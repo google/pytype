@@ -362,6 +362,28 @@ class SolverTests(test_base.BaseTest):
         x = ...  # type: complex
       """)
 
+  def test_store_name_cfg(self):
+    ty = self.Infer("""\
+      a = 1
+      a = a + 1
+      """)
+    self.assertTypesMatchPytd(ty, "a = ...  # type: int")
+
+  def test_store_global_cfg(self):
+    # STORE_GLOBAL didn't advance the cfg, so it required additional statements
+    # in between in order to show the bug.
+    ty = self.Infer("""\
+      global a
+      b = 1
+      a = 1
+      b = 1 + b
+      a = 1 + a
+      """)
+    self.assertTypesMatchPytd(ty, """\
+      a = ...  # type: int
+      b = ...  # type: int
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

@@ -1061,17 +1061,28 @@ class VirtualMachine(object):
     else:
       return self.load_from(state, self.frame.f_builtins, name)
 
+  def _store_value(self, state, name, value, local):
+    if local:
+      target = self.frame.f_locals
+    else:
+      target = self.frame.f_globals
+    node = self.attribute_handler.set_attribute(state.node, target, name, value)
+    return state.change_cfg_node(node)
+
   def store_local(self, state, name, value):
     """Called when a local is written."""
-    node = self.attribute_handler.set_attribute(
-        state.node, self.frame.f_locals, name, value)
-    return state.change_cfg_node(node)
+    return self._store_value(state, name, value, local=True)
 
   def store_global(self, state, name, value):
     """Same as store_local except for globals."""
-    node = self.attribute_handler.set_attribute(
-        state.node, self.frame.f_globals, name, value)
-    return state.change_cfg_node(node)
+    return self._store_value(state, name, value, local=False)
+
+  def _pop_and_store(self, state, op, name, local):
+    state, value = state.pop()
+    value = self.annotations_util.apply_type_comment(state, op, name, value)
+    state = state.forward_cfg_node()
+    state = self._store_value(state, name, value, local)
+    return state.forward_cfg_node()
 
   def del_local(self, name):
     """Called when a local is deleted."""
@@ -1556,10 +1567,7 @@ class VirtualMachine(object):
 
   def byte_STORE_NAME(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
-    state, value = state.pop()
-    value = self.annotations_util.apply_type_comment(state, op, name, value)
-    state = self.store_local(state, name, value)
-    return state.forward_cfg_node()
+    return self._pop_and_store(state, op, name, local=True)
 
   def byte_DELETE_NAME(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
@@ -1578,12 +1586,7 @@ class VirtualMachine(object):
 
   def byte_STORE_FAST(self, state, op):
     name = self.frame.f_code.co_varnames[op.arg]
-    state, value = state.pop()
-    value = self.annotations_util.apply_type_comment(state, op, name, value)
-    state = state.forward_cfg_node()
-    state = self.store_local(state, name, value)
-    state = state.forward_cfg_node()
-    return state
+    return self._pop_and_store(state, op, name, local=True)
 
   def byte_DELETE_FAST(self, state, op):
     name = self.frame.f_code.co_varnames[op.arg]
@@ -1605,10 +1608,7 @@ class VirtualMachine(object):
 
   def byte_STORE_GLOBAL(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
-    state, value = state.pop()
-    value = self.annotations_util.apply_type_comment(state, op, name, value)
-    state = self.store_global(state, name, value)
-    return state
+    return self._pop_and_store(state, op, name, local=False)
 
   def byte_DELETE_GLOBAL(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
@@ -1641,7 +1641,9 @@ class VirtualMachine(object):
     assert isinstance(value, cfg.Variable)
     name = self.frame.f_code.co_cellvars[op.arg]
     value = self.annotations_util.apply_type_comment(state, op, name, value)
+    state = state.forward_cfg_node()
     self.frame.cells[op.arg].PasteVariable(value, state.node)
+    state = state.forward_cfg_node()
     return state
 
   def byte_DELETE_DEREF(self, state, op):
