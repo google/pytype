@@ -450,6 +450,11 @@ class MatcherTest(unittest.TestCase):
       self.assertSetEqual(set(subst), {abstract.T})
       self.assertListEqual(subst[abstract.T].data, [self.vm.convert.empty])
 
+  def testListAgainstMapping(self):
+    left = self._convert_type("list", as_instance=True)
+    right = self.vm.convert.name_to_value("typing.Mapping")
+    self.assertNoMatch(left, right)
+
 
 if __name__ == "__main__":
   unittest.main()

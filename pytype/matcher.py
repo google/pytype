@@ -686,7 +686,7 @@ class AbstractMatcher(object):
 
     Args:
       left: A type.
-      other_type: A formal type. E.g. abstract.Class or abstract.Union.
+      other_type: A protocol.
       subst: The current type parameter assignment.
       node: The current CFG node.
       view: The current mapping of Variable to Value.
@@ -695,6 +695,11 @@ class AbstractMatcher(object):
     """
     if isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
       return subst
+    elif left.template and len(left.template) < len(other_type.template):
+      # 'left' is a generic class with fewer type parameters than the protocol.
+      # Note that having more type parameters is fine; for example,
+      # Mapping[K, V] matches Iterable[K].
+      return None
     left_methods = self._get_methods_dict(left)
     method_names_matched = all(
         method in left_methods for method in other_type.abstract_methods)
@@ -733,6 +738,9 @@ class AbstractMatcher(object):
       for signature in abstract_method.signatures:
         callable_signature = converter.signature_to_callable(
             signature.signature, self.vm)
+        if isinstance(callable_signature, abstract.Callable):
+          # Prevent the matcher from trying to enforce contravariance on 'self'.
+          callable_signature.type_parameters[0] = self.vm.convert.unsolvable
         annotation_subst = {
             param: self.vm.annotations_util.instantiate_for_sub(node, value)
             for (param, value) in params.items()}

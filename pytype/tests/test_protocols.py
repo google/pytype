@@ -256,7 +256,7 @@ class ProtocolTest(test_base.BaseTest):
         return iter(x)
     """)
 
-  def test_iterable(self):
+  def test_iterable_getitem(self):
     ty = self.Infer("""
       from __future__ import google_type_annotations
       from typing import Iterable, Iterator, TypeVar
@@ -280,12 +280,47 @@ class ProtocolTest(test_base.BaseTest):
       def f(s: Iterable[T2]) -> Iterator[T2]
     """)
 
-  def test_pyi_iterable(self):
+  def test_iterable_iter(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from typing import Iterable, Iterator, TypeVar
+      class Bar(object):
+        def __iter__(self) -> Iterator:
+          return iter([])
+      T = TypeVar("T")
+      def f(s: Iterable[T]) -> Iterator[T]:
+        return iter(s)
+      next(f(Bar()))
+    """, deep=False)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Iterable, Iterator, TypeVar
+      class Bar(object):
+        def __iter__(self) -> Iterator: ...
+      T = TypeVar("T")
+      def f(s: Iterable[T]) -> Iterator[T]
+    """)
+
+  def test_pyi_iterable_getitem(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         T = TypeVar("T")
         class Foo(object):
           def __getitem__(self, i: T) -> T: ...
+      """)
+      self.Check("""
+        from __future__ import google_type_annotations
+        from typing import Iterable, TypeVar
+        import foo
+        T = TypeVar("T")
+        def f(s: Iterable[T]) -> T: ...
+        f(foo.Foo())
+      """, pythonpath=[d.path])
+
+  def test_pyi_iterable_iter(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class Foo(object):
+          def __iter__(self) -> ?: ...
       """)
       self.Check("""
         from __future__ import google_type_annotations
@@ -352,6 +387,14 @@ class ProtocolTest(test_base.BaseTest):
       def f(x: Collection):
         pass
       f(Foo())
+    """)
+
+  def test_list_against_collection(self):
+    self.Check("""
+      from __future__ import google_type_annotations
+      from typing import Collection
+      def f() -> Collection[str]:
+        return [""]
     """)
 
   def test_hashable(self):
