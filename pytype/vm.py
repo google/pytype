@@ -1363,18 +1363,13 @@ class VirtualMachine(object):
             state, func, (self.convert.build_int(state.node),))
         # Create a new iterator from the returned value.
         itr.AddBinding(abstract.Iterator(self, item), [], state.node)
-      else:
-        # Cannot iterate this object.
-        if report_errors:
-          for m in missing:
-            if state.node.HasCombination([m]):
-              if not self.options.strict_none and self._data_is_none(m.data):
-                self.errorlog.none_attr(self.frames, "__iter__")
-              else:
-                self.errorlog.attribute_error(self.frames, m, "__iter__")
-          itr = self.convert.create_new_unsolvable(state.node)
-        else:
-          itr = None
+      if report_errors:
+        for m in missing:
+          if state.node.HasCombination([m]):
+            if not self.options.strict_none and self._data_is_none(m.data):
+              self.errorlog.none_attr(self.frames, "__iter__")
+            else:
+              self.errorlog.attribute_error(self.frames, m, "__iter__")
     return state, itr
 
   def byte_UNARY_NOT(self, state, op):
@@ -1715,7 +1710,7 @@ class VirtualMachine(object):
       # For an object without a __contains__ method, cmp_in falls back to
       # checking x against the items produced by y's iterator.
       state, itr = self._get_iter(state, y, report_errors=False)
-      if not itr:
+      if len(itr.bindings) < len(y.bindings):
         # y does not have any of __contains__, __iter__, and __getitem__.
         # (The last two are checked by _get_iter.)
         if not self.options.strict_none and self._is_only_none(state.node, y):

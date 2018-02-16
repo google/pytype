@@ -801,6 +801,38 @@ class TestAttributes(test_base.BaseTest):
         pass
     """)
 
+  def testBadIter(self):
+    errors = self.CheckWithErrors("""\
+      v = [] if __random__ else 42
+      for _ in v:
+        pass
+    """)
+    self.assertErrorLogIs(errors, [(2, "attribute-error", r"__iter__.*int")])
+
+  def testBadGetItem(self):
+    errors = self.CheckWithErrors("""\
+      class Foo(object):
+        def __getitem__(self, x):
+          return 0
+      v = Foo() if __random__ else 42
+      for _ in v:  # line 5
+        pass
+    """)
+    self.assertErrorLogIs(errors, [(5, "attribute-error", r"__iter__.*int")])
+
+  def testBadContains(self):
+    errors = self.CheckWithErrors("""\
+      class Foo(object):
+        def __iter__(self):
+          return iter([])
+      v = Foo() if __random__ else 42
+      if 42 in v:  # line 5
+        pass
+    """)
+    self.assertErrorLogIs(
+        errors, [(5, "unsupported-operands",
+                  r"__contains__.*'Union\[Foo, int\]' and 'int'")])
+
 
 if __name__ == "__main__":
   test_base.main()
