@@ -774,6 +774,7 @@ class TestAttributes(test_base.BaseTest):
           def __init__(self) -> None: ...
     """)
 
+  @unittest.skip("Needs vm._get_iter() to iterate through individual bindings.")
   def testMetaclassIter(self):
     self.Check("""
       class Meta(type):
@@ -801,6 +802,7 @@ class TestAttributes(test_base.BaseTest):
         pass
     """)
 
+  @unittest.skip("Needs vm._get_iter() to iterate through individual bindings.")
   def testBadIter(self):
     errors = self.CheckWithErrors("""\
       v = [] if __random__ else 42
@@ -818,7 +820,8 @@ class TestAttributes(test_base.BaseTest):
       for _ in v:  # line 5
         pass
     """)
-    self.assertErrorLogIs(errors, [(5, "attribute-error", r"__iter__.*int")])
+    self.assertErrorLogIs(errors, [(5, "attribute-error",
+                                    r"__iter__.*int.*Union\[Foo, int\]")])
 
   def testBadContains(self):
     errors = self.CheckWithErrors("""\
