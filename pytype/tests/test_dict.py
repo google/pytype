@@ -88,6 +88,19 @@ class DictTest(test_base.BaseTest):
     """)
     self.assertErrorLogIs(errors, [(4, "bad-return-type")])
 
+  def testUpdateEmpty(self):
+    ty = self.Infer("""
+      from typing import Dict
+      d1 = {}
+      d2 = None  # type: Dict[str, int]
+      d1.update(d2)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict
+      d1 = ...  # type: Dict[str, int]
+      d2 = ...  # type: Dict[str, int]
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

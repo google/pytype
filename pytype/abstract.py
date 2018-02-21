@@ -1153,9 +1153,14 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
         self.could_contain_anything |= other_dict.could_contain_anything
     else:
       assert isinstance(other_dict, AtomicAbstractValue)
-      unsolvable = self.vm.convert.create_new_unsolvable(node)
-      self.merge_type_parameter(node, K, unsolvable)
-      self.merge_type_parameter(node, V, unsolvable)
+      if (isinstance(other_dict, Instance) and
+          other_dict.get_full_name() == "__builtin__.dict"):
+        k = other_dict.get_type_parameter(node, K)
+        v = other_dict.get_type_parameter(node, V)
+      else:
+        k = v = self.vm.convert.create_new_unsolvable(node)
+      self.merge_type_parameter(node, K, k)
+      self.merge_type_parameter(node, V, v)
       self.could_contain_anything = True
 
   def compatible_with(self, logical_value):
