@@ -463,7 +463,7 @@ class AssignmentCommentTest(test_base.BaseTest):
       def hello_world() -> str: ...
     """)
 
-  def test_nested_comment_alias(self):
+  def testNestedCommentAlias(self):
     ty = self.Infer("""\
       class A(object): pass
       class B(object):
@@ -478,7 +478,7 @@ class AssignmentCommentTest(test_base.BaseTest):
         x = ...  # type: A
       """)
 
-  def test_nested_classes_comments(self):
+  def testNestedClassesComments(self):
     ty = self.Infer("""\
       class A(object):
         class B(object): pass
@@ -490,6 +490,54 @@ class AssignmentCommentTest(test_base.BaseTest):
         B = ...  # type: type
         x = ...  # type: Any
       """)
+
+  def testListComprehensionComments(self):
+    ty = self.Infer("""\
+      from typing import List
+      def f(x):
+        # type: (str) -> None
+        pass
+      def g(xs):
+        # type: (List[str]) -> List[str]
+        ys = [f(x) for x in xs]  # type: List[str]
+        return ys
+    """)
+    self.assertTypesMatchPytd(ty, """\
+      from typing import List
+      def f(x: str) -> None: ...
+      def g(xs: List[str]) -> List[str]: ...
+    """)
+
+  def testMultipleAssignments(self):
+    ty = self.Infer("""\
+      a = 1; b = 2; c = 4  # type: float
+    """)
+    self.assertTypesMatchPytd(ty, """\
+      a = ...  # type: int
+      b = ...  # type: int
+      c = ...  # type: float
+    """)
+
+
+class Py3TypeCommentTest(test_base.BaseTest):
+  """Tests for type comments in python3."""
+
+  PYTHON_VERSION = (3, 6)
+
+  def testListComprehensionComments(self):
+    ty = self.Infer("""\
+      from typing import List
+      def f(x: str):
+        pass
+      def g(xs: List[str]) -> List[str]:
+        ys = [f(x) for x in xs]  # type: List[str]
+        return ys
+    """)
+    self.assertTypesMatchPytd(ty, """\
+      from typing import List
+      def f(x: str) -> None: ...
+      def g(xs: List[str]) -> List[str]: ...
+    """)
 
 
 if __name__ == "__main__":

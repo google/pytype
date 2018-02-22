@@ -53,7 +53,7 @@ class BytecodeTest(test_base.BaseTest):
         0x64, 1, 0,  # 0 LOAD_CONST, arg=1 (1)
         0x53,  # 3 RETURN_VALUE
     ], name="simple")
-    code = blocks.process_code(code)
+    code = blocks.process_code(code, {})
     v = vm.VirtualMachine(self.errorlog, self.options, loader=self.loader)
     v.run_bytecode(v.program.NewCFGNode(), code)
 
@@ -85,7 +85,7 @@ class BytecodeTest(test_base.BaseTest):
         0x7c, 1, 0,   # 45 LOAD_FAST, arg=1,
         0x53,         # 48 RETURN_VALUE
     ])
-    code = blocks.process_code(code)
+    code = blocks.process_code(code, {})
     v = vm.VirtualMachine(self.errorlog, self.options, loader=self.loader)
     v.run_bytecode(v.program.NewCFGNode(), code)
 

@@ -110,11 +110,7 @@ class _FindIgnoredTypeComments(object):
   def visit_code(self, code):
     """Interface for pyc.visit."""
     for i, op in enumerate(code.co_code):
-      if isinstance(op, (opcodes.STORE_NAME,
-                         opcodes.STORE_FAST,
-                         opcodes.STORE_ATTR,
-                         opcodes.STORE_DEREF,
-                         opcodes.STORE_GLOBAL)):
+      if isinstance(op, blocks.STORE_OPCODES):
         self._ignored_type_lines.discard(op.line)
       elif isinstance(op, opcodes.MAKE_FUNCTION):
         code_line = self._find_code_line(code, i)
@@ -664,7 +660,7 @@ class VirtualMachine(object):
         src, python_version=self.python_version,
         python_exe=self.options.python_exe,
         filename=filename, mode=mode)
-    return blocks.process_code(code)
+    return blocks.process_code(code, self.director.type_comments)
 
   def run_bytecode(self, node, code, f_globals=None, f_locals=None):
     frame = self.make_frame(node, code, f_globals=f_globals, f_locals=f_locals)

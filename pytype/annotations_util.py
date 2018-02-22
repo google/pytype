@@ -155,30 +155,31 @@ class AnnotationsUtil(object):
     assert op is self.vm.frame.current_opcode
     if op.code.co_filename != self.vm.filename:
       return value
-    code, comment = self.vm.director.type_comments.get(op.line, (None, None))
-    if code:
+    if not op.type_comment:
+      return value
+    comment = op.type_comment
+    try:
+      var = self._eval_expr(state.node, self.vm.frame.f_globals,
+                            self.vm.frame.f_locals, comment)
+    except EvaluationError as e:
+      self.vm.errorlog.invalid_type_comment(
+          self.vm.frames, comment, details=e.message)
+      value = self.vm.convert.create_new_unsolvable(state.node)
+    else:
       try:
-        var = self._eval_expr(state.node, self.vm.frame.f_globals,
-                              self.vm.frame.f_locals, comment)
-      except EvaluationError as e:
+        typ = abstract.get_atomic_value(var)
+      except abstract.ConversionError:
         self.vm.errorlog.invalid_type_comment(
-            self.vm.frames, comment, details=e.message)
+            self.vm.frames, comment, details="Must be constant.")
         value = self.vm.convert.create_new_unsolvable(state.node)
       else:
+        if self.get_type_parameters(typ):
+          self.vm.errorlog.not_supported_yet(
+              self.vm.frames, "using type parameter in type comment")
         try:
-          typ = abstract.get_atomic_value(var)
-        except abstract.ConversionError:
-          self.vm.errorlog.invalid_type_comment(
-              self.vm.frames, comment, details="Must be constant.")
-          value = self.vm.convert.create_new_unsolvable(state.node)
-        else:
-          if self.get_type_parameters(typ):
-            self.vm.errorlog.not_supported_yet(
-                self.vm.frames, "using type parameter in type comment")
-          try:
-            value = self.init_annotation(typ, name, self.vm.frames, state.node)
-          except self.LateAnnotationError:
-            value = LateAnnotation(typ, name, self.vm.simple_stack())
+          value = self.init_annotation(typ, name, self.vm.frames, state.node)
+        except self.LateAnnotationError:
+          value = LateAnnotation(typ, name, self.vm.simple_stack())
     return value
 
   def init_annotation(self, annot, name, stack, node, f_globals=None,

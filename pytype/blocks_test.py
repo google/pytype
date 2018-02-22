@@ -3,12 +3,18 @@
 
 from pytype import blocks
 from pytype.pyc import opcodes
+from pytype.pyc import pyc
 from pytype.tests import test_base
 import unittest
 
 
 class OrderingTest(test_base.BaseTest):
   """Tests for order_code in blocks.py."""
+
+  def _order_code(self, code):
+    """Helper function to disassemble and then order code."""
+    disassembled_code = pyc.visit(code, blocks.DisCodeVisitor())
+    return blocks.order_code(disassembled_code)
 
   def test_trivial(self):
     # Disassembled from:
@@ -17,7 +23,7 @@ class OrderingTest(test_base.BaseTest):
         0x64, 1, 0,  # 0 LOAD_CONST, arg=0 (None)
         0x53,  # 3 RETURN_VALUE
     ], name="trivial")
-    ordered_code = blocks.order_code(co)
+    ordered_code = self._order_code(co)
     b0, = ordered_code.order
     self.assertEqual(2, len(b0.code))
     self.assertItemsEqual([], b0.incoming)
@@ -30,7 +36,7 @@ class OrderingTest(test_base.BaseTest):
         0x64, 1, 0,  # 0 LOAD_CONST, arg=0 (None)
         0x53,  # 3 RETURN_VALUE
     ], name="trivial")
-    ordered_code = blocks.order_code(co)
+    ordered_code = self._order_code(co)
     self.assertTrue(ordered_code.has_opcode(opcodes.LOAD_CONST))
     self.assertTrue(ordered_code.has_opcode(opcodes.RETURN_VALUE))
     self.assertFalse(ordered_code.has_opcode(opcodes.POP_TOP))
@@ -48,7 +54,7 @@ class OrderingTest(test_base.BaseTest):
         0x64, 0, 0,  # 15 LOAD_CONST, arg=0 (None),
         0x53,  # 18 RETURN_VALUE
     ], name="yield")
-    ordered_code = blocks.order_code(co)
+    ordered_code = self._order_code(co)
     self.assertEqual(ordered_code.co_name, "yield")
     b0, b1 = ordered_code.order
     self.assertItemsEqual(b0.outgoing, [b1])
@@ -80,7 +86,7 @@ class OrderingTest(test_base.BaseTest):
         0x7c, 1, 0,  # 31 LOAD_FAST, arg=1,
         0x53,  # 34 RETURN_VALUE
     ], name="triangle")
-    ordered_code = blocks.order_code(co)
+    ordered_code = self._order_code(co)
     self.assertEqual(ordered_code.co_name, "triangle")
     b0, b1, b2 = ordered_code.order
     self.assertItemsEqual(b0.incoming, [])
@@ -121,7 +127,7 @@ class OrderingTest(test_base.BaseTest):
         0x7c, 1, 0,  # 41 LOAD_FAST, arg=1,
         0x53,  # 44 RETURN_VALUE
     ], name="diamond")
-    ordered_code = blocks.order_code(co)
+    ordered_code = self._order_code(co)
     self.assertEqual(ordered_code.co_name, "diamond")
     b0, b1, b2, b3 = ordered_code.order
     self.assertItemsEqual(b0.incoming, [])
@@ -144,7 +150,7 @@ class OrderingTest(test_base.BaseTest):
         0x64, 1, 0,  # 9 LOAD_CONST, arg=1, dead.
         0x53,  # 12 RETURN_VALUE, dead.
     ], name="raise")
-    ordered_code = blocks.order_code(co)
+    ordered_code = self._order_code(co)
     self.assertEqual(ordered_code.co_name, "raise")
     b0, = ordered_code.order
     self.assertEqual(2, len(b0.code))
@@ -163,7 +169,7 @@ class OrderingTest(test_base.BaseTest):
         0x64, 0, 0,  # 7 LOAD_CONST, arg=0,
         0x53,  # 10 RETURN_VALUE
     ], name="call")
-    ordered_code = blocks.order_code(co)
+    ordered_code = self._order_code(co)
     b0, b1 = ordered_code.order
     self.assertEqual(2, len(b0.code))
     self.assertEqual(3, len(b1.code))
@@ -187,7 +193,7 @@ class OrderingTest(test_base.BaseTest):
         0x64, 0, 0,  # 8 LOAD_CONST, arg=0 (None),
         0x53,  # 11 RETURN_VALUE
     ], name="finally")
-    ordered_code = blocks.order_code(co)
+    ordered_code = self._order_code(co)
     b0, b1, b2, b3 = ordered_code.order
     self.assertEqual(2, len(b0.code))
     self.assertEqual(1, len(b1.code))
@@ -218,7 +224,7 @@ class OrderingTest(test_base.BaseTest):
         0x64, 0, 0,  # 14 LOAD_CONST, arg=0,
         0x53,        # 17 RETURN_VALUE
     ], name="except")
-    ordered_code = blocks.order_code(co)
+    ordered_code = self._order_code(co)
     b0, b1, b2, b3 = ordered_code.order
     self.assertEqual(2, len(b0.code))
     self.assertEqual(1, len(b1.code))
@@ -238,7 +244,7 @@ class OrderingTest(test_base.BaseTest):
         0x64, 1, 0,  # 4 LOAD_CONST, arg=0 (None), dead.
         0x53,  # 7 RETURN_VALUE, dead.
     ], name="return")
-    ordered_code = blocks.order_code(co)
+    ordered_code = self._order_code(co)
     b0, = ordered_code.order
     self.assertEqual(2, len(b0.code))
 
@@ -262,7 +268,7 @@ class OrderingTest(test_base.BaseTest):
         0x64, 0, 0,  # 13 LOAD_CONST, arg=0,
         0x53,        # 16 RETURN_VALUE
     ], name="with")
-    ordered_code = blocks.order_code(co)
+    ordered_code = self._order_code(co)
     b0, b1, b2, b3, b4 = ordered_code.order
     self.assertEqual(4, len(b0.code))
     self.assertEqual(1, len(b1.code))
@@ -415,6 +421,24 @@ class BlockStackTest(test_base.BaseTest):
     self.assertEqual(bytecode[1], bytecode[6].target)
     self.assertEqual(bytecode[1], bytecode[10].target)
     self.assertEqual(bytecode[1], bytecode[12].target)
+
+  def test_apply_typecomments(self):
+    # Disassembly + type comment map from
+    #   a = 1; b = 2  # type: float
+    # The type comment should only apply to b.
+    co = self.make_code([
+        0x64, 0, 0,     # [0]  0 LOAD_CONST, arg=0 (1)
+        0x5a, 0, 0,     # [1]  3 STORE_NAME, arg=0 (a)
+        0x64, 1, 0,     # [2]  6 LOAD_CONST, arg=1 (2)
+        0x5a, 1, 0,     # [3]  9 STORE_NAME, arg=1 (b)
+        0x64, 2, 0,     # [4] 12 LOAD_CONST, arg=2 (None)
+        0x53            # [5] 15 RETURN_VALUE
+    ])
+    ordered_code = blocks.process_code(co, {1: ("a = 1; b = 2", "float")})
+    bytecode = ordered_code.order[0].code
+    self.assertEqual(bytecode[1].type_comment, None)
+    self.assertEqual(bytecode[3].type_comment, "float")
+
 
 if __name__ == "__main__":
   unittest.main()

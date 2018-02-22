@@ -22,7 +22,8 @@ class Opcode(object):
   """An opcode without arguments."""
 
   __slots__ = ("line", "index", "prev", "next",
-               "target", "block_target", "code")
+               "target", "block_target", "code",
+               "type_comment")
   FLAGS = 0
 
   def __init__(self, index, line):
@@ -30,6 +31,7 @@ class Opcode(object):
     self.line = line
     self.target = None
     self.code = None  # If we have a CodeType or OrderedCode parent
+    self.type_comment = None
 
   def at_line(self, line):
     """Return a new opcode simliar to this one but with a different line."""
@@ -39,8 +41,15 @@ class Opcode(object):
     op.code = self.code
     return op
 
-  def __str__(self):
+  def basic_str(self):
+    """Helper function for the various __str__ formats."""
     return "%d: %d: %s" % (self.line, self.index, self.__class__.__name__)
+
+  def __str__(self):
+    if self.type_comment:
+      return "%s  # type: %s" % (self.basic_str(), self.type_comment)
+    else:
+      return self.basic_str()
 
   def __repr__(self):
     return self.__class__.__name__
@@ -129,8 +138,11 @@ class OpcodeWithArg(Opcode):
     self.pretty_arg = pretty_arg
 
   def __str__(self):
-    return "%d: %d: %s %s" % (
-        self.line, self.index, self.__class__.__name__, self.pretty_arg)
+    out = "%s %s" % (self.basic_str(), self.pretty_arg)
+    if self.type_comment:
+      return "%s  # type: %s" % (out, self.type_comment)
+    else:
+      return out
 
   @classmethod
   def has_arg(cls):
@@ -1136,7 +1148,8 @@ def _bytecode_reader(data, mapping):
   Arguments:
     data: The block of binary pyc code
     mapping: {opcode : class}
-  Returns:
+
+  Yields:
     (start position, end position, opcode class, oparg)
   """
   pos = 0
@@ -1176,7 +1189,8 @@ def _wordcode_reader(data, mapping):
   Arguments:
     data: The block of binary pyc code
     mapping: {opcode : class}
-  Returns:
+
+  Yields:
     (start position, end position, opcode class, oparg)
   """
   extended_arg = 0
@@ -1240,6 +1254,7 @@ def _dis(data, mapping, reader,
 
 
 def dis(data, python_version, *args, **kwargs):
+  """Set up version-specific arguments and call _dis()."""
   major, minor = python_version[0], python_version[1]
   assert major in (2, 3)
   mapping = {

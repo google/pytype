@@ -1,10 +1,21 @@
 """Functions for computing the execution order of bytecode."""
 
+import collections
 import itertools
 
 from pytype import utils
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
+
+STORE_OPCODES = (
+    opcodes.STORE_NAME,
+    opcodes.STORE_FAST,
+    opcodes.STORE_ATTR,
+    opcodes.STORE_DEREF,
+    opcodes.STORE_GLOBAL)
+
+# Opcodes whose argument can be a block of code.
+CODE_LOADING_OPCODES = (opcodes.LOAD_CONST,)
 
 
 class OrderedCode(object):
@@ -204,6 +215,14 @@ def compute_order(bytecode):
   return utils.order_nodes(blocks)
 
 
+class DisCodeVisitor(object):
+  """Visitor for disassembling code into Opcode objects."""
+
+  def visit_code(self, code):
+    code.co_code = opcodes.dis_code(code)
+    return code
+
+
 def order_code(code):
   """Split a CodeType object into ordered blocks.
 
@@ -216,18 +235,60 @@ def order_code(code):
   Returns:
     A CodeBlocks instance.
   """
-  bytecodes = opcodes.dis_code(code)
+  bytecodes = code.co_code
   add_pop_block_targets(bytecodes)  # TODO(kramm): move into pyc/opcodes.py?
   return OrderedCode(code, bytecodes, compute_order(bytecodes),
                      code.python_version)
 
 
 class OrderCodeVisitor(object):
-  """Visitor for recursively changing all CodeType to OrderedCode."""
+  """Visitor for recursively changing all CodeType to OrderedCode.
+
+  Depends on DisCodeVisitor having been run first.
+  """
 
   def visit_code(self, code):
     return order_code(code)
 
 
-def process_code(code):
+class CollectTypeCommentTargetsVisitor(object):
+  """Collect opcodes that might have type comments attached.
+
+  Depends on DisCodeVisitor having been run first.
+  """
+
+  def __init__(self):
+    # A mutable map of line: opcode for STORE_* opcodes. This is modified as the
+    # visitor runs, and contains the last opcode for each line.
+    self.store_op_map = collections.defaultdict(None)
+
+  def visit_code(self, code):
+    # For type comments attached to multi-opcode lines, we want to mark the
+    # latest 'store' opcode and attach the type comment to it.
+    for op in code.co_code:
+      if isinstance(op, STORE_OPCODES):
+        self.store_op_map[op.line] = op
+
+
+def merge_type_comments(code, type_comments):
+  """Merges type comments into their associated opcodes.
+
+  Modifies code in place.
+
+  Args:
+    code: CodeType object that has been disassembled (see DisCodeVisitor).
+    type_comments: Map of type comments from the director.
+  """
+  visitor = CollectTypeCommentTargetsVisitor()
+  pyc.visit(code, visitor)
+  # Apply type comments to the STORE_* opcodes
+  for line, op in visitor.store_op_map.items():
+    if line in type_comments:
+      _, comment = type_comments[line]
+      op.type_comment = comment
+
+
+def process_code(code, type_comments):
+  code = pyc.visit(code, DisCodeVisitor())
+  merge_type_comments(code, type_comments)
   return pyc.visit(code, OrderCodeVisitor())
