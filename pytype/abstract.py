@@ -864,8 +864,13 @@ class Instance(SimpleAbstractValue):
     # conflicts, so we'll set all of them to unsolvable.
     node = self.vm.root_cfg_node
     for name in bad_names:
-      super(Instance, self).merge_type_parameter(
-          node, name, self.vm.convert.create_new_unsolvable(node))
+      # We overwrite the type parameter directly instead of calling
+      # merge_type_parameter so that we don't accidentally evaluate the
+      # overwritten value. Using dict.__setitem__ allows us to bypass
+      # MonitorDict's checks, which is safe because changes in __init__ don't
+      # need to be monitored.
+      dict.__setitem__(self.type_parameters, name,
+                       self.vm.convert.create_new_unsolvable(node))
     self._bad_names = bad_names
 
     for name, param in unbound_params:

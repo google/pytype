@@ -801,6 +801,20 @@ class ContainerTest(test_base.BaseTest):
       def read(path) -> Any
     """)
 
+  def testRecursiveDefinitionAndConflict(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Generic, TypeVar
+        T = TypeVar("T")
+        class Foo(Generic[T]): ...
+        class Bar(Generic[T]): ...
+        class Baz(Foo[Baz], Bar[str]): ...
+      """)
+      self.Check("""
+        import foo
+        foo.Baz()
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_base.main()
