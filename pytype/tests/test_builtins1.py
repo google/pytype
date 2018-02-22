@@ -236,7 +236,7 @@ class BuiltinTests(test_base.BaseTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List
-      def t_testListInit3(x: List[int or str, ...], i: int) -> int or str
+      def t_testListInit3(x: List[int or str, ...], i: int) -> int
     """)
 
   def testListInit4(self):

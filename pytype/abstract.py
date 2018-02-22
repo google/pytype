@@ -945,15 +945,18 @@ class HasSlots(object):
     return HasSlots.super(self.get_special_attribute)(node, name, valself)
 
 
-class List(Instance, PythonConstant):
+class List(Instance, HasSlots, PythonConstant):
   """Representation of Python 'list' objects."""
 
   def __init__(self, content, vm):
     super(List, self).__init__(vm.convert.list_type, vm)
     PythonConstant.init_mixin(self, content)
+    HasSlots.init_mixin(self)
     combined_content = vm.convert.build_content(content)
     self.merge_type_parameter(None, T, combined_content)
     self.could_contain_anything = False
+    self.set_slot("__getitem__", self.getitem_slot)
+    self.set_slot("__getslice__", self.getslice_slot)
 
   def str_of_constant(self, printer):
     return "[%s]" % ", ".join(" or ".join(printer(v) for v in val.data)
@@ -972,6 +975,87 @@ class List(Instance, PythonConstant):
   def compatible_with(self, logical_value):
     return (self.could_contain_anything or
             PythonConstant.compatible_with(self, logical_value))
+
+  def getitem_slot(self, node, index_var):
+    """Implements __getitem__ for List.
+
+    Arguments:
+      node: The current CFG node.
+      index_var: The Variable containing the index value, the i in lst[i].
+
+    Returns:
+      Tuple of (node, return_variable). node may be the same as the argument.
+      return_variable is a Variable with bindings of the possible return values.
+    """
+    results = []
+    unresolved = False
+    node, ret = self.call_pytd(node, "__getitem__", index_var)
+    if not self.could_contain_anything:
+      for val in index_var.bindings:
+        try:
+          index = self.vm.convert.value_to_constant(val.data, int)
+        except ConversionError:
+          unresolved = True
+        else:
+          results.append(self.pyval[index])
+    if unresolved or self.could_contain_anything:
+      results.append(ret)
+    return node, self.vm.join_variables(node, results)
+
+  def _get_index(self, data):
+    """Helper function for getslice_slot that extracts int or None from data.
+
+    If data is an Instance of int, None is returned. This may happen when
+    vm.py:get_slice replaces an argument with an Instance of int.
+
+    Args:
+      data: The object to extract from. Usually an AbstractOrConcreteValue or an
+        Instance.
+
+    Returns:
+      The value (an int or None) of the index.
+
+    Raises:
+      ConversionError: If the data could not be converted to an int or None.
+    """
+    if isinstance(data, AbstractOrConcreteValue):
+      return self.vm.convert.value_to_constant(data, (int, type(None)))
+    elif isinstance(data, Instance):
+      if get_atomic_value(data.cls) != self.vm.convert.int_type:
+        raise ConversionError()
+      else:
+        return None
+    else:
+      raise ConversionError()
+
+  def getslice_slot(self, node, start_var, end_var):
+    """Implements __getslice__ for List.
+
+    Arguments:
+      node: The current CFG node.
+      start_var: A Variable containing the i in lst[i:j].
+      end_var: A Variable containing the j in lst[i:j].
+
+    Returns:
+      Tuple of (node, return_variable). node may be the same as the argument.
+      return_variable is a Variable with bindings of the possible return values.
+    """
+    # call_pytd will typecheck start_var and end_var.
+    node, ret = self.call_pytd(node, "__getslice__", start_var, end_var)
+    results = []
+    unresolved = False
+    if not self.could_contain_anything:
+      for start_val, end_val in utils.variable_product([start_var, end_var]):
+        try:
+          start = self._get_index(start_val.data)
+          end = self._get_index(end_val.data)
+        except ConversionError:
+          unresolved = True
+        else:
+          results.append(List(self.pyval[start:end], self.vm).to_variable(node))
+    if unresolved or self.could_contain_anything:
+      results.append(ret)
+    return node, self.vm.join_variables(node, results)
 
 
 class Tuple(Instance, PythonConstant):

@@ -114,13 +114,21 @@ class Converter(object):
         None: self.primitive_class_instances[bool],
     }
 
+  def _constant_name(self, constant_type):
+    if constant_type is None:
+      return "a constant"
+    elif isinstance(constant_type, tuple):
+      return "in (%s)" % ", ".join(c.__name__ for c in constant_type)
+    else:
+      return "a(n) %s" % constant_type.__name__
+
   def value_to_constant(self, val, constant_type):
     if (isinstance(val, abstract.PythonConstant) and
         isinstance(val.pyval, constant_type or object) and
         not getattr(val, "could_contain_anything", False)):
       return val.pyval
-    name = "constant" if constant_type is None else constant_type.__name__
-    raise abstract.ConversionError("%s is not a(n) %s" % (val, name))
+    name = self._constant_name(constant_type)
+    raise abstract.ConversionError("%s is not %s" % (val, name))
 
   def name_to_value(self, name, subst=None, ast=None):
     if ast is None:
