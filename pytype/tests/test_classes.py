@@ -350,7 +350,7 @@ class ClassesTest(test_base.BaseTest):
         _name = ...  # type: str
         def __get__(self, obj, objtype) -> str: ...
       class Bar(object):
-        foo = ...  # type: Foo
+        foo = ...  # type: str
         def test(self) -> str: ...
     """)
 
@@ -372,7 +372,7 @@ class ClassesTest(test_base.BaseTest):
         def __get__(self, obj, objtype) -> Any: ...
       class Bar(object):
         _name = ...  # type: str
-        foo = ...  # type: Foo
+        foo = ...  # type: Any
         def test(self) -> str: ...
     """)
 
@@ -393,8 +393,40 @@ class ClassesTest(test_base.BaseTest):
         def __get__(self, obj, objtype) -> Any: ...
       class Bar(object):
         _name = ...  # type: str
-        foo = ...  # type: Foo
+        foo = ...  # type: Any
         def test(self) -> str: ...
+    """)
+
+  def testBadDescriptor(self):
+    ty = self.Infer("""
+      class Foo(object):
+        __get__ = None
+      class Bar(object):
+        foo = Foo()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      class Foo(object):
+        __get__ = ...  # type: None
+      class Bar(object):
+        foo = ...  # type: Any
+    """)
+
+  def testNotDescriptor(self):
+    ty = self.Infer("""
+      class Foo(object):
+        pass
+      foo = Foo()
+      foo.__get__ = None
+      class Bar(object):
+        foo = foo
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        __get__ = ...  # type: None
+      foo = ...  # type: Foo
+      class Bar(object):
+        foo = ...  # type: Foo
     """)
 
   def testGetAttr(self):

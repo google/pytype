@@ -435,15 +435,13 @@ class Converter(object):
         template=())
     return pytd.Function(name, (pytd_sig,), pytd.METHOD)
 
-  def _property_to_types(self, node, v):
-    """Convert a property to a list of PyTD types."""
-    if not v.fget:
-      return [pytd.AnythingType()]
-    getter_options = v.fget.FilteredData(self.vm.exitpoint)
-    if not all(isinstance(o, abstract.Function) for o in getter_options):
+  def _function_to_return_types(self, node, fvar):
+    """Convert a function variable to a list of PyTD return types."""
+    options = fvar.FilteredData(self.vm.exitpoint)
+    if not all(isinstance(o, abstract.Function) for o in options):
       return [pytd.AnythingType()]
     types = []
-    for val in getter_options:
+    for val in options:
       if isinstance(val, abstract.InterpreterFunction):
         combinations = val.get_call_combinations(node)
         for node_after, _, return_value in combinations:
@@ -491,8 +489,11 @@ class Converter(object):
         if isinstance(value, special_builtins.PropertyInstance):
           # For simplicity, output properties as constants, since our parser
           # turns them into constants anyway.
-          for typ in self._property_to_types(node, value):
-            constants[name].add_type(typ)
+          if value.fget:
+            for typ in self._function_to_return_types(node, value.fget):
+              constants[name].add_type(typ)
+          else:
+            constants[name].add_type(pytd.AnythingType())
         elif isinstance(value, special_builtins.StaticMethodInstance):
           try:
             methods[name] = self._static_method_to_def(
@@ -514,7 +515,16 @@ class Converter(object):
           methods[name] = self.value_to_pytd_def(node, value, name).Visit(
               visitors.DropMutableParameters())
         else:
-          constants[name].add_type(value.to_type(node))
+          cls = self.vm.convert.merge_classes(node, [value])
+          node, attr = self.vm.attribute_handler.get_attribute(
+              node, cls, "__get__")
+          if attr:
+            # This attribute is a descriptor. Its type is the return value of
+            # its __get__ method.
+            for typ in self._function_to_return_types(node, attr):
+              constants[name].add_type(typ)
+          else:
+            constants[name].add_type(value.to_type(node))
 
     # instance-level attributes
     for instance in v.instances:
