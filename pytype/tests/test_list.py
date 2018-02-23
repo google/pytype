@@ -131,6 +131,20 @@ class ListTest(test_base.BaseTest):
         (10, "wrong-arg-types", "list.__getslice__"),
         (11, "wrong-arg-types", "list.__getslice__")])
 
+  def test_index_out_of_range(self):
+    ty = self.Infer("""
+      a = [0] if __random__ else []
+      b = 0
+      if b < len(a):
+        c = a[b]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List
+      a = ...  # type: List[int]
+      b = ...  # type: int
+      c = ...  # type: int
+    """)
+
 
 class ListTestPython3(test_base.BaseTest):
   """Tests for __builtin__.list in Python 3."""

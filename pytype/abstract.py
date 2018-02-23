@@ -997,7 +997,11 @@ class List(Instance, HasSlots, PythonConstant):
         except ConversionError:
           unresolved = True
         else:
-          results.append(self.pyval[index])
+          self_len = len(self.pyval)
+          if -self_len <= index < self_len:
+            results.append(self.pyval[index])
+          else:
+            unresolved = True
     if unresolved or self.could_contain_anything:
       results.append(ret)
     return node, self.vm.join_variables(node, results)
@@ -2532,7 +2536,7 @@ class TupleClass(ParameterizedClass, HasSlots):
     except ConversionError:
       pass
     else:
-      if -self.tuple_length <= index and index < self.tuple_length:
+      if -self.tuple_length <= index < self.tuple_length:
         # TODO(rechen): Should index out of bounds be a pytype error?
         return node, self._instantiate_index(node, index)
     return self.call_pytd(
