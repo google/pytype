@@ -36,7 +36,8 @@ CLASS_LEVEL_IGNORE = {
 class Converter(object):
   """Functions for converting abstract classes into PyTD."""
 
-  def __init__(self):
+  def __init__(self, vm):
+    self.vm = vm
     self._detailed = False
 
   @contextlib.contextmanager
@@ -97,12 +98,12 @@ class Converter(object):
               node, instance.type_parameters[t], view)
         elif isinstance(v, abstract.Callable):
           param_values = v.type_parameters[t].instantiate(
-              node or v.vm.root_cfg_node).data
+              node or self.vm.root_cfg_node).data
         else:
-          param_values = [v.vm.convert.unsolvable]
-        if (param_values == [v.vm.convert.unsolvable] and
+          param_values = [self.vm.convert.unsolvable]
+        if (param_values == [self.vm.convert.unsolvable] and
             isinstance(v, abstract.ParameterizedClass) and
-            not v.vm.annotations_util.get_type_parameters(
+            not self.vm.annotations_util.get_type_parameters(
                 v.type_parameters[t])):
           # When the instance's parameter value is unsolvable, we can get a
           # more precise type from the class. Note that we need to be careful
@@ -212,12 +213,12 @@ class Converter(object):
                         abstract.BoundInterpreterFunction)):
       sig, = abstract.get_signatures(v)
       return self.value_instance_to_pytd_type(
-          node, self.signature_to_callable(sig, v.vm), None, seen, view)
+          node, self.signature_to_callable(sig, self.vm), None, seen, view)
     elif isinstance(v, (abstract.PyTDFunction, abstract.BoundPyTDFunction)):
       signatures = abstract.get_signatures(v)
       if len(signatures) == 1:
-        val = self.signature_to_callable(signatures[0], v.vm)
-        if not v.vm.annotations_util.get_type_parameters(val):
+        val = self.signature_to_callable(signatures[0], self.vm)
+        if not self.vm.annotations_util.get_type_parameters(val):
           # This is a workaround to make sure we don't put unexpected type
           # parameters in call traces.
           return self.value_instance_to_pytd_type(node, val, None, seen, view)
@@ -242,7 +243,7 @@ class Converter(object):
               node, cls, v, seen=seen, view=view))
         ret = pytd_utils.JoinTypes(cls_types)
         ret.Visit(visitors.FillInLocalPointers(
-            {"__builtin__": v.vm.loader.builtins}))
+            {"__builtin__": self.vm.loader.builtins}))
         return ret
       else:
         # We don't know this type's __class__, so return AnythingType to
@@ -438,7 +439,7 @@ class Converter(object):
     """Convert a property to a list of PyTD types."""
     if not v.fget:
       return [pytd.AnythingType()]
-    getter_options = v.fget.FilteredData(v.vm.exitpoint)
+    getter_options = v.fget.FilteredData(self.vm.exitpoint)
     if not all(isinstance(o, abstract.Function) for o in getter_options):
       return [pytd.AnythingType()]
     types = []
@@ -486,7 +487,7 @@ class Converter(object):
     for name, member in v.members.items():
       if name in CLASS_LEVEL_IGNORE:
         continue
-      for value in member.FilteredData(v.vm.exitpoint):
+      for value in member.FilteredData(self.vm.exitpoint):
         if isinstance(value, special_builtins.PropertyInstance):
           # For simplicity, output properties as constants, since our parser
           # turns them into constants anyway.
@@ -519,7 +520,7 @@ class Converter(object):
     for instance in v.instances:
       for name, member in instance.members.items():
         if name not in CLASS_LEVEL_IGNORE:
-          for value in member.FilteredData(v.vm.exitpoint):
+          for value in member.FilteredData(self.vm.exitpoint):
             constants[name].add_type(value.to_type(node))
 
     for name in list(methods):
@@ -532,7 +533,7 @@ class Converter(object):
     bases = [pytd_utils.JoinTypes(b.get_instance_type(node)
                                   for b in basevar.data)
              for basevar in v.bases()
-             if basevar.data != [v.vm.convert.oldstyleclass_type]]
+             if basevar.data != [self.vm.convert.oldstyleclass_type]]
     constants = [pytd.Constant(name, builder.build())
                  for name, builder in constants.items() if builder]
     metaclass = v.metaclass(node)

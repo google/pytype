@@ -37,7 +37,7 @@ class Converter(object):
   def __init__(self, vm):
     self.vm = vm
     self.vm.convert = self  # to make constant_to_value calls below work
-    self.pytd_convert = output.Converter()
+    self.pytd_convert = output.Converter(vm)
 
     self._convert_cache = {}
     self._resolved_late_types = {}  # performance cache
