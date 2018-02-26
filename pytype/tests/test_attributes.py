@@ -836,6 +836,18 @@ class TestAttributes(test_base.BaseTest):
         errors, [(5, "unsupported-operands",
                   r"__contains__.*'Union\[Foo, int\]' and 'int'")])
 
+  def testErrorInAny(self):
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Any
+      def f(x: Any):
+        if __random__:
+          x = 42
+        x.upper()  # line 6
+    """)
+    self.assertErrorLogIs(
+        errors, [(6, "attribute-error", r"upper.*int.*Union\[Any, int\]")])
+
 
 if __name__ == "__main__":
   test_base.main()

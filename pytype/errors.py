@@ -427,7 +427,7 @@ class ErrorLog(ErrorLogBase):
     return "NoReturn" if ret == "nothing" else ret
 
   def _join_printed_types(self, types):
-    types = sorted(types)
+    types = sorted(set(types))  # dedup
     if len(types) == 1:
       return next(iter(types))
     elif types:
@@ -506,8 +506,10 @@ class ErrorLog(ErrorLogBase):
   def _attribute_error(self, stack, binding, attr_name):
     obj_repr = self._print_as_actual_type(binding.data)
     if len(binding.variable.bindings) > 1:
-      details = "In %s" % self._print_as_actual_type(abstract.merge_values(
-          binding.variable.data, binding.data.vm))
+      # Joining the printed types rather than merging them before printing
+      # ensures that we print all of the options when 'Any' is among them.
+      details = "In %s" % self._join_printed_types(
+          self._print_as_actual_type(v) for v in binding.variable.data)
     else:
       details = None
     self.error(
