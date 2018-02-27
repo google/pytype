@@ -194,9 +194,10 @@ class Converter(object):
       return pytd.NothingType()
     elif isinstance(v, abstract.TypeParameterInstance):
       if v.instance.type_parameters[v.name].bindings:
-        # The type parameter was initialized.
+        # The type parameter was initialized. Set the view to None, since we
+        # don't include v.instance in the view.
         return pytd_utils.JoinTypes(
-            self.value_to_pytd_type(node, p, seen, view)
+            self.value_to_pytd_type(node, p, seen, None)
             for p in v.instance.type_parameters[v.name].data)
       elif v.param.constraints:
         return pytd_utils.JoinTypes(

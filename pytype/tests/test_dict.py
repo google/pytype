@@ -101,6 +101,20 @@ class DictTest(test_base.BaseTest):
       d2 = ...  # type: Dict[str, int]
     """)
 
+  def testBadGetItemReturn(self):
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      from typing import Any, Dict, Tuple
+      class Foo(object):
+        def foo(self) -> unicode:
+          assignments = {}
+          counts = None  # type: Dict[Tuple[Any, int], Any]
+          assignments[__any_object__] = sorted(counts.iteritems())[0]
+          return assignments[""]  # line 8
+    """)
+    self.assertErrorLogIs(errors, [
+        (8, "bad-return-type", r"unicode.*Tuple\[Tuple\[Any, int\], Any\]")])
+
 
 if __name__ == "__main__":
   test_base.main()
