@@ -226,6 +226,17 @@ class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):
     pyval = self.typing_ast.Lookup("typing._NamedTuple")
     pyval = pyval.Replace(name="typing.NamedTuple")
     super(NamedTupleBuilder, self).__init__(name, vm, pyval)
+    # NamedTuple's fields arg has type Sequence[Sequence[Union[str, type]]],
+    # which doesn't provide precise enough type-checking, so we have to do
+    # some of our own in _getargs. _NamedTupleFields is an alias to
+    # List[Tuple[str, type]], which gives a more understandable error message.
+    fields_pyval = self.typing_ast.Lookup("typing._NamedTupleFields").type
+    self._fields_type = vm.convert.constant_to_value(
+        fields_pyval, {}, vm.root_cfg_node)
+
+  def _is_str_instance(self, val):
+    return (isinstance(val, abstract.Instance) and
+            val.get_full_name() == "__builtin__.str")
 
   def _getargs(self, node, args):
     self._match_args(node, args)
@@ -245,7 +256,15 @@ class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):
     # for the field types.
     names = []
     types = []
-    for (name, typ) in fields:
+    for field in fields:
+      if (len(field) != 2 or
+          any(not self._is_str_instance(v) for v in field[0].data)):
+        # Note that we don't need to check field[1] because both 'str'
+        # (forward reference) and 'type' are valid for it.
+        sig, = self.signatures
+        bad_param = abstract.BadParam(name="fields", expected=self._fields_type)
+        raise abstract.WrongArgTypes(sig.signature, args, self.vm, bad_param)
+      name, typ = field
       names.append(abstract.get_atomic_python_constant(name))
       types.append(abstract.get_atomic_value(typ))
     return name_var, names, types

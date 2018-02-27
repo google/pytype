@@ -381,7 +381,9 @@ class ItemsView(MappingView[Tuple[_K, _V]], AbstractSet[Tuple[_K, _V]]):
 NoReturn = nothing
 
 
-def _NamedTuple(typename: str, fields: List[Tuple[str, Union[str, type]]]) -> ?: ...
+def _NamedTuple(typename: str, fields: Sequence[Sequence[Union[str, type]]]) -> ?: ...
+# A more precise (but incorrect) fields type for error messages.
+_NamedTupleFields = List[Tuple[str, type]]
 
 
 def NewType(name, tp) -> type

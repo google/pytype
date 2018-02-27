@@ -172,12 +172,14 @@ class NamedTupleTest(test_base.BaseTest):
         typing.NamedTuple("_", [("abc", int), ("def", int), ("ghi", int)])
         typing.NamedTuple("_", [("abc", "int")])
         typing.NamedTuple("1", [("a", int)])
+        typing.NamedTuple("_", [[int, "a"]])
         """)
     self.assertErrorLogIs(errorlog,
                           [(2, "wrong-arg-types"),
                            (4, "invalid-namedtuple-arg"),
                            (5, "not-supported-yet"),
-                           (6, "invalid-namedtuple-arg")])
+                           (6, "invalid-namedtuple-arg"),
+                           (7, "wrong-arg-types")])
 
   def test_empty_args(self):
     self.Check(
@@ -220,6 +222,24 @@ class NamedTupleTest(test_base.BaseTest):
     self.assertMultiLineEqual(pytd.Print(ty.Lookup("foo")),
                               "def foo(x: X) -> Any: ...")
     self.assertErrorLogIs(errors, [(3, "invalid-annotation", r"Union.*x")])
+
+  def test_tuple_fields(self):
+    errors = self.CheckWithErrors("""\
+      from typing import NamedTuple
+      X = NamedTuple("X", (("a", str),))
+      X(a="")
+      X(a=42)
+    """)
+    self.assertErrorLogIs(errors, [(4, "wrong-arg-types", r"str.*int")])
+
+  def test_list_field(self):
+    errors = self.CheckWithErrors("""\
+      from typing import NamedTuple
+      X = NamedTuple("X", [["a", str]])
+      X(a="")
+      X(a=42)
+    """)
+    self.assertErrorLogIs(errors, [(4, "wrong-arg-types", r"str.*int")])
 
 
 if __name__ == "__main__":
