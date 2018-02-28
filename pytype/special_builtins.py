@@ -22,6 +22,20 @@ class TypeNew(abstract.PyTDFunction):
         pass
       else:
         return node, variable
+    elif (args.posargs and self.vm.callself_stack and
+          args.posargs[-1].data == self.vm.callself_stack[-1].data):
+      # We're calling type(self) in an __init__ method. A common pattern for
+      # making a class non-instantiable is:
+      #   class Foo:
+      #     def __init__(self):
+      #       if type(self) is Foo:
+      #         raise ...
+      # If we were to return 'Foo', pytype would think that this constructor
+      # can never return. The correct return type is something like
+      # TypeVar(bound=Foo), but we can't introduce a type parameter that isn't
+      # bound to a class or function, so we'll go with Any.
+      self._match_args(node, args)  # May raise FailedFunctionCall.
+      return node, self.vm.convert.unsolvable.to_variable(node)
     return super(TypeNew, self).call(node, func, args)
 
 

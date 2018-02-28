@@ -393,6 +393,26 @@ class TestExceptions(test_base.BaseTest):
       def g() -> Callable[[], nothing]
     """)
 
+  def test_type_self(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __init__(self, _):  # Add an arg so __init__ isn't optimized away.
+          if type(self) is Foo:
+            raise ValueError()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        def __init__(self, _) -> None: ...
+    """)
+
+  def test_bad_type_self(self):
+    errors = self.CheckWithErrors("""\
+      class Foo(object):
+        def __init__(self):
+          type(42, self)
+    """)
+    self.assertErrorLogIs(errors, [(3, "wrong-arg-count", r"2.*3")])
+
 
 if __name__ == "__main__":
   test_base.main()
