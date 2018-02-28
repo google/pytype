@@ -893,6 +893,24 @@ class TestFunctions(test_base.BaseTest):
       ) -> Tuple[Dict[str, Union[str, int]], Dict[str, int]]: ...
     """)
 
+  def test_typecheck_varargs(self):
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      def f(*args: int) -> int:
+        return args[0]
+      f(*['value'])
+      """)
+    self.assertErrorLogIs(errors, [(4, "wrong-arg-types")])
+
+  def test_typecheck_kwargs(self):
+    errors = self.CheckWithErrors("""\
+      from __future__ import google_type_annotations
+      def f(**kwargs: int) -> int:
+        return kwargs.values()[0]
+      f(**{'arg': 'value'})
+      """)
+    self.assertErrorLogIs(errors, [(4, "wrong-arg-types")])
+
 
 if __name__ == "__main__":
   test_base.main()

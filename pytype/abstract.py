@@ -3211,7 +3211,6 @@ class InterpreterFunction(SignedFunction):
     return super(InterpreterFunction, self)._match_args(node, args)
 
   def call(self, node, func, args, new_locals=None):
-    args = args.simplify(node)
     if self.vm.is_at_maximum_depth() and self.name != "__init__":
       log.info("Maximum depth reached. Not analyzing %r", self.name)
       if self.vm.callself_stack:
@@ -3219,8 +3218,8 @@ class InterpreterFunction(SignedFunction):
           b.data.maybe_missing_members = True
       return (node,
               self.vm.convert.create_new_unsolvable(node))
+    callargs = self._map_args(node, args.simplify(node))
     substs = self._match_args(node, args)
-    callargs = self._map_args(node, args)
     # Keep type parameters without substitutions, as they may be needed for
     # type-checking down the road.
     annotations = self.vm.annotations_util.sub_annotations(
