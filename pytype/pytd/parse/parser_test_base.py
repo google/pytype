@@ -36,7 +36,6 @@ class ParserTest(unittest.TestCase):
 
   def Parse(self, src, name=None, version=None, platform=None):
     version = version or self.PYTHON_VERSION
-    # TODO(kramm): Using self.parser here breaks tests. Why?
     tree = parser.parse_string(
         textwrap.dedent(src), name=name, python_version=version,
         platform=platform)

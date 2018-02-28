@@ -240,7 +240,6 @@ class BuiltinTests(test_base.BaseTest):
     """)
 
   def testListInit4(self):
-    # TODO(kramm): This test takes over six seconds
     ty = self.Infer("""
     def t_testListInit4(x):
       return _i_(list(x))[0]

@@ -296,16 +296,9 @@ class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):
     members["_field_defaults"] = field_dict_cls.instantiate(node)
     # _field_types and __annotations__ are both collections.OrderedDicts
     # that map field names (strings) to the types of the fields.
-    # The `type` must be parameterized with `object` in order to produce
-    # `collections.OrderedDict[str, type]`.
-    # Otherwise, it will produce `collections.OrderedDict[str, Any]`.
-    type_type = abstract.ParameterizedClass(
-        self.vm.convert.type_type,
-        {abstract.T: self.vm.convert.object_type},
-        self.vm)
     field_types_cls = abstract.ParameterizedClass(
         ordered_dict_cls,
-        {"K": self.vm.convert.str_type, "V": type_type},
+        {"K": self.vm.convert.str_type, "V": self.vm.convert.type_type},
         self.vm)
     members["_field_types"] = field_types_cls.instantiate(node)
     members["__annotations__"] = field_types_cls.instantiate(node)

@@ -356,7 +356,6 @@ class Match(Generic[AnyStr]):
 class ClassVar(Generic[_T]): ...
 
 
-# TODO(kramm): register with str and bytearray
 class ByteString(Sequence[int]): ...
 
 # TODO(tsudol): Should be covariant, e.g. _T_co. traceback arg for __exit__

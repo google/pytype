@@ -2344,7 +2344,6 @@ class Class(object):
   def _call_init(self, node, value, args):
     node, init = self.vm.attribute_handler.get_attribute(
         node, value.data, "__init__", value)
-    # TODO(pludemann): Verify that this follows MRO:
     if init:
       log.debug("calling %s.__init__(...)", self.name)
       node, ret = self.vm.call_function(node, init, args)
@@ -2537,7 +2536,12 @@ class TupleClass(ParameterizedClass, HasSlots):
       pass
     else:
       if -self.tuple_length <= index < self.tuple_length:
-        # TODO(rechen): Should index out of bounds be a pytype error?
+        # Index out of bounds is not a pytype error because of the high
+        # likelihood of false positives, e.g.,
+        #   tup = []
+        #   idx = 0
+        #   if idx < len(tup):
+        #     tup[idx]
         return node, self._instantiate_index(node, index)
     return self.call_pytd(
         node, "__getitem__", self.instantiate(node), index_var)

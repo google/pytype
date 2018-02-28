@@ -24,7 +24,7 @@ import time
 
 import yaml
 
-# TODO(tsudol): Not needed once tracemalloc is added to main branch.
+# TODO(tsudol): Not needed once pytype is ported to Python 3.
 try:
   import tracemalloc  # pylint: disable=g-import-not-at-top
 except ImportError:

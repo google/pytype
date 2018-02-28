@@ -467,11 +467,8 @@ class dict(Dict[_K, _V]):
         self := dict[_K or _K2, _V or _V2]
     def update(self, other: dict[_K2, _V2]):
         self := dict[_K or _K2, _V or _V2]
-    # TODO(kramm): Better definition:
-    # def update(self, **kwargs: _V2):
-    #     self := dict[_K or str, _V or _V2]
-    def update(self, **kwargs):
-        self := dict[_K or str, ?]
+    def update(self, **kwargs: _V2):
+        self := dict[_K or str, _V or _V2]
     def update(self, E, ...) -> NoneType:
         self := dict[?, ?]
     def update(self) -> NoneType

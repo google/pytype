@@ -733,7 +733,6 @@ class _PathFinder(object):
           break
         node = self.FindHighestReachableWeight(node, blocked, weights)
       result = True, path
-    # TODO(kramm): This dict can grow pretty big. Use a MRU cache?
     self._solved_find_queries[query] = result
     return result
 

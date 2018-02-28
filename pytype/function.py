@@ -19,8 +19,6 @@ def _print(t):
   return pytd_utils.Print(t.get_instance_type())
 
 
-# TODO(kramm): This class is deprecated and should be folded into
-# abstract.InterpreterFunction and/or pytd.Signature.
 class Signature(object):
   """Representation of a Python function signature.
 

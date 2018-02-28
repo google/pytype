@@ -2478,7 +2478,6 @@ class VirtualMachine(object):
       self.has_unknown_wildcard_imports = True
       return state
     log.info("%r", mod)
-    # TODO(kramm): Add Module type to abstract.py
     for name, var in mod.items():
       if name[0] != "_" or name == "__getattr__":
         state = self.store_local(state, name, var)
