@@ -8,9 +8,9 @@ import re
 import StringIO
 import sys
 
-import debug
 
 from pytype import abstract
+from pytype import debug
 from pytype import utils
 from pytype.pytd import optimize
 from pytype.pytd import pytd

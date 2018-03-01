@@ -1,6 +1,6 @@
 """Compare two variables."""
 
-import abstract
+from pytype import abstract
 
 # Equality classes.
 NUMERIC = {"__builtin__.bool", "__builtin__.int", "__builtin__.float",

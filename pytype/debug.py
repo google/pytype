@@ -5,7 +5,8 @@ import logging
 import re
 import StringIO
 import traceback
-import utils
+
+from pytype import utils
 
 
 def _ascii_tree(io, node, p1, p2, seen, get_children, get_description=None):
