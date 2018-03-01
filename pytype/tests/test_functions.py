@@ -899,8 +899,10 @@ class TestFunctions(test_base.BaseTest):
       def f(*args: int) -> int:
         return args[0]
       f(*['value'])
+      f(1, 'hello', 'world')
       """)
-    self.assertErrorLogIs(errors, [(4, "wrong-arg-types")])
+    self.assertErrorLogIs(errors, [(4, "wrong-arg-types"),
+                                   (5, "wrong-arg-types")])
 
   def test_typecheck_kwargs(self):
     errors = self.CheckWithErrors("""\
@@ -908,8 +910,10 @@ class TestFunctions(test_base.BaseTest):
       def f(**kwargs: int) -> int:
         return kwargs.values()[0]
       f(**{'arg': 'value'})
+      f(arg='value', arg2=3)
       """)
-    self.assertErrorLogIs(errors, [(4, "wrong-arg-types")])
+    self.assertErrorLogIs(errors, [(4, "wrong-arg-types"),
+                                   (5, "wrong-arg-types")])
 
 
 if __name__ == "__main__":

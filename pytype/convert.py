@@ -263,6 +263,15 @@ class Converter(object):
     params = {abstract.K: self.str_type, abstract.V: arg_type}
     return abstract.ParameterizedClass(self.dict_type, params, self.vm)
 
+  def get_element_type(self, arg_type):
+    """Extract the element type of a vararg or kwarg."""
+    assert isinstance(arg_type, abstract.ParameterizedClass)
+    if arg_type.base_cls is self.dict_type:
+      return arg_type.type_parameters.get(abstract.V)
+    else:
+      assert arg_type.base_cls is self.tuple_type
+      return arg_type.type_parameters.get(abstract.T)
+
   def _copy_type_parameters(self, old_container, new_container_name):
     new_container = self.name_to_value(new_container_name)
     if isinstance(old_container, abstract.ParameterizedClass):

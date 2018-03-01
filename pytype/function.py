@@ -198,10 +198,19 @@ class Signature(object):
       if i < len(self.param_names):
         name = self.param_names[i]
         yield (name, posarg, self.annotations.get(name))
+      elif self.varargs_name and self.varargs_name in self.annotations:
+        varargs_type = self.annotations[self.varargs_name]
+        formal = varargs_type.vm.convert.get_element_type(varargs_type)
+        yield (argname(i), posarg, formal)
       else:
         yield (argname(i), posarg, None)
     for name, namedarg in sorted(args.namedargs.items()):
-      yield (name, namedarg, self.annotations.get(name))
+      formal = self.annotations.get(name)
+      if formal is None and self.kwargs_name:
+        kwargs_type = self.annotations.get(self.kwargs_name)
+        if kwargs_type:
+          formal = kwargs_type.vm.convert.get_element_type(kwargs_type)
+      yield (name, namedarg, formal)
     if self.varargs_name is not None and args.starargs is not None:
       yield (self.varargs_name, args.starargs,
              self.annotations.get(self.varargs_name))
