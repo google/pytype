@@ -265,8 +265,11 @@ class Converter(object):
 
   def get_element_type(self, arg_type):
     """Extract the element type of a vararg or kwarg."""
-    assert isinstance(arg_type, abstract.ParameterizedClass)
-    if arg_type.base_cls is self.dict_type:
+    if not isinstance(arg_type, abstract.ParameterizedClass):
+      assert (isinstance(arg_type, abstract.Class) and
+              arg_type.full_name in ("__builtin__.dict", "__builtin__.tuple"))
+      return None
+    elif arg_type.base_cls is self.dict_type:
       return arg_type.type_parameters.get(abstract.V)
     else:
       assert arg_type.base_cls is self.tuple_type

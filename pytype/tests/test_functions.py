@@ -915,6 +915,17 @@ class TestFunctions(test_base.BaseTest):
     self.assertErrorLogIs(errors, [(4, "wrong-arg-types"),
                                    (5, "wrong-arg-types")])
 
+  def test_pyi_starargs(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(x: str, ...) -> None: ...
+      """)
+      errors = self.CheckWithErrors("""\
+        import foo
+        foo.f(True, False)
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(2, "wrong-arg-types")])
+
 
 if __name__ == "__main__":
   test_base.main()
