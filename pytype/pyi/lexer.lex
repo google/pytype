@@ -27,6 +27,13 @@
   yylloc->last_line = yylineno; \
   yylloc->last_column = yycolumn + yyleng - 1; \
   yycolumn += yyleng;
+
+#if PY_MAJOR_VERSION >= 3
+#  define PyInt_FromString PyLong_FromString
+#  define PyString_FromFormat PyUnicode_FromFormat
+#  define PyString_FromString PyUnicode_FromString
+#  define PyString_FromStringAndSize PyUnicode_FromStringAndSize
+#endif
 %}
 
 %%
@@ -91,7 +98,10 @@ u\"\" { return UNICODESTRING; }
 }
 
  /* NUMBER */
-[-+]?[0-9]+  { yylval->obj=PyInt_FromString(yytext, NULL, 10); return NUMBER; }
+[-+]?[0-9]+  {
+  yylval->obj=PyInt_FromString(yytext, NULL, 10);
+  return NUMBER;
+}
 [-+]?[0-9]*\.[0-9]+  {
   yylval->obj=PyFloat_FromDouble(atof(yytext));
   return NUMBER;

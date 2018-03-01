@@ -27,6 +27,14 @@
 #include "lexer.h"
 #include "parser.h"
 
+
+#if PY_MAJOR_VERSION >= 3
+#  define PyString_FromString PyUnicode_FromString
+#  define PyString_FromFormat PyUnicode_FromFormat
+#  define PyString_AsString(ob) \
+        (PyUnicode_Check(ob) ? PyUnicode_AsUTF8(ob) : PyBytes_AsString(ob))
+#endif
+
 namespace pytype {
 // Note that the pytype namespace is not closed until the trailing block of
 // code after the parser skeleton is emitted.  Thus the entire parser (except
@@ -408,9 +416,15 @@ from_items
 
 from_item
   : NAME
-  | NAMEDTUPLE { $$ = PyString_FromString("NamedTuple"); }
-  | TYPEVAR { $$ = PyString_FromString("TypeVar"); }
-  | '*' { $$ = PyString_FromString("*"); }
+  | NAMEDTUPLE {
+ $$ = PyString_FromString("NamedTuple");
+ }
+  | TYPEVAR {
+ $$ = PyString_FromString("TypeVar");
+ }
+  | '*' {
+ $$ = PyString_FromString("*");
+ }
   | NAME AS NAME { $$ = Py_BuildValue("(NN)", $1, $3); }
   ;
 
@@ -644,8 +658,14 @@ type_tuple_literal
 dotted_name
   : NAME { $$ = $1; }
   | dotted_name '.' NAME {
+#if PY_MAJOR_VERSION >= 3
+      $1 = PyUnicode_Concat($1, DOT_STRING);
+      $1 = PyUnicode_Concat($1, $3);
+      Py_DECREF($3);
+#else
       PyString_Concat(&$1, DOT_STRING);
       PyString_ConcatAndDel(&$1, $3);
+#endif
       $$ = $1;
     }
   ;

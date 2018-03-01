@@ -91,7 +91,7 @@ typedef union YYSTYPE
 {
 
 /* Line 1685 of yacc.c  */
-#line 58 "parser.y"
+#line 66 "parser.y"
 
   PyObject* obj;
   const char* str;
