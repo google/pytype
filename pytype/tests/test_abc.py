@@ -388,7 +388,6 @@ class AbstractMethodTests(test_base.BaseTest):
     """)
 
   def test_none_attribute(self):
-    self.options.tweak(strict_none=True)
     self.Check("""
       import abc
       class Foo(object):
@@ -399,6 +398,7 @@ class AbstractMethodTests(test_base.BaseTest):
         def bar(self):
           return self.foo().upper()
     """)
+
 
 class AbstractPropertyTests(test_base.BaseTest):
   """Tests for @abc.abstractproperty."""

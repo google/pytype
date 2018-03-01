@@ -234,9 +234,6 @@ class Options(object):
         "--show-config", action="store_true",
         dest="show_config",
         help=("Display all config variables and exit."))
-    o.add_option(
-        "--strict_none", action="store_true", default=False, dest="strict_none",
-        help=("Turn on strict attribute checking for None."))
     return o
 
   def _postprocess_options(self, names):
@@ -298,6 +295,7 @@ class Options(object):
 
   @uses(["input", "show_config", "pythonpath"])
   def _store_generate_builtins(self, generate_builtins):
+    """Store the generate-builtins option."""
     if generate_builtins:
       if self.input:
         raise optparse.OptionConflictError("Not allowed with an input file",

@@ -51,9 +51,9 @@ class DisableTest(test_base.BaseTest):
         pass
       def g(): pass
       x = y  # pytype: disable=name-error  # ok (single line)
-      # pytype: disable=none-attr  # ok (re-enabled)
+      # pytype: disable=attribute-error  # ok (re-enabled)
       # pytype: disable=wrong-arg-types  # bad
-      # pytype: enable=none-attr
+      # pytype: enable=attribute-error
     """)
     self.assertErrorLogIs(errors, [(12, "late-directive", "Type checking"),
                                    (17, "late-directive", "wrong-arg-types")])
