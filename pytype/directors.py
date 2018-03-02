@@ -180,12 +180,12 @@ class Director(object):
         closing_bracket_lines.clear()
         whitespace_lines.clear()
       if tok == tokenize.COMMENT:
-        m = _DIRECTIVE_RE.search(line[col:])
-        if m:
+        matches = list(_DIRECTIVE_RE.finditer(line[col:]))
+        is_nested = bool(matches) and matches[0].start(0) > 0
+        for m in matches:
           code = line[:col].strip()
           tool, data = m.groups()
           open_ended = not code
-          is_nested = m.start(0) > 0
           data = data.strip()
           if tool == "type":
             self._process_type(lineno, code, data, is_nested)
@@ -213,6 +213,12 @@ class Director(object):
     # Discard type comments embedded in larger whole-line comments.
     if not code and is_nested:
       return
+    if lineno in self._type_comments:
+      # If we have multiple type comments on the same line, take the last one,
+      # but add an error to the log.
+      self._errorlog.invalid_directive(
+          self._filename, lineno,
+          "Multiple type comments on the same line.")
     if data == "ignore":
       if not code:
         self._ignore.start_range(lineno, True)

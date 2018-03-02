@@ -454,13 +454,30 @@ class AssignmentCommentTest(test_base.BaseTest):
   def testDiscardedTypeComment(self):
     """Discard the first whole-line comment, keep the second."""
     ty = self.Infer("""\
-        # Yo dawg # type: ignore
+        # We want either # type: ignore or # type: int
         def hello_world():
           # type: () -> str
           return 'hello world'
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def hello_world() -> str: ...
+    """)
+
+  def testMultipleTypeComments(self):
+    """We should not allow multiple type comments on one line."""
+    _, errors = self.InferWithErrors("""\
+      a = 42  # type: int  # type: float
+    """)
+    self.assertErrorLogIs(
+        errors, [(1, "invalid-directive", r"Multiple")])
+
+  def testMultipleDirectives(self):
+    """We should support multiple directives on one line."""
+    self.Check("""\
+      a = list() # type: list[int, str]  # pytype: disable=invalid-type-comment
+      b = list() # pytype: disable=invalid-type-comment  # type: list[int, str]
+      def foo(x): pass
+      c = foo(a, b.i) # pytype: disable=attribute-error  # pytype: disable=wrong-arg-count
     """)
 
   def testNestedCommentAlias(self):
