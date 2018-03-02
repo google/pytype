@@ -695,10 +695,11 @@ class AbstractMatcher(object):
     """
     if isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
       return subst
-    elif left.template and len(left.template) < len(other_type.template):
-      # 'left' is a generic class with fewer type parameters than the protocol.
-      # Note that having more type parameters is fine; for example,
-      # Mapping[K, V] matches Iterable[K].
+    elif len(left.template) == 1 and other_type.full_name == "typing.Mapping":
+      # TODO(rechen): This check is a workaround to prevent List from matching
+      # against Mapping. What we should actually do is detect the mismatch
+      # between the type parameters in List's and Mapping's abstract methods,
+      # but that's tricky to do.
       return None
     left_methods = self._get_methods_dict(left)
     method_names_matched = all(

@@ -433,6 +433,26 @@ class ProtocolTest(test_base.BaseTest):
     self.assertErrorLogIs(
         errors, [(7, "wrong-arg-types", r"Hashable.*Foo.*__hash__")])
 
+  def test_generic_callable(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Generic, TypeVar
+        T = TypeVar("T")
+        class Foo(Generic[T]):
+          def __init__(self, x: T):
+            self := Foo[T]
+          def __call__(self) -> T: ...
+      """)
+      self.Check("""
+        from __future__ import google_type_annotations
+        from typing import Callable
+        import foo
+        def f() -> Callable:
+          return foo.Foo("")
+        def g() -> Callable[[], str]:
+          return foo.Foo("")
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_base.main()

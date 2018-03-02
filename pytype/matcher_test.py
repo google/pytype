@@ -455,6 +455,14 @@ class MatcherTest(unittest.TestCase):
     right = self.vm.convert.name_to_value("typing.Mapping")
     self.assertNoMatch(left, right)
 
+  def testListAgainstParameterizedMapping(self):
+    left = self._convert_type("list", as_instance=True)
+    right = abstract.ParameterizedClass(
+        self.vm.convert.name_to_value("typing.Mapping"),
+        {abstract.K: abstract.TypeParameter(abstract.K, self.vm),
+         abstract.V: abstract.TypeParameter(abstract.V, self.vm)}, self.vm)
+    self.assertNoMatch(left, right)
+
 
 if __name__ == "__main__":
   unittest.main()
