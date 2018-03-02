@@ -2219,8 +2219,7 @@ class VirtualMachine(object):
       pos_defaults = abstract.get_atomic_python_constant(packed_pos_def, tuple)
     return state, pos_defaults, kw_defaults, annot, late_annot, free_vars
 
-  def _process_function_type_comment(self, op, code_var, annotations,
-                                     late_annotations):
+  def _process_function_type_comment(self, op, annotations, late_annotations):
     """Modifies annotations/late_annotations from a function type comment.
 
     Checks if a type comment is present for the function.  If so, the type
@@ -2229,35 +2228,17 @@ class VirtualMachine(object):
 
     Args:
       op: An opcode (used to determine filename and line number).
-      code_var: A variable for functions's code object.
       annotations: A dict of annotations.
       late_annotations: A dict of late annotations.
     """
-    # Find type comment (if any).  It should appear on the line immediately
-    # following the opcode.
-    filename = op.code.co_filename
-    if filename != self.filename or op.line is None:
+    if not op.type_comment:
       return
 
-    co_code = code_var.data[0].pyval.co_code
-    if not co_code:
-      return
-    comment = None
-    # Look for a type comment on a bare line after the opcode but before the
-    # first actual function code.
-    lineno = None
-    for lineno in range(op.line + 1, co_code[0].line):
-      entry = self.director.type_comments.get(lineno)
-      # entry is either None, or (src, comment).
-      if entry and not entry[0]:
-        comment = entry[1]
-        break
-    if not comment:
-      return
+    comment, lineno = op.type_comment
 
     # It is an error to use a type comment on an annotated function.
     if annotations or late_annotations:
-      self.errorlog.redundant_function_type_comment(filename, lineno)
+      self.errorlog.redundant_function_type_comment(op.code.co_filename, lineno)
       return
 
     # Parse the comment, use a fake Opcode that is similar to the original
@@ -2295,7 +2276,7 @@ class VirtualMachine(object):
       get_args = self._get_extra_function_args
     state, defaults, kw_defaults, annot, late_annot, free_vars = (
         get_args(state, op.arg))
-    self._process_function_type_comment(op, code, annot, late_annot)
+    self._process_function_type_comment(op, annot, late_annot)
     # TODO(dbaum): Add support for per-arg type comments.
     # TODO(dbaum): Add support for variable type comments.
     globs = self.get_globals_dict()

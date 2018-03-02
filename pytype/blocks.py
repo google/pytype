@@ -268,6 +268,39 @@ class CollectTypeCommentTargetsVisitor(object):
     for op in code.co_code:
       if isinstance(op, STORE_OPCODES):
         self.store_op_map[op.line] = op
+    return code
+
+
+class CollectFunctionTypeCommentTargetsVisitor(object):
+  """Collect opcodes that might have function type comments attached.
+
+  Depends on DisCodeVisitor having been run first.
+  """
+
+  def __init__(self):
+    # A mutable list of (start, end, opcode) for MAKE_FUNCTION opcodes. This is
+    # modified as the visitor runs, and contains the range of lines that could
+    # contain function type comments.
+    self.make_function_ops = []
+
+  def visit_code(self, code):
+    """Find MAKE_FUNCTION opcodes and record the comment line range."""
+    # Offset between function code and MAKE_FUNCTION
+    if code.python_version < (3, 4):
+      # [LOAD_CONST <code>, MAKE_FUNCTION]
+      offset = 1
+    else:
+      # [LOAD_CONST <code>, LOAD_CONST name, MAKE_FUNCTION]
+      offset = 2
+    for i, op in enumerate(code.co_code):
+      if isinstance(op, opcodes.MAKE_FUNCTION):
+        code_op = code.co_code[i - offset]
+        assert isinstance(code_op, CODE_LOADING_OPCODES)
+        fn_code = code.co_consts[code_op.arg]
+        assert isinstance(fn_code, pyc.loadmarshal.CodeType)
+        end_line = fn_code.co_code[0].line  # First line of code in body.
+        self.make_function_ops.append((op.line + 1, end_line, op))
+    return code
 
 
 def merge_type_comments(code, type_comments):
@@ -278,17 +311,33 @@ def merge_type_comments(code, type_comments):
   Args:
     code: CodeType object that has been disassembled (see DisCodeVisitor).
     type_comments: Map of type comments from the director.
+
+  Returns:
+    The code with type comments added to the relevant opcodes.
   """
-  visitor = CollectTypeCommentTargetsVisitor()
-  pyc.visit(code, visitor)
   # Apply type comments to the STORE_* opcodes
+  visitor = CollectTypeCommentTargetsVisitor()
+  code = pyc.visit(code, visitor)
   for line, op in visitor.store_op_map.items():
     if line in type_comments:
       _, comment = type_comments[line]
       op.type_comment = comment
 
+  # Apply type comments to the MAKE_FUNCTION opcodes
+  visitor = CollectFunctionTypeCommentTargetsVisitor()
+  code = pyc.visit(code, visitor)
+  for start, end, op in visitor.make_function_ops:
+    for i in range(start, end):
+      # Take the first comment we find as the function typecomment.
+      if i in type_comments:
+        _, comment = type_comments[i]
+        # Record the line number of the comment for error messages.
+        op.type_comment = (comment, i)
+        break
+  return code
+
 
 def process_code(code, type_comments):
   code = pyc.visit(code, DisCodeVisitor())
-  merge_type_comments(code, type_comments)
+  code = merge_type_comments(code, type_comments)
   return pyc.visit(code, OrderCodeVisitor())
