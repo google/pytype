@@ -57,7 +57,7 @@ def filter(function: Optional[Callable[[AnyStr], ?]], iterable: AnyStr) -> AnySt
 def filter(function: Optional[Callable[[_T], ?]], iterable: Tuple[_T, ...]) -> Tuple[_T, ...]
 def filter(function: Optional[Callable[[_T], ?]], iterable: Iterable[_T]) -> List[_T]
 def format(value, ...) -> str
-def getattr(value: object, attr: str, ...) -> ?
+def getattr(value, attr: str, ...) -> ?
 def globals() -> dict[str, ?]
 def hasattr(object, name: str) -> bool
 def hash(obj) -> int

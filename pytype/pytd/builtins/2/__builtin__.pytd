@@ -54,7 +54,7 @@ def filter(function: Optional[Callable[[_T], ?]], iterable: Tuple[_T, ...]) -> T
 def filter(function: Optional[Callable[[_T], ?]], iterable: Iterable[_T]) -> List[_T]
 def format(value, ...) -> str
 def format(value: unicode, ...) -> unicode
-def getattr(value: object, attr: str or unicode, ...) -> ?
+def getattr(value, attr: str or unicode, ...) -> ?
 def globals() -> dict[str, ?]
 def hasattr(object, name: str or unicode or bytearray) -> bool
 def hash(obj) -> int

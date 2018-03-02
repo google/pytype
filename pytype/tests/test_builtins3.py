@@ -380,6 +380,12 @@ class BuiltinTests3(test_base.BaseTest):
       d2 = ...  # type: Dict[str, type]
     """)
 
+  def testGetFunctionAttr(self):
+    self.Check("getattr(lambda: None, '__defaults__')")
+
+  def testGetFunctionAttrPy3(self):
+    self.Check("getattr(lambda: None, '__defaults__')", python_version=(3, 6))
+
 
 if __name__ == "__main__":
   test_base.main()
