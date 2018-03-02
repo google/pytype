@@ -280,24 +280,21 @@ class ErrorTest(test_base.BaseTest):
           def __getattr__(self, name):
             return "attr"
         def f():
-          return Foo.foo  # line 5
+          return Foo.foo
         def g(x):
           if x:
             y = None
           else:
             y = 1
-          return y.bar  # line 11
+          return y.bar
         def h():
           return Foo().foo  # No error
         import modfoo
-        modfoo.baz  # line 15
+        modfoo.baz
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [
           (5, "attribute-error", r"No attribute 'foo' on Type\[Foo\]"),
-          (11, "attribute-error",
-           r"No attribute 'bar' on None\nIn Union\[None, int\]"),
-          (11, "attribute-error",
-           r"No attribute 'bar' on int\nIn Union\[None, int\]"),
+          (11, "attribute-error", r"No attribute 'bar' on int"),
           (15, "module-attr",
            "No attribute 'baz' on module 'modfoo'")])
 
@@ -317,7 +314,8 @@ class ErrorTest(test_base.BaseTest):
     _, errors = self.InferWithErrors("""\
       None.foo
     """)
-    self.assertErrorLogIs(errors, [(1, "attribute-error", r"foo")])
+    self.assertErrorLogIs(errors, [
+        (1, "none-attr", r"foo")])
 
   def testPyiType(self):
     with utils.Tempdir() as d:
@@ -933,13 +931,13 @@ class ErrorTest(test_base.BaseTest):
     _, errors = self.InferWithErrors("""\
       None()
     """)
-    self.assertErrorLogIs(errors, [(1, "not-callable")])
+    self.assertErrorLogIs(errors, [(1, "none-attr")])
 
   def testInNone(self):
     _, errors = self.InferWithErrors("""\
       3 in None
     """)
-    self.assertErrorLogIs(errors, [(1, "unsupported-operands")])
+    self.assertErrorLogIs(errors, [(1, "none-attr")])
 
   def testNoAttrError(self):
     _, errors = self.InferWithErrors("""\

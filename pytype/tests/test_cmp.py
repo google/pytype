@@ -54,9 +54,9 @@ class InTest(test_base.BaseTest):
       if "" in x:
         del x[""]
     """)
-    self.assertErrorLogIs(errors, [
-        (2, "unsupported-operands", r"__contains__.*None"),
-        (3, "attribute-error", r"__delitem__.*None")])
+    self.assertErrorLogIs(errors, [(2, "none-attr",
+                                    r"__contains__.*None"),
+                                   (3, "none-attr", r"__delitem__.*None")])
 
 
 class NotInTest(test_base.BaseTest):
@@ -102,9 +102,9 @@ class NotInTest(test_base.BaseTest):
       if "" not in x:
         x[""] = 42
     """)
-    self.assertErrorLogIs(errors, [
-        (2, "unsupported-operands", r"__contains__.*None"),
-        (3, "attribute-error", r"__setitem__.*None")])
+    self.assertErrorLogIs(errors, [(2, "none-attr",
+                                    r"__contains__.*None"),
+                                   (3, "none-attr", r"__setitem__.*None")])
 
 
 class IsTest(test_base.BaseTest):

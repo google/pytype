@@ -10,6 +10,9 @@ program execution.
 # Bytecodes don't always use all their arguments:
 # pylint: disable=unused-argument
 
+# VirtualMachine uses late initialization for its "frame" attribute:
+# pytype: disable=none-attr
+
 import collections
 import logging
 import os
@@ -814,7 +817,9 @@ class VirtualMachine(object):
     result = self.join_variables(state.node, results)
     log.debug("Result: %r %r", result, result.data)
     if not result.bindings and report_errors:
-      if error is None:
+      if not self.options.strict_none and self._is_only_none(state.node, x):
+        self.errorlog.none_attr(self.frames, name)
+      elif error is None:
         self.errorlog.unsupported_operands(self.frames, name, x, y)
       elif isinstance(error, abstract.DictKeyMissing):
         self.errorlog.key_error(self.frames, error.name)
@@ -1118,6 +1123,21 @@ class VirtualMachine(object):
     assert isinstance(v, cfg.Variable)
     return v.bindings and all(self._data_is_none(b.data) for b in v.bindings)
 
+  def _is_none(self, node, binding):
+    """Returns true if binding is None or unreachable. Deprecated."""
+    return (self._data_is_none(binding.data) or
+            not node.HasCombination([binding]))
+
+  def _has_at_least_one_none(self, node, obj):
+    # Deprecated.
+    return any(self._data_is_none(b.data) and node.HasCombination([b])
+               for b in obj.bindings)
+
+  def _is_only_none(self, node, obj):
+    # Deprecated.
+    return (all(self._is_none(node, b) for b in obj.bindings) and
+            self._has_at_least_one_none(node, obj))
+
   def _delete_item(self, state, obj, arg):
     state, f = self.load_attr(state, obj, "__delitem__")
     state, _ = self.call_function_with_state(state, f, (arg,))
@@ -1126,12 +1146,15 @@ class VirtualMachine(object):
   def load_attr(self, state, obj, attr):
     """Try loading an attribute, and report errors."""
     node, result, errors = self._retrieve_attr(state.node, obj, attr)
-    self._attribute_error_detection(state, attr, errors)
+    if self.options.strict_none:
+      self._new_attribute_error_detection(state, obj, attr, errors)
+    else:
+      self._old_attribute_error_detection(state, obj, attr, errors)
     if result is None:
       result = self.convert.create_new_unsolvable(node)
     return state.change_cfg_node(node), result
 
-  def _attribute_error_detection(self, state, attr, errors):
+  def _new_attribute_error_detection(self, state, _, attr, errors):
     for error in errors:
       combination = [error]
       if self.frame.func:
@@ -1190,6 +1213,14 @@ class VirtualMachine(object):
             return True
           has_any_none_origin = True
     return not has_any_none_origin
+
+  def _old_attribute_error_detection(self, state, obj, attr, errors):
+    if errors and obj.bindings and self._is_only_none(state.node, obj):
+      self.errorlog.none_attr(self.frames, attr)
+    else:
+      for error in errors:
+        if not self._is_none(state.node, error):
+          self.errorlog.attribute_error(self.frames, error, attr)
 
   def load_attr_noerror(self, state, obj, attr):
     """Try loading an attribute, ignore errors."""
@@ -1340,7 +1371,10 @@ class VirtualMachine(object):
       if report_errors:
         for m in missing:
           if state.node.HasCombination([m]):
-            self.errorlog.attribute_error(self.frames, m, "__iter__")
+            if not self.options.strict_none and self._data_is_none(m.data):
+              self.errorlog.none_attr(self.frames, "__iter__")
+            else:
+              self.errorlog.attribute_error(self.frames, m, "__iter__")
     return state, itr
 
   def byte_UNARY_NOT(self, state, op):
@@ -1675,7 +1709,10 @@ class VirtualMachine(object):
       if len(itr.bindings) < len(y.bindings):
         # y does not have any of __contains__, __iter__, and __getitem__.
         # (The last two are checked by _get_iter.)
-        self.errorlog.unsupported_operands(self.frames, "__contains__", y, x)
+        if not self.options.strict_none and self._is_only_none(state.node, y):
+          self.errorlog.none_attr(self.frames, "__contains__")
+        else:
+          self.errorlog.unsupported_operands(self.frames, "__contains__", y, x)
       ret = self.convert.build_bool(state.node)
     return state, ret
 
