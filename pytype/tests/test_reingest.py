@@ -261,10 +261,6 @@ class ReingestTest(test_base.BaseTest):
 
 class StrictNoneTest(test_base.BaseTest):
 
-  def setUp(self):
-    super(StrictNoneTest, self).setUp()
-    self.options.tweak(strict_none=True)
-
   def testPyiReturnConstant(self):
     foo = self.Infer("""
       x = None
