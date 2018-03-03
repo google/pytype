@@ -295,9 +295,9 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorLogIs(errors, [
           (5, "attribute-error", r"No attribute 'foo' on Type\[Foo\]"),
           (11, "attribute-error",
-           r"No attribute 'bar' on None\nIn Union\[None, int\]"),
+           r"No attribute 'bar' on None\nIn Optional\[int\]"),
           (11, "attribute-error",
-           r"No attribute 'bar' on int\nIn Union\[None, int\]"),
+           r"No attribute 'bar' on int\nIn Optional\[int\]"),
           (15, "module-attr",
            "No attribute 'baz' on module 'modfoo'")])
 
@@ -1036,7 +1036,7 @@ class ErrorTest(test_base.BaseTest):
     """)
     self.assertErrorLogIs(errors, [
         (1, "base-class-error", r"Invalid base class: None"),
-        (2, "base-class-error", r"Union\[<instance of int>, None\]")])
+        (2, "base-class-error", r"Optional\[<instance of int>\]")])
 
   def testCallableInUnsupportedOperands(self):
     _, errors = self.InferWithErrors("""\

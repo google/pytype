@@ -431,7 +431,11 @@ class ErrorLog(ErrorLogBase):
     if len(types) == 1:
       return next(iter(types))
     elif types:
-      return "Union[%s]" % ", ".join(types)
+      if "None" in types:
+        types.remove("None")
+        return "Optional[%s]" % self._join_printed_types(types)
+      else:
+        return "Union[%s]" % ", ".join(types)
     else:
       return "nothing"
 
