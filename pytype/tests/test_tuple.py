@@ -124,6 +124,13 @@ class TupleTest(test_base.BaseTest):
         (2, "bad-unpacking", "2 values.*1 variable"),
         (3, "bad-unpacking", "2 values.*3 variables")])
 
+  def testBadUnpackingWithSlurp(self):
+    _, errors = self.InferWithErrors("""\
+      a, *b, c = (1,)
+    """, python_version=(3, 6))
+    self.assertErrorLogIs(
+        errors, [(1, "bad-unpacking", "1 value.*3 variables")])
+
   def testUnpackAmbiguousTuple(self):
     self.Check("""
       from __future__ import google_type_annotations

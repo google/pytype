@@ -257,9 +257,7 @@ class ImportTest(test_base.BaseTest):
       d.create_file("main.py", """
         from other_file import f
       """)
-      ty = self.InferFromFile(
-          filename=d["main.py"],
-          pythonpath=[d.path])
+      ty = self.InferFromFile(filename=d["main.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         def f() -> int
       """)
@@ -274,9 +272,7 @@ class ImportTest(test_base.BaseTest):
         def g():
           return f()
       """)
-      ty = self.InferFromFile(
-          filename=d["main.py"],
-          pythonpath=[d.path])
+      ty = self.InferFromFile(filename=d["main.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         def f() -> int
         def g() -> int
@@ -299,9 +295,7 @@ class ImportTest(test_base.BaseTest):
         def j():
           return sub.bar.baz.g()
       """)
-      ty = self.InferFromFile(
-          filename=d["main.py"],
-          pythonpath=[d.path])
+      ty = self.InferFromFile(filename=d["main.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         other_file = ...  # type: module
         sub = ...  # type: module  # from 'import sub.bar.baz'
@@ -321,8 +315,7 @@ class ImportTest(test_base.BaseTest):
         def g():
           return f()
       """)
-      ty = self.InferFromFile(filename=d["main.py"],
-                              pythonpath=[d.path])
+      ty = self.InferFromFile(filename=d["main.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         def f() -> int
         def g() -> int
@@ -340,8 +333,7 @@ class ImportTest(test_base.BaseTest):
         def g():
           return f()
       """)
-      ty = self.InferFromFile(filename=d["main.py"],
-                              pythonpath=[d.path])
+      ty = self.InferFromFile(filename=d["main.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         def f() -> foo.A
         def g() -> foo.A
@@ -359,8 +351,7 @@ class ImportTest(test_base.BaseTest):
         def f():
           return x.bar()
       """)
-      ty = self.InferFromFile(filename=d["main.py"],
-                              pythonpath=[d.path])
+      ty = self.InferFromFile(filename=d["main.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         x = ...  # type: bar.Bar
         def f() -> int
@@ -374,8 +365,7 @@ class ImportTest(test_base.BaseTest):
         x = baz.x
       """)
       d.create_file("foo/__init__.pyi", "")
-      ty = self.InferFromFile(filename=d["foo/bar.py"],
-                              pythonpath=[d.path])
+      ty = self.InferFromFile(filename=d["foo/bar.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         baz = ...  # type: module
         x = ...  # type: int
@@ -390,8 +380,7 @@ class ImportTest(test_base.BaseTest):
           return baz.x
       """)
       d.create_file("foo/__init__.pyi", "")
-      ty = self.InferFromFile(filename=d["foo/bar.py"],
-                              pythonpath=[d.path])
+      ty = self.InferFromFile(filename=d["foo/bar.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         baz = ...  # type: module
         def f() -> int
@@ -405,9 +394,7 @@ class ImportTest(test_base.BaseTest):
         x = baz.x
       """
       d.create_file("foo/bar.py", bar)
-      ty = self.Infer(bar,
-                      module_name="foo.bar",
-                      pythonpath=[d.path])
+      ty = self.Infer(bar, module_name="foo.bar", pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         baz = ...  # type: module
         x = ...  # type: int
@@ -423,8 +410,7 @@ class ImportTest(test_base.BaseTest):
       d.create_file("up1/bar.pyi", """x = ...  # type: int""")
       d.create_file("up1/__init__.pyi", "")
       d.create_file("__init__.pyi", "")
-      ty = self.InferFromFile(filename=d["up1/foo.py"],
-                              pythonpath=[d.path])
+      ty = self.InferFromFile(filename=d["up1/foo.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         x = ...  # type: int
     """)
@@ -439,8 +425,7 @@ class ImportTest(test_base.BaseTest):
       d.create_file("__init__.pyi", "")
       d.create_file("up2/__init__.pyi", "")
       d.create_file("up2/baz/__init__.pyi", "")
-      ty = self.InferFromFile(filename=d["up2/baz/foo.py"],
-                              pythonpath=[d.path])
+      ty = self.InferFromFile(filename=d["up2/baz/foo.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         x = ...  # type: int
       """)
@@ -451,8 +436,7 @@ class ImportTest(test_base.BaseTest):
         from .bar import x
       """)
       d.create_file("bar.pyi", """x = ...  # type: int""")
-      ty = self.InferFromFile(filename=d["foo.py"],
-                              pythonpath=[d.path])
+      ty = self.InferFromFile(filename=d["foo.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         x = ...  # type: int
       """)
@@ -463,8 +447,7 @@ class ImportTest(test_base.BaseTest):
         from ..bar import x
       """)
       d.create_file("bar.pyi", """x = ...  # type: int""")
-      ty = self.InferFromFile(filename=d["baz/foo.py"],
-                              pythonpath=[d.path])
+      ty = self.InferFromFile(filename=d["baz/foo.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         x = ...  # type: int
       """)
@@ -497,8 +480,7 @@ class ImportTest(test_base.BaseTest):
                     from up2.baz.foo import X
                     x = X()
                     """)
-      ty = self.InferFromFile(filename=d["top.py"],
-                              pythonpath=[d.path])
+      ty = self.InferFromFile(filename=d["top.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Type
         import up2.bar
@@ -526,8 +508,7 @@ class ImportTest(test_base.BaseTest):
       d.create_file("top.py", """\
         import foo.b
         x = foo.b.Y() """)
-      ty = self.InferFromFile(filename=d["top.py"],
-                              pythonpath=[d.path])
+      ty = self.InferFromFile(filename=d["top.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Type
         import foo.a

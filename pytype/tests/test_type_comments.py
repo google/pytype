@@ -233,6 +233,7 @@ class FunctionCommentWithAnnotationsTest(test_base.BaseTest):
     """)
     self.assertErrorLogIs(errors, [(3, "redundant-function-type-comment")])
 
+
 class AssignmentCommentTest(test_base.BaseTest):
   """Tests for type comments applied to assignments."""
 

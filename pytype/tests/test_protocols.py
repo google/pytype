@@ -453,6 +453,22 @@ class ProtocolTest(test_base.BaseTest):
           return foo.Foo("")
       """, pythonpath=[d.path])
 
+  def test_check_supports_bytes_protocol(self):
+    self.Check("""
+      import protocols
+      from typing import SupportsBytes
+      def f(x: protocols.SupportsBytes):
+        return None
+      def g(x: SupportsBytes):
+        return None
+      class Foo:
+        def __bytes__(self):
+          return b"foo"
+      foo = Foo()
+      f(foo)
+      g(foo)
+    """, python_version=(3, 6))
+
 
 if __name__ == "__main__":
   test_base.main()

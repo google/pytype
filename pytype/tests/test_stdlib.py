@@ -367,6 +367,7 @@ class StdlibTests(test_base.BaseTest):
     """)
 
   def testCollectionsSmokeTest(self):
+    # These classes are not fully implemented in typing.py.
     self.Check("""
       import collections
       collections.AsyncIterable

@@ -4,6 +4,7 @@ import collections
 import os
 import textwrap
 
+from pytype import config
 from pytype import load_pytd
 from pytype import utils
 from pytype.pytd import pytd
@@ -381,6 +382,30 @@ class PickledPyiLoaderTest(unittest.TestCase):
       self.assertTrue(loader.import_name("datetime"))
       self.assertTrue(loader.import_name("foo"))
       self.assertTrue(loader.import_name("ctypes"))
+
+
+class Python3Test(unittest.TestCase):
+  """Tests for load_pytd.py."""
+
+  PYTHON_VERSION = (3, 6)
+
+  def setUp(self):
+    self.options = config.Options.create(python_version=self.PYTHON_VERSION)
+
+  def testPython3Builtins(self):
+    # Test that we read python3 builtins from builtin.pytd if we pass a (3, 6)
+    # version to the loader.
+    with utils.Tempdir() as d:
+      d.create_file("a.pyi", """\
+          from typing import AsyncGenerator
+          class A(AsyncGenerator[str]): ...""")
+      loader = load_pytd.Loader("base",
+                                python_version=self.PYTHON_VERSION,
+                                pythonpath=[d.path])
+      a = loader.import_name("a")
+      cls = a.Lookup("a.A")
+      # New python3 builtins are currently aliases for Any.
+      self.assertIn(pytd.AnythingType(), cls.parents)
 
 
 if __name__ == "__main__":

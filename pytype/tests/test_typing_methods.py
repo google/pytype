@@ -1,12 +1,28 @@
 """Tests for the methods in typing.pyi."""
 
+import textwrap
+
 
 from pytype import utils
 from pytype.tests import test_base
 
 
-class TypingMethodsTest(test_base.TypingTest):
+class TypingMethodsTest(test_base.BaseTest):
   """Tests for typing.py."""
+
+  def _check_call(self, t, expr, python_version=(2, 7)):  # pylint: disable=invalid-name
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import %(type)s
+        def f() -> %(type)s
+      """ % {"type": t})
+      indented_expr = textwrap.dedent(expr).replace("\n", "\n" + " "*8)
+      self.Check("""\
+        import foo
+        x = foo.f()
+        %(expr)s
+      """ % {"expr": indented_expr}, pythonpath=[d.path],
+                 python_version=python_version)
 
   def test_text(self):
     self._check_call("Text", "x.upper()")
@@ -355,6 +371,9 @@ class TypingMethodsTest(test_base.TypingTest):
       x.throw(Exception())
       x.close()
     """)
+
+  def test_supportsbytes(self):
+    self._check_call("SupportsBytes", "bytes(x)", python_version=(3, 6))
 
   def test_pattern_and_match(self):
     # Basic pattern sanity check.

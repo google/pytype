@@ -159,6 +159,15 @@ class AbstractMethodTests(test_base.BaseTest):
           return None
     """, skip_repeat_calls=False)
 
+  def test_no_skip_calls_py3(self):
+    self.Check("""
+      import abc
+      class Example(metaclass=abc.ABCMeta):
+        @abc.abstractmethod
+        def foo(self) -> int:
+          return None
+    """, skip_repeat_calls=False, python_version=(3, 6))
+
   def test_instantiate_abstract_class(self):
     _, errors = self.InferWithErrors("""\
       import abc
@@ -300,6 +309,43 @@ class AbstractMethodTests(test_base.BaseTest):
       Bar9("")
       BarA(0)
     """)
+
+  def test_multiple_inheritance_builtins_py3(self):
+    self.Check("""
+      import abc
+      class Foo(object, metaclass=abc.ABCMeta):
+        pass
+      class Bar1(Foo, tuple):
+        pass
+      class Bar2(Foo, bytes):
+        pass
+      class Bar3(Foo, str):
+        pass
+      class Bar4(Foo, bytearray):
+        pass
+      class Bar5(Foo, dict):
+        pass
+      class Bar6(Foo, list):
+        pass
+      class Bar7(Foo, set):
+        pass
+      class Bar8(Foo, frozenset):
+        pass
+      class Bar9(Foo, memoryview):
+        pass
+      class BarA(Foo, xrange):
+        pass
+      Bar1()
+      Bar2()
+      Bar3()
+      Bar4()
+      Bar5()
+      Bar6()
+      Bar7()
+      Bar8()
+      Bar9(b"")
+      BarA(0)
+    """, python_version=(3, 6))
 
   def test_abstract_method_unusual_selfname(self):
     self.Check("""

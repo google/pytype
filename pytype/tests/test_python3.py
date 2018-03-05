@@ -152,39 +152,6 @@ class TestPython3(test_base.BaseTest):
       vars = ...  # type: List[int]
     """)
 
-  def test_bad_unpacking(self):
-    _, errors = self.InferWithErrors("""\
-      a, *b, c = (1,)
-    """)
-    self.assertErrorLogIs(
-        errors, [(1, "bad-unpacking", "1 value.*3 variables")])
-
-  def test_abstract_method_no_skip_calls(self):
-    self.Check("""
-      import abc
-      class Example(object):
-        __metaclass__ = abc.ABCMeta
-        @abc.abstractmethod
-        def foo(self) -> int:
-          return None
-    """, skip_repeat_calls=False)
-
-  def test_check_supports_bytes_protocol(self):
-    self.Check("""
-      import protocols
-      from typing import SupportsBytes
-      def f(x: protocols.SupportsBytes):
-        return None
-      def g(x: SupportsBytes):
-        return None
-      class Foo:
-        def __bytes__(self):
-          return b"foo"
-      foo = Foo()
-      f(foo)
-      g(foo)
-    """)
-
   def test_metaclass_kwarg(self):
     self.Check("""
       import abc
@@ -231,60 +198,6 @@ class TestPython3(test_base.BaseTest):
         foo.x("a = 2")
       """, pythonpath=[d.path])
 
-  def test_none_length(self):
-    errors = self.CheckWithErrors("len(None)")
-    self.assertErrorLogIs(errors, [(1, "wrong-arg-types", r"Sized.*None")])
-
-  def test_bytearray(self):
-    self.Check("""
-      ba = bytearray(b"hello")
-      ba[0] = 106
-      ba[:1] = [106]
-      ba[:1] = b"j"
-      ba[:1] = bytearray(b"j")
-      ba[:1] = memoryview(b"j")
-      ba[4:] = b"yfish"
-      ba[0:5] = b""
-      ba[1:4:2] = b"at"
-    """)
-
-  def test_multiple_inheritance_builtins(self):
-    self.Check("""
-      import abc
-      class Foo(object, metaclass=abc.ABCMeta):
-        pass
-      class Bar1(Foo, tuple):
-        pass
-      class Bar2(Foo, bytes):
-        pass
-      class Bar3(Foo, str):
-        pass
-      class Bar4(Foo, bytearray):
-        pass
-      class Bar5(Foo, dict):
-        pass
-      class Bar6(Foo, list):
-        pass
-      class Bar7(Foo, set):
-        pass
-      class Bar8(Foo, frozenset):
-        pass
-      class Bar9(Foo, memoryview):
-        pass
-      class BarA(Foo, xrange):
-        pass
-      Bar1()
-      Bar2()
-      Bar3()
-      Bar4()
-      Bar5()
-      Bar6()
-      Bar7()
-      Bar8()
-      Bar9(b"")
-      BarA(0)
-    """)
-
   def test_raise_exception_from(self):
     self.Check("raise ValueError from NameError")
 
@@ -323,15 +236,6 @@ class TestPython3(test_base.BaseTest):
       g({}.items())
       h({}.values())
     """)
-
-
-class TypingMethodsTest(test_base.TypingTest):
-  """Tests for typing.py specific to python3."""
-
-  PYTHON_VERSION = (3, 4)
-
-  def test_supportsbytes(self):
-    self._check_call("SupportsBytes", "bytes(x)")
 
 
 if __name__ == "__main__":

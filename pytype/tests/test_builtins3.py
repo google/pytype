@@ -330,8 +330,25 @@ class BuiltinTests3(test_base.BaseTest):
       ba[2:3:2] = "u"
     """)
 
+  def testBytearraySetItemPy3(self):
+    self.Check("""
+      ba = bytearray(b"hello")
+      ba[0] = 106
+      ba[:1] = [106]
+      ba[:1] = b"j"
+      ba[:1] = bytearray(b"j")
+      ba[:1] = memoryview(b"j")
+      ba[4:] = b"yfish"
+      ba[0:5] = b""
+      ba[1:4:2] = b"at"
+    """, python_version=(3, 6))
+
   def testNoneLength(self):
     errors = self.CheckWithErrors("len(None)")
+    self.assertErrorLogIs(errors, [(1, "wrong-arg-types", r"Sized.*None")])
+
+  def testNoneLengthPy3(self):
+    errors = self.CheckWithErrors("len(None)", python_version=(3, 6))
     self.assertErrorLogIs(errors, [(1, "wrong-arg-types", r"Sized.*None")])
 
   def testSetLength(self):
