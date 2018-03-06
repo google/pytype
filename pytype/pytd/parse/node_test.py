@@ -109,6 +109,11 @@ class TestNode(unittest.TestCase):
     self.assertTrue(n1 == n2)
     self.assertFalse(n1 != n2)
 
+  def testHash1(self):
+    n1 = Node1(a=1, b=2)
+    n2 = Node1(a=1, b=2)
+    self.assertEqual(hash(n1), hash(n2))
+
   def testEq2(self):
     """Test the __eq__ and __ne__ functions of identical nested nodes."""
     n1 = Node1(a=1, b=2)
@@ -120,6 +125,18 @@ class TestNode(unittest.TestCase):
     self.assertTrue(d1 == d2 and d2 == d3 and d3 == d4 and d4 == d1)
     # Since node overloads __ne___, too, test it explicitly:
     self.assertFalse(d1 != d2 or d2 != d3 or d3 != d4 or d4 != d1)
+
+  def testHash2(self):
+    n1 = Node1(a=1, b=2)
+    n2 = Node1(a=1, b=2)
+    d1 = Node2(x="foo", y=n1)
+    d2 = Node2(x="foo", y=n1)
+    d3 = Node2(x="foo", y=n2)
+    d4 = Node2(x="foo", y=n2)
+    self.assertEqual(hash(d1), hash(d2))
+    self.assertEqual(hash(d2), hash(d3))
+    self.assertEqual(hash(d3), hash(d4))
+    self.assertEqual(hash(d4), hash(d1))
 
   def testDeepEq2(self):
     """Test the __eq__ and __ne__ functions of differing nested nodes."""
@@ -141,6 +158,20 @@ class TestNode(unittest.TestCase):
     self.assertFalse(d2 == d3)
     self.assertFalse(d2 == d4)
     self.assertFalse(d3 == d4)
+
+  def testDeepHash2(self):
+    n1 = Node1(a=1, b=2)
+    n2 = Node1(a=1, b=3)
+    d1 = Node2(x="foo", y=n1)
+    d2 = Node3(x="foo", y=n1)
+    d3 = Node2(x="foo", y=n2)
+    d4 = Node3(x="foo", y=n2)
+    self.assertNotEqual(hash(d1), hash(d2))
+    self.assertNotEqual(hash(d1), hash(d3))
+    self.assertNotEqual(hash(d1), hash(d4))
+    self.assertNotEqual(hash(d2), hash(d3))
+    self.assertNotEqual(hash(d2), hash(d4))
+    self.assertNotEqual(hash(d3), hash(d4))
 
   def testImmutable(self):
     """Test that node.Node has/preserves immutatibility."""

@@ -135,6 +135,10 @@ def Node(*child_names):
       else:
         return False  # or NotImplemented
 
+    def __hash__(self):
+      """Return a hash of the node type and the underlying tuple."""
+      return hash((self.__class__,) + tuple(self))
+
     def __ne__(self, other):
       """Compare two nodes for inequality. See __eq__."""
       return not self == other
