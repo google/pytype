@@ -142,6 +142,11 @@ PyObject* Context::Call(CallSelector selector, const char* fmt, ...) const {
     return NULL;
   }
 
+  // PyObject_CallObject clobbers the error, so return early.
+  if (PyErr_Occurred()) {
+    return NULL;
+  }
+
   // Call and return result.
   PyObject* result = PyObject_CallObject(callables_[selector], args);
   Py_DECREF(args);
