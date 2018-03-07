@@ -73,6 +73,24 @@ class FunctionCommentTest(test_base.BaseTest):
       def foo(x: int, y: str, z: float) -> None
     """)
 
+  def testFunctionCommentOnColon(self):
+    _, errors = self.InferWithErrors("""
+      def f(x) \\
+        : # type: (None) -> None
+        return True
+    """)
+    self.assertErrorLogIs(errors, [(4, "bad-return-type")])
+
+  def testMultipleFunctionComments(self):
+    _, errors = self.InferWithErrors("""
+      def f(x):
+        # type: (None) -> bool
+        # type: (str) -> str
+        return True
+    """)
+    self.assertErrorLogIs(errors, [(4, "ignored-type-comment",
+                                    r"Stray type comment:.*str")])
+
   def testFunctionNoneInArgs(self):
     ty = self.Infer("""
       def foo(x, y, z):

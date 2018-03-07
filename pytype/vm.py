@@ -90,61 +90,26 @@ class _FindIgnoredTypeComments(object):
     # Build sets of all lines with the associated style of type comment.
     # Lines will be removed from these sets during visiting.  Any lines
     # that remain at the end are type comments that will be ignored.
-    self._ignored_function_lines = set()
     self._ignored_type_lines = set()
-    for line, comment in type_comments.items():
-      if comment[0]:
-        self._ignored_type_lines.add(line)
-      else:
-        self._ignored_function_lines.add(line)
-    # Keep a copy of the lines that have function comments.  This is necessary
-    # because the function comment check involves finding the first line
-    # within a range that contains a comment.  If the same code object is
-    # referenced by multiple MAKE_FUNCTION ops, then simply using the ignored
-    # set when checking for existence of a comment would be incorrect.
-    self._function_lines = set(self._ignored_function_lines)
+    for line, _ in type_comments.items():
+      self._ignored_type_lines.add(line)
 
   def visit_code(self, code):
     """Interface for pyc.visit."""
     for i, op in enumerate(code.co_code):
+      # Make sure we have attached the type comment to an opcode.
       if isinstance(op, blocks.STORE_OPCODES):
-        self._ignored_type_lines.discard(op.line)
+        if op.type_comment:
+          self._ignored_type_lines.discard(op.line)
       elif isinstance(op, opcodes.MAKE_FUNCTION):
-        code_line = self._find_code_line(code, i)
-        if code_line is not None:
-          # Discard the first function type comment line.
-          for line in range(op.line + 1, code_line):
-            if line in self._function_lines:
-              self._ignored_function_lines.discard(line)
-              break
+        if op.type_comment:
+          _, line = op.type_comment
+          self._ignored_type_lines.discard(line)
     return code
-
-  def _find_code_line(self, code, index):
-    """Return the line number for the first opcode (or None).
-
-    Args:
-      code: An OrderedCode object.
-      index: The index of the MAKE_FUNCTION op within code.co_code.
-
-    Returns:
-      The line number of the first opcode in the body of the function, or
-      None if this cannot be determined.
-    """
-    if index < 1:
-      return
-    op = code.co_code[index-1]
-    if op.name != "LOAD_CONST":
-      return
-    target_code = code.co_consts[op.arg]
-    # If the object doesn't have a co_code attribute, or the co_code
-    # attribute is an empty list, we can't determine the line.
-    if not getattr(target_code, "co_code", None):
-      return
-    return target_code.co_code[0].line
 
   def ignored_lines(self):
     """Returns a set of lines that contain ignored type comments."""
-    return self._ignored_function_lines | self._ignored_type_lines
+    return self._ignored_type_lines
 
 
 class VirtualMachine(object):
