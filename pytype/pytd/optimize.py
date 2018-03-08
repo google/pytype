@@ -722,14 +722,15 @@ class AddInheritedMethods(visitors.Visitor):
     # this class, local methods override parent class methods.
     names = {m.name for m in cls.methods} | {c.name for c in cls.constants}
     # TODO(kramm): This should do full-blown MRO.
+    adjust_self = visitors.AdjustSelf(force=True)
+    adjust_self.class_types.append(visitors.ClassAsType(cls))
     new_methods = cls.methods + tuple(
-        m for base in bases for m in base.methods
+        m.Visit(adjust_self) for base in bases for m in base.methods
         if m.name not in names)
     new_constants = cls.constants + tuple(
         c for base in bases for c in base.constants
         if c.name not in names)
-    cls = cls.Replace(methods=new_methods, constants=new_constants)
-    return cls.Visit(visitors.AdjustSelf(force=True))
+    return cls.Replace(methods=new_methods, constants=new_constants)
 
 
 class RemoveInheritedMethods(visitors.Visitor):
@@ -929,18 +930,19 @@ class PullInMethodClasses(visitors.Visitor):
     """Visit a class, and change constants to methods where possible."""
     new_constants = []
     new_methods = list(cls.methods)
+    adjust_self = visitors.AdjustSelf(force=True)
+    adjust_self.class_types.append(visitors.ClassAsType(cls))
     for const in cls.constants:
       if self._IsSimpleCall(const.type):
         c = self._MaybeLookup(const.type)
         signatures = c.methods[0].signatures
         self._processed_count[c.name] += 1
-        new_methods.append(
-            pytd.Function(const.name, signatures, c.methods[0].kind))
+        new_method = pytd.Function(const.name, signatures, c.methods[0].kind)
+        new_methods.append(new_method.Visit(adjust_self))
       else:
         new_constants.append(const)  # keep
-    cls = cls.Replace(constants=tuple(new_constants),
-                      methods=tuple(new_methods))
-    return cls.Visit(visitors.AdjustSelf(force=True))
+    return cls.Replace(constants=tuple(new_constants),
+                       methods=tuple(new_methods))
 
 
 class AbsorbMutableParameters(visitors.Visitor):
@@ -1171,7 +1173,7 @@ def Optimize(node,
     node = node.Visit(AbsorbMutableParameters())
     node = node.Visit(CombineContainers())
     node = node.Visit(MergeTypeParameters())
-    node = node.Visit(visitors.AdjustSelf(force=True))
+    node = node.Visit(visitors.AdjustSelf())
   node = node.Visit(SimplifyContainers())
   if builtins and can_do_lookup:
     node = visitors.LookupClasses(node, builtins, ignore_late_types=True)

@@ -372,7 +372,6 @@ class BaseTest(unittest.TestCase):
     unit, builtins_pytd = analyze.infer_types(
         src, errorlog, self.options, loader=self.loader, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
-    unit = pytd_utils.CanonicalOrdering(unit)
     if report_errors and len(errorlog):
       errorlog.print_to_stderr()
       self.fail("Inferencer found %d errors" % len(errorlog))
@@ -391,7 +390,7 @@ class BaseTest(unittest.TestCase):
         visitors.CanonicalOrderingVisitor(sort_signatures=True))
     pytd_tree.Visit(visitors.VerifyVisitor())
     ty = ty.Visit(visitors.ClassTypeToNamedType())
-    ty = ty.Visit(visitors.AdjustSelf(force=True))
+    ty = ty.Visit(visitors.AdjustSelf())
     ty = ty.Visit(visitors.CanonicalOrderingVisitor(sort_signatures=True))
     ty.Visit(visitors.VerifyVisitor())
 

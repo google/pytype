@@ -953,10 +953,10 @@ class ClassesTest(test_base.BaseTest):
           return 42
       X = A("X", (object,), {})
       v = X[0]
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       class A(type):
-        def __getitem__(self, i: int) -> int
+        def __getitem__(self, i) -> int
       class X(object, metaclass=A): ...
       v = ...  # type: int
     """)

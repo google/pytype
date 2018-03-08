@@ -754,6 +754,21 @@ class TestOptimize(parser_test_base.ParserTest):
     self.assertItemsEqual(("f", "g", "h"),
                           [m.name for m in ast.Lookup("B").methods])
 
+  def testAdjustInheritedMethodSelf(self):
+    src = textwrap.dedent("""
+      class A():
+        def f(self: object) -> float
+      class B(A):
+        pass
+    """)
+    ast = self.Parse(src)
+    ast = visitors.LookupClasses(ast, self.builtins)
+    ast = ast.Visit(optimize.AddInheritedMethods())
+    self.assertMultiLineEqual(pytd.Print(ast.Lookup("B")), textwrap.dedent("""\
+        class B(A):
+            def f(self) -> float: ...
+    """))
+
   def testRemoveInheritedMethodsWithLateType(self):
     src = textwrap.dedent("""
         class Foo(other.Bar):
