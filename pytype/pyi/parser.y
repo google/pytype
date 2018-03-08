@@ -54,7 +54,7 @@ PyObject* ExtendList(PyObject* dst, PyObject* src);
 }  // end namespace
 
 
-// Check that a python value is not NULL.  This must be a macro because it
+// Check that a python value is not NULL.  The must be a macro because it
 // calls YYERROR (which is a goto).
 #define CHECK(x, loc) do { if (x == NULL) {\
     ctx->SetErrorLocation(&loc); \
