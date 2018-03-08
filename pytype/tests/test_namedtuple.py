@@ -284,6 +284,24 @@ class NamedtupleTests(test_base.BaseTest):
         def __new__(cls: Type[_TX], _) -> _TX: ...""").format(name=name)
     self.assertTypesMatchPytd(ty, expected)
 
+  def test_subclass_replace(self):
+    ty = self.Infer("""
+      import collections
+      X = collections.namedtuple("X", "a")
+      class Y(X): pass
+      z = Y(1)._replace(a=2)
+    """)
+    self.assertEqual(pytd.Print(ty.Lookup("z")), "z = ...  # type: Y")
+
+  def test_subclass_make(self):
+    ty = self.Infer("""
+      import collections
+      X = collections.namedtuple("X", "a")
+      class Y(X): pass
+      z = Y._make([1])
+    """)
+    self.assertEqual(pytd.Print(ty.Lookup("z")), "z = ...  # type: Y")
+
   def test_unpacking(self):
     with utils.Tempdir() as d:
       d.create_file("foo.pyi", """

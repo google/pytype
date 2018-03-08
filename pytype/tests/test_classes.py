@@ -1061,9 +1061,11 @@ class ClassesTest(test_base.BaseTest):
           return self
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import TypeVar
+      _TFoo = TypeVar("_TFoo", bound=Foo)
       class Foo(object):
         def __new__(cls) -> Foo or None
-        def foo(self) -> Foo
+        def foo(self: _TFoo) -> _TFoo
     """)
 
   def testSuperNewExtraArg(self):

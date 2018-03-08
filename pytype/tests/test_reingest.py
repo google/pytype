@@ -334,6 +334,24 @@ class StrictNoneTest(test_base.BaseTest):
           return x.upper()
       """, pythonpath=[d.path])
 
+  def testContextManagerSubclass(self):
+    foo = self.Infer("""
+      class Foo(object):
+        def __enter__(self):
+          return self
+        def __exit__(self, type, value, traceback):
+          return None
+    """)
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd.Print(foo))
+      self.Check("""
+        import foo
+        class Bar(foo.Foo):
+          x = None
+        with Bar() as bar:
+          bar.x
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_base.main()

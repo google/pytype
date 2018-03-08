@@ -745,12 +745,25 @@ class MethodsTest(test_base.BaseTest):
             pass
 
           def clone(self):
-              return Cloneable()
+            return type(self)()
       Cloneable().clone()
     """, deep=False, show_library_calls=True)
     cls = ty.Lookup("Cloneable")
     method = cls.Lookup("clone")
-    self.assertOnlyHasReturnType(method, pytd.ClassType("Cloneable", cls))
+    self.assertEqual(
+        pytd.Print(method), "def clone(self: _TCloneable) -> _TCloneable: ...")
+
+  @unittest.skip("pytype thinks 'clone' returns a TypeVar(bound=Cloneable)")
+  def testSimpleClone(self):
+    ty = self.Infer("""
+      class Cloneable(object):
+        def clone(self):
+          return Cloneable()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Cloneable(object):
+        def clone(self) -> Cloneable
+    """)
 
   def testDecorator(self):
     ty = self.Infer("""
@@ -1049,6 +1062,19 @@ class MethodsTest(test_base.BaseTest):
         pass
     """)
     self.assertErrorLogIs(errors, [(4, "invalid-annotation", r"int.*self")])
+
+  def testReturnSelf(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __enter__(self):
+          return self
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypeVar
+      _TFoo = TypeVar("_TFoo", bound=Foo)
+      class Foo(object):
+        def __enter__(self: _TFoo) -> _TFoo: ...
+    """)
 
 
 if __name__ == "__main__":

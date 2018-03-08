@@ -1430,23 +1430,31 @@ class _CountUnknowns(Visitor):
 class CreateTypeParametersForSignatures(Visitor):
   """Visitor for inserting type parameters into signatures.
 
-  This visitor replaces re-occurring ~unknowns and the class type in __new__
+  This visitor replaces re-occurring ~unknowns and class types (when necessary)
   with type parameters.
 
   For example, this will change
+  1.
     class ~unknown1:
       ...
     def f(x: ~unknown1) -> ~unknown1
   to
     _T1 = TypeVar("_T1")
     def f(x: _T1) -> _T1
-  and
+  2.
     class Foo:
       def __new__(cls: Type[Foo]) -> Foo
   to
     _TFoo = TypeVar("_TFoo", bound=Foo)
     class Foo:
       def __new__(cls: Type[_TFoo]) -> _TFoo
+  3.
+    class Foo:
+      def __enter__(self) -> Foo
+  to
+    _TFoo = TypeVar("_TFoo", bound=Foo)
+    class Foo:
+      def __enter__(self: _TFoo) -> _TFoo
   """
 
   PREFIX = "_T"  # Prefix for new type params
@@ -1472,34 +1480,34 @@ class CreateTypeParametersForSignatures(Visitor):
   def LeaveFunction(self, _):
     self.function_name = None
 
-  def _IsSimpleNew(self, sig):
-    """Whether the signature matches a simple __new__ method.
+  def _NeedsClassParam(self, sig):
+    """Whether the signature needs a bounded type param for the class.
 
-    We're interested in whether X.__new__ has the signature
-    (cls: Type[X][, ...]) -> X, since if it does, it most likely calls
-    object.__new__ (via super()), so X in the signature should be replaced
-    with a bounded TypeVar. (There are weird corner cases like
-
-    class X(object):
-      def __new__(cls):
-        self = Y()
-        self.__class__ = X
-        return self
-
-    where the replacement is wrong, but code that does things like this
-    arguably shouldn't expect type-checking to work anyway.)
+    We detect the signatures
+      (cls: Type[X][, ...]) -> X
+    and
+      (self: X[, ...]) -> X
+    so that we can replace X with a bounded TypeVar. This heuristic
+    isn't perfect; for example, in this naive copy method:
+      class X(object):
+        def copy(self):
+          return X()
+    we should have left X alone. But it prevents a number of false
+    positives by enabling us to infer correct types for common
+    implementations of __new__ and __enter__.
 
     Args:
       sig: A pytd.Signature.
 
     Returns:
-      True if the signature matches a simple __new__ method, False otherwise.
+      True if the signature needs a class param, False otherwise.
     """
     if self.class_name and self.function_name and sig.params:
       # Printing the class name escapes illegal characters.
       safe_class_name = pytd.Print(pytd.NamedType(self.class_name))
       return (pytd.Print(sig.return_type) == safe_class_name and
-              pytd.Print(sig.params[0].type) == "Type[%s]" % safe_class_name)
+              pytd.Print(sig.params[0].type) in (
+                  "Type[%s]" % safe_class_name, safe_class_name))
     return False
 
   def VisitSignature(self, sig):
@@ -1520,7 +1528,7 @@ class CreateTypeParametersForSignatures(Visitor):
         type_param = pytd.TypeParameter(
             self.PREFIX + str(counter.position[suffix]))
         replacements["~unknown"+suffix] = type_param
-    if self._IsSimpleNew(sig):
+    if self._NeedsClassParam(sig):
       type_param = pytd.TypeParameter(
           self.PREFIX + self.class_name, bound=pytd.NamedType(self.class_name))
       replacements[self.class_name] = type_param

@@ -24,8 +24,8 @@ class NamedTupleAstTest(unittest.TestCase):
                      pytd.Print(nt.Lookup("__init__")))
     make_sig, = nt.Lookup("_make").signatures
     replace_sig, = nt.Lookup("_replace").signatures
-    self.assertEqual("X", make_sig.return_type.name)
-    self.assertEqual("X", replace_sig.return_type.name)
+    self.assertEqual("_TX", make_sig.return_type.name)
+    self.assertEqual("_TX", replace_sig.return_type.name)
 
   def test_no_fields(self):
     nt = self._namedtuple_ast("X", []).Lookup("X")
