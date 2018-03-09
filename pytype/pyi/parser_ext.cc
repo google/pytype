@@ -149,9 +149,13 @@ PyObject* Context::Call(CallSelector selector, const char* fmt, ...) const {
 }
 
 void Context::SetErrorLocation(YYLTYPE* location) const {
+  // Call clobbers any existing error, so we need to save it.
+  PyObject *ptype, *pvalue, *ptraceback;
+  PyErr_Fetch(&ptype, &pvalue, &ptraceback);
   PyObject* result = Call(kSetErrorLocation, "((iiii))",
                           location->first_line, location->first_column,
                           location->last_line, location->last_column);
+  PyErr_Restore(ptype, pvalue, ptraceback);
   Py_XDECREF(result);
 }
 
