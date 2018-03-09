@@ -495,3 +495,34 @@ def DummyMethod(name, *params):
                        signatures=(sig,),
                        kind=pytd.METHOD,
                        flags=0)
+
+
+def MergeBaseClass(cls, base):
+  """Merge a base class into a subclass.
+
+  Arguments:
+    cls: The subclass to merge values into. pytd.Class.
+    base: The superclass whose values will be merged. pytd.Class.
+
+  Returns:
+    a pytd.Class of the two merged classes.
+  """
+  bases = tuple(b for b in cls.parents if b != base)
+  bases += tuple(b for b in base.parents if b not in bases)
+  method_names = [m.name for m in cls.methods]
+  methods = cls.methods + tuple(m for m in base.methods
+                                if m.name not in method_names)
+  constant_names = [c.name for c in cls.constants]
+  constants = cls.constants + tuple(c for c in base.constants
+                                    if c.name not in constant_names)
+  if cls.slots:
+    slots = cls.clots + tuple(s for s in base.slots or () if s not in cls.slots)
+  else:
+    slots = base.slots
+  return pytd.Class(name=cls.name,
+                    metaclass=cls.metaclass or base.metaclass,
+                    parents=bases,
+                    methods=methods,
+                    constants=constants,
+                    slots=slots,
+                    template=cls.template or base.template)

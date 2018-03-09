@@ -1376,6 +1376,133 @@ class ClassesTest(test_base.BaseTest):
           pass
     """)
 
+  def testSubclassContainsBase(self):
+    ty = self.Infer("""\
+      def get_c():
+        class C(object):
+          def __init__(self, z):
+            self.a = 3
+            self.c = z
+          def baz(self): pass
+        return C
+      class DC(get_c()):
+        def __init__(self, z):
+          super(DC, self).__init__(z)
+          self.b = "hello"
+        def bar(self, x): pass
+      x = DC(1)
+    """)
+    self.assertTypesMatchPytd(ty, """\
+      from typing import Any
+      class DC(object):
+          a = ...  # type: int
+          b = ...  # type: str
+          c = ...  # type: Any
+          def __init__(self, z) -> None: ...
+          def bar(self, x) -> None: ...
+          def baz(self) -> None: ...
+      def get_c() -> type: ...
+      x = ...  # type: DC
+    """)
+
+  def testSubclassMultipleBaseOptions(self):
+    ty = self.Infer("""\
+      class A(object): pass
+      def get_base():
+        class B(object): pass
+        return B
+      Base = A if __random__ else get_base()
+      class C(Base): pass
+    """)
+    self.assertTypesMatchPytd(ty, """\
+      from typing import Any, Union
+      def get_base() -> type: ...
+      class A(object): pass
+      Base = ...  # type: type
+      class C(Any): pass
+    """)
+
+  def testSubclassContainsGenericBase(self):
+    ty = self.Infer("""\
+      import typing
+      def get_base():
+        class C(typing.List[str]):
+          def get_len(self): return len(self)
+        return C
+      class DL(get_base()): pass
+    """)
+    self.assertTypesMatchPytd(ty, """\
+      from typing import List
+      typing = ...  # type: module
+      class DL(List[str]):
+          def get_len(self) -> int: ...
+      def get_base() -> type: ...
+    """)
+
+  def testSubclassOverridesBaseAttributes(self):
+    ty = self.Infer("""\
+      def get_base():
+        class B(object):
+          def __init__(self):
+            self.a = 1
+            self.b = 2
+          def bar(self, x): pass
+          def baz(self): pass
+        return B
+      class C(get_base()):
+        def __init__(self):
+          super(C, self).__init__()
+          self.b = "hello"
+          self.c = "world"
+        def bar(self, x): pass
+    """)
+    self.assertTypesMatchPytd(ty, """\
+      def get_base() -> type: ...
+      class C(object):
+        a = ...  # type: int
+        b = ...  # type: str
+        c = ...  # type: str
+        def bar(self, x) -> None: ...
+        def baz(self) -> None: ...
+    """)
+
+  def testSubclassMakeBase(self):
+    ty = self.Infer("""
+      def make_base(x):
+        class C(x):
+          def __init__(self):
+            self.x = 1
+        return C
+      class BX(make_base(list)): pass
+    """)
+    self.assertTypesMatchPytd(ty, """\
+      def make_base(x) -> type: ...
+      class BX(list):
+        x = ...  # type: int
+    """)
+
+  def testSubclassBasesOverlap(self):
+    ty = self.Infer("""\
+      def make_a():
+        class A(object):
+          def __init__(self):
+            self.x = 1
+        return A
+      def make_b():
+        class B(object):
+          def __init__(self):
+            self.x = "hello"
+        return B
+      class C(make_a(), make_b()):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def make_a() -> type: ...
+      def make_b() -> type: ...
+      class C(object):
+        x = ...  # type: int
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

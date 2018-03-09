@@ -541,22 +541,41 @@ class Converter(object):
         del methods[name]
         constants[name].add_type(pytd.AnythingType())
 
-    bases = [pytd_utils.JoinTypes(b.get_instance_type(node)
-                                  for b in basevar.data)
-             for basevar in v.bases()
-             if basevar.data != [self.vm.convert.oldstyleclass_type]]
     constants = [pytd.Constant(name, builder.build())
                  for name, builder in constants.items() if builder]
+
     metaclass = v.metaclass(node)
     if metaclass is not None:
       metaclass = metaclass.get_instance_type(node)
-    return pytd.Class(name=class_name,
-                      metaclass=metaclass,
-                      parents=tuple(bases),
-                      methods=tuple(methods.values()),
-                      constants=tuple(constants),
-                      slots=v.slots,
-                      template=())
+
+    # Some of the class's bases may not be in global scope, so they won't show
+    # up in the output. In that case, fold the base class's type information
+    # into this class's pytd.
+    bases = []
+    missing_bases = []
+    for basevar in v.bases():
+      if basevar.data == [self.vm.convert.oldstyleclass_type]:
+        continue
+      elif len(basevar.bindings) == 1:
+        b, = basevar.data
+        if b.official_name is None and isinstance(b, abstract.InterpreterClass):
+          missing_bases.append(b)
+        else:
+          bases.append(b.get_instance_type(node))
+      else:
+        bases.append(pytd_utils.JoinTypes(b.get_instance_type(node)
+                                          for b in basevar.data))
+    cls = pytd.Class(name=class_name,
+                     metaclass=metaclass,
+                     parents=tuple(bases),
+                     methods=tuple(methods.values()),
+                     constants=tuple(constants),
+                     slots=v.slots,
+                     template=())
+    for base in missing_bases:
+      base_cls = self.value_to_pytd_def(node, base, base.name)
+      cls = pytd_utils.MergeBaseClass(cls, base_cls)
+    return cls
 
   def _typeparam_to_def(self, node, v, name):
     constraints = tuple(c.get_instance_type(node) for c in v.constraints)

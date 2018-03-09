@@ -439,6 +439,7 @@ class PyTDTest(AbstractTestBase):
 
   def test_inherited_metaclass(self):
     parent = abstract.InterpreterClass("X", [], {}, None, self._vm)
+    parent.official_name = "X"
     meta = abstract.InterpreterClass("M", [], {}, None, self._vm)
     meta.official_name = "M"
     parent.cls = meta.to_variable(self._vm.root_cfg_node)
