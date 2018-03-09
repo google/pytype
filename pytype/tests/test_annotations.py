@@ -912,6 +912,24 @@ class AnnotationTest(test_base.BaseTest):
         pass
     """)
 
+  def testLateAnnotationPython36(self):
+    ty = self.Infer("""\
+      def new_x() -> 'X':
+        return X()
+      class X(object):
+        def __init__(self) -> None:
+          self.foo = 1
+      def get_foo() -> int:
+        return new_x().foo
+    """, python_version=(3, 6))
+    self.assertTypesMatchPytd(ty, """
+      def new_x() -> X: ...
+      def get_foo() -> int: ...
+
+      class X(object):
+        foo = ...  # type: int
+    """)
+
   def testChangeAnnotatedArg(self):
     ty = self.Infer("""\
       from __future__ import google_type_annotations

@@ -2130,8 +2130,6 @@ class VirtualMachine(object):
     pos_defaults = ()
     kw_defaults = {}
     annot = {}
-    # TODO(mdemello): Does the 3.6 calling scheme need late annotations?
-    late_annot = {}
     if arg & loadmarshal.MAKE_FUNCTION_HAS_FREE_VARS:
       state, free_vars = state.pop()
     if arg & loadmarshal.MAKE_FUNCTION_HAS_ANNOTATIONS:
@@ -2145,6 +2143,8 @@ class VirtualMachine(object):
     if arg & loadmarshal.MAKE_FUNCTION_HAS_POS_DEFAULTS:
       state, packed_pos_def = state.pop()
       pos_defaults = abstract.get_atomic_python_constant(packed_pos_def, tuple)
+    annot, late_annot = self.annotations_util.convert_annotations_list(
+        annot.items())
     return state, pos_defaults, kw_defaults, annot, late_annot, free_vars
 
   def _process_function_type_comment(self, op, annotations, late_annotations):
