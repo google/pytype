@@ -3,7 +3,6 @@
 import collections
 import csv
 import logging
-import os
 import re
 import StringIO
 import sys
@@ -236,8 +235,7 @@ class Error(object):
     method = ", in %s" % self._methodname if self._methodname else ""
 
     if self._filename:
-      filename = os.path.basename(self._filename)
-      return "File \"%s\", line %d%s" % (filename,
+      return "File \"%s\", line %d%s" % (self._filename,
                                          self._lineno,
                                          method)
     elif self._lineno:
