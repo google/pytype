@@ -94,6 +94,14 @@ class AnnotationsUtil(object):
       return sum((self.get_type_parameters(o) for o in annot.options), [])
     return []
 
+  def convert_function_type_annotation(self, node, name, typ):
+    visible = typ.Data(node)
+    if len(visible) > 1:
+      self.vm.errorlog.ambiguous_annotation(self.vm.frames, visible, name)
+      return None
+    else:
+      return visible[0]
+
   def convert_function_annotations(self, node, raw_annotations):
     if raw_annotations:
       # {"i": int, "return": str} is stored as (int, str, ("i", "return"))
@@ -102,12 +110,7 @@ class AnnotationsUtil(object):
       annotations_list = []
       for name, t in zip(names, type_list):
         name = abstract.get_atomic_python_constant(name)
-        visible = t.Data(node)
-        if len(visible) > 1:
-          self.vm.errorlog.ambiguous_annotation(self.vm.frames, visible, name)
-          t = None
-        else:
-          t = visible[0]
+        t = self.convert_function_type_annotation(node, name, t)
         annotations_list.append((name, t))
       return self.convert_annotations_list(annotations_list)
     else:

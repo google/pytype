@@ -2136,7 +2136,8 @@ class VirtualMachine(object):
       state, packed_annot = state.pop()
       annot = abstract.get_atomic_python_constant(packed_annot, dict)
       for k in annot.keys():
-        annot[k] = abstract.get_atomic_value(annot[k])
+        annot[k] = self.annotations_util.convert_function_type_annotation(
+            state.node, k, annot[k])
     if arg & loadmarshal.MAKE_FUNCTION_HAS_KW_DEFAULTS:
       state, packed_kw_def = state.pop()
       kw_defaults = abstract.get_atomic_python_constant(packed_kw_def, dict)
