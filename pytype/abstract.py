@@ -1172,6 +1172,12 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
   def setitem_slot(self, node, name_var, value_var):
     """Implements the __setitem__ slot."""
     self.setitem(node, name_var, value_var)
+    # Hack to allow storing types with parameters in a dict (needed for
+    # python3.6 function annotation support). A dict assigned to a visible
+    # variable will be inferred as Dict[key_type, Any], but the pyval will
+    # contain the data we need for annotations.
+    if any(has_type_parameters(node, x) for x in value_var.data):
+      value_var = self.vm.convert.unsolvable.to_variable(node)
     return self.call_pytd(node, "__setitem__", name_var, value_var)
 
   def setdefault_slot(self, node, name_var, value_var=None):

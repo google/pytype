@@ -831,6 +831,20 @@ class TypeVarTest(test_base.BaseTest):
       T = ...  # type: Any
     """)
 
+  def testStoreTypeVarInDict(self):
+    """Convert a typevar to Any when stored as a dict value."""
+    # See abstract.Dict.setitem_slot for why this is needed.
+    ty = self.Infer("""
+      from typing import TypeVar
+      T = TypeVar("T")
+      a = {'key': T}
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Dict, TypeVar
+      a = ...  # type: Dict[str, Any]
+      T = TypeVar('T')
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

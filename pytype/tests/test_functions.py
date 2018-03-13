@@ -927,14 +927,19 @@ class TestFunctions(test_base.BaseTest):
       self.assertErrorLogIs(errors, [(2, "wrong-arg-types")])
 
   def test_py36_type_param_args(self):
-    # There is still a bug with type params in annotations; this test just makes
-    # sure we don't crash pytype when we hit it.
-    self.assertNoCrash(self.Check, """
+    ty = self.Infer("""
       from typing import Any, Type, TypeVar
       T = TypeVar('T')
       def cast(typ: Type[T], val: Any) -> T:
         return val
     """, python_version=(3, 6))
+    self.assertTypesMatchPytd(ty, """
+      from typing import Type, TypeVar
+
+      T = TypeVar('T')
+
+      def cast(typ: Type[T], val) -> T: ...
+    """)
 
 
 if __name__ == "__main__":
