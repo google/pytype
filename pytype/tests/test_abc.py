@@ -485,6 +485,33 @@ class AbstractPropertyTests(test_base.BaseTest):
     self.assertErrorLogIs(errors,
                           [(6, "not-callable", r"'abstractproperty' object")])
 
+  def test_abstractproperty_py3(self):
+    ty, errors = self.InferWithErrors("""\
+      import abc
+      class Foo(metaclass=abc.ABCMeta):
+        @abc.abstractproperty
+        def foo(self):
+          return 42
+      class Bar(Foo):
+        @property
+        def foo(self):
+          return super(Bar, self).foo
+      v1 = Foo().foo
+      v2 = Bar().foo
+    """, python_version=(3, 6))
+    self.assertTypesMatchPytd(ty, """
+      import abc
+      from typing import Any
+      abc = ...  # type: module
+      v1 = ...  # type: Any
+      v2 = ...  # type: int
+      class Bar(Foo):
+        foo = ...  # type: Any
+      class Foo(metaclass=abc.ABCMeta):
+        foo = ...  # type: Any
+    """)
+    self.assertErrorLogIs(errors, [(10, "not-instantiable", r"Foo.*foo")])
+
 
 if __name__ == "__main__":
   test_base.main()
