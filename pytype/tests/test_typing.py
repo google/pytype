@@ -443,8 +443,9 @@ class TypingTest(test_base.BaseTest):
     ty = self.Infer("""
       import re
       match1 = re.search("(?P<foo>.*)", "bar")
-      v1 = match1.group(u"foo")
       match2 = re.search("(?P<foo>.*)", u"bar")
+      assert match1 and match2
+      v1 = match1.group(u"foo")
       v2 = match2.group("foo")
       v3 = match1.group(u"foo", u"foo")
       v4 = match1.start(u"foo")
@@ -452,10 +453,10 @@ class TypingTest(test_base.BaseTest):
       v6 = match1.span(u"foo")
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import Match, Tuple
+      from typing import Match, Optional, Tuple
       re = ...  # type: module
-      match1 = ...  # type: Match[str]
-      match2 = ...  # type: Match[unicode]
+      match1 = ...  # type: Optional[Match[str]]
+      match2 = ...  # type: Optional[Match[unicode]]
       v1 = ...  # type: str
       v2 = ...  # type: unicode
       v3 = ...  # type: Tuple[str, ...]
