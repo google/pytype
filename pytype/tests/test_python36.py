@@ -234,6 +234,38 @@ class TestPython36(test_base.BaseTest):
       def test_with(x) -> None: ...
     """)
 
+  def test_async_iter(self):
+    ty = self.Infer("""
+      import asyncio
+      class AsyncIterable:
+        def __aiter__(self):
+          return self
+        async def __anext__(self):
+          data = await self.fetch_data()
+          if data:
+            return data
+          else:
+            raise StopAsyncIteration
+        async def fetch_data(self):
+          pass
+      async def iterate(x):
+        async for i in x:
+          pass
+        else:
+          pass
+      iterate(AsyncIterable())
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import NoReturn, TypeVar
+      asyncio = ...  # type: module
+      _TAsyncIterable = TypeVar('_TAsyncIterable', bound=AsyncIterable)
+      class AsyncIterable:
+          def __aiter__(self: _TAsyncIterable) -> _TAsyncIterable: ...
+          def __anext__(self) -> NoReturn: ...
+          def fetch_data(self) -> None: ...
+      def iterate(x) -> None: ...
+    """)
+
   def test_import_importlib(self):
     # Test that we import importlib/__init__.pytd (the version in typeshed does
     # not load).
