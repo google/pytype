@@ -478,6 +478,62 @@ class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):
     return node, cls_var
 
 
+class NewType(abstract.PyTDFunction):
+  """Implementation of typing.NewType as a function."""
+
+  def __init__(self, name, vm):
+    pyval = vm.loader.typing.Lookup("typing.NewType")
+    f = vm.convert.constant_to_value(pyval, {}, vm.root_cfg_node)
+    super(NewType, self).__init__(name, f.signatures, pytd.METHOD, vm)
+    assert len(self.signatures) == 1, "NewType has more than one signature."
+    signature = self.signatures[0].signature
+    self._name_arg_name = signature.param_names[0]
+    self._type_arg_name = signature.param_names[1]
+    self._internal_name_counter = 0
+
+  @property
+  def internal_name_counter(self):
+    val = self._internal_name_counter
+    self._internal_name_counter += 1
+    return val
+
+  def call(self, node, func, args):
+    args = args.simplify(node)
+    self._match_args(node, args, match_all_views=True)
+    # As long as the types match we do not really care about the actual
+    # class name. But, if we have a string literal value as the name arg,
+    # we will use it.
+    name_arg = args.namedargs.get(self._name_arg_name) or args.posargs[0]
+    try:
+      _ = abstract.get_atomic_python_constant(name_arg, str)
+    except abstract.ConversionError:
+      name_arg = self.vm.convert.constant_to_var(
+          "_NewType_Internal_Class_Name_%d_" % self.internal_name_counter)
+    type_arg = args.namedargs.get(self._type_arg_name) or args.posargs[1]
+    try:
+      type_value = abstract.get_atomic_value(type_arg)
+    except abstract.ConversionError:
+      # We need the type arg to be an atomic value. If not, we just
+      # silently return unsolvable.
+      return node, self.vm.convert.create_new_unsolvable(node)
+    value_arg_name = "val"
+    constructor = abstract.SimpleFunction(
+        name="__init__",
+        param_names=("self", value_arg_name),
+        varargs_name=None,
+        kwonly_params=(),
+        kwargs_name=None,
+        defaults={},
+        annotations={value_arg_name: type_value},
+        late_annotations={},
+        vm=self.vm,
+    ).to_variable(node)
+    members = abstract.Dict(self.vm)
+    members.set_str_item(node, "__init__", constructor)
+    return node, self.vm.make_class(node, name_arg, (type_arg,),
+                                    members.to_variable(node), None)
+
+
 def not_supported_yet(name, vm):
   vm.errorlog.not_supported_yet(vm.frames, "typing." + name)
   return vm.convert.unsolvable
@@ -509,7 +565,7 @@ typing_overload = {
     "ClassVar": not_supported_yet,
     "Generic": not_supported_yet,
     "NamedTuple": NamedTupleBuilder,
-    "NewType": not_supported_yet,
+    "NewType": NewType,
     "NoReturn": build_noreturn,
     "Optional": build_optional,
     "Tuple": Tuple,

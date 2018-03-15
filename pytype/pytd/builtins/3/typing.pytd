@@ -385,7 +385,7 @@ def _NamedTuple(typename: str, fields: Sequence[Sequence[Union[str, type]]]) -> 
 _NamedTupleFields = List[Tuple[str, type]]
 
 
-def NewType(name, tp) -> type
+def NewType(name: str, tp: type) -> type
 
 def cast(typ: Type[_T], val) -> _T
 

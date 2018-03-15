@@ -1630,7 +1630,7 @@ class Function(SimpleAbstractValue):
     # this function. See test_duplicate_getproperty() in tests/test_flow.py.
     return self.bound_class(callself, callcls, self)
 
-  def _match_args(self, node, args):
+  def _match_args(self, node, args, match_all_views=False):
     """Check whether the given arguments can match the function signature."""
     assert all(a.bindings for a in args.posargs)
     error = None
@@ -1654,6 +1654,8 @@ class Function(SimpleAbstractValue):
           if hasattr(self, "parent"):
             e.name = "%s.%s" % (self.parent.name, e.name)
           error = e
+        if match_all_views:
+          raise e
       else:
         matched.append(match)
     if not matched and error:

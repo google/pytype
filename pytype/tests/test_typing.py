@@ -557,11 +557,114 @@ class TypingTest(test_base.BaseTest):
     """)
 
   def test_new_type(self):
-    _, errors = self.InferWithErrors("""\
+    ty = self.Infer("""
       from __future__ import google_type_annotations
       from typing import NewType
+      MyInt = NewType('MyInt', int)
+      class A(object):
+        pass
+      MyA = NewType('MyA', A)
+      MySpecialA = NewType('MySpecialA', MyA)
+      MyStr1 = NewType(*('MyStr1', str))
+      MyStr2 = NewType(**{'tp':str, 'name':'MyStr2'})
+      MyAnyType = NewType('MyAnyType', tp=str if __random__ else int)
+      MyFunnyNameType = NewType('Foo' if __random__ else 'Bar', tp=str)
+      def func1(i: MyInt) -> MyInt:
+        return i
+      def func2(i: MyInt) -> int:
+        return i
+      def func3(a: MyA) -> MyA:
+        return a
+      def func4(a: MyA) -> A:
+        return a
+      def func5(a: MySpecialA) -> MySpecialA:
+        return a
+      def func6(a: MySpecialA) -> MyA:
+        return a
+      def func7(a: MySpecialA) -> A:
+        return a
+      v = 123
+      func1(MyInt(v))
+      func2(MyInt(v))
+      my_a = MyA(A())
+      func3(my_a)
+      func4(my_a)
+      my_special_a = MySpecialA(my_a)
+      func5(my_special_a)
+      func6(my_special_a)
+      func7(my_special_a)
     """)
-    self.assertErrorLogIs(errors, [(2, "not-supported-yet", r"typing.NewType")])
+    self.assertTypesMatchPytd(ty, """
+      class A(object):
+        pass
+      class MyInt(int):
+        def __init__(self, val: int): ...
+      class MyA(A):
+        def __init__(self, val: A): ...
+      class MySpecialA(MyA):
+        def __init__(self, val: MyA): ...
+      class MyStr1(str):
+        def __init__(self, val: str): ...
+      class MyStr2(str):
+        def __init__(self, val: str): ...
+      MyAnyType = ... # Any
+      class MyFunnyNameType(str):
+        def __init__(self, val:str): ...
+      def func1(i: MyInt) -> MyInt: ...
+      def func2(i: MyInt) -> int: ...
+      def func3(a: MyA) -> MyA: ...
+      def func4(a: MyA) -> A: ...
+      def func5(a: MySpecialA) -> MySpecialA: ...
+      def func6(a: MySpecialA) -> MyA: ...
+      def func7(a: MySpecialA) -> A: ...
+      v = ...  # type: int
+      my_a = ...  # type: MyA
+      my_special_a = ...  # type: MySpecialA
+    """)
+
+  def test_new_type_error(self):
+    _, errors = self.InferWithErrors("""
+      from __future__ import google_type_annotations
+      from typing import NewType
+      MyInt = NewType('MyInt', int)
+      MyStr = NewType('MyStr', str)
+      def func1(i: MyInt) -> MyInt:
+        return i
+      def func2(i: int) -> MyInt:
+        return i
+      def func3(s: MyStr) -> MyStr:
+        return s
+      func1(123)
+      func3(MyStr(123))
+    """)
+    self.assertErrorLogIs(
+        errors,
+        [(9, "bad-return-type",
+          r"Expected: MyInt\nActually returned: int"),
+         (12, "wrong-arg-types",
+          r".*Expected: \(i: MyInt\)\nActually passed: \(i: int\)"),
+         (13, "wrong-arg-types",
+          r".*Expected:.*val: str\)\nActually passed:.*val: int\)"),])
+
+  def test_new_type_arg_error(self):
+    _, errors = self.InferWithErrors("""
+      from __future__ import google_type_annotations
+      from typing import NewType
+      MyInt = NewType(int, 'MyInt')
+      MyStr = NewType(tp='str', name='MyStr')
+      MyFunnyNameType = NewType(name=123 if __random__ else 'Abc', tp=int)
+      MyFunnyType = NewType(name='Abc', tp=int if __random__ else 'int')
+    """)
+    self.assertErrorLogIs(
+        errors,
+        [(4, "wrong-arg-types",
+          r".*Expected:.*str.*\nActually passed:.*Type\[int\].*"),
+         (5, "wrong-arg-types",
+          r".*Expected:.*type.*\nActually passed:.*str.*"),
+         (6, "wrong-arg-types",
+          r".*Expected:.*str.*\nActually passed:.*Union.*"),
+         (7, "wrong-arg-types",
+          r".*Expected:.*type.*\nActually passed:.*Union.*"),])
 
   def test_mapping_iter(self):
     self.Check("""
