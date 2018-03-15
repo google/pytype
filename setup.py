@@ -30,8 +30,7 @@ def get_builtin_files():
                                  check=['3', '*.py*'])
     stdlib = scan_package_data(['pytd', 'stdlib'], '*.pytd',
                                check=['3', 'asyncio', '*.pytd'])
-    # typeshed/ is at the same level as pytype/
-    typeshed = scan_package_data(['..', 'typeshed'], '*.pyi',
+    typeshed = scan_package_data(['typeshed'], '*.pyi',
                                  check=['stdlib', '2', '*.pyi'])
     return builtins + stdlib + typeshed
 
