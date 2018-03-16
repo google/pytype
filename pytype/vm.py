@@ -96,7 +96,7 @@ class _FindIgnoredTypeComments(object):
 
   def visit_code(self, code):
     """Interface for pyc.visit."""
-    for i, op in enumerate(code.co_code):
+    for op in code.co_code:
       # Make sure we have attached the type comment to an opcode.
       if isinstance(op, blocks.STORE_OPCODES):
         if op.type_comment:
@@ -1540,6 +1540,21 @@ class VirtualMachine(object):
     self.del_global(name)
     return state
 
+  def get_closure_var_name(self, arg):
+    n_cellvars = len(self.frame.f_code.co_cellvars)
+    if arg < n_cellvars:
+      name = self.frame.f_code.co_cellvars[arg]
+    else:
+      name = self.frame.f_code.co_freevars[arg - n_cellvars]
+    return name
+
+  def check_for_deleted(self, state, arg, cell_var):
+    if any(isinstance(x, abstract.Empty) for x in cell_var.Data(state.node)):
+      # Referencing a deleted variable
+      arg_name = self.get_closure_var_name(arg)
+      # TODO(mdemello): A "use-after-delete" error would be more helpful.
+      self.errorlog.name_error(self.frames, arg_name)
+
   def byte_LOAD_CLOSURE(self, state, op):
     """Used to generate the 'closure' tuple for MAKE_CLOSURE.
 
@@ -1553,18 +1568,22 @@ class VirtualMachine(object):
     Returns:
       A new state.
     """
-    return state.push(self.frame.cells[op.arg])
+    cell = self.frame.cells[op.arg]
+    self.check_for_deleted(state, op.arg, cell)
+    return state.push(cell)
 
   def byte_LOAD_DEREF(self, state, op):
     """Retrieves a value out of a cell."""
     # Since we're working on cfg.Variable, we don't need to dereference.
-    return state.push(self.frame.cells[op.arg])
+    cell = self.frame.cells[op.arg]
+    self.check_for_deleted(state, op.arg, cell)
+    return state.push(cell)
 
   def byte_STORE_DEREF(self, state, op):
     """Stores a value in a closure cell."""
     state, value = state.pop()
     assert isinstance(value, cfg.Variable)
-    name = self.frame.f_code.co_cellvars[op.arg]
+    name = self.get_closure_var_name(op.arg)
     value = self.annotations_util.apply_type_comment(state, op, name, value)
     state = state.forward_cfg_node()
     self.frame.cells[op.arg].PasteVariable(value, state.node)
@@ -1572,8 +1591,10 @@ class VirtualMachine(object):
     return state
 
   def byte_DELETE_DEREF(self, state, op):
-    # TODO(mdemello): Figure out what to do here.
-    log.warning("DELETE_DEREF does not do anything.")
+    value = abstract.Empty(self).to_variable(state.node)
+    state = state.forward_cfg_node()
+    self.frame.cells[op.arg].PasteVariable(value, state.node)
+    state = state.forward_cfg_node()
     return state
 
   def byte_LOAD_LOCALS(self, state, op):

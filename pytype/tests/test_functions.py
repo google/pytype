@@ -32,6 +32,76 @@ class TestClosures(test_base.BaseTest):
       assert a(7) == 28
       """)
 
+  def test_closures_delete_deref(self):
+    _, errors = self.InferWithErrors("""\
+      def f():
+        x = "hello"
+        def g():
+          nonlocal x  # force x to be stored in a closure cell
+          x = 10
+        del x
+        return x
+    """, python_version=(3, 6))
+    self.assertErrorLogIs(errors, [(7, "name-error")])
+
+  def test_nonlocal(self):
+    ty = self.Infer("""\
+      def f():
+        x = "hello"
+        def g():
+          nonlocal x
+          x = 10
+        g()
+        return x
+    """, python_version=(3, 6))
+    self.assertTypesMatchPytd(ty, """
+      def f() -> int
+    """)
+
+  def test_nonlocal_delete_deref(self):
+    _, errors = self.InferWithErrors("""\
+      def f():
+        x = True
+        def g():
+          nonlocal x
+          del x
+        g()
+        return x
+    """, python_version=(3, 6))
+    self.assertErrorLogIs(errors, [(7, "name-error")])
+
+  def test_reuse_after_delete_deref(self):
+    ty = self.Infer("""\
+      def f():
+        x = True
+        def g():
+          nonlocal x
+          del x
+        g()
+        x = 42
+        return x
+    """, python_version=(3, 6))
+    self.assertTypesMatchPytd(ty, """
+      def f() -> int
+    """)
+
+  def test_if_split_delete_deref(self):
+    ty = self.Infer("""\
+      def f(a: int):
+        x = "hello"
+        def g():
+          nonlocal x
+          x = 42
+        if a:
+          g()
+        else:
+          return x
+    """, python_version=(3, 6))
+    self.assertTypesMatchPytd(ty, """
+      from typing import Optional
+      def f(a: int) -> Optional[str]
+    """)
+
   def test_closures_in_loop(self):
     self.Check("""\
       def make_fns(x):
