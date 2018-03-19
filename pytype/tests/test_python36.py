@@ -266,15 +266,18 @@ class TestPython36(test_base.BaseTest):
       def iterate(x) -> None: ...
     """)
 
-  def test_import_importlib(self):
-    # Test that we import importlib/__init__.pytd (the version in typeshed does
-    # not load).
-    ty = self.Infer("""
-      import importlib
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      importlib = ...  # type: module
-    """)
+  def test_import_shadowed(self):
+    """Test that we import modules from pytd/ rather than typeshed."""
+    # We can't import the following modules from typeshed; this tests that we
+    # import them correctly from our internal pytd/ versions.
+    for module in [
+        "importlib",
+        "re",
+        "signal"
+    ]:
+      ty = self.Infer("import %s" % module)
+      expected = "  %s = ...  # type: module" % module
+      self.assertTypesMatchPytd(ty, expected)
 
   def test_iter(self):
     ty = self.Infer("""
