@@ -156,6 +156,33 @@ class AnnotationTest(test_base.BaseTest):
       def f(c: int) -> None: ...
     """)
 
+  def testUnicodeAnnotation(self):
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      def f(c: u"int") -> u"None":
+        c += 1
+        return
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f(c: int) -> None: ...
+    """)
+
+  def testFutureUnicodeLiteralAnnotation(self):
+    ty = self.Infer("""\
+      from __future__ import google_type_annotations
+      from __future__ import unicode_literals
+      def f(c: "int") -> "None":
+        c += 1
+        return
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import __future__
+
+      unicode_literals = ...  # type: __future__._Feature
+
+      def f(c: int) -> None: ...
+    """)
+
   def testTypingOnlyImport(self):
     ty = self.Infer("""\
       from __future__ import google_type_annotations

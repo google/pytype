@@ -275,6 +275,7 @@ class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):
       field_types_union = abstract.Union(field_types, self.vm)
     else:
       field_types_union = self.vm.convert.none_type
+
     members = {n: t.instantiate(node) for n, t in zip(field_names, field_types)}
     # collections.namedtuple has: __dict__, __slots__ and _fields.
     # typing.NamedTuple adds: _field_types, __annotations__ and _field_defaults.
@@ -286,11 +287,17 @@ class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):
     # field names (strings) to objects of the field types.
     ordered_dict_cls = self.vm.convert.name_to_value("collections.OrderedDict",
                                                      ast=self.collections_ast)
+
+    # In Python 2, keys can be `str` or `unicode`; support both.
+    # In Python 3, `str_type` and `unicode_type` are the same.
+    field_keys_union = abstract.Union([self.vm.convert.str_type,
+                                       self.vm.convert.unicode_type], self.vm)
+
     # Normally, we would use abstract.K and abstract.V, but collections.pyi
     # doesn't conform to that standard.
     field_dict_cls = abstract.ParameterizedClass(
         ordered_dict_cls,
-        {"K": self.vm.convert.str_type, "V": field_types_union},
+        {"K": field_keys_union, "V": field_types_union},
         self.vm)
     members["__dict__"] = field_dict_cls.instantiate(node)
     members["_field_defaults"] = field_dict_cls.instantiate(node)
@@ -298,7 +305,7 @@ class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):
     # that map field names (strings) to the types of the fields.
     field_types_cls = abstract.ParameterizedClass(
         ordered_dict_cls,
-        {"K": self.vm.convert.str_type, "V": self.vm.convert.type_type},
+        {"K": field_keys_union, "V": self.vm.convert.type_type},
         self.vm)
     members["_field_types"] = field_types_cls.instantiate(node)
     members["__annotations__"] = field_types_cls.instantiate(node)

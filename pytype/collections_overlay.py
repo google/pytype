@@ -32,7 +32,19 @@ def namedtuple_ast(name, fields, python_version=None):
   field_defs = "\n  ".join(
       "%s = ...  # type: ?" % field for field in fields)
   field_names = "".join(", " + field for field in fields)
-  field_names_as_strings = ", ".join(repr(field) for field in fields)
+
+  # WARNING: The .pyi parser has weird inconsistent behavior for strings; those
+  # with `b` or `u` prefixes are parsed as BYTESTRING or UNICODESTRING, but only
+  # if they are present as an empty string.
+  #
+  # For unprefixed strings, the parser just outright pretends that the quotes
+  # don't exist.
+  #
+  # So, if a unicode string is passed in as a field name, we need to rewrite it
+  # as a plain string instead before formatting it with `repr`, to prevent the
+  # pyi lexer from barfing.
+  field_names_as_strings = ", ".join(repr(str(field)) for field in fields)
+
   nt = textwrap.dedent("""
     {typevar} = TypeVar("{typevar}", bound={name})
     class {name}(tuple):

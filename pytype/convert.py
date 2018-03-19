@@ -90,6 +90,10 @@ class Converter(object):
     self.super_type = self.primitive_classes[super]
     self.str_type = self.primitive_classes[str]
     self.int_type = self.primitive_classes[int]
+    if self.vm.python_version[0] < 3:
+      self.unicode_type = self.primitive_classes[unicode]
+    else:
+      self.unicode_type = self.str_type
 
     self.unsolvable = abstract.Unsolvable(self.vm)
     self.empty = abstract.Empty(self.vm)
@@ -496,6 +500,8 @@ class Converter(object):
       # We use a subclass of str, loadmarshal.BytesPy3, to mark Python 3
       # bytestrings, which are converted to abstract bytes instances.
       return abstract.AbstractOrConcreteValue(pyval, self.str_type, self.vm)
+    elif self.vm.python_version[0] < 3 and isinstance(pyval, unicode):
+      return abstract.AbstractOrConcreteValue(pyval, self.unicode_type, self.vm)
     elif isinstance(pyval, int) and -1 <= pyval <= MAX_IMPORT_DEPTH:
       # For small integers, preserve the actual value (for things like the
       # level in IMPORT_NAME).
