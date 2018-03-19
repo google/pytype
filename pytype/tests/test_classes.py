@@ -1503,6 +1503,17 @@ class ClassesTest(test_base.BaseTest):
         x = ...  # type: int
     """)
 
+  def testBuildClassQuick(self):
+    # A() hits maximum stack depth in python3.6
+    ty = self.Infer("""\
+      def f():
+        class A(object): pass
+        return {A: A()}
+    """, python_version=(3, 6), quick=True, maximum_depth=1)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> dict: ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

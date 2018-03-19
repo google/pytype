@@ -3675,7 +3675,11 @@ class BuildClass(AtomicAbstractValue):
     node, _ = func.call(node, funcvar.bindings[0],
                         args.replace(posargs=(), namedargs={}),
                         new_locals=True)
-    func.f_locals = func.last_frame.f_locals
+    if func.last_frame:
+      func.f_locals = func.last_frame.f_locals
+    else:
+      # We have hit 'maximum depth' before setting func.last_frame
+      func.f_locals = self.vm.convert.unsolvable
     return node, self.vm.make_class(
         node, name, list(bases), func.f_locals.to_variable(node), metaclass)
 

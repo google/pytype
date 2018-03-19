@@ -369,6 +369,7 @@ class BaseTest(unittest.TestCase):
         imports_map=imports_map, python_version=python_version)
     errorlog = errors.ErrorLog()
     self._CreateLoader()
+    # TODO(mdemello): Setting 'quick' does not set maximum depth in infer_types.
     unit, builtins_pytd = analyze.infer_types(
         src, errorlog, self.options, loader=self.loader, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
