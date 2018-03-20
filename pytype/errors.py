@@ -534,15 +534,6 @@ class ErrorLog(ErrorLogBase):
     else:
       self._attribute_error(stack, binding, attr_name)
 
-  # TODO(rechen): Delete this error once we've released the change that
-  # removes all usages of it.
-  @_error_name("none-attr")
-  def none_attr(self, stack, attr_name):
-    self.error(
-        stack,
-        "Access of attribute %r on a type that might be None" % attr_name,
-        details="Do you need a type comment?")
-
   @_error_name("unbound-type-param")
   def unbound_type_param(self, stack, obj, attr_name, type_param_name):
     self.error(
