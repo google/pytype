@@ -75,11 +75,19 @@ class SlotsTest(test_base.BaseTest):
     """)
 
   def testSlotWithUnicode(self):
-    self.Check("""
+    errors = self.CheckWithErrors("""\
       class Foo(object):
-        __slots__ = (u"fo\xf6", u"b\xe4r", "baz")
+        __slots__ = (u"fo\\xf6", u"b\\xe4r", "baz")
       Foo().baz = 3
     """)
+    self.assertErrorLogIs(errors, [(1, "bad-slots", r"fo\\xc3\\xb6")])
+
+  def testSlotWithUnicodePy3(self):
+    self.Check("""
+      class Foo(object):
+        __slots__ = (u"fo\\xf6", u"b\\xe4r", "baz")
+      Foo().baz = 3
+    """, python_version=(3, 6))
 
   def testSlotAsAttribute(self):
     ty = self.Infer("""

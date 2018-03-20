@@ -2793,11 +2793,15 @@ class InterpreterClass(SimpleAbstractValue, Class):
     except ConversionError:
       return None  # Happens e.g. for __slots__ = ["x" if b else "y"]
     for s in strings:
-      if not isinstance(s, (str, unicode)):
+      if not isinstance(s, str):
+        if isinstance(s, unicode):
+          name = s.encode("utf8", "ignore")
+        else:
+          name = str(s)
         self.vm.errorlog.bad_slots(self.vm.frames,
-                                   "Invalid __slot__ entry: %r" % str(s))
+                                   "Invalid __slot__ entry: %r" % name)
         return None
-    return tuple(self._mangle(s.encode("utf8", "ignore")) for s in strings)
+    return tuple(self._mangle(s) for s in strings)
 
   def register_instance(self, instance):
     self.instances.add(instance)
