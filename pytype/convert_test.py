@@ -112,6 +112,13 @@ class ConvertTest(unittest.TestCase):
     self.assertEqual(t_bool.data, [self._vm.convert.true])
     self.assertEqual(f_bool.data, [self._vm.convert.false])
 
+  def test_boolean_constants(self):
+    true = self._vm.convert.constant_to_value(True, {}, self._vm.root_cfg_node)
+    self.assertEqual(true, self._vm.convert.true)
+    false = self._vm.convert.constant_to_value(
+        False, {}, self._vm.root_cfg_node)
+    self.assertEqual(false, self._vm.convert.false)
+
   def test_callable_with_args(self):
     ast = self._load_ast("a", """
       from typing import Callable

@@ -651,6 +651,31 @@ class BuiltinTests(test_base.BaseTest):
       def f(tz) -> NoneType
   """)
 
+  def testBoolReturnValue(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      def f():
+        return True
+      def g() -> bool:
+        return f()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> bool: ...
+      def g() -> bool: ...
+    """)
+
+  def testBoolReturnValuePy3(self):
+    ty = self.Infer("""
+      def f():
+        return True
+      def g() -> bool:
+        return f()
+    """, python_version=(3, 6))
+    self.assertTypesMatchPytd(ty, """
+      def f() -> bool: ...
+      def g() -> bool: ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

@@ -502,6 +502,8 @@ class Converter(object):
       return abstract.AbstractOrConcreteValue(pyval, self.str_type, self.vm)
     elif self.vm.python_version[0] < 3 and isinstance(pyval, unicode):
       return abstract.AbstractOrConcreteValue(pyval, self.unicode_type, self.vm)
+    elif isinstance(pyval, bool):
+      return self.true if pyval is True else self.false
     elif isinstance(pyval, int) and -1 <= pyval <= MAX_IMPORT_DEPTH:
       # For small integers, preserve the actual value (for things like the
       # level in IMPORT_NAME).
