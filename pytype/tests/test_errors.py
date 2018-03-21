@@ -1209,6 +1209,23 @@ class ErrorTest(test_base.BaseTest):
     """)
     self.assertErrorLogIs(errors, [(4, "name-error")])
 
+  def testNestedProtoClass(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo_bar.pyi", """
+        from typing import Type
+        class _Foo_DOT_Bar: ...
+        class Foo:
+          Bar = ...  # type: Type[_Foo_DOT_Bar]
+      """)
+      errors = self.CheckWithErrors("""\
+        from __future__ import google_type_annotations
+        import foo_bar
+        def f(x: foo_bar.Foo.Bar): ...
+        f(42)
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(
+          errors, [(4, "wrong-arg-types", r"foo_bar\.Foo\.Bar")])
+
 
 if __name__ == "__main__":
   test_base.main()
