@@ -156,6 +156,9 @@ class TestPython36(test_base.BaseTest):
       c = {'1':2, '3':4}
       d = {'5':6, '7':8}
       e = {'9':10, 'B':12}
+      # Test merging two dicts into an args dict for k
+      x = {'a': 1, 'c': 2}
+      y = {'b': 1, 'd': 2}
 
       def f(**kwargs):
         print(kwargs)
@@ -169,6 +172,9 @@ class TestPython36(test_base.BaseTest):
       def j(a=1, b=2, c=3):
         print(a, b,c)
 
+      def k(a, b, c, d, **kwargs):
+        print(a, b, c, d, kwargs)
+
       p = [*a, *b]  # BUILD_LIST_UNPACK
       q = {*a, *b}  # BUILD_SET_UNPACK
       r = (*a, *b)  # BUILD_TUPLE_UNPACK
@@ -177,6 +183,7 @@ class TestPython36(test_base.BaseTest):
       g(*a, *b)  # BUILD_TUPLE_UNPACK_WITH_CALL
       h(*a, *b, **c, **d)
       j(**{'a': 1, 'b': 2})  # BUILD_CONST_KEY_MAP
+      k(**x, **y, **e)  # BUILD_MAP_UNPACK_WITH_CALL
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, List, Set, Tuple
@@ -189,12 +196,49 @@ class TestPython36(test_base.BaseTest):
       p = ...  # type: List[List[int]]
       q = ...  # type: Set[List[int]]
       r = ...  # type: Tuple[List[int], List[int]]
-      s = ...  # type: Dict[nothing, nothing]
+      s = ...  # type: Dict[str, int]
+      x = ...  # type: Dict[str, int]
+      y = ...  # type: Dict[str, int]
 
       def f(**kwargs) -> None: ...
       def g(*args) -> None: ...
       def h(*args, **kwargs) -> None: ...
       def j(a = ..., b = ..., c = ...) -> None: ...
+      def k(a, b, c, d, **kwargs) -> None: ...
+    """)
+
+  def test_unpack_nonliteral(self):
+    ty = self.Infer("""
+      def f(x, **kwargs):
+        return kwargs['y']
+      def g(**kwargs):
+        return f(x=10, **kwargs)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+
+      def f(x, **kwargs) -> Any: ...
+      def g(**kwargs) -> Any: ...
+    """)
+
+  def test_unpack_multiple_bindings(self):
+    ty = self.Infer("""
+      if __random__:
+        x = {'a': 1, 'c': 2}
+      else:
+        x = {'a': '1', 'c': '2'}
+      if __random__:
+        y = {'b': 1, 'd': 2}
+      else:
+        y = {'b': b'1', 'd': b'2'}
+      z = {**x, **y}
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict, TypeVar, Union
+
+      x = ...  # type: Dict[str, Union[str, int]]
+      y = ...  # type: Dict[str, Union[bytes, int]]
+      z = ...  # type: Dict[str, Union[bytes, int, str]]
     """)
 
   def test_async(self):

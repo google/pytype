@@ -954,7 +954,6 @@ class VirtualMachine(object):
         starstarargs = None
       else:
         posargs = args
-
     state, func = state.pop()
     state, ret = self.call_function_with_state(
         state, func, posargs, namedargs, starargs, starstarargs)
@@ -2496,17 +2495,27 @@ class VirtualMachine(object):
     ret = self.convert.build_list(state.node, ret)
     return state.push(ret)
 
+  def _build_map_unpack(self, state, arg_list):
+    """Merge a list of kw dicts into a single dict."""
+    args = abstract.Dict(self)
+    for arg in arg_list:
+      for data in arg.Data(state.node):
+        args.update(state.node, data)
+    args = args.to_variable(state.node)
+    return args
+
   def byte_BUILD_MAP_UNPACK(self, state, op):
-    # TODO(mdemello): We should actually populate the map.
-    state, _ = self._pop_and_unpack_list(state, op.arg)
-    return state.push(self.convert.build_map(state.node))
+    state, ret = self._pop_and_unpack_list(state, op.arg)
+    args = self._build_map_unpack(state, ret)
+    return state.push(args)
 
   def byte_BUILD_MAP_UNPACK_WITH_CALL(self, state, op):
     if self.python_version >= (3, 6):
-      state, _ = self._pop_and_unpack_list(state, op.arg)
+      state, ret = self._pop_and_unpack_list(state, op.arg)
     else:
-      state, _ = self._pop_and_unpack_list(state, op.arg & 0xff)
-    return state.push(self.convert.build_map(state.node))
+      state, ret = self._pop_and_unpack_list(state, op.arg & 0xff)
+    args = self._build_map_unpack(state, ret)
+    return state.push(args)
 
   def byte_BUILD_TUPLE_UNPACK(self, state, op):
     state, ret = self._pop_and_unpack_list(state, op.arg)
