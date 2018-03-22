@@ -349,6 +349,49 @@ class TestPython36(test_base.BaseTest):
     ty = self.Infer("v = 'foo\u00e4'")  # pylint: disable=anomalous-unicode-escape-in-string
     self.assertTypesMatchPytd(ty, "v = ...  # type: str")
 
+  def test_memoryview(self):
+    self.Check("""
+      v = memoryview(b'abc')
+      v.format
+      v.itemsize
+      v.shape
+      v.strides
+      v.suboffsets
+      v.readonly
+      v.ndim
+      v[1]
+      v[1:]
+      98 in v
+      [x for x in v]
+      len(v)
+      v[1] = 98
+      v[1:] = b'bc'
+    """)
+
+  def test_memoryview_methods(self):
+    ty = self.Infer("""
+      v1 = memoryview(b'abc')
+      v2 = v1.tobytes()
+      v3 = v1.tolist()
+      v4 = v1.hex()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List
+      v1 = ...  # type: memoryview
+      v2 = ...  # type: bytes
+      v3 = ...  # type: List[int]
+      v4 = ...  # type: str
+    """)
+
+  def test_memoryview_contextmanager(self):
+    ty = self.Infer("""
+      with memoryview(b'abc') as v:
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      v = ...  # type: memoryview
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

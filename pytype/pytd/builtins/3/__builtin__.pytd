@@ -851,11 +851,26 @@ class slice(object):
 
 class memoryview(object):
     __slots__ = []
+    format = ...  # type: str
+    itemsize = ...  # type: int
+    shape = ...  # type: Optional[Tuple[int, ...]]
+    strides = ...  # type: Optional[Tuple[int, ...]]
+    suboffsets = ...  # type: Optional[Tuple[int, ...]]
+    readonly = ...  # type: bool
+    ndim = ...  # type: int
     def __init__(self, object: bytes or bytearray or memoryview) -> NoneType
     def __getitem__(self, index: int) -> int
+    def __getitem__(self, index: slice) -> memoryview
     def __len__(self) -> int
-    def tobytes(self, ...) -> str
-    def tolist(self, ...) -> list[int]
+    def __setitem__(self, index: int, o: int) -> None
+    def __setitem__(self, index: slice, o: bytes or bytearray or memoryview) -> None
+    def tobytes(self, ...) -> bytes
+    def tolist(self) -> list[int]
+    if sys.version_info >= (3, 2):
+        def __enter__(self) -> memoryview
+        def __exit__(self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException], traceback: Optional[?]) -> Optional[bool]
+    if sys.version_info >= (3, 5):
+        def hex(self) -> str
 
 class type(Callable, Type[_T]):
     __name__ = ...  # type: str
