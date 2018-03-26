@@ -44,6 +44,16 @@ class TestClosures(test_base.BaseTest):
     """, python_version=(3, 6))
     self.assertErrorLogIs(errors, [(7, "name-error")])
 
+  def test_empty_vs_deleted(self):
+    self.Check("""\
+      import collections
+      Foo = collections.namedtuple('Foo', 'x')
+      def f():
+        x, _ = Foo(10)  # x gets set to abstract.Empty here.
+        def g():
+          return x  # Should not raise a name-error
+    """)
+
   def test_nonlocal(self):
     ty = self.Infer("""\
       def f():

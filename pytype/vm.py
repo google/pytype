@@ -1548,7 +1548,7 @@ class VirtualMachine(object):
     return name
 
   def check_for_deleted(self, state, arg, cell_var):
-    if any(isinstance(x, abstract.Empty) for x in cell_var.Data(state.node)):
+    if any(isinstance(x, abstract.Deleted) for x in cell_var.Data(state.node)):
       # Referencing a deleted variable
       arg_name = self.get_closure_var_name(arg)
       # TODO(mdemello): A "use-after-delete" error would be more helpful.
@@ -1590,7 +1590,7 @@ class VirtualMachine(object):
     return state
 
   def byte_DELETE_DEREF(self, state, op):
-    value = abstract.Empty(self).to_variable(state.node)
+    value = abstract.Deleted(self).to_variable(state.node)
     state = state.forward_cfg_node()
     self.frame.cells[op.arg].PasteVariable(value, state.node)
     state = state.forward_cfg_node()

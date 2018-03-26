@@ -493,6 +493,11 @@ class Empty(AtomicAbstractValue):
     return self.to_variable(node)
 
 
+class Deleted(Empty):
+  """Assigned to variables that have del called on them."""
+  pass
+
+
 class MixinMeta(type):
   """Metaclass for mix-ins."""
 
