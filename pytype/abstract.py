@@ -495,7 +495,10 @@ class Empty(AtomicAbstractValue):
 
 class Deleted(Empty):
   """Assigned to variables that have del called on them."""
-  pass
+
+  def __init__(self, vm):
+    super(Deleted, self).__init__(vm)
+    self.name = "deleted"
 
 
 class MixinMeta(type):

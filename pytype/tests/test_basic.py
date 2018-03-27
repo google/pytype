@@ -245,17 +245,16 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_deleting_names(self):
-    # TODO(rechen): We should report a name error for the last g access.
-    self.assertNoCrash(self.Check, """\
+    _, errors = self.InferWithErrors("""\
       g = 17
       assert g == 17
       del g
       g
     """)
+    self.assertErrorLogIs(errors, [(4, "name-error")])
 
   def test_deleting_local_names(self):
-    # TODO(rechen): We should report a name error for the last l access.
-    self.assertNoCrash(self.Check, """\
+    _, errors = self.InferWithErrors("""\
       def f():
         l = 23
         assert l == 23
@@ -263,6 +262,7 @@ class TestIt(test_base.BaseTest):
         l
       f()
     """)
+    self.assertErrorLogIs(errors, [(5, "name-error")])
 
   def test_import(self):
     self.Check("""\
@@ -503,13 +503,15 @@ class TestIt(test_base.BaseTest):
       """)
 
   def test_delete_global(self):
-    # TODO(kramm): Also test that a is inaccessible after f() has run.
-    self.Check("""\
+    _, errors = self.InferWithErrors("""\
       a = 3
       def f():
         global a
         del a
+      f()
+      x = a
       """)
+    self.assertErrorLogIs(errors, [(6, "name-error")])
 
 
 class TestPrinting(test_base.BaseTest):

@@ -1039,16 +1039,12 @@ class VirtualMachine(object):
     state = self._store_value(state, name, value, local)
     return state.forward_cfg_node()
 
-  def del_local(self, name):
-    """Called when a local is deleted."""
-    # TODO(ampere): Implement locals removal or decide not to.
-    log.warning("Local variable removal does not actually do "
-                "anything in the abstract interpreter")
-
-  def del_global(self, name):
-    """Called when a global is deleted."""
-    log.warning("Global variable removal does not actually do "
-                "anything in the abstract interpreter")
+  def _del_name(self, state, name, local):
+    """Called when a local or global is deleted."""
+    value = abstract.Deleted(self).to_variable(state.node)
+    state = state.forward_cfg_node()
+    state = self._store_value(state, name, value, local)
+    return state.forward_cfg_node()
 
   def _retrieve_attr(self, node, obj, attr):
     """Load an attribute from an object."""
@@ -1487,6 +1483,7 @@ class VirtualMachine(object):
             self.errorlog.name_error(self.frames, name)
           return state.push(
               self.convert.create_new_unsolvable(state.node))
+    self.check_for_deleted(state, name, val)
     return state.push(val)
 
   def byte_STORE_NAME(self, state, op):
@@ -1495,8 +1492,7 @@ class VirtualMachine(object):
 
   def byte_DELETE_NAME(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
-    self.del_local(name)
-    return state
+    return self._del_name(state, name, local=True)
 
   def byte_LOAD_FAST(self, state, op):
     """Load a local. Unlike LOAD_NAME, it doesn't fall back to globals."""
@@ -1506,6 +1502,7 @@ class VirtualMachine(object):
     except KeyError:
       self.errorlog.name_error(self.frames, name)
       val = self.convert.create_new_unsolvable(state.node)
+    self.check_for_deleted(state, name, val)
     return state.push(val)
 
   def byte_STORE_FAST(self, state, op):
@@ -1514,8 +1511,7 @@ class VirtualMachine(object):
 
   def byte_DELETE_FAST(self, state, op):
     name = self.frame.f_code.co_varnames[op.arg]
-    self.del_local(name)
-    return state
+    return self._del_name(state, name, local=True)
 
   def byte_LOAD_GLOBAL(self, state, op):
     """Load a global variable, or fall back to trying to load a builtin."""
@@ -1528,6 +1524,7 @@ class VirtualMachine(object):
       except KeyError:
         self.errorlog.name_error(self.frames, name)
         return state.push(self.convert.create_new_unsolvable(state.node))
+    self.check_for_deleted(state, name, val)
     return state.push(val)
 
   def byte_STORE_GLOBAL(self, state, op):
@@ -1536,8 +1533,7 @@ class VirtualMachine(object):
 
   def byte_DELETE_GLOBAL(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
-    self.del_global(name)
-    return state
+    return self._del_name(state, name, local=False)
 
   def get_closure_var_name(self, arg):
     n_cellvars = len(self.frame.f_code.co_cellvars)
@@ -1547,15 +1543,16 @@ class VirtualMachine(object):
       name = self.frame.f_code.co_freevars[arg - n_cellvars]
     return name
 
-  def check_for_deleted(self, state, arg, cell_var):
-    if any(isinstance(x, abstract.Deleted) for x in cell_var.Data(state.node)):
+  def check_for_deleted(self, state, name, var):
+    if any(isinstance(x, abstract.Deleted) for x in var.Data(state.node)):
       # Referencing a deleted variable
-      arg_name = self.get_closure_var_name(arg)
       # TODO(mdemello): A "use-after-delete" error would be more helpful.
-      self.errorlog.name_error(self.frames, arg_name)
+      self.errorlog.name_error(self.frames, name)
 
-  def byte_LOAD_CLOSURE(self, state, op):
-    """Used to generate the 'closure' tuple for MAKE_CLOSURE.
+  def load_closure_cell(self, state, op):
+    """Retrieve the value out of a closure cell.
+
+    Used to generate the 'closure' tuple for MAKE_CLOSURE.
 
     Each entry in that tuple is typically retrieved using LOAD_CLOSURE.
 
@@ -1568,15 +1565,17 @@ class VirtualMachine(object):
       A new state.
     """
     cell = self.frame.cells[op.arg]
-    self.check_for_deleted(state, op.arg, cell)
+    name = self.get_closure_var_name(op.arg)
+    self.check_for_deleted(state, name, cell)
     return state.push(cell)
+
+  def byte_LOAD_CLOSURE(self, state, op):
+    """Retrieves a value out of a cell."""
+    return self.load_closure_cell(state, op)
 
   def byte_LOAD_DEREF(self, state, op):
     """Retrieves a value out of a cell."""
-    # Since we're working on cfg.Variable, we don't need to dereference.
-    cell = self.frame.cells[op.arg]
-    self.check_for_deleted(state, op.arg, cell)
-    return state.push(cell)
+    return self.load_closure_cell(state, op)
 
   def byte_STORE_DEREF(self, state, op):
     """Stores a value in a closure cell."""
