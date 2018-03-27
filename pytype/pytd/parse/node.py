@@ -137,7 +137,7 @@ def Node(*child_names):
 
     def __hash__(self):
       """Return a hash of the node type and the underlying tuple."""
-      return hash((self.__class__,) + tuple(self))
+      return hash((self.__class__.__name__,) + tuple(self))
 
     def __ne__(self, other):
       """Compare two nodes for inequality. See __eq__."""
