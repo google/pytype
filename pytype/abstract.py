@@ -3236,8 +3236,10 @@ class InterpreterFunction(SignedFunction):
           b.data.maybe_missing_members = True
       return (node,
               self.vm.convert.create_new_unsolvable(node))
-    callargs = self._map_args(node, args.simplify(node))
     substs = self._match_args(node, args)
+    args = args.simplify(node)
+    first_posarg = args.posargs[0] if args.posargs else None
+    callargs = self._map_args(node, args)
     # Keep type parameters without substitutions, as they may be needed for
     # type-checking down the road.
     annotations = self.vm.annotations_util.sub_annotations(
@@ -3251,7 +3253,8 @@ class InterpreterFunction(SignedFunction):
     # Might throw vm.RecursionException:
     frame = self.vm.make_frame(node, self.code, callargs,
                                self.f_globals, self.f_locals, self.closure,
-                               new_locals=new_locals, func=func)
+                               new_locals=new_locals, func=func,
+                               first_posarg=first_posarg)
     if self.signature.param_names:
       self_var = callargs.get(self.signature.param_names[0])
       caller_is_abstract = self_var and all(
@@ -3667,6 +3670,8 @@ class Module(Instance):
 class BuildClass(AtomicAbstractValue):
   """Representation of the Python 3 __build_class__ object."""
 
+  CLOSURE_NAME = "__class__"
+
   def __init__(self, vm):
     super(BuildClass, self).__init__("__build_class__", vm)
 
@@ -3689,11 +3694,14 @@ class BuildClass(AtomicAbstractValue):
                         new_locals=True)
     if func.last_frame:
       func.f_locals = func.last_frame.f_locals
+      class_closure_var = func.last_frame.class_closure_var
     else:
       # We have hit 'maximum depth' before setting func.last_frame
       func.f_locals = self.vm.convert.unsolvable
+      class_closure_var = None
     return node, self.vm.make_class(
-        node, name, list(bases), func.f_locals.to_variable(node), metaclass)
+        node, name, list(bases), func.f_locals.to_variable(node), metaclass,
+        new_class_var=class_closure_var)
 
 
 # TODO(rechen): Don't allow this class to be instantiated multiple times. It's

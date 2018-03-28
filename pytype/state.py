@@ -229,7 +229,7 @@ class Frame(object):
   """
 
   def __init__(self, node, vm, f_code, f_globals, f_locals, f_back, callargs,
-               closure, func):
+               closure, func, first_posarg=None):
     """Initialize a special frame as needed by TypegraphVirtualMachine.
 
     Args:
@@ -243,6 +243,7 @@ class Frame(object):
       callargs: Additional function arguments to store in f_locals.
       closure: A tuple containing the new co_freevars.
       func: An Optional[cfg.Binding] to the function this frame corresponds to.
+      first_posarg: Optional first positional argument to the function.
     Raises:
       NameError: If we can't resolve any references into the outer frame.
     """
@@ -264,6 +265,9 @@ class Frame(object):
       builtins_pu, = bltin.bindings
       self.f_builtins = builtins_pu.data
     self.f_lineno = f_code.co_firstlineno
+    # The first positional argument is used to make Python 3 super calls
+    # when super is not passed any arguments.
+    self.first_posarg = first_posarg
     self.cells = {}
 
     self.allowed_returns = None
@@ -292,6 +296,21 @@ class Frame(object):
           self.cells[i].PasteVariable(value, node)
         else:
           self.vm.attribute_handler.set_attribute(node, f_locals, name, value)
+    # Python 3 supports calling 'super' without any arguments. In such a case
+    # the implicit type argument is inserted into __build_class__'s cellvars
+    # and propagated as a closure variable to all method/functions calling
+    # 'super' without any arguments.
+    # If this is a frame for the function called by __build_class__ (see
+    # abstract.BuildClass), then we will store a reference to the variable
+    # corresponding to the cellvar named "__class__" separately for convenient
+    # access. After the class is built, abstract.BuildClass.call will add the
+    # binding for the new class into this variable.
+    self.class_closure_var = None
+    if func and isinstance(func.data, abstract.InterpreterFunction):
+      closure_name = abstract.BuildClass.CLOSURE_NAME
+      if func.data.is_class_builder and closure_name in f_code.co_cellvars:
+        i = f_code.co_cellvars.index(closure_name)
+        self.class_closure_var = self.cells[i]
     self.func = func
 
   def __repr__(self):     # pragma: no cover

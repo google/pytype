@@ -668,6 +668,10 @@ class ErrorLog(ErrorLogBase):
                (_function_name(name), duplicate))
     self._invalid_parameters(stack, message, bad_call)
 
+  @_error_name("invalid-super-call")
+  def invalid_super_call(self, stack, message, details=None):
+    self.error(stack, message, details)
+
   def invalid_function_call(self, stack, error):
     if isinstance(error, abstract.WrongArgCount):
       self.wrong_arg_count(stack, error.name, error.bad_call)

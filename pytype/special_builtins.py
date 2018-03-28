@@ -433,24 +433,46 @@ class Super(BuiltinClass):
   def call(self, node, _, args):
     result = self.vm.program.NewVariable()
     num_args = len(args.posargs)
-    if 1 <= num_args and num_args <= 2:
+    if num_args == 0 and self.vm.python_version[0] >= 3:
+      # The implicit type argument is available in a freevar named '__class__'.
+      cls_var = None
+      for i, free_var in enumerate(self.vm.frame.f_code.co_freevars):
+        if free_var == abstract.BuildClass.CLOSURE_NAME:
+          cls_var = self.vm.frame.cells[
+              len(self.vm.frame.f_code.co_cellvars) + i]
+          break
+      if not (cls_var and cls_var.bindings):
+        self.vm.errorlog.invalid_super_call(
+            self.vm.frames, message="Missing __class__ closure for super call.",
+            details="Is 'super' being called from a method defined in a class?")
+        return node, self.vm.convert.create_new_unsolvable(node)
+      # The implicit super object argument is the first positional argument to
+      # the function calling 'super'.
+      self_arg = self.vm.frame.first_posarg
+      if not self_arg:
+        self.vm.errorlog.invalid_super_call(
+            self.vm.frames, message="Missing 'self' argument to 'super' call.")
+        return node, self.vm.convert.create_new_unsolvable(node)
+      super_objects = self_arg.bindings
+    elif 1 <= num_args and num_args <= 2:
+      cls_var = args.posargs[0]
       super_objects = args.posargs[1].bindings if num_args == 2 else [None]
-      for cls in args.posargs[0].bindings:
-        if not isinstance(cls.data, (abstract.Class,
-                                     abstract.AMBIGUOUS_OR_EMPTY)):
-          bad = abstract.BadParam(
-              name="cls", expected=self.vm.convert.type_type)
-          raise abstract.WrongArgTypes(
-              self._SIGNATURE, args, self.vm, bad_param=bad)
-        for obj in super_objects:
-          if obj:
-            result.AddBinding(
-                SuperInstance(cls.data, obj.data, self.vm), [cls, obj], node)
-          else:
-            result.AddBinding(
-                SuperInstance(cls.data, None, self.vm), [cls], node)
     else:
       raise abstract.WrongArgCount(self._SIGNATURE, args, self.vm)
+    for cls in cls_var.bindings:
+      if not isinstance(cls.data, (abstract.Class,
+                                   abstract.AMBIGUOUS_OR_EMPTY)):
+        bad = abstract.BadParam(
+            name="cls", expected=self.vm.convert.type_type)
+        raise abstract.WrongArgTypes(
+            self._SIGNATURE, args, self.vm, bad_param=bad)
+      for obj in super_objects:
+        if obj:
+          result.AddBinding(
+              SuperInstance(cls.data, obj.data, self.vm), [cls, obj], node)
+        else:
+          result.AddBinding(
+              SuperInstance(cls.data, None, self.vm), [cls], node)
     return node, result
 
 

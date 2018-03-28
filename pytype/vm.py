@@ -455,7 +455,8 @@ class VirtualMachine(object):
         non_meta.append(base)
     return meta, non_meta
 
-  def make_class(self, node, name_var, bases, class_dict_var, cls_var):
+  def make_class(self, node, name_var, bases, class_dict_var, cls_var,
+                 new_class_var=None):
     """Create a class with the name, bases and methods given.
 
     Args:
@@ -465,6 +466,9 @@ class VirtualMachine(object):
       class_dict_var: Members of the class, as a Variable containing an
           abstract.Dict value.
       cls_var: The class's metaclass, if any.
+      new_class_var: If not None, make_class() will return new_class_var with
+          the newly constructed class added as a binding. Otherwise, a new
+          variable if returned.
 
     Returns:
       An instance of Class.
@@ -514,7 +518,10 @@ class VirtualMachine(object):
         self.errorlog.mro_error(self.frames, name, e.mro_seqs)
         var = self.convert.create_new_unsolvable(node)
       else:
-        var = self.program.NewVariable()
+        if new_class_var:
+          var = new_class_var
+        else:
+          var = self.program.NewVariable()
         var.AddBinding(val, class_dict_var.bindings, node)
         if not val.is_abstract:
           # Since a class decorator could have made the class inherit from
@@ -551,7 +558,7 @@ class VirtualMachine(object):
     return var
 
   def make_frame(self, node, code, callargs=None, f_globals=None, f_locals=None,
-                 closure=None, new_locals=None, func=None):
+                 closure=None, new_locals=None, func=None, first_posarg=None):
     """Create a new frame object, using the given args, globals and locals."""
     if any(code is f.f_code for f in self.frames):
       log.info("Detected recursion in %s", code.co_name or code.co_filename)
@@ -586,7 +593,8 @@ class VirtualMachine(object):
       f_locals = self.convert_locals_or_globals({}, "locals")
 
     return frame_state.Frame(node, self, code, f_globals, f_locals,
-                             self.frame, callargs or {}, closure, func)
+                             self.frame, callargs or {}, closure, func,
+                             first_posarg)
 
   def simple_stack(self, opcode=None):
     """Get a stack of simple frames.
