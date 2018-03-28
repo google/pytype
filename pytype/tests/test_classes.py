@@ -291,12 +291,12 @@ class ClassesTest(test_base.BaseTest):
       seed = _inst.seed
     """)
     self.assertTypesMatchPytd(ty, """
-    from typing import Any, Callable
-    class Random(object):
-       def seed(self) -> None: ...
+      from typing import Any, Callable
+      class Random(object):
+         def seed(self) -> None: ...
 
-    _inst = ...  # type: Random
-    seed = ...  # type: Callable[[], Any]
+      _inst = ...  # type: Random
+      def seed() -> None: ...
     """)
 
   def testMROWithUnsolvables(self):

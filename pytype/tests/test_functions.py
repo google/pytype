@@ -1021,6 +1021,19 @@ class TestFunctions(test_base.BaseTest):
       def cast(typ: Type[T], val) -> T: ...
     """)
 
+  def test_infer_bound_pytd_func(self):
+    ty = self.Infer("""
+      import struct
+      if __random__:
+        int2byte = struct.Struct(">B").pack
+      else:
+        int2byte = chr
+    """)
+    self.assertTypesMatchPytd(ty, """
+      struct = ...  # type: module
+      def int2byte(*v) -> str: ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

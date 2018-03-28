@@ -298,8 +298,13 @@ class Converter(object):
     Returns:
       A PyTD definition.
     """
-    if (isinstance(v, abstract.PyTDFunction) and
-        not isinstance(v, typing.TypeVar)):
+    if isinstance(v, abstract.BoundFunction):
+      d = self.value_to_pytd_def(node, v.underlying, name)
+      assert isinstance(d, pytd.Function)
+      sigs = tuple(sig.Replace(params=sig.params[1:]) for sig in d.signatures)
+      return d.Replace(signatures=sigs)
+    elif (isinstance(v, abstract.PyTDFunction) and
+          not isinstance(v, typing.TypeVar)):
       return pytd.Function(
           name=name,
           signatures=tuple(sig.pytd_sig for sig in v.signatures),
