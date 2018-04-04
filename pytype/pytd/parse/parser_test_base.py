@@ -22,6 +22,7 @@ from pytype import load_pytd
 from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import visitors
+import six
 import unittest
 
 
@@ -59,7 +60,7 @@ class ParserTest(unittest.TestCase):
     return ast
 
   def ToAST(self, src_or_tree):
-    if isinstance(src_or_tree, basestring):
+    if isinstance(src_or_tree, six.string_types):
       # Put into a canonical form (removes comments, standard indents):
       return self.Parse(src_or_tree + "\n")
     else:  # isinstance(src_or_tree, tuple):

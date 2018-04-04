@@ -98,7 +98,7 @@ class TestUtils(parser_test_base.ParserTest):
 
   def testJoinTypes(self):
     """Test that JoinTypes() does recursive flattening."""
-    n1, n2, n3, n4, n5, n6 = [pytd.NamedType("n%d" % i) for i in xrange(6)]
+    n1, n2, n3, n4, n5, n6 = [pytd.NamedType("n%d" % i) for i in range(6)]
     # n1 or (n2 or (n3))
     nested1 = pytd.UnionType((n1, pytd.UnionType((n2, pytd.UnionType((n3,))))))
     # ((n4) or n5) or n6
@@ -181,7 +181,7 @@ class TestUtils(parser_test_base.ParserTest):
                      pytd.NamedType("package.name"))
 
   def testOrderedSet(self):
-    ordered_set = pytd_utils.OrderedSet(n/2 for n in range(10))
+    ordered_set = pytd_utils.OrderedSet(n//2 for n in range(10))
     ordered_set.add(-42)
     ordered_set.add(3)
     self.assertEqual(tuple(ordered_set), (0, 1, 2, 3, 4, -42))
@@ -229,7 +229,6 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertFalse("x" in a)
     self.assertEqual(a.get("foo"), 1)
     self.assertEqual(a["foo"], 1)
-    self.assertTrue(a.has_key("foo"))
     self.assertTrue("foo" in a)
     self.assertTrue("bar" in a)
     self.assertEqual(a.copy(), a.m)
@@ -251,15 +250,15 @@ class TestUtils(parser_test_base.ParserTest):
     a = A()
     a.m = {}
     a.m = {"foo": 1, "bar": 2}
-    self.assertTrue(a.has_key("foo"))
-    self.assertTrue(a.has_key("bar"))
+    self.assertIn("foo", a)
+    self.assertIn("bar", a)
     del a["foo"]
     a["bar"] = 3
-    self.assertFalse(a.has_key("foo"))
-    self.assertTrue(a.has_key("bar"))
+    self.assertNotIn("foo", a)
+    self.assertIn("bar", a)
     value = a.pop("bar")
     self.assertEqual(3, value)
-    self.assertFalse(a.has_key("bar"))
+    self.assertNotIn("bar", a)
     a["new"] = 7
     item = a.popitem()
     self.assertEqual(item, ("new", 7))
@@ -373,7 +372,7 @@ class TestDataFiles(parser_test_base.ParserTest):
     # and the result is a string
     path, src = pytd_utils.GetPredefinedFile(self.BUILTINS, "__builtin__")
     self.assertEqual(path, "pytd/builtins/2/__builtin__.pytd")
-    self.assertIsInstance(src, str)
+    self.assertIsInstance(src, bytes)
 
   def testGetPredefinedFileThrows(self):
     # smoke test, only checks that it does throw
@@ -387,18 +386,18 @@ class TestDataFiles(parser_test_base.ParserTest):
     subdir = "builtins/2"
     _, import_contents = pytd_utils.GetPredefinedFile(subdir, "__builtin__")
     with open(os.path.join(os.path.dirname(pytd.__file__),
-                           subdir, "__builtin__.pytd"), "rb") as fi:
+                           subdir, "__builtin__.pytd"), "r") as fi:
       file_contents = fi.read()
-    self.assertMultiLineEqual(import_contents, file_contents)
+    self.assertMultiLineEqual(import_contents.decode("utf-8"), file_contents)
 
   def testPytdBuiltin3(self):
     """Verify 'import sys' for python3."""
     subdir = "builtins/3"
     _, import_contents = pytd_utils.GetPredefinedFile(subdir, "__builtin__")
     with open(os.path.join(os.path.dirname(pytd.__file__),
-                           subdir, "__builtin__.pytd"), "rb") as fi:
+                           subdir, "__builtin__.pytd"), "r") as fi:
       file_contents = fi.read()
-    self.assertMultiLineEqual(import_contents, file_contents)
+    self.assertMultiLineEqual(import_contents.decode("utf-8"), file_contents)
 
   def testPytdBuiltinIsPackage(self):
     """Verify 'import importlib' for python3."""

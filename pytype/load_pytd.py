@@ -1,6 +1,5 @@
 """Load and link .pyi files."""
 
-import cPickle
 import logging
 import os
 
@@ -12,6 +11,7 @@ from pytype.pytd import serialize_ast
 from pytype.pytd import typeshed
 from pytype.pytd import visitors
 from pytype.pytd.parse import builtins
+from six.moves import cPickle
 
 log = logging.getLogger(__name__)
 

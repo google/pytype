@@ -22,7 +22,6 @@ locally or within a larger repository.
 # pylint: disable=g-explicit-length-test
 
 import collections
-import cPickle
 import gzip
 import itertools
 import os
@@ -33,6 +32,8 @@ from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import visitors
+import six
+from six.moves import cPickle
 
 
 _PICKLE_PROTOCOL = cPickle.HIGHEST_PROTOCOL
@@ -319,6 +320,7 @@ def WrapsDict(member_name, writable=False, implement_len=False):
       def __init__(self):
         self.inner_dict = {}
   The resulting class will delegate all dictionary operations to inner_dict.
+  Note that we don't wrap has_key, which was removed in Python 3.
 
   Args:
     member_name: Name of the attribute that contains the wrapped dictionary.
@@ -341,9 +343,6 @@ def WrapsDict(member_name, writable=False, implement_len=False):
       def __contains__(self, key):
         return key in self.{member_name}
 
-      def has_key(self, key):
-        return self.{member_name}.has_key(key)
-
       def copy(self):
         return self.{member_name}.copy()
 
@@ -354,13 +353,13 @@ def WrapsDict(member_name, writable=False, implement_len=False):
         return self.{member_name}.items()
 
       def iteritems(self):
-        return self.{member_name}.iteritems()
+        return six.iteritems(self.{member_name})
 
       def iterkeys(self):
-        return self.{member_name}.iterkeys()
+        return six.iterkeys(self.{member_name})
 
       def itervalues(self):
-        return self.{member_name}.itervalues()
+        return six.itervalues(self.{member_name})
 
       def keys(self):
         return self.{member_name}.keys()
@@ -369,13 +368,13 @@ def WrapsDict(member_name, writable=False, implement_len=False):
         return self.{member_name}.values()
 
       def viewitems(self):
-        return self.{member_name}.viewitems()
+        return six.viewitems(self.{member_name})
 
       def viewkeys(self):
-        return self.{member_name}.viewkeys()
+        return six.viewkeys(self.{member_name})
 
       def viewvalues(self):
-        return self.{member_name}.viewvalues()
+        return six.viewvalues(self.{member_name})
   """.format(member_name=member_name)
 
   if writable:
@@ -408,8 +407,8 @@ def WrapsDict(member_name, writable=False, implement_len=False):
         return len(self.{member_name})
     """.format(member_name=member_name)
 
-  namespace = {}
-  exec src in namespace  # pylint: disable=exec-used
+  namespace = {"six": six}
+  exec(src, namespace)  # pylint: disable=exec-used
   return namespace["WrapsDict"]  # pytype: disable=key-error
 
 

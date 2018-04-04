@@ -399,7 +399,7 @@ class _Parser(object):
       ast = ast.Visit(visitors.AddNamePrefix())
     else:
       # If there's no unique name, hash the sourcecode.
-      ast = ast.Replace(name=hashlib.md5(src).hexdigest())
+      ast = ast.Replace(name=hashlib.md5(src.encode("utf-8")).hexdigest())
     ast = ast.Visit(visitors.StripExternalNamePrefix())
 
     # Typeshed files that explicitly import and refer to "builtins" need to have
