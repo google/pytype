@@ -10,6 +10,10 @@ Details of the format may change between Python versions.
 """
 
 import struct
+import sys
+
+import six
+import six.moves
 
 
 TYPE_NULL = 0x30  # '0'
@@ -74,7 +78,7 @@ class _NULL(object):
 
 # bytes and str are the same class in Python 2, and different classes in
 # Python 3, so we need a way to mark Python 3 bytestrings.
-class BytesPy3(str):
+class BytesPy3(bytes):
   pass
 
 
@@ -104,7 +108,7 @@ class CodeType(object):
     assert isinstance(nlocals, int)
     assert isinstance(stacksize, int)
     assert isinstance(flags, int)
-    assert isinstance(filename, (str, unicode))
+    assert isinstance(filename, (bytes, six.string_types))
     self.co_argcount = argcount
     self.co_kwonlyargcount = kwonlyargcount
     self.co_nlocals = nlocals
@@ -139,7 +143,7 @@ class _LoadMarshal(object):
 
   def load(self):
     """Load an encoded Python data structure."""
-    c = '?'  # make pylint happy
+    c = ord('?')  # make pylint happy
     try:
       c = self._read_byte()
       if c & REF:
@@ -169,7 +173,7 @@ class _LoadMarshal(object):
     """Read an unsigned byte."""
     pos = self.bufpos
     self.bufpos += 1
-    return ord(self.bufstr[pos])
+    return six.indexbytes(self.bufstr, pos)
 
   def _read_short(self):
     """Read a signed 16 bit word."""
@@ -184,8 +188,9 @@ class _LoadMarshal(object):
   def _read_long(self):
     """Read a signed 32 bit word."""
     s = self._read(4)
-    x = ord(s[0]) | ord(s[1])<<8 | ord(s[2])<<16 | ord(s[3])<<24
-    if ord(s[3]) & 0x80 and x > 0:
+    b = lambda i: six.indexbytes(s, i)
+    x = b(0) | b(1)<<8 | b(2)<<16 | b(3)<<24
+    if b(3) & 0x80 and x > 0:
       # sign extension
       x = -((1<<32) - x)
       return int(x)
@@ -195,9 +200,10 @@ class _LoadMarshal(object):
   def _read_long64(self):
     """Read a signed 64 bit integer."""
     s = self._read(8)
-    x = (ord(s[0]) | ord(s[1])<<8 | ord(s[2])<<16 | ord(s[3])<<24 |
-         ord(s[4])<<32 | ord(s[5])<<40 | ord(s[6])<<48 | ord(s[7])<<56)
-    if ord(s[7]) & 0x80 and x > 0:
+    b = lambda i: six.indexbytes(s, i)
+    x = (b(0) | b(1)<<8 | b(2)<<16 | b(3)<<24 |
+         b(4)<<32 | b(5)<<40 | b(6)<<48 | b(7)<<56)
+    if b(7) & 0x80 and x > 0:
       # sign extension
       x = -((1<<64) - x)
     return x
@@ -215,6 +221,9 @@ class _LoadMarshal(object):
     idx = len(self.refs)
     self.refs.append(None)
     return idx
+
+  # pylint: disable=missing-docstring
+  # This is a bunch of small methods with self-explanatory names.
 
   def load_null(self):
     return _NULL
@@ -244,7 +253,7 @@ class _LoadMarshal(object):
     """Load a variable length integer."""
     size = self._read_long()
     x = 0
-    for i in xrange(abs(size)):
+    for i in six.moves.range(abs(size)):
       d = self._read_short()
       x |= d<<(i*15)
     return x if size >= 0 else -x
@@ -282,7 +291,11 @@ class _LoadMarshal(object):
 
   def load_interned(self):
     n = self._read_long()
-    ret = intern(self._read(n))
+    s = self._read(n)
+    # Interned strings need to be the native `str` type of the host python.
+    if sys.version_info[0] == 3:
+      s = s.decode('utf-8')
+    ret = six.moves.intern(s)
     self._stringtable.append(ret)
     return ret
 
@@ -293,10 +306,13 @@ class _LoadMarshal(object):
   def load_unicode(self):
     n = self._read_long()
     s = self._read(n)
-    if self.python_version[0] < 3:
-      # For Python 2, we decode to a unicode string. (In Python 3, unicode is
-      # the native 'str' type, so we represent the Python 3 string as a utf8
-      # encoded str, in host Python 2.)
+    # We need to convert bytes to a unicode string for any of the following:
+    # - We are analysing python2 code
+    # - We are running in a python3 host
+    # If we are analysing python3 code in a python2 host, we leave the string as
+    # a utf-8 encoded bytestring.
+    if (self.python_version[0] < 3 or
+        sys.version_info[0] == 3):
       s = s.decode('utf8')
     return s
 
@@ -314,14 +330,14 @@ class _LoadMarshal(object):
   def load_small_tuple(self):
     n = self._read_byte()
     l = []
-    for _ in xrange(n):
+    for _ in six.moves.range(n):
       l.append(self.load())
     return tuple(l)
 
   def load_list(self):
     n = self._read_long()
     l = []
-    for _ in xrange(n):
+    for _ in six.moves.range(n):
       l.append(self.load())
     return l
 
@@ -361,17 +377,19 @@ class _LoadMarshal(object):
 
   def load_set(self):
     n = self._read_long()
-    args = [self.load() for _ in xrange(n)]
+    args = [self.load() for _ in six.moves.range(n)]
     return set(args)
 
   def load_frozenset(self):
     n = self._read_long()
-    args = [self.load() for _ in xrange(n)]
+    args = [self.load() for _ in six.moves.range(n)]
     return frozenset(args)
 
   def load_ref(self):
     n = self._read_long()
     return self.refs[n]
+
+  # pylint: enable=missing-docstring
 
   dispatch = {
       TYPE_ASCII: load_ascii,

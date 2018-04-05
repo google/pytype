@@ -85,10 +85,11 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
       assert p.poll() == 0, "Child process failed"
   finally:
     os.unlink(fi.name)
-  if bytecode[0] == chr(0):  # compile OK
+  first_byte = six.indexbytes(bytecode, 0)
+  if first_byte == 0:  # compile OK
     return bytecode[1:]
-  elif bytecode[0] == chr(1):  # compile error
-    raise CompileError(bytecode[1:])
+  elif first_byte == 1:  # compile error
+    raise CompileError(bytecode[1:].decode("utf-8"))
   else:
     raise IOError("_compile.py produced invalid result")
 
@@ -108,7 +109,7 @@ def parse_pyc_stream(fi):
   magic_word = fi.read(2)
   python_version = magic.magic_word_to_version(magic_word)
   crlf = fi.read(2)  # cr, lf
-  if crlf != "\r\n":
+  if crlf != b"\r\n":
     raise IOError("Malformed pyc file")
   fi.read(4)  # timestamp
   if python_version >= (3, 3):
@@ -126,7 +127,7 @@ def parse_pyc_string(data):
   Returns:
     An instance of loadmarshal.CodeType.
   """
-  return parse_pyc_stream(six.StringIO(data))
+  return parse_pyc_stream(six.BytesIO(data))
 
 
 class AdjustFilename(object):

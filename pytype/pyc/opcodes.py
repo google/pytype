@@ -1103,7 +1103,7 @@ class _LineNumberTableParser(object):
     assert not len(lnotab) & 1  # lnotab always has an even number of elements
     self.lnotab = lnotab
     self.lineno = firstlineno
-    self.next_addr = ord(self.lnotab[0]) if self.lnotab else 0
+    self.next_addr = six.indexbytes(self.lnotab, 0) if self.lnotab else 0
     self.pos = 0
 
   def get(self, i):
@@ -1119,10 +1119,10 @@ class _LineNumberTableParser(object):
       The line number corresponding to the position at i.
     """
     while i >= self.next_addr and self.pos < len(self.lnotab):
-      self.lineno += ord(self.lnotab[self.pos + 1])
+      self.lineno += six.indexbytes(self.lnotab, self.pos + 1)
       self.pos += 2
       if self.pos < len(self.lnotab):
-        self.next_addr += ord(self.lnotab[self.pos])
+        self.next_addr += six.indexbytes(self.lnotab, self.pos)
     return self.lineno
 
 
@@ -1158,18 +1158,19 @@ def _bytecode_reader(data, mapping):
   extended_arg = 0
   start = 0
   size = len(data)
+  byte_at = lambda i: six.indexbytes(data, i)
   while pos < size:
-    opcode = ord(data[pos])
+    opcode = byte_at(pos)
     cls = mapping[opcode]
     oparg = None
     if cls is EXTENDED_ARG:
       # EXTENDED_ARG modifies the opcode after it, setting bits 16..31 of
       # its argument.
       assert not extended_arg, "two EXTENDED_ARGs in a row"
-      extended_arg = ord(data[pos+1]) << 16 | ord(data[pos+2]) << 24
+      extended_arg = byte_at(pos+1) << 16 | byte_at(pos+2) << 24
       bytes_read = 3
     elif cls.FLAGS & HAS_ARGUMENT:
-      oparg = ord(data[pos+1]) | ord(data[pos+2]) << 8 | extended_arg
+      oparg = byte_at(pos+1) | byte_at(pos+2) << 8 | extended_arg
       extended_arg = 0
       bytes_read = 3
     else:
@@ -1197,14 +1198,15 @@ def _wordcode_reader(data, mapping):
   """
   extended_arg = 0
   start = 0
+  byte_at = lambda i: six.indexbytes(data, i)
   for pos in xrange(0, len(data), 2):
-    opcode = ord(data[pos])
+    opcode = byte_at(pos)
     cls = mapping[opcode]
     if cls is EXTENDED_ARG:
-      oparg = ord(data[pos+1]) | extended_arg
+      oparg = byte_at(pos+1) | extended_arg
       extended_arg = oparg << 8
     elif cls.FLAGS & HAS_ARGUMENT:
-      oparg = ord(data[pos+1]) | extended_arg
+      oparg = byte_at(pos+1) | extended_arg
       extended_arg = 0
     else:
       oparg = None
