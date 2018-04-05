@@ -21,6 +21,7 @@ from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import visitors
 from pytype.pytd.parse import parser_test_base
+import six
 import unittest
 
 
@@ -41,7 +42,7 @@ class TestOptimize(parser_test_base.ParserTest):
     return optimize.Optimize(ast, self.builtins, **kwargs)
 
   def OptimizedString(self, data):
-    tree = self.Parse(data) if isinstance(data, basestring) else data
+    tree = self.Parse(data) if isinstance(data, six.string_types) else data
     new_tree = self.Optimize(tree)
     return pytd.Print(new_tree)
 
