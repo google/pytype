@@ -18,7 +18,10 @@ import re
 
 
 class PreconditionError(ValueError):
-  pass
+
+  def __init__(self, message):
+    assert message and isinstance(message, str)
+    super(PreconditionError, self).__init__(message)
 
 
 class _Precondition(object):
@@ -110,7 +113,7 @@ class _OrPrecondition(_Precondition):
         return
       except PreconditionError as e:
         errors.append(e)
-    raise PreconditionError(" or ".join("(%s)" % e.message for e in errors))
+    raise PreconditionError(" or ".join("(%s)" % e.args[0] for e in errors))
 
   def allowed_types(self):
     allowed = set()
@@ -143,7 +146,7 @@ class CallChecker(object):
       try:
         condition.check(value)
       except PreconditionError as e:
-        raise PreconditionError("argument=%s: %s." % (name, e.message))
+        raise PreconditionError("argument=%s: %s." % (name, e.args[0]))
 
   def allowed_types(self):
     """Determines the types and typenames allowed by calls to the checker.
