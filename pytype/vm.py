@@ -14,7 +14,6 @@ import collections
 import logging
 import os
 import re
-import repr as reprlib
 import sys
 
 
@@ -46,6 +45,7 @@ from pytype.pytd import slots
 from pytype.pytd import visitors
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
+from six.moves import reprlib
 
 log = logging.getLogger(__name__)
 

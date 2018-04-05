@@ -3,7 +3,6 @@
 import copy
 import os
 import re
-import StringIO
 import subprocess
 import tempfile
 
@@ -11,6 +10,7 @@ from pytype import utils
 from pytype.pyc import compile_bytecode
 from pytype.pyc import loadmarshal
 from pytype.pyc import magic
+import six
 
 
 COMPILE_SCRIPT = "pyc/compile_bytecode.py"
@@ -64,7 +64,7 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
     fi.close()
     if python_exe == "HOST":
       # We were asked to use the version of Python we're running to compile.
-      output = StringIO.StringIO()
+      output = six.StringIO()
       compile_bytecode.compile_to_pyc(fi.name, filename or fi.name,
                                       output, mode)
       bytecode = output.getvalue()
@@ -126,7 +126,7 @@ def parse_pyc_string(data):
   Returns:
     An instance of loadmarshal.CodeType.
   """
-  return parse_pyc_stream(StringIO.StringIO(data))
+  return parse_pyc_stream(six.StringIO(data))
 
 
 class AdjustFilename(object):

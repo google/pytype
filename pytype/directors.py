@@ -2,10 +2,11 @@
 
 import bisect
 import collections
-import cStringIO
 import re
 import sys
 import tokenize
+
+from six import moves
 
 _DIRECTIVE_RE = re.compile(r"#\s*(pytype|type)\s*:\s([^#]*)")
 _CLOSING_BRACKETS_RE = re.compile(r"^(\s*[]})]\s*)+(#.*)?$")
@@ -162,7 +163,7 @@ class Director(object):
 
   def _parse_source(self, src):
     """Parse a source file, extracting directives from comments."""
-    f = cStringIO.StringIO(src)
+    f = moves.cStringIO(src)
     defs_start = None
     closing_bracket_lines = set()
     whitespace_lines = set()

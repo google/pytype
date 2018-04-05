@@ -1,5 +1,7 @@
 """Opcode definitions for both Python 2 and Python 3."""
 
+import six
+
 # We define all-uppercase classes, to match their opcode names:
 # pylint: disable=invalid-name
 
@@ -1066,7 +1068,7 @@ python3_mapping = {
 def _overlay_mapping(mapping, new_entries):
   ret = mapping.copy()
   ret.update(new_entries)
-  return dict((k, v) for k, v in ret.iteritems() if v is not None)
+  return dict((k, v) for k, v in six.iteritems(ret) if v is not None)
 
 python_3_5_mapping = _overlay_mapping(python3_mapping, {
     16: BINARY_MATRIX_MULTIPLY,

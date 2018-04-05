@@ -4,7 +4,6 @@ import collections
 import csv
 import logging
 import re
-import StringIO
 import sys
 
 
@@ -14,6 +13,7 @@ from pytype import utils
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+import six
 
 # Usually we call the logger "log" but that name is used quite often here.
 _log = logging.getLogger(__name__)
@@ -384,7 +384,7 @@ class ErrorLogBase(object):
     self.print_to_file(sys.stderr)
 
   def __str__(self):
-    io = StringIO.StringIO()
+    io = six.StringIO()
     self.print_to_file(io)
     return io.getvalue()
 

@@ -3,10 +3,10 @@
 import collections
 import logging
 import re
-import StringIO
 import traceback
 
 from pytype import utils
+import six
 
 
 def _ascii_tree(io, node, p1, p2, seen, get_children, get_description=None):
@@ -46,7 +46,7 @@ def ascii_tree(node, get_children, get_description=None):
   Returns:
     A string.
   """
-  io = StringIO.StringIO()
+  io = six.StringIO()
   _ascii_tree(io, node, "", "", set(), get_children, get_description)
   return io.getvalue()
 
@@ -109,7 +109,7 @@ def prettyprint_cfg_node(node, decorate_after_node=0, full=False):
   if node.id <= decorate_after_node:
     return repr(node) + " [%d bindings]" % len(node.bindings)
   if full:
-    name = lambda(x): getattr(x, "name", str(x))
+    name = lambda x: getattr(x, "name", str(x))
   else:
     name = str
   bindings = collections.defaultdict(list)
@@ -187,7 +187,7 @@ def program_to_text(program):
   """
   def label(node):
     return "<%d>%s" % (node.id, node.name)
-  s = StringIO.StringIO()
+  s = six.StringIO()
   seen = set()
   for node in utils.order_nodes(program.cfg_nodes):
     seen.add(node)
@@ -231,7 +231,7 @@ def program_to_dot(program, ignored, only_cfg=False):
       sum(len(v.bindings) for v in program.variables),
       len(program.variables)))
 
-  sb = StringIO.StringIO()
+  sb = six.StringIO()
   sb.write("digraph {\n")
   for node in program.cfg_nodes:
     if node in ignored:

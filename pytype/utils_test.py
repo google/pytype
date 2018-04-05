@@ -177,8 +177,7 @@ class UtilsTest(unittest.TestCase):
     u1 = self.prog.NewVariable([1, 2], [], self.current_location)
     u2 = self.prog.NewVariable([3, 4], [], self.current_location)
     product = utils.variable_product_dict({"a": u1, "b": u2})
-    pairs = [{k: a.data for k, a in d.iteritems()}
-             for d in product]
+    pairs = [{k: a.data for k, a in d.items()} for d in product]
     self.assertItemsEqual(pairs, [
         {"a": 1, "b": 3},
         {"a": 1, "b": 4},
@@ -380,7 +379,7 @@ class UtilsTest(unittest.TestCase):
                                  (filename3, "data3"),
                                  (filename4, "data4.1\ndata4.2"),  # dedented
                                 ]:
-        with open(filename, "rb") as fi:
+        with open(filename, "r") as fi:
           self.assertEqual(fi.read(), contents)
     self.assertFalse(os.path.isdir(d.path))
     self.assertFalse(os.path.isfile(filename1))

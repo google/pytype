@@ -139,14 +139,16 @@ def _variable_product_items(variableitems, complexity_limit):
   Yields:
     A sequence of [(key, cfg.Binding), ...] lists.
   """
-  if variableitems:
-    headkey, headvar = variableitems[0]
-    for tail in _variable_product_items(variableitems[1:], complexity_limit):
+  variableitems_iter = iter(variableitems)
+  try:
+    headkey, headvar = next(variableitems_iter)
+  except StopIteration:
+    yield []
+  else:
+    for tail in _variable_product_items(variableitems_iter, complexity_limit):
       for headvalue in headvar.bindings:
         complexity_limit.inc()
         yield [(headkey, headvalue)] + tail
-  else:
-    yield []
 
 
 class TooComplexError(Exception):
@@ -478,7 +480,7 @@ class Tempdir(object):
     if filedir:
       self.create_directory(filedir)
     path = os.path.join(self.path, filedir, filename)
-    with open(path, "wb") as fi:
+    with open(path, "w") as fi:
       if indented_data:
         fi.write(textwrap.dedent(indented_data))
     return path
@@ -550,17 +552,13 @@ def list_pytype_files(suffix):
   basedir = os.path.join(os.path.dirname(__file__), suffix)
   assert not suffix.endswith("/")
   loader = globals().get("__loader__", None)
-  if loader:
-    # List directory using __loader__
-    for filename in loader.get_zipfile().namelist():
-      directory = "pytype/" + suffix + "/"
-      try:
-        i = filename.rindex(directory)
-      except ValueError:
-        pass
-      else:
-        yield filename[i + len(directory):]
-  else:
+  try:
+    # List directory using __loader__.
+    # __loader__ exists only when this file is in a Python archive in Python 2
+    # but is always present in Python 3, so we can't use the presence or
+    # absence of the loader to determine whether calling get_zipfile is okay.
+    filenames = loader.get_zipfile().namelist()
+  except AttributeError:
     # List directory using the file system
     if not os.path.isdir(basedir):
       raise NoSuchDirectory(basedir)
@@ -573,6 +571,15 @@ def list_pytype_files(suffix):
           directories.append(filename)
         elif os.path.exists(os.path.join(basedir, filename)):
           yield filename
+  else:
+    for filename in filenames:
+      directory = "pytype/" + suffix + "/"
+      try:
+        i = filename.rindex(directory)
+      except ValueError:
+        pass
+      else:
+        yield filename[i + len(directory):]
 
 
 def path_to_module_name(filename):
@@ -620,7 +627,7 @@ def list_strip_prefix(l, prefix):
 
 def _arg_names(f):
   """Return the argument names of a function."""
-  return f.func_code.co_varnames[:f.func_code.co_argcount]
+  return f.__code__.co_varnames[:f.__code__.co_argcount]
 
 
 class memoize(object):  # pylint: disable=invalid-name
@@ -651,7 +658,7 @@ class memoize(object):  # pylint: disable=invalid-name
       return memoize(key)(f)
     else:
       key = key_or_function
-      return object.__new__(cls, key)
+      return object.__new__(cls)
 
   def __init__(self, key):
     self.key = key
@@ -661,11 +668,11 @@ class memoize(object):  # pylint: disable=invalid-name
     argnames = _arg_names(f)
     memoized = {}
     no_result = object()
-    if f.func_defaults:
-      defaults = dict(zip(argnames[-len(f.func_defaults):], f.func_defaults))
+    if f.__defaults__:
+      defaults = dict(zip(argnames[-len(f.__defaults__):], f.__defaults__))
     else:
       defaults = {}
-    pos_and_arg_tuples = zip(range(f.func_code.co_argcount), argnames)
+    pos_and_arg_tuples = list(zip(range(f.__code__.co_argcount), argnames))
     shared_dict = {}
     # TODO(kramm): Use functools.wraps or functools.update_wrapper to preserve
     # the metadata of the original function.

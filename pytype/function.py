@@ -3,6 +3,7 @@
 import collections
 
 from pytype.pytd import pytd_utils
+import six
 
 
 # Used as a key in Signature.late_annotations to indicate an annotation
@@ -46,7 +47,7 @@ class Signature(object):
     self.annotations = annotations
     self.late_annotations = late_annotations
     if postprocess_annotations:
-      for name, annot in self.annotations.iteritems():
+      for name, annot in six.iteritems(self.annotations):
         self.annotations[name] = self._postprocess_annotation(name, annot)
 
   @property
