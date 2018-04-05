@@ -26,6 +26,7 @@ from pytype import utils
 from pytype.pytd import mro
 from pytype.pytd import pytd
 from pytype.pytd.parse import parser_constants  # pylint: disable=g-importing-member
+import six
 
 
 class ContainerError(Exception):
@@ -2253,8 +2254,7 @@ class ExpandCompatibleBuiltins(Visitor):
         # want it in our union
         rmap[prefix + name].append(pytd.ClassType(full_name, t))
 
-    return {k: pytd.UnionType(tuple(v))
-            for k, v in rmap.iteritems()}
+    return {k: pytd.UnionType(tuple(v)) for k, v in six.iteritems(rmap)}
 
   def EnterParameter(self, _):
     assert not self.in_parameter
