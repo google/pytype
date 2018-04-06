@@ -139,7 +139,9 @@ class Typeshed(object):
     if self._env_home:
       raise NotImplementedError("Can't read blacklist outside ./typeshed")
     data = utils.load_pytype_file("typeshed/tests/pytype_blacklist.txt")
+    # |data| is raw byte data.
     for line in data.splitlines():
+      line = line.decode("utf-8")
       line = line[:line.find("#")].strip()
       if line:
         yield line

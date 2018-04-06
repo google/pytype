@@ -21,13 +21,13 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
   def test_get_typeshed_file(self):
     filename, data = self.ts.get_module_file("stdlib", "errno", (2, 7))
     self.assertEqual("errno.pyi", os.path.basename(filename))
-    self.assertIn("errorcode", data)
+    self.assertIn(b"errorcode", data)
 
   def test_get_typeshed_dir(self):
     filename, data = self.ts.get_module_file(
         "stdlib", "logging", (2, 7))
     self.assertEqual("__init__.pyi", os.path.basename(filename))
-    self.assertIn("LogRecord", data)
+    self.assertIn(b"LogRecord", data)
 
   def test_parse_type_definition(self):
     ast = typeshed.parse_type_definition("stdlib", "_random", (2, 7))
