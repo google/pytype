@@ -19,7 +19,7 @@ import re
 from pytype import utils
 
 
-class PreconditionError(ValueError, utils.ExceptionMessageProperty):
+class PreconditionError(ValueError):
   pass
 
 
@@ -112,7 +112,8 @@ class _OrPrecondition(_Precondition):
         return
       except PreconditionError as e:
         errors.append(e)
-    raise PreconditionError(" or ".join("(%s)" % e.message for e in errors))
+    raise PreconditionError(
+        " or ".join("(%s)" % utils.message(e) for e in errors))
 
   def allowed_types(self):
     allowed = set()
@@ -145,7 +146,7 @@ class CallChecker(object):
       try:
         condition.check(value)
       except PreconditionError as e:
-        raise PreconditionError("argument=%s: %s." % (name, e.message))
+        raise PreconditionError("argument=%s: %s." % (name, utils.message(e)))
 
   def allowed_types(self):
     """Determines the types and typenames allowed by calls to the checker.

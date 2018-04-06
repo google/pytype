@@ -16,7 +16,7 @@ _CLASS_OR_FUNC_RE = re.compile(r"^(def|class)\s")
 _ALL_ERRORS = "*"  # Wildcard for disabling all errors.
 
 
-class _DirectiveError(utils.ExceptionMessageProperty, Exception):
+class _DirectiveError(Exception):
   pass
 
 
@@ -196,7 +196,7 @@ class Director(object):
               self._process_pytype(lineno, data, open_ended)
             except _DirectiveError as e:
               self._errorlog.invalid_directive(
-                  self._filename, lineno, e.message)
+                  self._filename, lineno, utils.message(e))
           else:
             pass  # ignore comments for other tools
     if closing_bracket_lines:

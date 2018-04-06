@@ -5,6 +5,7 @@ import re
 import sys
 import textwrap
 
+from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import pytd
 import six
@@ -66,7 +67,7 @@ class _ParserTestBase(unittest.TestCase):
                           python_version=self.PYTHON_VERSION)
       self.fail("ParseError expected")
     except parser.ParseError as e:
-      six.assertRegex(self, e.message, re.escape(message))
+      six.assertRegex(self, utils.message(e), re.escape(message))
       self.assertEqual(expected_line, e.line)
 
 

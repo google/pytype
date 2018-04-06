@@ -80,7 +80,7 @@ class _ConditionScope(object):
     return self._parent
 
 
-class ParseError(Exception, utils.ExceptionMessageProperty):
+class ParseError(Exception):
 
   """Exceptions raised by the parser."""
 
@@ -106,7 +106,7 @@ class ParseError(Exception, utils.ExceptionMessageProperty):
       # Output a pointer below the error column, adjusting for stripped spaces.
       pos = indent + (self._column - 1) - (len(self._text) - len(stripped))
       lines.append("%*s^" % (pos, ""))
-    lines.append("%s: %s" % (type(self).__name__, self.message))
+    lines.append("%s: %s" % (type(self).__name__, utils.message(self)))
     return "\n".join(lines)
 
 
@@ -383,7 +383,7 @@ class _Parser(object):
           text = src.splitlines()[line-1]
         except IndexError:
           text = None
-        raise ParseError(e.message, line=line, filename=self._filename,
+        raise ParseError(utils.message(e), line=line, filename=self._filename,
                          column=self._error_location[1], text=text)
       else:
         raise e
@@ -507,7 +507,7 @@ class _Parser(object):
       try:
         actual = self._version[key]
       except IndexError as e:
-        raise ParseError(e.args[0] if e.args else "")
+        raise ParseError(utils.message(e))
       if isinstance(key, slice):
         actual = _three_tuple(actual)
         value = _three_tuple(value)
@@ -815,7 +815,7 @@ class _Parser(object):
       try:
         signature = signature.Visit(mutator)
       except NotImplementedError as e:
-        raise ParseError(e.message)
+        raise ParseError(utils.message(e))
       if not mutator.successful:
         raise ParseError("No parameter named %s" % mutator.name)
 

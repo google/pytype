@@ -27,19 +27,22 @@ import types
 DEEP_VARIABLE_LIMIT = 1024
 
 
-class ExceptionMessageProperty(object):
-  """A convenience mixin which provides a 'message' property.
+def message(error):
+  """A convenience function which extracts a message from an exception.
 
-  Python3 exceptions do not have the 'message' attribute. This mixin
+  Python3 exceptions do not have the 'message' attribute. This function
   tries to fill in that gap.
+
+  Args:
+    error: The exception.
+
+  Returns:
+    A message string.
   """
-
-  @property
-  def message(self):
-    return self.args[0] if self.args else ""
+  return error.args[0] if error.args else ""
 
 
-class UsageError(ExceptionMessageProperty, Exception):
+class UsageError(Exception):
   """Raise this for top-level usage errors."""
   pass
 
