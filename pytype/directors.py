@@ -6,6 +6,7 @@ import re
 import sys
 import tokenize
 
+from pytype import utils
 from six import moves
 
 _DIRECTIVE_RE = re.compile(r"#\s*(pytype|type)\s*:\s([^#]*)")
@@ -15,7 +16,7 @@ _CLASS_OR_FUNC_RE = re.compile(r"^(def|class)\s")
 _ALL_ERRORS = "*"  # Wildcard for disabling all errors.
 
 
-class _DirectiveError(Exception):
+class _DirectiveError(utils.ExceptionMessageProperty, Exception):
   pass
 
 
@@ -280,7 +281,7 @@ class Director(object):
     if error.filename != self._filename or error.lineno is None:
       return True
     # Treat lineno=0 as below the file, so we can filter it.
-    lineno = error.lineno or sys.maxint
+    lineno = error.lineno or sys.maxsize
     # Report the error if it isn't subject to any ignore or disable.
     return (lineno not in self._ignore and
             lineno not in self._disables[_ALL_ERRORS] and
