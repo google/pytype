@@ -80,7 +80,7 @@ class _ConditionScope(object):
     return self._parent
 
 
-class ParseError(Exception):
+class ParseError(Exception, utils.ExceptionMessageProperty):
 
   """Exceptions raised by the parser."""
 
@@ -507,7 +507,7 @@ class _Parser(object):
       try:
         actual = self._version[key]
       except IndexError as e:
-        raise ParseError(e.message)
+        raise ParseError(e.args[0] if e.args else "")
       if isinstance(key, slice):
         actual = _three_tuple(actual)
         value = _three_tuple(value)

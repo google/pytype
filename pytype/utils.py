@@ -27,7 +27,19 @@ import types
 DEEP_VARIABLE_LIMIT = 1024
 
 
-class UsageError(Exception):
+class ExceptionMessageProperty(object):
+  """A convenience mixin which provides a 'message' property.
+
+  Python3 exceptions do not have the 'message' attribute. This mixin
+  tries to fill in that gap.
+  """
+
+  @property
+  def message(self):
+    return self.args[0] if self.args else ""
+
+
+class UsageError(ExceptionMessageProperty, Exception):
   """Raise this for top-level usage errors."""
   pass
 

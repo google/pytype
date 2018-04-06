@@ -7,6 +7,7 @@ import textwrap
 
 from pytype.pyi import parser
 from pytype.pytd import pytd
+import six
 
 import unittest
 
@@ -65,7 +66,7 @@ class _ParserTestBase(unittest.TestCase):
                           python_version=self.PYTHON_VERSION)
       self.fail("ParseError expected")
     except parser.ParseError as e:
-      self.assertRegexpMatches(e.message, re.escape(message))
+      six.assertRegex(self, e.message, re.escape(message))
       self.assertEqual(expected_line, e.line)
 
 
@@ -237,7 +238,7 @@ class ParserTest(_ParserTestBase):
     self.check("from foo.bar import baz as abc")
     self.check("from typing import NamedTuple, TypeVar", "")
     self.check("from foo.bar import *")
-    self.check_error("from foo import * as bar", 1, "")
+    self.check_error("from foo import * as bar", 1, "syntax error")
     self.check("from foo import a, b",
                "from foo import a\nfrom foo import b")
     self.check("from foo import (a, b)",
@@ -398,10 +399,10 @@ class ParserTest(_ParserTestBase):
     # If the name is not specified, it is a digest of the source.
     src = ""
     ast = self.check(src)
-    self.assertEqual(hashlib.md5(src).hexdigest(), ast.name)
+    self.assertEqual(hashlib.md5(src.encode()).hexdigest(), ast.name)
     src = "x = ...  # type: int"
     ast = self.check(src)
-    self.assertEqual(hashlib.md5(src).hexdigest(), ast.name)
+    self.assertEqual(hashlib.md5(src.encode()).hexdigest(), ast.name)
 
   def test_pep84_aliasing(self):
     # This should not be done for the typing module itself.
@@ -1748,9 +1749,11 @@ class MemoryLeakTest(unittest.TestCase):
       try:
         parser.parse_string(src, python_version=self.PYTHON_VERSION)
       except parser.ParseError:
-        # It is essential to clear the error, otherwise the system exc_info
-        # will hold references to lots of stuff hanging off the exception.
-        sys.exc_clear()
+        if six.PY2:
+          # It is essential to clear the error, otherwise the system exc_info
+          # will hold references to lots of stuff hanging off the exception.
+          # This happens only in Python2.
+          sys.exc_clear()
 
     # Sometimes parsing has side effects that are long-lived (lazy
     # initialization of shared instances, etc).  In order to prevent these
