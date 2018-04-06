@@ -167,7 +167,7 @@ class PreprocessReverseOperatorsVisitor(visitors.Visitor):
   def _MatchSignature(self, sig1, sig2):
     return (len(sig1.params) == len(sig2.params) and
             all(self.Match(p1.type, p2.type)
-                for p1, p2 in zip(sig1.params, sig2.params)[1:]))
+                for p1, p2 in list(zip(sig1.params, sig2.params))[1:]))
 
   def VisitClass(self, cls):
     """Modify the methods of a class.
