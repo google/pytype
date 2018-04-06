@@ -79,7 +79,7 @@ class LexerTest(unittest.TestCase):
     text = textwrap.dedent(text)
     actual = map(convert_token, parser_ext.tokenize(text))
     if expected is not None:
-      self.assertEqual(map(convert_expected, expected), actual)
+      self.assertListEqual(list(map(convert_expected, expected)), list(actual))
 
   def test_punctuation(self):
     punctuation = "@*:,.=?<>().[]"
