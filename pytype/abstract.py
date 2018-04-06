@@ -3502,7 +3502,12 @@ class BoundFunction(AtomicAbstractValue):
       callself = self._callself.data[0].name
     else:
       callself = "<class>"
-    return callself + "." + repr(self.underlying)
+    underlying = repr(self.underlying)
+    assert underlying.endswith("(...)")
+    if underlying.count(".") > 3:
+      # Replace the parent name with the callself.
+      underlying = underlying.split(".", 1)[-1]
+    return callself + "." + underlying
 
 
 class BoundInterpreterFunction(BoundFunction):
