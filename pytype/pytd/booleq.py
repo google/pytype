@@ -224,6 +224,12 @@ class _Eq(BooleanTerm):
     return ((self.left, self.right),)
 
 
+def _expr_set_hash(expr_set):
+  # We sort the hash of individual expressions so that two equal sets
+  # have the same hash value.
+  return hash(tuple(sorted(hash(e) for e in expr_set)))
+
+
 class _And(BooleanTerm):
   """A conjunction of equalities and disjunctions.
 
@@ -251,6 +257,9 @@ class _And(BooleanTerm):
 
   def __str__(self):
     return "(" + " & ".join(str(t) for t in self.exprs) + ")"
+
+  def __hash__(self):
+    return _expr_set_hash(self.exprs)
 
   def simplify(self, assignments):
     return simplify_exprs((e.simplify(assignments) for e in self.exprs), _And,
@@ -299,6 +308,9 @@ class _Or(BooleanTerm):
 
   def __str__(self):
     return "(" + " | ".join(str(t) for t in self.exprs) + ")"
+
+  def __hash__(self):
+    return _expr_set_hash(self.exprs)
 
   def simplify(self, assignments):
     return simplify_exprs((e.simplify(assignments) for e in self.exprs), _Or,

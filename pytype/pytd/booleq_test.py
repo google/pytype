@@ -15,9 +15,12 @@
 
 """Tests for booleq.py."""
 
-import unittest
+from __future__ import print_function
 
+import unittest
 from pytype.pytd import booleq
+import six
+
 
 # pylint: disable=invalid-name
 And = booleq.And
@@ -85,25 +88,25 @@ class TestBoolEq(unittest.TestCase):
               "y": {"0", "1"}}
     # x == 0 || x == 1
     equation = Or([Eq("x", "0"), Eq("x", "1")])
-    self.assertItemsEqual(["0", "1"], equation.extract_pivots(values)["x"])
+    six.assertCountEqual(self, ["0", "1"], equation.extract_pivots(values)["x"])
 
     # x == 0 && x == 0
     equation = And([Eq("x", "0"), Eq("x", "0")])
-    self.assertItemsEqual(["0"], equation.extract_pivots(values)["x"])
+    six.assertCountEqual(self, ["0"], equation.extract_pivots(values)["x"])
 
     # x == 0 && (x == 0 || x == 1)
     equation = And([Eq("x", "0"), Or([Eq("x", "0"), Eq("x", "1")])])
-    self.assertItemsEqual(["0"], equation.extract_pivots(values)["x"])
+    six.assertCountEqual(self, ["0"], equation.extract_pivots(values)["x"])
 
     # x == 0 || x == 0
     equation = And([Eq("x", "0"), Eq("x", "0")])
-    self.assertItemsEqual(["0"], equation.extract_pivots(values)["x"])
+    six.assertCountEqual(self, ["0"], equation.extract_pivots(values)["x"])
 
     # x == 0 || y == 0
     equation = Or([Eq("x", "0"), Eq("y", "0")])
     pivots = equation.extract_pivots(values)
-    self.assertItemsEqual(["0"], pivots["x"])
-    self.assertItemsEqual(["0"], pivots["y"])
+    six.assertCountEqual(self, ["0"], pivots["x"])
+    six.assertCountEqual(self, ["0"], pivots["y"])
 
   def testSimplify(self):
     # x == 0 || x == 1  with x in {0}
@@ -156,11 +159,11 @@ class TestBoolEq(unittest.TestCase):
     for unknown, possible_types in sorted(mapping.items()):
       assert isinstance(possible_types, (set, frozenset))
       if len(possible_types) > cutoff:
-        print "%s can be   %s, ... (total: %d)" % (
+        print("%s can be   %s, ... (total: %d)" % (
             unknown, ", ".join(sorted(possible_types)[0:cutoff]),
-            len(possible_types))
+            len(possible_types)))
       else:
-        print "%s can be %s" % (unknown, ", ".join(sorted(possible_types)))
+        print("%s can be %s" % (unknown, ", ".join(sorted(possible_types))))
 
   def testGetFalseFirstApproximation(self):
     solver = self._MakeSolver(["x"])
@@ -258,7 +261,7 @@ class TestBoolEq(unittest.TestCase):
     solver.implies(Eq("y", "d"), FALSE)
     solver.implies(Eq("y", "e"), FALSE)
     m = solver.solve()
-    self.assertItemsEqual(m["z"], {"a", "b"})
+    six.assertCountEqual(self, m["z"], {"a", "b"})
 
   def testConjunction(self):
     solver = booleq.Solver()
@@ -275,10 +278,10 @@ class TestBoolEq(unittest.TestCase):
     solver.implies(Eq("w", "1"), TRUE)
     solver.implies(Eq("w", "4"), TRUE)
     m = solver.solve()
-    self.assertItemsEqual(m["x"], {"1"})
-    self.assertItemsEqual(m["y"], {"2"})
-    self.assertItemsEqual(m["z"], {"3"})
-    self.assertItemsEqual(m["z.T"], {"1"})
+    six.assertCountEqual(self, m["x"], {"1"})
+    six.assertCountEqual(self, m["y"], {"2"})
+    six.assertCountEqual(self, m["z"], {"3"})
+    six.assertCountEqual(self, m["z.T"], {"1"})
     self.assertIn("1", m["y.T"])
     self.assertNotIn("4", m["y.T"])
 
