@@ -59,7 +59,7 @@ def main():
   try:
     utils.validate_version(python_version)
   except utils.UsageError as e:
-    sys.stderr.write("Usage error: %s\n" % e.message)
+    sys.stderr.write("Usage error: %s\n" % utils.message(e))
     sys.exit(1)
 
   if len(filenames) == 1:
