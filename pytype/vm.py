@@ -1603,6 +1603,15 @@ class VirtualMachine(object):
     state = state.forward_cfg_node()
     return state
 
+  def byte_LOAD_CLASSDEREF(self, state, op):
+    """Retrieves a value out of either locals or a closure cell."""
+    name = self.get_closure_var_name(op.arg)
+    try:
+      state, val = self.load_local(state, name)
+      return state.push(val)
+    except KeyError:
+      return self.load_closure_cell(state, op)
+
   def byte_LOAD_LOCALS(self, state, op):
     log.debug("Returning locals: %r", self.frame.f_locals)
     locals_dict = self.frame.f_locals.to_variable(self.root_cfg_node)

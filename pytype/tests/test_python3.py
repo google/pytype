@@ -237,6 +237,16 @@ class TestPython3(test_base.BaseTest):
       h({}.values())
     """)
 
+  def test_load_classderef(self):
+    """Exercises the LOAD_CLASSDEREF opcode."""
+    self.Check("""
+      class A(object):
+        def foo(self):
+          x = 10
+          class B(object):
+            y = str(x)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
