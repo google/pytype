@@ -1,11 +1,11 @@
 """Test errors.py."""
 
-import cStringIO
 import math
 import tempfile
 import time
 
 from pytype import metrics
+from six import moves
 import yaml
 
 import unittest
@@ -62,21 +62,21 @@ class MetricsTest(unittest.TestCase):
     # Create a counter, increment it, and dump it.
     c1 = metrics.Counter("foo")
     c1.inc(1)
-    dump = yaml.dump([c1])
+    dump = yaml.dump([c1], encoding=None)
     # Reset metrics, merge from dump, which will create a new metric.
     metrics._prepare_for_test()
     self.assertEqual(0, len(metrics._registered_metrics))
-    metrics.merge_from_file(cStringIO.StringIO(dump))
+    metrics.merge_from_file(moves.cStringIO(dump))
     m = metrics._registered_metrics["foo"]
     self.assertEqual(1, m._total)
     # Merge again, this time it will merge data into the existing metric.
-    metrics.merge_from_file(cStringIO.StringIO(dump))
+    metrics.merge_from_file(moves.cStringIO(dump))
     self.assertEqual(2, m._total)
     # It's an error to merge an incompatible type.
     metrics._prepare_for_test()
     _ = metrics.MapCounter("foo")
     self.assertRaises(TypeError, metrics.merge_from_file,
-                      cStringIO.StringIO(dump))
+                      moves.cStringIO(dump))
 
   def test_get_metric(self):
     c1 = metrics.get_metric("foo", metrics.Counter)

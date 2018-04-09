@@ -366,4 +366,4 @@ class MetricsContext(object):
     _enabled = self._old_enabled
     if self._output_path:
       with open(self._output_path, "w") as f:
-        yaml.dump(_registered_metrics.values(), f)
+        yaml.dump(list(_registered_metrics.values()), f)
