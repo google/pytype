@@ -8,6 +8,7 @@ import textwrap
 
 
 from pytype import analyze
+from pytype import compat
 from pytype import config
 from pytype import debug
 from pytype import directors
@@ -408,13 +409,13 @@ class BaseTest(unittest.TestCase):
     # (In other words, display a change from "working" to "broken")
     self.assertMultiLineEqual(pytd_tree_src, ty_src)
 
-  def make_code(self, byte_array, name="testcode"):
+  def make_code(self, int_array, name="testcode"):
     """Utility method for creating CodeType objects."""
     return loadmarshal.CodeType(
         argcount=0, kwonlyargcount=0, nlocals=2, stacksize=2, flags=0,
         consts=[None, 1, 2], names=[], varnames=["x", "y"], filename="",
         name=name, firstlineno=1, lnotab=[], freevars=[], cellvars=[],
-        code="".join(chr(c) for c in byte_array),
+        code=compat.int_array_to_bytes(int_array),
         python_version=self.PYTHON_VERSION)
 
 

@@ -14,7 +14,6 @@ import textwrap
 import threading
 import types
 
-
 # Limit on how many argument combinations we allow before aborting.
 # For a sample of 16664 (sane) source files without imports, these are the
 # quantiles that were below the given number of argument combinations:
@@ -30,8 +29,8 @@ DEEP_VARIABLE_LIMIT = 1024
 def message(error):
   """A convenience function which extracts a message from an exception.
 
-  Python3 exceptions do not have the 'message' attribute. This function
-  tries to fill in that gap.
+  Use this to replace exception.message, which is deprecated in python2 and
+  removed in python3.
 
   Args:
     error: The exception.
