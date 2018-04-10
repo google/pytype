@@ -2256,10 +2256,10 @@ class Class(object):
   __metaclass__ = MixinMeta
   overloads = ("get_special_attribute", "get_own_new")
 
-  def __new__(cls, *args, **kwds):
+  def __new__(cls, *unused_args, **unused_kwds):
     """Prevent direct instantiation."""
     assert cls is not Class, "Cannot instantiate Class"
-    return object.__new__(cls, *args, **kwds)
+    return object.__new__(cls)
 
   def init_mixin(self, metaclass):
     """Mix-in equivalent of __init__."""

@@ -12,6 +12,7 @@ Details of the format may change between Python versions.
 import struct
 import sys
 
+from pytype import compat
 import six
 import six.moves
 
@@ -73,12 +74,6 @@ REF = 0x80
 
 class _NULL(object):
   """Used internally, e.g. as a sentinel in dictionary entry lists."""
-  pass
-
-
-# bytes and str are the same class in Python 2, and different classes in
-# Python 3, so we need a way to mark Python 3 bytestrings.
-class BytesPy3(bytes):
   pass
 
 
@@ -286,7 +281,7 @@ class _LoadMarshal(object):
     if self.python_version[0] >= 3:
       # load_string() loads a bytestring, and in Python 3, str and bytes are
       # different classes.
-      s = BytesPy3(s)
+      s = compat.BytesType(s)
     return s
 
   def load_interned(self):

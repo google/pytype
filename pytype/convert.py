@@ -6,6 +6,7 @@ import types
 
 from pytype import abstract
 from pytype import blocks
+from pytype import compat
 from pytype import output
 from pytype import special_builtins
 from pytype import typing
@@ -49,49 +50,52 @@ class Converter(object):
     self.object_type = self.constant_to_value(object)
 
     if self.vm.python_version[0] < 3:
-      version_specific = [unicode]
+      # Under host python3 this will return str, which will get deduped.
+      version_specific = [compat.UnicodeType]
     else:
-      version_specific = [loadmarshal.BytesPy3]
+      # Under host python2 this will return str, which will get deduped.
+      version_specific = [compat.BytesType]
 
     # Now fill primitive_classes with the real values using constant_to_value.
     self.primitive_classes = {v: self.constant_to_value(v)
                               for v in [
                                   int, float, str, object,
-                                  types.NoneType, complex, bool, slice,
-                                  types.CodeType, types.EllipsisType,
-                                  types.ClassType, super] + version_specific}
+                                  compat.NoneType, complex, bool, slice,
+                                  types.CodeType, compat.EllipsisType,
+                                  compat.OldStyleClassType, super
+                              ] + version_specific}
     self.primitive_class_names = [
         x.__module__ + "." + x.__name__ for x in self.primitive_classes]
     self.none = abstract.AbstractOrConcreteValue(
-        None, self.primitive_classes[types.NoneType], self.vm)
+        None, self.primitive_classes[compat.NoneType], self.vm)
     self.true = abstract.AbstractOrConcreteValue(
         True, self.primitive_classes[bool], self.vm)
     self.false = abstract.AbstractOrConcreteValue(
         False, self.primitive_classes[bool], self.vm)
     self.ellipsis = abstract.AbstractOrConcreteValue(
-        Ellipsis, self.primitive_classes[types.EllipsisType], self.vm)
+        Ellipsis, self.primitive_classes[compat.EllipsisType], self.vm)
 
     self.primitive_class_instances = {}
     for name, cls in self.primitive_classes.items():
-      if name == types.NoneType:
+      if name == compat.NoneType:
         # This is possible because all None instances are the same.
         # Without it pytype could not reason that "x is None" is always true, if
         # x is indeed None.
         instance = self.none
-      elif name == types.EllipsisType:
+      elif name == compat.EllipsisType:
         instance = self.ellipsis
       else:
         instance = abstract.Instance(cls, self.vm)
       self.primitive_class_instances[name] = instance
       self._convert_cache[(abstract.Instance, cls.pytd_cls)] = instance
 
-    self.none_type = self.primitive_classes[types.NoneType]
-    self.oldstyleclass_type = self.primitive_classes[types.ClassType]
+    self.none_type = self.primitive_classes[compat.NoneType]
+    self.oldstyleclass_type = self.primitive_classes[compat.OldStyleClassType]
     self.super_type = self.primitive_classes[super]
     self.str_type = self.primitive_classes[str]
     self.int_type = self.primitive_classes[int]
     if self.vm.python_version[0] < 3:
-      self.unicode_type = self.primitive_classes[unicode]
+      self.unicode_type = self.primitive_classes[compat.UnicodeType]
     else:
       self.unicode_type = self.str_type
 
@@ -107,11 +111,7 @@ class Converter(object):
     self.function_type = self.constant_to_value(types.FunctionType)
     self.tuple_type = self.constant_to_value(tuple)
     self.generator_type = self.constant_to_value(types.GeneratorType)
-    # TODO(dbaum): There isn't a types.IteratorType.  This can probably be
-    # based on typing.Iterator, but that will also require changes to
-    # convert.py since that assumes all types can be looked up in
-    # __builtin__.
-    self.iterator_type = self.constant_to_value(types.ObjectType)
+    self.iterator_type = self.constant_to_value(compat.IteratorType)
     self.bool_values = {
         True: self.true,
         False: self.false,
@@ -497,10 +497,12 @@ class Converter(object):
       TypeParameterError: If we can't find a substitution for a type parameter.
     """
     if pyval.__class__ is str:
-      # We use a subclass of str, loadmarshal.BytesPy3, to mark Python 3
+      # We use a subclass of str, compat.BytesPy3, to mark Python 3
       # bytestrings, which are converted to abstract bytes instances.
+      # compat.BytesType dispatches to this when appropriate.
       return abstract.AbstractOrConcreteValue(pyval, self.str_type, self.vm)
-    elif self.vm.python_version[0] < 3 and isinstance(pyval, unicode):
+    elif (self.vm.python_version[0] < 3 and
+          isinstance(pyval, compat.UnicodeType)):
       return abstract.AbstractOrConcreteValue(pyval, self.unicode_type, self.vm)
     elif isinstance(pyval, bool):
       return self.true if pyval is True else self.false
@@ -508,7 +510,7 @@ class Converter(object):
       # For small integers, preserve the actual value (for things like the
       # level in IMPORT_NAME).
       return abstract.AbstractOrConcreteValue(pyval, self.int_type, self.vm)
-    elif isinstance(pyval, long):
+    elif isinstance(pyval, compat.LongType):
       # long is aliased to int
       return self.primitive_class_instances[int]
     elif pyval.__class__ in self.primitive_classes:
@@ -523,8 +525,12 @@ class Converter(object):
     elif pyval.__class__ is type:
       if pyval is types.FunctionType:
         classname = "typing.Callable"
-      elif pyval is loadmarshal.BytesPy3:
+      elif pyval is compat.BytesType:
         classname = "__builtin__.bytes"
+      elif pyval is compat.OldStyleClassType:
+        classname = "__builtin__.classobj"
+      elif pyval is compat.IteratorType:
+        classname = "__builtin__.object"
       else:
         classname = "__builtin__." + pyval.__name__
       try:
@@ -697,11 +703,11 @@ class Converter(object):
         return self.unsolvable
       if isinstance(pyval, pytd.TupleType):
         abstract_class = abstract.TupleClass
-        template = range(len(pyval.parameters)) + [abstract.T]
+        template = list(range(len(pyval.parameters))) + [abstract.T]
         parameters = pyval.parameters + (pytd.UnionType(pyval.parameters),)
       elif isinstance(pyval, pytd.CallableType):
         abstract_class = abstract.Callable
-        template = range(len(pyval.args)) + [abstract.ARGS, abstract.RET]
+        template = list(range(len(pyval.args))) + [abstract.ARGS, abstract.RET]
         parameters = pyval.args + (pytd_utils.JoinTypes(pyval.args), pyval.ret)
       else:
         abstract_class = abstract.ParameterizedClass

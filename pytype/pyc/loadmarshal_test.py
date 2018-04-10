@@ -3,6 +3,7 @@
 import sys
 
 
+from pytype import compat
 from pytype.pyc import loadmarshal
 import unittest
 
@@ -72,7 +73,7 @@ class TestLoadMarshal(unittest.TestCase):
   def test_load_string(self):
     self.assertStrictEqual(self.load(b's\4\0\0\0test', (2, 7)), b'test')
     self.assertStrictEqual(self.load(b's\4\0\0\0test', (3, 6)),
-                           loadmarshal.BytesPy3(b'test'))
+                           compat.BytesType(b'test'))
 
   def test_load_interned(self):
     self.assertStrictEqual(self.load(b't\4\0\0\0test'), 'test')

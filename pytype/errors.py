@@ -1,5 +1,7 @@
 """Code and data structures for storing and displaying errors."""
 
+from __future__ import print_function
+
 import collections
 import csv
 import logging
@@ -344,7 +346,7 @@ class ErrorLogBase(object):
 
   def print_to_file(self, fi):
     for error in self.unique_sorted_errors():
-      print >> fi, error
+      print(error, file=fi)
 
   def unique_sorted_errors(self):
     """Gets the unique errors in this log, sorted on filename and lineno."""
