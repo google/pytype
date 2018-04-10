@@ -126,7 +126,50 @@ class DebugTest(unittest.TestCase):
     v = self.prog.NewVariable()
     _ = v.AddBinding("bar", (b1,), n1)
     s = debug.prettyprint_cfg_tree(n1)
-    assert isinstance(s, str)
+    assert isinstance(s, str)  # smoke test
+
+  def testPrettyPrintBindingSet(self):
+    v = self.prog.NewVariable()
+    b1 = v.AddBinding("x", [], self.current_location)
+    b2 = v.AddBinding("y", [], self.current_location)
+    # smoke test
+    assert isinstance(debug.prettyprint_binding_set({b1, b2}), str)
+
+  def testPrettyPrintBindingNested(self):
+    v1 = self.prog.NewVariable()
+    b1 = v1.AddBinding("x", [], self.current_location)
+    v2 = self.prog.NewVariable()
+    b2 = v2.AddBinding("y", {b1}, self.current_location)
+    assert isinstance(debug.prettyprint_binding_nested(b2), str)  # smoke test
+
+  def testProgramToText(self):
+    v1 = self.prog.NewVariable()
+    b = v1.AddBinding("x", [], self.current_location)
+    n = self.current_location.ConnectNew()
+    v2 = self.prog.NewVariable()
+    v2.AddBinding("y", {b}, n)
+    assert isinstance(debug.program_to_text(self.prog), str)  # smoke test
+
+  def testProgramToDot(self):
+    v1 = self.prog.NewVariable()
+    b = v1.AddBinding("x", [], self.current_location)
+    n = self.current_location.ConnectNew()
+    v2 = self.prog.NewVariable()
+    v2.AddBinding("y", {b}, n)
+    # smoke test
+    assert isinstance(debug.program_to_dot(self.prog, ignored=()), str)
+
+  def testRootCauseVisible(self):
+    v = self.prog.NewVariable()
+    b = v.AddBinding("x", [], self.current_location)
+    self.assertEqual(debug.root_cause(b, self.current_location), (None, None))
+
+  def testRootCauseNotVisible(self):
+    v = self.prog.NewVariable()
+    b = v.AddBinding("x", [], self.current_location)
+    n = self.current_location.ConnectNew()
+    v.AddBinding("y", [], n)
+    self.assertEqual(debug.root_cause(b, n), (b, n))
 
 
 if __name__ == "__main__":
