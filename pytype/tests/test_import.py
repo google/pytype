@@ -225,7 +225,7 @@ class ImportTest(test_base.BaseTest):
       def f():
         return sys.stderr
       def g():
-        return sys.maxint
+        return sys.maxsize
       def h():
         return sys.getrecursionlimit()
     """, report_errors=False)

@@ -131,7 +131,7 @@ class VirtualMachine(object):
                analyze_annotated=False,
                store_all_calls=False):
     """Construct a TypegraphVirtualMachine."""
-    self.maximum_depth = sys.maxint
+    self.maximum_depth = sys.maxsize
     self.errorlog = errorlog
     self.options = options
     self.python_version = options.python_version
@@ -656,7 +656,7 @@ class VirtualMachine(object):
     self.director = director
     self.filename = filename
 
-    self.maximum_depth = sys.maxint if maximum_depth is None else maximum_depth
+    self.maximum_depth = sys.maxsize if maximum_depth is None else maximum_depth
 
     code = self.compile_src(src, filename=filename)
     visitor = _FindIgnoredTypeComments(self.director.type_comments)
