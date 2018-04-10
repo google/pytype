@@ -930,7 +930,6 @@ class AttributeError(StandardError):
     pass
 
 class BaseException(object):
-    message = ...  # type: str
     def __init__(self, ...) -> NoneType
     def __getitem__(self, i: int) -> ?
     def __getslice__(self, i: int, j: int) -> tuple

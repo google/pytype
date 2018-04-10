@@ -471,6 +471,11 @@ class TestPython36(test_base.BaseTest):
          (11, "invalid-super-call",
           r".*Missing __class__ closure.*")])
 
+  def test_exception_message(self):
+    # This attribute was removed in Python 3.
+    errors = self.CheckWithErrors("ValueError().message")
+    self.assertErrorLogIs(errors, [(1, "attribute-error")])
+
 
 if __name__ == "__main__":
   test_base.main()
