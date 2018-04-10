@@ -177,8 +177,8 @@ def GetAllSubClasses(ast):
   return utils.invert_dict(hierarchy)
 
 
-def Print(ast):
-  return ast.Visit(visitors.PrintVisitor())
+def Print(ast, multiline_args=False):
+  return ast.Visit(visitors.PrintVisitor(multiline_args))
 
 
 def CreateModule(name="<empty>", **kwargs):
@@ -412,12 +412,12 @@ def WrapsDict(member_name, writable=False, implement_len=False):
   return namespace["WrapsDict"]  # pytype: disable=key-error
 
 
-def canonical_pyi(pyi, python_version):
+def canonical_pyi(pyi, python_version, multiline_args=False):
   ast = parser.parse_string(pyi, python_version=python_version)
   ast = ast.Visit(visitors.ClassTypeToNamedType())
   ast = ast.Visit(visitors.CanonicalOrderingVisitor(sort_signatures=True))
   ast.Visit(visitors.VerifyVisitor())
-  return pytd.Print(ast)
+  return Print(ast, multiline_args)
 
 
 def GetPredefinedFile(pytd_subdir, module, extension=".pytd",

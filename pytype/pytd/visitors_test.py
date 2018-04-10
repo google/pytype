@@ -1012,6 +1012,22 @@ class TestVisitors(parser_test_base.ParserTest):
 
       def f() -> NoReturn: ..."""))
 
+  def testPrintMultilineSignature(self):
+    src = textwrap.dedent("""
+      def f(x: int, y: str, z: bool) -> list[str]:
+        pass
+    """)
+    self.assertMultiLineEqual(
+        pytd.Print(self.Parse(src), multiline_args=True),
+        textwrap.dedent("""\
+           from typing import List
+
+           def f(
+               x: int,
+               y: str,
+               z: bool
+           ) -> List[str]: ..."""))
+
   def testRenameBuiltinsPrefix(self):
     """builtins.foo should get rewritten to __builtin__.foo and then to foo."""
     src = textwrap.dedent("""

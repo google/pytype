@@ -217,7 +217,7 @@ class PrintVisitor(Visitor):
   _RESERVED = frozenset(parser_constants.RESERVED +
                         parser_constants.RESERVED_PYTHON)
 
-  def __init__(self):
+  def __init__(self, multiline_args=False):
     super(PrintVisitor, self).__init__()
     self.class_names = []  # allow nested classes
     self.imports = collections.defaultdict(set)
@@ -226,6 +226,7 @@ class PrintVisitor(Visitor):
     self._local_names = set()
     self._class_members = set()
     self._typing_import_counts = collections.defaultdict(int)
+    self.multiline_args = multiline_args
 
   def _EscapedName(self, name):
     """Name, possibly escaped with backticks.
@@ -492,8 +493,15 @@ class PrintVisitor(Visitor):
     if not body:
       body.append(" ...")
 
-    return "({params}){ret}:{body}".format(
-        params=", ".join(params), ret=ret, body="".join(body))
+    if self.multiline_args:
+      indent = "\n" + self.INDENT
+      params = ",".join([indent + p for p in params])
+      return "({params}\n){ret}:{body}".format(
+          params=params, ret=ret, body="".join(body))
+    else:
+      params = ", ".join(params)
+      return "({params}){ret}:{body}".format(
+          params=params, ret=ret, body="".join(body))
 
   def EnterParameter(self, unused_node):
     assert not self.in_parameter

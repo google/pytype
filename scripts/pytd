@@ -48,6 +48,10 @@ def parse_options(args):
       "-V", "--python_version", type="string", action="store",
       dest="python_version", default="2.7",
       help=("Python version to target (\"major.minor\", e.g. \"2.7\")"))
+  o.add_option(
+      "--multiline-args", action="store_true",
+      dest="multiline_args", default=False,
+      help="Print function arguments one to a line.")
   options, filenames = o.parse_args(args)
   return options, filenames
 
@@ -89,7 +93,7 @@ def main():
                                can_do_lookup=False)
 
   if filename_out is not None:
-    out_text = pytd.Print(parsed)
+    out_text = pytd.Print(parsed, options.multiline_args)
     if filename_out == "-":
       sys.stdout.write(out_text)
     else:

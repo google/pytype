@@ -557,11 +557,11 @@ TYPE = (NamedType, ClassType, AnythingType, UnionType, NothingType,
 GENERIC_BASE_TYPE = (NamedType, ClassType)
 
 
-def Print(n):
+def Print(n, multiline_args=False):
   """Convert a PYTD node to a string."""
   # TODO(kramm): fix circular import
   from pytype.pytd import pytd_utils  # pylint: disable=g-import-not-at-top
-  return pytd_utils.Print(n)
+  return pytd_utils.Print(n, multiline_args)
 
 
 def IsContainer(t):
