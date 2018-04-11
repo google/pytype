@@ -79,7 +79,7 @@ class Signature(object):
     c = collections.Counter()
     for annot in self.annotations.values():
       c.update(annot.vm.annotations_util.get_type_parameters(annot))
-    for param, count in c.iteritems():
+    for param, count in six.iteritems(c):
       if count == 1 and not (param.constraints or param.bound or
                              param.covariant or param.contravariant):
         param.vm.errorlog.invalid_annotation(

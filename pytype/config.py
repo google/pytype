@@ -14,6 +14,8 @@ from pytype import imports_map_loader
 from pytype import load_pytd
 from pytype import utils
 
+import six
+
 
 LOG_LEVELS = [logging.CRITICAL, logging.ERROR, logging.WARNING,
               logging.INFO, logging.DEBUG, logging.DEBUG - 1]
@@ -273,7 +275,7 @@ class Options(object):
 
   def __repr__(self):
     return "\n".join(["%s: %r" % (k, v)
-                      for k, v in sorted(self.__dict__.iteritems())
+                      for k, v in sorted(six.iteritems(self.__dict__))
                       if not k.startswith("_")])
 
   @uses(["output"])

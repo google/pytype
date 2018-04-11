@@ -1,6 +1,7 @@
 """Opcode definitions for both Python 2 and Python 3."""
 
 import six
+import six.moves
 
 # We define all-uppercase classes, to match their opcode names:
 # pylint: disable=invalid-name
@@ -1199,7 +1200,7 @@ def _wordcode_reader(data, mapping):
   extended_arg = 0
   start = 0
   byte_at = lambda i: six.indexbytes(data, i)
-  for pos in xrange(0, len(data), 2):
+  for pos in six.moves.xrange(0, len(data), 2):
     opcode = byte_at(pos)
     cls = mapping[opcode]
     if cls is EXTENDED_ARG:

@@ -202,7 +202,7 @@ class Director(object):
     if closing_bracket_lines:
       self._adjust_type_comments(closing_bracket_lines, whitespace_lines)
     if defs_start is not None:
-      disables = self._disables.items()
+      disables = list(self._disables.items())
       # Add "# type: ignore" to the list of disables that we check.
       disables.append(("Type checking", self._ignore))
       for name, lineset in disables:

@@ -13,6 +13,7 @@ import itertools
 import logging
 
 
+from pytype import compat
 from pytype import function
 from pytype import utils
 from pytype.pyc import loadmarshal
@@ -232,9 +233,9 @@ class AtomicAbstractValue(object):
       if data_id in seen_ids:
         continue
       seen_ids.add(data_id)
-      m.update(str(data_id))
+      m.update(compat.bytestring(data_id))
       for mapping in data.get_children_maps():
-        m.update(str(mapping.changestamp))
+        m.update(compat.bytestring(mapping.changestamp))
         stack.extend(mapping.data)
     return m.digest()
 
@@ -3218,7 +3219,7 @@ class InterpreterFunction(SignedFunction):
       vardict = {name: vardict[name] for name in names.intersection(vardict)}
     m = hashlib.md5()
     for name, var in sorted(vardict.items()):
-      m.update(str(name))
+      m.update(compat.bytestring(name))
       for value in var.bindings:
         m.update(value.data.get_fullhash())
     return m.digest()
@@ -3226,8 +3227,9 @@ class InterpreterFunction(SignedFunction):
   @staticmethod
   def _hash_all(*hash_args):
     """Convenience method for hashing a sequence of dicts."""
-    return hashlib.md5("".join(InterpreterFunction._hash(*args)
-                               for args in hash_args)).digest()
+    return hashlib.md5(b"".join(
+        InterpreterFunction._hash(*args)
+        for args in hash_args)).digest()
 
   def _match_args(self, node, args):
     if not self.signature.has_param_annotations:
@@ -3672,9 +3674,9 @@ class Module(Instance):
   def get_fullhash(self):
     """Hash the set of member names."""
     m = hashlib.md5()
-    m.update(self.full_name)
+    m.update(compat.bytestring(self.full_name))
     for k in self._member_map:
-      m.update(k)
+      m.update(compat.bytestring(k))
     return m.digest()
 
 
@@ -3800,7 +3802,7 @@ class Unknown(AtomicAbstractValue):
     # same members," so member names are used in the hash instead of id().
     m = hashlib.md5()
     for name in self.members:
-      m.update(name)
+      m.update(compat.bytestring(name))
     return m.digest()
 
   def get_children_maps(self):

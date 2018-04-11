@@ -3,12 +3,23 @@
 import sys
 import types
 
+import six
+
 
 def int_array_to_bytes(int_array):
   if sys.version_info[0] == 2:
     return b"".join(map(chr, int_array))
   else:
     return bytes(int_array)
+
+
+def bytestring(obj):
+  """Like the builtin str() but always returns a utf-8 encoded bytestring."""
+  out = str(obj)
+  if isinstance(out, six.text_type):
+    return out.encode("utf-8")
+  else:
+    return out
 
 
 # bytes and str are the same class in Python 2, and different classes in

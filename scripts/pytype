@@ -7,6 +7,8 @@ Usage:
   pytype [flags] file.py
 """
 
+from __future__ import print_function
+
 import cProfile
 import logging
 import os
@@ -137,7 +139,7 @@ def process_one_file(input_filename,
                                  options=options,
                                  loader=loader)
   except utils.UsageError as e:
-    sys.stderr.write("Usage error: %s\n" % e.message)
+    sys.stderr.write("Usage error: %s\n" % utils.message(e))
     sys.exit(1)
   except pyc.CompileError as e:
     errorlog.python_compiler_error(input_filename, e.lineno, e.error)
@@ -156,9 +158,9 @@ def process_one_file(input_filename,
             "# Caught error in pytype: " + str(e).replace("\n", "\n#")
             + "\n# " + "\n# ".join(traceback.format_exc().splitlines()))
     else:
-      message = str(e.message) + "\nException: %s\nFile: %s" % (
+      message = str(utils.message(e)) + "\nException: %s\nFile: %s" % (
           type(e).__name__, input_filename)
-      raise AssertionError, message, sys.exc_info()[2]
+      raise AssertionError(message, sys.exc_info()[2])
   if not options.check:
     if output_filename == "-" or not output_filename:
       sys.stdout.write(result)
@@ -194,7 +196,7 @@ def process_one_file(input_filename,
       errorlog.print_to_stderr()
       if (options.target_name and
           any(e.name == "import-error" for e in errorlog)):
-        print >>sys.stderr, "\nWhile building %r" % options.target_name
+        print("\nWhile building %r" % options.target_name, file=sys.stderr)
     return 1 if errorlog.has_error() else 0  # exit code
   else:
     return 0
@@ -242,11 +244,11 @@ def main(argv):
   try:
     options = config.Options(argv)
   except (config.OptParseError, utils.UsageError) as e:
-    print >>sys.stderr, str(e)
+    print(str(e), file=sys.stderr)
     sys.exit(1)
 
   if options.show_config:
-    print options
+    print(options)
     sys.exit(1)
 
   node.SetCheckPreconditions(options.check_preconditions)

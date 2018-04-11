@@ -8,6 +8,8 @@ from pytype import function
 from pytype import typing
 from pytype.pyc import pyc
 
+import six
+
 
 class EvaluationError(Exception):
   """Used to signal an errorlog error during type comment evaluation."""
@@ -134,7 +136,7 @@ class AnnotationsUtil(object):
 
   def eval_late_annotations(self, node, func, f_globals, f_locals):
     """Resolves an instance of LateAnnotation's expression."""
-    for name, annot in func.signature.late_annotations.iteritems():
+    for name, annot in six.iteritems(func.signature.late_annotations):
       if name == function.MULTI_ARG_ANNOTATION:
         try:
           self._eval_multi_arg_annotation(node, func, f_globals, f_locals,

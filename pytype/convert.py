@@ -96,8 +96,10 @@ class Converter(object):
     self.int_type = self.primitive_classes[int]
     if self.vm.python_version[0] < 3:
       self.unicode_type = self.primitive_classes[compat.UnicodeType]
+      self.bytes_type = self.str_type
     else:
       self.unicode_type = self.str_type
+      self.bytes_type = self.primitive_classes[compat.BytesType]
 
     self.unsolvable = abstract.Unsolvable(self.vm)
     self.empty = abstract.Empty(self.vm)
@@ -504,6 +506,8 @@ class Converter(object):
     elif (self.vm.python_version[0] < 3 and
           isinstance(pyval, compat.UnicodeType)):
       return abstract.AbstractOrConcreteValue(pyval, self.unicode_type, self.vm)
+    elif isinstance(pyval, compat.BytesType):
+      return abstract.AbstractOrConcreteValue(pyval, self.bytes_type, self.vm)
     elif isinstance(pyval, bool):
       return self.true if pyval is True else self.false
     elif isinstance(pyval, int) and -1 <= pyval <= MAX_IMPORT_DEPTH:
