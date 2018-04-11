@@ -4,7 +4,7 @@
 #include <vector>
 #include <Python.h>
 
-#include "lexer.h"
+#include "location.hh"
 #include "refholder.h"
 
 namespace pytype {
@@ -66,7 +66,7 @@ class Context {
   PyObject* Call(CallSelector selector, const char* fmt, ...) const;
 
   // Call the peer's kSetErrorLocation method.
-  void SetErrorLocation(YYLTYPE* loc) const;
+  void SetErrorLocation(const location& loc) const;
 
   // Get the result object (a borrowed reference).
   PyObject* GetResult() const { return result_; }

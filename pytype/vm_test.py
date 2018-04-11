@@ -5,6 +5,7 @@ import textwrap
 
 
 from pytype import blocks
+from pytype import compat
 from pytype import config
 from pytype import errors
 from pytype import load_pytd
@@ -30,10 +31,6 @@ class TraceVM(vm.VirtualMachine):
   def run_instruction(self, op, state):
     self.instructions_executed.add(op.index)
     return super(TraceVM, self).run_instruction(op, state)
-
-
-def ListToString(lst):
-  return "".join(chr(c) for c in lst)
 
 
 class BytecodeTest(test_base.BaseTest):
@@ -97,7 +94,7 @@ class BytecodeTest(test_base.BaseTest):
         if x:
           z += x*a
     """)
-  code_nested_loop = ListToString([
+  code_nested_loop = compat.int_array_to_bytes([
       dis.opmap["LOAD_CONST"], 0, 0,          # [0], 0, arg=0
       dis.opmap["LOAD_CONST"], 1, 0,          # [1], 3, arg=1
       dis.opmap["LOAD_CONST"], 2, 0,          # [2], 6, arg=2
@@ -150,7 +147,7 @@ class BytecodeTest(test_base.BaseTest):
     raise RuntimeError
     x = 42
     """)
-  code_deadcode = ListToString([
+  code_deadcode = compat.int_array_to_bytes([
       dis.opmap["LOAD_NAME"], 0, 0,           # [0] 0, arg=0
       dis.opmap["POP_JUMP_IF_FALSE"], 15, 0,  # [1] 3, dest=15
       dis.opmap["LOAD_CONST"], 0, 0,          # [2] 6, arg=0

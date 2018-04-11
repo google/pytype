@@ -1,29 +1,21 @@
-%defines  // Creates a .h file.
+%skeleton "lalr1.cc"
+%require "3.0.4"
+%defines
 
-// Prefix is not needed since we are including the whole parser within a
-// namespace.  But use it anyway because using a prefix is a recommended
-// practice.
-%name-prefix "pytype"
 %locations
 
-// Use a reentrant parser, wire it up to a reentrant lexer.
-%pure-parser
 %lex-param {void* scanner}
 %parse-param {void* scanner}
-// Plumb our Context object through the parser.
 %parse-param {pytype::Context* ctx}
 
-%error-verbose
+%define parse.error verbose
+
+%name-prefix "pytype"
+%define api.namespace {pytype}
 
 %code requires {
 #include <Python.h>
-}
 
-/* We cannot use %code here because we are intentionally leaving the
- * pytype namespace open, thus we don't close as many braces as we open.  That
- * confuses %code, thus we have to use %{ %} instead.
- */
-%{
 #include "lexer.h"
 #include "parser.h"
 
@@ -34,17 +26,11 @@
 #  define PyString_AsString(ob) \
         (PyUnicode_Check(ob) ? PyUnicode_AsUTF8(ob) : PyBytes_AsString(ob))
 #endif
+} // %code requires
 
-namespace pytype {
-// Note that the pytype namespace is not closed until the trailing block of
-// code after the parser skeleton is emitted.  Thus the entire parser (except
-// for a few #defines) is in the pytype namespace.
-
+%code {
 namespace {
 PyObject* DOT_STRING = PyString_FromString(".");
-
-int pytypeerror(YYLTYPE* llocp, void* scanner, pytype::Context* ctx,
-    const char *p);
 
 /* Helper functions for building up lists. */
 PyObject* StartList(PyObject* item);
@@ -57,19 +43,24 @@ PyObject* ExtendList(PyObject* dst, PyObject* src);
 // Check that a python value is not NULL.  This must be a macro because it
 // calls YYERROR (which is a goto).
 #define CHECK(x, loc) do { if (x == NULL) {\
-    ctx->SetErrorLocation(&loc); \
+    ctx->SetErrorLocation(loc); \
     YYERROR; \
   }} while(0)
 
-%}
+// pytypelex is generated in lexer.lex.cc, but because it uses semantic_type and
+// location, it must be declared here.
+int pytypelex(pytype::parser::semantic_type* lvalp, pytype::location* llocp,
+              void* scanner);
 
-%union {
+} // %code
+
+%union{
   PyObject* obj;
   const char* str;
 }
 
 /* This token value is defined by flex, give it a nice name. */
-%token END 0              "end of file"
+%token END 0 "end of file"
 
 /* Tokens with PyObject values */
 %token <obj> NAME NUMBER LEXERROR
@@ -108,7 +99,6 @@ PyObject* ExtendList(PyObject* dst, PyObject* src);
  * a custom %destructor.
  */
 %type <str> condition_op
-%destructor { } <condition_op>
 
 /* The following nonterminals do not have a value, and are not included in
  * the above %type directives.
@@ -467,8 +457,7 @@ funcdef
       // TODO(dbaum): Consider making this smarter and only ignoring decorators
       // when they are empty.  Making decorators non-nullable and having two
       // productions for funcdef would be a reasonable solution.
-      @$.first_line = @2.first_line;
-      @$.first_column = @2.first_column;
+      @$.begin = @2.begin;
       CHECK($$, @$);
     }
   ;
@@ -696,19 +685,17 @@ pass_or_ellipsis
 
 %%
 
-namespace {
-
-int pytypeerror(
-    YYLTYPE* llocp, void* scanner, pytype::Context* ctx, const char *p) {
-  ctx->SetErrorLocation(llocp);
-  Lexer* lexer = pytypeget_extra(scanner);
+void pytype::parser::error(const location& loc, const std::string& msg) {
+  ctx->SetErrorLocation(loc);
+  pytype::Lexer* lexer = pytypeget_extra(scanner);
   if (lexer->error_message_) {
-    PyErr_SetObject(ctx->Value(kParseError), lexer->error_message_);
+    PyErr_SetObject(ctx->Value(pytype::kParseError), lexer->error_message_);
   } else {
-    PyErr_SetString(ctx->Value(kParseError), p);
+    PyErr_SetString(ctx->Value(pytype::kParseError), msg.c_str());
   }
-  return 0;
 }
+
+namespace {
 
 PyObject* StartList(PyObject* item) {
   return Py_BuildValue("[N]", item);
@@ -732,4 +719,3 @@ PyObject* ExtendList(PyObject* dst, PyObject* src) {
 }
 
 }  // end namespace
-}  // end namespace pytype

@@ -56,7 +56,7 @@ class Signature(object):
 
   @property
   def has_param_annotations(self):
-    return bool(self.annotations.viewkeys() - {"return"})
+    return bool(six.viewkeys(self.annotations) - {"return"})
 
   def _postprocess_annotation(self, name, annotation):
     if (name in self.defaults and

@@ -14,6 +14,8 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
 
+import six
+
 import unittest
 
 
@@ -1286,8 +1288,8 @@ class AbstractTest(AbstractTestBase):
     class A(object):
       def f(self, x):
         return x
+    @six.add_metaclass(abstract.MixinMeta)
     class MyMixin(object):
-      __metaclass__ = abstract.MixinMeta
       overloads = ("f",)
       def f(self, x):
         if x == 0:

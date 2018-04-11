@@ -11,6 +11,7 @@ from pytype import overlay
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import visitors
+from six import moves
 
 
 class TypingOverlay(overlay.Overlay):
@@ -61,7 +62,7 @@ class Tuple(TypingContainer):
       return super(Tuple, self)._get_value_info(
           inner, ellipses, allowed_ellipses={len(inner) - 1} - {0})
     else:
-      template = range(len(inner)) + [abstract.T]
+      template = list(moves.range(len(inner))) + [abstract.T]
       inner += (abstract.merge_values(inner, self.vm),)
       return template, inner, abstract.TupleClass
 
@@ -93,7 +94,8 @@ class Callable(TypingContainer):
 
   def _get_value_info(self, inner, ellipses):
     if isinstance(inner[0], list):
-      template = range(len(inner[0])) + [t.name for t in self.base_cls.template]
+      template = (list(moves.range(len(inner[0]))) +
+                  [t.name for t in self.base_cls.template])
       combined_args = abstract.merge_values(inner[0], self.vm)
       inner = tuple(inner[0]) + (combined_args,) + inner[1:]
       self.vm.errorlog.invalid_ellipses(self.vm.frames, ellipses, self.name)
@@ -276,7 +278,8 @@ class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):
     else:
       field_types_union = self.vm.convert.none_type
 
-    members = {n: t.instantiate(node) for n, t in zip(field_names, field_types)}
+    members = {n: t.instantiate(node)
+               for n, t in moves.zip(field_names, field_types)}
     # collections.namedtuple has: __dict__, __slots__ and _fields.
     # typing.NamedTuple adds: _field_types, __annotations__ and _field_defaults.
     # __slots__ and _fields are tuples containing the names of the fields.
@@ -312,7 +315,7 @@ class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):
     # __new__
     new_annots = {}
     new_lates = {}
-    for (n, t) in zip(field_names, field_types):
+    for (n, t) in moves.zip(field_names, field_types):
       # We don't support late annotations yet, but once we do, they'll show up
       # as LateAnnotation objects to be stored in new_lates.
       new_annots[n] = t
@@ -471,7 +474,7 @@ class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):
       return node, self.vm.convert.unsolvable.to_variable(node)
 
     annots, late_annots = self.vm.annotations_util.convert_annotations_list(
-        zip(field_names, field_types))
+        moves.zip(field_names, field_types))
     if late_annots:
       # We currently don't support forward references. Report if we find any,
       # then continue by using Unsolvable instead.

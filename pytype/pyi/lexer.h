@@ -4,7 +4,8 @@
 #include <vector>
 #include <Python.h>
 
-#include "parser.tab.h"
+#include "parser.tab.hh"
+#include "location.hh"
 #include "refholder.h"
 
 namespace pytype {
@@ -56,8 +57,8 @@ class Lexer {
 
 }  // end namespace pytype
 
-// Generated functions in lexer.lex.cc.
-int pytypelex(YYSTYPE* lvalp, YYLTYPE* llocp, void* scanner);
+// pytypeget_extra is generated in lexer.lex.cc, and it needs to be declared
+// here so the parser knows about it.
 pytype::Lexer* pytypeget_extra(void* scanner);
 
 #endif  // PYTYPE_PYI_LEXER_H_

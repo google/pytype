@@ -21,6 +21,7 @@ from pytype.pytd import mro
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
+import six
 
 log = logging.getLogger(__name__)
 chain = itertools.chain  # pylint: disable=invalid-name
@@ -117,7 +118,7 @@ def get_views(variables, node, filter_strict=False):
                      for var in variables),)
   for combination in combinations:
     view = {value.variable: value for value in combination}
-    combination = view.values()
+    combination = list(view.values())
     check = node.HasCombination if filter_strict else node.CanHaveCombination
     if not check(combination):
       log.info("Skipping combination %r", combination)
@@ -511,6 +512,12 @@ class MixinMeta(type):
         for method in sup.overloads:
           if method not in cls.__dict__:
             setattr(cls, method, getattr(sup, method))
+            # Record the fact that we have set a method on the class, to do
+            # superclass lookups.
+            if "__mixin_overloads__" in cls.__dict__:
+              cls.__mixin_overloads__["method"] = sup
+            else:
+              setattr(cls, "__mixin_overloads__", {method: sup})
 
   def super(cls, method):
     """Imitate super() in a mix-in.
@@ -531,14 +538,14 @@ class MixinMeta(type):
     for supercls in type(method.__self__).__mro__:
       # Fetch from __dict__ rather than using getattr() because we only want
       # to consider methods defined on supercls itself (not on a parent).
-      m = supercls.__dict__.get(method.__name__)
-      # m.im_class differs from supercls if m was set by MixinMeta.__init__.
-      if getattr(m, "im_class", None) is cls:
+      if ("__mixin_overloads__" in supercls.__dict__ and
+          supercls.__mixin_overloads__.get(method.__name__) is cls):
         method_cls = supercls
         break
     return getattr(super(method_cls, method.__self__), method.__name__)
 
 
+@six.add_metaclass(MixinMeta)
 class PythonConstant(object):
   """A mix-in for storing actual Python constants, not just their types.
 
@@ -548,7 +555,6 @@ class PythonConstant(object):
   "r" etc.).
   """
 
-  __metaclass__ = MixinMeta
   overloads = ("__repr__", "compatible_with",)
 
   def init_mixin(self, pyval):
@@ -906,6 +912,7 @@ class Instance(SimpleAbstractValue):
       return None
 
 
+@six.add_metaclass(MixinMeta)
 class HasSlots(object):
   """Mix-in for overriding slots with custom methods.
 
@@ -913,7 +920,6 @@ class HasSlots(object):
   handling of some magic methods (__setitem__ etc.)
   """
 
-  __metaclass__ = MixinMeta
   overloads = ("get_special_attribute",)
 
   def init_mixin(self):
@@ -1521,7 +1527,7 @@ class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
     return FunctionArgs(posargs, namedargs, starargs, starstarargs)
 
   def get_variables(self):
-    variables = list(self.posargs) + self.namedargs.values()
+    variables = list(self.posargs) + list(self.namedargs.values())
     if self.starargs is not None:
       variables.append(self.starargs)
     if self.starstarargs is not None:
@@ -1657,7 +1663,7 @@ class Function(SimpleAbstractValue):
       except FailedFunctionCall as e:
         # We could also pass "filter_strict=True" to get_views() above,
         # but it's cheaper to delay verification until the error case.
-        if e > error and node.HasCombination(view.values()):
+        if e > error and node.HasCombination(list(view.values())):
           # Add the name of the caller if possible.
           if hasattr(self, "parent"):
             e.name = "%s.%s" % (self.parent.name, e.name)
@@ -1824,7 +1830,7 @@ class PyTDSignature(object):
     """Call this signature. Used by PyTDFunction."""
     return_type = self.pytd_sig.return_type
     t = (return_type, subst)
-    sources = [func] + arg_dict.values()
+    sources = [func] + list(arg_dict.values())
     if t not in ret_map:
       for param in pytd_utils.GetTypeParameters(return_type):
         if param.name in subst:
@@ -2250,10 +2256,10 @@ class PyTDFunction(Function):
         flags=pytd.Function.abstract_flag(self.is_abstract))
 
 
+@six.add_metaclass(MixinMeta)
 class Class(object):
   """Mix-in to mark all class-like values."""
 
-  __metaclass__ = MixinMeta
   overloads = ("get_special_attribute", "get_own_new")
 
   def __new__(cls, *unused_args, **unused_kwds):
@@ -3325,7 +3331,7 @@ class InterpreterFunction(SignedFunction):
         ret = self.vm.convert.unsolvable.to_variable(node_after_call)
       for combination in combinations:
         for return_value in ret.bindings:
-          values = combination.values() + [return_value]
+          values = list(combination.values()) + [return_value]
           data = tuple(v.data for v in values)
           if data in signature_data:
             # This combination yields a signature we already know is possible

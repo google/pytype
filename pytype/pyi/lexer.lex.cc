@@ -427,17 +427,22 @@ static yyconst flex_int32_t yy_rule_can_match_eol[63] =
 
 #line 17 "lexer.lex"
 #include "lexer.h"
+#include "parser.tab.hh"
+#include "location.hh"
 
 #define YY_EXTRA_TYPE pytype::Lexer*
 
 #define YY_USER_INIT BEGIN(NEWLINE);
 
+#define YYSTYPE pytype::parser::semantic_type
+#define YYLTYPE pytype::location
+
 #define YY_USER_ACTION \
   yylval->obj=NULL; \
-  yylloc->first_line = yylineno; \
-  yylloc->first_column = yycolumn; \
-  yylloc->last_line = yylineno; \
-  yylloc->last_column = yycolumn + yyleng - 1; \
+  yylloc->begin.line = yylineno; \
+  yylloc->begin.column = yycolumn; \
+  yylloc->end.line = yylineno; \
+  yylloc->end.column = yycolumn + yyleng - 1; \
   yycolumn += yyleng;
 
 #if PY_MAJOR_VERSION >= 3
@@ -446,7 +451,9 @@ static yyconst flex_int32_t yy_rule_can_match_eol[63] =
 #  define PyString_FromString PyUnicode_FromString
 #  define PyString_FromStringAndSize PyUnicode_FromStringAndSize
 #endif
-#line 465 "pyi/lexer.lex.cc"
+
+typedef pytype::parser::token t;
+#line 472 "pyi/lexer.lex.cc"
 
 #define INITIAL 0
 #define NEWLINE 1
@@ -690,10 +697,10 @@ YY_DECL
 	int yy_act;
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
 
-#line 39 "lexer.lex"
+#line 46 "lexer.lex"
 
 
-#line 712 "pyi/lexer.lex.cc"
+#line 719 "pyi/lexer.lex.cc"
 
     yylval = yylval_param;
 
@@ -791,236 +798,236 @@ do_action:	/* This label is used only to access EOF actions. */
 case 1:
 /* rule 1 can match eol */
 YY_RULE_SETUP
-#line 41 "lexer.lex"
+#line 48 "lexer.lex"
 { BEGIN(NEWLINE); yycolumn=1; }  /* Determine indentation. */
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 42 "lexer.lex"
+#line 49 "lexer.lex"
 { }  /* Ignore whitespace */
 	YY_BREAK
 /* Punctuation */
 case 3:
 YY_RULE_SETUP
-#line 45 "lexer.lex"
+#line 52 "lexer.lex"
 { return yytext[0]; }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 46 "lexer.lex"
+#line 53 "lexer.lex"
 { ++yyextra->bracket_count_; return yytext[0]; }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 47 "lexer.lex"
+#line 54 "lexer.lex"
 { --yyextra->bracket_count_; return yytext[0]; }
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 48 "lexer.lex"
+#line 55 "lexer.lex"
 { ++yyextra->bracket_count_; return yytext[0]; }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 49 "lexer.lex"
+#line 56 "lexer.lex"
 { --yyextra->bracket_count_; return yytext[0]; }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 51 "lexer.lex"
-{ return BYTESTRING; }
+#line 58 "lexer.lex"
+{ return t::BYTESTRING; }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 52 "lexer.lex"
-{ return BYTESTRING; }
+#line 59 "lexer.lex"
+{ return t::BYTESTRING; }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 53 "lexer.lex"
-{ return UNICODESTRING; }
+#line 60 "lexer.lex"
+{ return t::UNICODESTRING; }
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 54 "lexer.lex"
-{ return UNICODESTRING; }
+#line 61 "lexer.lex"
+{ return t::UNICODESTRING; }
 	YY_BREAK
 /* Ignore all other quotes, to simplify processing of forward references. */
 case 12:
 YY_RULE_SETUP
-#line 57 "lexer.lex"
+#line 64 "lexer.lex"
 { }
 	YY_BREAK
 /* Multi-character punctuation. */
 case 13:
 YY_RULE_SETUP
-#line 60 "lexer.lex"
-{ return ARROW; }
+#line 67 "lexer.lex"
+{ return t::ARROW; }
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 61 "lexer.lex"
-{ return COLONEQUALS; }
+#line 68 "lexer.lex"
+{ return t::COLONEQUALS; }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 62 "lexer.lex"
-{ return ELLIPSIS; }
+#line 69 "lexer.lex"
+{ return t::ELLIPSIS; }
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 63 "lexer.lex"
-{ return EQ; }
+#line 70 "lexer.lex"
+{ return t::EQ; }
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 64 "lexer.lex"
-{ return NE; }
+#line 71 "lexer.lex"
+{ return t::NE; }
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 65 "lexer.lex"
-{ return LE; }
+#line 72 "lexer.lex"
+{ return t::LE; }
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 66 "lexer.lex"
-{ return GE; }
+#line 73 "lexer.lex"
+{ return t::GE; }
 	YY_BREAK
 /* Reserved words (must also be added to parse_ext.cc and match
   * parser_constant.py).
   */
 case 20:
 YY_RULE_SETUP
-#line 72 "lexer.lex"
-{ return CLASS; }
+#line 79 "lexer.lex"
+{ return t::CLASS; }
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 73 "lexer.lex"
-{ return DEF; }
+#line 80 "lexer.lex"
+{ return t::DEF; }
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 74 "lexer.lex"
-{ return ELSE; }
+#line 81 "lexer.lex"
+{ return t::ELSE; }
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 75 "lexer.lex"
-{ return ELIF; }
+#line 82 "lexer.lex"
+{ return t::ELIF; }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 76 "lexer.lex"
-{ return IF; }
+#line 83 "lexer.lex"
+{ return t::IF; }
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 77 "lexer.lex"
-{ return OR; }
+#line 84 "lexer.lex"
+{ return t::OR; }
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 78 "lexer.lex"
-{ return AND; }
+#line 85 "lexer.lex"
+{ return t::AND; }
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 79 "lexer.lex"
-{ return PASS; }
+#line 86 "lexer.lex"
+{ return t::PASS; }
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 80 "lexer.lex"
-{ return IMPORT; }
+#line 87 "lexer.lex"
+{ return t::IMPORT; }
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 81 "lexer.lex"
-{ return FROM; }
+#line 88 "lexer.lex"
+{ return t::FROM; }
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 82 "lexer.lex"
-{ return AS; }
+#line 89 "lexer.lex"
+{ return t::AS; }
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 83 "lexer.lex"
-{ return RAISE; }
+#line 90 "lexer.lex"
+{ return t::RAISE; }
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 84 "lexer.lex"
-{ return NOTHING; }
+#line 91 "lexer.lex"
+{ return t::NOTHING; }
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 85 "lexer.lex"
-{ return NAMEDTUPLE; }
+#line 92 "lexer.lex"
+{ return t::NAMEDTUPLE; }
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 86 "lexer.lex"
-{ return NAMEDTUPLE; }
+#line 93 "lexer.lex"
+{ return t::NAMEDTUPLE; }
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 87 "lexer.lex"
-{ return TYPEVAR; }
+#line 94 "lexer.lex"
+{ return t::TYPEVAR; }
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 88 "lexer.lex"
-{ return TYPEVAR; }
+#line 95 "lexer.lex"
+{ return t::TYPEVAR; }
 	YY_BREAK
 /* NAME */
 case 37:
 YY_RULE_SETUP
-#line 91 "lexer.lex"
+#line 98 "lexer.lex"
 {
   yylval->obj=PyString_FromString(yytext);
-  return NAME;
+  return t::NAME;
 }
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 95 "lexer.lex"
+#line 102 "lexer.lex"
 {
   yylval->obj=PyString_FromStringAndSize(yytext+1, yyleng-2);
-  return NAME;
+  return t::NAME;
 }
 	YY_BREAK
 /* NUMBER */
 case 39:
 YY_RULE_SETUP
-#line 101 "lexer.lex"
+#line 108 "lexer.lex"
 {
   yylval->obj=PyInt_FromString(yytext, NULL, 10);
-  return NUMBER;
+  return t::NUMBER;
 }
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 105 "lexer.lex"
+#line 112 "lexer.lex"
 {
   yylval->obj=PyFloat_FromDouble(atof(yytext));
-  return NUMBER;
+  return t::NUMBER;
 }
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 109 "lexer.lex"
+#line 116 "lexer.lex"
 {
   yylval->obj=PyFloat_FromDouble(atof(yytext));
-  return NUMBER;
+  return t::NUMBER;
 }
 	YY_BREAK
 /* TRIPLEQUOTED */
 case 42:
 YY_RULE_SETUP
-#line 115 "lexer.lex"
+#line 122 "lexer.lex"
 {
   BEGIN(TRIPLE1);
   yyextra->start_line_ = yylineno;
@@ -1029,33 +1036,33 @@ YY_RULE_SETUP
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 120 "lexer.lex"
+#line 127 "lexer.lex"
 { }
 	YY_BREAK
 case 44:
 /* rule 44 can match eol */
 YY_RULE_SETUP
-#line 121 "lexer.lex"
+#line 128 "lexer.lex"
 { yycolumn = 1; }
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 122 "lexer.lex"
+#line 129 "lexer.lex"
 { }
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 123 "lexer.lex"
+#line 130 "lexer.lex"
 {
   BEGIN(INITIAL);
-  yylloc->first_line = yyextra->start_line_;
-  yylloc->first_column = yyextra->start_column_;
-  return TRIPLEQUOTED;
+  yylloc->begin.line = yyextra->start_line_;
+  yylloc->begin.column = yyextra->start_column_;
+  return t::TRIPLEQUOTED;
 }
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 130 "lexer.lex"
+#line 137 "lexer.lex"
 {
   BEGIN(TRIPLE2);
   yyextra->start_line_ = yylineno;
@@ -1064,38 +1071,38 @@ YY_RULE_SETUP
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 135 "lexer.lex"
+#line 142 "lexer.lex"
 { }
 	YY_BREAK
 case 49:
 /* rule 49 can match eol */
 YY_RULE_SETUP
-#line 136 "lexer.lex"
+#line 143 "lexer.lex"
 { yycolumn = 1; }
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 137 "lexer.lex"
+#line 144 "lexer.lex"
 { }
 	YY_BREAK
 case 51:
 YY_RULE_SETUP
-#line 138 "lexer.lex"
+#line 145 "lexer.lex"
 {
   BEGIN(INITIAL);
-  yylloc->first_line = yyextra->start_line_;
-  yylloc->first_column = yyextra->start_column_;
-  return TRIPLEQUOTED;
+  yylloc->begin.line = yyextra->start_line_;
+  yylloc->begin.column = yyextra->start_column_;
+  return t::TRIPLEQUOTED;
 }
 	YY_BREAK
 case 52:
 YY_RULE_SETUP
-#line 145 "lexer.lex"
-{ return TYPECOMMENT; }
+#line 152 "lexer.lex"
+{ return t::TYPECOMMENT; }
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
-#line 146 "lexer.lex"
+#line 153 "lexer.lex"
 { BEGIN(COMMENT); }
 	YY_BREAK
 /* Due to a quirk of the flex state machine, matching an empty string
@@ -1107,13 +1114,13 @@ YY_RULE_SETUP
   */
 case 54:
 YY_RULE_SETUP
-#line 154 "lexer.lex"
+#line 161 "lexer.lex"
 { BEGIN(INITIAL); }
 	YY_BREAK
 case 55:
 /* rule 55 can match eol */
 YY_RULE_SETUP
-#line 155 "lexer.lex"
+#line 162 "lexer.lex"
 { BEGIN(NEWLINE); yycolumn=1; }
 	YY_BREAK
 /* NEWLINE state is responsible for processing the whitespace at the start
@@ -1124,7 +1131,7 @@ YY_RULE_SETUP
 case 56:
 /* rule 56 can match eol */
 YY_RULE_SETUP
-#line 164 "lexer.lex"
+#line 171 "lexer.lex"
 { yycolumn = 1; }
 	YY_BREAK
 /* Ignore comment indentation. */
@@ -1133,13 +1140,13 @@ case 57:
 yyg->yy_c_buf_p = yy_cp -= 1;
 YY_DO_BEFORE_ACTION; /* set up yytext again */
 YY_RULE_SETUP
-#line 167 "lexer.lex"
+#line 174 "lexer.lex"
 { BEGIN(INITIAL); }
 	YY_BREAK
 /* White space at start of line. */
 case 58:
 YY_RULE_SETUP
-#line 170 "lexer.lex"
+#line 177 "lexer.lex"
 {
   if (yyextra->bracket_count_) {
     // Ignore indentation within brackets.
@@ -1149,7 +1156,7 @@ YY_RULE_SETUP
     if (!yyextra->PopIndentationTo(yyleng)) {
       yylval->obj=PyString_FromString("Invalid indentation");
       yyextra->error_message_ = yylval->obj;
-      return LEXERROR;
+      return t::LEXERROR;
     }
     BEGIN(PENDING);
   } else if (yyleng == yyextra->CurrentIndentation()) {
@@ -1159,14 +1166,14 @@ YY_RULE_SETUP
     // Indent
     yyextra->PushIndentation(yyleng);
     BEGIN(INITIAL);
-    return INDENT;
+    return t::INDENT;
   }
 }
 	YY_BREAK
 /* Anything else - put it back and transition to PENDING or INITIAL. */
 case 59:
 YY_RULE_SETUP
-#line 194 "lexer.lex"
+#line 201 "lexer.lex"
 {
   yyless(0); yycolumn--;
   if (yyextra->CurrentIndentation()) {
@@ -1182,11 +1189,11 @@ YY_RULE_SETUP
   */
 case 60:
 YY_RULE_SETUP
-#line 207 "lexer.lex"
+#line 214 "lexer.lex"
 {
   yyless(0);
   if (yyextra->PopDedent()) {
-    return DEDENT;
+    return t::DEDENT;
   } else {
     BEGIN(INITIAL);
   }
@@ -1198,7 +1205,7 @@ case YY_STATE_EOF(PENDING):
 case YY_STATE_EOF(TRIPLE1):
 case YY_STATE_EOF(TRIPLE2):
 case YY_STATE_EOF(COMMENT):
-#line 216 "lexer.lex"
+#line 223 "lexer.lex"
 {
   if (yyextra->CurrentIndentation()) {
     yyextra->PopIndentationTo(0);
@@ -1206,7 +1213,7 @@ case YY_STATE_EOF(COMMENT):
   // Ensure a yylval of NULL, even when returning EOF.
   yylval->obj=NULL;
   if (yyextra->PopDedent()) {
-    return DEDENT;
+    return t::DEDENT;
   } else {
     yyterminate();
   }
@@ -1216,19 +1223,19 @@ case YY_STATE_EOF(COMMENT):
 case 61:
 /* rule 61 can match eol */
 YY_RULE_SETUP
-#line 230 "lexer.lex"
+#line 237 "lexer.lex"
 {
   yylval->obj=PyString_FromFormat("Illegal character '%c'", yytext[0]);
   yyextra->error_message_ = yylval->obj;
-  return LEXERROR;
+  return t::LEXERROR;
 }
 	YY_BREAK
 case 62:
 YY_RULE_SETUP
-#line 236 "lexer.lex"
+#line 243 "lexer.lex"
 YY_FATAL_ERROR( "flex scanner jammed" );
 	YY_BREAK
-#line 1247 "pyi/lexer.lex.cc"
+#line 1254 "pyi/lexer.lex.cc"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -2413,7 +2420,7 @@ void pytypefree (void * ptr , yyscan_t yyscanner)
 
 #define YYTABLES_NAME "yytables"
 
-#line 236 "lexer.lex"
+#line 243 "lexer.lex"
 
 
 

@@ -15,17 +15,22 @@
 
 %{
 #include "lexer.h"
+#include "parser.tab.hh"
+#include "location.hh"
 
 #define YY_EXTRA_TYPE pytype::Lexer*
 
 #define YY_USER_INIT BEGIN(NEWLINE);
 
+#define YYSTYPE pytype::parser::semantic_type
+#define YYLTYPE pytype::location
+
 #define YY_USER_ACTION \
   yylval->obj=NULL; \
-  yylloc->first_line = yylineno; \
-  yylloc->first_column = yycolumn; \
-  yylloc->last_line = yylineno; \
-  yylloc->last_column = yycolumn + yyleng - 1; \
+  yylloc->begin.line = yylineno; \
+  yylloc->begin.column = yycolumn; \
+  yylloc->end.line = yylineno; \
+  yylloc->end.column = yycolumn + yyleng - 1; \
   yycolumn += yyleng;
 
 #if PY_MAJOR_VERSION >= 3
@@ -34,6 +39,8 @@
 #  define PyString_FromString PyUnicode_FromString
 #  define PyString_FromStringAndSize PyUnicode_FromStringAndSize
 #endif
+
+typedef pytype::parser::token t;
 %}
 
 %%
@@ -48,67 +55,67 @@
 \( { ++yyextra->bracket_count_; return yytext[0]; }
 \) { --yyextra->bracket_count_; return yytext[0]; }
 
-b'' { return BYTESTRING; }
-b\"\" { return BYTESTRING; }
-u'' { return UNICODESTRING; }
-u\"\" { return UNICODESTRING; }
+b'' { return t::BYTESTRING; }
+b\"\" { return t::BYTESTRING; }
+u'' { return t::UNICODESTRING; }
+u\"\" { return t::UNICODESTRING; }
 
  /* Ignore all other quotes, to simplify processing of forward references. */
 ['"] { }
 
  /* Multi-character punctuation. */
-"->" { return ARROW; }
-":=" { return COLONEQUALS; }
-"..." { return ELLIPSIS; }
-"==" { return EQ; }
-"!=" { return NE; }
-"<=" { return LE; }
-">=" { return GE; }
+"->" { return t::ARROW; }
+":=" { return t::COLONEQUALS; }
+"..." { return t::ELLIPSIS; }
+"==" { return t::EQ; }
+"!=" { return t::NE; }
+"<=" { return t::LE; }
+">=" { return t::GE; }
 
  /* Reserved words (must also be added to parse_ext.cc and match
   * parser_constant.py).
   */
 
-"class" { return CLASS; }
-"def" { return DEF; }
-"else" { return ELSE; }
-"elif" { return ELIF; }
-"if" { return IF; }
-"or" { return OR; }
-"and" { return AND; }
-"pass" { return PASS; }
-"import" { return IMPORT; }
-"from" { return FROM; }
-"as" { return AS; }
-"raise" { return RAISE; }
-"nothing" { return NOTHING; }
-"NamedTuple" { return NAMEDTUPLE; }
-"typing.NamedTuple" { return NAMEDTUPLE; }
-"TypeVar" { return TYPEVAR; }
-"typing.TypeVar" { return TYPEVAR; }
+"class" { return t::CLASS; }
+"def" { return t::DEF; }
+"else" { return t::ELSE; }
+"elif" { return t::ELIF; }
+"if" { return t::IF; }
+"or" { return t::OR; }
+"and" { return t::AND; }
+"pass" { return t::PASS; }
+"import" { return t::IMPORT; }
+"from" { return t::FROM; }
+"as" { return t::AS; }
+"raise" { return t::RAISE; }
+"nothing" { return t::NOTHING; }
+"NamedTuple" { return t::NAMEDTUPLE; }
+"typing.NamedTuple" { return t::NAMEDTUPLE; }
+"TypeVar" { return t::TYPEVAR; }
+"typing.TypeVar" { return t::TYPEVAR; }
 
  /* NAME */
 [_[:alpha:]][-_[:alnum:]]* {
   yylval->obj=PyString_FromString(yytext);
-  return NAME;
+  return t::NAME;
 }
 `[_~[:alpha:]][-_~[:alnum:]]*` {
   yylval->obj=PyString_FromStringAndSize(yytext+1, yyleng-2);
-  return NAME;
+  return t::NAME;
 }
 
  /* NUMBER */
 [-+]?[0-9]+  {
   yylval->obj=PyInt_FromString(yytext, NULL, 10);
-  return NUMBER;
+  return t::NUMBER;
 }
 [-+]?[0-9]*\.[0-9]+  {
   yylval->obj=PyFloat_FromDouble(atof(yytext));
-  return NUMBER;
+  return t::NUMBER;
 }
 [-+]?[0-9]+\.[0-9]*  {
   yylval->obj=PyFloat_FromDouble(atof(yytext));
-  return NUMBER;
+  return t::NUMBER;
 }
 
  /* TRIPLEQUOTED */
@@ -122,9 +129,9 @@ u\"\" { return UNICODESTRING; }
 <TRIPLE1>\'\'? { }
 <TRIPLE1>\'\'\' {
   BEGIN(INITIAL);
-  yylloc->first_line = yyextra->start_line_;
-  yylloc->first_column = yyextra->start_column_;
-  return TRIPLEQUOTED;
+  yylloc->begin.line = yyextra->start_line_;
+  yylloc->begin.column = yyextra->start_column_;
+  return t::TRIPLEQUOTED;
 }
 
 \"\"\" {
@@ -137,12 +144,12 @@ u\"\" { return UNICODESTRING; }
 <TRIPLE2>\"\"? { }
 <TRIPLE2>\"\"\" {
   BEGIN(INITIAL);
-  yylloc->first_line = yyextra->start_line_;
-  yylloc->first_column = yyextra->start_column_;
-  return TRIPLEQUOTED;
+  yylloc->begin.line = yyextra->start_line_;
+  yylloc->begin.column = yyextra->start_column_;
+  return t::TRIPLEQUOTED;
 }
 
-\#[ ]*"type:" { return TYPECOMMENT; }
+\#[ ]*"type:" { return t::TYPECOMMENT; }
 \# { BEGIN(COMMENT); }
  /* Due to a quirk of the flex state machine, matching an empty string
   * does not trigger an action, thus <COMMENT>[^\n]* would not by itself
@@ -176,7 +183,7 @@ u\"\" { return UNICODESTRING; }
     if (!yyextra->PopIndentationTo(yyleng)) {
       yylval->obj=PyString_FromString("Invalid indentation");
       yyextra->error_message_ = yylval->obj;
-      return LEXERROR;
+      return t::LEXERROR;
     }
     BEGIN(PENDING);
   } else if (yyleng == yyextra->CurrentIndentation()) {
@@ -186,7 +193,7 @@ u\"\" { return UNICODESTRING; }
     // Indent
     yyextra->PushIndentation(yyleng);
     BEGIN(INITIAL);
-    return INDENT;
+    return t::INDENT;
   }
 }
 
@@ -207,7 +214,7 @@ u\"\" { return UNICODESTRING; }
 <PENDING>. {
   yyless(0);
   if (yyextra->PopDedent()) {
-    return DEDENT;
+    return t::DEDENT;
   } else {
     BEGIN(INITIAL);
   }
@@ -220,7 +227,7 @@ u\"\" { return UNICODESTRING; }
   // Ensure a yylval of NULL, even when returning EOF.
   yylval->obj=NULL;
   if (yyextra->PopDedent()) {
-    return DEDENT;
+    return t::DEDENT;
   } else {
     yyterminate();
   }
@@ -230,7 +237,7 @@ u\"\" { return UNICODESTRING; }
 <*>.|\n {
   yylval->obj=PyString_FromFormat("Illegal character '%c'", yytext[0]);
   yyextra->error_message_ = yylval->obj;
-  return LEXERROR;
+  return t::LEXERROR;
 }
 
 %%

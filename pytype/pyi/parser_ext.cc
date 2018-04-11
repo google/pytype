@@ -3,10 +3,18 @@
 #include "lexer.h"
 #include "parser.h"
 
+// The parser defines a token struct. Give it a shorter alias.
+typedef pytype::parser::token t;
+
+// pytypelex is generated in lexer.lex.cc, but because it uses semantic_type and
+// location, it must be declared here.
+int pytypelex(pytype::parser::semantic_type* lvalp, pytype::location* llocp,
+              void* scanner);
+
 namespace pytype {
 
 // From parser.tab.cc.
-int pytypeparse(void* scanner, pytype::Context* ctx);
+/* int pytypeparse(void* scanner, pytype::Context* ctx); */
 
 // A pair of enum value and attribute name, parameterized by enum type.
 template <typename T> class SelectorEntry {
@@ -148,13 +156,13 @@ PyObject* Context::Call(CallSelector selector, const char* fmt, ...) const {
   return result;
 }
 
-void Context::SetErrorLocation(YYLTYPE* location) const {
+void Context::SetErrorLocation(const pytype::location& loc) const {
   // Call clobbers any existing error, so we need to save it.
   PyObject *ptype, *pvalue, *ptraceback;
   PyErr_Fetch(&ptype, &pvalue, &ptraceback);
   PyObject* result = Call(kSetErrorLocation, "((iiii))",
-                          location->first_line, location->first_column,
-                          location->last_line, location->last_column);
+                          loc.begin.line, loc.begin.column,
+                          loc.end.line, loc.end.column);
   PyErr_Restore(ptype, pvalue, ptraceback);
   Py_XDECREF(result);
 }
@@ -177,7 +185,8 @@ static PyObject* parse(PyObject* self, PyObject* args) {
   }
 
   pytype::Lexer lexer(bytes, length);
-  int err = pytype::pytypeparse(lexer.scanner(), &ctx);
+  pytype::parser parser(lexer.scanner(), &ctx);
+  int err = parser.parse();
   if (err) {
     if (err != 1) {
       // This wasn't a syntax error (which has already constructed an error
@@ -211,8 +220,8 @@ static PyObject* tokenize(PyObject* self, PyObject* args) {
   pytype::Lexer lexer(bytes, length);
   PyObject* tokens = PyList_New(0);
   while (1) {
-    YYSTYPE lval;
-    YYLTYPE lloc;
+    pytype::parser::semantic_type lval;
+    pytype::location lloc;
     int t = pytypelex(&lval, &lloc, lexer.scanner());
     if (!t) break;
     PyObject* obj = lval.obj;
@@ -222,8 +231,8 @@ static PyObject* tokenize(PyObject* self, PyObject* args) {
     }
 
     PyObject* token = Py_BuildValue(
-        "(iOiiii)", t, obj, lloc.first_line, lloc.first_column, lloc.last_line,
-        lloc.last_column);
+        "(iOiiii)", t, obj, lloc.begin.line, lloc.begin.column, lloc.end.line,
+        lloc.end.column);
     PyList_Append(tokens, token);
     Py_DECREF(token);
     Py_DECREF(obj);
@@ -252,41 +261,39 @@ static void add_token(PyObject* dict, const char* name, int value) {
   Py_DECREF(pyval);
 }
 
-#define ADD_TOKEN(dict, name) add_token(dict, #name, name)
-
 // Create a TOKENS attribute that maps token names to integer values.
 static void add_tokens_dict(PyObject* module) {
   PyObject* tokens = PyDict_New();
-  ADD_TOKEN(tokens, NAME);
-  ADD_TOKEN(tokens, NUMBER);
-  ADD_TOKEN(tokens, TRIPLEQUOTED);
-  ADD_TOKEN(tokens, TYPECOMMENT);
-  ADD_TOKEN(tokens, ARROW);
-  ADD_TOKEN(tokens, COLONEQUALS);
-  ADD_TOKEN(tokens, ELLIPSIS);
-  ADD_TOKEN(tokens, EQ);
-  ADD_TOKEN(tokens, NE);
-  ADD_TOKEN(tokens, LE);
-  ADD_TOKEN(tokens, GE);
-  ADD_TOKEN(tokens, INDENT);
-  ADD_TOKEN(tokens, DEDENT);
-  ADD_TOKEN(tokens, LEXERROR);
+  add_token(tokens, "NAME",         t::NAME);
+  add_token(tokens, "NUMBER",       t::NUMBER);
+  add_token(tokens, "TRIPLEQUOTED", t::TRIPLEQUOTED);
+  add_token(tokens, "TYPECOMMENT",  t::TYPECOMMENT);
+  add_token(tokens, "ARROW",        t::ARROW);
+  add_token(tokens, "COLONEQUALS",  t::COLONEQUALS);
+  add_token(tokens, "ELLIPSIS",     t::ELLIPSIS);
+  add_token(tokens, "EQ",           t::EQ);
+  add_token(tokens, "NE",           t::NE);
+  add_token(tokens, "LE",           t::LE);
+  add_token(tokens, "GE",           t::GE);
+  add_token(tokens, "INDENT",       t::INDENT);
+  add_token(tokens, "DEDENT",       t::DEDENT);
+  add_token(tokens, "LEXERROR",     t::LEXERROR);
 
-  // Reserved words.
-  ADD_TOKEN(tokens, CLASS);
-  ADD_TOKEN(tokens, DEF);
-  ADD_TOKEN(tokens, ELSE);
-  ADD_TOKEN(tokens, ELIF);
-  ADD_TOKEN(tokens, IF);
-  ADD_TOKEN(tokens, OR);
-  ADD_TOKEN(tokens, PASS);
-  ADD_TOKEN(tokens, IMPORT);
-  ADD_TOKEN(tokens, FROM);
-  ADD_TOKEN(tokens, AS);
-  ADD_TOKEN(tokens, RAISE);
-  ADD_TOKEN(tokens, NOTHING);
-  ADD_TOKEN(tokens, NAMEDTUPLE);
-  ADD_TOKEN(tokens, TYPEVAR);
+  // reserved words.
+  add_token(tokens, "CLASS",        t::CLASS);
+  add_token(tokens, "DEF",          t::DEF);
+  add_token(tokens, "ELSE",         t::ELSE);
+  add_token(tokens, "ELIF",         t::ELIF);
+  add_token(tokens, "IF",           t::IF);
+  add_token(tokens, "OR",           t::OR);
+  add_token(tokens, "PASS",         t::PASS);
+  add_token(tokens, "IMPORT",       t::IMPORT);
+  add_token(tokens, "FROM",         t::FROM);
+  add_token(tokens, "AS",           t::AS);
+  add_token(tokens, "RAISE",        t::RAISE);
+  add_token(tokens, "NOTHING",      t::NOTHING);
+  add_token(tokens, "NAMEDTUPLE",   t::NAMEDTUPLE);
+  add_token(tokens, "TYPEVAR",      t::TYPEVAR);
 
   // Add dict to module.
   PyObject_SetAttrString(module, "TOKENS", tokens);

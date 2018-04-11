@@ -1,4 +1,5 @@
 """Implementation of types from Python 2's collections library."""
+
 import collections
 import inspect
 # TODO(tsudol): Python 2 and Python 3 have different keyword lists.
@@ -10,6 +11,7 @@ from pytype import overlay
 from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import visitors
+import six
 
 
 def _repeat_type(type_str, n):
@@ -175,7 +177,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
     # namedtuple fields can be given as a single string, e.g. "a, b, c" or as a
     # list [Variable('a'), Variable('b'), Variable('c')].
     # We just want a list of strings.
-    if isinstance(fields, (str, unicode)):
+    if isinstance(fields, (str, six.text_type)):
       field_names = fields.replace(",", " ").split()
     else:
       field_names = [abstract.get_atomic_python_constant(f) for f in fields]
