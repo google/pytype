@@ -326,7 +326,7 @@ class ErrorLogBase(object):
     self._errors = self._errors[:checkpoint.position]
 
   def print_to_csv_file(self, filename):
-    with open(filename, "wb") as f:
+    with open(filename, "w") as f:
       csv_file = csv.writer(f, delimiter=",")
       for error in self.unique_sorted_errors():
         # pylint: disable=protected-access

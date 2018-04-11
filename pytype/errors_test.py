@@ -128,7 +128,7 @@ class ErrorTest(unittest.TestCase):
     with utils.Tempdir() as d:
       filename = d.create_file("errors.csv")
       errorlog.print_to_csv_file(filename)
-      with open(filename, "rb") as fi:
+      with open(filename, "r") as fi:
         rows = list(csv.reader(fi, delimiter=","))
         self.assertEqual(2, len(rows))
         for i, row in enumerate(rows):
@@ -147,7 +147,7 @@ class ErrorTest(unittest.TestCase):
     with utils.Tempdir() as d:
       filename = d.create_file("errors.csv")
       errorlog.print_to_csv_file(filename)
-      with open(filename, "rb") as fi:
+      with open(filename, "r") as fi:
         (_, _, _, _, actual_details), = list(csv.reader(fi, delimiter=","))
         self.assertMultiLineEqual(actual_details, textwrap.dedent("""\
           some
