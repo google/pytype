@@ -170,8 +170,8 @@ class PytypeTest(unittest.TestCase):
     # Tests that the pickled format is stable under a constant PYTHONHASHSEED.
     l_1 = self.GeneratePickledSimpleFile("simple1.pickled")
     l_2 = self.GeneratePickledSimpleFile("simple2.pickled")
-    with open(l_1, "rb") as f_1:
-      with open(l_2, "rb") as f_2:
+    with open(l_1, "r") as f_1:
+      with open(l_2, "r") as f_2:
         self.assertEqual(f_1.read(), f_2.read())
 
   def testGeneratePickledAst(self):

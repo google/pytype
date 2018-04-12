@@ -547,7 +547,7 @@ def load_pytype_file(filename):
     IOError: if file not found
   """
   path = os.path.join(os.path.dirname(__file__), filename)
-  with open(path, "rb") as fi:
+  with open(path, "r") as fi:
     return fi.read()
 
 

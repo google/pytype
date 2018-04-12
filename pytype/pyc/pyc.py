@@ -179,7 +179,7 @@ def compile_file(filename, python_version):
   Returns:
     An instance of loadmarshal.CodeType.
   """
-  with open(filename, "rb") as fi:
+  with open(filename, "r") as fi:
     return compile_src(fi.read(), python_version, filename)
 
 

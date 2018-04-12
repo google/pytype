@@ -30,7 +30,7 @@ class Typeshed(object):
   def _load_file(self, path):
     if self._env_home:
       filename = os.path.join(self._env_home, path)
-      with open(filename, "rb") as f:
+      with open(filename, "r") as f:
         return filename, f.read()
     else:
       data = utils.load_pytype_file(os.path.join(

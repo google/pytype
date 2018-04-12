@@ -4,6 +4,7 @@ import os
 import tempfile
 import textwrap
 
+from pytype import compat
 from pytype import imports_map_loader
 from pytype import utils
 
@@ -16,7 +17,7 @@ class ImportMapLoaderTest(unittest.TestCase):
   def testReadImportsInfo(self):
     """Test reading an imports_info file into ImportsInfo."""
     with tempfile.NamedTemporaryFile() as fi:
-      fi.write(textwrap.dedent("""
+      fi.write(compat.bytestring(textwrap.dedent("""
         a/b/__init__.py prefix/1/a/b/__init__.py~
         a/b/b.py prefix/1/a/b/b.py~suffix
         a/b/c.pyi prefix/1/a/b/c.pyi~
@@ -24,7 +25,7 @@ class ImportMapLoaderTest(unittest.TestCase):
         a/b/e.py 2/a/b/e1.py~
         a/b/e 2/a/b/e2.py~
         a/b/e 2/a/b/foo/#2.py~
-      """))
+      """)))
       fi.seek(0)  # ready for reading
       self.assertSameElements(
           imports_map_loader._read_imports_map(fi.name).items(),

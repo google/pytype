@@ -1025,7 +1025,7 @@ def parse_string(src, name=None, filename=None, python_version=None,
 
 def parse_file(filename=None, name=None, python_version=None,
                platform=None):
-  with open(filename, "rb") as fi:
+  with open(filename, "r") as fi:
     src = fi.read()
   return _Parser(version=python_version, platform=platform).parse(
       src, name, filename)

@@ -168,7 +168,7 @@ class BaseTest(unittest.TestCase):
     return kwargs["errorlog"]
 
   def InferFromFile(self, filename, pythonpath, python_version=None):
-    with open(filename, "rb") as fi:
+    with open(filename, "r") as fi:
       code = fi.read()
       errorlog = errors.ErrorLog()
       self.options.tweak(
