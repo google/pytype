@@ -677,7 +677,7 @@ class VirtualMachine(object):
     for func in self.functions_with_late_annotations:
       self.annotations_util.eval_late_annotations(node, func, f_globals,
                                                   f_locals)
-    for name, annot in f_globals.late_annotations.items():
+    for name, annot in list(f_globals.late_annotations.items()):
       attr = self.annotations_util.init_annotation(
           annot.expr, annot.name, annot.stack, node, f_globals, f_locals)
       self.attribute_handler.set_attribute(node, f_globals, name, attr)

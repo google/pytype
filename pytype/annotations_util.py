@@ -6,6 +6,7 @@ import collections
 from pytype import abstract
 from pytype import function
 from pytype import typing
+from pytype import utils
 from pytype.pyc import pyc
 
 import six
@@ -143,7 +144,7 @@ class AnnotationsUtil(object):
                                           annot)
         except EvaluationError as e:
           self.vm.errorlog.invalid_function_type_comment(
-              annot.stack, annot.expr, details=e.message)
+              annot.stack, annot.expr, details=utils.message(e))
         except abstract.ConversionError:
           self.vm.errorlog.invalid_function_type_comment(
               annot.stack, annot.expr, details="Must be constant.")
@@ -168,7 +169,7 @@ class AnnotationsUtil(object):
                             self.vm.frame.f_locals, comment)
     except EvaluationError as e:
       self.vm.errorlog.invalid_type_comment(
-          self.vm.frames, comment, details=e.message)
+          self.vm.frames, comment, details=utils.message(e))
       value = self.vm.convert.create_new_unsolvable(state.node)
     else:
       try:
@@ -255,7 +256,8 @@ class AnnotationsUtil(object):
           try:
             v = self._eval_expr(node, f_globals, f_locals, annotation.pyval)
           except EvaluationError as e:
-            self.vm.errorlog.invalid_annotation(stack, annotation, e.message)
+            self.vm.errorlog.invalid_annotation(
+                stack, annotation, utils.message(e))
             return None
           if len(v.data) == 1:
             return self._process_one_annotation(
