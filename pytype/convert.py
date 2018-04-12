@@ -63,7 +63,7 @@ class Converter(object):
                                   compat.OldStyleClassType, super
                               ] + version_specific}
     self.primitive_class_names = [
-        x.__module__ + "." + x.__name__ for x in self.primitive_classes]
+        self._type_to_name(x) for x in self.primitive_classes]
     self.none = abstract.AbstractOrConcreteValue(
         None, self.primitive_classes[compat.NoneType], self.vm)
     self.true = abstract.AbstractOrConcreteValue(
@@ -125,6 +125,26 @@ class Converter(object):
       return "in (%s)" % ", ".join(c.__name__ for c in constant_type)
     else:
       return "a(n) %s" % constant_type.__name__
+
+  def _type_to_name(self, t):
+    assert t.__class__ is type
+    # TODO(rechen): We should use the target version-specific name of the
+    # builtins module rather than hard-coding __builtin__.
+    if t is types.FunctionType:
+      return "typing.Callable"
+    elif t is compat.BytesType:
+      return "__builtin__.bytes"
+    elif t is compat.UnicodeType:
+      if self.vm.python_version[0] < 3:
+        return "__builtin__.unicode"
+      else:
+        return "__builtin__.str"
+    elif t is compat.OldStyleClassType:
+      return "__builtin__.classobj"
+    elif t is compat.IteratorType:
+      return "__builtin__.object"
+    else:
+      return "__builtin__." + t.__name__
 
   def value_to_constant(self, val, constant_type):
     if (isinstance(val, abstract.PythonConstant) and
@@ -524,23 +544,8 @@ class Converter(object):
     elif pyval is object:
       return special_builtins.Object(self.vm)
     elif pyval.__class__ is type:
-      if pyval is types.FunctionType:
-        classname = "typing.Callable"
-      elif pyval is compat.BytesType:
-        classname = "__builtin__.bytes"
-      elif pyval is compat.UnicodeType:
-        if self.vm.python_version[0] < 3:
-          classname = "__builtin__.unicode"
-        else:
-          classname = "__builtin__.str"
-      elif pyval is compat.OldStyleClassType:
-        classname = "__builtin__.classobj"
-      elif pyval is compat.IteratorType:
-        classname = "__builtin__.object"
-      else:
-        classname = "__builtin__." + pyval.__name__
       try:
-        return self.name_to_value(classname, subst)
+        return self.name_to_value(self._type_to_name(pyval), subst)
       except (KeyError, AttributeError):
         log.debug("Failed to find pytd", exc_info=True)
         raise
