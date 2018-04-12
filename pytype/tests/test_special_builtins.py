@@ -240,7 +240,7 @@ class SpecialBuiltinsTest(test_base.BaseTest):
       foo1 = Foo()
       foo2 = Foo()
       if isinstance(foo1.foo, str):
-        print foo2.foo.upper()  # line 10
+        x = foo2.foo.upper()  # line 10
     """)
     self.assertErrorLogIs(errors, [(10, "attribute-error", r"upper.*int")])
 

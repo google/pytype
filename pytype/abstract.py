@@ -2074,6 +2074,7 @@ class PyTDFunction(Function):
       if logged is None:
         logged = set()
       for i, arg_values in enumerate(arg_values_list):
+        arg_values = list(arg_values)
         if level:
           if arg_values and any(v.data not in logged for v in arg_values):
             log.debug("%s%s:", "  " * level, arg_values[0].variable.id)
