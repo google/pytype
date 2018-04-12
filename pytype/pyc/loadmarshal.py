@@ -309,6 +309,9 @@ class _LoadMarshal(object):
     if (self.python_version[0] < 3 or
         sys.version_info[0] == 3):
       s = s.decode('utf8')
+    if self.python_version[0] < 3:
+      # In Python 2, unicode and str are different classes.
+      s = compat.UnicodeType(s)
     return s
 
   def load_ascii(self):

@@ -50,10 +50,8 @@ class Converter(object):
     self.object_type = self.constant_to_value(object)
 
     if self.vm.python_version[0] < 3:
-      # Under host python3 this will return str, which will get deduped.
       version_specific = [compat.UnicodeType]
     else:
-      # Under host python2 this will return str, which will get deduped.
       version_specific = [compat.BytesType]
 
     # Now fill primitive_classes with the real values using constant_to_value.
@@ -503,8 +501,7 @@ class Converter(object):
       # bytestrings, which are converted to abstract bytes instances.
       # compat.BytesType dispatches to this when appropriate.
       return abstract.AbstractOrConcreteValue(pyval, self.str_type, self.vm)
-    elif (self.vm.python_version[0] < 3 and
-          isinstance(pyval, compat.UnicodeType)):
+    elif isinstance(pyval, compat.UnicodeType):
       return abstract.AbstractOrConcreteValue(pyval, self.unicode_type, self.vm)
     elif isinstance(pyval, compat.BytesType):
       return abstract.AbstractOrConcreteValue(pyval, self.bytes_type, self.vm)
@@ -531,6 +528,11 @@ class Converter(object):
         classname = "typing.Callable"
       elif pyval is compat.BytesType:
         classname = "__builtin__.bytes"
+      elif pyval is compat.UnicodeType:
+        if self.vm.python_version[0] < 3:
+          classname = "__builtin__.unicode"
+        else:
+          classname = "__builtin__.str"
       elif pyval is compat.OldStyleClassType:
         classname = "__builtin__.classobj"
       elif pyval is compat.IteratorType:

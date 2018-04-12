@@ -130,7 +130,8 @@ class TestLoadMarshal(unittest.TestCase):
     self.assertEqual(code.co_lnotab, None)
 
   def test_load_unicode(self):
-    self.assertStrictEqual(self.load(b'u\4\0\0\0test', (2, 7)), u'test')
+    self.assertStrictEqual(self.load(b'u\4\0\0\0test', (2, 7)),
+                           compat.UnicodeType(u'test'))
     self.assertStrictEqual(self.load(b'u\4\0\0\0test', (3, 6)), 'test')
     # This character is \u00e4 (umlaut a).
     s = b'u\2\0\0\0\xc3\xa4'

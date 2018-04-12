@@ -11,6 +11,7 @@ from pytype import typing
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
+from six import moves
 
 log = logging.getLogger(__name__)
 
@@ -72,7 +73,7 @@ class Converter(object):
     """Get PyTD types for the parameters of an instance of an abstract value."""
     if isinstance(v, abstract.Callable):
       assert template == (abstract.ARGS, abstract.RET), template
-      template = range(v.num_args) + [template[1]]
+      template = list(moves.range(v.num_args)) + [template[1]]
     if self._is_tuple(v, instance):
       if isinstance(v, abstract.TupleClass):
         new_template = range(v.tuple_length)

@@ -23,8 +23,16 @@ def bytestring(obj):
 
 
 # bytes and str are the same class in Python 2, and different classes in
-# Python 3, so we need a way to mark Python 3 bytestrings.
+# Python 3, so we need a way to mark bytestrings when analyzing Python 3 while
+# running under Python 2.
 class BytesPy3(bytes):
+  pass
+
+
+# str and unicode are the same class in Python 3, and different classes in
+# Python 2, so we need a way to mark unicode strings when analyzing Python 2
+# while running under Python 3.
+class UnicodePy2(str):
   pass
 
 
@@ -49,6 +57,6 @@ if sys.version_info[0] == 2:
   OldStyleClassType = types.ClassType
 elif sys.version_info[0] == 3:
   BytesType = bytes
-  UnicodeType = str
+  UnicodeType = UnicodePy2
   LongType = int
   OldStyleClassType = OldStyleClassPy3
