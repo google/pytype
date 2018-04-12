@@ -8,6 +8,7 @@ from pytype import abstract
 from pytype import collections_overlay
 from pytype import function
 from pytype import overlay
+from pytype import utils
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import visitors
@@ -179,7 +180,8 @@ class TypeVar(abstract.PyTDFunction):
     try:
       param = self._get_typeparam(node, args)
     except TypeVarError as e:
-      self.vm.errorlog.invalid_typevar(self.vm.frames, e.message, e.bad_call)
+      self.vm.errorlog.invalid_typevar(
+          self.vm.frames, utils.message(e), e.bad_call)
       return node, self.vm.convert.unsolvable.to_variable(node)
     return node, param.to_variable(node)
 
@@ -470,7 +472,7 @@ class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):
     try:
       field_names = self._validate_and_rename_args(name, field_names, False)
     except ValueError as e:
-      self.vm.errorlog.invalid_namedtuple_arg(self.vm.frames, e.message)
+      self.vm.errorlog.invalid_namedtuple_arg(self.vm.frames, utils.message(e))
       return node, self.vm.convert.unsolvable.to_variable(node)
 
     annots, late_annots = self.vm.annotations_util.convert_annotations_list(

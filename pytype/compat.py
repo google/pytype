@@ -22,6 +22,16 @@ def bytestring(obj):
     return out
 
 
+def native_str(s):
+  """Convert a bytes or unicode object to the native str type."""
+  if isinstance(s, str):
+    return s
+  elif sys.version_info[0] < 3:
+    return s.encode("utf-8")
+  else:
+    return s.decode("utf-8")
+
+
 # bytes and str are the same class in Python 2, and different classes in
 # Python 3, so we need a way to mark bytestrings when analyzing Python 3 while
 # running under Python 2.

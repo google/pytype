@@ -125,7 +125,7 @@ class TestLoadMarshal(unittest.TestCase):
     self.assertEqual(code.co_varnames, ())
     self.assertEqual(code.co_freevars, ())
     self.assertEqual(code.co_cellvars, ())
-    self.assertEqual(code.co_filename, b'test.py')
+    self.assertEqual(code.co_filename, 'test.py')
     self.assertEqual(code.co_firstlineno, 6)
     self.assertEqual(code.co_lnotab, None)
 
@@ -157,19 +157,19 @@ class TestLoadMarshal(unittest.TestCase):
                      (0x03020100, 0x7060504, 0x03020100, 0x7060504))
 
   def test_load_ascii(self):
-    self.assertStrictEqual(self.load(b'a\4\0\0\0test'), b'test')
+    self.assertStrictEqual(self.load(b'a\4\0\0\0test'), 'test')
 
   def test_load_ascii_interned(self):
-    self.assertStrictEqual(self.load(b'A\4\0\0\0test'), b'test')
+    self.assertStrictEqual(self.load(b'A\4\0\0\0test'), 'test')
 
   def test_load_small_tuple(self):
     self.assertEqual(self.load(b')\2TF'), (True, False))
 
   def test_load_short_ascii(self):
-    self.assertStrictEqual(self.load(b'z\4test'), b'test')
+    self.assertStrictEqual(self.load(b'z\4test'), 'test')
 
   def test_load_short_ascii_interned(self):
-    self.assertStrictEqual(self.load(b'Z\4test'), b'test')
+    self.assertStrictEqual(self.load(b'Z\4test'), 'test')
 
   def test_truncated(self):
     self.assertRaises(EOFError, lambda: self.load(b'f\x020'))

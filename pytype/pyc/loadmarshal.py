@@ -316,11 +316,11 @@ class _LoadMarshal(object):
 
   def load_ascii(self):
     n = self._read_long()
-    return self._read(n)
+    return compat.native_str(self._read(n))
 
   def load_short_ascii(self):
     n = self._read_byte()
-    return self._read(n)
+    return compat.native_str(self._read(n))
 
   def load_tuple(self):
     return tuple(self.load_list())
