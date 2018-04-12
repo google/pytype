@@ -2910,7 +2910,7 @@ class NativeFunction(Function):
       #   (2) duplicate keyword
       #   (3) unexpected keyword
       # The way we constructed namedargs rules out (2).
-      if "keyword" in e.message:
+      if "keyword" in utils.message(e):
         # Happens for, e.g.,
         #   def f(*args): pass
         #   f(x=42)

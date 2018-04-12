@@ -274,7 +274,7 @@ class Loader(object):
       ast = ast.Visit(visitors.LookupExternalTypes(
           self._get_module_map(), self_name=ast.name))
     except KeyError as e:
-      raise BadDependencyError(e.message, ast.name)
+      raise BadDependencyError(utils.message(e), ast.name)
     return ast
 
   def _finish_ast(self, ast):
@@ -286,7 +286,7 @@ class Loader(object):
     try:
       ast.Visit(visitors.VerifyLookup(ignore_late_types=True))
     except ValueError as e:
-      raise BadDependencyError(e.message)
+      raise BadDependencyError(utils.message(e))
     ast.Visit(visitors.VerifyContainers())
 
   def resolve_ast(self, ast):
@@ -576,7 +576,7 @@ class PickledPyiLoader(Loader):
       ast = serialize_ast.ProcessAst(loaded_ast, self._get_module_map())
     except serialize_ast.UnrestorableDependencyError as e:
       del self._modules[module_name]
-      raise BadDependencyError(e.message, module_name)
+      raise BadDependencyError(utils.message(e), module_name)
     self._modules[module_name].ast = ast
     self._modules[module_name].pickle = None
     self._modules[module_name].dirty = False

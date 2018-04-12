@@ -7,7 +7,9 @@ from keyword import iskeyword
 import textwrap
 
 from pytype import abstract
+from pytype import compat
 from pytype import overlay
+from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import visitors
@@ -177,10 +179,12 @@ class NamedTupleBuilder(abstract.PyTDFunction):
     # namedtuple fields can be given as a single string, e.g. "a, b, c" or as a
     # list [Variable('a'), Variable('b'), Variable('c')].
     # We just want a list of strings.
-    if isinstance(fields, (str, six.text_type)):
+    if isinstance(fields, (bytes, six.text_type)):
+      fields = compat.native_str(fields)
       field_names = fields.replace(",", " ").split()
     else:
       field_names = [abstract.get_atomic_python_constant(f) for f in fields]
+      field_names = [compat.native_str(f) for f in field_names]
 
     # namedtuple also takes a "verbose" argument, but we don't care about that.
 
@@ -277,7 +281,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
     try:
       field_names = self._validate_and_rename_args(name, field_names, rename)
     except ValueError as e:
-      self.vm.errorlog.invalid_namedtuple_arg(self.vm.frames, e.message)
+      self.vm.errorlog.invalid_namedtuple_arg(self.vm.frames, utils.message(e))
       return node, self.vm.convert.unsolvable.to_variable(node)
 
     name = namedtuple_name(name, field_names)
