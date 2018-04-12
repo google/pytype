@@ -1226,6 +1226,14 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorLogIs(
           errors, [(4, "wrong-arg-types", r"foo_bar\.Foo\.Bar")])
 
+  def testUnknownInError(self):
+    errors = self.CheckWithErrors("""\
+      def f(x):
+        y = x if __random__ else None
+        return y.groups()
+    """)
+    self.assertErrorLogIs(errors, [(3, "attribute-error", r"Optional\[Any\]")])
+
 
 if __name__ == "__main__":
   test_base.main()
