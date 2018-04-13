@@ -1,4 +1,5 @@
 """Integration test for pytype."""
+from __future__ import print_function
 
 import csv
 import hashlib
@@ -52,9 +53,10 @@ class PytypeTest(unittest.TestCase):
 
   def _MakeFile(self, contents):
     contents = textwrap.dedent(contents)
-    path = self._TmpPath(hashlib.md5(contents).hexdigest() + ".py")
+    path = self._TmpPath(
+        hashlib.md5(contents.encode("utf-8")).hexdigest() + ".py")
     with open(path, "w") as f:
-      print >>f, contents
+      print(contents, file=f)
     return path
 
   def _RunPytype(self, pytype_args_dict):
@@ -80,7 +82,7 @@ class PytypeTest(unittest.TestCase):
       pytype_args.append(arg)
     p = subprocess.Popen(
         pytype_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    self.stdout, self.stderr = p.communicate()
+    self.stdout, self.stderr = (s.decode("utf-8") for s in p.communicate())
     self.returncode = p.returncode
 
   def _ParseString(self, string):
@@ -121,7 +123,7 @@ class PytypeTest(unittest.TestCase):
         self.assertEqual(expected_error, error[2],
                          "Expected %r, got %r" % (expected_error, error[2]))
     except:
-      print >>sys.stderr, "\n".join(" | ".join(error) for error in errors)
+      print("\n".join(" | ".join(error) for error in errors), file=sys.stderr)
       raise
 
   def _SetUpChecking(self, filename):
@@ -170,8 +172,8 @@ class PytypeTest(unittest.TestCase):
     # Tests that the pickled format is stable under a constant PYTHONHASHSEED.
     l_1 = self.GeneratePickledSimpleFile("simple1.pickled")
     l_2 = self.GeneratePickledSimpleFile("simple2.pickled")
-    with open(l_1, "r") as f_1:
-      with open(l_2, "r") as f_2:
+    with open(l_1, "rb") as f_1:
+      with open(l_2, "rb") as f_2:
         self.assertEqual(f_1.read(), f_2.read())
 
   def testGeneratePickledAst(self):
