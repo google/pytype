@@ -1,3 +1,4 @@
+from pytype import compat
 from pytype.pyc import opcodes
 import unittest
 
@@ -7,7 +8,7 @@ class _TestBase(unittest.TestCase):
 
   def dis(self, code):
     """Return the opcodes from disassbling a code sequence."""
-    return opcodes.dis(''.join(chr(c) for c in code), self.PYTHON_VERSION)
+    return opcodes.dis(compat.int_array_to_bytes(code), self.PYTHON_VERSION)
 
   def assertSimple(self, opcode, name):
     """Assert that a single opcode byte diassembles to the given name."""

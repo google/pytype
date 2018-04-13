@@ -1155,6 +1155,7 @@ def _bytecode_reader(data, mapping):
   Yields:
     (start position, end position, opcode class, oparg)
   """
+  assert isinstance(data, bytes)
   pos = 0
   extended_arg = 0
   start = 0
@@ -1197,6 +1198,7 @@ def _wordcode_reader(data, mapping):
   Yields:
     (start position, end position, opcode class, oparg)
   """
+  assert isinstance(data, bytes)
   extended_arg = 0
   start = 0
   byte_at = lambda i: six.indexbytes(data, i)
