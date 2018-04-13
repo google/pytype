@@ -452,6 +452,8 @@ class TypingTest(test_base.BaseTest):
       v5 = match1.end(u"foo")
       v6 = match1.span(u"foo")
       v7 = match1.groups("foo")
+      v8 = match1.groups()
+      v9 = match1.groups(None)
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Match, Optional, Tuple
@@ -464,7 +466,9 @@ class TypingTest(test_base.BaseTest):
       v4 = ...  # type: int
       v5 = ...  # type: int
       v6 = ...  # type: Tuple[int, int]
-      v7 = ...  # type: Tuple[Optional[str], ...]
+      v7 = ...  # type: Tuple[str, ...]
+      v8 = ...  # type: Tuple[Optional[str], ...]
+      v9 = ...  # type: Tuple[Optional[str], ...]
     """)
 
   def test_callable_call(self):
