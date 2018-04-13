@@ -105,7 +105,7 @@ class BadDependencyError(Exception):
     super(BadDependencyError, self).__init__(module_error + referenced)
 
   def __str__(self):
-    return self.message
+    return utils.message(self)
 
 
 class Loader(object):
