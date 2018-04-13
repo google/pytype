@@ -89,6 +89,13 @@ class SlotsTest(test_base.BaseTest):
       Foo().baz = 3
     """, python_version=(3, 6))
 
+  def testSlotWithBytesPy3(self):
+    errors = self.CheckWithErrors("""\
+      class Foo(object):
+        __slots__ = (b"x",)
+    """, python_version=(3, 6))
+    self.assertErrorLogIs(errors, [(1, "bad-slots")])
+
   def testSlotAsAttribute(self):
     ty = self.Infer("""
       class Foo(object):

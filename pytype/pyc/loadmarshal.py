@@ -287,10 +287,7 @@ class _LoadMarshal(object):
   def load_interned(self):
     n = self._read_long()
     s = self._read(n)
-    # Interned strings need to be the native `str` type of the host python.
-    if sys.version_info[0] == 3:
-      s = s.decode('utf-8')
-    ret = six.moves.intern(s)
+    ret = six.moves.intern(compat.native_str(s))
     self._stringtable.append(ret)
     return ret
 
