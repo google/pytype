@@ -489,14 +489,23 @@ class Tempdir(object):
     return path
 
   def create_file(self, filename, indented_data=None):
-    """Create a file in the temporary directory. Also dedents the contents."""
+    """Create a file in the temporary directory. Dedents the data if needed."""
     filedir, filename = os.path.split(filename)
     if filedir:
       self.create_directory(filedir)
     path = os.path.join(self.path, filedir, filename)
-    with open(path, "w") as fi:
-      if indented_data:
-        fi.write(textwrap.dedent(indented_data))
+    if isinstance(indented_data, bytes) and not isinstance(indented_data, str):
+      # This is binary data rather than text.
+      # TODO(rechen): The second isinstance() check can be dropped once we no
+      # longer support running under Python 2.
+      mode = "wb"
+      data = indented_data
+    else:
+      mode = "w"
+      data = textwrap.dedent(indented_data) if indented_data else indented_data
+    with open(path, mode) as fi:
+      if data:
+        fi.write(data)
     return path
 
   def delete_file(self, filename):

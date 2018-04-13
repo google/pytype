@@ -346,7 +346,7 @@ class TestPython36(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, "v = ...  # type: bytes")
 
   def test_unicode_constant(self):
-    ty = self.Infer("v = 'foo\u00e4'")  # pylint: disable=anomalous-unicode-escape-in-string
+    ty = self.Infer("v = 'foo\\u00e4'")
     self.assertTypesMatchPytd(ty, "v = ...  # type: str")
 
   def test_memoryview(self):

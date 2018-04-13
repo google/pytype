@@ -45,7 +45,7 @@ from pytype.pytd import slots
 from pytype.pytd import visitors
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
-from six.moves import reprlib
+from six import moves
 
 log = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ _FUNCTION_TYPE_COMMENT_RE = re.compile(r"^\((.*)\)\s*->\s*(\S.*?)\s*$")
 # Create a repr that won't overflow.
 _TRUNCATE = 120
 _TRUNCATE_STR = 72
-repr_obj = reprlib.Repr()
+repr_obj = moves.reprlib.Repr()
 repr_obj.maxother = _TRUNCATE
 repr_obj.maxstring = _TRUNCATE_STR
 repper = repr_obj.repr
@@ -1776,7 +1776,7 @@ class VirtualMachine(object):
     the_map = self.convert.build_map(state.node)
     if self.python_version >= (3, 5):
       state, args = state.popn(2 * op.arg)
-      for i in xrange(op.arg):
+      for i in moves.range(op.arg):
         key, val = args[2*i], args[2*i+1]
         state = self.store_subscr(state, the_map, key, val)
     else:

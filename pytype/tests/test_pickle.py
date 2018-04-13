@@ -1,19 +1,18 @@
 """Tests for loading and saving pickled files."""
 
-import cPickle
-
 
 from pytype import load_pytd
 from pytype import utils
 from pytype.pytd import visitors
 from pytype.tests import test_base
+from six.moves import cPickle
 
 
 class PickleTest(test_base.BaseTest):
   """Tests for loading and saving pickled files."""
 
   def _verifyDeps(self, module, immediate_deps, late_deps):
-    if isinstance(module, str):
+    if isinstance(module, bytes):
       data = cPickle.loads(module)
       self.assertItemsEqual(data.dependencies, immediate_deps)
       ast = data.ast
