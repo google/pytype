@@ -71,7 +71,7 @@ class TestLoadMarshal(unittest.TestCase):
     self.assertEqual(self.load(b'l\xfe\xff\xff\xff\1\0\2\0'), -65537)
 
   def test_load_string(self):
-    self.assertStrictEqual(self.load(b's\4\0\0\0test', (2, 7)), b'test')
+    self.assertStrictEqual(self.load(b's\4\0\0\0test', (2, 7)), 'test')
     self.assertStrictEqual(self.load(b's\4\0\0\0test', (3, 6)),
                            compat.BytesType(b'test'))
 

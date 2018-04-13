@@ -2809,14 +2809,8 @@ class InterpreterClass(SimpleAbstractValue, Class):
     except ConversionError:
       return None  # Happens e.g. for __slots__ = ["x" if b else "y"]
     for s in strings:
-      allowed_types = (str,)
-      if self.vm.python_version[0] < 3:
-        # When running under Python 3 and analyzing Python 2, slot names can be
-        # loaded as both bytes and str, since these types are the same to the
-        # target version.
-        allowed_types += (bytes,)
       # The identity check filters out compat.py subclasses.
-      if s.__class__ not in allowed_types:
+      if s.__class__ is not str:
         if isinstance(s, six.text_type):
           name = s.encode("utf8", "ignore")
         else:
