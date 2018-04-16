@@ -780,6 +780,22 @@ class PYITest(test_base.BaseTest):
         def bar(*args) -> int: ...
         """)
 
+  def testStaticMethodFromPyiAsCallable(self):
+    with utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class A:
+          @staticmethod
+          def callback(msg: str) -> None: ...
+      """)
+      self.Check("""
+        from __future__ import google_type_annotations
+        from typing import Any, Callable
+        import foo
+        def func(c: Callable[[Any], None], arg: Any) -> None:
+          c(arg)
+        func(foo.A.callback, 'hello, world')
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_base.main()

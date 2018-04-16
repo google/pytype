@@ -372,6 +372,8 @@ class AbstractMatcher(object):
       if other_type.full_name in [
           "__builtin__.staticmethod", "__builtin__.object"]:
         return subst
+      return self._match_type_against_type(
+          left.method, other_type, subst, node, view)
     elif isinstance(left, abstract.Union):
       for o in left.options:
         new_subst = self._match_type_against_type(
