@@ -352,9 +352,6 @@ class CallTracer(vm.VirtualMachine):
     if val.data.is_attribute_of_class:
       # We'll analyze this function as part of a class.
       log.info("Analyze functions: Skipping class method %s", val.data.name)
-    elif val.data.is_closure():
-      # We analyze closures as part of the function they're defined in.
-      log.info("Analyze functions: Skipping closure %s", val.data.name)
     else:
       node1 = node0.ConnectNew(val.data.name)
       node2 = self.maybe_analyze_method(node1, val)

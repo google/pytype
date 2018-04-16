@@ -2268,6 +2268,7 @@ class VirtualMachine(object):
     globs = self.get_globals_dict()
     fn = self._make_function(name, state.node, code, globs, defaults,
                              kw_defaults, closure=closure)
+    self.trace_functiondef(fn)
     return state.push(fn)
 
   def byte_CALL_FUNCTION(self, state, op):

@@ -41,7 +41,7 @@ class TestPython36(test_base.BaseTest):
       def f(a = 2, *args, b:int = 1, **kwargs):
         x = 0
         def g(i:int = 3) -> int:
-          print(x)
+          return x + i
         return g
 
       y = f(2)
