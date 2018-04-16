@@ -551,12 +551,12 @@ def load_pytype_file(filename):
   Arguments:
     filename: the path, relative to "pytype/"
   Returns:
-    The contents of the file
+    The contents of the file as a bytestring
   Raises:
     IOError: if file not found
   """
   path = os.path.join(os.path.dirname(__file__), filename)
-  with open(path, "r") as fi:
+  with open(path, "rb") as fi:
     return fi.read()
 
 
