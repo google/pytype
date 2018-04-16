@@ -160,6 +160,23 @@ class NamedtupleTests(test_base.BaseTest):
                            (4, "wrong-arg-count"),
                            (5, "duplicate-keyword-argument")])
 
+  def test_bad_call_36(self):
+    """The last two arguments are kwonly in 3.6."""
+    _, errorlog = self.InferWithErrors("""\
+        import collections
+        collections.namedtuple()
+        collections.namedtuple("_")
+        collections.namedtuple("_", "", True)
+        collections.namedtuple("_", "", True, True)
+        collections.namedtuple("_", "", True, True, True)
+    """, python_version=(3, 6))
+    self.assertErrorLogIs(errorlog,
+                          [(2, "missing-parameter"),
+                           (3, "missing-parameter"),
+                           (4, "wrong-arg-count"),
+                           (5, "wrong-arg-count"),
+                           (6, "wrong-arg-count")])
+
   def test_constructors(self):
     self.Check("""
         import collections

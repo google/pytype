@@ -1,7 +1,5 @@
 """Implementation of types from Python 2's collections library."""
 
-import collections
-import inspect
 # TODO(tsudol): Python 2 and Python 3 have different keyword lists.
 from keyword import iskeyword
 import textwrap
@@ -161,11 +159,9 @@ class NamedTupleBuilder(abstract.PyTDFunction):
     # abstract.PyTDFunction._match_args checks the args for this call.
     self._match_args(node, args)
 
-    # inspect.callargs returns a dictionary mapping the argument names to
-    # the values in args.posargs and args.namedargs (or False if there is no
-    # value given).
-    callargs = inspect.getcallargs(collections.namedtuple, *args.posargs,
-                                   **args.namedargs)
+    # namedtuple only has one signature
+    sig, = self.signatures
+    callargs = {name: var for name, var, _ in sig.signature.iter_args(args)}
 
     # The name of the namedtuple class is the first arg (a Variable)
     # We need the actual Variable later, so we'll just return name_var and
@@ -190,7 +186,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
 
     # rename will take any problematic field names and give them a new name.
     # Like the other args, it's stored as a Variable, but we want just a bool.
-    if callargs["rename"]:
+    if callargs.get("rename", None):
       rename = abstract.get_atomic_python_constant(callargs["rename"])
     else:
       rename = False

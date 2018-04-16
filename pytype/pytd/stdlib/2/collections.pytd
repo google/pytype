@@ -56,9 +56,15 @@ if sys.version_info[0] >= 3:
   Generator = typing.Generator
   Reversible = typing.Reversible
 
-def namedtuple(typename: Text,
-  field_names: Text or Iterable[Text] or Iterable[nothing],
-  verbose: bool = ..., rename: bool = ...) -> type
+if sys.version_info >= (3, 6):
+  def namedtuple(typename: Text,
+    field_names: Text or Iterable[Text] or Iterable[nothing],
+    *,
+    verbose: bool = ..., rename: bool = ...) -> type
+else:
+  def namedtuple(typename: Text,
+    field_names: Text or Iterable[Text] or Iterable[nothing],
+    verbose: bool = ..., rename: bool = ...) -> type
 
 class OrderedDict(Dict[K, V]):
   def popitem(self, last: bool = ...) -> Tuple[K, V]
