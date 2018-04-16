@@ -476,6 +476,17 @@ class TestPython36(test_base.BaseTest):
     errors = self.CheckWithErrors("ValueError().message")
     self.assertErrorLogIs(errors, [(1, "attribute-error")])
 
+  def test_iterator_builtins(self):
+    ty = self.Infer("""
+      v1 = map(int, ["0"])
+      v2 = zip([0], [1])
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Iterator, Tuple
+      v1 = ...  # type: Iterator[int]
+      v2 = ...  # type: Iterator[Tuple[int, int]]
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

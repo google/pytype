@@ -132,6 +132,10 @@ class BuiltinTests(test_base.BaseTest):
       f = ...  # type: List[Tuple[complex, int]]
       """)
 
+  def testZipError(self):
+    errors = self.CheckWithErrors("zip([], [], [], 42)")
+    self.assertErrorLogIs(errors, [(1, "wrong-arg-types", "Iterable.*int")])
+
   def testDict(self):
     ty = self.Infer("""
       def t_testDict():
@@ -428,6 +432,15 @@ class BuiltinTests(test_base.BaseTest):
         pass
 
       def f() -> list
+    """)
+
+  def testMap3(self):
+    ty = self.Infer("""
+      v = map(int, ("0",))
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List
+      v = ...  # type: List[int]
     """)
 
   def testArraySmoke(self):

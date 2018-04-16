@@ -73,8 +73,8 @@ def iter(collection: Iterable[_T]) -> Iterator[_T]
 def iter(func: typing.Callable[[], Union[_T, _T2]], sentinel: _T) -> `callable-iterator`[_T2]
 def len(obj: Sized) -> int
 def locals() -> dict[str, object]
-def map(function, sequence: list[nothing], ...) -> list[nothing]
-def map(function, sequence, ...) -> list
+def map(function, *sequences: Iterable[nothing]) -> List[nothing]
+def map(function: Callable[..., _T], *sequences: Iterable) -> List[_T]
 def max(iterable: Iterable[_T], key: Callable = ...) -> _T
 def max(arg1: _T, arg2: _T2, *, key: Callable = ...) -> _T or _T2
 def max(arg1: _T, arg2: _T2, arg3: _T3, *, key: Callable = ...) -> _T or _T2 or _T3
@@ -108,13 +108,13 @@ def sum(iterable: Iterable[_NUMBER]) -> _NUMBER
 def sum(iterable: Iterable[_T], start: _T) -> _T
 def unichr(i: int) -> unicode
 def vars(...) -> dict[str, ?]
-def zip() -> list[nothing]
+def zip() -> List[nothing]
 def zip(seq1: Iterable[nothing]) -> List[nothing]
 def zip(seq1: Iterable[_T]) -> List[Tuple[_T]]
 def zip(seq1: Iterable[nothing], seq2: Iterable) -> List[nothing]
 def zip(seq1: Iterable, seq2: Iterable[nothing]) -> List[nothing]
 def zip(seq1: Iterable[_T], seq2: Iterable[_T2]) -> List[Tuple[_T, _T2]]
-def zip(seq1, seq2, seq3, ...) -> List[tuple]
+def zip(seq1, seq2, seq3, *seqs: Iterable) -> List[tuple]
 def exit(code: ? = ...) -> NoneType:
     raise SystemExit()
 def quit() -> NoneType:
