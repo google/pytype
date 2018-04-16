@@ -16,14 +16,16 @@ However, it can additionally verify (and leverage)
 
 ## How to get started
 
-You currently need Python 2.7 to *run* pytype. (It can *analyze* Python 3, though)
+Pytype can run under both Python 2.7 and Python 3.6. It also needs an
+interpreter in $PATH for the python version of the code you're analyzing
+(Python 2.7 by default).
 
 ```
 git clone https://github.com/google/pytype.git
 cd pytype
 git submodule init
 git submodule update
+pip install pyyaml six
 python setup.py install
-pip install pyyaml
 pytype your_python_code.py
 ```

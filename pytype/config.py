@@ -173,8 +173,7 @@ class Options(object):
         "--python_exe", type="string", action="store",
         dest="python_exe", default=None,
         help=("Full path to a Python interpreter that is used to compile the "
-              "source(s) to byte code. Can be \"HOST\" to use the same Python "
-              "that is running pytype. If not specified, --python_version is "
+              "source(s) to byte code. If not specified, --python_version is "
               "used to create the name of an interpreter."))
     o.add_option(
         "--use-pickled-files", action="store_true", default=False,

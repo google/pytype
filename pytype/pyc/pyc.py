@@ -45,7 +45,7 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
     filename: Name of the source file. For error messages.
     python_version: Python version, (major, minor). E.g. (2, 7). Will be used
       to determine the Python executable to call.
-    python_exe: Path to a Python interpreter, or "HOST", or None. If this is
+    python_exe: Path to a Python interpreter, or None. If this is
       None, the system "pythonX.X" interpreter will be used.
     mode: Same as __builtin__.compile: "exec" if source consists of a
       sequence of statements, "eval" if it consists of a single expression,
@@ -62,27 +62,20 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
   try:
     fi.write(src)
     fi.close()
-    if python_exe == "HOST":
-      # We were asked to use the version of Python we're running to compile.
-      output = six.StringIO()
-      compile_bytecode.compile_to_pyc(fi.name, filename or fi.name,
-                                      output, mode)
-      bytecode = output.getvalue()
+    # In order to be able to compile pyc files for both Python 2 and Python 3,
+    # we spawn an external process.
+    if python_exe:
+      # Allow python_exe to contain parameters (E.g. "-T")
+      exe = python_exe.split() + ["-S"]
     else:
-      # In order to be able to compile pyc files for both Python 2 and Python 3,
-      # we spawn an external process.
-      if python_exe:
-        # Allow python_exe to contain parameters (E.g. "-T")
-        exe = python_exe.split() + ["-S"]
-      else:
-        exe = ["python" + ".".join(map(str, python_version))]
-      cmd = exe + ["-", fi.name, filename or fi.name, mode]
+      exe = ["python" + ".".join(map(str, python_version))]
+    cmd = exe + ["-", fi.name, filename or fi.name, mode]
 
-      src = utils.load_pytype_file(COMPILE_SCRIPT)
+    src = utils.load_pytype_file(COMPILE_SCRIPT)
 
-      p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-      bytecode, _ = p.communicate(src)
-      assert p.poll() == 0, "Child process failed"
+    p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    bytecode, _ = p.communicate(src)
+    assert p.poll() == 0, "Child process failed"
   finally:
     os.unlink(fi.name)
   first_byte = six.indexbytes(bytecode, 0)

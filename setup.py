@@ -61,8 +61,10 @@ setup(
              ],
     scripts=['scripts/pytype', 'scripts/pytd'],
     package_data={'pytype': get_builtin_files()},
-    requires=['pyyaml (>=3.11)'],
-    install_requires=['pyyaml>=3.11'],
-    classifiers=['Programming Language :: Python :: 2.7'],
+    requires=['pyyaml (>=3.11)', 'six'],
+    classifiers=[
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.6',
+    ],
     ext_modules = [parser_ext],
 )
