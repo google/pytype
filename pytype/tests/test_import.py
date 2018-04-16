@@ -729,8 +729,9 @@ class ImportTest(test_base.BaseTest):
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Union
+        from typing import SupportsFloat
         foo = ...  # type: module
-        def d(x: float, y: float) -> float
+        def d(x: SupportsFloat, y: SupportsFloat) -> float
       """)
 
   def testImportConstant(self):
