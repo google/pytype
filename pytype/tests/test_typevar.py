@@ -141,7 +141,7 @@ class TypeVarTest(test_base.BaseTest):
     """)
     self.assertErrorLogIs(errors, [
         (3, "invalid-typevar", r"wrong arguments"),
-        (5, "invalid-typevar", r"Expected.*str.*Actual.*int"),
+        (5, "invalid-typevar", r"Expected.*(str|unicode).*Actual.*int"),
         (6, "invalid-typevar", r"constant str"),
         (7, "invalid-typevar", r"unambiguous type"),
         (8, "invalid-typevar", r"Expected.*_1: type.*Actual.*_1: int"),
@@ -843,6 +843,26 @@ class TypeVarTest(test_base.BaseTest):
       from typing import Any, Dict, TypeVar
       a = ...  # type: Dict[str, Any]
       T = TypeVar('T')
+    """)
+
+  def testUnicodeLiterals(self):
+    ty = self.Infer("""
+      from __future__ import google_type_annotations
+      from __future__ import unicode_literals
+      import typing
+      T = typing.TypeVar("T")
+      def f(x: T) -> T:
+        return __any_object__
+      v = f(42)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import __future__
+      from typing import Any
+      typing = ...  # type: module
+      unicode_literals = ...  # type: __future__._Feature
+      T = TypeVar("T")
+      def f(x: T) -> T: ...
+      v = ...  # type: int
     """)
 
 

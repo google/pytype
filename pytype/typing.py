@@ -12,6 +12,7 @@ from pytype import utils
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import visitors
+import six
 from six import moves
 
 
@@ -123,13 +124,13 @@ class TypeVar(abstract.PyTDFunction):
     f = vm.convert.constant_to_value(pyval, {}, vm.root_cfg_node)
     super(TypeVar, self).__init__(name, f.signatures, pytd.METHOD, vm)
 
-  def _get_class_or_constant(self, var, name, arg_type):
+  def _get_class_or_constant(self, var, name, arg_type, arg_type_desc=None):
     if arg_type is abstract.Class:
       convert_func = abstract.get_atomic_value
-      type_desc = "an unambiguous type"
+      type_desc = arg_type_desc or "an unambiguous type"
     else:
       convert_func = abstract.get_atomic_python_constant
-      type_desc = "a constant " + arg_type.__name__
+      type_desc = arg_type_desc or "a constant " + arg_type.__name__
     try:
       return convert_func(var, arg_type)
     except abstract.ConversionError:
@@ -154,7 +155,9 @@ class TypeVar(abstract.PyTDFunction):
       # It is currently impossible to get here, since the only
       # FailedFunctionCall that is not an InvalidParameters is NotCallable.
       raise TypeVarError("initialization failed")
-    name = self._get_class_or_constant(args.posargs[0], "name", str)
+    name = self._get_class_or_constant(args.posargs[0], "name",
+                                       six.string_types,
+                                       arg_type_desc="a constant str")
     constraints = tuple(self._get_class_or_constant(
         c, "constraint", abstract.Class) for c in args.posargs[1:])
     if len(constraints) == 1:

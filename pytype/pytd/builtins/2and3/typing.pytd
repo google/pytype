@@ -15,15 +15,15 @@ _V2 = TypeVar('_V2')
 _T2 = TypeVar('_T2')
 
 
-# This function does not exist in typing.py. It is here for documentation
-# purposes and to make it easier for pytype to type-check arguments to TypeVar.
-def _typevar_new(name: str, *constraints: type, bound: type=None, covariant: bool=False, contravariant: bool=False): ...
-
-
 if sys.version_info >= (3, 0):
   Text = str
 else:
   Text = unicode
+
+
+# This function does not exist in typing.py. It is here for documentation
+# purposes and to make it easier for pytype to type-check arguments to TypeVar.
+def _typevar_new(name: Text, *constraints: type, bound: type=None, covariant: bool=False, contravariant: bool=False): ...
 
 
 class Callable(Generic[_ARGS, _RET], Protocol):
