@@ -432,12 +432,11 @@ class AnythingType(node.Node(), Type):
   """A type we know nothing about yet ('?' in pytd)."""
   __slots__ = ()
 
-  # For running under Python 2
-  def __nonzero__(self):
-    return True
-
   def __bool__(self):
     return True
+
+  # For running under Python 2
+  __nonzero__ = __bool__
 
 
 class NothingType(node.Node(), Type):
@@ -448,12 +447,11 @@ class NothingType(node.Node(), Type):
   """
   __slots__ = ()
 
-  # For running under Python 2
-  def __nonzero__(self):
-    return True
-
   def __bool__(self):
     return True
+
+  # For running under Python 2
+  __nonzero__ = __bool__
 
 
 class _SetOfTypes(node.Node('type_list: tuple[{Type}]'), Type):

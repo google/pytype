@@ -282,8 +282,11 @@ class TypeBuilder(object):
     """Get a union of all the types added so far."""
     return self.union
 
-  def __nonzero__(self):
+  def __bool__(self):
     return not isinstance(self.union, pytd.NothingType)
+
+  # For running under Python 2
+  __nonzero__ = __bool__
 
 
 def NamedOrClassType(name, cls):

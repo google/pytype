@@ -405,5 +405,12 @@ class TestDataFiles(parser_test_base.ParserTest):
     path, _ = pytd_utils.GetPredefinedFile(subdir, "importlib", as_package=True)
     self.assertEqual(path, "pytd/stdlib/3/importlib/__init__.pytd")
 
+  def testTypeBuilder(self):
+    t = pytd_utils.TypeBuilder()
+    self.assertFalse(t)
+    t.add_type(pytd.AnythingType())
+    self.assertTrue(t)
+
+
 if __name__ == "__main__":
   unittest.main()
