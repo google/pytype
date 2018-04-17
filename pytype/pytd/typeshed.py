@@ -20,7 +20,8 @@ class Typeshed(object):
     self._env_home = home = os.getenv("TYPESHED_HOME")
     if home:
       if not os.path.isdir(home):
-        raise IOError("No typeshed directory %s" % home)
+        raise IOError("Could not find a typeshed installation in "
+                      "$TYPESHED_HOME directory %s" % home)
       self._typeshed_path = home
     else:
       pytype_base = os.path.split(os.path.dirname(__file__))[0]
@@ -173,7 +174,7 @@ def _get_typeshed():
       # This happens if typeshed is not available. Which is a setup error
       # and should be propagated to the user. The IOError is catched further up
       # in the stack.
-      raise AssertionError("Couldn't create Typeshed: %s" % str(e))
+      raise utils.UsageError("Couldn't initalize typeshed:\n %s" % str(e))
   return _typeshed
 
 
