@@ -2124,13 +2124,30 @@ class VirtualMachine(object):
 
   def byte_WITH_CLEANUP(self, state, op):
     """Called at the end of a with block. Calls the exit handlers etc."""
+    # In Python 2, cleaning up after a with block is done in a single
+    # WITH_CLEANUP opcode. In Python 3, the same functionality is split into
+    # a cleanup start and end. See http://shortn/_VocWdMxKuK for how cleanup
+    # manipulates the stack.
+    return self.byte_WITH_CLEANUP_FINISH(
+        self.byte_WITH_CLEANUP_START(state, op), op)
+
+  def byte_WITH_CLEANUP_START(self, state, op):
+    """Called to start cleaning up a with block. Calls the exit handlers etc."""
     state, u = state.pop()  # pop 'None'
     state, exit_func = state.pop()
+    state = state.push(u)
     state = state.push(self.convert.build_none(state.node))
     v = self.convert.build_none(state.node)
     w = self.convert.build_none(state.node)
-    state, unused_suppress_exception = self.call_function_with_state(
+    state, suppress_exception = self.call_function_with_state(
         state, exit_func, (u, v, w))
+    return state.push(suppress_exception)
+
+  def byte_WITH_CLEANUP_FINISH(self, state, op):
+    """Called to finish cleaning up a with block."""
+    # TODO(mdemello): Should we do something with the result here?
+    state, unused_suppress_exception = state.pop()
+    state, unused_none = state.pop()
     return state
 
   def _convert_kw_defaults(self, values):
@@ -2465,23 +2482,6 @@ class VirtualMachine(object):
 
   def byte_DELETE_SLICE_3(self, state, op):
     return self.delete_slice(state, 3)
-
-  def byte_WITH_CLEANUP_START(self, state, op):
-    """Called at the end of a with block. Calls the exit handlers etc."""
-    # From the following commit: https://goo.gl/WxS2vJ
-    # WITH_CLEANUP_START in ceval.c is just WITH_CLEANUP with a name change.
-    return self.byte_WITH_CLEANUP(state, op)
-
-  def byte_WITH_CLEANUP_FINISH(self, state, op):
-    """Called when an async exit function returns."""
-    # TODO(mdemello): Should we do something with the result here?
-    state, unused_result = state.pop()
-    # We don't pop the exception because we never pushed it in
-    # WITH_CLEANUP_START.
-    # Set WHY_SILENCED to prevent END_FINALLY from trying to reraise the
-    # nonexistent exception
-    state = state.set_why("silenced")
-    return state
 
   def byte_SETUP_ANNOTATIONS(self, state, op):
     """Sets up variable annotations in locals()."""

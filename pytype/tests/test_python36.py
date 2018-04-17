@@ -487,6 +487,18 @@ class TestPython36(test_base.BaseTest):
       v2 = ...  # type: Iterator[Tuple[int, int]]
     """)
 
+  def test_cleanup(self):
+    ty = self.Infer("""
+      with open("foo.py", "r") as f:
+        v = f.read()
+      w = 42
+    """)
+    self.assertTypesMatchPytd(ty, """
+      f = ...  # type: file
+      v = ...  # type: str
+      w = ...  # type: int
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

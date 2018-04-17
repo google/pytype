@@ -42,6 +42,7 @@ parser_ext = Extension(
         'pytype/pyi/lexer.lex.cc',
         'pytype/pyi/parser.tab.cc',
         ],
+    extra_compile_args=['-std=c++11']
 )
 
 
@@ -62,6 +63,7 @@ setup(
     scripts=['scripts/pytype', 'scripts/pytd'],
     package_data={'pytype': get_builtin_files()},
     requires=['pyyaml (>=3.11)', 'six'],
+    install_requires=['pyyaml (>=3.11)', 'six'],
     classifiers=[
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.6',
