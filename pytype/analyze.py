@@ -375,7 +375,8 @@ class CallTracer(vm.VirtualMachine):
     # These are typically hidden under a decorator.
     for f in self._interpreter_functions:
       for value in f.bindings:
-        if (not value.data.is_class_builder and
+        if (isinstance(value.data, abstract.InterpreterFunction) and
+            not value.data.is_class_builder and
             value.data not in self._analyzed_functions):
           node = self.analyze_function(node, value)
     for c in self._interpreter_classes:

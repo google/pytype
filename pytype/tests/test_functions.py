@@ -1034,6 +1034,22 @@ class TestFunctions(test_base.BaseTest):
       def int2byte(*v) -> str: ...
     """)
 
+  def test_pass_func_to_complex_func(self):
+    # This test gets an unsolvable binding added to the variable containing the
+    # lambda by making the call to 'f' trigger a TooComplexError.
+    self.Check("""
+      from __future__ import google_type_annotations
+      from typing import Optional
+      def f(x1, x2: Optional[str], x3, x4, x5, x6, x7, x8, x9, xA, xB):
+        pass
+      def g(x2: Optional[str] = None, x3: Optional[str] = None,
+            x4: Optional[str] = None, x5: Optional[str] = None,
+            x6: Optional[str] = None, x7: Optional[str] = None,
+            x8: Optional[str] = None, x9: Optional[str] = None,
+            xA: Optional[str] = None, xB: Optional[str] = None):
+        f(lambda: None, x2, x3, x4, x5, x6, x7, x8, x9, xA, xB)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

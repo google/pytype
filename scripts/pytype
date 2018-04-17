@@ -158,7 +158,8 @@ def process_one_file(input_filename,
             "# Caught error in pytype: " + str(e).replace("\n", "\n#")
             + "\n# " + "\n# ".join(traceback.format_exc().splitlines()))
     else:
-      e.args = (utils.message(e) + "\nFile: %s" % input_filename,) + e.args[1:]
+      e.args = (
+          str(utils.message(e)) + "\nFile: %s" % input_filename,) + e.args[1:]
       raise
   if not options.check:
     if output_filename == "-" or not output_filename:
