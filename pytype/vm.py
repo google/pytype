@@ -2126,8 +2126,9 @@ class VirtualMachine(object):
     """Called at the end of a with block. Calls the exit handlers etc."""
     # In Python 2, cleaning up after a with block is done in a single
     # WITH_CLEANUP opcode. In Python 3, the same functionality is split into
-    # a cleanup start and end. See http://shortn/_VocWdMxKuK for how cleanup
-    # manipulates the stack.
+    # a cleanup start and end. See WITH_CLEANUP(_{START,FINISH}) here for how
+    # cleanup manipulates the stack:
+    #   https://github.com/python/cpython/blob/master/Doc/library/dis.rst
     return self.byte_WITH_CLEANUP_FINISH(
         self.byte_WITH_CLEANUP_START(state, op), op)
 
