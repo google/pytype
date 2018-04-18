@@ -580,7 +580,7 @@ def list_pytype_files(suffix):
     # __loader__ exists only when this file is in a Python archive in Python 2
     # but is always present in Python 3, so we can't use the presence or
     # absence of the loader to determine whether calling get_zipfile is okay.
-    filenames = loader.get_zipfile().namelist()
+    filenames = loader.get_zipfile().namelist()  # pytype: disable=attribute-error
   except AttributeError:
     # List directory using the file system
     if not os.path.isdir(basedir):

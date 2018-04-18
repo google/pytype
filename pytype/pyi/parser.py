@@ -334,8 +334,10 @@ class _Parser(object):
     self._error_location = None
     self._version = _three_tuple(version or _DEFAULT_VERSION)
     self._platform = platform or _DEFAULT_PLATFORM
-    self._filename = None
-    self._ast_name = None
+    # Fields initialized in self.parse().
+    self._filename = None  # type: str
+    self._ast_name = None  # type: str
+    self._type_map = None  # type: dict
     # The condition stack, start with a default scope that will always be
     # active.
     self._current_condition = _ConditionScope(None)

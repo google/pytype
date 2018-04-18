@@ -86,7 +86,8 @@ class Program(object):
       A Variable instance.
     """
     variable = Variable(self, self.next_variable_id)
-    log.trace("New variable v%d", self.next_variable_id)
+    # We patch the logger to have an extra 'trace' level.
+    log.trace("New variable v%d", self.next_variable_id)  # pytype: disable=attribute-error
     self.next_variable_id += 1
     if bindings is not None:
       assert source_set is not None and where is not None
