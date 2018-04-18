@@ -6,9 +6,8 @@ import textwrap
 
 from pytype import blocks
 from pytype import compat
-from pytype import config
 from pytype import errors
-from pytype import load_pytd
+from pytype import utils
 from pytype import vm
 from pytype.pyc import pyc
 from pytype.tests import test_base
@@ -37,10 +36,9 @@ class BytecodeTest(test_base.BaseTest):
   """Tests for process_code in blocks.py and VM integration."""
 
   def setUp(self):
-    self.options = config.Options.create(python_version=self.PYTHON_VERSION,
-                                         python_exe=self.PYTHON_EXE)
+    super(BytecodeTest, self).setUp()
+    self.ConfigureOptions(python_version=self.PYTHON_VERSION)
     self.errorlog = errors.ErrorLog()
-    self.loader = load_pytd.Loader(None, self.PYTHON_VERSION)
     self.trace_vm = TraceVM(self.options, self.loader)
 
   def test_simple(self):
@@ -130,10 +128,11 @@ class BytecodeTest(test_base.BaseTest):
   ])
 
   def test_each_instruction_once_loops(self):
-    code_nested_loop = pyc.compile_src(src=self.src_nested_loop,
-                                       python_version=self.PYTHON_VERSION,
-                                       python_exe=self.PYTHON_EXE,
-                                       filename="<>")
+    code_nested_loop = pyc.compile_src(
+        src=self.src_nested_loop,
+        python_version=self.PYTHON_VERSION,
+        python_exe=utils.get_python_exe(self.PYTHON_VERSION),
+        filename="<>")
     self.assertEqual(code_nested_loop.co_code,
                      self.code_nested_loop)
     self.trace_vm.run_program(self.src_nested_loop, "", maximum_depth=10)
@@ -162,10 +161,11 @@ class BytecodeTest(test_base.BaseTest):
   ])
 
   def test_each_instruction_once_dead_code(self):
-    code_deadcode = pyc.compile_src(src=self.src_deadcode,
-                                    python_version=self.PYTHON_VERSION,
-                                    python_exe=self.PYTHON_EXE,
-                                    filename="<>")
+    code_deadcode = pyc.compile_src(
+        src=self.src_deadcode,
+        python_version=self.PYTHON_VERSION,
+        python_exe=utils.get_python_exe(self.PYTHON_VERSION),
+        filename="<>")
     self.assertEqual(code_deadcode.co_code,
                      self.code_deadcode)
     try:

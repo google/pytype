@@ -1,8 +1,10 @@
 """Tests for loading and saving pickled files."""
 
+import textwrap
 
-from pytype import load_pytd
+
 from pytype import utils
+from pytype.pyi import parser
 from pytype.pytd import visitors
 from pytype.tests import test_base
 from six.moves import cPickle
@@ -10,6 +12,13 @@ from six.moves import cPickle
 
 class PickleTest(test_base.BaseTest):
   """Tests for loading and saving pickled files."""
+
+  def PicklePyi(self, src, module_name):
+    src = textwrap.dedent(src)
+    ast = parser.parse_string(src, python_version=self.PYTHON_VERSION)
+    ast = ast.Visit(visitors.LookupBuiltins(
+        self.loader.builtins, full_names=False))
+    return self._Pickle(ast, module_name)
 
   def _verifyDeps(self, module, immediate_deps, late_deps):
     if isinstance(module, bytes):
@@ -184,15 +193,16 @@ class PickleTest(test_base.BaseTest):
       """, imports_map={"foo": foo}, module_name="bar")
 
   def testFunctionType(self):
-    self.loader = load_pytd.PickledPyiLoader(
-        base_module="bar",
+    self.ConfigureOptions(
+        module_name="bar",
         python_version=self.PYTHON_VERSION,
-        pythonpath=[""])
-    with utils.Tempdir() as d:
-      pickled_foo = self.PicklePyi("""
+        pythonpath=[""],
+        use_pickled_files=True)
+    pickled_foo = self.PicklePyi("""
         import UserDict
         def f(x: UserDict.UserDict) -> None: ...
       """, module_name="foo")
+    with utils.Tempdir() as d:
       foo = d.create_file("foo.pickled", pickled_foo)
       self.loader.imports_map = {"foo": foo}
       pickled_bar = self.PicklePyi("""

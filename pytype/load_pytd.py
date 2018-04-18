@@ -16,13 +16,19 @@ from six.moves import cPickle
 log = logging.getLogger(__name__)
 
 
+LOADER_ATTR_TO_CONFIG_OPTION_MAP = {
+    "base_module": "module_name",
+    "python_version": "python_version",
+    "pythonpath": "pythonpath",
+    "imports_map": "imports_map",
+    "use_typeshed": "typeshed",
+}
+
+
 def create_loader(options):
   """Create a pytd loader."""
-  kwargs = {"base_module": options.module_name,
-            "python_version": options.python_version,
-            "pythonpath": options.pythonpath,
-            "imports_map": options.imports_map,
-            "use_typeshed": options.typeshed}
+  kwargs = {attr: getattr(options, opt)
+            for attr, opt in LOADER_ATTR_TO_CONFIG_OPTION_MAP.items()}
   if options.precompiled_builtins:
     return PickledPyiLoader.load_from_pickle(
         options.precompiled_builtins, **kwargs)

@@ -3,7 +3,6 @@
 import os
 
 
-from pytype import load_pytd
 from pytype.pytd import typeshed
 from pytype.pytd.parse import builtins
 from pytype.pytd.parse import parser_test_base
@@ -74,7 +73,7 @@ class TestTypeshedParsing(test_base.BaseTest):
 
   def setUp(self):
     super(TestTypeshedParsing, self).setUp()
-    self.loader = load_pytd.Loader("base", self.PYTHON_VERSION)
+    self.ConfigureOptions(module_name="base")
 
   def test_quopri(self):
     self.assertTrue(self.loader.import_name("quopri"))

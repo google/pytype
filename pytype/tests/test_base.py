@@ -32,6 +32,20 @@ log = logging.getLogger(__name__)
 CAPTURE_STDOUT = ("-s" not in sys.argv)
 
 
+def _MatchLoaderConfig(options, loader):
+  """Match the |options| with the configuration of |loader|."""
+  if not loader:
+    return False
+  assert isinstance(loader, load_pytd.Loader)
+  if (options.use_pickled_files !=
+      isinstance(loader, load_pytd.PickledPyiLoader)):
+    return False
+  for loader_attr, opt in load_pytd.LOADER_ATTR_TO_CONFIG_OPTION_MAP.items():
+    if getattr(options, opt) != getattr(loader, loader_attr):
+      return False
+  return True
+
+
 class BaseTest(unittest.TestCase):
   """Base class for implementing tests that check PyTD output."""
 
@@ -39,86 +53,80 @@ class BaseTest(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    cls.PYTHON_EXE = utils.get_python_exe(cls.PYTHON_VERSION)
-    # This is the default loader. It might get shadowed.
-    cls.loader = load_pytd.Loader(None, cls.PYTHON_VERSION)
-
-  def tearDown(self):
-    # Some tests customize the loader or python version. Clean up after them.
-    for name in ("loader", "PYTHON_VERSION", "PYTHON_EXE"):
-      if name in self.__dict__:
-        # Delete the name from the instance, keep the class one.
-        delattr(self, name)
-
-  def setUp(self):
-    self.options = config.Options.create(python_version=self.PYTHON_VERSION,
-                                         python_exe=self.PYTHON_EXE)
+    # We use class-wide loader to avoid creating a new loader for every test
+    # method if not required.
+    cls._loader = None
 
     def t(name):  # pylint: disable=invalid-name
       return pytd.ClassType("__builtin__." + name)
-    self.bool = t("bool")
-    self.dict = t("dict")
-    self.float = t("float")
-    self.complex = t("complex")
-    self.int = t("int")
-    self.list = t("list")
-    self.none_type = t("NoneType")
-    self.object = t("object")
-    self.set = t("set")
-    self.frozenset = t("frozenset")
-    self.str = t("str")
-    self.bytearray = t("bytearray")
-    self.tuple = t("tuple")
-    self.unicode = t("unicode")
-    self.generator = t("generator")
-    self.function = pytd.ClassType("typing.Callable")
-    self.anything = pytd.AnythingType()
-    self.nothing = pytd.NothingType()
-    self.module = t("module")
-    self.file = t("file")
+    cls.bool = t("bool")
+    cls.dict = t("dict")
+    cls.float = t("float")
+    cls.complex = t("complex")
+    cls.int = t("int")
+    cls.list = t("list")
+    cls.none_type = t("NoneType")
+    cls.object = t("object")
+    cls.set = t("set")
+    cls.frozenset = t("frozenset")
+    cls.str = t("str")
+    cls.bytearray = t("bytearray")
+    cls.tuple = t("tuple")
+    cls.unicode = t("unicode")
+    cls.generator = t("generator")
+    cls.function = pytd.ClassType("typing.Callable")
+    cls.anything = pytd.AnythingType()
+    cls.nothing = pytd.NothingType()
+    cls.module = t("module")
+    cls.file = t("file")
 
     # The various union types use pytd_utils.CanonicalOrdering()'s ordering:
-    self.intorstr = pytd.UnionType((self.int, self.str))
-    self.strorunicode = pytd.UnionType((self.str, self.unicode))
-    self.intorfloat = pytd.UnionType((self.float, self.int))
-    self.intorfloatorstr = pytd.UnionType((self.float, self.int, self.str))
-    self.complexorstr = pytd.UnionType((self.complex, self.str))
-    self.intorfloatorcomplex = pytd.UnionType(
-        (self.int, self.float, self.complex))
-    self.int_tuple = pytd.GenericType(self.tuple, (self.int,))
-    self.nothing_tuple = pytd.GenericType(self.tuple, (self.nothing,))
-    self.intorfloat_tuple = pytd.GenericType(self.tuple, (self.intorfloat,))
-    self.int_set = pytd.GenericType(self.set, (self.int,))
-    self.intorfloat_set = pytd.GenericType(self.set, (self.intorfloat,))
-    self.unknown_frozenset = pytd.GenericType(self.frozenset, (self.anything,))
-    self.float_frozenset = pytd.GenericType(self.frozenset, (self.float,))
-    self.empty_frozenset = pytd.GenericType(self.frozenset, (self.nothing,))
-    self.int_list = pytd.GenericType(self.list, (self.int,))
-    self.str_list = pytd.GenericType(self.list, (self.str,))
-    self.intorfloat_list = pytd.GenericType(self.list, (self.intorfloat,))
-    self.intorstr_list = pytd.GenericType(self.list, (self.intorstr,))
-    self.anything_list = pytd.GenericType(self.list, (self.anything,))
-    self.nothing_list = pytd.GenericType(self.list, (self.nothing,))
-    self.int_int_dict = pytd.GenericType(self.dict, (self.int, self.int))
-    self.int_str_dict = pytd.GenericType(self.dict, (self.int, self.str))
-    self.str_int_dict = pytd.GenericType(self.dict, (self.str, self.int))
-    self.nothing_nothing_dict = pytd.GenericType(self.dict,
-                                                 (self.nothing, self.nothing))
+    cls.intorstr = pytd.UnionType((cls.int, cls.str))
+    cls.strorunicode = pytd.UnionType((cls.str, cls.unicode))
+    cls.intorfloat = pytd.UnionType((cls.float, cls.int))
+    cls.intorfloatorstr = pytd.UnionType((cls.float, cls.int, cls.str))
+    cls.complexorstr = pytd.UnionType((cls.complex, cls.str))
+    cls.intorfloatorcomplex = pytd.UnionType(
+        (cls.int, cls.float, cls.complex))
+    cls.int_tuple = pytd.GenericType(cls.tuple, (cls.int,))
+    cls.nothing_tuple = pytd.GenericType(cls.tuple, (cls.nothing,))
+    cls.intorfloat_tuple = pytd.GenericType(cls.tuple, (cls.intorfloat,))
+    cls.int_set = pytd.GenericType(cls.set, (cls.int,))
+    cls.intorfloat_set = pytd.GenericType(cls.set, (cls.intorfloat,))
+    cls.unknown_frozenset = pytd.GenericType(cls.frozenset, (cls.anything,))
+    cls.float_frozenset = pytd.GenericType(cls.frozenset, (cls.float,))
+    cls.empty_frozenset = pytd.GenericType(cls.frozenset, (cls.nothing,))
+    cls.int_list = pytd.GenericType(cls.list, (cls.int,))
+    cls.str_list = pytd.GenericType(cls.list, (cls.str,))
+    cls.intorfloat_list = pytd.GenericType(cls.list, (cls.intorfloat,))
+    cls.intorstr_list = pytd.GenericType(cls.list, (cls.intorstr,))
+    cls.anything_list = pytd.GenericType(cls.list, (cls.anything,))
+    cls.nothing_list = pytd.GenericType(cls.list, (cls.nothing,))
+    cls.int_int_dict = pytd.GenericType(cls.dict, (cls.int, cls.int))
+    cls.int_str_dict = pytd.GenericType(cls.dict, (cls.int, cls.str))
+    cls.str_int_dict = pytd.GenericType(cls.dict, (cls.str, cls.int))
+    cls.nothing_nothing_dict = pytd.GenericType(cls.dict,
+                                                (cls.nothing, cls.nothing))
 
-  def _CreateLoader(self):
-    if self.options.python_version:
-      custom_version = True
-      self.options.tweak(
-          python_exe=utils.get_python_exe(self.options.python_version))
-      # pylint: disable=invalid-name
-      self.PYTHON_VERSION = self.options.python_version
-      self.PYTHON_EXE = self.options.python_exe
-      # pylint: enable=invalid-name
-    else:
-      custom_version = False
-      self.options.tweak(python_version=self.PYTHON_VERSION)
-    if self.options.module_name or self.options.pythonpath or custom_version:
-      self.loader = load_pytd.create_loader(self.options)
+  def setUp(self):
+    self.options = config.Options.create(
+        python_version=self.PYTHON_VERSION,
+        python_exe=utils.get_python_exe(self.PYTHON_VERSION))
+
+  @property
+  def loader(self):
+    if not _MatchLoaderConfig(self.options, self._loader):
+      # Create a new loader only if the configuration in the current options
+      # does not match the configuration in the current loader.
+      self._loader = load_pytd.create_loader(self.options)
+    return self._loader
+
+  def ConfigureOptions(self, **kwargs):
+    self.options.tweak(**kwargs)
+    if self.options.python_version is None:
+      self.options.python_version = self.PYTHON_VERSION
+    self.options.tweak(
+        python_exe=utils.get_python_exe(self.options.python_version))
 
   # For historical reasons (byterun), this method name is snakecase:
   # TODO(kramm): Rename this function.
@@ -126,10 +134,9 @@ class BaseTest(unittest.TestCase):
   def Check(self, code, pythonpath=(), skip_repeat_calls=True,
             report_errors=True, filename=None, python_version=None, **kwargs):
     """Run an inference smoke test for the given code."""
-    self.options.tweak(skip_repeat_calls=skip_repeat_calls,
-                       pythonpath=pythonpath, python_version=python_version)
+    self.ConfigureOptions(skip_repeat_calls=skip_repeat_calls,
+                          pythonpath=pythonpath, python_version=python_version)
     errorlog = errors.ErrorLog()
-    self._CreateLoader()
     try:
       analyze.check_types(
           textwrap.dedent(code), filename, loader=self.loader,
@@ -146,8 +153,7 @@ class BaseTest(unittest.TestCase):
   def _SetUpErrorHandling(self, code, pythonpath, python_version):
     code = textwrap.dedent(code)
     errorlog = errors.ErrorLog()
-    self.options.tweak(pythonpath=pythonpath, python_version=python_version)
-    self._CreateLoader()
+    self.ConfigureOptions(pythonpath=pythonpath, python_version=python_version)
     return {"src": code, "errorlog": errorlog, "options": self.options,
             "loader": self.loader}
 
@@ -171,10 +177,9 @@ class BaseTest(unittest.TestCase):
     with open(filename, "r") as fi:
       code = fi.read()
       errorlog = errors.ErrorLog()
-      self.options.tweak(
+      self.ConfigureOptions(
           module_name=load_pytd.get_module_name(filename, pythonpath),
           pythonpath=pythonpath, python_version=python_version)
-      self._CreateLoader()
       unit, _ = analyze.infer_types(code, errorlog, self.options,
                                     loader=self.loader, filename=filename)
       unit.Visit(visitors.VerifyVisitor())
@@ -320,13 +325,6 @@ class BaseTest(unittest.TestCase):
         module_name, self.PYTHON_VERSION, ast, self.loader)
     return serialize_ast.StoreAst(ast)
 
-  def PicklePyi(self, src, module_name):
-    src = textwrap.dedent(src)
-    ast = parser.parse_string(src, python_version=self.PYTHON_VERSION)
-    ast = ast.Visit(visitors.LookupBuiltins(
-        self.loader.builtins, full_names=False))
-    return self._Pickle(ast, module_name)
-
   def Infer(self, srccode, pythonpath=(), deep=True,
             report_errors=True, analyze_annotated=True, pickle=False,
             module_name=None, python_version=None, **kwargs):
@@ -364,12 +362,11 @@ class BaseTest(unittest.TestCase):
     Returns:
       A pytd.TypeDeclUnit
     """
-    self.options.tweak(
+    self.ConfigureOptions(
         module_name=module_name, quick=quick, use_pickled_files=True,
         pythonpath=[""] if (not pythonpath and imports_map) else pythonpath,
         imports_map=imports_map, python_version=python_version)
     errorlog = errors.ErrorLog()
-    self._CreateLoader()
     # TODO(mdemello): Setting 'quick' does not set maximum depth in infer_types.
     unit, builtins_pytd = analyze.infer_types(
         src, errorlog, self.options, loader=self.loader, **kwargs)
