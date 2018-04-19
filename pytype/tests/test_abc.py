@@ -333,7 +333,7 @@ class AbstractMethodTests(test_base.BaseTest):
         pass
       class Bar9(Foo, memoryview):
         pass
-      class BarA(Foo, xrange):
+      class BarA(Foo, range):
         pass
       Bar1()
       Bar2()

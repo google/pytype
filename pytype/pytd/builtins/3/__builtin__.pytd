@@ -96,7 +96,6 @@ def pow(x: int or float or complex, y: complex, ...) -> complex
 def pow(x: int or float, y: float, ...) -> float
 def pow(x: float, y: int, ...) -> float
 def pow(x: complex, y: int or float, ...) -> complex
-def range(stop: int, ...) -> list[int]
 def reduce(function: Callable[..., _T], iterable: Iterable[_T2]) -> _T or _T2
 def reduce(function: Callable, iterable: Iterable[nothing], initial: _T) -> _T
 def reduce(function: Callable[..., _T], iterable: Iterable, initial) -> _T
@@ -462,7 +461,6 @@ class dict(Dict[_K, _V]):
     def fromkeys(keys: Iterable[_K]) -> Dict[_K, NoneType]
     @staticmethod
     def fromkeys(keys: Iterable[_K], value: _V) -> Dict[_K, _V]
-    def has_key(self, k) -> bool
     def items(self) -> dict_items[_K, _V]
     def keys(self) -> dict_keys[_K]
     def pop(self, k) -> _V
@@ -733,8 +731,6 @@ class int(SupportsInt, SupportsFloat, SupportsAbs[int]):
     def bit_length(self) -> int
     def conjugate(self) -> int
 
-long = int
-
 class float(SupportsInt, SupportsFloat, SupportsAbs):
     __slots__ = []
     real = ... # type: float
@@ -904,7 +900,7 @@ class super(nothing):
     def __set__(self, obj, value) -> super
     def __new__(cls: Type[super], ...) -> super
 
-class xrange(Sequence[int]):
+class range(Sequence[int]):
     __slots__ = []
     def __init__(self, stop: int, ...) -> NoneType
     def __getitem__(self, index: int) -> int

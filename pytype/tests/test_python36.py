@@ -499,6 +499,23 @@ class TestPython36(test_base.BaseTest):
       w = ...  # type: int
     """)
 
+  def test_removed_builtins(self):
+    errors = self.CheckWithErrors("""\
+      long
+      {}.has_key
+    """)
+    self.assertErrorLogIs(errors, [(1, "name-error"), (2, "attribute-error")])
+
+  def test_range(self):
+    ty, errors = self.InferWithErrors("""\
+      xrange(3)
+      v = range(3)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      v = ...  # type: range
+    """)
+    self.assertErrorLogIs(errors, [(1, "name-error")])
+
 
 if __name__ == "__main__":
   test_base.main()
