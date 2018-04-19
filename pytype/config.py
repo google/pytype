@@ -67,8 +67,7 @@ class Options(object):
   def _options(self):
     """Use optparse to parse command line options."""
     o = optparse.OptionParser(
-        usage=("Usage: %prog [options] "
-               "file1.py[:file1.pyi] [file2.py:file2.pyi [...]]"),
+        usage=("Usage: %prog [options] file.py"),
         description="Infer/check types in a Python module")
     o.add_option(
         "-C", "--check", action="store_true",
@@ -144,7 +143,7 @@ class Options(object):
     o.add_option(
         "-o", "--output", type="string", action="store",
         dest="output", default=None,
-        help=("Output file. Use '-' or '' for stdout."))
+        help=("Output file. Use '-' for stdout."))
     o.add_option(
         "--output-errors-csv", type="string", action="store",
         dest="output_errors_csv", default=None,
