@@ -15,7 +15,9 @@ class SixOverlay(overlay.Overlay):
   def __init__(self, vm):
     member_map = {
         "add_metaclass": AddMetaclass,
-        "with_metaclass": WithMetaclass
+        "with_metaclass": WithMetaclass,
+        "PY2": build_version_bool(2),
+        "PY3": build_version_bool(3),
     }
     ast = vm.loader.import_name("six")
     super(SixOverlay, self).__init__(vm, "six", member_map, ast)
@@ -88,3 +90,7 @@ class WithMetaclass(abstract.PyTDFunction):
     bases = args.posargs[1:]
     result = WithMetaclassInstance(self.vm, meta, bases).to_variable(node)
     return node, result
+
+
+def build_version_bool(major):
+  return lambda _, vm: vm.convert.bool_values[vm.python_version[0] == major]

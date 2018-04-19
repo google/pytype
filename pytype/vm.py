@@ -34,6 +34,7 @@ from pytype import metrics
 from pytype import six_overlay
 from pytype import special_builtins
 from pytype import state as frame_state
+from pytype import sys_overlay
 from pytype import typing
 from pytype import utils
 from pytype.pyc import loadmarshal
@@ -70,6 +71,7 @@ overlays = {
     "abc": abc_overlay.ABCOverlay,
     "collections": collections_overlay.CollectionsOverlay,
     "six": six_overlay.SixOverlay,
+    "sys": sys_overlay.SysOverlay,
     "typing": typing.TypingOverlay,
 }
 
