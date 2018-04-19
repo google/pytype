@@ -58,6 +58,7 @@ setup(
               'pytype/pyi',
               'pytype/pytd',
               'pytype/pytd/parse',
+              'pytype/tools',
               'pytype/typegraph',
              ],
     scripts=['scripts/pytype', 'scripts/pytd'],
