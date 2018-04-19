@@ -97,7 +97,7 @@ class Next(BuiltinFunction):
   def call(self, node, _, args):
     self._match_args(node, args)
     arg, default = self._get_args(args)
-    node, fn = self.get_underlying_method(node, arg, "next")
+    node, fn = self.get_underlying_method(node, arg, self.vm.convert.next_attr)
     if fn is not None:
       node, ret = self.vm.call_function(node, fn, abstract.FunctionArgs(()))
       ret.PasteVariable(default)

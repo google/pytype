@@ -3554,7 +3554,7 @@ class Generator(Instance):
     if name == "__iter__":
       f = NativeFunction(name, self.__iter__, self.vm)
       return f.to_variable(node)
-    elif name in ["next", "__next__"]:
+    elif name == self.vm.convert.next_attr:
       return self.to_variable(node)
     elif name == "throw":
       # We don't model exceptions in a way that would allow us to induce one
@@ -3592,7 +3592,7 @@ class Iterator(Instance, HasSlots):
   def __init__(self, vm, return_var):
     super(Iterator, self).__init__(vm.convert.iterator_type, vm)
     HasSlots.init_mixin(self)
-    self.set_slot("next", self.next_slot)
+    self.set_slot(self.vm.convert.next_attr, self.next_slot)
     # TODO(dbaum): Should we set type_parameters[self.TYPE_PARAM] to something
     # based on return_var?
     self._return_var = return_var

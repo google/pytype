@@ -92,12 +92,6 @@ class Converter(object):
     self.super_type = self.primitive_classes[super]
     self.str_type = self.primitive_classes[str]
     self.int_type = self.primitive_classes[int]
-    if self.vm.python_version[0] < 3:
-      self.unicode_type = self.primitive_classes[compat.UnicodeType]
-      self.bytes_type = self.str_type
-    else:
-      self.unicode_type = self.str_type
-      self.bytes_type = self.primitive_classes[compat.BytesType]
 
     self.unsolvable = abstract.Unsolvable(self.vm)
     self.empty = abstract.Empty(self.vm)
@@ -117,6 +111,14 @@ class Converter(object):
         False: self.false,
         None: self.primitive_class_instances[bool],
     }
+    if self.vm.python_version[0] < 3:
+      self.unicode_type = self.primitive_classes[compat.UnicodeType]
+      self.bytes_type = self.str_type
+      self.next_attr = "next"
+    else:
+      self.unicode_type = self.str_type
+      self.bytes_type = self.primitive_classes[compat.BytesType]
+      self.next_attr = "__next__"
 
   def _constant_name(self, constant_type):
     if constant_type is None:

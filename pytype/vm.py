@@ -1859,7 +1859,7 @@ class VirtualMachine(object):
       nontuple_seq.AddBinding(b.data, {b}, state.node)
     if nontuple_seq.bindings:
       state, itr = self._get_iter(state, nontuple_seq)
-      state, f = self.load_attr(state, itr, "next")
+      state, f = self.load_attr(state, itr, self.convert.next_attr)
       state, result = self.call_function_with_state(state, f, ())
       # For a non-literal iterable, next() should always return the same type T,
       # so we can iterate `count` times in both UNPACK_SEQUENCE and UNPACK_EX,
@@ -2036,7 +2036,7 @@ class VirtualMachine(object):
 
   def byte_FOR_ITER(self, state, op):
     self.store_jump(op.target, state.pop_and_discard())
-    state, f = self.load_attr(state, state.top(), "next")
+    state, f = self.load_attr(state, state.top(), self.convert.next_attr)
     state = state.push(f)
     return self.call_function_from_stack(state, 0, None, None)
 
