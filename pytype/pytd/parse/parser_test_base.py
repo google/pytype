@@ -14,6 +14,7 @@
 # limitations under the License.
 
 """Utility classes for testing the PYTD parser."""
+from __future__ import print_function
 
 import os
 import sys
@@ -86,15 +87,15 @@ class ParserTest(unittest.TestCase):
       else:
         sys.stdout.flush()
         sys.stderr.flush()
-        print >>sys.stderr, "Source files or ASTs differ:"
-        print >>sys.stderr, "-" * 36, " Actual ", "-" * 36
-        print >>sys.stderr, textwrap.dedent(src1).strip()
-        print >>sys.stderr, "-" * 36, "Expected", "-" * 36
-        print >>sys.stderr, textwrap.dedent(src2).strip()
-        print >>sys.stderr, "-" * 80
+        print("Source files or ASTs differ:", file=sys.stderr)
+        print("-" * 36, " Actual ", "-" * 36, file=sys.stderr)
+        print(textwrap.dedent(src1).strip(), file=sys.stderr)
+        print("-" * 36, "Expected", "-" * 36, file=sys.stderr)
+        print(textwrap.dedent(src2).strip(), file=sys.stderr)
+        print("-" * 80, file=sys.stderr)
       if not ast1.ASTeq(ast2):
-        print >>sys.stderr, "Actual AST:", ast1
-        print >>sys.stderr, "Expect AST:", ast2
+        print("Actual AST:", ast1, file=sys.stderr)
+        print("Expect AST:", ast2, file=sys.stderr)
       self.fail("source files differ")
 
   def ApplyVisitorToString(self, data, visitor):

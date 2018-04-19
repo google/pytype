@@ -20,8 +20,6 @@ COMPAT_ITEMS = [
     ("NoneType", "bool"),
     # pep484 allows None as an alias for NoneType in type annotations.
     ("None", "bool"),
-    ("str", "unicode"),
-    ("bytes", "unicode"),
     ("int", "float"),
     ("int", "complex"),
     ("float", "complex")]
@@ -32,15 +30,6 @@ PEP484_CAPITALIZED = {
     # E.g. "typing.List" is used to represent the "list" type.
     "List", "Dict", "Tuple", "Set", "FrozenSet", "Generator", "Type"
 }
-
-
-def CompatItems(python_version):
-  """Return a version specific list of compat items, see COMPAT_ITEMS."""
-  if python_version[0] >= 3:
-    return [(x, y) for x, y in COMPAT_ITEMS
-            if "unicode" not in [x, y]]
-  else:
-    return COMPAT_ITEMS
 
 
 def PEP484_MaybeCapitalize(name):  # pylint: disable=invalid-name

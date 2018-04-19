@@ -367,11 +367,7 @@ class Converter(object):
     """
     source_sets = source_sets or [[]]
     node = node or self.vm.root_cfg_node
-    if isinstance(pyval, pytd.UnionType):
-      options = [self.constant_to_value(t, subst, node)
-                 for t in pyval.type_list]
-      return self.vm.program.NewVariable(options, [], self.vm.root_cfg_node)
-    elif isinstance(pyval, pytd.NothingType):
+    if isinstance(pyval, pytd.NothingType):
       return self.vm.program.NewVariable([], [], self.vm.root_cfg_node)
     elif isinstance(pyval, pytd.Alias):
       return self.constant_to_var(pyval.type, subst, node, source_sets,

@@ -18,7 +18,7 @@ _T2 = TypeVar('_T2')
 if sys.version_info >= (3, 0):
   Text = str
 else:
-  Text = unicode
+  Text = Union[str, unicode]
 
 
 # This function does not exist in typing.py. It is here for documentation
