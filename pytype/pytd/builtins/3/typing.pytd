@@ -13,6 +13,7 @@ _V = TypeVar('_V')
 _K2 = TypeVar('_K2')
 _V2 = TypeVar('_V2')
 _T2 = TypeVar('_T2')
+_T_IO = TypeVar('_T_IO', bound=IO)
 
 
 if sys.version_info >= (3, 0):
@@ -197,7 +198,7 @@ class IO(Iterator[AnyStr]):
   mode = ...  # type: str
   closed = ...  # type: bool
   newlines = ...  # type: Union[None, str, Tuple[str,...]]
-  def __enter__(self) -> IO[AnyStr]: ...
+  def __enter__(self: _T_IO) -> _T_IO: ...
   def __exit__(self, t, value, traceback) -> bool: ...
   def __iter__(self) -> Iterator[AnyStr]: ...
   if sys.version_info >= (3, 0):
@@ -221,7 +222,7 @@ class IO(Iterator[AnyStr]):
   def writelines(self, lines: Iterable[AnyStr]) -> None: ...
 
 
-class BinaryIO(IO[str]): ...
+class BinaryIO(IO[bytes]): ...
 
 
 if sys.version_info >= (3, 0):

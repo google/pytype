@@ -178,6 +178,7 @@ class VirtualMachine(object):
         "callable": special_builtins.IsCallable(self),
         "abs": special_builtins.Abs(self),
         "next": special_builtins.Next(self),
+        "open": special_builtins.Open(self),
         "property": special_builtins.Property(self),
         "staticmethod": special_builtins.StaticMethod(self),
         "classmethod": special_builtins.ClassMethod(self),

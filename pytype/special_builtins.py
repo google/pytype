@@ -39,6 +39,33 @@ class TypeNew(abstract.PyTDFunction):
     return super(TypeNew, self).call(node, func, args)
 
 
+class Open(abstract.PyTDFunction):
+  """Implementation of open(...)."""
+
+  def __init__(self, vm):
+    super(Open, self).__init__(
+        *abstract.PyTDFunction.get_constructor_args("open", vm, "__builtin__"))
+
+  def call(self, node, func, args):
+    if self.vm.python_version[0] >= 3:
+      # In Python 3, the type of IO object returned depends on the mode.
+      self._match_args(node, args)  # May raise FailedFunctionCall.
+      sig, = self.signatures
+      callargs = {name: var for name, var, _ in sig.signature.iter_args(args)}
+      try:
+        if "mode" not in callargs:
+          io_type = "Text"  # The default mode is 'r'.
+        else:
+          mode = abstract.get_atomic_python_constant(callargs["mode"])
+          io_type = "Binary" if "b" in mode else "Text"
+      except abstract.ConversionError:
+        pass
+      else:
+        return node, self.vm.convert.constant_to_var(abstract.AsInstance(
+            self.vm.lookup_builtin("typing.%sIO" % io_type)), {}, node)
+    return super(Open, self).call(node, func, args)
+
+
 class BuiltinFunction(abstract.PyTDFunction):
   """Implementation of functions in __builtin__.pytd."""
 
