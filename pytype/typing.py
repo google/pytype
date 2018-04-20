@@ -6,7 +6,6 @@
 
 from pytype import abstract
 from pytype import collections_overlay
-from pytype import function
 from pytype import overlay
 from pytype import utils
 from pytype.pytd import pep484
@@ -120,9 +119,8 @@ class TypeVar(abstract.PyTDFunction):
   """Representation of typing.TypeVar, as a function."""
 
   def __init__(self, name, vm):
-    pyval = vm.loader.typing.Lookup("typing._typevar_new")
-    f = vm.convert.constant_to_value(pyval, {}, vm.root_cfg_node)
-    super(TypeVar, self).__init__(name, f.signatures, pytd.METHOD, vm)
+    super(TypeVar, self).__init__(*abstract.PyTDFunction.get_constructor_args(
+        name, vm, "typing", pyval_name="_typevar_new"))
 
   def _get_class_or_constant(self, var, name, arg_type, arg_type_desc=None):
     if arg_type is abstract.Class:
@@ -247,12 +245,8 @@ class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):
 
   def _getargs(self, node, args):
     self._match_args(node, args)
-    # Normally we would use typing.NamedTuple.__new__ to match args to
-    # parameters, but we can't import typing.
-    # TODO(tsudol): Replace with typing.NamedTuple.__new__.
-    f = function.Signature.from_param_names("typing.NamedTuple",
-                                            ["typename", "fields"])
-    callargs = {arg_name: arg_var for arg_name, arg_var, _ in f.iter_args(args)}
+    sig, = self.signatures
+    callargs = {name: var for name, var, _ in sig.signature.iter_args(args)}
     # typing.NamedTuple doesn't support rename or verbose
     name_var = callargs["typename"]
     fields_var = callargs["fields"]
@@ -497,9 +491,8 @@ class NewType(abstract.PyTDFunction):
   """Implementation of typing.NewType as a function."""
 
   def __init__(self, name, vm):
-    pyval = vm.loader.typing.Lookup("typing.NewType")
-    f = vm.convert.constant_to_value(pyval, {}, vm.root_cfg_node)
-    super(NewType, self).__init__(name, f.signatures, pytd.METHOD, vm)
+    super(NewType, self).__init__(
+        *abstract.PyTDFunction.get_constructor_args(name, vm, "typing"))
     assert len(self.signatures) == 1, "NewType has more than one signature."
     signature = self.signatures[0].signature
     self._name_arg_name = signature.param_names[0]
@@ -564,9 +557,7 @@ def build_typechecking(name, vm):
 
 
 def build_cast(name, vm):
-  f = vm.lookup_builtin("typing.cast")
-  signatures = [abstract.PyTDSignature(name, sig, vm) for sig in f.signatures]
-  return Cast(name, signatures, f.kind, vm)
+  return Cast(*abstract.PyTDFunction.get_constructor_args(name, vm, "typing"))
 
 
 def build_noreturn(name, vm):

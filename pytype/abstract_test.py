@@ -839,6 +839,37 @@ class FunctionTest(AbstractTestBase):
     )
     self.assertRaises(KeyError, sig.del_annotation, "rumpelstiltskin")
 
+  def test_constructor_args(self):
+    f = abstract.PyTDFunction(*abstract.PyTDFunction.get_constructor_args(
+        "open", self._vm, "__builtin__"))
+    self.assertEqual(f.name, "__builtin__.open")
+    self.assertItemsEqual(
+        {sig.pytd_sig for sig in f.signatures},
+        self._vm.lookup_builtin("__builtin__.open").signatures)
+    self.assertIs(f.kind, pytd.METHOD)
+    self.assertIs(f.vm, self._vm)
+
+  def test_constructor_args_pyval(self):
+    sig = pytd.Signature((), None, None, pytd.AnythingType(), (), ())
+    pyval = pytd.Function("blah", (sig,), pytd.STATICMETHOD, 0)
+    f = abstract.PyTDFunction(*abstract.PyTDFunction.get_constructor_args(
+        "open", self._vm, "__builtin__", pyval=pyval))
+    self.assertEqual(f.name, "__builtin__.open")
+    f_sig, = f.signatures
+    self.assertIs(f_sig.pytd_sig, sig)
+    self.assertIs(f.kind, pytd.STATICMETHOD)
+    self.assertIs(f.vm, self._vm)
+
+  def test_get_constructor_args(self):
+    f = abstract.PyTDFunction(*abstract.PyTDFunction.get_constructor_args(
+        "TypeVar", self._vm, "typing", pyval_name="_typevar_new"))
+    self.assertEqual(f.name, "typing.TypeVar")
+    self.assertItemsEqual({sig.pytd_sig for sig in f.signatures},
+                          self._vm.loader.import_name("typing").Lookup(
+                              "typing._typevar_new").signatures)
+    self.assertIs(f.kind, pytd.METHOD)
+    self.assertIs(f.vm, self._vm)
+
 
 class AbstractMethodsTest(AbstractTestBase):
 

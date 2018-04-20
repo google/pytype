@@ -2041,6 +2041,33 @@ class PyTDFunction(Function):
   This represents (potentially overloaded) functions.
   """
 
+  @staticmethod
+  def get_constructor_args(name, vm, module, pyval=None, pyval_name=None):
+    """Get args to PyTDFunction.__init__ for the specified function.
+
+    Args:
+      name: The function name.
+      vm: The VM.
+      module: The module that the function is in.
+      pyval: Optionally, the pytd.Function object to use. Otherwise, it is
+        fetched from the loader.
+      pyval_name: Optionally, the name of the pytd.Function object to look up,
+        if it is different from the function name.
+
+    Returns:
+      A tuple of the constructor args.
+    """
+    assert not pyval or not pyval_name  # there's never a reason to pass both
+    function_name = module + "." + name
+    if not pyval:
+      pyval_name = module + "." + (pyval_name or name)
+      if module not in ("__builtin__", "typing"):
+        pyval = vm.loader.import_name(module).Lookup(pyval_name)
+      else:
+        pyval = vm.lookup_builtin(pyval_name)
+    f = vm.convert.constant_to_value(pyval, {}, vm.root_cfg_node)
+    return function_name, f.signatures, pyval.kind, vm
+
   def __init__(self, name, signatures, kind, vm):
     super(PyTDFunction, self).__init__(name, vm)
     assert signatures

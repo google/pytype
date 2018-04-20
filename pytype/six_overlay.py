@@ -50,10 +50,8 @@ class AddMetaclass(abstract.PyTDFunction):
   """Implements the @six.add_metaclass decorator."""
 
   def __init__(self, name, vm):
-    ast = vm.loader.import_name("six")
-    method = ast.Lookup("six.add_metaclass")
-    sigs = [abstract.PyTDSignature(name, sig, vm) for sig in method.signatures]
-    super(AddMetaclass, self).__init__(name, sigs, method.kind, vm)
+    super(AddMetaclass, self).__init__(
+        *abstract.PyTDFunction.get_constructor_args(name, vm, "six"))
 
   def call(self, node, unused_func, args):
     """Adds a metaclass."""
@@ -78,10 +76,8 @@ class WithMetaclass(abstract.PyTDFunction):
   """Implements six.with_metaclass."""
 
   def __init__(self, name, vm):
-    ast = vm.loader.import_name("six")
-    method = ast.Lookup("six.with_metaclass")
-    sigs = [abstract.PyTDSignature(name, sig, vm) for sig in method.signatures]
-    super(WithMetaclass, self).__init__(name, sigs, method.kind, vm)
+    super(WithMetaclass, self).__init__(
+        *abstract.PyTDFunction.get_constructor_args(name, vm, "six"))
 
   def call(self, node, unused_func, args):
     """Creates an anonymous class to act as a metaclass."""

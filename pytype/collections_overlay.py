@@ -110,8 +110,9 @@ class NamedTupleBuilder(abstract.PyTDFunction):
     # Subclasses of NamedTupleBuilder need a different pyval.
     if not pyval:
       pyval = self.collections_ast.Lookup("collections.namedtuple")
-    f = vm.convert.constant_to_value(pyval, {}, vm.root_cfg_node)
-    super(NamedTupleBuilder, self).__init__(name, f.signatures, pytd.METHOD, vm)
+    super(NamedTupleBuilder, self).__init__(
+        *abstract.PyTDFunction.get_constructor_args(
+            name, vm, "collections", pyval=pyval))
 
   def _get_builtin_classtype(self, name):
     fullname = "__builtin__.%s" % name

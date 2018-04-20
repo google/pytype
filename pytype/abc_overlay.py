@@ -21,10 +21,8 @@ class AbstractMethod(abstract.PyTDFunction):
   """Implements the @abc.abstractmethod decorator."""
 
   def __init__(self, name, vm):
-    ast = vm.loader.import_name("abc")
-    method = ast.Lookup("abc.abstractmethod")
-    sigs = [abstract.PyTDSignature(name, sig, vm) for sig in method.signatures]
-    super(AbstractMethod, self).__init__(name, sigs, method.kind, vm)
+    super(AbstractMethod, self).__init__(
+        *abstract.PyTDFunction.get_constructor_args(name, vm, "abc"))
 
   def call(self, node, unused_func, args):
     """Marks that the given function is abstract."""

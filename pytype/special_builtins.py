@@ -43,10 +43,8 @@ class BuiltinFunction(abstract.PyTDFunction):
   """Implementation of functions in __builtin__.pytd."""
 
   def __init__(self, name, vm):
-    f = vm.lookup_builtin(name)
-    signatures = [abstract.PyTDSignature(f.name, sig, vm)
-                  for sig in f.signatures]
-    super(BuiltinFunction, self).__init__(f.name, signatures, f.kind, vm)
+    super(BuiltinFunction, self).__init__(
+        *abstract.PyTDFunction.get_constructor_args(name, vm, "__builtin__"))
 
   def get_underlying_method(self, node, receiver, method_name):
     """Get the bound method that a built-in function delegates to."""
@@ -66,7 +64,7 @@ class Abs(BuiltinFunction):
   """Implements abs."""
 
   def __init__(self, vm):
-    super(Abs, self).__init__("__builtin__.abs", vm)
+    super(Abs, self).__init__("abs", vm)
 
   def call(self, node, _, args):
     self._match_args(node, args)
@@ -82,7 +80,7 @@ class Next(BuiltinFunction):
   """Implements next."""
 
   def __init__(self, vm):
-    super(Next, self).__init__("__builtin__.next", vm)
+    super(Next, self).__init__("next", vm)
 
   def _get_args(self, args):
     arg = args.posargs[0]
@@ -115,7 +113,7 @@ class ObjectPredicate(BuiltinFunction):
   """
 
   def __init__(self, name, vm):
-    super(ObjectPredicate, self).__init__("__builtin__." + name, vm)
+    super(ObjectPredicate, self).__init__(name, vm)
     # Map of True/False/None (where None signals an ambiguous bool) to
     # vm values.
     self._vm_values = {
