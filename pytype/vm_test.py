@@ -37,7 +37,7 @@ class BytecodeTest(test_base.BaseTest):
 
   def setUp(self):
     super(BytecodeTest, self).setUp()
-    self.ConfigureOptions(python_version=self.PYTHON_VERSION)
+    self.ConfigureOptions(python_version=self.python_version)
     self.errorlog = errors.ErrorLog()
     self.trace_vm = TraceVM(self.options, self.loader)
 
@@ -130,8 +130,8 @@ class BytecodeTest(test_base.BaseTest):
   def test_each_instruction_once_loops(self):
     code_nested_loop = pyc.compile_src(
         src=self.src_nested_loop,
-        python_version=self.PYTHON_VERSION,
-        python_exe=utils.get_python_exe(self.PYTHON_VERSION),
+        python_version=self.python_version,
+        python_exe=utils.get_python_exe(self.python_version),
         filename="<>")
     self.assertEqual(code_nested_loop.co_code,
                      self.code_nested_loop)
@@ -163,8 +163,8 @@ class BytecodeTest(test_base.BaseTest):
   def test_each_instruction_once_dead_code(self):
     code_deadcode = pyc.compile_src(
         src=self.src_deadcode,
-        python_version=self.PYTHON_VERSION,
-        python_exe=utils.get_python_exe(self.PYTHON_VERSION),
+        python_version=self.python_version,
+        python_exe=utils.get_python_exe(self.python_version),
         filename="<>")
     self.assertEqual(code_deadcode.co_code,
                      self.code_deadcode)

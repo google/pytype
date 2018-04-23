@@ -294,7 +294,7 @@ class BlockStackTest(test_base.BaseTest):
         0x64, 0, 0,  # [4] 8 LOAD_CONST, arg=0 (None),
         0x53,        # [5] 11 RETURN_VALUE
     ], name="finally")
-    bytecode = opcodes.dis(co.co_code, python_version=self.PYTHON_VERSION)
+    bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
     blocks.add_pop_block_targets(bytecode)
     self.assertEqual(bytecode[3], bytecode[0].target)
     self.assertEqual(bytecode[3], bytecode[1].block_target)
@@ -317,7 +317,7 @@ class BlockStackTest(test_base.BaseTest):
         0x64, 0, 0,  # [11] 14 LOAD_CONST, arg=0,
         0x53,        # [12] 17 RETURN_VALUE
     ], name="except")
-    bytecode = opcodes.dis(co.co_code, python_version=self.PYTHON_VERSION)
+    bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
     blocks.add_pop_block_targets(bytecode)
     self.assertEqual(bytecode[3], bytecode[0].target)
     self.assertEqual(bytecode[3], bytecode[1].block_target)
@@ -337,7 +337,7 @@ class BlockStackTest(test_base.BaseTest):
         0x64, 0, 0,  # [7] 13 LOAD_CONST, arg=0,
         0x53,        # [8] 16 RETURN_VALUE
     ], name="with")
-    bytecode = opcodes.dis(co.co_code, python_version=self.PYTHON_VERSION)
+    bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
     blocks.add_pop_block_targets(bytecode)
     self.assertEqual(bytecode[5], bytecode[1].target)
     self.assertEqual(bytecode[5], bytecode[3].block_target)
@@ -355,7 +355,7 @@ class BlockStackTest(test_base.BaseTest):
         0x64, 0, 0,   # [5] 13 LOAD_CONST, arg=0,
         0x53,         # [6] 16 RETURN_VALUE
     ])
-    bytecode = opcodes.dis(co.co_code, python_version=self.PYTHON_VERSION)
+    bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
     blocks.add_pop_block_targets(bytecode)
     self.assertEqual(bytecode[5], bytecode[0].target)
     self.assertEqual(bytecode[4], bytecode[2].target)
@@ -380,7 +380,7 @@ class BlockStackTest(test_base.BaseTest):
         0x64, 0, 0,   # [9] 23 LOAD_CONST, arg=0,
         0x53,         # [10] 26 RETURN_VALUE
     ])
-    bytecode = opcodes.dis(co.co_code, python_version=self.PYTHON_VERSION)
+    bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
     blocks.add_pop_block_targets(bytecode)
     self.assertEqual(bytecode[9], bytecode[0].target)
     self.assertEqual(bytecode[9], bytecode[5].block_target)
@@ -412,7 +412,7 @@ class BlockStackTest(test_base.BaseTest):
         0x64, 0, 0,   # [14] 30 LOAD_CONST, arg=0,
         0x53,         # [15] 33 RETURN_VALUE
     ])
-    bytecode = opcodes.dis(co.co_code, python_version=self.PYTHON_VERSION)
+    bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
     blocks.add_pop_block_targets(bytecode)
     self.assertEqual(bytecode[14], bytecode[0].target)
     self.assertEqual(bytecode[13], bytecode[2].target)

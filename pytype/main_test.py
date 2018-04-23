@@ -296,8 +296,7 @@ class PytypeTest(unittest.TestCase):
 
   def testReturnType(self):
     self._CheckTypesAndErrors(self._MakeFile("""\
-      from __future__ import google_type_annotations
-      def f() -> int:
+            def f() -> int:
         return "foo"
     """), ["bad-return-type"])
 
