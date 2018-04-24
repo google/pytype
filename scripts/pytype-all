@@ -1,0 +1,112 @@
+#!/usr/bin/env python
+
+# Copyright 2017 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Analyze an entire project using pytype."""
+
+from __future__ import print_function
+
+import argparse
+import os
+import sys
+
+from importlab import config
+from importlab import environment
+from importlab import graph
+
+from pytype.tools.analyze_project import pytype_runner
+
+
+def parse_args():
+  """Parse command line args."""
+
+  parser = argparse.ArgumentParser()
+  parser.add_argument(
+      'filenames', metavar='filename', type=str, nargs='*',
+      help='input file(s)')
+  parser.add_argument(
+      '--tree', dest='tree', action='store_true', default=False,
+      help='Display import tree.')
+  parser.add_argument(
+      '--unresolved', dest='unresolved', action='store_true', default=False,
+      help='Display unresolved dependencies.')
+  parser.add_argument(
+      '-T', '--typeshed-location', dest='typeshed_location', action='store',
+      default=None,
+      help=('Location of typeshed. Will use the TYPESHED_HOME environment '
+            'variable if this argument is not specified.'))
+  parser.add_argument(
+      '--quiet', dest='quiet', action='store_true', default=False,
+      help="Don't print errors to stdout.")
+  parser.add_argument(
+      '--config', dest='config', type=str, action='store', default='',
+      help='Configuration file.')
+  parser.add_argument(
+      '--generate-config', dest='generate_config', type=str, action='store',
+      default='',
+      help='Write out a dummy configuration file.')
+  return parser.parse_args()
+
+
+def read_config_file(args):
+  ret = config.Config()
+  if args.config:
+    ret.read_from_file(args.config)
+  return ret
+
+
+def recursive_import(args, env):
+  import_graph = graph.ImportGraph(env)
+  for filename in args.filenames:
+    import_graph.add_file_recursive(os.path.abspath(filename))
+  import_graph.build()
+  return import_graph
+
+
+def main():
+  # Set up environment and paths
+  args = parse_args()
+
+  if args.generate_config:
+    config.generate_default(args.generate_config)
+    sys.exit(0)
+
+  cfg = read_config_file(args)
+  print('Configuration:')
+  cfg.show()
+  print()
+
+  env = environment.Environment(args, cfg)
+
+  # Run pytype
+  imports = recursive_import(args, env)
+
+  if args.tree:
+    print('Source tree:')
+    imports.print_tree()
+    sys.exit(0)
+
+  if args.unresolved:
+    print('Unresolved dependencies:')
+    for imp in sorted(imports.get_all_unresolved()):
+      print(' ', imp.name)
+    sys.exit(0)
+
+  runner = pytype_runner.PytypeRunner(imports, env)
+  runner.run()
+
+
+if __name__ == '__main__':
+  sys.exit(main())

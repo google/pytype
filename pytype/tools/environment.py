@@ -55,7 +55,7 @@ def initialize_typeshed_or_die(opts):
 
   See Typeshed.find_location() for details.
   """
-  ret = Typeshed.find_location(opts)
+  ret = Typeshed.create_from_opts(opts)
   if not ret:
     opt = getattr(opts, Typeshed.OPTIONS_KEY, None)
     env = os.environ.get(Typeshed.ENVIRONMENT_VARIABLE)
