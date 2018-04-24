@@ -168,8 +168,6 @@ class CallTracer(vm.VirtualMachine):
       if isinstance(func, (abstract.InterpreterFunction,
                            abstract.BoundInterpreterFunction)):
         node1, args = self.create_method_arguments(node0, func)
-        if func.is_attribute_of_class:
-          args = args.replace(posargs=args.posargs[1:])
         # Once the args are generated, try calling the function.
         # call_function will check fallback_to_unsolvable if a DictKeyMissing or
         # FailedFunctionCall error is raised when the target function is called.
