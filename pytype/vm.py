@@ -931,7 +931,16 @@ class VirtualMachine(object):
           # class and its attributes.
           # If the call still fails, _call_with_fake_args will return
           # abstract.Unsolvable.
-          if all(func.name == "__init__" for func in funcu.data):
+          # Python 3's MAKE_FUNCTION byte code takes an explicit fully qualified
+          # function name as an argument and that is used for the function name.
+          # On the other hand, Python 2's MAKE_FUNCTION does not take any name
+          # argument so we pick the name from the code object. This name is not
+          # fully qualified. Hence, constructor names in Python 3 are fully
+          # qualified ending in '.__init__', and constructor names in Python 2
+          # are all '__init__'. So, we identify a constructor by matching its
+          # name with one of these patterns.
+          if all(func.name == "__init__" or func.name.endswith(".__init__")
+                 for func in funcu.data):
             return self._call_with_fake_args(node, funcu)
         return node, self.convert.create_new_unsolvable(node)
       else:
