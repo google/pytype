@@ -51,8 +51,8 @@ class Program {
   Program(const Program&) = delete;
   Program& operator=(const Program&) = delete;
 
-  CFGNode* NewCFGNode(const string& name);
-  CFGNode* NewCFGNode(const string& name, Binding* condition);
+  CFGNode* NewCFGNode(const std::string& name);
+  CFGNode* NewCFGNode(const std::string& name, Binding* condition);
   Variable* NewVariable();
   size_t CountCFGNodes() const;
 
@@ -98,8 +98,8 @@ class CFGNode {
   CFGNode& operator=(const CFGNode&) = delete;
 
   // Create a new node, and connect it after this node.
-  CFGNode* ConnectNew(const string& name);
-  CFGNode* ConnectNew(const string& name, Binding* condition);
+  CFGNode* ConnectNew(const std::string& name);
+  CFGNode* ConnectNew(const std::string& name, Binding* condition);
 
   // Connect to an existing node. O(n), with n current number of outgoing edges.
   void ConnectTo(CFGNode* node);
@@ -120,7 +120,7 @@ class CFGNode {
   size_t id() const { return id_; }
 
   // Node name. E.g. filename plus line number, for generating backtraces.
-  const string& name() const { return name_; }
+  const std::string& name() const { return name_; }
 
   // Node condition. The binding representing condition for node's branch.
   Binding* condition() const { return condition_; }
@@ -137,10 +137,10 @@ class CFGNode {
   const std::vector<Binding*>& bindings() const { return bindings_; }
 
  private:
-  CFGNode(Program* program, const string& name, size_t id, Binding* condition,
-          ReachabilityAnalyzer* backward_reachability);
+  CFGNode(Program* program, const std::string& name, size_t id,
+          Binding* condition, ReachabilityAnalyzer* backward_reachability);
 
-  const string name_;
+  const std::string name_;
   std::vector<CFGNode*> incoming_;
   std::vector<CFGNode*> outgoing_;
   size_t id_;

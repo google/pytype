@@ -1,5 +1,7 @@
 #include "third_party/py/pytype/typegraph/map_util.h"
 
+#include <string>
+
 #include "gtest/gtest.h"
 
 namespace devtools_python_typegraph {

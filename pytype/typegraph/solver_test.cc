@@ -17,8 +17,8 @@ TEST(SolverTest, TestOverwrite) {
   Program p;
   CFGNode* n0 = p.NewCFGNode("n0");
   CFGNode* n1 = n0->ConnectNew("n1");
-  string const1("1");
-  string const2("2");
+  std::string const1("1");
+  std::string const2("2");
   Variable* x = p.NewVariable();
   x->AddBinding(&const1, n0, {});
   x->AddBinding(&const2, n0, {});
@@ -33,8 +33,8 @@ TEST(SolverTest, TestShadow) {
   Program p;
   CFGNode* n0 = p.NewCFGNode("n0");
   CFGNode* n1 = n0->ConnectNew("n1");
-  string const1("1");
-  string const2("2");
+  std::string const1("1");
+  std::string const2("2");
   Variable* x = p.NewVariable();
   x->AddBinding(&const1, n0, {});
   x->AddBinding(&const2, n1, {});
@@ -55,7 +55,7 @@ TEST(SolverTest, TestOriginUnreachable) {
   CFGNode* n0 = p.NewCFGNode("n0");
   CFGNode* n1 = n0->ConnectNew("n1");
   CFGNode* n2 = n0->ConnectNew("n2");
-  string const1("1");
+  std::string const1("1");
   Variable* x = p.NewVariable();
   Variable* y = p.NewVariable();
   Binding* ax = x->AddBinding(&const1, n1, {});
@@ -75,7 +75,7 @@ TEST(SolverTest, TestOriginReachable) {
   Program p;
   CFGNode* n0 = p.NewCFGNode("n0");
   CFGNode* n1 = n0->ConnectNew("n1");
-  string const1("1");
+  std::string const1("1");
   Variable* x = p.NewVariable();
   Variable* y = p.NewVariable();
   Binding* ax = x->AddBinding(&const1, n0, {});
@@ -95,9 +95,9 @@ TEST(SolverTest, TestOriginMulti) {
   CFGNode* n0 = p.NewCFGNode("n0");
   CFGNode* n1 = n0->ConnectNew("n1");
   CFGNode* n2 = n1->ConnectNew("n2");
-  string const1("1");
-  string const2("2");
-  string const3("3");
+  std::string const1("1");
+  std::string const2("2");
+  std::string const3("3");
   Variable* x = p.NewVariable();
   Variable* y = p.NewVariable();
   Variable* z = p.NewVariable();
@@ -123,7 +123,7 @@ TEST(SolverTest, TestDiamond) {
   CFGNode* n2 = n0->ConnectNew("n2");
   CFGNode* n3 = n2->ConnectNew("n3");
   n1->ConnectTo(n3);
-  string const1("1");
+  std::string const1("1");
   Variable* x = p.NewVariable();
   Variable* y = p.NewVariable();
   Variable* z = p.NewVariable();
@@ -159,14 +159,14 @@ TEST(SolverTest, TestOriginSplitPath) {
   CFGNode* n2 = n0->ConnectNew("n2");
   CFGNode* n3 = n2->ConnectNew("n3");
   n1->ConnectTo(n3);
-  string const1("1");
-  string const2("2");
-  string const10("10");
-  string const20("20");
-  string const11("11");
-  string const21("21");
-  string const12("12");
-  string const22("22");
+  std::string const1("1");
+  std::string const2("2");
+  std::string const10("10");
+  std::string const20("20");
+  std::string const11("11");
+  std::string const21("21");
+  std::string const12("12");
+  std::string const22("22");
   Binding* a10 = p.NewVariable()->AddBinding(&const10, n0, {});
   Binding* a20 = p.NewVariable()->AddBinding(&const20, n0, {});
   Binding* a1 = p.NewVariable()->AddBinding(&const1, n0, {});
@@ -207,7 +207,7 @@ TEST(SolverTest, TestCombination) {
   Program p;
   CFGNode* n0 = p.NewCFGNode("n0");
   CFGNode* n1 = n0->ConnectNew("n1");
-  string const1("1");
+  std::string const1("1");
   Variable* x = p.NewVariable();
   Variable* y = p.NewVariable();
   Binding* ax = x->AddBinding(&const1, n0, {});
@@ -221,8 +221,8 @@ TEST(SolverTest, TestConflicting) {
   // [n0] x = 1 or 2
   Program p;
   CFGNode* n0 = p.NewCFGNode("n0");
-  string const1("1");
-  string const2("2");
+  std::string const1("1");
+  std::string const2("2");
   Variable* x = p.NewVariable();
   Binding* a0 = x->AddBinding(&const1, n0, {});
   Binding* a1 = x->AddBinding(&const2, n0, {});
@@ -245,8 +245,8 @@ TEST(SolverTest, TestSameBinding) {
   CFGNode* n2 = n0->ConnectNew("n2");
   CFGNode* n3 = n2->ConnectNew("n3");
   n1->ConnectTo(n3);
-  string const1("1");
-  string const2("2");
+  std::string const1("1");
+  std::string const2("2");
   Variable* x = p.NewVariable();
   Variable* y = p.NewVariable();
   Binding* x1 = x->AddBinding(&const1, n0, {});
@@ -269,8 +269,8 @@ TEST(SolverTest, TestEntrypoint) {
   Program p;
   CFGNode* n0 = p.NewCFGNode("n0");
   CFGNode* n1 = n0->ConnectNew("n1");
-  string const1("1");
-  string const2("2");
+  std::string const1("1");
+  std::string const2("2");
   Variable* x = p.NewVariable();
   Binding* v0 = x->AddBinding(&const1, n0, {});
   Binding* v1 = x->AddBinding(&const2, n1, {});
@@ -288,9 +288,9 @@ TEST(SolverTest, TestUnordered) {
   Program p;
   CFGNode* n0 = p.NewCFGNode("n0");
   CFGNode* n1 = n0->ConnectNew("n1");
-  string const1("1");
-  string const2("2");
-  string const3("3");
+  std::string const1("1");
+  std::string const2("2");
+  std::string const3("3");
   Variable* x = p.NewVariable();
   Variable* y = p.NewVariable();
   Binding* x1 = x->AddBinding(&const1, n0, {});
@@ -313,7 +313,7 @@ TEST(SolverTest, TestMemoization) {
   // [n1] x, y = x&y, x&y
   // [n2] x, y = x&y, x&y
   Program p;
-  string const1("1");
+  std::string const1("1");
   CFGNode* n0 = p.NewCFGNode("n0");
   CFGNode* n1 = n0->ConnectNew("n1");
   CFGNode* n2 = n1->ConnectNew("n2");
@@ -389,9 +389,9 @@ TEST(SolverTest, TestFindNodeBackwards) {
   // +-->n3--'       +--->n7--'
   Program p;
   CFGNode* n1 = p.NewCFGNode("n1");
-  string one("1");
-  string two("2");
-  string thr("3");
+  std::string one("1");
+  std::string two("2");
+  std::string thr("3");
   Variable* x = p.NewVariable();
   Variable* y = p.NewVariable();
   Variable* z = p.NewVariable();
@@ -432,8 +432,8 @@ TEST(SolverTest, TestFindNodeBackwards) {
 TEST(SolverTest, TestConflict) {
   // Moved from cfg_test.py to avoid exposing GetSolver.
   Program p;
-  string a("a");
-  string b("b");
+  std::string a("a");
+  std::string b("b");
   CFGNode* n1 = p.NewCFGNode("n1");
   CFGNode* n2 = n1->ConnectNew("n2");
   CFGNode* n3 = n2->ConnectNew("n3");

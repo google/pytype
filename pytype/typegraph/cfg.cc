@@ -1,7 +1,6 @@
 #include <Python.h>
 #include <structseq.h>
 
-#include <string>
 #include <unordered_map>
 #include <utility>
 

@@ -1,6 +1,7 @@
 #include "third_party/py/pytype/typegraph/solver.h"
 
 #include <stack>
+#include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -269,7 +270,7 @@ bool Solver::GoalsConflict(const internal::GoalSet& goals) const {
 }
 
 bool Solver::FindSolution(const internal::State& state, int current_depth) {
-  string indent(current_depth, ' ');
+  std::string indent(current_depth, ' ');
 
   internal::GoalSet goals(state.goals());
   if (state.pos()->condition()) {

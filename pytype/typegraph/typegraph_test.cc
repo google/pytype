@@ -41,13 +41,13 @@ class TypeGraphTest : public ::testing::Test {
     // a = 2 # n3
     // b = 3 # n4
     // c = z # n4
-    string classA("classA");
-    string classB("classB");
-    string classC("classC");
-    string classD("classD");
-    string const1("1");
-    string const2("2");
-    string const3("3");
+    std::string classA("classA");
+    std::string classB("classB");
+    std::string classC("classC");
+    std::string classD("classD");
+    std::string const1("1");
+    std::string const2("2");
+    std::string const3("3");
 
     a_ = p_.NewVariable();
     b_ = p_.NewVariable();
@@ -152,9 +152,9 @@ TEST_F(TypeGraphTest, TestPrune) {
 
 TEST_F(TypeGraphTest, TestVariableProperties) {
   auto xx_ = p_.NewVariable();
-  string A("A");
-  string B("B");
-  string C("C");
+  std::string A("A");
+  std::string B("B");
+  std::string C("C");
   xx_->AddBinding(&A, n_[1], {});
   xx_->AddBinding(&B, n_[2], {});
   xx_->AddBinding(&C, n_[3], {});
@@ -170,8 +170,8 @@ TEST_F(TypeGraphTest, testConditionOnStartNode2) {
   Program p;
   CFGNode* n1 = p.NewCFGNode("n1");
   Variable* x = p.NewVariable();
-  string a("a");
-  string b("b");
+  std::string a("a");
+  std::string b("b");
   Binding* x_a = x->AddBinding(&a, n1, {});
   Binding* x_b = x->AddBinding(&b, n1, {});
   EXPECT_TRUE(n1->HasCombination({x_a}));
@@ -198,7 +198,7 @@ TEST_F(TypeGraphTest, testInvalidateSolver) {
   Variable* x = p.NewVariable();
   EXPECT_NE(p.solver(), nullptr);
   // Adding a binding invalidates the solver.
-  string a("a");
+  std::string a("a");
   Binding* ax = x->AddBinding(&a);
   ax->AddOrigin(n1);
   EXPECT_EQ(p.solver(), nullptr);

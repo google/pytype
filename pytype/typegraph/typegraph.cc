@@ -13,11 +13,11 @@
 
 namespace devtools_python_typegraph {
 
-CFGNode* Program::NewCFGNode(const string& name) {
+CFGNode* Program::NewCFGNode(const std::string& name) {
   return NewCFGNode(name, nullptr);
 }
 
-CFGNode* Program::NewCFGNode(const string& name, Binding* condition) {
+CFGNode* Program::NewCFGNode(const std::string& name, Binding* condition) {
   // Count the number of nodes so far and use that as ID
   InvalidateSolver();
   size_t node_nr = CountCFGNodes();
@@ -60,7 +60,7 @@ bool Program::is_reachable(const CFGNode* src, const CFGNode* dst) {
   return backward_reachability_->is_reachable(dst->id(), src->id());
 }
 
-CFGNode::CFGNode(Program* program, const string& name, size_t id,
+CFGNode::CFGNode(Program* program, const std::string& name, size_t id,
                  Binding* condition,
                  ReachabilityAnalyzer* backward_reachability)
     : name_(name),
@@ -71,11 +71,11 @@ CFGNode::CFGNode(Program* program, const string& name, size_t id,
 
 CFGNode::~CFGNode() {}
 
-CFGNode* CFGNode::ConnectNew(const string& name) {
+CFGNode* CFGNode::ConnectNew(const std::string& name) {
   return ConnectNew(name, nullptr);
 }
 
-CFGNode* CFGNode::ConnectNew(const string& name, Binding* condition) {
+CFGNode* CFGNode::ConnectNew(const std::string& name, Binding* condition) {
   CFGNode* node = program_->NewCFGNode(name, condition);
 
   this->ConnectTo(node);
