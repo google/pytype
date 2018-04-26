@@ -561,6 +561,11 @@ class Converter(object):
       return self.object_type
     elif isinstance(pyval, pytd.Class) and pyval.name == "types.ModuleType":
       return self.module_type
+    # Python 3's typeshed uses a stub file indirection to define ModuleType even
+    # though it is exported via types.pyi.
+    elif (isinstance(pyval, pytd.Class) and
+          pyval.name == "_importlib_modulespec.ModuleType"):
+      return self.module_type
     elif isinstance(pyval, pytd.Class):
       module, dot, base_name = pyval.name.rpartition(".")
       try:
