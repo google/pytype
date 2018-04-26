@@ -225,9 +225,9 @@ class Converter(object):
           # parameters in call traces.
           return self.value_instance_to_pytd_type(node, val, None, seen, view)
       return pytd.NamedType("typing.Callable")
+    elif isinstance(v, (abstract.ClassMethod, abstract.StaticMethod)):
+      return self.value_to_pytd_type(node, v.method, seen, view)
     elif isinstance(v, (special_builtins.IsInstance,
-                        abstract.ClassMethod,
-                        abstract.StaticMethod,
                         special_builtins.ClassMethodCallable)):
       return pytd.NamedType("typing.Callable")
     elif isinstance(v, abstract.Class):
