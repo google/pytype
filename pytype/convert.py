@@ -555,28 +555,28 @@ class Converter(object):
     elif isinstance(pyval, pytd.Module):
       mod = self.vm.loader.import_name(pyval.module_name)
       return self._create_module(mod)
-    elif isinstance(pyval, pytd.Class) and pyval.name == "__builtin__.super":
-      return self.vm.special_builtins["super"]
-    elif isinstance(pyval, pytd.Class) and pyval.name == "__builtin__.object":
-      return self.object_type
-    elif isinstance(pyval, pytd.Class) and pyval.name == "types.ModuleType":
-      return self.module_type
-    # Python 3's typeshed uses a stub file indirection to define ModuleType even
-    # though it is exported via types.pyi.
-    elif (isinstance(pyval, pytd.Class) and
-          pyval.name == "_importlib_modulespec.ModuleType"):
-      return self.module_type
     elif isinstance(pyval, pytd.Class):
-      module, dot, base_name = pyval.name.rpartition(".")
-      try:
-        cls = abstract.PyTDClass(base_name, pyval, self.vm)
-      except mro.MROError as e:
-        self.vm.errorlog.mro_error(self.vm.frames, base_name, e.mro_seqs)
-        cls = self.unsolvable
+      if pyval.name == "__builtin__.super":
+        return self.vm.special_builtins["super"]
+      elif pyval.name == "__builtin__.object":
+        return self.object_type
+      elif pyval.name == "types.ModuleType":
+        return self.module_type
+      elif pyval.name == "_importlib_modulespec.ModuleType":
+        # Python 3's typeshed uses a stub file indirection to define ModuleType
+        # even though it is exported via types.pyi.
+        return self.module_type
       else:
-        if dot:
-          cls.module = module
-      return cls
+        module, dot, base_name = pyval.name.rpartition(".")
+        try:
+          cls = abstract.PyTDClass(base_name, pyval, self.vm)
+        except mro.MROError as e:
+          self.vm.errorlog.mro_error(self.vm.frames, base_name, e.mro_seqs)
+          cls = self.unsolvable
+        else:
+          if dot:
+            cls.module = module
+        return cls
     elif isinstance(pyval, pytd.Function):
       signatures = [abstract.PyTDSignature(pyval.name, sig, self.vm)
                     for sig in pyval.signatures]
