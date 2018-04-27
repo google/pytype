@@ -1989,6 +1989,9 @@ class ClassMethod(AtomicAbstractValue):
   def get_class(self):
     return self.vm.convert.function_type.to_variable(self.vm.root_cfg_node)
 
+  def to_bound_function(self):
+    return BoundPyTDFunction(self.callself, self.callcls, self.method)
+
 
 class StaticMethod(AtomicAbstractValue):
   """Implements @staticmethod methods in pyi."""

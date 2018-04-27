@@ -368,6 +368,8 @@ class AbstractMatcher(object):
       if other_type.full_name in [
           "__builtin__.classmethod", "__builtin__.object"]:
         return subst
+      return self._match_type_against_type(
+          left.to_bound_function(), other_type, subst, node, view)
     elif isinstance(left, abstract.StaticMethod):
       if other_type.full_name in [
           "__builtin__.staticmethod", "__builtin__.object"]:
