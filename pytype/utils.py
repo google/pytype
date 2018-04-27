@@ -556,6 +556,11 @@ def load_pytype_file(filename):
     IOError: if file not found
   """
   path = os.path.join(os.path.dirname(__file__), filename)
+  return load_data_file(path)
+
+
+def load_data_file(path):
+  """Get the contents of a data file."""
   with open(path, "rb") as fi:
     return fi.read()
 
