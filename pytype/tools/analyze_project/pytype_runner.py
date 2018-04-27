@@ -15,11 +15,11 @@ class PytypeRunner(object):
   def __init__(self, import_graph, importlab_env):
     self.import_graph = import_graph
     self.env = importlab_env
-    cfg = self.env.config
+    conf = self.env.config
     self.pythonpath = self.env.pythonpath.split(':')
-    self.output_dir = cfg.output_dir
-    self.deps = cfg.deps
-    self.projects = cfg.projects
+    self.output_dir = conf.output_dir
+    self.deps = conf.deps
+    self.projects = conf.projects
     self.system_env = {b'TYPESHED_HOME': self.env.typeshed.root.encode('utf-8')}
     self.pyi_dir = os.path.join(self.output_dir, 'pyi')
     if not os.path.exists(self.output_dir):
@@ -93,6 +93,7 @@ class PytypeRunner(object):
       self.logger.warning(error)
 
   def run(self):
+    """Run pytype over the project."""
     deps = list(self.import_graph.sorted_source_files())
     print('Writing logs to:', self.log_file)
     print()

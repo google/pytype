@@ -22,11 +22,14 @@ import argparse
 import os
 import sys
 
-from importlab import config
-from importlab import environment
-from importlab import graph
+import importlab.environment
+import importlab.fs
+import importlab.graph
 
+from pytype.tools import environment
+from pytype.tools.analyze_project import config
 from pytype.tools.analyze_project import pytype_runner
+from pytype.tools.analyze_project import utils
 
 
 def parse_args():
@@ -64,47 +67,52 @@ def read_config_file(args):
   ret = config.Config()
   if args.config:
     ret.read_from_file(args.config)
+  else:
+    print('Warning: No config file specified. Using default configuration.')
   return ret
 
 
-def recursive_import(args, env):
-  import_graph = graph.ImportGraph(env)
-  for filename in args.filenames:
-    import_graph.add_file_recursive(os.path.abspath(filename))
-  import_graph.build()
-  return import_graph
+def create_importlab_environment(args, conf):
+  """Create an importlab environment from the python version and path."""
+  typeshed = environment.initialize_typeshed_or_die(args)
+  python_version_string = conf.python_version
+  pythonpath = conf.make_pythonpath()
+  python_version = utils.split_version(python_version_string)
+  path = importlab.fs.Path()
+  for p in pythonpath.split(os.pathsep):
+    path.add_path(p, 'os')
+  for p in typeshed.get_paths(python_version):
+    path.add_path(p, 'pyi')
+  return importlab.environment.Environment(path, python_version)
 
 
 def main():
-  # Set up environment and paths
   args = parse_args()
 
   if args.generate_config:
-    config.generate_default(args.generate_config)
+    config.generate_sample_config(args.generate_config)
     sys.exit(0)
 
-  cfg = read_config_file(args)
+  conf = read_config_file(args)
   print('Configuration:')
-  cfg.show()
+  conf.show()
   print()
 
-  env = environment.Environment(args, cfg)
-
-  # Run pytype
-  imports = recursive_import(args, env)
+  env = create_importlab_environment(args, conf)
+  import_graph = importlab.graph.ImportGraph.create(env, args.filenames)
 
   if args.tree:
     print('Source tree:')
-    imports.print_tree()
+    import_graph.print_tree()
     sys.exit(0)
 
   if args.unresolved:
     print('Unresolved dependencies:')
-    for imp in sorted(imports.get_all_unresolved()):
+    for imp in sorted(import_graph.get_all_unresolved()):
       print(' ', imp.name)
     sys.exit(0)
 
-  runner = pytype_runner.PytypeRunner(imports, env)
+  runner = pytype_runner.PytypeRunner(import_graph, env)
   runner.run()
 
 
