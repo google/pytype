@@ -111,7 +111,7 @@ class AbstractAttributeHandler(object):
         param_var = obj.param.instantiate(self.vm.root_cfg_node)
       results = []
       nodes = []
-      for v in param_var.Data(node):
+      for v in param_var.data:
         node2, ret = self.get_attribute(node, v, name, valself, valcls)
         if ret is None:
           return node, None
@@ -296,7 +296,7 @@ class AbstractAttributeHandler(object):
       result = self.vm.program.NewVariable()
       nodes = []
       # Deal with descriptors as a potential additional level of indirection.
-      for v in attr.Bindings(node):
+      for v in attr.bindings:
         value = v.data
         node2, getter = self.get_attribute(node, value, "__get__", v)
         if getter is not None:
@@ -400,6 +400,7 @@ class AbstractAttributeHandler(object):
     return ret
 
   def _get_attribute_flat(self, node, obj, name):
+    """Flat attribute retrieval (no mro lookup)."""
     if isinstance(obj, abstract.ParameterizedClass):
       return self._get_attribute_flat(node, obj.base_cls, name)
     elif isinstance(obj, abstract.Class):
@@ -421,18 +422,15 @@ class AbstractAttributeHandler(object):
     # If we are looking up a member that we can determine is an instance
     # rather than a class attribute, add it to the instance's members.
     if valself and isinstance(obj, abstract.Instance):
-      if name not in obj.members or not obj.members[name].Bindings(node):
+      if name not in obj.members or not obj.members[name].bindings:
         # See test_generic.testInstanceAttributeVisible for an example of an
         # attribute in self.members needing to be reloaded.
         self._maybe_load_as_instance_attribute(node, obj, name)
 
     # Retrieve instance attribute
     if name in obj.members:
-      # Allow an instance attribute to shadow a class attribute, but only
-      # if there's a path through the CFG that actually assigns it.
-      # TODO(kramm): It would be more precise to check whether there's NOT any
-      # path that DOESN'T have it.
-      if obj.members[name].Bindings(node):
+      # Allow an instance attribute to shadow a class attribute.
+      if obj.members[name].bindings:
         return node, obj.members[name]
     return node, None
 
@@ -449,7 +447,7 @@ class AbstractAttributeHandler(object):
           # upper bound on the values. When all else fails, we add an empty
           # value as a placeholder that can be passed around and converted to
           # Any after analysis.
-          if var.Bindings(node):
+          if var.bindings:
             candidates.append(var)
           elif val.param.constraints:
             constraints = abstract.merge_values(val.param.constraints, self.vm)

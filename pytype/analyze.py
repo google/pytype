@@ -197,7 +197,7 @@ class CallTracer(vm.VirtualMachine):
   def analyze_method_var(self, node0, name, var):
     log.info("Analyzing %s", name)
     node1 = node0.ConnectNew(name)
-    for val in var.Bindings(node0):
+    for val in var.bindings:
       node2 = self.maybe_analyze_method(node1, val)
       node2.ConnectTo(node0)
     return node0
@@ -473,7 +473,7 @@ class CallTracer(vm.VirtualMachine):
           else:
             data.append(d)
       else:
-        log.error("No visible options for " + name)
+        log.error("No visible options for %s", name)
         data.append(pytd.Constant(name, pytd.AnythingType()))
     return pytd_utils.WrapTypeDeclUnit("inferred", data)
 
@@ -657,6 +657,7 @@ def infer_types(src, errorlog, options, loader,
 
 
 def _maybe_output_debug(options, program):
+  """Maybe emit debugging output."""
   if options.output_cfg or options.output_typegraph:
     dot = debug.program_to_dot(program, set([]), bool(options.output_cfg))
     proc = subprocess.Popen(["/usr/bin/dot", "-T", "svg", "-o",

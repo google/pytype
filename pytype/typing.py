@@ -55,6 +55,7 @@ class TypingContainer(abstract.AnnotationContainer):
 
 
 class Tuple(TypingContainer):
+  """Implementation of typing.Tuple."""
 
   def _get_value_info(self, inner, ellipses):
     if ellipses:
@@ -72,7 +73,7 @@ class Callable(TypingContainer):
   """Implementation of typing.Callable[...]."""
 
   def getitem_slot(self, node, slice_var):
-    content = self._maybe_extract_tuple(node, slice_var)
+    content = self._maybe_extract_tuple(slice_var)
     inner, ellipses = self._build_inner(content)
     args = inner[0]
     if isinstance(args, abstract.List) and not args.could_contain_anything:

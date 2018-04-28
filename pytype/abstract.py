@@ -158,8 +158,7 @@ def has_type_parameters(node, val, seen=None):
     return False
   seen.add(val)
   if isinstance(val, cfg.Variable):
-    return any((has_type_parameters(node, d, seen)
-                for d in val.Data(node)))
+    return any((has_type_parameters(node, d, seen) for d in val.data))
   elif isinstance(val, TypeParameter):
     return True
   elif isinstance(val, (ParameterizedClass, Union)):
@@ -767,9 +766,6 @@ class SimpleAbstractValue(AtomicAbstractValue):
     else:
       return "<%s>" % self.name
 
-  def to_variable(self, node):
-    return super(SimpleAbstractValue, self).to_variable(node)
-
   def get_class(self):
     # See Py_TYPE() in Include/object.h
     if self.cls:
@@ -1238,7 +1234,7 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
   def update_slot(self, node, *args, **kwargs):
     posargs_handled = False
     if len(args) == 1:
-      arg_data = args[0].Data(node)
+      arg_data = args[0].data
       if len(arg_data) == 1:
         self.update(node, arg_data[0])
         posargs_handled = True
@@ -1294,9 +1290,9 @@ class AnnotationClass(SimpleAbstractValue, HasSlots):
     self.set_slot("__getitem__", self.getitem_slot)
 
   @staticmethod
-  def _maybe_extract_tuple(node, t):
+  def _maybe_extract_tuple(t):
     """Returns a tuple of Variables."""
-    values = t.Data(node)
+    values = t.data
     if len(values) > 1:
       return (t,)
     v, = values
@@ -1306,7 +1302,7 @@ class AnnotationClass(SimpleAbstractValue, HasSlots):
 
   def getitem_slot(self, node, slice_var):
     """Custom __getitem__ implementation."""
-    slice_content = self._maybe_extract_tuple(node, slice_var)
+    slice_content = self._maybe_extract_tuple(slice_var)
     inner, ellipses = self._build_inner(slice_content)
     value = self._build_value(node, tuple(inner), ellipses)
     return node, value.to_variable(node)
@@ -2100,6 +2096,7 @@ class PyTDFunction(Function):
     return min(sig.signature.mandatory_param_count() for sig in self.signatures)
 
   def _log_args(self, arg_values_list, level=0, logged=None):
+    """Log the argument values."""
     if log.isEnabledFor(logging.DEBUG):
       if logged is None:
         logged = set()
@@ -2720,7 +2717,7 @@ class PyTDClass(SimpleAbstractValue, Class):
       c.parent = self
       return c.to_variable(self.vm.root_cfg_node)
     else:
-      raise AssertionError("Invalid class member %s", pytd.Print(pyval))
+      raise AssertionError("Invalid class member %s" % pytd.Print(pyval))
 
   def call(self, node, func, args):
     if self.is_abstract:
@@ -2747,6 +2744,7 @@ class PyTDClass(SimpleAbstractValue, Class):
     return name in self._member_map
 
   def convert_as_instance_attribute(self, node, name, instance):
+    """Convert `name` as an instance attribute."""
     try:
       c = self.pytd_cls.Lookup(name)
     except KeyError:
@@ -3016,7 +3014,7 @@ class SignedFunction(Function):
     kws = {k: u.AssignToNewVariable(node)
            for k, u in args.namedargs.items()}
     sig = self.signature
-    callargs = {name: self.vm.program.NewVariable(default.Data(node), [], node)
+    callargs = {name: self.vm.program.NewVariable(default.data, [], node)
                 for name, default in sig.defaults.items()}
     positional = dict(zip(sig.param_names, posargs))
     for key in positional:

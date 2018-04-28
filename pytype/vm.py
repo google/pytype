@@ -232,6 +232,7 @@ class VirtualMachine(object):
     return state
 
   def join_cfg_nodes(self, nodes):
+    """Get a new node to which the given nodes have been joined."""
     assert nodes
     if len(nodes) == 1:
       return nodes[0]
@@ -722,7 +723,7 @@ class VirtualMachine(object):
           break
         if cls.is_lazy:
           cls.load_lazy_attribute(attr)
-        if attr in cls.members and cls.members[attr].Bindings(node):
+        if attr in cls.members and cls.members[attr].bindings:
           return True
     return False
 
@@ -770,12 +771,10 @@ class VirtualMachine(object):
     """Map a binary operator to "magic methods" (__add__ etc.)."""
     results = []
     log.debug("Calling binary operator %s", name)
-    x_bindings = x.Bindings(state.node)
-    y_bindings = y.Bindings(state.node)
     nodes = []
     error = None
-    for xval in x_bindings:
-      for yval in y_bindings:
+    for xval in x.bindings:
+      for yval in y.bindings:
         try:
           node, ret = self._call_binop_on_bindings(state.node, name, xval, yval)
         except (abstract.DictKeyMissing, abstract.FailedFunctionCall) as e:
@@ -858,6 +857,7 @@ class VirtualMachine(object):
   def call_function_with_state(self, state, funcu, posargs, namedargs=None,
                                starargs=None, starstarargs=None,
                                fallback_to_unsolvable=True):
+    """Call a function with the given state."""
     assert starargs is None or isinstance(starargs, cfg.Variable)
     assert starstarargs is None or isinstance(starstarargs, cfg.Variable)
     node, ret = self.call_function(state.node, funcu, abstract.FunctionArgs(
@@ -1074,7 +1074,7 @@ class VirtualMachine(object):
     log.debug("getting attr %s from %r", attr, obj)
     nodes = []
     values_without_attribute = []
-    for val in obj.Bindings(node):
+    for val in obj.bindings:
       node2, attr_var = self.attribute_handler.get_attribute_generic(
           node, val.data, attr, val)
       if attr_var is None or not attr_var.bindings:
@@ -1281,8 +1281,8 @@ class VirtualMachine(object):
 
   def expand_bool_result(self, node, left, right, name, maybe_predicate):
     result = self.program.NewVariable()
-    for x in left.Bindings(node):
-      for y in right.Bindings(node):
+    for x in left.bindings:
+      for y in right.bindings:
         pyval = maybe_predicate(x.data, y.data)
         result.AddBinding(self.convert.bool_values[pyval],
                           source_set=(x, y), where=node)
@@ -1326,10 +1326,9 @@ class VirtualMachine(object):
   def byte_UNARY_NOT(self, state, op):
     """Implement the UNARY_NOT bytecode."""
     state, var = state.pop()
-    bindings = var.Bindings(state.node)
-    true_bindings = [b for b in bindings if b.data.compatible_with(True)]
-    false_bindings = [b for b in bindings if b.data.compatible_with(False)]
-    if len(true_bindings) == len(false_bindings) == len(bindings):
+    true_bindings = [b for b in var.bindings if b.data.compatible_with(True)]
+    false_bindings = [b for b in var.bindings if b.data.compatible_with(False)]
+    if len(true_bindings) == len(false_bindings) == len(var.bindings):
       # No useful information from bindings, use a generic bool value.
       # This is merely an optimization rather than building separate True/False
       # values each with the same bindings as var.
@@ -1722,7 +1721,7 @@ class VirtualMachine(object):
     elif op.arg == slots.CMP_EXC_MATCH:
       ret = self.convert.build_bool(state.node)
     else:
-      raise VirtualMachineError("Invalid argument to COMPARE_OP: %d", op.arg)
+      raise VirtualMachineError("Invalid argument to COMPARE_OP: %d" % op.arg)
     if not ret.bindings and op.arg in slots.CMP_ALWAYS_SUPPORTED:
       # Some comparison operations are always supported.
       # (https://docs.python.org/2/library/stdtypes.html#comparisons)
@@ -2186,8 +2185,7 @@ class VirtualMachine(object):
     free_vars = None  # Python < 3.6 does not handle closure vars here.
     kw_defaults = self._convert_kw_defaults(kw_defaults)
     annot, late_annot = (
-        self.annotations_util.convert_function_annotations(state.node,
-                                                           raw_annotations))
+        self.annotations_util.convert_function_annotations(raw_annotations))
     return state, pos_defaults, kw_defaults, annot, late_annot, free_vars
 
   def _get_extra_function_args_3_6(self, state, arg):
@@ -2203,7 +2201,7 @@ class VirtualMachine(object):
       annot = abstract.get_atomic_python_constant(packed_annot, dict)
       for k in annot.keys():
         annot[k] = self.annotations_util.convert_function_type_annotation(
-            state.node, k, annot[k])
+            k, annot[k])
     if arg & loadmarshal.MAKE_FUNCTION_HAS_KW_DEFAULTS:
       state, packed_kw_def = state.pop()
       kw_defaults = abstract.get_atomic_python_constant(packed_kw_def, dict)
@@ -2411,6 +2409,7 @@ class VirtualMachine(object):
     return state
 
   def byte_END_FINALLY(self, state, op):
+    """Implementation of the END_FINALLY opcode."""
     state, exc = state.pop()
     if self._var_is_none(exc):
       return state
@@ -2529,7 +2528,7 @@ class VirtualMachine(object):
     """Merge a list of kw dicts into a single dict."""
     args = abstract.Dict(self)
     for arg in arg_list:
-      for data in arg.Data(state.node):
+      for data in arg.data:
         args.update(state.node, data)
     args = args.to_variable(state.node)
     return args

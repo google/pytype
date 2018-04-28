@@ -97,15 +97,16 @@ class AnnotationsUtil(object):
       return sum((self.get_type_parameters(o) for o in annot.options), [])
     return []
 
-  def convert_function_type_annotation(self, node, name, typ):
-    visible = typ.Data(node)
+  def convert_function_type_annotation(self, name, typ):
+    visible = typ.data
     if len(visible) > 1:
       self.vm.errorlog.ambiguous_annotation(self.vm.frames, visible, name)
       return None
     else:
       return visible[0]
 
-  def convert_function_annotations(self, node, raw_annotations):
+  def convert_function_annotations(self, raw_annotations):
+    """Convert raw annotations to dicts of annotations and late annotations."""
     if raw_annotations:
       # {"i": int, "return": str} is stored as (int, str, ("i", "return"))
       names = abstract.get_atomic_python_constant(raw_annotations[-1])
@@ -113,7 +114,7 @@ class AnnotationsUtil(object):
       annotations_list = []
       for name, t in zip(names, type_list):
         name = abstract.get_atomic_python_constant(name)
-        t = self.convert_function_type_annotation(node, name, t)
+        t = self.convert_function_type_annotation(name, t)
         annotations_list.append((name, t))
       return self.convert_annotations_list(annotations_list)
     else:
@@ -335,6 +336,7 @@ class AnnotationsUtil(object):
     return ret
 
   def _eval_expr_as_tuple(self, node, f_globals, f_locals, expr):
+    """Evaluate an expression as a tuple."""
     if not expr:
       return ()
 
