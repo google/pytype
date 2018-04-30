@@ -139,6 +139,19 @@ def get_signatures(func):
     raise NotImplementedError(func.__class__.__name__)
 
 
+def func_name_is_class_init(name):
+  """Return True if |name| is that of a class' __init__ method."""
+  # Python 3's MAKE_FUNCTION byte code takes an explicit fully qualified
+  # function name as an argument and that is used for the function name.
+  # On the other hand, Python 2's MAKE_FUNCTION does not take any name
+  # argument so we pick the name from the code object. This name is not
+  # fully qualified. Hence, constructor names in Python 3 are fully
+  # qualified ending in '.__init__', and constructor names in Python 2
+  # are all '__init__'. So, we identify a constructor by matching its
+  # name with one of these patterns.
+  return name == "__init__" or name.endswith(".__init__")
+
+
 def has_type_parameters(node, val, seen=None):
   """Checks if the given object has any TypeParameters in its type_parameters.
 
@@ -3409,7 +3422,7 @@ class InterpreterFunction(SignedFunction):
     return bool(self.code.co_flags & loadmarshal.CodeType.CO_VARKEYWORDS)
 
   def property_get(self, callself, callcls):
-    if self.name == "__init__" and self.signature.param_names:
+    if func_name_is_class_init(self.name) and self.signature.param_names:
       self_name = self.signature.param_names[0]
       if self_name in self.signature.annotations:
         self.vm.errorlog.invalid_annotation(
