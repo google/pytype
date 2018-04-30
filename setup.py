@@ -2,7 +2,7 @@
 
 # pylint: disable=bad-indentation
 
-from distutils.core import setup, Extension
+from setuptools import setup, Extension  # pylint: disable=multiple-import
 
 import glob
 import os

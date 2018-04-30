@@ -20,6 +20,8 @@ Pytype can run under both Python 2.7 and Python 3.6. It also needs an
 interpreter in $PATH for the python version of the code you're analyzing
 (Python 2.7 by default).
 
+Pytype's `setup.py` relies on setuptools.
+
 ```
 git clone https://github.com/google/pytype.git
 cd pytype
