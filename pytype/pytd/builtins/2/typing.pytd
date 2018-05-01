@@ -370,7 +370,8 @@ class Match(Generic[AnyStr]):
 class ClassVar(Generic[_T]): ...
 
 
-class ByteString(Sequence[int]): ...
+class ByteString(Sequence[int]):
+  __slots__ = []
 
 # TODO(tsudol): Should be covariant, e.g. _T_co. traceback arg for __exit__
 # should be types.TracebackType.
