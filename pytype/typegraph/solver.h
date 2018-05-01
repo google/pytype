@@ -29,7 +29,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "third_party/py/pytype/typegraph/typegraph.h"
+#include "typegraph.h"
 
 namespace devtools_python_typegraph {
 

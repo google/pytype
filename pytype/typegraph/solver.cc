@@ -1,4 +1,4 @@
-#include "third_party/py/pytype/typegraph/solver.h"
+#include "solver.h"
 
 #include <stack>
 #include <string>
@@ -6,9 +6,9 @@
 #include <utility>
 #include <vector>
 
-#include "third_party/py/pytype/typegraph/cfg_assert.h"
-#include "third_party/py/pytype/typegraph/map_util.h"
-#include "third_party/py/pytype/typegraph/typegraph.h"
+#include "cfg_assert.h"
+#include "map_util.h"
+#include "typegraph.h"
 
 namespace devtools_python_typegraph {
 

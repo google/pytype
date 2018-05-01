@@ -1,4 +1,4 @@
-#include "third_party/py/pytype/typegraph/map_util.h"
+#include "map_util.h"
 
 #include <string>
 

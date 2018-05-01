@@ -1,4 +1,4 @@
-#include "third_party/py/pytype/typegraph/typegraph.h"
+#include "typegraph.h"
 
 #include <algorithm>
 #include <iterator>
@@ -7,9 +7,9 @@
 #include <vector>
 
 #include "third_party/absl/memory/memory.h"
-#include "third_party/py/pytype/typegraph/cfg_assert.h"
-#include "third_party/py/pytype/typegraph/map_util.h"
-#include "third_party/py/pytype/typegraph/solver.h"
+#include "cfg_assert.h"
+#include "map_util.h"
+#include "solver.h"
 
 namespace devtools_python_typegraph {
 

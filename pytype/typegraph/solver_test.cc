@@ -3,8 +3,8 @@
 #include <string>
 #include <vector>
 
-#include "third_party/py/pytype/typegraph/typegraph.h"
-#include "third_party/py/pytype/typegraph/solver.h"
+#include "typegraph.h"
+#include "solver.h"
 #include "gtest/gtest.h"
 
 namespace devtools_python_typegraph {

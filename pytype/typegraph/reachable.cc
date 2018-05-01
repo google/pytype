@@ -1,4 +1,4 @@
-#include "third_party/py/pytype/typegraph/reachable.h"
+#include "reachable.h"
 
 #include <cstddef>
 

@@ -4,8 +4,8 @@
 #include <unordered_map>
 #include <utility>
 
-#include "third_party/py/pytype/typegraph/cfg_assert.h"
-#include "third_party/py/pytype/typegraph/typegraph.h"
+#include "cfg_assert.h"
+#include "typegraph.h"
 
 namespace typegraph = devtools_python_typegraph;
 

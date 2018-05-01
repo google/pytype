@@ -1,4 +1,4 @@
-#include "third_party/py/pytype/typegraph/typegraph.h"
+#include "typegraph.h"
 
 #include <algorithm>
 
