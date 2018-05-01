@@ -16,6 +16,7 @@
 
 import textwrap
 import unittest
+
 from pytype import load_pytd
 from pytype.pyi import parser
 from pytype.pytd import mro

@@ -1,7 +1,6 @@
 """Abstract attribute handling."""
 import logging
 
-
 from pytype import abstract
 from pytype import annotations_util
 from pytype import overlay

@@ -1,6 +1,5 @@
 """Tests for pyc.py."""
 
-
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 import unittest

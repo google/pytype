@@ -5,7 +5,6 @@ import logging
 import subprocess
 import sys
 
-
 from pytype import abstract
 from pytype import convert_structural
 from pytype import debug

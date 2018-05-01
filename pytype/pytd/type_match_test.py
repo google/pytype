@@ -17,7 +17,6 @@
 
 import textwrap
 
-
 from pytype.pyi import parser
 from pytype.pytd import booleq
 from pytype.pytd import pytd

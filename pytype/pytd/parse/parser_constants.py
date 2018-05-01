@@ -2,7 +2,6 @@
 
 import re
 
-
 # PyTD keywords
 RESERVED = [
     'class',

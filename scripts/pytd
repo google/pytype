@@ -13,7 +13,6 @@ Usage:
 import optparse
 import sys
 
-
 from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import optimize

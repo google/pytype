@@ -3,7 +3,6 @@
 # pylint's detection of this is error-prone:
 # pylint: disable=unpacking-non-sequence
 
-
 from pytype import abstract
 from pytype import collections_overlay
 from pytype import overlay

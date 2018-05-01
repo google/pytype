@@ -2,7 +2,6 @@
 
 import textwrap
 
-
 from pytype.pytd import transforms
 from pytype.pytd import visitors
 from pytype.pytd.parse import builtins

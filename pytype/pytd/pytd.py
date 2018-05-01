@@ -22,6 +22,7 @@
 
 import collections
 import itertools
+
 from pytype.pytd.parse import node
 from pytype.pytd.parse import preconditions
 

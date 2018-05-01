@@ -4,7 +4,6 @@ import itertools
 import logging
 import os
 
-
 from pytype import utils
 from pytype.tests import test_base
 from pytype.typegraph import cfg

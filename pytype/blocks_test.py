@@ -1,6 +1,5 @@
 """Tests for blocks.py."""
 
-
 from pytype import blocks
 from pytype.pyc import opcodes
 from pytype.pyc import pyc

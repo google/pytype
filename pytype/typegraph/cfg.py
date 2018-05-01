@@ -7,7 +7,6 @@ and to model path-specific visibility of nested data structures.
 import collections
 import logging
 
-
 from pytype import metrics
 # debug is imported to enable log.trace. Since it isn't used directly, it's
 # flagged as an unused import.

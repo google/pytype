@@ -1,6 +1,5 @@
 """Tests for magic.py."""
 
-
 from pytype.pyc import magic
 import unittest
 

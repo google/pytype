@@ -2,7 +2,6 @@
 
 import logging
 
-
 from pytype import abstract
 from pytype import metrics
 from pytype.typegraph import cfg

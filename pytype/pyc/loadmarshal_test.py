@@ -2,7 +2,6 @@
 
 import sys
 
-
 from pytype import compat
 from pytype.pyc import loadmarshal
 import unittest

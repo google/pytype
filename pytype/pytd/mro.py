@@ -1,6 +1,5 @@
 """Code related to sequence merging and MRO."""
 
-
 from pytype.pytd import pytd
 
 

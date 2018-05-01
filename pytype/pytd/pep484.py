@@ -1,6 +1,5 @@
 """PEP484 compatibility code."""
 
-
 from pytype.pytd import pytd
 from pytype.pytd import visitors
 

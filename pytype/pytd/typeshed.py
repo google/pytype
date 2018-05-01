@@ -2,7 +2,6 @@
 
 import os
 
-
 from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd.parse import builtins

@@ -3,7 +3,6 @@
 import dis
 import textwrap
 
-
 from pytype import blocks
 from pytype import compat
 from pytype import errors

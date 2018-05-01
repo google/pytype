@@ -3,7 +3,6 @@
 import collections
 import logging
 
-
 from pytype.pytd import booleq
 from pytype.pytd import optimize
 from pytype.pytd import pytd

@@ -12,7 +12,6 @@ import inspect
 import itertools
 import logging
 
-
 from pytype import compat
 from pytype import function
 from pytype import utils

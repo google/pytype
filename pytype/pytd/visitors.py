@@ -21,7 +21,6 @@ import itertools
 import logging
 import re
 
-
 from pytype import utils
 from pytype.pytd import mro
 from pytype.pytd import pytd

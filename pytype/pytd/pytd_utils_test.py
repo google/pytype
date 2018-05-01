@@ -17,6 +17,7 @@
 import os
 import textwrap
 import unittest
+
 from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import pytd

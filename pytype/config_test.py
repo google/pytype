@@ -1,6 +1,5 @@
 """Tests for config.py."""
 
-
 from pytype import config
 from pytype.tests import test_base
 

@@ -17,7 +17,6 @@
 
 """Utilities for parsing pytd files for builtins."""
 
-
 from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import pytd_utils

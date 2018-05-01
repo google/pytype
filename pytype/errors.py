@@ -8,7 +8,6 @@ import logging
 import re
 import sys
 
-
 from pytype import abstract
 from pytype import debug
 from pytype import utils

@@ -1,7 +1,6 @@
 """Matching logic for abstract values."""
 import logging
 
-
 from pytype import abstract
 from pytype import function
 from pytype import special_builtins

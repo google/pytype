@@ -1,6 +1,5 @@
 """Tests for collections_overlay.py."""
 
-
 from pytype import collections_overlay
 from pytype.pytd import pytd
 

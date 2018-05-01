@@ -28,7 +28,6 @@ signatures against new inference results.
 
 import logging
 
-
 from pytype import utils
 from pytype.pytd import booleq
 from pytype.pytd import pytd

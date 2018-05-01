@@ -19,6 +19,7 @@ from __future__ import print_function
 import os
 import sys
 import textwrap
+
 from pytype import load_pytd
 from pytype.pyi import parser
 from pytype.pytd import pytd

@@ -16,7 +16,6 @@
 
 import textwrap
 
-
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors

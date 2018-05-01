@@ -14,6 +14,7 @@
 
 
 import itertools
+
 from pytype.pytd import visitors
 from pytype.pytd.parse import node
 import unittest

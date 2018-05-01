@@ -2,7 +2,6 @@
 
 import collections
 
-
 from pytype import abstract
 from pytype import function
 from pytype import typing

@@ -3,7 +3,6 @@
 import collections
 import hashlib
 
-
 from pytype import utils
 from pytype.pyi import parser_ext
 from pytype.pytd import pep484

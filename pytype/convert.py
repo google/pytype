@@ -3,7 +3,6 @@
 import logging
 import types
 
-
 from pytype import abstract
 from pytype import blocks
 from pytype import compat

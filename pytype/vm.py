@@ -16,7 +16,6 @@ import os
 import re
 import sys
 
-
 from pytype import abc_overlay
 from pytype import abstract
 from pytype import annotations_util

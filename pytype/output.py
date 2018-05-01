@@ -4,7 +4,6 @@ import collections
 import contextlib
 import logging
 
-
 from pytype import abstract
 from pytype import special_builtins
 from pytype import typing

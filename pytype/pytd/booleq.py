@@ -21,7 +21,6 @@
 import collections
 import itertools
 
-
 from pytype.pytd import pytd_utils
 
 chain = itertools.chain.from_iterable

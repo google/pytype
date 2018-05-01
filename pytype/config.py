@@ -8,7 +8,6 @@ import logging
 import optparse
 import os
 
-
 from pytype import debug
 from pytype import imports_map_loader
 from pytype import load_pytd

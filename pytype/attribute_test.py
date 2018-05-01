@@ -1,6 +1,5 @@
 """Tests for attribute.py."""
 
-
 from pytype import abstract
 from pytype import config
 from pytype import errors

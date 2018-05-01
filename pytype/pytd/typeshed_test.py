@@ -2,7 +2,6 @@
 
 import os
 
-
 from pytype.pytd import typeshed
 from pytype.pytd.parse import builtins
 from pytype.pytd.parse import parser_test_base

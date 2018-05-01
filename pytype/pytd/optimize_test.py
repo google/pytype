@@ -16,6 +16,7 @@
 
 import textwrap
 import unittest
+
 from pytype import load_pytd
 from pytype.pytd import optimize
 from pytype.pytd import pytd

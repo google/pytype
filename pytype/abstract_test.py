@@ -1,6 +1,5 @@
 """Tests for abstract.py."""
 
-
 from pytype import abstract
 from pytype import annotations_util
 from pytype import config

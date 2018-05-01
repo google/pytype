@@ -1,6 +1,5 @@
 """Tests for directors.py."""
 
-
 from pytype import directors
 from pytype import errors
 import unittest
