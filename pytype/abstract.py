@@ -316,20 +316,6 @@ class AtomicAbstractValue(object):
     """Returns the minimum number of arguments needed for a call."""
     raise NotImplementedError(self.__class__.__name__)
 
-  def is_closure(self):
-    """Return whether this is a closure. Overridden by subclasses.
-
-    This can only return True for InterpreterFunction and NativeFunction
-    (i.e., at the time of this writing, never for functions e.g. from PyTD,
-    which doesn't know about closures), and only if they bind variables from
-    their outer scope. Inner functions not binding anything are not considered a
-    closure.
-
-    Returns:
-      True if this is a closure.
-    """
-    return False
-
   def register_instance(self, instance):  # pylint: disable=unused-arg
     """Treating self as a class definition, register an instance of it.
 
@@ -3236,9 +3222,6 @@ class InterpreterFunction(SignedFunction):
 
   def get_first_opcode(self):
     return self.code.co_code[0]
-
-  def is_closure(self):
-    return self.closure is not None
 
   def argcount(self, _):
     return self.code.co_argcount

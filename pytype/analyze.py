@@ -142,9 +142,9 @@ class CallTracer(vm.VirtualMachine):
   def maybe_analyze_method(self, node, val):
     method = val.data
     fname = val.data.name
-    self._analyzed_functions.add(method)
     if isinstance(method, (abstract.InterpreterFunction,
                            abstract.BoundInterpreterFunction)):
+      self._analyzed_functions.add(method.get_first_opcode())
       if (not self.analyze_annotated and
           method.signature.has_return_annotation and
           fname not in self._CONSTRUCTORS):
@@ -218,7 +218,7 @@ class CallTracer(vm.VirtualMachine):
     instance = self.program.NewVariable()
     nodes = []
     for b in new.bindings:
-      self._analyzed_functions.add(b.data)
+      self._analyzed_functions.add(b.data.get_first_opcode())
       node2, args = self.create_method_arguments(node1, b.data)
       if args.posargs and (
           b.data.signature.param_names[0] not in b.data.signature.annotations):
@@ -372,9 +372,13 @@ class CallTracer(vm.VirtualMachine):
     # These are typically hidden under a decorator.
     for f in self._interpreter_functions:
       for value in f.bindings:
+        # We record analyzed functions by opcode rather than function object.
+        # The two ways of recording are equivalent except for closures, which
+        # are re-generated when the variables they close over change, but we
+        # don't want to re-analyze them.
         if (isinstance(value.data, abstract.InterpreterFunction) and
             not value.data.is_class_builder and
-            value.data not in self._analyzed_functions):
+            value.data.get_first_opcode() not in self._analyzed_functions):
           node = self.analyze_function(node, value)
     for c in self._interpreter_classes:
       for value in c.bindings:
