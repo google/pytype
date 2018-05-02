@@ -3262,7 +3262,7 @@ class InterpreterFunction(SignedFunction):
     return super(InterpreterFunction, self)._match_args(node, args)
 
   def call(self, node, func, args, new_locals=None):
-    if self.vm.is_at_maximum_depth() and self.name != "__init__":
+    if self.vm.is_at_maximum_depth() and not func_name_is_class_init(self.name):
       log.info("Maximum depth reached. Not analyzing %r", self.name)
       if self.vm.callself_stack:
         for b in self.vm.callself_stack[-1].bindings:
@@ -3490,7 +3490,7 @@ class BoundFunction(AtomicAbstractValue):
     return self.underlying.signature.drop_first_parameter()
 
   def call(self, node, func, args):
-    if self.name == "__init__":
+    if func_name_is_class_init(self.name):
       self.vm.callself_stack.append(self._callself)
     # The "self" parameter is automatically added to the list of arguments, but
     # only if the function actually takes any arguments.
@@ -3507,7 +3507,7 @@ class BoundFunction(AtomicAbstractValue):
         e.name = "%s.%s" % (self._callself.data[0].name, e.name)
       raise
     finally:
-      if self.name == "__init__":
+      if func_name_is_class_init(self.name):
         self.vm.callself_stack.pop()
 
   def get_positional_names(self):
