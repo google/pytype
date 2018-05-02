@@ -59,6 +59,7 @@ setup(
               'pytype/pytd',
               'pytype/pytd/parse',
               'pytype/tools',
+              'pytype/tools/analyze_project',
               'pytype/typegraph',
              ],
     scripts=['scripts/pytype',
