@@ -773,9 +773,6 @@ class MonitorDict(dict):
   another origin for existing data.
   """
 
-  def __init__(self, *args, **kwargs):
-    super(MonitorDict, self).__init__(*args, **kwargs)
-
   def __delitem__(self, name):
     raise NotImplementedError
 
@@ -795,22 +792,18 @@ class MonitorDict(dict):
 class DictTemplate(dict):
   """A template class for dictionary subclasses.
 
-  Use this template as a base for complex dictionary subclasses that
-  should explicitly override dict methods that they wish to expose. A
-  NotImplementedError is raised upon any attempt to access other methods.
+  Use this template as a base for complex dictionary subclasses. Methods get(),
+  values(), and items() are exposed; subclasses must explicitly override any
+  other dict method that they wish to provide.
   """
 
   def get(self, name):
+    # We reimplement get() because the builtin implementation doesn't play
+    # nicely with AliasingDict.
     try:
       return self[name]
     except KeyError:
       return None
-
-  def values(self):
-    return super(DictTemplate, self).values()
-
-  def items(self):
-    return super(DictTemplate, self).items()
 
   def clear(self):
     raise NotImplementedError()

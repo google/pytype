@@ -147,7 +147,7 @@ class LexerTest(unittest.TestCase):
       2 '''this shoulnd't be swallowed by the previous string'''
       3""")
     # Double quotes.
-    # pylint: disable=g-inconsistent-quotes
+    # pylint: disable=g-inconsistent-quotes,g-backslash-continuation
     self.check([
         ("NUMBER", 1, 1),
         ("TRIPLEQUOTED", None, 1, 3, 3, 5),

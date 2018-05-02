@@ -326,6 +326,7 @@ class ErrorLogBase(object):
     self._errors = self._errors[:checkpoint.position]
 
   def print_to_csv_file(self, filename):
+    """Print the errorlog to a csv file."""
     with open(filename, "w") as f:
       csv_file = csv.writer(f, delimiter=",")
       for error in self.unique_sorted_errors():
@@ -412,11 +413,13 @@ class ErrorLog(ErrorLogBase):
       #   class Foo:
       #     Bar = ...  # type: Type[_Foo_DOT_Bar]
       # Replace _Foo_DOT_Bar with Foo.Bar in error messages for readability.
+      # TODO(b/35138984): Get rid of this hack.
       start = nested_class_match.start()
       return name[:start] + name[start+1:].replace("_DOT_", ".")
     return name
 
   def _print_as_expected_type(self, t, instance=None):
+    """Print abstract value t as a pytd type."""
     if isinstance(t, (abstract.Unknown, abstract.Unsolvable, abstract.Class,
                       abstract.Union)):
       with t.vm.convert.pytd_convert.produce_detailed_output():
@@ -440,6 +443,7 @@ class ErrorLog(ErrorLogBase):
     return "NoReturn" if ret == "nothing" else ret
 
   def _join_printed_types(self, types):
+    """Pretty-print the union of the printed types."""
     types = sorted(set(types))  # dedup
     if len(types) == 1:
       return next(iter(types))
@@ -521,6 +525,7 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("attribute-error")
   def _attribute_error(self, stack, binding, attr_name):
+    """Log an attribute error."""
     obj_repr = self._print_as_actual_type(binding.data)
     if len(binding.variable.bindings) > 1:
       # Joining the printed types rather than merging them before printing
@@ -562,10 +567,6 @@ class ErrorLog(ErrorLogBase):
   @_error_name("import-error")
   def import_error(self, stack, module_name):
     self.error(stack, "Can't find module %r." % module_name)
-
-  @_error_name("missing-typing-dependency")
-  def missing_typing_dependency(self):
-    self.error(None, "Can't find module `typing`.")
 
   def _explain_protocol_mismatch(self, protocol_param, passed_params):
     """Return possibly extra protocol details about an argument mismatch."""
@@ -675,6 +676,7 @@ class ErrorLog(ErrorLogBase):
     self.error(stack, message, details)
 
   def invalid_function_call(self, stack, error):
+    """Log an invalid function call."""
     if isinstance(error, abstract.WrongArgCount):
       self.wrong_arg_count(stack, error.name, error.bad_call)
     elif isinstance(error, abstract.WrongArgTypes):

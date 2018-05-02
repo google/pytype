@@ -27,6 +27,7 @@ def write_pyc(f, codeobject, source_size=0, timestamp=0):
 
 
 def compile_to_pyc(data_file, filename, output, mode="exec"):
+  """Compile the source code to byte code."""
   with open(data_file, "r") as fi:
     src = fi.read()
   try:
@@ -45,6 +46,7 @@ def compile_to_pyc(data_file, filename, output, mode="exec"):
 def main():
   if len(sys.argv) != 4:
     sys.exit(1)
+  # TODO(b/31819797): Remove the pytype disable and enable.
   # pytype: disable=attribute-error
   output = sys.stdout.buffer if hasattr(sys.stdout, "buffer") else sys.stdout
   # pytype: enable=attribute-error

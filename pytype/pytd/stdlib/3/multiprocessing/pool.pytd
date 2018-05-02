@@ -4,7 +4,7 @@
 #   class ThreadPool(Pool, ContextManager[ThreadPool])
 #
 # where we do not let ThreadPool inherit from both ContextManager[Pool] and
-# ContextManager[ThreadPool]
+# ContextManager[ThreadPool]. (see b/69934236)
 
 from typing import (
     Any, Callable, ContextManager, Iterable, Mapping, Optional, Dict, List,
