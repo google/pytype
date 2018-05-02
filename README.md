@@ -37,6 +37,9 @@ NOTE: pytype analyzes a single file. To analyze an entire project, use the
 included
 [pytype-all](https://github.com/google/pytype/tree/master/pytype/tools/analyze_project) tool.
 
+For more detailed explanations of pytype's error messages, see [this
+doc](https://github.com/google/pytype/tree/master/docs/errors.md)
+
 ```
 Usage: pytype [options] file.py
 

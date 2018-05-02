@@ -45,7 +45,7 @@ Errors](index#silencing-errors).
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: mdemello, at: 2018-05-02T15:28-07:00 -->
+<!-- Added by: mdemello, at: 2018-05-02T16:48-07:00 -->
 
 <!--te-->
 
@@ -169,9 +169,8 @@ def f():
 
 ## import-error
 
-The module being imported was not found. A common culprit is that your BUILD
-file is missing the corresponding dependency; consider using go/build_cleaner to
-automatically fix the dependencies in your BUILD files.
+The module being imported was not found.
+
 
 ## invalid-annotation
 
