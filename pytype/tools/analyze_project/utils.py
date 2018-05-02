@@ -40,4 +40,4 @@ def expand_paths(paths, cwd=None):
 
 
 def split_version(version):
-  return [int(v) for v in version.split('.')]
+  return tuple(int(v) for v in version.split('.'))
