@@ -680,11 +680,11 @@ class VirtualMachine(object):
     for func in self.functions_with_late_annotations:
       self.annotations_util.eval_late_annotations(node, func, f_globals,
                                                   f_locals)
-    for name, annot in list(f_globals.late_annotations.items()):
+    while f_globals.late_annotations:
+      name, annot = f_globals.late_annotations.popitem()
       attr = self.annotations_util.init_annotation(
           annot.expr, annot.name, annot.stack, node, f_globals, f_locals)
       self.attribute_handler.set_attribute(node, f_globals, name, attr)
-      del f_globals.late_annotations[name]
     assert not self.frames, "Frames left over!"
     log.info("Final node: <%d>%s", node.id, node.name)
     return node, f_globals.members
