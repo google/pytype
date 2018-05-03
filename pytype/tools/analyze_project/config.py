@@ -100,7 +100,8 @@ def generate_sample_config(filename):
       ''
   ]
   for item in SAMPLE:
-    config.extend(textwrap.wrap('# ' + item.comment, 80))
+    config.extend(textwrap.wrap(
+        item.comment, 80, initial_indent='# ', subsequent_indent='# '))
     config.extend(_format_sample_item(item.key, item.sample))
     config.append('')
   with open(filename, 'w') as f:
