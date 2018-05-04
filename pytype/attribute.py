@@ -429,7 +429,7 @@ class AbstractAttributeHandler(object):
     # Retrieve instance attribute
     if name in obj.members:
       # Allow an instance attribute to shadow a class attribute.
-      if obj.members[name].bindings:
+      if obj.members[name].Bindings(node):
         return node, obj.members[name]
     return node, None
 
