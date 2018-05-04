@@ -1,8 +1,22 @@
 # Error classes
 
 pytype has the following classes of errors, which can be disabled with a
-`pytype: disable=error-class` directive. See [Silencing
-Errors](index#silencing-errors).
+`pytype: disable=error-class` directive. For example, to suppress an
+error for a missing attribute `foo`:
+
+```
+x = a.foo  # pytype: disable=attribute-error
+```
+
+or, to suppress all attribute errors for a block of code:
+
+```
+# pytype: disable=attribute-error
+x = a.foo
+y = a.bar
+# pytype: enable=attribute-error
+```
+
 
 <!--ts-->
    * [Error classes](#error-classes)
@@ -45,7 +59,7 @@ Errors](index#silencing-errors).
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: mdemello, at: 2018-05-02T16:48-07:00 -->
+<!-- Added by: mdemello, at: 2018-05-04T12:11-07:00 -->
 
 <!--te-->
 
