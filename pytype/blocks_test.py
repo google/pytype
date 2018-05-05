@@ -7,7 +7,14 @@ from pytype.tests import test_base
 import unittest
 
 
-class OrderingTest(test_base.BaseTest):
+class BaseBlocksTest(unittest.TestCase, test_base.MakeCodeMixin):
+  """A base class for implementing tests testing blocks.py."""
+
+  def setUp(self):
+    self.python_version = (2, 7)
+
+
+class OrderingTest(BaseBlocksTest):
   """Tests for order_code in blocks.py."""
 
   def _order_code(self, code):
@@ -276,7 +283,7 @@ class OrderingTest(test_base.BaseTest):
     self.assertEqual(2, len(b4.code))
 
 
-class BlockStackTest(test_base.BaseTest):
+class BlockStackTest(BaseBlocksTest):
   """Test the add_pop_block_targets function."""
 
   def test_finally(self):

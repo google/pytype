@@ -63,7 +63,7 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
       self.assertNotIn("/", module_name)
 
 
-class TestTypeshedParsing(test_base.BaseTest):
+class TestTypeshedParsing(test_base.TargetIndependentTest):
   """Tests a handful of typeshed modules.
 
   The list was generated using

@@ -31,12 +31,16 @@ class TraceVM(vm.VirtualMachine):
     return super(TraceVM, self).run_instruction(op, state)
 
 
-class BytecodeTest(test_base.BaseTest):
+class BytecodeTest(test_base.BaseTest, test_base.MakeCodeMixin):
   """Tests for process_code in blocks.py and VM integration."""
+
+  def __init__(self, *args, **kwargs):
+    super(BytecodeTest, self).__init__(*args, **kwargs)
+    # We only test Python 2 bytecode.
+    self.python_version = (2, 7)
 
   def setUp(self):
     super(BytecodeTest, self).setUp()
-    self.ConfigureOptions(python_version=self.python_version)
     self.errorlog = errors.ErrorLog()
     self.trace_vm = TraceVM(self.options, self.loader)
 
