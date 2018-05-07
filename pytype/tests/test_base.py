@@ -442,10 +442,6 @@ class TargetPython3BasicTest(BaseTest):
 
   Test methods in subclasses will test Pytype on Python code stubs which use
   type annotations as the only Python 3 feature.
-  # MOE:begin_strip
-  In google3, these tests will also be run with target Python version set to
-  2.7.
-  # MOE:end_strip
   """
 
   def __init__(self, *args, **kwargs):
