@@ -1706,7 +1706,14 @@ class Function(SimpleAbstractValue):
 
 
 class Mutation(collections.namedtuple("_", ["instance", "name", "value"])):
-  pass
+
+  def __eq__(self, other):
+    return (self.instance == other.instance and
+            self.name == other.name and
+            frozenset(self.value.data) == frozenset(other.value.data))
+
+  def __hash__(self):
+    return hash((self.instance, self.name, frozenset(self.value.data)))
 
 
 class PyTDSignature(object):
@@ -2117,7 +2124,7 @@ class PyTDFunction(Function):
     self._log_args(arg.bindings for arg in args.posargs)
     ret_map = {}
     retvar = self.vm.program.NewVariable()
-    all_mutations = []
+    all_mutations = set()
     # The following line may raise FailedFunctionCall
     possible_calls = self._match_args(node, args)
     for view, signatures in possible_calls:
@@ -2128,7 +2135,7 @@ class PyTDFunction(Function):
         ret = sig.call_with_args(node, func, arg_dict, subst, ret_map)
       node, result, mutations = ret
       retvar.PasteVariable(result, node)
-      all_mutations += mutations
+      all_mutations.update(mutations)
 
     log.info("Applying %d mutations", len(all_mutations))
     if all_mutations:
