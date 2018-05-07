@@ -8,7 +8,7 @@ import os
 import sys
 import textwrap
 
-from . import utils
+from pytype.tools import utils
 
 Item = collections.namedtuple('Item', ['key', 'default', 'sample', 'comment'])
 
@@ -68,8 +68,9 @@ class Config(object):
     self.deps = utils.expand_paths(self.deps, cwd)
     self.output_dir = utils.expand_path(self.output_dir, cwd)
 
-  def make_pythonpath(self):
-    return ':'.join(self.projects + self.deps)
+  @property
+  def pythonpath(self):
+    return self.projects + self.deps
 
   def show(self):
     for k in DEFAULT:

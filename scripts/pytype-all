@@ -19,7 +19,6 @@
 from __future__ import print_function
 
 import argparse
-import os
 import sys
 
 import importlab.environment
@@ -27,9 +26,9 @@ import importlab.fs
 import importlab.graph
 
 from pytype.tools import environment
+from pytype.tools import utils
 from pytype.tools.analyze_project import config
 from pytype.tools.analyze_project import pytype_runner
-from pytype.tools.analyze_project import utils
 
 
 def parse_args():
@@ -72,14 +71,11 @@ def read_config_file(args):
   return ret
 
 
-def create_importlab_environment(args, conf):
+def create_importlab_environment(conf, typeshed):
   """Create an importlab environment from the python version and path."""
-  typeshed = environment.initialize_typeshed_or_die(args)
-  python_version_string = conf.python_version
-  pythonpath = conf.make_pythonpath()
-  python_version = utils.split_version(python_version_string)
+  python_version = utils.split_version(conf.python_version)
   path = importlab.fs.Path()
-  for p in pythonpath.split(os.pathsep):
+  for p in conf.pythonpath:
     path.add_path(p, 'os')
   for p in typeshed.get_paths(python_version):
     path.add_path(p, 'pyi')
@@ -98,7 +94,8 @@ def main():
   conf.show()
   print()
 
-  env = create_importlab_environment(args, conf)
+  typeshed = environment.initialize_typeshed_or_die(args)
+  env = create_importlab_environment(conf, typeshed)
   import_graph = importlab.graph.ImportGraph.create(env, args.filenames)
 
   if args.tree:
@@ -112,7 +109,7 @@ def main():
       print(' ', imp.name)
     sys.exit(0)
 
-  runner = pytype_runner.PytypeRunner(import_graph, env)
+  runner = pytype_runner.PytypeRunner(import_graph, conf, typeshed, args.quiet)
   runner.run()
 
 
