@@ -24,6 +24,7 @@ import sys
 import importlab.environment
 import importlab.fs
 import importlab.graph
+import importlab.output
 
 from pytype.tools import environment
 from pytype.tools import utils
@@ -100,7 +101,7 @@ def main():
 
   if args.tree:
     print('Source tree:')
-    import_graph.print_tree()
+    importlab.output.print_tree(import_graph)
     sys.exit(0)
 
   if args.unresolved:
