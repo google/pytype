@@ -20,14 +20,14 @@ python setup.py install
 ### Prerequisites
 `pytype-all` depends on [importlab](https://github.com/google/importlab) for
 dependency analysis. It also requires `pytype` itself to be installed and
-available in $PATH, and [typeshed](https://github.com/python/typeshed) to be
-locally available.
+available in $PATH. Pytype comes with its own copy of
+[typeshed](https://github.com/python/typeshed), but there is also an option
+to use an external local installation.
 
 * `importlab`: Needs to be installed (via its `setup.py`)
 * `pytype`: Needs to be installed (via its `setup.py`) and in $PATH
-* `typeshed`: Needs to be checked out from git, and pointed to via
-  the `TYPESHED_HOME` environment variable, or via the `--typeshed_location`
-  argument
+* `typeshed`: (Optional) Can be checked out from git, and pointed to via
+  the `TYPESHED_HOME` environment variable
 
 If the target python version (the version of the code being analyzed) does not
 match the version of python being used to run `pytype-all` it will require (at
@@ -42,8 +42,7 @@ them. Typechecking errors and `.pyi` files are generated in an output directory
 specified in the config file.
 
 ```
-usage: pytype-all [-h] [--tree] [--unresolved]
-                  [-T TYPESHED_LOCATION] [--quiet]
+usage: pytype-all [-h] [--tree] [--unresolved] [--quiet]
                   [--config CONFIG] [--generate-config CONFIG]
                   [filename [filename ...]]
 
@@ -54,10 +53,6 @@ optional arguments:
   -h, --help            show this help message and exit
   --tree                Display import tree.
   --unresolved          Display unresolved dependencies.
-  -T TYPESHED_LOCATION, --typeshed-location TYPESHED_LOCATION
-                        Location of typeshed. Will use the TYPESHED_HOME
-                        environment variable if this argument is not
-                        specified.
   --quiet               Don't print errors to stdout.
   --config CONFIG       Configuration file.
   --generate-config CONFIG

@@ -2,10 +2,10 @@
 
 from __future__ import print_function
 
-import os
 import sys
 
 from . import runner
+from pytype.pytd import typeshed
 
 
 def check_pytype_or_die():
@@ -44,86 +44,14 @@ def check_python_exe_or_die(required):
   sys.exit(1)
 
 
-def initialize_typeshed_or_die(opts):
+def initialize_typeshed_or_die():
   """Initialize a Typeshed object or die.
-
-  Args:
-    opts: an optparse.Values object
 
   Returns:
     An instance of Typeshed()
-
-  See Typeshed.find_location() for details.
   """
-  ret = Typeshed.create_from_opts(opts)
-  if not ret:
-    opt = getattr(opts, Typeshed.OPTIONS_KEY, None)
-    env = os.environ.get(Typeshed.ENVIRONMENT_VARIABLE)
-    print("Cannot find a valid typeshed installation.")
-    print("Searched in:")
-    print("  %s argument: %s" % (Typeshed.OPTIONS_KEY, opt))
-    print("  %s environment variable: %s" %
-          (Typeshed.ENVIRONMENT_VARIABLE, env))
+  try:
+    return typeshed.Typeshed()
+  except IOError as e:
+    print(str(e))
     sys.exit(1)
-  return ret
-
-
-class Typeshed(object):
-  """Query a typeshed installation."""
-
-  # Where the typeshed location is specified. The command line option overrides
-  # the environment variable.
-  #
-  # Tools should ideally standardise on pointing to typeshed via
-  #   - A --typeshed_location argument
-  #   - The $TYPESHED_HOME environment variable
-  # but if not you can subclass and override these variables.
-  OPTIONS_KEY = "typeshed_location"
-  ENVIRONMENT_VARIABLE = "TYPESHED_HOME"
-
-  def __init__(self, root):
-    self.root = root
-
-  @classmethod
-  def find_location(cls, opts):
-    """Find a typeshed installation if present.
-
-    Args:
-      opts: an optparse.Values object
-
-    Returns:
-      A path to a valid typeshed installation, or None.
-    """
-    opt = getattr(opts, cls.OPTIONS_KEY)
-    env = os.environ.get(cls.ENVIRONMENT_VARIABLE, None)
-    ret = opt or env or ""
-    if not os.path.isdir(os.path.join(ret, "stdlib")):
-      return None
-    return ret
-
-  @classmethod
-  def create_from_opts(cls, opts):
-    root = cls.find_location(opts)
-    if root:
-      return cls(root)
-    return None
-
-  def get_paths(self, python_version):
-    """Get the names of all modules in typeshed and pytype/pytd/builtins.
-
-    Args:
-      python_version: A tuple of (major, minor)
-
-    Returns:
-      A list of paths to typeshed subdirectories.
-    """
-    major, minor = python_version
-    subdirs = [
-        "stdlib/%d" % major,
-        "stdlib/2and3",
-    ]
-    if major == 3:
-      for i in range(0, minor + 1):
-        # iterate over 3.0, 3.1, 3.2, ...
-        subdirs.append("stdlib/3.%d" % i)
-    return [os.path.join(self.root, d) for d in subdirs]

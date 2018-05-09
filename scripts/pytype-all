@@ -46,11 +46,6 @@ def parse_args():
       '--unresolved', dest='unresolved', action='store_true', default=False,
       help='Display unresolved dependencies.')
   parser.add_argument(
-      '-T', '--typeshed-location', dest='typeshed_location', action='store',
-      default=None,
-      help=('Location of typeshed. Will use the TYPESHED_HOME environment '
-            'variable if this argument is not specified.'))
-  parser.add_argument(
       '--quiet', dest='quiet', action='store_true', default=False,
       help="Don't print errors to stdout.")
   parser.add_argument(
@@ -78,7 +73,8 @@ def create_importlab_environment(conf, typeshed):
   path = importlab.fs.Path()
   for p in conf.pythonpath:
     path.add_path(p, 'os')
-  for p in typeshed.get_paths(python_version):
+  for p in typeshed.get_typeshed_paths(python_version):
+    # TODO(rechen): Add paths from get_pytd_paths().
     path.add_path(p, 'pyi')
   return importlab.environment.Environment(path, python_version)
 
@@ -95,7 +91,7 @@ def main():
   conf.show()
   print()
 
-  typeshed = environment.initialize_typeshed_or_die(args)
+  typeshed = environment.initialize_typeshed_or_die()
   env = create_importlab_environment(conf, typeshed)
   import_graph = importlab.graph.ImportGraph.create(env, args.filenames)
 
