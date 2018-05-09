@@ -62,7 +62,7 @@ class MatchTest(test_base.TargetIndependentTest):
         class A(Iterable[V], Generic[K, V]): ...
         class B(A[K, V]):
           def __init__(self):
-            self := B[bool, str]
+            self = B[bool, str]
         def f(x: Iterable[Q]) -> Q
       """)
       ty = self.Infer("""

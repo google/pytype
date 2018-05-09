@@ -1871,7 +1871,7 @@ class PyTDSignature(object):
 
     This will adjust the type parameters as needed for pytd functions like:
       def append_float(x: list[int]):
-        x := list[int or float]
+        x = list[int or float]
     This is called after all the signature matching has succeeded, and we
     know we're actually calling this function.
 

@@ -951,7 +951,7 @@ class AbsorbMutableParameters(visitors.Visitor):
 
   For example, this will change
     def f(x: list[int]):
-      x := list[int or float]
+      x = list[int or float]
   to
     def f(x: list[int] or list[int or float])
   .
@@ -1039,7 +1039,7 @@ class MergeTypeParameters(TypeParameterScope):
   MergeTypeParameters transforms
     class list(typing.Generic(T)):
       def append(self, v: T2) -> NoneType:
-        self := T or T2
+        self = T or T2
   to
     class list(typing.Generic(T')):
       def append(self, V:T') -> NoneType

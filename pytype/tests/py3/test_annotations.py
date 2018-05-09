@@ -949,7 +949,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         T2 = TypeVar("T2")
         class Foo(Generic[T]):
           def __init__(self, x: T2):
-            self := Foo[T2]
+            self = Foo[T2]
       """)
       _, errors = self.InferWithErrors("""\
                 import foo

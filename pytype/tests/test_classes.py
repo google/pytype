@@ -700,7 +700,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         class A(Generic[T]):
           def __new__(cls, x) -> A[nothing]
           def __init__(self, x: N):
-            self := A[N]
+            self = A[N]
         class B(object):
           def __new__(cls) -> A[str]
           # __init__ should not be called

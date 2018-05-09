@@ -88,7 +88,7 @@ def _GetAncestorMap():
           # This means preconditions list a typename that is unknown.  If it
           # is a node then make sure _FindNodeClasses() can discover it.  If it
           # is not a node, then add the typename to _IGNORED_TYPENAMES.
-          raise AssertionError("Unknown precondition typename: %s", allowed)
+          raise AssertionError("Unknown precondition typename: %s" % allowed)
 
     predecessors = utils.compute_predecessors(node_classes.values())
     # Convert predecessors keys and values to use names instead of info objects.
@@ -484,7 +484,7 @@ class PrintVisitor(Visitor):
                       if p.mutated_type is not None]
     # pylint: enable=no-member
     for name, new_type in mutable_params:
-      body.append("\n{indent}{name} := {new_type}".format(
+      body.append("\n{indent}{name} = {new_type}".format(
           indent=self.INDENT, name=name,
           new_type=new_type.Visit(PrintVisitor())))
     for exc in node.exceptions:
@@ -712,6 +712,7 @@ class FillInLocalPointers(Visitor):
     self._lookup_map = lookup_map
 
   def _Lookup(self, node):
+    """Look up a node by name."""
     module, _, _ = node.name.rpartition(".")
     if module:
       modules_to_try = [("", module)]
@@ -783,7 +784,7 @@ def ToType(item, allow_constants=True):
   elif isinstance(item, pytd.Alias):
     return item.type
   else:
-    raise
+    raise NotImplementedError("Can't convert %s: %s" % (type(item), item))
 
 
 class RemoveTypeParametersFromGenericAny(Visitor):
@@ -817,6 +818,7 @@ class DefaceUnresolved(RemoveTypeParametersFromGenericAny):
     self._do_not_log_prefix = do_not_log_prefix
 
   def VisitNamedType(self, node):
+    """Do replacement on a pytd.NamedType."""
     name = node.name
     for lookup in self._lookup_list:
       try:
@@ -962,6 +964,7 @@ class LookupBuiltins(Visitor):
     del self._prefix
 
   def VisitNamedType(self, t):
+    """Do lookup on a pytd.NamedType."""
     if "." in t.name:
       return t
     try:
@@ -1192,6 +1195,7 @@ class LookupLocalTypes(RemoveTypeParametersFromGenericAny):
     del self.unit
 
   def VisitNamedType(self, node):
+    """Do lookup on a pytd.NamedType."""
     module_name, dot, _ = node.name.rpartition(".")
     if not dot:
       try:
@@ -1755,6 +1759,7 @@ class AddNamePrefix(Visitor):
     return self.VisitNamedType(node)
 
   def VisitNamedType(self, node):
+    """Prefix a pytd.NamedType."""
     if node.name.startswith(parser_constants.EXTERNAL_NAME_PREFIX):
       # This is an external type; do not prefix it. StripExternalNamePrefix will
       # remove it later.
@@ -1810,6 +1815,7 @@ class CollectDependencies(Visitor):
     self.modules = set()
 
   def _ProcessName(self, name):
+    """Retrieve a module name from a node name."""
     module_name, dot, unused_name = name.rpartition(".")
     if dot:
       if module_name:
@@ -1854,6 +1860,7 @@ class QualifyRelativeNames(Visitor):
     self.package_name = package_name
 
   def _QualifyName(self, orig_name):
+    """Qualify an import name."""
     # Generated from "from . import foo" - see parser.y
     prefix, package, name = orig_name.partition("__PACKAGE__.")
     if not prefix and package:
@@ -2109,6 +2116,7 @@ class VerifyContainers(Visitor):
   """
 
   def EnterGenericType(self, node):
+    """Verify a pytd.GenericType."""
     base_type = node.base_type
     if isinstance(base_type, pytd.LateType):
       return  # We can't verify this yet
@@ -2163,6 +2171,7 @@ class VerifyContainers(Visitor):
     return mapping
 
   def _UpdateParamToValuesMapping(self, mapping, param, value):
+    """Update the given mapping of parameter names to values."""
     param_name = param.type_param.full_name
     if isinstance(value, pytd.TypeParameter):
       assert param_name != value.full_name

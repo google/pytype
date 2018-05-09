@@ -31,7 +31,7 @@ class MatchTest(test_base.TargetPython27FeatureTest):
         N = TypeVar("N")
         class Foo(Generic[A]):
           def __init__(self, c: Callable[[], N]):
-            self := Foo[N]
+            self = Foo[N]
         x = ...  # type: Iterator[int]
       """)
       self.Check("""

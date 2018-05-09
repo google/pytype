@@ -357,7 +357,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
         T = TypeVar("T")
         class Foo(Generic[T]):
           def __init__(self, x: T):
-            self := Foo[T]
+            self = Foo[T]
           def __call__(self) -> T: ...
       """)
       self.Check("""

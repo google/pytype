@@ -90,7 +90,6 @@ class LexerTest(unittest.TestCase):
 
   def test_multi_char(self):
     self.check(["ARROW"], "->")
-    self.check(["COLONEQUALS"], ":=")
     self.check(["ELLIPSIS"], "...")
     self.check(["EQ"], "==")
     self.check(["NE"], "!=")

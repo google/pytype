@@ -176,7 +176,7 @@ class GenericTest(test_base.TargetIndependentTest):
         B = TypeVar("B")
         class Foo(List[A]):
           def foo(self) -> None:
-            self := Foo[A or complex]
+            self = Foo[A or complex]
         class Bar(Foo[B], Set[B]):
           def bar(self) -> B
       """)
@@ -207,7 +207,7 @@ class GenericTest(test_base.TargetIndependentTest):
           def g(self) -> T1: ...
         class C(A[T2], B[T3]):
           def __init__(self):
-            self := C[int, str]
+            self = C[int, str]
           def h(self) -> Tuple[T2, T3]
       """)
       ty = self.Infer("""
@@ -237,7 +237,7 @@ class GenericTest(test_base.TargetIndependentTest):
           def g(self) -> T2: ...
         class C(A[T3], B[T3]):
           def __init__(self):
-            self := C[str]
+            self = C[str]
       """)
       ty = self.Infer("""
         import a
@@ -259,11 +259,11 @@ class GenericTest(test_base.TargetIndependentTest):
         T3 = TypeVar("T3")
         class A(Generic[T1]):
           def f(self):
-            self := A[str]
+            self = A[str]
         class B(Generic[T1]): ...
         class C(A[T2], B[T3]):
           def g(self):
-            self:= C[int, float]
+            self= C[int, float]
       """)
       ty = self.Infer("""
         import a
@@ -310,7 +310,7 @@ class GenericTest(test_base.TargetIndependentTest):
           from a import T
           class A(Generic[T]):
             def __init__(self, x: T) -> None:
-              self := A[int or T]
+              self = A[int or T]
             def a(self) -> T
         """)
         ty = self.Infer("""
@@ -516,7 +516,7 @@ class GenericTest(test_base.TargetIndependentTest):
         U = TypeVar("U")
         class A(Dict[int, U], List[T], Generic[T, U]):
           def f(self) -> None:
-            self := A[int, str]
+            self = A[int, str]
           def g(self) -> T
           def h(self) -> U
       """)
@@ -586,7 +586,7 @@ class GenericTest(test_base.TargetIndependentTest):
         T = TypeVar("T")
         class A(List[T]):
           def __init__(self) -> None:
-            self := A[str]
+            self = A[str]
           def f(self) -> T
         class B(A): pass
       """)
@@ -610,7 +610,7 @@ class GenericTest(test_base.TargetIndependentTest):
         T = TypeVar("T")
         class A(List[T]):
           def __init__(self) -> None:
-            self := A[str]
+            self = A[str]
           def f(self) -> T
       """)
       ty = self.Infer("""
@@ -658,7 +658,7 @@ class GenericTest(test_base.TargetIndependentTest):
         class MyPattern(Generic[T]):
           pattern = ...  # type: T
           def __init__(self, x: T):
-            self := MyPattern[T]
+            self = MyPattern[T]
       """)
       ty = self.Infer("""
         import a
@@ -685,7 +685,7 @@ class GenericTest(test_base.TargetIndependentTest):
         class A(Generic[T]):
           x = ...  # type: T
           def f(self, x: N) -> None:
-            self := A[N]
+            self = A[N]
       """)
       ty = self.Infer("""
         import a
@@ -885,7 +885,7 @@ class GenericTest(test_base.TargetIndependentTest):
         V = TypeVar("V")
         class Foo(List[K or V]):
           def __init__(self):
-            self := Foo[int, str]
+            self = Foo[int, str]
       """)
       ty = self.Infer("""
         import foo
@@ -1007,9 +1007,9 @@ class GenericTest(test_base.TargetIndependentTest):
         _T = TypeVar("_T")
         class A(Generic[_T]):
           def to_str(self):
-            self := A[str]
+            self = A[str]
           def to_int(self):
-            self := A[int]
+            self = A[int]
       """)
       ty = self.Infer("""
         import foo

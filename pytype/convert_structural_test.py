@@ -607,7 +607,7 @@ class MatchTest(unittest.TestCase):
       N = TypeVar('N')
       class mylist(typing.Generic[T], object):
         def __setitem__(self, i: int, y: N) -> NoneType:
-          self := mylist[T or N]
+          self = mylist[T or N]
 
       class `~mylist`():
         def __setitem__(self, i: int, y: `~unknown2`) -> `~unknown1`

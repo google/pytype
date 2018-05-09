@@ -461,22 +461,22 @@ class TestOptimize(parser_test_base.ParserTest):
   def testFactorizeMutable(self):
     src = textwrap.dedent("""
         def foo(a: list[bool], b: X) -> file:
-            a := list[int]
+            a = list[int]
         def foo(a: list[bool], b: Y) -> file:
-            a := list[int]
+            a = list[int]
         # not groupable:
         def bar(a: int, b: list[int]) -> file:
-            b := list[complex]
+            b = list[complex]
         def bar(a: int, b: list[float]) -> file:
-            b := list[str]
+            b = list[str]
     """)
     new_src = textwrap.dedent("""
         def foo(a: list[bool], b: X or Y) -> file:
-            a := list[int]
+            a = list[int]
         def bar(a: int, b: list[int]) -> file:
-            b := list[complex]
+            b = list[complex]
         def bar(a: int, b: list[float]) -> file:
-            b := list[str]
+            b = list[str]
     """)
     self.AssertSourceEquals(
         self.ApplyVisitorToString(src, optimize.Factorize()), new_src)
@@ -915,11 +915,11 @@ class TestOptimize(parser_test_base.ParserTest):
   def testAbsorbMutableParameters(self):
     src = textwrap.dedent("""
         def popall(x: list[?]) -> ?:
-            x := list[nothing]
+            x = list[nothing]
         def add_float(x: list[int]) -> ?:
-            x := list[int or float]
+            x = list[int or float]
         def f(x: list[int]) -> ?:
-            x := list[int or float]
+            x = list[int or float]
     """)
     expected = textwrap.dedent("""
         def popall(x: list[?]) -> ?
@@ -939,7 +939,7 @@ class TestOptimize(parser_test_base.ParserTest):
         NEW = TypeVar('NEW')
         class MyClass(typing.Generic[T], object):
             def append(self, x: NEW) -> ?:
-                self := MyClass[T or NEW]
+                self = MyClass[T or NEW]
     """)
     expected = textwrap.dedent("""
         T = TypeVar('T')

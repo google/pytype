@@ -732,8 +732,8 @@ class FunctionTest(_ParserTestBase):
                "def foo() -> int: ...")
     self.check("def foo() -> int: pass  # type: ignore",
                "def foo() -> int: ...")
-    self.check("def foo(x) -> int: # type: ignore\n  x:=List[int]",
-               "def foo(x) -> int:\n    x := List[int]")
+    self.check("def foo(x) -> int: # type: ignore\n  x=List[int]",
+               "def foo(x) -> int:\n    x = List[int]")
     self.check("""\
                def foo(x: int,  # type: ignore
                        y: str) -> bool: ...""",
@@ -869,10 +869,10 @@ class FunctionTest(_ParserTestBase):
     # Mutators.
     self.check("""\
       def foo(x) -> int:
-          x := int""")
+          x = int""")
     self.check_error("""\
       def foo(x) -> int:
-          y := int""", 1, "No parameter named y")
+          y = int""", 1, "No parameter named y")
 
   def test_exceptions(self):
     self.check("""\

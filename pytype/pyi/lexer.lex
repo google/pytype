@@ -65,7 +65,6 @@ u\"\" { return t::UNICODESTRING; }
 
  /* Multi-character punctuation. */
 "->" { return t::ARROW; }
-":=" { return t::COLONEQUALS; }
 "..." { return t::ELLIPSIS; }
 "==" { return t::EQ; }
 "!=" { return t::NE; }

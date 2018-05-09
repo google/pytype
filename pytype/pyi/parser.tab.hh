@@ -186,18 +186,17 @@ namespace pytype {
         NAMEDTUPLE = 274,
         TYPEVAR = 275,
         ARROW = 276,
-        COLONEQUALS = 277,
-        ELLIPSIS = 278,
-        EQ = 279,
-        NE = 280,
-        LE = 281,
-        GE = 282,
-        INDENT = 283,
-        DEDENT = 284,
-        TRIPLEQUOTED = 285,
-        TYPECOMMENT = 286,
-        BYTESTRING = 287,
-        UNICODESTRING = 288
+        ELLIPSIS = 277,
+        EQ = 278,
+        NE = 279,
+        LE = 280,
+        GE = 281,
+        INDENT = 282,
+        DEDENT = 283,
+        TRIPLEQUOTED = 284,
+        TYPECOMMENT = 285,
+        BYTESTRING = 286,
+        UNICODESTRING = 287
       };
     };
 
@@ -505,12 +504,12 @@ namespace pytype {
     enum
     {
       yyeof_ = 0,
-      yylast_ = 412,     ///< Last index in yytable_.
+      yylast_ = 430,     ///< Last index in yytable_.
       yynnts_ = 66,  ///< Number of nonterminal symbols.
       yyfinal_ = 6, ///< Termination state number.
       yyterror_ = 1,
       yyerrcode_ = 256,
-      yyntokens_ = 47  ///< Number of tokens.
+      yyntokens_ = 46  ///< Number of tokens.
     };
 
 
@@ -522,7 +521,7 @@ namespace pytype {
 
 #line 14 "parser.yy" // lalr1.cc:377
 } // pytype
-#line 526 "pyi/parser.tab.hh" // lalr1.cc:377
+#line 525 "pyi/parser.tab.hh" // lalr1.cc:377
 
 
 

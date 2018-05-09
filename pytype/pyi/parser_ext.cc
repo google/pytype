@@ -269,7 +269,6 @@ static void add_tokens_dict(PyObject* module) {
   add_token(tokens, "TRIPLEQUOTED", t::TRIPLEQUOTED);
   add_token(tokens, "TYPECOMMENT",  t::TYPECOMMENT);
   add_token(tokens, "ARROW",        t::ARROW);
-  add_token(tokens, "COLONEQUALS",  t::COLONEQUALS);
   add_token(tokens, "ELLIPSIS",     t::ELLIPSIS);
   add_token(tokens, "EQ",           t::EQ);
   add_token(tokens, "NE",           t::NE);

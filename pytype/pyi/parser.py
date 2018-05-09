@@ -123,11 +123,11 @@ class _Mutator(visitors.Visitor):
 
   We model
     def f(x: old_type):
-      x := new_type
+      x = new_type
   as
     def f(x: BeforeAfterType(old_type, new_type))
   .
-  This visitor applies the body "x := new_type" to the function signature.
+  This visitor applies the body "x = new_type" to the function signature.
   """
 
   def __init__(self, name, new_type):
@@ -1245,7 +1245,7 @@ def _split_definitions(defs):
       slots = tuple(p.name for p in d.slots.parameters
                     if isinstance(p, pytd.NamedType))
     else:
-      raise TypeError("Unexpected definition type %s", type(d))
+      raise TypeError("Unexpected definition type %s" % type(d))
   return constants, functions, aliases, slots
 
 

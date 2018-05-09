@@ -550,7 +550,7 @@ class TestVisitors(parser_test_base.ParserTest):
       def f(x: T) -> T
       class A(Generic[T]):
         def a(self, x: T2) -> None:
-          self := A[T or T2]
+          self = A[T or T2]
     """)
 
     f = ast.Lookup("f")

@@ -435,21 +435,21 @@ class dict_items(ItemsView[_K, _V], object):
 class dict(Dict[_K, _V]):
     __slots__ = []
     def __init__(self) -> NoneType:
-        self := dict[nothing, nothing]
+        self = dict[nothing, nothing]
     def __init__(self, list: list[nothing]) -> NoneType:
-        self := dict[nothing, nothing]
+        self = dict[nothing, nothing]
     def __init__(self, mapping: Mapping[_K2, _V2]) -> NoneType:
-        self := dict[_K2, _V2]
+        self = dict[_K2, _V2]
     def __init__(self, iterable: Iterable[tuple[_K2, _V2]]) -> NoneType:
-        self := dict[_K2, _V2]
+        self = dict[_K2, _V2]
     def __init__(self, ...) -> NoneType:
-        self := dict[?, ?]
+        self = dict[?, ?]
     def __delitem__(self, y: _K) -> NoneType
     def __iter__(self) -> `dictionary-keyiterator`[_K]
     def __setitem__(self, i: _K2, y: _V2) -> NoneType:
-      self := dict[_K or _K2, _V or _V2]
+      self = dict[_K or _K2, _V or _V2]
     def clear(self) -> NoneType:
-        self := dict[nothing, nothing]
+        self = dict[nothing, nothing]
     def copy(self) -> dict[_K, _V]
     @staticmethod
     def fromkeys(keys: Iterable[_K]) -> Dict[_K, NoneType]
@@ -462,15 +462,15 @@ class dict(Dict[_K, _V]):
     def pop(self, k) -> _V
     def pop(self, k, d: _V2) -> _V or _V2
     def setdefault(self, k: _K2) -> _V or NoneType:
-        self := dict[_K or _K2, _V or NoneType]
+        self = dict[_K or _K2, _V or NoneType]
     def setdefault(self, k: _K2, v: _V2) -> _V or _V2:
-        self := dict[_K or _K2, _V or _V2]
+        self = dict[_K or _K2, _V or _V2]
     def update(self, other: dict[_K2, _V2]):
-        self := dict[_K or _K2, _V or _V2]
+        self = dict[_K or _K2, _V or _V2]
     def update(self, **kwargs: _V2):
-        self := dict[_K or str, _V or _V2]
+        self = dict[_K or str, _V or _V2]
     def update(self, E, ...) -> NoneType:
-        self := dict[?, ?]
+        self = dict[?, ?]
     def update(self) -> NoneType
     def viewitems(self) -> dict_items[_K,_V]
     def viewkeys(self) -> dict_keys[_K]
@@ -484,7 +484,7 @@ class listiterator(Iterator[_T]):
 class enumerate(Iterator[_T]):
     __slots__ = []
     def __init__(self, iterable: Iterable[_T2], start: int = ...) -> NoneType:
-      self := enumerate[_T2]
+      self = enumerate[_T2]
     def __iter__(self) -> enumerate[_T]  # enumerate.__iter__() returns itself
     def next(self) -> tuple[int, _T]
 
@@ -496,9 +496,9 @@ class listreverseiterator(Iterator[_T]):
 class list(List[_T]):
     __slots__ = []
     def __init__(self) -> NoneType:
-        self := list[nothing]
+        self = list[nothing]
     def __init__(self, iterable: Iterable[_T2]) -> NoneType:
-        self := list[_T2]
+        self = list[_T2]
     def __add__(self, y: list[_T2]) -> list[_T or _T2]
     def __contains__(self, y) -> bool
     def __delitem__(self, y: int or slice) -> NoneType
@@ -507,23 +507,23 @@ class list(List[_T]):
     def __getitem__(self, index: slice) -> list[_T]
     def __getslice__(self, i: Optional[int], j: Optional[int]) -> list[_T]
     def __iadd__(self, y: Iterable[_T2]) -> list[_T or _T2]:
-      self := list[_T or _T2]
+      self = list[_T or _T2]
     def __iter__(self) -> listiterator[_T]
     def __mul__(self, n: int) -> list[_T]
     def __reversed__(self) -> listreverseiterator[_T]
     def __setitem__(self, i: int, y: _T2) -> NoneType:
-      self := list[_T or _T2]
+      self = list[_T or _T2]
     def __setitem__(self, i: slice, y) -> NoneType:
-      self := list[?]
+      self = list[?]
     def __setslice__(self, i: int, j: int, y) -> NoneType
     def append(self, object: _T2) -> NoneType:
-      self := list[_T or _T2]
+      self = list[_T or _T2]
     def extend(self, i: Iterable[_T2]) -> NoneType:
-      self := list[_T or _T2]
+      self = list[_T or _T2]
     def count(self, value: _T) -> int
     def index(self, value, ...) -> int
     def insert(self, index: int, object: _T2) -> NoneType:
-      self := list[_T or _T2]
+      self = list[_T or _T2]
     def pop(self) -> _T
     def pop(self, i: int) -> _T
     def remove(self, value: _T) -> NoneType
@@ -534,16 +534,16 @@ class list(List[_T]):
 class reversed(Iterator[_T]):
     __slots__ = []
     def __init__(self, sequence: Reversible[_T2]) -> NoneType:
-      self := reversed[_T2]
+      self = reversed[_T2]
     def __iter__(self) -> reversed
     def next(self) -> _T
 
 class tuple(Tuple[_T]):
     __slots__ = []
     def __init__(self) -> NoneType:
-      self := tuple[nothing, ...]
+      self = tuple[nothing, ...]
     def __init__(self, p0: Iterable[_T2]) -> NoneType:
-      self := tuple[_T2, ...]
+      self = tuple[_T2, ...]
     def __add__(self, y: tuple[_T2, ...]) -> tuple[_T or _T2, ...]
     def __contains__(self, y) -> bool
     def __getitem__(self, index: int) -> _T
@@ -562,9 +562,9 @@ class tupleiterator(Iterator[_T]):
 class set(Set[_T]):
     __slots__ = []
     def __init__(self) -> NoneType:
-        self := set[nothing]
+        self = set[nothing]
     def __init__(self, iterable: Iterable[_T2]) -> NoneType:
-        self := set[_T2]
+        self = set[_T2]
     def __and__(self, y: Iterable) -> set[_T]
     def __contains__(self, y) -> bool
     def __iter__(self) -> setiterator[_T]
@@ -572,7 +572,7 @@ class set(Set[_T]):
     def __sub__(self, y: Iterable) -> set[_T]
     def __xor__(self, y: Iterable[_T2]) -> set[_T or _T2]
     def clear(self) -> NoneType:
-        self := set[nothing]
+        self = set[nothing]
     def copy(self) -> set[_T]
     def discard(self, y) -> NoneType
     def difference_update(self, ...) -> NoneType
@@ -584,9 +584,9 @@ class set(Set[_T]):
     def pop(self) -> _T
     def remove(self, x) -> None
     def update(self, ...) -> NoneType:
-        self := set[?]
+        self = set[?]
     def add(self, y: _T2) -> NoneType:
-        self := set[_T or _T2]
+        self = set[_T or _T2]
     # Even though these look like instance methods (i.e., you can call
     # {1}.union(x)), they're actually static methods. (Which will accept a
     # variable number of arguments, the first of which can e.g. be self.)
@@ -602,9 +602,9 @@ class set(Set[_T]):
 class frozenset(FrozenSet[_T]):
     __slots__ = []
     def __init__(self) -> NoneType:
-        self := frozenset[nothing]
+        self = frozenset[nothing]
     def __init__(self, x: Iterable[_T2]) -> NoneType:
-        self := frozenset[_T2]
+        self = frozenset[_T2]
     def __and__(self, y: AbstractSet) -> frozenset[_T]
     def __contains__(self, y) -> bool
     def __iter__(self) -> setiterator[_T]

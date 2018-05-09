@@ -148,23 +148,23 @@ class MutableSequence(Sequence[_T], Protocol):
   __slots__ = []
   @abstractmethod
   def __setitem__(self, i: int, v: _T2) -> None:
-    self := MutableSequence[_T or _T2]
+    self = MutableSequence[_T or _T2]
   @abstractmethod
   def __setitem__(self, i: slice, v: Iterable[_T2]) -> None:
-    self := MutableSequence[_T or _T2]
+    self = MutableSequence[_T or _T2]
   if sys.version_info < (3, 0):
     def __setslice__(self, i: int, j: int, s: Iterable[_T2]) -> None:
-      self := MutableSequence[_T or _T2]
+      self = MutableSequence[_T or _T2]
   @abstractmethod
   def __delitem__(self, i: Union[int, slice]) -> None: ...
   def __add__(self, x: Iterable[_T2]) -> MutableSequence[_T or _T2]: ...
   def append(self, v: _T2) -> None:
-    self := MutableSequence[_T or _T2]
+    self = MutableSequence[_T or _T2]
   def extend(self, iterable: Iterable[_T2]) -> None:
-    self := MutableSequence[_T or _T2]
+    self = MutableSequence[_T or _T2]
   @abstractmethod
   def insert(self, i: int, v: _T2) -> None:
-    self := MutableSequence[_T or _T2]
+    self = MutableSequence[_T or _T2]
   def reverse(self) -> None: ...
   def pop(self, index: int = ...) -> _T: ...
   def remove(self, value: _T) -> None: ...
@@ -181,14 +181,14 @@ class List(MutableSequence[_T]):
 class Deque(MutableSequence[_T]):
   maxlen = ...  # type: Optional[int]
   def __init__(self, iterable: Iterable[_T] = ..., maxlen: Optional[int] = ...) -> None:
-    self := Deque[_T]
+    self = Deque[_T]
   def appendleft(self, v: _T2) -> None:
-    self := Deque[_T or _T2]
+    self = Deque[_T or _T2]
   def clear(self) -> None:
-    self := Deque[nothing]
+    self = Deque[nothing]
   def copy(self) -> Deque[_T]: ...
   def extendleft(self, iterable: Iterable[_T2]) -> None:
-    self := Deque[_T or _T2]
+    self = Deque[_T or _T2]
   def popleft(self, index: int = ...) -> _T: ...
   def rotate(self, steps: int = ...) -> None: ...
 
@@ -257,19 +257,19 @@ class MutableMapping(Mapping[_K, _V], Protocol):
   def copy(self) -> MutableMapping[_K, _V]: ...
   @abstractmethod
   def __setitem__(self, k: _K2, v: _V2) -> None:
-    self := MutableMapping[_K or _K2, _V or _V2]
+    self = MutableMapping[_K or _K2, _V or _V2]
   @abstractmethod
   def __delitem__(self, k) -> None: ...
   def clear(self) -> None:
-    self := MutableMapping[nothing, nothing]
+    self = MutableMapping[nothing, nothing]
   def pop(self, k, default: _V2 = ...) -> _V or _V2: ...
   def popitem(self) -> Tuple[_K, _V]: ...
   def setdefault(self, k: _K2, default: _V2 = ...) -> _V or _V2:
-    self := MutableMapping[_K or _K2, _V or _V2]
+    self = MutableMapping[_K or _K2, _V or _V2]
   def update(self, m: Mapping[_K2, _V2]) -> None:
-    self := MutableMapping[_K or _K2, _V or _V2]
+    self = MutableMapping[_K or _K2, _V or _V2]
   def update(self, m: Iterable[Tuple[_T, ...]]) -> None:
-    self := MutableMapping[_K or _T, _V or _T]
+    self = MutableMapping[_K or _T, _V or _T]
 
 
 class DefaultDict(MutableMapping[_K, _V]): ...
@@ -299,10 +299,10 @@ class FrozenSet(AbstractSet[_T]):
 class MutableSet(AbstractSet[_T]):
   __slots__ = []
   def add(self, x: _T2) -> None:
-    self := MutableSet[_T or _T2]
+    self = MutableSet[_T or _T2]
   def discard(self, x) -> None: ...
   def clear(self) -> None:
-    self := MutableSet[nothing]
+    self = MutableSet[nothing]
   def pop(self) -> _T: ...
   def remove(self, element: _T) -> None: ...
   def __or__(self, s: AbstractSet[_T2]) -> MutableSet[_T or _T2]: ...

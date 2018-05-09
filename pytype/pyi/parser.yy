@@ -69,7 +69,7 @@ int pytypelex(pytype::parser::semantic_type* lvalp, pytype::location* llocp,
 %token CLASS DEF ELSE ELIF IF OR AND PASS IMPORT FROM AS RAISE
 %token NOTHING NAMEDTUPLE TYPEVAR
 /* Punctuation. */
-%token ARROW COLONEQUALS ELLIPSIS EQ NE LE GE
+%token ARROW ELLIPSIS EQ NE LE GE
 /* Other. */
 %token INDENT DEDENT TRIPLEQUOTED TYPECOMMENT BYTESTRING UNICODESTRING
 
@@ -544,7 +544,7 @@ body
   ;
 
 body_stmt
-  : NAME COLONEQUALS type { $$ = Py_BuildValue("(NN)", $1, $3); }
+  : NAME '=' type { $$ = Py_BuildValue("(NN)", $1, $3); }
   | RAISE type { $$ = $2; }
   | RAISE type '(' ')' { $$ = $2; }
   ;
