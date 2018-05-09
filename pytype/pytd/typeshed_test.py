@@ -32,9 +32,9 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     self.assertIn("_random.Random", [cls.name for cls in ast.classes])
 
 
-  def test_get_all_stdlib_module_names_2(self):
+  def test_get_all_module_names_2(self):
     t = typeshed.Typeshed()
-    modules = t.get_all_stdlib_module_names([2, 7])
+    modules = t.get_all_module_names([2, 7])
     self.assertIn("collections", modules)
     self.assertIn("csv", modules)
     self.assertIn("ctypes", modules)
@@ -42,9 +42,9 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     self.assertIn("xml.etree.ElementTree", modules)
     self.assertIn("six.moves", modules)
 
-  def test_get_all_stdlib_module_names_3(self):
+  def test_get_all_module_names_3(self):
     t = typeshed.Typeshed()
-    modules = t.get_all_stdlib_module_names([3, 5])
+    modules = t.get_all_module_names([3, 5])
     self.assertIn("asyncio", modules)
     self.assertIn("collections", modules)
     self.assertIn("configparser", modules)

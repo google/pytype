@@ -21,10 +21,10 @@ class Typeshed(object):
       if not os.path.isdir(home):
         raise IOError("Could not find a typeshed installation in "
                       "$TYPESHED_HOME directory %s" % home)
-      self._typeshed_path = home
+      self._root = home
     else:
-      pytype_base = os.path.split(os.path.dirname(__file__))[0]
-      self._typeshed_path = os.path.join(pytype_base, "typeshed")
+      self._pytype_base = os.path.split(os.path.dirname(__file__))[0]
+      self._root = os.path.join(self._pytype_base, "typeshed")
     self._missing = frozenset(self._load_missing())
 
   def _load_file(self, path):
@@ -33,9 +33,8 @@ class Typeshed(object):
       with open(filename, "r") as f:
         return filename, f.read()
     else:
-      data = utils.load_pytype_file(os.path.join(
-          self._typeshed_path, path))
-      return os.path.join(self._typeshed_path, path), data
+      data = utils.load_pytype_file(os.path.join(self._root, path))
+      return os.path.join(self._root, path), data
 
   def _load_missing(self):
     return set()
@@ -46,14 +45,14 @@ class Typeshed(object):
     return self._missing
 
   @property
-  def typeshed_path(self):
+  def root(self):
     """Path of typeshed's root directory.
 
     Returns:
       Base of filenames returned by get_module_file(). Not guaranteed to exist
       if typeshed is bundled with pytype.
     """
-    return self._typeshed_path
+    return self._root
 
   def _ignore(self, module, version):
     """Return True if we ignore a file in typeshed."""
@@ -92,8 +91,7 @@ class Typeshed(object):
 
       # Give precedence to missing.txt
       if path_rel in self._missing:
-        return (os.path.join(self._typeshed_path, "nonexistent",
-                             path_rel + ".pyi"),
+        return (os.path.join(self._root, "nonexistent", path_rel + ".pyi"),
                 builtins.DEFAULT_SRC)
 
       # TODO(mdemello): handle this in the calling code.
@@ -106,22 +104,33 @@ class Typeshed(object):
 
     raise IOError("Couldn't find %s" % module)
 
-  def get_all_stdlib_module_names(self, python_version):
-    """Get the names of all modules in typeshed and pytype/pytd/builtins."""
+  def get_typeshed_paths(self, python_version):
+    """Gets the paths to typeshed's version-specific pyi files."""
+    major, minor = python_version
+    typeshed_subdirs = ["stdlib/%d" % major,
+                        "stdlib/2and3",
+                        "third_party/%d" % major,
+                        "third_party/2and3",
+                       ]
+    if major == 3:
+      for i in range(0, minor + 1):
+        # iterate over 3.0, 3.1, 3.2, ...
+        typeshed_subdirs.append("stdlib/3.%d" % i)
+    return [os.path.join(self._root, d) for d in typeshed_subdirs]
+
+  def get_pytd_paths(self, python_version):
+    """Gets the paths to pytype's version-specific pytd files."""
+    return [os.path.join(self._pytype_base, d) for d in [
+        "pytd/builtins/%d" % python_version[0],
+        "pytd/builtins/%d" % python_version[0]]]
+
+  def get_all_module_names(self, python_version):
+    """Get the names of all modules in typeshed or bundled with pytype."""
     if self._env_home:
       raise NotImplementedError("Not implemented: Can't scan external typeshed")
-    major = python_version[0]
-    subdirs = [os.path.join("pytd/builtins/%d" % major),
-               os.path.join("pytd/stdlib/%d" % major),
-               "typeshed/stdlib/%d" % major,
-               "typeshed/stdlib/2and3",
-               "typeshed/third_party/%d" % major,
-               "typeshed/third_party/2and3",
-              ]
-    if major == 3:
-      for i in range(0, python_version[1] + 1):
-        # iterate over 3.0, 3.1, 3.2, ...
-        subdirs.append("typeshed/stdlib/3.%d" % i)
+    paths = (self.get_typeshed_paths(python_version) +
+             self.get_pytd_paths(python_version))
+    subdirs = [d.rpartition("pytype/")[-1] for d in paths]
     module_names = set()
     for subdir in subdirs:
       try:

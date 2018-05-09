@@ -146,7 +146,7 @@ def process_one_file(input_filename,
   except IndentationError as e:
     errorlog.python_compiler_error(input_filename, e.lineno, e.msg)
   except tokenize.TokenError as e:
-    msg, (lineno, unused_column) = e.args  # pylint: disable=unpacking-non-sequence
+    msg, (lineno, unused_column) = e.args  # pylint: disable=unbalanced-tuple-unpacking
     errorlog.python_compiler_error(input_filename, lineno, msg)
   except directors.SkipFile:
     result += "# skip-file found, file not analyzed"
@@ -229,11 +229,11 @@ def _generate_builtins_pickle(output_filename, options):
   """Create a pickled file with the standard library (typeshed + builtins)."""
   loader = load_pytd.create_loader(options)
   t = typeshed.Typeshed()
-  module_names = t.get_all_stdlib_module_names(options.python_version)
+  module_names = t.get_all_module_names(options.python_version)
   blacklist = set(t.blacklisted_modules(options.python_version))
   if options.python_version[0] == 3:
     # TODO(mdemello): plistlib should be in the typeshed blacklist and isn't.
-    blacklist.update(["plistlib"])
+    blacklist.add("plistlib")
   for m in sorted(module_names):
     if m not in blacklist:
       loader.import_name(m)
