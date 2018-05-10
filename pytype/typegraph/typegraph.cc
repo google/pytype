@@ -6,7 +6,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "third_party/absl/memory/memory.h"
+#include "memory_util.h"
 #include "cfg_assert.h"
 #include "map_util.h"
 #include "solver.h"
@@ -24,15 +24,16 @@ CFGNode* Program::NewCFGNode(const std::string& name, Binding* condition) {
   int n = backward_reachability_->add_node();
   CFG_ASSERT_MSG(n == node_nr,
                  "internal error: wrong reachability cache node count.");
-  auto node = absl::WrapUnique(new CFGNode(this, name, node_nr, condition,
-                                           backward_reachability_.get()));
+  auto node = memory_util::WrapUnique(
+      new CFGNode(this, name, node_nr, condition,
+                  backward_reachability_.get()));
   CFGNode* np = node.get();
   cfg_nodes_.push_back(std::move(node));
   return np;
 }
 
 Variable* Program::NewVariable() {
-  auto u = absl::WrapUnique(new Variable(this, next_variable_id_));
+  auto u = memory_util::WrapUnique(new Variable(this, next_variable_id_));
   next_variable_id_ += 1;
   Variable* up = u.get();
   variables_.push_back(std::move(u));
@@ -44,13 +45,13 @@ size_t Program::CountCFGNodes() const { return cfg_nodes_.size(); }
 Program::Program()
     : entrypoint_(nullptr),
       next_variable_id_(0),
-      backward_reachability_(absl::make_unique<ReachabilityAnalyzer>()),
+      backward_reachability_(memory_util::make_unique<ReachabilityAnalyzer>()),
       default_data_(nullptr) {}
 
 Program::~Program() {}
 
 Solver* Program::GetSolver() {
-  if (solver_ == nullptr) solver_ = absl::make_unique<Solver>(this);
+  if (solver_ == nullptr) solver_ = memory_util::make_unique<Solver>(this);
   return solver_.get();
 }
 
@@ -144,7 +145,7 @@ Origin* Binding::FindOrigin(const CFGNode* node) const {
 Origin* Binding::FindOrAddOrigin(CFGNode* node) {
   auto it = node_to_origin_.find(node);
   if (it == node_to_origin_.end()) {
-    auto o = absl::make_unique<Origin>(node);
+    auto o = memory_util::make_unique<Origin>(node);
     Origin* op = o.get();
     origins_.push_back(std::move(o));
     node_to_origin_[node] = op;
