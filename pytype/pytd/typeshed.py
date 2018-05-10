@@ -120,9 +120,10 @@ class Typeshed(object):
 
   def get_pytd_paths(self, python_version):
     """Gets the paths to pytype's version-specific pytd files."""
+    # TODO(mdemello): Should we add 2and3 here too and stop symlinking?
     return [os.path.join(self._pytype_base, d) for d in [
         "pytd/builtins/%d" % python_version[0],
-        "pytd/builtins/%d" % python_version[0]]]
+        "pytd/stdlib/%d" % python_version[0]]]
 
   def get_all_module_names(self, python_version):
     """Get the names of all modules in typeshed or bundled with pytype."""
