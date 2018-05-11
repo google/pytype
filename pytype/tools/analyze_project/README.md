@@ -9,11 +9,8 @@ Apache 2.0
 
 ## Installation
 
-```
-git clone https://github.com/google/importlab.git
-cd importlab
-python setup.py install
-```
+`pytype-all` is part of pytype; installing pytype should also provide the
+`pytype-all` executable.
 
 ## Usage
 
@@ -98,7 +95,7 @@ deps = [
 ]
 
 # All output goes here.
-output_dir = "importlab_output"
+output_dir = "pytype_output"
 ```
 
 ### Example
