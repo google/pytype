@@ -5,6 +5,7 @@
 from setuptools import setup, Extension  # pylint: disable=multiple-import
 
 import glob
+import io
 import os
 
 
@@ -46,10 +47,25 @@ parser_ext = Extension(
 )
 
 
+here = os.path.abspath(os.path.dirname(__file__))
+
+
+# Read the long-description from a file.
+with io.open(os.path.join(here, 'DESCRIPTION.rst'), encoding='utf-8') as f:
+    long_description = '\n' + f.read()
+
+
+# Load the package's __version__.py module as a dictionary.
+about = {}
+with open(os.path.join(here, 'pytype', '__version__.py')) as f:
+    exec(f.read(), about)  # pylint: disable=exec-used
+
+
 setup(
     name='pytype',
-    version='0.2',
+    version=about['__version__'],
     description='Python type inferencer',
+    long_description=long_description,
     maintainer='Google',
     maintainer_email='pytypedecl-dev@googlegroups.com',
     url='http://github.com/google/pytype',
@@ -67,11 +83,20 @@ setup(
              'scripts/pytype-all',
             ],
     package_data={'pytype': get_builtin_files()},
-    requires=['pyyaml (>=3.11)', 'six'],
-    install_requires=['pyyaml (>=3.11)', 'six'],
+    install_requires=[
+        'importlab',
+        'pyyaml (>=3.11)',
+        'six'
+    ],
     classifiers=[
+        'Development Status :: 3 - Alpha',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: Apache Software License',
+        'Programming Language :: Python',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: Implementation :: CPython',
+        'Topic :: Software Development',
     ],
     ext_modules = [parser_ext],
 )
