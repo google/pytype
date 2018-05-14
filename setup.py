@@ -7,6 +7,22 @@ from setuptools import setup, Extension  # pylint: disable=multiple-import
 import glob
 import io
 import os
+import shutil
+
+
+# Copy checked-in generated files to where they are expected by setup.py.
+# This is an interim step until we completely get rid of the generated files.
+pyi_dir = os.path.join(
+    os.path.abspath(os.path.dirname(__file__)), 'pytype', 'pyi')
+gen_dir = os.path.join(pyi_dir, 'gen')
+for f in [
+    'lexer.lex.cc',
+    'location.hh',
+    'parser.tab.cc',
+    'parser.tab.hh',
+    'position.hh',
+    'stack.hh']:
+  shutil.copy(os.path.join(gen_dir, f), os.path.join(pyi_dir, f))
 
 
 def scan_package_data(path, pattern, check):
