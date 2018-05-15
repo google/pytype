@@ -12,7 +12,6 @@ from __future__ import print_function
 import cProfile
 import logging
 import os
-import signal
 import sys
 import tokenize
 import traceback
@@ -194,9 +193,6 @@ def process_one_file(input_filename,
       return 0  # Command is successful regardless of errors.
     else:
       errorlog.print_to_stderr()
-      if (options.target_name and
-          any(e.name == "import-error" for e in errorlog)):
-        print("\nWhile building %r" % options.target_name, file=sys.stderr)
     return 1 if errorlog.has_error() else 0  # exit code
   else:
     return 0
@@ -268,8 +264,6 @@ def _parse_pyi(options):
 
 def _run_pytype(options):
   """Run pytype with the given configuration options."""
-  if options.timeout is not None:
-    signal.alarm(int(options.timeout))
   if options.generate_builtins:
     _generate_builtins_pickle(options.generate_builtins, options)
     return

@@ -252,13 +252,6 @@ class PytypeTest(unittest.TestCase):
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
-  def testImportErrorDescription(self):
-    self._SetUpChecking("import_error.py")
-    self.pytype_args["--target-name"] = "world"
-    self._RunPytype(self.pytype_args)
-    self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
-    self.assertIn("world", self.stderr)
-
   def testPytypeErrors(self):
     self._SetUpChecking("bad.py")
     self._RunPytype(self.pytype_args)
@@ -369,14 +362,6 @@ class PytypeTest(unittest.TestCase):
     self.pytype_args["--parse-pyi"] = self.INCLUDE
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
-
-  def testAlarm(self):
-    # Note: At the time of this writing, pickling builtins takes well over one
-    # second (~10s). If it ever was to get faster, this test would become flaky.
-    self.pytype_args["--timeout"] = 1
-    self.pytype_args["--generate-builtins"] = self._TmpPath("builtins.pickle")
-    self._RunPytype(self.pytype_args)
-    self.assertOutputStateMatches(stdout=False, stderr=False, returncode=True)
 
   def testPytree(self):
     """Test pytype on a real-world program."""

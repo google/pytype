@@ -68,22 +68,55 @@ class Options(object):
     o = optparse.OptionParser(
         usage=("Usage: %prog [options] file.py"),
         description="Infer/check types in a Python module")
+
+    # Basic options.
     o.add_option(
         "-C", "--check", action="store_true",
         dest="check",
         help=("Don't do type inference. Only check for type errors."))
     o.add_option(
-        "--check_preconditions", action="store_true",
-        dest="check_preconditions", default=False,
-        help=("Enable checking of preconditions."))
-    o.add_option(
         "-d", "--disable", action="store",
         dest="disable", default=None,
         help=("Comma separated list of error names to ignore."))
     o.add_option(
+        "--no-report-errors", action="store_false",
+        dest="report_errors", default=True,
+        help=("Don't report errors."))
+    o.add_option(
+        "-o", "--output", type="string", action="store",
+        dest="output", default=None,
+        help=("Output file. Use '-' for stdout."))
+    o.add_option(
+        "--python_exe", type="string", action="store",
+        dest="python_exe", default=None,
+        help=("Full path to a Python interpreter that is used to compile the "
+              "source(s) to byte code. If not specified, --python_version is "
+              "used to create the name of an interpreter."))
+    o.add_option(
+        "--protocols", action="store_true",
+        dest="protocols", default=False,
+        help=("Solve unknown types to label with structural types."))
+    o.add_option(
+        "-V", "--python_version", type="string", action="store",
+        dest="python_version", default="2.7",
+        help=("Python version to emulate (\"major.minor\", e.g. \"2.7\")"))
+    o.add_option(
+        "-Z", "--quick", action="store_true",
+        dest="quick",
+        help=("Only do an approximation."))
+
+    # Options that run a pytype subtool, not pytype itself.
+    # TODO(rechen): These should be standalone tools.
+    o.add_option(
         "--generate-builtins", action="store",
         dest="generate_builtins", default=None,
         help="Precompile builtins pytd and write to the given file.")
+    o.add_option(
+        "--parse-pyi", action="store_true",
+        dest="parse_pyi", default=False,
+        help="Try parsing a PYI file. For testing of typeshed.")
+
+    # Options for using pickled pyi files with pytype.
     o.add_option(
         "--output-pickled", action="store",
         dest="output_pickled",
@@ -91,41 +124,70 @@ class Options(object):
               "file. The value of this parameter is the destination filename "
               "for the pickled data."))
     o.add_option(
-        "--parse-pyi", action="store_true",
-        dest="parse_pyi", default=False,
-        help="Try parsing a PYI file. For testing of typeshed.")
+        "--use-pickled-files", action="store_true", default=False,
+        dest="use_pickled_files",
+        help=("Use pickled pyi files instead of pyi files. This will check "
+              "if a file 'foo.bar.pyi.pickled' is present next to "
+              "'foo.bar.pyi' and load it instead. This will load the pickled "
+              "file without further verification. Allowing untrusted pickled "
+              "files into the code tree can lead to arbitrary code execution!"))
+    o.add_option(
+        "--precompiled-builtins", action="store",
+        dest="precompiled_builtins", default=None,
+        help="Use the supplied file as precompiled builtins pytd.")
+
+    # Options for pytype infrastructure.
     o.add_option(
         "--imports_info", type="string", action="store",
         dest="imports_map", default=None,
         help=("Information for mapping import .pytd to files. "
               "This options is incompatible with --pythonpath."))
     o.add_option(
-        "-m", "--main", action="store_true",
-        dest="main_only", default=False,
-        help=("Only analyze the main method and everything called from it"))
-    o.add_option(
         "-M", "--module-name", action="store",
         dest="module_name", default=None,
         help=("Name of the module we're analyzing. For __init__.py files the "
               "package should be suffixed with '.__init__'. "
               "E.g. 'foo.bar.mymodule' and 'foo.bar.__init__'"))
+    # TODO(b/68306233): Get rid of nofail.
     o.add_option(
-        "-t", "--target-name", action="store",
-        dest="target_name", default=None,
-        help=("Description of the module we're analyzing. "
-              "Displayed for import errors."))
+        "--nofail", action="store_true",
+        dest="nofail", default=False,
+        help=("Don't allow pytype to fail."))
     o.add_option(
-        "--timeout", action="store",
-        dest="timeout", default=None,
-        help=("In seconds. Abort after the given time has elapsed."))
+        "--output-errors-csv", type="string", action="store",
+        dest="output_errors_csv", default=None,
+        help=("Outputs the error contents to a csv file"))
+    o.add_option(
+        "-P", "--pythonpath", type="string", action="store",
+        dest="pythonpath", default="",
+        help=("Directories for reading dependencies - a list of paths "
+              "separated by '%s'. The files must have been generated "
+              "by running pytype on dependencies of the file(s) "
+              "being analyzed. That is, if an input .py file has an "
+              "'import path.to.foo', and pytype has already been run "
+              "with 'pytype path.to.foo.py -o "
+              "$OUTDIR/path/to/foo.pytd', "  # TODO(kramm): Change to .pyi
+              "then pytype should be invoked with $OUTDIR in "
+              "--pythonpath. This option is incompatible with "
+              "--imports_info and --generate_builtins.") % os.pathsep)
+    o.add_option(
+        "--touch", type="string", action="store",
+        dest="touch", default=None,
+        help="Output file to touch when exit status is ok.")
+
+    # Debug options.
+    o.add_option(
+        "--check_preconditions", action="store_true",
+        dest="check_preconditions", default=False,
+        help=("Enable checking of preconditions."))
+    o.add_option(
+        "-m", "--main", action="store_true",
+        dest="main_only", default=False,
+        help=("Only analyze the main method and everything called from it"))
     o.add_option(
         "--metrics", type="string", action="store",
         dest="metrics", default=None,
         help="Write a metrics report to the specified file.")
-    o.add_option(
-        "--no-report-errors", action="store_false",
-        dest="report_errors", default=True,
-        help=("Don't report errors. Only generate a .pyi."))
     o.add_option(
         "--no-skip-calls", action="store_false",
         dest="skip_repeat_calls", default=True,
@@ -135,18 +197,6 @@ class Options(object):
         dest="typeshed", default=True,
         help=("Do not use typeshed to look up types in the Python stdlib. "
               "For testing."))
-    o.add_option(
-        "--nofail", action="store_true",
-        dest="nofail", default=False,
-        help=("Don't allow pytype to fail."))
-    o.add_option(
-        "-o", "--output", type="string", action="store",
-        dest="output", default=None,
-        help=("Output file. Use '-' for stdout."))
-    o.add_option(
-        "--output-errors-csv", type="string", action="store",
-        dest="output_errors_csv", default=None,
-        help=("Outputs the error contents to a csv file"))
     o.add_option(
         "--output-cfg", type="string", action="store",
         dest="output_cfg", default=None,
@@ -164,49 +214,6 @@ class Options(object):
         dest="profile", default=None,
         help="Profile pytype and output the stats to the specified file.")
     o.add_option(
-        "--precompiled-builtins", action="store",
-        dest="precompiled_builtins", default=None,
-        help="Use the supplied file as precompiled builtins pytd.")
-    o.add_option(
-        "--python_exe", type="string", action="store",
-        dest="python_exe", default=None,
-        help=("Full path to a Python interpreter that is used to compile the "
-              "source(s) to byte code. If not specified, --python_version is "
-              "used to create the name of an interpreter."))
-    o.add_option(
-        "--use-pickled-files", action="store_true", default=False,
-        dest="use_pickled_files",
-        help=("Use pickled pyi files instead of pyi files. This will check "
-              "if a file 'foo.bar.pyi.pickled' is present next to "
-              "'foo.bar.pyi' and load it instead. This will load the pickled "
-              "file without further verification. Allowing untrusted pickled "
-              "files into the code tree can lead to arbitrary code execution!"))
-    o.add_option(
-        "-P", "--pythonpath", type="string", action="store",
-        dest="pythonpath", default="",
-        help=("Directories for reading dependencies - a list of paths "
-              "separated by '%s'. The files must have been generated "
-              "by running pytype on dependencies of the file(s) "
-              "being analyzed. That is, if an input .py file has an "
-              "'import path.to.foo', and pytype has already been run "
-              "with 'pytype path.to.foo.py -o "
-              "$OUTDIR/path/to/foo.pytd', "  # TODO(kramm): Change to .pyi
-              "then pytype should be invoked with $OUTDIR in "
-              "--pythonpath. This option is incompatible with "
-              "--imports_info and --generate_builtins.") % os.pathsep)
-    o.add_option(
-        "--protocols", action="store_true",
-        dest="protocols", default=False,
-        help=("Solve unknown types to label with structural types."))
-    o.add_option(
-        "--touch", type="string", action="store",
-        dest="touch", default=None,
-        help="Output file to touch when exit status is ok.")
-    o.add_option(
-        "-V", "--python_version", type="string", action="store",
-        dest="python_version", default="2.7",
-        help=("Python version to emulate (\"major.minor\", e.g. \"2.7\")"))
-    o.add_option(
         # Not stored, just used to configure logging.
         "-v", "--verbosity", type="int", action="store",
         dest="verbosity", default=1,
@@ -220,10 +227,6 @@ class Options(object):
               "syntax tree written as pickled output. This will raise an "
               "uncaught AssertionError if the two ASTs are not the same. The "
               "option is intended for debugging."))
-    o.add_option(
-        "-Z", "--quick", action="store_true",
-        dest="quick",
-        help=("Only do an approximation."))
     o.add_option(
         "--memory-snapshots", action="store_true", default=False,
         dest="memory_snapshots",
@@ -394,6 +397,7 @@ class Options(object):
 
 
 def _parse_arguments(arguments):
+  """Parse the input/output arguments."""
   if len(arguments) > 1:
     raise optparse.OptionValueError("Can only process one file at a time.")
   if not arguments:
