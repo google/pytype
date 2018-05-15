@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""Pytype setup file."""
 
 # pylint: disable=bad-indentation
 
@@ -7,7 +8,7 @@ import io
 import os
 import shutil
 
-from setuptools import setup, Extension  # pylint: disable=multiple-import
+from setuptools import setup, Extension  # pylint: disable=g-multiple-import
 
 
 # Path to directory containing setup.py
@@ -36,7 +37,7 @@ if not os.path.exists(os.path.join(internal_typeshed, 'stdlib')):
   if os.path.exists(internal_typeshed):
     # If it is a symlink, remove it
     try:
-      os.path.rm(internal_typeshed)
+      os.remove(internal_typeshed)
     except OSError:
       # This might be a directory that has not got a complete typeshed
       # installation in it; delete and copy it over again.
