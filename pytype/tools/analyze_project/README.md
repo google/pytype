@@ -21,10 +21,12 @@ available in $PATH. Pytype comes with its own copy of
 [typeshed](https://github.com/python/typeshed), but there is also an option
 to use an external local installation.
 
-* `importlab`: Needs to be installed (via its `setup.py`)
-* `pytype`: Needs to be installed (via its `setup.py`) and in $PATH
+* `importlab`: Needs to be installed
+* `pytype`: Needs to be installed and in $PATH
 * `typeshed`: (Optional) Can be checked out from git, and pointed to via
   the `TYPESHED_HOME` environment variable
+
+Running `pip install pytype` should automatically satisfy these requirements.
 
 If the target python version (the version of the code being analyzed) does not
 match the version of python being used to run `pytype-all` it will require (at
@@ -103,22 +105,12 @@ output_dir = "pytype_output"
 A complete set of steps to check out the `requests` project and run `pytype` over it. We will assume a ~/github toplevel directory in which everything gets checked out:
 
 ```
-# Install typeshed
+# Install typeshed (optional)
 $ git clone https://github.com/python/typeshed
 $ export TYPESHED_HOME=`pwd`/typeshed
 
-# Install importlab
-$ git clone https://github.com/google/importlab.git
-$ cd importlab
-$ sudo python setup.py install
-$ cd ..
-
 # Install pytype
-$ cd ~/github
-$ git clone https://github.com/google/pytype
-$ cd pytype
-$ sudo python setup.py install
-$ cd ..
+$ pip install pytype
 
 # Check out and analyze requests
 $ git clone https://github.com/requests/requests

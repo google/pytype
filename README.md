@@ -1,4 +1,4 @@
-## Pytype - https://github.com/google/pytype/
+## Pytype
 
 Pytype is a static analyzer for Python code.
 
@@ -20,14 +20,20 @@ Pytype can run under both Python 2.7 and Python 3.6. It also needs an
 interpreter in $PATH for the python version of the code you're analyzing
 (Python 2.7 by default).
 
-Pytype's `setup.py` relies on setuptools.
+pytype can be installed via pip:
+
+```
+pip install pytype
+```
+
+The source code can be [found on github](https://github.com/google/pytype/), and
+installed via setup.py (note that pytype's `setup.py` relies on setuptools).
 
 ```
 git clone https://github.com/google/pytype.git
 cd pytype
 git submodule init
 git submodule update
-pip install pyyaml six
 python setup.py install
 ```
 
@@ -43,7 +49,8 @@ doc](https://github.com/google/pytype/tree/master/docs/errors.md)
 ```
 Usage: pytype [options] file.py
 
-Infer/check types in a Python module
+Infer/check types in a Python module. pytype's major modes are -C [check] and -o
+[infer types and write to a file or to stdout].
 
 Options:
   -h, --help            Show the full list of options
@@ -53,7 +60,7 @@ Options:
                         files the package should be suffixed with '.__init__'.
                         E.g. 'foo.bar.mymodule' and 'foo.bar.__init__'
   -o OUTPUT, --output=OUTPUT
-                        Output file. Use '-' for stdout.
+                        Output file, for type inference. Use '-' for stdout.
   -P PYTHONPATH, --pythonpath=PYTHONPATH
                         Directories for reading dependencies - a list of paths
                         separated by ':'. The files must have been generated
