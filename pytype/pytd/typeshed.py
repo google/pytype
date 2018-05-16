@@ -17,20 +17,20 @@ class Typeshed(object):
 
   def __init__(self):
     self._env_home = home = os.getenv("TYPESHED_HOME")
+    self._pytype_base = os.path.split(os.path.dirname(__file__))[0]
     if home:
       if not os.path.isdir(home):
         raise IOError("Could not find a typeshed installation in "
                       "$TYPESHED_HOME directory %s" % home)
       self._root = home
     else:
-      self._pytype_base = os.path.split(os.path.dirname(__file__))[0]
       self._root = os.path.join(self._pytype_base, "typeshed")
     self._missing = frozenset(self._load_missing())
 
   def _load_file(self, path):
     if self._env_home:
       filename = os.path.join(self._env_home, path)
-      with open(filename, "r") as f:
+      with open(filename, "rb") as f:
         return filename, f.read()
     else:
       data = utils.load_pytype_file(os.path.join(self._root, path))

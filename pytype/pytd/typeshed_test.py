@@ -49,6 +49,20 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     self.assertIn("collections", modules)
     self.assertIn("configparser", modules)
 
+  def test_get_pytd_paths(self):
+    # Set TYPESHED_HOME to pytype's internal typeshed copy.
+    t = typeshed.Typeshed()
+    old_env = os.environ.copy()
+    os.environ["TYPESHED_HOME"] = t.root
+    try:
+      # Check that get_pytd_paths() works with a typeshed installation that
+      # reads from TYPESHED_HOME.
+      t = typeshed.Typeshed()
+      paths = {p.rsplit("pytype/", 1)[-1] for p in t.get_pytd_paths([2, 7])}
+      self.assertSetEqual(paths, {"pytd/builtins/2", "pytd/stdlib/2"})
+    finally:
+      os.environ = old_env
+
   def test_read_blacklist(self):
     t = typeshed.Typeshed()
     for filename in t.read_blacklist():
