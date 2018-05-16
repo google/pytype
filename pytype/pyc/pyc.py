@@ -7,7 +7,6 @@ import subprocess
 import tempfile
 
 from pytype import utils
-from pytype.pyc import compile_bytecode
 from pytype.pyc import loadmarshal
 from pytype.pyc import magic
 import six
@@ -18,6 +17,7 @@ COMPILE_ERROR_RE = re.compile(r"^(.*) \((.*), line (\d+)\)$")
 
 
 class CompileError(Exception):
+  """A compilation error."""
 
   def __init__(self, msg):
     super(CompileError, self).__init__(msg)
@@ -66,7 +66,7 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
     # we spawn an external process.
     if python_exe:
       # Allow python_exe to contain parameters (E.g. "-T")
-      exe = python_exe.split() + ["-S"]
+      exe = python_exe.split()
     else:
       exe = ["python" + ".".join(map(str, python_version))]
     cmd = exe + ["-", fi.name, filename or fi.name, mode]
