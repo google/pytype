@@ -580,7 +580,6 @@ def check_types(src, filename, errorlog, options, loader,
   """Verify a PyTD against the Python code."""
   tracer = CallTracer(errorlog=errorlog, options=options,
                       module_name=options.module_name,
-                      analyze_annotated=True,
                       generate_unknowns=False,
                       loader=loader, **kwargs)
   loc, defs = tracer.run_program(src, filename, init_maximum_depth)

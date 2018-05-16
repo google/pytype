@@ -158,24 +158,26 @@ class BaseTest(unittest.TestCase):
   def assertNoCrash(self, method, code, **kwargs):
     method(code, report_errors=False, **kwargs)
 
-  def _SetUpErrorHandling(self, code, pythonpath):
+  def _SetUpErrorHandling(self, code, pythonpath, analyze_annotated):
     code = textwrap.dedent(code)
     errorlog = errors.ErrorLog()
-    self.ConfigureOptions(pythonpath=pythonpath)
+    self.ConfigureOptions(pythonpath=pythonpath,
+                          analyze_annotated=analyze_annotated)
     return {"src": code, "errorlog": errorlog, "options": self.options,
             "loader": self.loader}
 
-  def InferWithErrors(self, code, deep=True, pythonpath=(), **kwargs):
-    kwargs.update(self._SetUpErrorHandling(code, pythonpath))
-    unit, builtins_pytd = analyze.infer_types(
-        deep=deep, analyze_annotated=True, **kwargs)
+  def InferWithErrors(self, code, deep=True, pythonpath=(),
+                      analyze_annotated=True, **kwargs):
+    kwargs.update(self._SetUpErrorHandling(code, pythonpath, analyze_annotated))
+    unit, builtins_pytd = analyze.infer_types(deep=deep, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
     unit = optimize.Optimize(unit, builtins_pytd, lossy=False, use_abcs=False,
                              max_union=7, remove_mutable=False)
     return pytd_utils.CanonicalOrdering(unit), kwargs["errorlog"]
 
-  def CheckWithErrors(self, code, deep=True, pythonpath=(), **kwargs):
-    kwargs.update(self._SetUpErrorHandling(code, pythonpath))
+  def CheckWithErrors(self, code, deep=True, pythonpath=(),
+                      analyze_annotated=True, **kwargs):
+    kwargs.update(self._SetUpErrorHandling(code, pythonpath, analyze_annotated))
     analyze.check_types(filename="<inline>", deep=deep, **kwargs)
     return kwargs["errorlog"]
 
@@ -346,8 +348,9 @@ class BaseTest(unittest.TestCase):
     else:
       return types
 
-  def _InferAndVerify(self, src, pythonpath, module_name, report_errors,
-                      imports_map=None, quick=False, **kwargs):
+  def _InferAndVerify(
+      self, src, pythonpath, module_name, report_errors, analyze_annotated,
+      imports_map=None, quick=False, **kwargs):
     """Infer types for the source code treating it as a module.
 
     Used by Infer().
@@ -358,6 +361,7 @@ class BaseTest(unittest.TestCase):
       module_name: Name of the module we're analyzing. E.g. "foo.bar.mymodule".
       report_errors: Whether to fail if the type inferencer reports any errors
         in the program.
+      analyze_annotated: Whether to analyze functions with return annotations.
       imports_map: --imports_info data
       quick: Try to run faster, by avoiding costly computations.
       **kwargs: Keyword parameters to pass through to the type inferencer.
@@ -370,7 +374,7 @@ class BaseTest(unittest.TestCase):
     self.ConfigureOptions(
         module_name=module_name, quick=quick, use_pickled_files=True,
         pythonpath=[""] if (not pythonpath and imports_map) else pythonpath,
-        imports_map=imports_map)
+        imports_map=imports_map, analyze_annotated=analyze_annotated)
     errorlog = errors.ErrorLog()
     # TODO(mdemello): Setting 'quick' does not set maximum depth in infer_types.
     unit, builtins_pytd = analyze.infer_types(

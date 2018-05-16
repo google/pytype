@@ -24,6 +24,22 @@ class ConfigTest(unittest.TestCase):
     self.assertEqual(opts.output, "out.pyi")
     self.assertEqual(opts.input, "test.py")
 
+  def test_analyze_annotated_check(self):
+    argv = ["pytype", "--check", "test.py"]
+    opts = config.Options(argv)
+    self.assertTrue(opts.analyze_annotated)  # default
+    argv.append("--analyze-annotated")
+    opts = config.Options(argv)
+    self.assertTrue(opts.analyze_annotated)
+
+  def test_analyze_annotated_output(self):
+    argv = ["pytype", "--output=out.pyi", "test.py"]
+    opts = config.Options(argv)
+    self.assertFalse(opts.analyze_annotated)  # default
+    argv.append("--analyze-annotated")
+    opts = config.Options(argv)
+    self.assertTrue(opts.analyze_annotated)
+
 
 if __name__ == "__main__":
   test_base.main()

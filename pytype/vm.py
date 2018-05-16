@@ -129,7 +129,6 @@ class VirtualMachine(object):
                loader,
                module_name=None,
                generate_unknowns=False,
-               analyze_annotated=False,
                store_all_calls=False):
     """Construct a TypegraphVirtualMachine."""
     self.maximum_depth = sys.maxsize
@@ -137,7 +136,7 @@ class VirtualMachine(object):
     self.options = options
     self.python_version = options.python_version
     self.generate_unknowns = generate_unknowns
-    self.analyze_annotated = analyze_annotated
+    self.analyze_annotated = options.analyze_annotated
     self.store_all_calls = store_all_calls
     self.loader = loader
     self.frames = []  # The call stack of frames.

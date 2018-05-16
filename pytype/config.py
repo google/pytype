@@ -174,7 +174,10 @@ class Options(object):
         "--touch", type="string", action="store",
         dest="touch", default=None,
         help="Output file to touch when exit status is ok.")
-
+    o.add_option("--analyze-annotated", action="store_true",
+                 dest="analyze_annotated", default=None,
+                 help=("Analyze methods with return annotations. By default, "
+                       "on for checking and off for inference."))
     # Debug options.
     o.add_option(
         "--check_preconditions", action="store_true",
@@ -394,6 +397,12 @@ class Options(object):
     if module_name is None:
       module_name = load_pytd.get_module_name(self.input, self.pythonpath)
     self.module_name = module_name
+
+  @uses(["check"])
+  def _store_analyze_annotated(self, analyze_annotated):
+    if analyze_annotated is None:
+      analyze_annotated = self.check
+    self.analyze_annotated = analyze_annotated
 
 
 def _parse_arguments(arguments):

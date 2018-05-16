@@ -377,6 +377,22 @@ class PytypeTest(unittest.TestCase):
          "NodePattern", "WildcardPattern"],
         [c.name for c in ast.classes])
 
+  def testNoAnalyzeAnnotated(self):
+    filename = self._MakeFile("""\
+            def f() -> str:
+        return 42
+    """)
+    self._InferTypesAndCheckErrors(self._DataPath(filename), [])
+
+  def testAnalyzeAnnotated(self):
+    filename = self._MakeFile("""\
+            def f() -> str:
+        return 42
+    """)
+    self.pytype_args["--analyze-annotated"] = self.INCLUDE
+    self._InferTypesAndCheckErrors(self._DataPath(filename),
+                                   ["bad-return-type"])
+
   def testRunPytype(self):
     """Basic unit test (smoke test) for _run_pytype."""
     # TODO(kramm): This is a unit test, whereas all other tests in this file
