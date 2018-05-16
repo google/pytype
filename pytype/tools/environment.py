@@ -2,10 +2,12 @@
 
 from __future__ import print_function
 
+import os
 import sys
 
-from . import runner
 from pytype.pytd import typeshed
+from pytype.tools import runner
+from pytype.tools import utils
 
 
 def check_pytype_or_die():
@@ -55,3 +57,36 @@ def initialize_typeshed_or_die():
   except IOError as e:
     print(str(e))
     sys.exit(1)
+
+
+def compute_pythonpath(filenames):
+  """Compute a list of dependency paths."""
+  paths = set()
+  for f in utils.expand_paths(filenames):
+    containing_dir = os.path.dirname(f)
+    if os.path.exists(os.path.join(containing_dir, "__init__.py")):
+      # If the file's containing directory has an __init__.py, we assume that
+      # the file is in a (sub)package. Add the containing directory of the
+      # top-level package so that 'from package import module' works.
+      package_parent = os.path.dirname(containing_dir)
+      while os.path.exists(os.path.join(package_parent, "__init__.py")):
+        package_parent = os.path.dirname(package_parent)
+      p = package_parent
+    else:
+      # Otherwise, the file is a standalone script. Add its containing directory
+      # to the path so that 'import module_in_same_directory' works.
+      p = containing_dir
+    paths.add(p)
+  # Reverse sorting the paths guarantees that child directories always appear
+  # before their parents. To see why this property is necessary, consider the
+  # following file structure:
+  #   foo/
+  #     bar1.py
+  #     bar2.py  # import bar1
+  #     baz/
+  #       qux1.py
+  #       qux2.py  # import qux1
+  # If the path were [foo/, foo/baz/], then foo/ would be used as the base of
+  # the module names in both directories, yielding bar1 (good) and baz.qux1
+  # (bad). With the order reversed, we get bar1 and qux1 as expected.
+  return sorted(paths, reverse=True)

@@ -64,6 +64,8 @@ def read_config_file(args):
     ret.read_from_file(args.config)
   else:
     print('Warning: No config file specified. Using default configuration.')
+  if not ret.projects:
+    ret.projects = environment.compute_pythonpath(args.filenames)
   return ret
 
 
