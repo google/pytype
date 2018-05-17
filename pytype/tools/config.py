@@ -2,7 +2,7 @@
 
 import collections
 import os
-import configparser
+from six.moves import configparser
 
 
 Item = collections.namedtuple('Item', ['key', 'default', 'sample', 'comment'])
@@ -52,7 +52,12 @@ class ConfigSection(object):
     return None
 
   def get(self, key):
-    value = self.parser.get(self.section, key, fallback=None)
+    """Get the value for the given key."""
+    try:
+      # The 'fallback' option is Python 3-only, so we use a try/except.
+      value = self.parser.get(self.section, key)
+    except configparser.NoOptionError:
+      value = None
     if not value:
       return None
     converter = self.keymap[key]
