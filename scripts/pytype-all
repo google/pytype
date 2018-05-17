@@ -19,6 +19,7 @@
 from __future__ import print_function
 
 import argparse
+import os
 import sys
 
 import importlab.environment
@@ -59,11 +60,24 @@ def parse_args():
 
 
 def read_config_file(args):
+  """Read config from args.config or from setup.cfg."""
+
   ret = config.Config()
   if args.config:
-    ret.read_from_file(args.config)
+    if not ret.read_from_file(args.config):
+      print('Could not read config file: ', args.config)
+      print()
+      print('Generate a sample configuration via: ')
+      print('  pytype-all --generate-config sample.cfg')
+      sys.exit(1)
   else:
-    print('Warning: No config file specified. Using default configuration.')
+    # Try reading from setup.cfg
+    filepath = ret.read_from_setup_cfg(os.getcwd())
+    if filepath:
+      print('Reading config from: ', filepath)
+    else:
+      print('Warning: No config file specified, and no [pytype] section '
+            'in setup.cfg. Using default configuration.')
   if not ret.projects:
     ret.projects = environment.compute_pythonpath(args.filenames)
   return ret

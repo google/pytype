@@ -2,15 +2,17 @@
 
 from __future__ import print_function
 
-import collections
-import imp
 import os
 import sys
 import textwrap
 
+from pytype.tools import config
 from pytype.tools import utils
 
-Item = collections.namedtuple('Item', ['key', 'default', 'sample', 'comment'])
+
+# Convenience alias
+Item = config.Item  # pylint: disable=invalid-name
+
 
 # Generates both the default config and the sample config file.
 SAMPLE = [
@@ -18,10 +20,10 @@ SAMPLE = [
          'Python version ("major.minor") of the target code.'),
     Item('output_dir', 'pytype_output', 'pytype_output',
          'All pytype output goes here.'),
-    Item('projects', [], ['/path/to/project'],
+    Item('projects', [], ['/path/to/project', '/path/to/project'],
          'Dependencies within these directories will be checked for type '
          'errors.'),
-    Item('deps', [], ['/path/to/project'],
+    Item('deps', [], ['/path/to/project', '/path/to/project'],
          'Dependencies within these directories will have type inference '
          'run on them, but will not be checked for errors.'),
 ]
@@ -54,16 +56,39 @@ class Config(object):
       print(textwrap.dedent(err))
       sys.exit(0)
 
-  def read_from_file(self, path):
-    """Read config from a file."""
+  def read_from_setup_cfg(self, starting_path):
+    """Read config from the first setup.cfg file found upwards from path.
 
-    path = utils.expand_path(path)
-    mod = imp.load_source('config_file', path)
-    consts = {k: v for k, v in mod.__dict__.items() if not k.startswith('__')}
-    self._validate_keys(consts)
-    for k in DEFAULT:
-      setattr(self, k, consts.get(k, DEFAULT[k]))
-    cwd = os.path.dirname(path)
+    Arguments:
+      starting_path: The path to start searching from (typically cwd).
+
+    Returns:
+      A path to the config file if one was read successfully, otherwise None.
+    """
+
+    filepath = config.find_config_file(starting_path)
+    if not filepath:
+      return None
+    return self.read_from_file(filepath)
+
+  def read_from_file(self, filepath):
+    """Read config from an INI-style file with a [pytype] section."""
+
+    keymap = {}
+    for k, v in DEFAULT.items():
+      if isinstance(v, list):
+        keymap[k] = config.get_list
+      else:
+        keymap[k] = None
+    cfg = config.ConfigSection.create_from_file(filepath, 'pytype', keymap)
+    if not cfg:
+      return None
+    cfg.populate_object(self)
+    self.expand_paths(filepath)
+    return filepath
+
+  def expand_paths(self, base_path):
+    cwd = os.path.dirname(base_path)
     self.projects = utils.expand_paths(self.projects, cwd)
     self.deps = utils.expand_paths(self.deps, cwd)
     self.output_dir = utils.expand_path(self.output_dir, cwd)
@@ -80,12 +105,11 @@ class Config(object):
 def _format_sample_item(k, v):
   out = []
   if isinstance(v, list):
-    out.append('%s = [' % k)
+    out.append('%s =' % k)
     for entry in v:
-      out.append('    %r,' % entry)
-    out.append(']')
+      out.append('    %s,' % entry)
   else:
-    out.append('%s = %r' % (k, v))
+    out.append('%s = %s' % (k, v))
   return out
 
 
@@ -96,14 +120,17 @@ def generate_sample_config(filename):
     print('Not overwriting existing file: %s' % filename)
     sys.exit(0)
 
-  config = [
+  # Not using configparser's write method because it doesn't support comments.
+
+  conf = [
       '# NOTE: All relative paths are relative to the location of this file.',
-      ''
+      '',
+      '[pytype]'
   ]
   for item in SAMPLE:
-    config.extend(textwrap.wrap(
+    conf.extend(textwrap.wrap(
         item.comment, 80, initial_indent='# ', subsequent_indent='# '))
-    config.extend(_format_sample_item(item.key, item.sample))
-    config.append('')
+    conf.extend(_format_sample_item(item.key, item.sample))
+    conf.append('')
   with open(filename, 'w') as f:
-    f.write('\n'.join(config))
+    f.write('\n'.join(conf))

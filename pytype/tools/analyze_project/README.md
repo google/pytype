@@ -61,8 +61,10 @@ optional arguments:
 ### Config File
 
 `pytype-all` uses a config file to set up per-project input, dependency and
-output directories. The config file is a python file defining configuration
-variables as top-level constants.
+output directories. The config file is an INI-style file with a `[pytype]`
+section; if an explicit config file is not supplied pytype-all will look for a
+`[pytype]` section in your `setup.cfg` (the first `setup.cfg` file found by
+walking upwards from the current working directory).
 
 Start off by generating a sample config file:
 ```
@@ -80,24 +82,23 @@ across two directories, `~/code/foo` and `~/code/bar`, and the config file at
 ```
 # NOTE: All relative paths are relative to the location of this file.
 
-# Python version (major.minor)
-python_version = '3.6'
+[pytype]
+# Python version ("major.minor") of the target code.
+python_version = 3.6
+
+# All pytype output goes here.
+output_dir = pytype_output
 
 # Dependencies within these directories will be checked for type errors.
-projects = [
-  ".",
-  "~/code/bar"
-]
+projects =
+  .,
+  ~/code/bar
 
-# Dependencies within these directories will have type inference
-# run on them, but will not be checked for errors.
-deps = [
-  "~/code/some_dependency",
-  "/usr/local/lib/python3.6/dist-packages/project.egg/"
-]
-
-# All output goes here.
-output_dir = "pytype_output"
+# Dependencies within these directories will have type inference run on them,
+# but will not be checked for errors.
+deps =
+  ~/code/some_dependency,
+  /usr/local/lib/python3.6/dist-packages/project.egg/
 ```
 
 ### Example
@@ -119,21 +120,16 @@ $ cd requests
 $ pytype-all --generate-config requests.conf
 # and edit it to point to your toplevel directory
 $ cat requests.conf
+  [pytype]
+
   # Python version (major.minor)
   python_version = 2.7
 
   # Dependencies within these directories will be checked for type errors.
-  projects = [
-    "."  # "~/github/requests" would work too
-  ]
-
-  # Dependencies within these directories will have type inference
-  # run on them, but will not be checked for errors.
-  deps = [
-  ]
+  projects = .
 
   # All output goes here.
-  output_dir = "pytype_output"
+  output_dir = pytype_output
 
 $ pytype-all --config=requests.conf requests/*.py
 ```
@@ -186,15 +182,11 @@ $ cd requests
 # edit file
 $ cat requests.conf
   # Dependencies within these directories will be checked for type errors.
-  projects = [
-    "."
-  ]
+  projects = .
 
   # Dependencies within these directories will have type inference
   # run on them, but will not be checked for errors.
-  deps = [
-    "~/github/urllib3"
-  ]
+  deps = ~/github/urllib3
 
 # run pytype-all again
 $ pytype-all --config=requests.conf requests/*.py
