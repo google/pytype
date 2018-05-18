@@ -41,7 +41,7 @@ them. Typechecking errors and `.pyi` files are generated in an output directory
 specified in the config file.
 
 ```
-usage: pytype-all [-h] [--tree] [--unresolved] [--quiet]
+usage: pytype-all [-h] [--tree] [--unresolved] [--verbosity]
                   [--config CONFIG] [--generate-config CONFIG]
                   [filename [filename ...]]
 
@@ -52,7 +52,7 @@ optional arguments:
   -h, --help            show this help message and exit
   --tree                Display import tree.
   --unresolved          Display unresolved dependencies.
-  --quiet               Don't print errors to stdout.
+  -v, --verbosity       Set logging level: 0=ERROR, 1=WARNING (default), 2=INFO.
   --config CONFIG       Configuration file.
   --generate-config CONFIG
                         Write out a dummy configuration file.

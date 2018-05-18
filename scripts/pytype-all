@@ -19,6 +19,7 @@
 from __future__ import print_function
 
 import argparse
+import logging
 import os
 import sys
 
@@ -47,8 +48,9 @@ def parse_args():
       '--unresolved', dest='unresolved', action='store_true', default=False,
       help='Display unresolved dependencies.')
   parser.add_argument(
-      '--quiet', dest='quiet', action='store_true', default=False,
-      help="Don't print errors to stdout.")
+      '-v', '--verbosity', dest='verbosity', type=int, action='store',
+      default=1,
+      help='Set logging level: 0=ERROR, 1 =WARNING (default), 2=INFO.')
   parser.add_argument(
       '--config', dest='config', type=str, action='store', default='',
       help='Configuration file.')
@@ -130,7 +132,21 @@ def main():
       print(' ', imp.name)
     sys.exit(0)
 
-  runner = pytype_runner.PytypeRunner(import_graph, conf, typeshed, args.quiet)
+  if args.verbosity == 0:
+    log_level = logging.ERROR
+  elif args.verbosity == 1:
+    log_level = logging.WARNING
+  elif args.verbosity == 2:
+    log_level = logging.INFO
+  else:
+    print('Bad verbosity level:', args.verbosity)
+    sys.exit(0)
+
+  utils.setup_logging(log_level)
+  logging.info('Source tree:\n%s',
+               importlab.output.formatted_deps_list(import_graph))
+  utils.makedirs_or_die(conf.output_dir, 'Could not create output directory')
+  runner = pytype_runner.PytypeRunner(import_graph.sorted_source_files(), conf)
   runner.run()
 
 

@@ -2,7 +2,6 @@
 
 from __future__ import print_function
 
-import os
 import subprocess
 
 
@@ -13,23 +12,17 @@ class BinaryRun(object):
     ret, out, err = BinaryRun([exe, arg, ...]).communicate()
   """
 
-  def __init__(self, args, dry_run=False, env=None):
+  def __init__(self, args, dry_run=False):
     self.args = args
     self.results = None
 
     if dry_run:
       self.results = (0, "", "")
     else:
-      if env is not None:
-        full_env = os.environ.copy()
-        full_env.update(env)
-      else:
-        full_env = None
       self.proc = subprocess.Popen(
           self.args,
           stdout=subprocess.PIPE,
-          stderr=subprocess.PIPE,
-          env=full_env)
+          stderr=subprocess.PIPE)
 
   def communicate(self):
     if self.results:

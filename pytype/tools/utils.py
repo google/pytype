@@ -16,15 +16,9 @@ def filename_to_module_name(filename):
   return filename.replace(os.sep, '.')
 
 
-def setup_logging(name, log_file, level=logging.INFO):
-  formatter = logging.Formatter(
-      fmt='%(asctime)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-  handler = logging.FileHandler(log_file)
-  handler.setFormatter(formatter)
-  logger = logging.getLogger(name)
-  logger.setLevel(level)
-  logger.addHandler(handler)
-  return logger
+def setup_logging(level):
+  logging.basicConfig(level=level,
+                      format='%(asctime)s %(levelname)s %(message)s')
 
 
 @contextmanager
