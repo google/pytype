@@ -10,12 +10,10 @@ from pytype.tools.analyze_project import config
 PYTYPE_CFG = """
   [pytype]
   python_version = 2.7
-  deps =
+  pythonpath =
+    .
     /foo/bar
     baz/quux
-  projects =
-    .
-    /a/b/c
 """
 
 RANDOM_CFG = """
@@ -32,8 +30,8 @@ class TestConfig(unittest.TestCase):
 
   def _validate_file_contents(self, conf, path):
     self.assertEqual(conf.python_version, u'2.7')
-    self.assertEqual(conf.projects, [path, u'/a/b/c'])
-    self.assertEqual(conf.deps, [
+    self.assertEqual(conf.pythonpath, [
+        path,
         u'/foo/bar',
         os.path.join(path, u'baz/quux')
     ])

@@ -80,8 +80,6 @@ def read_config_file(args):
     else:
       print('Warning: No config file specified, and no [pytype] section '
             'in setup.cfg. Using default configuration.')
-  if not ret.projects:
-    ret.projects = environment.compute_pythonpath(args.filenames)
   return ret
 
 
@@ -112,14 +110,18 @@ def main():
     config.generate_sample_config(args.generate_config)
     sys.exit(0)
 
+  filenames = utils.expand_paths(args.filenames)
+
   conf = read_config_file(args)
+  if not conf.pythonpath:
+    conf.pythonpath = environment.compute_pythonpath(filenames)
   print('Configuration:')
   conf.show()
   print()
 
   typeshed = environment.initialize_typeshed_or_die()
   env = create_importlab_environment(conf, typeshed)
-  import_graph = importlab.graph.ImportGraph.create(env, args.filenames)
+  import_graph = importlab.graph.ImportGraph.create(env, filenames)
 
   if args.tree:
     print('Source tree:')
@@ -146,7 +148,8 @@ def main():
   logging.info('Source tree:\n%s',
                importlab.output.formatted_deps_list(import_graph))
   utils.makedirs_or_die(conf.output_dir, 'Could not create output directory')
-  runner = pytype_runner.PytypeRunner(import_graph.sorted_source_files(), conf)
+  runner = pytype_runner.PytypeRunner(
+      filenames, import_graph.sorted_source_files(), conf)
   runner.run()
 
 

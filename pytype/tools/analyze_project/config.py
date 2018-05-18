@@ -17,15 +17,11 @@ Item = config.Item  # pylint: disable=invalid-name
 # Generates both the default config and the sample config file.
 SAMPLE = [
     Item('python_version', '3.6', '3.6',
-         'Python version ("major.minor") of the target code.'),
+         'Python version (major.minor) of the target code.'),
     Item('output_dir', 'pytype_output', 'pytype_output',
          'All pytype output goes here.'),
-    Item('projects', [], ['/path/to/project', '/path/to/project'],
-         'Dependencies within these directories will be checked for type '
-         'errors.'),
-    Item('deps', [], ['/path/to/project', '/path/to/project'],
-         'Dependencies within these directories will have type inference '
-         'run on them, but will not be checked for errors.'),
+    Item('pythonpath', [], ['/path/to/project', '/path/to/project'],
+         'Paths to source code directories.')
 ]
 
 DEFAULT = {item.key: item.default for item in SAMPLE}
@@ -34,7 +30,7 @@ DEFAULT = {item.key: item.default for item in SAMPLE}
 class Config(object):
   """Configuration variables."""
 
-  __slots__ = 'projects', 'deps', 'output_dir', 'python_version'
+  __slots__ = 'pythonpath', 'output_dir', 'python_version'
 
   def __init__(self):
     for k, v in DEFAULT.items():
@@ -89,13 +85,8 @@ class Config(object):
 
   def expand_paths(self, base_path):
     cwd = os.path.dirname(base_path)
-    self.projects = utils.expand_paths(self.projects, cwd)
-    self.deps = utils.expand_paths(self.deps, cwd)
+    self.pythonpath = utils.expand_paths(self.pythonpath, cwd)
     self.output_dir = utils.expand_path(self.output_dir, cwd)
-
-  @property
-  def pythonpath(self):
-    return self.projects + self.deps
 
   def show(self):
     for k in DEFAULT:

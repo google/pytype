@@ -21,20 +21,17 @@ Module = collections.namedtuple('_', 'path target name')
 class PytypeRunner(object):
   """Runs pytype over an import graph."""
 
-  def __init__(self, sorted_source_files, conf):
-    self.sorted_source_files = sorted_source_files
-    self.output_dir = conf.output_dir
-    self.deps = conf.deps
-    self.projects = conf.projects
+  def __init__(self, filenames, sorted_source_files, conf):
+    self.filenames = set(filenames)  # files to type-check
+    self.sorted_source_files = sorted_source_files  # all source files
     self.pythonpath = conf.pythonpath
     self.python_version = conf.python_version
-    self.pyi_dir = os.path.join(self.output_dir, 'pyi')
+    self.pyi_dir = conf.output_dir
 
   def infer_module_name(self, filename):
     """Convert a filename to a module name relative to pythonpath."""
     # We want '' in our lookup path, but we don't want it for prefix tests.
     for path in filter(bool, self.pythonpath):
-      path = os.path.abspath(path)
       if not path.endswith(os.sep):
         path += os.sep
       if filename.startswith(path):
@@ -43,32 +40,21 @@ class PytypeRunner(object):
     # We have not found filename relative to anywhere in pythonpath.
     return Module('', filename, utils.filename_to_module_name(filename))
 
-  def get_cmd_options(self, module, report_errors):
-    """Get the command-line options for running pytype on the given module."""
-    outfile = os.path.join(self.pyi_dir, module.target + 'i')
-    options = [
+  def get_run_cmd(self, module, report_errors):
+    """Get the command for running pytype on the given module."""
+    return [
+        'pytype',
         '-P', self.pyi_dir,
         '-V', self.python_version,
-        '-o', outfile,
+        '-o', os.path.join(self.pyi_dir, module.target + 'i'),
         '--quick',
-        '--module-name', module.name
+        '--module-name', module.name,
+        '--analyze-annotated' if report_errors else '--no-report-errors',
+        os.path.join(module.path, module.target),
     ]
-    if not report_errors:
-      options.append('--no-report-errors')
-    return options
 
-  def run_pytype(self, filename, report_errors=True):
-    """Run pytype over a single file."""
-    module = self.infer_module_name(filename)
-    in_projects = any(module.path.startswith(d) for d in self.projects)
-    in_deps = any(module.path.startswith(d) for d in self.deps)
-
-    # Do not try to analyse files importlab has resolved via the system path.
-    # Also, if importlab has returned a non-.py dependency, ignore it.
-    if (not in_projects and not in_deps) or not module.target.endswith('.py'):
-      print('  skipping file:', module.target)
-      return
-
+  def run_pytype(self, module, report_errors):
+    """Run pytype over a single module."""
     # Create the output subdirectory for this file.
     target_dir = os.path.join(self.pyi_dir, os.path.dirname(module.target))
     try:
@@ -77,15 +63,12 @@ class PytypeRunner(object):
       logging.error('Could not create output directory: %s', target_dir)
       return
 
-    # Report errors for files in projects (those we are analysing directly)
-    report_errors = in_projects and report_errors
     if report_errors:
       print('  %s' % module.target)
     else:
       print('  %s*' % module.target)
 
-    cmd_options = self.get_cmd_options(module, report_errors)
-    run_cmd = ['pytype'] + cmd_options + [filename]
+    run_cmd = self.get_run_cmd(module, report_errors)
     logging.info('Running: %s', ' '.join(run_cmd))
     run = runner.BinaryRun(run_cmd)
     try:
@@ -102,18 +85,35 @@ class PytypeRunner(object):
       # Log as WARNING since this is a pytype error, not our error.
       logging.warning(error)
 
+  def yield_sorted_modules(self):
+    """Yield modules from our sorted source files."""
+    for files in self.sorted_source_files:
+      modules = []
+      for f in files:
+        if not f.endswith('.py'):
+          logging.info('Skipping non-Python file: %s', f)
+          continue
+        module = self.infer_module_name(f)
+        if not any(module.path.startswith(d) for d in self.pythonpath):
+          logging.info('Skipping file not in pythonpath: %s', f)
+          continue
+        # Report errors for files we are analysing directly.
+        report_errors = f in self.filenames
+        modules.append((module, report_errors))
+      if len(modules) == 1:
+        yield modules[0]
+      else:
+        # If we have a cycle we run pytype over the files twice, ignoring errors
+        # the first time so that we don't fail on missing dependencies.
+        for module, _ in modules:
+          yield module, False
+        for module_and_report_errors in modules:
+          yield module_and_report_errors
+
   def run(self):
     """Run pytype over the project."""
     print(
         'Generating %d targets' % sum(len(x) for x in self.sorted_source_files))
     logging.info('------------- Starting pytype run. -------------')
-    for files in self.sorted_source_files:
-      if len(files) == 1:
-        self.run_pytype(files[0])
-      else:
-        # If we have a cycle we run pytype over the files twice, ignoring errors
-        # the first time so that we don't fail on missing dependencies.
-        for f in files:
-          self.run_pytype(f, report_errors=False)
-        for f in files:
-          self.run_pytype(f, report_errors=True)
+    for module, report_errors in self.yield_sorted_modules():
+      self.run_pytype(module, report_errors)

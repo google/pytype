@@ -60,11 +60,11 @@ optional arguments:
 
 ### Config File
 
-`pytype-all` uses a config file to set up per-project input, dependency and
-output directories. The config file is an INI-style file with a `[pytype]`
-section; if an explicit config file is not supplied pytype-all will look for a
-`[pytype]` section in your `setup.cfg` (the first `setup.cfg` file found by
-walking upwards from the current working directory).
+`pytype-all` uses a config file to set up per-project input and output
+directories. The config file is an INI-style file with a `[pytype]` section;
+if an explicit config file is not supplied pytype-all will look for a `[pytype]`
+section in your `setup.cfg` (the first `setup.cfg` file found by walking upwards
+from the current working directory).
 
 Start off by generating a sample config file:
 ```
@@ -75,9 +75,10 @@ Now customise each section based on your local setup. Directories may be
 relative to the location of the config file, which is useful if you want to
 check in the config file as part of your project.
 
-Here is an example of a filled-in config file for a project with files split
-across two directories, `~/code/foo` and `~/code/bar`, and the config file at
-`~/code/foo/foo.cfg`
+Here is an example of a filled-in config file for a project with files in
+package `~/code/foo` and a dependency on a package in the installed
+`other_project` library. Note that the package directory itself is not
+included in the path.
 
 ```
 # NOTE: All relative paths are relative to the location of this file.
@@ -89,16 +90,10 @@ python_version = 3.6
 # All pytype output goes here.
 output_dir = pytype_output
 
-# Dependencies within these directories will be checked for type errors.
-projects =
-  .,
-  ~/code/bar
-
-# Dependencies within these directories will have type inference run on them,
-# but will not be checked for errors.
-deps =
-  ~/code/some_dependency,
-  /usr/local/lib/python3.6/dist-packages/project.egg/
+# Paths to source code directories.
+pythonpath =
+  ~/code,
+  /usr/local/lib/python3.6/dist-packages/other_project.egg
 ```
 
 ### Example
@@ -125,8 +120,8 @@ $ cat requests.conf
   # Python version (major.minor)
   python_version = 2.7
 
-  # Dependencies within these directories will be checked for type errors.
-  projects = .
+  # Paths to source code directories.
+  pythonpath = .
 
   # All output goes here.
   output_dir = pytype_output
@@ -171,8 +166,7 @@ dependency checker:
 $ pytype-all --config=requests.conf requests/*.py --unresolved
 ```
 
-Since we are analysing `requests`, and not `urllib3`, we add it to `deps` rather
-than `projects`:
+We add `urllib3` to the pythonpath:
 
 ```
 $ cd ..
@@ -181,12 +175,10 @@ $ cd requests
 
 # edit file
 $ cat requests.conf
-  # Dependencies within these directories will be checked for type errors.
-  projects = .
-
-  # Dependencies within these directories will have type inference
-  # run on them, but will not be checked for errors.
-  deps = ~/github/urllib3
+  # Paths to source code directories.
+  pythonpath =
+    .,
+    ~/github/urllib3
 
 # run pytype-all again
 $ pytype-all --config=requests.conf requests/*.py

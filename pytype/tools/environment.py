@@ -7,7 +7,6 @@ import sys
 
 from pytype.pytd import typeshed
 from pytype.tools import runner
-from pytype.tools import utils
 
 
 def check_pytype_or_die():
@@ -62,7 +61,7 @@ def initialize_typeshed_or_die():
 def compute_pythonpath(filenames):
   """Compute a list of dependency paths."""
   paths = set()
-  for f in utils.expand_paths(filenames):
+  for f in filenames:
     containing_dir = os.path.dirname(f)
     if os.path.exists(os.path.join(containing_dir, "__init__.py")):
       # If the file's containing directory has an __init__.py, we assume that
