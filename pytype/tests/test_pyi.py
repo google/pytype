@@ -361,12 +361,12 @@ class PYITest(test_base.TargetIndependentTest):
         x = ...  # type: str
       """)
 
-  def testSketchyFunctionReference(self):
+  def testDubiousFunctionReference(self):
     with utils.Tempdir() as d:
       # TODO(kramm): visitors._ToType() currently allows this. Should it?
       d.create_file("a.pyi", """
-        def SketchyType() -> None
-        x = ...  # type: SketchyType
+        def DubiousType() -> None
+        x = ...  # type: DubiousType
       """)
       ty = self.Infer("""\
         import a

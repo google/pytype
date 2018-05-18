@@ -2,7 +2,8 @@
 Backport of PEP 3107, function annotations, to Python 2. Using this
 requires an import from __future__.
 Example:
-        def f(x: int, y: int) -> Tuple[int, ...]
+    from __future__ import google_type_annotations
+    def f(x: int, y: int) -> Tuple[int, ...]
 
 diff --git a/Doc/library/dis.rst b/Doc/library/dis.rst
 index 8dee901..58e115c 100644
@@ -888,7 +889,8 @@ index 4bcb438..c1f9372 100644
 --- a/Lib/test/test_compile.py
 +++ b/Lib/test/test_compile.py
 @@ -1,3 +1,4 @@
-+ import unittest
++from __future__ import google_type_annotations
+ import unittest
  import sys
  import _ast
 @@ -193,6 +194,52 @@ def f(x):

@@ -10,7 +10,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
   # A lot of these tests depend on comprehensions like [x for x in ...] binding
   # x in the outer scope, which does not happen in python3.
   #
-  # TODO(pytype): Write python3 versions of these.
+  # TODO(rechen): Write python3 versions of these.
 
   def testIteratePyiListNothing(self):
     with utils.Tempdir() as d:

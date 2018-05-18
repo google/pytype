@@ -740,10 +740,10 @@ class FunctionTest(_ParserTestBase):
                "def foo(x: int, y: str) -> bool: ...")
 
   def test_decorators(self):
-    # These tests are a bit sketchy because most of the decorators only make
-    # sense for methods of classes.  But this at least gives us some coverage
-    # of the decorator logic.  More sensible tests can be created once classes
-    # are implemented.
+    # These tests are a bit questionable because most of the decorators only
+    # make sense for methods of classes.  But this at least gives us some
+    # coverage of the decorator logic.  More sensible tests can be created once
+    # classes are implemented.
     self.check("""\
       @overload
       def foo() -> int: ...""",
