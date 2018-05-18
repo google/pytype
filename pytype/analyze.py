@@ -566,6 +566,8 @@ class CallTracer(vm.VirtualMachine):
     return ty.Visit(visitors.AdjustTypeParameters())
 
   def _check_return(self, node, actual, formal):
+    if not self.report_errors:
+      return
     bad = self.matcher.bad_matches(actual, formal, node)
     if bad:
       with self.convert.pytd_convert.produce_detailed_output():

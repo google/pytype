@@ -137,6 +137,7 @@ class VirtualMachine(object):
     self.python_version = options.python_version
     self.generate_unknowns = generate_unknowns
     self.analyze_annotated = options.analyze_annotated
+    self.report_errors = options.report_errors
     self.store_all_calls = store_all_calls
     self.loader = loader
     self.frames = []  # The call stack of frames.
@@ -786,7 +787,7 @@ class VirtualMachine(object):
       state = state.change_cfg_node(self.join_cfg_nodes(nodes))
     result = self.join_variables(state.node, results)
     log.debug("Result: %r %r", result, result.data)
-    if not result.bindings and report_errors:
+    if not result.bindings and report_errors and self.report_errors:
       if error is None:
         self.errorlog.unsupported_operands(self.frames, name, x, y)
       elif isinstance(error, abstract.DictKeyMissing):
@@ -1102,6 +1103,8 @@ class VirtualMachine(object):
     return state.change_cfg_node(node), result
 
   def _attribute_error_detection(self, state, attr, errors):
+    if not self.report_errors:
+      return
     for error in errors:
       combination = [error]
       if self.frame.func:
@@ -1307,7 +1310,7 @@ class VirtualMachine(object):
         itr = abstract.Iterator(self, item).to_variable(state.node)
       else:
         itr = self.program.NewVariable()
-      if report_errors:
+      if report_errors and self.report_errors:
         for m in missing:
           if state.node.HasCombination([m]):
             self.errorlog.attribute_error(self.frames, m, "__iter__")
