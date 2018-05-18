@@ -26,6 +26,8 @@ from pytype import utils
 from pytype.pytd import mro
 from pytype.pytd import pytd
 from pytype.pytd.parse import parser_constants  # pylint: disable=g-importing-member
+from pytype.typegraph import cfg_utils
+
 import six
 
 
@@ -91,7 +93,7 @@ def _GetAncestorMap():
           # is not a node, then add the typename to _IGNORED_TYPENAMES.
           raise AssertionError("Unknown precondition typename: %s" % allowed)
 
-    predecessors = utils.compute_predecessors(node_classes.values())
+    predecessors = cfg_utils.compute_predecessors(node_classes.values())
     # Convert predecessors keys and values to use names instead of info objects.
     _ancestor_map = {
         k.name: {n.name for n in v} for k, v in predecessors.items()}

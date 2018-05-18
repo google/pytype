@@ -406,10 +406,10 @@ class VirtualMachine(object):
   # Importing
 
   def join_variables(self, node, variables):
-    return cfg_utils.MergeVariables(self.program, node, variables)
+    return cfg_utils.merge_variables(self.program, node, variables)
 
   def join_bindings(self, node, bindings):
-    return cfg_utils.MergeBindings(self.program, node, bindings)
+    return cfg_utils.merge_bindings(self.program, node, bindings)
 
   def _process_base_class(self, node, base):
     """Process a base class for InterpreterClass creation."""
@@ -1145,7 +1145,7 @@ class VirtualMachine(object):
     if not self._analyzing:
       return True
     has_any_none_origin = False
-    walker = cfg_utils.WalkBinding(
+    walker = cfg_utils.walk_binding(
         binding, keep_binding=lambda b: self._data_is_none(b.data))
     origin = None
     while True:

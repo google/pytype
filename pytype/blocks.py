@@ -3,9 +3,9 @@
 import collections
 import itertools
 
-from pytype import utils
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
+from pytype.typegraph import cfg_utils
 
 STORE_OPCODES = (
     opcodes.STORE_NAME,
@@ -24,7 +24,7 @@ class OrderedCode(object):
   Attributes:
     co_*: Same as loadmarshal.CodeType.
     order: A list of bytecode blocks. They're ordered ancestors-first, see
-      utils.py:order_nodes.
+      cfg_utils.py:order_nodes.
     python_version: The Python version this bytecode is from.
   """
 
@@ -212,7 +212,7 @@ def compute_order(bytecode):
       block.connect_outgoing(first_op_to_block[last_op.target])
     if last_op.block_target:
       block.connect_outgoing(first_op_to_block[last_op.block_target])
-  return utils.order_nodes(blocks)
+  return cfg_utils.order_nodes(blocks)
 
 
 class DisCodeVisitor(object):

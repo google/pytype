@@ -12,6 +12,7 @@ from pytype import debug
 from pytype import imports_map_loader
 from pytype import load_pytd
 from pytype import utils
+from pytype.typegraph import cfg_utils
 
 import six
 
@@ -269,7 +270,7 @@ class Options(object):
           f.incoming = tuple(nodes[use] for use in dependencies)
 
     # process the option list in the right order:
-    for node in utils.topological_sort(nodes.values()):
+    for node in cfg_utils.topological_sort(nodes.values()):
       value = getattr(self._options, node.name)
       if node.processor is not None:
         node.processor(value)

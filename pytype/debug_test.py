@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 
 
 class Node(object):
-  """A graph node, for testing topological sorting."""
+  """A graph node, for testing tree printing."""
 
   def __init__(self, name, *incoming):
     self.name = name

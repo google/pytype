@@ -22,6 +22,8 @@ from pytype.pytd import mro
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
+from pytype.typegraph import cfg_utils
+
 import six
 
 log = logging.getLogger(__name__)
@@ -113,8 +115,8 @@ def get_views(variables, node, filter_strict=False):
     A variable->binding dictionary.
   """
   try:
-    combinations = utils.deep_variable_product(variables)
-  except utils.TooComplexError:
+    combinations = cfg_utils.deep_variable_product(variables)
+  except cfg_utils.TooComplexError:
     combinations = ((var.AddBinding(node.program.default_data, [], node)
                      for var in variables),)
   for combination in combinations:
@@ -1057,7 +1059,8 @@ class List(Instance, HasSlots, PythonConstant):
     results = []
     unresolved = False
     if not self.could_contain_anything:
-      for start_val, end_val in utils.variable_product([start_var, end_var]):
+      for start_val, end_val in cfg_utils.variable_product([start_var,
+                                                            end_var]):
         try:
           start = self._get_index(start_val.data)
           end = self._get_index(end_val.data)
@@ -3357,8 +3360,8 @@ class InterpreterFunction(SignedFunction):
     signature_data = set()
     for callargs, ret, node_after_call in self._call_records:
       try:
-        combinations = utils.variable_product_dict(callargs)
-      except utils.TooComplexError:
+        combinations = cfg_utils.variable_product_dict(callargs)
+      except cfg_utils.TooComplexError:
         combination = {
             name: self.vm.convert.unsolvable.to_binding(node_after_call)
             for name in callargs}

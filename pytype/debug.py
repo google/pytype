@@ -6,6 +6,8 @@ import re
 import traceback
 
 from pytype import utils
+from pytype.typegraph import cfg_utils
+
 import six
 
 
@@ -189,7 +191,7 @@ def program_to_text(program):
     return "<%d>%s" % (node.id, node.name)
   s = six.StringIO()
   seen = set()
-  for node in utils.order_nodes(program.cfg_nodes):
+  for node in cfg_utils.order_nodes(program.cfg_nodes):
     seen.add(node)
     s.write("%s\n" % label(node))
     s.write("  From: %s\n" % ", ".join(label(n) for n in node.incoming))
