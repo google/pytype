@@ -211,5 +211,4 @@ class PickleTest(test_base.TargetIndependentTest):
       """, imports_map={"foo": foo, "bar": bar}, module_name="baz")
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

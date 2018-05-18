@@ -17,5 +17,4 @@ class InplaceTest(test_base.TargetPython3FeatureTest,
     self._check_inplace("/", ["x=3+2j", "y=1.0"], self.complex)
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

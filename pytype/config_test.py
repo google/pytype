@@ -1,7 +1,6 @@
 """Tests for config.py."""
 
 from pytype import config
-from pytype.tests import test_base
 
 import unittest
 
@@ -42,4 +41,4 @@ class ConfigTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-  test_base.main()
+  unittest.main()

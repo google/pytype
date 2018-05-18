@@ -26,5 +26,4 @@ class ErrorTest(test_base.TargetPython27FeatureTest):
         4, "wrong-arg-types", r"\n\s*next\s*$")])  # `next` on its own line
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

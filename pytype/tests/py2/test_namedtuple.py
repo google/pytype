@@ -37,5 +37,4 @@ class NamedtupleTests(test_base.TargetPython27FeatureTest):
                            (5, "duplicate-keyword-argument")])
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

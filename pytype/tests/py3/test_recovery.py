@@ -43,5 +43,4 @@ class RecoveryTests(test_base.TargetPython3BasicTest):
     self.assertErrorLogIs(errors, [(14, "name-error", r"other_module")])
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

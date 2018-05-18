@@ -10,6 +10,13 @@ if(NOT FLEX_FOUND)
   message(FATAL_ERROR "PyType requires 'flex'. The minimum required 'flex' version is ${min_flex_version}.")
 endif()
 
+# Find the python interpreter first so that Python libs corresponding to the
+# version of this interpreter can be found below.
+find_package(PythonInterp)
+if (NOT PYTHONINTERP_FOUND)
+  message(FATAL_ERROR "Python interpreter not found.")
+endif()
+
 find_package(PythonLibs)
 if(NOT PYTHONLIBS_FOUND)
   message(FATAL_ERROR "PyType requires Python developer libraries (https://packages.ubuntu.com/python-dev).")

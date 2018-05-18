@@ -90,5 +90,4 @@ class InplaceTest(test_base.TargetIndependentTest,
     self._check_inplace("^", ["x={1}", "y={2}"], self.int_set)
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

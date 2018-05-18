@@ -27,5 +27,4 @@ class SlotsTest(test_base.TargetPython27FeatureTest):
     self.assertErrorLogIs(errors, [(1, "bad-slots", r"fo\\xc3\\xb6")])
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

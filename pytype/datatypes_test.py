@@ -1,7 +1,6 @@
 """Tests for datatypes.py."""
 
 from pytype import datatypes
-from pytype.tests import test_base
 from pytype.typegraph import cfg
 
 import unittest
@@ -145,4 +144,4 @@ class DatatypesTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-  test_base.main()
+  unittest.main()

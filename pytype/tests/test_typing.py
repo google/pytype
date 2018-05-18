@@ -196,5 +196,4 @@ class TypingTest(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [(1, "pyi-error", r"ClassVar.*1.*2")])
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

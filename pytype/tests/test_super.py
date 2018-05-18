@@ -268,5 +268,4 @@ class SuperTest(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [(3, "not-writable", r"super")])
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

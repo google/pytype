@@ -122,5 +122,4 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
                               "def foo(x: X) -> Union[bytes, str]: ...")
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

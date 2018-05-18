@@ -321,5 +321,4 @@ class StrictNoneTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

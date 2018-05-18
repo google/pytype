@@ -186,5 +186,4 @@ class TupleTestPython3Feature(test_base.TargetPython3FeatureTest):
         errors, [(1, "bad-unpacking", "1 value.*3 variables")])
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

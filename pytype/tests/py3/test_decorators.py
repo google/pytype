@@ -17,5 +17,4 @@ class DecoratorsTest(test_base.TargetPython3BasicTest):
     self.assertErrorLogIs(errors, [(5, "name-error", r"bad_decorator")])
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

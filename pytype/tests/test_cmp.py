@@ -336,5 +336,4 @@ class InstanceUnequalityTest(test_base.TargetIndependentTest):
     """)
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

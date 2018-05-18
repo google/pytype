@@ -627,7 +627,23 @@ def _ReplaceMethods(toplevel):
   return False
 
 
-def main(debugging=False):
+def main(toplevels, is_main_module=True, debugging=False):
+  """The main method for tests subclassing one of the above classes.
+
+  This function should be called unconditionally, and typically as follows:
+
+    main(globals(), __name__ == "__main__")
+
+  This enables one to run the tests using the 'python -m unittest ...' command,
+  which does run the main test module as the main interpreter module.
+  Call to unittest.main is made only if |is_main_module| is true.
+
+  Arguments:
+    toplevels: The toplevels defined in the main test module.
+    is_main_module: True if the main test module is the main module in the
+                    interpreter.
+    debugging: Enable debug logs.
+  """
   # TODO(ampere): This is just a useful hack. Should be replaced with real
   #               argument handling.
   level = logging.DEBUG if debugging or len(sys.argv) > 1 else logging.WARNING
@@ -636,19 +652,15 @@ def main(debugging=False):
   # version set to 2.7, and another time with target Python version set to 3.6.
   # So, for tests falling in such buckets, we replace the single test method
   # with two methods, one each for the target version 2.7 and 3.6 respectively.
-  import __main__  # pylint: disable=g-import-not-at-top
-  for toplevel_name in dir(__main__):
-    toplevel = getattr(__main__, toplevel_name)
-    if _ReplaceMethods(toplevel):
-      for attr_name in dir(toplevel):
-        attr = getattr(toplevel, attr_name)
+  for _, tp in toplevels.items():
+    if _ReplaceMethods(tp):
+      for attr_name in dir(tp):
+        attr = getattr(tp, attr_name)
         if attr_name.startswith("test") and callable(attr):
-          setattr(toplevel, "%s_py2" % attr_name,
+          setattr(tp, "%s_py2" % attr_name,
                   _ReplacementMethod((2, 7), attr))
-          setattr(toplevel, "%s_py3" % attr_name,
+          setattr(tp, "%s_py3" % attr_name,
                   _ReplacementMethod((3, 6), attr))
-          delattr(toplevel, attr_name)
-  unittest.main()
-
-if __name__ == "__main__":
-  main()
+          delattr(tp, attr_name)
+  if is_main_module:
+    unittest.main()

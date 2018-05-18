@@ -372,5 +372,4 @@ class TypeVarTestPy3(test_base.TargetPython3FeatureTest):
           (3, "wrong-arg-types", r"Union\[bytes, str\].*int")])
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

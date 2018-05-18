@@ -1006,5 +1006,4 @@ class ErrorTest(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [(3, "attribute-error", r"Optional\[Any\]")])
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

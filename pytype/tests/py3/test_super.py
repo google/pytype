@@ -86,5 +86,4 @@ class TestSuperPython3Featue(test_base.TargetPython3FeatureTest):
           r".*Missing __class__ closure.*")])
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

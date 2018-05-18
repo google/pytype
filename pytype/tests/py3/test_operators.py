@@ -35,5 +35,4 @@ class InplaceTest(test_base.TargetPython3FeatureTest,
     self.check_inplace("itruediv", "/=")
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

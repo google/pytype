@@ -178,5 +178,4 @@ class BytecodeTest(test_base.BaseTest, test_base.MakeCodeMixin):
     self.assertItemsEqual(self.trace_vm.instructions_executed, [0, 1, 5, 6])
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

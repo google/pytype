@@ -95,5 +95,4 @@ class AbstractMethodTests(test_base.TargetIndependentTest):
                           [(5, "not-callable", r"'abstractproperty' object")])
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

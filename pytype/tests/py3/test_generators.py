@@ -24,5 +24,4 @@ class GeneratorTest(test_base.TargetPython3BasicTest):
     self.assertErrorLogIs(errors, [(4, "bad-return-type", r"str.*int")])
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

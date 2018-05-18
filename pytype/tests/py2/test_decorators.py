@@ -19,5 +19,4 @@ class DecoratorsTest(test_base.TargetPython27FeatureTest):
     self.assertErrorLogIs(errors, [(6, "attribute-error", r"Goodbye")])
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

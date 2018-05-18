@@ -95,5 +95,4 @@ class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
                                     r"Expected.*y: str.*Actual.*y: bytes")])
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

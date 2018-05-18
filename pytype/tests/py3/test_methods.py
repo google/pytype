@@ -54,5 +54,4 @@ class TestMethods(test_base.TargetPython3BasicTest):
     self.assertErrorLogIs(errors, [(4, "invalid-annotation", r"int.*self")])
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

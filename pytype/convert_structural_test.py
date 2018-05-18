@@ -8,7 +8,6 @@ from pytype import load_pytd
 from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import visitors
-from pytype.tests import test_base
 import unittest
 
 
@@ -711,4 +710,4 @@ class MatchTest(unittest.TestCase):
     self.assertItemsEqual(["Foo", "Base1"], mapping["~unknown1"])
 
 if __name__ == "__main__":
-  test_base.main()
+  unittest.main()

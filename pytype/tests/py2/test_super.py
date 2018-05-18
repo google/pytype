@@ -22,5 +22,4 @@ class SuperTest(test_base.TargetPython27FeatureTest):
         (6, "wrong-arg-count", r"2.*0")])
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

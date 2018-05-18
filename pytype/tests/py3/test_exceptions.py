@@ -22,5 +22,4 @@ class TestExceptionsPy3(test_base.TargetPython3FeatureTest):
     self.assertErrorLogIs(errors, [(1, "attribute-error")])
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

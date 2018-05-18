@@ -64,5 +64,4 @@ class CallsTest(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(2, "wrong-keyword-args")])
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

@@ -116,5 +116,4 @@ class OptionsTest(test_base.TargetIndependentTest):
     """, deep=False, maximum_depth=3, init_maximum_depth=4)
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")

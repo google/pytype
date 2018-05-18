@@ -293,5 +293,4 @@ class BuiltinTests3(test_base.TargetIndependentTest):
     self.Check("getattr(lambda: None, '__defaults__')")
 
 
-if __name__ == "__main__":
-  test_base.main()
+test_base.main(globals(), __name__ == "__main__")
