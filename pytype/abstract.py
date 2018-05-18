@@ -13,6 +13,7 @@ import itertools
 import logging
 
 from pytype import compat
+from pytype import datatypes
 from pytype import function
 from pytype import utils
 from pytype.pyc import loadmarshal
@@ -677,8 +678,8 @@ class SimpleAbstractValue(AtomicAbstractValue):
       vm: The TypegraphVirtualMachine to use.
     """
     super(SimpleAbstractValue, self).__init__(name, vm)
-    self.members = utils.MonitorDict()
-    self.type_parameters = utils.LazyAliasingMonitorDict()
+    self.members = datatypes.MonitorDict()
+    self.type_parameters = datatypes.LazyAliasingMonitorDict()
     self.maybe_missing_members = False
     # The latter caches the result of get_type_key. This is a recursive function
     # that has the potential to generate too many calls for large definitions.
@@ -848,7 +849,7 @@ class Instance(SimpleAbstractValue):
             #  class Foo(List[U]): pass
             try:
               self.type_parameters.add_alias(name, param.name)
-            except utils.AliasingDictConflictError as e:
+            except datatypes.AliasingDictConflictError as e:
               bad_names |= {name, param.name, e.existing_name}
           else:
             # We have either a non-formal parameter, e.g.,
@@ -2792,7 +2793,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     super(InterpreterClass, self).__init__(name, vm)
     self._bases = bases
     self.mro = self.compute_mro()
-    self.members = utils.MonitorDict(members)
+    self.members = datatypes.MonitorDict(members)
     Class.init_mixin(self, cls)
     self.instances = set()  # filled through register_instance
     self._instance_cache = {}
@@ -3820,7 +3821,7 @@ class Unknown(AtomicAbstractValue):
   def __init__(self, vm):
     name = "~unknown%d" % Unknown._current_id
     super(Unknown, self).__init__(name, vm)
-    self.members = utils.MonitorDict()
+    self.members = datatypes.MonitorDict()
     self.owner = None
     Unknown._current_id += 1
     self.class_name = self.name

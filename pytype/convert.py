@@ -6,10 +6,10 @@ import types
 from pytype import abstract
 from pytype import blocks
 from pytype import compat
+from pytype import datatypes
 from pytype import output
 from pytype import special_builtins
 from pytype import typing
-from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pytd import mro
 from pytype.pytd import pytd
@@ -728,7 +728,7 @@ class Converter(object):
         parameters = pyval.parameters
       assert (pyval.base_type.name == "typing.Generic" or
               len(parameters) <= len(template))
-      type_parameters = utils.LazyDict()
+      type_parameters = datatypes.LazyDict()
       for i, name in enumerate(template):
         if i < len(parameters):
           type_parameters.add_lazy_item(name, self.constant_to_value,

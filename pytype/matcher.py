@@ -2,10 +2,10 @@
 import logging
 
 from pytype import abstract
+from pytype import datatypes
 from pytype import function
 from pytype import special_builtins
 from pytype import typing
-from pytype import utils
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -42,14 +42,14 @@ class AbstractMatcher(object):
       arg_dict: A map of strings to pytd.Bindings instances.
       view: A mapping of Variable to Value.
     Returns:
-      A tuple (subst, name), with "subst" the utils.HashableDict if we found a
-      working substition, None otherwise, and "name" the bad parameter in case
+      A tuple (subst, name), with "subst" the datatypes.HashableDict if we found
+      a working substition, None otherwise, and "name" the bad parameter in case
       subst=None.
     """
     if not arg_dict:
       # A call with no arguments always succeeds.
       assert not formal_args
-      return utils.HashableDict(), None
+      return datatypes.HashableDict(), None
     subst = {}
     self._set_error_subst(None)
     for name, formal in formal_args:
@@ -59,7 +59,7 @@ class AbstractMatcher(object):
         formal = self.vm.annotations_util.sub_one_annotation(
             node, formal, [self._error_subst or {}])
         return None, abstract.BadParam(name=name, expected=formal)
-    return utils.HashableDict(subst), None
+    return datatypes.HashableDict(subst), None
 
   def bad_matches(self, var, other_type, node):
     """Match a Variable against a type. Return views that don't match.

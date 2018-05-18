@@ -21,6 +21,7 @@ import itertools
 import logging
 import re
 
+from pytype import datatypes
 from pytype import utils
 from pytype.pytd import mro
 from pytype.pytd import pytd
@@ -2201,13 +2202,13 @@ class VerifyContainers(Visitor):
     # GetBasesInMRO gave us the pytd.ClassType for each base. Map class types
     # to generic types so that we can iterate through the latter in MRO.
     cls_to_bases = self._GetGenericBasesLookupMap(node)
-    param_to_values = utils.AliasingDict()
+    param_to_values = datatypes.AliasingDict()
     ambiguous_aliases = set()
     for base in sum((cls_to_bases[cls] for cls in classes), []):
       for param, value in zip(base.base_type.cls.template, base.parameters):
         try:
           self._UpdateParamToValuesMapping(param_to_values, param, value)
-        except utils.AliasingDictConflictError:
+        except datatypes.AliasingDictConflictError:
           ambiguous_aliases.add(param.type_param.full_name)
     for param_name, values in param_to_values.items():
       if any(param_to_values[alias] is values for alias in ambiguous_aliases):
