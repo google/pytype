@@ -43,4 +43,30 @@ class RecoveryTests(test_base.TargetPython3BasicTest):
     self.assertErrorLogIs(errors, [(14, "name-error", r"other_module")])
 
 
+class RecoveryTestsPython3(test_base.TargetPython3FeatureTest):
+  """Tests for recovering after errors(python3 only)."""
+
+  def testBadCallParameter(self):
+    ty = self.Infer("""
+          def f():
+            return "%s" % chr("foo")
+        """, report_errors=False)
+    self.assertTypesMatchPytd(ty, """
+          def f() -> str
+        """)
+
+  def testBadFunction(self):
+    ty = self.Infer("""
+        import time
+        def f():
+          return time.unknown_function(3)
+        def g():
+          return '%s' % f()
+      """, report_errors=False)
+    self.assertTypesMatchPytd(ty, """
+        time = ...  # type: module
+        def f() -> ?
+        def g() -> str
+      """)
+
 test_base.main(globals(), __name__ == "__main__")

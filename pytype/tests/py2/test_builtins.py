@@ -346,5 +346,15 @@ class BuiltinTests(test_base.TargetPython27FeatureTest):
       v2 = ...  # type: int
     """)
 
+  def testStrUnicodeMod(self):
+    ty = self.Infer("""
+        def t_testStrUnicodeMod():
+          a = u"Hello"
+          return "%s Uni" %(u"Hello")
+        t_testStrUnicodeMod()
+      """, deep=False)
+    self.assertTypesMatchPytd(ty, """
+        def t_testStrUnicodeMod() -> unicode
+      """)
 
 test_base.main(globals(), __name__ == "__main__")

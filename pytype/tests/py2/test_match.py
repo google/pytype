@@ -47,7 +47,7 @@ class MatchTest(test_base.TargetPython27FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List
       a = ...  # type: List[nothing]
-      b = ...  # type: List[str]
+      b = ...  # type: List
       i = ...  # type: Any
     """)
 

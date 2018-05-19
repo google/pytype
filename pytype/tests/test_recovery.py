@@ -22,29 +22,6 @@ class RecoveryTests(test_base.TargetIndependentTest):
       def f() -> ?
     """)
 
-  def testBadCall(self):
-    ty = self.Infer("""
-      def f():
-        return "%s" % chr("foo")
-    """, report_errors=False)
-    self.assertTypesMatchPytd(ty, """
-      def f() -> str
-    """)
-
-  def testBadFunction(self):
-    ty = self.Infer("""
-      import time
-      def f():
-        return time.unknown_function(3)
-      def g():
-        return '%s' % f()
-    """, report_errors=False)
-    self.assertTypesMatchPytd(ty, """
-      time = ...  # type: module
-      def f() -> ?
-      def g() -> str
-    """)
-
   def testInheritFromInstance(self):
     ty = self.Infer("""
       class Foo(3):
