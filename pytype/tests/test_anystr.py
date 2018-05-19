@@ -1,6 +1,6 @@
 """Tests for typing.AnyStr."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -8,7 +8,7 @@ class AnyStrTest(test_base.TargetIndependentTest):
   """Tests for issues related to AnyStr."""
 
   def testTypeParameters(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import AnyStr
         def f(x: AnyStr) -> AnyStr

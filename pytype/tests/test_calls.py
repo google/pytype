@@ -1,6 +1,6 @@
 """Tests for calling other functions, and the corresponding checks."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -8,7 +8,7 @@ class CallsTest(test_base.TargetIndependentTest):
   """Tests for checking function calls."""
 
   def testOptional(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def foo(x: int, y: int = ..., z: int = ...) -> int
       """)
@@ -20,7 +20,7 @@ class CallsTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
 
   def testMissing(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def foo(x, y) -> int
       """)
@@ -31,7 +31,7 @@ class CallsTest(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(2, "missing-parameter")])
 
   def testExtraneous(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def foo(x, y) -> int
       """)
@@ -42,7 +42,7 @@ class CallsTest(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(2, "wrong-arg-count")])
 
   def testMissingKwOnly(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def foo(x, y, *, z) -> int
       """)
@@ -53,7 +53,7 @@ class CallsTest(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(2, "missing-parameter", r"\bz\b")])
 
   def testExtraKeyword(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def foo(x, y) -> int
       """)

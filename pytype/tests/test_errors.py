@@ -2,7 +2,7 @@
 
 import unittest
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -103,7 +103,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     )
 
   def testPyTDFunctionNameInMsg(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", "class A(list): pass")
       _, errors = self.InferWithErrors("""\
         import foo
@@ -142,7 +142,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     )
 
   def testPrettyPrintWrongArgs(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(a: int, b: int, c: int, d: int, e: int): ...
       """)
@@ -162,7 +162,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [(1, "base-class-error")])
 
   def testInvalidIteratorFromImport(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         class Codec(object):
             def __init__(self) -> None: ...
@@ -196,7 +196,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         errors, [(2, "module-attr", r"__iter__.*module 'sys'")])
 
   def testInheritFromGeneric(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")
@@ -211,7 +211,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(2, "wrong-arg-types", r"int.*mod\.Bar")])
 
   def testWrongKeywordArg(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("mycgi.pyi", """
         def escape(x: str or int) -> str or int
       """)
@@ -224,7 +224,7 @@ class ErrorTest(test_base.TargetIndependentTest):
                                       r"quote.*mycgi\.escape")])
 
   def testMissingParameter(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def bar(xray, yankee, zulu) -> str
       """)
@@ -247,7 +247,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [(5, "mro-error")])
 
   def testBadCall(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("other.pyi", """
         def foo(x: int, y: str) -> str: ...
       """)
@@ -273,7 +273,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [(3, "wrong-arg-count", "2.*3")])
 
   def testAttributeError(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("modfoo.pyi", "")
       _, errors = self.InferWithErrors("""\
         class Foo(object):
@@ -320,7 +320,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [(1, "attribute-error", r"foo")])
 
   def testPyiType(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x: list[int]) -> int: ...
       """)
@@ -356,7 +356,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [(3, "duplicate-keyword-argument", r"f.*x")])
 
   def testBadImport(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         def f() -> int: ...
         class f: ...
@@ -367,7 +367,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(1, "pyi-error")])
 
   def testBadImportDependency(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from b import X
         class Y(X): ...
@@ -378,7 +378,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(1, "pyi-error")])
 
   def testBadImportFrom(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo/a.pyi", """
         def f() -> int: ...
         class f: ...
@@ -390,7 +390,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(1, "pyi-error", r"foo\.a")])
 
   def testBadImportFromDependency(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo/a.pyi", """
           from a import X
           class Y(X): ...
@@ -402,7 +402,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(1, "pyi-error", r"foo\.a")])
 
   def testBadContainer(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import SupportsInt
         class A(SupportsInt[int]): pass
@@ -414,7 +414,7 @@ class ErrorTest(test_base.TargetIndependentTest):
                                       r"SupportsInt is not a container")])
 
   def testBadTypeParameterOrder(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
         K = TypeVar("K")
@@ -427,7 +427,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(1, "pyi-error", r"Illegal.*order.*a\.A")])
 
   def testDuplicateTypeParameter(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")
@@ -439,7 +439,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(1, "pyi-error", r"T")])
 
   def testTypeParameterInModuleConstant(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import TypeVar
         T = TypeVar("T")
@@ -451,7 +451,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(1, "pyi-error", r"a.*T.*a\.x")])
 
   def testTypeParameterInClassAttribute(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")
@@ -466,7 +466,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(3, "unbound-type-param", r"x.*A.*T")])
 
   def testUnboundTypeParameterInInstanceAttribute(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import TypeVar
         T = TypeVar("T")
@@ -479,7 +479,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(1, "pyi-error", r"a.*T.*a\.A\.x")])
 
   def testPrintUnionArg(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         def f(x: int or str) -> None
       """)
@@ -533,7 +533,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [(2, "not-writable", r"y.*int")])
 
   def testInvalidParametersOnMethod(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A(object):
           def __init__(self, x: int) -> None
@@ -554,7 +554,7 @@ class ErrorTest(test_base.TargetIndependentTest):
                                      (6, "missing-parameter", r"A\.__init__")])
 
   def testDuplicateKeywords(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x, *args, y) -> None
       """)
@@ -615,7 +615,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         errors, [(5, "wrong-arg-types", r"Type\[B\].*Type\[A\]")])
 
   def testBadNameImport(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         import typing
         x = ...  # type: typing.Rumpelstiltskin
@@ -627,7 +627,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(1, "pyi-error", r"Rumpelstiltskin")])
 
   def testBadNameImportFrom(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Rumpelstiltskin
         x = ...  # type: Rumpelstiltskin
@@ -639,7 +639,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(1, "pyi-error", r"Rumpelstiltskin")])
 
   def testMatchType(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Type
         class A(object): ...
@@ -664,7 +664,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       """)
 
   def testMatchParameterizedType(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, Type, TypeVar
         T = TypeVar("T")
@@ -680,7 +680,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(2, "wrong-arg-types", expected_error)])
 
   def testMROError(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A(object): ...
         class B(object): ...
@@ -695,7 +695,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(2, "mro-error", r"E")])
 
   def testBadMRO(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A(BaseException, ValueError): ...
       """)
@@ -707,7 +707,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(2, "mro-error", r"A")])
 
   def testUnsolvableAsMetaclass(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Any
         def __getattr__(name) -> Any
@@ -746,7 +746,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     """)
 
   def testFailedFunctionCall(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         def f(x: str, y: int) -> bool
         def f(x: str) -> bool
@@ -759,7 +759,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(2, "wrong-arg-types", r"")])
 
   def testNoncomputableMethod(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         T = TypeVar("T")
         def copy(x: T) -> T
@@ -801,7 +801,7 @@ class ErrorTest(test_base.TargetIndependentTest):
                                     r"Actual.*Dict\[int, int\]")])
 
   def testRecursion(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A(B): ...
         class B(A): ...
@@ -820,7 +820,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(2, "recursion-error", r"a\.A")])
 
   def testEmptyUnionOrOptional(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("f1.pyi", """\
         def f(x: Union): ...
       """)
@@ -843,7 +843,7 @@ class ErrorTest(test_base.TargetIndependentTest):
                                     r"a.*Dict\[str, int\]")])
 
   def testBadPyiDict(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Dict
         x = ...  # type: Dict[str, int, float]
@@ -905,7 +905,7 @@ class ErrorTest(test_base.TargetIndependentTest):
                                    (2, "wrong-arg-types", r"list.*int")])
 
   def testKwargOrder(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(*args, y, x, z: int): ...
         def g(x): ...
@@ -938,7 +938,7 @@ class ErrorTest(test_base.TargetIndependentTest):
                                     r"Callable\[\[Any, Any\], Any\]")])
 
   def testCleanPyiNamedtupleNames(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import NamedTuple
         X = NamedTuple("X", [])

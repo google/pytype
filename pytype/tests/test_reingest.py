@@ -2,7 +2,7 @@
 
 import unittest
 
-from pytype import utils
+from pytype import file_utils
 from pytype.pytd import pytd
 from pytype.tests import test_base
 
@@ -18,7 +18,7 @@ class ReingestTest(test_base.TargetIndependentTest):
       class A(Container):
         pass
     """, deep=False)
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(ty))
       self.Check("""
         # u.py
@@ -32,7 +32,7 @@ class ReingestTest(test_base.TargetIndependentTest):
         pass
       x = {"Union": Union}
     """, deep=False)
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(ty))
       self.Check("""
         from foo import Union
@@ -43,7 +43,7 @@ class ReingestTest(test_base.TargetIndependentTest):
       def decorate(f):
         return f
     """)
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       ty = self.Infer("""
         import foo
@@ -65,7 +65,7 @@ class ReingestTest(test_base.TargetIndependentTest):
       def maybe_decorate(f):
         return f or (lambda *args: 42)
     """)
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       ty = self.Infer("""
         import foo
@@ -86,7 +86,7 @@ class ReingestTest(test_base.TargetIndependentTest):
       import collections
       X = collections.namedtuple("X", ["a", "b"])
     """, deep=False)
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       self.Check("""
         import foo
@@ -100,7 +100,7 @@ class ReingestTest(test_base.TargetIndependentTest):
         def __new__(cls, x):
           return super(X, cls).__new__(cls)
     """)
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       self.Check("""
         import foo
@@ -120,7 +120,7 @@ class ReingestTest(test_base.TargetIndependentTest):
           _ = b
           return super(X, cls).__new__(cls, a)
     """)
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       _, errors = self.InferWithErrors("""\
         import foo
@@ -136,7 +136,7 @@ class ReingestTest(test_base.TargetIndependentTest):
           return super(_Foo, cls).__new__(cls)
       Foo = _Foo
     """)
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       self.Check("""
         import foo
@@ -150,7 +150,7 @@ class ReingestTest(test_base.TargetIndependentTest):
     foo2 = self.Infer("""
       has_dynamic_attributes = True
     """)
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo1.pyi", pytd.Print(foo1))
       d.create_file("foo2.pyi", pytd.Print(foo2))
       d.create_file("bar.pyi", """\
@@ -179,7 +179,7 @@ class ReingestTest(test_base.TargetIndependentTest):
         def foo(self):
           pass
     """)
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       _, errors = self.InferWithErrors("""\
         import foo
@@ -193,7 +193,7 @@ class ReingestTest(test_base.TargetIndependentTest):
       class MyList(list):
         write = list.append
     """)
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       ty = self.Infer("""
         import foo
@@ -214,7 +214,7 @@ class ReingestTest(test_base.TargetIndependentTest):
       class MyList(List[T]):
         write = list.append
     """)
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       ty = self.Infer("""
         import foo
@@ -235,7 +235,7 @@ class StrictNoneTest(test_base.TargetIndependentTest):
       def f():
         return x
     """)
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       self.Check("""
         import foo
@@ -249,7 +249,7 @@ class StrictNoneTest(test_base.TargetIndependentTest):
       def f():
         yield x
     """)
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       self.Check("""
         import foo
@@ -263,7 +263,7 @@ class StrictNoneTest(test_base.TargetIndependentTest):
       def f():
         return [x]
     """)
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       self.Check("""
         import foo
@@ -278,7 +278,7 @@ class StrictNoneTest(test_base.TargetIndependentTest):
       def f():
         return Foo.x
     """)
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       self.Check("""
         import foo
@@ -291,7 +291,7 @@ class StrictNoneTest(test_base.TargetIndependentTest):
       def fail():
         raise ValueError()
     """)
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       self.Check("""
         import foo
@@ -310,7 +310,7 @@ class StrictNoneTest(test_base.TargetIndependentTest):
         def __exit__(self, type, value, traceback):
           return None
     """)
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd.Print(foo))
       self.Check("""
         import foo

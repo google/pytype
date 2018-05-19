@@ -2,7 +2,7 @@
 
 import unittest
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -125,7 +125,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """)
 
   def testInheritFromUnsolvable(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Any
         def __getattr__(name) -> Any
@@ -476,7 +476,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """)
 
   def testGetAttrPyi(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo(object):
           def __getattr__(self, name) -> str
@@ -505,7 +505,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """)
 
   def testGetAttributePyi(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A(object):
           def __getattribute__(self, name) -> int
@@ -520,7 +520,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       """)
 
   def testInheritFromClassobj(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A():
           pass
@@ -539,7 +539,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       """)
 
   def testMetaclassGetAttribute(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("enum.pyi", """
         from typing import Any
         class EnumMeta(type):
@@ -572,7 +572,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       """)
 
   def testReturnClassType(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Type
         class A(object):
@@ -597,7 +597,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       """)
 
   def testCallClassType(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Type
         class A(object): ...
@@ -628,7 +628,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """)
 
   def testNew(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A(object):
           def __new__(cls, x: int) -> B
@@ -692,7 +692,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """)
 
   def testNewAndInitPyi(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")
@@ -788,7 +788,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       """)
 
   def testMetaclassPyi(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A(type):
           def f(self) -> float
@@ -804,7 +804,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       """)
 
   def testUnsolvableMetaclass(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Any
         def __getattr__(name) -> Any
@@ -936,7 +936,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """)
 
   def testMetaclass(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         T = TypeVar("T")
         class MyMeta(type):
@@ -978,7 +978,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """)
 
   def testBadMroParameterizedClass(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")
@@ -1105,7 +1105,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """)
 
   def testSuperInitExtraArg2(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo(object):
           def __new__(cls, a, b) -> Foo
@@ -1191,7 +1191,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """)
 
   def testModuleInClassDefinitionScope(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Bar: ...
       """)

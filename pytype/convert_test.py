@@ -3,8 +3,8 @@
 from pytype import abstract
 from pytype import config
 from pytype import errors
+from pytype import file_utils
 from pytype import load_pytd
-from pytype import utils
 from pytype import vm
 from pytype.pytd import pytd
 
@@ -21,7 +21,7 @@ class ConvertTest(unittest.TestCase):
         errors.ErrorLog(), options, load_pytd.Loader(None, self.PYTHON_VERSION))
 
   def _load_ast(self, name, src):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file(name + ".pyi", src)
       self._vm.loader.pythonpath = [d.path]  # monkeypatch
       return self._vm.loader.import_name(name)

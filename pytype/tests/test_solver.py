@@ -1,6 +1,6 @@
 """Test cases that need solve_unknowns."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -260,7 +260,7 @@ class SolverTests(test_base.TargetIndependentTest):
     """)
 
   def testMatchAgainstFunctionWithoutSelf(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("bad_mod.pyi", """
         class myclass:
           def bad_method() -> bool
@@ -302,7 +302,7 @@ class SolverTests(test_base.TargetIndependentTest):
     """)
 
   def testMutatingTypeParameters(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List
         def f() -> List[int]
@@ -321,7 +321,7 @@ class SolverTests(test_base.TargetIndependentTest):
       """)
 
   def testDuplicateKeyword(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import TypeVar
         T = TypeVar("T")

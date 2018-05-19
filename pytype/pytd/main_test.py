@@ -4,7 +4,7 @@ import os
 import sys
 import textwrap
 import unittest
-from pytype import utils
+from pytype import file_utils
 from pytype.pytd import main as pytd_tool
 
 
@@ -42,14 +42,14 @@ class TestPytdTool(unittest.TestCase):
       pytd_tool.main()
 
   def test_parse_error(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       inpath = d.create_file("in.pytd", "def f(x): str")  # malformed pytd
       sys.argv = ["main.py", inpath]
       with self.assertRaises(SystemExit):
         pytd_tool.main()
 
   def test_no_output(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       inpath = d.create_file("in.pytd", "def f(x) -> str")
       # Not specifying an output is fine; the tool simply checks that the input
       # file is parseable.
@@ -57,7 +57,7 @@ class TestPytdTool(unittest.TestCase):
       pytd_tool.main()
 
   def test_output(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       src = textwrap.dedent("""
         @overload
         def f(x: int) -> str: ...
@@ -72,7 +72,7 @@ class TestPytdTool(unittest.TestCase):
         self.assertMultiLineEqual(f.read(), src)
 
   def test_optimize(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       inpath = d.create_file("in.pytd", """
         @overload
         def f(x: int) -> str: ...

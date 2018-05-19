@@ -5,8 +5,8 @@ import tempfile
 import textwrap
 
 from pytype import compat
+from pytype import file_utils
 from pytype import imports_map_loader
-from pytype import utils
 
 import unittest
 
@@ -39,7 +39,7 @@ class ImportMapLoaderTest(unittest.TestCase):
 
   def testImportsInfoFilter(self):
     """Test filtering out the current target's entry from the imports info."""
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       # The files in our "program" that we're building an imports_map for.
       files = [
           "a/__init__.py",

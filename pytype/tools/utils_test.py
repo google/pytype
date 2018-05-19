@@ -3,7 +3,7 @@
 import os
 import unittest
 
-from pytype import utils as pytype_utils
+from pytype import file_utils
 from pytype.tools import utils
 
 
@@ -51,7 +51,7 @@ class TestPathExpansion(unittest.TestCase):
                      [full_path1, full_path2])
 
   def test_expand_with_cwd(self):
-    with pytype_utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       f = d.create_file('foo.py')
       self.assertEqual(utils.expand_path('foo.py', d.path), f)
 
@@ -67,7 +67,7 @@ class TestMakeDirsOrDie(unittest.TestCase):
   """Tests for utils.makedirs_or_die()."""
 
   def test_make(self):
-    with pytype_utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       subdir = os.path.join(d.path, 'some/path')
       utils.makedirs_or_die(subdir, '')
       self.assertTrue(os.path.isdir(subdir))

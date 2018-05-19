@@ -1,6 +1,6 @@
 """Tests for typing.py."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.pytd import pep484
 from pytype.tests import test_base
 
@@ -108,7 +108,7 @@ class TypingTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, "")
 
   def test_recursive_tuple(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Tuple
         class Foo(Tuple[Foo]): ...
@@ -172,7 +172,7 @@ class TypingTest(test_base.TargetIndependentTest):
         errors, [(1, "not-supported-yet", r"typing.ClassVar")])
 
   def test_pyi_classvar(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import ClassVar
         class X:
@@ -184,7 +184,7 @@ class TypingTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
 
   def test_pyi_classvar_argcount(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import ClassVar
         class X:

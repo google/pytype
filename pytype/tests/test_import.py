@@ -2,8 +2,8 @@
 
 import unittest
 
+from pytype import file_utils
 from pytype import imports_map_loader
-from pytype import utils
 from pytype.tests import test_base
 
 
@@ -33,7 +33,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testLongFrom(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("path/to/my_module.pyi",
                     "def foo() -> str")
       ty = self.Infer("""\
@@ -57,7 +57,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testStarImport(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("my_module.pyi", """
         def f() -> str
         class A(object):
@@ -75,7 +75,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testStarImportAny(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Any
         def __getattr__(name) -> Any
@@ -89,7 +89,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testStarImportInPyi(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class X: ...
       """)
@@ -123,7 +123,7 @@ class ImportTest(test_base.TargetIndependentTest):
                                    (3, "import-error", r"other_nonsense")])
 
   def testPathImport(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("path/to/my_module.pyi",
                     "def qqsv() -> str")
       d.create_file("path/to/__init__.pyi", "")
@@ -139,7 +139,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testPathImport2(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("path/to/my_module.pyi",
                     "def qqsv() -> str")
       d.create_file("path/to/__init__.pyi", "")
@@ -229,7 +229,7 @@ class ImportTest(test_base.TargetIndependentTest):
     """)
 
   def testImportPytd(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("other_file.pyi", """
         def f() -> int
       """)
@@ -242,7 +242,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testImportPytd2(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("other_file.pyi", """
         def f() -> int
       """)
@@ -258,7 +258,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testImportDirectory(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("sub/other_file.pyi", "def f() -> int")
       d.create_file("sub/bar/baz.pyi", "def g() -> float")
       d.create_file("sub/__init__.pyi", "")
@@ -285,7 +285,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testImportInit(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("sub/__init__.pyi", """
         def f() -> int
       """)
@@ -301,7 +301,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testImportName(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class A(object):
           pass
@@ -319,7 +319,7 @@ class ImportTest(test_base.TargetIndependentTest):
     """)
 
   def testDeepDependency(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", "x = ...  # type: bar.Bar")
       d.create_file("bar.pyi", """
           class Bar(object):
@@ -337,7 +337,7 @@ class ImportTest(test_base.TargetIndependentTest):
     """)
 
   def testRelativeImport(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo/baz.pyi", """x = ...  # type: int""")
       d.create_file("foo/bar.py", """
         from . import baz
@@ -354,7 +354,7 @@ class ImportTest(test_base.TargetIndependentTest):
   def testDotPackage(self):
     # This tests up one level: note that the test file (foo.py)
     # is tested in the context of the up-level director "up1".
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("up1/foo.py", """
         from .bar import x
       """)
@@ -368,7 +368,7 @@ class ImportTest(test_base.TargetIndependentTest):
 
   def testDotDotPackage(self):
     # Similar to testDotPackage, except two levels
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("up2/baz/foo.py", """
         from ..bar import x
       """)
@@ -382,7 +382,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testDotPackageNoInit(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.py", """
         from .bar import x
       """)
@@ -393,7 +393,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testDotDotPackagNoInit(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("baz/foo.py", """
         from ..bar import x
       """)
@@ -404,7 +404,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testDotDot(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo/baz.pyi", """x = ...  # type: int""")
       d.create_file("foo/deep/bar.py", """
         from .. import baz
@@ -422,7 +422,7 @@ class ImportTest(test_base.TargetIndependentTest):
 
   def testDotDotPackageInPyi(self):
     # Similar to testDotDotPackage, except for a pyi file.
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("up2/baz/foo.pyi", """
         from ..bar import X
       """)
@@ -441,7 +441,7 @@ class ImportTest(test_base.TargetIndependentTest):
 
   def testTooManyDotsInPackageInPyi(self):
     # Trying to go up more directories than the package path contains
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("up/foo.pyi", "from ..bar import X")
       d.create_file("up/bar.pyi", "class X: ...")
       _, err = self.InferWithErrors(
@@ -451,7 +451,7 @@ class ImportTest(test_base.TargetIndependentTest):
 
   def testFromDotInPyi(self):
     # from . import module
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo/a.pyi", "class X: ...")
       d.create_file("foo/b.pyi", """\
         from . import a
@@ -470,13 +470,13 @@ class ImportTest(test_base.TargetIndependentTest):
   def testUnusedFromDotInPyi(self):
     # A `from . import module` that does not subsequently use the module should
     # not raise an unreplaced NamedType error.
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo/a.pyi", "class X: ...")
       d.create_file("foo/b.pyi", "from . import a")
       self.Check("import foo.b", pythonpath=[d.path])
 
   def testFileImport1(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("path/to/some/module.pyi",
                     "def foo(x:int) -> str")
       d.create_file("path/to/some/__init__.pyi", "")
@@ -493,7 +493,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testFileImport2(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("path/to/some/module.pyi",
                     "def foo(x:int) -> str")
       d.create_file("path/to/some/__init__.pyi", "")
@@ -553,7 +553,7 @@ class ImportTest(test_base.TargetIndependentTest):
     """)
 
   def testMatchAgainstImported(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo(object):
           pass
@@ -585,7 +585,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testImportedConstants(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("module.pyi", """
         x = ...  # type: int
         class Foo(object):
@@ -608,7 +608,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testCircular(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("x.pyi", """
           class X(object):
             pass
@@ -639,7 +639,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testReimport(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
           from collections import OrderedDict as MyOrderedDict
       """)
@@ -653,7 +653,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testImportFunction(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
           from math import pow as mypow
       """)
@@ -669,7 +669,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testImportConstant(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("mymath.pyi", """
           from math import pi as half_tau
       """)
@@ -685,7 +685,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testImportMap(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       foo_filename = d.create_file("foo.pyi", """
           bar = ...  # type: int
       """)
@@ -703,7 +703,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testImportResolveOnDummy(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
           from typing import Any
           def __getattr__(name) -> Any: ...
@@ -725,7 +725,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testTwoLevel(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         +++ /&* unparseable *&/ +++
       """)
@@ -741,7 +741,7 @@ class ImportTest(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [(1, "pyi-error", r"a\.pyi")])
 
   def testSubdirAndModuleWithSameNameAsPackage(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("pkg/__init__.pyi", """
           from pkg.pkg.pkg import *
           from pkg.bar import *""")
@@ -761,7 +761,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testRedefinedBuiltin(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any
         object = ...  # type: Any
@@ -778,7 +778,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testRedefinedBuiltin2(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class object:
           def foo(self) -> None: ...
@@ -800,7 +800,7 @@ class ImportTest(test_base.TargetIndependentTest):
       ])
 
   def testNoFailOnBadSymbolLookup(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x: FooBar) -> FooBar
       """)
@@ -810,7 +810,7 @@ class ImportTest(test_base.TargetIndependentTest):
 
   @unittest.skip("instantiating 'type' should use 'Type[Any]', not 'Any'")
   def testImportTypeFactory(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         def factory() -> type
       """)
@@ -824,7 +824,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testGetBadSubmoduleAsAttribute(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo/__init__.pyi", "")
       d.create_file("foo/bar.pyi", "nonsense")
       self.assertNoCrash(self.Check, """
@@ -854,7 +854,7 @@ class ImportTest(test_base.TargetIndependentTest):
     """)
 
   def testAttributeOnModule(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         foo = ...  # type: int
       """)
@@ -869,7 +869,7 @@ class ImportTest(test_base.TargetIndependentTest):
     ])
 
   def testFromImport(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo/b.pyi", """
         from foo import c
         class bar(c.X): ...
@@ -884,7 +884,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
 
   def testImportMapFilter(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       imp_path = ".".join(d.path[1:].split("/"))
       init_body = """\
         from {0}.foo import bar
@@ -917,7 +917,7 @@ class ImportTest(test_base.TargetIndependentTest):
         """.format(imp_path))
 
   def testMutualImports(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("pkg/a.pyi", """
         from typing import TypeVar, Generic, List
         from .b import Foo
@@ -944,7 +944,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testModuleReexportsAndAliases(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("pkg/a.pyi", """
         from pkg import b as c
         from pkg.b import e as f
@@ -980,7 +980,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testModuleClassConflict(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo/bar.pyi", "def __getattr__(name) -> ?")
       ty = self.Infer("""
         from foo import bar
@@ -997,7 +997,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testClassAlias(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo/bar.pyi", "def __getattr__(name) -> ?")
       ty = self.Infer("""
         from foo import bar

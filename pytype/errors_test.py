@@ -6,8 +6,8 @@ import os
 import textwrap
 
 from pytype import errors
+from pytype import file_utils
 from pytype import state as frame_state
-from pytype import utils
 
 import unittest
 
@@ -125,7 +125,7 @@ class ErrorTest(unittest.TestCase):
     message, details = "This is an error", "with\nsome\ndetails: \"1\", 2, 3"
     errorlog.error(op.to_stack(), message, details + "0")
     errorlog.error(op.to_stack(), message, details + "1")
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       filename = d.create_file("errors.csv")
       errorlog.print_to_csv_file(filename)
       with open(filename, "r") as fi:
@@ -144,7 +144,7 @@ class ErrorTest(unittest.TestCase):
     errorlog = errors.ErrorLog()
     stack = _fake_stack(2)
     errorlog.error(stack, "", "some\ndetails")
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       filename = d.create_file("errors.csv")
       errorlog.print_to_csv_file(filename)
       with open(filename, "r") as fi:

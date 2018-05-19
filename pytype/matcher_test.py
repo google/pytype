@@ -5,8 +5,8 @@ import unittest
 from pytype import abstract
 from pytype import config
 from pytype import errors
+from pytype import file_utils
 from pytype import load_pytd
-from pytype import utils
 from pytype import vm
 
 import unittest
@@ -29,7 +29,7 @@ class MatcherTest(unittest.TestCase):
   def _parse_and_lookup(self, src, objname, filename=None):
     if filename is None:
       filename = str(hash(src))
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file(filename + ".pyi", src)
       self.vm.loader.pythonpath = [d.path]   # monkeypatch
       ast = self.vm.loader.import_name(filename)

@@ -2,7 +2,7 @@
 
 import textwrap
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -10,7 +10,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
   """Tests for typing.py."""
 
   def _check_call(self, t, expr):  # pylint: disable=invalid-name
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import %(type)s
         def f() -> %(type)s
@@ -59,7 +59,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
     self._check_call("Container", "42 in x")
 
   def test_io(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import IO
         def f() -> IO[str]
@@ -114,7 +114,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
     self._check_call("TextIO", "x.read(10).upper()")
 
   def test_sequence_and_tuple(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Sequence, Tuple
         def seq() -> Sequence[str]
@@ -144,7 +144,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
       """)
 
   def test_mutablesequence_and_list(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List, MutableSequence
         def seq() -> MutableSequence[str]
@@ -179,7 +179,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
       """)
 
   def test_deque(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Deque
         def deq() -> Deque[int]
@@ -211,7 +211,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
       """)
 
   def test_mutablemapping(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import MutableMapping, TypeVar
         K = TypeVar("K")
@@ -247,7 +247,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
     self._check_call("Dict", "x[42j]")
 
   def test_abstractset(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import AbstractSet
         def f() -> AbstractSet[str]
@@ -279,7 +279,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
     self._check_call("FrozenSet", "3 in x")
 
   def test_mutableset(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import MutableSet
         def f() -> MutableSet[str]
@@ -325,7 +325,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
 
   def test_pattern_and_match(self):
     # Basic pattern sanity check.
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Pattern
         def f() -> Pattern[str]

@@ -2,7 +2,7 @@
 
 import textwrap
 
-from pytype import utils
+from pytype import file_utils
 from pytype.pyi import parser
 from pytype.pytd import visitors
 from pytype.tests import test_base
@@ -41,7 +41,7 @@ class PickleTest(test_base.TargetIndependentTest):
       def g() -> json.JSONDecoder:
         return json.JSONDecoder()
     """, pickle=True, module_name="foo")
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       u = d.create_file("u.pickled", pickled)
       ty = self.Infer("""
         import u
@@ -57,7 +57,7 @@ class PickleTest(test_base.TargetIndependentTest):
     pickled = self.Infer("""
       x = type
     """, deep=False, pickle=True, module_name="foo")
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       u = d.create_file("u.pickled", pickled)
       ty = self.Infer("""
         import u
@@ -77,7 +77,7 @@ class PickleTest(test_base.TargetIndependentTest):
       file_dispatcher = asyncore.file_dispatcher  # copy class
     """, deep=False, pickle=True, module_name="foo")
     self._verifyDeps(pickled_foo, ["__builtin__"], ["asyncore"])
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       foo = d.create_file("foo.pickled", pickled_foo)
       pickled_bar = self.Infer("""
         import foo
@@ -98,7 +98,7 @@ class PickleTest(test_base.TargetIndependentTest):
       """)
 
   def testOptimizeOnLateTypes(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       pickled_foo = self.Infer("""
         class X(object): pass
       """, deep=False, pickle=True, module_name="foo")
@@ -119,7 +119,7 @@ class PickleTest(test_base.TargetIndependentTest):
       """, deep=False, imports_map={"foo": foo, "bar": bar})
 
   def testFileChange(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       pickled_xy = self.Infer("""
         class X(object): pass
         class Y(object): pass
@@ -152,7 +152,7 @@ class PickleTest(test_base.TargetIndependentTest):
       """, deep=False, imports_map={"foo": foo, "bar": bar})
 
   def testFileRename(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       pickled_other_foo = self.Infer("""
         class Foo: pass
       """, deep=False, pickle=True, module_name="bar")
@@ -172,7 +172,7 @@ class PickleTest(test_base.TargetIndependentTest):
                  module_name="baz")
 
   def testOptimize(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       pickled_foo = self.PicklePyi("""
         import UserDict
         class Foo(object): ...
@@ -198,7 +198,7 @@ class PickleTest(test_base.TargetIndependentTest):
         import UserDict
         def f(x: UserDict.UserDict) -> None: ...
       """, module_name="foo")
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       foo = d.create_file("foo.pickled", pickled_foo)
       self.loader.imports_map = {"foo": foo}
       pickled_bar = self.PicklePyi("""

@@ -1,6 +1,6 @@
 import unittest
 
-from pytype import utils
+from pytype import file_utils
 from pytype.pytd import pytd
 from pytype.tests import test_base
 
@@ -581,7 +581,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """)
 
   def testBuiltinStarArgs(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("myjson.pyi", """
         from typing import Any
         def loads(s: str, encoding: Any = ...) -> Any: ...
@@ -597,7 +597,7 @@ class MethodsTest(test_base.TargetIndependentTest):
       """)
 
   def testBuiltinStarStarArgs(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("myjson.pyi", """
         from typing import Any
         def loads(s: str, encoding: Any = ...) -> Any: ...
@@ -613,7 +613,7 @@ class MethodsTest(test_base.TargetIndependentTest):
       """)
 
   def testBuiltinKeyword(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("myjson.pyi", """
         from typing import Any
         def loads(s: str, encoding: Any = ...) -> Any: ...

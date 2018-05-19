@@ -3,7 +3,7 @@
 import os
 import unittest
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tools.analyze_project import config
 
 
@@ -39,7 +39,7 @@ class TestConfig(unittest.TestCase):
     self.assertEqual(conf.output_dir, os.path.join(path, 'pytype_output'))
 
   def test_config_file(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       f = d.create_file('test.cfg', PYTYPE_CFG)
       conf = config.Config()
       path = conf.read_from_file(f)
@@ -47,7 +47,7 @@ class TestConfig(unittest.TestCase):
       self._validate_file_contents(conf, d.path)
 
   def test_setup_cfg(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       f = d.create_file('setup.cfg', SETUP_CFG)
       conf = config.Config()
       path = conf.read_from_setup_cfg(d.path)
@@ -55,7 +55,7 @@ class TestConfig(unittest.TestCase):
       self._validate_file_contents(conf, d.path)
 
   def test_setup_cfg_from_subdir(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       f = d.create_file('setup.cfg', SETUP_CFG)
       sub = d.create_directory('x/y/z')
       conf = config.Config()
@@ -64,7 +64,7 @@ class TestConfig(unittest.TestCase):
       self._validate_file_contents(conf, d.path)
 
   def test_missing_setup_cfg_section(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file('setup.cfg', RANDOM_CFG)
       conf = config.Config()
       path = conf.read_from_setup_cfg(d.path)
@@ -72,7 +72,7 @@ class TestConfig(unittest.TestCase):
       self.assertEqual(conf.python_version, u'3.6')
 
   def test_missing_config_file_section(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       f = d.create_file('test.cfg', RANDOM_CFG)
       conf = config.Config()
       path = conf.read_from_file(f)
@@ -85,7 +85,7 @@ class TestConfig(unittest.TestCase):
 
   def test_read_bad_format(self):
     conf = config.Config()
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       f = d.create_file('test.cfg', 'ladadeda := squirrels')
       self.assertIsNone(conf.read_from_file(f))
 
@@ -101,14 +101,14 @@ class TestGenerateConfig(unittest.TestCase):
       config.generate_sample_config_or_die('/does/not/exist/sample.cfg')
 
   def test_existing_file(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       f = d.create_file('sample.cfg')
       with self.assertRaises(SystemExit):
         config.generate_sample_config_or_die(f)
 
   def test_generate(self):
     conf = config.Config()
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       f = os.path.join(d.path, 'sample.cfg')
       config.generate_sample_config_or_die(f)
       conf.read_from_file(f)  # Test that we've generated a valid config.

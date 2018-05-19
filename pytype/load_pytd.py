@@ -3,6 +3,7 @@
 import logging
 import os
 
+from pytype import file_utils
 from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import pytd_utils
@@ -205,7 +206,7 @@ class Loader(object):
   def _create_empty(self, module_name, filename):
     ast = self.load_file(module_name, filename,
                          pytd_utils.CreateModule(module_name))
-    return ast.Replace(is_package=utils.is_pyi_directory_init(filename))
+    return ast.Replace(is_package=file_utils.is_pyi_directory_init(filename))
 
   def _get_existing_ast(self, module_name):
     existing = self._modules.get(module_name)
@@ -363,7 +364,7 @@ class Loader(object):
     """Load a pytd/pyi that ships with pytype or typeshed."""
     # Try our own type definitions first.
     if not third_party_only:
-      builtin_dir = utils.get_versioned_path(subdir, self.python_version)
+      builtin_dir = file_utils.get_versioned_path(subdir, self.python_version)
       mod = self._parse_predefined(builtin_dir, module_name)
       if not mod:
         mod = self._parse_predefined(builtin_dir, module_name, as_package=True)

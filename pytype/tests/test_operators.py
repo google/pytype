@@ -1,6 +1,6 @@
 """Test operators (basic tests)."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -254,7 +254,7 @@ class ReverseTest(test_base.TargetIndependentTest,
     self.check_reverse("sub", "-")
 
   def test_custom(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("test.pyi", """
         from typing import Tuple
         class Test():

@@ -1,6 +1,6 @@
 """Tests for the analysis phase matcher (match_var_against_type)."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -8,7 +8,7 @@ class MatchTest(test_base.TargetIndependentTest):
   """Tests for matching types."""
 
   def testTypeAgainstCallable(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Callable
         def f(x: Callable) -> str
@@ -38,7 +38,7 @@ class MatchTest(test_base.TargetIndependentTest):
     """)
 
   def testGenericHierarchy(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Iterable
         def f(x: Iterable[str]) -> str
@@ -53,7 +53,7 @@ class MatchTest(test_base.TargetIndependentTest):
       """)
 
   def testGeneric(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, Iterable
         K = TypeVar("K")
@@ -75,7 +75,7 @@ class MatchTest(test_base.TargetIndependentTest):
       """)
 
   def testMatchIdentityFunction(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import TypeVar
         T = TypeVar("T")
@@ -92,7 +92,7 @@ class MatchTest(test_base.TargetIndependentTest):
       """)
 
   def testCallableReturn(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Callable, TypeVar
         T = TypeVar("T")
@@ -107,7 +107,7 @@ class MatchTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
 
   def testCallableUnionReturn(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Callable, TypeVar
         T1 = TypeVar("T1")
@@ -125,7 +125,7 @@ class MatchTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
 
   def testAnyBaseClass(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any
         class Foo(Any): pass

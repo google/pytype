@@ -6,7 +6,7 @@ File 3/3. Split into parts to enable better test parallelism.
 import unittest
 
 from pytype import abstract
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -134,7 +134,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [(7, "wrong-arg-count", r"1.*4")])
 
   def testNewlines(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("newlines.txt", """\
           1
           2

@@ -1,6 +1,6 @@
 """Tests for @abc.abstractmethod in abc_overlay.py."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -8,7 +8,7 @@ class AbstractMethodTests(test_base.TargetIndependentTest):
   """Tests for @abc.abstractmethod."""
 
   def test_instantiate_pyi_abstract_class(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         import abc
         class Example(metaclass=abc.ABCMeta):
@@ -34,7 +34,7 @@ class AbstractMethodTests(test_base.TargetIndependentTest):
                                     r"foo.*Example")])
 
   def test_multiple_inheritance_implementation_pyi(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         import abc
         class Interface(metaclass=abc.ABCMeta):
@@ -51,7 +51,7 @@ class AbstractMethodTests(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
 
   def test_multiple_inheritance_error_pyi(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         import abc
         class X(object): ...
@@ -67,7 +67,7 @@ class AbstractMethodTests(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(2, "not-instantiable", r"foo\.Foo.*foo")])
 
   def test_abc_metaclass_from_decorator(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("six.pyi", """
         from typing import TypeVar, Callable
         T = TypeVar('T')

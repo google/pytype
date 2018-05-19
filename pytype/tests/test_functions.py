@@ -1,6 +1,6 @@
 """Test functions."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -319,7 +319,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       """)
 
   def test_wraps(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("myfunctools.pyi", """
         from typing import Any, Callable, Sequence
         from typing import Any
@@ -383,7 +383,7 @@ class TestFunctions(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [(2, "wrong-keyword-args", r"foo.*max")])
 
   def test_multiple_signatures_with_type_parameter(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List, TypeVar
         T = TypeVar("T")
@@ -403,7 +403,7 @@ class TestFunctions(test_base.TargetIndependentTest):
 
   def test_unknown_single_signature(self):
     # Test that the right signature is picked in the presence of an unknown
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List, TypeVar
         T = TypeVar("T")
@@ -422,7 +422,7 @@ class TestFunctions(test_base.TargetIndependentTest):
     """)
 
   def test_unknown_with_solved_type_parameter(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List, TypeVar
         T = TypeVar("T")
@@ -442,7 +442,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       """)
 
   def test_unknown_with_extra_information(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List, TypeVar
         T = TypeVar("T")
@@ -472,7 +472,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       """)
 
   def test_type_parameter_in_return(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")
@@ -494,7 +494,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       """)
 
   def test_multiple_signatures(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x: str) -> float
         def f(x: int, y: bool) -> int
@@ -509,7 +509,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       """)
 
   def test_multiple_signatures_with_unknown(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(arg1: str) -> float
         def f(arg2: int) -> bool
@@ -526,7 +526,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       """)
 
   def test_multiple_signatures_with_optional_arg(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x: str) -> int
         def f(...) -> float
@@ -543,7 +543,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       """)
 
   def test_multiple_signatures_with_kwarg(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(*, y: int) -> bool
         def f(y: str) -> float
@@ -595,7 +595,7 @@ class TestFunctions(test_base.TargetIndependentTest):
     """)
 
   def test_function_class(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f() -> None: ...
       """)
@@ -618,7 +618,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       """)
 
   def test_type_parameter_visibility(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Tuple, TypeVar, Union
         T = TypeVar("T")
@@ -635,7 +635,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       """)
 
   def test_pytd_function_in_class(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def bar(): ...
       """)
@@ -686,7 +686,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       """)
 
   def test_set_defaults_non_new(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """\
         def b(x: int, y: int, z: int): ...
         """)
@@ -801,7 +801,7 @@ class TestFunctions(test_base.TargetIndependentTest):
     """)
 
   def test_pyi_starargs(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x: str, ...) -> None: ...
       """)

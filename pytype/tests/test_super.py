@@ -1,6 +1,6 @@
 """Tests for super()."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -166,7 +166,7 @@ class SuperTest(test_base.TargetIndependentTest):
     """)
 
   def testSuperWithAmbiguousBase(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Grandparent(object):
           def f(self) -> int
@@ -247,7 +247,7 @@ class SuperTest(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [(4, "not-writable", r"super")])
 
   def testSuperNothingSetAttr(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo(nothing): ...
       """)

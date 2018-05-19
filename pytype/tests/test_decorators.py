@@ -1,6 +1,6 @@
 """Test for function and class decorators."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -251,7 +251,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
     """)
 
   def testInferCalledDecoratedMethod(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any, Callable, List, TypeVar
         T = TypeVar("T")

@@ -1,7 +1,6 @@
 """Tests for utils.py."""
 
 import logging
-import os
 
 from pytype import utils
 
@@ -16,13 +15,6 @@ log = logging.getLogger(__name__)
 class UtilsTest(unittest.TestCase):
   """Test generic utilities."""
 
-  def testReplaceExtension(self):
-    self.assertEqual("foo.bar", utils.replace_extension("foo.txt", "bar"))
-    self.assertEqual("foo.bar", utils.replace_extension("foo.txt", ".bar"))
-    self.assertEqual("a.b.c.bar", utils.replace_extension("a.b.c.txt", ".bar"))
-    self.assertEqual("a.b/c.bar", utils.replace_extension("a.b/c.d", ".bar"))
-    self.assertEqual("xyz.bar", utils.replace_extension("xyz", "bar"))
-
   def testNumericSortKey(self):
     k = utils.numeric_sort_key
     self.assertLess(k("1aaa"), k("12aa"))
@@ -33,50 +25,6 @@ class UtilsTest(unittest.TestCase):
   def testPrettyDNF(self):
     dnf = [["a", "b"], "c", ["d", "e", "f"]]
     self.assertEqual(utils.pretty_dnf(dnf), "(a & b) | c | (d & e & f)")
-
-  def testTempdir(self):
-    with utils.Tempdir() as d:
-      filename1 = d.create_file("foo.txt")
-      filename2 = d.create_file("bar.txt", "\tdata2")
-      filename3 = d.create_file("baz.txt", "data3")
-      filename4 = d.create_file("d1/d2/qqsv.txt", "  data4.1\n  data4.2")
-      filename5 = d.create_directory("directory")
-      self.assertEqual(filename1, d["foo.txt"])
-      self.assertEqual(filename2, d["bar.txt"])
-      self.assertEqual(filename3, d["baz.txt"])
-      self.assertEqual(filename4, d["d1/d2/qqsv.txt"])
-      self.assertTrue(os.path.isdir(d.path))
-      self.assertTrue(os.path.isfile(filename1))
-      self.assertTrue(os.path.isfile(filename2))
-      self.assertTrue(os.path.isfile(filename3))
-      self.assertTrue(os.path.isfile(filename4))
-      self.assertTrue(os.path.isdir(os.path.join(d.path, "d1")))
-      self.assertTrue(os.path.isdir(os.path.join(d.path, "d1", "d2")))
-      self.assertTrue(os.path.isdir(filename5))
-      self.assertEqual(filename4, os.path.join(d.path, "d1", "d2", "qqsv.txt"))
-      for filename, contents in [(filename1, ""),
-                                 (filename2, "data2"),  # dedented
-                                 (filename3, "data3"),
-                                 (filename4, "data4.1\ndata4.2"),  # dedented
-                                ]:
-        with open(filename, "r") as fi:
-          self.assertEqual(fi.read(), contents)
-    self.assertFalse(os.path.isdir(d.path))
-    self.assertFalse(os.path.isfile(filename1))
-    self.assertFalse(os.path.isfile(filename2))
-    self.assertFalse(os.path.isfile(filename3))
-    self.assertFalse(os.path.isdir(os.path.join(d.path, "d1")))
-    self.assertFalse(os.path.isdir(os.path.join(d.path, "d1", "d2")))
-    self.assertFalse(os.path.isdir(filename5))
-
-  def testCd(self):
-    with utils.Tempdir() as d:
-      d.create_directory("foo")
-      d1 = os.getcwd()
-      with utils.cd(d.path):
-        self.assertTrue(os.path.isdir("foo"))
-      d2 = os.getcwd()
-      self.assertEqual(d1, d2)
 
   def testListStripPrefix(self):
     self.assertEqual([1, 2, 3], utils.list_strip_prefix([1, 2, 3], []))
@@ -113,6 +61,32 @@ class UtilsTest(unittest.TestCase):
     ]
     for prefix, name, expected in test_cases:
       self.assertEqual(utils.get_absolute_name(prefix, name), expected)
+
+  def testInvertDict(self):
+    a = {"p": ["q", "r"], "x": ["q", "z"]}
+    b = utils.invert_dict(a)
+    self.assertEqual(sorted(b["q"]), ["p", "x"])
+    self.assertEqual(b["r"], ["p"])
+    self.assertEqual(b["z"], ["x"])
+
+  def testDynamicVar(self):
+    var = utils.DynamicVar()
+    self.assertIsNone(var.get())
+    with var.bind(123):
+      self.assertEqual(123, var.get())
+      with var.bind(456):
+        self.assertEqual(456, var.get())
+      self.assertEqual(123, var.get())
+    self.assertIsNone(var.get())
+
+  def testPathToModuleName(self):
+    self.assertEqual("x.y.z", utils.path_to_module_name("x/y/z.pyi"))
+    self.assertEqual("x.y.z", utils.path_to_module_name("x/y/z.pytd"))
+    self.assertEqual("x.y.z", utils.path_to_module_name("x/y/z/__init__.pyi"))
+
+
+class DecoratorsTest(unittest.TestCase):
+  """Test decorators."""
 
   @utils.memoize
   def _f1(self, x, y):
@@ -190,39 +164,12 @@ class UtilsTest(unittest.TestCase):
     self.assertIsNot(z1, z2)
     self.assertIs(z2, z3)
 
-  def testInvertDict(self):
-    a = {"p": ["q", "r"], "x": ["q", "z"]}
-    b = utils.invert_dict(a)
-    self.assertEqual(sorted(b["q"]), ["p", "x"])
-    self.assertEqual(b["r"], ["p"])
-    self.assertEqual(b["z"], ["x"])
-
-  def testDynamicVar(self):
-    var = utils.DynamicVar()
-    self.assertIsNone(var.get())
-    with var.bind(123):
-      self.assertEqual(123, var.get())
-      with var.bind(456):
-        self.assertEqual(456, var.get())
-      self.assertEqual(123, var.get())
-    self.assertIsNone(var.get())
-
   def testAnnotatingDecorator(self):
     foo = utils.AnnotatingDecorator()
     @foo(3)
     def f():  # pylint: disable=unused-variable
       pass
     self.assertEqual(foo.lookup["f"], 3)
-
-  def testListPytypeFiles(self):
-    l = list(utils.list_pytype_files("pytd/stdlib/2"))
-    self.assertIn("ctypes.pytd", l)
-    self.assertIn("collections.pytd", l)
-
-  def testPathToModuleName(self):
-    self.assertEqual("x.y.z", utils.path_to_module_name("x/y/z.pyi"))
-    self.assertEqual("x.y.z", utils.path_to_module_name("x/y/z.pytd"))
-    self.assertEqual("x.y.z", utils.path_to_module_name("x/y/z/__init__.pyi"))
 
 
 if __name__ == "__main__":

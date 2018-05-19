@@ -3,7 +3,7 @@
 import textwrap
 
 from pytype import collections_overlay
-from pytype import utils
+from pytype import file_utils
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
@@ -150,7 +150,7 @@ class NamedtupleTests(test_base.TargetIndependentTest):
         X=("X", ["a", "b", "c"]), suffix="a = ...  # type: X"))
 
   def test_instantiate_pyi_namedtuple(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class X(NamedTuple('X', [('y', str), ('z', int)])): ...
       """)
@@ -167,7 +167,7 @@ class NamedtupleTests(test_base.TargetIndependentTest):
                                      (4, "wrong-arg-types", r"str.*int")])
 
   def test_use_pyi_namedtuple(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class X(NamedTuple("X", [])): ...
       """)
@@ -179,7 +179,7 @@ class NamedtupleTests(test_base.TargetIndependentTest):
       self.assertErrorLogIs(errors, [(3, "attribute-error", r"nonsense.*X")])
 
   def test_subclass_pyi_namedtuple(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class X(NamedTuple("X", [("y", int)])): ...
       """)
@@ -261,7 +261,7 @@ class NamedtupleTests(test_base.TargetIndependentTest):
     self.assertEqual(pytd.Print(ty.Lookup("z")), "z = ...  # type: Y")
 
   def test_unpacking(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import NamedTuple
         X = NamedTuple("X", [('a', str), ('b', int)])

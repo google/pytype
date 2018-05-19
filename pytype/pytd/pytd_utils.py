@@ -28,6 +28,7 @@ import os
 import re
 import sys
 
+from pytype import file_utils
 from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import pytd
@@ -442,7 +443,7 @@ def GetPredefinedFile(pytd_subdir, module, extension=".pytd",
     parts.append("__init__")
   mod_path = os.path.join(*parts) + extension
   path = os.path.join("pytd", pytd_subdir, mod_path)
-  return path, utils.load_pytype_file(path)
+  return path, file_utils.load_pytype_file(path)
 
 
 def LoadPickle(filename, compress=False):

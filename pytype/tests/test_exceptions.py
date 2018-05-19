@@ -1,6 +1,6 @@
 """Test exceptions."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -197,7 +197,7 @@ class TestExceptions(test_base.TargetIndependentTest):
     """)
 
   def test_match_exception_type(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("warnings.pyi", """
         from typing import Optional, Type, Union
         def warn(message: Union[str, Warning],

@@ -2,6 +2,7 @@
 
 import os
 
+from pytype import file_utils
 from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd.parse import builtins
@@ -33,7 +34,7 @@ class Typeshed(object):
       with open(filename, "rb") as f:
         return filename, f.read()
     else:
-      data = utils.load_pytype_file(os.path.join(self._root, path))
+      data = file_utils.load_pytype_file(os.path.join(self._root, path))
       return os.path.join(self._root, path), data
 
   def _load_missing(self):
@@ -135,8 +136,8 @@ class Typeshed(object):
     module_names = set()
     for subdir in subdirs:
       try:
-        contents = list(utils.list_pytype_files(subdir))
-      except utils.NoSuchDirectory:
+        contents = list(file_utils.list_pytype_files(subdir))
+      except file_utils.NoSuchDirectory:
         pass
       else:
         for filename in contents:
@@ -148,7 +149,7 @@ class Typeshed(object):
     """Read the typeshed blacklist."""
     if self._env_home:
       raise NotImplementedError("Can't read blacklist outside ./typeshed")
-    data = utils.load_pytype_file("typeshed/tests/pytype_blacklist.txt")
+    data = file_utils.load_pytype_file("typeshed/tests/pytype_blacklist.txt")
     # |data| is raw byte data.
     for line in data.splitlines():
       line = line.decode("utf-8")
@@ -208,4 +209,4 @@ def parse_type_definition(pyi_subdir, module, python_version):
 
   ast = parser.parse_string(src, filename=filename, name=module,
                             python_version=python_version)
-  return ast.Replace(is_package=utils.is_pyi_directory_init(filename))
+  return ast.Replace(is_package=file_utils.is_pyi_directory_init(filename))

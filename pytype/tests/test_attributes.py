@@ -2,7 +2,7 @@
 
 import unittest
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -61,7 +61,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
     """)
 
   def testPyiConstant(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         x = ...  # type: None
       """)
@@ -72,7 +72,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
 
   def testPyiAttribute(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo(object):
           x = ...  # type: None
@@ -103,7 +103,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [(5, "attribute-error", r"upper.*None")])
 
   def testPyiReturnValue(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", "def f() -> None: ...")
       errors = self.CheckWithErrors("""\
         import foo
@@ -579,7 +579,7 @@ class TestAttributes(test_base.TargetIndependentTest):
     """)
 
   def testHasDynamicAttributesPYI(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         class Foo(object):
           has_dynamic_attributes = True
@@ -729,7 +729,7 @@ class TestAttributes(test_base.TargetIndependentTest):
                   r"__contains__.*'Union\[Foo, int\]' and 'int'")])
 
   def testSubclassShadowing(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """\
         class X:
           b = ...  # type: int

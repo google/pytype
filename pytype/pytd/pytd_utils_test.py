@@ -18,7 +18,7 @@ import os
 import textwrap
 import unittest
 
-from pytype import utils
+from pytype import file_utils
 from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -348,7 +348,7 @@ class TestUtils(parser_test_base.ParserTest):
 
   def testLoadPickleFromFile(self):
     d1 = {1, 2j, "3"}
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       filename = d.create_file("foo.pickle")
       pytd_utils.SavePickle(d1, filename)
       d2 = pytd_utils.LoadPickle(filename)
@@ -356,7 +356,7 @@ class TestUtils(parser_test_base.ParserTest):
 
   def testLoadPickleFromCompressedFile(self):
     d1 = {1, 2j, "3"}
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       filename = d.create_file("foo.pickle.gz")
       pytd_utils.SavePickle(d1, filename, compress=True)
       d2 = pytd_utils.LoadPickle(filename, compress=True)
