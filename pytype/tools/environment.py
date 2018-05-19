@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 
+import logging
 import os
 import sys
 
@@ -11,7 +12,8 @@ from pytype.tools import runner
 
 def check_pytype_or_die():
   if not runner.can_run("pytype", "-h"):
-    print("Cannot run pytype. Check that it is installed and in your path")
+    logging.critical(
+        "Cannot run pytype. Check that it is installed and in your path")
     sys.exit(1)
 
 
@@ -27,7 +29,7 @@ def check_python_version(exe, required):
     else:
       return False, version.rstrip()
   except OSError:
-    return False, "Could not run"
+    return False, None
 
 
 def check_python_exe_or_die(required):
@@ -37,11 +39,11 @@ def check_python_exe_or_die(required):
     valid, out = check_python_version(exe, required)
     if valid:
       return exe
-    else:
-      error += ["%s: %s" % (exe, out)]
-  print("Could not find a valid python%s interpreter in path:" % required)
-  print("--------------------------------------------------------")
-  print("\n".join(error))
+    elif out:
+      error.append(out)
+  logging.critical(
+      "Could not find a valid python%s interpreter in path (found %s)",
+      required, ", ".join(error))
   sys.exit(1)
 
 
@@ -54,7 +56,7 @@ def initialize_typeshed_or_die():
   try:
     return typeshed.Typeshed()
   except IOError as e:
-    print(str(e))
+    logging.critical(str(e))
     sys.exit(1)
 
 

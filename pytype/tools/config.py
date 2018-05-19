@@ -46,7 +46,11 @@ class ConfigSection(object):
   def create_from_file(cls, filepath, section, keymap):
     """Create a ConfigSection if the file at filepath has section."""
     parser = configparser.ConfigParser()
-    parser.read(filepath)
+    try:
+      parser.read(filepath)
+    except configparser.MissingSectionHeaderError:
+      # We've read an improperly formatted config file.
+      return None
     if parser.has_section(section):
       return cls(parser, section, keymap)
     return None

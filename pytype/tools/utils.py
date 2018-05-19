@@ -16,9 +16,18 @@ def filename_to_module_name(filename):
   return filename.replace(os.sep, '.')
 
 
-def setup_logging(level):
-  logging.basicConfig(level=level,
-                      format='%(asctime)s %(levelname)s %(message)s')
+def setup_logging_or_die(verbosity):
+  """Set the logging level or die."""
+  if verbosity == 0:
+    level = logging.ERROR
+  elif verbosity == 1:
+    level = logging.WARNING
+  elif verbosity == 2:
+    level = logging.INFO
+  else:
+    logging.critical('Bad verbosity level: %s', verbosity)
+    sys.exit(1)
+  logging.basicConfig(level=level, format='%(levelname)s %(message)s')
 
 
 @contextmanager
@@ -58,5 +67,5 @@ def makedirs_or_die(path, message):
   try:
     makedirs(path)
   except OSError:
-    print(message + ': ' + path)
+    logging.critical('%s: %s', message, path)
     sys.exit(1)

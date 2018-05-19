@@ -79,5 +79,40 @@ class TestConfig(unittest.TestCase):
       self.assertEqual(path, None)
       self.assertEqual(conf.python_version, u'3.6')
 
+  def test_read_nonexistent(self):
+    conf = config.Config()
+    self.assertIsNone(conf.read_from_file('/does/not/exist/test.cfg'))
+
+  def test_read_bad_format(self):
+    conf = config.Config()
+    with utils.Tempdir() as d:
+      f = d.create_file('test.cfg', 'ladadeda := squirrels')
+      self.assertIsNone(conf.read_from_file(f))
+
+  def test_str(self):
+    str(config.Config())  # smoke test
+
+
+class TestGenerateConfig(unittest.TestCase):
+  """Test config.generate_sample_config_or_die."""
+
+  def test_bad_location(self):
+    with self.assertRaises(SystemExit):
+      config.generate_sample_config_or_die('/does/not/exist/sample.cfg')
+
+  def test_existing_file(self):
+    with utils.Tempdir() as d:
+      f = d.create_file('sample.cfg')
+      with self.assertRaises(SystemExit):
+        config.generate_sample_config_or_die(f)
+
+  def test_generate(self):
+    conf = config.Config()
+    with utils.Tempdir() as d:
+      f = os.path.join(d.path, 'sample.cfg')
+      config.generate_sample_config_or_die(f)
+      conf.read_from_file(f)  # Test that we've generated a valid config.
+
+
 if __name__ == '__main__':
   unittest.main()

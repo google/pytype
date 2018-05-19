@@ -52,5 +52,29 @@ class TestComputePythonPath(unittest.TestCase):
           environment.compute_pythonpath([f3, f2, f1]), path)
 
 
+class TestDoXOrDie(unittest.TestCase):
+  """Tests for {do_x}_or_die() methods.
+
+  Since whether these functions complete successfully depends on one's
+  particular environment, these tests allow either succeeding or raising
+  SystemExit. Any other exception will cause a test failure.
+  """
+
+  def _test(self, method, *args):
+    try:
+      method(*args)
+    except SystemExit:
+      pass
+
+  def test_pytype(self):
+    self._test(environment.check_pytype_or_die)
+
+  def test_python_exe(self):
+    self._test(environment.check_python_exe_or_die, 3.0)
+
+  def test_typeshed(self):
+    self._test(environment.initialize_typeshed_or_die)
+
+
 if __name__ == '__main__':
   unittest.main()

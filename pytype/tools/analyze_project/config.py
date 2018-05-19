@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 
+import logging
 import os
 import sys
 import textwrap
@@ -35,22 +36,6 @@ class Config(object):
   def __init__(self):
     for k, v in DEFAULT.items():
       setattr(self, k, v)
-
-  def _validate_keys(self, consts):
-    """Check keys against default config."""
-
-    valid = set(DEFAULT)
-    invalid = set(consts) - valid
-    if invalid:
-      err = """
-          Invalid config variables: {}
-          Valid options are: {}
-
-          To generate a complete sample config file, run:
-            pytype-all --generate-config sample.cfg
-      """.format(', '.join(invalid), ', '.join(valid))
-      print(textwrap.dedent(err))
-      sys.exit(0)
 
   def read_from_setup_cfg(self, starting_path):
     """Read config from the first setup.cfg file found upwards from path.
@@ -88,9 +73,8 @@ class Config(object):
     self.pythonpath = utils.expand_paths(self.pythonpath, cwd)
     self.output_dir = utils.expand_path(self.output_dir, cwd)
 
-  def show(self):
-    for k in DEFAULT:
-      print('%s = %r' % (k, getattr(self, k)))
+  def __str__(self):
+    return '\n'.join('%s = %r' % (k, (getattr(self, k))) for k in DEFAULT)
 
 
 def _format_sample_item(k, v):
@@ -104,12 +88,12 @@ def _format_sample_item(k, v):
   return out
 
 
-def generate_sample_config(filename):
+def generate_sample_config_or_die(filename):
   """Write out a sample config file."""
 
   if os.path.exists(filename):
-    print('Not overwriting existing file: %s' % filename)
-    sys.exit(0)
+    logging.critical('Not overwriting existing file: %s', filename)
+    sys.exit(1)
 
   # Not using configparser's write method because it doesn't support comments.
 
@@ -123,5 +107,9 @@ def generate_sample_config(filename):
         item.comment, 80, initial_indent='# ', subsequent_indent='# '))
     conf.extend(_format_sample_item(item.key, item.sample))
     conf.append('')
-  with open(filename, 'w') as f:
-    f.write('\n'.join(conf))
+  try:
+    with open(filename, 'w') as f:
+      f.write('\n'.join(conf))
+  except IOError as e:
+    logging.critical('Cannot write to %s:\n%s', filename, str(e))
+    sys.exit(1)

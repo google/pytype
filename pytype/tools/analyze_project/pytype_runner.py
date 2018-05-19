@@ -64,9 +64,9 @@ class PytypeRunner(object):
       return
 
     if report_errors:
-      print('  %s' % module.target)
+      print('%s' % module.target)
     else:
-      print('  %s*' % module.target)
+      print('%s*' % module.target)
 
     run_cmd = self.get_run_cmd(module, report_errors)
     logging.info('Running: %s', ' '.join(run_cmd))
@@ -78,27 +78,28 @@ class PytypeRunner(object):
       return
     if returncode:
       errfile = os.path.join(self.pyi_dir, module.target + '.errors')
-      print('    errors written to:', errfile)
+      logging.info('Errors written to: %s', errfile)
       error = stderr.decode('utf-8')
       with open(errfile, 'w') as f:
         f.write(error)
-      # Log as WARNING since this is a pytype error, not our error.
-      logging.warning(error)
+      print(error)
 
   def yield_sorted_modules(self):
     """Yield modules from our sorted source files."""
     for files in self.sorted_source_files:
       modules = []
       for f in files:
+        # Report errors for files we are analysing directly.
+        report_errors = f in self.filenames
+        # We'll use this function to report skipped files.
+        report = logging.warning if report_errors else logging.info
         if not f.endswith('.py'):
-          logging.info('Skipping non-Python file: %s', f)
+          report('Skipping non-Python file: %s', f)
           continue
         module = self.infer_module_name(f)
         if not any(module.path.startswith(d) for d in self.pythonpath):
-          logging.info('Skipping file not in pythonpath: %s', f)
+          report('Skipping file not in pythonpath: %s', f)
           continue
-        # Report errors for files we are analysing directly.
-        report_errors = f in self.filenames
         modules.append((module, report_errors))
       if len(modules) == 1:
         yield modules[0]
@@ -112,8 +113,11 @@ class PytypeRunner(object):
 
   def run(self):
     """Run pytype over the project."""
-    print(
-        'Generating %d targets' % sum(len(x) for x in self.sorted_source_files))
     logging.info('------------- Starting pytype run. -------------')
-    for module, report_errors in self.yield_sorted_modules():
+    modules = list(self.yield_sorted_modules())
+    files_to_analyze = {os.path.join(m.path, m.target) for m, _ in modules}
+    num_sources = len(self.filenames & files_to_analyze)
+    print('Analyzing %d sources with %d dependencies' %
+          (num_sources, len(files_to_analyze) - num_sources))
+    for module, report_errors in modules:
       self.run_pytype(module, report_errors)

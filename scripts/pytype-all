@@ -67,19 +67,18 @@ def read_config_file(args):
   ret = config.Config()
   if args.config:
     if not ret.read_from_file(args.config):
-      print('Could not read config file: ', args.config)
-      print()
-      print('Generate a sample configuration via: ')
-      print('  pytype-all --generate-config sample.cfg')
+      logging.critical('Could not read config file: %s\n'
+                       '  Generate a sample configuration via:\n'
+                       '  pytype-all --generate-config sample.cfg', args.config)
       sys.exit(1)
   else:
     # Try reading from setup.cfg
     filepath = ret.read_from_setup_cfg(os.getcwd())
     if filepath:
-      print('Reading config from: ', filepath)
+      logging.info('Reading config from: %s', filepath)
     else:
-      print('Warning: No config file specified, and no [pytype] section '
-            'in setup.cfg. Using default configuration.')
+      logging.info('No config file specified, and no [pytype] section in '
+                   'setup.cfg. Using default configuration.')
   return ret
 
 
@@ -105,23 +104,32 @@ def create_importlab_environment(conf, typeshed):
 
 def main():
   args = parse_args()
+  utils.setup_logging_or_die(args.verbosity)
 
   if args.generate_config:
-    config.generate_sample_config(args.generate_config)
+    config.generate_sample_config_or_die(args.generate_config)
     sys.exit(0)
 
+  if not args.filenames:
+    logging.warning('Nothing to do!')
+    sys.exit(0)
   filenames = utils.expand_paths(args.filenames)
 
   conf = read_config_file(args)
   if not conf.pythonpath:
     conf.pythonpath = environment.compute_pythonpath(filenames)
-  print('Configuration:')
-  conf.show()
-  print()
+  logging.info('\n  '.join(['Configuration:'] + str(conf).split('\n')))
+
+  # Importlab needs the python exe, so we check it as early as possible.
+  environment.check_python_exe_or_die(conf.python_version)
 
   typeshed = environment.initialize_typeshed_or_die()
   env = create_importlab_environment(conf, typeshed)
-  import_graph = importlab.graph.ImportGraph.create(env, filenames)
+  try:
+    import_graph = importlab.graph.ImportGraph.create(env, filenames)
+  except Exception as e:  # pylint: disable=broad-except
+    logging.critical('Cannot parse input files:\n%s', str(e))
+    sys.exit(1)
 
   if args.tree:
     print('Source tree:')
@@ -134,17 +142,10 @@ def main():
       print(' ', imp.name)
     sys.exit(0)
 
-  if args.verbosity == 0:
-    log_level = logging.ERROR
-  elif args.verbosity == 1:
-    log_level = logging.WARNING
-  elif args.verbosity == 2:
-    log_level = logging.INFO
-  else:
-    print('Bad verbosity level:', args.verbosity)
-    sys.exit(0)
+  # --tree and --unresolved can run without pytype being available, so we do
+  # this check only if we're going to fire up the pytype runner.
+  environment.check_pytype_or_die()
 
-  utils.setup_logging(log_level)
   logging.info('Source tree:\n%s',
                importlab.output.formatted_deps_list(import_graph))
   utils.makedirs_or_die(conf.output_dir, 'Could not create output directory')
