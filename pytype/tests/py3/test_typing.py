@@ -1,6 +1,6 @@
 """Tests for typing.py."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -94,7 +94,7 @@ class TypingTest(test_base.TargetPython3BasicTest):
     self.assertErrorLogIs(errors, [(10, "attribute-error", "bar.*int")])
 
   def test_use_type_alias(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List
         MyType = List[str]
@@ -107,7 +107,7 @@ class TypingTest(test_base.TargetPython3BasicTest):
       """, pythonpath=[d.path])
 
   def test_callable(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Callable
         def f() -> Callable
@@ -194,7 +194,7 @@ class TypingTest(test_base.TargetPython3BasicTest):
          r"instance of List\[Type\[Union\[int, str\]\]\].*Must be constant"),])
 
   def test_generics(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Dict
         K = TypeVar("K")
@@ -509,9 +509,10 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
 
 class TypingTestPython3Feature(test_base.TargetPython3FeatureTest):
+  """Typing tests (Python 3.6)."""
 
   def test_namedtuple_item(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import NamedTuple
         def f() -> NamedTuple("ret", [("x", int), ("y", str)])

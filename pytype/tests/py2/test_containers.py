@@ -1,6 +1,6 @@
 """Test list, dict, etc."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -13,7 +13,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
   # TODO(rechen): Write python3 versions of these.
 
   def testIteratePyiListNothing(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List
         lst1 = ...  # type: List[nothing]
@@ -34,7 +34,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
 
   def testIteratePyiListAny(self):
     # Depends on [x for x in ...] binding x in the outer scope
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Any, List
         lst1 = ...  # type: List[Any]
@@ -78,7 +78,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
     """)
 
   def testIteratePyiListUnion(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, Set
         lst1 = ...  # type: List[nothing] or Set[int]
@@ -95,7 +95,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
       """)
 
   def testIteratePyiList(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         lst1 = ...  # type: list
       """)
@@ -114,7 +114,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
       """)
 
   def testIteratePyiListInt(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List
         lst1 = ...  # type: List[int]

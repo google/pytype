@@ -1,6 +1,6 @@
 """Tests for displaying errors."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -187,7 +187,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
     self.assertErrorLogIs(errors, [(5, "bad-return-type", r"int.*Foo")])
 
   def testNestedProtoClass(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo_bar.pyi", """
         from typing import Type
         class _Foo_DOT_Bar: ...
@@ -203,7 +203,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
           errors, [(4, "wrong-arg-types", r"foo_bar\.Foo\.Bar")])
 
   def testStaticmethodInError(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """\
         class A(object):
           @staticmethod

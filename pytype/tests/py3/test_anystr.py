@@ -1,6 +1,6 @@
 """Tests for typing.AnyStr."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -51,7 +51,7 @@ class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
     self.assertTrue(ty.Lookup("f").signatures[0].template)
 
   def testAnyStrFunctionImport(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import AnyStr
         def f(x: AnyStr) -> AnyStr

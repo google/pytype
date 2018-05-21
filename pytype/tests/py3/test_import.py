@@ -1,6 +1,6 @@
 """Tests for import."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -45,7 +45,7 @@ class ImportTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testRelativePriority(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", "x = ...  # type: int")
       d.create_file("b/a.pyi", "x = ...  # type: complex")
       ty = self.Infer("""\

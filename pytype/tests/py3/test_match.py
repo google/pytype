@@ -1,6 +1,6 @@
 """Tests for the analysis phase matcher (match_var_against_type)."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -8,7 +8,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
   """Tests for matching types."""
 
   def testNoArgumentPyTDFunctionAgainstCallable(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def bar() -> bool
       """)
@@ -27,7 +27,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
                                       r"\(x: Callable\[\[\], bool\]\)")])
 
   def testPyTDFunctionAgainstCallableWithTypeParameters(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f1(x: int) -> int: ...
         def f2(x: int) -> bool: ...
@@ -107,7 +107,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
                                     r"Actual.*Callable\[\[Any, int\], bool\]")])
 
   def testCallableParameters(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any, Callable, List, TypeVar
         T = TypeVar("T")
@@ -181,7 +181,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
     self.assertErrorLogIs(errors, [(9, "wrong-arg-types")])
 
   def testUnionInTypeParameter(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Callable, Iterator, List, TypeVar
         T = TypeVar("T")
@@ -238,7 +238,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
                                     r"Expected.*T2.*Actual.*T1")])
 
   def testCallableBaseClass(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Callable, Union, Type
         def f() -> Union[Callable[[], ...], Type[Exception]]
@@ -277,7 +277,7 @@ class MatchTestPy3(test_base.TargetPython3FeatureTest):
     """)
 
   def testCallableAgainstGeneric(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import TypeVar, Callable, Generic, Iterable, Iterator
         A = TypeVar("A")

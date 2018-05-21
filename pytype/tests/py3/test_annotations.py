@@ -2,7 +2,7 @@
 
 import unittest
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -463,7 +463,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         4, "bad-return-type", r"Expected: FooBar")])
 
   def testUnknownArgument(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         def factory() -> type
       """)
@@ -942,7 +942,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
                  (5, "invalid-annotation", r"Ellipsis.*Dict")])
 
   def testCustomContainer(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic
         T = TypeVar("T")

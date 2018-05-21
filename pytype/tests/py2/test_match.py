@@ -1,6 +1,6 @@
 """Tests for the analysis phase matcher (match_var_against_type)."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -24,7 +24,7 @@ class MatchTest(test_base.TargetPython27FeatureTest):
     """)
 
   def testCallableAgainstGeneric(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import TypeVar, Callable, Generic, Iterable, Iterator
         A = TypeVar("A")

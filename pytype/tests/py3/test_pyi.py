@@ -1,6 +1,6 @@
 """Tests for handling PYI code."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -20,7 +20,7 @@ class PYITest(test_base.TargetPython3BasicTest):
         """)
 
   def testStaticMethodFromPyiAsCallable(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class A:
           @staticmethod
@@ -35,7 +35,7 @@ class PYITest(test_base.TargetPython3BasicTest):
       """, pythonpath=[d.path])
 
   def testClassMethodFromPyiAsCallable(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class A:
           @classmethod
@@ -54,7 +54,7 @@ class PYITestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for PYI."""
 
   def testBytes(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f() -> bytes
       """)

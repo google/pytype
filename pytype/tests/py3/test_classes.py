@@ -1,7 +1,6 @@
 """Tests for classes."""
 
-
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -151,7 +150,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def testGenericReinstantiated(self):
     """Makes sure the result of foo.f() isn't used by both a() and b()."""
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """\
         def f() -> list: ...
         """)

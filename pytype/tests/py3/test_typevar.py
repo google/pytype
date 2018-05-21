@@ -1,6 +1,6 @@
 """Tests for TypeVar."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -62,7 +62,7 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
     """)
 
   def testImportTypeVarNameChange(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import TypeVar
         T = TypeVar("T")
@@ -355,7 +355,7 @@ class TypeVarTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for TypeVar in Python 3."""
 
   def testUseConstraintsFromPyi(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """\
         from typing import AnyStr, TypeVar
         T = TypeVar("T", int, float)

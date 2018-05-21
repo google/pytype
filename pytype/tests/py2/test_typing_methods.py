@@ -1,6 +1,6 @@
 """Tests for the methods in the typing module."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -8,7 +8,7 @@ class TypingMethodsTest(test_base.TargetPython27FeatureTest):
   """Tests for typing.py."""
 
   def test_mapping(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Mapping
         K = TypeVar("K")

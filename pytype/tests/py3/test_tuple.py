@@ -1,6 +1,6 @@
 """Tests of __builtin__.tuple."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -83,7 +83,7 @@ class TupleTest(test_base.TargetPython3BasicTest):
                                   ])
 
   def testInlineTuple(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Tuple
         class A(Tuple[int, str]): ...
@@ -101,7 +101,7 @@ class TupleTest(test_base.TargetPython3BasicTest):
       """, pythonpath=[d.path])
 
   def testInlineTupleError(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Tuple
         class A(Tuple[str, int]): ...
@@ -146,7 +146,7 @@ class TupleTest(test_base.TargetPython3BasicTest):
     """)
 
   def testMismatchedPyiTuple(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("bar.pyi", """
         class Bar(tuple): ...
       """)

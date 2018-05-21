@@ -1,6 +1,6 @@
 """Tests for import."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -45,7 +45,7 @@ class ImportTest(test_base.TargetPython27FeatureTest):
     """)
 
   def testModuleName(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo/baz.pyi", """x = ...  # type: int""")
       bar = """
         import baz
@@ -59,7 +59,7 @@ class ImportTest(test_base.TargetPython27FeatureTest):
     """)
 
   def testRelativeName(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo/baz.pyi", """x = ...  # type: int""")
       d.create_file("foo/bar.py", """
         import baz

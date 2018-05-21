@@ -1,6 +1,6 @@
 """Tests for TypeVar."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -8,7 +8,7 @@ class Test(test_base.TargetPython27FeatureTest):
   """Tests for TypeVar."""
 
   def testUseConstraintsFromPyi(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """\
         from typing import AnyStr, TypeVar
         T = TypeVar("T", int, float)

@@ -1,6 +1,6 @@
 """Tests for handling PYI code."""
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -8,7 +8,7 @@ class PYITest(test_base.TargetPython27FeatureTest):
   """Tests for PYI."""
 
   def testBytes(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f() -> bytes
       """)
@@ -22,7 +22,7 @@ class PYITest(test_base.TargetPython27FeatureTest):
       """)
 
   def testVarargs(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         T = TypeVar("T")
         def get_varargs(x: int, *args: T, z: int, **kws: int) -> T: ...
@@ -59,7 +59,7 @@ class PYITest(test_base.TargetPython27FeatureTest):
   # TODO(sivachandra): Make this a target independent test after
   # after b/78785264 is fixed.
   def testKwargs(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         T = TypeVar("T")
         def get_kwargs(x: int, *args: int, z: int, **kws: T) -> T: ...

@@ -3,7 +3,7 @@
 Based on PEP 544 https://www.python.org/dev/peps/pep-0544/.
 """
 
-from pytype import utils
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -241,7 +241,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_pyi_iterable_getitem(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         T = TypeVar("T")
         class Foo(object):
@@ -256,7 +256,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
       """, pythonpath=[d.path])
 
   def test_pyi_iterable_iter(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo(object):
           def __iter__(self) -> ?: ...
@@ -351,7 +351,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
         errors, [(7, "wrong-arg-types", r"Hashable.*Foo.*__hash__")])
 
   def test_generic_callable(self):
-    with utils.Tempdir() as d:
+    with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")
