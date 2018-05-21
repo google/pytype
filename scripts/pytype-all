@@ -28,8 +28,10 @@ import importlab.fs
 import importlab.graph
 import importlab.output
 
+from pytype import file_utils
+from pytype import utils
 from pytype.tools import environment
-from pytype.tools import utils
+from pytype.tools import tool_utils
 from pytype.tools.analyze_project import config
 from pytype.tools.analyze_project import pytype_runner
 
@@ -104,7 +106,7 @@ def create_importlab_environment(conf, typeshed):
 
 def main():
   args = parse_args()
-  utils.setup_logging_or_die(args.verbosity)
+  tool_utils.setup_logging_or_die(args.verbosity)
 
   if args.generate_config:
     config.generate_sample_config_or_die(args.generate_config)
@@ -113,7 +115,7 @@ def main():
   if not args.filenames:
     logging.warning('Nothing to do!')
     sys.exit(0)
-  filenames = utils.expand_paths(args.filenames)
+  filenames = file_utils.expand_paths(args.filenames)
 
   conf = read_config_file(args)
   if not conf.pythonpath:
@@ -148,7 +150,8 @@ def main():
 
   logging.info('Source tree:\n%s',
                importlab.output.formatted_deps_list(import_graph))
-  utils.makedirs_or_die(conf.output_dir, 'Could not create output directory')
+  tool_utils.makedirs_or_die(conf.output_dir,
+                             'Could not create output directory')
   runner = pytype_runner.PytypeRunner(
       filenames, import_graph.sorted_source_files(), conf)
   runner.run()

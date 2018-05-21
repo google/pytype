@@ -175,4 +175,17 @@ def list_pytype_files(suffix):
         yield filename[i + len(directory):]
 
 
+def expand_path(path, cwd=None):
+  """Fully expand a path, optionally with an explicit cwd."""
 
+  expand = lambda path: os.path.realpath(os.path.expanduser(path))
+  if cwd:
+    with cd(cwd):
+      return expand(path)
+  else:
+    return expand(path)
+
+
+def expand_paths(paths, cwd=None):
+  """Fully expand a list of paths, optionally with an explicit cwd."""
+  return [expand_path(x, cwd) for x in paths]

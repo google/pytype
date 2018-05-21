@@ -37,7 +37,7 @@ def format_version(python_version):
   return ".".join([str(x) for x in python_version])
 
 
-def parse_version(version_string):
+def split_version(version_string):
   """Parse a version string like 2.7 into a tuple."""
   return tuple(map(int, version_string.split(".")))
 
@@ -149,12 +149,18 @@ def concat_tuples(tuples):
   return tuple(itertools.chain.from_iterable(tuples))
 
 
-def path_to_module_name(filename):
+def path_to_module_name(filename, preserve_init=False):
   """Converts a filename into a dotted module name."""
-  module_name = os.path.splitext(filename)[0].replace(os.path.sep, ".")
-  # strip __init__ suffix
-  m, _, _ = module_name.partition(".__init__")
-  return m
+  if os.path.dirname(filename).startswith(os.pardir):
+    # Don't try to infer a module name for filenames starting with ../
+    return None
+  # TODO(mdemello): should we validate the extension?
+  filename, _ = os.path.splitext(filename)
+  module_name = filename.replace(os.path.sep, ".")
+  if not preserve_init:
+    # strip __init__ suffix
+    module_name, _, _ = module_name.partition(".__init__")
+  return module_name
 
 
 

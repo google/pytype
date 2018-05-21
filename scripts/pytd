@@ -58,7 +58,7 @@ def parse_options(args):
 def main():
   options, filenames = parse_options(sys.argv)
   unused_executable = filenames.pop(0)
-  python_version = utils.parse_version(options.python_version)
+  python_version = utils.split_version(options.python_version)
   try:
     utils.validate_version(python_version)
   except utils.UsageError as e:

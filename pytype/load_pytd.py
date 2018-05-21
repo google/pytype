@@ -38,14 +38,6 @@ def create_loader(options):
     return Loader(**kwargs)
 
 
-def _filename_to_module_name(filename):
-  """Helper function for get_module_name."""
-  if os.path.dirname(filename).startswith(os.pardir):
-    # Don't try to infer a module name for filenames starting with ../
-    return None
-  return filename.replace(os.sep, ".")
-
-
 def get_module_name(filename, pythonpath):
   """Try to reverse-engineer the name of the module we're analyzing.
 
@@ -72,9 +64,9 @@ def get_module_name(filename, pythonpath):
         path += os.sep
       if filename.startswith(path):
         rel_filename = filename[len(path):]
-        return _filename_to_module_name(rel_filename)
+        return utils.path_to_module_name(rel_filename)
     # Explicit pythonpath has failed, treat filename as relative to .
-    return _filename_to_module_name(filename)
+    return utils.path_to_module_name(filename)
 
 
 class Module(object):

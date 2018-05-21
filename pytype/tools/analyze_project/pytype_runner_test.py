@@ -2,13 +2,14 @@
 
 import os
 import unittest
+
 from pytype import config as pytype_config
-from pytype.tools import utils
+from pytype import file_utils
 from pytype.tools.analyze_project import config
 from pytype.tools.analyze_project import pytype_runner
 
 
-expand = utils.expand_path
+expand = file_utils.expand_path
 
 
 class TestInferModuleName(unittest.TestCase):

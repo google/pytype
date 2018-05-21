@@ -69,5 +69,24 @@ class FileUtilsTest(unittest.TestCase):
     self.assertIn("collections.pytd", l)
 
 
+class TestPathExpansion(unittest.TestCase):
+  """Tests for file_utils.expand_path(s?)."""
+
+  def test_expand_one_path(self):
+    full_path = os.path.join(os.getcwd(), "foo.py")
+    self.assertEqual(file_utils.expand_path("foo.py"), full_path)
+
+  def test_expand_two_paths(self):
+    full_path1 = os.path.join(os.getcwd(), "foo.py")
+    full_path2 = os.path.join(os.getcwd(), "bar.py")
+    self.assertEqual(file_utils.expand_paths(["foo.py", "bar.py"]),
+                     [full_path1, full_path2])
+
+  def test_expand_with_cwd(self):
+    with file_utils.Tempdir() as d:
+      f = d.create_file("foo.py")
+      self.assertEqual(file_utils.expand_path("foo.py", d.path), f)
+
+
 if __name__ == "__main__":
   unittest.main()

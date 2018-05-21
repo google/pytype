@@ -7,8 +7,8 @@ import os
 import sys
 import textwrap
 
+from pytype import file_utils
 from pytype.tools import config
-from pytype.tools import utils
 
 
 # Convenience alias
@@ -70,8 +70,8 @@ class Config(object):
 
   def expand_paths(self, base_path):
     cwd = os.path.dirname(base_path)
-    self.pythonpath = utils.expand_paths(self.pythonpath, cwd)
-    self.output_dir = utils.expand_path(self.output_dir, cwd)
+    self.pythonpath = file_utils.expand_paths(self.pythonpath, cwd)
+    self.output_dir = file_utils.expand_path(self.output_dir, cwd)
 
   def __str__(self):
     return '\n'.join('%s = %r' % (k, (getattr(self, k))) for k in DEFAULT)

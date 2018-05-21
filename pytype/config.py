@@ -341,7 +341,7 @@ class Options(object):
 
   def _store_python_version(self, python_version):
     """Configure the python version."""
-    self.python_version = utils.parse_version(python_version)
+    self.python_version = utils.split_version(python_version)
     if len(self.python_version) != 2:
       raise optparse.OptionValueError(
           "--python_version must be <major>.<minor>: %r" % python_version)

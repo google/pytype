@@ -80,9 +80,16 @@ class UtilsTest(unittest.TestCase):
     self.assertIsNone(var.get())
 
   def testPathToModuleName(self):
+    self.assertIsNone(utils.path_to_module_name("../foo.py"))
     self.assertEqual("x.y.z", utils.path_to_module_name("x/y/z.pyi"))
     self.assertEqual("x.y.z", utils.path_to_module_name("x/y/z.pytd"))
     self.assertEqual("x.y.z", utils.path_to_module_name("x/y/z/__init__.pyi"))
+    self.assertEqual("x.y.z.__init__",
+                     utils.path_to_module_name("x/y/z/__init__.pyi",
+                                               preserve_init=True))
+
+  def testSplitVersion(self):
+    self.assertEqual(utils.split_version("2.7"), (2, 7))
 
 
 class DecoratorsTest(unittest.TestCase):

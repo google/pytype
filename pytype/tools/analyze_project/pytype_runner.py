@@ -6,8 +6,9 @@ import collections
 import logging
 import os
 
+from pytype import file_utils
+from pytype import utils
 from pytype.tools import runner
-from pytype.tools import utils
 
 
 # Inferred information about a module.
@@ -30,15 +31,18 @@ class PytypeRunner(object):
 
   def infer_module_name(self, filename):
     """Convert a filename to a module name relative to pythonpath."""
+    # TODO(mdemello): Deduplicate this one and the one in load_pytd.py
     # We want '' in our lookup path, but we don't want it for prefix tests.
     for path in filter(bool, self.pythonpath):
       if not path.endswith(os.sep):
         path += os.sep
       if filename.startswith(path):
         filename = filename[len(path):]
-        return Module(path, filename, utils.filename_to_module_name(filename))
-    # We have not found filename relative to anywhere in pythonpath.
-    return Module('', filename, utils.filename_to_module_name(filename))
+        return Module(path, filename,
+                      utils.path_to_module_name(filename, preserve_init=True))
+        # We have not found filename relative to anywhere in pythonpath.
+    return Module('', filename,
+                  utils.path_to_module_name(filename, preserve_init=True))
 
   def get_run_cmd(self, module, report_errors):
     """Get the command for running pytype on the given module."""
@@ -58,7 +62,7 @@ class PytypeRunner(object):
     # Create the output subdirectory for this file.
     target_dir = os.path.join(self.pyi_dir, os.path.dirname(module.target))
     try:
-      utils.makedirs(target_dir)
+      file_utils.makedirs(target_dir)
     except OSError:
       logging.error('Could not create output directory: %s', target_dir)
       return
