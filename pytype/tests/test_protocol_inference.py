@@ -143,8 +143,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
 
   def test_supports_lower(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         return x.lower()
      """)
     self.assertTypesMatchPytd(ty, """
@@ -155,8 +155,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
 
   def test_container(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x, y):
+    ty = self.Infer("""
+      def f(x, y):
           return y in x
      """)
     self.assertTypesMatchPytd(ty, """
@@ -166,8 +166,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
 
   def test_supports_int(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         return x.__int__()
       """)
     self.assertTypesMatchPytd(ty, """
@@ -177,8 +177,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
 
   def test_supports_float(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
           return x.__float__()
       """)
     self.assertTypesMatchPytd(ty, """
@@ -188,8 +188,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
 
   def test_supports_complex(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         return x.__complex__()
       """)
     self.assertTypesMatchPytd(ty, """
@@ -199,8 +199,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
 
   def test_sized(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         return x.__len__()
       """)
     self.assertTypesMatchPytd(ty, """
@@ -210,8 +210,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
 
   def test_supports_abs(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         y = abs(x)
         return y.__len__()
       """)
@@ -223,8 +223,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
   @unittest.skip("doesn't match arguments correctly")
   def test_supports_round(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         y = x.__round__()
       """)
     self.assertTypesMatchPytd(ty, """
@@ -234,8 +234,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
 
   def test_reversible(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         y = x.__reversed__()
         return y
       """)
@@ -246,8 +246,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
 
   def test_iterable(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         return x.__iter__()
       """)
     self.assertTypesMatchPytd(ty, """
@@ -258,8 +258,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
   @unittest.skip("Iterator not implemented, breaks other functionality")
   def test_iterator(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         return x.next()
       """)
     self.assertTypesMatchPytd(ty, """
@@ -269,8 +269,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
 
   def test_callable(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         return x().lower()
       """)
     self.assertTypesMatchPytd(ty, """
@@ -282,8 +282,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
   @unittest.skip("Matches Mapping[int, Any] but not Sequence")
   def test_sequence(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         x.index(6)
         x.count(7)
         return x.__getitem__(5) + x[1:5]
@@ -297,8 +297,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
   @unittest.skip("doesn't match arguments correctly on exit")
   def test_context_manager(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         x.__enter__()
         x.__exit__(None, None, None)
       """)
@@ -315,8 +315,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
         from typing import Sized, SupportsAbs
         def f(x: SupportsAbs[Sized]) -> None
       """)
-      ty = self.Infer("""\
-                import foo
+      ty = self.Infer("""
+        import foo
         def g(y):
           return foo.f(y)
       """, pythonpath=[d.path])
@@ -333,8 +333,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
         from typing import SupportsAbs
         def f(x: SupportsAbs[int]) -> None
       """)
-      ty = self.Infer("""\
-                import foo
+      ty = self.Infer("""
+        import foo
         def g(y):
           return foo.f(y)
       """, pythonpath=[d.path])
@@ -347,8 +347,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
   @unittest.skip("Unexpectedly assumes returned result is sequence")
   def test_mapping_abstractmethod(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x, y):
+    ty = self.Infer("""
+      def f(x, y):
         return x.__getitem__(y)
       """)
     self.assertTypesMatchPytd(ty, """
@@ -358,8 +358,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
 
   def test_supports_upper(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         return x.upper()
      """)
     self.assertTypesMatchPytd(ty, """
@@ -370,8 +370,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
 
   def test_supports_startswith(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         return x.startswith("foo")
      """)
     self.assertTypesMatchPytd(ty, """
@@ -382,8 +382,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
 
   def test_supports_endswith(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         return x.endswith("foo")
      """)
     self.assertTypesMatchPytd(ty, """
@@ -394,8 +394,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
 
   def test_supports_lstrip(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         return x.lstrip()
      """)
     self.assertTypesMatchPytd(ty, """
@@ -406,8 +406,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
 
   def test_supports_replace(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         return x.replace("foo", "bar")
      """)
     self.assertTypesMatchPytd(ty, """
@@ -418,8 +418,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
 
   def test_supports_encode(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         return x.encode()
      """)
     self.assertTypesMatchPytd(ty, """
@@ -430,8 +430,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
 
   def test_supports_decode(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         return x.decode()
      """)
     self.assertTypesMatchPytd(ty, """
@@ -442,8 +442,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
 
   def test_supports_splitlines(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         return x.splitlines()
      """)
     self.assertTypesMatchPytd(ty, """
@@ -454,8 +454,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
 
   def test_supports_split(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         return x.split()
      """)
     self.assertTypesMatchPytd(ty, """
@@ -466,8 +466,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
 
   def test_supports_strip(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         return x.strip()
      """)
     self.assertTypesMatchPytd(ty, """
@@ -478,8 +478,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
 
   def test_supports_find(self):
     self.options.tweak(protocols=True)
-    ty = self.Infer("""\
-            def f(x):
+    ty = self.Infer("""
+      def f(x):
         return x.find("foo")
      """)
     self.assertTypesMatchPytd(ty, """
