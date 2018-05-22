@@ -81,7 +81,8 @@ parser_ext = Extension(
         'pytype/pyi/lexer.lex.cc',
         'pytype/pyi/parser.tab.cc',
     ],
-    extra_compile_args=['-std=c++11']
+    extra_compile_args=['-std=c++11', '-stdlib=libc++'],
+    extra_link_args=['-stdlib=libc++']
 )
 
 
