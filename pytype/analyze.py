@@ -145,7 +145,7 @@ class CallTracer(vm.VirtualMachine):
     if isinstance(method, (abstract.InterpreterFunction,
                            abstract.BoundInterpreterFunction)):
       self._analyzed_functions.add(method.get_first_opcode())
-      if (not self.analyze_annotated and
+      if (not self.options.analyze_annotated and
           method.signature.has_return_annotation and
           fname not in self._CONSTRUCTORS):
         log.info("%r has return annotation, not analyzing further.", fname)
@@ -566,7 +566,7 @@ class CallTracer(vm.VirtualMachine):
     return ty.Visit(visitors.AdjustTypeParameters())
 
   def _check_return(self, node, actual, formal):
-    if not self.report_errors:
+    if not self.options.report_errors:
       return
     bad = self.matcher.bad_matches(actual, formal, node)
     if bad:
@@ -581,9 +581,7 @@ def check_types(src, filename, errorlog, options, loader,
                 deep=True, init_maximum_depth=INIT_MAXIMUM_DEPTH, **kwargs):
   """Verify a PyTD against the Python code."""
   tracer = CallTracer(errorlog=errorlog, options=options,
-                      module_name=options.module_name,
-                      generate_unknowns=False,
-                      loader=loader, **kwargs)
+                      generate_unknowns=False, loader=loader, **kwargs)
   loc, defs = tracer.run_program(src, filename, init_maximum_depth)
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)
   snapshotter.take_snapshot("analyze:check_types:tracer")
@@ -616,10 +614,8 @@ def infer_types(src, errorlog, options, loader,
     AssertionError: In case of a bad parameter combination.
   """
   tracer = CallTracer(errorlog=errorlog, options=options,
-                      module_name=options.module_name,
                       generate_unknowns=options.protocols,
-                      store_all_calls=not deep, loader=loader,
-                      **kwargs)
+                      store_all_calls=not deep, loader=loader, **kwargs)
   loc, defs = tracer.run_program(src, filename, init_maximum_depth)
   log.info("===Done running definitions and module-level code===")
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)
