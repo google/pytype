@@ -7,12 +7,25 @@ import glob
 import io
 import os
 import shutil
+import sysconfig
 
 from setuptools import setup, Extension  # pylint: disable=g-multiple-import
 
 
 # Path to directory containing setup.py
 here = os.path.abspath(os.path.dirname(__file__))
+
+
+# Detect the c++ compiler. We need to do this because clang on darwin requires
+# some extra flags, but gcc does not support those flags.
+config_vars = sysconfig.get_config_vars()
+cc = config_vars['CC']
+if 'clang' in cc:
+  extra_compile_args = ['-std=c++11', '-stdlib=libc++']
+  extra_link_args = ['-stdlib=libc++']
+else:
+  extra_compile_args = ['-std=c++11']
+  extra_link_args = []
 
 
 # Copy checked-in generated files to where they are expected by setup.py.
@@ -81,8 +94,8 @@ parser_ext = Extension(
         'pytype/pyi/lexer.lex.cc',
         'pytype/pyi/parser.tab.cc',
     ],
-    extra_compile_args=['-std=c++11', '-stdlib=libc++'],
-    extra_link_args=['-stdlib=libc++']
+    extra_compile_args=extra_compile_args,
+    extra_link_args=extra_link_args
 )
 
 
