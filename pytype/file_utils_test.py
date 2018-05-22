@@ -68,6 +68,15 @@ class FileUtilsTest(unittest.TestCase):
     self.assertIn("ctypes.pytd", l)
     self.assertIn("collections.pytd", l)
 
+  def testCollectFiles(self):
+    files = [
+        "a.py", "foo/b.py", "foo/c.txt", "foo/bar/d.py", "foo/bar/baz/e.py"
+    ]
+    with file_utils.Tempdir() as d:
+      fs = [d.create_file(f) for f in files]
+      pyfiles = [f for f in fs if f.endswith(".py")]
+      self.assertItemsEqual(pyfiles, file_utils.collect_files(d.path, ".py"))
+
 
 class TestPathExpansion(unittest.TestCase):
   """Tests for file_utils.expand_path(s?)."""
@@ -86,6 +95,38 @@ class TestPathExpansion(unittest.TestCase):
     with file_utils.Tempdir() as d:
       f = d.create_file("foo.py")
       self.assertEqual(file_utils.expand_path("foo.py", d.path), f)
+
+
+class TestExpandSourceFiles(unittest.TestCase):
+  """Tests for file_utils.expand_source_files."""
+
+  FILES = [
+      "a.py", "foo/b.py", "foo/c.txt", "foo/bar/d.py",
+      "foo/bar/baz/e.py"
+  ]
+
+  def _test_expand(self, args):
+    with file_utils.Tempdir() as d:
+      fs = [d.create_file(f) for f in self.FILES]
+      pyfiles = [f for f in fs if f.endswith(".py")]
+      self.assertItemsEqual(
+          pyfiles,
+          file_utils.expand_source_files(args, d.path))
+
+  def test_expand_source_files(self):
+    self._test_expand(["a.py", "foo/c.txt", "foo"])
+
+  def test_duplicates(self):
+    self._test_expand(["a.py", "foo/b.py", "foo", "foo/bar"])
+
+  def test_cwd(self):
+    with file_utils.Tempdir() as d:
+      fs = [d.create_file(f) for f in self.FILES]
+      pyfiles = [f for f in fs if f.endswith(".py")]
+      # cd to d.path and run with just "." as an argument
+      with file_utils.cd(d.path):
+        self.assertItemsEqual(
+            pyfiles, file_utils.expand_source_files("."))
 
 
 if __name__ == "__main__":

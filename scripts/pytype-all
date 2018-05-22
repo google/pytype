@@ -115,7 +115,7 @@ def main():
   if not args.filenames:
     logging.warning('Nothing to do!')
     sys.exit(0)
-  filenames = file_utils.expand_paths(args.filenames)
+  filenames = file_utils.expand_source_files(args.filenames)
 
   conf = read_config_file(args)
   if not conf.pythonpath:
