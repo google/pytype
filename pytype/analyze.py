@@ -579,7 +579,7 @@ class CallTracer(vm.VirtualMachine):
 
 def check_types(src, filename, errorlog, options, loader,
                 deep=True, init_maximum_depth=INIT_MAXIMUM_DEPTH, **kwargs):
-  """Verify a PyTD against the Python code."""
+  """Verify the Python code."""
   tracer = CallTracer(errorlog=errorlog, options=options,
                       generate_unknowns=False, loader=loader, **kwargs)
   loc, defs = tracer.run_program(src, filename, init_maximum_depth)
