@@ -6,9 +6,10 @@ import collections
 import logging
 import os
 
+from pytype import config as pytype_config
 from pytype import file_utils
+from pytype import io
 from pytype import utils
-from pytype.tools import runner
 
 
 # Inferred information about a module.
@@ -54,6 +55,7 @@ class PytypeRunner(object):
         '--quick',
         '--module-name', module.name,
         '--analyze-annotated' if report_errors else '--no-report-errors',
+        '--nofail',
         os.path.join(module.path, module.target),
     ]
 
@@ -74,19 +76,11 @@ class PytypeRunner(object):
 
     run_cmd = self.get_run_cmd(module, report_errors)
     logging.info('Running: %s', ' '.join(run_cmd))
-    run = runner.BinaryRun(run_cmd)
-    try:
-      returncode, _, stderr = run.communicate()
-    except OSError:
-      logging.error('Could not run pytype.')
-      return
-    if returncode:
-      errfile = os.path.join(self.pyi_dir, module.target + '.errors')
-      logging.info('Errors written to: %s', errfile)
-      error = stderr.decode('utf-8')
-      with open(errfile, 'w') as f:
-        f.write(error)
-      print(error)
+    # TODO(rechen): Do we want to get rid of the --nofail option and use a
+    # try/except here instead? We'd control the failure behavior (e.g. we could
+    # potentially bring back the .errors file, or implement an "abort on first
+    # error" flag for quick iterative typechecking).
+    io.process_one_file(pytype_config.Options(run_cmd))
 
   def yield_sorted_modules(self):
     """Yield modules from our sorted source files."""
