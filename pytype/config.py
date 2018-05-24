@@ -240,6 +240,10 @@ class Options(object):
         "--show-config", action="store_true",
         dest="show_config",
         help=("Display all config variables and exit."))
+    o.add_option(
+        "--version", action="store_true",
+        dest="version",
+        help=("Display pytype version and exit."))
     return o
 
   def _postprocess_options(self, names):
@@ -299,7 +303,7 @@ class Options(object):
                                          "output_pickled")
     self.output_pickled = filename
 
-  @uses(["input", "show_config", "pythonpath"])
+  @uses(["input", "show_config", "pythonpath", "version"])
   def _store_generate_builtins(self, generate_builtins):
     """Store the generate-builtins option."""
     if generate_builtins:
@@ -311,7 +315,7 @@ class Options(object):
             "Not allowed with --pythonpath", "generate-builtins")
       # Set the default pythonpath to [] rather than [""]
       self.pythonpath = []
-    elif not self.input and not self.show_config:
+    elif not self.input and not self.show_config and not self.version:
       raise optparse.OptParseError("Need a filename.")
     self.generate_builtins = generate_builtins
 

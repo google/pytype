@@ -1,11 +1,5 @@
 #!/usr/bin/python2.7
-"""Tool for inferring types from Python programs.
-
-'pytype' is a tool for generating pyi from Python programs.
-
-Usage:
-  pytype [flags] file.py
-"""
+"""Public interface to top-level pytype functions."""
 
 from __future__ import print_function
 
@@ -15,6 +9,7 @@ import sys
 import tokenize
 import traceback
 
+from pytype import __version__
 from pytype import analyze
 from pytype import directors
 from pytype import errors
@@ -207,3 +202,7 @@ def parse_pyi(options):
   """Tries parsing a PYI file."""
   loader = load_pytd.create_loader(options)
   loader.load_file(options.module_name, options.input)
+
+
+def get_pytype_version():
+  return __version__.__version__

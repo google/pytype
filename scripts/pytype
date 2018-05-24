@@ -74,6 +74,10 @@ def main(argv):
     print(options)
     sys.exit(0)
 
+  if options.version:
+    print(io.get_pytype_version())
+    sys.exit(0)
+
   node.SetCheckPreconditions(options.check_preconditions)
 
   with _ProfileContext(options.profile):
