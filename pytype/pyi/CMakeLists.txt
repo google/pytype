@@ -1,3 +1,4 @@
+add_package()
 
 genbison(
   NAME

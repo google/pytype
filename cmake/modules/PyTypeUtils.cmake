@@ -22,6 +22,8 @@ if(NOT PYTHONLIBS_FOUND)
   message(FATAL_ERROR "PyType requires Python developer libraries (https://packages.ubuntu.com/python-dev).")
 endif()
 
+set(COPY_SCRIPT "${PROJECT_SOURCE_DIR}/buildutils/copy.py")
+
 add_compile_options("-std=c++11")
 
 include(CMakeParseArguments)
@@ -227,3 +229,81 @@ function(py_extension)
     endforeach(dep)
   endif()
 endfunction(py_extension)
+
+function(py_library)
+  cmake_parse_arguments(
+    PY_LIBRARY   # prefix
+    ""           # optional args
+    "NAME"       # single value args
+    "SRCS;DEPS"  # multi-value args
+    ${ARGN}
+  )
+  if(NOT PY_LIBRARY_NAME)
+    message(FATAL_ERROR "'py_library' rule requires a NAME argument.")
+  endif()
+
+  if(PY_LIBRARY_SRCS)
+    # Add a command which copies the listed sources over to the current build
+    # directory.
+    add_custom_command(
+      OUTPUT ${PY_LIBRARY_SRCS}
+      COMMAND ${PYTHON_EXECUTABLE} -B ${COPY_SCRIPT} -s ${CMAKE_CURRENT_SOURCE_DIR} -d ${CMAKE_CURRENT_BINARY_DIR} ${PY_LIBRARY_SRCS}
+      DEPENDS ${PY_LIBRARY_SRCS}
+    )
+  endif()
+
+  _gen_fq_target_name(${PY_LIBRARY_NAME} fq_target_name)
+  add_custom_target(
+    ${fq_target_name}
+    ALL
+    DEPENDS ${PY_LIBRARY_SRCS}
+  )
+  # Add the deps if specified
+  if(PY_LIBRARY_DEPS)
+    foreach(dep IN LISTS PY_LIBRARY_DEPS)
+      _eval_fq_target_name(${dep} fq_dep_name)
+      add_dependencies(${fq_target_name} ${fq_dep_name})
+    endforeach(dep)
+  endif()
+endfunction(py_library)
+
+function(filegroup)
+  cmake_parse_arguments(
+    FILEGROUP  # prefix
+    ""  # optional args
+    "NAME"  # single value args
+    "SRCS"  # multi-value args
+    ${ARGN}
+  )
+  if(NOT FILEGROUP_NAME)
+    message(FATAL_ERROR "'filegroup' rule requires a NAME argument.")
+  endif()
+  if(NOT FILEGROUP_SRCS)
+    message(FATAL_ERROR "'filegroup' rule requires a SRCS argument.")
+  endif()
+
+  # Add a command which copies the listed sources over to the current build
+  # directory.
+  add_custom_command(
+    OUTPUT ${FILEGROUP_SRCS}
+    COMMAND ${PYTHON_EXECUTABLE} -B ${COPY_SCRIPT} -s ${CMAKE_CURRENT_SOURCE_DIR} -d ${CMAKE_CURRENT_BINARY_DIR} ${FILEGROUP_SRCS}
+    DEPENDS ${FILEGROUP_SRCS}
+  )
+
+  _gen_fq_target_name(${FILEGROUP_NAME} fq_target_name)
+  add_custom_target(
+    ${fq_target_name}
+    ALL
+    DEPENDS ${FILEGROUP_SRCS}
+  )
+endfunction(filegroup)
+
+# Add an __init__.py file to the current binary directory.
+# TODO(sivachandra): Make this rule use the __init__.py from the current source
+# directory if present. Currently, none of Pytype's __init__.py files have any
+# functionality. So, just creating an empty __init__.py is sufficient.
+function(add_package)
+  # TODO(sivachandra): Make this function create a real target on which all
+  # py_library targets in the directory will implicitly depend on.
+  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/__init__.py" "\n")
+endfunction(add_package)
