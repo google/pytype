@@ -7,6 +7,7 @@ import logging
 import os
 
 from pytype import config as pytype_config
+from pytype import debug
 from pytype import file_utils
 from pytype import io
 from pytype import utils
@@ -80,7 +81,8 @@ class PytypeRunner(object):
     # try/except here instead? We'd control the failure behavior (e.g. we could
     # potentially bring back the .errors file, or implement an "abort on first
     # error" flag for quick iterative typechecking).
-    io.process_one_file(pytype_config.Options(run_cmd))
+    with debug.save_logging_level():  # pytype_config changes the logging level
+      io.process_one_file(pytype_config.Options(run_cmd))
 
   def yield_sorted_modules(self):
     """Yield modules from our sorted source files."""

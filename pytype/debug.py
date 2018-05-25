@@ -1,6 +1,7 @@
 """Debugging helper functions."""
 
 import collections
+import contextlib
 import logging
 import re
 import traceback
@@ -339,6 +340,13 @@ def set_logging_level(level):
     logging.root.setLevel(level)
   else:
     logging.basicConfig(level=level)
+
+
+@contextlib.contextmanager
+def save_logging_level():
+  level = logging.getLogger().getEffectiveLevel()
+  yield
+  logging.root.setLevel(level)
 
 
 patch_logging()
