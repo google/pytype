@@ -83,6 +83,25 @@ class AbstractMethodTests(test_base.TargetIndependentTest):
             pass
       """, pythonpath=[d.path])
 
+  def test_abc_child_metaclass(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("six.pyi", """
+        from typing import TypeVar, Callable
+        T = TypeVar('T')
+        def add_metaclass(metaclass: type) -> Callable[[T], T]: ...
+      """)
+      self.Check("""
+        import abc
+        import six
+        class ABCChild(abc.ABCMeta):
+          pass
+        @six.add_metaclass(ABCChild)
+        class Foo(object):
+          @abc.abstractmethod
+          def foo(self):
+            pass
+      """, pythonpath=[d.path])
+
   def test_misplaced_abstractproperty(self):
     _, errors = self.InferWithErrors("""\
       import abc

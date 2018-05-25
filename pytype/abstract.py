@@ -2338,8 +2338,8 @@ class Class(object):
 
   @property
   def has_abstract_metaclass(self):
-    return self.cls and any(
-        cls.full_name == "abc.ABCMeta" for cls in self.cls.data)
+    return self.cls and "abc.ABCMeta" in itertools.chain.from_iterable(
+        (parent.full_name for parent in cls.mro) for cls in self.cls.data)
 
   @property
   def is_abstract(self):
