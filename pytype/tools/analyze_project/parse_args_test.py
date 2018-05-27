@@ -1,5 +1,6 @@
 """Tests for parse_args.py."""
 
+import os
 import unittest
 
 from pytype.tools.analyze_project import parse_args
@@ -35,6 +36,29 @@ class TestParseOrDie(unittest.TestCase):
     self.assertEqual(args.generate_config, 'test.cfg')
     with self.assertRaises(SystemExit):
       parse_args.parse_or_die(['--generate-config', 'test.cfg', '--tree'])
+
+  def test_python_version(self):
+    self.assertEqual(parse_args.parse_or_die(['-V2.7']).python_version, '2.7')
+    self.assertEqual(parse_args.parse_or_die(
+        ['--python-version', '2.7']).python_version, '2.7')
+
+  def test_output(self):
+    self.assertEqual(parse_args.parse_or_die(
+        ['-o', 'pyi']).output, os.path.join(os.getcwd(), 'pyi'))
+    self.assertEqual(parse_args.parse_or_die(
+        ['--output', 'pyi']).output, os.path.join(os.getcwd(), 'pyi'))
+
+  def test_pythonpath(self):
+    d = os.getcwd()
+    self.assertSequenceEqual(parse_args.parse_or_die(
+        ['-P', ':foo']).pythonpath, [d, os.path.join(d, 'foo')])
+    self.assertSequenceEqual(parse_args.parse_or_die(
+        ['--pythonpath', ':foo']).pythonpath, [d, os.path.join(d, 'foo')])
+
+  def test_defaults(self):
+    args = parse_args.parse_or_die([])
+    for arg in ['python_version', 'output', 'pythonpath']:
+      self.assertIsNone(getattr(args, arg))
 
 
 if __name__ == '__main__':

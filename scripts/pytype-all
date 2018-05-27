@@ -65,6 +65,8 @@ def main():
     sys.exit(0)
 
   conf = config.read_config_file_or_die(args.config)
+  # Command line arguments will overwrite file options.
+  conf.populate_from(vars(args))
   if not conf.pythonpath:
     conf.pythonpath = environment.compute_pythonpath(args.filenames)
   logging.info('\n  '.join(['Configuration:'] + str(conf).split('\n')))

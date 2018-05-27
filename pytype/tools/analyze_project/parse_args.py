@@ -2,6 +2,8 @@
 
 import argparse
 
+from pytype.tools.analyze_project import config
+
 
 def parse_or_die(argv):
   """Parse command line args."""
@@ -28,4 +30,12 @@ def parse_or_die(argv):
   parser.add_argument(
       '--config', dest='config', type=str, action='store', default='',
       help='Configuration file.')
+  types = config.make_converters()
+  for short_arg, arg, dest in [('-V', '--python-version', 'python_version'),
+                               ('-o', '--output', 'output'),
+                               ('-P', '--pythonpath', 'pythonpath')]:
+    # Without an explicit default, the argument defaults to None, allowing us
+    # to tell whether it was passed or not.
+    parser.add_argument(short_arg, arg, dest=dest, action='store',
+                        type=types.get(dest), help=config.ITEMS[dest].comment)
   return parser.parse_args(argv)
