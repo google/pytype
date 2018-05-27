@@ -88,11 +88,11 @@ included in the path.
 python_version = 3.6
 
 # All pytype output goes here.
-output_dir = pytype_output
+output = pytype_output
 
-# Paths to source code directories.
+# Paths to source code directories, separated by ':'.
 pythonpath =
-  ~/code,
+  ~/code:
   /usr/local/lib/python3.6/dist-packages/other_project.egg
 ```
 
@@ -120,11 +120,11 @@ $ cat requests.conf
   # Python version (major.minor)
   python_version = 2.7
 
-  # Paths to source code directories.
+  # Paths to source code directories, separated by ':'.
   pythonpath = .
 
   # All output goes here.
-  output_dir = pytype_output
+  output = pytype_output
 
 $ pytype-all --config=requests.conf requests/*.py
 ```
@@ -175,9 +175,9 @@ $ cd requests
 
 # edit file
 $ cat requests.conf
-  # Paths to source code directories.
+  # Paths to source code directories, separated by ':'.
   pythonpath =
-    .,
+    .:
     ~/github/urllib3
 
 # run pytype-all again

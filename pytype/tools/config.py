@@ -23,13 +23,6 @@ def find_config_file(path, filename='setup.cfg'):
   return None
 
 
-def get_list(string):
-  """Split a list of lines, optionally removing terminal commas."""
-  xs = string.strip().split('\n')
-  xs = [x.strip().rstrip(', \t') for x in xs]
-  return xs
-
-
 class ConfigSection(object):
   """Read a given set of keys from a section of a config file."""
 

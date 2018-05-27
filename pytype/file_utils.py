@@ -228,3 +228,12 @@ def expand_source_files(filenames, cwd=None):
       if f.endswith(".py"):
         out.append(f)
   return set(out)
+
+
+def expand_pythonpath(pythonpath, cwd=None):
+  """Expand a/b:c/d into [/path/to/a/b, /path/to/c/d]."""
+  if pythonpath:
+    return expand_paths(
+        (path.strip() for path in pythonpath.split(os.pathsep)), cwd)
+  else:
+    return []

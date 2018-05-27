@@ -29,7 +29,7 @@ class PytypeRunner(object):
     self.sorted_source_files = sorted_source_files  # all source files
     self.pythonpath = conf.pythonpath
     self.python_version = conf.python_version
-    self.pyi_dir = conf.output_dir
+    self.pyi_dir = conf.output
 
   def infer_module_name(self, filename):
     """Convert a filename to a module name relative to pythonpath."""

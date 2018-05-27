@@ -11,8 +11,8 @@ PYTYPE_CFG = """
   [pytype]
   python_version = 2.7
   pythonpath =
-    .
-    /foo/bar
+    .:
+    /foo/bar:
     baz/quux
 """
 
@@ -36,13 +36,15 @@ class TestBase(unittest.TestCase):
         os.path.join(path, u'baz/quux')
     ])
     # This should be picked up from defaults since we haven't set it
-    self.assertEqual(conf.output_dir, 'pytype_output')
+    self.assertEqual(
+        conf.output, os.path.join(os.getcwd(), config.ITEMS['output'].default))
 
   def _validate_default_contents(self, conf):
     self.assertEqual(
         conf.python_version, config.ITEMS['python_version'].default)
     self.assertEqual(conf.pythonpath, [])
-    self.assertEqual(conf.output_dir, config.ITEMS['output_dir'].default)
+    self.assertEqual(
+        conf.output, os.path.join(os.getcwd(), config.ITEMS['output'].default))
 
 
 class TestConfig(TestBase):
@@ -107,7 +109,10 @@ class TestGenerateConfig(unittest.TestCase):
     with file_utils.Tempdir() as d:
       f = os.path.join(d.path, 'sample.cfg')
       config.generate_sample_config_or_die(f)
-      conf.read_from_file(f)  # Test that we've generated a valid config.
+      # Test that we've generated a valid config and spot-check pythonpath.
+      conf.read_from_file(f)
+      self.assertEqual(
+          conf.pythonpath, config.ITEMS['pythonpath'].sample.split(os.pathsep))
 
 
 class TestReadConfig(TestBase):
