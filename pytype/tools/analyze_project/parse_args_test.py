@@ -23,6 +23,8 @@ class TestParseOrDie(unittest.TestCase):
   def test_tree(self):
     args = parse_args.parse_or_die(['--tree'])
     self.assertTrue(args.tree)
+    with self.assertRaises(SystemExit):
+      parse_args.parse_or_die(['--tree', '--unresolved'])
 
   def test_unresolved(self):
     args = parse_args.parse_or_die(['--unresolved'])
@@ -31,6 +33,8 @@ class TestParseOrDie(unittest.TestCase):
   def test_generate_config(self):
     args = parse_args.parse_or_die(['--generate-config', 'test.cfg'])
     self.assertEqual(args.generate_config, 'test.cfg')
+    with self.assertRaises(SystemExit):
+      parse_args.parse_or_die(['--generate-config', 'test.cfg', '--tree'])
 
 
 if __name__ == '__main__':
