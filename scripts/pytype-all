@@ -18,9 +18,7 @@
 
 from __future__ import print_function
 
-import argparse
 import logging
-import os
 import sys
 
 import importlab.environment
@@ -33,55 +31,8 @@ from pytype import utils
 from pytype.tools import environment
 from pytype.tools import tool_utils
 from pytype.tools.analyze_project import config
+from pytype.tools.analyze_project import parse_args
 from pytype.tools.analyze_project import pytype_runner
-
-
-def parse_args():
-  """Parse command line args."""
-
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-      'filenames', metavar='filename', type=str, nargs='*',
-      help='input file(s)')
-  parser.add_argument(
-      '--tree', dest='tree', action='store_true', default=False,
-      help='Display import tree.')
-  parser.add_argument(
-      '--unresolved', dest='unresolved', action='store_true', default=False,
-      help='Display unresolved dependencies.')
-  parser.add_argument(
-      '-v', '--verbosity', dest='verbosity', type=int, action='store',
-      default=1,
-      help='Set logging level: 0=ERROR, 1 =WARNING (default), 2=INFO.')
-  parser.add_argument(
-      '--config', dest='config', type=str, action='store', default='',
-      help='Configuration file.')
-  parser.add_argument(
-      '--generate-config', dest='generate_config', type=str, action='store',
-      default='',
-      help='Write out a dummy configuration file.')
-  return parser.parse_args()
-
-
-def read_config_file(args):
-  """Read config from args.config or from setup.cfg."""
-
-  ret = config.Config()
-  if args.config:
-    if not ret.read_from_file(args.config):
-      logging.critical('Could not read config file: %s\n'
-                       '  Generate a sample configuration via:\n'
-                       '  pytype-all --generate-config sample.cfg', args.config)
-      sys.exit(1)
-  else:
-    # Try reading from setup.cfg
-    filepath = ret.read_from_setup_cfg(os.getcwd())
-    if filepath:
-      logging.info('Reading config from: %s', filepath)
-    else:
-      logging.info('No config file specified, and no [pytype] section in '
-                   'setup.cfg. Using default configuration.')
-  return ret
 
 
 class PytdFileSystem(importlab.fs.ExtensionRemappingFileSystem):
@@ -105,22 +56,22 @@ def create_importlab_environment(conf, typeshed):
 
 
 def main():
-  args = parse_args()
+  args = parse_args.parse_or_die(sys.argv[1:])
   tool_utils.setup_logging_or_die(args.verbosity)
+  args.filenames = file_utils.expand_source_files(args.filenames)
 
   if args.generate_config:
     config.generate_sample_config_or_die(args.generate_config)
     sys.exit(0)
 
+  conf = config.read_config_file_or_die(args.config)
+  if not conf.pythonpath:
+    conf.pythonpath = environment.compute_pythonpath(args.filenames)
+  logging.info('\n  '.join(['Configuration:'] + str(conf).split('\n')))
+
   if not args.filenames:
     logging.warning('Nothing to do!')
     sys.exit(0)
-  filenames = file_utils.expand_source_files(args.filenames)
-
-  conf = read_config_file(args)
-  if not conf.pythonpath:
-    conf.pythonpath = environment.compute_pythonpath(filenames)
-  logging.info('\n  '.join(['Configuration:'] + str(conf).split('\n')))
 
   # Importlab needs the python exe, so we check it as early as possible.
   environment.check_python_exe_or_die(conf.python_version)
@@ -128,7 +79,7 @@ def main():
   typeshed = environment.initialize_typeshed_or_die()
   env = create_importlab_environment(conf, typeshed)
   try:
-    import_graph = importlab.graph.ImportGraph.create(env, filenames)
+    import_graph = importlab.graph.ImportGraph.create(env, args.filenames)
   except Exception as e:  # pylint: disable=broad-except
     logging.critical('Cannot parse input files:\n%s', str(e))
     sys.exit(1)
@@ -153,7 +104,7 @@ def main():
   tool_utils.makedirs_or_die(conf.output_dir,
                              'Could not create output directory')
   runner = pytype_runner.PytypeRunner(
-      filenames, import_graph.sorted_source_files(), conf)
+      args.filenames, import_graph.sorted_source_files(), conf)
   runner.run()
 
 

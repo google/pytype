@@ -1,11 +1,7 @@
 """Utilities for dealing with project configuration."""
 
-import collections
 import os
 from six.moves import configparser
-
-
-Item = collections.namedtuple('Item', ['key', 'default', 'sample', 'comment'])
 
 
 def find_config_file(path, filename='setup.cfg'):
@@ -68,15 +64,3 @@ class ConfigSection(object):
     if converter:
       value = converter(value)
     return value
-
-  def populate_object(self, obj):
-    """Populate an object that sets keys via setattr."""
-    for k in self.keymap:
-      value = self.get(k)
-      if value:
-        setattr(obj, k, value)
-    return obj
-
-  def to_hash(self):
-    """Return the section as a hash."""
-    return {k: self.get(k) for k in self.keymap}
