@@ -23,15 +23,21 @@ Item = collections.namedtuple('Item', ['default', 'sample', 'comment'])
 # Generates both the default config and the sample config file.
 ITEMS = {
     'python_version': Item(
-        '3.6', '3.6',
-        'Python version (major.minor) of the target code.'),
+        '3.6', '3.6', 'Python version (major.minor) of the target code.'),
     'output_dir': Item(
-        'pytype_output', 'pytype_output',
-        'All pytype output goes here.'),
+        'pytype_output', 'pytype_output', 'All pytype output goes here.'),
     'pythonpath': Item(
         [], ['/path/to/project', '/path/to/project'],
         'Paths to source code directories.')
 }
+
+
+def make_converters(cwd=None):
+  """For items that need coaxing into their internal representations."""
+  return {
+      'output_dir': lambda v: file_utils.expand_path(v, cwd),
+      'pythonpath': lambda v: file_utils.expand_paths(config.get_list(v), cwd)
+  }
 
 
 class Config(object):
@@ -46,23 +52,13 @@ class Config(object):
   def read_from_file(self, filepath):
     """Read config from an INI-style file with a [pytype] section."""
 
-    keymap = {}
-    for k, v in ITEMS.items():
-      if isinstance(v.default, list):
-        keymap[k] = config.get_list
-      else:
-        keymap[k] = None
+    converters = make_converters(cwd=os.path.dirname(filepath))
+    keymap = {k: converters.get(k) for k in ITEMS}
     cfg = config.ConfigSection.create_from_file(filepath, 'pytype', keymap)
     if not cfg:
       return None
     self.populate_from(cfg)
-    self.expand_paths(filepath)
     return filepath
-
-  def expand_paths(self, base_path):
-    cwd = os.path.dirname(base_path)
-    self.pythonpath = file_utils.expand_paths(self.pythonpath, cwd)
-    self.output_dir = file_utils.expand_path(self.output_dir, cwd)
 
   def populate_from(self, obj):
     """Populate self from an object with a dict-like get method."""

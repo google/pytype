@@ -57,10 +57,19 @@ class TestConfigSection(unittest.TestCase):
         k2 = v2
       '''))
       section = config.ConfigSection.create_from_file(
-          f, 'test', {k: lambda v: v for k in ('k1', 'k2')})
+          f, 'test', {k: None for k in ('k1', 'k2')})
     self.assertEqual(section.get('k1'), 'v1')
     self.assertEqual(section.get('k2'), 'v2')
     self.assertIsNone(section.get('k3'))
+
+  def test_get_empty(self):
+    with file_utils.Tempdir() as d:
+      f = d.create_file('setup.cfg', textwrap.dedent('''
+        [test]
+        k =
+      '''))
+      section = config.ConfigSection.create_from_file(f, 'test', {'k': None})
+      self.assertEqual(section.get('k'), '')
 
   def test_no_file(self):
     self.assertIsNone(config.ConfigSection.create_from_file(

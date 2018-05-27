@@ -36,7 +36,7 @@ class TestBase(unittest.TestCase):
         os.path.join(path, u'baz/quux')
     ])
     # This should be picked up from defaults since we haven't set it
-    self.assertEqual(conf.output_dir, os.path.join(path, 'pytype_output'))
+    self.assertEqual(conf.output_dir, 'pytype_output')
 
   def _validate_default_contents(self, conf):
     self.assertEqual(

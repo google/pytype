@@ -57,8 +57,6 @@ class ConfigSection(object):
       # The 'fallback' option is Python 3-only, so we use a try/except.
       value = self.parser.get(self.section, key)
     except configparser.NoOptionError:
-      value = None
-    if not value:
       return None
     converter = self.keymap[key]
     if converter:
