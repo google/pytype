@@ -61,14 +61,6 @@ def validate_version(python_version):
     raise UsageError("Python versions > 3.6 are not yet supported.")
 
 
-def is_python_2(python_version):
-  return python_version[0] == 2
-
-
-def is_python_3(python_version):
-  return python_version[0] == 3
-
-
 def strip_prefix(string, prefix):
   """Strip off prefix if it exists."""
   if string.startswith(prefix):

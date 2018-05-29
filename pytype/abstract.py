@@ -3188,7 +3188,7 @@ class InterpreterFunction(SignedFunction):
     super(InterpreterFunction, self).__init__(signature, vm)
     self.last_frame = None  # for BuildClass
     self._store_call_records = False
-    if self.vm.python_version >= (3, 0):
+    if self.vm.PY3:
       self.is_class_builder = False  # Will be set by BuildClass.
     else:
       self.is_class_builder = self.code.has_opcode(opcodes.LOAD_LOCALS)

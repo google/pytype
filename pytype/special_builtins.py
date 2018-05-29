@@ -47,7 +47,7 @@ class Open(abstract.PyTDFunction):
         *abstract.PyTDFunction.get_constructor_args("open", vm, "__builtin__"))
 
   def call(self, node, func, args):
-    if self.vm.python_version[0] >= 3:
+    if self.vm.PY3:
       # In Python 3, the type of IO object returned depends on the mode.
       self._match_args(node, args)  # May raise FailedFunctionCall.
       sig, = self.signatures
@@ -458,7 +458,7 @@ class Super(BuiltinClass):
   def call(self, node, _, args):
     result = self.vm.program.NewVariable()
     num_args = len(args.posargs)
-    if num_args == 0 and self.vm.python_version[0] >= 3:
+    if num_args == 0 and self.vm.PY3:
       # The implicit type argument is available in a freevar named '__class__'.
       cls_var = None
       for i, free_var in enumerate(self.vm.frame.f_code.co_freevars):
@@ -578,7 +578,7 @@ class PropertyTemplate(BuiltinClass):
 
   _KEYS = ["fget", "fset", "fdel", "doc"]
 
-  def __init__(self, vm, name, module="__builtin__"):
+  def __init__(self, vm, name, module="__builtin__"):  # pylint: disable=useless-super-delegation
     super(PropertyTemplate, self).__init__(vm, name, module)
 
   def signature(self):

@@ -21,7 +21,7 @@ def _write32(f, w):
 def write_pyc(f, codeobject, source_size=0, timestamp=0):
   f.write(MAGIC)
   _write32(f, timestamp)
-  if tuple(sys.version_info[:2]) >= (3, 3):
+  if sys.version_info[:2] >= (3, 3):
     _write32(f, source_size)
   f.write(marshal.dumps(codeobject))
 

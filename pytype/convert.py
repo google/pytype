@@ -48,7 +48,7 @@ class Converter(object):
     # object_type is needed to initialize the primitive class values.
     self.object_type = self.constant_to_value(object)
 
-    if self.vm.python_version[0] < 3:
+    if self.vm.PY2:
       version_specific = [compat.UnicodeType]
     else:
       version_specific = [compat.BytesType]
@@ -110,7 +110,7 @@ class Converter(object):
         False: self.false,
         None: self.primitive_class_instances[bool],
     }
-    if self.vm.python_version[0] < 3:
+    if self.vm.PY2:
       self.unicode_type = self.primitive_classes[compat.UnicodeType]
       self.bytes_type = self.str_type
       self.next_attr = "next"
@@ -128,6 +128,7 @@ class Converter(object):
       return "a(n) %s" % constant_type.__name__
 
   def _type_to_name(self, t):
+    """Convert a type to its name."""
     assert t.__class__ is type
     # TODO(rechen): We should use the target version-specific name of the
     # builtins module rather than hard-coding __builtin__.
@@ -136,7 +137,7 @@ class Converter(object):
     elif t is compat.BytesType:
       return "__builtin__.bytes"
     elif t is compat.UnicodeType:
-      if self.vm.python_version[0] < 3:
+      if self.vm.PY2:
         return "__builtin__.unicode"
       else:
         return "__builtin__.str"
@@ -180,7 +181,7 @@ class Converter(object):
     elif value is False:
       return self.false.to_variable(node)
     else:
-      raise ValueError("Invalid bool value: %r", value)
+      raise ValueError("Invalid bool value: %r" % value)
 
   def build_int(self, node):
     i = self.primitive_class_instances[int]

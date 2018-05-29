@@ -134,6 +134,8 @@ class VirtualMachine(object):
     self.errorlog = errorlog
     self.options = options
     self.python_version = options.python_version
+    self.PY2 = self.python_version[0] == 2
+    self.PY3 = self.python_version[0] == 3
     self.generate_unknowns = generate_unknowns
     self.store_all_calls = store_all_calls
     self.loader = loader
@@ -2098,7 +2100,7 @@ class VirtualMachine(object):
       return state.set_why("exception")
 
   def byte_RAISE_VARARGS(self, state, op):
-    if utils.is_python_2(self.python_version):
+    if self.PY2:
       return self.byte_RAISE_VARARGS_PY2(state, op)
     else:
       return self.byte_RAISE_VARARGS_PY3(state, op)
@@ -2116,10 +2118,10 @@ class VirtualMachine(object):
     state = state.push(exit_method)
     state, enter = self.load_attr(state, ctxmgr, "__enter__")
     state, ctxmgr_obj = self.call_function_with_state(state, enter, ())
-    if utils.is_python_2(self.python_version):
+    if self.PY2:
       state = self.push_block(state, "with", op, op.target, level)
     else:
-      assert self.python_version[0] == 3
+      assert self.PY3
       state = self.push_block(state, "finally", op, op.target, level)
     return state.push(ctxmgr_obj)
 
@@ -2162,11 +2164,11 @@ class VirtualMachine(object):
 
   def _get_extra_function_args(self, state, arg):
     """Get function annotations and defaults from the stack. (Python3.5-)."""
-    if utils.is_python_2(self.python_version):
+    if self.PY2:
       num_pos_defaults = arg & 0xffff
       num_kw_defaults = 0
     else:
-      assert self.python_version[0] == 3
+      assert self.PY3
       num_pos_defaults = arg & 0xff
       num_kw_defaults = (arg >> 8) & 0xff
     state, raw_annotations = state.popn((arg >> 16) & 0x7fff)
@@ -2246,10 +2248,10 @@ class VirtualMachine(object):
 
   def byte_MAKE_FUNCTION(self, state, op):
     """Create a function and push it onto the stack."""
-    if utils.is_python_2(self.python_version):
+    if self.PY2:
       name = None
     else:
-      assert self.python_version[0] == 3
+      assert self.PY3
       state, name_var = state.pop()
       name = abstract.get_atomic_python_constant(name_var)
     state, code = state.pop()
@@ -2272,11 +2274,11 @@ class VirtualMachine(object):
 
   def byte_MAKE_CLOSURE(self, state, op):
     """Make a function that binds local variables."""
-    if utils.is_python_2(self.python_version):
+    if self.PY2:
       # The py3 docs don't mention this change.
       name = None
     else:
-      assert self.python_version[0] == 3
+      assert self.PY3
       state, name_var = state.pop()
       name = abstract.get_atomic_python_constant(name_var)
     state, (closure, code) = state.popn(2)
