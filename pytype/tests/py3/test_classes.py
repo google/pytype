@@ -213,7 +213,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
       def f():
         class A(object): pass
         return {A: A()}
-    """, quick=True, maximum_depth=1)
+    """, quick=True)
     self.assertTypesMatchPytd(ty, """
       def f() -> dict: ...
     """)

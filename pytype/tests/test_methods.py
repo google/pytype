@@ -211,8 +211,7 @@ class MethodsTest(test_base.TargetIndependentTest):
         return x.foo()
 
       test()
-    """, deep=False,
-        show_library_calls=True, maximum_depth=4)
+    """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("test"), (), self.int)
 
   def testExplicitProperty(self):

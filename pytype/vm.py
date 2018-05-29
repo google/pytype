@@ -14,7 +14,6 @@ import collections
 import logging
 import os
 import re
-import sys
 
 from pytype import abc_overlay
 from pytype import abstract
@@ -129,7 +128,7 @@ class VirtualMachine(object):
                generate_unknowns=False,
                store_all_calls=False):
     """Construct a TypegraphVirtualMachine."""
-    self.maximum_depth = sys.maxsize
+    self.maximum_depth = None  # set by run_program() and analyze()
     self.errorlog = errorlog
     self.options = options
     self.python_version = options.python_version
@@ -652,7 +651,7 @@ class VirtualMachine(object):
     self.director = director
     self.filename = filename
 
-    self.maximum_depth = sys.maxsize if maximum_depth is None else maximum_depth
+    self.maximum_depth = maximum_depth
 
     code = self.compile_src(src, filename=filename)
     visitor = _FindIgnoredTypeComments(self.director.type_comments)

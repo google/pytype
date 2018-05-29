@@ -158,17 +158,18 @@ class BaseTest(unittest.TestCase):
   def assertNoCrash(self, method, code, **kwargs):
     method(code, report_errors=False, **kwargs)
 
-  def _SetUpErrorHandling(self, code, pythonpath, analyze_annotated):
+  def _SetUpErrorHandling(self, code, pythonpath, analyze_annotated, quick):
     code = textwrap.dedent(code)
     errorlog = errors.ErrorLog()
-    self.ConfigureOptions(pythonpath=pythonpath,
-                          analyze_annotated=analyze_annotated)
+    self.ConfigureOptions(
+        pythonpath=pythonpath, analyze_annotated=analyze_annotated, quick=quick)
     return {"src": code, "errorlog": errorlog, "options": self.options,
             "loader": self.loader}
 
   def InferWithErrors(self, code, deep=True, pythonpath=(),
-                      analyze_annotated=True, **kwargs):
-    kwargs.update(self._SetUpErrorHandling(code, pythonpath, analyze_annotated))
+                      analyze_annotated=True, quick=False, **kwargs):
+    kwargs.update(
+        self._SetUpErrorHandling(code, pythonpath, analyze_annotated, quick))
     unit, builtins_pytd = analyze.infer_types(deep=deep, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
     unit = optimize.Optimize(unit, builtins_pytd, lossy=False, use_abcs=False,
@@ -176,8 +177,9 @@ class BaseTest(unittest.TestCase):
     return pytd_utils.CanonicalOrdering(unit), kwargs["errorlog"]
 
   def CheckWithErrors(self, code, deep=True, pythonpath=(),
-                      analyze_annotated=True, **kwargs):
-    kwargs.update(self._SetUpErrorHandling(code, pythonpath, analyze_annotated))
+                      analyze_annotated=True, quick=False, **kwargs):
+    kwargs.update(
+        self._SetUpErrorHandling(code, pythonpath, analyze_annotated, quick))
     analyze.check_types(filename="<inline>", deep=deep, **kwargs)
     return kwargs["errorlog"]
 
@@ -376,7 +378,6 @@ class BaseTest(unittest.TestCase):
         pythonpath=[""] if (not pythonpath and imports_map) else pythonpath,
         imports_map=imports_map, analyze_annotated=analyze_annotated)
     errorlog = errors.ErrorLog()
-    # TODO(mdemello): Setting 'quick' does not set maximum depth in infer_types.
     unit, builtins_pytd = analyze.infer_types(
         src, errorlog, self.options, loader=self.loader, **kwargs)
     unit.Visit(visitors.VerifyVisitor())

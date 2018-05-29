@@ -374,8 +374,8 @@ class TestFunctions(test_base.TargetIndependentTest):
     """)
 
   def test_named_arg_unsolvable_max_depth(self):
-    # Main test here is for this not to throw a KeyError exception while
-    # running type inference. The given options simulate those of --quick.
+    # Main test here is for this not to throw a KeyError exception upon hitting
+    # maximum depth.
     _, errors = self.InferWithErrors("""\
       def f(x):
         return max(foo=repr(__any_object__))

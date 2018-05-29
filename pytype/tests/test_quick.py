@@ -44,12 +44,15 @@ class QuickTest(test_base.TargetIndependentTest):
       def f():
         class A(object): pass
         return {A: A()}
-    """, quick=True, maximum_depth=1)
+    """, quick=True)
     self.assertTypesMatchPytd(ty, """
       def f() -> dict
     """)
 
   def testInit(self):
+    # Tests that it's possible for --quick to handle this case with a large
+    # enough maximum depth, even though it can't currently due to
+    # QUICK_INFER_MAXIMUM_DEPTH being 1.
     ty = self.Infer("""
       class A(object):
         def __init__(self):

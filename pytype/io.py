@@ -36,16 +36,23 @@ def _read_source_file(input_filename):
     raise utils.UsageError("Could not load input file %s" % input_filename)
 
 
-def check_py(input_filename, errorlog, options, loader):
-  """Check the types of one file."""
+def _call(analyze_types, input_filename, errorlog, options, loader):
+  """Helper function to call analyze.check/infer_types."""
   src = _read_source_file(input_filename)
-  analyze.check_types(
+  # 'deep' tells the analyzer whether to analyze functions not called from main.
+  deep = not options.main_only
+  return analyze_types(
       src=src,
-      loader=loader,
       filename=input_filename,
       errorlog=errorlog,
       options=options,
-      deep=not options.main_only)
+      loader=loader,
+      deep=deep)
+
+
+def check_py(input_filename, errorlog, options, loader):
+  """Check the types of one file."""
+  _call(analyze.check_types, input_filename, errorlog, options, loader)
 
 
 def generate_pyi(input_filename, errorlog, options, loader):
@@ -64,15 +71,8 @@ def generate_pyi(input_filename, errorlog, options, loader):
     CompileError: If we couldn't parse the input file.
     UsageError: If the input filepath is invalid.
   """
-  src = _read_source_file(input_filename)
-  mod, builtins = analyze.infer_types(
-      src=src,
-      errorlog=errorlog,
-      options=options,
-      loader=loader,
-      filename=input_filename,
-      deep=not options.main_only,
-      maximum_depth=1 if options.quick else 3)
+  mod, builtins = _call(
+      analyze.infer_types, input_filename, errorlog, options, loader)
   mod.Visit(visitors.VerifyVisitor())
   mod = optimize.Optimize(mod,
                           builtins,

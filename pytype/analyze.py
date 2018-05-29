@@ -3,7 +3,6 @@
 import collections
 import logging
 import subprocess
-import sys
 
 from pytype import abstract
 from pytype import convert_structural
@@ -28,8 +27,11 @@ CallRecord = collections.namedtuple(
                    "keyword_arguments", "return_value"])
 
 
-# How deep to follow call chains, during module loading:
-INIT_MAXIMUM_DEPTH = 4
+# How deep to follow call chains:
+INIT_MAXIMUM_DEPTH = 4  # during module loading
+MAXIMUM_DEPTH = 3  # during non-quick analysis
+QUICK_CHECK_MAXIMUM_DEPTH = 2  # during quick checking
+QUICK_INFER_MAXIMUM_DEPTH = 1  # during quick inference
 
 
 _INITIALIZING = object()
@@ -389,7 +391,7 @@ class CallTracer(vm.VirtualMachine):
 
   def analyze(self, node, defs, maximum_depth):
     assert not self.frame
-    self.maximum_depth = sys.maxsize if maximum_depth is None else maximum_depth
+    self.maximum_depth = maximum_depth
     self._analyzing = True
     node = node.ConnectNew(name="Analyze")
     return self.analyze_toplevel(node, defs)
@@ -578,7 +580,8 @@ class CallTracer(vm.VirtualMachine):
 
 
 def check_types(src, filename, errorlog, options, loader,
-                deep=True, init_maximum_depth=INIT_MAXIMUM_DEPTH, **kwargs):
+                deep=True, init_maximum_depth=INIT_MAXIMUM_DEPTH,
+                maximum_depth=None, **kwargs):
   """Verify the Python code."""
   tracer = CallTracer(errorlog=errorlog, options=options,
                       generate_unknowns=False, loader=loader, **kwargs)
@@ -586,7 +589,10 @@ def check_types(src, filename, errorlog, options, loader,
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)
   snapshotter.take_snapshot("analyze:check_types:tracer")
   if deep:
-    tracer.analyze(loc, defs, maximum_depth=(2 if options.quick else None))
+    if maximum_depth is None:
+      maximum_depth = (
+          QUICK_CHECK_MAXIMUM_DEPTH if options.quick else MAXIMUM_DEPTH)
+    tracer.analyze(loc, defs, maximum_depth=maximum_depth)
   snapshotter.take_snapshot("analyze:check_types:post")
   _maybe_output_debug(options, tracer.program)
 
@@ -621,6 +627,9 @@ def infer_types(src, errorlog, options, loader,
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)
   snapshotter.take_snapshot("analyze:infer_types:tracer")
   if deep:
+    if maximum_depth is None:
+      maximum_depth = (
+          QUICK_INFER_MAXIMUM_DEPTH if options.quick else MAXIMUM_DEPTH)
     tracer.exitpoint = tracer.analyze(loc, defs, maximum_depth)
   else:
     tracer.exitpoint = loc
