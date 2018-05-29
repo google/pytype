@@ -324,17 +324,6 @@ def stack_trace(indent_level=0, limit=100):
   return "\n  ".join(trace)
 
 
-def patch_logging():
-  """Add one extra log level, "TRACE", to logging."""
-  def trace(self, msg, *args, **kwargs):
-    if self.isEnabledFor(logging.DEBUG - 1):
-      # pylint: disable=protected-access
-      self._log(logging.DEBUG - 1, msg, args, **kwargs)
-  logging.TRACE = logging.DEBUG - 1
-  logging.Logger.trace = trace
-  logging.addLevelName(logging.DEBUG - 1, "TRACE")
-
-
 def set_logging_level(level):
   if logging.root.handlers:
     logging.root.setLevel(level)
@@ -347,6 +336,3 @@ def save_logging_level():
   level = logging.getLogger().getEffectiveLevel()
   yield
   logging.root.setLevel(level)
-
-
-patch_logging()

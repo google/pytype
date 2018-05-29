@@ -1,5 +1,7 @@
 """Tests for config.py."""
 
+import optparse
+
 from pytype import config
 
 import unittest
@@ -38,6 +40,11 @@ class ConfigTest(unittest.TestCase):
     argv.append("--analyze-annotated")
     opts = config.Options(argv)
     self.assertTrue(opts.analyze_annotated)
+
+  def test_bad_verbosity(self):
+    argv = ["pytype", "--verbosity", "5", "test.py"]
+    with self.assertRaises(optparse.OptParseError):
+      config.Options(argv)
 
 
 if __name__ == "__main__":

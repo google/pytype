@@ -24,7 +24,6 @@ from pytype import blocks
 from pytype import collections_overlay
 from pytype import compare
 from pytype import convert
-from pytype import debug  # pylint: disable=unused-import
 from pytype import directors
 from pytype import function
 from pytype import load_pytd
@@ -344,11 +343,6 @@ class VirtualMachine(object):
     log.info("%s | data_stack: %s", indent, stack_rep)
     log.info("%s | block_stack: %s", indent, block_stack_rep)
     log.info("%s | node: <%d>%s", indent, state.node.id, state.node.name)
-    if log.isEnabledFor(logging.TRACE):
-      log.trace("%s | backtrace: %s", indent,
-                " ".join(str(f.current_opcode.line)
-                         for f in self.frames
-                         if isinstance(f, frame_state.Frame)))
     log.info("%s %s", indent, utils.maybe_truncate(str(op), _TRUNCATE))
 
   def repper(self, s):

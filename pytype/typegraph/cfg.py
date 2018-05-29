@@ -8,9 +8,6 @@ import collections
 import logging
 
 from pytype import metrics
-# debug is imported to enable log.trace. Since it isn't used directly, it's
-# flagged as an unused import.
-import pytype.debug  # pylint: disable=unused-import
 
 log = logging.getLogger(__name__)
 
@@ -85,8 +82,6 @@ class Program(object):
       A Variable instance.
     """
     variable = Variable(self, self.next_variable_id)
-    # We patch the logger to have an extra 'trace' level.
-    log.trace("New variable v%d", self.next_variable_id)  # pytype: disable=attribute-error
     self.next_variable_id += 1
     if bindings is not None:
       assert source_set is not None and where is not None

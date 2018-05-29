@@ -17,8 +17,8 @@ from pytype.typegraph import cfg_utils
 import six
 
 
-LOG_LEVELS = [logging.CRITICAL, logging.ERROR, logging.WARNING,
-              logging.INFO, logging.DEBUG, logging.DEBUG - 1]
+LOG_LEVELS = [logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO,
+              logging.DEBUG]
 
 
 OptParseError = optparse.OptParseError  # used by main.py
@@ -222,8 +222,7 @@ class Options(object):
         "-v", "--verbosity", type="int", action="store",
         dest="verbosity", default=1,
         help=("Set logging verbosity: "
-              "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug, "
-              "5=trace"))
+              "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug"))
     o.add_option(
         "--verify-pickle", action="store_true", default=False,
         dest="verify_pickle",

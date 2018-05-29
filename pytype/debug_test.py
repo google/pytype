@@ -102,9 +102,6 @@ class DebugTest(unittest.TestCase):
           +-[N1]
     """), s)
 
-  def testTraceLogLevel(self):
-    log.trace("hello world")
-
   def testRootCause(self):
     n1 = self.prog.NewCFGNode()
     n2 = self.prog.NewCFGNode()
