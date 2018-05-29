@@ -3334,14 +3334,15 @@ class InterpreterFunction(SignedFunction):
       old_ret, old_remaining_depth = self._call_cache[callkey]
       # Optimization: This function has already been called, with the same
       # environment and arguments, so recycle the old return value.
-      # We would want to skip this optimization and reanalyze the call
-      # if the all the possible types of the return value was unsolvable
-      # and we can transverse the function deeper.
-      if (all(x == self.vm.convert.unsolvable for x in old_ret.data) and
-          self.vm.remaining_depth() > old_remaining_depth):
-        log.info("Reanalyzing %r because all of its call record's bindings are "
-                 "Unsolvable; remaining_depth = %d,"
-                 "record remaining_depth = %d",
+      # We would want to skip this optimization and reanalyze the call if we can
+      # traverse the function deeper.
+      if self.vm.remaining_depth() > old_remaining_depth:
+        # TODO(rechen): Reanalysis is necessary only if the VM was unable to
+        # completely analyze the call with old_remaining_depth. For now, we can
+        # get away with not checking for completion because of how severely
+        # --quick constrains the maximum depth.
+        log.info("Reanalyzing %r because we can traverse deeper; "
+                 "remaining_depth = %d, old_remaining_depth = %d",
                  self.name, self.vm.remaining_depth(), old_remaining_depth)
       else:
         ret = old_ret.AssignToNewVariable(node)
