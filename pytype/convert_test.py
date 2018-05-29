@@ -313,6 +313,13 @@ class ConvertTest(unittest.TestCase):
         abstract.AsInstance(pyval), {}, self._vm.root_cfg_node)
     self.assertEqual(v, self._vm.convert.primitive_class_instances[int])
 
+  def test_constant_name(self):
+    # Test that we create a string name without crashing.
+    self.assertIsInstance(self._vm.convert.constant_name(int), str)
+    self.assertIsInstance(self._vm.convert.constant_name(None), str)
+    self.assertIsInstance(
+        self._vm.convert.constant_name((int, (str, super))), str)
+
 
 if __name__ == "__main__":
   unittest.main()

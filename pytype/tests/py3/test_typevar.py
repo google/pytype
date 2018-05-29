@@ -350,6 +350,24 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       v = ...  # type: int
     """)
 
+  def testAnyAsBound(self):
+    self.Check("""
+            from typing import Any, TypeVar
+      T = TypeVar("T", bound=Any)
+      def f(x: T) -> T:
+        return x
+      f(42)
+    """)
+
+  def testAnyAsConstraint(self):
+    self.Check("""
+            from typing import Any, TypeVar
+      T = TypeVar("T", str, Any)
+      def f(x: T) -> T:
+        return x
+      f(42)
+    """)
+
 
 class TypeVarTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for TypeVar in Python 3."""

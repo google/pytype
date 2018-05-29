@@ -118,12 +118,15 @@ class TypeVarError(Exception):
 class TypeVar(abstract.PyTDFunction):
   """Representation of typing.TypeVar, as a function."""
 
+  # See b/74212131: we allow Any for bounds and constraints.
+  _CLASS_TYPE = (abstract.Class, abstract.Unsolvable)
+
   def __init__(self, name, vm):
     super(TypeVar, self).__init__(*abstract.PyTDFunction.get_constructor_args(
         name, vm, "typing", pyval_name="_typevar_new"))
 
   def _get_class_or_constant(self, var, name, arg_type, arg_type_desc=None):
-    if arg_type is abstract.Class:
+    if arg_type is self._CLASS_TYPE:
       convert_func = abstract.get_atomic_value
       type_desc = arg_type_desc or "an unambiguous type"
     else:
@@ -157,10 +160,10 @@ class TypeVar(abstract.PyTDFunction):
                                        six.string_types,
                                        arg_type_desc="a constant str")
     constraints = tuple(self._get_class_or_constant(
-        c, "constraint", abstract.Class) for c in args.posargs[1:])
+        c, "constraint", self._CLASS_TYPE) for c in args.posargs[1:])
     if len(constraints) == 1:
       raise TypeVarError("the number of constraints must be 0 or more than 1")
-    bound = self._get_namedarg(args, "bound", abstract.Class, None)
+    bound = self._get_namedarg(args, "bound", self._CLASS_TYPE, None)
     covariant = self._get_namedarg(args, "covariant", bool, False)
     contravariant = self._get_namedarg(args, "contravariant", bool, False)
     if constraints and bound:

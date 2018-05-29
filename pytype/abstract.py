@@ -63,14 +63,18 @@ class AsReturnValue(AsInstance):
 
 
 def get_atomic_value(variable, constant_type=None):
+  """Get the atomic value stored in this variable."""
   if len(variable.bindings) == 1:
     v, = variable.bindings
     if isinstance(v.data, constant_type or object):
       return v.data
-  name = "<any>" if constant_type is None else constant_type.__name__
+  elif not variable.bindings:
+    raise ConversionError("Cannot get atomic value from empty variable.")
+  bindings = variable.bindings
+  name = bindings[0].data.vm.convert.constant_name(constant_type)
   raise ConversionError(
       "Cannot get atomic value %s from variable. %s %s"
-      % (name, variable, [a.data for a in variable.bindings]))
+      % (name, variable, [b.data for b in bindings]))
 
 
 def get_atomic_python_constant(variable, constant_type=None):

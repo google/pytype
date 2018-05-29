@@ -119,13 +119,13 @@ class Converter(object):
       self.bytes_type = self.primitive_classes[compat.BytesType]
       self.next_attr = "__next__"
 
-  def _constant_name(self, constant_type):
+  def constant_name(self, constant_type):
     if constant_type is None:
-      return "a constant"
+      return "constant"
     elif isinstance(constant_type, tuple):
-      return "in (%s)" % ", ".join(c.__name__ for c in constant_type)
+      return "(%s)" % ", ".join(self.constant_name(c) for c in constant_type)
     else:
-      return "a(n) %s" % constant_type.__name__
+      return constant_type.__name__
 
   def _type_to_name(self, t):
     """Convert a type to its name."""
@@ -153,8 +153,8 @@ class Converter(object):
         isinstance(val.pyval, constant_type or object) and
         not getattr(val, "could_contain_anything", False)):
       return val.pyval
-    name = self._constant_name(constant_type)
-    raise abstract.ConversionError("%s is not %s" % (val, name))
+    name = self.constant_name(constant_type)
+    raise abstract.ConversionError("%s is not of type %s" % (val, name))
 
   def name_to_value(self, name, subst=None, ast=None):
     if ast is None:
