@@ -2443,6 +2443,8 @@ class ParameterizedClass(AtomicAbstractValue, Class):
         parameter.
   """
 
+  is_lazy = False
+
   def __init__(self, base_cls, type_parameters, vm):
     # A ParameterizedClass is created by converting a pytd.GenericType, whose
     # base type is restricted to NamedType and ClassType.
@@ -2678,6 +2680,7 @@ class PyTDClass(SimpleAbstractValue, Class):
     cls: A pytd.Class
     mro: Method resolution order. An iterable of AtomicAbstractValue.
   """
+
   is_lazy = True  # uses _convert_member
 
   def __init__(self, name, pytd_cls, vm):
@@ -2792,6 +2795,8 @@ class InterpreterClass(SimpleAbstractValue, Class):
   These are the abstract value for class objects that are implemented in the
   program.
   """
+
+  is_lazy = False
 
   def __init__(self, name, bases, members, cls, vm):
     assert isinstance(name, str)

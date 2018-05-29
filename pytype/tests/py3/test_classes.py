@@ -177,6 +177,14 @@ class ClassesTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorLogIs(errors, [(8, "wrong-arg-types", r"Sequence.*int")])
 
+  def testParameterizedClassBinaryOperator(self):
+    _, errors = self.InferWithErrors("""\
+            from typing import Sequence
+      def f(x: Sequence[str], y: Sequence[str]) -> None:
+        a = x + y
+      """)
+    self.assertErrorLogIs(errors, [(4, "unsupported-operands")])
+
 
 class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for classes."""
