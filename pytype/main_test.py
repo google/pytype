@@ -401,7 +401,7 @@ class PytypeTest(unittest.TestCase):
     outfile = self._TmpPath("output")
     with open(infile, "w") as f:
       f.write("def f(x): pass")
-    argv = ["", "-o", outfile, infile]
+    argv = ["-o", outfile, infile]
     options = config.Options(argv)
     main_module._run_pytype(options)
     self.assertTrue(os.path.isfile(outfile))

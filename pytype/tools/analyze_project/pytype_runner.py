@@ -22,10 +22,9 @@ class PytypeRunner(object):
     self.python_version = conf.python_version
     self.pyi_dir = conf.output
 
-  def get_run_cmd(self, module, report_errors):
-    """Get the command for running pytype on the given module."""
+  def get_pytype_args(self, module, report_errors):
+    """Get the options for running pytype on the given module."""
     return [
-        'pytype',
         '-P', self.pyi_dir,
         '-V', self.python_version,
         '-o', os.path.join(self.pyi_dir, module.target + 'i'),
@@ -51,14 +50,14 @@ class PytypeRunner(object):
     else:
       print('%s*' % module.target)
 
-    run_cmd = self.get_run_cmd(module, report_errors)
-    logging.info('Running: %s', ' '.join(run_cmd))
+    args = self.get_pytype_args(module, report_errors)
+    logging.info('Running: pytype %s', ' '.join(args))
     # TODO(rechen): Do we want to get rid of the --nofail option and use a
     # try/except here instead? We'd control the failure behavior (e.g. we could
     # potentially bring back the .errors file, or implement an "abort on first
     # error" flag for quick iterative typechecking).
     with debug.save_logging_level():  # pytype_config changes the logging level
-      io.process_one_file(pytype_config.Options(run_cmd))
+      io.process_one_file(pytype_config.Options(args))
 
   def yield_sorted_modules(self):
     """Yield modules from our sorted source files."""

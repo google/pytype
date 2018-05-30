@@ -11,14 +11,15 @@ from pytype.tools.analyze_project import pytype_runner
 
 
 class TestGetRunCmd(unittest.TestCase):
-  """Test PytypeRunner.get_run_cmd()."""
+  """Test PytypeRunner.get_pytype_args()."""
 
   def setUp(self):
     self.runner = pytype_runner.PytypeRunner([], [], config.Config())
 
-  def get_basic_options(self):
+  def get_basic_options(self, report_errors=False):
     module = utils.Module('foo', 'bar.py', 'bar')
-    return pytype_config.Options(self.runner.get_run_cmd(module, False))
+    args = self.runner.get_pytype_args(module, report_errors)
+    return pytype_config.Options(args)
 
   def test_pythonpath(self):
     self.assertEqual(self.get_basic_options().pythonpath, [self.runner.pyi_dir])
@@ -39,13 +40,12 @@ class TestGetRunCmd(unittest.TestCase):
     self.assertEqual(self.get_basic_options().module_name, 'bar')
 
   def test_error_reporting(self):
-    module = utils.Module('foo', 'bar.py', 'bar')
-    options = pytype_config.Options(
-        self.runner.get_run_cmd(module, report_errors=False))
+    # Disable error reporting
+    options = self.get_basic_options(report_errors=False)
     self.assertFalse(options.report_errors)
     self.assertFalse(options.analyze_annotated)
-    options = pytype_config.Options(
-        self.runner.get_run_cmd(module, report_errors=True))
+    # Enable error reporting
+    options = self.get_basic_options(report_errors=True)
     self.assertTrue(options.report_errors)
     self.assertTrue(options.analyze_annotated)
 
