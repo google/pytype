@@ -1,7 +1,9 @@
 """Tests for utils.py."""
 
 import logging
+import os
 
+from pytype import file_utils
 from pytype import utils
 
 import unittest
@@ -177,6 +179,40 @@ class DecoratorsTest(unittest.TestCase):
     def f():  # pylint: disable=unused-variable
       pass
     self.assertEqual(foo.lookup["f"], 3)
+
+
+# Because TestInferModuleName expands a lot of paths:
+expand = file_utils.expand_path
+
+
+class TestInferModuleName(unittest.TestCase):
+  """Test utils.infer_module."""
+
+  def assert_module_equal(self, module, path, target, name):
+    self.assertEqual(module.path.rstrip(os.sep), path.rstrip(os.sep))
+    self.assertEqual(module.target, target)
+    self.assertEqual(module.name, name)
+
+  def test_simple_name(self):
+    module = utils.infer_module(expand("foo/bar.py"), [expand("foo")])
+    self.assert_module_equal(module, expand("foo"), "bar.py", "bar")
+
+  def test_name_in_package(self):
+    module = utils.infer_module(expand("foo/bar/baz.py"), [expand("foo")])
+    self.assert_module_equal(module, expand("foo"), "bar/baz.py", "bar.baz")
+
+  def test_multiple_paths(self):
+    pythonpath = [expand("foo"), expand("bar/baz"), expand("bar")]
+    module = utils.infer_module(expand("bar/baz/qux.py"), pythonpath)
+    self.assert_module_equal(module, expand("bar/baz"), "qux.py", "qux")
+    module = utils.infer_module(expand("bar/qux.py"), pythonpath)
+    self.assert_module_equal(module, expand("bar"), "qux.py", "qux")
+
+  def test_not_found(self):
+    module = utils.infer_module(expand("bar/baz.py"), ["foo"])
+    expected_target = expand("bar/baz.py")
+    expected_name, _ = os.path.splitext(expected_target.replace(os.sep, "."))
+    self.assert_module_equal(module, "", expected_target, expected_name)
 
 
 if __name__ == "__main__":

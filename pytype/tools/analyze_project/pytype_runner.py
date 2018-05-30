@@ -2,7 +2,6 @@
 
 from __future__ import print_function
 
-import collections
 import logging
 import os
 
@@ -11,14 +10,6 @@ from pytype import debug
 from pytype import file_utils
 from pytype import io
 from pytype import utils
-
-
-# Inferred information about a module.
-# Args:
-#   path: The path to the module, e.g., foo/.
-#   target: The filename relative to the path, e.g., bar/baz.py.
-#   name: The module name, e.g., bar.baz.
-Module = collections.namedtuple('_', 'path target name')
 
 
 class PytypeRunner(object):
@@ -30,21 +21,6 @@ class PytypeRunner(object):
     self.pythonpath = conf.pythonpath
     self.python_version = conf.python_version
     self.pyi_dir = conf.output
-
-  def infer_module_name(self, filename):
-    """Convert a filename to a module name relative to pythonpath."""
-    # TODO(mdemello): Deduplicate this one and the one in load_pytd.py
-    # We want '' in our lookup path, but we don't want it for prefix tests.
-    for path in filter(bool, self.pythonpath):
-      if not path.endswith(os.sep):
-        path += os.sep
-      if filename.startswith(path):
-        filename = filename[len(path):]
-        return Module(path, filename,
-                      utils.path_to_module_name(filename, preserve_init=True))
-        # We have not found filename relative to anywhere in pythonpath.
-    return Module('', filename,
-                  utils.path_to_module_name(filename, preserve_init=True))
 
   def get_run_cmd(self, module, report_errors):
     """Get the command for running pytype on the given module."""
@@ -96,7 +72,7 @@ class PytypeRunner(object):
         if not f.endswith('.py'):
           report('Skipping non-Python file: %s', f)
           continue
-        module = self.infer_module_name(f)
+        module = utils.infer_module(f, self.pythonpath, preserve_init=True)
         if not any(module.path.startswith(d) for d in self.pythonpath):
           report('Skipping file not in pythonpath: %s', f)
           continue

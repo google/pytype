@@ -39,34 +39,12 @@ def create_loader(options):
 
 
 def get_module_name(filename, pythonpath):
-  """Try to reverse-engineer the name of the module we're analyzing.
-
-  This method tries to deduce the module name from the PYTHONPATH and the
-  filename. This will not always be possible. (It depends on the filename
-  starting with an entry in the pythonpath.)
-
-  The module name is used for relative imports.
-
-  Args:
-    filename: The filename of a Python file. E.g. "src/foo/bar/my_module.py".
-    pythonpath: The path Python uses to search for modules.
-
-  Returns:
-    A module name, e.g. "foo.bar.my_module", or None if we can't determine the
-    module name.
-  """
+  """Get the module name, or None if we can't determine it."""
   if filename:
-    filename, _ = os.path.splitext(os.path.normpath(filename))
-    # We want '' in our lookup path, but we don't want it for prefix tests.
-    for path in filter(bool, pythonpath):
-      path = os.path.normpath(path)
-      if not path.endswith(os.sep):
-        path += os.sep
-      if filename.startswith(path):
-        rel_filename = filename[len(path):]
-        return utils.path_to_module_name(rel_filename)
-    # Explicit pythonpath has failed, treat filename as relative to .
-    return utils.path_to_module_name(filename)
+    filename = os.path.normpath(filename)
+    # Keep path '' as is; infer_module will handle it.
+    pythonpath = [path and os.path.normpath(path) for path in pythonpath]
+    return utils.infer_module(filename, pythonpath).name
 
 
 class Module(object):

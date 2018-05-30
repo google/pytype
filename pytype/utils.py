@@ -141,6 +141,42 @@ def concat_tuples(tuples):
   return tuple(itertools.chain.from_iterable(tuples))
 
 
+# Inferred information about a module.
+# Args:
+#   path: The path to the module, e.g., foo/.
+#   target: The filename relative to the path, e.g., bar/baz.py.
+#   name: The module name, e.g., bar.baz.
+Module = collections.namedtuple("_", "path target name")
+
+
+def infer_module(filename, pythonpath, preserve_init=False):
+  """Convert a filename to a module relative to pythonpath.
+
+  This method tries to deduce the module name from the pythonpath and the
+  filename. This will not always be possible. (It depends on the filename
+  starting with an entry in the pythonpath.)
+
+  Args:
+    filename: The filename of a Python file. E.g. "foo/bar/baz.py".
+    pythonpath: The path Python uses to search for modules.
+    preserve_init: Whether to keep the __init__ suffix in a module name.
+
+  Returns:
+    A Module object.
+  """
+  # We want '' in our lookup path, but we don't want it for prefix tests.
+  for path in filter(bool, pythonpath):
+    if not path.endswith(os.sep):
+      path += os.sep
+    if filename.startswith(path):
+      filename = filename[len(path):]
+      break
+  else:
+    # We have not found filename relative to anywhere in pythonpath.
+    path = ""
+  return Module(path, filename, path_to_module_name(filename, preserve_init))
+
+
 def path_to_module_name(filename, preserve_init=False):
   """Converts a filename into a dotted module name."""
   if os.path.dirname(filename).startswith(os.pardir):
