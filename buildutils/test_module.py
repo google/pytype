@@ -3,7 +3,7 @@
 
 Usage:
 
-$> test_module.py MODULE [-o RESULTS_FILE] [-p] [-s]
+$> test_module.py MODULE [-o RESULTS_FILE] [-p] [-s] [-P PATH] [-S]
 
 MODULE is the fully qualified name of a test module within the Pytype source
 tree. For example, to run tests in pytype/tests/test_functions.py, specify
@@ -16,6 +16,13 @@ well on stdout, specify the "-p" option.
 
 Be default, failure stack traces are not printed to stdout. To see failure
 stack traces on stdout, specify the "-s" option.
+
+By default, the pytype package in the root source directory will be used to run
+tests. One can use the -P option to specify the path to a different pytype
+package.
+
+Specifying the -S option silences all printing to stdout. It overrides other
+print flags (-p and -s).
 """
 
 from __future__ import print_function
@@ -25,6 +32,13 @@ import sys
 import unittest
 
 PYTYPE_SRC_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def print_messages(options, stdout_msg, output_file_msg):
+  if not options.silent and stdout_msg:
+    print(stdout_msg)
+  if options.output_file and output_file_msg:
+    options.output_file.write(output_file_msg + "\n")
 
 
 class StatsCollector(object):
@@ -53,9 +67,7 @@ class StatsCollector(object):
     msg += "Found %d errors\n" % self.error_count
     msg += "Found %d failures\n" % self.fail_count
     msg += "Found %s unexpected successes\n" % self.unexpected_success_count
-    print(msg)
-    if self._options.output_file:
-      self._options.output_file.write(msg)
+    print_messages(self._options, msg, msg)
 
 
 class ResultReporter(object):
@@ -68,8 +80,11 @@ class ResultReporter(object):
   def _method_info(self, prefix, fq_method_name, group):
     common_msg = "%s: %s" % (prefix, fq_method_name)
     log_message = "%s\n%s" % (common_msg, group[0][1])
-    print_message = log_message if self._options.print_st else common_msg
-    return log_message, print_message
+    stdout_message = log_message if self._options.print_st else common_msg
+    return log_message, stdout_message
+
+  def _print_messages(self, stdout_msg, log_msg):
+    print_messages(self._options, stdout_msg, log_msg)
 
   def report_method(self, fq_method_name, test_result):
     self._stats_collector.add_method(test_result)
@@ -79,34 +94,26 @@ class ResultReporter(object):
                      ("UNEXPECTED PASS", test_result.unexpectedSuccesses)]
     for kind, problems in problems_list:
       if problems:
-        log_msg, print_msg = self._method_info(kind, fq_method_name, problems)
+        log_msg, stdout_msg = self._method_info(kind, fq_method_name, problems)
         ret_val = 1
         # There can only be one kind of problem because a different test_result
         # object is used for each method.
         break
     if ret_val == 0:
       log_msg = "PASS: %s" % fq_method_name
-      if self._options.print_passes:
-        print(log_msg)
-    else:
-      print(print_msg)
-    if self._options.output_file:
-      self._options.output_file.write(log_msg + "\n")
+      stdout_msg = log_msg if self._options.print_passes else None
+    self._print_messages(stdout_msg, log_msg)
     return ret_val
 
   def report_class(self, class_name):
     self._stats_collector.add_class()
     msg = "\nRunning test methods in class %s ..." % (
         self._options.fq_mod_name + "." + class_name)
-    print(msg)
-    if self._options.output_file:
-      self._options.output_file.write(msg + "\n")
+    self._print_messages(msg, msg)
 
   def report_module(self):
     msg = "\nRunning tests in module %s ..." % self._options.fq_mod_name
-    print(msg)
-    if self._options.output_file:
-      self._options.output_file.write(msg + "\n")
+    self._print_messages(msg, msg)
 
 
 def parse_args():
@@ -114,12 +121,17 @@ def parse_args():
   parser = argparse.ArgumentParser()
   parser.add_argument("fq_mod_name", type=str, metavar="FQ_MOD_NAME",
                       help="Fully qualified name of the test module to run.")
+  parser.add_argument("-P", "--pytype_path", type=str,
+                      default=PYTYPE_SRC_ROOT,
+                      help="Path in which the pytype package can be found.")
   parser.add_argument("-o", "--output", type=str,
                       help="Path to the results file.")
   parser.add_argument("-p", "--print_passes", action="store_true",
                       help="Print information about passing tests to stdout.")
   parser.add_argument("-s", "--print_st", action="store_true",
                       help="Print stack traces of failing tests to stdout.")
+  parser.add_argument("-S", "--silent", action="store_true",
+                      help="Do not print anything to stdout.")
   return parser.parse_args()
 
 
@@ -160,13 +172,14 @@ def run_tests_in_module(mod_object, options, reporter):
 
 
 def main():
-  # We add path to the pytype source root at the beginning of sys.path so that
+  options = parse_args()
+  # We add path to the pytype package at the beginning of sys.path so that
   # it gets picked up before other potential pytype installations present
   # already.
-  sys.path = [PYTYPE_SRC_ROOT] + sys.path
-  options = parse_args()
+  sys.path = [options.pytype_path] + sys.path
   mod_abs_path = os.path.join(
-      PYTYPE_SRC_ROOT, options.fq_mod_name.replace(".", os.path.sep) + ".py")
+      options.pytype_path,
+      options.fq_mod_name.replace(".", os.path.sep) + ".py")
   if not os.path.exists(mod_abs_path):
     sys.exit("Module %s not found." % options.fq_mod_name)
   if "." in options.fq_mod_name:

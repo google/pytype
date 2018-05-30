@@ -22,11 +22,17 @@ if(NOT PYTHONLIBS_FOUND)
   message(FATAL_ERROR "PyType requires Python developer libraries (https://packages.ubuntu.com/python-dev).")
 endif()
 
-set(COPY_SCRIPT "${PROJECT_SOURCE_DIR}/buildutils/copy.py")
+set(COPY_SCRIPT "${PROJECT_SOURCE_DIR}/buildutils/pytype_copy.py")
+set(TEST_MODULE_SCRIPT "${PROJECT_SOURCE_DIR}/buildutils/test_module.py")
 
 add_compile_options("-std=c++11")
 
 include(CMakeParseArguments)
+
+set(ALL_TESTS_TARGET "test_all")
+add_custom_target(
+  ${ALL_TESTS_TARGET}
+)
 
 # Returns the fully qualified parent name for targets in the current source
 # directory in |fq_parent_name|.
@@ -266,6 +272,52 @@ function(py_library)
     endforeach(dep)
   endif()
 endfunction(py_library)
+
+function(py_test)
+  cmake_parse_arguments(
+    PY_TEST      # prefix
+    ""           # optional args
+    "NAME"       # single value args
+    "SRCS;DEPS"  # multi-value args
+    ${ARGN}
+  )
+  if(NOT PY_TEST_NAME)
+    message(FATAL_ERROR "'py_library' rule requires a NAME argument.")
+  endif()
+
+  _gen_fq_target_name(${PY_TEST_NAME} fq_target_name)
+  set(lib_suffix "___internal_py_library_for_test")
+
+  py_library(
+    NAME
+      "${PY_TEST_NAME}${lib_suffix}"
+    SRCS
+      ${PY_TEST_SRCS}
+    DEPS
+      ${PY_TEST_DEPS}
+  )
+
+  add_custom_target(
+    ${fq_target_name}
+    COMMAND "TYPESHED_HOME=${PROJECT_SOURCE_DIR}/typeshed" ${PYTHON_EXECUTABLE} -B
+            ${TEST_MODULE_SCRIPT} ${fq_target_name} -o ${CMAKE_CURRENT_BINARY_DIR}/${PY_TEST_NAME}.log -P ${PROJECT_BINARY_DIR} -S
+    BYPRODUCTS ${PY_TEST_NAME}.log
+    VERBATIM
+    DEPENDS ${PY_TEST_SRCS}
+  )
+  # The internal py_library target should be a dep for this target.
+  add_dependencies(${fq_target_name} "${fq_target_name}${lib_suffix}")
+
+  # Add the deps if specified
+  if(PY_TEST_DEPS)
+    foreach(dep IN LISTS PY_TEST_DEPS)
+      _eval_fq_target_name(${dep} fq_dep_name)
+      add_dependencies(${fq_target_name} ${fq_dep_name})
+    endforeach(dep)
+  endif()
+
+  add_dependencies(${ALL_TESTS_TARGET} ${fq_target_name})
+endfunction(py_test)
 
 function(filegroup)
   cmake_parse_arguments(

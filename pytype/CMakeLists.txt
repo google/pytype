@@ -256,5 +256,6 @@ py_library(
 add_subdirectory(pyc)
 add_subdirectory(pyi)
 add_subdirectory(pytd)
+add_subdirectory(tests)
 add_subdirectory(tools)
 add_subdirectory(typegraph)
