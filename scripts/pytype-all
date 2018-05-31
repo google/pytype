@@ -56,7 +56,7 @@ def create_importlab_environment(conf, typeshed):
 
 
 def main():
-  args = parse_args.parse_or_die(sys.argv[1:])
+  args, pytype_single_args = parse_args.parse_or_die(sys.argv[1:])
   tool_utils.setup_logging_or_die(args.verbosity)
   args.filenames = file_utils.expand_source_files(args.filenames)
 
@@ -67,6 +67,8 @@ def main():
   conf = config.read_config_file_or_die(args.config)
   # Command line arguments will overwrite file options.
   conf.populate_from(vars(args))
+  # TODO(rechen): Allow pytype_single_args to be set from the config file.
+  conf.pytype_single_vars = vars(pytype_single_args)
   if not conf.pythonpath:
     conf.pythonpath = environment.compute_pythonpath(args.filenames)
   logging.info('\n  '.join(['Configuration:'] + str(conf).split('\n')))

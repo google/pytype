@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 import collections
+import itertools
 import logging
 import os
 import sys
@@ -55,13 +56,14 @@ def get_formatters():
 class Config(object):
   """Configuration variables."""
 
-  __slots__ = 'pythonpath', 'output', 'python_version'
+  __slots__ = 'pythonpath', 'output', 'python_version', 'pytype_single_vars'
 
   def __init__(self):
     converters = make_converters()
     for k, v in ITEMS.items():
       setattr(
           self, k, converters[k](v.default) if k in converters else v.default)
+    self.pytype_single_vars = {}
 
   def read_from_file(self, filepath):
     """Read config from an INI-style file with a [pytype] section."""
@@ -82,7 +84,9 @@ class Config(object):
         setattr(self, k, value)
 
   def __str__(self):
-    return '\n'.join('%s = %r' % (k, getattr(self, k)) for k in ITEMS)
+    items = itertools.chain(
+        ((k, getattr(self, k)) for k in ITEMS), self.pytype_single_vars.items())
+    return '\n'.join('%s = %r' % item for item in items)
 
 
 def generate_sample_config_or_die(filename):

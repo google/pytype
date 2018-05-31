@@ -74,11 +74,34 @@ def make_parser():
   o.add_argument(
       "input", nargs="*", help="File to process")
 
-  # Basic options.
+  # Modes
   o.add_argument(
       "-C", "--check", action="store_true",
       dest="check", default=None,
       help=("Don't do type inference. Only check for type errors."))
+  o.add_argument(
+      "-o", "--output", type=str, action="store",
+      dest="output", default=None,
+      help=("Output file. Use '-' for stdout."))
+
+  # Options
+  # TODO(b/80098600): Change the typeshed test so we can get rid of this option.
+  o.add_argument(
+      "--python_exe", type=str, action="store",
+      dest="python_exe", default=None,
+      help=("Full path to a Python interpreter that is used to compile the "
+            "source(s) to byte code. If not specified, --python_version is "
+            "used to create the name of an interpreter."))
+  add_basic_options(o)
+  add_subtools(o)
+  add_pickle_options(o)
+  add_infrastructure_options(o)
+  add_debug_options(o)
+  return o
+
+
+def add_basic_options(o):
+  """Add basic options to the given parser."""
   o.add_argument(
       "-d", "--disable", action="store",
       dest="disable", default=None,
@@ -88,30 +111,19 @@ def make_parser():
       dest="report_errors", default=True,
       help=("Don't report errors."))
   o.add_argument(
-      "-o", "--output", type=str, action="store",
-      dest="output", default=None,
-      help=("Output file. Use '-' for stdout."))
-  o.add_argument(
-      "--python_exe", type=str, action="store",
-      dest="python_exe", default=None,
-      help=("Full path to a Python interpreter that is used to compile the "
-            "source(s) to byte code. If not specified, --python_version is "
-            "used to create the name of an interpreter."))
-  o.add_argument(
       "--protocols", action="store_true",
       dest="protocols", default=False,
-      help=("Solve unknown types to label with structural types."))
+      help="Experimental: solve unknown types to label with structural types.")
   o.add_argument(
       "-V", "--python_version", type=str, action="store",
       dest="python_version", default="2.7",
       help=("Python version to emulate (\"major.minor\", e.g. \"2.7\")"))
-  o.add_argument(
-      "-Z", "--quick", action="store_true",
-      dest="quick", default=None,
-      help=("Only do an approximation."))
 
-  # Options that run a pytype subtool, not pytype itself.
+
+def add_subtools(o):
+  """Add subtools to the given parser."""
   # TODO(rechen): These should be standalone tools.
+  o = o.add_argument_group("subtools")
   o.add_argument(
       "--generate-builtins", action="store",
       dest="generate_builtins", default=None,
@@ -121,7 +133,10 @@ def make_parser():
       dest="parse_pyi", default=False,
       help="Try parsing a PYI file. For testing of typeshed.")
 
-  # Options for using pickled pyi files with pytype.
+
+def add_pickle_options(o):
+  """Add options for using pickled pyi files to the given parser."""
+  o = o.add_argument_group("pickle arguments")
   o.add_argument(
       "--output-pickled", action="store",
       dest="output_pickled",
@@ -141,7 +156,10 @@ def make_parser():
       dest="precompiled_builtins", default=None,
       help="Use the supplied file as precompiled builtins pytd.")
 
-  # Options for pytype infrastructure.
+
+def add_infrastructure_options(o):
+  """Add infrastructure options to the given parser."""
+  o = o.add_argument_group("infrastructure arguments")
   o.add_argument(
       "--imports_info", type=str, action="store",
       dest="imports_map", default=None,
@@ -179,13 +197,23 @@ def make_parser():
       "--touch", type=str, action="store",
       dest="touch", default=None,
       help="Output file to touch when exit status is ok.")
+  # TODO(rechen): --analyze-annotated and --quick would make more sense as
+  # basic options but are currently used by pytype-all in a way that isn't
+  # easily configurable.
   o.add_argument(
       "--analyze-annotated", action="store_true",
       dest="analyze_annotated", default=None,
       help=("Analyze methods with return annotations. By default, "
             "on for checking and off for inference."))
+  o.add_argument(
+      "-Z", "--quick", action="store_true",
+      dest="quick", default=None,
+      help=("Only do an approximation."))
 
-  # Debug options.
+
+def add_debug_options(o):
+  """Add debug options to the given parser."""
+  o = o.add_argument_group("debug arguments")
   o.add_argument(
       "--check_preconditions", action="store_true",
       dest="check_preconditions", default=False,
@@ -249,7 +277,6 @@ def make_parser():
       "--version", action="store_true",
       dest="version", default=None,
       help=("Display pytype version and exit."))
-  return o
 
 
 class PostprocessingError(Exception):
