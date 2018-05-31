@@ -68,28 +68,6 @@ def strip_prefix(string, prefix):
   return string
 
 
-def get_absolute_name(prefix, relative_name):
-  """Joins a dotted-name prefix and a relative name.
-
-  Args:
-    prefix: A dotted name, e.g. foo.bar.baz
-    relative_name: A dotted name with possibly some leading dots, e.g. ..x.y
-
-  Returns:
-    The relative name appended to the prefix, after going up one level for each
-      leading dot.
-      e.g. foo.bar.baz + ..hello.world -> foo.bar.hello.world
-    None if the relative name has too many leading dots.
-  """
-  path = prefix.split(".") if prefix else []
-  name = relative_name.lstrip(".")
-  ndots = len(relative_name) - len(name)
-  if ndots > len(path):
-    return None
-  prefix = "".join([p + "." for p in path[:len(path) + 1 - ndots]])
-  return prefix + name
-
-
 def maybe_truncate(s, length=30):
   """Truncate long strings (and append '...'), but leave short strings alone."""
   s = str(s)
@@ -139,56 +117,6 @@ def numeric_sort_key(s):
 
 def concat_tuples(tuples):
   return tuple(itertools.chain.from_iterable(tuples))
-
-
-# Inferred information about a module.
-# Args:
-#   path: The path to the module, e.g., foo/.
-#   target: The filename relative to the path, e.g., bar/baz.py.
-#   name: The module name, e.g., bar.baz.
-Module = collections.namedtuple("_", "path target name")
-
-
-def infer_module(filename, pythonpath, preserve_init=False):
-  """Convert a filename to a module relative to pythonpath.
-
-  This method tries to deduce the module name from the pythonpath and the
-  filename. This will not always be possible. (It depends on the filename
-  starting with an entry in the pythonpath.)
-
-  Args:
-    filename: The filename of a Python file. E.g. "foo/bar/baz.py".
-    pythonpath: The path Python uses to search for modules.
-    preserve_init: Whether to keep the __init__ suffix in a module name.
-
-  Returns:
-    A Module object.
-  """
-  # We want '' in our lookup path, but we don't want it for prefix tests.
-  for path in filter(bool, pythonpath):
-    if not path.endswith(os.sep):
-      path += os.sep
-    if filename.startswith(path):
-      filename = filename[len(path):]
-      break
-  else:
-    # We have not found filename relative to anywhere in pythonpath.
-    path = ""
-  return Module(path, filename, path_to_module_name(filename, preserve_init))
-
-
-def path_to_module_name(filename, preserve_init=False):
-  """Converts a filename into a dotted module name."""
-  if os.path.dirname(filename).startswith(os.pardir):
-    # Don't try to infer a module name for filenames starting with ../
-    return None
-  # TODO(mdemello): should we validate the extension?
-  filename, _ = os.path.splitext(filename)
-  module_name = filename.replace(os.path.sep, ".")
-  if not preserve_init:
-    # strip __init__ suffix
-    module_name, _, _ = module_name.partition(".__init__")
-  return module_name
 
 
 
@@ -318,16 +246,6 @@ def invert_dict(d):
     for val in value_list:
       inverted[val].append(key)
   return inverted
-
-
-def get_pyi_package_name(module_name, is_package=False):
-  """Figure out a package name for a module."""
-  if module_name is None:
-    return ""
-  parts = module_name.split(".")
-  if not is_package:
-    parts = parts[:-1]
-  return ".".join(parts)
 
 
 class DynamicVar(object):

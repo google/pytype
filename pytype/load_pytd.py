@@ -4,6 +4,7 @@ import logging
 import os
 
 from pytype import file_utils
+from pytype import module_utils
 from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import pytd_utils
@@ -44,7 +45,7 @@ def get_module_name(filename, pythonpath):
     filename = os.path.normpath(filename)
     # Keep path '' as is; infer_module will handle it.
     pythonpath = [path and os.path.normpath(path) for path in pythonpath]
-    return utils.infer_module(filename, pythonpath).name
+    return module_utils.infer_module(filename, pythonpath).name
 
 
 class Module(object):
@@ -161,7 +162,7 @@ class Loader(object):
 
   def _postprocess_pyi(self, ast):
     """Apply all the PYI transformations we need."""
-    package_name = utils.get_pyi_package_name(ast.name, ast.is_package)
+    package_name = module_utils.get_package_name(ast.name, ast.is_package)
     if package_name:
       ast = ast.Visit(visitors.QualifyRelativeNames(package_name))
     ast = ast.Visit(visitors.LookupBuiltins(self.builtins, full_names=False))

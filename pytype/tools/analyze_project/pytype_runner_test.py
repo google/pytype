@@ -5,7 +5,7 @@ import unittest
 
 from pytype import config as pytype_config
 from pytype import file_utils
-from pytype import utils
+from pytype import module_utils
 from pytype.tools.analyze_project import config
 from pytype.tools.analyze_project import pytype_runner
 
@@ -17,7 +17,7 @@ class TestGetRunCmd(unittest.TestCase):
     self.runner = pytype_runner.PytypeRunner([], [], config.Config())
 
   def get_basic_options(self, report_errors=False):
-    module = utils.Module('foo', 'bar.py', 'bar')
+    module = module_utils.Module('foo', 'bar.py', 'bar')
     args = self.runner.get_pytype_args(module, report_errors)
     return pytype_config.Options(args)
 
@@ -62,7 +62,7 @@ class TestYieldSortedModules(unittest.TestCase):
         module, actual_report_errors = next(mod_gen)
       except StopIteration:
         raise AssertionError('Not enough modules')
-      self.assertEqual(module, utils.Module(path, target, name))
+      self.assertEqual(module, module_utils.Module(path, target, name))
       self.assertEqual(actual_report_errors, expected_report_errors)
     try:
       next(mod_gen)

@@ -3,6 +3,7 @@
 import os
 
 from pytype import file_utils
+from pytype import module_utils
 from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd.parse import builtins
@@ -141,7 +142,7 @@ class Typeshed(object):
         pass
       else:
         for filename in contents:
-          module_names.add(utils.path_to_module_name(filename))
+          module_names.add(module_utils.path_to_module_name(filename))
     assert "ctypes" in module_names  # sanity check
     return module_names
 
@@ -168,7 +169,7 @@ class Typeshed(object):
       # we can still just use python_version[0].
       if (path[1].startswith(str(python_version[0])) or
           path[1] == "2and3"):
-        yield utils.path_to_module_name("/".join(path[2:]))
+        yield module_utils.path_to_module_name("/".join(path[2:]))
 
 
 _typeshed = None

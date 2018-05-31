@@ -9,7 +9,7 @@ from pytype import config as pytype_config
 from pytype import debug
 from pytype import file_utils
 from pytype import io
-from pytype import utils
+from pytype import module_utils
 
 
 class PytypeRunner(object):
@@ -71,7 +71,8 @@ class PytypeRunner(object):
         if not f.endswith('.py'):
           report('Skipping non-Python file: %s', f)
           continue
-        module = utils.infer_module(f, self.pythonpath, preserve_init=True)
+        module = module_utils.infer_module(
+            f, self.pythonpath, preserve_init=True)
         if not any(module.path.startswith(d) for d in self.pythonpath):
           report('Skipping file not in pythonpath: %s', f)
           continue

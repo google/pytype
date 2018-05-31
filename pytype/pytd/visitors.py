@@ -22,6 +22,7 @@ import logging
 import re
 
 from pytype import datatypes
+from pytype import module_utils
 from pytype import utils
 from pytype.pytd import mro
 from pytype.pytd import pytd
@@ -1792,7 +1793,8 @@ class AddNamePrefix(Visitor):
       return node
     else:
       # global constant. Handle leading . for relative module names.
-      return node.Replace(name=utils.get_absolute_name(self.name, node.name))
+      return node.Replace(
+          name=module_utils.get_absolute_name(self.name, node.name))
 
   def VisitFunction(self, node):
     return self._VisitNamedNode(node)
@@ -1869,7 +1871,7 @@ class QualifyRelativeNames(Visitor):
     if not prefix and package:
       return self.package_name + "." + name
     if orig_name.startswith("."):
-      name = utils.get_absolute_name(self.package_name, orig_name)
+      name = module_utils.get_absolute_name(self.package_name, orig_name)
       if name is None:
         raise SymbolLookupError(
             "Cannot resolve relative import %s" %

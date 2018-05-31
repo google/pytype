@@ -1,17 +1,8 @@
 """Tests for utils.py."""
 
-import logging
-import os
-
-from pytype import file_utils
 from pytype import utils
 
 import unittest
-
-# pylint: disable=invalid-name
-
-
-log = logging.getLogger(__name__)
 
 
 class UtilsTest(unittest.TestCase):
@@ -53,17 +44,6 @@ class UtilsTest(unittest.TestCase):
     self.assertTrue(utils.list_startswith([], []))
     self.assertFalse(utils.list_startswith([], [1]))
 
-  def testGetAbsoluteName(self):
-    test_cases = [
-        ("x.y", "a.b", "x.y.a.b"),
-        ("", "a.b", "a.b"),
-        ("x.y", ".a.b", "x.y.a.b"),
-        ("x.y", "..a.b", "x.a.b"),
-        ("x.y", "...a.b", None),
-    ]
-    for prefix, name, expected in test_cases:
-      self.assertEqual(utils.get_absolute_name(prefix, name), expected)
-
   def testInvertDict(self):
     a = {"p": ["q", "r"], "x": ["q", "z"]}
     b = utils.invert_dict(a)
@@ -80,15 +60,6 @@ class UtilsTest(unittest.TestCase):
         self.assertEqual(456, var.get())
       self.assertEqual(123, var.get())
     self.assertIsNone(var.get())
-
-  def testPathToModuleName(self):
-    self.assertIsNone(utils.path_to_module_name("../foo.py"))
-    self.assertEqual("x.y.z", utils.path_to_module_name("x/y/z.pyi"))
-    self.assertEqual("x.y.z", utils.path_to_module_name("x/y/z.pytd"))
-    self.assertEqual("x.y.z", utils.path_to_module_name("x/y/z/__init__.pyi"))
-    self.assertEqual("x.y.z.__init__",
-                     utils.path_to_module_name("x/y/z/__init__.pyi",
-                                               preserve_init=True))
 
   def testSplitVersion(self):
     self.assertEqual(utils.split_version("2.7"), (2, 7))
@@ -179,40 +150,6 @@ class DecoratorsTest(unittest.TestCase):
     def f():  # pylint: disable=unused-variable
       pass
     self.assertEqual(foo.lookup["f"], 3)
-
-
-# Because TestInferModuleName expands a lot of paths:
-expand = file_utils.expand_path
-
-
-class TestInferModuleName(unittest.TestCase):
-  """Test utils.infer_module."""
-
-  def assert_module_equal(self, module, path, target, name):
-    self.assertEqual(module.path.rstrip(os.sep), path.rstrip(os.sep))
-    self.assertEqual(module.target, target)
-    self.assertEqual(module.name, name)
-
-  def test_simple_name(self):
-    module = utils.infer_module(expand("foo/bar.py"), [expand("foo")])
-    self.assert_module_equal(module, expand("foo"), "bar.py", "bar")
-
-  def test_name_in_package(self):
-    module = utils.infer_module(expand("foo/bar/baz.py"), [expand("foo")])
-    self.assert_module_equal(module, expand("foo"), "bar/baz.py", "bar.baz")
-
-  def test_multiple_paths(self):
-    pythonpath = [expand("foo"), expand("bar/baz"), expand("bar")]
-    module = utils.infer_module(expand("bar/baz/qux.py"), pythonpath)
-    self.assert_module_equal(module, expand("bar/baz"), "qux.py", "qux")
-    module = utils.infer_module(expand("bar/qux.py"), pythonpath)
-    self.assert_module_equal(module, expand("bar"), "qux.py", "qux")
-
-  def test_not_found(self):
-    module = utils.infer_module(expand("bar/baz.py"), ["foo"])
-    expected_target = expand("bar/baz.py")
-    expected_name, _ = os.path.splitext(expected_target.replace(os.sep, "."))
-    self.assert_module_equal(module, "", expected_target, expected_name)
 
 
 if __name__ == "__main__":
