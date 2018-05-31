@@ -55,6 +55,15 @@ py_test(
 )
 
 py_test(
+    NAME
+      test_dict
+    SRCS
+      test_dict.py
+    DEPS
+      .test_base
+)
+
+py_test(
   NAME
     test_exceptions
   SRCS

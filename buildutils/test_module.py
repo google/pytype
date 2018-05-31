@@ -32,6 +32,27 @@ import sys
 import unittest
 
 PYTYPE_SRC_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_FAILURE_MSG_PREFIX = ">>> FAIL"
+_PASS_MSG_PREFIX = ">>> PASS"
+_RESULT_MSG_SEP = " - "
+
+
+def get_module_and_log_file_from_result_msg(msg):
+  if msg.startswith(_FAILURE_MSG_PREFIX):
+    _, mod_name, log_file = msg.split(_RESULT_MSG_SEP)
+    return mod_name, log_file
+  if msg.startswith(_PASS_MSG_PREFIX):
+    _, mod_name = msg.split(_RESULT_MSG_SEP)
+    return mod_name, None
+  return None, None
+
+
+def failure_msg(mod_name, log_file):
+  return _RESULT_MSG_SEP.join([_FAILURE_MSG_PREFIX, mod_name, log_file])
+
+
+def pass_msg(mod_name):
+  return _RESULT_MSG_SEP.join([_PASS_MSG_PREFIX, mod_name])
 
 
 def print_messages(options, stdout_msg, output_file_msg):
@@ -202,7 +223,10 @@ def main():
   else:
     result = run(None)
   if result != 0:
+    print(failure_msg(options.fq_mod_name, options.output))
     sys.exit(1)
+  else:
+    print(pass_msg(options.fq_mod_name))
 
 
 if __name__ == "__main__":

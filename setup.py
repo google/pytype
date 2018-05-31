@@ -126,6 +126,7 @@ setup(
         'pytype/pytd/parse',
         'pytype/tools',
         'pytype/tools/analyze_project',
+        'pytype/tools/merge_pyi',
         'pytype/typegraph',
     ],
     scripts=[
@@ -136,6 +137,7 @@ setup(
     package_data={'pytype': get_builtin_files()},
     install_requires=[
         'importlab',
+        'lib2to3',
         'pyyaml (>=3.11)',
         'six'
     ],
