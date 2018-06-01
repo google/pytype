@@ -57,17 +57,18 @@ class ImportMapLoaderTest(unittest.TestCase):
       d.create_file("imports_info", "\n".join(imports_map))
       # build_imports_map should strip out the entry for a/__init__.py, leaving
       # the entry for a/b.py intact.
-      self.assertSameElements(
-          imports_map_loader.build_imports_map(d["imports_info"],
-                                               d["a/__init__.py"]).items(),
-          [
+      self.assertListEqual(
+          sorted(imports_map_loader.build_imports_map(
+              d["imports_info"],
+              d["a/__init__.py"]).items()),
+          sorted([
               ("%s/a/b" % d.path, "{0}/prefix{0}/a/b.py~suffix".format(d.path)),
               # These are all added by the last bit of build_imports_map
               ("__init__", os.devnull),
               ("tmp/__init__", os.devnull),
               ("%s/__init__" % d.path[1:], os.devnull),
               ("%s/a/__init__" % d.path[1:], os.devnull),
-          ]
+          ])
       )
 
 if __name__ == "__main__":
