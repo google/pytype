@@ -72,6 +72,7 @@ py_library(
     compat.py
     datatypes.py
     file_utils.py
+    module_utils.py
     utils.py
 )
 
@@ -251,6 +252,180 @@ py_library(
       .libvm
       .tools
       .utils
+)
+
+py_test(
+  NAME
+    config_test
+  SRCS
+    config_test.py
+  DEPS
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    datatypes_test
+  SRCS
+    datatypes_test.py
+  DEPS
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    file_utils_test
+  SRCS
+    file_utils_test.py
+  DEPS
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    module_utils_test
+  SRCS
+    module_utils_test.py
+  DEPS
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    utils_test
+  SRCS
+    utils_test.py
+  DEPS
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    abstract_test
+  SRCS
+    abstract_test.py
+  DEPS
+    .libvm
+)
+
+py_test(
+  NAME
+    matcher_test
+  SRCS
+    matcher_test.py
+  DEPS
+    .libvm
+)
+
+py_test(
+  NAME
+    convert_test
+  SRCS
+    convert_test.py
+  DEPS
+    .libvm
+)
+
+py_test(
+  NAME
+    attribute_test
+  SRCS
+    attribute_test.py
+  DEPS
+    .libvm
+)
+
+py_test(
+  NAME
+    convert_structural_test
+  SRCS
+    convert_structural_test.py
+  DEPS
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    blocks_test
+  SRCS
+    blocks_test.py
+  DEPS
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    vm_test
+  SRCS
+    vm_test.py
+  DEPS
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    directors_test
+  SRCS
+    directors_test.py
+  DEPS
+    .libvm
+)
+
+py_test(
+  NAME
+    load_pytd_test
+  SRCS
+    load_pytd_test.py
+  DEPS
+    .builtins_pytd
+    .libvm
+)
+
+py_test(
+  NAME
+    imports_map_loader_test
+  SRCS
+    imports_map_loader_test.py
+  DEPS
+    .builtins_pytd
+    .libvm
+)
+
+py_test(
+  NAME
+    metrics_test
+  SRCS
+    metrics_test.py
+  DEPS
+    .metrics
+)
+
+py_test(
+  NAME
+    state_test
+  SRCS
+    state_test.py
+  DEPS
+    .libvm
+)
+
+py_test(
+  NAME
+    collections_overlay_test
+  SRCS
+    collections_overlay_test.py
+  DEPS
+    .libvm
+)
+
+py_test(
+  NAME
+    debug_test
+  SRCS
+    debug_test.py
+  DEPS
+    .debug
+    .pytd
 )
 
 add_subdirectory(pyc)
