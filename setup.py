@@ -130,6 +130,7 @@ setup(
         'pytype/typegraph',
     ],
     scripts=[
+        'scripts/merge-pyi',
         'scripts/pytype',
         'scripts/pytd',
         'scripts/pytype-all',
