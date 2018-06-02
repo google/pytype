@@ -6,15 +6,23 @@ import unittest
 from pytype import config as pytype_config
 from pytype import file_utils
 from pytype import module_utils
-from pytype.tools.analyze_project import config
+from pytype.tools.analyze_project import parse_args
 from pytype.tools.analyze_project import pytype_runner
 
 
-class TestGetRunCmd(unittest.TestCase):
+class TestBase(unittest.TestCase):
+
+  @classmethod
+  def setUpClass(cls):
+    cls.parser = parse_args.make_parser()
+
+
+class TestGetRunCmd(TestBase):
   """Test PytypeRunner.get_pytype_args()."""
 
   def setUp(self):
-    self.runner = pytype_runner.PytypeRunner([], [], config.Config())
+    self.runner = pytype_runner.PytypeRunner(
+        [], [], self.parser.config_from_defaults())
 
   def get_basic_options(self, report_errors=False):
     module = module_utils.Module('foo', 'bar.py', 'bar')
@@ -50,7 +58,7 @@ class TestGetRunCmd(unittest.TestCase):
     self.assertTrue(options.analyze_annotated)
 
 
-class TestYieldSortedModules(unittest.TestCase):
+class TestYieldSortedModules(TestBase):
   """Tests for PytypeRunner.yield_sorted_modules()."""
 
   def normalize(self, d):
@@ -73,7 +81,7 @@ class TestYieldSortedModules(unittest.TestCase):
       raise AssertionError('Too many modules')
 
   def test_source(self):
-    conf = config.Config()
+    conf = self.parser.config_from_defaults()
     d = self.normalize('foo/')
     conf.pythonpath = [d]
     f = os.path.join(d, 'bar.py')
@@ -82,7 +90,7 @@ class TestYieldSortedModules(unittest.TestCase):
                                      [(d, 'bar.py', 'bar', True)])
 
   def test_source_and_dep(self):
-    conf = config.Config()
+    conf = self.parser.config_from_defaults()
     d = self.normalize('foo/')
     conf.pythonpath = [d]
     source = os.path.join(d, 'bar.py')
@@ -93,7 +101,7 @@ class TestYieldSortedModules(unittest.TestCase):
         [(d, 'baz.py', 'baz', False), (d, 'bar.py', 'bar', True)])
 
   def test_cycle(self):
-    conf = config.Config()
+    conf = self.parser.config_from_defaults()
     d = self.normalize('foo/')
     conf.pythonpath = [d]
     source = os.path.join(d, 'bar.py')
@@ -105,7 +113,7 @@ class TestYieldSortedModules(unittest.TestCase):
          (d, 'baz.py', 'baz', False), (d, 'bar.py', 'bar', True)])
 
   def test_non_py_dep(self):
-    conf = config.Config()
+    conf = self.parser.config_from_defaults()
     d = self.normalize('foo/')
     conf.pythonpath = [d]
     dep = os.path.join(d, 'bar.so')
@@ -113,7 +121,7 @@ class TestYieldSortedModules(unittest.TestCase):
     self.assert_sorted_modules_equal(runner.yield_sorted_modules(), [])
 
   def test_non_pythonpath_dep(self):
-    conf = config.Config()
+    conf = self.parser.config_from_defaults()
     d = self.normalize('foo/')
     conf.pythonpath = [d]
     dep = file_utils.expand_path('bar/baz.py')

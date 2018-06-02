@@ -3,7 +3,6 @@
 from __future__ import print_function
 
 import collections
-import itertools
 import logging
 import os
 import sys
@@ -53,40 +52,48 @@ def get_formatters():
   return {'pythonpath': format_pythonpath}
 
 
-class Config(object):
-  """Configuration variables."""
+def Config(*extra_variables):  # pylint: disable=invalid-name
+  """Builds a Config class and returns an instance of it."""
 
-  __slots__ = 'pythonpath', 'output', 'python_version', 'pytype_single_vars'
+  class Config(object):  # pylint: disable=redefined-outer-name
+    """Configuration variables.
 
-  def __init__(self):
-    converters = make_converters()
-    for k, v in ITEMS.items():
-      setattr(
-          self, k, converters[k](v.default) if k in converters else v.default)
-    self.pytype_single_vars = {}
+    A lightweight configuration class that reads in attributes from other
+    objects and prettyprints itself. The intention is for each source of
+    attributes (e.g., FileConfig) to do its own processing, then for Config to
+    copy in the final results in the right order.
+    """
+
+    __slots__ = ('pythonpath', 'output', 'python_version') + extra_variables
+
+    def populate_from(self, obj):
+      """Populate self from another object's attributes."""
+      for k in self.__slots__:
+        if hasattr(obj, k):
+          setattr(self, k, getattr(obj, k))
+
+    def __str__(self):
+      return '\n'.join(
+          '%s = %r' % (k, getattr(self, k, None)) for k in self.__slots__)
+
+  return Config()
+
+
+class FileConfig(object):
+  """Configuration variables from a file."""
 
   def read_from_file(self, filepath):
     """Read config from an INI-style file with a [pytype] section."""
 
-    converters = make_converters(cwd=os.path.dirname(filepath))
-    keymap = {k: converters.get(k) for k in ITEMS}
-    cfg = config.ConfigSection.create_from_file(filepath, 'pytype', keymap)
+    cfg = config.ConfigSection.create_from_file(filepath, 'pytype')
     if not cfg:
       return None
-    self.populate_from(cfg)
+    converters = make_converters(cwd=os.path.dirname(filepath))
+    for k, v in cfg.items():
+      if k in converters:
+        v = converters[k](v)
+      setattr(self, k, v)
     return filepath
-
-  def populate_from(self, obj):
-    """Populate self from an object with a dict-like get method."""
-    for k in ITEMS:
-      value = obj.get(k)
-      if value is not None:
-        setattr(self, k, value)
-
-  def __str__(self):
-    items = itertools.chain(
-        ((k, getattr(self, k)) for k in ITEMS), self.pytype_single_vars.items())
-    return '\n'.join('%s = %r' % item for item in items)
 
 
 def generate_sample_config_or_die(filename):
@@ -123,7 +130,7 @@ def generate_sample_config_or_die(filename):
 def read_config_file_or_die(filepath):
   """Read config from filepath or from setup.cfg."""
 
-  ret = Config()
+  ret = FileConfig()
   if filepath:
     if not ret.read_from_file(filepath):
       logging.critical('Could not read config file: %s\n'

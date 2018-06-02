@@ -26,13 +26,12 @@ def find_config_file(path, filename='setup.cfg'):
 class ConfigSection(object):
   """Read a given set of keys from a section of a config file."""
 
-  def __init__(self, parser, section, keymap):
+  def __init__(self, parser, section):
     self.parser = parser
     self.section = section
-    self.keymap = keymap
 
   @classmethod
-  def create_from_file(cls, filepath, section, keymap):
+  def create_from_file(cls, filepath, section):
     """Create a ConfigSection if the file at filepath has section."""
     parser = configparser.ConfigParser()
     try:
@@ -41,17 +40,8 @@ class ConfigSection(object):
       # We've read an improperly formatted config file.
       return None
     if parser.has_section(section):
-      return cls(parser, section, keymap)
+      return cls(parser, section)
     return None
 
-  def get(self, key):
-    """Get the value for the given key."""
-    try:
-      # The 'fallback' option is Python 3-only, so we use a try/except.
-      value = self.parser.get(self.section, key)
-    except configparser.NoOptionError:
-      return None
-    converter = self.keymap[key]
-    if converter:
-      value = converter(value)
-    return value
+  def items(self):
+    return self.parser.items(self.section)

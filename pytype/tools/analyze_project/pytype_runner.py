@@ -10,6 +10,7 @@ from pytype import debug
 from pytype import file_utils
 from pytype import io
 from pytype import module_utils
+from pytype.tools.analyze_project import config
 
 
 class PytypeRunner(object):
@@ -21,7 +22,8 @@ class PytypeRunner(object):
     self.pythonpath = conf.pythonpath
     self.python_version = conf.python_version
     self.pyi_dir = conf.output
-    self.custom_options = conf.pytype_single_vars
+    self.custom_options = {
+        k: getattr(conf, k) for k in set(conf.__slots__) - set(config.ITEMS)}
 
   def get_pytype_args(self, module, report_errors):
     """Get the options for running pytype on the given module."""

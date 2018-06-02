@@ -42,7 +42,7 @@ class Options(object):
     options = argument_parser.parse_args(argv)
     names = set(vars(options))
     try:
-      Postprocessor(options, self, names).process()
+      Postprocessor(names, options, self).process()
     except PostprocessingError as e:
       argument_parser.error(utils.message(e))
 
@@ -286,10 +286,11 @@ class PostprocessingError(Exception):
 class Postprocessor(object):
   """Postprocesses options read from the command line."""
 
-  def __init__(self, input_options, output_options, names):
-    self.input_options = input_options
-    self.output_options = output_options
+  def __init__(self, names, input_options, output_options=None):
     self.names = names
+    self.input_options = input_options
+    # If output not specified, process in-place.
+    self.output_options = output_options or input_options
 
   def process(self):
     """Postprocesses all options in self.input_options.

@@ -49,51 +49,38 @@ class TestFindConfigFile(unittest.TestCase):
 
 class TestConfigSection(unittest.TestCase):
 
-  def test_get(self):
+  def test_items(self):
     with file_utils.Tempdir() as d:
       f = d.create_file('setup.cfg', textwrap.dedent('''
         [test]
         k1 = v1
         k2 = v2
       '''))
-      section = config.ConfigSection.create_from_file(
-          f, 'test', {k: None for k in ('k1', 'k2')})
-    self.assertEqual(section.get('k1'), 'v1')
-    self.assertEqual(section.get('k2'), 'v2')
-    self.assertIsNone(section.get('k3'))
+      section = config.ConfigSection.create_from_file(f, 'test')
+    self.assertSequenceEqual(section.items(), [('k1', 'v1'), ('k2', 'v2')])
 
-  def test_get_empty(self):
+  def test_empty(self):
     with file_utils.Tempdir() as d:
       f = d.create_file('setup.cfg', textwrap.dedent('''
         [test]
         k =
       '''))
-      section = config.ConfigSection.create_from_file(f, 'test', {'k': None})
-      self.assertEqual(section.get('k'), '')
+      section = config.ConfigSection.create_from_file(f, 'test')
+      self.assertSequenceEqual(section.items(), [('k', '')])
 
   def test_no_file(self):
     self.assertIsNone(config.ConfigSection.create_from_file(
-        '/does/not/exist.cfg', 'test', {}))
+        '/does/not/exist.cfg', 'test'))
 
   def test_malformed_file(self):
     with file_utils.Tempdir() as d:
       f = d.create_file('setup.cfg', 'rainbow = unicorns')
-      self.assertIsNone(config.ConfigSection.create_from_file(f, 'test', {}))
+      self.assertIsNone(config.ConfigSection.create_from_file(f, 'test'))
 
   def test_missing_section(self):
     with file_utils.Tempdir() as d:
       f = d.create_file('setup.cfg')
-      self.assertIsNone(config.ConfigSection.create_from_file(f, 'test', {}))
-
-  def test_keymap(self):
-    with file_utils.Tempdir() as d:
-      f = d.create_file('setup.cfg', textwrap.dedent('''
-        [test]
-        k = v
-      '''))
-      section = config.ConfigSection.create_from_file(
-          f, 'test', {'k': lambda v: 2*v})
-      self.assertEqual(section.get('k'), 'vv')
+      self.assertIsNone(config.ConfigSection.create_from_file(f, 'test'))
 
 
 if __name__ == '__main__':

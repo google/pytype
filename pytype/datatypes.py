@@ -247,3 +247,12 @@ class LazyDict(DictTemplate):
 
 class LazyAliasingMonitorDict(LazyDict, AliasingDict, MonitorDict):
   pass
+
+
+# Based on https://docs.python.org/3/library/types.html#types.SimpleNamespace
+# and can be replaced with types.SimpleNamespace when we drop Python 2 support.
+class SimpleNamespace(object):
+  """A simple object class that provides attribute access to its namespace."""
+
+  def __init__(self, **kwargs):
+    self.__dict__.update(kwargs)

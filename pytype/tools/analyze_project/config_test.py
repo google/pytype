@@ -3,6 +3,7 @@
 import os
 import unittest
 
+from pytype import datatypes
 from pytype import file_utils
 from pytype.tools.analyze_project import config
 
@@ -35,25 +36,21 @@ class TestBase(unittest.TestCase):
         u'/foo/bar',
         os.path.join(path, u'baz/quux')
     ])
-    # This should be picked up from defaults since we haven't set it
-    self.assertEqual(
-        conf.output, os.path.join(os.getcwd(), config.ITEMS['output'].default))
+    # output shouldn't be present since we haven't set it.
+    self.assertFalse(hasattr(conf, 'output'))
 
-  def _validate_default_contents(self, conf):
-    self.assertEqual(
-        conf.python_version, config.ITEMS['python_version'].default)
-    self.assertEqual(conf.pythonpath, [])
-    self.assertEqual(
-        conf.output, os.path.join(os.getcwd(), config.ITEMS['output'].default))
+  def _validate_empty_contents(self, conf):
+    for k in config.ITEMS:
+      self.assertFalse(hasattr(conf, k))
 
 
-class TestConfig(TestBase):
-  """Test Config"""
+class TestFileConfig(TestBase):
+  """Test FileConfig."""
 
   def test_config_file(self):
     with file_utils.Tempdir() as d:
       f = d.create_file('test.cfg', PYTYPE_CFG)
-      conf = config.Config()
+      conf = config.FileConfig()
       path = conf.read_from_file(f)
       self.assertEqual(path, f)
       self._validate_file_contents(conf, d.path)
@@ -61,31 +58,48 @@ class TestConfig(TestBase):
   def test_missing_config_file_section(self):
     with file_utils.Tempdir() as d:
       f = d.create_file('test.cfg', RANDOM_CFG)
-      conf = config.Config()
+      conf = config.FileConfig()
       path = conf.read_from_file(f)
       self.assertEqual(path, None)
-      self._validate_default_contents(conf)
+      self._validate_empty_contents(conf)
 
   def test_read_nonexistent(self):
-    conf = config.Config()
+    conf = config.FileConfig()
     self.assertIsNone(conf.read_from_file('/does/not/exist/test.cfg'))
+    self._validate_empty_contents(conf)
 
   def test_read_bad_format(self):
-    conf = config.Config()
+    conf = config.FileConfig()
     with file_utils.Tempdir() as d:
       f = d.create_file('test.cfg', 'ladadeda := squirrels')
       self.assertIsNone(conf.read_from_file(f))
+    self._validate_empty_contents(conf)
+
+
+class TestConfig(TestBase):
+  """Test Config."""
 
   def test_populate_from(self):
     conf = config.Config()
-    conf.populate_from({k: 42 for k in config.ITEMS})
+    self._validate_empty_contents(conf)
+    conf.populate_from(
+        datatypes.SimpleNamespace(**{k: 42 for k in config.ITEMS}))
     for k in config.ITEMS:
       self.assertEqual(getattr(conf, k), 42)
 
-  def test_no_populate_from(self):
+  def test_populate_from_none(self):
     conf = config.Config()
-    conf.populate_from({})
-    self._validate_default_contents(conf)
+    self._validate_empty_contents(conf)
+    # None is a valid value.
+    conf.populate_from(
+        datatypes.SimpleNamespace(**{k: None for k in config.ITEMS}))
+    for k in config.ITEMS:
+      self.assertIsNone(getattr(conf, k))
+
+  def test_populate_from_empty(self):
+    conf = config.Config()
+    conf.populate_from(object())
+    self._validate_empty_contents(conf)
 
   def test_str(self):
     str(config.Config())  # smoke test
@@ -105,7 +119,7 @@ class TestGenerateConfig(unittest.TestCase):
         config.generate_sample_config_or_die(f)
 
   def test_generate(self):
-    conf = config.Config()
+    conf = config.FileConfig()
     with file_utils.Tempdir() as d:
       f = os.path.join(d.path, 'sample.cfg')
       config.generate_sample_config_or_die(f)
@@ -151,7 +165,7 @@ class TestReadConfig(TestBase):
       d.create_file('setup.cfg', RANDOM_CFG)
       with file_utils.cd(d.path):
         conf = config.read_config_file_or_die(None)
-        self._validate_default_contents(conf)
+        self._validate_empty_contents(conf)
 
 
 if __name__ == '__main__':

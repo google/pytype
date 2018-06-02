@@ -15,22 +15,84 @@ class ParserWrapper(object):
 
   def add_argument(self, *args, **kwargs):
     try:
-      self.parser.add_argument(*args, **kwargs)
+      action = self.parser.add_argument(*args, **kwargs)
     except argparse.ArgumentError:
       # We deliberately mask some pytype-single options with pytype-all ones.
       pass
     else:
-      self.names.add(kwargs['dest'])
+      self.names.add(action.dest)
 
 
-def parse_or_die(argv):
-  """Parse command line args.
+def convert_string(s):
+  s = s.replace('\n', '')
+  try:
+    return int(s)
+  except ValueError:
+    if s in ('True', 'False'):
+      return s == 'True'
+    else:
+      return s
 
-  Args:
-    argv: sys.argv[1:]
+
+class Parser(object):
+  """pytype-all parser."""
+
+  def __init__(self, parser, pytype_single_names):
+    self.parser = parser
+    self.pytype_single_names = pytype_single_names
+
+  def parse_args(self, argv):
+    """Parses argv.
+
+    Commandline-only args are parsed normally. File-configurable args appear in
+    the parsed args only if explicitly present in argv.
+
+    Args:
+      argv: sys.argv[1:]
+
+    Returns:
+      An argparse.Namespace.
+    """
+    file_config_names = set(config.ITEMS) | self.pytype_single_names
+    # Creates a namespace that we'll parse argv into, so that we can check for
+    # a file configurable arg by whether the None default was overwritten.
+    args = argparse.Namespace(**{k: None for k in file_config_names})
+    self.parser.parse_args(argv, args)
+    for k in file_config_names:
+      if getattr(args, k) is None:
+        delattr(args, k)
+    self.postprocess(args)
+    return args
+
+  def config_from_defaults(self):
+    defaults = self.parser.parse_args([])
+    self.postprocess(defaults)
+    conf = config.Config(*self.pytype_single_names)
+    conf.populate_from(defaults)
+    return conf
+
+  def postprocess(self, args, from_strings=False):
+    """Postprocesses the subset of pytype_single_names that appear in args.
+
+    Args:
+      args: an argparse.Namespace.
+      from_strings: Whether the args are all strings. If so, we'll do our best
+        to convert them to the right types.
+    """
+    names = set()
+    for k in self.pytype_single_names:
+      if hasattr(args, k):
+        names.add(k)
+        if from_strings:
+          setattr(args, k, convert_string(getattr(args, k)))
+    pytype_config.Postprocessor(names, args).process()
+
+
+def make_parser():
+  """Make parser for command line args.
 
   Returns:
-    A tuple of pytype-all args and pytype-single args.
+    A Parser object.
   """
 
   parser = argparse.ArgumentParser()
@@ -55,24 +117,15 @@ def parse_or_die(argv):
   parser.add_argument(
       '--config', dest='config', type=str, action='store', default='',
       help='Configuration file.')
-  # Adds options that can also be set in a config file.
+  # Adds options from the config file.
   types = config.make_converters()
   for short_arg, arg, dest in [('-V', '--python-version', 'python_version'),
                                ('-o', '--output', 'output'),
                                ('-P', '--pythonpath', 'pythonpath')]:
-    # Without an explicit default, the argument defaults to None, allowing us
-    # to tell whether it was passed or not.
-    parser.add_argument(short_arg, arg, dest=dest, action='store',
-                        type=types.get(dest), help=config.ITEMS[dest].comment)
-  # Adds options from pytype-single and gets their names.
+    parser.add_argument(short_arg, arg, dest=dest, type=types.get(dest),
+                        action='store', default=config.ITEMS[dest].default,
+                        help=config.ITEMS[dest].comment)
+  # Adds options from pytype-single.
   wrapper = ParserWrapper(parser)
   pytype_config.add_basic_options(wrapper)
-  pytype_single_names = wrapper.names
-  # Parses everything and splits out the pytype-single options.
-  args = parser.parse_args(argv)
-  pytype_single_args = argparse.Namespace()
-  pytype_config.Postprocessor(
-      args, pytype_single_args, pytype_single_names).process()
-  for name in pytype_single_names:
-    delattr(args, name)
-  return args, pytype_single_args
+  return Parser(parser, wrapper.names)

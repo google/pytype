@@ -1,6 +1,7 @@
 """Tests for config.py."""
 
 from pytype import config
+from pytype import datatypes
 
 import unittest
 
@@ -58,78 +59,79 @@ class ConfigTest(unittest.TestCase):
       self._test_arg_conflict(arg1, arg2)
 
 
-class Namespace(object):
-  """Custom namespace for testing config.Postprocessor."""
-
-
 class PostprocessorTest(unittest.TestCase):
 
   def setUp(self):
-    self.input_options = Namespace()
-    self.output_options = Namespace()
+    self.output_options = datatypes.SimpleNamespace()
 
   def test_input(self):
-    self.input_options.input = ["test.py"]
+    input_options = datatypes.SimpleNamespace(input=["test.py"])
     config.Postprocessor(
-        self.input_options, self.output_options, {"input"}).process()
+        {"input"}, input_options, self.output_options).process()
     self.assertEqual(self.output_options.input, "test.py")
 
   def test_io_pair(self):
-    self.input_options.input = ["in.py:out.pyi"]
+    input_options = datatypes.SimpleNamespace(input=["in.py:out.pyi"])
     config.Postprocessor(
-        self.input_options, self.output_options, {"input", "output"}).process()
+        {"input", "output"}, input_options, self.output_options).process()
     self.assertEqual(self.output_options.input, "in.py")
     self.assertEqual(self.output_options.output, "out.pyi")
 
   def test_io_pair_input(self):
-    self.input_options.input = ["in.py:out.pyi"]
-    # This argument should be ignored, since we're only processing the input.
-    self.input_options.output = "out2.pyi"
+    # The duplicate output is ignored, since we're only processing the input.
+    input_options = datatypes.SimpleNamespace(
+        input=["in.py:out.pyi"], output="out2.pyi")
     config.Postprocessor(
-        self.input_options, self.output_options, {"input"}).process()
+        {"input"}, input_options, self.output_options).process()
     self.assertEqual(self.output_options.input, "in.py")
     with self.assertRaises(AttributeError):
       _ = self.output_options.output
 
   def test_io_pair_output(self):
-    self.input_options.input = ["in.py:out.pyi"]
+    input_options = datatypes.SimpleNamespace(input=["in.py:out.pyi"])
     config.Postprocessor(
-        self.input_options, self.output_options, {"output"}).process()
+        {"output"}, input_options, self.output_options).process()
     with self.assertRaises(AttributeError):
       _ = self.output_options.input
     self.assertEqual(self.output_options.output, "out.pyi")
 
   def test_io_pair_multiple_output(self):
-    self.input_options.input = ["in.py:out.pyi"]
-    self.input_options.output = "out2.pyi"
+    input_options = datatypes.SimpleNamespace(
+        input=["in.py:out.pyi"], output="out2.pyi")
     with self.assertRaises(config.PostprocessingError):
       config.Postprocessor(
-          self.input_options, self.output_options, {"output"}).process()
+          {"output"}, input_options, self.output_options).process()
 
   def test_dependency(self):
-    self.input_options.output = "test.pyi"
-    self.input_options.check = None
+    input_options = datatypes.SimpleNamespace(output="test.pyi", check=None)
     config.Postprocessor(
-        self.input_options, self.output_options, {"output", "check"}).process()
+        {"output", "check"}, input_options, self.output_options).process()
     self.assertEqual(self.output_options.output, "test.pyi")
     self.assertIs(self.output_options.check, False)
 
   def test_subset(self):
-    self.input_options.pythonpath = "."
-    self.input_options.python_version = "3.4"
+    input_options = datatypes.SimpleNamespace(
+        pythonpath=".", python_version="3.4")
     config.Postprocessor(
-        self.input_options, self.output_options, {"python_version"}).process()
+        {"python_version"}, input_options, self.output_options).process()
     with self.assertRaises(AttributeError):
       _ = self.output_options.pythonpath  # not processed
     self.assertTupleEqual(self.output_options.python_version, (3, 4))
 
   def test_error(self):
-    self.input_options.check = True
-    self.input_options.output = "test.pyi"
+    input_options = datatypes.SimpleNamespace(check=True, output="test.pyi")
     with self.assertRaises(config.PostprocessingError):
       config.Postprocessor(
-          self.input_options, self.output_options, {"check", "output"}
-      ).process()
+          {"check", "output"}, input_options, self.output_options).process()
+
+  def test_inplace(self):
+    input_options = datatypes.SimpleNamespace(
+        disable="import-error,attribute-error", python_version="3.4")
+    config.Postprocessor(
+        {"disable", "python_version"}, input_options).process()
+    self.assertSequenceEqual(
+        input_options.disable, ["import-error", "attribute-error"])
+    self.assertTupleEqual(input_options.python_version, (3, 4))
 
 
 if __name__ == "__main__":
