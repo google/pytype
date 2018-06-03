@@ -95,10 +95,10 @@ def make_parser():
     A Parser object.
   """
 
-  parser = argparse.ArgumentParser()
+  parser = argparse.ArgumentParser(usage='%(prog)s [options] input [input ...]')
   parser.add_argument(
-      'filenames', metavar='filename', type=str, nargs='*',
-      help='input file(s)')
+      'filenames', metavar='input', type=str, nargs='*',
+      help='file or directory to process')
   modes = parser.add_mutually_exclusive_group()
   modes.add_argument(
       '--tree', dest='tree', action='store_true', default=False,
