@@ -13,12 +13,50 @@ from pytype import module_utils
 from pytype.tools.analyze_project import config
 
 
+# Generate a default pyi for dependencies not in the pythonpath.
+DEFAULT_PYI = """
+from typing import Any
+def __getattr__(name) -> Any: ...
+"""
+
+
+class Action(object):
+  REPORT_ERRORS = 1
+  IGNORE_ERRORS = 2
+  GENERATE_DEFAULT = 3
+
+
+def deps_from_import_graph(import_graph):
+  """Construct PytypeRunner args from an importlab.ImportGraph instance.
+
+  Kept as a separate function so PytypeRunner can be tested independently of
+  importlab.
+
+  Args:
+    import_graph: An importlab.ImportGraph instance.
+
+  Returns:
+    A list of lists of source modules in dependency order.
+  """
+  def make_module(mod):
+    full_path = mod.path
+    target = mod.short_path
+    path = full_path[:-len(target)]
+    name = mod.module_name
+    # We want to preserve __init__ in the module_name for pytype.
+    if os.path.basename(full_path) == '__init__.py':
+      name += '.__init__'
+    return module_utils.Module(path=path, target=target, name=name)
+  return [[make_module(import_graph.provenance[f]) for f in files]
+          for files in import_graph.sorted_source_files()]
+
+
 class PytypeRunner(object):
   """Runs pytype over an import graph."""
 
-  def __init__(self, filenames, sorted_source_files, conf):
+  def __init__(self, filenames, sorted_sources, conf):
     self.filenames = set(filenames)  # files to type-check
-    self.sorted_source_files = sorted_source_files  # all source files
+    self.sorted_sources = sorted_sources  # all source modules
     self.pythonpath = conf.pythonpath
     self.python_version = conf.python_version
     self.pyi_dir = conf.output
@@ -30,29 +68,39 @@ class PytypeRunner(object):
     return [
         '-P', self.pyi_dir,
         '-V', self.python_version,
-        '-o', os.path.join(self.pyi_dir, module.target + 'i'),
+        '-o', self._output_file(module),
         '--quick',
         '--module-name', module.name,
         '--analyze-annotated' if report_errors else '--no-report-errors',
         '--nofail',
-        os.path.join(module.path, module.target),
+        module.full_path,
     ]
 
-  def run_pytype(self, module, report_errors):
-    """Run pytype over a single module."""
+  def _output_file(self, module):
+    filename = module.name.replace('.', os.path.sep) + '.pyi'
+    return os.path.join(self.pyi_dir, filename)
+
+  def create_output_dir(self, module):
     # Create the output subdirectory for this file.
-    target_dir = os.path.join(self.pyi_dir, os.path.dirname(module.target))
+    target_dir = os.path.dirname(self._output_file(module))
     try:
       file_utils.makedirs(target_dir)
     except OSError:
       logging.error('Could not create output directory: %s', target_dir)
       return
+    return target_dir
 
-    if report_errors:
-      print('%s' % module.target)
-    else:
-      print('%s*' % module.target)
+  def write_default_pyi(self, module):
+    """Write a default pyi file for the module."""
+    self.create_output_dir(module)
+    output = self._output_file(module)
+    logging.info('Generating default pyi: %s', output)
+    with open(output, 'w') as f:
+      f.write(DEFAULT_PYI)
 
+  def run_pytype(self, module, report_errors):
+    """Run pytype over a single module."""
+    self.create_output_dir(module)
     args = self.get_pytype_args(module, report_errors)
     logging.info('Running: pytype %s %s', ' '.join(args), self.custom_options)
     # TODO(rechen): Do we want to get rid of the --nofail option and use a
@@ -66,41 +114,62 @@ class PytypeRunner(object):
         options.tweak(**self.custom_options)
       io.process_one_file(options)
 
+  def process_module(self, module, action):
+    """Process a single module with the given action."""
+    if action == Action.REPORT_ERRORS:
+      print('%s' % module.target)
+      self.run_pytype(module, True)
+    elif action == Action.IGNORE_ERRORS:
+      print('%s*' % module.target)
+      self.run_pytype(module, False)
+    elif action == Action.GENERATE_DEFAULT:
+      print('%s#' % module.target)
+      self.write_default_pyi(module)
+    else:
+      logging.fatal('Unexpected action %r', action)
+
   def yield_sorted_modules(self):
     """Yield modules from our sorted source files."""
-    for files in self.sorted_source_files:
+    for group in self.sorted_sources:
       modules = []
-      for f in files:
+      for module in group:
+        f = module.full_path
         # Report errors for files we are analysing directly.
-        report_errors = f in self.filenames
-        # We'll use this function to report skipped files.
-        report = logging.warning if report_errors else logging.info
+        if f in self.filenames:
+          action = Action.REPORT_ERRORS
+          report = logging.warning
+        else:
+          action = Action.IGNORE_ERRORS
+          report = logging.info
         if not f.endswith('.py'):
           report('Skipping non-Python file: %s', f)
           continue
-        module = module_utils.infer_module(
-            f, self.pythonpath, preserve_init=True)
-        if not any(module.path.startswith(d) for d in self.pythonpath):
-          report('Skipping file not in pythonpath: %s', f)
-          continue
-        modules.append((module, report_errors))
+        # For files not in pythonpath, do not attempt to generate a pyi.
+        if not any(f.startswith(d) for d in self.pythonpath):
+          report('Generating empty pyi for file not in pythonpath: %s', f)
+          action = Action.GENERATE_DEFAULT
+        modules.append((module, action))
       if len(modules) == 1:
         yield modules[0]
       else:
         # If we have a cycle we run pytype over the files twice, ignoring errors
         # the first time so that we don't fail on missing dependencies.
-        for module, _ in modules:
-          yield module, False
-        for module_and_report_errors in modules:
-          yield module_and_report_errors
+        for module, action in modules:
+          if action == Action.REPORT_ERRORS:
+            action = Action.IGNORE_ERRORS
+          yield module, action
+        for module, action in modules:
+          # We don't need to run generate_default twice
+          if action != Action.GENERATE_DEFAULT:
+            yield module, action
 
   def run(self):
     """Run pytype over the project."""
     logging.info('------------- Starting pytype run. -------------')
     modules = list(self.yield_sorted_modules())
-    files_to_analyze = {os.path.join(m.path, m.target) for m, _ in modules}
+    files_to_analyze = {m.full_path for m, _ in modules}
     num_sources = len(self.filenames & files_to_analyze)
     print('Analyzing %d sources with %d dependencies' %
           (num_sources, len(files_to_analyze) - num_sources))
-    for module, report_errors in modules:
-      self.run_pytype(module, report_errors)
+    for module, action in modules:
+      self.process_module(module, action)

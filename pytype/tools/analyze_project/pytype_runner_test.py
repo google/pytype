@@ -1,5 +1,6 @@
 """Tests for pytype_runner.py."""
 
+import collections
 import os
 import unittest
 
@@ -10,7 +11,50 @@ from pytype.tools.analyze_project import parse_args
 from pytype.tools.analyze_project import pytype_runner
 
 
+# Convenience aliases.
+# pylint: disable=invalid-name
+Module = module_utils.Module
+Action = pytype_runner.Action
+# pylint: enable=invalid-name
+
+
+ImportlabModule = collections.namedtuple('_', 'path short_path module_name')
+
+
+class FakeImportGraph(object):
+  """Just enough of the ImportGraph interface to run tests."""
+
+  def __init__(self, source_files, provenance):
+    self.source_files = source_files
+    self.provenance = provenance
+
+  def sorted_source_files(self):
+    return [[x] for x in self.source_files]
+
+
+class TestDepsFromImportGraph(unittest.TestCase):
+  """Test deps_from_import_graph."""
+
+  def setUp(self):
+    init = ImportlabModule('/foo/bar/__init__.py', 'bar/__init__.py', 'bar')
+    a = ImportlabModule('/foo/bar/a.py', 'bar/a.py', 'bar.a')
+    b = ImportlabModule('/foo/bar/b.py', 'bar/b.py', 'bar.b')
+    self.sources = [x.path for x in [init, a, b]]
+    self.provenance = {x.path: x for x in [init, a, b]}
+    self.graph = FakeImportGraph(self.sources, self.provenance)
+
+  def testBasic(self):
+    deps = pytype_runner.deps_from_import_graph(self.graph)
+    expected = [
+        [Module('/foo/', 'bar/__init__.py', 'bar.__init__')],
+        [Module('/foo/', 'bar/a.py', 'bar.a')],
+        [Module('/foo/', 'bar/b.py', 'bar.b')]
+    ]
+    self.assertEqual(deps, expected)
+
+
 class TestBase(unittest.TestCase):
+  """Base class for tests using a parser."""
 
   @classmethod
   def setUpClass(cls):
@@ -25,7 +69,7 @@ class TestGetRunCmd(TestBase):
         [], [], self.parser.config_from_defaults())
 
   def get_basic_options(self, report_errors=False):
-    module = module_utils.Module('foo', 'bar.py', 'bar')
+    module = Module('foo', 'bar.py', 'bar')
     args = self.runner.get_pytype_args(module, report_errors)
     return pytype_config.Options(args)
 
@@ -70,7 +114,7 @@ class TestYieldSortedModules(TestBase):
         module, actual_report_errors = next(mod_gen)
       except StopIteration:
         raise AssertionError('Not enough modules')
-      self.assertEqual(module, module_utils.Module(path, target, name))
+      self.assertEqual(module, Module(path, target, name))
       self.assertEqual(actual_report_errors, expected_report_errors)
     try:
       next(mod_gen)
@@ -80,53 +124,65 @@ class TestYieldSortedModules(TestBase):
       # Too many modules
       raise AssertionError('Too many modules')
 
+  def make_runner(self, sources, dep, conf):
+    """Allow source filenames to be passed in as modules."""
+    return pytype_runner.PytypeRunner(
+        [m.full_path for m in sources], dep, conf)
+
   def test_source(self):
     conf = self.parser.config_from_defaults()
     d = self.normalize('foo/')
     conf.pythonpath = [d]
-    f = os.path.join(d, 'bar.py')
-    runner = pytype_runner.PytypeRunner([f], [[f]], conf)
-    self.assert_sorted_modules_equal(runner.yield_sorted_modules(),
-                                     [(d, 'bar.py', 'bar', True)])
+    f = Module(d, 'bar.py', 'bar')
+    runner = self.make_runner([f], [[f]], conf)
+    self.assert_sorted_modules_equal(
+        runner.yield_sorted_modules(),
+        [(d, 'bar.py', 'bar', Action.REPORT_ERRORS)])
 
   def test_source_and_dep(self):
     conf = self.parser.config_from_defaults()
     d = self.normalize('foo/')
     conf.pythonpath = [d]
-    source = os.path.join(d, 'bar.py')
-    dep = os.path.join(d, 'baz.py')
-    runner = pytype_runner.PytypeRunner([source], [[dep], [source]], conf)
+    src = Module(d, 'bar.py', 'bar')
+    dep = Module(d, 'baz.py', 'baz')
+    runner = self.make_runner([src], [[dep], [src]], conf)
     self.assert_sorted_modules_equal(
         runner.yield_sorted_modules(),
-        [(d, 'baz.py', 'baz', False), (d, 'bar.py', 'bar', True)])
+        [(d, 'baz.py', 'baz', Action.IGNORE_ERRORS),
+         (d, 'bar.py', 'bar', Action.REPORT_ERRORS)])
 
   def test_cycle(self):
     conf = self.parser.config_from_defaults()
     d = self.normalize('foo/')
     conf.pythonpath = [d]
-    source = os.path.join(d, 'bar.py')
-    dep = os.path.join(d, 'baz.py')
-    runner = pytype_runner.PytypeRunner([source], [[dep, source]], conf)
+    src = Module(d, 'bar.py', 'bar')
+    dep = Module(d, 'baz.py', 'baz')
+    runner = self.make_runner([src], [[dep, src]], conf)
     self.assert_sorted_modules_equal(
         runner.yield_sorted_modules(),
-        [(d, 'baz.py', 'baz', False), (d, 'bar.py', 'bar', False),
-         (d, 'baz.py', 'baz', False), (d, 'bar.py', 'bar', True)])
+        [(d, 'baz.py', 'baz', Action.IGNORE_ERRORS),
+         (d, 'bar.py', 'bar', Action.IGNORE_ERRORS),
+         (d, 'baz.py', 'baz', Action.IGNORE_ERRORS),
+         (d, 'bar.py', 'bar', Action.REPORT_ERRORS)])
 
   def test_non_py_dep(self):
     conf = self.parser.config_from_defaults()
     d = self.normalize('foo/')
     conf.pythonpath = [d]
-    dep = os.path.join(d, 'bar.so')
-    runner = pytype_runner.PytypeRunner([], [[dep]], conf)
+    dep = Module(d, 'bar.so', 'bar')
+    runner = self.make_runner([], [[dep]], conf)
     self.assert_sorted_modules_equal(runner.yield_sorted_modules(), [])
 
   def test_non_pythonpath_dep(self):
     conf = self.parser.config_from_defaults()
     d = self.normalize('foo/')
+    external = self.normalize('quux/')
     conf.pythonpath = [d]
-    dep = file_utils.expand_path('bar/baz.py')
-    runner = pytype_runner.PytypeRunner([], [[dep]], conf)
-    self.assert_sorted_modules_equal(runner.yield_sorted_modules(), [])
+    dep = Module(external, 'bar/baz.py', 'bar.baz')
+    runner = self.make_runner([], [[dep]], conf)
+    self.assert_sorted_modules_equal(
+        runner.yield_sorted_modules(),
+        [(external, 'bar/baz.py', 'bar.baz', Action.GENERATE_DEFAULT)])
 
 
 if __name__ == '__main__':

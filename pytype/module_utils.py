@@ -4,12 +4,17 @@ import collections
 import os
 
 
-# Inferred information about a module.
-# Args:
-#   path: The path to the module, e.g., foo/.
-#   target: The filename relative to the path, e.g., bar/baz.py.
-#   name: The module name, e.g., bar.baz.
-Module = collections.namedtuple("_", "path target name")
+class Module(collections.namedtuple("_", "path target name")):
+  """Inferred information about a module.
+  Args:
+    path: The path to the module, e.g., foo/.
+    target: The filename relative to the path, e.g., bar/baz.py.
+    name: The module name, e.g., bar.baz.
+  """
+
+  @property
+  def full_path(self):
+    return os.path.join(self.path, self.target)
 
 
 def infer_module(filename, pythonpath, preserve_init=False):
@@ -84,5 +89,3 @@ def get_package_name(module_name, is_package=False):
   if not is_package:
     parts = parts[:-1]
   return ".".join(parts)
-
-
