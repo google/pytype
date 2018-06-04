@@ -12,7 +12,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_check_protocol(self):
     self.Check("""
-            import protocols
+
+      import protocols
       from typing import Sized
       def f(x: protocols.Sized):
         return None
@@ -30,7 +31,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_check_protocol_error(self):
     _, errors = self.InferWithErrors("""\
-            import protocols
+
+      import protocols
 
       def f(x: protocols.SupportsAbs):
         return x.__abs__()
@@ -41,7 +43,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_check_iterator_error(self):
     _, errors = self.InferWithErrors("""\
-            from typing import Iterator
+
+      from typing import Iterator
       def f(x: Iterator[int]):
         return None
       class Foo:
@@ -56,7 +59,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_check_protocol_match_unknown(self):
     self.Check("""\
-            from typing import Sized
+
+      from typing import Sized
       def f(x: Sized):
         pass
       class Foo(object):
@@ -69,7 +73,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_check_protocol_against_garbage(self):
     _, errors = self.InferWithErrors("""\
-            from typing import Sized
+
+      from typing import Sized
       def f(x: Sized):
         pass
       class Foo(object):
@@ -83,7 +88,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_check_parameterized_protocol(self):
     self.Check("""\
-            from typing import Iterator, Iterable
+
+      from typing import Iterator, Iterable
 
       class Foo(object):
         def __iter__(self) -> Iterator[int]:
@@ -99,7 +105,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_check_parameterized_protocol_error(self):
     _, errors = self.InferWithErrors("""\
-            from typing import Iterator, Iterable
+
+      from typing import Iterator, Iterable
 
       class Foo(object):
         def __iter__(self) -> Iterator[str]:
@@ -116,7 +123,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_check_parameterized_protocol_multi_signature(self):
     self.Check("""\
-            from typing import Sequence, Union
+
+      from typing import Sequence, Union
 
       class Foo(object):
         def __len__(self):
@@ -133,7 +141,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_check_parameterized_protocol_error_multi_signature(self):
     _, errors = self.InferWithErrors("""\
-            from typing import Sequence, Union
+
+      from typing import Sequence, Union
 
       class Foo(object):
         def __len__(self):
@@ -152,7 +161,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_construct_dict_with_protocol(self):
     self.Check("""
-            class Foo(object):
+
+      class Foo(object):
         def __iter__(self):
           pass
       def f(x: Foo):
@@ -161,7 +171,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_method_on_superclass(self):
     self.Check("""
-            class Foo(object):
+
+      class Foo(object):
         def __iter__(self):
           pass
       class Bar(Foo):
@@ -172,7 +183,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_method_on_parameterized_superclass(self):
     self.Check("""
-            from typing import List
+
+      from typing import List
       class Bar(List[int]):
         pass
       def f(x: Bar):
@@ -181,7 +193,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_any_superclass(self):
     self.Check("""
-            class Bar(__any_object__):
+
+      class Bar(__any_object__):
         pass
       def f(x: Bar):
         return iter(x)
@@ -189,7 +202,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_multiple_options(self):
     self.Check("""
-            class Bar(object):
+
+      class Bar(object):
         if __random__:
           def __iter__(self): return 1
         else:
@@ -200,7 +214,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_iterable_getitem(self):
     ty = self.Infer("""
-            from typing import Iterable, Iterator, TypeVar
+
+      from typing import Iterable, Iterator, TypeVar
       T = TypeVar("T")
       class Bar(object):
         def __getitem__(self, i: T) -> T:
@@ -223,7 +238,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_iterable_iter(self):
     ty = self.Infer("""
-            from typing import Iterable, Iterator, TypeVar
+
+      from typing import Iterable, Iterator, TypeVar
       class Bar(object):
         def __iter__(self) -> Iterator:
           return iter([])
@@ -248,7 +264,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
           def __getitem__(self, i: T) -> T: ...
       """)
       self.Check("""
-                from typing import Iterable, TypeVar
+
+        from typing import Iterable, TypeVar
         import foo
         T = TypeVar("T")
         def f(s: Iterable[T]) -> T: ...
@@ -262,7 +279,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
           def __iter__(self) -> ?: ...
       """)
       self.Check("""
-                from typing import Iterable, TypeVar
+
+        from typing import Iterable, TypeVar
         import foo
         T = TypeVar("T")
         def f(s: Iterable[T]) -> T: ...
@@ -271,7 +289,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_inherited_abstract_method_error(self):
     _, errors = self.InferWithErrors("""\
-            from typing import Iterator
+
+      from typing import Iterator
       class Foo(object):
         def __iter__(self) -> Iterator[str]:
           return __any_object__
@@ -286,7 +305,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_reversible(self):
     self.Check("""
-            from typing import Reversible
+
+      from typing import Reversible
       class Foo(object):
         def __reversed__(self):
           pass
@@ -297,7 +317,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_collection(self):
     self.Check("""
-            from typing import Collection
+
+      from typing import Collection
       class Foo(object):
         def __contains__(self, x):
           pass
@@ -312,14 +333,16 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_list_against_collection(self):
     self.Check("""
-            from typing import Collection
+
+      from typing import Collection
       def f() -> Collection[str]:
         return [""]
     """)
 
   def test_hashable(self):
     self.Check("""
-            from typing import Hashable
+
+      from typing import Hashable
       class Foo(object):
         def __hash__(self):
           pass
@@ -330,7 +353,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_list_hash(self):
     errors = self.CheckWithErrors("""\
-            from typing import Hashable
+
+      from typing import Hashable
       def f(x: Hashable):
         pass
       f([])  # line 5
@@ -340,7 +364,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_hash_constant(self):
     errors = self.CheckWithErrors("""\
-            from typing import Hashable
+
+      from typing import Hashable
       class Foo(object):
         __hash__ = None
       def f(x: Hashable):
@@ -361,7 +386,8 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
           def __call__(self) -> T: ...
       """)
       self.Check("""
-                from typing import Callable
+
+        from typing import Callable
         import foo
         def f() -> Callable:
           return foo.Foo("")
@@ -375,7 +401,8 @@ class ProtocolsTestPython3Feature(test_base.TargetPython3FeatureTest):
 
   def test_check_iterator(self):
     self.Check("""
-            from typing import Iterator
+
+      from typing import Iterator
       def f(x: Iterator):
         return None
       class Foo:
@@ -389,7 +416,8 @@ class ProtocolsTestPython3Feature(test_base.TargetPython3FeatureTest):
 
   def test_check_parameterized_iterator(self):
     self.Check("""
-            from typing import Iterator
+
+      from typing import Iterator
       def f(x: Iterator[int]):
         return None
       class Foo:
@@ -402,7 +430,8 @@ class ProtocolsTestPython3Feature(test_base.TargetPython3FeatureTest):
 
   def test_inherited_abstract_method(self):
     self.Check("""
-            from typing import Iterator
+
+      from typing import Iterator
       class Foo(object):
         def __iter__(self) -> Iterator[int]:
           return __any_object__

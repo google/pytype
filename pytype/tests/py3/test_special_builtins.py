@@ -8,7 +8,8 @@ class SpecialBuiltinsTest(test_base.TargetPython3BasicTest):
 
   def testPropertyWithTypeParameter(self):
     ty = self.Infer("""
-            from typing import Union
+
+      from typing import Union
       class Foo(object):
         @property
         def foo(self) -> Union[str, int]:
@@ -21,7 +22,8 @@ class SpecialBuiltinsTest(test_base.TargetPython3BasicTest):
 
   def testPropertyWithContainedTypeParameter(self):
     ty = self.Infer("""
-            from typing import List, Union
+
+      from typing import List, Union
       class Foo(object):
         @property
         def foo(self) -> List[Union[str, int]]:
@@ -35,7 +37,8 @@ class SpecialBuiltinsTest(test_base.TargetPython3BasicTest):
 
   def testCallableMatching(self):
     self.Check("""
-            from typing import Any, Callable
+
+      from typing import Any, Callable
       def f(x: Callable[[Any], bool]):
         pass
       f(callable)

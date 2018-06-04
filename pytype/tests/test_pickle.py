@@ -35,7 +35,8 @@ class PickleTest(test_base.TargetIndependentTest):
 
   def testContainer(self):
     pickled = self.Infer("""
-            import collections, json
+
+      import collections, json
       def f() -> collections.OrderedDict[int, int]:
         return collections.OrderedDict({1: 1})
       def g() -> json.JSONDecoder:
@@ -184,7 +185,8 @@ class PickleTest(test_base.TargetIndependentTest):
       self._verifyDeps(pickled_foo, ["__builtin__", "foo"], ["UserDict"])
       foo = d.create_file("foo.pickled", pickled_foo)
       self.assertNoCrash(self.Infer, """
-                import foo
+
+        import foo
         class Bar(object):
           f = foo.f
       """, imports_map={"foo": foo}, module_name="bar")
@@ -206,7 +208,8 @@ class PickleTest(test_base.TargetIndependentTest):
       """, module_name="bar")
       bar = d.create_file("bar.pickled", pickled_bar)
       self.assertNoCrash(self.Infer, """
-                import bar
+
+        import bar
         bar.f(42)
       """, imports_map={"foo": foo, "bar": bar}, module_name="baz")
 

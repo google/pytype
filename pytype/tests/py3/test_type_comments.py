@@ -8,7 +8,8 @@ class FunctionCommentWithAnnotationsTest(test_base.TargetPython3BasicTest):
 
   def testFunctionTypeCommentPlusAnnotations(self):
     _, errors = self.InferWithErrors("""\
-            def foo(x: int) -> float:
+
+      def foo(x: int) -> float:
         # type: (int) -> float
         return x
     """)
@@ -16,7 +17,8 @@ class FunctionCommentWithAnnotationsTest(test_base.TargetPython3BasicTest):
 
   def testListComprehensionComments(self):
     ty = self.Infer("""\
-            from typing import List
+
+      from typing import List
       def f(x: str):
         pass
       def g(xs: List[str]) -> List[str]:

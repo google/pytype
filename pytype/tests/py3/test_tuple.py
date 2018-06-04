@@ -9,7 +9,8 @@ class TupleTest(test_base.TargetPython3BasicTest):
 
   def testUnpackInlineTuple(self):
     ty = self.Infer("""\
-            from typing import Tuple
+
+      from typing import Tuple
       def f(x: Tuple[str, int]):
         return x
       v1, v2 = f(__any_object__)
@@ -23,7 +24,8 @@ class TupleTest(test_base.TargetPython3BasicTest):
 
   def testUnpackTupleOrTuple(self):
     self.Check("""
-            def f():
+
+      def f():
         if __random__:
           return (False, 'foo')
         else:
@@ -35,7 +37,8 @@ class TupleTest(test_base.TargetPython3BasicTest):
 
   def testUnpackTupleOrList(self):
     self.Check("""
-            def f():
+
+      def f():
         if __random__:
           return (False, 'foo')
         else:
@@ -47,14 +50,16 @@ class TupleTest(test_base.TargetPython3BasicTest):
 
   def testUnpackAmbiguousTuple(self):
     self.Check("""
-            def f() -> tuple:
+
+      def f() -> tuple:
         return __any_object__
       a, b = f()
     """)
 
   def testTuplePrinting(self):
     _, errors = self.InferWithErrors("""\
-            from typing import Tuple
+
+      from typing import Tuple
       def f(x: Tuple[str, ...]):
         pass
       def g(y: Tuple[str]):
@@ -89,7 +94,8 @@ class TupleTest(test_base.TargetPython3BasicTest):
         class A(Tuple[int, str]): ...
       """)
       self.Check("""
-                from typing import Tuple, Type
+
+        from typing import Tuple, Type
         import foo
         def f(x: Type[Tuple[int, str]]):
           pass
@@ -107,7 +113,8 @@ class TupleTest(test_base.TargetPython3BasicTest):
         class A(Tuple[str, int]): ...
       """)
       _, errors = self.InferWithErrors("""\
-                from typing import Tuple, Type
+
+        from typing import Tuple, Type
         import foo
         def f(x: Type[Tuple[int, str]]):
           pass
@@ -127,7 +134,8 @@ class TupleTest(test_base.TargetPython3BasicTest):
 
   def testTupleCombinationExplosion(self):
     self.Check("""
-            from typing import Any, Dict, List, Tuple, Union
+
+      from typing import Any, Dict, List, Tuple, Union
       AlphaNum = Union[str, int]
       def f(x: Dict[AlphaNum, Any]) -> List[Tuple]:
         return list(sorted((k, v) for k, v in x.items() if k in {}))
@@ -135,7 +143,8 @@ class TupleTest(test_base.TargetPython3BasicTest):
 
   def testTupleInContainer(self):
     ty = self.Infer("""
-            from typing import List, Tuple
+
+      from typing import List, Tuple
       def f(l: List[Tuple[int, List[int]]]):
         line, foo = l[0]
         return foo
@@ -151,7 +160,8 @@ class TupleTest(test_base.TargetPython3BasicTest):
         class Bar(tuple): ...
       """)
       errors = self.CheckWithErrors("""\
-                from typing import Tuple
+
+        from typing import Tuple
         import bar
         def foo() -> Tuple[bar.Bar, bar.Bar]:
           return bar.Bar(None, None)  # line 5

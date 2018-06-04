@@ -575,7 +575,8 @@ class TestCollectionsMixin(object):
 
   def _testCollectionsObject(self, obj, good_arg, bad_arg, error):  # pylint: disable=invalid-name
     result = self.CheckWithErrors("""\
-            import collections
+
+      import collections
       def f(x: collections.{obj}): ...
       f({good_arg})
       f({bad_arg})  # line 5

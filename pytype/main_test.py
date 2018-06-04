@@ -289,7 +289,8 @@ class PytypeTest(unittest.TestCase):
 
   def testReturnType(self):
     self._CheckTypesAndErrors(self._MakeFile("""\
-            def f() -> int:
+
+      def f() -> int:
         return "foo"
     """), ["bad-return-type"])
 
@@ -379,14 +380,16 @@ class PytypeTest(unittest.TestCase):
 
   def testNoAnalyzeAnnotated(self):
     filename = self._MakeFile("""\
-            def f() -> str:
+
+      def f() -> str:
         return 42
     """)
     self._InferTypesAndCheckErrors(self._DataPath(filename), [])
 
   def testAnalyzeAnnotated(self):
     filename = self._MakeFile("""\
-            def f() -> str:
+
+      def f() -> str:
         return 42
     """)
     self.pytype_args["--analyze-annotated"] = self.INCLUDE

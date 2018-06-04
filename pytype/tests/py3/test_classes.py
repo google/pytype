@@ -9,7 +9,8 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def testClassGetItem(self):
     ty = self.Infer("""
-            class A(type):
+
+      class A(type):
         def __getitem__(self, i):
           return 42
       X = A("X", (object,), {})
@@ -24,7 +25,8 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def testNewAnnotatedCls(self):
     ty = self.Infer("""
-            from typing import Type
+
+      from typing import Type
       class Foo(object):
         def __new__(cls: Type[str]):
           return super(Foo, cls).__new__(cls)
@@ -37,7 +39,8 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def testRecursiveConstructor(self):
     self.Check("""
-            from typing import List
+
+      from typing import List
       MyType = List['Foo']
       class Foo(object):
         def __init__(self, x):
@@ -50,7 +53,8 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def testRecursiveConstructorAttribute(self):
     self.Check("""
-            from typing import List
+
+      from typing import List
       MyType = List['Foo']
       class Foo(object):
         def __init__(self, x):
@@ -62,7 +66,8 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def testRecursiveConstructorBadAttribute(self):
     _, errors = self.InferWithErrors("""\
-            from typing import List
+
+      from typing import List
       MyType = List['Foo']
       class Foo(object):
         def __init__(self, x):
@@ -76,7 +81,8 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def testRecursiveConstructorSubclass(self):
     self.Check("""
-            from typing import List
+
+      from typing import List
       MyType = List['Foo']
       class Foo(object):
         def __init__(self, x):
@@ -92,7 +98,8 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def testNameExists(self):
     self.Check("""
-            class Foo(object): pass
+
+      class Foo(object): pass
       class Bar(object):
         @staticmethod
         def Create(x: Foo=None):
@@ -107,7 +114,8 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def testInheritFromGenericClass(self):
     ty = self.Infer("""
-            from typing import List
+
+      from typing import List
       class Foo(List[str]): ...
       v = Foo()[0]
     """, deep=False)
@@ -119,7 +127,8 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def testMakeGenericClass(self):
     ty, errors = self.InferWithErrors("""\
-            from typing import List, TypeVar, Union
+
+      from typing import List, TypeVar, Union
       T1 = TypeVar("T1")
       T2 = TypeVar("T2")
       class Foo(List[Union[T1, T2]]): ...
@@ -134,7 +143,8 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def testMakeGenericClassWithConcreteValue(self):
     ty, errors = self.InferWithErrors("""\
-            from typing import Dict, TypeVar
+
+      from typing import Dict, TypeVar
       V = TypeVar("V")
       class Foo(Dict[str, V]): ...
       for v in Foo().keys():
@@ -155,7 +165,8 @@ class ClassesTest(test_base.TargetPython3BasicTest):
         def f() -> list: ...
         """)
       self.Check("""\
-                import foo
+
+        import foo
         from typing import List
         def a() -> List[str]:
           x = foo.f()
@@ -167,7 +178,8 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def testParentInit(self):
     errors = self.CheckWithErrors("""\
-            from typing import Sequence
+
+      from typing import Sequence
       class X(object):
         def __init__(self, obj: Sequence):
           pass
@@ -179,7 +191,8 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def testParameterizedClassBinaryOperator(self):
     _, errors = self.InferWithErrors("""\
-            from typing import Sequence
+
+      from typing import Sequence
       def f(x: Sequence[str], y: Sequence[str]) -> None:
         a = x + y
       """)

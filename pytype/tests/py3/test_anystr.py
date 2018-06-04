@@ -10,7 +10,8 @@ class AnyStrTest(test_base.TargetPython3BasicTest):
   def testCallable(self):
     """Tests Callable + AnyStr."""
     self.Check("""
-            from typing import AnyStr, Callable
+
+      from typing import AnyStr, Callable
 
       def f1(f: Callable[[AnyStr], AnyStr]):
         f2(f)
@@ -20,7 +21,8 @@ class AnyStrTest(test_base.TargetPython3BasicTest):
 
   def testUnknownAgainstMultipleAnyStr(self):
     self.Check("""
-            from typing import Any, Dict, Tuple, AnyStr
+
+      from typing import Any, Dict, Tuple, AnyStr
 
       def foo(x: Dict[Tuple[AnyStr], AnyStr]): ...
       foo(__any_object__)
@@ -28,7 +30,8 @@ class AnyStrTest(test_base.TargetPython3BasicTest):
 
   def testMultipleUnknownAgainstMultipleAnyStr(self):
     self.Check("""
-            from typing import AnyStr, List
+
+      from typing import AnyStr, List
       def foo(x: List[AnyStr], y: List[AnyStr]): ...
       foo(__any_object__, [__any_object__])
     """)
@@ -39,7 +42,8 @@ class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
 
   def testAnyStr(self):
     ty = self.Infer("""
-            from typing import AnyStr
+
+      from typing import AnyStr
       def f(x: AnyStr) -> AnyStr:
         return __any_object__
     """)
@@ -67,7 +71,8 @@ class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
 
   def testUseAnyStrConstraints(self):
     ty, errors = self.InferWithErrors("""\
-            from typing import AnyStr, TypeVar
+
+      from typing import AnyStr, TypeVar
       def f(x: AnyStr, y: AnyStr) -> AnyStr:
         return __any_object__
       v1 = f(__any_object__, u"")  # ok
@@ -85,7 +90,8 @@ class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
 
   def testConstraintMismatch(self):
     _, errors = self.InferWithErrors("""\
-            from typing import AnyStr
+
+      from typing import AnyStr
       def f(x: AnyStr, y: AnyStr): ...
       f("", "")  # ok
       f("", b"")

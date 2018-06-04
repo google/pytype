@@ -13,7 +13,8 @@ class MatchTest(test_base.TargetPython3BasicTest):
         def bar() -> bool
       """)
       _, errors = self.InferWithErrors("""\
-                from typing import Callable
+
+        from typing import Callable
         import foo
 
         def f(x: Callable[[], int]): ...
@@ -34,7 +35,8 @@ class MatchTest(test_base.TargetPython3BasicTest):
         def f3(x: int) -> str: ...
       """)
       _, errors = self.InferWithErrors("""\
-                from typing import Callable, TypeVar
+
+        from typing import Callable, TypeVar
         import foo
 
         T_plain = TypeVar("T_plain")
@@ -63,7 +65,8 @@ class MatchTest(test_base.TargetPython3BasicTest):
 
   def testInterpreterFunctionAgainstCallable(self):
     _, errors = self.InferWithErrors("""\
-            from typing import Callable
+
+      from typing import Callable
       def f(x: Callable[[bool], int]): ...
       def g1(x: int) -> bool:
         return __any_object__
@@ -78,7 +81,8 @@ class MatchTest(test_base.TargetPython3BasicTest):
 
   def testBoundInterpreterFunctionAgainstCallable(self):
     _, errors = self.InferWithErrors("""\
-            from typing import Callable
+
+      from typing import Callable
 
       class A(object):
         def f(self, x: int) -> bool:
@@ -115,7 +119,8 @@ class MatchTest(test_base.TargetPython3BasicTest):
         def f2(x: Callable[[T], Any]) -> List[T]: ...
       """)
       ty = self.Infer("""\
-                from typing import Any, Callable
+
+        from typing import Any, Callable
         import foo
 
         def g1(): pass
@@ -144,7 +149,8 @@ class MatchTest(test_base.TargetPython3BasicTest):
 
   def testVariableLengthFunctionAgainstCallable(self):
     _, errors = self.InferWithErrors("""\
-            from typing import Any, Callable
+
+      from typing import Any, Callable
       def f(x: Callable[[int], Any]): pass
       def g1(x: int=0): pass
       def g2(x: str=""): pass
@@ -157,7 +163,8 @@ class MatchTest(test_base.TargetPython3BasicTest):
 
   def testCallableInstanceAgainstCallableWithTypeParameters(self):
     _, errors = self.InferWithErrors("""\
-            from typing import Callable, TypeVar
+
+      from typing import Callable, TypeVar
       T = TypeVar("T")
       def f(x: Callable[[T], T]): ...
       def g() -> Callable[[int], str]: return __any_object__
@@ -169,7 +176,8 @@ class MatchTest(test_base.TargetPython3BasicTest):
 
   def testFunctionWithTypeParameterReturnAgainstCallable(self):
     _, errors = self.InferWithErrors("""\
-            from typing import Callable, AnyStr, TypeVar
+
+      from typing import Callable, AnyStr, TypeVar
       T = TypeVar("T")
       def f(x: Callable[..., AnyStr]): ...
       def g1(x: AnyStr) -> AnyStr: return x
@@ -188,7 +196,8 @@ class MatchTest(test_base.TargetPython3BasicTest):
         def decorate(func: Callable[..., Iterator[T]]) -> List[T]
       """)
       ty = self.Infer("""
-                from typing import Generator, Optional
+
+        from typing import Generator, Optional
         import foo
         @foo.decorate
         def f() -> Generator[Optional[str]]:
@@ -202,14 +211,16 @@ class MatchTest(test_base.TargetPython3BasicTest):
 
   def testAnyStr(self):
     self.Check("""
-            from typing import AnyStr, Dict, Tuple
+
+      from typing import AnyStr, Dict, Tuple
       class Foo(object):
         def bar(self, x: Dict[Tuple[AnyStr], AnyStr]): ...
     """)
 
   def testFormalType(self):
     _, errors = self.InferWithErrors("""\
-            from typing import AnyStr, List, NamedTuple
+
+      from typing import AnyStr, List, NamedTuple
       def f(x: str):
         pass
       f(AnyStr)
@@ -225,7 +236,8 @@ class MatchTest(test_base.TargetPython3BasicTest):
 
   def testTypeVarWithBound(self):
     _, errors = self.InferWithErrors("""\
-            from typing import Callable, TypeVar
+
+      from typing import Callable, TypeVar
       T1 = TypeVar("T1", bound=int)
       T2 = TypeVar("T2")
       def f(x: T1) -> T1:
@@ -245,7 +257,8 @@ class MatchTest(test_base.TargetPython3BasicTest):
         def g() -> Union[Type[Exception], Callable[[], ...]]
       """)
       self.Check("""
-                from typing import Union
+
+        from typing import Union
         import foo
         class Foo(foo.f()):
           pass

@@ -9,7 +9,8 @@ class ErrorTest(test_base.TargetPython3BasicTest):
 
   def testUnion(self):
     _, errors = self.InferWithErrors("""\
-            def f(x: int):
+
+      def f(x: int):
         pass
       if __random__:
         i = 0
@@ -23,7 +24,8 @@ class ErrorTest(test_base.TargetPython3BasicTest):
 
   def testInvalidAnnotations(self):
     _, errors = self.InferWithErrors("""\
-            from typing import Dict, List, Union
+
+      from typing import Dict, List, Union
       def f1(x: Dict):  # okay
         pass
       def f2(x: Dict[str]):  # okay, "Any" is automatically filled in for V
@@ -38,7 +40,8 @@ class ErrorTest(test_base.TargetPython3BasicTest):
 
   def testPrintUnsolvable(self):
     _, errors = self.InferWithErrors("""\
-            from typing import List
+
+      from typing import List
       def f(x: List[nonsense], y: str, z: float):
         pass
       f({nonsense}, "", "")
@@ -50,7 +53,8 @@ class ErrorTest(test_base.TargetPython3BasicTest):
 
   def testPrintUnionOfContainers(self):
     _, errors = self.InferWithErrors("""\
-            def f(x: str):
+
+      def f(x: str):
         pass
       if __random__:
         x = dict
@@ -63,7 +67,8 @@ class ErrorTest(test_base.TargetPython3BasicTest):
 
   def testWrongBrackets(self):
     _, errors = self.InferWithErrors("""\
-            from typing import List
+
+      from typing import List
       def f(x: List(str)):
         pass
     """)
@@ -71,7 +76,8 @@ class ErrorTest(test_base.TargetPython3BasicTest):
 
   def testInterpreterClassPrinting(self):
     _, errors = self.InferWithErrors("""\
-            class Foo(object): pass
+
+      class Foo(object): pass
       def f(x: str): pass
       f(Foo())
     """)
@@ -79,7 +85,8 @@ class ErrorTest(test_base.TargetPython3BasicTest):
 
   def testPrintDictAndTuple(self):
     _, errors = self.InferWithErrors("""\
-            from typing import Tuple
+
+      from typing import Tuple
       tup = None  # type: Tuple[int, ...]
       dct = None  # type: dict[str, int]
       def f1(x: (int, str)):  # line 5
@@ -101,7 +108,8 @@ class ErrorTest(test_base.TargetPython3BasicTest):
 
   def testMoveUnionInward(self):
     _, errors = self.InferWithErrors("""\
-            def f() -> str:
+
+      def f() -> str:
         y = "hello" if __random__ else 42
         yield y
     """)
@@ -111,7 +119,8 @@ class ErrorTest(test_base.TargetPython3BasicTest):
 
   def testInnerClassError(self):
     _, errors = self.InferWithErrors("""\
-            def f(x: str): pass
+
+      def f(x: str): pass
       def g():
         class Foo(object): pass
         f(Foo())
@@ -120,7 +129,8 @@ class ErrorTest(test_base.TargetPython3BasicTest):
 
   def testInnerClassError2(self):
     _, errors = self.InferWithErrors("""\
-            def f():
+
+      def f():
         class Foo(object): pass
         def g(x: Foo): pass
         g("")
@@ -131,7 +141,8 @@ class ErrorTest(test_base.TargetPython3BasicTest):
     # Make sure the namedtuple renaming in _pytd_print correctly extracts type
     # names and doesn't erase other types accidentally.
     _, errors = self.InferWithErrors("""\
-            import collections
+
+      import collections
       X = collections.namedtuple("X", "a b c d")
       Y = collections.namedtuple("Z", "")
       W = collections.namedtuple("W", "abc def ghi abc", rename=True)
@@ -157,7 +168,8 @@ class ErrorTest(test_base.TargetPython3BasicTest):
 
   def testArgumentOrder(self):
     _, errors = self.InferWithErrors("""\
-            def g(f: str, a, b, c, d, e,):
+
+      def g(f: str, a, b, c, d, e,):
         pass
       g(a=1, b=2, c=3, d=4, e=5, f=6)
       """)
@@ -169,7 +181,8 @@ class ErrorTest(test_base.TargetPython3BasicTest):
 
   def testConversionOfGeneric(self):
     _, errors = self.InferWithErrors("""
-            import os
+
+      import os
       def f() -> None:
         return os.walk("/tmp")
     """)
@@ -179,7 +192,8 @@ class ErrorTest(test_base.TargetPython3BasicTest):
 
   def testInnerClass(self):
     _, errors = self.InferWithErrors("""\
-            def f() -> int:
+
+      def f() -> int:
         class Foo(object):
           pass
         return Foo()  # line 5
@@ -195,7 +209,8 @@ class ErrorTest(test_base.TargetPython3BasicTest):
           Bar = ...  # type: Type[_Foo_DOT_Bar]
       """)
       errors = self.CheckWithErrors("""\
-                import foo_bar
+
+        import foo_bar
         def f(x: foo_bar.Foo.Bar): ...
         f(42)
       """, pythonpath=[d.path])
@@ -210,7 +225,8 @@ class ErrorTest(test_base.TargetPython3BasicTest):
           def t(a: str) -> None: ...
         """)
       errors = self.CheckWithErrors("""\
-                from typing import Callable
+
+        from typing import Callable
         import foo
         def f(x: Callable[[int], None], y: int) -> None:
           return x(y)

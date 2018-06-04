@@ -8,7 +8,8 @@ class CheckerTest(test_base.TargetPython3BasicTest):
 
   def testSet(self):
     self.Check("""
-            from typing import List, Set
+
+      from typing import List, Set
       def f(data: List[str]):
         data = set(x for x in data)
         g(data)
@@ -18,7 +19,8 @@ class CheckerTest(test_base.TargetPython3BasicTest):
 
   def testRecursiveForwardReference(self):
     errorlog = self.CheckWithErrors("""\
-            class X(object):
+
+      class X(object):
         def __init__(self, val: "X"):
           pass
       def f():
@@ -28,7 +30,8 @@ class CheckerTest(test_base.TargetPython3BasicTest):
 
   def testBadReturnTypeInline(self):
     errorlog = self.CheckWithErrors("""\
-            from typing import List
+
+      from typing import List
       def f() -> List[int]:
         return [object()]
       f()[0] += 1
@@ -38,7 +41,8 @@ class CheckerTest(test_base.TargetPython3BasicTest):
 
   def testUseVarargsAndKwargs(self):
     self.Check("""\
-            class A(object):
+
+      class A(object):
         pass
       def f(*args: A, **kwargs: A):
         for arg in args:
@@ -49,7 +53,8 @@ class CheckerTest(test_base.TargetPython3BasicTest):
 
   def testNestedNoneType(self):
     self.Check("""\
-            from typing import List, Union
+
+      from typing import List, Union
       def f1() -> Union[None]:
         pass
       def f2() -> List[None]:
@@ -62,7 +67,8 @@ class CheckerTest(test_base.TargetPython3BasicTest):
 
   def testInnerClassInit(self):
     self.Check("""\
-            from typing import List
+
+      from typing import List
       class A:
         def __init__(self):
           self.x = 42
@@ -76,7 +82,8 @@ class CheckerTest(test_base.TargetPython3BasicTest):
 
   def testRecursion(self):
     self.Check("""\
-            class A:
+
+      class A:
         def __init__(self, x: "B"):
           pass
       class B:
@@ -87,7 +94,8 @@ class CheckerTest(test_base.TargetPython3BasicTest):
 
   def testBadDictValue(self):
     errorlog = self.CheckWithErrors("""\
-            from typing import Dict
+
+      from typing import Dict
       def f() -> Dict[str, int]:
         return {"x": 42.0}
     """)
@@ -95,7 +103,8 @@ class CheckerTest(test_base.TargetPython3BasicTest):
 
   def testInstanceAsAnnotation(self):
     errorlog = self.CheckWithErrors("""\
-            def f():
+
+      def f():
         pass
       def g(x: f):
         pass
@@ -109,7 +118,8 @@ class CheckerTest(test_base.TargetPython3BasicTest):
 
   def testBadGenerator(self):
     errorlog = self.CheckWithErrors("""\
-            from typing import Generator
+
+      from typing import Generator
       def f() -> Generator[str]:
         for i in range(3):
           yield i
@@ -120,7 +130,8 @@ class CheckerTest(test_base.TargetPython3BasicTest):
 
   def testMultipleParameterBindings(self):
     errorlog = self.CheckWithErrors("""\
-            from typing import List
+
+      from typing import List
       def f(x) -> List[int]:
         return ["", x]
     """)
@@ -129,7 +140,8 @@ class CheckerTest(test_base.TargetPython3BasicTest):
 
   def testNoParamBinding(self):
     errorlog = self.CheckWithErrors("""\
-            def f() -> None:
+
+      def f() -> None:
         x = []
         return x
     """)
@@ -138,7 +150,8 @@ class CheckerTest(test_base.TargetPython3BasicTest):
 
   def testAttributeInIncompleteInstance(self):
     errorlog = self.CheckWithErrors("""\
-            from typing import List
+
+      from typing import List
       class Foo(object):
         def __init__(self, other: "List[Foo]"):
           self.x = other[0].x  # okay
@@ -150,14 +163,16 @@ class CheckerTest(test_base.TargetPython3BasicTest):
 
   def testBadGetItem(self):
     errorlog = self.CheckWithErrors("""\
-            def f(x: int):
+
+      def f(x: int):
         return x[0]
     """)
     self.assertErrorLogIs(errorlog, [(3, "unsupported-operands", r"int.*int")])
 
   def testBadAnnotationContainer(self):
     errorlog = self.CheckWithErrors("""\
-            class A(object):
+
+      class A(object):
         pass
       def f(x: int[str]):
         pass

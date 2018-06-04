@@ -8,7 +8,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
   """Tests for typing.py."""
 
   _TEMPLATE = """
-        import collections
+
+    import collections
     import typing
     def f(s: %(annotation)s):%(disables)s
       return s
@@ -36,7 +37,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_generator(self):
     self.Check("""\
-            from typing import Generator
+
+      from typing import Generator
       def f() -> Generator[int]:
         for i in range(3):
           yield i
@@ -44,7 +46,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_type(self):
     ty, errors = self.InferWithErrors("""\
-            from typing import Type
+
+      from typing import Type
       class Foo:
         x = 1
       def f1(foo: Type[Foo]):
@@ -77,7 +80,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_type_union(self):
     _, errors = self.InferWithErrors("""\
-            from typing import Type, Union
+
+      from typing import Type, Union
       class Foo:
         bar = ...  # type: int
       def f1(x: Type[Union[int, Foo]]):
@@ -100,7 +104,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
         MyType = List[str]
       """)
       self.Check("""
-                import foo
+
+        import foo
         def f(x: foo.MyType):
           pass
         f([""])
@@ -113,7 +118,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
         def f() -> Callable
       """)
       self.Check("""\
-                from typing import Callable
+
+        from typing import Callable
         import foo
         def f() -> Callable:
           return foo.f()
@@ -123,7 +129,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_callable_parameters(self):
     ty, errors = self.InferWithErrors("""\
-            from typing import Any, Callable
+
+      from typing import Any, Callable
 
       # The below are all valid.
       def f1(x: Callable[[int, str], bool]): ...
@@ -168,7 +175,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_callable_bad_args(self):
     ty, errors = self.InferWithErrors("""\
-            from typing import Callable
+
+      from typing import Callable
       lst1 = [str]
       lst1[0] = int
       def g1(x: Callable[lst1, bool]): ...  # line 5
@@ -202,7 +210,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
         class CustomDict(Dict[K, V]): ...
       """)
       self.Check("""\
-                import typing
+
+        import typing
         import foo
         def f(x: typing.Callable[..., int]): pass
         def f(x: typing.Iterator[int]): pass
@@ -234,7 +243,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_generator_iterator_match(self):
     self.Check("""
-            from typing import Iterator
+
+      from typing import Iterator
       def f(x: Iterator[int]):
         pass
       f(x for x in [42])
@@ -242,7 +252,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_name_conflict(self):
     ty = self.Infer("""
-            import typing
+
+      import typing
       def f() -> typing.Any:
         pass
       class Any(object):
@@ -261,7 +272,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_callable_call(self):
     ty, errors = self.InferWithErrors("""\
-            from typing import Callable
+
+      from typing import Callable
       f = ...  # type: Callable[[int], str]
       v1 = f()
       v2 = f(True)  # ok
@@ -282,7 +294,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_callable_call_with_type_parameters(self):
     ty, errors = self.InferWithErrors("""\
-            from typing import Callable, TypeVar
+
+      from typing import Callable, TypeVar
       T = TypeVar("T")
       def f(g: Callable[[T, T], T], y, z):
         return g(y, z)
@@ -300,7 +313,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_callable_call_with_return_only(self):
     ty = self.Infer("""
-            from typing import Callable
+
+      from typing import Callable
       f = ...  # type: Callable[..., int]
       v = f()
     """, deep=False)
@@ -312,7 +326,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_callable_call_with_varargs_and_kwargs(self):
     _, errors = self.InferWithErrors("""\
-            from typing import Callable
+
+      from typing import Callable
       f = ...  # type: Callable[[], int]
       f(x=3)
       f(*(42,))
@@ -326,27 +341,31 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_callable_attribute(self):
     self.Check("""\
-            from typing import Any, Callable
+
+      from typing import Any, Callable
       def foo(fn: Callable[[Any], Any]):
         fn.foo # pytype: disable=attribute-error
     """)
 
   def test_callable_func_name(self):
     self.Check("""\
-            from typing import Any, Callable
+
+      from typing import Any, Callable
       def foo(fn: Callable[[Any], Any]) -> str:
         return fn.func_name
     """)
 
   def test_items_view(self):
     self.Check("""
-            from typing import ItemsView
+
+      from typing import ItemsView
       def f(x: ItemsView[str, int]): ...
     """)
 
   def test_new_type(self):
     ty = self.Infer("""
-            from typing import NewType
+
+      from typing import NewType
       MyInt = NewType('MyInt', int)
       class A(object):
         pass
@@ -411,7 +430,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_new_type_error(self):
     _, errors = self.InferWithErrors("""
-            from typing import NewType
+
+      from typing import NewType
       MyInt = NewType('MyInt', int)
       MyStr = NewType('MyStr', str)
       def func1(i: MyInt) -> MyInt:
@@ -434,7 +454,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_maybe_return(self):
     self.Check("""
-            def f() -> int:
+
+      def f() -> int:
         if __random__:
           return 42
         else:
@@ -443,7 +464,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_no_return_against_str(self):
     ty = self.Infer("""
-            def f() -> str:
+
+      def f() -> str:
         raise ValueError()
       def g():
         return f()
@@ -455,7 +477,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_called_no_return_against_str(self):
     self.Check("""
-            def f():
+
+      def f():
         raise ValueError()
       def g() -> str:
         return f()
@@ -463,7 +486,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_union_ellipsis(self):
     errors = self.CheckWithErrors("""\
-            from typing import Union
+
+      from typing import Union
       MyUnion = Union[int, ...]
     """)
     self.assertErrorLogIs(
@@ -471,7 +495,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_list_ellipsis(self):
     errors = self.CheckWithErrors("""\
-            from typing import List
+
+      from typing import List
       MyList = List[int, ...]
     """)
     self.assertErrorLogIs(
@@ -479,7 +504,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_multiple_ellipses(self):
     errors = self.CheckWithErrors("""\
-            from typing import Union
+
+      from typing import Union
       MyUnion = Union[..., int, ..., str, ...]
     """)
     self.assertErrorLogIs(errors, [
@@ -487,7 +513,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_bad_tuple_ellipsis(self):
     errors = self.CheckWithErrors("""\
-            from typing import Tuple
+
+      from typing import Tuple
       MyTuple1 = Tuple[..., ...]
       MyTuple2 = Tuple[...]
     """)
@@ -497,7 +524,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_bad_callable_ellipsis(self):
     errors = self.CheckWithErrors("""\
-            from typing import Callable
+
+      from typing import Callable
       MyCallable1 = Callable[..., ...]
       MyCallable2 = Callable[[int], ...]
       MyCallable3 = Callable[[...], int]

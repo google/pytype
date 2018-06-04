@@ -8,7 +8,8 @@ class RecoveryTests(test_base.TargetPython3BasicTest):
 
   def testFunctionWithUnknownDecorator(self):
     _, errors = self.InferWithErrors("""\
-            from nowhere import decorator
+
+      from nowhere import decorator
       @decorator
       def f():
         name_error
@@ -25,7 +26,8 @@ class RecoveryTests(test_base.TargetPython3BasicTest):
   def testComplexInit(self):
     """Test that we recover when __init__ triggers a utils.TooComplexError."""
     _, errors = self.InferWithErrors("""\
-            from typing import AnyStr
+
+      from typing import AnyStr
       class X(object):
         def __init__(self,
                      literal: int = None,

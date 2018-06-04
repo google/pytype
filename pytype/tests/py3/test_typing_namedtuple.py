@@ -9,7 +9,8 @@ class NamedTupleTest(test_base.TargetPython3BasicTest):
 
   def test_make(self):
     errors = self.CheckWithErrors("""\
-                import typing
+
+        import typing
         A = typing.NamedTuple("A", [("b", str), ("c", str)])
         a = A._make(["hello", "world"])
         b = A._make(["hello", "world"], len=len)
@@ -24,7 +25,8 @@ class NamedTupleTest(test_base.TargetPython3BasicTest):
 
   def test_subclass(self):
     errors = self.CheckWithErrors("""\
-                import typing
+
+        import typing
         A = typing.NamedTuple("A", [("b", str), ("c", int)])
         class B(A):
           def __new__(cls, b: str, c: int=1):
@@ -48,7 +50,8 @@ class NamedTupleTest(test_base.TargetPython3BasicTest):
 
   def test_callable_attribute(self):
     ty = self.Infer("""
-            from typing import Callable, NamedTuple
+
+      from typing import Callable, NamedTuple
       X = NamedTuple("X", [("f", Callable)])
       def foo(x: X):
         return x.f
@@ -58,7 +61,8 @@ class NamedTupleTest(test_base.TargetPython3BasicTest):
 
   def test_bare_union_attribute(self):
     ty, errors = self.InferWithErrors("""\
-            from typing import NamedTuple, Union
+
+      from typing import NamedTuple, Union
       X = NamedTuple("X", [("x", Union)])
       def foo(x: X):
         return x.x
@@ -113,7 +117,8 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
 
   def test_union_attribute(self):
     ty = self.Infer("""
-            from typing import NamedTuple, Union
+
+      from typing import NamedTuple, Union
       X = NamedTuple("X", [("x", Union[bytes, str])])
       def foo(x: X):
         return x.x

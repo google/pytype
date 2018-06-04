@@ -8,7 +8,8 @@ class DictTest(test_base.TargetIndependentTest):
 
   def testFilteredGetItem(self):
     ty = self.Infer("""
-            from typing import Union
+
+      from typing import Union
       MAP = {0: "foo"}
       def foo(x: Union[int, None]):
         if x is not None:
@@ -80,7 +81,8 @@ class DictTest(test_base.TargetIndependentTest):
 
   def testObjectInDict(self):
     errors = self.CheckWithErrors("""\
-            from typing import Any, Dict
+
+      from typing import Any, Dict
       def objectIsStr() -> Dict[str, Any]:
         return {object(): ""}
     """)
@@ -102,7 +104,8 @@ class DictTest(test_base.TargetIndependentTest):
   def testBigConcreteDict(self):
     # Test that we don't timeout.
     errorlog = self.CheckWithErrors("""\
-            from typing import Dict, Tuple, Union
+
+      from typing import Dict, Tuple, Union
       # A concrete dictionary with lots of concrete keys and a complicated
       # value type.
       d = {}
@@ -129,7 +132,8 @@ class DictTest(test_base.TargetIndependentTest):
     # utils.deep_variable_product(group_dict) generates a lot of combinations.
     # Test that we finish checking this code in a reasonable amount of time.
     self.Check("""
-            from typing import Dict, Tuple
+
+      from typing import Dict, Tuple
       def iter_equality_constraints(op):
         yield (op, 0 if __random__ else __any_object__)
       def get_equality_groups(ops) -> Dict[Tuple, Tuple]:

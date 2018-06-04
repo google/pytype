@@ -7,7 +7,8 @@ class DecoratorsTest(test_base.TargetPython3BasicTest):
 
   def testAnnotatedSuperCallUnderBadDecorator(self):
     _, errors = self.InferWithErrors("""\
-            class Foo(object):
+
+      class Foo(object):
         def Run(self) -> None: ...
       class Bar(Foo):
         @bad_decorator  # line 5

@@ -8,7 +8,8 @@ class TestStrictNone(test_base.TargetPython3BasicTest):
 
   def testExplicitNone(self):
     errors = self.CheckWithErrors("""\
-            from typing import Optional
+
+      from typing import Optional
       def f(x: Optional[str]):
         return x.upper()
     """)
@@ -16,7 +17,8 @@ class TestStrictNone(test_base.TargetPython3BasicTest):
 
   def testClosure(self):
     self.Check("""
-            from typing import Optional
+
+      from typing import Optional
       d = ...  # type: Optional[dict]
       if d:
         formatter = lambda x: d.get(x, '')
@@ -27,7 +29,8 @@ class TestStrictNone(test_base.TargetPython3BasicTest):
 
   def testOverwriteGlobal(self):
     errors = self.CheckWithErrors("""\
-            from typing import Optional
+
+      from typing import Optional
       d = ...  # type: Optional[dict]
       if d:
         formatter = lambda x: d.get(x, '')  # line 5
@@ -45,7 +48,8 @@ class TestAttributes(test_base.TargetPython3BasicTest):
 
   def testAttrOnOptional(self):
     errors = self.CheckWithErrors("""\
-            from typing import Optional
+
+      from typing import Optional
       def f(x: Optional[str]):
         return x.upper()
     """)
@@ -53,7 +57,8 @@ class TestAttributes(test_base.TargetPython3BasicTest):
 
   def testErrorInAny(self):
     errors = self.CheckWithErrors("""\
-            from typing import Any
+
+      from typing import Any
       def f(x: Any):
         if __random__:
           x = 42

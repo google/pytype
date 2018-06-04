@@ -10,7 +10,8 @@ class ReingestTest(test_base.TargetPython3BasicTest):
 
   def testTypeParameterBound(self):
     foo = self.Infer("""
-            from typing import TypeVar
+
+      from typing import TypeVar
       T = TypeVar("T", bound=float)
       def f(x: T) -> T: return x
     """, deep=False)
@@ -24,7 +25,8 @@ class ReingestTest(test_base.TargetPython3BasicTest):
 
   def testDefaultArgumentType(self):
     foo = self.Infer("""
-            from typing import Any, Callable, TypeVar
+
+      from typing import Any, Callable, TypeVar
       T = TypeVar("T")
       def f(x):
         return True

@@ -11,7 +11,8 @@ class StrLibTestsBasic(test_base.TargetPython3BasicTest,
     # This method is different from the preceding ones because we model
     # collections.deque as a subclass, rather than an alias, of typing.Deque.
     errors = self.CheckWithErrors("""\
-            from typing import Deque
+
+      from typing import Deque
       import collections
       def f1(x: Deque): ...
       def f2(x: int): ...
@@ -22,7 +23,8 @@ class StrLibTestsBasic(test_base.TargetPython3BasicTest,
 
   def testCollectionsDequeInit(self):
     ty = self.Infer("""\
-            import collections
+
+      import collections
       x = collections.deque([1, 2, 3], maxlen=10)
     """)
     self.assertTypesMatchPytd(ty, """
@@ -32,7 +34,8 @@ class StrLibTestsBasic(test_base.TargetPython3BasicTest,
 
   def testPartial(self):
     self.Check("""\
-            import functools
+
+      import functools
       from typing import TypeVar
       T = TypeVar('T', float, str)
       def identity(x: T) -> T: return x

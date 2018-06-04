@@ -9,7 +9,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testId(self):
     ty = self.Infer("""
-            import typing
+
+      import typing
       T = typing.TypeVar("T")
       def f(x: T) -> T:
         return __any_object__
@@ -28,7 +29,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testExtractItem(self):
     ty = self.Infer("""
-            from typing import List, TypeVar
+
+      from typing import List, TypeVar
       S = TypeVar("S")  # unused
       T = TypeVar("T")
       def f(x: List[T]) -> T:
@@ -47,7 +49,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testWrapItem(self):
     ty = self.Infer("""
-            from typing import List, TypeVar
+
+      from typing import List, TypeVar
       T = TypeVar("T")
       def f(x: T) -> List[T]:
         return __any_object__
@@ -69,7 +72,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
         X = TypeVar("X")
       """)
       _, errors = self.InferWithErrors("""\
-                # This is illegal: A TypeVar("T") needs to be stored under the name "T".
+
+        # This is illegal: A TypeVar("T") needs to be stored under the name "T".
         from a import T as T2
         from a import X
         Y = X
@@ -82,7 +86,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testMultipleSubstitution(self):
     ty = self.Infer("""\
-            from typing import Dict, Tuple, TypeVar
+
+      from typing import Dict, Tuple, TypeVar
       K = TypeVar("K")
       V = TypeVar("V")
       def f(x: Dict[K, V]) -> Tuple[V, K]:
@@ -101,7 +106,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testUnion(self):
     ty = self.Infer("""\
-            from typing import TypeVar, Union
+
+      from typing import TypeVar, Union
       S = TypeVar("S")
       T = TypeVar("T")
       def f(x: S, y: T) -> Union[S, T]:
@@ -120,7 +126,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testBadSubstitution(self):
     _, errors = self.InferWithErrors("""\
-            from typing import List, TypeVar
+
+      from typing import List, TypeVar
       S = TypeVar("S")
       T = TypeVar("T")
       def f1(x: S) -> List[S]:
@@ -145,7 +152,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testUseConstraints(self):
     ty, errors = self.InferWithErrors("""\
-            from typing import TypeVar
+
+      from typing import TypeVar
       T = TypeVar("T", int, float)
       def f(x: T) -> T:
         return __any_object__
@@ -166,7 +174,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testTypeParameterType(self):
     ty = self.Infer("""\
-            from typing import Type, TypeVar
+
+      from typing import Type, TypeVar
       T = TypeVar("T")
       def f(x: Type[T]) -> T:
         return __any_object__
@@ -181,7 +190,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testPrintNestedTypeParameter(self):
     _, errors = self.InferWithErrors("""\
-            from typing import List, TypeVar
+
+      from typing import List, TypeVar
       T = TypeVar("T", int, float)
       def f(x: List[T]): ...
       f([""])
@@ -191,7 +201,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testConstraintSubtyping(self):
     _, errors = self.InferWithErrors("""\
-            from typing import TypeVar
+
+      from typing import TypeVar
       T = TypeVar("T", int, float)
       def f(x: T, y: T): ...
       f(True, False)  # ok
@@ -202,7 +213,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testFilterValue(self):
     _, errors = self.InferWithErrors("""\
-            from typing import TypeVar
+
+      from typing import TypeVar
       T = TypeVar("T", int, float)
       def f(x: T, y: T): ...
       x = 3
@@ -215,7 +227,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testFilterClass(self):
     _, errors = self.InferWithErrors("""\
-            from typing import TypeVar
+
+      from typing import TypeVar
       class A(object): pass
       class B(object): pass
       T = TypeVar("T", A, B)
@@ -230,7 +243,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testSplit(self):
     ty = self.Infer("""\
-            from typing import TypeVar
+
+      from typing import TypeVar
       T = TypeVar("T", int, type(None))
       def f(x: T) -> T:
         return __any_object__
@@ -251,7 +265,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testEnforceNonConstrainedTypeVar(self):
     _, errors = self.InferWithErrors("""\
-            from typing import TypeVar
+
+      from typing import TypeVar
       T = TypeVar("T")
       def f(x: T, y: T): ...
       f(42, True)  # ok
@@ -268,7 +283,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testUselessTypeVar(self):
     _, errors = self.InferWithErrors("""\
-            from typing import Tuple, TypeVar
+
+      from typing import Tuple, TypeVar
       T = TypeVar("T")
       S = TypeVar("S", int, float)
       def f1(x: T): ...
@@ -288,7 +304,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testUseBound(self):
     ty, errors = self.InferWithErrors("""\
-            from typing import TypeVar
+
+      from typing import TypeVar
       T = TypeVar("T", bound=float)
       def f(x: T) -> T:
         return x
@@ -313,7 +330,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testBadReturn(self):
     self.assertNoCrash(self.Check, """\
-            from typing import AnyStr, Dict
+
+      from typing import AnyStr, Dict
 
       class Foo(object):
         def f(self) -> AnyStr: return __any_object__
@@ -323,7 +341,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testOptionalTypeVar(self):
     _, errors = self.InferWithErrors("""\
-            from typing import Optional, TypeVar
+
+      from typing import Optional, TypeVar
       T = TypeVar("T", bound=str)
       def f() -> Optional[T]:
         return 42 if __random__ else None
@@ -333,7 +352,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testUnicodeLiterals(self):
     ty = self.Infer("""
-            from __future__ import unicode_literals
+
+      from __future__ import unicode_literals
       import typing
       T = typing.TypeVar("T")
       def f(x: T) -> T:
@@ -352,7 +372,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testAnyAsBound(self):
     self.Check("""
-            from typing import Any, TypeVar
+
+      from typing import Any, TypeVar
       T = TypeVar("T", bound=Any)
       def f(x: T) -> T:
         return x
@@ -361,7 +382,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testAnyAsConstraint(self):
     self.Check("""
-            from typing import Any, TypeVar
+
+      from typing import Any, TypeVar
       T = TypeVar("T", str, Any)
       def f(x: T) -> T:
         return x

@@ -9,7 +9,8 @@ class BuiltinTests(test_base.TargetPython3BasicTest):
 
   def testBoolReturnValue(self):
     ty = self.Infer("""
-            def f():
+
+      def f():
         return True
       def g() -> bool:
         return f()
@@ -21,14 +22,16 @@ class BuiltinTests(test_base.TargetPython3BasicTest):
 
   def testSumReturn(self):
     self.Check("""
-            from typing import List
+
+      from typing import List
       def f(x: List[float]) -> float:
         return sum(x)
     """)
 
   def testFilter(self):
     ty = self.Infer("""
-            def f(x: int):
+
+      def f(x: int):
         pass
       x1 = filter(f, {1: None}.keys())
       x2 = filter(None, {1: None}.keys())
@@ -49,7 +52,8 @@ class BuiltinTests(test_base.TargetPython3BasicTest):
 
   def testFilename(self):
     self.Check("""
-            def foo(s: str) -> str:
+
+      def foo(s: str) -> str:
         return s
       foo(__file__)
       """, filename="foobar.py")
@@ -62,7 +66,8 @@ class BuiltinTests(test_base.TargetPython3BasicTest):
         def g(x: Type[super]): ...
       """)
       ty = self.Infer("""
-                from typing import Any, Type
+
+        from typing import Any, Type
         import foo
         def f(x): ...
         def g(x: object): ...
@@ -91,7 +96,8 @@ class BuiltinTests(test_base.TargetPython3BasicTest):
 
   def testBytearraySlice(self):
     self.Check("""
-            def f(x: bytearray) -> bytearray:
+
+      def f(x: bytearray) -> bytearray:
         return x[1:]
       def g(x: bytearray) -> bytearray:
         return x[1:5:2]
@@ -99,7 +105,8 @@ class BuiltinTests(test_base.TargetPython3BasicTest):
 
   def testSetLength(self):
     self.Check("""
-            from typing import Set
+
+      from typing import Set
       x = ...  # type: Set[int]
       len(x)
       len(set())
@@ -107,14 +114,16 @@ class BuiltinTests(test_base.TargetPython3BasicTest):
 
   def testSequenceLength(self):
     self.Check("""
-            from typing import Sequence
+
+      from typing import Sequence
       x = ...  # type: Sequence
       len(x)
     """)
 
   def testMappingLength(self):
     self.Check("""
-            from typing import Mapping
+
+      from typing import Mapping
       x = ...  # type: Mapping
       len(x)
     """)

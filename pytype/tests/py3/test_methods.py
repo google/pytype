@@ -8,7 +8,8 @@ class TestMethods(test_base.TargetPython3BasicTest):
 
   def testFunctionInit(self):
     ty = self.Infer("""
-            def __init__(self: int):
+
+      def __init__(self: int):
         return self
     """)
     self.assertTypesMatchPytd(ty, """
@@ -17,7 +18,8 @@ class TestMethods(test_base.TargetPython3BasicTest):
 
   def testAnnotatedSelf(self):
     errors = self.CheckWithErrors("""\
-            class Foo(object):
+
+      class Foo(object):
         def __init__(x: int):
           pass
     """)
@@ -25,7 +27,8 @@ class TestMethods(test_base.TargetPython3BasicTest):
 
   def testLateAnnotatedSelf(self):
     errors = self.CheckWithErrors("""\
-            class Foo(object):
+
+      class Foo(object):
         def __init__(x: "X"):
           pass
       class X(object):
@@ -35,7 +38,8 @@ class TestMethods(test_base.TargetPython3BasicTest):
 
   def testAttributeWithAnnotatedSelf(self):
     errors = self.CheckWithErrors("""\
-            class Foo(object):
+
+      class Foo(object):
         def __init__(self: int):
           self.x = 3
         def foo(self):
@@ -45,7 +49,8 @@ class TestMethods(test_base.TargetPython3BasicTest):
 
   def testAttributeWithAnnotatedSelfAndFunctionInit(self):
     errors = self.CheckWithErrors("""\
-            class Foo(object):
+
+      class Foo(object):
         def __init__(self: int):
           self.x = 3
       def __init__(self: int):

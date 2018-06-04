@@ -8,7 +8,8 @@ class InstanceUnequalityTest(test_base.TargetPython3BasicTest):
   def test_is(self):
     """SomeType is not be the same as AnotherType."""
     self.Check("""
-            from typing import Optional
+
+      from typing import Optional
       def f(x: Optional[str]) -> NoneType:
         if x is None:
           return x
