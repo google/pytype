@@ -1,101 +1,118 @@
-#!/usr/bin/python2.7
-"""Tool for inferring types from Python programs.
+#!/usr/bin/env python
 
-'pytype' is a tool for generating pyi from Python programs.
+# Copyright 2017 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-Usage:
-  pytype [flags] file.py
-"""
+"""Analyze an entire project using pytype."""
 
 from __future__ import print_function
 
-import cProfile
 import logging
 import sys
 
-from pytype import config
-from pytype import io
-from pytype import load_pytd
-from pytype import metrics
+import importlab.environment
+import importlab.fs
+import importlab.graph
+import importlab.output
+
+from pytype import file_utils
 from pytype import utils
-from pytype.pytd import typeshed
-from pytype.pytd.parse import node
+from pytype.tools import environment
+from pytype.tools import tool_utils
+from pytype.tools.analyze_project import config
+from pytype.tools.analyze_project import parse_args
+from pytype.tools.analyze_project import pytype_runner
 
 
-log = logging.getLogger(__name__)
+class PytdFileSystem(importlab.fs.ExtensionRemappingFileSystem):
+  """File system that remaps .py file extensions to pytd."""
+
+  def __init__(self, underlying):
+    super(PytdFileSystem, self).__init__(underlying, 'pytd')
 
 
-class _ProfileContext(object):
-  """A context manager for optionally profiling code."""
-
-  def __init__(self, output_path):
-    """Initialize.
-
-    Args:
-      output_path: A pathname for the profiler output.  An empty string
-          indicates that no profiling should be done.
-    """
-    self._output_path = output_path
-    self._profile = cProfile.Profile() if self._output_path else None
-
-  def __enter__(self):
-    if self._profile:
-      self._profile.enable()
-
-  def __exit__(self, exc_type, exc_value, traceback):  # pylint: disable=redefined-outer-name
-    if self._profile:
-      self._profile.disable()
-      self._profile.dump_stats(self._output_path)
+def create_importlab_environment(conf, typeshed):
+  """Create an importlab environment from the python version and path."""
+  python_version = utils.split_version(conf.python_version)
+  path = importlab.fs.Path()
+  for p in conf.pythonpath:
+    path.add_path(p, 'os')
+  for p in typeshed.get_pytd_paths(python_version):
+    path.add_fs(PytdFileSystem(importlab.fs.OSFileSystem(p)))
+  for p in typeshed.get_typeshed_paths(python_version):
+    path.add_path(p, 'pyi')
+  return importlab.environment.Environment(path, python_version)
 
 
-def _generate_builtins_pickle(options):
-  """Create a pickled file with the standard library (typeshed + builtins)."""
-  loader = load_pytd.create_loader(options)
-  t = typeshed.Typeshed()
-  module_names = t.get_all_module_names(options.python_version)
-  blacklist = set(t.blacklisted_modules(options.python_version))
-  if options.python_version[0] == 3:
-    # TODO(mdemello): plistlib should be in the typeshed blacklist and isn't.
-    blacklist.add("plistlib")
-  for m in sorted(module_names):
-    if m not in blacklist:
-      loader.import_name(m)
-  loader.save_to_pickle(options.generate_builtins)
+def main():
+  parser = parse_args.make_parser()
+  args = parser.parse_args(sys.argv[1:])
+  tool_utils.setup_logging_or_die(args.verbosity)
+  args.filenames = file_utils.expand_source_files(args.filenames)
 
+  if args.generate_config:
+    config.generate_sample_config_or_die(args.generate_config)
+    sys.exit(0)
 
-def main(argv):
+  conf = parser.config_from_defaults()
+  # File options overwrite defaults.
+  file_config = config.read_config_file_or_die(args.config)
+  parser.postprocess(file_config, from_strings=True)
+  conf.populate_from(file_config)
+  # Command line arguments overwrite file options.
+  conf.populate_from(args)
+  if not conf.pythonpath:
+    conf.pythonpath = environment.compute_pythonpath(args.filenames)
+  logging.info('\n  '.join(['Configuration:'] + str(conf).split('\n')))
+
+  if not args.filenames:
+    logging.warning('Nothing to do!')
+    sys.exit(0)
+
+  # Importlab needs the python exe, so we check it as early as possible.
+  environment.check_python_exe_or_die(conf.python_version)
+
+  typeshed = environment.initialize_typeshed_or_die()
+  env = create_importlab_environment(conf, typeshed)
   try:
-    options = config.Options(argv[1:])
-  except utils.UsageError as e:
-    print(str(e), file=sys.stderr)
+    import_graph = importlab.graph.ImportGraph.create(env, args.filenames)
+  except Exception as e:  # pylint: disable=broad-except
+    logging.critical('Cannot parse input files:\n%s', str(e))
     sys.exit(1)
 
-  if options.show_config:
-    print(options)
+  if args.tree:
+    print('Source tree:')
+    importlab.output.print_tree(import_graph)
     sys.exit(0)
 
-  if options.version:
-    print(io.get_pytype_version())
+  if args.unresolved:
+    print('Unresolved dependencies:')
+    for imp in sorted(import_graph.get_all_unresolved()):
+      print(' ', imp.name)
     sys.exit(0)
 
-  node.SetCheckPreconditions(options.check_preconditions)
+  # --tree and --unresolved can run without pytype being available, so we do
+  # this check only if we're going to fire up the pytype runner.
+  environment.check_pytype_or_die()
 
-  with _ProfileContext(options.profile):
-    with metrics.MetricsContext(options.metrics):
-      with metrics.StopWatch("total_time"):
-        with metrics.Snapshot("memory", enabled=options.memory_snapshots):
-          return _run_pytype(options)
-
-
-def _run_pytype(options):
-  """Run pytype with the given configuration options."""
-  if options.generate_builtins:
-    return _generate_builtins_pickle(options)
-  elif options.parse_pyi:
-    return io.parse_pyi(options)
-  else:
-    return io.process_one_file(options)
+  logging.info('Source tree:\n%s',
+               importlab.output.formatted_deps_list(import_graph))
+  tool_utils.makedirs_or_die(conf.output, 'Could not create output directory')
+  deps = pytype_runner.deps_from_import_graph(import_graph)
+  runner = pytype_runner.PytypeRunner(args.filenames, deps, conf)
+  runner.run()
 
 
-if __name__ == "__main__":
-  sys.exit(main(sys.argv) or 0)
+if __name__ == '__main__':
+  sys.exit(main())

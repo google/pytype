@@ -111,6 +111,7 @@ def generate_sample_config_or_die(filename):
       '[pytype]'
   ]
   formatters = get_formatters()
+  # TODO(rechen): Add the pytype-single arguments.
   for key, item in ITEMS.items():
     conf.extend(textwrap.wrap(
         item.comment, 80, initial_indent='# ', subsequent_indent='# '))
@@ -135,7 +136,7 @@ def read_config_file_or_die(filepath):
     if not ret.read_from_file(filepath):
       logging.critical('Could not read config file: %s\n'
                        '  Generate a sample configuration via:\n'
-                       '  pytype-all --generate-config sample.cfg', filepath)
+                       '  pytype --generate-config sample.cfg', filepath)
       sys.exit(1)
   else:
     # Try reading from setup.cfg.

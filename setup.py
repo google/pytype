@@ -131,9 +131,9 @@ setup(
     ],
     scripts=[
         'scripts/merge-pyi',
-        'scripts/pytype',
+        'scripts/pytype-single',
         'scripts/pytd',
-        'scripts/pytype-all',
+        'scripts/pytype',
     ],
     package_data={'pytype': get_builtin_files()},
     install_requires=[
