@@ -1,13 +1,11 @@
 """Generic functions."""
 
-import atexit
 import collections
 import contextlib
 import itertools
 import os
 import re
 import subprocess
-import tempfile
 import threading
 import types
 
@@ -117,8 +115,6 @@ def numeric_sort_key(s):
 
 def concat_tuples(tuples):
   return tuple(itertools.chain.from_iterable(tuples))
-
-
 
 
 def get_python_exe(python_version):

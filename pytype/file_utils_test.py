@@ -63,11 +63,6 @@ class FileUtilsTest(unittest.TestCase):
       d2 = os.getcwd()
       self.assertEqual(d1, d2)
 
-  def testListPytypeFiles(self):
-    l = list(file_utils.list_pytype_files("pytd/stdlib/2"))
-    self.assertIn("ctypes.pytd", l)
-    self.assertIn("collections.pytd", l)
-
   def testCollectFiles(self):
     files = [
         "a.py", "foo/b.py", "foo/c.txt", "foo/bar/d.py", "foo/bar/baz/e.py"

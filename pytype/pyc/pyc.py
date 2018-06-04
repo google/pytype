@@ -6,7 +6,7 @@ import re
 import subprocess
 import tempfile
 
-from pytype import file_utils
+from pytype import pytype_source_utils
 from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pyc import magic
@@ -72,7 +72,7 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
       exe = ["python" + ".".join(map(str, python_version))]
     cmd = exe + ["-", fi.name, filename or fi.name, mode]
 
-    src = file_utils.load_pytype_file(COMPILE_SCRIPT)
+    src = pytype_source_utils.load_pytype_file(COMPILE_SCRIPT)
 
     p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     bytecode, _ = p.communicate(src)

@@ -4,6 +4,7 @@ import os
 
 from pytype import file_utils
 from pytype import module_utils
+from pytype import pytype_source_utils
 from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd.parse import builtins
@@ -19,14 +20,13 @@ class Typeshed(object):
 
   def __init__(self):
     self._env_home = home = os.getenv("TYPESHED_HOME")
-    self._pytype_base = os.path.split(os.path.dirname(__file__))[0]
     if home:
       if not os.path.isdir(home):
         raise IOError("Could not find a typeshed installation in "
                       "$TYPESHED_HOME directory %s" % home)
       self._root = home
     else:
-      self._root = os.path.join(self._pytype_base, "typeshed")
+      self._root = pytype_source_utils.get_full_path("typeshed")
     self._missing = frozenset(self._load_missing())
 
   def _load_file(self, path):
@@ -35,8 +35,9 @@ class Typeshed(object):
       with open(filename, "rb") as f:
         return filename, f.read()
     else:
-      data = file_utils.load_pytype_file(os.path.join(self._root, path))
-      return os.path.join(self._root, path), data
+      filepath = os.path.join(self._root, path)
+      data = pytype_source_utils.load_pytype_file(filepath)
+      return filepath, data
 
   def _load_missing(self):
     return set()
@@ -123,7 +124,7 @@ class Typeshed(object):
   def get_pytd_paths(self, python_version):
     """Gets the paths to pytype's version-specific pytd files."""
     # TODO(mdemello): Should we add 2and3 here too and stop symlinking?
-    return [os.path.join(self._pytype_base, d) for d in [
+    return [pytype_source_utils.get_full_path(d) for d in [
         "pytd/builtins/%d" % python_version[0],
         "pytd/stdlib/%d" % python_version[0]]]
 
@@ -137,8 +138,8 @@ class Typeshed(object):
     module_names = set()
     for subdir in subdirs:
       try:
-        contents = list(file_utils.list_pytype_files(subdir))
-      except file_utils.NoSuchDirectory:
+        contents = list(pytype_source_utils.list_pytype_files(subdir))
+      except pytype_source_utils.NoSuchDirectory:
         pass
       else:
         for filename in contents:
@@ -150,7 +151,8 @@ class Typeshed(object):
     """Read the typeshed blacklist."""
     if self._env_home:
       raise NotImplementedError("Can't read blacklist outside ./typeshed")
-    data = file_utils.load_pytype_file("typeshed/tests/pytype_blacklist.txt")
+    data = pytype_source_utils.load_pytype_file(
+        "typeshed/tests/pytype_blacklist.txt")
     # |data| is raw byte data.
     for line in data.splitlines():
       line = line.decode("utf-8")
