@@ -593,10 +593,10 @@ class FunctionTest(AbstractTestBase):
     self.assertEqual(sig.name, "f")
     self.assertSequenceEqual(sig.param_names, ("self",))
     self.assertEqual(sig.varargs_name, "args")
-    self.assertEmpty(sig.kwonly_params)
+    self.assertFalse(sig.kwonly_params)
     self.assertIs(sig.kwargs_name, None)
     self.assertSetEqual(set(sig.annotations), {"self", "args", "return"})
-    self.assertEmpty(sig.late_annotations)
+    self.assertFalse(sig.late_annotations)
     self.assertTrue(sig.has_return_annotation)
     self.assertTrue(sig.has_param_annotations)
 
@@ -612,10 +612,10 @@ class FunctionTest(AbstractTestBase):
     self.assertEqual(sig.name, "<callable>")
     self.assertSequenceEqual(sig.param_names, ("_0", "_1"))
     self.assertIs(sig.varargs_name, None)
-    self.assertEmpty(sig.kwonly_params)
+    self.assertFalse(sig.kwonly_params)
     self.assertIs(sig.kwargs_name, None)
-    self.assertCountEqual(sig.annotations.keys(), sig.param_names)
-    self.assertEmpty(sig.late_annotations)
+    six.assertCountEqual(self, sig.annotations.keys(), sig.param_names)
+    self.assertFalse(sig.late_annotations)
     self.assertFalse(sig.has_return_annotation)
     self.assertTrue(sig.has_param_annotations)
 
@@ -802,7 +802,7 @@ class FunctionTest(AbstractTestBase):
         late_annotations={}
     )
     sig.del_annotation("x")
-    self.assertCountEqual(sig.annotations.keys(), {"return"})
+    six.assertCountEqual(self, sig.annotations.keys(), {"return"})
     self.assertFalse(sig.has_param_annotations)
     self.assertTrue(sig.has_return_annotation)
 
@@ -820,7 +820,7 @@ class FunctionTest(AbstractTestBase):
         late_annotations={}
     )
     sig.del_annotation("return")
-    self.assertCountEqual(sig.annotations.keys(), {"x"})
+    six.assertCountEqual(self, sig.annotations.keys(), {"x"})
     self.assertTrue(sig.has_param_annotations)
     self.assertFalse(sig.has_return_annotation)
 

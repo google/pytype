@@ -9,6 +9,8 @@ from pytype import file_utils
 from pytype import load_pytd
 from pytype import vm
 
+import six
+
 import unittest
 
 
@@ -126,7 +128,7 @@ class MatcherTest(unittest.TestCase):
     right = abstract.TypeParameter("T", self.vm)
     result = self.vm.matcher.match_var_against_type(
         var, right, {}, self.vm.root_cfg_node, {})
-    self.assertCountEqual(result.keys(), ["T"])
+    six.assertCountEqual(self, result.keys(), ["T"])
     self.assertFalse(result["T"].bindings)
 
   def testEmptyAgainstUnsolvable(self):

@@ -8,6 +8,8 @@ from pytype import compat
 from pytype import file_utils
 from pytype import imports_map_loader
 
+import six
+
 import unittest
 
 
@@ -27,7 +29,8 @@ class ImportMapLoaderTest(unittest.TestCase):
         a/b/e 2/a/b/foo/#2.py~
       """)))
       fi.seek(0)  # ready for reading
-      self.assertSameElements(
+      six.assertCountEqual(
+          self,
           imports_map_loader._read_imports_map(fi.name).items(),
           [
               ("a/b/__init__", ["prefix/1/a/b/__init__.py~"]),
@@ -57,11 +60,12 @@ class ImportMapLoaderTest(unittest.TestCase):
       d.create_file("imports_info", "\n".join(imports_map))
       # build_imports_map should strip out the entry for a/__init__.py, leaving
       # the entry for a/b.py intact.
-      self.assertListEqual(
-          sorted(imports_map_loader.build_imports_map(
+      six.assertCountEqual(
+          self,
+          imports_map_loader.build_imports_map(
               d["imports_info"],
-              d["a/__init__.py"]).items()),
-          sorted([
+              d["a/__init__.py"]).items(),
+          [
               ("%s/a/b" % d.path, "{0}/prefix{0}/a/b.py~suffix".format(d.path)),
               # These are all added by the last bit of build_imports_map
               ("__init__", os.devnull),
@@ -69,7 +73,6 @@ class ImportMapLoaderTest(unittest.TestCase):
               ("%s/__init__" % d.path[1:], os.devnull),
               ("%s/a/__init__" % d.path[1:], os.devnull),
           ])
-      )
 
 if __name__ == "__main__":
   unittest.main()
