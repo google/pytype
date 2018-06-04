@@ -44,7 +44,7 @@ class QuickTest(test_base.TargetIndependentTest):
       def f():
         class A(object): pass
         return {A: A()}
-    """, quick=True)
+    """, quick=True, maximum_depth=1)
     self.assertTypesMatchPytd(ty, """
       def f() -> dict
     """)
@@ -72,6 +72,16 @@ class QuickTest(test_base.TargetIndependentTest):
         def f(self) -> int
       def f() -> Any
     """)
+
+  def testAnalyzeAnnotatedMaxDepth(self):
+    # --output with --analyze-annotated has the same max depth as --check.
+    _, errors = self.InferWithErrors("""\
+      def make_greeting(user_id):
+        return 'hello, user' + user_id
+      def print_greeting():
+        print(make_greeting(0))
+    """, quick=True)
+    self.assertErrorLogIs(errors, [(2, "wrong-arg-types", r"add.*str.*int")])
 
 
 test_base.main(globals(), __name__ == "__main__")

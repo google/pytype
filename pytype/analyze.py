@@ -628,8 +628,14 @@ def infer_types(src, errorlog, options, loader,
   snapshotter.take_snapshot("analyze:infer_types:tracer")
   if deep:
     if maximum_depth is None:
-      maximum_depth = (
-          QUICK_INFER_MAXIMUM_DEPTH if options.quick else MAXIMUM_DEPTH)
+      if not options.quick:
+        maximum_depth = MAXIMUM_DEPTH
+      elif options.analyze_annotated:
+        # Since there's no point in analyzing annotated functions for inference,
+        # the presence of this option means that the user wants checking, too.
+        maximum_depth = QUICK_CHECK_MAXIMUM_DEPTH
+      else:
+        maximum_depth = QUICK_INFER_MAXIMUM_DEPTH
     tracer.exitpoint = tracer.analyze(loc, defs, maximum_depth)
   else:
     tracer.exitpoint = loc
