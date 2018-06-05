@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import logging
 import os
+import sys
 
 from pytype import config as pytype_config
 from pytype import debug
@@ -49,6 +50,20 @@ def deps_from_import_graph(import_graph):
     return module_utils.Module(path=path, target=target, name=name)
   return [[make_module(import_graph.provenance[f]) for f in files]
           for files in import_graph.sorted_source_files()]
+
+
+def _print_transient(msg):
+  """Prints an overwritable terminal message.
+
+  Prints a message that will be overwritten by the next one. Be warned that if
+  the next message is shorter, then part of this message will still be visible
+  on the right.
+
+  Args:
+    msg: A msg
+  """
+  if sys.stdout.isatty():
+    print(msg + '\r', end='')
 
 
 class PytypeRunner(object):
@@ -117,16 +132,22 @@ class PytypeRunner(object):
   def process_module(self, module, action):
     """Process a single module with the given action."""
     if action == Action.REPORT_ERRORS:
-      print('%s' % module.target)
+      msg = '%s' % module.target
+      _print_transient(msg)
       self.run_pytype(module, True)
     elif action == Action.IGNORE_ERRORS:
-      print('%s*' % module.target)
+      msg = '%s*' % module.target
+      _print_transient(msg)
       self.run_pytype(module, False)
     elif action == Action.GENERATE_DEFAULT:
-      print('%s#' % module.target)
+      msg = '%s#' % module.target
+      _print_transient(msg)
       self.write_default_pyi(module)
     else:
       logging.fatal('Unexpected action %r', action)
+      return
+    # Clears the message by overwriting it with whitespace.
+    _print_transient(' ' * len(msg))
 
   def yield_sorted_modules(self):
     """Yield modules from our sorted source files."""
