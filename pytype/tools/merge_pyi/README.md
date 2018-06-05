@@ -7,26 +7,26 @@ This script is Python 2 and 3 compatible.
 Add the type annotations in simple.pyi to simple.py and print the updated file
 to stdout:
 
-       merge-pyi testdata/simple.py testdata/simple.pyi
+       merge-pyi test_data/simple.py test_data/simple.pyi
 
 Add the type annotations in simple.pyi to simple.py as type comments:
 
-       merge-pyi --as-comments testdata/simple.py testdata/simple.pyi
+       merge-pyi --as-comments test_data/simple.py test_data/simple.pyi
 
 Output a diff of the changes to the source file:
 
-       merge-pyi --diff testdata/simple.py testdata/simple.pyi
+       merge-pyi --diff test_data/simple.py test_data/simple.pyi
 
 Overwrite the source file:
 
-       merge-pyi -i testdata/simple.py testdata/simple.pyi
+       merge-pyi -i test_data/simple.py test_data/simple.pyi
 
 #### Regression tests
 
 ```
-testdata/foo.py  : input we want to annotate
-testdata/foo.pyi : type hints we want to add to foo.py (may be intentionally bad)
+test_data/foo.py  : input we want to annotate
+test_data/foo.pyi : type hints we want to add to foo.py (may be intentionally bad)
 
-testdata/foo.comment.py : expected output, inserting types as comments
-testdata/foo.pep484.py  : expected output, inserting types in PEP484 style
+test_data/foo.comment.py : expected output, inserting types as comments
+test_data/foo.pep484.py  : expected output, inserting types in PEP484 style
 ```

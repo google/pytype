@@ -16,7 +16,7 @@ OVERWRITE_EXPECTED = 0  # flip to regenerate expected files
 
 
 def load_tests(unused_loader, standard_tests, unused_pattern):
-  standard_tests.addTests(TestBuilder().build('testdata'))
+  standard_tests.addTests(TestBuilder().build('test_data'))
   return standard_tests
 
 
