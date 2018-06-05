@@ -73,6 +73,7 @@ py_library(
     datatypes.py
     file_utils.py
     module_utils.py
+    pytype_source_utils.py
     utils.py
 )
 

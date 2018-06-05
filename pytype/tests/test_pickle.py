@@ -33,27 +33,6 @@ class PickleTest(test_base.TargetIndependentTest):
     ast.Visit(c)
     self.assertItemsEqual(c.modules, late_deps)
 
-  def testContainer(self):
-    pickled = self.Infer("""
-
-      import collections, json
-      def f() -> collections.OrderedDict[int, int]:
-        return collections.OrderedDict({1: 1})
-      def g() -> json.JSONDecoder:
-        return json.JSONDecoder()
-    """, pickle=True, module_name="foo")
-    with file_utils.Tempdir() as d:
-      u = d.create_file("u.pickled", pickled)
-      ty = self.Infer("""
-        import u
-        r = u.f()
-      """, deep=False, pythonpath=[""], imports_map={"u": u})
-      self.assertTypesMatchPytd(ty, """
-        import collections
-        u = ...  # type: module
-        r = ...  # type: collections.OrderedDict[int, int]
-      """)
-
   def testType(self):
     pickled = self.Infer("""
       x = type

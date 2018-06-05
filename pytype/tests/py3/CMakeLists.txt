@@ -350,3 +350,21 @@ py_test(
   DEPS
     pytype.tests.test_base
 )
+
+py_test(
+  NAME
+    test_dict
+  SRCS
+    test_dict.py
+  DEPS
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    test_pickle
+  SRCS
+    test_pickle.py
+  DEPS
+    pytype.tests.test_base
+)
