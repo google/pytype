@@ -206,11 +206,8 @@ class StdlibTests(test_base.TargetIndependentTest,
       import _ctypes
       import ctypes
       import dummy_thread
-      import _elfzipimport
       import encodings
       import __future__
-      import subprocess
-      import tracemalloc
       import xmlrpclib
     """)
 
