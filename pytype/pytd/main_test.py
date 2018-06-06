@@ -19,17 +19,19 @@ class TestPytdTool(unittest.TestCase):
   def tearDown(self):
     sys.argv = self._sys_argv
 
-  def test_parse_options(self):
-    options, filenames = pytd_tool.parse_options([
-        "main.py", "--optimize", "--lossy", "--max-union=42", "--use-abcs",
+  def test_parse_opts(self):
+    argument_parser = pytd_tool.make_parser()
+    opts = argument_parser.parse_args([
+        "--optimize", "--lossy", "--max-union=42", "--use-abcs",
         "--remove-mutable", "--python_version=3.6", "in.pytd", "out.pytd"])
-    self.assertTrue(options.optimize)
-    self.assertTrue(options.lossy)
-    self.assertEqual(options.max_union, 42)
-    self.assertTrue(options.use_abcs)
-    self.assertTrue(options.remove_mutable)
-    self.assertEqual(options.python_version, "3.6")
-    self.assertListEqual(filenames, ["main.py", "in.pytd", "out.pytd"])
+    self.assertTrue(opts.optimize)
+    self.assertTrue(opts.lossy)
+    self.assertEqual(opts.max_union, 42)
+    self.assertTrue(opts.use_abcs)
+    self.assertTrue(opts.remove_mutable)
+    self.assertEqual(opts.python_version, "3.6")
+    self.assertEqual(opts.input, "in.pytd")
+    self.assertEqual(opts.output, "out.pytd")
 
   def test_version_error(self):
     sys.argv = ["main.py", "--python_version=4.0"]
