@@ -119,6 +119,7 @@ class AbstractMatcher(object):
         continue
 
   def match_var_against_type(self, var, other_type, subst, node, view):
+    """Match a variable against a type."""
     if var.bindings:
       return self._match_value_against_type(
           view[var], other_type, subst, node, view)
@@ -255,15 +256,9 @@ class AbstractMatcher(object):
         new_var = subst[other_type.name].AssignToNewVariable(node)
         new_var.AddBinding(left, [], node)
       else:
-        # NOTE: We need both conditions below because we want to retain the
-        # pyval for strings used as hash keys to support f(**x) (see
-        # test_solver:testIdentityFunction) but not for AnyStr (see
-        # test_anystr:testTypeParameters)
-        if isinstance(left, abstract.PythonConstant) and other_type.constraints:
-          new_var = self.vm.convert.get_maybe_abstract_instance(
-              left).to_variable(node)
-        else:
-          new_var = value.AssignToNewVariable(node)
+        new_left = self.vm.convert.get_maybe_abstract_instance(left)
+        new_var = self.vm.program.NewVariable()
+        new_var.AddBinding(new_left, {value}, node)
 
       type_key = left.get_type_key()
       # Every value with this type key produces the same result when matched
