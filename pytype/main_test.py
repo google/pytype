@@ -272,6 +272,14 @@ class PytypeTest(unittest.TestCase):
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
 
+  def testPytypeReturnSuccess(self):
+    self._SetUpChecking("bad.py")
+    self.pytype_args["--return-success"] = self.INCLUDE
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=True, returncode=False)
+    self.assertIn("[wrong-arg-types]", self.stderr)
+    self.assertIn("[name-error]", self.stderr)
+
   def testCompilerError(self):
     self._CheckTypesAndErrors("syntax.py", ["python-compiler-error"])
 

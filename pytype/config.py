@@ -177,6 +177,10 @@ def add_infrastructure_options(o):
       dest="nofail", default=False,
       help=("Don't allow pytype to fail."))
   o.add_argument(
+      "--return-success", action="store_true",
+      dest="return_success", default=False,
+      help="Report all errors but exit with a success code.")
+  o.add_argument(
       "--output-errors-csv", type=str, action="store",
       dest="output_errors_csv", default=None,
       help=("Outputs the error contents to a csv file"))

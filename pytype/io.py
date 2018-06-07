@@ -155,6 +155,12 @@ def process_one_file(options):
       if options.output_pickled:
         write_pickle(ast, loader, options)
   exit_status = handle_errors(errorlog, options)
+
+  # If we have set return_success, set exit_status to 0 after the regular error
+  # handler has been called.
+  if options.return_success:
+    exit_status = 0
+
   # Touch output file upon success.
   if options.touch and not exit_status:
     with open(options.touch, "a"):
@@ -187,15 +193,16 @@ def write_pickle(ast, loader, options):
 
 def handle_errors(errorlog, options):
   """Handle the errorlog according to the given options."""
-  if options.report_errors:
-    if options.output_errors_csv:
-      errorlog.print_to_csv_file(options.output_errors_csv)
-      return 0  # Command is successful regardless of errors.
-    else:
-      errorlog.print_to_stderr()
-    return 1 if errorlog.has_error() else 0  # exit code
-  else:
+  if not options.report_errors:
     return 0
+
+  if options.output_errors_csv:
+    errorlog.print_to_csv_file(options.output_errors_csv)
+    return 0  # Command is successful regardless of errors.
+
+  errorlog.print_to_stderr()
+
+  return 1 if errorlog.has_error() else 0  # exit code
 
 
 def parse_pyi(options):
