@@ -477,6 +477,14 @@ class PytypeTest(unittest.TestCase):
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
 
+  def testTimeout(self):
+    # Note: At the time of this writing, pickling builtins takes well over one
+    # second (~10s). If it ever was to get faster, this test would become flaky.
+    self.pytype_args["--timeout"] = 1
+    self.pytype_args["--generate-builtins"] = self._TmpPath("builtins.pickle")
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=False, returncode=True)
+
 
 def main():
   unittest.main()

@@ -281,6 +281,11 @@ def add_debug_options(o):
       "--version", action="store_true",
       dest="version", default=None,
       help=("Display pytype version and exit."))
+  # Timing out kills pytype with an error code. Useful for determining whether
+  # pytype is fast enough to be enabled for a particular target.
+  o.add_argument(
+      "--timeout", type=int, action="store", dest="timeout", default=None,
+      help="In seconds. Abort after the given time has elapsed.")
 
 
 class PostprocessingError(Exception):

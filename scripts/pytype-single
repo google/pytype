@@ -11,6 +11,7 @@ from __future__ import print_function
 
 import cProfile
 import logging
+import signal
 import sys
 
 from pytype import config
@@ -79,6 +80,9 @@ def main(argv):
     sys.exit(0)
 
   node.SetCheckPreconditions(options.check_preconditions)
+
+  if options.timeout is not None:
+    signal.alarm(options.timeout)
 
   with _ProfileContext(options.profile):
     with metrics.MetricsContext(options.metrics):
