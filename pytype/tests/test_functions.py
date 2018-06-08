@@ -401,6 +401,25 @@ class TestFunctions(test_base.TargetIndependentTest):
         def f(x, y) -> Any
       """)
 
+  def test_multiple_signatures_with_multiple_type_parameter(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import List, Tuple, TypeVar
+        T = TypeVar("T")
+        def f(arg1: int) -> List[T]: ...
+        def f(arg2: str) -> Tuple[T, T]: ...
+      """)
+      ty = self.Infer("""
+        import foo
+        def f(x):
+          return foo.f(x)
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Any, List, Tuple, Union
+        foo = ... # type: module
+        def f(x) -> Union[List, Tuple[Any, Any]]
+      """)
+
   def test_unknown_single_signature(self):
     # Test that the right signature is picked in the presence of an unknown
     with file_utils.Tempdir() as d:
@@ -520,9 +539,9 @@ class TestFunctions(test_base.TargetIndependentTest):
           return foo.f(x)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Any
+        from typing import Union
         foo = ...  # type: module
-        def f(x) -> Any
+        def f(x) -> Union[bool, float]
       """)
 
   def test_multiple_signatures_with_optional_arg(self):
@@ -537,9 +556,9 @@ class TestFunctions(test_base.TargetIndependentTest):
           return foo.f(x)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Any
+        from typing import Union
         foo = ...  # type: module
-        def f(x) -> Any
+        def f(x) -> Union[float, int]
       """)
 
   def test_multiple_signatures_with_kwarg(self):
@@ -554,9 +573,9 @@ class TestFunctions(test_base.TargetIndependentTest):
           return foo.f(y=x)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Any
+        from typing import Union
         foo = ...  # type: module
-        def f(x) -> Any
+        def f(x) -> Union[bool, float]
       """)
 
   def test_isinstance(self):

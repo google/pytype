@@ -12,7 +12,8 @@ class RecoveryTests(test_base.TargetPython27FeatureTest):
           return "%s" % chr("foo")
       """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
-        def f() -> ?
+        from typing import Union
+        def f() -> Union[str, unicode]
     """)
 
   def testBadFunction(self):
@@ -24,9 +25,10 @@ class RecoveryTests(test_base.TargetPython27FeatureTest):
         return '%s' % f()
     """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
+      from typing import Union
       time = ...  # type: module
       def f() -> ?
-      def g() -> ?
+      def g() -> Union[str, unicode]
     """)
 
 

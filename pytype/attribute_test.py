@@ -60,6 +60,20 @@ class AttributeTest(unittest.TestCase):
         str(self._vm.errorlog).strip(),
         "Can't assign attribute 'rumpelstiltskin' on str [not-writable]")
 
+  def test_union_set_attribute(self):
+    list_instance = abstract.Instance(self._vm.convert.list_type, self._vm)
+    cls = abstract.InterpreterClass(
+        "obj", [], {}, None, self._vm)
+    cls_instance = abstract.Instance(cls, self._vm)
+    union = abstract.Union([cls_instance, list_instance], self._vm)
+    node = self._vm.attribute_handler.set_attribute(
+        self._vm.root_cfg_node, union, "rumpelstiltskin",
+        self._vm.convert.none_type.to_variable(self._vm.root_cfg_node))
+    self.assertEqual(cls_instance.members["rumpelstiltskin"].data.pop(),
+                     self._vm.convert.none_type)
+    self.assertIs(node, self._vm.root_cfg_node)
+    error, = self._vm.errorlog.unique_sorted_errors()
+    self.assertEqual(error.name, "not-writable")
 
 if __name__ == "__main__":
   unittest.main()

@@ -499,6 +499,24 @@ class TestAttributes(test_base.TargetIndependentTest):
       def f(x) -> str or bool
     """)
 
+  def testUnionSetAttribute(self):
+    ty, errors = self.InferWithErrors("""\
+      class A(object):
+        x = "Hello world"
+      def f(i):
+        t = A()
+        l = [t]
+        l[i].x = 1  # line 6
+        return l[i].x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      class A(object):
+        x = ...  # type: str
+      def f(i) -> Any
+    """)
+    self.assertErrorLogIs(errors, [(6, "not-writable")])
+
   def testSetClass(self):
     ty = self.Infer("""
       def f(x):

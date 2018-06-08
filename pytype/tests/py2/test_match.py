@@ -45,9 +45,9 @@ class MatchTest(test_base.TargetPython27FeatureTest):
       b = ["%d" % i for i in a]
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, List
+      from typing import Any, List, Union
       a = ...  # type: List[nothing]
-      b = ...  # type: List
+      b = ...  # type: List[Union[str, unicode]]
       i = ...  # type: Any
     """)
 

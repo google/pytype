@@ -19,7 +19,8 @@ class RecoveryTests(test_base.TargetIndependentTest):
         return t - ("bla" - t)
     """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
-      def f() -> ?
+      from typing import Union
+      def f() -> Union[complex, float]
     """)
 
   def testInheritFromInstance(self):

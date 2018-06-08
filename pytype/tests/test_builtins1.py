@@ -441,8 +441,9 @@ class BuiltinTests(test_base.TargetIndependentTest):
         return divmod(a, 30268)
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
-      def seed(self, a = ...) -> Any
+      from typing import Tuple, Union
+      def seed(self, a = ...) -> Tuple[Union[complex, float, int], Union[complex, float, int]]
+
     """)
 
   def testDivMod3(self):
@@ -453,8 +454,8 @@ class BuiltinTests(test_base.TargetIndependentTest):
         return divmod(a, 30268)
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
-      def seed(self, a = ...) -> Any
+      from typing import Tuple, Union
+      def seed(self, a = ...) -> Tuple[Union[complex, float, int], Union[complex, float, int]]
     """)
 
   def testJoin(self):

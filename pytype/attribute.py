@@ -240,6 +240,10 @@ class AbstractAttributeHandler(object):
       for v in obj.instance.type_parameters[obj.name].data:
         nodes.append(self.set_attribute(node, v, name, value))
       return self.vm.join_cfg_nodes(nodes) if nodes else node
+    elif isinstance(obj, abstract.Union):
+      for option in obj.options:
+        node = self.set_attribute(node, option, name, value)
+      return node
     else:
       raise NotImplementedError(obj.__class__.__name__)
 

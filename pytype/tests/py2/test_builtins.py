@@ -224,7 +224,7 @@ class BuiltinTests(test_base.TargetPython27FeatureTest):
       def f(input_string, sub):
         return ''.join(map(lambda ch: ch, input_string))
     """)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.anything)
+    self.assertOnlyHasReturnType(ty.Lookup("f"), self.str)
 
   def testMap2(self):
     ty = self.Infer("""

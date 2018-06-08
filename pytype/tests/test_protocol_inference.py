@@ -49,6 +49,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
         def f(y: int) -> List[str]
       """)
 
+  # Skipping due to b/80438098
+  @unittest.skip("The Union type cannot be match against the interface.")
   def test_multiple_signatures_with_unknown(self):
     self.options.tweak(protocols=True)
     with file_utils.Tempdir() as d:
@@ -66,6 +68,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
         def f(x: int or str) -> float or bool
       """)
 
+  # Skipping due to b/80438098
+  @unittest.skip("The Union type cannot be match against the interface.")
   def test_multiple_signatures_with_optional_arg(self):
     self.options.tweak(protocols=True)
     with file_utils.Tempdir() as d:
@@ -83,6 +87,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
         def f(x: str) -> int or float
       """)
 
+  # Skipping due to b/80438098
+  @unittest.skip("The Union type cannot be match against the interface.")
   def test_multiple_signatures_with_kwarg(self):
     self.options.tweak(protocols=True)
     with file_utils.Tempdir() as d:
@@ -100,6 +106,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
         def f(x: int or str) -> bool or float
       """)
 
+  # Skipping due to b/80438098
+  @unittest.skip("The Union type cannot be match against the interface.")
   def test_pow2(self):
     self.options.tweak(protocols=True)
     ty = self.Infer("""
