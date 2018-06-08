@@ -1456,6 +1456,9 @@ class Union(AtomicAbstractValue):
   def __hash__(self):
     return hash(self.options)
 
+  def _unique_parameters(self):
+    return [o.to_variable(self.vm.root_cfg_node) for o in self.options]
+
   def instantiate(self, node, container=None):
     var = self.vm.program.NewVariable()
     for option in self.options:
