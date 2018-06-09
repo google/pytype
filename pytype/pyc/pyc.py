@@ -58,10 +58,7 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
     CompileError: If we find a syntax error in the file.
     IOError: If our compile script failed.
   """
-  tempfile_options = {"mode": "w", "suffix": ".py", "delete": False}
-  if six.PY3:
-    tempfile_options.update({"encoding": "utf-8"})
-  fi = tempfile.NamedTemporaryFile(**tempfile_options)
+  fi = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
 
   try:
     fi.write(src)
@@ -75,10 +72,10 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
       exe = ["python" + ".".join(map(str, python_version))]
     cmd = exe + ["-", fi.name, filename or fi.name, mode]
 
-    compile_script_src = pytype_source_utils.load_pytype_file(COMPILE_SCRIPT)
+    src = pytype_source_utils.load_pytype_file(COMPILE_SCRIPT)
 
     p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    bytecode, _ = p.communicate(compile_script_src)
+    bytecode, _ = p.communicate(src)
     assert p.poll() == 0, "Child process failed"
   finally:
     os.unlink(fi.name)

@@ -28,12 +28,8 @@ def write_pyc(f, codeobject, source_size=0, timestamp=0):
 
 def compile_to_pyc(data_file, filename, output, mode="exec"):
   """Compile the source code to byte code."""
-  if sys.version_info[0] >= 3:
-    with open(data_file, "r", encoding="utf-8") as fi:  # pytype: disable=wrong-keyword-args
-      src = fi.read()
-  else:
-    with open(data_file, "r") as fi:
-      src = fi.read().decode("utf-8")
+  with open(data_file, "r") as fi:
+    src = fi.read()
   try:
     codeobject = compile(src, filename, mode)
   except Exception as err:  # pylint: disable=broad-except
