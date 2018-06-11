@@ -110,6 +110,19 @@ def merge_values(values, vm):
 def get_views(variables, node, filter_strict=False):
   """Get all possible views of the given variables at a particular node.
 
+  This function can be used either as a regular generator or in an optimized way
+  to yield only functionally unique views:
+    views = get_views(...)
+    skip_future = None
+    while True:
+      try:
+        view = views.send(skip_future)
+      except StopIteration:
+        break
+      ...
+    The caller should set `skip_future` to True when it is safe to skip
+    equivalent future views and False otherwise.
+
   Args:
     variables: The variables.
     node: The node.
@@ -117,21 +130,31 @@ def get_views(variables, node, filter_strict=False):
       satisfied; else, use the faster node.CanHaveCombination.
 
   Yields:
-    A variable->binding dictionary.
+    A datatypes.AcessTrackingDict mapping variables to bindings.
   """
   try:
     combinations = cfg_utils.deep_variable_product(variables)
   except cfg_utils.TooComplexError:
     combinations = ((var.AddBinding(node.program.default_data, [], node)
                      for var in variables),)
+  seen = []  # the accessed subsets of previously seen views
   for combination in combinations:
     view = {value.variable: value for value in combination}
+    if any(subset <= six.viewitems(view) for subset in seen):
+      # Optimization: This view can be skipped because it matches the accessed
+      # subset of a previous one.
+      log.info("Skipping view (already seen): %r", view)
+      continue
     combination = list(view.values())
     check = node.HasCombination if filter_strict else node.CanHaveCombination
     if not check(combination):
-      log.info("Skipping combination %r", combination)
+      log.info("Skipping combination (unreachable): %r", combination)
       continue
-    yield view
+    view = datatypes.AccessTrackingDict(view)
+    skip_future = yield view
+    if skip_future:
+      # Skip future views matching this accessed subset.
+      seen.append(six.viewitems(view.accessed_subset))
 
 
 def get_signatures(func):
@@ -1657,7 +1680,13 @@ class Function(SimpleAbstractValue):
     error = None
     matched = []
     arg_variables = args.get_variables()
-    for view in get_views(arg_variables, node):
+    views = get_views(arg_variables, node)
+    skip_future = None
+    while True:
+      try:
+        view = views.send(skip_future)
+      except StopIteration:
+        break
       log.debug("args in view: %r", [(a.bindings and view[a].data)
                                      for a in args.posargs])
       for arg in arg_variables:
@@ -1675,10 +1704,16 @@ class Function(SimpleAbstractValue):
           if hasattr(self, "parent"):
             e.name = "%s.%s" % (self.parent.name, e.name)
           error = e
+          skip_future = True
+        else:
+          # This error was ignored, but future ones with the same accessed
+          # subset may need to be recorded, so we can't skip them.
+          skip_future = False
         if match_all_views:
           raise e
       else:
         matched.append(match)
+        skip_future = True
     if not matched and error:
       raise error  # pylint: disable=raising-bad-type
     return matched

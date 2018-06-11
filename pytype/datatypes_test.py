@@ -6,6 +6,43 @@ from pytype.typegraph import cfg
 import unittest
 
 
+class AccessTrackingDictTest(unittest.TestCase):
+  """Test AccessTrackingDict."""
+
+  def setUp(self):
+    self.d = datatypes.AccessTrackingDict({"a": 1, "b": 2})
+
+  def test_get(self):
+    v = self.d["a"]
+    item, = self.d.accessed_subset.items()
+    self.assertEqual(item, ("a", 1))
+    self.assertEqual(v, 1)
+
+  def test_set(self):
+    self.d["a"] = 3
+    item, = self.d.accessed_subset.items()
+    self.assertEqual(item, ("a", 1))
+    self.assertEqual(self.d["a"], 3)
+
+  def test_set_new(self):
+    self.d["c"] = 3
+    self.assertFalse(self.d.accessed_subset)
+
+  def test_del(self):
+    del self.d["a"]
+    item, = self.d.accessed_subset.items()
+    self.assertEqual(item, ("a", 1))
+    with self.assertRaises(KeyError):
+      _ = self.d["a"]
+
+  def test_repeat_access(self):
+    self.d["a"] = 3
+    v = self.d["a"]
+    item, = self.d.accessed_subset.items()
+    self.assertEqual(item, ("a", 1))
+    self.assertEqual(v, 3)
+
+
 class DatatypesTest(unittest.TestCase):
   """Test datatypes."""
 

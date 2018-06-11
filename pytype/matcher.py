@@ -73,9 +73,20 @@ class AbstractMatcher(object):
       A list of all the views of var that didn't match.
     """
     bad = []
-    for view in abstract.get_views([var], node, filter_strict=True):
+    views = abstract.get_views([var], node, filter_strict=True)
+    skip_future = None
+    while True:
+      try:
+        view = views.send(skip_future)
+      except StopIteration:
+        break
       if self.match_var_against_type(var, other_type, {}, node, view) is None:
         bad.append(view)
+        # To get complete error messages, we need to collect all bad views, so
+        # we can't skip any.
+        skip_future = False
+      else:
+        skip_future = True
     return bad
 
   def match_from_mro(self, left, other_type, allow_compat_builtins=True):

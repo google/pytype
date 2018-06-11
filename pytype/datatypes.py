@@ -41,6 +41,31 @@ class HashableDict(dict):
     return self._hash
 
 
+class AccessTrackingDict(dict):
+  """A dict that tracks access of its original items."""
+
+  def __init__(self, d):
+    super(AccessTrackingDict, self).__init__(d)
+    self.accessed_subset = {}
+
+  def __getitem__(self, k):
+    v = super(AccessTrackingDict, self).__getitem__(k)
+    if k not in self.accessed_subset:
+      self.accessed_subset[k] = v
+    return v
+
+  def __setitem__(self, k, v):
+    if k in self:
+      _ = self[k]
+    # If the key is new, we don't track it.
+    return super(AccessTrackingDict, self).__setitem__(k, v)
+
+  def __delitem__(self, k):
+    if k in self:
+      _ = self[k]
+    return super(AccessTrackingDict, self).__delitem__(k)
+
+
 class MonitorDict(dict):
   """A dictionary that monitors changes to its cfg.Variable values.
 
