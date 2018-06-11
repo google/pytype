@@ -26,5 +26,16 @@ class AnyStrTest(test_base.TargetIndependentTest):
         y = ...  # type: int
       """)
 
+  def test_format(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import AnyStr
+        def f(x: AnyStr) -> AnyStr
+      """)
+      self.Check("""
+        import foo
+        foo.f("" % __any_object__)
+      """, pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")

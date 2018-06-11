@@ -398,7 +398,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         foo = ...  # type: module
-        def f(x, y) -> Any
+        def f(x, y) -> list
       """)
 
   def test_multiple_signatures_with_multiple_type_parameter(self):
@@ -457,7 +457,7 @@ class TestFunctions(test_base.TargetIndependentTest):
         from typing import Any
         foo = ...  # type: module
         # TODO(rechen): def f(x: str or List[str]) -> List[str]
-        def f(x) -> Any
+        def f(x) -> list
       """)
 
   def test_unknown_with_extra_information(self):
@@ -484,10 +484,9 @@ class TestFunctions(test_base.TargetIndependentTest):
         foo = ...  # type: module
         # TODO(rechen): def f(x: unicode or List[unicode]) -> bool
         def f(x) -> Any
-        # TODO(rechen): def g(x) -> list
-        def g(x) -> Any
+        def g(x) -> list
         # TODO(rechen): def h(x: buffer or bytearray or unicode) -> List[buffer or bytearray or unicode]
-        def h(x) -> Any
+        def h(x) -> list
       """)
 
   def test_type_parameter_in_return(self):

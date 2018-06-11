@@ -499,6 +499,7 @@ class TestAttributes(test_base.TargetIndependentTest):
       def f(x) -> str or bool
     """)
 
+  @unittest.skip("TODO(b/63407497): implement strict checking for __setitem__")
   def testUnionSetAttribute(self):
     ty, errors = self.InferWithErrors("""\
       class A(object):

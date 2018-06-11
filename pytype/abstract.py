@@ -2235,20 +2235,9 @@ class PyTDFunction(Function):
 
   def _call_with_signatures(self, node, func, args, view, signatures):
     """Perform a function call that involves multiple signatures."""
-    if len(self._return_types) == 1:
-      ret_type, = self._return_types
-      try:
-        # Even though we don't know which signature got picked, if the return
-        # type is unique and does not contain any type parameter, we can use it.
-        result = self.vm.convert.constant_to_var(
-            AsReturnValue(ret_type), {}, node)
-      except self.vm.convert.TypeParameterError:
-        # The return type contains a type parameter
-        result = None
-      else:
-        log.debug("Unknown args. But return is always %s", pytd.Print(ret_type))
-    else:
-      result = self._make_union_of_multiple_returns(node)
+    ret_type = self._make_union_of_multiple_returns(signatures)
+    log.debug("Unknown args. But return is %s", pytd.Print(ret_type))
+    result = self.vm.convert.constant_to_var(AsReturnValue(ret_type), {}, node)
     if result is None:
       log.debug("Creating unknown return")
       result = self.vm.convert.create_new_unknown(
@@ -2281,17 +2270,18 @@ class PyTDFunction(Function):
                        result)
     return node, result, mutations
 
-  def _make_union_of_multiple_returns(self, node):
+  def _make_union_of_multiple_returns(self, signatures):
     """Combines multiple return types into a Union.
 
     Args:
-      node: The current CFG node.
+      signatures: The candidate signatures.
 
     Returns:
       A Union of the return types.
     """
     options = []
-    for t in self._return_types:
+    for sig, _, _ in signatures:
+      t = sig.pytd_sig.return_type
       visitor = visitors.CollectTypeParameters()
       t.Visit(visitor)
       if visitor.params:
@@ -2300,10 +2290,8 @@ class PyTDFunction(Function):
           replacement[param_type] = pytd.AnythingType()
         replace_visitor = visitors.ReplaceTypeParameters(replacement)
         t = t.Visit(replace_visitor)
-      options.append(self.vm.convert.constant_to_value(AsReturnValue(t)))
-    result = Union(options, self.vm)
-
-    return result.to_variable(node)
+      options.append(t)
+    return pytd_utils.JoinTypes(options)
 
   def _yield_matching_signatures(self, node, args, view):
     """Try, in order, all pytd signatures, yielding matches."""
