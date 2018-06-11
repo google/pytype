@@ -105,20 +105,5 @@ class ListTest(test_base.TargetIndependentTest):
       c = ...  # type: int
     """)
 
-  def test_repeated_add(self):
-    # At the time of this writing, this test completes in <5s. If it takes
-    # significantly longer, there's been a performance regression.
-    errors = self.CheckWithErrors("""\
-
-      from typing import List, Text, Tuple
-      def f() -> Tuple[List[Text]]:
-        x = (
-            ['' % __any_object__, ''] + [''] + [''] + [''.format()] + [''] +
-            [['' % __any_object__, '', '']]
-        )
-        return ([__any_object__] + [''] + x,)
-    """)
-    self.assertErrorLogIs(errors, [(8, "bad-return-type")])
-
 
 test_base.main(globals(), __name__ == "__main__")

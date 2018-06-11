@@ -5,6 +5,25 @@ import unittest
 from pytype.tests import test_base
 
 
+class ListTestBasic(test_base.TargetPython3BasicTest):
+  """Basic tests for __builtin__.list in Python 3."""
+
+  def test_repeated_add(self):
+    # At the time of this writing, this test completes in <5s. If it takes
+    # significantly longer, there's been a performance regression.
+    errors = self.CheckWithErrors("""\
+
+      from typing import List, Text, Tuple
+      def f() -> Tuple[List[Text]]:
+        x = (
+            ['' % __any_object__, ''] + [''] + [''] + [''.format()] + [''] +
+            [['' % __any_object__, '', '']]
+        )
+        return ([__any_object__] + [''] + x,)
+    """)
+    self.assertErrorLogIs(errors, [(8, "bad-return-type")])
+
+
 class ListTest(test_base.TargetPython3FeatureTest):
   """Tests for __builtin__.list in Python 3."""
 
