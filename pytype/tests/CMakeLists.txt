@@ -513,5 +513,14 @@ py_test(
     .test_base
 )
 
+py_test(
+  NAME
+    test_compile_to_pyc
+  SRCS
+    test_compile_to_pyc.py
+  DEPS
+    .test_base
+)
+
 add_subdirectory(py2)
 add_subdirectory(py3)
