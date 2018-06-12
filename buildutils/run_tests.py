@@ -88,7 +88,8 @@ def run_ninja(targets, fail_collector):
                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
   have_failures = False
   while True:
-    l = process.stdout.readline()
+    # process.stdout.readline() always returns a 'bytes' object.
+    l = process.stdout.readline().decode("utf-8")
     if not l:
       break
     mod_name, log_file = test_module.get_module_and_log_file_from_result_msg(l)
