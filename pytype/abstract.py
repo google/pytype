@@ -645,7 +645,8 @@ class TypeParameter(AtomicAbstractValue):
 
   def instantiate(self, node, container=None):
     var = self.vm.program.NewVariable()
-    if container:
+    if container and (not isinstance(container, SimpleAbstractValue) or
+                      self.name in container.type_parameters):
       instance = TypeParameterInstance(self, container, self.vm)
       return instance.to_variable(node)
     else:

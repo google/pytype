@@ -36,6 +36,16 @@ class AnyStrTest(test_base.TargetPython3BasicTest):
       foo(__any_object__, [__any_object__])
     """)
 
+  def testAnyStrInClosure(self):
+    self.assertNoCrash(self.Check, """
+
+      from typing import AnyStr, Dict, Optional
+      def foo(d: Dict[unicode, Optional[AnyStr]] = None):
+        def bar() -> Optional[AnyStr]:
+          return __any_object__
+        d[__any_object__] = bar()
+    """)
+
 
 class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for issues related to AnyStr in Python 3."""
