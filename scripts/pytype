@@ -27,6 +27,7 @@ import importlab.graph
 import importlab.output
 
 from pytype import file_utils
+from pytype import io
 from pytype import utils
 from pytype.tools import environment
 from pytype.tools import tool_utils
@@ -58,13 +59,18 @@ def create_importlab_environment(conf, typeshed):
 def main():
   parser = parse_args.make_parser()
   args = parser.parse_args(sys.argv[1:])
+
+  if args.version:
+    print(io.get_pytype_version())
+    sys.exit(0)
+
   tool_utils.setup_logging_or_die(args.verbosity)
-  args.filenames = file_utils.expand_source_files(args.filenames)
 
   if args.generate_config:
     config.generate_sample_config_or_die(args.generate_config)
     sys.exit(0)
 
+  args.filenames = file_utils.expand_source_files(args.filenames)
   conf = parser.config_from_defaults()
   # File options overwrite defaults.
   file_config = config.read_config_file_or_die(args.config)

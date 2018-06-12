@@ -37,6 +37,9 @@ class TestParser(unittest.TestCase):
     self.assertEqual(self.parser.parse_args(['--verbosity', '0']).verbosity, 0)
     self.assertEqual(self.parser.parse_args(['-v1']).verbosity, 1)
 
+  def test_version(self):
+    self.assertTrue(self.parser.parse_args(['--version']).version)
+
   def test_config(self):
     args = self.parser.parse_args(['--config=test.cfg'])
     self.assertEqual(args.config, 'test.cfg')

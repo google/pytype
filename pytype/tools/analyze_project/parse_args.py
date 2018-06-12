@@ -117,6 +117,10 @@ def make_parser():
   parser.add_argument(
       '--config', dest='config', type=str, action='store', default='',
       help='Configuration file.')
+  parser.add_argument(
+      '--version', action='store_true', dest='version', default=None,
+      help=('Display pytype version and exit.'))
+
   # Adds options from the config file.
   types = config.make_converters()
   for short_arg, arg, dest in [('-V', '--python-version', 'python_version'),
