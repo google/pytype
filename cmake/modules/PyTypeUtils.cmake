@@ -1,10 +1,16 @@
-set(min_bison_version 3.0.4)
+# Pytype's bison files can work with bison 3.0.4. However, we set the minimum
+# required version to 3.0.2 as that is the version of bison one can install
+# with apt-get on the Travis Trusty VMs.
+set(min_bison_version 3.0.2)
 find_package(BISON ${min_bison_version})
 if(NOT BISON_FOUND)
   message(FATAL_ERROR "PyType requires 'bison'. The minimum required 'bison' version is ${min_bison_version}.")
 endif()
 
-set(min_flex_version 2.6.1)
+# Pytype's flex files can work with flex 2.6.1. However, we set the minimum
+# required version to 2.5.35 as that is the version of flex one can install
+# with apt-get on the Travis Trusty VMs.
+set(min_flex_version 2.5.35)
 find_package(FLEX ${min_flex_version})
 if(NOT FLEX_FOUND)
   message(FATAL_ERROR "PyType requires 'flex'. The minimum required 'flex' version is ${min_flex_version}.")

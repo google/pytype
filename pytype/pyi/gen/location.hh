@@ -40,7 +40,7 @@
 
 # include "position.hh"
 
-#line 14 "parser.yy" // location.cc:296
+#line 17 "parser.yy" // location.cc:296
 namespace pytype {
 #line 46 "pyi/location.hh" // location.cc:296
   /// Abstract a location.
@@ -186,7 +186,7 @@ namespace pytype {
     return ostr;
   }
 
-#line 14 "parser.yy" // location.cc:296
+#line 17 "parser.yy" // location.cc:296
 } // pytype
 #line 192 "pyi/location.hh" // location.cc:296
 #endif // !YY_PYTYPE_BLAZE_OUT_K8_FASTBUILD_GENFILES_THIRD_PARTY_PY_PYTYPE_PYI_LOCATION_HH_INCLUDED

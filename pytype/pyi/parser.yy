@@ -1,5 +1,8 @@
 %skeleton "lalr1.cc"
-%require "3.0.4"
+// This file can work with bison 3.0.4. However, we set the minimum
+// required version to 3.0.2 as that is the version of bison one can install
+// with apt-get on the Travis Trusty VMs.
+%require "3.0.2"
 %defines
 
 %locations

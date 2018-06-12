@@ -40,7 +40,7 @@
 #ifndef YY_PYTYPE_BLAZE_OUT_K8_FASTBUILD_GENFILES_THIRD_PARTY_PY_PYTYPE_PYI_PARSER_TAB_HH_INCLUDED
 # define YY_PYTYPE_BLAZE_OUT_K8_FASTBUILD_GENFILES_THIRD_PARTY_PY_PYTYPE_PYI_PARSER_TAB_HH_INCLUDED
 // //                    "%code requires" blocks.
-#line 16 "parser.yy" // lalr1.cc:377
+#line 19 "parser.yy" // lalr1.cc:377
 
 #include <Python.h>
 
@@ -125,7 +125,7 @@
 # define YYDEBUG 0
 #endif
 
-#line 14 "parser.yy" // lalr1.cc:377
+#line 17 "parser.yy" // lalr1.cc:377
 namespace pytype {
 #line 131 "pyi/parser.tab.hh" // lalr1.cc:377
 
@@ -141,7 +141,7 @@ namespace pytype {
     /// Symbol semantic values.
     union semantic_type
     {
-    #line 57 "parser.yy" // lalr1.cc:377
+    #line 60 "parser.yy" // lalr1.cc:377
 
   PyObject* obj;
   const char* str;
@@ -519,7 +519,7 @@ namespace pytype {
   };
 
 
-#line 14 "parser.yy" // lalr1.cc:377
+#line 17 "parser.yy" // lalr1.cc:377
 } // pytype
 #line 525 "pyi/parser.tab.hh" // lalr1.cc:377
 

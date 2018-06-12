@@ -40,7 +40,7 @@
 
 # include <vector>
 
-#line 14 "parser.yy" // stack.hh:140
+#line 17 "parser.yy" // stack.hh:140
 namespace pytype {
 #line 46 "pyi/stack.hh" // stack.hh:140
   template <class T, class S = std::vector<T> >
@@ -158,7 +158,7 @@ namespace pytype {
     unsigned int range_;
   };
 
-#line 14 "parser.yy" // stack.hh:140
+#line 17 "parser.yy" // stack.hh:140
 } // pytype
 #line 164 "pyi/stack.hh" // stack.hh:140
 

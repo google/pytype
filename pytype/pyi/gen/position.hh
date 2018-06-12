@@ -50,7 +50,7 @@
 #  endif
 # endif
 
-#line 14 "parser.yy" // location.cc:296
+#line 17 "parser.yy" // location.cc:296
 namespace pytype {
 #line 56 "pyi/position.hh" // location.cc:296
   /// Abstract a position.
@@ -174,7 +174,7 @@ namespace pytype {
     return ostr << pos.line << '.' << pos.column;
   }
 
-#line 14 "parser.yy" // location.cc:296
+#line 17 "parser.yy" // location.cc:296
 } // pytype
 #line 180 "pyi/position.hh" // location.cc:296
 #endif // !YY_PYTYPE_BLAZE_OUT_K8_FASTBUILD_GENFILES_THIRD_PARTY_PY_PYTYPE_PYI_POSITION_HH_INCLUDED

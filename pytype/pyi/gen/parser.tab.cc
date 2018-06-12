@@ -51,7 +51,7 @@
 
 #line 53 "pyi/parser.tab.cc" // lalr1.cc:412
 // Unqualified %code blocks.
-#line 31 "parser.yy" // lalr1.cc:413
+#line 34 "parser.yy" // lalr1.cc:413
 
 namespace {
 PyObject* DOT_STRING = PyString_FromString(".");
@@ -161,7 +161,7 @@ int pytypelex(pytype::parser::semantic_type* lvalp, pytype::location* llocp,
 #define YYERROR         goto yyerrorlab
 #define YYRECOVERING()  (!!yyerrstatus_)
 
-#line 14 "parser.yy" // lalr1.cc:479
+#line 17 "parser.yy" // lalr1.cc:479
 namespace pytype {
 #line 167 "pyi/parser.tab.cc" // lalr1.cc:479
 
@@ -415,441 +415,441 @@ namespace pytype {
     {
             case 3: // NAME
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 421 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 4: // NUMBER
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 428 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 5: // LEXERROR
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 435 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 47: // start
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 442 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 48: // unit
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 449 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 49: // alldefs
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 456 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 51: // classdef
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 463 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 52: // class_name
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 470 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 53: // parents
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 477 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 54: // parent_list
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 484 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 55: // parent
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 491 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 56: // maybe_class_funcs
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 498 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 57: // class_funcs
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 505 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 58: // funcdefs
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 512 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 59: // if_stmt
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 519 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 60: // if_and_elifs
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 526 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 61: // class_if_stmt
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 533 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 62: // class_if_and_elifs
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 540 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 63: // if_cond
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 547 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 64: // elif_cond
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 554 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 65: // else_cond
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 561 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 66: // condition
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 568 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 67: // version_tuple
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 575 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 68: // condition_op
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.str)); }
 #line 582 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 69: // constantdef
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 589 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 70: // importdef
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 596 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 71: // import_items
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 603 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 72: // import_item
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 610 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 73: // import_name
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 617 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 74: // from_list
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 624 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 75: // from_items
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 631 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 76: // from_item
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 638 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 77: // alias_or_constant
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 645 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 78: // typevardef
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 652 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 79: // typevar_args
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 659 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 80: // typevar_kwargs
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 666 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 81: // typevar_kwarg
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 673 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 82: // funcdef
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 680 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 83: // decorators
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 687 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 84: // decorator
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 694 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 85: // params
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 701 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 86: // param_list
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 708 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 87: // param
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 715 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 88: // param_type
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 722 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 89: // param_default
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 729 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 90: // param_star_name
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 736 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 91: // return
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 743 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 93: // maybe_body
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 750 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 95: // body
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 757 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 96: // body_stmt
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 764 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 97: // type_parameters
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 771 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 98: // type_parameter
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 778 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 99: // type
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 785 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 100: // named_tuple_fields
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 792 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 101: // named_tuple_field_list
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 799 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 102: // named_tuple_field
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 806 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 104: // maybe_type_list
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 813 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 105: // type_list
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 820 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 106: // type_tuple_elements
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 827 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 107: // type_tuple_literal
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 834 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 108: // dotted_name
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 841 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 109: // getitem_key
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 848 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
 
       case 110: // maybe_number
 
-#line 96 "parser.yy" // lalr1.cc:614
+#line 99 "parser.yy" // lalr1.cc:614
         { Py_CLEAR((yysym.value.obj)); }
 #line 855 "pyi/parser.tab.cc" // lalr1.cc:614
         break;
@@ -1096,37 +1096,37 @@ namespace pytype {
           switch (yyn)
             {
   case 2:
-#line 129 "parser.yy" // lalr1.cc:867
+#line 132 "parser.yy" // lalr1.cc:867
     { ctx->SetAndDelResult((yystack_[1].value.obj)); (yylhs.value.obj) = NULL; }
 #line 1102 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 3:
-#line 130 "parser.yy" // lalr1.cc:867
+#line 133 "parser.yy" // lalr1.cc:867
     { ctx->SetAndDelResult((yystack_[1].value.obj)); (yylhs.value.obj) = NULL; }
 #line 1108 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 5:
-#line 138 "parser.yy" // lalr1.cc:867
+#line 141 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = AppendList((yystack_[1].value.obj), (yystack_[0].value.obj)); }
 #line 1114 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 6:
-#line 139 "parser.yy" // lalr1.cc:867
+#line 142 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = AppendList((yystack_[1].value.obj), (yystack_[0].value.obj)); }
 #line 1120 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 7:
-#line 140 "parser.yy" // lalr1.cc:867
+#line 143 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[1].value.obj); Py_DECREF((yystack_[0].value.obj)); }
 #line 1126 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 8:
-#line 141 "parser.yy" // lalr1.cc:867
+#line 144 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = (yystack_[1].value.obj);
       PyObject* tmp = ctx->Call(kAddAliasOrConstant, "(N)", (yystack_[0].value.obj));
@@ -1137,19 +1137,19 @@ namespace pytype {
     break;
 
   case 9:
-#line 147 "parser.yy" // lalr1.cc:867
+#line 150 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[1].value.obj); Py_DECREF((yystack_[0].value.obj)); }
 #line 1143 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 10:
-#line 148 "parser.yy" // lalr1.cc:867
+#line 151 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[1].value.obj); Py_DECREF((yystack_[0].value.obj)); }
 #line 1149 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 11:
-#line 149 "parser.yy" // lalr1.cc:867
+#line 152 "parser.yy" // lalr1.cc:867
     {
       PyObject* tmp = ctx->Call(kIfEnd, "(N)", (yystack_[0].value.obj));
       CHECK(tmp, yystack_[0].location);
@@ -1159,13 +1159,13 @@ namespace pytype {
     break;
 
   case 12:
-#line 154 "parser.yy" // lalr1.cc:867
+#line 157 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = PyList_New(0); }
 #line 1165 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 15:
-#line 162 "parser.yy" // lalr1.cc:867
+#line 165 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = ctx->Call(kAddClass, "(NNN)", (yystack_[4].value.obj), (yystack_[3].value.obj), (yystack_[0].value.obj));
       CHECK((yylhs.value.obj), yylhs.location);
@@ -1174,7 +1174,7 @@ namespace pytype {
     break;
 
   case 16:
-#line 169 "parser.yy" // lalr1.cc:867
+#line 172 "parser.yy" // lalr1.cc:867
     {
       // Do not borrow the $1 reference since it is also returned later
       // in $$.  Use O instead of N in the format string.
@@ -1187,79 +1187,79 @@ namespace pytype {
     break;
 
   case 17:
-#line 180 "parser.yy" // lalr1.cc:867
+#line 183 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[1].value.obj); }
 #line 1193 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 18:
-#line 181 "parser.yy" // lalr1.cc:867
+#line 184 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = PyList_New(0); }
 #line 1199 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 19:
-#line 182 "parser.yy" // lalr1.cc:867
+#line 185 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = PyList_New(0); }
 #line 1205 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 20:
-#line 186 "parser.yy" // lalr1.cc:867
+#line 189 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = AppendList((yystack_[2].value.obj), (yystack_[0].value.obj)); }
 #line 1211 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 21:
-#line 187 "parser.yy" // lalr1.cc:867
+#line 190 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = StartList((yystack_[0].value.obj)); }
 #line 1217 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 22:
-#line 191 "parser.yy" // lalr1.cc:867
+#line 194 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[0].value.obj); }
 #line 1223 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 23:
-#line 192 "parser.yy" // lalr1.cc:867
+#line 195 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = Py_BuildValue("(NN)", (yystack_[2].value.obj), (yystack_[0].value.obj)); }
 #line 1229 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 24:
-#line 196 "parser.yy" // lalr1.cc:867
+#line 199 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = PyList_New(0); }
 #line 1235 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 25:
-#line 197 "parser.yy" // lalr1.cc:867
+#line 200 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[1].value.obj); }
 #line 1241 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 26:
-#line 198 "parser.yy" // lalr1.cc:867
+#line 201 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[1].value.obj); }
 #line 1247 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 27:
-#line 202 "parser.yy" // lalr1.cc:867
+#line 205 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = PyList_New(0); }
 #line 1253 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 29:
-#line 207 "parser.yy" // lalr1.cc:867
+#line 210 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = AppendList((yystack_[1].value.obj), (yystack_[0].value.obj)); }
 #line 1259 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 30:
-#line 208 "parser.yy" // lalr1.cc:867
+#line 211 "parser.yy" // lalr1.cc:867
     {
       PyObject* tmp = ctx->Call(kNewAliasOrConstant, "(N)", (yystack_[0].value.obj));
       CHECK(tmp, yylhs.location);
@@ -1269,13 +1269,13 @@ namespace pytype {
     break;
 
   case 31:
-#line 213 "parser.yy" // lalr1.cc:867
+#line 216 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = AppendList((yystack_[1].value.obj), (yystack_[0].value.obj)); }
 #line 1275 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 32:
-#line 214 "parser.yy" // lalr1.cc:867
+#line 217 "parser.yy" // lalr1.cc:867
     {
       PyObject* tmp = ctx->Call(kIfEnd, "(N)", (yystack_[0].value.obj));
       CHECK(tmp, yystack_[0].location);
@@ -1285,13 +1285,13 @@ namespace pytype {
     break;
 
   case 33:
-#line 219 "parser.yy" // lalr1.cc:867
+#line 222 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = PyList_New(0); }
 #line 1291 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 34:
-#line 224 "parser.yy" // lalr1.cc:867
+#line 227 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = AppendList((yystack_[5].value.obj), Py_BuildValue("(NN)", (yystack_[4].value.obj), (yystack_[1].value.obj)));
     }
@@ -1299,7 +1299,7 @@ namespace pytype {
     break;
 
   case 36:
-#line 232 "parser.yy" // lalr1.cc:867
+#line 235 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = Py_BuildValue("[(NN)]", (yystack_[4].value.obj), (yystack_[1].value.obj));
     }
@@ -1307,7 +1307,7 @@ namespace pytype {
     break;
 
   case 37:
-#line 236 "parser.yy" // lalr1.cc:867
+#line 239 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = AppendList((yystack_[5].value.obj), Py_BuildValue("(NN)", (yystack_[4].value.obj), (yystack_[1].value.obj)));
     }
@@ -1315,7 +1315,7 @@ namespace pytype {
     break;
 
   case 38:
-#line 255 "parser.yy" // lalr1.cc:867
+#line 258 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = AppendList((yystack_[5].value.obj), Py_BuildValue("(NN)", (yystack_[4].value.obj), (yystack_[1].value.obj)));
     }
@@ -1323,7 +1323,7 @@ namespace pytype {
     break;
 
   case 40:
-#line 263 "parser.yy" // lalr1.cc:867
+#line 266 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = Py_BuildValue("[(NN)]", (yystack_[4].value.obj), (yystack_[1].value.obj));
     }
@@ -1331,7 +1331,7 @@ namespace pytype {
     break;
 
   case 41:
-#line 267 "parser.yy" // lalr1.cc:867
+#line 270 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = AppendList((yystack_[5].value.obj), Py_BuildValue("(NN)", (yystack_[4].value.obj), (yystack_[1].value.obj)));
     }
@@ -1339,25 +1339,25 @@ namespace pytype {
     break;
 
   case 42:
-#line 279 "parser.yy" // lalr1.cc:867
+#line 282 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = ctx->Call(kIfBegin, "(N)", (yystack_[0].value.obj)); CHECK((yylhs.value.obj), yylhs.location); }
 #line 1345 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 43:
-#line 283 "parser.yy" // lalr1.cc:867
+#line 286 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = ctx->Call(kIfElif, "(N)", (yystack_[0].value.obj)); CHECK((yylhs.value.obj), yylhs.location); }
 #line 1351 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 44:
-#line 287 "parser.yy" // lalr1.cc:867
+#line 290 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = ctx->Call(kIfElse, "()"); CHECK((yylhs.value.obj), yylhs.location); }
 #line 1357 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 45:
-#line 291 "parser.yy" // lalr1.cc:867
+#line 294 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = Py_BuildValue("((NO)sN)", (yystack_[2].value.obj), Py_None, (yystack_[1].value.str), (yystack_[0].value.obj));
     }
@@ -1365,7 +1365,7 @@ namespace pytype {
     break;
 
   case 46:
-#line 294 "parser.yy" // lalr1.cc:867
+#line 297 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = Py_BuildValue("((NO)sN)", (yystack_[2].value.obj), Py_None, (yystack_[1].value.str), (yystack_[0].value.obj));
     }
@@ -1373,7 +1373,7 @@ namespace pytype {
     break;
 
   case 47:
-#line 297 "parser.yy" // lalr1.cc:867
+#line 300 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = Py_BuildValue("((NN)sN)", (yystack_[5].value.obj), (yystack_[3].value.obj), (yystack_[1].value.str), (yystack_[0].value.obj));
     }
@@ -1381,7 +1381,7 @@ namespace pytype {
     break;
 
   case 48:
-#line 300 "parser.yy" // lalr1.cc:867
+#line 303 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = Py_BuildValue("((NN)sN)", (yystack_[5].value.obj), (yystack_[3].value.obj), (yystack_[1].value.str), (yystack_[0].value.obj));
     }
@@ -1389,37 +1389,37 @@ namespace pytype {
     break;
 
   case 49:
-#line 303 "parser.yy" // lalr1.cc:867
+#line 306 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = Py_BuildValue("(NsN)", (yystack_[2].value.obj), "and", (yystack_[0].value.obj)); }
 #line 1395 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 50:
-#line 304 "parser.yy" // lalr1.cc:867
+#line 307 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = Py_BuildValue("(NsN)", (yystack_[2].value.obj), "or", (yystack_[0].value.obj)); }
 #line 1401 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 51:
-#line 305 "parser.yy" // lalr1.cc:867
+#line 308 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[1].value.obj); }
 #line 1407 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 52:
-#line 310 "parser.yy" // lalr1.cc:867
+#line 313 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = Py_BuildValue("(N)", (yystack_[2].value.obj)); }
 #line 1413 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 53:
-#line 311 "parser.yy" // lalr1.cc:867
+#line 314 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = Py_BuildValue("(NN)", (yystack_[3].value.obj), (yystack_[1].value.obj)); }
 #line 1419 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 54:
-#line 312 "parser.yy" // lalr1.cc:867
+#line 315 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = Py_BuildValue("(NNN)", (yystack_[5].value.obj), (yystack_[3].value.obj), (yystack_[1].value.obj));
     }
@@ -1427,43 +1427,43 @@ namespace pytype {
     break;
 
   case 55:
-#line 318 "parser.yy" // lalr1.cc:867
+#line 321 "parser.yy" // lalr1.cc:867
     { (yylhs.value.str) = "<"; }
 #line 1433 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 56:
-#line 319 "parser.yy" // lalr1.cc:867
+#line 322 "parser.yy" // lalr1.cc:867
     { (yylhs.value.str) = ">"; }
 #line 1439 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 57:
-#line 320 "parser.yy" // lalr1.cc:867
+#line 323 "parser.yy" // lalr1.cc:867
     { (yylhs.value.str) = "<="; }
 #line 1445 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 58:
-#line 321 "parser.yy" // lalr1.cc:867
+#line 324 "parser.yy" // lalr1.cc:867
     { (yylhs.value.str) = ">="; }
 #line 1451 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 59:
-#line 322 "parser.yy" // lalr1.cc:867
+#line 325 "parser.yy" // lalr1.cc:867
     { (yylhs.value.str) = "=="; }
 #line 1457 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 60:
-#line 323 "parser.yy" // lalr1.cc:867
+#line 326 "parser.yy" // lalr1.cc:867
     { (yylhs.value.str) = "!="; }
 #line 1463 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 61:
-#line 327 "parser.yy" // lalr1.cc:867
+#line 330 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = ctx->Call(kNewConstant, "(NN)", (yystack_[2].value.obj), (yystack_[0].value.obj));
       CHECK((yylhs.value.obj), yylhs.location);
@@ -1472,7 +1472,7 @@ namespace pytype {
     break;
 
   case 62:
-#line 331 "parser.yy" // lalr1.cc:867
+#line 334 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = ctx->Call(kNewConstant, "(NN)", (yystack_[2].value.obj), ctx->Value(kByteString));
       CHECK((yylhs.value.obj), yylhs.location);
@@ -1481,7 +1481,7 @@ namespace pytype {
     break;
 
   case 63:
-#line 335 "parser.yy" // lalr1.cc:867
+#line 338 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = ctx->Call(kNewConstant, "(NN)", (yystack_[2].value.obj), ctx->Value(kUnicodeString));
       CHECK((yylhs.value.obj), yylhs.location);
@@ -1490,7 +1490,7 @@ namespace pytype {
     break;
 
   case 64:
-#line 339 "parser.yy" // lalr1.cc:867
+#line 342 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = ctx->Call(kNewConstant, "(NN)", (yystack_[2].value.obj), (yystack_[0].value.obj));
       CHECK((yylhs.value.obj), yylhs.location);
@@ -1499,7 +1499,7 @@ namespace pytype {
     break;
 
   case 65:
-#line 343 "parser.yy" // lalr1.cc:867
+#line 346 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = ctx->Call(kNewConstant, "(NN)", (yystack_[2].value.obj), ctx->Value(kAnything));
       CHECK((yylhs.value.obj), yylhs.location);
@@ -1508,7 +1508,7 @@ namespace pytype {
     break;
 
   case 66:
-#line 347 "parser.yy" // lalr1.cc:867
+#line 350 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = ctx->Call(kNewConstant, "(NN)", (yystack_[4].value.obj), (yystack_[0].value.obj));
       CHECK((yylhs.value.obj), yylhs.location);
@@ -1517,7 +1517,7 @@ namespace pytype {
     break;
 
   case 67:
-#line 351 "parser.yy" // lalr1.cc:867
+#line 354 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = ctx->Call(kNewConstant, "(NN)", (yystack_[2].value.obj), (yystack_[0].value.obj));
       CHECK((yylhs.value.obj), yylhs.location);
@@ -1526,7 +1526,7 @@ namespace pytype {
     break;
 
   case 68:
-#line 355 "parser.yy" // lalr1.cc:867
+#line 358 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = ctx->Call(kNewConstant, "(NN)", (yystack_[4].value.obj), (yystack_[2].value.obj));
       CHECK((yylhs.value.obj), yylhs.location);
@@ -1535,7 +1535,7 @@ namespace pytype {
     break;
 
   case 69:
-#line 362 "parser.yy" // lalr1.cc:867
+#line 365 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = ctx->Call(kAddImport, "(ON)", Py_None, (yystack_[0].value.obj));
       CHECK((yylhs.value.obj), yylhs.location);
@@ -1544,7 +1544,7 @@ namespace pytype {
     break;
 
   case 70:
-#line 366 "parser.yy" // lalr1.cc:867
+#line 369 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = ctx->Call(kAddImport, "(NN)", (yystack_[2].value.obj), (yystack_[0].value.obj));
       CHECK((yylhs.value.obj), yylhs.location);
@@ -1553,7 +1553,7 @@ namespace pytype {
     break;
 
   case 71:
-#line 370 "parser.yy" // lalr1.cc:867
+#line 373 "parser.yy" // lalr1.cc:867
     {
       // Special-case "from . import" and pass in a __PACKAGE__ token that
       // the Python parser code will rewrite to the current package name.
@@ -1564,25 +1564,25 @@ namespace pytype {
     break;
 
   case 72:
-#line 379 "parser.yy" // lalr1.cc:867
+#line 382 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = AppendList((yystack_[2].value.obj), (yystack_[0].value.obj)); }
 #line 1570 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 73:
-#line 380 "parser.yy" // lalr1.cc:867
+#line 383 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = StartList((yystack_[0].value.obj)); }
 #line 1576 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 75:
-#line 384 "parser.yy" // lalr1.cc:867
+#line 387 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = Py_BuildValue("(NN)", (yystack_[2].value.obj), (yystack_[0].value.obj)); }
 #line 1582 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 77:
-#line 390 "parser.yy" // lalr1.cc:867
+#line 393 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = PyString_FromFormat(".%s", PyString_AsString((yystack_[0].value.obj)));
       Py_DECREF((yystack_[0].value.obj));
@@ -1591,31 +1591,31 @@ namespace pytype {
     break;
 
   case 79:
-#line 398 "parser.yy" // lalr1.cc:867
+#line 401 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[1].value.obj); }
 #line 1597 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 80:
-#line 399 "parser.yy" // lalr1.cc:867
+#line 402 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[2].value.obj); }
 #line 1603 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 81:
-#line 403 "parser.yy" // lalr1.cc:867
+#line 406 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = AppendList((yystack_[2].value.obj), (yystack_[0].value.obj)); }
 #line 1609 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 82:
-#line 404 "parser.yy" // lalr1.cc:867
+#line 407 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = StartList((yystack_[0].value.obj)); }
 #line 1615 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 84:
-#line 409 "parser.yy" // lalr1.cc:867
+#line 412 "parser.yy" // lalr1.cc:867
     {
  (yylhs.value.obj) = PyString_FromString("NamedTuple");
  }
@@ -1623,7 +1623,7 @@ namespace pytype {
     break;
 
   case 85:
-#line 412 "parser.yy" // lalr1.cc:867
+#line 415 "parser.yy" // lalr1.cc:867
     {
  (yylhs.value.obj) = PyString_FromString("TypeVar");
  }
@@ -1631,7 +1631,7 @@ namespace pytype {
     break;
 
   case 86:
-#line 415 "parser.yy" // lalr1.cc:867
+#line 418 "parser.yy" // lalr1.cc:867
     {
  (yylhs.value.obj) = PyString_FromString("*");
  }
@@ -1639,19 +1639,19 @@ namespace pytype {
     break;
 
   case 87:
-#line 418 "parser.yy" // lalr1.cc:867
+#line 421 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = Py_BuildValue("(NN)", (yystack_[2].value.obj), (yystack_[0].value.obj)); }
 #line 1645 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 88:
-#line 422 "parser.yy" // lalr1.cc:867
+#line 425 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = Py_BuildValue("(NN)", (yystack_[2].value.obj), (yystack_[0].value.obj)); }
 #line 1651 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 89:
-#line 426 "parser.yy" // lalr1.cc:867
+#line 429 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = ctx->Call(kAddTypeVar, "(NNN)", (yystack_[6].value.obj), (yystack_[2].value.obj), (yystack_[1].value.obj));
       CHECK((yylhs.value.obj), yylhs.location);
@@ -1660,49 +1660,49 @@ namespace pytype {
     break;
 
   case 90:
-#line 433 "parser.yy" // lalr1.cc:867
+#line 436 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = Py_BuildValue("(OO)", Py_None, Py_None); }
 #line 1666 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 91:
-#line 434 "parser.yy" // lalr1.cc:867
+#line 437 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = Py_BuildValue("(NO)", (yystack_[0].value.obj), Py_None); }
 #line 1672 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 92:
-#line 435 "parser.yy" // lalr1.cc:867
+#line 438 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = Py_BuildValue("(ON)", Py_None, (yystack_[0].value.obj)); }
 #line 1678 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 93:
-#line 436 "parser.yy" // lalr1.cc:867
+#line 439 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = Py_BuildValue("(NN)", (yystack_[2].value.obj), (yystack_[0].value.obj)); }
 #line 1684 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 94:
-#line 440 "parser.yy" // lalr1.cc:867
+#line 443 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = AppendList((yystack_[2].value.obj), (yystack_[0].value.obj)); }
 #line 1690 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 95:
-#line 441 "parser.yy" // lalr1.cc:867
+#line 444 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = StartList((yystack_[0].value.obj)); }
 #line 1696 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 96:
-#line 445 "parser.yy" // lalr1.cc:867
+#line 448 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = Py_BuildValue("(NN)", (yystack_[2].value.obj), (yystack_[0].value.obj)); }
 #line 1702 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 97:
-#line 449 "parser.yy" // lalr1.cc:867
+#line 452 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = ctx->Call(kNewFunction, "(NNNNN)", (yystack_[7].value.obj), (yystack_[5].value.obj), (yystack_[3].value.obj), (yystack_[1].value.obj), (yystack_[0].value.obj));
       // Decorators is nullable and messes up the location tracking by
@@ -1721,211 +1721,211 @@ namespace pytype {
     break;
 
   case 98:
-#line 466 "parser.yy" // lalr1.cc:867
+#line 469 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = AppendList((yystack_[1].value.obj), (yystack_[0].value.obj)); }
 #line 1727 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 99:
-#line 467 "parser.yy" // lalr1.cc:867
+#line 470 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = PyList_New(0); }
 #line 1733 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 100:
-#line 471 "parser.yy" // lalr1.cc:867
+#line 474 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[1].value.obj); }
 #line 1739 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 101:
-#line 475 "parser.yy" // lalr1.cc:867
+#line 478 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[1].value.obj); }
 #line 1745 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 102:
-#line 476 "parser.yy" // lalr1.cc:867
+#line 479 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = PyList_New(0); }
 #line 1751 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 103:
-#line 488 "parser.yy" // lalr1.cc:867
+#line 491 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = AppendList((yystack_[3].value.obj), (yystack_[0].value.obj)); }
 #line 1757 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 104:
-#line 489 "parser.yy" // lalr1.cc:867
+#line 492 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = StartList((yystack_[0].value.obj)); }
 #line 1763 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 105:
-#line 493 "parser.yy" // lalr1.cc:867
+#line 496 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = Py_BuildValue("(NNN)", (yystack_[2].value.obj), (yystack_[1].value.obj), (yystack_[0].value.obj)); }
 #line 1769 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 106:
-#line 494 "parser.yy" // lalr1.cc:867
+#line 497 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = Py_BuildValue("(sOO)", "*", Py_None, Py_None); }
 #line 1775 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 107:
-#line 495 "parser.yy" // lalr1.cc:867
+#line 498 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = Py_BuildValue("(NNO)", (yystack_[1].value.obj), (yystack_[0].value.obj), Py_None); }
 #line 1781 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 108:
-#line 496 "parser.yy" // lalr1.cc:867
+#line 499 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = ctx->Value(kEllipsis); }
 #line 1787 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 109:
-#line 500 "parser.yy" // lalr1.cc:867
+#line 503 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[0].value.obj); }
 #line 1793 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 110:
-#line 501 "parser.yy" // lalr1.cc:867
+#line 504 "parser.yy" // lalr1.cc:867
     { Py_INCREF(Py_None); (yylhs.value.obj) = Py_None; }
 #line 1799 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 111:
-#line 505 "parser.yy" // lalr1.cc:867
+#line 508 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[0].value.obj); }
 #line 1805 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 112:
-#line 506 "parser.yy" // lalr1.cc:867
+#line 509 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[0].value.obj); }
 #line 1811 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 113:
-#line 507 "parser.yy" // lalr1.cc:867
+#line 510 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = ctx->Value(kEllipsis); }
 #line 1817 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 114:
-#line 508 "parser.yy" // lalr1.cc:867
+#line 511 "parser.yy" // lalr1.cc:867
     { Py_INCREF(Py_None); (yylhs.value.obj) = Py_None; }
 #line 1823 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 115:
-#line 512 "parser.yy" // lalr1.cc:867
+#line 515 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = PyString_FromFormat("*%s", PyString_AsString((yystack_[0].value.obj))); }
 #line 1829 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 116:
-#line 513 "parser.yy" // lalr1.cc:867
+#line 516 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = PyString_FromFormat("**%s", PyString_AsString((yystack_[0].value.obj))); }
 #line 1835 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 117:
-#line 517 "parser.yy" // lalr1.cc:867
+#line 520 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[0].value.obj); }
 #line 1841 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 118:
-#line 518 "parser.yy" // lalr1.cc:867
+#line 521 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = ctx->Value(kAnything); }
 #line 1847 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 119:
-#line 522 "parser.yy" // lalr1.cc:867
+#line 525 "parser.yy" // lalr1.cc:867
     { Py_DecRef((yystack_[0].value.obj)); }
 #line 1853 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 120:
-#line 526 "parser.yy" // lalr1.cc:867
+#line 529 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[1].value.obj); }
 #line 1859 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 121:
-#line 527 "parser.yy" // lalr1.cc:867
+#line 530 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[1].value.obj); }
 #line 1865 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 122:
-#line 528 "parser.yy" // lalr1.cc:867
+#line 531 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = PyList_New(0); }
 #line 1871 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 130:
-#line 542 "parser.yy" // lalr1.cc:867
+#line 545 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = AppendList((yystack_[1].value.obj), (yystack_[0].value.obj)); }
 #line 1877 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 131:
-#line 543 "parser.yy" // lalr1.cc:867
+#line 546 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = StartList((yystack_[0].value.obj)); }
 #line 1883 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 132:
-#line 547 "parser.yy" // lalr1.cc:867
+#line 550 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = Py_BuildValue("(NN)", (yystack_[2].value.obj), (yystack_[0].value.obj)); }
 #line 1889 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 133:
-#line 548 "parser.yy" // lalr1.cc:867
+#line 551 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[0].value.obj); }
 #line 1895 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 134:
-#line 549 "parser.yy" // lalr1.cc:867
+#line 552 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[2].value.obj); }
 #line 1901 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 135:
-#line 553 "parser.yy" // lalr1.cc:867
+#line 556 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = AppendList((yystack_[2].value.obj), (yystack_[0].value.obj)); }
 #line 1907 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 136:
-#line 554 "parser.yy" // lalr1.cc:867
+#line 557 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = StartList((yystack_[0].value.obj)); }
 #line 1913 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 137:
-#line 558 "parser.yy" // lalr1.cc:867
+#line 561 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[0].value.obj); }
 #line 1919 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 138:
-#line 559 "parser.yy" // lalr1.cc:867
+#line 562 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = ctx->Value(kEllipsis); }
 #line 1925 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 139:
-#line 563 "parser.yy" // lalr1.cc:867
+#line 566 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = ctx->Call(kNewType, "(N)", (yystack_[0].value.obj));
       CHECK((yylhs.value.obj), yylhs.location);
@@ -1934,7 +1934,7 @@ namespace pytype {
     break;
 
   case 140:
-#line 567 "parser.yy" // lalr1.cc:867
+#line 570 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = ctx->Call(kNewType, "(NN)", (yystack_[3].value.obj), (yystack_[1].value.obj));
       CHECK((yylhs.value.obj), yylhs.location);
@@ -1943,7 +1943,7 @@ namespace pytype {
     break;
 
   case 141:
-#line 571 "parser.yy" // lalr1.cc:867
+#line 574 "parser.yy" // lalr1.cc:867
     {
       // This rule is needed for Callable[[...], ...]
       (yylhs.value.obj) = ctx->Call(kNewType, "(sN)", "tuple", (yystack_[1].value.obj));
@@ -1953,7 +1953,7 @@ namespace pytype {
     break;
 
   case 142:
-#line 576 "parser.yy" // lalr1.cc:867
+#line 579 "parser.yy" // lalr1.cc:867
     {
       (yylhs.value.obj) = ctx->Call(kNewNamedTuple, "(NN)", (yystack_[3].value.obj), (yystack_[1].value.obj));
       CHECK((yylhs.value.obj), yylhs.location);
@@ -1962,103 +1962,103 @@ namespace pytype {
     break;
 
   case 143:
-#line 580 "parser.yy" // lalr1.cc:867
+#line 583 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[1].value.obj); }
 #line 1968 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 144:
-#line 581 "parser.yy" // lalr1.cc:867
+#line 584 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = ctx->Call(kNewIntersectionType, "([NN])", (yystack_[2].value.obj), (yystack_[0].value.obj)); }
 #line 1974 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 145:
-#line 582 "parser.yy" // lalr1.cc:867
+#line 585 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = ctx->Call(kNewUnionType, "([NN])", (yystack_[2].value.obj), (yystack_[0].value.obj)); }
 #line 1980 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 146:
-#line 583 "parser.yy" // lalr1.cc:867
+#line 586 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = ctx->Value(kAnything); }
 #line 1986 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 147:
-#line 584 "parser.yy" // lalr1.cc:867
+#line 587 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = ctx->Value(kNothing); }
 #line 1992 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 148:
-#line 588 "parser.yy" // lalr1.cc:867
+#line 591 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[2].value.obj); }
 #line 1998 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 149:
-#line 589 "parser.yy" // lalr1.cc:867
+#line 592 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = PyList_New(0); }
 #line 2004 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 150:
-#line 593 "parser.yy" // lalr1.cc:867
+#line 596 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = AppendList((yystack_[2].value.obj), (yystack_[0].value.obj)); }
 #line 2010 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 151:
-#line 594 "parser.yy" // lalr1.cc:867
+#line 597 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = StartList((yystack_[0].value.obj)); }
 #line 2016 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 152:
-#line 598 "parser.yy" // lalr1.cc:867
+#line 601 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = Py_BuildValue("(NN)", (yystack_[4].value.obj), (yystack_[2].value.obj)); }
 #line 2022 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 155:
-#line 607 "parser.yy" // lalr1.cc:867
+#line 610 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[0].value.obj); }
 #line 2028 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 156:
-#line 608 "parser.yy" // lalr1.cc:867
+#line 611 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = PyList_New(0); }
 #line 2034 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 157:
-#line 612 "parser.yy" // lalr1.cc:867
+#line 615 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = AppendList((yystack_[2].value.obj), (yystack_[0].value.obj)); }
 #line 2040 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 158:
-#line 613 "parser.yy" // lalr1.cc:867
+#line 616 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = StartList((yystack_[0].value.obj)); }
 #line 2046 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 159:
-#line 620 "parser.yy" // lalr1.cc:867
+#line 623 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = AppendList((yystack_[2].value.obj), (yystack_[0].value.obj)); }
 #line 2052 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 160:
-#line 621 "parser.yy" // lalr1.cc:867
+#line 624 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = Py_BuildValue("(NN)", (yystack_[2].value.obj), (yystack_[0].value.obj)); }
 #line 2058 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 161:
-#line 630 "parser.yy" // lalr1.cc:867
+#line 633 "parser.yy" // lalr1.cc:867
     {
       Py_DECREF((yystack_[2].value.obj));
       (yylhs.value.obj) = ctx->Value(kTuple);
@@ -2067,7 +2067,7 @@ namespace pytype {
     break;
 
   case 162:
-#line 635 "parser.yy" // lalr1.cc:867
+#line 638 "parser.yy" // lalr1.cc:867
     {
       Py_DECREF((yystack_[2].value.obj));
       (yylhs.value.obj) = ctx->Value(kTuple);
@@ -2076,7 +2076,7 @@ namespace pytype {
     break;
 
   case 163:
-#line 641 "parser.yy" // lalr1.cc:867
+#line 644 "parser.yy" // lalr1.cc:867
     {
       Py_DECREF((yystack_[1].value.obj));
       (yylhs.value.obj) = ctx->Value(kTuple);
@@ -2085,13 +2085,13 @@ namespace pytype {
     break;
 
   case 164:
-#line 648 "parser.yy" // lalr1.cc:867
+#line 651 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[0].value.obj); }
 #line 2091 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 165:
-#line 649 "parser.yy" // lalr1.cc:867
+#line 652 "parser.yy" // lalr1.cc:867
     {
 #if PY_MAJOR_VERSION >= 3
       (yystack_[2].value.obj) = PyUnicode_Concat((yystack_[2].value.obj), DOT_STRING);
@@ -2107,13 +2107,13 @@ namespace pytype {
     break;
 
   case 166:
-#line 663 "parser.yy" // lalr1.cc:867
+#line 666 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[0].value.obj); }
 #line 2113 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 167:
-#line 664 "parser.yy" // lalr1.cc:867
+#line 667 "parser.yy" // lalr1.cc:867
     {
       PyObject* slice = PySlice_New((yystack_[2].value.obj), (yystack_[0].value.obj), NULL);
       CHECK(slice, yylhs.location);
@@ -2123,7 +2123,7 @@ namespace pytype {
     break;
 
   case 168:
-#line 669 "parser.yy" // lalr1.cc:867
+#line 672 "parser.yy" // lalr1.cc:867
     {
       PyObject* slice = PySlice_New((yystack_[4].value.obj), (yystack_[2].value.obj), (yystack_[0].value.obj));
       CHECK(slice, yylhs.location);
@@ -2133,13 +2133,13 @@ namespace pytype {
     break;
 
   case 169:
-#line 677 "parser.yy" // lalr1.cc:867
+#line 680 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = (yystack_[0].value.obj); }
 #line 2139 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
 
   case 170:
-#line 678 "parser.yy" // lalr1.cc:867
+#line 681 "parser.yy" // lalr1.cc:867
     { (yylhs.value.obj) = NULL; }
 #line 2145 "pyi/parser.tab.cc" // lalr1.cc:867
     break;
@@ -2721,24 +2721,24 @@ namespace pytype {
   const unsigned short int
   parser::yyrline_[] =
   {
-       0,   129,   129,   130,   134,   138,   139,   140,   141,   147,
-     148,   149,   154,   158,   159,   162,   169,   180,   181,   182,
-     186,   187,   191,   192,   196,   197,   198,   202,   203,   207,
-     208,   213,   214,   219,   224,   227,   232,   236,   255,   258,
-     263,   267,   279,   283,   287,   291,   294,   297,   300,   303,
-     304,   305,   310,   311,   312,   318,   319,   320,   321,   322,
-     323,   327,   331,   335,   339,   343,   347,   351,   355,   362,
-     366,   370,   379,   380,   383,   384,   389,   390,   397,   398,
-     399,   403,   404,   408,   409,   412,   415,   418,   422,   426,
-     433,   434,   435,   436,   440,   441,   445,   449,   466,   467,
-     471,   475,   476,   488,   489,   493,   494,   495,   496,   500,
-     501,   505,   506,   507,   508,   512,   513,   517,   518,   522,
-     526,   527,   528,   532,   533,   534,   535,   536,   537,   538,
-     542,   543,   547,   548,   549,   553,   554,   558,   559,   563,
-     567,   571,   576,   580,   581,   582,   583,   584,   588,   589,
-     593,   594,   598,   602,   603,   607,   608,   612,   613,   620,
-     621,   630,   635,   641,   648,   649,   663,   664,   669,   677,
-     678,   682,   683
+       0,   132,   132,   133,   137,   141,   142,   143,   144,   150,
+     151,   152,   157,   161,   162,   165,   172,   183,   184,   185,
+     189,   190,   194,   195,   199,   200,   201,   205,   206,   210,
+     211,   216,   217,   222,   227,   230,   235,   239,   258,   261,
+     266,   270,   282,   286,   290,   294,   297,   300,   303,   306,
+     307,   308,   313,   314,   315,   321,   322,   323,   324,   325,
+     326,   330,   334,   338,   342,   346,   350,   354,   358,   365,
+     369,   373,   382,   383,   386,   387,   392,   393,   400,   401,
+     402,   406,   407,   411,   412,   415,   418,   421,   425,   429,
+     436,   437,   438,   439,   443,   444,   448,   452,   469,   470,
+     474,   478,   479,   491,   492,   496,   497,   498,   499,   503,
+     504,   508,   509,   510,   511,   515,   516,   520,   521,   525,
+     529,   530,   531,   535,   536,   537,   538,   539,   540,   541,
+     545,   546,   550,   551,   552,   556,   557,   561,   562,   566,
+     570,   574,   579,   583,   584,   585,   586,   587,   591,   592,
+     596,   597,   601,   605,   606,   610,   611,   615,   616,   623,
+     624,   633,   638,   644,   651,   652,   666,   667,   672,   680,
+     681,   685,   686
   };
 
   // Print the state stack on the debug stream.
@@ -2820,10 +2820,10 @@ namespace pytype {
       return undef_token_;
   }
 
-#line 14 "parser.yy" // lalr1.cc:1179
+#line 17 "parser.yy" // lalr1.cc:1179
 } // pytype
 #line 2826 "pyi/parser.tab.cc" // lalr1.cc:1179
-#line 686 "parser.yy" // lalr1.cc:1180
+#line 689 "parser.yy" // lalr1.cc:1180
 
 
 void pytype::parser::error(const location& loc, const std::string& msg) {
