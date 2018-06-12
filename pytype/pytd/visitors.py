@@ -2298,11 +2298,12 @@ class ClearClassPointers(Visitor):
     node.cls = None
 
 
-class ReplaceWithAnyReferenceVisitor(RemoveTypeParametersFromGenericAny):
+class ReplaceModulesWithAny(RemoveTypeParametersFromGenericAny):
   """Replace all references to modules in a list with AnythingType."""
 
   def __init__(self, module_list):
-    super(ReplaceWithAnyReferenceVisitor, self).__init__()
+    super(ReplaceModulesWithAny, self).__init__()
+    assert isinstance(module_list, list)
     self._any_modules = module_list
 
   def VisitNamedType(self, n):

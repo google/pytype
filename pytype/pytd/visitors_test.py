@@ -1056,17 +1056,17 @@ class TestAncestorMap(unittest.TestCase):
     self.assertNotIn("AnythingType", named_type)
 
 
-class ReplaceWithAnyReferenceVisitorTest(unittest.TestCase):
+class ReplaceModulesWithAnyTest(unittest.TestCase):
 
   def testAnyReplacement(self):
     class_type_match = pytd.ClassType("match.foo")
     named_type_match = pytd.NamedType("match.bar")
-    class_type_no_match = pytd.ClassType("no.match.foo")
-    named_type_no_match = pytd.NamedType("no.match.bar")
+    class_type_no_match = pytd.ClassType("match_no.foo")
+    named_type_no_match = pytd.NamedType("match_no.bar")
     generic_type_match = pytd.GenericType(class_type_match, ())
     generic_type_no_match = pytd.GenericType(class_type_no_match, ())
 
-    visitor = visitors.ReplaceWithAnyReferenceVisitor("match.")
+    visitor = visitors.ReplaceModulesWithAny(["match."])
     self.assertEqual(class_type_no_match, class_type_no_match.Visit(visitor))
     self.assertEqual(named_type_no_match, named_type_no_match.Visit(visitor))
     self.assertEqual(generic_type_no_match,
