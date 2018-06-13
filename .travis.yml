@@ -1,0 +1,31 @@
+os: linux
+
+sudo: enabled
+
+git:
+  submodules: true
+
+language: python
+
+# TODO(sivachandra): Add Python 3.6 here after the scripts are made Python 3
+# ready.
+python:
+  - "2.7"
+
+before_install:
+  - sudo apt-get install g++
+  - sudo apt-get install cmake
+  - sudo apt-get install bison
+  - sudo apt-get install flex
+  - sudo apt-get install ninja-build
+  # We need to install python-3.6 from a third party repo as it is not
+  # available as a standard package on Travis Trusty VMs.
+  - sudo add-apt-repository ppa:jonathonf/python-3.6 -y
+  - sudo apt-get update -q
+  - sudo apt-get install python3.6
+
+install:
+  - pip install pyyaml
+  - pip install six
+
+script: python buildutils/run_tests.py
