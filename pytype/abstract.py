@@ -19,6 +19,7 @@ from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
 from pytype.pytd import mro
+from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
@@ -2236,13 +2237,16 @@ class PyTDFunction(Function):
 
   def _call_with_signatures(self, node, func, args, view, signatures):
     """Perform a function call that involves multiple signatures."""
-    ret_type = self._make_union_of_multiple_returns(signatures)
-    log.debug("Unknown args. But return is %s", pytd.Print(ret_type))
-    result = self.vm.convert.constant_to_var(AsReturnValue(ret_type), {}, node)
-    if result is None:
+    ret_type = self._combine_multiple_returns(signatures)
+    if self.vm.options.protocols and isinstance(ret_type, pytd.AnythingType):
+      # We can infer a more specific type.
       log.debug("Creating unknown return")
       result = self.vm.convert.create_new_unknown(
           node, action="pytd_call")
+    else:
+      log.debug("Unknown args. But return is %s", pytd.Print(ret_type))
+      result = self.vm.convert.constant_to_var(
+          AsReturnValue(ret_type), {}, node)
     for i, arg in enumerate(args.posargs):
       if isinstance(view[arg].data, Unknown):
         for sig, _, _ in signatures:
@@ -2271,14 +2275,14 @@ class PyTDFunction(Function):
                        result)
     return node, result, mutations
 
-  def _make_union_of_multiple_returns(self, signatures):
-    """Combines multiple return types into a Union.
+  def _combine_multiple_returns(self, signatures):
+    """Combines multiple return types.
 
     Args:
       signatures: The candidate signatures.
 
     Returns:
-      A Union of the return types.
+      The combined return type.
     """
     options = []
     for sig, _, _ in signatures:
@@ -2292,7 +2296,12 @@ class PyTDFunction(Function):
         replace_visitor = visitors.ReplaceTypeParameters(replacement)
         t = t.Visit(replace_visitor)
       options.append(t)
-    return pytd_utils.JoinTypes(options)
+    if len(set(options)) == 1:
+      return options[0]
+    # Optimizing and then removing unions allows us to preserve as much
+    # precision as possible while avoiding false positives.
+    ret_type = optimize.Optimize(pytd_utils.JoinTypes(options))
+    return ret_type.Visit(visitors.ReplaceUnionsWithAny())
 
   def _yield_matching_signatures(self, node, args, view):
     """Try, in order, all pytd signatures, yielding matches."""

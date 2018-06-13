@@ -140,10 +140,10 @@ class BaseTest(unittest.TestCase):
   # TODO(kramm): Rename this function.
   # pylint: disable=invalid-name
   def Check(self, code, pythonpath=(), skip_repeat_calls=True,
-            report_errors=True, filename=None, **kwargs):
+            report_errors=True, filename=None, quick=False, **kwargs):
     """Run an inference smoke test for the given code."""
     self.ConfigureOptions(skip_repeat_calls=skip_repeat_calls,
-                          pythonpath=pythonpath)
+                          pythonpath=pythonpath, quick=quick)
     errorlog = errors.ErrorLog()
     try:
       analyze.check_types(

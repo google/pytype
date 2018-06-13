@@ -2318,6 +2318,12 @@ class ReplaceModulesWithAny(RemoveTypeParametersFromGenericAny):
     return self.VisitNamedType(n)
 
 
+class ReplaceUnionsWithAny(Visitor):
+
+  def VisitUnionType(self, _):
+    return pytd.AnythingType()
+
+
 class ClassTypeToLateType(Visitor):
   """Convert ClassType to LateType."""
 

@@ -483,9 +483,9 @@ class ContainerTest(test_base.TargetIndependentTest):
       y = divmod(x, 3.14)
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, Tuple, Union
+      from typing import Any, Tuple
       x = ...  # type: Any
-      y = ...  # type: Tuple[Union[complex, float], Union[complex, float]]
+      y = ...  # type: Tuple[Any, Any]
     """)
 
   def testIndex(self):

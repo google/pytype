@@ -415,9 +415,9 @@ class TestFunctions(test_base.TargetIndependentTest):
           return foo.f(x)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Any, List, Tuple, Union
+        from typing import Any
         foo = ... # type: module
-        def f(x) -> Union[List, Tuple[Any, Any]]
+        def f(x) -> Any
       """)
 
   def test_unknown_single_signature(self):
@@ -538,9 +538,9 @@ class TestFunctions(test_base.TargetIndependentTest):
           return foo.f(x)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Union
+        from typing import Any
         foo = ...  # type: module
-        def f(x) -> Union[bool, float]
+        def f(x) -> Any
       """)
 
   def test_multiple_signatures_with_optional_arg(self):
@@ -555,9 +555,9 @@ class TestFunctions(test_base.TargetIndependentTest):
           return foo.f(x)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Union
+        from typing import Any
         foo = ...  # type: module
-        def f(x) -> Union[float, int]
+        def f(x) -> Any
       """)
 
   def test_multiple_signatures_with_kwarg(self):
@@ -572,9 +572,9 @@ class TestFunctions(test_base.TargetIndependentTest):
           return foo.f(y=x)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Union
+        from typing import Any
         foo = ...  # type: module
-        def f(x) -> Union[bool, float]
+        def f(x) -> Any
       """)
 
   def test_isinstance(self):
@@ -840,6 +840,21 @@ class TestFunctions(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       struct = ...  # type: module
       def int2byte(*v) -> bytes: ...
+    """)
+
+  def test_preserve_return_union(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(x: int) -> int or str
+        def f(x: float) -> int or str
+      """)
+      ty = self.Infer("""
+        import foo
+        v = foo.f(__any_object__)
+      """, pythonpath=[d.path])
+    self.assertTypesMatchPytd(ty, """
+      foo = ...  # type: module
+      v = ...  # type: int or str
     """)
 
 

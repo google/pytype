@@ -17,8 +17,8 @@ class BuiltinTests2(test_base.TargetIndependentTest):
         return divmod(3, y)
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Tuple, Union
-      def f(x, y) -> Tuple[Union[complex, float, int], Union[complex, float, int]]
+      from typing import Any, Tuple
+      def f(x, y) -> Tuple[Any, Any]
     """)
 
   def testDefaultDict(self):

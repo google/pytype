@@ -1084,5 +1084,13 @@ class ReplaceModulesWithAnyTest(unittest.TestCase):
                      generic_type_match.Visit(visitor).__class__)
 
 
+class ReplaceUnionsWithAnyTest(unittest.TestCase):
+
+  def testAnyReplacement(self):
+    union = pytd.UnionType((pytd.NamedType("a"), pytd.NamedType("b")))
+    self.assertEqual(
+        union.Visit(visitors.ReplaceUnionsWithAny()), pytd.AnythingType())
+
+
 if __name__ == "__main__":
   unittest.main()
