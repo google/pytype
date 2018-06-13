@@ -20,6 +20,8 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.pytd.parse import parser_test_base
+import six
+
 import unittest
 
 
@@ -164,11 +166,11 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     tree = self.Parse(src)
     data = tree.Visit(visitors.ExtractSuperClassesByName())
-    self.assertItemsEqual(("classobj",), data["A"])
-    self.assertItemsEqual(("classobj",), data["B"])
-    self.assertItemsEqual(("A",), data["C"])
-    self.assertItemsEqual(("A", "B"), data["D"])
-    self.assertItemsEqual(("A", "C", "D"), data["E"])
+    six.assertCountEqual(self, ("classobj",), data["A"])
+    six.assertCountEqual(self, ("classobj",), data["B"])
+    six.assertCountEqual(self, ("A",), data["C"])
+    six.assertCountEqual(self, ("A", "B"), data["D"])
+    six.assertCountEqual(self, ("A", "C", "D"), data["E"])
 
   def testSuperClasses(self):
     src = textwrap.dedent("""
@@ -187,12 +189,15 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     ast = visitors.LookupClasses(self.Parse(src))
     data = ast.Visit(visitors.ExtractSuperClasses())
-    self.assertItemsEqual(["classobj"], [t.name for t in data[ast.Lookup("A")]])
-    self.assertItemsEqual(["classobj"], [t.name for t in data[ast.Lookup("B")]])
-    self.assertItemsEqual(["A"], [t.name for t in data[ast.Lookup("C")]])
-    self.assertItemsEqual(["A", "B"], [t.name for t in data[ast.Lookup("D")]])
-    self.assertItemsEqual(["C", "D", "A"],
-                          [t.name for t in data[ast.Lookup("E")]])
+    six.assertCountEqual(self,
+                         ["classobj"], [t.name for t in data[ast.Lookup("A")]])
+    six.assertCountEqual(self,
+                         ["classobj"], [t.name for t in data[ast.Lookup("B")]])
+    six.assertCountEqual(self, ["A"], [t.name for t in data[ast.Lookup("C")]])
+    six.assertCountEqual(self,
+                         ["A", "B"], [t.name for t in data[ast.Lookup("D")]])
+    six.assertCountEqual(self, ["C", "D", "A"],
+                         [t.name for t in data[ast.Lookup("E")]])
 
   def testStripSelf(self):
     src = textwrap.dedent("""

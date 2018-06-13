@@ -751,10 +751,11 @@ class TestOptimize(parser_test_base.ParserTest):
     """)
     ast = self.Parse(src)
     ast = visitors.LookupClasses(ast, self.builtins)
-    self.assertItemsEqual(("g", "h"), [m.name for m in ast.Lookup("B").methods])
+    six.assertCountEqual(self,
+                         ("g", "h"), [m.name for m in ast.Lookup("B").methods])
     ast = ast.Visit(optimize.AddInheritedMethods())
-    self.assertItemsEqual(("f", "g", "h"),
-                          [m.name for m in ast.Lookup("B").methods])
+    six.assertCountEqual(self, ("f", "g", "h"),
+                         [m.name for m in ast.Lookup("B").methods])
 
   def testAdjustInheritedMethodSelf(self):
     src = textwrap.dedent("""

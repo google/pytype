@@ -380,8 +380,9 @@ class MatcherTest(unittest.TestCase):
     dummy_instance = abstract.Instance(self.vm.convert.tuple_type, self.vm)
     left = abstract.TypeParameterInstance(right, dummy_instance, self.vm)
     for result in self._match_var(left, right):
-      self.assertItemsEqual([(name, var.data) for name, var in result.items()],
-                            [("AnyStr", [left])])
+      six.assertCountEqual(self,
+                           [(name, var.data) for name, var in result.items()],
+                           [("AnyStr", [left])])
 
   def testProtocol(self):
     left1 = self._convert_type("str", as_instance=True)

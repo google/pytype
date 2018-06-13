@@ -6,6 +6,8 @@ from pytype import file_utils
 from pytype.pyi import parser
 from pytype.pytd import visitors
 from pytype.tests import test_base
+
+import six
 from six.moves import cPickle
 
 
@@ -22,16 +24,16 @@ class PickleTest(test_base.TargetIndependentTest):
   def _verifyDeps(self, module, immediate_deps, late_deps):
     if isinstance(module, bytes):
       data = cPickle.loads(module)
-      self.assertItemsEqual(data.dependencies, immediate_deps)
+      six.assertCountEqual(self, data.dependencies, immediate_deps)
       ast = data.ast
     else:
       c = visitors.CollectDependencies()
       module.Visit(c)
-      self.assertItemsEqual(c.modules, immediate_deps)
+      six.assertCountEqual(self, c.modules, immediate_deps)
       ast = module
     c = visitors.CollectLateDependencies()
     ast.Visit(c)
-    self.assertItemsEqual(c.modules, late_deps)
+    six.assertCountEqual(self, c.modules, late_deps)
 
   def testType(self):
     pickled = self.Infer("""

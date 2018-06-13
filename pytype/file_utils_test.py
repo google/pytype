@@ -3,6 +3,7 @@
 import os
 
 from pytype import file_utils
+import six
 
 import unittest
 
@@ -70,7 +71,8 @@ class FileUtilsTest(unittest.TestCase):
     with file_utils.Tempdir() as d:
       fs = [d.create_file(f) for f in files]
       pyfiles = [f for f in fs if f.endswith(".py")]
-      self.assertItemsEqual(pyfiles, file_utils.collect_files(d.path, ".py"))
+      six.assertCountEqual(self,
+                           pyfiles, file_utils.collect_files(d.path, ".py"))
 
 
 class TestPathExpansion(unittest.TestCase):
@@ -104,7 +106,8 @@ class TestExpandSourceFiles(unittest.TestCase):
     with file_utils.Tempdir() as d:
       fs = [d.create_file(f) for f in self.FILES]
       pyfiles = [f for f in fs if f.endswith(".py")]
-      self.assertItemsEqual(
+      six.assertCountEqual(
+          self,
           pyfiles,
           file_utils.expand_source_files(args, d.path))
 
@@ -120,8 +123,8 @@ class TestExpandSourceFiles(unittest.TestCase):
       pyfiles = [f for f in fs if f.endswith(".py")]
       # cd to d.path and run with just "." as an argument
       with file_utils.cd(d.path):
-        self.assertItemsEqual(
-            pyfiles, file_utils.expand_source_files("."))
+        six.assertCountEqual(
+            self, pyfiles, file_utils.expand_source_files("."))
 
 
 class TestExpandPythonpath(unittest.TestCase):

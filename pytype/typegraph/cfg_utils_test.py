@@ -4,6 +4,8 @@ import itertools
 
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
+import six
+
 import unittest
 
 
@@ -35,7 +37,7 @@ class CFGUtilTest(unittest.TestCase):
     w.AddBinding(1, source_set=[u1], where=n1)
     w.AddBinding(3, source_set=[], where=n1)
     vw = cfg_utils.merge_variables(p, n2, [v, w])
-    self.assertItemsEqual(vw.data, [1, 2, 3])
+    six.assertCountEqual(self, vw.data, [1, 2, 3])
     val1, = [v for v in vw.bindings if v.data == 1]
     self.assertTrue(val1.HasSource(u1))
 
@@ -47,8 +49,8 @@ class CFGUtilTest(unittest.TestCase):
     v2 = u.AddBinding("2", source_set=[], where=n0)
     w1 = cfg_utils.merge_bindings(p, None, [u1, v2])
     w2 = cfg_utils.merge_bindings(p, n0, [u1, v2])
-    self.assertItemsEqual(w1.data, ["1", "2"])
-    self.assertItemsEqual(w2.data, ["1", "2"])
+    six.assertCountEqual(self, w1.data, ["1", "2"])
+    six.assertCountEqual(self, w2.data, ["1", "2"])
 
   def _create_nodes(self, node_id, node, num_nodes):
     """Create a chain of nodes. Used by _create_program_nodes.
@@ -134,7 +136,7 @@ class VariableProductTest(unittest.TestCase):
     product = cfg_utils.variable_product([u1, u2])
     pairs = [[a.data for a in d]
              for d in product]
-    self.assertItemsEqual(pairs, [
+    six.assertCountEqual(self, pairs, [
         [1, 3],
         [1, 4],
         [2, 3],
@@ -187,7 +189,7 @@ class VariableProductTest(unittest.TestCase):
     product = cfg_utils.deep_variable_product([v1, v4])
     rows = [{a.data for a in row}
             for row in product]
-    self.assertItemsEqual(rows, [
+    six.assertCountEqual(self, rows, [
         {x1, x3, x4, x6},
         {x1, x3, x5, x6},
         {x2, x6},
@@ -201,7 +203,7 @@ class VariableProductTest(unittest.TestCase):
     product = cfg_utils.deep_variable_product([v1])
     rows = [{a.data for a in row}
             for row in product]
-    self.assertItemsEqual(rows, [{x1}])
+    six.assertCountEqual(self, rows, [{x1}])
 
   def testDeepVariableProductWithEmptyTopLayer(self):
     x1 = DummyValue(1)
@@ -210,7 +212,7 @@ class VariableProductTest(unittest.TestCase):
     product = cfg_utils.deep_variable_product([v1, v2])
     rows = [{a.data for a in row}
             for row in product]
-    self.assertItemsEqual(rows, [{x1}])
+    six.assertCountEqual(self, rows, [{x1}])
 
   def testDeepVariableProductWithCycle(self):
     x1, x2, x3, x4, x5, x6 = [DummyValue(i + 1) for i in range(6)]
@@ -223,7 +225,7 @@ class VariableProductTest(unittest.TestCase):
     product = cfg_utils.deep_variable_product([v1, v4])
     rows = [{a.data for a in row}
             for row in product]
-    self.assertItemsEqual(rows, [
+    six.assertCountEqual(self, rows, [
         {x1, x3, x4, x6},
         {x1, x2, x3, x5, x6},
         {x1, x3, x5, x6},
@@ -235,7 +237,7 @@ class VariableProductTest(unittest.TestCase):
     u2 = self.prog.NewVariable([3, 4], [], self.current_location)
     product = cfg_utils.variable_product_dict({"a": u1, "b": u2})
     pairs = [{k: a.data for k, a in d.items()} for d in product]
-    self.assertItemsEqual(pairs, [
+    six.assertCountEqual(self, pairs, [
         {"a": 1, "b": 3},
         {"a": 1, "b": 4},
         {"a": 2, "b": 3},
@@ -293,31 +295,31 @@ class GraphUtilTest(unittest.TestCase):
     # will still be fully explored.
     nodes = [n7, n1, n20, n3, n4, n5, n6]
     r = cfg_utils.compute_predecessors(nodes)
-    self.assertItemsEqual(r[n1], {n1})
-    self.assertItemsEqual(r[n20], {n1, n20, n3, n4, n5})
-    self.assertItemsEqual(r[n3], {n1, n20, n3, n4, n5})
-    self.assertItemsEqual(r[n4], {n1, n20, n3, n4, n5})
-    self.assertItemsEqual(r[n5], {n1, n20, n3, n4, n5})
-    self.assertItemsEqual(r[n6], {n1, n20, n3, n4, n5, n6})
-    self.assertItemsEqual(r[n7], {n1, n7})
+    six.assertCountEqual(self, r[n1], {n1})
+    six.assertCountEqual(self, r[n20], {n1, n20, n3, n4, n5})
+    six.assertCountEqual(self, r[n3], {n1, n20, n3, n4, n5})
+    six.assertCountEqual(self, r[n4], {n1, n20, n3, n4, n5})
+    six.assertCountEqual(self, r[n5], {n1, n20, n3, n4, n5})
+    six.assertCountEqual(self, r[n6], {n1, n20, n3, n4, n5, n6})
+    six.assertCountEqual(self, r[n7], {n1, n7})
 
   def testOrderNodes0(self):
     order = cfg_utils.order_nodes([])
-    self.assertItemsEqual(order, [])
+    six.assertCountEqual(self, order, [])
 
   def testOrderNodes1(self):
     # n1 --> n2
     n1 = self.prog.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
     order = cfg_utils.order_nodes([n1, n2])
-    self.assertItemsEqual([n1, n2], order)
+    six.assertCountEqual(self, [n1, n2], order)
 
   def testOrderNodes2(self):
     # n1   n2(dead)
     n1 = self.prog.NewCFGNode("n1")
     n2 = self.prog.NewCFGNode("n2")
     order = cfg_utils.order_nodes([n1, n2])
-    self.assertItemsEqual([n1], order)
+    six.assertCountEqual(self, [n1], order)
 
   def testOrderNodes3(self):
     # n1 --> n2 --> n3
@@ -328,7 +330,7 @@ class GraphUtilTest(unittest.TestCase):
     n3 = n2.ConnectNew("n3")
     n3.ConnectTo(n1)
     order = cfg_utils.order_nodes([n1, n2, n3])
-    self.assertItemsEqual([n1, n2, n3], order)
+    six.assertCountEqual(self, [n1, n2, n3], order)
 
   def testOrderNodes4(self):
     # n1 --> n3 --> n2
@@ -339,7 +341,7 @@ class GraphUtilTest(unittest.TestCase):
     n2 = n3.ConnectNew("n2")
     n3.ConnectTo(n1)
     order = cfg_utils.order_nodes([n1, n2, n3])
-    self.assertItemsEqual([n1, n3, n2], order)
+    six.assertCountEqual(self, [n1, n3, n2], order)
 
   def testOrderNodes5(self):
     # n1 --> n3 --> n2
@@ -351,7 +353,7 @@ class GraphUtilTest(unittest.TestCase):
     n3.ConnectTo(n1)
     n4 = self.prog.NewCFGNode("n4")
     order = cfg_utils.order_nodes([n1, n2, n3, n4])
-    self.assertItemsEqual([n1, n3, n2], order)
+    six.assertCountEqual(self, [n1, n3, n2], order)
 
   def testOrderNodes6(self):
     #  +-------------------+
@@ -367,7 +369,7 @@ class GraphUtilTest(unittest.TestCase):
     n5 = n3.ConnectNew("n5")
     n1.ConnectTo(n5)
     order = cfg_utils.order_nodes([n1, n5, n4, n3, n2])
-    self.assertItemsEqual([n1, n2, n3, n4, n5], order)
+    six.assertCountEqual(self, [n1, n2, n3, n4, n5], order)
 
   def testOrderNodes7(self):
     #  +---------------------------------+
@@ -388,7 +390,7 @@ class GraphUtilTest(unittest.TestCase):
     n8.ConnectTo(n4)
     n1.ConnectTo(n6)
     order = cfg_utils.order_nodes([n1, n2, n3, n4, n5, n6, n7, n8])
-    self.assertItemsEqual([n1, n2, n3, n7, n4, n5, n8, n6], order)
+    six.assertCountEqual(self, [n1, n2, n3, n7, n4, n5, n8, n6], order)
 
   def testTopologicalSort(self):
     n1 = Node("1")

@@ -24,6 +24,8 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd.parse import parser_test_base
 
+import six
+
 
 class TestUtils(parser_test_base.ParserTest):
   """Test pytype.pytd.pytd_utils."""
@@ -37,9 +39,9 @@ class TestUtils(parser_test_base.ParserTest):
     c1 = ast.Lookup("c1").type
     c2 = ast.Lookup("c2").type
     c3 = ast.Lookup("c3").type
-    self.assertItemsEqual(pytd_utils.UnpackUnion(c1), c1.type_list)
-    self.assertItemsEqual(pytd_utils.UnpackUnion(c2), [c2])
-    self.assertItemsEqual(pytd_utils.UnpackUnion(c3), [c3])
+    six.assertCountEqual(self, pytd_utils.UnpackUnion(c1), c1.type_list)
+    six.assertCountEqual(self, pytd_utils.UnpackUnion(c2), [c2])
+    six.assertCountEqual(self, pytd_utils.UnpackUnion(c3), [c3])
 
   def testConcat(self):
     """Test for concatenating two pytd ASTs."""
@@ -233,16 +235,16 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertTrue("foo" in a)
     self.assertTrue("bar" in a)
     self.assertEqual(a.copy(), a.m)
-    self.assertItemsEqual(iter(a), ["foo", "bar"])
-    self.assertItemsEqual(a.keys(), ["foo", "bar"])
-    self.assertItemsEqual(a.viewkeys(), ["foo", "bar"])
-    self.assertItemsEqual(a.iterkeys(), ["foo", "bar"])
-    self.assertItemsEqual(a.values(), [1, 2])
-    self.assertItemsEqual(a.viewvalues(), [1, 2])
-    self.assertItemsEqual(a.itervalues(), [1, 2])
-    self.assertItemsEqual(a.items(), [("foo", 1), ("bar", 2)])
-    self.assertItemsEqual(a.viewitems(), [("foo", 1), ("bar", 2)])
-    self.assertItemsEqual(a.iteritems(), [("foo", 1), ("bar", 2)])
+    six.assertCountEqual(self, iter(a), ["foo", "bar"])
+    six.assertCountEqual(self, a.keys(), ["foo", "bar"])
+    six.assertCountEqual(self, a.viewkeys(), ["foo", "bar"])
+    six.assertCountEqual(self, a.iterkeys(), ["foo", "bar"])
+    six.assertCountEqual(self, a.values(), [1, 2])
+    six.assertCountEqual(self, a.viewvalues(), [1, 2])
+    six.assertCountEqual(self, a.itervalues(), [1, 2])
+    six.assertCountEqual(self, a.items(), [("foo", 1), ("bar", 2)])
+    six.assertCountEqual(self, a.viewitems(), [("foo", 1), ("bar", 2)])
+    six.assertCountEqual(self, a.iteritems(), [("foo", 1), ("bar", 2)])
     self.assertFalse(hasattr(a, "popitem"))
 
   def testWrapsWritableDict(self):
@@ -269,9 +271,9 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertEqual(a["1"], 1)
     self.assertEqual(a["2"], 22)
     a.update({"3": 33})
-    self.assertItemsEqual(a.items(), (("1", 1), ("2", 22), ("3", 33)))
+    six.assertCountEqual(self, a.items(), (("1", 1), ("2", 22), ("3", 33)))
     a.clear()
-    self.assertItemsEqual(a.items(), ())
+    six.assertCountEqual(self, a.items(), ())
 
   def testWrapsDictWithLength(self):
     class A(pytd_utils.WrapsDict("m", implement_len=True)):

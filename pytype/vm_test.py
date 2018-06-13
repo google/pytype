@@ -11,6 +11,8 @@ from pytype import vm
 from pytype.pyc import pyc
 from pytype.tests import test_base
 
+import six
+
 
 class TraceVM(vm.VirtualMachine):
   """Special VM that remembers which instructions it executed."""
@@ -140,8 +142,8 @@ class BytecodeTest(test_base.BaseTest, test_base.MakeCodeMixin):
                      self.code_nested_loop)
     self.trace_vm.run_program(self.src_nested_loop, "", maximum_depth=10)
     # We expect all instructions, except 26, in the above to execute.
-    self.assertItemsEqual(self.trace_vm.instructions_executed,
-                          set(range(32)) - {26})
+    six.assertCountEqual(self, self.trace_vm.instructions_executed,
+                         set(range(32)) - {26})
 
   src_deadcode = textwrap.dedent("""
     if False:
@@ -175,7 +177,8 @@ class BytecodeTest(test_base.BaseTest, test_base.MakeCodeMixin):
       self.trace_vm.run_program(self.src_deadcode, "", maximum_depth=10)
     except vm.VirtualMachineError:
       pass  # The code we test throws an exception. Ignore it.
-    self.assertItemsEqual(self.trace_vm.instructions_executed, [0, 1, 5, 6])
+    six.assertCountEqual(self,
+                         self.trace_vm.instructions_executed, [0, 1, 5, 6])
 
 
 test_base.main(globals(), __name__ == "__main__")

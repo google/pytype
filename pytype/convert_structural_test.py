@@ -8,6 +8,8 @@ from pytype import load_pytd
 from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import visitors
+import six
+
 import unittest
 
 
@@ -42,8 +44,8 @@ class MatchTest(unittest.TestCase):
       class `~unknown1`(object):
         def __add__(self, _1: `~unknown2`) -> int
     """)
-    self.assertItemsEqual(["int", "bool"], mapping["~unknown1"])
-    self.assertItemsEqual(["int", "bool"], mapping["~unknown2"])
+    six.assertCountEqual(self, ["int", "bool"], mapping["~unknown1"])
+    six.assertCountEqual(self, ["int", "bool"], mapping["~unknown2"])
 
   @unittest.skip("Moving to protocols")
   def test_float_and_bytearray(self):
@@ -55,8 +57,8 @@ class MatchTest(unittest.TestCase):
         def __add__(self, _1: str) -> bytearray
         def __add__(self, _1: bytearray) -> bytearray
       """)
-    self.assertItemsEqual(["float"], mapping["~unknown1"])
-    self.assertItemsEqual(["bytearray"], mapping["~unknown2"])
+    six.assertCountEqual(self, ["float"], mapping["~unknown1"])
+    six.assertCountEqual(self, ["bytearray"], mapping["~unknown2"])
 
   @unittest.skip("Moving to protocols")
   def test_float_and_bytearray2(self):
@@ -66,8 +68,8 @@ class MatchTest(unittest.TestCase):
       class `~unknown2`(object):
         def __add__(self, _1: bytearray) -> bytearray
       """)
-    self.assertItemsEqual(["float"], mapping["~unknown1"])
-    self.assertItemsEqual(["str", "bytearray"], mapping["~unknown2"])
+    six.assertCountEqual(self, ["float"], mapping["~unknown1"])
+    six.assertCountEqual(self, ["str", "bytearray"], mapping["~unknown2"])
 
   @unittest.skip("Moving to protocols")
   def test_append(self):
@@ -75,9 +77,10 @@ class MatchTest(unittest.TestCase):
       class `~unknown1`(object):
         def append(self, _1: int) -> NoneType
     """)
-    self.assertItemsEqual(["list", "bytearray",
-                           "typing.List", "typing.MutableSequence"],
-                          mapping["~unknown1"])
+    six.assertCountEqual(self,
+                         ["list", "bytearray", "typing.List",
+                          "typing.MutableSequence"],
+                         mapping["~unknown1"])
 
   @unittest.skip("Moving to protocols")
   def test_single_list(self):
@@ -87,9 +90,11 @@ class MatchTest(unittest.TestCase):
         def append(self, _1: float) -> NoneType
     """)
     convert_structural.log_info_mapping(mapping)
-    self.assertItemsEqual(["list", "typing.MutableSequence", "typing.List"],
-                          mapping["~unknown1"])
-    self.assertItemsEqual(["float"], mapping["~unknown1.__builtin__.list._T"])
+    six.assertCountEqual(self,
+                         ["list", "typing.MutableSequence", "typing.List"],
+                         mapping["~unknown1"])
+    six.assertCountEqual(self,
+                         ["float"], mapping["~unknown1.__builtin__.list._T"])
 
   @unittest.skip("Moving to protocols")
   def test_list(self):
@@ -103,10 +108,12 @@ class MatchTest(unittest.TestCase):
         def __add__(self: float, _1: float) -> float
       """)
     convert_structural.log_info_mapping(mapping)
-    self.assertItemsEqual(["float"], mapping["~unknown1"])
-    self.assertItemsEqual(["list", "typing.List", "typing.MutableSequence"],
-                          mapping["~unknown2"])
-    self.assertItemsEqual(["float"], mapping["~unknown2.__builtin__.list._T"])
+    six.assertCountEqual(self, ["float"], mapping["~unknown1"])
+    six.assertCountEqual(self,
+                         ["list", "typing.List", "typing.MutableSequence"],
+                         mapping["~unknown2"])
+    six.assertCountEqual(self,
+                         ["float"], mapping["~unknown2.__builtin__.list._T"])
 
   @unittest.skip("Moving to protocols")
   def test_float_list(self):
@@ -116,9 +123,12 @@ class MatchTest(unittest.TestCase):
         def __getitem__(self, _1: int) -> float
       """)
     convert_structural.log_info_mapping(mapping)
-    self.assertItemsEqual(["list", "typing.List", "typing.MutableSequence"],
-                          mapping["~unknown1"])
-    self.assertItemsEqual(["float"], mapping["~unknown1.__builtin__.list._T"])
+    six.assertCountEqual(self,
+                         ["list", "typing.List", "typing.MutableSequence"],
+                         mapping["~unknown1"])
+    six.assertCountEqual(self,
+                         ["float"],
+                         mapping["~unknown1.__builtin__.list._T"])
 
   @unittest.skip("Moving to protocols")
   def test_two_lists(self):
@@ -128,13 +138,16 @@ class MatchTest(unittest.TestCase):
       class `~unknown2`(object):
         def insert(self: list, _1: int, _2: float) -> NoneType
       """)
-    self.assertItemsEqual(["list", "typing.List", "typing.MutableSequence"],
-                          mapping["~unknown1"])
-    self.assertItemsEqual(["list", "typing.List", "typing.MutableSequence"],
-                          mapping["~unknown2"])
-    self.assertItemsEqual(["NoneType"],
-                          mapping["~unknown1.__builtin__.list._T"])
-    self.assertItemsEqual(["float"], mapping["~unknown2.__builtin__.list._T"])
+    six.assertCountEqual(self,
+                         ["list", "typing.List", "typing.MutableSequence"],
+                         mapping["~unknown1"])
+    six.assertCountEqual(self,
+                         ["list", "typing.List", "typing.MutableSequence"],
+                         mapping["~unknown2"])
+    six.assertCountEqual(self,
+                         ["NoneType"], mapping["~unknown1.__builtin__.list._T"])
+    six.assertCountEqual(self,
+                         ["float"], mapping["~unknown2.__builtin__.list._T"])
 
   @unittest.skip("Moving to protocols")
   def test_float(self):
@@ -142,7 +155,7 @@ class MatchTest(unittest.TestCase):
       class `~unknown1`(object):
         def __add__(self, _1: int) -> float
     """)
-    self.assertItemsEqual(["float"], mapping["~unknown1"])
+    six.assertCountEqual(self, ["float"], mapping["~unknown1"])
 
   @unittest.skip("Moving to protocols")
   def test_or(self):
@@ -152,7 +165,7 @@ class MatchTest(unittest.TestCase):
         def join(self, _1: unicode) -> unicode
         def join(self, _1: Iterator[str]) -> str
     """)
-    self.assertItemsEqual(["str"], mapping["~unknown1"])
+    six.assertCountEqual(self, ["str"], mapping["~unknown1"])
 
   @unittest.skip("Moving to protocols")
   def test_multiple(self):
@@ -170,13 +183,15 @@ class MatchTest(unittest.TestCase):
       class `~unknown4`(object):
         def append(self, _1: NoneType) -> NoneType
     """)
-    self.assertItemsEqual(["float"], mapping["~unknown1"])
-    self.assertItemsEqual(["bytearray"], mapping["~unknown2"])
-    self.assertItemsEqual(["str"], mapping["~unknown3"])
-    self.assertItemsEqual(["list", "typing.MutableSequence", "typing.List"],
-                          mapping["~unknown4"])
-    self.assertItemsEqual(["NoneType"],
-                          mapping["~unknown4.__builtin__.list._T"])
+    six.assertCountEqual(self, ["float"], mapping["~unknown1"])
+    six.assertCountEqual(self, ["bytearray"], mapping["~unknown2"])
+    six.assertCountEqual(self, ["str"], mapping["~unknown3"])
+    six.assertCountEqual(self,
+                         ["list", "typing.MutableSequence", "typing.List"],
+                         mapping["~unknown4"])
+    six.assertCountEqual(self,
+                         ["NoneType"],
+                         mapping["~unknown4.__builtin__.list._T"])
 
   @unittest.skip("Moving to protocols")
   def test_union(self):
@@ -186,8 +201,8 @@ class MatchTest(unittest.TestCase):
       class `~unknown2`(object):
         def __add__(self, _1: bytearray) -> bytearray
     """)
-    self.assertItemsEqual(["float"], mapping["~unknown1"])
-    self.assertItemsEqual(["str", "bytearray"], mapping["~unknown2"])
+    six.assertCountEqual(self, ["float"], mapping["~unknown1"])
+    six.assertCountEqual(self, ["str", "bytearray"], mapping["~unknown2"])
 
   @unittest.skip("Moving to protocols")
   def test_containers(self):
@@ -197,7 +212,7 @@ class MatchTest(unittest.TestCase):
       class A(object):
         def foo(self, x: list[int]) -> int
     """)
-    self.assertItemsEqual(["A"], mapping["~unknown1"])
+    six.assertCountEqual(self, ["A"], mapping["~unknown1"])
 
   @unittest.skip("Moving to protocols")
   def test_type_parameters(self):
@@ -211,8 +226,8 @@ class MatchTest(unittest.TestCase):
         def foo(self) -> ?
         def bar(self, x: int) -> ?
     """)
-    self.assertItemsEqual(["A"], mapping["~unknown1"])
-    self.assertItemsEqual(["int"], mapping["~unknown1.A.T"])
+    six.assertCountEqual(self, ["A"], mapping["~unknown1"])
+    six.assertCountEqual(self, ["int"], mapping["~unknown1.A.T"])
 
   @unittest.skip("Moving to protocols")
   def test_generic_against_generic(self):
@@ -228,8 +243,8 @@ class MatchTest(unittest.TestCase):
       class `~unknown2`(object):
         def g(self, x: list[int]) -> ?
     """)
-    self.assertItemsEqual(["A"], mapping["~unknown1"])
-    self.assertItemsEqual(["B"], mapping["~unknown2"])
+    six.assertCountEqual(self, ["A"], mapping["~unknown1"])
+    six.assertCountEqual(self, ["B"], mapping["~unknown2"])
 
   @unittest.skip("Moving to protocols")
   def test_unknown_against_generic(self):
@@ -247,11 +262,12 @@ class MatchTest(unittest.TestCase):
       class `~unknown8`():
         pass
     """)
-    self.assertItemsEqual(["dict"], mapping["~unknown0"])
+    six.assertCountEqual(self, ["dict"], mapping["~unknown0"])
     self.assertContainsSubset(["complex", "float"],
                               mapping["~unknown0.__builtin__.dict._V"])
-    self.assertItemsEqual(["dict_values"], mapping["~unknown2"])
-    self.assertItemsEqual(["dictionary-valueiterator"], mapping["~unknown4"])
+    six.assertCountEqual(self, ["dict_values"], mapping["~unknown2"])
+    six.assertCountEqual(self,
+                         ["dictionary-valueiterator"], mapping["~unknown4"])
     self.assertContainsSubset(["complex", "float"], mapping["~unknown6"])
     self.assertContainsSubset(["complex", "float"], mapping["~unknown8"])
 
@@ -269,10 +285,10 @@ class MatchTest(unittest.TestCase):
       class `~unknown4`(object):
         def f(self, x: ?) -> list[bool]
     """)
-    self.assertItemsEqual(["A"], mapping["~unknown1"])
-    self.assertItemsEqual([], mapping["~unknown2"])
-    self.assertItemsEqual([], mapping["~unknown3"])
-    self.assertItemsEqual(["A"], mapping["~unknown4"])
+    six.assertCountEqual(self, ["A"], mapping["~unknown1"])
+    six.assertCountEqual(self, [], mapping["~unknown2"])
+    six.assertCountEqual(self, [], mapping["~unknown3"])
+    six.assertCountEqual(self, ["A"], mapping["~unknown4"])
 
   @unittest.skip("Moving to protocols")
   def test_subclass(self):
@@ -298,10 +314,10 @@ class MatchTest(unittest.TestCase):
       class `~unknown4`(object):
         def foo(self, x: B) -> B
     """)
-    self.assertItemsEqual(["AA"], mapping["~unknown1"])
-    self.assertItemsEqual(["AA", "AB"], mapping["~unknown2"])
-    self.assertItemsEqual(["AA", "BA"], mapping["~unknown3"])
-    self.assertItemsEqual(["AA", "AB", "BA", "BB"], mapping["~unknown4"])
+    six.assertCountEqual(self, ["AA"], mapping["~unknown1"])
+    six.assertCountEqual(self, ["AA", "AB"], mapping["~unknown2"])
+    six.assertCountEqual(self, ["AA", "BA"], mapping["~unknown3"])
+    six.assertCountEqual(self, ["AA", "AB", "BA", "BB"], mapping["~unknown4"])
 
   @unittest.skip("Moving to protocols")
   def test_odd_superclass(self):
@@ -334,8 +350,8 @@ class MatchTest(unittest.TestCase):
         def __add__(self, _1: int) -> int
         def foobar(self) -> NoneType
     """)
-    self.assertItemsEqual(["int", "bool"], mapping["~unknown1"])
-    self.assertItemsEqual(["A"], mapping["~unknown2"])
+    six.assertCountEqual(self, ["int", "bool"], mapping["~unknown1"])
+    six.assertCountEqual(self, ["A"], mapping["~unknown2"])
 
   @unittest.skip("Moving to protocols")
   def test_nothing(self):
@@ -357,10 +373,10 @@ class MatchTest(unittest.TestCase):
       class `~unknown4`(object):
         def f(self, x:int) -> int
     """)
-    self.assertItemsEqual(["A", "B", "C", "D"], mapping["~unknown1"])
-    self.assertItemsEqual(["B", "D"], mapping["~unknown2"])
-    self.assertItemsEqual(["C", "D"], mapping["~unknown3"])
-    self.assertItemsEqual(["D"], mapping["~unknown4"])
+    six.assertCountEqual(self, ["A", "B", "C", "D"], mapping["~unknown1"])
+    six.assertCountEqual(self, ["B", "D"], mapping["~unknown2"])
+    six.assertCountEqual(self, ["C", "D"], mapping["~unknown3"])
+    six.assertCountEqual(self, ["D"], mapping["~unknown4"])
 
   @unittest.skip("Moving to protocols")
   def test_unknown(self):
@@ -380,7 +396,7 @@ class MatchTest(unittest.TestCase):
         def f(self, x:int) -> int
     """)
     convert_structural.log_info_mapping(mapping)
-    self.assertItemsEqual(["A", "B", "C", "D"], mapping["~unknown1"])
+    six.assertCountEqual(self, ["A", "B", "C", "D"], mapping["~unknown1"])
 
   @unittest.skip("Moving to protocols")
   def test_union_left_right(self):
@@ -400,9 +416,9 @@ class MatchTest(unittest.TestCase):
       class `~unknown3`(object):
         def f(self, x:int) -> int or float
     """)
-    self.assertItemsEqual(["A", "B", "C", "D"], mapping["~unknown1"])
-    self.assertItemsEqual(["C", "D"], mapping["~unknown2"])
-    self.assertItemsEqual(["B", "D"], mapping["~unknown3"])
+    six.assertCountEqual(self, ["A", "B", "C", "D"], mapping["~unknown1"])
+    six.assertCountEqual(self, ["C", "D"], mapping["~unknown2"])
+    six.assertCountEqual(self, ["B", "D"], mapping["~unknown3"])
 
   @unittest.skip("Moving to protocols")
   def test_different_lengths(self):
@@ -420,9 +436,9 @@ class MatchTest(unittest.TestCase):
       class `~unknown3`(object):
         def f(self, x, y) -> ?
     """)
-    self.assertItemsEqual(["A"], mapping["~unknown1"])
-    self.assertItemsEqual(["B"], mapping["~unknown2"])
-    self.assertItemsEqual(["C"], mapping["~unknown3"])
+    six.assertCountEqual(self, ["A"], mapping["~unknown1"])
+    six.assertCountEqual(self, ["B"], mapping["~unknown2"])
+    six.assertCountEqual(self, ["C"], mapping["~unknown3"])
 
   @unittest.skip("Moving to protocols")
   def test_filter(self):
@@ -434,8 +450,8 @@ class MatchTest(unittest.TestCase):
       class `~unknown2`(object):
         def capitalize(self) -> ?
     """)
-    self.assertItemsEqual(["A"], mapping["~unknown1"])
-    self.assertItemsEqual(["bytearray"], mapping["~unknown2"])
+    six.assertCountEqual(self, ["A"], mapping["~unknown1"])
+    six.assertCountEqual(self, ["bytearray"], mapping["~unknown2"])
 
   @unittest.skip("Moving to protocols")
   def test_partial(self):
@@ -448,8 +464,8 @@ class MatchTest(unittest.TestCase):
       class `~unknown2`(object):
         pass
     """)
-    self.assertItemsEqual(["bool", "int"], mapping["~unknown1"])
-    self.assertItemsEqual(["bool", "int"], mapping["~unknown2"])
+    six.assertCountEqual(self, ["bool", "int"], mapping["~unknown1"])
+    six.assertCountEqual(self, ["bool", "int"], mapping["~unknown2"])
 
   @unittest.skip("Moving to protocols")
   def test_optional_parameters(self):
@@ -469,9 +485,9 @@ class MatchTest(unittest.TestCase):
       class `~unknown4`(object):
         def f(self, x, y, z) -> ?
     """)
-    self.assertItemsEqual(["A"], mapping["~unknown1"])
-    self.assertItemsEqual(["A", "B"], mapping["~unknown2"])
-    self.assertItemsEqual(["A", "B", "C"], mapping["~unknown3"])
+    six.assertCountEqual(self, ["A"], mapping["~unknown1"])
+    six.assertCountEqual(self, ["A", "B"], mapping["~unknown2"])
+    six.assertCountEqual(self, ["A", "B", "C"], mapping["~unknown3"])
 
   @unittest.skip("Moving to protocols")
   def test_listiterator(self):
@@ -538,8 +554,9 @@ class MatchTest(unittest.TestCase):
       class `~unknown12`():
           pass
     """)
-    self.assertItemsEqual(["int", "bool", "float", "complex"],
-                          mapping["~unknown4"])
+    six.assertCountEqual(self,
+                         ["int", "bool", "float", "complex"],
+                         mapping["~unknown4"])
 
   @unittest.skip("Moving to protocols")
   def test_add(self):
@@ -553,8 +570,8 @@ class MatchTest(unittest.TestCase):
           pass
     """)
     numbers = ["int", "complex", "float", "bool"]
-    self.assertItemsEqual(numbers, mapping["~unknown4"])
-    self.assertItemsEqual(numbers, mapping["~unknown6"])
+    six.assertCountEqual(self, numbers, mapping["~unknown4"])
+    six.assertCountEqual(self, numbers, mapping["~unknown6"])
 
   @unittest.skip("Moving to protocols")
   def test_subclasses(self):
@@ -577,7 +594,7 @@ class MatchTest(unittest.TestCase):
       class `~unknown3`(object):
         pass
     """)
-    self.assertItemsEqual(["complex", "float"], mapping["~unknown3"])
+    six.assertCountEqual(self, ["complex", "float"], mapping["~unknown3"])
 
   @unittest.skip("Moving to protocols")
   def test_match_builtin_function(self):
@@ -592,7 +609,7 @@ class MatchTest(unittest.TestCase):
       class `~unknown4`(object):
         pass
     """)
-    self.assertItemsEqual(["complex", "float"], mapping["~unknown4"])
+    six.assertCountEqual(self, ["complex", "float"], mapping["~unknown4"])
 
   @unittest.skip("Moving to protocols")
   def test_match_builtin_class(self):
@@ -611,7 +628,7 @@ class MatchTest(unittest.TestCase):
       class `~mylist`():
         def __setitem__(self, i: int, y: `~unknown2`) -> `~unknown1`
     """)
-    self.assertItemsEqual(["NoneType"], mapping["~unknown1"])
+    six.assertCountEqual(self, ["NoneType"], mapping["~unknown1"])
 
   @unittest.skip("Moving to protocols")
   def test_subclasses2(self):
@@ -641,7 +658,7 @@ class MatchTest(unittest.TestCase):
       class `~unknown4`(object):
         pass
     """)
-    self.assertItemsEqual(["complex", "float"], mapping["~unknown4"])
+    six.assertCountEqual(self, ["complex", "float"], mapping["~unknown4"])
 
   @unittest.skip("Moving to protocols")
   def test_convert(self):
@@ -707,7 +724,7 @@ class MatchTest(unittest.TestCase):
       class `~unknown1`():
         def f(self, x:Base1) -> Base2
     """)
-    self.assertItemsEqual(["Foo", "Base1"], mapping["~unknown1"])
+    six.assertCountEqual(self, ["Foo", "Base1"], mapping["~unknown1"])
 
 if __name__ == "__main__":
   unittest.main()

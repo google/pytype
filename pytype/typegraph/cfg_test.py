@@ -80,7 +80,7 @@ class CFGTest(unittest.TestCase):
       origin, = binding.origins
       self.assertEqual(origin.where, node)
       source_set, = origin.source_sets
-      self.assertItemsEqual(list(source_set), expected_source_set)
+      six.assertCountEqual(self, list(source_set), expected_source_set)
 
   def testVariableSet(self):
     p = cfg.Program()
@@ -677,9 +677,9 @@ class CFGTest(unittest.TestCase):
     self.assertEqual([v.data for v in x.bindings], ["a", "b"])
     self.assertEqual([v.data for v in y.bindings], ["a", "b"])
     o, = ay.origins
-    self.assertItemsEqual([set()], o.source_sets)
+    six.assertCountEqual(self, [set()], o.source_sets)
     o, = ay.origins
-    self.assertItemsEqual([set()], o.source_sets)
+    six.assertCountEqual(self, [set()], o.source_sets)
 
   def testPasteWithAdditionalSources(self):
     p = cfg.Program()

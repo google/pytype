@@ -7,6 +7,7 @@ from pytype import file_utils
 from pytype import load_pytd
 from pytype import vm
 from pytype.pytd import pytd
+import six
 
 import unittest
 
@@ -87,13 +88,13 @@ class ConvertTest(unittest.TestCase):
     instance = self._vm.convert.constant_to_value(
         abstract.AsInstance(x), {}, self._vm.root_cfg_node)
     self.assertIsInstance(cls, abstract.TupleClass)
-    self.assertItemsEqual(cls.type_parameters.items(),
-                          [(0, self._vm.convert.str_type),
-                           (1, self._vm.convert.int_type),
-                           (abstract.T, abstract.Union([
-                               cls.type_parameters[0],
-                               cls.type_parameters[1],
-                           ], self._vm))])
+    six.assertCountEqual(self, cls.type_parameters.items(),
+                         [(0, self._vm.convert.str_type),
+                          (1, self._vm.convert.int_type),
+                          (abstract.T, abstract.Union([
+                              cls.type_parameters[0],
+                              cls.type_parameters[1],
+                          ], self._vm))])
     self.assertIsInstance(instance, abstract.Tuple)
     self.assertListEqual([v.data for v in instance.pyval],
                          [[self._vm.convert.primitive_class_instances[str]],
@@ -128,7 +129,8 @@ class ConvertTest(unittest.TestCase):
     instance = self._vm.convert.constant_to_value(
         abstract.AsInstance(x), {}, self._vm.root_cfg_node)
     self.assertIsInstance(cls, abstract.Callable)
-    self.assertItemsEqual(
+    six.assertCountEqual(
+        self,
         cls.type_parameters.items(),
         [(0, self._vm.convert.int_type),
          (1, self._vm.convert.primitive_classes[bool]),
@@ -137,7 +139,8 @@ class ConvertTest(unittest.TestCase):
          (abstract.RET, self._vm.convert.str_type)])
     self.assertIsInstance(instance, abstract.Instance)
     self.assertEqual(abstract.get_atomic_value(instance.cls), cls)
-    self.assertItemsEqual(
+    six.assertCountEqual(
+        self,
         [(name, set(var.data))
          for name, var in instance.type_parameters.items()],
         [(abstract.ARGS, {self._vm.convert.primitive_class_instances[int],
@@ -168,12 +171,13 @@ class ConvertTest(unittest.TestCase):
     instance = self._vm.convert.constant_to_value(
         abstract.AsInstance(x), {}, self._vm.root_cfg_node)
     self.assertIsInstance(cls, abstract.ParameterizedClass)
-    self.assertItemsEqual(cls.type_parameters.items(),
-                          [(abstract.ARGS, self._vm.convert.unsolvable),
-                           (abstract.RET, self._vm.convert.int_type)])
+    six.assertCountEqual(self, cls.type_parameters.items(),
+                         [(abstract.ARGS, self._vm.convert.unsolvable),
+                          (abstract.RET, self._vm.convert.int_type)])
     self.assertIsInstance(instance, abstract.Instance)
     self.assertEqual(abstract.get_atomic_value(instance.cls), cls.base_cls)
-    self.assertItemsEqual(
+    six.assertCountEqual(
+        self,
         [(name, var.data) for name, var in instance.type_parameters.items()],
         [(abstract.ARGS, [self._vm.convert.unsolvable]),
          (abstract.RET, [self._vm.convert.primitive_class_instances[int]])])
@@ -243,7 +247,7 @@ class ConvertTest(unittest.TestCase):
     """)
     cls = self._vm.convert.constant_to_value(
         ast.Lookup("a.A"), {}, self._vm.root_cfg_node)
-    self.assertItemsEqual(cls.abstract_methods, {"f"})
+    six.assertCountEqual(self, cls.abstract_methods, {"f"})
 
   def test_class_inherited_abstract_method(self):
     ast = self._load_ast("a", """
@@ -254,7 +258,7 @@ class ConvertTest(unittest.TestCase):
     """)
     cls = self._vm.convert.constant_to_value(
         ast.Lookup("a.B"), {}, self._vm.root_cfg_node)
-    self.assertItemsEqual(cls.abstract_methods, {"f"})
+    six.assertCountEqual(self, cls.abstract_methods, {"f"})
 
   def test_class_override_abstract_method(self):
     ast = self._load_ast("a", """
@@ -279,7 +283,7 @@ class ConvertTest(unittest.TestCase):
     """)
     cls = self._vm.convert.constant_to_value(
         ast.Lookup("a.B"), {}, self._vm.root_cfg_node)
-    self.assertItemsEqual(cls.abstract_methods, {"f"})
+    six.assertCountEqual(self, cls.abstract_methods, {"f"})
 
   def test_parameterized_class_abstract_method(self):
     ast = self._load_ast("a", """
@@ -290,7 +294,7 @@ class ConvertTest(unittest.TestCase):
     cls = self._vm.convert.constant_to_value(
         ast.Lookup("a.A"), {}, self._vm.root_cfg_node)
     parameterized_cls = abstract.ParameterizedClass(cls, {}, self._vm)
-    self.assertItemsEqual(parameterized_cls.abstract_methods, {"f"})
+    six.assertCountEqual(self, parameterized_cls.abstract_methods, {"f"})
 
   def test_classvar(self):
     ast = self._load_ast("a", """

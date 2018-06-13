@@ -12,7 +12,6 @@ from pytype import vm
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
-
 import six
 
 import unittest
@@ -842,7 +841,8 @@ class FunctionTest(AbstractTestBase):
     f = abstract.PyTDFunction(*abstract.PyTDFunction.get_constructor_args(
         "open", self._vm, "__builtin__"))
     self.assertEqual(f.name, "__builtin__.open")
-    self.assertItemsEqual(
+    six.assertCountEqual(
+        self,
         {sig.pytd_sig for sig in f.signatures},
         self._vm.lookup_builtin("__builtin__.open").signatures)
     self.assertIs(f.kind, pytd.METHOD)
@@ -863,9 +863,11 @@ class FunctionTest(AbstractTestBase):
     f = abstract.PyTDFunction(*abstract.PyTDFunction.get_constructor_args(
         "TypeVar", self._vm, "typing", pyval_name="_typevar_new"))
     self.assertEqual(f.name, "typing.TypeVar")
-    self.assertItemsEqual({sig.pytd_sig for sig in f.signatures},
-                          self._vm.loader.import_name("typing").Lookup(
-                              "typing._typevar_new").signatures)
+    six.assertCountEqual(
+        self,
+        {sig.pytd_sig for sig in f.signatures},
+        self._vm.loader.import_name("typing").Lookup(
+            "typing._typevar_new").signatures)
     self.assertIs(f.kind, pytd.METHOD)
     self.assertIs(f.vm, self._vm)
 
@@ -876,7 +878,7 @@ class AbstractMethodsTest(AbstractTestBase):
     func = abstract.Function("f", self._vm).to_variable(self._vm.root_cfg_node)
     func.data[0].is_abstract = True
     cls = abstract.InterpreterClass("X", [], {"f": func}, None, self._vm)
-    self.assertItemsEqual(cls.abstract_methods, {"f"})
+    six.assertCountEqual(self, cls.abstract_methods, {"f"})
 
   def test_inherited_abstract_method(self):
     sized_pytd = self._vm.loader.typing.Lookup("typing.Sized")
@@ -884,7 +886,7 @@ class AbstractMethodsTest(AbstractTestBase):
         sized_pytd, {}, self._vm.root_cfg_node)
     cls = abstract.InterpreterClass(
         "X", [sized.to_variable(self._vm.root_cfg_node)], {}, None, self._vm)
-    self.assertItemsEqual(cls.abstract_methods, {"__len__"})
+    six.assertCountEqual(self, cls.abstract_methods, {"__len__"})
 
   def test_overridden_abstract_method(self):
     sized_pytd = self._vm.loader.typing.Lookup("typing.Sized")
@@ -905,7 +907,7 @@ class AbstractMethodsTest(AbstractTestBase):
     func.is_abstract = True
     members = {"__len__": func.to_variable(self._vm.root_cfg_node)}
     cls = abstract.InterpreterClass("X", bases, members, None, self._vm)
-    self.assertItemsEqual(cls.abstract_methods, {"__len__"})
+    six.assertCountEqual(self, cls.abstract_methods, {"__len__"})
 
 
 class SimpleFunctionTest(AbstractTestBase):
