@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/google/pytype.svg?branch=master)](https://travis-ci.org/google/pytype)
+
 ## Pytype
 
 Statically check and infer types for unannotated Python code.
