@@ -700,5 +700,59 @@ class PYITest(test_base.TargetIndependentTest):
         ta = ...  # type: Callable[[str], None]
         """)
 
+  def testAliasConstant(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class Foo(object):
+          const = ...  # type: int
+        Const = Foo.const
+      """)
+      ty = self.Infer("""
+        import foo
+        Const = foo.Const
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        Const = ...  # type: int
+      """)
+
+  def testAliasMethod(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class Foo(object):
+          def f(self) -> int: ...
+        Func = Foo.f
+      """)
+      ty = self.Infer("""
+        import foo
+        Func = foo.Func
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        def Func(self) -> int: ...
+      """)
+
+  def testAliasAliases(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class Foo(object):
+          a1 = const
+          a2 = f
+          const = ...  # type: int
+          def f(self) -> int: ...
+        Const = Foo.a1
+        Func = Foo.a2
+      """)
+      ty = self.Infer("""
+        import foo
+        Const = foo.Const
+        Func = foo.Func
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        Const = ...  # type: int
+        def Func(self) -> int: ...
+      """)
+
 
 test_base.main(globals(), __name__ == "__main__")

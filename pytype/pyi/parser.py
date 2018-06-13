@@ -422,12 +422,25 @@ class _Parser(object):
                          for x in class_list]
 
     classes = generated_classes + self._classes
+    functions = _merge_method_signatures(functions)
 
-    all_names = (list(set(f.name for f in functions)) +
+    name_to_class = {c.name: c for c in classes}
+    aliases = []
+    for a in self._aliases:
+      t = _maybe_resolve_alias(a, name_to_class)
+      if isinstance(t, pytd.Function):
+        functions.append(t)
+      elif isinstance(t, pytd.Constant):
+        constants.append(t)
+      else:
+        assert isinstance(t, pytd.Alias)
+        aliases.append(t)
+
+    all_names = ([f.name for f in functions] +
                  [c.name for c in constants] +
                  [c.name for c in self._type_params] +
                  [c.name for c in classes] +
-                 [c.name for c in self._aliases])
+                 [c.name for c in aliases])
     duplicates = [name
                   for name, count in collections.Counter(all_names).items()
                   if count >= 2]
@@ -435,7 +448,6 @@ class _Parser(object):
       raise ParseError(
           "Duplicate top-level identifier(s): " + ", ".join(duplicates))
 
-    functions = _merge_method_signatures(functions)
     properties = [x for x in functions if x.kind == pytd.PROPERTY]
     if properties:
       prop_names = ", ".join(p.name for p in properties)
@@ -448,7 +460,7 @@ class _Parser(object):
                              type_params=tuple(self._type_params),
                              functions=tuple(functions),
                              classes=tuple(classes),
-                             aliases=tuple(self._aliases))
+                             aliases=tuple(aliases))
 
   def set_error_location(self, location):
     """Record the location of the current error.
@@ -1380,3 +1392,19 @@ def _merge_method_signatures(signatures):
       flags |= pytd.Function.IS_COROUTINE
     methods.append(pytd.Function(name, tuple(signatures), kind, flags))
   return methods
+
+
+def _maybe_resolve_alias(alias, name_to_class):
+  """If possible, resolve the alias from the class map."""
+  if isinstance(alias.type, pytd.NamedType):
+    prefix, dot, remainder = alias.type.name.partition(".")
+    if dot and prefix in name_to_class:
+      try:
+        value = name_to_class[prefix].Lookup(remainder)
+      except KeyError:
+        # There's no need to report an error here, as load_pytd will
+        # complain if it can't resolve `prefix`.
+        pass
+      else:
+        return value.Replace(name=alias.name)
+  return alias
