@@ -168,12 +168,19 @@ def run_test_method(method_name, class_object, options, reporter):
   return reporter.report_method(fq_method_name, test_result)
 
 
+def _get_members_list(parent_object):
+  # We want to create of list of members explicitly as dict.items in
+  # Python 3 returns an iterator. Hence, we do not want to be in situation where
+  # in the members dict changes during iteration and raises an exception.
+  return list(parent_object.__dict__.items())
+
+
 def run_tests_in_class(class_object, options, reporter):
   """Run test methods in a class and return the number of failing methods.."""
   result = 0
   class_object.setUpClass()
   reporter.report_class(class_object.__name__)
-  for method_name, method_object in class_object.__dict__.items():
+  for method_name, method_object in _get_members_list(class_object):
     if callable(method_object) and method_name.startswith("test"):
       result += run_test_method(method_name, class_object, options,
                                 reporter)
@@ -185,7 +192,7 @@ def run_tests_in_module(mod_object, options, reporter):
   """Run test methods in a module and return the number of failing methods.."""
   reporter.report_module()
   result = 0
-  for _, class_object in mod_object.__dict__.items():
+  for _, class_object in _get_members_list(mod_object):
     if (isinstance(class_object, type) and
         issubclass(class_object, unittest.TestCase)):
       result += run_tests_in_class(class_object, options, reporter)
