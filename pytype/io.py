@@ -28,6 +28,10 @@ from pytype.pytd.parse import builtins as pytd_builtins
 log = logging.getLogger(__name__)
 
 
+# Webpage explaining the pytype error codes
+ERROR_DOC_URL = "https://github.com/google/pytype/blob/master/docs/errors.md"
+
+
 def _read_source_file(input_filename):
   try:
     with open(input_filename, "r") as fi:
@@ -191,6 +195,15 @@ def write_pickle(ast, loader, options):
   serialize_ast.StoreAst(ast, options.output_pickled)
 
 
+def print_error_doc_url(errorlog):
+  names = {e.name for e in errorlog}
+  if names:
+    doclink = "\nFor more details, see %s" % ERROR_DOC_URL
+    if len(names) == 1:
+      doclink += "#" + names.pop()
+    print(doclink + ".", file=sys.stderr)
+
+
 def handle_errors(errorlog, options):
   """Handle the errorlog according to the given options."""
   if not options.report_errors:
@@ -201,6 +214,7 @@ def handle_errors(errorlog, options):
     return 0  # Command is successful regardless of errors.
 
   errorlog.print_to_stderr()
+  print_error_doc_url(errorlog)
 
   return 1 if errorlog.has_error() else 0  # exit code
 

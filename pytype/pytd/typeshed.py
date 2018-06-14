@@ -18,6 +18,12 @@ class Typeshed(object):
   pytype (i.e., /{some_path}/pytype/typeshed).
   """
 
+  # Text file of typeshed entries that will not be loaded.
+  # The path is relative to typeshed's root directory, e.g. if you set this to
+  # "missing.txt" you need to create $TYPESHED_HOME/missing.txt or
+  # pytype/typeshed/missing.txt
+  MISSING_FILE = None
+
   def __init__(self):
     self._env_home = home = os.getenv("TYPESHED_HOME")
     if home:
@@ -40,7 +46,10 @@ class Typeshed(object):
       return filepath, data
 
   def _load_missing(self):
-    return set()
+    if not self.MISSING_FILE:
+      return set()
+    _, data = self._load_file(self.MISSING_FILE)
+    return {line.decode("utf-8").strip() for line in data.split(b"\n") if line}
 
   @property
   def missing(self):
@@ -92,8 +101,8 @@ class Typeshed(object):
     for v in versions + [str(version[0]), "2and3"]:
       path_rel = os.path.join(toplevel, v, module_path)
 
-      # Give precedence to missing.txt
-      if path_rel in self._missing:
+      # Give precedence to MISSING_FILE
+      if path_rel in self.missing:
         return (os.path.join(self._root, "nonexistent", path_rel + ".pyi"),
                 builtins.DEFAULT_SRC)
 
@@ -144,6 +153,12 @@ class Typeshed(object):
       else:
         for filename in contents:
           module_names.add(module_utils.path_to_module_name(filename))
+    # Also load modules not in typeshed, so that we have a dummy entry for them.
+    for f in self.missing:
+      parts = f.split("/")
+      if parts[1].startswith(str(python_version[0])):
+        filename = "/".join(parts[2:])  # remove prefixes like stdlib/2.7
+        module_names.add(filename.replace("/", "."))
     assert "ctypes" in module_names  # sanity check
     return module_names
 

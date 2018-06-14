@@ -42,11 +42,14 @@ def load_pytype_file(filename):
   Raises:
     IOError: if file not found
   """
-  return load_data_file(get_full_path(filename))
-
-
-def load_data_file(path):
-  """Get the contents of a data file."""
+  path = get_full_path(filename)
+  # Check for a ResourceLoader (see comment under list_pytype_files).
+  loader = globals().get("__loader__", None)
+  if loader:
+    # For an explanation of the args to loader.get_data, see
+    # https://www.python.org/dev/peps/pep-0302/#optional-extensions-to-the-importer-protocol
+    # https://docs.python.org/3/library/importlib.html#importlib.abc.ResourceLoader.get_data
+    return loader.get_data(path)
   with open(path, "rb") as fi:
     return fi.read()
 
