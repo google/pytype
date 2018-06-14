@@ -7,10 +7,9 @@ git:
 
 language: python
 
-# TODO(sivachandra): Add Python 3.6 here after the scripts are made Python 3
-# ready.
 python:
   - "2.7"
+  - "3.6"
 
 before_install:
   - sudo apt-get install g++
