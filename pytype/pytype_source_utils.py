@@ -42,7 +42,11 @@ def load_pytype_file(filename):
   Raises:
     IOError: if file not found
   """
-  path = get_full_path(filename)
+  return load_data_file(get_full_path(filename))
+
+
+def load_data_file(path):
+  """Load a file either from __loader__ or the filesystem."""
   # Check for a ResourceLoader (see comment under list_pytype_files).
   loader = globals().get("__loader__", None)
   if loader:
