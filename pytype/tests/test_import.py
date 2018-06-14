@@ -1011,5 +1011,27 @@ class ImportTest(test_base.TargetIndependentTest):
         baz = foo
       """)
 
+  def testRelativeStarImport(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo/bar.pyi", "from .baz.qux import *")
+      d.create_file("foo/baz/qux.pyi", "v = ...  # type: int")
+      ty = self.Infer("""
+        from foo.bar import *
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        v = ...  # type: int
+      """)
+
+  def testRelativeStarImport2(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo/bar/baz.pyi", "from ..bar.qux import *")
+      d.create_file("foo/bar/qux.pyi", "v = ...  # type: int")
+      ty = self.Infer("""
+        from foo.bar.baz import *
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        v = ...  # type: int
+      """)
+
 
 test_base.main(globals(), __name__ == "__main__")

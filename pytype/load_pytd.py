@@ -262,7 +262,7 @@ class Loader(object):
     try:
       ast.Visit(visitors.VerifyLookup(ignore_late_types=True))
     except ValueError as e:
-      raise BadDependencyError(utils.message(e))
+      raise BadDependencyError(utils.message(e), ast.name)
     ast.Visit(visitors.VerifyContainers())
 
   def resolve_ast(self, ast):

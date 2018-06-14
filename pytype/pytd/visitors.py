@@ -1863,6 +1863,10 @@ class QualifyRelativeNames(Visitor):
     assert (package_name is not None and
             not package_name.endswith("."))
     self.package_name = package_name
+    self.module_name = None
+
+  def EnterTypeDeclUnit(self, node):
+    self.module_name = node.name
 
   def _QualifyName(self, orig_name):
     """Qualify an import name."""
@@ -1879,6 +1883,16 @@ class QualifyRelativeNames(Visitor):
       return name
     else:
       return orig_name
+
+  def VisitAlias(self, node):
+    if (isinstance(node.type, pytd.NamedType) and node.type.name.endswith("*")
+        and not node.name.endswith(node.type.name)):
+      # Star imports are stored as
+      #   importing_mod.imported_mod.* = imported_mod.*
+      # We've qualified the name of imported_mod in the alias type, so update
+      # it in the alias name as well.
+      node = node.Replace(name="%s.%s" % (self.module_name, node.type.name))
+    return node
 
   def VisitNamedType(self, node):
     name = self._QualifyName(node.name)
