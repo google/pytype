@@ -216,7 +216,6 @@ def extract_local(ast):
   """Extract all classes that are not unknowns of call records of builtins."""
   return pytd.TypeDeclUnit(
       name=ast.name,
-      is_package=ast.is_package,
       classes=tuple(cls for cls in ast.classes if is_complete(cls)),
       functions=tuple(f for f in ast.functions if is_complete(f)),
       constants=tuple(c for c in ast.constants if is_complete(c)),

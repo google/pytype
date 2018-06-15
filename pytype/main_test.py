@@ -237,6 +237,17 @@ class PytypeTest(unittest.TestCase):
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
+  def testGenerateBuiltinsPy2(self):
+    self.pytype_args["--generate-builtins"] = self._TmpPath("builtins.py")
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
+
+  def testGenerateBuiltinsPy3(self):
+    self.pytype_args["--generate-builtins"] = self._TmpPath("builtins.py")
+    self.pytype_args["--python_version"] = "3.6"
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
+
   def testMissingInput(self):
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)

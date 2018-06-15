@@ -71,10 +71,8 @@ def Concat(*args, **kwargs):
   """Concatenate two or more pytd ASTs."""
   assert all(isinstance(arg, pytd.TypeDeclUnit) for arg in args)
   name = kwargs.get("name")
-  is_package = bool(kwargs.get("is_package"))
   return pytd.TypeDeclUnit(
       name=name or " + ".join(arg.name for arg in args),
-      is_package=is_package,
       constants=sum((arg.constants for arg in args), ()),
       type_params=sum((arg.type_params for arg in args), ()),
       classes=sum((arg.classes for arg in args), ()),
@@ -184,19 +182,17 @@ def Print(ast, multiline_args=False):
 
 def CreateModule(name="<empty>", **kwargs):
   module = pytd.TypeDeclUnit(
-      name, is_package=False, type_params=(), constants=(), classes=(),
-      functions=(), aliases=())
+      name, type_params=(), constants=(), classes=(), functions=(), aliases=())
   return module.Replace(**kwargs)
 
 
-def WrapTypeDeclUnit(name, items, is_package=False):
+def WrapTypeDeclUnit(name, items):
   """Given a list (classes, functions, etc.), wrap a pytd around them.
 
   Args:
     name: The name attribute of the resulting TypeDeclUnit.
     items: A list of items. Can contain pytd.Class, pytd.Function and
       pytd.Constant.
-    is_package: Whether the module is a package (e.g. foo/__init__.pyi)
   Returns:
     A pytd.TypeDeclUnit.
   Raises:
@@ -213,8 +209,8 @@ def WrapTypeDeclUnit(name, items, is_package=False):
     if isinstance(item, pytd.Function):
       if item.name in functions:
         if item.kind != functions[item.name].kind:
-          raise ValueError("Can't combine %s and %s", item.kind,
-                           functions[item.name].kind)
+          raise ValueError("Can't combine %s and %s" % (
+              item.kind, functions[item.name].kind))
         functions[item.name] = pytd.Function(
             item.name, functions[item.name].signatures + item.signatures,
             item.kind)
@@ -244,7 +240,6 @@ def WrapTypeDeclUnit(name, items, is_package=False):
 
   return pytd.TypeDeclUnit(
       name=name,
-      is_package=is_package,
       constants=tuple(
           pytd.Constant(name, t.build())
           for name, t in sorted(constants.items())),
@@ -255,6 +250,7 @@ def WrapTypeDeclUnit(name, items, is_package=False):
 
 
 def _check_intersection(items1, items2, name1, name2):
+  """Check for duplicate identifiers."""
   items = set(items1) & set(items2)
   if items:
     if len(items) == 1:
@@ -456,6 +452,7 @@ def LoadPickle(filename, compress=False):
 
 
 def SavePickle(data, filename=None, compress=False):
+  """Pickle the data."""
   recursion_limit = sys.getrecursionlimit()
   sys.setrecursionlimit(_PICKLE_RECURSION_LIMIT_AST)
   assert not compress or filename, "gzip only supported with a filename"

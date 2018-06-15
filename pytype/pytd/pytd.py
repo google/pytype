@@ -41,7 +41,6 @@ preconditions.register(Type)
 
 
 class TypeDeclUnit(node.Node('name: str or None',
-                             'is_package: bool',
                              'constants: tuple[Constant]',
                              'type_params: tuple[TypeParameter]',
                              'classes: tuple[Class]',
@@ -51,8 +50,6 @@ class TypeDeclUnit(node.Node('name: str or None',
 
   Attributes:
     name: Name of this module, or None for the top-level module.
-    is_package: True for, e.g., 'foo/__init__.pyi', False for 'foo.pyi'
-      (though self.name is 'foo' for both)
     constants: Iterable of module-level constants.
     type_params: Iterable of module-level type parameters.
     functions: Iterable of functions defined in this type decl unit.

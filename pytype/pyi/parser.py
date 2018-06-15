@@ -4,6 +4,7 @@ import collections
 import hashlib
 
 from pytype import file_utils
+from pytype import module_utils
 from pytype import utils
 from pytype.pyi import parser_ext
 from pytype.pytd import pep484
@@ -337,6 +338,7 @@ class _Parser(object):
     # Fields initialized in self.parse().
     self._filename = None  # type: str
     self._ast_name = None  # type: str
+    self._package_name = None  # type: str
     self._type_map = None  # type: dict
     # The condition stack, start with a default scope that will always be
     # active.
@@ -375,6 +377,9 @@ class _Parser(object):
     self._ast_name = name
     self._type_map = {}
 
+    is_package = file_utils.is_pyi_directory_init(filename)
+    self._package_name = module_utils.get_package_name(name, is_package)
+
     try:
       defs = parser_ext.parse(self, src)
       ast = self._build_type_decl_unit(defs)
@@ -406,9 +411,7 @@ class _Parser(object):
 
     # Typeshed files that explicitly import and refer to "builtins" need to have
     # that rewritten to __builtin__
-    ast = ast.Visit(visitors.RenameBuiltinsPrefix())
-
-    return ast.Replace(is_package=file_utils.is_pyi_directory_init(filename))
+    return ast.Visit(visitors.RenameBuiltinsPrefix())
 
   def _build_type_decl_unit(self, defs):
     """Return a pytd.TypeDeclUnit for the given defs (plus parser state)."""
@@ -455,7 +458,6 @@ class _Parser(object):
           "Module-level functions with property decorators: " + prop_names)
 
     return pytd.TypeDeclUnit(name=None,
-                             is_package=False,
                              constants=tuple(constants),
                              type_params=tuple(self._type_params),
                              functions=tuple(functions),
@@ -640,7 +642,7 @@ class _Parser(object):
           name, new_name = item
         else:
           name = new_name = item
-        qualified_name = "%s.%s" % (from_package, name)
+        qualified_name = self._qualify_name("%s.%s" % (from_package, name))
         if from_package == "__PACKAGE__" and isinstance(item, str):
           # This will always be a simple module import (from . cannot import a
           # NamedType, and without 'as' the name will not be reexported).
@@ -671,7 +673,8 @@ class _Parser(object):
       for item in import_list:
         if isinstance(item, tuple):
           name, new_name = item
-          t = pytd.Module(name=new_name, module_name=name)
+          t = pytd.Module(name=self._qualify_name(new_name),
+                          module_name=self._qualify_name(name))
           self._aliases.append(pytd.Alias(new_name, t))
         else:
           # We don't care about imports that are not aliased.
@@ -1029,6 +1032,24 @@ class _Parser(object):
         name=name,
         constraints=() if constraints is None else tuple(constraints),
         bound=named_args.get("bound")))
+
+  def _qualify_name(self, orig_name):
+    """Qualify an import name."""
+    # Doing the "builtins" rename here ensures that we catch alias names.
+    orig_name = visitors.RenameBuiltinsPrefixInName(orig_name)
+    if not self._package_name:
+      return orig_name
+    # Generated from "from . import foo" - see parser.y
+    prefix, package, name = orig_name.partition("__PACKAGE__.")
+    if not prefix and package:
+      return self._package_name + "." + name
+    if orig_name.startswith("."):
+      name = module_utils.get_absolute_name(self._package_name, orig_name)
+      if name is None:
+        raise ParseError(
+            "Cannot resolve relative import %s" % orig_name.rsplit(".", 1)[0])
+      return name
+    return orig_name
 
 
 def parse_string(src, name=None, filename=None, python_version=None,

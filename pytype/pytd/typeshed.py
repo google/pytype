@@ -2,7 +2,6 @@
 
 import os
 
-from pytype import file_utils
 from pytype import module_utils
 from pytype import pytype_source_utils
 from pytype import utils
@@ -222,6 +221,5 @@ def parse_type_definition(pyi_subdir, module, python_version):
   except IOError:
     return None
 
-  ast = parser.parse_string(src, filename=filename, name=module,
-                            python_version=python_version)
-  return ast.Replace(is_package=file_utils.is_pyi_directory_init(filename))
+  return parser.parse_string(src, filename=filename, name=module,
+                             python_version=python_version)

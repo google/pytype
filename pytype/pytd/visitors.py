@@ -884,15 +884,18 @@ class DropBuiltinPrefix(Visitor):
     return self.VisitClassType(node)
 
 
+# TODO(b/110164593): Get rid of this hack.
+def RenameBuiltinsPrefixInName(name):
+  if name.startswith("builtins."):
+    name = "__builtin__." + name[len("builtins."):]
+  return name
+
+
 class RenameBuiltinsPrefix(Visitor):
   """Rename 'builtins' to '__builtin__' at import time."""
 
   def VisitClassType(self, node):
-    if node.name.startswith("builtins."):
-      name = "__builtin__." + node.name[len("builtins."):]
-    else:
-      name = node.name
-    return pytd.NamedType(name)
+    return pytd.NamedType(RenameBuiltinsPrefixInName(node.name))
 
   def VisitNamedType(self, node):
     return self.VisitClassType(node)
@@ -1664,7 +1667,6 @@ class CanonicalOrderingVisitor(Visitor):
 
   def VisitTypeDeclUnit(self, node):
     return pytd.TypeDeclUnit(name=node.name,
-                             is_package=node.is_package,
                              constants=tuple(sorted(node.constants)),
                              type_params=tuple(sorted(node.type_params)),
                              functions=tuple(sorted(node.functions)),
@@ -1853,58 +1855,6 @@ class CollectLateDependencies(Visitor):
     module_name, dot, unused_name = t.name.rpartition(".")
     assert dot
     self.modules.add(module_name)
-
-
-class QualifyRelativeNames(Visitor):
-  """Resolve package-relative imports (e.g. from .foo import ...)."""
-
-  def __init__(self, package_name):
-    super(QualifyRelativeNames, self).__init__()
-    assert (package_name is not None and
-            not package_name.endswith("."))
-    self.package_name = package_name
-    self.module_name = None
-
-  def EnterTypeDeclUnit(self, node):
-    self.module_name = node.name
-
-  def _QualifyName(self, orig_name):
-    """Qualify an import name."""
-    # Generated from "from . import foo" - see parser.y
-    prefix, package, name = orig_name.partition("__PACKAGE__.")
-    if not prefix and package:
-      return self.package_name + "." + name
-    if orig_name.startswith("."):
-      name = module_utils.get_absolute_name(self.package_name, orig_name)
-      if name is None:
-        raise SymbolLookupError(
-            "Cannot resolve relative import %s" %
-            orig_name.rsplit(".", 1)[0])
-      return name
-    else:
-      return orig_name
-
-  def VisitAlias(self, node):
-    if (isinstance(node.type, pytd.NamedType) and node.type.name.endswith("*")
-        and not node.name.endswith(node.type.name)):
-      # Star imports are stored as
-      #   importing_mod.imported_mod.* = imported_mod.*
-      # We've qualified the name of imported_mod in the alias type, so update
-      # it in the alias name as well.
-      node = node.Replace(name="%s.%s" % (self.module_name, node.type.name))
-    return node
-
-  def VisitNamedType(self, node):
-    name = self._QualifyName(node.name)
-    return node.Replace(name=name)
-
-  def VisitClassType(self, t):
-    return self.VisitNamedType(t)
-
-  def VisitModule(self, module):
-    name = self._QualifyName(module.name)
-    module_name = self._QualifyName(module.module_name)
-    return module.Replace(name=name, module_name=module_name)
 
 
 def ExpandSignature(sig):

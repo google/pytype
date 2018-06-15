@@ -1035,12 +1035,6 @@ class TestVisitors(parser_test_base.ParserTest):
           pass
     """))
 
-  def testQualifyRelativeNames(self):
-    src = "from . import foo"
-    ast = self.Parse(src).Visit(visitors.QualifyRelativeNames("package"))
-    _, module = ast.Lookup("foo")  # Alias(foo, Module)
-    self.assertEqual(module.module_name, "package.foo")
-
 
 class TestAncestorMap(unittest.TestCase):
 

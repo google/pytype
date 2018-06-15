@@ -162,9 +162,6 @@ class Loader(object):
 
   def _postprocess_pyi(self, ast):
     """Apply all the PYI transformations we need."""
-    package_name = module_utils.get_package_name(ast.name, ast.is_package)
-    if package_name:
-      ast = ast.Visit(visitors.QualifyRelativeNames(package_name))
     ast = ast.Visit(visitors.LookupBuiltins(self.builtins, full_names=False))
     ast = ast.Visit(visitors.ExpandCompatibleBuiltins(self.builtins))
     dependencies = self._collect_ast_dependencies(ast)
@@ -175,9 +172,8 @@ class Loader(object):
     return ast
 
   def _create_empty(self, module_name, filename):
-    ast = self.load_file(module_name, filename,
-                         pytd_utils.CreateModule(module_name))
-    return ast.Replace(is_package=file_utils.is_pyi_directory_init(filename))
+    return self.load_file(module_name, filename,
+                          pytd_utils.CreateModule(module_name))
 
   def _get_existing_ast(self, module_name):
     existing = self._modules.get(module_name)
