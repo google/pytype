@@ -9,6 +9,18 @@ from pytype.pyi import parser
 from pytype.pytd.parse import builtins
 
 
+def _get_module_names_in_path(lister, path):
+  names = set()
+  try:
+    contents = list(lister(path))
+  except pytype_source_utils.NoSuchDirectory:
+    pass
+  else:
+    for filename in contents:
+      names.add(module_utils.path_to_module_name(filename))
+  return names
+
+
 class Typeshed(object):
   """A typeshed installation.
 
@@ -138,18 +150,20 @@ class Typeshed(object):
 
   def get_all_module_names(self, python_version):
     """Get the names of all modules in typeshed or bundled with pytype."""
-    paths = (self.get_typeshed_paths(python_version) +
-             self.get_pytd_paths(python_version))
-    subdirs = [d.rpartition("pytype/")[-1] for d in paths]
     module_names = set()
+    typeshed_paths = self.get_typeshed_paths(python_version)
+    pytd_paths = self.get_pytd_paths(python_version)
+    if self._env_home:
+      for p in typeshed_paths:
+        module_names |= _get_module_names_in_path(
+            pytype_source_utils.list_files, p)
+      pytype_paths = pytd_paths
+    else:
+      pytype_paths = typeshed_paths + pytd_paths
+    subdirs = [d.rpartition("pytype/")[-1] for d in pytype_paths]
     for subdir in subdirs:
-      try:
-        contents = list(pytype_source_utils.list_pytype_files(subdir))
-      except pytype_source_utils.NoSuchDirectory:
-        pass
-      else:
-        for filename in contents:
-          module_names.add(module_utils.path_to_module_name(filename))
+      module_names |= _get_module_names_in_path(
+          pytype_source_utils.list_pytype_files, subdir)
     # Also load modules not in typeshed, so that we have a dummy entry for them.
     for f in self.missing:
       parts = f.split("/")

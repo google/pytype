@@ -58,6 +58,21 @@ def load_data_file(path):
     return fi.read()
 
 
+def list_files(basedir):
+  """List files in the directory rooted at |basedir|."""
+  if not os.path.isdir(basedir):
+    raise NoSuchDirectory(basedir)
+  directories = [""]
+  while directories:
+    d = directories.pop()
+    for basename in os.listdir(os.path.join(basedir, d)):
+      filename = os.path.join(d, basename)
+      if os.path.isdir(os.path.join(basedir, filename)):
+        directories.append(filename)
+      elif os.path.exists(os.path.join(basedir, filename)):
+        yield filename
+
+
 def list_pytype_files(suffix):
   """Recursively get the contents of a directory in the pytype installation.
 
@@ -79,19 +94,9 @@ def list_pytype_files(suffix):
     # absence of the loader to determine whether calling get_zipfile is okay.
     filenames = loader.get_zipfile().namelist()  # pytype: disable=attribute-error
   except AttributeError:
-    basedir = get_full_path(suffix)
     # List directory using the file system
-    if not os.path.isdir(basedir):
-      raise NoSuchDirectory(basedir)
-    directories = [""]
-    while directories:
-      d = directories.pop()
-      for basename in os.listdir(os.path.join(basedir, d)):
-        filename = os.path.join(d, basename)
-        if os.path.isdir(os.path.join(basedir, filename)):
-          directories.append(filename)
-        elif os.path.exists(os.path.join(basedir, filename)):
-          yield filename
+    for f in list_files(get_full_path(suffix)):
+      yield f
   else:
     for filename in filenames:
       directory = "pytype/" + suffix + "/"
