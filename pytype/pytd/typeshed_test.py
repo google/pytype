@@ -38,7 +38,6 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     self.assertIn("collections", modules)
     self.assertIn("csv", modules)
     self.assertIn("ctypes", modules)
-    self.assertIn("email.MIMEBase", modules)
     self.assertIn("xml.etree.ElementTree", modules)
     self.assertIn("six.moves", modules)
 

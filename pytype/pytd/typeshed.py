@@ -138,8 +138,6 @@ class Typeshed(object):
 
   def get_all_module_names(self, python_version):
     """Get the names of all modules in typeshed or bundled with pytype."""
-    if self._env_home:
-      raise NotImplementedError("Not implemented: Can't scan external typeshed")
     paths = (self.get_typeshed_paths(python_version) +
              self.get_pytd_paths(python_version))
     subdirs = [d.rpartition("pytype/")[-1] for d in paths]
