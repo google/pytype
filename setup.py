@@ -7,7 +7,7 @@ import glob
 import io
 import os
 import shutil
-import sysconfig
+import sys
 
 from setuptools import setup, Extension  # pylint: disable=g-multiple-import
 
@@ -16,11 +16,13 @@ from setuptools import setup, Extension  # pylint: disable=g-multiple-import
 here = os.path.abspath(os.path.dirname(__file__))
 
 
-# Detect the c++ compiler. We need to do this because clang on darwin requires
-# some extra flags, but gcc does not support those flags.
-config_vars = sysconfig.get_config_vars()
-cc = config_vars['CC']
-if 'clang' in cc:
+# We need some platform-dependent compile args for the C extensions.
+if sys.platform == 'win32':
+  # windows does not have unistd.h; lex/yacc needs this define.
+  extra_compile_args = ['-DYY_NO_UNISTD_H']
+  extra_link_args = []
+elif sys.platform == 'darwin':
+  # clang on darwin requires some extra flags, which gcc does not support
   extra_compile_args = ['-std=c++11', '-stdlib=libc++']
   extra_link_args = ['-stdlib=libc++']
 else:

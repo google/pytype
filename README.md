@@ -63,6 +63,11 @@ Pytype is currently available only on Linux. You need a Python 2.7 or 3.6
 interpreter to run pytype, as well as an interpreter in `$PATH` for the Python
 version of the code you're analyzing.
 
+Installation on windows (either from pip or from github) requires the Visual C++
+compiler, which can be downloaded from Microsoft. [This
+page](https://wiki.python.org/moin/WindowsCompilers) lists the version of the
+compiler you need, depending on your Python version.
+
 ## Installing
 
 Pytype can be installed via pip:
@@ -194,7 +199,6 @@ of its dependencies.
 
 ## Roadmap
 
-* Windows and Mac support
 * A rerun mode to only reanalyze files that have changed since the last run
 
 ## License

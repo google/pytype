@@ -6,6 +6,7 @@
 %option warn
 %option nodefault
 %option yylineno
+%option nounistd
 
 %option bison-bridge
 %option bison-locations
