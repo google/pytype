@@ -90,6 +90,7 @@ py_library(
   NAME
     libvm
   SRCS
+    __version__.py
     abc_overlay.py
     abstract.py
     analyze.py
@@ -232,6 +233,15 @@ py_library(
 )
 
 py_library(
+  NAME
+    pytdtest
+  SRCS
+    pytd/parse/parser_test_base.py
+  DEPS
+    .pytd
+)
+
+py_library(
     NAME
       tools
     SRCS
@@ -248,6 +258,7 @@ py_library(
       analyze_project
     SRCS
       tools/analyze_project/config.py
+      tools/analyze_project/parse_args.py
       tools/analyze_project/pytype_runner.py
     DEPS
       .libvm

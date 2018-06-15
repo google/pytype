@@ -34,3 +34,33 @@ py_extension(
     .parser_gen
     .lexer
 )
+
+py_test(
+  NAME
+    lexer_test
+  SRCS
+    lexer_test.py
+  DEPS
+    .parser_ext
+    pytype.pytd
+)
+
+py_test(
+  NAME
+    parser_test
+  SRCS
+    parser_test.py
+  DEPS
+    pytype.parser
+    pytype.pytd
+)
+
+py_test(
+  NAME
+    parse_typeshed_test
+  SRCS
+    parse_typeshed_test.py
+  DEPS
+    pytype.parser
+    pytype.pytd
+)
