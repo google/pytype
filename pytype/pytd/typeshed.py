@@ -164,10 +164,7 @@ class Typeshed(object):
 
   def read_blacklist(self):
     """Read the typeshed blacklist."""
-    if self._env_home:
-      raise NotImplementedError("Can't read blacklist outside ./typeshed")
-    data = pytype_source_utils.load_pytype_file(
-        "typeshed/tests/pytype_blacklist.txt")
+    _, data = self._load_file(os.path.join("tests", "pytype_blacklist.txt"))
     # |data| is raw byte data.
     for line in data.splitlines():
       line = line.decode("utf-8")
