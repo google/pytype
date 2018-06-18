@@ -61,14 +61,17 @@ Merge pytype's generated type information back into ``foo.py``:
 Requirements
 ------------
 
-Pytype is currently available only on Linux. You need a Python 2.7 or
-3.6 interpreter to run pytype, as well as an interpreter in ``$PATH``
-for the Python version of the code you're analyzing.
+You need a Python 2.7 or 3.6 interpreter to run pytype, as well as an
+interpreter in ``$PATH`` for the Python version of the code you're
+analyzing.
 
-Installation on windows (either from pip or from github) requires the
-Visual C++ compiler, which can be downloaded from Microsoft. `This
-page <https://wiki.python.org/moin/WindowsCompilers>`__ lists the
-version of the compiler you need, depending on your Python version.
+Platform support:
+
+-  Pytype is currently developed and tested on Linux, which is the main
+   supported platform.
+-  Installation on MacOSX requires OSX 10.7 or higher and Xcode v8 or
+   higher.
+-  Windows is currently not supported.
 
 Installing
 ----------
@@ -210,6 +213,7 @@ Pytype ships with three scripts in addition to ``pytype`` itself:
 Roadmap
 -------
 
+-  Windows support
 -  A rerun mode to only reanalyze files that have changed since the last
    run
 
