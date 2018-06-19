@@ -73,19 +73,30 @@ Platform support:
    higher.
 -  Windows is currently not supported.
 
+Quickstart resources
+--------------------
+
+The rest of this document provides complete instructions for installing
+and using pytype. To quickly get started with some common workflows,
+check out the following docs:
+
+-  `Quickstart <https://github.com/google/pytype/tree/master/docs/quickstart.md>`__
+-  `Error
+   classes <https://github.com/google/pytype/tree/master/docs/errors.md>`__
+
 Installing
 ----------
 
-Pytype can be installed via pip:
+Pytype can be installed via pip. Note that the installation requires
+``wheel`` and ``setuptools``. (If you're working in a virtualenv, these
+two packages should already be present.)
 
 ::
 
-    pip install wheel
     pip install pytype
 
 Or from the source code `on
-GitHub <https://github.com/google/pytype/>`__. (Note that pytype's
-``setup.py`` relies on setuptools).
+GitHub <https://github.com/google/pytype/>`__.
 
 ::
 
