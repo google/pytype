@@ -1676,7 +1676,7 @@ class Function(SimpleAbstractValue):
     # this function. See test_duplicate_getproperty() in tests/test_flow.py.
     return self.bound_class(callself, callcls, self)
 
-  def _match_args(self, node, args, match_all_views=False):
+  def match_args(self, node, args, match_all_views=False):
     """Check whether the given arguments can match the function signature."""
     assert all(a.bindings for a in args.posargs)
     error = None
@@ -1856,8 +1856,8 @@ class PyTDSignature(object):
         # something more precise, since we need a Value, not a Variable.
         arg_dict[p.name] = self.vm.convert.unsolvable.to_binding(node)
 
-  def match_args(self, node, args, view):
-    """Match arguments against this signature. Used by PyTDFunction."""
+  def substitute_formal_args(self, node, args, view):
+    """Substitute matching args into this signature. Used by PyTDFunction."""
     formal_args, arg_dict = self._map_args(args, view)
     self._fill_in_missing_parameters(node, args, arg_dict)
     subst, bad_arg = self.vm.matcher.compute_subst(
@@ -2175,7 +2175,7 @@ class PyTDFunction(Function):
     retvar = self.vm.program.NewVariable()
     all_mutations = set()
     # The following line may raise FailedFunctionCall
-    possible_calls = self._match_args(node, args)
+    possible_calls = self.match_args(node, args)
     for view, signatures in possible_calls:
       if len(signatures) > 1:
         ret = self._call_with_signatures(node, func, args, view, signatures)
@@ -2309,7 +2309,7 @@ class PyTDFunction(Function):
     matched = False
     for sig in self.signatures:
       try:
-        arg_dict, subst = sig.match_args(node, args, view)
+        arg_dict, subst = sig.substitute_formal_args(node, args, view)
       except FailedFunctionCall as e:
         if e > error:
           error = e
@@ -3337,10 +3337,10 @@ class InterpreterFunction(SignedFunction):
         InterpreterFunction._hash(*args)
         for args in hash_args)).digest()
 
-  def _match_args(self, node, args):
+  def match_args(self, node, args):
     if not self.signature.has_param_annotations:
       return
-    return super(InterpreterFunction, self)._match_args(node, args)
+    return super(InterpreterFunction, self).match_args(node, args)
 
   def call(self, node, func, args, new_locals=None):
     if self.vm.is_at_maximum_depth() and not func_name_is_class_init(self.name):
@@ -3350,7 +3350,7 @@ class InterpreterFunction(SignedFunction):
           b.data.maybe_missing_members = True
       return (node,
               self.vm.convert.create_new_unsolvable(node))
-    substs = self._match_args(node, args)
+    substs = self.match_args(node, args)
     args = args.simplify(node)
     first_posarg = args.posargs[0] if args.posargs else None
     callargs = self._map_args(node, args)
@@ -3538,11 +3538,11 @@ class SimpleFunction(SignedFunction):
 
   def call(self, node, _, args):
     # We only simplify args for _map_args, because that simplifies checking.
-    # This allows _match_args to typecheck varargs and kwargs.
+    # This allows match_args to typecheck varargs and kwargs.
     # We discard the results from _map_args, because SimpleFunction only cares
     # that the arguments are acceptable.
     self._map_args(node, args.simplify(node))
-    substs = self._match_args(node, args)
+    substs = self.match_args(node, args)
     # Substitute type parameters in the signature's annotations.
     annotations = self.vm.annotations_util.sub_annotations(
         node, self.signature.annotations, substs, instantiate_unbound=False)
@@ -3583,7 +3583,7 @@ class BoundFunction(AtomicAbstractValue):
     except InvalidParameters as e:
       if self._callself and self._callself.bindings:
         if "." in e.name:
-          # _match_args will try to prepend the parent's name to the error name.
+          # match_args will try to prepend the parent's name to the error name.
           # Overwrite it with _callself instead, which may be more exact.
           _, _, e.name = e.name.partition(".")
         e.name = "%s.%s" % (self._callself.data[0].name, e.name)

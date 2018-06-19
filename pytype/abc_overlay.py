@@ -26,7 +26,7 @@ class AbstractMethod(abstract.PyTDFunction):
 
   def call(self, node, unused_func, args):
     """Marks that the given function is abstract."""
-    self._match_args(node, args)
+    self.match_args(node, args)
 
     # Since we have only 1 argument, it's easy enough to extract.
     if args.posargs:

@@ -149,7 +149,7 @@ class TypeVar(abstract.PyTDFunction):
   def _get_typeparam(self, node, args):
     args = args.simplify(node)
     try:
-      self._match_args(node, args)
+      self.match_args(node, args)
     except abstract.InvalidParameters as e:
       raise TypeVarError("wrong arguments", e.bad_call)
     except abstract.FailedFunctionCall:
@@ -247,7 +247,7 @@ class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):
             val.get_full_name() == "__builtin__.str")
 
   def _getargs(self, node, args):
-    self._match_args(node, args)
+    self.match_args(node, args)
     sig, = self.signatures
     callargs = {name: var for name, var, _ in sig.signature.iter_args(args)}
     # typing.NamedTuple doesn't support rename or verbose
@@ -510,7 +510,7 @@ class NewType(abstract.PyTDFunction):
 
   def call(self, node, func, args):
     args = args.simplify(node)
-    self._match_args(node, args, match_all_views=True)
+    self.match_args(node, args, match_all_views=True)
     # As long as the types match we do not really care about the actual
     # class name. But, if we have a string literal value as the name arg,
     # we will use it.

@@ -9,7 +9,7 @@ class TypeNew(abstract.PyTDFunction):
 
   def call(self, node, func, args):
     if len(args.posargs) == 4:
-      self._match_args(node, args)  # May raise FailedFunctionCall.
+      self.match_args(node, args)  # May raise FailedFunctionCall.
       cls, name_var, bases_var, class_dict_var = args.posargs
       try:
         bases = list(abstract.get_atomic_python_constant(bases_var))
@@ -34,7 +34,7 @@ class TypeNew(abstract.PyTDFunction):
       # can never return. The correct return type is something like
       # TypeVar(bound=Foo), but we can't introduce a type parameter that isn't
       # bound to a class or function, so we'll go with Any.
-      self._match_args(node, args)  # May raise FailedFunctionCall.
+      self.match_args(node, args)  # May raise FailedFunctionCall.
       return node, self.vm.convert.unsolvable.to_variable(node)
     return super(TypeNew, self).call(node, func, args)
 
@@ -49,7 +49,7 @@ class Open(abstract.PyTDFunction):
   def call(self, node, func, args):
     if self.vm.PY3:
       # In Python 3, the type of IO object returned depends on the mode.
-      self._match_args(node, args)  # May raise FailedFunctionCall.
+      self.match_args(node, args)  # May raise FailedFunctionCall.
       sig, = self.signatures
       callargs = {name: var for name, var, _ in sig.signature.iter_args(args)}
       try:
@@ -94,7 +94,7 @@ class Abs(BuiltinFunction):
     super(Abs, self).__init__("abs", vm)
 
   def call(self, node, _, args):
-    self._match_args(node, args)
+    self.match_args(node, args)
     arg = args.posargs[0]
     node, fn = self.get_underlying_method(node, arg, "__abs__")
     if fn is not None:
@@ -120,7 +120,7 @@ class Next(BuiltinFunction):
     return arg, default
 
   def call(self, node, _, args):
-    self._match_args(node, args)
+    self.match_args(node, args)
     arg, default = self._get_args(args)
     node, fn = self.get_underlying_method(node, arg, self.vm.convert.next_attr)
     if fn is not None:
@@ -151,7 +151,7 @@ class ObjectPredicate(BuiltinFunction):
 
   def call(self, node, _, args):
     try:
-      self._match_args(node, args)
+      self.match_args(node, args)
       node = node.ConnectNew(self.name)
       result = self.vm.program.NewVariable()
       self.run(node, args, result)

@@ -143,7 +143,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
     values aren't passed for 'verbose' and 'rename'.
 
     Args:
-      node: The current CFG node. Used by _match_args.
+      node: The current CFG node. Used by match_args.
       args: An abstract.FunctionArgs object
 
     Returns:
@@ -152,13 +152,13 @@ class NamedTupleBuilder(abstract.PyTDFunction):
 
     Raises:
       abstract.FailedFunctionCall: The arguments do not match those needed by
-        the function call. See also: abstract.PyTDFunction._match_args().
+        the function call. See also: abstract.PyTDFunction.match_args().
       abstract.ConversionError: One of the arguments could not be extracted.
         Typically occurs if typename or one of the field names is in unicode.
     """
 
-    # abstract.PyTDFunction._match_args checks the args for this call.
-    self._match_args(node, args)
+    # abstract.PyTDFunction.match_args checks the args for this call.
+    self.match_args(node, args)
 
     # namedtuple only has one signature
     sig, = self.signatures

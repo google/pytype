@@ -55,7 +55,7 @@ class AddMetaclass(abstract.PyTDFunction):
 
   def call(self, node, unused_func, args):
     """Adds a metaclass."""
-    self._match_args(node, args)
+    self.match_args(node, args)
     meta = args.posargs[0]
     return node, AddMetaclassInstance(meta, self.vm).to_variable(node)
 
@@ -81,7 +81,7 @@ class WithMetaclass(abstract.PyTDFunction):
 
   def call(self, node, unused_func, args):
     """Creates an anonymous class to act as a metaclass."""
-    self._match_args(node, args)
+    self.match_args(node, args)
     meta = args.posargs[0]
     bases = args.posargs[1:]
     result = WithMetaclassInstance(self.vm, meta, bases).to_variable(node)
