@@ -64,9 +64,9 @@ def _generate_builtins_pickle(options):
   loader.save_to_pickle(options.generate_builtins)
 
 
-def main(argv):
+def main():
   try:
-    options = config.Options(argv[1:])
+    options = config.Options(sys.argv[1:])
   except utils.UsageError as e:
     print(str(e), file=sys.stderr)
     sys.exit(1)
@@ -102,4 +102,4 @@ def _run_pytype(options):
 
 
 if __name__ == "__main__":
-  sys.exit(main(sys.argv) or 0)
+  sys.exit(main() or 0)

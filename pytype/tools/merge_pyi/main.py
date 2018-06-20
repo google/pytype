@@ -37,7 +37,6 @@ def parse_args(argv):
   """Process command line arguments using argparse."""
 
   parser = argparse.ArgumentParser(
-      prog=argv[0],
       description='Copy type annotations from file.pyi to file.py.',
       epilog='Outputs merged file to stdout.')
 
@@ -102,4 +101,3 @@ def main(argv=None):
 
 if __name__ == '__main__':
   main()
-

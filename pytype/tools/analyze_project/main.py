@@ -83,7 +83,7 @@ def main():
   logging.info('\n  '.join(['Configuration:'] + str(conf).split('\n')))
 
   if not args.filenames:
-    logging.warning('Nothing to do!')
+    parser.parser.print_usage()
     sys.exit(0)
 
   # Importlab needs the python exe, so we check it as early as possible.

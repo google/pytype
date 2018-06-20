@@ -131,12 +131,14 @@ setup(
         'pytype/tools/merge_pyi',
         'pytype/typegraph',
     ],
-    scripts=[
-        'scripts/merge-pyi',
-        'scripts/pytype-single',
-        'scripts/pytd',
-        'scripts/pytype',
-    ],
+    entry_points={
+        'console_scripts': [
+            'merge-pyi = pytype.tools.merge_pyi.main:main',
+            'pytype-single = pytype.main:main',
+            'pytd = pytype.pytd.main:main',
+            'pytype = pytype.tools.analyze_project.main:main',
+        ]
+    },
     package_data={'pytype': get_builtin_files()},
     install_requires=[
         'importlab',
