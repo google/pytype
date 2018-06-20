@@ -29,3 +29,10 @@ install:
   - pip install six
 
 script: python buildutils/run_tests.py
+
+notifications:
+  email:
+    recipients:
+      - pytype@googlegroups.com
+    on_success: change
+    on_failure: always
