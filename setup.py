@@ -42,7 +42,12 @@ for f in [
     'position.hh',
     'stack.hh'
 ]:
-  shutil.copy(os.path.join(gen_dir, f), os.path.join(pyi_dir, f))
+  src = os.path.join(gen_dir, f)
+  target = os.path.join(pyi_dir, f)
+  # If we are building from an sdist this has already been done
+  if os.path.exists(src):
+    shutil.copy(src, target)
+  assert os.path.exists(target)
 
 
 # Copy typeshed to pytype/typeshed if the symlink doesn't work
