@@ -108,10 +108,6 @@ def main():
       print(' ', imp.name)
     sys.exit(0)
 
-  # --tree and --unresolved can run without pytype being available, so we do
-  # this check only if we're going to fire up the pytype runner.
-  environment.check_pytype_or_die()
-
   logging.info('Source tree:\n%s',
                importlab.output.formatted_deps_list(import_graph))
   tool_utils.makedirs_or_die(conf.output, 'Could not create output directory')
