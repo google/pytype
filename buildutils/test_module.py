@@ -29,6 +29,7 @@ from __future__ import print_function
 import argparse
 import os
 import sys
+import traceback
 import unittest
 
 PYTYPE_SRC_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -48,7 +49,10 @@ def get_module_and_log_file_from_result_msg(msg):
 
 
 def failure_msg(mod_name, log_file):
-  return _RESULT_MSG_SEP.join([_FAILURE_MSG_PREFIX, mod_name, log_file])
+  components = [_FAILURE_MSG_PREFIX, mod_name]
+  if log_file:
+    components.append(log_file)
+  return _RESULT_MSG_SEP.join(components)
 
 
 def pass_msg(mod_name):
@@ -188,9 +192,28 @@ def run_tests_in_class(class_object, options, reporter):
   return result
 
 
-def run_tests_in_module(mod_object, options, reporter):
+def run_tests_in_module(options, reporter):
   """Run test methods in a module and return the number of failing methods.."""
   reporter.report_module()
+  mod_abs_path = os.path.join(
+      options.pytype_path,
+      options.fq_mod_name.replace(".", os.path.sep) + ".py")
+  if not os.path.exists(mod_abs_path):
+    msg = "ERROR: Module not found: %s." % options.fq_mod_name
+    if options.output_file:
+      options.output_file.write(msg + "\n")
+      return 1
+    else:
+      sys.exit(msg)
+  try:
+    if "." in options.fq_mod_name:
+      fq_pkg_name, _ = options.fq_mod_name.rsplit(".", 1)
+      mod_object = __import__(options.fq_mod_name, fromlist=[fq_pkg_name])
+    else:
+      mod_object = __import__(options.fq_mod_name)
+  except ImportError:
+    traceback.print_exc(file=options.output_file)
+    return 1
   result = 0
   for _, class_object in _get_members_list(mod_object):
     if (isinstance(class_object, type) and
@@ -205,22 +228,12 @@ def main():
   # it gets picked up before other potential pytype installations present
   # already.
   sys.path = [options.pytype_path] + sys.path
-  mod_abs_path = os.path.join(
-      options.pytype_path,
-      options.fq_mod_name.replace(".", os.path.sep) + ".py")
-  if not os.path.exists(mod_abs_path):
-    sys.exit("Module %s not found." % options.fq_mod_name)
-  if "." in options.fq_mod_name:
-    fq_pkg_name, _ = options.fq_mod_name.rsplit(".", 1)
-    mod_object = __import__(options.fq_mod_name, fromlist=[fq_pkg_name])
-  else:
-    mod_object = __import__(options.fq_mod_name)
   stats_collector = StatsCollector(options)
   reporter = ResultReporter(options, stats_collector)
 
   def run(output_file):
     options.output_file = output_file
-    result = run_tests_in_module(mod_object, options, reporter)
+    result = run_tests_in_module(options, reporter)
     stats_collector.report()
     return result
 
