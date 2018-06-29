@@ -6,7 +6,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include "base/logging.h"
 #include "map_util.h"
 #include "memory_util.h"
 #include "solver.h"
