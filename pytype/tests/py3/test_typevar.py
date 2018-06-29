@@ -9,7 +9,6 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testId(self):
     ty = self.Infer("""
-
       import typing
       T = typing.TypeVar("T")
       def f(x: T) -> T:
@@ -29,7 +28,6 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testExtractItem(self):
     ty = self.Infer("""
-
       from typing import List, TypeVar
       S = TypeVar("S")  # unused
       T = TypeVar("T")
@@ -49,7 +47,6 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testWrapItem(self):
     ty = self.Infer("""
-
       from typing import List, TypeVar
       T = TypeVar("T")
       def f(x: T) -> List[T]:
@@ -72,7 +69,6 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
         X = TypeVar("X")
       """)
       _, errors = self.InferWithErrors("""\
-
         # This is illegal: A TypeVar("T") needs to be stored under the name "T".
         from a import T as T2
         from a import X
@@ -80,13 +76,12 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
         def f(x: T2) -> T2: ...
       """, pythonpath=[d.path])
     self.assertErrorLogIs(errors, [
-        (3, "invalid-typevar", "T.*T2"),
-        (5, "invalid-typevar", "X.*Y"),
+        (2, "invalid-typevar", "T.*T2"),
+        (4, "invalid-typevar", "X.*Y"),
     ])
 
   def testMultipleSubstitution(self):
     ty = self.Infer("""\
-
       from typing import Dict, Tuple, TypeVar
       K = TypeVar("K")
       V = TypeVar("V")
@@ -106,7 +101,6 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testUnion(self):
     ty = self.Infer("""\
-
       from typing import TypeVar, Union
       S = TypeVar("S")
       T = TypeVar("T")
@@ -126,7 +120,6 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testBadSubstitution(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import List, TypeVar
       S = TypeVar("S")
       T = TypeVar("T")
@@ -145,14 +138,13 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       f4("hello", "world", "domination")  # ok
     """)
     self.assertErrorLogIs(errors, [
-        (6, "bad-return-type", r"List\[S\].*set"),
-        (10, "bad-return-type", r"str.*int"),
-        (10, "bad-return-type", r"bool.*int"),
-        (12, "bad-return-type", r"List\[bool\].*List\[Union\[float, int\]\]")])
+        (5, "bad-return-type", r"List\[S\].*set"),
+        (9, "bad-return-type", r"str.*int"),
+        (9, "bad-return-type", r"bool.*int"),
+        (11, "bad-return-type", r"List\[bool\].*List\[Union\[float, int\]\]")])
 
   def testUseConstraints(self):
     ty, errors = self.InferWithErrors("""\
-
       from typing import TypeVar
       T = TypeVar("T", int, float)
       def f(x: T) -> T:
@@ -169,12 +161,11 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       w = ...  # type: bool
       u = ...  # type: int or float
     """)
-    self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
+    self.assertErrorLogIs(errors, [(5, "wrong-arg-types",
                                     r"Union\[float, int\].*str")])
 
   def testTypeParameterType(self):
     ty = self.Infer("""\
-
       from typing import Type, TypeVar
       T = TypeVar("T")
       def f(x: Type[T]) -> T:
@@ -190,30 +181,27 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testPrintNestedTypeParameter(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import List, TypeVar
       T = TypeVar("T", int, float)
       def f(x: List[T]): ...
       f([""])
     """)
     self.assertErrorLogIs(errors, [
-        (5, "wrong-arg-types", r"List\[Union\[float, int\]\].*List\[str\]")])
+        (4, "wrong-arg-types", r"List\[Union\[float, int\]\].*List\[str\]")])
 
   def testConstraintSubtyping(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import TypeVar
       T = TypeVar("T", int, float)
       def f(x: T, y: T): ...
       f(True, False)  # ok
       f(True, 42)
     """)
-    self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
+    self.assertErrorLogIs(errors, [(5, "wrong-arg-types",
                                     r"Expected.*y: bool.*Actual.*y: int")])
 
   def testFilterValue(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import TypeVar
       T = TypeVar("T", int, float)
       def f(x: T, y: T): ...
@@ -222,12 +210,11 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       f(x, 3)
       f(x, 42.0)  # ok
     """)
-    self.assertErrorLogIs(errors, [(7, "wrong-arg-types",
+    self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
                                     r"Expected.*y: float.*Actual.*y: int")])
 
   def testFilterClass(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import TypeVar
       class A(object): pass
       class B(object): pass
@@ -238,12 +225,11 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       f(x, A())
       f(x, B())  # ok
     """)
-    self.assertErrorLogIs(errors, [(9, "wrong-arg-types",
+    self.assertErrorLogIs(errors, [(8, "wrong-arg-types",
                                     r"Expected.*y: B.*Actual.*y: A")])
 
   def testSplit(self):
     ty = self.Infer("""\
-
       from typing import TypeVar
       T = TypeVar("T", int, type(None))
       def f(x: T) -> T:
@@ -265,7 +251,6 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testEnforceNonConstrainedTypeVar(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import TypeVar
       T = TypeVar("T")
       def f(x: T, y: T): ...
@@ -276,14 +261,13 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       f(42, object())  # ok
       f(42.0, "")
     """)
-    self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
+    self.assertErrorLogIs(errors, [(5, "wrong-arg-types",
                                     r"Expected.*y: int.*Actual.*y: str"),
-                                   (10, "wrong-arg-types",
+                                   (9, "wrong-arg-types",
                                     r"Expected.*y: float.*Actual.*y: str")])
 
   def testUselessTypeVar(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import Tuple, TypeVar
       T = TypeVar("T")
       S = TypeVar("S", int, float)
@@ -297,14 +281,13 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       def f8(x: "U") -> "U": ...  # ok
       U = TypeVar("U")
     """)
-    self.assertErrorLogIs(errors, [(5, "invalid-annotation"),
+    self.assertErrorLogIs(errors, [(4, "invalid-annotation"),
+                                   (5, "invalid-annotation"),
                                    (6, "invalid-annotation"),
-                                   (7, "invalid-annotation"),
-                                   (10, "invalid-annotation")])
+                                   (9, "invalid-annotation")])
 
   def testUseBound(self):
     ty, errors = self.InferWithErrors("""\
-
       from typing import TypeVar
       T = TypeVar("T", bound=float)
       def f(x: T) -> T:
@@ -326,11 +309,10 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       v5 = ...  # type: Any
     """)
     self.assertErrorLogIs(
-        errors, [(10, "wrong-arg-types", r"x: float.*x: str")])
+        errors, [(9, "wrong-arg-types", r"x: float.*x: str")])
 
   def testBadReturn(self):
     self.assertNoCrash(self.Check, """\
-
       from typing import AnyStr, Dict
 
       class Foo(object):
@@ -341,18 +323,16 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testOptionalTypeVar(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import Optional, TypeVar
       T = TypeVar("T", bound=str)
       def f() -> Optional[T]:
         return 42 if __random__ else None
     """, deep=True)
     self.assertErrorLogIs(
-        errors, [(5, "bad-return-type", r"Optional\[T\].*int")])
+        errors, [(4, "bad-return-type", r"Optional\[T\].*int")])
 
   def testUnicodeLiterals(self):
     ty = self.Infer("""
-
       from __future__ import unicode_literals
       import typing
       T = typing.TypeVar("T")
@@ -372,7 +352,6 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testAnyAsBound(self):
     self.Check("""
-
       from typing import Any, TypeVar
       T = TypeVar("T", bound=Any)
       def f(x: T) -> T:
@@ -382,7 +361,6 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
 
   def testAnyAsConstraint(self):
     self.Check("""
-
       from typing import Any, TypeVar
       T = TypeVar("T", str, Any)
       def f(x: T) -> T:

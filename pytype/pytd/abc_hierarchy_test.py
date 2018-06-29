@@ -1,7 +1,7 @@
 """Tests for abc_hierarchy.py."""
 
-import unittest
 from pytype.pytd import abc_hierarchy
+import unittest
 
 
 class TestAbcHierarchy(unittest.TestCase):

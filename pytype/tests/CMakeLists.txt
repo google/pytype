@@ -5,6 +5,7 @@ py_library(
     test_base
   SRCS
     test_base.py
+    test_utils.py
   DEPS
     pytype.libvm
 )

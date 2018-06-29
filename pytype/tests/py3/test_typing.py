@@ -8,7 +8,6 @@ class TypingTest(test_base.TargetPython3BasicTest):
   """Tests for typing.py."""
 
   _TEMPLATE = """
-
     import collections
     import typing
     def f(s: %(annotation)s):%(disables)s
@@ -37,7 +36,6 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_generator(self):
     self.Check("""\
-
       from typing import Generator
       def f() -> Generator[int]:
         for i in range(3):
@@ -46,7 +44,6 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_type(self):
     ty, errors = self.InferWithErrors("""\
-
       from typing import Type
       class Foo:
         x = 1
@@ -63,7 +60,7 @@ class TypingTest(test_base.TargetPython3BasicTest):
       v3 = f3(Foo)
       v4 = f4(Foo)
     """)
-    self.assertErrorLogIs(errors, [(8, "attribute-error", r"y.*Foo")])
+    self.assertErrorLogIs(errors, [(7, "attribute-error", r"y.*Foo")])
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Type
       class Foo:
@@ -80,7 +77,6 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_type_union(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import Type, Union
       class Foo:
         bar = ...  # type: int
@@ -95,7 +91,7 @@ class TypingTest(test_base.TargetPython3BasicTest):
         f1(x)
         f2(x)
     """)
-    self.assertErrorLogIs(errors, [(10, "attribute-error", "bar.*int")])
+    self.assertErrorLogIs(errors, [(9, "attribute-error", "bar.*int")])
 
   def test_use_type_alias(self):
     with file_utils.Tempdir() as d:
@@ -104,7 +100,6 @@ class TypingTest(test_base.TargetPython3BasicTest):
         MyType = List[str]
       """)
       self.Check("""
-
         import foo
         def f(x: foo.MyType):
           pass
@@ -118,7 +113,6 @@ class TypingTest(test_base.TargetPython3BasicTest):
         def f() -> Callable
       """)
       self.Check("""\
-
         from typing import Callable
         import foo
         def f() -> Callable:
@@ -129,7 +123,6 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_callable_parameters(self):
     ty, errors = self.InferWithErrors("""\
-
       from typing import Any, Callable
 
       # The below are all valid.
@@ -164,26 +157,25 @@ class TypingTest(test_base.TargetPython3BasicTest):
        def g7(x: Callable[[], bool]) -> None: ...
     """)
     self.assertErrorLogIs(errors, [
-        (9, "invalid-annotation", r"'int'.*must be a list of argument types"),
-        (11, "invalid-annotation", r"\[int\] or \[str\].*Must be constant"),
-        (12, "invalid-annotation", r"bool or str.*Must be constant"),
-        (13, "invalid-annotation", r"int or str.*Must be constant"),
-        (15, "invalid-annotation",
+        (8, "invalid-annotation", r"'int'.*must be a list of argument types"),
+        (10, "invalid-annotation", r"\[int\] or \[str\].*Must be constant"),
+        (11, "invalid-annotation", r"bool or str.*Must be constant"),
+        (12, "invalid-annotation", r"int or str.*Must be constant"),
+        (14, "invalid-annotation",
          r"instance of List\[int\].*Must be constant"),
-        (16, "invalid-annotation", r"instance of int"),
-        (17, "invalid-annotation", r"Callable.*Expected 2.*got 3"),])
+        (15, "invalid-annotation", r"instance of int"),
+        (16, "invalid-annotation", r"Callable.*Expected 2.*got 3"),])
 
   def test_callable_bad_args(self):
     ty, errors = self.InferWithErrors("""\
-
       from typing import Callable
       lst1 = [str]
       lst1[0] = int
-      def g1(x: Callable[lst1, bool]): ...  # line 5
+      def g1(x: Callable[lst1, bool]): ...  # line 4
       lst2 = [str]
       while __random__:
         lst2.append(int)
-      def g2(x: Callable[lst2, bool]): ...  # line 9
+      def g2(x: Callable[lst2, bool]): ...  # line 8
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Callable, List, Type, Union
@@ -196,9 +188,9 @@ class TypingTest(test_base.TargetPython3BasicTest):
     # the mutation is simple enough that we could keep track of the change to
     # the constant, but we don't do that yet.
     self.assertErrorLogIs(errors, [
-        (5, "invalid-annotation",
+        (4, "invalid-annotation",
          r"instance of List\[Type\[Union\[int, str\]\]\].*Must be constant"),
-        (9, "invalid-annotation",
+        (8, "invalid-annotation",
          r"instance of List\[Type\[Union\[int, str\]\]\].*Must be constant"),])
 
   def test_generics(self):
@@ -210,7 +202,6 @@ class TypingTest(test_base.TargetPython3BasicTest):
         class CustomDict(Dict[K, V]): ...
       """)
       self.Check("""\
-
         import typing
         import foo
         def f(x: typing.Callable[..., int]): pass
@@ -243,7 +234,6 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_generator_iterator_match(self):
     self.Check("""
-
       from typing import Iterator
       def f(x: Iterator[int]):
         pass
@@ -252,7 +242,6 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_name_conflict(self):
     ty = self.Infer("""
-
       import typing
       def f() -> typing.Any:
         pass
@@ -272,7 +261,6 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_callable_call(self):
     ty, errors = self.InferWithErrors("""\
-
       from typing import Callable
       f = ...  # type: Callable[[int], str]
       v1 = f()
@@ -288,13 +276,12 @@ class TypingTest(test_base.TargetPython3BasicTest):
       v3 = ...  # type: Any
       v4 = ...  # type: Any
     """)
-    self.assertErrorLogIs(errors, [(4, "wrong-arg-count", "1.*0"),
-                                   (6, "wrong-arg-types", "int.*float"),
-                                   (7, "wrong-arg-count", "1.*2")])
+    self.assertErrorLogIs(errors, [(3, "wrong-arg-count", "1.*0"),
+                                   (5, "wrong-arg-types", "int.*float"),
+                                   (6, "wrong-arg-count", "1.*2")])
 
   def test_callable_call_with_type_parameters(self):
     ty, errors = self.InferWithErrors("""\
-
       from typing import Callable, TypeVar
       T = TypeVar("T")
       def f(g: Callable[[T, T], T], y, z):
@@ -309,11 +296,10 @@ class TypingTest(test_base.TargetPython3BasicTest):
       v1 = ...  # type: int or float
       v2 = ...  # type: Any
     """)
-    self.assertErrorLogIs(errors, [(5, "wrong-arg-types", r"int.*str")])
+    self.assertErrorLogIs(errors, [(4, "wrong-arg-types", r"int.*str")])
 
   def test_callable_call_with_return_only(self):
     ty = self.Infer("""
-
       from typing import Callable
       f = ...  # type: Callable[..., int]
       v = f()
@@ -326,7 +312,6 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_callable_call_with_varargs_and_kwargs(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import Callable
       f = ...  # type: Callable[[], int]
       f(x=3)
@@ -334,14 +319,13 @@ class TypingTest(test_base.TargetPython3BasicTest):
       f(**{"x": "hello", "y": "world"})
       f(*(42,), **{"hello": "world"})
     """)
-    self.assertErrorLogIs(errors, [(4, "wrong-keyword-args", r"x"),
-                                   (5, "wrong-arg-count", r"0.*1"),
-                                   (6, "wrong-keyword-args", r"x, y"),
-                                   (7, "wrong-keyword-args", r"hello")])
+    self.assertErrorLogIs(errors, [(3, "wrong-keyword-args", r"x"),
+                                   (4, "wrong-arg-count", r"0.*1"),
+                                   (5, "wrong-keyword-args", r"x, y"),
+                                   (6, "wrong-keyword-args", r"hello")])
 
   def test_callable_attribute(self):
     self.Check("""\
-
       from typing import Any, Callable
       def foo(fn: Callable[[Any], Any]):
         fn.foo # pytype: disable=attribute-error
@@ -349,7 +333,6 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_callable_func_name(self):
     self.Check("""\
-
       from typing import Any, Callable
       def foo(fn: Callable[[Any], Any]) -> str:
         return fn.func_name
@@ -357,14 +340,12 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_items_view(self):
     self.Check("""
-
       from typing import ItemsView
       def f(x: ItemsView[str, int]): ...
     """)
 
   def test_new_type(self):
     ty = self.Infer("""
-
       from typing import NewType
       MyInt = NewType('MyInt', int)
       class A(object):
@@ -430,7 +411,6 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_new_type_error(self):
     _, errors = self.InferWithErrors("""
-
       from typing import NewType
       MyInt = NewType('MyInt', int)
       MyStr = NewType('MyStr', str)
@@ -445,16 +425,15 @@ class TypingTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorLogIs(
         errors,
-        [(9, "bad-return-type",
+        [(8, "bad-return-type",
           r"Expected: MyInt\nActually returned: int"),
-         (12, "wrong-arg-types",
+         (11, "wrong-arg-types",
           r".*Expected: \(i: MyInt\)\nActually passed: \(i: int\)"),
-         (13, "wrong-arg-types",
+         (12, "wrong-arg-types",
           r".*Expected:.*val: str\)\nActually passed:.*val: int\)"),])
 
   def test_maybe_return(self):
     self.Check("""
-
       def f() -> int:
         if __random__:
           return 42
@@ -464,7 +443,6 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_no_return_against_str(self):
     ty = self.Infer("""
-
       def f() -> str:
         raise ValueError()
       def g():
@@ -477,7 +455,6 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_called_no_return_against_str(self):
     self.Check("""
-
       def f():
         raise ValueError()
       def g() -> str:
@@ -486,54 +463,49 @@ class TypingTest(test_base.TargetPython3BasicTest):
 
   def test_union_ellipsis(self):
     errors = self.CheckWithErrors("""\
-
       from typing import Union
       MyUnion = Union[int, ...]
     """)
     self.assertErrorLogIs(
-        errors, [(3, "invalid-annotation", r"Ellipsis.*index 1.*Union")])
+        errors, [(2, "invalid-annotation", r"Ellipsis.*index 1.*Union")])
 
   def test_list_ellipsis(self):
     errors = self.CheckWithErrors("""\
-
       from typing import List
       MyList = List[int, ...]
     """)
     self.assertErrorLogIs(
-        errors, [(3, "invalid-annotation", r"Ellipsis.*index 1.*List")])
+        errors, [(2, "invalid-annotation", r"Ellipsis.*index 1.*List")])
 
   def test_multiple_ellipses(self):
     errors = self.CheckWithErrors("""\
-
       from typing import Union
       MyUnion = Union[..., int, ..., str, ...]
     """)
     self.assertErrorLogIs(errors, [
-        (3, "invalid-annotation", r"Ellipsis.*indices 0, 2, 4.*Union")])
+        (2, "invalid-annotation", r"Ellipsis.*indices 0, 2, 4.*Union")])
 
   def test_bad_tuple_ellipsis(self):
     errors = self.CheckWithErrors("""\
-
       from typing import Tuple
       MyTuple1 = Tuple[..., ...]
       MyTuple2 = Tuple[...]
     """)
     self.assertErrorLogIs(
-        errors, [(3, "invalid-annotation", r"Ellipsis.*index 0.*Tuple"),
-                 (4, "invalid-annotation", r"Ellipsis.*index 0.*Tuple")])
+        errors, [(2, "invalid-annotation", r"Ellipsis.*index 0.*Tuple"),
+                 (3, "invalid-annotation", r"Ellipsis.*index 0.*Tuple")])
 
   def test_bad_callable_ellipsis(self):
     errors = self.CheckWithErrors("""\
-
       from typing import Callable
       MyCallable1 = Callable[..., ...]
       MyCallable2 = Callable[[int], ...]
       MyCallable3 = Callable[[...], int]
     """)
     self.assertErrorLogIs(
-        errors, [(3, "invalid-annotation", r"Ellipsis.*index 1.*Callable"),
-                 (4, "invalid-annotation", r"Ellipsis.*index 1.*Callable"),
-                 (5, "invalid-annotation", r"Ellipsis.*index 0.*list")])
+        errors, [(2, "invalid-annotation", r"Ellipsis.*index 1.*Callable"),
+                 (3, "invalid-annotation", r"Ellipsis.*index 1.*Callable"),
+                 (4, "invalid-annotation", r"Ellipsis.*index 0.*list")])
 
 
 class TypingTestPython3Feature(test_base.TargetPython3FeatureTest):

@@ -28,7 +28,7 @@ install:
   - pip install pyyaml
   - pip install six
 
-script: python buildutils/run_tests.py
+script: python build_scripts/run_tests.py
 
 notifications:
   email:

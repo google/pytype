@@ -1,7 +1,5 @@
 """Tests for reloading generated pyi."""
 
-import unittest
-
 from pytype import file_utils
 from pytype.pytd import pytd
 from pytype.tests import test_base
@@ -59,7 +57,7 @@ class ReingestTest(test_base.TargetIndependentTest):
         def g() -> int
       """)
 
-  @unittest.skip("Needs better handling of Union[Callable, f] in output.py.""")
+  @test_base.skip("Needs better handling of Union[Callable, f] in output.py.""")
   def testMaybeIdentityDecorators(self):
     foo = self.Infer("""
       def maybe_decorate(f):
@@ -206,7 +204,7 @@ class ReingestTest(test_base.TargetIndependentTest):
         lst = ...  # type: foo.MyList
       """)
 
-  @unittest.skip("Need to give MyList.write the right self mutation.")
+  @test_base.skip("Need to give MyList.write the right self mutation.")
   def testInheritedMutationInGenericClass(self):
     foo = self.Infer("""
       from typing import List, TypeVar

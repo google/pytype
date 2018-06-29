@@ -1,6 +1,5 @@
 """Tests for handling GenericType."""
 
-import unittest
 
 from pytype import file_utils
 from pytype.tests import test_base
@@ -474,7 +473,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def f() -> List[nothing]
       """)
 
-  @unittest.skip("Needs better GenericType support")
+  @test_base.skip("Needs better GenericType support")
   def testTypeParameterLimits(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """

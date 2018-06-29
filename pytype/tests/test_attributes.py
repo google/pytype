@@ -1,7 +1,5 @@
 """Test instance and class attributes."""
 
-import unittest
-
 from pytype import file_utils
 from pytype.tests import test_base
 
@@ -132,7 +130,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
         return f().upper()
     """)
 
-  @unittest.skip("has_strict_none_origins can't tell if an origin is blocked.")
+  @test_base.skip("has_strict_none_origins can't tell if an origin is blocked.")
   def testBlockedLocalOrigin(self):
     self.Check("""
       x = None
@@ -170,7 +168,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
         Foo()
     """)
     self.assertErrorLogIs(
-        errors, [(3, "attribute-error", r"upper.*None.*Traceback.*5")])
+        errors, [(3, "attribute-error", r"upper.*None.*Traceback.*line 5")])
 
   def testKeepNoneReturn(self):
     ty = self.Infer("""
@@ -499,7 +497,7 @@ class TestAttributes(test_base.TargetIndependentTest):
       def f(x) -> str or bool
     """)
 
-  @unittest.skip("TODO(b/63407497): implement strict checking for __setitem__")
+  @test_base.skip("TODO(b/63407497): implement strict checking for __setitem__")
   def testUnionSetAttribute(self):
     ty, errors = self.InferWithErrors("""\
       class A(object):
@@ -550,7 +548,7 @@ class TestAttributes(test_base.TargetIndependentTest):
       x = ...  # type: int
     """)
 
-  @unittest.skip("Magic methods aren't computed")
+  @test_base.skip("Magic methods aren't computed")
   def testCallComputed(self):
     ty = self.Infer("""
       class A(object):
@@ -685,7 +683,7 @@ class TestAttributes(test_base.TargetIndependentTest):
           def __init__(self) -> None: ...
     """)
 
-  @unittest.skip("Needs vm._get_iter() to iterate through individual bindings.")
+  @test_base.skip("Needs vm._get_iter() to iterate over individual bindings.")
   def testMetaclassIter(self):
     self.Check("""
       class Meta(type):
@@ -699,7 +697,7 @@ class TestAttributes(test_base.TargetIndependentTest):
         pass
     """)
 
-  @unittest.skip("Needs better handling of __getitem__ in vm._get_iter().")
+  @test_base.skip("Needs better handling of __getitem__ in vm._get_iter().")
   def testMetaclassGetItem(self):
     self.Check("""
       class Meta(type):
@@ -713,7 +711,7 @@ class TestAttributes(test_base.TargetIndependentTest):
         pass
     """)
 
-  @unittest.skip("Needs vm._get_iter() to iterate through individual bindings.")
+  @test_base.skip("Needs vm._get_iter() to iterate over individual bindings.")
   def testBadIter(self):
     errors = self.CheckWithErrors("""\
       v = [] if __random__ else 42

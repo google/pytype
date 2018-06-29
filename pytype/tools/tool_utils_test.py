@@ -1,10 +1,10 @@
 """Tests for tool_utils.py."""
 
 import os
-import unittest
 
 from pytype import file_utils
 from pytype.tools import tool_utils
+import unittest
 
 
 class TestSetupLoggingOrDie(unittest.TestCase):

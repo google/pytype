@@ -17,10 +17,10 @@
 
 from __future__ import print_function
 
-import unittest
 
 from pytype.pytd import booleq
 import six
+import unittest
 
 
 # pylint: disable=invalid-name
@@ -184,7 +184,7 @@ class TestBoolEq(unittest.TestCase):
     assignments = solver._get_first_approximation()
     self.assertDictEqual(assignments,
                          {"x": {"1"}, "y": {"1"}})
-    self.assertTrue(assignments["x"] is assignments["y"])
+    self.assertIs(assignments["x"], assignments["y"])
 
   def testGetMultipleEqualFirstApproximation(self):
     solver = self._MakeSolver(["x", "y", "z"])
@@ -195,8 +195,8 @@ class TestBoolEq(unittest.TestCase):
                          {"x": {"1", "2"},
                           "y": {"1", "2"},
                           "z": {"1", "2"}})
-    self.assertTrue(assignments["x"] is assignments["y"])
-    self.assertTrue(assignments["y"] is assignments["z"])
+    self.assertIs(assignments["x"], assignments["y"])
+    self.assertIs(assignments["y"], assignments["z"])
 
   def testImplication(self):
     solver = self._MakeSolver()

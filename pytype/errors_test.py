@@ -8,28 +8,12 @@ import textwrap
 from pytype import errors
 from pytype import file_utils
 from pytype import state as frame_state
+from pytype.tests import test_utils
 
 import unittest
 
 _TEST_ERROR = "test-error"
-_MESSAGE = "an error message"
-
-FakeCode = collections.namedtuple("FakeCode", "co_filename co_name")
-
-
-class FakeOpcode(object):
-
-  def __init__(self, filename, line, methodname):
-    self.code = FakeCode(filename, methodname)
-    self.line = line
-
-  def to_stack(self):
-    return [frame_state.SimpleFrame(self)]
-
-
-def _fake_stack(length):
-  return [frame_state.SimpleFrame(FakeOpcode("foo.py", i, "function%d" % i))
-          for i in range(length)]
+_MESSAGE = "an error message on 'here'"
 
 
 class ErrorTest(unittest.TestCase):
@@ -37,52 +21,57 @@ class ErrorTest(unittest.TestCase):
   @errors._error_name(_TEST_ERROR)
   def test_init(self):
     e = errors.Error(errors.SEVERITY_ERROR, _MESSAGE, filename="foo.py",
-                     lineno=123, methodname="foo")
+                     lineno=123, methodname="foo", keyword="here")
     self.assertEqual(errors.SEVERITY_ERROR, e._severity)
     self.assertEqual(_MESSAGE, e._message)
     self.assertEqual(e._name, _TEST_ERROR)
     self.assertEqual("foo.py", e._filename)
     self.assertEqual(123, e._lineno)
     self.assertEqual("foo", e._methodname)
+    self.assertEqual("here", e.keyword)
 
   @errors._error_name(_TEST_ERROR)
   def test_with_stack(self):
     # Opcode of None.
-    e = errors.Error.with_stack(None, errors.SEVERITY_ERROR, _MESSAGE)
+    e = errors.Error.with_stack(None, errors.SEVERITY_ERROR, _MESSAGE,
+                                keyword="here")
     self.assertEqual(errors.SEVERITY_ERROR, e._severity)
     self.assertEqual(_MESSAGE, e._message)
     self.assertEqual(e._name, _TEST_ERROR)
     self.assertEqual(None, e._filename)
     self.assertEqual(0, e._lineno)
     self.assertEqual(None, e._methodname)
+    self.assertEqual("here", e.keyword)
     # Opcode of None.
-    op = FakeOpcode("foo.py", 123, "foo")
-    e = errors.Error.with_stack(op.to_stack(), errors.SEVERITY_ERROR, _MESSAGE)
+    op = test_utils.FakeOpcode("foo.py", 123, "foo")
+    e = errors.Error.with_stack(op.to_stack(), errors.SEVERITY_ERROR, _MESSAGE,
+                                keyword="here")
     self.assertEqual(errors.SEVERITY_ERROR, e._severity)
     self.assertEqual(_MESSAGE, e._message)
     self.assertEqual(e._name, _TEST_ERROR)
     self.assertEqual("foo.py", e._filename)
     self.assertEqual(123, e._lineno)
     self.assertEqual("foo", e._methodname)
+    self.assertEqual("here", e.keyword)
 
   @errors._error_name(_TEST_ERROR)
   def test_no_traceback_stack_len_1(self):
     # Stack of length 1
-    op = FakeOpcode("foo.py", 123, "foo")
+    op = test_utils.FakeOpcode("foo.py", 123, "foo")
     error = errors.Error.with_stack(op.to_stack(), errors.SEVERITY_ERROR, "")
     self.assertIsNone(error._traceback)
 
   @errors._error_name(_TEST_ERROR)
   def test_no_traceback_no_opcode(self):
     # Frame without opcode
-    op = FakeOpcode("foo.py", 123, "foo")
+    op = test_utils.FakeOpcode("foo.py", 123, "foo")
     stack = [frame_state.SimpleFrame(), frame_state.SimpleFrame(op)]
     error = errors.Error.with_stack(stack, errors.SEVERITY_ERROR, "")
     self.assertIsNone(error._traceback)
 
   @errors._error_name(_TEST_ERROR)
   def test_traceback(self):
-    stack = _fake_stack(errors.MAX_TRACEBACK_LENGTH + 1)
+    stack = test_utils.fake_stack(errors.MAX_TRACEBACK_LENGTH + 1)
     error = errors.Error.with_stack(stack, errors.SEVERITY_ERROR, "")
     self.assertMultiLineEqual(error._traceback, textwrap.dedent("""\
       Traceback:
@@ -92,7 +81,7 @@ class ErrorTest(unittest.TestCase):
 
   @errors._error_name(_TEST_ERROR)
   def test_truncated_traceback(self):
-    stack = _fake_stack(errors.MAX_TRACEBACK_LENGTH + 2)
+    stack = test_utils.fake_stack(errors.MAX_TRACEBACK_LENGTH + 2)
     error = errors.Error.with_stack(stack, errors.SEVERITY_ERROR, "")
     self.assertMultiLineEqual(error._traceback, textwrap.dedent("""\
       Traceback:
@@ -114,14 +103,14 @@ class ErrorTest(unittest.TestCase):
   def test_str(self):
     e = errors.Error(errors.SEVERITY_ERROR, _MESSAGE, filename="foo.py",
                      lineno=123, methodname="foo")
-    self.assertEqual(
-        'File "foo.py", line 123, in foo: an error message [test-error]',
-        str(e))
+    message = "an error message on 'here'"
+    error = "File \"foo.py\", line 123, in foo: " + message + " [test-error]"
+    self.assertEqual(error, str(e))
 
   @errors._error_name(_TEST_ERROR)
   def test_write_to_csv(self):
     errorlog = errors.ErrorLog()
-    op = FakeOpcode("foo.py", 123, "foo")
+    op = test_utils.FakeOpcode("foo.py", 123, "foo")
     message, details = "This is an error", "with\nsome\ndetails: \"1\", 2, 3"
     errorlog.error(op.to_stack(), message, details + "0")
     errorlog.error(op.to_stack(), message, details + "1")
@@ -142,7 +131,7 @@ class ErrorTest(unittest.TestCase):
   @errors._error_name(_TEST_ERROR)
   def test_write_to_csv_with_traceback(self):
     errorlog = errors.ErrorLog()
-    stack = _fake_stack(2)
+    stack = test_utils.fake_stack(2)
     errorlog.error(stack, "", "some\ndetails")
     with file_utils.Tempdir() as d:
       filename = d.create_file("errors.csv")
@@ -162,7 +151,7 @@ class ErrorLogBaseTest(unittest.TestCase):
   @errors._error_name(_TEST_ERROR)
   def test_error(self):
     errorlog = errors.ErrorLog()
-    op = FakeOpcode("foo.py", 123, "foo")
+    op = test_utils.FakeOpcode("foo.py", 123, "foo")
     errorlog.error(op.to_stack(), "unknown attribute %s" % "xyz")
     self.assertEqual(1, len(errorlog))
     e = list(errorlog)[0]  # iterate the log and save the first error.
@@ -184,7 +173,7 @@ class ErrorLogBaseTest(unittest.TestCase):
   @errors._error_name(_TEST_ERROR)
   def test_warn(self):
     errorlog = errors.ErrorLog()
-    op = FakeOpcode("foo.py", 123, "foo")
+    op = test_utils.FakeOpcode("foo.py", 123, "foo")
     errorlog.warn(op.to_stack(), "unknown attribute %s", "xyz")
     self.assertEqual(1, len(errorlog))
     e = list(errorlog)[0]  # iterate the log and save the first error.
@@ -209,7 +198,7 @@ class ErrorLogBaseTest(unittest.TestCase):
   @errors._error_name(_TEST_ERROR)
   def test_duplicate_error_no_traceback(self):
     errorlog = errors.ErrorLog()
-    stack = _fake_stack(2)
+    stack = test_utils.fake_stack(2)
     errorlog.error(stack, "error")  # traceback
     errorlog.error(stack[-1:], "error")  # no traceback
     # Keep the error with no traceback.
@@ -220,7 +209,7 @@ class ErrorLogBaseTest(unittest.TestCase):
   @errors._error_name(_TEST_ERROR)
   def test_duplicate_error_shorter_traceback(self):
     errorlog = errors.ErrorLog()
-    stack = _fake_stack(3)
+    stack = test_utils.fake_stack(3)
     errorlog.error(stack, "error")  # longer traceback
     errorlog.error(stack[-2:], "error")  # shorter traceback
     # Keep the error with a shorter traceback.
@@ -233,9 +222,12 @@ class ErrorLogBaseTest(unittest.TestCase):
   @errors._error_name(_TEST_ERROR)
   def test_unique_errors(self):
     errorlog = errors.ErrorLog()
-    current_frame = frame_state.SimpleFrame(FakeOpcode("foo.py", 123, "foo"))
-    backframe1 = frame_state.SimpleFrame(FakeOpcode("foo.py", 1, "bar"))
-    backframe2 = frame_state.SimpleFrame(FakeOpcode("foo.py", 2, "baz"))
+    current_frame = frame_state.SimpleFrame(
+        test_utils.FakeOpcode("foo.py", 123, "foo"))
+    backframe1 = frame_state.SimpleFrame(
+        test_utils.FakeOpcode("foo.py", 1, "bar"))
+    backframe2 = frame_state.SimpleFrame(
+        test_utils.FakeOpcode("foo.py", 2, "baz"))
     errorlog.error([backframe1, current_frame], "error")
     errorlog.error([backframe2, current_frame], "error")
     # Keep both errors, since the tracebacks are different.
@@ -244,6 +236,41 @@ class ErrorLogBaseTest(unittest.TestCase):
     self.assertSetEqual(set(errorlog), set(unique_errors))
 
 
+class ErrorDocTest(unittest.TestCase):
+  ERROR_FILE_PATH = os.path.join(os.path.dirname(errors.__file__),
+                                 "../docs/errors.md")
+
+  def _check_and_get_documented_errors(self):
+    with open(self.ERROR_FILE_PATH, "r") as f:
+      lines = f.readlines()
+    entries = [line[3:].strip() for line in lines if line.startswith("##")]
+    counts = collections.Counter(entries)
+    if any(count > 1 for count in counts.values()):
+      raise AssertionError(
+          "These errors.md entries have duplicates:\n  " +
+          "\n  ".join(name for name, count in counts.items() if count > 1))
+    sorted_entries = sorted(entries)
+    if sorted_entries != entries:
+      raise AssertionError(
+          "These errors.md entries are out of alphabetical order:\n  " +
+          "\n  ".join(
+              actual for expected, actual in zip(sorted_entries, entries)
+              if expected != actual))
+    return set(entries)
+
+  def test_error_doc(self):
+    documented_errors = self._check_and_get_documented_errors()
+    all_errors = errors._ERROR_NAMES - {_TEST_ERROR}
+    undocumented_errors = all_errors - documented_errors
+    if undocumented_errors:
+      raise AssertionError(
+          "These errors are missing entries in errors.md:\n  " +
+          "\n  ".join(undocumented_errors) + "\n")
+    deprecated_errors = documented_errors - all_errors
+    if deprecated_errors:
+      raise AssertionError(
+          "These errors.md entries do not correspond to errors:\n  " +
+          "\n  ".join(deprecated_errors))
 
 
 if __name__ == "__main__":

@@ -8,7 +8,6 @@ class GeneratorTest(test_base.TargetPython3BasicTest):
 
   def testReturnBeforeYield(self):
     self.Check("""
-
       from typing import Generator
       def f() -> generator:
         if __random__:
@@ -18,12 +17,11 @@ class GeneratorTest(test_base.TargetPython3BasicTest):
 
   def testNoReturn(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import Generator
       def f() -> Generator[str]:
         yield 42
     """)
-    self.assertErrorLogIs(errors, [(4, "bad-return-type", r"str.*int")])
+    self.assertErrorLogIs(errors, [(3, "bad-return-type", r"str.*int")])
 
 
 test_base.main(globals(), __name__ == "__main__")

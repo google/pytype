@@ -13,7 +13,6 @@ class MatchTest(test_base.TargetPython3BasicTest):
         def bar() -> bool
       """)
       _, errors = self.InferWithErrors("""\
-
         from typing import Callable
         import foo
 
@@ -23,7 +22,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
         f(foo.bar)  # ok
         g(foo.bar)
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(9, "wrong-arg-types",
+      self.assertErrorLogIs(errors, [(8, "wrong-arg-types",
                                       r"\(x: Callable\[\[\], str\]\).*"
                                       r"\(x: Callable\[\[\], bool\]\)")])
 
@@ -35,7 +34,6 @@ class MatchTest(test_base.TargetPython3BasicTest):
         def f3(x: int) -> str: ...
       """)
       _, errors = self.InferWithErrors("""\
-
         from typing import Callable, TypeVar
         import foo
 
@@ -53,19 +51,18 @@ class MatchTest(test_base.TargetPython3BasicTest):
       """, pythonpath=[d.path])
       expected = r"Callable\[\[Union\[bool, int\]\], Union\[bool, int\]\]"
       self.assertErrorLogIs(errors, [
-          (12, "wrong-arg-types",
+          (11, "wrong-arg-types",
            r"Expected.*Callable\[\[str\], str\].*"
            r"Actual.*Callable\[\[int\], str\]"),
-          (14, "wrong-arg-types",
+          (13, "wrong-arg-types",
            r"Expected.*Callable\[\[bool\], bool\].*"
            r"Actual.*Callable\[\[int\], bool\]"),
-          (15, "wrong-arg-types",
+          (14, "wrong-arg-types",
            r"Expected.*" + expected + ".*"
            r"Actual.*Callable\[\[int\], str\]")])
 
   def testInterpreterFunctionAgainstCallable(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import Callable
       def f(x: Callable[[bool], int]): ...
       def g1(x: int) -> bool:
@@ -75,13 +72,12 @@ class MatchTest(test_base.TargetPython3BasicTest):
       f(g1)  # ok
       f(g2)
     """)
-    self.assertErrorLogIs(errors, [(9, "wrong-arg-types",
+    self.assertErrorLogIs(errors, [(8, "wrong-arg-types",
                                     r"Expected.*Callable\[\[bool\], int\].*"
                                     r"Actual.*Callable\[\[str\], int\]")])
 
   def testBoundInterpreterFunctionAgainstCallable(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import Callable
 
       class A(object):
@@ -100,13 +96,13 @@ class MatchTest(test_base.TargetPython3BasicTest):
       f1(unbound)
       f2(unbound)  # ok
     """)
-    self.assertErrorLogIs(errors, [(15, "wrong-arg-types",
+    self.assertErrorLogIs(errors, [(14, "wrong-arg-types",
                                     r"Expected.*Callable\[\[A, bool\], int\].*"
                                     r"Actual.*Callable\[\[int\], bool\]"),
-                                   (16, "wrong-arg-types",
+                                   (15, "wrong-arg-types",
                                     r"Expected.*Callable\[\[bool\], str\].*"
                                     r"Actual.*Callable\[\[int\], bool\]"),
-                                   (17, "wrong-arg-types",
+                                   (16, "wrong-arg-types",
                                     r"Expected.*Callable\[\[bool\], int\].*"
                                     r"Actual.*Callable\[\[Any, int\], bool\]")])
 
@@ -119,7 +115,6 @@ class MatchTest(test_base.TargetPython3BasicTest):
         def f2(x: Callable[[T], Any]) -> List[T]: ...
       """)
       ty = self.Infer("""\
-
         from typing import Any, Callable
         import foo
 
@@ -149,7 +144,6 @@ class MatchTest(test_base.TargetPython3BasicTest):
 
   def testVariableLengthFunctionAgainstCallable(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import Any, Callable
       def f(x: Callable[[int], Any]): pass
       def g1(x: int=0): pass
@@ -157,26 +151,24 @@ class MatchTest(test_base.TargetPython3BasicTest):
       f(g1)  # ok
       f(g2)
     """)
-    self.assertErrorLogIs(errors, [(7, "wrong-arg-types",
+    self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
                                     r"Expected.*Callable\[\[int\], Any\].*"
                                     r"Actual.*Callable\[\[str\], Any\]")])
 
   def testCallableInstanceAgainstCallableWithTypeParameters(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import Callable, TypeVar
       T = TypeVar("T")
       def f(x: Callable[[T], T]): ...
       def g() -> Callable[[int], str]: return __any_object__
       f(g())
     """)
-    self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
+    self.assertErrorLogIs(errors, [(5, "wrong-arg-types",
                                     r"Expected.*Callable\[\[str\], str\].*"
                                     r"Actual.*Callable\[\[int\], str\]")])
 
   def testFunctionWithTypeParameterReturnAgainstCallable(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import Callable, AnyStr, TypeVar
       T = TypeVar("T")
       def f(x: Callable[..., AnyStr]): ...
@@ -186,7 +178,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
       f(g1)  # ok
       f(g2)
     """)
-    self.assertErrorLogIs(errors, [(9, "wrong-arg-types")])
+    self.assertErrorLogIs(errors, [(8, "wrong-arg-types")])
 
   def testUnionInTypeParameter(self):
     with file_utils.Tempdir() as d:
@@ -196,7 +188,6 @@ class MatchTest(test_base.TargetPython3BasicTest):
         def decorate(func: Callable[..., Iterator[T]]) -> List[T]
       """)
       ty = self.Infer("""
-
         from typing import Generator, Optional
         import foo
         @foo.decorate
@@ -211,7 +202,6 @@ class MatchTest(test_base.TargetPython3BasicTest):
 
   def testAnyStr(self):
     self.Check("""
-
       from typing import AnyStr, Dict, Tuple
       class Foo(object):
         def bar(self, x: Dict[Tuple[AnyStr], AnyStr]): ...
@@ -219,7 +209,6 @@ class MatchTest(test_base.TargetPython3BasicTest):
 
   def testFormalType(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import AnyStr, List, NamedTuple
       def f(x: str):
         pass
@@ -230,13 +219,12 @@ class MatchTest(test_base.TargetPython3BasicTest):
       H = NamedTuple("H", [('a', AnyStr)])
     """)
     self.assertErrorLogIs(errors, [
-        (5, "invalid-typevar"),
-        (8, "invalid-typevar"),
-        (9, "invalid-typevar")])
+        (4, "invalid-typevar"),
+        (7, "invalid-typevar"),
+        (8, "invalid-typevar")])
 
   def testTypeVarWithBound(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import Callable, TypeVar
       T1 = TypeVar("T1", bound=int)
       T2 = TypeVar("T2")
@@ -244,9 +232,9 @@ class MatchTest(test_base.TargetPython3BasicTest):
         return __any_object__
       def g(x: Callable[[T2], T2]) -> None:
         pass
-      g(f)  # line 9
+      g(f)  # line 8
     """)
-    self.assertErrorLogIs(errors, [(9, "wrong-arg-types",
+    self.assertErrorLogIs(errors, [(8, "wrong-arg-types",
                                     r"Expected.*T2.*Actual.*T1")])
 
   def testCallableBaseClass(self):
@@ -257,7 +245,6 @@ class MatchTest(test_base.TargetPython3BasicTest):
         def g() -> Union[Type[Exception], Callable[[], ...]]
       """)
       self.Check("""
-
         from typing import Union
         import foo
         class Foo(foo.f()):

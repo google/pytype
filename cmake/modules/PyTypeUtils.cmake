@@ -28,8 +28,8 @@ if(NOT PYTHONLIBS_FOUND)
   message(FATAL_ERROR "PyType requires Python developer libraries (https://packages.ubuntu.com/python-dev).")
 endif()
 
-set(COPY_SCRIPT "${PROJECT_SOURCE_DIR}/buildutils/pytype_copy.py")
-set(TEST_MODULE_SCRIPT "${PROJECT_SOURCE_DIR}/buildutils/test_module.py")
+set(COPY_SCRIPT "${PROJECT_SOURCE_DIR}/build_scripts/pytype_copy.py")
+set(TEST_MODULE_SCRIPT "${PROJECT_SOURCE_DIR}/build_scripts/test_module.py")
 
 add_compile_options("-std=c++11")
 
@@ -76,6 +76,35 @@ function(_eval_fq_target_name target_name fq_target_name)
     set(${fq_target_name} ${target_name} PARENT_SCOPE)
   endif()
 endfunction(_eval_fq_target_name target_name fq_target_name)
+
+# Given a fully qualifed target name |fq_target_name|, and a list of file names
+# relative to the current directory, this function adds a list of the absolute
+# paths to these files as the property "OUT" to the target.
+function(_add_out_property fq_target_name relative_filename_list)
+  set(absolute_filename_list "")
+  foreach(src IN LISTS relative_filename_list)
+    list(APPEND absolute_filename_list "${CMAKE_CURRENT_BINARY_DIR}/${src}")
+  endforeach(src)
+
+  set_target_properties(
+    ${fq_target_name}
+    PROPERTIES
+      OUT "${absolute_filename_list}"
+  )
+endfunction(_add_out_property local_target_name out_file_list)
+
+# Given a list of |targets|, the list of their "OUT" property are returned
+# in a var named by |out_property_list|.
+function(_get_out_property_list targets out_property_list)
+  set(out_list "")
+  if(targets)
+    foreach(tgt IN LISTS targets)
+      _eval_fq_target_name(${tgt} fq_target_name)
+      list(APPEND out_list $<TARGET_PROPERTY:${fq_target_name},OUT>)
+    endforeach(tgt)
+  endif()
+  set(${out_property_list} "${out_list}" PARENT_SCOPE)
+endfunction(_get_out_property_list targets out_property_list)
 
 # Function implementing a 'genbison' rule which invokes bison over a source
 # file.
@@ -254,13 +283,15 @@ function(py_library)
     message(FATAL_ERROR "'py_library' rule requires a NAME argument.")
   endif()
 
+  _get_out_property_list("${PY_LIBRARY_DEPS}" deps_out)
+
   if(PY_LIBRARY_SRCS)
     # Add a command which copies the listed sources over to the current build
     # directory.
     add_custom_command(
       OUTPUT ${PY_LIBRARY_SRCS}
       COMMAND ${PYTHON_EXECUTABLE} -B ${COPY_SCRIPT} -s ${CMAKE_CURRENT_SOURCE_DIR} -d ${CMAKE_CURRENT_BINARY_DIR} ${PY_LIBRARY_SRCS}
-      DEPENDS ${PY_LIBRARY_SRCS}
+      DEPENDS ${PY_LIBRARY_SRCS} ${deps_out}
     )
   endif()
 
@@ -277,6 +308,8 @@ function(py_library)
       add_dependencies(${fq_target_name} ${fq_dep_name})
     endforeach(dep)
   endif()
+
+  _add_out_property(${fq_target_name} "${PY_LIBRARY_SRCS}")
 endfunction(py_library)
 
 function(py_test)
@@ -303,13 +336,17 @@ function(py_test)
       ${PY_TEST_DEPS}
   )
 
-  add_custom_target(
-    ${fq_target_name}
+  _get_out_property_list(${fq_target_name}${lib_suffix} lib_out)
+
+  add_custom_command(
+    OUTPUT ${PY_TEST_NAME}.log
     COMMAND "TYPESHED_HOME=${PROJECT_SOURCE_DIR}/typeshed" ${PYTHON_EXECUTABLE} -B
             ${TEST_MODULE_SCRIPT} ${fq_target_name} -o ${CMAKE_CURRENT_BINARY_DIR}/${PY_TEST_NAME}.log -P ${PROJECT_BINARY_DIR} -S
-    BYPRODUCTS ${PY_TEST_NAME}.log
-    VERBATIM
-    DEPENDS ${PY_TEST_SRCS}
+    DEPENDS ${lib_out}
+  )
+  add_custom_target(
+    ${fq_target_name}
+    DEPENDS ${PY_TEST_NAME}.log
   )
   # The internal py_library target should be a dep for this target.
   add_dependencies(${fq_target_name} "${fq_target_name}${lib_suffix}")

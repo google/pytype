@@ -10,7 +10,7 @@ Abstract
 Pytype is a static analyzer that helps you find type errors in Python
 code. It can type-check code with or without `type
 annotations <https://www.python.org/dev/peps/pep-0484/>`__, as well as
-generate annotations. Pytype runs under Python 2.7 or 3.6 and analyzes
+generate annotations. Pytype runs under Python 2.7 or 3.5+ and analyzes
 both Python 2 and Python 3 code.
 
 Example
@@ -61,7 +61,7 @@ Merge pytype's generated type information back into ``foo.py``:
 Requirements
 ------------
 
-You need a Python 2.7 or 3.6 interpreter to run pytype, as well as an
+You need a Python 2.7 or 3.5+ interpreter to run pytype, as well as an
 interpreter in ``$PATH`` for the Python version of the code you're
 analyzing.
 

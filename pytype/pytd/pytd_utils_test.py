@@ -16,7 +16,6 @@
 
 import os
 import textwrap
-import unittest
 
 from pytype import file_utils
 from pytype.pyi import parser
@@ -25,6 +24,7 @@ from pytype.pytd import pytd_utils
 from pytype.pytd.parse import parser_test_base
 
 import six
+import unittest
 
 
 class TestUtils(parser_test_base.ParserTest):

@@ -25,7 +25,6 @@ filegroup(
     pytd/builtins/3/protocols.pytd
     pytd/builtins/3/typing.pytd
 
-    pytd/stdlib/2/__future__.pytd
     pytd/stdlib/2/_ctypes.pytd
     pytd/stdlib/2/collections.pytd
     pytd/stdlib/2/ctypes.pytd
@@ -33,7 +32,6 @@ filegroup(
     pytd/stdlib/2/encodings.pytd
     pytd/stdlib/2/xmlrpclib.pytd
 
-    pytd/stdlib/2and3/__future__.pytd
     pytd/stdlib/2and3/_ctypes.pytd
     pytd/stdlib/2and3/collections.pytd
     pytd/stdlib/2and3/ctypes.pytd
@@ -41,7 +39,6 @@ filegroup(
     pytd/stdlib/2and3/encodings.pytd
     pytd/stdlib/2and3/xmlrpclib.pytd
 
-    pytd/stdlib/3/__future__.pytd
     pytd/stdlib/3/_ctypes.pytd
     pytd/stdlib/3/collections.pytd
     pytd/stdlib/3/ctypes.pytd

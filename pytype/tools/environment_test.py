@@ -1,10 +1,10 @@
 """Tests for environment.py."""
 
 import os
-import unittest
 
 from pytype import file_utils
 from pytype.tools import environment
+import unittest
 
 
 class TestComputePythonPath(unittest.TestCase):

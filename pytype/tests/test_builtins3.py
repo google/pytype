@@ -3,7 +3,6 @@
 File 3/3. Split into parts to enable better test parallelism.
 """
 
-import unittest
 
 from pytype import abstract
 from pytype import file_utils
@@ -89,7 +88,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       v = ...  # type: Type[type]
     """)
 
-  @unittest.skip("broken")
+  @test_base.skip("broken")
   def testClear(self):
     ty = self.Infer("""\
       x = {1, 2}

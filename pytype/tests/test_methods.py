@@ -1,5 +1,3 @@
-import unittest
-
 from pytype import file_utils
 from pytype.pytd import pytd
 from pytype.tests import test_base
@@ -453,7 +451,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
-  @unittest.skip("Needs better pytd for 'dict'")
+  @test_base.skip("Needs better pytd for 'dict'")
   def testStarStar3(self):
     ty = self.Infer("""
       def f(x):
@@ -752,7 +750,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     self.assertEqual(
         pytd.Print(method), "def clone(self: _TCloneable) -> _TCloneable: ...")
 
-  @unittest.skip("pytype thinks 'clone' returns a TypeVar(bound=Cloneable)")
+  @test_base.skip("pytype thinks 'clone' returns a TypeVar(bound=Cloneable)")
   def testSimpleClone(self):
     ty = self.Infer("""
       class Cloneable(object):

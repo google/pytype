@@ -9,7 +9,6 @@ class TupleTest(test_base.TargetPython3BasicTest):
 
   def testUnpackInlineTuple(self):
     ty = self.Infer("""\
-
       from typing import Tuple
       def f(x: Tuple[str, int]):
         return x
@@ -24,7 +23,6 @@ class TupleTest(test_base.TargetPython3BasicTest):
 
   def testUnpackTupleOrTuple(self):
     self.Check("""
-
       def f():
         if __random__:
           return (False, 'foo')
@@ -37,7 +35,6 @@ class TupleTest(test_base.TargetPython3BasicTest):
 
   def testUnpackTupleOrList(self):
     self.Check("""
-
       def f():
         if __random__:
           return (False, 'foo')
@@ -50,7 +47,6 @@ class TupleTest(test_base.TargetPython3BasicTest):
 
   def testUnpackAmbiguousTuple(self):
     self.Check("""
-
       def f() -> tuple:
         return __any_object__
       a, b = f()
@@ -58,7 +54,6 @@ class TupleTest(test_base.TargetPython3BasicTest):
 
   def testTuplePrinting(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import Tuple
       def f(x: Tuple[str, ...]):
         pass
@@ -77,13 +72,13 @@ class TupleTest(test_base.TargetPython3BasicTest):
     tuple_int = r"Tuple\[int\]"
     tuple_ints = r"Tuple\[int, \.\.\.\]"
     tuple_str_str = r"Tuple\[str, str\]"
-    self.assertErrorLogIs(errors, [(7, "wrong-arg-types",
+    self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
                                     r"%s.*%s" % (x, tuple_int)),
-                                   (8, "wrong-arg-types",
+                                   (7, "wrong-arg-types",
                                     r"%s.*%s" % (x, tuple_ints)),
-                                   (10, "wrong-arg-types",
+                                   (9, "wrong-arg-types",
                                     r"%s.*%s" % (y, tuple_int)),
-                                   (11, "wrong-arg-types",
+                                   (10, "wrong-arg-types",
                                     r"%s.*%s" % (y, tuple_str_str))
                                   ])
 
@@ -94,7 +89,6 @@ class TupleTest(test_base.TargetPython3BasicTest):
         class A(Tuple[int, str]): ...
       """)
       self.Check("""
-
         from typing import Tuple, Type
         import foo
         def f(x: Type[Tuple[int, str]]):
@@ -113,7 +107,6 @@ class TupleTest(test_base.TargetPython3BasicTest):
         class A(Tuple[str, int]): ...
       """)
       _, errors = self.InferWithErrors("""\
-
         from typing import Tuple, Type
         import foo
         def f(x: Type[Tuple[int, str]]):
@@ -127,14 +120,13 @@ class TupleTest(test_base.TargetPython3BasicTest):
       expected = r"Tuple\[int, str\]"
       actual = r"Tuple\[str, int\]"
       self.assertErrorLogIs(errors, [
-          (8, "wrong-arg-types",
+          (7, "wrong-arg-types",
            r"Type\[%s\].*Type\[%s\]" % (expected, actual)),
-          (9, "wrong-arg-types", r"%s.*%s" % (expected, actual)),
-          (10, "wrong-arg-types", r"%s.*foo\.A" % expected)])
+          (8, "wrong-arg-types", r"%s.*%s" % (expected, actual)),
+          (9, "wrong-arg-types", r"%s.*foo\.A" % expected)])
 
   def testTupleCombinationExplosion(self):
     self.Check("""
-
       from typing import Any, Dict, List, Tuple, Union
       AlphaNum = Union[str, int]
       def f(x: Dict[AlphaNum, Any]) -> List[Tuple]:
@@ -143,7 +135,6 @@ class TupleTest(test_base.TargetPython3BasicTest):
 
   def testTupleInContainer(self):
     ty = self.Infer("""
-
       from typing import List, Tuple
       def f(l: List[Tuple[int, List[int]]]):
         line, foo = l[0]
@@ -160,13 +151,12 @@ class TupleTest(test_base.TargetPython3BasicTest):
         class Bar(tuple): ...
       """)
       errors = self.CheckWithErrors("""\
-
         from typing import Tuple
         import bar
         def foo() -> Tuple[bar.Bar, bar.Bar]:
-          return bar.Bar(None, None)  # line 5
+          return bar.Bar(None, None)  # line 4
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(5, "wrong-arg-count", "1.*3")])
+      self.assertErrorLogIs(errors, [(4, "wrong-arg-count", "1.*3")])
 
 
 class TupleTestPython3Feature(test_base.TargetPython3FeatureTest):

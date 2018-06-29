@@ -15,13 +15,13 @@
 
 
 import textwrap
-import unittest
 
 from pytype import load_pytd
 from pytype.pyi import parser
 from pytype.pytd import mro
 from pytype.pytd import visitors
 from pytype.pytd.parse import parser_test_base
+import unittest
 
 
 class MroTest(parser_test_base.ParserTest):

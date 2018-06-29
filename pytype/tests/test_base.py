@@ -7,14 +7,12 @@ import sys
 import textwrap
 
 from pytype import analyze
-from pytype import compat
 from pytype import config
 from pytype import debug
 from pytype import directors
 from pytype import errors
 from pytype import load_pytd
 from pytype import utils
-from pytype.pyc import loadmarshal
 from pytype.pyi import parser
 from pytype.pytd import optimize
 from pytype.pytd import pytd
@@ -29,6 +27,64 @@ log = logging.getLogger(__name__)
 
 # Make this false if you need to run the debugger inside a test.
 CAPTURE_STDOUT = ("-s" not in sys.argv)
+
+
+# For ease of importing, re-export unittest.skip.
+skip = unittest.skip
+
+
+# Pytype offers a Python 2.7 interpreter with type annotations backported as a
+# __future__ import (see pytype/patches/python_2_7_type_annotations.diff).
+_ANNOTATIONS_IMPORT = "from __future__ import google_type_annotations"
+
+
+# If you're using the patched interpreter, set this value to True to test type
+# annotations in Python 2.
+USE_ANNOTATIONS_BACKPORT = False
+
+
+def WithAnnotationsImport(code):
+  code_without_newline = code.lstrip("\n")
+  indent = len(code_without_newline) - len(code_without_newline.lstrip(" "))
+  return (indent * " ") + _ANNOTATIONS_IMPORT + "\n" + code
+
+
+def _AddAnnotationsImportPy2(func):
+  def _Wrapper(self, code, *args, **kwargs):
+    assert _ANNOTATIONS_IMPORT not in code
+    if self.options.python_version == (2, 7):
+      code = WithAnnotationsImport(code)
+    return func(self, code, *args, **kwargs)
+  return _Wrapper
+
+
+def _ParseExpectedError(pattern):
+  assert 2 <= len(pattern) <= 3, (
+      "Bad expected error format. Use: (<line>, <name>[, <regexp>])")
+  line = pattern[0]
+  name = pattern[1]
+  regexp = pattern[2] if len(pattern) > 2 else ""
+  return line, name, regexp
+
+
+def _IncrementLineNumbersPy2(func):
+  def _Wrapper(self, errorlog, expected_errors):
+    if self.options.python_version == (2, 7):
+      incremented_expected_errors = []
+      for pattern in expected_errors:
+        line, name, regexp = _ParseExpectedError(pattern)
+        # Increments the expected line number of the error.
+        line += 1
+        # Increments line numbers in the text of the expected error message.
+        regexp = re.sub(
+            r"line (\d+)", lambda m: "line %d" % (int(m.group(1)) + 1), regexp)
+        incremented_expected_error = (line, name)
+        if regexp:
+          incremented_expected_error += (regexp,)
+        incremented_expected_errors.append(incremented_expected_error)
+      expected_errors = incremented_expected_errors
+    return func(self, errorlog, expected_errors)
+  return _Wrapper
 
 
 def _MatchLoaderConfig(options, loader):
@@ -290,14 +346,6 @@ class BaseTest(unittest.TestCase):
       self.assertEqual(param1.type, sig.return_type,
                        "Not identity: %r" % pytd.Print(func))
 
-  def _parse_expected_error(self, pattern):
-    assert 2 <= len(pattern) <= 3, (
-        "Bad expected error format. Use: (<line>, <name>[, <regexp>])")
-    line = pattern[0]
-    name = pattern[1]
-    regexp = pattern[2] if len(pattern) > 2 else ""
-    return line, name, regexp
-
   def assertErrorLogIs(self, errorlog, expected_errors):
     expected_errors = collections.Counter(expected_errors)
     # This is O(|errorlog| * |expected_errors|), which is okay because error
@@ -305,7 +353,7 @@ class BaseTest(unittest.TestCase):
     for error in errorlog.unique_sorted_errors():
       almost_matches = set()
       for (pattern, count) in expected_errors.items():
-        line, name, regexp = self._parse_expected_error(pattern)
+        line, name, regexp = _ParseExpectedError(pattern)
         if line == error.lineno and name == error.name:
           if not regexp or re.search(regexp, error.message, flags=re.DOTALL):
             if count == 1:
@@ -325,7 +373,7 @@ class BaseTest(unittest.TestCase):
     if expected_errors:
       errorlog.print_to_stderr()
       leftover_errors = [
-          self._parse_expected_error(pattern) for pattern in expected_errors]
+          _ParseExpectedError(pattern) for pattern in expected_errors]
       raise AssertionError("Errors not found:\n" + "\n".join(
           "Line %d: %r [%s]" % (e[0], e[2], e[1]) for e in leftover_errors))
 
@@ -416,6 +464,13 @@ class BaseTest(unittest.TestCase):
     # (In other words, display a change from "working" to "broken")
     self.assertMultiLineEqual(pytd_tree_src, ty_src)
 
+  if USE_ANNOTATIONS_BACKPORT:
+    Check = _AddAnnotationsImportPy2(Check)
+    CheckWithErrors = _AddAnnotationsImportPy2(CheckWithErrors)
+    Infer = _AddAnnotationsImportPy2(Infer)
+    InferWithErrors = _AddAnnotationsImportPy2(InferWithErrors)
+    assertErrorLogIs = _IncrementLineNumbersPy2(assertErrorLogIs)
+
 
 class TargetIndependentTest(BaseTest):
   """Class for tests which are independent of the target Python version.
@@ -446,7 +501,8 @@ class TargetPython3BasicTest(BaseTest):
   """Class for tests using type annotations as the only Python 3 feature.
 
   Test methods in subclasses will test Pytype on Python code stubs which use
-  type annotations as the only Python 3 feature.
+  type annotations as the only Python 3 feature. If USE_ANNOTATIONS_BACKPORT
+  is set, these tests will also be run with target Python version set to 2.7.
   """
 
   def __init__(self, *args, **kwargs):
@@ -460,141 +516,6 @@ class TargetPython3FeatureTest(TargetPython3BasicTest):
   Test methods in subclasses will test Pytype on a Python 3.6 feature.
   """
   pass
-
-
-class OperatorsTestMixin(object):
-  """Mixin providing uitlities for operators tests."""
-
-  def check_expr(self, expr, assignments, expected_return):  # pylint: disable=invalid-name
-    # Note that testing "1+2" as opposed to "x=1; y=2; x+y" doesn't really test
-    # anything because the peephole optimizer converts "1+2" to "3" and __add__
-    # isn't called. So, need to defeat the optimizer by replacing the constants
-    # by variables, which will result in calling __add__ et al.
-
-    # Join the assignments with ";" to avoid figuring out the exact indentation:
-    assignments = "; ".join(assignments)
-    src = """
-      def f():
-        {assignments}
-        return {expr}
-      f()
-    """.format(expr=expr, assignments=assignments)
-    ty = self.Infer(src, deep=False)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), expected_return)
-
-  def check_binary(self, function_name, op):  # pylint: disable=invalid-name
-    ty = self.Infer("""
-      class Foo(object):
-        def {function_name}(self, unused_x):
-          return 3j
-      class Bar(object):
-        pass
-      def f():
-        return Foo() {op} Bar()
-      f()
-    """.format(function_name=function_name, op=op),
-                    deep=False,
-                    show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
-
-  def check_unary(self, function_name, op, ret=None):  # pylint: disable=invalid-name
-    ty = self.Infer("""
-      class Foo(object):
-        def {function_name}(self):
-          return 3j
-      def f():
-        return {op} Foo()
-      f()
-    """.format(function_name=function_name, op=op),
-                    deep=False,
-                    show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), ret or self.complex)
-
-  def check_reverse(self, function_name, op):  # pylint: disable=invalid-name
-    ty = self.Infer("""
-      class Foo(object):
-        def __{function_name}__(self, x):
-          return 3j
-      class Bar(Foo):
-        def __r{function_name}__(self, x):
-          return "foo"
-      def f():
-        return Foo() {op} 1  # use Foo.__{function_name}__
-      def g():
-        return 1 {op} Bar()  # use Bar.__r{function_name}__
-      def h():
-        return Foo() {op} Bar()  # use Bar.__r{function_name}__
-      def i():
-        return Foo() {op} Foo()  # use Foo.__{function_name}__
-      f(); g(); h(); i()
-    """.format(op=op, function_name=function_name),
-                    deep=False,
-                    show_library_calls=True)
-    self.assertHasReturnType(ty.Lookup("f"), self.complex)
-    self.assertHasReturnType(ty.Lookup("g"), self.str)
-    self.assertHasReturnType(ty.Lookup("h"), self.str)
-    self.assertHasReturnType(ty.Lookup("i"), self.complex)
-
-  def check_inplace(self, function_name, op):  # pylint: disable=invalid-name
-    ty = self.Infer("""
-      class Foo(object):
-        def __{function_name}__(self, x):
-          return 3j
-      def f():
-        x = Foo()
-        x {op} None
-        return x
-      f()
-    """.format(op=op, function_name=function_name),
-                    deep=False,
-                    show_library_calls=True)
-    self.assertHasReturnType(ty.Lookup("f"), self.complex)
-
-
-# TODO(sivachandra): Remove this class infavor of the class OperatorsTestMixin.
-# It is not a drop-in-replacement currently, but there is no reason why it
-# cannot be made one.
-class InplaceTestMixin(object):
-  """Mixin providing a method to check in-place operators."""
-
-  def _check_inplace(self, op, assignments, expected_return):  # pylint: disable=invalid-name
-    assignments = "; ".join(assignments)
-    src = """
-      def f(x, y):
-        {assignments}
-        x {op}= y
-        return x
-      a = f(1, 2)
-    """.format(assignments=assignments, op=op)
-    ty = self.Infer(src, deep=False)
-    self.assertTypeEquals(ty.Lookup("a").type, expected_return)
-
-
-class TestCollectionsMixin(object):
-  """Mixin providing utils for tests on the collections module."""
-
-  def _testCollectionsObject(self, obj, good_arg, bad_arg, error):  # pylint: disable=invalid-name
-    result = self.CheckWithErrors("""\
-
-      import collections
-      def f(x: collections.{obj}): ...
-      f({good_arg})
-      f({bad_arg})  # line 5
-    """.format(obj=obj, good_arg=good_arg, bad_arg=bad_arg))
-    self.assertErrorLogIs(result, [(5, "wrong-arg-types", error)])
-
-
-class MakeCodeMixin(object):
-  """Mixin providing a method to make a code object from bytecode."""
-
-  def make_code(self, int_array, name="testcode"):  # pylint: disable=invalid-name
-    """Utility method for creating CodeType objects."""
-    return loadmarshal.CodeType(
-        argcount=0, kwonlyargcount=0, nlocals=2, stacksize=2, flags=0,
-        consts=[None, 1, 2], names=[], varnames=["x", "y"], filename="",
-        name=name, firstlineno=1, lnotab=[], freevars=[], cellvars=[],
-        code=compat.int_array_to_bytes(int_array),
-        python_version=self.python_version)
 
 
 def _PrintErrorDebug(descr, value):
@@ -626,6 +547,10 @@ def _ReplaceMethods(toplevel):
     return False
   if issubclass(toplevel, TargetIndependentTest):
     return True
+  # Run the Python 3 basic tests with target Python version set to 2.7 if we
+  # can use type annotations in 2.7.
+  if USE_ANNOTATIONS_BACKPORT and issubclass(toplevel, TargetPython3BasicTest):
+    return not issubclass(toplevel, TargetPython3FeatureTest)
   return False
 
 

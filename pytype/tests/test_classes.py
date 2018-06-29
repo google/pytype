@@ -1,6 +1,5 @@
 """Tests for classes."""
 
-import unittest
 
 from pytype import file_utils
 from pytype.tests import test_base
@@ -875,7 +874,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       x = ...  # type: Any
     """)
 
-  @unittest.skip("A.__init__ needs to be called")
+  @test_base.skip("A.__init__ needs to be called")
   def testTypeInit(self):
     ty = self.Infer("""
       class A(type):
@@ -962,7 +961,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         v = ...  # type: int
       """)
 
-  @unittest.skip("Setting __metaclass__ to a function doesn't work yet.")
+  @test_base.skip("Setting __metaclass__ to a function doesn't work yet.")
   def testFunctionAsMetaclass(self):
     ty = self.Infer("""
       def MyMeta(name, bases, members):

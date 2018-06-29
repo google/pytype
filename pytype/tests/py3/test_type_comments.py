@@ -8,16 +8,14 @@ class FunctionCommentWithAnnotationsTest(test_base.TargetPython3BasicTest):
 
   def testFunctionTypeCommentPlusAnnotations(self):
     _, errors = self.InferWithErrors("""\
-
       def foo(x: int) -> float:
         # type: (int) -> float
         return x
     """)
-    self.assertErrorLogIs(errors, [(3, "redundant-function-type-comment")])
+    self.assertErrorLogIs(errors, [(2, "redundant-function-type-comment")])
 
   def testListComprehensionComments(self):
     ty = self.Infer("""\
-
       from typing import List
       def f(x: str):
         pass

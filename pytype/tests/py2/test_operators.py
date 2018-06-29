@@ -1,10 +1,11 @@
 """Test operators (basic tests)."""
 
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class ConcreteTest(test_base.TargetPython27FeatureTest,
-                   test_base.OperatorsTestMixin):
+                   test_utils.OperatorsTestMixin):
   """Tests for operators on concrete values (no unknowns)."""
 
   def test_div(self):
@@ -12,7 +13,7 @@ class ConcreteTest(test_base.TargetPython27FeatureTest,
 
 
 class OverloadTest(test_base.TargetPython27FeatureTest,
-                   test_base.OperatorsTestMixin):
+                   test_utils.OperatorsTestMixin):
   """Tests for overloading operators."""
 
   def test_div(self):
@@ -20,7 +21,7 @@ class OverloadTest(test_base.TargetPython27FeatureTest,
 
 
 class ReverseTest(test_base.TargetPython27FeatureTest,
-                  test_base.OperatorsTestMixin):
+                  test_utils.OperatorsTestMixin):
   """Tests for reverse operators."""
 
   def test_div(self):
@@ -28,7 +29,7 @@ class ReverseTest(test_base.TargetPython27FeatureTest,
 
 
 class InplaceTest(test_base.TargetPython27FeatureTest,
-                  test_base.OperatorsTestMixin):
+                  test_utils.OperatorsTestMixin):
   """Tests for in-place operators."""
 
   def test_div(self):

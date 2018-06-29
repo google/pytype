@@ -14,7 +14,6 @@ class QuickTest(test_base.TargetPython3BasicTest):
         def add(x: int,  y: float) -> float
       """)
       self.Check("""
-
         import foo
         def f1():
           f2()
@@ -32,7 +31,6 @@ class QuickTest(test_base.TargetPython3BasicTest):
         def concat(x: int, y: float) -> Tuple[int, float]
       """)
       self.Check("""
-
         from typing import Tuple
         import foo
         def f1():

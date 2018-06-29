@@ -101,34 +101,34 @@ def generate_pyi(input_filename, errorlog, options, loader):
   return result, mod
 
 
-def process_one_file(options):
-  """Check a .py file or generate a .pyi for it, according to options.
+def check_or_generate_pyi(options, errorlog, loader):
+  """Returns generated errors and result pyi or None if it's only check.
 
   Args:
     options: config.Options object.
+    errorlog: errors.ErrorLog object.
+    loader: load_pytd.Loader object.
 
   Returns:
-    An error code (0 means no error).
+    A tuple, (PYI Ast as string, AST) or None.
   """
-  log.info("Process %s => %s", options.input, options.output)
-  errorlog = errors.ErrorLog()
+
   result = pytd_builtins.DEFAULT_SRC
   ast = pytd_builtins.GetDefaultAst(options.python_version)
-  loader = load_pytd.create_loader(options)
   try:
     if options.check:
       check_py(input_filename=options.input,
                errorlog=errorlog,
                options=options,
                loader=loader)
+      return None
     else:
       result, ast = generate_pyi(input_filename=options.input,
                                  errorlog=errorlog,
                                  options=options,
                                  loader=loader)
   except utils.UsageError as e:
-    logging.error("Usage error: %s\n", utils.message(e))
-    return 1
+    raise
   except pyc.CompileError as e:
     errorlog.python_compiler_error(options.input, e.lineno, e.error)
   except IndentationError as e:
@@ -149,7 +149,31 @@ def process_one_file(options):
       e.args = (
           str(utils.message(e)) + "\nFile: %s" % options.input,) + e.args[1:]
       raise
+
+  return (result, ast)
+
+
+def process_one_file(options):
+  """Check a .py file or generate a .pyi for it, according to options.
+
+  Args:
+    options: config.Options object.
+
+  Returns:
+    An error code (0 means no error).
+  """
+
+  log.info("Process %s => %s", options.input, options.output)
+  errorlog = errors.ErrorLog()
+  loader = load_pytd.create_loader(options)
+  try:
+    generated_values = check_or_generate_pyi(options, errorlog, loader)
+  except utils.UsageError as e:
+    logging.error("Usage error: %s\n", utils.message(e))
+    return 1
+
   if not options.check:
+    result, ast = generated_values
     if options.output == "-" or not options.output:
       sys.stdout.write(result)
     else:

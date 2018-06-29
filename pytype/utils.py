@@ -47,14 +47,20 @@ def validate_version(python_version):
     # case we get python_version via a different entry point.
     raise UsageError("python_version must be <major>.<minor>: %r" %
                      format_version(python_version))
-  if (3, 0) <= python_version <= (3, 3):
+  elif python_version < (2, 7):
+    raise UsageError("Python version %r is not supported." %
+                     format_version(python_version))
+  elif (2, 8) <= python_version < (3, 0):
+    raise UsageError("Python version %r is not a valid Python version." %
+                     format_version(python_version))
+  elif (3, 0) <= python_version <= (3, 3):
     # These have odd __build_class__ parameters, store co_code.co_name fields
     # as unicode, and don't yet have the extra qualname parameter to
     # MAKE_FUNCTION. Jumping through these extra hoops is not worth it, given
     # that typing.py isn't introduced until 3.5, anyway.
     raise UsageError(
         "Python versions 3.0 - 3.3 are not supported. Use 3.4 and higher.")
-  if python_version > (3, 6):
+  elif python_version > (3, 6):
     # We have an explicit per-minor-version mapping in opcodes.py
     raise UsageError("Python versions > 3.6 are not yet supported.")
 

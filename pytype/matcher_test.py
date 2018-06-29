@@ -1,7 +1,5 @@
 """Tests for matcher.py."""
 
-import unittest
-
 from pytype import abstract
 from pytype import config
 from pytype import errors

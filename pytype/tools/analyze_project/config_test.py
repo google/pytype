@@ -1,11 +1,11 @@
 """Tests for config.py."""
 
 import os
-import unittest
 
 from pytype import datatypes
 from pytype import file_utils
 from pytype.tools.analyze_project import config
+import unittest
 
 
 PYTYPE_CFG = """

@@ -8,7 +8,6 @@ class SplitTest(test_base.TargetPython3BasicTest):
 
   def testHasAttr(self):
     ty = self.Infer("""
-
       class Foo():
         def bar(self):
           pass
@@ -36,7 +35,6 @@ class SplitTest(test_base.TargetPython3BasicTest):
 
   def testUnion(self):
     self.Check("""
-
       from typing import Union
       def f(data: str):
         pass
@@ -47,7 +45,6 @@ class SplitTest(test_base.TargetPython3BasicTest):
 
   def testUnion2(self):
     self.Check("""
-
       from typing import Union
       class MyString(object):
         def __init__(self, arg: str):
@@ -63,8 +60,6 @@ class SplitTest(test_base.TargetPython3BasicTest):
 
   def testLoadAttr(self):
     self.Check("""
-
-
       class A(object):
         def __init__(self):
           self.initialized = False
@@ -82,7 +77,6 @@ class SplitTest(test_base.TargetPython3BasicTest):
   def testGuardingIs(self):
     """Assert that conditions are remembered for is."""
     self.Check("""
-
       from typing import Optional
       def f(x: Optional[str]) -> str:
         if x is None:
@@ -93,7 +87,6 @@ class SplitTest(test_base.TargetPython3BasicTest):
   def testConditionsAreOrdered(self):
     """Assert that multiple conditions on a path work."""
     self.Check("""
-
       from typing import Optional
       def f(x: Optional[NoneType]) -> int:
         if x is not None:
@@ -106,7 +99,6 @@ class SplitTest(test_base.TargetPython3BasicTest):
   def testGuardingIsNot(self):
     """Assert that conditions are remembered for is not."""
     self.Check("""
-
       from typing import Optional
       def f(x: Optional[str]) -> NoneType:
         if x is not None:
@@ -117,7 +109,6 @@ class SplitTest(test_base.TargetPython3BasicTest):
   def testGuardingIsNotElse(self):
     """Assert that conditions are remembered for else if."""
     self.Check("""
-
       from typing import Optional
       def f(x: Optional[str]) -> int:
         if x is None:
@@ -129,14 +120,12 @@ class SplitTest(test_base.TargetPython3BasicTest):
 
   def testSimpleOr(self):
     self.Check("""
-
       def f(self, x: str = None) -> str:
         return x or "foo"
     """)
 
   def testOr(self):
     self.Check("""
-
       from typing import Optional
       def f(foo: Optional[int] = None) -> int:
         if foo is None:
@@ -155,7 +144,6 @@ class SplitTest(test_base.TargetPython3BasicTest):
 
   def testHiddenConflict(self):
     self.Check("""
-
       import typing
       def f(obj: typing.Union[int, dict, list, float, str, complex]):
         if isinstance(obj, int):
@@ -166,7 +154,6 @@ class SplitTest(test_base.TargetPython3BasicTest):
 
   def testIsInstanceList(self):
     self.Check("""
-
       from typing import List
       def f(x: List[float]):
         if not isinstance(x, list):
@@ -175,7 +162,6 @@ class SplitTest(test_base.TargetPython3BasicTest):
 
   def testLongSignature(self):
     self.Check("""
-
 
       class Foo(object):
 
@@ -190,7 +176,6 @@ class SplitTest(test_base.TargetPython3BasicTest):
 
   def testCreateList(self):
     self.Check("""
-
       from typing import List, Optional
       def _CreateList(opt: Optional[str]) -> List[str]:
         if opt is not None:
@@ -200,7 +185,6 @@ class SplitTest(test_base.TargetPython3BasicTest):
 
   def testCreateTuple(self):
     self.Check("""
-
       from typing import Optional, Tuple
       def _CreateTuple(opt: Optional[str]) -> Tuple[str]:
         if opt is not None:

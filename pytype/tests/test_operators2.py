@@ -1,13 +1,11 @@
 """Test operators, using __any_object__."""
 
-import unittest
-
 from pytype.tests import test_base
 
 
 class OperatorsWithAnyTests(test_base.TargetIndependentTest):
 
-  @unittest.skip("Needs __radd__ on all builtins")
+  @test_base.skip("Needs __radd__ on all builtins")
   def testAdd1(self):
     """Test that __add__, __radd__ are working."""
     ty = self.Infer("""
@@ -18,7 +16,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
       def t_testAdd1(x: int or float or complex or bool) -> float or complex
     """)
 
-  @unittest.skip("Needs __radd__ on all builtins")
+  @test_base.skip("Needs __radd__ on all builtins")
   def testAdd2(self):
     """Test that __add__, __radd__ are working."""
     ty = self.Infer("""
@@ -40,7 +38,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
       def t_testAdd3(x) -> Any
     """)
 
-  @unittest.skip("Needs handling of immutable types for += on an unknown")
+  @test_base.skip("Needs handling of immutable types for += on an unknown")
   def testAdd4(self):
     # TODO(rechen): Fix test_stringio when this is working.
     ty = self.Infer("""
@@ -92,7 +90,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
       t_testCallAny = ...  # type: ?
     """)
 
-  @unittest.skip("Needs NameError support")
+  @test_base.skip("Needs NameError support")
   def testUndefinedModule(self):
     ty = self.Infer("""
       def t_testSys():

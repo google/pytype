@@ -1,10 +1,10 @@
 """Tests for parse_args.py."""
 
 import os
-import unittest
 
 from pytype import datatypes
 from pytype.tools.analyze_project import parse_args
+import unittest
 
 
 class TestConvertString(unittest.TestCase):

@@ -9,7 +9,6 @@ class NamedTupleTest(test_base.TargetPython3BasicTest):
 
   def test_make(self):
     errors = self.CheckWithErrors("""\
-
         import typing
         A = typing.NamedTuple("A", [("b", str), ("c", str)])
         a = A._make(["hello", "world"])
@@ -20,12 +19,11 @@ class NamedTupleTest(test_base.TargetPython3BasicTest):
         f(a)
         """)
     self.assertErrorLogIs(errors, [
-        (6, "wrong-arg-types"),
-        (7, "wrong-arg-types")])
+        (5, "wrong-arg-types"),
+        (6, "wrong-arg-types")])
 
   def test_subclass(self):
     errors = self.CheckWithErrors("""\
-
         import typing
         A = typing.NamedTuple("A", [("b", str), ("c", int)])
         class B(A):
@@ -45,12 +43,11 @@ class NamedTupleTest(test_base.TargetPython3BasicTest):
         take_b(y._replace(b="world"))
         """)
     self.assertErrorLogIs(errors, [
-        (14, "wrong-arg-types"),
-        (15, "missing-parameter")])
+        (13, "wrong-arg-types"),
+        (14, "missing-parameter")])
 
   def test_callable_attribute(self):
     ty = self.Infer("""
-
       from typing import Callable, NamedTuple
       X = NamedTuple("X", [("f", Callable)])
       def foo(x: X):
@@ -61,7 +58,6 @@ class NamedTupleTest(test_base.TargetPython3BasicTest):
 
   def test_bare_union_attribute(self):
     ty, errors = self.InferWithErrors("""\
-
       from typing import NamedTuple, Union
       X = NamedTuple("X", [("x", Union)])
       def foo(x: X):
@@ -69,7 +65,7 @@ class NamedTupleTest(test_base.TargetPython3BasicTest):
     """)
     self.assertMultiLineEqual(pytd.Print(ty.Lookup("foo")),
                               "def foo(x: X) -> Any: ...")
-    self.assertErrorLogIs(errors, [(3, "invalid-annotation", r"Union.*x")])
+    self.assertErrorLogIs(errors, [(2, "invalid-annotation", r"Union.*x")])
 
 
 class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
@@ -117,7 +113,6 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
 
   def test_union_attribute(self):
     ty = self.Infer("""
-
       from typing import NamedTuple, Union
       X = NamedTuple("X", [("x", Union[bytes, str])])
       def foo(x: X):

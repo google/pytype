@@ -3,9 +3,9 @@ import difflib
 import logging
 import os
 import re
-import unittest
 
 from pytype.tools.merge_pyi import merge_pyi
+import unittest
 
 
 __all__ = ('TestBuilder', 'load_tests')

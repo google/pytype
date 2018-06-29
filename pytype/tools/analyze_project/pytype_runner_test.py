@@ -2,13 +2,13 @@
 
 import collections
 import os
-import unittest
 
 from pytype import config as pytype_config
 from pytype import file_utils
 from pytype import module_utils
 from pytype.tools.analyze_project import parse_args
 from pytype.tools.analyze_project import pytype_runner
+import unittest
 
 
 # Convenience aliases.

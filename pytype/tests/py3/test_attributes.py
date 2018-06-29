@@ -8,16 +8,14 @@ class TestStrictNone(test_base.TargetPython3BasicTest):
 
   def testExplicitNone(self):
     errors = self.CheckWithErrors("""\
-
       from typing import Optional
       def f(x: Optional[str]):
         return x.upper()
     """)
-    self.assertErrorLogIs(errors, [(4, "attribute-error", r"upper.*None")])
+    self.assertErrorLogIs(errors, [(3, "attribute-error", r"upper.*None")])
 
   def testClosure(self):
     self.Check("""
-
       from typing import Optional
       d = ...  # type: Optional[dict]
       if d:
@@ -29,18 +27,17 @@ class TestStrictNone(test_base.TargetPython3BasicTest):
 
   def testOverwriteGlobal(self):
     errors = self.CheckWithErrors("""\
-
       from typing import Optional
       d = ...  # type: Optional[dict]
       if d:
-        formatter = lambda x: d.get(x, '')  # line 5
+        formatter = lambda x: d.get(x, '')  # line 4
       else:
         formatter = lambda x: ''
       d = None
-      formatter('key')  # line 9
+      formatter('key')  # line 8
     """)
     self.assertErrorLogIs(
-        errors, [(5, "attribute-error", "get.*None.*Traceback.*line 9")])
+        errors, [(4, "attribute-error", r"get.*None.*Traceback.*line 8")])
 
 
 class TestAttributes(test_base.TargetPython3BasicTest):
@@ -48,24 +45,22 @@ class TestAttributes(test_base.TargetPython3BasicTest):
 
   def testAttrOnOptional(self):
     errors = self.CheckWithErrors("""\
-
       from typing import Optional
       def f(x: Optional[str]):
         return x.upper()
     """)
-    self.assertErrorLogIs(errors, [(4, "attribute-error", r"upper.*None")])
+    self.assertErrorLogIs(errors, [(3, "attribute-error", r"upper.*None")])
 
   def testErrorInAny(self):
     errors = self.CheckWithErrors("""\
-
       from typing import Any
       def f(x: Any):
         if __random__:
           x = 42
-        x.upper()  # line 6
+        x.upper()  # line 5
     """)
     self.assertErrorLogIs(
-        errors, [(6, "attribute-error", r"upper.*int.*Union\[Any, int\]")])
+        errors, [(5, "attribute-error", r"upper.*int.*Union\[Any, int\]")])
 
 
 class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):

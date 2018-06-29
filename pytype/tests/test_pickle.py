@@ -166,7 +166,6 @@ class PickleTest(test_base.TargetIndependentTest):
       self._verifyDeps(pickled_foo, ["__builtin__", "foo"], ["UserDict"])
       foo = d.create_file("foo.pickled", pickled_foo)
       self.assertNoCrash(self.Infer, """
-
         import foo
         class Bar(object):
           f = foo.f
@@ -189,7 +188,6 @@ class PickleTest(test_base.TargetIndependentTest):
       """, module_name="bar")
       bar = d.create_file("bar.pickled", pickled_bar)
       self.assertNoCrash(self.Infer, """
-
         import bar
         bar.f(42)
       """, imports_map={"foo": foo, "bar": bar}, module_name="baz")

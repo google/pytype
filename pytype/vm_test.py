@@ -10,6 +10,7 @@ from pytype import utils
 from pytype import vm
 from pytype.pyc import pyc
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 import six
 
@@ -33,7 +34,7 @@ class TraceVM(vm.VirtualMachine):
     return super(TraceVM, self).run_instruction(op, state)
 
 
-class BytecodeTest(test_base.BaseTest, test_base.MakeCodeMixin):
+class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
   """Tests for process_code in blocks.py and VM integration."""
 
   def __init__(self, *args, **kwargs):

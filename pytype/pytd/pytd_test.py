@@ -3,12 +3,12 @@
 import itertools
 import pickle
 import textwrap
-import unittest
 
 from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import visitors
 from six.moves import cPickle
+import unittest
 
 
 class TestPytd(unittest.TestCase):

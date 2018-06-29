@@ -2,7 +2,8 @@
 
 #include <algorithm>
 
-#include "gtest/gtest.h"
+#include "gtest/gmock.h"  // for UnorderedElementsAre
+#include "gtest/gunit.h"
 
 namespace devtools_python_typegraph {
 namespace {

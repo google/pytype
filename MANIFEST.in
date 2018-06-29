@@ -1,3 +1,2 @@
 include DESCRIPTION.rst
-include pytype/pyi/gen/*
 include pytype/pyi/*

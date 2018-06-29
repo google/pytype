@@ -3,13 +3,13 @@
 from pytype import blocks
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
-from pytype.tests import test_base
+from pytype.tests import test_utils
 import six
 
 import unittest
 
 
-class BaseBlocksTest(unittest.TestCase, test_base.MakeCodeMixin):
+class BaseBlocksTest(unittest.TestCase, test_utils.MakeCodeMixin):
   """A base class for implementing tests testing blocks.py."""
 
   def setUp(self):

@@ -64,6 +64,17 @@ class UtilsTest(unittest.TestCase):
   def testSplitVersion(self):
     self.assertEqual(utils.split_version("2.7"), (2, 7))
 
+  def testValidateVersion(self):
+    self._validate_version_helper((1, 1))
+    self._validate_version_helper((2, 1))
+    self._validate_version_helper((2, 8))
+    self._validate_version_helper((3, 1))
+    self._validate_version_helper((3, 8))
+
+  def _validate_version_helper(self, python_version):
+    with self.assertRaises(utils.UsageError):
+      utils.validate_version(python_version)
+
 
 class DecoratorsTest(unittest.TestCase):
   """Test decorators."""

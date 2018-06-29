@@ -30,26 +30,6 @@ else:
   extra_link_args = []
 
 
-# Copy checked-in generated files to where they are expected by setup.py.
-# This is an interim step until we completely get rid of the generated files.
-pyi_dir = os.path.join(here, 'pytype', 'pyi')
-gen_dir = os.path.join(pyi_dir, 'gen')
-for f in [
-    'lexer.lex.cc',
-    'location.hh',
-    'parser.tab.cc',
-    'parser.tab.hh',
-    'position.hh',
-    'stack.hh'
-]:
-  src = os.path.join(gen_dir, f)
-  target = os.path.join(pyi_dir, f)
-  # If we are building from an sdist this has already been done
-  if os.path.exists(src):
-    shutil.copy(src, target)
-  assert os.path.exists(target)
-
-
 # Copy typeshed to pytype/typeshed if the symlink doesn't work
 # (workaround for installing on windows).
 internal_typeshed = os.path.join(here, 'pytype', 'typeshed')
