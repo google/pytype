@@ -1,6 +1,5 @@
 """Tests for __builtin__.list."""
 
-import unittest
 
 from pytype.tests import test_base
 
@@ -12,7 +11,6 @@ class ListTestBasic(test_base.TargetPython3BasicTest):
     # At the time of this writing, this test completes in <5s. If it takes
     # significantly longer, there's been a performance regression.
     errors = self.CheckWithErrors("""\
-
       from typing import List, Text, Tuple
       def f() -> Tuple[List[Text]]:
         x = (
@@ -21,7 +19,7 @@ class ListTestBasic(test_base.TargetPython3BasicTest):
         )
         return ([__any_object__] + [''] + x,)
     """)
-    self.assertErrorLogIs(errors, [(8, "bad-return-type")])
+    self.assertErrorLogIs(errors, [(7, "bad-return-type")])
 
 
 class ListTest(test_base.TargetPython3FeatureTest):
@@ -85,7 +83,7 @@ class ListTest(test_base.TargetPython3FeatureTest):
       """)
     self.assertErrorLogIs(errors, [(5, "wrong-arg-types")])
 
-  @unittest.skip("Requires more precise slice objects")
+  @test_base.skip("Requires more precise slice objects")
   def test_getitem_slice(self):
     # Python 3 uses __getitem__ with slice objects instead of __getslice__.
     # Pytype doesn't support slice objects well, so a lot of results here are

@@ -10,7 +10,6 @@ class AnyStrTest(test_base.TargetPython3BasicTest):
   def testCallable(self):
     """Tests Callable + AnyStr."""
     self.Check("""
-
       from typing import AnyStr, Callable
 
       def f1(f: Callable[[AnyStr], AnyStr]):
@@ -21,7 +20,6 @@ class AnyStrTest(test_base.TargetPython3BasicTest):
 
   def testUnknownAgainstMultipleAnyStr(self):
     self.Check("""
-
       from typing import Any, Dict, Tuple, AnyStr
 
       def foo(x: Dict[Tuple[AnyStr], AnyStr]): ...
@@ -30,7 +28,6 @@ class AnyStrTest(test_base.TargetPython3BasicTest):
 
   def testMultipleUnknownAgainstMultipleAnyStr(self):
     self.Check("""
-
       from typing import AnyStr, List
       def foo(x: List[AnyStr], y: List[AnyStr]): ...
       foo(__any_object__, [__any_object__])
@@ -38,7 +35,6 @@ class AnyStrTest(test_base.TargetPython3BasicTest):
 
   def testAnyStrInClosure(self):
     self.assertNoCrash(self.Check, """
-
       from typing import AnyStr, Dict, Optional
       def foo(d: Dict[unicode, Optional[AnyStr]] = None):
         def bar() -> Optional[AnyStr]:
@@ -52,7 +48,6 @@ class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
 
   def testAnyStr(self):
     ty = self.Infer("""
-
       from typing import AnyStr
       def f(x: AnyStr) -> AnyStr:
         return __any_object__
@@ -81,7 +76,6 @@ class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
 
   def testUseAnyStrConstraints(self):
     ty, errors = self.InferWithErrors("""\
-
       from typing import AnyStr, TypeVar
       def f(x: AnyStr, y: AnyStr) -> AnyStr:
         return __any_object__
@@ -95,19 +89,18 @@ class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
       v1 = ...  # type: str
       v2 = ...  # type: Any
     """)
-    self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
+    self.assertErrorLogIs(errors, [(5, "wrong-arg-types",
                                     r"Union\[bytes, str\].*int")])
 
   def testConstraintMismatch(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import AnyStr
       def f(x: AnyStr, y: AnyStr): ...
       f("", "")  # ok
       f("", b"")
       f(b"", b"")  # ok
     """)
-    self.assertErrorLogIs(errors, [(5, "wrong-arg-types",
+    self.assertErrorLogIs(errors, [(4, "wrong-arg-types",
                                     r"Expected.*y: str.*Actual.*y: bytes")])
 
 

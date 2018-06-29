@@ -9,7 +9,6 @@ class PickleTest(test_base.TargetPython3BasicTest):
 
   def testContainer(self):
     pickled = self.Infer("""
-
       import collections, json
       def f() -> collections.OrderedDict[int, int]:
         return collections.OrderedDict({1: 1})

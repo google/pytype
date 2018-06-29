@@ -132,6 +132,9 @@ class Loader(object):
     # have been loaded.
     items = tuple((name, serialize_ast.StoreAst(module.ast))
                   for name, module in sorted(self._modules.items()))
+    # Preparing an ast for pickling clears its class pointers, making it
+    # unsuitable for reuse, so we have to discard the builtins cache.
+    builtins.InvalidateCache(self.python_version)
     # Now pickle the pickles. We keep the "inner" modules as pickles as a
     # performance optimization - unpickling is slow.
     pytd_utils.SavePickle(items, filename, compress=True)

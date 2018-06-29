@@ -9,7 +9,6 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def testClassGetItem(self):
     ty = self.Infer("""
-
       class A(type):
         def __getitem__(self, i):
           return 42
@@ -25,7 +24,6 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def testNewAnnotatedCls(self):
     ty = self.Infer("""
-
       from typing import Type
       class Foo(object):
         def __new__(cls: Type[str]):
@@ -39,7 +37,6 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def testRecursiveConstructor(self):
     self.Check("""
-
       from typing import List
       MyType = List['Foo']
       class Foo(object):
@@ -53,7 +50,6 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def testRecursiveConstructorAttribute(self):
     self.Check("""
-
       from typing import List
       MyType = List['Foo']
       class Foo(object):
@@ -66,7 +62,6 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def testRecursiveConstructorBadAttribute(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import List
       MyType = List['Foo']
       class Foo(object):
@@ -77,11 +72,10 @@ class ClassesTest(test_base.TargetPython3BasicTest):
         def Convert(self):
           self.y
     """)
-    self.assertErrorLogIs(errors, [(10, "attribute-error", r"y.*Foo")])
+    self.assertErrorLogIs(errors, [(9, "attribute-error", r"y.*Foo")])
 
   def testRecursiveConstructorSubclass(self):
     self.Check("""
-
       from typing import List
       MyType = List['Foo']
       class Foo(object):
@@ -98,7 +92,6 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def testNameExists(self):
     self.Check("""
-
       class Foo(object): pass
       class Bar(object):
         @staticmethod
@@ -114,7 +107,6 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def testInheritFromGenericClass(self):
     ty = self.Infer("""
-
       from typing import List
       class Foo(List[str]): ...
       v = Foo()[0]
@@ -127,7 +119,6 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def testMakeGenericClass(self):
     ty, errors = self.InferWithErrors("""\
-
       from typing import List, TypeVar, Union
       T1 = TypeVar("T1")
       T2 = TypeVar("T2")
@@ -139,11 +130,10 @@ class ClassesTest(test_base.TargetPython3BasicTest):
       T2 = TypeVar("T2")
       class Foo(List[Union[T1, T2]]): ...
     """)
-    self.assertErrorLogIs(errors, [(5, "not-supported-yet", r"generic")])
+    self.assertErrorLogIs(errors, [(4, "not-supported-yet", r"generic")])
 
   def testMakeGenericClassWithConcreteValue(self):
     ty, errors = self.InferWithErrors("""\
-
       from typing import Dict, TypeVar
       V = TypeVar("V")
       class Foo(Dict[str, V]): ...
@@ -156,7 +146,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
       class Foo(Dict[str, V]): ...
       v = ...  # type: str
     """)
-    self.assertErrorLogIs(errors, [(4, "not-supported-yet", r"generic")])
+    self.assertErrorLogIs(errors, [(3, "not-supported-yet", r"generic")])
 
   def testGenericReinstantiated(self):
     """Makes sure the result of foo.f() isn't used by both a() and b()."""
@@ -165,7 +155,6 @@ class ClassesTest(test_base.TargetPython3BasicTest):
         def f() -> list: ...
         """)
       self.Check("""\
-
         import foo
         from typing import List
         def a() -> List[str]:
@@ -178,25 +167,23 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def testParentInit(self):
     errors = self.CheckWithErrors("""\
-
       from typing import Sequence
       class X(object):
         def __init__(self, obj: Sequence):
           pass
       class Y(X):
         def __init__(self, obj: int):
-          X.__init__(self, obj)  # line 8
+          X.__init__(self, obj)  # line 7
     """)
-    self.assertErrorLogIs(errors, [(8, "wrong-arg-types", r"Sequence.*int")])
+    self.assertErrorLogIs(errors, [(7, "wrong-arg-types", r"Sequence.*int")])
 
   def testParameterizedClassBinaryOperator(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import Sequence
       def f(x: Sequence[str], y: Sequence[str]) -> None:
         a = x + y
       """)
-    self.assertErrorLogIs(errors, [(4, "unsupported-operands")])
+    self.assertErrorLogIs(errors, [(3, "unsupported-operands")])
 
 
 class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):

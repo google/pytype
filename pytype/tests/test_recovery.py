@@ -1,7 +1,5 @@
 """Tests for recovering after errors."""
 
-import unittest
-
 from pytype.tests import test_base
 
 
@@ -123,7 +121,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
           return self._bar
     """)
 
-  @unittest.skip("Line 7, in __str__: No attribute '_bar' on Foo'")
+  @test_base.skip("Line 7, in __str__: No attribute '_bar' on Foo'")
   def testConstructorInfiniteLoop(self):
     self.Check("""\
       class Foo(object):

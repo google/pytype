@@ -1,7 +1,6 @@
 """Test match.py."""
 
 import textwrap
-import unittest
 
 from pytype import convert_structural
 from pytype import load_pytd

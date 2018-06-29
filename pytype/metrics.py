@@ -38,6 +38,15 @@ _METRIC_NAME_RE = re.compile(r"^[a-zA-Z_]\w+$")
 _registered_metrics = {}  # Map from metric name to Metric object.
 _enabled = False  # True iff metrics should be collected.
 
+# pyyaml 4+ switched to using safe dump/load methods by default, which does not
+# work with our classes. The danger_* methods were provided as a fallback.
+try:
+  dump = yaml.danger_dump
+  load = yaml.danger_load
+except AttributeError:
+  dump = yaml.dump
+  load = yaml.load
+
 
 def _prepare_for_test(enabled=True):
   """Setup metrics collection for a test."""
@@ -75,7 +84,7 @@ def get_report():
 
 def merge_from_file(metrics_file):
   """Merge metrics recorded in another file into the current metrics."""
-  for metric in yaml.load(metrics_file):
+  for metric in load(metrics_file):
     existing = _registered_metrics.get(metric.name)
     if existing is None:
       _registered_metrics[metric.name] = metric
@@ -138,9 +147,6 @@ class Counter(Metric):
 
 class StopWatch(Metric):
   """A counter that measures the time spent in a "with" statement."""
-
-  def __init__(self, name):
-    super(StopWatch, self).__init__(name)
 
   def __enter__(self):
     self._start_time = time.clock()
@@ -366,4 +372,4 @@ class MetricsContext(object):
     _enabled = self._old_enabled
     if self._output_path:
       with open(self._output_path, "w") as f:
-        yaml.dump(list(_registered_metrics.values()), f)
+        dump(list(_registered_metrics.values()), f)

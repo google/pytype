@@ -1,5 +1,4 @@
 """Tests for classes, MROs, inheritance etc."""
-import unittest
 
 from pytype.pytd import pytd
 from pytype.tests import test_base
@@ -8,7 +7,7 @@ from pytype.tests import test_base
 class InheritanceTest(test_base.TargetIndependentTest):
   """Tests for class inheritance."""
 
-  @unittest.skip("needs (re-)analyzing methods on subclasses")
+  @test_base.skip("needs (re-)analyzing methods on subclasses")
   def testSubclassAttributes(self):
     ty = self.Infer("""
       class Base(object):

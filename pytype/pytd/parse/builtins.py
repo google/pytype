@@ -37,6 +37,10 @@ def _FindBuiltinFile(name, python_version, extension=".pytd"):
 _cached_builtins_pytd = {}
 
 
+def InvalidateCache(python_version):
+  del _cached_builtins_pytd[python_version]
+
+
 def GetBuiltinsAndTyping(python_version):  # Deprecated. Use load_pytd instead.
   """Get __builtin__.pytd and typing.pytd."""
   assert python_version

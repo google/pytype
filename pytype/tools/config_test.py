@@ -1,10 +1,10 @@
 """Tests for config.py."""
 
 import textwrap
-import unittest
 
 from pytype import file_utils
 from pytype.tools import config
+import unittest
 
 
 # TODO(rechen): How can we create and test a symlink loop?

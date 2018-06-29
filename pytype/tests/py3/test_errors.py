@@ -9,7 +9,6 @@ class ErrorTest(test_base.TargetPython3BasicTest):
 
   def testUnion(self):
     _, errors = self.InferWithErrors("""\
-
       def f(x: int):
         pass
       if __random__:
@@ -19,12 +18,11 @@ class ErrorTest(test_base.TargetPython3BasicTest):
       x = (3.14, "")
       f(x[i])
     """)
-    self.assertErrorLogIs(errors, [(9, "wrong-arg-types",
+    self.assertErrorLogIs(errors, [(8, "wrong-arg-types",
                                     r"Actually passed:.*Union\[float, str\]")])
 
   def testInvalidAnnotations(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import Dict, List, Union
       def f1(x: Dict):  # okay
         pass
@@ -35,25 +33,23 @@ class ErrorTest(test_base.TargetPython3BasicTest):
       def f4(x: Union):
         pass
     """)
-    self.assertErrorLogIs(errors, [(7, "invalid-annotation", r"1.*2"),
-                                   (9, "invalid-annotation", r"Union.*x")])
+    self.assertErrorLogIs(errors, [(6, "invalid-annotation", r"1.*2"),
+                                   (8, "invalid-annotation", r"Union.*x")])
 
   def testPrintUnsolvable(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import List
       def f(x: List[nonsense], y: str, z: float):
         pass
       f({nonsense}, "", "")
     """)
     self.assertErrorLogIs(errors, [
-        (3, "name-error", r"nonsense"),
-        (5, "name-error", r"nonsense"),
-        (5, "wrong-arg-types", r"Expected:.*x: list.*Actual.*x: set")])
+        (2, "name-error", r"nonsense"),
+        (4, "name-error", r"nonsense"),
+        (4, "wrong-arg-types", r"Expected:.*x: list.*Actual.*x: set")])
 
   def testPrintUnionOfContainers(self):
     _, errors = self.InferWithErrors("""\
-
       def f(x: str):
         pass
       if __random__:
@@ -63,142 +59,132 @@ class ErrorTest(test_base.TargetPython3BasicTest):
       f(x)
     """)
     error = r"Actual.*Union\[List\[Type\[float\]\], Type\[dict\]\]"
-    self.assertErrorLogIs(errors, [(8, "wrong-arg-types", error)])
+    self.assertErrorLogIs(errors, [(7, "wrong-arg-types", error)])
 
   def testWrongBrackets(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import List
       def f(x: List(str)):
         pass
     """)
-    self.assertErrorLogIs(errors, [(3, "not-callable", r"List")])
+    self.assertErrorLogIs(errors, [(2, "not-callable", r"List")])
 
   def testInterpreterClassPrinting(self):
     _, errors = self.InferWithErrors("""\
-
       class Foo(object): pass
       def f(x: str): pass
       f(Foo())
     """)
-    self.assertErrorLogIs(errors, [(4, "wrong-arg-types", r"str.*Foo")])
+    self.assertErrorLogIs(errors, [(3, "wrong-arg-types", r"str.*Foo")])
 
   def testPrintDictAndTuple(self):
     _, errors = self.InferWithErrors("""\
-
       from typing import Tuple
       tup = None  # type: Tuple[int, ...]
       dct = None  # type: dict[str, int]
-      def f1(x: (int, str)):  # line 5
+      def f1(x: (int, str)):  # line 4
         pass
-      def f2(x: tup):  # line 7
+      def f2(x: tup):  # line 6
         pass
-      def g1(x: {"a": 1}):  # line 9
+      def g1(x: {"a": 1}):  # line 8
         pass
-      def g2(x: dct):  # line 11
+      def g2(x: dct):  # line 10
         pass
     """)
     self.assertErrorLogIs(errors, [
-        (5, "invalid-annotation", r"(int, str).*Not a type"),
-        (7, "invalid-annotation",
+        (4, "invalid-annotation", r"(int, str).*Not a type"),
+        (6, "invalid-annotation",
          r"instance of Tuple\[int, \.\.\.\].*Not a type"),
-        (9, "invalid-annotation", r"{'a': '1'}.*Not a type"),
-        (11, "invalid-annotation", r"instance of Dict\[str, int\].*Not a type")
+        (8, "invalid-annotation", r"{'a': '1'}.*Not a type"),
+        (10, "invalid-annotation", r"instance of Dict\[str, int\].*Not a type")
     ])
 
   def testMoveUnionInward(self):
     _, errors = self.InferWithErrors("""\
-
       def f() -> str:
         y = "hello" if __random__ else 42
         yield y
     """)
     self.assertErrorLogIs(errors, [(
-        4, "bad-return-type",
+        3, "bad-return-type",
         r"Generator\[Union\[int, str\], None, None\]")])
 
   def testInnerClassError(self):
     _, errors = self.InferWithErrors("""\
-
       def f(x: str): pass
       def g():
         class Foo(object): pass
         f(Foo())
     """)
-    self.assertErrorLogIs(errors, [(5, "wrong-arg-types", r"x: str.*x: Foo")])
+    self.assertErrorLogIs(errors, [(4, "wrong-arg-types", r"x: str.*x: Foo")])
 
   def testInnerClassError2(self):
     _, errors = self.InferWithErrors("""\
-
       def f():
         class Foo(object): pass
         def g(x: Foo): pass
         g("")
     """)
-    self.assertErrorLogIs(errors, [(5, "wrong-arg-types", r"x: Foo.*x: str")])
+    self.assertErrorLogIs(errors, [(4, "wrong-arg-types", r"x: Foo.*x: str")])
 
   def testCleanNamedtupleNames(self):
     # Make sure the namedtuple renaming in _pytd_print correctly extracts type
     # names and doesn't erase other types accidentally.
     _, errors = self.InferWithErrors("""\
-
       import collections
       X = collections.namedtuple("X", "a b c d")
       Y = collections.namedtuple("Z", "")
       W = collections.namedtuple("W", "abc def ghi abc", rename=True)
       def bar(x: str):
         return x
-      bar(X(1,2,3,4))  # 8
-      bar(Y())         # 9
-      bar(W(1,2,3,4))  # 10
-      bar({1: 2}.__iter__())  # 11
+      bar(X(1,2,3,4))  # 7
+      bar(Y())         # 8
+      bar(W(1,2,3,4))  # 9
+      bar({1: 2}.__iter__())  # 10
       if __random__:
         a = X(1,2,3,4)
       else:
         a = 1
-      bar(a)  # 16
+      bar(a)  # 15
       """)
     self.assertErrorLogIs(errors,
-                          [(8, "wrong-arg-types", r"`X`"),
-                           (9, "wrong-arg-types", r"`Z`"),
-                           (10, "wrong-arg-types", r"`W`"),
-                           (11, "wrong-arg-types", r"`dictionary-keyiterator`"),
-                           (16, "wrong-arg-types", r"Union\[int, `X`\]")
+                          [(7, "wrong-arg-types", r"`X`"),
+                           (8, "wrong-arg-types", r"`Z`"),
+                           (9, "wrong-arg-types", r"`W`"),
+                           (10, "wrong-arg-types", r"`dictionary-keyiterator`"),
+                           (15, "wrong-arg-types", r"Union\[int, `X`\]")
                           ])
 
   def testArgumentOrder(self):
     _, errors = self.InferWithErrors("""\
-
       def g(f: str, a, b, c, d, e,):
         pass
       g(a=1, b=2, c=3, d=4, e=5, f=6)
       """)
     self.assertErrorLogIs(
         errors,
-        [(4, "wrong-arg-types",
+        [(3, "wrong-arg-types",
           r"Expected.*f: str, \.\.\..*Actual.*f: int, \.\.\.")]
     )
 
   def testConversionOfGeneric(self):
     _, errors = self.InferWithErrors("""
-
       import os
       def f() -> None:
         return os.walk("/tmp")
     """)
     self.assertErrorLogIs(errors, [
-        (5, "bad-return-type")
+        (4, "bad-return-type")
     ])
 
   def testInnerClass(self):
     _, errors = self.InferWithErrors("""\
-
       def f() -> int:
         class Foo(object):
           pass
-        return Foo()  # line 5
+        return Foo()  # line 4
     """)
-    self.assertErrorLogIs(errors, [(5, "bad-return-type", r"int.*Foo")])
+    self.assertErrorLogIs(errors, [(4, "bad-return-type", r"int.*Foo")])
 
   def testNestedProtoClass(self):
     with file_utils.Tempdir() as d:
@@ -209,13 +195,12 @@ class ErrorTest(test_base.TargetPython3BasicTest):
           Bar = ...  # type: Type[_Foo_DOT_Bar]
       """)
       errors = self.CheckWithErrors("""\
-
         import foo_bar
         def f(x: foo_bar.Foo.Bar): ...
         f(42)
       """, pythonpath=[d.path])
       self.assertErrorLogIs(
-          errors, [(4, "wrong-arg-types", r"foo_bar\.Foo\.Bar")])
+          errors, [(3, "wrong-arg-types", r"foo_bar\.Foo\.Bar")])
 
   def testStaticmethodInError(self):
     with file_utils.Tempdir() as d:
@@ -225,7 +210,6 @@ class ErrorTest(test_base.TargetPython3BasicTest):
           def t(a: str) -> None: ...
         """)
       errors = self.CheckWithErrors("""\
-
         from typing import Callable
         import foo
         def f(x: Callable[[int], None], y: int) -> None:
@@ -234,7 +218,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
         """, pythonpath=[d.path])
       self.assertErrorLogIs(
           errors,
-          [(6, "wrong-arg-types",
+          [(5, "wrong-arg-types",
             r"Actually passed: \(x: Callable\[\[str\], None\]")])
 
 

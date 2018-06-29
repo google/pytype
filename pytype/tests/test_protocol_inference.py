@@ -1,7 +1,5 @@
 """Tests for inferring protocols."""
 
-import unittest
-
 from pytype import file_utils
 from pytype.tests import test_base
 
@@ -112,7 +110,7 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
       def t_testPow2(x: complex or float or int, y: complex or float or int) -> complex or float or int
     """)
 
-  @unittest.skip("Moving to protocols.")
+  @test_base.skip("Moving to protocols.")
   def test_slices(self):
     self.options.tweak(protocols=True)
     ty = self.Infer("""
@@ -220,7 +218,7 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
       def f(x: SupportsAbs[Sized]) -> ?
     """)
 
-  @unittest.skip("doesn't match arguments correctly")
+  @test_base.skip("doesn't match arguments correctly")
   def test_supports_round(self):
     self.options.tweak(protocols=True)
     ty = self.Infer("""
@@ -255,7 +253,7 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
       def f(x: Iterable) -> Iterator
     """)
 
-  @unittest.skip("Iterator not implemented, breaks other functionality")
+  @test_base.skip("Iterator not implemented, breaks other functionality")
   def test_iterator(self):
     self.options.tweak(protocols=True)
     ty = self.Infer("""
@@ -279,7 +277,7 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
       def f(x: Callable[Any, protocols.SupportsLower]) -> ?
     """)
 
-  @unittest.skip("Matches Mapping[int, Any] but not Sequence")
+  @test_base.skip("Matches Mapping[int, Any] but not Sequence")
   def test_sequence(self):
     self.options.tweak(protocols=True)
     ty = self.Infer("""
@@ -294,7 +292,7 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
       def f(x: Sequence) -> ?
     """)
 
-  @unittest.skip("doesn't match arguments correctly on exit")
+  @test_base.skip("doesn't match arguments correctly on exit")
   def test_context_manager(self):
     self.options.tweak(protocols=True)
     ty = self.Infer("""
@@ -344,7 +342,7 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
         def g(y: SupportsAbs[int]) -> None
       """)
 
-  @unittest.skip("Unexpectedly assumes returned result is sequence")
+  @test_base.skip("Unexpectedly assumes returned result is sequence")
   def test_mapping_abstractmethod(self):
     self.options.tweak(protocols=True)
     ty = self.Infer("""

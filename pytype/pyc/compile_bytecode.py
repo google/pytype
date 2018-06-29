@@ -41,20 +41,18 @@ def compile_to_pyc(data_file, filename, output, mode="exec"):
   else:
     with open(data_file, "r") as fi:
       # Python 2's compile function does not like the line specifying the
-      # encoding. So, we strip it off if it is present.
+      # encoding. So, we strip it off if it is present, replacing it with an
+      # empty comment to preserve the original line numbering.
       # As per PEP-263, the line specifying the encoding can occur only
       # in the first or the second line.
       l1 = fi.readline()
+      l2 = fi.readline()
       if re.match(ENCODING_PATTERN, l1.rstrip()):
-        src = fi.read().decode("utf-8")
-      else:
-        l2 = fi.readline()
-        if is_comment_only(l1) and re.match(ENCODING_PATTERN, l2.rstrip()):
-          src = fi.read().decode("utf-8")
-        else:
-          # If the encoding line was not present in the first or the second
-          # line, then use the entire source.
-          src = "".join([l1, l2, fi.read()]).decode("utf-8")
+        l1 = "#\n"
+      elif is_comment_only(l1) and re.match(ENCODING_PATTERN, l2.rstrip()):
+        l1 = "#\n"
+        l2 = "#\n"
+      src = "".join([l1, l2, fi.read()]).decode("utf-8")
   try:
     codeobject = compile(src, filename, mode)
   except Exception as err:  # pylint: disable=broad-except

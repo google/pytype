@@ -6,7 +6,6 @@ import time
 
 from pytype import metrics
 from six import moves
-import yaml
 
 import unittest
 
@@ -62,7 +61,7 @@ class MetricsTest(unittest.TestCase):
     # Create a counter, increment it, and dump it.
     c1 = metrics.Counter("foo")
     c1.inc(1)
-    dump = yaml.dump([c1], encoding=None)
+    dump = metrics.dump([c1], encoding=None)
     # Reset metrics, merge from dump, which will create a new metric.
     metrics._prepare_for_test()
     self.assertEqual(0, len(metrics._registered_metrics))
@@ -295,7 +294,7 @@ class MetricsContextTest(unittest.TestCase):
         self._counter.inc()
       self.assertEqual(1, self._counter._total)
       with open(out.name) as f:
-        dumped = yaml.load(f)
+        dumped = metrics.load(f)
         self.assertEqual(1, len(dumped))
         self.assertEqual("foo", dumped[0].name)
         self.assertEqual("foo: 1", str(dumped[0]))

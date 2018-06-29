@@ -1,7 +1,5 @@
 """Tests for TypeVar."""
 
-import unittest
-
 from pytype import file_utils
 from pytype.tests import test_base
 
@@ -259,7 +257,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
       """)
 
   # Skipping due to b/66005735
-  @unittest.skip("Type parameter bug")
+  @test_base.skip("Type parameter bug")
   def testPropertyTypeParam3(self):
     # Don't mix up the class parameter and the property parameter
     with file_utils.Tempdir() as d:

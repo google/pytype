@@ -2,10 +2,11 @@
 
 from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class ConcreteTest(test_base.TargetIndependentTest,
-                   test_base.OperatorsTestMixin):
+                   test_utils.OperatorsTestMixin):
   """Tests for operators on concrete values (no unknowns)."""
 
   def test_add(self):
@@ -170,7 +171,7 @@ class ConcreteTest(test_base.TargetIndependentTest,
 
 
 class OverloadTest(test_base.TargetIndependentTest,
-                   test_base.OperatorsTestMixin):
+                   test_utils.OperatorsTestMixin):
   """Tests for overloading operators."""
 
   def test_add(self):
@@ -220,7 +221,7 @@ class OverloadTest(test_base.TargetIndependentTest,
 
 
 class ReverseTest(test_base.TargetIndependentTest,
-                  test_base.OperatorsTestMixin):
+                  test_utils.OperatorsTestMixin):
   """Tests for reverse operators."""
 
   def test_add(self):
@@ -333,7 +334,7 @@ class ReverseTest(test_base.TargetIndependentTest,
 
 
 class InplaceTest(test_base.TargetIndependentTest,
-                  test_base.OperatorsTestMixin):
+                  test_utils.OperatorsTestMixin):
   """Tests for in-place operators."""
 
   def test_add(self):

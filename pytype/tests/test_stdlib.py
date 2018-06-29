@@ -3,8 +3,7 @@
 from pytype.tests import test_base
 
 
-class StdlibTests(test_base.TargetIndependentTest,
-                  test_base.TestCollectionsMixin):
+class StdlibTests(test_base.TargetIndependentTest):
   """Tests for files in typeshed/stdlib."""
 
   def testAST(self):

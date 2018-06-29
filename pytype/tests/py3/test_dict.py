@@ -8,7 +8,6 @@ class DictTest(test_base.TargetPython3BasicTest):
 
   def testFilteredGetItem(self):
     ty = self.Infer("""
-
       from typing import Union
       MAP = {0: "foo"}
       def foo(x: Union[int, None]):
@@ -23,17 +22,15 @@ class DictTest(test_base.TargetPython3BasicTest):
 
   def testObjectInDict(self):
     errors = self.CheckWithErrors("""\
-
       from typing import Any, Dict
       def objectIsStr() -> Dict[str, Any]:
         return {object(): ""}
     """)
-    self.assertErrorLogIs(errors, [(4, "bad-return-type")])
+    self.assertErrorLogIs(errors, [(3, "bad-return-type")])
 
   def testBigConcreteDict(self):
     # Test that we don't timeout.
     errorlog = self.CheckWithErrors("""\
-
       from typing import Dict, Tuple, Union
       # A concrete dictionary with lots of concrete keys and a complicated
       # value type.
@@ -53,15 +50,14 @@ class DictTest(test_base.TargetPython3BasicTest):
       def f() -> Dict[Union[str, Tuple[str, None]], ValueType]:
         return d
       def g() -> Dict[int, int]:
-        return d  # line 21
+        return d  # line 20
     """)
-    self.assertErrorLogIs(errorlog, [(21, "bad-return-type")])
+    self.assertErrorLogIs(errorlog, [(20, "bad-return-type")])
 
   def testDictOfTuple(self):
     # utils.deep_variable_product(group_dict) generates a lot of combinations.
     # Test that we finish checking this code in a reasonable amount of time.
     self.Check("""
-
       from typing import Dict, Tuple
       def iter_equality_constraints(op):
         yield (op, 0 if __random__ else __any_object__)

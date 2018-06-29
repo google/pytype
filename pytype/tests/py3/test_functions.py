@@ -8,12 +8,11 @@ class TestClosures(test_base.TargetPython3BasicTest):
 
   def test_error(self):
     errors = self.CheckWithErrors("""\
-
       def f(x: int):
         def g():
           return x.upper()
     """)
-    self.assertErrorLogIs(errors, [(4, "attribute-error", "upper.*int")])
+    self.assertErrorLogIs(errors, [(3, "attribute-error", "upper.*int")])
 
 
 class TestClosuresPy3(test_base.TargetPython3FeatureTest):
@@ -95,7 +94,6 @@ class TestFunctions(test_base.TargetPython3BasicTest):
 
   def test_function_to_callable(self):
     ty = self.Infer("""\
-
       def f():
         def g1(x: int, y: bool) -> str:
           return "hello world"
@@ -110,7 +108,6 @@ class TestFunctions(test_base.TargetPython3BasicTest):
 
   def test_function_to_callable_return_only(self):
     ty = self.Infer("""\
-
       def f():
         def g1(x=None) -> int:
           return 42
@@ -126,7 +123,6 @@ class TestFunctions(test_base.TargetPython3BasicTest):
   def test_fake_arguments(self):
     self.Check("""\
 
-
       class Foo(object):
         def __init__(self, x: int):
           self.y = __any_object__
@@ -137,7 +133,6 @@ class TestFunctions(test_base.TargetPython3BasicTest):
 
   def test_argument_name_conflict(self):
     ty = self.Infer("""
-
       from typing import Dict
       def f(x: Dict[str, int]):
         x[""] = ""
@@ -153,7 +148,6 @@ class TestFunctions(test_base.TargetPython3BasicTest):
 
   def test_argument_type_conflict(self):
     ty = self.Infer("""
-
       from typing import Dict
       def f(x: Dict[str, int], y: Dict[str, int]):
         x[""] = ""
@@ -168,31 +162,28 @@ class TestFunctions(test_base.TargetPython3BasicTest):
 
   def test_typecheck_varargs(self):
     errors = self.CheckWithErrors("""\
-
       def f(*args: int) -> int:
         return args[0]
       f(*['value'])
       f(1, 'hello', 'world')
       """)
-    self.assertErrorLogIs(errors, [(4, "wrong-arg-types"),
-                                   (5, "wrong-arg-types")])
+    self.assertErrorLogIs(errors, [(3, "wrong-arg-types"),
+                                   (4, "wrong-arg-types")])
 
   def test_typecheck_kwargs(self):
     errors = self.CheckWithErrors("""\
-
       def f(**kwargs: int) -> int:
         return len(kwargs.values())
       f(**{'arg': 'value'})
       f(arg='value', arg2=3)
       """)
-    self.assertErrorLogIs(errors, [(4, "wrong-arg-types"),
-                                   (5, "wrong-arg-types")])
+    self.assertErrorLogIs(errors, [(3, "wrong-arg-types"),
+                                   (4, "wrong-arg-types")])
 
   def test_pass_func_to_complex_func(self):
     # This test gets an unsolvable binding added to the variable containing the
     # lambda by making the call to 'f' trigger a TooComplexError.
     self.Check("""
-
       from typing import Optional
       def f(x1, x2: Optional[str], x3, x4, x5, x6, x7, x8, x9, xA, xB):
         pass
@@ -206,7 +197,6 @@ class TestFunctions(test_base.TargetPython3BasicTest):
 
   def test_type_param_args(self):
     ty = self.Infer("""
-
       from typing import Any, Type, TypeVar
       T = TypeVar('T')
       def cast(typ: Type[T], val: Any) -> T:

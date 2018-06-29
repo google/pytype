@@ -158,7 +158,7 @@ class Error(object):
   """Representation of an error in the error log."""
 
   def __init__(self, severity, message, filename=None, lineno=0,
-               methodname=None, details=None, traceback=None):
+               methodname=None, details=None, traceback=None, keyword=None):
     name = _CURRENT_ERROR_NAME.get()
     assert name, ("Errors must be created from a caller annotated "
                   "with @error_name.")
@@ -174,9 +174,10 @@ class Error(object):
     self._lineno = lineno or 0
     self._methodname = methodname
     self._traceback = traceback
+    self._keyword = keyword
 
   @classmethod
-  def with_stack(cls, stack, severity, message, details=None):
+  def with_stack(cls, stack, severity, message, details=None, keyword=None):
     """Return an error using a stack for position information.
 
     Args:
@@ -184,6 +185,10 @@ class Error(object):
       severity: The error level (error or warning), an integer.
       message: The error message string.
       details: Optionally, a string of message details.
+      keyword: Optionally, the culprit keyword in the line where error is.
+               Eg
+               message = "No attribute '_submatch' on BasePattern"
+               keyword = _submatch
 
     Returns:
       An Error object.
@@ -191,11 +196,12 @@ class Error(object):
     opcodes = _stack_to_opcodes(stack) if stack else None
     opcode = opcodes[-1] if opcodes else None
     if opcode is None:
-      return cls(severity, message, details=details)
+      return cls(severity, message, details=details, keyword=keyword)
     else:
       return cls(severity, message, filename=opcode.code.co_filename,
                  lineno=opcode.line, methodname=opcode.code.co_name,
-                 details=details, traceback=_make_traceback_str(opcodes))
+                 details=details, traceback=_make_traceback_str(opcodes),
+                 keyword=keyword)
 
   @classmethod
   def for_test(cls, severity, message, name, **kwargs):
@@ -231,6 +237,14 @@ class Error(object):
   @property
   def methodname(self):
     return self._methodname
+
+  @property
+  def details(self):
+    return self._details
+
+  @property
+  def keyword(self):
+    return self._keyword
 
   def _position(self):
     """Return human-readable filename + line number."""
@@ -314,8 +328,9 @@ class ErrorLogBase(object):
   def warn(self, stack, message, *args):
     self._add(Error.with_stack(stack, SEVERITY_WARNING, message % args))
 
-  def error(self, stack, message, details=None):
-    self._add(Error.with_stack(stack, SEVERITY_ERROR, message, details=details))
+  def error(self, stack, message, details=None, keyword=None):
+    self._add(Error.with_stack(stack, SEVERITY_ERROR, message, details=details,
+                               keyword=keyword))
 
   def save(self):
     """Returns a checkpoint that represents the log messages up to now."""
@@ -521,7 +536,8 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("pyi-error")
   def pyi_error(self, stack, name, error):
-    self.error(stack, "Couldn't import pyi for %r" % name, str(error))
+    self.error(stack, "Couldn't import pyi for %r" % name, str(error),
+               keyword=name)
 
   @_error_name("attribute-error")
   def _attribute_error(self, stack, binding, attr_name):
@@ -535,18 +551,21 @@ class ErrorLog(ErrorLogBase):
     else:
       details = None
     self.error(
-        stack, "No attribute %r on %s" % (attr_name, obj_repr), details=details)
+        stack, "No attribute %r on %s" % (attr_name, obj_repr), details=details,
+        keyword=attr_name)
 
   @_error_name("not-writable")
   def not_writable(self, stack, obj, attr_name):
     obj_values = abstract.merge_values([obj], obj.vm)
     obj_repr = self._print_as_actual_type(obj_values)
-    self.error(stack, "Can't assign attribute %r on %s" % (attr_name, obj_repr))
+    self.error(stack, "Can't assign attribute %r on %s" % (attr_name, obj_repr),
+               keyword=attr_name)
 
   @_error_name("module-attr")
   def _module_attr(self, stack, binding, attr_name):
     module_name = binding.data.name
-    self.error(stack, "No attribute %r on module %r" % (attr_name, module_name))
+    self.error(stack, "No attribute %r on module %r" % (attr_name, module_name),
+               keyword=attr_name)
 
   def attribute_error(self, stack, binding, attr_name):
     if isinstance(binding.data, abstract.Module):
@@ -558,15 +577,16 @@ class ErrorLog(ErrorLogBase):
   def unbound_type_param(self, stack, obj, attr_name, type_param_name):
     self.error(
         stack, "Can't access attribute %r on %s" % (attr_name, obj.name),
-        "No binding for type parameter %s" % type_param_name)
+        "No binding for type parameter %s" % type_param_name, keyword=attr_name)
 
   @_error_name("name-error")
   def name_error(self, stack, name):
-    self.error(stack, "Name %r is not defined" % name)
+    self.error(stack, "Name %r is not defined" % name, keyword=name)
 
   @_error_name("import-error")
   def import_error(self, stack, module_name):
-    self.error(stack, "Can't find module %r." % module_name)
+    self.error(stack, "Can't find module %r." % module_name,
+               keyword=module_name)
 
   def _explain_protocol_mismatch(self, protocol_param, passed_params):
     """Return possibly extra protocol details about an argument mismatch."""
@@ -642,15 +662,16 @@ class ErrorLog(ErrorLogBase):
   def not_callable(self, stack, function):
     """Calling an object that isn't callable."""
     message = "%r object is not callable" % (function.name)
-    self.error(stack, message)
+    self.error(stack, message, keyword=function.name)
 
   @_error_name("not-indexable")
   def not_indexable(self, stack, name, generic_warning=False):
     message = "class %s is not indexable" % name
     if generic_warning:
-      self.error(stack, message, "(%r does not subclass Generic)" % name)
+      self.error(stack, message, "(%r does not subclass Generic)" % name,
+                 keyword=name)
     else:
-      self.error(stack, message)
+      self.error(stack, message, keyword=name)
 
   @_error_name("not-instantiable")
   def not_instantiable(self, stack, cls):
@@ -699,7 +720,7 @@ class ErrorLog(ErrorLogBase):
   def base_class_error(self, stack, base_var):
     base_cls = self._join_printed_types(
         self._print_as_expected_type(t) for t in base_var.data)
-    self.error(stack, "Invalid base class: %s" % base_cls)
+    self.error(stack, "Invalid base class: %s" % base_cls, keyword=base_cls)
 
   @_error_name("bad-return-type")
   def bad_return_type(self, stack, actual_pytd, expected_pytd):
@@ -750,7 +771,7 @@ class ErrorLog(ErrorLogBase):
     for seq in mro_seqs:
       seqs.append("[%s]" % ", ".join(cls.name for cls in seq))
     self.error(stack, "Class %s has invalid (cyclic?) inheritance: %s." % (
-        name, ", ".join(seqs)))
+        name, ", ".join(seqs)), keyword=name)
 
   @_error_name("invalid-directive")
   def invalid_directive(self, filename, lineno, message):
@@ -771,7 +792,8 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("key-error")
   def key_error(self, stack, key):
-    self.error(stack, "Key %r possibly not in dictionary (yet)" % key)
+    self.error(stack, "Key %r possibly not in dictionary (yet)" % key,
+               keyword=key)
 
   @_error_name("python-compiler-error")
   def python_compiler_error(self, filename, lineno, message):
@@ -780,7 +802,7 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("recursion-error")
   def recursion_error(self, stack, name):
-    self.error(stack, "Detected recursion in %s" % name)
+    self.error(stack, "Detected recursion in %s" % name, keyword=name)
 
   @_error_name("redundant-function-type-comment")
   def redundant_function_type_comment(self, filename, lineno):
@@ -833,7 +855,7 @@ class ErrorLog(ErrorLogBase):
     vals_str = prettify(num_vals, "value")
     vars_str = prettify(num_vars, "variable")
     msg = "Cannot unpack %s into %s" % (vals_str, vars_str)
-    self.error(stack, msg)
+    self.error(stack, msg, keyword=vals_str)
 
   @_error_name("reveal-type")
   def reveal_type(self, stack, node, var):

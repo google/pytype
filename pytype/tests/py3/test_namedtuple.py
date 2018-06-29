@@ -8,7 +8,6 @@ class NamedtupleTests(test_base.TargetPython3BasicTest):
 
   def test_namedtuple_match(self):
     self.Check("""\
-
         import collections
         from typing import Any, Dict
 

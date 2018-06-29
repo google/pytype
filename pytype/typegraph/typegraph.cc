@@ -6,9 +6,9 @@
 #include <unordered_set>
 #include <vector>
 
-#include "memory_util.h"
-#include "cfg_assert.h"
+#include "base/logging.h"
 #include "map_util.h"
+#include "memory_util.h"
 #include "solver.h"
 
 namespace devtools_python_typegraph {
@@ -22,8 +22,8 @@ CFGNode* Program::NewCFGNode(const std::string& name, Binding* condition) {
   InvalidateSolver();
   size_t node_nr = CountCFGNodes();
   int n = backward_reachability_->add_node();
-  CFG_ASSERT_MSG(n == node_nr,
-                 "internal error: wrong reachability cache node count.");
+  assert((n == node_nr) &&
+      "internal error: wrong reachability cache node count.");
   auto node = memory_util::WrapUnique(
       new CFGNode(this, name, node_nr, condition,
                   backward_reachability_.get()));
@@ -335,7 +335,7 @@ std::set<Binding*> Variable::Prune(const CFGNode* viewpoint) {
     stack.pop();
     seen.insert(node);
     if (map_util::ContainsKey(cfg_node_to_bindings_, node)) {
-      CFG_ASSERT_MSG(cfg_node_to_bindings_[node].size(), "empty binding list");
+      assert((cfg_node_to_bindings_[node].size()) && "empty binding list");
       for (auto v : cfg_node_to_bindings_[node]) {
         result.insert(v);
       }

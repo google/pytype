@@ -6,7 +6,7 @@
 #include <utility>
 #include <vector>
 
-#include "cfg_assert.h"
+#include "base/logging.h"
 #include "map_util.h"
 #include "typegraph.h"
 
@@ -258,9 +258,9 @@ bool Solver::GoalsConflict(const internal::GoalSet& goals) const {
     const Binding* existing = map_util::FindPtrOrNull(variables,
                                                       goal->variable());
     if (existing) {
-      CFG_ASSERT_MSG(existing != goal, "Internal error. Duplicate goal.");
+      assert((existing != goal) && "Internal error. Duplicate goal.");
       // TODO(kramm): What if existing->binding == goal->binding ?
-      CFG_ASSERT_MSG(existing->data() != goal->data(),
+      assert((existing->data() != goal->data()) &&
           "Internal error. Duplicate data across bindings.");
       return true;
     }

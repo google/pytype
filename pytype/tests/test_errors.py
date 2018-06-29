@@ -1,6 +1,5 @@
 """Tests for displaying errors."""
 
-import unittest
 
 from pytype import file_utils
 from pytype.tests import test_base
@@ -602,7 +601,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [
         (7, "wrong-arg-types", r"cls: type.*cls: B")])
 
-  @unittest.skip("Need to type-check second argument to super")
+  @test_base.skip("Need to type-check second argument to super")
   def testBadSuperInstance(self):
     _, errors = self.InferWithErrors("""\
       class A(object):

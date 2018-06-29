@@ -1,8 +1,7 @@
 """Tests for slots.py."""
 
-import unittest
-
 from pytype.pytd import slots
+import unittest
 
 
 class TestPytd(unittest.TestCase):

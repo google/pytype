@@ -1,29 +1,28 @@
 """Tests of selected stdlib functions."""
 
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class StrLibTestsBasic(test_base.TargetPython3BasicTest,
-                       test_base.TestCollectionsMixin):
+                       test_utils.TestCollectionsMixin):
   """Tests for files in typeshed/stdlib."""
 
   def testCollectionsDeque(self):
     # This method is different from the preceding ones because we model
     # collections.deque as a subclass, rather than an alias, of typing.Deque.
     errors = self.CheckWithErrors("""\
-
       from typing import Deque
       import collections
       def f1(x: Deque): ...
       def f2(x: int): ...
       f1(collections.deque())
-      f2(collections.deque())  # line 7
+      f2(collections.deque())  # line 6
     """)
-    self.assertErrorLogIs(errors, [(7, "wrong-arg-types", r"int.*deque")])
+    self.assertErrorLogIs(errors, [(6, "wrong-arg-types", r"int.*deque")])
 
   def testCollectionsDequeInit(self):
     ty = self.Infer("""\
-
       import collections
       x = collections.deque([1, 2, 3], maxlen=10)
     """)
@@ -34,7 +33,6 @@ class StrLibTestsBasic(test_base.TargetPython3BasicTest,
 
   def testPartial(self):
     self.Check("""\
-
       import functools
       from typing import TypeVar
       T = TypeVar('T', float, str)
@@ -82,7 +80,7 @@ class StrLibTestsBasic(test_base.TargetPython3BasicTest,
 
 
 class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
-                          test_base.TestCollectionsMixin):
+                          test_utils.TestCollectionsMixin):
   """Tests for files in typeshed/stdlib."""
 
   def testCollectionsSmokeTest(self):

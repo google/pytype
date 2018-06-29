@@ -8,7 +8,6 @@ class RecoveryTests(test_base.TargetPython3BasicTest):
 
   def testFunctionWithUnknownDecorator(self):
     _, errors = self.InferWithErrors("""\
-
       from nowhere import decorator
       @decorator
       def f():
@@ -18,15 +17,14 @@ class RecoveryTests(test_base.TargetPython3BasicTest):
         x.upper()
     """, deep=True)
     self.assertErrorLogIs(errors, [
-        (2, "import-error"),
-        (5, "name-error"),
-        (8, "attribute-error"),
+        (1, "import-error"),
+        (4, "name-error"),
+        (7, "attribute-error"),
     ])
 
   def testComplexInit(self):
     """Test that we recover when __init__ triggers a utils.TooComplexError."""
     _, errors = self.InferWithErrors("""\
-
       from typing import AnyStr
       class X(object):
         def __init__(self,
@@ -39,10 +37,10 @@ class RecoveryTests(test_base.TargetPython3BasicTest):
                      string_ref: AnyStr = None,
                      type_ref: AnyStr = None) -> None:
           pass
-        def foo(self, x: other_module.X) -> None:  # line 14
+        def foo(self, x: other_module.X) -> None:  # line 13
           pass
     """, deep=True)
-    self.assertErrorLogIs(errors, [(14, "name-error", r"other_module")])
+    self.assertErrorLogIs(errors, [(13, "name-error", r"other_module")])
 
 
 class RecoveryTestsPython3(test_base.TargetPython3FeatureTest):

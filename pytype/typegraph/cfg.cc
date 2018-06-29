@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <utility>
 
-#include "cfg_assert.h"
+#include "base/logging.h"
 #include "typegraph.h"
 
 namespace typegraph = devtools_python_typegraph;
@@ -95,7 +95,7 @@ static PyObject* FindInCache(PyProgramObj* program, const void* key) {
 // Upon deallocation of the Python object, we remove it from our cache.
 static void RemoveFromCache(PyProgramObj* program, void* key) {
   auto result = program->cache->find(key);
-  CFG_ASSERT_MSG(result != program->cache->end(), "corrupted PyProgram cache");
+  assert((result != program->cache->end()) && "corrupted PyProgram cache");
   program->cache->erase(key);
 }
 
@@ -194,7 +194,7 @@ static bool IsCFGNodeOrNone(PyObject* obj, typegraph::CFGNode** ret) {
 // --- Program -----------------------------------------------------------------
 
 static void ProgramDealloc(PyObject* self) {
-  CFG_ASSERT(self && Py_TYPE(self) == &PyProgram);
+  assert(self && Py_TYPE(self) == &PyProgram);
   PyProgramObj* program = reinterpret_cast<PyProgramObj*>(self);
   delete program->cache;
   delete program->program;
@@ -202,7 +202,7 @@ static void ProgramDealloc(PyObject* self) {
 }
 
 static PyObject* ProgramGetAttro(PyObject* self, PyObject* attr) {
-  CFG_ASSERT(self && Py_TYPE(self) == &PyProgram);
+  assert(self && Py_TYPE(self) == &PyProgram);
   PyProgramObj* program = reinterpret_cast<PyProgramObj*>(self);
   if (PyObject_RichCompareBool(attr, k_cfg_nodes, Py_EQ) > 0) {
     PyObject* list = PyList_New(0);
@@ -239,8 +239,8 @@ static PyObject* ProgramGetAttro(PyObject* self, PyObject* attr) {
 }
 
 static int ProgramSetAttro(PyObject* self, PyObject* attr, PyObject* val) {
-  CFG_ASSERT(self != nullptr);
-  CFG_ASSERT(Py_TYPE(self) == &PyProgram);
+  assert(self != nullptr);
+  assert(Py_TYPE(self) == &PyProgram);
   PyProgramObj* program = reinterpret_cast<PyProgramObj*>(self);
 
   if (PyObject_RichCompareBool(attr, k_entrypoint, Py_EQ) > 0) {
@@ -375,7 +375,7 @@ static PyObject* NewVariable(PyProgramObj* self,
 
   if (bindings) {
     // TODO(kramm): Is assert the right thing to use, inside a Python extension?
-    CFG_ASSERT(bindings && source_set && where);
+    assert(bindings && source_set && where);
     PyObject* item;
     PyObject* bind_iter = PyObject_GetIter(bindings);
     while ((item = PyIter_Next(bind_iter))) {
@@ -483,7 +483,7 @@ PyTypeObject PyProgram = {
 // --- CFGNode -----------------------------------------------------------------
 
 static PyObject* CFGNodeGetAttro(PyObject* self, PyObject* attr) {
-  CFG_ASSERT(self && Py_TYPE(self) == &PyCFGNode);
+  assert(self && Py_TYPE(self) == &PyCFGNode);
   PyCFGNodeObj* cfg_node = reinterpret_cast<PyCFGNodeObj*>(self);
   PyProgramObj* program = cfg_node->program;
 
@@ -523,8 +523,8 @@ static PyObject* CFGNodeGetAttro(PyObject* self, PyObject* attr) {
 }
 
 static int CFGNodeSetAttro(PyObject* self, PyObject* attr, PyObject* val) {
-  CFG_ASSERT(self != nullptr);
-  CFG_ASSERT(Py_TYPE(self) == &PyCFGNode);
+  assert(self != nullptr);
+  assert(Py_TYPE(self) == &PyCFGNode);
   PyCFGNodeObj* cfg_node = reinterpret_cast<PyCFGNodeObj*>(self);
 
   if (PyObject_RichCompareBool(attr, k_condition, Py_EQ) > 0) {
@@ -543,7 +543,7 @@ static int CFGNodeSetAttro(PyObject* self, PyObject* attr, PyObject* val) {
 }
 
 static void CFGNodeDealloc(PyObject* self) {
-  CFG_ASSERT(self && Py_TYPE(self) == &PyCFGNode);
+  assert(self && Py_TYPE(self) == &PyCFGNode);
   PyCFGNodeObj* cfg_node = reinterpret_cast<PyCFGNodeObj*>(self);
   RemoveFromCache(cfg_node->program, cfg_node->cfg_node);
   Py_DECREF(cfg_node->program);
@@ -753,7 +753,7 @@ static PyStructSequence_Desc origin_desc = {
 // --- Binding ---------------------------------------------------------------
 
 static void BindingDealloc(PyObject* self) {
-  CFG_ASSERT(self && Py_TYPE(self) == &PyBinding);
+  assert(self && Py_TYPE(self) == &PyBinding);
   PyBindingObj* attr = reinterpret_cast<PyBindingObj*>(self);
   RemoveFromCache(attr->program, attr->attr);
   Py_DECREF(attr->program);
@@ -778,7 +778,7 @@ static PyObject* BindingRepr(PyObject* self) {
 }
 
 static PyObject* BindingGetAttro(PyObject* self, PyObject* attr) {
-  CFG_ASSERT(self && Py_TYPE(self) == &PyBinding);
+  assert(self && Py_TYPE(self) == &PyBinding);
   PyBindingObj* a = reinterpret_cast<PyBindingObj*>(self);
   PyProgramObj* program = a->program;
 
@@ -949,7 +949,7 @@ PyTypeObject PyBinding = {
 // --- Variable ----------------------------------------------------------------
 
 static void VariableDealloc(PyObject* self) {
-  CFG_ASSERT(self && Py_TYPE(self) == &PyVariable);
+  assert(self && Py_TYPE(self) == &PyVariable);
   PyVariableObj* u = reinterpret_cast<PyVariableObj*>(self);
   RemoveFromCache(u->program, u->u);
   Py_DECREF(u->program);
@@ -963,7 +963,7 @@ static PyObject* VariableRepr(PyObject* self) {
 }
 
 static PyObject* VariableGetAttro(PyObject* self, PyObject* attr) {
-  CFG_ASSERT(self && Py_TYPE(self) == &PyVariable);
+  assert(self && Py_TYPE(self) == &PyVariable);
   PyVariableObj* u = reinterpret_cast<PyVariableObj*>(self);
   PyProgramObj* program = u->program;
 
@@ -991,8 +991,8 @@ static PyObject* VariableGetAttro(PyObject* self, PyObject* attr) {
 }
 
 static int VariableSetAttro(PyObject* self, PyObject* attr, PyObject* val) {
-  CFG_ASSERT(self != nullptr);
-  CFG_ASSERT(Py_TYPE(self) == &PyVariable);
+  assert(self != nullptr);
+  assert(Py_TYPE(self) == &PyVariable);
   return PyObject_GenericSetAttr(self, attr, val);
 }
 

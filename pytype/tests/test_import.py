@@ -1,6 +1,5 @@
 """Tests for import."""
 
-import unittest
 
 from pytype import file_utils
 from pytype import imports_map_loader
@@ -509,7 +508,7 @@ class ImportTest(test_base.TargetIndependentTest):
         def my_foo(x) -> str
       """)
 
-  @unittest.skip("flaky")
+  @test_base.skip("flaky")
   def testSolveForImported(self):
     ty = self.Infer("""\
       import StringIO
@@ -808,7 +807,7 @@ class ImportTest(test_base.TargetIndependentTest):
         import foo
       """, pythonpath=[d.path])
 
-  @unittest.skip("instantiating 'type' should use 'Type[Any]', not 'Any'")
+  @test_base.skip("instantiating 'type' should use 'Type[Any]', not 'Any'")
   def testImportTypeFactory(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """

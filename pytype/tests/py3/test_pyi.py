@@ -9,7 +9,6 @@ class PYITest(test_base.TargetPython3BasicTest):
 
   def testUnneccessaryAnyImport(self):
     ty = self.Infer("""\
-
         import typing
         def foo(**kwargs: typing.Any) -> int: return 1
         def bar(*args: typing.Any) -> int: return 2
@@ -28,7 +27,6 @@ class PYITest(test_base.TargetPython3BasicTest):
           def callback(msg: str) -> None: ...
       """)
       self.Check("""
-
         from typing import Any, Callable
         import foo
         def func(c: Callable[[Any], None], arg: Any) -> None:
@@ -44,7 +42,6 @@ class PYITest(test_base.TargetPython3BasicTest):
           def callback(cls, msg: str) -> None: ...
       """)
       self.Check("""
-
         from typing import Any, Callable
         import foo
         def func(c: Callable[[Any], None], arg: Any) -> None:

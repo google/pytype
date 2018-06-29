@@ -1,7 +1,5 @@
 """Tests of __builtin__.tuple."""
 
-import unittest
-
 from pytype.tests import test_base
 
 
@@ -25,7 +23,7 @@ class TupleTest(test_base.TargetIndependentTest):
       v4 = ...  # type: int
     """)
 
-  @unittest.skip("Needs better slice support in abstract.Tuple, convert.py.")
+  @test_base.skip("Needs better slice support in abstract.Tuple, convert.py.")
   def testGetItemSlice(self):
     ty = self.Infer("""\
       t = ("", 42)

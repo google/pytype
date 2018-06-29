@@ -38,6 +38,7 @@ class TestExceptions(test_base.TargetPython27FeatureTest):
     """)
 
   # Infers __init__(self, _) -> NoReturn under target py3
+  # b/78654300
   def test_type_self(self):
     ty = self.Infer("""
       class Foo(object):

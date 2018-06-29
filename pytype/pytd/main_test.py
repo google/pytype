@@ -3,9 +3,9 @@
 import os
 import sys
 import textwrap
-import unittest
 from pytype import file_utils
 from pytype.pytd import main as pytd_tool
+import unittest
 
 
 class TestPytdTool(unittest.TestCase):

@@ -1,6 +1,5 @@
 """Test comparison operators."""
 
-import unittest
 
 from pytype.tests import test_base
 
@@ -168,7 +167,7 @@ class LtTest(test_base.TargetIndependentTest):
     """, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
-  @unittest.skip("Needs full emulation of Objects/object.c:try_rich_compare""")
+  @test_base.skip("Needs full emulation of Objects/object.c:try_rich_compare")
   def test_reverse(self):
     ty = self.Infer("""
       class Foo(object):
