@@ -18,13 +18,11 @@ before_install:
   - sudo apt-get install bison
   - sudo apt-get install flex
   - sudo apt-get install ninja-build
-  - sudo apt-get install python3.5-dev
   # We need to install python-3.6 from a third party repo as it is not
   # available as a standard package on Travis Trusty VMs.
   - sudo add-apt-repository ppa:jonathonf/python-3.6 -y
   - sudo apt-get update -q
   - sudo apt-get install python3.6
-  - sudo apt-get install python3.6-dev
 
 install:
   - pip install pyyaml

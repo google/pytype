@@ -65,7 +65,7 @@ There exists a convenience script to run Python tests. A typical usage of this
 script is as follows:
 
 ```
-$> python buildutils/run_tests.py <MODULE_NAME>
+$> python build_scripts/run_tests.py <MODULE_NAME>
 ```
 
 `MODULE_NAME` is the fully qualified test module name within the root Pytype
