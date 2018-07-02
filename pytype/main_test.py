@@ -14,6 +14,7 @@ from pytype import config
 from pytype import main as main_module
 from pytype import utils
 from pytype.pyi import parser
+from pytype.pytd import typeshed
 from pytype.pytd.parse import builtins
 from pytype.tests import test_base
 import unittest
@@ -461,6 +462,7 @@ class PytypeTest(unittest.TestCase):
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
     self.assertTrue(os.path.isfile(filename))
     # input files
+    canary = "import pytypecanary" if typeshed.Typeshed.MISSING_FILE else ""
     src = self._MakePyFile("""\
       import __future__
       import sys
@@ -471,15 +473,15 @@ class PytypeTest(unittest.TestCase):
       import ctypes
       import xml.etree.ElementTree as ElementTree
       import md5
-      from email import MIMEBase
+      %s
       x = foo.x
       y = csv.writer
       z = md5.new
-    """)
-    pyi = self._MakePyFile("""\
+    """ % canary)
+    pyi = self._MakeFile("""\
       import datetime
       x = ...  # type: datetime.tzinfo
-    """)
+    """, extension=".pyi")
     # Use builtins pickle with an imports map
     self._ResetPytypeArgs()
     self._SetUpChecking(src)
