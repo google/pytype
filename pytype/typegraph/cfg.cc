@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include <cassert>
 #include "typegraph.h"
 
 namespace typegraph = devtools_python_typegraph;
