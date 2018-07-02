@@ -6,6 +6,7 @@
 #include <utility>
 #include <vector>
 
+#include <cassert>
 #include "map_util.h"
 #include "typegraph.h"
 
