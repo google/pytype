@@ -6,6 +6,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include <cassert>
 #include "map_util.h"
 #include "memory_util.h"
 #include "solver.h"
