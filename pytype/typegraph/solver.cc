@@ -1,5 +1,6 @@
 #include "solver.h"
 
+#include <algorithm>
 #include <stack>
 #include <string>
 #include <tuple>
