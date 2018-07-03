@@ -137,7 +137,7 @@ py_library(
   SRCS
     typegraph/cfg_utils.py
   DEPS
-    .cfg_py
+    pytype.typegraph.cfg
 )
 
 py_library(
@@ -196,12 +196,12 @@ py_library(
     pytd/visitors.py
   DEPS
     .builtins_pytd  # TODO(sivachandra): Move this into a data dependency
-    .cfg_py
     .cfg_utils
     .debug
     .metrics
     .node
     .utils
+    pytype.typegraph.cfg
 )
 
 py_library(
