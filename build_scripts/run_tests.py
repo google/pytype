@@ -106,10 +106,7 @@ def main():
   fail_collector = FailCollector()
   # PyType's target names use the dotted name convention. So, the fully
   # qualified test module names are actually ninja target names.
-  print("Building ...\n")
-  if not run_ninja(["all"], None):
-    sys.exit(1)
-  print("Running tests ...\n")
+  print("Running tests (build steps will be executed as required) ...\n")
   if not run_ninja(modules, fail_collector):
     fail_collector.print_report()
     sys.exit(1)
