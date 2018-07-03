@@ -38,11 +38,6 @@ skip = unittest.skip
 _ANNOTATIONS_IMPORT = "from __future__ import google_type_annotations"
 
 
-# If you're using the patched interpreter, set this value to True to test type
-# annotations in Python 2.
-USE_ANNOTATIONS_BACKPORT = False
-
-
 def WithAnnotationsImport(code):
   code_without_newline = code.lstrip("\n")
   indent = len(code_without_newline) - len(code_without_newline.lstrip(" "))
@@ -464,7 +459,7 @@ class BaseTest(unittest.TestCase):
     # (In other words, display a change from "working" to "broken")
     self.assertMultiLineEqual(pytd_tree_src, ty_src)
 
-  if USE_ANNOTATIONS_BACKPORT:
+  if utils.USE_ANNOTATIONS_BACKPORT:
     Check = _AddAnnotationsImportPy2(Check)
     CheckWithErrors = _AddAnnotationsImportPy2(CheckWithErrors)
     Infer = _AddAnnotationsImportPy2(Infer)
@@ -501,8 +496,9 @@ class TargetPython3BasicTest(BaseTest):
   """Class for tests using type annotations as the only Python 3 feature.
 
   Test methods in subclasses will test Pytype on Python code stubs which use
-  type annotations as the only Python 3 feature. If USE_ANNOTATIONS_BACKPORT
-  is set, these tests will also be run with target Python version set to 2.7.
+  type annotations as the only Python 3 feature. If
+  utils.USE_ANNOTATIONS_BACKPORT is set, these tests will also be run with
+  target Python version set to 2.7.
   """
 
   def __init__(self, *args, **kwargs):
@@ -549,7 +545,8 @@ def _ReplaceMethods(toplevel):
     return True
   # Run the Python 3 basic tests with target Python version set to 2.7 if we
   # can use type annotations in 2.7.
-  if USE_ANNOTATIONS_BACKPORT and issubclass(toplevel, TargetPython3BasicTest):
+  if (utils.USE_ANNOTATIONS_BACKPORT and
+      issubclass(toplevel, TargetPython3BasicTest)):
     return not issubclass(toplevel, TargetPython3FeatureTest)
   return False
 
