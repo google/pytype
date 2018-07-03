@@ -35,7 +35,6 @@ subdirectory. The target code for these tests uses a Python 3.6 specific
 feature, with or without type annotations. The test classes for these tests are
 subclasses of `TargetPython3FeatureTest`.
 
-
 ## Adding New Tests
 
 Adding a new test method to an existing functional test class is straight
