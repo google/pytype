@@ -56,7 +56,7 @@ class Converter(object):
     # Now fill primitive_classes with the real values using constant_to_value.
     self.primitive_classes = {v: self.constant_to_value(v)
                               for v in [
-                                  int, float, str, object,
+                                  int, float, str, object, frozenset,
                                   compat.NoneType, complex, bool, slice,
                                   types.CodeType, compat.EllipsisType,
                                   compat.OldStyleClassType, super
