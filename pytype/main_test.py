@@ -54,7 +54,7 @@ class PytypeTest(unittest.TestCase):
     return os.path.join(self.tmp_dir, filename)
 
   def _MakePyFile(self, contents):
-    if test_base.USE_ANNOTATIONS_BACKPORT:
+    if utils.USE_ANNOTATIONS_BACKPORT:
       contents = test_base.WithAnnotationsImport(contents)
     return self._MakeFile(contents, extension=".py")
 
