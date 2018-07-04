@@ -6,8 +6,8 @@
 // All allocated memory belongs to a Program instance, and will be
 // deallocated whenever said Program is deleted.
 
-#ifndef DEVTOOLS_PYTHON_TYPEGRAPH_TYPEGRAPH_H_
-#define DEVTOOLS_PYTHON_TYPEGRAPH_TYPEGRAPH_H_
+#ifndef PYTYPE_TYPEGRAPH_TYPEGRAPH_H_
+#define PYTYPE_TYPEGRAPH_TYPEGRAPH_H_
 
 #include <cstddef>
 #include <memory>
@@ -322,4 +322,4 @@ class Variable {
 
 }  // namespace devtools_python_typegraph
 
-#endif  // DEVTOOLS_PYTHON_TYPEGRAPH_TYPEGRAPH_H_
+#endif  // PYTYPE_TYPEGRAPH_TYPEGRAPH_H_

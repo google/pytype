@@ -4,8 +4,8 @@
 // the associated value.)
 // The functions are self-explanatory based on their names.
 
-#ifndef DEVTOOLS_PYTHON_TYPEGRAPH_MAP_UTIL_H_
-#define DEVTOOLS_PYTHON_TYPEGRAPH_MAP_UTIL_H_
+#ifndef PYTYPE_TYPEGRAPH_MAP_UTIL_H_
+#define PYTYPE_TYPEGRAPH_MAP_UTIL_H_
 
 namespace devtools_python_typegraph {
 
@@ -60,4 +60,4 @@ const V<M>& FindOrDefault(const M& map, const K<M>& key, const V<M>& value) {
 
 }  // namespace devtools_python_typegraph
 
-#endif  // DEVTOOLS_PYTHON_TYPEGRAPH_MAP_UTIL_H_
+#endif  // PYTYPE_TYPEGRAPH_MAP_UTIL_H_
