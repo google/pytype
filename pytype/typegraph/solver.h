@@ -17,8 +17,8 @@
 // problem is NP complete; i.e., it's possible to reduce 3-SAT to a type
 // inference problem.
 
-#ifndef DEVTOOLS_PYTHON_TYPEGRAPH_SOLVER_H_
-#define DEVTOOLS_PYTHON_TYPEGRAPH_SOLVER_H_
+#ifndef PYTYPE_TYPEGRAPH_SOLVER_H_
+#define PYTYPE_TYPEGRAPH_SOLVER_H_
 
 #include <cstddef>
 #include <deque>
@@ -233,4 +233,4 @@ class Solver {
 
 }  // namespace devtools_python_typegraph
 
-#endif  // DEVTOOLS_PYTHON_TYPEGRAPH_SOLVER_H_
+#endif  // PYTYPE_TYPEGRAPH_SOLVER_H_
