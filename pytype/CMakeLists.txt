@@ -107,6 +107,7 @@ py_library(
     matcher.py
     output.py
     overlay.py
+    overlay_dict.py
     six_overlay.py
     special_builtins.py
     state.py
