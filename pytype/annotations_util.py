@@ -4,7 +4,7 @@ import collections
 
 from pytype import abstract
 from pytype import function
-from pytype import typing
+from pytype import typing_overlay
 from pytype import utils
 from pytype.pyc import pyc
 
@@ -23,7 +23,8 @@ LateAnnotation = collections.namedtuple(
 class AnnotationsUtil(object):
   """Utility class for inline type annotations."""
 
-  # Define this error inside AnnotationsUtil so that it is exposed to typing.py.
+  # Define this error inside AnnotationsUtil so that it is exposed to
+  # typing_overlay.py.
   class LateAnnotationError(Exception):
     """Used to break out of annotation evaluation if we discover a string."""
     pass
@@ -240,7 +241,7 @@ class AnnotationsUtil(object):
     if isinstance(annotation, abstract.AnnotationContainer):
       annotation = annotation.base_cls
 
-    if isinstance(annotation, typing.Union):
+    if isinstance(annotation, typing_overlay.Union):
       self.vm.errorlog.invalid_annotation(
           stack, annotation, "Needs options", name)
       return None
@@ -289,7 +290,7 @@ class AnnotationsUtil(object):
     elif isinstance(annotation, (abstract.Class,
                                  abstract.AMBIGUOUS_OR_EMPTY,
                                  abstract.TypeParameter,
-                                 typing.NoReturn)):
+                                 typing_overlay.NoReturn)):
       return annotation
     else:
       self.vm.errorlog.invalid_annotation(stack, annotation, "Not a type", name)
