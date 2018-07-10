@@ -8,7 +8,6 @@ import argparse
 import logging
 import os
 
-from pytype import debug
 from pytype import imports_map_loader
 from pytype import load_pytd
 from pytype import utils
@@ -395,7 +394,7 @@ class Postprocessor(object):
       # "verbosity=-1" can be used to disable all logging, so configure
       # logging accordingly.
       basic_logging_level = logging.CRITICAL + 1
-    debug.set_logging_level(basic_logging_level)
+    logging.basicConfig(level=basic_logging_level)
 
   def _store_pythonpath(self, pythonpath):
     # Note that the below gives [""] for "", and ["x", ""] for "x:"
