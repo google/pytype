@@ -9,7 +9,7 @@ from pytype import compat
 from pytype import datatypes
 from pytype import output
 from pytype import special_builtins
-from pytype import typing
+from pytype import typing_overlay
 from pytype.pyc import loadmarshal
 from pytype.pytd import mro
 from pytype.pytd import pytd
@@ -94,7 +94,7 @@ class Converter(object):
 
     self.unsolvable = abstract.Unsolvable(self.vm)
     self.empty = abstract.Empty(self.vm)
-    self.no_return = typing.NoReturn(self.vm)
+    self.no_return = typing_overlay.NoReturn(self.vm)
 
     self.list_type = self.constant_to_value(list)
     self.set_type = self.constant_to_value(set)
