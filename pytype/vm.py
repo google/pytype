@@ -15,24 +15,21 @@ import logging
 import os
 import re
 
-from pytype import abc_overlay
 from pytype import abstract
 from pytype import annotations_util
 from pytype import attribute
 from pytype import blocks
-from pytype import collections_overlay
 from pytype import compare
 from pytype import convert
 from pytype import directors
 from pytype import function
+from pytype import overlay_dict
 from pytype import load_pytd
 from pytype import matcher
 from pytype import metrics
 from pytype import six_overlay
 from pytype import special_builtins
 from pytype import state as frame_state
-from pytype import sys_overlay
-from pytype import typing
 from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
@@ -61,16 +58,6 @@ repper = repr_obj.repr
 Block = collections.namedtuple("Block", ["type", "op", "handler", "level"])
 
 _opcode_counter = metrics.MapCounter("vm_opcode")
-
-# Collection of module overlays, used in _import_module to fetch an overlay
-# instead of the module itself. Memoized in the vm itself.
-overlays = {
-    "abc": abc_overlay.ABCOverlay,
-    "collections": collections_overlay.CollectionsOverlay,
-    "six": six_overlay.SixOverlay,
-    "sys": sys_overlay.SysOverlay,
-    "typing": typing.TypingOverlay,
-}
 
 
 class RecursionException(Exception):
@@ -1223,9 +1210,9 @@ class VirtualMachine(object):
     if name:
       if level <= 0:
         assert level in [-1, 0]
-        if name in overlays:
+        if name in overlay_dict.overlays:
           if name not in self.loaded_overlays:
-            self.loaded_overlays[name] = overlays[name](self)
+            self.loaded_overlays[name] = overlay_dict.overlays[name](self)
           return self.loaded_overlays[name]
         elif level == -1 and self.loader.base_module:
           # Python 2 tries relative imports first.
