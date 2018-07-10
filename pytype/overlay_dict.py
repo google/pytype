@@ -11,7 +11,7 @@ from pytype import abc_overlay
 from pytype import collections_overlay
 from pytype import six_overlay
 from pytype import sys_overlay
-from pytype import typing
+from pytype import typing_overlay
 
 # Collection of module overlays, used by the vm to fetch an overlay
 # instead of the module itself. Memoized in the vm itself.
@@ -20,6 +20,6 @@ overlays = {
     "collections": collections_overlay.CollectionsOverlay,
     "six": six_overlay.SixOverlay,
     "sys": sys_overlay.SysOverlay,
-    "typing": typing.TypingOverlay,
+    "typing": typing_overlay.TypingOverlay,
 }
 

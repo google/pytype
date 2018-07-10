@@ -11,7 +11,7 @@ from pytype import function
 from pytype import metrics
 from pytype import output
 from pytype import state as frame_state
-from pytype import typing
+from pytype import typing_overlay
 from pytype import vm
 from pytype.pytd import optimize
 from pytype.pytd import pytd
@@ -397,7 +397,7 @@ class CallTracer(vm.VirtualMachine):
     return self.analyze_toplevel(node, defs)
 
   def trace_module_member(self, module, name, member):
-    if module is None or isinstance(module, typing.TypingOverlay):
+    if module is None or isinstance(module, typing_overlay.TypingOverlay):
       # TypingOverlay takes precedence over typing.pytd.
       trace = True
     else:
@@ -472,7 +472,7 @@ class CallTracer(vm.VirtualMachine):
               if isinstance(option, abstract.Empty):
                 d = pytd.AnythingType()
               else:
-                assert isinstance(option, typing.NoReturn)
+                assert isinstance(option, typing_overlay.NoReturn)
           if isinstance(d, pytd.TYPE) and not isinstance(d, pytd.TypeParameter):
             data.append(pytd.Constant(name, d))
           else:

@@ -112,7 +112,7 @@ py_library(
     special_builtins.py
     state.py
     sys_overlay.py
-    typing.py
+    typing_overlay.py
     vm.py
   DEPS
     .debug
