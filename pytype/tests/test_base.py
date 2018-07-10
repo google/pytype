@@ -8,7 +8,6 @@ import textwrap
 
 from pytype import analyze
 from pytype import config
-from pytype import debug
 from pytype import directors
 from pytype import errors
 from pytype import load_pytd
@@ -551,7 +550,7 @@ def _ReplaceMethods(toplevel):
   return False
 
 
-def main(toplevels, is_main_module=True, debugging=False):
+def main(toplevels, is_main_module=True):
   """The main method for tests subclassing one of the above classes.
 
   This function should be called unconditionally, and typically as follows:
@@ -566,12 +565,7 @@ def main(toplevels, is_main_module=True, debugging=False):
     toplevels: The toplevels defined in the main test module.
     is_main_module: True if the main test module is the main module in the
                     interpreter.
-    debugging: Enable debug logs.
   """
-  # TODO(ampere): This is just a useful hack. Should be replaced with real
-  #               argument handling.
-  level = logging.DEBUG if debugging or len(sys.argv) > 1 else logging.WARNING
-  debug.set_logging_level(level)
   # We want to run tests in a few buckets twice: once with target Python
   # version set to 2.7, and another time with target Python version set to 3.6.
   # So, for tests falling in such buckets, we replace the single test method
