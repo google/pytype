@@ -162,13 +162,14 @@ class PytypeTest(unittest.TestCase):
     self.assertTrue(self._ParseString(self.stdout).ASTeq(
         self._ParseString(expected_pyi)), message)
 
-  def GeneratePickledSimpleFile(self, pickle_name):
+  def GeneratePickledSimpleFile(self, pickle_name, verify_pickle=True):
     pickled_location = os.path.join(self.tmp_dir, pickle_name)
     self.pytype_args["--pythonpath"] = self.tmp_dir
-    self.pytype_args["--output-pickled"] = pickled_location
+    self.pytype_args["--pickle-output"] = self.INCLUDE
     self.pytype_args["--module-name"] = "simple"
-    self.pytype_args["--verify-pickle"] = self.INCLUDE
-    self.pytype_args["--output"] = os.path.join(self.tmp_dir, "unused_pyi")
+    if verify_pickle:
+      self.pytype_args["--verify-pickle"] = self.INCLUDE
+    self.pytype_args["--output"] = pickled_location
     self.pytype_args[self._DataPath("simple.py")] = self.INCLUDE
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=0)
@@ -184,16 +185,29 @@ class PytypeTest(unittest.TestCase):
         self.assertEqual(f_1.read(), f_2.read())
 
   def testGeneratePickledAst(self):
-    pickled_location = os.path.join(self.tmp_dir, "simple.pickled")
-    self.pytype_args["--pythonpath"] = self.tmp_dir
-    self.pytype_args["--output-pickled"] = pickled_location
-    self.pytype_args["--module-name"] = "simple"
-    self.pytype_args["--verify-pickle"] = self.INCLUDE
-    self.pytype_args["--output"] = os.path.join(self.tmp_dir, "unused_pyi")
+    self.GeneratePickledSimpleFile("simple.pickled", verify_pickle=True)
+
+  def testGenerateUnverifiedPickledAst(self):
+    self.GeneratePickledSimpleFile("simple.pickled", verify_pickle=False)
+
+  def testPickleNoOutput(self):
+    self.pytype_args["--pickle-output"] = self.INCLUDE
     self.pytype_args[self._DataPath("simple.py")] = self.INCLUDE
     self._RunPytype(self.pytype_args)
-    self.assertOutputStateMatches(stdout=False, stderr=False, returncode=0)
-    self.assertTrue(os.path.exists(pickled_location))
+    self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
+
+  def testPickleBadOutput(self):
+    self.pytype_args["--pickle-output"] = self.INCLUDE
+    self.pytype_args["--output"] = os.path.join(self.tmp_dir, "simple.pyi")
+    self.pytype_args[self._DataPath("simple.py")] = self.INCLUDE
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
+
+  def testBadVerifyPickle(self):
+    self.pytype_args["--verify-pickle"] = self.INCLUDE
+    self.pytype_args[self._DataPath("simple.py")] = self.INCLUDE
+    self._RunPytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
   def testNonexistentOption(self):
     self.pytype_args["--rumpelstiltskin"] = self.INCLUDE
