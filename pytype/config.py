@@ -137,8 +137,8 @@ def add_pickle_options(o):
   """Add options for using pickled pyi files to the given parser."""
   o = o.add_argument_group("pickle arguments")
   o.add_argument(
-      "--output-pickled", action="store",
-      dest="output_pickled",
+      "--pickle-output", action="store_true", default=False,
+      dest="pickle_output",
       help=("Saves the ast representation of the inferred pyi as a pickled "
             "file. The value of this parameter is the destination filename "
             "for the pickled data."))
@@ -357,10 +357,24 @@ class Postprocessor(object):
       self.output_options.check = check
 
   @uses(["output"])
-  def _store_output_pickled(self, filename):
-    if filename is not None and self.output_options.output is None:
-      self.error("Can't use without --output", "output_pickled")
-    self.output_options.output_pickled = filename
+  def _store_pickle_output(self, pickle_output):
+    if pickle_output:
+      if self.output_options.output is None:
+        self.error("Can't use without --output", "pickle-output")
+      elif not load_pytd.is_pickle(self.output_options.output):
+        self.error("Must specify %s file for --output" % load_pytd.PICKLE_EXT,
+                   "pickle-output")
+    self.output_options.pickle_output = pickle_output
+
+  @uses(["output", "pickle_output"])
+  def _store_verify_pickle(self, verify_pickle):
+    if not verify_pickle:
+      self.output_options.verify_pickle = None
+    elif not self.output_options.pickle_output:
+      self.error("Can't use without --pickle-output", "verify-pickle")
+    else:
+      self.output_options.verify_pickle = self.output_options.output.replace(
+          load_pytd.PICKLE_EXT, ".pyi")
 
   @uses(["input", "show_config", "pythonpath", "version"])
   def _store_generate_builtins(self, generate_builtins):
