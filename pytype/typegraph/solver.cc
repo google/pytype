@@ -7,7 +7,7 @@
 #include <utility>
 #include <vector>
 
-#include <cassert>
+#include "cfg_logging.h"
 #include "map_util.h"
 #include "typegraph.h"
 
@@ -259,10 +259,10 @@ bool Solver::GoalsConflict(const internal::GoalSet& goals) const {
     const Binding* existing = map_util::FindPtrOrNull(variables,
                                                       goal->variable());
     if (existing) {
-      assert((existing != goal) && "Internal error. Duplicate goal.");
+      CHECK(existing != goal) << "Internal error. Duplicate goal.";
       // TODO(kramm): What if existing->binding == goal->binding ?
-      assert((existing->data() != goal->data()) &&
-          "Internal error. Duplicate data across bindings.");
+      CHECK(existing->data() != goal->data()) <<
+          "Internal error. Duplicate data across bindings.";
       return true;
     }
     variables[goal->variable()] = goal;
@@ -272,20 +272,39 @@ bool Solver::GoalsConflict(const internal::GoalSet& goals) const {
 
 bool Solver::FindSolution(const internal::State& state, int current_depth) {
   std::string indent(current_depth, ' ');
+  LOG(INFO) << indent << "I'm at <" << state.pos()->id() << "> "
+            << state.pos()->name();
+  for (const Binding* goal : state.goals()) {
+    LOG(INFO) << indent << "Goal: " << goal->variable()->id() << " = "
+              << goal->data();
+  }
 
   internal::GoalSet goals(state.goals());
   if (state.pos()->condition()) {
     const auto* condition = state.pos()->condition();
     goals.insert(condition);
+    LOG(INFO) << indent << "Absorbed condition: " << condition->variable()->id()
+              << " = " << condition->data();
   }
 
   auto results = internal::remove_finished_goals(state.pos(), goals);
   for (const auto& result : results) {
+    LOG(INFO) << indent << "Trying to find assignment:";
+    for (const auto* goal : result.removed_goals) {
+      LOG(INFO) << indent << "Removed: " << goal->variable()->id() << " = "
+                << goal->data();
+    }
+    for (const auto* goal : result.new_goals) {
+      LOG(INFO) << indent << "New: " << goal->variable()->id() << " = "
+                << goal->data();
+    }
     current_depth += 1;
     if (GoalsConflict(result.removed_goals)) {
+      LOG(INFO) << indent << "conflicting removed goals!";
       continue;  // We bulk-removed goals that are internally conflicting.
     }
     if (result.new_goals.empty()) {
+      LOG(INFO) << indent << "done!";
       return true;
     }
     std::set<const CFGNode*> blocked;
@@ -312,6 +331,8 @@ bool Solver::FindSolution(const internal::State& state, int current_depth) {
       }
     }
     for (const auto* new_pos : new_positions) {
+      LOG(INFO) << indent << "New pos: <" << new_pos->id() << "> "
+                << new_pos->name();
       internal::State new_state(new_pos, result.new_goals);
       if (RecallOrFindSolution(new_state, current_depth))
         return true;
@@ -342,6 +363,12 @@ bool Solver::RecallOrFindSolution(const internal::State& state,
                                   int current_depth) {
   const bool* status = map_util::FindOrNull(*solved_states_, state);
   if (status) {
+    std::string indent(current_depth, ' ');
+    if (*status) {
+      LOG(INFO) << indent << "Known state: solveable.";
+    } else {
+      LOG(INFO) << indent << "Known state: not solvable.";
+    }
     return *status;
   }
 

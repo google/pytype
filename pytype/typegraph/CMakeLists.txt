@@ -24,8 +24,12 @@ py_extension(
     cfg
   SRCS
     cfg.cc
+    cfg_logging.cc
+    cfg_logging.h
     map_util.h
     memory_util.h
+    pylogging.cc
+    pylogging.h
     reachable.cc
     reachable.h
     solver.cc
