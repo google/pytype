@@ -10,7 +10,6 @@
 // assignments that are impossible because the bindings they use have fallen
 // out of scope.
 //
-//
 // Even with these optimizations, it's possible to construct "pathological"
 // programs that would exhibit exponential running time when analyzed completely
 // (and hence, will need pruning of the tree). That's normal: the underlying
