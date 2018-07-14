@@ -27,16 +27,6 @@ from six.moves import input
 
 TEST_MODE = "TEST"
 RELEASE_MODE = "RELEASE"
-SRC_PYI_DIR = os.path.join(build_utils.PYTYPE_SRC_ROOT, "pytype", "pyi")
-OUT_PYI_DIR = os.path.join(build_utils.OUT_DIR, "pytype", "pyi")
-GEN_FILE_LIST = [
-    "lexer.lex.cc",
-    "location.hh",
-    "parser.tab.cc",
-    "parser.tab.hh",
-    "position.hh",
-    "stack.hh",
-]
 
 
 class ReleaseError(Exception):
@@ -58,29 +48,6 @@ def parse_args():
   if args.mode not in allowed_modes:
     sys.exit("Invalid --mode option. Should be one of %s" % allowed_modes)
   return args
-
-
-def generate_files():
-  """Run flex and bison to produce the parser .cc and .h files."""
-  if not build_utils.run_cmake(force_clean=True):
-    raise ReleaseError("Running CMake failed!")
-  ninja_cmd = ["ninja", "pytype.pyi.parser_gen", "pytype.pyi.lexer"]
-  print("Building flex and bison outputs ...\n")
-  returncode, stdout = build_utils.run_cmd(ninja_cmd, cwd=build_utils.OUT_DIR)
-  if returncode != 0:
-    raise ReleaseError("Error generating the Flex and Bison outputs:\n%s" %
-                       stdout)
-  # Copy the generated files into the source tree.
-  for gen_file in GEN_FILE_LIST:
-    print("Copying %s to source tree ...\n" % gen_file)
-    shutil.copy(os.path.join(OUT_PYI_DIR, gen_file),
-                os.path.join(SRC_PYI_DIR, gen_file))
-
-
-def clean_generated_files():
-  for gen_file in GEN_FILE_LIST:
-    print("Deleting %s from source tree ...\n" % gen_file)
-    os.remove(os.path.join(SRC_PYI_DIR, gen_file))
 
 
 def verify_no_pytype_installation_exists():
@@ -149,17 +116,6 @@ def upload_package(package_path, test=False):
     raise ReleaseError("Package upload failed:\n%s" % stdout)
 
 
-class GeneratedFilesContext(object):
-  """Context manager to generate and clean up flex and bison outputs."""
-
-  def __enter__(self):
-    generate_files()
-
-  def __exit__(self, exc_type, exc_val, exc_tb):
-    clean_generated_files()
-    return False
-
-
 class DistributionPackage(object):
   """Context manager to build the pytype distribution package."""
 
@@ -191,9 +147,8 @@ def main():
   verify_pypirc_exists()
 
   try:
-    with GeneratedFilesContext():
-      with DistributionPackage() as pkg_path:
-        upload_package(pkg_path, args.mode == TEST_MODE)
+    with DistributionPackage() as pkg_path:
+      upload_package(pkg_path, args.mode == TEST_MODE)
   except ReleaseError as error:
     sys.exit(">>> Release Failed <<<\n%s" % error.msg)
   print("!!! Release Successfull !!!\n")
