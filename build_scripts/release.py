@@ -18,7 +18,6 @@ from __future__ import print_function
 import argparse
 import os
 import shutil
-import subprocess
 import sys
 import tempfile
 
@@ -38,20 +37,6 @@ GEN_FILE_LIST = [
     "position.hh",
     "stack.hh",
 ]
-
-
-# TODO(sivachandra): Investigate if this function can be generalized and moved
-# to the build_utils module.
-def _run_cmd(cmd, cwd=None):
-  process_options = {
-      "stdout": subprocess.PIPE,
-      "stderr": subprocess.STDOUT,
-  }
-  if cwd:
-    process_options["cwd"] = cwd
-  process = subprocess.Popen(cmd, **process_options)
-  stdout, _ = process.communicate()
-  return process.returncode, stdout
 
 
 class ReleaseError(Exception):
@@ -81,7 +66,7 @@ def generate_files():
     raise ReleaseError("Running CMake failed!")
   ninja_cmd = ["ninja", "pytype.pyi.parser_gen", "pytype.pyi.lexer"]
   print("Building flex and bison outputs ...\n")
-  returncode, stdout = _run_cmd(ninja_cmd, cwd=build_utils.OUT_DIR)
+  returncode, stdout = build_utils.run_cmd(ninja_cmd, cwd=build_utils.OUT_DIR)
   if returncode != 0:
     raise ReleaseError("Error generating the Flex and Bison outputs:\n%s" %
                        stdout)
@@ -131,7 +116,7 @@ def verify_description_rst_is_up_to_date():
       "--output=%s" % new_description_rst,
       temp_readme_md,
   ]
-  returncode, stdout = _run_cmd(pandoc_cmd)
+  returncode, stdout = build_utils.run_cmd(pandoc_cmd)
   if returncode != 0:
     sys.exit("Running 'pandoc' failed:\n%s" % stdout)
 
@@ -159,7 +144,7 @@ def upload_package(package_path, test=False):
     twine_cmd.extend(["--repository", "testpypi"])
   twine_cmd.append(os.path.join(package_path, "*"))
   print("Uploading: %s" % twine_cmd)
-  returncode, stdout = _run_cmd(twine_cmd)
+  returncode, stdout = build_utils.run_cmd(twine_cmd)
   if returncode != 0:
     raise ReleaseError("Package upload failed:\n%s" % stdout)
 
@@ -181,7 +166,7 @@ class DistributionPackage(object):
   def __enter__(self):
     sdist_cmd = ["python", "setup.py", "sdist"]
     print("Creating distribution package: %s\n" % sdist_cmd)
-    returncode, stdout = _run_cmd(sdist_cmd)
+    returncode, stdout = build_utils.run_cmd(sdist_cmd)
     if returncode != 0:
       raise ReleaseError("Running %s failed:\n%s" % (sdist_cmd, stdout))
     # The sdist command creates the distribution package in a directory
@@ -192,6 +177,8 @@ class DistributionPackage(object):
   def __exit__(self, exc_type, exc_val, exc_tb):
     print("Deleting the distribution directory ...\n")
     shutil.rmtree(self.dist_path)
+    print("Deleting the metadata directory ...\n")
+    shutil.rmtree(os.path.join(build_utils.PYTYPE_SRC_ROOT, "pytype.egg-info"))
     return False
 
 
