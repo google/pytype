@@ -11,6 +11,13 @@ import sys
 
 from setuptools import setup, Extension  # pylint: disable=g-multiple-import
 
+try:
+  from build_scripts import build_utils  # pylint: disable=g-import-not-at-top
+except ImportError:
+  # When build_utils is present, we'll generate parser files for installing
+  # from source or packaging into a PyPI release.
+  build_utils = None
+
 
 # Path to directory containing setup.py
 here = os.path.abspath(os.path.dirname(__file__))
@@ -101,6 +108,9 @@ def get_version():
 
 
 copy_typeshed()
+if build_utils:
+  e = build_utils.generate_files()
+  assert not e, e
 setup(
     name='pytype',
     version=get_version(),
@@ -146,3 +156,5 @@ setup(
     ],
     ext_modules=[get_parser_ext()],
 )
+if build_utils:
+  build_utils.clean_generated_files()
