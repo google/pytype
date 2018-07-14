@@ -16,33 +16,45 @@ from setuptools import setup, Extension  # pylint: disable=g-multiple-import
 here = os.path.abspath(os.path.dirname(__file__))
 
 
-# We need some platform-dependent compile args for the C extensions.
-if sys.platform == 'win32':
-  # windows does not have unistd.h; lex/yacc needs this define.
-  extra_compile_args = ['-DYY_NO_UNISTD_H']
-  extra_link_args = []
-elif sys.platform == 'darwin':
-  # clang on darwin requires some extra flags, which gcc does not support
-  extra_compile_args = ['-std=c++11', '-stdlib=libc++']
-  extra_link_args = ['-stdlib=libc++']
-else:
-  extra_compile_args = ['-std=c++11']
-  extra_link_args = []
+def get_parser_ext():
+  """Get the parser extension."""
+  # We need some platform-dependent compile args for the C extensions.
+  if sys.platform == 'win32':
+    # windows does not have unistd.h; lex/yacc needs this define.
+    extra_compile_args = ['-DYY_NO_UNISTD_H']
+    extra_link_args = []
+  elif sys.platform == 'darwin':
+    # clang on darwin requires some extra flags, which gcc does not support
+    extra_compile_args = ['-std=c++11', '-stdlib=libc++']
+    extra_link_args = ['-stdlib=libc++']
+  else:
+    extra_compile_args = ['-std=c++11']
+    extra_link_args = []
+  return Extension(
+      'pytype.pyi.parser_ext',
+      sources=[
+          'pytype/pyi/parser_ext.cc',
+          'pytype/pyi/lexer.lex.cc',
+          'pytype/pyi/parser.tab.cc',
+      ],
+      extra_compile_args=extra_compile_args,
+      extra_link_args=extra_link_args
+  )
 
 
-# Copy typeshed to pytype/typeshed if the symlink doesn't work
-# (workaround for installing on windows).
-internal_typeshed = os.path.join(here, 'pytype', 'typeshed')
-if not os.path.exists(os.path.join(internal_typeshed, 'stdlib')):
-  if os.path.exists(internal_typeshed):
-    # If it is a symlink, remove it
-    try:
-      os.remove(internal_typeshed)
-    except OSError:
-      # This might be a directory that has not got a complete typeshed
-      # installation in it; delete and copy it over again.
-      shutil.rmtree(internal_typeshed)
-  shutil.copytree(os.path.join(here, 'typeshed'), internal_typeshed)
+def copy_typeshed():
+  """Windows install workaround: copy typeshed if the symlink doesn't work."""
+  internal_typeshed = os.path.join(here, 'pytype', 'typeshed')
+  if not os.path.exists(os.path.join(internal_typeshed, 'stdlib')):
+    if os.path.exists(internal_typeshed):
+      # If it is a symlink, remove it
+      try:
+        os.remove(internal_typeshed)
+      except OSError:
+        # This might be a directory that has not got a complete typeshed
+        # installation in it; delete and copy it over again.
+        shutil.rmtree(internal_typeshed)
+    shutil.copytree(os.path.join(here, 'typeshed'), internal_typeshed)
 
 
 def scan_package_data(path, pattern, check):
@@ -74,36 +86,28 @@ def get_builtin_files():
   return builtins + stdlib + typeshed
 
 
-parser_ext = Extension(
-    'pytype.pyi.parser_ext',
-    sources=[
-        'pytype/pyi/parser_ext.cc',
-        'pytype/pyi/lexer.lex.cc',
-        'pytype/pyi/parser.tab.cc',
-    ],
-    extra_compile_args=extra_compile_args,
-    extra_link_args=extra_link_args
-)
+def get_long_description():
+  # Read the long-description from a file.
+  with io.open(os.path.join(here, 'DESCRIPTION.rst'), encoding='utf-8') as f:
+    return '\n' + f.read()
 
 
-# Read the long-description from a file.
-with io.open(os.path.join(here, 'DESCRIPTION.rst'), encoding='utf-8') as f:
-  long_description = '\n' + f.read()
+def get_version():
+  # Load the package's __version__.py module as a dictionary.
+  about = {}
+  with open(os.path.join(here, 'pytype', '__version__.py')) as f:
+    exec (f.read(), about)  # pylint: disable=exec-used
+  return about['__version__']
 
 
-# Load the package's __version__.py module as a dictionary.
-about = {}
-with open(os.path.join(here, 'pytype', '__version__.py')) as f:
-  exec (f.read(), about)  # pylint: disable=exec-used
-
-
+copy_typeshed()
 setup(
     name='pytype',
-    version=about['__version__'],
+    version=get_version(),
     description='Python type inferencer',
-    long_description=long_description,
+    long_description=get_long_description(),
     maintainer='Google',
-    maintainer_email='pytypedecl-dev@googlegroups.com',
+    maintainer_email='pytype@googlegroups.com',
     url='http://github.com/google/pytype',
     packages=[
         'pytype',
@@ -140,5 +144,5 @@ setup(
         'Programming Language :: Python :: Implementation :: CPython',
         'Topic :: Software Development',
     ],
-    ext_modules=[parser_ext],
+    ext_modules=[get_parser_ext()],
 )
