@@ -42,8 +42,20 @@ def _clean_out_dir(msg):
     path = os.path.join(OUT_DIR, item)
     if os.path.isdir(path):
       shutil.rmtree(path)
-    elif item != "README.md":
+    elif item not in ["README.md", ".gitignore"]:
       os.remove(path)
+
+
+def run_cmd(cmd, cwd=None):
+  process_options = {
+      "stdout": subprocess.PIPE,
+      "stderr": subprocess.STDOUT,
+  }
+  if cwd:
+    process_options["cwd"] = cwd
+  process = subprocess.Popen(cmd, **process_options)
+  stdout, _ = process.communicate()
+  return process.returncode, stdout
 
 
 def run_cmake(force_clean=False):
@@ -68,13 +80,10 @@ def run_cmake(force_clean=False):
   print("Running CMake ...\n")
   cmd = ["cmake", PYTYPE_SRC_ROOT, "-G", "Ninja",
          "-DPython_ADDITIONAL_VERSIONS=%s" % current_version]
-  process = subprocess.Popen(cmd, cwd=OUT_DIR, stdout=subprocess.PIPE,
-                             stderr=subprocess.STDOUT)
-  stdout, _ = process.communicate()
+  returncode, stdout = run_cmd(cmd, cwd=OUT_DIR)
   # Cache the Python version for which the build files have been generated.
   PyVersionCache.cache()
-  if process.returncode != 0:
+  if returncode != 0:
     print("Running %s failed:\n%s" % (cmd, stdout))
     return False
   return True
-
