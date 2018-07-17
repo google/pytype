@@ -172,7 +172,8 @@ class VirtualMachine(object):
     self.loaded_overlays = {}
 
   def trace_opcode(self, op, symbol, val):
-    rec = (op, symbol, val.data)
+    data = getattr(val, "data", None)
+    rec = (op, symbol, data)
     self.opcode_traces.append(rec)
 
   def lookup_builtin(self, name):
