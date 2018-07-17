@@ -6,7 +6,7 @@ import logging
 
 from pytype import abstract
 from pytype import special_builtins
-from pytype import typing
+from pytype import typing_overlay
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
@@ -21,6 +21,7 @@ TOP_LEVEL_IGNORE = {
     "__future__",
     "__module__",
     "__name__",
+    "google_type_annotations",
 }
 
 CLASS_LEVEL_IGNORE = {
@@ -172,7 +173,7 @@ class Converter(object):
       # We generate the full definition because, if this type parameter is
       # imported, we will need the definition in order to declare it later.
       return self._typeparam_to_def(node, v, v.name)
-    elif isinstance(v, typing.NoReturn):
+    elif isinstance(v, typing_overlay.NoReturn):
       return pytd.NothingType()
     else:
       log.info("Using ? for instance of %s", v.name)
@@ -190,7 +191,7 @@ class Converter(object):
     Returns:
       A PyTD type.
     """
-    if isinstance(v, (abstract.Empty, typing.NoReturn)):
+    if isinstance(v, (abstract.Empty, typing_overlay.NoReturn)):
       return pytd.NothingType()
     elif isinstance(v, abstract.TypeParameterInstance):
       if v.instance.type_parameters[v.name].bindings:
@@ -208,7 +209,7 @@ class Converter(object):
             node, v.param.bound, None, seen, view)
       else:
         return pytd.AnythingType()
-    elif isinstance(v, typing.TypeVar):
+    elif isinstance(v, typing_overlay.TypeVar):
       return pytd.NamedType("__builtin__.type")
     elif isinstance(v, (abstract.InterpreterFunction,
                         abstract.BoundInterpreterFunction)):
@@ -268,6 +269,17 @@ class Converter(object):
       raise NotImplementedError(v.__class__.__name__)
 
   def signature_to_callable(self, sig, vm):
+    """Converts a function.Signature object into a callable object.
+
+    Args:
+      sig: The signature to convert.
+      vm: The vm instance.
+
+    Returns:
+      An abstract.Callable representing the signature, or an
+      abstract.ParameterizedClass if the signature has a variable number of
+      arguments.
+    """
     base_cls = vm.convert.function_type
     ret = sig.annotations.get("return", vm.convert.unsolvable)
     if self._detailed or (
@@ -304,7 +316,7 @@ class Converter(object):
       sigs = tuple(sig.Replace(params=sig.params[1:]) for sig in d.signatures)
       return d.Replace(signatures=sigs)
     elif (isinstance(v, abstract.PyTDFunction) and
-          not isinstance(v, typing.TypeVar)):
+          not isinstance(v, typing_overlay.TypeVar)):
       return pytd.Function(
           name=name,
           signatures=tuple(sig.pytd_sig for sig in v.signatures),
@@ -346,7 +358,7 @@ class Converter(object):
         if isinstance(seen_return.data, abstract.Empty):
           ret = pytd.AnythingType()
         else:
-          assert isinstance(seen_return.data, typing.NoReturn)
+          assert isinstance(seen_return.data, typing_overlay.NoReturn)
     return ret
 
   def _function_to_def(self, node, v, function_name):

@@ -26,6 +26,13 @@ LOADER_ATTR_TO_CONFIG_OPTION_MAP = {
 }
 
 
+PICKLE_EXT = ".pickled"
+
+
+def is_pickle(filename):
+  return os.path.splitext(filename)[1].startswith(PICKLE_EXT)
+
+
 def create_loader(options):
   """Create a pytd loader."""
   kwargs = {attr: getattr(options, opt)
@@ -533,7 +540,7 @@ class PickledPyiLoader(Loader):
 
   def load_file(self, module_name, filename, ast=None):
     """Load (or retrieve from cache) a module and resolve its dependencies."""
-    if not os.path.splitext(filename)[1].startswith(".pickled"):
+    if not is_pickle(filename):
       return super(PickledPyiLoader, self).load_file(module_name, filename, ast)
     existing = self._get_existing_ast(module_name)
     if existing:

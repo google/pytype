@@ -108,3 +108,39 @@ def list_pytype_files(suffix):
         yield filename[i + len(directory):]
 
 
+# Directory containing custom Python interpreters for use with pytype.
+# The path is relative to pytype's root directory.
+CUSTOM_PYTHON_EXE_DIR = None
+
+
+def get_custom_python_exe(python_exe):
+  """Get the path to a custom python interpreter.
+
+  If CUSTOM_PYTHON_EXE_DIR is set, either returns
+  {CUSTOM_PYTHON_EXE_DIR}/python_exe if it exists, or extracts it from a par
+  file into /tmp/pytype and returns that.
+
+  Arguments:
+    python_exe: the exe filename, e.g. python2.7
+  Returns:
+    None if CUSTOM_PYTHON_EXE_DIR is unset or invalid. Else:
+    The path to the extracted file if it is found
+    The input exe filename if not (so it can be tried in $PATH)
+  """
+  if not CUSTOM_PYTHON_EXE_DIR:
+    return None
+  path = get_full_path(os.path.join(CUSTOM_PYTHON_EXE_DIR, python_exe))
+  if os.path.exists(path):
+    return path
+  try:
+    data = load_pytype_file(path)
+  except IOError:
+    return None
+
+  with tempfile.NamedTemporaryFile(delete=False, suffix="python") as fi:
+    fi.write(data)
+    fi.close()
+    exe_file = fi.name
+    os.chmod(exe_file, 0o750)
+    atexit.register(lambda: os.unlink(exe_file))
+  return exe_file

@@ -9,6 +9,13 @@ import subprocess
 import threading
 import types
 
+from pytype import pytype_source_utils
+
+
+# Set this value to True to indicate that pytype is running under a 2.7
+# interpreter with the type annotations patch applied.
+USE_ANNOTATIONS_BACKPORT = False
+
 
 def message(error):
   """A convenience function which extracts a message from an exception.
@@ -132,6 +139,12 @@ def get_python_exe(python_version):
     The inferred python_exe argument
   """
   python_exe = "python%d.%d" % python_version
+  # Use custom interpreters, if provided, in preference to the ones in $PATH
+  custom_python_exe = pytype_source_utils.get_custom_python_exe(python_exe)
+  if custom_python_exe:
+    python_exe = custom_python_exe
+  if USE_ANNOTATIONS_BACKPORT and python_version == (2, 7):
+    python_exe += " -T"
   return python_exe
 
 

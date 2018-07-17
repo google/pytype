@@ -5,7 +5,7 @@ from pytype import abstract
 from pytype import datatypes
 from pytype import function
 from pytype import special_builtins
-from pytype import typing
+from pytype import typing_overlay
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -230,8 +230,8 @@ class AbstractMatcher(object):
         # left to its upper bound.
         return self._instantiate_and_match(
             left.param, other_type, subst, node, view)
-    elif (isinstance(other_type, typing.NoReturn) or
-          isinstance(left, typing.NoReturn)):
+    elif (isinstance(other_type, typing_overlay.NoReturn) or
+          isinstance(left, typing_overlay.NoReturn)):
       # NoReturn is a singleton that matches only itself.
       return subst if left == other_type else None
     elif isinstance(other_type, abstract.Class):

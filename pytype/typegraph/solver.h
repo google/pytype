@@ -10,15 +10,14 @@
 // assignments that are impossible because the bindings they use have fallen
 // out of scope.
 //
-//
 // Even with these optimizations, it's possible to construct "pathological"
 // programs that would exhibit exponential running time when analyzed completely
 // (and hence, will need pruning of the tree). That's normal: the underlying
 // problem is NP complete; i.e., it's possible to reduce 3-SAT to a type
 // inference problem.
 
-#ifndef DEVTOOLS_PYTHON_TYPEGRAPH_SOLVER_H_
-#define DEVTOOLS_PYTHON_TYPEGRAPH_SOLVER_H_
+#ifndef PYTYPE_TYPEGRAPH_SOLVER_H_
+#define PYTYPE_TYPEGRAPH_SOLVER_H_
 
 #include <cstddef>
 #include <deque>
@@ -233,4 +232,4 @@ class Solver {
 
 }  // namespace devtools_python_typegraph
 
-#endif  // DEVTOOLS_PYTHON_TYPEGRAPH_SOLVER_H_
+#endif  // PYTYPE_TYPEGRAPH_SOLVER_H_
