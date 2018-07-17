@@ -182,4 +182,43 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
                          self.trace_vm.instructions_executed, [0, 1, 5, 6])
 
 
+class TraceTest(test_base.BaseTest, test_utils.MakeCodeMixin):
+  """Tests for opcode tracing in the VM."""
+
+  def __init__(self, *args, **kwargs):
+    super(TraceTest, self).__init__(*args, **kwargs)
+    self.python_version = (3, 6)
+
+  def setUp(self):
+    super(TraceTest, self).setUp()
+    self.errorlog = errors.ErrorLog()
+    self.trace_vm = TraceVM(self.options, self.loader)
+
+  def test_const(self):
+    src = textwrap.dedent("""\
+      x = 1  # line 1
+      y = x  # line 2
+    """)
+    # Compiles to:
+    #     0 LOAD_CONST     0 (1)
+    #     3 STORE_NAME     0 (x)
+    #
+    #     6 LOAD_NAME      0 (x)
+    #     9 STORE_NAME     1 (y)
+    #    12 LOAD_CONST     1 (None)
+    #    15 RETURN_VALUE
+    self.trace_vm.run_program(src, "", maximum_depth=10)
+    expected = [
+        # (opcode, line number, symbol)
+        ("LOAD_CONST", 1, 1),
+        ("STORE_NAME", 1, "x"),
+        ("LOAD_NAME", 2, "x"),
+        ("STORE_NAME", 2, "y"),
+        ("LOAD_CONST", 2, None)
+    ]
+    actual = [(op.name, op.line, symbol)
+              for op, symbol, _ in self.trace_vm.opcode_traces]
+    self.assertEqual(actual, expected)
+
+
 test_base.main(globals(), __name__ == "__main__")
