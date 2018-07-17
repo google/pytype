@@ -67,24 +67,25 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     # | elif []:
     # |   y = None
     # | return y
+    o = test_utils.Py2Opcodes
     code = self.make_code([
-        0x67, 0, 0,   #  0 BUILD_LIST, arg=0,
-        0x72, 15, 0,  #  3 POP_JUMP_IF_FALSE, dest=15,
-        0x64, 1, 0,   #  6 LOAD_CONST, arg=1 (1),
-        0x7d, 1, 0,   #  9 STORE_FAST, arg=1 "y",
-        0x6e, 30, 0,  # 12 JUMP_FORWARD, dest=45,
-        0x67, 0, 0,   # 15 BUILD_LIST, arg=0,
-        0x72, 30, 0,  # 18 POP_JUMP_IF_FALSE, dest=30,
-        0x64, 2, 0,   # 21 LOAD_CONST, arg=2 (2),
-        0x7d, 1, 0,   # 24 STORE_FAST, arg=1 "y",
-        0x6e, 15, 0,  # 27 JUMP_FORWARD, dest=45,
-        0x67, 0, 0,   # 30 BUILD_LIST, arg=0,
-        0x72, 45, 0,  # 33 POP_JUMP_IF_FALSE, dest=45,
-        0x64, 0, 0,   # 36 LOAD_CONST, arg=0 (None),
-        0x7d, 1, 0,   # 39 STORE_FAST, arg=1 "y",
-        0x6e, 0, 0,   # 42 JUMP_FORWARD, dest=45,
-        0x7c, 1, 0,   # 45 LOAD_FAST, arg=1,
-        0x53,         # 48 RETURN_VALUE
+        o.BUILD_LIST, 0, 0,
+        o.POP_JUMP_IF_FALSE, 15, 0,
+        o.LOAD_CONST, 1, 0,
+        o.STORE_FAST, 1, 0,
+        o.JUMP_FORWARD, 30, 0,
+        o.BUILD_LIST, 0, 0,
+        o.POP_JUMP_IF_FALSE, 30, 0,
+        o.LOAD_CONST, 2, 0,
+        o.STORE_FAST, 1, 0,
+        o.JUMP_FORWARD, 15, 0,
+        o.BUILD_LIST, 0, 0,
+        o.POP_JUMP_IF_FALSE, 45, 0,
+        o.LOAD_CONST, 0, 0,
+        o.STORE_FAST, 1, 0,
+        o.JUMP_FORWARD, 0, 0,
+        o.LOAD_FAST, 1, 0,
+        o.RETURN_VALUE,
     ])
     code = blocks.process_code(code, {})
     v = vm.VirtualMachine(self.errorlog, self.options, loader=self.loader)
