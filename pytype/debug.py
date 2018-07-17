@@ -324,13 +324,6 @@ def stack_trace(indent_level=0, limit=100):
   return "\n  ".join(trace)
 
 
-def set_logging_level(level):
-  if logging.root.handlers:
-    logging.root.setLevel(level)
-  else:
-    logging.basicConfig(level=level)
-
-
 @contextlib.contextmanager
 def save_logging_level():
   level = logging.getLogger().getEffectiveLevel()

@@ -31,10 +31,22 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     ast = typeshed.parse_type_definition("stdlib", "_random", (2, 7))
     self.assertIn("_random.Random", [cls.name for cls in ast.classes])
 
+  def test_get_typeshed_missing(self):
+    if not self.ts.missing:
+      return  # nothing to test
+    self.assertIn(os.path.join("stdlib", "2.7", "pytypecanary"),
+                  self.ts.missing)
+    _, data = self.ts.get_module_file("stdlib", "pytypecanary", (2, 7))
+    self.assertEqual(data, builtins.DEFAULT_SRC)
+
+  def test_get_google_only_module_names(self):
+    if not self.ts.missing:
+      return  # nothing to test
+    modules = self.ts.get_all_module_names([2, 7])
+    self.assertIn("pytypecanary", modules)
 
   def test_get_all_module_names_2(self):
-    t = typeshed.Typeshed()
-    modules = t.get_all_module_names([2, 7])
+    modules = self.ts.get_all_module_names([2, 7])
     self.assertIn("collections", modules)
     self.assertIn("csv", modules)
     self.assertIn("ctypes", modules)
@@ -42,37 +54,34 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     self.assertIn("six.moves", modules)
 
   def test_get_all_module_names_3(self):
-    t = typeshed.Typeshed()
-    modules = t.get_all_module_names([3, 5])
+    modules = self.ts.get_all_module_names([3, 5])
     self.assertIn("asyncio", modules)
     self.assertIn("collections", modules)
     self.assertIn("configparser", modules)
 
   def test_get_pytd_paths(self):
     # Set TYPESHED_HOME to pytype's internal typeshed copy.
-    t = typeshed.Typeshed()
     old_env = os.environ.copy()
-    os.environ["TYPESHED_HOME"] = t.root
+    os.environ["TYPESHED_HOME"] = self.ts.root
     try:
       # Check that get_pytd_paths() works with a typeshed installation that
       # reads from TYPESHED_HOME.
-      t = typeshed.Typeshed()
-      paths = {p.rsplit("pytype/", 1)[-1] for p in t.get_pytd_paths([2, 7])}
+
+      paths = {p.rsplit("pytype/", 1)[-1]
+               for p in self.ts.get_pytd_paths([2, 7])}
       self.assertSetEqual(paths, {"pytd/builtins/2", "pytd/stdlib/2"})
     finally:
       os.environ = old_env
 
   def test_read_blacklist(self):
-    t = typeshed.Typeshed()
-    for filename in t.read_blacklist():
+    for filename in self.ts.read_blacklist():
       self.assertTrue(filename.startswith("stdlib") or
                       filename.startswith("third_party"))
 
   def test_blacklisted_modules(self):
-    t = typeshed.Typeshed()
-    for module_name in t.blacklisted_modules([2, 7]):
+    for module_name in self.ts.blacklisted_modules([2, 7]):
       self.assertNotIn("/", module_name)
-    for module_name in t.blacklisted_modules([3, 6]):
+    for module_name in self.ts.blacklisted_modules([3, 6]):
       self.assertNotIn("/", module_name)
 
 

@@ -18,7 +18,6 @@ from __future__ import print_function
 import argparse
 import os
 import shutil
-import subprocess
 import sys
 import tempfile
 
@@ -28,30 +27,6 @@ from six.moves import input
 
 TEST_MODE = "TEST"
 RELEASE_MODE = "RELEASE"
-SRC_PYI_DIR = os.path.join(build_utils.PYTYPE_SRC_ROOT, "pytype", "pyi")
-OUT_PYI_DIR = os.path.join(build_utils.OUT_DIR, "pytype", "pyi")
-GEN_FILE_LIST = [
-    "lexer.lex.cc",
-    "location.hh",
-    "parser.tab.cc",
-    "parser.tab.hh",
-    "position.hh",
-    "stack.hh",
-]
-
-
-# TODO(sivachandra): Investigate if this function can be generalized and moved
-# to the build_utils module.
-def _run_cmd(cmd, cwd=None):
-  process_options = {
-      "stdout": subprocess.PIPE,
-      "stderr": subprocess.STDOUT,
-  }
-  if cwd:
-    process_options["cwd"] = cwd
-  process = subprocess.Popen(cmd, **process_options)
-  stdout, _ = process.communicate()
-  return process.returncode, stdout
 
 
 class ReleaseError(Exception):
@@ -73,29 +48,6 @@ def parse_args():
   if args.mode not in allowed_modes:
     sys.exit("Invalid --mode option. Should be one of %s" % allowed_modes)
   return args
-
-
-def generate_files():
-  """Run flex and bison to produce the parser .cc and .h files."""
-  if not build_utils.run_cmake(force_clean=True):
-    raise ReleaseError("Running CMake failed!")
-  ninja_cmd = ["ninja", "pytype.pyi.parser_gen", "pytype.pyi.lexer"]
-  print("Building flex and bison outputs ...\n")
-  returncode, stdout = _run_cmd(ninja_cmd, cwd=build_utils.OUT_DIR)
-  if returncode != 0:
-    raise ReleaseError("Error generating the Flex and Bison outputs:\n%s" %
-                       stdout)
-  # Copy the generated files into the source tree.
-  for gen_file in GEN_FILE_LIST:
-    print("Copying %s to source tree ...\n" % gen_file)
-    shutil.copy(os.path.join(OUT_PYI_DIR, gen_file),
-                os.path.join(SRC_PYI_DIR, gen_file))
-
-
-def clean_generated_files():
-  for gen_file in GEN_FILE_LIST:
-    print("Deleting %s from source tree ...\n" % gen_file)
-    os.remove(os.path.join(SRC_PYI_DIR, gen_file))
 
 
 def verify_no_pytype_installation_exists():
@@ -131,7 +83,7 @@ def verify_description_rst_is_up_to_date():
       "--output=%s" % new_description_rst,
       temp_readme_md,
   ]
-  returncode, stdout = _run_cmd(pandoc_cmd)
+  returncode, stdout = build_utils.run_cmd(pandoc_cmd)
   if returncode != 0:
     sys.exit("Running 'pandoc' failed:\n%s" % stdout)
 
@@ -159,20 +111,9 @@ def upload_package(package_path, test=False):
     twine_cmd.extend(["--repository", "testpypi"])
   twine_cmd.append(os.path.join(package_path, "*"))
   print("Uploading: %s" % twine_cmd)
-  returncode, stdout = _run_cmd(twine_cmd)
+  returncode, stdout = build_utils.run_cmd(twine_cmd)
   if returncode != 0:
     raise ReleaseError("Package upload failed:\n%s" % stdout)
-
-
-class GeneratedFilesContext(object):
-  """Context manager to generate and clean up flex and bison outputs."""
-
-  def __enter__(self):
-    generate_files()
-
-  def __exit__(self, exc_type, exc_val, exc_tb):
-    clean_generated_files()
-    return False
 
 
 class DistributionPackage(object):
@@ -181,7 +122,7 @@ class DistributionPackage(object):
   def __enter__(self):
     sdist_cmd = ["python", "setup.py", "sdist"]
     print("Creating distribution package: %s\n" % sdist_cmd)
-    returncode, stdout = _run_cmd(sdist_cmd)
+    returncode, stdout = build_utils.run_cmd(sdist_cmd)
     if returncode != 0:
       raise ReleaseError("Running %s failed:\n%s" % (sdist_cmd, stdout))
     # The sdist command creates the distribution package in a directory
@@ -192,6 +133,8 @@ class DistributionPackage(object):
   def __exit__(self, exc_type, exc_val, exc_tb):
     print("Deleting the distribution directory ...\n")
     shutil.rmtree(self.dist_path)
+    print("Deleting the metadata directory ...\n")
+    shutil.rmtree(os.path.join(build_utils.PYTYPE_SRC_ROOT, "pytype.egg-info"))
     return False
 
 
@@ -204,9 +147,8 @@ def main():
   verify_pypirc_exists()
 
   try:
-    with GeneratedFilesContext():
-      with DistributionPackage() as pkg_path:
-        upload_package(pkg_path, args.mode == TEST_MODE)
+    with DistributionPackage() as pkg_path:
+      upload_package(pkg_path, args.mode == TEST_MODE)
   except ReleaseError as error:
     sys.exit(">>> Release Failed <<<\n%s" % error.msg)
   print("!!! Release Successfull !!!\n")

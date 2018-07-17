@@ -107,11 +107,12 @@ py_library(
     matcher.py
     output.py
     overlay.py
+    overlay_dict.py
     six_overlay.py
     special_builtins.py
     state.py
     sys_overlay.py
-    typing.py
+    typing_overlay.py
     vm.py
   DEPS
     .debug
@@ -137,7 +138,7 @@ py_library(
   SRCS
     typegraph/cfg_utils.py
   DEPS
-    .cfg_py
+    pytype.typegraph.cfg
 )
 
 py_library(
@@ -196,12 +197,12 @@ py_library(
     pytd/visitors.py
   DEPS
     .builtins_pytd  # TODO(sivachandra): Move this into a data dependency
-    .cfg_py
     .cfg_utils
     .debug
     .metrics
     .node
     .utils
+    pytype.typegraph.cfg
 )
 
 py_library(
