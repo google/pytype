@@ -324,13 +324,13 @@ static bool ContainerToSourceSet(PyObject** container,
     return true;
   }
   *container = PySequence_List(*container);
-  if (!container) {
+  if (!(*container)) {
     PyErr_SetString(PyExc_TypeError,
                     "SourceSet can only be generated from an iterable");
     return false;
   }
   if (!VerifyListOfBindings(*container, program)) {
-    Py_XDECREF(*container);
+    Py_DECREF(*container);
     return false;  // pass error through
   }
   return true;
@@ -560,14 +560,21 @@ static PyObject* CFGNodeRepr(PyObject* self) {
         " condition:%zu",
         node->condition()->variable()->id());
 #if PY_MAJOR_VERSION >= 3
-    str = PyUnicode_Concat(str, cond_str);
+    PyObject* str_cond_str = PyUnicode_Concat(str, cond_str);
+    // Drop references to the old |str| and |cond_str| as we do not need them
+    // anymore.
     Py_DECREF(str);
+    Py_DECREF(cond_str);
+    str = str_cond_str;
 #else
     PyString_ConcatAndDel(&str, cond_str);
 #endif
   }
 #if PY_MAJOR_VERSION >= 3
-  str = PyUnicode_Concat(str, PyString_FromString(">"));
+  PyObject* final_str = PyUnicode_Concat(str, PyString_FromString(">"));
+  // Drop reference to |str| as we do not need it anymore.
+  Py_DECREF(str);
+  str = final_str;
 #else
   PyString_ConcatAndDel(&str, PyString_FromString(">"));
 #endif
@@ -866,7 +873,9 @@ static PyObject* AssignToNewVariable(PyBindingObj* self, PyObject* args,
     return nullptr;
   }
   typegraph::Variable* v = self->program->program->NewVariable();
-  typegraph::Binding* binding = v->AddBinding(self->attr->data());
+  PyObject* data = reinterpret_cast<PyObject*>(self->attr->data());
+  Py_XINCREF(data);
+  typegraph::Binding* binding = v->AddBinding(data);
   binding->CopyOrigins(self->attr, where);
   return WrapVariable(self->program, v);
 }
@@ -1156,7 +1165,9 @@ static PyObject* VariableAddBindings(PyVariableObj* self, PyObject* args,
     return nullptr;
   }
   for (const auto& binding : variable->u->bindings()) {
-    typegraph::Binding* copy = self->u->AddBinding(binding->data());
+    PyObject* data = reinterpret_cast<PyObject*>(binding->data());
+    Py_XINCREF(data);
+    typegraph::Binding* copy = self->u->AddBinding(data);
     copy->CopyOrigins(binding.get(), where->cfg_node);
   }
   Py_RETURN_NONE;
@@ -1182,7 +1193,9 @@ static PyObject* VarAssignToNewVariable(PyVariableObj* self,
   }
   typegraph::Variable* v = self->program->program->NewVariable();
   for (const auto& binding : self->u->bindings()) {
-    typegraph::Binding* copy = v->AddBinding(binding->data());
+    PyObject* data = reinterpret_cast<PyObject*>(binding->data());
+    Py_XINCREF(data);
+    typegraph::Binding* copy = v->AddBinding(data);
     copy->CopyOrigins(binding.get(), where);
   }
   return WrapVariable(self->program, v);
