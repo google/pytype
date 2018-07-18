@@ -6,7 +6,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "base/logging.h"
+#include "cfg_logging.h"
 #include "map_util.h"
 #include "memory_util.h"
 #include "solver.h"
@@ -22,8 +22,8 @@ CFGNode* Program::NewCFGNode(const std::string& name, Binding* condition) {
   InvalidateSolver();
   size_t node_nr = CountCFGNodes();
   int n = backward_reachability_->add_node();
-  assert((n == node_nr) &&
-      "internal error: wrong reachability cache node count.");
+  CHECK(n == node_nr) <<
+      "internal error: wrong reachability cache node count.";
   auto node = memory_util::WrapUnique(
       new CFGNode(this, name, node_nr, condition,
                   backward_reachability_.get()));
@@ -33,6 +33,7 @@ CFGNode* Program::NewCFGNode(const std::string& name, Binding* condition) {
 }
 
 Variable* Program::NewVariable() {
+  LOG(DEBUG) << "Creating Variable v" << next_variable_id_;
   auto u = memory_util::WrapUnique(new Variable(this, next_variable_id_));
   next_variable_id_ += 1;
   Variable* up = u.get();
@@ -219,6 +220,7 @@ Binding* Variable::FindOrAddBinding(void* data) {
     data = this->program_->default_data();
   auto it = data_to_binding_.find(data);
   if (it == data_to_binding_.end()) {
+    LOG(DEBUG) << "Adding choice to Variable " << id_;
     program_->InvalidateSolver();
     auto binding =
         std::unique_ptr<Binding>(new Binding(this->program_, this, data));
@@ -335,7 +337,7 @@ std::set<Binding*> Variable::Prune(const CFGNode* viewpoint) {
     stack.pop();
     seen.insert(node);
     if (map_util::ContainsKey(cfg_node_to_bindings_, node)) {
-      assert((cfg_node_to_bindings_[node].size()) && "empty binding list");
+      CHECK(cfg_node_to_bindings_[node].size()) << "empty binding list";
       for (auto v : cfg_node_to_bindings_[node]) {
         result.insert(v);
       }

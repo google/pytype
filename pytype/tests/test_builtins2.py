@@ -586,6 +586,16 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       x3 = ...  # type: frozenset[str]
     """)
 
+  def testFrozenSetLiteral(self):
+    # In python2 this calls LOAD_CONST 'foo'; BUILD_SET, but python3 calls
+    # LOAD_CONST frozenset(['foo']) directly. Test that both versions work.
+    ty = self.Infer("""
+      a = "foo" in {"foo"}
+    """)
+    self.assertTypesMatchPytd(ty, """
+      a = ...  # type: bool
+    """)
+
   def testFuncTools(self):
     self.Check("""
       import functools

@@ -8,7 +8,6 @@ import textwrap
 
 from pytype import analyze
 from pytype import config
-from pytype import debug
 from pytype import directors
 from pytype import errors
 from pytype import load_pytd
@@ -36,11 +35,6 @@ skip = unittest.skip
 # Pytype offers a Python 2.7 interpreter with type annotations backported as a
 # __future__ import (see pytype/patches/python_2_7_type_annotations.diff).
 _ANNOTATIONS_IMPORT = "from __future__ import google_type_annotations"
-
-
-# If you're using the patched interpreter, set this value to True to test type
-# annotations in Python 2.
-USE_ANNOTATIONS_BACKPORT = False
 
 
 def WithAnnotationsImport(code):
@@ -464,7 +458,7 @@ class BaseTest(unittest.TestCase):
     # (In other words, display a change from "working" to "broken")
     self.assertMultiLineEqual(pytd_tree_src, ty_src)
 
-  if USE_ANNOTATIONS_BACKPORT:
+  if utils.USE_ANNOTATIONS_BACKPORT:
     Check = _AddAnnotationsImportPy2(Check)
     CheckWithErrors = _AddAnnotationsImportPy2(CheckWithErrors)
     Infer = _AddAnnotationsImportPy2(Infer)
@@ -501,8 +495,9 @@ class TargetPython3BasicTest(BaseTest):
   """Class for tests using type annotations as the only Python 3 feature.
 
   Test methods in subclasses will test Pytype on Python code stubs which use
-  type annotations as the only Python 3 feature. If USE_ANNOTATIONS_BACKPORT
-  is set, these tests will also be run with target Python version set to 2.7.
+  type annotations as the only Python 3 feature. If
+  utils.USE_ANNOTATIONS_BACKPORT is set, these tests will also be run with
+  target Python version set to 2.7.
   """
 
   def __init__(self, *args, **kwargs):
@@ -549,12 +544,13 @@ def _ReplaceMethods(toplevel):
     return True
   # Run the Python 3 basic tests with target Python version set to 2.7 if we
   # can use type annotations in 2.7.
-  if USE_ANNOTATIONS_BACKPORT and issubclass(toplevel, TargetPython3BasicTest):
+  if (utils.USE_ANNOTATIONS_BACKPORT and
+      issubclass(toplevel, TargetPython3BasicTest)):
     return not issubclass(toplevel, TargetPython3FeatureTest)
   return False
 
 
-def main(toplevels, is_main_module=True, debugging=False):
+def main(toplevels, is_main_module=True):
   """The main method for tests subclassing one of the above classes.
 
   This function should be called unconditionally, and typically as follows:
@@ -569,12 +565,7 @@ def main(toplevels, is_main_module=True, debugging=False):
     toplevels: The toplevels defined in the main test module.
     is_main_module: True if the main test module is the main module in the
                     interpreter.
-    debugging: Enable debug logs.
   """
-  # TODO(ampere): This is just a useful hack. Should be replaced with real
-  #               argument handling.
-  level = logging.DEBUG if debugging or len(sys.argv) > 1 else logging.WARNING
-  debug.set_logging_level(level)
   # We want to run tests in a few buckets twice: once with target Python
   # version set to 2.7, and another time with target Python version set to 3.6.
   # So, for tests falling in such buckets, we replace the single test method

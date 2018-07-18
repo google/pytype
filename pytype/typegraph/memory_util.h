@@ -4,8 +4,8 @@
 // dependency on Abseil.
 // Note that these implementations are sufficient only for the typegraph
 // library's usage of unique_ptr and do not cover all possible corner cases.
-#ifndef DEVTOOLS_PYTHON_TYPEGRAPH_MEMORY_UTIL_H_
-#define DEVTOOLS_PYTHON_TYPEGRAPH_MEMORY_UTIL_H_
+#ifndef PYTYPE_TYPEGRAPH_MEMORY_UTIL_H_
+#define PYTYPE_TYPEGRAPH_MEMORY_UTIL_H_
 
 #include <memory>
 #include <type_traits>
@@ -33,4 +33,4 @@ std::unique_ptr<T> WrapUnique(T* ptr) {
 
 }  // namespace devtools_python_typegraph
 
-#endif  // DEVTOOLS_PYTHON_TYPEGRAPH_MEMORY_UTIL_H_
+#endif  // PYTYPE_TYPEGRAPH_MEMORY_UTIL_H_

@@ -174,14 +174,19 @@ def process_one_file(options):
 
   if not options.check:
     result, ast = generated_values
-    if options.output == "-" or not options.output:
-      sys.stdout.write(result)
+    if options.pickle_output:
+      pyi_output = options.verify_pickle
     else:
-      log.info("write pyi %r => %r", options.input, options.output)
-      with open(options.output, "w") as fi:
+      pyi_output = options.output
+    if pyi_output == "-":
+      sys.stdout.write(result)
+    elif pyi_output:
+      log.info("write pyi %r => %r", options.input, pyi_output)
+      with open(pyi_output, "w") as fi:
         fi.write(result)
-      if options.output_pickled:
-        write_pickle(ast, loader, options)
+    if options.pickle_output:
+      log.info("write pickle %r => %r", options.input, options.output)
+      write_pickle(ast, loader, options)
   exit_status = handle_errors(errorlog, options)
 
   # If we have set return_success, set exit_status to 0 after the regular error
@@ -212,11 +217,11 @@ def write_pickle(ast, loader, options):
   if options.verify_pickle:
     ast1 = ast.Visit(visitors.LateTypeToClassType())
     ast1 = ast1.Visit(visitors.ClearClassPointers())
-    ast2 = loader.load_file(options.module_name, options.output)
+    ast2 = loader.load_file(options.module_name, options.verify_pickle)
     ast2 = ast2.Visit(visitors.ClearClassPointers())
     if not ast1.ASTeq(ast2):
       raise AssertionError()
-  serialize_ast.StoreAst(ast, options.output_pickled)
+  serialize_ast.StoreAst(ast, options.output)
 
 
 def print_error_doc_url(errorlog):

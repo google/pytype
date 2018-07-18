@@ -1,7 +1,7 @@
 // A cache to store the reachability set of nodes.
 
-#ifndef THIRD_PARTY_PY_PYTYPE_TYPEGRAPH_REACHABLE_H_
-#define THIRD_PARTY_PY_PYTYPE_TYPEGRAPH_REACHABLE_H_
+#ifndef PYTYPE_TYPEGRAPH_REACHABLE_H_
+#define PYTYPE_TYPEGRAPH_REACHABLE_H_
 
 #include <vector>
 #include <cstdint>
@@ -24,4 +24,4 @@ class ReachabilityAnalyzer {
 
 }  // namespace devtools_python_typegraph
 
-#endif  // THIRD_PARTY_PY_PYTYPE_TYPEGRAPH_REACHABLE_H_
+#endif  // PYTYPE_TYPEGRAPH_REACHABLE_H_
