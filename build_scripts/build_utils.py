@@ -11,6 +11,8 @@ PYTYPE_SRC_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(PYTYPE_SRC_ROOT, "out")
 SRC_PYI_DIR = os.path.join(PYTYPE_SRC_ROOT, "pytype", "pyi")
 OUT_PYI_DIR = os.path.join(OUT_DIR, "pytype", "pyi")
+CMAKE_LOG = os.path.join(OUT_DIR, "cmake.log")
+NINJA_LOG = os.path.join(OUT_DIR, "ninja.log")
 GEN_FILE_LIST = [
     "lexer.lex.cc",
     "location.hh",
@@ -65,10 +67,13 @@ def run_cmd(cmd, cwd=None):
     process_options["cwd"] = cwd
   process = subprocess.Popen(cmd, **process_options)
   stdout, _ = process.communicate()
+  if sys.version_info.major >= 3:
+    # Popen.communicate returns a bytes object always.
+    stdout = stdout.decode("utf-8")
   return process.returncode, stdout
 
 
-def run_cmake(force_clean=False):
+def run_cmake(force_clean=False, log_output=False):
   """Run cmake in the 'out' directory."""
   current_version = current_py_version()
   if force_clean:
@@ -85,17 +90,29 @@ def run_cmake(force_clean=False):
     # Run CMake if it was not already run. If CMake was already run, it
     # generates a build.ninja file in the "out" directory.
     print("Running CMake skipped ...\n")
+    if log_output:
+      with open(CMAKE_LOG, "w") as cmake_log:
+        cmake_log.write("Running CMake was skipped.\n")
     return True
 
   print("Running CMake ...\n")
   cmd = ["cmake", PYTYPE_SRC_ROOT, "-G", "Ninja",
          "-DPython_ADDITIONAL_VERSIONS=%s" % current_version]
   returncode, stdout = run_cmd(cmd, cwd=OUT_DIR)
+  # Print the full CMake output to stdout. It is not a lot that it would
+  # clutter the output, and also gives information about the Python version
+  # found etc.
+  print(stdout)
+  if log_output:
+    with open(CMAKE_LOG, "w") as cmake_log:
+      cmake_log.write(stdout)
+  if returncode != 0:
+    print(">>> FAILED: CMake command '%s'" % " ".join(cmd))
+    if log_output:
+      print(">>>         Full CMake output is available in '%s'." % CMAKE_LOG)
+    return False
   # Cache the Python version for which the build files have been generated.
   PyVersionCache.cache()
-  if returncode != 0:
-    print("Running %s failed:\n%s" % (cmd, stdout))
-    return False
   return True
 
 

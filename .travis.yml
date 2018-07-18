@@ -30,7 +30,9 @@ install:
   - pip install pyyaml
   - pip install six
 
-script: python build_scripts/run_tests.py
+# We pass the -f option so that the script aborts at the first
+# failure and gives a less cluttered output.
+script: python build_scripts/run_tests.py -f
 
 notifications:
   email:
