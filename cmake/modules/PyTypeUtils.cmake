@@ -341,7 +341,7 @@ function(py_test)
   add_custom_command(
     OUTPUT ${PY_TEST_NAME}.log
     COMMAND "TYPESHED_HOME=${PROJECT_SOURCE_DIR}/typeshed" ${PYTHON_EXECUTABLE} -B
-            ${TEST_MODULE_SCRIPT} ${fq_target_name} -o ${CMAKE_CURRENT_BINARY_DIR}/${PY_TEST_NAME}.log -P ${PROJECT_BINARY_DIR} -s -p
+            ${TEST_MODULE_SCRIPT} ${fq_target_name} -o ${CMAKE_CURRENT_BINARY_DIR}/${PY_TEST_NAME}.log -P ${PROJECT_BINARY_DIR} -S
     DEPENDS ${lib_out}
   )
   add_custom_target(
