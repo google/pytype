@@ -81,19 +81,19 @@ def run_ninja(targets, fail_collector, fail_fast=False):
   failed_targets = []
   with open(build_utils.NINJA_LOG, "w") as ninja_log:
     while True:
-      l = process.stdout.readline()
-      if not l:
+      line = process.stdout.readline()
+      if not line:
         break
       if sys.version_info.major >= 3:
         # process.stdout.readline() always returns a 'bytes' object.
-        l = l.decode("utf-8")
-      ninja_log.write(l)
-      if l.startswith(NINJA_FAILURE_PREFIX):
+        line = line.decode("utf-8")
+      ninja_log.write(line)
+      if line.startswith(NINJA_FAILURE_PREFIX):
         # This is a failed ninja target.
-        failed_targets.append(l[len(NINJA_FAILURE_PREFIX):].strip())
-      modname, logfile = test_module.get_module_and_log_file_from_result_msg(l)
+        failed_targets.append(line[len(NINJA_FAILURE_PREFIX):].strip())
+      modname, logfile = test_module.get_module_and_log_file_from_result_msg(line)
       if modname:
-        print(l)
+        print(line)
       if logfile:
         assert modname
         if fail_collector:
