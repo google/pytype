@@ -27,9 +27,10 @@ class OrderingTest(BaseBlocksTest):
   def test_trivial(self):
     # Disassembled from:
     # | return None
+    o = test_utils.Py2Opcodes
     co = self.make_code([
-        0x64, 1, 0,  # 0 LOAD_CONST, arg=0 (None)
-        0x53,  # 3 RETURN_VALUE
+        o.LOAD_CONST, 1, 0,
+        o.RETURN_VALUE,
     ], name="trivial")
     ordered_code = self._order_code(co)
     b0, = ordered_code.order
@@ -40,9 +41,10 @@ class OrderingTest(BaseBlocksTest):
   def test_has_opcode(self):
     # Disassembled from:
     # | return None
+    o = test_utils.Py2Opcodes
     co = self.make_code([
-        0x64, 1, 0,  # 0 LOAD_CONST, arg=0 (None)
-        0x53,  # 3 RETURN_VALUE
+        o.LOAD_CONST, 1, 0,
+        o.RETURN_VALUE,
     ], name="trivial")
     ordered_code = self._order_code(co)
     self.assertTrue(ordered_code.has_opcode(opcodes.LOAD_CONST))
@@ -53,14 +55,15 @@ class OrderingTest(BaseBlocksTest):
     # Disassembled from:
     # | yield 1
     # | yield None
+    o = test_utils.Py2Opcodes
     co = self.make_code([
         # b0:
-        0x64, 1, 0,  # 0 LOAD_CONST, arg=1 (1),
-        0x56,  # 3 YIELD_VALUE,
+        o.LOAD_CONST, 1, 0,
+        o.YIELD_VALUE,
         # b1:
-        0x01,  # 4 POP_TOP,
-        0x64, 0, 0,  # 15 LOAD_CONST, arg=0 (None),
-        0x53,  # 18 RETURN_VALUE
+        o.POP_TOP,
+        o.LOAD_CONST, 0, 0,
+        o.RETURN_VALUE,
     ], name="yield")
     ordered_code = self._order_code(co)
     self.assertEqual(ordered_code.co_name, "yield")
@@ -76,23 +79,24 @@ class OrderingTest(BaseBlocksTest):
     # | if y > 1:
     # |   x -= 2
     # | return x
+    o = test_utils.Py2Opcodes
     co = self.make_code([
         # b0:
-        0x7c, 0, 0,  # 0 LOAD_FAST, arg=0,
-        0x7d, 1, 0,  # 3 STORE_FAST, arg=1,
-        0x7c, 0, 0,  # 6 LOAD_FAST, arg=0,
-        0x64, 1, 0,  # 9 LOAD_CONST, arg=1 (1),
-        0x6b, 4, 0,  # 12 COMPARE_OP, arg=4,
-        0x72, 31, 0,  # 15 POP_JUMP_IF_FALSE, dest=31,
+        o.LOAD_FAST, 0, 0,
+        o.STORE_FAST, 1, 0,
+        o.LOAD_FAST, 0, 0,
+        o.LOAD_CONST, 1, 0,
+        o.COMPARE_OP, 4, 0,
+        o.POP_JUMP_IF_FALSE, 31, 0,  # dest=31
         # b1:
-        0x7c, 1, 0,  # 18 LOAD_FAST, arg=1,
-        0x64, 2, 0,  # 21 LOAD_CONST, arg=2,
-        0x38,  # 24 INPLACE_SUBTRACT,
-        0x7d, 1, 0,  # 25 STORE_FAST, arg=1,
-        0x6e, 0, 0,  # 28 JUMP_FORWARD, dest=31,
+        o.LOAD_FAST, 1, 0,
+        o.LOAD_CONST, 2, 0,
+        o.INPLACE_SUBTRACT,
+        o.STORE_FAST, 1, 0,
+        o.JUMP_FORWARD, 0, 0,   # dest=31
         # b2:
-        0x7c, 1, 0,  # 31 LOAD_FAST, arg=1,
-        0x53,  # 34 RETURN_VALUE
+        o.LOAD_FAST, 1, 0,
+        o.RETURN_VALUE,
     ], name="triangle")
     ordered_code = self._order_code(co)
     self.assertEqual(ordered_code.co_name, "triangle")
@@ -112,28 +116,29 @@ class OrderingTest(BaseBlocksTest):
     # | else:
     # |   x += 2
     # | return x
+    o = test_utils.Py2Opcodes
     co = self.make_code([
         # b0:
-        0x7c, 0, 0,  # 0 LOAD_FAST, arg=0,
-        0x7d, 1, 0,  # 3 STORE_FAST, arg=1,
-        0x7c, 0, 0,  # 6 LOAD_FAST, arg=0,
-        0x64, 1, 0,  # 9 LOAD_CONST, arg=1,
-        0x6b, 4, 0,  # 12 COMPARE_OP, arg=4,
-        0x72, 31, 0,  # 15 POP_JUMP_IF_FALSE, dest=31,
+        o.LOAD_FAST, 0, 0,
+        o.STORE_FAST, 1, 0,
+        o.LOAD_FAST, 0, 0,
+        o.LOAD_CONST, 1, 0,
+        o.COMPARE_OP, 4, 0,
+        o.POP_JUMP_IF_FALSE, 31, 0,  # dest=31
         # b1:
-        0x7c, 1, 0,  # 18 LOAD_FAST, arg=1,
-        0x64, 2, 0,  # 21 LOAD_CONST, arg=2,
-        0x38,  # 24 INPLACE_SUBTRACT,
-        0x7d, 1, 0,  # 25 STORE_FAST, arg=1,
-        0x6e, 10, 0,  # 28 JUMP_FORWARD, dest=41,
+        o.LOAD_FAST, 1, 0,
+        o.LOAD_CONST, 2, 0,
+        o.INPLACE_SUBTRACT,
+        o.STORE_FAST, 1, 0,
+        o.JUMP_FORWARD, 10, 0,  # dest=41
         # b2:
-        0x7c, 1, 0,  # 31 LOAD_FAST, arg=1,
-        0x64, 2, 0,  # 34 LOAD_CONST, arg=2,
-        0x37,  # 37 INPLACE_ADD,
-        0x7d, 1, 0,  # 38 STORE_FAST, arg=1,
+        o.LOAD_FAST, 1, 0,
+        o.LOAD_CONST, 2, 0,
+        o.INPLACE_ADD,
+        o.STORE_FAST, 1, 0,
         # b3:
-        0x7c, 1, 0,  # 41 LOAD_FAST, arg=1,
-        0x53,  # 44 RETURN_VALUE
+        o.LOAD_FAST, 1, 0,
+        o.RETURN_VALUE,
     ], name="diamond")
     ordered_code = self._order_code(co)
     self.assertEqual(ordered_code.co_name, "diamond")
@@ -151,12 +156,13 @@ class OrderingTest(BaseBlocksTest):
     # Disassembled from:
     # | raise ValueError()
     # | return 1
+    o = test_utils.Py2Opcodes
     co = self.make_code([
         # b0:
-        0x74, 0, 0,  # 0 LOAD_GLOBAL, arg=0,
-        0x82, 1, 0,  # 6 RAISE_VARARGS, arg=1,
-        0x64, 1, 0,  # 9 LOAD_CONST, arg=1, dead.
-        0x53,  # 12 RETURN_VALUE, dead.
+        o.LOAD_GLOBAL, 0, 0,
+        o.RAISE_VARARGS, 1, 0,
+        o.LOAD_CONST, 1, 0,
+        o.RETURN_VALUE,  # dead.
     ], name="raise")
     ordered_code = self._order_code(co)
     self.assertEqual(ordered_code.co_name, "raise")
@@ -168,14 +174,15 @@ class OrderingTest(BaseBlocksTest):
   def test_call(self):
     # Disassembled from:
     # | f()
+    o = test_utils.Py2Opcodes
     co = self.make_code([
         # b0:
-        0x74, 0, 0,  # 0 LOAD_GLOBAL, arg=0,
-        0x83, 0, 0,  # 3 CALL_FUNCTION, arg=0,
+        o.LOAD_GLOBAL, 0, 0,
+        o.CALL_FUNCTION, 0, 0,
         # b1:
-        0x01,  # 6 POP_TOP,
-        0x64, 0, 0,  # 7 LOAD_CONST, arg=0,
-        0x53,  # 10 RETURN_VALUE
+        o.POP_TOP,
+        o.LOAD_CONST, 0, 0,
+        o.RETURN_VALUE,
     ], name="call")
     ordered_code = self._order_code(co)
     b0, b1 = ordered_code.order
@@ -189,17 +196,18 @@ class OrderingTest(BaseBlocksTest):
     # |   pass
     # | finally:
     # |   pass
+    o = test_utils.Py2Opcodes
     co = self.make_code([
         # b0:
-        0x7a, 4, 0,  # 0 SETUP_FINALLY, dest=7,
-        0x57,  # 3 POP_BLOCK,
+        o.SETUP_FINALLY, 4, 0,  # dest=7
+        o.POP_BLOCK,
         # b1:
-        0x64, 0, 0,  # 4 LOAD_CONST, arg=0 (None),
+        o.LOAD_CONST, 0, 0,
         # b2:
-        0x58,  # 7 END_FINALLY,
+        o.END_FINALLY,
         # b3:
-        0x64, 0, 0,  # 8 LOAD_CONST, arg=0 (None),
-        0x53,  # 11 RETURN_VALUE
+        o.LOAD_CONST, 0, 0,
+        o.RETURN_VALUE,
     ], name="finally")
     ordered_code = self._order_code(co)
     b0, b1, b2, b3 = ordered_code.order
@@ -215,22 +223,23 @@ class OrderingTest(BaseBlocksTest):
     # |   pass
     # | except:
     # |   pass
+    o = test_utils.Py2Opcodes
     co = self.make_code([
         # b0:
-        0x79, 4, 0,  # 0 SETUP_EXCEPT, dest=7,
-        0x57,        # 3 POP_BLOCK,
+        o.SETUP_EXCEPT, 4, 0,  # dest=7,
+        o.POP_BLOCK,
         # b1:
-        0x6e, 7, 0,  # 4 JUMP_FORWARD, dest=14,
+        o.JUMP_FORWARD, 7, 0,  # dest=14,
         # b2:
-        0x01,        # 7 POP_TOP,
-        0x01,        # 8 POP_TOP,
-        0x01,        # 9 POP_TOP,
-        0x6e, 1, 0,  # 10 JUMP_FORWARD, dest=14,
+        o.POP_TOP,
+        o.POP_TOP,
+        o.POP_TOP,
+        o.JUMP_FORWARD, 1, 0,  # dest=14,
         # b3:
-        0x58,        # 13 END_FINALLY,
+        o.END_FINALLY,
         # b4:
-        0x64, 0, 0,  # 14 LOAD_CONST, arg=0,
-        0x53,        # 17 RETURN_VALUE
+        o.LOAD_CONST, 0, 0,
+        o.RETURN_VALUE,
     ], name="except")
     ordered_code = self._order_code(co)
     b0, b1, b2, b3 = ordered_code.order
@@ -246,11 +255,12 @@ class OrderingTest(BaseBlocksTest):
     # Disassembled from:
     # | return None
     # | return None
+    o = test_utils.Py2Opcodes
     co = self.make_code([
-        0x64, 1, 0,  # 0 LOAD_CONST, arg=0 (None)
-        0x53,  # 3 RETURN_VALUE, dead.
-        0x64, 1, 0,  # 4 LOAD_CONST, arg=0 (None), dead.
-        0x53,  # 7 RETURN_VALUE, dead.
+        o.LOAD_CONST, 1, 0,
+        o.RETURN_VALUE,  # dead.
+        o.LOAD_CONST, 1, 0,  # dead.
+        o.RETURN_VALUE,  # dead.
     ], name="return")
     ordered_code = self._order_code(co)
     b0, = ordered_code.order
@@ -260,21 +270,22 @@ class OrderingTest(BaseBlocksTest):
     # Disassembled from:
     # | with None:
     # |   pass
+    o = test_utils.Py2Opcodes
     co = self.make_code([
         # b0:
-        0x64, 0, 0,  # 0 LOAD_CONST, arg=0,
-        0x8f, 5, 0,  # 3 SETUP_WITH, dest=11,
-        0x01,        # 6 POP_TOP,
-        0x57,        # 7 POP_BLOCK,
+        o.LOAD_CONST, 0, 0,
+        o.SETUP_WITH, 5, 0,  # dest=11,
+        o.POP_TOP,
+        o.POP_BLOCK,
         # b1:
-        0x64, 0, 0,  # 8 LOAD_CONST, arg=0,
+        o.LOAD_CONST, 0, 0,
         # b2:
-        0x51,        # 11 WITH_CLEANUP,
+        o.WITH_CLEANUP,
         # b3:
-        0x58,        # 12 END_FINALLY,
+        o.END_FINALLY,
         # b4:
-        0x64, 0, 0,  # 13 LOAD_CONST, arg=0,
-        0x53,        # 16 RETURN_VALUE
+        o.LOAD_CONST, 0, 0,
+        o.RETURN_VALUE,
     ], name="with")
     ordered_code = self._order_code(co)
     b0, b1, b2, b3, b4 = ordered_code.order
@@ -294,13 +305,14 @@ class BlockStackTest(BaseBlocksTest):
     # |   pass
     # | finally:
     # |   pass
+    o = test_utils.Py2Opcodes
     co = self.make_code([
-        0x7a, 4, 0,  # [0] 0 SETUP_FINALLY, dest=7 [3],
-        0x57,        # [1] 3 POP_BLOCK,
-        0x64, 0, 0,  # [2] 4 LOAD_CONST, arg=0 (None),
-        0x58,        # [3] 7 END_FINALLY,
-        0x64, 0, 0,  # [4] 8 LOAD_CONST, arg=0 (None),
-        0x53,        # [5] 11 RETURN_VALUE
+        o.SETUP_FINALLY, 4, 0,  # dest=7 [3],
+        o.POP_BLOCK,
+        o.LOAD_CONST, 0, 0,
+        o.END_FINALLY,
+        o.LOAD_CONST, 0, 0,
+        o.RETURN_VALUE,
     ], name="finally")
     bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
     blocks.add_pop_block_targets(bytecode)
@@ -313,17 +325,18 @@ class BlockStackTest(BaseBlocksTest):
     # |   pass
     # | except:
     # |   pass
+    o = test_utils.Py2Opcodes
     co = self.make_code([
-        0x79, 4, 0,  # [ 0] 0 SETUP_EXCEPT, dest=7 [3],
-        0x57,        # [ 1] 3 POP_BLOCK,
-        0x6e, 7, 0,  # [ 2] 4 JUMP_FORWARD, dest=14 [11],
-        0x01,        # [ 3] 7 POP_TOP,
-        0x01,        # [ 4] 8 POP_TOP,
-        0x01,        # [ 8] 9 POP_TOP,
-        0x6e, 1, 0,  # [ 9] 10 JUMP_FORWARD, dest=14 [11],
-        0x58,        # [10] 13 END_FINALLY,
-        0x64, 0, 0,  # [11] 14 LOAD_CONST, arg=0,
-        0x53,        # [12] 17 RETURN_VALUE
+        o.SETUP_EXCEPT, 4, 0,  # dest=7 [3],
+        o.POP_BLOCK,
+        o.JUMP_FORWARD, 7, 0,  # dest=14 [11],
+        o.POP_TOP,
+        o.POP_TOP,
+        o.POP_TOP,
+        o.JUMP_FORWARD, 1, 0,  # dest=14 [11],
+        o.END_FINALLY,
+        o.LOAD_CONST, 0, 0,
+        o.RETURN_VALUE,
     ], name="except")
     bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
     blocks.add_pop_block_targets(bytecode)
@@ -334,16 +347,17 @@ class BlockStackTest(BaseBlocksTest):
     # Disassembled from:
     # | with None:
     # |   pass
+    o = test_utils.Py2Opcodes
     co = self.make_code([
-        0x64, 0, 0,  # [0] 0 LOAD_CONST, arg=0,
-        0x8f, 5, 0,  # [1] 3 SETUP_WITH, dest=11 [5],
-        0x01,        # [2] 6 POP_TOP,
-        0x57,        # [3] 7 POP_BLOCK,
-        0x64, 0, 0,  # [4] 8 LOAD_CONST, arg=0,
-        0x51,        # [5] 11 WITH_CLEANUP,
-        0x58,        # [6] 12 END_FINALLY,
-        0x64, 0, 0,  # [7] 13 LOAD_CONST, arg=0,
-        0x53,        # [8] 16 RETURN_VALUE
+        o.LOAD_CONST, 0, 0,
+        o.SETUP_WITH, 5, 0,  # dest=11 [5],
+        o.POP_TOP,
+        o.POP_BLOCK,
+        o.LOAD_CONST, 0, 0,
+        o.WITH_CLEANUP,
+        o.END_FINALLY,
+        o.LOAD_CONST, 0, 0,
+        o.RETURN_VALUE,
     ], name="with")
     bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
     blocks.add_pop_block_targets(bytecode)
@@ -354,14 +368,15 @@ class BlockStackTest(BaseBlocksTest):
     # Disassembled from:
     # | while []:
     # |   break
+    o = test_utils.Py2Opcodes
     co = self.make_code([
-        0x78, 10, 0,  # [0] 0 SETUP_LOOP, dest=13 [5],
-        0x67, 0, 0,   # [1] 3 BUILD_LIST, arg=0,
-        0x72, 12, 0,  # [2] 6 POP_JUMP_IF_FALSE, dest=12 [4],
-        0x71, 3, 0,   # [3] 9 JUMP_ABSOLUTE, dest=3 [1],
-        0x57,         # [4] 12 POP_BLOCK,
-        0x64, 0, 0,   # [5] 13 LOAD_CONST, arg=0,
-        0x53,         # [6] 16 RETURN_VALUE
+        o.SETUP_LOOP, 10, 0,  # dest=13 [5],
+        o.BUILD_LIST, 0, 0,
+        o.POP_JUMP_IF_FALSE, 12, 0,  # dest=12 [4],
+        o.JUMP_ABSOLUTE, 3, 0,   # dest=3 [1],
+        o.POP_BLOCK,
+        o.LOAD_CONST, 0, 0,
+        o.RETURN_VALUE,
     ])
     bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
     blocks.add_pop_block_targets(bytecode)
@@ -375,18 +390,19 @@ class BlockStackTest(BaseBlocksTest):
     # | while True:
     # |  if []:
     # |    break
+    o = test_utils.Py2Opcodes
     co = self.make_code([
-        0x78, 20, 0,  # [0] 0 SETUP_LOOP, dest=23, [9],
-        0x74, 0, 0,   # [1] 3 LOAD_GLOBAL, arg=0,
-        0x72, 22, 0,  # [2] 6 POP_JUMP_IF_FALSE, dest=22 [8],
-        0x67, 0, 0,   # [3] 9 BUILD_LIST, arg=0,
-        0x72, 3, 0,   # [4] 12 POP_JUMP_IF_FALSE, dest=3 [1],
-        0x50,         # [5] 15 BREAK_LOOP,
-        0x71, 3, 0,   # [6] 16 JUMP_ABSOLUTE, dest=3 [1],
-        0x71, 3, 0,   # [7] 19 JUMP_ABSOLUTE, dest=3 [1],
-        0x57,         # [8] 22 POP_BLOCK,
-        0x64, 0, 0,   # [9] 23 LOAD_CONST, arg=0,
-        0x53,         # [10] 26 RETURN_VALUE
+        o.SETUP_LOOP, 20, 0,  # dest=23, [9],
+        o.LOAD_GLOBAL, 0, 0,
+        o.POP_JUMP_IF_FALSE, 22, 0,  # dest=22 [8],
+        o.BUILD_LIST, 0, 0,
+        o.POP_JUMP_IF_FALSE, 3, 0,   # dest=3 [1],
+        o.BREAK_LOOP,
+        o.JUMP_ABSOLUTE, 3, 0,   # dest=3 [1],
+        o.JUMP_ABSOLUTE, 3, 0,   # dest=3 [1],
+        o.POP_BLOCK,
+        o.LOAD_CONST, 0, 0,
+        o.RETURN_VALUE,
     ])
     bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
     blocks.add_pop_block_targets(bytecode)
@@ -402,23 +418,24 @@ class BlockStackTest(BaseBlocksTest):
     # |     continue
     # |   except:
     # |     pass
+    o = test_utils.Py2Opcodes
     co = self.make_code([
-        0x78, 27, 0,  # [0] 0 SETUP_LOOP, dest=30 [14],
-        0x74, 0, 0,   # [1] 3 LOAD_GLOBAL, arg=0,
-        0x72, 29, 0,  # [2] 6 POP_JUMP_IF_FALSE, dest=29 [13],
-        0x79, 7, 0,   # [3] 9 SETUP_EXCEPT, dest=19 [7],
-        0x77, 3, 0,   # [4] 12 CONTINUE_LOOP, dest=3 [1],
-        0x57,         # [5] 15 POP_BLOCK,
-        0x71, 3, 0,   # [6] 16 JUMP_ABSOLUTE, dest=3 [1],
-        0x01,         # [7] 19 POP_TOP,
-        0x01,         # [8] 20 POP_TOP,
-        0x01,         # [9] 21 POP_TOP,
-        0x71, 3, 0,   # [10] 22 JUMP_ABSOLUTE, dest=3 [1],
-        0x58,         # [11] 25 END_FINALLY,
-        0x71, 3, 0,   # [12] 26 JUMP_ABSOLUTE, dest=3 [1],
-        0x57,         # [13] 29 POP_BLOCK,
-        0x64, 0, 0,   # [14] 30 LOAD_CONST, arg=0,
-        0x53,         # [15] 33 RETURN_VALUE
+        o.SETUP_LOOP, 27, 0,  # dest=30 [14],
+        o.LOAD_GLOBAL, 0, 0,
+        o.POP_JUMP_IF_FALSE, 29, 0,  # dest=29 [13],
+        o.SETUP_EXCEPT, 7, 0,   # dest=19 [7],
+        o.CONTINUE_LOOP, 3, 0,   # dest=3 [1],
+        o.POP_BLOCK,
+        o.JUMP_ABSOLUTE, 3, 0,   # dest=3 [1],
+        o.POP_TOP,
+        o.POP_TOP,
+        o.POP_TOP,
+        o.JUMP_ABSOLUTE, 3, 0,   # dest=3 [1],
+        o.END_FINALLY,
+        o.JUMP_ABSOLUTE, 3, 0,   # dest=3 [1],
+        o.POP_BLOCK,
+        o.LOAD_CONST, 0, 0,
+        o.RETURN_VALUE,
     ])
     bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
     blocks.add_pop_block_targets(bytecode)
@@ -434,13 +451,14 @@ class BlockStackTest(BaseBlocksTest):
     # Disassembly + type comment map from
     #   a = 1; b = 2  # type: float
     # The type comment should only apply to b.
+    o = test_utils.Py2Opcodes
     co = self.make_code([
-        0x64, 0, 0,     # [0]  0 LOAD_CONST, arg=0 (1)
-        0x5a, 0, 0,     # [1]  3 STORE_NAME, arg=0 (a)
-        0x64, 1, 0,     # [2]  6 LOAD_CONST, arg=1 (2)
-        0x5a, 1, 0,     # [3]  9 STORE_NAME, arg=1 (b)
-        0x64, 2, 0,     # [4] 12 LOAD_CONST, arg=2 (None)
-        0x53            # [5] 15 RETURN_VALUE
+        o.LOAD_CONST, 0, 0,
+        o.STORE_NAME, 0, 0,
+        o.LOAD_CONST, 1, 0,
+        o.STORE_NAME, 1, 0,
+        o.LOAD_CONST, 2, 0,
+        o.RETURN_VALUE
     ])
     ordered_code = blocks.process_code(co, {1: ("a = 1; b = 2", "float")})
     bytecode = ordered_code.order[0].code

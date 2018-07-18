@@ -67,24 +67,25 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     # | elif []:
     # |   y = None
     # | return y
+    o = test_utils.Py2Opcodes
     code = self.make_code([
-        0x67, 0, 0,   #  0 BUILD_LIST, arg=0,
-        0x72, 15, 0,  #  3 POP_JUMP_IF_FALSE, dest=15,
-        0x64, 1, 0,   #  6 LOAD_CONST, arg=1 (1),
-        0x7d, 1, 0,   #  9 STORE_FAST, arg=1 "y",
-        0x6e, 30, 0,  # 12 JUMP_FORWARD, dest=45,
-        0x67, 0, 0,   # 15 BUILD_LIST, arg=0,
-        0x72, 30, 0,  # 18 POP_JUMP_IF_FALSE, dest=30,
-        0x64, 2, 0,   # 21 LOAD_CONST, arg=2 (2),
-        0x7d, 1, 0,   # 24 STORE_FAST, arg=1 "y",
-        0x6e, 15, 0,  # 27 JUMP_FORWARD, dest=45,
-        0x67, 0, 0,   # 30 BUILD_LIST, arg=0,
-        0x72, 45, 0,  # 33 POP_JUMP_IF_FALSE, dest=45,
-        0x64, 0, 0,   # 36 LOAD_CONST, arg=0 (None),
-        0x7d, 1, 0,   # 39 STORE_FAST, arg=1 "y",
-        0x6e, 0, 0,   # 42 JUMP_FORWARD, dest=45,
-        0x7c, 1, 0,   # 45 LOAD_FAST, arg=1,
-        0x53,         # 48 RETURN_VALUE
+        o.BUILD_LIST, 0, 0,
+        o.POP_JUMP_IF_FALSE, 15, 0,
+        o.LOAD_CONST, 1, 0,
+        o.STORE_FAST, 1, 0,
+        o.JUMP_FORWARD, 30, 0,
+        o.BUILD_LIST, 0, 0,
+        o.POP_JUMP_IF_FALSE, 30, 0,
+        o.LOAD_CONST, 2, 0,
+        o.STORE_FAST, 1, 0,
+        o.JUMP_FORWARD, 15, 0,
+        o.BUILD_LIST, 0, 0,
+        o.POP_JUMP_IF_FALSE, 45, 0,
+        o.LOAD_CONST, 0, 0,
+        o.STORE_FAST, 1, 0,
+        o.JUMP_FORWARD, 0, 0,
+        o.LOAD_FAST, 1, 0,
+        o.RETURN_VALUE,
     ])
     code = blocks.process_code(code, {})
     v = vm.VirtualMachine(self.errorlog, self.options, loader=self.loader)
@@ -180,6 +181,51 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
       pass  # The code we test throws an exception. Ignore it.
     six.assertCountEqual(self,
                          self.trace_vm.instructions_executed, [0, 1, 5, 6])
+
+
+class TraceTest(test_base.BaseTest, test_utils.MakeCodeMixin):
+  """Tests for opcode tracing in the VM."""
+
+  def __init__(self, *args, **kwargs):
+    super(TraceTest, self).__init__(*args, **kwargs)
+    self.python_version = (3, 6)
+
+  def setUp(self):
+    super(TraceTest, self).setUp()
+    self.errorlog = errors.ErrorLog()
+    self.trace_vm = TraceVM(self.options, self.loader)
+
+  def test_empty_data(self):
+    """Test that we can trace values without data."""
+    op = test_utils.FakeOpcode("foo.py", 123, "foo")
+    self.trace_vm.trace_opcode(op, "x", 42)
+    self.assertEquals(self.trace_vm.opcode_traces, [(op, "x", None)])
+
+  def test_const(self):
+    src = textwrap.dedent("""\
+      x = 1  # line 1
+      y = x  # line 2
+    """)
+    # Compiles to:
+    #     0 LOAD_CONST     0 (1)
+    #     3 STORE_NAME     0 (x)
+    #
+    #     6 LOAD_NAME      0 (x)
+    #     9 STORE_NAME     1 (y)
+    #    12 LOAD_CONST     1 (None)
+    #    15 RETURN_VALUE
+    self.trace_vm.run_program(src, "", maximum_depth=10)
+    expected = [
+        # (opcode, line number, symbol)
+        ("LOAD_CONST", 1, 1),
+        ("STORE_NAME", 1, "x"),
+        ("LOAD_NAME", 2, "x"),
+        ("STORE_NAME", 2, "y"),
+        ("LOAD_CONST", 2, None)
+    ]
+    actual = [(op.name, op.line, symbol)
+              for op, symbol, _ in self.trace_vm.opcode_traces]
+    self.assertEqual(actual, expected)
 
 
 test_base.main(globals(), __name__ == "__main__")

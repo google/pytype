@@ -141,6 +141,7 @@ class VirtualMachine(object):
     self.filename = None
     self.director = None
     self._analyzing = False  # Are we in self.analyze()?
+    self.opcode_traces = []
 
     # Map from builtin names to canonical objects.
     self.special_builtins = {
@@ -169,6 +170,11 @@ class VirtualMachine(object):
 
     # Memoize which overlays are loaded.
     self.loaded_overlays = {}
+
+  def trace_opcode(self, op, symbol, val):
+    data = getattr(val, "data", None)
+    rec = (op, symbol, data)
+    self.opcode_traces.append(rec)
 
   def lookup_builtin(self, name):
     try:
@@ -1027,13 +1033,15 @@ class VirtualMachine(object):
     value = self.annotations_util.apply_type_comment(state, op, name, value)
     state = state.forward_cfg_node()
     state = self._store_value(state, name, value, local)
+    self.trace_opcode(op, name, value)
     return state.forward_cfg_node()
 
-  def _del_name(self, state, name, local):
+  def _del_name(self, op, state, name, local):
     """Called when a local or global is deleted."""
     value = abstract.Deleted(self).to_variable(state.node)
     state = state.forward_cfg_node()
     state = self._store_value(state, name, value, local)
+    self.trace_opcode(op, name, value)
     return state.forward_cfg_node()
 
   def _retrieve_attr(self, node, obj, attr):
@@ -1421,6 +1429,7 @@ class VirtualMachine(object):
   def byte_LOAD_CONST(self, state, op):
     raw_const = self.frame.f_code.co_consts[op.arg]
     const = self.convert.constant_to_var(raw_const, node=state.node)
+    self.trace_opcode(op, raw_const, const)
     return state.push(const)
 
   def byte_POP_TOP(self, state, op):
@@ -1475,6 +1484,7 @@ class VirtualMachine(object):
           return state.push(
               self.convert.create_new_unsolvable(state.node))
     self.check_for_deleted(state, name, val)
+    self.trace_opcode(op, name, val)
     return state.push(val)
 
   def byte_STORE_NAME(self, state, op):
@@ -1483,7 +1493,7 @@ class VirtualMachine(object):
 
   def byte_DELETE_NAME(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
-    return self._del_name(state, name, local=True)
+    return self._del_name(op, state, name, local=True)
 
   def byte_LOAD_FAST(self, state, op):
     """Load a local. Unlike LOAD_NAME, it doesn't fall back to globals."""
@@ -1494,6 +1504,7 @@ class VirtualMachine(object):
       self.errorlog.name_error(self.frames, name)
       val = self.convert.create_new_unsolvable(state.node)
     self.check_for_deleted(state, name, val)
+    self.trace_opcode(op, name, val)
     return state.push(val)
 
   def byte_STORE_FAST(self, state, op):
@@ -1502,7 +1513,7 @@ class VirtualMachine(object):
 
   def byte_DELETE_FAST(self, state, op):
     name = self.frame.f_code.co_varnames[op.arg]
-    return self._del_name(state, name, local=True)
+    return self._del_name(op, state, name, local=True)
 
   def byte_LOAD_GLOBAL(self, state, op):
     """Load a global variable, or fall back to trying to load a builtin."""
@@ -1516,6 +1527,7 @@ class VirtualMachine(object):
         self.errorlog.name_error(self.frames, name)
         return state.push(self.convert.create_new_unsolvable(state.node))
     self.check_for_deleted(state, name, val)
+    self.trace_opcode(op, name, val)
     return state.push(val)
 
   def byte_STORE_GLOBAL(self, state, op):
@@ -1524,7 +1536,7 @@ class VirtualMachine(object):
 
   def byte_DELETE_GLOBAL(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
-    return self._del_name(state, name, local=False)
+    return self._del_name(op, state, name, local=False)
 
   def get_closure_var_name(self, arg):
     n_cellvars = len(self.frame.f_code.co_cellvars)
@@ -1558,6 +1570,7 @@ class VirtualMachine(object):
     cell = self.frame.cells[op.arg]
     name = self.get_closure_var_name(op.arg)
     self.check_for_deleted(state, name, cell)
+    self.trace_opcode(op, name, cell)
     return state.push(cell)
 
   def byte_LOAD_CLOSURE(self, state, op):
@@ -1577,13 +1590,16 @@ class VirtualMachine(object):
     state = state.forward_cfg_node()
     self.frame.cells[op.arg].PasteVariable(value, state.node)
     state = state.forward_cfg_node()
+    self.trace_opcode(op, name, value)
     return state
 
   def byte_DELETE_DEREF(self, state, op):
     value = abstract.Deleted(self).to_variable(state.node)
+    name = self.get_closure_var_name(op.arg)
     state = state.forward_cfg_node()
     self.frame.cells[op.arg].PasteVariable(value, state.node)
     state = state.forward_cfg_node()
+    self.trace_opcode(op, name, value)
     return state
 
   def byte_LOAD_CLASSDEREF(self, state, op):
@@ -1591,6 +1607,7 @@ class VirtualMachine(object):
     name = self.get_closure_var_name(op.arg)
     try:
       state, val = self.load_local(state, name)
+      self.trace_opcode(op, name, val)
       return state.push(val)
     except KeyError:
       return self.load_closure_cell(state, op)
@@ -1707,6 +1724,7 @@ class VirtualMachine(object):
     state, obj = state.pop()
     log.debug("LOAD_ATTR: %r %r", obj, name)
     state, val = self.load_attr(state, obj, name)
+    self.trace_opcode(op, name, val)
     return state.push(val)
 
   def byte_STORE_ATTR(self, state, op):
@@ -1716,6 +1734,7 @@ class VirtualMachine(object):
     state = state.forward_cfg_node()
     state = self.store_attr(state, obj, name, val)
     state = state.forward_cfg_node()
+    self.trace_opcode(op, name, val)
     return state
 
   def byte_DELETE_ATTR(self, state, op):
