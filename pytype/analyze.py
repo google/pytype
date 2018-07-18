@@ -599,7 +599,8 @@ def check_types(src, filename, errorlog, options, loader,
 
 def infer_types(src, errorlog, options, loader,
                 filename=None, deep=True, init_maximum_depth=INIT_MAXIMUM_DEPTH,
-                show_library_calls=False, maximum_depth=None, **kwargs):
+                show_library_calls=False, maximum_depth=None, tracer_vm=None,
+                **kwargs):
   """Given Python source return its types.
 
   Args:
@@ -613,15 +614,22 @@ def infer_types(src, errorlog, options, loader,
     init_maximum_depth: Depth of analysis during module loading.
     show_library_calls: If True, call traces are kept in the output.
     maximum_depth: Depth of the analysis. Default: unlimited.
+    tracer_vm: An instance of CallTracer, in case the caller wants to
+      instantiate and retain the vm used for type inference.
     **kwargs: Additional parameters to pass to vm.VirtualMachine
   Returns:
-    A TypeDeclUnit
+    A tuple of (ast: TypeDeclUnit, builtins: TypeDeclUnit)
   Raises:
     AssertionError: In case of a bad parameter combination.
   """
-  tracer = CallTracer(errorlog=errorlog, options=options,
-                      generate_unknowns=options.protocols,
-                      store_all_calls=not deep, loader=loader, **kwargs)
+  # If the caller has passed in a vm, use that.
+  if tracer_vm:
+    assert isinstance(tracer_vm, CallTracer)
+    tracer = tracer_vm
+  else:
+    tracer = CallTracer(errorlog=errorlog, options=options,
+                        generate_unknowns=options.protocols,
+                        store_all_calls=not deep, loader=loader, **kwargs)
   loc, defs = tracer.run_program(src, filename, init_maximum_depth)
   log.info("===Done running definitions and module-level code===")
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)

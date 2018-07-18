@@ -32,7 +32,7 @@ log = logging.getLogger(__name__)
 ERROR_DOC_URL = "https://github.com/google/pytype/blob/master/docs/errors.md"
 
 
-def _read_source_file(input_filename):
+def read_source_file(input_filename):
   try:
     with open(input_filename, "r") as fi:
       return fi.read()
@@ -42,7 +42,7 @@ def _read_source_file(input_filename):
 
 def _call(analyze_types, input_filename, errorlog, options, loader):
   """Helper function to call analyze.check/infer_types."""
-  src = _read_source_file(input_filename)
+  src = read_source_file(input_filename)
   # 'deep' tells the analyzer whether to analyze functions not called from main.
   deep = not options.main_only
   return analyze_types(
