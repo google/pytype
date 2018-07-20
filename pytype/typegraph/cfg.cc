@@ -207,14 +207,18 @@ static PyObject* ProgramGetAttro(PyObject* self, PyObject* attr) {
   if (PyObject_RichCompareBool(attr, k_cfg_nodes, Py_EQ) > 0) {
     PyObject* list = PyList_New(0);
     for (const auto& method : program->program->cfg_nodes()) {
-      PyList_Append(list, WrapCFGNode(program, method.get()));
+      PyObject* cfg_node = WrapCFGNode(program, method.get());
+      PyList_Append(list, cfg_node);
+      Py_DECREF(cfg_node);
     }
     return list;
   } else if (PyObject_RichCompareBool(attr, k_variables, Py_EQ) > 0) {
     PyObject* set = PySet_New(0);
     for (const auto& n : program->program->cfg_nodes()) {
       for (auto b : n->bindings()) {
-        PySet_Add(set, WrapVariable(program, b->variable()));
+        PyObject* variable = WrapVariable(program, b->variable());
+        PySet_Add(set, variable);
+        Py_DECREF(variable);
       }
     }
     return set;
@@ -490,19 +494,25 @@ static PyObject* CFGNodeGetAttro(PyObject* self, PyObject* attr) {
   if (PyObject_RichCompareBool(attr, k_incoming, Py_EQ) > 0) {
     PyObject* list = PyList_New(0);
     for (typegraph::CFGNode* node : cfg_node->cfg_node->incoming()) {
-      PyList_Append(list, WrapCFGNode(program, node));
+      PyObject* cfg_node = WrapCFGNode(program, node);
+      PyList_Append(list, cfg_node);
+      Py_DECREF(cfg_node);
     }
     return list;
   } else if (PyObject_RichCompareBool(attr, k_outgoing, Py_EQ) > 0) {
     PyObject* list = PyList_New(0);
     for (typegraph::CFGNode* node : cfg_node->cfg_node->outgoing()) {
-      PyList_Append(list, WrapCFGNode(program, node));
+      PyObject* cfg_node = WrapCFGNode(program, node);
+      PyList_Append(list, cfg_node);
+      Py_DECREF(cfg_node);
     }
     return list;
   } else if (PyObject_RichCompareBool(attr, k_bindings, Py_EQ) > 0) {
     PyObject* list = PyList_New(0);
     for (typegraph::Binding* v : cfg_node->cfg_node->bindings()) {
-      PyList_Append(list, WrapBinding(program, v));
+      PyObject* binding = WrapBinding(program, v);
+      PyList_Append(list, binding);
+      Py_DECREF(binding);
     }
     return list;
   } else if (PyObject_RichCompareBool(attr, k_name, Py_EQ) > 0) {
@@ -801,12 +811,18 @@ static PyObject* BindingGetAttro(PyObject* self, PyObject* attr) {
       for (const typegraph::SourceSet& source_set : origin->source_sets) {
         PyObject* py_source_set = PySet_New(0);
         for (typegraph::Binding* source : source_set) {
-          PySet_Add(py_source_set, WrapBinding(program, source));
+          PyObject* binding = WrapBinding(program, source);
+          PySet_Add(py_source_set, binding);
+          Py_DECREF(binding);
         }
         PyList_Append(py_source_sets, py_source_set);
+        Py_DECREF(py_source_set);
       }
+      // Do not DECREF on |py_source_sets| as PyStructSequence_SET_ITEM
+      // steals the reference.
       PyStructSequence_SET_ITEM(py_origin, 1, py_source_sets);
       PyList_Append(py_origins, py_origin);
+      Py_DECREF(py_origin);
     }
     return py_origins;
   } else if (PyObject_RichCompareBool(attr, k_data, Py_EQ) > 0) {
@@ -979,14 +995,16 @@ static PyObject* VariableGetAttro(PyObject* self, PyObject* attr) {
   if (PyObject_RichCompareBool(attr, k_bindings, Py_EQ) > 0) {
     PyObject* list = PyList_New(0);
     for (const auto& attr : u->u->bindings()) {
-      PyList_Append(list, WrapBinding(program, attr.get()));
+      PyObject* binding = WrapBinding(program, attr.get());
+      PyList_Append(list, binding);
+      Py_DECREF(binding);
     }
     return list;
   } else if (PyObject_RichCompareBool(attr, k_data, Py_EQ) > 0) {
     PyObject* list = PyList_New(0);
     for (const auto& attr : u->u->bindings()) {
       PyObject* data = reinterpret_cast<PyObject*>(attr->data());
-      Py_INCREF(data);
+      // Do not INCREF on |data| as PyList_Append does it internally.
       PyList_Append(list, data);
     }
     return list;
@@ -1029,7 +1047,9 @@ static PyObject* VariablePrune(PyVariableObj* self,
   auto bindings = self->u->Prune(cfg_node);
   PyObject* list = PyList_New(0);
   for (typegraph::Binding* attr : bindings) {
-    PyList_Append(list, WrapBinding(self->program, attr));
+    PyObject* binding = WrapBinding(self->program, attr);
+    PyList_Append(list, binding);
+    Py_DECREF(binding);
   }
   return list;
 }
@@ -1054,7 +1074,7 @@ static PyObject* VariablePruneData(PyVariableObj* self,
   PyObject* list = PyList_New(0);
   for (typegraph::Binding* attr : bindings) {
     PyObject* data = reinterpret_cast<PyObject*>(attr->data());
-    Py_INCREF(data);
+    // Do not INCREF on |data| as PyList_Append does that internally.
     PyList_Append(list, data);
   }
   return list;
@@ -1077,7 +1097,9 @@ static PyObject* VariableFilter(PyVariableObj* self,
   auto bindings = self->u->Filter(cfg_node->cfg_node);
   PyObject* list = PyList_New(0);
   for (typegraph::Binding* attr : bindings) {
-    PyList_Append(list, WrapBinding(program, attr));
+    PyObject* binding = WrapBinding(program, attr);
+    PyList_Append(list, binding);
+    Py_DECREF(binding);
   }
   return list;
 }
@@ -1097,7 +1119,7 @@ static PyObject* VariableFilteredData(PyVariableObj* self,
   PyObject* list = PyList_New(0);
   for (void* attr_data : bindings) {
     PyObject* data = reinterpret_cast<PyObject*>(attr_data);
-    Py_INCREF(data);
+    // Do not INCREF on |data| as PyList_Append does that internally.
     PyList_Append(list, data);
   }
   return list;
