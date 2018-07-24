@@ -6,6 +6,7 @@ from pytype import datatypes
 from pytype import function
 from pytype import special_builtins
 from pytype import typing_overlay
+from pytype import utils
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -20,11 +21,8 @@ _COMPATIBLE_BUILTINS = [
 ]
 
 
-class AbstractMatcher(object):
+class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
   """Matcher for abstract values."""
-
-  def __init__(self, vm):
-    self.vm = vm
 
   def _set_error_subst(self, subst):
     """Set the substitution used by compute_subst in the event of an error."""

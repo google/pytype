@@ -214,7 +214,7 @@ def has_type_parameters(node, val, seen=None):
     return False
 
 
-class AtomicAbstractValue(object):
+class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   """A single abstract value such as a type or function signature.
 
   This is the base class of the things that appear in Variables. It represents
@@ -232,8 +232,8 @@ class AtomicAbstractValue(object):
 
   def __init__(self, name, vm):
     """Basic initializer for all AtomicAbstractValues."""
+    super(AtomicAbstractValue, self).__init__(vm)
     assert hasattr(vm, "program"), type(self)
-    self.vm = vm
     self.mro = []
     self.cls = None
     self.name = name
@@ -1765,7 +1765,7 @@ class Mutation(collections.namedtuple("_", ["instance", "name", "value"])):
     return hash((self.instance, self.name, frozenset(self.value.data)))
 
 
-class PyTDSignature(object):
+class PyTDSignature(utils.VirtualMachineWeakrefMixin):
   """A PyTD function type (signature).
 
   This represents instances of functions with specific arguments and return
@@ -1773,7 +1773,7 @@ class PyTDSignature(object):
   """
 
   def __init__(self, name, pytd_sig, vm):
-    self.vm = vm
+    super(PyTDSignature, self).__init__(vm)
     self.name = name
     self.pytd_sig = pytd_sig
     self.param_types = [

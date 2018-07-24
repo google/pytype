@@ -10,6 +10,7 @@ from pytype import datatypes
 from pytype import output
 from pytype import special_builtins
 from pytype import typing_overlay
+from pytype import utils
 from pytype.pyc import loadmarshal
 from pytype.pytd import mro
 from pytype.pytd import pytd
@@ -24,7 +25,7 @@ log = logging.getLogger(__name__)
 MAX_IMPORT_DEPTH = 12
 
 
-class Converter(object):
+class Converter(utils.VirtualMachineWeakrefMixin):
   """Functions for creating the classes in abstract.py."""
 
   # Define this error inside Converter so that it is exposed to abstract.py
@@ -35,7 +36,7 @@ class Converter(object):
       self.type_param_name = type_param_name
 
   def __init__(self, vm):
-    self.vm = vm
+    super(Converter, self).__init__(vm)
     self.vm.convert = self  # to make constant_to_value calls below work
     self.pytd_convert = output.Converter(vm)
 
