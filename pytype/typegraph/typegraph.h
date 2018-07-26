@@ -10,6 +10,7 @@
 #define PYTYPE_TYPEGRAPH_TYPEGRAPH_H_
 
 #include <cstddef>
+#include <functional>
 #include <memory>
 #include <set>
 #include <string>
