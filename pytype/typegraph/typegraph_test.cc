@@ -1,6 +1,7 @@
-#include "typegraph.h"
-
 #include <algorithm>
+
+#include "test_util.h"
+#include "typegraph.h"
 
 #include "gtest/gmock.h"  // for UnorderedElementsAre
 #include "gtest/gunit.h"
@@ -57,16 +58,16 @@ class TypeGraphTest : public ::testing::Test {
     y_ = p_.NewVariable();
     z_ = p_.NewVariable();
 
-    xval_ = x_->AddBinding(&classA, n_[0], {});
-    yval_ = y_->AddBinding(&classB, n_[0], {});
-    zval_ = z_->AddBinding(&classC, n_[0], {});
-    x_->AddBinding(&const1, n_[1], {});
+    xval_ = AddBinding(x_, &classA, n_[0], {});
+    yval_ = AddBinding(y_, &classB, n_[0], {});
+    zval_ = AddBinding(z_, &classC, n_[0], {});
+    AddBinding(x_, &const1, n_[1], {});
     for (const auto& binding : z_->bindings()) {
       x_->AddBinding(binding->data(), n_[2], {});
     }
-    x_->AddBinding(&classD, n_[5], {});
-    a_->AddBinding(&const2, n_[3], {});
-    b_->AddBinding(&const3, n_[4], {});
+    AddBinding(x_, &classD, n_[5], {});
+    AddBinding(a_, &const2, n_[3], {});
+    AddBinding(b_, &const3, n_[4], {});
     for (const auto& binding : z_->bindings()) {
       c_->AddBinding(binding->data(), n_[4], {});
     }
@@ -156,11 +157,12 @@ TEST_F(TypeGraphTest, TestVariableProperties) {
   std::string A("A");
   std::string B("B");
   std::string C("C");
-  xx_->AddBinding(&A, n_[1], {});
-  xx_->AddBinding(&B, n_[2], {});
-  xx_->AddBinding(&C, n_[3], {});
+  AddBinding(xx_, &A, n_[1], {});
+  AddBinding(xx_, &B, n_[2], {});
+  AddBinding(xx_, &C, n_[3], {});
   EXPECT_THAT(xx_->nodes(), testing::UnorderedElementsAre(n_[1], n_[2], n_[3]));
-  EXPECT_THAT(xx_->Data(), testing::UnorderedElementsAre(&A, &B, &C));
+  EXPECT_THAT(xx_->Data(), testing::UnorderedElementsAre(
+      AsDataType(&A), AsDataType(&B), AsDataType(&C)));
 }
 
 TEST_F(TypeGraphTest, testConditionOnStartNode2) {
@@ -173,8 +175,8 @@ TEST_F(TypeGraphTest, testConditionOnStartNode2) {
   Variable* x = p.NewVariable();
   std::string a("a");
   std::string b("b");
-  Binding* x_a = x->AddBinding(&a, n1, {});
-  Binding* x_b = x->AddBinding(&b, n1, {});
+  Binding* x_a = AddBinding(x, &a, n1, {});
+  Binding* x_b = AddBinding(x, &b, n1, {});
   EXPECT_TRUE(n1->HasCombination({x_a}));
   n1->set_condition(x_b);
   p.InvalidateSolver();
@@ -200,7 +202,7 @@ TEST_F(TypeGraphTest, testInvalidateSolver) {
   EXPECT_NE(p.solver(), nullptr);
   // Adding a binding invalidates the solver.
   std::string a("a");
-  Binding* ax = x->AddBinding(&a);
+  Binding* ax = AddBinding(x, &a);
   ax->AddOrigin(n1);
   EXPECT_EQ(p.solver(), nullptr);
   n2->HasCombination({ax});
@@ -210,16 +212,16 @@ TEST_F(TypeGraphTest, testInvalidateSolver) {
 TEST_F(TypeGraphTest, testMaxVarSize) {
   Program p;
   int def_data(MAX_VAR_SIZE + 3);
-  p.set_default_data(&def_data);
+  p.set_default_data(MakeBindingData(&def_data, nullptr));
   Variable* x = p.NewVariable();
   int data[MAX_VAR_SIZE];
   for (int i = 0; i < MAX_VAR_SIZE; i++) {
     data[i] = i;
-    x->AddBinding(&data[i]);
+    AddBinding(x, &data[i]);
   }
   EXPECT_EQ(MAX_VAR_SIZE, x->bindings().size());
-  EXPECT_EQ(x->bindings()[1].get(), x->AddBinding(&data[1]));
-  EXPECT_EQ(x->bindings().back().get(), x->AddBinding(&def_data));
+  EXPECT_EQ(x->bindings()[1].get(), AddBinding(x, &data[1]));
+  EXPECT_EQ(x->bindings().back().get(), AddBinding(x, &def_data));
   EXPECT_EQ(MAX_VAR_SIZE, x->bindings().size());
 }
 

@@ -106,6 +106,17 @@ typedef struct {
   typegraph::Variable* u;
 } PyVariableObj;
 
+static void DecRefCallback(typegraph::DataType* data) {
+  Py_XDECREF(reinterpret_cast<PyObject*>(data));
+}
+
+// Since ownership of the bound data is transferred to C++, one should also
+// give C++ a Python reference to |obj|. The C++ side will drop this reference
+// as part of its cleanup.
+static inline typegraph::BindingData MakeBindingData(PyObject* obj) {
+  return typegraph::MakeBindingData(obj, DecRefCallback);
+}
+
 // We remember which C structure we wrapped and the PyObject that wraps it in
 // the "cache" attribute of PyProgramObj. The entries in this cache are like
 // weak references: even though they have a pointer to the PyObject, they don't
@@ -271,7 +282,8 @@ static PyObject* ProgramGetAttro(PyObject* self, PyObject* attr) {
   } else if (PyObject_RichCompareBool(attr, k_next_variable_id, Py_EQ) > 0) {
     return PyInt_FromSize_t(program->program->next_variable_id());
   } else if (PyObject_RichCompareBool(attr, k_default_data, Py_EQ) > 0) {
-    auto data = reinterpret_cast<PyObject*>(program->program->default_data());
+    auto data = reinterpret_cast<PyObject*>(
+        program->program->default_data().get());
     if (!data) {
       Py_RETURN_NONE;
     }
@@ -298,9 +310,8 @@ static int ProgramSetAttro(PyObject* self, PyObject* attr, PyObject* val) {
     }
     return 0;
   } else if (PyObject_RichCompareBool(attr, k_default_data, Py_EQ) > 0) {
-    Py_XDECREF(program->program->default_data());
     Py_INCREF(val);
-    program->program->set_default_data(val);
+    program->program->set_default_data(MakeBindingData(val));
     return 0;
   }
   return PyObject_GenericSetAttr(self, attr, val);
@@ -424,7 +435,7 @@ static PyObject* NewVariable(PyProgramObj* self,
     while ((item = PyIter_Next(bind_iter))) {
       // PyIter_Next returns a new reference, which will be owned by AddBinding.
       // That means we don't need to INCREF or DECREF item.
-      typegraph::Binding* attr = u->AddBinding(item);
+      typegraph::Binding* attr = u->AddBinding(MakeBindingData(item));
       typegraph::Origin* origin = attr->AddOrigin(where);
       origin->AddSourceSet(ParseBindingList(source_set));
     }
@@ -820,7 +831,7 @@ static PyObject* BindingRepr(PyObject* self) {
   size_t id;
   if (!py_id) {
     PyErr_Clear();
-    id = reinterpret_cast<size_t>(attr->attr->data());
+    id = reinterpret_cast<size_t>(attr->attr->data().get());
   } else {
     id = PyInt_AsLong(py_id);
     if (id == -1 && PyErr_Occurred())
@@ -863,7 +874,7 @@ static PyObject* BindingGetAttro(PyObject* self, PyObject* attr) {
     }
     return py_origins;
   } else if (PyObject_RichCompareBool(attr, k_data, Py_EQ) > 0) {
-    PyObject* data = static_cast<PyObject*>(a->attr->data());
+    PyObject* data = reinterpret_cast<PyObject*>(a->attr->data().get());
     Py_INCREF(data);
     return data;
   }
@@ -928,9 +939,7 @@ static PyObject* AssignToNewVariable(PyBindingObj* self, PyObject* args,
   }
   PyProgramObj* program = get_program(self);
   typegraph::Variable* v = program->program->NewVariable();
-  PyObject* data = reinterpret_cast<PyObject*>(self->attr->data());
-  Py_XINCREF(data);
-  typegraph::Binding* binding = v->AddBinding(data);
+  typegraph::Binding* binding = v->AddBinding(self->attr->data());
   binding->CopyOrigins(self->attr, where);
   return WrapVariable(program, v);
 }
@@ -1041,7 +1050,7 @@ static PyObject* VariableGetAttro(PyObject* self, PyObject* attr) {
   } else if (PyObject_RichCompareBool(attr, k_data, Py_EQ) > 0) {
     PyObject* list = PyList_New(0);
     for (const auto& attr : u->u->bindings()) {
-      PyObject* data = reinterpret_cast<PyObject*>(attr->data());
+      PyObject* data = reinterpret_cast<PyObject*>(attr->data().get());
       // Do not INCREF on |data| as PyList_Append does it internally.
       PyList_Append(list, data);
     }
@@ -1112,7 +1121,7 @@ static PyObject* VariablePruneData(PyVariableObj* self,
   auto bindings = self->u->Prune(cfg_node);
   PyObject* list = PyList_New(0);
   for (typegraph::Binding* attr : bindings) {
-    PyObject* data = reinterpret_cast<PyObject*>(attr->data());
+    PyObject* data = reinterpret_cast<PyObject*>(attr->data().get());
     // Do not INCREF on |data| as PyList_Append does that internally.
     PyList_Append(list, data);
   }
@@ -1202,7 +1211,7 @@ static PyObject* VariableAddBinding(PyVariableObj* self, PyObject* args,
     return nullptr;
 
   Py_INCREF(data);
-  typegraph::Binding* attr = self->u->AddBinding(data);
+  typegraph::Binding* attr = self->u->AddBinding(MakeBindingData(data));
   if (where && source_set) {
     typegraph::Origin* origin = attr->AddOrigin(where);
     origin->AddSourceSet(ParseBindingList(source_set));
@@ -1226,9 +1235,7 @@ static PyObject* VariableAddBindings(PyVariableObj* self, PyObject* args,
     return nullptr;
   }
   for (const auto& binding : variable->u->bindings()) {
-    PyObject* data = reinterpret_cast<PyObject*>(binding->data());
-    Py_XINCREF(data);
-    typegraph::Binding* copy = self->u->AddBinding(data);
+    typegraph::Binding* copy = self->u->AddBinding(binding->data());
     copy->CopyOrigins(binding.get(), where->cfg_node);
   }
   Py_RETURN_NONE;
@@ -1255,9 +1262,7 @@ static PyObject* VarAssignToNewVariable(PyVariableObj* self,
   PyProgramObj* program = get_program(self);
   typegraph::Variable* v = program->program->NewVariable();
   for (const auto& binding : self->u->bindings()) {
-    PyObject* data = reinterpret_cast<PyObject*>(binding->data());
-    Py_XINCREF(data);
-    typegraph::Binding* copy = v->AddBinding(data);
+    typegraph::Binding* copy = v->AddBinding(binding->data());
     copy->CopyOrigins(binding.get(), where);
   }
   return WrapVariable(program, v);

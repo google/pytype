@@ -29,6 +29,26 @@ class Variable;
 // Forward declare the Solver.
 class Solver;
 
+// We declare a fictional opaque type for the raw binding data. The actual
+// binding data, the ones added via the AddBinding methods, are shared pointers
+// to values of this fictional type. This allows us to share the binding data
+// between different Binding and Variable objects.
+class DataType;
+typedef std::shared_ptr<DataType> BindingData;
+
+// A convenience function to create shareable binding data from raw binding
+// data. The |cleanup| argument is called to cleanup the bound data. It can be
+// nullptr to indicate that a cleanup is not required.
+template <typename RawDataType>
+inline BindingData MakeBindingData(RawDataType* raw_data,
+                                   std::function<void(DataType*)> cleanup) {
+  if (cleanup) {
+    return BindingData(reinterpret_cast<DataType*>(raw_data), cleanup);
+  } else {
+    return BindingData(reinterpret_cast<DataType*>(raw_data), [](DataType*){});
+  }
+}
+
 // Maximum number of Bindings allowed on a Variable.
 // Across a sample of 19352 modules, for files which took more than 25 seconds,
 // the largest variable was, on average, 157. For files below 25 seconds, it was
@@ -60,8 +80,12 @@ class Program {
     return cfg_nodes_;
   }
   size_t next_variable_id() { return next_variable_id_; }
-  void* default_data() const { return default_data_; }
-  void set_default_data(void* new_default) { default_data_ = new_default; }
+
+  const BindingData& default_data() const { return default_data_; }
+
+  void set_default_data(const BindingData& new_default) {
+    default_data_ = new_default;
+  }
 
   CFGNode* entrypoint() { return this->entrypoint_; }
   void set_entrypoint(CFGNode* node) { this->entrypoint_ = node; }
@@ -82,7 +106,7 @@ class Program {
   std::vector<std::unique_ptr<CFGNode>> cfg_nodes_;
   std::vector<std::unique_ptr<Variable>> variables_;
   std::unique_ptr<Solver> solver_;
-  void* default_data_;
+  BindingData default_data_;
 };
 
 // A node in the CFG. Assignments within one CFG node are treated as unordered:
@@ -224,13 +248,13 @@ class Binding {
   Variable* variable() const { return variable_; }
 
   // User data, for specifing what this binding is set to.
-  void* data() const { return data_; }
+  const BindingData& data() const { return data_; }
 
   // Used by solver.cc:
   Origin* FindOrigin(const CFGNode* node) const;
 
  private:
-  Binding(Program* program, Variable* variable, void* data);
+  Binding(Program* program, Variable* variable, const BindingData& data);
   Origin* FindOrAddOrigin(CFGNode* node);
 
   std::vector<std::unique_ptr<Origin>> origins_;
@@ -239,7 +263,7 @@ class Binding {
   // TODO(pludemann): map has emplace(); change to map instead of hash_map?
   std::unordered_map<const CFGNode*, Origin*> node_to_origin_;
   Variable* variable_;
-  void* data_;
+  BindingData data_;
   Program* program_;  // for alloc
   friend Variable;    // to allow Variables to construct Bindings
 };
@@ -271,8 +295,8 @@ class Variable {
   // in the current CFG node - do that explicitly with RemoveChoicesFromCFGNode.
   // (It's legitimate to have multiple bindings for a variable on the same CFG
   //  node, e.g. if a union type is introduced at that node)
-  Binding* AddBinding(void* data);
-  Binding* AddBinding(void* data, CFGNode* where,
+  Binding* AddBinding(const BindingData& data);
+  Binding* AddBinding(const BindingData& data, CFGNode* where,
                       const std::vector<Binding*>& source_set);
 
   // Adds all bindings from another variable to this one.
@@ -299,20 +323,21 @@ class Variable {
   const std::set<const CFGNode*> nodes() const;
 
   // Get the (unfiltered) data of all bindings.
-  const std::vector<void*> Data() const;
+  const std::vector<DataType*> Data() const;
 
   // Convenience function for retrieving the filtered data of all bindings.
-  const std::vector<void*> FilteredData(const CFGNode* viewpoint) const;
+  const std::vector<DataType*> FilteredData(const CFGNode* viewpoint) const;
 
  private:
   // Initialize an empty variable
   explicit Variable(Program* program, size_t id);
-  Binding* FindOrAddBinding(void* data);
+  Binding* FindOrAddBindingHelper(const BindingData& data);
+  Binding* FindOrAddBinding(const BindingData& data);
   void RegisterBindingAtNode(Binding* binding, const CFGNode* node);
 
   size_t id_;
   std::vector<std::unique_ptr<Binding>> bindings_;
-  std::unordered_map<void*, Binding*> data_to_binding_;
+  std::unordered_map<DataType*, Binding*> data_to_binding_;
   std::unordered_map<const CFGNode*, SourceSet> cfg_node_to_bindings_;
 
   Program* program_;  // for alloc

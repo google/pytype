@@ -129,7 +129,7 @@ void Origin::AddSourceSet(const SourceSet& source_set) {
 }
 
 // Create a Binding, and also registers it with its CFG node.
-Binding::Binding(Program* program, Variable* variable, void* data)
+Binding::Binding(Program* program, Variable* variable, const BindingData& data)
     : variable_(variable), data_(data), program_(program) {}
 
 Binding::~Binding() {}
@@ -214,11 +214,8 @@ bool Binding::HasSource(const Binding* binding) const {
 
 Variable::Variable(Program* program, size_t id) : id_(id), program_(program) {}
 
-Binding* Variable::FindOrAddBinding(void* data) {
-  if (bindings_.size() >= MAX_VAR_SIZE - 1 &&
-      !map_util::ContainsKey(data_to_binding_, data))
-    data = this->program_->default_data();
-  auto it = data_to_binding_.find(data);
+Binding* Variable::FindOrAddBindingHelper(const BindingData& data) {
+  auto it = data_to_binding_.find(data.get());
   if (it == data_to_binding_.end()) {
     LOG(DEBUG) << "Adding choice to Variable " << id_;
     program_->InvalidateSolver();
@@ -226,10 +223,17 @@ Binding* Variable::FindOrAddBinding(void* data) {
         std::unique_ptr<Binding>(new Binding(this->program_, this, data));
     Binding* bp = binding.get();
     bindings_.push_back(std::move(binding));
-    data_to_binding_[data] = bp;
+    data_to_binding_[data.get()] = bp;
     return bp;
   }
   return it->second;
+}
+
+Binding* Variable::FindOrAddBinding(const BindingData& data) {
+  if (bindings_.size() >= MAX_VAR_SIZE - 1 &&
+      !map_util::ContainsKey(data_to_binding_, data.get()))
+    return FindOrAddBindingHelper(this->program_->default_data());
+  return FindOrAddBindingHelper(data);
 }
 
 void Variable::RegisterBindingAtNode(Binding* binding, const CFGNode* node) {
@@ -239,9 +243,12 @@ void Variable::RegisterBindingAtNode(Binding* binding, const CFGNode* node) {
   cfg_node_to_bindings_[node].insert(binding);
 }
 
-Binding* Variable::AddBinding(void* data) { return FindOrAddBinding(data); }
+Binding* Variable::AddBinding(const BindingData& data) {
+  return FindOrAddBinding(data);
+}
 
-Binding* Variable::AddBinding(void* data, CFGNode* where,
+Binding* Variable::AddBinding(const BindingData& data,
+                              CFGNode* where,
                               const std::vector<Binding*>& source_set) {
   Binding* binding = FindOrAddBinding(data);
   Origin* origin = binding->AddOrigin(where);
@@ -284,22 +291,22 @@ const std::set<const CFGNode*> Variable::nodes() const {
   return nodes;
 }
 
-const std::vector<void*> Variable::Data() const {
-  std::vector<void*> data;
+const std::vector<DataType*> Variable::Data() const {
+  std::vector<DataType*> data;
   data.reserve(bindings_.size());
   for (const auto& a : bindings_) {
-    data.push_back(a->data());
+    data.push_back(a->data().get());
   }
   return data;
 }
 
-const std::vector<void*> Variable::FilteredData(
+const std::vector<DataType*> Variable::FilteredData(
     const CFGNode* viewpoint) const {
   std::vector<Binding*> filtered = Filter(viewpoint);
-  std::vector<void*> data;
+  std::vector<DataType*> data;
   data.reserve(filtered.size());
   for (const auto& a : filtered) {
-    data.push_back(a->data());
+    data.push_back(a->data().get());
   }
   return data;
 }
