@@ -8,6 +8,7 @@ import re
 import subprocess
 import threading
 import types
+import weakref
 
 from pytype import pytype_source_utils
 
@@ -312,3 +313,15 @@ class AnnotatingDecorator(object):
       self.lookup[f.__name__] = value
       return f
     return decorate
+
+
+class VirtualMachineWeakrefMixin(object):
+
+  __slots__ = ["vm_weakref"]
+
+  def __init__(self, vm):
+    self.vm_weakref = weakref.ref(vm)
+
+  @property
+  def vm(self):
+    return self.vm_weakref()

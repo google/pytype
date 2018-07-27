@@ -33,7 +33,6 @@ class AddMetaclassInstance(abstract.AtomicAbstractValue):
   def __init__(self, meta, vm):
     super(AddMetaclassInstance, self).__init__("AddMetaclassInstance", vm)
     self.meta = meta
-    self.vm = vm
 
   def call(self, node, unused, args):
     if len(args.posargs) != 1:

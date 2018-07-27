@@ -3,8 +3,9 @@
 #include <string>
 #include <vector>
 
-#include "typegraph.h"
 #include "solver.h"
+#include "test_util.h"
+#include "typegraph.h"
 #include "gtest/gmock.h"  // for UnorderedElementsAre
 #include "gtest/gunit.h"
 
@@ -21,10 +22,10 @@ TEST(SolverTest, TestOverwrite) {
   std::string const1("1");
   std::string const2("2");
   Variable* x = p.NewVariable();
-  x->AddBinding(&const1, n0, {});
-  x->AddBinding(&const2, n0, {});
+  AddBinding(x, &const1, n0, {});
+  AddBinding(x, &const2, n0, {});
   EXPECT_THAT(x->FilteredData(n1), testing::UnorderedElementsAre(
-      &const1, &const2));
+      AsDataType(&const1), AsDataType(&const2)));
 }
 
 TEST(SolverTest, TestShadow) {
@@ -37,12 +38,12 @@ TEST(SolverTest, TestShadow) {
   std::string const1("1");
   std::string const2("2");
   Variable* x = p.NewVariable();
-  x->AddBinding(&const1, n0, {});
-  x->AddBinding(&const2, n1, {});
+  AddBinding(x, &const1, n0, {});
+  AddBinding(x, &const2, n1, {});
   EXPECT_THAT(x->FilteredData(n0),
-              testing::UnorderedElementsAre(&const1));
+              testing::UnorderedElementsAre(AsDataType(&const1)));
   EXPECT_THAT(x->FilteredData(n1),
-              testing::UnorderedElementsAre(&const2));
+              testing::UnorderedElementsAre(AsDataType(&const2)));
 }
 
 TEST(SolverTest, TestOriginUnreachable) {
@@ -59,8 +60,8 @@ TEST(SolverTest, TestOriginUnreachable) {
   std::string const1("1");
   Variable* x = p.NewVariable();
   Variable* y = p.NewVariable();
-  Binding* ax = x->AddBinding(&const1, n1, {});
-  Binding* ay = y->AddBinding(&const1, n2, {ax});
+  Binding* ax = AddBinding(x, &const1, n1, {});
+  Binding* ay = AddBinding(y, &const1, n2, {ax});
   EXPECT_TRUE(ax->IsVisible(n1));
   EXPECT_FALSE(ay->IsVisible(n1));
   EXPECT_FALSE(ax->IsVisible(n2));
@@ -79,8 +80,8 @@ TEST(SolverTest, TestOriginReachable) {
   std::string const1("1");
   Variable* x = p.NewVariable();
   Variable* y = p.NewVariable();
-  Binding* ax = x->AddBinding(&const1, n0, {});
-  y->AddBinding(&const1, n1, {ax});
+  Binding* ax = AddBinding(x, &const1, n0, {});
+  AddBinding(y, &const1, n1, {ax});
   EXPECT_EQ(1, x->FilteredData(n0).size());
   EXPECT_EQ(1, x->FilteredData(n1).size());
   EXPECT_EQ(0, y->FilteredData(n0).size());
@@ -102,11 +103,13 @@ TEST(SolverTest, TestOriginMulti) {
   Variable* x = p.NewVariable();
   Variable* y = p.NewVariable();
   Variable* z = p.NewVariable();
-  Binding* ax = x->AddBinding(&const1, n0, {});
-  Binding* ay = y->AddBinding(&const2, n1, {ax});
-  z->AddBinding(&const3, n2, {ax, ay});
-  EXPECT_THAT(y->FilteredData(n2), testing::UnorderedElementsAre(&const2));
-  EXPECT_THAT(z->FilteredData(n2), testing::UnorderedElementsAre(&const3));
+  Binding* ax = AddBinding(x, &const1, n0, {});
+  Binding* ay = AddBinding(y, &const2, n1, {ax});
+  AddBinding(z, &const3, n2, {ax, ay});
+  EXPECT_THAT(y->FilteredData(n2),
+              testing::UnorderedElementsAre(AsDataType(&const2)));
+  EXPECT_THAT(z->FilteredData(n2),
+              testing::UnorderedElementsAre(AsDataType(&const3)));
 }
 
 TEST(SolverTest, TestDiamond) {
@@ -129,14 +132,15 @@ TEST(SolverTest, TestDiamond) {
   Variable* y = p.NewVariable();
   Variable* z = p.NewVariable();
   Variable* yz = p.NewVariable();
-  Binding* ax = x->AddBinding(&const1, n0, {});
-  Binding* ay = y->AddBinding(&const1, n1, {ax});
-  Binding* az = z->AddBinding(&const1, n2, {ax});
-  yz->AddBinding(&const1, n3, {ay, az});
+  Binding* ax = AddBinding(x, &const1, n0, {});
+  Binding* ay = AddBinding(y, &const1, n1, {ax});
+  Binding* az = AddBinding(z, &const1, n2, {ax});
+  AddBinding(yz, &const1, n3, {ay, az});
   EXPECT_EQ(0, yz->FilteredData(n3).size());
-  EXPECT_THAT(y->FilteredData(n3), testing::UnorderedElementsAre(&const1));
-  EXPECT_THAT(z->FilteredData(n3), testing::UnorderedElementsAre(&const1));
-  EXPECT_THAT(x->FilteredData(n3), testing::UnorderedElementsAre(&const1));
+  DataType* const1_data = AsDataType(&const1);
+  EXPECT_THAT(y->FilteredData(n3), testing::UnorderedElementsAre(const1_data));
+  EXPECT_THAT(z->FilteredData(n3), testing::UnorderedElementsAre(const1_data));
+  EXPECT_THAT(x->FilteredData(n3), testing::UnorderedElementsAre(const1_data));
 }
 
 TEST(SolverTest, TestOriginSplitPath) {
@@ -168,28 +172,28 @@ TEST(SolverTest, TestOriginSplitPath) {
   std::string const21("21");
   std::string const12("12");
   std::string const22("22");
-  Binding* a10 = p.NewVariable()->AddBinding(&const10, n0, {});
-  Binding* a20 = p.NewVariable()->AddBinding(&const20, n0, {});
-  Binding* a1 = p.NewVariable()->AddBinding(&const1, n0, {});
-  Binding* a2 = p.NewVariable()->AddBinding(&const2, n0, {});
+  Binding* a10 = AddBinding(p.NewVariable(), &const10, n0, {});
+  Binding* a20 = AddBinding(p.NewVariable(), &const20, n0, {});
+  Binding* a1 = AddBinding(p.NewVariable(), &const1, n0, {});
+  Binding* a2 = AddBinding(p.NewVariable(), &const2, n0, {});
   Variable* x = p.NewVariable();
   Variable* y = p.NewVariable();
   Variable* z = p.NewVariable();
 
-  Binding* ax10 = x->AddBinding(&const10, n1, {a10});
-  Binding* ay1 = y->AddBinding(&const1, n1, {a1});
-  Binding* ax20 = x->AddBinding(&const20, n2, {a20});
-  Binding* ay2 = y->AddBinding(&const2, n2, {a2});
+  Binding* ax10 = AddBinding(x, &const10, n1, {a10});
+  Binding* ay1 = AddBinding(y, &const1, n1, {a1});
+  Binding* ax20 = AddBinding(x, &const20, n2, {a20});
+  Binding* ay2 = AddBinding(y, &const2, n2, {a2});
 
   EXPECT_TRUE(ax10->IsVisible(n3));
   EXPECT_TRUE(ay1->IsVisible(n3));
   EXPECT_TRUE(ax20->IsVisible(n3));
   EXPECT_TRUE(ay2->IsVisible(n3));
 
-  Binding* az11 = z->AddBinding(&const11, n3, {ax10, ay1});
-  Binding* az12 = z->AddBinding(&const12, n3, {ax10, ay2});
-  Binding* az21 = z->AddBinding(&const21, n3, {ax20, ay1});
-  Binding* az22 = z->AddBinding(&const22, n3, {ax20, ay2});
+  Binding* az11 = AddBinding(z, &const11, n3, {ax10, ay1});
+  Binding* az12 = AddBinding(z, &const12, n3, {ax10, ay2});
+  Binding* az21 = AddBinding(z, &const21, n3, {ax20, ay1});
+  Binding* az22 = AddBinding(z, &const22, n3, {ax20, ay2});
 
   EXPECT_TRUE(az11->IsVisible(n3));
   EXPECT_FALSE(az12->IsVisible(n3));
@@ -198,7 +202,8 @@ TEST(SolverTest, TestOriginSplitPath) {
 
   EXPECT_EQ(2, z->FilteredData(n3).size());
   EXPECT_THAT(z->FilteredData(n3),
-              testing::UnorderedElementsAre(&const11, &const22));
+              testing::UnorderedElementsAre(AsDataType(&const11),
+                                            AsDataType(&const22)));
 }
 
 TEST(SolverTest, TestCombination) {
@@ -211,8 +216,8 @@ TEST(SolverTest, TestCombination) {
   std::string const1("1");
   Variable* x = p.NewVariable();
   Variable* y = p.NewVariable();
-  Binding* ax = x->AddBinding(&const1, n0, {});
-  Binding* ay = y->AddBinding(&const1, n1, {});
+  Binding* ax = AddBinding(x, &const1, n0, {});
+  Binding* ay = AddBinding(y, &const1, n1, {});
   EXPECT_FALSE(n0->HasCombination({ax, ay}));
   EXPECT_TRUE(n1->HasCombination({ax, ay}));
 }
@@ -225,8 +230,8 @@ TEST(SolverTest, TestConflicting) {
   std::string const1("1");
   std::string const2("2");
   Variable* x = p.NewVariable();
-  Binding* a0 = x->AddBinding(&const1, n0, {});
-  Binding* a1 = x->AddBinding(&const2, n0, {});
+  Binding* a0 = AddBinding(x, &const1, n0, {});
+  Binding* a1 = AddBinding(x, &const2, n0, {});
   EXPECT_TRUE(n0->HasCombination({a0}));
   EXPECT_TRUE(n0->HasCombination({a1}));
   EXPECT_FALSE(n0->HasCombination({a0, a1}));
@@ -250,18 +255,19 @@ TEST(SolverTest, TestSameBinding) {
   std::string const2("2");
   Variable* x = p.NewVariable();
   Variable* y = p.NewVariable();
-  Binding* x1 = x->AddBinding(&const1, n0, {});
-  Binding* x2 = x->AddBinding(&const2, n0, {});
-  y->AddBinding(&const1, n1, {});
-  y->AddBinding(&const2, n1, {});
-  y->AddBinding(&const1, n1, {x1});
-  y->AddBinding(&const2, n1, {x2});
-  y->AddBinding(&const1, n2, {});
-  y->AddBinding(&const2, n2, {});
-  y->AddBinding(&const1, n2, {x1});
-  y->AddBinding(&const2, n2, {x2});
+  Binding* x1 = AddBinding(x, &const1, n0, {});
+  Binding* x2 = AddBinding(x, &const2, n0, {});
+  AddBinding(y, &const1, n1, {});
+  AddBinding(y, &const2, n1, {});
+  AddBinding(y, &const1, n1, {x1});
+  AddBinding(y, &const2, n1, {x2});
+  AddBinding(y, &const1, n2, {});
+  AddBinding(y, &const2, n2, {});
+  AddBinding(y, &const1, n2, {x1});
+  AddBinding(y, &const2, n2, {x2});
   EXPECT_THAT(y->Data(),
-              testing::UnorderedElementsAre(&const1, &const2));
+              testing::UnorderedElementsAre(AsDataType(&const1),
+                                            AsDataType(&const2)));
 }
 
 TEST(SolverTest, TestEntrypoint) {
@@ -273,8 +279,8 @@ TEST(SolverTest, TestEntrypoint) {
   std::string const1("1");
   std::string const2("2");
   Variable* x = p.NewVariable();
-  Binding* v0 = x->AddBinding(&const1, n0, {});
-  Binding* v1 = x->AddBinding(&const2, n1, {});
+  Binding* v0 = AddBinding(x, &const1, n0, {});
+  Binding* v1 = AddBinding(x, &const2, n1, {});
   p.set_entrypoint(n0);
   EXPECT_TRUE(n0->HasCombination({v0}));
   EXPECT_TRUE(n1->HasCombination({v1}));
@@ -294,12 +300,12 @@ TEST(SolverTest, TestUnordered) {
   std::string const3("3");
   Variable* x = p.NewVariable();
   Variable* y = p.NewVariable();
-  Binding* x1 = x->AddBinding(&const1, n0, {});
-  Binding* x2 = x->AddBinding(&const2, n0, {});
-  Binding* x3 = x->AddBinding(&const3, n0, {});
-  Binding* y1 = y->AddBinding(&const1, n1, {x1});
-  Binding* y2 = y->AddBinding(&const2, n1, {x2});
-  Binding* y3 = y->AddBinding(&const3, n1, {x3});
+  Binding* x1 = AddBinding(x, &const1, n0, {});
+  Binding* x2 = AddBinding(x, &const2, n0, {});
+  Binding* x3 = AddBinding(x, &const3, n0, {});
+  Binding* y1 = AddBinding(y, &const1, n1, {x1});
+  Binding* y2 = AddBinding(y, &const2, n1, {x2});
+  Binding* y3 = AddBinding(y, &const3, n1, {x3});
   EXPECT_TRUE(n0->HasCombination({x1}));
   EXPECT_TRUE(n0->HasCombination({x2}));
   EXPECT_TRUE(n0->HasCombination({x3}));
@@ -320,12 +326,12 @@ TEST(SolverTest, TestMemoization) {
   CFGNode* n2 = n1->ConnectNew("n2");
   Variable* x = p.NewVariable();
   Variable* y = p.NewVariable();
-  Binding* x0 = x->AddBinding(&const1, n0, {});
-  Binding* y0 = y->AddBinding(&const1, n0, {});
-  Binding* x1 = x->AddBinding(&const1, n1, {x0, y0});
-  Binding* y1 = y->AddBinding(&const1, n1, {x0, y0});
-  Binding* x2 = x->AddBinding(&const1, n2, {x1, y1});
-  Binding* y2 = y->AddBinding(&const1, n2, {x1, y1});
+  Binding* x0 = AddBinding(x, &const1, n0, {});
+  Binding* y0 = AddBinding(y, &const1, n0, {});
+  Binding* x1 = AddBinding(x, &const1, n1, {x0, y0});
+  Binding* y1 = AddBinding(y, &const1, n1, {x0, y0});
+  Binding* x2 = AddBinding(x, &const1, n2, {x1, y1});
+  Binding* y2 = AddBinding(y, &const1, n2, {x1, y1});
   EXPECT_TRUE(n2->HasCombination({x2, y2}));
 }
 
@@ -396,9 +402,9 @@ TEST(SolverTest, TestFindNodeBackwards) {
   Variable* x = p.NewVariable();
   Variable* y = p.NewVariable();
   Variable* z = p.NewVariable();
-  Binding* c1 = x->AddBinding(&one, n1, {});
-  Binding* c2 = y->AddBinding(&two, n1, {});
-  Binding* c3 = z->AddBinding(&thr, n1, {});
+  Binding* c1 = AddBinding(x, &one, n1, {});
+  Binding* c2 = AddBinding(y, &two, n1, {});
+  Binding* c3 = AddBinding(z, &thr, n1, {});
   CFGNode* n2 = n1->ConnectNew("n2", c3);
   CFGNode* n3 = n1->ConnectNew("n3");
   CFGNode* n4 = p.NewCFGNode("n4", c1);
@@ -439,10 +445,10 @@ TEST(SolverTest, TestConflict) {
   CFGNode* n2 = n1->ConnectNew("n2");
   CFGNode* n3 = n2->ConnectNew("n3");
   Variable* x = p.NewVariable();
-  Binding* xa = x->AddBinding(&a, n1, {});
-  x->AddBinding(&b, n2, {});
+  Binding* xa = AddBinding(x, &a, n1, {});
+  AddBinding(x, &b, n2, {});
   Variable* y = p.NewVariable();
-  Binding* ya = y->AddBinding(&a, n2, {});
+  Binding* ya = AddBinding(y, &a, n2, {});
   p.set_entrypoint(n1);
   Solver* solver = p.GetSolver();
   EXPECT_FALSE(solver->Solve({ya, xa}, n3));

@@ -4,6 +4,7 @@ import logging
 
 from pytype import abstract
 from pytype import metrics
+from pytype import utils
 from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
@@ -13,16 +14,16 @@ log = logging.getLogger(__name__)
 UNSATISFIABLE = object()
 
 
-class FrameState(object):
+class FrameState(utils.VirtualMachineWeakrefMixin):
   """Immutable state object, for attaching to opcodes."""
 
-  __slots__ = ["block_stack", "data_stack", "node", "vm", "exception", "why"]
+  __slots__ = ["block_stack", "data_stack", "node", "exception", "why"]
 
   def __init__(self, data_stack, block_stack, node, vm, exception, why):
+    super(FrameState, self).__init__(vm)
     self.data_stack = data_stack
     self.block_stack = block_stack
     self.node = node
-    self.vm = vm
     self.exception = exception
     self.why = why
 
@@ -197,7 +198,7 @@ class SimpleFrame(object):
     self.node = node
 
 
-class Frame(object):
+class Frame(utils.VirtualMachineWeakrefMixin):
   """An interpreter frame.
 
   This contains the local value and block stacks and the associated code and
@@ -246,9 +247,9 @@ class Frame(object):
     Raises:
       NameError: If we can't resolve any references into the outer frame.
     """
+    super(Frame, self).__init__(vm)
     assert isinstance(f_globals, abstract.LazyConcreteDict)
     assert isinstance(f_locals, abstract.LazyConcreteDict)
-    self.vm = vm
     self.node = node
     self.current_opcode = None
     self.f_code = f_code

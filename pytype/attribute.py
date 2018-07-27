@@ -5,16 +5,14 @@ from pytype import abstract
 from pytype import annotations_util
 from pytype import overlay
 from pytype import special_builtins
+from pytype import utils
 from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
 
 
-class AbstractAttributeHandler(object):
+class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
   """Handler for abstract attributes."""
-
-  def __init__(self, vm):
-    self.vm = vm
 
   def get_attribute_generic(self, node, obj, name, val):
     if isinstance(obj, abstract.ParameterizedClass):

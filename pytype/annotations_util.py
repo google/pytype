@@ -20,7 +20,7 @@ LateAnnotation = collections.namedtuple(
     "LateAnnotation", ["expr", "name", "stack"])
 
 
-class AnnotationsUtil(object):
+class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
   """Utility class for inline type annotations."""
 
   # Define this error inside AnnotationsUtil so that it is exposed to
@@ -31,9 +31,6 @@ class AnnotationsUtil(object):
 
   # A dummy container object for use in instantiating type parameters.
   DUMMY_CONTAINER = object()
-
-  def __init__(self, vm):
-    self.vm = vm
 
   def instantiate_for_sub(self, node, typ):
     """Instantiate this type for use only in sub_(one_)annotation(s).

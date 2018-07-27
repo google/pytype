@@ -59,21 +59,63 @@ typedef struct {
 
 typedef struct {
   PyObject_HEAD
-  typegraph::CFGNode* cfg_node;
   PyProgramObj* program;
+} CachedPyObject;
+
+#define CACHED_PYOBJECT_HEAD CachedPyObject _cached_pyobject_head;
+
+static inline PyObject* NewCachedPyObject(PyTypeObject* obj_type,
+                                          PyProgramObj* program,
+                                          void* key) {
+  PyObject* obj = _PyObject_New(obj_type);
+  CachedPyObject* cached_obj = reinterpret_cast<CachedPyObject*>(obj);
+  // Though the cached object has a pointer to the parent PyProgramObj, it
+  // does not hold a Python reference to it. We want to keep it this way to
+  // avoid subtle reference cycles.
+  //
+  // The parent PyProgramObj is set to nullptr in ProgramDealloc. This will
+  // ensure that the cached object does not access the parent program after the
+  // parent PyProgramObj goes away.
+  cached_obj->program = program;
+  (*program->cache)[key] = obj;
+  return obj;
+}
+
+static inline PyProgramObj* CachedObjectProgram(CachedPyObject* obj) {
+  PyProgramObj* program = obj->program;
+  CHECK(program != nullptr) << "Internal Error: Accessing py program object "
+                            << "after it has been garbage collected.";
+  return program;
+}
+
+#define get_program(obj) CachedObjectProgram( \
+    reinterpret_cast<CachedPyObject*>(obj))
+
+typedef struct {
+  CACHED_PYOBJECT_HEAD
+  typegraph::CFGNode* cfg_node;
 } PyCFGNodeObj;
 
 typedef struct {
-  PyObject_HEAD
+  CACHED_PYOBJECT_HEAD
   typegraph::Binding* attr;
-  PyProgramObj* program;
 } PyBindingObj;
 
 typedef struct {
-  PyObject_HEAD
+  CACHED_PYOBJECT_HEAD
   typegraph::Variable* u;
-  PyProgramObj* program;
 } PyVariableObj;
+
+static void DecRefCallback(typegraph::DataType* data) {
+  Py_XDECREF(reinterpret_cast<PyObject*>(data));
+}
+
+// Since ownership of the bound data is transferred to C++, one should also
+// give C++ a Python reference to |obj|. The C++ side will drop this reference
+// as part of its cleanup.
+static inline typegraph::BindingData MakeBindingData(PyObject* obj) {
+  return typegraph::MakeBindingData(obj, DecRefCallback);
+}
 
 // We remember which C structure we wrapped and the PyObject that wraps it in
 // the "cache" attribute of PyProgramObj. The entries in this cache are like
@@ -92,11 +134,18 @@ static PyObject* FindInCache(PyProgramObj* program, const void* key) {
   }
 }
 
-// Upon deallocation of the Python object, we remove it from our cache.
-static void RemoveFromCache(PyProgramObj* program, void* key) {
-  auto result = program->cache->find(key);
-  CHECK(result != program->cache->end()) << "corrupted PyProgram cache";
-  program->cache->erase(key);
+// Upon deallocation of the Python object, we remove it from the program cache.
+static void RemoveFromCache(PyObject* pyobj, void* key) {
+  CachedPyObject* cached_pyobj = reinterpret_cast<CachedPyObject*>(pyobj);
+  // If the parent py program object gets deallocated, then the parent is set to
+  // nullptr. In such a case, we do nothing as the cache is already gone.
+  if (cached_pyobj->program == nullptr) {
+    return;
+  }
+  auto cache = cached_pyobj->program->cache;
+  auto result = cache->find(key);
+  CHECK(result != cache->end()) << "corrupted PyProgram cache";
+  cache->erase(key);
 }
 
 static PyObject* WrapCFGNode(PyProgramObj* program,
@@ -104,12 +153,9 @@ static PyObject* WrapCFGNode(PyProgramObj* program,
   PyObject* cached = FindInCache(program, cfg_node);
   if (cached)
     return cached;
-  PyCFGNodeObj* py_cfg_node = PyObject_New(PyCFGNodeObj, &PyCFGNode);
+  PyObject* obj = NewCachedPyObject(&PyCFGNode, program, cfg_node);
+  PyCFGNodeObj* py_cfg_node = reinterpret_cast<PyCFGNodeObj*>(obj);
   py_cfg_node->cfg_node = cfg_node;
-  py_cfg_node->program = program;
-  Py_INCREF(program);  // DECREF in CFGNodeDealloc
-  PyObject* obj = reinterpret_cast<PyObject*>(py_cfg_node);
-  (*program->cache)[cfg_node] = obj;
   return obj;
 }
 
@@ -117,12 +163,9 @@ static PyObject* WrapBinding(PyProgramObj* program, typegraph::Binding* attr) {
   PyObject* cached = FindInCache(program, attr);
   if (cached)
     return cached;
-  PyBindingObj* py_attr = PyObject_New(PyBindingObj, &PyBinding);
-  py_attr->attr = attr;
-  py_attr->program = program;
-  Py_INCREF(program);  // DECREF in BindingDealloc
-  PyObject* obj = reinterpret_cast<PyObject*>(py_attr);
-  (*program->cache)[attr] = obj;
+  PyObject* obj = NewCachedPyObject(&PyBinding, program, attr);
+  PyBindingObj* py_binding = reinterpret_cast<PyBindingObj*>(obj);
+  py_binding->attr = attr;
   return obj;
 }
 
@@ -130,12 +173,9 @@ static PyObject* WrapVariable(PyProgramObj* program, typegraph::Variable* u) {
   PyObject* cached = FindInCache(program, u);
   if (cached)
     return cached;
-  PyVariableObj* py_variable = PyObject_New(PyVariableObj, &PyVariable);
+  PyObject* obj = NewCachedPyObject(&PyVariable, program, u);
+  PyVariableObj* py_variable = reinterpret_cast<PyVariableObj*>(obj);
   py_variable->u = u;
-  py_variable->program = program;
-  Py_INCREF(program);  // DECREF in VariableDealloc
-  PyObject* obj = reinterpret_cast<PyObject*>(py_variable);
-  (*program->cache)[u] = obj;
   return obj;
 }
 
@@ -196,6 +236,16 @@ static bool IsCFGNodeOrNone(PyObject* obj, typegraph::CFGNode** ret) {
 static void ProgramDealloc(PyObject* self) {
   CHECK(self && Py_TYPE(self) == &PyProgram);
   PyProgramObj* program = reinterpret_cast<PyProgramObj*>(self);
+  auto start = program->cache->begin();
+  auto end = program->cache->end();
+  for (auto iter = start; iter != end; ++iter) {
+    // We set the parent program pointers in the cached object to nullptr to
+    // convey that the parent (and hence the parent program's cache) are already
+    // gone.
+    PyObject* obj = iter->second;
+    CachedPyObject* cached_obj = reinterpret_cast<CachedPyObject*>(obj);
+    cached_obj->program = nullptr;
+  }
   delete program->cache;
   delete program->program;
   PyObject_Del(self);
@@ -232,7 +282,8 @@ static PyObject* ProgramGetAttro(PyObject* self, PyObject* attr) {
   } else if (PyObject_RichCompareBool(attr, k_next_variable_id, Py_EQ) > 0) {
     return PyInt_FromSize_t(program->program->next_variable_id());
   } else if (PyObject_RichCompareBool(attr, k_default_data, Py_EQ) > 0) {
-    auto data = reinterpret_cast<PyObject*>(program->program->default_data());
+    auto data = reinterpret_cast<PyObject*>(
+        program->program->default_data().get());
     if (!data) {
       Py_RETURN_NONE;
     }
@@ -259,9 +310,8 @@ static int ProgramSetAttro(PyObject* self, PyObject* attr, PyObject* val) {
     }
     return 0;
   } else if (PyObject_RichCompareBool(attr, k_default_data, Py_EQ) > 0) {
-    Py_XDECREF(program->program->default_data());
     Py_INCREF(val);
-    program->program->set_default_data(val);
+    program->program->set_default_data(MakeBindingData(val));
     return 0;
   }
   return PyObject_GenericSetAttr(self, attr, val);
@@ -385,7 +435,7 @@ static PyObject* NewVariable(PyProgramObj* self,
     while ((item = PyIter_Next(bind_iter))) {
       // PyIter_Next returns a new reference, which will be owned by AddBinding.
       // That means we don't need to INCREF or DECREF item.
-      typegraph::Binding* attr = u->AddBinding(item);
+      typegraph::Binding* attr = u->AddBinding(MakeBindingData(item));
       typegraph::Origin* origin = attr->AddOrigin(where);
       origin->AddSourceSet(ParseBindingList(source_set));
     }
@@ -489,7 +539,7 @@ PyTypeObject PyProgram = {
 static PyObject* CFGNodeGetAttro(PyObject* self, PyObject* attr) {
   CHECK(self && Py_TYPE(self) == &PyCFGNode);
   PyCFGNodeObj* cfg_node = reinterpret_cast<PyCFGNodeObj*>(self);
-  PyProgramObj* program = cfg_node->program;
+  PyProgramObj* program = get_program(self);
 
   if (PyObject_RichCompareBool(attr, k_incoming, Py_EQ) > 0) {
     PyObject* list = PyList_New(0);
@@ -555,8 +605,7 @@ static int CFGNodeSetAttro(PyObject* self, PyObject* attr, PyObject* val) {
 static void CFGNodeDealloc(PyObject* self) {
   CHECK(self && Py_TYPE(self) == &PyCFGNode);
   PyCFGNodeObj* cfg_node = reinterpret_cast<PyCFGNodeObj*>(self);
-  RemoveFromCache(cfg_node->program, cfg_node->cfg_node);
-  Py_DECREF(cfg_node->program);
+  RemoveFromCache(self, cfg_node->cfg_node);
   PyObject_Del(self);
 }
 
@@ -596,7 +645,7 @@ PyDoc_STRVAR(connect_new_doc,
 
 static PyObject* ConnectNew(PyCFGNodeObj* self,
                             PyObject* args, PyObject* kwargs) {
-  PyProgramObj* program = self->program;
+  PyProgramObj* program = get_program(self);
   static char *kwlist[] = {"name", "condition", nullptr};
   PyObject* name_obj = nullptr;
   const char* name = "None";
@@ -643,7 +692,7 @@ PyDoc_STRVAR(
 
 static PyObject* HasCombination(PyCFGNodeObj* self,
                                 PyObject* args, PyObject* kwargs) {
-  PyProgramObj* program = self->program;
+  PyProgramObj* program = get_program(self);
   static char *kwlist[] = {"attrs", nullptr};
   PyObject* list = nullptr;
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!", kwlist,
@@ -670,7 +719,7 @@ PyDoc_STRVAR(
 
 static PyObject* CanHaveCombination(PyCFGNodeObj* self,
                                     PyObject* args, PyObject* kwargs) {
-  PyProgramObj* program = self->program;
+  PyProgramObj* program = get_program(self);
   static char *kwlist[] = {"attrs", nullptr};
   PyObject* list = nullptr;
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!", kwlist,
@@ -772,8 +821,7 @@ static PyStructSequence_Desc origin_desc = {
 static void BindingDealloc(PyObject* self) {
   CHECK(self && Py_TYPE(self) == &PyBinding);
   PyBindingObj* attr = reinterpret_cast<PyBindingObj*>(self);
-  RemoveFromCache(attr->program, attr->attr);
-  Py_DECREF(attr->program);
+  RemoveFromCache(self, attr->attr);
   PyObject_Del(self);
 }
 
@@ -783,7 +831,7 @@ static PyObject* BindingRepr(PyObject* self) {
   size_t id;
   if (!py_id) {
     PyErr_Clear();
-    id = reinterpret_cast<size_t>(attr->attr->data());
+    id = reinterpret_cast<size_t>(attr->attr->data().get());
   } else {
     id = PyInt_AsLong(py_id);
     if (id == -1 && PyErr_Occurred())
@@ -797,7 +845,7 @@ static PyObject* BindingRepr(PyObject* self) {
 static PyObject* BindingGetAttro(PyObject* self, PyObject* attr) {
   CHECK(self && Py_TYPE(self) == &PyBinding);
   PyBindingObj* a = reinterpret_cast<PyBindingObj*>(self);
-  PyProgramObj* program = a->program;
+  PyProgramObj* program = get_program(self);
 
   if (PyObject_RichCompareBool(attr, k_variable, Py_EQ) > 0) {
     return WrapVariable(program, a->attr->variable());
@@ -826,7 +874,7 @@ static PyObject* BindingGetAttro(PyObject* self, PyObject* attr) {
     }
     return py_origins;
   } else if (PyObject_RichCompareBool(attr, k_data, Py_EQ) > 0) {
-    PyObject* data = static_cast<PyObject*>(a->attr->data());
+    PyObject* data = reinterpret_cast<PyObject*>(a->attr->data().get());
     Py_INCREF(data);
     return data;
   }
@@ -863,8 +911,9 @@ static PyObject* AddOrigin(PyBindingObj* self, PyObject* args,
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!O", kwlist,
                                    &PyCFGNode, &where, &source_set))
     return nullptr;
-  if (!ContainerToSourceSet(&source_set, self->program))
+  if (!ContainerToSourceSet(&source_set, get_program(self))) {
     return nullptr;
+  }
   if (!source_set) {
     PyErr_SetString(PyExc_TypeError,
                     "source_set must be a sequence of cfg.Binding objects");
@@ -888,12 +937,11 @@ static PyObject* AssignToNewVariable(PyBindingObj* self, PyObject* args,
     PyErr_SetString(PyExc_TypeError, "where must be a CFGNode or None.");
     return nullptr;
   }
-  typegraph::Variable* v = self->program->program->NewVariable();
-  PyObject* data = reinterpret_cast<PyObject*>(self->attr->data());
-  Py_XINCREF(data);
-  typegraph::Binding* binding = v->AddBinding(data);
+  PyProgramObj* program = get_program(self);
+  typegraph::Variable* v = program->program->NewVariable();
+  typegraph::Binding* binding = v->AddBinding(self->attr->data());
   binding->CopyOrigins(self->attr, where);
-  return WrapVariable(self->program, v);
+  return WrapVariable(program, v);
 }
 
 PyDoc_STRVAR(has_source_doc, "Does this binding depend on a given source?");
@@ -976,8 +1024,7 @@ PyTypeObject PyBinding = {
 static void VariableDealloc(PyObject* self) {
   CHECK(self && Py_TYPE(self) == &PyVariable);
   PyVariableObj* u = reinterpret_cast<PyVariableObj*>(self);
-  RemoveFromCache(u->program, u->u);
-  Py_DECREF(u->program);
+  RemoveFromCache(self, u->u);
   PyObject_Del(self);
 }
 
@@ -990,7 +1037,7 @@ static PyObject* VariableRepr(PyObject* self) {
 static PyObject* VariableGetAttro(PyObject* self, PyObject* attr) {
   CHECK(self && Py_TYPE(self) == &PyVariable);
   PyVariableObj* u = reinterpret_cast<PyVariableObj*>(self);
-  PyProgramObj* program = u->program;
+  PyProgramObj* program = get_program(self);
 
   if (PyObject_RichCompareBool(attr, k_bindings, Py_EQ) > 0) {
     PyObject* list = PyList_New(0);
@@ -1003,7 +1050,7 @@ static PyObject* VariableGetAttro(PyObject* self, PyObject* attr) {
   } else if (PyObject_RichCompareBool(attr, k_data, Py_EQ) > 0) {
     PyObject* list = PyList_New(0);
     for (const auto& attr : u->u->bindings()) {
-      PyObject* data = reinterpret_cast<PyObject*>(attr->data());
+      PyObject* data = reinterpret_cast<PyObject*>(attr->data().get());
       // Do not INCREF on |data| as PyList_Append does it internally.
       PyList_Append(list, data);
     }
@@ -1046,8 +1093,9 @@ static PyObject* VariablePrune(PyVariableObj* self,
   }
   auto bindings = self->u->Prune(cfg_node);
   PyObject* list = PyList_New(0);
+  PyProgramObj* program = get_program(self);
   for (typegraph::Binding* attr : bindings) {
-    PyObject* binding = WrapBinding(self->program, attr);
+    PyObject* binding = WrapBinding(program, attr);
     PyList_Append(list, binding);
     Py_DECREF(binding);
   }
@@ -1073,7 +1121,7 @@ static PyObject* VariablePruneData(PyVariableObj* self,
   auto bindings = self->u->Prune(cfg_node);
   PyObject* list = PyList_New(0);
   for (typegraph::Binding* attr : bindings) {
-    PyObject* data = reinterpret_cast<PyObject*>(attr->data());
+    PyObject* data = reinterpret_cast<PyObject*>(attr->data().get());
     // Do not INCREF on |data| as PyList_Append does that internally.
     PyList_Append(list, data);
   }
@@ -1089,7 +1137,7 @@ PyDoc_STRVAR(
 
 static PyObject* VariableFilter(PyVariableObj* self,
                                 PyObject* args, PyObject* kwargs) {
-  PyProgramObj* program = self->program;
+  PyProgramObj* program = get_program(self);
   static char *kwlist[] = {"cfg_node", nullptr};
   PyCFGNodeObj* cfg_node;
   if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O", kwlist, &cfg_node))
@@ -1134,7 +1182,7 @@ PyDoc_STRVAR(variable_add_choice_doc,
 
 static PyObject* VariableAddBinding(PyVariableObj* self, PyObject* args,
                                     PyObject* kwargs) {
-  PyProgramObj* program = self->program;
+  PyProgramObj* program = get_program(self);
   static char* kwlist[] = {"data", "source_set", "where", nullptr};
   PyObject* data = nullptr;
   PyObject* source_set = nullptr;
@@ -1163,7 +1211,7 @@ static PyObject* VariableAddBinding(PyVariableObj* self, PyObject* args,
     return nullptr;
 
   Py_INCREF(data);
-  typegraph::Binding* attr = self->u->AddBinding(data);
+  typegraph::Binding* attr = self->u->AddBinding(MakeBindingData(data));
   if (where && source_set) {
     typegraph::Origin* origin = attr->AddOrigin(where);
     origin->AddSourceSet(ParseBindingList(source_set));
@@ -1187,9 +1235,7 @@ static PyObject* VariableAddBindings(PyVariableObj* self, PyObject* args,
     return nullptr;
   }
   for (const auto& binding : variable->u->bindings()) {
-    PyObject* data = reinterpret_cast<PyObject*>(binding->data());
-    Py_XINCREF(data);
-    typegraph::Binding* copy = self->u->AddBinding(data);
+    typegraph::Binding* copy = self->u->AddBinding(binding->data());
     copy->CopyOrigins(binding.get(), where->cfg_node);
   }
   Py_RETURN_NONE;
@@ -1213,14 +1259,13 @@ static PyObject* VarAssignToNewVariable(PyVariableObj* self,
     PyErr_SetString(PyExc_TypeError, "where must be a CFGNode or None.");
     return nullptr;
   }
-  typegraph::Variable* v = self->program->program->NewVariable();
+  PyProgramObj* program = get_program(self);
+  typegraph::Variable* v = program->program->NewVariable();
   for (const auto& binding : self->u->bindings()) {
-    PyObject* data = reinterpret_cast<PyObject*>(binding->data());
-    Py_XINCREF(data);
-    typegraph::Binding* copy = v->AddBinding(data);
+    typegraph::Binding* copy = v->AddBinding(binding->data());
     copy->CopyOrigins(binding.get(), where);
   }
-  return WrapVariable(self->program, v);
+  return WrapVariable(program, v);
 }
 
 PyDoc_STRVAR(
@@ -1247,7 +1292,7 @@ static PyObject* VariablePasteVariable(PyVariableObj* self, PyObject* args,
   // PasteVariable expects a SourceSet for additional sources, so convert the
   // given sequence to a SourceSet after verifying its contents.
   typegraph::SourceSet additional_sources;
-  if (!ContainerToSourceSet(&additional, self->program)) {
+  if (!ContainerToSourceSet(&additional, get_program(self))) {
     return nullptr;
   }
   if (additional) {
@@ -1283,7 +1328,7 @@ static PyObject* VariablePasteBinding(PyVariableObj* self, PyObject* args,
 
   // PasteBinding expects a SourceSet for additional sources.
   typegraph::SourceSet additional_sources;
-  if (!ContainerToSourceSet(&additional, self->program)) {
+  if (!ContainerToSourceSet(&additional, get_program(self))) {
     return nullptr;
   }
   if (additional) {

@@ -7,6 +7,7 @@ import logging
 from pytype import abstract
 from pytype import special_builtins
 from pytype import typing_overlay
+from pytype import utils
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
@@ -34,11 +35,11 @@ CLASS_LEVEL_IGNORE = {
 }
 
 
-class Converter(object):
+class Converter(utils.VirtualMachineWeakrefMixin):
   """Functions for converting abstract classes into PyTD."""
 
   def __init__(self, vm):
-    self.vm = vm
+    super(Converter, self).__init__(vm)
     self._detailed = False
 
   @contextlib.contextmanager
