@@ -922,10 +922,7 @@ class DeprecationWarning(Warning):
 class EOFError(StandardError):
     pass
 
-class EnvironmentError(StandardError):
-    errno = ...  # type: int
-    filename = ...  # type: str
-    strerror = ...  # type: str
+EnvironmentError = OSError
 
 class Exception(BaseException):
     pass
@@ -939,8 +936,7 @@ class FutureWarning(Warning):
 class GeneratorExit(BaseException):
     pass
 
-class IOError(EnvironmentError):
-    pass
+IOError = OSError
 
 class ImportError(StandardError):
     pass
@@ -972,8 +968,11 @@ class NameError(StandardError):
 class NotImplementedError(RuntimeError):
     pass
 
-class OSError(EnvironmentError):
-    pass
+class OSError(Exception):
+    errno: int
+    filename: str
+    filename2: str
+    strerror: str
 
 class OverflowError(ArithmeticError):
     pass
@@ -1069,6 +1068,15 @@ class ZeroDivisionError(ArithmeticError):
 
 class BlockingIOError(OSError):
     characters_written = ...  # type: int
+class ChildProcessError(OSError): ...
+class FileExistsError(OSError): ...
+class FileNotFoundError(OSError): ...
+class InterruptedError(OSError): ...
+class IsADirectoryError(OSError): ...
+class NotADirectoryError(OSError): ...
+class PermissionError(OSError): ...
+class ProcessLookupError(OSError): ...
+class TimeoutError(OSError): ...
 
 class ResourceWarning(Warning): ...
 

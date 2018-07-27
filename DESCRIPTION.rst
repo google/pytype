@@ -49,7 +49,7 @@ Merge pytype's generated type information back into ``foo.py``:
     def make_greeting(user_id) -> str: ...
     def print_greeting() -> None: ...
 
-    $ merge-pyi -i foo.py foo.pyi
+    $ merge-pyi -i foo.py pytype_output/foo.pyi
     $ cat foo.py
 
     def make_greeting(user_id) -> str:

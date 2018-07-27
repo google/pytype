@@ -513,5 +513,30 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       v2 = ...  # type: int
     """)
 
+  def testAliasedError(self):
+    # In Python 3, EnvironmentError and IOError became aliases for OSError.
+    self.Check("""
+      def f(e: OSError): ...
+      def g(e: IOError): ...
+      f(EnvironmentError())
+      g(EnvironmentError())
+    """)
+
+  def testOSErrorSubclasses(self):
+    # New in Python 3:
+    self.Check("""
+      BlockingIOError
+      ChildProcessError
+      ConnectionError
+      FileExistsError
+      FileNotFoundError
+      InterruptedError
+      IsADirectoryError
+      NotADirectoryError
+      PermissionError
+      ProcessLookupError
+      TimeoutError
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
