@@ -218,5 +218,18 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
       def f() -> dict: ...
     """)
 
+  def testTypeChange(self):
+    ty = self.Infer("""
+      class A(object):
+        def __init__(self):
+          self.__class__ = int
+      x = "" % type(A())
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class A(object):
+        pass
+      x = ...  # type: str
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

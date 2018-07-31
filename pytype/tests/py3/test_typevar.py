@@ -214,7 +214,7 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
                                     r"Expected.*y: float.*Actual.*y: int")])
 
   def testFilterClass(self):
-    _, errors = self.InferWithErrors("""\
+    self.Check("""\
       from typing import TypeVar
       class A(object): pass
       class B(object): pass
@@ -222,11 +222,10 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       def f(x: T, y: T): ...
       x = A()
       x.__class__ = B
+      # Setting __class__ makes the type ambiguous to pytype.
       f(x, A())
-      f(x, B())  # ok
+      f(x, B())
     """)
-    self.assertErrorLogIs(errors, [(8, "wrong-arg-types",
-                                    r"Expected.*y: B.*Actual.*y: A")])
 
   def testSplit(self):
     ty = self.Infer("""\

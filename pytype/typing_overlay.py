@@ -80,8 +80,7 @@ class Callable(TypingContainer):
       self.vm.errorlog.invalid_ellipses(
           self.vm.frames, inner_ellipses, args.name)
     else:
-      if args.cls and any(v.full_name == "__builtin__.list"
-                          for v in args.cls.data):
+      if args.cls and args.cls.full_name == "__builtin__.list":
         self.vm.errorlog.invalid_annotation(
             self.vm.frames, args, "Must be constant")
       elif (args is not self.vm.convert.ellipsis and
@@ -215,7 +214,7 @@ class NoReturn(abstract.AtomicAbstractValue):
     super(NoReturn, self).__init__("NoReturn", vm)
 
   def get_class(self):
-    return self.to_variable(self.vm.root_cfg_node)
+    return self
 
 
 def build_any(name, vm):

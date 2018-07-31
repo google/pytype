@@ -340,7 +340,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     for v in instances:
       cls = v.get_class()
       if cls:
-        classes.update(cls.Data(node))
+        classes.add(cls)
     return abstract.merge_values(classes, self.vm)
 
   def constant_to_var(self, pyval, subst=None, node=None, source_sets=None,

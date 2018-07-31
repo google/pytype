@@ -108,7 +108,7 @@ class TupleTest(AbstractTestBase):
   def test_getitem__concrete_index(self):
     t = abstract.Tuple((self._var,), self._vm)
     index = self._vm.convert.constant_to_var(0)
-    node, var = t.cls.data[0].getitem_slot(self._node, index)
+    node, var = t.cls.getitem_slot(self._node, index)
     self.assertIs(node, self._node)
     self.assertIs(abstract.get_atomic_value(var),
                   abstract.get_atomic_value(self._var))
@@ -116,7 +116,7 @@ class TupleTest(AbstractTestBase):
   def test_getitem__abstract_index(self):
     t = abstract.Tuple((self._var,), self._vm)
     index = self._vm.convert.build_int(self._node)
-    node, var = t.cls.data[0].getitem_slot(self._node, index)
+    node, var = t.cls.getitem_slot(self._node, index)
     self.assertIs(node, self._node)
     self.assertIs(abstract.get_atomic_value(var),
                   abstract.get_atomic_value(self._var))
@@ -433,7 +433,7 @@ class PyTDTest(AbstractTestBase):
     cls = abstract.InterpreterClass("X", [], {}, None, self._vm)
     meta = abstract.InterpreterClass("M", [], {}, None, self._vm)
     meta.official_name = "M"
-    cls.cls = meta.to_variable(self._vm.root_cfg_node)
+    cls.cls = meta
     pytd_cls = cls.to_pytd_def(self._vm.root_cfg_node, "X")
     self.assertEqual(pytd_cls.metaclass, pytd.NamedType("M"))
 
@@ -442,7 +442,7 @@ class PyTDTest(AbstractTestBase):
     parent.official_name = "X"
     meta = abstract.InterpreterClass("M", [], {}, None, self._vm)
     meta.official_name = "M"
-    parent.cls = meta.to_variable(self._vm.root_cfg_node)
+    parent.cls = meta
     child = abstract.InterpreterClass(
         "Y", [parent.to_variable(self._vm.root_cfg_node)], {}, None, self._vm)
     self.assertIs(child.cls, parent.cls)
@@ -455,8 +455,7 @@ class PyTDTest(AbstractTestBase):
     meta2 = abstract.InterpreterClass("M2", [], {}, None, self._vm)
     meta1.official_name = "M1"
     meta2.official_name = "M2"
-    cls.cls = abstract.Union(
-        [meta1, meta2], self._vm).to_variable(self._vm.root_cfg_node)
+    cls.cls = abstract.Union([meta1, meta2], self._vm)
     pytd_cls = cls.to_pytd_def(self._vm.root_cfg_node, "X")
     self.assertEqual(pytd_cls.metaclass, pytd.UnionType(
         (pytd.NamedType("M1"), pytd.NamedType("M2"))))
@@ -470,40 +469,27 @@ class PyTDTest(AbstractTestBase):
     param_binding = instance.type_parameters[abstract.T].AddBinding(
         self._vm.convert.primitive_class_instances[int], [],
         self._vm.root_cfg_node)
-    view = {instance.cls: instance.cls.bindings[0],
-            instance.type_parameters[abstract.T]: param_binding,
-            param_binding.data.cls: param_binding.data.cls.bindings[0]}
+    view = {instance.type_parameters[abstract.T]: param_binding}
     pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
     self.assertEqual("__builtin__.list", pytd_type.base_type.name)
     self.assertSetEqual({"__builtin__.int"},
                         {t.name for t in pytd_type.parameters})
 
   def test_to_type_with_view2(self):
-    # to_type(<instance of <str or unsolvable>>, view={__class__: str})
-    instance = abstract.Instance(self._vm.convert.unsolvable, self._vm)
-    cls_binding = instance.cls.AddBinding(
-        self._vm.convert.str_type, [], self._vm.root_cfg_node)
-    view = {instance.cls: cls_binding}
-    pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
-    self.assertEqual("__builtin__.str", pytd_type.name)
-
-  def test_to_type_with_view3(self):
     # to_type(<tuple (int or str,)>, view={0: str})
     param1 = self._vm.convert.primitive_class_instances[int]
     param2 = self._vm.convert.primitive_class_instances[str]
     param_var = param1.to_variable(self._vm.root_cfg_node)
     str_binding = param_var.AddBinding(param2, [], self._vm.root_cfg_node)
     instance = abstract.Tuple((param_var,), self._vm)
-    view = {param_var: str_binding, instance.cls: instance.cls.bindings[0],
-            str_binding.data.cls: str_binding.data.cls.bindings[0]}
+    view = {param_var: str_binding}
     pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
     self.assertEqual(pytd_type.parameters[0],
                      pytd.NamedType("__builtin__.str"))
 
   def test_to_type_with_view_and_empty_param(self):
     instance = abstract.List([], self._vm)
-    view = {instance.cls: instance.cls.bindings[0]}
-    pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
+    pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view={})
     self.assertEqual("__builtin__.list", pytd_type.base_type.name)
     self.assertSequenceEqual((pytd.NothingType(),), pytd_type.parameters)
 
@@ -935,7 +921,7 @@ class SimpleFunctionTest(AbstractTestBase):
     node, ret = f.call(self._vm.root_cfg_node, f, args)
     self.assertIs(node, self._vm.root_cfg_node)
     ret_val, = ret.data
-    self.assertEqual(ret_val.cls.data[0], self._vm.convert.int_type)
+    self.assertEqual(ret_val.cls, self._vm.convert.int_type)
 
   def test_call_with_bad_arg(self):
     f = self._make_func(param_names=("test",),
@@ -975,7 +961,7 @@ class SimpleFunctionTest(AbstractTestBase):
     args = abstract.FunctionArgs(posargs=(), starargs=starargs)
     node, ret = f.call(self._vm.root_cfg_node, f, args)
     self.assertIs(node, self._vm.root_cfg_node)
-    self.assertIs(ret.data[0].cls.data[0], self._vm.convert.str_type)
+    self.assertIs(ret.data[0].cls, self._vm.convert.str_type)
 
   def test_call_with_bad_varargs(self):
     f = self._make_func(
@@ -1207,7 +1193,7 @@ class SimpleFunctionTest(AbstractTestBase):
     _, ret = f.call(self._vm.root_cfg_node, f, args)
     # ret is an Instance(ParameterizedClass(list, {abstract.T: int}))
     # but we really only care about T.
-    self.assertIs(ret.data[0].cls.data[0].type_parameters[abstract.T],
+    self.assertIs(ret.data[0].cls.type_parameters[abstract.T],
                   self._vm.convert.int_type)
 
   def test_signature_func_output_basic(self):
@@ -1311,8 +1297,7 @@ class AbstractTest(AbstractTestBase):
 
   def test_super_type(self):
     supercls = special_builtins.Super(self._vm)
-    self.assertListEqual(supercls.get_class().data,
-                         [self._vm.convert.type_type])
+    self.assertEqual(supercls.get_class(), self._vm.convert.type_type)
 
   def test_mixin_super(self):
     """Test the imitation 'super' method on MixinMeta."""
@@ -1377,7 +1362,7 @@ class AbstractTest(AbstractTestBase):
                                 abstract.FunctionArgs(posargs=()))
     self.assertIs(node, self._node)
     retval, = ret.data
-    self.assertListEqual(retval.cls.data, [self._vm.convert.int_type])
+    self.assertEqual(retval.cls, self._vm.convert.int_type)
 
   def test_call_empty_type_parameter_instance(self):
     instance = abstract.Instance(self._vm.convert.list_type, self._vm)

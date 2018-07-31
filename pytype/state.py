@@ -399,14 +399,7 @@ def _is_or_is_not_cmp(left, right, is_not=False):
     return is_not ^ (left.pyval == right.pyval)
   elif (isinstance(left, abstract.Instance) and
         isinstance(right, abstract.Instance)):
-    try:
-      left_class = abstract.get_atomic_value(left.cls)
-      right_class = abstract.get_atomic_value(right.cls)
-    except abstract.ConversionError:
-      # If multiple classes are possible we cannot be sure what happens.
-      # Therefore returning None is fine.
-      return None
-    if left_class != right_class:
+    if left.cls != right.cls:
       # If those were the same they could be the same but we can't be sure from
       # comparing types.
       return is_not

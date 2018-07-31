@@ -446,7 +446,7 @@ class ErrorLog(ErrorLogBase):
     elif isinstance(t, abstract.AnnotationClass) or not t.cls:
       return t.name
     else:
-      return "<instance of %s>" % self._print_as_expected_type(t.cls.data[0], t)
+      return "<instance of %s>" % self._print_as_expected_type(t.cls, t)
 
   def _print_as_actual_type(self, t):
     with t.vm.convert.pytd_convert.produce_detailed_output():

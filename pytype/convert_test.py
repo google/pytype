@@ -38,8 +38,8 @@ class ConvertTest(unittest.TestCase):
       class C(B): ...
     """)
     meta = self._convert_class("a.A", ast)
-    cls_meta, = self._convert_class("a.B", ast).cls.data
-    subcls_meta, = self._convert_class("a.C", ast).cls.data
+    cls_meta = self._convert_class("a.B", ast).cls
+    subcls_meta = self._convert_class("a.C", ast).cls
     self.assertEqual(meta, cls_meta)
     self.assertEqual(meta, subcls_meta)
 
@@ -59,8 +59,8 @@ class ConvertTest(unittest.TestCase):
       class C(B[int]): ...
     """)
     meta = self._convert_class("a.A", ast)
-    cls_meta, = self._convert_class("a.B", ast).cls.data
-    subcls_meta, = self._convert_class("a.C", ast).cls.data
+    cls_meta = self._convert_class("a.B", ast).cls
+    subcls_meta = self._convert_class("a.C", ast).cls
     self.assertEqual(meta, cls_meta)
     self.assertEqual(meta, subcls_meta)
 
@@ -138,7 +138,7 @@ class ConvertTest(unittest.TestCase):
              [cls.type_parameters[0], cls.type_parameters[1]], self._vm)),
          (abstract.RET, self._vm.convert.str_type)])
     self.assertIsInstance(instance, abstract.Instance)
-    self.assertEqual(abstract.get_atomic_value(instance.cls), cls)
+    self.assertEqual(instance.cls, cls)
     six.assertCountEqual(
         self,
         [(name, set(var.data))
@@ -175,7 +175,7 @@ class ConvertTest(unittest.TestCase):
                          [(abstract.ARGS, self._vm.convert.unsolvable),
                           (abstract.RET, self._vm.convert.int_type)])
     self.assertIsInstance(instance, abstract.Instance)
-    self.assertEqual(abstract.get_atomic_value(instance.cls), cls.base_cls)
+    self.assertEqual(instance.cls, cls.base_cls)
     six.assertCountEqual(
         self,
         [(name, var.data) for name, var in instance.type_parameters.items()],
