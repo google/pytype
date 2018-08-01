@@ -240,5 +240,12 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       def iterate(x) -> None: ...
     """)
 
+  def test_subprocess(self):
+    # Test an attribute new in Python 3.
+    self.Check("""
+      import subprocess
+      subprocess.run
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
