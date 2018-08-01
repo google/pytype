@@ -30,6 +30,7 @@ endif()
 
 set(COPY_SCRIPT "${PROJECT_SOURCE_DIR}/build_scripts/pytype_copy.py")
 set(TEST_MODULE_SCRIPT "${PROJECT_SOURCE_DIR}/build_scripts/test_module.py")
+set(PYEXE_SCRIPT "${PROJECT_SOURCE_DIR}/build_scripts/pyexe.py")
 
 add_compile_options("-std=c++11")
 
@@ -311,6 +312,62 @@ function(py_library)
 
   _add_out_property(${fq_target_name} "${PY_LIBRARY_SRCS}")
 endfunction(py_library)
+
+function(toplevel_py_binary)
+  cmake_parse_arguments(
+    PY_BINARY    # prefix
+    ""           # optional args
+    "NAME;MAIN"  # single value args
+    "SRCS;DEPS"  # multi-value args
+    ${ARGN}
+  )
+  if(NOT PY_BINARY_NAME)
+    message(FATAL_ERROR "'py_binary' rule requires a NAME argument.")
+  endif()
+  if(NOT PY_BINARY_SRCS)
+    message(FATAL_ERROR "'py_binary' rule requires a SRCS argument.")
+  endif()
+  if(NOT PY_BINARY_MAIN)
+    message(FATAL_ERROR "'py_binary' rule requires a MAIN argument.")
+  endif()
+
+  if(PY_BINARY_DEPS)
+    set(deps "DEPS ${PY_BINARY_DEPS}")
+  endif()
+
+  set(lib_suffix "___internal_py_library_for_binary")
+  set(py_binary_library_name ${PY_BINARY_NAME}${lib_suffix})
+
+  py_library(
+    NAME
+      ${py_binary_library_name}
+    SRCS
+      ${PY_BINARY_SRCS}
+    DEPS
+      ${PY_BINARY_DEPS}
+  )
+  _gen_fq_target_name(${py_binary_library_name} py_binary_library_fq_name)
+  _get_out_property_list(${py_binary_library_fq_name} out_file_list)
+
+  string(REPLACE "${PROJECT_SOURCE_DIR}/" "" relative_path_to_main ${CMAKE_CURRENT_SOURCE_DIR}/${PY_BINARY_MAIN})
+  string(REPLACE ".py" "" relative_path_to_main_no_ext ${relative_path_to_main})
+  string(REPLACE "/" "." main_module ${relative_path_to_main_no_ext})
+
+  set(exe_path ${PYTYPE_OUT_BIN_DIR}/${PY_BINARY_NAME})
+
+  # Copy the main script to a file with the name of the target name.
+  add_custom_command(
+      OUTPUT ${exe_path}
+      COMMAND ${PYTHON_EXECUTABLE} ${PYEXE_SCRIPT} -p ${PROJECT_BINARY_DIR} -v TYPESHED_HOME=${PROJECT_SOURCE_DIR}/typeshed -m ${main_module} -x ${exe_path}
+      DEPENDS ${out_file_list}  # This command should run if the internal py_library was built.
+  )
+  _gen_fq_target_name(${PY_BINARY_NAME} fq_target_name)
+  add_custom_target(
+    ${fq_target_name}
+    ALL
+    DEPENDS ${exe_path}
+  )
+endfunction(toplevel_py_binary)
 
 function(py_test)
   cmake_parse_arguments(

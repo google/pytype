@@ -9,4 +9,7 @@ set(CMAKE_MODULE_PATH
 )
 include(PyTypeUtils)
 
+set(PYTYPE_OUT_BIN_DIR ${PROJECT_BINARY_DIR}/bin)
+file(MAKE_DIRECTORY ${PYTYPE_OUT_BIN_DIR})
+
 add_subdirectory(pytype)
