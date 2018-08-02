@@ -275,7 +275,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         node, attr = self._get_attribute_computed(
             node, cls, name, valself, clsval, compute_function="__getattr__")
     if attr is not None:
-      attr = self._filter_type_parameter_instances(node, attr)
+      attr = self._filter_var(node, attr)
     if attr is None and obj.maybe_missing_members:
       # The VM hit maximum depth while initializing this instance, so it may
       # have attributes that we don't know about.
@@ -401,7 +401,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     elif isinstance(obj, abstract.Class):
       node, attr = self._get_member(node, obj, name)
       if attr is not None:
-        attr = self._filter_type_parameter_instances(node, attr)
+        attr = self._filter_var(node, attr)
       return node, attr
     elif isinstance(obj, (abstract.Unknown, abstract.Unsolvable)):
       # The object doesn't have an MRO, so this is the same as get_attribute
@@ -429,18 +429,18 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         return node, obj.members[name]
     return node, None
 
-  def _filter_type_parameter_instances(self, node, var):
-    """Filter the type parameter instances in the variable by the node.
+  def _filter_var(self, node, var):
+    """Filter the variable by the node.
 
-    A type parameter instance needs to be filtered at the moment of access,
-    since its value may change later. Recursively filters any such instances
-    in the variable.
+    Filters the variable data, including recursively expanded type parameter
+    instances, by visibility at the node. A type parameter instance needs to be
+    filtered at the moment of access because its value may change later.
 
     Args:
       node: The current node.
       var: A variable to filter.
     Returns:
-      The variable with type parameter instances filtered.
+      The filtered variable.
     """
     # First, check if we need to do any filtering at all. This method is
     # heavily called, so creating the `ret` variable judiciously reduces the
@@ -448,8 +448,8 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     bindings = var.Bindings(node)
     if not bindings:
       return None
-    if not any(isinstance(b.data, abstract.TypeParameterInstance)
-               for b in bindings):
+    if len(bindings) == len(var.bindings) and not any(
+        isinstance(b.data, abstract.TypeParameterInstance) for b in bindings):
       return var
     ret = self.vm.program.NewVariable()
     for binding in bindings:

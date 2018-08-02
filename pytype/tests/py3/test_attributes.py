@@ -118,5 +118,35 @@ class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):
       z = ...  # type: int
     """)
 
+  def testFilterSubclassAttribute(self):
+    self.Check("""
+      from typing import List
+
+      class NamedObject(object):
+        name = ...  # type: str
+      class UnnamedObject(object):
+        pass
+      class ObjectHolder(object):
+        named = ...  # type: NamedObject
+        unnamed = ...  # type: UnnamedObject
+
+      class Base(object):
+        def __init__(self):
+          self.objects = []  # type: List
+
+      class Foo(Base):
+        def __init__(self, holder: ObjectHolder):
+          Base.__init__(self)
+          self.objects.append(holder.named)
+        def get_name(self):
+          return self.objects[0].name
+
+      class Bar(Base):
+        def __init__(self, holder: ObjectHolder):
+          Base.__init__(self)
+          self.objects = []
+          self.objects.append(holder.unnamed)
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
