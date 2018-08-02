@@ -203,7 +203,7 @@ class BaseTest(unittest.TestCase):
       pass
     if report_errors and len(errorlog):
       errorlog.print_to_stderr()
-      self.fail("Checker found %d errors" % len(errorlog))
+      self.fail("Checker found {} errors:\n{}".format(len(errorlog), errorlog))
 
   def assertNoCrash(self, method, code, **kwargs):
     method(code, report_errors=False, **kwargs)
