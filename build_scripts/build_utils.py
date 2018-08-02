@@ -22,6 +22,11 @@ GEN_FILE_LIST = [
     "stack.hh",
 ]
 
+NINJA_FAILURE_PREFIX = "FAILED: "
+FAILURE_MSG_PREFIX = ">>> FAIL"
+PASS_MSG_PREFIX = ">>> PASS"
+RESULT_MSG_SEP = " - "
+
 
 def current_py_version():
   """Return the Python version under which this script is being run."""
@@ -56,6 +61,27 @@ def _clean_out_dir(msg):
       shutil.rmtree(path)
     elif item not in ["README.md", ".gitignore"]:
       os.remove(path)
+
+
+def get_module_and_log_file_from_result_msg(msg):
+  if msg.startswith(FAILURE_MSG_PREFIX):
+    _, mod_name, log_file = msg.split(RESULT_MSG_SEP)
+    return mod_name, log_file
+  if msg.startswith(PASS_MSG_PREFIX):
+    _, mod_name = msg.split(RESULT_MSG_SEP)
+    return mod_name, None
+  return None, None
+
+
+def failure_msg(mod_name, log_file):
+  components = [FAILURE_MSG_PREFIX, mod_name]
+  if log_file:
+    components.append(log_file)
+  return RESULT_MSG_SEP.join(components)
+
+
+def pass_msg(mod_name):
+  return RESULT_MSG_SEP.join([PASS_MSG_PREFIX, mod_name])
 
 
 def run_cmd(cmd, cwd=None):
@@ -114,6 +140,65 @@ def run_cmake(force_clean=False, log_output=False):
   # Cache the Python version for which the build files have been generated.
   PyVersionCache.cache()
   return True
+
+
+def run_ninja(targets, fail_collector=None, fail_fast=False):
+  """Run ninja over the list of specified targets.
+
+  Arguments:
+    targets: The list of test targets to run.
+    fail_collector: A FailCollector object to collect failures.
+    fail_fast: If True, abort at the first target failure.
+
+  Returns:
+    True if no target fails. False, otherwise.
+  """
+  # The -k option to ninja, set to a very high value, makes it run until it
+  # detects all failures. So, we set it to a high value unless |fail_fast| is
+  # True.
+  cmd = ["ninja", "-k", "1" if fail_fast else "100000"] + targets
+  process = subprocess.Popen(cmd, cwd=OUT_DIR,
+                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+  failed_targets = []
+  with open(NINJA_LOG, "w") as ninja_log:
+    while True:
+      line = process.stdout.readline()
+      if not line:
+        break
+      if sys.version_info.major >= 3:
+        # process.stdout.readline() always returns a 'bytes' object.
+        line = line.decode("utf-8")
+      ninja_log.write(line)
+      if line.startswith(NINJA_FAILURE_PREFIX):
+        # This is a failed ninja target.
+        failed_targets.append(line[len(NINJA_FAILURE_PREFIX):].strip())
+      modname, logfile = get_module_and_log_file_from_result_msg(line)
+      if modname:
+        print(line)
+      if logfile:
+        assert modname
+        if fail_collector:
+          fail_collector.add_failure(modname, logfile)
+    if failed_targets:
+      # For convenience, we will print the list of failed targets.
+      summary_hdr = ">>> Detected Ninja target failures:"
+      print("\n" + summary_hdr)
+      ninja_log.write("\n" + summary_hdr + "\n")
+      for t in failed_targets:
+        target = "    - %s" % t
+        print(target)
+        ninja_log.write(target + "\n")
+  process.wait()
+  if process.returncode == 0:
+    return True
+  else:
+    # Ninja output can be a lot. Printing it here will clutter the output of
+    # this script. So, just tell the user how to repro the error.
+    print(">>> FAILED: Ninja command '%s'." % " ".join(cmd))
+    print(">>>         Run it in the 'out' directory to reproduce.")
+    print(">>>         Full Ninja output is available in '%s'." % NINJA_LOG)
+    print(">>>         Failing test modules (if any) will be reported below.")
+    return False
 
 
 def generate_files():
