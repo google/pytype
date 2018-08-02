@@ -55,6 +55,10 @@ class SerializeAstTest(unittest.TestCase):
                               python_version=self.PYTHON_VERSION,
                               pythonpath=[temp_dir.path])
     ast = loader.load_file(module_name, pyi_filename)
+    # serialize_ast.StoreAst sorts the ast for determinism, so we should do the
+    # same to the original ast to do pre- and post-pickling comparisons.
+    loader._modules[module_name].ast = ast = ast.Visit(
+        visitors.CanonicalOrderingVisitor())
     return ast, loader
 
   def testFindClassTypesVisitor(self):
