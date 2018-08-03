@@ -26,6 +26,10 @@ NINJA_FAILURE_PREFIX = "FAILED: "
 FAILURE_MSG_PREFIX = ">>> FAIL"
 PASS_MSG_PREFIX = ">>> PASS"
 RESULT_MSG_SEP = " - "
+_NOT_A_MSG = 0
+_NINJA_FAILURE_MSG = 1
+_TEST_MODULE_FAIL_MSG = 2
+_TEST_MODULE_PASS_MSG = 3
 
 
 def current_py_version():
@@ -63,14 +67,18 @@ def _clean_out_dir(msg):
       os.remove(path)
 
 
-def get_module_and_log_file_from_result_msg(msg):
-  if msg.startswith(FAILURE_MSG_PREFIX):
-    _, mod_name, log_file = msg.split(RESULT_MSG_SEP)
-    return mod_name, log_file
-  if msg.startswith(PASS_MSG_PREFIX):
-    _, mod_name = msg.split(RESULT_MSG_SEP)
-    return mod_name, None
-  return None, None
+def parse_ninja_output_line(line):
+  if line.startswith(NINJA_FAILURE_PREFIX):
+    return _NINJA_FAILURE_MSG, None, None
+  elif line.startswith(FAILURE_MSG_PREFIX):
+    components = line.split(RESULT_MSG_SEP)
+    log_file = components[2] if len(components) == 3 else None
+    return _TEST_MODULE_FAIL_MSG, components[1], log_file
+  elif line.startswith(PASS_MSG_PREFIX):
+    _, mod_name = line.split(RESULT_MSG_SEP)
+    return _TEST_MODULE_PASS_MSG, mod_name, None
+  else:
+    return _NOT_A_MSG, None, None
 
 
 def failure_msg(mod_name, log_file):
@@ -142,11 +150,32 @@ def run_cmake(force_clean=False, log_output=False):
   return True
 
 
+class FailCollector(object):
+  """A class to collect failures."""
+
+  def __init__(self):
+    self._failures = []
+
+  def add_failure(self, mod_name, log_file):
+    self._failures.append((mod_name, log_file))
+
+  def print_report(self):
+    num_failures = len(self._failures)
+    if num_failures == 0:
+      return
+    print("\n%d test module(s) failed: \n" % num_failures)
+    for mod_name, log_file in self._failures:
+      msg = "** %s" % mod_name
+      if log_file:
+        msg += " - %s" % log_file
+      print(msg)
+
+
 def run_ninja(targets, fail_collector=None, fail_fast=False):
   """Run ninja over the list of specified targets.
 
   Arguments:
-    targets: The list of test targets to run.
+    targets: The list of targets to run.
     fail_collector: A FailCollector object to collect failures.
     fail_fast: If True, abort at the first target failure.
 
@@ -169,19 +198,17 @@ def run_ninja(targets, fail_collector=None, fail_fast=False):
         # process.stdout.readline() always returns a 'bytes' object.
         line = line.decode("utf-8")
       ninja_log.write(line)
-      if line.startswith(NINJA_FAILURE_PREFIX):
+      msg_type, modname, logfile = parse_ninja_output_line(line)
+      if msg_type == _NINJA_FAILURE_MSG:
         # This is a failed ninja target.
         failed_targets.append(line[len(NINJA_FAILURE_PREFIX):].strip())
-      modname, logfile = get_module_and_log_file_from_result_msg(line)
-      if modname:
+      if msg_type == _TEST_MODULE_PASS_MSG or msg_type == _TEST_MODULE_FAIL_MSG:
         print(line)
-      if logfile:
-        assert modname
-        if fail_collector:
+        if msg_type == _TEST_MODULE_FAIL_MSG:
           fail_collector.add_failure(modname, logfile)
     if failed_targets:
       # For convenience, we will print the list of failed targets.
-      summary_hdr = ">>> Detected Ninja target failures:"
+      summary_hdr = ">>> Found Ninja target failures (includes test failures):"
       print("\n" + summary_hdr)
       ninja_log.write("\n" + summary_hdr + "\n")
       for t in failed_targets:

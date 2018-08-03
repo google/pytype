@@ -40,30 +40,12 @@ def parse_args():
   return args
 
 
-class FailCollector(object):
-  """A class to collect failures."""
-
-  def __init__(self):
-    self._failures = []
-
-  def add_failure(self, mod_name, log_file):
-    self._failures.append((mod_name, log_file))
-
-  def print_report(self):
-    num_failures = len(self._failures)
-    if num_failures == 0:
-      return
-    print("\n%d test module(s) failed: \n" % num_failures)
-    for mod_name, log_file in self._failures:
-      print("** %s - %s" % (mod_name, log_file))
-
-
 def main():
   opts = parse_args()
   modules = opts.modules or ["test_all"]
   if not build_utils.run_cmake(log_output=True):
     sys.exit(1)
-  fail_collector = FailCollector()
+  fail_collector = build_utils.FailCollector()
   # PyType's target names use the dotted name convention. So, the fully
   # qualified test module names are actually ninja target names.
   print("Running tests (build steps will be executed as required) ...\n")
