@@ -64,17 +64,20 @@ class AsReturnValue(AsInstance):
   """Specially mark return values, to handle NoReturn properly."""
 
 
-# TODO(rechen): Check this function's call sites to see what can be simplified
-# with the new `default` argument.
-def get_atomic_value(variable, constant_type=None, default=None):
+_NONE = object()  # sentinel for get_atomic_value
+
+
+def get_atomic_value(variable, constant_type=None, default=_NONE):
   """Get the atomic value stored in this variable."""
   if len(variable.bindings) == 1:
     v, = variable.bindings
     if isinstance(v.data, constant_type or object):
-      return v.data
-  elif default:
+      return v.data  # success
+  if default is not _NONE:
+    # If a default is specified, we return it instead of failing.
     return default
-  elif not variable.bindings:
+  # Determine an appropriate failure message.
+  if not variable.bindings:
     raise ConversionError("Cannot get atomic value from empty variable.")
   bindings = variable.bindings
   name = bindings[0].data.vm.convert.constant_name(constant_type)
@@ -1537,11 +1540,7 @@ class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
     return args
 
   def starstarargs_as_dict(self):
-    try:
-      kws = self.starstarargs and get_atomic_value(self.starstarargs, Dict)
-    except ConversionError:
-      kws = None
-    return kws
+    return self.starstarargs and get_atomic_value(self.starstarargs, Dict, None)
 
   def simplify(self, node):
     """Try to insert part of *args, **kwargs into posargs / namedargs."""
