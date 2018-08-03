@@ -89,8 +89,7 @@ class MatcherTest(unittest.TestCase):
         self.type_type, type_parameters, self.vm)
     for result in self._match_var(left, other_type):
       instance_binding, = result[abstract.T].bindings
-      cls_binding, = instance_binding.data.cls.bindings
-      self.assertEqual(cls_binding.data, left)
+      self.assertEqual(instance_binding.data.cls, left)
 
   def testUnion(self):
     left_option1 = self._make_class("o1")
@@ -102,8 +101,9 @@ class MatcherTest(unittest.TestCase):
     left = self._make_class("left")
     meta1 = self._make_class("m1")
     meta2 = self._make_class("m2")
-    left.cls = self.vm.program.NewVariable(
-        [meta1, meta2], [], self.vm.root_cfg_node)
+    left.set_class(self.vm.root_cfg_node,
+                   self.vm.program.NewVariable(
+                       [meta1, meta2], [], self.vm.root_cfg_node))
     self.assertMatch(left, meta1)
     self.assertMatch(left, meta2)
 
@@ -306,7 +306,7 @@ class MatcherTest(unittest.TestCase):
         self.vm.root_cfg_node, instance, "f", binding)
     bound = var.data[0]
     _, var = self.vm.attribute_handler.get_attribute(
-        self.vm.root_cfg_node, instance.cls.data[0], "f")
+        self.vm.root_cfg_node, instance.cls, "f")
     unbound = var.data[0]
     callable_no_self = self._convert_type("Callable[[int]]")
     callable_self = self._convert_type("Callable[[Any, int]]")

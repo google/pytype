@@ -437,7 +437,7 @@ class VirtualMachine(object):
           with_metaclass = True
           if not meta:
             # Only the first metaclass gets applied.
-            meta = b.get_class()
+            meta = b.get_class().to_variable(self.root_cfg_node)
           non_meta.extend(b.bases)
       if not with_metaclass:
         non_meta.append(base)
@@ -495,12 +495,14 @@ class VirtualMachine(object):
       if cls_var and all(v.data.full_name == "__builtin__.type"
                          for v in cls_var.bindings):
         cls_var = None
+      cls = abstract.get_atomic_value(
+          cls_var, default=self.convert.unsolvable) if cls_var else None
       try:
         val = abstract.InterpreterClass(
             name,
             bases,
             class_dict.pyval,
-            cls_var,
+            cls,
             self)
       except mro.MROError as e:
         self.errorlog.mro_error(self.frames, name, e.mro_seqs)
@@ -679,29 +681,22 @@ class VirtualMachine(object):
       return cls.base_cls
     return cls
 
-  def _yield_subclass_superclass_pairs(self, subcls_var, supercls_var):
-    """Get (subcls, supercls) pairs of abstract.AtomicAbstractValue objects."""
-    if subcls_var and supercls_var:
-      for subcls in subcls_var.data:
-        for supercls in supercls_var.data:
-          if supercls in subcls.mro:
-            yield self._base(subcls), self._base(supercls)
-
-  def _overrides(self, node, subcls_var, supercls_var, attr):
+  def _overrides(self, node, subcls, supercls, attr):
     """Check whether subcls_var overrides or newly defines the given attribute.
 
     Args:
       node: The current node.
-      subcls_var: A variable of a potential subclass.
-      supercls_var: A variable of a potential superclass.
+      subcls: A potential subclass.
+      supercls: A potential superclass.
       attr: An attribute name.
 
     Returns:
       True if subcls_var is a subclass of supercls_var and overrides or newly
       defines the attribute. False otherwise.
     """
-    for subcls, supercls in self._yield_subclass_superclass_pairs(
-        subcls_var, supercls_var):
+    if subcls and supercls and supercls in subcls.mro:
+      subcls = self._base(subcls)
+      supercls = self._base(supercls)
       for cls in subcls.mro:
         if cls == supercls:
           break
@@ -1070,7 +1065,7 @@ class VirtualMachine(object):
 
   def _data_is_none(self, x):
     assert isinstance(x, abstract.AtomicAbstractValue)
-    return x.cls and x.cls.data == [self.convert.none_type]
+    return x.cls == self.convert.none_type
 
   def _var_is_none(self, v):
     assert isinstance(v, cfg.Variable)
@@ -1800,9 +1795,8 @@ class VirtualMachine(object):
       try:
         return tuple(self.convert.value_to_constant(data, list))
       except abstract.ConversionError:
-        if data.cls and len(data.cls.bindings) == 1:
-          cls, = data.cls.data
-          for base in cls.mro:
+        if data.cls:
+          for base in data.cls.mro:
             if isinstance(base, abstract.TupleClass) and not base.formal:
               # We've found a TupleClass with concrete parameters, which means
               # we're a subclass of a heterogenous tuple (usually a

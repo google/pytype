@@ -64,12 +64,16 @@ class AsReturnValue(AsInstance):
   """Specially mark return values, to handle NoReturn properly."""
 
 
-def get_atomic_value(variable, constant_type=None):
+# TODO(rechen): Check this function's call sites to see what can be simplified
+# with the new `default` argument.
+def get_atomic_value(variable, constant_type=None, default=None):
   """Get the atomic value stored in this variable."""
   if len(variable.bindings) == 1:
     v, = variable.bindings
     if isinstance(v.data, constant_type or object):
       return v.data
+  elif default:
+    return default
   elif not variable.bindings:
     raise ConversionError("Cannot get atomic value from empty variable.")
   bindings = variable.bindings
@@ -315,7 +319,7 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   def get_special_attribute(self, unused_node, name, unused_valself):
     """Fetch a special attribute (e.g., __get__, __iter__)."""
     if name == "__class__":
-      return self.get_class()
+      return self.get_class().to_variable(self.vm.root_cfg_node)
     return None
 
   def get_own_new(self, node, value):
@@ -439,7 +443,7 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
     Returns:
       A list of variables.
     """
-    return [self.cls] if self.cls else []
+    return []
 
   def unique_parameter_values(self):
     """Get unique parameter subtypes as bindings.
@@ -518,7 +522,7 @@ class Empty(AtomicAbstractValue):
     return node, self.to_variable(node)
 
   def get_class(self):
-    return self.to_variable(self.vm.root_cfg_node)
+    return self
 
   def instantiate(self, node, container=None):
     return self.to_variable(node)
@@ -666,7 +670,7 @@ class TypeParameter(AtomicAbstractValue):
       self.vm.errorlog.invalid_typevar(self.vm.frames, message)
 
   def get_class(self):
-    return self.to_variable(self.vm.root_cfg_node)
+    return self
 
 
 class TypeParameterInstance(AtomicAbstractValue):
@@ -678,7 +682,7 @@ class TypeParameterInstance(AtomicAbstractValue):
     self.instance = instance
 
   def get_class(self):
-    return self.param.to_variable(self.vm.root_cfg_node)
+    return self.param
 
   def call(self, node, func, args):
     var = self.instance.type_parameters[self.name]
@@ -791,27 +795,31 @@ class SimpleAbstractValue(AtomicAbstractValue):
       return 0
 
   def __repr__(self):
-    if self.cls:
-      cls = self.cls.data[0]
-      return "<%s [%r]>" % (self.name, cls)
-    else:
-      return "<%s>" % self.name
+    cls = " [%r]" % self.cls if self.cls else ""
+    return "<%s%s>" % (self.name, cls)
 
   def get_class(self):
     # See Py_TYPE() in Include/object.h
     if self.cls:
       return self.cls
     elif isinstance(self, (AnnotationClass, Class)):
-      return self.vm.convert.type_type.to_variable(self.vm.root_cfg_node)
+      return self.vm.convert.type_type
 
   def set_class(self, node, var):
     """Set the __class__ of an instance, for code that does "x.__class__ = y."""
-    if self.cls:
-      self.cls.PasteVariable(var, node)
+    # Simplification: Setting __class__ is done rarely, and supporting this
+    # action would complicate pytype considerably by forcing us to track the
+    # class in a variable, so we instead fall back to Any.
+    try:
+      new_cls = get_atomic_value(var)
+    except ConversionError:
+      self.cls = self.vm.convert.unsolvable
     else:
-      self.cls = var
-    for cls in var.data:
-      cls.register_instance(self)
+      if self.cls and self.cls != new_cls:
+        self.cls = self.vm.convert.unsolvable
+      else:
+        self.cls = new_cls
+        new_cls.register_instance(self)
     return node
 
   def get_type_key(self, seen=None):
@@ -824,7 +832,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     seen.add(self)
     key = set()
     if self.cls:
-      key.update(self.cls.data)
+      key.add(self.cls)
     for name, var in self.type_parameters.items():
       subkey = frozenset(value.data.get_default_type_key() if value.data in seen
                          else value.data.get_type_key(seen)
@@ -853,7 +861,7 @@ class Instance(SimpleAbstractValue):
 
   def __init__(self, cls, vm):
     super(Instance, self).__init__(cls.name, vm)
-    self.cls = cls.to_variable(vm.root_cfg_node)
+    self.cls = cls
     if isinstance(cls, (InterpreterClass, PyTDClass)) and cls.is_dynamic:
       self.maybe_missing_members = True
     cls.register_instance(self)
@@ -934,10 +942,9 @@ class Instance(SimpleAbstractValue):
     return True
 
   def get_full_name(self):
-    try:
-      return get_atomic_value(self.get_class()).full_name
-    except ConversionError:
-      return None
+    # TODO(rechen): Override the `full_name` property instead of defining this
+    # separate method.
+    return self.get_class().full_name
 
 
 @six.add_metaclass(MixinMeta)
@@ -1065,7 +1072,7 @@ class List(Instance, HasSlots, PythonConstant):
     if isinstance(data, AbstractOrConcreteValue):
       return self.vm.convert.value_to_constant(data, (int, type(None)))
     elif isinstance(data, Instance):
-      if get_atomic_value(data.cls) != self.vm.convert.int_type:
+      if data.cls != self.vm.convert.int_type:
         raise ConversionError()
       else:
         return None
@@ -1418,8 +1425,7 @@ class AnnotationContainer(AnnotationClass):
         # late annotations.
         # TODO(kramm): Instead of blacklisting only int, this should use
         # annotations_util.py to look up legal types.
-        if (isinstance(val, Instance) and
-            val.cls.data == [self.vm.convert.int_type]):
+        if isinstance(val, Instance) and val.cls == self.vm.convert.int_type:
           # Don't report this error again.
           inner = (self.vm.convert.unsolvable,)
           self.vm.errorlog.not_indexable(self.vm.frames, self.name)
@@ -1491,10 +1497,11 @@ class Union(AtomicAbstractValue):
     return var
 
   def get_class(self):
-    var = self.vm.program.NewVariable()
-    for o in self.options:
-      var.PasteVariable(o.get_class(), self.vm.root_cfg_node)
-    return var
+    classes = {o.get_class() for o in self.options}
+    if len(classes) > 1:
+      return self.vm.convert.unsolvable
+    else:
+      return classes.pop()
 
   def call(self, node, func, args):
     var = self.vm.program.NewVariable(self.options, [], node)
@@ -1660,7 +1667,7 @@ class Function(SimpleAbstractValue):
 
   def __init__(self, name, vm):
     super(Function, self).__init__(name, vm)
-    self.cls = self.vm.convert.function_type.to_variable(vm.root_cfg_node)
+    self.cls = self.vm.convert.function_type
     self.is_attribute_of_class = False
     self.is_abstract = False
     self.members["func_name"] = self.vm.convert.build_string(
@@ -2037,7 +2044,7 @@ class ClassMethod(AtomicAbstractValue):
         node, func, args.replace(posargs=(cls,) + args.posargs))
 
   def get_class(self):
-    return self.vm.convert.function_type.to_variable(self.vm.root_cfg_node)
+    return self.vm.convert.function_type
 
   def to_bound_function(self):
     return BoundPyTDFunction(self.callself, self.callcls, self.method)
@@ -2057,7 +2064,7 @@ class StaticMethod(AtomicAbstractValue):
     return self.method.call(*args, **kwargs)
 
   def get_class(self):
-    return self.vm.convert.function_type.to_variable(self.vm.root_cfg_node)
+    return self.vm.convert.function_type
 
 
 class Property(AtomicAbstractValue):
@@ -2085,7 +2092,7 @@ class Property(AtomicAbstractValue):
         node, func, args.replace(posargs=(cls,)))
 
   def get_class(self):
-    return self.vm.convert.function_type.to_variable(self.vm.root_cfg_node)
+    return self.vm.convert.function_type
 
 
 class PyTDFunction(Function):
@@ -2403,8 +2410,8 @@ class Class(object):
 
   @property
   def has_abstract_metaclass(self):
-    return self.cls and "abc.ABCMeta" in itertools.chain.from_iterable(
-        (parent.full_name for parent in cls.mro) for cls in self.cls.data)
+    return self.cls and "abc.ABCMeta" in (
+        parent.full_name for parent in self.cls.mro)
 
   @property
   def is_abstract(self):
@@ -2455,8 +2462,7 @@ class Class(object):
       # val.data's __init__ method rather than that of val.data.cls. See
       # testClasses.testTypeInit for a case in which skipping this __init__
       # call is problematic.
-      if (not isinstance(val.data, Class) and val.data.cls and
-          self in val.data.cls.data):
+      if not isinstance(val.data, Class) and self == val.data.cls:
         node = self._call_init(node, val, args)
     return node, variable
 
@@ -2570,6 +2576,9 @@ class ParameterizedClass(AtomicAbstractValue, Class):
 
   def get_class(self):
     return self.base_cls.get_class()
+
+  def set_class(self, node, var):
+    self.base_cls.set_class(node, var)
 
   def get_method(self, method_name):
     """Retrieve the method with the given name."""
@@ -2753,7 +2762,7 @@ class PyTDClass(SimpleAbstractValue, Class):
     if pytd_cls.metaclass is None:
       metaclass = None
     else:
-      metaclass = self.vm.convert.constant_to_var(
+      metaclass = self.vm.convert.constant_to_value(
           pytd_cls.metaclass, subst={}, node=self.vm.root_cfg_node)
     self.pytd_cls = pytd_cls
     self.mro = self.compute_mro()
@@ -3372,8 +3381,8 @@ class InterpreterFunction(SignedFunction):
     if self.signature.param_names:
       self_var = callargs.get(self.signature.param_names[0])
       caller_is_abstract = self_var and all(
-          isinstance(cls, Class) and cls.is_abstract
-          for v in self_var.data if v.cls for cls in v.cls.data)
+          isinstance(v.cls, Class) and v.cls.is_abstract
+          for v in self_var.data if v.cls)
     else:
       caller_is_abstract = False
     check_return = not (caller_is_abstract and self.is_abstract)
@@ -3560,7 +3569,7 @@ class BoundFunction(AtomicAbstractValue):
   def __init__(self, callself, callcls, underlying):
     super(BoundFunction, self).__init__(underlying.name, underlying.vm)
     self._callself = callself
-    self._callcls = callcls
+    self._callcls = callcls  # TODO(rechen): remove this unused attribute.
     self.underlying = underlying
     self.is_attribute_of_class = False
 
@@ -3867,7 +3876,7 @@ class Unsolvable(AtomicAbstractValue):
 
   def get_class(self):
     # return ourself.
-    return self.to_variable(self.vm.root_cfg_node)
+    return self
 
   def instantiate(self, node, container=None):
     # return ourself.
@@ -4001,7 +4010,7 @@ class Unknown(AtomicAbstractValue):
 
   def get_class(self):
     # We treat instances of an Unknown as the same as the class.
-    return self.to_variable(self.vm.root_cfg_node)
+    return self
 
   def instantiate(self, node, container=None):
     return self.to_variable(node)

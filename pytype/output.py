@@ -239,12 +239,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return pytd.NamedType("__builtin__.module")
     elif isinstance(v, abstract.SimpleAbstractValue):
       if v.cls:
-        classvalues = self._get_values(node, v.cls, view)
-        cls_types = []
-        for cls in classvalues:
-          cls_types.append(self.value_instance_to_pytd_type(
-              node, cls, v, seen=seen, view=view))
-        ret = pytd_utils.JoinTypes(cls_types)
+        ret = self.value_instance_to_pytd_type(
+            node, v.cls, v, seen=seen, view=view)
         ret.Visit(visitors.FillInLocalPointers(
             {"__builtin__": self.vm.loader.builtins}))
         return ret
@@ -493,7 +489,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
 
   def _is_instance(self, value, cls_name):
     return (isinstance(value, abstract.Instance) and
-            all(cls.full_name == cls_name for cls in value.cls.data))
+            value.cls.full_name == cls_name)
 
   def _class_to_def(self, node, v, class_name):
     """Convert an InterpreterClass to a PyTD definition."""

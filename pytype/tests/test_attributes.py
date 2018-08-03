@@ -490,11 +490,12 @@ class TestAttributes(test_base.TargetIndependentTest):
         return v.x
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       class A(object):
         x = ...  # type: str
       class B(object):
         def __getattribute__(self, name) -> bool
-      def f(x) -> str or bool
+      def f(x) -> Any
     """)
 
   @test_base.skip("TODO(b/63407497): implement strict checking for __setitem__")

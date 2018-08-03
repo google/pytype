@@ -455,11 +455,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
   def _match_instance_against_type(self, left, other_type, subst, node, view):
     left_type = left.get_class()
     assert left_type
-    for left_cls in left_type.data:
-      new_subst = self._match_class_and_instance_against_type(
-          left_cls, left, other_type, subst, node, view)
-      if new_subst is not None:
-        return new_subst
+    return self._match_class_and_instance_against_type(
+        left_type, left, other_type, subst, node, view)
 
   def _match_instance(self, left, instance, other_type, subst, node, view):
     """Used by _match_class_and_instance_against_type. Matches one MRO entry.
@@ -679,13 +676,12 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     """Get a list of the protocol methods not implemented by `left`."""
     assert self.is_protocol(other_type)
     if left.cls:
-      for cls in left.cls.data:
-        methods = self._get_methods_dict(cls)
-        unimplemented = [
-            method for method in other_type.abstract_methods
-            if method not in methods]
-        if unimplemented:
-          return unimplemented
+      methods = self._get_methods_dict(left.cls)
+      unimplemented = [
+          method for method in other_type.abstract_methods
+          if method not in methods]
+      if unimplemented:
+        return unimplemented
     return []
 
   def _match_against_protocol(self, left, other_type, subst, node, view):
@@ -766,18 +762,24 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
             new_substs.append(match_result)
     return self._merge_substs(subst, new_substs)
 
-  def _get_concrete_values(self, var):
+  def _get_concrete_values_and_classes(self, var):
     # TODO(rechen): For type parameter instances, we should extract the concrete
     # value from v.instance so that we can check it, rather than ignoring the
     # value altogether.
-    return [v for v in var.data
-            if not isinstance(v, (abstract.AMBIGUOUS_OR_EMPTY,
-                                  abstract.TypeParameterInstance))]
+    values = []
+    classes = []
+    for v in var.data:
+      if not isinstance(v, (abstract.AMBIGUOUS_OR_EMPTY,
+                            abstract.TypeParameterInstance)):
+        cls = v.get_class()
+        if not isinstance(cls, abstract.AMBIGUOUS_OR_EMPTY):
+          values.append(v)
+          classes.append(cls)
+    return values, classes
 
   def _enforce_single_type(self, var, node):
     """Enforce that the variable contains only one concrete type."""
-    concrete_values = self._get_concrete_values(var)
-    classes = sum((v.get_class().Data(node) for v in concrete_values), [])
+    concrete_values, classes = self._get_concrete_values_and_classes(var)
     if len(set(classes)) > 1:
       # We require all occurrences to be of the same type, no subtyping allowed.
       return None
@@ -789,22 +791,19 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
 
   def _enforce_common_superclass(self, var):
     """Enforce that the variable's values share a superclass below object."""
-    concrete_values = self._get_concrete_values(var)
+    concrete_values, classes = self._get_concrete_values_and_classes(var)
     common_classes = None
     object_in_values = False
-    for v in concrete_values:
-      classes = []
-      for cls in v.get_class().data:
-        object_in_values |= cls == self.vm.convert.object_type
-        classes.extend(cls.mro)
-      classes = set(c.full_name for c in classes)
+    for cls in classes:
+      object_in_values |= cls == self.vm.convert.object_type
+      superclasses = {c.full_name for c in cls.mro}
       for compat, name in _COMPATIBLE_BUILTINS:
-        if compat in classes:
-          classes.add(name)
+        if compat in superclasses:
+          superclasses.add(name)
       if common_classes is None:
-        common_classes = classes
+        common_classes = superclasses
       else:
-        common_classes = common_classes.intersection(classes)
+        common_classes = common_classes.intersection(superclasses)
     if object_in_values:
       ignored_superclasses = {}
     else:

@@ -243,8 +243,8 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
           stack, annotation, "Needs options", name)
       return None
     elif isinstance(annotation, abstract.Instance) and (
-        annotation.cls.data == [self.vm.convert.str_type] or
-        annotation.cls.data == [self.vm.convert.unicode_type]
+        annotation.cls == self.vm.convert.str_type or
+        annotation.cls == self.vm.convert.unicode_type
     ):
       # String annotations : Late evaluation
       if isinstance(annotation, abstract.PythonConstant):
@@ -263,7 +263,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       self.vm.errorlog.invalid_annotation(
           stack, annotation, "Must be constant", name)
       return None
-    elif annotation.cls and annotation.cls.data == [self.vm.convert.none_type]:
+    elif annotation.cls == self.vm.convert.none_type:
       # PEP 484 allows to write "NoneType" as "None"
       return self.vm.convert.none_type
     elif isinstance(annotation, abstract.ParameterizedClass):

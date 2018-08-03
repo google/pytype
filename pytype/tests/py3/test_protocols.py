@@ -67,20 +67,6 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
         f(foo)
     """)
 
-  def test_check_protocol_against_garbage(self):
-    _, errors = self.InferWithErrors("""\
-      from typing import Sized
-      def f(x: Sized):
-        pass
-      class Foo(object):
-        pass
-      def g(x):
-        foo = Foo()
-        foo.__class__ = 42
-        f(foo)
-    """)
-    self.assertErrorLogIs(errors, [(9, "wrong-arg-types", r"\(x: Sized\)")])
-
   def test_check_parameterized_protocol(self):
     self.Check("""\
       from typing import Iterator, Iterable

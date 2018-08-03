@@ -323,20 +323,14 @@ std::vector<Binding*> Variable::Filter(const CFGNode* viewpoint) const {
 }
 
 std::set<Binding*> Variable::Prune(const CFGNode* viewpoint) {
-  std::stack<const CFGNode*> stack;
   std::set<Binding*> result;
-  if (!viewpoint) {
-    for (const auto& r : bindings_) {
-      result.insert(r.get());
-    }
-    return result;
-  }
   if (!viewpoint) {
     for (const auto& binding : bindings_) {
       result.insert(binding.get());
     }
     return result;
   }
+  std::stack<const CFGNode*> stack;
   std::unordered_set<const CFGNode*> seen;
   stack.push(viewpoint);
   do {

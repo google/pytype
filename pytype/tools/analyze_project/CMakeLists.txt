@@ -28,3 +28,14 @@ py_test(
     pytype.analyze_project
     pytype.libvm
 )
+
+toplevel_py_binary(
+  NAME
+    pytype
+  SRCS
+    main.py
+  MAIN
+    main.py
+  DEPS
+    pytype.analyze_project
+)

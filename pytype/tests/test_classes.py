@@ -1,6 +1,5 @@
 """Tests for classes."""
 
-
 from pytype import file_utils
 from pytype.tests import test_base
 
@@ -821,19 +820,6 @@ class ClassesTest(test_base.TargetIndependentTest):
         b = ...  # type: module
         x = ...  # type: Any
       """)
-
-  def testTypeChange(self):
-    ty = self.Infer("""
-      class A(object):
-        def __init__(self):
-          self.__class__ = int
-      x = "" % type(A())
-    """)
-    self.assertTypesMatchPytd(ty, """
-      class A(object):
-        pass
-      x = ...  # type: str
-    """)
 
   def testMakeType(self):
     ty = self.Infer("""

@@ -120,4 +120,15 @@ py_test(
     pytype.pytdtest
 )
 
+toplevel_py_binary(
+  NAME
+    pytd
+  SRCS
+    main.py
+  MAIN
+    main.py
+  DEPS
+    pytype.pytd
+)
+
 add_subdirectory(parse)

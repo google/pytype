@@ -307,18 +307,11 @@ class IsInstance(BinaryPredicate):
       True if the object is derived from a class in the class_spec, False if
       it is not, and None if it is ambiguous whether obj matches class_spec.
     """
-    if isinstance(obj, abstract.AMBIGUOUS_OR_EMPTY):
+    cls = obj.get_class()
+    if (isinstance(obj, abstract.AMBIGUOUS_OR_EMPTY) or cls is None or
+        isinstance(cls, abstract.AMBIGUOUS_OR_EMPTY)):
       return None
-    # Assume a single binding for the object's class variable.  If this isn't
-    # the case, treat the call as ambiguous.
-    cls_var = obj.get_class()
-    if cls_var is None:
-      return None
-    try:
-      obj_class = abstract.get_atomic_value(cls_var)
-    except abstract.ConversionError:
-      return None
-    return _check_against_mro(self.vm, obj_class, class_spec)
+    return _check_against_mro(self.vm, cls, class_spec)
 
 
 class IsSubclass(BinaryPredicate):
@@ -405,7 +398,7 @@ class SuperInstance(abstract.AtomicAbstractValue):
 
   def __init__(self, cls, obj, vm):
     super(SuperInstance, self).__init__("super", vm)
-    self.cls = self.vm.convert.super_type.to_variable(vm.root_cfg_node)
+    self.cls = self.vm.convert.super_type
     self.super_cls = cls
     self.super_obj = obj
     self.get = abstract.NativeFunction("__get__", self.get, self.vm)
@@ -555,7 +548,7 @@ class Object(BuiltinClass):
         self.load_lazy_attribute("__new__extra_args")
         return self.members["__new__extra_args"]
       elif (name == "__init__" and isinstance(val, abstract.Instance) and
-            any(self._has_own(node, cls, "__new__") for cls in val.cls.data)):
+            self._has_own(node, val.cls, "__new__")):
         self.load_lazy_attribute("__init__extra_args")
         return self.members["__init__extra_args"]
     return super(Object, self).get_special_attribute(node, name, valself)
@@ -665,9 +658,8 @@ class Property(PropertyTemplate):
 
   def call(self, node, funcv, args):
     property_args = self._get_args(args)
-    cls = self.to_variable(node)
     return node, PropertyInstance(
-        self.vm, "property", cls, **property_args).to_variable(node)
+        self.vm, "property", self, **property_args).to_variable(node)
 
 
 class StaticMethodInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
@@ -700,8 +692,7 @@ class StaticMethod(BuiltinClass):
     if len(args.posargs) != 1:
       raise abstract.WrongArgCount(self._SIGNATURE, args, self.vm)
     arg = args.posargs[0]
-    cls = self.to_variable(node)
-    return node, StaticMethodInstance(self.vm, cls, arg).to_variable(node)
+    return node, StaticMethodInstance(self.vm, self, arg).to_variable(node)
 
 
 class ClassMethodCallable(abstract.BoundFunction):
@@ -740,5 +731,4 @@ class ClassMethod(BuiltinClass):
     if len(args.posargs) != 1:
       raise abstract.WrongArgCount(self._SIGNATURE, args, self.vm)
     arg = args.posargs[0]
-    cls = self.to_variable(node)
-    return node, ClassMethodInstance(self.vm, cls, arg).to_variable(node)
+    return node, ClassMethodInstance(self.vm, self, arg).to_variable(node)

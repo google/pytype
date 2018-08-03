@@ -22,6 +22,8 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     else:
       return self.get_attribute(node, obj, name, valself=val)
 
+  # TODO(rechen): Get rid of the valcls argument, now that cls is a constant
+  # rather than a variable.
   def get_attribute(self, node, obj, name, valself=None, valcls=None):
     """Get the named attribute from the given object.
 
@@ -169,17 +171,16 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     if obj.cls is None:
       # "Any" etc.
       return True
-    for cls in obj.cls.data:
-      for baseclass in cls.mro:
-        if baseclass.full_name == "__builtin__.object":
-          # It's not possible to set an attribute on object itself.
-          # (object has __setattr__, but that honors __slots__.)
-          continue
-        if (isinstance(baseclass, abstract.SimpleAbstractValue) and
-            ("__setattr__" in baseclass.members or name in baseclass.members)):
-          return True  # This is a programmatic attribute.
-        if baseclass.slots is None or name in baseclass.slots:
-          return True  # Found a slot declaration; this is an instance attribute
+    for baseclass in obj.cls.mro:
+      if baseclass.full_name == "__builtin__.object":
+        # It's not possible to set an attribute on object itself.
+        # (object has __setattr__, but that honors __slots__.)
+        continue
+      if (isinstance(baseclass, abstract.SimpleAbstractValue) and
+          ("__setattr__" in baseclass.members or name in baseclass.members)):
+        return True  # This is a programmatic attribute.
+      if baseclass.slots is None or name in baseclass.slots:
+        return True  # Found a slot declaration; this is an instance attribute
     self.vm.errorlog.not_writable(self.vm.frames, obj, name)
     return False
 
@@ -245,7 +246,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     else:
       raise NotImplementedError(obj.__class__.__name__)
 
-  def _get_value_or_class_attribute(self, node, obj, name, valself, clsvar,
+  def _get_value_or_class_attribute(self, node, obj, name, valself, cls,
                                     get_from_value):
     """Get an attribute from a value or its class.
 
@@ -254,34 +255,27 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       obj: The value.
       name: The name of the attribute.
       valself: The object binding.
-      clsvar: A variable of the object class.
+      cls: The object class.
       get_from_value: A function that looks up the attribute on a value.
 
     Returns:
       A tuple of the node and the attribute, or None if it was not found.
     """
-    def computer(clsval):
-      return self._get_attribute_computed(
-          node, clsval.data, name, valself, clsval,
-          compute_function="__getattribute__")
-    node, candidates = self._get_candidates_from_var(node, clsvar, computer)
-    if not candidates or len(candidates) < len(clsvar.bindings):
+    if cls:
+      clsval = cls.to_binding(node)
+      node, attr = self._get_attribute_computed(
+          node, cls, name, valself, clsval, compute_function="__getattribute__")
+    else:
+      clsval = attr = None
+    if attr is None:
       node, attr = get_from_value(node, obj)
+    if attr is None and cls:
+      node, attr = self.get_attribute(node, cls, name, valself, clsval)
       if attr is None:
-        def getter(clsval):
-          new_node, new_attr = self.get_attribute(
-              node, clsval.data, name, valself, clsval)
-          if new_attr is None:
-            new_node, new_attr = self._get_attribute_computed(
-                node, clsval.data, name, valself, clsval,
-                compute_function="__getattr__")
-          return new_node, new_attr
-        node, new_candidates = self._get_candidates_from_var(
-            node, clsvar, getter)
-        candidates.extend(new_candidates)
-      else:
-        candidates.append(attr)
-    attr = self._filter_and_merge_candidates(node, candidates)
+        node, attr = self._get_attribute_computed(
+            node, cls, name, valself, clsval, compute_function="__getattr__")
+    if attr is not None:
+      attr = self._filter_var(node, attr)
     if attr is None and obj.maybe_missing_members:
       # The VM hit maximum depth while initializing this instance, so it may
       # have attributes that we don't know about.
@@ -407,7 +401,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     elif isinstance(obj, abstract.Class):
       node, attr = self._get_member(node, obj, name)
       if attr is not None:
-        attr = self._filter_and_merge_candidates(node, [attr])
+        attr = self._filter_var(node, attr)
       return node, attr
     elif isinstance(obj, (abstract.Unknown, abstract.Unsolvable)):
       # The object doesn't have an MRO, so this is the same as get_attribute
@@ -435,29 +429,48 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         return node, obj.members[name]
     return node, None
 
-  def _filter_and_merge_candidates(self, node, candidates):
-    """Merge the given candidates into one variable, filtered by the node."""
+  def _filter_var(self, node, var):
+    """Filter the variable by the node.
+
+    Filters the variable data, including recursively expanded type parameter
+    instances, by visibility at the node. A type parameter instance needs to be
+    filtered at the moment of access because its value may change later.
+
+    Args:
+      node: The current node.
+      var: A variable to filter.
+    Returns:
+      The filtered variable.
+    """
+    # First, check if we need to do any filtering at all. This method is
+    # heavily called, so creating the `ret` variable judiciously reduces the
+    # number of variables per pytype run by as much as 20%.
+    bindings = var.Bindings(node)
+    if not bindings:
+      return None
+    if len(bindings) == len(var.bindings) and not any(
+        isinstance(b.data, abstract.TypeParameterInstance) for b in bindings):
+      return var
     ret = self.vm.program.NewVariable()
-    for candidate in candidates:
-      for binding in candidate.Bindings(node):
-        val = binding.data
-        if isinstance(val, abstract.TypeParameterInstance):
-          var = val.instance.type_parameters[val.name]
-          # If this type parameter has visible values, we add those to the
-          # return value. Otherwise, if it has constraints, we add those as an
-          # upper bound on the values. When all else fails, we add an empty
-          # value as a placeholder that can be passed around and converted to
-          # Any after analysis.
-          if var.bindings:
-            candidates.append(var)
-          elif val.param.constraints:
-            constraints = abstract.merge_values(val.param.constraints, self.vm)
-            ret.PasteVariable(constraints.instantiate(node))
-          else:
-            ret.AddBinding(self.vm.convert.empty, [], node)
+    for binding in bindings:
+      val = binding.data
+      if isinstance(val, abstract.TypeParameterInstance):
+        var = val.instance.type_parameters[val.name]
+        # If this type parameter has visible values, we add those to the
+        # return value. Otherwise, if it has constraints, we add those as an
+        # upper bound on the values. When all else fails, we add an empty
+        # value as a placeholder that can be passed around and converted to
+        # Any after analysis.
+        var_bindings = var.Bindings(node)
+        if var_bindings:
+          bindings.extend(var_bindings)
+        elif val.param.constraints:
+          constraints = abstract.merge_values(val.param.constraints, self.vm)
+          ret.PasteVariable(constraints.instantiate(node))
         else:
-          sources = {binding}
-          ret.AddBinding(val, sources, node)
+          ret.AddBinding(self.vm.convert.empty, [], node)
+      else:
+        ret.AddBinding(val, {binding}, node)
     if ret.bindings:
       return ret
     else:
@@ -465,14 +478,13 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
 
   def _maybe_load_as_instance_attribute(self, node, obj, name):
     assert isinstance(obj, abstract.SimpleAbstractValue)
-    for cls in obj.cls.data:
-      if isinstance(cls, abstract.Class):
-        var = self._get_as_instance_attribute(node, cls, name, obj)
-        if var is not None:
-          if name in obj.members:
-            obj.members[name].PasteVariable(var, node)
-          else:
-            obj.members[name] = var
+    if isinstance(obj.cls, abstract.Class):
+      var = self._get_as_instance_attribute(node, obj.cls, name, obj)
+      if var is not None:
+        if name in obj.members:
+          obj.members[name].PasteVariable(var, node)
+        else:
+          obj.members[name] = var
 
   def _get_as_instance_attribute(self, node, cls, name, instance):
     assert isinstance(cls, abstract.Class)

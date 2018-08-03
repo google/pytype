@@ -108,12 +108,14 @@ def main():
       print(' ', imp.name)
     sys.exit(0)
 
+  # Main usage mode: analyze the project file by file in dependency order.
+
   logging.info('Source tree:\n%s',
                importlab.output.formatted_deps_list(import_graph))
   tool_utils.makedirs_or_die(conf.output, 'Could not create output directory')
   deps = pytype_runner.deps_from_import_graph(import_graph)
   runner = pytype_runner.PytypeRunner(args.filenames, deps, conf)
-  runner.run()
+  return runner.run()
 
 
 if __name__ == '__main__':

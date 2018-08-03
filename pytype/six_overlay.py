@@ -40,7 +40,7 @@ class AddMetaclassInstance(abstract.AtomicAbstractValue):
     cls_var = args.posargs[0]
     for b in cls_var.bindings:
       cls = b.data
-      log.debug("Adding metaclass %r to class %r", self.meta.data[0], cls)
+      log.debug("Adding metaclass %r to class %r", self.meta, cls)
       cls.cls = self.meta
     return node, cls_var
 
@@ -55,7 +55,8 @@ class AddMetaclass(abstract.PyTDFunction):
   def call(self, node, unused_func, args):
     """Adds a metaclass."""
     self.match_args(node, args)
-    meta = args.posargs[0]
+    meta = abstract.get_atomic_value(
+        args.posargs[0], default=self.vm.convert.unsolvable)
     return node, AddMetaclassInstance(meta, self.vm).to_variable(node)
 
 
@@ -81,7 +82,8 @@ class WithMetaclass(abstract.PyTDFunction):
   def call(self, node, unused_func, args):
     """Creates an anonymous class to act as a metaclass."""
     self.match_args(node, args)
-    meta = args.posargs[0]
+    meta = abstract.get_atomic_value(
+        args.posargs[0], default=self.vm.convert.unsolvable)
     bases = args.posargs[1:]
     result = WithMetaclassInstance(self.vm, meta, bases).to_variable(node)
     return node, result

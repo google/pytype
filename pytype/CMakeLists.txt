@@ -438,6 +438,17 @@ py_test(
     .pytd
 )
 
+toplevel_py_binary(
+  NAME
+    pytype-single
+  SRCS
+    main.py
+  MAIN
+    main.py
+  DEPS
+    .libvm
+)
+
 add_subdirectory(pyc)
 add_subdirectory(pyi)
 add_subdirectory(pytd)

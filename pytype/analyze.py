@@ -308,10 +308,11 @@ class CallTracer(vm.VirtualMachine):
       if isinstance(b.data, abstract.SimpleAbstractValue):
         for param in b.data.type_parameters.values():
           node = self.call_init(node, param)
-      b_clsvar = b.data.get_class()
-      b_clsbind = b_clsvar.bindings[0]
+      b_cls = b.data.get_class()
+      b_clsvar = b_cls.to_variable(node)
+      b_clsbind, = b_clsvar.bindings
       node, init = self.attribute_handler.get_attribute(
-          node, b_clsbind.data, "__init__", b, b_clsbind)
+          node, b_cls, "__init__", b, b_clsbind)
       if init:
         bound_init = self.bind_method(
             node, "__init__", init, b.data, b_clsvar)
@@ -331,8 +332,7 @@ class CallTracer(vm.VirtualMachine):
   def analyze_class(self, node, val):
     self._analyzed_classes.add(val.data)
     node, clsvar, instance = self.init_class(node, val.data)
-    good_instances = [b for b in instance.bindings
-                      if b.data.cls and val.data in b.data.cls.data]
+    good_instances = [b for b in instance.bindings if val.data == b.data.cls]
     if not good_instances:
       # __new__ returned something that's not an instance of our class.
       instance = val.data.instantiate(node)
@@ -527,10 +527,9 @@ class CallTracer(vm.VirtualMachine):
         # We don't need to record call signatures that don't involve
         # unknowns - there's nothing to solve for.
         continue
-      clsvar = args[0].data.get_class()
-      for cls in clsvar.data:
-        if isinstance(cls, abstract.PyTDClass):
-          class_to_records[cls].append(call_record)
+      cls = args[0].data.get_class()
+      if isinstance(cls, abstract.PyTDClass):
+        class_to_records[cls].append(call_record)
     classes = []
     for cls, call_records in class_to_records.items():
       full_name = cls.module + "." + cls.name if cls.module else cls.name

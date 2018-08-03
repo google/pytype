@@ -127,27 +127,30 @@ class PytypeRunner(object):
       # TODO(rechen): Do this tweaking in get_pytype_args so it can be tested.
       if report_errors:
         options.tweak(**self.custom_options)
-      io.process_one_file(options)
+      return io.process_one_file(options)
 
   def process_module(self, module, action):
     """Process a single module with the given action."""
+    ret = None
     if action == Action.REPORT_ERRORS:
       msg = '%s' % module.target
       _print_transient(msg)
-      self.run_pytype(module, True)
+      ret = self.run_pytype(module, True)
     elif action == Action.IGNORE_ERRORS:
       msg = '%s*' % module.target
       _print_transient(msg)
-      self.run_pytype(module, False)
+      ret = self.run_pytype(module, False)
     elif action == Action.GENERATE_DEFAULT:
       msg = '%s#' % module.target
       _print_transient(msg)
       self.write_default_pyi(module)
+      ret = 0
     else:
       logging.fatal('Unexpected action %r', action)
-      return
+      return 1
     # Clears the message by overwriting it with whitespace.
     _print_transient(' ' * len(msg))
+    return ret
 
   def yield_sorted_modules(self):
     """Yield modules from our sorted source files."""
@@ -192,5 +195,9 @@ class PytypeRunner(object):
     num_sources = len(self.filenames & files_to_analyze)
     print('Analyzing %d sources with %d dependencies' %
           (num_sources, len(files_to_analyze) - num_sources))
+    # set ret = 1 if any invocation of process_module returns an error.
+    ret = 0
     for module, action in modules:
-      self.process_module(module, action)
+      status = self.process_module(module, action)
+      ret = ret or status
+    return ret

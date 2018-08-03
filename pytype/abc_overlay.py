@@ -58,6 +58,5 @@ class AbstractProperty(special_builtins.PropertyTemplate):
         # have a more precise error message that insisted f was a class method.
         if isinstance(f, abstract.Function):
           f.is_abstract = True
-    cls = self.to_variable(node)
     return node, special_builtins.PropertyInstance(
-        self.vm, self.name, cls, **property_args).to_variable(node)
+        self.vm, self.name, self, **property_args).to_variable(node)
