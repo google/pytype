@@ -231,5 +231,18 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
       x = ...  # type: str
     """)
 
+  def testAmbiguousBaseClass(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Any
+        class Foo(Any): ...
+      """)
+      self.Check("""
+        from typing import Tuple
+        import foo
+        def f() -> Tuple[int]:
+          return foo.Foo()
+      """, pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")
