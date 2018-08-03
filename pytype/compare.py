@@ -20,7 +20,7 @@ def _is_primitive(vm, value):
   if isinstance(value, abstract.PythonConstant):
     return value.pyval.__class__ in vm.convert.primitive_classes
   elif isinstance(value, abstract.Instance):
-    return value.get_full_name() in vm.convert.primitive_class_names
+    return value.full_name in vm.convert.primitive_class_names
   return False
 
 
@@ -33,7 +33,7 @@ def _compare_primitive_value(vm, left, right):
 
 def _compare_primitive(left, right):
   if (isinstance(right, abstract.Instance) and
-      _incompatible(left.get_full_name(), right.get_full_name())):
+      _incompatible(left.full_name, right.full_name)):
     return False
   return None
 
