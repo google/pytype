@@ -933,7 +933,7 @@ class Instance(SimpleAbstractValue):
 
   def compatible_with(self, logical_value):  # pylint: disable=unused-argument
     # Containers with unset parameters and NoneType instances cannot match True.
-    name = self.get_full_name()
+    name = self.full_name
     if logical_value and name in Instance._CONTAINER_NAMES:
       return (T in self.type_parameters and
               bool(self.type_parameters[T].bindings))
@@ -941,9 +941,8 @@ class Instance(SimpleAbstractValue):
       return not logical_value
     return True
 
-  def get_full_name(self):
-    # TODO(rechen): Override the `full_name` property instead of defining this
-    # separate method.
+  @property
+  def full_name(self):
     return self.get_class().full_name
 
 
@@ -1301,7 +1300,7 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
     else:
       assert isinstance(other_dict, AtomicAbstractValue)
       if (isinstance(other_dict, Instance) and
-          other_dict.get_full_name() == "__builtin__.dict"):
+          other_dict.full_name == "__builtin__.dict"):
         k = other_dict.get_type_parameter(node, K)
         v = other_dict.get_type_parameter(node, V)
       else:
@@ -1751,7 +1750,7 @@ class Function(SimpleAbstractValue):
       # Case 3: Data is anything else. Same as Case 2, but emit a warning.
       if not (all(isinstance(d, (Instance, Unknown, Unsolvable))
                   for d in defaults_var.data) and
-              all(d.get_full_name() == "__builtin__.tuple"
+              all(d.full_name == "__builtin__.tuple"
                   for d in defaults_var.data if isinstance(d, Instance))):
         self.vm.errorlog.bad_function_defaults(self.vm.frames, self.name)
       # The ambiguous case is handled by the subclass.
@@ -3746,6 +3745,10 @@ class Module(Instance):
   @module.setter
   def module(self, m):
     assert (m is None or m == self.ast.name), (m, self.ast.name)
+
+  @property
+  def full_name(self):
+    return self.ast.name
 
   def has_getattr(self):
     """Does this module have a module-level __getattr__?
