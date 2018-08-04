@@ -32,31 +32,7 @@ import sys
 import traceback
 import unittest
 
-PYTYPE_SRC_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_FAILURE_MSG_PREFIX = ">>> FAIL"
-_PASS_MSG_PREFIX = ">>> PASS"
-_RESULT_MSG_SEP = " - "
-
-
-def get_module_and_log_file_from_result_msg(msg):
-  if msg.startswith(_FAILURE_MSG_PREFIX):
-    _, mod_name, log_file = msg.split(_RESULT_MSG_SEP)
-    return mod_name, log_file
-  if msg.startswith(_PASS_MSG_PREFIX):
-    _, mod_name = msg.split(_RESULT_MSG_SEP)
-    return mod_name, None
-  return None, None
-
-
-def failure_msg(mod_name, log_file):
-  components = [_FAILURE_MSG_PREFIX, mod_name]
-  if log_file:
-    components.append(log_file)
-  return _RESULT_MSG_SEP.join(components)
-
-
-def pass_msg(mod_name):
-  return _RESULT_MSG_SEP.join([_PASS_MSG_PREFIX, mod_name])
+import build_utils
 
 
 def print_messages(options, stdout_msg, output_file_msg):
@@ -147,7 +123,7 @@ def parse_args():
   parser.add_argument("fq_mod_name", type=str, metavar="FQ_MOD_NAME",
                       help="Fully qualified name of the test module to run.")
   parser.add_argument("-P", "--pytype_path", type=str,
-                      default=PYTYPE_SRC_ROOT,
+                      default=build_utils.PYTYPE_SRC_ROOT,
                       help="Path in which the pytype package can be found.")
   parser.add_argument("-o", "--output", type=str,
                       help="Path to the results file.")
@@ -243,10 +219,10 @@ def main():
   else:
     result = run(None)
   if result != 0:
-    print(failure_msg(options.fq_mod_name, options.output))
+    print(build_utils.failure_msg(options.fq_mod_name, options.output))
     sys.exit(1)
   else:
-    print(pass_msg(options.fq_mod_name))
+    print(build_utils.pass_msg(options.fq_mod_name))
 
 
 if __name__ == "__main__":
