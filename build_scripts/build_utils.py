@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 
+import json
 import os
 import shutil
 import subprocess
@@ -37,24 +38,43 @@ def current_py_version():
   return "%d.%d" % (sys.version_info.major, sys.version_info.minor)
 
 
-class PyVersionCache(object):
+class BuildConfig(object):
   """Utility class to manage the Python version cache."""
 
-  VERSION_CACHE = os.path.join(OUT_DIR, ".python_version")
+  BUILD_CONFIG_CACHE = os.path.join(OUT_DIR, ".build_config.json")
+
+  def __init__(self, **kwargs):
+    self.py_version = kwargs.get("py_version")
+    self.build_type = kwargs.get("build_type")
+
+  def save_to_cache_file(self):
+    with open(self.BUILD_CONFIG_CACHE, "w") as f:
+      json.dump(
+          {"py_version": self.py_version, "build_type": self.build_type}, f)
+
+  def __eq__(self, other):
+    return all([self.py_version == other.py_version,
+                self.build_type == other.build_type])
+
+  def __ne__(self, other):
+    return any([self.py_version != other.py_version,
+                self.build_type != other.build_type])
 
   @classmethod
-  def read(cls):
-    if os.path.exists(cls.VERSION_CACHE):
-      with open(cls.VERSION_CACHE, "r") as f:
-        return f.readline().strip()
+  def current_build_config(cls, debug):
+    return BuildConfig(**{
+        "py_version": current_py_version(),
+        "build_type": "debug" if debug else "None"
+    })
+
+  @classmethod
+  def read_cached_config(cls):
+    if os.path.exists(cls.BUILD_CONFIG_CACHE):
+      with open(cls.BUILD_CONFIG_CACHE, "r") as f:
+        return BuildConfig(**json.load(f))
     else:
       # There is no python version cache file during the very first run.
-      return ""
-
-  @classmethod
-  def cache(cls):
-    with open(cls.VERSION_CACHE, "w") as f:
-      f.write(current_py_version())
+      return BuildConfig(**{})
 
 
 def _clean_out_dir(msg):
@@ -107,31 +127,33 @@ def run_cmd(cmd, cwd=None):
   return process.returncode, stdout
 
 
-def run_cmake(force_clean=False, log_output=False):
+def run_cmake(force_clean=False, log_output=False, debug_build=False):
   """Run cmake in the 'out' directory."""
-  current_version = current_py_version()
+  current_config = BuildConfig.current_build_config(debug_build)
   if force_clean:
     _clean_out_dir("Force-cleaning 'out' directory.")
-  elif PyVersionCache.read() != current_version:
+  elif BuildConfig.read_cached_config() != current_config:
     _clean_out_dir(
-        "Previous Python version is not %s; cleaning 'out' directory.\n" %
-        current_version)
+        "Previous build config was different; cleaning 'out' directory.\n")
   else:
-    print("Running with the cached Python version; "
+    print("Running with build config same as cached build config; "
           "not cleaning 'out' directory.\n")
 
   if os.path.exists(os.path.join(OUT_DIR, "build.ninja")):
     # Run CMake if it was not already run. If CMake was already run, it
     # generates a build.ninja file in the "out" directory.
-    print("Running CMake skipped ...\n")
+    msg = "Running CMake skipped as the build.ninja file is present ...\n"
+    print(msg)
     if log_output:
       with open(CMAKE_LOG, "w") as cmake_log:
-        cmake_log.write("Running CMake was skipped.\n")
+        cmake_log.write(msg)
     return True
 
   print("Running CMake ...\n")
   cmd = ["cmake", PYTYPE_SRC_ROOT, "-G", "Ninja",
-         "-DPython_ADDITIONAL_VERSIONS=%s" % current_version]
+         "-DPython_ADDITIONAL_VERSIONS=%s" % current_config.py_version]
+  if debug_build:
+    cmd.append("-DCMAKE_BUILD_TYPE=Debug")
   returncode, stdout = run_cmd(cmd, cwd=OUT_DIR)
   # Print the full CMake output to stdout. It is not a lot that it would
   # clutter the output, and also gives information about the Python version
@@ -145,8 +167,8 @@ def run_cmake(force_clean=False, log_output=False):
     if log_output:
       print(">>>         Full CMake output is available in '%s'." % CMAKE_LOG)
     return False
-  # Cache the Python version for which the build files have been generated.
-  PyVersionCache.cache()
+  # Cache the config for which the build files have been generated.
+  current_config.save_to_cache_file()
   return True
 
 
