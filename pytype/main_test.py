@@ -507,6 +507,18 @@ class PytypeTest(unittest.TestCase):
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
 
+  @unittest.skip("Where do the pickles differ?")
+  def testBuiltinsDeterminism(self):
+    f1 = self._TmpPath("builtins1.pickle")
+    f2 = self._TmpPath("builtins2.pickle")
+    self.pytype_args["--generate-builtins"] = f1
+    self._RunPytype(self.pytype_args)
+    self.pytype_args["--generate-builtins"] = f2
+    self._RunPytype(self.pytype_args)
+    with open(f1, "rb") as pickle1:
+      with open(f2, "rb") as pickle2:
+        self.assertEqual(pickle1.read(), pickle2.read())
+
   def testTimeout(self):
     # Note: At the time of this writing, pickling builtins takes well over one
     # second (~10s). If it ever was to get faster, this test would become flaky.

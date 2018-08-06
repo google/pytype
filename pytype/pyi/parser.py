@@ -507,7 +507,7 @@ class _Parser(object):
       The boolean result of the comparison.
 
     Raises:
-      ParseError: If the comparison cannot be evaluted.
+      ParseError: If the comparison cannot be evaluated.
     """
     name, key = ident
     if name == "sys.version_info":

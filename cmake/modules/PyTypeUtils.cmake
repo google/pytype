@@ -41,6 +41,11 @@ add_custom_target(
   ${ALL_TESTS_TARGET}
 )
 
+string(COMPARE EQUAL ${CMAKE_BUILD_TYPE} "Debug" is_debug_build)
+if(is_debug_build)
+  add_definitions(-DPYTYPE_ENABLE_CPP_LOGGING)
+endif(is_debug_build)
+
 # Returns the fully qualified parent name for targets in the current source
 # directory in |fq_parent_name|.
 function(_gen_fq_target_parent_name fq_parent_name)
