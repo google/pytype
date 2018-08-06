@@ -243,7 +243,7 @@ class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):
 
   def _is_str_instance(self, val):
     return (isinstance(val, abstract.Instance) and
-            val.get_full_name() == "__builtin__.str")
+            val.full_name == "__builtin__.str")
 
   def _getargs(self, node, args):
     self.match_args(node, args)

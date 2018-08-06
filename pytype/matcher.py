@@ -617,6 +617,11 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           return self._match_against_protocol(left, other_type, subst, node,
                                               view)
         return None
+      elif isinstance(base, abstract.AMBIGUOUS_OR_EMPTY):
+        # An ambiguous base class matches everything.
+        # _match_maybe_parameterized_instance puts the right params in `subst`.
+        return self._match_maybe_parameterized_instance(
+            base, instance, other_type, subst, node, view)
       else:
         return self._match_instance(
             base, instance, other_type, subst, node, view)

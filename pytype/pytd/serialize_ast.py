@@ -17,11 +17,9 @@ from pytype.pytd import visitors
 class UnrestorableDependencyError(Exception):
   """If a dependency can't be restored in the current state."""
 
-  def __init__(self, error_msg):
-    super(UnrestorableDependencyError, self).__init__(error_msg)
-
 
 class FindClassAndFunctionTypesVisitor(visitors.Visitor):
+  """Visitor to find class and function types."""
 
   def __init__(self):
     super(FindClassAndFunctionTypesVisitor, self).__init__()
@@ -157,6 +155,7 @@ def StoreAst(ast, filename=None):
   ast.Visit(visitors.ClearClassPointers())
   indexer = FindClassAndFunctionTypesVisitor()
   ast.Visit(indexer)
+  ast = ast.Visit(visitors.CanonicalOrderingVisitor())
   return pytd_utils.SavePickle(SerializableAst(
       ast, list(sorted(dependencies)),
       list(sorted(indexer.class_type_nodes)),
@@ -278,6 +277,7 @@ def _LookupClassReferences(serializable_ast, module_map, self_name):
 
 
 def FillLocalReferences(serializable_ast, module_map):
+  """Fill in local references."""
   local_filler = visitors.FillInLocalPointers(module_map)
   if (serializable_ast.class_type_nodes is None or
       serializable_ast.function_type_nodes is None):
@@ -331,7 +331,6 @@ def PrepareForExport(module_name, python_version, ast, loader):
   ast = ast.Visit(visitors.AdjustTypeParameters())
   ast = ast.Visit(visitors.NamedTypeToClassType())
   ast = ast.Visit(visitors.FillInLocalPointers({"": ast, module_name: ast}))
-  ast = ast.Visit(visitors.CanonicalOrderingVisitor())
   ast = ast.Visit(visitors.ClassTypeToLateType(
       ignore=[module_name + ".", "__builtin__.", "typing."]))
   return ast
