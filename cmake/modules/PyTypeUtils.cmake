@@ -41,7 +41,7 @@ add_custom_target(
   ${ALL_TESTS_TARGET}
 )
 
-string(COMPARE EQUAL ${CMAKE_BUILD_TYPE} "Debug" is_debug_build)
+string(COMPARE EQUAL "${CMAKE_BUILD_TYPE}" "Debug" is_debug_build)
 if(is_debug_build)
   add_definitions(-DPYTYPE_ENABLE_CPP_LOGGING)
 endif(is_debug_build)
