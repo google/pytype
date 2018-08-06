@@ -39,7 +39,7 @@ def current_py_version():
 
 
 class BuildConfig(object):
-  """Utility class to manage the Python version cache."""
+  """Utility class to create and manage the build config cache."""
 
   BUILD_CONFIG_CACHE = os.path.join(OUT_DIR, ".build_config.json")
 
