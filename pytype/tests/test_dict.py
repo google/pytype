@@ -1,5 +1,6 @@
 """Tests for dictionaries."""
 
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -76,6 +77,22 @@ class DictTest(test_base.TargetIndependentTest):
       d1 = ...  # type: Dict[str, int]
       d2 = ...  # type: Dict[str, int]
     """)
+
+  def testUpdateAnySubclass(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import TypeVar
+        T = TypeVar("T")
+        def f(x: T, y: T = ...) -> T: ...
+      """)
+      self.Check("""
+        from typing import Any
+        import foo
+        class Foo(Any):
+          def f(self):
+            kwargs = {}
+            kwargs.update(foo.f(self))
+      """, pythonpath=[d.path])
 
 
 test_base.main(globals(), __name__ == "__main__")
