@@ -240,6 +240,50 @@ class BuiltinTests(test_base.TargetPython27FeatureTest):
       lst3 = ...  # type: List[nothing]
     """)
 
+  def testMapNoneFunction(self):
+    ty = self.Infer("l = map(None, [1,2,3])")
+    self.assertTypesMatchPytd(ty, """
+      from typing import List
+      l = ...  # type: List[int]
+      """)
+
+  def testMapNoneFunctionTwoIterables(self):
+    ty = self.Infer("""
+      l1 = [1,2,3]
+      l2 = [4,5,6]
+      l3 = map(None, l1, l2)
+      """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List, Tuple
+      l1 = ...  # type: List[int]
+      l2 = ...  # type: List[int]
+      l3 = ...  # type: List[Tuple[int, int]]
+      """)
+
+  def testMapNoneFuncDifferentTypes(self):
+    ty = self.Infer("""
+      l1 = [1,2,3]
+      l2 = ['a', 'b', 'c']
+      l3 = map(None, l1, l2)
+      """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List, Tuple
+      l1 = ...  # type: List[int]
+      l2 = ...  # type: List[str]
+      l3 = ...  # type: List[Tuple[int, str]]
+      """)
+
+  def testMapNoneFuncManyIters(self):
+    # Currently, 2/__builtins__.pytd special cases map(function=None, ...) with
+    # 2 iterable arguments. See that it handles the general case too.
+    ty = self.Infer("""
+      l = map(None, [1,2], ['a', 'b'], [(3, 'c'), (4, 'b')])
+      """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List, Tuple
+      l = ...  # type: List[Tuple[...]]
+      """)
+
   def testDict(self):
     ty = self.Infer("""
       def t_testDict():
