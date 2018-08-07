@@ -26,6 +26,8 @@ def parse_args():
                       help="List of test modules to run.")
   parser.add_argument("--fail_fast", "-f", action="store_true", default=False,
                       help="Fail as soon as one build target fails.")
+  parser.add_argument("--debug", "-d", action="store_true", default=False,
+                      help="Build targets in the debug mode.")
   args = parser.parse_args()
   for module in args.modules:
     if "." in module:
@@ -43,7 +45,7 @@ def parse_args():
 def main():
   opts = parse_args()
   modules = opts.modules or ["test_all"]
-  if not build_utils.run_cmake(log_output=True):
+  if not build_utils.run_cmake(log_output=True, debug_build=opts.debug):
     sys.exit(1)
   fail_collector = build_utils.FailCollector()
   # PyType's target names use the dotted name convention. So, the fully
