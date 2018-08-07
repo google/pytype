@@ -74,6 +74,9 @@ def iter(func: typing.Callable[[], Union[_T, _T2]], sentinel: _T) -> `callable-i
 def len(obj: Sized) -> int
 def locals() -> dict[str, object]
 def map(function, *sequences: Iterable[nothing]) -> List[nothing]
+def map(function: None, sequence: Iterable[_T]) -> List[_T]
+def map(function: None, sequence1: Iterable[_T], sequence2: Iterable[_T2]) -> List[Tuple[_T, _T2]]
+def map(function: None, *sequences: Iterable) -> List[Tuple[...]]
 def map(function: Callable[..., _T], *sequences: Iterable) -> List[_T]
 def max(iterable: Iterable[_T], key: Callable = ...) -> _T
 def max(arg1: _T, arg2: _T2, *, key: Callable = ...) -> _T or _T2
