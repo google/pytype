@@ -74,5 +74,5 @@ tests for which `py_test` targets exist in the CMake files.
 
 ### The small print
 Contributions made by corporations are covered by a different agreement than
-the one mentioned above; they're covered by the the Software Grant and
+the one mentioned above; they're covered by the Software Grant and
 Corporate Contributor License Agreement.
