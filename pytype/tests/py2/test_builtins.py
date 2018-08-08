@@ -281,8 +281,20 @@ class BuiltinTests(test_base.TargetPython27FeatureTest):
       """)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Tuple
-      l = ...  # type: List[Tuple[...]]
+      l = ...  # type: List[Tuple]
       """)
+
+  def testUnpackMapNoneFuncManyIters(self):
+    ty = self.Infer("""
+      for a, b, c in map(None, [1, 2], ['a', 'b'], [(3, 'c'), (4, 'b')]):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      a = ...  # type: Any
+      b = ...  # type: Any
+      c = ...  # type: Any
+    """)
 
   def testDict(self):
     ty = self.Infer("""
