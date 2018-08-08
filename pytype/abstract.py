@@ -486,6 +486,10 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
     """Update the official name."""
     pass
 
+  def get_formal_type_parameter(self, t):
+    del t
+    return self.vm.convert.unsolvable
+
 
 class Empty(AtomicAbstractValue):
   """An empty value.
@@ -1508,6 +1512,12 @@ class Union(AtomicAbstractValue):
   def call(self, node, func, args):
     var = self.vm.program.NewVariable(self.options, [], node)
     return self.vm.call_function(node, var, args)
+
+  def get_formal_type_parameter(self, t):
+    """Retrieve the type from Union elments to generate a new Union."""
+    new_options = [option.get_formal_type_parameter(t)
+                   for option in self.options]
+    return Union(new_options, self.vm)
 
 
 class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
@@ -2598,6 +2608,10 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     del args
     raise NotCallable(self)
 
+  def get_formal_type_parameter(self, t):
+    """Retrieve the type stored in type_parameters."""
+    return self.type_parameters.get(t, self.vm.convert.unsolvable)
+
 
 class TupleClass(ParameterizedClass, HasSlots):
   """The class of a heterogeneous tuple.
@@ -3219,6 +3233,13 @@ class InterpreterFunction(SignedFunction):
       An InterpreterFunction.
     """
     annotations = annotations or {}
+    if (loadmarshal.CodeType.has_generator(code.co_flags) and
+        "return" in annotations):
+      # Check Generator return type
+      ret_type = annotations["return"]
+      if not Generator.matches_type(ret_type):
+        error = "Expected Generator, Iterable or Iterator"
+        vm.errorlog.invalid_annotation(vm.frames, ret_type, error)
     late_annotations = late_annotations or {}
     key = (name, code,
            InterpreterFunction._hash_all(
@@ -3239,9 +3260,9 @@ class InterpreterFunction(SignedFunction):
   def get_arg_count(code):
     """Return the arg count given a code object."""
     count = code.co_argcount + max(code.co_kwonlyargcount, 0)
-    if code.co_flags & loadmarshal.CodeType.CO_VARARGS:
+    if loadmarshal.CodeType.has_varargs(code.co_flags):
       count += 1
-    if code.co_flags & loadmarshal.CodeType.CO_VARKEYWORDS:
+    if loadmarshal.CodeType.has_varkeywords(code.co_flags):
       count += 1
     return count
 
@@ -3418,11 +3439,11 @@ class InterpreterFunction(SignedFunction):
           # Even if the call is cached, we might not have been recording it.
           self._call_records.append((callargs, ret, node))
         return node, ret
-    if self.code.co_flags & loadmarshal.CodeType.CO_GENERATOR:
+    if loadmarshal.CodeType.has_generator(self.code.co_flags):
       generator = Generator(frame, self.vm)
       # Run the generator right now, even though the program didn't call it,
       # because we need to know the contained type for futher matching.
-      node2, _ = generator.run_until_yield(node)
+      node2, _ = generator.run_generator(node)
       node_after_call, ret = node2, generator.to_variable(node2)
     else:
       node_after_call, ret = self.vm.run_frame(frame, node)
@@ -3487,10 +3508,10 @@ class InterpreterFunction(SignedFunction):
       i += 1
 
   def has_varargs(self):
-    return bool(self.code.co_flags & loadmarshal.CodeType.CO_VARARGS)
+    return loadmarshal.CodeType.has_varargs(self.code.co_flags)
 
   def has_kwargs(self):
-    return bool(self.code.co_flags & loadmarshal.CodeType.CO_VARKEYWORDS)
+    return loadmarshal.CodeType.has_varkeywords(self.code.co_flags)
 
   def property_get(self, callself, callcls):
     if func_name_is_class_init(self.name) and self.signature.param_names:
@@ -3657,6 +3678,20 @@ class Generator(Instance):
   SEND = "_T2"
   RET = "_V"
 
+  @staticmethod
+  def matches_type(type_obj):
+    """Check if type_obj matches a Generator type."""
+    if isinstance(type_obj, Union):
+      return all(Generator.matches_type(sub_type)
+                 for sub_type in type_obj.options)
+    else:
+      base_cls = type_obj
+      if isinstance(type_obj, ParameterizedClass):
+        base_cls = type_obj.base_cls
+      return ((isinstance(base_cls, PyTDClass) and
+               base_cls.name in ("generator", "Iterable", "Iterator")) or
+              isinstance(base_cls, AMBIGUOUS_OR_EMPTY))
+
   def __init__(self, generator_frame, vm):
     super(Generator, self).__init__(vm.convert.generator_type, vm)
     self.generator_frame = generator_frame
@@ -3679,23 +3714,36 @@ class Generator(Instance):
   def __iter__(self, node):  # pylint: disable=non-iterator-returned,unexpected-special-method-signature
     return node, self.to_variable(node)
 
-  def run_until_yield(self, node):
+  def run_generator(self, node):
     """Run the generator."""
     if self.runs == 0:  # Optimization: We only run the coroutine once.
       node, _ = self.vm.resume_frame(node, self.generator_frame)
-      # TODO(rechen): In Python 3, generators can have non-None send and
-      # return types.
-      self.merge_type_parameter(node, T, self.generator_frame.yield_variable)
-      none_var = self.vm.convert.none.to_variable(node)
-      self.merge_type_parameter(node, self.SEND, none_var)
-      self.merge_type_parameter(node, self.RET, none_var)
+      ret_type = self.generator_frame.allowed_returns
+      if ret_type:
+        # set type parameters according to annotated Generator return type
+        self.merge_type_parameter(node, T, self.vm.init_class(
+            node, ret_type.get_formal_type_parameter(T))[2])
+        self.merge_type_parameter(node, self.SEND, self.vm.init_class(
+            node, ret_type.get_formal_type_parameter(self.SEND))[2])
+        self.merge_type_parameter(node, self.RET, self.vm.init_class(
+            node, ret_type.get_formal_type_parameter(self.RET))[2])
+      else:
+        # infer the type parameters based on the collected type information.
+        self.merge_type_parameter(node, T, self.generator_frame.yield_variable)
+        # For SEND type, it can not be decided until the SEND function is called
+        # later on. So set SEND type as ANY so that the type check will not fail
+        # when the function is called afterwards.
+        self.merge_type_parameter(node, self.SEND,
+                                  self.vm.convert.unsolvable.to_variable(node))
+        self.merge_type_parameter(node, self.RET,
+                                  self.generator_frame.return_variable)
       self.runs += 1
     return node, self.type_parameters[T]
 
   def call(self, node, func, args):
     """Call this generator or (more common) its "next" attribute."""
     del func, args
-    return self.run_until_yield(node)
+    return self.run_generator(node)
 
 
 class Iterator(Instance, HasSlots):

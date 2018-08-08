@@ -98,6 +98,22 @@ class CodeType(object):
   CO_FUTURE_PRINT_FUNCTION = 0x10000
   CO_FUTURE_UNICODE_LITERALS = 0x20000
 
+  @staticmethod
+  def has_generator(flags):
+    return bool(flags & CodeType.CO_GENERATOR)
+
+  @staticmethod
+  def has_varargs(flags):
+    return bool(flags & CodeType.CO_VARARGS)
+
+  @staticmethod
+  def has_varkeywords(flags):
+    return bool(flags & CodeType.CO_VARKEYWORDS)
+
+  @staticmethod
+  def has_newlocals(flags):
+    return bool(flags & CodeType.CO_NEWLOCALS)
+
   def __init__(self, argcount, kwonlyargcount, nlocals, stacksize, flags, code,
                consts, names, varnames, filename, name, firstlineno, lnotab,
                freevars, cellvars, python_version):
