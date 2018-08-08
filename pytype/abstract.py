@@ -221,6 +221,12 @@ def has_type_parameters(node, val, seen=None):
     return False
 
 
+def equivalent_to(binding, cls):
+  """Whether binding.data is equivalent to cls, modulo parameterization."""
+  return (isinstance(binding.data, Class) and
+          binding.data.full_name == cls.full_name)
+
+
 class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   """A single abstract value such as a type or function signature.
 
@@ -301,17 +307,19 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
     del name
     return self.vm.convert.create_new_unsolvable(node)
 
-  def property_get(self, callself, callcls):  # pylint: disable=unused-argument
-    """Bind this value to the given self and class.
+  def property_get(self, callself, is_class=False):  # pylint: disable=unused-argument
+    """Bind this value to the given self or cls.
 
     This function is similar to __get__ except at the abstract level. This does
     not trigger any code execution inside the VM. See __get__ for more details.
 
     Args:
-      callself: The Variable that should be passed as self when the call is
-        made. None if this is class call.
-      callcls: The Variable that should be used as the class when the call is
-        made.
+      callself: The Variable that should be passed as self or cls when the call
+        is made. We only need one of self or cls, so having them share a
+        parameter prevents accidentally passing in both.
+      is_class: Whether callself is self or cls. Should be cls only when we
+        want to directly pass in a class to bind a class method to, rather than
+        passing in an instance and calling get_class().
 
     Returns:
       Another abstract value that should be returned in place of this one. The
@@ -1681,15 +1689,15 @@ class Function(SimpleAbstractValue):
     self.members["func_name"] = self.vm.convert.build_string(
         self.vm.root_cfg_node, name)
 
-  def property_get(self, callself, callcls):
-    if self.name == "__new__" or not callself or not callcls:
+  def property_get(self, callself, is_class=False):
+    if self.name == "__new__" or not callself or is_class:
       return self
     self.is_attribute_of_class = True
     # We'd like to cache this, but we can't. "callself" contains Variables
     # that would be tied into a BoundFunction instance. However, those
     # Variables aren't necessarily visible from other parts of the CFG binding
     # this function. See test_duplicate_getproperty() in tests/test_flow.py.
-    return self.bound_class(callself, callcls, self)
+    return self.bound_class(callself, self)
 
   def match_args(self, node, args, match_all_views=False):
     """Check whether the given arguments can match the function signature."""
@@ -2036,36 +2044,30 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
 class ClassMethod(AtomicAbstractValue):
   """Implements @classmethod methods in pyi."""
 
-  def __init__(self, name, method, callself, callcls, vm):
+  def __init__(self, name, method, callself, vm):
     super(ClassMethod, self).__init__(name, vm)
     self.method = method
-    self.callself = callself  # unused
-    self.callcls = callcls
+    # Rename to callcls to make clear that callself is the cls parameter.
+    self.callcls = callself
     self.signatures = self.method.signatures
 
   def call(self, node, func, args):
-    if self.callcls:
-      cls = self.callcls
-    else:
-      cls = self.vm.convert.create_new_unsolvable(node)
     return self.method.call(
-        node, func, args.replace(posargs=(cls,) + args.posargs))
+        node, func, args.replace(posargs=(self.callcls,) + args.posargs))
 
   def get_class(self):
     return self.vm.convert.function_type
 
   def to_bound_function(self):
-    return BoundPyTDFunction(self.callself, self.callcls, self.method)
+    return BoundPyTDFunction(self.callcls, self.method)
 
 
 class StaticMethod(AtomicAbstractValue):
   """Implements @staticmethod methods in pyi."""
 
-  def __init__(self, name, method, callself, callcls, vm):
+  def __init__(self, name, method, _, vm):
     super(StaticMethod, self).__init__(name, vm)
     self.method = method
-    self.callself = callself  # unused
-    self.callcls = callcls  # unused
     self.signatures = self.method.signatures
 
   def call(self, *args, **kwargs):
@@ -2082,22 +2084,16 @@ class Property(AtomicAbstractValue):
   resolved as a function, not as a constant.
   """
 
-  def __init__(self, name, method, callself, callcls, vm):
+  def __init__(self, name, method, callself, vm):
     super(Property, self).__init__(name, vm)
     self.method = method
     self.callself = callself
-    self.callcls = callcls  # unused
     self.signatures = self.method.signatures
 
   def call(self, node, func, args):
     func = func or self.to_binding(node)
     args = args or FunctionArgs(posargs=(self.callself,))
-    if self.callself:
-      cls = self.callself
-    else:
-      cls = self.vm.convert.create_new_unsolvable(node)
-    return self.method.call(
-        node, func, args.replace(posargs=(cls,)))
+    return self.method.call(node, func, args.replace(posargs=(self.callself,)))
 
   def get_class(self):
     return self.vm.convert.function_type
@@ -2151,15 +2147,26 @@ class PyTDFunction(Function):
       sig.function = self
       sig.name = self.name
 
-  def property_get(self, callself, callcls):
+  def property_get(self, callself, is_class=False):
     if self.kind == pytd.STATICMETHOD:
-      return StaticMethod(self.name, self, callself, callcls, self.vm)
+      if is_class:
+        # Binding the function to None rather than not binding it tells
+        # output.py to infer the type as a Callable rather than reproducing the
+        # signature, including the @staticmethod decorator, which is
+        # undesirable for module-level aliases.
+        callself = None
+      return StaticMethod(self.name, self, callself, self.vm)
     elif self.kind == pytd.CLASSMETHOD:
-      return ClassMethod(self.name, self, callself, callcls, self.vm)
-    elif self.kind == pytd.PROPERTY:
-      return Property(self.name, self, callself, callcls, self.vm)
+      if not is_class:
+        # callself is the instance, and we want to bind to its class.
+        callself = get_atomic_value(
+            callself, default=self.vm.convert.unsolvable
+        ).get_class().to_variable(self.vm.root_cfg_node)
+      return ClassMethod(self.name, self, callself, self.vm)
+    elif self.kind == pytd.PROPERTY and not is_class:
+      return Property(self.name, self, callself, self.vm)
     else:
-      return super(PyTDFunction, self).property_get(callself, callcls)
+      return super(PyTDFunction, self).property_get(callself, is_class)
 
   def argcount(self, _):
     return min(sig.signature.mandatory_param_count() for sig in self.signatures)
@@ -2443,13 +2450,11 @@ class Class(object):
       __new__ method, or None.
     """
     node, new = self.vm.attribute_handler.get_attribute(
-        node, value.data, "__new__", value)
+        node, value.data, "__new__")
     if new is None:
       return node, None
     if len(new.bindings) == 1:
       f = new.bindings[0].data
-      if isinstance(f, StaticMethod):
-        f = f.method
       if (isinstance(f, AMBIGUOUS_OR_EMPTY) or
           self.vm.convert.object_type.is_object_new(f)):
         # Instead of calling object.__new__, our abstract classes directly
@@ -2486,9 +2491,11 @@ class Class(object):
   def get_special_attribute(self, node, name, valself):
     """Fetch a special attribute."""
     if name == "__getitem__" and valself is None:
+      # See vm._call_binop_on_bindings: valself == None is a special value that
+      # indicates an annotation.
       if self.cls:
         # This class has a custom metaclass; check if it defines __getitem__.
-        _, attr = self.vm.attribute_handler.get_instance_attribute(
+        _, attr = self.vm.attribute_handler.get_attribute(
             node, self, name, self.to_binding(node))
         if attr:
           return attr
@@ -2689,7 +2696,7 @@ class TupleClass(ParameterizedClass, HasSlots):
         node, "__getitem__", self.instantiate(node), index_var)
 
   def get_special_attribute(self, node, name, valself):
-    if valself and name in self._slots:
+    if valself and not equivalent_to(valself, self) and name in self._slots:
       return HasSlots.get_special_attribute(self, node, name, valself)
     return super(TupleClass, self).get_special_attribute(node, name, valself)
 
@@ -2748,7 +2755,7 @@ class Callable(ParameterizedClass, HasSlots):
     return node, retvar
 
   def get_special_attribute(self, node, name, valself):
-    if valself and name in self._slots:
+    if valself and not equivalent_to(valself, self) and name in self._slots:
       return HasSlots.get_special_attribute(self, node, name, valself)
     return super(Callable, self).get_special_attribute(node, name, valself)
 
@@ -3016,7 +3023,7 @@ class NativeFunction(Function):
   def __init__(self, name, func, vm):
     super(NativeFunction, self).__init__(name, vm)
     self.func = func
-    self.bound_class = lambda callself, callcls, underlying: self
+    self.bound_class = lambda callself, underlying: self
 
   def argcount(self, _):
     return self.func.func_code.co_argcount
@@ -3513,7 +3520,7 @@ class InterpreterFunction(SignedFunction):
   def has_kwargs(self):
     return loadmarshal.CodeType.has_varkeywords(self.code.co_flags)
 
-  def property_get(self, callself, callcls):
+  def property_get(self, callself, is_class=False):
     if func_name_is_class_init(self.name) and self.signature.param_names:
       self_name = self.signature.param_names[0]
       if self_name in self.signature.annotations:
@@ -3522,7 +3529,7 @@ class InterpreterFunction(SignedFunction):
             self.signature.annotations[self_name],
             details="Cannot annotate self argument of __init__", name=self_name)
         self.signature.del_annotation(self_name)
-    return super(InterpreterFunction, self).property_get(callself, callcls)
+    return super(InterpreterFunction, self).property_get(callself, is_class)
 
 
 class SimpleFunction(SignedFunction):
@@ -3585,10 +3592,9 @@ class SimpleFunction(SignedFunction):
 class BoundFunction(AtomicAbstractValue):
   """An function type which has had an argument bound into it."""
 
-  def __init__(self, callself, callcls, underlying):
+  def __init__(self, callself, underlying):
     super(BoundFunction, self).__init__(underlying.name, underlying.vm)
     self._callself = callself
-    self._callcls = callcls  # TODO(rechen): remove this unused attribute.
     self.underlying = underlying
     self.is_attribute_of_class = False
 
