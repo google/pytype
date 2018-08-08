@@ -840,6 +840,11 @@ class VirtualMachine(object):
     # This dummy implementation is overwritten in analyze.py.
     return node
 
+  def init_class(self, node, cls, extra_key=None):
+    # This dummy implementation is overwritten in analyze.py.
+    del cls, extra_key
+    return node, None
+
   def call_function_with_state(self, state, funcu, posargs, namedargs=None,
                                starargs=None, starstarargs=None,
                                fallback_to_unsolvable=True):
@@ -2331,9 +2336,10 @@ class VirtualMachine(object):
       ret_type = self.frame.allowed_returns
       self._check_return(state.node, ret,
                          ret_type.get_formal_type_parameter(abstract.T))
-      return state.push(self.init_class(
-          state.node, ret_type.get_formal_type_parameter(
-              abstract.Generator.SEND))[2])
+      _, send_var = self.init_class(
+          state.node,
+          ret_type.get_formal_type_parameter(abstract.Generator.SEND))
+      return state.push(send_var)
     return state.push(self.convert.unsolvable.to_variable(state.node))
 
   def byte_IMPORT_NAME(self, state, op):
@@ -2412,7 +2418,7 @@ class VirtualMachine(object):
 
   def _set_frame_return(self, node, frame, var):
     if frame.allowed_returns is not None:
-      _, _, retvar = self.init_class(node, frame.allowed_returns)
+      _, retvar = self.init_class(node, frame.allowed_returns)
     else:
       retvar = var
     frame.return_variable.PasteVariable(retvar, node)
