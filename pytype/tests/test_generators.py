@@ -67,7 +67,7 @@ class GeneratorTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Generator
-      def foo(self) -> Generator[int, None, None]
+      def foo(self) -> Generator[int, Any, None]
     """)
 
   def testIterationOfGetItem(self):
@@ -116,8 +116,26 @@ class GeneratorTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Generator
-      def f() -> Generator[int, None, None]
+      def f() -> Generator[int, Any, None]
     """)
 
+  def testYieldType(self):
+    ty = self.Infer("""
+      from typing import Generator
+      def f(x):
+        if x == 1:
+          yield 1
+        else:
+          yield "1"
+
+      x = f(2)
+      y = f(1)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Generator, Union
+      def f(x) -> Generator[Union[int, str], Any, None]
+      x = ...  # type: Generator[str, Any, None]
+      y = ...  # type: Generator[int, Any, None]
+    """)
 
 test_base.main(globals(), __name__ == "__main__")

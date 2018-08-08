@@ -579,7 +579,7 @@ class VirtualMachine(object):
     # Implement NEWLOCALS flag. See Objects/frameobject.c in CPython.
     # (Also allow to override this with a parameter, Python 3 doesn't always set
     #  it to the right value, e.g. for class-level code.)
-    if code.co_flags & loadmarshal.CodeType.CO_NEWLOCALS or new_locals:
+    if loadmarshal.CodeType.has_newlocals(code.co_flags) or new_locals:
       f_locals = self.convert_locals_or_globals({}, "locals")
 
     return frame_state.Frame(node, self, code, f_globals, f_locals,
@@ -2321,19 +2321,13 @@ class VirtualMachine(object):
     state, ret = state.pop()
     self.frame.yield_variable.PasteVariable(ret, state.node)
     if self.frame.check_return:
-      # Create a dummy generator instance for checking that
-      # Generator[<yield_variable>] matches the annotated return type.
-      # TODO(rechen): In Python 3, generators can have non-None send and
-      # return types.
-      generator = abstract.Generator(self.frame, self)
-      generator.merge_type_parameter(
-          state.node, abstract.T, self.frame.yield_variable)
-      none_var = self.convert.none.to_variable(state.node)
-      generator.merge_type_parameter(state.node, generator.SEND, none_var)
-      generator.merge_type_parameter(state.node, generator.RET, none_var)
-      self._check_return(state.node, generator.to_variable(state.node),
-                         self.frame.allowed_returns)
-    return state.set_why("yield")
+      ret_type = self.frame.allowed_returns
+      self._check_return(state.node, ret,
+                         ret_type.get_formal_type_parameter(abstract.T))
+      return state.push(self.init_class(
+          state.node, ret_type.get_formal_type_parameter(
+              abstract.Generator.SEND))[2])
+    return state.push(self.convert.unsolvable.to_variable(state.node))
 
   def byte_IMPORT_NAME(self, state, op):
     """Import a single module."""
@@ -2420,10 +2414,10 @@ class VirtualMachine(object):
     """Get and check the return value."""
     state, var = state.pop()
     if self.frame.check_return:
-      if self.frame.f_code.co_flags & loadmarshal.CodeType.CO_GENERATOR:
-        # A generator shouldn't return anything, so the expected return type
-        # is None.
-        self._check_return(state.node, var, self.convert.none_type)
+      if loadmarshal.CodeType.has_generator(self.frame.f_code.co_flags):
+        ret_type = self.frame.allowed_returns
+        self._check_return(state.node, var, ret_type.
+                           get_formal_type_parameter(abstract.Generator.RET))
       else:
         self._check_return(state.node, var, self.frame.allowed_returns)
     self._set_frame_return(state.node, self.frame, var)
