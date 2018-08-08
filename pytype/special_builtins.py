@@ -533,8 +533,7 @@ class Object(BuiltinClass):
       return False
     self.load_lazy_attribute(method)
     obj_method = self.members[method]
-    _, cls_method = self.vm.attribute_handler.get_class_attribute(
-        node, cls, method)
+    _, cls_method = self.vm.attribute_handler.get_attribute(node, cls, method)
     return obj_method.data != cls_method.data
 
   def get_special_attribute(self, node, name, valself):
@@ -542,7 +541,7 @@ class Object(BuiltinClass):
     # cpython/Objects/typeobject.c (https://goo.gl/bTEBRt). It is legal to pass
     # extra arguments to object.__new__ if the calling class overrides
     # object.__init__, and vice versa.
-    if valself:
+    if valself and not abstract.equivalent_to(valself, self):
       val = valself.data
       if name == "__new__" and self._has_own(node, val, "__init__"):
         self.load_lazy_attribute("__new__extra_args")
@@ -714,8 +713,7 @@ class ClassMethodInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
     return self.cls
 
   def func_slot(self, node, obj, objtype):
-    results = [ClassMethodCallable(objtype, None, b.data)
-               for b in self.func.bindings]
+    results = [ClassMethodCallable(objtype, b.data) for b in self.func.bindings]
     return node, self.vm.program.NewVariable(results, [], node)
 
 

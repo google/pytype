@@ -726,8 +726,15 @@ class VirtualMachine(object):
         options.reverse()
     error = None
     for left_val, right_val, attr_name in options:
-      node, attr_var = self.attribute_handler.get_attribute_generic(
-          node, left_val.data, attr_name, left_val)
+      if (isinstance(left_val.data, abstract.Class) and
+          attr_name == "__getitem__"):
+        # We're parameterizing a type annotation. Set valself to None to
+        # differentiate this action from a real __getitem__ call on the class.
+        valself = None
+      else:
+        valself = left_val
+      node, attr_var = self.attribute_handler.get_attribute(
+          node, left_val.data, attr_name, valself)
       if attr_var and attr_var.bindings:
         args = abstract.FunctionArgs(posargs=(right_val.AssignToNewVariable(),))
         try:
@@ -1048,7 +1055,7 @@ class VirtualMachine(object):
     nodes = []
     values_without_attribute = []
     for val in obj.bindings:
-      node2, attr_var = self.attribute_handler.get_attribute_generic(
+      node2, attr_var = self.attribute_handler.get_attribute(
           node, val.data, attr, val)
       if attr_var is None or not attr_var.bindings:
         log.debug("No %s on %s", attr, val.data.__class__)
