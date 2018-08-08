@@ -49,18 +49,18 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         # have a function we don't want to be treated as a descriptor.
         return node, None
       else:
-        return self.get_instance_attribute(node, obj, name, valself)
+        return self._get_instance_attribute(node, obj, name, valself)
     elif isinstance(obj, abstract.ParameterizedClass):
       return self.get_attribute(node, obj.base_cls, name, valself)
     elif isinstance(obj, abstract.Class):
-      return self.get_class_attribute(node, obj, name, valself)
+      return self._get_class_attribute(node, obj, name, valself)
     elif isinstance(obj, overlay.Overlay):
-      return self.get_module_attribute(
+      return self._get_module_attribute(
           node, obj.get_module(name), name, valself)
     elif isinstance(obj, abstract.Module):
-      return self.get_module_attribute(node, obj, name, valself)
+      return self._get_module_attribute(node, obj, name, valself)
     elif isinstance(obj, abstract.SimpleAbstractValue):
-      return self.get_instance_attribute(node, obj, name, valself)
+      return self._get_instance_attribute(node, obj, name, valself)
     elif isinstance(obj, abstract.Union):
       nodes = []
       ret = self.vm.program.NewVariable()
@@ -106,58 +106,6 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       return node, None
     else:
       return node, None
-
-  def get_module_attribute(self, node, module, name, valself=None):
-    """Get an attribute from a module."""
-    assert isinstance(module, abstract.Module)
-
-    # Local variables in __init__.py take precedence over submodules.
-    node, var = self.get_instance_attribute(node, module, name, valself)
-    if var is not None:
-      return node, var
-
-    # And finally, look for a submodule.
-    var = module.get_submodule(node, name)
-    return node, var
-
-  def get_class_attribute(self, node, cls, name, valself=None):
-    """Get an attribute from a class."""
-    assert isinstance(cls, abstract.Class)
-    if (not valself or not abstract.equivalent_to(valself, cls) or
-        cls == self.vm.convert.type_type):
-      # Since type(type) == type, the type_type check prevents an infinite loop.
-      meta = None
-    else:
-      # We treat a class as an instance of its metaclass, but only if we are
-      # looking for a class rather than an instance attribute. (So, for
-      # instance, if we're analyzing int.mro(), we want to retrieve the mro
-      # method on the type class, but for 3.mro(), we want to report that the
-      # method does not exist.)
-      meta = cls.get_class()
-    return self._get_attribute(node, cls, meta, name, valself)
-
-  def get_instance_attribute(self, node, obj, name, valself=None):
-    """Get an attribute from an instance."""
-    assert isinstance(obj, abstract.SimpleAbstractValue)
-    return self._get_attribute(node, obj, obj.cls, name, valself)
-
-  def _check_writable(self, obj, name):
-    """Verify that a given attribute is writable. Log an error if not."""
-    if obj.cls is None:
-      # "Any" etc.
-      return True
-    for baseclass in obj.cls.mro:
-      if baseclass.full_name == "__builtin__.object":
-        # It's not possible to set an attribute on object itself.
-        # (object has __setattr__, but that honors __slots__.)
-        continue
-      if (isinstance(baseclass, abstract.SimpleAbstractValue) and
-          ("__setattr__" in baseclass.members or name in baseclass.members)):
-        return True  # This is a programmatic attribute.
-      if baseclass.slots is None or name in baseclass.slots:
-        return True  # Found a slot declaration; this is an instance attribute
-    self.vm.errorlog.not_writable(self.vm.frames, obj, name)
-    return False
 
   def set_attribute(self, node, obj, name, value):
     """Set an attribute on an object.
@@ -221,10 +169,61 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     else:
       raise NotImplementedError(obj.__class__.__name__)
 
+  def _check_writable(self, obj, name):
+    """Verify that a given attribute is writable. Log an error if not."""
+    if obj.cls is None:
+      # "Any" etc.
+      return True
+    for baseclass in obj.cls.mro:
+      if baseclass.full_name == "__builtin__.object":
+        # It's not possible to set an attribute on object itself.
+        # (object has __setattr__, but that honors __slots__.)
+        continue
+      if (isinstance(baseclass, abstract.SimpleAbstractValue) and
+          ("__setattr__" in baseclass.members or name in baseclass.members)):
+        return True  # This is a programmatic attribute.
+      if baseclass.slots is None or name in baseclass.slots:
+        return True  # Found a slot declaration; this is an instance attribute
+    self.vm.errorlog.not_writable(self.vm.frames, obj, name)
+    return False
+
+  def _get_module_attribute(self, node, module, name, valself=None):
+    """Get an attribute from a module."""
+    assert isinstance(module, abstract.Module)
+
+    # Local variables in __init__.py take precedence over submodules.
+    node, var = self._get_instance_attribute(node, module, name, valself)
+    if var is not None:
+      return node, var
+
+    # And finally, look for a submodule.
+    return node, module.get_submodule(node, name)
+
+  def _get_class_attribute(self, node, cls, name, valself=None):
+    """Get an attribute from a class."""
+    assert isinstance(cls, abstract.Class)
+    if (not valself or not abstract.equivalent_to(valself, cls) or
+        cls == self.vm.convert.type_type):
+      # Since type(type) == type, the type_type check prevents an infinite loop.
+      meta = None
+    else:
+      # We treat a class as an instance of its metaclass, but only if we are
+      # looking for a class rather than an instance attribute. (So, for
+      # instance, if we're analyzing int.mro(), we want to retrieve the mro
+      # method on the type class, but for (3).mro(), we want to report that the
+      # method does not exist.)
+      meta = cls.get_class()
+    return self._get_attribute(node, cls, meta, name, valself)
+
+  def _get_instance_attribute(self, node, obj, name, valself=None):
+    """Get an attribute from an instance."""
+    assert isinstance(obj, abstract.SimpleAbstractValue)
+    return self._get_attribute(node, obj, obj.cls, name, valself)
+
   def _get_attribute(self, node, obj, cls, name, valself):
     """Get an attribute from an object or its class.
 
-    The underlying method called by all of the get_(x_)attribute methods.
+    The underlying method called by all of the (_)get_(x_)attribute methods.
     Attempts to resolve an attribute first with __getattribute__, then by
     fetching it from the object, then by fetching it from the class, and
     finally with __getattr__.
@@ -298,19 +297,6 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         return self.vm.join_cfg_nodes(nodes), result
     return node, attr
 
-  def _get_candidates_from_var(self, node, var, getter):
-    """Convenience method for calling get_x on a variable."""
-    candidates = []
-    if var:
-      nodes = []
-      for val in var.bindings:
-        new_node, candidate = getter(val)
-        nodes.append(new_node)
-        if candidate is not None:
-          candidates.append(candidate)
-      node = self.vm.join_cfg_nodes(nodes)
-    return node, candidates
-
   def _computable(self, name):
     return not (name.startswith("__") and name.endswith("__"))
 
@@ -322,22 +308,21 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       attr_var = self._lookup_from_mro(node, cls, compute_function, valself,
                                        skip=self.vm.convert.object_type)
       if attr_var and attr_var.bindings:
-        vm = self.vm  # pytype: disable=attribute-error
         name_var = abstract.AbstractOrConcreteValue(
-            name, vm.convert.str_type, vm).to_variable(node)
-        return vm.call_function(
+            name, self.vm.convert.str_type, self.vm).to_variable(node)
+        return self.vm.call_function(
             node, attr_var, abstract.FunctionArgs((name_var,)))
     return node, None
 
-  def _lookup_from_mro(self, node, obj, name, valself, skip):
+  def _lookup_from_mro(self, node, cls, name, valself, skip):
     """Find an identifier in the MRO of the class."""
-    if isinstance(obj, (abstract.Unknown, abstract.Unsolvable)):
+    if isinstance(cls, (abstract.Unknown, abstract.Unsolvable)):
       # We don't know the object's MRO, so it's possible that one of its
       # bases has the attribute.
       return self.vm.convert.unsolvable.to_variable(node)
     ret = self.vm.program.NewVariable()
     add_origins = [valself] if valself else []
-    for base in obj.mro:
+    for base in cls.mro:
       # Potentially skip start of MRO, for super()
       if base is skip:
         continue
@@ -360,7 +345,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
             # See AtomicAbstractValue.property_get for an explanation of the
             # parameters we're passing here.
             value = value.property_get(valself.AssignToNewVariable(node),
-                                       abstract.equivalent_to(valself, obj))
+                                       abstract.equivalent_to(valself, cls))
           if isinstance(value, abstract.Property):
             node, value = value.call(node, None, None)
             value, = value.data
@@ -368,18 +353,18 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       break  # we found a class which has this attribute
     return ret
 
-  def _get_attribute_flat(self, node, obj, name):
+  def _get_attribute_flat(self, node, cls, name):
     """Flat attribute retrieval (no mro lookup)."""
-    if isinstance(obj, abstract.ParameterizedClass):
-      return self._get_attribute_flat(node, obj.base_cls, name)
-    elif isinstance(obj, abstract.Class):
-      node, attr = self._get_member(node, obj, name)
+    if isinstance(cls, abstract.ParameterizedClass):
+      return self._get_attribute_flat(node, cls.base_cls, name)
+    elif isinstance(cls, abstract.Class):
+      node, attr = self._get_member(node, cls, name)
       if attr is not None:
         attr = self._filter_var(node, attr)
       return node, attr
-    elif isinstance(obj, (abstract.Unknown, abstract.Unsolvable)):
+    elif isinstance(cls, (abstract.Unknown, abstract.Unsolvable)):
       # The object doesn't have an MRO, so this is the same as get_attribute
-      return self.get_attribute(node, obj, name)
+      return self.get_attribute(node, cls, name)
     else:
       return node, None
 
@@ -396,11 +381,9 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         # attribute in self.members needing to be reloaded.
         self._maybe_load_as_instance_attribute(node, obj, name)
 
-    # Retrieve instance attribute
-    if name in obj.members:
-      # Allow an instance attribute to shadow a class attribute.
-      if obj.members[name].Bindings(node):
-        return node, obj.members[name]
+    # Retrieve member
+    if name in obj.members and obj.members[name].Bindings(node):
+      return node, obj.members[name]
     return node, None
 
   def _filter_var(self, node, var):
@@ -452,23 +435,19 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
 
   def _maybe_load_as_instance_attribute(self, node, obj, name):
     assert isinstance(obj, abstract.SimpleAbstractValue)
-    if isinstance(obj.cls, abstract.Class):
-      var = self._get_as_instance_attribute(node, obj.cls, name, obj)
-      if var is not None:
-        if name in obj.members:
-          obj.members[name].PasteVariable(var, node)
-        else:
-          obj.members[name] = var
-
-  def _get_as_instance_attribute(self, node, cls, name, instance):
-    assert isinstance(cls, abstract.Class)
-    for base in cls.mro:
+    if not isinstance(obj.cls, abstract.Class):
+      return
+    for base in obj.cls.mro:
       if isinstance(base, abstract.ParameterizedClass):
         base = base.base_cls
       if isinstance(base, abstract.PyTDClass):
-        var = base.convert_as_instance_attribute(node, name, instance)
+        var = base.convert_as_instance_attribute(node, name, obj)
         if var is not None:
-          return var
+          if name in obj.members:
+            obj.members[name].PasteVariable(var, node)
+          else:
+            obj.members[name] = var
+          return
 
   def _set_member(self, node, obj, name, var):
     """Set a member on an object."""

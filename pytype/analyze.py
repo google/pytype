@@ -203,10 +203,10 @@ class CallTracer(vm.VirtualMachine):
       node2.ConnectTo(node0)
     return node0
 
-  def bind_method(self, node, name, methodvar, instance):
+  def bind_method(self, node, name, methodvar, instance_var):
     bound = self.program.NewVariable()
     for m in methodvar.Data(node):
-      bound.AddBinding(m.property_get(instance), [], node)
+      bound.AddBinding(m.property_get(instance_var), [], node)
     return bound
 
   def _instantiate_binding(self, node0, cls):
@@ -272,7 +272,7 @@ class CallTracer(vm.VirtualMachine):
         that shouldn't get back the same cached instance.
 
     Returns:
-      A tuple of node, class variable, instance variable.
+      A tuple of node and instance variable.
     """
     key = (self.frame and self.frame.current_opcode, extra_key, cls)
     if (key not in self._instance_cache or
@@ -294,9 +294,8 @@ class CallTracer(vm.VirtualMachine):
       else:
         self._instance_cache[key] = _INITIALIZING
         node = self.call_init(node, instance)
-      self._instance_cache[key] = clsvar, instance
-    clsvar, instance = self._instance_cache[key]
-    return node, clsvar, instance
+      self._instance_cache[key] = instance
+    return node, self._instance_cache[key]
 
   def call_init(self, node, instance):
     # Call __init__ on each binding.
@@ -328,7 +327,7 @@ class CallTracer(vm.VirtualMachine):
 
   def analyze_class(self, node, val):
     self._analyzed_classes.add(val.data)
-    node, _, instance = self.init_class(node, val.data)
+    node, instance = self.init_class(node, val.data)
     good_instances = [b for b in instance.bindings if val.data == b.data.cls]
     if not good_instances:
       # __new__ returned something that's not an instance of our class.

@@ -307,7 +307,7 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
     del name
     return self.vm.convert.create_new_unsolvable(node)
 
-  def property_get(self, callself, is_class=False):  # pylint: disable=unused-argument
+  def property_get(self, callself, is_class=False):
     """Bind this value to the given self or cls.
 
     This function is similar to __get__ except at the abstract level. This does
@@ -325,6 +325,7 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
       Another abstract value that should be returned in place of this one. The
       default implementation returns self, so this can always be called safely.
     """
+    del callself, is_class
     return self
 
   def get_special_attribute(self, unused_node, name, unused_valself):
@@ -2048,18 +2049,18 @@ class ClassMethod(AtomicAbstractValue):
     super(ClassMethod, self).__init__(name, vm)
     self.method = method
     # Rename to callcls to make clear that callself is the cls parameter.
-    self.callcls = callself
+    self._callcls = callself
     self.signatures = self.method.signatures
 
   def call(self, node, func, args):
     return self.method.call(
-        node, func, args.replace(posargs=(self.callcls,) + args.posargs))
+        node, func, args.replace(posargs=(self._callcls,) + args.posargs))
 
   def get_class(self):
     return self.vm.convert.function_type
 
   def to_bound_function(self):
-    return BoundPyTDFunction(self.callcls, self.method)
+    return BoundPyTDFunction(self._callcls, self.method)
 
 
 class StaticMethod(AtomicAbstractValue):
@@ -2087,13 +2088,13 @@ class Property(AtomicAbstractValue):
   def __init__(self, name, method, callself, vm):
     super(Property, self).__init__(name, vm)
     self.method = method
-    self.callself = callself
+    self._callself = callself
     self.signatures = self.method.signatures
 
   def call(self, node, func, args):
     func = func or self.to_binding(node)
-    args = args or FunctionArgs(posargs=(self.callself,))
-    return self.method.call(node, func, args.replace(posargs=(self.callself,)))
+    args = args or FunctionArgs(posargs=(self._callself,))
+    return self.method.call(node, func, args.replace(posargs=(self._callself,)))
 
   def get_class(self):
     return self.vm.convert.function_type
@@ -2751,7 +2752,7 @@ class Callable(ParameterizedClass, HasSlots):
             self.vm, bad_param=bad_param)
     ret = self.vm.annotations_util.sub_one_annotation(
         node, self.type_parameters[RET], substs)
-    node, _, retvar = self.vm.init_class(node, ret)
+    node, retvar = self.vm.init_class(node, ret)
     return node, retvar
 
   def get_special_attribute(self, node, name, valself):
@@ -3397,7 +3398,7 @@ class InterpreterFunction(SignedFunction):
       for name in callargs:
         if name in annotations:
           extra_key = (self.get_first_opcode(), name)
-          node, _, callargs[name] = self.vm.init_class(
+          node, callargs[name] = self.vm.init_class(
               node, annotations[name], extra_key=extra_key)
     # Might throw vm.RecursionException:
     frame = self.vm.make_frame(node, self.code, callargs,
@@ -3727,12 +3728,10 @@ class Generator(Instance):
       ret_type = self.generator_frame.allowed_returns
       if ret_type:
         # set type parameters according to annotated Generator return type
-        self.merge_type_parameter(node, T, self.vm.init_class(
-            node, ret_type.get_formal_type_parameter(T))[2])
-        self.merge_type_parameter(node, self.SEND, self.vm.init_class(
-            node, ret_type.get_formal_type_parameter(self.SEND))[2])
-        self.merge_type_parameter(node, self.RET, self.vm.init_class(
-            node, ret_type.get_formal_type_parameter(self.RET))[2])
+        for param_name in (T, self.SEND, self.RET):
+          _, param_var = self.vm.init_class(
+              node, ret_type.get_formal_type_parameter(param_name))
+          self.merge_type_parameter(node, param_name, param_var)
       else:
         # infer the type parameters based on the collected type information.
         self.merge_type_parameter(node, T, self.generator_frame.yield_variable)
