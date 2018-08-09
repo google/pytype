@@ -408,7 +408,11 @@ class Postprocessor(object):
       # "verbosity=-1" can be used to disable all logging, so configure
       # logging accordingly.
       basic_logging_level = logging.CRITICAL + 1
-    logging.basicConfig(level=basic_logging_level)
+    if logging.root.handlers:
+      # When calling pytype as a library, override the caller's logging level.
+      logging.root.setLevel(basic_logging_level)
+    else:
+      logging.basicConfig(level=basic_logging_level)
 
   def _store_pythonpath(self, pythonpath):
     # Note that the below gives [""] for "", and ["x", ""] for "x:"
