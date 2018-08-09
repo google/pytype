@@ -220,6 +220,37 @@ class ErrorTest(test_base.TargetPython3BasicTest):
           [(5, "wrong-arg-types",
             r"Actually passed: \(x: Callable\[\[str\], None\]")])
 
+  def testGeneratorSend(self):
+    errors = self.CheckWithErrors("""\
+      from typing import Generator, Any
+      def f(x) -> Generator[Any, int, Any]:
+        if x == 1:
+          yield 1
+        else:
+          yield "1"
+
+      x = f(2)
+      x.send("123")
+    """)
+    self.assertErrorLogIs(errors, [(9, "wrong-arg-types",
+                                    r"\(self, value: int\)")])
+
+  def testGeneratorIteratorRetType(self):
+    errors = self.CheckWithErrors("""\
+      from typing import Iterator
+      def f() -> Iterator[str]:
+        yield 1
+    """)
+    self.assertErrorLogIs(errors, [(3, "bad-return-type", r"str.*int")])
+
+  def testGeneratorIterableRetType(self):
+    errors = self.CheckWithErrors("""\
+      from typing import Iterable
+      def f() -> Iterable[str]:
+        yield 1
+    """)
+    self.assertErrorLogIs(errors, [(3, "bad-return-type", r"str.*int")])
+
 
 class ErrorTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for errors."""
