@@ -1,6 +1,7 @@
 #include <Python.h>
 #include <structseq.h>
 
+#include <string>
 #include <unordered_map>
 #include <utility>
 
@@ -338,7 +339,7 @@ static PyObject* NewCFGNode(PyProgramObj* self,
                             PyObject* args, PyObject* kwargs) {
   static const char *kwlist[] = {"name", "condition", nullptr};
   PyObject* name_obj = nullptr;
-  const char* name = nullptr;
+  std::string name;
   PyObject* condition_obj = nullptr;
   if (!SafeParseTupleAndKeywords(args, kwargs, "|OO!", kwlist, &name_obj,
                                  &PyBinding, &condition_obj))
@@ -446,7 +447,7 @@ static PyObject* NewVariable(PyProgramObj* self,
     Py_DECREF(bind_iter);
     if (PyErr_Occurred()) {
       // PyIter_Next raised an error, so clean up and propagate.
-      Py_DECREF(source_set);
+      Py_XDECREF(source_set);
       return nullptr;
     }
   }
@@ -652,7 +653,7 @@ static PyObject* ConnectNew(PyCFGNodeObj* self,
   PyProgramObj* program = get_program(self);
   static const char *kwlist[] = {"name", "condition", nullptr};
   PyObject* name_obj = nullptr;
-  const char* name = "None";
+  std::string name;
   PyObject* condition_obj = nullptr;
   if (!SafeParseTupleAndKeywords(args, kwargs, "|OO", kwlist, &name_obj,
                                  &condition_obj))
@@ -661,6 +662,8 @@ static PyObject* ConnectNew(PyCFGNodeObj* self,
     name_obj = PyObject_Str(name_obj);
     name = PyString_AsString(name_obj);
     Py_DECREF(name_obj);
+  } else {
+    name = "None";
   }
 
   if (!condition_obj || condition_obj == Py_None) {
