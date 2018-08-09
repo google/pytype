@@ -504,13 +504,14 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         left = other_type
       for type_param in left.template:
         class_param = other_type.type_parameters[type_param.name]
-        instance_param = instance.get_type_parameter(node, type_param.name)
+        instance_param = instance.get_instance_type_parameter(
+            node, type_param.name)
         instance_type_param = left.type_parameters[type_param.name]
         if (not instance_param.bindings and isinstance(
             instance_type_param, abstract.TypeParameter) and
             instance_type_param.name != type_param.name):
           # This type parameter was renamed!
-          instance_param = instance.get_type_parameter(
+          instance_param = instance.get_instance_type_parameter(
               node, instance_type_param.name)
         if instance_param.bindings and instance_param not in view:
           binding, = instance_param.bindings
@@ -577,7 +578,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         not isinstance(other_type, abstract.ParameterizedClass)):
       return subst
     subst = self.match_var_against_type(
-        instance.get_type_parameter(node, abstract.RET),
+        instance.get_instance_type_parameter(node, abstract.RET),
         other_type.type_parameters[abstract.RET], subst, node, view)
     if subst is None:
       return None

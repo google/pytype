@@ -303,9 +303,36 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
     """
     return ()
 
-  def get_type_parameter(self, node, name):
+  def get_instance_type_parameter(self, node, name):
+    """Get a cfg.Variable of the instance's values for the type parameter.
+
+    Treating self as an abstract.Instance, gets the variable of its values for
+    the given type parameter. For the real implementation, see
+    SimpleAbstractValue.get_instance_type_parameter.
+
+    Args:
+      node: The current CFG node.
+      name: The name of the type parameter.
+    Returns:
+      A Variable which may be empty.
+    """
     del name
     return self.vm.convert.create_new_unsolvable(node)
+
+  def get_formal_type_parameter(self, t):
+    """Get the class's type for the type parameter.
+
+    Treating self as an abstract.Class, gets its formal type for the given
+    type parameter. For the real implementation, see
+    ParameterizedClass.get_formal_type_parameter.
+
+    Args:
+      t: The name of the type parameter.
+    Returns:
+      A formal type.
+    """
+    del t
+    return self.vm.convert.unsolvable
 
   def property_get(self, callself, is_class=False):
     """Bind this value to the given self or cls.
@@ -494,10 +521,6 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   def update_official_name(self, _):
     """Update the official name."""
     pass
-
-  def get_formal_type_parameter(self, t):
-    del t
-    return self.vm.convert.unsolvable
 
 
 class Empty(AtomicAbstractValue):
@@ -741,18 +764,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
   def get_children_maps(self):
     return (self.type_parameters, self.members)
 
-  def get_type_parameter(self, node, name):
-    """Get the cfg.Variable representing the type parameter of self.
-
-    This will be a cfg.Variable made up of values that have been used in
-    place of this type parameter.
-
-    Args:
-      node: The current CFG node.
-      name: The name of the type parameter.
-    Returns:
-      A Variable which may be empty.
-    """
+  def get_instance_type_parameter(self, node, name):
     param = self.type_parameters.get(name)
     if not param:
       log.info("Creating new empty type param %s", name)
@@ -1308,8 +1320,8 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
         if key not in omit:
           self.set_str_item(node, key, value)
       if isinstance(other_dict, Dict):
-        k = other_dict.get_type_parameter(node, K)
-        v = other_dict.get_type_parameter(node, V)
+        k = other_dict.get_instance_type_parameter(node, K)
+        v = other_dict.get_instance_type_parameter(node, V)
         self.merge_type_parameter(node, K, k)
         self.merge_type_parameter(node, V, v)
         self.could_contain_anything |= other_dict.could_contain_anything
@@ -1317,8 +1329,8 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
       assert isinstance(other_dict, AtomicAbstractValue)
       if (isinstance(other_dict, Instance) and
           other_dict.full_name == "__builtin__.dict"):
-        k = other_dict.get_type_parameter(node, K)
-        v = other_dict.get_type_parameter(node, V)
+        k = other_dict.get_instance_type_parameter(node, K)
+        v = other_dict.get_instance_type_parameter(node, V)
       else:
         k = v = self.vm.convert.create_new_unsolvable(node)
       self.merge_type_parameter(node, K, k)
@@ -1523,7 +1535,6 @@ class Union(AtomicAbstractValue):
     return self.vm.call_function(node, var, args)
 
   def get_formal_type_parameter(self, t):
-    """Retrieve the type from Union elments to generate a new Union."""
     new_options = [option.get_formal_type_parameter(t)
                    for option in self.options]
     return Union(new_options, self.vm)
@@ -2617,7 +2628,6 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     raise NotCallable(self)
 
   def get_formal_type_parameter(self, t):
-    """Retrieve the type stored in type_parameters."""
     return self.type_parameters.get(t, self.vm.convert.unsolvable)
 
 
