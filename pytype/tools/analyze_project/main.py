@@ -28,32 +28,12 @@ import importlab.output
 
 from pytype import file_utils
 from pytype import io
-from pytype import utils
 from pytype.tools import environment
 from pytype.tools import tool_utils
 from pytype.tools.analyze_project import config
+from pytype.tools.analyze_project import environment as analyze_project_env
 from pytype.tools.analyze_project import parse_args
 from pytype.tools.analyze_project import pytype_runner
-
-
-class PytdFileSystem(importlab.fs.ExtensionRemappingFileSystem):
-  """File system that remaps .py file extensions to pytd."""
-
-  def __init__(self, underlying):
-    super(PytdFileSystem, self).__init__(underlying, 'pytd')
-
-
-def create_importlab_environment(conf, typeshed):
-  """Create an importlab environment from the python version and path."""
-  python_version = utils.split_version(conf.python_version)
-  path = importlab.fs.Path()
-  for p in conf.pythonpath:
-    path.add_path(p, 'os')
-  for p in typeshed.get_pytd_paths(python_version):
-    path.add_fs(PytdFileSystem(importlab.fs.OSFileSystem(p)))
-  for p in typeshed.get_typeshed_paths(python_version):
-    path.add_path(p, 'pyi')
-  return importlab.environment.Environment(path, python_version)
 
 
 def main():
@@ -90,7 +70,7 @@ def main():
   environment.check_python_exe_or_die(conf.python_version)
 
   typeshed = environment.initialize_typeshed_or_die()
-  env = create_importlab_environment(conf, typeshed)
+  env = analyze_project_env.create_importlab_environment(conf, typeshed)
   try:
     import_graph = importlab.graph.ImportGraph.create(env, args.filenames)
   except Exception as e:  # pylint: disable=broad-except

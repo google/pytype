@@ -114,9 +114,7 @@ class CheckerTest(test_base.TargetPython3BasicTest):
         for i in range(3):
           yield i
     """)
-    self.assertErrorLogIs(errorlog, [(4, "bad-return-type",
-                                      r"Generator\[str, Any, Any\].*"
-                                      r"Generator\[int, None, None\]")])
+    self.assertErrorLogIs(errorlog, [(4, "bad-return-type", r"str.*int")])
 
   def testMultipleParameterBindings(self):
     errorlog = self.CheckWithErrors("""\

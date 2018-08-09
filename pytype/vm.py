@@ -579,7 +579,7 @@ class VirtualMachine(object):
     # Implement NEWLOCALS flag. See Objects/frameobject.c in CPython.
     # (Also allow to override this with a parameter, Python 3 doesn't always set
     #  it to the right value, e.g. for class-level code.)
-    if code.co_flags & loadmarshal.CodeType.CO_NEWLOCALS or new_locals:
+    if loadmarshal.CodeType.has_newlocals(code.co_flags) or new_locals:
       f_locals = self.convert_locals_or_globals({}, "locals")
 
     return frame_state.Frame(node, self, code, f_globals, f_locals,
@@ -726,8 +726,15 @@ class VirtualMachine(object):
         options.reverse()
     error = None
     for left_val, right_val, attr_name in options:
-      node, attr_var = self.attribute_handler.get_attribute_generic(
-          node, left_val.data, attr_name, left_val)
+      if (isinstance(left_val.data, abstract.Class) and
+          attr_name == "__getitem__"):
+        # We're parameterizing a type annotation. Set valself to None to
+        # differentiate this action from a real __getitem__ call on the class.
+        valself = None
+      else:
+        valself = left_val
+      node, attr_var = self.attribute_handler.get_attribute(
+          node, left_val.data, attr_name, valself)
       if attr_var and attr_var.bindings:
         args = abstract.FunctionArgs(posargs=(right_val.AssignToNewVariable(),))
         try:
@@ -832,6 +839,11 @@ class VirtualMachine(object):
   def call_init(self, node, unused_instance):
     # This dummy implementation is overwritten in analyze.py.
     return node
+
+  def init_class(self, node, cls, extra_key=None):
+    # This dummy implementation is overwritten in analyze.py.
+    del cls, extra_key
+    return node, None
 
   def call_function_with_state(self, state, funcu, posargs, namedargs=None,
                                starargs=None, starstarargs=None,
@@ -1048,7 +1060,7 @@ class VirtualMachine(object):
     nodes = []
     values_without_attribute = []
     for val in obj.bindings:
-      node2, attr_var = self.attribute_handler.get_attribute_generic(
+      node2, attr_var = self.attribute_handler.get_attribute(
           node, val.data, attr, val)
       if attr_var is None or not attr_var.bindings:
         log.debug("No %s on %s", attr, val.data.__class__)
@@ -2321,19 +2333,14 @@ class VirtualMachine(object):
     state, ret = state.pop()
     self.frame.yield_variable.PasteVariable(ret, state.node)
     if self.frame.check_return:
-      # Create a dummy generator instance for checking that
-      # Generator[<yield_variable>] matches the annotated return type.
-      # TODO(rechen): In Python 3, generators can have non-None send and
-      # return types.
-      generator = abstract.Generator(self.frame, self)
-      generator.merge_type_parameter(
-          state.node, abstract.T, self.frame.yield_variable)
-      none_var = self.convert.none.to_variable(state.node)
-      generator.merge_type_parameter(state.node, generator.SEND, none_var)
-      generator.merge_type_parameter(state.node, generator.RET, none_var)
-      self._check_return(state.node, generator.to_variable(state.node),
-                         self.frame.allowed_returns)
-    return state.set_why("yield")
+      ret_type = self.frame.allowed_returns
+      self._check_return(state.node, ret,
+                         ret_type.get_formal_type_parameter(abstract.T))
+      _, send_var = self.init_class(
+          state.node,
+          ret_type.get_formal_type_parameter(abstract.Generator.SEND))
+      return state.push(send_var)
+    return state.push(self.convert.unsolvable.to_variable(state.node))
 
   def byte_IMPORT_NAME(self, state, op):
     """Import a single module."""
@@ -2411,7 +2418,7 @@ class VirtualMachine(object):
 
   def _set_frame_return(self, node, frame, var):
     if frame.allowed_returns is not None:
-      _, _, retvar = self.init_class(node, frame.allowed_returns)
+      _, retvar = self.init_class(node, frame.allowed_returns)
     else:
       retvar = var
     frame.return_variable.PasteVariable(retvar, node)
@@ -2420,10 +2427,10 @@ class VirtualMachine(object):
     """Get and check the return value."""
     state, var = state.pop()
     if self.frame.check_return:
-      if self.frame.f_code.co_flags & loadmarshal.CodeType.CO_GENERATOR:
-        # A generator shouldn't return anything, so the expected return type
-        # is None.
-        self._check_return(state.node, var, self.convert.none_type)
+      if loadmarshal.CodeType.has_generator(self.frame.f_code.co_flags):
+        ret_type = self.frame.allowed_returns
+        self._check_return(state.node, var, ret_type.
+                           get_formal_type_parameter(abstract.Generator.RET))
       else:
         self._check_return(state.node, var, self.frame.allowed_returns)
     self._set_frame_return(state.node, self.frame, var)

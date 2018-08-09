@@ -221,6 +221,12 @@ def has_type_parameters(node, val, seen=None):
     return False
 
 
+def equivalent_to(binding, cls):
+  """Whether binding.data is equivalent to cls, modulo parameterization."""
+  return (isinstance(binding.data, Class) and
+          binding.data.full_name == cls.full_name)
+
+
 class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   """A single abstract value such as a type or function signature.
 
@@ -297,26 +303,56 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
     """
     return ()
 
-  def get_type_parameter(self, node, name):
+  def get_instance_type_parameter(self, node, name):
+    """Get a cfg.Variable of the instance's values for the type parameter.
+
+    Treating self as an abstract.Instance, gets the variable of its values for
+    the given type parameter. For the real implementation, see
+    SimpleAbstractValue.get_instance_type_parameter.
+
+    Args:
+      node: The current CFG node.
+      name: The name of the type parameter.
+    Returns:
+      A Variable which may be empty.
+    """
     del name
     return self.vm.convert.create_new_unsolvable(node)
 
-  def property_get(self, callself, callcls):  # pylint: disable=unused-argument
-    """Bind this value to the given self and class.
+  def get_formal_type_parameter(self, t):
+    """Get the class's type for the type parameter.
+
+    Treating self as an abstract.Class, gets its formal type for the given
+    type parameter. For the real implementation, see
+    ParameterizedClass.get_formal_type_parameter.
+
+    Args:
+      t: The name of the type parameter.
+    Returns:
+      A formal type.
+    """
+    del t
+    return self.vm.convert.unsolvable
+
+  def property_get(self, callself, is_class=False):
+    """Bind this value to the given self or cls.
 
     This function is similar to __get__ except at the abstract level. This does
     not trigger any code execution inside the VM. See __get__ for more details.
 
     Args:
-      callself: The Variable that should be passed as self when the call is
-        made. None if this is class call.
-      callcls: The Variable that should be used as the class when the call is
-        made.
+      callself: The Variable that should be passed as self or cls when the call
+        is made. We only need one of self or cls, so having them share a
+        parameter prevents accidentally passing in both.
+      is_class: Whether callself is self or cls. Should be cls only when we
+        want to directly pass in a class to bind a class method to, rather than
+        passing in an instance and calling get_class().
 
     Returns:
       Another abstract value that should be returned in place of this one. The
       default implementation returns self, so this can always be called safely.
     """
+    del callself, is_class
     return self
 
   def get_special_attribute(self, unused_node, name, unused_valself):
@@ -728,18 +764,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
   def get_children_maps(self):
     return (self.type_parameters, self.members)
 
-  def get_type_parameter(self, node, name):
-    """Get the cfg.Variable representing the type parameter of self.
-
-    This will be a cfg.Variable made up of values that have been used in
-    place of this type parameter.
-
-    Args:
-      node: The current CFG node.
-      name: The name of the type parameter.
-    Returns:
-      A Variable which may be empty.
-    """
+  def get_instance_type_parameter(self, node, name):
     param = self.type_parameters.get(name)
     if not param:
       log.info("Creating new empty type param %s", name)
@@ -1295,8 +1320,8 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
         if key not in omit:
           self.set_str_item(node, key, value)
       if isinstance(other_dict, Dict):
-        k = other_dict.get_type_parameter(node, K)
-        v = other_dict.get_type_parameter(node, V)
+        k = other_dict.get_instance_type_parameter(node, K)
+        v = other_dict.get_instance_type_parameter(node, V)
         self.merge_type_parameter(node, K, k)
         self.merge_type_parameter(node, V, v)
         self.could_contain_anything |= other_dict.could_contain_anything
@@ -1304,8 +1329,8 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
       assert isinstance(other_dict, AtomicAbstractValue)
       if (isinstance(other_dict, Instance) and
           other_dict.full_name == "__builtin__.dict"):
-        k = other_dict.get_type_parameter(node, K)
-        v = other_dict.get_type_parameter(node, V)
+        k = other_dict.get_instance_type_parameter(node, K)
+        v = other_dict.get_instance_type_parameter(node, V)
       else:
         k = v = self.vm.convert.create_new_unsolvable(node)
       self.merge_type_parameter(node, K, k)
@@ -1509,6 +1534,11 @@ class Union(AtomicAbstractValue):
     var = self.vm.program.NewVariable(self.options, [], node)
     return self.vm.call_function(node, var, args)
 
+  def get_formal_type_parameter(self, t):
+    new_options = [option.get_formal_type_parameter(t)
+                   for option in self.options]
+    return Union(new_options, self.vm)
+
 
 class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
                                                 "starargs", "starstarargs"])):
@@ -1671,15 +1701,15 @@ class Function(SimpleAbstractValue):
     self.members["func_name"] = self.vm.convert.build_string(
         self.vm.root_cfg_node, name)
 
-  def property_get(self, callself, callcls):
-    if self.name == "__new__" or not callself or not callcls:
+  def property_get(self, callself, is_class=False):
+    if self.name == "__new__" or not callself or is_class:
       return self
     self.is_attribute_of_class = True
     # We'd like to cache this, but we can't. "callself" contains Variables
     # that would be tied into a BoundFunction instance. However, those
     # Variables aren't necessarily visible from other parts of the CFG binding
     # this function. See test_duplicate_getproperty() in tests/test_flow.py.
-    return self.bound_class(callself, callcls, self)
+    return self.bound_class(callself, self)
 
   def match_args(self, node, args, match_all_views=False):
     """Check whether the given arguments can match the function signature."""
@@ -2026,36 +2056,30 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
 class ClassMethod(AtomicAbstractValue):
   """Implements @classmethod methods in pyi."""
 
-  def __init__(self, name, method, callself, callcls, vm):
+  def __init__(self, name, method, callself, vm):
     super(ClassMethod, self).__init__(name, vm)
     self.method = method
-    self.callself = callself  # unused
-    self.callcls = callcls
+    # Rename to callcls to make clear that callself is the cls parameter.
+    self._callcls = callself
     self.signatures = self.method.signatures
 
   def call(self, node, func, args):
-    if self.callcls:
-      cls = self.callcls
-    else:
-      cls = self.vm.convert.create_new_unsolvable(node)
     return self.method.call(
-        node, func, args.replace(posargs=(cls,) + args.posargs))
+        node, func, args.replace(posargs=(self._callcls,) + args.posargs))
 
   def get_class(self):
     return self.vm.convert.function_type
 
   def to_bound_function(self):
-    return BoundPyTDFunction(self.callself, self.callcls, self.method)
+    return BoundPyTDFunction(self._callcls, self.method)
 
 
 class StaticMethod(AtomicAbstractValue):
   """Implements @staticmethod methods in pyi."""
 
-  def __init__(self, name, method, callself, callcls, vm):
+  def __init__(self, name, method, _, vm):
     super(StaticMethod, self).__init__(name, vm)
     self.method = method
-    self.callself = callself  # unused
-    self.callcls = callcls  # unused
     self.signatures = self.method.signatures
 
   def call(self, *args, **kwargs):
@@ -2072,22 +2096,16 @@ class Property(AtomicAbstractValue):
   resolved as a function, not as a constant.
   """
 
-  def __init__(self, name, method, callself, callcls, vm):
+  def __init__(self, name, method, callself, vm):
     super(Property, self).__init__(name, vm)
     self.method = method
-    self.callself = callself
-    self.callcls = callcls  # unused
+    self._callself = callself
     self.signatures = self.method.signatures
 
   def call(self, node, func, args):
     func = func or self.to_binding(node)
-    args = args or FunctionArgs(posargs=(self.callself,))
-    if self.callself:
-      cls = self.callself
-    else:
-      cls = self.vm.convert.create_new_unsolvable(node)
-    return self.method.call(
-        node, func, args.replace(posargs=(cls,)))
+    args = args or FunctionArgs(posargs=(self._callself,))
+    return self.method.call(node, func, args.replace(posargs=(self._callself,)))
 
   def get_class(self):
     return self.vm.convert.function_type
@@ -2141,15 +2159,26 @@ class PyTDFunction(Function):
       sig.function = self
       sig.name = self.name
 
-  def property_get(self, callself, callcls):
+  def property_get(self, callself, is_class=False):
     if self.kind == pytd.STATICMETHOD:
-      return StaticMethod(self.name, self, callself, callcls, self.vm)
+      if is_class:
+        # Binding the function to None rather than not binding it tells
+        # output.py to infer the type as a Callable rather than reproducing the
+        # signature, including the @staticmethod decorator, which is
+        # undesirable for module-level aliases.
+        callself = None
+      return StaticMethod(self.name, self, callself, self.vm)
     elif self.kind == pytd.CLASSMETHOD:
-      return ClassMethod(self.name, self, callself, callcls, self.vm)
-    elif self.kind == pytd.PROPERTY:
-      return Property(self.name, self, callself, callcls, self.vm)
+      if not is_class:
+        # callself is the instance, and we want to bind to its class.
+        callself = get_atomic_value(
+            callself, default=self.vm.convert.unsolvable
+        ).get_class().to_variable(self.vm.root_cfg_node)
+      return ClassMethod(self.name, self, callself, self.vm)
+    elif self.kind == pytd.PROPERTY and not is_class:
+      return Property(self.name, self, callself, self.vm)
     else:
-      return super(PyTDFunction, self).property_get(callself, callcls)
+      return super(PyTDFunction, self).property_get(callself, is_class)
 
   def argcount(self, _):
     return min(sig.signature.mandatory_param_count() for sig in self.signatures)
@@ -2433,13 +2462,11 @@ class Class(object):
       __new__ method, or None.
     """
     node, new = self.vm.attribute_handler.get_attribute(
-        node, value.data, "__new__", value)
+        node, value.data, "__new__")
     if new is None:
       return node, None
     if len(new.bindings) == 1:
       f = new.bindings[0].data
-      if isinstance(f, StaticMethod):
-        f = f.method
       if (isinstance(f, AMBIGUOUS_OR_EMPTY) or
           self.vm.convert.object_type.is_object_new(f)):
         # Instead of calling object.__new__, our abstract classes directly
@@ -2476,9 +2503,11 @@ class Class(object):
   def get_special_attribute(self, node, name, valself):
     """Fetch a special attribute."""
     if name == "__getitem__" and valself is None:
+      # See vm._call_binop_on_bindings: valself == None is a special value that
+      # indicates an annotation.
       if self.cls:
         # This class has a custom metaclass; check if it defines __getitem__.
-        _, attr = self.vm.attribute_handler.get_instance_attribute(
+        _, attr = self.vm.attribute_handler.get_attribute(
             node, self, name, self.to_binding(node))
         if attr:
           return attr
@@ -2598,6 +2627,9 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     del args
     raise NotCallable(self)
 
+  def get_formal_type_parameter(self, t):
+    return self.type_parameters.get(t, self.vm.convert.unsolvable)
+
 
 class TupleClass(ParameterizedClass, HasSlots):
   """The class of a heterogeneous tuple.
@@ -2675,7 +2707,7 @@ class TupleClass(ParameterizedClass, HasSlots):
         node, "__getitem__", self.instantiate(node), index_var)
 
   def get_special_attribute(self, node, name, valself):
-    if valself and name in self._slots:
+    if valself and not equivalent_to(valself, self) and name in self._slots:
       return HasSlots.get_special_attribute(self, node, name, valself)
     return super(TupleClass, self).get_special_attribute(node, name, valself)
 
@@ -2730,11 +2762,11 @@ class Callable(ParameterizedClass, HasSlots):
             self.vm, bad_param=bad_param)
     ret = self.vm.annotations_util.sub_one_annotation(
         node, self.type_parameters[RET], substs)
-    node, _, retvar = self.vm.init_class(node, ret)
+    node, retvar = self.vm.init_class(node, ret)
     return node, retvar
 
   def get_special_attribute(self, node, name, valself):
-    if valself and name in self._slots:
+    if valself and not equivalent_to(valself, self) and name in self._slots:
       return HasSlots.get_special_attribute(self, node, name, valself)
     return super(Callable, self).get_special_attribute(node, name, valself)
 
@@ -3002,7 +3034,7 @@ class NativeFunction(Function):
   def __init__(self, name, func, vm):
     super(NativeFunction, self).__init__(name, vm)
     self.func = func
-    self.bound_class = lambda callself, callcls, underlying: self
+    self.bound_class = lambda callself, underlying: self
 
   def argcount(self, _):
     return self.func.func_code.co_argcount
@@ -3219,6 +3251,13 @@ class InterpreterFunction(SignedFunction):
       An InterpreterFunction.
     """
     annotations = annotations or {}
+    if (loadmarshal.CodeType.has_generator(code.co_flags) and
+        "return" in annotations):
+      # Check Generator return type
+      ret_type = annotations["return"]
+      if not Generator.matches_type(ret_type):
+        error = "Expected Generator, Iterable or Iterator"
+        vm.errorlog.invalid_annotation(vm.frames, ret_type, error)
     late_annotations = late_annotations or {}
     key = (name, code,
            InterpreterFunction._hash_all(
@@ -3239,9 +3278,9 @@ class InterpreterFunction(SignedFunction):
   def get_arg_count(code):
     """Return the arg count given a code object."""
     count = code.co_argcount + max(code.co_kwonlyargcount, 0)
-    if code.co_flags & loadmarshal.CodeType.CO_VARARGS:
+    if loadmarshal.CodeType.has_varargs(code.co_flags):
       count += 1
-    if code.co_flags & loadmarshal.CodeType.CO_VARKEYWORDS:
+    if loadmarshal.CodeType.has_varkeywords(code.co_flags):
       count += 1
     return count
 
@@ -3369,7 +3408,7 @@ class InterpreterFunction(SignedFunction):
       for name in callargs:
         if name in annotations:
           extra_key = (self.get_first_opcode(), name)
-          node, _, callargs[name] = self.vm.init_class(
+          node, callargs[name] = self.vm.init_class(
               node, annotations[name], extra_key=extra_key)
     # Might throw vm.RecursionException:
     frame = self.vm.make_frame(node, self.code, callargs,
@@ -3418,11 +3457,11 @@ class InterpreterFunction(SignedFunction):
           # Even if the call is cached, we might not have been recording it.
           self._call_records.append((callargs, ret, node))
         return node, ret
-    if self.code.co_flags & loadmarshal.CodeType.CO_GENERATOR:
+    if loadmarshal.CodeType.has_generator(self.code.co_flags):
       generator = Generator(frame, self.vm)
       # Run the generator right now, even though the program didn't call it,
       # because we need to know the contained type for futher matching.
-      node2, _ = generator.run_until_yield(node)
+      node2, _ = generator.run_generator(node)
       node_after_call, ret = node2, generator.to_variable(node2)
     else:
       node_after_call, ret = self.vm.run_frame(frame, node)
@@ -3487,12 +3526,12 @@ class InterpreterFunction(SignedFunction):
       i += 1
 
   def has_varargs(self):
-    return bool(self.code.co_flags & loadmarshal.CodeType.CO_VARARGS)
+    return loadmarshal.CodeType.has_varargs(self.code.co_flags)
 
   def has_kwargs(self):
-    return bool(self.code.co_flags & loadmarshal.CodeType.CO_VARKEYWORDS)
+    return loadmarshal.CodeType.has_varkeywords(self.code.co_flags)
 
-  def property_get(self, callself, callcls):
+  def property_get(self, callself, is_class=False):
     if func_name_is_class_init(self.name) and self.signature.param_names:
       self_name = self.signature.param_names[0]
       if self_name in self.signature.annotations:
@@ -3501,7 +3540,7 @@ class InterpreterFunction(SignedFunction):
             self.signature.annotations[self_name],
             details="Cannot annotate self argument of __init__", name=self_name)
         self.signature.del_annotation(self_name)
-    return super(InterpreterFunction, self).property_get(callself, callcls)
+    return super(InterpreterFunction, self).property_get(callself, is_class)
 
 
 class SimpleFunction(SignedFunction):
@@ -3564,10 +3603,9 @@ class SimpleFunction(SignedFunction):
 class BoundFunction(AtomicAbstractValue):
   """An function type which has had an argument bound into it."""
 
-  def __init__(self, callself, callcls, underlying):
+  def __init__(self, callself, underlying):
     super(BoundFunction, self).__init__(underlying.name, underlying.vm)
     self._callself = callself
-    self._callcls = callcls  # TODO(rechen): remove this unused attribute.
     self.underlying = underlying
     self.is_attribute_of_class = False
 
@@ -3657,6 +3695,20 @@ class Generator(Instance):
   SEND = "_T2"
   RET = "_V"
 
+  @staticmethod
+  def matches_type(type_obj):
+    """Check if type_obj matches a Generator type."""
+    if isinstance(type_obj, Union):
+      return all(Generator.matches_type(sub_type)
+                 for sub_type in type_obj.options)
+    else:
+      base_cls = type_obj
+      if isinstance(type_obj, ParameterizedClass):
+        base_cls = type_obj.base_cls
+      return ((isinstance(base_cls, PyTDClass) and
+               base_cls.name in ("generator", "Iterable", "Iterator")) or
+              isinstance(base_cls, AMBIGUOUS_OR_EMPTY))
+
   def __init__(self, generator_frame, vm):
     super(Generator, self).__init__(vm.convert.generator_type, vm)
     self.generator_frame = generator_frame
@@ -3679,23 +3731,34 @@ class Generator(Instance):
   def __iter__(self, node):  # pylint: disable=non-iterator-returned,unexpected-special-method-signature
     return node, self.to_variable(node)
 
-  def run_until_yield(self, node):
+  def run_generator(self, node):
     """Run the generator."""
     if self.runs == 0:  # Optimization: We only run the coroutine once.
       node, _ = self.vm.resume_frame(node, self.generator_frame)
-      # TODO(rechen): In Python 3, generators can have non-None send and
-      # return types.
-      self.merge_type_parameter(node, T, self.generator_frame.yield_variable)
-      none_var = self.vm.convert.none.to_variable(node)
-      self.merge_type_parameter(node, self.SEND, none_var)
-      self.merge_type_parameter(node, self.RET, none_var)
+      ret_type = self.generator_frame.allowed_returns
+      if ret_type:
+        # set type parameters according to annotated Generator return type
+        for param_name in (T, self.SEND, self.RET):
+          _, param_var = self.vm.init_class(
+              node, ret_type.get_formal_type_parameter(param_name))
+          self.merge_type_parameter(node, param_name, param_var)
+      else:
+        # infer the type parameters based on the collected type information.
+        self.merge_type_parameter(node, T, self.generator_frame.yield_variable)
+        # For SEND type, it can not be decided until the SEND function is called
+        # later on. So set SEND type as ANY so that the type check will not fail
+        # when the function is called afterwards.
+        self.merge_type_parameter(node, self.SEND,
+                                  self.vm.convert.unsolvable.to_variable(node))
+        self.merge_type_parameter(node, self.RET,
+                                  self.generator_frame.return_variable)
       self.runs += 1
     return node, self.type_parameters[T]
 
   def call(self, node, func, args):
     """Call this generator or (more common) its "next" attribute."""
     del func, args
-    return self.run_until_yield(node)
+    return self.run_generator(node)
 
 
 class Iterator(Instance, HasSlots):
