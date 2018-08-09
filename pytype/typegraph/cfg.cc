@@ -22,6 +22,10 @@ static const char* kModuleName = "cfg";
 #define PyInt_FromSize_t PyLong_FromSize_t
 #endif
 
+#define SafeParseTupleAndKeywords(args, kwargs, pattern, kwlist, ...) \
+    PyArg_ParseTupleAndKeywords(args, kwargs, pattern, \
+                                const_cast<char**>(kwlist), ##__VA_ARGS__)
+
 // forward declarations of singletons
 extern PyTypeObject PyProgram;
 extern PyTypeObject PyCFGNode;
@@ -332,12 +336,12 @@ PyDoc_STRVAR(new_cfg_node_doc,
 
 static PyObject* NewCFGNode(PyProgramObj* self,
                             PyObject* args, PyObject* kwargs) {
-  static char *kwlist[] = {"name", "condition", nullptr};
+  static const char *kwlist[] = {"name", "condition", nullptr};
   PyObject* name_obj = nullptr;
   const char* name = nullptr;
   PyObject* condition_obj = nullptr;
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|OO!", kwlist, &name_obj,
-                                   &PyBinding, &condition_obj))
+  if (!SafeParseTupleAndKeywords(args, kwargs, "|OO!", kwlist, &name_obj,
+                                 &PyBinding, &condition_obj))
     return nullptr;
   if (name_obj) {
     name_obj = PyObject_Str(name_obj);
@@ -402,12 +406,12 @@ PyDoc_STRVAR(
 
 static PyObject* NewVariable(PyProgramObj* self,
                              PyObject* args, PyObject* kwargs) {
-  static char* kwlist[] = {"bindings", "source_set", "where", nullptr};
+  static const char* kwlist[] = {"bindings", "source_set", "where", nullptr};
   PyObject* bindings = nullptr;
   PyObject* source_set = nullptr;
   PyObject* where_obj = nullptr;
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|OOO", kwlist,
-                                   &bindings, &source_set, &where_obj))
+  if (!SafeParseTupleAndKeywords(args, kwargs, "|OOO", kwlist, &bindings,
+                                 &source_set, &where_obj))
     return nullptr;
 
   if (bindings == Py_None)
@@ -456,11 +460,11 @@ PyDoc_STRVAR(
 
 static PyObject* is_reachable(PyProgramObj* self,
                               PyObject* args, PyObject* kwargs) {
-  static char* kwlist[] = {"src", "dst", nullptr};
+  static const char* kwlist[] = {"src", "dst", nullptr};
   PyCFGNodeObj* src;
   PyCFGNodeObj* dst;
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!O!", kwlist, &PyCFGNode,
-                                   &src, &PyCFGNode, &dst))
+  if (!SafeParseTupleAndKeywords(args, kwargs, "O!O!", kwlist, &PyCFGNode,
+                                 &src, &PyCFGNode, &dst))
     return nullptr;
   if (self->program->is_reachable(src->cfg_node, dst->cfg_node)) {
     Py_RETURN_TRUE;
@@ -646,12 +650,12 @@ PyDoc_STRVAR(connect_new_doc,
 static PyObject* ConnectNew(PyCFGNodeObj* self,
                             PyObject* args, PyObject* kwargs) {
   PyProgramObj* program = get_program(self);
-  static char *kwlist[] = {"name", "condition", nullptr};
+  static const char *kwlist[] = {"name", "condition", nullptr};
   PyObject* name_obj = nullptr;
   const char* name = "None";
   PyObject* condition_obj = nullptr;
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|OO", kwlist, &name_obj,
-                                   &condition_obj))
+  if (!SafeParseTupleAndKeywords(args, kwargs, "|OO", kwlist, &name_obj,
+                                 &condition_obj))
     return nullptr;
   if (name_obj) {
     name_obj = PyObject_Str(name_obj);
@@ -693,10 +697,10 @@ PyDoc_STRVAR(
 static PyObject* HasCombination(PyCFGNodeObj* self,
                                 PyObject* args, PyObject* kwargs) {
   PyProgramObj* program = get_program(self);
-  static char *kwlist[] = {"attrs", nullptr};
+  static const char *kwlist[] = {"attrs", nullptr};
   PyObject* list = nullptr;
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!", kwlist,
-                                   &PyList_Type, &list))
+  if (!SafeParseTupleAndKeywords(args, kwargs, "O!", kwlist, &PyList_Type,
+                                 &list))
     return nullptr;
   if (!VerifyListOfBindings(list, program)) return nullptr;
   int length = PyList_Size(list);
@@ -720,10 +724,10 @@ PyDoc_STRVAR(
 static PyObject* CanHaveCombination(PyCFGNodeObj* self,
                                     PyObject* args, PyObject* kwargs) {
   PyProgramObj* program = get_program(self);
-  static char *kwlist[] = {"attrs", nullptr};
+  static const char *kwlist[] = {"attrs", nullptr};
   PyObject* list = nullptr;
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!", kwlist,
-                                   &PyList_Type, &list))
+  if (!SafeParseTupleAndKeywords(args, kwargs, "O!", kwlist, &PyList_Type,
+                                 &list))
     return nullptr;
   if (!VerifyListOfBindings(list, program)) return nullptr;
   int length = PyList_Size(list);
@@ -805,12 +809,15 @@ PyDoc_STRVAR(origin_doc,
              "of a CFG node and a set of sourcesets.");
 
 static PyStructSequence_Field origin_fields[] = {
-    {"where", "CFG Node where this assignment happened."},
-    {"source_sets", "Possible sets of source bindings used to construct this."},
+    {const_cast<char*>("where"),
+     const_cast<char*>("CFG Node where this assignment happened.")},
+    {const_cast<char*>("source_sets"),
+     const_cast<char*>(
+         "Possible sets of source bindings used to construct this.")},
     {nullptr}};
 
 static PyStructSequence_Desc origin_desc = {
-  name: "Origin",
+  name: const_cast<char*>("Origin"),
   doc: origin_doc,
   fields: origin_fields,
   n_in_sequence: 2,
@@ -889,10 +896,9 @@ PyDoc_STRVAR(
 
 static PyObject* IsVisible(PyBindingObj* self, PyObject* args,
                            PyObject* kwargs) {
-  static char *kwlist[] = {"where", nullptr};
+  static const char *kwlist[] = {"where", nullptr};
   PyCFGNodeObj* node;
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!", kwlist,
-                                   &PyCFGNode, &node))
+  if (!SafeParseTupleAndKeywords(args, kwargs, "O!", kwlist, &PyCFGNode, &node))
     return nullptr;
   if (self->attr->IsVisible(node->cfg_node)) {
     Py_RETURN_TRUE;
@@ -905,11 +911,11 @@ PyDoc_STRVAR(add_origin_doc, "Add another possible origin to this binding.");
 
 static PyObject* AddOrigin(PyBindingObj* self, PyObject* args,
                            PyObject* kwargs) {
-  static char *kwlist[] = {"where", "source_set", nullptr};
+  static const char *kwlist[] = {"where", "source_set", nullptr};
   PyCFGNodeObj* where;
   PyObject* source_set;
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!O", kwlist,
-                                   &PyCFGNode, &where, &source_set))
+  if (!SafeParseTupleAndKeywords(args, kwargs, "O!O", kwlist, &PyCFGNode,
+                                 &where, &source_set))
     return nullptr;
   if (!ContainerToSourceSet(&source_set, get_program(self))) {
     return nullptr;
@@ -928,9 +934,9 @@ PyDoc_STRVAR(assign_to_new_variable_doc,
 
 static PyObject* AssignToNewVariable(PyBindingObj* self, PyObject* args,
                                      PyObject* kwargs) {
-  static char* kwlist[] = {"where", nullptr};
+  static const char* kwlist[] = {"where", nullptr};
   PyObject* where_obj = nullptr;
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|O", kwlist, &where_obj))
+  if (!SafeParseTupleAndKeywords(args, kwargs, "|O", kwlist, &where_obj))
     return nullptr;
   typegraph::CFGNode* where;
   if (!IsCFGNodeOrNone(where_obj, &where)) {
@@ -948,10 +954,10 @@ PyDoc_STRVAR(has_source_doc, "Does this binding depend on a given source?");
 
 static PyObject* HasSource(PyBindingObj* self, PyObject* args,
                            PyObject* kwargs) {
-  static char* kwlist[] = {"binding", nullptr};
+  static const char* kwlist[] = {"binding", nullptr};
   PyBindingObj* binding;
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!", kwlist, &PyBinding,
-                                   &binding))
+  if (!SafeParseTupleAndKeywords(args, kwargs, "O!", kwlist, &PyBinding,
+                                 &binding))
     return nullptr;
   if (self->attr->HasSource(binding->attr)) {
     Py_RETURN_TRUE;
@@ -1082,9 +1088,9 @@ PyDoc_STRVAR(
 
 static PyObject* VariablePrune(PyVariableObj* self,
                                PyObject* args, PyObject* kwargs) {
-  static char *kwlist[] = {"cfg_node", nullptr};
+  static const char *kwlist[] = {"cfg_node", nullptr};
   PyObject* cfg_node_obj;
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O", kwlist, &cfg_node_obj))
+  if (!SafeParseTupleAndKeywords(args, kwargs, "O", kwlist, &cfg_node_obj))
     return nullptr;
   typegraph::CFGNode* cfg_node = nullptr;
   if (!IsCFGNodeOrNone(cfg_node_obj, &cfg_node)) {
@@ -1108,9 +1114,9 @@ PyDoc_STRVAR(variable_prune_data_doc,
 
 static PyObject* VariablePruneData(PyVariableObj* self,
                                          PyObject* args, PyObject* kwargs) {
-  static char *kwlist[] = {"cfg_node", nullptr};
+  static const char *kwlist[] = {"cfg_node", nullptr};
   PyObject* cfg_node_obj = nullptr;
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O", kwlist, &cfg_node_obj))
+  if (!SafeParseTupleAndKeywords(args, kwargs, "O", kwlist, &cfg_node_obj))
     return nullptr;
 
   typegraph::CFGNode* cfg_node = nullptr;
@@ -1138,9 +1144,9 @@ PyDoc_STRVAR(
 static PyObject* VariableFilter(PyVariableObj* self,
                                 PyObject* args, PyObject* kwargs) {
   PyProgramObj* program = get_program(self);
-  static char *kwlist[] = {"cfg_node", nullptr};
+  static const char *kwlist[] = {"cfg_node", nullptr};
   PyCFGNodeObj* cfg_node;
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O", kwlist, &cfg_node))
+  if (!SafeParseTupleAndKeywords(args, kwargs, "O", kwlist, &cfg_node))
     return nullptr;
   auto bindings = self->u->Filter(cfg_node->cfg_node);
   PyObject* list = PyList_New(0);
@@ -1158,10 +1164,10 @@ PyDoc_STRVAR(variable_filtered_data_doc,
 
 static PyObject* VariableFilteredData(PyVariableObj* self,
                                       PyObject* args, PyObject* kwargs) {
-  static char *kwlist[] = {"cfg_node", nullptr};
+  static const char *kwlist[] = {"cfg_node", nullptr};
   PyCFGNodeObj* cfg_node;
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!", kwlist,
-                                   &PyCFGNode, &cfg_node))
+  if (!SafeParseTupleAndKeywords(args, kwargs, "O!", kwlist, &PyCFGNode,
+                                 &cfg_node))
     return nullptr;
   auto bindings = self->u->FilteredData(cfg_node->cfg_node);
   PyObject* list = PyList_New(0);
@@ -1183,12 +1189,12 @@ PyDoc_STRVAR(variable_add_choice_doc,
 static PyObject* VariableAddBinding(PyVariableObj* self, PyObject* args,
                                     PyObject* kwargs) {
   PyProgramObj* program = get_program(self);
-  static char* kwlist[] = {"data", "source_set", "where", nullptr};
+  static const char* kwlist[] = {"data", "source_set", "where", nullptr};
   PyObject* data = nullptr;
   PyObject* source_set = nullptr;
   PyObject* where_obj = nullptr;
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|OO", kwlist, &data,
-                                   &source_set, &where_obj))
+  if (!SafeParseTupleAndKeywords(args, kwargs, "O|OO", kwlist, &data,
+                                 &source_set, &where_obj))
     return nullptr;
   if (!where_obj != !source_set) {
     PyErr_SetString(PyExc_ValueError,
@@ -1226,12 +1232,11 @@ PyDoc_STRVAR(variable_add_bindings_doc,
 
 static PyObject* VariableAddBindings(PyVariableObj* self, PyObject* args,
                                      PyObject* kwargs) {
-  static char *kwlist[] = {"variable", "where", nullptr};
+  static const char *kwlist[] = {"variable", "where", nullptr};
   PyVariableObj* variable = nullptr;
   PyCFGNodeObj* where = nullptr;
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!O!", kwlist,
-                                   &PyVariable, &variable,
-                                   &PyCFGNode, &where)) {
+  if (!SafeParseTupleAndKeywords(args, kwargs, "O!O!", kwlist, &PyVariable,
+                                 &variable, &PyCFGNode, &where)) {
     return nullptr;
   }
   for (const auto& binding : variable->u->bindings()) {
@@ -1250,9 +1255,9 @@ PyDoc_STRVAR(
 
 static PyObject* VarAssignToNewVariable(PyVariableObj* self,
                                         PyObject* args, PyObject* kwargs) {
-  static char* kwlist[] = {"where", nullptr};
+  static const char* kwlist[] = {"where", nullptr};
   PyObject* where_obj = nullptr;
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|O", kwlist, &where_obj))
+  if (!SafeParseTupleAndKeywords(args, kwargs, "|O", kwlist, &where_obj))
     return nullptr;
   typegraph::CFGNode* where;
   if (!IsCFGNodeOrNone(where_obj, &where)) {
@@ -1274,13 +1279,13 @@ PyDoc_STRVAR(
 
 static PyObject* VariablePasteVariable(PyVariableObj* self, PyObject* args,
                                        PyObject* kwargs) {
-  static char *kwlist[] = {"variable", "where", "additional_sources", nullptr};
+  static const char *kwlist[] = {
+      "variable", "where", "additional_sources", nullptr};
   PyVariableObj* variable;
   PyObject* where_obj = nullptr;
   PyObject* additional = nullptr;
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!|OO", kwlist,
-                                   &PyVariable, &variable,
-                                   &where_obj, &additional)) {
+  if (!SafeParseTupleAndKeywords(args, kwargs, "O!|OO", kwlist, &PyVariable,
+                                 &variable, &where_obj, &additional)) {
     return nullptr;
   }
 
@@ -1311,13 +1316,13 @@ PyDoc_STRVAR(
 
 static PyObject* VariablePasteBinding(PyVariableObj* self, PyObject* args,
                                       PyObject* kwargs) {
-  static char *kwlist[] = {"binding", "where", "additional_sources", nullptr};
+  static const char *kwlist[] = {
+      "binding", "where", "additional_sources", nullptr};
   PyBindingObj* binding;
   PyObject* where_obj = nullptr;
   PyObject* additional = nullptr;
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!|OO", kwlist,
-                                   &PyBinding, &binding,
-                                    &where_obj, &additional)) {
+  if (!SafeParseTupleAndKeywords(args, kwargs, "O!|OO", kwlist, &PyBinding,
+                                 &binding, &where_obj, &additional)) {
     return nullptr;
   }
   typegraph::CFGNode* where;
