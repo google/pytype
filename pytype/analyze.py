@@ -203,10 +203,10 @@ class CallTracer(vm.VirtualMachine):
       node2.ConnectTo(node0)
     return node0
 
-  def bind_method(self, node, name, methodvar, instance, clsvar):
+  def bind_method(self, node, name, methodvar, instance_var):
     bound = self.program.NewVariable()
     for m in methodvar.Data(node):
-      bound.AddBinding(m.property_get(instance, clsvar), [], node)
+      bound.AddBinding(m.property_get(instance_var), [], node)
     return bound
 
   def _instantiate_binding(self, node0, cls):
@@ -272,7 +272,7 @@ class CallTracer(vm.VirtualMachine):
         that shouldn't get back the same cached instance.
 
     Returns:
-      A tuple of node, class variable, instance variable.
+      A tuple of node and instance variable.
     """
     key = (self.frame and self.frame.current_opcode, extra_key, cls)
     if (key not in self._instance_cache or
@@ -294,9 +294,8 @@ class CallTracer(vm.VirtualMachine):
       else:
         self._instance_cache[key] = _INITIALIZING
         node = self.call_init(node, instance)
-      self._instance_cache[key] = clsvar, instance
-    clsvar, instance = self._instance_cache[key]
-    return node, clsvar, instance
+      self._instance_cache[key] = instance
+    return node, self._instance_cache[key]
 
   def call_init(self, node, instance):
     # Call __init__ on each binding.
@@ -308,14 +307,11 @@ class CallTracer(vm.VirtualMachine):
       if isinstance(b.data, abstract.SimpleAbstractValue):
         for param in b.data.type_parameters.values():
           node = self.call_init(node, param)
-      b_cls = b.data.get_class()
-      b_clsvar = b_cls.to_variable(node)
-      b_clsbind, = b_clsvar.bindings
       node, init = self.attribute_handler.get_attribute(
-          node, b_cls, "__init__", b, b_clsbind)
+          node, b.data.get_class(), "__init__", b)
       if init:
         bound_init = self.bind_method(
-            node, "__init__", init, b.data, b_clsvar)
+            node, "__init__", init, b.AssignToNewVariable())
         try:
           node = self.analyze_method_var(node, "__init__", bound_init)
         except vm.RecursionException:
@@ -331,7 +327,7 @@ class CallTracer(vm.VirtualMachine):
 
   def analyze_class(self, node, val):
     self._analyzed_classes.add(val.data)
-    node, clsvar, instance = self.init_class(node, val.data)
+    node, instance = self.init_class(node, val.data)
     good_instances = [b for b in instance.bindings if val.data == b.data.cls]
     if not good_instances:
       # __new__ returned something that's not an instance of our class.
@@ -343,7 +339,7 @@ class CallTracer(vm.VirtualMachine):
     for name, methodvar in sorted(val.data.members.items()):
       if name in self._CONSTRUCTORS:
         continue  # We already called this method during initialization.
-      b = self.bind_method(node, name, methodvar, instance, clsvar)
+      b = self.bind_method(node, name, methodvar, instance)
       node = self.analyze_method_var(node, name, b)
     return node
 

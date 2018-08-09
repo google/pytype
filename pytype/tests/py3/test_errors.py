@@ -106,8 +106,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
         yield y
     """)
     self.assertErrorLogIs(errors, [(
-        3, "bad-return-type",
-        r"Generator\[Union\[int, str\], None, None\]")])
+        1, "invalid-annotation", r"Generator, Iterable or Iterator")])
 
   def testInnerClassError(self):
     _, errors = self.InferWithErrors("""\
@@ -243,6 +242,15 @@ class ErrorTestPy3(test_base.TargetPython3FeatureTest):
     """)
     self.assertErrorLogIs(errors, [(
         4, "wrong-arg-types", r"\n\s*__next__\s*$")])  # `next` on its own line
+
+  def testGeneratorSendRetType(self):
+    _, errors = self.InferWithErrors("""\
+      from typing import Generator
+      def f() -> Generator[int, str, int]:
+        x = yield 1
+        return x
+    """)
+    self.assertErrorLogIs(errors, [(4, "bad-return-type", r"int.*str")])
 
 
 test_base.main(globals(), __name__ == "__main__")

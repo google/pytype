@@ -193,7 +193,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     if processed is None:
       value = self.vm.convert.unsolvable.to_variable(node)
     else:
-      _, _, value = self.vm.init_class(node, processed)
+      _, value = self.vm.init_class(node, processed)
     return value
 
   def process_annotation_var(self, var, name, stack, node):
