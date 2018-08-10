@@ -97,8 +97,11 @@ def make_parser():
 
   parser = argparse.ArgumentParser(usage='%(prog)s [options] input [input ...]')
   parser.add_argument(
-      'filenames', metavar='input', type=str, nargs='*',
+      'inputs', metavar='input', type=str, nargs='*',
       help='file or directory to process')
+  parser.add_argument(
+      '--exclude', dest='exclude', type=str, nargs='*',
+      help='comma-separated list of files or directories to exclude')
   modes = parser.add_mutually_exclusive_group()
   modes.add_argument(
       '--tree', dest='tree', action='store_true', default=False,

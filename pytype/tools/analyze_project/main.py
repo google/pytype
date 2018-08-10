@@ -50,7 +50,9 @@ def main():
     config.generate_sample_config_or_die(args.generate_config)
     sys.exit(0)
 
-  args.filenames = file_utils.expand_source_files(args.filenames)
+  # Empty posargs defaults to a list, but an empty nargs flag defaults to None.
+  args.inputs = (file_utils.expand_source_files(args.inputs) -
+                 file_utils.expand_source_files(args.exclude or []))
   conf = parser.config_from_defaults()
   # File options overwrite defaults.
   file_config = config.read_config_file_or_die(args.config)
@@ -59,10 +61,10 @@ def main():
   # Command line arguments overwrite file options.
   conf.populate_from(args)
   if not conf.pythonpath:
-    conf.pythonpath = environment.compute_pythonpath(args.filenames)
+    conf.pythonpath = environment.compute_pythonpath(args.inputs)
   logging.info('\n  '.join(['Configuration:'] + str(conf).split('\n')))
 
-  if not args.filenames:
+  if not args.inputs:
     parser.parser.print_usage()
     sys.exit(0)
 
@@ -72,7 +74,7 @@ def main():
   typeshed = environment.initialize_typeshed_or_die()
   env = analyze_project_env.create_importlab_environment(conf, typeshed)
   try:
-    import_graph = importlab.graph.ImportGraph.create(env, args.filenames)
+    import_graph = importlab.graph.ImportGraph.create(env, args.inputs)
   except Exception as e:  # pylint: disable=broad-except
     logging.critical('Cannot parse input files:\n%s', str(e))
     sys.exit(1)
@@ -94,7 +96,7 @@ def main():
                importlab.output.formatted_deps_list(import_graph))
   tool_utils.makedirs_or_die(conf.output, 'Could not create output directory')
   deps = pytype_runner.deps_from_import_graph(import_graph)
-  runner = pytype_runner.PytypeRunner(args.filenames, deps, conf)
+  runner = pytype_runner.PytypeRunner(args.inputs, deps, conf)
   return runner.run()
 
 
