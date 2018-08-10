@@ -31,7 +31,12 @@ class TestParser(unittest.TestCase):
   def test_parse_filenames(self):
     filenames = ['a.py', 'b.py']
     args = self.parser.parse_args(filenames)
-    self.assertSequenceEqual(args.filenames, filenames)
+    self.assertSequenceEqual(args.inputs, filenames)
+
+  def test_parse_exclude(self):
+    exclude = ['--exclude', 'a.py', 'b.py']
+    args = self.parser.parse_args(exclude)
+    self.assertSequenceEqual(args.exclude, ['a.py', 'b.py'])
 
   def test_verbosity(self):
     self.assertEqual(self.parser.parse_args(['--verbosity', '0']).verbosity, 0)
