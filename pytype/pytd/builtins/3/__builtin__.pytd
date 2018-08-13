@@ -260,7 +260,7 @@ class str(Sequence[str]):
     def rstrip(self, chars: Optional[str] = ...) -> str
     def split(self, sep: Optional[str] = ..., maxsplit: int = ...) -> List[str]
     def splitlines(self, keepends: bool = ...) -> List[str]
-    def startswith(self, prefix: str or Tuple[str], ...) -> bool
+    def startswith(self, prefix: str or Tuple[str, ...], ...) -> bool
     def strip(self, chars: Optional[str] = ...) -> str
     def swapcase(self) -> str
     def title(self) -> str

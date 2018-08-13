@@ -538,5 +538,13 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       TimeoutError
     """)
 
+  def testStrStartswith(self):
+    self.Check("""
+      s = "some str"
+      s.startswith("s")
+      s.startswith(("s", "t"))
+      s.startswith("a", start=1, end=2)
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
