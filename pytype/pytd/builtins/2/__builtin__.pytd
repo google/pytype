@@ -233,7 +233,7 @@ class str(basestring, Sequence[str]):
     def count(self, sub: basestring or bytearray, ...) -> int
     def decode(self, ...) -> unicode
     def encode(self, ...) -> str
-    def endswith(self, suffix: basestring or bytearray or tuple[basestring or bytearray, ...], ...) -> bool
+    def endswith(self, suffix: basestring or bytearray or Tuple[basestring or bytearray, ...], start: Optional[int] = ..., end: Optional[int] = ...) -> bool
     def expandtabs(self, ...) -> str
     def find(self, sub: basestring or bytearray, ...) -> int
     def format(self, ...) -> str
@@ -264,7 +264,7 @@ class str(basestring, Sequence[str]):
     def rstrip(self, ...) -> str
     def split(self, ...) -> list[str]
     def splitlines(self, ...) -> list[str]
-    def startswith(self, prefix: basestring or bytearray or Iterable[basestring or bytearray], ...) -> bool
+    def startswith(self, prefix: basestring or bytearray or Tuple[basestring or bytearray, ...], start: Optional[int] = ..., end: Optional[int] = ...) -> bool
     def strip(self, ...) -> str
     def swapcase(self) -> str
     def title(self) -> str

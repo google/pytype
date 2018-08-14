@@ -228,7 +228,7 @@ class str(Sequence[str]):
     def center(self, width: int, fillchar: str = ...) -> str
     def count(self, sub: str, ...) -> int
     def encode(self, encoding: str = ..., errors: str = ...) -> bytes
-    def endswith(self, suffix: str or tuple, start: Optional[int] = ..., end: Optional[int] = ...) -> bool
+    def endswith(self, suffix: str or Tuple[str, ...], start: Optional[int] = ..., end: Optional[int] = ...) -> bool
     def expandtabs(self, tabsize: int = ...) -> str
     def find(self, sub: str, ...) -> int
     def format(self, ...) -> str
@@ -260,7 +260,7 @@ class str(Sequence[str]):
     def rstrip(self, chars: Optional[str] = ...) -> str
     def split(self, sep: Optional[str] = ..., maxsplit: int = ...) -> List[str]
     def splitlines(self, keepends: bool = ...) -> List[str]
-    def startswith(self, prefix: str or Tuple[str], ...) -> bool
+    def startswith(self, prefix: str or Tuple[str, ...], start: Optional[int] = ..., end: Optional[int] = ...) -> bool
     def strip(self, chars: Optional[str] = ...) -> str
     def swapcase(self) -> str
     def title(self) -> str

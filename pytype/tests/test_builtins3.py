@@ -291,5 +291,21 @@ class BuiltinTests3(test_base.TargetIndependentTest):
   def testGetFunctionAttr(self):
     self.Check("getattr(lambda: None, '__defaults__')")
 
+  def testStrStartswith(self):
+    self.Check("""
+      s = "some str"
+      s.startswith("s")
+      s.startswith(("s", "t"))
+      s.startswith("a", start=1, end=2)
+    """)
+
+  def testStrEndswith(self):
+    self.Check("""
+      s = "some str"
+      s.endswith("r")
+      s.endswith(("r", "t"))
+      s.endswith("a", start=1, end=2)
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

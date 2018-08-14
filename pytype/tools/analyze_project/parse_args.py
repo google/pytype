@@ -101,7 +101,7 @@ def make_parser():
       help='file or directory to process')
   parser.add_argument(
       '--exclude', dest='exclude', type=str, nargs='*',
-      help='comma-separated list of files or directories to exclude')
+      help='space-separated list of files or directories to exclude')
   modes = parser.add_mutually_exclusive_group()
   modes.add_argument(
       '--tree', dest='tree', action='store_true', default=False,
