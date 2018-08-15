@@ -1,3 +1,6 @@
 [submodule "typeshed"]
 	path = typeshed
 	url = https://github.com/python/typeshed.git
+[submodule "googletest"]
+	path = googletest
+	url = https://github.com/google/googletest
