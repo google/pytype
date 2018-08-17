@@ -1,6 +1,7 @@
 #include "map_util.h"
 
 #include <string>
+#include <unordered_map>
 
 #include "gtest/gunit.h"
 
