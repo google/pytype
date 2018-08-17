@@ -3,8 +3,8 @@
 #include "test_util.h"
 #include "typegraph.h"
 
-#include "gtest/gmock.h"  // for UnorderedElementsAre
-#include "gtest/gunit.h"
+#include "gmock/gmock.h"  // for UnorderedElementsAre
+#include "gtest/gtest.h"
 
 namespace devtools_python_typegraph {
 namespace {
