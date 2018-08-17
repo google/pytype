@@ -222,7 +222,7 @@ def build_any(name, vm):
   return vm.convert.unsolvable
 
 
-class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):
+class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
   """Factory for creating typing.NamedTuple classes."""
 
   def __init__(self, name, vm):
@@ -232,7 +232,7 @@ class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):
     # error messages will correctly display "typing.NamedTuple".
     pyval = self.typing_ast.Lookup("typing._NamedTuple")
     pyval = pyval.Replace(name="typing.NamedTuple")
-    super(NamedTupleBuilder, self).__init__(name, vm, pyval)
+    super(NamedTupleFuncBuilder, self).__init__(name, vm, pyval)
     # NamedTuple's fields arg has type Sequence[Sequence[Union[str, type]]],
     # which doesn't provide precise enough type-checking, so we have to do
     # some of our own in _getargs. _NamedTupleFields is an alias to
@@ -483,10 +483,108 @@ class NamedTupleBuilder(collections_overlay.NamedTupleBuilder):
           self.vm.frames, "Forward references in typing.NamedTuple")
     field_types = [annots.get(field_name, self.vm.convert.unsolvable)
                    for field_name in field_names]
-
     cls_var = self._build_namedtuple(name, field_names, field_types, node)
     self.vm.trace_classdef(cls_var)
     return node, cls_var
+
+
+class NamedTupleClassBuilder(abstract.PyTDClass):
+  """Factory for creating typing.NamedTuple classes."""
+
+  # attributes prohibited to set in NamedTuple class syntax
+  _prohibited = ("__new__", "__init__", "__slots__", "__getnewargs__",
+                 "_fields", "_field_defaults", "_field_types",
+                 "_make", "_replace", "_asdict", "_source")
+
+  _special = ("__module__", "__name__", "__qualname__", "__annotations__")
+
+  def __init__(self, name, vm):
+    self.typing_ast = vm.loader.import_name("typing")
+    pyval = self.typing_ast.Lookup("typing._NamedTupleClass")
+    pyval = pyval.Replace(name="typing.NamedTuple")
+    super(NamedTupleClassBuilder, self).__init__(name, pyval, vm)
+    # Prior to python 3.6, NamedTuple is a function. Although NamedTuple is a
+    # class in python 3.6+, we can still use it like a function. Hold the
+    # an instance of 'NamedTupleFuncBuilder' so that we can reuse the
+    # old implementation to implement the NamedTuple in python 3.6+
+    self.namedtuple = NamedTupleFuncBuilder(name, vm)
+
+  def call(self, node, _, args):
+    posargs = args.posargs
+    namedargs = self.vm.convert.value_to_constant(args.namedargs, dict)
+    if namedargs and self.vm.python_version < (3, 6):
+      errmsg = "Keyword syntax for NamedTuple is only supported in Python 3.6+"
+      self.vm.errorlog.invalid_namedtuple_arg(self.vm.frames, err_msg=errmsg)
+    if namedargs and len(posargs) == 1:
+      namedargs = [abstract.Tuple(
+          (self.vm.convert.build_string(node, k), v), self.vm).to_variable(node)
+                   for k, v in namedargs.items()]
+      namedargs = abstract.List(namedargs, self.vm).to_variable(node)
+      posargs += (namedargs,)
+      args = abstract.FunctionArgs(posargs)
+    elif namedargs:
+      errmsg = ("Either list of fields or keywords can be provided to "
+                "NamedTuple, not both")
+      self.vm.errorlog.invalid_namedtuple_arg(self.vm.frames, err_msg=errmsg)
+    return self.namedtuple.call(node, None, args)
+
+  def make_class(self, node, f_locals):
+    f_locals = abstract.get_atomic_python_constant(f_locals)
+
+    # retrieve __qualname__ to get the name of class
+    name = f_locals["__qualname__"]
+    # retrieve __annotations__ to get the dict
+    # with key-value pair of (variable, type)
+    anno = f_locals.get("__annotations__", {})
+    if anno:
+      anno = abstract.get_atomic_value(anno)
+
+    # assemble the arguments that are compatible with NamedTupleFuncBuilder.call
+    field_list = []
+    defaults = []
+    for k, v in anno.items():
+      if k in f_locals:
+        defaults.append(f_locals.get(k))
+        # TODO(ahxun): check if the value matches the declared type
+      k = self.vm.convert.constant_to_var(k, node=node)
+      field_list.append(self.vm.convert.build_tuple(node, (k, v)))
+    anno = self.vm.convert.build_list(node, field_list)
+    posargs = (name, anno)
+    args = abstract.FunctionArgs(posargs=posargs)
+    node, cls_var = self.namedtuple.call(node, None, args)
+    cls_val = abstract.get_atomic_value(cls_var)
+
+    if not isinstance(cls_val, abstract.Unsolvable):
+      # set __new__.__defaults__
+      defaults = abstract.Tuple(tuple(defaults), self.vm).to_variable(node)
+      node, new_attr = self.vm.attribute_handler.get_attribute(
+          node, cls_val, "__new__")
+      new_attr = abstract.get_atomic_value(new_attr)
+      node = self.vm.attribute_handler.set_attribute(
+          node, new_attr, "__defaults__", defaults)
+
+      # set the attribute without overriding special namedtuple attributes
+      node, fields = self.vm.attribute_handler.get_attribute(
+          node, cls_val, "_fields")
+      fields = abstract.get_atomic_python_constant(fields, tuple)
+      fields = [abstract.get_atomic_python_constant(field, str)
+                for field in fields]
+      for key in f_locals:
+        if key in self._prohibited:
+          self.vm.errorlog.not_writable(self.vm.frames, cls_val, key)
+        if key not in self._special and  key not in fields:
+          node = self.vm.attribute_handler.set_attribute(
+              node, cls_val, key, f_locals[key])
+
+    return node, cls_var
+
+
+def namedtuple_builder(name, vm):
+  """Factory method for creating typing.NamedTuple classes."""
+  if vm.python_version < (3, 6):
+    return NamedTupleFuncBuilder(name, vm)
+  else:
+    return NamedTupleClassBuilder(name, vm)
 
 
 class NewType(abstract.PyTDFunction):
@@ -572,7 +670,7 @@ typing_overload = {
     "Callable": Callable,
     "ClassVar": not_supported_yet,
     "Generic": not_supported_yet,
-    "NamedTuple": NamedTupleBuilder,
+    "NamedTuple": namedtuple_builder,
     "NewType": NewType,
     "NoReturn": build_noreturn,
     "Optional": build_optional,
