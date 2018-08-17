@@ -42,6 +42,47 @@ dependencies.
    time as if it were Python3.6 code. Hence, to run these tests, you will need
    Python2.7 and Python3.6 interpreters installed on your system.
 
+The Pytype Git repository also contains few Git submodules. Before building
+the `pytype` executable or running tests, one has to ensure that the submodules
+are up to date. This can be done with the following command:
+
+```
+$> git submodule update --init
+```
+
+### Building `pytype` and other executables
+The executables like `pytype` etc. are built using a convenience script as
+follows:
+
+```
+$> python build_scripts/build.py
+```
+
+`build.py` will build the executables in the `out/bin` directory.
+
+### Logging
+One can pass the logging verbosity level option to `pytype-single` to see the
+logs:
+
+```
+$> out/bin/pytype-single -v<N> <other command like arguments>
+```
+
+For information about the logging levels, run `pytype-single --help`.
+
+#### Logging from extension modules
+The `pytype-single` executable makes use of few a C extension modules. Logging
+from these extension modules is enabled only in debug builds. One can build
+`pytype-single` in debug mode by passing the `--debug` option to the build
+script as follows:
+
+```
+$> python build_scripts/build.py --debug
+```
+
+In a debug build of `pytype-single`, logging from extension modules follows the
+same verbosity levels as the rest of the Python modules.
+
 ### Adding tests to your Changes
 Ideally, every change should include a test. Depending on the type of your
 change, you should either be adding a functional test or a unit test (some

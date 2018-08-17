@@ -1,6 +1,6 @@
 #include "reachable.h"
 
-#include "gtest/gunit.h"
+#include "gtest/gtest.h"
 
 namespace devtools_python_typegraph {
 namespace {

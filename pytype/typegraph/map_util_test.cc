@@ -1,8 +1,9 @@
 #include "map_util.h"
 
 #include <string>
+#include <unordered_map>
 
-#include "gtest/gunit.h"
+#include "gtest/gtest.h"
 
 namespace devtools_python_typegraph {
 namespace map_util {
