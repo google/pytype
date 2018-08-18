@@ -13,3 +13,8 @@ set(PYTYPE_OUT_BIN_DIR ${PROJECT_BINARY_DIR}/bin)
 file(MAKE_DIRECTORY ${PYTYPE_OUT_BIN_DIR})
 
 add_subdirectory(pytype)
+
+# Add the "googletest" directory at the end as it defines its own CMake rules
+# for py_test etc. Adding it at the end avoids mixing up Pytype's definitions
+# with these definitions.
+add_subdirectory(googletest)
