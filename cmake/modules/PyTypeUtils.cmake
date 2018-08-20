@@ -219,6 +219,112 @@ function(genflex)
   )
 endfunction(genflex)
 
+# A function implementing a 'cc_library' rule which builds a C++ static library.
+# The 'cc_library' rule takes the following arguments:
+# NAME - The name of the target. This is a required argument.
+# SRCS - List of .cc files of the library. This is a required argument.
+# HDRS - List of .h files of the library.
+# DEPS - Other cc_library targets this library depends on.
+#
+# TODO(sivachandra): Implement a header only library rule.
+# CMake does not support header only libraries via its builtin utilities. Since
+# Pytype uses header only library targets, having rules to setup header only
+# library targets helps in setting up the dependencies correctly.
+function(cc_library)
+  cmake_parse_arguments(
+    CC_LIBRARY        # prefix
+    ""                # optional args
+    "NAME"            # single value args
+    "SRCS;HDRS;DEPS"  # multi-value args
+    ${ARGN}
+  )
+  if(NOT CC_LIBRARY_NAME)
+    message(FATAL_ERROR "'cc_library' rule requires a NAME argument.")
+  endif()
+  if(NOT CC_LIBRARY_SRCS)
+    message(FATAL_ERROR "'cc_library' rule requires a SRCS argument specifying the list of .cc files of the library.")
+  endif()
+
+  _gen_fq_target_name(${CC_LIBRARY_NAME} fq_target_name)
+
+  add_library(
+    ${fq_target_name}
+    ${CC_LIBRARY_SRCS}
+    ${CC_LIBRARY_HDRS}
+  )
+
+  target_include_directories(
+    ${fq_target_name}
+    PUBLIC
+      ${PYTHON_INCLUDE_DIRS}
+      ${PROJECT_SOURCE_DIR}
+  )
+
+  set_target_properties(
+    ${fq_target_name}
+    PROPERTIES
+      OUTPUT_NAME ${CC_LIBRARY_NAME}
+  )
+
+  if(CC_LIBRARY_DEPS)
+    foreach(dep IN LISTS CC_LIBRARY_DEPS)
+      _eval_fq_target_name(${dep} fq_dep_name)
+      target_link_libraries(${fq_target_name} ${fq_dep_name})
+    endforeach(dep)
+  endif(CC_LIBRARY_DEPS)
+endfunction(cc_library)
+
+# A function implementing a 'cc_test' rule which builds a C++ test suite binary.
+# The 'cc_test' rule takes the following arguments:
+# NAME - The name of the target. This is a required argument.
+# SRCS - List of .cc files of the test. This is a required argument.
+# DEPS - List of cc_library targets this test depends on.
+function(cc_test)
+  cmake_parse_arguments(
+    CC_TEST      # prefix
+    ""           # optional args
+    "NAME"       # single value args
+    "SRCS;DEPS"  # multi-value args
+    ${ARGN}
+  )
+  if(NOT CC_TEST_NAME)
+    message(FATAL_ERROR "'cc_test' rule requires a NAME argument.")
+  endif()
+  if(NOT CC_TEST_SRCS)
+    message(FATAL_ERROR "'cc_test' rule requires a SRCS argument specifying the list of .cc files of the test.")
+  endif()
+
+  _gen_fq_target_name(${CC_TEST_NAME} fq_target_name)
+
+  add_executable(
+    ${fq_target_name}
+    ${CC_TEST_SRCS}
+  )
+
+  target_include_directories(
+    ${fq_target_name}
+    PUBLIC
+      ${PYTHON_INCLUDE_DIRS}
+      ${PROJECT_SOURCE_DIR}
+      ${PROJECT_SOURCE_DIR}/googletest/googlemock/include
+      ${PROJECT_SOURCE_DIR}/googletest/googletest/include
+  )
+
+  if(CC_TEST_DEPS)
+    foreach(dep IN LISTS CC_TEST_DEPS)
+      _eval_fq_target_name(${dep} fq_dep_name)
+      target_link_libraries(${fq_target_name} ${fq_dep_name})
+    endforeach(dep)
+  endif()
+
+  target_link_libraries(
+    ${fq_target_name}
+    ${PYTHON_LIBRARIES}
+    gtest_main
+    gmock_main
+  )
+endfunction(cc_test)
+
 # Function implementing a rule 'py_extension' to compile a set of CC and headers
 # files into a Python extension module.
 # The 'py_extension' rule requires the following arguments:

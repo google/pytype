@@ -48,13 +48,15 @@ ValuesView = typing.ValuesView
 if sys.version_info[0] >= 3:
   AsyncIterable = typing.AsyncIterable
   AsyncIterator = typing.AsyncIterator
-  AsyncGenerator = typing.AsyncGenerator
   Awaitable = typing.Awaitable
   ByteString = typing.ByteString
   Coroutine = typing.Coroutine
   Collection = typing.Collection
   Generator = typing.Generator
   Reversible = typing.Reversible
+
+if sys.version_info >= (3, 6):
+  AsyncGenerator = typing.AsyncGenerator
 
 if sys.version_info >= (3, 6):
   def namedtuple(typename: Text,

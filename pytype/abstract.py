@@ -1182,7 +1182,10 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
     self.set_slot("setdefault", self.setdefault_slot)
     self.set_slot("update", self.update_slot)
     self.could_contain_anything = False
-    PythonConstant.init_mixin(self, {})
+    # Use OrderedDict instead of dict, so that it can be compatible with
+    # where needs ordered dict.
+    # For example: f_locals["__annotations__"]
+    PythonConstant.init_mixin(self, collections.OrderedDict())
 
   def str_of_constant(self, printer):
     return str({name: " or ".join(printer(v) for v in value.data)
@@ -3893,6 +3896,15 @@ class BuildClass(AtomicAbstractValue):
       # We have hit 'maximum depth' before setting func.last_frame
       func.f_locals = self.vm.convert.unsolvable
       class_closure_var = None
+    for base in bases:
+      # If base class is NamedTuple, we will call its own make_class method to
+      # make a class.
+      base = get_atomic_value(base, default=self.vm.convert.unsolvable)
+      if isinstance(base, PyTDClass) and base.full_name == "NamedTuple":
+        # The subclass of NamedTuple will ignore all its base classes. This is
+        # controled by a metaclass provided to NamedTuple.
+        # See: https://github.com/python/typing/blob/master/src/typing.py#L2170
+        return base.make_class(node, func.f_locals.to_variable(node))
     return node, self.vm.make_class(
         node, name, list(bases), func.f_locals.to_variable(node), metaclass,
         new_class_var=class_closure_var)

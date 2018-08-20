@@ -172,7 +172,12 @@ class VirtualMachine(object):
     self.loaded_overlays = {}
 
   def trace_opcode(self, op, symbol, val):
-    data = getattr(val, "data", None)
+    if not op:
+      op = self.frame.current_opcode
+    if isinstance(val, tuple):
+      data = [getattr(v, "data", None) for v in val]
+    else:
+      data = getattr(val, "data", None)
     rec = (op, symbol, data)
     self.opcode_traces.append(rec)
 
@@ -1059,6 +1064,7 @@ class VirtualMachine(object):
     log.debug("getting attr %s from %r", attr, obj)
     nodes = []
     values_without_attribute = []
+    self.trace_opcode(None, attr, obj)
     for val in obj.bindings:
       node2, attr_var = self.attribute_handler.get_attribute(
           node, val.data, attr, val)
@@ -1483,11 +1489,13 @@ class VirtualMachine(object):
         try:
           if self._is_private(name):
             # Private names must be explicitly imported.
+            self.trace_opcode(op, name, None)
             raise KeyError()
           state, val = self.load_builtin(state, name)
         except KeyError:
           if self._is_private(name) or not self.has_unknown_wildcard_imports:
             self.errorlog.name_error(self.frames, name)
+          self.trace_opcode(op, name, None)
           return state.push(
               self.convert.create_new_unsolvable(state.node))
     self.check_for_deleted(state, name, val)
@@ -1532,6 +1540,7 @@ class VirtualMachine(object):
         state, val = self.load_builtin(state, name)
       except KeyError:
         self.errorlog.name_error(self.frames, name)
+        self.trace_opcode(op, name, None)
         return state.push(self.convert.create_new_unsolvable(state.node))
     self.check_for_deleted(state, name, val)
     self.trace_opcode(op, name, val)
@@ -1731,7 +1740,8 @@ class VirtualMachine(object):
     state, obj = state.pop()
     log.debug("LOAD_ATTR: %r %r", obj, name)
     state, val = self.load_attr(state, obj, name)
-    self.trace_opcode(op, name, val)
+    # We need to trace both the object and the attribute.
+    self.trace_opcode(op, name, (obj, val))
     return state.push(val)
 
   def byte_STORE_ATTR(self, state, op):
@@ -1741,7 +1751,8 @@ class VirtualMachine(object):
     state = state.forward_cfg_node()
     state = self.store_attr(state, obj, name, val)
     state = state.forward_cfg_node()
-    self.trace_opcode(op, name, val)
+    # We need to trace both the object and the attribute.
+    self.trace_opcode(op, name, (obj, val))
     return state
 
   def byte_DELETE_ATTR(self, state, op):
@@ -2274,6 +2285,7 @@ class VirtualMachine(object):
                              kw_defaults, annotations=annot,
                              late_annotations=late_annot,
                              closure=free_vars)
+    self.trace_opcode(op, name, fn)
     self.trace_functiondef(fn)
     return state.push(fn)
 

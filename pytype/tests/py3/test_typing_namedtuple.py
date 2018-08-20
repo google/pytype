@@ -121,5 +121,183 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
     self.assertMultiLineEqual(pytd.Print(ty.Lookup("foo")),
                               "def foo(x: X) -> Union[bytes, str]: ...")
 
+  def test_bad_call(self):
+    _, errorlog = self.InferWithErrors("""\
+        from typing import NamedTuple
+        E2 = NamedTuple('Employee2', [('name', str), ('id', int)],
+                        birth=str, gender=bool)
+    """)
+    self.assertErrorLogIs(errorlog, [
+        (3, "invalid-namedtuple-arg", "Either list of fields or keywords.*"),
+        (3, "wrong-keyword-args", ".*(birth, gender).*NamedTuple")])
+
+  def test_bad_attribute(self):
+    _, errorlog = self.InferWithErrors("""\
+        from typing import NamedTuple
+
+        class SubCls(NamedTuple):
+          def __init__(self):
+            pass
+    """)
+    self.assertErrorLogIs(errorlog, [
+        (3, "not-writable", ".*'__init__'.*[SubCls]")])
+
+  def test_bad_arg_count(self):
+    _, errorlog = self.InferWithErrors("""\
+        from typing import NamedTuple
+
+        class SubCls(NamedTuple):
+          a: int
+          b: int
+
+        cls1 = SubCls(5)
+    """)
+    self.assertErrorLogIs(errorlog, [
+        (7, "missing-parameter", "Missing.*'b'.*__new__")])
+
+  def test_bad_arg_name(self):
+    _, errorlog = self.InferWithErrors("""\
+        from typing import NamedTuple
+
+        class SubCls(NamedTuple):
+          _a: int
+          b: int
+
+        cls1 = SubCls(5)
+    """)
+    self.assertErrorLogIs(errorlog, [
+        (3, "invalid-namedtuple-arg")])
+
+  def test_namedtuple_class(self):
+    self.Check("""\
+      from typing import NamedTuple
+
+      class SubNamedTuple(NamedTuple):
+        a: int
+        b: str ="123"
+        c: int = 123
+
+        def __repr__(self) -> str:
+          return "__repr__"
+
+        def func():
+          pass
+
+      tuple1 = SubNamedTuple(5)
+      tuple2 = SubNamedTuple(5, "123")
+      tuple3 = SubNamedTuple(5, "123", 123)
+
+      E1 = NamedTuple('Employee1', name=str, id=int)
+      E2 = NamedTuple('Employee2', [('name', str), ('id', int)])
+      """)
+
+  def test_baseclass(self):
+    ty = self.Infer("""\
+      from typing import NamedTuple
+
+      class baseClass(object):
+        x=5
+        y=6
+
+      class SubNamedTuple(baseClass, NamedTuple):
+        a: int
+      """)
+    self.assertTypesMatchPytd(
+        ty,
+        """\
+        import collections
+        from typing import Callable, Iterable, Sized, Tuple, Type, TypeVar
+
+        _TSubNamedTuple = TypeVar('_TSubNamedTuple', bound=SubNamedTuple)
+
+        class SubNamedTuple(tuple):
+            __slots__ = ["a"]
+            __annotations__ = ...  # type: collections.OrderedDict[str, type]
+            __dict__ = ...  # type: collections.OrderedDict[str, int]
+            _field_defaults = ...  # type: collections.OrderedDict[str, int]
+            _field_types = ...  # type: collections.OrderedDict[str, type]
+            _fields = ...  # type: Tuple[str]
+            a = ...  # type: int
+            def __getnewargs__(self) -> Tuple[int]: ...
+            def __getstate__(self) -> None: ...
+            def __init__(self, *args, **kwargs) -> None: ...
+            def __new__(cls: Type[_TSubNamedTuple], a: int) -> _TSubNamedTuple:
+              ...
+            def _asdict(self) -> collections.OrderedDict[str, int]: ...
+            @classmethod
+            def _make(cls: Type[_TSubNamedTuple],
+                      iterable: Iterable[int], new = ...,
+                      len: Callable[[Sized], int] = ...) -> _TSubNamedTuple: ...
+            def _replace(self: _TSubNamedTuple,
+                         **kwds: int) -> _TSubNamedTuple: ...
+
+        class baseClass(object):
+            x = ...  # type: int
+            y = ...  # type: int
+        """)
+
+  def test_namedtuple_class_pyi(self):
+    ty = self.Infer("""\
+      from typing import NamedTuple
+
+      class SubNamedTuple(NamedTuple):
+        a: int
+        b: str ="123"
+        c: int = 123
+
+        def __repr__(self) -> str:
+          return "__repr__"
+
+        def func():
+          pass
+
+      X = SubNamedTuple(1, "aaa", 222)
+      a = X.a
+      b = X.b
+      c = X.c
+      f = X.func
+      """)
+    self.assertTypesMatchPytd(
+        ty,
+        """\
+        import collections
+        from typing import Callable, Iterable, Sized, Tuple, Type, TypeVar, Union
+
+        X = ...  # type: SubNamedTuple
+        a = ...  # type: int
+        b = ...  # type: str
+        c = ...  # type: int
+
+        _TSubNamedTuple = TypeVar('_TSubNamedTuple', bound=SubNamedTuple)
+
+        class SubNamedTuple(tuple):
+            __slots__ = ["a", "b", "c"]
+            __annotations__ = ...  # type: collections.OrderedDict[str, type]
+            __dict__ = ...  # type: collections.OrderedDict[str, Union[int, str]]
+            _field_defaults = ...  # type: collections.OrderedDict[str,
+              Union[int, str]]
+            _field_types = ...  # type: collections.OrderedDict[str, type]
+            _fields = ...  # type: Tuple[str, str, str]
+            a = ...  # type: int
+            b = ...  # type: str
+            c = ...  # type: int
+            def __getnewargs__(self) -> Tuple[int, str, int]: ...
+            def __getstate__(self) -> None: ...
+            def __init__(self, *args, **kwargs) -> None: ...
+            def __new__(cls: Type[_TSubNamedTuple], a: int, b: str = ...,
+              c: int = ...) -> _TSubNamedTuple: ...
+            def _asdict(self) -> collections.OrderedDict[str, Union[int, str]]:
+              ...
+            @classmethod
+            def _make(cls: Type[_TSubNamedTuple],
+                      iterable: Iterable[Union[int, str]], new = ...,
+                      len: Callable[[Sized], int] = ...) -> _TSubNamedTuple: ...
+            def _replace(self: _TSubNamedTuple,
+                         **kwds: Union[int, str]) -> _TSubNamedTuple: ...
+            def func() -> None: ...
+
+        def f() -> None: ...
+        """)
+
 
 test_base.main(globals(), __name__ == "__main__")

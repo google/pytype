@@ -396,9 +396,13 @@ NoReturn = nothing
 
 
 def _NamedTuple(typename: str, fields: Sequence[Sequence[Union[str, type]]]) -> ?: ...
+
 # A more precise (but incorrect) fields type for error messages.
 _NamedTupleFields = List[Tuple[str, type]]
 
+if sys.version_info >= (3, 6):
+  class _NamedTupleClass(object):
+    __slots__ = []
 
 def NewType(name: str, tp: type) -> type
 
