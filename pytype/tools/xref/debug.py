@@ -2,14 +2,12 @@
 
 from __future__ import print_function
 
-import ast
-
-
 # pylint: disable=protected-access
 # We never care about protected access when writing debug code!
 
 
-def dump(node, annotate_fields=True, include_attributes=True, indent='  '):
+def dump(node, ast, annotate_fields=True,
+         include_attributes=True, indent='  '):
   """Return a formatted dump of the tree in *node*.
 
   This is mainly useful for debugging purposes.  The returned string will show
@@ -20,6 +18,7 @@ def dump(node, annotate_fields=True, include_attributes=True, indent='  '):
 
   Arguments:
     node: Top AST node.
+    ast: An module providing an AST class hierarchy.
     annotate_fields: Show field annotations.
     include_attributes: Show all attributes.
     indent: Indentation string.

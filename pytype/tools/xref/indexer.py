@@ -4,7 +4,6 @@
 
 from __future__ import print_function
 
-import ast
 import collections
 import logging
 
@@ -15,20 +14,29 @@ from pytype import io
 from pytype import load_pytd
 from pytype import utils
 
+from typed_ast import ast27
+from typed_ast import ast3
 
-# Children to recurse into for each node type.
-CHILDREN = {
-    ast.Module: ["body"],
-    ast.ClassDef: ["body"],
-    ast.FunctionDef: ["body"],
-    ast.Assign: ["targets", "value"],
-}
+
+# A global "ast" variable that we set to ast27 or ast3 depending on the target
+# python version.
+#
+# TODO(mdemello): Use typed_ast.convert to coerce everything into ast3
+ast = None
 
 
 def children(node):
   """Children to recurse over."""
 
-  ks = CHILDREN.get(node.__class__, None)
+  # Children to recurse into for each node type.
+  node_children = {
+      ast.Module: ["body"],
+      ast.ClassDef: ["body"],
+      ast.FunctionDef: ["body"],
+      ast.Assign: ["targets", "value"],
+  }
+
+  ks = node_children.get(node.__class__, None)
   if ks:
     return [(k, getattr(node, k)) for k in ks]
   else:
@@ -262,13 +270,14 @@ class ScopedVisitor(object):
   # TODO(mdemello): Is the two-level visitor hierarchy really buying us
   # anything by way of maintainability or readability?
 
-  # Nodes whose subtrees will be pruned during generic_visit.
-  SUPPRESSED_NODES = []
-
   def __init__(self):
     self.stack = []
     self.class_ids = []
     self.envs = {}
+
+  def get_suppressed_nodes(self):
+    """Nodes whose subtrees will be pruned during generic_visit."""
+    return []
 
   def iprint(self, x):
     """Print messages indented by scope level, for debugging."""
@@ -335,7 +344,7 @@ class ScopedVisitor(object):
     self.add_scope(node)
 
   def generic_visit(self, node):
-    if node.__class__ in self.SUPPRESSED_NODES:
+    if node.__class__ in self.get_suppressed_nodes():
       return "<node>"
 
   def call_visitor(self, node):
@@ -354,15 +363,16 @@ class ScopedVisitor(object):
 class IndexVisitor(ScopedVisitor):
   """Visitor that generates indexes."""
 
-  SUPPRESSED_NODES = [ast.Module, ast.BinOp, ast.Return, ast.Assign,
-                      ast.Num, ast.Add, ast.Str]
-
   def __init__(self, traces):
     super(IndexVisitor, self).__init__()
     self.defs = {}
     self.locs = collections.defaultdict(list)
     self.refs = []
     self.traces = traces
+
+  def get_suppressed_nodes(self):
+    return [ast.Module, ast.BinOp, ast.Return, ast.Assign,
+            ast.Num, ast.Add, ast.Str]
 
   def make_def(self, node, **kwargs):
     """Make a definition from a node."""
@@ -564,6 +574,9 @@ def collect_traces(opcode_traces):
 def process_file(options):
   """Process a single file and return cross references."""
 
+  # We bind the global ast variable in this function.
+  global ast
+
   errorlog = errors.ErrorLog()
   loader = load_pytd.create_loader(options)
   src = io.read_source_file(options.input)
@@ -586,7 +599,16 @@ def process_file(options):
     return 1
 
   traces = collect_traces(vm.opcode_traces)
-  a = ast.parse(src, options.input)
+
+  major, minor = options.python_version
+  if major == 2:
+    # python2.7 is the only supported py2 version.
+    a = ast27.parse(src, options.input)
+    ast = ast27
+  else:
+    a = ast3.parse(src, options.input, feature_version=minor)
+    ast = ast3
+
   ix = Indexer(traces)
   ix.index(a)
   ix.lookup_refs()
