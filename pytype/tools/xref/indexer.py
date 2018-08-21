@@ -12,6 +12,7 @@ from pytype import analyze
 from pytype import errors
 from pytype import io
 from pytype import load_pytd
+from pytype import module_utils
 from pytype import utils
 
 from typed_ast import ast27
@@ -87,6 +88,11 @@ def has_decorator(f, decorator):
     if isinstance(d, ast.Name) and d.id == decorator:
       return True
   return False
+
+
+def get_opcodes(traces, lineno, op_list):
+  """Get all opcodes in op_list on a given line."""
+  return [x for x in traces[lineno] if x[0] in op_list]
 
 
 class AttrError(Exception):
@@ -368,6 +374,9 @@ class IndexVisitor(ScopedVisitor):
     self.defs = {}
     self.locs = collections.defaultdict(list)
     self.refs = []
+    self.modules = {}
+    self.traces = traces
+
     self.traces = traces
 
   def get_suppressed_nodes(self):
@@ -507,14 +516,37 @@ class IndexVisitor(ScopedVisitor):
     return "<expr>"
 
   def visit_Import(self, node):
+    store_ops = get_opcodes(self.traces, node.lineno, "STORE_NAME")
+    import_ops = get_opcodes(self.traces, node.lineno, "IMPORT_NAME")
     for alias in node.names:
       name = alias.asname if alias.asname else alias.name
-      self.add_local_def(node, name=name)
+      d = self.add_local_def(node, name=name)
+      # Only record modules that pytype has resolved in self.modules
+      if alias.asname:
+        # for |import x.y as z| we want {z: x.y}
+        for _, symbol, data in store_ops:
+          if (symbol == d.name and data and
+              isinstance(data[0], abstract.Module)):
+            self.modules[d.id] = data[0].full_name
+      else:
+        for _, symbol, data in import_ops:
+          if (symbol == d.name and data and
+              isinstance(data[0], abstract.Module)):
+            # |import x.y| puts both {x: x} and {x.y: x.y} in modules
+            for mod in module_utils.get_all_prefixes(name):
+              self.modules[d.scope + "::" + mod] = mod
 
   def visit_ImportFrom(self, node):
+    store_ops = get_opcodes(self.traces, node.lineno, "STORE_NAME")
     for alias in node.names:
       name = alias.asname if alias.asname else alias.name
-      self.add_local_def(node, name=name)
+      d = self.add_local_def(node, name=name)
+      for _, symbol, data in store_ops:
+        if (symbol == d.name and data and
+            isinstance(data[0], abstract.Module)):
+          # Only record modules that pytype has resolved in self.modules
+          self.modules[d.id] = data[0].full_name
+
 
 # pylint: enable=invalid-name
 # pylint: enable=missing-docstring
@@ -529,6 +561,7 @@ class Indexer(object):
     self.locs = None
     self.refs = None
     self.envs = None
+    self.modules = None
     self.links = []
 
   def index(self, code_ast):
@@ -538,6 +571,7 @@ class Indexer(object):
     self.locs = v.locs
     self.refs = v.refs
     self.envs = v.envs
+    self.modules = v.modules
 
   def lookup_refs(self):
     """Look up references to generate links."""
@@ -547,7 +581,21 @@ class Indexer(object):
         env = self.envs[r.scope]
         env, defn = env.lookup(r.target)
         if defn:
-          self.links.append((r, defn))
+          if defn.id in self.modules:
+            remote = self.modules[defn.id]
+            kw = defn._asdict()
+            del kw["scope"]
+            del kw["name"]
+            scope = "%s/%s" % (remote, defn.scope)
+            name = r.name
+            if name.startswith(remote):
+              name = name[(len(remote) + 1):]
+            # pytype: disable=missing-parameter
+            new = Definition(scope=scope, name=name, **kw)
+            # pytype: enable=missing-parameter
+            self.links.append((r, new))
+          else:
+            self.links.append((r, defn))
         else:
           self.links.append((r, r.target))
       else:
