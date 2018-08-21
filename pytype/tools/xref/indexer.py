@@ -95,6 +95,21 @@ def get_opcodes(traces, lineno, op_list):
   return [x for x in traces[lineno] if x[0] in op_list]
 
 
+def get_docstring(node):
+  """If the first element in node.body is a string, return it."""
+  # This should only be called on ClassDef and FunctionDef
+  assert isinstance(node, (ast.ClassDef, ast.FunctionDef))
+  if (node.body and
+      isinstance(node.body[0], ast.Expr) and
+      isinstance(node.body[0].value, ast.Str)):
+    doc = node.body[0].value.s
+    if isinstance(doc, bytes):
+      # In target 2.7 mode we get docstrings as bytes.
+      doc = doc.decode("utf-8")
+    return doc
+  return None
+
+
 class AttrError(Exception):
   pass
 
@@ -140,7 +155,7 @@ class Dummy(object):
 
 
 class Definition(collections.namedtuple(
-    "defn", ["name", "typ", "scope", "target"]), Dummy):
+    "defn", ["name", "typ", "scope", "target", "doc"]), Dummy):
   """A symbol definition.
 
   Attributes:
@@ -148,10 +163,11 @@ class Definition(collections.namedtuple(
     typ: The definition type (e.g. ClassDef)
     scope: The namespace id (e.g. module:class A:function f:x)
     target: The LHS of an attribute (e.g. for x.foo, target = typeof(x))
+    doc: The docstring, if any, for function and class defs
   """
 
-  def __init__(self, name, typ, scope, target):
-    super(Definition, self).__init__(name, typ, scope, target)
+  def __init__(self, name, typ, scope, target, doc):
+    super(Definition, self).__init__(name, typ, scope, target, doc)
     self.id = self.scope + "::" + self.name
 
   def format(self):
@@ -395,6 +411,7 @@ class IndexVisitor(ScopedVisitor):
         "scope": self.scope_id(),
         "typ": t,
         "target": None,
+        "doc": None,
     }
     args.update(kwargs)
     defn = Definition(**args)
@@ -443,11 +460,11 @@ class IndexVisitor(ScopedVisitor):
       self.envs[self.scope_id()].setattr(node.attr, defn)
 
   def enter_ClassDef(self, node):
-    self.add_local_def(node)
+    self.add_local_def(node, doc=get_docstring(node))
     super(IndexVisitor, self).enter_ClassDef(node)
 
   def enter_FunctionDef(self, node):
-    self.add_local_def(node)
+    self.add_local_def(node, doc=get_docstring(node))
     env = self.add_scope(node)
     params = [self.add_local_def(v) for v in node.args.args]
     if env.cls:

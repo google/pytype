@@ -25,8 +25,11 @@ def typename(node):
 
 def show_defs(index):
   for def_id in index.locs:
+    defn = index.defs[def_id]
     for loc in index.locs[def_id]:
-      print(format_def_with_location(index.defs[def_id], loc.location))
+      print(format_def_with_location(defn, loc.location))
+      if defn.doc:
+        print(" "*28 + str(defn.doc))
 
 
 def show_refs(index):

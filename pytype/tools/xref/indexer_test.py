@@ -6,16 +6,18 @@ from pytype.tests import test_base
 from pytype.tools.xref import indexer
 
 
-def index_code(code):
-  """Generate references from a code string."""
-  with file_utils.Tempdir() as d:
-    d.create_file("t.py", code)
-    options = config.Options([d["t.py"]])
-    return indexer.process_file(options)
-
-
 class IndexerTest(test_base.TargetIndependentTest):
   """Tests for the indexer."""
+
+  def index_code(self, code, **kwargs):
+    """Generate references from a code string."""
+    args = {"version": self.python_version}
+    args.update(kwargs)
+    with file_utils.Tempdir() as d:
+      d.create_file("t.py", code)
+      options = config.Options([d["t.py"]])
+      options.tweak(**args)
+      return indexer.process_file(options)
 
   def assertDef(self, index, fqname, name, typ):
     self.assertTrue(fqname in index.defs)
@@ -33,7 +35,7 @@ class IndexerTest(test_base.TargetIndependentTest):
       self.assertEqual(v, getattr(obj, k))
 
   def test_class_def(self):
-    ix = index_code("""\
+    ix = self.index_code("""\
         class A(object):
           pass
         b = A()
@@ -44,7 +46,7 @@ class IndexerTest(test_base.TargetIndependentTest):
     self.assertDefLocs(ix, "module::b", [(3, 0)])
 
   def test_function_def(self):
-    ix = index_code("""\
+    ix = self.index_code("""\
         def f(x, y):
           a = 1  # local variable
     """)
@@ -58,7 +60,7 @@ class IndexerTest(test_base.TargetIndependentTest):
     self.assertDefLocs(ix, "module:function f::a", [(2, 2)])
 
   def test_param_reuse(self):
-    ix = index_code("""\
+    ix = self.index_code("""\
         def f(x):
           x = 1 # reuse param variable
     """)
@@ -68,7 +70,7 @@ class IndexerTest(test_base.TargetIndependentTest):
     self.assertDefLocs(ix, "module:function f::x", [(1, 6), (2, 2)])
 
   def test_nested_function(self):
-    ix = index_code("""\
+    ix = self.index_code("""\
         def f(x):
           def g(x):  # shadows x
             x = 1  # should be f:g::x
@@ -97,7 +99,7 @@ class IndexerTest(test_base.TargetIndependentTest):
       d.create_file("a/b.pyi", stub)
       d.create_file("p/q.pyi", stub)
       options = config.Options([d["t.py"]])
-      options.tweak(pythonpath=[d.path])
+      options.tweak(pythonpath=[d.path], version=self.python_version)
       ix = indexer.process_file(options)
       self.assertDef(ix, "module::foo", "foo", "Import")
       self.assertDef(ix, "module::x.y", "x.y", "Import")
@@ -121,7 +123,7 @@ class IndexerTest(test_base.TargetIndependentTest):
       d.create_file("t.py", code)
       d.create_file("foo.pyi", stub)
       options = config.Options([d["t.py"]])
-      options.tweak(pythonpath=[d.path])
+      options.tweak(pythonpath=[d.path], version=self.python_version)
       ix = indexer.process_file(options)
       self.assertDef(ix, "module::foo", "foo", "Import")
       self.assertDef(ix, "module::x", "x", "Store")
@@ -137,6 +139,22 @@ class IndexerTest(test_base.TargetIndependentTest):
       for (ref, defn), (expected_ref, expected_defn) in zip(ix.links, expected):
         self.assertAttrs(ref, expected_ref)
         self.assertAttrs(defn, expected_defn)
+
+  def test_docstrings(self):
+    ix = self.index_code("""\
+        class A():
+          '''Class docstring'''
+          def f(x, y):
+            '''Function docstring'''
+            a = 1  # local variable
+            '''Not a docstring'''
+    """)
+    self.assertDef(ix, "module::A", "A", "ClassDef")
+    self.assertDef(ix, "module:class A::f", "f", "FunctionDef")
+    def_A = ix.defs["module::A"]  # pylint: disable=invalid-name
+    def_f = ix.defs["module:class A::f"]
+    self.assertEqual(def_A.doc, "Class docstring")
+    self.assertEqual(def_f.doc, "Function docstring")
 
 
 test_base.main(globals(), __name__ == "__main__")
