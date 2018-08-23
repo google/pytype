@@ -31,6 +31,7 @@ endif()
 set(COPY_SCRIPT "${PROJECT_SOURCE_DIR}/build_scripts/pytype_copy.py")
 set(TEST_MODULE_SCRIPT "${PROJECT_SOURCE_DIR}/build_scripts/test_module.py")
 set(PYEXE_SCRIPT "${PROJECT_SOURCE_DIR}/build_scripts/pyexe.py")
+set(CC_TEST_SCRIPT "${PROJECT_SOURCE_DIR}/build_scripts/run_cc_test.py")
 
 add_compile_options("-std=c++11")
 
@@ -274,7 +275,8 @@ function(cc_library)
   endif(CC_LIBRARY_DEPS)
 endfunction(cc_library)
 
-# A function implementing a 'cc_test' rule which builds a C++ test suite binary.
+# A function implementing a 'cc_test' rule which builds a C++ test suite binary
+# and runs it.
 # The 'cc_test' rule takes the following arguments:
 # NAME - The name of the target. This is a required argument.
 # SRCS - List of .cc files of the test. This is a required argument.
@@ -294,15 +296,16 @@ function(cc_test)
     message(FATAL_ERROR "'cc_test' rule requires a SRCS argument specifying the list of .cc files of the test.")
   endif()
 
+  _gen_fq_target_name("${CC_TEST_NAME}___runner_internal" fq_runner_target_name)
   _gen_fq_target_name(${CC_TEST_NAME} fq_target_name)
 
   add_executable(
-    ${fq_target_name}
+    ${fq_runner_target_name}
     ${CC_TEST_SRCS}
   )
 
   target_include_directories(
-    ${fq_target_name}
+    ${fq_runner_target_name}
     PUBLIC
       ${PYTHON_INCLUDE_DIRS}
       ${PROJECT_SOURCE_DIR}
@@ -313,16 +316,39 @@ function(cc_test)
   if(CC_TEST_DEPS)
     foreach(dep IN LISTS CC_TEST_DEPS)
       _eval_fq_target_name(${dep} fq_dep_name)
-      target_link_libraries(${fq_target_name} ${fq_dep_name})
+      target_link_libraries(${fq_runner_target_name} ${fq_dep_name})
     endforeach(dep)
   endif()
 
   target_link_libraries(
-    ${fq_target_name}
+    ${fq_runner_target_name}
     ${PYTHON_LIBRARIES}
     gtest_main
     gmock_main
   )
+
+  # Add a target to run the executable built above.
+  set_target_properties(
+    ${fq_runner_target_name}
+    PROPERTIES
+      PREFIX ""
+      SUFFIX ".exe"
+      OUTPUT_NAME "${CC_TEST_NAME}"
+  )
+
+  set(log_file "${CC_TEST_NAME}.log")
+  add_custom_command(
+    OUTPUT ${log_file}
+    COMMAND ${CC_TEST_SCRIPT} -t ${fq_target_name} -b "${CMAKE_CURRENT_BINARY_DIR}/${CC_TEST_NAME}.exe" -l "${CMAKE_CURRENT_BINARY_DIR}/${log_file}"
+    DEPENDS ${fq_runner_target_name}
+  )
+
+  add_custom_target(
+    ${fq_target_name}
+    DEPENDS ${log_file}
+  )
+
+  add_dependencies(${ALL_TESTS_TARGET} ${fq_target_name})
 endfunction(cc_test)
 
 # Function implementing a rule 'py_extension' to compile a set of CC and headers

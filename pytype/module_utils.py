@@ -89,3 +89,24 @@ def get_package_name(module_name, is_package=False):
   if not is_package:
     parts = parts[:-1]
   return ".".join(parts)
+
+
+def get_all_prefixes(module_name):
+  """Return all the prefixes of a module name.
+
+  e.g. x.y.z => x, x.y, x.y.z
+
+  Args:
+    module_name: module name
+
+  Returns:
+    List of prefixes
+  """
+  parts = module_name.split(".")
+  name = parts[0]
+  out = [name]
+  for part in parts[1:]:
+    name = ".".join([name, part])
+    out.append(name)
+  return out
+

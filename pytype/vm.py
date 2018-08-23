@@ -2361,6 +2361,7 @@ class VirtualMachine(object):
     state, (level_var, fromlist) = state.popn(2)
     if op.line in self.director.ignore:
       # "import name  # type: ignore"
+      self.trace_opcode(op, full_name, None)
       return state.push(self.convert.create_new_unsolvable(state.node))
     # The IMPORT_NAME for an "import a.b.c" will push the module "a".
     # However, for "from a.b.c import Foo" it'll push the module "a.b.c". Those
@@ -2375,20 +2376,26 @@ class VirtualMachine(object):
       log.warning("Couldn't find module %r", name)
       self.errorlog.import_error(self.frames, name)
       module = self.convert.unsolvable
-    return state.push(module.to_variable(state.node))
+    mod = module.to_variable(state.node)
+    self.trace_opcode(op, full_name, mod)
+    return state.push(mod)
 
   def byte_IMPORT_FROM(self, state, op):
     """IMPORT_FROM is mostly like LOAD_ATTR but doesn't pop the container."""
+    name = self.frame.f_code.co_names[op.arg]
     if op.line in self.director.ignore:
       # "from x import y  # type: ignore"
+      # TODO(mdemello): Should we add some sort of signal data to indicate that
+      # this should be treated as resolvable even though there is no module?
+      self.trace_opcode(op, name, None)
       return state.push(self.convert.create_new_unsolvable(state.node))
-    name = self.frame.f_code.co_names[op.arg]
     module = state.top()
     state, attr = self.load_attr_noerror(state, module, name)
     if attr is None:
       full_name = module.data[0].name + "." + name
       self.errorlog.import_error(self.frames, full_name)
       attr = self.convert.unsolvable.to_variable(state.node)
+    self.trace_opcode(op, name, attr)
     return state.push(attr)
 
   def byte_EXEC_STMT(self, state, op):
