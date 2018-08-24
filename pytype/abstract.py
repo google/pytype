@@ -1704,6 +1704,9 @@ class Function(SimpleAbstractValue):
     self.members["func_name"] = self.vm.convert.build_string(
         self.vm.root_cfg_node, name)
 
+  def _full_name(self):
+    return self.name
+
   def property_get(self, callself, is_class=False):
     if self.name == "__new__" or not callself or is_class:
       return self
@@ -1762,7 +1765,7 @@ class Function(SimpleAbstractValue):
     raise NotImplementedError(self.__class__.__name__)
 
   def __repr__(self):
-    return self.name + "(...)"
+    return self.full_name + "(...)"
 
   def _extract_defaults(self, defaults_var):
     """Extracts defaults from a Variable, used by set_function_defaults.
@@ -3660,17 +3663,19 @@ class BoundFunction(AtomicAbstractValue):
   def is_abstract(self, value):
     self.underlying.is_abstract = value
 
-  def __repr__(self):
+  def _full_name(self):
     if self._callself and self._callself.bindings:
       callself = self._callself.data[0].name
     else:
       callself = "<class>"
-    underlying = repr(self.underlying)
-    assert underlying.endswith("(...)")
-    if underlying.count(".") > 3:
+    underlying = self.underlying.full_name
+    if underlying.count(".") > 0:
       # Replace the parent name with the callself.
       underlying = underlying.split(".", 1)[-1]
     return callself + "." + underlying
+
+  def __repr__(self):
+    return self._full_name() + "(...)"
 
 
 class BoundInterpreterFunction(BoundFunction):
