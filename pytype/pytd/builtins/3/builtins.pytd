@@ -615,15 +615,17 @@ class frozenset(FrozenSet[_T]):
     def __sub__(self, y: AbstractSet[_T2]) -> frozenset[_T]
     def __xor__(self, y: AbstractSet[_T2]) -> frozenset[_T or _T2]
     def copy(self, ...) -> frozenset[_T]
-    def isdisjoint(self, y: AbstractSet[_T2]) -> bool
-    def issubset(self, y: AbstractSet[_T2]) -> bool
-    def issuperset(self, y: AbstractSet[_T2]) -> bool
+    def isdisjoint(self, y: Iterable) -> bool
+    def issubset(self, y: Iterable) -> bool
+    def issuperset(self, y: Iterable) -> bool
     @staticmethod
     def union(...) -> frozenset[?]
     @staticmethod
     def intersection(...) -> frozenset[?]
     @staticmethod
     def difference(...) -> frozenset[?]
+    @staticmethod
+    def symmetric_difference(Iterable) -> frozenset[?]
 
 class setiterator(Iterator[_T]):
     __slots__ = []
