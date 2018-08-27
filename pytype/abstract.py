@@ -3668,7 +3668,7 @@ class BoundFunction(AtomicAbstractValue):
       callself = self._callself.data[0].name
     else:
       callself = "<class>"
-    underlying = self.underlying.full_name
+    underlying = self.underlying._full_name()  # pylint: disable=protected-access
     if underlying.count(".") > 0:
       # Replace the parent name with the callself.
       underlying = underlying.split(".", 1)[-1]
