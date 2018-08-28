@@ -28,11 +28,7 @@ def main():
     signal.alarm(options.timeout)
 
   v = indexer.process_file(options)
-  output.show_defs(v)
-  print()
-  print("--------------------")
-  print()
-  output.show_refs(v)
+  output.output_kythe_graph(v)
 
 
 if __name__ == "__main__":
