@@ -438,6 +438,21 @@ class ImportTest(test_base.TargetIndependentTest):
         x = ...  # type: up2.bar.X
       """)
 
+  def testDotDotInPyi(self):
+    # Similar to testDotDot except in a pyi file.
+    with file_utils.Tempdir() as d:
+      d.create_file("foo/baz.pyi", "x: int")
+      d.create_file("foo/deep/bar.py", """\
+        from .. import baz
+        a = baz.x
+      """)
+      ty = self.InferFromFile(filename=d["foo/deep/bar.py"],
+                              pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """\
+        baz = ...  # type: module
+        a: int
+      """)
+
   def testTooManyDotsInPackageInPyi(self):
     # Trying to go up more directories than the package path contains
     with file_utils.Tempdir() as d:
@@ -976,6 +991,81 @@ class ImportTest(test_base.TargetIndependentTest):
         t = ...  # type: pkg.b.e
         u = ...  # type: module
         v = ...  # type: pkg.d.Y
+      """)
+
+  def testImportPackageAsAlias(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("a.pyi", "class A: ...")
+      d.create_file("b.pyi", """
+        import a as _a
+        f: _a.A
+      """)
+      self.Check("""
+        import b
+        c = b.f
+      """, pythonpath=[d.path])
+
+  def testImportPackageAliasNameConflict(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("a.pyi", "A: str")
+      d.create_file("b.pyi", """
+        import a as _a
+        class a:
+          A: int
+        x = _a.A
+        y = a.A
+      """)
+      ty = self.Infer("""
+        import b
+        x = b.x
+        y = b.y
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        b: module
+        x: str
+        y: int
+      """)
+
+  def testImportPackageAliasNameConflict2(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("a.pyi", "A: str")
+      d.create_file("b.pyi", "A: int")
+      d.create_file("c.pyi", """
+        import a as _a
+        import b as a
+        x = _a.A
+        y = a.A
+      """)
+      ty = self.Infer("""
+        import c
+        x = c.x
+        y = c.y
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        c: module
+        x: str
+        y: int
+      """)
+
+  def testImportPackageAliasNameConflict3(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("a.pyi", "A: str")
+      d.create_file("b.pyi", "A: int")
+      d.create_file("c.pyi", """
+        import b as a
+        import a as _a
+        x = _a.A
+        y = a.A
+      """)
+      ty = self.Infer("""
+        import c
+        x = c.x
+        y = c.y
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        c: module
+        x: str
+        y: int
       """)
 
   def testModuleClassConflict(self):
