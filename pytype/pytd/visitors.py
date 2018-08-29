@@ -992,16 +992,20 @@ class LookupBuiltins(Visitor):
 class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
   """Look up NamedType pointers using a symbol table."""
 
-  def __init__(self, module_map, self_name=None):
+  def __init__(self, module_map, self_name=None, module_alias_map=None):
     """Create this visitor.
 
     Args:
       module_map: A dictionary mapping module names to symbol tables.
       self_name: The name of the current module. If provided, then the visitor
         will ignore nodes with this module name.
+      module_alias_map: A dictionary mapping module aliases to real module
+        names. If the source contains "import X as Y", module_alias_map should
+        contain an entry mapping "Y": "X".
     """
     super(LookupExternalTypes, self).__init__()
     self._module_map = module_map
+    self._module_alias_map = module_alias_map or {}
     self.name = self_name
     self._in_constant = False
     self._alias_name = None
@@ -1063,6 +1067,8 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
       # Nothing to do here. This visitor will only look up nodes in other
       # modules.
       return t
+    if module_name in self._module_alias_map:
+      module_name = self._module_alias_map[module_name]
     module = self._LookupModuleName(module_name)
     try:
       if name == "*":

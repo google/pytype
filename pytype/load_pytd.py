@@ -7,6 +7,7 @@ from pytype import file_utils
 from pytype import module_utils
 from pytype import utils
 from pytype.pyi import parser
+from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import typeshed
@@ -128,6 +129,7 @@ class Loader(object):
     self.use_typeshed = use_typeshed
     self._concatenated = None
     self._import_name_cache = {}  # performance cache
+    self._aliases = {}
     # Paranoid verification that pytype.main properly checked the flags:
     if imports_map is not None:
       assert pythonpath == [""], pythonpath
@@ -242,9 +244,24 @@ class Loader(object):
     ast.Visit(deps)
     return deps.modules
 
+  def _resolve_module_alias(self, name, ast, ast_name=None):
+    """Check if a given name is an alias and resolve it if so."""
+    # name is bare, but aliases are stored as "ast_name.alias".
+    if ast is None:
+      return name
+    key = "%s.%s" % (ast_name or ast.name, name)
+    for alias, value in ast.aliases:
+      if alias == key and isinstance(value, pytd.Module):
+        return value.module_name
+    return name
+
   def _load_ast_dependencies(self, dependencies, ast, ast_name=None):
     """Fill in all ClassType.cls pointers and load reexported modules."""
-    for name in (dependencies or ()):
+    for dep_name in (dependencies or ()):
+      name = self._resolve_module_alias(dep_name, ast, ast_name)
+      if dep_name != name:
+        # We have an alias. Store it in the aliases map.
+        self._aliases[dep_name] = name
       if name not in self._modules or not self._modules[name].ast:
         other_ast = self._import_name(name)
         if other_ast is None:
@@ -254,7 +271,8 @@ class Loader(object):
   def _resolve_external_types(self, ast):
     try:
       ast = ast.Visit(visitors.LookupExternalTypes(
-          self._get_module_map(), self_name=ast.name))
+          self._get_module_map(), self_name=ast.name,
+          module_alias_map=self._aliases))
     except KeyError as e:
       raise BadDependencyError(utils.message(e), ast.name)
     return ast

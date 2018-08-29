@@ -102,16 +102,18 @@ NOTE: Please see `pytype/tests/README.md` for more rules pertaining to adding
 new functional tests.
 
 ### Running tests
-There exists a convenience script to run Python tests. A typical usage of this
+There exists a convenience script to run Pytype tests. A typical usage of this
 script is as follows:
 
 ```
-$> python build_scripts/run_tests.py <MODULE_NAME>
+$> python build_scripts/run_tests.py <TARGET>
 ```
 
-`MODULE_NAME` is the fully qualified test module name within the root Pytype
-source tree. If a module name is not specified, the script runs all the Python
-tests for which `py_test` targets exist in the CMake files.
+`TARGET` is the fully qualified name of the test target within the root Pytype
+source tree. If a target name is not specified, the script runs all `py_test`
+and `cc_test` targets in the Pytype source tree.
+
+For more information about `run_tests.py` options, run `run_test.py --help`.
 
 ### The small print
 Contributions made by corporations are covered by a different agreement than

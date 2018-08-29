@@ -2,6 +2,8 @@
 
 from __future__ import print_function
 
+import json
+
 
 def format_loc(location):
   # location is (line, column)
@@ -15,7 +17,7 @@ def format_def_with_location(defn, loc):
 
 
 def format_ref(ref):
-  return ("%s  | %s  %s::%s" % (
+  return ("%s  | %s  %s.%s" % (
       format_loc(ref.location), ref.typ.ljust(15), ref.scope, ref.name))
 
 
@@ -42,13 +44,11 @@ def show_refs(index):
     continue
 
 
-def display_traces(src, traces):
-  """Format and print the output of indexer.collect_traces."""
+def output_kythe_graph(index):
+  for def_id in index.locs:
+    defn = index.defs[def_id]
+    print(json.dumps(defn.to_vname()._asdict()))
 
-  source = src.split("\n")
-  for line in sorted(traces.keys()):
-    print("%d %s" % (line, source[line - 1]))
-    for name, symbol, data in traces[line]:
-      print("  %s : %s <- %s %s" % (
-          name, symbol, data, data and [typename(x) for x in data]))
-    print("-------------------")
+  for x in index.kythe:
+    print(json.dumps(x._asdict()))
+

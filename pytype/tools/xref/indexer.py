@@ -48,20 +48,6 @@ def typename(node):
   return node.__class__.__name__
 
 
-def get_id(node):
-  """Construct an id based on node type."""
-
-  c = node.__class__
-  if c == ast.FunctionDef:
-    return "function %s" % node.name
-  elif c == ast.ClassDef:
-    return "class %s" % node.name
-  elif c == ast.Module:
-    return "module"
-  else:
-    raise Exception("Unexpected scope: %r" % node)
-
-
 def get_name(node):
   """Nodes have different name attributes."""
 
@@ -114,6 +100,43 @@ class AttrError(Exception):
   pass
 
 
+class SourceLines(object):
+  """Line-based source code access."""
+
+  def __init__(self, src, raw_traces):
+    self.src = src
+    self.traces = self.collect_traces(raw_traces)
+    self.lines = src.split("\n")
+    self.offsets = []
+    self._init_byte_offsets()
+
+  def _init_byte_offsets(self):
+    offset = 0
+    for line in self.lines:
+      self.offsets.append(offset)
+      offset += len(line)
+
+  def get_offset(self, line, column):
+    return self.offsets[line - 1] + column
+
+  def collect_traces(self, raw_traces):
+    """Postprocess pytype's opcode traces."""
+
+    out = collections.defaultdict(list)
+    for op, symbol, data in raw_traces:
+      out[op.line].append((op.name, symbol, data))
+    return out
+
+  def display_traces(self):
+    """Debug printing of source + traces per line."""
+    for line in sorted(self.traces.keys()):
+      print("%d %s" % (line, self.lines[line - 1]))
+      for name, symbol, data in self.traces[line]:
+        print("  %s : %s <- %s %s" % (
+            name, symbol, data, data and [typename(x) for x in data]))
+      print("-------------------")
+
+
 class PytypeValue(object):
   """Stores a value inferred by pytype."""
 
@@ -123,7 +146,7 @@ class PytypeValue(object):
     self.typ = typ
 
   def format(self):
-    return "{ %s::%s : %s }" % (self.module, self.typ, self.name)
+    return "{ %s.%s : %s }" % (self.module, self.typ, self.name)
 
   @classmethod
   def from_data(cls, data):
@@ -145,6 +168,35 @@ class PytypeValue(object):
     else:
       # TODO(mdemello): We need to infer the module here.
       return cls("module", str(data), typename(data))
+
+  def to_vname(self):
+    sig = self.module + "." + self.name
+    return make_vname(sig)
+
+
+# Kythe nodes
+
+VName = collections.namedtuple(
+    "VName", ["sig", "path", "lang", "root", "corpus"])
+
+Entry = collections.namedtuple(
+    "Entry", ["source", "kind", "target", "fact_label", "value"])
+
+Fact = collections.namedtuple("Fact", ["name", "value"])
+
+Edge = collections.namedtuple("Edge", ["source", "edge_name", "target"])
+
+
+def make_vname(sig):
+  return VName(
+      sig=sig,
+      path="",
+      lang="python",
+      root="",
+      corpus="")
+
+
+# Internal datatypes
 
 
 class Dummy(object):
@@ -168,10 +220,14 @@ class Definition(collections.namedtuple(
 
   def __init__(self, name, typ, scope, target, doc):
     super(Definition, self).__init__(name, typ, scope, target, doc)
-    self.id = self.scope + "::" + self.name
+    self.id = self.scope + "." + self.name
 
   def format(self):
     return self.id
+
+  def to_vname(self):
+    sig = self.scope + "." + self.name
+    return make_vname(sig)
 
 
 class DefLocation(collections.namedtuple("defloc", ["def_id", "location"])):
@@ -203,7 +259,7 @@ class Reference(collections.namedtuple(
 
   def __init__(self, name, typ, data, scope, target, location):
     super(Reference, self).__init__(name, typ, data, scope, target, location)
-    self.id = self.scope + "::" + self.name
+    self.id = self.scope + "." + self.name
 
   def format(self):
     return self.id
@@ -292,10 +348,24 @@ class ScopedVisitor(object):
   # TODO(mdemello): Is the two-level visitor hierarchy really buying us
   # anything by way of maintainability or readability?
 
-  def __init__(self):
+  def __init__(self, module_name):
     self.stack = []
     self.class_ids = []
     self.envs = {}
+    self.module_name = module_name
+
+  def get_id(self, node):
+    """Construct an id based on node type."""
+
+    c = node.__class__
+    if c == ast.FunctionDef:
+      return node.name
+    elif c == ast.ClassDef:
+      return node.name
+    elif c == ast.Module:
+      return self.module_name
+    else:
+      raise Exception("Unexpected scope: %r" % node)
 
   def get_suppressed_nodes(self):
     """Nodes whose subtrees will be pruned during generic_visit."""
@@ -306,7 +376,7 @@ class ScopedVisitor(object):
     print("  " * len(self.stack), x)
 
   def scope_id(self):
-    return ":".join(get_id(x) for x in self.stack)
+    return ".".join(self.get_id(x) for x in self.stack)
 
   def visit(self, node):
     """Visit a node."""
@@ -385,15 +455,14 @@ class ScopedVisitor(object):
 class IndexVisitor(ScopedVisitor):
   """Visitor that generates indexes."""
 
-  def __init__(self, traces):
-    super(IndexVisitor, self).__init__()
+  def __init__(self, traces, module_name):
+    super(IndexVisitor, self).__init__(module_name)
     self.defs = {}
     self.locs = collections.defaultdict(list)
     self.refs = []
     self.modules = {}
     self.traces = traces
-
-    self.traces = traces
+    self.kythe = []
 
   def get_suppressed_nodes(self):
     return [ast.Module, ast.BinOp, ast.Return, ast.Assign,
@@ -459,18 +528,29 @@ class IndexVisitor(ScopedVisitor):
     if env.is_self_attr(node):
       self.envs[self.scope_id()].setattr(node.attr, defn)
 
+  def add_edge(self, **kwargs):
+    self.kythe.append(Edge(**kwargs))
+
   def enter_ClassDef(self, node):
     self.add_local_def(node, doc=get_docstring(node))
     super(IndexVisitor, self).enter_ClassDef(node)
 
   def enter_FunctionDef(self, node):
-    self.add_local_def(node, doc=get_docstring(node))
+    fn_def = self.add_local_def(node, doc=get_docstring(node))
     env = self.add_scope(node)
     params = [self.add_local_def(v) for v in node.args.args]
+    for i, param in enumerate(params):
+      self.add_edge(
+          source=fn_def.to_vname(),
+          edge_name="param.%d" % i,
+          target=param.to_vname())
     if env.cls:
       if (not has_decorator(node, "classmethod") and
           not has_decorator(node, "staticmethod")):
-        env.self_var = params[0]
+        # Don't crash if we have buggy code like
+        # class A(): def f(): ...
+        if params:
+          env.self_var = params[0]
 
   def visit_Name(self, node):
     # We use pytype trace data to distinguish between local and global
@@ -551,7 +631,7 @@ class IndexVisitor(ScopedVisitor):
               isinstance(data[0], abstract.Module)):
             # |import x.y| puts both {x: x} and {x.y: x.y} in modules
             for mod in module_utils.get_all_prefixes(name):
-              self.modules[d.scope + "::" + mod] = mod
+              self.modules[d.scope + "." + mod] = mod
 
   def visit_ImportFrom(self, node):
     store_ops = get_opcodes(self.traces, node.lineno, "STORE_NAME")
@@ -572,23 +652,73 @@ class IndexVisitor(ScopedVisitor):
 class Indexer(object):
   """Runs the indexer visitor and collects its results."""
 
-  def __init__(self, traces):
-    self.traces = traces
+  def __init__(self, source, module_name):
+    self.source = source
+    self.module_name = module_name
+    self.traces = source.traces
     self.defs = None
     self.locs = None
     self.refs = None
     self.envs = None
     self.modules = None
     self.links = []
+    self.kythe = []
 
   def index(self, code_ast):
-    v = IndexVisitor(self.traces)
+    v = IndexVisitor(self.traces, self.module_name)
     v.visit(code_ast)
     self.defs = v.defs
     self.locs = v.locs
     self.refs = v.refs
     self.envs = v.envs
     self.modules = v.modules
+    self.kythe = v.kythe
+
+  def get_def_offsets(self, defloc):
+    """Get the byte offsets for a definition."""
+
+    line, col = defloc.location
+    start = self.source.get_offset(line, col)
+    defn = self.defs[defloc.def_id]
+    typ = defn.typ
+    if typ == "ClassDef":
+      start += 6
+    elif typ == "FunctionDef":
+      start += 4
+    end = start + len(defn.name)
+    return (start, end)
+
+  def process_deflocs(self):
+    """Generate kythe edges for definitions."""
+
+    for def_id in self.locs:
+      defn = self.defs[def_id]
+      for defloc in self.locs[def_id]:
+        start, end = self.get_def_offsets(defloc)
+        sig = "@%d:%d" % (start, end)
+        vname = make_vname(sig)
+        defn = self.defs[defloc.def_id]
+        self.kythe.append(Edge(
+            source=vname,
+            target=defn.to_vname(),
+            edge_name="defines/binding"))
+
+  def process_links(self):
+    """Generate kythe edges for references."""
+
+    for ref, defn in self.links:
+      if not isinstance(defn, Definition):
+        # TODO(mdemello): Fixes needed for chained method calls.
+        continue
+      line, col = ref.location
+      start = self.source.get_offset(line, col)
+      end = start + len(ref.name)
+      sig = "@%d:%d" % (start, end)
+      vname = make_vname(sig)
+      self.kythe.append(Edge(
+          source=vname,
+          target=defn.to_vname(),
+          edge_name="ref"))
 
   def lookup_refs(self):
     """Look up references to generate links."""
@@ -627,15 +757,6 @@ class Indexer(object):
           self.links.append((r, PytypeValue.from_data(r.data)))
 
 
-def collect_traces(opcode_traces):
-  """Postprocess pytype"s opcode traces."""
-
-  out = collections.defaultdict(list)
-  for op, symbol, data in opcode_traces:
-    out[op.line].append((op.name, symbol, data))
-  return out
-
-
 def process_file(options):
   """Process a single file and return cross references."""
 
@@ -663,8 +784,6 @@ def process_file(options):
     logging.error("Usage error: %s\n", utils.message(e))
     return 1
 
-  traces = collect_traces(vm.opcode_traces)
-
   major, minor = options.python_version
   if major == 2:
     # python2.7 is the only supported py2 version.
@@ -674,7 +793,12 @@ def process_file(options):
     a = ast3.parse(src, options.input, feature_version=minor)
     ast = ast3
 
-  ix = Indexer(traces)
+  # TODO(mdemello): Get from args
+  module_name = "module"
+  source = SourceLines(src, vm.opcode_traces)
+  ix = Indexer(source, module_name)
   ix.index(a)
   ix.lookup_refs()
+  ix.process_deflocs()
+  ix.process_links()
   return ix

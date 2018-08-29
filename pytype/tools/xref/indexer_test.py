@@ -40,47 +40,47 @@ class IndexerTest(test_base.TargetIndependentTest):
           pass
         b = A()
     """)
-    self.assertDef(ix, "module::A", "A", "ClassDef")
-    self.assertDef(ix, "module::b", "b", "Store")
-    self.assertDefLocs(ix, "module::A", [(1, 0)])
-    self.assertDefLocs(ix, "module::b", [(3, 0)])
+    self.assertDef(ix, "module.A", "A", "ClassDef")
+    self.assertDef(ix, "module.b", "b", "Store")
+    self.assertDefLocs(ix, "module.A", [(1, 0)])
+    self.assertDefLocs(ix, "module.b", [(3, 0)])
 
   def test_function_def(self):
     ix = self.index_code("""\
         def f(x, y):
           a = 1  # local variable
     """)
-    self.assertDef(ix, "module::f", "f", "FunctionDef")
-    self.assertDef(ix, "module:function f::x", "x", "Param")
-    self.assertDef(ix, "module:function f::y", "y", "Param")
-    self.assertDef(ix, "module:function f::a", "a", "Store")
-    self.assertDefLocs(ix, "module::f", [(1, 0)])
-    self.assertDefLocs(ix, "module:function f::x", [(1, 6)])
-    self.assertDefLocs(ix, "module:function f::y", [(1, 9)])
-    self.assertDefLocs(ix, "module:function f::a", [(2, 2)])
+    self.assertDef(ix, "module.f", "f", "FunctionDef")
+    self.assertDef(ix, "module.f.x", "x", "Param")
+    self.assertDef(ix, "module.f.y", "y", "Param")
+    self.assertDef(ix, "module.f.a", "a", "Store")
+    self.assertDefLocs(ix, "module.f", [(1, 0)])
+    self.assertDefLocs(ix, "module.f.x", [(1, 6)])
+    self.assertDefLocs(ix, "module.f.y", [(1, 9)])
+    self.assertDefLocs(ix, "module.f.a", [(2, 2)])
 
   def test_param_reuse(self):
     ix = self.index_code("""\
         def f(x):
           x = 1 # reuse param variable
     """)
-    self.assertDef(ix, "module::f", "f", "FunctionDef")
-    self.assertDef(ix, "module:function f::x", "x", "Param")
-    self.assertDefLocs(ix, "module::f", [(1, 0)])
-    self.assertDefLocs(ix, "module:function f::x", [(1, 6), (2, 2)])
+    self.assertDef(ix, "module.f", "f", "FunctionDef")
+    self.assertDef(ix, "module.f.x", "x", "Param")
+    self.assertDefLocs(ix, "module.f", [(1, 0)])
+    self.assertDefLocs(ix, "module.f.x", [(1, 6), (2, 2)])
 
   def test_nested_function(self):
     ix = self.index_code("""\
         def f(x):
           def g(x):  # shadows x
-            x = 1  # should be f:g::x
+            x = 1  # should be f:g.x
     """)
-    self.assertDef(ix, "module::f", "f", "FunctionDef")
-    self.assertDef(ix, "module:function f::x", "x", "Param")
-    self.assertDef(ix, "module:function f::g", "g", "FunctionDef")
-    self.assertDef(ix, "module:function f:function g::x", "x", "Param")
-    self.assertDefLocs(ix, "module:function f::x", [(1, 6)])
-    self.assertDefLocs(ix, "module:function f:function g::x", [(2, 8), (3, 4)])
+    self.assertDef(ix, "module.f", "f", "FunctionDef")
+    self.assertDef(ix, "module.f.x", "x", "Param")
+    self.assertDef(ix, "module.f.g", "g", "FunctionDef")
+    self.assertDef(ix, "module.f.g.x", "x", "Param")
+    self.assertDefLocs(ix, "module.f.x", [(1, 6)])
+    self.assertDefLocs(ix, "module.f.g.x", [(2, 8), (3, 4)])
 
   def test_resolved_imports(self):
     # We need all imports to be valid for pytype
@@ -101,16 +101,16 @@ class IndexerTest(test_base.TargetIndependentTest):
       options = config.Options([d["t.py"]])
       options.tweak(pythonpath=[d.path], version=self.python_version)
       ix = indexer.process_file(options)
-      self.assertDef(ix, "module::foo", "foo", "Import")
-      self.assertDef(ix, "module::x.y", "x.y", "Import")
-      self.assertDef(ix, "module::c", "c", "Import")
-      self.assertDef(ix, "module::b", "b", "ImportFrom")
-      self.assertDef(ix, "module::r", "r", "ImportFrom")
-      self.assertEqual(ix.modules["module::foo"], "foo")
-      self.assertEqual(ix.modules["module::x.y"], "x.y")
-      self.assertEqual(ix.modules["module::b"], "a.b")
-      self.assertEqual(ix.modules["module::c"], "a.b")
-      self.assertEqual(ix.modules["module::r"], "p.q")
+      self.assertDef(ix, "module.foo", "foo", "Import")
+      self.assertDef(ix, "module.x.y", "x.y", "Import")
+      self.assertDef(ix, "module.c", "c", "Import")
+      self.assertDef(ix, "module.b", "b", "ImportFrom")
+      self.assertDef(ix, "module.r", "r", "ImportFrom")
+      self.assertEqual(ix.modules["module.foo"], "foo")
+      self.assertEqual(ix.modules["module.x.y"], "x.y")
+      self.assertEqual(ix.modules["module.b"], "a.b")
+      self.assertEqual(ix.modules["module.c"], "a.b")
+      self.assertEqual(ix.modules["module.r"], "p.q")
 
   def test_import_ref(self):
     # We need all imports to be valid for pytype
@@ -125,9 +125,9 @@ class IndexerTest(test_base.TargetIndependentTest):
       options = config.Options([d["t.py"]])
       options.tweak(pythonpath=[d.path], version=self.python_version)
       ix = indexer.process_file(options)
-      self.assertDef(ix, "module::foo", "foo", "Import")
-      self.assertDef(ix, "module::x", "x", "Store")
-      self.assertEqual(ix.modules["module::foo"], "foo")
+      self.assertDef(ix, "module.foo", "foo", "Import")
+      self.assertDef(ix, "module.x", "x", "Store")
+      self.assertEqual(ix.modules["module.foo"], "foo")
       expected = [
           ({"name": "foo", "typ": "Name", "scope": "module",
             "location": (2, 4)},
@@ -149,10 +149,10 @@ class IndexerTest(test_base.TargetIndependentTest):
             a = 1  # local variable
             '''Not a docstring'''
     """)
-    self.assertDef(ix, "module::A", "A", "ClassDef")
-    self.assertDef(ix, "module:class A::f", "f", "FunctionDef")
-    def_A = ix.defs["module::A"]  # pylint: disable=invalid-name
-    def_f = ix.defs["module:class A::f"]
+    self.assertDef(ix, "module.A", "A", "ClassDef")
+    self.assertDef(ix, "module.A.f", "f", "FunctionDef")
+    def_A = ix.defs["module.A"]  # pylint: disable=invalid-name
+    def_f = ix.defs["module.A.f"]
     self.assertEqual(def_A.doc, "Class docstring")
     self.assertEqual(def_f.doc, "Function docstring")
 
