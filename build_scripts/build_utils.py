@@ -77,14 +77,19 @@ class BuildConfig(object):
       return BuildConfig(**{})
 
 
-def _clean_out_dir(msg):
-  print(msg)
-  for item in os.listdir(OUT_DIR):
-    path = os.path.join(OUT_DIR, item)
+def clean_dir(dir_path, exclude_file_list=None):
+  exclude_list = exclude_file_list or []
+  for item in os.listdir(dir_path):
+    path = os.path.join(dir_path, item)
     if os.path.isdir(path):
       shutil.rmtree(path)
-    elif item not in ["README.md", ".gitignore"]:
+    elif item not in exclude_list:
       os.remove(path)
+
+
+def _clean_out_dir(msg):
+  print(msg)
+  clean_dir(OUT_DIR, ["README.md", ".gitignore"])
 
 
 def parse_ninja_output_line(line):

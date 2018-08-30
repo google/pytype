@@ -4,3 +4,6 @@
 [submodule "googletest"]
 	path = googletest
 	url = https://github.com/google/googletest
+[submodule "cpython"]
+	path = cpython
+	url = https://github.com/python/cpython.git
