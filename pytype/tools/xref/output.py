@@ -25,6 +25,21 @@ def typename(node):
   return node.__class__.__name__
 
 
+def unpack(obj):
+  """Recursively expand namedtuples into dicts."""
+
+  if hasattr(obj, "_asdict"):
+    return {k: unpack(v) for k, v in obj._asdict().items()}
+  elif isinstance(obj, dict):
+    return {k: unpack(v) for k, v in obj.items()}
+  elif isinstance(obj, list):
+    return [unpack(v) for v in obj]
+  elif isinstance(obj, tuple):
+    return tuple(unpack(v) for v in obj)
+  else:
+    return obj
+
+
 def show_defs(index):
   for def_id in index.locs:
     defn = index.defs[def_id]
@@ -45,10 +60,5 @@ def show_refs(index):
 
 
 def output_kythe_graph(index):
-  for def_id in index.locs:
-    defn = index.defs[def_id]
-    print(json.dumps(defn.to_vname()._asdict()))
-
-  for x in index.kythe:
-    print(json.dumps(x._asdict()))
-
+  for x in index.kythe.entries:
+    print(json.dumps(unpack(x)))
