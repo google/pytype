@@ -15,6 +15,8 @@ from pytype import load_pytd
 from pytype import module_utils
 from pytype import utils
 
+from pytype.tools.xref import kythe
+
 from typed_ast import ast27
 from typed_ast import ast3
 
@@ -24,6 +26,15 @@ from typed_ast import ast3
 #
 # TODO(mdemello): Use typed_ast.convert to coerce everything into ast3
 ast = None
+
+
+# A mapping of offsets between a node's start position and the symbol being
+# defined. e.g. in the declaration "class X" the X is at +6 from the start.
+DEF_OFFSETS = {
+    "ClassDef": 6,  # class X
+    "FunctionDef": 4,  # def f
+    "Import": 7,  # import a
+}
 
 
 def children(node):
@@ -100,12 +111,13 @@ class AttrError(Exception):
   pass
 
 
-class SourceLines(object):
+class SourceFile(object):
   """Line-based source code access."""
 
-  def __init__(self, src, raw_traces):
-    self.src = src
+  def __init__(self, src, raw_traces, filename):
+    self.text = src
     self.traces = self.collect_traces(raw_traces)
+    self.filename = filename
     self.lines = src.split("\n")
     self.offsets = []
     self._init_byte_offsets()
@@ -114,7 +126,7 @@ class SourceLines(object):
     offset = 0
     for line in self.lines:
       self.offsets.append(offset)
-      offset += len(line)
+      offset += len(line) + 1  # account for the \n
 
   def get_offset(self, line, column):
     return self.offsets[line - 1] + column
@@ -169,34 +181,8 @@ class PytypeValue(object):
       # TODO(mdemello): We need to infer the module here.
       return cls("module", str(data), typename(data))
 
-  def to_vname(self):
-    sig = self.module + "." + self.name
-    return make_vname(sig)
-
-
-# Kythe nodes
-
-VName = collections.namedtuple(
-    "VName", ["sig", "path", "lang", "root", "corpus"])
-
-Entry = collections.namedtuple(
-    "Entry", ["source", "kind", "target", "fact_label", "value"])
-
-Fact = collections.namedtuple("Fact", ["name", "value"])
-
-Edge = collections.namedtuple("Edge", ["source", "edge_name", "target"])
-
-
-def make_vname(sig):
-  return VName(
-      sig=sig,
-      path="",
-      lang="python",
-      root="",
-      corpus="")
-
-
-# Internal datatypes
+  def to_signature(self):
+    return self.module + "." + self.name
 
 
 class Dummy(object):
@@ -225,9 +211,8 @@ class Definition(collections.namedtuple(
   def format(self):
     return self.id
 
-  def to_vname(self):
-    sig = self.scope + "." + self.name
-    return make_vname(sig)
+  def to_signature(self):
+    return self.scope + "." + self.name
 
 
 class DefLocation(collections.namedtuple("defloc", ["def_id", "location"])):
@@ -455,14 +440,15 @@ class ScopedVisitor(object):
 class IndexVisitor(ScopedVisitor):
   """Visitor that generates indexes."""
 
-  def __init__(self, traces, module_name):
+  def __init__(self, source, module_name):
     super(IndexVisitor, self).__init__(module_name)
     self.defs = {}
     self.locs = collections.defaultdict(list)
     self.refs = []
     self.modules = {}
-    self.traces = traces
-    self.kythe = []
+    self.source = source
+    self.traces = source.traces
+    self.kythe = kythe.Kythe(source)
 
   def get_suppressed_nodes(self):
     return [ast.Module, ast.BinOp, ast.Return, ast.Assign,
@@ -516,6 +502,7 @@ class IndexVisitor(ScopedVisitor):
   def add_local_ref(self, node, **kwargs):
     ref = self.make_ref(node, **kwargs)
     self.refs.append(ref)
+    return ref
 
   def add_global_ref(self, node, **kwargs):
     kwargs.update({"scope": "module"})
@@ -528,9 +515,6 @@ class IndexVisitor(ScopedVisitor):
     if env.is_self_attr(node):
       self.envs[self.scope_id()].setattr(node.attr, defn)
 
-  def add_edge(self, **kwargs):
-    self.kythe.append(Edge(**kwargs))
-
   def enter_ClassDef(self, node):
     self.add_local_def(node, doc=get_docstring(node))
     super(IndexVisitor, self).enter_ClassDef(node)
@@ -540,10 +524,10 @@ class IndexVisitor(ScopedVisitor):
     env = self.add_scope(node)
     params = [self.add_local_def(v) for v in node.args.args]
     for i, param in enumerate(params):
-      self.add_edge(
-          source=fn_def.to_vname(),
+      self.kythe.add_edge(
+          source=self.kythe.vname(fn_def.to_signature()),
           edge_name="param.%d" % i,
-          target=param.to_vname())
+          target=self.kythe.vname(param.to_signature()))
     if env.cls:
       if (not has_decorator(node, "classmethod") and
           not has_decorator(node, "staticmethod")):
@@ -662,10 +646,10 @@ class Indexer(object):
     self.envs = None
     self.modules = None
     self.links = []
-    self.kythe = []
+    self.kythe = None
 
   def index(self, code_ast):
-    v = IndexVisitor(self.traces, self.module_name)
+    v = IndexVisitor(self.source, self.module_name)
     v.visit(code_ast)
     self.defs = v.defs
     self.locs = v.locs
@@ -681,10 +665,9 @@ class Indexer(object):
     start = self.source.get_offset(line, col)
     defn = self.defs[defloc.def_id]
     typ = defn.typ
-    if typ == "ClassDef":
-      start += 6
-    elif typ == "FunctionDef":
-      start += 4
+    if typ in DEF_OFFSETS:
+      start += DEF_OFFSETS[typ]
+    # TODO(mdemello): Attributes need to scan the line for the attribute name.
     end = start + len(defn.name)
     return (start, end)
 
@@ -694,14 +677,18 @@ class Indexer(object):
     for def_id in self.locs:
       defn = self.defs[def_id]
       for defloc in self.locs[def_id]:
-        start, end = self.get_def_offsets(defloc)
-        sig = "@%d:%d" % (start, end)
-        vname = make_vname(sig)
         defn = self.defs[defloc.def_id]
-        self.kythe.append(Edge(
-            source=vname,
-            target=defn.to_vname(),
-            edge_name="defines/binding"))
+        defn_vname = self.kythe.vname(defn.to_signature())
+        start, end = self.get_def_offsets(defloc)
+        anchor_vname = self.kythe.add_anchor(start, end)
+        self.kythe.add_fact(
+            source=defn_vname,
+            fact_name="node/kind",
+            fact_value="variable")
+        self.kythe.add_edge(
+            source=anchor_vname,
+            target=defn_vname,
+            edge_name="defines/binding")
 
   def process_links(self):
     """Generate kythe edges for references."""
@@ -713,12 +700,11 @@ class Indexer(object):
       line, col = ref.location
       start = self.source.get_offset(line, col)
       end = start + len(ref.name)
-      sig = "@%d:%d" % (start, end)
-      vname = make_vname(sig)
-      self.kythe.append(Edge(
+      vname = self.kythe.add_anchor(start, end)
+      self.kythe.add_edge(
           source=vname,
-          target=defn.to_vname(),
-          edge_name="ref"))
+          target=self.kythe.vname(defn.to_signature()),
+          edge_name="ref")
 
   def lookup_refs(self):
     """Look up references to generate links."""
@@ -795,7 +781,7 @@ def process_file(options):
 
   # TODO(mdemello): Get from args
   module_name = "module"
-  source = SourceLines(src, vm.opcode_traces)
+  source = SourceFile(src, vm.opcode_traces, filename=options.input)
   ix = Indexer(source, module_name)
   ix.index(a)
   ix.lookup_refs()
