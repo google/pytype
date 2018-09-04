@@ -163,7 +163,7 @@ class CallChecker(object):
 
 # RE to match a single token.  Leading whitepace is ignored.
 _TOKEN_RE = re.compile(
-    r"\s*(?:(?P<literal>[[\]{}])|(?P<word>[a-zA-Z_]\w*))")
+    r"\s*(?:(?P<literal>[\[\]{}])|(?P<word>[a-zA-Z_]\w*))")
 
 # Token codes (aside from literal characters)
 _TOKEN_NAME = 1
