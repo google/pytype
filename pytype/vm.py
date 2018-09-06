@@ -173,7 +173,7 @@ class VirtualMachine(object):
 
   def trace_opcode(self, op, symbol, val):
     """Record trace data for other tools to use."""
-    if not op:
+    if self.frame and not op:
       op = self.frame.current_opcode
     if not op:
       # If we don't have a current opcode, don't emit a trace.
