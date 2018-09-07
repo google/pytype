@@ -112,34 +112,6 @@ class IndexerTest(test_base.TargetIndependentTest):
       self.assertEqual(ix.modules["module.c"], "a.b")
       self.assertEqual(ix.modules["module.r"], "p.q")
 
-  def test_import_ref(self):
-    # We need all imports to be valid for pytype
-    code = """\
-        import foo
-        x = foo.Bar
-    """
-    stub = "class Bar: pass"
-    with file_utils.Tempdir() as d:
-      d.create_file("t.py", code)
-      d.create_file("foo.pyi", stub)
-      options = config.Options([d["t.py"]])
-      options.tweak(pythonpath=[d.path], version=self.python_version)
-      ix = indexer.process_file(options)
-      self.assertDef(ix, "module.foo", "foo", "Import")
-      self.assertDef(ix, "module.x", "x", "Store")
-      self.assertEqual(ix.modules["module.foo"], "foo")
-      expected = [
-          ({"name": "foo", "typ": "Name", "scope": "module",
-            "location": (2, 4)},
-           {"name": "foo", "scope": "module"}),
-          ({"name": "foo.Bar", "typ": "Attribute", "scope": "module",
-            "location": (2, 4)},
-           {"name": "Bar", "scope": "foo/module"})
-      ]
-      for (ref, defn), (expected_ref, expected_defn) in zip(ix.links, expected):
-        self.assertAttrs(ref, expected_ref)
-        self.assertAttrs(defn, expected_defn)
-
   def test_docstrings(self):
     ix = self.index_code("""\
         class A():
