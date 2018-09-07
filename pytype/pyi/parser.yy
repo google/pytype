@@ -147,7 +147,7 @@ alldefs
       CHECK(tmp, @$);
       Py_DECREF(tmp);
     }
-  | alldefs classdef { $$ = $1; Py_DECREF($2); }
+  | alldefs classdef { $$ = AppendList($1, $2); }
   | alldefs typevardef { $$ = $1; Py_DECREF($2); }
   | alldefs if_stmt {
       PyObject* tmp = ctx->Call(kIfEnd, "(N)", $2);
@@ -161,9 +161,12 @@ maybe_type_ignore
   : typeignore
   |
 
+/* TODO(rechen): maybe_class_funcs contains all class attributes, not just
+ * functions; rename it to something less confusing.
+ */
 classdef
   : CLASS class_name parents ':' maybe_type_ignore maybe_class_funcs {
-      $$ = ctx->Call(kAddClass, "(NNN)", $2, $3, $6);
+      $$ = ctx->Call(kNewClass, "(NNN)", $2, $3, $6);
       CHECK($$, @$);
     }
   ;
@@ -219,6 +222,7 @@ funcdefs
       CHECK(tmp, @2);
       $$ = ExtendList($1, tmp);
     }
+  | funcdefs classdef { $$ = AppendList($1, $2); }
   | /* EMPTY */ { $$ = PyList_New(0); }
   ;
 

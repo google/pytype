@@ -251,12 +251,12 @@ class _Parser(object):
     new_constant()
     add_alias_or_constant()
     add_import()
+    new_class()
     new_type()
     new_union_type()
     new_function()
     new_named_tuple()
     regiser_class_name()
-    add_class()
     add_type_var()
     if_begin()
     if_elif()
@@ -347,7 +347,6 @@ class _Parser(object):
     # final TypeDeclUnit.
     self._constants = []
     self._aliases = []
-    self._classes = []
     self._type_params = []
     self._module_path_map = {}
     self._generated_classes = collections.defaultdict(list)
@@ -416,7 +415,7 @@ class _Parser(object):
   def _build_type_decl_unit(self, defs):
     """Return a pytd.TypeDeclUnit for the given defs (plus parser state)."""
     # defs contains both constant and function definitions.
-    constants, functions, aliases, slots = _split_definitions(defs)
+    constants, functions, aliases, slots, classes = _split_definitions(defs)
     assert not slots  # slots aren't allowed on the module level
     assert not aliases  # We handle top-level aliases in add_alias_or_constant.
     constants.extend(self._constants)
@@ -424,7 +423,7 @@ class _Parser(object):
     generated_classes = [x for class_list in self._generated_classes.values()
                          for x in class_list]
 
-    classes = generated_classes + self._classes
+    classes = generated_classes + classes
     functions = _merge_method_signatures(functions)
 
     name_to_class = {c.name: c for c in classes}
@@ -934,8 +933,8 @@ class _Parser(object):
       return
     self._type_map[class_name] = pytd.NamedType(class_name)
 
-  def add_class(self, class_name, parent_args, defs):
-    """Add a class to the module.
+  def new_class(self, class_name, parent_args, defs):
+    """Create a new class.
 
     Args:
       class_name: The name of the class (a string).
@@ -946,6 +945,9 @@ class _Parser(object):
       defs: A list of constant (pytd.Constant) and function (_NameAndSig)
           definitions.
 
+    Returns:
+      None if the class definition is inside a non-active conditional,
+      otherwise a new pytd.Class.
     Raises:
       ParseError: if defs contains duplicate names (excluding multiple
           definitions of a function, which is allowed).
@@ -964,7 +966,10 @@ class _Parser(object):
           raise ParseError("Only 'metaclass' allowed as classdef kwarg")
         metaclass = value
 
-    constants, methods, aliases, slots = _split_definitions(defs)
+    constants, methods, aliases, slots, classes = _split_definitions(defs)
+    # TODO(rechen): retain more information about nested classes.
+    for cls in classes:
+      constants.append(self.new_constant(cls.name, pytd.NamedType("type")))
 
     all_names = (list(set(f.name for f in methods)) +
                  [c.name for c in constants] +
@@ -979,6 +984,8 @@ class _Parser(object):
     # This check is performed after the above error checking so that errors
     # will be spotted even in non-active conditional code.
     if not self._current_condition.active:
+      # Returning early is safe because if_end() takes care of discarding
+      # definitions inside non-active conditions.
       return
 
     if aliases:
@@ -1004,13 +1011,12 @@ class _Parser(object):
     # Ensure that old style classes inherit from classobj.
     if not parents and class_name not in ["classobj", "object"]:
       parents = (pytd.NamedType("classobj"),)
-    cls = pytd.Class(name=class_name, metaclass=metaclass,
-                     parents=tuple(parents),
-                     methods=tuple(methods),
-                     constants=tuple(constants),
-                     slots=slots,
-                     template=())
-    self._classes.append(cls)
+    return pytd.Class(name=class_name, metaclass=metaclass,
+                      parents=tuple(parents),
+                      methods=tuple(methods),
+                      constants=tuple(constants),
+                      slots=slots,
+                      template=())
 
   def add_type_var(self, name, name_arg, args):
     """Add a type variable, <name> = TypeVar(<name_arg>, <args>)."""
@@ -1259,6 +1265,7 @@ def _split_definitions(defs):
   functions = []
   aliases = []
   slots = None
+  classes = []
   for d in defs:
     if isinstance(d, pytd.Constant):
       if d.name == "__slots__":
@@ -1278,9 +1285,11 @@ def _split_definitions(defs):
         raise ParseError("Entries in __slots__ can only be strings")
       slots = tuple(p.name for p in d.slots.parameters
                     if isinstance(p, pytd.NamedType))
+    elif isinstance(d, pytd.Class):
+      classes.append(d)
     else:
       raise TypeError("Unexpected definition type %s" % type(d))
-  return constants, functions, aliases, slots
+  return constants, functions, aliases, slots, classes
 
 
 def _is_int_tuple(value):

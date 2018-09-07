@@ -32,11 +32,11 @@ enum CallSelector {
   kAddImport,
   kAddAliasOrConstant,
   kNewAliasOrConstant,
+  kNewClass,
   kNewConstant,
   kNewFunction,
   kNewNamedTuple,
   kRegisterClassName,
-  kAddClass,
   kAddTypeVar,
 
   kIfBegin,
