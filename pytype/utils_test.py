@@ -76,6 +76,10 @@ class UtilsTest(unittest.TestCase):
       utils.validate_version(python_version)
 
 
+def _make_tuple(x):
+  return tuple(range(x))
+
+
 class DecoratorsTest(unittest.TestCase):
   """Test decorators."""
 
@@ -113,8 +117,13 @@ class DecoratorsTest(unittest.TestCase):
     return x + y
 
   def testMemoize3(self):
-    l1 = self._f3((1,), (2,))
-    l2 = self._f3((1,), (2,))
+    # We make use of an indirect way to create two identical
+    # tuples so that we do not end up with the same object
+    # due to constant literal caching.
+    y1 = _make_tuple(2)
+    y2 = _make_tuple(2)
+    l1 = self._f3((1,), y1)
+    l2 = self._f3((1,), y2)
     self.assertIsNot(l1, l2)  # two different ids
     y = (2,)
     l1 = self._f3((1,), y)

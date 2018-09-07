@@ -21,6 +21,11 @@ def format_ref(ref):
       format_loc(ref.location), ref.typ.ljust(15), ref.scope, ref.name))
 
 
+def format_call(call):
+  return ("%s  | %s  %s" % (
+      format_loc(call.location), "Call".ljust(15), call.func))
+
+
 def typename(node):
   return node.__class__.__name__
 
@@ -57,6 +62,11 @@ def show_refs(index):
     else:
       print("          :   None")
     continue
+
+
+def show_calls(index):
+  for call in index.calls:
+    print(format_call(call))
 
 
 def output_kythe_graph(index):

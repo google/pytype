@@ -59,7 +59,7 @@ y = a.bar
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: mdemello, at: 2018-05-04T12:11-07:00 -->
+<!-- Added by: rechen, at: 2018-09-05T10:31-07:00 -->
 
 <!--te-->
 
@@ -228,7 +228,8 @@ class A(object):
 
 ## invalid-directive
 
-The error name is misspelled in a pytype disable/enable directive. Example:
+The error name is misspelled in a pytype disable/enable directive. Example with
+a misspelled `name-error`:
 
 ```python {.bad}
 x = TypeDefinedAtRuntime  # pytype: disable=nmae-error  # invalid-directive

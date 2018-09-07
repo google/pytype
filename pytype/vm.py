@@ -172,12 +172,19 @@ class VirtualMachine(object):
     self.loaded_overlays = {}
 
   def trace_opcode(self, op, symbol, val):
-    if not op:
+    """Record trace data for other tools to use."""
+    if self.frame and not op:
       op = self.frame.current_opcode
+    if not op:
+      # If we don't have a current opcode, don't emit a trace.
+      return
     if isinstance(val, tuple):
       data = [getattr(v, "data", None) for v in val]
     else:
       data = getattr(val, "data", None)
+    # Sometimes val is a binding.
+    if data and not isinstance(data, list):
+      data = [data]
     rec = (op, symbol, data)
     self.opcode_traces.append(rec)
 
@@ -891,6 +898,7 @@ class VirtualMachine(object):
     for funcv in funcu.bindings:
       func = funcv.data
       assert isinstance(func, abstract.AtomicAbstractValue), type(func)
+      self.trace_opcode(None, func.name, funcv)
       try:
         new_node, one_result = func.call(node, funcv, args)
       except (abstract.DictKeyMissing, abstract.FailedFunctionCall) as e:
@@ -1064,7 +1072,6 @@ class VirtualMachine(object):
     log.debug("getting attr %s from %r", attr, obj)
     nodes = []
     values_without_attribute = []
-    self.trace_opcode(None, attr, obj)
     for val in obj.bindings:
       node2, attr_var = self.attribute_handler.get_attribute(
           node, val.data, attr, val)

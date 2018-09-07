@@ -1704,7 +1704,8 @@ class Function(SimpleAbstractValue):
     self.members["func_name"] = self.vm.convert.build_string(
         self.vm.root_cfg_node, name)
 
-  def _full_name(self):
+  def _repr_name(self):
+    """The name to use in the function's string representation."""
     return self.name
 
   def property_get(self, callself, is_class=False):
@@ -3663,19 +3664,19 @@ class BoundFunction(AtomicAbstractValue):
   def is_abstract(self, value):
     self.underlying.is_abstract = value
 
-  def _full_name(self):
+  def _repr_name(self):
     if self._callself and self._callself.bindings:
       callself = self._callself.data[0].name
     else:
       callself = "<class>"
-    underlying = self.underlying._full_name()  # pylint: disable=protected-access
+    underlying = self.underlying._repr_name()  # pylint: disable=protected-access
     if underlying.count(".") > 0:
       # Replace the parent name with the callself.
       underlying = underlying.split(".", 1)[-1]
     return callself + "." + underlying
 
   def __repr__(self):
-    return self._full_name() + "(...)"
+    return self._repr_name() + "(...)"
 
 
 class BoundInterpreterFunction(BoundFunction):
