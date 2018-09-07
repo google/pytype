@@ -232,6 +232,15 @@ class ParserTest(_ParserTestBase):
           __slots__ = ["foo", ?]
     """, 1, "Entries in __slots__ can only be strings")
 
+  def test_nested_class(self):
+    self.check("""\
+      class A:
+          class B: ...
+    """, """\
+      class A:
+          B = ...  # type: type
+    """)
+
   def test_import(self):
     self.check("import foo.bar.baz", "")
     self.check("import a as b")
@@ -1301,11 +1310,14 @@ class ClassIfTest(_ParserTestBase):
     """, 1, "Illegal value for alias 'a'")
 
   def test_no_class(self):
-    self.check_error("""\
+    self.check("""\
       class Foo:
-        if sys.version_info > (2, 7, 0):
+        if sys.version_info <= (2, 7, 0):
           class Bar: ...
-    """, 3, "syntax error")
+    """, """\
+      class Foo:
+          pass
+    """)
 
   def test_no_typevar(self):
     self.check_error("""\
