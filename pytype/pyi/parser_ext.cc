@@ -43,11 +43,11 @@ static const SelectorEntry<CallSelector> call_attributes[] = {
   {kAddImport, "add_import"},
   {kAddAliasOrConstant, "add_alias_or_constant"},
   {kNewAliasOrConstant, "new_alias_or_constant"},
+  {kNewClass, "new_class"},
   {kNewConstant, "new_constant"},
   {kNewFunction, "new_function"},
   {kNewNamedTuple, "new_named_tuple"},
   {kRegisterClassName, "register_class_name"},
-  {kAddClass, "add_class"},
   {kAddTypeVar, "add_type_var"},
 
   {kIfBegin, "if_begin"},
