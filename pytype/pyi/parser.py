@@ -942,8 +942,8 @@ class _Parser(object):
           Parent types must be instances of pytd.Type.  Keyword tuples must
           appear at the end of the list.  Currently the only supported keyword
           is 'metaclass'.
-      defs: A list of constant (pytd.Constant) and function (_NameAndSig)
-          definitions.
+      defs: A list of constant (pytd.Constant), function (_NameAndSig), alias
+          (pytd.Alias), slot (_SlotDecl), and class (pytd.Class) definitions.
 
     Returns:
       None if the class definition is inside a non-active conditional,
