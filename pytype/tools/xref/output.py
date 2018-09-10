@@ -69,6 +69,13 @@ def show_calls(index):
     print(format_call(call))
 
 
-def output_kythe_graph(index):
+def json_kythe_graph(index):
+  """Generate kythe entries."""
+
   for x in index.kythe.entries:
-    print(json.dumps(unpack(x)))
+    yield json.dumps(unpack(x))
+
+
+def output_kythe_graph(index):
+  for x in json_kythe_graph(index):
+    print(x)
