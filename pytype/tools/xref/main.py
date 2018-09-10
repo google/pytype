@@ -15,20 +15,6 @@ from pytype.tools.xref import indexer
 from pytype.tools.xref import output
 
 
-def debug_output(index):
-  """Display output in human-readable format."""
-
-  def separator():
-    print("\n--------------------\n")
-
-  output.show_defs(index)
-  separator()
-  output.show_refs(index)
-  separator()
-  output.show_calls(index)
-  separator()
-
-
 def main():
   try:
     options = config.Options(sys.argv[1:])
