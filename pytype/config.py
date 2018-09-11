@@ -26,6 +26,8 @@ uses = utils.AnnotatingDecorator()  # model relationship between options
 class Options(object):
   """Encapsulation of the command-line options."""
 
+  _HAS_DYNAMIC_ATTRIBUTES = True
+
   def __init__(self, argv):
     """Parse and encapsulate the command-line options.
 
@@ -285,6 +287,10 @@ def add_debug_options(o):
   o.add_argument(
       "--timeout", type=int, action="store", dest="timeout", default=None,
       help="In seconds. Abort after the given time has elapsed.")
+  o.add_argument(
+      "--debug", action="store_true",
+      dest="debug", default=None,
+      help=("Flag used internally by some of pytype's subtools"))
 
 
 class PostprocessingError(Exception):
