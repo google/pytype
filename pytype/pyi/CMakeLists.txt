@@ -57,6 +57,16 @@ py_test(
 
 py_test(
   NAME
+    parser_memleak_test
+  SRCS
+    parser_memleak_test.py
+  DEPS
+    pytype.parser
+    pytype.pytd
+)
+
+py_test(
+  NAME
     parse_typeshed_test
   SRCS
     parse_typeshed_test.py
