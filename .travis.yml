@@ -1,5 +1,5 @@
 os: linux
-
+dist: xenial  # Python3.7 virtualenv is available only on Travis Xenial VMs.
 sudo: enabled
 
 git:
@@ -7,10 +7,16 @@ git:
 
 language: python
 
-python:
-  - "2.7"
-  - "3.5"
-  - "3.6"
+matrix:
+  include:
+  - name: "host_python_27"
+    python: "2.7"
+  - name: "host_python_35"
+    python: "3.5"
+  - name: "host_python_36"
+    python: "3.6"
+  - name: "host_python_37"
+    python: "3.7"
 
 before_install:
   - sudo apt-get install g++
@@ -18,13 +24,17 @@ before_install:
   - sudo apt-get install bison
   - sudo apt-get install flex
   - sudo apt-get install ninja-build
-  - sudo apt-get install python3.5-dev
-  # We need to install python-3.6 from a third party repo as it is not
-  # available as a standard package on Travis Trusty VMs.
-  - sudo add-apt-repository ppa:jonathonf/python-3.6 -y
-  - sudo apt-get update -q
-  - sudo apt-get install python3.6
-  - sudo apt-get install python3.6-dev
+
+# We need to install python3.6 and python3.7 packages from a third party
+# repo as they are not available on standard Ubuntu Xenial.
+addons:
+  apt:
+    sources:
+    - sourceline: 'ppa:deadsnakes/ppa'
+    packages:
+    - python3.6  # To compile targets with a 3.6 compiler.
+    - python3.6-dev  # To build host extension modules under 3.6
+    - python3.7-dev  # To build host extension modules under 3.7
 
 install:
   - pip install pyyaml
