@@ -38,6 +38,11 @@ def current_py_version():
   return "%d.%d" % (sys.version_info.major, sys.version_info.minor)
 
 
+def build_script(base_name):
+  """Return the full path to a script in the 'build_scripts' directory."""
+  return os.path.join(PYTYPE_SRC_ROOT, "build_scripts", base_name)
+
+
 class BuildConfig(object):
   """Utility class to create and manage the build config cache."""
 
@@ -117,16 +122,18 @@ def pass_msg(mod_name):
   return RESULT_MSG_SEP.join([PASS_MSG_PREFIX, mod_name])
 
 
-def run_cmd(cmd, cwd=None):
-  process_options = {
-      "stdout": subprocess.PIPE,
-      "stderr": subprocess.STDOUT,
-  }
+def run_cmd(cmd, cwd=None, pipe=True):
+  process_options = {}
+  if pipe:
+    process_options = {
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.STDOUT,
+    }
   if cwd:
     process_options["cwd"] = cwd
   process = subprocess.Popen(cmd, **process_options)
   stdout, _ = process.communicate()
-  if sys.version_info.major >= 3:
+  if pipe and sys.version_info.major >= 3:
     # Popen.communicate returns a bytes object always.
     stdout = stdout.decode("utf-8")
   return process.returncode, stdout

@@ -37,21 +37,11 @@ addons:
     - python3.7-dev  # To build host extension modules under 3.7
 
 install:
+  - pip install importlab
   - pip install pyyaml
   - pip install six
-  - pip install pytype
 
-# Before testing the code, "compile" it by statically analyzing the types.
-# TODO(rechen): Support specifying the pytype inputs in setup.cfg instead.
-# Due to https://github.com/travis-ci/travis-ci/issues/1066, if we want
-# the build to stop on pytype failure, we have to use one large command.
-# We pass the -f option to run_tests so that the script aborts at the first
-# failure and gives a less cluttered output.
-script: |
-  pytype\
-    pytype/compat.py pytype/debug.py pytype/utils.py pytype/pyc\
-    --exclude pytype/pyc/*_test.py &&
-  python build_scripts/run_tests.py -f
+script: python build_scripts/travis_script.py
 
 notifications:
   email:
