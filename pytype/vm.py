@@ -178,6 +178,12 @@ class VirtualMachine(object):
     if not op:
       # If we don't have a current opcode, don't emit a trace.
       return
+
+    # Hack: LOAD_ATTR for @property methods generates an extra opcode trace for
+    # the implicit function call, which we do not want.
+    if op.name == "LOAD_ATTR" and not isinstance(val, tuple):
+      return
+
     if isinstance(val, tuple):
       data = [getattr(v, "data", None) for v in val]
     else:
@@ -530,6 +536,7 @@ class VirtualMachine(object):
           # ABCMeta, we have to mark concrete classes now and check for
           # abstract methods at postprocessing time.
           self.concrete_classes.append((val, self.simple_stack()))
+    self.trace_opcode(None, name, var)
     return var
 
   def _make_function(self, name, node, code, globs, defaults, kw_defaults,
