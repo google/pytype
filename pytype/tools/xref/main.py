@@ -11,22 +11,9 @@ from pytype import config
 from pytype import utils
 from pytype.pytd.parse import node
 
+from pytype.tools.xref import debug
 from pytype.tools.xref import indexer
 from pytype.tools.xref import output
-
-
-def debug_output(index):
-  """Display output in human-readable format."""
-
-  def separator():
-    print("\n--------------------\n")
-
-  output.show_defs(index)
-  separator()
-  output.show_refs(index)
-  separator()
-  output.show_calls(index)
-  separator()
 
 
 def main():
@@ -42,7 +29,10 @@ def main():
     signal.alarm(options.timeout)
 
   ix = indexer.process_file(options)
-  output.output_kythe_graph(ix)
+  if options.debug:
+    debug.show_index(ix)
+  else:
+    output.output_kythe_graph(ix)
 
 
 if __name__ == "__main__":

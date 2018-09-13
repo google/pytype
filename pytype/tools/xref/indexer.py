@@ -459,10 +459,13 @@ class ScopedVisitor(object):
   @property
   def current_env(self):
     current_scope = self.scope_id()
-    return self.envs.get(current_scope, None)
+    return self.envs[current_scope]
 
   def add_scope(self, node, is_class=False):
-    parent = self.current_env
+    if self.stack:
+      parent = self.current_env
+    else:
+      parent = None
     self.stack.append(node)
     new_scope = self.scope_id()
     new_env = Env(scope=new_scope, parent=parent,
@@ -576,6 +579,22 @@ class IndexVisitor(ScopedVisitor):
     self.refs.append(ref)
     return ref
 
+  def add_closure_ref(self, node, **kwargs):
+    """Look for node.name up the chain of scopes."""
+    name = get_name(node)
+    env, _ = self.current_env.lookup(name)
+    if env:
+      kwargs.update({"scope": env.scope})
+    else:
+      # This should never happen! If python has generated a LOAD_DEREF bytecode
+      # then we do have the name defined in a parent scope. However, in the
+      # interests of not crashing the indexer, fall back to the current scope.
+      # TODO(mdemello): We need error logs.
+      pass
+    ref = self.make_ref(node, **kwargs)
+    self.refs.append(ref)
+    return ref
+
   def add_global_ref(self, node, **kwargs):
     kwargs.update({"scope": "module"})
     return self.add_local_ref(node, **kwargs)
@@ -626,6 +645,11 @@ class IndexVisitor(ScopedVisitor):
             ref = self.add_local_ref(node, name=symbol, data=data)
             self.typemap[ref.id] = data
             break
+          elif op in ["LOAD_DEREF"]:
+            ref = self.add_closure_ref(node, name=symbol, data=data)
+            self.typemap[ref.id] = data
+            break
+
     elif isinstance(node.ctx, ast.Store):
       ops = self.traces[node.lineno]
       for op, symbol, data in ops:
@@ -634,7 +658,7 @@ class IndexVisitor(ScopedVisitor):
             defn = self.add_global_def(node, name=symbol)
             self.typemap[defn.id] = data
             break
-          elif op in ["STORE_FAST", "STORE_NAME"]:
+          elif op in ["STORE_FAST", "STORE_NAME", "STORE_DEREF"]:
             defn = self.add_local_def(node, name=symbol)
             self.typemap[defn.id] = data
             break
@@ -746,6 +770,7 @@ class Indexer(object):
     self.typemap = None
     self.calls = None
     self.kythe = None
+    self._links = []  # for debugging purposes
 
   def index(self, code_ast):
     """Index an AST corresponding to self.source."""
@@ -782,6 +807,7 @@ class Indexer(object):
     """
 
     links = self._lookup_refs()
+    self._links = links
     self._process_deflocs()
     self._process_links(links)
     self._process_calls(links)

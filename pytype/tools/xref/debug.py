@@ -1,4 +1,4 @@
-"""Debug utils for working with the AST."""
+"""Debug utils for working with the indexer and the AST."""
 
 from __future__ import print_function
 
@@ -6,8 +6,74 @@ from __future__ import print_function
 # We never care about protected access when writing debug code!
 
 
+def format_loc(location):
+  # location is (line, column)
+  fmt = "%d:%d" % location
+  return fmt.rjust(8)
+
+
+def format_def_with_location(defn, loc):
+  return ("%s  | %s %s" % (
+      format_loc(loc), defn.typ.ljust(15), defn.format()))
+
+
+def format_ref(ref):
+  return ("%s  | %s  %s.%s" % (
+      format_loc(ref.location), ref.typ.ljust(15), ref.scope, ref.name))
+
+
+def format_call(call):
+  return ("%s  | %s  %s" % (
+      format_loc(call.location), "Call".ljust(15), call.func))
+
+
+def typename(node):
+  return node.__class__.__name__
+
+
+def show_defs(index):
+  for def_id in index.locs:
+    defn = index.defs[def_id]
+    for loc in index.locs[def_id]:
+      print(format_def_with_location(defn, loc.location))
+      if defn.doc:
+        print(" "*28 + str(defn.doc))
+
+
+def show_refs(index):
+  for ref, defn in index._links:
+    print(format_ref(ref))
+    if defn:
+      print("          :  ", defn.format())
+    else:
+      print("          :   None")
+    continue
+
+
+def show_calls(index):
+  for call in index.calls:
+    print(format_call(call))
+
+
+def show_index(index):
+  """Display output in human-readable format."""
+
+  def separator():
+    print("\n--------------------\n")
+
+  show_defs(index)
+  separator()
+  show_refs(index)
+  separator()
+  show_calls(index)
+  separator()
+
+
+# AST display
+
+
 def dump(node, ast, annotate_fields=True,
-         include_attributes=True, indent='  '):
+         include_attributes=True, indent="  "):
   """Return a formatted dump of the tree in *node*.
 
   This is mainly useful for debugging purposes.  The returned string will show
@@ -37,24 +103,24 @@ def dump(node, ast, annotate_fields=True,
       if include_attributes and node._attributes:
         fields.extend([(a, _format(getattr(node, a), level))
                        for a in node._attributes])
-      return ''.join([
+      return "".join([
           node.__class__.__name__,
-          '(',
-          ', '.join(('%s=%s' % field for field in fields)
+          "(",
+          ", ".join(("%s=%s" % field for field in fields)
                     if annotate_fields else
                     (b for a, b in fields)),
-          ')'])
+          ")"])
     elif isinstance(node, list):
-      lines = ['[']
-      lines.extend((indent * (level + 2) + _format(x, level + 2) + ','
+      lines = ["["]
+      lines.extend((indent * (level + 2) + _format(x, level + 2) + ","
                     for x in node))
       if len(lines) > 1:
-        lines.append(indent * (level + 1) + ']')
+        lines.append(indent * (level + 1) + "]")
       else:
-        lines[-1] += ']'
-      return '\n'.join(lines)
+        lines[-1] += "]"
+      return "\n".join(lines)
     return repr(node)
 
   if not isinstance(node, ast.AST):
-    raise TypeError('expected AST, got %r' % node.__class__.__name__)
+    raise TypeError("expected AST, got %r" % node.__class__.__name__)
   return _format(node)
