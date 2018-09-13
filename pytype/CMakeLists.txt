@@ -256,6 +256,7 @@ py_library(
       analyze_project
     SRCS
       tools/analyze_project/config.py
+      tools/analyze_project/environment.py
       tools/analyze_project/parse_args.py
       tools/analyze_project/pytype_runner.py
     DEPS
