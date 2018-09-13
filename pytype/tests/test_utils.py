@@ -16,6 +16,7 @@ class FakeOpcode(object):
   def __init__(self, filename, line, methodname):
     self.code = FakeCode(filename, methodname)
     self.line = line
+    self.name = "FAKE_OPCODE"
 
   def to_stack(self):
     return [frame_state.SimpleFrame(self)]
