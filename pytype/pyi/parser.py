@@ -741,6 +741,10 @@ class _Parser(object):
   def _is_any(self, t):
     return isinstance(t, pytd.AnythingType) or t == pytd.NamedType("typing.Any")
 
+  def _is_parameterized_protocol(self, t):
+    return (isinstance(t, pytd.GenericType) and
+            t.base_type.name == "typing.Protocol")
+
   def _parameterized_type(self, base_type, parameters):
     """Return a parameterized type."""
     if self._is_any(base_type):
@@ -956,7 +960,13 @@ class _Parser(object):
     parents = []
     metaclass = None
     for i, p in enumerate(parent_args):
-      if isinstance(p, pytd.Type):
+      if self._is_parameterized_protocol(p):
+        # From PEP 544: "`Protocol[T, S, ...]` is allowed as a shorthand for
+        # `Protocol, Generic[T, S, ...]`."
+        # https://www.python.org/dev/peps/pep-0544/#generic-protocols
+        parents.append(p.base_type)
+        parents.append(p.Replace(base_type=pytd.NamedType("typing.Generic")))
+      elif isinstance(p, pytd.Type):
         parents.append(p)
       else:
         keyword, value = p

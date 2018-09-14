@@ -3,6 +3,8 @@
 Based on PEP 544 https://www.python.org/dev/peps/pep-0544/.
 """
 
+
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -22,6 +24,17 @@ class ProtocolTest(test_base.TargetIndependentTest):
         def __iter__(self) -> Any: ...
       v = ...  # type: list
     """)
+
+  def test_generic(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Generic, Protocol, TypeVar
+        T = TypeVar("T")
+        class Foo(Protocol[T]): ...
+      """)
+      self.Check("""
+        import foo
+      """, pythonpath=[d.path])
 
 
 test_base.main(globals(), __name__ == "__main__")
