@@ -114,7 +114,8 @@ class DatatypesTest(unittest.TestCase):
     d.add_alias("alias", "name")
     d["name"] = "hello"
     d["name2"] = "world"
-    self.assertRaises(AssertionError, lambda: d.add_alias("name2", "name"))
+    self.assertRaises(datatypes.AliasingDictConflictError,
+                      lambda: d.add_alias("name2", "name"))
     d.add_alias("alias", "name")
 
   def testAliasingDictTransitive(self):
