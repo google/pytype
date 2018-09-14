@@ -910,6 +910,12 @@ class Indexer(object):
     end = start + length
     return (start, end)
 
+  def get_ref_bounds(self, ref):
+    if ref.typ == "Attribute":
+      return self._get_attr_bounds(ref)
+    else:
+      return self.get_anchor_bounds(ref.location, len(ref.name))
+
   def _process_links(self, links):
     """Generate kythe edges for references."""
 
@@ -917,10 +923,7 @@ class Indexer(object):
       if not isinstance(defn, Definition):
         # TODO(mdemello): Fixes needed for chained method calls.
         continue
-      if ref.typ == "Attribute":
-        start, end = self._get_attr_bounds(ref)
-      else:
-        start, end = self.get_anchor_bounds(ref.location, len(ref.name))
+      start, end = self.get_ref_bounds(ref)
       vname = self.kythe.add_anchor(start, end)
       self.kythe.add_edge(
           source=vname,
@@ -943,17 +946,19 @@ class Indexer(object):
 
     for call in self.calls:
       call_links = link_map[call.location]
-      defn = None
+      call_ref = None
+      call_defn = None
       for ref, d in call_links:
         if ref.name == call.name:
-          defn = d
+          call_ref = ref
+          call_defn = d
           break
-      if defn:
-        start, end = self.get_anchor_bounds(call.location, len(call.name))
+      if call_defn:
+        start, end = self.get_ref_bounds(call_ref)
         anchor_vname = self.kythe.anchor_vname(start, end)
         self.kythe.add_edge(
             source=anchor_vname,
-            target=self.kythe.vname(defn.to_signature()),
+            target=self.kythe.vname(call_defn.to_signature()),
             edge_name="ref/call")
 
   def _lookup_remote_symbol(self, ref, defn):
