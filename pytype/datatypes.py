@@ -180,11 +180,14 @@ class AliasingDict(DictTemplate):
     if new_name != existing_name:
       raise AliasingDictConflictError(existing_name)
     if super(AliasingDict, self).__contains__(alias):
-      # This alias had a value, so move the value to the name that the alias
-      # now points at.
-      assert new_name not in self
-      self[new_name] = self[alias]
-      del self[alias]
+      if new_name in self:
+        # The alias and the name it now points at both have values; we can't
+        # reconcile the two.
+        raise AliasingDictConflictError(new_name)
+      else:
+        # Move the alias's value to the name that the alias now points at.
+        self[new_name] = self[alias]
+        del self[alias]
     self._alias_map[alias] = new_name
 
   def __contains__(self, name):
