@@ -117,21 +117,6 @@ def get_opcodes(traces, lineno, op_list):
   return [x for x in traces[lineno] if x[0] in op_list]
 
 
-def get_docstring(node):
-  """If the first element in node.body is a string, return it."""
-  # This should only be called on ClassDef and FunctionDef
-  assert isinstance(node, (ast.ClassDef, ast.FunctionDef))
-  if (node.body and
-      isinstance(node.body[0], ast.Expr) and
-      isinstance(node.body[0].value, ast.Str)):
-    doc = node.body[0].value.s
-    if isinstance(doc, bytes):
-      # In target 2.7 mode we get docstrings as bytes.
-      doc = doc.decode("utf-8")
-    return doc
-  return None
-
-
 def make_id(data):
   """Return a string id for a piece of data."""
   if isinstance(data, (abstract.PyTDClass, abstract.PyTDFunction)):
@@ -247,6 +232,29 @@ class Dummy(object):
     pass
 
 
+class DocString(collections.namedtuple(
+    "docstring", ["text", "location", "length"])):
+  """Store the text and location of a docstring."""
+
+  @classmethod
+  def from_node(cls, node):
+    """If the first element in node.body is a string, create a docstring."""
+
+    # This should only be called on ClassDef and FunctionDef
+    assert isinstance(node, (ast.ClassDef, ast.FunctionDef))
+    if (node.body and
+        isinstance(node.body[0], ast.Expr) and
+        isinstance(node.body[0].value, ast.Str)):
+      doc_node = node.body[0]
+      doc = doc_node.value.s
+      length = len(doc)  # we want to preserve the byte length
+      if isinstance(doc, bytes):
+        # In target 2.7 mode we get docstrings as bytes.
+        doc = doc.decode("utf-8")
+      return cls(doc, get_location(doc_node), length)
+    return None
+
+
 class Definition(collections.namedtuple(
     "defn", ["name", "typ", "scope", "target", "doc"]), Dummy):
   """A symbol definition.
@@ -268,6 +276,10 @@ class Definition(collections.namedtuple(
 
   def to_signature(self):
     return self.scope + "." + self.name
+
+  def doc_signature(self):
+    """Signature for the definition's docstring."""
+    return self.to_signature() + ".__doc__"
 
   def node_kind(self):
     # TODO(mdemello): Add more node types.
@@ -613,7 +625,7 @@ class IndexVisitor(ScopedVisitor):
       self.envs[self.scope_id()].setattr(node.attr, defn)
 
   def enter_ClassDef(self, node):
-    defn = self.add_local_def(node, doc=get_docstring(node))
+    defn = self.add_local_def(node, doc=DocString.from_node(node))
     # TODO(mdemello): For decorated classes, the node's lineno starts at the
     # first decorator, and therefore does not match the opcode's lineno.
     # Likewise, when a class definition spans multiple lines, the AST node
@@ -627,7 +639,7 @@ class IndexVisitor(ScopedVisitor):
     super(IndexVisitor, self).enter_ClassDef(node)
 
   def enter_FunctionDef(self, node):
-    fn_def = self.add_local_def(node, doc=get_docstring(node))
+    fn_def = self.add_local_def(node, doc=DocString.from_node(node))
     env = self.add_scope(node)
     params = [self.add_local_def(v) for v in node.args.args]
     for i, param in enumerate(params):
@@ -815,6 +827,14 @@ class Indexer(object):
     end = start + len(defn.name)
     return (start, end)
 
+  def get_doc_offsets(self, doc):
+    """Get the byte offsets for a docstring."""
+
+    line, col = doc.location
+    start = self.source.get_offset(line, col)
+    end = start + doc.length
+    return (start, end)
+
   def finalize(self):
     """Postprocess the information gathered by the tree visitor.
 
@@ -846,6 +866,29 @@ class Indexer(object):
             source=anchor_vname,
             target=defn_vname,
             edge_name="defines/binding")
+
+        # Emit a docstring if we have one.
+        doc = defn.doc
+        if doc:
+          doc_vname = self.kythe.vname(defn.doc_signature())
+          start, end = self.get_doc_offsets(defn.doc)
+          anchor_vname = self.kythe.add_anchor(start, end)
+          self.kythe.add_fact(
+              source=doc_vname,
+              fact_name="node/kind",
+              fact_value="doc")
+          self.kythe.add_fact(
+              source=doc_vname,
+              fact_name="text",
+              fact_value=doc.text)
+          self.kythe.add_edge(
+              source=anchor_vname,
+              target=doc_vname,
+              edge_name="defines")
+          self.kythe.add_edge(
+              source=doc_vname,
+              target=defn_vname,
+              edge_name="documents")
 
   def _get_attr_bounds(self, ref):
     """Calculate the anchor bounds for an attr access."""
