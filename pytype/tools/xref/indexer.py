@@ -121,12 +121,12 @@ def make_id(data):
   """Return a string id for a piece of data."""
   if isinstance(data, (abstract.PyTDClass, abstract.PyTDFunction)):
     if data.module == "__builtin__":
-      return "<%s>" % data.name
+      return "__builtin__/%s" % data.name
     else:
-      return "%s/module::%s" % (data.module, data.name)
+      return "%s/module.%s" % (data.module, data.name)
   elif isinstance(data, (abstract.InterpreterClass,
                          abstract.InterpreterFunction)):
-    return "module::%s" % data.name
+    return "module.%s" % data.name
   else:
     return str(data)
 
@@ -225,6 +225,15 @@ class PytypeValue(object):
     return self.module + "." + self.name
 
 
+class Module(object):
+
+  def __init__(self, name):
+    self.name = name
+
+  def attr(self, attr_name):
+    return Remote(self.name, attr_name)
+
+
 class Dummy(object):
   """Work around a python3 issue with calling super with kwargs."""
 
@@ -275,7 +284,7 @@ class Definition(collections.namedtuple(
     return self.id
 
   def to_signature(self):
-    return self.scope + "." + self.name
+    return self.id
 
   def doc_signature(self):
     """Signature for the definition's docstring."""
@@ -289,6 +298,23 @@ class Definition(collections.namedtuple(
       return "function"
     else:
       return "variable"
+
+
+class Remote(collections.namedtuple("remote", ["module", "name"]), Dummy):
+  """A symbol from another module."""
+
+  def __init__(self, module, name):
+    super(Remote, self).__init__(module, name)
+    self.id = self.module + "/module." + self.name
+
+  def to_signature(self):
+    return self.id
+
+  def attr(self, attr_name):
+    return Remote(self.module, self.name + "." + attr_name)
+
+  def format(self):
+    return self.id
 
 
 class DefLocation(collections.namedtuple("defloc", ["def_id", "location"])):
@@ -920,7 +946,7 @@ class Indexer(object):
     """Generate kythe edges for references."""
 
     for ref, defn in links:
-      if not isinstance(defn, Definition):
+      if not isinstance(defn, (Definition, Remote, Module)):
         # TODO(mdemello): Fixes needed for chained method calls.
         continue
       start, end = self.get_ref_bounds(ref)
@@ -974,16 +1000,10 @@ class Indexer(object):
       remote = defn.name
     else:
       return None
-    kw = defn._asdict()
-    del kw["scope"]
-    del kw["name"]
-    scope = "%s/%s" % (remote, defn.scope)
     name = ref.name
     if name.startswith(remote):
       name = name[(len(remote) + 1):]
-    # pytype: disable=missing-parameter
-    return Definition(scope=scope, name=name, **kw)
-    # pytype: enable=missing-parameter
+    return Remote(module=remote, name=name)
 
   def _lookup_class_attr(self, name, attr):
     """Look up a class attribute in the environment."""
@@ -997,10 +1017,14 @@ class Indexer(object):
     return defn
 
   def _get_attribute_class(self, obj):
-    if isinstance(obj, abstract.InterpreterClass):
-      return self.classmap.get(obj)
-    elif isinstance(obj, abstract.Instance):
+    if isinstance(obj, abstract.Module):
+      return Module(obj.name)
+    if isinstance(obj, abstract.Instance):
       return self._get_attribute_class(obj.cls)
+    elif isinstance(obj, abstract.InterpreterClass):
+      return self.classmap.get(obj)
+    elif isinstance(obj, abstract.PyTDClass):
+      return Remote(obj.module, obj.name)
     else:
       return None
 
@@ -1012,15 +1036,20 @@ class Indexer(object):
     for l in lhs:
       cls = self._get_attribute_class(l)
       if cls:
-        env = self.envs[cls.id]
-        _, attr_value = env.lookup(attr_name)
-        if not attr_value and isinstance(l, abstract.Instance):
-          try:
-            attr_value = env.getattr(attr_name)
-          except AttrError:
-            # TODO(mdemello): Remove this when we fix MRO lookup
-            continue
-        links.append((r, attr_value))
+        if isinstance(cls, Definition):
+          env = self.envs[cls.id]
+          _, attr_value = env.lookup(attr_name)
+          if not attr_value and isinstance(l, abstract.Instance):
+            try:
+              attr_value = env.getattr(attr_name)
+            except AttrError:
+              # TODO(mdemello): Remove this when we fix MRO lookup
+              continue
+          links.append((r, attr_value))
+        elif isinstance(cls, Remote):
+          links.append((r, cls.attr(attr_name)))
+        elif isinstance(cls, Module):
+          links.append((r, cls.attr(attr_name)))
     return links
 
   def _lookup_refs(self):
