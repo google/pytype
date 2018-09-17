@@ -2313,12 +2313,12 @@ class VirtualMachine(object):
       state, name_var = state.pop()
       name = abstract.get_atomic_python_constant(name_var)
     state, (closure, code) = state.popn(2)
-    # TODO(mdemello): Handle kw_defaults and annotations (Python 3.5).
-    state, defaults, kw_defaults, _, _, _ = (
+    state, defaults, kw_defaults, annot, late_annot, _ = (
         self._get_extra_function_args(state, op.arg))
     globs = self.get_globals_dict()
     fn = self._make_function(name, state.node, code, globs, defaults,
-                             kw_defaults, closure=closure)
+                             kw_defaults, annotations=annot,
+                             late_annotations=late_annot, closure=closure)
     self.trace_functiondef(fn)
     return state.push(fn)
 
