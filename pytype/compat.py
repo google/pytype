@@ -1,9 +1,50 @@
+# python2 python3
 """Python 2 and 3 compatibility functions."""
 
+import glob
+import os
 import sys
 import types
 
 import six
+
+
+def recursive_glob(path):
+  """Version-agnostic recursive glob.
+
+  Implements the Python 3.5+ glob module's recursive glob for Python 2.7+.
+  Recursive glob emulates the bash shell's globstar feature, which is enabled
+  with `shopt -s globstar`.
+
+  Args:
+    path: A path that may contain `**` and `*` ("magic").
+  Returns:
+    The expanded list of paths with magic removed.
+  """
+  if "*" not in path:
+    # Glob isn't needed.
+    return [path]
+  elif "**" not in path:
+    # Recursive glob isn't needed.
+    return glob.glob(path)
+  elif sys.version_info >= (3, 5):
+    # Recursive glob is supported.
+    # TODO(b/110380447): Remove the pytype disable.
+    # Pylint doesn't respect the version check.
+    # pytype: disable=wrong-keyword-args
+    # pylint: disable=unexpected-keyword-arg
+    return glob.glob(path, recursive=True)
+    # pylint: enable=unexpected-keyword-arg
+    # pytype: enable=wrong-keyword-args
+  # Simulate recursive glob with os.walk.
+  left, right = path.split("**", 1)
+  if not left:
+    left = "."
+  right = right.lstrip(os.sep)
+  paths = []
+  for d, _, _ in os.walk(left):
+    paths += recursive_glob(os.path.join(d, right))
+  return paths
 
 
 def int_array_to_bytes(int_array):
@@ -57,16 +98,22 @@ class IteratorType(object):
 # Native types that we test pyval against. six does not quite do what we want
 # here.
 
+# Because pylint doesn't like type aliases (b/62879736):
+# pylint: disable=invalid-name
 NoneType = type(None)
-EllipsisType = type(Ellipsis)  # pylint: disable=invalid-name
+EllipsisType = type(Ellipsis)
 
 if sys.version_info[0] == 2:
+  # Because pylint doesn't respect version checks:
+  # pylint: disable=undefined-variable
   BytesType = BytesPy3
   UnicodeType = unicode
   LongType = long
   OldStyleClassType = types.ClassType
+  # pylint: enable=undefined-variable
 elif sys.version_info[0] == 3:
   BytesType = bytes
   UnicodeType = UnicodePy2
   LongType = int
   OldStyleClassType = OldStyleClassPy3
+# pylint: enable=invalid-name

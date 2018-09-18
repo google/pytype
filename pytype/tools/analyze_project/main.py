@@ -50,9 +50,6 @@ def main():
     config.generate_sample_config_or_die(args.generate_config)
     sys.exit(0)
 
-  # Empty posargs defaults to a list, but an empty nargs flag defaults to None.
-  args.inputs = (file_utils.expand_source_files(args.inputs) -
-                 file_utils.expand_source_files(args.exclude or []))
   conf = parser.config_from_defaults()
   # File options overwrite defaults.
   file_config = config.read_config_file_or_die(args.config)
@@ -60,6 +57,8 @@ def main():
   conf.populate_from(file_config)
   # Command line arguments overwrite file options.
   conf.populate_from(args)
+  args.inputs = (
+      file_utils.expand_source_files(args.inputs).difference(conf.exclude))
   if not conf.pythonpath:
     conf.pythonpath = environment.compute_pythonpath(args.inputs)
   logging.info('\n  '.join(['Configuration:'] + str(conf).split('\n')))
