@@ -96,12 +96,10 @@ def make_parser():
   """
 
   parser = argparse.ArgumentParser(usage='%(prog)s [options] input [input ...]')
+  parser.register('action', 'flatten', _FlattenAction)
   parser.add_argument(
       'inputs', metavar='input', type=str, nargs='*',
       help='file or directory to process')
-  parser.add_argument(
-      '--exclude', dest='exclude', type=str, nargs='*',
-      help='space-separated list of files or directories to exclude')
   modes = parser.add_mutually_exclusive_group()
   modes.add_argument(
       '--tree', dest='tree', action='store_true', default=False,
@@ -116,7 +114,7 @@ def make_parser():
   parser.add_argument(
       '-v', '--verbosity', dest='verbosity', type=int, action='store',
       default=1,
-      help='Set logging level: 0=ERROR, 1 =WARNING (default), 2=INFO.')
+      help='Set logging level: 0=ERROR, 1=WARNING (default), 2=INFO.')
   parser.add_argument(
       '--config', dest='config', type=str, action='store', default='',
       help='Configuration file.')
@@ -126,13 +124,38 @@ def make_parser():
 
   # Adds options from the config file.
   types = config.make_converters()
-  for short_arg, arg, dest in [('-V', '--python-version', 'python_version'),
-                               ('-o', '--output', 'output'),
-                               ('-P', '--pythonpath', 'pythonpath')]:
-    parser.add_argument(short_arg, arg, dest=dest, type=types.get(dest),
-                        action='store', default=config.ITEMS[dest].default,
-                        help=config.ITEMS[dest].comment)
+  # For nargs=*, argparse calls type() on each arg individually, so
+  # _FlattenAction flattens --exclude's list of list of paths as we go along.
+  for option in [('-x', '--exclude', {'nargs': '*', 'action': 'flatten'}),
+                 ('-V', '--python-version'),
+                 ('-o', '--output'),
+                 ('-P', '--pythonpath')]:
+    _add_file_argument(parser, types, *option)
   # Adds options from pytype-single.
   wrapper = ParserWrapper(parser)
   pytype_config.add_basic_options(wrapper)
   return Parser(parser, wrapper.names)
+
+
+class _FlattenAction(argparse.Action):
+  """Flattens a list of lists. Used by --exclude."""
+
+  def __call__(self, parser, namespace, values, option_string=None):
+    items = getattr(namespace, self.dest, None)
+    if items is None:
+      items = []
+      setattr(namespace, self.dest, items)
+    items.extend(sum(values, []))
+
+
+def _add_file_argument(parser, types, short_arg, arg, custom_kwargs=None):
+  """Add a file-configurable option to the parser."""
+  custom_kwargs = custom_kwargs or {}
+  dest = custom_kwargs.get('dest', arg.lstrip('--').replace('-', '_'))
+  kwargs = {'dest': dest,
+            'type': types.get(dest),
+            'action': 'store',
+            'default': config.ITEMS[dest].default,
+            'help': config.ITEMS[dest].comment}
+  kwargs.update(custom_kwargs)  # custom_kwargs takes precedence
+  parser.add_argument(short_arg, arg, **kwargs)

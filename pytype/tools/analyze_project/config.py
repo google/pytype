@@ -28,20 +28,29 @@ ITEMS = {
         'pytype_output', 'pytype_output', 'All pytype output goes here.'),
     'pythonpath': Item(
         '', '/path/to/project:/path/to/project',
-        'Paths to source code directories, separated by %r.' % os.pathsep)
+        'Paths to source code directories, separated by %r.' % os.pathsep),
+    'exclude': Item(
+        '', '**/*_test.py **/test_*.py',
+        'Space-separated list of files or directories to exclude.'),
 }
 
 
 def make_converters(cwd=None):
   """For items that need coaxing into their internal representations."""
   return {
+      'exclude': lambda v: file_utils.expand_globpath(v, cwd),
       'output': lambda v: file_utils.expand_path(v, cwd),
-      'pythonpath': lambda v: file_utils.expand_pythonpath(v, cwd)
+      'pythonpath': lambda v: file_utils.expand_pythonpath(v, cwd),
   }
 
 
 def get_formatters():
   """For items that need special print formatting."""
+  def format_exclude(p):
+    out = []
+    out.append('exclude =')
+    out.extend('    %s' % entry for entry in p.split())
+    return out
   def format_pythonpath(p):
     out = []
     out.append('pythonpath =')
@@ -49,7 +58,7 @@ def get_formatters():
     for entry in p.replace(os.pathsep, os.pathsep + '\n').split('\n'):
       out.append('    %s' % entry)
     return out
-  return {'pythonpath': format_pythonpath}
+  return {'exclude': format_exclude, 'pythonpath': format_pythonpath}
 
 
 def Config(*extra_variables):  # pylint: disable=invalid-name
@@ -64,7 +73,7 @@ def Config(*extra_variables):  # pylint: disable=invalid-name
     copy in the final results in the right order.
     """
 
-    __slots__ = ('pythonpath', 'output', 'python_version') + extra_variables
+    __slots__ = tuple(ITEMS) + extra_variables
 
     def populate_from(self, obj):
       """Populate self from another object's attributes."""
@@ -108,7 +117,8 @@ def generate_sample_config_or_die(filename):
   conf = [
       '# NOTE: All relative paths are relative to the location of this file.',
       '',
-      '[pytype]'
+      '[pytype]',
+      '',
   ]
   formatters = get_formatters()
   # TODO(rechen): Add the pytype-single arguments.

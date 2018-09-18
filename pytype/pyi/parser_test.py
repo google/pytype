@@ -745,6 +745,27 @@ class FunctionTest(_ParserTestBase):
                def foo(x: int,  # type: ignore
                        y: str) -> bool: ...""",
                "def foo(x: int, y: str) -> bool: ...")
+    self.check("""\
+      class Foo:
+          bar: str  # type: ignore
+    """, """\
+      class Foo:
+          bar = ...  # type: str
+    """)
+    self.check("""\
+      class Foo:
+          bar = ...  # type: str  # type: ignore
+    """, """\
+      class Foo:
+          bar = ...  # type: str
+    """)
+    self.check("""\
+      class Foo:
+          bar: str = ...  # type: ignore
+    """, """\
+      class Foo:
+          bar = ...  # type: str
+    """)
 
   def test_decorators(self):
     # These tests are a bit questionable because most of the decorators only
@@ -1066,6 +1087,31 @@ class ClassTest(_ParserTestBase):
           @overload
           def x(self) -> str: ...
       """)
+
+  def test_protocol_parent(self):
+    self.check("""\
+      from typing import Protocol
+
+      class Foo(Protocol):
+          pass
+    """)
+
+  def test_parameterized_protocol_parent(self):
+    self.check("""\
+      from typing import Protocol, TypeVar
+
+      T = TypeVar('T')
+
+      class Foo(Protocol[T]):
+          pass
+    """, """\
+      from typing import Generic, Protocol, TypeVar
+
+      T = TypeVar('T')
+
+      class Foo(Protocol, Generic[T]):
+          pass
+    """)
 
 
 class IfTest(_ParserTestBase):
