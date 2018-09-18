@@ -745,6 +745,27 @@ class FunctionTest(_ParserTestBase):
                def foo(x: int,  # type: ignore
                        y: str) -> bool: ...""",
                "def foo(x: int, y: str) -> bool: ...")
+    self.check("""\
+      class Foo:
+          bar: str  # type: ignore
+    """, """\
+      class Foo:
+          bar = ...  # type: str
+    """)
+    self.check("""\
+      class Foo:
+          bar = ...  # type: str  # type: ignore
+    """, """\
+      class Foo:
+          bar = ...  # type: str
+    """)
+    self.check("""\
+      class Foo:
+          bar: str = ...  # type: ignore
+    """, """\
+      class Foo:
+          bar = ...  # type: str
+    """)
 
   def test_decorators(self):
     # These tests are a bit questionable because most of the decorators only

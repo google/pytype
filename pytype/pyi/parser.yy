@@ -351,15 +351,15 @@ constantdef
       $$ = ctx->Call(kNewConstant, "(NN)", $1, ctx->Value(kAnything));
       CHECK($$, @$);
     }
-  | NAME '=' ELLIPSIS TYPECOMMENT type {
+  | NAME '=' ELLIPSIS TYPECOMMENT type maybe_type_ignore {
       $$ = ctx->Call(kNewConstant, "(NN)", $1, $5);
       CHECK($$, @$);
     }
-  | NAME ':' type {
+  | NAME ':' type maybe_type_ignore {
       $$ = ctx->Call(kNewConstant, "(NN)", $1, $3);
       CHECK($$, @$);
     }
-  | NAME ':' type '=' ELLIPSIS {
+  | NAME ':' type '=' ELLIPSIS maybe_type_ignore {
       $$ = ctx->Call(kNewConstant, "(NN)", $1, $3);
       CHECK($$, @$);
     }
