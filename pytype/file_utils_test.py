@@ -155,5 +155,28 @@ class TestExpandPythonpath(unittest.TestCase):
            os.path.join(os.getcwd(), "c", "d")])
 
 
+class TestExpandGlobpath(unittest.TestCase):
+
+  def test_expand_empty(self):
+    self.assertEqual(file_utils.expand_globpath(""), [])
+
+  def test_expand(self):
+    filenames = ["a.py", "b/c.py"]
+    with file_utils.Tempdir() as d:
+      for f in filenames:
+        d.create_file(f)
+      with file_utils.cd(d.path):
+        self.assertEqual(file_utils.expand_globpath("**/*.py"),
+                         [os.path.realpath(f) for f in filenames])
+
+  def test_expand_with_cwd(self):
+    filenames = ["a.py", "b/c.py"]
+    with file_utils.Tempdir() as d:
+      for f in filenames:
+        d.create_file(f)
+      self.assertEqual(file_utils.expand_globpath("**/*.py", cwd=d.path),
+                       [os.path.join(d.path, f) for f in filenames])
+
+
 if __name__ == "__main__":
   unittest.main()

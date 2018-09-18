@@ -15,6 +15,7 @@ PYTYPE_CFG = """
     .:
     /foo/bar:
     baz/quux
+  exclude = nonexistent.*
 """
 
 RANDOM_CFG = """
@@ -36,6 +37,7 @@ class TestBase(unittest.TestCase):
         u'/foo/bar',
         os.path.join(path, u'baz/quux')
     ])
+    self.assertEqual(conf.exclude, [])
     # output shouldn't be present since we haven't set it.
     self.assertFalse(hasattr(conf, 'output'))
 

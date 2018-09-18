@@ -3,6 +3,7 @@
 import os
 
 from pytype import datatypes
+from pytype import file_utils
 from pytype.tools.analyze_project import parse_args
 import unittest
 
@@ -34,9 +35,20 @@ class TestParser(unittest.TestCase):
     self.assertSequenceEqual(args.inputs, filenames)
 
   def test_parse_exclude(self):
-    exclude = ['--exclude', 'a.py', 'b.py']
-    args = self.parser.parse_args(exclude)
-    self.assertSequenceEqual(args.exclude, ['a.py', 'b.py'])
+    filenames = ['a.py', 'b.py']
+    args = self.parser.parse_args(['--exclude'] + filenames)
+    self.assertSequenceEqual(args.exclude,
+                             [os.path.realpath(f) for f in filenames])
+
+  def test_parse_single_exclude(self):
+    filenames = ['a.py', 'b/c.py']
+    with file_utils.Tempdir() as d:
+      for f in filenames:
+        d.create_file(f)
+      with file_utils.cd(d.path):
+        args = self.parser.parse_args(['--exclude=**/*.py'])
+        self.assertSequenceEqual(args.exclude,
+                                 [os.path.realpath(f) for f in filenames])
 
   def test_verbosity(self):
     self.assertEqual(self.parser.parse_args(['--verbosity', '0']).verbosity, 0)
