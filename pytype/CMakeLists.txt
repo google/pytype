@@ -285,6 +285,15 @@ py_test(
 
 py_test(
   NAME
+    compat_test
+  SRCS
+    compat_test.py
+  DEPS
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
     file_utils_test
   SRCS
     file_utils_test.py

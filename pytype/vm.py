@@ -178,6 +178,12 @@ class VirtualMachine(object):
     if not op:
       # If we don't have a current opcode, don't emit a trace.
       return
+
+    # Hack: LOAD_ATTR for @property methods generates an extra opcode trace for
+    # the implicit function call, which we do not want.
+    if op.name == "LOAD_ATTR" and not isinstance(val, tuple):
+      return
+
     if isinstance(val, tuple):
       data = [getattr(v, "data", None) for v in val]
     else:
@@ -530,6 +536,7 @@ class VirtualMachine(object):
           # ABCMeta, we have to mark concrete classes now and check for
           # abstract methods at postprocessing time.
           self.concrete_classes.append((val, self.simple_stack()))
+    self.trace_opcode(None, name, var)
     return var
 
   def _make_function(self, name, node, code, globs, defaults, kw_defaults,
@@ -2306,12 +2313,12 @@ class VirtualMachine(object):
       state, name_var = state.pop()
       name = abstract.get_atomic_python_constant(name_var)
     state, (closure, code) = state.popn(2)
-    # TODO(mdemello): Handle kw_defaults and annotations (Python 3.5).
-    state, defaults, kw_defaults, _, _, _ = (
+    state, defaults, kw_defaults, annot, late_annot, _ = (
         self._get_extra_function_args(state, op.arg))
     globs = self.get_globals_dict()
     fn = self._make_function(name, state.node, code, globs, defaults,
-                             kw_defaults, closure=closure)
+                             kw_defaults, annotations=annot,
+                             late_annotations=late_annot, closure=closure)
     self.trace_functiondef(fn)
     return state.push(fn)
 

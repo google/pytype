@@ -88,6 +88,16 @@ class TestClosuresPy3(test_base.TargetPython3FeatureTest):
       def f() -> int
     """)
 
+  def test_closure_annotations(self):
+    errors = self.CheckWithErrors("""\
+      def f():
+        a = 1
+        def g(x: int) -> int:
+          a  # makes sure g is a closure
+          return "hello"
+    """)
+    self.assertErrorLogIs(errors, [(5, "bad-return-type", "int.*str")])
+
 
 class TestFunctions(test_base.TargetPython3BasicTest):
   """Tests for functions."""

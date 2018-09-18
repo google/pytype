@@ -30,35 +30,6 @@ class IndexerTest(test_base.TargetIndependentTest):
     deflocs = index.locs[fqname]
     self.assertCountEqual([x.location for x in deflocs], locs)
 
-  def assertAttrs(self, obj, attr_dict):
-    for k, v in attr_dict.items():
-      self.assertEqual(v, getattr(obj, k))
-
-  def test_class_def(self):
-    ix = self.index_code("""\
-        class A(object):
-          pass
-        b = A()
-    """)
-    self.assertDef(ix, "module.A", "A", "ClassDef")
-    self.assertDef(ix, "module.b", "b", "Store")
-    self.assertDefLocs(ix, "module.A", [(1, 0)])
-    self.assertDefLocs(ix, "module.b", [(3, 0)])
-
-  def test_function_def(self):
-    ix = self.index_code("""\
-        def f(x, y):
-          a = 1  # local variable
-    """)
-    self.assertDef(ix, "module.f", "f", "FunctionDef")
-    self.assertDef(ix, "module.f.x", "x", "Param")
-    self.assertDef(ix, "module.f.y", "y", "Param")
-    self.assertDef(ix, "module.f.a", "a", "Store")
-    self.assertDefLocs(ix, "module.f", [(1, 0)])
-    self.assertDefLocs(ix, "module.f.x", [(1, 6)])
-    self.assertDefLocs(ix, "module.f.y", [(1, 9)])
-    self.assertDefLocs(ix, "module.f.a", [(2, 2)])
-
   def test_param_reuse(self):
     ix = self.index_code("""\
         def f(x):
@@ -68,19 +39,6 @@ class IndexerTest(test_base.TargetIndependentTest):
     self.assertDef(ix, "module.f.x", "x", "Param")
     self.assertDefLocs(ix, "module.f", [(1, 0)])
     self.assertDefLocs(ix, "module.f.x", [(1, 6), (2, 2)])
-
-  def test_nested_function(self):
-    ix = self.index_code("""\
-        def f(x):
-          def g(x):  # shadows x
-            x = 1  # should be f:g.x
-    """)
-    self.assertDef(ix, "module.f", "f", "FunctionDef")
-    self.assertDef(ix, "module.f.x", "x", "Param")
-    self.assertDef(ix, "module.f.g", "g", "FunctionDef")
-    self.assertDef(ix, "module.f.g.x", "x", "Param")
-    self.assertDefLocs(ix, "module.f.x", [(1, 6)])
-    self.assertDefLocs(ix, "module.f.g.x", [(2, 8), (3, 4)])
 
   def test_resolved_imports(self):
     # We need all imports to be valid for pytype
@@ -111,22 +69,6 @@ class IndexerTest(test_base.TargetIndependentTest):
       self.assertEqual(ix.modules["module.b"], "a.b")
       self.assertEqual(ix.modules["module.c"], "a.b")
       self.assertEqual(ix.modules["module.r"], "p.q")
-
-  def test_docstrings(self):
-    ix = self.index_code("""\
-        class A():
-          '''Class docstring'''
-          def f(x, y):
-            '''Function docstring'''
-            a = 1  # local variable
-            '''Not a docstring'''
-    """)
-    self.assertDef(ix, "module.A", "A", "ClassDef")
-    self.assertDef(ix, "module.A.f", "f", "FunctionDef")
-    def_A = ix.defs["module.A"]  # pylint: disable=invalid-name
-    def_f = ix.defs["module.A.f"]
-    self.assertEqual(def_A.doc, "Class docstring")
-    self.assertEqual(def_f.doc, "Function docstring")
 
 
 test_base.main(globals(), __name__ == "__main__")

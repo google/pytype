@@ -754,5 +754,24 @@ class PYITest(test_base.TargetIndependentTest):
         def Func(self) -> int: ...
       """)
 
+  def testGenericInheritance(self):
+    with file_utils.Tempdir() as d:
+      # Inspired by typeshed/stdlib/2/UserString.pyi
+      d.create_file("foo.pyi", """
+        from typing import Sequence, MutableSequence, TypeVar
+        TFoo = TypeVar("TFoo", bound=Foo)
+        class Foo(Sequence[Foo]):
+          def __getitem__(self: TFoo, i: int) -> TFoo: ...
+        class Bar(Foo, MutableSequence[Bar]): ...
+      """)
+      ty = self.Infer("""
+        import foo
+        v = foo.Bar()[0]
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        v = ...  # type: foo.Bar
+      """)
+
 
 test_base.main(globals(), __name__ == "__main__")

@@ -1067,6 +1067,31 @@ class ClassTest(_ParserTestBase):
           def x(self) -> str: ...
       """)
 
+  def test_protocol_parent(self):
+    self.check("""\
+      from typing import Protocol
+
+      class Foo(Protocol):
+          pass
+    """)
+
+  def test_parameterized_protocol_parent(self):
+    self.check("""\
+      from typing import Protocol, TypeVar
+
+      T = TypeVar('T')
+
+      class Foo(Protocol[T]):
+          pass
+    """, """\
+      from typing import Generic, Protocol, TypeVar
+
+      T = TypeVar('T')
+
+      class Foo(Protocol, Generic[T]):
+          pass
+    """)
+
 
 class IfTest(_ParserTestBase):
 

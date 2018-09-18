@@ -117,31 +117,16 @@ def get_opcodes(traces, lineno, op_list):
   return [x for x in traces[lineno] if x[0] in op_list]
 
 
-def get_docstring(node):
-  """If the first element in node.body is a string, return it."""
-  # This should only be called on ClassDef and FunctionDef
-  assert isinstance(node, (ast.ClassDef, ast.FunctionDef))
-  if (node.body and
-      isinstance(node.body[0], ast.Expr) and
-      isinstance(node.body[0].value, ast.Str)):
-    doc = node.body[0].value.s
-    if isinstance(doc, bytes):
-      # In target 2.7 mode we get docstrings as bytes.
-      doc = doc.decode("utf-8")
-    return doc
-  return None
-
-
 def make_id(data):
   """Return a string id for a piece of data."""
   if isinstance(data, (abstract.PyTDClass, abstract.PyTDFunction)):
     if data.module == "__builtin__":
-      return "<%s>" % data.name
+      return "__builtin__/%s" % data.name
     else:
-      return "%s/module::%s" % (data.module, data.name)
+      return "%s/module.%s" % (data.module, data.name)
   elif isinstance(data, (abstract.InterpreterClass,
                          abstract.InterpreterFunction)):
-    return "module::%s" % data.name
+    return "module.%s" % data.name
   else:
     return str(data)
 
@@ -181,10 +166,14 @@ class SourceFile(object):
       out[op.line].append((op.name, symbol, data))
     return out
 
+  def line(self, n):
+    """Index source lines from 1."""
+    return self.lines[n - 1]
+
   def display_traces(self):
     """Debug printing of source + traces per line."""
     for line in sorted(self.traces.keys()):
-      print("%d %s" % (line, self.lines[line - 1]))
+      print("%d %s" % (line, self.line(line)))
       for name, symbol, data in self.traces[line]:
         print("  %s : %s <- %s %s" % (
             name, symbol, data, data and [typename(x) for x in data]))
@@ -194,11 +183,11 @@ class SourceFile(object):
 class PytypeValue(object):
   """Stores a value inferred by pytype."""
 
-  def __init__(self, module, name, typ, full_id):
+  def __init__(self, module, name, typ):
     self.module = module
     self.name = name
     self.typ = typ
-    self.id = full_id
+    self.id = self.module + "." + self.name
 
   def format(self):
     return "%s { %s.%s : %s }" % (
@@ -212,17 +201,16 @@ class PytypeValue(object):
       return None
 
     if isinstance(data, abstract.PyTDClass):
-      return cls(data.module, data.name, "Class", make_id(data))
+      return cls(data.module, data.name, "Class")
     elif isinstance(data, abstract.InterpreterClass):
-      return cls("module", data.name, "Class", make_id(data))
+      return cls("module", data.name, "Class")
     elif isinstance(data, abstract.BoundFunction):
-      # TODO(mdemello): Handle multiple callcls values.
-      data_cls = typename(data._callcls.data[0])  # pylint: disable=protected-access
-      return cls("module", data_cls + "." + data.name, "BoundFunction",
-                 make_id(data))
+      # TODO(mdemello): Handle multiple class bindings.
+      data_cls = typename(data._callself.data[0])  # pylint: disable=protected-access
+      return cls("module", data_cls + "." + data.name, "BoundFunction")
     else:
       # TODO(mdemello): We need to infer the module here.
-      return cls("module", str(data), typename(data), make_id(data))
+      return cls("module", str(data), typename(data))
 
   @classmethod
   def from_data(cls, data):
@@ -237,11 +225,43 @@ class PytypeValue(object):
     return self.module + "." + self.name
 
 
+class Module(object):
+
+  def __init__(self, name):
+    self.name = name
+
+  def attr(self, attr_name):
+    return Remote(self.name, attr_name)
+
+
 class Dummy(object):
   """Work around a python3 issue with calling super with kwargs."""
 
   def __init__(self, *args, **kwargs):
     pass
+
+
+class DocString(collections.namedtuple(
+    "docstring", ["text", "location", "length"])):
+  """Store the text and location of a docstring."""
+
+  @classmethod
+  def from_node(cls, node):
+    """If the first element in node.body is a string, create a docstring."""
+
+    # This should only be called on ClassDef and FunctionDef
+    assert isinstance(node, (ast.ClassDef, ast.FunctionDef))
+    if (node.body and
+        isinstance(node.body[0], ast.Expr) and
+        isinstance(node.body[0].value, ast.Str)):
+      doc_node = node.body[0]
+      doc = doc_node.value.s
+      length = len(doc)  # we want to preserve the byte length
+      if isinstance(doc, bytes):
+        # In target 2.7 mode we get docstrings as bytes.
+        doc = doc.decode("utf-8")
+      return cls(doc, get_location(doc_node), length)
+    return None
 
 
 class Definition(collections.namedtuple(
@@ -264,7 +284,11 @@ class Definition(collections.namedtuple(
     return self.id
 
   def to_signature(self):
-    return self.scope + "." + self.name
+    return self.id
+
+  def doc_signature(self):
+    """Signature for the definition's docstring."""
+    return self.to_signature() + ".__doc__"
 
   def node_kind(self):
     # TODO(mdemello): Add more node types.
@@ -274,6 +298,23 @@ class Definition(collections.namedtuple(
       return "function"
     else:
       return "variable"
+
+
+class Remote(collections.namedtuple("remote", ["module", "name"]), Dummy):
+  """A symbol from another module."""
+
+  def __init__(self, module, name):
+    super(Remote, self).__init__(module, name)
+    self.id = self.module + "/module." + self.name
+
+  def to_signature(self):
+    return self.id
+
+  def attr(self, attr_name):
+    return Remote(self.module, self.name + "." + attr_name)
+
+  def format(self):
+    return self.id
 
 
 class DefLocation(collections.namedtuple("defloc", ["def_id", "location"])):
@@ -367,9 +408,9 @@ class Env(object):
         node.value.id == self.self_var.name)
 
   def getattr(self, attr):
-    if self.attrs:
+    if self.attrs is not None and attr in self.attrs:
       return self.attrs[attr]
-    elif self.cls:
+    elif self.cls and self.cls.scope != self.scope:
       return self.cls.getattr(attr)
     else:
       raise AttrError("called getattr in non-class context")
@@ -380,7 +421,6 @@ class Env(object):
     elif self.cls is not None:
       return self.cls.setattr(attr, value)
     else:
-      print("setattr: ", attr, value)
       raise AttrError("called setattr in non-class context")
 
 
@@ -522,6 +562,7 @@ class IndexVisitor(ScopedVisitor):
     self.source = source
     self.traces = source.traces
     self.typemap = {}
+    self.classmap = {}
     self.calls = []
     self.kythe = kythe.Kythe(source)
 
@@ -610,11 +651,21 @@ class IndexVisitor(ScopedVisitor):
       self.envs[self.scope_id()].setattr(node.attr, defn)
 
   def enter_ClassDef(self, node):
-    self.add_local_def(node, doc=get_docstring(node))
+    defn = self.add_local_def(node, doc=DocString.from_node(node))
+    # TODO(mdemello): For decorated classes, the node's lineno starts at the
+    # first decorator, and therefore does not match the opcode's lineno.
+    # Likewise, when a class definition spans multiple lines, the AST node
+    # starts on the first line but the BUILD_CLASS opcode starts on the last
+    # one. Fix when we incorporate asttokens.
+    ops = get_opcodes(self.traces, node.lineno, ["BUILD_CLASS"])
+    class_name = get_name(node)
+    for _, symbol, data in ops:
+      if symbol == class_name:
+        self.classmap[data[0]] = defn
     super(IndexVisitor, self).enter_ClassDef(node)
 
   def enter_FunctionDef(self, node):
-    fn_def = self.add_local_def(node, doc=get_docstring(node))
+    fn_def = self.add_local_def(node, doc=DocString.from_node(node))
     env = self.add_scope(node)
     params = [self.add_local_def(v) for v in node.args.args]
     for i, param in enumerate(params):
@@ -702,8 +753,9 @@ class IndexVisitor(ScopedVisitor):
             target=node.value,
             name=node.value + "." + symbol,
             data=data)
-        _, rhs = data
-        self.typemap[ref.id] = rhs
+        if data and len(data) == 2:
+          _, rhs = data
+          self.typemap[ref.id] = rhs
         break
       elif symbol == node.attr and op in ["STORE_ATTR"]:
         self.add_local_def(node)
@@ -768,6 +820,7 @@ class Indexer(object):
     self.envs = None
     self.modules = None
     self.typemap = None
+    self.classmap = None
     self.calls = None
     self.kythe = None
     self._links = []  # for debugging purposes
@@ -783,6 +836,7 @@ class Indexer(object):
     self.envs = v.envs
     self.modules = v.modules
     self.typemap = v.typemap
+    self.classmap = v.classmap
     self.calls = v.calls
     self.kythe = v.kythe
 
@@ -797,6 +851,14 @@ class Indexer(object):
       start += DEF_OFFSETS[typ]
     # TODO(mdemello): Attributes need to scan the line for the attribute name.
     end = start + len(defn.name)
+    return (start, end)
+
+  def get_doc_offsets(self, doc):
+    """Get the byte offsets for a docstring."""
+
+    line, col = doc.location
+    start = self.source.get_offset(line, col)
+    end = start + doc.length
     return (start, end)
 
   def finalize(self):
@@ -831,6 +893,41 @@ class Indexer(object):
             target=defn_vname,
             edge_name="defines/binding")
 
+        # Emit a docstring if we have one.
+        doc = defn.doc
+        if doc:
+          doc_vname = self.kythe.vname(defn.doc_signature())
+          start, end = self.get_doc_offsets(defn.doc)
+          anchor_vname = self.kythe.add_anchor(start, end)
+          self.kythe.add_fact(
+              source=doc_vname,
+              fact_name="node/kind",
+              fact_value="doc")
+          self.kythe.add_fact(
+              source=doc_vname,
+              fact_name="text",
+              fact_value=doc.text)
+          self.kythe.add_edge(
+              source=anchor_vname,
+              target=doc_vname,
+              edge_name="defines")
+          self.kythe.add_edge(
+              source=doc_vname,
+              target=defn_vname,
+              edge_name="documents")
+
+  def _get_attr_bounds(self, ref):
+    """Calculate the anchor bounds for an attr access."""
+    # TODO(mdemello): This is pretty crude, and does not for example take into
+    # account multiple calls of the same attribute in a line. It is just to get
+    # our tests passing till we incorporate asttokens.
+    lineno, col = ref.location
+    line = self.source.line(lineno)
+    attr = ref.name.split(".")[-1]
+    offset = line.index("." + attr) - col + 1
+    start, end = self.get_anchor_bounds(ref.location, len(attr))
+    return (start + offset, end + offset)
+
   def get_anchor_bounds(self, location, length):
     """Generate byte offsets from a location and length."""
 
@@ -839,14 +936,20 @@ class Indexer(object):
     end = start + length
     return (start, end)
 
+  def get_ref_bounds(self, ref):
+    if ref.typ == "Attribute":
+      return self._get_attr_bounds(ref)
+    else:
+      return self.get_anchor_bounds(ref.location, len(ref.name))
+
   def _process_links(self, links):
     """Generate kythe edges for references."""
 
     for ref, defn in links:
-      if not isinstance(defn, Definition):
+      if not isinstance(defn, (Definition, Remote, Module)):
         # TODO(mdemello): Fixes needed for chained method calls.
         continue
-      start, end = self.get_anchor_bounds(ref.location, len(ref.name))
+      start, end = self.get_ref_bounds(ref)
       vname = self.kythe.add_anchor(start, end)
       self.kythe.add_edge(
           source=vname,
@@ -869,35 +972,85 @@ class Indexer(object):
 
     for call in self.calls:
       call_links = link_map[call.location]
-      defn = None
+      call_ref = None
+      call_defn = None
       for ref, d in call_links:
         if ref.name == call.name:
-          defn = d
+          call_ref = ref
+          call_defn = d
           break
-      if defn:
-        start, end = self.get_anchor_bounds(call.location, len(call.name))
+      if call_defn:
+        start, end = self.get_ref_bounds(call_ref)
         anchor_vname = self.kythe.anchor_vname(start, end)
         self.kythe.add_edge(
             source=anchor_vname,
-            target=self.kythe.vname(defn.to_signature()),
+            target=self.kythe.vname(call_defn.to_signature()),
             edge_name="ref/call")
 
   def _lookup_remote_symbol(self, ref, defn):
     """Try to look up a definition in an imported module."""
 
-    if defn.id not in self.modules:
+    if defn.id in self.modules:
+      remote = self.modules[defn.id]
+    elif defn.typ in ["Import", "ImportFrom"]:
+      # Allow unresolved modules too.
+      # TODO(mdemello): This if statement is technically useless now; it's just
+      # preserving the two separate code paths for modules pytype did and did
+      # not import.
+      remote = defn.name
+    else:
       return None
-    remote = self.modules[defn.id]
-    kw = defn._asdict()
-    del kw["scope"]
-    del kw["name"]
-    scope = "%s/%s" % (remote, defn.scope)
     name = ref.name
     if name.startswith(remote):
       name = name[(len(remote) + 1):]
-    # pytype: disable=missing-parameter
-    return Definition(scope=scope, name=name, **kw)
-    # pytype: enable=missing-parameter
+    return Remote(module=remote, name=name)
+
+  def _lookup_class_attr(self, name, attr):
+    """Look up a class attribute in the environment."""
+
+    env = self.envs["module"]
+    if name not in env.env:
+      return None
+    d = env.env[name]
+    class_env = self.envs[d.id]
+    _, defn = class_env.lookup(attr)
+    return defn
+
+  def _get_attribute_class(self, obj):
+    if isinstance(obj, abstract.Module):
+      return Module(obj.name)
+    if isinstance(obj, abstract.Instance):
+      return self._get_attribute_class(obj.cls)
+    elif isinstance(obj, abstract.InterpreterClass):
+      return self.classmap.get(obj)
+    elif isinstance(obj, abstract.PyTDClass):
+      return Remote(obj.module, obj.name)
+    else:
+      return None
+
+  def _lookup_attribute_by_type(self, r, attr_name):
+    """Look up an attribute using pytype annotations."""
+
+    lhs, _ = r.data
+    links = []
+    for l in lhs:
+      cls = self._get_attribute_class(l)
+      if cls:
+        if isinstance(cls, Definition):
+          env = self.envs[cls.id]
+          _, attr_value = env.lookup(attr_name)
+          if not attr_value and isinstance(l, abstract.Instance):
+            try:
+              attr_value = env.getattr(attr_name)
+            except AttrError:
+              # TODO(mdemello): Remove this when we fix MRO lookup
+              continue
+          links.append((r, attr_value))
+        elif isinstance(cls, Remote):
+          links.append((r, cls.attr(attr_name)))
+        elif isinstance(cls, Module):
+          links.append((r, cls.attr(attr_name)))
+    return links
 
   def _lookup_refs(self):
     """Look up references to generate links."""
@@ -906,25 +1059,36 @@ class Indexer(object):
 
     for r in self.refs:
       if r.typ == "Attribute":
-        env = self.envs[r.scope]
-        env, defn = env.lookup(r.target)
-        if defn:
-          # See if this is a definition from another module first.
-          remote = self._lookup_remote_symbol(r, defn)
-          if remote:
-            links.append((r, remote))
-          else:
-            # See if we can figure out the class of a bound attribute from the
-            # typemap.
-            typ = self.typemap[defn.id]
-            if typ:
-              for x in PytypeValue.from_data(typ):
-                links.append((r, x))
-            else:
-              links.append((r, defn))
+        attr = r.name.split(".")[-1]
+        defs = self._lookup_attribute_by_type(r, attr)
+        if defs:
+          links.extend(defs)
+          continue
         else:
-          # TODO(mdemello): This is probably not the best we can do here.
-          links.append((r, r.target))
+          env = self.envs[r.scope]
+          env, defn = env.lookup(r.target)
+          if defn:
+            # See if this is a definition from another module first.
+            remote = self._lookup_remote_symbol(r, defn)
+            if remote:
+              links.append((r, remote))
+            else:
+              # See if we can figure out the class of a bound attribute from the
+              # typemap.
+              typ = self.typemap.get(defn.id)
+              if typ:
+                for x in PytypeValue.from_data(typ):
+                  if x.typ == "Class":
+                    d = self._lookup_class_attr(x.name, attr)
+                    if d:
+                      links.append((r, d))
+                    else:
+                      # Fall back to <module>.<name>
+                      links.append((r, x))
+                  else:
+                    links.append((r, x))
+              else:
+                links.append((r, defn))
       else:
         try:
           env, defn = self.envs[r.scope].lookup(r.name)
@@ -934,8 +1098,10 @@ class Indexer(object):
         if defn:
           links.append((r, defn))
         else:
-          for x in PytypeValue.from_data(r.data):
-            links.append((r, x))
+          data = PytypeValue.from_data(r.data)
+          if data:
+            for x in data:
+              links.append((r, x))
 
     return links
 

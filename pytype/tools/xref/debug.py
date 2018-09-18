@@ -69,6 +69,13 @@ def show_index(index):
   separator()
 
 
+def show_map(name, mapping):
+  print("%s: {" % name)
+  for k, v in mapping.items():
+    print("  ", k, v)
+  print("}")
+
+
 # AST display
 
 
