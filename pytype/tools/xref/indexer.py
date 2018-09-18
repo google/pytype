@@ -170,6 +170,13 @@ class SourceFile(object):
     """Index source lines from 1."""
     return self.lines[n - 1]
 
+  def find_text(self, start_line, end_line, text):
+    for l in range(start_line, end_line):
+      col = self.line(l).find(text)
+      if col > -1:
+        return (l, col)
+    return None, None
+
   def display_traces(self):
     """Debug printing of source + traces per line."""
     for line in sorted(self.traces.keys()):
@@ -566,6 +573,24 @@ class IndexVisitor(ScopedVisitor):
     self.calls = []
     self.kythe = kythe.Kythe(source)
 
+  def _get_location(self, node, args):
+    """Get a more accurate node location."""
+    # For class and function definitions, search for the string
+    #   (class|def) <name>
+    # between the start of the AST node and the start of the body. Handles the
+    # offset for decorated functions/classes.
+    if isinstance(node, ast.ClassDef):
+      body_start = node.body[0].lineno
+      text = "class %s" % args["name"]
+      line, col = self.source.find_text(node.lineno, body_start, text)
+    elif isinstance(node, ast.FunctionDef):
+      body_start = node.body[0].lineno
+      text = "def %s" % args["name"]
+      line, col = self.source.find_text(node.lineno, body_start, text)
+    else:
+      line, col = get_location(node)
+    return (line, col)
+
   def get_suppressed_nodes(self):
     return [ast.Module, ast.BinOp, ast.Return, ast.Assign,
             ast.Num, ast.Add, ast.Str]
@@ -586,7 +611,9 @@ class IndexVisitor(ScopedVisitor):
     }
     args.update(kwargs)
     defn = Definition(**args)
-    defloc = DefLocation(defn.id, get_location(node))
+    line, col = self._get_location(node, args)
+    assert line is not None
+    defloc = DefLocation(defn.id, (line, col))
     return (defn, defloc)
 
   def make_ref(self, node, **kwargs):
@@ -1019,14 +1046,30 @@ class Indexer(object):
   def _get_attribute_class(self, obj):
     if isinstance(obj, abstract.Module):
       return Module(obj.name)
-    if isinstance(obj, abstract.Instance):
-      return self._get_attribute_class(obj.cls)
     elif isinstance(obj, abstract.InterpreterClass):
       return self.classmap.get(obj)
     elif isinstance(obj, abstract.PyTDClass):
-      return Remote(obj.module, obj.name)
+      if obj.module:
+        return Remote(obj.module, obj.name)
+      else:
+        # Corner case: a namedtuple in the MRO of a class will generate a
+        # PyTDClass even though it's in the current module.
+        # TODO(mdemello): We need special handling for namedtuples to generate
+        # and populate a class.
+        return None
     else:
       return None
+
+  def _get_mro(self, obj):
+    if isinstance(obj, abstract.InterpreterClass):
+      return obj.mro
+    elif isinstance(obj, abstract.Instance):
+      return obj.cls.mro
+    else:
+      return []
+
+  def _is_pytype_module(self, obj):
+    return isinstance(obj, abstract.Module)
 
   def _lookup_attribute_by_type(self, r, attr_name):
     """Look up an attribute using pytype annotations."""
@@ -1034,22 +1077,28 @@ class Indexer(object):
     lhs, _ = r.data
     links = []
     for l in lhs:
-      cls = self._get_attribute_class(l)
-      if cls:
-        if isinstance(cls, Definition):
-          env = self.envs[cls.id]
-          _, attr_value = env.lookup(attr_name)
-          if not attr_value and isinstance(l, abstract.Instance):
-            try:
-              attr_value = env.getattr(attr_name)
-            except AttrError:
-              # TODO(mdemello): Remove this when we fix MRO lookup
-              continue
-          links.append((r, attr_value))
-        elif isinstance(cls, Remote):
-          links.append((r, cls.attr(attr_name)))
-        elif isinstance(cls, Module):
-          links.append((r, cls.attr(attr_name)))
+      if self._is_pytype_module(l):
+        lookup = [l]
+      else:
+        lookup = self._get_mro(l)
+      for pytype_cls in lookup:
+        cls = self._get_attribute_class(pytype_cls)
+        if cls:
+          if isinstance(cls, Definition):
+            env = self.envs[cls.id]
+            _, attr_value = env.lookup(attr_name)
+            if not attr_value and isinstance(l, abstract.Instance):
+              try:
+                attr_value = env.getattr(attr_name)
+              except AttrError:
+                # We will walk up the MRO if we can't find anything.
+                continue
+            if attr_value:
+              links.append((r, attr_value))
+              break
+          elif isinstance(cls, (Module, Remote)):
+            links.append((r, cls.attr(attr_name)))
+            break
     return links
 
   def _lookup_refs(self):
@@ -1068,7 +1117,7 @@ class Indexer(object):
           env = self.envs[r.scope]
           env, defn = env.lookup(r.target)
           if defn:
-            # See if this is a definition from another module first.
+            # See if this is a definition from an imported module first.
             remote = self._lookup_remote_symbol(r, defn)
             if remote:
               links.append((r, remote))
