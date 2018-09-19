@@ -137,6 +137,13 @@ def expand_paths(paths, cwd=None):
   return [expand_path(x, cwd) for x in paths]
 
 
+def expand_globpaths(globpaths, cwd=None):
+  """Expand a list of glob expressions into a list of full paths."""
+  with cd(cwd):
+    paths = sum((compat.recursive_glob(p) for p in globpaths), [])
+  return expand_paths(paths, cwd)
+
+
 def expand_source_files(filenames, cwd=None):
   """Expand a list of filenames passed in as sources.
 
@@ -153,7 +160,7 @@ def expand_source_files(filenames, cwd=None):
     A set of full paths to .py files
   """
   out = []
-  for f in expand_paths(filenames, cwd):
+  for f in expand_globpaths(filenames, cwd):
     if os.path.isdir(f):
       # If we have a directory, collect all the .py files within it.
       out += collect_files(f, ".py")
@@ -172,11 +179,6 @@ def expand_pythonpath(pythonpath, cwd=None):
     return []
 
 
-def expand_globpath(globpath, cwd=None):
-  """Expand space-separated glob expressions into a set of full paths."""
-  if globpath:
-    with cd(cwd):
-      paths = sum((compat.recursive_glob(p) for p in globpath.split()), [])
-    return set(expand_paths(paths, cwd))
-  else:
-    return set()
+def expand_exclude(exclude, cwd=None):
+  """Do glob expansion and .py file collection on space-separated paths."""
+  return expand_source_files(exclude.split(), cwd)

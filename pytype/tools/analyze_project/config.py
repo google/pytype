@@ -38,7 +38,7 @@ ITEMS = {
 def make_converters(cwd=None):
   """For items that need coaxing into their internal representations."""
   return {
-      'exclude': lambda v: file_utils.expand_globpath(v, cwd),
+      'exclude': lambda v: file_utils.expand_exclude(v, cwd),
       'output': lambda v: file_utils.expand_path(v, cwd),
       'pythonpath': lambda v: file_utils.expand_pythonpath(v, cwd),
   }

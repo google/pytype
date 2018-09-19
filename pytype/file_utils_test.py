@@ -162,10 +162,10 @@ class TestExpandPythonpath(unittest.TestCase):
            os.path.join(os.getcwd(), "c", "d")])
 
 
-class TestExpandGlobpath(unittest.TestCase):
+class TestExpandGlobpaths(unittest.TestCase):
 
   def test_expand_empty(self):
-    self.assertEqual(file_utils.expand_globpath(""), set())
+    self.assertEqual(file_utils.expand_globpaths([]), [])
 
   def test_expand(self):
     filenames = ["a.py", "b/c.py"]
@@ -173,7 +173,30 @@ class TestExpandGlobpath(unittest.TestCase):
       for f in filenames:
         d.create_file(f)
       with file_utils.cd(d.path):
-        self.assertEqual(file_utils.expand_globpath("**/*.py"),
+        self.assertEqual(file_utils.expand_globpaths(["**/*.py"]),
+                         [os.path.realpath(f) for f in filenames])
+
+  def test_expand_with_cwd(self):
+    filenames = ["a.py", "b/c.py"]
+    with file_utils.Tempdir() as d:
+      for f in filenames:
+        d.create_file(f)
+      self.assertEqual(file_utils.expand_globpaths(["**/*.py"], cwd=d.path),
+                       [os.path.join(d.path, f) for f in filenames])
+
+
+class TestExpandExclude(unittest.TestCase):
+
+  def test_expand_empty(self):
+    self.assertEqual(file_utils.expand_exclude(""), set())
+
+  def test_expand(self):
+    filenames = ["a.py", "b/c.py"]
+    with file_utils.Tempdir() as d:
+      for f in filenames:
+        d.create_file(f)
+      with file_utils.cd(d.path):
+        self.assertEqual(file_utils.expand_exclude("**/*.py"),
                          {os.path.realpath(f) for f in filenames})
 
   def test_expand_with_cwd(self):
@@ -181,7 +204,15 @@ class TestExpandGlobpath(unittest.TestCase):
     with file_utils.Tempdir() as d:
       for f in filenames:
         d.create_file(f)
-      self.assertEqual(file_utils.expand_globpath("**/*.py", cwd=d.path),
+      self.assertEqual(file_utils.expand_exclude("**/*.py", cwd=d.path),
+                       {os.path.join(d.path, f) for f in filenames})
+
+  def test_expand_multiple(self):
+    filenames = ["a.py", "b/c.py"]
+    with file_utils.Tempdir() as d:
+      for f in filenames:
+        d.create_file(f)
+      self.assertEqual(file_utils.expand_exclude("*.py b/*.py", cwd=d.path),
                        {os.path.join(d.path, f) for f in filenames})
 
 

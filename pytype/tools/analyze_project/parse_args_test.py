@@ -48,6 +48,15 @@ class TestParser(unittest.TestCase):
         args = self.parser.parse_args(['--exclude=**/*.py'])
         self.assertEqual(args.exclude, {os.path.realpath(f) for f in filenames})
 
+  def test_parse_exclude_dir(self):
+    filenames = ['foo/f1.py', 'foo/f2.py']
+    with file_utils.Tempdir() as d:
+      for f in filenames:
+        d.create_file(f)
+      with file_utils.cd(d.path):
+        args = self.parser.parse_args(['--exclude=foo/'])
+        self.assertEqual(args.exclude, {os.path.realpath(f) for f in filenames})
+
   def test_verbosity(self):
     self.assertEqual(self.parser.parse_args(['--verbosity', '0']).verbosity, 0)
     self.assertEqual(self.parser.parse_args(['-v1']).verbosity, 1)
