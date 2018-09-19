@@ -43,7 +43,7 @@ def children(node):
   # Children to recurse into for each node type.
   node_children = {
       ast.Module: ["body"],
-      ast.ClassDef: ["body"],
+      ast.ClassDef: ["bases", "body"],
       ast.FunctionDef: ["body"],
       ast.Assign: ["targets", "value"],
   }
@@ -115,20 +115,6 @@ def has_decorator(f, decorator):
 def get_opcodes(traces, lineno, op_list):
   """Get all opcodes in op_list on a given line."""
   return [x for x in traces[lineno] if x[0] in op_list]
-
-
-def make_id(data):
-  """Return a string id for a piece of data."""
-  if isinstance(data, (abstract.PyTDClass, abstract.PyTDFunction)):
-    if data.module == "__builtin__":
-      return "__builtin__/%s" % data.name
-    else:
-      return "%s/module.%s" % (data.module, data.name)
-  elif isinstance(data, (abstract.InterpreterClass,
-                         abstract.InterpreterFunction)):
-    return "module.%s" % data.name
-  else:
-    return str(data)
 
 
 # Internal datatypes
@@ -208,7 +194,8 @@ class PytypeValue(object):
       return None
 
     if isinstance(data, abstract.PyTDClass):
-      return cls(data.module, data.name, "Class")
+      # If we have a remote reference, return Remote rather than PytypeValue.
+      return Remote(data.module, data.name)
     elif isinstance(data, abstract.InterpreterClass):
       return cls("module", data.name, "Class")
     elif isinstance(data, abstract.BoundFunction):
@@ -1044,6 +1031,8 @@ class Indexer(object):
     return defn
 
   def _get_attribute_class(self, obj):
+    """Look up the class of an attribute target."""
+
     if isinstance(obj, abstract.Module):
       return Module(obj.name)
     elif isinstance(obj, abstract.InterpreterClass):
