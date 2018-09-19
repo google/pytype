@@ -57,8 +57,7 @@ def main():
   conf.populate_from(file_config)
   # Command line arguments overwrite file options.
   conf.populate_from(args)
-  args.inputs = (
-      file_utils.expand_source_files(args.inputs).difference(conf.exclude))
+  args.inputs = file_utils.expand_source_files(args.inputs) - conf.exclude
   if not conf.pythonpath:
     conf.pythonpath = environment.compute_pythonpath(args.inputs)
   logging.info('\n  '.join(['Configuration:'] + str(conf).split('\n')))

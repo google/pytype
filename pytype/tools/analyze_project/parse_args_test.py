@@ -37,8 +37,7 @@ class TestParser(unittest.TestCase):
   def test_parse_exclude(self):
     filenames = ['a.py', 'b.py']
     args = self.parser.parse_args(['--exclude'] + filenames)
-    self.assertSequenceEqual(args.exclude,
-                             [os.path.realpath(f) for f in filenames])
+    self.assertEqual(args.exclude, {os.path.realpath(f) for f in filenames})
 
   def test_parse_single_exclude(self):
     filenames = ['a.py', 'b/c.py']
@@ -47,8 +46,7 @@ class TestParser(unittest.TestCase):
         d.create_file(f)
       with file_utils.cd(d.path):
         args = self.parser.parse_args(['--exclude=**/*.py'])
-        self.assertSequenceEqual(args.exclude,
-                                 [os.path.realpath(f) for f in filenames])
+        self.assertEqual(args.exclude, {os.path.realpath(f) for f in filenames})
 
   def test_verbosity(self):
     self.assertEqual(self.parser.parse_args(['--verbosity', '0']).verbosity, 0)

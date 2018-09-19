@@ -22,16 +22,16 @@ Item = collections.namedtuple('Item', ['default', 'sample', 'comment'])
 
 # Generates both the default config and the sample config file.
 ITEMS = {
-    'python_version': Item(
-        '3.6', '3.6', 'Python version (major.minor) of the target code.'),
+    'exclude': Item(
+        '', '**/*_test.py **/test_*.py',
+        'Space-separated list of files or directories to exclude.'),
     'output': Item(
         'pytype_output', 'pytype_output', 'All pytype output goes here.'),
     'pythonpath': Item(
         '', '/path/to/project:/path/to/project',
         'Paths to source code directories, separated by %r.' % os.pathsep),
-    'exclude': Item(
-        '', '**/*_test.py **/test_*.py',
-        'Space-separated list of files or directories to exclude.'),
+    'python_version': Item(
+        '3.6', '3.6', 'Python version (major.minor) of the target code.'),
 }
 
 

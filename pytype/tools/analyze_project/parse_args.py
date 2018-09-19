@@ -125,11 +125,11 @@ def make_parser():
   # Adds options from the config file.
   types = config.make_converters()
   # For nargs=*, argparse calls type() on each arg individually, so
-  # _FlattenAction flattens --exclude's list of list of paths as we go along.
+  # _FlattenAction flattens --exclude's list of sets of paths as we go along.
   for option in [('-x', '--exclude', {'nargs': '*', 'action': 'flatten'}),
-                 ('-V', '--python-version'),
                  ('-o', '--output'),
-                 ('-P', '--pythonpath')]:
+                 ('-P', '--pythonpath'),
+                 ('-V', '--python-version')]:
     _add_file_argument(parser, types, *option)
   # Adds options from pytype-single.
   wrapper = ParserWrapper(parser)
@@ -138,14 +138,15 @@ def make_parser():
 
 
 class _FlattenAction(argparse.Action):
-  """Flattens a list of lists. Used by --exclude."""
+  """Flattens a list of sets. Used by --exclude."""
 
   def __call__(self, parser, namespace, values, option_string=None):
     items = getattr(namespace, self.dest, None)
     if items is None:
-      items = []
+      items = set()
       setattr(namespace, self.dest, items)
-    items.extend(sum(values, []))
+    for v in values:
+      items.update(v)
 
 
 def _add_file_argument(parser, types, short_arg, arg, custom_kwargs=None):

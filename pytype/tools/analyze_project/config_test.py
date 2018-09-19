@@ -10,12 +10,12 @@ import unittest
 
 PYTYPE_CFG = """
   [pytype]
-  python_version = 2.7
+  exclude = nonexistent.*
   pythonpath =
     .:
     /foo/bar:
     baz/quux
-  exclude = nonexistent.*
+  python_version = 2.7
 """
 
 RANDOM_CFG = """
@@ -31,15 +31,15 @@ class TestBase(unittest.TestCase):
   """Base for config tests."""
 
   def _validate_file_contents(self, conf, path):
-    self.assertEqual(conf.python_version, u'2.7')
+    self.assertEqual(conf.exclude, set())
+    # output shouldn't be present since we haven't set it.
+    self.assertFalse(hasattr(conf, 'output'))
     self.assertEqual(conf.pythonpath, [
         path,
         u'/foo/bar',
         os.path.join(path, u'baz/quux')
     ])
-    self.assertEqual(conf.exclude, [])
-    # output shouldn't be present since we haven't set it.
-    self.assertFalse(hasattr(conf, 'output'))
+    self.assertEqual(conf.python_version, u'2.7')
 
   def _validate_empty_contents(self, conf):
     for k in config.ITEMS:

@@ -89,11 +89,11 @@ def cd(path):
       ...
 
   Arguments:
-    path: The directory to change to. If None, this function is a no-op.
+    path: The directory to change to. If empty, this function is a no-op.
   Yields:
     Executes your code, in a changed directory.
   """
-  if path is None:
+  if not path:
     yield
     return
   curdir = os.getcwd()
@@ -173,10 +173,10 @@ def expand_pythonpath(pythonpath, cwd=None):
 
 
 def expand_globpath(globpath, cwd=None):
-  """Expand comma-separated glob expressions into a list of full paths."""
+  """Expand space-separated glob expressions into a set of full paths."""
   if globpath:
     with cd(cwd):
       paths = sum((compat.recursive_glob(p) for p in globpath.split()), [])
-    return expand_paths(paths, cwd)
+    return set(expand_paths(paths, cwd))
   else:
-    return []
+    return set()

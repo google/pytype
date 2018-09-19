@@ -64,6 +64,13 @@ class FileUtilsTest(unittest.TestCase):
       d2 = os.getcwd()
       self.assertEqual(d1, d2)
 
+  def testCdNoop(self):
+    d = os.getcwd()
+    with file_utils.cd(None):
+      self.assertEqual(os.getcwd(), d)
+    with file_utils.cd(""):
+      self.assertEqual(os.getcwd(), d)
+
   def testCollectFiles(self):
     files = [
         "a.py", "foo/b.py", "foo/c.txt", "foo/bar/d.py", "foo/bar/baz/e.py"
@@ -158,7 +165,7 @@ class TestExpandPythonpath(unittest.TestCase):
 class TestExpandGlobpath(unittest.TestCase):
 
   def test_expand_empty(self):
-    self.assertEqual(file_utils.expand_globpath(""), [])
+    self.assertEqual(file_utils.expand_globpath(""), set())
 
   def test_expand(self):
     filenames = ["a.py", "b/c.py"]
@@ -167,7 +174,7 @@ class TestExpandGlobpath(unittest.TestCase):
         d.create_file(f)
       with file_utils.cd(d.path):
         self.assertEqual(file_utils.expand_globpath("**/*.py"),
-                         [os.path.realpath(f) for f in filenames])
+                         {os.path.realpath(f) for f in filenames})
 
   def test_expand_with_cwd(self):
     filenames = ["a.py", "b/c.py"]
@@ -175,7 +182,7 @@ class TestExpandGlobpath(unittest.TestCase):
       for f in filenames:
         d.create_file(f)
       self.assertEqual(file_utils.expand_globpath("**/*.py", cwd=d.path),
-                       [os.path.join(d.path, f) for f in filenames])
+                       {os.path.join(d.path, f) for f in filenames})
 
 
 if __name__ == "__main__":
