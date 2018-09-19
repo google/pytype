@@ -12,6 +12,14 @@ class A(object):
   def foo(self, x):
     pass
 
-#- @foo ref FnFoo
-#- @foo ref/call FnFoo
-A().foo(10)
+
+#- @bar defines/binding FnBar
+#- FnBar.node/kind function
+def bar():
+  #- @A ref ClassA
+  #- @A ref/call ClassA
+  #- @A childof FnBar
+  #- @foo ref FnFoo
+  #- @foo ref/call FnFoo
+  #- @foo childof FnBar
+  A().foo(10)

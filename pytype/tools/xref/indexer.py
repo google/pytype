@@ -326,20 +326,24 @@ class DefLocation(collections.namedtuple("defloc", ["def_id", "location"])):
 
 
 class Reference(collections.namedtuple(
-    "refr", ["name", "typ", "data", "scope", "target", "location"]), Dummy):
+    "refr", [
+        "name", "typ", "data", "scope", "ref_scope", "target", "location"])
+                , Dummy):
   """A symbol holding a reference to a definition.
 
   Attributes:
     name: The symbol name
     typ: The symbol type (e.g. Attribute)
     data: The pytype data attached to the symbol
-    scope: The namespace id (e.g. module:class A:function f:x)
+    scope: The namespace id (e.g. module.A.f)
+    ref_scope: The namespace id of the referred symbol (if we can determine it)
     target: The LHS of an attribute (e.g. for x.foo, target = typeof(x))
     location: The line and column of the symbol in the source code.
   """
 
-  def __init__(self, name, typ, data, scope, target, location):
-    super(Reference, self).__init__(name, typ, data, scope, target, location)
+  def __init__(self, name, typ, data, scope, ref_scope, target, location):
+    super(Reference, self).__init__(
+        name, typ, data, scope, ref_scope, target, location)
     self.id = self.scope + "." + self.name
 
   def format(self):
@@ -609,6 +613,7 @@ class IndexVisitor(ScopedVisitor):
     args = {
         "name": get_name(node),
         "scope": self.scope_id(),
+        "ref_scope": None,
         "typ": typename(node),
         "location": get_location(node),
         "target": None,
@@ -630,6 +635,7 @@ class IndexVisitor(ScopedVisitor):
     return self.add_local_def(node, **kwargs)
 
   def add_local_ref(self, node, **kwargs):
+    kwargs.update({"ref_scope": self.scope_id()})
     ref = self.make_ref(node, **kwargs)
     self.refs.append(ref)
     return ref
@@ -639,7 +645,7 @@ class IndexVisitor(ScopedVisitor):
     name = get_name(node)
     env, _ = self.current_env.lookup(name)
     if env:
-      kwargs.update({"scope": env.scope})
+      kwargs.update({"ref_scope": env.scope})
     else:
       # This should never happen! If python has generated a LOAD_DEREF bytecode
       # then we do have the name defined in a parent scope. However, in the
@@ -651,7 +657,7 @@ class IndexVisitor(ScopedVisitor):
     return ref
 
   def add_global_ref(self, node, **kwargs):
-    kwargs.update({"scope": "module"})
+    kwargs.update({"ref_scope": "module"})
     return self.add_local_ref(node, **kwargs)
 
   def add_call(self, node, name, func):
@@ -1000,6 +1006,18 @@ class Indexer(object):
             source=anchor_vname,
             target=self.kythe.vname(call_defn.to_signature()),
             edge_name="ref/call")
+        # The call is a child of the enclosing function/class (this lets us
+        # generate call graphs).
+        if ref.scope != "module":
+          parent_defn = self.defs.get(call_ref.scope)
+          if parent_defn:
+            # TODO(mdemello): log the 'else' case; it should never happen.
+            self.kythe.add_edge(
+                source=anchor_vname,
+                target=self.kythe.vname(parent_defn.to_signature()),
+                edge_name="childof")
+          else:
+            assert False, ref
 
   def _lookup_remote_symbol(self, ref, defn):
     """Try to look up a definition in an imported module."""
