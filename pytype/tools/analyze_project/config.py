@@ -22,43 +22,55 @@ Item = collections.namedtuple('Item', ['default', 'sample', 'comment'])
 
 # Generates both the default config and the sample config file.
 ITEMS = {
-    'python_version': Item(
-        '3.6', '3.6', 'Python version (major.minor) of the target code.'),
+    'exclude': Item(
+        '', '**/*_test.py **/test_*.py',
+        'Space-separated list of files or directories to exclude.'),
+    'inputs': Item(
+        '', '.',
+        'Space-separated list of files or directories to process.'),
     'output': Item(
         'pytype_output', 'pytype_output', 'All pytype output goes here.'),
     'pythonpath': Item(
         '', '/path/to/project:/path/to/project',
         'Paths to source code directories, separated by %r.' % os.pathsep),
-    'exclude': Item(
-        '', '**/*_test.py **/test_*.py',
-        'Space-separated list of files or directories to exclude.'),
+    'python_version': Item(
+        '3.6', '3.6', 'Python version (major.minor) of the target code.'),
 }
 
 
 def make_converters(cwd=None):
   """For items that need coaxing into their internal representations."""
   return {
-      'exclude': lambda v: file_utils.expand_globpath(v, cwd),
+      'exclude': lambda v: file_utils.expand_source_files(v, cwd),
+      'inputs': lambda v: file_utils.expand_source_files(v, cwd),
       'output': lambda v: file_utils.expand_path(v, cwd),
       'pythonpath': lambda v: file_utils.expand_pythonpath(v, cwd),
   }
 
 
-def get_formatters():
-  """For items that need special print formatting."""
-  def format_exclude(p):
+def _make_spaced_path_formatter(name):
+  """Formatter for space-separated paths."""
+  def format_spaced_path(p):
     out = []
-    out.append('exclude =')
+    out.append('%s =' % name)
     out.extend('    %s' % entry for entry in p.split())
     return out
-  def format_pythonpath(p):
-    out = []
-    out.append('pythonpath =')
-    # Breaks the pythonpath after each ':'.
-    for entry in p.replace(os.pathsep, os.pathsep + '\n').split('\n'):
-      out.append('    %s' % entry)
-    return out
-  return {'exclude': format_exclude, 'pythonpath': format_pythonpath}
+  return format_spaced_path
+
+
+def _format_pythonpath(p):
+  out = []
+  out.append('pythonpath =')
+  # Breaks the pythonpath after each ':'.
+  for entry in p.replace(os.pathsep, os.pathsep + '\n').split('\n'):
+    out.append('    %s' % entry)
+  return out
+
+
+def make_formatters():
+  return {'exclude': _make_spaced_path_formatter('exclude'),
+          'inputs': _make_spaced_path_formatter('inputs'),
+          'pythonpath': _format_pythonpath}
 
 
 def Config(*extra_variables):  # pylint: disable=invalid-name
@@ -120,7 +132,7 @@ def generate_sample_config_or_die(filename):
       '[pytype]',
       '',
   ]
-  formatters = get_formatters()
+  formatters = make_formatters()
   # TODO(rechen): Add the pytype-single arguments.
   for key, item in ITEMS.items():
     conf.extend(textwrap.wrap(

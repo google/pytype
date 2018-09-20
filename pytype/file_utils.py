@@ -89,11 +89,11 @@ def cd(path):
       ...
 
   Arguments:
-    path: The directory to change to. If None, this function is a no-op.
+    path: The directory to change to. If empty, this function is a no-op.
   Yields:
     Executes your code, in a changed directory.
   """
-  if path is None:
+  if not path:
     yield
     return
   curdir = os.getcwd()
@@ -111,19 +111,6 @@ def is_pyi_directory_init(filename):
   return os.path.splitext(os.path.basename(filename))[0] == "__init__"
 
 
-def collect_files(path, extension):
-  """Collect all the files with extension in a directory tree."""
-
-  # We should only call this on an actual directory; callers should do the
-  # validation.
-  assert os.path.isdir(path)
-  out = []
-  # glob would be faster (see PEP471) but python glob doesn't do **/*
-  for root, _, files in os.walk(path):
-    out += [os.path.join(root, f) for f in files if f.endswith(extension)]
-  return out
-
-
 def expand_path(path, cwd=None):
   """Fully expand a path, optionally with an explicit cwd."""
 
@@ -137,8 +124,15 @@ def expand_paths(paths, cwd=None):
   return [expand_path(x, cwd) for x in paths]
 
 
+def expand_globpaths(globpaths, cwd=None):
+  """Expand a list of glob expressions into a list of full paths."""
+  with cd(cwd):
+    paths = sum((compat.recursive_glob(p) for p in globpaths), [])
+  return expand_paths(paths, cwd)
+
+
 def expand_source_files(filenames, cwd=None):
-  """Expand a list of filenames passed in as sources.
+  """Expand a space-separated string of filenames passed in as sources.
 
   This is a helper function for handling command line arguments that specify a
   list of source files and directories.
@@ -147,19 +141,18 @@ def expand_source_files(filenames, cwd=None):
   Any files that do not end with ".py" will be dropped.
 
   Args:
-    filenames: A list of filenames to process.
+    filenames: A space-separated string of filenames to process.
     cwd: An optional working directory to expand relative paths
   Returns:
     A set of full paths to .py files
   """
   out = []
-  for f in expand_paths(filenames, cwd):
+  for f in expand_globpaths(filenames.split(), cwd):
     if os.path.isdir(f):
       # If we have a directory, collect all the .py files within it.
-      out += collect_files(f, ".py")
-    else:
-      if f.endswith(".py"):
-        out.append(f)
+      out += compat.recursive_glob(os.path.join(f, "**", "*.py"))
+    elif f.endswith(".py"):
+      out.append(f)
   return set(out)
 
 
@@ -168,15 +161,5 @@ def expand_pythonpath(pythonpath, cwd=None):
   if pythonpath:
     return expand_paths(
         (path.strip() for path in pythonpath.split(os.pathsep)), cwd)
-  else:
-    return []
-
-
-def expand_globpath(globpath, cwd=None):
-  """Expand comma-separated glob expressions into a list of full paths."""
-  if globpath:
-    with cd(cwd):
-      paths = sum((compat.recursive_glob(p) for p in globpath.split()), [])
-    return expand_paths(paths, cwd)
   else:
     return []

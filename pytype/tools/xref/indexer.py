@@ -43,7 +43,7 @@ def children(node):
   # Children to recurse into for each node type.
   node_children = {
       ast.Module: ["body"],
-      ast.ClassDef: ["body"],
+      ast.ClassDef: ["bases", "body"],
       ast.FunctionDef: ["body"],
       ast.Assign: ["targets", "value"],
   }
@@ -117,20 +117,6 @@ def get_opcodes(traces, lineno, op_list):
   return [x for x in traces[lineno] if x[0] in op_list]
 
 
-def make_id(data):
-  """Return a string id for a piece of data."""
-  if isinstance(data, (abstract.PyTDClass, abstract.PyTDFunction)):
-    if data.module == "__builtin__":
-      return "__builtin__/%s" % data.name
-    else:
-      return "%s/module.%s" % (data.module, data.name)
-  elif isinstance(data, (abstract.InterpreterClass,
-                         abstract.InterpreterFunction)):
-    return "module.%s" % data.name
-  else:
-    return str(data)
-
-
 # Internal datatypes
 
 
@@ -170,6 +156,13 @@ class SourceFile(object):
     """Index source lines from 1."""
     return self.lines[n - 1]
 
+  def find_text(self, start_line, end_line, text):
+    for l in range(start_line, end_line):
+      col = self.line(l).find(text)
+      if col > -1:
+        return (l, col)
+    return None, None
+
   def display_traces(self):
     """Debug printing of source + traces per line."""
     for line in sorted(self.traces.keys()):
@@ -201,7 +194,8 @@ class PytypeValue(object):
       return None
 
     if isinstance(data, abstract.PyTDClass):
-      return cls(data.module, data.name, "Class")
+      # If we have a remote reference, return Remote rather than PytypeValue.
+      return Remote(data.module, data.name)
     elif isinstance(data, abstract.InterpreterClass):
       return cls("module", data.name, "Class")
     elif isinstance(data, abstract.BoundFunction):
@@ -332,20 +326,24 @@ class DefLocation(collections.namedtuple("defloc", ["def_id", "location"])):
 
 
 class Reference(collections.namedtuple(
-    "refr", ["name", "typ", "data", "scope", "target", "location"]), Dummy):
+    "refr", [
+        "name", "typ", "data", "scope", "ref_scope", "target", "location"])
+                , Dummy):
   """A symbol holding a reference to a definition.
 
   Attributes:
     name: The symbol name
     typ: The symbol type (e.g. Attribute)
     data: The pytype data attached to the symbol
-    scope: The namespace id (e.g. module:class A:function f:x)
+    scope: The namespace id (e.g. module.A.f)
+    ref_scope: The namespace id of the referred symbol (if we can determine it)
     target: The LHS of an attribute (e.g. for x.foo, target = typeof(x))
     location: The line and column of the symbol in the source code.
   """
 
-  def __init__(self, name, typ, data, scope, target, location):
-    super(Reference, self).__init__(name, typ, data, scope, target, location)
+  def __init__(self, name, typ, data, scope, ref_scope, target, location):
+    super(Reference, self).__init__(
+        name, typ, data, scope, ref_scope, target, location)
     self.id = self.scope + "." + self.name
 
   def format(self):
@@ -566,6 +564,24 @@ class IndexVisitor(ScopedVisitor):
     self.calls = []
     self.kythe = kythe.Kythe(source)
 
+  def _get_location(self, node, args):
+    """Get a more accurate node location."""
+    # For class and function definitions, search for the string
+    #   (class|def) <name>
+    # between the start of the AST node and the start of the body. Handles the
+    # offset for decorated functions/classes.
+    if isinstance(node, ast.ClassDef):
+      body_start = node.body[0].lineno
+      text = "class %s" % args["name"]
+      line, col = self.source.find_text(node.lineno, body_start, text)
+    elif isinstance(node, ast.FunctionDef):
+      body_start = node.body[0].lineno
+      text = "def %s" % args["name"]
+      line, col = self.source.find_text(node.lineno, body_start, text)
+    else:
+      line, col = get_location(node)
+    return (line, col)
+
   def get_suppressed_nodes(self):
     return [ast.Module, ast.BinOp, ast.Return, ast.Assign,
             ast.Num, ast.Add, ast.Str]
@@ -586,7 +602,9 @@ class IndexVisitor(ScopedVisitor):
     }
     args.update(kwargs)
     defn = Definition(**args)
-    defloc = DefLocation(defn.id, get_location(node))
+    line, col = self._get_location(node, args)
+    assert line is not None
+    defloc = DefLocation(defn.id, (line, col))
     return (defn, defloc)
 
   def make_ref(self, node, **kwargs):
@@ -595,6 +613,7 @@ class IndexVisitor(ScopedVisitor):
     args = {
         "name": get_name(node),
         "scope": self.scope_id(),
+        "ref_scope": None,
         "typ": typename(node),
         "location": get_location(node),
         "target": None,
@@ -616,6 +635,7 @@ class IndexVisitor(ScopedVisitor):
     return self.add_local_def(node, **kwargs)
 
   def add_local_ref(self, node, **kwargs):
+    kwargs.update({"ref_scope": self.scope_id()})
     ref = self.make_ref(node, **kwargs)
     self.refs.append(ref)
     return ref
@@ -625,7 +645,7 @@ class IndexVisitor(ScopedVisitor):
     name = get_name(node)
     env, _ = self.current_env.lookup(name)
     if env:
-      kwargs.update({"scope": env.scope})
+      kwargs.update({"ref_scope": env.scope})
     else:
       # This should never happen! If python has generated a LOAD_DEREF bytecode
       # then we do have the name defined in a parent scope. However, in the
@@ -637,7 +657,7 @@ class IndexVisitor(ScopedVisitor):
     return ref
 
   def add_global_ref(self, node, **kwargs):
-    kwargs.update({"scope": "module"})
+    kwargs.update({"ref_scope": "module"})
     return self.add_local_ref(node, **kwargs)
 
   def add_call(self, node, name, func):
@@ -986,6 +1006,18 @@ class Indexer(object):
             source=anchor_vname,
             target=self.kythe.vname(call_defn.to_signature()),
             edge_name="ref/call")
+        # The call is a child of the enclosing function/class (this lets us
+        # generate call graphs).
+        if ref.scope != "module":
+          parent_defn = self.defs.get(call_ref.scope)
+          if parent_defn:
+            # TODO(mdemello): log the 'else' case; it should never happen.
+            self.kythe.add_edge(
+                source=anchor_vname,
+                target=self.kythe.vname(parent_defn.to_signature()),
+                edge_name="childof")
+          else:
+            assert False, ref
 
   def _lookup_remote_symbol(self, ref, defn):
     """Try to look up a definition in an imported module."""
@@ -1017,16 +1049,34 @@ class Indexer(object):
     return defn
 
   def _get_attribute_class(self, obj):
+    """Look up the class of an attribute target."""
+
     if isinstance(obj, abstract.Module):
       return Module(obj.name)
-    if isinstance(obj, abstract.Instance):
-      return self._get_attribute_class(obj.cls)
     elif isinstance(obj, abstract.InterpreterClass):
       return self.classmap.get(obj)
     elif isinstance(obj, abstract.PyTDClass):
-      return Remote(obj.module, obj.name)
+      if obj.module:
+        return Remote(obj.module, obj.name)
+      else:
+        # Corner case: a namedtuple in the MRO of a class will generate a
+        # PyTDClass even though it's in the current module.
+        # TODO(mdemello): We need special handling for namedtuples to generate
+        # and populate a class.
+        return None
     else:
       return None
+
+  def _get_mro(self, obj):
+    if isinstance(obj, abstract.InterpreterClass):
+      return obj.mro
+    elif isinstance(obj, abstract.Instance):
+      return obj.cls.mro
+    else:
+      return []
+
+  def _is_pytype_module(self, obj):
+    return isinstance(obj, abstract.Module)
 
   def _lookup_attribute_by_type(self, r, attr_name):
     """Look up an attribute using pytype annotations."""
@@ -1034,22 +1084,28 @@ class Indexer(object):
     lhs, _ = r.data
     links = []
     for l in lhs:
-      cls = self._get_attribute_class(l)
-      if cls:
-        if isinstance(cls, Definition):
-          env = self.envs[cls.id]
-          _, attr_value = env.lookup(attr_name)
-          if not attr_value and isinstance(l, abstract.Instance):
-            try:
-              attr_value = env.getattr(attr_name)
-            except AttrError:
-              # TODO(mdemello): Remove this when we fix MRO lookup
-              continue
-          links.append((r, attr_value))
-        elif isinstance(cls, Remote):
-          links.append((r, cls.attr(attr_name)))
-        elif isinstance(cls, Module):
-          links.append((r, cls.attr(attr_name)))
+      if self._is_pytype_module(l):
+        lookup = [l]
+      else:
+        lookup = self._get_mro(l)
+      for pytype_cls in lookup:
+        cls = self._get_attribute_class(pytype_cls)
+        if cls:
+          if isinstance(cls, Definition):
+            env = self.envs[cls.id]
+            _, attr_value = env.lookup(attr_name)
+            if not attr_value and isinstance(l, abstract.Instance):
+              try:
+                attr_value = env.getattr(attr_name)
+              except AttrError:
+                # We will walk up the MRO if we can't find anything.
+                continue
+            if attr_value:
+              links.append((r, attr_value))
+              break
+          elif isinstance(cls, (Module, Remote)):
+            links.append((r, cls.attr(attr_name)))
+            break
     return links
 
   def _lookup_refs(self):
@@ -1068,7 +1124,7 @@ class Indexer(object):
           env = self.envs[r.scope]
           env, defn = env.lookup(r.target)
           if defn:
-            # See if this is a definition from another module first.
+            # See if this is a definition from an imported module first.
             remote = self._lookup_remote_symbol(r, defn)
             if remote:
               links.append((r, remote))

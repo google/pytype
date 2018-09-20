@@ -66,11 +66,26 @@ def _print_transient(msg):
     print(msg + '\r', end='')
 
 
+def _module_to_output_path(mod):
+  """Convert a module to an output path."""
+  path, _ = os.path.splitext(mod.target)
+  if path.replace(os.path.sep, '.').endswith(mod.name):
+    # Preferentially use the short path.
+    return path[-len(mod.name):]
+  else:
+    # Fall back to computing the output path from the name, which is a last
+    # resort because it messes up hidden files. Since such files aren't valid
+    # python packages anyway, we preserve any leading '.' in order to not
+    # create a file directly in / (which would likely cause a crash with a
+    # permission error) and let the rest of the path be mangled.
+    return mod.name[0] + mod.name[1:].replace('.', os.path.sep)
+
+
 class PytypeRunner(object):
   """Runs pytype over an import graph."""
 
-  def __init__(self, filenames, sorted_sources, conf):
-    self.filenames = set(filenames)  # files to type-check
+  def __init__(self, conf, sorted_sources):
+    self.filenames = set(conf.inputs)  # files to type-check
     self.sorted_sources = sorted_sources  # all source modules
     self.pythonpath = conf.pythonpath
     self.python_version = conf.python_version
@@ -92,7 +107,7 @@ class PytypeRunner(object):
     ]
 
   def _output_file(self, module):
-    filename = module.name.replace('.', os.path.sep) + '.pyi'
+    filename = _module_to_output_path(module) + '.pyi'
     return os.path.join(self.pyi_dir, filename)
 
   def create_output_dir(self, module):

@@ -66,7 +66,7 @@ class TestGetRunCmd(TestBase):
 
   def setUp(self):
     self.runner = pytype_runner.PytypeRunner(
-        [], [], self.parser.config_from_defaults())
+        self.parser.config_from_defaults(), [])
 
   def get_basic_options(self, report_errors=False):
     module = Module('foo', 'bar.py', 'bar')
@@ -101,6 +101,41 @@ class TestGetRunCmd(TestBase):
     self.assertTrue(options.report_errors)
     self.assertTrue(options.analyze_annotated)
 
+  def test_hidden_dir(self):
+    module = Module('', '.foo/bar.py', '.foo.bar')
+    args = self.runner.get_pytype_args(module, report_errors=False)
+    options = pytype_config.Options(args)
+    self.assertEqual(options.output,
+                     os.path.join(self.runner.pyi_dir, '.foo', 'bar.pyi'))
+
+  def test_hidden_file(self):
+    module = Module('', 'foo/.bar.py', 'foo..bar')
+    args = self.runner.get_pytype_args(module, report_errors=False)
+    options = pytype_config.Options(args)
+    self.assertEqual(options.output,
+                     os.path.join(self.runner.pyi_dir, 'foo', '.bar.pyi'))
+
+  def test_hidden_file_with_path_prefix(self):
+    module = Module('', 'foo/.bar.py', '.bar')
+    args = self.runner.get_pytype_args(module, report_errors=False)
+    options = pytype_config.Options(args)
+    self.assertEqual(options.output,
+                     os.path.join(self.runner.pyi_dir, '.bar.pyi'))
+
+  def test_hidden_dir_with_path_mismatch(self):
+    module = Module('', 'symlinked/foo.py', '.bar')
+    args = self.runner.get_pytype_args(module, report_errors=False)
+    options = pytype_config.Options(args)
+    self.assertEqual(options.output,
+                     os.path.join(self.runner.pyi_dir, '.bar.pyi'))
+
+  def test_path_mismatch(self):
+    module = Module('', 'symlinked/foo.py', 'bar.baz')
+    args = self.runner.get_pytype_args(module, report_errors=False)
+    options = pytype_config.Options(args)
+    self.assertEqual(options.output,
+                     os.path.join(self.runner.pyi_dir, 'bar', 'baz.pyi'))
+
 
 class TestYieldSortedModules(TestBase):
   """Tests for PytypeRunner.yield_sorted_modules()."""
@@ -126,8 +161,8 @@ class TestYieldSortedModules(TestBase):
 
   def make_runner(self, sources, dep, conf):
     """Allow source filenames to be passed in as modules."""
-    return pytype_runner.PytypeRunner(
-        [m.full_path for m in sources], dep, conf)
+    conf.inputs = [m.full_path for m in sources]
+    return pytype_runner.PytypeRunner(conf, dep)
 
   def test_source(self):
     conf = self.parser.config_from_defaults()

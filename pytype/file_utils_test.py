@@ -64,15 +64,12 @@ class FileUtilsTest(unittest.TestCase):
       d2 = os.getcwd()
       self.assertEqual(d1, d2)
 
-  def testCollectFiles(self):
-    files = [
-        "a.py", "foo/b.py", "foo/c.txt", "foo/bar/d.py", "foo/bar/baz/e.py"
-    ]
-    with file_utils.Tempdir() as d:
-      fs = [d.create_file(f) for f in files]
-      pyfiles = [f for f in fs if f.endswith(".py")]
-      six.assertCountEqual(self,
-                           pyfiles, file_utils.collect_files(d.path, ".py"))
+  def testCdNoop(self):
+    d = os.getcwd()
+    with file_utils.cd(None):
+      self.assertEqual(os.getcwd(), d)
+    with file_utils.cd(""):
+      self.assertEqual(os.getcwd(), d)
 
 
 class TestPathExpansion(unittest.TestCase):
@@ -102,20 +99,20 @@ class TestExpandSourceFiles(unittest.TestCase):
       "foo/bar/baz/e.py"
   ]
 
-  def _test_expand(self, args):
+  def _test_expand(self, string):
     with file_utils.Tempdir() as d:
       fs = [d.create_file(f) for f in self.FILES]
       pyfiles = [f for f in fs if f.endswith(".py")]
       six.assertCountEqual(
           self,
           pyfiles,
-          file_utils.expand_source_files(args, d.path))
+          file_utils.expand_source_files(string, d.path))
 
   def test_expand_source_files(self):
-    self._test_expand(["a.py", "foo/c.txt", "foo"])
+    self._test_expand("a.py foo/c.txt foo")
 
   def test_duplicates(self):
-    self._test_expand(["a.py", "foo/b.py", "foo", "foo/bar"])
+    self._test_expand("a.py foo/b.py foo foo/bar")
 
   def test_cwd(self):
     with file_utils.Tempdir() as d:
@@ -125,6 +122,61 @@ class TestExpandSourceFiles(unittest.TestCase):
       with file_utils.cd(d.path):
         six.assertCountEqual(
             self, pyfiles, file_utils.expand_source_files("."))
+
+  def test_empty(self):
+    self.assertEqual(file_utils.expand_source_files(""), set())
+
+  def test_magic(self):
+    filenames = ["a.py", "b/c.py"]
+    with file_utils.Tempdir() as d:
+      for f in filenames:
+        d.create_file(f)
+      with file_utils.cd(d.path):
+        self.assertEqual(file_utils.expand_source_files("**/*.py"),
+                         {os.path.realpath(f) for f in filenames})
+
+  def test_magic_with_cwd(self):
+    filenames = ["a.py", "b/c.py"]
+    with file_utils.Tempdir() as d:
+      for f in filenames:
+        d.create_file(f)
+      self.assertEqual(file_utils.expand_source_files("**/*.py", cwd=d.path),
+                       {os.path.join(d.path, f) for f in filenames})
+
+  def test_multiple_magic(self):
+    filenames = ["a.py", "b/c.py"]
+    with file_utils.Tempdir() as d:
+      for f in filenames:
+        d.create_file(f)
+      self.assertEqual(
+          file_utils.expand_source_files("*.py b/*.py", cwd=d.path),
+          {os.path.join(d.path, f) for f in filenames})
+
+
+class TestExpandHiddenFiles(unittest.TestCase):
+
+  def test_ignore_file(self):
+    with file_utils.Tempdir() as d:
+      d.create_file(".ignore.py")
+      self.assertEqual(file_utils.expand_source_files(".", cwd=d.path), set())
+
+  def test_find_file(self):
+    with file_utils.Tempdir() as d:
+      d.create_file(".find.py")
+      self.assertEqual(file_utils.expand_source_files(".*", cwd=d.path),
+                       {os.path.join(d.path, ".find.py")})
+
+  def test_ignore_dir(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("d1/.d2/ignore.py")
+      self.assertEqual(
+          file_utils.expand_source_files("d1/**/*", cwd=d.path), set())
+
+  def test_find_dir(self):
+    with file_utils.Tempdir() as d:
+      d.create_file(".d/find.py")
+      self.assertEqual(file_utils.expand_source_files(".d/**/*", cwd=d.path),
+                       {os.path.join(d.path, ".d", "find.py")})
 
 
 class TestExpandPythonpath(unittest.TestCase):
@@ -155,10 +207,10 @@ class TestExpandPythonpath(unittest.TestCase):
            os.path.join(os.getcwd(), "c", "d")])
 
 
-class TestExpandGlobpath(unittest.TestCase):
+class TestExpandGlobpaths(unittest.TestCase):
 
   def test_expand_empty(self):
-    self.assertEqual(file_utils.expand_globpath(""), [])
+    self.assertEqual(file_utils.expand_globpaths([]), [])
 
   def test_expand(self):
     filenames = ["a.py", "b/c.py"]
@@ -166,7 +218,7 @@ class TestExpandGlobpath(unittest.TestCase):
       for f in filenames:
         d.create_file(f)
       with file_utils.cd(d.path):
-        self.assertEqual(file_utils.expand_globpath("**/*.py"),
+        self.assertEqual(file_utils.expand_globpaths(["**/*.py"]),
                          [os.path.realpath(f) for f in filenames])
 
   def test_expand_with_cwd(self):
@@ -174,7 +226,7 @@ class TestExpandGlobpath(unittest.TestCase):
     with file_utils.Tempdir() as d:
       for f in filenames:
         d.create_file(f)
-      self.assertEqual(file_utils.expand_globpath("**/*.py", cwd=d.path),
+      self.assertEqual(file_utils.expand_globpaths(["**/*.py"], cwd=d.path),
                        [os.path.join(d.path, f) for f in filenames])
 
 
