@@ -26,7 +26,6 @@ import importlab.fs
 import importlab.graph
 import importlab.output
 
-from pytype import file_utils
 from pytype import io
 from pytype.tools import environment
 from pytype.tools import tool_utils
@@ -57,12 +56,12 @@ def main():
   conf.populate_from(file_config)
   # Command line arguments overwrite file options.
   conf.populate_from(args)
-  args.inputs = file_utils.expand_source_files(args.inputs) - conf.exclude
+  conf.inputs -= conf.exclude
   if not conf.pythonpath:
-    conf.pythonpath = environment.compute_pythonpath(args.inputs)
+    conf.pythonpath = environment.compute_pythonpath(conf.inputs)
   logging.info('\n  '.join(['Configuration:'] + str(conf).split('\n')))
 
-  if not args.inputs:
+  if not conf.inputs:
     parser.parser.error('Need an input.')
 
   # Importlab needs the python exe, so we check it as early as possible.
@@ -71,7 +70,7 @@ def main():
   typeshed = environment.initialize_typeshed_or_die()
   env = analyze_project_env.create_importlab_environment(conf, typeshed)
   try:
-    import_graph = importlab.graph.ImportGraph.create(env, args.inputs)
+    import_graph = importlab.graph.ImportGraph.create(env, conf.inputs)
   except Exception as e:  # pylint: disable=broad-except
     logging.critical('Cannot parse input files:\n%s', str(e))
     sys.exit(1)
@@ -93,7 +92,7 @@ def main():
                importlab.output.formatted_deps_list(import_graph))
   tool_utils.makedirs_or_die(conf.output, 'Could not create output directory')
   deps = pytype_runner.deps_from_import_graph(import_graph)
-  runner = pytype_runner.PytypeRunner(args.inputs, deps, conf)
+  runner = pytype_runner.PytypeRunner(conf, deps)
   return runner.run()
 
 

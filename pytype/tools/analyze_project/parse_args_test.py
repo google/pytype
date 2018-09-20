@@ -32,7 +32,19 @@ class TestParser(unittest.TestCase):
   def test_parse_filenames(self):
     filenames = ['a.py', 'b.py']
     args = self.parser.parse_args(filenames)
-    self.assertSequenceEqual(args.inputs, filenames)
+    self.assertEqual(args.inputs, {os.path.realpath(f) for f in filenames})
+
+  def test_parse_no_filename(self):
+    args = self.parser.parse_args([])
+    self.assertFalse(hasattr(args, 'inputs'))
+
+  def test_parse_bad_filename(self):
+    args = self.parser.parse_args(['this_file_should_not_exist'])
+    self.assertEqual(args.inputs, set())
+
+  def test_parse_filenames_default(self):
+    args = self.parser.config_from_defaults()
+    self.assertEqual(args.inputs, set())
 
   def test_parse_exclude(self):
     filenames = ['a.py', 'b.py']
@@ -56,6 +68,10 @@ class TestParser(unittest.TestCase):
       with file_utils.cd(d.path):
         args = self.parser.parse_args(['--exclude=foo/'])
         self.assertEqual(args.exclude, {os.path.realpath(f) for f in filenames})
+
+  def test_parse_bad_exclude(self):
+    args = self.parser.parse_args(['-x', 'this_file_should_not_exist'])
+    self.assertEqual(args.exclude, set())
 
   def test_verbosity(self):
     self.assertEqual(self.parser.parse_args(['--verbosity', '0']).verbosity, 0)

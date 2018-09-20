@@ -6,6 +6,9 @@ from pytype import config as pytype_config
 from pytype.tools.analyze_project import config
 
 
+_ARG_PREFIX = '--'
+
+
 class ParserWrapper(object):
   """Wrapper that adds arguments to a parser while recording their names."""
 
@@ -97,9 +100,6 @@ def make_parser():
 
   parser = argparse.ArgumentParser(usage='%(prog)s [options] input [input ...]')
   parser.register('action', 'flatten', _FlattenAction)
-  parser.add_argument(
-      'inputs', metavar='input', type=str, nargs='*',
-      help='file or directory to process')
   modes = parser.add_mutually_exclusive_group()
   modes.add_argument(
       '--tree', dest='tree', action='store_true', default=False,
@@ -125,11 +125,14 @@ def make_parser():
   # Adds options from the config file.
   types = config.make_converters()
   # For nargs=*, argparse calls type() on each arg individually, so
-  # _FlattenAction flattens --exclude's list of sets of paths as we go along.
-  for option in [('-x', '--exclude', {'nargs': '*', 'action': 'flatten'}),
-                 ('-o', '--output'),
-                 ('-P', '--pythonpath'),
-                 ('-V', '--python-version')]:
+  # _FlattenAction flattens the list of sets of paths as we go along.
+  for option in [
+      (('-x', '--exclude'), {'nargs': '*', 'action': 'flatten'}),
+      (('inputs',), {'metavar': 'input', 'nargs': '*', 'action': 'flatten'}),
+      (('-o', '--output'),),
+      (('-P', '--pythonpath'),),
+      (('-V', '--python-version'),)
+  ]:
     _add_file_argument(parser, types, *option)
   # Adds options from pytype-single.
   wrapper = ParserWrapper(parser)
@@ -138,25 +141,44 @@ def make_parser():
 
 
 class _FlattenAction(argparse.Action):
-  """Flattens a list of sets. Used by --exclude."""
+  """Flattens a list of sets. Used by --exclude and inputs."""
 
   def __call__(self, parser, namespace, values, option_string=None):
-    items = getattr(namespace, self.dest, None)
-    if items is None:
-      items = set()
+    items = getattr(namespace, self.dest, None) or set()
+    # We want to keep items as None if values is empty, since that means the
+    # argument was not passed on the command line. Note that an empty values
+    # can occur for inputs but not --exclude because a positional argument
+    # tries to overwrite any existing default with its own.
+    if values:
       setattr(namespace, self.dest, items)
-    for v in values:
-      items.update(v)
+      for v in values:
+        items.update(v)
 
 
-def _add_file_argument(parser, types, short_arg, arg, custom_kwargs=None):
-  """Add a file-configurable option to the parser."""
+def _add_file_argument(parser, types, args, custom_kwargs=None):
+  """Add a file-configurable option to the parser.
+
+  Args:
+    parser: The parser.
+    types: A map from option destination to type.
+    args: The option's name(s). Either a 2-tuple of (short_arg, arg) or a
+      1-tuple of (arg,).
+    custom_kwargs: The option's custom kwargs.
+  """
   custom_kwargs = custom_kwargs or {}
-  dest = custom_kwargs.get('dest', arg.lstrip('--').replace('-', '_'))
-  kwargs = {'dest': dest,
-            'type': types.get(dest),
+  arg = args[-1]
+  dest = custom_kwargs.get('dest', arg.lstrip(_ARG_PREFIX).replace('-', '_'))
+  kwargs = {'type': types.get(dest),
             'action': 'store',
             'default': config.ITEMS[dest].default,
             'help': config.ITEMS[dest].comment}
+  if arg.startswith(_ARG_PREFIX):
+    # For an optional argument, `dest` should be explicitly given. (For a
+    # positional one, it's inferred from `arg`.)
+    kwargs['dest'] = dest
+  elif kwargs['type']:
+    # For a positional argument, the type function isn't applied to the default,
+    # so we do the transformation manually.
+    kwargs['default'] = kwargs['type'](kwargs['default'])
   kwargs.update(custom_kwargs)  # custom_kwargs takes precedence
-  parser.add_argument(short_arg, arg, **kwargs)
+  parser.add_argument(*args, **kwargs)

@@ -132,7 +132,7 @@ def expand_globpaths(globpaths, cwd=None):
 
 
 def expand_source_files(filenames, cwd=None):
-  """Expand a list of filenames passed in as sources.
+  """Expand a space-separated string of filenames passed in as sources.
 
   This is a helper function for handling command line arguments that specify a
   list of source files and directories.
@@ -141,13 +141,13 @@ def expand_source_files(filenames, cwd=None):
   Any files that do not end with ".py" will be dropped.
 
   Args:
-    filenames: A list of filenames to process.
+    filenames: A space-separated string of filenames to process.
     cwd: An optional working directory to expand relative paths
   Returns:
     A set of full paths to .py files
   """
   out = []
-  for f in expand_globpaths(filenames, cwd):
+  for f in expand_globpaths(filenames.split(), cwd):
     if os.path.isdir(f):
       # If we have a directory, collect all the .py files within it.
       out += compat.recursive_glob(os.path.join(f, "**", "*.py"))
@@ -163,8 +163,3 @@ def expand_pythonpath(pythonpath, cwd=None):
         (path.strip() for path in pythonpath.split(os.pathsep)), cwd)
   else:
     return []
-
-
-def expand_exclude(exclude, cwd=None):
-  """Do glob expansion and .py file collection on space-separated paths."""
-  return expand_source_files(exclude.split(), cwd)

@@ -84,8 +84,8 @@ def _module_to_output_path(mod):
 class PytypeRunner(object):
   """Runs pytype over an import graph."""
 
-  def __init__(self, filenames, sorted_sources, conf):
-    self.filenames = set(filenames)  # files to type-check
+  def __init__(self, conf, sorted_sources):
+    self.filenames = set(conf.inputs)  # files to type-check
     self.sorted_sources = sorted_sources  # all source modules
     self.pythonpath = conf.pythonpath
     self.python_version = conf.python_version

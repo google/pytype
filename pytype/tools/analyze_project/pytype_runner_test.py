@@ -66,7 +66,7 @@ class TestGetRunCmd(TestBase):
 
   def setUp(self):
     self.runner = pytype_runner.PytypeRunner(
-        [], [], self.parser.config_from_defaults())
+        self.parser.config_from_defaults(), [])
 
   def get_basic_options(self, report_errors=False):
     module = Module('foo', 'bar.py', 'bar')
@@ -161,8 +161,8 @@ class TestYieldSortedModules(TestBase):
 
   def make_runner(self, sources, dep, conf):
     """Allow source filenames to be passed in as modules."""
-    return pytype_runner.PytypeRunner(
-        [m.full_path for m in sources], dep, conf)
+    conf.inputs = [m.full_path for m in sources]
+    return pytype_runner.PytypeRunner(conf, dep)
 
   def test_source(self):
     conf = self.parser.config_from_defaults()
