@@ -39,11 +39,15 @@ def recursive_glob(path):
   # Simulate recursive glob with os.walk.
   left, right = path.split("**", 1)
   if not left:
-    left = "."
+    left = "." + os.sep
   right = right.lstrip(os.sep)
   paths = []
   for d, _, _ in os.walk(left):
-    paths += recursive_glob(os.path.join(d, right))
+    # Don't recurse into hidden directories. Note that the current directory
+    # ends with '/', giving it a basename of '', which prevents this check
+    # from accidentally skipping it.
+    if not os.path.basename(d).startswith("."):
+      paths += recursive_glob(os.path.join(d, right))
   return paths
 
 

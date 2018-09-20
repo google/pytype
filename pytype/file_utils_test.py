@@ -71,16 +71,6 @@ class FileUtilsTest(unittest.TestCase):
     with file_utils.cd(""):
       self.assertEqual(os.getcwd(), d)
 
-  def testCollectFiles(self):
-    files = [
-        "a.py", "foo/b.py", "foo/c.txt", "foo/bar/d.py", "foo/bar/baz/e.py"
-    ]
-    with file_utils.Tempdir() as d:
-      fs = [d.create_file(f) for f in files]
-      pyfiles = [f for f in fs if f.endswith(".py")]
-      six.assertCountEqual(self,
-                           pyfiles, file_utils.collect_files(d.path, ".py"))
-
 
 class TestPathExpansion(unittest.TestCase):
   """Tests for file_utils.expand_path(s?)."""
@@ -132,6 +122,32 @@ class TestExpandSourceFiles(unittest.TestCase):
       with file_utils.cd(d.path):
         six.assertCountEqual(
             self, pyfiles, file_utils.expand_source_files("."))
+
+
+class TestExpandHiddenFiles(unittest.TestCase):
+
+  def test_ignore_file(self):
+    with file_utils.Tempdir() as d:
+      d.create_file(".ignore.py")
+      self.assertEqual(file_utils.expand_source_files(["."], cwd=d.path), set())
+
+  def test_find_file(self):
+    with file_utils.Tempdir() as d:
+      d.create_file(".find.py")
+      self.assertEqual(file_utils.expand_source_files([".*"], cwd=d.path),
+                       {os.path.join(d.path, ".find.py")})
+
+  def test_ignore_dir(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("d1/.d2/ignore.py")
+      self.assertEqual(
+          file_utils.expand_source_files(["d1/**/*"], cwd=d.path), set())
+
+  def test_find_dir(self):
+    with file_utils.Tempdir() as d:
+      d.create_file(".d/find.py")
+      self.assertEqual(file_utils.expand_source_files([".d/**/*"], cwd=d.path),
+                       {os.path.join(d.path, ".d", "find.py")})
 
 
 class TestExpandPythonpath(unittest.TestCase):

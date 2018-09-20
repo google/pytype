@@ -111,19 +111,6 @@ def is_pyi_directory_init(filename):
   return os.path.splitext(os.path.basename(filename))[0] == "__init__"
 
 
-def collect_files(path, extension):
-  """Collect all the files with extension in a directory tree."""
-
-  # We should only call this on an actual directory; callers should do the
-  # validation.
-  assert os.path.isdir(path)
-  out = []
-  # glob would be faster (see PEP471) but python glob doesn't do **/*
-  for root, _, files in os.walk(path):
-    out += [os.path.join(root, f) for f in files if f.endswith(extension)]
-  return out
-
-
 def expand_path(path, cwd=None):
   """Fully expand a path, optionally with an explicit cwd."""
 
@@ -163,10 +150,9 @@ def expand_source_files(filenames, cwd=None):
   for f in expand_globpaths(filenames, cwd):
     if os.path.isdir(f):
       # If we have a directory, collect all the .py files within it.
-      out += collect_files(f, ".py")
-    else:
-      if f.endswith(".py"):
-        out.append(f)
+      out += compat.recursive_glob(os.path.join(f, "**", "*.py"))
+    elif f.endswith(".py"):
+      out.append(f)
   return set(out)
 
 
