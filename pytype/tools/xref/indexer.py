@@ -791,7 +791,8 @@ class IndexVisitor(ScopedVisitor):
           self.typemap[ref.id] = rhs
         break
       elif symbol == node.attr and op in ["STORE_ATTR"]:
-        self.add_local_def(node)
+        defn = self.add_local_def(node)
+        self.current_env.setattr(node.attr, defn)
     return node.value + "." + node.attr
 
   def visit_Subscript(self, node):
@@ -876,14 +877,16 @@ class Indexer(object):
   def get_def_offsets(self, defloc):
     """Get the byte offsets for a definition."""
 
-    line, col = defloc.location
-    start = self.source.get_offset(line, col)
     defn = self.defs[defloc.def_id]
     typ = defn.typ
-    if typ in DEF_OFFSETS:
-      start += DEF_OFFSETS[typ]
-    # TODO(mdemello): Attributes need to scan the line for the attribute name.
-    end = start + len(defn.name)
+    if typ == "Attribute":
+      start, end = self._get_attr_bounds(defn.name, defloc.location)
+    else:
+      line, col = defloc.location
+      start = self.source.get_offset(line, col)
+      if typ in DEF_OFFSETS:
+        start += DEF_OFFSETS[typ]
+      end = start + len(defn.name)
     return (start, end)
 
   def get_doc_offsets(self, doc):
@@ -949,16 +952,16 @@ class Indexer(object):
               target=defn_vname,
               edge_name="documents")
 
-  def _get_attr_bounds(self, ref):
+  def _get_attr_bounds(self, name, location):
     """Calculate the anchor bounds for an attr access."""
     # TODO(mdemello): This is pretty crude, and does not for example take into
     # account multiple calls of the same attribute in a line. It is just to get
     # our tests passing till we incorporate asttokens.
-    lineno, col = ref.location
+    lineno, col = location
     line = self.source.line(lineno)
-    attr = ref.name.split(".")[-1]
+    attr = name.split(".")[-1]
     offset = line.index("." + attr) - col + 1
-    start, end = self.get_anchor_bounds(ref.location, len(attr))
+    start, end = self.get_anchor_bounds(location, len(attr))
     return (start + offset, end + offset)
 
   def get_anchor_bounds(self, location, length):
@@ -971,7 +974,7 @@ class Indexer(object):
 
   def get_ref_bounds(self, ref):
     if ref.typ == "Attribute":
-      return self._get_attr_bounds(ref)
+      return self._get_attr_bounds(ref.name, ref.location)
     else:
       return self.get_anchor_bounds(ref.location, len(ref.name))
 
