@@ -33,7 +33,6 @@ ast = None
 DEF_OFFSETS = {
     "ClassDef": 6,  # class X
     "FunctionDef": 4,  # def f
-    "Import": 7,  # import a
 }
 
 
@@ -566,11 +565,14 @@ class IndexVisitor(ScopedVisitor):
 
   def _get_location(self, node, args):
     """Get a more accurate node location."""
-    # For class and function definitions, search for the string
-    #   (class|def) <name>
-    # between the start of the AST node and the start of the body. Handles the
-    # offset for decorated functions/classes.
+
+    line, col = None, None
+
     if isinstance(node, ast.ClassDef):
+      # For class and function definitions, search for the string
+      #   (class|def) <name>
+      # between the start of the AST node and the start of the body. Handles the
+      # offset for decorated functions/classes.
       body_start = node.body[0].lineno
       text = "class %s" % args["name"]
       line, col = self.source.find_text(node.lineno, body_start, text)
@@ -578,8 +580,19 @@ class IndexVisitor(ScopedVisitor):
       body_start = node.body[0].lineno
       text = "def %s" % args["name"]
       line, col = self.source.find_text(node.lineno, body_start, text)
-    else:
+    elif isinstance(node, (ast.Import, ast.ImportFrom)):
+      # Search for imported module names
+      text = self.source.line(node.lineno)
+      name = args["name"]
+      c = text.index(" " + name)
+      if c == -1:
+        c = text.index("," + name)
+      if c != -1:
+        line, col = node.lineno, c + 1
+
+    if line is None:
       line, col = get_location(node)
+
     return (line, col)
 
   def get_suppressed_nodes(self):
