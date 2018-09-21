@@ -46,7 +46,8 @@ def main():
   tool_utils.setup_logging_or_die(args.verbosity)
 
   if args.generate_config:
-    config.generate_sample_config_or_die(args.generate_config)
+    config.generate_sample_config_or_die(args.generate_config,
+                                         parser.pytype_single_args)
     sys.exit(0)
 
   conf = parser.config_from_defaults()

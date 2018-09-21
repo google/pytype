@@ -31,10 +31,18 @@ ITEMS = {
     'output': Item(
         'pytype_output', 'pytype_output', 'All pytype output goes here.'),
     'pythonpath': Item(
-        '', '/path/to/project:/path/to/project',
+        '', '.',
         'Paths to source code directories, separated by %r.' % os.pathsep),
     'python_version': Item(
         '3.6', '3.6', 'Python version (major.minor) of the target code.'),
+}
+
+
+# The missing fields will be filled in by generate_sample_config_or_die.
+_PYTYPE_SINGLE_ITEMS = {
+    'disable': Item(None, 'pyi-error', None),
+    'report_errors': Item(None, 'True', None),
+    'protocols': Item(None, 'False', None),
 }
 
 
@@ -58,19 +66,25 @@ def _make_spaced_path_formatter(name):
   return format_spaced_path
 
 
-def _format_pythonpath(p):
-  out = []
-  out.append('pythonpath =')
-  # Breaks the pythonpath after each ':'.
-  for entry in p.replace(os.pathsep, os.pathsep + '\n').split('\n'):
-    out.append('    %s' % entry)
-  return out
+def _make_separated_path_formatter(name, sep):
+  """Formatter for paths separated by a non-space token."""
+  def format_separated_path(p):
+    out = []
+    out.append('%s =' % name)
+    # Breaks the path after each instance of sep.
+    for entry in p.replace(sep, sep + '\n').split('\n'):
+      out.append('    %s' % entry)
+    return out
+  return format_separated_path
 
 
 def make_formatters():
-  return {'exclude': _make_spaced_path_formatter('exclude'),
-          'inputs': _make_spaced_path_formatter('inputs'),
-          'pythonpath': _format_pythonpath}
+  return {
+      'disable': _make_separated_path_formatter('disable', ','),
+      'exclude': _make_spaced_path_formatter('exclude'),
+      'inputs': _make_spaced_path_formatter('inputs'),
+      'pythonpath': _make_separated_path_formatter('pythonpath', os.pathsep),
+  }
 
 
 def Config(*extra_variables):  # pylint: disable=invalid-name
@@ -117,12 +131,19 @@ class FileConfig(object):
     return filepath
 
 
-def generate_sample_config_or_die(filename):
+def generate_sample_config_or_die(filename, pytype_single_args):
   """Write out a sample config file."""
 
   if os.path.exists(filename):
     logging.critical('Not overwriting existing file: %s', filename)
     sys.exit(1)
+
+  # Combine all arguments into one name -> Item dictionary.
+  items = dict(ITEMS)
+  assert set(_PYTYPE_SINGLE_ITEMS) == set(pytype_single_args)
+  for key, item in _PYTYPE_SINGLE_ITEMS.items():
+    items[key] = item._replace(default=pytype_single_args[key].default,
+                               comment=pytype_single_args[key].help)
 
   # Not using configparser's write method because it doesn't support comments.
 
@@ -133,8 +154,7 @@ def generate_sample_config_or_die(filename):
       '',
   ]
   formatters = make_formatters()
-  # TODO(rechen): Add the pytype-single arguments.
-  for key, item in ITEMS.items():
+  for key, item in items.items():
     conf.extend(textwrap.wrap(
         item.comment, 80, initial_indent='# ', subsequent_indent='# '))
     if key in formatters:
