@@ -193,8 +193,13 @@ class PytypeValue(object):
       return None
 
     if isinstance(data, abstract.PyTDClass):
-      # If we have a remote reference, return Remote rather than PytypeValue.
-      return Remote(data.module, data.name)
+      if data.module:
+        # If we have a remote reference, return Remote rather than PytypeValue.
+        return Remote(data.module, data.name)
+      else:
+        # This is a namedtuple or some other special case pytype has generated a
+        # local PyTDClass for. We need special cases for them too.
+        return None
     elif isinstance(data, abstract.InterpreterClass):
       return cls("module", data.name, "Class")
     elif isinstance(data, abstract.BoundFunction):
@@ -596,8 +601,8 @@ class IndexVisitor(ScopedVisitor):
     return (line, col)
 
   def get_suppressed_nodes(self):
-    return [ast.Module, ast.BinOp, ast.Return, ast.Assign,
-            ast.Num, ast.Add, ast.Str]
+    return [ast.Module, ast.BinOp, ast.BoolOp, ast.Return, ast.Assign, ast.Num,
+            ast.Add, ast.Str]
 
   def make_def(self, node, **kwargs):
     """Make a definition from a node."""
@@ -792,7 +797,9 @@ class IndexVisitor(ScopedVisitor):
         break
       elif symbol == node.attr and op in ["STORE_ATTR"]:
         defn = self.add_local_def(node)
-        self.current_env.setattr(node.attr, defn)
+        if self.current_class:
+          # We only support attr definitions within a class definition.
+          self.current_env.setattr(node.attr, defn)
     return node.value + "." + node.attr
 
   def visit_Subscript(self, node):
@@ -1131,8 +1138,8 @@ class Indexer(object):
 
     for r in self.refs:
       if r.typ == "Attribute":
-        attr = r.name.split(".")[-1]
-        defs = self._lookup_attribute_by_type(r, attr)
+        attr_name = r.name.split(".")[-1]
+        defs = self._lookup_attribute_by_type(r, attr_name)
         if defs:
           links.extend(defs)
           continue
@@ -1150,8 +1157,10 @@ class Indexer(object):
               typ = self.typemap.get(defn.id)
               if typ:
                 for x in PytypeValue.from_data(typ):
-                  if x.typ == "Class":
-                    d = self._lookup_class_attr(x.name, attr)
+                  if isinstance(x, Remote):
+                    links.append((r, x.attr(attr_name)))
+                  elif x.typ == "Class":
+                    d = self._lookup_class_attr(x.name, attr_name)
                     if d:
                       links.append((r, d))
                     else:
