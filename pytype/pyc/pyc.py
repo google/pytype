@@ -73,7 +73,9 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
       exe = python_exe.split()
     else:
       exe = ["python" + ".".join(map(str, python_version))]
-    cmd = exe + ["-", fi.name, filename or fi.name, mode]
+    # We pass -E to ignore the environment so that PYTHONPATH and sitecustomize
+    # on some people's systems don't mess with the interpreter.
+    cmd = exe + ["-E", "-", fi.name, filename or fi.name, mode]
 
     compile_script_src = pytype_source_utils.load_pytype_file(COMPILE_SCRIPT)
 
