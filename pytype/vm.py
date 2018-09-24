@@ -126,6 +126,7 @@ class VirtualMachine(object):
     self.loader = loader
     self.frames = []  # The call stack of frames.
     self.functions_with_late_annotations = []
+    self.functions_type_params_check = []
     self.concrete_classes = []
     self.frame = None  # The current frame.
     self.program = cfg.Program()
@@ -133,9 +134,9 @@ class VirtualMachine(object):
     self.program.entrypoint = self.root_cfg_node
     self.annotations_util = annotations_util.AnnotationsUtil(self)
     self.attribute_handler = attribute.AbstractAttributeHandler(self)
+    self.matcher = matcher.AbstractMatcher(self)
     self.convert = convert.Converter(self)
     self.program.default_data = self.convert.unsolvable
-    self.matcher = matcher.AbstractMatcher(self)
     self.has_unknown_wildcard_imports = False
     self.callself_stack = []
     self.filename = None
@@ -495,11 +496,6 @@ class VirtualMachine(object):
     if not bases:
       # Old style class.
       bases = [self.convert.oldstyleclass_type.to_variable(self.root_cfg_node)]
-    for b in sum((b.data for b in bases), []):
-      if isinstance(b, abstract.ParameterizedClass) and any(
-          self.annotations_util.get_type_parameters(v)
-          for v in b.type_parameters.values()):
-        self.errorlog.not_supported_yet(self.frames, "creating generic classes")
     if (isinstance(class_dict, abstract.Unsolvable) or
         not isinstance(class_dict, abstract.PythonConstant)):
       # An unsolvable appears here if the vm hit maximum depth and gave up on
@@ -524,6 +520,9 @@ class VirtualMachine(object):
             self)
       except mro.MROError as e:
         self.errorlog.mro_error(self.frames, name, e.mro_seqs)
+        var = self.convert.create_new_unsolvable(node)
+      except abstract.GenericTypeError as e:
+        self.errorlog.invalid_annotation(self.frames, e.annot, e.error)
         var = self.convert.create_new_unsolvable(node)
       else:
         if new_class_var:
@@ -562,8 +561,8 @@ class VirtualMachine(object):
     var.AddBinding(val, code.bindings, node)
     if late_annotations:
       self.functions_with_late_annotations.append(val)
-    else:
-      val.signature.check_type_parameter_count(self.frames)
+    elif val.signature.annotations:
+      self.functions_type_params_check.append((val, self.frame.current_opcode))
     return var
 
   def make_frame(self, node, code, callargs=None, f_globals=None, f_locals=None,
@@ -686,6 +685,8 @@ class VirtualMachine(object):
     for func in self.functions_with_late_annotations:
       self.annotations_util.eval_late_annotations(node, func, f_globals,
                                                   f_locals)
+    for func, opcode in self.functions_type_params_check:
+      func.signature.check_type_parameter_count(self.simple_stack(opcode))
     while f_globals.late_annotations:
       name, annot = f_globals.late_annotations.popitem()
       attr = self.annotations_util.init_annotation(

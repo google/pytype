@@ -33,6 +33,8 @@ class Signature(object):
     kwargs_name: Name of the kwargs parameter. (The "kwargs" in **kwargs)
     defaults: Dictionary, name to value, for all parameters with default values.
     annotations: A dictionary of type annotations (string to type)
+    excluded_types: A set of type names that will be ignored when checking the
+      count of type parameters
   """
 
   def __init__(self, name, param_names, varargs_name, kwonly_params,
@@ -46,6 +48,7 @@ class Signature(object):
     self.defaults = defaults
     self.annotations = annotations
     self.late_annotations = late_annotations
+    self.excluded_types = set()
     if postprocess_annotations:
       for name, annot in six.iteritems(self.annotations):
         self.annotations[name] = self._postprocess_annotation(name, annot)
@@ -76,10 +79,14 @@ class Signature(object):
     del self.annotations[name]  # Raises KeyError if annotation does not exist.
 
   def check_type_parameter_count(self, stack):
+    """Check the count of type parameters in function."""
     c = collections.Counter()
     for annot in self.annotations.values():
       c.update(annot.vm.annotations_util.get_type_parameters(annot))
     for param, count in six.iteritems(c):
+      if param.full_name in self.excluded_types:
+        # skip all the type parameters in `excluded_types`
+        continue
       if count == 1 and not (param.constraints or param.bound or
                              param.covariant or param.contravariant):
         param.vm.errorlog.invalid_annotation(
@@ -220,6 +227,7 @@ class Signature(object):
              self.annotations.get(self.kwargs_name))
 
   def _yield_arguments(self):
+    """Yield all the function arguments."""
     names = list(self.param_names)
     if self.varargs_name:
       names.append("*" + self.varargs_name)

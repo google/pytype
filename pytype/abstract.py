@@ -53,6 +53,15 @@ class ConversionError(ValueError):
   pass
 
 
+class GenericTypeError(Exception):
+  """The error for user-defined generic types."""
+
+  def __init__(self, annot, error):
+    super(GenericTypeError, self).__init__(annot, error)
+    self.annot = annot
+    self.error = error
+
+
 class AsInstance(object):
   """Wrapper, used for marking things that we want to convert to an instance."""
 
@@ -266,17 +275,42 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   def default_mro(self):
     return [self, self.vm.convert.object_type]
 
-  def compute_mro(self):
+  def compute_mro(self, input_bases=None):
     """Compute the class precedence list (mro) according to C3."""
     # The base classes are Variables. If they have multiple options, we would
     # technically get different MROs, for each combination of options, and thus
     # would have to return a *list of MROs*. But since ambiguous base classes
     # are rare enough, we instead just pick one arbitrary option per base class.
+    input_bases = input_bases if input_bases else self.bases()
     bases = [min(b.data, key=lambda cls: cls.full_name)
-             for b in self.bases()
+             for b in input_bases
              if b.data]
-    return tuple(mro.MROMerge(
-        [[self]] + [list(base.mro) for base in bases] + [list(bases)]))
+    bases = [[self]] + [list(base.mro) for base in bases] + [list(bases)]
+    # If base classes are `ParameterizedClass`, we will use their `base_cls` to
+    # calculate the MRO. Bacause of type parameter renaming, we can not compare
+    # the `ParameterizedClass`s which contain the same `base_cls`.  See example:
+    #   class A(Iterator[T]): ...
+    #   class B(Iterator[U], A[V]): ...
+    # The inheritance: [B], [Iterator, ...], [A, Iterator, ...], [Iterator, A]
+    # So this has MRO order issue, but because the template names of
+    # `ParameterizedClass` of `Iterator` are different, they will be treated as
+    # different base classes and it will infer the MRO order is correct.
+    # TODO(ahxun): fix this by solving the template rename problem
+    base2cls = {}
+    newbases = []
+    for row in bases:
+      baselist = []
+      for base in row:
+        if isinstance(base, ParameterizedClass):
+          base2cls[base.base_cls] = base
+          baselist.append(base.base_cls)
+        else:
+          base2cls[base] = base
+          baselist.append(base)
+      newbases.append(baselist)
+
+    # calc MRO and replace them with original base classes
+    return tuple(base2cls[base] for base in mro.MROMerge(newbases))
 
   def get_fullhash(self):
     """Hash this value and all of its children."""
@@ -934,7 +968,8 @@ class Instance(SimpleAbstractValue):
               bad_names.add(name)
       elif base.template:
         for item in base.template:
-          unbound_params.add((item.type_param.name, item.type_param))
+          if isinstance(item, TypeParameter):
+            unbound_params.add((item.name, item))
 
     # We can't reliably track changes to type parameters involved in naming
     # conflicts, so we'll set all of them to unsolvable.
@@ -1024,6 +1059,7 @@ class List(Instance, HasSlots, PythonConstant):
 
   def __init__(self, content, vm):
     super(List, self).__init__(vm.convert.list_type, vm)
+    self._instance_cache = {}
     PythonConstant.init_mixin(self, content)
     HasSlots.init_mixin(self)
     combined_content = vm.convert.build_content(content)
@@ -1461,6 +1497,24 @@ class AnnotationContainer(AnnotationClass):
           self.vm.errorlog.not_indexable(self.vm.frames, self.name)
     params = {name: inner[i] if i < len(inner) else self.vm.convert.unsolvable
               for i, name in enumerate(template)}
+
+    # For user-defined generic types, check if its type parameter matches
+    # its corresponding concrete type
+    if isinstance(self.base_cls, InterpreterClass) and self.base_cls.template:
+      for formal in self.base_cls.template:
+        root_node = self.vm.root_cfg_node
+        actual = params[formal.name].instantiate(root_node)
+        bad = self.vm.matcher.bad_matches(actual, formal, root_node)
+        if bad:
+          with self.vm.convert.pytd_convert.produce_detailed_output():
+            combined = pytd_utils.JoinTypes(
+                view[actual].data.to_type(root_node, view=view) for view in bad)
+            formal = self.vm.annotations_util.sub_one_annotation(
+                root_node, formal, [{}])
+            self.vm.errorlog.bad_concrete_type(
+                self.vm.frames, combined, formal.get_instance_type(root_node))
+            return self.vm.convert.unsolvable
+
     return abstract_class(self.base_cls, params, self.vm)
 
 
@@ -1937,7 +1991,10 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
       except self.vm.convert.TypeParameterError:
         # The return type contains a type parameter without a substitution.
         subst = subst.copy()
-        for t in self.pytd_sig.template:
+        visitor = visitors.CollectTypeParameters()
+        return_type.Visit(visitor)
+
+        for t in visitor.params:
           if t.name not in subst:
             subst[t.name] = self.vm.convert.empty.to_variable(node)
         ret_map[t] = self.vm.convert.constant_to_var(
@@ -2066,6 +2123,7 @@ class ClassMethod(AtomicAbstractValue):
   def __init__(self, name, method, callself, vm):
     super(ClassMethod, self).__init__(name, vm)
     self.method = method
+    self.method.is_attribute_of_class = True
     # Rename to callcls to make clear that callself is the cls parameter.
     self._callcls = callself
     self.signatures = self.method.signatures
@@ -2404,7 +2462,7 @@ class PyTDFunction(Function):
 class Class(object):
   """Mix-in to mark all class-like values."""
 
-  overloads = ("get_special_attribute", "get_own_new")
+  overloads = ("get_special_attribute", "get_own_new", "call")
 
   def __new__(cls, *unused_args, **unused_kwds):
     """Prevent direct instantiation."""
@@ -2419,6 +2477,7 @@ class Class(object):
       # TODO(rechen): Check that the metaclass is a (non-strict) subclass of the
       # metaclasses of the base classes.
       self.cls = metaclass
+    self._instance_cache = {}
     self._init_abstract_methods()
 
   def get_own_abstract_methods(self):
@@ -2507,6 +2566,25 @@ class Class(object):
       log.debug("%s.__init__(...) returned %r", self.name, ret)
     return node
 
+  def _new_instance(self):
+    # We allow only one "instance" per code location, regardless of call stack.
+    key = self.vm.frame.current_opcode
+    assert key
+    if key not in self._instance_cache:
+      self._instance_cache[key] = Instance(self, self.vm)
+    return self._instance_cache[key]
+
+  def call(self, node, value, args):
+    if self.is_abstract:
+      self.vm.errorlog.not_instantiable(self.vm.frames, self)
+    node, variable = self._call_new_and_init(node, value, args)
+    if variable is None:
+      value = self._new_instance()
+      variable = self.vm.program.NewVariable()
+      val = variable.AddBinding(value, [], node)
+      node = self._call_init(node, val, args)
+    return node, variable
+
   def get_special_attribute(self, node, name, valself):
     """Fetch a special attribute."""
     if name == "__getitem__" and valself is None:
@@ -2546,6 +2624,16 @@ class ParameterizedClass(AtomicAbstractValue, Class):
 
   is_lazy = False
 
+  def get_self_annot(self):
+    """This is used to annotate the `self` in a class."""
+    if not self.self_annot:
+      type_parameters = {}
+      for item in self.base_cls.template:
+        type_parameters[item.name] = item
+      self.self_annot = ParameterizedClass(
+          self.base_cls, type_parameters, self.vm)
+    return self.self_annot
+
   def __init__(self, base_cls, type_parameters, vm):
     # A ParameterizedClass is created by converting a pytd.GenericType, whose
     # base type is restricted to NamedType and ClassType.
@@ -2558,6 +2646,7 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     self.official_name = self.base_cls.official_name
     self.template = self.base_cls.template
     self.slots = self.base_cls.slots
+    self.self_annot = None
     Class.init_mixin(self, base_cls.cls)
 
   def __repr__(self):
@@ -2629,10 +2718,16 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     assert method
     return self.vm.convert.constant_to_value(method)
 
+  def _is_callable(self):
+    return (not self.is_abstract and isinstance(self.base_cls, InterpreterClass)
+            and all(not isinstance(val, TypeParameter)
+                    for val in self.type_parameters.values()))
+
   def call(self, node, func, args):
-    del func
-    del args
-    raise NotCallable(self)
+    if not self._is_callable():
+      raise NotCallable(self)
+    else:
+      return Class.call(self, node, func, args)
 
   def get_formal_type_parameter(self, t):
     return self.type_parameters.get(t, self.vm.convert.unsolvable)
@@ -2804,7 +2899,11 @@ class PyTDClass(SimpleAbstractValue, Class):
     self.pytd_cls = pytd_cls
     self.mro = self.compute_mro()
     self.official_name = self.name
-    self.template = self.pytd_cls.template
+    # The `template` is usually a constant but in the case of
+    # typing.Generic (only) it'll change every time when a new
+    # `Generic` class is instantiated.
+    self.template = [self.vm.convert.constant_to_value(itm.type_param)
+                     for itm in self.pytd_cls.template]
     self.slots = pytd_cls.slots
     self.is_dynamic = self.compute_is_dynamic()
     Class.init_mixin(self, metaclass)
@@ -2881,7 +2980,7 @@ class PyTDClass(SimpleAbstractValue, Class):
         subst = {
             itm.name: self.vm.convert.constant_to_value(
                 itm.type_param, {}, node).instantiate(node, container=instance)
-            for itm in self.template}
+            for itm in self.pytd_cls.template}
         return self._convert_member(name, c, subst, node)
 
   def generate_ast(self):
@@ -2911,14 +3010,132 @@ class InterpreterClass(SimpleAbstractValue, Class):
     assert isinstance(members, dict)
     super(InterpreterClass, self).__init__(name, vm)
     self._bases = bases
-    self.mro = self.compute_mro()
+    self.mro = self.compute_mro(self._get_pure_bases(bases))
     self.members = datatypes.MonitorDict(members)
     Class.init_mixin(self, cls)
     self.instances = set()  # filled through register_instance
-    self._instance_cache = {}
     self.slots = self._convert_slots(members.get("__slots__"))
     self.is_dynamic = self.compute_is_dynamic()
     log.info("Created class: %r", self)
+    self.template = self._get_template(bases)
+
+    if self.template:
+      # nested class can not use the same type parameter
+      # in current generic class
+      inner_cls_types = self.collect_inner_cls_types()
+      for cls, item in inner_cls_types:
+        if item in self.template:
+          self.vm.errorlog.invalid_annotation(
+              self.vm.frames, item,
+              ("Generic class [%s] and its nested generic class [%s] cannot"
+               " use same type variable %s.")
+              % (self.full_name, cls.full_name, item.name))
+
+      # For function type parameters check
+      for mbr in self.members.values():
+        mbr = get_atomic_value(mbr, default=self.vm.convert.unsolvable)
+        if isinstance(mbr, InterpreterFunction):
+          mbr.signature.excluded_types.update(
+              [t.full_name for t in self.template])
+
+  def collect_inner_cls_types(self, max_depth=5):
+    """Collect all the type parameters from nested classes."""
+    templates = set()
+    if max_depth > 0:
+      for mbr in self.members.values():
+        mbr = get_atomic_value(mbr, default=self.vm.convert.unsolvable)
+        if isinstance(mbr, InterpreterClass) and mbr.template:
+          templates.update([(mbr, item) for item in mbr.template])
+          templates.update(mbr.collect_inner_cls_types(max_depth - 1))
+    return templates
+
+  def _get_pure_bases(self, bases):
+    """Remove unnecessary `typing.Generic` for MRO check."""
+    has_user_generic = False
+    for base in bases:
+      base_var = get_atomic_value(base, default=self.vm.convert.unsolvable)
+      # check if it contains user-defined generic types
+      if (isinstance(base_var, ParameterizedClass)
+          and base_var.full_name != "typing.Generic"):
+        has_user_generic = True
+        break
+
+    real_bases = []
+    for base in bases:
+      base_var = get_atomic_value(base, default=self.vm.convert.unsolvable)
+      # if user-defined generic type exists, we won't add `typing.Generic` to
+      # the final result list
+      if not has_user_generic or base_var.full_name != "typing.Generic":
+        real_bases.append(base)
+    return real_bases
+
+  def _get_template(self, bases):
+    """Compute the precedence list of template parameters according to C3.
+
+    1. For the base class list, if it contains `typing.Generic`, then all the
+    type parameters should be provided. That means we don't need to parse extra
+    base class and then we can get all the type parameters.
+    2. If there is no `typing.Generic`, parse the precedence list according to
+    C3 based on all the base classes.
+    3. If `typing.Generic` exists, it must contain at least one type parameters.
+    And there is at most one `typing.Generic` in the base classes. Report error
+    if the check fails.
+
+    Args:
+      bases: base classes of the current class
+
+    Returns:
+      parsed type parameters
+
+    Raises:
+      GenericTypeError: if the type annotation for generic type is incorrect
+    """
+    bases = [get_atomic_value(base, default=self.vm.convert.unsolvable)
+             for base in bases]
+    template = []
+
+    # Compute the number of `typing.Generic` and collect the type parameters
+    for base in bases:
+      if base.full_name == "typing.Generic":
+        if isinstance(base, PyTDClass):
+          raise GenericTypeError(self, "Cannot inherit from plain Generic")
+        if template:
+          raise GenericTypeError(
+              self, "Cannot inherit from Generic[...] multiple times")
+        for item in base.template:
+          val = base.type_parameters.get(item.name)
+          template.append(val)
+
+    if template:
+      # All type parameters in the base classes should appear in
+      # `typing.Generic`
+      for base in bases:
+        if base.full_name != "typing.Generic":
+          if isinstance(base, ParameterizedClass):
+            for item in base.template:
+              val = base.type_parameters.get(item.name)
+              if isinstance(val, TypeParameter):
+                if val not in template:
+                  raise GenericTypeError(
+                      self, "Generic should contain all the type variables")
+    else:
+      # Compute template parameters according to C3
+      seqs = []
+      for base in bases:
+        if isinstance(base, ParameterizedClass):
+          seq = []
+          for item in base.template:
+            val = base.type_parameters.get(item.name)
+            if isinstance(val, TypeParameter):
+              seq.append(val)
+          seqs.append(seq)
+      try:
+        template.extend(mro.MergeSequences(seqs))
+      except ValueError:
+        raise GenericTypeError(
+            self, "Illegal type parameter order in class %s" % self.name)
+
+    return template
 
   def get_own_abstract_methods(self):
     return {name for name, var in self.members.items()
@@ -2993,25 +3210,6 @@ class InterpreterClass(SimpleAbstractValue, Class):
       # preparation for analysis, often there is no frame on the stack yet, or
       # the frame is a SimpleFrame with no opcode.
       return super(InterpreterClass, self).instantiate(node, container)
-
-  def _new_instance(self):
-    # We allow only one "instance" per code location, regardless of call stack.
-    key = self.vm.frame.current_opcode
-    assert key
-    if key not in self._instance_cache:
-      self._instance_cache[key] = Instance(self, self.vm)
-    return self._instance_cache[key]
-
-  def call(self, node, value, args):
-    if self.is_abstract:
-      self.vm.errorlog.not_instantiable(self.vm.frames, self)
-    node, variable = self._call_new_and_init(node, value, args)
-    if variable is None:
-      value = self._new_instance()
-      variable = self.vm.program.NewVariable()
-      val = variable.AddBinding(value, [], node)
-      node = self._call_init(node, val, args)
-    return node, variable
 
   def __repr__(self):
     return "InterpreterClass(%s)" % self.name
@@ -3108,6 +3306,18 @@ class SignedFunction(Function):
   def __init__(self, signature, vm):
     super(SignedFunction, self).__init__(signature.name, vm)
     self.signature = signature
+
+  @contextlib.contextmanager
+  def set_self_annot(self, annot_class):
+    """Set the annotation for `self` in a class."""
+    self_name = self.signature.param_names[0]
+    old_self = self.signature.annotations.get(self_name)
+    self.signature.annotations[self_name] = annot_class
+    yield
+    if old_self:
+      self.signature.annotations[self_name] = old_self
+    else:
+      del self.signature.annotations[self_name]
 
   def argcount(self, _):
     return len(self.signature.param_names)
@@ -3310,6 +3520,7 @@ class InterpreterFunction(SignedFunction):
     signature = self._build_signature(name, annotations, late_annotations)
     super(InterpreterFunction, self).__init__(signature, vm)
     self.last_frame = None  # for BuildClass
+    self.last_substs = None  # Type Merge for instance
     self._store_call_records = False
     if self.vm.PY3:
       self.is_class_builder = False  # Will be set by BuildClass.
@@ -3395,6 +3606,29 @@ class InterpreterFunction(SignedFunction):
       return
     return super(InterpreterFunction, self).match_args(node, args)
 
+  def _inner_cls_check(self, last_frame):
+    """Check if the function and its nested class use same type parameter."""
+    # get all type parameters from function annotations
+    all_type_parameters = []
+    for annot in self.signature.annotations.values():
+      all_type_parameters.extend(
+          self.vm.annotations_util.get_type_parameters(annot))
+
+    if all_type_parameters:
+      for key, value in last_frame.f_locals.pyval.items():
+        value = get_atomic_value(value, default=self.vm.convert.unsolvable)
+        if (not self.signature.has_param(key)  # skip the argument list
+            and isinstance(value, InterpreterClass) and value.template):
+          inner_cls_types = value.collect_inner_cls_types()
+          inner_cls_types.update([(value, item) for item in value.template])
+          for cls, item in inner_cls_types:
+            if item in all_type_parameters:
+              self.vm.errorlog.invalid_annotation(
+                  self.vm.simple_stack(self.get_first_opcode()), item,
+                  ("Function [%s] and its nested generic class [%s] can"
+                   " not use the same type variable %s")
+                  % (self.full_name, cls.full_name, item.name))
+
   def call(self, node, func, args, new_locals=None):
     if self.vm.is_at_maximum_depth() and not func_name_is_class_init(self.name):
       log.info("Maximum depth reached. Not analyzing %r", self.name)
@@ -3413,15 +3647,16 @@ class InterpreterFunction(SignedFunction):
         node, self.signature.annotations, substs, instantiate_unbound=False)
     if annotations:
       for name in callargs:
-        if name in annotations:
+        if (name in annotations and (not self.is_attribute_of_class or
+                                     self.argcount(node) == 0 or
+                                     name != self.signature.param_names[0])):
           extra_key = (self.get_first_opcode(), name)
           node, callargs[name] = self.vm.init_class(
               node, annotations[name], extra_key=extra_key)
     # Might throw vm.RecursionException:
-    frame = self.vm.make_frame(node, self.code, callargs,
-                               self.f_globals, self.f_locals, self.closure,
-                               new_locals=new_locals, func=func,
-                               first_posarg=first_posarg)
+    frame = self.vm.make_frame(
+        node, self.code, callargs, self.f_globals, self.f_locals, self.closure,
+        new_locals=new_locals, func=func, first_posarg=first_posarg)
     if self.signature.param_names:
       self_var = callargs.get(self.signature.param_names[0])
       caller_is_abstract = self_var and all(
@@ -3476,6 +3711,8 @@ class InterpreterFunction(SignedFunction):
     if self._store_call_records or self.vm.store_all_calls:
       self._call_records.append((callargs, ret, node_after_call))
     self.last_frame = frame
+    self.last_substs = substs
+    self._inner_cls_check(self.last_frame)
     return node_after_call, ret
 
   def get_call_combinations(self, node):
@@ -3616,6 +3853,15 @@ class BoundFunction(AtomicAbstractValue):
     self.underlying = underlying
     self.is_attribute_of_class = False
 
+    # If the function belongs to `ParameterizedClass`, we will annotate the
+    # `self` when do argument matching
+    self.replace_self_annot = None
+    if isinstance(self.underlying, InterpreterFunction):
+      inst = get_atomic_value(
+          self._callself, default=self.vm.convert.unsolvable)
+      if isinstance(inst.cls, ParameterizedClass):
+        self.replace_self_annot = inst.cls.get_self_annot()
+
   def argcount(self, node):
     return self.underlying.argcount(node) - 1  # account for self
 
@@ -3631,7 +3877,24 @@ class BoundFunction(AtomicAbstractValue):
     if self.argcount(node) >= 0:
       args = args.replace(posargs=(self._callself,) + args.posargs)
     try:
-      return self.underlying.call(node, func, args)
+      inst = get_atomic_value(
+          self._callself, default=self.vm.convert.unsolvable)
+      if self.replace_self_annot:
+        with self.underlying.set_self_annot(self.replace_self_annot):
+          node, ret = self.underlying.call(node, func, args)
+      else:
+        node, ret = self.underlying.call(node, func, args)
+      if (isinstance(self.underlying, InterpreterFunction)
+          and isinstance(inst, Instance)):
+        substs = self.underlying.last_substs
+        if substs:
+          for subst in substs:
+            for k, v in subst.items():
+              if k in inst.type_parameters:
+                value = inst.type_parameters[k].AssignToNewVariable(node)
+                value.PasteVariable(v, node)
+                inst.merge_type_parameter(node, k, value)
+      return node, ret
     except InvalidParameters as e:
       if self._callself and self._callself.bindings:
         if "." in e.name:
@@ -3892,6 +4155,7 @@ class BuildClass(AtomicAbstractValue):
       raise ConversionError("Invalid argument to __build_class__")
     func.is_class_builder = True
     bases = args.posargs[2:]
+
     node, _ = func.call(node, funcvar.bindings[0],
                         args.replace(posargs=(), namedargs={}),
                         new_locals=True)

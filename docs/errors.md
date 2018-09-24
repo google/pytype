@@ -21,6 +21,7 @@ y = a.bar
 <!--ts-->
    * [Error classes](#error-classes)
       * [attribute-error](#attribute-error)
+      * [bad-concrete-type](#bad-concrete-type)
       * [bad-function-defaults](#bad-function-defaults)
       * [bad-return-type](#bad-return-type)
       * [bad-slots](#bad-slots)
@@ -59,7 +60,7 @@ y = a.bar
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2018-09-05T10:31-07:00 -->
+<!-- Added by: ahxun, at: 2018-09-14T13:10-07:00 -->
 
 <!--te-->
 
@@ -83,6 +84,22 @@ ellipses) and supply the type in a type comment:
 
 class A(object):
   foo = ...  # type: int
+```
+
+## bad-concrete-type
+
+The function was called with the wrong instance type in the generic class.
+Example:
+
+```python {.bad}
+from typing import Generic, TypeVar
+
+T = TypeVar('T', int, float)
+
+class A(Generic[T]):
+  pass
+
+obj = A[str]()  # bad-concrete-type
 ```
 
 ## bad-function-defaults

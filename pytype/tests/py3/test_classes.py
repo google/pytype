@@ -118,7 +118,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
     """)
 
   def testMakeGenericClass(self):
-    ty, errors = self.InferWithErrors("""\
+    ty = self.Infer("""\
       from typing import List, TypeVar, Union
       T1 = TypeVar("T1")
       T2 = TypeVar("T2")
@@ -130,10 +130,9 @@ class ClassesTest(test_base.TargetPython3BasicTest):
       T2 = TypeVar("T2")
       class Foo(List[Union[T1, T2]]): ...
     """)
-    self.assertErrorLogIs(errors, [(4, "not-supported-yet", r"generic")])
 
   def testMakeGenericClassWithConcreteValue(self):
-    ty, errors = self.InferWithErrors("""\
+    ty = self.Infer("""\
       from typing import Dict, TypeVar
       V = TypeVar("V")
       class Foo(Dict[str, V]): ...
@@ -146,7 +145,6 @@ class ClassesTest(test_base.TargetPython3BasicTest):
       class Foo(Dict[str, V]): ...
       v = ...  # type: str
     """)
-    self.assertErrorLogIs(errors, [(3, "not-supported-yet", r"generic")])
 
   def testGenericReinstantiated(self):
     """Makes sure the result of foo.f() isn't used by both a() and b()."""

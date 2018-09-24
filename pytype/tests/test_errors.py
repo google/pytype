@@ -418,12 +418,14 @@ class ErrorTest(test_base.TargetIndependentTest):
         from typing import Generic, TypeVar
         K = TypeVar("K")
         V = TypeVar("V")
-        class A(Generic[K, V], Generic[V, K]): pass
+        class A(Generic[K, V]): pass
+        class B(Generic[K, V]): pass
+        class C(A[K, V], B[V, K]): pass
       """)
       _, errors = self.InferWithErrors("""\
         import a
       """, deep=True, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(1, "pyi-error", r"Illegal.*order.*a\.A")])
+      self.assertErrorLogIs(errors, [(1, "pyi-error", r"Illegal.*order.*a\.C")])
 
   def testDuplicateTypeParameter(self):
     with file_utils.Tempdir() as d:
@@ -436,6 +438,19 @@ class ErrorTest(test_base.TargetIndependentTest):
         import a
       """, deep=True, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(1, "pyi-error", r"T")])
+
+  def testDuplicateGenericBaseClass(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import Generic, TypeVar
+        T = TypeVar("T")
+        V = TypeVar("V")
+        class A(Generic[T], Generic[V]): pass
+      """)
+      _, errors = self.InferWithErrors("""\
+        import a
+      """, deep=True, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(1, "pyi-error", r"inherit.*Generic")])
 
   def testTypeParameterInModuleConstant(self):
     with file_utils.Tempdir() as d:
@@ -495,12 +510,6 @@ class ErrorTest(test_base.TargetIndependentTest):
     """, deep=True)
     self.assertErrorLogIs(
         errors, [(1, "wrong-arg-types", r"Actually passed.*Type\[int\]")])
-
-  def testNotSupported(self):
-    _, errors = self.InferWithErrors("""\
-      from typing import Generic
-    """)
-    self.assertErrorLogIs(errors, [(1, "not-supported-yet")])
 
   def testDeleteFromSet(self):
     _, errors = self.InferWithErrors("""\

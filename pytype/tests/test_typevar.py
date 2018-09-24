@@ -124,7 +124,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
                                    (4, "not-supported-yet")])
 
   def testBaseClassWithTypeVar(self):
-    ty, errors = self.InferWithErrors("""\
+    ty = self.Infer("""\
       from typing import List, TypeVar
       T = TypeVar("T")
       class A(List[T]): pass
@@ -134,7 +134,6 @@ class TypeVarTest(test_base.TargetIndependentTest):
       T = TypeVar("T")
       class A(List[T]): ...
     """)
-    self.assertErrorLogIs(errors, [(3, "not-supported-yet")])
 
   def testOverwriteBaseClassWithTypeVar(self):
     self.Check("""

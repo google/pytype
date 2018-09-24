@@ -642,6 +642,30 @@ class NewType(abstract.PyTDFunction):
                                     members.to_variable(node), None)
 
 
+class Generic(TypingContainer):
+  """Implementation of typing.Generic."""
+
+  def _get_value_info(self, inner, ellipses):
+    if not all(isinstance(item, abstract.TypeParameter) for item in inner):
+      self.vm.errorlog.invalid_annotation(
+          self.vm.frames, self,
+          "Parameters to Generic[...] must all be type variables")
+      inner = [item for item in inner
+               if isinstance(item, abstract.TypeParameter)]
+
+    template = [item.full_name for item in inner]
+
+    if len(set(template)) != len(template):
+      self.vm.errorlog.invalid_annotation(
+          self.vm.frames, self,
+          "Parameters to Generic[...] must all be unique")
+
+    # `self.base_cls.template` will change each time, it is used to initialize
+    # the template in ParameterizedClass.
+    self.base_cls.template = tuple(inner)
+    return template, inner, abstract.ParameterizedClass
+
+
 def not_supported_yet(name, vm):
   vm.errorlog.not_supported_yet(vm.frames, "typing." + name)
   return vm.convert.unsolvable
@@ -669,7 +693,7 @@ typing_overload = {
     "Any": build_any,
     "Callable": Callable,
     "ClassVar": not_supported_yet,
-    "Generic": not_supported_yet,
+    "Generic": Generic,
     "NamedTuple": namedtuple_builder,
     "NewType": NewType,
     "NoReturn": build_noreturn,

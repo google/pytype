@@ -250,6 +250,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           break
       else:
         if other_type.constraints:
+          self._set_error_subst(subst)
           return None
       if other_type.bound:
         new_subst = self._match_value_against_type(
