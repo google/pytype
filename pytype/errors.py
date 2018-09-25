@@ -730,6 +730,14 @@ class ErrorLog(ErrorLogBase):
     ])
     self.error(stack, "bad option in return type", details)
 
+  @_error_name("bad-concrete-type")
+  def bad_concrete_type(self, stack, actual_pytd, expected_pytd):
+    details = "".join([
+        "Expected: ", self._print_as_return_type(expected_pytd), "\n",
+        "Actually passed: ", self._print_as_return_type(actual_pytd),
+    ])
+    self.error(stack, "Invalid instantiation of generic class", details)
+
   @_error_name("unsupported-operands")
   def unsupported_operands(self, stack, operation, var1, var2):
     left = self._join_printed_types(

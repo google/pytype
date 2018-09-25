@@ -368,6 +368,13 @@ class CallTracer(vm.VirtualMachine):
             new_node.ConnectTo(node)
     # Now go through all functions and classes we haven't analyzed yet.
     # These are typically hidden under a decorator.
+    # Go through classes first so that the `is_attribute_of_class` will
+    # be set for all functions in class.
+    for c in self._interpreter_classes:
+      for value in c.bindings:
+        if (isinstance(value.data, abstract.InterpreterClass) and
+            value.data not in self._analyzed_classes):
+          node = self.analyze_class(node, value)
     for f in self._interpreter_functions:
       for value in f.bindings:
         # We record analyzed functions by opcode rather than function object.
@@ -378,11 +385,6 @@ class CallTracer(vm.VirtualMachine):
             not value.data.is_class_builder and
             value.data.get_first_opcode() not in self._analyzed_functions):
           node = self.analyze_function(node, value)
-    for c in self._interpreter_classes:
-      for value in c.bindings:
-        if (isinstance(value.data, abstract.InterpreterClass) and
-            value.data not in self._analyzed_classes):
-          node = self.analyze_class(node, value)
     return node
 
   def analyze(self, node, defs, maximum_depth):

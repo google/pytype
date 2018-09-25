@@ -3,7 +3,6 @@
 ## Pytype
 
 Statically check and infer types for unannotated Python code.
-(This is not an official Google product.)
 
 ## Abstract
 
@@ -166,9 +165,10 @@ analyze package `~/repo1/foo`, which depends on package `~/repo2/bar`:
         └── dependency.py
 ```
 
-Here is the filled-in config file, which instructs pytype to treat its input as
-Python 3.6 code and ignore attribute errors. Notice that the path to a package
-does not include the package itself.
+Here is the filled-in config file, which instructs pytype to type-check
+`~/repo1/foo` as Python 3.6 code, look for packages in `~/repo1` and `~/repo2`,
+and ignore attribute errors. Notice that the path to a package does not include
+the package itself.
 
 ```
 $ cat ~/repo1/pytype.cfg
@@ -176,6 +176,11 @@ $ cat ~/repo1/pytype.cfg
 # NOTE: All relative paths are relative to the location of this file.
 
 [pytype]
+
+# Space-separated list of files or directories to process.
+inputs =
+    foo
+
 # Python version (major.minor) of the target code.
 python_version = 3.6
 
@@ -184,7 +189,9 @@ pythonpath =
     .:
     ~/repo2
 
-disable=attribute-error
+# Comma separated list of error names to ignore.
+disable =
+    attribute-error
 ```
 
 We could've discovered that `~/repo2` needed to be added to the pythonpath by
@@ -216,3 +223,6 @@ of its dependencies.
 
 ## License
 Apache 2.0
+
+## Disclaimer
+This is not an official Google product.

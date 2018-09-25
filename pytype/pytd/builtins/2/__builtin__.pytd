@@ -845,11 +845,14 @@ class instancemethod(object):
     def __init__(self, function: Callable or instancemethod, instance, cls) -> NoneType
     def __get__(self, obj, ...) -> instancemethod
 
+__path__ = ...  # type: Iterable[str]  # only sometimes present
+
 class module(object):
+    __doc__ = ...  # type: str or unicode
     __file__ = ...  # type: str
     __name__ = ...  # type: str
-    __doc__ = ...  # type: str or unicode
     __package__ = ...  # type: Optional[str]
+    __path__ = ...  # type: Iterable[str]  # only sometimes present
     def __init__(self, name: str or bytearray, doc = ...) -> NoneType
     def __getattr__(self, name) -> ?  # modules can contain anything
 

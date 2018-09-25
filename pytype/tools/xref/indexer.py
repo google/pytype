@@ -33,7 +33,6 @@ ast = None
 DEF_OFFSETS = {
     "ClassDef": 6,  # class X
     "FunctionDef": 4,  # def f
-    "Import": 7,  # import a
 }
 
 
@@ -194,8 +193,13 @@ class PytypeValue(object):
       return None
 
     if isinstance(data, abstract.PyTDClass):
-      # If we have a remote reference, return Remote rather than PytypeValue.
-      return Remote(data.module, data.name)
+      if data.module:
+        # If we have a remote reference, return Remote rather than PytypeValue.
+        return Remote(data.module, data.name)
+      else:
+        # This is a namedtuple or some other special case pytype has generated a
+        # local PyTDClass for. We need special cases for them too.
+        return None
     elif isinstance(data, abstract.InterpreterClass):
       return cls("module", data.name, "Class")
     elif isinstance(data, abstract.BoundFunction):
@@ -566,11 +570,14 @@ class IndexVisitor(ScopedVisitor):
 
   def _get_location(self, node, args):
     """Get a more accurate node location."""
-    # For class and function definitions, search for the string
-    #   (class|def) <name>
-    # between the start of the AST node and the start of the body. Handles the
-    # offset for decorated functions/classes.
+
+    line, col = None, None
+
     if isinstance(node, ast.ClassDef):
+      # For class and function definitions, search for the string
+      #   (class|def) <name>
+      # between the start of the AST node and the start of the body. Handles the
+      # offset for decorated functions/classes.
       body_start = node.body[0].lineno
       text = "class %s" % args["name"]
       line, col = self.source.find_text(node.lineno, body_start, text)
@@ -578,13 +585,24 @@ class IndexVisitor(ScopedVisitor):
       body_start = node.body[0].lineno
       text = "def %s" % args["name"]
       line, col = self.source.find_text(node.lineno, body_start, text)
-    else:
+    elif isinstance(node, (ast.Import, ast.ImportFrom)):
+      # Search for imported module names
+      text = self.source.line(node.lineno)
+      name = args["name"]
+      c = text.index(" " + name)
+      if c == -1:
+        c = text.index("," + name)
+      if c != -1:
+        line, col = node.lineno, c + 1
+
+    if line is None:
       line, col = get_location(node)
+
     return (line, col)
 
   def get_suppressed_nodes(self):
-    return [ast.Module, ast.BinOp, ast.Return, ast.Assign,
-            ast.Num, ast.Add, ast.Str]
+    return [ast.Module, ast.BinOp, ast.BoolOp, ast.Return, ast.Assign, ast.Num,
+            ast.Add, ast.Str]
 
   def make_def(self, node, **kwargs):
     """Make a definition from a node."""
@@ -778,7 +796,10 @@ class IndexVisitor(ScopedVisitor):
           self.typemap[ref.id] = rhs
         break
       elif symbol == node.attr and op in ["STORE_ATTR"]:
-        self.add_local_def(node)
+        defn = self.add_local_def(node)
+        if self.current_class:
+          # We only support attr definitions within a class definition.
+          self.current_env.setattr(node.attr, defn)
     return node.value + "." + node.attr
 
   def visit_Subscript(self, node):
@@ -863,14 +884,16 @@ class Indexer(object):
   def get_def_offsets(self, defloc):
     """Get the byte offsets for a definition."""
 
-    line, col = defloc.location
-    start = self.source.get_offset(line, col)
     defn = self.defs[defloc.def_id]
     typ = defn.typ
-    if typ in DEF_OFFSETS:
-      start += DEF_OFFSETS[typ]
-    # TODO(mdemello): Attributes need to scan the line for the attribute name.
-    end = start + len(defn.name)
+    if typ == "Attribute":
+      start, end = self._get_attr_bounds(defn.name, defloc.location)
+    else:
+      line, col = defloc.location
+      start = self.source.get_offset(line, col)
+      if typ in DEF_OFFSETS:
+        start += DEF_OFFSETS[typ]
+      end = start + len(defn.name)
     return (start, end)
 
   def get_doc_offsets(self, doc):
@@ -936,16 +959,16 @@ class Indexer(object):
               target=defn_vname,
               edge_name="documents")
 
-  def _get_attr_bounds(self, ref):
+  def _get_attr_bounds(self, name, location):
     """Calculate the anchor bounds for an attr access."""
     # TODO(mdemello): This is pretty crude, and does not for example take into
     # account multiple calls of the same attribute in a line. It is just to get
     # our tests passing till we incorporate asttokens.
-    lineno, col = ref.location
+    lineno, col = location
     line = self.source.line(lineno)
-    attr = ref.name.split(".")[-1]
+    attr = name.split(".")[-1]
     offset = line.index("." + attr) - col + 1
-    start, end = self.get_anchor_bounds(ref.location, len(attr))
+    start, end = self.get_anchor_bounds(location, len(attr))
     return (start + offset, end + offset)
 
   def get_anchor_bounds(self, location, length):
@@ -958,7 +981,7 @@ class Indexer(object):
 
   def get_ref_bounds(self, ref):
     if ref.typ == "Attribute":
-      return self._get_attr_bounds(ref)
+      return self._get_attr_bounds(ref.name, ref.location)
     else:
       return self.get_anchor_bounds(ref.location, len(ref.name))
 
@@ -1115,8 +1138,8 @@ class Indexer(object):
 
     for r in self.refs:
       if r.typ == "Attribute":
-        attr = r.name.split(".")[-1]
-        defs = self._lookup_attribute_by_type(r, attr)
+        attr_name = r.name.split(".")[-1]
+        defs = self._lookup_attribute_by_type(r, attr_name)
         if defs:
           links.extend(defs)
           continue
@@ -1134,8 +1157,10 @@ class Indexer(object):
               typ = self.typemap.get(defn.id)
               if typ:
                 for x in PytypeValue.from_data(typ):
-                  if x.typ == "Class":
-                    d = self._lookup_class_attr(x.name, attr)
+                  if isinstance(x, Remote):
+                    links.append((r, x.attr(attr_name)))
+                  elif x.typ == "Class":
+                    d = self._lookup_class_attr(x.name, attr_name)
                     if d:
                       links.append((r, d))
                     else:

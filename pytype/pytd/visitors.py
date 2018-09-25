@@ -521,8 +521,10 @@ class PrintVisitor(Visitor):
       # Abbreviated form. "Any" is the default.
       self._typing_import_counts["Any"] -= 1
       return node.name + suffix
+    # For parameterized class, for example: ClsName[T, V].
+    # Its name is `ClsName` before `[`.
     elif node.name == "self" and self.class_names and (
-        node.type == self.class_names[-1]):
+        self.class_names[-1].split("[")[0] == node.type):
       return self._SafeName(node.name) + suffix
     elif node.name == "cls" and self.class_names and (
         node.type == "Type[%s]" % self.class_names[-1]):
@@ -1982,15 +1984,32 @@ class AdjustTypeParameters(Visitor):
   def EnterClass(self, node):
     """Establish the template for the class."""
     templates = []
+    generic_template = None
+
     for parent in node.parents:
       if isinstance(parent, pytd.GenericType):
         params = sum((self._GetTemplateItems(param)
                       for param in parent.parameters), [])
-        templates.append(params)
-        # TODO(mdemello): Do we need "Generic" in here or is it guaranteed to be
-        # replaced by typing.Generic by the time this visitor is called?
         if parent.base_type.name in ["typing.Generic", "Generic"]:
+          # TODO(mdemello): Do we need "Generic" in here or is it guaranteed
+          # to be replaced by typing.Generic by the time this visitor is called?
           self._CheckDuplicateNames(params, node.name)
+          if generic_template:
+            raise ContainerError(
+                "Cannot inherit from Generic[...] multiple times in class %s"
+                % node.name)
+          else:
+            generic_template = params
+        else:
+          templates.append(params)
+    if generic_template:
+      for params in templates:
+        for param in params:
+          if param not in generic_template:
+            raise ContainerError(
+                ("Some type variables (%s) are not listed in Generic of"
+                 " class %s") % (param.type_param.name, node.name))
+      templates = [generic_template]
 
     try:
       template = mro.MergeSequences(templates)

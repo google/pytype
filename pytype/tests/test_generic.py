@@ -343,7 +343,7 @@ class GenericTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
-        x = ...  # type: a.Custom
+        x = ...  # type: a.Custom[nothing, nothing]
       """)
 
   def testTypeParameterAmbiguous(self):
@@ -381,8 +381,10 @@ class GenericTest(test_base.TargetIndependentTest):
           return x
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import a
+
         a = ...  # type: module
-        def f() -> a.A[int, int]
+        def f() -> a.A[int]: ...
       """)
 
   def testUnion(self):
@@ -534,8 +536,8 @@ class GenericTest(test_base.TargetIndependentTest):
         from typing import Any
         a = ...  # type: module
         # T was made unsolvable by an AliasingDictConflictError.
-        def f() -> a.A[Any, str]
-        def g() -> Any
+        def f() -> a.A[int, str]
+        def g() -> int
         def h() -> str
       """)
 
@@ -554,9 +556,7 @@ class GenericTest(test_base.TargetIndependentTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
-        # Type parameter a.A.T can be an alias for both List._T and Dict._K.
-        # Due to this ambiguity, T is set to Any.
-        v = ...  # type: a.A[Any, nothing]
+        v = ...  # type: a.A[nothing, nothing]
       """)
 
   def testRecursiveContainer(self):

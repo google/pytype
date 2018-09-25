@@ -307,5 +307,13 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       s.endswith("a", start=1, end=2)
     """)
 
+  def testPath(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo/__init__.py")
+      self.Check("""
+        import foo
+        __path__, foo.__path__
+      """, pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")

@@ -10,11 +10,11 @@ _ARG_PREFIX = '--'
 
 
 class ParserWrapper(object):
-  """Wrapper that adds arguments to a parser while recording their names."""
+  """Wrapper that adds arguments to a parser while recording them."""
 
   def __init__(self, parser):
     self.parser = parser
-    self.names = set()
+    self.actions = {}
 
   def add_argument(self, *args, **kwargs):
     try:
@@ -23,7 +23,7 @@ class ParserWrapper(object):
       # We deliberately mask some pytype-single options with pytype-all ones.
       pass
     else:
-      self.names.add(action.dest)
+      self.actions[action.dest] = action
 
 
 def convert_string(s):
@@ -40,9 +40,9 @@ def convert_string(s):
 class Parser(object):
   """pytype-all parser."""
 
-  def __init__(self, parser, pytype_single_names):
+  def __init__(self, parser, pytype_single_args):
     self.parser = parser
-    self.pytype_single_names = pytype_single_names
+    self.pytype_single_args = pytype_single_args
 
   def parse_args(self, argv):
     """Parses argv.
@@ -56,7 +56,7 @@ class Parser(object):
     Returns:
       An argparse.Namespace.
     """
-    file_config_names = set(config.ITEMS) | self.pytype_single_names
+    file_config_names = set(config.ITEMS) | set(self.pytype_single_args)
     # Creates a namespace that we'll parse argv into, so that we can check for
     # a file configurable arg by whether the None default was overwritten.
     args = argparse.Namespace(**{k: None for k in file_config_names})
@@ -70,12 +70,12 @@ class Parser(object):
   def config_from_defaults(self):
     defaults = self.parser.parse_args([])
     self.postprocess(defaults)
-    conf = config.Config(*self.pytype_single_names)
+    conf = config.Config(*self.pytype_single_args)
     conf.populate_from(defaults)
     return conf
 
   def postprocess(self, args, from_strings=False):
-    """Postprocesses the subset of pytype_single_names that appear in args.
+    """Postprocesses the subset of pytype_single_args that appear in args.
 
     Args:
       args: an argparse.Namespace.
@@ -83,7 +83,7 @@ class Parser(object):
         to convert them to the right types.
     """
     names = set()
-    for k in self.pytype_single_names:
+    for k in self.pytype_single_args:
       if hasattr(args, k):
         names.add(k)
         if from_strings:
@@ -137,7 +137,7 @@ def make_parser():
   # Adds options from pytype-single.
   wrapper = ParserWrapper(parser)
   pytype_config.add_basic_options(wrapper)
-  return Parser(parser, wrapper.names)
+  return Parser(parser, wrapper.actions)
 
 
 class _FlattenAction(argparse.Action):

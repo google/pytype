@@ -1,5 +1,6 @@
 """Test functions."""
 
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -220,6 +221,29 @@ class TestFunctions(test_base.TargetPython3BasicTest):
       def cast(typ: Type[T], val) -> T: ...
     """)
 
+  def test_varargs(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(x: int, *args): ...
+      """)
+      self.Check("""
+        import foo
+        def g(*args):
+          foo.f(42, *args)
+      """, pythonpath=[d.path])
+
+  def test_varargs_error(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(x: int, *args): ...
+      """)
+      errors = self.CheckWithErrors("""\
+        import foo
+        def g(*args):
+          foo.f("", *args)
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(3, "wrong-arg-types", "int.*str")])
+
 
 class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for functions."""
@@ -391,9 +415,9 @@ class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
       c = ...  # type: Dict[str, int]
       d = ...  # type: Dict[str, int]
       e = ...  # type: Dict[str, int]
-      p = ...  # type: List[List[int]]
-      q = ...  # type: Set[List[int]]
-      r = ...  # type: Tuple[List[int], List[int]]
+      p = ...  # type: List[int]
+      q = ...  # type: Set[int]
+      r = ...  # type: Tuple[int, int, int, int, int, int, int, int]
       s = ...  # type: Dict[str, int]
       x = ...  # type: Dict[str, int]
       y = ...  # type: Dict[str, int]
@@ -403,6 +427,19 @@ class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
       def h(*args, **kwargs) -> None: ...
       def j(a = ..., b = ..., c = ...) -> None: ...
       def k(a, b, c, d, **kwargs) -> None: ...
+    """)
+
+  def test_unpack_str(self):
+    ty = self.Infer("""
+      s1 = "abc"
+      s2 = "def"
+      tup = (*s1, *s2)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Tuple
+      s1 = ...  # type: str
+      s2 = ...  # type: str
+      tup = ...  # type: Tuple[str, str, str, str, str, str]
     """)
 
   def test_unpack_nonliteral(self):
@@ -438,6 +475,31 @@ class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
       y = ...  # type: Dict[str, Union[bytes, int]]
       z = ...  # type: Dict[str, Union[bytes, int, str]]
     """)
+
+  def test_kwonly(self):
+    self.Check("""
+      def foo(x: int, *, z: int = None) -> None:
+        pass
+
+      foo(1, z=5)
+    """)
+
+  def test_varargs_with_kwonly(self):
+    self.Check("""
+      def foo(x: int, *args: int, z: int) -> None:
+        pass
+
+      foo(1, 2, z=5)
+    """)
+
+  def test_varargs_with_missing_kwonly(self):
+    errors = self.CheckWithErrors("""\
+      def foo(x: int, *args: int, z: int) -> None:
+        pass
+
+      foo(1, 2, 5)
+    """)
+    self.assertErrorLogIs(errors, [(4, "missing-parameter", r"\bz\b")])
 
 
 test_base.main(globals(), __name__ == "__main__")

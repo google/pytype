@@ -5,6 +5,7 @@ import os
 from pytype import datatypes
 from pytype import file_utils
 from pytype.tools.analyze_project import config
+from pytype.tools.analyze_project import parse_args
 import unittest
 
 
@@ -110,25 +111,36 @@ class TestConfig(TestBase):
 class TestGenerateConfig(unittest.TestCase):
   """Test config.generate_sample_config_or_die."""
 
+  @classmethod
+  def setUpClass(cls):
+    cls._pytype_single_args = parse_args.make_parser().pytype_single_args
+
   def test_bad_location(self):
     with self.assertRaises(SystemExit):
-      config.generate_sample_config_or_die('/does/not/exist/sample.cfg')
+      config.generate_sample_config_or_die('/does/not/exist/sample.cfg',
+                                           self._pytype_single_args)
 
   def test_existing_file(self):
     with file_utils.Tempdir() as d:
       f = d.create_file('sample.cfg')
       with self.assertRaises(SystemExit):
-        config.generate_sample_config_or_die(f)
+        config.generate_sample_config_or_die(f, self._pytype_single_args)
 
   def test_generate(self):
     conf = config.FileConfig()
     with file_utils.Tempdir() as d:
       f = os.path.join(d.path, 'sample.cfg')
-      config.generate_sample_config_or_die(f)
-      # Test that we've generated a valid config and spot-check pythonpath.
+      config.generate_sample_config_or_die(f, self._pytype_single_args)
+      # Test that we've generated a valid config and spot-check a pytype-all
+      # and a pytype-single argument.
       conf.read_from_file(f)
-      self.assertEqual(
-          conf.pythonpath, config.ITEMS['pythonpath'].sample.split(os.pathsep))
+      with file_utils.cd(d.path):
+        expected_pythonpath = [
+            os.path.realpath(p)
+            for p in config.ITEMS['pythonpath'].sample.split(os.pathsep)]
+      expected_protocols = config._PYTYPE_SINGLE_ITEMS['protocols'].sample
+      self.assertEqual(conf.pythonpath, expected_pythonpath)
+      self.assertEqual(conf.protocols, expected_protocols)
 
 
 class TestReadConfig(TestBase):
