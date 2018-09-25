@@ -19,6 +19,7 @@
 from __future__ import print_function
 
 import logging
+import os
 import sys
 
 import importlab.environment
@@ -91,6 +92,9 @@ def main():
 
   logging.info('Source tree:\n%s',
                importlab.output.formatted_deps_list(import_graph))
+  if os.path.exists(conf.output):
+    logging.info(
+        'Existing output directory, may affect results: %s', conf.output)
   tool_utils.makedirs_or_die(conf.output, 'Could not create output directory')
   deps = pytype_runner.deps_from_import_graph(import_graph)
   runner = pytype_runner.PytypeRunner(conf, deps)
