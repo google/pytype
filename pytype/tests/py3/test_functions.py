@@ -439,5 +439,30 @@ class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
       z = ...  # type: Dict[str, Union[bytes, int, str]]
     """)
 
+  def test_kwonly(self):
+    self.Check("""
+      def foo(x: int, *, z: int = None) -> None:
+        pass
+
+      foo(1, z=5)
+    """)
+
+  def test_varargs_with_kwonly(self):
+    self.Check("""
+      def foo(x: int, *args: int, z: int) -> None:
+        pass
+
+      foo(1, 2, z=5)
+    """)
+
+  def test_varargs_with_missing_kwonly(self):
+    errors = self.CheckWithErrors("""\
+      def foo(x: int, *args: int, z: int) -> None:
+        pass
+
+      foo(1, 2, 5)
+    """)
+    self.assertErrorLogIs(errors, [(4, "missing-parameter", r"\bz\b")])
+
 
 test_base.main(globals(), __name__ == "__main__")

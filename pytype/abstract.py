@@ -3553,7 +3553,7 @@ class InterpreterFunction(SignedFunction):
     defaults.update(self.kw_defaults)
     return function.Signature(
         name,
-        tuple(self.code.co_varnames[:self.nonstararg_count]),
+        tuple(self.code.co_varnames[:self.code.co_argcount]),
         vararg_name,
         tuple(kwonly),
         kwarg_name,

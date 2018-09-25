@@ -63,5 +63,28 @@ class CallsTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(2, "wrong-keyword-args")])
 
+  def testVarArgsWithKwOnly(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("mod.pyi", """
+        def foo(*args: int, z: int) -> int
+      """)
+      self.Check(
+          """\
+        import mod
+        mod.foo(1, 2, z=3)
+      """, pythonpath=[d.path])
+
+  def testVarArgsWithMissingKwOnly(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("mod.pyi", """
+        def foo(*args: int, z: int) -> int
+      """)
+      _, errors = self.InferWithErrors(
+          """\
+        import mod
+        mod.foo(1, 2, 3)
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(2, "missing-parameter", r"\bz\b")])
+
 
 test_base.main(globals(), __name__ == "__main__")
