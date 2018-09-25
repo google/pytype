@@ -41,10 +41,10 @@ class Kythe(object):
     self.add_fact(vname, "text", file_contents)
     return vname
 
-  def vname(self, signature):
+  def vname(self, signature, filepath=None):
     return VName(
         signature=signature,
-        path=self.path,
+        path=filepath or self.path,
         lang="python",
         root=self.root,
         corpus=self.corpus)

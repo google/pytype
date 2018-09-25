@@ -1,9 +1,12 @@
+import json
+
 from pytype import config
 from pytype import file_utils
 
 from pytype.tests import test_base
 
 from pytype.tools.xref import indexer
+from pytype.tools.xref import output
 
 
 class IndexerTest(test_base.TargetIndependentTest):
@@ -43,32 +46,66 @@ class IndexerTest(test_base.TargetIndependentTest):
   def test_resolved_imports(self):
     # We need all imports to be valid for pytype
     code = """\
-        import foo
+        import f
         import x.y
         import a.b as c
         from a import b
         from p import q as r
+
+        fx = f.X()
+        cx = c.X()
+        bx = b.X()
+        rx = r.x()
     """
     stub = "class X: pass"
     with file_utils.Tempdir() as d:
       d.create_file("t.py", code)
-      d.create_file("foo.pyi", stub)
+      d.create_file("f.pyi", stub)
       d.create_file("x/y.pyi", stub)
       d.create_file("a/b.pyi", stub)
       d.create_file("p/q.pyi", stub)
       options = config.Options([d["t.py"]])
       options.tweak(pythonpath=[d.path], version=self.python_version)
       ix = indexer.process_file(options)
-      self.assertDef(ix, "module.foo", "foo", "Import")
+      self.assertDef(ix, "module.f", "f", "Import")
       self.assertDef(ix, "module.x.y", "x.y", "Import")
       self.assertDef(ix, "module.c", "c", "Import")
       self.assertDef(ix, "module.b", "b", "ImportFrom")
       self.assertDef(ix, "module.r", "r", "ImportFrom")
-      self.assertEqual(ix.modules["module.foo"], "foo")
+      self.assertEqual(ix.modules["module.f"], "f")
       self.assertEqual(ix.modules["module.x.y"], "x.y")
       self.assertEqual(ix.modules["module.b"], "a.b")
       self.assertEqual(ix.modules["module.c"], "a.b")
       self.assertEqual(ix.modules["module.r"], "p.q")
+
+      # Collect all the references from the kythe graph.
+      kythe = [json.loads(x) for x in output.json_kythe_graph(ix)]
+      refs = [x for x in kythe
+              if x.get("edge_kind") == "/kythe/edge/ref"]
+
+      # Extract the span of text and the target symbol for each reference.
+      src = ix.source.text
+      out = []
+      for r in refs:
+        pos = r["source"]["signature"]
+        start, end = pos[1:].split(":")
+        start, end = int(start), int(end)
+        text = src[start:end]
+        out.append((text, r["target"]["signature"], r["target"]["path"]))
+
+      expected = [
+          ("f", "module.f", "t.py"),
+          ("X", "module.X", "f.py"),
+          ("c", "module.c", "t.py"),
+          ("X", "module.X", "a/b.py"),
+          ("b", "module.b", "t.py"),
+          ("X", "module.X", "a/b.py"),
+          ("r", "module.r", "t.py"),
+          ("x", "module.x", "p/q.py")]
+
+      # Resolve filepaths within the tempdir.
+      expected = [(ref, target, d[path]) for (ref, target, path) in expected]
+      self.assertEqual(out, expected)
 
 
 test_base.main(globals(), __name__ == "__main__")

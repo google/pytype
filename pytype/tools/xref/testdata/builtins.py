@@ -1,7 +1,7 @@
 # pylint: skip-file
 
 a = "hello"
-#- @split ref vname("__builtin__/module.str.split", _, _, _, _)
+#- @split ref vname("module.str.split", _, _, "pytd:__builtin__", _)
 b = a.split('.')
-#- @reverse ref vname("__builtin__/module.list.reverse", _, _, _, _)
+#- @reverse ref vname("module.list.reverse", _, _, "pytd:__builtin__", _)
 c = b.reverse()

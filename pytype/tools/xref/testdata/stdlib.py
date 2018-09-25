@@ -2,6 +2,6 @@
 
 import os
 
-#- @path ref vname("os/module.path", _, _, _, _)
-#- @split ref vname("os.path/module.split", _, _, _, _)
+#- @path ref vname("module.path", _, _, "pytd:os", _)
+#- @split ref vname("module.split", _, _, "pytd:os.path", _)
 os.path.split("/x/y")

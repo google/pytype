@@ -195,7 +195,7 @@ class PytypeValue(object):
     if isinstance(data, abstract.PyTDClass):
       if data.module:
         # If we have a remote reference, return Remote rather than PytypeValue.
-        return Remote(data.module, data.name)
+        return Remote(data.module, data.name, resolved=True)
       else:
         # This is a namedtuple or some other special case pytype has generated a
         # local PyTDClass for. We need special cases for them too.
@@ -229,7 +229,7 @@ class Module(object):
     self.name = name
 
   def attr(self, attr_name):
-    return Remote(self.name, attr_name)
+    return Remote(self.name, attr_name, resolved=True)
 
 
 class Dummy(object):
@@ -298,18 +298,16 @@ class Definition(collections.namedtuple(
       return "variable"
 
 
-class Remote(collections.namedtuple("remote", ["module", "name"]), Dummy):
+class Remote(collections.namedtuple(
+    "remote", ["module", "name", "resolved"]), Dummy):
   """A symbol from another module."""
 
-  def __init__(self, module, name):
-    super(Remote, self).__init__(module, name)
+  def __init__(self, module, name, resolved):
+    super(Remote, self).__init__(module, name, resolved)
     self.id = self.module + "/module." + self.name
 
-  def to_signature(self):
-    return self.id
-
   def attr(self, attr_name):
-    return Remote(self.module, self.name + "." + attr_name)
+    return Remote(self.module, self.name + "." + attr_name, self.resolved)
 
   def format(self):
     return self.id
@@ -851,8 +849,9 @@ class IndexVisitor(ScopedVisitor):
 class Indexer(object):
   """Runs the indexer visitor and collects its results."""
 
-  def __init__(self, source, module_name):
+  def __init__(self, source, vm, module_name):
     self.source = source
+    self.vm = vm
     self.module_name = module_name
     self.traces = source.traces
     self.defs = None
@@ -985,6 +984,23 @@ class Indexer(object):
     else:
       return self.get_anchor_bounds(ref.location, len(ref.name))
 
+  def _make_defn_vname(self, defn):
+    """Convert a definition into a kythe vname."""
+    if isinstance(defn, Remote):
+      remote = defn.module
+      mod = self.vm.loader._modules.get(remote)  # pylint: disable=protected-access
+      if mod:
+        path = mod.filename
+        if path.endswith(".pyi"):
+          path = path[:-1]
+        sig = "module." + defn.name
+        return self.kythe.vname(sig, path)
+      else:
+        # Don't generate vnames for unresolved modules
+        return None
+    else:
+      return self.kythe.vname(defn.to_signature())
+
   def _process_links(self, links):
     """Generate kythe edges for references."""
 
@@ -994,10 +1010,12 @@ class Indexer(object):
         continue
       start, end = self.get_ref_bounds(ref)
       vname = self.kythe.add_anchor(start, end)
-      self.kythe.add_edge(
-          source=vname,
-          target=self.kythe.vname(defn.to_signature()),
-          edge_name="ref")
+      target = self._make_defn_vname(defn)
+      if target:
+        self.kythe.add_edge(
+            source=vname,
+            target=target,
+            edge_name="ref")
 
   def _process_calls(self, links):
     """Generate kythe edges for function calls.
@@ -1023,42 +1041,43 @@ class Indexer(object):
           call_defn = d
           break
       if call_defn:
-        start, end = self.get_ref_bounds(call_ref)
-        anchor_vname = self.kythe.anchor_vname(start, end)
-        self.kythe.add_edge(
-            source=anchor_vname,
-            target=self.kythe.vname(call_defn.to_signature()),
-            edge_name="ref/call")
-        # The call is a child of the enclosing function/class (this lets us
-        # generate call graphs).
-        if ref.scope != "module":
-          parent_defn = self.defs.get(call_ref.scope)
-          if parent_defn:
-            # TODO(mdemello): log the 'else' case; it should never happen.
-            self.kythe.add_edge(
-                source=anchor_vname,
-                target=self.kythe.vname(parent_defn.to_signature()),
-                edge_name="childof")
-          else:
-            assert False, ref
+        target = self._make_defn_vname(call_defn)
+        if target:
+          start, end = self.get_ref_bounds(call_ref)
+          anchor_vname = self.kythe.anchor_vname(start, end)
+          self.kythe.add_edge(
+              source=anchor_vname,
+              target=target,
+              edge_name="ref/call")
+          # The call is a child of the enclosing function/class (this lets us
+          # generate call graphs).
+          if ref.scope != "module":
+            parent_defn = self.defs.get(call_ref.scope)
+            if parent_defn:
+              # TODO(mdemello): log the 'else' case; it should never happen.
+              self.kythe.add_edge(
+                  source=anchor_vname,
+                  target=self.kythe.vname(parent_defn.to_signature()),
+                  edge_name="childof")
+            else:
+              assert False, ref
 
   def _lookup_remote_symbol(self, ref, defn):
     """Try to look up a definition in an imported module."""
 
     if defn.id in self.modules:
       remote = self.modules[defn.id]
+      resolved = True
     elif defn.typ in ["Import", "ImportFrom"]:
       # Allow unresolved modules too.
-      # TODO(mdemello): This if statement is technically useless now; it's just
-      # preserving the two separate code paths for modules pytype did and did
-      # not import.
       remote = defn.name
+      resolved = False
     else:
       return None
     name = ref.name
     if name.startswith(remote):
       name = name[(len(remote) + 1):]
-    return Remote(module=remote, name=name)
+    return Remote(module=remote, name=name, resolved=resolved)
 
   def _lookup_class_attr(self, name, attr):
     """Look up a class attribute in the environment."""
@@ -1080,7 +1099,7 @@ class Indexer(object):
       return self.classmap.get(obj)
     elif isinstance(obj, abstract.PyTDClass):
       if obj.module:
-        return Remote(obj.module, obj.name)
+        return Remote(obj.module, obj.name, resolved=True)
       else:
         # Corner case: a namedtuple in the MRO of a class will generate a
         # PyTDClass even though it's in the current module.
@@ -1226,7 +1245,7 @@ def process_file(options):
   # TODO(mdemello): Get from args
   module_name = "module"
   source = SourceFile(src, vm.opcode_traces, filename=options.input)
-  ix = Indexer(source, module_name)
+  ix = Indexer(source, vm, module_name)
   ix.index(a)
   ix.finalize()
   return ix
