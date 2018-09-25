@@ -9,18 +9,8 @@ import sys
 
 import build_utils
 
-def _ismod(f):
-  """Return True if f is a Python module but not a test module."""
-  return f.endswith(".py") and not f.endswith("_test.py")
-
 
 STEP = collections.namedtuple("STEP", ["name", "command"])
-
-PYTYPE_COMMAND = os.path.join("out", "bin", "pytype")
-PYC_DIR = os.path.join(build_utils.PYTYPE_SRC_ROOT, "pytype", "pyc")
-PYC_FILES = [os.path.join(PYC_DIR, f) for f in os.listdir(PYC_DIR) if _ismod(f)]
-TYPECHECK_FILES = [
-    "pytype/compat.py", "pytype/debug.py", "pytype/utils.py"] + PYC_FILES
 
 
 def _begin_step(s):
@@ -48,7 +38,7 @@ def _run_steps(steps):
       _report_failure(s)
       sys.exit(1)
     _end_step(s)
-    
+
 
 def main():
   s1 = STEP(name="Build",
@@ -56,7 +46,7 @@ def main():
   s2 = STEP(name="Run Tests",
             command=["python", build_utils.build_script("run_tests.py"), "-f"])
   s3 = STEP(name="Type Check",
-            command=[PYTYPE_COMMAND] + TYPECHECK_FILES)
+            command=[os.path.join("out", "bin", "pytype")])
   _run_steps([s1, s2, s3])
   print("\n*** All build steps completed successfully! ***\n")
 
