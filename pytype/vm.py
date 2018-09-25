@@ -2541,8 +2541,20 @@ class VirtualMachine(object):
 
   def _pop_and_unpack_list(self, state, count):
     """Pop count iterables off the stack and concatenate."""
-    state, elements = state.popn(count)
-    # TODO(mdemello): We need to expand the iterables here.
+    state, iterables = state.popn(count)
+    elements = []
+    for var in iterables:
+      try:
+        itr = abstract.get_atomic_python_constant(var, collections.Iterable)
+      except abstract.ConversionError:
+        # TODO(rechen): The assumption that any abstract iterable unpacks to
+        # exactly one element is highly dubious.
+        elements.append(self.convert.unsolvable.to_variable(self.root_cfg_node))
+      else:
+        # Some iterable constants (e.g., tuples) already contain variables,
+        # whereas others (e.g., strings) need to be wrapped.
+        elements.extend(v if isinstance(v, cfg.Variable)
+                        else self.convert.constant_to_var(v) for v in itr)
     return state, elements
 
   def byte_BUILD_LIST_UNPACK(self, state, op):
@@ -2560,16 +2572,16 @@ class VirtualMachine(object):
     return args
 
   def byte_BUILD_MAP_UNPACK(self, state, op):
-    state, ret = self._pop_and_unpack_list(state, op.arg)
-    args = self._build_map_unpack(state, ret)
+    state, maps = state.popn(op.arg)
+    args = self._build_map_unpack(state, maps)
     return state.push(args)
 
   def byte_BUILD_MAP_UNPACK_WITH_CALL(self, state, op):
     if self.python_version >= (3, 6):
-      state, ret = self._pop_and_unpack_list(state, op.arg)
+      state, maps = state.popn(op.arg)
     else:
-      state, ret = self._pop_and_unpack_list(state, op.arg & 0xff)
-    args = self._build_map_unpack(state, ret)
+      state, maps = state.popn(op.arg & 0xff)
+    args = self._build_map_unpack(state, maps)
     return state.push(args)
 
   def byte_BUILD_TUPLE_UNPACK(self, state, op):
