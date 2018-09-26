@@ -47,7 +47,8 @@ def deps_from_import_graph(import_graph):
     # We want to preserve __init__ in the module_name for pytype.
     if os.path.basename(full_path) == '__init__.py':
       name += '.__init__'
-    return module_utils.Module(path=path, target=target, name=name)
+    return module_utils.Module(
+        path=path, target=target, name=name, kind=mod.__class__.__name__)
   return [[make_module(import_graph.provenance[f]) for f in files]
           for files in import_graph.sorted_source_files()]
 
@@ -183,9 +184,9 @@ class PytypeRunner(object):
         if not f.endswith('.py'):
           report('Skipping non-Python file: %s', f)
           continue
-        # For files not in pythonpath, do not attempt to generate a pyi.
-        if not any(f.startswith(d) for d in self.pythonpath):
-          report('Generating empty pyi for file not in pythonpath: %s', f)
+        # For builtin and system files, do not attempt to generate a pyi.
+        if module.kind in ('Builtin', 'System'):
+          report('Generating default pyi for %s file: %s', module.kind, f)
           action = Action.GENERATE_DEFAULT
         modules.append((module, action))
       if len(modules) == 1:

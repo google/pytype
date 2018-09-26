@@ -18,7 +18,8 @@ Action = pytype_runner.Action
 # pylint: enable=invalid-name
 
 
-ImportlabModule = collections.namedtuple('_', 'path short_path module_name')
+# named 'Local' to match importlab.resolve.Local
+ImportlabModule = collections.namedtuple('Local', 'path short_path module_name')
 
 
 class FakeImportGraph(object):
@@ -144,12 +145,12 @@ class TestYieldSortedModules(TestBase):
     return file_utils.expand_path(d).rstrip(os.sep) + os.sep
 
   def assert_sorted_modules_equal(self, mod_gen, expected_list):
-    for path, target, name, expected_report_errors in expected_list:
+    for expected_module, expected_report_errors in expected_list:
       try:
         module, actual_report_errors = next(mod_gen)
       except StopIteration:
         raise AssertionError('Not enough modules')
-      self.assertEqual(module, Module(path, target, name))
+      self.assertEqual(module, Module(*expected_module))
       self.assertEqual(actual_report_errors, expected_report_errors)
     try:
       next(mod_gen)
@@ -172,7 +173,7 @@ class TestYieldSortedModules(TestBase):
     runner = self.make_runner([f], [[f]], conf)
     self.assert_sorted_modules_equal(
         runner.yield_sorted_modules(),
-        [(d, 'bar.py', 'bar', Action.REPORT_ERRORS)])
+        [((d, 'bar.py', 'bar'), Action.REPORT_ERRORS)])
 
   def test_source_and_dep(self):
     conf = self.parser.config_from_defaults()
@@ -183,8 +184,8 @@ class TestYieldSortedModules(TestBase):
     runner = self.make_runner([src], [[dep], [src]], conf)
     self.assert_sorted_modules_equal(
         runner.yield_sorted_modules(),
-        [(d, 'baz.py', 'baz', Action.IGNORE_ERRORS),
-         (d, 'bar.py', 'bar', Action.REPORT_ERRORS)])
+        [((d, 'baz.py', 'baz'), Action.IGNORE_ERRORS),
+         ((d, 'bar.py', 'bar'), Action.REPORT_ERRORS)])
 
   def test_cycle(self):
     conf = self.parser.config_from_defaults()
@@ -195,10 +196,10 @@ class TestYieldSortedModules(TestBase):
     runner = self.make_runner([src], [[dep, src]], conf)
     self.assert_sorted_modules_equal(
         runner.yield_sorted_modules(),
-        [(d, 'baz.py', 'baz', Action.IGNORE_ERRORS),
-         (d, 'bar.py', 'bar', Action.IGNORE_ERRORS),
-         (d, 'baz.py', 'baz', Action.IGNORE_ERRORS),
-         (d, 'bar.py', 'bar', Action.REPORT_ERRORS)])
+        [((d, 'baz.py', 'baz'), Action.IGNORE_ERRORS),
+         ((d, 'bar.py', 'bar'), Action.IGNORE_ERRORS),
+         ((d, 'baz.py', 'baz'), Action.IGNORE_ERRORS),
+         ((d, 'bar.py', 'bar'), Action.REPORT_ERRORS)])
 
   def test_non_py_dep(self):
     conf = self.parser.config_from_defaults()
@@ -208,16 +209,16 @@ class TestYieldSortedModules(TestBase):
     runner = self.make_runner([], [[dep]], conf)
     self.assert_sorted_modules_equal(runner.yield_sorted_modules(), [])
 
-  def test_non_pythonpath_dep(self):
+  def test_system_dep(self):
     conf = self.parser.config_from_defaults()
     d = self.normalize('foo/')
     external = self.normalize('quux/')
     conf.pythonpath = [d]
-    dep = Module(external, 'bar/baz.py', 'bar.baz')
+    mod = (external, 'bar/baz.py', 'bar.baz', 'System')
+    dep = Module(*mod)
     runner = self.make_runner([], [[dep]], conf)
     self.assert_sorted_modules_equal(
-        runner.yield_sorted_modules(),
-        [(external, 'bar/baz.py', 'bar.baz', Action.GENERATE_DEFAULT)])
+        runner.yield_sorted_modules(), [(mod, Action.GENERATE_DEFAULT)])
 
 
 if __name__ == '__main__':

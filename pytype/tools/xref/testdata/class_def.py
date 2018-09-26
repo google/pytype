@@ -1,7 +1,7 @@
 # pylint: skip-file
 
 #- @A defines/binding ClassA
-#- @object ref vname("__builtin__/module.object", _, _, _, _)
+#- @object ref vname("module.object", _, _, "pytd:__builtin__", _)
 #- ClassA.node/kind class
 class A(object):
   pass
