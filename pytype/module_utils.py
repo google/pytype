@@ -4,20 +4,25 @@ import collections
 import os
 
 
-class Module(collections.namedtuple("_", "path target name")):
+class Module(collections.namedtuple("_", "path target name kind")):
   """Inferred information about a module.
   Args:
     path: The path to the module, e.g., foo/.
     target: The filename relative to the path, e.g., bar/baz.py.
     name: The module name, e.g., bar.baz.
+    kind: The module kind: Builtin, Direct, Local, or System.
+      See https://github.com/google/importlab/blob/master/importlab/resolve.py.
   """
+
+  def __new__(cls, path, target, name, kind=None):
+    return super(Module, cls).__new__(cls, path, target, name, kind or "Local")
 
   @property
   def full_path(self):
     return os.path.join(self.path, self.target)
 
 
-def infer_module(filename, pythonpath, preserve_init=False):
+def infer_module(filename, pythonpath):
   """Convert a filename to a module relative to pythonpath.
 
   This method tries to deduce the module name from the pythonpath and the
@@ -27,7 +32,6 @@ def infer_module(filename, pythonpath, preserve_init=False):
   Args:
     filename: The filename of a Python file. E.g. "foo/bar/baz.py".
     pythonpath: The path Python uses to search for modules.
-    preserve_init: Whether to keep the __init__ suffix in a module name.
 
   Returns:
     A Module object.
@@ -42,10 +46,10 @@ def infer_module(filename, pythonpath, preserve_init=False):
   else:
     # We have not found filename relative to anywhere in pythonpath.
     path = ""
-  return Module(path, filename, path_to_module_name(filename, preserve_init))
+  return Module(path, filename, path_to_module_name(filename))
 
 
-def path_to_module_name(filename, preserve_init=False):
+def path_to_module_name(filename):
   """Converts a filename into a dotted module name."""
   if os.path.dirname(filename).startswith(os.pardir):
     # Don't try to infer a module name for filenames starting with ../
@@ -53,9 +57,8 @@ def path_to_module_name(filename, preserve_init=False):
   # TODO(mdemello): should we validate the extension?
   filename, _ = os.path.splitext(filename)
   module_name = filename.replace(os.path.sep, ".")
-  if not preserve_init:
-    # strip __init__ suffix
-    module_name, _, _ = module_name.partition(".__init__")
+  # strip __init__ suffix
+  module_name, _, _ = module_name.partition(".__init__")
   return module_name
 
 
@@ -109,4 +112,3 @@ def get_all_prefixes(module_name):
     name = ".".join([name, part])
     out.append(name)
   return out
-

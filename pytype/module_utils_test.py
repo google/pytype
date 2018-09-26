@@ -28,9 +28,6 @@ class ModuleUtilsTest(unittest.TestCase):
     self.assertEqual("x.y.z", module_utils.path_to_module_name("x/y/z.pytd"))
     self.assertEqual("x.y.z",
                      module_utils.path_to_module_name("x/y/z/__init__.pyi"))
-    self.assertEqual("x.y.z.__init__",
-                     module_utils.path_to_module_name("x/y/z/__init__.pyi",
-                                                      preserve_init=True))
 
 
 # Because TestInferModule expands a lot of paths:
@@ -40,10 +37,11 @@ expand = file_utils.expand_path
 class TestInferModule(unittest.TestCase):
   """Test module_utils.infer_module."""
 
-  def assert_module_equal(self, module, path, target, name):
+  def assert_module_equal(self, module, path, target, name, kind="Local"):
     self.assertEqual(module.path.rstrip(os.sep), path.rstrip(os.sep))
     self.assertEqual(module.target, target)
     self.assertEqual(module.name, name)
+    self.assertEqual(module.kind, kind)
 
   def test_simple_name(self):
     mod = module_utils.infer_module(expand("foo/bar.py"), [expand("foo")])
