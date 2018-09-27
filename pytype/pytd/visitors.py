@@ -16,6 +16,9 @@
 
 """Visitor(s) for walking ASTs."""
 
+# Because pytype takes too long:
+# pytype: skip-file
+
 import collections
 import itertools
 import logging

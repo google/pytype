@@ -1,9 +1,11 @@
 """The abstract values used by vm.py."""
 
+# Because pytype takes too long:
+# pytype: skip-file
+
 # Because of false positives:
 # pylint: disable=unpacking-non-sequence
 # pylint: disable=abstract-method
-# pytype: disable=attribute-error
 
 import collections
 import contextlib
