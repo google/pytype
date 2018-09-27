@@ -6,7 +6,7 @@ import hashlib
 from pytype import file_utils
 from pytype import module_utils
 from pytype import utils
-from pytype.pyi import parser_ext
+from pytype.pyi import parser_ext  # pytype: disable=import-error
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import visitors

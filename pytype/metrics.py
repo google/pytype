@@ -26,7 +26,7 @@ import yaml
 
 # TODO(tsudol): Not needed once pytype is ported to Python 3.
 try:
-  import tracemalloc  # pylint: disable=g-import-not-at-top
+  import tracemalloc  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
 except ImportError:
   tracemalloc = None
 
@@ -41,8 +41,10 @@ _enabled = False  # True iff metrics should be collected.
 # pyyaml 4+ switched to using safe dump/load methods by default, which does not
 # work with our classes. The danger_* methods were provided as a fallback.
 try:
+  # pytype: disable=module-attr
   dump = yaml.danger_dump
   load = yaml.danger_load
+  # pytype: enable=module-attr
 except AttributeError:
   dump = yaml.dump
   load = yaml.load
