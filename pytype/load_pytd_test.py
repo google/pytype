@@ -248,6 +248,18 @@ class ImportPathsTest(unittest.TestCase):
       ast = loader.import_name("pkg.sub")
       self.assertTrue(ast.Lookup("pkg.sub.X"))
 
+  def testGetResolvedModules(self):
+    with file_utils.Tempdir() as d:
+      filename = d.create_file("dir/module.pyi", "def foo() -> str")
+      loader = load_pytd.Loader(None, self.PYTHON_VERSION, pythonpath=[d.path])
+      ast = loader.import_name("dir.module")
+      modules = loader.get_resolved_modules()
+      self.assertEqual(set(modules), {"__builtin__", "typing", "dir.module"})
+      module = modules["dir.module"]
+      self.assertEqual(module.module_name, "dir.module")
+      self.assertEqual(module.filename, filename)
+      self.assertEqual(module.ast, ast)
+
 
 _Module = collections.namedtuple("_", ["module_name", "file_name"])
 
@@ -385,7 +397,7 @@ class PickledPyiLoaderTest(unittest.TestCase):
 
 
 class Python3Test(unittest.TestCase):
-  """Tests for load_pytd.py."""
+  """Tests for load_pytd.py on (target) Python 3."""
 
   PYTHON_VERSION = (3, 6)
 

@@ -1760,10 +1760,6 @@ class Function(SimpleAbstractValue):
     self.members["func_name"] = self.vm.convert.build_string(
         self.vm.root_cfg_node, name)
 
-  def _repr_name(self):
-    """The name to use in the function's string representation."""
-    return self.name
-
   def property_get(self, callself, is_class=False):
     if self.name == "__new__" or not callself or is_class:
       return self
@@ -3929,19 +3925,32 @@ class BoundFunction(AtomicAbstractValue):
   def is_abstract(self, value):
     self.underlying.is_abstract = value
 
-  def _repr_name(self):
+  def repr_names(self, callself_repr=None):
+    """Names to use in the bound function's string representation.
+
+    This function can return multiple names because there may be multiple
+    bindings in callself.
+
+    Args:
+      callself_repr: Optionally, a repr function for callself.
+
+    Returns:
+      A non-empty iterable of string names.
+    """
+    callself_repr = callself_repr or (lambda v: v.name)
     if self._callself and self._callself.bindings:
-      callself = self._callself.data[0].name
+      callself_names = [callself_repr(v) for v in self._callself.data]
     else:
-      callself = "<class>"
-    underlying = self.underlying._repr_name()  # pylint: disable=protected-access
+      callself_names = ["<class>"]
+    # We don't need to recursively call repr_names() because we replace the
+    # parent name with the callself.
+    underlying = self.underlying.name
     if underlying.count(".") > 0:
-      # Replace the parent name with the callself.
       underlying = underlying.split(".", 1)[-1]
-    return callself + "." + underlying
+    return [callself + "." + underlying for callself in callself_names]
 
   def __repr__(self):
-    return self._repr_name() + "(...)"
+    return self.repr_names()[0] + "(...)"
 
 
 class BoundInterpreterFunction(BoundFunction):
