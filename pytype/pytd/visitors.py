@@ -1106,10 +1106,10 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
 
     Returns:
       A tuple of:
-      - a set of new aliases,
+      - a list of new aliases,
       - a set of new __getattr__ functions.
     """
-    aliases = set()
+    aliases = []
     getattrs = set()
     ast = self._module_map[module]
     for member in sum((ast.constants, ast.type_params, ast.classes,
@@ -1121,7 +1121,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
         # than aliased.
         getattrs.add(member.Replace(name=new_name))
       else:
-        aliases.add(pytd.Alias(new_name, ToType(member)))
+        aliases.append(pytd.Alias(new_name, ToType(member)))
     return aliases, getattrs
 
   def _DiscardExistingNames(self, node, potential_members):
@@ -1149,16 +1149,17 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
     Raises:
       KeyError: If there is a name clash.
     """
-    grouped_aliases = collections.defaultdict(set)
-    for a in new_aliases:
-      grouped_aliases[a.name].add(a)
+    name_to_alias = {}
     out = []
-    for group in grouped_aliases.values():
-      if len(group) > 1:
-        duplicates = ", ".join(a.type.name for a in group)
-        raise KeyError("Duplicate top level items: %r" % duplicates)
+    for a in new_aliases:
+      if a.name in name_to_alias:
+        existing = name_to_alias[a.name]
+        if existing != a:
+          raise KeyError("Duplicate top level items: %r, %r" % (
+              existing.type.name, a.type.name))
       else:
-        out.extend(group)
+        name_to_alias[a.name] = a
+        out.append(a)
     return out
 
   def VisitTypeDeclUnit(self, node):
@@ -2056,7 +2057,9 @@ class AdjustTypeParameters(Visitor):
     self.function_typeparams = None
 
   def VisitSignature(self, node):
-    return node.Replace(template=tuple(self.function_typeparams))
+    # Sorting the template in CanonicalOrderingVisitor is enough to guarantee
+    # pyi determinism, but we need to sort here as well for pickle determinism.
+    return node.Replace(template=tuple(sorted(self.function_typeparams)))
 
   def EnterFunction(self, node):
     self.function_name = node.name
