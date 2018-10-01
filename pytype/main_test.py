@@ -509,6 +509,7 @@ class PytypeTest(unittest.TestCase):
 
   @unittest.skip("Where do the pickles differ?")
   def testBuiltinsDeterminism(self):
+    os.environ["PYTHONHASHSEED"] = "0"
     f1 = self._TmpPath("builtins1.pickle")
     f2 = self._TmpPath("builtins2.pickle")
     self.pytype_args["--generate-builtins"] = f1
