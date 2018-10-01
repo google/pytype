@@ -262,7 +262,7 @@ class Loader(object):
 
   def _load_ast_dependencies(self, dependencies, ast, ast_name=None):
     """Fill in all ClassType.cls pointers and load reexported modules."""
-    for dep_name in (dependencies or ()):
+    for dep_name in dependencies:
       name = self._resolve_module_alias(dep_name, ast, ast_name)
       if dep_name != name:
         # We have an alias. Store it in the aliases map.
