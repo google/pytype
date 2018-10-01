@@ -74,11 +74,8 @@ def get_id(node):
 
 def qualified_method(data):
   """Fully qualify a method call with its class scope."""
-
-  # TODO(mdemello): Merge this with BoundFunction._repr_name()
   if isinstance(data, abstract.BoundFunction):
-    callself = data._callself  # pylint: disable=protected-access
-    return [cls.name + "." + data.name for cls in callself.data]
+    return data.repr_names()
   else:
     return [data.name]
 
@@ -204,8 +201,8 @@ class PytypeValue(object):
       return cls("module", data.name, "Class")
     elif isinstance(data, abstract.BoundFunction):
       # TODO(mdemello): Handle multiple class bindings.
-      data_cls = typename(data._callself.data[0])  # pylint: disable=protected-access
-      return cls("module", data_cls + "." + data.name, "BoundFunction")
+      name = data.repr_names(callself_repr=typename)[0]
+      return cls("module", name, "BoundFunction")
     else:
       # TODO(mdemello): We need to infer the module here.
       return cls("module", str(data), typename(data))
@@ -849,9 +846,9 @@ class IndexVisitor(ScopedVisitor):
 class Indexer(object):
   """Runs the indexer visitor and collects its results."""
 
-  def __init__(self, source, vm, module_name):
+  def __init__(self, source, resolved_modules, module_name):
     self.source = source
-    self.vm = vm
+    self.resolved_modules = resolved_modules
     self.module_name = module_name
     self.traces = source.traces
     self.defs = None
@@ -988,9 +985,8 @@ class Indexer(object):
     """Convert a definition into a kythe vname."""
     if isinstance(defn, Remote):
       remote = defn.module
-      mod = self.vm.loader._modules.get(remote)  # pylint: disable=protected-access
-      if mod:
-        path = mod.filename
+      if remote in self.resolved_modules:
+        path = self.resolved_modules[remote].filename
         if path.endswith(".pyi"):
           path = path[:-1]
         sig = "module." + defn.name
@@ -1245,7 +1241,7 @@ def process_file(options):
   # TODO(mdemello): Get from args
   module_name = "module"
   source = SourceFile(src, vm.opcode_traces, filename=options.input)
-  ix = Indexer(source, vm, module_name)
+  ix = Indexer(source, vm.loader.get_resolved_modules(), module_name)
   ix.index(a)
   ix.finalize()
   return ix

@@ -1,5 +1,6 @@
 """Load and link .pyi files."""
 
+import collections
 import logging
 import os
 
@@ -54,6 +55,10 @@ def get_module_name(filename, pythonpath):
     # Keep path '' as is; infer_module will handle it.
     pythonpath = [path and os.path.normpath(path) for path in pythonpath]
     return module_utils.infer_module(filename, pythonpath).name
+
+
+ResolvedModule = collections.namedtuple(
+    "ResolvedModule", ("module_name", "filename", "ast"))
 
 
 class Module(object):
@@ -511,6 +516,15 @@ class Loader(object):
       return True
     return (module in self.imports_map or
             "%s/__init__" % module in self.imports_map)
+
+  def get_resolved_modules(self):
+    """Gets a name -> ResolvedModule map of the loader's resolved modules."""
+    resolved_modules = {}
+    for name, mod in self._modules.items():
+      if not mod.dirty:
+        resolved_modules[name] = ResolvedModule(
+            mod.module_name, mod.filename, mod.ast)
+    return resolved_modules
 
 
 class PickledPyiLoader(Loader):
