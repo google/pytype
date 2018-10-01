@@ -2235,12 +2235,15 @@ class ExpandCompatibleBuiltins(Visitor):
   Used to allow a function requiring a float to accept an int without making
   int inherit from float.
 
+  NOTE: We do not do this for type parameter constraints.
+
   See https://www.python.org/dev/peps/pep-0484/#the-numeric-tower
   """
 
   def __init__(self, builtins):
     super(ExpandCompatibleBuiltins, self).__init__()
     self.in_parameter = False
+    self.in_type_parameter = False
     self.replacements = self._BuildReplacementMap(builtins)
 
   @staticmethod
@@ -2276,8 +2279,16 @@ class ExpandCompatibleBuiltins(Visitor):
     assert self.in_parameter
     self.in_parameter = False
 
+  def EnterTypeParameter(self, _):
+    assert not self.in_type_parameter
+    self.in_type_parameter = True
+
+  def LeaveTypeParameter(self, _):
+    assert self.in_type_parameter
+    self.in_type_parameter = False
+
   def VisitClassType(self, node):
-    if self.in_parameter:
+    if self.in_parameter and not self.in_type_parameter:
       return self.replacements.get(node.name, node)
     else:
       return node
