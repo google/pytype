@@ -773,5 +773,37 @@ class PYITest(test_base.TargetIndependentTest):
         v = ...  # type: foo.Bar
       """)
 
+  def testDotImport(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo/a.pyi", "class A: ...")
+      d.create_file("foo/b.pyi", """
+        from . import a
+        X = a.A
+      """)
+      ty = self.Infer("""
+        from foo import b
+        a = b.X()
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        b = ...  # type: module
+        a = ...  # type: foo.a.A
+      """)
+
+  def testDotDotImport(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo/a.pyi", "class A: ...")
+      d.create_file("foo/bar/b.pyi", """
+        from .. import a
+        X = a.A
+      """)
+      ty = self.Infer("""
+        from foo.bar import b
+        a = b.X()
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        b = ...  # type: module
+        a = ...  # type: foo.a.A
+      """)
+
 
 test_base.main(globals(), __name__ == "__main__")

@@ -339,6 +339,7 @@ class _Parser(object):
     self._filename = None  # type: str
     self._ast_name = None  # type: str
     self._package_name = None  # type: str
+    self._parent_name = None  # type: str
     self._type_map = None  # type: dict
     # The condition stack, start with a default scope that will always be
     # active.
@@ -378,6 +379,7 @@ class _Parser(object):
 
     is_package = file_utils.is_pyi_directory_init(filename)
     self._package_name = module_utils.get_package_name(name, is_package)
+    self._parent_name = module_utils.get_package_name(self._package_name, False)
 
     try:
       defs = parser_ext.parse(self, src)
@@ -642,7 +644,8 @@ class _Parser(object):
         else:
           name = new_name = item
         qualified_name = self._qualify_name("%s.%s" % (from_package, name))
-        if from_package == "__PACKAGE__" and isinstance(item, str):
+        if (from_package in ["__PACKAGE__", "__PARENT__"]
+            and isinstance(item, str)):
           # This will always be a simple module import (from . cannot import a
           # NamedType, and without 'as' the name will not be reexported).
           t = pytd.Module(name=new_name, module_name=qualified_name)
@@ -1049,16 +1052,36 @@ class _Parser(object):
         constraints=() if constraints is None else tuple(constraints),
         bound=named_args.get("bound")))
 
+  def _qualify_name_with_special_dir(self, orig_name):
+    """Handle the case of '.' and '..' as package names."""
+    if "__PACKAGE__." in orig_name:
+      # Generated from "from . import foo" - see parser.yy
+      prefix, _, name = orig_name.partition("__PACKAGE__.")
+      if prefix:
+        raise ParseError("Cannot resolve import: %s" % orig_name)
+      return self._package_name + "." + name
+    elif "__PARENT__." in orig_name:
+      # Generated from "from .. import foo" - see parser.yy
+      prefix, _, name = orig_name.partition("__PARENT__.")
+      if prefix:
+        raise ParseError("Cannot resolve import: %s" % orig_name)
+      if not self._parent_name:
+        raise ParseError(
+            "Cannot resolve relative import ..: Package %s has no parent" %
+            self._package_name)
+      return self._parent_name + "." + name
+    else:
+      return None
+
   def _qualify_name(self, orig_name):
     """Qualify an import name."""
     # Doing the "builtins" rename here ensures that we catch alias names.
     orig_name = visitors.RenameBuiltinsPrefixInName(orig_name)
     if not self._package_name:
       return orig_name
-    # Generated from "from . import foo" - see parser.y
-    prefix, package, name = orig_name.partition("__PACKAGE__.")
-    if not prefix and package:
-      return self._package_name + "." + name
+    rel_name = self._qualify_name_with_special_dir(orig_name)
+    if rel_name:
+      return rel_name
     if orig_name.startswith("."):
       name = module_utils.get_absolute_name(self._package_name, orig_name)
       if name is None:
