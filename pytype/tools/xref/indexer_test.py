@@ -43,6 +43,17 @@ class IndexerTest(test_base.TargetIndependentTest):
     self.assertDefLocs(ix, "module.f", [(1, 0)])
     self.assertDefLocs(ix, "module.f.x", [(1, 6), (2, 2)])
 
+  def test_type_annotations(self):
+    ix = self.index_code("""\
+       from __future__ import google_type_annotations
+       def f(x: int) -> int:
+         return x
+    """)
+    self.assertDef(ix, "module.f", "f", "FunctionDef")
+    self.assertDef(ix, "module.f.x", "x", "Param")
+    self.assertDefLocs(ix, "module.f", [(2, 0)])
+    self.assertDefLocs(ix, "module.f.x", [(2, 6)])
+
   def test_resolved_imports(self):
     # We need all imports to be valid for pytype
     code = """\

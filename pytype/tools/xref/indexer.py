@@ -17,7 +17,7 @@ from pytype import utils
 
 from pytype.tools.xref import kythe
 
-from typed_ast import ast27
+from typed_ast import ast27t as ast27
 from typed_ast import ast3
 
 
@@ -85,6 +85,8 @@ def get_name(node):
 
   if isinstance(node, ast.Attribute):
     return get_name(node.value) + "." + node.attr
+  elif isinstance(node, ast.arg):
+    return node.arg
   elif isinstance(node, str):
     return node
   elif hasattr(node, "name"):
@@ -604,6 +606,8 @@ class IndexVisitor(ScopedVisitor):
 
     if isinstance(node, ast.Name):
       t = typename(node.ctx)
+    elif isinstance(node, ast.arg):
+      t = "Param"
     else:
       t = typename(node)
     args = {
