@@ -321,6 +321,26 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
             self.ProtoClass()
       """, pythonpath=[d.path])
 
+  def testPytdClassInstantiation(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import Generic, TypeVar
+        T = TypeVar("T")
+        class A(Generic[T]):
+          def get(self) -> T: ...
+          def put(self, elem: T): ...
+      """)
+      ty = self.Infer("""
+        import a
+        b = a.A[int]()
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        import a
+
+        a = ...  # type: module
+        b = ...  # type: a.A[int]
+      """)
+
 
 class GenericFeatureTest(test_base.TargetPython3FeatureTest):
   """Tests for User-defined Generic Type."""

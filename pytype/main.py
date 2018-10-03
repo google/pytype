@@ -55,9 +55,6 @@ def _generate_builtins_pickle(options):
   t = typeshed.Typeshed()
   module_names = t.get_all_module_names(options.python_version)
   blacklist = set(t.blacklisted_modules(options.python_version))
-  if options.python_version[0] == 3:
-    # TODO(mdemello): plistlib should be in the typeshed blacklist and isn't.
-    blacklist.add("plistlib")
   for m in sorted(module_names):
     if m not in blacklist:
       loader.import_name(m)

@@ -60,7 +60,7 @@ y = a.bar
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: ahxun, at: 2018-09-14T13:10-07:00 -->
+<!-- Added by: rechen, at: 2018-09-27T16:00-07:00 -->
 
 <!--te-->
 
@@ -88,7 +88,7 @@ class A(object):
 
 ## bad-concrete-type
 
-The function was called with the wrong instance type in the generic class.
+A generic type was instantiated with incorrect concrete types.
 Example:
 
 ```python {.bad}
@@ -213,11 +213,15 @@ from typing import List, TypeVar, Union
 
 T = TypeVar("T")
 condition = ...  # type: bool
+class _Foo: ...
+def Foo():
+  return _Foo()
+
 def f(x: List[int, str]):  # bad: too many parameters for List
   pass
 def f(x: T):  # bad: the TypeVar appears only once in the signature
   pass
-def f(x: 0):  # bad: 0 is not a type
+def f(x: Foo):  # bad: not a type
   pass
 def f(x: Union):  # bad: no options in the union
   pass

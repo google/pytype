@@ -247,5 +247,15 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       subprocess.run
     """)
 
+  def test_enum(self):
+    self.Check("""
+      import enum
+      class Foo(enum.Enum):
+        foo = 0
+      def f(x: Foo):
+        pass
+      f(Foo.foo)
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

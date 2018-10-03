@@ -877,20 +877,19 @@ class PullInMethodClasses(visitors.Visitor):
     """
     return sig.params and sig.params[0].name == "self"
 
-  def _IsSimpleCall(self, t):
-    """Returns whether a type has only one method, "__call__"."""
+  def _LookupIfSimpleCall(self, t):
+    """Looks up the type if it has only one method, "__call__"."""
     if not isinstance(t, (pytd.NamedType, pytd.ClassType)):
       # We only do this for simple types.
-      return False
+      return None
     cls = self._MaybeLookup(t)
     if not isinstance(cls, pytd.Class):
       # This is not a class or it doesn't exist, so assume it's not a method.
-      return False
+      return None
     if [f.name for f in cls.methods] != ["__call__"]:
-      return False
+      return None
     method, = cls.methods
-    return all(self._HasSelf(sig)
-               for sig in method.signatures)
+    return cls if all(self._HasSelf(sig) for sig in method.signatures) else None
 
   def _CanDelete(self, cls):
     """Checks whether this class can be deleted.
@@ -934,8 +933,8 @@ class PullInMethodClasses(visitors.Visitor):
     adjust_self = visitors.AdjustSelf(force=True)
     adjust_self.class_types.append(visitors.ClassAsType(cls))
     for const in cls.constants:
-      if self._IsSimpleCall(const.type):
-        c = self._MaybeLookup(const.type)
+      c = self._LookupIfSimpleCall(const.type)
+      if c:
         signatures = c.methods[0].signatures
         self._processed_count[c.name] += 1
         new_method = pytd.Function(const.name, signatures, c.methods[0].kind)

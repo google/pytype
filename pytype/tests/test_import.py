@@ -1122,5 +1122,19 @@ class ImportTest(test_base.TargetIndependentTest):
         v = ...  # type: int
       """)
 
+  def testUnimportedSubmoduleFailure(self):
+    """Fail when accessing a submodule we haven't imported."""
+    with file_utils.Tempdir() as d:
+      d.create_file("sub/bar/baz.pyi", "class A: ...")
+      d.create_file("sub/bar/quux.pyi", "class B: ...")
+      d.create_file("sub/__init__.pyi", "")
+      d.create_file("sub/bar/__init__.pyi", "")
+      _, errors = self.InferWithErrors("""\
+        import sub.bar.baz
+        x = sub.bar.baz.A()
+        y = sub.bar.quux.B()
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(3, "module-attr", r"quux.*sub\.bar")])
+
 
 test_base.main(globals(), __name__ == "__main__")

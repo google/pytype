@@ -14,6 +14,7 @@ from pytype import config
 from pytype import main as main_module
 from pytype import utils
 from pytype.pyi import parser
+from pytype.pytd import pytd_utils
 from pytype.pytd import typeshed
 from pytype.pytd.parse import builtins
 from pytype.tests import test_base
@@ -95,6 +96,30 @@ class PytypeTest(unittest.TestCase):
   def _ParseString(self, string):
     """A wrapper for parser.parse_string that inserts the python version."""
     return parser.parse_string(string, python_version=self.PYTHON_VERSION)
+
+  def _GenerateBuiltinsTwice(self, python_version):
+    os.environ["PYTHONHASHSEED"] = "0"
+    f1 = self._TmpPath("builtins1.pickle")
+    f2 = self._TmpPath("builtins2.pickle")
+    for f in (f1, f2):
+      self.pytype_args["--generate-builtins"] = f
+      self.pytype_args["--python_exe"] = utils.get_python_exe(python_version)
+      self._RunPytype(self.pytype_args)
+    return f1, f2
+
+  def assertBuiltinsPickleEqual(self, f1, f2):
+    with open(f1, "rb") as pickle1, open(f2, "rb") as pickle2:
+      if pickle1.read() == pickle2.read():
+        return
+    out1 = pytd_utils.LoadPickle(f1, compress=True)
+    out2 = pytd_utils.LoadPickle(f2, compress=True)
+    diff = []
+    for (name1, ast1), (name2, ast2) in zip(out1, out2):
+      if name1 != name2:
+        raise AssertionError("different ordering of pyi files")
+      elif ast1 != ast2:
+        diff.append(name1)
+    raise AssertionError("pyi files differ: " + ", ".join(diff))
 
   def assertOutputStateMatches(self, **has_output):
     """Check that the output state matches expectations.
@@ -507,17 +532,13 @@ class PytypeTest(unittest.TestCase):
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
 
-  @unittest.skip("Where do the pickles differ?")
-  def testBuiltinsDeterminism(self):
-    f1 = self._TmpPath("builtins1.pickle")
-    f2 = self._TmpPath("builtins2.pickle")
-    self.pytype_args["--generate-builtins"] = f1
-    self._RunPytype(self.pytype_args)
-    self.pytype_args["--generate-builtins"] = f2
-    self._RunPytype(self.pytype_args)
-    with open(f1, "rb") as pickle1:
-      with open(f2, "rb") as pickle2:
-        self.assertEqual(pickle1.read(), pickle2.read())
+  def testBuiltinsDeterminism2(self):
+    f1, f2 = self._GenerateBuiltinsTwice((2, 7))
+    self.assertBuiltinsPickleEqual(f1, f2)
+
+  def testBuiltinsDeterminism3(self):
+    f1, f2 = self._GenerateBuiltinsTwice((3, 6))
+    self.assertBuiltinsPickleEqual(f1, f2)
 
   def testTimeout(self):
     # Note: At the time of this writing, pickling builtins takes well over one
