@@ -135,6 +135,7 @@ class Loader(object):
     self._concatenated = None
     self._import_name_cache = {}  # performance cache
     self._aliases = {}
+    self._prefixes = set()
     # Paranoid verification that pytype.main properly checked the flags:
     if imports_map is not None:
       assert pythonpath == [""], pythonpath
@@ -241,6 +242,7 @@ class Loader(object):
       # don't leave half-resolved modules around
       del self._modules[module_name]
       raise
+    self.add_module_prefixes(module_name)
     return module.ast
 
   def _collect_ast_dependencies(self, ast):
@@ -359,6 +361,13 @@ class Loader(object):
       self._verify_ast(ast)
     self._import_name_cache[module_name] = ast
     return ast
+
+  def add_module_prefixes(self, module_name):
+    for prefix in module_utils.get_all_prefixes(module_name):
+      self._prefixes.add(prefix)
+
+  def has_module_prefix(self, prefix):
+    return prefix in self._prefixes
 
   def _load_builtin(self, subdir, module_name, third_party_only=False):
     """Load a pytd/pyi that ships with pytype or typeshed."""
