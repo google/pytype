@@ -2717,7 +2717,9 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     return self.vm.convert.constant_to_value(method)
 
   def _is_callable(self):
-    return (not self.is_abstract and isinstance(self.base_cls, InterpreterClass)
+    return (not self.is_abstract
+            and isinstance(self.base_cls, (InterpreterClass, PyTDClass))
+            and self.module not in  ("__builtin__", "typing")
             and all(not isinstance(val, TypeParameter)
                     for val in self.type_parameters.values()))
 
