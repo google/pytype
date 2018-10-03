@@ -20,9 +20,16 @@ _COMPATIBLE_BUILTINS = [
     for compatible_builtin, builtin in pep484.COMPAT_ITEMS
 ]
 
+# Sentinel value for matching instances.
+_PARTIAL_PROTOCOL_MATCH = object()
+
 
 class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
   """Matcher for abstract values."""
+
+  def __init__(self, vm):
+    super(AbstractMatcher, self).__init__(vm)
+    self._protocol_cache = {}
 
   def _set_error_subst(self, subst):
     """Set the substitution used by compute_subst in the event of an error."""
@@ -711,6 +718,17 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       # between the type parameters in List's and Mapping's abstract methods,
       # but that's tricky to do.
       return None
+    # Some protocols have methods that return instances of the protocol, e.g.
+    # Iterator.next returns Iterator. This will cause an infinite loop.
+    # Track which potential protocols we're matching against to prevent a loop.
+    key = (node, left, other_type)
+    if key not in self._protocol_cache:
+      self._protocol_cache[key] = _PARTIAL_PROTOCOL_MATCH
+    elif self._protocol_cache[key] == _PARTIAL_PROTOCOL_MATCH:
+      self._protocol_cache[key] = subst
+      return subst
+    else:
+      return self._protocol_cache[key]
     left_methods = self._get_methods_dict(left)
     method_names_matched = all(
         method in left_methods for method in other_type.abstract_methods)
