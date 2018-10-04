@@ -380,6 +380,12 @@ importdef
       $$ = ctx->Call(kAddImport, "(sN)", "__PACKAGE__", $4);
       CHECK($$, @$);
     }
+  | FROM '.' '.' IMPORT from_list {
+      // Special-case "from .. import" and pass in a __PARENT__ token that
+      // the Python parser code will rewrite to the parent package name.
+      $$ = ctx->Call(kAddImport, "(sN)", "__PARENT__", $5);
+      CHECK($$, @$);
+    }
   ;
 
 import_items

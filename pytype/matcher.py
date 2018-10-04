@@ -1,4 +1,5 @@
 """Matching logic for abstract values."""
+import contextlib
 import logging
 
 from pytype import abstract
@@ -24,9 +25,29 @@ _COMPATIBLE_BUILTINS = [
 class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
   """Matcher for abstract values."""
 
+  def __init__(self, vm):
+    super(AbstractMatcher, self).__init__(vm)
+    self._protocol_cache = set()
+
   def _set_error_subst(self, subst):
     """Set the substitution used by compute_subst in the event of an error."""
     self._error_subst = subst
+
+  @contextlib.contextmanager
+  def _track_partially_matched_protocols(self):
+    """Context manager for handling the protocol cache.
+
+    Some protocols have methods that return instances of the protocol, e.g.
+    Iterator.next returns Iterator. This will cause an infinite loop, which can
+    be avoided by tracking partially matched protocols. To prevent collisions,
+    keys are removed from the cache as soon as match is completed.
+
+    Yields:
+      Into the protocol matching context.
+    """
+    old_protocol_cache = set(self._protocol_cache)
+    yield
+    self._protocol_cache = old_protocol_cache
 
   def compute_subst(self, node, formal_args, arg_dict, view):
     """Compute information about type parameters using one-way unification.
@@ -616,8 +637,9 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       base = self.match_from_mro(left, other_type)
       if base is None:
         if self.is_protocol(other_type):
-          return self._match_against_protocol(left, other_type, subst, node,
-                                              view)
+          with self._track_partially_matched_protocols():
+            return self._match_against_protocol(left, other_type, subst, node,
+                                                view)
         return None
       elif isinstance(base, abstract.AMBIGUOUS_OR_EMPTY):
         # An ambiguous base class matches everything.
@@ -716,6 +738,10 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         method in left_methods for method in other_type.abstract_methods)
     if method_names_matched and isinstance(other_type,
                                            abstract.ParameterizedClass):
+      key = (node, left, other_type)
+      if key in self._protocol_cache:
+        return subst
+      self._protocol_cache.add(key)
       return self._match_parameterized_protocol(left_methods, other_type, subst,
                                                 node, view)
     elif method_names_matched:

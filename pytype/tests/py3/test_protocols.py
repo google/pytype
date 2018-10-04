@@ -355,6 +355,26 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
           return foo.Foo("")
       """, pythonpath=[d.path])
 
+  def test_protocol_caching(self):
+    self.Check("""
+      import collections
+      from typing import Text
+
+      class _PortInterface(object):
+
+        def __init__(self):
+          self._flattened_ports = collections.OrderedDict()
+
+        def PortBundle(self, prefix: Text, bundle):
+          for name, port in bundle.ports.items():
+            full_name = prefix + "_" + name
+            self._flattened_ports[full_name] = port
+
+        def _GetPortsWithDirection(self):
+          return collections.OrderedDict(
+              (name, port) for name, port in self._flattened_ports)
+    """)
+
 
 class ProtocolsTestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for protocol implementation on a target using a Python 3 feature."""

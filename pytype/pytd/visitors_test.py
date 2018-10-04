@@ -661,7 +661,10 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def testExpandCompatibleBuiltins(self):
     src = textwrap.dedent("""
-        from typing import Tuple, Union
+        from typing import Tuple, Union, TypeVar
+
+        T = TypeVar('T', float, bool)
+
         def f1(a: float) -> None: ...
         def f2() -> float: ...
 
@@ -670,9 +673,14 @@ class TestVisitors(parser_test_base.ParserTest):
 
         def f5(a: Union[bool, int]) -> None: ...
         def f6(a: Tuple[bool, int]) -> None: ...
+
+        def f7(x: T) -> T: ...
     """)
     expected = textwrap.dedent("""
-        from typing import Tuple, Union
+        from typing import Tuple, TypeVar, Union
+
+        T = TypeVar('T', float, bool)
+
         def f1(a: Union[float, int]) -> None: ...
         def f2() -> float: ...
 
@@ -681,6 +689,8 @@ class TestVisitors(parser_test_base.ParserTest):
 
         def f5(a: Union[bool, None, int]) -> None: ...
         def f6(a: Tuple[Union[bool, None], int]) -> None: ...
+
+        def f7(x: T) -> T: ...
     """)
 
     src_tree, expected_tree = (

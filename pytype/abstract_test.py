@@ -505,7 +505,7 @@ class PyTDTest(AbstractTestBase):
 # TODO(rechen): Test InterpreterFunction.
 class FunctionTest(AbstractTestBase):
 
-  def _make_pytd_function(self, params):
+  def _make_pytd_function(self, params, name="f"):
     pytd_params = []
     for i, p in enumerate(params):
       p_type = pytd.ClassType(p.name)
@@ -514,8 +514,8 @@ class FunctionTest(AbstractTestBase):
           pytd.Parameter(function.argname(i), p_type, False, False, None))
     pytd_sig = pytd.Signature(
         tuple(pytd_params), None, None, pytd.AnythingType(), (), ())
-    sig = abstract.PyTDSignature("f", pytd_sig, self._vm)
-    return abstract.PyTDFunction("f", (sig,), pytd.METHOD, self._vm)
+    sig = abstract.PyTDSignature(name, pytd_sig, self._vm)
+    return abstract.PyTDFunction(name, (sig,), pytd.METHOD, self._vm)
 
   def _call_pytd_function(self, f, args):
     b = f.to_binding(self._vm.root_cfg_node)
@@ -856,6 +856,51 @@ class FunctionTest(AbstractTestBase):
             "typing._typevar_new").signatures)
     self.assertIs(f.kind, pytd.METHOD)
     self.assertIs(f.vm, self._vm)
+
+  def test_bound_function_repr(self):
+    f = self._make_pytd_function(params=())
+    callself = self._vm.program.NewVariable(
+        [abstract.AtomicAbstractValue(name, self._vm)
+         for name in ("test1", "test2")], [], self._vm.root_cfg_node)
+    bound = abstract.BoundFunction(callself, f)
+    six.assertCountEqual(self, bound.repr_names(), ["test1.f", "test2.f"])
+    six.assertRegex(self, repr(bound), r"test(1|2)\.f")
+
+  def test_bound_function_callself_repr(self):
+    f = self._make_pytd_function(params=())
+    callself = self._vm.program.NewVariable(
+        [abstract.AtomicAbstractValue("test", self._vm)],
+        [], self._vm.root_cfg_node)
+    bound = abstract.BoundFunction(callself, f)
+    callself_repr = lambda v: v.name + "foo"
+    six.assertCountEqual(self, bound.repr_names(callself_repr), ["testfoo.f"])
+
+  def test_bound_function_nested_repr(self):
+    f = self._make_pytd_function(params=())
+    callself1 = self._vm.program.NewVariable(
+        [abstract.AtomicAbstractValue("test1", self._vm)],
+        [], self._vm.root_cfg_node)
+    bound1 = abstract.BoundFunction(callself1, f)
+    callself2 = self._vm.program.NewVariable(
+        [abstract.AtomicAbstractValue("test2", self._vm)],
+        [], self._vm.root_cfg_node)
+    bound2 = abstract.BoundFunction(callself2, bound1)
+    # `bound2` is BoundFunction(test2, BoundFunction(test1, f))
+    six.assertCountEqual(self, bound2.repr_names(), ["test2.f"])
+
+  def test_bound_function_repr_no_callself(self):
+    f = self._make_pytd_function(params=())
+    callself = self._vm.program.NewVariable()
+    bound = abstract.BoundFunction(callself, f)
+    six.assertCountEqual(self, bound.repr_names(), ["<class>.f"])
+
+  def test_bound_function_repr_replace_parent(self):
+    f = self._make_pytd_function(params=(), name="foo.f")
+    callself = self._vm.program.NewVariable(
+        [abstract.AtomicAbstractValue("test", self._vm)],
+        [], self._vm.root_cfg_node)
+    bound = abstract.BoundFunction(callself, f)
+    six.assertCountEqual(self, bound.repr_names(), ["test.f"])
 
 
 class AbstractMethodsTest(AbstractTestBase):

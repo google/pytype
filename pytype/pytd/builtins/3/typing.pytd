@@ -272,13 +272,13 @@ class MutableMapping(Mapping[_K, _V], Protocol):
     self = MutableMapping[_K or _T, _V or _T]
 
 
-class DefaultDict(MutableMapping[_K, _V]): ...
-
-
 class Dict(MutableMapping[_K, _V]):
   __slots__ = []
   def __getitem__(self, key: _K) -> _V: ...
   def __len__(self) -> int: ...
+
+
+class DefaultDict(Dict[_K, _V]): ...
 
 
 class AbstractSet(Sized, Iterable[_T], Container[_T]):

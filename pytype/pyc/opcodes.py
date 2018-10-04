@@ -1,5 +1,8 @@
 """Opcode definitions for both Python 2 and Python 3."""
 
+# Because pytype takes too long:
+# pytype: skip-file
+
 import six
 import six.moves
 
@@ -1129,6 +1132,7 @@ class _LineNumberTableParser(object):
 
 def _prettyprint_arg(cls, oparg, co_consts, co_names,
                      co_varnames, cellvars_freevars):
+  """Prettyprint `oparg`."""
   if cls.has_jrel():
     return oparg
   elif co_consts and cls.has_const():

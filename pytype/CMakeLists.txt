@@ -44,6 +44,7 @@ filegroup(
     pytd/stdlib/3/ctypes.pytd
     pytd/stdlib/3/dummy_thread.pytd
     pytd/stdlib/3/encodings.pytd
+    pytd/stdlib/3/enum.pytd
     pytd/stdlib/3/re.pytd
     pytd/stdlib/3/signal.pytd
     pytd/stdlib/3/xmlrpclib.pytd

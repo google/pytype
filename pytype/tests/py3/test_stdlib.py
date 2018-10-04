@@ -156,6 +156,17 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       ids = collections.defaultdict(itertools.count(17).__next__)
     """)
 
+  def testDefaultDictMatchesDict(self):
+    self.Check("""
+      import collections
+      from typing import DefaultDict, Dict
+      def take_dict(d: Dict[int, str]): pass
+      def take_defaultdict(d: DefaultDict[int, str]): pass
+      d = collections.defaultdict(str, {1: "hello"})
+      take_dict(d)
+      take_defaultdict(d)
+    """)
+
   def testSysVersionInfo(self):
     ty = self.Infer("""
       import sys
@@ -245,6 +256,16 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
     self.Check("""
       import subprocess
       subprocess.run
+    """)
+
+  def test_enum(self):
+    self.Check("""
+      import enum
+      class Foo(enum.Enum):
+        foo = 0
+      def f(x: Foo):
+        pass
+      f(Foo.foo)
     """)
 
 

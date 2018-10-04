@@ -614,5 +614,14 @@ class ContainerTest(test_base.TargetIndependentTest):
         foo.Baz()
       """, pythonpath=[d.path])
 
+  def testFoo(self):
+    _ = self.Infer("""
+      import collections
+      class A(collections.namedtuple("_", ["a"])):
+        pass
+      class B(A, dict):
+        pass
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
