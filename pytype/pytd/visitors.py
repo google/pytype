@@ -2174,19 +2174,25 @@ class VerifyContainers(Visitor):
     """Update the given mapping of parameter names to values."""
     param_name = param.type_param.full_name
     if isinstance(value, pytd.TypeParameter):
-      assert param_name != value.full_name
-      # A TypeVar has been aliased, e.g.,
-      #   class MyList(List[U]): ...
-      #   class List(Sequence[T]): ...
-      # Register the alias. May raise AliasingDictConflictError.
-      mapping.add_alias(param_name, value.full_name)
-    else:
-      # A TypeVar has been given a concrete value, e.g.,
-      #   class MyList(List[str]): ...
-      # Register the value.
-      if param_name not in mapping:
-        mapping[param_name] = set()
-      mapping[param_name].add(value)
+      value_name = value.full_name
+      assert param_name != value_name
+      if value_name in mapping:
+        # A TypeVar has been aliased, e.g.,
+        #   class MyList(List[U]): ...
+        #   class List(Sequence[T]): ...
+        # Register the alias. May raise AliasingDictConflictError.
+        mapping.add_alias(param_name, value.full_name)
+        return
+      # A bare container type has been subclassed - for example, in
+      # `class Foo(tuple): ...`, typing.Tuple._T points to
+      # __builtin__.tuple._T, but the latter has no explicit value.
+      value = pytd.AnythingType()
+    # A TypeVar has been given a concrete value, e.g.,
+    #   class MyList(List[str]): ...
+    # Register the value.
+    if param_name not in mapping:
+      mapping[param_name] = set()
+    mapping[param_name].add(value)
 
   def EnterClass(self, node):
     """Check for conflicting type parameter values in the class's bases."""
