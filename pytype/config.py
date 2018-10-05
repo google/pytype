@@ -119,6 +119,10 @@ def add_basic_options(o):
       "-V", "--python_version", type=str, action="store",
       dest="python_version", default="2.7",
       help=("Python version to emulate (\"major.minor\", e.g. \"2.7\")"))
+  o.add_argument(
+      "--strict-import", action="store_true",
+      dest="strict_import", default=False,
+      help="Experimental: Only load submodules that are explicitly imported.")
 
 
 def add_subtools(o):

@@ -1124,6 +1124,7 @@ class ImportTest(test_base.TargetIndependentTest):
 
   def testUnimportedSubmoduleFailure(self):
     """Fail when accessing a submodule we haven't imported."""
+    self.options.tweak(strict_import=True)
     with file_utils.Tempdir() as d:
       d.create_file("sub/bar/baz.pyi", "class A: ...")
       d.create_file("sub/bar/quux.pyi", "class B: ...")
