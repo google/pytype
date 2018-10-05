@@ -1832,13 +1832,14 @@ class CollectDependencies(Visitor):
   def __init__(self):
     super(CollectDependencies, self).__init__()
     self.modules = set()
+    self.late_modules = set()
 
-  def _ProcessName(self, name):
+  def _ProcessName(self, name, modules):
     """Retrieve a module name from a node name."""
     module_name, dot, unused_name = name.rpartition(".")
     if dot:
       if module_name:
-        self.modules.add(module_name)
+        modules.add(module_name)
       else:
         # If we have a relative import that did not get qualified (usually due
         # to an empty package_name), don't insert module_name='' into the
@@ -1847,26 +1848,16 @@ class CollectDependencies(Visitor):
         logging.warning("Empty package name: %s", name)
 
   def EnterClassType(self, node):
-    self._ProcessName(node.name)
+    self._ProcessName(node.name, self.modules)
 
   def EnterNamedType(self, node):
-    self._ProcessName(node.name)
+    self._ProcessName(node.name, self.modules)
 
   def EnterFunctionType(self, node):
-    self._ProcessName(node.name)
+    self._ProcessName(node.name, self.modules)
 
-
-class CollectLateDependencies(Visitor):
-  """Visitor for retrieving late dependencies. Only used in tests."""
-
-  def __init__(self):
-    super(CollectLateDependencies, self).__init__()
-    self.modules = set()
-
-  def EnterLateType(self, t):
-    module_name, dot, unused_name = t.name.rpartition(".")
-    assert dot
-    self.modules.add(module_name)
+  def EnterLateType(self, node):
+    self._ProcessName(node.name, self.late_modules)
 
 
 def ExpandSignature(sig):

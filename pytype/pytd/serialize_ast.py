@@ -150,9 +150,7 @@ def StoreAst(ast, filename=None):
   deps = visitors.CollectDependencies()
   ast.Visit(deps)
   dependencies = deps.modules
-  late_deps = visitors.CollectLateDependencies()
-  ast.Visit(late_deps)
-  late_dependencies = late_deps.modules
+  late_dependencies = deps.late_modules
 
   # Clean external references
   ast.Visit(visitors.ClearClassPointers())
