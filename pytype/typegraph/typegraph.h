@@ -290,7 +290,7 @@ class Variable {
   // Prunes all bindings of this variable that are invisible at the CFG node.
   // This only takes the CFG into account, and ignores source sets. It's faster
   // than Filter().
-  std::set<Binding*> Prune(const CFGNode* viewpoint);
+  std::vector<Binding*> Prune(const CFGNode* viewpoint);
 
   // Add another choice to this variable. This will not overwrite this variable
   // in the current CFG node - do that explicitly with RemoveChoicesFromCFGNode.

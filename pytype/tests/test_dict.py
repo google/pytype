@@ -1,6 +1,7 @@
 """Tests for dictionaries."""
 
 from pytype import file_utils
+from pytype.pytd import pytd
 from pytype.tests import test_base
 
 
@@ -93,6 +94,28 @@ class DictTest(test_base.TargetIndependentTest):
             kwargs = {}
             kwargs.update(foo.f(self))
       """, pythonpath=[d.path])
+
+  def testDeterminism(self):
+    # Regression test for code on which pytype used to be non-deterministic.
+    canonical = None
+    for _ in range(10):  # increase the chance of finding non-determinism
+      ty = self.Infer("""
+        class Foo(object):
+          def __init__(self, filenames):
+            self._dict = {}
+            for filename in filenames:
+              d = self._dict
+              if __random__:
+                d[__any_object__] = {}
+                d = d[__any_object__]
+              if __random__:
+                d[__any_object__] = None
+      """)
+      out = pytd.Print(ty)
+      if canonical is None:
+        canonical = out
+      else:
+        self.assertMultiLineEqual(canonical, out)
 
 
 test_base.main(globals(), __name__ == "__main__")
