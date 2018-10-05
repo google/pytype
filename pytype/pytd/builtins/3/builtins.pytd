@@ -342,7 +342,7 @@ class bytearray(MutableSequence[int], ByteString):
     def __add__(self, y: str or bytearray) -> bytearray
     def __alloc__(self) -> int
     def __contains__(self, y: str or int or bytearray) -> bool
-    def __delitem__(self, y: int) -> NoneType
+    def __delitem__(self, y: int or slice) -> NoneType
     def __getitem__(self, index: int) -> int
     def __getitem__(self, index: slice) -> bytearray
     def __iter__(self) -> bytearray_iterator

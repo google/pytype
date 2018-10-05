@@ -322,11 +322,12 @@ std::vector<Binding*> Variable::Filter(const CFGNode* viewpoint) const {
   return filtered;
 }
 
-std::set<Binding*> Variable::Prune(const CFGNode* viewpoint) {
-  std::set<Binding*> result;
+std::vector<Binding*> Variable::Prune(const CFGNode* viewpoint) {
+  std::vector<Binding*> result;  // use a vector for determinism
+  std::unordered_set<Binding*> seen_results;
   if (!viewpoint) {
     for (const auto& binding : bindings_) {
-      result.insert(binding.get());
+      result.push_back(binding.get());
     }
     return result;
   }
@@ -340,7 +341,9 @@ std::set<Binding*> Variable::Prune(const CFGNode* viewpoint) {
     if (map_util::ContainsKey(cfg_node_to_bindings_, node)) {
       CHECK(cfg_node_to_bindings_[node].size()) << "empty binding list";
       for (auto v : cfg_node_to_bindings_[node]) {
-        result.insert(v);
+        if (seen_results.insert(v).second) {
+          result.push_back(v);
+        }
       }
       // Don't expand this node - previous assignments to this variable will
       // be invisible, since they're overwritten here.
