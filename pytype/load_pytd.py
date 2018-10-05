@@ -600,6 +600,11 @@ class PickledPyiLoader(Loader):
     except serialize_ast.UnrestorableDependencyError as e:
       del self._modules[module_name]
       raise BadDependencyError(utils.message(e), module_name)
+    # Mark all the module's late dependencies as explicitly imported.
+    for d in loaded_ast.late_dependencies:
+      if d != loaded_ast.ast.name:
+        self.add_module_prefixes(d)
+
     self._modules[module_name].ast = ast
     self._modules[module_name].pickle = None
     self._modules[module_name].dirty = False

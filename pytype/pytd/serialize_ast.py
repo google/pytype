@@ -34,7 +34,7 @@ class FindClassAndFunctionTypesVisitor(visitors.Visitor):
 
 
 SerializableTupleClass = collections.namedtuple(
-    "_", ["ast", "dependencies",
+    "_", ["ast", "dependencies", "late_dependencies",
           "class_type_nodes", "function_type_nodes"])
 
 
@@ -150,6 +150,9 @@ def StoreAst(ast, filename=None):
   deps = visitors.CollectDependencies()
   ast.Visit(deps)
   dependencies = deps.modules
+  late_deps = visitors.CollectLateDependencies()
+  ast.Visit(late_deps)
+  late_dependencies = late_deps.modules
 
   # Clean external references
   ast.Visit(visitors.ClearClassPointers())
@@ -158,6 +161,7 @@ def StoreAst(ast, filename=None):
   ast = ast.Visit(visitors.CanonicalOrderingVisitor())
   return pytd_utils.SavePickle(SerializableAst(
       ast, list(sorted(dependencies)),
+      list(sorted(late_dependencies)),
       list(sorted(indexer.class_type_nodes)),
       list(sorted(indexer.function_type_nodes))), filename)
 
