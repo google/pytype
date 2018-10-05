@@ -315,5 +315,11 @@ class BuiltinTests3(test_base.TargetIndependentTest):
         __path__, foo.__path__
       """, pythonpath=[d.path])
 
+  def testDelByteArraySlice(self):
+    self.Check("""
+      ba = bytearray(b"hello")
+      del ba[0:2]
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
