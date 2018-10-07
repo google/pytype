@@ -4183,7 +4183,7 @@ class BuildClass(AtomicAbstractValue):
       # If base class is NamedTuple, we will call its own make_class method to
       # make a class.
       base = get_atomic_value(base, default=self.vm.convert.unsolvable)
-      if isinstance(base, PyTDClass) and base.full_name == "NamedTuple":
+      if isinstance(base, PyTDClass) and base.full_name == "typing.NamedTuple":
         # The subclass of NamedTuple will ignore all its base classes. This is
         # controled by a metaclass provided to NamedTuple.
         # See: https://github.com/python/typing/blob/master/src/typing.py#L2170
