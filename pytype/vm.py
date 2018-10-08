@@ -1659,33 +1659,32 @@ class VirtualMachine(object):
     locals_dict = self.frame.f_locals.to_variable(self.root_cfg_node)
     return state.push(locals_dict)
 
-  def _cmp_eq(self, state, x, y, eq=True):
-    """Implementation of CMP_EQ/CMP_NE.
+  def _cmp_rel(self, state, op_name, x, y):
+    """Implementation of relational operators CMP_(LT|LE|EQ|NE|GE|GT).
 
     Args:
       state: Initial FrameState.
+      op_name: An operator name, e.g., "EQ".
       x: A variable of the lhs value.
       y: A variable of the rhs value.
-      eq: True or False (indicates which value to return when x == y).
 
     Returns:
       A tuple of the new FrameState and the return variable.
     """
     ret = self.program.NewVariable()
-    # A variable of the values without a special cmp_eq implementation. Needed
+    # A variable of the values without a special cmp_rel implementation. Needed
     # because overloaded __eq__ implementations do not necessarily return a
     # bool; see, e.g., test_overloaded in test_cmp.
     leftover = self.program.NewVariable()
     for b1 in x.bindings:
       for b2 in y.bindings:
-        val = compare.cmp_eq(self, b1.data, b2.data)
+        val = compare.cmp_rel(self, getattr(slots, op_name), b1.data, b2.data)
         if val is None:
           leftover.AddBinding(b1.data, {b1}, state.node)
         else:
-          ret.AddBinding(
-              self.convert.bool_values[val is eq], {b1, b2}, state.node)
+          ret.AddBinding(self.convert.bool_values[val], {b1, b2}, state.node)
     if leftover.bindings:
-      op = "__eq__" if eq else "__ne__"
+      op = "__%s__" % op_name.lower()
       state, leftover_ret = self.call_binary_operator(state, op, leftover, y)
       ret.PasteVariable(leftover_ret, state.node)
     return state, ret
@@ -1728,17 +1727,17 @@ class VirtualMachine(object):
     # Explicit, redundant, switch statement, to make it easier to address the
     # behavior of individual compare operations:
     if op.arg == slots.CMP_LT:
-      state, ret = self.call_binary_operator(state, "__lt__", x, y)
+      state, ret = self._cmp_rel(state, "LT", x, y)
     elif op.arg == slots.CMP_LE:
-      state, ret = self.call_binary_operator(state, "__le__", x, y)
+      state, ret = self._cmp_rel(state, "LE", x, y)
     elif op.arg == slots.CMP_EQ:
-      state, ret = self._cmp_eq(state, x, y)
+      state, ret = self._cmp_rel(state, "EQ", x, y)
     elif op.arg == slots.CMP_NE:
-      state, ret = self._cmp_eq(state, x, y, eq=False)
+      state, ret = self._cmp_rel(state, "NE", x, y)
     elif op.arg == slots.CMP_GT:
-      state, ret = self.call_binary_operator(state, "__gt__", x, y)
+      state, ret = self._cmp_rel(state, "GT", x, y)
     elif op.arg == slots.CMP_GE:
-      state, ret = self.call_binary_operator(state, "__ge__", x, y)
+      state, ret = self._cmp_rel(state, "GE", x, y)
     elif op.arg == slots.CMP_IS:
       ret = self.expand_bool_result(state.node, x, y,
                                     "is_cmp", frame_state.is_cmp)

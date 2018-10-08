@@ -6,9 +6,6 @@ mappings.
 """
 
 
-import collections
-
-
 TYPEOBJECT_PREFIX = "tp_"
 NUMBER_PREFIX = "nb_"
 SEQUENCE_PREFIX = "sq_"
@@ -225,9 +222,6 @@ SLOTS = [
 ]
 
 
-CompareOp = collections.namedtuple("CompareOp", ["op", "index", "magic"])
-
-
 CMP_LT = 0
 CMP_LE = 1
 CMP_EQ = 2
@@ -241,25 +235,20 @@ CMP_IS_NOT = 9
 CMP_EXC_MATCH = 10
 
 
-CMP_ALWAYS_SUPPORTED = [
+CMP_ALWAYS_SUPPORTED = {
     CMP_LT, CMP_LE, CMP_EQ, CMP_NE, CMP_GT, CMP_GE, CMP_IS, CMP_IS_NOT
-]
+}
 
 
-COMPARE_OPS = [
-    CompareOp("LT", CMP_LT, "__lt__"),
-    CompareOp("LE", CMP_LE, "__le__"),
-    CompareOp("EQ", CMP_EQ, "__eq__"),
-    CompareOp("NE", CMP_NE, "__ne__"),
-    CompareOp("GT", CMP_GT, "__gt__"),
-    CompareOp("GE", CMP_GE, "__ge__"),
-    CompareOp("IN", CMP_IN, None),  # reversed __contains__
-    CompareOp("NOT_IN", CMP_NOT_IN, None),  # reversed inverted __contains__
-    # these don't have a magic function:
-    CompareOp("IS", CMP_IS, None),
-    CompareOp("IS_NOT", CMP_IS_NOT, None),
-    CompareOp("EXC_MATCH", CMP_EXC_MATCH, None),
-]
+EQ, NE, LT, LE, GT, GE = "==", "!=", "<", "<=", ">", ">="
+COMPARES = {
+    EQ: lambda x, y: x == y,
+    NE: lambda x, y: x != y,
+    LT: lambda x, y: x < y,
+    LE: lambda x, y: x <= y,
+    GT: lambda x, y: x > y,
+    GE: lambda x, y: x >= y,
+}
 
 
 def ReversibleOperatorNames():
