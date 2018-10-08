@@ -45,7 +45,33 @@ class StdlibTests(test_base.TargetPython27FeatureTest):
       ids = collections.defaultdict(itertools.count(17).next)
     """)
 
-  def testSysVersionInfo(self):
+  def testSysVersionInfoLt(self):
+    ty = self.Infer("""
+      import sys
+      if sys.version_info[0] < 3:
+        v = 42
+      else:
+        v = "hello world"
+    """)
+    self.assertTypesMatchPytd(ty, """
+      sys = ...  # type: module
+      v = ...  # type: int
+    """)
+
+  def testSysVersionInfoLe(self):
+    ty = self.Infer("""
+      import sys
+      if sys.version_info[0] <= 2:
+        v = 42
+      else:
+        v = "hello world"
+    """)
+    self.assertTypesMatchPytd(ty, """
+      sys = ...  # type: module
+      v = ...  # type: int
+    """)
+
+  def testSysVersionInfoEq(self):
     ty = self.Infer("""
       import sys
       if sys.version_info[0] == 2:
@@ -58,6 +84,32 @@ class StdlibTests(test_base.TargetPython27FeatureTest):
     self.assertTypesMatchPytd(ty, """
       sys = ...  # type: module
       v = ...  # type: int
+    """)
+
+  def testSysVersionInfoGe(self):
+    ty = self.Infer("""
+      import sys
+      if sys.version_info[0] >= 3:
+        v = 42
+      else:
+        v = "hello world"
+    """)
+    self.assertTypesMatchPytd(ty, """
+      sys = ...  # type: module
+      v = ...  # type: str
+    """)
+
+  def testSysVersionInfoGt(self):
+    ty = self.Infer("""
+      import sys
+      if sys.version_info[0] > 2:
+        v = 42
+      else:
+        v = "hello world"
+    """)
+    self.assertTypesMatchPytd(ty, """
+      sys = ...  # type: module
+      v = ...  # type: str
     """)
 
 

@@ -9,6 +9,7 @@ from pytype import utils
 from pytype.pyi import parser_ext  # pytype: disable=import-error
 from pytype.pytd import pep484
 from pytype.pytd import pytd
+from pytype.pytd import slots as cmp_slots
 from pytype.pytd import visitors
 from pytype.pytd.parse import parser_constants  # pylint: disable=g-importing-member
 
@@ -27,16 +28,6 @@ _NameAndSig = collections.namedtuple("_", ["name", "signature",
 _SlotDecl = collections.namedtuple("_", ["slots"])
 
 _Property = collections.namedtuple("_", ["precedence", "arity"])
-
-
-_COMPARES = {
-    "==": lambda x, y: x == y,
-    "!=": lambda x, y: x != y,
-    "<": lambda x, y: x < y,
-    "<=": lambda x, y: x <= y,
-    ">": lambda x, y: x > y,
-    ">=": lambda x, y: x >= y,
-}
 
 
 class _ConditionScope(object):
@@ -477,9 +468,9 @@ class _Parser(object):
     """Evaluate a condition and return a bool.
 
     Args:
-      condition: A condition tuple of (left, op, right). If op is "or" or "and",
-      then left and right are conditions. Otherwise, left is a name, op is one
-      of the comparison strings in _COMPARES, and right is the expected value.
+      condition: A tuple of (left, op, right). If op is "or" or "and", then left
+      and right are conditions. Otherwise, left is a name, op is one of the
+      comparison strings in cmp_slots.COMPARES, and right is the expected value.
 
     Returns:
       The boolean result of evaluating the condition.
@@ -501,7 +492,7 @@ class _Parser(object):
     Args:
       ident: A tuple of a dotted name string and an optional __getitem__ key
         (int or slice).
-      op: One of the comparison operator strings in _COMPARES.
+      op: One of the comparison operator strings in cmp_slots.COMPARES.
       value: Either a string, an integer, or a tuple of integers.
 
     Returns:
@@ -531,12 +522,14 @@ class _Parser(object):
     elif name == "sys.platform":
       if not isinstance(value, str):
         raise ParseError("sys.platform must be compared to a string")
-      if op not in ["==", "!="]:
-        raise ParseError("sys.platform must be compared using == or !=")
+      valid_cmps = (cmp_slots.EQ, cmp_slots.NE)
+      if op not in valid_cmps:
+        raise ParseError(
+            "sys.platform must be compared using %s or %s" % valid_cmps)
       actual = self._platform
     else:
       raise ParseError("Unsupported condition: '%s'." % name)
-    return _COMPARES[op](actual, value)
+    return cmp_slots.COMPARES[op](actual, value)
 
   def if_begin(self, condition):
     """Begin an "if" statement using the specified condition."""
