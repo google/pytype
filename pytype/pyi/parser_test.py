@@ -1113,6 +1113,20 @@ class ClassTest(_ParserTestBase):
           pass
     """)
 
+  def test_bad_typevar_in_mutation(self):
+    self.check_error("""\
+      from typing import Generic, TypeVar
+
+      S = TypeVar('S')
+      T = TypeVar('T')
+      U = TypeVar('U')
+      V = TypeVar('V')
+
+      class Foo(Generic[T]):
+        def __init__(self, x: S):
+          self = Generic[S, T, U, V]
+     """, None, "Type parameter(s) {U, V}")
+
 
 class IfTest(_ParserTestBase):
 

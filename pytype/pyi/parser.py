@@ -112,13 +112,13 @@ class OverloadedDecoratorError(ParseError):
 
 
 class _Mutator(visitors.Visitor):
-  """Visitor for changing parameters to BeforeAfterType instances.
+  """Visitor for adding a mutated_type to parameters.
 
-  We model
+  We model the parameter x in
     def f(x: old_type):
       x = new_type
   as
-    def f(x: BeforeAfterType(old_type, new_type))
+    Parameter(name=x, type=old_type, mutated_type=new_type)
   .
   This visitor applies the body "x = new_type" to the function signature.
   """
@@ -154,6 +154,57 @@ class _InsertTypeParameters(visitors.Visitor):
       return self.type_params[node.name]
     else:
       return node
+
+
+class _VerifyMutators(visitors.Visitor):
+  """Visitor for verifying TypeParameters used in mutations are in scope."""
+
+  def __init__(self):
+    super(_VerifyMutators, self).__init__()
+    # A stack of type parameters introduced into the scope. The top of the stack
+    # contains the currently accessible parameter set.
+    self.type_params_in_scope = [set()]
+    self.current_function = None
+
+  def _AddParams(self, params):
+    top = self.type_params_in_scope[-1]
+    self.type_params_in_scope.append(top | params)
+
+  def _GetTypeParameters(self, node):
+    collector = visitors.CollectTypeParameters()
+    node.Visit(collector)
+    return {x.name for x in collector.params}
+
+  def EnterClass(self, node):
+    params = set()
+    for cls in node.parents:
+      params |= self._GetTypeParameters(cls)
+    self._AddParams(params)
+
+  def LeaveClass(self, _):
+    self.type_params_in_scope.pop()
+
+  def EnterFunction(self, node):
+    self.current_function = node
+    params = set()
+    for sig in node.signatures:
+      for arg in sig.params:
+        params |= self._GetTypeParameters(arg.type)
+    self._AddParams(params)
+
+  def LeaveFunction(self, _):
+    self.type_params_in_scope.pop()
+    self.current_function = None
+
+  def EnterParameter(self, node):
+    if isinstance(node.mutated_type, pytd.GenericType):
+      params = self._GetTypeParameters(node.mutated_type)
+      extra = params - self.type_params_in_scope[-1]
+      if extra:
+        fn = pytd.Print(self.current_function)
+        msg = "Type parameter(s) {%s} not in scope in\n\n%s" % (
+            ", ".join(sorted(extra)), fn)
+        raise ParseError(msg)
 
 
 class _ContainsAnyType(visitors.Visitor):
@@ -389,6 +440,7 @@ class _Parser(object):
 
     ast = ast.Visit(_PropertyToConstant())
     ast = ast.Visit(_InsertTypeParameters())
+    ast = ast.Visit(_VerifyMutators())
     # TODO(kramm): This is in the wrong place- it should happen after resolving
     # local names, in load_pytd.
     ast = ast.Visit(pep484.ConvertTypingToNative(name))
