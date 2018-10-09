@@ -551,6 +551,46 @@ class PYITest(test_base.TargetIndependentTest):
         v = ...  # type: ?
       """)
 
+  def testTypeParamInMutation(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Generic, TypeVar
+        T = TypeVar("T")
+        T2 = TypeVar("T2")
+        class Bar(Generic[T]):
+          def bar(self, x:T2):
+            self = Bar[T2]
+      """)
+      ty = self.Infer("""\
+        import foo
+        x = foo.Bar()
+        x.bar(10)
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo = ...  # type: module
+        x = ...  # type: foo.Bar[int]
+      """)
+
+  def testBadTypeParamInMutation(self):
+    with file_utils.Tempdir() as d:
+      # T2 is not in scope when used in the mutation in Bar.bar()
+      d.create_file("foo.pyi", """
+        from typing import Generic, TypeVar
+        T = TypeVar("T")
+        T2 = TypeVar("T2")
+        class Bar(Generic[T]):
+          def quux(self, x: T2): ...
+          def bar(self):
+            self = Bar[T2]
+      """)
+      # We should get an error at import time rather than at use time here.
+      _, errors = self.InferWithErrors("""\
+        import foo
+        x = foo.Bar()
+        x.bar()
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(1, "pyi-error", "T2")])
+
   def testStarImport(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
