@@ -1042,6 +1042,11 @@ class VirtualMachine(object):
     else:
       return self.load_from(state, self.frame.f_builtins, name)
 
+  def load_constant(self, state, op, raw_const):
+    const = self.convert.constant_to_var(raw_const, node=state.node)
+    self.trace_opcode(op, raw_const, const)
+    return state.push(const)
+
   def _store_value(self, state, name, value, local):
     if local:
       target = self.frame.f_locals
@@ -1467,9 +1472,7 @@ class VirtualMachine(object):
 
   def byte_LOAD_CONST(self, state, op):
     raw_const = self.frame.f_code.co_consts[op.arg]
-    const = self.convert.constant_to_var(raw_const, node=state.node)
-    self.trace_opcode(op, raw_const, const)
-    return state.push(const)
+    return self.load_constant(state, op, raw_const)
 
   def byte_POP_TOP(self, state, op):
     return state.pop_and_discard()
@@ -1559,6 +1562,11 @@ class VirtualMachine(object):
   def byte_LOAD_GLOBAL(self, state, op):
     """Load a global variable, or fall back to trying to load a builtin."""
     name = self.frame.f_code.co_names[op.arg]
+    if name == "None":
+      # Load None itself as a constant to avoid the None filtering done on
+      # variables. This workaround is safe because assigning to None is a
+      # syntax error.
+      return self.load_constant(state, op, None)
     try:
       state, val = self.load_global(state, name)
     except KeyError:
@@ -1610,6 +1618,22 @@ class VirtualMachine(object):
       A new state.
     """
     cell = self.frame.cells[op.arg]
+    visible_bindings = cell.Filter(state.node)
+    if len(visible_bindings) != len(cell.bindings):
+      # We need to filter here because the closure will be analyzed outside of
+      # its creating context, when information about what values are visible
+      # has been lost.
+      new_cell = self.program.NewVariable()
+      if visible_bindings:
+        for b in visible_bindings:
+          new_cell.AddBinding(b.data, {b}, state.node)
+      else:
+        # TODO(rechen): Is this a bug?
+        # See test_closures.ClosuresTest.testNoVisibleBindings.
+        new_cell.AddBinding(self.convert.unsolvable)
+      # Update the cell because the DELETE_DEREF implementation works on
+      # variable identity.
+      self.frame.cells[op.arg] = cell = new_cell
     name = self.get_closure_var_name(op.arg)
     self.check_for_deleted(state, name, cell)
     self.trace_opcode(op, name, cell)
