@@ -3419,6 +3419,9 @@ class SignedFunction(Function):
       raise WrongArgTypes(self.signature, args, self.vm, bad_param=bad_arg)
     return subst
 
+  def get_first_opcode(self):
+    return None
+
   def set_function_defaults(self, defaults_var):
     """Attempts to set default arguments of a function.
 
