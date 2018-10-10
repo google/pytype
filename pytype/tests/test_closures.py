@@ -167,5 +167,23 @@ class ClosuresTest(test_base.TargetIndependentTest):
       def caller() -> int
     """)
 
+  def testNoVisibleBindings(self):
+    # Regression test for a crash; see vm.VirtualMachine.load_closure_cell.
+    self.Check("""
+      def foo():
+        name = __any_object__
+        def msg():
+          return name
+        while True:
+          if __random__:
+            name = __any_object__
+            raise ValueError(msg())
+          else:
+            break
+        if __random__:
+          return {'': name}
+        return {'': name}
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
