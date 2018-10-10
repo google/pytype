@@ -153,6 +153,15 @@ def check_or_generate_pyi(options, errorlog, loader):
   return (result, ast)
 
 
+def _maybe_write_pyi_output(options, contents, filename):
+  if filename == "-":
+    sys.stdout.write(contents)
+  else:
+    log.info("write pyi %r => %r", options.input, filename)
+    with open(filename, "w") as fi:
+      fi.write(contents)
+
+
 def process_one_file(options):
   """Check a .py file or generate a .pyi for it, according to options.
 
@@ -178,12 +187,9 @@ def process_one_file(options):
       pyi_output = options.verify_pickle
     else:
       pyi_output = options.output
-    if pyi_output == "-":
-      sys.stdout.write(result)
-    elif pyi_output:
-      log.info("write pyi %r => %r", options.input, pyi_output)
-      with open(pyi_output, "w") as fi:
-        fi.write(result)
+    # Write out the pyi file.
+    _maybe_write_pyi_output(options, result, pyi_output)
+    # Write out the pickle file.
     if options.pickle_output:
       log.info("write pickle %r => %r", options.input, options.output)
       write_pickle(ast, loader, options)
@@ -251,7 +257,11 @@ def handle_errors(errorlog, options):
 def parse_pyi(options):
   """Tries parsing a PYI file."""
   loader = load_pytd.create_loader(options)
-  loader.load_file(options.module_name, options.input)
+  ast = loader.load_file(options.module_name, options.input)
+  if options.output:
+    result = "# Internal AST parsed and postprocessed from %s\n\n%s" % (
+        options.input, pytd.Print(ast))
+    _maybe_write_pyi_output(options, result, options.output)
 
 
 def get_pytype_version():
