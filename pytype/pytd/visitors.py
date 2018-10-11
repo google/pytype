@@ -403,17 +403,20 @@ class PrintVisitor(Visitor):
       slots = [self.INDENT + "__slots__ = [" + slots_str + "]"]
     else:
       slots = []
-    if node.methods or node.constants or slots:
+    if node.classes or node.methods or node.constants or slots:
       # We have multiple methods, and every method has multiple signatures
       # (i.e., the method string will have multiple lines). Combine this into
       # an array that contains all the lines, then indent the result.
+      class_lines = sum((m.splitlines() for m in node.classes), [])
+      classes = [self.INDENT + m for m in class_lines]
       constants = [self.INDENT + m for m in node.constants]
       method_lines = sum((m.splitlines() for m in node.methods), [])
       methods = [self.INDENT + m for m in method_lines]
     else:
       constants = []
+      classes = []
       methods = [self.INDENT + "pass"]
-    return "\n".join(header + slots + constants + methods) + "\n"
+    return "\n".join(header + slots + classes + constants + methods) + "\n"
 
   def VisitFunction(self, node):
     """Visit function, producing multi-line string (one for each signature)."""
@@ -1692,6 +1695,7 @@ class CanonicalOrderingVisitor(Visitor):
         parents=node.parents,
         methods=tuple(sorted(node.methods)),
         constants=tuple(sorted(node.constants)),
+        classes=tuple(sorted(node.classes)),
         slots=tuple(sorted(node.slots)) if node.slots is not None else None,
         template=node.template)
 
@@ -1754,7 +1758,7 @@ class AddNamePrefix(Visitor):
 
   def __init__(self):
     super(AddNamePrefix, self).__init__()
-    self.cls = None
+    self.cls_stack = []
     self.classes = None
     self.prefix = None
     self.name = None
@@ -1765,11 +1769,11 @@ class AddNamePrefix(Visitor):
     self.prefix = node.name + "."
 
   def EnterClass(self, cls):
-    self.cls = cls
+    self.cls_stack.append(cls)
 
   def LeaveClass(self, cls):
-    assert self.cls is cls
-    self.cls = None
+    assert self.cls_stack[-1] is cls
+    self.cls_stack.pop()
 
   def VisitClassType(self, node):
     if node.cls is not None:
@@ -1790,7 +1794,8 @@ class AddNamePrefix(Visitor):
       return node
 
   def VisitClass(self, node):
-    return node.Replace(name=self.prefix + node.name)
+    name = self.prefix + ".".join(x.name for x in self.cls_stack)
+    return node.Replace(name=name)
 
   def VisitTypeParameter(self, node):
     if node.scope is not None:
@@ -1802,7 +1807,7 @@ class AddNamePrefix(Visitor):
     return node.Replace(scope=self.name)
 
   def _VisitNamedNode(self, node):
-    if self.cls:
+    if self.cls_stack:
       # class attribute
       return node
     else:
@@ -1938,7 +1943,7 @@ class AdjustTypeParameters(Visitor):
     super(AdjustTypeParameters, self).__init__()
     self.class_typeparams = set()
     self.function_typeparams = None
-    self.class_template = None
+    self.class_template = []
     self.class_name = None
     self.function_name = None
     self.constant_name = None
@@ -2012,8 +2017,7 @@ class AdjustTypeParameters(Visitor):
       raise ContainerError(
           "Illegal type parameter order in class %s" % node.name)
 
-    assert self.class_template is None
-    self.class_template = template
+    self.class_template.append(template)
 
     for t in template:
       assert isinstance(t.type_param, pytd.TypeParameter)
@@ -2023,11 +2027,11 @@ class AdjustTypeParameters(Visitor):
 
   def LeaveClass(self, node):
     del node
-    for t in self.class_template:
+    for t in self.class_template[-1]:
       if t.name in self.class_typeparams:
         self.class_typeparams.remove(t.name)
     self.class_name = None
-    self.class_template = None
+    self.class_template.pop()
 
   def VisitClass(self, node):
     """Builds a template for the class from its GenericType parents."""
@@ -2036,7 +2040,7 @@ class AdjustTypeParameters(Visitor):
     # subtree.  They now need to be scoped similar to VisitTypeParameter,
     # except we happen to know they are all bound by the class.
     template = [pytd.TemplateItem(t.type_param.Replace(scope=node.name))
-                for t in self.class_template]
+                for t in self.class_template[-1]]
     node = node.Replace(template=tuple(template))
     return node.Visit(AdjustSelf()).Visit(NamedTypeToClassType())
 
