@@ -154,6 +154,7 @@ def check_or_generate_pyi(options, errorlog, loader):
 
 
 def _write_pyi_output(options, contents, filename):
+  assert filename
   if filename == "-":
     sys.stdout.write(contents)
   else:
