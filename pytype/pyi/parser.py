@@ -232,30 +232,30 @@ class _PropertyToConstant(visitors.Visitor):
 
   def EnterTypeDeclUnit(self, node):
     self.type_param_names = [x.name for x in node.type_params]
-    self.const_properties = None
+    self.const_properties = []
 
   def LeaveTypeDeclUnit(self, node):
     self.type_param_names = None
 
   def EnterClass(self, node):
-    self.const_properties = []
+    self.const_properties.append([])
 
   def LeaveClass(self, node):
-    self.const_properties = None
+    self.const_properties.pop()
 
   def VisitClass(self, node):
     constants = list(node.constants)
-    for fn in self.const_properties:
+    for fn in self.const_properties[-1]:
       types = [x.return_type for x in fn.signatures]
       constants.append(pytd.Constant(name=fn.name, type=join_types(types)))
-    methods = [x for x in node.methods if x not in self.const_properties]
+    methods = [x for x in node.methods if x not in self.const_properties[-1]]
     return node.Replace(constants=tuple(constants), methods=tuple(methods))
 
   def EnterFunction(self, node):
-    if (self.const_properties is not None and
+    if (self.const_properties and
         node.kind == pytd.PROPERTY and
         not self._is_parametrised(node)):
-      self.const_properties.append(node)
+      self.const_properties[-1].append(node)
 
   def _is_parametrised(self, method):
     for sig in method.signatures:
@@ -973,6 +973,7 @@ class _Parser(object):
                           parents=(class_parent,),
                           methods=tuple(methods),
                           constants=class_constants,
+                          classes=(),
                           slots=tuple(n for n, _ in fields),
                           template=())
 
@@ -1025,9 +1026,6 @@ class _Parser(object):
         metaclass = value
 
     constants, methods, aliases, slots, classes = _split_definitions(defs)
-    # TODO(rechen): retain more information about nested classes.
-    for cls in classes:
-      constants.append(self.new_constant(cls.name, pytd.NamedType("type")))
 
     all_names = (list(set(f.name for f in methods)) +
                  [c.name for c in constants] +
@@ -1073,6 +1071,7 @@ class _Parser(object):
                       parents=tuple(parents),
                       methods=tuple(methods),
                       constants=tuple(constants),
+                      classes=tuple(classes),
                       slots=slots,
                       template=())
 
@@ -1345,7 +1344,9 @@ def _split_definitions(defs):
   slots = None
   classes = []
   for d in defs:
-    if isinstance(d, pytd.Constant):
+    if isinstance(d, pytd.Class):
+      classes.append(d)
+    elif isinstance(d, pytd.Constant):
       if d.name == "__slots__":
         pass  # ignore definitions of __slots__ as a type
       else:
@@ -1363,8 +1364,6 @@ def _split_definitions(defs):
         raise ParseError("Entries in __slots__ can only be strings")
       slots = tuple(p.name for p in d.slots.parameters
                     if isinstance(p, pytd.NamedType))
-    elif isinstance(d, pytd.Class):
-      classes.append(d)
     else:
       raise TypeError("Unexpected definition type %s" % type(d))
   return constants, functions, aliases, slots, classes

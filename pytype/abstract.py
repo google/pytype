@@ -2999,6 +2999,7 @@ class PyTDClass(SimpleAbstractValue, Class):
         parents=self.pytd_cls.parents,
         methods=tuple(self._member_map[m.name] for m in self.pytd_cls.methods),
         constants=self.pytd_cls.constants,
+        classes=self.pytd_cls.classes,
         slots=self.pytd_cls.slots,
         template=self.pytd_cls.template)
 
@@ -3056,6 +3057,13 @@ class InterpreterClass(SimpleAbstractValue, Class):
           templates.update([(mbr, item) for item in mbr.template])
           templates.update(mbr.collect_inner_cls_types(max_depth - 1))
     return templates
+
+  def get_inner_classes(self):
+    """Return the list of top-level nested classes."""
+    values = [
+        get_atomic_value(mbr, default=self.vm.convert.unsolvable)
+        for mbr in self.members.values()]
+    return [x for x in values if isinstance(x, InterpreterClass)]
 
   def _get_pure_bases(self, bases):
     """Remove unnecessary `typing.Generic` for MRO check."""
@@ -4384,6 +4392,7 @@ class Unknown(AtomicAbstractValue):
         methods=methods,
         constants=tuple(pytd.Constant(name, Unknown._to_pytd(node, c))
                         for name, c in self.members.items()),
+        classes=(),
         slots=None,
         template=())
 

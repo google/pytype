@@ -519,6 +519,9 @@ def MergeBaseClass(cls, base):
   constant_names = [c.name for c in cls.constants]
   constants = cls.constants + tuple(c for c in base.constants
                                     if c.name not in constant_names)
+  class_names = [c.name for c in cls.classes]
+  classes = cls.classes + tuple(c for c in base.classes
+                                if c.name not in class_names)
   if cls.slots:
     slots = cls.clots + tuple(s for s in base.slots or () if s not in cls.slots)
   else:
@@ -528,5 +531,6 @@ def MergeBaseClass(cls, base):
                     parents=bases,
                     methods=methods,
                     constants=constants,
+                    classes=classes,
                     slots=slots,
                     template=cls.template or base.template)

@@ -236,7 +236,8 @@ class ParserTest(_ParserTestBase):
           class B: ...
     """, """\
       class A:
-          B = ...  # type: type
+          class B:
+              pass
     """)
 
   def test_import(self):

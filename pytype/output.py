@@ -579,11 +579,20 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       else:
         bases.append(pytd_utils.JoinTypes(b.get_instance_type(node)
                                           for b in basevar.data))
+
+    # Collect nested classes
+    # TODO(mdemello): We cannot put these in the output yet; they fail in
+    # load_dependencies because of the dotted class name (google/pytype#150)
+    classes = [self._class_to_def(node, x, x.name)
+               for x in v.get_inner_classes()]
+    classes = [x.Replace(name=class_name + "." + x.name) for x in classes]
+
     cls = pytd.Class(name=class_name,
                      metaclass=metaclass,
                      parents=tuple(bases),
                      methods=tuple(methods.values()),
                      constants=tuple(constants),
+                     classes=(),
                      slots=v.slots,
                      template=())
     for base in missing_bases:
