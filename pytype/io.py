@@ -153,7 +153,7 @@ def check_or_generate_pyi(options, errorlog, loader):
   return (result, ast)
 
 
-def _maybe_write_pyi_output(options, contents, filename):
+def _write_pyi_output(options, contents, filename):
   if filename == "-":
     sys.stdout.write(contents)
   else:
@@ -188,7 +188,8 @@ def process_one_file(options):
     else:
       pyi_output = options.output
     # Write out the pyi file.
-    _maybe_write_pyi_output(options, result, pyi_output)
+    if pyi_output:
+      _write_pyi_output(options, result, pyi_output)
     # Write out the pickle file.
     if options.pickle_output:
       log.info("write pickle %r => %r", options.input, options.output)
@@ -261,7 +262,7 @@ def parse_pyi(options):
   if options.output:
     result = "# Internal AST parsed and postprocessed from %s\n\n%s" % (
         options.input, pytd.Print(ast))
-    _maybe_write_pyi_output(options, result, options.output)
+    _write_pyi_output(options, result, options.output)
 
 
 def get_pytype_version():
