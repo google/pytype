@@ -26,8 +26,8 @@ from pytype import function
 from pytype import overlay_dict
 from pytype import load_pytd
 from pytype import matcher
+from pytype import metaclass
 from pytype import metrics
-from pytype import six_overlay
 from pytype import special_builtins
 from pytype import state as frame_state
 from pytype import utils
@@ -454,7 +454,7 @@ class VirtualMachine(object):
     for base in bases:
       with_metaclass = False
       for b in base.data:
-        if isinstance(b, six_overlay.WithMetaclassInstance):
+        if isinstance(b, metaclass.WithMetaclassInstance):
           with_metaclass = True
           if not meta:
             # Only the first metaclass gets applied.
@@ -490,9 +490,9 @@ class VirtualMachine(object):
       log.error("Error initializing class %r", name)
       return self.convert.create_new_unknown(node)
     # Handle six.with_metaclass.
-    metaclass, bases = self._filter_out_metaclasses(bases)
-    if metaclass:
-      cls_var = metaclass
+    metacls, bases = self._filter_out_metaclasses(bases)
+    if metacls:
+      cls_var = metacls
     # Flatten Unions in the bases
     bases = [self._process_base_class(node, base) for base in bases]
     if not bases:
