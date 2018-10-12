@@ -1643,7 +1643,14 @@ class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
     return args
 
   def starstarargs_as_dict(self):
-    return self.starstarargs and get_atomic_value(self.starstarargs, Dict, None)
+    if self.starstarargs:
+      try:
+        d = get_atomic_value(self.starstarargs, Dict)
+      except ConversionError:
+        return None
+      if not d.could_contain_anything:
+        return d
+    return None
 
   def simplify(self, node):
     """Try to insert part of *args, **kwargs into posargs / namedargs."""
