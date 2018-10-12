@@ -113,13 +113,7 @@ class PytypeTest(unittest.TestCase):
         return
     out1 = pytd_utils.LoadPickle(f1, compress=True)
     out2 = pytd_utils.LoadPickle(f2, compress=True)
-    diff = []
-    for (name1, ast1), (name2, ast2) in zip(out1, out2):
-      if name1 != name2:
-        raise AssertionError("different ordering of pyi files")
-      elif ast1 != ast2:
-        diff.append(name1)
-    raise AssertionError("pyi files differ: " + ", ".join(diff))
+    raise AssertionError("\n".join(pytd_utils.DiffNamedPickles(out1, out2)))
 
   def assertOutputStateMatches(self, **has_output):
     """Check that the output state matches expectations.
