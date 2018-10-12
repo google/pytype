@@ -473,6 +473,27 @@ def SavePickle(data, filename=None, compress=False):
     sys.setrecursionlimit(recursion_limit)
 
 
+def DiffNamedPickles(named_pickles1, named_pickles2):
+  """Diff two lists of (name, pickled_module)."""
+  len1, len2 = len(named_pickles1), len(named_pickles2)
+  if len1 != len2:
+    return ["different number of pyi files: %d, %d" % (len1, len2)]
+  diff = []
+  for (name1, pickle1), (name2, pickle2) in zip(named_pickles1, named_pickles2):
+    if name1 != name2:
+      diff.append("different ordering of pyi files: %s, %s" % (name1, name2))
+    elif pickle1 != pickle2:
+      ast1, ast2 = cPickle.loads(pickle1), cPickle.loads(pickle2)
+      if ast1.ast.ASTeq(ast2.ast):
+        diff.append("asts match but pickles differ: %s" % name1)
+      else:
+        diff.append("asts differ: %s" % name1)
+        diff.append("-" * 50)
+        diff.extend(ast1.ast.ASTdiff(ast2.ast))
+        diff.append("-" * 50)
+  return diff
+
+
 def GetTypeParameters(node):
   collector = visitors.CollectTypeParameters()
   node.Visit(collector)
