@@ -149,7 +149,7 @@ class CallTracer(vm.VirtualMachine):
       self._analyzed_functions.add(method.get_first_opcode())
       if (not self.options.analyze_annotated and
           method.signature.has_return_annotation and
-          fname not in self._CONSTRUCTORS):
+          fname.rsplit(".", 1)[-1] not in self._CONSTRUCTORS):
         log.info("%r has return annotation, not analyzing further.", fname)
       else:
         node, args = self.create_method_arguments(node, method)
