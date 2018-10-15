@@ -108,7 +108,8 @@ def prevent_direct_instantiation(cls, *args, **kwargs):
   new = cls.__dict__.get("__new__")
   if getattr(new, "__func__", None) == prevent_direct_instantiation:
     raise AssertionError("Can't instantiate %s directly" % cls.__name__)
-  return object.__new__(cls, *args, **kwargs)
+  # TODO(b/117657518): Remove the disable after the pytype bug is fixed.
+  return object.__new__(cls, *args, **kwargs)  # pytype: disable=wrong-arg-count
 
 
 def disabled_function(*unused_args, **unused_kwargs):
@@ -151,7 +152,8 @@ class TypeMatcher(object):
     if f:
       return f(t1, t2, *args, **kwargs)
     else:
-      return self.default_match(t1, t2, *args, **kwargs)
+      # TODO(b/117657518): Remove the disable once the pytype bug is fixed.
+      return self.default_match(t1, t2, *args, **kwargs)  # pytype: disable=wrong-arg-count
 
 
 def CanonicalOrdering(n, sort_signatures=False):
@@ -445,7 +447,8 @@ def GetPredefinedFile(pytd_subdir, module, extension=".pytd",
 def LoadPickle(filename, compress=False):
   if compress:
     with gzip.GzipFile(filename, "rb") as fi:
-      return cPickle.load(fi)
+      # TODO(b/117797409): Remove the disable once the typeshed bug is fixed.
+      return cPickle.load(fi)  # pytype: disable=wrong-arg-types
   else:
     with open(filename, "rb") as fi:
       return cPickle.load(fi)
@@ -463,7 +466,8 @@ def SavePickle(data, filename=None, compress=False):
         # deterministic gzip files.
         with gzip.GzipFile(filename="", mode="wb",
                            fileobj=fi, mtime=1.0) as zfi:
-          cPickle.dump(data, zfi, _PICKLE_PROTOCOL)
+          # TODO(b/117797409): Remove disable once typeshed bug is fixed.
+          cPickle.dump(data, zfi, _PICKLE_PROTOCOL)  # pytype: disable=wrong-arg-types
     elif filename is not None:
       with open(filename, "wb") as fi:
         cPickle.dump(data, fi, _PICKLE_PROTOCOL)
