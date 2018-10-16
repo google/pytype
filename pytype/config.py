@@ -132,7 +132,7 @@ def add_subtools(o):
   o.add_argument(
       "--generate-builtins", action="store",
       dest="generate_builtins", default=None,
-      help="Precompile builtins pytd and write to the given file.")
+      help="Precompile builtins pyi and write to the given file.")
   o.add_argument(
       "--parse-pyi", action="store_true",
       dest="parse_pyi", default=False,
@@ -159,7 +159,7 @@ def add_pickle_options(o):
   o.add_argument(
       "--precompiled-builtins", action="store",
       dest="precompiled_builtins", default=None,
-      help="Use the supplied file as precompiled builtins pytd.")
+      help="Use the supplied file as precompiled builtins pyi.")
 
 
 def add_infrastructure_options(o):
@@ -168,7 +168,7 @@ def add_infrastructure_options(o):
   o.add_argument(
       "--imports_info", type=str, action="store",
       dest="imports_map", default=None,
-      help=("Information for mapping import .pytd to files. "
+      help=("Information for mapping import .pyi to files. "
             "This options is incompatible with --pythonpath."))
   o.add_argument(
       "-M", "--module-name", action="store",
@@ -198,7 +198,7 @@ def add_infrastructure_options(o):
             "being analyzed. That is, if an input .py file has an "
             "'import path.to.foo', and pytype has already been run "
             "with 'pytype path.to.foo.py -o "
-            "$OUTDIR/path/to/foo.pytd', "  # TODO(kramm): Change to .pyi
+            "$OUTDIR/path/to/foo.pyi', "
             "then pytype should be invoked with $OUTDIR in "
             "--pythonpath. This option is incompatible with "
             "--imports_info and --generate_builtins.") % os.pathsep)
