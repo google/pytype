@@ -192,6 +192,26 @@ class SplitTest(test_base.TargetPython3BasicTest):
         return ("foo",)
     """)
 
+  def testClosure(self):
+    self.Check("""
+      from typing import Optional
+      def foo(arg: Optional[str]):
+        if arg is None:
+          raise TypeError()
+        def nested():
+          print(arg.upper())
+    """)
+
+  def testAnnotatedClosure(self):
+    self.Check("""
+      from typing import Optional
+      def foo(arg: Optional[str]):
+        if arg is None:
+          raise TypeError()
+        def nested() -> None:
+          print(arg.upper())
+    """)
+
 
 class SplitTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for if-splitting in Python 3."""

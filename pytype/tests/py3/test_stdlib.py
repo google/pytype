@@ -167,7 +167,33 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       take_defaultdict(d)
     """)
 
-  def testSysVersionInfo(self):
+  def testSysVersionInfoLt(self):
+    ty = self.Infer("""
+      import sys
+      if sys.version_info[0] < 3:
+        v = 42
+      else:
+        v = "hello world"
+    """)
+    self.assertTypesMatchPytd(ty, """
+      sys = ...  # type: module
+      v = ...  # type: str
+    """)
+
+  def testSysVersionInfoLe(self):
+    ty = self.Infer("""
+      import sys
+      if sys.version_info[0] <= 3:
+        v = 42
+      else:
+        v = "hello world"
+    """)
+    self.assertTypesMatchPytd(ty, """
+      sys = ...  # type: module
+      v = ...  # type: int
+    """)
+
+  def testSysVersionInfoEq(self):
     ty = self.Infer("""
       import sys
       if sys.version_info[0] == 2:
@@ -180,6 +206,32 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
     self.assertTypesMatchPytd(ty, """
       sys = ...  # type: module
       v = ...  # type: str
+    """)
+
+  def testSysVersionInfoGe(self):
+    ty = self.Infer("""
+      import sys
+      if sys.version_info[0] >= 3:
+        v = 42
+      else:
+        v = "hello world"
+    """)
+    self.assertTypesMatchPytd(ty, """
+      sys = ...  # type: module
+      v = ...  # type: int
+    """)
+
+  def testSysVersionInfoGt(self):
+    ty = self.Infer("""
+      import sys
+      if sys.version_info[0] > 2:
+        v = 42
+      else:
+        v = "hello world"
+    """)
+    self.assertTypesMatchPytd(ty, """
+      sys = ...  # type: module
+      v = ...  # type: int
     """)
 
   def test_async(self):

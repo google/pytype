@@ -236,7 +236,8 @@ class ParserTest(_ParserTestBase):
           class B: ...
     """, """\
       class A:
-          B = ...  # type: type
+          class B:
+              pass
     """)
 
   def test_import(self):
@@ -1112,6 +1113,20 @@ class ClassTest(_ParserTestBase):
       class Foo(Protocol, Generic[T]):
           pass
     """)
+
+  def test_bad_typevar_in_mutation(self):
+    self.check_error("""\
+      from typing import Generic, TypeVar
+
+      S = TypeVar('S')
+      T = TypeVar('T')
+      U = TypeVar('U')
+      V = TypeVar('V')
+
+      class Foo(Generic[T]):
+        def __init__(self, x: S):
+          self = Generic[S, T, U, V]
+     """, None, "Type parameter(s) {U, V}")
 
 
 class IfTest(_ParserTestBase):

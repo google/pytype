@@ -43,6 +43,7 @@ _PYTYPE_SINGLE_ITEMS = {
     'disable': Item(None, 'pyi-error', None),
     'report_errors': Item(None, 'True', None),
     'protocols': Item(None, 'False', None),
+    'strict_import': Item(None, 'False', None),
 }
 
 

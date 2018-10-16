@@ -108,7 +108,8 @@ def prevent_direct_instantiation(cls, *args, **kwargs):
   new = cls.__dict__.get("__new__")
   if getattr(new, "__func__", None) == prevent_direct_instantiation:
     raise AssertionError("Can't instantiate %s directly" % cls.__name__)
-  return object.__new__(cls, *args, **kwargs)
+  # TODO(b/117657518): Remove the disable after the pytype bug is fixed.
+  return object.__new__(cls, *args, **kwargs)  # pytype: disable=wrong-arg-count
 
 
 def disabled_function(*unused_args, **unused_kwargs):
@@ -151,7 +152,8 @@ class TypeMatcher(object):
     if f:
       return f(t1, t2, *args, **kwargs)
     else:
-      return self.default_match(t1, t2, *args, **kwargs)
+      # TODO(b/117657518): Remove the disable once the pytype bug is fixed.
+      return self.default_match(t1, t2, *args, **kwargs)  # pytype: disable=wrong-arg-count
 
 
 def CanonicalOrdering(n, sort_signatures=False):
@@ -445,7 +447,8 @@ def GetPredefinedFile(pytd_subdir, module, extension=".pytd",
 def LoadPickle(filename, compress=False):
   if compress:
     with gzip.GzipFile(filename, "rb") as fi:
-      return cPickle.load(fi)
+      # TODO(b/117797409): Remove the disable once the typeshed bug is fixed.
+      return cPickle.load(fi)  # pytype: disable=wrong-arg-types
   else:
     with open(filename, "rb") as fi:
       return cPickle.load(fi)
@@ -463,7 +466,8 @@ def SavePickle(data, filename=None, compress=False):
         # deterministic gzip files.
         with gzip.GzipFile(filename="", mode="wb",
                            fileobj=fi, mtime=1.0) as zfi:
-          cPickle.dump(data, zfi, _PICKLE_PROTOCOL)
+          # TODO(b/117797409): Remove disable once typeshed bug is fixed.
+          cPickle.dump(data, zfi, _PICKLE_PROTOCOL)  # pytype: disable=wrong-arg-types
     elif filename is not None:
       with open(filename, "wb") as fi:
         cPickle.dump(data, fi, _PICKLE_PROTOCOL)
@@ -471,6 +475,27 @@ def SavePickle(data, filename=None, compress=False):
       return cPickle.dumps(data, _PICKLE_PROTOCOL)
   finally:
     sys.setrecursionlimit(recursion_limit)
+
+
+def DiffNamedPickles(named_pickles1, named_pickles2):
+  """Diff two lists of (name, pickled_module)."""
+  len1, len2 = len(named_pickles1), len(named_pickles2)
+  if len1 != len2:
+    return ["different number of pyi files: %d, %d" % (len1, len2)]
+  diff = []
+  for (name1, pickle1), (name2, pickle2) in zip(named_pickles1, named_pickles2):
+    if name1 != name2:
+      diff.append("different ordering of pyi files: %s, %s" % (name1, name2))
+    elif pickle1 != pickle2:
+      ast1, ast2 = cPickle.loads(pickle1), cPickle.loads(pickle2)
+      if ast1.ast.ASTeq(ast2.ast):
+        diff.append("asts match but pickles differ: %s" % name1)
+      else:
+        diff.append("asts differ: %s" % name1)
+        diff.append("-" * 50)
+        diff.extend(ast1.ast.ASTdiff(ast2.ast))
+        diff.append("-" * 50)
+  return diff
 
 
 def GetTypeParameters(node):
@@ -519,6 +544,9 @@ def MergeBaseClass(cls, base):
   constant_names = [c.name for c in cls.constants]
   constants = cls.constants + tuple(c for c in base.constants
                                     if c.name not in constant_names)
+  class_names = [c.name for c in cls.classes]
+  classes = cls.classes + tuple(c for c in base.classes
+                                if c.name not in class_names)
   if cls.slots:
     slots = cls.clots + tuple(s for s in base.slots or () if s not in cls.slots)
   else:
@@ -528,5 +556,6 @@ def MergeBaseClass(cls, base):
                     parents=bases,
                     methods=methods,
                     constants=constants,
+                    classes=classes,
                     slots=slots,
                     template=cls.template or base.template)

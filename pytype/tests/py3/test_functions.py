@@ -99,6 +99,22 @@ class TestClosuresPy3(test_base.TargetPython3FeatureTest):
     """)
     self.assertErrorLogIs(errors, [(5, "bad-return-type", "int.*str")])
 
+  def test_filter_before_delete(self):
+    # TODO(b/117463644): Remove the disable on line 7.
+    errors = self.CheckWithErrors("""\
+      from typing import Optional
+      def f(x: Optional[str]):
+        if x is None:
+          raise TypeError()
+        def nested():
+          nonlocal x
+          print(x.upper())  # pytype: disable=name-error
+          del x
+        nested()
+        return x  # line 10
+    """)
+    self.assertErrorLogIs(errors, [(10, "name-error")])
+
 
 class TestFunctions(test_base.TargetPython3BasicTest):
   """Tests for functions."""

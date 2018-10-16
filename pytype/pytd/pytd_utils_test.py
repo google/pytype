@@ -21,6 +21,7 @@ from pytype import file_utils
 from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+from pytype.pytd import serialize_ast
 from pytype.pytd.parse import parser_test_base
 
 import six
@@ -363,6 +364,52 @@ class TestUtils(parser_test_base.ParserTest):
       pytd_utils.SavePickle(d1, filename, compress=True)
       d2 = pytd_utils.LoadPickle(filename, compress=True)
     self.assertEqual(d1, d2)
+
+  def testDiffSamePickle(self):
+    ast = pytd.TypeDeclUnit("foo", (), (), (), (), ())
+    with file_utils.Tempdir() as d:
+      filename = os.path.join(d.path, "foo.pickled")
+      serialize_ast.StoreAst(ast, filename)
+      with open(filename, "rb") as fi:
+        data = fi.read()
+    named_pickles = [("foo", data)]
+    self.assertFalse(pytd_utils.DiffNamedPickles(named_pickles, named_pickles))
+
+  def testDiffPickleName(self):
+    ast = pytd.TypeDeclUnit("foo", (), (), (), (), ())
+    with file_utils.Tempdir() as d:
+      filename = os.path.join(d.path, "foo.pickled")
+      serialize_ast.StoreAst(ast, filename)
+      with open(filename, "rb") as fi:
+        data = fi.read()
+    named_pickles1 = [("foo", data)]
+    named_pickles2 = [("bar", data)]
+    self.assertTrue(pytd_utils.DiffNamedPickles(named_pickles1, named_pickles2))
+
+  def testDiffPickleAst(self):
+    ast1 = pytd.TypeDeclUnit("foo", (), (), (), (), ())
+    ast2 = ast1.Replace(type_params=(pytd.TypeParameter("T", (), None, None),))
+    with file_utils.Tempdir() as d:
+      data = []
+      for ast in (ast1, ast2):
+        filename = os.path.join(d.path, "foo.pickled")
+        serialize_ast.StoreAst(ast, filename)
+        with open(filename, "rb") as fi:
+          data.append(fi.read())
+    named_pickles1 = [("foo", data[0])]
+    named_pickles2 = [("foo", data[1])]
+    self.assertTrue(pytd_utils.DiffNamedPickles(named_pickles1, named_pickles2))
+
+  def testDiffPickleLength(self):
+    ast = pytd.TypeDeclUnit("foo", (), (), (), (), ())
+    with file_utils.Tempdir() as d:
+      filename = os.path.join(d.path, "foo.pickled")
+      serialize_ast.StoreAst(ast, filename)
+      with open(filename, "rb") as fi:
+        data = fi.read()
+    named_pickles1 = []
+    named_pickles2 = [("foo", data)]
+    self.assertTrue(pytd_utils.DiffNamedPickles(named_pickles1, named_pickles2))
 
 
 class TestDataFiles(parser_test_base.ParserTest):

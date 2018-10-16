@@ -114,6 +114,22 @@ class TestPytd(unittest.TestCase):
     self.assertTrue(tree2.ASTeq(tree1))
     self.assertTrue(tree2.ASTeq(tree2))
 
+  def testASTdiff(self):
+    src1 = textwrap.dedent("""\
+        a = ...  # type: int
+        b = ...  # type: str""")
+    src2 = textwrap.dedent("""\
+        a = ...  # type: int
+        b = ...  # type: float""")
+    tree1 = parser.parse_string(src1, python_version=self.PYTHON_VERSION)
+    tree2 = parser.parse_string(src2, python_version=self.PYTHON_VERSION)
+    normalize = lambda diff: textwrap.dedent("\n".join(diff))
+    self.assertEqual(normalize(tree1.ASTdiff(tree1)), src1)
+    self.assertEqual(normalize(tree2.ASTdiff(tree2)), src2)
+    diff_pattern = r"(?s)- b.*\+ b"
+    self.assertRegexpMatches(normalize(tree1.ASTdiff(tree2)), diff_pattern)
+    self.assertRegexpMatches(normalize(tree2.ASTdiff(tree1)), diff_pattern)
+
   def testEmptyNodesAreTrue(self):
     self.assertTrue(pytd.AnythingType())
     self.assertTrue(pytd.NothingType())
