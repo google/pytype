@@ -983,6 +983,17 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       def f(x: int) -> int: ...
     """)
 
+  def testReturnAbstractDict(self):
+    self.Check("""
+      from typing import Dict
+      def f(x, y):
+        pass
+      def g() -> Dict:
+        return {"y": None}
+      def h():
+        f(x=None, **g())
+    """)
+
 
 class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for PEP 484 style inline annotations."""

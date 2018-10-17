@@ -238,6 +238,20 @@ def equivalent_to(binding, cls):
           binding.data.full_name == cls.full_name)
 
 
+def _apply_mutations(node, get_mutations):
+  """Apply mutations yielded from a get_mutations function."""
+  log.info("Applying mutations")
+  num_mutations = 0
+  for obj, name, value in get_mutations():
+    if not num_mutations:
+      # mutations warrant creating a new CFG node
+      node = node.ConnectNew(node.name)
+    num_mutations += 1
+    obj.merge_type_parameter(node, name, value)
+  log.info("Applied %d mutations", num_mutations)
+  return node
+
+
 class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   """A single abstract value such as a type or function signature.
 
@@ -1629,7 +1643,14 @@ class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
     return args
 
   def starstarargs_as_dict(self):
-    return self.starstarargs and get_atomic_value(self.starstarargs, Dict, None)
+    if self.starstarargs:
+      try:
+        d = get_atomic_value(self.starstarargs, Dict)
+      except ConversionError:
+        return None
+      if not d.could_contain_anything:
+        return d
+    return None
 
   def simplify(self, node):
     """Try to insert part of *args, **kwargs into posargs / namedargs."""
@@ -2283,13 +2304,7 @@ class PyTDFunction(Function):
       retvar.PasteVariable(result, node)
       all_mutations.update(mutations)
 
-    log.info("Applying %d mutations", len(all_mutations))
-    if all_mutations:
-      # mutations warrant creating a new CFG node
-      node = node.ConnectNew(node.name)
-    for obj, name, value in all_mutations:
-      obj.merge_type_parameter(node, name, value)
-
+    node = _apply_mutations(node, all_mutations.__iter__)
     return node, retvar
 
   def _get_mutation_to_unknown(self, node, values):
@@ -2991,6 +3006,7 @@ class PyTDClass(SimpleAbstractValue, Class):
         parents=self.pytd_cls.parents,
         methods=tuple(self._member_map[m.name] for m in self.pytd_cls.methods),
         constants=self.pytd_cls.constants,
+        classes=self.pytd_cls.classes,
         slots=self.pytd_cls.slots,
         template=self.pytd_cls.template)
 
@@ -3048,6 +3064,13 @@ class InterpreterClass(SimpleAbstractValue, Class):
           templates.update([(mbr, item) for item in mbr.template])
           templates.update(mbr.collect_inner_cls_types(max_depth - 1))
     return templates
+
+  def get_inner_classes(self):
+    """Return the list of top-level nested classes."""
+    values = [
+        get_atomic_value(mbr, default=self.vm.convert.unsolvable)
+        for mbr in self.members.values()]
+    return [x for x in values if isinstance(x, InterpreterClass)]
 
   def _get_pure_bases(self, bases):
     """Remove unnecessary `typing.Generic` for MRO check."""
@@ -3411,6 +3434,9 @@ class SignedFunction(Function):
       raise WrongArgTypes(self.signature, args, self.vm, bad_param=bad_arg)
     return subst
 
+  def get_first_opcode(self):
+    return None
+
   def set_function_defaults(self, defaults_var):
     """Attempts to set default arguments of a function.
 
@@ -3520,7 +3546,6 @@ class InterpreterFunction(SignedFunction):
     signature = self._build_signature(name, annotations, late_annotations)
     super(InterpreterFunction, self).__init__(signature, vm)
     self.last_frame = None  # for BuildClass
-    self.last_substs = None  # Type Merge for instance
     self._store_call_records = False
     if self.vm.PY3:
       self.is_class_builder = False  # Will be set by BuildClass.
@@ -3629,6 +3654,26 @@ class InterpreterFunction(SignedFunction):
                    " not use the same type variable %s")
                   % (self.full_name, cls.full_name, item.name))
 
+  def _mutations_generator(self, node, first_posarg, substs):
+    def generator():
+      """Yields mutations."""
+      if not self.is_attribute_of_class or not first_posarg or not substs:
+        return
+      try:
+        inst = get_atomic_value(first_posarg, Instance)
+      except ConversionError:
+        return
+      if inst.cls.template:
+        for subst in substs:
+          for k, v in subst.items():
+            if k in inst.type_parameters:
+              value = inst.type_parameters[k].AssignToNewVariable(node)
+              value.PasteVariable(v, node)
+              yield Mutation(inst, k, value)
+    # Optimization: return a generator to avoid iterating over the mutations an
+    # extra time.
+    return generator
+
   def call(self, node, func, args, new_locals=None):
     if self.vm.is_at_maximum_depth() and not func_name_is_class_init(self.name):
       log.info("Maximum depth reached. Not analyzing %r", self.name)
@@ -3707,12 +3752,13 @@ class InterpreterFunction(SignedFunction):
       node_after_call, ret = node2, generator.to_variable(node2)
     else:
       node_after_call, ret = self.vm.run_frame(frame, node)
+    self._inner_cls_check(frame)
+    mutations = self._mutations_generator(node_after_call, first_posarg, substs)
+    node_after_call = _apply_mutations(node_after_call, mutations)
     self._call_cache[callkey] = ret, self.vm.remaining_depth()
     if self._store_call_records or self.vm.store_all_calls:
       self._call_records.append((callargs, ret, node_after_call))
     self.last_frame = frame
-    self.last_substs = substs
-    self._inner_cls_check(self.last_frame)
     return node_after_call, ret
 
   def get_call_combinations(self, node):
@@ -3877,24 +3923,11 @@ class BoundFunction(AtomicAbstractValue):
     if self.argcount(node) >= 0:
       args = args.replace(posargs=(self._callself,) + args.posargs)
     try:
-      inst = get_atomic_value(
-          self._callself, default=self.vm.convert.unsolvable)
       if self.replace_self_annot:
         with self.underlying.set_self_annot(self.replace_self_annot):
           node, ret = self.underlying.call(node, func, args)
       else:
         node, ret = self.underlying.call(node, func, args)
-      if (isinstance(self.underlying, InterpreterFunction)
-          and isinstance(inst, Instance)):
-        substs = self.underlying.last_substs
-        if substs:
-          for subst in substs:
-            for k, v in subst.items():
-              if k in inst.type_parameters:
-                value = inst.type_parameters[k].AssignToNewVariable(node)
-                value.PasteVariable(v, node)
-                inst.merge_type_parameter(node, k, value)
-      return node, ret
     except InvalidParameters as e:
       if self._callself and self._callself.bindings:
         if "." in e.name:
@@ -3906,6 +3939,7 @@ class BoundFunction(AtomicAbstractValue):
     finally:
       if func_name_is_class_init(self.name):
         self.vm.callself_stack.pop()
+    return node, ret
 
   def get_positional_names(self):
     return self.underlying.get_positional_names()
@@ -4183,7 +4217,7 @@ class BuildClass(AtomicAbstractValue):
       # If base class is NamedTuple, we will call its own make_class method to
       # make a class.
       base = get_atomic_value(base, default=self.vm.convert.unsolvable)
-      if isinstance(base, PyTDClass) and base.full_name == "NamedTuple":
+      if isinstance(base, PyTDClass) and base.full_name == "typing.NamedTuple":
         # The subclass of NamedTuple will ignore all its base classes. This is
         # controled by a metaclass provided to NamedTuple.
         # See: https://github.com/python/typing/blob/master/src/typing.py#L2170
@@ -4365,6 +4399,7 @@ class Unknown(AtomicAbstractValue):
         methods=methods,
         constants=tuple(pytd.Constant(name, Unknown._to_pytd(node, c))
                         for name, c in self.members.items()),
+        classes=(),
         slots=None,
         template=())
 

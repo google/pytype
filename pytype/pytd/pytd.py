@@ -21,6 +21,7 @@
 
 
 import collections
+import difflib
 import itertools
 
 from pytype.pytd.parse import node
@@ -95,12 +96,14 @@ class TypeDeclUnit(node.Node('name: str or None',
     return id(self) != id(other)
 
   def ASTeq(self, other):
-    # Used in tests.
     return (self.constants == other.constants and
             self.type_params == other.type_params and
             self.classes == other.classes and
             self.functions == other.functions and
             self.aliases == other.aliases)
+
+  def ASTdiff(self, other):
+    return difflib.ndiff(Print(self).splitlines(), Print(other).splitlines())
 
 
 class Constant(node.Node('name: str', 'type: {Type}')):
@@ -131,6 +134,7 @@ class Class(node.Node('name: str',
                       'parents: tuple[Class or {Type}]',
                       'methods: tuple[Function]',
                       'constants: tuple[Constant]',
+                      'classes: tuple[Class]',
                       'slots: None or tuple[str]',
                       'template: tuple[TemplateItem]')):
   """Represents a class declaration.

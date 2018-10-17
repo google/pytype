@@ -9,6 +9,7 @@ from pytype import utils
 from pytype.pyi import parser_ext  # pytype: disable=import-error
 from pytype.pytd import pep484
 from pytype.pytd import pytd
+from pytype.pytd import slots as cmp_slots
 from pytype.pytd import visitors
 from pytype.pytd.parse import parser_constants  # pylint: disable=g-importing-member
 
@@ -27,16 +28,6 @@ _NameAndSig = collections.namedtuple("_", ["name", "signature",
 _SlotDecl = collections.namedtuple("_", ["slots"])
 
 _Property = collections.namedtuple("_", ["precedence", "arity"])
-
-
-_COMPARES = {
-    "==": lambda x, y: x == y,
-    "!=": lambda x, y: x != y,
-    "<": lambda x, y: x < y,
-    "<=": lambda x, y: x <= y,
-    ">": lambda x, y: x > y,
-    ">=": lambda x, y: x >= y,
-}
 
 
 class _ConditionScope(object):
@@ -121,13 +112,13 @@ class OverloadedDecoratorError(ParseError):
 
 
 class _Mutator(visitors.Visitor):
-  """Visitor for changing parameters to BeforeAfterType instances.
+  """Visitor for adding a mutated_type to parameters.
 
-  We model
+  We model the parameter x in
     def f(x: old_type):
       x = new_type
   as
-    def f(x: BeforeAfterType(old_type, new_type))
+    Parameter(name=x, type=old_type, mutated_type=new_type)
   .
   This visitor applies the body "x = new_type" to the function signature.
   """
@@ -165,6 +156,57 @@ class _InsertTypeParameters(visitors.Visitor):
       return node
 
 
+class _VerifyMutators(visitors.Visitor):
+  """Visitor for verifying TypeParameters used in mutations are in scope."""
+
+  def __init__(self):
+    super(_VerifyMutators, self).__init__()
+    # A stack of type parameters introduced into the scope. The top of the stack
+    # contains the currently accessible parameter set.
+    self.type_params_in_scope = [set()]
+    self.current_function = None
+
+  def _AddParams(self, params):
+    top = self.type_params_in_scope[-1]
+    self.type_params_in_scope.append(top | params)
+
+  def _GetTypeParameters(self, node):
+    collector = visitors.CollectTypeParameters()
+    node.Visit(collector)
+    return {x.name for x in collector.params}
+
+  def EnterClass(self, node):
+    params = set()
+    for cls in node.parents:
+      params |= self._GetTypeParameters(cls)
+    self._AddParams(params)
+
+  def LeaveClass(self, _):
+    self.type_params_in_scope.pop()
+
+  def EnterFunction(self, node):
+    self.current_function = node
+    params = set()
+    for sig in node.signatures:
+      for arg in sig.params:
+        params |= self._GetTypeParameters(arg.type)
+    self._AddParams(params)
+
+  def LeaveFunction(self, _):
+    self.type_params_in_scope.pop()
+    self.current_function = None
+
+  def EnterParameter(self, node):
+    if isinstance(node.mutated_type, pytd.GenericType):
+      params = self._GetTypeParameters(node.mutated_type)
+      extra = params - self.type_params_in_scope[-1]
+      if extra:
+        fn = pytd.Print(self.current_function)
+        msg = "Type parameter(s) {%s} not in scope in\n\n%s" % (
+            ", ".join(sorted(extra)), fn)
+        raise ParseError(msg)
+
+
 class _ContainsAnyType(visitors.Visitor):
   """Check if a pytd object contains a type of any of the given names."""
 
@@ -190,30 +232,30 @@ class _PropertyToConstant(visitors.Visitor):
 
   def EnterTypeDeclUnit(self, node):
     self.type_param_names = [x.name for x in node.type_params]
-    self.const_properties = None
+    self.const_properties = []
 
   def LeaveTypeDeclUnit(self, node):
     self.type_param_names = None
 
   def EnterClass(self, node):
-    self.const_properties = []
+    self.const_properties.append([])
 
   def LeaveClass(self, node):
-    self.const_properties = None
+    self.const_properties.pop()
 
   def VisitClass(self, node):
     constants = list(node.constants)
-    for fn in self.const_properties:
+    for fn in self.const_properties[-1]:
       types = [x.return_type for x in fn.signatures]
       constants.append(pytd.Constant(name=fn.name, type=join_types(types)))
-    methods = [x for x in node.methods if x not in self.const_properties]
+    methods = [x for x in node.methods if x not in self.const_properties[-1]]
     return node.Replace(constants=tuple(constants), methods=tuple(methods))
 
   def EnterFunction(self, node):
-    if (self.const_properties is not None and
+    if (self.const_properties and
         node.kind == pytd.PROPERTY and
         not self._is_parametrised(node)):
-      self.const_properties.append(node)
+      self.const_properties[-1].append(node)
 
   def _is_parametrised(self, method):
     for sig in method.signatures:
@@ -398,6 +440,7 @@ class _Parser(object):
 
     ast = ast.Visit(_PropertyToConstant())
     ast = ast.Visit(_InsertTypeParameters())
+    ast = ast.Visit(_VerifyMutators())
     # TODO(kramm): This is in the wrong place- it should happen after resolving
     # local names, in load_pytd.
     ast = ast.Visit(pep484.ConvertTypingToNative(name))
@@ -477,9 +520,9 @@ class _Parser(object):
     """Evaluate a condition and return a bool.
 
     Args:
-      condition: A condition tuple of (left, op, right). If op is "or" or "and",
-      then left and right are conditions. Otherwise, left is a name, op is one
-      of the comparison strings in _COMPARES, and right is the expected value.
+      condition: A tuple of (left, op, right). If op is "or" or "and", then left
+      and right are conditions. Otherwise, left is a name, op is one of the
+      comparison strings in cmp_slots.COMPARES, and right is the expected value.
 
     Returns:
       The boolean result of evaluating the condition.
@@ -501,7 +544,7 @@ class _Parser(object):
     Args:
       ident: A tuple of a dotted name string and an optional __getitem__ key
         (int or slice).
-      op: One of the comparison operator strings in _COMPARES.
+      op: One of the comparison operator strings in cmp_slots.COMPARES.
       value: Either a string, an integer, or a tuple of integers.
 
     Returns:
@@ -531,12 +574,14 @@ class _Parser(object):
     elif name == "sys.platform":
       if not isinstance(value, str):
         raise ParseError("sys.platform must be compared to a string")
-      if op not in ["==", "!="]:
-        raise ParseError("sys.platform must be compared using == or !=")
+      valid_cmps = (cmp_slots.EQ, cmp_slots.NE)
+      if op not in valid_cmps:
+        raise ParseError(
+            "sys.platform must be compared using %s or %s" % valid_cmps)
       actual = self._platform
     else:
       raise ParseError("Unsupported condition: '%s'." % name)
-    return _COMPARES[op](actual, value)
+    return cmp_slots.COMPARES[op](actual, value)
 
   def if_begin(self, condition):
     """Begin an "if" statement using the specified condition."""
@@ -928,6 +973,7 @@ class _Parser(object):
                           parents=(class_parent,),
                           methods=tuple(methods),
                           constants=class_constants,
+                          classes=(),
                           slots=tuple(n for n, _ in fields),
                           template=())
 
@@ -980,9 +1026,6 @@ class _Parser(object):
         metaclass = value
 
     constants, methods, aliases, slots, classes = _split_definitions(defs)
-    # TODO(rechen): retain more information about nested classes.
-    for cls in classes:
-      constants.append(self.new_constant(cls.name, pytd.NamedType("type")))
 
     all_names = (list(set(f.name for f in methods)) +
                  [c.name for c in constants] +
@@ -1028,6 +1071,7 @@ class _Parser(object):
                       parents=tuple(parents),
                       methods=tuple(methods),
                       constants=tuple(constants),
+                      classes=tuple(classes),
                       slots=slots,
                       template=())
 
@@ -1300,7 +1344,9 @@ def _split_definitions(defs):
   slots = None
   classes = []
   for d in defs:
-    if isinstance(d, pytd.Constant):
+    if isinstance(d, pytd.Class):
+      classes.append(d)
+    elif isinstance(d, pytd.Constant):
       if d.name == "__slots__":
         pass  # ignore definitions of __slots__ as a type
       else:
@@ -1318,8 +1364,6 @@ def _split_definitions(defs):
         raise ParseError("Entries in __slots__ can only be strings")
       slots = tuple(p.name for p in d.slots.parameters
                     if isinstance(p, pytd.NamedType))
-    elif isinstance(d, pytd.Class):
-      classes.append(d)
     else:
       raise TypeError("Unexpected definition type %s" % type(d))
   return constants, functions, aliases, slots, classes

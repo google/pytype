@@ -1,6 +1,7 @@
 """Compare two variables."""
 
 from pytype import abstract
+from pytype.pytd import slots
 
 # Equality classes.
 NUMERIC = {"__builtin__.bool", "__builtin__.int", "__builtin__.float",
@@ -24,45 +25,61 @@ def _is_primitive(vm, value):
   return False
 
 
-def _compare_primitive_value(vm, left, right):
+def _is_equality_cmp(op):
+  return op in (slots.EQ, slots.NE)
+
+
+def _compare_primitive_value(vm, op, left, right):
   if _is_primitive(vm, right) and isinstance(right, abstract.PythonConstant):
-    return left.pyval == right.pyval
-  else:
-    return _compare_primitive(left, right)
+    try:
+      return slots.COMPARES[op](left.pyval, right.pyval)
+    except TypeError:
+      # TODO(rechen): In host Python 3, some types are not comparable; e.g.,
+      # `3 < ""` leads to a type error. We should do a Python 2-style comparison
+      # for target Python 2 and log an error for target Python 3.
+      pass
+  return _compare_primitive(op, left, right)
 
 
-def _compare_primitive(left, right):
-  if (isinstance(right, abstract.Instance) and
+def _compare_primitive(op, left, right):
+  # Determines when primitives are definitely not equal by checking for
+  # compatibility of their types.
+  if (_is_equality_cmp(op) and
+      isinstance(right, abstract.Instance) and
       _incompatible(left.full_name, right.full_name)):
-    return False
+    return op != slots.EQ
   return None
 
 
-def _compare_tuple(left, right):
-  if (isinstance(right, abstract.Tuple) and
+def _compare_tuple(op, left, right):
+  # Determines when tuples are definitely not equal by checking their lengths.
+  if (_is_equality_cmp(op) and
+      isinstance(right, abstract.Tuple) and
       left.tuple_length != right.tuple_length):
-    return False
+    return op != slots.EQ
   return None
 
 
-def _compare_dict(left, right):
-  if (not left.could_contain_anything and
+def _compare_dict(op, left, right):
+  # Determines when dicts are definitely not equal by checking their key sets.
+  if (_is_equality_cmp(op) and
+      not left.could_contain_anything and
       isinstance(right, abstract.Dict) and
       not right.could_contain_anything and
       set(left.pyval) != set(right.pyval)):
-    return False
+    return op != slots.EQ
   return None
 
 
-def cmp_eq(vm, left, right):
+def cmp_rel(vm, op, left, right):
   """Compare two variables."""
   if _is_primitive(vm, left) and isinstance(left, abstract.PythonConstant):
-    return _compare_primitive_value(vm, left, right)
+    return _compare_primitive_value(vm, op, left, right)
   elif _is_primitive(vm, left) and _is_primitive(vm, right):
-    return _compare_primitive(left, right)
+    return _compare_primitive(op, left, right)
   elif isinstance(left, abstract.Tuple):
-    return _compare_tuple(left, right)
+    return _compare_tuple(op, left, right)
   elif isinstance(left, abstract.Dict):
-    return _compare_dict(left, right)
+    return _compare_dict(op, left, right)
   else:
     return None

@@ -183,6 +183,17 @@ class ClassesTest(test_base.TargetPython3BasicTest):
       """)
     self.assertErrorLogIs(errors, [(3, "unsupported-operands")])
 
+  def testInstanceAttribute(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __init__(self) -> None:
+          self.bar = 42
+    """, analyze_annotated=False)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        bar: int
+    """)
+
 
 class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for classes."""

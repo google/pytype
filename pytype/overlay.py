@@ -42,7 +42,9 @@ class Overlay(abstract.Module):
         ast, subst={}, node=vm.root_cfg_node)
 
   def _convert_member(self, name, member):
-    var = member(name, self.vm).to_variable(self.vm.root_cfg_node)
+    val = member(name, self.vm)
+    val.module = self.name
+    var = val.to_variable(self.vm.root_cfg_node)
     self.vm.trace_module_member(self, name, var)
     return var
 

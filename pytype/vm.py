@@ -26,8 +26,8 @@ from pytype import function
 from pytype import overlay_dict
 from pytype import load_pytd
 from pytype import matcher
+from pytype import metaclass
 from pytype import metrics
-from pytype import six_overlay
 from pytype import special_builtins
 from pytype import state as frame_state
 from pytype import utils
@@ -454,7 +454,7 @@ class VirtualMachine(object):
     for base in bases:
       with_metaclass = False
       for b in base.data:
-        if isinstance(b, six_overlay.WithMetaclassInstance):
+        if isinstance(b, metaclass.WithMetaclassInstance):
           with_metaclass = True
           if not meta:
             # Only the first metaclass gets applied.
@@ -490,9 +490,9 @@ class VirtualMachine(object):
       log.error("Error initializing class %r", name)
       return self.convert.create_new_unknown(node)
     # Handle six.with_metaclass.
-    metaclass, bases = self._filter_out_metaclasses(bases)
-    if metaclass:
-      cls_var = metaclass
+    metacls, bases = self._filter_out_metaclasses(bases)
+    if metacls:
+      cls_var = metacls
     # Flatten Unions in the bases
     bases = [self._process_base_class(node, base) for base in bases]
     if not bases:
@@ -1042,6 +1042,11 @@ class VirtualMachine(object):
     else:
       return self.load_from(state, self.frame.f_builtins, name)
 
+  def load_constant(self, state, op, raw_const):
+    const = self.convert.constant_to_var(raw_const, node=state.node)
+    self.trace_opcode(op, raw_const, const)
+    return state.push(const)
+
   def _store_value(self, state, name, value, local):
     if local:
       target = self.frame.f_locals
@@ -1223,11 +1228,12 @@ class VirtualMachine(object):
 
   def import_module(self, name, full_name, level):
     """Import a module and return the module object or None."""
-    # Do not import new modules if we aren't in an IMPORT statement.
-    # The exception is if we have an implicit "package" module (e.g.
-    # `import a.b.c` adds `a.b` to the list of instantiable modules.)
-    if not (self._importing or self.loader.has_module_prefix(full_name)):
-      return None
+    if self.options.strict_import:
+      # Do not import new modules if we aren't in an IMPORT statement.
+      # The exception is if we have an implicit "package" module (e.g.
+      # `import a.b.c` adds `a.b` to the list of instantiable modules.)
+      if not (self._importing or self.loader.has_module_prefix(full_name)):
+        return None
     try:
       module = self._import_module(name, level)
       # Since we have explicitly imported full_name, add it to the prefix list.
@@ -1466,9 +1472,7 @@ class VirtualMachine(object):
 
   def byte_LOAD_CONST(self, state, op):
     raw_const = self.frame.f_code.co_consts[op.arg]
-    const = self.convert.constant_to_var(raw_const, node=state.node)
-    self.trace_opcode(op, raw_const, const)
-    return state.push(const)
+    return self.load_constant(state, op, raw_const)
 
   def byte_POP_TOP(self, state, op):
     return state.pop_and_discard()
@@ -1558,6 +1562,11 @@ class VirtualMachine(object):
   def byte_LOAD_GLOBAL(self, state, op):
     """Load a global variable, or fall back to trying to load a builtin."""
     name = self.frame.f_code.co_names[op.arg]
+    if name == "None":
+      # Load None itself as a constant to avoid the None filtering done on
+      # variables. This workaround is safe because assigning to None is a
+      # syntax error.
+      return self.load_constant(state, op, None)
     try:
       state, val = self.load_global(state, name)
     except KeyError:
@@ -1609,6 +1618,22 @@ class VirtualMachine(object):
       A new state.
     """
     cell = self.frame.cells[op.arg]
+    visible_bindings = cell.Filter(state.node)
+    if len(visible_bindings) != len(cell.bindings):
+      # We need to filter here because the closure will be analyzed outside of
+      # its creating context, when information about what values are visible
+      # has been lost.
+      new_cell = self.program.NewVariable()
+      if visible_bindings:
+        for b in visible_bindings:
+          new_cell.AddBinding(b.data, {b}, state.node)
+      else:
+        # TODO(rechen): Is this a bug?
+        # See test_closures.ClosuresTest.testNoVisibleBindings.
+        new_cell.AddBinding(self.convert.unsolvable)
+      # Update the cell because the DELETE_DEREF implementation works on
+      # variable identity.
+      self.frame.cells[op.arg] = cell = new_cell
     name = self.get_closure_var_name(op.arg)
     self.check_for_deleted(state, name, cell)
     self.trace_opcode(op, name, cell)
@@ -1658,33 +1683,32 @@ class VirtualMachine(object):
     locals_dict = self.frame.f_locals.to_variable(self.root_cfg_node)
     return state.push(locals_dict)
 
-  def _cmp_eq(self, state, x, y, eq=True):
-    """Implementation of CMP_EQ/CMP_NE.
+  def _cmp_rel(self, state, op_name, x, y):
+    """Implementation of relational operators CMP_(LT|LE|EQ|NE|GE|GT).
 
     Args:
       state: Initial FrameState.
+      op_name: An operator name, e.g., "EQ".
       x: A variable of the lhs value.
       y: A variable of the rhs value.
-      eq: True or False (indicates which value to return when x == y).
 
     Returns:
       A tuple of the new FrameState and the return variable.
     """
     ret = self.program.NewVariable()
-    # A variable of the values without a special cmp_eq implementation. Needed
+    # A variable of the values without a special cmp_rel implementation. Needed
     # because overloaded __eq__ implementations do not necessarily return a
     # bool; see, e.g., test_overloaded in test_cmp.
     leftover = self.program.NewVariable()
     for b1 in x.bindings:
       for b2 in y.bindings:
-        val = compare.cmp_eq(self, b1.data, b2.data)
+        val = compare.cmp_rel(self, getattr(slots, op_name), b1.data, b2.data)
         if val is None:
           leftover.AddBinding(b1.data, {b1}, state.node)
         else:
-          ret.AddBinding(
-              self.convert.bool_values[val is eq], {b1, b2}, state.node)
+          ret.AddBinding(self.convert.bool_values[val], {b1, b2}, state.node)
     if leftover.bindings:
-      op = "__eq__" if eq else "__ne__"
+      op = "__%s__" % op_name.lower()
       state, leftover_ret = self.call_binary_operator(state, op, leftover, y)
       ret.PasteVariable(leftover_ret, state.node)
     return state, ret
@@ -1727,17 +1751,17 @@ class VirtualMachine(object):
     # Explicit, redundant, switch statement, to make it easier to address the
     # behavior of individual compare operations:
     if op.arg == slots.CMP_LT:
-      state, ret = self.call_binary_operator(state, "__lt__", x, y)
+      state, ret = self._cmp_rel(state, "LT", x, y)
     elif op.arg == slots.CMP_LE:
-      state, ret = self.call_binary_operator(state, "__le__", x, y)
+      state, ret = self._cmp_rel(state, "LE", x, y)
     elif op.arg == slots.CMP_EQ:
-      state, ret = self._cmp_eq(state, x, y)
+      state, ret = self._cmp_rel(state, "EQ", x, y)
     elif op.arg == slots.CMP_NE:
-      state, ret = self._cmp_eq(state, x, y, eq=False)
+      state, ret = self._cmp_rel(state, "NE", x, y)
     elif op.arg == slots.CMP_GT:
-      state, ret = self.call_binary_operator(state, "__gt__", x, y)
+      state, ret = self._cmp_rel(state, "GT", x, y)
     elif op.arg == slots.CMP_GE:
-      state, ret = self.call_binary_operator(state, "__ge__", x, y)
+      state, ret = self._cmp_rel(state, "GE", x, y)
     elif op.arg == slots.CMP_IS:
       ret = self.expand_bool_result(state.node, x, y,
                                     "is_cmp", frame_state.is_cmp)
