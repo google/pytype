@@ -106,6 +106,7 @@ py_library(
     imports_map_loader.py
     io.py
     matcher.py
+    metaclass.py
     output.py
     overlay.py
     overlay_dict.py
