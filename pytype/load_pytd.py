@@ -218,7 +218,8 @@ class Loader(object):
 
     Args:
       module_name: The fully qualified name of the module being imported.
-      filename: The file the ast was generated from.
+        May be None.
+      filename: The file the ast was generated from. May be None.
       ast: The pytd.TypeDeclUnit representing the module.
 
     Returns:
@@ -242,7 +243,8 @@ class Loader(object):
       # don't leave half-resolved modules around
       del self._modules[module_name]
       raise
-    self.add_module_prefixes(module_name)
+    if module_name:
+      self.add_module_prefixes(module_name)
     return module.ast
 
   def _collect_ast_dependencies(self, ast):

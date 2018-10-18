@@ -402,12 +402,6 @@ class Postprocessor(object):
       self.error("Need a filename.")
     self.output_options.generate_builtins = generate_builtins
 
-  @uses(["module_name"])
-  def _store_read_pyi_save_pickle(self, read_pyi_save_pickle):
-    if read_pyi_save_pickle and not self.output_options.module_name:
-      self.error("--module-name must be set, for pickling and saving an AST.")
-    self.output_options.read_pyi_save_pickle = read_pyi_save_pickle
-
   def _store_verbosity(self, verbosity):
     """Configure logging."""
     if verbosity >= 0:
