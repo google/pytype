@@ -152,8 +152,7 @@ class TypeMatcher(object):
     if f:
       return f(t1, t2, *args, **kwargs)
     else:
-      # TODO(b/117657518): Remove the disable once the pytype bug is fixed.
-      return self.default_match(t1, t2, *args, **kwargs)  # pytype: disable=wrong-arg-count
+      return self.default_match(t1, t2, *args, **kwargs)
 
 
 def CanonicalOrdering(n, sort_signatures=False):

@@ -857,5 +857,13 @@ class TestFunctions(test_base.TargetIndependentTest):
       v = ...  # type: int or str
     """)
 
+  def test_call_with_varargs_and_kwargs(self):
+    self.Check("""
+      def foo(an_arg):
+        pass
+      def bar(an_arg, *args, **kwargs):
+        foo(an_arg, *args, **kwargs)
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

@@ -1652,7 +1652,7 @@ class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
         return d
     return None
 
-  def simplify(self, node):
+  def simplify(self, node, match_signature=None, vm=None):
     """Try to insert part of *args, **kwargs into posargs / namedargs."""
     # TODO(rechen): When we have type information about *args/**kwargs,
     # we need to check it before doing this simplification.
@@ -1662,10 +1662,25 @@ class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
     starstarargs = self.starstarargs
     starargs_as_tuple = self.starargs_as_tuple()
     if starargs_as_tuple is not None:
-      posargs += starargs_as_tuple
-      starargs = None
+      if match_signature and vm:
+        # As we have the function signature we will attempt to adjust the
+        # starargs into the missing posargs.
+        missing_posarg_count = len(match_signature.param_names) - len(posargs)
+        starargs_list = list(starargs_as_tuple)
+        for _ in range(missing_posarg_count):
+          if starargs_list:
+            posargs += (starargs_list.pop(0),)
+          else:
+            break
+        starargs = vm.convert.tuple_to_value(starargs_list).to_variable(node)
+      else:
+        posargs += starargs_as_tuple
+        starargs = None
     starstarargs_as_dict = self.starstarargs_as_dict()
     if starstarargs_as_dict is not None:
+      # TODO(sivachandra): Similar to adjusting varargs in to missing positional
+      # args, there might be a benefit in adjusting starstarargs in to named
+      # args if function signature has matching param_names.
       if namedargs is None:
         namedargs = starstarargs_as_dict
       else:
@@ -2287,6 +2302,8 @@ class PyTDFunction(Function):
                            logged | {value.data})
 
   def call(self, node, func, args):
+    # TODO(sivachandra): Refactor this method to pass the signature to
+    # simplify.
     args = args.simplify(node)
     self._log_args(arg.bindings for arg in args.posargs)
     ret_map = {}
@@ -3682,8 +3699,8 @@ class InterpreterFunction(SignedFunction):
           b.data.maybe_missing_members = True
       return (node,
               self.vm.convert.create_new_unsolvable(node))
+    args = args.simplify(node, self.signature, self.vm)
     substs = self.match_args(node, args)
-    args = args.simplify(node)
     first_posarg = args.posargs[0] if args.posargs else None
     callargs = self._map_args(node, args)
     # Keep type parameters without substitutions, as they may be needed for
