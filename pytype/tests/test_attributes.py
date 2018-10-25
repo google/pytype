@@ -168,7 +168,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
         Foo()
     """)
     self.assertErrorLogIs(
-        errors, [(3, "attribute-error", r"upper.*None.*Traceback.*line 5")])
+        errors, [(3, "attribute-error", r"upper.*None.*traceback.*line 5")])
 
   def testKeepNoneReturn(self):
     ty = self.Infer("""

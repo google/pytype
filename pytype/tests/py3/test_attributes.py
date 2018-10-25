@@ -37,7 +37,7 @@ class TestStrictNone(test_base.TargetPython3BasicTest):
       formatter('key')  # line 8
     """)
     self.assertErrorLogIs(
-        errors, [(4, "attribute-error", r"get.*None.*Traceback.*line 8")])
+        errors, [(4, "attribute-error", r"get.*None.*traceback.*line 8")])
 
 
 class TestAttributes(test_base.TargetPython3BasicTest):

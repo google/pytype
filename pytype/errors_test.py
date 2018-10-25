@@ -74,7 +74,7 @@ class ErrorTest(unittest.TestCase):
     stack = test_utils.fake_stack(errors.MAX_TRACEBACK_LENGTH + 1)
     error = errors.Error.with_stack(stack, errors.SEVERITY_ERROR, "")
     self.assertMultiLineEqual(error._traceback, textwrap.dedent("""\
-      Traceback:
+      Called from (traceback):
         line 0, in function0
         line 1, in function1
         line 2, in function2"""))
@@ -84,7 +84,7 @@ class ErrorTest(unittest.TestCase):
     stack = test_utils.fake_stack(errors.MAX_TRACEBACK_LENGTH + 2)
     error = errors.Error.with_stack(stack, errors.SEVERITY_ERROR, "")
     self.assertMultiLineEqual(error._traceback, textwrap.dedent("""\
-      Traceback:
+      Called from (traceback):
         line 0, in function0
         ...
         line 3, in function3"""))
@@ -142,7 +142,7 @@ class ErrorTest(unittest.TestCase):
           some
           details
 
-          Traceback:
+          Called from (traceback):
             line 0, in function0"""))
 
 
@@ -216,7 +216,7 @@ class ErrorLogBaseTest(unittest.TestCase):
     unique_errors = errorlog.unique_sorted_errors()
     self.assertEqual(1, len(unique_errors))
     self.assertMultiLineEqual(unique_errors[0]._traceback, textwrap.dedent("""\
-      Traceback:
+      Called from (traceback):
         line 1, in function1"""))
 
   @errors._error_name(_TEST_ERROR)
