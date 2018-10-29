@@ -266,6 +266,30 @@ def _get_template(val):
     return None
 
 
+def _get_mro_bases(bases):
+  """Get bases for MRO computation."""
+  mro_bases = []
+  has_user_generic = False
+  for base_var in bases:
+    if not base_var.data:
+      continue
+    # A base class is a Variable. If it has multiple options, we would
+    # technically get different MROs. But since ambiguous base classes are rare
+    # enough, we instead just pick one arbitrary option per base class.
+    base = min(base_var.data, key=lambda cls: cls.full_name)
+    mro_bases.append(base)
+    # check if it contains user-defined generic types
+    if (isinstance(base, ParameterizedClass)
+        and base.full_name != "typing.Generic"):
+      has_user_generic = True
+  # if user-defined generic type exists, we won't add `typing.Generic` to
+  # the final result list
+  if has_user_generic:
+    return [b for b in mro_bases if b.full_name != "typing.Generic"]
+  else:
+    return mro_bases
+
+
 class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   """A single abstract value such as a type or function signature.
 
@@ -286,9 +310,9 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
     """Basic initializer for all AtomicAbstractValues."""
     super(AtomicAbstractValue, self).__init__(vm)
     assert hasattr(vm, "program"), type(self)
-    self.mro = []
     self.cls = None
     self.name = name
+    self.mro = self.compute_mro()
     self.module = None
     self.official_name = None
     self.template = ()
@@ -302,45 +326,13 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   def __repr__(self):
     return self.name
 
+  def compute_mro(self):
+    # default for objects with no MRO
+    return []
+
   def default_mro(self):
+    # default for objects with unknown MRO
     return [self, self.vm.convert.object_type]
-
-  def compute_mro(self, input_bases=None):
-    """Compute the class precedence list (mro) according to C3."""
-    # The base classes are Variables. If they have multiple options, we would
-    # technically get different MROs, for each combination of options, and thus
-    # would have to return a *list of MROs*. But since ambiguous base classes
-    # are rare enough, we instead just pick one arbitrary option per base class.
-    input_bases = input_bases if input_bases else self.bases()
-    bases = [min(b.data, key=lambda cls: cls.full_name)
-             for b in input_bases
-             if b.data]
-    bases = [[self]] + [list(base.mro) for base in bases] + [list(bases)]
-    # If base classes are `ParameterizedClass`, we will use their `base_cls` to
-    # calculate the MRO. Bacause of type parameter renaming, we can not compare
-    # the `ParameterizedClass`s which contain the same `base_cls`.  See example:
-    #   class A(Iterator[T]): ...
-    #   class B(Iterator[U], A[V]): ...
-    # The inheritance: [B], [Iterator, ...], [A, Iterator, ...], [Iterator, A]
-    # So this has MRO order issue, but because the template names of
-    # `ParameterizedClass` of `Iterator` are different, they will be treated as
-    # different base classes and it will infer the MRO order is correct.
-    # TODO(ahxun): fix this by solving the template rename problem
-    base2cls = {}
-    newbases = []
-    for row in bases:
-      baselist = []
-      for base in row:
-        if isinstance(base, ParameterizedClass):
-          base2cls[base.base_cls] = base
-          baselist.append(base.base_cls)
-        else:
-          base2cls[base] = base
-          baselist.append(base)
-      newbases.append(baselist)
-
-    # calc MRO and replace them with original base classes
-    return tuple(base2cls[base] for base in mro.MROMerge(newbases))
 
   def get_fullhash(self):
     """Hash this value and all of its children."""
@@ -2550,7 +2542,7 @@ class PyTDFunction(Function):
 class Class(object):
   """Mix-in to mark all class-like values."""
 
-  overloads = ("get_special_attribute", "get_own_new", "call")
+  overloads = ("get_special_attribute", "get_own_new", "call", "compute_mro")
 
   def __new__(cls, *unused_args, **unused_kwds):
     """Prevent direct instantiation."""
@@ -2700,6 +2692,36 @@ class Class(object):
                for c in self.mro
                if isinstance(c, Class))
 
+  def compute_mro(self):
+    """Compute the class precedence list (mro) according to C3."""
+    bases = _get_mro_bases(self.bases())
+    bases = [[self]] + [list(base.mro) for base in bases] + [list(bases)]
+    # If base classes are `ParameterizedClass`, we will use their `base_cls` to
+    # calculate the MRO. Bacause of type parameter renaming, we can not compare
+    # the `ParameterizedClass`s which contain the same `base_cls`.  See example:
+    #   class A(Iterator[T]): ...
+    #   class B(Iterator[U], A[V]): ...
+    # The inheritance: [B], [Iterator, ...], [A, Iterator, ...], [Iterator, A]
+    # So this has MRO order issue, but because the template names of
+    # `ParameterizedClass` of `Iterator` are different, they will be treated as
+    # different base classes and it will infer the MRO order is correct.
+    # TODO(ahxun): fix this by solving the template rename problem
+    base2cls = {}
+    newbases = []
+    for row in bases:
+      baselist = []
+      for base in row:
+        if isinstance(base, ParameterizedClass):
+          base2cls[base.base_cls] = base
+          baselist.append(base.base_cls)
+        else:
+          base2cls[base] = base
+          baselist.append(base)
+      newbases.append(baselist)
+
+    # calc MRO and replace them with original base classes
+    return tuple(base2cls[base] for base in mro.MROMerge(newbases))
+
 
 class ParameterizedClass(AtomicAbstractValue, Class):
   """A class that contains additional parameters. E.g. a container.
@@ -2726,14 +2748,13 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     # A ParameterizedClass is created by converting a pytd.GenericType, whose
     # base type is restricted to NamedType and ClassType.
     assert isinstance(base_cls, Class)
-    super(ParameterizedClass, self).__init__(base_cls.name, vm)
     self.base_cls = base_cls
+    super(ParameterizedClass, self).__init__(base_cls.name, vm)
     self.module = base_cls.module
     # Lazily loaded to handle recursive types.
     # See the type_parameters() property.
     self._type_parameters = type_parameters
     self._hash = None  # memoized due to expensive computation
-    self.mro = (self,) + self.base_cls.mro[1:]
     self.official_name = self.base_cls.official_name
     self.template = self.base_cls.template
     self.slots = self.base_cls.slots
@@ -2798,6 +2819,9 @@ class ParameterizedClass(AtomicAbstractValue, Class):
               param, self._type_parameters.subst, self.vm.root_cfg_node)
       self._type_parameters = type_parameters
     return self._type_parameters
+
+  def compute_mro(self):
+    return (self,) + self.base_cls.mro[1:]
 
   def instantiate(self, node, container=None):
     if self.full_name == "__builtin__.type":
@@ -2871,13 +2895,15 @@ class TupleClass(ParameterizedClass, HasSlots):
     # We subtract one to account for "T".
     self.tuple_length = num_parameters - 1
     self._instance = None
-    # ParameterizedClass removes the base PyTDClass(tuple) from the mro; add it
-    # back here so that isinstance(tuple) checks work.
-    self.mro = (self.mro[0],) + self.base_cls.mro
     self.slots = ()  # tuples don't have any writable attributes
 
   def __repr__(self):
     return "TupleClass(%s)" % self.type_parameters
+
+  def compute_mro(self):
+    # ParameterizedClass removes the base PyTDClass(tuple) from the mro; add it
+    # back here so that isinstance(tuple) checks work.
+    return (self,) + self.base_cls.mro
 
   def instantiate(self, node, container=None):
     if self._instance:
@@ -3005,6 +3031,7 @@ class PyTDClass(SimpleAbstractValue, Class):
   is_lazy = True  # uses _convert_member
 
   def __init__(self, name, pytd_cls, vm):
+    self.pytd_cls = pytd_cls
     super(PyTDClass, self).__init__(name, vm)
     mm = {}
     for val in pytd_cls.constants + pytd_cls.methods:
@@ -3015,8 +3042,6 @@ class PyTDClass(SimpleAbstractValue, Class):
     else:
       metaclass = self.vm.convert.constant_to_value(
           pytd_cls.metaclass, subst={}, node=self.vm.root_cfg_node)
-    self.pytd_cls = pytd_cls
-    self.mro = self.compute_mro()
     self.official_name = self.name
     # The `template` is usually a constant but in the case of
     # typing.Generic (only) it'll change every time when a new
@@ -3128,9 +3153,8 @@ class InterpreterClass(SimpleAbstractValue, Class):
     assert isinstance(name, str)
     assert isinstance(bases, list)
     assert isinstance(members, dict)
-    super(InterpreterClass, self).__init__(name, vm)
     self._bases = bases
-    self.mro = self.compute_mro(self._get_pure_bases(bases))
+    super(InterpreterClass, self).__init__(name, vm)
     self.members = datatypes.MonitorDict(members)
     Class.init_mixin(self, cls)
     self.instances = set()  # filled through register_instance
@@ -3175,26 +3199,6 @@ class InterpreterClass(SimpleAbstractValue, Class):
         get_atomic_value(mbr, default=self.vm.convert.unsolvable)
         for mbr in self.members.values()]
     return [x for x in values if isinstance(x, InterpreterClass)]
-
-  def _get_pure_bases(self, bases):
-    """Remove unnecessary `typing.Generic` for MRO check."""
-    has_user_generic = False
-    for base in bases:
-      base_var = get_atomic_value(base, default=self.vm.convert.unsolvable)
-      # check if it contains user-defined generic types
-      if (isinstance(base_var, ParameterizedClass)
-          and base_var.full_name != "typing.Generic"):
-        has_user_generic = True
-        break
-
-    real_bases = []
-    for base in bases:
-      base_var = get_atomic_value(base, default=self.vm.convert.unsolvable)
-      # if user-defined generic type exists, we won't add `typing.Generic` to
-      # the final result list
-      if not has_user_generic or base_var.full_name != "typing.Generic":
-        real_bases.append(base)
-    return real_bases
 
   def _compute_template(self, bases):
     """Compute the precedence list of template parameters according to C3.
@@ -4353,7 +4357,9 @@ class Unsolvable(AtomicAbstractValue):
 
   def __init__(self, vm):
     super(Unsolvable, self).__init__("unsolveable", vm)
-    self.mro = self.default_mro()
+
+  def compute_mro(self):
+    return self.default_mro()
 
   def get_special_attribute(self, node, name, _):
     if name in self.IGNORED_ATTRIBUTES:
@@ -4407,8 +4413,10 @@ class Unknown(AtomicAbstractValue):
     Unknown._current_id += 1
     self.class_name = self.name
     self._calls = []
-    self.mro = self.default_mro()
     log.info("Creating %s", self.class_name)
+
+  def compute_mro(self):
+    return self.default_mro()
 
   def get_fullhash(self):
     # Unknown needs its own implementation of get_fullhash to ensure equivalent
