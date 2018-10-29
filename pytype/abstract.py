@@ -75,6 +75,11 @@ class AsReturnValue(AsInstance):
   """Specially mark return values, to handle NoReturn properly."""
 
 
+# For lazy evaluation of ParameterizedClass.type_parameters
+LazyTypeParameters = collections.namedtuple(
+    "LazyTypeParameters", ("template", "parameters", "subst"))
+
+
 _NONE = object()  # sentinel for get_atomic_value
 
 
@@ -250,6 +255,15 @@ def _apply_mutations(node, get_mutations):
     obj.merge_type_parameter(node, name, value)
   log.info("Applied %d mutations", num_mutations)
   return node
+
+
+def _get_template(val):
+  if isinstance(val, Class):
+    return {t.name for t in val.template}
+  elif isinstance(val, AtomicAbstractValue):
+    return _get_template(val.cls)
+  else:
+    return None
 
 
 class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
@@ -740,7 +754,7 @@ class TypeParameter(AtomicAbstractValue):
   def instantiate(self, node, container=None):
     var = self.vm.program.NewVariable()
     if container and (not isinstance(container, SimpleAbstractValue) or
-                      self.name in container.type_parameters):
+                      self.name in _get_template(container)):
       instance = TypeParameterInstance(self, container, self.vm)
       return instance.to_variable(node)
     else:
@@ -783,6 +797,14 @@ class TypeParameterInstance(AtomicAbstractValue):
   def __repr__(self):
     return "TypeParameterInstance(%r)" % self.name
 
+  def __eq__(self, other):
+    if isinstance(other, type(self)):
+      return self.param == other.param and self.instance == other.instance
+    return NotImplemented
+
+  def __hash__(self):
+    return hash((self.param, self.instance))
+
 
 class SimpleAbstractValue(AtomicAbstractValue):
   """A basic abstract value that represents instances.
@@ -804,12 +826,18 @@ class SimpleAbstractValue(AtomicAbstractValue):
     """
     super(SimpleAbstractValue, self).__init__(name, vm)
     self.members = datatypes.MonitorDict()
-    self.type_parameters = datatypes.LazyAliasingMonitorDict()
+    # Lazily loaded to handle recursive types.
+    # See Instance._load_type_parameters().
+    self._type_parameters = datatypes.LazyAliasingMonitorDict()
     self.maybe_missing_members = False
     # The latter caches the result of get_type_key. This is a recursive function
     # that has the potential to generate too many calls for large definitions.
     self._cached_type_key = (
-        (self.members.changestamp, self.type_parameters.changestamp), None)
+        (self.members.changestamp, self._type_parameters.changestamp), None)
+
+  @property
+  def type_parameters(self):
+    return self._type_parameters
 
   def get_children_maps(self):
     return (self.type_parameters, self.members)
@@ -840,12 +868,6 @@ class SimpleAbstractValue(AtomicAbstractValue):
       self.type_parameters[name].PasteVariable(value, node)
     else:
       self.type_parameters[name] = value
-
-  def _initialize_type_parameter(self, name, value):
-    assert isinstance(name, str)
-    assert name not in self.type_parameters
-    log.info("Initializing type param %s: %r", name, value.data)
-    self.type_parameters[name] = value
 
   def load_lazy_attribute(self, name):
     """Load the named attribute into self.members."""
@@ -943,9 +965,15 @@ class Instance(SimpleAbstractValue):
     if isinstance(cls, (InterpreterClass, PyTDClass)) and cls.is_dynamic:
       self.maybe_missing_members = True
     cls.register_instance(self)
+    self._type_parameters_loaded = False
+    self._bad_names = set()
+
+  def _load_type_parameters(self):
+    if self._type_parameters_loaded:
+      return
     bad_names = set()
     unbound_params = set()
-    for base in cls.mro:
+    for base in self.cls.mro:
       if isinstance(base, ParameterizedClass):
         if isinstance(base, TupleClass):
           if isinstance(self, Tuple):
@@ -966,7 +994,7 @@ class Instance(SimpleAbstractValue):
             #  class List(Generic[T]): pass
             #  class Foo(List[U]): pass
             try:
-              self.type_parameters.add_alias(name, param.name)
+              self._type_parameters.add_alias(name, param.name)
             except datatypes.AliasingDictConflictError as e:
               bad_names |= {name, param.name, e.existing_name}
           else:
@@ -974,10 +1002,10 @@ class Instance(SimpleAbstractValue):
             # class Foo(List[int]), or a non-1:1 parameter mapping, e.g.,
             # class Foo(List[K or V]). Initialize the corresponding instance
             # parameter appropriately.
-            lazy_value = (param.instantiate, self.vm.root_cfg_node, self)
-            if name not in self.type_parameters:
-              self.type_parameters.add_lazy_item(name, *lazy_value)
-            elif not self.type_parameters.lazy_eq(name, *lazy_value):
+            value = param.instantiate(self.vm.root_cfg_node, self)
+            if name not in self._type_parameters:
+              self._type_parameters[name] = value
+            elif self._type_parameters[name].data != value.data:
               # Two unrelated containers happen to use the same type
               # parameter name. pytype isn't yet smart enough to handle this
               # case, so we'll just set the type parameter to Any.
@@ -992,17 +1020,24 @@ class Instance(SimpleAbstractValue):
     node = self.vm.root_cfg_node
     for name in bad_names:
       # We overwrite the type parameter directly instead of calling
-      # merge_type_parameter so that we don't accidentally evaluate the
-      # overwritten value. Using dict.__setitem__ allows us to bypass
-      # MonitorDict's checks, which is safe because changes in __init__ don't
+      # merge_type_parameter so that we don't infinitely loop on evaluating
+      # type_parameters. Using dict.__setitem__ allows us to bypass
+      # MonitorDict's checks, which is safe because the initial loading doesn't
       # need to be monitored.
-      dict.__setitem__(self.type_parameters, name,
+      dict.__setitem__(self._type_parameters, name,
                        self.vm.convert.create_new_unsolvable(node))
     self._bad_names = bad_names
 
     for name, param in unbound_params:
-      if name not in self.type_parameters:
-        self._initialize_type_parameter(name, self.vm.program.NewVariable())
+      if name not in self._type_parameters:
+        value = self.vm.program.NewVariable()
+        log.info("Initializing type param %s: %r", name, value)
+        self._type_parameters[name] = value
+
+    # We purposely set this flag at the very end so that accidentally accessing
+    # type_parameters during loading will trigger an obvious crash due to
+    # infinite recursion, rather than silently returning an incomplete dict.
+    self._type_parameters_loaded = True
 
   def merge_type_parameter(self, node, name, value):
     # Members of _bad_names are involved in naming conflicts, so we don't want
@@ -1023,6 +1058,11 @@ class Instance(SimpleAbstractValue):
   @property
   def full_name(self):
     return self.get_class().full_name
+
+  @property
+  def type_parameters(self):
+    self._load_type_parameters()
+    return self._type_parameters
 
 
 @six.add_metaclass(MixinMeta)
@@ -1079,7 +1119,7 @@ class List(Instance, HasSlots, PythonConstant):
     PythonConstant.init_mixin(self, content)
     HasSlots.init_mixin(self)
     combined_content = vm.convert.build_content(content)
-    self.merge_type_parameter(None, T, combined_content)
+    self._type_parameters[T] = combined_content
     self.could_contain_anything = False
     self.set_slot("__getitem__", self.getitem_slot)
     self.set_slot("__getslice__", self.getslice_slot)
@@ -1200,9 +1240,10 @@ class Tuple(Instance, PythonConstant):
                     tuple(enumerate(content)) + ((T, combined_content),)}
     cls = TupleClass(vm.convert.tuple_type, class_params, vm)
     super(Tuple, self).__init__(cls, vm)
-    self.merge_type_parameter(None, T, combined_content)
+    self._type_parameters[T] = combined_content
     PythonConstant.init_mixin(self, content)
     self.tuple_length = len(self.pyval)
+    self._hash = None  # memoized due to expensive computation
 
   def str_of_constant(self, printer):
     content = ", ".join(" or ".join(printer(v) for v in val.data)
@@ -1215,6 +1256,23 @@ class Tuple(Instance, PythonConstant):
     parameters = super(Tuple, self)._unique_parameters()
     parameters.extend(self.pyval)
     return parameters
+
+  def __eq__(self, other):
+    if isinstance(other, type(self)):
+      return (self.tuple_length == other.tuple_length and
+              all(e.data == other_e.data
+                  for e, other_e in zip(self.pyval, other.pyval)))
+    return NotImplemented
+
+  def __hash__(self):
+    if self._hash is None:
+      # Descending into pyval would trigger infinite recursion in the case of a
+      # tuple containing itself, so we approximate the inner values with their
+      # full names.
+      self._hash = hash((self.tuple_length,) +
+                        tuple(tuple(v.full_name for v in e.data)
+                              for e in self.pyval))
+    return self._hash
 
 
 class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
@@ -2671,7 +2729,10 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     super(ParameterizedClass, self).__init__(base_cls.name, vm)
     self.base_cls = base_cls
     self.module = base_cls.module
-    self.type_parameters = type_parameters
+    # Lazily loaded to handle recursive types.
+    # See the type_parameters() property.
+    self._type_parameters = type_parameters
+    self._hash = None  # memoized due to expensive computation
     self.mro = (self,) + self.base_cls.mro[1:]
     self.official_name = self.base_cls.official_name
     self.template = self.base_cls.template
@@ -2693,14 +2754,23 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     return not self == other
 
   def __hash__(self):
-    # This doesn't hash the lazy values when self.type_parameters is a LazyDict,
-    # which is probably wrong, but we can't evaluate those values here without
-    # causing recursion errors, since hash() is called by compute_mro() for
-    # definitions such as 'class str(Sequence[str]): ...'.
-    return hash((self.base_cls, tuple(dict.items(self.type_parameters))))
+    if self._hash is None:
+      if isinstance(self._type_parameters, LazyTypeParameters):
+        items = self._raw_type_parameters()
+      else:
+        items = self.type_parameters.items()
+      self._hash = hash((self.base_cls, tuple(items)))
+    return self._hash
 
   def __contains__(self, name):
     return name in self.base_cls
+
+  def _raw_type_parameters(self):
+    assert isinstance(self._type_parameters, LazyTypeParameters)
+    template, parameters, _ = self._type_parameters
+    for i, name in enumerate(template):
+      # TODO(rechen): A missing parameter should be an error.
+      yield name, parameters[i] if i < len(parameters) else None
 
   def get_own_abstract_methods(self):
     return self.base_cls.get_own_abstract_methods()
@@ -2715,6 +2785,19 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     # evaluation of our type parameters during initialization, possibly
     # leading to an infinite loop.
     return any(t.formal for t in self.type_parameters.values())
+
+  @property
+  def type_parameters(self):
+    if isinstance(self._type_parameters, LazyTypeParameters):
+      type_parameters = {}
+      for name, param in self._raw_type_parameters():
+        if param is None:
+          type_parameters[name] = self.vm.convert.unsolvable
+        else:
+          type_parameters[name] = self.vm.convert.constant_to_value(
+              param, self._type_parameters.subst, self.vm.root_cfg_node)
+      self._type_parameters = type_parameters
+    return self._type_parameters
 
   def instantiate(self, node, container=None):
     if self.full_name == "__builtin__.type":
@@ -2781,8 +2864,12 @@ class TupleClass(ParameterizedClass, HasSlots):
     super(TupleClass, self).__init__(base_cls, type_parameters, vm)
     HasSlots.init_mixin(self)
     self.set_slot("__getitem__", self.getitem_slot)
+    if isinstance(self._type_parameters, LazyTypeParameters):
+      num_parameters = len(self._type_parameters.template)
+    else:
+      num_parameters = len(self._type_parameters)
     # We subtract one to account for "T".
-    self.tuple_length = len(self.type_parameters) - 1
+    self.tuple_length = num_parameters - 1
     self._instance = None
     # ParameterizedClass removes the base PyTDClass(tuple) from the mro; add it
     # back here so that isinstance(tuple) checks work.
@@ -2800,7 +2887,7 @@ class TupleClass(ParameterizedClass, HasSlots):
       p = self.type_parameters[i]
       if container is self.vm.annotations_util.DUMMY_CONTAINER or (
           container and isinstance(p, TypeParameter) and
-          p.name in container.type_parameters):
+          p.name in _get_template(container)):
         content.append(p.instantiate(self.vm.root_cfg_node, container))
       else:
         content.append(p.instantiate(self.vm.root_cfg_node))
@@ -3050,7 +3137,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     self.slots = self._convert_slots(members.get("__slots__"))
     self.is_dynamic = self.compute_is_dynamic()
     log.info("Created class: %r", self)
-    self.template = self._get_template(bases)
+    self.template = self._compute_template(bases)
 
     if self.template:
       # nested class can not use the same type parameter
@@ -3109,7 +3196,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
         real_bases.append(base)
     return real_bases
 
-  def _get_template(self, bases):
+  def _compute_template(self, bases):
     """Compute the precedence list of template parameters according to C3.
 
     1. For the base class list, if it contains `typing.Generic`, then all the
