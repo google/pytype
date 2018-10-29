@@ -828,7 +828,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     self.members = datatypes.MonitorDict()
     # Lazily loaded to handle recursive types.
     # See Instance._load_type_parameters().
-    self._type_parameters = datatypes.LazyAliasingMonitorDict()
+    self._type_parameters = datatypes.AliasingMonitorDict()
     self.maybe_missing_members = False
     # The latter caches the result of get_type_key. This is a recursive function
     # that has the potential to generate too many calls for large definitions.
