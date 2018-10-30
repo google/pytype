@@ -723,17 +723,20 @@ class GenericTest(test_base.TargetIndependentTest):
           x = ...  # type: T
       """)
       ty = self.Infer("""
+        from typing import TypeVar
         import a
-        class B(a.A): pass
+        T = TypeVar("T")
+        class B(a.A[T]): pass
         def f():
           return B().x
         def g():
           return B([42]).x
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Any
+        from typing import Any, TypeVar
         a = ...  # type: module
-        class B(a.A):
+        T = TypeVar("T")
+        class B(a.A[T]):
           x = ...  # type: int or float
         def f() -> int or float
         def g() -> int

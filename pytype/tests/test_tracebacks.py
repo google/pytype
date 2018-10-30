@@ -23,7 +23,8 @@ class TracebackTest(test_base.TargetIndependentTest):
       g("world")
     """, deep=True)
     self.assertErrorLogIs(errors, [(2, "wrong-arg-types",
-                                    r"Traceback:\n  line 4, in g")])
+                                    r"Called from.*:\n"
+                                    r"  line 4, in g")])
 
   def test_different_tracebacks(self):
     _, errors = self.InferWithErrors("""\
@@ -33,9 +34,11 @@ class TracebackTest(test_base.TargetIndependentTest):
       f("world")
     """)
     self.assertErrorLogIs(errors, [(2, "wrong-arg-types",
-                                    r"Traceback:\n  line 3, in <module>"),
+                                    r"Called from.*:\n"
+                                    r"  line 3, in current file"),
                                    (2, "wrong-arg-types",
-                                    r"Traceback:\n  line 4, in <module>")])
+                                    r"Called from.*:\n"
+                                    r"  line 4, in current file")])
 
   def test_comprehension(self):
     _, errors = self.InferWithErrors("""\
@@ -54,7 +57,7 @@ class TracebackTest(test_base.TargetIndependentTest):
         return {f(x) for x in range(10)}
     """)
     self.assertErrorLogIs(errors, [(2, "attribute-error",
-                                    r"Traceback:\n  line 4, in g$")])
+                                    r"Called from.*:\n  line 4, in g$")])
 
 
 test_base.main(globals(), __name__ == "__main__")

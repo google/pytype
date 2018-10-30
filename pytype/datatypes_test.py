@@ -145,41 +145,6 @@ class DatatypesTest(unittest.TestCase):
     self.assertEqual(d["alias2"], d["name"])
     self.assertEqual(d["alias1"], d["alias2"])
 
-  def testLazyDict(self):
-    d = datatypes.LazyDict()
-    # To avoid surprising behavior, we require desired dict functionality to be
-    # explicitly overridden
-    with self.assertRaises(NotImplementedError):
-      d.viewitems()
-    x = []
-    def f(y):
-      # Change the state of x so that we can check whether f is evaluated at the
-      # right time
-      x.append(x)
-      return y
-    d.add_lazy_item("f", f, "foo")
-    self.assertIn("f", d)
-    self.assertEqual(1, len(d))
-    self.assertEqual(0, len(x))
-    # Evaluate the item
-    self.assertEqual("foo", d["f"])
-    self.assertEqual(1, len(x))
-    self.assertIn("f", d)
-    self.assertEqual(1, len(d))
-
-  def testLazyDictEq(self):
-    d = datatypes.LazyDict()
-    f = lambda x: x
-    d.add_lazy_item("f", f, "foo")
-    self.assertTrue(d.lazy_eq("f", f, "foo"))
-    self.assertFalse(d.lazy_eq("f", f, "bar"))
-    with self.assertRaises(KeyError):
-      d.lazy_eq("g", f, "foo")
-    self.assertEqual("foo", d["f"])  # evaluation
-    # The point of lazy_eq is to do approximate equality checks when we can't
-    # evaluate the function, so there's no way to determine "foo" != f("bar").
-    self.assertTrue(d.lazy_eq("f", f, "bar"))
-
 
 if __name__ == "__main__":
   unittest.main()

@@ -16,34 +16,50 @@ from pytype.tools import config
 # Args:
 #   default: the default value.
 #   sample: a sample value.
+#   arg_info: information about the corresponding command-line argument.
 #   comment: help text.
-Item = collections.namedtuple('Item', ['default', 'sample', 'comment'])
+Item = collections.namedtuple(
+    'Item', ['default', 'sample', 'arg_info', 'comment'])
 
 
-# Generates both the default config and the sample config file.
+# Args:
+#   flag: the name of the command-line flag.
+#   to_command_line: a function to transform the value into a command-line arg.
+#     If None, the value will be used directly. The result will be interpreted
+#     as follows:
+#     - If a bool, it will determine whether the flag is included.
+#     - Elif it is empty, the flag will be omitted.
+#     - Else, it will be considered the flag's command-line value.
+ArgInfo = collections.namedtuple('ArgInfo', ['flag', 'to_command_line'])
+
+
+# Generates both the default config and the sample config file. These items
+# don't have ArgInfo populated, as it is needed only for pytype-single args.
 ITEMS = {
     'exclude': Item(
-        '', '**/*_test.py **/test_*.py',
+        '', '**/*_test.py **/test_*.py', None,
         'Space-separated list of files or directories to exclude.'),
     'inputs': Item(
-        '', '.',
+        '', '.', None,
         'Space-separated list of files or directories to process.'),
     'output': Item(
-        'pytype_output', 'pytype_output', 'All pytype output goes here.'),
+        'pytype_output', 'pytype_output', None, 'All pytype output goes here.'),
     'pythonpath': Item(
-        '', '.',
+        '', '.', None,
         'Paths to source code directories, separated by %r.' % os.pathsep),
     'python_version': Item(
-        '3.6', '3.6', 'Python version (major.minor) of the target code.'),
+        '3.6', '3.6', None, 'Python version (major.minor) of the target code.'),
 }
 
 
 # The missing fields will be filled in by generate_sample_config_or_die.
-_PYTYPE_SINGLE_ITEMS = {
-    'disable': Item(None, 'pyi-error', None),
-    'report_errors': Item(None, 'True', None),
-    'protocols': Item(None, 'False', None),
-    'strict_import': Item(None, 'False', None),
+PYTYPE_SINGLE_ITEMS = {
+    'disable': Item(None, 'pyi-error', ArgInfo('--disable', ','.join), None),
+    'report_errors': Item(
+        None, 'True', ArgInfo('--no-report-errors', lambda v: not v), None),
+    'protocols': Item(None, 'False', ArgInfo('--protocols', None), None),
+    'strict_import': Item(
+        None, 'False', ArgInfo('--strict-import', None), None),
 }
 
 
@@ -141,8 +157,8 @@ def generate_sample_config_or_die(filename, pytype_single_args):
 
   # Combine all arguments into one name -> Item dictionary.
   items = dict(ITEMS)
-  assert set(_PYTYPE_SINGLE_ITEMS) == set(pytype_single_args)
-  for key, item in _PYTYPE_SINGLE_ITEMS.items():
+  assert set(PYTYPE_SINGLE_ITEMS) == set(pytype_single_args)
+  for key, item in PYTYPE_SINGLE_ITEMS.items():
     items[key] = item._replace(default=pytype_single_args[key].default,
                                comment=pytype_single_args[key].help)
 

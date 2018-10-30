@@ -35,7 +35,7 @@ _CURRENT_ERROR_NAME = utils.DynamicVar()
 MAX_TRACEBACK_LENGTH = 3
 
 # Marker indicating the start of a traceback.
-TRACEBACK_MARKER = "Traceback:"
+TRACEBACK_MARKER = "Called from (traceback):"
 
 # Symbol representing an elided portion of the stack.
 _ELLIPSIS = object()
@@ -82,8 +82,16 @@ def _make_traceback_str(ops):
   ops = ops[:-1]
   if ops:
     ops = _maybe_truncate_traceback(ops)
-    op_to_str = lambda op: "line %d, in %s" % (op.line, op.code.co_name)
-    traceback = ["..." if op is _ELLIPSIS else op_to_str(op) for op in ops]
+    traceback = []
+    format_line = "line %d, in %s"
+    for op in ops:
+      if op is _ELLIPSIS:
+        line = "..."
+      elif op.code.co_name == "<module>":
+        line = format_line % (op.line, "current file")
+      else:
+        line = format_line % (op.line, op.code.co_name)
+      traceback.append(line)
     return TRACEBACK_MARKER + "\n  " + "\n  ".join(traceback)
   else:
     return None

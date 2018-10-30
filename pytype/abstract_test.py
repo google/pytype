@@ -621,7 +621,7 @@ class FunctionTest(AbstractTestBase):
     args_type = sig.annotations["args"]
     self.assertIsInstance(args_type, abstract.ParameterizedClass)
     self.assertIs(args_type.base_cls, self._vm.convert.tuple_type)
-    self.assertListEqual(args_type.type_parameters.items(),
+    self.assertListEqual(list(args_type.type_parameters.items()),
                          [(abstract.T, self._vm.convert.unsolvable)])
     self.assertIs(sig.drop_first_parameter().annotations["args"], args_type)
 

@@ -238,6 +238,32 @@ class TestFunctions(test_base.TargetPython3BasicTest):
     """)
 
   def test_varargs(self):
+    self.Check("""
+      def foo(x: str, y: bytes, *z: int):
+        pass
+      foo('abc', b'def', 123)
+      foo('abc', b'def', 123, 456, 789)
+      foo('abc', b'def', *[123, 456, 789])
+      foo('abc', *[b'def', 123, 456, 789])
+      foo(*['abc', b'def', 123, 456, 789])
+      def bar(*y: int):
+        foo('abc', b'def', *y)
+    """)
+
+  def text_varargs_errors(self):
+    errors = self.CheckWithErrors("""\
+      def foo(x: str, *y: int):
+        pass
+      foo(*[1, 2, 3])
+      def bar(*z: int):
+        foo(*z)
+    """)
+    self.assertErrorLogIs(
+        errors,
+        [(3, "wrong-arg-types", "str.*int"),
+         (5, "wrong-arg-types", "str.*int")])
+
+  def test_varargs_in_pyi(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x: int, *args): ...
@@ -248,7 +274,7 @@ class TestFunctions(test_base.TargetPython3BasicTest):
           foo.f(42, *args)
       """, pythonpath=[d.path])
 
-  def test_varargs_error(self):
+  def test_varargs_in_pyi_error(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x: int, *args): ...
@@ -516,6 +542,33 @@ class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
       foo(1, 2, 5)
     """)
     self.assertErrorLogIs(errors, [(4, "missing-parameter", r"\bz\b")])
+
+  def test_multiple_varargs_packs(self):
+    self.Check("""
+      from typing import Tuple
+      def foo1(*x: int):
+        pass
+      def foo2(x: str, y: bytes, *z: int):
+        pass
+      foo1(*[1, 2, 3], *[4, 5, 6])
+      foo2('abc', b'def', *[1, 2, 3], *[4, 5, 6])
+      def bar(y: Tuple[int], *z: int):
+        foo1(*y, *z)
+        foo2('abc', b'def', *y, *z)
+    """)
+
+  def text_multiple_varargs_packs_errors(self):
+    errors = self.CheckWithErrors("""\
+      def foo(x: str, *y: int):
+        pass
+      foo(*[1, 2, 3], *[4, 5, 6])
+      def bar(*z: int):
+        foo(*z, *z)
+    """)
+    self.assertErrorLogIs(
+        errors,
+        [(3, "wrong-arg-types", "str.*int"),
+         (5, "wrong-arg-types", "str.*int")])
 
 
 test_base.main(globals(), __name__ == "__main__")

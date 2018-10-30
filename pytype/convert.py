@@ -6,7 +6,6 @@ import types
 from pytype import abstract
 from pytype import blocks
 from pytype import compat
-from pytype import datatypes
 from pytype import output
 from pytype import special_builtins
 from pytype import typing_overlay
@@ -730,14 +729,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         parameters = pyval.parameters
       assert (pyval.base_type.name == "typing.Generic" or
               len(parameters) <= len(template))
-      type_parameters = datatypes.LazyDict()
-      for i, name in enumerate(template):
-        if i < len(parameters):
-          type_parameters.add_lazy_item(name, self.constant_to_value,
-                                        parameters[i], subst,
-                                        self.vm.root_cfg_node)
-        else:
-          type_parameters[name] = self.unsolvable
+      # Delay type parameter loading to handle recursive types.
+      # See the ParameterizedClass.type_parameters() property.
+      type_parameters = abstract.LazyTypeParameters(template, parameters, subst)
       return abstract_class(base_cls, type_parameters, self.vm)
     elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node
       return self.tuple_to_value([self.constant_to_var(item, subst,
