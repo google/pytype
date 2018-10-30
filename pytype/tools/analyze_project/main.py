@@ -90,10 +90,14 @@ def main():
 
   # Main usage mode: analyze the project file by file in dependency order.
 
+  # TODO(rechen): builtin and system files are currently included as sources in
+  # the tree, which generates a lot of noise.
   logging.info('Source tree:\n%s',
                importlab.output.formatted_deps_list(import_graph))
   if os.path.exists(conf.output):
-    # TODO(b/114124389): smartly reuse output when possible.
+    # TODO(b/114124389): clearing the directory ensures that the same pytype
+    # findings are generated on every run, but it prevents us from smartly
+    # reusing output. We should switch to using --imports_info.
     tool_utils.rmdir_or_die(
         conf.output, 'Could not remove existing output directory')
   tool_utils.makedirs_or_die(conf.output, 'Could not create output directory')

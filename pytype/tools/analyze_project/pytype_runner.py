@@ -22,8 +22,8 @@ def __getattr__(name) -> Any: ...
 
 
 class Action(object):
-  REPORT_ERRORS = 1
-  IGNORE_ERRORS = 2
+  CHECK = 1
+  INFER = 2
   GENERATE_DEFAULT = 3
 
 
@@ -166,11 +166,11 @@ class PytypeRunner(object):
   def process_module(self, module, action):
     """Process a single module with the given action."""
     ret = None
-    if action == Action.REPORT_ERRORS:
+    if action == Action.CHECK:
       msg = '%s' % module.target
       _print_transient(msg)
       ret = self.run_pytype(module, True)
-    elif action == Action.IGNORE_ERRORS:
+    elif action == Action.INFER:
       msg = '%s*' % module.target
       _print_transient(msg)
       ret = self.run_pytype(module, False)
@@ -186,35 +186,50 @@ class PytypeRunner(object):
     _print_transient(' ' * len(msg))
     return ret
 
+  def get_module_action(self, module):
+    """Get the action for the given module.
+
+    Args:
+      module: A module_utils.Module object.
+
+    Returns:
+      An Action object, or None for a non-Python file.
+    """
+    f = module.full_path
+    # Report errors for files we are analysing directly.
+    if f in self.filenames:
+      action = Action.CHECK
+      report = logging.warning
+    else:
+      action = Action.INFER
+      report = logging.info
+    if not f.endswith('.py'):
+      report('Skipping non-Python file: %s', f)
+      return None
+    # For builtin and system files, do not attempt to generate a pyi.
+    # TODO(rechen): We can skip files in the dependencies of other builtin or
+    # system files.
+    if module.kind in ('Builtin', 'System'):
+      report('Generating default pyi: %s module %s', module.kind, module.name)
+      action = Action.GENERATE_DEFAULT
+    return action
+
   def yield_sorted_modules(self):
     """Yield modules from our sorted source files."""
     for group in self.sorted_sources:
       modules = []
       for module in group:
-        f = module.full_path
-        # Report errors for files we are analysing directly.
-        if f in self.filenames:
-          action = Action.REPORT_ERRORS
-          report = logging.warning
-        else:
-          action = Action.IGNORE_ERRORS
-          report = logging.info
-        if not f.endswith('.py'):
-          report('Skipping non-Python file: %s', f)
-          continue
-        # For builtin and system files, do not attempt to generate a pyi.
-        if module.kind in ('Builtin', 'System'):
-          report('Generating default pyi for %s file: %s', module.kind, f)
-          action = Action.GENERATE_DEFAULT
-        modules.append((module, action))
+        action = self.get_module_action(module)
+        if action:
+          modules.append((module, action))
       if len(modules) == 1:
         yield modules[0]
       else:
         # If we have a cycle we run pytype over the files twice, ignoring errors
         # the first time so that we don't fail on missing dependencies.
         for module, action in modules:
-          if action == Action.REPORT_ERRORS:
-            action = Action.IGNORE_ERRORS
+          if action == Action.CHECK:
+            action = Action.INFER
           yield module, action
         for module, action in modules:
           # We don't need to run generate_default twice

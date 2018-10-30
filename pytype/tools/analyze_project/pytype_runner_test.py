@@ -220,6 +220,31 @@ class TestGetRunCmd(TestBase):
     self.assertEqual(options.disable, ['import-error', 'name-error'])
 
 
+class TestGetModuleAction(TestBase):
+  """Tests for PytypeRunner.get_module_action."""
+
+  def test_check(self):
+    sources = [Module('', 'foo.py', 'foo')]
+    runner = make_runner(sources, [], self.parser.config_from_defaults())
+    self.assertEqual(runner.get_module_action(sources[0]),
+                     pytype_runner.Action.CHECK)
+
+  def test_infer(self):
+    runner = make_runner([], [], self.parser.config_from_defaults())
+    self.assertEqual(runner.get_module_action(Module('', 'foo.py', 'foo')),
+                     pytype_runner.Action.INFER)
+
+  def test_generate_default(self):
+    runner = make_runner([], [], self.parser.config_from_defaults())
+    self.assertEqual(
+        runner.get_module_action(Module('', 'foo.py', 'foo', 'System')),
+        pytype_runner.Action.GENERATE_DEFAULT)
+
+  def test_skip(self):
+    runner = make_runner([], [], self.parser.config_from_defaults())
+    self.assertIsNone(runner.get_module_action(Module('', 'foo.cc', 'foo')))
+
+
 class TestYieldSortedModules(TestBase):
   """Tests for PytypeRunner.yield_sorted_modules()."""
 
@@ -250,7 +275,7 @@ class TestYieldSortedModules(TestBase):
     runner = make_runner([f], [[f]], conf)
     self.assert_sorted_modules_equal(
         runner.yield_sorted_modules(),
-        [((d, 'bar.py', 'bar'), Action.REPORT_ERRORS)])
+        [((d, 'bar.py', 'bar'), Action.CHECK)])
 
   def test_source_and_dep(self):
     conf = self.parser.config_from_defaults()
@@ -261,8 +286,8 @@ class TestYieldSortedModules(TestBase):
     runner = make_runner([src], [[dep], [src]], conf)
     self.assert_sorted_modules_equal(
         runner.yield_sorted_modules(),
-        [((d, 'baz.py', 'baz'), Action.IGNORE_ERRORS),
-         ((d, 'bar.py', 'bar'), Action.REPORT_ERRORS)])
+        [((d, 'baz.py', 'baz'), Action.INFER),
+         ((d, 'bar.py', 'bar'), Action.CHECK)])
 
   def test_cycle(self):
     conf = self.parser.config_from_defaults()
@@ -273,10 +298,10 @@ class TestYieldSortedModules(TestBase):
     runner = make_runner([src], [[dep, src]], conf)
     self.assert_sorted_modules_equal(
         runner.yield_sorted_modules(),
-        [((d, 'baz.py', 'baz'), Action.IGNORE_ERRORS),
-         ((d, 'bar.py', 'bar'), Action.IGNORE_ERRORS),
-         ((d, 'baz.py', 'baz'), Action.IGNORE_ERRORS),
-         ((d, 'bar.py', 'bar'), Action.REPORT_ERRORS)])
+        [((d, 'baz.py', 'baz'), Action.INFER),
+         ((d, 'bar.py', 'bar'), Action.INFER),
+         ((d, 'baz.py', 'baz'), Action.INFER),
+         ((d, 'bar.py', 'bar'), Action.CHECK)])
 
   def test_non_py_dep(self):
     conf = self.parser.config_from_defaults()
