@@ -138,7 +138,7 @@ class TestGenerateConfig(unittest.TestCase):
         expected_pythonpath = [
             os.path.realpath(p)
             for p in config.ITEMS['pythonpath'].sample.split(os.pathsep)]
-      expected_protocols = config._PYTYPE_SINGLE_ITEMS['protocols'].sample
+      expected_protocols = config.PYTYPE_SINGLE_ITEMS['protocols'].sample
       self.assertEqual(conf.pythonpath, expected_pythonpath)
       self.assertEqual(conf.protocols, expected_protocols)
 
