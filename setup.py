@@ -141,6 +141,7 @@ setup(
     package_data={'pytype': get_builtin_files()},
     install_requires=[
         'importlab',
+        'ninja',
         'pyyaml (>=3.11)',
         'six'
     ],

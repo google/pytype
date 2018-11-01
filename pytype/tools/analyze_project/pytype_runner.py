@@ -4,12 +4,9 @@ from __future__ import print_function
 
 import logging
 import os
-import sys
+import subprocess
 
-from pytype import config as pytype_config
-from pytype import debug
 from pytype import file_utils
-from pytype import io
 from pytype import module_utils
 from pytype.tools.analyze_project import config
 
@@ -22,9 +19,15 @@ def __getattr__(name) -> Any: ...
 
 
 class Action(object):
-  CHECK = 1
-  INFER = 2
-  GENERATE_DEFAULT = 3
+  CHECK = 'check'
+  INFER = 'infer'
+  GENERATE_DEFAULT = 'generate default'
+
+
+class Stage(object):
+  SINGLE_PASS = 'single pass'
+  FIRST_PASS = 'first pass'
+  SECOND_PASS = 'second pass'
 
 
 def deps_from_import_graph(import_graph):
@@ -53,20 +56,6 @@ def deps_from_import_graph(import_graph):
           for files in import_graph.sorted_source_files()]
 
 
-def _print_transient(msg):
-  """Prints an overwritable terminal message.
-
-  Prints a message that will be overwritten by the next one. Be warned that if
-  the next message is shorter, then part of this message will still be visible
-  on the right.
-
-  Args:
-    msg: A msg
-  """
-  if sys.stdout.isatty():
-    print(msg + '\r', end='')
-
-
 def _module_to_output_path(mod):
   """Convert a module to an output path."""
   path, _ = os.path.splitext(mod.target)
@@ -90,7 +79,10 @@ class PytypeRunner(object):
     self.sorted_sources = sorted_sources  # all source modules
     self.pythonpath = conf.pythonpath
     self.python_version = conf.python_version
-    self.pyi_dir = conf.output
+    self.pyi_dir = os.path.join(conf.output, 'pyi')
+    # directory for first-pass pyi files, for cycle resolution
+    self.pyi_1_dir = os.path.join(conf.output, 'pyi_1')
+    self.ninja_file = os.path.join(conf.output, 'build.ninja')
     self.custom_options = [
         (k, getattr(conf, k)) for k in set(conf.__slots__) - set(config.ITEMS)]
 
@@ -108,13 +100,14 @@ class PytypeRunner(object):
       elif value:
         flags_with_values[arg_info.flag] = str(value)
 
-  def get_pytype_args(self, module, report_errors):
-    """Get the options for running pytype on the given module."""
+  def get_pytype_command_for_ninja(self, report_errors):
+    """Get the command line for running pytype."""
+    exe = 'pytype-single'
     flags_with_values = {
-        '-P': self.pyi_dir,
+        '-P': '$pythonpath',
         '-V': self.python_version,
-        '-o': self._output_file(module),
-        '--module-name': module.name,
+        '-o': '$out',
+        '--module-name': '$module',
     }
     binary_flags = {
         '--quick',
@@ -124,67 +117,29 @@ class PytypeRunner(object):
     if report_errors:
       self.set_custom_options(flags_with_values, binary_flags)
     return (
+        [exe] +
+        list(sum(flags_with_values.items(), ())) +
         sum(([k, v] for k, v in flags_with_values.items()), []) +
         list(binary_flags) +
-        [module.full_path]
+        ['$in']
     )
 
-  def _output_file(self, module):
+  def _output_file(self, module, pyi_dir):
     filename = _module_to_output_path(module) + '.pyi'
-    return os.path.join(self.pyi_dir, filename)
+    return os.path.join(pyi_dir, filename)
 
-  def create_output_dir(self, module):
-    # Create the output subdirectory for this file.
-    target_dir = os.path.dirname(self._output_file(module))
-    try:
-      file_utils.makedirs(target_dir)
-    except OSError:
-      logging.error('Could not create output directory: %s', target_dir)
-      return
-    return target_dir
-
-  def write_default_pyi(self, module):
+  def generate_default_pyi(self, module):
     """Write a default pyi file for the module."""
-    self.create_output_dir(module)
-    output = self._output_file(module)
-    logging.info('Generating default pyi: %s', output)
+    output = self._output_file(module, self.pyi_dir)
+    # Create the output subdirectory for this file.
+    output_dir = os.path.dirname(output)
+    try:
+      file_utils.makedirs(output_dir)
+    except OSError:
+      logging.error('Could not create output directory: %s', output_dir)
+      return
     with open(output, 'w') as f:
       f.write(DEFAULT_PYI)
-
-  def run_pytype(self, module, report_errors):
-    """Run pytype over a single module."""
-    self.create_output_dir(module)
-    args = self.get_pytype_args(module, report_errors)
-    logging.info('Running: pytype %s', ' '.join(args))
-    # TODO(rechen): Do we want to get rid of the --nofail option and use a
-    # try/except here instead? We'd control the failure behavior (e.g. we could
-    # potentially bring back the .errors file, or implement an "abort on first
-    # error" flag for quick iterative typechecking).
-    with debug.save_logging_level():  # pytype_config changes the logging level
-      return io.process_one_file(pytype_config.Options(args))
-
-  def process_module(self, module, action):
-    """Process a single module with the given action."""
-    ret = None
-    if action == Action.CHECK:
-      msg = '%s' % module.target
-      _print_transient(msg)
-      ret = self.run_pytype(module, True)
-    elif action == Action.INFER:
-      msg = '%s*' % module.target
-      _print_transient(msg)
-      ret = self.run_pytype(module, False)
-    elif action == Action.GENERATE_DEFAULT:
-      msg = '%s#' % module.target
-      _print_transient(msg)
-      self.write_default_pyi(module)
-      ret = 0
-    else:
-      logging.fatal('Unexpected action %r', action)
-      return 1
-    # Clears the message by overwriting it with whitespace.
-    _print_transient(' ' * len(msg))
-    return ret
 
   def get_module_action(self, module):
     """Get the action for the given module.
@@ -204,14 +159,14 @@ class PytypeRunner(object):
       action = Action.INFER
       report = logging.info
     if not f.endswith('.py'):
-      report('Skipping non-Python file: %s', f)
+      report('skipped: non-Python file %s', f)
       return None
     # For builtin and system files, do not attempt to generate a pyi.
     # TODO(rechen): We can skip files in the dependencies of other builtin or
     # system files.
     if module.kind in ('Builtin', 'System'):
-      report('Generating default pyi: %s module %s', module.kind, module.name)
       action = Action.GENERATE_DEFAULT
+      report('%s: %s module %s', action, module.kind, module.name)
     return action
 
   def yield_sorted_modules(self):
@@ -223,30 +178,112 @@ class PytypeRunner(object):
         if action:
           modules.append((module, action))
       if len(modules) == 1:
-        yield modules[0]
+        yield modules[0] + (Stage.SINGLE_PASS,)
       else:
         # If we have a cycle we run pytype over the files twice, ignoring errors
         # the first time so that we don't fail on missing dependencies.
         for module, action in modules:
           if action == Action.CHECK:
             action = Action.INFER
-          yield module, action
+          yield module, action, Stage.FIRST_PASS
         for module, action in modules:
           # We don't need to run generate_default twice
           if action != Action.GENERATE_DEFAULT:
-            yield module, action
+            yield module, action, Stage.SECOND_PASS
+
+  def write_ninja_preamble(self):
+    """Write out the pytype-single commands that the build will call."""
+    with open(self.ninja_file, 'w') as f:
+      for action, report_errors in ((Action.INFER, False),
+                                    (Action.CHECK, True)):
+        command = ' '.join(
+            self.get_pytype_command_for_ninja(report_errors=report_errors))
+        logging.info('%s command: %s', action, command)
+        f.write('rule %s\n  command = %s\n' % (action, command))
+
+  def write_build_statement(self, module, action, deps, output_dir=None,
+                            additional_pythonpath_dir=None):
+    """Write a build statement for the given module.
+
+    Args:
+      module: A module_utils.Module object.
+      action: An Action object.
+      deps: The module's dependencies.
+      output_dir: Optionally, the output dir. Defaults to pytype_output/pyi/.
+      additional_pythonpath_dir: Optionally, a dir in which to look for previous
+        output, in addition to pytype_output/pyi/.
+
+    Returns:
+      The expected output of the build statement.
+    """
+    output_dir = output_dir or self.pyi_dir
+    output = self._output_file(module, output_dir)
+    pythonpath_dirs = [self.pyi_dir]
+    if additional_pythonpath_dir:
+      pythonpath_dirs.append(additional_pythonpath_dir)
+    logging.info('%s %s\n  pythonpath: %s\n  deps: %s\n  output: %s',
+                 action, module.name, pythonpath_dirs, deps, output)
+    with open(self.ninja_file, 'a') as f:
+      f.write('build {output}: {action} {input}{deps}\n'
+              '  pythonpath = {pythonpath}\n'
+              '  module = {module}\n'.format(
+                  output=output,
+                  action=action,
+                  input=module.full_path,
+                  deps=' | ' + ' '.join(deps) if deps else '',
+                  pythonpath=':'.join(pythonpath_dirs),
+                  module=module.name))
+    return output
+
+  def setup_build(self):
+    """Write out the full build.ninja file.
+
+    Returns:
+      All files with build statements.
+    """
+    self.write_ninja_preamble()
+    files = set()  # all files with build statements
+    deps = set()  # the dependencies for the next module
+    for module, action, stage in self.yield_sorted_modules():
+      if files >= self.filenames:
+        logging.info('skipped: %s %s (%s)', action, module.name, stage)
+        continue
+      if action == Action.GENERATE_DEFAULT:
+        # TODO(rechen): generating default pyis here breaks the separation
+        # between staging and execution. We should either generate these files
+        # during the ninja build or map them all to one canonical file.
+        self.generate_default_pyi(module)
+        continue
+      if stage == Stage.SINGLE_PASS:
+        files.add(module.full_path)
+        output_dir = additional_pythonpath_dir = None
+      elif stage == Stage.FIRST_PASS:
+        output_dir = self.pyi_1_dir
+        additional_pythonpath_dir = None
+      else:
+        assert stage == Stage.SECOND_PASS
+        files.add(module.full_path)
+        output_dir = None
+        additional_pythonpath_dir = self.pyi_1_dir
+      # TODO(rechen): Get more precise dependency information from the import
+      # graph, to allow build parallelization.
+      deps = {self.write_build_statement(
+          module, action, deps, output_dir, additional_pythonpath_dir)}
+    return files
+
+  def build(self):
+    """Execute the build.ninja file."""
+    # -k N     keep going until N jobs fail (0 means infinity)
+    # -C DIR   change to DIR before doing anything else
+    # TODO(rechen): The user should be able to customize -k.
+    return subprocess.call(
+        ['ninja', '-k', '0', '-C', os.path.dirname(self.ninja_file)])
 
   def run(self):
     """Run pytype over the project."""
     logging.info('------------- Starting pytype run. -------------')
-    modules = list(self.yield_sorted_modules())
-    files_to_analyze = {m.full_path for m, _ in modules}
+    files_to_analyze = self.setup_build()
     num_sources = len(self.filenames & files_to_analyze)
     print('Analyzing %d sources with %d dependencies' %
           (num_sources, len(files_to_analyze) - num_sources))
-    # set ret = 1 if any invocation of process_module returns an error.
-    ret = 0
-    for module, action in modules:
-      status = self.process_module(module, action)
-      ret = ret or status
-    return ret
+    return self.build()
