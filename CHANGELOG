@@ -1,0 +1,5 @@
+Version (upcoming)
+* Generate a build.ninja file and call pytype-single via ninja.
+
+Version 2018.10.30
+* Improve the display of tracebacks in error messages.
