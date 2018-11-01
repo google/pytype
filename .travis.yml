@@ -42,10 +42,3 @@ install:
   - pip install six
 
 script: python build_scripts/travis_script.py
-
-notifications:
-  email:
-    recipients:
-      - pytype@googlegroups.com
-    on_success: change
-    on_failure: always
