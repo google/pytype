@@ -33,3 +33,4 @@ py_test(
 
 add_subdirectory(analyze_project)
 add_subdirectory(merge_pyi)
+add_subdirectory(pyi_checker)
