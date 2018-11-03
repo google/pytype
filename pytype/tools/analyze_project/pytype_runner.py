@@ -162,8 +162,6 @@ class PytypeRunner(object):
       report('skipped: non-Python file %s', f)
       return None
     # For builtin and system files, do not attempt to generate a pyi.
-    # TODO(rechen): We can skip files in the dependencies of other builtin or
-    # system files.
     if module.kind in ('Builtin', 'System'):
       action = Action.GENERATE_DEFAULT
       report('%s: %s module %s', action, module.kind, module.name)

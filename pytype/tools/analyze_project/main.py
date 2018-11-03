@@ -72,7 +72,8 @@ def main():
   typeshed = environment.initialize_typeshed_or_die()
   env = analyze_project_env.create_importlab_environment(conf, typeshed)
   try:
-    import_graph = importlab.graph.ImportGraph.create(env, conf.inputs)
+    import_graph = importlab.graph.ImportGraph.create(
+        env, conf.inputs, trim=True)
   except Exception as e:  # pylint: disable=broad-except
     logging.critical('Cannot parse input files:\n%s', str(e))
     sys.exit(1)
@@ -90,8 +91,6 @@ def main():
 
   # Main usage mode: analyze the project file by file in dependency order.
 
-  # TODO(rechen): builtin and system files are currently included as sources in
-  # the tree, which generates a lot of noise.
   logging.info('Source tree:\n%s',
                importlab.output.formatted_deps_list(import_graph))
   if os.path.exists(conf.output):
