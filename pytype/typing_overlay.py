@@ -662,7 +662,9 @@ class Generic(TypingContainer):
 
     # `self.base_cls.template` will change each time, it is used to initialize
     # the template in ParameterizedClass.
-    self.base_cls.template = tuple(inner)
+    tp = [param.with_module(self.base_cls.full_name) for param in inner]
+    self.base_cls._template = tp  # pylint: disable=protected-access
+
     return template, inner, abstract.ParameterizedClass
 
 

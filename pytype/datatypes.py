@@ -252,13 +252,13 @@ class AliasingDict(dict):
   def __hash__(self):
     return hash(frozenset(self.items()))
 
-  def get(self, name):
+  def get(self, name, default=None):
     # We reimplement get() because the builtin implementation doesn't play
     # nicely with aliasing.
     try:
       return self[name]
     except KeyError:
-      return None
+      return default
 
   def clear(self):
     raise NotImplementedError()

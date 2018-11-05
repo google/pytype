@@ -548,7 +548,7 @@ class PYITest(test_base.TargetIndependentTest):
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
-        v = ...  # type: ?
+        v = ...  # type: foo.Foo
       """)
 
   def testTypeParamInMutation(self):

@@ -466,10 +466,10 @@ class PyTDTest(AbstractTestBase):
     instance.merge_type_parameter(
         self._vm.root_cfg_node, abstract.T, self._vm.program.NewVariable(
             [self._vm.convert.unsolvable], [], self._vm.root_cfg_node))
-    param_binding = instance.type_parameters[abstract.T].AddBinding(
+    param_binding = instance.get_instance_type_parameter(abstract.T).AddBinding(
         self._vm.convert.primitive_class_instances[int], [],
         self._vm.root_cfg_node)
-    view = {instance.type_parameters[abstract.T]: param_binding}
+    view = {instance.get_instance_type_parameter(abstract.T): param_binding}
     pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
     self.assertEqual("__builtin__.list", pytd_type.base_type.name)
     self.assertSetEqual({"__builtin__.int"},
@@ -1456,9 +1456,11 @@ class GetViewsTest(AbstractTestBase):
         [self._vm.convert.int_type, self._vm.convert.str_type], [],
         self._vm.root_cfg_node)
     views = list(abstract.get_views([v1, v2], self._vm.root_cfg_node))
-    six.assertCountEqual(
-        self, views, [{v1: v1.bindings[0], v2: v2.bindings[0]},
-                      {v1: v1.bindings[0], v2: v2.bindings[1]}])
+    six.assertCountEqual(self,
+                         [{v1: views[0][v1], v2: views[0][v2]},
+                          {v1: views[1][v1], v2: views[1][v2]}],
+                         [{v1: v1.bindings[0], v2: v2.bindings[0]},
+                          {v1: v1.bindings[0], v2: v2.bindings[1]}])
 
   def _test_optimized(self, skip_future_value, expected_num_views):
     v1 = self._vm.program.NewVariable(

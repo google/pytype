@@ -171,6 +171,15 @@ class DatatypesTest(unittest.TestCase):
     for i in range(1, 9):
       self.assertEqual(d["alias" + str(i)], "1234")
 
+  def testAliasingDictGet(self):
+    d = datatypes.AliasingDict()
+    d["alias1"] = "1"
+    d.add_alias("alias1", "alias2")
+    self.assertEqual(d.get("alias1"), "1")
+    self.assertEqual(d.get("alias2"), "1")
+    self.assertEqual(d.get("alias3", "2"), "2")
+    self.assertEqual(d.get("alias3"), None)
+
   def testAddAliasForAliasingMonitorDict(self):
     d = datatypes.AliasingMonitorDict()
     d["alias1"] = "1"

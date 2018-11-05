@@ -182,9 +182,6 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
        class InnerClass1(Iterator[T]):
          pass
 
-       class InnerClass2(Generic[T]):
-         pass
-
      class A(Generic[T]):
        class B(Generic[S]):
          class C(Generic[T]):
@@ -192,8 +189,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorLogIs(errors, [
         (6, "invalid-annotation", r"MyClass.*InnerClass1.*T"),
-        (6, "invalid-annotation", r"MyClass.*InnerClass2.*T"),
-        (19, "invalid-annotation", r"A.*C.*T")])
+        (16, "invalid-annotation", r"A.*C.*T")])
 
   def testSignatureTypeParam(self):
     _, errors = self.InferWithErrors("""\
@@ -227,7 +223,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       from typing import TypeVar, Generic
 
       S = TypeVar('S')
-      T = TypeVar('T', int, str)
+      T = TypeVar('T')
       U = TypeVar('U')
       V = TypeVar('V')
 
@@ -267,7 +263,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       z = ...  # type: C[nothing, nothing]
 
       S = TypeVar('S')
-      T = TypeVar('T', int, str)
+      T = TypeVar('T')
       U = TypeVar('U')
       V = TypeVar('V')
 
@@ -340,6 +336,187 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
         a = ...  # type: module
         b = ...  # type: a.A[int]
       """)
+
+  def testFuncMatchForInterpreterClassError(self):
+    _, errors = self.InferWithErrors("""\
+      from typing import TypeVar, Generic
+
+      T1 = TypeVar('T1')
+      S1 = TypeVar('S1')
+      T2 = TypeVar('T2')
+      S2 = TypeVar('S2')
+      T = TypeVar('T')
+      S = TypeVar('S')
+
+      class A(Generic[T1, S1]):
+        def fun1(self, x: T1, y: S1):
+            pass
+
+      class B(Generic[T2, S2]):
+        def fun2(self, x: T2, y: S2):
+            pass
+
+      class C(Generic[T, S], A[T, S], B[T, S]):
+        def fun3(self, x: T, y: S):
+            pass
+
+      o = C[int, int]()
+      o.fun1("5", "5")
+      o.fun2("5", "5")
+      o.fun3("5", "5")
+    """)
+    self.assertErrorLogIs(errors, [
+        (23, "wrong-arg-types", r"int.*str"),
+        (24, "wrong-arg-types", r"int.*str"),
+        (25, "wrong-arg-types", r"int.*str")])
+
+  def testFuncMatchForPytdClassError(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import TypeVar, Generic
+
+        T1 = TypeVar('T1')
+        S1 = TypeVar('S1')
+        T2 = TypeVar('T2')
+        S2 = TypeVar('S2')
+        T = TypeVar('T')
+        S = TypeVar('S')
+
+        class A(Generic[T1, S1]):
+          def fun1(self, x: T1, y: S1): ...
+
+        class B(Generic[T2, S2]):
+          def fun2(self, x: T2, y: S2): ...
+
+        class C(A[T, S], B[T, S], Generic[T, S]):
+          def fun3(self, x: T, y: S): ...
+      """)
+      _, errors = self.InferWithErrors("""\
+        import a
+
+        o = a.C[int, int]()
+
+        o.fun1("5", "5")
+        o.fun2("5", "5")
+        o.fun3("5", "5")
+      """, deep=True, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [
+          (5, "wrong-arg-types", r"int.*str"),
+          (6, "wrong-arg-types", r"int.*str"),
+          (7, "wrong-arg-types", r"int.*str")])
+
+  def testTypeRenamingError(self):
+    _, errors = self.InferWithErrors("""\
+      from typing import Generic, TypeVar
+
+      T = TypeVar('T', int, float)
+      V = TypeVar('V')
+      S = TypeVar('S')
+      U = TypeVar('U', bound=int)
+      W = TypeVar('W')
+
+      class A(Generic[T]): pass
+      class B(A[V]): pass
+
+      class C(Generic[V]): pass
+      class D(C[T]): pass
+      class E(D[S]): pass
+
+      class F(Generic[U]): pass
+      class G(F[W]): pass
+    """)
+    self.assertErrorLogIs(errors, [
+        (10, "not-supported-yet", r"Renaming TypeVar `T`.*"),
+        (14, "not-supported-yet", r"Renaming TypeVar `T`.*"),
+        (17, "not-supported-yet", r"Renaming TypeVar `U`.*")])
+
+  def testTypeParameterConflictError(self):
+    ty, errors = self.InferWithErrors("""\
+      from typing import Generic, TypeVar
+
+      T = TypeVar('T')
+      V = TypeVar('V')
+      S = TypeVar('S')
+      U = TypeVar('U')
+
+      class A(Generic[T]): pass
+      class B(A[V]): pass
+
+      class D(B[S], A[U]): pass
+      class E(D[int, str]): pass
+
+      d = D[int, str]()
+      e = E()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Generic, TypeVar
+
+      d = ...  # type: Any
+      e = ...  # type: E
+
+      S = TypeVar('S')
+      T = TypeVar('T')
+      U = TypeVar('U')
+      V = TypeVar('V')
+
+      class A(Generic[T]):
+          pass
+
+      class B(A[V]):
+          pass
+
+      class D(B[S], A[U]):
+          pass
+
+      class E(Any):
+          pass
+     """)
+    self.assertErrorLogIs(errors, [
+        (12, "invalid-annotation", r"Conflicting value for TypeVar"),
+        (14, "invalid-annotation", r"Conflicting value for TypeVar")])
+
+  def testUnboundTypeParameterError(self):
+    _, errors = self.InferWithErrors("""\
+      from typing import Generic, TypeVar
+
+      T = TypeVar('T')
+      U = TypeVar('U')
+
+      class A(Generic[T]): pass
+      class B(A): pass
+      class D(B, A[U]): pass
+    """)
+    self.assertErrorLogIs(errors, [
+        (8, "invalid-annotation", r"Conflicting value for TypeVar D.U")])
+
+  def testSelfTypeParameter(self):
+    # The purpose is to verify there is no infinite recursion
+    with file_utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import Sequence, Typing, Generic
+
+        AT = TypeVar("AT", bound=A)
+        BT = TypeVar("BT", bound=B)
+        CT = TypeVar("CT", bound=C)
+        T = TypeVar("T")
+
+        class A(Sequence[AT]): ...
+        class B(A, Sequence[BT]): ...
+        class C(B, Sequence[CT]): ...
+
+        class D(Sequence[D]): ...
+        class E(D, Sequence[E]): ...
+        class F(E, Sequence[F]): ...
+
+        class G(Sequence[G[int]], Generic[T]): ...
+      """)
+      self.Check("""
+        import a
+
+        c = a.C()
+        f = a.F()
+        g = a.G[int]()
+      """, pythonpath=[d.path])
 
 
 class GenericFeatureTest(test_base.TargetPython3FeatureTest):

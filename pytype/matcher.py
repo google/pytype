@@ -49,7 +49,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     yield
     self._protocol_cache = old_protocol_cache
 
-  def compute_subst(self, node, formal_args, arg_dict, view):
+  def compute_subst(self, node, formal_args, arg_dict, view, alias_map=None):
     """Compute information about type parameters using one-way unification.
 
     Given the arguments of a function call, try to find a substitution that
@@ -60,6 +60,9 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       formal_args: An iterable of (name, value) pairs of formal arguments.
       arg_dict: A map of strings to pytd.Bindings instances.
       view: A mapping of Variable to Value.
+      alias_map: Optionally, a datatypes.UnionFind, which stores all the type
+        renaming information, mapping of type parameter name to its
+        representative.
     Returns:
       A tuple (subst, name), with "subst" the datatypes.HashableDict if we found
       a working substition, None otherwise, and "name" the bad parameter in case
@@ -68,8 +71,10 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     if not arg_dict:
       # A call with no arguments always succeeds.
       assert not formal_args
-      return datatypes.HashableDict(), None
+      return datatypes.AliasingDict(), None
     subst = datatypes.AliasingDict()
+    if alias_map:
+      subst.uf = alias_map
     self._set_error_subst(None)
     for name, formal in formal_args:
       actual = arg_dict[name]
@@ -155,7 +160,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           view[var], other_type, subst, node, view)
     else:  # Empty set of values. The "nothing" type.
       if isinstance(other_type, abstract.TupleClass):
-        other_type = other_type.type_parameters[abstract.T]
+        other_type = other_type.get_formal_type_parameter(abstract.T)
       if isinstance(other_type, abstract.Union):
         right_side_options = other_type.options
       else:
@@ -164,9 +169,9 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         if isinstance(right, abstract.TypeParameter):
           # If we have a union like "K or V" and we match both against
           # nothing, that will fill in both K and V.
-          if right.name not in subst:
+          if right.full_name not in subst:
             subst = subst.copy()
-            subst[right.name] = var.program.NewVariable()
+            subst[right.full_name] = var.program.NewVariable()
       # If this type is empty, we can match it against anything.
       return subst
 
@@ -224,7 +229,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         if new_subst is not None:
           subst = new_subst.copy()
           # TODO(kramm): Can we put in something more precise?
-          subst[other_type.name] = node.program.NewVariable([], [], node)
+          subst[other_type.full_name] = node.program.NewVariable([], [], node)
           return subst
         else:
           # Keep the type parameter names in the expected types.
@@ -277,14 +282,14 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         new_subst = self._match_value_against_type(
             value, other_type.bound, subst, node, view)
         if new_subst is None:
-          new_subst = {other_type.name:
+          new_subst = {other_type.full_name:
                        self.vm.annotations_util.instantiate_for_sub(
                            node, other_type.bound)}
           self._set_error_subst(self._merge_substs(subst, [new_subst]))
           return None
-      if other_type.name in subst:
+      if other_type.full_name in subst:
         # Merge the two variables.
-        new_var = subst[other_type.name].AssignToNewVariable(node)
+        new_var = subst[other_type.full_name].AssignToNewVariable(node)
         new_var.AddBinding(left, [], node)
       else:
         new_left = self.vm.convert.get_maybe_abstract_instance(left)
@@ -307,7 +312,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         self._set_error_subst(subst)
         return None
       subst = subst.copy()
-      subst[other_type.name] = new_var
+      subst[other_type.full_name] = new_var
       return subst
     elif (isinstance(other_type, (abstract.Unknown, abstract.Unsolvable)) or
           isinstance(left, (abstract.Unknown, abstract.Unsolvable))):
@@ -347,11 +352,11 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     elif isinstance(left, abstract.Class):
       if (other_type.full_name == "__builtin__.type" and
           isinstance(other_type, abstract.ParameterizedClass)):
-        other_type = other_type.type_parameters[abstract.T]
+        other_type = other_type.get_formal_type_parameter(abstract.T)
         return self._instantiate_and_match(left, other_type, subst, node, view)
       elif (other_type.full_name == "typing.Callable" and
             isinstance(other_type, abstract.ParameterizedClass)):
-        other_type = other_type.type_parameters[abstract.RET]
+        other_type = other_type.get_formal_type_parameter(abstract.RET)
         return self._instantiate_and_match(left, other_type, subst, node, view)
       elif other_type.full_name in [
           "__builtin__.type", "__builtin__.object", "typing.Callable"]:
@@ -415,7 +420,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
                                 (type(left), type(other_type)))
 
   def _mutate_type_parameters(self, params, value, subst, node):
-    new_subst = {p.name: value.to_variable(node) for p in params}
+    new_subst = {p.full_name: value.to_variable(node) for p in params}
     return self._merge_substs(subst, [new_subst])
 
   def _match_signature_against_callable(
@@ -423,8 +428,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     """Match a function.Signature against a parameterized callable."""
     ret_type = sig.annotations.get("return", self.vm.convert.unsolvable)
     subst = self._instantiate_and_match(
-        ret_type, other_type.type_parameters[abstract.RET], subst, node, view,
-        container=sig)
+        ret_type, other_type.get_formal_type_parameter(abstract.RET),
+        subst, node, view, container=sig)
     if subst is None:
       return subst
     if not isinstance(other_type, abstract.Callable):
@@ -525,16 +530,16 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         assert left is other_type.base_cls
         left = other_type
       for type_param in left.template:
-        class_param = other_type.type_parameters[type_param.name]
+        class_param = other_type.get_formal_type_parameter(type_param.name)
         instance_param = instance.get_instance_type_parameter(
-            node, type_param.name)
-        instance_type_param = left.type_parameters[type_param.name]
+            type_param.full_name, node)
+        instance_type_param = left.get_formal_type_parameter(type_param.name)
         if (not instance_param.bindings and isinstance(
             instance_type_param, abstract.TypeParameter) and
             instance_type_param.name != type_param.name):
           # This type parameter was renamed!
           instance_param = instance.get_instance_type_parameter(
-              node, instance_type_param.name)
+              type_param.full_name, node)
         if instance_param.bindings and instance_param not in view:
           binding, = instance_param.bindings
           assert isinstance(binding.data, abstract.Unsolvable)
@@ -562,7 +567,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         else:
           return None
       elif isinstance(other_type, abstract.ParameterizedClass):
-        class_param = other_type.type_parameters[abstract.T]
+        class_param = other_type.get_formal_type_parameter(abstract.T)
         # If we merge in the new substitution results prematurely, then we'll
         # accidentally trigger _enforce_common_superclass.
         new_substs = []
@@ -584,7 +589,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     else:
       assert isinstance(other_type, abstract.TupleClass)
       if isinstance(instance, abstract.SimpleAbstractValue):
-        instance_param = instance.type_parameters[abstract.T]
+        instance_param = instance.get_instance_type_parameter(abstract.T, node)
         for i in range(other_type.tuple_length):
           class_param = other_type.type_parameters[i]
           subst = self.match_var_against_type(
@@ -600,8 +605,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         not isinstance(other_type, abstract.ParameterizedClass)):
       return subst
     subst = self.match_var_against_type(
-        instance.get_instance_type_parameter(node, abstract.RET),
-        other_type.type_parameters[abstract.RET], subst, node, view)
+        instance.get_instance_type_parameter(abstract.RET, node),
+        other_type.get_formal_type_parameter(abstract.RET), subst, node, view)
     if subst is None:
       return None
     if (not isinstance(left, abstract.Callable) or
@@ -763,7 +768,6 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     Returns:
       A new type parameter assignment if the matching succeeded, None otherwise.
     """
-    params = other_type.type_parameters
     new_substs = []
     for name in other_type.abstract_methods:
       abstract_method = other_type.get_method(name)
@@ -778,9 +782,12 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         if isinstance(callable_signature, abstract.Callable):
           # Prevent the matcher from trying to enforce contravariance on 'self'.
           callable_signature.type_parameters[0] = self.vm.convert.unsolvable
-        annotation_subst = {
-            param: self.vm.annotations_util.instantiate_for_sub(node, value)
-            for (param, value) in params.items()}
+        annotation_subst = datatypes.AliasingDict()
+        if isinstance(other_type.base_cls, abstract.Class):
+          annotation_subst.uf = other_type.base_cls.name2types.uf
+        for (param, value) in other_type.get_type_parameters().items():
+          annotation_subst[param] = (self.vm.annotations_util.
+                                     instantiate_for_sub(node, value))
         annotated_callable = self.vm.annotations_util.sub_one_annotation(
             node, callable_signature, [annotation_subst])
         if isinstance(matching_left_method, pytd.Function):
