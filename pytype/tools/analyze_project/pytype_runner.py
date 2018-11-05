@@ -9,9 +9,10 @@ import subprocess
 from pytype import file_utils
 from pytype import module_utils
 from pytype.tools.analyze_project import config
+import six
 
 
-# Generate a default pyi for dependencies not in the pythonpath.
+# Generate a default pyi for builtin and system dependencies.
 DEFAULT_PYI = """
 from typing import Any
 def __getattr__(name) -> Any: ...
@@ -30,6 +31,19 @@ class Stage(object):
   SECOND_PASS = 'second pass'
 
 
+def resolved_file_to_module(f):
+  """Turn an importlab ResolvedFile into a pytype Module."""
+  full_path = f.path
+  target = f.short_path
+  path = full_path[:-len(target)]
+  name = f.module_name
+  # We want to preserve __init__ in the module_name for pytype.
+  if os.path.basename(full_path) == '__init__.py':
+    name += '.__init__'
+  return module_utils.Module(
+      path=path, target=target, name=name, kind=f.__class__.__name__)
+
+
 def deps_from_import_graph(import_graph):
   """Construct PytypeRunner args from an importlab.ImportGraph instance.
 
@@ -40,20 +54,21 @@ def deps_from_import_graph(import_graph):
     import_graph: An importlab.ImportGraph instance.
 
   Returns:
-    A list of lists of source modules in dependency order.
+    List of (tuple of source modules, tuple of direct deps) in dependency order.
   """
-  def make_module(mod):
-    full_path = mod.path
-    target = mod.short_path
-    path = full_path[:-len(target)]
-    name = mod.module_name
-    # We want to preserve __init__ in the module_name for pytype.
-    if os.path.basename(full_path) == '__init__.py':
-      name += '.__init__'
-    return module_utils.Module(
-        path=path, target=target, name=name, kind=mod.__class__.__name__)
-  return [[make_module(import_graph.provenance[f]) for f in files]
-          for files in import_graph.sorted_source_files()]
+  def get_filenames(node):
+    return (node,) if isinstance(node, six.string_types) else tuple(node.nodes)
+  def make_module(filename):
+    return resolved_file_to_module(import_graph.provenance[filename])
+  modules = []
+  for node, deps in reversed(import_graph.deps_list()):
+    files = tuple(make_module(f) for f in get_filenames(node))
+    # flatten and dedup
+    seen = set()
+    deps = tuple(make_module(d) for dep in deps for d in get_filenames(dep)
+                 if d not in seen and not seen.add(d))
+    modules.append((files, deps))
+  return modules
 
 
 def _module_to_output_path(mod):
@@ -76,8 +91,8 @@ class PytypeRunner(object):
 
   def __init__(self, conf, sorted_sources):
     self.filenames = set(conf.inputs)  # files to type-check
-    self.sorted_sources = sorted_sources  # all source modules
-    self.pythonpath = conf.pythonpath
+    # all source modules as a sequence of (module, direct_deps)
+    self.sorted_sources = sorted_sources
     self.python_version = conf.python_version
     self.pyi_dir = os.path.join(conf.output, 'pyi')
     # directory for first-pass pyi files, for cycle resolution
@@ -119,7 +134,6 @@ class PytypeRunner(object):
     return (
         [exe] +
         list(sum(flags_with_values.items(), ())) +
-        sum(([k, v] for k, v in flags_with_values.items()), []) +
         list(binary_flags) +
         ['$in']
     )
@@ -140,6 +154,7 @@ class PytypeRunner(object):
       return
     with open(output, 'w') as f:
       f.write(DEFAULT_PYI)
+    return output
 
   def get_module_action(self, module):
     """Get the action for the given module.
@@ -169,25 +184,29 @@ class PytypeRunner(object):
 
   def yield_sorted_modules(self):
     """Yield modules from our sorted source files."""
-    for group in self.sorted_sources:
+    for group, deps in self.sorted_sources:
       modules = []
       for module in group:
         action = self.get_module_action(module)
         if action:
           modules.append((module, action))
       if len(modules) == 1:
-        yield modules[0] + (Stage.SINGLE_PASS,)
+        yield modules[0] + (deps, Stage.SINGLE_PASS)
       else:
-        # If we have a cycle we run pytype over the files twice, ignoring errors
-        # the first time so that we don't fail on missing dependencies.
+        # If we have a cycle we run pytype over the files twice. So that we
+        # don't fail on missing dependencies, we'll ignore errors the first
+        # time and add the cycle itself to the dependencies the second time.
+        second_pass_deps = []
         for module, action in modules:
+          second_pass_deps.append(module)
           if action == Action.CHECK:
             action = Action.INFER
-          yield module, action, Stage.FIRST_PASS
+          yield module, action, deps, Stage.FIRST_PASS
+        deps += tuple(second_pass_deps)
         for module, action in modules:
           # We don't need to run generate_default twice
           if action != Action.GENERATE_DEFAULT:
-            yield module, action, Stage.SECOND_PASS
+            yield module, action, deps, Stage.SECOND_PASS
 
   def write_ninja_preamble(self):
     """Write out the pytype-single commands that the build will call."""
@@ -241,8 +260,8 @@ class PytypeRunner(object):
     """
     self.write_ninja_preamble()
     files = set()  # all files with build statements
-    deps = set()  # the dependencies for the next module
-    for module, action, stage in self.yield_sorted_modules():
+    module_to_output = {}  # mapping from module to expected output
+    for module, action, deps, stage in self.yield_sorted_modules():
       if files >= self.filenames:
         logging.info('skipped: %s %s (%s)', action, module.name, stage)
         continue
@@ -250,7 +269,7 @@ class PytypeRunner(object):
         # TODO(rechen): generating default pyis here breaks the separation
         # between staging and execution. We should either generate these files
         # during the ninja build or map them all to one canonical file.
-        self.generate_default_pyi(module)
+        module_to_output[module] = self.generate_default_pyi(module)
         continue
       if stage == Stage.SINGLE_PASS:
         files.add(module.full_path)
@@ -263,10 +282,9 @@ class PytypeRunner(object):
         files.add(module.full_path)
         output_dir = None
         additional_pythonpath_dir = self.pyi_1_dir
-      # TODO(rechen): Get more precise dependency information from the import
-      # graph, to allow build parallelization.
-      deps = {self.write_build_statement(
-          module, action, deps, output_dir, additional_pythonpath_dir)}
+      module_to_output[module] = self.write_build_statement(
+          module, action, tuple(module_to_output[m] for m in deps), output_dir,
+          additional_pythonpath_dir)
     return files
 
   def build(self):
