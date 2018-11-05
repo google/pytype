@@ -58,11 +58,11 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
   def sub_one_annotation(self, node, annot, substs, instantiate_unbound=True):
     """Apply type parameter substitutions to an annotation."""
     if isinstance(annot, abstract.TypeParameter):
-      if all(annot.name in subst and subst[annot.name].bindings and
+      if all(annot.full_name in subst and subst[annot.full_name].bindings and
              not any(isinstance(v, abstract.AMBIGUOUS_OR_EMPTY)
-                     for v in subst[annot.name].data)
+                     for v in subst[annot.full_name].data)
              for subst in substs):
-        vals = sum((subst[annot.name].data for subst in substs), [])
+        vals = sum((subst[annot.full_name].data for subst in substs), [])
       elif instantiate_unbound:
         vals = annot.instantiate(node).data
       else:
@@ -79,6 +79,40 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
                                               instantiate_unbound)
                       for o in annot.options)
       return type(annot)(options, self.vm)
+    return annot
+
+  def add_scope(self, annot, types, module):
+    """Add scope for type parameters.
+
+    In original type class, all type parameters that should be added a scope
+    will be replaced with a new copy.
+
+    Args:
+      annot: The type class.
+      types: A type name list that should be added a scope.
+      module: Module name.
+
+    Returns:
+      The type with fresh type parameters that have been added the scope.
+    """
+    if isinstance(annot, abstract.TypeParameter):
+      if annot.name in types:
+        new_annot = annot.copy()
+        new_annot.module = module
+        return new_annot
+      return annot
+    elif isinstance(annot, abstract.TupleClass):
+      annot.type_parameters[abstract.T] = self.add_scope(
+          annot.type_parameters[abstract.T], types, module)
+      return annot
+    elif isinstance(annot, abstract.ParameterizedClass):
+      for key, val in annot.type_parameters.items():
+        annot.type_parameters[key] = self.add_scope(val, types, module)
+      return annot
+    elif isinstance(annot, abstract.Union):
+      annot.options = tuple(self.add_scope(option, types, module)
+                            for option in annot.options)
+      return annot
     return annot
 
   def get_type_parameters(self, annot):

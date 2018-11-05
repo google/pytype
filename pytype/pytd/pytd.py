@@ -335,6 +335,10 @@ class TemplateItem(node.Node('type_param: TypeParameter')):
   def name(self):
     return self.type_param.name
 
+  @property
+  def full_name(self):
+    return self.type_param.full_name
+
 
 # Types can be:
 # 1.) NamedType:

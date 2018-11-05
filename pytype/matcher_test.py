@@ -380,7 +380,7 @@ class MatcherTest(unittest.TestCase):
     for result in self._match_var(left, right):
       six.assertCountEqual(self,
                            [(name, var.data) for name, var in result.items()],
-                           [("AnyStr", [left])])
+                           [("typing.AnyStr", [left])])
 
   def testProtocol(self):
     left1 = self._convert_type("str", as_instance=True)

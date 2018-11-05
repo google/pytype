@@ -1,5 +1,6 @@
 """Base class for module overlays."""
 from pytype import abstract
+from pytype import datatypes
 
 
 class Overlay(abstract.Module):
@@ -39,7 +40,7 @@ class Overlay(abstract.Module):
     """
     super(Overlay, self).__init__(vm, name, member_map, ast)
     self.real_module = vm.convert.constant_to_value(
-        ast, subst={}, node=vm.root_cfg_node)
+        ast, subst=datatypes.AliasingDict(), node=vm.root_cfg_node)
 
   def _convert_member(self, name, member):
     val = member(name, self.vm)
