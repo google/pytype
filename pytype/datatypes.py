@@ -3,42 +3,117 @@
 import itertools
 
 
-class HashableDict(dict):
-  """A dict subclass that can be hashed.
+class UnionFind(object):
+  r"""A disjoint-set data structure for `AliasingDict`.
 
-  Instances should not be modified. Methods that would modify the dictionary
-  have been overwritten to throw an exception.
+  This is used to record the alias information for `AliasingDict`. It is
+  consist of different components. Each component will contain the names
+  that represent the same thing.
+    E.g., for a five-node component/tree, the representative for all the
+    nodes in the component is `T`:
+       T          [T] The root node and representative
+      / \         [U] Its parent is `T`
+     U   V        [V] Its parent is `T`
+        / \       [W] Its parent is `V`
+       W   X      [X] Its parent is `V`
+  For performance consideration, we will compress the path each time when
+  we compute the representative of a node. E.g., if we try to get the
+  representative of node `W`, then the above tree will become:
+      T
+     /|\
+    U W V
+         \
+          X
+
+
+  Attributes:
+    name2id: mapping all names to unique id.
+    parent: the parent id of current unique id.
+    rank: the height of the tree for corresponding component, it is an
+    optimization to merge two components.
+    id2name: mapping unique id to corresponding names, the reverse map of
+    `name2id`.
+    latest_id: the maximal allocated id.
   """
 
-  def __init__(self, *args, **kwargs):
-    super(HashableDict, self).__init__(*args, **kwargs)
-    self._hash = hash(frozenset(self.items()))
+  def __init__(self):
+    self.name2id = {}
+    self.parent = []
+    self.rank = []
+    self.id2name = []
+    self.latest_id = 0
 
-  def update(self):
-    raise TypeError()
+  def copy(self):
+    res = UnionFind()
+    res.name2id = self.name2id.copy()
+    res.parent = list(self.parent)
+    res.rank = list(self.rank)
+    res.id2name = list(self.id2name)
+    res.latest_id = self.latest_id
+    return res
 
-  def clear(self):
-    raise TypeError()
+  def merge_from(self, uf):
+    """Merge a UnionFind into the current one."""
+    for i, name in enumerate(uf.id2name):
+      self.merge(name, uf.id2name[uf.parent[i]])
 
-  def pop(self):
-    raise TypeError()
+  def find_by_name(self, name):
+    """Find the representative of a component represented by given name."""
+    key = self._get_or_add_id(name)
+    return self.id2name[self._find(key)]
 
-  def popitem(self):
-    raise TypeError()
+  def merge(self, name1, name2):
+    """Merge two components represented by the given names."""
+    key1 = self._get_or_add_id(name1)
+    key2 = self._get_or_add_id(name2)
+    self._merge(key1, key2)
+    return self.find_by_name(name1)
 
-  def setdefault(self):
-    raise TypeError()
+  def _get_or_add_id(self, name):
+    if name not in self.name2id:
+      self.name2id[name] = self.latest_id
+      self.parent.append(self.latest_id)
+      self.rank.append(1)
+      self.id2name.append(name)
+      self.latest_id += 1
+    return self.name2id[name]
 
-  # pylint: disable=unexpected-special-method-signature
-  def __setitem__(self):
-    raise TypeError()
+  def _find(self, key):
+    """Find the tree root."""
+    assert self.latest_id > key
+    res = key
+    if self.parent[key] != key:
+      res = self._find(self.parent[key])
+      # Compress/Optimize the search path
+      self.parent[key] = res
+    return res
 
-  def __delitem__(self):
-    raise TypeError()
-  # pylint: enable=unexpected-special-method-signature
+  def _merge(self, k1, k2):
+    """Merge two components."""
+    assert self.latest_id > k1 and self.latest_id > k2
+    s1 = self._find(k1)
+    s2 = self._find(k2)
+    if s1 != s2:
+      if self.rank[s1] > self.rank[s2]:
+        self.parent[s2] = s1
+      elif self.rank[s1] < self.rank[s2]:
+        self.parent[s1] = s2
+      else:
+        self.parent[s1] = s2
+        self.rank[s2] += 1
 
-  def __hash__(self):
-    return self._hash
+  def __repr__(self):
+    comps = []
+    used = set()
+    for x in self.id2name:
+      if x not in used:
+        comp = []
+        for y in self.id2name:
+          if self.find_by_name(x) == self.find_by_name(y):
+            used.add(y)
+            comp.append(y)
+        comps.append(comp)
+    return "%r" % comps
 
 
 class AccessTrackingDict(dict):
@@ -79,7 +154,6 @@ class MonitorDict(dict):
     raise NotImplementedError
 
   def __setitem__(self, name, var):
-    assert not dict.__contains__(self, name)
     super(MonitorDict, self).__setitem__(name, var)
 
   @property
@@ -102,49 +176,81 @@ class AliasingDict(dict):
   """A dictionary that supports key aliasing.
 
   This dictionary provides a way to register aliases for a key, which are then
-  treated like the key itself by getters and setters. It does not allow using
-  a pre-existing key as an alias or adding the same alias to different keys. To
-  avoid surprising behavior, we raise NotImplementedError for all dict methods
-  not explicitly supported; supported methods are get(), values(), and items().
+  treated like the key itself by getters and setters. To avoid surprising
+  behavior, we raise NotImplementedError for all dict methods not explicitly
+  supported; supported methods are get(), values(), items(), copy() and keys().
   """
 
   def __init__(self, *args, **kwargs):
-    self._alias_map = {}
+    self._uf = UnionFind()
     super(AliasingDict, self).__init__(*args, **kwargs)
 
-  def add_alias(self, alias, name):
-    """Alias 'alias' to 'name'."""
-    assert alias not in self._alias_map.values()
-    new_name = self._alias_map.get(name, name)
-    existing_name = self._alias_map.get(alias, new_name)
-    if new_name != existing_name:
-      raise AliasingDictConflictError(existing_name)
-    if super(AliasingDict, self).__contains__(alias):
-      if new_name in self:
-        # The alias and the name it now points at both have values; we can't
-        # reconcile the two.
-        raise AliasingDictConflictError(new_name)
-      else:
-        # Move the alias's value to the name that the alias now points at.
-        self[new_name] = self[alias]
-        del self[alias]
-    self._alias_map[alias] = new_name
+  @property
+  def uf(self):
+    return self._uf
+
+  @uf.setter
+  def uf(self, uf):
+    self._uf = uf
+
+  def copy(self):
+    res = AliasingDict()
+    res.uf = self.uf.copy()
+    for k, v in self.items():
+      res[k] = v
+    return res
+
+  def add_alias(self, alias, name, op=None):
+    """Alias 'alias' to 'name'.
+
+    After aliasing, we will think `alias` and `name`, they represent the same
+    name. We will merge the values if `op` is provided.
+
+    Args:
+      alias: A string.
+      name: A string.
+      op: The function used to merge the values.
+    """
+    alias = self.uf.find_by_name(alias)
+    name = self.uf.find_by_name(name)
+    if alias == name:  # Already in one component
+      return
+    elif alias in self and name in self:
+      # Merge the values if `op` operator is provided
+      val = op(self[alias], self[name]) if op else self[alias]
+      del self[alias]
+      del self[name]
+      root = self.uf.merge(alias, name)
+      self[root] = val
+    elif alias not in self and name not in self:
+      self.uf.merge(alias, name)
+    elif alias in self:
+      root = self.uf.merge(alias, name)
+      self[root] = dict.__getitem__(self, alias)
+      if alias != root: dict.__delitem__(self, alias)
+    elif name in self:
+      root = self.uf.merge(alias, name)
+      self[root] = dict.__getitem__(self, name)
+      if name != root: dict.__delitem__(self, name)
+
+  def same_name(self, name1, name2):
+    return self.uf.find_by_name(name1) == self.uf.find_by_name(name2)
 
   def __contains__(self, name):
-    return super(AliasingDict, self).__contains__(
-        self._alias_map.get(name, name))
+    return super(AliasingDict, self).__contains__(self.uf.find_by_name(name))
 
   def __setitem__(self, name, var):
-    super(AliasingDict, self).__setitem__(
-        self._alias_map.get(name, name), var)
+    super(AliasingDict, self).__setitem__(self.uf.find_by_name(name), var)
 
   def __getitem__(self, name):
-    return super(AliasingDict, self).__getitem__(
-        self._alias_map.get(name, name))
+    return super(AliasingDict, self).__getitem__(self.uf.find_by_name(name))
 
   def __repr__(self):
-    return ("%r, _alias_map=%r" %
-            (super(AliasingDict, self).__repr__(), repr(self._alias_map)))
+    return ("%r, _alias=%r" %
+            (super(AliasingDict, self).__repr__(), repr(self.uf)))
+
+  def __hash__(self):
+    return hash(frozenset(self.items()))
 
   def get(self, name):
     # We reimplement get() because the builtin implementation doesn't play
@@ -155,9 +261,6 @@ class AliasingDict(dict):
       return None
 
   def clear(self):
-    raise NotImplementedError()
-
-  def copy(self):
     raise NotImplementedError()
 
   def fromkeys(self):
@@ -173,9 +276,6 @@ class AliasingDict(dict):
     raise NotImplementedError()
 
   def itervalues(self):
-    raise NotImplementedError()
-
-  def keys(self):
     raise NotImplementedError()
 
   def pop(self):
@@ -200,8 +300,103 @@ class AliasingDict(dict):
     raise NotImplementedError()
 
 
+class HashableDict(AliasingDict):
+  """A AliasingDict subclass that can be hashed.
+
+  Instances should not be modified. Methods that would modify the dictionary
+  have been overwritten to throw an exception.
+  """
+
+  def __init__(self, alias_dict=None):
+    if alias_dict:
+      super(HashableDict, self).__init__(alias_dict)
+      self.uf = alias_dict.uf
+    else:
+      super(HashableDict, self).__init__()
+    self._hash = hash(frozenset(self.items()))
+
+  def update(self):
+    raise TypeError()
+
+  def clear(self):
+    raise TypeError()
+
+  def pop(self):
+    raise TypeError()
+
+  def popitem(self):
+    raise TypeError()
+
+  def setdefault(self):
+    raise TypeError()
+
+  # pylint: disable=unexpected-special-method-signature
+  def __setitem__(self):
+    raise TypeError()
+
+  def __delitem__(self):
+    raise TypeError()
+  # pylint: enable=unexpected-special-method-signature
+
+  def __hash__(self):
+    return self._hash
+
+
 class AliasingMonitorDict(AliasingDict, MonitorDict):
-  pass
+  """The dictionary that supports aliasing, lazy dict and monitor."""
+
+  def merge_from(self, lam_dict):
+    """Merge the other `AliasingMonitorDict` into current class."""
+    # Merge from dict
+    for key, val in lam_dict.items():
+      if key in self and self[key] != val:
+        raise AliasingDictConflictError(key)
+      else:
+        self[key] = val
+    # Merge the aliasing info
+    for cur_id in range(lam_dict.uf.latest_id):
+      parent_id = lam_dict.uf.parent[cur_id]
+      cur_name = lam_dict.uf.id2name[cur_id]
+      parent_name = lam_dict.uf.id2name[parent_id]
+      if self.uf.find_by_name(cur_name) != self.uf.find_by_name(parent_name):
+        self.add_alias(cur_name, parent_name)
+
+  def _equal_merge(self, name1, name2):
+    """Merge if the values for name1 and name2 are equal."""
+    name1 = self.uf.find_by_name(name1)
+    name2 = self.uf.find_by_name(name2)
+    assert name1 != name2
+    if self[name1] == self[name2]:
+      dict.__delitem__(self, name2)
+      root = self.uf.merge(name1, name2)
+      self._copy_item(name1, root)
+      return True
+    else:
+      return False
+
+  def _copy_item(self, src, tgt):
+    """Assign the dict `src` value to `tgt`."""
+    if src == tgt:
+      return
+    self[tgt] = dict.__getitem__(self, src)
+    dict.__delitem__(self, src)
+
+  def add_alias(self, alias, name):
+    alias = self.uf.find_by_name(alias)
+    name = self.uf.find_by_name(name)
+    if alias == name:
+      return
+    elif alias in self and name in self:
+      if not self._equal_merge(alias, name):
+        raise AliasingDictConflictError(name)
+    elif alias not in self and name not in self:
+      self.uf.merge(alias, name)
+    elif alias in self:
+      root = self.uf.merge(alias, name)
+      self._copy_item(alias, root)
+    elif name in self:
+      root = self.uf.merge(alias, name)
+      self._copy_item(name, root)
 
 
 # Based on https://docs.python.org/3/library/types.html#types.SimpleNamespace

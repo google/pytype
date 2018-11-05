@@ -69,7 +69,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       # A call with no arguments always succeeds.
       assert not formal_args
       return datatypes.HashableDict(), None
-    subst = {}
+    subst = datatypes.AliasingDict()
     self._set_error_subst(None)
     for name, formal in formal_args:
       actual = arg_dict[name]

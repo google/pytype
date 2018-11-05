@@ -2176,7 +2176,7 @@ class VerifyContainers(Visitor):
         #   class MyList(List[U]): ...
         #   class List(Sequence[T]): ...
         # Register the alias. May raise AliasingDictConflictError.
-        mapping.add_alias(param_name, value.full_name)
+        mapping.add_alias(param_name, value.full_name, set.union)
         return
       # A bare container type has been subclassed - for example, in
       # `class Foo(tuple): ...`, typing.Tuple._T points to
@@ -2188,6 +2188,35 @@ class VerifyContainers(Visitor):
     if param_name not in mapping:
       mapping[param_name] = set()
     mapping[param_name].add(value)
+
+  def _TypeCompatibilityCheck(self, type_params):
+    """Check if the types are compatible.
+
+    It is used to handle the case:
+      class A(Sequence[A]): pass
+      class B(A, Sequence[B]): pass
+      class C(B, Sequence[C]): pass
+    In class `C`, the type parameter `_T` of Sequence could be `A`, `B` or `C`.
+    Next we will check they have a linear inheritance relationship:
+    `A` -> `B` -> `C`.
+
+    Args:
+      type_params: The class type list.
+
+    Returns:
+      True if all the types are comatible.
+    """
+    assert isinstance(type_params, set)
+    if not all(isinstance(t, pytd.ClassType) for t in type_params):
+      return False
+    mro_list = [set(mro.GetBasesInMRO(t.cls)) for t in type_params]
+    mro_list.sort(key=len)
+    prev = set()
+    for cur in mro_list:
+      if not cur.issuperset(prev):
+        return False
+      prev = cur
+    return True
 
   def EnterClass(self, node):
     """Check for conflicting type parameter values in the class's bases."""
@@ -2216,14 +2245,16 @@ class VerifyContainers(Visitor):
         # positive, since a conflicting value assigned through an ambiguous
         # alias could have been meant for a different type parameter.
         continue
-      elif len(values) > 1:
+      elif len(values) > 1 and not self._TypeCompatibilityCheck(values):
         raise ContainerError(
             "Conflicting values for TypeVar %s: %s" % (
                 param_name, ", ".join(str(v) for v in values)))
-      elif any(t.type_param.full_name == param_name for t in node.template):
-        value, = values
+    for t in node.template:
+      if t.type_param.full_name in param_to_values:
+        value, = param_to_values[t.type_param.full_name]
         raise ContainerError(
-            "Conflicting value %s for TypeVar %s" % (value, param_name))
+            "Conflicting value %s for TypeVar %s" % (value,
+                                                     t.type_param.full_name))
 
 
 class ExpandCompatibleBuiltins(Visitor):
