@@ -830,8 +830,8 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     ast.Visit(visitors.VerifyContainers())
 
-  def testTypeVarValueNoConflictAmbiguousAlias(self):
-    # No conflict due to T1 being aliased to two different type parameters.
+  def testTypeVarValueConsistency(self):
+    # Type renaming makes all type parameters represent the same type `T1`.
     ast = self.ParseWithBuiltins("""
       from typing import Generic, TypeVar
       T1 = TypeVar("T1")
@@ -843,7 +843,7 @@ class TestVisitors(parser_test_base.ParserTest):
       class B1(A[T2]): ...
       class B2(A[T3]): ...
       class C(B1[T4], B2[T5]): ...
-      class D(C[int, str], A[str]): ...
+      class D(C[str, str], A[str]): ...
     """)
     ast.Visit(visitors.VerifyContainers())
 

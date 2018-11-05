@@ -90,14 +90,7 @@ class DatatypesTest(unittest.TestCase):
     d = datatypes.AliasingDict()
     d.add_alias("alias1", "name")
     d.add_alias("alias2", "name")
-    self.assertRaises(AssertionError,
-                      lambda: d.add_alias("name", "other_name"))
-    try:
-      d.add_alias("alias1", "other_name")
-    except datatypes.AliasingDictConflictError as e:
-      self.assertEqual(e.existing_name, "name")
-    else:
-      self.fail("AliasingDictConflictError not raised")
+
     d.add_alias("alias1", "name")
     d.add_alias("alias2", "alias1")
     d.add_alias("alias1", "alias2")
@@ -114,9 +107,13 @@ class DatatypesTest(unittest.TestCase):
     d.add_alias("alias", "name")
     d["name"] = "hello"
     d["name2"] = "world"
-    self.assertRaises(datatypes.AliasingDictConflictError,
-                      lambda: d.add_alias("name2", "name"))
-    d.add_alias("alias", "name")
+    self.assertEqual("hello", d["alias"])
+    self.assertEqual("hello", d["name"])
+    self.assertEqual("world", d["name2"])
+    d.add_alias("name", "name2", op=lambda x, y: x + " " + y)
+    self.assertEqual("hello world", d["name"])
+    self.assertEqual("hello world", d["name2"])
+    self.assertEqual("hello world", d["alias"])
 
   def testAliasingDictTransitive(self):
     d = datatypes.AliasingDict()
@@ -145,6 +142,88 @@ class DatatypesTest(unittest.TestCase):
     self.assertEqual(d["alias2"], d["name"])
     self.assertEqual(d["alias1"], d["alias2"])
 
+  def testAliasingDictWithUnionFind(self):
+    d = datatypes.AliasingDict()
+    d["alias1"] = "1"
+    d["alias3"] = "2"
+    d.add_alias("alias1", "alias2")
+    d.add_alias("alias4", "alias3")
+    self.assertEqual(d["alias1"], "1")
+    self.assertEqual(d["alias2"], "1")
+    self.assertEqual(d["alias3"], "2")
+    self.assertEqual(d["alias4"], "2")
+    d.add_alias("alias1", "alias3", str.__add__)
+    self.assertEqual(d["alias1"], "12")
+    self.assertEqual(d["alias2"], "12")
+    self.assertEqual(d["alias3"], "12")
+    self.assertEqual(d["alias4"], "12")
+
+    d["alias5"] = "34"
+    d.add_alias("alias5", "alias6")
+    d.add_alias("alias6", "alias7")
+    d.add_alias("alias7", "alias8")
+    self.assertEqual(d["alias5"], "34")
+    self.assertEqual(d["alias6"], "34")
+    self.assertEqual(d["alias7"], "34")
+    self.assertEqual(d["alias8"], "34")
+
+    d.add_alias("alias1", "alias8", str.__add__)
+    for i in range(1, 9):
+      self.assertEqual(d["alias" + str(i)], "1234")
+
+  def testAddAliasForAliasingMonitorDict(self):
+    d = datatypes.AliasingMonitorDict()
+    d["alias1"] = "1"
+    d["alias2"] = "1"
+    self.assertEqual(2, len(d))
+    # Merge with same values
+    d.add_alias("alias1", "alias2")
+    self.assertEqual(1, len(d))
+    self.assertEqual(d["alias1"], "1")
+    self.assertEqual(d["alias2"], "1")
+
+    # Merge with different values
+    d["alias3"] = "2"
+    with self.assertRaises(datatypes.AliasingDictConflictError):
+      d.add_alias("alias1", "alias3")
+
+    # Neither of names has value
+    d.add_alias("alias5", "alias6")
+    # The first name is in dict
+    d.add_alias("alias3", "alias4")
+    # The second name is in dict
+    d.add_alias("alias5", "alias3")
+    self.assertEqual(d["alias3"], "2")
+    self.assertEqual(d["alias4"], "2")
+    self.assertEqual(d["alias5"], "2")
+    self.assertEqual(d["alias6"], "2")
+
+  def testAliasingMonitorDictMerge(self):
+    d1 = datatypes.AliasingMonitorDict()
+    d1["alias1"] = "1"
+    d1.add_alias("alias1", "alias2")
+
+    d2 = datatypes.AliasingMonitorDict()
+    d2["alias3"] = "1"
+    d2.add_alias("alias3", "alias4")
+
+    d1.merge_from(d2)
+    self.assertEqual(d1["alias1"], "1")
+    self.assertEqual(d1["alias2"], "1")
+    self.assertEqual(d1["alias3"], "1")
+    self.assertEqual(d1["alias4"], "1")
+    self.assertEqual(d1.same_name("alias3", "alias4"), True)
+
+    d4 = datatypes.AliasingMonitorDict()
+    d4["alias2"] = 3
+    with self.assertRaises(datatypes.AliasingDictConflictError):
+      d1.merge_from(d4)
+
+    d3 = datatypes.AliasingMonitorDict()
+    d3.add_alias("alias2", "alias5")
+    d3["alias5"] = 3
+    with self.assertRaises(datatypes.AliasingDictConflictError):
+      d1.merge_from(d3)
 
 if __name__ == "__main__":
   unittest.main()

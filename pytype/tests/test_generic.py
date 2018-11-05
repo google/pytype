@@ -193,6 +193,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def f() -> int or float or complex or str
       """)
 
+  @test_base.skip("disable temporarily")
   def testTypeParameterRenamingConflict1(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
@@ -249,6 +250,7 @@ class GenericTest(test_base.TargetIndependentTest):
         w = ...  # type: str
       """)
 
+  @test_base.skip("disable temporarily")
   def testChangeMultiplyRenamedTypeParameter(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
@@ -346,6 +348,7 @@ class GenericTest(test_base.TargetIndependentTest):
         x = ...  # type: a.Custom[nothing, nothing]
       """)
 
+  @test_base.skip("disable temporarily")
   def testTypeParameterAmbiguous(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
@@ -509,6 +512,7 @@ class GenericTest(test_base.TargetIndependentTest):
         g = lambda y: y+1
       """, pythonpath=[d.path])
 
+  @test_base.skip("disable temporarily")
   def testTemplateConstruction(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
@@ -541,6 +545,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def h() -> str
       """)
 
+  @test_base.skip("disable temporarily")
   def testAliasingDictConflictError(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
