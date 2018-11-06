@@ -73,9 +73,10 @@ def build_imports_map(options_info_path, output=None):
   # This _usually_ isn't a problem, but it can be if an __init__.py imports
   # one of its submodules -- the submodule will be read as an Any from the pyi.
   if output:
-    path, _ = os.path.splitext(output)
     for k, v in imports_map.items():
-      if path in v:
+      # Our convention is that if a pyi is generated twice, the first path is
+      # the second plus some suffix such as `-1`.
+      if output in v:
         del imports_map[k]
         break
 

@@ -74,5 +74,16 @@ class ImportMapLoaderTest(unittest.TestCase):
               ("%s/a/__init__" % d.path[1:], os.devnull),
           ])
 
+  def testDoNotFilter(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("a/b/c.pyi")
+      imports_info = "%s %s\n" % ("a/b/c.pyi", d["a/b/c.pyi"])
+      d.create_file("imports_info", imports_info)
+      output = os.path.join(d.path, "a/b.pyi")
+      imports_map = imports_map_loader.build_imports_map(
+          d["imports_info"], output)
+      self.assertEqual(imports_map["a/b/c"], d["a/b/c.pyi"])
+
+
 if __name__ == "__main__":
   unittest.main()
