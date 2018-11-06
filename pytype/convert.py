@@ -215,14 +215,15 @@ class Converter(utils.VirtualMachineWeakrefMixin):
   def build_list_of_type(self, node, var):
     """Create a VM list with element type derived from the given variable."""
     ret = abstract.Instance(self.list_type, self.vm)
-    ret.merge_type_parameter(node, abstract.T, var)
+    ret.merge_instance_type_parameter(node, abstract.T, var)
     return ret.to_variable(node)
 
   def build_set(self, node, content):
     """Create a VM set from the given sequence."""
     content = list(content)  # content might be a generator
     value = abstract.Instance(self.set_type, self.vm)
-    value.merge_type_parameter(node, abstract.T, self.build_content(content))
+    value.merge_instance_type_parameter(
+        node, abstract.T, self.build_content(content))
     return value.to_variable(node)
 
   def build_map(self, node):
@@ -306,7 +307,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     new_container = self.name_to_value(new_container_name)
     if isinstance(old_container, abstract.ParameterizedClass):
       return abstract.ParameterizedClass(
-          new_container, old_container.type_parameters, self.vm)
+          new_container, old_container.formal_type_parameters, self.vm)
     else:
       assert isinstance(old_container, abstract.Class)
       return new_container
@@ -680,7 +681,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
               # An omitted type parameter implies `Any`.
               node = self.vm.root_cfg_node
               p = self.unsolvable.to_variable(node)
-            instance.merge_type_parameter(node, formal.name, p)
+            instance.merge_instance_type_parameter(node, formal.name, p)
           return instance
       elif isinstance(cls, pytd.Class):
         assert not cls.template
@@ -736,8 +737,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       assert (pyval.base_type.name == "typing.Generic" or
               len(parameters) <= len(template))
       # Delay type parameter loading to handle recursive types.
-      # See the ParameterizedClass.type_parameters() property.
-      type_parameters = abstract.LazyTypeParameters(template, parameters, subst)
+      # See the ParameterizedClass.formal_type_parameters() property.
+      type_parameters = abstract.LazyFormalTypeParameters(
+          template, parameters, subst)
       return abstract_class(base_cls, type_parameters, self.vm)
     elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node
       return self.tuple_to_value([self.constant_to_var(item, subst,

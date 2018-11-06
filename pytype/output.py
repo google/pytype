@@ -96,7 +96,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       for t in template:
         if isinstance(instance, abstract.Tuple):
           param_values = self._get_values(node, instance.pyval[t], view)
-        elif instance.has_type_parameter(t):
+        elif instance.has_instance_type_parameter(t):
           param_values = self._get_values(
               node, instance.get_instance_type_parameter(t), view)
         elif isinstance(v, abstract.Callable):

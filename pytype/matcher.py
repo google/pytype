@@ -441,7 +441,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     if max_argcount is not None and max_argcount < other_type.num_args:
       return None
     for name, expected_arg in zip(sig.param_names,
-                                  (other_type.type_parameters[i]
+                                  (other_type.formal_type_parameters[i]
                                    for i in range(other_type.num_args))):
       actual_arg = sig.annotations.get(name, self.vm.convert.unsolvable)
       # Flip actual and expected, since argument types are contravariant.
@@ -559,7 +559,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         if instance.tuple_length == other_type.tuple_length:
           for i in range(instance.tuple_length):
             instance_param = instance.pyval[i]
-            class_param = other_type.type_parameters[i]
+            class_param = other_type.formal_type_parameters[i]
             subst = self.match_var_against_type(
                 instance_param, class_param, subst, node, view)
             if subst is None:
@@ -591,7 +591,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       if isinstance(instance, abstract.SimpleAbstractValue):
         instance_param = instance.get_instance_type_parameter(abstract.T, node)
         for i in range(other_type.tuple_length):
-          class_param = other_type.type_parameters[i]
+          class_param = other_type.formal_type_parameters[i]
           subst = self.match_var_against_type(
               instance_param, class_param, subst, node, view)
           if subst is None:
@@ -618,7 +618,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     for i in range(left.num_args):
       # Flip actual and expected to enforce contravariance of argument types.
       subst = self._instantiate_and_match(
-          other_type.type_parameters[i], left.type_parameters[i],
+          other_type.formal_type_parameters[i], left.formal_type_parameters[i],
           subst, node, view, container=other_type)
       if subst is None:
         return None
@@ -781,11 +781,13 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
             signature.signature, self.vm)
         if isinstance(callable_signature, abstract.Callable):
           # Prevent the matcher from trying to enforce contravariance on 'self'.
-          callable_signature.type_parameters[0] = self.vm.convert.unsolvable
+          callable_signature.formal_type_parameters[0] = (
+              self.vm.convert.unsolvable)
         annotation_subst = datatypes.AliasingDict()
         if isinstance(other_type.base_cls, abstract.Class):
-          annotation_subst.uf = other_type.base_cls.name2types.uf
-        for (param, value) in other_type.get_type_parameters().items():
+          annotation_subst.uf = (
+              other_type.base_cls.all_formal_type_parameters.uf)
+        for (param, value) in other_type.get_formal_type_parameters().items():
           annotation_subst[param] = (self.vm.annotations_util.
                                      instantiate_for_sub(node, value))
         annotated_callable = self.vm.annotations_util.sub_one_annotation(

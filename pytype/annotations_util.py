@@ -69,9 +69,10 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         vals = [annot]
       return self.vm.convert.merge_classes(node, vals)
     elif isinstance(annot, abstract.ParameterizedClass):
-      type_parameters = {name: self.sub_one_annotation(node, param, substs,
-                                                       instantiate_unbound)
-                         for name, param in annot.type_parameters.items()}
+      type_parameters = {
+          name: self.sub_one_annotation(
+              node, param, substs, instantiate_unbound)
+          for name, param in annot.formal_type_parameters.items()}
       # annot may be a subtype of ParameterizedClass, such as TupleClass.
       return type(annot)(annot.base_cls, type_parameters, self.vm)
     elif isinstance(annot, abstract.Union):
@@ -102,12 +103,12 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         return new_annot
       return annot
     elif isinstance(annot, abstract.TupleClass):
-      annot.type_parameters[abstract.T] = self.add_scope(
-          annot.type_parameters[abstract.T], types, module)
+      annot.formal_type_parameters[abstract.T] = self.add_scope(
+          annot.formal_type_parameters[abstract.T], types, module)
       return annot
     elif isinstance(annot, abstract.ParameterizedClass):
-      for key, val in annot.type_parameters.items():
-        annot.type_parameters[key] = self.add_scope(val, types, module)
+      for key, val in annot.formal_type_parameters.items():
+        annot.formal_type_parameters[key] = self.add_scope(val, types, module)
       return annot
     elif isinstance(annot, abstract.Union):
       annot.options = tuple(self.add_scope(option, types, module)
@@ -120,10 +121,10 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     if isinstance(annot, abstract.TypeParameter):
       return [annot]
     elif isinstance(annot, abstract.TupleClass):
-      return self.get_type_parameters(annot.type_parameters[abstract.T])
+      return self.get_type_parameters(annot.formal_type_parameters[abstract.T])
     elif isinstance(annot, abstract.ParameterizedClass):
       return sum((self.get_type_parameters(p)
-                  for p in annot.type_parameters.values()), [])
+                  for p in annot.formal_type_parameters.values()), [])
     elif isinstance(annot, abstract.Union):
       return sum((self.get_type_parameters(o) for o in annot.options), [])
     return []
@@ -301,12 +302,12 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       # PEP 484 allows to write "NoneType" as "None"
       return self.vm.convert.none_type
     elif isinstance(annotation, abstract.ParameterizedClass):
-      for param_name, param in annotation.type_parameters.items():
+      for param_name, param in annotation.formal_type_parameters.items():
         processed = self._process_one_annotation(
             param, name, stack, node, f_globals, f_locals)
         if processed is None:
           return None
-        annotation.type_parameters[param_name] = processed
+        annotation.formal_type_parameters[param_name] = processed
       return annotation
     elif isinstance(annotation, abstract.Union):
       options = []
