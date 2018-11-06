@@ -75,9 +75,9 @@ class AsReturnValue(AsInstance):
   """Specially mark return values, to handle NoReturn properly."""
 
 
-# For lazy evaluation of ParameterizedClass.type_parameters
-LazyTypeParameters = collections.namedtuple(
-    "LazyTypeParameters", ("template", "parameters", "subst"))
+# For lazy evaluation of ParameterizedClass.formal_type_parameters
+LazyFormalTypeParameters = collections.namedtuple(
+    "LazyFormalTypeParameters", ("template", "parameters", "subst"))
 
 
 _NONE = object()  # sentinel for get_atomic_value
@@ -207,7 +207,7 @@ def func_name_is_class_init(name):
 
 
 def has_type_parameters(node, val, seen=None):
-  """Checks if the given object has any TypeParameters in its type_parameters.
+  """Checks if the given object contains any TypeParameters.
 
   Args:
     node: The current CFG node.
@@ -216,8 +216,7 @@ def has_type_parameters(node, val, seen=None):
     seen: Optional. A set of already-visited objects, to avoid infinite loops.
 
   Returns:
-    True if there are any TypeParameters in the object's type_parameters dict,
-    or False otherwise.
+    True if the object contains any TypeParameters, or False otherwise.
   """
   if seen is None:
     seen = set()
@@ -232,7 +231,7 @@ def has_type_parameters(node, val, seen=None):
     return val.formal
   elif isinstance(val, SimpleAbstractValue):
     return any((has_type_parameters(node, tp, seen)
-                for tp in val.type_parameters.values()))
+                for tp in val.instance_type_parameters.values()))
   else:
     return False
 
@@ -252,12 +251,13 @@ def _apply_mutations(node, get_mutations):
       # mutations warrant creating a new CFG node
       node = node.ConnectNew(node.name)
     num_mutations += 1
-    obj.merge_type_parameter(node, name, value)
+    obj.merge_instance_type_parameter(node, name, value)
   log.info("Applied %d mutations", num_mutations)
   return node
 
 
 def _get_template(val):
+  """Get the value's class template."""
   if isinstance(val, Class):
     res = {t.full_name for t in val.template}
     if isinstance(val, ParameterizedClass):
@@ -296,13 +296,14 @@ def _get_mro_bases(bases):
   else:
     return mro_bases
 
-def parse_type_parameters(base, prefix, name2types):
+
+def parse_formal_type_parameters(base, prefix, formal_type_parameters):
   """Parse type parameters from base class.
 
   Args:
     base: base class.
     prefix: the full name of subclass of base class.
-    name2types: the mapping of type parameter name to its type
+    formal_type_parameters: the mapping of type parameter name to its type
 
   Raises:
     GenericTypeError: If the lazy types of type parameter don't match
@@ -312,30 +313,31 @@ def parse_type_parameters(base, prefix, name2types):
       return
     if isinstance(base.base_cls, (InterpreterClass, PyTDClass)):
       # merge the type parameters info from base class
-      name2types.merge_from(base.base_cls.name2types)
-    params = base.get_type_parameters()
+      formal_type_parameters.merge_from(
+          base.base_cls.all_formal_type_parameters)
+    params = base.get_formal_type_parameters()
     for name, param in params.items():
       if isinstance(param, TypeParameter):
         # We have type parameter renaming, e.g.,
         #  class List(Generic[T]): pass
         #  class Foo(List[U]): pass
         if prefix:
-          name2types.add_alias(name, prefix + "." + param.name)
+          formal_type_parameters.add_alias(name, prefix + "." + param.name)
       else:
         # We have either a non-formal parameter, e.g.,
         # class Foo(List[int]), or a non-1:1 parameter mapping, e.g.,
         # class Foo(List[K or V]). Initialize the corresponding instance
         # parameter appropriately.
-        if name not in name2types:
-          name2types[name] = param
+        if name not in formal_type_parameters:
+          formal_type_parameters[name] = param
         else:
           # Two unrelated containers happen to use the same type
           # parameter but with different types.
-          pre_type = name2types[name]
+          pre_type = formal_type_parameters[name]
           cur_type = param
           # pre_type is parent of cur_type
           if pre_type in cur_type.mro:
-            name2types[name] = param
+            formal_type_parameters[name] = param
           # they don't have inheritance relationship
           elif not pre_type or cur_type not in pre_type.mro:
             raise GenericTypeError(base,
@@ -343,13 +345,13 @@ def parse_type_parameters(base, prefix, name2types):
   else:
     if isinstance(base, (InterpreterClass, PyTDClass)):
       # merge the type parameters info from base class
-      name2types.merge_from(base.name2types)
+      formal_type_parameters.merge_from(base.all_formal_type_parameters)
     if base.template:
       # handle unbound type parameters
       for item in base.template:
         if isinstance(item, TypeParameter):
           # This type parameter will be set as `ANY`.
-          name2types[base.full_type_name(item.name)] = None
+          formal_type_parameters[base.full_type_name(item.name)] = None
 
 
 def _get_class(cls_var, default=None):
@@ -947,41 +949,42 @@ class SimpleAbstractValue(AtomicAbstractValue):
     super(SimpleAbstractValue, self).__init__(name, vm)
     self.members = datatypes.MonitorDict()
     # Lazily loaded to handle recursive types.
-    # See Instance._load_type_parameters().
-    self._type_parameters = datatypes.AliasingMonitorDict()
+    # See Instance._load_instance_type_parameters().
+    self._instance_type_parameters = datatypes.AliasingMonitorDict()
     self.maybe_missing_members = False
     # The latter caches the result of get_type_key. This is a recursive function
     # that has the potential to generate too many calls for large definitions.
     self._cached_type_key = (
-        (self.members.changestamp, self._type_parameters.changestamp), None)
+        (self.members.changestamp, self._instance_type_parameters.changestamp),
+        None)
 
   @property
-  def type_parameters(self):
-    return self._type_parameters
+  def instance_type_parameters(self):
+    return self._instance_type_parameters
 
-  def has_type_parameter(self, name):
-    """Check if the key is in `type_parameters`."""
+  def has_instance_type_parameter(self, name):
+    """Check if the key is in `instance_type_parameters`."""
     name = self.full_type_name(name)
-    return name in self.type_parameters
+    return name in self.instance_type_parameters
 
   def get_children_maps(self):
-    return (self.type_parameters, self.members)
+    return (self.instance_type_parameters, self.members)
 
   def get_instance_type_parameter(self, name, node=None):
     name = self.full_type_name(name)
-    param = self.type_parameters.get(name)
+    param = self.instance_type_parameters.get(name)
     if not param:
       log.info("Creating new empty type param %s", name)
       if node is None:
         node = self.vm.root_cfg_node
       param = self.vm.program.NewVariable([], [], node)
-      self.type_parameters[name] = param
+      self.instance_type_parameters[name] = param
     return param
 
-  def merge_type_parameter(self, node, name, value):
+  def merge_instance_type_parameter(self, node, name, value):
     """Set the value of a type parameter.
 
-    This will always add to the type_parameter unlike set_attribute which will
+    This will always add to the type parameter unlike set_attribute which will
     replace value from the same basic block. This is because type parameters may
     be affected by a side effect so we need to collect all the information
     regardless of multiple assignments in one basic block.
@@ -993,10 +996,10 @@ class SimpleAbstractValue(AtomicAbstractValue):
     """
     name = self.full_type_name(name)
     log.info("Modifying type param %s", name)
-    if name in self.type_parameters:
-      self.type_parameters[name].PasteVariable(value, node)
+    if name in self.instance_type_parameters:
+      self.instance_type_parameters[name].PasteVariable(value, node)
     else:
-      self.type_parameters[name] = value
+      self.instance_type_parameters[name] = value
 
   def load_lazy_attribute(self, name):
     """Load the named attribute into self.members."""
@@ -1053,8 +1056,9 @@ class SimpleAbstractValue(AtomicAbstractValue):
 
   def get_type_key(self, seen=None):
     cached_changestamps, saved_key = self._cached_type_key
-    if saved_key and cached_changestamps == (self.members.changestamp,
-                                             self.type_parameters.changestamp):
+    if saved_key and cached_changestamps == (
+        self.members.changestamp,
+        self.instance_type_parameters.changestamp):
       return saved_key
     if not seen:
       seen = set()
@@ -1062,7 +1066,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     key = set()
     if self.cls:
       key.add(self.cls)
-    for name, var in self.type_parameters.items():
+    for name, var in self.instance_type_parameters.items():
       subkey = frozenset(value.data.get_default_type_key() if value.data in seen
                          else value.data.get_type_key(seen)
                          for value in var.bindings)
@@ -1072,12 +1076,13 @@ class SimpleAbstractValue(AtomicAbstractValue):
     else:
       type_key = super(SimpleAbstractValue, self).get_type_key()
     self._cached_type_key = (
-        (self.members.changestamp, self.type_parameters.changestamp), type_key)
+        (self.members.changestamp, self.instance_type_parameters.changestamp),
+        type_key)
     return type_key
 
   def _unique_parameters(self):
     parameters = super(SimpleAbstractValue, self)._unique_parameters()
-    parameters.extend(self.type_parameters.values())
+    parameters.extend(self.instance_type_parameters.values())
     return parameters
 
 
@@ -1091,35 +1096,35 @@ class Instance(SimpleAbstractValue):
   def __init__(self, cls, vm):
     super(Instance, self).__init__(cls.name, vm)
     self.cls = cls
-    self._type_parameters_loaded = False
+    self._instance_type_parameters_loaded = False
     if isinstance(cls, (InterpreterClass, PyTDClass)) and cls.is_dynamic:
       self.maybe_missing_members = True
     cls.register_instance(self)
 
-  def _load_type_parameters(self):
-    if self._type_parameters_loaded:
+  def _load_instance_type_parameters(self):
+    if self._instance_type_parameters_loaded:
       return
-    name2types = datatypes.AliasingMonitorDict()
-    parse_type_parameters(self.cls, None, name2types)
-    self._type_parameters.uf = name2types.uf
-    for name, param in name2types.items():
+    all_formal_type_parameters = datatypes.AliasingMonitorDict()
+    parse_formal_type_parameters(self.cls, None, all_formal_type_parameters)
+    self._instance_type_parameters.uf = all_formal_type_parameters.uf
+    for name, param in all_formal_type_parameters.items():
       if param is None:
         value = self.vm.program.NewVariable()
         log.info("Initializing type param %s: %r", name, value)
-        self._type_parameters[name] = value
+        self._instance_type_parameters[name] = value
       else:
-        self._type_parameters[name] = param.instantiate(
+        self._instance_type_parameters[name] = param.instantiate(
             self.vm.root_cfg_node, self)
     # We purposely set this flag at the very end so that accidentally accessing
-    # type_parameters during loading will trigger an obvious crash due to
-    # infinite recursion, rather than silently returning an incomplete dict.
-    self._type_parameters_loaded = True
+    # instance_type_parameters during loading will trigger an obvious crash due
+    # to infinite recursion, rather than silently returning an incomplete dict.
+    self._instance_type_parameters_loaded = True
 
   def compatible_with(self, logical_value):  # pylint: disable=unused-argument
     # Containers with unset parameters and NoneType instances cannot match True.
     name = self.full_name
     if logical_value and name in Instance._CONTAINER_NAMES:
-      return (self.has_type_parameter(T) and
+      return (self.has_instance_type_parameter(T) and
               bool(self.get_instance_type_parameter(T).bindings))
     elif name == "__builtin__.NoneType":
       return not logical_value
@@ -1130,9 +1135,9 @@ class Instance(SimpleAbstractValue):
     return self.get_class().full_name
 
   @property
-  def type_parameters(self):
-    self._load_type_parameters()
-    return self._type_parameters
+  def instance_type_parameters(self):
+    self._load_instance_type_parameters()
+    return self._instance_type_parameters
 
 
 @six.add_metaclass(MixinMeta)
@@ -1189,7 +1194,7 @@ class List(Instance, HasSlots, PythonConstant):
     PythonConstant.init_mixin(self, content)
     HasSlots.init_mixin(self)
     combined_content = vm.convert.build_content(content)
-    self.merge_type_parameter(None, T, combined_content)
+    self.merge_instance_type_parameter(None, T, combined_content)
     self.could_contain_anything = False
     self.set_slot("__getitem__", self.getitem_slot)
     self.set_slot("__getslice__", self.getslice_slot)
@@ -1204,9 +1209,9 @@ class List(Instance, HasSlots, PythonConstant):
     else:
       return PythonConstant.__repr__(self)
 
-  def merge_type_parameter(self, node, name, value):
+  def merge_instance_type_parameter(self, node, name, value):
     self.could_contain_anything = True
-    super(List, self).merge_type_parameter(node, name, value)
+    super(List, self).merge_instance_type_parameter(node, name, value)
 
   def compatible_with(self, logical_value):
     return (self.could_contain_anything or
@@ -1310,7 +1315,7 @@ class Tuple(Instance, PythonConstant):
                     tuple(enumerate(content)) + ((T, combined_content),)}
     cls = TupleClass(vm.convert.tuple_type, class_params, vm)
     super(Tuple, self).__init__(cls, vm)
-    self.merge_type_parameter(None, T, combined_content)
+    self.merge_instance_type_parameter(None, T, combined_content)
     PythonConstant.init_mixin(self, content)
     self.tuple_length = len(self.pyval)
     self._hash = None  # memoized due to expensive computation
@@ -1404,8 +1409,9 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
     return node, self.vm.join_variables(node, results)
 
   def set_str_item(self, node, name, value_var):
-    self.merge_type_parameter(node, K, self.vm.convert.build_string(node, name))
-    self.merge_type_parameter(node, V, value_var)
+    self.merge_instance_type_parameter(
+        node, K, self.vm.convert.build_string(node, name))
+    self.merge_instance_type_parameter(node, V, value_var)
     if name in self.pyval:
       self.pyval[name].PasteVariable(value_var, node)
     else:
@@ -1505,8 +1511,8 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
       if isinstance(other_dict, Dict):
         k = other_dict.get_instance_type_parameter(K, node)
         v = other_dict.get_instance_type_parameter(V, node)
-        self.merge_type_parameter(node, K, k)
-        self.merge_type_parameter(node, V, v)
+        self.merge_instance_type_parameter(node, K, k)
+        self.merge_instance_type_parameter(node, V, v)
         self.could_contain_anything |= other_dict.could_contain_anything
     else:
       assert isinstance(other_dict, AtomicAbstractValue)
@@ -1516,8 +1522,8 @@ class Dict(Instance, HasSlots, PythonConstant, WrapsDict("pyval")):
         v = other_dict.get_instance_type_parameter(V, node)
       else:
         k = v = self.vm.convert.create_new_unsolvable(node)
-      self.merge_type_parameter(node, K, k)
-      self.merge_type_parameter(node, V, v)
+      self.merge_instance_type_parameter(node, K, k)
+      self.merge_instance_type_parameter(node, V, v)
       self.could_contain_anything = True
 
   def compatible_with(self, logical_value):
@@ -2482,7 +2488,7 @@ class PyTDFunction(Function):
     return [Mutation(v, name, self.vm.convert.create_new_unknown(
         node, action="type_param_" + name))
             for v in values if isinstance(v, SimpleAbstractValue)
-            for name in v.type_parameters]
+            for name in v.instance_type_parameters]
 
   def _match_view(self, node, args, view, alias_map=None):
     # If we're calling an overloaded pytd function with an unknown as a
@@ -2653,27 +2659,29 @@ class Class(object):
       self.cls = metaclass
     self._instance_cache = {}
     self._init_abstract_methods()
-    self._name2types = datatypes.AliasingMonitorDict()
-    self._name2types_loaded = False
+    self._all_formal_type_parameters = datatypes.AliasingMonitorDict()
+    self._all_formal_type_parameters_loaded = False
 
   def bases(self):
     return []
 
   @property
-  def name2types(self):
-    self._load_name2types()
-    return self._name2types
+  def all_formal_type_parameters(self):
+    self._load_all_formal_type_parameters()
+    return self._all_formal_type_parameters
 
-  def _load_name2types(self):
-    if self._name2types_loaded:
+  def _load_all_formal_type_parameters(self):
+    """Load _all_formal_type_parameters."""
+    if self._all_formal_type_parameters_loaded:
       return
 
     bases = [_get_class(base, default=self.vm.convert.unsolvable)
              for base in self.bases()]
     for base in bases:
-      parse_type_parameters(base, self.full_name, self._name2types)
+      parse_formal_type_parameters(
+          base, self.full_name, self._all_formal_type_parameters)
 
-    self._name2types_loaded = True
+    self._all_formal_type_parameters_loaded = True
 
   def get_own_abstract_methods(self):
     """Get the abstract methods defined by this class."""
@@ -2843,8 +2851,8 @@ class ParameterizedClass(AtomicAbstractValue, Class):
 
   Attributes:
     cls: A PyTDClass representing the base type.
-    type_parameters: An iterable of AtomicAbstractValue, one for each type
-        parameter.
+    formal_type_parameters: An iterable of AtomicAbstractValue, one for each
+        type parameter.
   """
 
   is_lazy = False
@@ -2852,14 +2860,14 @@ class ParameterizedClass(AtomicAbstractValue, Class):
   def get_self_annot(self):
     """This is used to annotate the `self` in a class."""
     if not self.self_annot:
-      type_parameters = {}
+      formal_type_parameters = {}
       for item in self.base_cls.template:
-        type_parameters[item.name] = item
+        formal_type_parameters[item.name] = item
       self.self_annot = ParameterizedClass(
-          self.base_cls, type_parameters, self.vm)
+          self.base_cls, formal_type_parameters, self.vm)
     return self.self_annot
 
-  def __init__(self, base_cls, type_parameters, vm):
+  def __init__(self, base_cls, formal_type_parameters, vm):
     # A ParameterizedClass is created by converting a pytd.GenericType, whose
     # base type is restricted to NamedType and ClassType.
     assert isinstance(base_cls, Class)
@@ -2867,8 +2875,8 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     super(ParameterizedClass, self).__init__(base_cls.name, vm)
     self.module = base_cls.module
     # Lazily loaded to handle recursive types.
-    # See the type_parameters() property.
-    self._type_parameters = type_parameters
+    # See the formal_type_parameters() property.
+    self._formal_type_parameters = formal_type_parameters
     self._hash = None  # memoized due to expensive computation
     self.official_name = self.base_cls.official_name
     # Load immediately due to template in base_cls could change
@@ -2879,24 +2887,26 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     self.type_param_check()
 
   def __repr__(self):
-    return "ParameterizedClass(cls=%r params=%s)" % (self.base_cls,
-                                                     self.type_parameters)
+    return "ParameterizedClass(cls=%r params=%s)" % (
+        self.base_cls,
+        self.formal_type_parameters)
 
   def type_param_check(self):
     """Throw exception for invalid type parameters."""
-    # It will cause infinite recursion if `type_parameters` is
+    # It will cause infinite recursion if `formal_type_parameters` is
     # `LazyTypeParameters`
-    if not isinstance(self._type_parameters, LazyTypeParameters):
+    if not isinstance(self._formal_type_parameters, LazyFormalTypeParameters):
       tparams = datatypes.AliasingMonitorDict()
-      parse_type_parameters(self, None, tparams)
+      parse_formal_type_parameters(self, None, tparams)
 
-  def get_type_parameters(self):
-    return {self.full_type_name(k): v for k, v in self.type_parameters.items()}
+  def get_formal_type_parameters(self):
+    return {self.full_type_name(k): v
+            for k, v in self.formal_type_parameters.items()}
 
   def __eq__(self, other):
     if isinstance(other, type(self)):
       return self.base_cls == other.base_cls and (
-          self.type_parameters == other.type_parameters)
+          self.formal_type_parameters == other.formal_type_parameters)
     return NotImplemented
 
   def __ne__(self, other):
@@ -2904,19 +2914,19 @@ class ParameterizedClass(AtomicAbstractValue, Class):
 
   def __hash__(self):
     if self._hash is None:
-      if isinstance(self._type_parameters, LazyTypeParameters):
-        items = self._raw_type_parameters()
+      if isinstance(self._formal_type_parameters, LazyFormalTypeParameters):
+        items = self._raw_formal_type_parameters()
       else:
-        items = self.type_parameters.items()
+        items = self.formal_type_parameters.items()
       self._hash = hash((self.base_cls, tuple(items)))
     return self._hash
 
   def __contains__(self, name):
     return name in self.base_cls
 
-  def _raw_type_parameters(self):
-    assert isinstance(self._type_parameters, LazyTypeParameters)
-    template, parameters, _ = self._type_parameters
+  def _raw_formal_type_parameters(self):
+    assert isinstance(self._formal_type_parameters, LazyFormalTypeParameters)
+    template, parameters, _ = self._formal_type_parameters
     for i, name in enumerate(template):
       # TODO(rechen): A missing parameter should be an error.
       yield name, parameters[i] if i < len(parameters) else None
@@ -2933,27 +2943,27 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     # We can't compute self.formal in __init__ because doing so would force
     # evaluation of our type parameters during initialization, possibly
     # leading to an infinite loop.
-    return any(t.formal for t in self.type_parameters.values())
+    return any(t.formal for t in self.formal_type_parameters.values())
 
   @property
-  def type_parameters(self):
-    if isinstance(self._type_parameters, LazyTypeParameters):
-      type_parameters = {}
-      for name, param in self._raw_type_parameters():
+  def formal_type_parameters(self):
+    if isinstance(self._formal_type_parameters, LazyFormalTypeParameters):
+      formal_type_parameters = {}
+      for name, param in self._raw_formal_type_parameters():
         if param is None:
-          type_parameters[name] = self.vm.convert.unsolvable
+          formal_type_parameters[name] = self.vm.convert.unsolvable
         else:
-          type_parameters[name] = self.vm.convert.constant_to_value(
-              param, self._type_parameters.subst, self.vm.root_cfg_node)
-      self._type_parameters = type_parameters
-    return self._type_parameters
+          formal_type_parameters[name] = self.vm.convert.constant_to_value(
+              param, self._formal_type_parameters.subst, self.vm.root_cfg_node)
+      self._formal_type_parameters = formal_type_parameters
+    return self._formal_type_parameters
 
   def compute_mro(self):
     return (self,) + self.base_cls.mro[1:]
 
   def instantiate(self, node, container=None):
     if self.full_name == "__builtin__.type":
-      instance = self.type_parameters[T]
+      instance = self.formal_type_parameters[T]
       if instance.formal:
         # This can happen for, say, Type[T], where T is a type parameter. See
         # test_typevar's testTypeParameterType for an example.
@@ -2990,7 +3000,7 @@ class ParameterizedClass(AtomicAbstractValue, Class):
             and isinstance(self.base_cls, (InterpreterClass, PyTDClass))
             and self.module not in  ("__builtin__", "typing")
             and all(not isinstance(val, TypeParameter)
-                    for val in self.type_parameters.values()))
+                    for val in self.formal_type_parameters.values()))
 
   def call(self, node, func, args, alias_map=None):
     if not self._is_callable():
@@ -2999,51 +3009,51 @@ class ParameterizedClass(AtomicAbstractValue, Class):
       return Class.call(self, node, func, args)
 
   def get_formal_type_parameter(self, t):
-    return self.type_parameters.get(t, self.vm.convert.unsolvable)
+    return self.formal_type_parameters.get(t, self.vm.convert.unsolvable)
 
 
 class TupleClass(ParameterizedClass, HasSlots):
   """The class of a heterogeneous tuple.
 
-  The type_parameters attribute stores the types of the individual tuple
+  The formal_type_parameters attribute stores the types of the individual tuple
   elements under their indices and the overall element type under "T". So for
     Tuple[str, int]
-  type_parameters is
+  formal_type_parameters is
     {0: str, 1: int, T: str or int}.
   Note that we can't store the individual types as a PythonConstant as we do
   for Tuple, since we can't evaluate type parameters during initialization.
   """
 
-  def __init__(self, base_cls, type_parameters, vm):
-    super(TupleClass, self).__init__(base_cls, type_parameters, vm)
+  def __init__(self, base_cls, formal_type_parameters, vm):
+    super(TupleClass, self).__init__(base_cls, formal_type_parameters, vm)
     HasSlots.init_mixin(self)
     self.set_slot("__getitem__", self.getitem_slot)
-    if isinstance(self._type_parameters, LazyTypeParameters):
-      num_parameters = len(self._type_parameters.template)
+    if isinstance(self._formal_type_parameters, LazyFormalTypeParameters):
+      num_parameters = len(self._formal_type_parameters.template)
     else:
-      num_parameters = len(self._type_parameters)
+      num_parameters = len(self._formal_type_parameters)
     # We subtract one to account for "T".
     self.tuple_length = num_parameters - 1
     self._instance = None
     self.slots = ()  # tuples don't have any writable attributes
 
   def __repr__(self):
-    return "TupleClass(%s)" % self.type_parameters
+    return "TupleClass(%s)" % self.formal_type_parameters
 
   def compute_mro(self):
     # ParameterizedClass removes the base PyTDClass(tuple) from the mro; add it
     # back here so that isinstance(tuple) checks work.
     return (self,) + self.base_cls.mro
 
-  def get_type_parameters(self):
-    return {self.full_type_name(T): self.type_parameters[T]}
+  def get_formal_type_parameters(self):
+    return {self.full_type_name(T): self.formal_type_parameters[T]}
 
   def instantiate(self, node, container=None):
     if self._instance:
       return self._instance.to_variable(node)
     content = []
     for i in range(self.tuple_length):
-      p = self.type_parameters[i]
+      p = self.formal_type_parameters[i]
       if container is self.vm.annotations_util.DUMMY_CONTAINER or (
           container and isinstance(p, TypeParameter) and
           p.full_name in container.all_template_names):
@@ -3057,7 +3067,7 @@ class TupleClass(ParameterizedClass, HasSlots):
       return self._instance.pyval[index]
     else:
       index %= self.tuple_length  # fixes negative indices
-      return self.type_parameters[index].instantiate(node)
+      return self.formal_type_parameters[index].instantiate(node)
 
   def register_instance(self, instance):
     # A TupleClass can never have more than one registered instance because the
@@ -3095,28 +3105,28 @@ class TupleClass(ParameterizedClass, HasSlots):
 class Callable(ParameterizedClass, HasSlots):
   """A Callable with a list of argument types.
 
-  The type_parameters attribute stores the types of the individual arguments
-  under their indices, the overall argument type under "ARGS", and the return
-  type under "RET". So for
+  The formal_type_parameters attribute stores the types of the individual
+  arguments under their indices, the overall argument type under "ARGS", and the
+  return type under "RET". So for
     Callable[[int, bool], str]
-  type_parameters is
+  formal_type_parameters is
     {0: int, 1: bool, ARGS: int or bool, RET: str}
   When there are no args (Callable[[], ...]), ARGS contains abstract.Empty.
   """
 
-  def __init__(self, base_cls, type_parameters, vm):
-    super(Callable, self).__init__(base_cls, type_parameters, vm)
+  def __init__(self, base_cls, formal_type_parameters, vm):
+    super(Callable, self).__init__(base_cls, formal_type_parameters, vm)
     HasSlots.init_mixin(self)
     self.set_slot("__call__", self.call_slot)
     # We subtract two to account for "ARGS" and "RET".
-    self.num_args = len(self.type_parameters) - 2
+    self.num_args = len(self.formal_type_parameters) - 2
 
   def __repr__(self):
-    return "Callable(%s)" % self.type_parameters
+    return "Callable(%s)" % self.formal_type_parameters
 
-  def get_type_parameters(self):
-    return {self.full_type_name(ARGS): self.type_parameters[ARGS],
-            self.full_type_name(RET): self.type_parameters[RET]}
+  def get_formal_type_parameters(self):
+    return {self.full_type_name(ARGS): self.formal_type_parameters[ARGS],
+            self.full_type_name(RET): self.formal_type_parameters[RET]}
 
   def call_slot(self, node, *args, **kwargs):
     """Implementation of Callable.__call__."""
@@ -3127,7 +3137,7 @@ class Callable(ParameterizedClass, HasSlots):
     if len(args) != self.num_args:
       raise WrongArgCount(function.Signature.from_callable(self),
                           FunctionArgs(posargs=args), self.vm)
-    formal_args = [(function.argname(i), self.type_parameters[i])
+    formal_args = [(function.argname(i), self.formal_type_parameters[i])
                    for i in range(self.num_args)]
     substs = [datatypes.AliasingDict()]
     bad_param = None
@@ -3145,7 +3155,7 @@ class Callable(ParameterizedClass, HasSlots):
             function.Signature.from_callable(self), FunctionArgs(posargs=args),
             self.vm, bad_param=bad_param)
     ret = self.vm.annotations_util.sub_one_annotation(
-        node, self.type_parameters[RET], substs)
+        node, self.formal_type_parameters[RET], substs)
     node, retvar = self.vm.init_class(node, ret)
     return node, retvar
 
@@ -3248,8 +3258,8 @@ class PyTDClass(SimpleAbstractValue, Class):
           self.vm.convert.constant_to_value(self.pytd_cls), self.vm)
       for type_param in self.template:
         name = type_param.full_name
-        if name not in value.type_parameters:
-          value.type_parameters[name] = self.vm.program.NewVariable()
+        if name not in value.instance_type_parameters:
+          value.instance_type_parameters[name] = self.vm.program.NewVariable()
       results = self.vm.program.NewVariable()
       retval = results.AddBinding(value, [func], node)
       node = self._call_init(node, retval, args)
@@ -3339,9 +3349,9 @@ class InterpreterClass(SimpleAbstractValue, Class):
                      "cannot use same type variable %s.")
               % (self.full_name, cls.full_name, item.name))
 
-    self._load_name2types()  # Throw exception if there is error
+    self._load_all_formal_type_parameters()  # Throw exception if there is error
     for t in self.template:
-      if t.full_name in self.name2types:
+      if t.full_name in self.all_formal_type_parameters:
         raise GenericTypeError(
             self, "Conflicting value for TypeVar %s" % t.full_name)
 
@@ -3395,7 +3405,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
           raise GenericTypeError(
               self, "Cannot inherit from Generic[...] multiple times")
         for item in base.template:
-          val = base.type_parameters.get(item.name)
+          val = base.formal_type_parameters.get(item.name)
           template.append(val.with_module(self.full_name))
 
     if template:
@@ -3405,7 +3415,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
         if base.full_name != "typing.Generic":
           if isinstance(base, ParameterizedClass):
             for item in base.template:
-              val = base.type_parameters.get(item.name)
+              val = base.formal_type_parameters.get(item.name)
               if isinstance(val, TypeParameter):
                 t = val.with_module(self.full_name)
                 if t not in template:
@@ -3418,7 +3428,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
         if isinstance(base, ParameterizedClass):
           seq = []
           for item in base.template:
-            val = base.type_parameters.get(item.name)
+            val = base.formal_type_parameters.get(item.name)
             if isinstance(val, TypeParameter):
               seq.append(val.with_module(self.full_name))
           seqs.append(seq)
@@ -3939,8 +3949,8 @@ class InterpreterFunction(SignedFunction):
       if inst.cls.template:
         for subst in substs:
           for k, v in subst.items():
-            if k in inst.type_parameters:
-              value = inst.type_parameters[k].AssignToNewVariable(node)
+            if k in inst.instance_type_parameters:
+              value = inst.instance_type_parameters[k].AssignToNewVariable(node)
               value.PasteVariable(v, node)
               yield Mutation(inst, k, value)
     # Optimization: return a generator to avoid iterating over the mutations an
@@ -4181,9 +4191,9 @@ class BoundFunction(AtomicAbstractValue):
       if isinstance(inst.cls, ParameterizedClass):
         self.replace_self_annot = inst.cls.get_self_annot()
     if isinstance(inst, SimpleAbstractValue):
-      self.alias_map = inst.type_parameters.uf
+      self.alias_map = inst.instance_type_parameters.uf
     elif isinstance(inst, TypeParameterInstance):
-      self.alias_map = inst.instance.type_parameters.uf
+      self.alias_map = inst.instance.instance_type_parameters.uf
     else:
       self.alias_map = None
 
@@ -4341,17 +4351,18 @@ class Generator(Instance):
         for param_name in (T, self.SEND, self.RET):
           _, param_var = self.vm.init_class(
               node, ret_type.get_formal_type_parameter(param_name))
-          self.merge_type_parameter(node, param_name, param_var)
+          self.merge_instance_type_parameter(node, param_name, param_var)
       else:
         # infer the type parameters based on the collected type information.
-        self.merge_type_parameter(node, T, self.generator_frame.yield_variable)
+        self.merge_instance_type_parameter(
+            node, T, self.generator_frame.yield_variable)
         # For SEND type, it can not be decided until the SEND function is called
         # later on. So set SEND type as ANY so that the type check will not fail
         # when the function is called afterwards.
-        self.merge_type_parameter(node, self.SEND,
-                                  self.vm.convert.unsolvable.to_variable(node))
-        self.merge_type_parameter(node, self.RET,
-                                  self.generator_frame.return_variable)
+        self.merge_instance_type_parameter(
+            node, self.SEND, self.vm.convert.unsolvable.to_variable(node))
+        self.merge_instance_type_parameter(
+            node, self.RET, self.generator_frame.return_variable)
       self.runs += 1
     return node, self.get_instance_type_parameter(T)
 
@@ -4368,8 +4379,8 @@ class Iterator(Instance, HasSlots):
     super(Iterator, self).__init__(vm.convert.iterator_type, vm)
     HasSlots.init_mixin(self)
     self.set_slot(self.vm.convert.next_attr, self.next_slot)
-    # TODO(dbaum): Should we set type_parameters[self.TYPE_PARAM] to something
-    # based on return_var?
+    # TODO(dbaum): Should we set instance_type_parameters[self.TYPE_PARAM] to
+    # something based on return_var?
     self._return_var = return_var
 
   def next_slot(self, node):
