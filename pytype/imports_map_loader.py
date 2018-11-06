@@ -3,7 +3,6 @@
 import collections
 import logging
 import os
-import textwrap
 
 log = logging.getLogger(__name__)
 
@@ -26,35 +25,14 @@ def _read_imports_map(options_info_path):
           for short_path, paths in imports_multimap.items()}
 
 
-def _validate_map(imports_map, output):
+def _validate_imports_map(imports_map):
   """Validate the imports map against the command line arguments.
-
-  Validate the map. Note that main.py has ensured that all output files also
-  exist, in case they're actually used for input, e.g. when there are multiple
-  files being processed.
 
   Args:
     imports_map: The map returned by _read_imports_map.
-    output: The pyi file pytype is building right now.
   Raises:
     AssertionError: If we found an error in the imports map.
   """
-  # If pytype is processing multiple files that import each other, during the
-  # first pass, we don't have a .pyi for them yet, even though they might be
-  # mentioned in the imports_map. So fill them with temporary contents.
-  if output is not None:
-    if os.path.exists(output):
-      log.error("output file %r already exists; will be overwritten",
-                os.path.abspath(output))
-    with open(output, "w") as fi:
-      fi.write(textwrap.dedent("""\
-          # If you see this comment, it means pytype hasn't properly
-          # processed %r.
-          from typing import Any
-          def __getattr__(name) -> Any: ...
-      """ % output))
-
-  # Now, validate the imports_map.
   for short_path, paths in imports_map.items():
     for path in paths:
       if not os.path.exists(path):
@@ -101,7 +79,7 @@ def build_imports_map(options_info_path, output=None):
         del imports_map[k]
         break
 
-  _validate_map(imports_multimap, output)
+  _validate_imports_map(imports_multimap)
 
   # Add the potential directory nodes for adding "__init__", because some build
   # systems automatically create __init__.py in empty directories. These are
