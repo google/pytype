@@ -31,6 +31,9 @@ class Stage(object):
   SECOND_PASS = 'second pass'
 
 
+FIRST_PASS_SUFFIX = '-1'
+
+
 def resolved_file_to_module(f):
   """Turn an importlab ResolvedFile into a pytype Module."""
   full_path = f.path
@@ -57,7 +60,11 @@ def deps_from_import_graph(import_graph):
     List of (tuple of source modules, tuple of direct deps) in dependency order.
   """
   def get_filenames(node):
-    return (node,) if isinstance(node, six.string_types) else tuple(node.nodes)
+    if isinstance(node, six.string_types):
+      return (node,)
+    else:
+      # Make the build as deterministic as possible to minimize rebuilds.
+      return tuple(sorted(node.nodes))
   def make_module(filename):
     return resolved_file_to_module(import_graph.provenance[filename])
   modules = []
@@ -86,6 +93,16 @@ def _module_to_output_path(mod):
     return mod.name[0] + mod.name[1:].replace('.', os.path.sep)
 
 
+def get_imports_map(deps, module_to_imports_map, module_to_output):
+  """Get a short path -> full path map for the given deps."""
+  imports_map = {}
+  for m in deps:
+    if m in module_to_imports_map:
+      imports_map.update(module_to_imports_map[m])
+    imports_map[_module_to_output_path(m)] = module_to_output[m]
+  return imports_map
+
+
 class PytypeRunner(object):
   """Runs pytype over an import graph."""
 
@@ -95,8 +112,7 @@ class PytypeRunner(object):
     self.sorted_sources = sorted_sources
     self.python_version = conf.python_version
     self.pyi_dir = os.path.join(conf.output, 'pyi')
-    # directory for first-pass pyi files, for cycle resolution
-    self.pyi_1_dir = os.path.join(conf.output, 'pyi_1')
+    self.imports_dir = os.path.join(conf.output, 'imports')
     self.ninja_file = os.path.join(conf.output, 'build.ninja')
     self.custom_options = [
         (k, getattr(conf, k)) for k in set(conf.__slots__) - set(config.ITEMS)]
@@ -119,7 +135,7 @@ class PytypeRunner(object):
     """Get the command line for running pytype."""
     exe = 'pytype-single'
     flags_with_values = {
-        '-P': '$pythonpath',
+        '--imports_info': '$imports',
         '-V': self.python_version,
         '-o': '$out',
         '--module-name': '$module',
@@ -131,29 +147,35 @@ class PytypeRunner(object):
     }
     if report_errors:
       self.set_custom_options(flags_with_values, binary_flags)
+    # Order the flags so that ninja recognizes commands across runs.
     return (
         [exe] +
-        list(sum(flags_with_values.items(), ())) +
-        list(binary_flags) +
+        list(sum(sorted(flags_with_values.items()), ())) +
+        sorted(binary_flags) +
         ['$in']
     )
 
-  def _output_file(self, module, pyi_dir):
-    filename = _module_to_output_path(module) + '.pyi'
-    return os.path.join(pyi_dir, filename)
-
-  def generate_default_pyi(self, module):
-    """Write a default pyi file for the module."""
-    output = self._output_file(module, self.pyi_dir)
-    # Create the output subdirectory for this file.
-    output_dir = os.path.dirname(output)
+  def make_imports_dir(self):
     try:
-      file_utils.makedirs(output_dir)
+      file_utils.makedirs(self.imports_dir)
     except OSError:
-      logging.error('Could not create output directory: %s', output_dir)
-      return
+      logging.error('Could not create imports directory: %s', self.imports_dir)
+      return False
+    return True
+
+  def write_default_pyi(self):
+    """Write a default pyi file."""
+    output = os.path.join(self.imports_dir, 'default.pyi')
     with open(output, 'w') as f:
       f.write(DEFAULT_PYI)
+    return output
+
+  def write_imports(self, module_name, imports_map, suffix):
+    """Write a .imports file."""
+    output = os.path.join(self.imports_dir, module_name + '.imports' + suffix)
+    with open(output, 'w') as f:
+      for item in imports_map.items():
+        f.write('%s %s\n' % item)
     return output
 
   def get_module_action(self, module):
@@ -218,37 +240,32 @@ class PytypeRunner(object):
         logging.info('%s command: %s', action, command)
         f.write('rule %s\n  command = %s\n' % (action, command))
 
-  def write_build_statement(self, module, action, deps, output_dir=None,
-                            additional_pythonpath_dir=None):
+  def write_build_statement(self, module, action, deps, imports, suffix):
     """Write a build statement for the given module.
 
     Args:
       module: A module_utils.Module object.
       action: An Action object.
       deps: The module's dependencies.
-      output_dir: Optionally, the output dir. Defaults to pytype_output/pyi/.
-      additional_pythonpath_dir: Optionally, a dir in which to look for previous
-        output, in addition to pytype_output/pyi/.
+      imports: An imports file.
+      suffix: An output file suffix.
 
     Returns:
       The expected output of the build statement.
     """
-    output_dir = output_dir or self.pyi_dir
-    output = self._output_file(module, output_dir)
-    pythonpath_dirs = [self.pyi_dir]
-    if additional_pythonpath_dir:
-      pythonpath_dirs.append(additional_pythonpath_dir)
-    logging.info('%s %s\n  pythonpath: %s\n  deps: %s\n  output: %s',
-                 action, module.name, pythonpath_dirs, deps, output)
+    output = os.path.join(self.pyi_dir,
+                          _module_to_output_path(module) + '.pyi' + suffix)
+    logging.info('%s %s\n  imports: %s\n  deps: %s\n  output: %s',
+                 action, module.name, imports, deps, output)
     with open(self.ninja_file, 'a') as f:
       f.write('build {output}: {action} {input}{deps}\n'
-              '  pythonpath = {pythonpath}\n'
+              '  imports = {imports}\n'
               '  module = {module}\n'.format(
                   output=output,
                   action=action,
                   input=module.full_path,
                   deps=' | ' + ' '.join(deps) if deps else '',
-                  pythonpath=':'.join(pythonpath_dirs),
+                  imports=imports,
                   module=module.name))
     return output
 
@@ -258,33 +275,37 @@ class PytypeRunner(object):
     Returns:
       All files with build statements.
     """
+    if not self.make_imports_dir():
+      return set()
+    default_output = self.write_default_pyi()
     self.write_ninja_preamble()
-    files = set()  # all files with build statements
-    module_to_output = {}  # mapping from module to expected output
+    files = set()
+    module_to_imports_map = {}
+    module_to_output = {}
     for module, action, deps, stage in self.yield_sorted_modules():
       if files >= self.filenames:
         logging.info('skipped: %s %s (%s)', action, module.name, stage)
         continue
       if action == Action.GENERATE_DEFAULT:
-        # TODO(rechen): generating default pyis here breaks the separation
-        # between staging and execution. We should either generate these files
-        # during the ninja build or map them all to one canonical file.
-        module_to_output[module] = self.generate_default_pyi(module)
+        module_to_output[module] = default_output
         continue
       if stage == Stage.SINGLE_PASS:
         files.add(module.full_path)
-        output_dir = additional_pythonpath_dir = None
+        suffix = ''
       elif stage == Stage.FIRST_PASS:
-        output_dir = self.pyi_1_dir
-        additional_pythonpath_dir = None
+        suffix = FIRST_PASS_SUFFIX
       else:
         assert stage == Stage.SECOND_PASS
         files.add(module.full_path)
-        output_dir = None
-        additional_pythonpath_dir = self.pyi_1_dir
+        suffix = ''
+      imports_map = module_to_imports_map[module] = get_imports_map(
+          deps, module_to_imports_map, module_to_output)
+      imports = self.write_imports(module.name, imports_map, suffix)
+      # Don't depend on default.pyi, since it's regenerated every time.
+      deps = tuple(module_to_output[m] for m in deps
+                   if module_to_output[m] != default_output)
       module_to_output[module] = self.write_build_statement(
-          module, action, tuple(module_to_output[m] for m in deps), output_dir,
-          additional_pythonpath_dir)
+          module, action, deps, imports, suffix)
     return files
 
   def build(self):

@@ -26,21 +26,6 @@ class TestSetupLoggingOrDie(unittest.TestCase):
     tool_utils.setup_logging_or_die(2)
 
 
-class TestRmDirOrDie(unittest.TestCase):
-  """Tests for tool_utils.rmdir_or_die()."""
-
-  def test_rm(self):
-    with file_utils.Tempdir() as d:
-      d.create_file('foo/bar/baz.py')
-      tool_utils.rmdir_or_die(os.path.join(d.path, 'foo', 'bar'), '')
-      self.assertFalse(os.path.exists(os.path.join(d.path, 'foo', 'bar')))
-      self.assertTrue(os.path.exists(os.path.join(d.path, 'foo')))
-
-  def test_die(self):
-    with self.assertRaises(SystemExit):
-      tool_utils.rmdir_or_die('/nonexistent/path', '')
-
-
 class TestMakeDirsOrDie(unittest.TestCase):
   """Tests for tool_utils.makedirs_or_die()."""
 

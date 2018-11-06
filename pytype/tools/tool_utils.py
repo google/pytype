@@ -3,7 +3,6 @@
 from __future__ import print_function
 
 import logging
-import shutil
 import sys
 
 from pytype import file_utils
@@ -23,17 +22,9 @@ def setup_logging_or_die(verbosity):
   logging.basicConfig(level=level, format='%(levelname)s %(message)s')
 
 
-def _manipulate_path_or_die(manipulate, path, message):
+def makedirs_or_die(path, message):
   try:
-    manipulate(path)
+    file_utils.makedirs(path)
   except OSError:
     logging.critical('%s: %s', message, path)
     sys.exit(1)
-
-
-def rmdir_or_die(path, message):
-  _manipulate_path_or_die(shutil.rmtree, path, message)
-
-
-def makedirs_or_die(path, message):
-  _manipulate_path_or_die(file_utils.makedirs, path, message)

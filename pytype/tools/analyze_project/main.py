@@ -19,7 +19,6 @@
 from __future__ import print_function
 
 import logging
-import os
 import sys
 
 import importlab.environment
@@ -93,12 +92,6 @@ def main():
 
   logging.info('Source tree:\n%s',
                importlab.output.formatted_deps_list(import_graph))
-  if os.path.exists(conf.output):
-    # TODO(b/114124389): clearing the directory ensures that the same pytype
-    # findings are generated on every run, but it prevents us from smartly
-    # reusing output. We should switch to using --imports_info.
-    tool_utils.rmdir_or_die(
-        conf.output, 'Could not remove existing output directory')
   tool_utils.makedirs_or_die(conf.output, 'Could not create output directory')
   deps = pytype_runner.deps_from_import_graph(import_graph)
   runner = pytype_runner.PytypeRunner(conf, deps)

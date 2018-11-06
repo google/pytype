@@ -1,5 +1,8 @@
-Version (upcoming)
+Version 2018.11.06
+* Use --imports_info to allow preserving generated type stubs between runs.
+* Handle TypeParameter inheritance more robustly with a union-find approach.
 * Get more precise deps from importlab to allow build parallelization.
+* Trim the dependencies of builtin and system files from the import graph.
 * Generate a build.ninja file and call pytype-single via ninja.
 
 Version 2018.10.30
