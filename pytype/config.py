@@ -241,7 +241,7 @@ def add_debug_options(o):
       help=("Don't reuse the results of previous function calls."))
   o.add_argument(
       "-T", "--no-typeshed", action="store_false",
-      dest="typeshed", default=True,
+      dest="typeshed", default=None,
       help=("Do not use typeshed to look up types in the Python stdlib. "
             "For testing."))
   o.add_argument(
@@ -401,6 +401,16 @@ class Postprocessor(object):
           not self.output_options.version):
       self.error("Need a filename.")
     self.output_options.generate_builtins = generate_builtins
+
+  @uses(["precompiled_builtins"])
+  def _store_typeshed(self, typeshed):
+    if typeshed is not None:
+      self.output_options.typeshed = typeshed
+    elif self.output_options.precompiled_builtins:
+      # Typeshed is included in the builtins pickle.
+      self.output_options.typeshed = False
+    else:
+      self.output_options.typeshed = True
 
   def _store_verbosity(self, verbosity):
     """Configure logging."""

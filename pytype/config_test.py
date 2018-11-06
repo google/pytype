@@ -133,6 +133,28 @@ class PostprocessorTest(unittest.TestCase):
         input_options.disable, ["import-error", "attribute-error"])
     self.assertTupleEqual(input_options.python_version, (3, 4))
 
+  def test_typeshed_default(self):
+    input_options = datatypes.SimpleNamespace(
+        typeshed=None, precompiled_builtins=None)
+    config.Postprocessor({"typeshed", "precompiled_builtins"}, input_options,
+                         self.output_options).process()
+    # We only care that `None` was replaced.
+    self.assertIsNotNone(self.output_options.typeshed)
+
+  def test_typeshed_with_precompiled_builtins(self):
+    input_options = datatypes.SimpleNamespace(
+        typeshed=None, precompiled_builtins="builtins")
+    config.Postprocessor({"typeshed", "precompiled_builtins"}, input_options,
+                         self.output_options).process()
+    self.assertIs(self.output_options.typeshed, False)
+
+  def test_typeshed(self):
+    input_options = datatypes.SimpleNamespace(
+        typeshed=False, precompiled_builtins=None)
+    config.Postprocessor({"typeshed", "precompiled_builtins"}, input_options,
+                         self.output_options).process()
+    self.assertIs(self.output_options.typeshed, False)
+
 
 if __name__ == "__main__":
   unittest.main()

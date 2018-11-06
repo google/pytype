@@ -430,16 +430,14 @@ class Loader(object):
       return mod
 
     # Third party modules from typeshed (typically site-packages) come last.
-    if not self.imports_map:
-      mod = self._load_builtin(
-          "third_party", module_name, third_party_only=True)
-      if mod:
-        return mod
+    mod = self._load_builtin("third_party", module_name, third_party_only=True)
+    if mod:
+      return mod
 
     log.warning("Couldn't import module %s %r in (path=%r) imports_map: %s",
                 module_name, module_name, self.pythonpath,
                 "%d items" % len(self.imports_map) if
-                self.imports_map else "none")
+                self.imports_map is not None else "none")
     if log.isEnabledFor(logging.DEBUG) and self.imports_map:
       for module, path in self.imports_map.items():
         log.debug("%s -> %s", module, path)
@@ -521,9 +519,10 @@ class Loader(object):
             if module.ast}
 
   def can_see(self, module):
-    """Reports whether the Loader can find the module."""
-    # Assume that if there is no imports_map that any module can be found.
-    if not self.imports_map:
+    """Reports whether the Loader is allowed to use the module."""
+    # If there is no imports_map or we are allowed to look up modules in
+    # typeshed, then any module that can be found can be used.
+    if self.imports_map is None or self.use_typeshed:
       return True
     return (module in self.imports_map or
             "%s/__init__" % module in self.imports_map)
