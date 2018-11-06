@@ -2878,6 +2878,7 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     # Lazily loaded to handle recursive types.
     # See the formal_type_parameters() property.
     self._formal_type_parameters = formal_type_parameters
+    self._formal_type_parameters_loaded = False
     self._hash = None  # memoized due to expensive computation
     self.official_name = self.base_cls.official_name
     # Load immediately due to template in base_cls could change
@@ -2948,6 +2949,12 @@ class ParameterizedClass(AtomicAbstractValue, Class):
 
   @property
   def formal_type_parameters(self):
+    self._load_formal_type_parameters()
+    return self._formal_type_parameters
+
+  def _load_formal_type_parameters(self):
+    if self._formal_type_parameters_loaded:
+      return
     if isinstance(self._formal_type_parameters, LazyFormalTypeParameters):
       formal_type_parameters = {}
       for name, param in self._raw_formal_type_parameters():
@@ -2957,7 +2964,10 @@ class ParameterizedClass(AtomicAbstractValue, Class):
           formal_type_parameters[name] = self.vm.convert.constant_to_value(
               param, self._formal_type_parameters.subst, self.vm.root_cfg_node)
       self._formal_type_parameters = formal_type_parameters
-    return self._formal_type_parameters
+    self._formal_type_parameters = (
+        self.vm.annotations_util.convert_class_annotations(
+            self._formal_type_parameters))
+    self._formal_type_parameters_loaded = True
 
   def compute_mro(self):
     return (self,) + self.base_cls.mro[1:]
