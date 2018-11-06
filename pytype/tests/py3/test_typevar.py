@@ -367,6 +367,17 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       f(42)
     """)
 
+  def testNameReuse(self):
+    self.Check("""
+      from typing import Generic, TypeVar
+      T = TypeVar("T", int, float)
+      class Foo(Generic[T]):
+        def __init__(self, x: T):
+          self.x = x
+      def f(foo: Foo[T]) -> T:
+        return foo.x
+    """)
+
 
 class TypeVarTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for TypeVar in Python 3."""

@@ -1653,11 +1653,12 @@ class AnnotationContainer(AnnotationClass):
     # its corresponding concrete type
     if isinstance(self.base_cls, InterpreterClass) and self.base_cls.template:
       for formal in self.base_cls.template:
-        if (isinstance(formal, TypeParameter) and not formal.is_generic()
-            and isinstance(params[formal.name], TypeParameter)):
-          self.vm.errorlog.not_supported_yet(
-              self.vm.frames,
-              "Renaming TypeVar `%s` with constraints or bound" % formal.name)
+        if (isinstance(formal, TypeParameter) and not formal.is_generic() and
+            isinstance(params[formal.name], TypeParameter)):
+          if formal.name != params[formal.name].name:
+            self.vm.errorlog.not_supported_yet(
+                self.vm.frames,
+                "Renaming TypeVar `%s` with constraints or bound" % formal.name)
         else:
           root_node = self.vm.root_cfg_node
           actual = params[formal.name].instantiate(root_node)
