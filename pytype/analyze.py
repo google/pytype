@@ -67,7 +67,7 @@ class CallTracer(vm.VirtualMachine):
 
   def create_varargs(self, node):
     value = abstract.Instance(self.convert.tuple_type, self)
-    value.merge_type_parameter(
+    value.merge_instance_type_parameter(
         node, abstract.T, self.convert.create_new_unknown(node))
     return value.to_variable(node)
 
@@ -75,8 +75,8 @@ class CallTracer(vm.VirtualMachine):
     key_type = self.convert.primitive_class_instances[str].to_variable(node)
     value_type = self.convert.create_new_unknown(node)
     kwargs = abstract.Instance(self.convert.dict_type, self)
-    kwargs.merge_type_parameter(node, abstract.K, key_type)
-    kwargs.merge_type_parameter(node, abstract.V, value_type)
+    kwargs.merge_instance_type_parameter(node, abstract.K, key_type)
+    kwargs.merge_instance_type_parameter(node, abstract.V, value_type)
     return kwargs.to_variable(node)
 
   def create_method_arguments(self, node, method):
@@ -257,7 +257,7 @@ class CallTracer(vm.VirtualMachine):
         seen.add(v)
         if isinstance(v, abstract.SimpleAbstractValue):
           v.maybe_missing_members = True
-          for child in v.type_parameters.values():
+          for child in v.instance_type_parameters.values():
             values.extend(child.data)
 
   def init_class(self, node, cls, extra_key=None):
@@ -305,7 +305,7 @@ class CallTracer(vm.VirtualMachine):
         continue
       self._initialized_instances.add(b.data)
       if isinstance(b.data, abstract.SimpleAbstractValue):
-        for param in b.data.type_parameters.values():
+        for param in b.data.instance_type_parameters.values():
           node = self.call_init(node, param)
       node, init = self.attribute_handler.get_attribute(
           node, b.data.get_class(), "__init__", b)

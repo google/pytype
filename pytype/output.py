@@ -89,29 +89,30 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       template = new_template
     if instance is None and isinstance(v, abstract.ParameterizedClass):
       return [self.value_instance_to_pytd_type(
-          node, v.type_parameters[t], None, seen, view) for t in template]
+          node, v.get_formal_type_parameter(t), None, seen, view)
+              for t in template]
     elif isinstance(instance, abstract.SimpleAbstractValue):
       type_arguments = []
       for t in template:
         if isinstance(instance, abstract.Tuple):
           param_values = self._get_values(node, instance.pyval[t], view)
-        elif t in instance.type_parameters:
+        elif instance.has_instance_type_parameter(t):
           param_values = self._get_values(
-              node, instance.type_parameters[t], view)
+              node, instance.get_instance_type_parameter(t), view)
         elif isinstance(v, abstract.Callable):
-          param_values = v.type_parameters[t].instantiate(
+          param_values = v.get_formal_type_parameter(t).instantiate(
               node or self.vm.root_cfg_node).data
         else:
           param_values = [self.vm.convert.unsolvable]
         if (param_values == [self.vm.convert.unsolvable] and
             isinstance(v, abstract.ParameterizedClass) and
             not self.vm.annotations_util.get_type_parameters(
-                v.type_parameters[t])):
+                v.get_formal_type_parameter(t))):
           # When the instance's parameter value is unsolvable, we can get a
           # more precise type from the class. Note that we need to be careful
           # not to introduce unbound type parameters.
           arg = self.value_instance_to_pytd_type(
-              node, v.type_parameters[t], None, seen, view)
+              node, v.get_formal_type_parameter(t), None, seen, view)
         else:
           arg = pytd_utils.JoinTypes(self.value_to_pytd_type(
               node, p, seen, view) for p in param_values)
@@ -195,12 +196,12 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     if isinstance(v, (abstract.Empty, typing_overlay.NoReturn)):
       return pytd.NothingType()
     elif isinstance(v, abstract.TypeParameterInstance):
-      if v.instance.type_parameters[v.name].bindings:
+      if v.instance.get_instance_type_parameter(v.full_name).bindings:
         # The type parameter was initialized. Set the view to None, since we
         # don't include v.instance in the view.
         return pytd_utils.JoinTypes(
             self.value_to_pytd_type(node, p, seen, None)
-            for p in v.instance.type_parameters[v.name].data)
+            for p in v.instance.get_instance_type_parameter(v.full_name).data)
       elif v.param.constraints:
         return pytd_utils.JoinTypes(
             self.value_instance_to_pytd_type(node, p, None, seen, view)

@@ -1,5 +1,91 @@
-Version (upcoming)
+Version 2018.11.06
+* Use --imports_info to allow preserving generated type stubs between runs.
+* Handle TypeParameter inheritance more robustly with a union-find approach.
+* Get more precise deps from importlab to allow build parallelization.
+* Trim the dependencies of builtin and system files from the import graph.
 * Generate a build.ninja file and call pytype-single via ninja.
 
 Version 2018.10.30
 * Improve the display of tracebacks in error messages.
+* Make several Python 3 fixes and improvements, including better enum support.
+* Fix evaluation of conditionals inside closures.
+* Improve handling of comparison operators.
+* Add a --strict-import option to not load submodules not explicitly imported.
+
+Version 2018.09.26
+* Generate default type stubs for pip-installed dependencies.
+* Remove the output directory at the start of each pytype run.
+
+Version 2018.09.25
+* Improve Python 3 varargs and kwargs support.
+* Support user-defined generic types.
+* Improve --generate-config to show a full sample config file.
+
+Version 2018.09.19
+* Allow the command-line `inputs` option to be specified in a config file.
+* Support hidden files.
+* Make the behavior of --exclude more intuitive.
+
+Version 2018.09.18
+* Support setting --exclude in a config file.
+* Add support for annotations in inner functions.
+* Officially support running under Python 3.7.
+
+Version 2018.09.07.1
+* Update the typeshed submodule.
+
+Version 2018.09.07
+* Make typing.NamedTuple a class for Python 3.6+.
+
+Version 2018.08.10
+* Add --exclude flag to support excluding files or directories from analysis.
+
+Version 2018.07.13
+* Improve type checking of typing.Generator.
+* Enable logging from C++ in debug builds.
+* Expose pytype-single's return code.
+* Add the ability to record trace data during bytecode execution.
+
+Version 2018.06.19
+* Tweak the installation instructions and add a quickstart guide.
+
+Version 2018.06.18
+* Document pytype's platform support.
+
+Version 2018.06.15
+* Officially support running under Python 3.5 and 3.6.
+* Expose pytype-single's --version option.
+* Optimization: skip argument parameter combinations we've already seen.
+* Bring back pytype-single's --timeout option.
+* Add --return-success to pytype-single to report errors but return success.
+
+Version 2018.06.05
+* Print transient progress messages.
+* Rename pytype to pytype-single and pytype-all to pytype.
+* Use the system and site package dependencies found by importlab in pytype-all.
+* Make the pytype-all help message friendlier.
+* Allow pytype-single args to be specified in a config file.
+* Add a merge-pyi subtool to merge pyi files into their Python sources.
+* Expose some pytype-single options to pytype-all.
+* Add a script which runs pytype tests.
+* Allow specifying config file variables for pytype-all on the command line.
+* Add a --version option to display the pytype version.
+
+Version 2018.05.22.1
+* Use different flags when compiling with gcc or clang.
+
+Version 2018.05.22
+* Add flags for building with clang on Mac OS X.
+* Allow pytype-all to accept directories as input.
+* Change pytype-all's config file to INI style, and fall back to setup.cfg.
+* Make analyze_annotated a command-line option.
+* Add pythonpath guessing to pytype-all.
+
+Version 2018.05.15
+* Make some fixes to the release packaging.
+
+Version 2018.05.14
+* Release pytype-all.
+
+Version 0.2
+* Release pytype.

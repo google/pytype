@@ -6,6 +6,7 @@ import types
 from pytype import abstract
 from pytype import blocks
 from pytype import compat
+from pytype import datatypes
 from pytype import output
 from pytype import special_builtins
 from pytype import typing_overlay
@@ -53,6 +54,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     else:
       version_specific = [compat.BytesType]
 
+    self.unsolvable = abstract.Unsolvable(self.vm)
+    self.empty = abstract.Empty(self.vm)
+    self.no_return = typing_overlay.NoReturn(self.vm)
+
     # Now fill primitive_classes with the real values using constant_to_value.
     self.primitive_classes = {v: self.constant_to_value(v)
                               for v in [
@@ -91,10 +96,6 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     self.super_type = self.primitive_classes[super]
     self.str_type = self.primitive_classes[str]
     self.int_type = self.primitive_classes[int]
-
-    self.unsolvable = abstract.Unsolvable(self.vm)
-    self.empty = abstract.Empty(self.vm)
-    self.no_return = typing_overlay.NoReturn(self.vm)
 
     self.list_type = self.constant_to_value(list)
     self.set_type = self.constant_to_value(set)
@@ -161,7 +162,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       pytd_cls = self.vm.lookup_builtin(name)
     else:
       pytd_cls = ast.Lookup(name)
-    subst = subst or {}
+    subst = subst or datatypes.AliasingDict()
     return self.constant_to_value(pytd_cls, subst, self.vm.root_cfg_node)
 
   def tuple_to_value(self, content):
@@ -214,14 +215,15 @@ class Converter(utils.VirtualMachineWeakrefMixin):
   def build_list_of_type(self, node, var):
     """Create a VM list with element type derived from the given variable."""
     ret = abstract.Instance(self.list_type, self.vm)
-    ret.merge_type_parameter(node, abstract.T, var)
+    ret.merge_instance_type_parameter(node, abstract.T, var)
     return ret.to_variable(node)
 
   def build_set(self, node, content):
     """Create a VM set from the given sequence."""
     content = list(content)  # content might be a generator
     value = abstract.Instance(self.set_type, self.vm)
-    value.merge_type_parameter(node, abstract.T, self.build_content(content))
+    value.merge_instance_type_parameter(
+        node, abstract.T, self.build_content(content))
     return value.to_variable(node)
 
   def build_map(self, node):
@@ -296,16 +298,16 @@ class Converter(utils.VirtualMachineWeakrefMixin):
               arg_type.full_name in ("__builtin__.dict", "__builtin__.tuple"))
       return None
     elif arg_type.base_cls is self.dict_type:
-      return arg_type.type_parameters.get(abstract.V)
+      return arg_type.get_formal_type_parameter(abstract.V)
     else:
       assert arg_type.base_cls is self.tuple_type
-      return arg_type.type_parameters.get(abstract.T)
+      return arg_type.get_formal_type_parameter(abstract.T)
 
   def _copy_type_parameters(self, old_container, new_container_name):
     new_container = self.name_to_value(new_container_name)
     if isinstance(old_container, abstract.ParameterizedClass):
       return abstract.ParameterizedClass(
-          new_container, old_container.type_parameters, self.vm)
+          new_container, old_container.formal_type_parameters, self.vm)
     else:
       assert isinstance(old_container, abstract.Class)
       return new_container
@@ -382,10 +384,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       var = self.vm.program.NewVariable()
       for t in pytd_utils.UnpackUnion(cls):
         if isinstance(t, pytd.TypeParameter):
-          if not subst or t.name not in subst:
-            raise self.TypeParameterError(t.name)
+          if not subst or t.full_name not in subst:
+            raise self.TypeParameterError(t.full_name)
           else:
-            for v in subst[t.name].bindings:
+            for v in subst[t.full_name].bindings:
               for source_set in source_sets:
                 var.AddBinding(self.get_maybe_abstract_instance(v.data)
                                if discard_concrete_values else v.data,
@@ -615,7 +617,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       bound = (pyval.bound and
                self.constant_to_value(pyval.bound, {}, self.vm.root_cfg_node))
       return abstract.TypeParameter(
-          pyval.name, self.vm, constraints=constraints, bound=bound)
+          pyval.name, self.vm, constraints=constraints,
+          bound=bound, module=pyval.scope)
     elif isinstance(pyval, abstract.AsInstance):
       cls = pyval.cls
       if isinstance(cls, pytd.LateType):
@@ -650,9 +653,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         if base_cls.name == "__builtin__.type":
           c, = cls.parameters
           if isinstance(c, pytd.TypeParameter):
-            if not subst or c.name not in subst:
-              raise self.TypeParameterError(c.name)
-            return self.merge_classes(get_node(), subst[c.name].data)
+            if not subst or c.full_name not in subst:
+              raise self.TypeParameterError(c.full_name)
+            return self.merge_classes(get_node(), subst[c.full_name].data)
           else:
             return self.constant_to_value(c, subst, self.vm.root_cfg_node)
         elif isinstance(cls, pytd.TupleType):
@@ -678,7 +681,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
               # An omitted type parameter implies `Any`.
               node = self.vm.root_cfg_node
               p = self.unsolvable.to_variable(node)
-            instance.merge_type_parameter(node, formal.name, p)
+            instance.merge_instance_type_parameter(node, formal.name, p)
           return instance
       elif isinstance(cls, pytd.Class):
         assert not cls.template
@@ -725,13 +728,18 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         parameters = pyval.args + (pytd_utils.JoinTypes(pyval.args), pyval.ret)
       else:
         abstract_class = abstract.ParameterizedClass
-        template = tuple(t.name for t in base.template)
+        if pyval.base_type.name == "typing.Generic":
+          pyval_template = pyval.parameters
+        else:
+          pyval_template = base.template
+        template = tuple(t.name for t in pyval_template)
         parameters = pyval.parameters
       assert (pyval.base_type.name == "typing.Generic" or
               len(parameters) <= len(template))
       # Delay type parameter loading to handle recursive types.
-      # See the ParameterizedClass.type_parameters() property.
-      type_parameters = abstract.LazyTypeParameters(template, parameters, subst)
+      # See the ParameterizedClass.formal_type_parameters() property.
+      type_parameters = abstract.LazyFormalTypeParameters(
+          template, parameters, subst)
       return abstract_class(base_cls, type_parameters, self.vm)
     elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node
       return self.tuple_to_value([self.constant_to_var(item, subst,

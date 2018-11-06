@@ -19,7 +19,6 @@
 from __future__ import print_function
 
 import logging
-import os
 import sys
 
 import importlab.environment
@@ -72,7 +71,8 @@ def main():
   typeshed = environment.initialize_typeshed_or_die()
   env = analyze_project_env.create_importlab_environment(conf, typeshed)
   try:
-    import_graph = importlab.graph.ImportGraph.create(env, conf.inputs)
+    import_graph = importlab.graph.ImportGraph.create(
+        env, conf.inputs, trim=True)
   except Exception as e:  # pylint: disable=broad-except
     logging.critical('Cannot parse input files:\n%s', str(e))
     sys.exit(1)
@@ -90,16 +90,8 @@ def main():
 
   # Main usage mode: analyze the project file by file in dependency order.
 
-  # TODO(rechen): builtin and system files are currently included as sources in
-  # the tree, which generates a lot of noise.
   logging.info('Source tree:\n%s',
                importlab.output.formatted_deps_list(import_graph))
-  if os.path.exists(conf.output):
-    # TODO(b/114124389): clearing the directory ensures that the same pytype
-    # findings are generated on every run, but it prevents us from smartly
-    # reusing output. We should switch to using --imports_info.
-    tool_utils.rmdir_or_die(
-        conf.output, 'Could not remove existing output directory')
   tool_utils.makedirs_or_die(conf.output, 'Could not create output directory')
   deps = pytype_runner.deps_from_import_graph(import_graph)
   runner = pytype_runner.PytypeRunner(conf, deps)

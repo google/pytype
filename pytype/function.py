@@ -2,6 +2,7 @@
 
 import collections
 
+from pytype import datatypes
 from pytype.pytd import pytd_utils
 import six
 
@@ -61,6 +62,14 @@ class Signature(object):
   def has_param_annotations(self):
     return bool(six.viewkeys(self.annotations) - {"return"})
 
+  def add_scope(self, module):
+    """Add scope for type parameters in annotations."""
+    annotations = {}
+    for key, val in self.annotations.items():
+      annotations[key] = val.vm.annotations_util.add_scope(
+          val, self.excluded_types, module)
+    self.annotations = annotations
+
   def _postprocess_annotation(self, name, annotation):
     if (name in self.defaults and
         self.defaults[name].data == [annotation.vm.convert.none]):
@@ -84,7 +93,7 @@ class Signature(object):
     for annot in self.annotations.values():
       c.update(annot.vm.annotations_util.get_type_parameters(annot))
     for param, count in six.iteritems(c):
-      if param.full_name in self.excluded_types:
+      if param.name in self.excluded_types:
         # skip all the type parameters in `excluded_types`
         continue
       if count == 1 and not (param.constraints or param.bound or
@@ -122,11 +131,11 @@ class Signature(object):
         kwonly_params=set(p.name for p in sig.params if p.kwonly),
         kwargs_name=None if sig.starstarargs is None else sig.starstarargs.name,
         defaults={p.name: vm.convert.constant_to_var(
-            p.type, subst={}, node=vm.root_cfg_node)
+            p.type, subst=datatypes.AliasingDict(), node=vm.root_cfg_node)
                   for p in sig.params
                   if p.optional},
         annotations={name: vm.convert.constant_to_value(
-            typ, subst={}, node=vm.root_cfg_node)
+            typ, subst=datatypes.AliasingDict(), node=vm.root_cfg_node)
                      for name, typ in pytd_annotations},
         late_annotations={},
         postprocess_annotations=False,
@@ -134,7 +143,7 @@ class Signature(object):
 
   @classmethod
   def from_callable(cls, val):
-    annotations = {argname(i): val.type_parameters[i]
+    annotations = {argname(i): val.formal_type_parameters[i]
                    for i in range(val.num_args)}
     return cls(
         name="<callable>",

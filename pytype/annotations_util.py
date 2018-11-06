@@ -58,20 +58,21 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
   def sub_one_annotation(self, node, annot, substs, instantiate_unbound=True):
     """Apply type parameter substitutions to an annotation."""
     if isinstance(annot, abstract.TypeParameter):
-      if all(annot.name in subst and subst[annot.name].bindings and
+      if all(annot.full_name in subst and subst[annot.full_name].bindings and
              not any(isinstance(v, abstract.AMBIGUOUS_OR_EMPTY)
-                     for v in subst[annot.name].data)
+                     for v in subst[annot.full_name].data)
              for subst in substs):
-        vals = sum((subst[annot.name].data for subst in substs), [])
+        vals = sum((subst[annot.full_name].data for subst in substs), [])
       elif instantiate_unbound:
         vals = annot.instantiate(node).data
       else:
         vals = [annot]
       return self.vm.convert.merge_classes(node, vals)
     elif isinstance(annot, abstract.ParameterizedClass):
-      type_parameters = {name: self.sub_one_annotation(node, param, substs,
-                                                       instantiate_unbound)
-                         for name, param in annot.type_parameters.items()}
+      type_parameters = {
+          name: self.sub_one_annotation(
+              node, param, substs, instantiate_unbound)
+          for name, param in annot.formal_type_parameters.items()}
       # annot may be a subtype of ParameterizedClass, such as TupleClass.
       return type(annot)(annot.base_cls, type_parameters, self.vm)
     elif isinstance(annot, abstract.Union):
@@ -81,15 +82,49 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       return type(annot)(options, self.vm)
     return annot
 
+  def add_scope(self, annot, types, module):
+    """Add scope for type parameters.
+
+    In original type class, all type parameters that should be added a scope
+    will be replaced with a new copy.
+
+    Args:
+      annot: The type class.
+      types: A type name list that should be added a scope.
+      module: Module name.
+
+    Returns:
+      The type with fresh type parameters that have been added the scope.
+    """
+    if isinstance(annot, abstract.TypeParameter):
+      if annot.name in types:
+        new_annot = annot.copy()
+        new_annot.module = module
+        return new_annot
+      return annot
+    elif isinstance(annot, abstract.TupleClass):
+      annot.formal_type_parameters[abstract.T] = self.add_scope(
+          annot.formal_type_parameters[abstract.T], types, module)
+      return annot
+    elif isinstance(annot, abstract.ParameterizedClass):
+      for key, val in annot.formal_type_parameters.items():
+        annot.formal_type_parameters[key] = self.add_scope(val, types, module)
+      return annot
+    elif isinstance(annot, abstract.Union):
+      annot.options = tuple(self.add_scope(option, types, module)
+                            for option in annot.options)
+      return annot
+    return annot
+
   def get_type_parameters(self, annot):
     """Get all the TypeParameter instances that appear in the annotation."""
     if isinstance(annot, abstract.TypeParameter):
       return [annot]
     elif isinstance(annot, abstract.TupleClass):
-      return self.get_type_parameters(annot.type_parameters[abstract.T])
+      return self.get_type_parameters(annot.formal_type_parameters[abstract.T])
     elif isinstance(annot, abstract.ParameterizedClass):
       return sum((self.get_type_parameters(p)
-                  for p in annot.type_parameters.values()), [])
+                  for p in annot.formal_type_parameters.values()), [])
     elif isinstance(annot, abstract.Union):
       return sum((self.get_type_parameters(o) for o in annot.options), [])
     return []
@@ -132,6 +167,24 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         if annot is not None:
           annotations[name] = annot
     return annotations, late_annotations
+
+  def convert_class_annotations(self, raw_annotations):
+    """Convert a name -> raw_annot dict to annotations."""
+    annotations = {}
+    for name, t in raw_annotations.items():
+      try:
+        # Don't use the parameter name, since it's often something unhelpful
+        # like `0`.
+        annot = self._process_one_annotation(t, None, self.vm.frames)
+      except self.LateAnnotationError:
+        # Copy the late annotation back into the dict for
+        # convert_function_annotations to deal with.
+        # TODO(rechen): Handle it here so that the raw annotation isn't
+        # accidentally used elsewhere.
+        annotations[name] = t
+      else:
+        annotations[name] = annot or self.vm.convert.unsolvable
+    return annotations
 
   def eval_late_annotations(self, node, func, f_globals, f_locals):
     """Resolves an instance of LateAnnotation's expression."""
@@ -267,12 +320,12 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       # PEP 484 allows to write "NoneType" as "None"
       return self.vm.convert.none_type
     elif isinstance(annotation, abstract.ParameterizedClass):
-      for param_name, param in annotation.type_parameters.items():
+      for param_name, param in annotation.formal_type_parameters.items():
         processed = self._process_one_annotation(
             param, name, stack, node, f_globals, f_locals)
         if processed is None:
           return None
-        annotation.type_parameters[param_name] = processed
+        annotation.formal_type_parameters[param_name] = processed
       return annotation
     elif isinstance(annotation, abstract.Union):
       options = []

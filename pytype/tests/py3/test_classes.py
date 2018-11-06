@@ -255,5 +255,16 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
           return foo.Foo()
       """, pythonpath=[d.path])
 
+  def testCallableInheritance(self):
+    self.Check("""
+      from typing import Callable
+      Foo = Callable[[], None]
+      class Bar(Foo):
+        pass
+      def f(x: Foo):
+        pass
+      f(Bar())
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

@@ -88,7 +88,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     elif isinstance(obj, abstract.BoundFunction):
       return self.get_attribute(node, obj.underlying, name, valself)
     elif isinstance(obj, abstract.TypeParameterInstance):
-      param_var = obj.instance.type_parameters[obj.name]
+      param_var = obj.instance.get_instance_type_parameter(obj.name)
       if not param_var.bindings:
         param_var = obj.param.instantiate(self.vm.root_cfg_node)
       results = []
@@ -159,7 +159,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       return node
     elif isinstance(obj, abstract.TypeParameterInstance):
       nodes = []
-      for v in obj.instance.type_parameters[obj.name].data:
+      for v in obj.instance.get_instance_type_parameter(obj.name).data:
         nodes.append(self.set_attribute(node, v, name, value))
       return self.vm.join_cfg_nodes(nodes) if nodes else node
     elif isinstance(obj, abstract.Union):
@@ -412,7 +412,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     for binding in bindings:
       val = binding.data
       if isinstance(val, abstract.TypeParameterInstance):
-        var = val.instance.type_parameters[val.name]
+        var = val.instance.get_instance_type_parameter(val.name)
         # If this type parameter has visible values, we add those to the
         # return value. Otherwise, if it has constraints, we add those as an
         # upper bound on the values. When all else fails, we add an empty

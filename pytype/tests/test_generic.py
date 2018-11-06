@@ -218,9 +218,9 @@ class GenericTest(test_base.TargetIndependentTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Any, Tuple
         a = ...  # type: module
-        v1 = ...  # type: Any
-        v2 = ...  # type: Any
-        v3 = ...  # type: Tuple[Any, Any]
+        v1 = ...  # type: int
+        v2 = ...  # type: str
+        v3 = ...  # type: Tuple[int, str]
       """)
 
   def testTypeParameterRenamingConflict2(self):
@@ -271,10 +271,11 @@ class GenericTest(test_base.TargetIndependentTest):
         v.g()
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Union
         a = ...  # type: module
         # T1, T2, and T3 are all set to Any due to T1 being an alias for both
         # T2 and T3.
-        v = ...  # type: a.C
+        v = ...  # type: a.C[int, Union[float, int]]
       """)
 
   def testTypeParameterDeep(self):
@@ -363,7 +364,7 @@ class GenericTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
-        def f() -> a.C[int]
+        def f() -> a.C[nothing]
       """)
 
   def testTypeParameterDuplicated(self):
@@ -515,7 +516,7 @@ class GenericTest(test_base.TargetIndependentTest):
         from typing import Dict, Generic, List, TypeVar
         T = TypeVar("T")
         U = TypeVar("U")
-        class A(Dict[int, U], List[T], Generic[T, U]):
+        class A(Dict[T, U], List[T], Generic[T, U]):
           def f(self) -> None:
             self = A[int, str]
           def g(self) -> T
@@ -547,7 +548,7 @@ class GenericTest(test_base.TargetIndependentTest):
         from typing import Dict, Generic, List, TypeVar
         T = TypeVar("T")
         U = TypeVar("U")
-        class A(Dict[int, U], List[T], Generic[T, U]): ...
+        class A(Dict[T, U], List[T], Generic[T, U]): ...
       """)
       ty = self.Infer("""
         import a

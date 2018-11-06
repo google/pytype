@@ -21,6 +21,7 @@ from pytype import attribute
 from pytype import blocks
 from pytype import compare
 from pytype import convert
+from pytype import datatypes
 from pytype import directors
 from pytype import function
 from pytype import overlay_dict
@@ -1283,7 +1284,7 @@ class VirtualMachine(object):
       ast = self.loader.import_relative(level)
     if ast:
       return self.convert.constant_to_value(
-          ast, subst={}, node=self.root_cfg_node)
+          ast, subst=datatypes.AliasingDict(), node=self.root_cfg_node)
     else:
       return None
 

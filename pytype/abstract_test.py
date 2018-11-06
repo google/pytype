@@ -62,7 +62,7 @@ class InstanceTest(AbstractTestBase):
     self.assertIs(False, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))
     # Once a type parameter is set, list is compatible with True and False.
-    i.merge_type_parameter(
+    i.merge_instance_type_parameter(
         self._node, abstract.T,
         self._vm.convert.object_type.to_variable(self._vm.root_cfg_node))
     self.assertIs(True, i.compatible_with(True))
@@ -74,7 +74,7 @@ class InstanceTest(AbstractTestBase):
     self.assertIs(False, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))
     # Once a type parameter is set, list is compatible with True and False.
-    i.merge_type_parameter(
+    i.merge_instance_type_parameter(
         self._node, abstract.T,
         self._vm.convert.object_type.to_variable(self._vm.root_cfg_node))
     self.assertIs(True, i.compatible_with(True))
@@ -167,7 +167,7 @@ class DictTest(AbstractTestBase):
 
   def test_compatible_with__after_ambiguous_update(self):
     ambiguous_dict = abstract.Dict(self._vm)
-    ambiguous_dict.merge_type_parameter(
+    ambiguous_dict.merge_instance_type_parameter(
         self._node, abstract.K,
         self._vm.convert.create_new_unsolvable(self._node))
     ambiguous_dict.could_contain_anything = True
@@ -463,13 +463,13 @@ class PyTDTest(AbstractTestBase):
   def test_to_type_with_view1(self):
     # to_type(<instance of List[int or unsolvable]>, view={T: int})
     instance = abstract.List([], self._vm)
-    instance.merge_type_parameter(
+    instance.merge_instance_type_parameter(
         self._vm.root_cfg_node, abstract.T, self._vm.program.NewVariable(
             [self._vm.convert.unsolvable], [], self._vm.root_cfg_node))
-    param_binding = instance.type_parameters[abstract.T].AddBinding(
+    param_binding = instance.get_instance_type_parameter(abstract.T).AddBinding(
         self._vm.convert.primitive_class_instances[int], [],
         self._vm.root_cfg_node)
-    view = {instance.type_parameters[abstract.T]: param_binding}
+    view = {instance.get_instance_type_parameter(abstract.T): param_binding}
     pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
     self.assertEqual("__builtin__.list", pytd_type.base_type.name)
     self.assertSetEqual({"__builtin__.int"},
@@ -621,7 +621,7 @@ class FunctionTest(AbstractTestBase):
     args_type = sig.annotations["args"]
     self.assertIsInstance(args_type, abstract.ParameterizedClass)
     self.assertIs(args_type.base_cls, self._vm.convert.tuple_type)
-    self.assertListEqual(list(args_type.type_parameters.items()),
+    self.assertListEqual(list(args_type.formal_type_parameters.items()),
                          [(abstract.T, self._vm.convert.unsolvable)])
     self.assertIs(sig.drop_first_parameter().annotations["args"], args_type)
 
@@ -1238,7 +1238,7 @@ class SimpleFunctionTest(AbstractTestBase):
     _, ret = f.call(self._vm.root_cfg_node, f, args)
     # ret is an Instance(ParameterizedClass(list, {abstract.T: int}))
     # but we really only care about T.
-    self.assertIs(ret.data[0].cls.type_parameters[abstract.T],
+    self.assertIs(ret.data[0].cls.formal_type_parameters[abstract.T],
                   self._vm.convert.int_type)
 
   def test_signature_func_output_basic(self):
@@ -1398,7 +1398,7 @@ class AbstractTest(AbstractTestBase):
 
   def test_call_type_parameter_instance(self):
     instance = abstract.Instance(self._vm.convert.list_type, self._vm)
-    instance.merge_type_parameter(
+    instance.merge_instance_type_parameter(
         self._vm.root_cfg_node, abstract.T,
         self._vm.convert.int_type.to_variable(self._vm.root_cfg_node))
     t = abstract.TypeParameter(abstract.T, self._vm)
@@ -1421,7 +1421,7 @@ class AbstractTest(AbstractTestBase):
 
   def test_call_type_parameter_instance_with_wrong_args(self):
     instance = abstract.Instance(self._vm.convert.list_type, self._vm)
-    instance.merge_type_parameter(
+    instance.merge_instance_type_parameter(
         self._vm.root_cfg_node, abstract.T,
         self._vm.convert.int_type.to_variable(self._vm.root_cfg_node))
     t = abstract.TypeParameter(abstract.T, self._vm)
@@ -1456,9 +1456,11 @@ class GetViewsTest(AbstractTestBase):
         [self._vm.convert.int_type, self._vm.convert.str_type], [],
         self._vm.root_cfg_node)
     views = list(abstract.get_views([v1, v2], self._vm.root_cfg_node))
-    six.assertCountEqual(
-        self, views, [{v1: v1.bindings[0], v2: v2.bindings[0]},
-                      {v1: v1.bindings[0], v2: v2.bindings[1]}])
+    six.assertCountEqual(self,
+                         [{v1: views[0][v1], v2: views[0][v2]},
+                          {v1: views[1][v1], v2: views[1][v2]}],
+                         [{v1: v1.bindings[0], v2: v2.bindings[0]},
+                          {v1: v1.bindings[0], v2: v2.bindings[1]}])
 
   def _test_optimized(self, skip_future_value, expected_num_views):
     v1 = self._vm.program.NewVariable(
