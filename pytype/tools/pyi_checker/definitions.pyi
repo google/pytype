@@ -31,7 +31,7 @@ class Function(Definition):
 _TVariable = TypeVar("_TVariable", bound=Variable)
 class Variable(Definition):
   @classmethod
-  from_node(cls: Type[_TVariable], node: ast3.Name) -> _TVariable: ...
+  def from_node(cls: Type[_TVariable], node: ast3.Name) -> _TVariable: ...
 
 _TClass = TypeVar("_TClass", bound=Class)
 class Class(Definition):
