@@ -518,6 +518,30 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
         g = a.G[int]()
       """, pythonpath=[d.path])
 
+  def testAnyMatchAllTypes(self):
+    _, errors = self.InferWithErrors("""\
+      import collections, typing
+
+      class DictA(collections.OrderedDict, typing.MutableMapping[int, int]):
+        pass
+
+      class DictB(typing.MutableMapping[int, int]):
+        pass
+
+      class DictC(collections.OrderedDict, DictB):
+        pass
+
+      d1 = collections.OrderedDict()
+      d2 = DictA()
+      d3 = DictC()
+      x = d1["123"]
+      y = d2["123"]
+      z = d3["123"]
+    """)
+    self.assertErrorLogIs(errors, [
+        (16, "wrong-arg-types", r"int.*str"),
+        (17, "wrong-arg-types", r"int.*str")])
+
 
 class GenericFeatureTest(test_base.TargetPython3FeatureTest):
   """Tests for User-defined Generic Type."""

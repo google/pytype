@@ -181,12 +181,17 @@ class DatatypesTest(unittest.TestCase):
     self.assertEqual(d.get("alias3"), None)
 
   def testAddAliasForAliasingMonitorDict(self):
+    def merge_value(v0, v1, name):
+      if v0 == v1:
+        return v0
+      raise datatypes.AliasingDictConflictError(name)
+
     d = datatypes.AliasingMonitorDict()
     d["alias1"] = "1"
     d["alias2"] = "1"
     self.assertEqual(2, len(d))
     # Merge with same values
-    d.add_alias("alias1", "alias2")
+    d.add_alias("alias1", "alias2", merge_value)
     self.assertEqual(1, len(d))
     self.assertEqual(d["alias1"], "1")
     self.assertEqual(d["alias2"], "1")
@@ -194,29 +199,34 @@ class DatatypesTest(unittest.TestCase):
     # Merge with different values
     d["alias3"] = "2"
     with self.assertRaises(datatypes.AliasingDictConflictError):
-      d.add_alias("alias1", "alias3")
+      d.add_alias("alias1", "alias3", merge_value)
 
     # Neither of names has value
-    d.add_alias("alias5", "alias6")
+    d.add_alias("alias5", "alias6", merge_value)
     # The first name is in dict
-    d.add_alias("alias3", "alias4")
+    d.add_alias("alias3", "alias4", merge_value)
     # The second name is in dict
-    d.add_alias("alias5", "alias3")
+    d.add_alias("alias5", "alias3", merge_value)
     self.assertEqual(d["alias3"], "2")
     self.assertEqual(d["alias4"], "2")
     self.assertEqual(d["alias5"], "2")
     self.assertEqual(d["alias6"], "2")
 
   def testAliasingMonitorDictMerge(self):
+    def merge_value(v0, v1, name):
+      if v0 == v1:
+        return v0
+      raise datatypes.AliasingDictConflictError(name)
+
     d1 = datatypes.AliasingMonitorDict()
     d1["alias1"] = "1"
-    d1.add_alias("alias1", "alias2")
+    d1.add_alias("alias1", "alias2", merge_value)
 
     d2 = datatypes.AliasingMonitorDict()
     d2["alias3"] = "1"
-    d2.add_alias("alias3", "alias4")
+    d2.add_alias("alias3", "alias4", merge_value)
 
-    d1.merge_from(d2)
+    d1.merge_from(d2, merge_value)
     self.assertEqual(d1["alias1"], "1")
     self.assertEqual(d1["alias2"], "1")
     self.assertEqual(d1["alias3"], "1")
@@ -226,13 +236,13 @@ class DatatypesTest(unittest.TestCase):
     d4 = datatypes.AliasingMonitorDict()
     d4["alias2"] = 3
     with self.assertRaises(datatypes.AliasingDictConflictError):
-      d1.merge_from(d4)
+      d1.merge_from(d4, merge_value)
 
     d3 = datatypes.AliasingMonitorDict()
-    d3.add_alias("alias2", "alias5")
+    d3.add_alias("alias2", "alias5", merge_value)
     d3["alias5"] = 3
     with self.assertRaises(datatypes.AliasingDictConflictError):
-      d1.merge_from(d3)
+      d1.merge_from(d3, merge_value)
 
 if __name__ == "__main__":
   unittest.main()

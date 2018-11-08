@@ -297,6 +297,36 @@ def _get_mro_bases(bases):
     return mro_bases
 
 
+def _merge_type(t0, t1, name, cls):
+  """Merge two types.
+
+  Rules: Type `Any` can match any type, we will return the other type if one
+  of them is `Any`. Return the sub-class if the types have inheritance
+  relationship.
+
+  Args:
+    t0: The first type.
+    t1: The second type.
+    name: type parameter name.
+    cls: The abstract.Class on which any error should be reported.
+  Returns:
+    A type.
+  Raises:
+    GenericTypeError: if the types don't match.
+  """
+  if t0 is None or isinstance(t0, Unsolvable):
+    return t1
+  if t1 is None or isinstance(t1, Unsolvable):
+    return t0
+  # t0 is parent of t1
+  if t0 in t1.mro:
+    return t1
+  # t1 is parent of t0
+  if t1 in t0.mro:
+    return t0
+  raise GenericTypeError(cls, "Conflicting value for TypeVar %s" % name)
+
+
 def parse_formal_type_parameters(base, prefix, formal_type_parameters):
   """Parse type parameters from base class.
 
@@ -308,13 +338,16 @@ def parse_formal_type_parameters(base, prefix, formal_type_parameters):
   Raises:
     GenericTypeError: If the lazy types of type parameter don't match
   """
+  def merge(t0, t1, name):
+    return _merge_type(t0, t1, name, base)
+
   if isinstance(base, ParameterizedClass):
     if base.full_name == "typing.Generic":
       return
     if isinstance(base.base_cls, (InterpreterClass, PyTDClass)):
       # merge the type parameters info from base class
       formal_type_parameters.merge_from(
-          base.base_cls.all_formal_type_parameters)
+          base.base_cls.all_formal_type_parameters, merge)
     params = base.get_formal_type_parameters()
     for name, param in params.items():
       if isinstance(param, TypeParameter):
@@ -322,7 +355,8 @@ def parse_formal_type_parameters(base, prefix, formal_type_parameters):
         #  class List(Generic[T]): pass
         #  class Foo(List[U]): pass
         if prefix:
-          formal_type_parameters.add_alias(name, prefix + "." + param.name)
+          formal_type_parameters.add_alias(
+              name, prefix + "." + param.name, merge)
       else:
         # We have either a non-formal parameter, e.g.,
         # class Foo(List[int]), or a non-1:1 parameter mapping, e.g.,
@@ -333,25 +367,21 @@ def parse_formal_type_parameters(base, prefix, formal_type_parameters):
         else:
           # Two unrelated containers happen to use the same type
           # parameter but with different types.
-          pre_type = formal_type_parameters[name]
-          cur_type = param
-          # pre_type is parent of cur_type
-          if pre_type in cur_type.mro:
-            formal_type_parameters[name] = param
-          # they don't have inheritance relationship
-          elif not pre_type or cur_type not in pre_type.mro:
-            raise GenericTypeError(base,
-                                   "Conflicting value for TypeVar %s" % name)
+          last_type = formal_type_parameters[name]
+          formal_type_parameters[name] = merge(last_type, param, name)
   else:
     if isinstance(base, (InterpreterClass, PyTDClass)):
       # merge the type parameters info from base class
-      formal_type_parameters.merge_from(base.all_formal_type_parameters)
+      formal_type_parameters.merge_from(
+          base.all_formal_type_parameters, merge)
     if base.template:
       # handle unbound type parameters
       for item in base.template:
         if isinstance(item, TypeParameter):
           # This type parameter will be set as `ANY`.
-          formal_type_parameters[base.full_type_name(item.name)] = None
+          name = base.full_type_name(item.name)
+          if name not in formal_type_parameters:
+            formal_type_parameters[name] = None
 
 
 def _get_class(cls_var, default=None):
