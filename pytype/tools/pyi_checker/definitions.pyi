@@ -6,6 +6,7 @@ class Definition:
   name: str
   lineno: int
   col_offset: int
+  full_name: str
   def __init__(self, name: str, lineno: int, col_offset: int) -> None: ...
 
 _TArgument = TypeVar("_TArgument", bound=Argument)
@@ -40,9 +41,9 @@ class Class(Definition):
   decorators: List[str]
   fields: List[Variable]
   methods: List[Function]
-  nested_classes: List[_TClass]
+  nested_classes: List[Class]
   def __init__(self, name: str, lineno: int, col_offset: int, bases: List[str], keyword_bases: Dict[str, str],
     decorators: List[str], fields: List[Variable], methods: List[Function], nested_classes: List[Class]) -> None: ...
   @classmethod
   def from_node(cls: Type[_TClass], node: ast3.ClassDef, fields: List[Variable], methods: List[Function],
-    nested_classes: List[_TClass]) -> _TClass
+    nested_classes: List[Class]) -> _TClass: ...

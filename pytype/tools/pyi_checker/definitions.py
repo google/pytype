@@ -27,6 +27,11 @@ class Definition:
   lineno: int
   col_offset: int
 
+  def __post_init__(self):
+    # This method is automatically called by __init__. Subclasses override it
+    # to set full_name to "%{kind} %{name}", e.g. "function doThing".
+    self.full_name = self.name
+
 
 @dataclasses.dataclass
 class Argument(Definition):
@@ -39,6 +44,9 @@ class Argument(Definition):
     has_default: Whether a default value is provided for the argument.
   """
   has_default: bool
+
+  def __post_init__(self):
+    self.full_name = f"argument {self.name}"
 
   @classmethod
   def from_node(cls, node: ast3.arg):
@@ -70,6 +78,9 @@ class Function(Definition):
   kwarg: Optional[Argument]
   decorators: List[str]
   is_async: bool
+
+  def __post_init__(self):
+    self.full_name = f"function {self.name}"
 
   @classmethod
   def from_node(cls, node: Union[ast3.FunctionDef, ast3.AsyncFunctionDef]):
@@ -121,6 +132,9 @@ class Variable(Definition):
   attributes.
   """
 
+  def __post_init__(self):
+    self.full_name = f"variable {self.name}"
+
   @classmethod
   def from_node(cls, node: ast3.Name):
     return cls(node.id, node.lineno, node.col_offset)
@@ -146,6 +160,9 @@ class Class(Definition):
   fields: List[Variable]
   methods: List[Function]
   nested_classes: List["Class"]
+
+  def __post_init__(self):
+    self.full_name = f"class {self.name}"
 
   @classmethod
   def from_node(cls, node: ast3.ClassDef, fields: List[Variable],
