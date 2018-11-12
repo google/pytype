@@ -1206,15 +1206,24 @@ class Indexer(object):
     return links
 
 
-def process_file(options):
-  """Process a single file and return cross references."""
+def process_file(options, source_text=None):
+  """Process a single file and return cross references.
+
+  Args:
+    options: A dictionary of pytype options.
+    source_text: Optional text of the file; will be read from the file pointed
+      to by options.input if not supplied.
+
+  Returns:
+    An Indexer object with the indexed code.
+  """
 
   # We bind the global ast variable in this function.
   global ast
 
   errorlog = errors.ErrorLog()
   loader = load_pytd.create_loader(options)
-  src = io.read_source_file(options.input)
+  src = source_text or io.read_source_file(options.input)
   vm = analyze.CallTracer(
       errorlog=errorlog,
       options=options,

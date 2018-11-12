@@ -1,4 +1,5 @@
 import json
+import textwrap
 
 from pytype import config
 from pytype import file_utils
@@ -117,6 +118,17 @@ class IndexerTest(test_base.TargetIndependentTest):
       # Resolve filepaths within the tempdir.
       expected = [(ref, target, d[path]) for (ref, target, path) in expected]
       self.assertEqual(out, expected)
+
+  def test_source_text(self):
+    # Don't try to read from the filesystem if we supply source_text
+    code = textwrap.dedent("""
+        def f(x):
+          return 42
+    """)
+    options = config.Options(["/path/to/nonexistent/file.py"])
+    options.tweak(version=self.python_version)
+    ix = indexer.process_file(options, source_text=code)
+    self.assertDef(ix, "module.f", "f", "FunctionDef")
 
 
 test_base.main(globals(), __name__ == "__main__")
