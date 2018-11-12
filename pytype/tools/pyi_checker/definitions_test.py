@@ -28,13 +28,15 @@ class DefinitionFromNodeTest(unittest.TestCase):
     params = params or []
     kwonlyargs = kwonlyargs or []
     decorators = decorators or []
-    return definitions.Function(name=name, lineno=lineno, col_offset=col_offset,
+    return definitions.Function(name=name, source="",
+                                lineno=lineno, col_offset=col_offset,
                                 params=params, vararg=vararg,
                                 kwonlyargs=kwonlyargs, kwarg=kwarg,
                                 decorators=decorators, is_async=is_async)
 
   def _make_arg(self, name, lineno=1, col_offset=0, has_default=False):
-    return definitions.Argument(name=name, lineno=lineno, col_offset=col_offset,
+    return definitions.Argument(name=name, source="",
+                                lineno=lineno, col_offset=col_offset,
                                 has_default=has_default)
 
   def test_function_basic(self):
@@ -96,7 +98,7 @@ class DefinitionFromNodeTest(unittest.TestCase):
 
   def test_variable(self):
     node = self.parse_expr("x")
-    expected = definitions.Variable(name="x", lineno=1, col_offset=0)
+    expected = definitions.Variable(name="x", source="", lineno=1, col_offset=0)
     actual = definitions.Variable.from_node(node)
     self.assertEqual(expected, actual)
 
@@ -129,15 +131,18 @@ class DefinitionFromNodeTest(unittest.TestCase):
                     self._make_arg("arg", lineno=5, col_offset=21)])
     ]
     expected_fields = [
-        definitions.Variable("class_field", lineno=2, col_offset=2),
-        definitions.Variable("instance_field", lineno=4, col_offset=4)]
+        definitions.Variable("class_field", source="", lineno=2, col_offset=2),
+        definitions.Variable("instance_field", source="", lineno=4,
+                             col_offset=4)]
     expected_nests = [
-        definitions.Class(name="_simple_nested_cls", lineno=7, col_offset=2,
+        definitions.Class(name="_simple_nested_cls", source="",
+                          lineno=7, col_offset=2,
                           bases=[], keyword_bases=[], decorators=[],
                           fields=[], methods=[], nested_classes=[])
     ]
     expected_class = definitions.Class(
         name="A",
+        source="",
         lineno=1,
         col_offset=0,
         bases=[],
@@ -157,7 +162,7 @@ class DefinitionFromNodeTest(unittest.TestCase):
         # class_field definition
         definitions.Variable.from_node(classfield.targets[0]),
         # self.instance_field definition
-        definitions.Variable(instance_field.attr, instance_field.lineno,
+        definitions.Variable(instance_field.attr, "", instance_field.lineno,
                              instance_field.col_offset)]
     actual_methods = [
         definitions.Function.from_node(init),
