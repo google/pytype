@@ -882,3 +882,7 @@ class ErrorLog(ErrorLogBase):
              for b in var.bindings
              if node.HasCombination([b])]
     self.error(stack, self._join_printed_types(types))
+
+
+def get_error_names_set():
+  return _ERROR_NAMES

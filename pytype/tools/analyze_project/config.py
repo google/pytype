@@ -55,6 +55,8 @@ ITEMS = {
 # The missing fields will be filled in by generate_sample_config_or_die.
 PYTYPE_SINGLE_ITEMS = {
     'disable': Item(None, 'pyi-error', ArgInfo('--disable', ','.join), None),
+    'enable_only': Item(
+        None, 'import-error', ArgInfo('--enable-only', ','.join), None),
     'report_errors': Item(
         None, 'True', ArgInfo('--no-report-errors', lambda v: not v), None),
     'protocols': Item(None, 'False', ArgInfo('--protocols', None), None),
