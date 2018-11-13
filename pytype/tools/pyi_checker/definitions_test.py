@@ -6,57 +6,29 @@ These are sanity checks to make sure from_node definitions work.
 import textwrap
 
 from pytype.tools.pyi_checker import definitions
+from pytype.tools.pyi_checker import test_utils as utils
 from typed_ast import ast3
 import unittest
 
 
 class DefinitionFromNodeTest(unittest.TestCase):
 
-  def parse(self, source):
-    return ast3.parse(source)
-
-  def parse_stmt(self, source):
-    """Helper for parsing single statements."""
-    return ast3.parse(source).body[0]
-
-  def parse_expr(self, source):
-    """Helper for parsing single expressions."""
-    return ast3.parse(source, mode="eval").body
-
-  def _make_func(self, name, lineno=1, col_offset=0, params=None, vararg=None,
-                 kwonlyargs=None, kwarg=None, decorators=None, is_async=False):
-    params = params or []
-    kwonlyargs = kwonlyargs or []
-    decorators = decorators or []
-    return definitions.Function(name=name, source="",
-                                lineno=lineno, col_offset=col_offset,
-                                params=params, vararg=vararg,
-                                kwonlyargs=kwonlyargs, kwarg=kwarg,
-                                decorators=decorators, is_async=is_async)
-
-  def _make_arg(self, name, lineno=1, col_offset=0, has_default=False):
-    return definitions.Argument(name=name, source="",
-                                lineno=lineno, col_offset=col_offset,
-                                has_default=has_default)
-
   def test_function_basic(self):
-    node = self.parse_stmt("def foo(): pass")
-    expected = self._make_func(name="foo")
-    actual = definitions.Function.from_node(node)
+    expected = utils.make_func(name="foo")
+    actual = utils.func_from_source("def foo(): pass")
     self.assertEqual(expected, actual)
 
   def test_function_all_args(self):
     func_str = "def foo(arg1, arg2=2, *var, key1, key2=2, **keys): pass"
-    node = self.parse_stmt(func_str)
-    expected = self._make_func(
+    expected = utils.make_func(
         name="foo",
-        params=[self._make_arg("arg1", col_offset=8),
-                self._make_arg("arg2", col_offset=14, has_default=True)],
-        vararg=self._make_arg("var", col_offset=23),
-        kwonlyargs=[self._make_arg("key1", col_offset=28),
-                    self._make_arg("key2", col_offset=34, has_default=True)],
-        kwarg=self._make_arg("keys", col_offset=44))
-    actual = definitions.Function.from_node(node)
+        params=[utils.make_arg("arg1", col_offset=8),
+                utils.make_arg("arg2", col_offset=14, has_default=True)],
+        vararg=utils.make_arg("var", col_offset=23),
+        kwonlyargs=[utils.make_arg("key1", col_offset=28),
+                    utils.make_arg("key2", col_offset=34, has_default=True)],
+        kwarg=utils.make_arg("keys", col_offset=44))
+    actual = utils.func_from_source(func_str)
     self.assertEqual(expected, actual)
 
   def test_function_decorators(self):
@@ -66,22 +38,20 @@ class DefinitionFromNodeTest(unittest.TestCase):
         def test():
           pass
         """)
-    node = self.parse_stmt(func_str)
-    expected = self._make_func(
+    expected = utils.make_func(
         name="test",
         lineno=1,  # Decorators all count as 1 line.
         decorators=["some_decorator", "another_decorator"])
-    actual = definitions.Function.from_node(node)
+    actual = utils.func_from_source(func_str)
     self.assertEqual(expected, actual)
 
   def test_function_async(self):
     func_str = "async def test(): pass"
-    node = self.parse_stmt(func_str)
-    expected = self._make_func(
+    expected = utils.make_func(
         name="test",
         col_offset=6,  # "async" doesn't count as part of definition.
         is_async=True)
-    actual = definitions.Function.from_node(node)
+    actual = utils.func_from_source(func_str)
     self.assertEqual(expected, actual)
 
   def test_function_sigs_differ(self):
@@ -90,16 +60,13 @@ class DefinitionFromNodeTest(unittest.TestCase):
     # different, since they have different keyword-only argument orders.
     # The richer comparison performed by the pyi checker would consider them
     # the same, since keyword-only argument order doesn't really matter.
-    func1 = definitions.Function.from_node(
-        self.parse_stmt("def foo(a, *c, d, e): pass"))
-    func2 = definitions.Function.from_node(
-        self.parse_stmt("def foo(a, *c, e, d): pass"))
+    func1 = utils.func_from_source("def foo(a, *c, d, e): pass")
+    func2 = utils.func_from_source("def foo(a, *c, e, d): pass")
     self.assertNotEqual(func1, func2)
 
   def test_variable(self):
-    node = self.parse_expr("x")
     expected = definitions.Variable(name="x", source="", lineno=1, col_offset=0)
-    actual = definitions.Variable.from_node(node)
+    actual = utils.var_from_source("x")
     self.assertEqual(expected, actual)
 
   def test_class_members(self):
@@ -117,18 +84,18 @@ class DefinitionFromNodeTest(unittest.TestCase):
           pass
       """)
     expected_methods = [
-        self._make_func(
+        utils.make_func(
             name="__init__",
             lineno=3,
             col_offset=2,
-            params=[self._make_arg("self", lineno=3, col_offset=15),
-                    self._make_arg("arg", lineno=3, col_offset=21)]),
-        self._make_func(
+            params=[utils.make_arg("self", lineno=3, col_offset=15),
+                    utils.make_arg("arg", lineno=3, col_offset=21)]),
+        utils.make_func(
             name="a_method",
             lineno=5,
             col_offset=2,
-            params=[self._make_arg("self", lineno=5, col_offset=15),
-                    self._make_arg("arg", lineno=5, col_offset=21)])
+            params=[utils.make_arg("self", lineno=5, col_offset=15),
+                    utils.make_arg("arg", lineno=5, col_offset=21)])
     ]
     expected_fields = [
         definitions.Variable("class_field", source="", lineno=2, col_offset=2),
@@ -152,7 +119,7 @@ class DefinitionFromNodeTest(unittest.TestCase):
         methods=expected_methods,
         nested_classes=expected_nests)
     # We have to pull apart the parsed class by hand.
-    node = self.parse_stmt(class_stmt)
+    node = utils.parse_stmt(class_stmt)
     classfield, init, method, nested = node.body
     # init.body[0] is an ast3.Attribute, and for class fields, there needs to
     # be a definition for the attr instead of the value. So the Variable
