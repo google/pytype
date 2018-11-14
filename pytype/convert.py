@@ -342,7 +342,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       cls = v.get_class()
       if cls:
         classes.add(cls)
-    return abstract.merge_values(classes, self.vm)
+    return abstract.Union.merge_values(classes, self.vm)
 
   def constant_to_var(self, pyval, subst=None, node=None, source_sets=None,
                       discard_concrete_values=False):

@@ -564,7 +564,7 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("not-writable")
   def not_writable(self, stack, obj, attr_name):
-    obj_values = abstract.merge_values([obj], obj.vm)
+    obj_values = abstract.Union.merge_values([obj], obj.vm)
     obj_repr = self._print_as_actual_type(obj_values)
     self.error(stack, "Can't assign attribute %r on %s" % (attr_name, obj_repr),
                keyword=attr_name)

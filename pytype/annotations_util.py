@@ -262,7 +262,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     """Evaluate annotation for multiple arguments (from a type comment)."""
     args = self._eval_expr_as_tuple(node, f_globals, f_locals, annot.expr)
     code = func.code
-    expected = abstract.InterpreterFunction.get_arg_count(code)
+    expected = code.get_arg_count()
     names = code.co_varnames
 
     # This is a hack.  Specifying the type of the first arg is optional in

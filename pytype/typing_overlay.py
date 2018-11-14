@@ -64,7 +64,7 @@ class Tuple(TypingContainer):
           inner, ellipses, allowed_ellipses={len(inner) - 1} - {0})
     else:
       template = list(moves.range(len(inner))) + [abstract.T]
-      inner += (abstract.merge_values(inner, self.vm),)
+      inner += (abstract.Union.merge_values(inner, self.vm),)
       return template, inner, abstract.TupleClass
 
 
@@ -72,7 +72,7 @@ class Callable(TypingContainer):
   """Implementation of typing.Callable[...]."""
 
   def getitem_slot(self, node, slice_var):
-    content = self._maybe_extract_tuple(slice_var)
+    content = abstract.maybe_extract_tuple(slice_var)
     inner, ellipses = self._build_inner(content)
     args = inner[0]
     if isinstance(args, abstract.List) and not args.could_contain_anything:
@@ -96,7 +96,7 @@ class Callable(TypingContainer):
     if isinstance(inner[0], list):
       template = (list(moves.range(len(inner[0]))) +
                   [t.name for t in self.base_cls.template])
-      combined_args = abstract.merge_values(inner[0], self.vm)
+      combined_args = abstract.Union.merge_values(inner[0], self.vm)
       inner = tuple(inner[0]) + (combined_args,) + inner[1:]
       self.vm.errorlog.invalid_ellipses(self.vm.frames, ellipses, self.name)
       return template, inner, abstract.Callable
@@ -196,7 +196,7 @@ class Cast(abstract.PyTDFunction):
       except self.vm.annotations_util.LateAnnotationError:
         self.vm.errorlog.invalid_annotation(
             self.vm.frames,
-            abstract.merge_values(args.posargs[0].data, self.vm),
+            abstract.Union.merge_values(args.posargs[0].data, self.vm),
             "Forward references not allowed in typing.cast.\n"
             "Consider switching to a type comment.")
         annot = self.vm.convert.create_new_unsolvable(node)

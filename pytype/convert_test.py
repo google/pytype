@@ -148,10 +148,10 @@ class ConvertTest(unittest.TestCase):
         self,
         [(name, set(var.data))
          for name, var in instance.instance_type_parameters.items()],
-        [(instance.full_type_name(abstract.ARGS),
+        [(abstract.full_type_name(instance, abstract.ARGS),
           {self._vm.convert.primitive_class_instances[int],
            self._vm.convert.primitive_class_instances[bool]}),
-         (instance.full_type_name(abstract.RET),
+         (abstract.full_type_name(instance, abstract.RET),
           {self._vm.convert.primitive_class_instances[str]})])
 
   def test_callable_no_args(self):
@@ -188,9 +188,9 @@ class ConvertTest(unittest.TestCase):
         self,
         [(name, var.data)
          for name, var in instance.instance_type_parameters.items()],
-        [(instance.full_type_name(abstract.ARGS),
+        [(abstract.full_type_name(instance, abstract.ARGS),
           [self._vm.convert.unsolvable]),
-         (instance.full_type_name(abstract.RET),
+         (abstract.full_type_name(instance, abstract.RET),
           [self._vm.convert.primitive_class_instances[int]])])
 
   def test_function_with_starargs(self):

@@ -3,6 +3,7 @@
 import collections
 import itertools
 
+from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.typegraph import cfg_utils
@@ -48,6 +49,26 @@ class OrderedCode(object):
   def has_opcode(self, op_type):
     return any(isinstance(op, op_type)
                for op in itertools.chain(*(block.code for block in self.order)))
+
+  def has_generator(self):
+    return bool(self.co_flags & loadmarshal.CodeType.CO_GENERATOR)
+
+  def has_varargs(self):
+    return bool(self.co_flags & loadmarshal.CodeType.CO_VARARGS)
+
+  def has_varkeywords(self):
+    return bool(self.co_flags & loadmarshal.CodeType.CO_VARKEYWORDS)
+
+  def has_newlocals(self):
+    return bool(self.co_flags & loadmarshal.CodeType.CO_NEWLOCALS)
+
+  def get_arg_count(self):
+    count = self.co_argcount + max(self.co_kwonlyargcount, 0)
+    if self.has_varargs():
+      count += 1
+    if self.has_varkeywords():
+      count += 1
+    return count
 
 
 class Block(object):

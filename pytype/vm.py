@@ -557,7 +557,7 @@ class VirtualMachine(object):
         name = abstract.get_atomic_python_constant(code).co_name
       else:
         name = "<lambda>"
-    val = abstract.InterpreterFunction.make_function(
+    val = abstract.InterpreterFunction.make(
         name, code=abstract.get_atomic_python_constant(code),
         f_locals=self.frame.f_locals, f_globals=globs,
         defaults=defaults, kw_defaults=kw_defaults,
@@ -605,7 +605,7 @@ class VirtualMachine(object):
     # Implement NEWLOCALS flag. See Objects/frameobject.c in CPython.
     # (Also allow to override this with a parameter, Python 3 doesn't always set
     #  it to the right value, e.g. for class-level code.)
-    if loadmarshal.CodeType.has_newlocals(code.co_flags) or new_locals:
+    if code.has_newlocals() or new_locals:
       f_locals = self.convert_locals_or_globals({}, "locals")
 
     return frame_state.Frame(node, self, code, f_globals, f_locals,
@@ -1879,7 +1879,7 @@ class VirtualMachine(object):
               # We've found a TupleClass with concrete parameters, which means
               # we're a subclass of a heterogenous tuple (usually a
               # typing.NamedTuple instance).
-              new_data = abstract.merge_values(
+              new_data = abstract.Union.merge_values(
                   base.instantiate(self.root_cfg_node).data, self)
               return self._get_literal_sequence(new_data)
         return None
@@ -2405,7 +2405,7 @@ class VirtualMachine(object):
                          ret_type.get_formal_type_parameter(abstract.T))
       _, send_var = self.init_class(
           state.node,
-          ret_type.get_formal_type_parameter(abstract.Generator.SEND))
+          ret_type.get_formal_type_parameter(abstract.T2))
       return state.push(send_var)
     return state.push(self.convert.unsolvable.to_variable(state.node))
 
@@ -2501,10 +2501,10 @@ class VirtualMachine(object):
     """Get and check the return value."""
     state, var = state.pop()
     if self.frame.check_return:
-      if loadmarshal.CodeType.has_generator(self.frame.f_code.co_flags):
+      if self.frame.f_code.has_generator():
         ret_type = self.frame.allowed_returns
-        self._check_return(state.node, var, ret_type.
-                           get_formal_type_parameter(abstract.Generator.RET))
+        self._check_return(
+            state.node, var, ret_type.get_formal_type_parameter(abstract.V))
       else:
         self._check_return(state.node, var, self.frame.allowed_returns)
     self._set_frame_return(state.node, self.frame, var)
