@@ -170,11 +170,11 @@ def get_views(variables, node, filter_strict=False):
 
 
 def get_signatures(func):
-  if isinstance(func, PyTDFunction):
+  if func.isinstance_PyTDFunction():
     return [sig.signature for sig in func.signatures]
-  elif isinstance(func, InterpreterFunction):
+  elif func.isinstance_InterpreterFunction():
     return [func.signature]
-  elif isinstance(func, BoundFunction):
+  elif func.isinstance_BoundFunction():
     sigs = get_signatures(func.underlying)
     return [sig.drop_first_parameter() for sig in sigs]  # drop "self"
   else:
@@ -213,11 +213,11 @@ def has_type_parameters(node, val, seen=None):
   seen.add(val)
   if isinstance(val, cfg.Variable):
     return any((has_type_parameters(node, d, seen) for d in val.data))
-  elif isinstance(val, TypeParameter):
+  elif val.isinstance_TypeParameter():
     return True
-  elif isinstance(val, (ParameterizedClass, Union)):
+  elif val.isinstance_ParameterizedClass() or val.isinstance_Union():
     return val.formal
-  elif isinstance(val, SimpleAbstractValue):
+  elif val.isinstance_SimpleAbstractValue():
     return any((has_type_parameters(node, tp, seen)
                 for tp in val.instance_type_parameters.values()))
   else:
@@ -226,7 +226,7 @@ def has_type_parameters(node, val, seen=None):
 
 def equivalent_to(binding, cls):
   """Whether binding.data is equivalent to cls, modulo parameterization."""
-  return (isinstance(binding.data, Class) and
+  return (binding.data.isinstance_Class() and
           binding.data.full_name == cls.full_name)
 
 
@@ -246,16 +246,16 @@ def _apply_mutations(node, get_mutations):
 
 def _get_template(val):
   """Get the value's class template."""
-  if isinstance(val, Class):
+  if val.isinstance_Class():
     res = {t.full_name for t in val.template}
-    if isinstance(val, ParameterizedClass):
+    if val.isinstance_ParameterizedClass():
       res.update(_get_template(val.base_cls))
-    elif isinstance(val, (PyTDClass, InterpreterClass)):
+    elif val.isinstance_PyTDClass() or val.isinstance_InterpreterClass():
       for base in val.bases():
         base = get_atomic_value(base, default=val.vm.convert.unsolvable)
         res.update(_get_template(base))
     return res
-  elif isinstance(val, AtomicAbstractValue):
+  elif val.cls:
     return _get_template(val.cls)
   else:
     return set()
@@ -274,8 +274,8 @@ def _get_mro_bases(bases, vm):
     base = get_atomic_value(base_var, default=vm.convert.unsolvable)
     mro_bases.append(base)
     # check if it contains user-defined generic types
-    if (isinstance(base, ParameterizedClass)
-        and base.full_name != "typing.Generic"):
+    if (base.isinstance_ParameterizedClass() and
+        base.full_name != "typing.Generic"):
       has_user_generic = True
   # if user-defined generic type exists, we won't add `typing.Generic` to
   # the final result list
@@ -302,9 +302,9 @@ def _merge_type(t0, t1, name, cls):
   Raises:
     GenericTypeError: if the types don't match.
   """
-  if t0 is None or isinstance(t0, Unsolvable):
+  if t0 is None or t0.isinstance_Unsolvable():
     return t1
-  if t1 is None or isinstance(t1, Unsolvable):
+  if t1 is None or t1.isinstance_Unsolvable():
     return t0
   # t0 is parent of t1
   if t0 in t1.mro:
@@ -329,16 +329,17 @@ def parse_formal_type_parameters(base, prefix, formal_type_parameters):
   def merge(t0, t1, name):
     return _merge_type(t0, t1, name, base)
 
-  if isinstance(base, ParameterizedClass):
+  if base.isinstance_ParameterizedClass():
     if base.full_name == "typing.Generic":
       return
-    if isinstance(base.base_cls, (InterpreterClass, PyTDClass)):
+    if (base.base_cls.isinstance_InterpreterClass() or
+        base.base_cls.isinstance_PyTDClass()):
       # merge the type parameters info from base class
       formal_type_parameters.merge_from(
           base.base_cls.all_formal_type_parameters, merge)
     params = base.get_formal_type_parameters()
     for name, param in params.items():
-      if isinstance(param, TypeParameter):
+      if param.isinstance_TypeParameter():
         # We have type parameter renaming, e.g.,
         #  class List(Generic[T]): pass
         #  class Foo(List[U]): pass
@@ -358,14 +359,14 @@ def parse_formal_type_parameters(base, prefix, formal_type_parameters):
           last_type = formal_type_parameters[name]
           formal_type_parameters[name] = merge(last_type, param, name)
   else:
-    if isinstance(base, (InterpreterClass, PyTDClass)):
+    if base.isinstance_InterpreterClass() or base.isinstance_PyTDClass():
       # merge the type parameters info from base class
       formal_type_parameters.merge_from(
           base.all_formal_type_parameters, merge)
     if base.template:
       # handle unbound type parameters
       for item in base.template:
-        if isinstance(item, TypeParameter):
+        if item.isinstance_TypeParameter():
           # This type parameter will be set as `ANY`.
           name = full_type_name(base, item.name)
           if name not in formal_type_parameters:
@@ -382,7 +383,7 @@ def full_type_name(val, name):
   Returns:
     The full type parameter name (e.g., List.T).
   """
-  if isinstance(val, Instance):
+  if val.isinstance_Instance():
     return full_type_name(val.cls, name)
   # The type is in current `class`
   for t in val.template:
@@ -403,7 +404,7 @@ def maybe_extract_tuple(t):
   if len(values) > 1:
     return (t,)
   v, = values
-  if not isinstance(v, Tuple):
+  if not v.isinstance_Tuple():
     return (t,)
   return v.pyval
 
@@ -429,10 +430,10 @@ def _compute_template(val):
   Raises:
     GenericTypeError: if the type annotation for generic type is incorrect
   """
-  if isinstance(val, PyTDClass):
+  if val.isinstance_PyTDClass():
     return [val.vm.convert.constant_to_value(itm.type_param)
             for itm in val.pytd_cls.template]
-  elif not isinstance(val, InterpreterClass):
+  elif not val.isinstance_InterpreterClass():
     return ()
   bases = [get_atomic_value(base, default=val.vm.convert.unsolvable)
            for base in val.bases()]
@@ -441,7 +442,7 @@ def _compute_template(val):
   # Compute the number of `typing.Generic` and collect the type parameters
   for base in bases:
     if base.full_name == "typing.Generic":
-      if isinstance(base, PyTDClass):
+      if base.isinstance_PyTDClass():
         raise GenericTypeError(val, "Cannot inherit from plain Generic")
       if template:
         raise GenericTypeError(
@@ -455,10 +456,10 @@ def _compute_template(val):
     # `typing.Generic`
     for base in bases:
       if base.full_name != "typing.Generic":
-        if isinstance(base, ParameterizedClass):
+        if base.isinstance_ParameterizedClass():
           for item in base.template:
             param = base.formal_type_parameters.get(item.name)
-            if isinstance(param, TypeParameter):
+            if param.isinstance_TypeParameter():
               t = param.with_module(val.full_name)
               if t not in template:
                 raise GenericTypeError(
@@ -467,11 +468,11 @@ def _compute_template(val):
     # Compute template parameters according to C3
     seqs = []
     for base in bases:
-      if isinstance(base, ParameterizedClass):
+      if base.isinstance_ParameterizedClass():
         seq = []
         for item in base.template:
           param = base.formal_type_parameters.get(item.name)
-          if isinstance(param, TypeParameter):
+          if param.isinstance_TypeParameter():
             seq.append(param.with_module(val.full_name))
         seqs.append(seq)
     try:
@@ -513,15 +514,15 @@ def _hash_all_dicts(*hash_args):
 
 def matches_generator(type_obj):
   """Check if type_obj matches a Generator type."""
-  if isinstance(type_obj, Union):
+  if type_obj.isinstance_Union():
     return all(matches_generator(sub_type) for sub_type in type_obj.options)
   else:
     base_cls = type_obj
-    if isinstance(type_obj, ParameterizedClass):
+    if type_obj.isinstance_ParameterizedClass():
       base_cls = type_obj.base_cls
-    return ((isinstance(base_cls, PyTDClass) and
+    return ((base_cls.isinstance_PyTDClass() and
              base_cls.name in ("generator", "Iterable", "Iterator")) or
-            isinstance(base_cls, AMBIGUOUS_OR_EMPTY))
+            base_cls.isinstance_AMBIGUOUS_OR_EMPTY())
 
 
 class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
@@ -835,6 +836,51 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   def update_official_name(self, _):
     """Update the official name."""
     pass
+
+  # The below methods allow code to do isinstance() checks on abstract values
+  # without importing abstract.py, making it easier to avoid import cycles.
+
+  def isinstance_AMBIGUOUS_OR_EMPTY(self):
+    return isinstance(self, AMBIGUOUS_OR_EMPTY)
+
+  def isinstance_BoundFunction(self):
+    return isinstance(self, BoundFunction)
+
+  def isinstance_Class(self):
+    return isinstance(self, Class)
+
+  def isinstance_Instance(self):
+    return isinstance(self, Instance)
+
+  def isinstance_InterpreterClass(self):
+    return isinstance(self, InterpreterClass)
+
+  def isinstance_InterpreterFunction(self):
+    return isinstance(self, InterpreterFunction)
+
+  def isinstance_ParameterizedClass(self):
+    return isinstance(self, ParameterizedClass)
+
+  def isinstance_PyTDClass(self):
+    return isinstance(self, PyTDClass)
+
+  def isinstance_PyTDFunction(self):
+    return isinstance(self, PyTDFunction)
+
+  def isinstance_SimpleAbstractValue(self):
+    return isinstance(self, SimpleAbstractValue)
+
+  def isinstance_Tuple(self):
+    return isinstance(self, Tuple)
+
+  def isinstance_TypeParameter(self):
+    return isinstance(self, TypeParameter)
+
+  def isinstance_Union(self):
+    return isinstance(self, Union)
+
+  def isinstance_Unsolvable(self):
+    return isinstance(self, Unsolvable)
 
 
 class Empty(AtomicAbstractValue):
@@ -1932,14 +1978,12 @@ class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
     return args
 
   def starstarargs_as_dict(self):
-    if self.starstarargs:
-      try:
-        d = get_atomic_value(self.starstarargs, Dict)
-      except ConversionError:
-        return None
-      if not d.could_contain_anything:
-        return d
-    return None
+    try:
+      args = self.starstarargs and get_atomic_python_constant(
+          self.starstarargs, dict)
+    except ConversionError:
+      args = None
+    return args
 
   def simplify(self, node, match_signature=None, vm=None):
     """Try to insert part of *args, **kwargs into posargs / namedargs."""
@@ -2231,7 +2275,7 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
       raise WrongArgCount(self.signature, args, self.vm)
     # Extra positional args are passed via the *args argument.
     varargs_type = self.signature.annotations.get(self.signature.varargs_name)
-    if isinstance(varargs_type, ParameterizedClass):
+    if varargs_type and varargs_type.isinstance_ParameterizedClass():
       for (i, vararg) in enumerate(args.posargs[num_expected_posargs:]):
         name = function.argname(num_expected_posargs + i)
         arg_dict[name] = view[vararg]
@@ -2247,7 +2291,7 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
       raise WrongKeywordArgs(self.signature, args, self.vm, extra_kwargs)
     # Extra keyword args are passed via the **kwargs argument.
     kwargs_type = self.signature.annotations.get(self.signature.kwargs_name)
-    if isinstance(kwargs_type, ParameterizedClass):
+    if kwargs_type and kwargs_type.isinstance_ParameterizedClass():
       # We sort the kwargs so that matching always happens in the same order.
       for name in sorted(extra_kwargs):
         formal_args.append((name, kwargs_type.get_formal_type_parameter(V)))
@@ -2365,7 +2409,7 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
       actual = arg_dict[formal.name]
       arg = actual.data
       if (formal.mutated_type is not None and
-          isinstance(arg, SimpleAbstractValue)):
+          arg.isinstance_SimpleAbstractValue()):
         if (isinstance(formal.type, pytd.GenericType) and
             isinstance(formal.mutated_type, pytd.GenericType) and
             formal.type.base_type == formal.mutated_type.base_type and
