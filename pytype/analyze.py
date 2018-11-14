@@ -129,7 +129,7 @@ class CallTracer(vm.VirtualMachine):
     try:
       state, ret = self.call_function_with_state(
           state, var, args, kwargs, starargs, starstarargs)
-    except vm.RecursionException:
+    except vm.VirtualMachineRecursionError:
       # A legitimate exception, which will be handled in run_instruction. (See,
       # e.g., CheckerTest.testRecursion.) Note that we don't want to pop the
       # frame in the case of a crash (any exception besides the ones we catch
@@ -314,14 +314,15 @@ class CallTracer(vm.VirtualMachine):
             node, "__init__", init, b.AssignToNewVariable())
         try:
           node = self.analyze_method_var(node, "__init__", bound_init)
-        except vm.RecursionException:
+        except vm.VirtualMachineRecursionError:
           # We've encountered recursion during an __init__ call, which means
           # we have another incompletely initialized instance of the same class
           # (or a subclass) at the same node. (See, e.g.,
           # testRecursiveConstructor and testRecursiveConstructorSubclass in
-          # test_classes.ClassesTest.) If we allow the RecursionException to be
-          # raised, initialization of that first instance will be aborted.
-          # Instead, mark this second instance as incomplete.
+          # test_classes.ClassesTest.) If we allow the
+          # VirtualMachineRecursionError to be raised, initialization of that
+          # first instance will be aborted. Instead, mark this second instance
+          # as incomplete.
           self._mark_maybe_missing_members([b.data])
     return node
 

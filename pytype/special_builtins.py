@@ -39,12 +39,34 @@ class TypeNew(abstract.PyTDFunction):
     return super(TypeNew, self).call(node, func, args)
 
 
-class Open(abstract.PyTDFunction):
+class BuiltinFunction(abstract.PyTDFunction):
+  """Implementation of functions in __builtin__.pytd."""
+
+  name = None
+
+  @classmethod
+  def make(cls, vm):
+    assert cls.name
+    return super(BuiltinFunction, cls).make(cls.name, vm, "__builtin__")
+
+  def get_underlying_method(self, node, receiver, method_name):
+    """Get the bound method that a built-in function delegates to."""
+    results = []
+    for b in receiver.bindings:
+      node, result = self.vm.attribute_handler.get_attribute(
+          node, b.data, method_name, valself=b)
+      if result is not None:
+        results.append(result)
+    if results:
+      return node, self.vm.join_variables(node, results)
+    else:
+      return node, None
+
+
+class Open(BuiltinFunction):
   """Implementation of open(...)."""
 
-  def __init__(self, vm):
-    super(Open, self).__init__(
-        *abstract.PyTDFunction.get_constructor_args("open", vm, "__builtin__"))
+  name = "open"
 
   def call(self, node, func, args):
     if self.vm.PY3:
@@ -66,32 +88,10 @@ class Open(abstract.PyTDFunction):
     return super(Open, self).call(node, func, args)
 
 
-class BuiltinFunction(abstract.PyTDFunction):
-  """Implementation of functions in __builtin__.pytd."""
-
-  def __init__(self, name, vm):
-    super(BuiltinFunction, self).__init__(
-        *abstract.PyTDFunction.get_constructor_args(name, vm, "__builtin__"))
-
-  def get_underlying_method(self, node, receiver, method_name):
-    """Get the bound method that a built-in function delegates to."""
-    results = []
-    for b in receiver.bindings:
-      node, result = self.vm.attribute_handler.get_attribute(
-          node, b.data, method_name, valself=b)
-      if result is not None:
-        results.append(result)
-    if results:
-      return node, self.vm.join_variables(node, results)
-    else:
-      return node, None
-
-
 class Abs(BuiltinFunction):
   """Implements abs."""
 
-  def __init__(self, vm):
-    super(Abs, self).__init__("abs", vm)
+  name = "abs"
 
   def call(self, node, _, args):
     self.match_args(node, args)
@@ -106,8 +106,7 @@ class Abs(BuiltinFunction):
 class Next(BuiltinFunction):
   """Implements next."""
 
-  def __init__(self, vm):
-    super(Next, self).__init__("next", vm)
+  name = "next"
 
   def _get_args(self, args):
     arg = args.posargs[0]
@@ -139,8 +138,8 @@ class ObjectPredicate(BuiltinFunction):
   (See UnaryPredicate and BinaryPredicate for examples.)
   """
 
-  def __init__(self, name, vm):
-    super(ObjectPredicate, self).__init__(name, vm)
+  def __init__(self, name, signatures, kind, vm):
+    super(ObjectPredicate, self).__init__(name, signatures, kind, vm)
     # Map of True/False/None (where None signals an ambiguous bool) to
     # vm values.
     self._vm_values = {
@@ -195,8 +194,7 @@ class BinaryPredicate(ObjectPredicate):
 class HasAttr(BinaryPredicate):
   """The hasattr() function."""
 
-  def __init__(self, vm):
-    super(HasAttr, self).__init__("hasattr", vm)
+  name = "hasattr"
 
   def _call_predicate(self, node, left, right):
     return self._has_attr(node, left.data, right.data)
@@ -288,8 +286,7 @@ def _check_against_mro(vm, target, class_spec):
 class IsInstance(BinaryPredicate):
   """The isinstance() function."""
 
-  def __init__(self, vm):
-    super(IsInstance, self).__init__("isinstance", vm)
+  name = "isinstance"
 
   def _call_predicate(self, node, left, right):
     return node, self._is_instance(left.data, right.data)
@@ -317,8 +314,7 @@ class IsInstance(BinaryPredicate):
 class IsSubclass(BinaryPredicate):
   """The issubclass() function."""
 
-  def __init__(self, vm):
-    super(IsSubclass, self).__init__("issubclass", vm)
+  name = "issubclass"
 
   def _call_predicate(self, node, left, right):
     return node, self._is_subclass(left.data, right.data)
@@ -344,8 +340,7 @@ class IsSubclass(BinaryPredicate):
 class IsCallable(UnaryPredicate):
   """The callable() function."""
 
-  def __init__(self, vm):
-    super(IsCallable, self).__init__("callable", vm)
+  name = "callable"
 
   def _call_predicate(self, node, obj):
     return self._is_callable(node, obj)

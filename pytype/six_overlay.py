@@ -9,8 +9,8 @@ class SixOverlay(overlay.Overlay):
 
   def __init__(self, vm):
     member_map = {
-        "add_metaclass": AddMetaclass,
-        "with_metaclass": WithMetaclass,
+        "add_metaclass": build_add_metaclass,
+        "with_metaclass": build_with_metaclass,
         "PY2": build_version_bool(2),
         "PY3": build_version_bool(3),
     }
@@ -18,16 +18,12 @@ class SixOverlay(overlay.Overlay):
     super(SixOverlay, self).__init__(vm, "six", member_map, ast)
 
 
-class AddMetaclass(metaclass.AddMetaclass):
-
-  def __init__(self, name, vm):
-    super(AddMetaclass, self).__init__(name, vm, "six")
+def build_add_metaclass(name, vm):
+  return metaclass.AddMetaclass.make(name, vm, "six")
 
 
-class WithMetaclass(metaclass.WithMetaclass):
-
-  def __init__(self, name, vm):
-    super(WithMetaclass, self).__init__(name, vm, "six")
+def build_with_metaclass(name, vm):
+  return metaclass.WithMetaclass.make(name, vm, "six")
 
 
 def build_version_bool(major):

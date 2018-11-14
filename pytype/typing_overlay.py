@@ -120,10 +120,6 @@ class TypeVar(abstract.PyTDFunction):
   # See b/74212131: we allow Any for bounds and constraints.
   _CLASS_TYPE = (abstract.Class, abstract.Unsolvable)
 
-  def __init__(self, name, vm):
-    super(TypeVar, self).__init__(*abstract.PyTDFunction.get_constructor_args(
-        name, vm, "typing", pyval_name="_typevar_new"))
-
   def _get_class_or_constant(self, var, name, arg_type, arg_type_desc=None):
     if arg_type is self._CLASS_TYPE:
       convert_func = abstract.get_atomic_value
@@ -225,21 +221,24 @@ def build_any(name, vm):
 class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
   """Factory for creating typing.NamedTuple classes."""
 
-  def __init__(self, name, vm):
-    self.typing_ast = vm.loader.import_name("typing")
+  @classmethod
+  def make(cls, name, vm):
+    typing_ast = vm.loader.import_name("typing")
     # Because NamedTuple is a special case for the pyi parser, typing.pytd has
     # "_NamedTuple" instead. Replace the name of the returned function so that
     # error messages will correctly display "typing.NamedTuple".
-    pyval = self.typing_ast.Lookup("typing._NamedTuple")
+    pyval = typing_ast.Lookup("typing._NamedTuple")
     pyval = pyval.Replace(name="typing.NamedTuple")
-    super(NamedTupleFuncBuilder, self).__init__(name, vm, pyval)
+    self = super(NamedTupleFuncBuilder, cls).make(name, vm, pyval)
     # NamedTuple's fields arg has type Sequence[Sequence[Union[str, type]]],
     # which doesn't provide precise enough type-checking, so we have to do
     # some of our own in _getargs. _NamedTupleFields is an alias to
     # List[Tuple[str, type]], which gives a more understandable error message.
-    fields_pyval = self.typing_ast.Lookup("typing._NamedTupleFields").type
+    fields_pyval = typing_ast.Lookup("typing._NamedTupleFields").type
+    # pylint: disable=protected-access
     self._fields_type = vm.convert.constant_to_value(
         fields_pyval, {}, vm.root_cfg_node)
+    return self
 
   def _is_str_instance(self, val):
     return (isinstance(val, abstract.Instance) and
@@ -499,15 +498,15 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
   _special = ("__module__", "__name__", "__qualname__", "__annotations__")
 
   def __init__(self, name, vm):
-    self.typing_ast = vm.loader.import_name("typing")
-    pyval = self.typing_ast.Lookup("typing._NamedTupleClass")
+    typing_ast = vm.loader.import_name("typing")
+    pyval = typing_ast.Lookup("typing._NamedTupleClass")
     pyval = pyval.Replace(name="typing.NamedTuple")
     super(NamedTupleClassBuilder, self).__init__(name, pyval, vm)
     # Prior to python 3.6, NamedTuple is a function. Although NamedTuple is a
     # class in python 3.6+, we can still use it like a function. Hold the
     # an instance of 'NamedTupleFuncBuilder' so that we can reuse the
     # old implementation to implement the NamedTuple in python 3.6+
-    self.namedtuple = NamedTupleFuncBuilder(name, vm)
+    self.namedtuple = NamedTupleFuncBuilder.make(name, vm)
 
   def call(self, node, _, args):
     posargs = args.posargs
@@ -579,20 +578,11 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
     return node, cls_var
 
 
-def namedtuple_builder(name, vm):
-  """Factory method for creating typing.NamedTuple classes."""
-  if vm.python_version < (3, 6):
-    return NamedTupleFuncBuilder(name, vm)
-  else:
-    return NamedTupleClassBuilder(name, vm)
-
-
 class NewType(abstract.PyTDFunction):
   """Implementation of typing.NewType as a function."""
 
-  def __init__(self, name, vm):
-    super(NewType, self).__init__(
-        *abstract.PyTDFunction.get_constructor_args(name, vm, "typing"))
+  def __init__(self, name, signatures, kind, vm):
+    super(NewType, self).__init__(name, signatures, kind, vm)
     assert len(self.signatures) == 1, "NewType has more than one signature."
     signature = self.signatures[0].signature
     self._name_arg_name = signature.param_names[0]
@@ -673,8 +663,28 @@ def not_supported_yet(name, vm):
   return vm.convert.unsolvable
 
 
+def build_namedtuple(name, vm):
+  if vm.python_version < (3, 6):
+    return NamedTupleFuncBuilder.make(name, vm)
+  else:
+    return NamedTupleClassBuilder(name, vm)
+
+
+def build_newtype(name, vm):
+  return NewType.make(name, vm, "typing")
+
+
+def build_noreturn(name, vm):
+  del name
+  return vm.convert.no_return
+
+
 def build_optional(name, vm):
   return Union(name, vm, (vm.convert.none_type,))
+
+
+def build_typevar(name, vm):
+  return TypeVar.make(name, vm, "typing", pyval_name="_typevar_new")
 
 
 def build_typechecking(name, vm):
@@ -683,12 +693,7 @@ def build_typechecking(name, vm):
 
 
 def build_cast(name, vm):
-  return Cast(*abstract.PyTDFunction.get_constructor_args(name, vm, "typing"))
-
-
-def build_noreturn(name, vm):
-  del name
-  return vm.convert.no_return
+  return Cast.make(name, vm, "typing")
 
 
 typing_overload = {
@@ -696,12 +701,12 @@ typing_overload = {
     "Callable": Callable,
     "ClassVar": not_supported_yet,
     "Generic": Generic,
-    "NamedTuple": namedtuple_builder,
-    "NewType": NewType,
+    "NamedTuple": build_namedtuple,
+    "NewType": build_newtype,
     "NoReturn": build_noreturn,
     "Optional": build_optional,
     "Tuple": Tuple,
-    "TypeVar": TypeVar,
+    "TypeVar": build_typevar,
     "Union": Union,
     "TYPE_CHECKING": build_typechecking,
     "cast": build_cast,

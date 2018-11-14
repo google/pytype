@@ -1874,6 +1874,8 @@ class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
     return variables
 
 
+# These names are chosen to match pytype error classes.
+# pylint: disable=g-bad-exception-name
 class FailedFunctionCall(Exception):
   """Exception for failed function calls."""
 
@@ -1953,6 +1955,7 @@ class MissingParameter(InvalidParameters):
   def __init__(self, sig, passed_args, vm, missing_parameter):
     super(MissingParameter, self).__init__(sig, passed_args, vm)
     self.missing_parameter = missing_parameter
+# pylint: enable=g-bad-exception-name
 
 
 class Function(SimpleAbstractValue):
@@ -2394,9 +2397,9 @@ class PyTDFunction(Function):
   This represents (potentially overloaded) functions.
   """
 
-  @staticmethod
-  def get_constructor_args(name, vm, module, pyval=None, pyval_name=None):
-    """Get args to PyTDFunction.__init__ for the specified function.
+  @classmethod
+  def make(cls, name, vm, module, pyval=None, pyval_name=None):
+    """Create a PyTDFunction.
 
     Args:
       name: The function name.
@@ -2408,7 +2411,7 @@ class PyTDFunction(Function):
         if it is different from the function name.
 
     Returns:
-      A tuple of the constructor args.
+      A new PyTDFunction.
     """
     assert not pyval or not pyval_name  # there's never a reason to pass both
     function_name = module + "." + name
@@ -2419,7 +2422,7 @@ class PyTDFunction(Function):
       else:
         pyval = vm.lookup_builtin(pyval_name)
     f = vm.convert.constant_to_value(pyval, {}, vm.root_cfg_node)
-    return function_name, f.signatures, pyval.kind, vm
+    return cls(function_name, f.signatures, pyval.kind, vm)
 
   def __init__(self, name, signatures, kind, vm):
     super(PyTDFunction, self).__init__(name, vm)
@@ -4022,7 +4025,7 @@ class InterpreterFunction(SignedFunction):
           extra_key = (self.get_first_opcode(), name)
           node, callargs[name] = self.vm.init_class(
               node, annotations[name], extra_key=extra_key)
-    # Might throw vm.RecursionException:
+    # Might throw VirtualMachineRecursionError:
     frame = self.vm.make_frame(
         node, self.code, callargs, self.f_globals, self.f_locals, self.closure,
         new_locals=new_locals, func=func, first_posarg=first_posarg)

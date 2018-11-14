@@ -10,7 +10,7 @@ class ABCOverlay(overlay.Overlay):
 
   def __init__(self, vm):
     member_map = {
-        "abstractmethod": AbstractMethod,
+        "abstractmethod": AbstractMethod.make,
         "abstractproperty": AbstractProperty
     }
     ast = vm.loader.import_name("abc")
@@ -20,9 +20,9 @@ class ABCOverlay(overlay.Overlay):
 class AbstractMethod(abstract.PyTDFunction):
   """Implements the @abc.abstractmethod decorator."""
 
-  def __init__(self, name, vm):
-    super(AbstractMethod, self).__init__(
-        *abstract.PyTDFunction.get_constructor_args(name, vm, "abc"))
+  @classmethod
+  def make(cls, name, vm):
+    return super(AbstractMethod, cls).make(name, vm, "abc")
 
   def call(self, node, unused_func, args):
     """Marks that the given function is abstract."""

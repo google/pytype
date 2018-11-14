@@ -272,7 +272,7 @@ class IsInstanceTest(AbstractTestBase):
 
   def setUp(self):
     super(IsInstanceTest, self).setUp()
-    self._is_instance = special_builtins.IsInstance(self._vm)
+    self._is_instance = special_builtins.IsInstance.make(self._vm)
     # Easier access to some primitive instances.
     self._bool = self._vm.convert.primitive_class_instances[bool]
     self._int = self._vm.convert.primitive_class_instances[int]
@@ -824,8 +824,7 @@ class FunctionTest(AbstractTestBase):
     self.assertRaises(KeyError, sig.del_annotation, "rumpelstiltskin")
 
   def test_constructor_args(self):
-    f = abstract.PyTDFunction(*abstract.PyTDFunction.get_constructor_args(
-        "open", self._vm, "__builtin__"))
+    f = abstract.PyTDFunction.make("open", self._vm, "__builtin__")
     self.assertEqual(f.name, "__builtin__.open")
     six.assertCountEqual(
         self,
@@ -837,8 +836,7 @@ class FunctionTest(AbstractTestBase):
   def test_constructor_args_pyval(self):
     sig = pytd.Signature((), None, None, pytd.AnythingType(), (), ())
     pyval = pytd.Function("blah", (sig,), pytd.STATICMETHOD, 0)
-    f = abstract.PyTDFunction(*abstract.PyTDFunction.get_constructor_args(
-        "open", self._vm, "__builtin__", pyval=pyval))
+    f = abstract.PyTDFunction.make("open", self._vm, "__builtin__", pyval=pyval)
     self.assertEqual(f.name, "__builtin__.open")
     f_sig, = f.signatures
     self.assertIs(f_sig.pytd_sig, sig)
@@ -846,8 +844,8 @@ class FunctionTest(AbstractTestBase):
     self.assertIs(f.vm, self._vm)
 
   def test_get_constructor_args(self):
-    f = abstract.PyTDFunction(*abstract.PyTDFunction.get_constructor_args(
-        "TypeVar", self._vm, "typing", pyval_name="_typevar_new"))
+    f = abstract.PyTDFunction.make(
+        "TypeVar", self._vm, "typing", pyval_name="_typevar_new")
     self.assertEqual(f.name, "typing.TypeVar")
     six.assertCountEqual(
         self,

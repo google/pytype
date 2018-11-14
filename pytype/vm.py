@@ -61,7 +61,7 @@ Block = collections.namedtuple("Block", ["type", "op", "handler", "level"])
 _opcode_counter = metrics.MapCounter("vm_opcode")
 
 
-class RecursionException(Exception):
+class VirtualMachineRecursionError(Exception):
   pass
 
 
@@ -159,17 +159,22 @@ class VirtualMachine(object):
         # boolean values.
         "True": self.convert.true,
         "False": self.convert.false,
-        "isinstance": special_builtins.IsInstance(self),
-        "issubclass": special_builtins.IsSubclass(self),
-        "hasattr": special_builtins.HasAttr(self),
-        "callable": special_builtins.IsCallable(self),
-        "abs": special_builtins.Abs(self),
-        "next": special_builtins.Next(self),
-        "open": special_builtins.Open(self),
+        # builtin classes
         "property": special_builtins.Property(self),
         "staticmethod": special_builtins.StaticMethod(self),
         "classmethod": special_builtins.ClassMethod(self),
     }
+    # builtin functions
+    for cls in (
+        special_builtins.Abs,
+        special_builtins.HasAttr,
+        special_builtins.IsCallable,
+        special_builtins.IsInstance,
+        special_builtins.IsSubclass,
+        special_builtins.Next,
+        special_builtins.Open
+    ):
+      self.special_builtins[cls.name] = cls.make(self)
 
     # Memoize which overlays are loaded.
     self.loaded_overlays = {}
@@ -233,7 +238,7 @@ class VirtualMachine(object):
       if bytecode_fn is None:
         raise VirtualMachineError("Unknown opcode: %s" % op.name)
       state = bytecode_fn(state, op)
-    except RecursionException:
+    except VirtualMachineRecursionError:
       # This is not an error - it just means that the block we're analyzing
       # goes into a recursion, and we're already two levels deep.
       state = state.set_why("recursion")
@@ -573,7 +578,7 @@ class VirtualMachine(object):
     """Create a new frame object, using the given args, globals and locals."""
     if any(code is f.f_code for f in self.frames):
       log.info("Detected recursion in %s", code.co_name or code.co_filename)
-      raise RecursionException()
+      raise VirtualMachineRecursionError()
 
     log.info("make_frame: callargs=%s, f_globals=[%s@%x], f_locals=[%s@%x]",
              self.repper(callargs),

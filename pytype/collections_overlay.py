@@ -1,7 +1,7 @@
 """Implementation of types from Python 2's collections library."""
 
 # TODO(tsudol): Python 2 and Python 3 have different keyword lists.
-from keyword import iskeyword
+from keyword import iskeyword  # pylint: disable=g-importing-member
 import textwrap
 
 from pytype import abstract
@@ -104,15 +104,17 @@ class CollectionsOverlay(overlay.Overlay):
 class NamedTupleBuilder(abstract.PyTDFunction):
   """Factory for creating collections.namedtuple typing information."""
 
-  def __init__(self, name, vm, pyval=None):
+  @classmethod
+  def make(cls, name, vm, pyval=None):
     # Loading the ast should be memoized after the import in CollectionsOverlay
-    self.collections_ast = vm.loader.import_name("collections")
+    collections_ast = vm.loader.import_name("collections")
     # Subclasses of NamedTupleBuilder need a different pyval.
     if not pyval:
-      pyval = self.collections_ast.Lookup("collections.namedtuple")
-    super(NamedTupleBuilder, self).__init__(
-        *abstract.PyTDFunction.get_constructor_args(
-            name, vm, "collections", pyval=pyval))
+      pyval = collections_ast.Lookup("collections.namedtuple")
+    self = super(NamedTupleBuilder, cls).make(
+        name, vm, "collections", pyval=pyval)
+    self.collections_ast = collections_ast
+    return self
 
   def _get_builtin_classtype(self, name):
     fullname = "__builtin__.%s" % name
@@ -308,5 +310,5 @@ class NamedTupleBuilder(abstract.PyTDFunction):
 
 
 collections_overlay = {
-    "namedtuple": NamedTupleBuilder,
+    "namedtuple": NamedTupleBuilder.make,
 }

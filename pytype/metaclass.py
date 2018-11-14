@@ -36,10 +36,11 @@ class AddMetaclassInstance(abstract.AtomicAbstractValue):
 class AddMetaclass(abstract.PyTDFunction):
   """Implements the add_metaclass decorator."""
 
-  def __init__(self, name, vm, module_name):
+  @classmethod
+  def make(cls, name, vm, module_name):
+    self = super(AddMetaclass, cls).make(name, vm, module_name)
     self.module_name = module_name
-    super(AddMetaclass, self).__init__(
-        *abstract.PyTDFunction.get_constructor_args(name, vm, module_name))
+    return self
 
   def call(self, node, unused_func, args):
     """Adds a metaclass."""
@@ -64,10 +65,6 @@ class WithMetaclassInstance(abstract.AtomicAbstractValue):
 
 class WithMetaclass(abstract.PyTDFunction):
   """Implements with_metaclass."""
-
-  def __init__(self, name, vm, module_name):
-    super(WithMetaclass, self).__init__(
-        *abstract.PyTDFunction.get_constructor_args(name, vm, module_name))
 
   def call(self, node, unused_func, args):
     """Creates an anonymous class to act as a metaclass."""
