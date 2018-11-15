@@ -16,6 +16,7 @@ import os
 import re
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import annotations_util
 from pytype import attribute
 from pytype import blocks
@@ -488,11 +489,11 @@ class VirtualMachine(object):
     Returns:
       An instance of Class.
     """
-    name = abstract.get_atomic_python_constant(name_var)
+    name = abstract_utils.get_atomic_python_constant(name_var)
     log.info("Declaring class %s", name)
     try:
-      class_dict = abstract.get_atomic_value(class_dict_var)
-    except abstract.ConversionError:
+      class_dict = abstract_utils.get_atomic_value(class_dict_var)
+    except abstract_utils.ConversionError:
       log.error("Error initializing class %r", name)
       return self.convert.create_new_unknown(node)
     # Handle six.with_metaclass.
@@ -517,7 +518,7 @@ class VirtualMachine(object):
       if cls_var and all(v.data.full_name == "__builtin__.type"
                          for v in cls_var.bindings):
         cls_var = None
-      cls = abstract.get_atomic_value(
+      cls = abstract_utils.get_atomic_value(
           cls_var, default=self.convert.unsolvable) if cls_var else None
       try:
         val = abstract.InterpreterClass(
@@ -529,7 +530,7 @@ class VirtualMachine(object):
       except mro.MROError as e:
         self.errorlog.mro_error(self.frames, name, e.mro_seqs)
         var = self.convert.create_new_unsolvable(node)
-      except abstract.GenericTypeError as e:
+      except abstract_utils.GenericTypeError as e:
         self.errorlog.invalid_annotation(self.frames, e.annot, e.error)
         var = self.convert.create_new_unsolvable(node)
       else:
@@ -550,15 +551,15 @@ class VirtualMachine(object):
                      closure=None, annotations=None, late_annotations=None):
     """Create a function or closure given the arguments."""
     if closure:
-      closure = tuple(c for c in abstract.get_atomic_python_constant(closure))
+      closure = tuple(
+          c for c in abstract_utils.get_atomic_python_constant(closure))
       log.info("closure: %r", closure)
     if not name:
-      if abstract.get_atomic_python_constant(code).co_name:
-        name = abstract.get_atomic_python_constant(code).co_name
-      else:
-        name = "<lambda>"
+      name = abstract_utils.get_atomic_python_constant(code).co_name
+    if not name:
+      name = "<lambda>"
     val = abstract.InterpreterFunction.make(
-        name, code=abstract.get_atomic_python_constant(code),
+        name, code=abstract_utils.get_atomic_python_constant(code),
         f_locals=self.frame.f_locals, f_globals=globs,
         defaults=defaults, kw_defaults=kw_defaults,
         closure=closure, annotations=annotations,
@@ -951,7 +952,7 @@ class VirtualMachine(object):
           # class and its attributes.
           # If the call still fails, _call_with_fake_args will return
           # abstract.Unsolvable.
-          if all(abstract.func_name_is_class_init(func.name)
+          if all(abstract_utils.func_name_is_class_init(func.name)
                  for func in funcu.data):
             return self._call_with_fake_args(node, funcu)
         return node, self.convert.create_new_unsolvable(node)
@@ -978,7 +979,7 @@ class VirtualMachine(object):
     else:
       state, args = state.popn(num)
       if starstarargs:
-        kwnames = abstract.get_atomic_python_constant(starstarargs, tuple)
+        kwnames = abstract_utils.get_atomic_python_constant(starstarargs, tuple)
         n = len(args) - len(kwnames)
         for key, arg in zip(kwnames, args[n:]):
           namedargs.setitem_slot(state.node, key, arg)
@@ -1868,11 +1869,11 @@ class VirtualMachine(object):
     """Helper function for _unpack_sequence."""
     try:
       return self.convert.value_to_constant(data, tuple)
-    except abstract.ConversionError:
+    except abstract_utils.ConversionError:
       # Fall back to looking for a literal list and converting to a tuple
       try:
         return tuple(self.convert.value_to_constant(data, list))
-      except abstract.ConversionError:
+      except abstract_utils.ConversionError:
         if data.cls:
           for base in data.cls.mro:
             if isinstance(base, abstract.TupleClass) and not base.formal:
@@ -2229,7 +2230,7 @@ class VirtualMachine(object):
     kw_defaults = {}
     for i in range(0, len(values), 2):
       key_var, value = values[i:i + 2]
-      key = abstract.get_atomic_python_constant(key_var)
+      key = abstract_utils.get_atomic_python_constant(key_var)
       kw_defaults[key] = value
     return kw_defaults
 
@@ -2261,16 +2262,18 @@ class VirtualMachine(object):
       state, free_vars = state.pop()
     if arg & loadmarshal.MAKE_FUNCTION_HAS_ANNOTATIONS:
       state, packed_annot = state.pop()
-      annot = abstract.get_atomic_python_constant(packed_annot, dict)
+      annot = abstract_utils.get_atomic_python_constant(packed_annot, dict)
       for k in annot.keys():
         annot[k] = self.annotations_util.convert_function_type_annotation(
             k, annot[k])
     if arg & loadmarshal.MAKE_FUNCTION_HAS_KW_DEFAULTS:
       state, packed_kw_def = state.pop()
-      kw_defaults = abstract.get_atomic_python_constant(packed_kw_def, dict)
+      kw_defaults = abstract_utils.get_atomic_python_constant(
+          packed_kw_def, dict)
     if arg & loadmarshal.MAKE_FUNCTION_HAS_POS_DEFAULTS:
       state, packed_pos_def = state.pop()
-      pos_defaults = abstract.get_atomic_python_constant(packed_pos_def, tuple)
+      pos_defaults = abstract_utils.get_atomic_python_constant(
+          packed_pos_def, tuple)
     annot, late_annot = self.annotations_util.convert_annotations_list(
         annot.items())
     return state, pos_defaults, kw_defaults, annot, late_annot, free_vars
@@ -2324,7 +2327,7 @@ class VirtualMachine(object):
     else:
       assert self.PY3
       state, name_var = state.pop()
-      name = abstract.get_atomic_python_constant(name_var)
+      name = abstract_utils.get_atomic_python_constant(name_var)
     state, code = state.pop()
     if self.python_version >= (3, 6):
       get_args = self._get_extra_function_args_3_6
@@ -2352,7 +2355,7 @@ class VirtualMachine(object):
     else:
       assert self.PY3
       state, name_var = state.pop()
-      name = abstract.get_atomic_python_constant(name_var)
+      name = abstract_utils.get_atomic_python_constant(name_var)
     state, (closure, code) = state.popn(2)
     state, defaults, kw_defaults, annot, late_annot, _ = (
         self._get_extra_function_args(state, op.arg))
@@ -2402,10 +2405,10 @@ class VirtualMachine(object):
     if self.frame.check_return:
       ret_type = self.frame.allowed_returns
       self._check_return(state.node, ret,
-                         ret_type.get_formal_type_parameter(abstract.T))
+                         ret_type.get_formal_type_parameter(abstract_utils.T))
       _, send_var = self.init_class(
           state.node,
-          ret_type.get_formal_type_parameter(abstract.T2))
+          ret_type.get_formal_type_parameter(abstract_utils.T2))
       return state.push(send_var)
     return state.push(self.convert.unsolvable.to_variable(state.node))
 
@@ -2425,7 +2428,7 @@ class VirtualMachine(object):
       name = full_name.split(".", 1)[0]  # "a.b.c" -> "a"
     else:
       name = full_name
-    level = abstract.get_atomic_python_constant(level_var)
+    level = abstract_utils.get_atomic_python_constant(level_var)
     module = self.import_module(name, full_name, level)
     if module is None:
       log.warning("Couldn't find module %r", name)
@@ -2460,7 +2463,7 @@ class VirtualMachine(object):
 
   def byte_BUILD_CLASS(self, state, op):
     state, (name, _bases, members) = state.popn(3)
-    bases = list(abstract.get_atomic_python_constant(_bases))
+    bases = list(abstract_utils.get_atomic_python_constant(_bases))
     cls = self.make_class(state.node, name, bases, members, None)
     self.trace_classdef(cls)
     return state.push(cls)
@@ -2471,7 +2474,7 @@ class VirtualMachine(object):
 
   def byte_STORE_LOCALS(self, state, op):
     state, locals_dict = state.pop()
-    self.frame.f_locals = abstract.get_atomic_value(locals_dict)
+    self.frame.f_locals = abstract_utils.get_atomic_value(locals_dict)
     return state
 
   def byte_END_FINALLY(self, state, op):
@@ -2503,8 +2506,8 @@ class VirtualMachine(object):
     if self.frame.check_return:
       if self.frame.f_code.has_generator():
         ret_type = self.frame.allowed_returns
-        self._check_return(
-            state.node, var, ret_type.get_formal_type_parameter(abstract.V))
+        self._check_return(state.node, var,
+                           ret_type.get_formal_type_parameter(abstract_utils.V))
       else:
         self._check_return(state.node, var, self.frame.allowed_returns)
     self._set_frame_return(state.node, self.frame, var)
@@ -2514,7 +2517,7 @@ class VirtualMachine(object):
     """Pops a module and stores all its contents in locals()."""
     # TODO(kramm): this doesn't use __all__ properly.
     state, mod_var = state.pop()
-    mod = abstract.get_atomic_value(mod_var)
+    mod = abstract_utils.get_atomic_value(mod_var)
     # TODO(rechen): Is mod ever an unknown?
     if isinstance(mod, (abstract.Unknown, abstract.Unsolvable)):
       self.has_unknown_wildcard_imports = True
@@ -2568,7 +2571,7 @@ class VirtualMachine(object):
 
   def byte_STORE_ANNOTATION(self, state, op):
     state, annotations_var = self.load_local(state, "__annotations__")
-    annotations = abstract.get_atomic_value(annotations_var)
+    annotations = abstract_utils.get_atomic_value(annotations_var)
     name = self.frame.f_code.co_names[op.arg]
     state, value = state.pop()
     annotations.set_str_item(state.node, name, value)
@@ -2585,8 +2588,9 @@ class VirtualMachine(object):
     elements = []
     for var in iterables:
       try:
-        itr = abstract.get_atomic_python_constant(var, collections.Iterable)
-      except abstract.ConversionError:
+        itr = abstract_utils.get_atomic_python_constant(
+            var, collections.Iterable)
+      except abstract_utils.ConversionError:
         # TODO(rechen): The assumption that any abstract iterable unpacks to
         # exactly one element is highly dubious.
         elements.append(self.convert.unsolvable.to_variable(self.root_cfg_node))
@@ -2652,7 +2656,7 @@ class VirtualMachine(object):
 
   def byte_BUILD_CONST_KEY_MAP(self, state, op):
     state, keys = state.pop()
-    keys = abstract.get_atomic_python_constant(keys, tuple)
+    keys = abstract_utils.get_atomic_python_constant(keys, tuple)
     the_map = self.convert.build_map(state.node)
     assert len(keys) == op.arg
     for key in reversed(keys):

@@ -14,6 +14,7 @@ import inspect
 import itertools
 import logging
 
+from pytype import abstract_utils
 from pytype import compat
 from pytype import datatypes
 from pytype import function
@@ -30,499 +31,6 @@ from pytype.typegraph import cfg_utils
 import six
 
 log = logging.getLogger(__name__)
-
-
-# Type parameter names matching the ones in __builtin__.pytd and typing.pytd.
-T = "_T"
-T2 = "_T2"
-K = "_K"
-V = "_V"
-ARGS = "_ARGS"
-RET = "_RET"
-
-
-DYNAMIC_ATTRIBUTE_MARKERS = [
-    "HAS_DYNAMIC_ATTRIBUTES",
-    "_HAS_DYNAMIC_ATTRIBUTES",
-    "has_dynamic_attributes",
-    "_has_dynamic_attributes",
-]
-
-
-class ConversionError(ValueError):
-  pass
-
-
-class GenericTypeError(Exception):
-  """The error for user-defined generic types."""
-
-  def __init__(self, annot, error):
-    super(GenericTypeError, self).__init__(annot, error)
-    self.annot = annot
-    self.error = error
-
-
-class AsInstance(object):
-  """Wrapper, used for marking things that we want to convert to an instance."""
-
-  def __init__(self, cls):
-    self.cls = cls
-
-
-class AsReturnValue(AsInstance):
-  """Specially mark return values, to handle NoReturn properly."""
-
-
-# For lazy evaluation of ParameterizedClass.formal_type_parameters
-LazyFormalTypeParameters = collections.namedtuple(
-    "LazyFormalTypeParameters", ("template", "parameters", "subst"))
-
-
-_NONE = object()  # sentinel for get_atomic_value
-
-
-def get_atomic_value(variable, constant_type=None, default=_NONE):
-  """Get the atomic value stored in this variable."""
-  if len(variable.bindings) == 1:
-    v, = variable.bindings
-    if isinstance(v.data, constant_type or object):
-      return v.data  # success
-  if default is not _NONE:
-    # If a default is specified, we return it instead of failing.
-    return default
-  # Determine an appropriate failure message.
-  if not variable.bindings:
-    raise ConversionError("Cannot get atomic value from empty variable.")
-  bindings = variable.bindings
-  name = bindings[0].data.vm.convert.constant_name(constant_type)
-  raise ConversionError(
-      "Cannot get atomic value %s from variable. %s %s"
-      % (name, variable, [b.data for b in bindings]))
-
-
-def get_atomic_python_constant(variable, constant_type=None):
-  """Get the concrete atomic Python value stored in this variable.
-
-  This is used for things that are stored in cfg.Variable, but we
-  need the actual data in order to proceed. E.g. function / class definitions.
-
-  Args:
-    variable: A cfg.Variable. It can only have one possible value.
-    constant_type: Optionally, the required type of the constant.
-  Returns:
-    A Python constant. (Typically, a string, a tuple, or a code object.)
-  Raises:
-    ConversionError: If the value in this Variable is purely abstract, i.e.
-      doesn't store a Python value, or if it has more than one possible value.
-  """
-  atomic = get_atomic_value(variable)
-  return atomic.vm.convert.value_to_constant(atomic, constant_type)
-
-
-def get_views(variables, node, filter_strict=False):
-  """Get all possible views of the given variables at a particular node.
-
-  This function can be used either as a regular generator or in an optimized way
-  to yield only functionally unique views:
-    views = get_views(...)
-    skip_future = None
-    while True:
-      try:
-        view = views.send(skip_future)
-      except StopIteration:
-        break
-      ...
-    The caller should set `skip_future` to True when it is safe to skip
-    equivalent future views and False otherwise.
-
-  Args:
-    variables: The variables.
-    node: The node.
-    filter_strict: If True, emit a view only when node.HasCombination is
-      satisfied; else, use the faster node.CanHaveCombination.
-
-  Yields:
-    A datatypes.AcessTrackingDict mapping variables to bindings.
-  """
-  try:
-    combinations = cfg_utils.deep_variable_product(variables)
-  except cfg_utils.TooComplexError:
-    combinations = ((var.AddBinding(node.program.default_data, [], node)
-                     for var in variables),)
-  seen = []  # the accessed subsets of previously seen views
-  for combination in combinations:
-    view = {value.variable: value for value in combination}
-    if any(subset <= six.viewitems(view) for subset in seen):
-      # Optimization: This view can be skipped because it matches the accessed
-      # subset of a previous one.
-      log.info("Skipping view (already seen): %r", view)
-      continue
-    combination = list(view.values())
-    check = node.HasCombination if filter_strict else node.CanHaveCombination
-    if not check(combination):
-      log.info("Skipping combination (unreachable): %r", combination)
-      continue
-    view = datatypes.AccessTrackingDict(view)
-    skip_future = yield view
-    if skip_future:
-      # Skip future views matching this accessed subset.
-      seen.append(six.viewitems(view.accessed_subset))
-
-
-def get_signatures(func):
-  if func.isinstance_PyTDFunction():
-    return [sig.signature for sig in func.signatures]
-  elif func.isinstance_InterpreterFunction():
-    return [func.signature]
-  elif func.isinstance_BoundFunction():
-    sigs = get_signatures(func.underlying)
-    return [sig.drop_first_parameter() for sig in sigs]  # drop "self"
-  else:
-    raise NotImplementedError(func.__class__.__name__)
-
-
-def func_name_is_class_init(name):
-  """Return True if |name| is that of a class' __init__ method."""
-  # Python 3's MAKE_FUNCTION byte code takes an explicit fully qualified
-  # function name as an argument and that is used for the function name.
-  # On the other hand, Python 2's MAKE_FUNCTION does not take any name
-  # argument so we pick the name from the code object. This name is not
-  # fully qualified. Hence, constructor names in Python 3 are fully
-  # qualified ending in '.__init__', and constructor names in Python 2
-  # are all '__init__'. So, we identify a constructor by matching its
-  # name with one of these patterns.
-  return name == "__init__" or name.endswith(".__init__")
-
-
-def has_type_parameters(node, val, seen=None):
-  """Checks if the given object contains any TypeParameters.
-
-  Args:
-    node: The current CFG node.
-    val: The object to check for TypeParameters. Will likely be a
-      SimpleAbstractValue or a cfg.Variable with SimpleAbstractValues bindings.
-    seen: Optional. A set of already-visited objects, to avoid infinite loops.
-
-  Returns:
-    True if the object contains any TypeParameters, or False otherwise.
-  """
-  if seen is None:
-    seen = set()
-  if val in seen:
-    return False
-  seen.add(val)
-  if isinstance(val, cfg.Variable):
-    return any((has_type_parameters(node, d, seen) for d in val.data))
-  elif val.isinstance_TypeParameter():
-    return True
-  elif val.isinstance_ParameterizedClass() or val.isinstance_Union():
-    return val.formal
-  elif val.isinstance_SimpleAbstractValue():
-    return any((has_type_parameters(node, tp, seen)
-                for tp in val.instance_type_parameters.values()))
-  else:
-    return False
-
-
-def equivalent_to(binding, cls):
-  """Whether binding.data is equivalent to cls, modulo parameterization."""
-  return (binding.data.isinstance_Class() and
-          binding.data.full_name == cls.full_name)
-
-
-def _apply_mutations(node, get_mutations):
-  """Apply mutations yielded from a get_mutations function."""
-  log.info("Applying mutations")
-  num_mutations = 0
-  for obj, name, value in get_mutations():
-    if not num_mutations:
-      # mutations warrant creating a new CFG node
-      node = node.ConnectNew(node.name)
-    num_mutations += 1
-    obj.merge_instance_type_parameter(node, name, value)
-  log.info("Applied %d mutations", num_mutations)
-  return node
-
-
-def _get_template(val):
-  """Get the value's class template."""
-  if val.isinstance_Class():
-    res = {t.full_name for t in val.template}
-    if val.isinstance_ParameterizedClass():
-      res.update(_get_template(val.base_cls))
-    elif val.isinstance_PyTDClass() or val.isinstance_InterpreterClass():
-      for base in val.bases():
-        base = get_atomic_value(base, default=val.vm.convert.unsolvable)
-        res.update(_get_template(base))
-    return res
-  elif val.cls:
-    return _get_template(val.cls)
-  else:
-    return set()
-
-
-def _get_mro_bases(bases, vm):
-  """Get bases for MRO computation."""
-  mro_bases = []
-  has_user_generic = False
-  for base_var in bases:
-    if not base_var.data:
-      continue
-    # A base class is a Variable. If it has multiple options, we would
-    # technically get different MROs. But since ambiguous base classes are rare
-    # enough, we instead just pick one arbitrary option per base class.
-    base = get_atomic_value(base_var, default=vm.convert.unsolvable)
-    mro_bases.append(base)
-    # check if it contains user-defined generic types
-    if (base.isinstance_ParameterizedClass() and
-        base.full_name != "typing.Generic"):
-      has_user_generic = True
-  # if user-defined generic type exists, we won't add `typing.Generic` to
-  # the final result list
-  if has_user_generic:
-    return [b for b in mro_bases if b.full_name != "typing.Generic"]
-  else:
-    return mro_bases
-
-
-def _merge_type(t0, t1, name, cls):
-  """Merge two types.
-
-  Rules: Type `Any` can match any type, we will return the other type if one
-  of them is `Any`. Return the sub-class if the types have inheritance
-  relationship.
-
-  Args:
-    t0: The first type.
-    t1: The second type.
-    name: Type parameter name.
-    cls: The abstract.Class on which any error should be reported.
-  Returns:
-    A type.
-  Raises:
-    GenericTypeError: if the types don't match.
-  """
-  if t0 is None or t0.isinstance_Unsolvable():
-    return t1
-  if t1 is None or t1.isinstance_Unsolvable():
-    return t0
-  # t0 is parent of t1
-  if t0 in t1.mro:
-    return t1
-  # t1 is parent of t0
-  if t1 in t0.mro:
-    return t0
-  raise GenericTypeError(cls, "Conflicting value for TypeVar %s" % name)
-
-
-def parse_formal_type_parameters(base, prefix, formal_type_parameters):
-  """Parse type parameters from base class.
-
-  Args:
-    base: base class.
-    prefix: the full name of subclass of base class.
-    formal_type_parameters: the mapping of type parameter name to its type
-
-  Raises:
-    GenericTypeError: If the lazy types of type parameter don't match
-  """
-  def merge(t0, t1, name):
-    return _merge_type(t0, t1, name, base)
-
-  if base.isinstance_ParameterizedClass():
-    if base.full_name == "typing.Generic":
-      return
-    if (base.base_cls.isinstance_InterpreterClass() or
-        base.base_cls.isinstance_PyTDClass()):
-      # merge the type parameters info from base class
-      formal_type_parameters.merge_from(
-          base.base_cls.all_formal_type_parameters, merge)
-    params = base.get_formal_type_parameters()
-    for name, param in params.items():
-      if param.isinstance_TypeParameter():
-        # We have type parameter renaming, e.g.,
-        #  class List(Generic[T]): pass
-        #  class Foo(List[U]): pass
-        if prefix:
-          formal_type_parameters.add_alias(
-              name, prefix + "." + param.name, merge)
-      else:
-        # We have either a non-formal parameter, e.g.,
-        # class Foo(List[int]), or a non-1:1 parameter mapping, e.g.,
-        # class Foo(List[K or V]). Initialize the corresponding instance
-        # parameter appropriately.
-        if name not in formal_type_parameters:
-          formal_type_parameters[name] = param
-        else:
-          # Two unrelated containers happen to use the same type
-          # parameter but with different types.
-          last_type = formal_type_parameters[name]
-          formal_type_parameters[name] = merge(last_type, param, name)
-  else:
-    if base.isinstance_InterpreterClass() or base.isinstance_PyTDClass():
-      # merge the type parameters info from base class
-      formal_type_parameters.merge_from(
-          base.all_formal_type_parameters, merge)
-    if base.template:
-      # handle unbound type parameters
-      for item in base.template:
-        if item.isinstance_TypeParameter():
-          # This type parameter will be set as `ANY`.
-          name = full_type_name(base, item.name)
-          if name not in formal_type_parameters:
-            formal_type_parameters[name] = None
-
-
-def full_type_name(val, name):
-  """Compute complete type parameter name with scope.
-
-  Args:
-    val: The object with type parameters.
-    name: The short type parameter name (e.g., T).
-
-  Returns:
-    The full type parameter name (e.g., List.T).
-  """
-  if val.isinstance_Instance():
-    return full_type_name(val.cls, name)
-  # The type is in current `class`
-  for t in val.template:
-    if t.name == name:
-      return val.full_name + "." + name
-    elif t.full_name == name:
-      return t.full_name
-  # The type is instantiated in `base class`
-  for t in val.all_template_names:
-    if t.split(".")[-1] == name or t == name:
-      return t
-  return name
-
-
-def maybe_extract_tuple(t):
-  """Returns a tuple of Variables."""
-  values = t.data
-  if len(values) > 1:
-    return (t,)
-  v, = values
-  if not v.isinstance_Tuple():
-    return (t,)
-  return v.pyval
-
-
-def _compute_template(val):
-  """Compute the precedence list of template parameters according to C3.
-
-  1. For the base class list, if it contains `typing.Generic`, then all the
-  type parameters should be provided. That means we don't need to parse extra
-  base class and then we can get all the type parameters.
-  2. If there is no `typing.Generic`, parse the precedence list according to
-  C3 based on all the base classes.
-  3. If `typing.Generic` exists, it must contain at least one type parameters.
-  And there is at most one `typing.Generic` in the base classes. Report error
-  if the check fails.
-
-  Args:
-    val: The abstract.AtomicAbstractValue to compute a template for.
-
-  Returns:
-    parsed type parameters
-
-  Raises:
-    GenericTypeError: if the type annotation for generic type is incorrect
-  """
-  if val.isinstance_PyTDClass():
-    return [val.vm.convert.constant_to_value(itm.type_param)
-            for itm in val.pytd_cls.template]
-  elif not val.isinstance_InterpreterClass():
-    return ()
-  bases = [get_atomic_value(base, default=val.vm.convert.unsolvable)
-           for base in val.bases()]
-  template = []
-
-  # Compute the number of `typing.Generic` and collect the type parameters
-  for base in bases:
-    if base.full_name == "typing.Generic":
-      if base.isinstance_PyTDClass():
-        raise GenericTypeError(val, "Cannot inherit from plain Generic")
-      if template:
-        raise GenericTypeError(
-            val, "Cannot inherit from Generic[...] multiple times")
-      for item in base.template:
-        param = base.formal_type_parameters.get(item.name)
-        template.append(param.with_module(val.full_name))
-
-  if template:
-    # All type parameters in the base classes should appear in
-    # `typing.Generic`
-    for base in bases:
-      if base.full_name != "typing.Generic":
-        if base.isinstance_ParameterizedClass():
-          for item in base.template:
-            param = base.formal_type_parameters.get(item.name)
-            if param.isinstance_TypeParameter():
-              t = param.with_module(val.full_name)
-              if t not in template:
-                raise GenericTypeError(
-                    val, "Generic should contain all the type variables")
-  else:
-    # Compute template parameters according to C3
-    seqs = []
-    for base in bases:
-      if base.isinstance_ParameterizedClass():
-        seq = []
-        for item in base.template:
-          param = base.formal_type_parameters.get(item.name)
-          if param.isinstance_TypeParameter():
-            seq.append(param.with_module(val.full_name))
-        seqs.append(seq)
-    try:
-      template.extend(mro.MergeSequences(seqs))
-    except ValueError:
-      raise GenericTypeError(
-          val, "Illegal type parameter order in class %s" % val.name)
-
-  return template
-
-
-def _hash_dict(vardict, names):
-  """Hash a dictionary.
-
-  This contains the keys and the full hashes of the data in the values.
-
-  Arguments:
-    vardict: A dictionary mapping str to Variable.
-    names: If this is non-None, the snapshot will include only those
-      dictionary entries whose keys appear in names.
-
-  Returns:
-    A hash of the dictionary.
-  """
-  if names is not None:
-    vardict = {name: vardict[name] for name in names.intersection(vardict)}
-  m = hashlib.md5()
-  for name, var in sorted(vardict.items()):
-    m.update(compat.bytestring(name))
-    for value in var.bindings:
-      m.update(value.data.get_fullhash())
-  return m.digest()
-
-
-def _hash_all_dicts(*hash_args):
-  """Convenience method for hashing a sequence of dicts."""
-  return hashlib.md5(b"".join(_hash_dict(*args) for args in hash_args)).digest()
-
-
-def matches_generator(type_obj):
-  """Check if type_obj matches a Generator type."""
-  if type_obj.isinstance_Union():
-    return all(matches_generator(sub_type) for sub_type in type_obj.options)
-  else:
-    base_cls = type_obj
-    if type_obj.isinstance_ParameterizedClass():
-      base_cls = type_obj.base_cls
-    return ((base_cls.isinstance_PyTDClass() and
-             base_cls.name in ("generator", "Iterable", "Iterator")) or
-            base_cls.isinstance_AMBIGUOUS_OR_EMPTY())
 
 
 class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
@@ -563,15 +71,15 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   @property
   def all_template_names(self):
     if self._all_template_names is None:
-      self._all_template_names = _get_template(self)
+      self._all_template_names = abstract_utils.get_template(self)
     return self._all_template_names
 
   @property
   def template(self):
     if self._template is None:
-      # Won't recompute if `_compute_template` throws exception
+      # Won't recompute if `compute_template` throws exception
       self._template = ()
-      self._template = _compute_template(self)
+      self._template = abstract_utils.compute_template(self)
     return self._template
 
   @property
@@ -1153,14 +661,14 @@ class SimpleAbstractValue(AtomicAbstractValue):
 
   def has_instance_type_parameter(self, name):
     """Check if the key is in `instance_type_parameters`."""
-    name = full_type_name(self, name)
+    name = abstract_utils.full_type_name(self, name)
     return name in self.instance_type_parameters
 
   def get_children_maps(self):
     return (self.instance_type_parameters, self.members)
 
   def get_instance_type_parameter(self, name, node=None):
-    name = full_type_name(self, name)
+    name = abstract_utils.full_type_name(self, name)
     param = self.instance_type_parameters.get(name)
     if not param:
       log.info("Creating new empty type param %s", name)
@@ -1183,7 +691,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
       name: The name of the type parameter.
       value: The value that is being used for this type parameter as a Variable.
     """
-    name = full_type_name(self, name)
+    name = abstract_utils.full_type_name(self, name)
     log.info("Modifying type param %s", name)
     if name in self.instance_type_parameters:
       self.instance_type_parameters[name].PasteVariable(value, node)
@@ -1232,8 +740,8 @@ class SimpleAbstractValue(AtomicAbstractValue):
     # action would complicate pytype considerably by forcing us to track the
     # class in a variable, so we instead fall back to Any.
     try:
-      new_cls = get_atomic_value(var)
-    except ConversionError:
+      new_cls = abstract_utils.get_atomic_value(var)
+    except abstract_utils.ConversionError:
       self.cls = self.vm.convert.unsolvable
     else:
       if self.cls and self.cls != new_cls:
@@ -1294,7 +802,8 @@ class Instance(SimpleAbstractValue):
     if self._instance_type_parameters_loaded:
       return
     all_formal_type_parameters = datatypes.AliasingMonitorDict()
-    parse_formal_type_parameters(self.cls, None, all_formal_type_parameters)
+    abstract_utils.parse_formal_type_parameters(
+        self.cls, None, all_formal_type_parameters)
     self._instance_type_parameters.uf = all_formal_type_parameters.uf
     for name, param in all_formal_type_parameters.items():
       if param is None:
@@ -1313,8 +822,8 @@ class Instance(SimpleAbstractValue):
     # Containers with unset parameters and NoneType instances cannot match True.
     name = self.full_name
     if logical_value and name in Instance._CONTAINER_NAMES:
-      return (self.has_instance_type_parameter(T) and
-              bool(self.get_instance_type_parameter(T).bindings))
+      return (self.has_instance_type_parameter(abstract_utils.T) and
+              bool(self.get_instance_type_parameter(abstract_utils.T).bindings))
     elif name == "__builtin__.NoneType":
       return not logical_value
     return True
@@ -1383,7 +892,7 @@ class List(Instance, HasSlots, PythonConstant):
     PythonConstant.init_mixin(self, content)
     HasSlots.init_mixin(self)
     combined_content = vm.convert.build_content(content)
-    self.merge_instance_type_parameter(None, T, combined_content)
+    self.merge_instance_type_parameter(None, abstract_utils.T, combined_content)
     self.could_contain_anything = False
     self.set_slot("__getitem__", self.getitem_slot)
     self.set_slot("__getslice__", self.getslice_slot)
@@ -1424,7 +933,7 @@ class List(Instance, HasSlots, PythonConstant):
       for val in index_var.bindings:
         try:
           index = self.vm.convert.value_to_constant(val.data, int)
-        except ConversionError:
+        except abstract_utils.ConversionError:
           unresolved = True
         else:
           self_len = len(self.pyval)
@@ -1450,17 +959,17 @@ class List(Instance, HasSlots, PythonConstant):
       The value (an int or None) of the index.
 
     Raises:
-      ConversionError: If the data could not be converted to an int or None.
+      abstract_utils.ConversionError: If the data could not be converted.
     """
     if isinstance(data, AbstractOrConcreteValue):
       return self.vm.convert.value_to_constant(data, (int, type(None)))
     elif isinstance(data, Instance):
       if data.cls != self.vm.convert.int_type:
-        raise ConversionError()
+        raise abstract_utils.ConversionError()
       else:
         return None
     else:
-      raise ConversionError()
+      raise abstract_utils.ConversionError()
 
   def getslice_slot(self, node, start_var, end_var):
     """Implements __getslice__ for List.
@@ -1484,7 +993,7 @@ class List(Instance, HasSlots, PythonConstant):
         try:
           start = self._get_index(start_val.data)
           end = self._get_index(end_val.data)
-        except ConversionError:
+        except abstract_utils.ConversionError:
           unresolved = True
         else:
           results.append(List(self.pyval[start:end], self.vm).to_variable(node))
@@ -1498,13 +1007,13 @@ class Tuple(Instance, PythonConstant):
 
   def __init__(self, content, vm):
     combined_content = vm.convert.build_content(content)
-    class_params = {name: vm.convert.merge_classes(vm.root_cfg_node,
-                                                   instance_param.data)
-                    for name, instance_param in
-                    tuple(enumerate(content)) + ((T, combined_content),)}
+    class_params = {
+        name: vm.convert.merge_classes(vm.root_cfg_node, instance_param.data)
+        for name, instance_param in
+        tuple(enumerate(content)) + ((abstract_utils.T, combined_content),)}
     cls = TupleClass(vm.convert.tuple_type, class_params, vm)
     super(Tuple, self).__init__(cls, vm)
-    self.merge_instance_type_parameter(None, T, combined_content)
+    self.merge_instance_type_parameter(None, abstract_utils.T, combined_content)
     PythonConstant.init_mixin(self, content)
     self.tuple_length = len(self.pyval)
     self._hash = None  # memoized due to expensive computation
@@ -1581,7 +1090,7 @@ class Dict(Instance, HasSlots, PythonConstant, pytd_utils.WrapsDict("pyval")):
       for val in name_var.bindings:
         try:
           name = self.vm.convert.value_to_constant(val.data, str)
-        except ConversionError:
+        except abstract_utils.ConversionError:
           unresolved = True
         else:
           try:
@@ -1599,8 +1108,8 @@ class Dict(Instance, HasSlots, PythonConstant, pytd_utils.WrapsDict("pyval")):
 
   def set_str_item(self, node, name, value_var):
     self.merge_instance_type_parameter(
-        node, K, self.vm.convert.build_string(node, name))
-    self.merge_instance_type_parameter(node, V, value_var)
+        node, abstract_utils.K, self.vm.convert.build_string(node, name))
+    self.merge_instance_type_parameter(node, abstract_utils.V, value_var)
     if name in self.pyval:
       self.pyval[name].PasteVariable(value_var, node)
     else:
@@ -1613,7 +1122,7 @@ class Dict(Instance, HasSlots, PythonConstant, pytd_utils.WrapsDict("pyval")):
     for val in name_var.bindings:
       try:
         name = self.vm.convert.value_to_constant(val.data, str)
-      except ConversionError:
+      except abstract_utils.ConversionError:
         # Now the dictionary is abstract: We don't know what it contains
         # anymore. Note that the below is not a variable, so it'll affect
         # all branches.
@@ -1631,7 +1140,7 @@ class Dict(Instance, HasSlots, PythonConstant, pytd_utils.WrapsDict("pyval")):
     # python3.6 function annotation support). A dict assigned to a visible
     # variable will be inferred as Dict[key_type, Any], but the pyval will
     # contain the data we need for annotations.
-    if any(has_type_parameters(node, x) for x in value_var.data):
+    if any(abstract_utils.has_type_parameters(node, x) for x in value_var.data):
       value_var = self.vm.convert.unsolvable.to_variable(node)
     return self.call_pytd(node, "__setitem__", name_var, value_var)
 
@@ -1650,8 +1159,8 @@ class Dict(Instance, HasSlots, PythonConstant, pytd_utils.WrapsDict("pyval")):
       value = None
     else:
       try:
-        str_key = get_atomic_python_constant(key_var, str)
-      except ConversionError:
+        str_key = abstract_utils.get_atomic_python_constant(key_var, str)
+      except abstract_utils.ConversionError:
         value = None
       else:
         value = str_key in self.pyval
@@ -1659,8 +1168,8 @@ class Dict(Instance, HasSlots, PythonConstant, pytd_utils.WrapsDict("pyval")):
 
   def pop_slot(self, node, key_var, default_var=None):
     try:
-      str_key = get_atomic_python_constant(key_var, str)
-    except ConversionError:
+      str_key = abstract_utils.get_atomic_python_constant(key_var, str)
+    except abstract_utils.ConversionError:
       self.could_contain_anything = True
     if self.could_contain_anything:
       if default_var:
@@ -1698,21 +1207,21 @@ class Dict(Instance, HasSlots, PythonConstant, pytd_utils.WrapsDict("pyval")):
         if key not in omit:
           self.set_str_item(node, key, value)
       if isinstance(other_dict, Dict):
-        k = other_dict.get_instance_type_parameter(K, node)
-        v = other_dict.get_instance_type_parameter(V, node)
-        self.merge_instance_type_parameter(node, K, k)
-        self.merge_instance_type_parameter(node, V, v)
+        k = other_dict.get_instance_type_parameter(abstract_utils.K, node)
+        v = other_dict.get_instance_type_parameter(abstract_utils.V, node)
+        self.merge_instance_type_parameter(node, abstract_utils.K, k)
+        self.merge_instance_type_parameter(node, abstract_utils.V, v)
         self.could_contain_anything |= other_dict.could_contain_anything
     else:
       assert isinstance(other_dict, AtomicAbstractValue)
       if (isinstance(other_dict, Instance) and
           other_dict.full_name == "__builtin__.dict"):
-        k = other_dict.get_instance_type_parameter(K, node)
-        v = other_dict.get_instance_type_parameter(V, node)
+        k = other_dict.get_instance_type_parameter(abstract_utils.K, node)
+        v = other_dict.get_instance_type_parameter(abstract_utils.V, node)
       else:
         k = v = self.vm.convert.create_new_unsolvable(node)
-      self.merge_instance_type_parameter(node, K, k)
-      self.merge_instance_type_parameter(node, V, v)
+      self.merge_instance_type_parameter(node, abstract_utils.K, k)
+      self.merge_instance_type_parameter(node, abstract_utils.V, v)
       self.could_contain_anything = True
 
   def compatible_with(self, logical_value):
@@ -1721,7 +1230,7 @@ class Dict(Instance, HasSlots, PythonConstant, pytd_utils.WrapsDict("pyval")):
       # parameters have been established (meaning that the dict can be
       # non-empty).
       return (not logical_value or
-              bool(self.get_instance_type_parameter(K).bindings))
+              bool(self.get_instance_type_parameter(abstract_utils.K).bindings))
     else:
       return PythonConstant.compatible_with(self, logical_value)
 
@@ -1736,7 +1245,7 @@ class AnnotationClass(SimpleAbstractValue, HasSlots):
 
   def getitem_slot(self, node, slice_var):
     """Custom __getitem__ implementation."""
-    slice_content = maybe_extract_tuple(slice_var)
+    slice_content = abstract_utils.maybe_extract_tuple(slice_var)
     inner, ellipses = self._build_inner(slice_content)
     value = self._build_value(node, tuple(inner), ellipses)
     return node, value.to_variable(node)
@@ -1854,7 +1363,7 @@ class AnnotationContainer(AnnotationClass):
 
     try:
       return abstract_class(self.base_cls, params, self.vm)
-    except GenericTypeError as e:
+    except abstract_utils.GenericTypeError as e:
       self.vm.errorlog.invalid_annotation(self.vm.frames, e.annot, e.error)
       return self.vm.convert.unsolvable
 
@@ -1972,16 +1481,17 @@ class FunctionArgs(collections.namedtuple("_", ["posargs", "namedargs",
 
   def starargs_as_tuple(self):
     try:
-      args = self.starargs and get_atomic_python_constant(self.starargs, tuple)
-    except ConversionError:
+      args = self.starargs and abstract_utils.get_atomic_python_constant(
+          self.starargs, tuple)
+    except abstract_utils.ConversionError:
       args = None
     return args
 
   def starstarargs_as_dict(self):
     try:
-      args = self.starstarargs and get_atomic_python_constant(
+      args = self.starstarargs and abstract_utils.get_atomic_python_constant(
           self.starstarargs, dict)
-    except ConversionError:
+    except abstract_utils.ConversionError:
       args = None
     return args
 
@@ -2148,7 +1658,7 @@ class Function(SimpleAbstractValue):
     error = None
     matched = []
     arg_variables = args.get_variables()
-    views = get_views(arg_variables, node)
+    views = abstract_utils.get_views(arg_variables, node)
     skip_future = None
     while True:
       try:
@@ -2158,15 +1668,15 @@ class Function(SimpleAbstractValue):
       log.debug("args in view: %r", [(a.bindings and view[a].data)
                                      for a in args.posargs])
       for arg in arg_variables:
-        if has_type_parameters(node, view[arg].data):
+        if abstract_utils.has_type_parameters(node, view[arg].data):
           self.vm.errorlog.invalid_typevar(
               self.vm.frames, "cannot pass a TypeVar to a function")
           view[arg] = arg.AddBinding(self.vm.convert.unsolvable, [], node)
       try:
         match = self._match_view(node, args, view, alias_map)
       except FailedFunctionCall as e:
-        # We could also pass "filter_strict=True" to get_views() above,
-        # but it's cheaper to delay verification until the error case.
+        # We could also pass "filter_strict=True" to abstract_utils.get_views()
+        # above, but it's cheaper to delay verification until the error case.
         if e > error and node.HasCombination(list(view.values())):
           # Add the name of the caller if possible.
           if hasattr(self, "parent"):
@@ -2279,7 +1789,8 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
       for (i, vararg) in enumerate(args.posargs[num_expected_posargs:]):
         name = function.argname(num_expected_posargs + i)
         arg_dict[name] = view[vararg]
-        formal_args.append((name, varargs_type.get_formal_type_parameter(T)))
+        formal_args.append(
+            (name, varargs_type.get_formal_type_parameter(abstract_utils.T)))
 
     # named args
     for name, arg in args.namedargs.items():
@@ -2294,7 +1805,8 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
     if kwargs_type and kwargs_type.isinstance_ParameterizedClass():
       # We sort the kwargs so that matching always happens in the same order.
       for name in sorted(extra_kwargs):
-        formal_args.append((name, kwargs_type.get_formal_type_parameter(V)))
+        formal_args.append(
+            (name, kwargs_type.get_formal_type_parameter(abstract_utils.V)))
 
     # packed args
     packed_args = [("starargs", self.signature.varargs_name),
@@ -2358,7 +1870,8 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
           node = self.vm.call_init(node, subst[param.full_name])
       try:
         ret_map[t] = self.vm.convert.constant_to_var(
-            AsReturnValue(return_type), subst, node, source_sets=[sources])
+            abstract_utils.AsReturnValue(return_type), subst, node,
+            source_sets=[sources])
       except self.vm.convert.TypeParameterError:
         # The return type contains a type parameter without a substitution.
         subst = subst.copy()
@@ -2369,7 +1882,8 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
           if t.full_name not in subst:
             subst[t.full_name] = self.vm.convert.empty.to_variable(node)
         ret_map[t] = self.vm.convert.constant_to_var(
-            AsReturnValue(return_type), subst, node, source_sets=[sources])
+            abstract_utils.AsReturnValue(return_type), subst, node,
+            source_sets=[sources])
       else:
         if (not ret_map[t].bindings and
             isinstance(return_type, pytd.TypeParameter)):
@@ -2422,7 +1936,7 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
                      tparam.name,
                      pytd.Print(type_actual))
             type_actual_val = self.vm.convert.constant_to_var(
-                AsInstance(type_actual), subst, node,
+                abstract_utils.AsInstance(type_actual), subst, node,
                 discard_concrete_values=True)
             mutations.append(Mutation(arg, tparam.full_name, type_actual_val))
         else:
@@ -2607,7 +2121,7 @@ class PyTDFunction(Function):
     elif self.kind == pytd.CLASSMETHOD:
       if not is_class:
         # callself is the instance, and we want to bind to its class.
-        callself = get_atomic_value(
+        callself = abstract_utils.get_atomic_value(
             callself, default=self.vm.convert.unsolvable
         ).get_class().to_variable(self.vm.root_cfg_node)
       return ClassMethod(self.name, self, callself, self.vm)
@@ -2659,7 +2173,7 @@ class PyTDFunction(Function):
       retvar.PasteVariable(result, node)
       all_mutations.update(mutations)
 
-    node = _apply_mutations(node, all_mutations.__iter__)
+    node = abstract_utils.apply_mutations(node, all_mutations.__iter__)
     return node, retvar
 
   def _get_mutation_to_unknown(self, node, values):
@@ -2714,7 +2228,7 @@ class PyTDFunction(Function):
     else:
       log.debug("Unknown args. But return is %s", pytd.Print(ret_type))
       result = self.vm.convert.constant_to_var(
-          AsReturnValue(ret_type), {}, node)
+          abstract_utils.AsReturnValue(ret_type), {}, node)
     for i, arg in enumerate(args.posargs):
       if isinstance(view[arg].data, Unknown):
         for sig, _, _ in signatures:
@@ -2792,8 +2306,8 @@ class PyTDFunction(Function):
     """Attempts to set default arguments for a function's signatures.
 
     If defaults_var is not an unambiguous tuple (i.e. one that can be processed
-    by get_atomic_python_constant), every argument is made optional and a
-    warning is issued. This function is used to emulate __defaults__.
+    by abstract_utils.get_atomic_python_constant), every argument is made
+    optional and a warning is issued. This function emulates __defaults__.
 
     If this function is part of a class (or has a parent), that parent is
     updated so the change is stored.
@@ -2865,10 +2379,11 @@ class Class(object):
     if self._all_formal_type_parameters_loaded:
       return
 
-    bases = [get_atomic_value(base, default=self.vm.convert.unsolvable)
-             for base in self.bases()]
+    bases = [
+        abstract_utils.get_atomic_value(
+            base, default=self.vm.convert.unsolvable) for base in self.bases()]
     for base in bases:
-      parse_formal_type_parameters(
+      abstract_utils.parse_formal_type_parameters(
           base, self.full_name, self._all_formal_type_parameters)
 
     self._all_formal_type_parameters_loaded = True
@@ -2997,7 +2512,7 @@ class Class(object):
     return Class.super(self.get_special_attribute)(node, name, valself)
 
   def has_dynamic_attributes(self):
-    return any(a in self for a in DYNAMIC_ATTRIBUTE_MARKERS)
+    return any(a in self for a in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS)
 
   def compute_is_dynamic(self):
     # This needs to be called after self.mro is set.
@@ -3007,7 +2522,7 @@ class Class(object):
 
   def compute_mro(self):
     """Compute the class precedence list (mro) according to C3."""
-    bases = _get_mro_bases(self.bases(), self.vm)
+    bases = abstract_utils.get_mro_bases(self.bases(), self.vm)
     bases = [[self]] + [list(base.mro) for base in bases] + [list(bases)]
     # If base classes are `ParameterizedClass`, we will use their `base_cls` to
     # calculate the MRO. Bacause of type parameter renaming, we can not compare
@@ -3086,12 +2601,13 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     """Throw exception for invalid type parameters."""
     # It will cause infinite recursion if `formal_type_parameters` is
     # `LazyTypeParameters`
-    if not isinstance(self._formal_type_parameters, LazyFormalTypeParameters):
+    if not isinstance(self._formal_type_parameters,
+                      abstract_utils.LazyFormalTypeParameters):
       tparams = datatypes.AliasingMonitorDict()
-      parse_formal_type_parameters(self, None, tparams)
+      abstract_utils.parse_formal_type_parameters(self, None, tparams)
 
   def get_formal_type_parameters(self):
-    return {full_type_name(self, k): v
+    return {abstract_utils.full_type_name(self, k): v
             for k, v in self.formal_type_parameters.items()}
 
   def __eq__(self, other):
@@ -3105,7 +2621,8 @@ class ParameterizedClass(AtomicAbstractValue, Class):
 
   def __hash__(self):
     if self._hash is None:
-      if isinstance(self._formal_type_parameters, LazyFormalTypeParameters):
+      if isinstance(self._formal_type_parameters,
+                    abstract_utils.LazyFormalTypeParameters):
         items = self._raw_formal_type_parameters()
       else:
         items = self.formal_type_parameters.items()
@@ -3116,7 +2633,8 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     return name in self.base_cls
 
   def _raw_formal_type_parameters(self):
-    assert isinstance(self._formal_type_parameters, LazyFormalTypeParameters)
+    assert isinstance(self._formal_type_parameters,
+                      abstract_utils.LazyFormalTypeParameters)
     template, parameters, _ = self._formal_type_parameters
     for i, name in enumerate(template):
       # TODO(rechen): A missing parameter should be an error.
@@ -3144,7 +2662,8 @@ class ParameterizedClass(AtomicAbstractValue, Class):
   def _load_formal_type_parameters(self):
     if self._formal_type_parameters_loaded:
       return
-    if isinstance(self._formal_type_parameters, LazyFormalTypeParameters):
+    if isinstance(self._formal_type_parameters,
+                  abstract_utils.LazyFormalTypeParameters):
       formal_type_parameters = {}
       for name, param in self._raw_formal_type_parameters():
         if param is None:
@@ -3163,7 +2682,7 @@ class ParameterizedClass(AtomicAbstractValue, Class):
 
   def instantiate(self, node, container=None):
     if self.full_name == "__builtin__.type":
-      instance = self.formal_type_parameters[T]
+      instance = self.formal_type_parameters[abstract_utils.T]
       if instance.formal:
         # This can happen for, say, Type[T], where T is a type parameter. See
         # test_typevar's testTypeParameterType for an example.
@@ -3228,7 +2747,8 @@ class TupleClass(ParameterizedClass, HasSlots):
     super(TupleClass, self).__init__(base_cls, formal_type_parameters, vm)
     HasSlots.init_mixin(self)
     self.set_slot("__getitem__", self.getitem_slot)
-    if isinstance(self._formal_type_parameters, LazyFormalTypeParameters):
+    if isinstance(self._formal_type_parameters,
+                  abstract_utils.LazyFormalTypeParameters):
       num_parameters = len(self._formal_type_parameters.template)
     else:
       num_parameters = len(self._formal_type_parameters)
@@ -3246,7 +2766,8 @@ class TupleClass(ParameterizedClass, HasSlots):
     return (self,) + self.base_cls.mro
 
   def get_formal_type_parameters(self):
-    return {full_type_name(self, T): self.formal_type_parameters[T]}
+    return {abstract_utils.full_type_name(self, abstract_utils.T):
+            self.formal_type_parameters[abstract_utils.T]}
 
   def instantiate(self, node, container=None):
     if self._instance:
@@ -3281,8 +2802,8 @@ class TupleClass(ParameterizedClass, HasSlots):
     """Implementation of tuple.__getitem__."""
     try:
       index = self.vm.convert.value_to_constant(
-          get_atomic_value(index_var), int)
-    except ConversionError:
+          abstract_utils.get_atomic_value(index_var), int)
+    except abstract_utils.ConversionError:
       pass
     else:
       if -self.tuple_length <= index < self.tuple_length:
@@ -3297,7 +2818,8 @@ class TupleClass(ParameterizedClass, HasSlots):
         node, "__getitem__", self.instantiate(node), index_var)
 
   def get_special_attribute(self, node, name, valself):
-    if valself and not equivalent_to(valself, self) and name in self._slots:
+    if (valself and not abstract_utils.equivalent_to(valself, self) and
+        name in self._slots):
       return HasSlots.get_special_attribute(self, node, name, valself)
     return super(TupleClass, self).get_special_attribute(node, name, valself)
 
@@ -3325,8 +2847,11 @@ class Callable(ParameterizedClass, HasSlots):
     return "Callable(%s)" % self.formal_type_parameters
 
   def get_formal_type_parameters(self):
-    return {full_type_name(self, ARGS): self.formal_type_parameters[ARGS],
-            full_type_name(self, RET): self.formal_type_parameters[RET]}
+    return {
+        abstract_utils.full_type_name(self, abstract_utils.ARGS): (
+            self.formal_type_parameters[abstract_utils.ARGS]),
+        abstract_utils.full_type_name(self, abstract_utils.RET): (
+            self.formal_type_parameters[abstract_utils.RET])}
 
   def call_slot(self, node, *args, **kwargs):
     """Implementation of Callable.__call__."""
@@ -3341,7 +2866,7 @@ class Callable(ParameterizedClass, HasSlots):
                    for i in range(self.num_args)]
     substs = [datatypes.AliasingDict()]
     bad_param = None
-    for view in get_views(args, node):
+    for view in abstract_utils.get_views(args, node):
       arg_dict = {function.argname(i): view[args[i]]
                   for i in range(self.num_args)}
       subst, bad_param = self.vm.matcher.compute_subst(
@@ -3355,12 +2880,13 @@ class Callable(ParameterizedClass, HasSlots):
             function.Signature.from_callable(self), FunctionArgs(posargs=args),
             self.vm, bad_param=bad_param)
     ret = self.vm.annotations_util.sub_one_annotation(
-        node, self.formal_type_parameters[RET], substs)
+        node, self.formal_type_parameters[abstract_utils.RET], substs)
     node, retvar = self.vm.init_class(node, ret)
     return node, retvar
 
   def get_special_attribute(self, node, name, valself):
-    if valself and not equivalent_to(valself, self) and name in self._slots:
+    if (valself and not abstract_utils.equivalent_to(valself, self) and
+        name in self._slots):
       return HasSlots.get_special_attribute(self, node, name, valself)
     return super(Callable, self).get_special_attribute(node, name, valself)
 
@@ -3420,7 +2946,7 @@ class PyTDClass(SimpleAbstractValue, Class):
     node = node or self.vm.root_cfg_node
     if isinstance(pyval, pytd.Constant):
       return self.vm.convert.constant_to_var(
-          AsInstance(pyval.type), subst, node)
+          abstract_utils.AsInstance(pyval.type), subst, node)
     elif isinstance(pyval, pytd.Function):
       c = self.vm.convert.constant_to_value(pyval, subst=subst, node=node)
       c.parent = self
@@ -3445,7 +2971,8 @@ class PyTDClass(SimpleAbstractValue, Class):
     return node, results
 
   def instantiate(self, node, container=None):
-    return self.vm.convert.constant_to_var(AsInstance(self.pytd_cls), {}, node)
+    return self.vm.convert.constant_to_var(
+        abstract_utils.AsInstance(self.pytd_cls), {}, node)
 
   def __repr__(self):
     return "PyTDClass(%s)" % self.name
@@ -3512,7 +3039,8 @@ class InterpreterClass(SimpleAbstractValue, Class):
     if self.template:
       # For function type parameters check
       for mbr in self.members.values():
-        mbr = get_atomic_value(mbr, default=self.vm.convert.unsolvable)
+        mbr = abstract_utils.get_atomic_value(
+            mbr, default=self.vm.convert.unsolvable)
         if isinstance(mbr, InterpreterFunction):
           mbr.signature.excluded_types.update(
               [t.name for t in self.template])
@@ -3523,7 +3051,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
       for cls, item in inner_cls_types:
         nitem = item.with_module(self.full_name)
         if nitem in self.template:
-          raise GenericTypeError(
+          raise abstract_utils.GenericTypeError(
               self, ("Generic class [%s] and its nested generic class [%s] "
                      "cannot use same type variable %s.")
               % (self.full_name, cls.full_name, item.name))
@@ -3531,7 +3059,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     self._load_all_formal_type_parameters()  # Throw exception if there is error
     for t in self.template:
       if t.full_name in self.all_formal_type_parameters:
-        raise GenericTypeError(
+        raise abstract_utils.GenericTypeError(
             self, "Conflicting value for TypeVar %s" % t.full_name)
 
   def collect_inner_cls_types(self, max_depth=5):
@@ -3539,7 +3067,8 @@ class InterpreterClass(SimpleAbstractValue, Class):
     templates = set()
     if max_depth > 0:
       for mbr in self.members.values():
-        mbr = get_atomic_value(mbr, default=self.vm.convert.unsolvable)
+        mbr = abstract_utils.get_atomic_value(
+            mbr, default=self.vm.convert.unsolvable)
         if isinstance(mbr, InterpreterClass) and mbr.template:
           templates.update([(mbr, item.with_module(None))
                             for item in mbr.template])
@@ -3549,7 +3078,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
   def get_inner_classes(self):
     """Return the list of top-level nested classes."""
     values = [
-        get_atomic_value(mbr, default=self.vm.convert.unsolvable)
+        abstract_utils.get_atomic_value(mbr, default=self.vm.convert.unsolvable)
         for mbr in self.members.values()]
     return [x for x in values if isinstance(x, InterpreterClass)]
 
@@ -3591,8 +3120,8 @@ class InterpreterClass(SimpleAbstractValue, Class):
     else:
       return None  # Happens e.g. for __slots__ = dir(Foo)
     try:
-      strings = [get_atomic_python_constant(v) for v in entries]
-    except ConversionError:
+      strings = [abstract_utils.get_atomic_python_constant(v) for v in entries]
+    except abstract_utils.ConversionError:
       return None  # Happens e.g. for __slots__ = ["x" if b else "y"]
     for s in strings:
       # The identity check filters out compat.py subclasses.
@@ -3836,8 +3365,8 @@ class SignedFunction(Function):
     """Attempts to set default arguments of a function.
 
     If defaults_var is not an unambiguous tuple (i.e. one that can be processed
-    by get_atomic_python_constant), every argument is made optional and a
-    warning is issued. This function is used to emulate __defaults__.
+    by abstract_utils.get_atomic_python_constant), every argument is made
+    optional and a warning is issued. This function emulates __defaults__.
 
     Args:
       defaults_var: a Variable with a single binding to a tuple of default
@@ -3892,12 +3421,12 @@ class InterpreterFunction(SignedFunction):
     if code.has_generator() and "return" in annotations:
       # Check Generator return type
       ret_type = annotations["return"]
-      if not matches_generator(ret_type):
+      if not abstract_utils.matches_generator(ret_type):
         error = "Expected Generator, Iterable or Iterator"
         vm.errorlog.invalid_annotation(vm.frames, ret_type, error)
     late_annotations = late_annotations or {}
     key = (name, code,
-           _hash_all_dicts(
+           abstract_utils.hash_all_dicts(
                (f_globals.members, set(code.co_names)),
                (f_locals.members,
                 set(f_locals.members) - set(code.co_varnames)),
@@ -3995,7 +3524,8 @@ class InterpreterFunction(SignedFunction):
 
     if all_type_parameters:
       for key, value in last_frame.f_locals.pyval.items():
-        value = get_atomic_value(value, default=self.vm.convert.unsolvable)
+        value = abstract_utils.get_atomic_value(
+            value, default=self.vm.convert.unsolvable)
         if (not self.signature.has_param(key)  # skip the argument list
             and isinstance(value, InterpreterClass) and value.template):
           inner_cls_types = value.collect_inner_cls_types()
@@ -4015,8 +3545,8 @@ class InterpreterFunction(SignedFunction):
       if not self.is_attribute_of_class or not first_posarg or not substs:
         return
       try:
-        inst = get_atomic_value(first_posarg, Instance)
-      except ConversionError:
+        inst = abstract_utils.get_atomic_value(first_posarg, Instance)
+      except abstract_utils.ConversionError:
         return
       if inst.cls.template:
         for subst in substs:
@@ -4030,7 +3560,8 @@ class InterpreterFunction(SignedFunction):
     return generator
 
   def call(self, node, func, args, new_locals=None, alias_map=None):
-    if self.vm.is_at_maximum_depth() and not func_name_is_class_init(self.name):
+    if (self.vm.is_at_maximum_depth() and
+        not abstract_utils.func_name_is_class_init(self.name)):
       log.info("Maximum depth reached. Not analyzing %r", self.name)
       if self.vm.callself_stack:
         for b in self.vm.callself_stack[-1].bindings:
@@ -4070,7 +3601,7 @@ class InterpreterFunction(SignedFunction):
           "return", self.vm.convert.unsolvable)
       frame.check_return = check_return
     if self.vm.options.skip_repeat_calls:
-      callkey = _hash_all_dicts(
+      callkey = abstract_utils.hash_all_dicts(
           (callargs, None),
           (frame.f_globals.members, set(self.code.co_names)),
           (frame.f_locals.members,
@@ -4109,7 +3640,7 @@ class InterpreterFunction(SignedFunction):
       node_after_call, ret = self.vm.run_frame(frame, node)
     self._inner_cls_check(frame)
     mutations = self._mutations_generator(node_after_call, first_posarg, substs)
-    node_after_call = _apply_mutations(node_after_call, mutations)
+    node_after_call = abstract_utils.apply_mutations(node_after_call, mutations)
     self._call_cache[callkey] = ret, self.vm.remaining_depth()
     if self._store_call_records or self.vm.store_all_calls:
       self._call_records.append((callargs, ret, node_after_call))
@@ -4177,7 +3708,8 @@ class InterpreterFunction(SignedFunction):
     return self.code.has_varkeywords()
 
   def property_get(self, callself, is_class=False):
-    if func_name_is_class_init(self.name) and self.signature.param_names:
+    if (abstract_utils.func_name_is_class_init(self.name) and
+        self.signature.param_names):
       self_name = self.signature.param_names[0]
       if self_name in self.signature.annotations:
         self.vm.errorlog.invalid_annotation(
@@ -4257,7 +3789,7 @@ class BoundFunction(AtomicAbstractValue):
     # If the function belongs to `ParameterizedClass`, we will annotate the
     # `self` when do argument matching
     self.replace_self_annot = None
-    inst = get_atomic_value(
+    inst = abstract_utils.get_atomic_value(
         self._callself, default=self.vm.convert.unsolvable)
     if isinstance(self.underlying, InterpreterFunction):
       if isinstance(inst.cls, ParameterizedClass):
@@ -4277,7 +3809,7 @@ class BoundFunction(AtomicAbstractValue):
     return self.underlying.signature.drop_first_parameter()
 
   def call(self, node, func, args, alias_map=None):
-    if func_name_is_class_init(self.name):
+    if abstract_utils.func_name_is_class_init(self.name):
       self.vm.callself_stack.append(self._callself)
     # The "self" parameter is automatically added to the list of arguments, but
     # only if the function actually takes any arguments.
@@ -4300,7 +3832,7 @@ class BoundFunction(AtomicAbstractValue):
         e.name = "%s.%s" % (self._callself.data[0].name, e.name)
       raise
     finally:
-      if func_name_is_class_init(self.name):
+      if abstract_utils.func_name_is_class_init(self.name):
         self.vm.callself_stack.pop()
     return node, ret
 
@@ -4403,23 +3935,25 @@ class Generator(Instance):
       ret_type = self.generator_frame.allowed_returns
       if ret_type:
         # set type parameters according to annotated Generator return type
-        for param_name in (T, T2, V):
+        for param_name in (
+            abstract_utils.T, abstract_utils.T2, abstract_utils.V):
           _, param_var = self.vm.init_class(
               node, ret_type.get_formal_type_parameter(param_name))
           self.merge_instance_type_parameter(node, param_name, param_var)
       else:
         # infer the type parameters based on the collected type information.
         self.merge_instance_type_parameter(
-            node, T, self.generator_frame.yield_variable)
+            node, abstract_utils.T, self.generator_frame.yield_variable)
         # For T2 type, it can not be decided until the send function is called
         # later on. So set T2 type as ANY so that the type check will not fail
         # when the function is called afterwards.
         self.merge_instance_type_parameter(
-            node, T2, self.vm.convert.unsolvable.to_variable(node))
+            node, abstract_utils.T2,
+            self.vm.convert.unsolvable.to_variable(node))
         self.merge_instance_type_parameter(
-            node, V, self.generator_frame.return_variable)
+            node, abstract_utils.V, self.generator_frame.return_variable)
       self.runs += 1
-    return node, self.get_instance_type_parameter(T)
+    return node, self.get_instance_type_parameter(abstract_utils.T)
 
   def call(self, node, func, args, alias_map=None):
     """Call this generator or (more common) its "next" attribute."""
@@ -4543,10 +4077,12 @@ class BuildClass(AtomicAbstractValue):
     # TODO(mdemello): Any remaining kwargs need to be passed to the metaclass.
     metaclass = kwargs.get("metaclass", None)
     if len(funcvar.bindings) != 1:
-      raise ConversionError("Invalid ambiguous argument to __build_class__")
+      raise abstract_utils.ConversionError(
+          "Invalid ambiguous argument to __build_class__")
     func, = funcvar.data
     if not isinstance(func, InterpreterFunction):
-      raise ConversionError("Invalid argument to __build_class__")
+      raise abstract_utils.ConversionError(
+          "Invalid argument to __build_class__")
     func.is_class_builder = True
     bases = args.posargs[2:]
 
@@ -4563,7 +4099,8 @@ class BuildClass(AtomicAbstractValue):
     for base in bases:
       # If base class is NamedTuple, we will call its own make_class method to
       # make a class.
-      base = get_atomic_value(base, default=self.vm.convert.unsolvable)
+      base = abstract_utils.get_atomic_value(
+          base, default=self.vm.convert.unsolvable)
       if isinstance(base, PyTDClass) and base.full_name == "typing.NamedTuple":
         # The subclass of NamedTuple will ignore all its base classes. This is
         # controled by a metaclass provided to NamedTuple.

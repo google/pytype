@@ -1,6 +1,7 @@
 """Tests for attribute.py."""
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import config
 from pytype import errors
 from pytype import load_pytd
@@ -19,7 +20,7 @@ class AttributeTest(unittest.TestCase):
         errors.ErrorLog(), options, load_pytd.Loader(None, self.PYTHON_VERSION))
 
   def test_type_parameter_instance(self):
-    t = abstract.TypeParameter(abstract.T, self._vm)
+    t = abstract.TypeParameter(abstract_utils.T, self._vm)
     t_instance = abstract.TypeParameterInstance(
         t, self._vm.convert.primitive_class_instances[str], self._vm)
     node, var = self._vm.attribute_handler.get_attribute(
@@ -29,7 +30,7 @@ class AttributeTest(unittest.TestCase):
     self.assertIsInstance(attr, abstract.PyTDFunction)
 
   def test_type_parameter_instance_bad_attribute(self):
-    t = abstract.TypeParameter(abstract.T, self._vm)
+    t = abstract.TypeParameter(abstract_utils.T, self._vm)
     t_instance = abstract.TypeParameterInstance(
         t, self._vm.convert.primitive_class_instances[str], self._vm)
     node, var = self._vm.attribute_handler.get_attribute(
@@ -39,7 +40,7 @@ class AttributeTest(unittest.TestCase):
 
   def test_empty_type_parameter_instance(self):
     t = abstract.TypeParameter(
-        abstract.T, self._vm, bound=self._vm.convert.int_type)
+        abstract_utils.T, self._vm, bound=self._vm.convert.int_type)
     instance = abstract.Instance(self._vm.convert.list_type, self._vm)
     t_instance = abstract.TypeParameterInstance(t, instance, self._vm)
     node, var = self._vm.attribute_handler.get_attribute(
@@ -49,7 +50,7 @@ class AttributeTest(unittest.TestCase):
     self.assertIs(attr, self._vm.convert.primitive_class_instances[int])
 
   def test_type_parameter_instance_set_attribute(self):
-    t = abstract.TypeParameter(abstract.T, self._vm)
+    t = abstract.TypeParameter(abstract_utils.T, self._vm)
     t_instance = abstract.TypeParameterInstance(
         t, self._vm.convert.primitive_class_instances[str], self._vm)
     node = self._vm.attribute_handler.set_attribute(

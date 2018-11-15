@@ -3,6 +3,7 @@
 import collections
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import function
 from pytype import typing_overlay
 from pytype import utils
@@ -103,8 +104,8 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         return new_annot
       return annot
     elif isinstance(annot, abstract.TupleClass):
-      annot.formal_type_parameters[abstract.T] = self.add_scope(
-          annot.formal_type_parameters[abstract.T], types, module)
+      annot.formal_type_parameters[abstract_utils.T] = self.add_scope(
+          annot.formal_type_parameters[abstract_utils.T], types, module)
       return annot
     elif isinstance(annot, abstract.ParameterizedClass):
       for key, val in annot.formal_type_parameters.items():
@@ -121,7 +122,8 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     if isinstance(annot, abstract.TypeParameter):
       return [annot]
     elif isinstance(annot, abstract.TupleClass):
-      return self.get_type_parameters(annot.formal_type_parameters[abstract.T])
+      return self.get_type_parameters(
+          annot.formal_type_parameters[abstract_utils.T])
     elif isinstance(annot, abstract.ParameterizedClass):
       return sum((self.get_type_parameters(p)
                   for p in annot.formal_type_parameters.values()), [])
@@ -141,11 +143,11 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     """Convert raw annotations to dicts of annotations and late annotations."""
     if raw_annotations:
       # {"i": int, "return": str} is stored as (int, str, ("i", "return"))
-      names = abstract.get_atomic_python_constant(raw_annotations[-1])
+      names = abstract_utils.get_atomic_python_constant(raw_annotations[-1])
       type_list = raw_annotations[:-1]
       annotations_list = []
       for name, t in zip(names, type_list):
-        name = abstract.get_atomic_python_constant(name)
+        name = abstract_utils.get_atomic_python_constant(name)
         t = self.convert_function_type_annotation(name, t)
         annotations_list.append((name, t))
       return self.convert_annotations_list(annotations_list)
@@ -196,7 +198,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         except EvaluationError as e:
           self.vm.errorlog.invalid_function_type_comment(
               annot.stack, annot.expr, details=utils.message(e))
-        except abstract.ConversionError:
+        except abstract_utils.ConversionError:
           self.vm.errorlog.invalid_function_type_comment(
               annot.stack, annot.expr, details="Must be constant.")
       else:
@@ -224,8 +226,8 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       value = self.vm.convert.create_new_unsolvable(state.node)
     else:
       try:
-        typ = abstract.get_atomic_value(var)
-      except abstract.ConversionError:
+        typ = abstract_utils.get_atomic_value(var)
+      except abstract_utils.ConversionError:
         self.vm.errorlog.invalid_type_comment(
             self.vm.frames, comment, details="Must be constant.")
         value = self.vm.convert.create_new_unsolvable(state.node)
@@ -390,11 +392,11 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     if not expr:
       return ()
 
-    result = abstract.get_atomic_value(
+    result = abstract_utils.get_atomic_value(
         self._eval_expr(node, f_globals, f_locals, expr))
     # If the result is a tuple, expand it.
     if (isinstance(result, abstract.PythonConstant) and
         isinstance(result.pyval, tuple)):
-      return tuple(abstract.get_atomic_value(x) for x in result.pyval)
+      return tuple(abstract_utils.get_atomic_value(x) for x in result.pyval)
     else:
       return (result,)

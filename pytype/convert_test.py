@@ -1,6 +1,7 @@
 """Tests for convert.py."""
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import config
 from pytype import errors
 from pytype import file_utils
@@ -71,9 +72,9 @@ class ConvertTest(unittest.TestCase):
     """)
     val = self._vm.convert.constant_to_value(
         ast.Lookup("a.x").type, {}, self._vm.root_cfg_node)
-    self.assertIs(val.formal_type_parameters[abstract.K],
+    self.assertIs(val.formal_type_parameters[abstract_utils.K],
                   self._vm.convert.str_type)
-    self.assertIs(val.formal_type_parameters[abstract.V],
+    self.assertIs(val.formal_type_parameters[abstract_utils.V],
                   self._vm.convert.unsolvable)
 
   def test_convert_long(self):
@@ -88,12 +89,12 @@ class ConvertTest(unittest.TestCase):
     x = ast.Lookup("a.x").type
     cls = self._vm.convert.constant_to_value(x, {}, self._vm.root_cfg_node)
     instance = self._vm.convert.constant_to_value(
-        abstract.AsInstance(x), {}, self._vm.root_cfg_node)
+        abstract_utils.AsInstance(x), {}, self._vm.root_cfg_node)
     self.assertIsInstance(cls, abstract.TupleClass)
     six.assertCountEqual(self, cls.formal_type_parameters.items(),
                          [(0, self._vm.convert.str_type),
                           (1, self._vm.convert.int_type),
-                          (abstract.T, abstract.Union([
+                          (abstract_utils.T, abstract.Union([
                               cls.formal_type_parameters[0],
                               cls.formal_type_parameters[1],
                           ], self._vm))])
@@ -102,10 +103,10 @@ class ConvertTest(unittest.TestCase):
                          [[self._vm.convert.primitive_class_instances[str]],
                           [self._vm.convert.primitive_class_instances[int]]])
     # The order of option elements in Union is random
-    six.assertCountEqual(self,
-                         instance.get_instance_type_parameter(abstract.T).data,
-                         [self._vm.convert.primitive_class_instances[str],
-                          self._vm.convert.primitive_class_instances[int]])
+    six.assertCountEqual(
+        self, instance.get_instance_type_parameter(abstract_utils.T).data,
+        [self._vm.convert.primitive_class_instances[str],
+         self._vm.convert.primitive_class_instances[int]])
 
   def test_build_bool(self):
     any_bool = self._vm.convert.build_bool(self._vm.root_cfg_node, None)
@@ -131,27 +132,27 @@ class ConvertTest(unittest.TestCase):
     x = ast.Lookup("a.x").type
     cls = self._vm.convert.constant_to_value(x, {}, self._vm.root_cfg_node)
     instance = self._vm.convert.constant_to_value(
-        abstract.AsInstance(x), {}, self._vm.root_cfg_node)
+        abstract_utils.AsInstance(x), {}, self._vm.root_cfg_node)
     self.assertIsInstance(cls, abstract.Callable)
     six.assertCountEqual(
         self,
         cls.formal_type_parameters.items(),
         [(0, self._vm.convert.int_type),
          (1, self._vm.convert.primitive_classes[bool]),
-         (abstract.ARGS, abstract.Union(
+         (abstract_utils.ARGS, abstract.Union(
              [cls.formal_type_parameters[0], cls.formal_type_parameters[1]],
              self._vm)),
-         (abstract.RET, self._vm.convert.str_type)])
+         (abstract_utils.RET, self._vm.convert.str_type)])
     self.assertIsInstance(instance, abstract.Instance)
     self.assertEqual(instance.cls, cls)
     six.assertCountEqual(
         self,
         [(name, set(var.data))
          for name, var in instance.instance_type_parameters.items()],
-        [(abstract.full_type_name(instance, abstract.ARGS),
+        [(abstract_utils.full_type_name(instance, abstract_utils.ARGS),
           {self._vm.convert.primitive_class_instances[int],
            self._vm.convert.primitive_class_instances[bool]}),
-         (abstract.full_type_name(instance, abstract.RET),
+         (abstract_utils.full_type_name(instance, abstract_utils.RET),
           {self._vm.convert.primitive_class_instances[str]})])
 
   def test_callable_no_args(self):
@@ -162,11 +163,11 @@ class ConvertTest(unittest.TestCase):
     x = ast.Lookup("a.x").type
     cls = self._vm.convert.constant_to_value(x, {}, self._vm.root_cfg_node)
     instance = self._vm.convert.constant_to_value(
-        abstract.AsInstance(x), {}, self._vm.root_cfg_node)
+        abstract_utils.AsInstance(x), {}, self._vm.root_cfg_node)
     self.assertIsInstance(
-        cls.get_formal_type_parameter(abstract.ARGS), abstract.Empty)
-    self.assertEqual(abstract.get_atomic_value(
-        instance.get_instance_type_parameter(abstract.ARGS)),
+        cls.get_formal_type_parameter(abstract_utils.ARGS), abstract.Empty)
+    self.assertEqual(abstract_utils.get_atomic_value(
+        instance.get_instance_type_parameter(abstract_utils.ARGS)),
                      self._vm.convert.empty)
 
   def test_plain_callable(self):
@@ -177,20 +178,20 @@ class ConvertTest(unittest.TestCase):
     x = ast.Lookup("a.x").type
     cls = self._vm.convert.constant_to_value(x, {}, self._vm.root_cfg_node)
     instance = self._vm.convert.constant_to_value(
-        abstract.AsInstance(x), {}, self._vm.root_cfg_node)
+        abstract_utils.AsInstance(x), {}, self._vm.root_cfg_node)
     self.assertIsInstance(cls, abstract.ParameterizedClass)
     six.assertCountEqual(self, cls.formal_type_parameters.items(),
-                         [(abstract.ARGS, self._vm.convert.unsolvable),
-                          (abstract.RET, self._vm.convert.int_type)])
+                         [(abstract_utils.ARGS, self._vm.convert.unsolvable),
+                          (abstract_utils.RET, self._vm.convert.int_type)])
     self.assertIsInstance(instance, abstract.Instance)
     self.assertEqual(instance.cls, cls.base_cls)
     six.assertCountEqual(
         self,
         [(name, var.data)
          for name, var in instance.instance_type_parameters.items()],
-        [(abstract.full_type_name(instance, abstract.ARGS),
+        [(abstract_utils.full_type_name(instance, abstract_utils.ARGS),
           [self._vm.convert.unsolvable]),
-         (abstract.full_type_name(instance, abstract.RET),
+         (abstract_utils.full_type_name(instance, abstract_utils.RET),
           [self._vm.convert.primitive_class_instances[int]])])
 
   def test_function_with_starargs(self):
@@ -325,7 +326,7 @@ class ConvertTest(unittest.TestCase):
     """)
     pyval = ast.Lookup("a.X").Lookup("v").type
     v = self._vm.convert.constant_to_value(
-        abstract.AsInstance(pyval), {}, self._vm.root_cfg_node)
+        abstract_utils.AsInstance(pyval), {}, self._vm.root_cfg_node)
     self.assertEqual(v, self._vm.convert.primitive_class_instances[int])
 
   def test_constant_name(self):

@@ -4,6 +4,7 @@
 # pylint: disable=unpacking-non-sequence
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import collections_overlay
 from pytype import overlay
 from pytype import utils
@@ -63,7 +64,7 @@ class Tuple(TypingContainer):
       return super(Tuple, self)._get_value_info(
           inner, ellipses, allowed_ellipses={len(inner) - 1} - {0})
     else:
-      template = list(moves.range(len(inner))) + [abstract.T]
+      template = list(moves.range(len(inner))) + [abstract_utils.T]
       inner += (abstract.Union.merge_values(inner, self.vm),)
       return template, inner, abstract.TupleClass
 
@@ -72,7 +73,7 @@ class Callable(TypingContainer):
   """Implementation of typing.Callable[...]."""
 
   def getitem_slot(self, node, slice_var):
-    content = abstract.maybe_extract_tuple(slice_var)
+    content = abstract_utils.maybe_extract_tuple(slice_var)
     inner, ellipses = self._build_inner(content)
     args = inner[0]
     if isinstance(args, abstract.List) and not args.could_contain_anything:
@@ -122,14 +123,14 @@ class TypeVar(abstract.PyTDFunction):
 
   def _get_class_or_constant(self, var, name, arg_type, arg_type_desc=None):
     if arg_type is self._CLASS_TYPE:
-      convert_func = abstract.get_atomic_value
+      convert_func = abstract_utils.get_atomic_value
       type_desc = arg_type_desc or "an unambiguous type"
     else:
-      convert_func = abstract.get_atomic_python_constant
+      convert_func = abstract_utils.get_atomic_python_constant
       type_desc = arg_type_desc or "a constant " + arg_type.__name__
     try:
       return convert_func(var, arg_type)
-    except abstract.ConversionError:
+    except abstract_utils.ConversionError:
       raise TypeVarError("%s must be %s" % (name, type_desc))
 
   def _get_namedarg(self, args, name, arg_type, default_value):
@@ -251,9 +252,9 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     # typing.NamedTuple doesn't support rename or verbose
     name_var = callargs["typename"]
     fields_var = callargs["fields"]
-    fields = abstract.get_atomic_python_constant(fields_var)
+    fields = abstract_utils.get_atomic_python_constant(fields_var)
     # The fields is a list of tuples, so we need to deeply unwrap them.
-    fields = [abstract.get_atomic_python_constant(t) for t in fields]
+    fields = [abstract_utils.get_atomic_python_constant(t) for t in fields]
     # We need the actual string for the field names and the AtomicAbstractValue
     # for the field types.
     names = []
@@ -267,8 +268,8 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
         bad_param = abstract.BadParam(name="fields", expected=self._fields_type)
         raise abstract.WrongArgTypes(sig.signature, args, self.vm, bad_param)
       name, typ = field
-      names.append(abstract.get_atomic_python_constant(name))
-      types.append(abstract.get_atomic_value(typ))
+      names.append(abstract_utils.get_atomic_python_constant(name))
+      types.append(abstract_utils.get_atomic_value(typ))
     return name_var, names, types
 
   def _build_namedtuple(self, name, field_names, field_types, node):
@@ -296,8 +297,8 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     field_keys_union = abstract.Union([self.vm.convert.str_type,
                                        self.vm.convert.unicode_type], self.vm)
 
-    # Normally, we would use abstract.K and abstract.V, but collections.pyi
-    # doesn't conform to that standard.
+    # Normally, we would use abstract_utils.K and abstract_utils.V, but
+    # collections.pyi doesn't conform to that standard.
     field_dict_cls = abstract.ParameterizedClass(
         ordered_dict_cls,
         {"K": field_keys_union, "V": field_types_union},
@@ -328,7 +329,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
         visitors.CreateTypeParametersForSignatures.PREFIX + name,
         self.vm, bound=None)
     new_annots["cls"] = abstract.ParameterizedClass(
-        self.vm.convert.type_type, {abstract.T: cls_type_param}, self.vm)
+        self.vm.convert.type_type, {abstract_utils.T: cls_type_param}, self.vm)
     new_annots["return"] = cls_type_param
     members["__new__"] = abstract.SimpleFunction(
         name="__new__",
@@ -358,7 +359,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     sized_cls = self.vm.convert.name_to_value("typing.Sized")
     iterable_type = abstract.ParameterizedClass(
         self.vm.convert.name_to_value("typing.Iterable"),
-        {abstract.T: field_types_union}, self.vm)
+        {abstract_utils.T: field_types_union}, self.vm)
     make = abstract.SimpleFunction(
         name="_make",
         param_names=("cls", "iterable", "new", "len"),
@@ -372,14 +373,14 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
         annotations={
             "cls": abstract.ParameterizedClass(
                 self.vm.convert.type_type,
-                {abstract.T: cls_type_param}, self.vm),
+                {abstract_utils.T: cls_type_param}, self.vm),
             "iterable": iterable_type,
             "new": self.vm.convert.unsolvable,
             "len": abstract.Callable(
                 self.vm.convert.name_to_value("typing.Callable"),
                 {0: sized_cls,
-                 abstract.ARGS: sized_cls,
-                 abstract.RET: self.vm.convert.int_type},
+                 abstract_utils.ARGS: sized_cls,
+                 abstract_utils.RET: self.vm.convert.int_type},
                 self.vm),
             "return": cls_type_param
         },
@@ -407,7 +408,8 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
         vm=self.vm).to_variable(node)
     # __getnewargs__
     getnewargs_tuple_params = dict(
-        tuple(enumerate(field_types)) + ((abstract.T, field_types_union),))
+        tuple(enumerate(field_types)) +
+        ((abstract_utils.T, field_types_union),))
     getnewargs_tuple = abstract.TupleClass(self.vm.convert.tuple_type,
                                            getnewargs_tuple_params, self.vm)
     members["__getnewargs__"] = abstract.SimpleFunction(
@@ -459,12 +461,12 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
   def call(self, node, _, args):
     try:
       name_var, field_names, field_types = self._getargs(node, args)
-    except abstract.ConversionError:
+    except abstract_utils.ConversionError:
       return node, self.vm.convert.unsolvable.to_variable(node)
 
     try:
-      name = abstract.get_atomic_python_constant(name_var)
-    except abstract.ConversionError:
+      name = abstract_utils.get_atomic_python_constant(name_var)
+    except abstract_utils.ConversionError:
       return node, self.vm.convert.unsolvable.to_variable(node)
 
     try:
@@ -528,7 +530,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
     return self.namedtuple.call(node, None, args)
 
   def make_class(self, node, f_locals):
-    f_locals = abstract.get_atomic_python_constant(f_locals)
+    f_locals = abstract_utils.get_atomic_python_constant(f_locals)
 
     # retrieve __qualname__ to get the name of class
     name = f_locals["__qualname__"]
@@ -536,7 +538,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
     # with key-value pair of (variable, type)
     anno = f_locals.get("__annotations__", {})
     if anno:
-      anno = abstract.get_atomic_value(anno)
+      anno = abstract_utils.get_atomic_value(anno)
 
     # assemble the arguments that are compatible with NamedTupleFuncBuilder.call
     field_list = []
@@ -551,22 +553,22 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
     posargs = (name, anno)
     args = abstract.FunctionArgs(posargs=posargs)
     node, cls_var = self.namedtuple.call(node, None, args)
-    cls_val = abstract.get_atomic_value(cls_var)
+    cls_val = abstract_utils.get_atomic_value(cls_var)
 
     if not isinstance(cls_val, abstract.Unsolvable):
       # set __new__.__defaults__
       defaults = abstract.Tuple(tuple(defaults), self.vm).to_variable(node)
       node, new_attr = self.vm.attribute_handler.get_attribute(
           node, cls_val, "__new__")
-      new_attr = abstract.get_atomic_value(new_attr)
+      new_attr = abstract_utils.get_atomic_value(new_attr)
       node = self.vm.attribute_handler.set_attribute(
           node, new_attr, "__defaults__", defaults)
 
       # set the attribute without overriding special namedtuple attributes
       node, fields = self.vm.attribute_handler.get_attribute(
           node, cls_val, "_fields")
-      fields = abstract.get_atomic_python_constant(fields, tuple)
-      fields = [abstract.get_atomic_python_constant(field, str)
+      fields = abstract_utils.get_atomic_python_constant(fields, tuple)
+      fields = [abstract_utils.get_atomic_python_constant(field, str)
                 for field in fields]
       for key in f_locals:
         if key in self._prohibited:
@@ -603,14 +605,14 @@ class NewType(abstract.PyTDFunction):
     # we will use it.
     name_arg = args.namedargs.get(self._name_arg_name) or args.posargs[0]
     try:
-      _ = abstract.get_atomic_python_constant(name_arg, str)
-    except abstract.ConversionError:
+      _ = abstract_utils.get_atomic_python_constant(name_arg, str)
+    except abstract_utils.ConversionError:
       name_arg = self.vm.convert.constant_to_var(
           "_NewType_Internal_Class_Name_%d_" % self.internal_name_counter)
     type_arg = args.namedargs.get(self._type_arg_name) or args.posargs[1]
     try:
-      type_value = abstract.get_atomic_value(type_arg)
-    except abstract.ConversionError:
+      type_value = abstract_utils.get_atomic_value(type_arg)
+    except abstract_utils.ConversionError:
       # We need the type arg to be an atomic value. If not, we just
       # silently return unsolvable.
       return node, self.vm.convert.create_new_unsolvable(node)

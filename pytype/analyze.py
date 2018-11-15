@@ -5,6 +5,7 @@ import logging
 import subprocess
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import convert_structural
 from pytype import debug
 from pytype import function
@@ -68,15 +69,15 @@ class CallTracer(vm.VirtualMachine):
   def create_varargs(self, node):
     value = abstract.Instance(self.convert.tuple_type, self)
     value.merge_instance_type_parameter(
-        node, abstract.T, self.convert.create_new_unknown(node))
+        node, abstract_utils.T, self.convert.create_new_unknown(node))
     return value.to_variable(node)
 
   def create_kwargs(self, node):
     key_type = self.convert.primitive_class_instances[str].to_variable(node)
     value_type = self.convert.create_new_unknown(node)
     kwargs = abstract.Instance(self.convert.dict_type, self)
-    kwargs.merge_instance_type_parameter(node, abstract.K, key_type)
-    kwargs.merge_instance_type_parameter(node, abstract.V, value_type)
+    kwargs.merge_instance_type_parameter(node, abstract_utils.K, key_type)
+    kwargs.merge_instance_type_parameter(node, abstract_utils.V, value_type)
     return kwargs.to_variable(node)
 
   def create_method_arguments(self, node, method):
@@ -650,7 +651,7 @@ def infer_types(src, errorlog, options, loader,
   ast = tracer.compute_types(defs)
   ast = tracer.loader.resolve_ast(ast)
   if tracer.has_unknown_wildcard_imports or any(
-      a in defs for a in abstract.DYNAMIC_ATTRIBUTE_MARKERS):
+      a in defs for a in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS):
     try:
       ast.Lookup("__getattr__")
     except KeyError:

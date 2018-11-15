@@ -4,7 +4,7 @@ File 3/3. Split into parts to enable better test parallelism.
 """
 
 
-from pytype import abstract
+from pytype import abstract_utils
 from pytype import file_utils
 from pytype.tests import test_base
 
@@ -66,7 +66,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
     """)
 
   def testImplicitTypeVarImport(self):
-    ty, errors = self.InferWithErrors("v = " + abstract.T)
+    ty, errors = self.InferWithErrors("v = " + abstract_utils.T)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       v = ...  # type: Any

@@ -2,6 +2,7 @@
 import logging
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import annotations_util
 from pytype import overlay
 from pytype import special_builtins
@@ -202,7 +203,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
   def _get_class_attribute(self, node, cls, name, valself=None):
     """Get an attribute from a class."""
     assert isinstance(cls, abstract.Class)
-    if (not valself or not abstract.equivalent_to(valself, cls) or
+    if (not valself or not abstract_utils.equivalent_to(valself, cls) or
         cls == self.vm.convert.type_type):
       # Since type(type) == type, the type_type check prevents an infinite loop.
       meta = None
@@ -344,8 +345,9 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
               not isinstance(base, abstract.InterpreterClass)):
             # See AtomicAbstractValue.property_get for an explanation of the
             # parameters we're passing here.
-            value = value.property_get(valself.AssignToNewVariable(node),
-                                       abstract.equivalent_to(valself, cls))
+            value = value.property_get(
+                valself.AssignToNewVariable(node),
+                abstract_utils.equivalent_to(valself, cls))
           if isinstance(value, abstract.Property):
             node, value = value.call(node, None, None)
             value, = value.data

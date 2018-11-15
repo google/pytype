@@ -7,6 +7,7 @@
 import logging
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import function
 
 log = logging.getLogger(__name__)
@@ -45,7 +46,7 @@ class AddMetaclass(abstract.PyTDFunction):
   def call(self, node, unused_func, args):
     """Adds a metaclass."""
     self.match_args(node, args)
-    meta = abstract.get_atomic_value(
+    meta = abstract_utils.get_atomic_value(
         args.posargs[0], default=self.vm.convert.unsolvable)
     return node, AddMetaclassInstance(
         meta, self.vm, self.module_name).to_variable(node)
@@ -69,7 +70,7 @@ class WithMetaclass(abstract.PyTDFunction):
   def call(self, node, unused_func, args):
     """Creates an anonymous class to act as a metaclass."""
     self.match_args(node, args)
-    meta = abstract.get_atomic_value(
+    meta = abstract_utils.get_atomic_value(
         args.posargs[0], default=self.vm.convert.unsolvable)
     bases = args.posargs[1:]
     result = WithMetaclassInstance(self.vm, meta, bases).to_variable(node)

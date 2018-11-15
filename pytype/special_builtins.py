@@ -1,6 +1,7 @@
 """Custom implementations of builtin types."""
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import function
 
 
@@ -12,13 +13,13 @@ class TypeNew(abstract.PyTDFunction):
       self.match_args(node, args)  # May raise FailedFunctionCall.
       cls, name_var, bases_var, class_dict_var = args.posargs
       try:
-        bases = list(abstract.get_atomic_python_constant(bases_var))
+        bases = list(abstract_utils.get_atomic_python_constant(bases_var))
         if not bases:
           bases = [
               self.vm.convert.object_type.to_variable(self.vm.root_cfg_node)]
         variable = self.vm.make_class(
             node, name_var, bases, class_dict_var, cls)
-      except abstract.ConversionError:
+      except abstract_utils.ConversionError:
         pass
       else:
         return node, variable
@@ -78,12 +79,12 @@ class Open(BuiltinFunction):
         if "mode" not in callargs:
           io_type = "Text"  # The default mode is 'r'.
         else:
-          mode = abstract.get_atomic_python_constant(callargs["mode"])
+          mode = abstract_utils.get_atomic_python_constant(callargs["mode"])
           io_type = "Binary" if "b" in mode else "Text"
-      except abstract.ConversionError:
+      except abstract_utils.ConversionError:
         pass
       else:
-        return node, self.vm.convert.constant_to_var(abstract.AsInstance(
+        return node, self.vm.convert.constant_to_var(abstract_utils.AsInstance(
             self.vm.lookup_builtin("typing.%sIO" % io_type)), {}, node)
     return super(Open, self).call(node, func, args)
 
@@ -536,7 +537,7 @@ class Object(BuiltinClass):
     # cpython/Objects/typeobject.c (https://goo.gl/bTEBRt). It is legal to pass
     # extra arguments to object.__new__ if the calling class overrides
     # object.__init__, and vice versa.
-    if valself and not abstract.equivalent_to(valself, self):
+    if valself and not abstract_utils.equivalent_to(valself, self):
       val = valself.data
       if name == "__new__" and self._has_own(node, val, "__init__"):
         self.load_lazy_attribute("__new__extra_args")

@@ -3,6 +3,7 @@ import contextlib
 import logging
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import datatypes
 from pytype import function
 from pytype import special_builtins
@@ -97,7 +98,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       A list of all the views of var that didn't match.
     """
     bad = []
-    views = abstract.get_views([var], node, filter_strict=True)
+    views = abstract_utils.get_views([var], node, filter_strict=True)
     skip_future = None
     while True:
       try:
@@ -160,7 +161,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           view[var], other_type, subst, node, view)
     else:  # Empty set of values. The "nothing" type.
       if isinstance(other_type, abstract.TupleClass):
-        other_type = other_type.get_formal_type_parameter(abstract.T)
+        other_type = other_type.get_formal_type_parameter(abstract_utils.T)
       if isinstance(other_type, abstract.Union):
         right_side_options = other_type.options
       else:
@@ -352,11 +353,11 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     elif isinstance(left, abstract.Class):
       if (other_type.full_name == "__builtin__.type" and
           isinstance(other_type, abstract.ParameterizedClass)):
-        other_type = other_type.get_formal_type_parameter(abstract.T)
+        other_type = other_type.get_formal_type_parameter(abstract_utils.T)
         return self._instantiate_and_match(left, other_type, subst, node, view)
       elif (other_type.full_name == "typing.Callable" and
             isinstance(other_type, abstract.ParameterizedClass)):
-        other_type = other_type.get_formal_type_parameter(abstract.RET)
+        other_type = other_type.get_formal_type_parameter(abstract_utils.RET)
         return self._instantiate_and_match(left, other_type, subst, node, view)
       elif other_type.full_name in [
           "__builtin__.type", "__builtin__.object", "typing.Callable"]:
@@ -381,7 +382,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           # are magic methods like __getitem__ which aren't likely to be passed
           # as function arguments.
           return subst
-        signatures = abstract.get_signatures(left)
+        signatures = abstract_utils.get_signatures(left)
         for sig in signatures:
           new_subst = self._match_signature_against_callable(
               sig, other_type, subst, node, view)
@@ -428,7 +429,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     """Match a function.Signature against a parameterized callable."""
     ret_type = sig.annotations.get("return", self.vm.convert.unsolvable)
     subst = self._instantiate_and_match(
-        ret_type, other_type.get_formal_type_parameter(abstract.RET),
+        ret_type, other_type.get_formal_type_parameter(abstract_utils.RET),
         subst, node, view, container=sig)
     if subst is None:
       return subst
@@ -466,7 +467,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     """Instantiate and match an abstract value."""
     instance = left.instantiate(node, container=container)
     new_substs = []
-    for new_view in abstract.get_views([instance], node):
+    for new_view in abstract_utils.get_views([instance], node):
       # When new_view and view have entries in common, we want to use the
       # entries from the old view.
       new_view.update(view)
@@ -567,7 +568,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         else:
           return None
       elif isinstance(other_type, abstract.ParameterizedClass):
-        class_param = other_type.get_formal_type_parameter(abstract.T)
+        class_param = other_type.get_formal_type_parameter(abstract_utils.T)
         # If we merge in the new substitution results prematurely, then we'll
         # accidentally trigger _enforce_common_superclass.
         new_substs = []
@@ -589,7 +590,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     else:
       assert isinstance(other_type, abstract.TupleClass)
       if isinstance(instance, abstract.SimpleAbstractValue):
-        instance_param = instance.get_instance_type_parameter(abstract.T, node)
+        instance_param = instance.get_instance_type_parameter(
+            abstract_utils.T, node)
         for i in range(other_type.tuple_length):
           class_param = other_type.formal_type_parameters[i]
           subst = self.match_var_against_type(
@@ -605,8 +607,9 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         not isinstance(other_type, abstract.ParameterizedClass)):
       return subst
     subst = self.match_var_against_type(
-        instance.get_instance_type_parameter(abstract.RET, node),
-        other_type.get_formal_type_parameter(abstract.RET), subst, node, view)
+        instance.get_instance_type_parameter(abstract_utils.RET, node),
+        other_type.get_formal_type_parameter(
+            abstract_utils.RET), subst, node, view)
     if subst is None:
       return None
     if (not isinstance(left, abstract.Callable) or

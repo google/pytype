@@ -117,10 +117,22 @@ py_library(
     typing_overlay.py
     vm.py
   DEPS
+    .abstract_utils
     .debug
     .metrics
     .pyc
     .pytd
+    .utils
+)
+
+py_library(
+  NAME
+    abstract_utils
+  SRCS
+    abstract_utils.py
+  DEPS
+    .cfg_utils
+    .pytd_for_parser
     .utils
 )
 
@@ -183,6 +195,16 @@ py_library(
 
 py_library(
   NAME
+    pytd_defs
+  SRCS
+    pytd/pytd.py
+  DEPS
+    .node
+    .preconditions
+)
+
+py_library(
+  NAME
     pytd_for_parser
   SRCS
     pytd/abc_hierarchy.py
@@ -191,7 +213,6 @@ py_library(
     pytd/optimize.py
     pytd/parse/parser_constants.py
     pytd/pep484.py
-    pytd/pytd.py
     pytd/pytd_utils.py
     pytd/slots.py
     pytd/transforms.py
@@ -203,6 +224,7 @@ py_library(
     .debug
     .metrics
     .node
+    .pytd_defs
     .utils
     pytype.typegraph.cfg
 )
@@ -327,6 +349,16 @@ py_test(
   SRCS
     abstract_test.py
   DEPS
+    .libvm
+)
+
+py_test(
+  NAME
+    abstract_utils_test
+  SRCS
+    abstract_utils_test.py
+  DEPS
+    .abstract_utils
     .libvm
 )
 

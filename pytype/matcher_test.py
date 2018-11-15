@@ -1,6 +1,7 @@
 """Tests for matcher.py."""
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import config
 from pytype import errors
 from pytype import file_utils
@@ -38,7 +39,7 @@ class MatcherTest(unittest.TestCase):
   def _convert(self, x, name, as_instance=False):
     pyval = self._parse_and_lookup(x, name)
     if as_instance:
-      pyval = abstract.AsInstance(pyval)
+      pyval = abstract_utils.AsInstance(pyval)
     return self.vm.convert.constant_to_value(pyval, {}, self.vm.root_cfg_node)
 
   def _convert_type(self, t, as_instance=False):
@@ -61,13 +62,13 @@ class MatcherTest(unittest.TestCase):
     filename = str(hash((t, as_instance)))
     x = self._parse_and_lookup(src, "x", filename).type
     if as_instance:
-      x = abstract.AsInstance(x)
+      x = abstract_utils.AsInstance(x)
     return self.vm.convert.constant_to_value(x, {}, self.vm.root_cfg_node)
 
   def _match_var(self, left, right):
     var = self.vm.program.NewVariable()
     var.AddBinding(left, [], self.vm.root_cfg_node)
-    for view in abstract.get_views([var], self.vm.root_cfg_node):
+    for view in abstract_utils.get_views([var], self.vm.root_cfg_node):
       yield self.vm.matcher.match_var_against_type(
           var, right, {}, self.vm.root_cfg_node, view)
 
@@ -84,11 +85,12 @@ class MatcherTest(unittest.TestCase):
 
   def testType(self):
     left = self._make_class("dummy")
-    type_parameters = {abstract.T: abstract.TypeParameter(abstract.T, self.vm)}
+    type_parameters = {
+        abstract_utils.T: abstract.TypeParameter(abstract_utils.T, self.vm)}
     other_type = abstract.ParameterizedClass(
         self.type_type, type_parameters, self.vm)
     for result in self._match_var(left, other_type):
-      instance_binding, = result[abstract.T].bindings
+      instance_binding, = result[abstract_utils.T].bindings
       self.assertEqual(instance_binding.data.cls, left)
 
   def testUnion(self):
@@ -140,7 +142,7 @@ class MatcherTest(unittest.TestCase):
     left = self._make_class("foo")
     union = abstract.Union((left,), self.vm)
     right = abstract.ParameterizedClass(
-        self.type_type, {abstract.T: union}, self.vm)
+        self.type_type, {abstract_utils.T: union}, self.vm)
     self.assertMatch(left, right)
 
   def testNoneAgainstBool(self):
@@ -244,24 +246,26 @@ class MatcherTest(unittest.TestCase):
 
   def testEmptyTupleClass(self):
     var = self.vm.program.NewVariable()
-    params = {0: abstract.TypeParameter(abstract.K, self.vm),
-              1: abstract.TypeParameter(abstract.V, self.vm)}
-    params[abstract.T] = abstract.Union((params[0], params[1]), self.vm)
+    params = {0: abstract.TypeParameter(abstract_utils.K, self.vm),
+              1: abstract.TypeParameter(abstract_utils.V, self.vm)}
+    params[abstract_utils.T] = abstract.Union((params[0], params[1]), self.vm)
     right = abstract.TupleClass(self.vm.convert.tuple_type, params, self.vm)
     match = self.vm.matcher.match_var_against_type(
         var, right, {}, self.vm.root_cfg_node, {})
-    self.assertSetEqual(set(match), {abstract.K, abstract.V})
+    self.assertSetEqual(set(match), {abstract_utils.K, abstract_utils.V})
 
   def testUnsolvableAgainstTupleClass(self):
     left = self.vm.convert.unsolvable
-    params = {0: abstract.TypeParameter(abstract.K, self.vm),
-              1: abstract.TypeParameter(abstract.V, self.vm)}
-    params[abstract.T] = abstract.Union((params[0], params[1]), self.vm)
+    params = {0: abstract.TypeParameter(abstract_utils.K, self.vm),
+              1: abstract.TypeParameter(abstract_utils.V, self.vm)}
+    params[abstract_utils.T] = abstract.Union((params[0], params[1]), self.vm)
     right = abstract.TupleClass(self.vm.convert.tuple_type, params, self.vm)
     for match in self._match_var(left, right):
-      self.assertSetEqual(set(match), {abstract.K, abstract.V})
-      self.assertEqual(match[abstract.K].data, [self.vm.convert.unsolvable])
-      self.assertEqual(match[abstract.V].data, [self.vm.convert.unsolvable])
+      self.assertSetEqual(set(match), {abstract_utils.K, abstract_utils.V})
+      self.assertEqual(match[abstract_utils.K].data,
+                       [self.vm.convert.unsolvable])
+      self.assertEqual(match[abstract_utils.V].data,
+                       [self.vm.convert.unsolvable])
 
   def testBoolAgainstFloat(self):
     left = self.vm.convert.true
@@ -446,10 +450,12 @@ class MatcherTest(unittest.TestCase):
     left = self.vm.convert.empty
     right = abstract.ParameterizedClass(
         self.vm.convert.list_type,
-        {abstract.T: abstract.TypeParameter(abstract.T, self.vm)}, self.vm)
+        {abstract_utils.T: abstract.TypeParameter(
+            abstract_utils.T, self.vm)}, self.vm)
     for subst in self._match_var(left, right):
-      self.assertSetEqual(set(subst), {abstract.T})
-      self.assertListEqual(subst[abstract.T].data, [self.vm.convert.empty])
+      self.assertSetEqual(set(subst), {abstract_utils.T})
+      self.assertListEqual(subst[abstract_utils.T].data,
+                           [self.vm.convert.empty])
 
   def testListAgainstMapping(self):
     left = self._convert_type("list", as_instance=True)
@@ -460,8 +466,9 @@ class MatcherTest(unittest.TestCase):
     left = self._convert_type("list", as_instance=True)
     right = abstract.ParameterizedClass(
         self.vm.convert.name_to_value("typing.Mapping"),
-        {abstract.K: abstract.TypeParameter(abstract.K, self.vm),
-         abstract.V: abstract.TypeParameter(abstract.V, self.vm)}, self.vm)
+        {abstract_utils.K: abstract.TypeParameter(abstract_utils.K, self.vm),
+         abstract_utils.V: abstract.TypeParameter(
+             abstract_utils.V, self.vm)}, self.vm)
     self.assertNoMatch(left, right)
 
 
