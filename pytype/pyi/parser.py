@@ -9,6 +9,7 @@ from pytype import utils
 from pytype.pyi import parser_ext  # pytype: disable=import-error
 from pytype.pytd import pep484
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.pytd import slots as cmp_slots
 from pytype.pytd import visitors
 from pytype.pytd.parse import parser_constants  # pylint: disable=g-importing-member
@@ -247,7 +248,8 @@ class _PropertyToConstant(visitors.Visitor):
     constants = list(node.constants)
     for fn in self.const_properties[-1]:
       types = [x.return_type for x in fn.signatures]
-      constants.append(pytd.Constant(name=fn.name, type=join_types(types)))
+      constants.append(
+          pytd.Constant(name=fn.name, type=pytd_utils.JoinTypes(types)))
     methods = [x for x in node.methods if x not in self.const_properties[-1]]
     return node.Replace(constants=tuple(constants), methods=tuple(methods))
 
@@ -1149,41 +1151,12 @@ def parse_file(filename=None, name=None, python_version=None,
       src, name, filename)
 
 
-def join_types(types):
-  """Combine a list of types into a union type, if needed.
-
-  Leaves singular return values alone, or wraps a UnionType around them if there
-  are multiple ones, or if there are no elements in the list (or only
-  NothingType) return NothingType.
-
-  Arguments:
-    types: A list of types. This list might contain other UnionTypes. If
-    so, they are flattened.
-
-  Returns:
-    A type that represents the union of the types passed in. Order is preserved.
-  """
-  queue = collections.deque(types)
-  seen = set()
-  new_types = []
-  while queue:
-    t = queue.popleft()
-    if isinstance(t, pytd.UnionType):
-      queue.extendleft(reversed(t.type_list))
-    elif isinstance(t, pytd.NothingType):
-      pass
-    elif t not in seen:
-      new_types.append(t)
-      seen.add(t)
-
-  if len(new_types) == 1:
-    return new_types.pop()
-  elif any(isinstance(t, pytd.AnythingType) for t in new_types):
-    return pytd.AnythingType()
-  elif new_types:
-    return pytd.UnionType(tuple(new_types))  # tuple() to make unions hashable
-  else:
-    return pytd.NothingType()
+def canonical_pyi(pyi, python_version, multiline_args=False):
+  ast = parse_string(pyi, python_version=python_version)
+  ast = ast.Visit(visitors.ClassTypeToNamedType())
+  ast = ast.Visit(visitors.CanonicalOrderingVisitor(sort_signatures=True))
+  ast.Visit(visitors.VerifyVisitor())
+  return pytd_utils.Print(ast, multiline_args)
 
 
 def _is_property_decorator(decorator):

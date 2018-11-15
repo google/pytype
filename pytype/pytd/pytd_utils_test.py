@@ -332,23 +332,6 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertEquals("def foo(x, y) -> Any: ...",
                       pytd.Print(pytd_utils.DummyMethod("foo", "x", "y")))
 
-  def testCanonicalVersion(self):
-    src = textwrap.dedent("""
-        from typing import Any
-        def foo(x: int = 0) -> Any: ...
-        def foo(x: str) -> Any: ...
-    """)
-    expected = textwrap.dedent("""\
-        from typing import Any
-
-        @overload
-        def foo(x: int = ...) -> Any: ...
-        @overload
-        def foo(x: str) -> Any: ...""")
-    self.assertMultiLineEqual(
-        pytd_utils.canonical_pyi(src, self.PYTHON_VERSION),
-        expected)
-
   def testLoadPickleFromFile(self):
     d1 = {1, 2j, "3"}
     with file_utils.Tempdir() as d:
