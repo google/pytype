@@ -424,6 +424,15 @@ class VirtualMachine(object):
   def join_bindings(self, node, bindings):
     return cfg_utils.merge_bindings(self.program, node, bindings)
 
+  def merge_values(self, values):
+    """Merge a collection of values into a single one."""
+    if not values:
+      return self.convert.empty
+    elif len(values) == 1:
+      return next(iter(values))
+    else:
+      return abstract.Union(values, self)
+
   def _process_base_class(self, node, base):
     """Process a base class for InterpreterClass creation."""
     new_base = self.program.NewVariable()
@@ -765,11 +774,11 @@ class VirtualMachine(object):
       node, attr_var = self.attribute_handler.get_attribute(
           node, left_val.data, attr_name, valself)
       if attr_var and attr_var.bindings:
-        args = abstract.FunctionArgs(posargs=(right_val.AssignToNewVariable(),))
+        args = function.Args(posargs=(right_val.AssignToNewVariable(),))
         try:
           return self.call_function(
               node, attr_var, args, fallback_to_unsolvable=False)
-        except (abstract.DictKeyMissing, abstract.FailedFunctionCall) as e:
+        except (function.DictKeyMissing, function.FailedFunctionCall) as e:
           # It's possible that this call failed because the function returned
           # NotImplemented.  See, e.g.,
           # test_operators.ReverseTest.check_reverse(), in which 1 {op} Bar()
@@ -792,7 +801,7 @@ class VirtualMachine(object):
       for yval in y.bindings:
         try:
           node, ret = self._call_binop_on_bindings(state.node, name, xval, yval)
-        except (abstract.DictKeyMissing, abstract.FailedFunctionCall) as e:
+        except (function.DictKeyMissing, function.FailedFunctionCall) as e:
           if e > error:
             error = e
         else:
@@ -806,7 +815,7 @@ class VirtualMachine(object):
     if not result.bindings and report_errors and self.options.report_errors:
       if error is None:
         self.errorlog.unsupported_operands(self.frames, name, x, y)
-      elif isinstance(error, abstract.DictKeyMissing):
+      elif isinstance(error, function.DictKeyMissing):
         self.errorlog.key_error(self.frames, error.name)
       else:
         self.errorlog.invalid_function_call(self.frames, error)
@@ -828,7 +837,7 @@ class VirtualMachine(object):
       try:
         state, ret = self.call_function_with_state(state, attr, (y,),
                                                    fallback_to_unsolvable=False)
-      except abstract.FailedFunctionCall as e:
+      except function.FailedFunctionCall as e:
         self.errorlog.invalid_function_call(self.frames, e)
         ret = self.convert.create_new_unsolvable(state.node)
     return state, ret
@@ -880,7 +889,7 @@ class VirtualMachine(object):
     """Call a function with the given state."""
     assert starargs is None or isinstance(starargs, cfg.Variable)
     assert starstarargs is None or isinstance(starstarargs, cfg.Variable)
-    node, ret = self.call_function(state.node, funcu, abstract.FunctionArgs(
+    node, ret = self.call_function(state.node, funcu, function.Args(
         posargs=posargs, namedargs=namedargs, starargs=starargs,
         starstarargs=starstarargs), fallback_to_unsolvable, allow_noreturn=True)
     if ret.data == [self.convert.no_return]:
@@ -898,7 +907,7 @@ class VirtualMachine(object):
     Args:
       node: The current CFG node.
       funcu: A variable of the possible functions to call.
-      args: The arguments to pass. See abstract.FunctionArgs.
+      args: The arguments to pass. See function.Args.
       fallback_to_unsolvable: If the function call fails, create an unknown.
       allow_noreturn: Whether typing.NoReturn is allowed in the return type.
     Returns:
@@ -918,7 +927,7 @@ class VirtualMachine(object):
       self.trace_opcode(None, func.name, funcv)
       try:
         new_node, one_result = func.call(node, funcv, args)
-      except (abstract.DictKeyMissing, abstract.FailedFunctionCall) as e:
+      except (function.DictKeyMissing, function.FailedFunctionCall) as e:
         if e > error:
           error = e
       else:
@@ -942,7 +951,7 @@ class VirtualMachine(object):
       return node, result
     else:
       if fallback_to_unsolvable:
-        if isinstance(error, abstract.DictKeyMissing):
+        if isinstance(error, function.DictKeyMissing):
           self.errorlog.key_error(self.frames, error.name)
         else:
           self.errorlog.invalid_function_call(self.frames, error)
@@ -1880,8 +1889,8 @@ class VirtualMachine(object):
               # We've found a TupleClass with concrete parameters, which means
               # we're a subclass of a heterogenous tuple (usually a
               # typing.NamedTuple instance).
-              new_data = abstract.Union.merge_values(
-                  base.instantiate(self.root_cfg_node).data, self)
+              new_data = self.merge_values(
+                  base.instantiate(self.root_cfg_node).data)
               return self._get_literal_sequence(new_data)
         return None
 
@@ -2390,7 +2399,7 @@ class VirtualMachine(object):
       starstarargs = None
     state, starargs = state.pop()
     state, fn = state.pop()
-    # TODO(mdemello): fix abstract.FunctionArgs() to properly init namedargs,
+    # TODO(mdemello): fix function.Args() to properly init namedargs,
     # and remove this.
     namedargs = abstract.Dict(self)
     state, ret = self.call_function_with_state(

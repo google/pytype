@@ -206,7 +206,7 @@ class DictTest(AbstractTestBase):
 
   def test_bad_pop(self):
     self._d.set_str_item(self._node, "a", self._var)
-    self.assertRaises(abstract.DictKeyMissing, self._d.pop_slot, self._node,
+    self.assertRaises(function.DictKeyMissing, self._d.pop_slot, self._node,
                       self._vm.convert.build_string(self._node, "b"))
     self.assertIs(True, self._d.compatible_with(True))
     self.assertIs(False, self._d.compatible_with(False))
@@ -296,8 +296,8 @@ class IsInstanceTest(AbstractTestBase):
     """
     name_map = {left: "left", right: "right"}
     node, result = self._is_instance.call(
-        self._node, None, abstract.FunctionArgs((left, right), self.new_dict(),
-                                                None, None))
+        self._node, None, function.Args(
+            (left, right), self.new_dict(), None, None))
     self.assertIn(node, self._node.outgoing)
     result_map = {}
     # Turning source sets into canonical string representations of the binding
@@ -340,8 +340,7 @@ class IsInstanceTest(AbstractTestBase):
   def test_call_wrong_argcount(self):
     self._vm.push_frame(frame_state.SimpleFrame())
     node, result = self._is_instance.call(
-        self._node, None, abstract.FunctionArgs((), self.new_dict(),
-                                                None, None))
+        self._node, None, function.Args((), self.new_dict(), None, None))
     self.assertEqual(self._node, node)
     self.assertIsInstance(abstract_utils.get_atomic_value(result),
                           abstract.Unsolvable)
@@ -351,8 +350,8 @@ class IsInstanceTest(AbstractTestBase):
     self._vm.push_frame(frame_state.SimpleFrame())
     x = self.new_var(abstract.Unknown(self._vm))
     node, result = self._is_instance.call(
-        self._node, None, abstract.FunctionArgs((x, x), self.new_dict(foo=x),
-                                                None, None))
+        self._node, None, function.Args(
+            (x, x), self.new_dict(foo=x), None, None))
     self.assertEqual(self._node, node)
     self.assertIsInstance(abstract_utils.get_atomic_value(result),
                           abstract.Unsolvable)
@@ -517,13 +516,12 @@ class FunctionTest(AbstractTestBase):
           pytd.Parameter(function.argname(i), p_type, False, False, None))
     pytd_sig = pytd.Signature(
         tuple(pytd_params), None, None, pytd.AnythingType(), (), ())
-    sig = abstract.PyTDSignature(name, pytd_sig, self._vm)
+    sig = function.PyTDSignature(name, pytd_sig, self._vm)
     return abstract.PyTDFunction(name, (sig,), pytd.METHOD, self._vm)
 
   def _call_pytd_function(self, f, args):
     b = f.to_binding(self._vm.root_cfg_node)
-    return f.call(
-        self._vm.root_cfg_node, b, abstract.FunctionArgs(posargs=args))
+    return f.call(self._vm.root_cfg_node, b, function.Args(posargs=args))
 
   def test_call_with_empty_arg(self):
     self.assertRaises(AssertionError, self._call_pytd_function,
@@ -536,7 +534,7 @@ class FunctionTest(AbstractTestBase):
     arg = self._vm.convert.primitive_class_instances[int].to_variable(
         self._vm.root_cfg_node)
     self.assertRaises(
-        abstract.WrongArgTypes, self._call_pytd_function, f, (arg,))
+        function.WrongArgTypes, self._call_pytd_function, f, (arg,))
 
   def test_simple_call(self):
     f = self._make_pytd_function(
@@ -963,7 +961,7 @@ class SimpleFunctionTest(AbstractTestBase):
   def test_simple_call(self):
     f = self._simple_sig([self._vm.convert.str_type],
                          ret_type=self._vm.convert.int_type)
-    args = abstract.FunctionArgs(
+    args = function.Args(
         (self._vm.convert.build_string(self._vm.root_cfg_node, "hello"),))
     node, ret = f.call(self._vm.root_cfg_node, f, args)
     self.assertIs(node, self._vm.root_cfg_node)
@@ -973,15 +971,14 @@ class SimpleFunctionTest(AbstractTestBase):
   def test_call_with_bad_arg(self):
     f = self._make_func(param_names=("test",),
                         annotations={"test": self._vm.convert.str_type})
-    args = abstract.FunctionArgs(
-        (self._vm.convert.build_int(self._vm.root_cfg_node),))
-    self.assertRaises(abstract.WrongArgTypes, f.call,
+    args = function.Args((self._vm.convert.build_int(self._vm.root_cfg_node),))
+    self.assertRaises(function.WrongArgTypes, f.call,
                       self._vm.root_cfg_node, f, args)
 
   def test_call_with_no_args(self):
     f = self._simple_sig([self._vm.convert.str_type, self._vm.convert.int_type])
-    args = abstract.FunctionArgs(())
-    self.assertRaises(abstract.MissingParameter, f.call,
+    args = function.Args(())
+    self.assertRaises(function.MissingParameter, f.call,
                       self._vm.root_cfg_node, f, args)
 
   def test_call_with_multiple_arg_bindings(self):
@@ -991,7 +988,7 @@ class SimpleFunctionTest(AbstractTestBase):
                    self._vm.root_cfg_node)
     arg.AddBinding(self._vm.convert.primitive_class_instances[int], [],
                    self._vm.root_cfg_node)
-    args = abstract.FunctionArgs((arg,))
+    args = function.Args((arg,))
     node, ret = f.call(self._vm.root_cfg_node, f, args)
     self.assertIs(node, self._vm.root_cfg_node)
     self.assertIs(ret.data[0], self._vm.convert.none)
@@ -1005,7 +1002,7 @@ class SimpleFunctionTest(AbstractTestBase):
     starargs = abstract.Tuple(
         (self._vm.convert.build_string(self._vm.root_cfg_node, ""),),
         self._vm).to_variable(self._vm.root_cfg_node)
-    args = abstract.FunctionArgs(posargs=(), starargs=starargs)
+    args = function.Args(posargs=(), starargs=starargs)
     node, ret = f.call(self._vm.root_cfg_node, f, args)
     self.assertIs(node, self._vm.root_cfg_node)
     self.assertIs(ret.data[0].cls, self._vm.convert.str_type)
@@ -1019,8 +1016,8 @@ class SimpleFunctionTest(AbstractTestBase):
          self._vm.convert.build_int(self._vm.root_cfg_node)),
         self._vm
     ).to_variable(self._vm.root_cfg_node)
-    args = abstract.FunctionArgs(posargs=(), starargs=starargs)
-    self.assertRaises(abstract.WrongArgTypes, f.call,
+    args = function.Args(posargs=(), starargs=starargs)
+    self.assertRaises(function.WrongArgTypes, f.call,
                       self._vm.root_cfg_node, f, args)
 
   def test_call_with_multiple_varargs_bindings(self):
@@ -1034,7 +1031,7 @@ class SimpleFunctionTest(AbstractTestBase):
                    self._vm.root_cfg_node)
     starargs = abstract.Tuple((arg,), self._vm)
     starargs = starargs.to_variable(self._vm.root_cfg_node)
-    args = abstract.FunctionArgs(posargs=(), starargs=starargs)
+    args = function.Args(posargs=(), starargs=starargs)
     f.call(self._vm.root_cfg_node, f, args)
 
   def test_call_with_kwargs(self):
@@ -1049,7 +1046,7 @@ class SimpleFunctionTest(AbstractTestBase):
             "_2": self._vm.convert.build_string(self._vm.root_cfg_node, "2")
         })
     kwargs = kwargs.to_variable(self._vm.root_cfg_node)
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(),
         namedargs=abstract.Dict(self._vm),
         starstarargs=kwargs
@@ -1064,12 +1061,12 @@ class SimpleFunctionTest(AbstractTestBase):
     kwargs.update(self._vm.root_cfg_node,
                   {"_1": self._vm.convert.build_int(self._vm.root_cfg_node)})
     kwargs = kwargs.to_variable(self._vm.root_cfg_node)
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(),
         namedargs=abstract.Dict(self._vm),
         starstarargs=kwargs
     )
-    self.assertRaises(abstract.WrongArgTypes, f.call,
+    self.assertRaises(function.WrongArgTypes, f.call,
                       self._vm.root_cfg_node, f, args)
 
   def test_call_with_kwonly_args(self):
@@ -1091,7 +1088,7 @@ class SimpleFunctionTest(AbstractTestBase):
         }
     )
     kwargs = kwargs.to_variable(self._vm.root_cfg_node)
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(self._vm.convert.build_string(self._vm.root_cfg_node, "1"),),
         namedargs=abstract.Dict(self._vm),
         starstarargs=kwargs
@@ -1103,13 +1100,13 @@ class SimpleFunctionTest(AbstractTestBase):
         {"b": self._vm.convert.build_string(self._vm.root_cfg_node, "3")}
     )
     kwargs = kwargs.to_variable(self._vm.root_cfg_node)
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(self._vm.convert.build_string(self._vm.root_cfg_node, "1"),
                  self._vm.convert.build_int(self._vm.root_cfg_node)),
         namedargs=abstract.Dict(self._vm),
         starstarargs=kwargs
     )
-    self.assertRaises(abstract.MissingParameter, f.call,
+    self.assertRaises(function.MissingParameter, f.call,
                       self._vm.root_cfg_node, f, args)
 
   def test_call_with_all_args(self):
@@ -1137,7 +1134,7 @@ class SimpleFunctionTest(AbstractTestBase):
                  {"x": self._vm.convert.build_bool(self._vm.root_cfg_node),
                   "y": self._vm.convert.build_bool(self._vm.root_cfg_node)})
     kwarg = kwarg.to_variable(self._vm.root_cfg_node)
-    args = abstract.FunctionArgs(posargs, namedargs, stararg, kwarg)
+    args = function.Args(posargs, namedargs, stararg, kwarg)
     f.call(self._vm.root_cfg_node, f, args)
 
   def test_call_with_defaults(self):
@@ -1150,21 +1147,21 @@ class SimpleFunctionTest(AbstractTestBase):
             "c": self._vm.convert.int_type
         }
     )
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(self._vm.convert.build_int(self._vm.root_cfg_node),
                  self._vm.convert.build_int(self._vm.root_cfg_node))
     )
     f.call(self._vm.root_cfg_node, f, args)
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(self._vm.convert.build_int(self._vm.root_cfg_node),
                  self._vm.convert.build_int(self._vm.root_cfg_node),
                  self._vm.convert.build_int(self._vm.root_cfg_node))
     )
     f.call(self._vm.root_cfg_node, f, args)
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(self._vm.convert.build_int(self._vm.root_cfg_node),))
     self.assertRaises(
-        abstract.MissingParameter, f.call, self._vm.root_cfg_node, f, args)
+        function.MissingParameter, f.call, self._vm.root_cfg_node, f, args)
 
   def test_call_with_bad_default(self):
     f = self._make_func(
@@ -1175,38 +1172,38 @@ class SimpleFunctionTest(AbstractTestBase):
             "b": self._vm.convert.str_type
         }
     )
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(self._vm.convert.build_int(self._vm.root_cfg_node),
                  self._vm.convert.build_int(self._vm.root_cfg_node))
     )
     self.assertRaises(
-        abstract.WrongArgTypes, f.call, self._vm.root_cfg_node, f, args)
+        function.WrongArgTypes, f.call, self._vm.root_cfg_node, f, args)
 
   def test_call_with_duplicate_keyword(self):
     f = self._simple_sig([self._vm.convert.int_type]*2)
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(self._vm.convert.build_int(self._vm.root_cfg_node),
                  self._vm.convert.build_int(self._vm.root_cfg_node)),
         namedargs={"_1": self._vm.convert.build_int(self._vm.root_cfg_node)}
     )
     self.assertRaises(
-        abstract.DuplicateKeyword, f.call, self._vm.root_cfg_node, f, args)
+        function.DuplicateKeyword, f.call, self._vm.root_cfg_node, f, args)
 
   def test_call_with_wrong_arg_count(self):
     f = self._simple_sig([self._vm.convert.int_type])
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(self._vm.convert.build_int(self._vm.root_cfg_node),
                  self._vm.convert.build_int(self._vm.root_cfg_node))
     )
     self.assertRaises(
-        abstract.WrongArgCount, f.call, self._vm.root_cfg_node, f, args)
+        function.WrongArgCount, f.call, self._vm.root_cfg_node, f, args)
 
   def test_change_defaults(self):
     f = self._make_func(
         param_names=("a", "b", "c"),
         defaults=(self._vm.convert.build_int(self._vm.root_cfg_node),)
     )
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(self._vm.convert.build_int(self._vm.root_cfg_node),
                  self._vm.convert.build_int(self._vm.root_cfg_node))
     )
@@ -1217,7 +1214,7 @@ class SimpleFunctionTest(AbstractTestBase):
         self._vm).to_variable(self._vm.root_cfg_node)
     f.set_function_defaults(new_defaults)
     f.call(self._vm.root_cfg_node, f, args)
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(self._vm.convert.build_int(self._vm.root_cfg_node),)
     )
     f.call(self._vm.root_cfg_node, f, args)
@@ -1235,7 +1232,7 @@ class SimpleFunctionTest(AbstractTestBase):
             "return": ret_cls
         }
     )
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(self._vm.convert.build_int(self._vm.root_cfg_node),))
     _, ret = f.call(self._vm.root_cfg_node, f, args)
     # ret is an Instance(ParameterizedClass(list, {abstract_utils.T: int}))
@@ -1407,7 +1404,7 @@ class AbstractTest(AbstractTestBase):
     t = abstract.TypeParameter(abstract_utils.T, self._vm)
     t_instance = abstract.TypeParameterInstance(t, instance, self._vm)
     node, ret = t_instance.call(self._node, t_instance.to_binding(self._node),
-                                abstract.FunctionArgs(posargs=()))
+                                function.Args(posargs=()))
     self.assertIs(node, self._node)
     retval, = ret.data
     self.assertEqual(retval.cls, self._vm.convert.int_type)
@@ -1417,7 +1414,7 @@ class AbstractTest(AbstractTestBase):
     t = abstract.TypeParameter(abstract_utils.T, self._vm)
     t_instance = abstract.TypeParameterInstance(t, instance, self._vm)
     node, ret = t_instance.call(self._node, t_instance.to_binding(self._node),
-                                abstract.FunctionArgs(posargs=()))
+                                function.Args(posargs=()))
     self.assertIs(node, self._node)
     retval, = ret.data
     self.assertIs(retval, self._vm.convert.empty)
@@ -1431,7 +1428,7 @@ class AbstractTest(AbstractTestBase):
     t_instance = abstract.TypeParameterInstance(t, instance, self._vm)
     posargs = (self._vm.convert.create_new_unsolvable(self._node),) * 3
     node, ret = t_instance.call(self._node, t_instance.to_binding(self._node),
-                                abstract.FunctionArgs(posargs=posargs))
+                                function.Args(posargs=posargs))
     self.assertIs(node, self._node)
     self.assertTrue(ret.bindings)
     error, = self._vm.errorlog

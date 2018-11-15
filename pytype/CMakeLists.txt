@@ -102,7 +102,6 @@ py_library(
     convert_structural.py
     directors.py
     errors.py
-    function.py
     imports_map_loader.py
     io.py
     matcher.py
@@ -119,6 +118,7 @@ py_library(
   DEPS
     .abstract_utils
     .debug
+    .function
     .metrics
     .pyc
     .pytd
@@ -132,6 +132,17 @@ py_library(
     abstract_utils.py
   DEPS
     .cfg_utils
+    .pytd_for_parser
+    .utils
+)
+
+py_library(
+  NAME
+    function
+  SRCS
+    function.py
+  DEPS
+    .abstract_utils
     .pytd_for_parser
     .utils
 )

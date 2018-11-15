@@ -8,6 +8,7 @@ from pytype import abstract_utils
 from pytype import blocks
 from pytype import compat
 from pytype import datatypes
+from pytype import function
 from pytype import output
 from pytype import special_builtins
 from pytype import typing_overlay
@@ -343,7 +344,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       cls = v.get_class()
       if cls:
         classes.add(cls)
-    return abstract.Union.merge_values(classes, self.vm)
+    return self.vm.merge_values(classes)
 
   def constant_to_var(self, pyval, subst=None, node=None, source_sets=None,
                       discard_concrete_values=False):
@@ -582,7 +583,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
             cls.module = module
         return cls
     elif isinstance(pyval, pytd.Function):
-      signatures = [abstract.PyTDSignature(pyval.name, sig, self.vm)
+      signatures = [function.PyTDSignature(pyval.name, sig, self.vm)
                     for sig in pyval.signatures]
       type_new = self.vm.lookup_builtin("__builtin__.type").Lookup("__new__")
       if pyval is type_new:

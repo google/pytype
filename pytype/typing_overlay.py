@@ -6,6 +6,7 @@
 from pytype import abstract
 from pytype import abstract_utils
 from pytype import collections_overlay
+from pytype import function
 from pytype import overlay
 from pytype import utils
 from pytype.pytd import pep484
@@ -65,7 +66,7 @@ class Tuple(TypingContainer):
           inner, ellipses, allowed_ellipses={len(inner) - 1} - {0})
     else:
       template = list(moves.range(len(inner))) + [abstract_utils.T]
-      inner += (abstract.Union.merge_values(inner, self.vm),)
+      inner += (self.vm.merge_values(inner),)
       return template, inner, abstract.TupleClass
 
 
@@ -97,7 +98,7 @@ class Callable(TypingContainer):
     if isinstance(inner[0], list):
       template = (list(moves.range(len(inner[0]))) +
                   [t.name for t in self.base_cls.template])
-      combined_args = abstract.Union.merge_values(inner[0], self.vm)
+      combined_args = self.vm.merge_values(inner[0])
       inner = tuple(inner[0]) + (combined_args,) + inner[1:]
       self.vm.errorlog.invalid_ellipses(self.vm.frames, ellipses, self.name)
       return template, inner, abstract.Callable
@@ -146,9 +147,9 @@ class TypeVar(abstract.PyTDFunction):
     args = args.simplify(node)
     try:
       self.match_args(node, args)
-    except abstract.InvalidParameters as e:
+    except function.InvalidParameters as e:
       raise TypeVarError("wrong arguments", e.bad_call)
-    except abstract.FailedFunctionCall:
+    except function.FailedFunctionCall:
       # It is currently impossible to get here, since the only
       # FailedFunctionCall that is not an InvalidParameters is NotCallable.
       raise TypeVarError("initialization failed")
@@ -196,8 +197,7 @@ class Cast(abstract.PyTDFunction):
             args.posargs[0], "typing.cast", self.vm.frames, node)
       except self.vm.annotations_util.LateAnnotationError:
         self.vm.errorlog.invalid_annotation(
-            self.vm.frames,
-            abstract.Union.merge_values(args.posargs[0].data, self.vm),
+            self.vm.frames, self.vm.merge_values(args.posargs[0].data),
             "Forward references not allowed in typing.cast.\n"
             "Consider switching to a type comment.")
         annot = self.vm.convert.create_new_unsolvable(node)
@@ -265,8 +265,8 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
         # Note that we don't need to check field[1] because both 'str'
         # (forward reference) and 'type' are valid for it.
         sig, = self.signatures
-        bad_param = abstract.BadParam(name="fields", expected=self._fields_type)
-        raise abstract.WrongArgTypes(sig.signature, args, self.vm, bad_param)
+        bad_param = function.BadParam(name="fields", expected=self._fields_type)
+        raise function.WrongArgTypes(sig.signature, args, self.vm, bad_param)
       name, typ = field
       names.append(abstract_utils.get_atomic_python_constant(name))
       types.append(abstract_utils.get_atomic_value(typ))
@@ -386,7 +386,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
         },
         late_annotations={},
         vm=self.vm).to_variable(node)
-    make_args = abstract.FunctionArgs(posargs=(make,))
+    make_args = function.Args(posargs=(make,))
     _, members["_make"] = self.vm.special_builtins["classmethod"].call(
         node, None, make_args)
     # _replace
@@ -522,7 +522,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
                    for k, v in namedargs.items()]
       namedargs = abstract.List(namedargs, self.vm).to_variable(node)
       posargs += (namedargs,)
-      args = abstract.FunctionArgs(posargs)
+      args = function.Args(posargs)
     elif namedargs:
       errmsg = ("Either list of fields or keywords can be provided to "
                 "NamedTuple, not both")
@@ -551,7 +551,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
       field_list.append(self.vm.convert.build_tuple(node, (k, v)))
     anno = self.vm.convert.build_list(node, field_list)
     posargs = (name, anno)
-    args = abstract.FunctionArgs(posargs=posargs)
+    args = function.Args(posargs=posargs)
     node, cls_var = self.namedtuple.call(node, None, args)
     cls_val = abstract_utils.get_atomic_value(cls_var)
 

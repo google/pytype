@@ -99,7 +99,7 @@ class Abs(BuiltinFunction):
     arg = args.posargs[0]
     node, fn = self.get_underlying_method(node, arg, "__abs__")
     if fn is not None:
-      return self.vm.call_function(node, fn, abstract.FunctionArgs(()))
+      return self.vm.call_function(node, fn, function.Args(()))
     else:
       return node, self.vm.convert.create_new_unsolvable(node)
 
@@ -124,7 +124,7 @@ class Next(BuiltinFunction):
     arg, default = self._get_args(args)
     node, fn = self.get_underlying_method(node, arg, self.vm.convert.next_attr)
     if fn is not None:
-      node, ret = self.vm.call_function(node, fn, abstract.FunctionArgs(()))
+      node, ret = self.vm.call_function(node, fn, function.Args(()))
       ret.PasteVariable(default)
       return node, ret
     else:
@@ -155,7 +155,7 @@ class ObjectPredicate(BuiltinFunction):
       node = node.ConnectNew(self.name)
       result = self.vm.program.NewVariable()
       self.run(node, args, result)
-    except abstract.InvalidParameters as ex:
+    except function.InvalidParameters as ex:
       self.vm.errorlog.invalid_function_call(self.vm.frames, ex)
       result = self.vm.convert.create_new_unsolvable(node)
     return node, result
@@ -472,13 +472,13 @@ class Super(BuiltinClass):
       cls_var = args.posargs[0]
       super_objects = args.posargs[1].bindings if num_args == 2 else [None]
     else:
-      raise abstract.WrongArgCount(self._SIGNATURE, args, self.vm)
+      raise function.WrongArgCount(self._SIGNATURE, args, self.vm)
     for cls in cls_var.bindings:
       if not isinstance(cls.data, (abstract.Class,
                                    abstract.AMBIGUOUS_OR_EMPTY)):
-        bad = abstract.BadParam(
+        bad = function.BadParam(
             name="cls", expected=self.vm.convert.type_type)
-        raise abstract.WrongArgTypes(
+        raise function.WrongArgTypes(
             self._SIGNATURE, args, self.vm, bad_param=bad)
       for obj in super_objects:
         if obj:
@@ -577,7 +577,7 @@ class PropertyTemplate(BuiltinClass):
     ret = dict(zip(self._KEYS, args.posargs))
     for k, v in args.namedargs.iteritems():
       if k not in self._KEYS:
-        raise abstract.WrongKeywordArgs(self.signature(), args, self.vm, [k])
+        raise function.WrongKeywordArgs(self.signature(), args, self.vm, [k])
       ret[k] = v
     return ret
 
@@ -616,15 +616,15 @@ class PropertyInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
     return self.cls
 
   def fget_slot(self, node, obj, objtype):
-    return self.vm.call_function(node, self.fget, abstract.FunctionArgs((obj,)))
+    return self.vm.call_function(node, self.fget, function.Args((obj,)))
 
   def fset_slot(self, node, obj, value):
     return self.vm.call_function(
-        node, self.fset, abstract.FunctionArgs((obj, value)))
+        node, self.fset, function.Args((obj, value)))
 
   def fdelete_slot(self, node, obj):
     return self.vm.call_function(
-        node, self.fdel, abstract.FunctionArgs((obj,)))
+        node, self.fdel, function.Args((obj,)))
 
   def getter_slot(self, node, fget):
     prop = PropertyInstance(
@@ -685,7 +685,7 @@ class StaticMethod(BuiltinClass):
 
   def call(self, node, funcv, args):
     if len(args.posargs) != 1:
-      raise abstract.WrongArgCount(self._SIGNATURE, args, self.vm)
+      raise function.WrongArgCount(self._SIGNATURE, args, self.vm)
     arg = args.posargs[0]
     return node, StaticMethodInstance(self.vm, self, arg).to_variable(node)
 
@@ -723,6 +723,6 @@ class ClassMethod(BuiltinClass):
 
   def call(self, node, funcv, args):
     if len(args.posargs) != 1:
-      raise abstract.WrongArgCount(self._SIGNATURE, args, self.vm)
+      raise function.WrongArgCount(self._SIGNATURE, args, self.vm)
     arg = args.posargs[0]
     return node, ClassMethodInstance(self.vm, self, arg).to_variable(node)

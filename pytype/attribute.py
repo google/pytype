@@ -4,6 +4,7 @@ import logging
 from pytype import abstract
 from pytype import abstract_utils
 from pytype import annotations_util
+from pytype import function
 from pytype import overlay
 from pytype import special_builtins
 from pytype import utils
@@ -288,7 +289,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
             posargs.append(self.vm.convert.none.to_variable(node))
           posargs.append(cls.to_variable(node))
           node2, get_result = self.vm.call_function(
-              node2, getter, abstract.FunctionArgs(tuple(posargs)))
+              node2, getter, function.Args(tuple(posargs)))
           for getter in get_result.bindings:
             result.AddBinding(getter.data, [getter], node2)
         else:
@@ -311,8 +312,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       if attr_var and attr_var.bindings:
         name_var = abstract.AbstractOrConcreteValue(
             name, self.vm.convert.str_type, self.vm).to_variable(node)
-        return self.vm.call_function(
-            node, attr_var, abstract.FunctionArgs((name_var,)))
+        return self.vm.call_function(node, attr_var, function.Args((name_var,)))
     return node, None
 
   def _lookup_from_mro(self, node, cls, name, valself, skip):
@@ -424,8 +424,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         if var_bindings:
           bindings.extend(var_bindings)
         elif val.param.constraints:
-          constraints = abstract.Union.merge_values(
-              val.param.constraints, self.vm)
+          constraints = self.vm.merge_values(val.param.constraints)
           ret.PasteVariable(constraints.instantiate(node))
         else:
           ret.AddBinding(self.vm.convert.empty, [], node)

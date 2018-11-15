@@ -147,14 +147,14 @@ class NamedTupleBuilder(abstract.PyTDFunction):
 
     Args:
       node: The current CFG node. Used by match_args.
-      args: An abstract.FunctionArgs object
+      args: A function.Args object
 
     Returns:
       A tuple containing the typename, field_names and rename arguments passed
       to this call to collections.namedtuple.
 
     Raises:
-      abstract.FailedFunctionCall: The arguments do not match those needed by
+      function.FailedFunctionCall: The arguments do not match those needed by
         the function call. See also: abstract.PyTDFunction.match_args().
       abstract_utils.ConversionError: One of the args could not be extracted.
         Typically occurs if typename or one of the field names is in unicode.
@@ -242,7 +242,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
     construct pytd.Function and pytd.Constant instances for each member of the
     class. Finally, the pytd.Class is wrapped in an abstract.PyTDClass.
 
-    If incorrect arguments are passed, a subclass of abstract.FailedFunctionCall
+    If incorrect arguments are passed, a subclass of function.FailedFunctionCall
     will be raised. Other cases may raise abstract_utils.ConversionError
     exceptions, such as when the arguments are in unicode or any of the
     arguments have multiple bindings, but these are caught and return Any. This
@@ -252,7 +252,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
     Arguments:
       node: the current CFG node
       _: the func binding, ignored.
-      args: an abstract.FunctionArgs instance
+      args: a function.Args instance
 
     Returns:
       a tuple of the given CFG node and an abstract.PyTDClass instance (wrapped
@@ -261,7 +261,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
       this function returns Unsolvable (in a Variable) instead of a PyTDClass.
 
     Raises:
-      abstract.FailedFunctionCall: Raised by _getargs if any of the arguments
+      function.FailedFunctionCall: Raised by _getargs if any of the arguments
         do not match the function signature.
     """
     # If we can't extract the arguments, we take the easy way out and return Any

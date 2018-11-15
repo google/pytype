@@ -92,7 +92,7 @@ class CallTracer(vm.VirtualMachine):
       method: An abstract.InterpreterFunction.
 
     Returns:
-      A tuple of a node and an abstract.FunctionArgs object.
+      A tuple of a node and a function.Args object.
     """
     args = [self.convert.create_new_unknown(node, force=True)
             for _ in range(method.argcount(node))]
@@ -100,10 +100,10 @@ class CallTracer(vm.VirtualMachine):
            for key in method.signature.kwonly_params}
     starargs = self.create_varargs(node) if method.has_varargs() else None
     starstarargs = self.create_kwargs(node) if method.has_kwargs() else None
-    return node, abstract.FunctionArgs(posargs=tuple(args),
-                                       namedargs=kws,
-                                       starargs=starargs,
-                                       starstarargs=starstarargs)
+    return node, function.Args(posargs=tuple(args),
+                               namedargs=kws,
+                               starargs=starargs,
+                               starstarargs=starstarargs)
 
   def call_function_with_args(self, node, val, args):
     """Call a function.
@@ -111,7 +111,7 @@ class CallTracer(vm.VirtualMachine):
     Args:
       node: The given node.
       val: A cfg.Binding containing the function.
-      args: An abstract.FunctionArgs object.
+      args: A function.Args object.
 
     Returns:
       A tuple of (1) a node and (2) a cfg.Variable of the return value.

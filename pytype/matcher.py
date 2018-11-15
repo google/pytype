@@ -83,7 +83,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       if subst is None:
         formal = self.vm.annotations_util.sub_one_annotation(
             node, formal, [self._error_subst or {}])
-        return None, abstract.BadParam(name=name, expected=formal)
+        return None, function.BadParam(name=name, expected=formal)
     return datatypes.HashableDict(subst), None
 
   def bad_matches(self, var, other_type, node):

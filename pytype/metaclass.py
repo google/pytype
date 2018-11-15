@@ -25,7 +25,7 @@ class AddMetaclassInstance(abstract.AtomicAbstractValue):
     if len(args.posargs) != 1:
       sig = function.Signature.from_param_names(
           "%s.add_metaclass" % self.module_name, ("cls",))
-      raise abstract.WrongArgCount(sig, args, self.vm)
+      raise function.WrongArgCount(sig, args, self.vm)
     cls_var = args.posargs[0]
     for b in cls_var.bindings:
       cls = b.data
