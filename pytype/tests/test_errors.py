@@ -961,13 +961,14 @@ class ErrorTest(test_base.TargetIndependentTest):
   def testBadAnnotation(self):
     _, errors = self.InferWithErrors("""\
       tuple[0]
-      dict[42]
+      dict[1, 2]
       class A(object): pass
       A[3]
     """)
     self.assertErrorLogIs(errors, [
         (1, "not-indexable", r"class tuple"),
-        (2, "not-indexable", r"class dict"),
+        (2, "invalid-annotation", r"1.*Not a type"),
+        (2, "invalid-annotation", r"2.*Not a type"),
         (4, "not-indexable", r"class A"),
     ])
 

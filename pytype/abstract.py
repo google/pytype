@@ -1201,7 +1201,7 @@ class AnnotationContainer(AnnotationClass):
 
   def _build_value(self, node, inner, ellipses):
     template, inner, abstract_class = self._get_value_info(inner, ellipses)
-    if len(inner) > len(template):
+    if len(inner) != len(template):
       if not template:
         self.vm.errorlog.not_indexable(self.vm.frames, self.base_cls.name,
                                        generic_warning=True)

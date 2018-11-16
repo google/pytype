@@ -267,6 +267,12 @@ class PrintVisitor(Visitor):
       return False  # TupleType is always heterogeneous.
     return t.base_type == "tuple"
 
+  def _NeedsCallableEllipsis(self, t):
+    """Check if it is typing.Callable type."""
+    assert isinstance(t, pytd.GenericType)
+    base = t.base_type
+    return isinstance(base, pytd.ClassType) and base.name == "typing.Callable"
+
   def _RequireImport(self, module, name=None):
     """Register that we're using name from module.
 
@@ -608,10 +614,13 @@ class PrintVisitor(Visitor):
 
   def VisitGenericType(self, node):
     """Convert a generic type to a string."""
-    ellipsis = ", ..." if self._NeedsTupleEllipsis(node) else ""
-    param_str = ", ".join(node.parameters)
+    parameters = node.parameters
+    if self._NeedsTupleEllipsis(node):
+      parameters += ("...",)
+    elif self._NeedsCallableEllipsis(self.old_node):
+      parameters = ("...",) + parameters[1:]
     return (self.MaybeCapitalize(node.base_type) +
-            "[" + param_str + ellipsis + "]")
+            "[" + ", ".join(parameters) + "]")
 
   def VisitCallableType(self, node):
     return "%s[[%s], %s]" % (self.MaybeCapitalize(node.base_type),

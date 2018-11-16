@@ -26,14 +26,15 @@ class ErrorTest(test_base.TargetPython3BasicTest):
       from typing import Dict, List, Union
       def f1(x: Dict):  # okay
         pass
-      def f2(x: Dict[str]):  # okay, "Any" is automatically filled in for V
+      def f2(x: Dict[str]):
         pass
       def f3(x: List[int, str]):
         pass
       def f4(x: Union):
         pass
     """)
-    self.assertErrorLogIs(errors, [(6, "invalid-annotation", r"1.*2"),
+    self.assertErrorLogIs(errors, [(4, "invalid-annotation", r"2.*1"),
+                                   (6, "invalid-annotation", r"1.*2"),
                                    (8, "invalid-annotation", r"Union.*x")])
 
   def testPrintUnsolvable(self):

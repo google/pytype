@@ -86,11 +86,10 @@ class Callable(TypingContainer):
       if args.cls and args.cls.full_name == "__builtin__.list":
         self.vm.errorlog.invalid_annotation(
             self.vm.frames, args, "Must be constant")
-      elif (args is not self.vm.convert.ellipsis and
-            not isinstance(args, abstract.Unsolvable)):
+      elif 0 not in ellipses or not isinstance(args, abstract.Unsolvable):
         self.vm.errorlog.invalid_annotation(
-            self.vm.frames, args,
-            "First argument to Callable must be a list of argument types.")
+            self.vm.frames, args, ("First argument to Callable must be a list"
+                                   " of argument types or ellipsis."))
       inner[0] = self.vm.convert.unsolvable
     value = self._build_value(node, tuple(inner), ellipses)
     return node, value.to_variable(node)
@@ -213,6 +212,9 @@ class NoReturn(abstract.AtomicAbstractValue):
 
   def get_class(self):
     return self
+
+  def compute_mro(self):
+    return self.default_mro()
 
 
 def build_any(name, vm):
@@ -634,7 +636,6 @@ class NewType(abstract.PyTDFunction):
     return node, self.vm.make_class(node, name_arg, (type_arg,),
                                     members.to_variable(node), None)
 
-
 class Generic(TypingContainer):
   """Implementation of typing.Generic."""
 
@@ -661,6 +662,17 @@ class Generic(TypingContainer):
     return template, inner, abstract.ParameterizedClass
 
 
+class Optional(abstract.AnnotationClass):
+  """Implementation of typing.Optional."""
+
+  def _build_value(self, node, inner, ellipses):
+    self.vm.errorlog.invalid_ellipses(self.vm.frames, ellipses, self.name)
+    if len(inner) != 1:
+      error = "typing.Optional can only contain one type parameter"
+      self.vm.errorlog.invalid_annotation(self.vm.frames, self, error)
+    return abstract.Union((self.vm.convert.none_type,) + inner, self.vm)
+
+
 def not_supported_yet(name, vm):
   vm.errorlog.not_supported_yet(vm.frames, "typing." + name)
   return vm.convert.unsolvable
@@ -680,10 +692,6 @@ def build_newtype(name, vm):
 def build_noreturn(name, vm):
   del name
   return vm.convert.no_return
-
-
-def build_optional(name, vm):
-  return Union(name, vm, (vm.convert.none_type,))
 
 
 def build_typevar(name, vm):
@@ -707,7 +715,7 @@ typing_overload = {
     "NamedTuple": build_namedtuple,
     "NewType": build_newtype,
     "NoReturn": build_noreturn,
-    "Optional": build_optional,
+    "Optional": Optional,
     "Tuple": Tuple,
     "TypeVar": build_typevar,
     "Union": Union,

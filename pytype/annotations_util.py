@@ -298,6 +298,11 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       self.vm.errorlog.invalid_annotation(
           stack, annotation, "Needs options", name)
       return None
+    elif (name is not None and name != "return"
+          and isinstance(annotation, typing_overlay.NoReturn)):
+      self.vm.errorlog.invalid_annotation(
+          stack, annotation, "NoReturn is not allowed", name)
+      return None
     elif isinstance(annotation, abstract.Instance) and (
         annotation.cls == self.vm.convert.str_type or
         annotation.cls == self.vm.convert.unicode_type
@@ -328,6 +333,10 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
             param, name, stack, node, f_globals, f_locals)
         if processed is None:
           return None
+        elif isinstance(processed, typing_overlay.NoReturn):
+          self.vm.errorlog.invalid_annotation(
+              stack, param, "NoReturn is not allowed as inner type", name)
+          return None
         annotation.formal_type_parameters[param_name] = processed
       return annotation
     elif isinstance(annotation, abstract.Union):
@@ -336,6 +345,10 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         processed = self._process_one_annotation(
             option, name, stack, node, f_globals, f_locals)
         if processed is None:
+          return None
+        elif isinstance(processed, typing_overlay.NoReturn):
+          self.vm.errorlog.invalid_annotation(
+              stack, option, "NoReturn is not allowed as inner type", name)
           return None
         options.append(processed)
       annotation.options = tuple(options)

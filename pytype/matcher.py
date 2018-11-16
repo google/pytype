@@ -256,21 +256,6 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         # left to its upper bound.
         return self._instantiate_and_match(
             left.param, other_type, subst, node, view)
-    elif (isinstance(other_type, typing_overlay.NoReturn) or
-          isinstance(left, typing_overlay.NoReturn)):
-      # NoReturn is a singleton that matches only itself.
-      return subst if left == other_type else None
-    elif isinstance(other_type, mixin.Class):
-      # Accumulate substitutions in "subst", or break in case of error:
-      return self._match_type_against_type(left, other_type, subst, node, view)
-    elif isinstance(other_type, abstract.Union):
-      matched = False
-      for t in other_type.options:
-        new_subst = self._match_value_against_type(value, t, subst, node, view)
-        if new_subst is not None:
-          matched = True
-          subst = new_subst
-      return subst if matched else None
     elif isinstance(other_type, abstract.TypeParameter):
       for c in other_type.constraints:
         new_subst = self._match_value_against_type(value, c, subst, node, view)
@@ -316,6 +301,23 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       subst = subst.copy()
       subst[other_type.full_name] = new_var
       return subst
+    elif (isinstance(other_type, typing_overlay.NoReturn) or
+          isinstance(left, typing_overlay.NoReturn)):
+      # `NoReturn` can only matches itself or `abstract.TypeParameter`.
+      # For the latter case, it will be used in byte code `STORE_ANNOTATION`
+      # to store the `NoReturn` annotation in a dict.
+      return subst if left == other_type else None
+    elif isinstance(other_type, mixin.Class):
+      # Accumulate substitutions in "subst", or break in case of error:
+      return self._match_type_against_type(left, other_type, subst, node, view)
+    elif isinstance(other_type, abstract.Union):
+      matched = False
+      for t in other_type.options:
+        new_subst = self._match_value_against_type(value, t, subst, node, view)
+        if new_subst is not None:
+          matched = True
+          subst = new_subst
+      return subst if matched else None
     elif (isinstance(other_type, (abstract.Unknown, abstract.Unsolvable)) or
           isinstance(left, (abstract.Unknown, abstract.Unsolvable))):
       # We can match anything against unknown types, and unknown types against

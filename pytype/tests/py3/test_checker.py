@@ -110,7 +110,7 @@ class CheckerTest(test_base.TargetPython3BasicTest):
   def testBadGenerator(self):
     errorlog = self.CheckWithErrors("""\
       from typing import Generator
-      def f() -> Generator[str]:
+      def f() -> Generator[str, None, None]:
         for i in range(3):
           yield i
     """)
