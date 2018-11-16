@@ -30,6 +30,7 @@ from pytype import load_pytd
 from pytype import matcher
 from pytype import metaclass
 from pytype import metrics
+from pytype import mixin
 from pytype import special_builtins
 from pytype import state as frame_state
 from pytype import utils
@@ -447,7 +448,7 @@ class VirtualMachine(object):
       else:
         new_base.AddBinding(b.data, {b}, node)
     base = new_base
-    if not any(isinstance(t, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY))
+    if not any(isinstance(t, (mixin.Class, abstract.AMBIGUOUS_OR_EMPTY))
                for t in base.data):
       self.errorlog.base_class_error(self.frames, base)
     return base
@@ -515,7 +516,7 @@ class VirtualMachine(object):
       # Old style class.
       bases = [self.convert.oldstyleclass_type.to_variable(self.root_cfg_node)]
     if (isinstance(class_dict, abstract.Unsolvable) or
-        not isinstance(class_dict, abstract.PythonConstant)):
+        not isinstance(class_dict, mixin.PythonConstant)):
       # An unsolvable appears here if the vm hit maximum depth and gave up on
       # analyzing the class we're now building. Otherwise, if class_dict isn't
       # a constant, then it's an abstract dictionary, and we don't have enough
@@ -582,6 +583,9 @@ class VirtualMachine(object):
     elif val.signature.annotations:
       self.functions_type_params_check.append((val, self.frame.current_opcode))
     return var
+
+  def make_native_function(self, name, method):
+    return abstract.NativeFunction(name, method, self)
 
   def make_frame(self, node, code, callargs=None, f_globals=None, f_locals=None,
                  closure=None, new_locals=None, func=None, first_posarg=None):
@@ -764,8 +768,7 @@ class VirtualMachine(object):
         options.reverse()
     error = None
     for left_val, right_val, attr_name in options:
-      if (isinstance(left_val.data, abstract.Class) and
-          attr_name == "__getitem__"):
+      if isinstance(left_val.data, mixin.Class) and attr_name == "__getitem__":
         # We're parameterizing a type annotation. Set valself to None to
         # differentiate this action from a real __getitem__ call on the class.
         valself = None
@@ -1156,7 +1159,7 @@ class VirtualMachine(object):
     for b in bindings:
       if self._has_strict_none_origins(b):
         if (discard_concrete_values and
-            isinstance(b.data, abstract.PythonConstant) and
+            isinstance(b.data, mixin.PythonConstant) and
             not isinstance(b.data.pyval, str)):
           # We need to keep constant strings as they may be forward references.
           var.AddBinding(
@@ -1734,7 +1737,7 @@ class VirtualMachine(object):
     bool_var = self.program.NewVariable()
     for b in var.bindings:
       v = b.data
-      if isinstance(v, abstract.PythonConstant) and isinstance(v.pyval, bool):
+      if isinstance(v, mixin.PythonConstant) and isinstance(v.pyval, bool):
         const = v.pyval is true_val
       elif not v.compatible_with(True):
         const = False is true_val

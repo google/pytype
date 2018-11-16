@@ -1,4 +1,8 @@
-"""The abstract values used by vm.py."""
+"""The abstract values used by vm.py.
+
+This file contains AtomicAbstractValue and its subclasses. Mixins such as Class
+are in mixin.py, and other abstract logic is in abstract_utils.py.
+"""
 
 # Because pytype takes too long:
 # pytype: skip-file
@@ -18,9 +22,9 @@ from pytype import abstract_utils
 from pytype import compat
 from pytype import datatypes
 from pytype import function
+from pytype import mixin
 from pytype import utils
 from pytype.pyc import opcodes
-from pytype.pytd import mro
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -143,7 +147,7 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   def get_formal_type_parameter(self, t):
     """Get the class's type for the type parameter.
 
-    Treating self as an abstract.Class, gets its formal type for the given
+    Treating self as a mixin.Class, gets its formal type for the given
     type parameter. For the real implementation, see
     ParameterizedClass.get_formal_type_parameter.
 
@@ -265,7 +269,13 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
 
   def instantiate(self, node, container=None):
     del container
-    return Instance(self, self.vm).to_variable(node)
+    return self.to_instance().to_variable(node)
+
+  def to_instance(self):
+    return Instance(self, self.vm)
+
+  def to_annotation_container(self):
+    return AnnotationContainer(self.name, self.vm, self)
 
   def to_variable(self, node):
     """Build a variable out of this abstract value.
@@ -355,7 +365,7 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
     return isinstance(self, BoundFunction)
 
   def isinstance_Class(self):
-    return isinstance(self, Class)
+    return isinstance(self, mixin.Class)
 
   def isinstance_Instance(self):
     return isinstance(self, Instance)
@@ -441,85 +451,6 @@ class Deleted(Empty):
   def __init__(self, vm):
     super(Deleted, self).__init__(vm)
     self.name = "deleted"
-
-
-class MixinMeta(type):
-  """Metaclass for mix-ins."""
-
-  def __init__(cls, name, superclasses, *args, **kwargs):
-    super(MixinMeta, cls).__init__(name, superclasses, *args, **kwargs)
-    for sup in superclasses:
-      if hasattr(sup, "overloads"):
-        for method in sup.overloads:
-          if method not in cls.__dict__:
-            setattr(cls, method, getattr(sup, method))
-            # Record the fact that we have set a method on the class, to do
-            # superclass lookups.
-            if "__mixin_overloads__" in cls.__dict__:
-              cls.__mixin_overloads__["method"] = sup
-            else:
-              setattr(cls, "__mixin_overloads__", {method: sup})
-
-  def super(cls, method):
-    """Imitate super() in a mix-in.
-
-    This method is a substitute for
-      super(MixinClass, self).overloaded_method(arg),
-    which we can't use because mix-ins appear at the end of the MRO. It should
-    be called as
-      MixinClass.super(self.overloaded_method)(arg)
-    . It works by finding the class on which MixinMeta.__init__ set
-    MixinClass.overloaded_method and calling super() on that class.
-
-    Args:
-      method: The method in the mix-in.
-    Returns:
-      The method overloaded by 'method'.
-    """
-    for supercls in type(method.__self__).__mro__:
-      # Fetch from __dict__ rather than using getattr() because we only want
-      # to consider methods defined on supercls itself (not on a parent).
-      if ("__mixin_overloads__" in supercls.__dict__ and
-          supercls.__mixin_overloads__.get(method.__name__) is cls):
-        method_cls = supercls
-        break
-    return getattr(super(method_cls, method.__self__), method.__name__)
-
-
-@six.add_metaclass(MixinMeta)
-class PythonConstant(object):
-  """A mix-in for storing actual Python constants, not just their types.
-
-  This is used for things that are stored in cfg.Variable, but where we
-  may need the actual data in order to proceed later. E.g. function / class
-  definitions, tuples. Also, potentially: Small integers, strings (E.g. "w",
-  "r" etc.).
-  """
-
-  overloads = ("__repr__", "compatible_with",)
-
-  def init_mixin(self, pyval):
-    """Mix-in equivalent of __init__."""
-    self.pyval = pyval
-
-  def str_of_constant(self, printer):
-    """Get a string representation of this constant.
-
-    Args:
-      printer: An AtomicAbstractValue -> str function that will be used to
-        print abstract values.
-
-    Returns:
-      A string of self.pyval.
-    """
-    del printer
-    return repr(self.pyval)
-
-  def __repr__(self):
-    return "<%s %r>" % (self.name, self.str_of_constant(str))
-
-  def compatible_with(self, logical_value):
-    return bool(self.pyval) == logical_value
 
 
 class TypeParameter(AtomicAbstractValue):
@@ -731,7 +662,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     # See Py_TYPE() in Include/object.h
     if self.cls:
       return self.cls
-    elif isinstance(self, (AnnotationClass, Class)):
+    elif isinstance(self, (AnnotationClass, mixin.Class)):
       return self.vm.convert.type_type
 
   def set_class(self, node, var):
@@ -838,59 +769,14 @@ class Instance(SimpleAbstractValue):
     return self._instance_type_parameters
 
 
-@six.add_metaclass(MixinMeta)
-class HasSlots(object):
-  """Mix-in for overriding slots with custom methods.
-
-  This makes it easier to emulate built-in classes like dict which need special
-  handling of some magic methods (__setitem__ etc.)
-  """
-
-  overloads = ("get_special_attribute",)
-
-  def init_mixin(self):
-    self._slots = {}
-    self._super = {}
-    self._function_cache = {}
-
-  def make_native_function(self, name, method):
-    key = (name, method)
-    if key not in self._function_cache:
-      self._function_cache[key] = NativeFunction(name, method, self.vm)
-    return self._function_cache[key]
-
-  def set_slot(self, name, method):
-    """Add a new slot to this value."""
-    assert name not in self._slots, "slot %s already occupied" % name
-    _, attr = self.vm.attribute_handler.get_attribute(
-        self.vm.root_cfg_node, self, name,
-        self.to_binding(self.vm.root_cfg_node))
-    self._super[name] = attr
-    f = self.make_native_function(name, method)
-    self._slots[name] = f.to_variable(self.vm.root_cfg_node)
-
-  def call_pytd(self, node, name, *args):
-    """Call the (original) pytd version of a method we overwrote."""
-    return self.vm.call_function(node, self._super[name], function.Args(args),
-                                 fallback_to_unsolvable=False)
-
-  def get_special_attribute(self, node, name, valself):
-    if name in self._slots:
-      attr = self.vm.program.NewVariable()
-      additional_sources = {valself} if valself else None
-      attr.PasteVariable(self._slots[name], node, additional_sources)
-      return attr
-    return HasSlots.super(self.get_special_attribute)(node, name, valself)
-
-
-class List(Instance, HasSlots, PythonConstant):
+class List(Instance, mixin.HasSlots, mixin.PythonConstant):
   """Representation of Python 'list' objects."""
 
   def __init__(self, content, vm):
     super(List, self).__init__(vm.convert.list_type, vm)
     self._instance_cache = {}
-    PythonConstant.init_mixin(self, content)
-    HasSlots.init_mixin(self)
+    mixin.PythonConstant.init_mixin(self, content)
+    mixin.HasSlots.init_mixin(self)
     combined_content = vm.convert.build_content(content)
     self.merge_instance_type_parameter(None, abstract_utils.T, combined_content)
     self.could_contain_anything = False
@@ -905,7 +791,7 @@ class List(Instance, HasSlots, PythonConstant):
     if self.could_contain_anything:
       return Instance.__repr__(self)
     else:
-      return PythonConstant.__repr__(self)
+      return mixin.PythonConstant.__repr__(self)
 
   def merge_instance_type_parameter(self, node, name, value):
     self.could_contain_anything = True
@@ -913,7 +799,7 @@ class List(Instance, HasSlots, PythonConstant):
 
   def compatible_with(self, logical_value):
     return (self.could_contain_anything or
-            PythonConstant.compatible_with(self, logical_value))
+            mixin.PythonConstant.compatible_with(self, logical_value))
 
   def getitem_slot(self, node, index_var):
     """Implements __getitem__ for List.
@@ -1002,7 +888,7 @@ class List(Instance, HasSlots, PythonConstant):
     return node, self.vm.join_variables(node, results)
 
 
-class Tuple(Instance, PythonConstant):
+class Tuple(Instance, mixin.PythonConstant):
   """Representation of Python 'tuple' objects."""
 
   def __init__(self, content, vm):
@@ -1014,7 +900,7 @@ class Tuple(Instance, PythonConstant):
     cls = TupleClass(vm.convert.tuple_type, class_params, vm)
     super(Tuple, self).__init__(cls, vm)
     self.merge_instance_type_parameter(None, abstract_utils.T, combined_content)
-    PythonConstant.init_mixin(self, content)
+    mixin.PythonConstant.init_mixin(self, content)
     self.tuple_length = len(self.pyval)
     self._hash = None  # memoized due to expensive computation
 
@@ -1048,7 +934,8 @@ class Tuple(Instance, PythonConstant):
     return self._hash
 
 
-class Dict(Instance, HasSlots, PythonConstant, pytd_utils.WrapsDict("pyval")):
+class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
+           pytd_utils.WrapsDict("pyval")):
   """Representation of Python 'dict' objects.
 
   It works like __builtins__.dict, except that, for string keys, it keeps track
@@ -1057,7 +944,7 @@ class Dict(Instance, HasSlots, PythonConstant, pytd_utils.WrapsDict("pyval")):
 
   def __init__(self, vm):
     super(Dict, self).__init__(vm.convert.dict_type, vm)
-    HasSlots.init_mixin(self)
+    mixin.HasSlots.init_mixin(self)
     self.set_slot("__contains__", self.contains_slot)
     self.set_slot("__getitem__", self.getitem_slot)
     self.set_slot("__setitem__", self.setitem_slot)
@@ -1068,7 +955,7 @@ class Dict(Instance, HasSlots, PythonConstant, pytd_utils.WrapsDict("pyval")):
     # Use OrderedDict instead of dict, so that it can be compatible with
     # where needs ordered dict.
     # For example: f_locals["__annotations__"]
-    PythonConstant.init_mixin(self, collections.OrderedDict())
+    mixin.PythonConstant.init_mixin(self, collections.OrderedDict())
 
   def str_of_constant(self, printer):
     return str({name: " or ".join(printer(v) for v in value.data)
@@ -1080,7 +967,7 @@ class Dict(Instance, HasSlots, PythonConstant, pytd_utils.WrapsDict("pyval")):
     elif self.could_contain_anything:
       return Instance.__repr__(self)
     else:
-      return PythonConstant.__repr__(self)
+      return mixin.PythonConstant.__repr__(self)
 
   def getitem_slot(self, node, name_var):
     """Implements the __getitem__ slot."""
@@ -1232,15 +1119,15 @@ class Dict(Instance, HasSlots, PythonConstant, pytd_utils.WrapsDict("pyval")):
       return (not logical_value or
               bool(self.get_instance_type_parameter(abstract_utils.K).bindings))
     else:
-      return PythonConstant.compatible_with(self, logical_value)
+      return mixin.PythonConstant.compatible_with(self, logical_value)
 
 
-class AnnotationClass(SimpleAbstractValue, HasSlots):
+class AnnotationClass(SimpleAbstractValue, mixin.HasSlots):
   """Base class of annotations that can be parameterized."""
 
   def __init__(self, name, vm):
     super(AnnotationClass, self).__init__(name, vm)
-    HasSlots.init_mixin(self)
+    mixin.HasSlots.init_mixin(self)
     self.set_slot("__getitem__", self.getitem_slot)
 
   def getitem_slot(self, node, slice_var):
@@ -1368,15 +1255,15 @@ class AnnotationContainer(AnnotationClass):
       return self.vm.convert.unsolvable
 
 
-class AbstractOrConcreteValue(Instance, PythonConstant):
+class AbstractOrConcreteValue(Instance, mixin.PythonConstant):
   """Abstract value with a concrete fallback."""
 
   def __init__(self, pyval, cls, vm):
     super(AbstractOrConcreteValue, self).__init__(cls, vm)
-    PythonConstant.init_mixin(self, pyval)
+    mixin.PythonConstant.init_mixin(self, pyval)
 
 
-class LazyConcreteDict(SimpleAbstractValue, PythonConstant):
+class LazyConcreteDict(SimpleAbstractValue, mixin.PythonConstant):
   """Dictionary with lazy values."""
 
   is_lazy = True  # uses _convert_member
@@ -1384,7 +1271,7 @@ class LazyConcreteDict(SimpleAbstractValue, PythonConstant):
   def __init__(self, name, member_map, vm):
     SimpleAbstractValue.__init__(self, name, vm)
     self._member_map = member_map
-    PythonConstant.init_mixin(self, self.members)
+    mixin.PythonConstant.init_mixin(self, self.members)
 
   def _convert_member(self, _, pyval):
     return self.vm.convert.constant_to_var(pyval)
@@ -1893,216 +1780,7 @@ class PyTDFunction(Function):
         flags=pytd.Function.abstract_flag(self.is_abstract))
 
 
-@six.add_metaclass(MixinMeta)
-class Class(object):
-  """Mix-in to mark all class-like values."""
-
-  overloads = ("get_special_attribute", "get_own_new", "call", "compute_mro")
-
-  def __new__(cls, *unused_args, **unused_kwds):
-    """Prevent direct instantiation."""
-    assert cls is not Class, "Cannot instantiate Class"
-    return object.__new__(cls)
-
-  def init_mixin(self, metaclass):
-    """Mix-in equivalent of __init__."""
-    if metaclass is None:
-      self.cls = self._get_inherited_metaclass()
-    else:
-      # TODO(rechen): Check that the metaclass is a (non-strict) subclass of the
-      # metaclasses of the base classes.
-      self.cls = metaclass
-    self._instance_cache = {}
-    self._init_abstract_methods()
-    self._all_formal_type_parameters = datatypes.AliasingMonitorDict()
-    self._all_formal_type_parameters_loaded = False
-
-  def bases(self):
-    return []
-
-  @property
-  def all_formal_type_parameters(self):
-    self._load_all_formal_type_parameters()
-    return self._all_formal_type_parameters
-
-  def _load_all_formal_type_parameters(self):
-    """Load _all_formal_type_parameters."""
-    if self._all_formal_type_parameters_loaded:
-      return
-
-    bases = [
-        abstract_utils.get_atomic_value(
-            base, default=self.vm.convert.unsolvable) for base in self.bases()]
-    for base in bases:
-      abstract_utils.parse_formal_type_parameters(
-          base, self.full_name, self._all_formal_type_parameters)
-
-    self._all_formal_type_parameters_loaded = True
-
-  def get_own_abstract_methods(self):
-    """Get the abstract methods defined by this class."""
-    raise NotImplementedError(self.__class__.__name__)
-
-  def _init_abstract_methods(self):
-    """Compute this class's abstract methods."""
-    # For the algorithm to run, abstract_methods needs to be populated with the
-    # abstract methods defined by this class. We'll overwrite the attribute
-    # with the full set of abstract methods later.
-    self.abstract_methods = self.get_own_abstract_methods()
-    abstract_methods = set()
-    for cls in reversed(self.mro):
-      if not isinstance(cls, Class):
-        continue
-      # Remove methods implemented by this class.
-      abstract_methods = {m for m in abstract_methods
-                          if m not in cls or m in cls.abstract_methods}
-      # Add abstract methods defined by this class.
-      abstract_methods |= {m for m in cls.abstract_methods if m in cls}
-    self.abstract_methods = abstract_methods
-
-  @property
-  def has_abstract_metaclass(self):
-    return self.cls and "abc.ABCMeta" in (
-        parent.full_name for parent in self.cls.mro)
-
-  @property
-  def is_abstract(self):
-    return self.has_abstract_metaclass and bool(self.abstract_methods)
-
-  def _get_inherited_metaclass(self):
-    for base in self.mro[1:]:
-      if isinstance(base, Class) and base.cls is not None:
-        return base.cls
-    return None
-
-  def get_own_new(self, node, value):
-    """Get this value's __new__ method, if it isn't object.__new__.
-
-    Args:
-      node: The current node.
-      value: A cfg.Binding containing this value.
-
-    Returns:
-      A tuple of (1) a node and (2) either a cfg.Variable of the special
-      __new__ method, or None.
-    """
-    node, new = self.vm.attribute_handler.get_attribute(
-        node, value.data, "__new__")
-    if new is None:
-      return node, None
-    if len(new.bindings) == 1:
-      f = new.bindings[0].data
-      if (isinstance(f, AMBIGUOUS_OR_EMPTY) or
-          self.vm.convert.object_type.is_object_new(f)):
-        # Instead of calling object.__new__, our abstract classes directly
-        # create instances of themselves.
-        return node, None
-    return node, new
-
-  def _call_new_and_init(self, node, value, args):
-    """Call __new__ if it has been overridden on the given value."""
-    node, new = self.get_own_new(node, value)
-    if new is None:
-      return node, None
-    cls = value.AssignToNewVariable(node)
-    new_args = args.replace(posargs=(cls,) + args.posargs)
-    node, variable = self.vm.call_function(node, new, new_args)
-    for val in variable.bindings:
-      # TODO(rechen): If val.data is a class, _call_init mistakenly calls
-      # val.data's __init__ method rather than that of val.data.cls. See
-      # testClasses.testTypeInit for a case in which skipping this __init__
-      # call is problematic.
-      if not isinstance(val.data, Class) and self == val.data.cls:
-        node = self._call_init(node, val, args)
-    return node, variable
-
-  def _call_init(self, node, value, args):
-    node, init = self.vm.attribute_handler.get_attribute(
-        node, value.data, "__init__", value)
-    if init:
-      log.debug("calling %s.__init__(...)", self.name)
-      node, ret = self.vm.call_function(node, init, args)
-      log.debug("%s.__init__(...) returned %r", self.name, ret)
-    return node
-
-  def _new_instance(self):
-    # We allow only one "instance" per code location, regardless of call stack.
-    key = self.vm.frame.current_opcode
-    assert key
-    if key not in self._instance_cache:
-      self._instance_cache[key] = Instance(self, self.vm)
-    return self._instance_cache[key]
-
-  def call(self, node, value, args):
-    if self.is_abstract:
-      self.vm.errorlog.not_instantiable(self.vm.frames, self)
-    node, variable = self._call_new_and_init(node, value, args)
-    if variable is None:
-      value = self._new_instance()
-      variable = self.vm.program.NewVariable()
-      val = variable.AddBinding(value, [], node)
-      node = self._call_init(node, val, args)
-    return node, variable
-
-  def get_special_attribute(self, node, name, valself):
-    """Fetch a special attribute."""
-    if name == "__getitem__" and valself is None:
-      # See vm._call_binop_on_bindings: valself == None is a special value that
-      # indicates an annotation.
-      if self.cls:
-        # This class has a custom metaclass; check if it defines __getitem__.
-        _, attr = self.vm.attribute_handler.get_attribute(
-            node, self, name, self.to_binding(node))
-        if attr:
-          return attr
-      # Treat this class as a parameterized container in an annotation. We do
-      # not need to worry about the class not being a container: in that case,
-      # AnnotationContainer's param length check reports an appropriate error.
-      container = AnnotationContainer(self.name, self.vm, self)
-      return container.get_special_attribute(node, name, valself)
-    return Class.super(self.get_special_attribute)(node, name, valself)
-
-  def has_dynamic_attributes(self):
-    return any(a in self for a in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS)
-
-  def compute_is_dynamic(self):
-    # This needs to be called after self.mro is set.
-    return any(c.has_dynamic_attributes()
-               for c in self.mro
-               if isinstance(c, Class))
-
-  def compute_mro(self):
-    """Compute the class precedence list (mro) according to C3."""
-    bases = abstract_utils.get_mro_bases(self.bases(), self.vm)
-    bases = [[self]] + [list(base.mro) for base in bases] + [list(bases)]
-    # If base classes are `ParameterizedClass`, we will use their `base_cls` to
-    # calculate the MRO. Bacause of type parameter renaming, we can not compare
-    # the `ParameterizedClass`s which contain the same `base_cls`.  See example:
-    #   class A(Iterator[T]): ...
-    #   class B(Iterator[U], A[V]): ...
-    # The inheritance: [B], [Iterator, ...], [A, Iterator, ...], [Iterator, A]
-    # So this has MRO order issue, but because the template names of
-    # `ParameterizedClass` of `Iterator` are different, they will be treated as
-    # different base classes and it will infer the MRO order is correct.
-    # TODO(ahxun): fix this by solving the template rename problem
-    base2cls = {}
-    newbases = []
-    for row in bases:
-      baselist = []
-      for base in row:
-        if isinstance(base, ParameterizedClass):
-          base2cls[base.base_cls] = base
-          baselist.append(base.base_cls)
-        else:
-          base2cls[base] = base
-          baselist.append(base)
-      newbases.append(baselist)
-
-    # calc MRO and replace them with original base classes
-    return tuple(base2cls[base] for base in mro.MROMerge(newbases))
-
-
-class ParameterizedClass(AtomicAbstractValue, Class):
+class ParameterizedClass(AtomicAbstractValue, mixin.Class):
   """A class that contains additional parameters. E.g. a container.
 
   Attributes:
@@ -2126,7 +1804,7 @@ class ParameterizedClass(AtomicAbstractValue, Class):
   def __init__(self, base_cls, formal_type_parameters, vm):
     # A ParameterizedClass is created by converting a pytd.GenericType, whose
     # base type is restricted to NamedType and ClassType.
-    assert isinstance(base_cls, Class)
+    assert isinstance(base_cls, mixin.Class)
     self.base_cls = base_cls
     super(ParameterizedClass, self).__init__(base_cls.name, vm)
     self.module = base_cls.module
@@ -2140,7 +1818,7 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     self._template = self.base_cls.template
     self.slots = self.base_cls.slots
     self.self_annot = None
-    Class.init_mixin(self, base_cls.cls)
+    mixin.Class.init_mixin(self, base_cls.cls)
     self.type_param_check()
 
   def __repr__(self):
@@ -2276,13 +1954,13 @@ class ParameterizedClass(AtomicAbstractValue, Class):
     if not self._is_callable():
       raise function.NotCallable(self)
     else:
-      return Class.call(self, node, func, args)
+      return mixin.Class.call(self, node, func, args)
 
   def get_formal_type_parameter(self, t):
     return self.formal_type_parameters.get(t, self.vm.convert.unsolvable)
 
 
-class TupleClass(ParameterizedClass, HasSlots):
+class TupleClass(ParameterizedClass, mixin.HasSlots):
   """The class of a heterogeneous tuple.
 
   The formal_type_parameters attribute stores the types of the individual tuple
@@ -2290,13 +1968,13 @@ class TupleClass(ParameterizedClass, HasSlots):
     Tuple[str, int]
   formal_type_parameters is
     {0: str, 1: int, T: str or int}.
-  Note that we can't store the individual types as a PythonConstant as we do
-  for Tuple, since we can't evaluate type parameters during initialization.
+  Note that we can't store the individual types as a mixin.PythonConstant as we
+  do for Tuple, since we can't evaluate type parameters during initialization.
   """
 
   def __init__(self, base_cls, formal_type_parameters, vm):
     super(TupleClass, self).__init__(base_cls, formal_type_parameters, vm)
-    HasSlots.init_mixin(self)
+    mixin.HasSlots.init_mixin(self)
     self.set_slot("__getitem__", self.getitem_slot)
     if isinstance(self._formal_type_parameters,
                   abstract_utils.LazyFormalTypeParameters):
@@ -2371,11 +2049,11 @@ class TupleClass(ParameterizedClass, HasSlots):
   def get_special_attribute(self, node, name, valself):
     if (valself and not abstract_utils.equivalent_to(valself, self) and
         name in self._slots):
-      return HasSlots.get_special_attribute(self, node, name, valself)
+      return mixin.HasSlots.get_special_attribute(self, node, name, valself)
     return super(TupleClass, self).get_special_attribute(node, name, valself)
 
 
-class Callable(ParameterizedClass, HasSlots):
+class Callable(ParameterizedClass, mixin.HasSlots):
   """A Callable with a list of argument types.
 
   The formal_type_parameters attribute stores the types of the individual
@@ -2389,7 +2067,7 @@ class Callable(ParameterizedClass, HasSlots):
 
   def __init__(self, base_cls, formal_type_parameters, vm):
     super(Callable, self).__init__(base_cls, formal_type_parameters, vm)
-    HasSlots.init_mixin(self)
+    mixin.HasSlots.init_mixin(self)
     self.set_slot("__call__", self.call_slot)
     # We subtract two to account for "ARGS" and "RET".
     self.num_args = len(self.formal_type_parameters) - 2
@@ -2438,11 +2116,11 @@ class Callable(ParameterizedClass, HasSlots):
   def get_special_attribute(self, node, name, valself):
     if (valself and not abstract_utils.equivalent_to(valself, self) and
         name in self._slots):
-      return HasSlots.get_special_attribute(self, node, name, valself)
+      return mixin.HasSlots.get_special_attribute(self, node, name, valself)
     return super(Callable, self).get_special_attribute(node, name, valself)
 
 
-class PyTDClass(SimpleAbstractValue, Class):
+class PyTDClass(SimpleAbstractValue, mixin.Class):
   """An abstract wrapper for PyTD class objects.
 
   These are the abstract values for class objects that are described in PyTD.
@@ -2470,7 +2148,7 @@ class PyTDClass(SimpleAbstractValue, Class):
     self.official_name = self.name
     self.slots = pytd_cls.slots
     self.is_dynamic = self.compute_is_dynamic()
-    Class.init_mixin(self, metaclass)
+    mixin.Class.init_mixin(self, metaclass)
 
   def get_own_abstract_methods(self):
     return {name for name, member in self._member_map.items()
@@ -2562,7 +2240,7 @@ class PyTDClass(SimpleAbstractValue, Class):
         template=self.pytd_cls.template)
 
 
-class InterpreterClass(SimpleAbstractValue, Class):
+class InterpreterClass(SimpleAbstractValue, mixin.Class):
   """An abstract wrapper for user-defined class objects.
 
   These are the abstract value for class objects that are implemented in the
@@ -2578,7 +2256,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
     self._bases = bases
     super(InterpreterClass, self).__init__(name, vm)
     self.members = datatypes.MonitorDict(members)
-    Class.init_mixin(self, cls)
+    mixin.Class.init_mixin(self, cls)
     self.instances = set()  # filled through register_instance
     self.slots = self._convert_slots(members.get("__slots__"))
     self.is_dynamic = self.compute_is_dynamic()
@@ -2663,7 +2341,7 @@ class InterpreterClass(SimpleAbstractValue, Class):
       # Ambiguous slots
       return None  # Treat "unknown __slots__" and "no __slots__" the same.
     val = slots_var.data[0]
-    if isinstance(val, PythonConstant):
+    if isinstance(val, mixin.PythonConstant):
       if isinstance(val.pyval, (list, tuple)):
         entries = val.pyval
       else:
@@ -3143,7 +2821,7 @@ class InterpreterFunction(SignedFunction):
     if self.signature.param_names:
       self_var = callargs.get(self.signature.param_names[0])
       caller_is_abstract = self_var and all(
-          isinstance(v.cls, Class) and v.cls.is_abstract
+          isinstance(v.cls, mixin.Class) and v.cls.is_abstract
           for v in self_var.data if v.cls)
     else:
       caller_is_abstract = False
@@ -3513,12 +3191,12 @@ class Generator(Instance):
     return self.run_generator(node)
 
 
-class Iterator(Instance, HasSlots):
+class Iterator(Instance, mixin.HasSlots):
   """A representation of instances of iterators."""
 
   def __init__(self, vm, return_var):
     super(Iterator, self).__init__(vm.convert.iterator_type, vm)
-    HasSlots.init_mixin(self)
+    mixin.HasSlots.init_mixin(self)
     self.set_slot(self.vm.convert.next_attr, self.next_slot)
     # TODO(dbaum): Should we set instance_type_parameters[self.TYPE_PARAM] to
     # something based on return_var?

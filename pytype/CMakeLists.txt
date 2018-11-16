@@ -120,6 +120,7 @@ py_library(
     .debug
     .function
     .metrics
+    .mixin
     .pyc
     .pytd
     .utils
@@ -143,6 +144,18 @@ py_library(
     function.py
   DEPS
     .abstract_utils
+    .pytd_for_parser
+    .utils
+)
+
+py_library(
+  NAME
+    mixin
+  SRCS
+    mixin.py
+  DEPS
+    .abstract_utils
+    .function
     .pytd_for_parser
     .utils
 )
@@ -371,6 +384,15 @@ py_test(
   DEPS
     .abstract_utils
     .libvm
+)
+
+py_test(
+  NAME
+    mixin_test
+  SRCS
+    mixin_test.py
+  DEPS
+    .mixin
 )
 
 py_test(

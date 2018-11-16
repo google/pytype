@@ -1,6 +1,7 @@
 """Compare two variables."""
 
 from pytype import abstract
+from pytype import mixin
 from pytype.pytd import slots
 
 # Equality classes.
@@ -18,7 +19,7 @@ def _incompatible(left_name, right_name):
 
 
 def _is_primitive(vm, value):
-  if isinstance(value, abstract.PythonConstant):
+  if isinstance(value, mixin.PythonConstant):
     return value.pyval.__class__ in vm.convert.primitive_classes
   elif isinstance(value, abstract.Instance):
     return value.full_name in vm.convert.primitive_class_names
@@ -30,7 +31,7 @@ def _is_equality_cmp(op):
 
 
 def _compare_primitive_value(vm, op, left, right):
-  if _is_primitive(vm, right) and isinstance(right, abstract.PythonConstant):
+  if _is_primitive(vm, right) and isinstance(right, mixin.PythonConstant):
     try:
       return slots.COMPARES[op](left.pyval, right.pyval)
     except TypeError:
@@ -73,7 +74,7 @@ def _compare_dict(op, left, right):
 
 def cmp_rel(vm, op, left, right):
   """Compare two variables."""
-  if _is_primitive(vm, left) and isinstance(left, abstract.PythonConstant):
+  if _is_primitive(vm, left) and isinstance(left, mixin.PythonConstant):
     return _compare_primitive_value(vm, op, left, right)
   elif _is_primitive(vm, left) and _is_primitive(vm, right):
     return _compare_primitive(op, left, right)

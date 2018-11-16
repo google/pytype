@@ -6,6 +6,7 @@ from pytype import abstract
 from pytype import abstract_utils
 from pytype import datatypes
 from pytype import function
+from pytype import mixin
 from pytype import special_builtins
 from pytype import typing_overlay
 from pytype import utils
@@ -131,7 +132,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         base_cls = base.base_cls
       else:
         base_cls = base
-      if isinstance(base_cls, abstract.Class):
+      if isinstance(base_cls, mixin.Class):
         if other_type.full_name == base_cls.full_name or (
             isinstance(other_type, abstract.ParameterizedClass) and
             other_type.base_cls is base_cls) or (allow_compat_builtins and (
@@ -259,7 +260,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           isinstance(left, typing_overlay.NoReturn)):
       # NoReturn is a singleton that matches only itself.
       return subst if left == other_type else None
-    elif isinstance(other_type, abstract.Class):
+    elif isinstance(other_type, mixin.Class):
       # Accumulate substitutions in "subst", or break in case of error:
       return self._match_type_against_type(left, other_type, subst, node, view)
     elif isinstance(other_type, abstract.Union):
@@ -333,7 +334,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
 
     Args:
       left: A type.
-      other_type: A formal type. E.g. abstract.Class or abstract.Union.
+      other_type: A formal type. E.g. mixin.Class or abstract.Union.
       subst: The current type parameter assignment.
       node: The current CFG node.
       view: The current mapping of Variable to Value.
@@ -350,7 +351,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       else:
         value = self.vm.convert.unsolvable
       return self._mutate_type_parameters(params, value, subst, node)
-    elif isinstance(left, abstract.Class):
+    elif isinstance(left, mixin.Class):
       if (other_type.full_name == "__builtin__.type" and
           isinstance(other_type, abstract.ParameterizedClass)):
         other_type = other_type.get_formal_type_parameter(abstract_utils.T)
@@ -634,14 +635,14 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     Args:
       left: A type.
       instance: An instance of the type. An abstract.Instance.
-      other_type: A formal type. E.g. abstract.Class or abstract.Union.
+      other_type: A formal type. E.g. mixin.Class or abstract.Union.
       subst: The current type parameter assignment.
       node: The current CFG node.
       view: The current mapping of Variable to Value.
     Returns:
       A new type parameter assignment if the matching succeeded, None otherwise.
     """
-    if isinstance(other_type, abstract.Class):
+    if isinstance(other_type, mixin.Class):
       base = self.match_from_mro(left, other_type)
       if base is None:
         if self.is_protocol(other_type):
@@ -667,7 +668,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     """Protocol matching other_type if it is a subtype of typing.Protocol.
 
     Args:
-      other_type: A formal type of type abstract.Class
+      other_type: A formal type of type mixin.Class
     Returns:
       Whether other_type is a protocol.
     """
@@ -787,7 +788,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           callable_signature.formal_type_parameters[0] = (
               self.vm.convert.unsolvable)
         annotation_subst = datatypes.AliasingDict()
-        if isinstance(other_type.base_cls, abstract.Class):
+        if isinstance(other_type.base_cls, mixin.Class):
           annotation_subst.uf = (
               other_type.base_cls.all_formal_type_parameters.uf)
         for (param, value) in other_type.get_formal_type_parameters().items():

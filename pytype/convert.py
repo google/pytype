@@ -9,6 +9,7 @@ from pytype import blocks
 from pytype import compat
 from pytype import datatypes
 from pytype import function
+from pytype import mixin
 from pytype import output
 from pytype import special_builtins
 from pytype import typing_overlay
@@ -152,7 +153,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return "__builtin__." + t.__name__
 
   def value_to_constant(self, val, constant_type):
-    if (isinstance(val, abstract.PythonConstant) and
+    if (isinstance(val, mixin.PythonConstant) and
         isinstance(val.pyval, constant_type or object) and
         not getattr(val, "could_contain_anything", False)):
       return val.pyval
@@ -250,7 +251,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     Returns:
       An instance of the same type as the data, abstract if possible.
     """
-    if isinstance(data, abstract.PythonConstant):
+    if isinstance(data, mixin.PythonConstant):
       data_type = type(data.pyval)
       if data_type in self.primitive_class_instances:
         return self.primitive_class_instances[data_type]
@@ -296,7 +297,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
   def get_element_type(self, arg_type):
     """Extract the element type of a vararg or kwarg."""
     if not isinstance(arg_type, abstract.ParameterizedClass):
-      assert (isinstance(arg_type, abstract.Class) and
+      assert (isinstance(arg_type, mixin.Class) and
               arg_type.full_name in ("__builtin__.dict", "__builtin__.tuple"))
       return None
     elif arg_type.base_cls is self.dict_type:
@@ -311,7 +312,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return abstract.ParameterizedClass(
           new_container, old_container.formal_type_parameters, self.vm)
     else:
-      assert isinstance(old_container, abstract.Class)
+      assert isinstance(old_container, mixin.Class)
       return new_container
 
   def widen_type(self, container):
@@ -718,7 +719,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       assert isinstance(base, pytd.Class), base
       base_cls = self.constant_to_value(
           base, subst, self.vm.root_cfg_node)
-      if not isinstance(base_cls, abstract.Class):
+      if not isinstance(base_cls, mixin.Class):
         # base_cls can be, e.g., an unsolvable due to an mro error.
         return self.unsolvable
       if isinstance(pyval, pytd.TupleType):

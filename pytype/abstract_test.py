@@ -1344,28 +1344,6 @@ class AbstractTest(AbstractTestBase):
     supercls = special_builtins.Super(self._vm)
     self.assertEqual(supercls.get_class(), self._vm.convert.type_type)
 
-  def test_mixin_super(self):
-    """Test the imitation 'super' method on MixinMeta."""
-    # pylint: disable=g-wrong-blank-lines
-    class A(object):
-      def f(self, x):
-        return x
-    @six.add_metaclass(abstract.MixinMeta)
-    class MyMixin(object):
-      overloads = ("f",)
-      def f(self, x):
-        if x == 0:
-          return "hello"
-        return MyMixin.super(self.f)(x)
-    class B(A, MyMixin):
-      pass
-    # pylint: enable=g-wrong-blank-lines
-    b = B()
-    v_mixin = b.f(0)
-    v_a = b.f(1)
-    self.assertEqual(v_mixin, "hello")
-    self.assertEqual(v_a, 1)
-
   def test_instantiate_interpreter_class(self):
     cls = abstract.InterpreterClass("X", [], {}, None, self._vm)
     # When there is no current frame, create a new instance every time.

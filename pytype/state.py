@@ -4,6 +4,7 @@ import logging
 
 from pytype import abstract
 from pytype import metrics
+from pytype import mixin
 from pytype import utils
 from pytype.typegraph import cfg
 
@@ -392,8 +393,8 @@ def _restrict_condition(node, bindings, logical_value):
 
 def _is_or_is_not_cmp(left, right, is_not=False):
   """Implementation of 'left is right' amd 'left is not right'."""
-  if (isinstance(left, abstract.PythonConstant) and
-      isinstance(right, abstract.PythonConstant)):
+  if (isinstance(left, mixin.PythonConstant) and
+      isinstance(right, mixin.PythonConstant)):
     if left.cls != right.cls:
       return is_not
     return is_not ^ (left.pyval == right.pyval)
@@ -404,7 +405,7 @@ def _is_or_is_not_cmp(left, right, is_not=False):
       # comparing types.
       return is_not
     return None
-  elif isinstance(left, abstract.Class) and isinstance(right, abstract.Class):
+  elif isinstance(left, mixin.Class) and isinstance(right, mixin.Class):
     # types are singletons. We use the name so that, e.g., two different
     # TupleClass instances compare as identical.
     return is_not ^ (left.full_name == right.full_name)

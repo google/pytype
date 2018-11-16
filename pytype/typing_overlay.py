@@ -7,6 +7,7 @@ from pytype import abstract
 from pytype import abstract_utils
 from pytype import collections_overlay
 from pytype import function
+from pytype import mixin
 from pytype import overlay
 from pytype import utils
 from pytype.pytd import pep484
@@ -120,7 +121,7 @@ class TypeVar(abstract.PyTDFunction):
   """Representation of typing.TypeVar, as a function."""
 
   # See b/74212131: we allow Any for bounds and constraints.
-  _CLASS_TYPE = (abstract.Class, abstract.Unsolvable)
+  _CLASS_TYPE = (mixin.Class, abstract.Unsolvable)
 
   def _get_class_or_constant(self, var, name, arg_type, arg_type_desc=None):
     if arg_type is self._CLASS_TYPE:

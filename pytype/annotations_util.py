@@ -5,6 +5,7 @@ import collections
 from pytype import abstract
 from pytype import abstract_utils
 from pytype import function
+from pytype import mixin
 from pytype import typing_overlay
 from pytype import utils
 from pytype.pyc import pyc
@@ -302,7 +303,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         annotation.cls == self.vm.convert.unicode_type
     ):
       # String annotations : Late evaluation
-      if isinstance(annotation, abstract.PythonConstant):
+      if isinstance(annotation, mixin.PythonConstant):
         if f_globals is None:
           raise self.LateAnnotationError()
         else:
@@ -339,7 +340,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         options.append(processed)
       annotation.options = tuple(options)
       return annotation
-    elif isinstance(annotation, (abstract.Class,
+    elif isinstance(annotation, (mixin.Class,
                                  abstract.AMBIGUOUS_OR_EMPTY,
                                  abstract.TypeParameter,
                                  typing_overlay.NoReturn)):
@@ -395,7 +396,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     result = abstract_utils.get_atomic_value(
         self._eval_expr(node, f_globals, f_locals, expr))
     # If the result is a tuple, expand it.
-    if (isinstance(result, abstract.PythonConstant) and
+    if (isinstance(result, mixin.PythonConstant) and
         isinstance(result.pyval, tuple)):
       return tuple(abstract_utils.get_atomic_value(x) for x in result.pyval)
     else:

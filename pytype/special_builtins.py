@@ -3,6 +3,7 @@
 from pytype import abstract
 from pytype import abstract_utils
 from pytype import function
+from pytype import mixin
 
 
 class TypeNew(abstract.PyTDFunction):
@@ -217,7 +218,7 @@ class HasAttr(BinaryPredicate):
     if isinstance(obj, abstract.AMBIGUOUS_OR_EMPTY):
       return node, None
     # If attr is not a literal constant, don't try to resolve it.
-    if (not isinstance(attr, abstract.PythonConstant) or
+    if (not isinstance(attr, mixin.PythonConstant) or
         not isinstance(attr.pyval, str)):
       return node, None
     node, ret = self.vm.attribute_handler.get_attribute(node, obj, attr.pyval)
@@ -241,7 +242,7 @@ def _flatten(value, classes):
     True iff a value was ignored during flattening.
   """
   # Used by IsInstance and IsSubclass
-  if isinstance(value, abstract.Class):
+  if isinstance(value, mixin.Class):
     # A single class, no ambiguity.
     classes.append(value)
     return False
@@ -364,7 +365,7 @@ class IsCallable(UnaryPredicate):
     if isinstance(val, abstract.AMBIGUOUS_OR_EMPTY):
       return node, None
     # Classes are always callable.
-    if isinstance(val, abstract.Class):
+    if isinstance(val, mixin.Class):
       return node, True
     # Otherwise, see if the object has a __call__ method.
     node, ret = self.vm.attribute_handler.get_attribute(
@@ -474,8 +475,7 @@ class Super(BuiltinClass):
     else:
       raise function.WrongArgCount(self._SIGNATURE, args, self.vm)
     for cls in cls_var.bindings:
-      if not isinstance(cls.data, (abstract.Class,
-                                   abstract.AMBIGUOUS_OR_EMPTY)):
+      if not isinstance(cls.data, (mixin.Class, abstract.AMBIGUOUS_OR_EMPTY)):
         bad = function.BadParam(
             name="cls", expected=self.vm.convert.type_type)
         raise function.WrongArgTypes(
@@ -516,7 +516,7 @@ class Object(BuiltinClass):
 
     Args:
       node: The current node.
-      cls: An abstract.Class.
+      cls: A mixin.Class.
       method: The method name. So that we don't have to handle the cases when
         the method doesn't exist, we only support "__new__" and "__init__".
 
@@ -525,7 +525,7 @@ class Object(BuiltinClass):
       definition in __builtin__.object, False otherwise.
     """
     assert method in ("__new__", "__init__")
-    if not isinstance(cls, abstract.Class):
+    if not isinstance(cls, mixin.Class):
       return False
     self.load_lazy_attribute(method)
     obj_method = self.members[method]
@@ -585,14 +585,14 @@ class PropertyTemplate(BuiltinClass):
     raise NotImplementedError()
 
 
-class PropertyInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
+class PropertyInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
   """Property instance (constructed by Property.call())."""
 
   CAN_BE_ABSTRACT = True
 
   def __init__(self, vm, name, cls, fget=None, fset=None, fdel=None, doc=None):
     super(PropertyInstance, self).__init__("property", vm)
-    abstract.HasSlots.init_mixin(self)
+    mixin.HasSlots.init_mixin(self)
     self.name = name  # Reports the correct decorator in error messages.
     self.fget = fget
     self.fset = fset
@@ -657,12 +657,12 @@ class Property(PropertyTemplate):
         self.vm, "property", self, **property_args).to_variable(node)
 
 
-class StaticMethodInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
+class StaticMethodInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
   """StaticMethod instance (constructed by StaticMethod.call())."""
 
   def __init__(self, vm, cls, func):
     super(StaticMethodInstance, self).__init__("staticmethod", vm)
-    abstract.HasSlots.init_mixin(self)
+    mixin.HasSlots.init_mixin(self)
     self.func = func
     self.cls = cls
     self.set_slot("__get__", self.func_slot)
@@ -695,12 +695,12 @@ class ClassMethodCallable(abstract.BoundFunction):
   pass
 
 
-class ClassMethodInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
+class ClassMethodInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
   """ClassMethod instance (constructed by ClassMethod.call())."""
 
   def __init__(self, vm, cls, func):
     super(ClassMethodInstance, self).__init__("classmethod", vm)
-    abstract.HasSlots.init_mixin(self)
+    mixin.HasSlots.init_mixin(self)
     self.cls = cls
     self.func = func
     self.set_slot("__get__", self.func_slot)
