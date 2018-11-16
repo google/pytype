@@ -95,6 +95,9 @@ def main(argv=None):
     if src_changed:
       with open(args.py.name, 'w') as f:
         f.write(annotated_src)
+      print('Merged types to %s from %s' % (args.py.name, args.pyi.name))
+    else:
+      print('No new types for %s in %s' % (args.py.name, args.pyi.name))
   else:
     sys.stdout.write(annotated_src)
 

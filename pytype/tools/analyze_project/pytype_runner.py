@@ -321,6 +321,9 @@ class PytypeRunner(object):
     logging.info('------------- Starting pytype run. -------------')
     files_to_analyze = self.setup_build()
     num_sources = len(self.filenames & files_to_analyze)
-    print('Analyzing %d sources with %d dependencies' %
+    print('Analyzing %d sources with %d local dependencies' %
           (num_sources, len(files_to_analyze) - num_sources))
-    return self.build()
+    ret = self.build()
+    if not ret:
+      print('Success: no errors found')
+    return ret
