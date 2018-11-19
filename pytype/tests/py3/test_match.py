@@ -191,7 +191,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
         from typing import Generator, Optional
         import foo
         @foo.decorate
-        def f() -> Generator[Optional[str]]:
+        def f() -> Generator[Optional[str], None, None]:
           yield "hello world"
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """

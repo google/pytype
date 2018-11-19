@@ -102,7 +102,6 @@ py_library(
     convert_structural.py
     directors.py
     errors.py
-    function.py
     imports_map_loader.py
     io.py
     matcher.py
@@ -117,10 +116,47 @@ py_library(
     typing_overlay.py
     vm.py
   DEPS
+    .abstract_utils
     .debug
+    .function
     .metrics
+    .mixin
     .pyc
     .pytd
+    .utils
+)
+
+py_library(
+  NAME
+    abstract_utils
+  SRCS
+    abstract_utils.py
+  DEPS
+    .cfg_utils
+    .pytd_for_parser
+    .utils
+)
+
+py_library(
+  NAME
+    function
+  SRCS
+    function.py
+  DEPS
+    .abstract_utils
+    .pytd_for_parser
+    .utils
+)
+
+py_library(
+  NAME
+    mixin
+  SRCS
+    mixin.py
+  DEPS
+    .abstract_utils
+    .function
+    .pytd_for_parser
     .utils
 )
 
@@ -183,6 +219,16 @@ py_library(
 
 py_library(
   NAME
+    pytd_defs
+  SRCS
+    pytd/pytd.py
+  DEPS
+    .node
+    .preconditions
+)
+
+py_library(
+  NAME
     pytd_for_parser
   SRCS
     pytd/abc_hierarchy.py
@@ -191,7 +237,6 @@ py_library(
     pytd/optimize.py
     pytd/parse/parser_constants.py
     pytd/pep484.py
-    pytd/pytd.py
     pytd/pytd_utils.py
     pytd/slots.py
     pytd/transforms.py
@@ -203,6 +248,7 @@ py_library(
     .debug
     .metrics
     .node
+    .pytd_defs
     .utils
     pytype.typegraph.cfg
 )
@@ -328,6 +374,25 @@ py_test(
     abstract_test.py
   DEPS
     .libvm
+)
+
+py_test(
+  NAME
+    abstract_utils_test
+  SRCS
+    abstract_utils_test.py
+  DEPS
+    .abstract_utils
+    .libvm
+)
+
+py_test(
+  NAME
+    mixin_test
+  SRCS
+    mixin_test.py
+  DEPS
+    .mixin
 )
 
 py_test(

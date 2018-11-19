@@ -5,6 +5,8 @@ import contextlib
 import logging
 
 from pytype import abstract
+from pytype import abstract_utils
+from pytype import mixin
 from pytype import special_builtins
 from pytype import typing_overlay
 from pytype import utils
@@ -73,7 +75,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
   def _value_to_parameter_types(self, node, v, instance, template, seen, view):
     """Get PyTD types for the parameters of an instance of an abstract value."""
     if isinstance(v, abstract.Callable):
-      assert template == (abstract.ARGS, abstract.RET), template
+      assert template == (abstract_utils.ARGS, abstract_utils.RET), template
       template = list(moves.range(v.num_args)) + [template[1]]
     if self._is_tuple(v, instance):
       if isinstance(v, abstract.TupleClass):
@@ -81,7 +83,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       else:
         new_template = range(instance.tuple_length)
       if template:
-        assert len(template) == 1 and template[0] == abstract.T, template
+        assert len(template) == 1 and template[0] == abstract_utils.T, template
       else:
         # We have a recursive type. By erasing the instance and value
         # information, we'll return Any for all of the tuple elements.
@@ -141,7 +143,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     elif isinstance(v, abstract.AnnotationContainer):
       return self.value_instance_to_pytd_type(
           node, v.base_cls, instance, seen, view)
-    elif isinstance(v, abstract.Class):
+    elif isinstance(v, mixin.Class):
       if not self._detailed and v.official_name is None:
         return pytd.AnythingType()
       if seen is None:
@@ -215,11 +217,11 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return pytd.NamedType("__builtin__.type")
     elif isinstance(v, (abstract.InterpreterFunction,
                         abstract.BoundInterpreterFunction)):
-      sig, = abstract.get_signatures(v)
+      sig, = abstract_utils.get_signatures(v)
       return self.value_instance_to_pytd_type(
           node, self.signature_to_callable(sig, self.vm), None, seen, view)
     elif isinstance(v, (abstract.PyTDFunction, abstract.BoundPyTDFunction)):
-      signatures = abstract.get_signatures(v)
+      signatures = abstract_utils.get_signatures(v)
       if len(signatures) == 1:
         val = self.signature_to_callable(signatures[0], self.vm)
         if not self.vm.annotations_util.get_type_parameters(val):
@@ -232,7 +234,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     elif isinstance(v, (special_builtins.IsInstance,
                         special_builtins.ClassMethodCallable)):
       return pytd.NamedType("typing.Callable")
-    elif isinstance(v, abstract.Class):
+    elif isinstance(v, mixin.Class):
       param = self.value_instance_to_pytd_type(node, v, None, seen, view)
       return pytd.GenericType(base_type=pytd.NamedType("__builtin__.type"),
                               parameters=(param,))
@@ -287,14 +289,15 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       # generation but undesirable for, say, error message printing.
       args = [sig.annotations.get(name, vm.convert.unsolvable)
               for name in sig.param_names]
-      params = {abstract.ARGS: abstract.merge_values(args, vm),
-                abstract.RET: ret}
+      params = {abstract_utils.ARGS: vm.merge_values(args),
+                abstract_utils.RET: ret}
       params.update(enumerate(args))
       return abstract.Callable(base_cls, params, vm)
     else:
       # The only way to indicate a variable number of arguments in a Callable
       # is to not specify argument types at all.
-      params = {abstract.ARGS: vm.convert.unsolvable, abstract.RET: ret}
+      params = {abstract_utils.ARGS: vm.convert.unsolvable,
+                abstract_utils.RET: ret}
       return abstract.ParameterizedClass(base_cls, params, vm)
 
   def value_to_pytd_def(self, node, v, name):
@@ -478,14 +481,14 @@ class Converter(utils.VirtualMachineWeakrefMixin):
 
   def _class_method_to_def(self, node, v, name, kind):
     """Convert a classmethod to a PyTD definition."""
-    # This line may raise abstract.ConversionError
-    func = abstract.get_atomic_value(v.func, abstract.Function)
+    # This line may raise abstract_utils.ConversionError
+    func = abstract_utils.get_atomic_value(v.func, abstract.Function)
     return self.value_to_pytd_def(node, func, name).Replace(kind=kind)
 
   def _static_method_to_def(self, node, v, name, kind):
     """Convert a staticmethod to a PyTD definition."""
-    # This line may raise abstract.ConversionError
-    func = abstract.get_atomic_value(v.func, abstract.Function)
+    # This line may raise abstract_utils.ConversionError
+    func = abstract_utils.get_atomic_value(v.func, abstract.Function)
     return self.value_to_pytd_def(node, func, name).Replace(kind=kind)
 
   def _is_instance(self, value, cls_name):
@@ -514,13 +517,13 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           try:
             methods[name] = self._static_method_to_def(
                 node, value, name, pytd.STATICMETHOD)
-          except abstract.ConversionError:
+          except abstract_utils.ConversionError:
             constants[name].add_type(pytd.AnythingType())
         elif isinstance(value, special_builtins.ClassMethodInstance):
           try:
             methods[name] = self._class_method_to_def(
                 node, value, name, pytd.CLASSMETHOD)
-          except abstract.ConversionError:
+          except abstract_utils.ConversionError:
             constants[name].add_type(pytd.AnythingType())
         elif isinstance(value, abstract.Function):
           # TODO(rechen): Removing mutations altogether won't work for generic

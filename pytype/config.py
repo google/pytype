@@ -8,6 +8,7 @@ import argparse
 import logging
 import os
 
+from pytype import errors
 from pytype import imports_map_loader
 from pytype import load_pytd
 from pytype import utils
@@ -206,6 +207,10 @@ def add_infrastructure_options(o):
       "--touch", type=str, action="store",
       dest="touch", default=None,
       help="Output file to touch when exit status is ok.")
+  o.add_argument(
+      "-e", "--enable-only", action="store",
+      dest="enable_only", default=None,
+      help="Comma separated list of error names to enable checking for.")
   # TODO(rechen): --analyze-annotated and --quick would make more sense as
   # basic options but are currently used by pytype-all in a way that isn't
   # easily configurable.
@@ -447,6 +452,19 @@ class Postprocessor(object):
       self.output_options.disable = disable.split(",")
     else:
       self.output_options.disable = []
+
+  @uses(["disable"])
+  def _store_enable_only(self, enable_only):
+    """Process the 'enable-only' option."""
+    if enable_only:
+      if self.output_options.disable:
+        self.error("Only one of 'disable' or 'enable-only' can be specified.")
+      self.output_options.disable = list(
+          errors.get_error_names_set() - set(enable_only.split(",")))
+    else:
+      # We set the field to an empty list as clients using this postprocessor
+      # expect a list.
+      self.output_options.enable_only = []
 
   @uses(["python_version"])
   def _store_python_exe(self, python_exe):

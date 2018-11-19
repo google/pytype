@@ -140,7 +140,7 @@ setup(
     },
     package_data={'pytype': get_builtin_files()},
     install_requires=[
-        'importlab',
+        'importlab (>=0.4)',
         'ninja',
         'pyyaml (>=3.11)',
         'six'

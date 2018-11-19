@@ -1,3 +1,7 @@
+Version (upcoming)
+* Flag annotations with the wrong parameter count and invalid uses of NoReturn.
+* Improve pytype and merge-pyi status messages.
+
 Version 2018.11.06
 * Use --imports_info to allow preserving generated type stubs between runs.
 * Handle TypeParameter inheritance more robustly with a union-find approach.

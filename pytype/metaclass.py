@@ -7,6 +7,7 @@
 import logging
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import function
 
 log = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ class AddMetaclassInstance(abstract.AtomicAbstractValue):
     if len(args.posargs) != 1:
       sig = function.Signature.from_param_names(
           "%s.add_metaclass" % self.module_name, ("cls",))
-      raise abstract.WrongArgCount(sig, args, self.vm)
+      raise function.WrongArgCount(sig, args, self.vm)
     cls_var = args.posargs[0]
     for b in cls_var.bindings:
       cls = b.data
@@ -36,15 +37,16 @@ class AddMetaclassInstance(abstract.AtomicAbstractValue):
 class AddMetaclass(abstract.PyTDFunction):
   """Implements the add_metaclass decorator."""
 
-  def __init__(self, name, vm, module_name):
+  @classmethod
+  def make(cls, name, vm, module_name):
+    self = super(AddMetaclass, cls).make(name, vm, module_name)
     self.module_name = module_name
-    super(AddMetaclass, self).__init__(
-        *abstract.PyTDFunction.get_constructor_args(name, vm, module_name))
+    return self
 
   def call(self, node, unused_func, args):
     """Adds a metaclass."""
     self.match_args(node, args)
-    meta = abstract.get_atomic_value(
+    meta = abstract_utils.get_atomic_value(
         args.posargs[0], default=self.vm.convert.unsolvable)
     return node, AddMetaclassInstance(
         meta, self.vm, self.module_name).to_variable(node)
@@ -65,14 +67,10 @@ class WithMetaclassInstance(abstract.AtomicAbstractValue):
 class WithMetaclass(abstract.PyTDFunction):
   """Implements with_metaclass."""
 
-  def __init__(self, name, vm, module_name):
-    super(WithMetaclass, self).__init__(
-        *abstract.PyTDFunction.get_constructor_args(name, vm, module_name))
-
   def call(self, node, unused_func, args):
     """Creates an anonymous class to act as a metaclass."""
     self.match_args(node, args)
-    meta = abstract.get_atomic_value(
+    meta = abstract_utils.get_atomic_value(
         args.posargs[0], default=self.vm.convert.unsolvable)
     bases = args.posargs[1:]
     result = WithMetaclassInstance(self.vm, meta, bases).to_variable(node)

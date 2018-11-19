@@ -32,7 +32,7 @@ class GeneratorBasicTest(test_base.TargetPython3BasicTest):
   def testNoReturn(self):
     _, errors = self.InferWithErrors("""\
       from typing import Generator
-      def f() -> Generator[str]:
+      def f() -> Generator[str, None, None]:
         yield 42
     """)
     self.assertErrorLogIs(errors, [(3, "bad-return-type", r"str.*int")])
@@ -73,6 +73,24 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       from typing import Any, Generator
       def f() -> Generator[str, int, Any]
     """)
+
+  def testParameterCount(self):
+    _, errors = self.InferWithErrors("""\
+      from typing import Generator
+
+      def func1() -> Generator[int, int, int]:
+        x = yield 5
+        return x
+
+      def func2() -> Generator[int, int]:
+        x = yield 5
+
+      def func3() -> Generator[int]:
+        yield 5
+    """)
+    self.assertErrorLogIs(errors, [
+        (7, "invalid-annotation", r"Expected 3.*2"),
+        (10, "invalid-annotation", r"Expected 3.*1")])
 
 
 test_base.main(globals(), __name__ == "__main__")

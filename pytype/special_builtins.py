@@ -1,7 +1,9 @@
 """Custom implementations of builtin types."""
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import function
+from pytype import mixin
 
 
 class TypeNew(abstract.PyTDFunction):
@@ -12,13 +14,13 @@ class TypeNew(abstract.PyTDFunction):
       self.match_args(node, args)  # May raise FailedFunctionCall.
       cls, name_var, bases_var, class_dict_var = args.posargs
       try:
-        bases = list(abstract.get_atomic_python_constant(bases_var))
+        bases = list(abstract_utils.get_atomic_python_constant(bases_var))
         if not bases:
           bases = [
               self.vm.convert.object_type.to_variable(self.vm.root_cfg_node)]
         variable = self.vm.make_class(
             node, name_var, bases, class_dict_var, cls)
-      except abstract.ConversionError:
+      except abstract_utils.ConversionError:
         pass
       else:
         return node, variable
@@ -39,39 +41,15 @@ class TypeNew(abstract.PyTDFunction):
     return super(TypeNew, self).call(node, func, args)
 
 
-class Open(abstract.PyTDFunction):
-  """Implementation of open(...)."""
-
-  def __init__(self, vm):
-    super(Open, self).__init__(
-        *abstract.PyTDFunction.get_constructor_args("open", vm, "__builtin__"))
-
-  def call(self, node, func, args):
-    if self.vm.PY3:
-      # In Python 3, the type of IO object returned depends on the mode.
-      self.match_args(node, args)  # May raise FailedFunctionCall.
-      sig, = self.signatures
-      callargs = {name: var for name, var, _ in sig.signature.iter_args(args)}
-      try:
-        if "mode" not in callargs:
-          io_type = "Text"  # The default mode is 'r'.
-        else:
-          mode = abstract.get_atomic_python_constant(callargs["mode"])
-          io_type = "Binary" if "b" in mode else "Text"
-      except abstract.ConversionError:
-        pass
-      else:
-        return node, self.vm.convert.constant_to_var(abstract.AsInstance(
-            self.vm.lookup_builtin("typing.%sIO" % io_type)), {}, node)
-    return super(Open, self).call(node, func, args)
-
-
 class BuiltinFunction(abstract.PyTDFunction):
   """Implementation of functions in __builtin__.pytd."""
 
-  def __init__(self, name, vm):
-    super(BuiltinFunction, self).__init__(
-        *abstract.PyTDFunction.get_constructor_args(name, vm, "__builtin__"))
+  name = None
+
+  @classmethod
+  def make(cls, vm):
+    assert cls.name
+    return super(BuiltinFunction, cls).make(cls.name, vm, "__builtin__")
 
   def get_underlying_method(self, node, receiver, method_name):
     """Get the bound method that a built-in function delegates to."""
@@ -87,18 +65,42 @@ class BuiltinFunction(abstract.PyTDFunction):
       return node, None
 
 
+class Open(BuiltinFunction):
+  """Implementation of open(...)."""
+
+  name = "open"
+
+  def call(self, node, func, args):
+    if self.vm.PY3:
+      # In Python 3, the type of IO object returned depends on the mode.
+      self.match_args(node, args)  # May raise FailedFunctionCall.
+      sig, = self.signatures
+      callargs = {name: var for name, var, _ in sig.signature.iter_args(args)}
+      try:
+        if "mode" not in callargs:
+          io_type = "Text"  # The default mode is 'r'.
+        else:
+          mode = abstract_utils.get_atomic_python_constant(callargs["mode"])
+          io_type = "Binary" if "b" in mode else "Text"
+      except abstract_utils.ConversionError:
+        pass
+      else:
+        return node, self.vm.convert.constant_to_var(abstract_utils.AsInstance(
+            self.vm.lookup_builtin("typing.%sIO" % io_type)), {}, node)
+    return super(Open, self).call(node, func, args)
+
+
 class Abs(BuiltinFunction):
   """Implements abs."""
 
-  def __init__(self, vm):
-    super(Abs, self).__init__("abs", vm)
+  name = "abs"
 
   def call(self, node, _, args):
     self.match_args(node, args)
     arg = args.posargs[0]
     node, fn = self.get_underlying_method(node, arg, "__abs__")
     if fn is not None:
-      return self.vm.call_function(node, fn, abstract.FunctionArgs(()))
+      return self.vm.call_function(node, fn, function.Args(()))
     else:
       return node, self.vm.convert.create_new_unsolvable(node)
 
@@ -106,8 +108,7 @@ class Abs(BuiltinFunction):
 class Next(BuiltinFunction):
   """Implements next."""
 
-  def __init__(self, vm):
-    super(Next, self).__init__("next", vm)
+  name = "next"
 
   def _get_args(self, args):
     arg = args.posargs[0]
@@ -124,7 +125,7 @@ class Next(BuiltinFunction):
     arg, default = self._get_args(args)
     node, fn = self.get_underlying_method(node, arg, self.vm.convert.next_attr)
     if fn is not None:
-      node, ret = self.vm.call_function(node, fn, abstract.FunctionArgs(()))
+      node, ret = self.vm.call_function(node, fn, function.Args(()))
       ret.PasteVariable(default)
       return node, ret
     else:
@@ -139,8 +140,8 @@ class ObjectPredicate(BuiltinFunction):
   (See UnaryPredicate and BinaryPredicate for examples.)
   """
 
-  def __init__(self, name, vm):
-    super(ObjectPredicate, self).__init__(name, vm)
+  def __init__(self, name, signatures, kind, vm):
+    super(ObjectPredicate, self).__init__(name, signatures, kind, vm)
     # Map of True/False/None (where None signals an ambiguous bool) to
     # vm values.
     self._vm_values = {
@@ -155,7 +156,7 @@ class ObjectPredicate(BuiltinFunction):
       node = node.ConnectNew(self.name)
       result = self.vm.program.NewVariable()
       self.run(node, args, result)
-    except abstract.InvalidParameters as ex:
+    except function.InvalidParameters as ex:
       self.vm.errorlog.invalid_function_call(self.vm.frames, ex)
       result = self.vm.convert.create_new_unsolvable(node)
     return node, result
@@ -195,8 +196,7 @@ class BinaryPredicate(ObjectPredicate):
 class HasAttr(BinaryPredicate):
   """The hasattr() function."""
 
-  def __init__(self, vm):
-    super(HasAttr, self).__init__("hasattr", vm)
+  name = "hasattr"
 
   def _call_predicate(self, node, left, right):
     return self._has_attr(node, left.data, right.data)
@@ -218,7 +218,7 @@ class HasAttr(BinaryPredicate):
     if isinstance(obj, abstract.AMBIGUOUS_OR_EMPTY):
       return node, None
     # If attr is not a literal constant, don't try to resolve it.
-    if (not isinstance(attr, abstract.PythonConstant) or
+    if (not isinstance(attr, mixin.PythonConstant) or
         not isinstance(attr.pyval, str)):
       return node, None
     node, ret = self.vm.attribute_handler.get_attribute(node, obj, attr.pyval)
@@ -242,7 +242,7 @@ def _flatten(value, classes):
     True iff a value was ignored during flattening.
   """
   # Used by IsInstance and IsSubclass
-  if isinstance(value, abstract.Class):
+  if isinstance(value, mixin.Class):
     # A single class, no ambiguity.
     classes.append(value)
     return False
@@ -288,8 +288,7 @@ def _check_against_mro(vm, target, class_spec):
 class IsInstance(BinaryPredicate):
   """The isinstance() function."""
 
-  def __init__(self, vm):
-    super(IsInstance, self).__init__("isinstance", vm)
+  name = "isinstance"
 
   def _call_predicate(self, node, left, right):
     return node, self._is_instance(left.data, right.data)
@@ -317,8 +316,7 @@ class IsInstance(BinaryPredicate):
 class IsSubclass(BinaryPredicate):
   """The issubclass() function."""
 
-  def __init__(self, vm):
-    super(IsSubclass, self).__init__("issubclass", vm)
+  name = "issubclass"
 
   def _call_predicate(self, node, left, right):
     return node, self._is_subclass(left.data, right.data)
@@ -344,8 +342,7 @@ class IsSubclass(BinaryPredicate):
 class IsCallable(UnaryPredicate):
   """The callable() function."""
 
-  def __init__(self, vm):
-    super(IsCallable, self).__init__("callable", vm)
+  name = "callable"
 
   def _call_predicate(self, node, obj):
     return self._is_callable(node, obj)
@@ -368,7 +365,7 @@ class IsCallable(UnaryPredicate):
     if isinstance(val, abstract.AMBIGUOUS_OR_EMPTY):
       return node, None
     # Classes are always callable.
-    if isinstance(val, abstract.Class):
+    if isinstance(val, mixin.Class):
       return node, True
     # Otherwise, see if the object has a __call__ method.
     node, ret = self.vm.attribute_handler.get_attribute(
@@ -476,13 +473,12 @@ class Super(BuiltinClass):
       cls_var = args.posargs[0]
       super_objects = args.posargs[1].bindings if num_args == 2 else [None]
     else:
-      raise abstract.WrongArgCount(self._SIGNATURE, args, self.vm)
+      raise function.WrongArgCount(self._SIGNATURE, args, self.vm)
     for cls in cls_var.bindings:
-      if not isinstance(cls.data, (abstract.Class,
-                                   abstract.AMBIGUOUS_OR_EMPTY)):
-        bad = abstract.BadParam(
+      if not isinstance(cls.data, (mixin.Class, abstract.AMBIGUOUS_OR_EMPTY)):
+        bad = function.BadParam(
             name="cls", expected=self.vm.convert.type_type)
-        raise abstract.WrongArgTypes(
+        raise function.WrongArgTypes(
             self._SIGNATURE, args, self.vm, bad_param=bad)
       for obj in super_objects:
         if obj:
@@ -520,7 +516,7 @@ class Object(BuiltinClass):
 
     Args:
       node: The current node.
-      cls: An abstract.Class.
+      cls: A mixin.Class.
       method: The method name. So that we don't have to handle the cases when
         the method doesn't exist, we only support "__new__" and "__init__".
 
@@ -529,7 +525,7 @@ class Object(BuiltinClass):
       definition in __builtin__.object, False otherwise.
     """
     assert method in ("__new__", "__init__")
-    if not isinstance(cls, abstract.Class):
+    if not isinstance(cls, mixin.Class):
       return False
     self.load_lazy_attribute(method)
     obj_method = self.members[method]
@@ -541,7 +537,7 @@ class Object(BuiltinClass):
     # cpython/Objects/typeobject.c (https://goo.gl/bTEBRt). It is legal to pass
     # extra arguments to object.__new__ if the calling class overrides
     # object.__init__, and vice versa.
-    if valself and not abstract.equivalent_to(valself, self):
+    if valself and not abstract_utils.equivalent_to(valself, self):
       val = valself.data
       if name == "__new__" and self._has_own(node, val, "__init__"):
         self.load_lazy_attribute("__new__extra_args")
@@ -581,7 +577,7 @@ class PropertyTemplate(BuiltinClass):
     ret = dict(zip(self._KEYS, args.posargs))
     for k, v in args.namedargs.iteritems():
       if k not in self._KEYS:
-        raise abstract.WrongKeywordArgs(self.signature(), args, self.vm, [k])
+        raise function.WrongKeywordArgs(self.signature(), args, self.vm, [k])
       ret[k] = v
     return ret
 
@@ -589,14 +585,14 @@ class PropertyTemplate(BuiltinClass):
     raise NotImplementedError()
 
 
-class PropertyInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
+class PropertyInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
   """Property instance (constructed by Property.call())."""
 
   CAN_BE_ABSTRACT = True
 
   def __init__(self, vm, name, cls, fget=None, fset=None, fdel=None, doc=None):
     super(PropertyInstance, self).__init__("property", vm)
-    abstract.HasSlots.init_mixin(self)
+    mixin.HasSlots.init_mixin(self)
     self.name = name  # Reports the correct decorator in error messages.
     self.fget = fget
     self.fset = fset
@@ -620,15 +616,15 @@ class PropertyInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
     return self.cls
 
   def fget_slot(self, node, obj, objtype):
-    return self.vm.call_function(node, self.fget, abstract.FunctionArgs((obj,)))
+    return self.vm.call_function(node, self.fget, function.Args((obj,)))
 
   def fset_slot(self, node, obj, value):
     return self.vm.call_function(
-        node, self.fset, abstract.FunctionArgs((obj, value)))
+        node, self.fset, function.Args((obj, value)))
 
   def fdelete_slot(self, node, obj):
     return self.vm.call_function(
-        node, self.fdel, abstract.FunctionArgs((obj,)))
+        node, self.fdel, function.Args((obj,)))
 
   def getter_slot(self, node, fget):
     prop = PropertyInstance(
@@ -661,12 +657,12 @@ class Property(PropertyTemplate):
         self.vm, "property", self, **property_args).to_variable(node)
 
 
-class StaticMethodInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
+class StaticMethodInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
   """StaticMethod instance (constructed by StaticMethod.call())."""
 
   def __init__(self, vm, cls, func):
     super(StaticMethodInstance, self).__init__("staticmethod", vm)
-    abstract.HasSlots.init_mixin(self)
+    mixin.HasSlots.init_mixin(self)
     self.func = func
     self.cls = cls
     self.set_slot("__get__", self.func_slot)
@@ -689,7 +685,7 @@ class StaticMethod(BuiltinClass):
 
   def call(self, node, funcv, args):
     if len(args.posargs) != 1:
-      raise abstract.WrongArgCount(self._SIGNATURE, args, self.vm)
+      raise function.WrongArgCount(self._SIGNATURE, args, self.vm)
     arg = args.posargs[0]
     return node, StaticMethodInstance(self.vm, self, arg).to_variable(node)
 
@@ -699,12 +695,12 @@ class ClassMethodCallable(abstract.BoundFunction):
   pass
 
 
-class ClassMethodInstance(abstract.SimpleAbstractValue, abstract.HasSlots):
+class ClassMethodInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
   """ClassMethod instance (constructed by ClassMethod.call())."""
 
   def __init__(self, vm, cls, func):
     super(ClassMethodInstance, self).__init__("classmethod", vm)
-    abstract.HasSlots.init_mixin(self)
+    mixin.HasSlots.init_mixin(self)
     self.cls = cls
     self.func = func
     self.set_slot("__get__", self.func_slot)
@@ -727,6 +723,6 @@ class ClassMethod(BuiltinClass):
 
   def call(self, node, funcv, args):
     if len(args.posargs) != 1:
-      raise abstract.WrongArgCount(self._SIGNATURE, args, self.vm)
+      raise function.WrongArgCount(self._SIGNATURE, args, self.vm)
     arg = args.posargs[0]
     return node, ClassMethodInstance(self.vm, self, arg).to_variable(node)

@@ -10,6 +10,8 @@ import sys
 
 from pytype import abstract
 from pytype import debug
+from pytype import function
+from pytype import mixin
 from pytype import utils
 from pytype.pytd import optimize
 from pytype.pytd import pytd
@@ -443,11 +445,11 @@ class ErrorLog(ErrorLogBase):
 
   def _print_as_expected_type(self, t, instance=None):
     """Print abstract value t as a pytd type."""
-    if isinstance(t, (abstract.Unknown, abstract.Unsolvable, abstract.Class,
+    if isinstance(t, (abstract.Unknown, abstract.Unsolvable, mixin.Class,
                       abstract.Union)):
       with t.vm.convert.pytd_convert.produce_detailed_output():
         return self._pytd_print(t.get_instance_type(instance=instance))
-    elif (isinstance(t, abstract.PythonConstant) and
+    elif (isinstance(t, mixin.PythonConstant) and
           not getattr(t, "could_contain_anything", False)):
       return re.sub(r"(\\n|\s)+", " ",
                     t.str_of_constant(self._print_as_expected_type))
@@ -564,7 +566,7 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("not-writable")
   def not_writable(self, stack, obj, attr_name):
-    obj_values = abstract.merge_values([obj], obj.vm)
+    obj_values = obj.vm.merge_values([obj])
     obj_repr = self._print_as_actual_type(obj_values)
     self.error(stack, "Can't assign attribute %r on %s" % (attr_name, obj_repr),
                keyword=attr_name)
@@ -667,10 +669,10 @@ class ErrorLog(ErrorLogBase):
     self._invalid_parameters(stack, message, bad_call)
 
   @_error_name("not-callable")
-  def not_callable(self, stack, function):
+  def not_callable(self, stack, func):
     """Calling an object that isn't callable."""
-    message = "%r object is not callable" % (function.name)
-    self.error(stack, message, keyword=function.name)
+    message = "%r object is not callable" % (func.name)
+    self.error(stack, message, keyword=func.name)
 
   @_error_name("not-indexable")
   def not_indexable(self, stack, name, generic_warning=False):
@@ -706,19 +708,19 @@ class ErrorLog(ErrorLogBase):
 
   def invalid_function_call(self, stack, error):
     """Log an invalid function call."""
-    if isinstance(error, abstract.WrongArgCount):
+    if isinstance(error, function.WrongArgCount):
       self.wrong_arg_count(stack, error.name, error.bad_call)
-    elif isinstance(error, abstract.WrongArgTypes):
+    elif isinstance(error, function.WrongArgTypes):
       self.wrong_arg_types(stack, error.name, error.bad_call)
-    elif isinstance(error, abstract.WrongKeywordArgs):
+    elif isinstance(error, function.WrongKeywordArgs):
       self.wrong_keyword_args(
           stack, error.name, error.bad_call, error.extra_keywords)
-    elif isinstance(error, abstract.MissingParameter):
+    elif isinstance(error, function.MissingParameter):
       self.missing_parameter(
           stack, error.name, error.bad_call, error.missing_parameter)
-    elif isinstance(error, abstract.NotCallable):
+    elif isinstance(error, function.NotCallable):
       self.not_callable(stack, error.obj)
-    elif isinstance(error, abstract.DuplicateKeyword):
+    elif isinstance(error, function.DuplicateKeyword):
       self.duplicate_keyword(
           stack, error.name, error.bad_call, error.duplicate)
     else:
@@ -882,3 +884,7 @@ class ErrorLog(ErrorLogBase):
              for b in var.bindings
              if node.HasCombination([b])]
     self.error(stack, self._join_printed_types(types))
+
+
+def get_error_names_set():
+  return _ERROR_NAMES

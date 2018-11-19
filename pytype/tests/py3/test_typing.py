@@ -37,7 +37,7 @@ class TypingTest(test_base.TargetPython3BasicTest):
   def test_generator(self):
     self.Check("""\
       from typing import Generator
-      def f() -> Generator[int]:
+      def f() -> Generator[int, None, None]:
         for i in range(3):
           yield i
     """)
@@ -139,6 +139,7 @@ class TypingTest(test_base.TargetPython3BasicTest):
       def g5(x: Callable[lst, bool]): ...  # bad: _ARGS not a constant
       def g6(x: Callable[[42], bool]): ...  # bad: _ARGS[0] not a type
       def g7(x: Callable[[], bool, int]): ...  # bad: Too many params
+      def g8(x: Callable[Any, bool]): ...  # bad: Any is not allowed
     """)
     self.assertTypesMatchPytd(ty, """
        from typing import Any, Callable, List, Type
@@ -155,16 +156,22 @@ class TypingTest(test_base.TargetPython3BasicTest):
        def g5(x: Callable[Any, bool]) -> None: ...
        def g6(x: Callable[[Any], bool]) -> None: ...
        def g7(x: Callable[[], bool]) -> None: ...
+       def g8(x: Callable[Any, bool]) -> None: ...
     """)
     self.assertErrorLogIs(errors, [
-        (8, "invalid-annotation", r"'int'.*must be a list of argument types"),
+        (8, "invalid-annotation",
+         r"'int'.*must be a list of argument types or ellipsis"),
         (10, "invalid-annotation", r"\[int\] or \[str\].*Must be constant"),
+        (10, "invalid-annotation",
+         r"'Any'.*must be a list of argument types or ellipsis"),
         (11, "invalid-annotation", r"bool or str.*Must be constant"),
         (12, "invalid-annotation", r"int or str.*Must be constant"),
         (14, "invalid-annotation",
          r"instance of List\[int\].*Must be constant"),
         (15, "invalid-annotation", r"instance of int"),
-        (16, "invalid-annotation", r"Callable.*Expected 2.*got 3"),])
+        (16, "invalid-annotation", r"Callable.*Expected 2.*got 3"),
+        (17, "invalid-annotation",
+         r"'Any'.*must be a list of argument types or ellipsis"),])
 
   def test_callable_bad_args(self):
     ty, errors = self.InferWithErrors("""\
@@ -225,7 +232,7 @@ class TypingTest(test_base.TargetPython3BasicTest):
         def f(x: typing.Reversible[int]): pass
         def f(x: typing.SupportsAbs[int]): pass
         def f(x: typing.Optional[int]): pass
-        def f(x: typing.Generator[int]): pass
+        def f(x: typing.Generator[int, None, None]): pass
         def f(x: typing.Type[int]): pass
         def f(x: typing.Pattern[str]): pass
         def f(x: typing.Match[str]): pass
@@ -493,7 +500,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorLogIs(
         errors, [(2, "invalid-annotation", r"Ellipsis.*index 0.*Tuple"),
-                 (3, "invalid-annotation", r"Ellipsis.*index 0.*Tuple")])
+                 (3, "invalid-annotation", r"Ellipsis.*index 0.*Tuple"),
+                 (3, "invalid-annotation", r"1.*0")])
 
   def test_bad_callable_ellipsis(self):
     errors = self.CheckWithErrors("""\
@@ -504,8 +512,56 @@ class TypingTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorLogIs(
         errors, [(2, "invalid-annotation", r"Ellipsis.*index 1.*Callable"),
+                 (2, "invalid-annotation", r"2.*1"),
                  (3, "invalid-annotation", r"Ellipsis.*index 1.*Callable"),
                  (4, "invalid-annotation", r"Ellipsis.*index 0.*list")])
+
+  def test_optional_parameters(self):
+    errors = self.CheckWithErrors("""\
+      from typing import Optional
+
+      def func1(x: Optional[int]):
+        pass
+
+      def func2(x: Optional):
+        pass
+
+      def func3(x: Optional[int, float, str]):
+        pass
+    """)
+    self.assertErrorLogIs(
+        errors, [(6, "invalid-annotation", r"Not a type"),
+                 (9, "invalid-annotation",
+                  r"typing.Optional can only contain one type parameter")])
+
+  def test_noreturn_parameters(self):
+    errors = self.CheckWithErrors("""\
+      from typing import NoReturn, List
+
+      def func0() -> NoReturn:
+        raise ValueError()
+
+      def func1() -> List[NoReturn]:
+        raise ValueError()
+
+      def func2(x) -> NoReturn:
+        if x > 1:
+          raise ValueError()
+
+      def func3(x: NoReturn):
+        pass
+
+      def func4(x: List[NoReturn]):
+        pass
+
+      bad2 = None  # type: NoReturn
+    """)
+    self.assertErrorLogIs(
+        errors, [(6, "invalid-annotation", r"NoReturn is not allowed"),
+                 (11, "bad-return-type", r"NoReturn.*None"),
+                 (13, "invalid-annotation", r"NoReturn is not allowed"),
+                 (16, "invalid-annotation", r"NoReturn is not allowed"),
+                 (19, "invalid-annotation", r"NoReturn is not allowed")])
 
 
 class TypingTestPython3Feature(test_base.TargetPython3FeatureTest):

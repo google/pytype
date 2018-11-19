@@ -1719,9 +1719,9 @@ class MergeSignaturesTest(_ParserTestBase):
       def foo(x: int) -> str: ...
       @overload
       def foo(x: str) -> str: ...""")
-    self.assertEqual(1, len(ast.functions))
+    self.assertEqual(len(ast.functions), 1)
     foo = ast.functions[0]
-    self.assertEqual(2, len(foo.signatures))
+    self.assertEqual(len(foo.signatures), 2)
 
   def test_method_and_property_error(self):
     self.check_error("""
@@ -1837,6 +1837,25 @@ class AnyTest(_ParserTestBase):
       Bar = Any
 
       x = ...  # type: Any""")
+
+
+class CanonicalPyiTest(_ParserTestBase):
+
+  def testCanonicalVersion(self):
+    src = textwrap.dedent("""
+        from typing import Any
+        def foo(x: int = 0) -> Any: ...
+        def foo(x: str) -> Any: ...
+    """)
+    expected = textwrap.dedent("""\
+        from typing import Any
+
+        @overload
+        def foo(x: int = ...) -> Any: ...
+        @overload
+        def foo(x: str) -> Any: ...""")
+    self.assertMultiLineEqual(
+        parser.canonical_pyi(src, self.PYTHON_VERSION), expected)
 
 
 if __name__ == "__main__":

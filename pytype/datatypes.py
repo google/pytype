@@ -345,12 +345,17 @@ class HashableDict(AliasingDict):
 class AliasingMonitorDict(AliasingDict, MonitorDict):
   """The dictionary that supports aliasing, lazy dict and monitor."""
 
-  def merge_from(self, lam_dict):
-    """Merge the other `AliasingMonitorDict` into current class."""
+  def merge_from(self, lam_dict, op):
+    """Merge the other `AliasingMonitorDict` into current class.
+
+    Args:
+      lam_dict: The dict to merge from.
+      op: The function used to merge the values.
+    """
     # Merge from dict
     for key, val in lam_dict.items():
-      if key in self and self[key] != val:
-        raise AliasingDictConflictError(key)
+      if key in self:
+        self[key] = op(self[key], val, key)
       else:
         self[key] = val
     # Merge the aliasing info
@@ -359,20 +364,16 @@ class AliasingMonitorDict(AliasingDict, MonitorDict):
       cur_name = lam_dict.uf.id2name[cur_id]
       parent_name = lam_dict.uf.id2name[parent_id]
       if self.uf.find_by_name(cur_name) != self.uf.find_by_name(parent_name):
-        self.add_alias(cur_name, parent_name)
+        self.add_alias(cur_name, parent_name, op)
 
-  def _equal_merge(self, name1, name2):
-    """Merge if the values for name1 and name2 are equal."""
+  def _merge(self, name1, name2, op):
     name1 = self.uf.find_by_name(name1)
     name2 = self.uf.find_by_name(name2)
     assert name1 != name2
-    if self[name1] == self[name2]:
-      dict.__delitem__(self, name2)
-      root = self.uf.merge(name1, name2)
-      self._copy_item(name1, root)
-      return True
-    else:
-      return False
+    self[name1] = op(self[name1], self[name2], name1)
+    dict.__delitem__(self, name2)
+    root = self.uf.merge(name1, name2)
+    self._copy_item(name1, root)
 
   def _copy_item(self, src, tgt):
     """Assign the dict `src` value to `tgt`."""
@@ -381,14 +382,13 @@ class AliasingMonitorDict(AliasingDict, MonitorDict):
     self[tgt] = dict.__getitem__(self, src)
     dict.__delitem__(self, src)
 
-  def add_alias(self, alias, name):
+  def add_alias(self, alias, name, op):
     alias = self.uf.find_by_name(alias)
     name = self.uf.find_by_name(name)
     if alias == name:
       return
     elif alias in self and name in self:
-      if not self._equal_merge(alias, name):
-        raise AliasingDictConflictError(name)
+      self._merge(alias, name, op)
     elif alias not in self and name not in self:
       self.uf.merge(alias, name)
     elif alias in self:

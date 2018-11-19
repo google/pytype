@@ -1,10 +1,11 @@
 """Implementation of types from Python 2's collections library."""
 
 # TODO(tsudol): Python 2 and Python 3 have different keyword lists.
-from keyword import iskeyword
+from keyword import iskeyword  # pylint: disable=g-importing-member
 import textwrap
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import compat
 from pytype import overlay
 from pytype import utils
@@ -104,15 +105,17 @@ class CollectionsOverlay(overlay.Overlay):
 class NamedTupleBuilder(abstract.PyTDFunction):
   """Factory for creating collections.namedtuple typing information."""
 
-  def __init__(self, name, vm, pyval=None):
+  @classmethod
+  def make(cls, name, vm, pyval=None):
     # Loading the ast should be memoized after the import in CollectionsOverlay
-    self.collections_ast = vm.loader.import_name("collections")
+    collections_ast = vm.loader.import_name("collections")
     # Subclasses of NamedTupleBuilder need a different pyval.
     if not pyval:
-      pyval = self.collections_ast.Lookup("collections.namedtuple")
-    super(NamedTupleBuilder, self).__init__(
-        *abstract.PyTDFunction.get_constructor_args(
-            name, vm, "collections", pyval=pyval))
+      pyval = collections_ast.Lookup("collections.namedtuple")
+    self = super(NamedTupleBuilder, cls).make(
+        name, vm, "collections", pyval=pyval)
+    self.collections_ast = collections_ast
+    return self
 
   def _get_builtin_classtype(self, name):
     fullname = "__builtin__.%s" % name
@@ -144,16 +147,16 @@ class NamedTupleBuilder(abstract.PyTDFunction):
 
     Args:
       node: The current CFG node. Used by match_args.
-      args: An abstract.FunctionArgs object
+      args: A function.Args object
 
     Returns:
       A tuple containing the typename, field_names and rename arguments passed
       to this call to collections.namedtuple.
 
     Raises:
-      abstract.FailedFunctionCall: The arguments do not match those needed by
+      function.FailedFunctionCall: The arguments do not match those needed by
         the function call. See also: abstract.PyTDFunction.match_args().
-      abstract.ConversionError: One of the arguments could not be extracted.
+      abstract_utils.ConversionError: One of the args could not be extracted.
         Typically occurs if typename or one of the field names is in unicode.
     """
 
@@ -172,7 +175,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
     # The fields are also a Variable, which stores the field names as Variables.
     # Extract the list itself, we don't need the wrapper.
     fields_var = callargs["field_names"]
-    fields = abstract.get_atomic_python_constant(fields_var)
+    fields = abstract_utils.get_atomic_python_constant(fields_var)
     # namedtuple fields can be given as a single string, e.g. "a, b, c" or as a
     # list [Variable('a'), Variable('b'), Variable('c')].
     # We just want a list of strings.
@@ -180,7 +183,8 @@ class NamedTupleBuilder(abstract.PyTDFunction):
       fields = compat.native_str(fields)
       field_names = fields.replace(",", " ").split()
     else:
-      field_names = [abstract.get_atomic_python_constant(f) for f in fields]
+      field_names = [abstract_utils.get_atomic_python_constant(f)
+                     for f in fields]
       field_names = [compat.native_str(f) for f in field_names]
 
     # namedtuple also takes a "verbose" argument, but we don't care about that.
@@ -188,7 +192,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
     # rename will take any problematic field names and give them a new name.
     # Like the other args, it's stored as a Variable, but we want just a bool.
     if callargs.get("rename", None):
-      rename = abstract.get_atomic_python_constant(callargs["rename"])
+      rename = abstract_utils.get_atomic_python_constant(callargs["rename"])
     else:
       rename = False
 
@@ -238,39 +242,39 @@ class NamedTupleBuilder(abstract.PyTDFunction):
     construct pytd.Function and pytd.Constant instances for each member of the
     class. Finally, the pytd.Class is wrapped in an abstract.PyTDClass.
 
-    If incorrect arguments are passed, a subclass of abstract.FailedFunctionCall
-    will be raised. Other cases may raise abstract.ConversionError exceptions,
-    such as when the arguments are in unicode or any of the arguments have
-    multiple bindings, but these are caught and return Any. This also occurs if
-    an argument to namedtuple is invalid, e.g. a keyword is used as a field name
-    and rename is False.
+    If incorrect arguments are passed, a subclass of function.FailedFunctionCall
+    will be raised. Other cases may raise abstract_utils.ConversionError
+    exceptions, such as when the arguments are in unicode or any of the
+    arguments have multiple bindings, but these are caught and return Any. This
+    also occurs if an argument to namedtuple is invalid, e.g. a keyword is used
+    as a field name and rename is False.
 
     Arguments:
       node: the current CFG node
       _: the func binding, ignored.
-      args: an abstract.FunctionArgs instance
+      args: a function.Args instance
 
     Returns:
       a tuple of the given CFG node and an abstract.PyTDClass instance (wrapped
       in a Variable) representing the constructed namedtuple class.
-      If a abstract.ConversionError occurs or if field names are invalid, this
-      function returns Unsolvable (in a Variable) instead of a PyTDClass.
+      If a abstract_utils.ConversionError occurs or if field names are invalid,
+      this function returns Unsolvable (in a Variable) instead of a PyTDClass.
 
     Raises:
-      abstract.FailedFunctionCall: Raised by _getargs if any of the arguments
+      function.FailedFunctionCall: Raised by _getargs if any of the arguments
         do not match the function signature.
     """
     # If we can't extract the arguments, we take the easy way out and return Any
     try:
       name_var, field_names, rename = self._getargs(node, args)
-    except abstract.ConversionError:
+    except abstract_utils.ConversionError:
       return node, self.vm.convert.unsolvable.to_variable(node)
 
     # We need the bare name for a few things, so pull that out now.
     # The same unicode issue can strike here, so again return Any.
     try:
-      name = abstract.get_atomic_python_constant(name_var)
-    except abstract.ConversionError:
+      name = abstract_utils.get_atomic_python_constant(name_var)
+    except abstract_utils.ConversionError:
       return node, self.vm.convert.unsolvable.to_variable(node)
 
     # namedtuple does some checking and optionally renaming of field names,
@@ -308,5 +312,5 @@ class NamedTupleBuilder(abstract.PyTDFunction):
 
 
 collections_overlay = {
-    "namedtuple": NamedTupleBuilder,
+    "namedtuple": NamedTupleBuilder.make,
 }

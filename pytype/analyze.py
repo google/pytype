@@ -5,6 +5,7 @@ import logging
 import subprocess
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import convert_structural
 from pytype import debug
 from pytype import function
@@ -68,15 +69,15 @@ class CallTracer(vm.VirtualMachine):
   def create_varargs(self, node):
     value = abstract.Instance(self.convert.tuple_type, self)
     value.merge_instance_type_parameter(
-        node, abstract.T, self.convert.create_new_unknown(node))
+        node, abstract_utils.T, self.convert.create_new_unknown(node))
     return value.to_variable(node)
 
   def create_kwargs(self, node):
     key_type = self.convert.primitive_class_instances[str].to_variable(node)
     value_type = self.convert.create_new_unknown(node)
     kwargs = abstract.Instance(self.convert.dict_type, self)
-    kwargs.merge_instance_type_parameter(node, abstract.K, key_type)
-    kwargs.merge_instance_type_parameter(node, abstract.V, value_type)
+    kwargs.merge_instance_type_parameter(node, abstract_utils.K, key_type)
+    kwargs.merge_instance_type_parameter(node, abstract_utils.V, value_type)
     return kwargs.to_variable(node)
 
   def create_method_arguments(self, node, method):
@@ -91,7 +92,7 @@ class CallTracer(vm.VirtualMachine):
       method: An abstract.InterpreterFunction.
 
     Returns:
-      A tuple of a node and an abstract.FunctionArgs object.
+      A tuple of a node and a function.Args object.
     """
     args = [self.convert.create_new_unknown(node, force=True)
             for _ in range(method.argcount(node))]
@@ -99,10 +100,10 @@ class CallTracer(vm.VirtualMachine):
            for key in method.signature.kwonly_params}
     starargs = self.create_varargs(node) if method.has_varargs() else None
     starstarargs = self.create_kwargs(node) if method.has_kwargs() else None
-    return node, abstract.FunctionArgs(posargs=tuple(args),
-                                       namedargs=kws,
-                                       starargs=starargs,
-                                       starstarargs=starstarargs)
+    return node, function.Args(posargs=tuple(args),
+                               namedargs=kws,
+                               starargs=starargs,
+                               starstarargs=starstarargs)
 
   def call_function_with_args(self, node, val, args):
     """Call a function.
@@ -110,7 +111,7 @@ class CallTracer(vm.VirtualMachine):
     Args:
       node: The given node.
       val: A cfg.Binding containing the function.
-      args: An abstract.FunctionArgs object.
+      args: A function.Args object.
 
     Returns:
       A tuple of (1) a node and (2) a cfg.Variable of the return value.
@@ -129,7 +130,7 @@ class CallTracer(vm.VirtualMachine):
     try:
       state, ret = self.call_function_with_state(
           state, var, args, kwargs, starargs, starstarargs)
-    except vm.RecursionException:
+    except vm.VirtualMachineRecursionError:
       # A legitimate exception, which will be handled in run_instruction. (See,
       # e.g., CheckerTest.testRecursion.) Note that we don't want to pop the
       # frame in the case of a crash (any exception besides the ones we catch
@@ -314,14 +315,15 @@ class CallTracer(vm.VirtualMachine):
             node, "__init__", init, b.AssignToNewVariable())
         try:
           node = self.analyze_method_var(node, "__init__", bound_init)
-        except vm.RecursionException:
+        except vm.VirtualMachineRecursionError:
           # We've encountered recursion during an __init__ call, which means
           # we have another incompletely initialized instance of the same class
           # (or a subclass) at the same node. (See, e.g.,
           # testRecursiveConstructor and testRecursiveConstructorSubclass in
-          # test_classes.ClassesTest.) If we allow the RecursionException to be
-          # raised, initialization of that first instance will be aborted.
-          # Instead, mark this second instance as incomplete.
+          # test_classes.ClassesTest.) If we allow the
+          # VirtualMachineRecursionError to be raised, initialization of that
+          # first instance will be aborted. Instead, mark this second instance
+          # as incomplete.
           self._mark_maybe_missing_members([b.data])
     return node
 
@@ -649,7 +651,7 @@ def infer_types(src, errorlog, options, loader,
   ast = tracer.compute_types(defs)
   ast = tracer.loader.resolve_ast(ast)
   if tracer.has_unknown_wildcard_imports or any(
-      a in defs for a in abstract.DYNAMIC_ATTRIBUTE_MARKERS):
+      a in defs for a in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS):
     try:
       ast.Lookup("__getattr__")
     except KeyError:

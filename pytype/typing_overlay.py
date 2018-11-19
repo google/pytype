@@ -4,7 +4,10 @@
 # pylint: disable=unpacking-non-sequence
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import collections_overlay
+from pytype import function
+from pytype import mixin
 from pytype import overlay
 from pytype import utils
 from pytype.pytd import pep484
@@ -63,8 +66,8 @@ class Tuple(TypingContainer):
       return super(Tuple, self)._get_value_info(
           inner, ellipses, allowed_ellipses={len(inner) - 1} - {0})
     else:
-      template = list(moves.range(len(inner))) + [abstract.T]
-      inner += (abstract.merge_values(inner, self.vm),)
+      template = list(moves.range(len(inner))) + [abstract_utils.T]
+      inner += (self.vm.merge_values(inner),)
       return template, inner, abstract.TupleClass
 
 
@@ -72,7 +75,7 @@ class Callable(TypingContainer):
   """Implementation of typing.Callable[...]."""
 
   def getitem_slot(self, node, slice_var):
-    content = self._maybe_extract_tuple(slice_var)
+    content = abstract_utils.maybe_extract_tuple(slice_var)
     inner, ellipses = self._build_inner(content)
     args = inner[0]
     if isinstance(args, abstract.List) and not args.could_contain_anything:
@@ -83,11 +86,10 @@ class Callable(TypingContainer):
       if args.cls and args.cls.full_name == "__builtin__.list":
         self.vm.errorlog.invalid_annotation(
             self.vm.frames, args, "Must be constant")
-      elif (args is not self.vm.convert.ellipsis and
-            not isinstance(args, abstract.Unsolvable)):
+      elif 0 not in ellipses or not isinstance(args, abstract.Unsolvable):
         self.vm.errorlog.invalid_annotation(
-            self.vm.frames, args,
-            "First argument to Callable must be a list of argument types.")
+            self.vm.frames, args, ("First argument to Callable must be a list"
+                                   " of argument types or ellipsis."))
       inner[0] = self.vm.convert.unsolvable
     value = self._build_value(node, tuple(inner), ellipses)
     return node, value.to_variable(node)
@@ -96,7 +98,7 @@ class Callable(TypingContainer):
     if isinstance(inner[0], list):
       template = (list(moves.range(len(inner[0]))) +
                   [t.name for t in self.base_cls.template])
-      combined_args = abstract.merge_values(inner[0], self.vm)
+      combined_args = self.vm.merge_values(inner[0])
       inner = tuple(inner[0]) + (combined_args,) + inner[1:]
       self.vm.errorlog.invalid_ellipses(self.vm.frames, ellipses, self.name)
       return template, inner, abstract.Callable
@@ -118,22 +120,18 @@ class TypeVar(abstract.PyTDFunction):
   """Representation of typing.TypeVar, as a function."""
 
   # See b/74212131: we allow Any for bounds and constraints.
-  _CLASS_TYPE = (abstract.Class, abstract.Unsolvable)
-
-  def __init__(self, name, vm):
-    super(TypeVar, self).__init__(*abstract.PyTDFunction.get_constructor_args(
-        name, vm, "typing", pyval_name="_typevar_new"))
+  _CLASS_TYPE = (mixin.Class, abstract.Unsolvable)
 
   def _get_class_or_constant(self, var, name, arg_type, arg_type_desc=None):
     if arg_type is self._CLASS_TYPE:
-      convert_func = abstract.get_atomic_value
+      convert_func = abstract_utils.get_atomic_value
       type_desc = arg_type_desc or "an unambiguous type"
     else:
-      convert_func = abstract.get_atomic_python_constant
+      convert_func = abstract_utils.get_atomic_python_constant
       type_desc = arg_type_desc or "a constant " + arg_type.__name__
     try:
       return convert_func(var, arg_type)
-    except abstract.ConversionError:
+    except abstract_utils.ConversionError:
       raise TypeVarError("%s must be %s" % (name, type_desc))
 
   def _get_namedarg(self, args, name, arg_type, default_value):
@@ -149,9 +147,9 @@ class TypeVar(abstract.PyTDFunction):
     args = args.simplify(node)
     try:
       self.match_args(node, args)
-    except abstract.InvalidParameters as e:
+    except function.InvalidParameters as e:
       raise TypeVarError("wrong arguments", e.bad_call)
-    except abstract.FailedFunctionCall:
+    except function.FailedFunctionCall:
       # It is currently impossible to get here, since the only
       # FailedFunctionCall that is not an InvalidParameters is NotCallable.
       raise TypeVarError("initialization failed")
@@ -199,8 +197,7 @@ class Cast(abstract.PyTDFunction):
             args.posargs[0], "typing.cast", self.vm.frames, node)
       except self.vm.annotations_util.LateAnnotationError:
         self.vm.errorlog.invalid_annotation(
-            self.vm.frames,
-            abstract.merge_values(args.posargs[0].data, self.vm),
+            self.vm.frames, self.vm.merge_values(args.posargs[0].data),
             "Forward references not allowed in typing.cast.\n"
             "Consider switching to a type comment.")
         annot = self.vm.convert.create_new_unsolvable(node)
@@ -216,6 +213,9 @@ class NoReturn(abstract.AtomicAbstractValue):
   def get_class(self):
     return self
 
+  def compute_mro(self):
+    return self.default_mro()
+
 
 def build_any(name, vm):
   del name
@@ -225,21 +225,24 @@ def build_any(name, vm):
 class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
   """Factory for creating typing.NamedTuple classes."""
 
-  def __init__(self, name, vm):
-    self.typing_ast = vm.loader.import_name("typing")
+  @classmethod
+  def make(cls, name, vm):
+    typing_ast = vm.loader.import_name("typing")
     # Because NamedTuple is a special case for the pyi parser, typing.pytd has
     # "_NamedTuple" instead. Replace the name of the returned function so that
     # error messages will correctly display "typing.NamedTuple".
-    pyval = self.typing_ast.Lookup("typing._NamedTuple")
+    pyval = typing_ast.Lookup("typing._NamedTuple")
     pyval = pyval.Replace(name="typing.NamedTuple")
-    super(NamedTupleFuncBuilder, self).__init__(name, vm, pyval)
+    self = super(NamedTupleFuncBuilder, cls).make(name, vm, pyval)
     # NamedTuple's fields arg has type Sequence[Sequence[Union[str, type]]],
     # which doesn't provide precise enough type-checking, so we have to do
     # some of our own in _getargs. _NamedTupleFields is an alias to
     # List[Tuple[str, type]], which gives a more understandable error message.
-    fields_pyval = self.typing_ast.Lookup("typing._NamedTupleFields").type
+    fields_pyval = typing_ast.Lookup("typing._NamedTupleFields").type
+    # pylint: disable=protected-access
     self._fields_type = vm.convert.constant_to_value(
         fields_pyval, {}, vm.root_cfg_node)
+    return self
 
   def _is_str_instance(self, val):
     return (isinstance(val, abstract.Instance) and
@@ -252,9 +255,9 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     # typing.NamedTuple doesn't support rename or verbose
     name_var = callargs["typename"]
     fields_var = callargs["fields"]
-    fields = abstract.get_atomic_python_constant(fields_var)
+    fields = abstract_utils.get_atomic_python_constant(fields_var)
     # The fields is a list of tuples, so we need to deeply unwrap them.
-    fields = [abstract.get_atomic_python_constant(t) for t in fields]
+    fields = [abstract_utils.get_atomic_python_constant(t) for t in fields]
     # We need the actual string for the field names and the AtomicAbstractValue
     # for the field types.
     names = []
@@ -265,11 +268,11 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
         # Note that we don't need to check field[1] because both 'str'
         # (forward reference) and 'type' are valid for it.
         sig, = self.signatures
-        bad_param = abstract.BadParam(name="fields", expected=self._fields_type)
-        raise abstract.WrongArgTypes(sig.signature, args, self.vm, bad_param)
+        bad_param = function.BadParam(name="fields", expected=self._fields_type)
+        raise function.WrongArgTypes(sig.signature, args, self.vm, bad_param)
       name, typ = field
-      names.append(abstract.get_atomic_python_constant(name))
-      types.append(abstract.get_atomic_value(typ))
+      names.append(abstract_utils.get_atomic_python_constant(name))
+      types.append(abstract_utils.get_atomic_value(typ))
     return name_var, names, types
 
   def _build_namedtuple(self, name, field_names, field_types, node):
@@ -297,8 +300,8 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     field_keys_union = abstract.Union([self.vm.convert.str_type,
                                        self.vm.convert.unicode_type], self.vm)
 
-    # Normally, we would use abstract.K and abstract.V, but collections.pyi
-    # doesn't conform to that standard.
+    # Normally, we would use abstract_utils.K and abstract_utils.V, but
+    # collections.pyi doesn't conform to that standard.
     field_dict_cls = abstract.ParameterizedClass(
         ordered_dict_cls,
         {"K": field_keys_union, "V": field_types_union},
@@ -329,7 +332,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
         visitors.CreateTypeParametersForSignatures.PREFIX + name,
         self.vm, bound=None)
     new_annots["cls"] = abstract.ParameterizedClass(
-        self.vm.convert.type_type, {abstract.T: cls_type_param}, self.vm)
+        self.vm.convert.type_type, {abstract_utils.T: cls_type_param}, self.vm)
     new_annots["return"] = cls_type_param
     members["__new__"] = abstract.SimpleFunction(
         name="__new__",
@@ -359,7 +362,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     sized_cls = self.vm.convert.name_to_value("typing.Sized")
     iterable_type = abstract.ParameterizedClass(
         self.vm.convert.name_to_value("typing.Iterable"),
-        {abstract.T: field_types_union}, self.vm)
+        {abstract_utils.T: field_types_union}, self.vm)
     make = abstract.SimpleFunction(
         name="_make",
         param_names=("cls", "iterable", "new", "len"),
@@ -373,20 +376,20 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
         annotations={
             "cls": abstract.ParameterizedClass(
                 self.vm.convert.type_type,
-                {abstract.T: cls_type_param}, self.vm),
+                {abstract_utils.T: cls_type_param}, self.vm),
             "iterable": iterable_type,
             "new": self.vm.convert.unsolvable,
             "len": abstract.Callable(
                 self.vm.convert.name_to_value("typing.Callable"),
                 {0: sized_cls,
-                 abstract.ARGS: sized_cls,
-                 abstract.RET: self.vm.convert.int_type},
+                 abstract_utils.ARGS: sized_cls,
+                 abstract_utils.RET: self.vm.convert.int_type},
                 self.vm),
             "return": cls_type_param
         },
         late_annotations={},
         vm=self.vm).to_variable(node)
-    make_args = abstract.FunctionArgs(posargs=(make,))
+    make_args = function.Args(posargs=(make,))
     _, members["_make"] = self.vm.special_builtins["classmethod"].call(
         node, None, make_args)
     # _replace
@@ -408,7 +411,8 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
         vm=self.vm).to_variable(node)
     # __getnewargs__
     getnewargs_tuple_params = dict(
-        tuple(enumerate(field_types)) + ((abstract.T, field_types_union),))
+        tuple(enumerate(field_types)) +
+        ((abstract_utils.T, field_types_union),))
     getnewargs_tuple = abstract.TupleClass(self.vm.convert.tuple_type,
                                            getnewargs_tuple_params, self.vm)
     members["__getnewargs__"] = abstract.SimpleFunction(
@@ -460,12 +464,12 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
   def call(self, node, _, args):
     try:
       name_var, field_names, field_types = self._getargs(node, args)
-    except abstract.ConversionError:
+    except abstract_utils.ConversionError:
       return node, self.vm.convert.unsolvable.to_variable(node)
 
     try:
-      name = abstract.get_atomic_python_constant(name_var)
-    except abstract.ConversionError:
+      name = abstract_utils.get_atomic_python_constant(name_var)
+    except abstract_utils.ConversionError:
       return node, self.vm.convert.unsolvable.to_variable(node)
 
     try:
@@ -499,15 +503,15 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
   _special = ("__module__", "__name__", "__qualname__", "__annotations__")
 
   def __init__(self, name, vm):
-    self.typing_ast = vm.loader.import_name("typing")
-    pyval = self.typing_ast.Lookup("typing._NamedTupleClass")
+    typing_ast = vm.loader.import_name("typing")
+    pyval = typing_ast.Lookup("typing._NamedTupleClass")
     pyval = pyval.Replace(name="typing.NamedTuple")
     super(NamedTupleClassBuilder, self).__init__(name, pyval, vm)
     # Prior to python 3.6, NamedTuple is a function. Although NamedTuple is a
     # class in python 3.6+, we can still use it like a function. Hold the
     # an instance of 'NamedTupleFuncBuilder' so that we can reuse the
     # old implementation to implement the NamedTuple in python 3.6+
-    self.namedtuple = NamedTupleFuncBuilder(name, vm)
+    self.namedtuple = NamedTupleFuncBuilder.make(name, vm)
 
   def call(self, node, _, args):
     posargs = args.posargs
@@ -521,7 +525,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
                    for k, v in namedargs.items()]
       namedargs = abstract.List(namedargs, self.vm).to_variable(node)
       posargs += (namedargs,)
-      args = abstract.FunctionArgs(posargs)
+      args = function.Args(posargs)
     elif namedargs:
       errmsg = ("Either list of fields or keywords can be provided to "
                 "NamedTuple, not both")
@@ -529,7 +533,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
     return self.namedtuple.call(node, None, args)
 
   def make_class(self, node, f_locals):
-    f_locals = abstract.get_atomic_python_constant(f_locals)
+    f_locals = abstract_utils.get_atomic_python_constant(f_locals)
 
     # retrieve __qualname__ to get the name of class
     name = f_locals["__qualname__"]
@@ -537,7 +541,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
     # with key-value pair of (variable, type)
     anno = f_locals.get("__annotations__", {})
     if anno:
-      anno = abstract.get_atomic_value(anno)
+      anno = abstract_utils.get_atomic_value(anno)
 
     # assemble the arguments that are compatible with NamedTupleFuncBuilder.call
     field_list = []
@@ -550,24 +554,24 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
       field_list.append(self.vm.convert.build_tuple(node, (k, v)))
     anno = self.vm.convert.build_list(node, field_list)
     posargs = (name, anno)
-    args = abstract.FunctionArgs(posargs=posargs)
+    args = function.Args(posargs=posargs)
     node, cls_var = self.namedtuple.call(node, None, args)
-    cls_val = abstract.get_atomic_value(cls_var)
+    cls_val = abstract_utils.get_atomic_value(cls_var)
 
     if not isinstance(cls_val, abstract.Unsolvable):
       # set __new__.__defaults__
       defaults = abstract.Tuple(tuple(defaults), self.vm).to_variable(node)
       node, new_attr = self.vm.attribute_handler.get_attribute(
           node, cls_val, "__new__")
-      new_attr = abstract.get_atomic_value(new_attr)
+      new_attr = abstract_utils.get_atomic_value(new_attr)
       node = self.vm.attribute_handler.set_attribute(
           node, new_attr, "__defaults__", defaults)
 
       # set the attribute without overriding special namedtuple attributes
       node, fields = self.vm.attribute_handler.get_attribute(
           node, cls_val, "_fields")
-      fields = abstract.get_atomic_python_constant(fields, tuple)
-      fields = [abstract.get_atomic_python_constant(field, str)
+      fields = abstract_utils.get_atomic_python_constant(fields, tuple)
+      fields = [abstract_utils.get_atomic_python_constant(field, str)
                 for field in fields]
       for key in f_locals:
         if key in self._prohibited:
@@ -579,20 +583,11 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
     return node, cls_var
 
 
-def namedtuple_builder(name, vm):
-  """Factory method for creating typing.NamedTuple classes."""
-  if vm.python_version < (3, 6):
-    return NamedTupleFuncBuilder(name, vm)
-  else:
-    return NamedTupleClassBuilder(name, vm)
-
-
 class NewType(abstract.PyTDFunction):
   """Implementation of typing.NewType as a function."""
 
-  def __init__(self, name, vm):
-    super(NewType, self).__init__(
-        *abstract.PyTDFunction.get_constructor_args(name, vm, "typing"))
+  def __init__(self, name, signatures, kind, vm):
+    super(NewType, self).__init__(name, signatures, kind, vm)
     assert len(self.signatures) == 1, "NewType has more than one signature."
     signature = self.signatures[0].signature
     self._name_arg_name = signature.param_names[0]
@@ -613,14 +608,14 @@ class NewType(abstract.PyTDFunction):
     # we will use it.
     name_arg = args.namedargs.get(self._name_arg_name) or args.posargs[0]
     try:
-      _ = abstract.get_atomic_python_constant(name_arg, str)
-    except abstract.ConversionError:
+      _ = abstract_utils.get_atomic_python_constant(name_arg, str)
+    except abstract_utils.ConversionError:
       name_arg = self.vm.convert.constant_to_var(
           "_NewType_Internal_Class_Name_%d_" % self.internal_name_counter)
     type_arg = args.namedargs.get(self._type_arg_name) or args.posargs[1]
     try:
-      type_value = abstract.get_atomic_value(type_arg)
-    except abstract.ConversionError:
+      type_value = abstract_utils.get_atomic_value(type_arg)
+    except abstract_utils.ConversionError:
       # We need the type arg to be an atomic value. If not, we just
       # silently return unsolvable.
       return node, self.vm.convert.create_new_unsolvable(node)
@@ -640,7 +635,6 @@ class NewType(abstract.PyTDFunction):
     members.set_str_item(node, "__init__", constructor)
     return node, self.vm.make_class(node, name_arg, (type_arg,),
                                     members.to_variable(node), None)
-
 
 class Generic(TypingContainer):
   """Implementation of typing.Generic."""
@@ -668,13 +662,40 @@ class Generic(TypingContainer):
     return template, inner, abstract.ParameterizedClass
 
 
+class Optional(abstract.AnnotationClass):
+  """Implementation of typing.Optional."""
+
+  def _build_value(self, node, inner, ellipses):
+    self.vm.errorlog.invalid_ellipses(self.vm.frames, ellipses, self.name)
+    if len(inner) != 1:
+      error = "typing.Optional can only contain one type parameter"
+      self.vm.errorlog.invalid_annotation(self.vm.frames, self, error)
+    return abstract.Union((self.vm.convert.none_type,) + inner, self.vm)
+
+
 def not_supported_yet(name, vm):
   vm.errorlog.not_supported_yet(vm.frames, "typing." + name)
   return vm.convert.unsolvable
 
 
-def build_optional(name, vm):
-  return Union(name, vm, (vm.convert.none_type,))
+def build_namedtuple(name, vm):
+  if vm.python_version < (3, 6):
+    return NamedTupleFuncBuilder.make(name, vm)
+  else:
+    return NamedTupleClassBuilder(name, vm)
+
+
+def build_newtype(name, vm):
+  return NewType.make(name, vm, "typing")
+
+
+def build_noreturn(name, vm):
+  del name
+  return vm.convert.no_return
+
+
+def build_typevar(name, vm):
+  return TypeVar.make(name, vm, "typing", pyval_name="_typevar_new")
 
 
 def build_typechecking(name, vm):
@@ -683,12 +704,7 @@ def build_typechecking(name, vm):
 
 
 def build_cast(name, vm):
-  return Cast(*abstract.PyTDFunction.get_constructor_args(name, vm, "typing"))
-
-
-def build_noreturn(name, vm):
-  del name
-  return vm.convert.no_return
+  return Cast.make(name, vm, "typing")
 
 
 typing_overload = {
@@ -696,12 +712,12 @@ typing_overload = {
     "Callable": Callable,
     "ClassVar": not_supported_yet,
     "Generic": Generic,
-    "NamedTuple": namedtuple_builder,
-    "NewType": NewType,
+    "NamedTuple": build_namedtuple,
+    "NewType": build_newtype,
     "NoReturn": build_noreturn,
-    "Optional": build_optional,
+    "Optional": Optional,
     "Tuple": Tuple,
-    "TypeVar": TypeVar,
+    "TypeVar": build_typevar,
     "Union": Union,
     "TYPE_CHECKING": build_typechecking,
     "cast": build_cast,

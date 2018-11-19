@@ -1,6 +1,7 @@
 """Tests for abstract.py."""
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import annotations_util
 from pytype import config
 from pytype import errors
@@ -63,7 +64,7 @@ class InstanceTest(AbstractTestBase):
     self.assertIs(True, i.compatible_with(False))
     # Once a type parameter is set, list is compatible with True and False.
     i.merge_instance_type_parameter(
-        self._node, abstract.T,
+        self._node, abstract_utils.T,
         self._vm.convert.object_type.to_variable(self._vm.root_cfg_node))
     self.assertIs(True, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))
@@ -75,7 +76,7 @@ class InstanceTest(AbstractTestBase):
     self.assertIs(True, i.compatible_with(False))
     # Once a type parameter is set, list is compatible with True and False.
     i.merge_instance_type_parameter(
-        self._node, abstract.T,
+        self._node, abstract_utils.T,
         self._vm.convert.object_type.to_variable(self._vm.root_cfg_node))
     self.assertIs(True, i.compatible_with(True))
     self.assertIs(True, i.compatible_with(False))
@@ -110,16 +111,16 @@ class TupleTest(AbstractTestBase):
     index = self._vm.convert.constant_to_var(0)
     node, var = t.cls.getitem_slot(self._node, index)
     self.assertIs(node, self._node)
-    self.assertIs(abstract.get_atomic_value(var),
-                  abstract.get_atomic_value(self._var))
+    self.assertIs(abstract_utils.get_atomic_value(var),
+                  abstract_utils.get_atomic_value(self._var))
 
   def test_getitem__abstract_index(self):
     t = abstract.Tuple((self._var,), self._vm)
     index = self._vm.convert.build_int(self._node)
     node, var = t.cls.getitem_slot(self._node, index)
     self.assertIs(node, self._node)
-    self.assertIs(abstract.get_atomic_value(var),
-                  abstract.get_atomic_value(self._var))
+    self.assertIs(abstract_utils.get_atomic_value(var),
+                  abstract_utils.get_atomic_value(self._var))
 
 
 class DictTest(AbstractTestBase):
@@ -168,7 +169,7 @@ class DictTest(AbstractTestBase):
   def test_compatible_with__after_ambiguous_update(self):
     ambiguous_dict = abstract.Dict(self._vm)
     ambiguous_dict.merge_instance_type_parameter(
-        self._node, abstract.K,
+        self._node, abstract_utils.K,
         self._vm.convert.create_new_unsolvable(self._node))
     ambiguous_dict.could_contain_anything = True
     self._d.update(self._node, ambiguous_dict)
@@ -205,7 +206,7 @@ class DictTest(AbstractTestBase):
 
   def test_bad_pop(self):
     self._d.set_str_item(self._node, "a", self._var)
-    self.assertRaises(abstract.DictKeyMissing, self._d.pop_slot, self._node,
+    self.assertRaises(function.DictKeyMissing, self._d.pop_slot, self._node,
                       self._vm.convert.build_string(self._node, "b"))
     self.assertIs(True, self._d.compatible_with(True))
     self.assertIs(False, self._d.compatible_with(False))
@@ -272,7 +273,7 @@ class IsInstanceTest(AbstractTestBase):
 
   def setUp(self):
     super(IsInstanceTest, self).setUp()
-    self._is_instance = special_builtins.IsInstance(self._vm)
+    self._is_instance = special_builtins.IsInstance.make(self._vm)
     # Easier access to some primitive instances.
     self._bool = self._vm.convert.primitive_class_instances[bool]
     self._int = self._vm.convert.primitive_class_instances[int]
@@ -295,8 +296,8 @@ class IsInstanceTest(AbstractTestBase):
     """
     name_map = {left: "left", right: "right"}
     node, result = self._is_instance.call(
-        self._node, None, abstract.FunctionArgs((left, right), self.new_dict(),
-                                                None, None))
+        self._node, None, function.Args(
+            (left, right), self.new_dict(), None, None))
     self.assertIn(node, self._node.outgoing)
     result_map = {}
     # Turning source sets into canonical string representations of the binding
@@ -339,10 +340,9 @@ class IsInstanceTest(AbstractTestBase):
   def test_call_wrong_argcount(self):
     self._vm.push_frame(frame_state.SimpleFrame())
     node, result = self._is_instance.call(
-        self._node, None, abstract.FunctionArgs((), self.new_dict(),
-                                                None, None))
+        self._node, None, function.Args((), self.new_dict(), None, None))
     self.assertEqual(self._node, node)
-    self.assertIsInstance(abstract.get_atomic_value(result),
+    self.assertIsInstance(abstract_utils.get_atomic_value(result),
                           abstract.Unsolvable)
     self.assertRegexpMatches(str(self._vm.errorlog), "missing-parameter")
 
@@ -350,10 +350,10 @@ class IsInstanceTest(AbstractTestBase):
     self._vm.push_frame(frame_state.SimpleFrame())
     x = self.new_var(abstract.Unknown(self._vm))
     node, result = self._is_instance.call(
-        self._node, None, abstract.FunctionArgs((x, x), self.new_dict(foo=x),
-                                                None, None))
+        self._node, None, function.Args(
+            (x, x), self.new_dict(foo=x), None, None))
     self.assertEqual(self._node, node)
-    self.assertIsInstance(abstract.get_atomic_value(result),
+    self.assertIsInstance(abstract_utils.get_atomic_value(result),
                           abstract.Unsolvable)
     self.assertRegexpMatches(
         str(self._vm.errorlog),
@@ -464,12 +464,14 @@ class PyTDTest(AbstractTestBase):
     # to_type(<instance of List[int or unsolvable]>, view={T: int})
     instance = abstract.List([], self._vm)
     instance.merge_instance_type_parameter(
-        self._vm.root_cfg_node, abstract.T, self._vm.program.NewVariable(
+        self._vm.root_cfg_node, abstract_utils.T, self._vm.program.NewVariable(
             [self._vm.convert.unsolvable], [], self._vm.root_cfg_node))
-    param_binding = instance.get_instance_type_parameter(abstract.T).AddBinding(
-        self._vm.convert.primitive_class_instances[int], [],
-        self._vm.root_cfg_node)
-    view = {instance.get_instance_type_parameter(abstract.T): param_binding}
+    param_binding = instance.get_instance_type_parameter(
+        abstract_utils.T).AddBinding(
+            self._vm.convert.primitive_class_instances[int], [],
+            self._vm.root_cfg_node)
+    view = {
+        instance.get_instance_type_parameter(abstract_utils.T): param_binding}
     pytd_type = instance.to_type(self._vm.root_cfg_node, seen=None, view=view)
     self.assertEqual("__builtin__.list", pytd_type.base_type.name)
     self.assertSetEqual({"__builtin__.int"},
@@ -514,13 +516,12 @@ class FunctionTest(AbstractTestBase):
           pytd.Parameter(function.argname(i), p_type, False, False, None))
     pytd_sig = pytd.Signature(
         tuple(pytd_params), None, None, pytd.AnythingType(), (), ())
-    sig = abstract.PyTDSignature(name, pytd_sig, self._vm)
+    sig = function.PyTDSignature(name, pytd_sig, self._vm)
     return abstract.PyTDFunction(name, (sig,), pytd.METHOD, self._vm)
 
   def _call_pytd_function(self, f, args):
     b = f.to_binding(self._vm.root_cfg_node)
-    return f.call(
-        self._vm.root_cfg_node, b, abstract.FunctionArgs(posargs=args))
+    return f.call(self._vm.root_cfg_node, b, function.Args(posargs=args))
 
   def test_call_with_empty_arg(self):
     self.assertRaises(AssertionError, self._call_pytd_function,
@@ -533,7 +534,7 @@ class FunctionTest(AbstractTestBase):
     arg = self._vm.convert.primitive_class_instances[int].to_variable(
         self._vm.root_cfg_node)
     self.assertRaises(
-        abstract.WrongArgTypes, self._call_pytd_function, f, (arg,))
+        function.WrongArgTypes, self._call_pytd_function, f, (arg,))
 
   def test_simple_call(self):
     f = self._make_pytd_function(
@@ -588,8 +589,9 @@ class FunctionTest(AbstractTestBase):
   def test_signature_from_callable(self):
     # Callable[[int, str], Any]
     params = {0: self._vm.convert.int_type, 1: self._vm.convert.str_type}
-    params[abstract.ARGS] = abstract.Union((params[0], params[1]), self._vm)
-    params[abstract.RET] = self._vm.convert.unsolvable
+    params[abstract_utils.ARGS] = abstract.Union(
+        (params[0], params[1]), self._vm)
+    params[abstract_utils.RET] = self._vm.convert.unsolvable
     callable_val = abstract.Callable(
         self._vm.convert.function_type, params, self._vm)
     sig = function.Signature.from_callable(callable_val)
@@ -622,7 +624,7 @@ class FunctionTest(AbstractTestBase):
     self.assertIsInstance(args_type, abstract.ParameterizedClass)
     self.assertIs(args_type.base_cls, self._vm.convert.tuple_type)
     self.assertListEqual(list(args_type.formal_type_parameters.items()),
-                         [(abstract.T, self._vm.convert.unsolvable)])
+                         [(abstract_utils.T, self._vm.convert.unsolvable)])
     self.assertIs(sig.drop_first_parameter().annotations["args"], args_type)
 
   def test_signature_annotations_existence(self):
@@ -824,8 +826,7 @@ class FunctionTest(AbstractTestBase):
     self.assertRaises(KeyError, sig.del_annotation, "rumpelstiltskin")
 
   def test_constructor_args(self):
-    f = abstract.PyTDFunction(*abstract.PyTDFunction.get_constructor_args(
-        "open", self._vm, "__builtin__"))
+    f = abstract.PyTDFunction.make("open", self._vm, "__builtin__")
     self.assertEqual(f.name, "__builtin__.open")
     six.assertCountEqual(
         self,
@@ -837,8 +838,7 @@ class FunctionTest(AbstractTestBase):
   def test_constructor_args_pyval(self):
     sig = pytd.Signature((), None, None, pytd.AnythingType(), (), ())
     pyval = pytd.Function("blah", (sig,), pytd.STATICMETHOD, 0)
-    f = abstract.PyTDFunction(*abstract.PyTDFunction.get_constructor_args(
-        "open", self._vm, "__builtin__", pyval=pyval))
+    f = abstract.PyTDFunction.make("open", self._vm, "__builtin__", pyval=pyval)
     self.assertEqual(f.name, "__builtin__.open")
     f_sig, = f.signatures
     self.assertIs(f_sig.pytd_sig, sig)
@@ -846,8 +846,8 @@ class FunctionTest(AbstractTestBase):
     self.assertIs(f.vm, self._vm)
 
   def test_get_constructor_args(self):
-    f = abstract.PyTDFunction(*abstract.PyTDFunction.get_constructor_args(
-        "TypeVar", self._vm, "typing", pyval_name="_typevar_new"))
+    f = abstract.PyTDFunction.make(
+        "TypeVar", self._vm, "typing", pyval_name="_typevar_new")
     self.assertEqual(f.name, "typing.TypeVar")
     six.assertCountEqual(
         self,
@@ -961,7 +961,7 @@ class SimpleFunctionTest(AbstractTestBase):
   def test_simple_call(self):
     f = self._simple_sig([self._vm.convert.str_type],
                          ret_type=self._vm.convert.int_type)
-    args = abstract.FunctionArgs(
+    args = function.Args(
         (self._vm.convert.build_string(self._vm.root_cfg_node, "hello"),))
     node, ret = f.call(self._vm.root_cfg_node, f, args)
     self.assertIs(node, self._vm.root_cfg_node)
@@ -971,15 +971,14 @@ class SimpleFunctionTest(AbstractTestBase):
   def test_call_with_bad_arg(self):
     f = self._make_func(param_names=("test",),
                         annotations={"test": self._vm.convert.str_type})
-    args = abstract.FunctionArgs(
-        (self._vm.convert.build_int(self._vm.root_cfg_node),))
-    self.assertRaises(abstract.WrongArgTypes, f.call,
+    args = function.Args((self._vm.convert.build_int(self._vm.root_cfg_node),))
+    self.assertRaises(function.WrongArgTypes, f.call,
                       self._vm.root_cfg_node, f, args)
 
   def test_call_with_no_args(self):
     f = self._simple_sig([self._vm.convert.str_type, self._vm.convert.int_type])
-    args = abstract.FunctionArgs(())
-    self.assertRaises(abstract.MissingParameter, f.call,
+    args = function.Args(())
+    self.assertRaises(function.MissingParameter, f.call,
                       self._vm.root_cfg_node, f, args)
 
   def test_call_with_multiple_arg_bindings(self):
@@ -989,7 +988,7 @@ class SimpleFunctionTest(AbstractTestBase):
                    self._vm.root_cfg_node)
     arg.AddBinding(self._vm.convert.primitive_class_instances[int], [],
                    self._vm.root_cfg_node)
-    args = abstract.FunctionArgs((arg,))
+    args = function.Args((arg,))
     node, ret = f.call(self._vm.root_cfg_node, f, args)
     self.assertIs(node, self._vm.root_cfg_node)
     self.assertIs(ret.data[0], self._vm.convert.none)
@@ -1003,7 +1002,7 @@ class SimpleFunctionTest(AbstractTestBase):
     starargs = abstract.Tuple(
         (self._vm.convert.build_string(self._vm.root_cfg_node, ""),),
         self._vm).to_variable(self._vm.root_cfg_node)
-    args = abstract.FunctionArgs(posargs=(), starargs=starargs)
+    args = function.Args(posargs=(), starargs=starargs)
     node, ret = f.call(self._vm.root_cfg_node, f, args)
     self.assertIs(node, self._vm.root_cfg_node)
     self.assertIs(ret.data[0].cls, self._vm.convert.str_type)
@@ -1017,8 +1016,8 @@ class SimpleFunctionTest(AbstractTestBase):
          self._vm.convert.build_int(self._vm.root_cfg_node)),
         self._vm
     ).to_variable(self._vm.root_cfg_node)
-    args = abstract.FunctionArgs(posargs=(), starargs=starargs)
-    self.assertRaises(abstract.WrongArgTypes, f.call,
+    args = function.Args(posargs=(), starargs=starargs)
+    self.assertRaises(function.WrongArgTypes, f.call,
                       self._vm.root_cfg_node, f, args)
 
   def test_call_with_multiple_varargs_bindings(self):
@@ -1032,7 +1031,7 @@ class SimpleFunctionTest(AbstractTestBase):
                    self._vm.root_cfg_node)
     starargs = abstract.Tuple((arg,), self._vm)
     starargs = starargs.to_variable(self._vm.root_cfg_node)
-    args = abstract.FunctionArgs(posargs=(), starargs=starargs)
+    args = function.Args(posargs=(), starargs=starargs)
     f.call(self._vm.root_cfg_node, f, args)
 
   def test_call_with_kwargs(self):
@@ -1047,7 +1046,7 @@ class SimpleFunctionTest(AbstractTestBase):
             "_2": self._vm.convert.build_string(self._vm.root_cfg_node, "2")
         })
     kwargs = kwargs.to_variable(self._vm.root_cfg_node)
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(),
         namedargs=abstract.Dict(self._vm),
         starstarargs=kwargs
@@ -1062,12 +1061,12 @@ class SimpleFunctionTest(AbstractTestBase):
     kwargs.update(self._vm.root_cfg_node,
                   {"_1": self._vm.convert.build_int(self._vm.root_cfg_node)})
     kwargs = kwargs.to_variable(self._vm.root_cfg_node)
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(),
         namedargs=abstract.Dict(self._vm),
         starstarargs=kwargs
     )
-    self.assertRaises(abstract.WrongArgTypes, f.call,
+    self.assertRaises(function.WrongArgTypes, f.call,
                       self._vm.root_cfg_node, f, args)
 
   def test_call_with_kwonly_args(self):
@@ -1089,7 +1088,7 @@ class SimpleFunctionTest(AbstractTestBase):
         }
     )
     kwargs = kwargs.to_variable(self._vm.root_cfg_node)
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(self._vm.convert.build_string(self._vm.root_cfg_node, "1"),),
         namedargs=abstract.Dict(self._vm),
         starstarargs=kwargs
@@ -1101,13 +1100,13 @@ class SimpleFunctionTest(AbstractTestBase):
         {"b": self._vm.convert.build_string(self._vm.root_cfg_node, "3")}
     )
     kwargs = kwargs.to_variable(self._vm.root_cfg_node)
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(self._vm.convert.build_string(self._vm.root_cfg_node, "1"),
                  self._vm.convert.build_int(self._vm.root_cfg_node)),
         namedargs=abstract.Dict(self._vm),
         starstarargs=kwargs
     )
-    self.assertRaises(abstract.MissingParameter, f.call,
+    self.assertRaises(function.MissingParameter, f.call,
                       self._vm.root_cfg_node, f, args)
 
   def test_call_with_all_args(self):
@@ -1135,7 +1134,7 @@ class SimpleFunctionTest(AbstractTestBase):
                  {"x": self._vm.convert.build_bool(self._vm.root_cfg_node),
                   "y": self._vm.convert.build_bool(self._vm.root_cfg_node)})
     kwarg = kwarg.to_variable(self._vm.root_cfg_node)
-    args = abstract.FunctionArgs(posargs, namedargs, stararg, kwarg)
+    args = function.Args(posargs, namedargs, stararg, kwarg)
     f.call(self._vm.root_cfg_node, f, args)
 
   def test_call_with_defaults(self):
@@ -1148,21 +1147,21 @@ class SimpleFunctionTest(AbstractTestBase):
             "c": self._vm.convert.int_type
         }
     )
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(self._vm.convert.build_int(self._vm.root_cfg_node),
                  self._vm.convert.build_int(self._vm.root_cfg_node))
     )
     f.call(self._vm.root_cfg_node, f, args)
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(self._vm.convert.build_int(self._vm.root_cfg_node),
                  self._vm.convert.build_int(self._vm.root_cfg_node),
                  self._vm.convert.build_int(self._vm.root_cfg_node))
     )
     f.call(self._vm.root_cfg_node, f, args)
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(self._vm.convert.build_int(self._vm.root_cfg_node),))
     self.assertRaises(
-        abstract.MissingParameter, f.call, self._vm.root_cfg_node, f, args)
+        function.MissingParameter, f.call, self._vm.root_cfg_node, f, args)
 
   def test_call_with_bad_default(self):
     f = self._make_func(
@@ -1173,38 +1172,38 @@ class SimpleFunctionTest(AbstractTestBase):
             "b": self._vm.convert.str_type
         }
     )
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(self._vm.convert.build_int(self._vm.root_cfg_node),
                  self._vm.convert.build_int(self._vm.root_cfg_node))
     )
     self.assertRaises(
-        abstract.WrongArgTypes, f.call, self._vm.root_cfg_node, f, args)
+        function.WrongArgTypes, f.call, self._vm.root_cfg_node, f, args)
 
   def test_call_with_duplicate_keyword(self):
     f = self._simple_sig([self._vm.convert.int_type]*2)
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(self._vm.convert.build_int(self._vm.root_cfg_node),
                  self._vm.convert.build_int(self._vm.root_cfg_node)),
         namedargs={"_1": self._vm.convert.build_int(self._vm.root_cfg_node)}
     )
     self.assertRaises(
-        abstract.DuplicateKeyword, f.call, self._vm.root_cfg_node, f, args)
+        function.DuplicateKeyword, f.call, self._vm.root_cfg_node, f, args)
 
   def test_call_with_wrong_arg_count(self):
     f = self._simple_sig([self._vm.convert.int_type])
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(self._vm.convert.build_int(self._vm.root_cfg_node),
                  self._vm.convert.build_int(self._vm.root_cfg_node))
     )
     self.assertRaises(
-        abstract.WrongArgCount, f.call, self._vm.root_cfg_node, f, args)
+        function.WrongArgCount, f.call, self._vm.root_cfg_node, f, args)
 
   def test_change_defaults(self):
     f = self._make_func(
         param_names=("a", "b", "c"),
         defaults=(self._vm.convert.build_int(self._vm.root_cfg_node),)
     )
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(self._vm.convert.build_int(self._vm.root_cfg_node),
                  self._vm.convert.build_int(self._vm.root_cfg_node))
     )
@@ -1215,7 +1214,7 @@ class SimpleFunctionTest(AbstractTestBase):
         self._vm).to_variable(self._vm.root_cfg_node)
     f.set_function_defaults(new_defaults)
     f.call(self._vm.root_cfg_node, f, args)
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(self._vm.convert.build_int(self._vm.root_cfg_node),)
     )
     f.call(self._vm.root_cfg_node, f, args)
@@ -1223,22 +1222,22 @@ class SimpleFunctionTest(AbstractTestBase):
   def test_call_with_type_parameter(self):
     ret_cls = abstract.ParameterizedClass(
         self._vm.convert.list_type,
-        {abstract.T: abstract.TypeParameter(abstract.T, self._vm)},
+        {abstract_utils.T: abstract.TypeParameter(abstract_utils.T, self._vm)},
         self._vm
     )
     f = self._make_func(
         param_names=("test",),
         annotations={
-            "test": abstract.TypeParameter(abstract.T, self._vm),
+            "test": abstract.TypeParameter(abstract_utils.T, self._vm),
             "return": ret_cls
         }
     )
-    args = abstract.FunctionArgs(
+    args = function.Args(
         posargs=(self._vm.convert.build_int(self._vm.root_cfg_node),))
     _, ret = f.call(self._vm.root_cfg_node, f, args)
-    # ret is an Instance(ParameterizedClass(list, {abstract.T: int}))
+    # ret is an Instance(ParameterizedClass(list, {abstract_utils.T: int}))
     # but we really only care about T.
-    self.assertIs(ret.data[0].cls.formal_type_parameters[abstract.T],
+    self.assertIs(ret.data[0].cls.formal_type_parameters[abstract_utils.T],
                   self._vm.convert.int_type)
 
   def test_signature_func_output_basic(self):
@@ -1265,8 +1264,8 @@ class SimpleFunctionTest(AbstractTestBase):
     node = self._vm.root_cfg_node
     dict_type = abstract.ParameterizedClass(
         self._vm.convert.dict_type,
-        {abstract.K: self._vm.convert.str_type,
-         abstract.V: self._vm.convert.int_type},
+        {abstract_utils.K: self._vm.convert.str_type,
+         abstract_utils.V: self._vm.convert.int_type},
         self._vm)
     f = self._make_func(
         name="test",
@@ -1334,7 +1333,8 @@ class AbstractTest(AbstractTestBase):
     self.assertNotEqual(union1, cls)
 
   def test_instantiate_type_parameter_type(self):
-    params = {abstract.T: abstract.TypeParameter(abstract.T, self._vm)}
+    params = {
+        abstract_utils.T: abstract.TypeParameter(abstract_utils.T, self._vm)}
     cls = abstract.ParameterizedClass(
         self._vm.convert.type_type, params, self._vm)
     self.assertListEqual(cls.instantiate(self._node).data,
@@ -1344,39 +1344,17 @@ class AbstractTest(AbstractTestBase):
     supercls = special_builtins.Super(self._vm)
     self.assertEqual(supercls.get_class(), self._vm.convert.type_type)
 
-  def test_mixin_super(self):
-    """Test the imitation 'super' method on MixinMeta."""
-    # pylint: disable=g-wrong-blank-lines
-    class A(object):
-      def f(self, x):
-        return x
-    @six.add_metaclass(abstract.MixinMeta)
-    class MyMixin(object):
-      overloads = ("f",)
-      def f(self, x):
-        if x == 0:
-          return "hello"
-        return MyMixin.super(self.f)(x)
-    class B(A, MyMixin):
-      pass
-    # pylint: enable=g-wrong-blank-lines
-    b = B()
-    v_mixin = b.f(0)
-    v_a = b.f(1)
-    self.assertEqual(v_mixin, "hello")
-    self.assertEqual(v_a, 1)
-
   def test_instantiate_interpreter_class(self):
     cls = abstract.InterpreterClass("X", [], {}, None, self._vm)
     # When there is no current frame, create a new instance every time.
-    v1 = abstract.get_atomic_value(cls.instantiate(self._node))
-    v2 = abstract.get_atomic_value(cls.instantiate(self._node))
+    v1 = abstract_utils.get_atomic_value(cls.instantiate(self._node))
+    v2 = abstract_utils.get_atomic_value(cls.instantiate(self._node))
     self.assertIsNot(v1, v2)
     # Create one instance per opcode.
     fake_opcode = object()
     self._vm.push_frame(frame_state.SimpleFrame(fake_opcode))
-    v3 = abstract.get_atomic_value(cls.instantiate(self._node))
-    v4 = abstract.get_atomic_value(cls.instantiate(self._node))
+    v3 = abstract_utils.get_atomic_value(cls.instantiate(self._node))
+    v4 = abstract_utils.get_atomic_value(cls.instantiate(self._node))
     self.assertIsNot(v1, v3)
     self.assertIsNot(v2, v3)
     self.assertIs(v3, v4)
@@ -1399,22 +1377,22 @@ class AbstractTest(AbstractTestBase):
   def test_call_type_parameter_instance(self):
     instance = abstract.Instance(self._vm.convert.list_type, self._vm)
     instance.merge_instance_type_parameter(
-        self._vm.root_cfg_node, abstract.T,
+        self._vm.root_cfg_node, abstract_utils.T,
         self._vm.convert.int_type.to_variable(self._vm.root_cfg_node))
-    t = abstract.TypeParameter(abstract.T, self._vm)
+    t = abstract.TypeParameter(abstract_utils.T, self._vm)
     t_instance = abstract.TypeParameterInstance(t, instance, self._vm)
     node, ret = t_instance.call(self._node, t_instance.to_binding(self._node),
-                                abstract.FunctionArgs(posargs=()))
+                                function.Args(posargs=()))
     self.assertIs(node, self._node)
     retval, = ret.data
     self.assertEqual(retval.cls, self._vm.convert.int_type)
 
   def test_call_empty_type_parameter_instance(self):
     instance = abstract.Instance(self._vm.convert.list_type, self._vm)
-    t = abstract.TypeParameter(abstract.T, self._vm)
+    t = abstract.TypeParameter(abstract_utils.T, self._vm)
     t_instance = abstract.TypeParameterInstance(t, instance, self._vm)
     node, ret = t_instance.call(self._node, t_instance.to_binding(self._node),
-                                abstract.FunctionArgs(posargs=()))
+                                function.Args(posargs=()))
     self.assertIs(node, self._node)
     retval, = ret.data
     self.assertIs(retval, self._vm.convert.empty)
@@ -1422,73 +1400,30 @@ class AbstractTest(AbstractTestBase):
   def test_call_type_parameter_instance_with_wrong_args(self):
     instance = abstract.Instance(self._vm.convert.list_type, self._vm)
     instance.merge_instance_type_parameter(
-        self._vm.root_cfg_node, abstract.T,
+        self._vm.root_cfg_node, abstract_utils.T,
         self._vm.convert.int_type.to_variable(self._vm.root_cfg_node))
-    t = abstract.TypeParameter(abstract.T, self._vm)
+    t = abstract.TypeParameter(abstract_utils.T, self._vm)
     t_instance = abstract.TypeParameterInstance(t, instance, self._vm)
     posargs = (self._vm.convert.create_new_unsolvable(self._node),) * 3
     node, ret = t_instance.call(self._node, t_instance.to_binding(self._node),
-                                abstract.FunctionArgs(posargs=posargs))
+                                function.Args(posargs=posargs))
     self.assertIs(node, self._node)
     self.assertTrue(ret.bindings)
     error, = self._vm.errorlog
     self.assertEqual(error.name, "wrong-arg-count")
 
   def test_instantiate_tuple_class_for_sub(self):
-    type_param = abstract.TypeParameter(abstract.K, self._vm)
-    cls = abstract.TupleClass(self._vm.convert.tuple_type,
-                              {0: type_param, abstract.T: type_param}, self._vm)
+    type_param = abstract.TypeParameter(abstract_utils.K, self._vm)
+    cls = abstract.TupleClass(
+        self._vm.convert.tuple_type,
+        {0: type_param, abstract_utils.T: type_param}, self._vm)
     # Instantiate the tuple class.
     subst_value = self._vm.annotations_util.instantiate_for_sub(
         self._vm.root_cfg_node, cls)
     # Recover the class from the instance.
     subbed_cls = self._vm.annotations_util.sub_one_annotation(
-        self._vm.root_cfg_node, type_param, [{abstract.K: subst_value}])
+        self._vm.root_cfg_node, type_param, [{abstract_utils.K: subst_value}])
     self.assertEqual(cls, subbed_cls)
-
-
-class GetViewsTest(AbstractTestBase):
-
-  def test_basic(self):
-    v1 = self._vm.program.NewVariable(
-        [self._vm.convert.unsolvable], [], self._vm.root_cfg_node)
-    v2 = self._vm.program.NewVariable(
-        [self._vm.convert.int_type, self._vm.convert.str_type], [],
-        self._vm.root_cfg_node)
-    views = list(abstract.get_views([v1, v2], self._vm.root_cfg_node))
-    six.assertCountEqual(self,
-                         [{v1: views[0][v1], v2: views[0][v2]},
-                          {v1: views[1][v1], v2: views[1][v2]}],
-                         [{v1: v1.bindings[0], v2: v2.bindings[0]},
-                          {v1: v1.bindings[0], v2: v2.bindings[1]}])
-
-  def _test_optimized(self, skip_future_value, expected_num_views):
-    v1 = self._vm.program.NewVariable(
-        [self._vm.convert.unsolvable], [], self._vm.root_cfg_node)
-    v2 = self._vm.program.NewVariable(
-        [self._vm.convert.int_type, self._vm.convert.str_type], [],
-        self._vm.root_cfg_node)
-    views = abstract.get_views([v1, v2], self._vm.root_cfg_node)
-    skip_future = None
-    # To count the number of views. Doesn't matter what we put in here, as long
-    # as it's one per view.
-    view_markers = []
-    while True:
-      try:
-        view = views.send(skip_future)
-      except StopIteration:
-        break
-      # Accesses v1 only, so the v2 bindings should be deduplicated when
-      # `skip_future` is True.
-      view_markers.append(view[v1])
-      skip_future = skip_future_value
-    self.assertEqual(len(view_markers), expected_num_views)
-
-  def test_skip(self):
-    self._test_optimized(skip_future_value=True, expected_num_views=1)
-
-  def test_no_skip(self):
-    self._test_optimized(skip_future_value=False, expected_num_views=2)
 
 
 if __name__ == "__main__":

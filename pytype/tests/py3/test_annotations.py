@@ -668,7 +668,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     self.assertErrorLogIs(errors, [(11, "wrong-arg-types", error1),
                                    (12, "wrong-arg-types", error2)])
 
-  @test_base.skip("Types not checked due to abstract.FunctionArgs.simplify")
+  @test_base.skip("Types not checked due to function.Args.simplify")
   def testSimplifiedVarargsAndKwargs(self):
     _, errors = self.InferWithErrors("""\
       def f(x, *args: int):

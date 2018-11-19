@@ -267,6 +267,12 @@ class PrintVisitor(Visitor):
       return False  # TupleType is always heterogeneous.
     return t.base_type == "tuple"
 
+  def _NeedsCallableEllipsis(self, t):
+    """Check if it is typing.Callable type."""
+    assert isinstance(t, pytd.GenericType)
+    base = t.base_type
+    return isinstance(base, pytd.ClassType) and base.name == "typing.Callable"
+
   def _RequireImport(self, module, name=None):
     """Register that we're using name from module.
 
@@ -608,10 +614,13 @@ class PrintVisitor(Visitor):
 
   def VisitGenericType(self, node):
     """Convert a generic type to a string."""
-    ellipsis = ", ..." if self._NeedsTupleEllipsis(node) else ""
-    param_str = ", ".join(node.parameters)
+    parameters = node.parameters
+    if self._NeedsTupleEllipsis(node):
+      parameters += ("...",)
+    elif self._NeedsCallableEllipsis(self.old_node):
+      parameters = ("...",) + parameters[1:]
     return (self.MaybeCapitalize(node.base_type) +
-            "[" + param_str + ellipsis + "]")
+            "[" + ", ".join(parameters) + "]")
 
   def VisitCallableType(self, node):
     return "%s[[%s], %s]" % (self.MaybeCapitalize(node.base_type),
@@ -2171,23 +2180,18 @@ class VerifyContainers(Visitor):
     if isinstance(value, pytd.TypeParameter):
       value_name = value.full_name
       assert param_name != value_name
-      if value_name in mapping:
-        # A TypeVar has been aliased, e.g.,
-        #   class MyList(List[U]): ...
-        #   class List(Sequence[T]): ...
-        # Register the alias. May raise AliasingDictConflictError.
-        mapping.add_alias(param_name, value.full_name, set.union)
-        return
-      # A bare container type has been subclassed - for example, in
-      # `class Foo(tuple): ...`, typing.Tuple._T points to
-      # __builtin__.tuple._T, but the latter has no explicit value.
-      value = pytd.AnythingType()
-    # A TypeVar has been given a concrete value, e.g.,
-    #   class MyList(List[str]): ...
-    # Register the value.
-    if param_name not in mapping:
-      mapping[param_name] = set()
-    mapping[param_name].add(value)
+      # A TypeVar has been aliased, e.g.,
+      #   class MyList(List[U]): ...
+      #   class List(Sequence[T]): ...
+      # Register the alias. May raise AliasingDictConflictError.
+      mapping.add_alias(param_name, value_name, set.union)
+    else:
+      # A TypeVar has been given a concrete value, e.g.,
+      #   class MyList(List[str]): ...
+      # Register the value.
+      if param_name not in mapping:
+        mapping[param_name] = set()
+      mapping[param_name].add(value)
 
   def _TypeCompatibilityCheck(self, type_params):
     """Check if the types are compatible.
@@ -2201,12 +2205,13 @@ class VerifyContainers(Visitor):
     `A` -> `B` -> `C`.
 
     Args:
-      type_params: The class type list.
+      type_params: The class type params.
 
     Returns:
-      True if all the types are comatible.
+      True if all the types are compatible.
     """
-    assert isinstance(type_params, set)
+    type_params = {t for t in type_params
+                   if not isinstance(t, pytd.AnythingType)}
     if not all(isinstance(t, pytd.ClassType) for t in type_params):
       return False
     mro_list = [set(mro.GetBasesInMRO(t.cls)) for t in type_params]

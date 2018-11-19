@@ -1,10 +1,18 @@
 """Representation of Python function headers and calls."""
 
 import collections
+import logging
 
+from pytype import abstract_utils
 from pytype import datatypes
+from pytype import utils
+from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+from pytype.pytd import visitors
+
 import six
+
+log = logging.getLogger(__name__)
 
 
 # Used as a key in Signature.late_annotations to indicate an annotation
@@ -275,3 +283,441 @@ class Signature(object):
     ret = self._print_annot("return")
     return "def {name}({args}) -> {ret}".format(
         name=self.name, args=args, ret=ret if ret else "Any")
+
+
+class Args(collections.namedtuple(
+    "Args", ["posargs", "namedargs", "starargs", "starstarargs"])):
+  """Represents the parameters of a function call."""
+
+  def __new__(cls, posargs, namedargs=None, starargs=None, starstarargs=None):
+    """Create arguments for a function under analysis.
+
+    Args:
+      posargs: The positional arguments. A tuple of cfg.Variable.
+      namedargs: The keyword arguments. A dictionary, mapping strings to
+        cfg.Variable.
+      starargs: The *args parameter, or None.
+      starstarargs: The **kwargs parameter, or None.
+    Returns:
+      An Args instance.
+    """
+    assert isinstance(posargs, tuple), posargs
+    cls.replace = cls._replace
+    return super(Args, cls).__new__(
+        cls, posargs=posargs, namedargs=namedargs or {}, starargs=starargs,
+        starstarargs=starstarargs)
+
+  def starargs_as_tuple(self):
+    try:
+      args = self.starargs and abstract_utils.get_atomic_python_constant(
+          self.starargs, tuple)
+    except abstract_utils.ConversionError:
+      args = None
+    return args
+
+  def starstarargs_as_dict(self):
+    try:
+      args = self.starstarargs and abstract_utils.get_atomic_python_constant(
+          self.starstarargs, dict)
+    except abstract_utils.ConversionError:
+      args = None
+    return args
+
+  def simplify(self, node, match_signature=None, vm=None):
+    """Try to insert part of *args, **kwargs into posargs / namedargs."""
+    # TODO(rechen): When we have type information about *args/**kwargs,
+    # we need to check it before doing this simplification.
+    posargs = self.posargs
+    namedargs = self.namedargs
+    starargs = self.starargs
+    starstarargs = self.starstarargs
+    starargs_as_tuple = self.starargs_as_tuple()
+    if starargs_as_tuple is not None:
+      if match_signature and vm:
+        # As we have the function signature we will attempt to adjust the
+        # starargs into the missing posargs.
+        missing_posarg_count = len(match_signature.param_names) - len(posargs)
+        starargs_list = list(starargs_as_tuple)
+        for _ in range(missing_posarg_count):
+          if starargs_list:
+            posargs += (starargs_list.pop(0),)
+          else:
+            break
+        starargs = vm.convert.tuple_to_value(starargs_list).to_variable(node)
+      else:
+        posargs += starargs_as_tuple
+        starargs = None
+    starstarargs_as_dict = self.starstarargs_as_dict()
+    if starstarargs_as_dict is not None:
+      # TODO(sivachandra): Similar to adjusting varargs in to missing positional
+      # args, there might be a benefit in adjusting starstarargs in to named
+      # args if function signature has matching param_names.
+      if namedargs is None:
+        namedargs = starstarargs_as_dict
+      else:
+        namedargs.update(node, starstarargs_as_dict)
+      starstarargs = None
+    return Args(posargs, namedargs, starargs, starstarargs)
+
+  def get_variables(self):
+    variables = list(self.posargs) + list(self.namedargs.values())
+    if self.starargs is not None:
+      variables.append(self.starargs)
+    if self.starstarargs is not None:
+      variables.append(self.starstarargs)
+    return variables
+
+
+# These names are chosen to match pytype error classes.
+# pylint: disable=g-bad-exception-name
+class FailedFunctionCall(Exception):
+  """Exception for failed function calls."""
+
+  def __gt__(self, other):
+    return other is None
+
+
+class NotCallable(FailedFunctionCall):
+  """For objects that don't have __call__."""
+
+  def __init__(self, obj):
+    super(NotCallable, self).__init__()
+    self.obj = obj
+
+
+class DictKeyMissing(Exception):
+  """When retrieving a key that does not exist in a dict."""
+
+  def __init__(self, name):
+    super(DictKeyMissing, self).__init__()
+    self.name = name
+
+  def __gt__(self, other):
+    return other is None
+
+
+BadCall = collections.namedtuple("_", ["sig", "passed_args", "bad_param"])
+
+
+BadParam = collections.namedtuple("_", ["name", "expected"])
+
+
+class InvalidParameters(FailedFunctionCall):
+  """Exception for functions called with an incorrect parameter combination."""
+
+  def __init__(self, sig, passed_args, vm, bad_param=None):
+    super(InvalidParameters, self).__init__()
+    self.name = sig.name
+    passed_args = [(name, vm.merge_values(arg.data))
+                   for name, arg, _ in sig.iter_args(passed_args)]
+    self.bad_call = BadCall(sig=sig, passed_args=passed_args,
+                            bad_param=bad_param)
+
+
+class WrongArgTypes(InvalidParameters):
+  """For functions that were called with the wrong types."""
+
+  def __gt__(self, other):
+    return other is None or (isinstance(other, FailedFunctionCall) and
+                             not isinstance(other, WrongArgTypes))
+
+
+class WrongArgCount(InvalidParameters):
+  """E.g. if a function expecting 4 parameters is called with 3."""
+  pass
+
+
+class WrongKeywordArgs(InvalidParameters):
+  """E.g. an arg "x" is passed to a function that doesn't have an "x" param."""
+
+  def __init__(self, sig, passed_args, vm, extra_keywords):
+    super(WrongKeywordArgs, self).__init__(sig, passed_args, vm)
+    self.extra_keywords = tuple(extra_keywords)
+
+
+class DuplicateKeyword(InvalidParameters):
+  """E.g. an arg "x" is passed to a function as both a posarg and a kwarg."""
+
+  def __init__(self, sig, passed_args, vm, duplicate):
+    super(DuplicateKeyword, self).__init__(sig, passed_args, vm)
+    self.duplicate = duplicate
+
+
+class MissingParameter(InvalidParameters):
+  """E.g. a function requires parameter 'x' but 'x' isn't passed."""
+
+  def __init__(self, sig, passed_args, vm, missing_parameter):
+    super(MissingParameter, self).__init__(sig, passed_args, vm)
+    self.missing_parameter = missing_parameter
+# pylint: enable=g-bad-exception-name
+
+
+class Mutation(collections.namedtuple("_", ["instance", "name", "value"])):
+
+  def __eq__(self, other):
+    return (self.instance == other.instance and
+            self.name == other.name and
+            frozenset(self.value.data) == frozenset(other.value.data))
+
+  def __hash__(self):
+    return hash((self.instance, self.name, frozenset(self.value.data)))
+
+
+class PyTDSignature(utils.VirtualMachineWeakrefMixin):
+  """A PyTD function type (signature).
+
+  This represents instances of functions with specific arguments and return
+  type.
+  """
+
+  def __init__(self, name, pytd_sig, vm):
+    super(PyTDSignature, self).__init__(vm)
+    self.name = name
+    self.pytd_sig = pytd_sig
+    self.param_types = [
+        self.vm.convert.constant_to_value(
+            p.type, subst=datatypes.AliasingDict(), node=self.vm.root_cfg_node)
+        for p in self.pytd_sig.params]
+    self.signature = Signature.from_pytd(vm, name, pytd_sig)
+
+  def _map_args(self, args, view):
+    """Map the passed arguments to a name->binding dictionary.
+
+    Args:
+      args: The passed arguments.
+      view: A variable->binding dictionary.
+
+    Returns:
+      A tuple of:
+        a list of formal arguments, each a (name, abstract value) pair;
+        a name->binding dictionary of the passed arguments.
+
+    Raises:
+      InvalidParameters: If the passed arguments don't match this signature.
+    """
+    formal_args = [(p.name, self.signature.annotations[p.name])
+                   for p in self.pytd_sig.params]
+    arg_dict = {}
+
+    # positional args
+    for name, arg in zip(self.signature.param_names, args.posargs):
+      arg_dict[name] = view[arg]
+    num_expected_posargs = len(self.signature.param_names)
+    if len(args.posargs) > num_expected_posargs and not self.pytd_sig.starargs:
+      raise WrongArgCount(self.signature, args, self.vm)
+    # Extra positional args are passed via the *args argument.
+    varargs_type = self.signature.annotations.get(self.signature.varargs_name)
+    if varargs_type and varargs_type.isinstance_ParameterizedClass():
+      for (i, vararg) in enumerate(args.posargs[num_expected_posargs:]):
+        name = argname(num_expected_posargs + i)
+        arg_dict[name] = view[vararg]
+        formal_args.append(
+            (name, varargs_type.get_formal_type_parameter(abstract_utils.T)))
+
+    # named args
+    for name, arg in args.namedargs.items():
+      if name in arg_dict:
+        raise DuplicateKeyword(self.signature, args, self.vm, name)
+      arg_dict[name] = view[arg]
+    extra_kwargs = set(args.namedargs) - {p.name for p in self.pytd_sig.params}
+    if extra_kwargs and not self.pytd_sig.starstarargs:
+      raise WrongKeywordArgs(self.signature, args, self.vm, extra_kwargs)
+    # Extra keyword args are passed via the **kwargs argument.
+    kwargs_type = self.signature.annotations.get(self.signature.kwargs_name)
+    if kwargs_type and kwargs_type.isinstance_ParameterizedClass():
+      # We sort the kwargs so that matching always happens in the same order.
+      for name in sorted(extra_kwargs):
+        formal_args.append(
+            (name, kwargs_type.get_formal_type_parameter(abstract_utils.V)))
+
+    # packed args
+    packed_args = [("starargs", self.signature.varargs_name),
+                   ("starstarargs", self.signature.kwargs_name)]
+    for arg_type, name in packed_args:
+      actual = getattr(args, arg_type)
+      pytd_val = getattr(self.pytd_sig, arg_type)
+      if actual and pytd_val:
+        arg_dict[name] = view[actual]
+        # The annotation is Tuple or Dict, but the passed arg only has to be
+        # Iterable or Mapping.
+        typ = self.vm.convert.widen_type(self.signature.annotations[name])
+        formal_args.append((name, typ))
+
+    return formal_args, arg_dict
+
+  def _fill_in_missing_parameters(self, node, args, arg_dict):
+    for p in self.pytd_sig.params:
+      if p.name not in arg_dict:
+        if (not p.optional and args.starargs is None and
+            args.starstarargs is None):
+          raise MissingParameter(self.signature, args, self.vm, p.name)
+        # Assume the missing parameter is filled in by *args or **kwargs.
+        # Unfortunately, we can't easily use *args or **kwargs to fill in
+        # something more precise, since we need a Value, not a Variable.
+        arg_dict[p.name] = self.vm.convert.unsolvable.to_binding(node)
+
+  def substitute_formal_args(self, node, args, view, alias_map):
+    """Substitute matching args into this signature. Used by PyTDFunction."""
+    formal_args, arg_dict = self._map_args(args, view)
+    self._fill_in_missing_parameters(node, args, arg_dict)
+    subst, bad_arg = self.vm.matcher.compute_subst(
+        node, formal_args, arg_dict, view, alias_map)
+    if subst is None:
+      if self.signature.has_param(bad_arg.name):
+        signature = self.signature
+      else:
+        signature = self.signature.insert_varargs_and_kwargs(arg_dict)
+      raise WrongArgTypes(signature, args, self.vm, bad_param=bad_arg)
+    if log.isEnabledFor(logging.DEBUG):
+      log.debug("Matched arguments against sig%s", pytd.Print(self.pytd_sig))
+    for nr, p in enumerate(self.pytd_sig.params):
+      log.info("param %d) %s: %s <=> %s", nr, p.name, p.type, arg_dict[p.name])
+    for name, var in sorted(subst.items()):
+      log.debug("Using %s=%r %r", name, var, var.data)
+
+    return arg_dict, subst
+
+  def call_with_args(self, node, func, arg_dict,
+                     subst, ret_map, alias_map=None):
+    """Call this signature. Used by PyTDFunction."""
+    return_type = self.pytd_sig.return_type
+    t = (return_type, subst)
+    sources = [func] + list(arg_dict.values())
+    if t not in ret_map:
+      for param in pytd_utils.GetTypeParameters(return_type):
+        if param.full_name in subst:
+          # This value, which was instantiated by the matcher, will end up in
+          # the return value. Since the matcher does not call __init__, we need
+          # to do that now.
+          node = self.vm.call_init(node, subst[param.full_name])
+      try:
+        ret_map[t] = self.vm.convert.constant_to_var(
+            abstract_utils.AsReturnValue(return_type), subst, node,
+            source_sets=[sources])
+      except self.vm.convert.TypeParameterError:
+        # The return type contains a type parameter without a substitution.
+        subst = subst.copy()
+        visitor = visitors.CollectTypeParameters()
+        return_type.Visit(visitor)
+
+        for t in visitor.params:
+          if t.full_name not in subst:
+            subst[t.full_name] = self.vm.convert.empty.to_variable(node)
+        ret_map[t] = self.vm.convert.constant_to_var(
+            abstract_utils.AsReturnValue(return_type), subst, node,
+            source_sets=[sources])
+      else:
+        if (not ret_map[t].bindings and
+            isinstance(return_type, pytd.TypeParameter)):
+          ret_map[t].AddBinding(self.vm.convert.empty, [], node)
+    else:
+      # add the new sources
+      for data in ret_map[t].data:
+        ret_map[t].AddBinding(data, sources, node)
+    mutations = self._get_mutation(node, arg_dict, subst)
+    self.vm.trace_call(node, func, (self,),
+                       tuple(arg_dict[p.name] for p in self.pytd_sig.params),
+                       {},
+                       ret_map[t])
+    return node, ret_map[t], mutations
+
+  def _get_mutation(self, node, arg_dict, subst):
+    """Mutation for changing the type parameters of mutable arguments.
+
+    This will adjust the type parameters as needed for pytd functions like:
+      def append_float(x: list[int]):
+        x = list[int or float]
+    This is called after all the signature matching has succeeded, and we
+    know we're actually calling this function.
+
+    Args:
+      node: The current CFG node.
+      arg_dict: A map of strings to pytd.Bindings instances.
+      subst: Current type parameters.
+    Returns:
+      A list of Mutation instances.
+    Raises:
+      ValueError: If the pytd contains invalid information for mutated params.
+    """
+    # Handle mutable parameters using the information type parameters
+    mutations = []
+    for formal in self.pytd_sig.params:
+      actual = arg_dict[formal.name]
+      arg = actual.data
+      if (formal.mutated_type is not None and
+          arg.isinstance_SimpleAbstractValue()):
+        if (isinstance(formal.type, pytd.GenericType) and
+            isinstance(formal.mutated_type, pytd.GenericType) and
+            formal.type.base_type == formal.mutated_type.base_type and
+            isinstance(formal.type.base_type, pytd.ClassType) and
+            formal.type.base_type.cls):
+          names_actuals = zip(formal.mutated_type.base_type.cls.template,
+                              formal.mutated_type.parameters)
+          for tparam, type_actual in names_actuals:
+            log.info("Mutating %s to %s",
+                     tparam.name,
+                     pytd.Print(type_actual))
+            type_actual_val = self.vm.convert.constant_to_var(
+                abstract_utils.AsInstance(type_actual), subst, node,
+                discard_concrete_values=True)
+            mutations.append(Mutation(arg, tparam.full_name, type_actual_val))
+        else:
+          log.error("Old: %s", pytd.Print(formal.type))
+          log.error("New: %s", pytd.Print(formal.mutated_type))
+          log.error("Actual: %r", actual)
+          raise ValueError("Mutable parameters setting a type to a "
+                           "different base type is not allowed.")
+    return mutations
+
+  def get_positional_names(self):
+    return [p.name for p in self.pytd_sig.params
+            if not p.kwonly]
+
+  def set_defaults(self, defaults):
+    """Set signature's default arguments. Requires rebuilding PyTD signature.
+
+    Args:
+      defaults: An iterable of function argument defaults.
+
+    Returns:
+      Self with an updated signature.
+    """
+    defaults = list(defaults)
+    params = []
+    for param in reversed(self.pytd_sig.params):
+      if defaults:
+        defaults.pop()  # Discard the default. Unless we want to update type?
+        params.append(pytd.Parameter(
+            name=param.name,
+            type=param.type,
+            kwonly=param.kwonly,
+            optional=True,
+            mutated_type=param.mutated_type
+        ))
+      else:
+        params.append(pytd.Parameter(
+            name=param.name,
+            type=param.type,
+            kwonly=param.kwonly,
+            optional=False,  # Reset any previously-set defaults
+            mutated_type=param.mutated_type
+        ))
+    new_sig = pytd.Signature(
+        params=tuple(reversed(params)),
+        starargs=self.pytd_sig.starargs,
+        starstarargs=self.pytd_sig.starstarargs,
+        return_type=self.pytd_sig.return_type,
+        exceptions=self.pytd_sig.exceptions,
+        template=self.pytd_sig.template
+    )
+    # Now update self
+    self.pytd_sig = new_sig
+    self.param_types = [
+        self.vm.convert.constant_to_value(
+            p.type, subst=datatypes.AliasingDict(), node=self.vm.root_cfg_node)
+        for p in self.pytd_sig.params]
+    self.signature = Signature.from_pytd(self.vm, self.name, self.pytd_sig)
+    return self
+
+  def __repr__(self):
+    return pytd.Print(self.pytd_sig)

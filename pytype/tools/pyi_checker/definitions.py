@@ -5,7 +5,7 @@ AST nodes are not very convenient for comparing two files. Instead, they should
 be parsed into these definitions. Each Definition subclass exposes the
 attributes of a particular kind of AST node.
 """
-from typing import Dict, Optional, List, Union
+from typing import ClassVar, Dict, Optional, List, Union
 
 import dataclasses
 from typed_ast import ast3
@@ -20,12 +20,21 @@ class Definition:
 
   Attributes:
     name: The node's identifier.
+    source: The source file that contains the definition.
     lineno: The line in the source file that contains the definition.
     col_offset: The column offset within the line of the source definition.
   """
   name: str
+  source: str
   lineno: int
   col_offset: int
+  kind: ClassVar[str]
+
+  def __post_init__(self):
+    # This method is automatically called by __init__. Subclasses override it
+    # to set full_name to "%{kind} %{name}", e.g. "function doThing".
+    self.full_name = f"{self.kind} {self.name}"
+    self.location = f"{self.source}:{self.lineno}"
 
 
 @dataclasses.dataclass
@@ -39,10 +48,11 @@ class Argument(Definition):
     has_default: Whether a default value is provided for the argument.
   """
   has_default: bool
+  kind: ClassVar[str] = "argument"
 
   @classmethod
-  def from_node(cls, node: ast3.arg):
-    return cls(node.arg, node.lineno, node.col_offset, False)
+  def from_node(cls, node: ast3.arg, source: str = ""):
+    return cls(node.arg, source, node.lineno, node.col_offset, False)
 
 
 @dataclasses.dataclass
@@ -70,13 +80,16 @@ class Function(Definition):
   kwarg: Optional[Argument]
   decorators: List[str]
   is_async: bool
+  kind: ClassVar[str] = "function"
 
   @classmethod
-  def from_node(cls, node: Union[ast3.FunctionDef, ast3.AsyncFunctionDef]):
+  def from_node(cls, node: Union[ast3.FunctionDef, ast3.AsyncFunctionDef],
+                source: str = ""):
     """Transform an AST function node into a Function definition.
 
     Arguments:
       node: The ast3.FunctionDef or ast3.AsyncFunctionDef to transform.
+      source: (Optional) The source file of this definition.
 
     Returns:
       A Function derived from the given AST node.
@@ -103,6 +116,7 @@ class Function(Definition):
     # discard the decorators that don't have names, which shouldn't happen.
     decorators = _find_all_names(node.decorator_list)
     return cls(name=node.name,
+               source=source,
                lineno=node.lineno,
                col_offset=node.col_offset,
                params=params,
@@ -120,10 +134,11 @@ class Variable(Definition):
   Variables that appear in type stubs are either global variables or class
   attributes.
   """
+  kind: ClassVar[str] = "variable"
 
   @classmethod
-  def from_node(cls, node: ast3.Name):
-    return cls(node.id, node.lineno, node.col_offset)
+  def from_node(cls, node: ast3.Name, source: str = ""):
+    return cls(node.id, source, node.lineno, node.col_offset)
 
 
 @dataclasses.dataclass
@@ -146,10 +161,12 @@ class Class(Definition):
   fields: List[Variable]
   methods: List[Function]
   nested_classes: List["Class"]
+  kind: ClassVar[str] = "class"
 
   @classmethod
   def from_node(cls, node: ast3.ClassDef, fields: List[Variable],
-                methods: List[Function], nested_classes: List["Class"]):
+                methods: List[Function], nested_classes: List["Class"],
+                source: str = ""):
     """Transform an ast3.ClassDef into a Class definition.
 
     Due to the complexity of parsing classes, the caller must provide the
@@ -160,6 +177,7 @@ class Class(Definition):
       fields: List of fields in the class.
       methods: List of functions defined in the class.
       nested_classes: List of nested classes defined in the class.
+      source: (Optional) The source file of this definition.
 
     Returns:
       A Class definition representing the ast3.ClassDef and its attributes.
@@ -168,6 +186,7 @@ class Class(Definition):
     keyword_bases = _find_all_names(node.keywords)
     decorators = _find_all_names(node.decorator_list)
     return cls(name=node.name,
+               source=source,
                lineno=node.lineno,
                col_offset=node.col_offset,
                bases=bases,

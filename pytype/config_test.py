@@ -155,6 +155,22 @@ class PostprocessorTest(unittest.TestCase):
                          self.output_options).process()
     self.assertIs(self.output_options.typeshed, False)
 
+  def test_enable_only(self):
+    input_options = datatypes.SimpleNamespace(
+        disable=None,
+        enable_only="import-error,attribute-error")
+    config.Postprocessor({"disable", "enable_only"}, input_options).process()
+    self.assertIn("python-compiler-error", input_options.disable)
+    self.assertNotIn("import-error", input_options.disable)
+    self.assertNotIn("attribute-error", input_options.disable)
+
+  def test_disable_and_enable_only(self):
+    input_options = datatypes.SimpleNamespace(
+        disable="import-error,attribute-error",
+        enable_only="bad-slots,bad-unpacking")
+    with self.assertRaises(config.PostprocessingError) as _:
+      config.Postprocessor({"disable", "enable_only"}, input_options).process()
+
 
 if __name__ == "__main__":
   unittest.main()
