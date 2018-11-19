@@ -42,6 +42,9 @@ ITEMS = {
     'inputs': Item(
         '', '.', None,
         'Space-separated list of files or directories to process.'),
+    'keep_going': Item(
+        False, 'False', None,
+        'Keep going past errors to analyze as many files as possible.'),
     'output': Item(
         'pytype_output', 'pytype_output', None, 'All pytype output goes here.'),
     'pythonpath': Item(
@@ -70,10 +73,15 @@ def get_pytype_single_item(name):
   return _PYTYPE_SINGLE_ITEMS[name]
 
 
+def string_to_bool(s):
+  return s == 'True' if s in ('True', 'False') else s
+
+
 def make_converters(cwd=None):
   """For items that need coaxing into their internal representations."""
   return {
       'exclude': lambda v: file_utils.expand_source_files(v, cwd),
+      'keep_going': string_to_bool,
       'inputs': lambda v: file_utils.expand_source_files(v, cwd),
       'output': lambda v: file_utils.expand_path(v, cwd),
       'pythonpath': lambda v: file_utils.expand_pythonpath(v, cwd),

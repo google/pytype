@@ -1,4 +1,5 @@
 Version (upcoming)
+* Change default behavior to stop at first error and add a --keep-going option.
 * Flag annotations with the wrong parameter count and invalid uses of NoReturn.
 * Improve pytype and merge-pyi status messages.
 

@@ -4,6 +4,7 @@ import os
 
 from pytype import datatypes
 from pytype import file_utils
+from pytype.tools.analyze_project import config
 from pytype.tools.analyze_project import parse_args
 import unittest
 
@@ -116,9 +117,15 @@ class TestParser(unittest.TestCase):
     self.assertSequenceEqual(self.parser.parse_args(
         ['--pythonpath', ':foo']).pythonpath, [d, os.path.join(d, 'foo')])
 
+  def test_keep_going(self):
+    self.assertTrue(self.parser.parse_args(['-k']).keep_going)
+
+  def test_keep_going_default(self):
+    self.assertIsInstance(self.parser.config_from_defaults().keep_going, bool)
+
   def test_defaults(self):
     args = self.parser.parse_args([])
-    for arg in ['python_version', 'output', 'pythonpath']:
+    for arg in config.ITEMS:
       self.assertFalse(hasattr(args, arg))
 
   def test_pytype_single_args(self):
