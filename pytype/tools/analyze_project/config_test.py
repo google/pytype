@@ -113,24 +113,24 @@ class TestGenerateConfig(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    cls._pytype_single_args = parse_args.make_parser().pytype_single_args
+    cls.parser = parse_args.make_parser()
 
   def test_bad_location(self):
     with self.assertRaises(SystemExit):
       config.generate_sample_config_or_die('/does/not/exist/sample.cfg',
-                                           self._pytype_single_args)
+                                           self.parser.pytype_single_args)
 
   def test_existing_file(self):
     with file_utils.Tempdir() as d:
       f = d.create_file('sample.cfg')
       with self.assertRaises(SystemExit):
-        config.generate_sample_config_or_die(f, self._pytype_single_args)
+        config.generate_sample_config_or_die(f, self.parser.pytype_single_args)
 
   def test_generate(self):
     conf = config.FileConfig()
     with file_utils.Tempdir() as d:
       f = os.path.join(d.path, 'sample.cfg')
-      config.generate_sample_config_or_die(f, self._pytype_single_args)
+      config.generate_sample_config_or_die(f, self.parser.pytype_single_args)
       # Test that we've generated a valid config and spot-check a pytype-all
       # and a pytype-single argument.
       conf.read_from_file(f)
@@ -138,9 +138,18 @@ class TestGenerateConfig(unittest.TestCase):
         expected_pythonpath = [
             os.path.realpath(p)
             for p in config.ITEMS['pythonpath'].sample.split(os.pathsep)]
-      expected_protocols = config.PYTYPE_SINGLE_ITEMS['protocols'].sample
+      expected_protocols = config._PYTYPE_SINGLE_ITEMS['protocols'].sample
       self.assertEqual(conf.pythonpath, expected_pythonpath)
       self.assertEqual(conf.protocols, expected_protocols)
+
+  def test_read(self):
+    with file_utils.Tempdir() as d:
+      f = os.path.join(d.path, 'test.cfg')
+      config.generate_sample_config_or_die(f, self.parser.pytype_single_args)
+      conf = config.read_config_file_or_die(f)
+    # Smoke test for postprocessing and spot-check of a result.
+    self.parser.postprocess(conf, from_strings=True)
+    self.assertIsInstance(conf.report_errors, bool)
 
 
 class TestReadConfig(TestBase):

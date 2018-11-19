@@ -53,16 +53,21 @@ ITEMS = {
 
 
 # The missing fields will be filled in by generate_sample_config_or_die.
-PYTYPE_SINGLE_ITEMS = {
+_PYTYPE_SINGLE_ITEMS = {
     'disable': Item(None, 'pyi-error', ArgInfo('--disable', ','.join), None),
-    'enable_only': Item(
-        None, 'import-error', ArgInfo('--enable-only', ','.join), None),
     'report_errors': Item(
         None, 'True', ArgInfo('--no-report-errors', lambda v: not v), None),
     'protocols': Item(None, 'False', ArgInfo('--protocols', None), None),
     'strict_import': Item(
         None, 'False', ArgInfo('--strict-import', None), None),
 }
+
+
+def get_pytype_single_item(name):
+  # We want to avoid exposing this hard-coded list as much as possible so that
+  # parser.pytype_single_args, which is guaranteed to match the actual args, is
+  # used instead.
+  return _PYTYPE_SINGLE_ITEMS[name]
 
 
 def make_converters(cwd=None):
@@ -159,8 +164,8 @@ def generate_sample_config_or_die(filename, pytype_single_args):
 
   # Combine all arguments into one name -> Item dictionary.
   items = dict(ITEMS)
-  assert set(PYTYPE_SINGLE_ITEMS) == set(pytype_single_args)
-  for key, item in PYTYPE_SINGLE_ITEMS.items():
+  assert set(_PYTYPE_SINGLE_ITEMS) == set(pytype_single_args)
+  for key, item in _PYTYPE_SINGLE_ITEMS.items():
     items[key] = item._replace(default=pytype_single_args[key].default,
                                comment=pytype_single_args[key].help)
 

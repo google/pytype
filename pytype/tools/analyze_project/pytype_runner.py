@@ -120,7 +120,7 @@ class PytypeRunner(object):
   def set_custom_options(self, flags_with_values, binary_flags):
     """Merge self.custom_options into flags_with_values and binary_flags."""
     for dest, value in self.custom_options:
-      arg_info = config.PYTYPE_SINGLE_ITEMS[dest].arg_info
+      arg_info = config.get_pytype_single_item(dest).arg_info
       if arg_info.to_command_line:
         value = arg_info.to_command_line(value)
       if isinstance(value, bool):
