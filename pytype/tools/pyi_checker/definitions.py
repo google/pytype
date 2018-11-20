@@ -158,9 +158,9 @@ class Class(Definition):
   bases: List[str]
   keyword_bases: Dict[str, str]
   decorators: List[str]
-  fields: List[Variable]
-  methods: List[Function]
-  nested_classes: List["Class"]
+  fields: Dict[str, List[Variable]]
+  methods: Dict[str, List[Function]]
+  nested_classes: Dict[str, List["Class"]]
   kind: ClassVar[str] = "class"
 
   @classmethod
