@@ -59,26 +59,6 @@ class ErrorTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorLogIs(errors, [(1, "name-error", r"foobar")])
 
-  def testUnsupportedOperands(self):
-    _, errors = self.InferWithErrors("""\
-      def f():
-        x = "foo"
-        y = "bar"
-        return x ^ y
-    """)
-    self.assertErrorLogIs(errors, [(4, "unsupported-operands",
-                                    r"__xor__.*str.*str")])
-
-  def testUnsupportedOperands2(self):
-    _, errors = self.InferWithErrors("""
-      def f():
-        x = "foo"
-        y = 3
-        return x + y
-    """)
-    self.assertErrorLogIs(errors, [(5, "wrong-arg-types",
-                                    r"Expected.*y: str.*Actual.*y: int")])
-
   def testWrongArgCount(self):
     _, errors = self.InferWithErrors("""\
       hex(1, 2, 3, 4)
@@ -909,8 +889,8 @@ class ErrorTest(test_base.TargetIndependentTest):
       f("hello")
       f([])
     """)
-    self.assertErrorLogIs(errors, [(2, "wrong-arg-types", r"str.*int"),
-                                   (2, "wrong-arg-types", r"list.*int")])
+    self.assertErrorLogIs(errors, [(2, "unsupported-operands", r"str.*int"),
+                                   (2, "unsupported-operands", r"list.*int")])
 
   def testKwargOrder(self):
     with file_utils.Tempdir() as d:
@@ -1013,6 +993,26 @@ class ErrorTest(test_base.TargetIndependentTest):
         return y.groups()
     """)
     self.assertErrorLogIs(errors, [(3, "attribute-error", r"Optional\[Any\]")])
+
+
+class UnsupportedOperandsTest(test_base.TargetIndependentTest):
+  """Test [unsupported-operands]."""
+
+  def testUnsupportedXor(self):
+    errors = self.CheckWithErrors("def f(): return 'foo' ^ 3")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"__xor__.*str.*int.*str\.__xor__.*int\.__rxor__")])
+
+  def testUnsupportedAdd(self):
+    errors = self.CheckWithErrors("def f(): return 'foo' + 3")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands", r"\+.*str.*int.*str\.__add__.*str")])
+
+  def testUnsupportedInvert(self):
+    errors = self.CheckWithErrors("def f(): return ~None")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands", r"\~.*None.*None\.__invert__")])
 
 
 test_base.main(globals(), __name__ == "__main__")

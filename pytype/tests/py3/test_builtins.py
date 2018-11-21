@@ -140,7 +140,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
         for x in bytes():
           return bytes() + x
     """)
-    self.assertErrorLogIs(errors, [(3, "wrong-arg-types")])
+    self.assertErrorLogIs(errors, [(3, "unsupported-operands")])
 
   def test_inplace_division(self):
     self.Check("""\

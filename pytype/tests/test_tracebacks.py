@@ -12,7 +12,8 @@ class TracebackTest(test_base.TargetIndependentTest):
         "hello" + 42
       f("world")
     """)
-    self.assertErrorLogIs(errors, [(2, "wrong-arg-types", r"str.*int\)$")])
+    self.assertErrorLogIs(errors, [(2, "unsupported-operands",
+                                    r"expected str$")])
 
   def test_same_traceback(self):
     _, errors = self.InferWithErrors("""\
@@ -22,7 +23,7 @@ class TracebackTest(test_base.TargetIndependentTest):
         f("hello", x)
       g("world")
     """, deep=True)
-    self.assertErrorLogIs(errors, [(2, "wrong-arg-types",
+    self.assertErrorLogIs(errors, [(2, "unsupported-operands",
                                     r"Called from.*:\n"
                                     r"  line 4, in g")])
 
@@ -33,10 +34,10 @@ class TracebackTest(test_base.TargetIndependentTest):
       f("hello")
       f("world")
     """)
-    self.assertErrorLogIs(errors, [(2, "wrong-arg-types",
+    self.assertErrorLogIs(errors, [(2, "unsupported-operands",
                                     r"Called from.*:\n"
                                     r"  line 3, in current file"),
-                                   (2, "wrong-arg-types",
+                                   (2, "unsupported-operands",
                                     r"Called from.*:\n"
                                     r"  line 4, in current file")])
 

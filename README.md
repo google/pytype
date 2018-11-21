@@ -31,9 +31,8 @@ Run pytype to catch the bug:
 ```
 $ pytype foo.py
 
-File "foo.py", line 2, in make_greeting: Function str.__add__ was called with the wrong arguments [wrong-arg-types]
-  Expected: (self, y: str)
-  Actually passed: (self, y: int)
+File "foo.py", line 2, in make_greeting: unsupported operand type(s) for +: 'str' and 'int' [unsupported-operands]
+  str.__add__ expected str
 Traceback:
   line 5, in print_greeting
 ```

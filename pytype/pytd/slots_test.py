@@ -15,6 +15,11 @@ class TestPytd(unittest.TestCase):
       reverse = "__r%s__" % operator
       self.assertEqual(slots.REVERSE_NAME_MAPPING[normal], reverse)
 
+  def testSymbolMapping(self):
+    for operator, symbol in [("__add__", "+"),
+                             ("__invert__", "~")]:
+      self.assertEqual(slots.SYMBOL_MAPPING[operator], symbol)
+
 
 if __name__ == "__main__":
   unittest.main()

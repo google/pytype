@@ -81,7 +81,7 @@ class QuickTest(test_base.TargetIndependentTest):
       def print_greeting():
         print(make_greeting(0))
     """, quick=True)
-    self.assertErrorLogIs(errors, [(2, "wrong-arg-types", r"add.*str.*int")])
+    self.assertErrorLogIs(errors, [(2, "unsupported-operands", r"str.*int")])
 
 
 test_base.main(globals(), __name__ == "__main__")

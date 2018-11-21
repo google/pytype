@@ -28,17 +28,20 @@ class Slot(object):
     opcode: The name of the opcode that CPython uses to call this
       function. This is only filled in for operators (e.g. BINARY_SUBSCR),
       but not for operations (e.g. STORE_SUBSCR).
-    python_version: "2", "3", or (default) "*"
+    python_version: "2", "3", or (default) "*".
+    symbol: Only filled in for operators. The corresponding symbol, e.g., "+"
+      for __add__.
   """
 
   def __init__(self, python_name, c_name, function_type, index=None,
-               opcode=None, python_version="*"):
+               opcode=None, python_version="*", symbol=None):
     self.python_name = python_name
     self.c_name = c_name
     self.function_type = function_type
     self.index = index
     self.opcode = opcode
     self.python_version = python_version
+    self.symbol = symbol
 
 
 SLOTS = [
@@ -83,7 +86,7 @@ SLOTS = [
 
     # number methods:
     Slot("__add__", "nb_add", "binary_nb", index=0,
-         opcode="BINARY_ADD"),
+         opcode="BINARY_ADD", symbol="+"),
     Slot("__radd__", "nb_add", "binary_nb", index=1),
     Slot("__sub__", "nb_subtract", "binary_nb", index=0,
          opcode="BINARY_SUBTRACT"),
@@ -132,7 +135,7 @@ SLOTS = [
     Slot("__abs__", "nb_absolute", "unary"),
     Slot("__nonzero__", "nb_nonzero", "inquiry"),  # inverse of UNARY_NOT opcode
     Slot("__invert__", "nb_invert", "unary",
-         opcode="UNARY_INVERT"),
+         opcode="UNARY_INVERT", symbol="~"),
     Slot("__coerce__", "nb_coerce", "coercion"),  # not needed
     Slot("__int__", "nb_int", "unary"),  # expects exact int as return
     Slot("__long__", "nb_long", "unary"),  # expects exact long as return
@@ -203,7 +206,7 @@ SLOTS = [
     # Python/ceval.c will try both sq_item and mp_subscript, which is why this
     # opcode appears twice in our list.
     Slot("__add__", "sq_concat", "binary",
-         opcode="BINARY_ADD"),
+         opcode="BINARY_ADD", symbol="+"),
     Slot("__mul__", "sq_repeat", "indexargfunc",
          opcode="BINARY_MULTIPLY"),
     Slot("__iadd__", "sq_inplace_concat", "binary",
@@ -249,6 +252,10 @@ COMPARES = {
     GT: lambda x, y: x > y,
     GE: lambda x, y: x >= y,
 }
+
+
+SYMBOL_MAPPING = {slot.python_name: slot.symbol
+                  for slot in SLOTS if slot.symbol}
 
 
 def _ReverseNameMapping():
