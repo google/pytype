@@ -121,9 +121,9 @@ SLOTS = [
          opcode="BINARY_TRUE_DIVIDE"),
     Slot("__rtruediv__", "nb_true_divide", "binary_nb", index=1),
 
-    Slot("__pow__", "nb_power", "ternary",
+    Slot("__pow__", "nb_power", "ternary", index=0,
          opcode="BINARY_POWER"),
-    Slot("__rpow__", "nb_power", "ternary"),  # needs wrap_tenary_nb
+    Slot("__rpow__", "nb_power", "ternary", index=1),  # needs wrap_tenary_nb
 
     Slot("__neg__", "nb_negative", "unary",
          opcode="UNARY_NEGATIVE"),
@@ -251,20 +251,13 @@ COMPARES = {
 }
 
 
-def ReversibleOperatorNames():
-  """{__add__, __div__, __mod__, ...}."""
-  return {slot.python_name for slot in SLOTS if slot.index == 0}
+def _ReverseNameMapping():
+  """__add__ -> __radd__, __mul__ -> __rmul__ etc."""
+  c_name_to_reverse = {slot.c_name: slot.python_name
+                       for slot in SLOTS
+                       if slot.index == 1}
+  return {slot.python_name: c_name_to_reverse[slot.c_name]
+          for slot in SLOTS if slot.index == 0}
 
 
-def ReverseOperatorNames():
-  """{__radd__, __rdiv__, __rmod__, ...}."""
-  return {slot.python_name for slot in SLOTS if slot.index == 1}
-
-
-def ReverseSlotMapping():
-  """__radd__ -> __add__, __rmul__ -> __mul__ etc."""
-  c_name_to_normal = {slot.c_name: slot.python_name
-                      for slot in SLOTS
-                      if slot.index == 0}
-  return {slot.python_name: c_name_to_normal[slot.c_name]
-          for slot in SLOTS if slot.index == 1}
+REVERSE_NAME_MAPPING = _ReverseNameMapping()

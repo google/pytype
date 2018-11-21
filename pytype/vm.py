@@ -308,20 +308,6 @@ class VirtualMachine(object):
             node, frame, self.convert.no_return.to_variable(node))
     return node, frame.return_variable
 
-  reversable_operators = set([
-      "__add__", "__sub__", "__mul__",
-      "__div__", "__truediv__", "__floordiv__",
-      "__mod__", "__divmod__", "__pow__",
-      "__lshift__", "__rshift__", "__and__", "__or__", "__xor__",
-      "__matmul__"
-  ])
-
-  @staticmethod
-  def reverse_operator_name(name):
-    if name in VirtualMachine.reversable_operators:
-      return "__r" + name[2:]
-    return None
-
   def push_block(self, state, t, op, handler=None, level=None):
     if level is None:
       level = len(state.data_stack)
@@ -750,7 +736,7 @@ class VirtualMachine(object):
 
   def _call_binop_on_bindings(self, node, name, xval, yval):
     """Call a binary operator on two cfg.Binding objects."""
-    rname = self.reverse_operator_name(name)
+    rname = slots.REVERSE_NAME_MAPPING.get(name)
     if rname and isinstance(xval.data, abstract.AMBIGUOUS_OR_EMPTY):
       # If the reverse operator is possible and x is ambiguous, then we have no
       # way of determining whether __{op} or __r{op}__ is called.  Technically,
