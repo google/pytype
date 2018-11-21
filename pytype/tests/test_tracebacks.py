@@ -59,5 +59,21 @@ class TracebackTest(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [(2, "attribute-error",
                                     r"Called from.*:\n  line 4, in g$")])
 
+  def test_no_argument_function(self):
+    errors = self.CheckWithErrors("""\
+      def f():
+        return None.attr
+      f()
+    """)
+    self.assertErrorLogIs(errors, [(2, "attribute-error", r"attr.*None$")])
+
+  def test_build_class(self):
+    errors = self.CheckWithErrors("""\
+      class Foo(object):
+        def f(self, x: Bar):
+          pass
+    """)
+    self.assertErrorLogIs(errors, [(2, "name-error", r"Bar.*not defined$")])
+
 
 test_base.main(globals(), __name__ == "__main__")

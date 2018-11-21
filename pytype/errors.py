@@ -72,45 +72,43 @@ def _maybe_truncate_traceback(traceback):
     return traceback
 
 
-def _make_traceback_str(ops):
-  """Turn a stack of opcodes into a traceback string.
-
-  Args:
-    ops: A list of pyi.opcodes.Opcode objects.
-
-  Returns:
-    A traceback string representing the stack.
-  """
-  ops = ops[:-1]
-  if ops:
-    ops = _maybe_truncate_traceback(ops)
-    traceback = []
-    format_line = "line %d, in %s"
-    for op in ops:
-      if op is _ELLIPSIS:
-        line = "..."
-      elif op.code.co_name == "<module>":
-        line = format_line % (op.line, "current file")
-      else:
-        line = format_line % (op.line, op.code.co_name)
-      traceback.append(line)
-    return TRACEBACK_MARKER + "\n  " + "\n  ".join(traceback)
-  else:
+def _make_traceback_str(frames):
+  """Turn a stack of frames into a traceback string."""
+  if len(frames) < 2 or (
+      frames[-1].f_code and not frames[-1].f_code.get_arg_count()):
+    # A traceback is usually unnecessary when the topmost frame has no
+    # arguments. If this frame ran during module loading, caching prevented it
+    # from running again without a traceback, so we drop the traceback manually.
     return None
+  frames = frames[:-1]
+  frames = _maybe_truncate_traceback(frames)
+  traceback = []
+  format_line = "line %d, in %s"
+  for frame in frames:
+    if frame is _ELLIPSIS:
+      line = "..."
+    elif frame.current_opcode.code.co_name == "<module>":
+      line = format_line % (frame.current_opcode.line, "current file")
+    else:
+      line = format_line % (frame.current_opcode.line,
+                            frame.current_opcode.code.co_name)
+    traceback.append(line)
+  return TRACEBACK_MARKER + "\n  " + "\n  ".join(traceback)
 
 
-def _stack_to_opcodes(stack):
-  """Turn a stack of frames into a stack of opcodes, removing duplicates."""
-  ops = []
+def _dedup_opcodes(stack):
+  """Dedup the opcodes in a stack of frames."""
+  deduped_stack = []
   for frame in stack:
     if frame.current_opcode and (
-        not ops or frame.current_opcode.line != ops[-1].line):
+        not deduped_stack or
+        frame.current_opcode.line != deduped_stack[-1].current_opcode.line):
       # We can have consecutive opcodes with the same line number due to, e.g.,
       # a set comprehension. The first opcode we encounter is the one with the
       # real method name, whereas the second's method name is something like
       # <setcomp>, so we keep the first.
-      ops.append(frame.current_opcode)
-  return ops
+      deduped_stack.append(frame)
+  return deduped_stack
 
 
 def _compare_traceback_strings(left, right):
@@ -203,14 +201,14 @@ class Error(object):
     Returns:
       An Error object.
     """
-    opcodes = _stack_to_opcodes(stack) if stack else None
-    opcode = opcodes[-1] if opcodes else None
+    stack = _dedup_opcodes(stack) if stack else None
+    opcode = stack[-1].current_opcode if stack else None
     if opcode is None:
       return cls(severity, message, details=details, keyword=keyword)
     else:
       return cls(severity, message, filename=opcode.code.co_filename,
                  lineno=opcode.line, methodname=opcode.code.co_name,
-                 details=details, traceback=_make_traceback_str(opcodes),
+                 details=details, traceback=_make_traceback_str(stack),
                  keyword=keyword)
 
   @classmethod
