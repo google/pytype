@@ -33,9 +33,10 @@ class ErrorTest(test_base.TargetPython3BasicTest):
       def f4(x: Union):
         pass
     """)
-    self.assertErrorLogIs(errors, [(4, "invalid-annotation", r"2.*1"),
-                                   (6, "invalid-annotation", r"1.*2"),
-                                   (8, "invalid-annotation", r"Union.*x")])
+    self.assertErrorLogIs(errors, [
+        (4, "invalid-annotation", r"typing.Dict\[_K, _V].*2.*1"),
+        (6, "invalid-annotation", r"typing.List\[_T].*1.*2"),
+        (8, "invalid-annotation", r"Union.*x")])
 
   def testPrintUnsolvable(self):
     _, errors = self.InferWithErrors("""\

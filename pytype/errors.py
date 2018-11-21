@@ -759,8 +759,9 @@ class ErrorLog(ErrorLogBase):
         operation, left, right))
 
   def invalid_annotation(self, stack, annot, details=None, name=None):
-    self._invalid_annotation(stack, self._print_as_expected_type(annot),
-                             details, name)
+    if annot is not None:
+      annot = self._print_as_expected_type(annot)
+    self._invalid_annotation(stack, annot, details, name)
 
   def invalid_ellipses(self, stack, indices, container_name):
     if indices:
@@ -776,11 +777,13 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("invalid-annotation")
   def _invalid_annotation(self, stack, annot_string, details, name):
+    """Log the invalid annotation."""
     if name is None:
       suffix = ""
     else:
-      suffix = " for " + name
-    self.error(stack, "Invalid type annotation %r%s" % (annot_string, suffix),
+      suffix = "for " + name
+    annot_string = "%r " % annot_string if annot_string else ""
+    self.error(stack, "Invalid type annotation %s%s" % (annot_string, suffix),
                details=details)
 
   @_error_name("mro-error")

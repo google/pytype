@@ -1193,21 +1193,27 @@ class AnnotationContainer(AnnotationClass):
     template = tuple(t.name for t in self.base_cls.template)
     self.vm.errorlog.invalid_ellipses(
         self.vm.frames, ellipses - allowed_ellipses, self.name)
-    if len(inner) - 1 in ellipses:
+    last_index = len(inner) - 1
+    if last_index and last_index in ellipses and len(inner) > len(template):
       # Even if an ellipsis is not allowed at this position, strip it off so
       # that we report only one error for something like 'List[int, ...]'
       inner = inner[:-1]
     return template, inner, ParameterizedClass
 
-  def _build_value(self, node, inner, ellipses):
-    template, inner, abstract_class = self._get_value_info(inner, ellipses)
+  def _build_value(self, node, raw_inner, ellipses):
+    template, inner, abstract_class = self._get_value_info(raw_inner, ellipses)
     if len(inner) != len(template):
       if not template:
         self.vm.errorlog.not_indexable(self.vm.frames, self.base_cls.name,
                                        generic_warning=True)
       else:
-        error = "Expected %d parameter(s), got %d" % (len(template), len(inner))
-        self.vm.errorlog.invalid_annotation(self.vm.frames, self, error)
+        # Use the unprocessed values of `template` and `inner` so that the error
+        # message matches what the user sees.
+        name = "%s[%s]" % (
+            self.full_name, ", ".join(t.name for t in self.base_cls.template))
+        error = "Expected %d parameter(s), got %d" % (
+            len(self.base_cls.template), len(raw_inner))
+        self.vm.errorlog.invalid_annotation(self.vm.frames, None, error, name)
     else:
       if len(inner) == 1:
         val, = inner

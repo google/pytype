@@ -140,6 +140,7 @@ class TypingTest(test_base.TargetPython3BasicTest):
       def g6(x: Callable[[42], bool]): ...  # bad: _ARGS[0] not a type
       def g7(x: Callable[[], bool, int]): ...  # bad: Too many params
       def g8(x: Callable[Any, bool]): ...  # bad: Any is not allowed
+      def g9(x: Callable[[]]) -> None: ...
     """)
     self.assertTypesMatchPytd(ty, """
        from typing import Any, Callable, List, Type
@@ -157,6 +158,7 @@ class TypingTest(test_base.TargetPython3BasicTest):
        def g6(x: Callable[[Any], bool]) -> None: ...
        def g7(x: Callable[[], bool]) -> None: ...
        def g8(x: Callable[Any, bool]) -> None: ...
+       def g9(x: Callable[[], Any]) -> None: ...
     """)
     self.assertErrorLogIs(errors, [
         (8, "invalid-annotation",
@@ -171,7 +173,8 @@ class TypingTest(test_base.TargetPython3BasicTest):
         (15, "invalid-annotation", r"instance of int"),
         (16, "invalid-annotation", r"Callable.*Expected 2.*got 3"),
         (17, "invalid-annotation",
-         r"'Any'.*must be a list of argument types or ellipsis"),])
+         r"'Any'.*must be a list of argument types or ellipsis"),
+        (18, "invalid-annotation", r"Callable\[_ARGS, _RET].*2.*1"),])
 
   def test_callable_bad_args(self):
     ty, errors = self.InferWithErrors("""\
@@ -500,8 +503,7 @@ class TypingTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorLogIs(
         errors, [(2, "invalid-annotation", r"Ellipsis.*index 0.*Tuple"),
-                 (3, "invalid-annotation", r"Ellipsis.*index 0.*Tuple"),
-                 (3, "invalid-annotation", r"1.*0")])
+                 (3, "invalid-annotation", r"Ellipsis.*index 0.*Tuple")])
 
   def test_bad_callable_ellipsis(self):
     errors = self.CheckWithErrors("""\
@@ -509,12 +511,13 @@ class TypingTest(test_base.TargetPython3BasicTest):
       MyCallable1 = Callable[..., ...]
       MyCallable2 = Callable[[int], ...]
       MyCallable3 = Callable[[...], int]
+      MyCallable4 = Callable[[int], int, int]
     """)
     self.assertErrorLogIs(
         errors, [(2, "invalid-annotation", r"Ellipsis.*index 1.*Callable"),
-                 (2, "invalid-annotation", r"2.*1"),
                  (3, "invalid-annotation", r"Ellipsis.*index 1.*Callable"),
-                 (4, "invalid-annotation", r"Ellipsis.*index 0.*list")])
+                 (4, "invalid-annotation", r"Ellipsis.*index 0.*list"),
+                 (5, "invalid-annotation", r"Callable\[_ARGS, _RET].*2.*3")])
 
   def test_optional_parameters(self):
     errors = self.CheckWithErrors("""\
