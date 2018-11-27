@@ -3,7 +3,6 @@
 import collections
 import contextlib
 import itertools
-import os
 import re
 import subprocess
 import threading
@@ -149,15 +148,14 @@ def get_python_exe(python_version):
   return python_exe
 
 
-def is_valid_python_exe(python_exe):
-  """Test that python_exe is a valid executable."""
+def get_python_exe_version(python_exe):
   try:
-    with open(os.devnull, "w") as null:
-      subprocess.check_call(python_exe + " -V",
-                            shell=True, stderr=null, stdout=null)
-      return True
+    python_exe_version = subprocess.check_output(
+        python_exe + " -V", shell=True, stderr=subprocess.STDOUT).decode()
   except subprocess.CalledProcessError:
-    return False
+    return None
+  # Turn "Python major.minor.micro" into (major, minor)
+  return split_version(python_exe_version.split()[-1].rsplit(".", 1)[0])
 
 
 def list_startswith(l, prefix):

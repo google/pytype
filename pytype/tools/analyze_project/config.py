@@ -9,6 +9,7 @@ import sys
 import textwrap
 
 from pytype import file_utils
+from pytype import utils
 from pytype.tools import config
 
 
@@ -51,7 +52,7 @@ ITEMS = {
         '', '.', None,
         'Paths to source code directories, separated by %r.' % os.pathsep),
     'python_version': Item(
-        '3.6', '3.6', None, 'Python version (major.minor) of the target code.'),
+        '', '3.6', None, 'Python version (major.minor) of the target code.'),
 }
 
 
@@ -77,6 +78,10 @@ def string_to_bool(s):
   return s == 'True' if s in ('True', 'False') else s
 
 
+def get_python_version(v):
+  return v if v else utils.format_version(sys.version_info[:2])
+
+
 def make_converters(cwd=None):
   """For items that need coaxing into their internal representations."""
   return {
@@ -84,6 +89,7 @@ def make_converters(cwd=None):
       'keep_going': string_to_bool,
       'inputs': lambda v: file_utils.expand_source_files(v, cwd),
       'output': lambda v: file_utils.expand_path(v, cwd),
+      'python_version': get_python_version,
       'pythonpath': lambda v: file_utils.expand_pythonpath(v, cwd),
   }
 

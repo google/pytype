@@ -7,6 +7,7 @@ options into an Options class.
 import argparse
 import logging
 import os
+import sys
 
 from pytype import errors
 from pytype import imports_map_loader
@@ -118,7 +119,7 @@ def add_basic_options(o):
       help="Experimental: solve unknown types to label with structural types.")
   o.add_argument(
       "-V", "--python_version", type=str, action="store",
-      dest="python_version", default="2.7",
+      dest="python_version", default=None,
       help=("Python version to emulate (\"major.minor\", e.g. \"2.7\")"))
   o.add_argument(
       "--strict-import", action="store_true",
@@ -440,7 +441,10 @@ class Postprocessor(object):
 
   def _store_python_version(self, python_version):
     """Configure the python version."""
-    self.output_options.python_version = utils.split_version(python_version)
+    if python_version:
+      self.output_options.python_version = utils.split_version(python_version)
+    else:
+      self.output_options.python_version = sys.version_info[:2]
     if len(self.output_options.python_version) != 2:
       self.error(
           "--python_version must be <major>.<minor>: %r" % python_version)
@@ -471,11 +475,20 @@ class Postprocessor(object):
     """Postprocess --python_exe."""
     if python_exe is None:
       python_exe = utils.get_python_exe(self.output_options.python_version)
-      err = ("Need a valid python%d.%d executable in $PATH" %
-             self.output_options.python_version)
+      user_provided_exe = False
     else:
-      err = "Bad flag --python_exe: could not run %s" % python_exe
-    if not utils.is_valid_python_exe(python_exe):
+      user_provided_exe = True
+    python_exe_version = utils.get_python_exe_version(python_exe)
+    if python_exe_version != self.output_options.python_version:
+      if not user_provided_exe:
+        err = ("Need a valid python%d.%d executable in $PATH" %
+               self.output_options.python_version)
+      elif python_exe_version:
+        err = ("--python_exe version %d.%d does not match "
+               "--python_version %d.%d" % (
+                   python_exe_version + self.output_options.python_version))
+      else:
+        err = "Bad flag --python_exe: could not run %s" % python_exe
       self.error(err)
     self.output_options.python_exe = python_exe
 

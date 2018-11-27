@@ -19,7 +19,8 @@ class MatcherTest(unittest.TestCase):
   PYTHON_VERSION = (2, 7)
 
   def setUp(self):
-    options = config.Options.create()
+    super(MatcherTest, self).setUp()
+    options = config.Options.create(python_version=self.PYTHON_VERSION)
     self.vm = vm.VirtualMachine(
         errors.ErrorLog(), options, load_pytd.Loader(None, self.PYTHON_VERSION))
     self.type_type = self.vm.convert.type_type

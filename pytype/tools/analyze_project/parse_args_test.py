@@ -1,6 +1,7 @@
 """Tests for parse_args.py."""
 
 import os
+import sys
 
 from pytype import datatypes
 from pytype import file_utils
@@ -28,6 +29,7 @@ class TestParser(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
+    super(TestParser, cls).setUpClass()
     cls.parser = parse_args.make_parser()
 
   def test_parse_filenames(self):
@@ -103,6 +105,10 @@ class TestParser(unittest.TestCase):
     self.assertEqual(self.parser.parse_args(['-V2.7']).python_version, '2.7')
     self.assertEqual(self.parser.parse_args(
         ['--python-version', '2.7']).python_version, '2.7')
+
+  def test_python_version_default(self):
+    self.assertEqual(self.parser.config_from_defaults().python_version,
+                     '%s.%s' % (sys.version_info.major, sys.version_info.minor))
 
   def test_output(self):
     self.assertEqual(self.parser.parse_args(

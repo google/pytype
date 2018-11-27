@@ -1,5 +1,7 @@
 """Tests for config.py."""
 
+import sys
+
 from pytype import config
 from pytype import datatypes
 
@@ -62,6 +64,7 @@ class ConfigTest(unittest.TestCase):
 class PostprocessorTest(unittest.TestCase):
 
   def setUp(self):
+    super(PostprocessorTest, self).setUp()
     self.output_options = datatypes.SimpleNamespace()
 
   def test_input(self):
@@ -159,17 +162,26 @@ class PostprocessorTest(unittest.TestCase):
     input_options = datatypes.SimpleNamespace(
         disable=None,
         enable_only="import-error,attribute-error")
-    config.Postprocessor({"disable", "enable_only"}, input_options).process()
-    self.assertIn("python-compiler-error", input_options.disable)
-    self.assertNotIn("import-error", input_options.disable)
-    self.assertNotIn("attribute-error", input_options.disable)
+    config.Postprocessor({"disable", "enable_only"}, input_options,
+                         self.output_options).process()
+    self.assertIn("python-compiler-error", self.output_options.disable)
+    self.assertNotIn("import-error", self.output_options.disable)
+    self.assertNotIn("attribute-error", self.output_options.disable)
 
   def test_disable_and_enable_only(self):
     input_options = datatypes.SimpleNamespace(
         disable="import-error,attribute-error",
         enable_only="bad-slots,bad-unpacking")
     with self.assertRaises(config.PostprocessingError) as _:
-      config.Postprocessor({"disable", "enable_only"}, input_options).process()
+      config.Postprocessor({"disable", "enable_only"}, input_options,
+                           self.output_options).process()
+
+  def test_python_version_default(self):
+    input_options = datatypes.SimpleNamespace(python_version=None)
+    config.Postprocessor({"python_version"}, input_options,
+                         self.output_options).process()
+    self.assertEqual(self.output_options.python_version,
+                     (sys.version_info.major, sys.version_info.minor))
 
 
 if __name__ == "__main__":
