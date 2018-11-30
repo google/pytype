@@ -321,5 +321,11 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       del ba[0:2]
     """)
 
+  def testInput(self):
+    self.Check("""
+      input()
+      input('input: ')
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

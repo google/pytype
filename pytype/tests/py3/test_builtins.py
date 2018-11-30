@@ -538,5 +538,10 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       TimeoutError
     """)
 
+  def testRawInput(self):
+    # Removed in Python 3:
+    errors = self.CheckWithErrors("raw_input")
+    self.assertErrorLogIs(errors, [(1, "name-error")])
+
 
 test_base.main(globals(), __name__ == "__main__")
