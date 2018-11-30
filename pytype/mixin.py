@@ -25,7 +25,7 @@ class MixinMeta(type):
             # Record the fact that we have set a method on the class, to do
             # superclass lookups.
             if "__mixin_overloads__" in cls.__dict__:
-              cls.__mixin_overloads__["method"] = sup
+              cls.__mixin_overloads__[method] = sup
             else:
               setattr(cls, "__mixin_overloads__", {method: sup})
 
