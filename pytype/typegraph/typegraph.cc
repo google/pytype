@@ -283,8 +283,8 @@ void Variable::PasteBinding(Binding* binding, CFGNode* where,
   new_binding->CopyOrigins(binding, nullptr, additional_sources);
 }
 
-const std::set<const CFGNode*> Variable::nodes() const {
-  std::set<const CFGNode*> nodes;
+const CFGNodeSet Variable::nodes() const {
+  CFGNodeSet nodes;
   for (auto kvpair : cfg_node_to_bindings_) {
     nodes.insert(kvpair.first);
   }

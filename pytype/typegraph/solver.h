@@ -103,7 +103,7 @@ class QueryKey {
  public:
   QueryKey(): start_(nullptr), finish_(nullptr) {}
   QueryKey(const CFGNode* s, const CFGNode* f,
-           const std::set<const CFGNode*>& b):
+           const CFGNodeSet& b):
     start_(s), finish_(f), blocked_(b) {}
 
   size_t Hash() const {
@@ -129,7 +129,7 @@ class QueryKey {
  private:
   const CFGNode* start_;
   const CFGNode* finish_;
-  std::set<const CFGNode*> blocked_;
+  CFGNodeSet blocked_;
 };
 
 // Hash functor for use by hashing data structures, e.g. std::unordered_map.
@@ -166,22 +166,22 @@ class PathFinder {
 
   // Determine whether we can reach a node at all.
   bool FindAnyPathToNode(const CFGNode* start, const CFGNode* finish,
-                         const std::set<const CFGNode*>& blocked) const;
+                         const CFGNodeSet& blocked) const;
 
   // Find a shortest path from start to finish, going backwards. Returns an
   // empty path if no path exists.
   const std::deque<const CFGNode*> FindShortestPathToNode(
       const CFGNode* start, const CFGNode* finish,
-      const std::set<const CFGNode*>& blocked) const;
+      const CFGNodeSet& blocked) const;
 
   // Determine the highest weighted node we can reach, going backwards.
   const CFGNode* FindHighestReachableWeight(
-      const CFGNode* start, std::set<const CFGNode*> seen,
+      const CFGNode* start, CFGNodeSet seen,
       const std::unordered_map<const CFGNode*, int>& weight_map) const;
 
   // Determine whether we can reach a CFG Node, going backwards.
   QueryResult FindNodeBackwards(const CFGNode* start, const CFGNode* finish,
-                                const std::set<const CFGNode*>& blocked);
+                                const CFGNodeSet& blocked);
 
  private:
   const std::unique_ptr<std::unordered_map<const QueryKey, QueryResult,

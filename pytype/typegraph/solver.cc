@@ -1,6 +1,7 @@
 #include "solver.h"
 
 #include <algorithm>
+#include <functional>
 #include <stack>
 #include <string>
 #include <tuple>
@@ -16,13 +17,12 @@ namespace devtools_python_typegraph {
 namespace internal {
 
 // Helper function for checking set membership.
-template <class T>
-static bool set_contains(const std::set<T>& set, const T elem) {
+template <class T, class U>
+static bool set_contains(const std::set<T, U>& set, const T elem) {
   return set.find(elem) != set.end();
 }
 
-static bool node_set_contains(const std::set<const CFGNode*>& set,
-                              const CFGNode* elem) {
+static bool node_set_contains(const CFGNodeSet& set, const CFGNode* elem) {
   return set_contains<const CFGNode*>(set, elem);
 }
 
@@ -121,10 +121,10 @@ PathFinder::~PathFinder() {}
 bool PathFinder::FindAnyPathToNode(
     const CFGNode* start,
     const CFGNode* finish,
-    const std::set<const CFGNode*>& blocked) const {
+    const CFGNodeSet& blocked) const {
   std::vector<const CFGNode*> stack;
   stack.push_back(start);
-  std::set<const CFGNode*> seen;
+  CFGNodeSet seen;
   const CFGNode* node;
   while (!stack.empty()) {
     node = stack.back();
@@ -141,12 +141,12 @@ bool PathFinder::FindAnyPathToNode(
 
 const std::deque<const CFGNode*> PathFinder::FindShortestPathToNode(
     const CFGNode* start, const CFGNode* finish,
-    const std::set<const CFGNode*>& blocked) const {
+    const CFGNodeSet& blocked) const {
   std::deque<const CFGNode*> queue;
   queue.push_front(start);
   std::unordered_map<const CFGNode*, const CFGNode*> previous;
   previous[start] = nullptr;
-  std::set<const CFGNode*> seen;
+  CFGNodeSet seen;
   const CFGNode* node;
   bool found = false;
   while (!queue.empty()) {
@@ -175,7 +175,7 @@ const std::deque<const CFGNode*> PathFinder::FindShortestPathToNode(
 }
 
 const CFGNode* PathFinder::FindHighestReachableWeight(
-    const CFGNode* start, std::set<const CFGNode*> seen,
+    const CFGNode* start, CFGNodeSet seen,
     const std::unordered_map<const CFGNode*, int>& weight_map) const {
   std::vector<const CFGNode*> stack;
   stack.insert(stack.end(), start->incoming().begin(), start->incoming().end());
@@ -205,7 +205,7 @@ const CFGNode* PathFinder::FindHighestReachableWeight(
 QueryResult PathFinder::FindNodeBackwards(
     const CFGNode* start,
     const CFGNode* finish,
-    const std::set<const CFGNode*>& blocked) {
+    const CFGNodeSet& blocked) {
   QueryKey query(start, finish, blocked);
   const auto* res = map_util::FindOrNull(*solved_find_queries_, query);
   if (res)
@@ -225,7 +225,7 @@ QueryResult PathFinder::FindNodeBackwards(
   // without using any nodes on it. The furthest node we can reach (described
   // below by the "weight", which is the position on our shortest path) is our
   // first articulation point. Set that as new start and continue.
-  std::set<const CFGNode*> blocked_(blocked);
+  CFGNodeSet blocked_(blocked);
   blocked_.insert(shortest_path.begin(), shortest_path.end());
   std::unordered_map<const CFGNode*, int> weights;
   int w = 0;
@@ -307,12 +307,12 @@ bool Solver::FindSolution(const internal::State& state, int current_depth) {
       LOG(INFO) << indent << "done!";
       return true;
     }
-    std::set<const CFGNode*> blocked;
+    CFGNodeSet blocked;
     for (const auto* goal : result.new_goals) {
       const auto vnodes = goal->variable()->nodes();
       blocked.insert(vnodes.begin(), vnodes.end());
     }
-    std::set<const CFGNode*> new_positions;
+    CFGNodeSet new_positions;
     for (const Binding* goal : result.new_goals) {
       for (const auto& origin : goal->origins()) {
         internal::QueryResult origin_path = path_finder_.FindNodeBackwards(

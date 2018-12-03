@@ -161,6 +161,9 @@ class CFGNode {
   // at us through their origin data structures.
   const std::vector<Binding*>& bindings() const { return bindings_; }
 
+  // Ordering CFGNodes is useful for ordered data structures like std::set.
+  bool operator<(const CFGNode& other) const { return id() < other.id(); }
+
  private:
   CFGNode(Program* program, const std::string& name, size_t id,
           Binding* condition, ReachabilityAnalyzer* backward_reachability);
@@ -175,6 +178,17 @@ class CFGNode {
   ReachabilityAnalyzer* backward_reachability_;
   friend Program;  // to allow Program to construct CFGNodes
 };
+
+// std::set uses less-than comparisons to order elements. Provide a custom
+// comparator that compares the underlying elements instead of pointers.
+template<typename T>
+struct pointer_less {
+  bool operator()(const T* a, const T* b) const {
+    return *a < *b;
+  }
+};
+
+typedef std::set<const CFGNode*, pointer_less<CFGNode>> CFGNodeSet;
 
 // A SourceSet is a combination of Bindings that was used to form a Binding.
 // E.g., for a statement like "z = a.x + y", a, a.x and y would be the
@@ -321,7 +335,7 @@ class Variable {
     return bindings_;
   }
   // All nodes in the bindings of this variable.
-  const std::set<const CFGNode*> nodes() const;
+  const CFGNodeSet nodes() const;
 
   // Get the (unfiltered) data of all bindings.
   const std::vector<DataType*> Data() const;
