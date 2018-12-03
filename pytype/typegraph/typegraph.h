@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "reachable.h"
+#include "map_util.h"
 
 namespace devtools_python_typegraph {
 
@@ -170,6 +171,10 @@ class CFGNode {
   // Ordering CFGNodes is useful for ordered data structures like std::set.
   bool operator<(const CFGNode& other) const { return id() < other.id(); }
 
+  size_t Hash() const {
+    return id_;
+  }
+
  private:
   CFGNode(Program* program, const std::string& name, size_t id,
           Binding* condition, ReachabilityAnalyzer* backward_reachability);
@@ -184,6 +189,8 @@ class CFGNode {
   ReachabilityAnalyzer* backward_reachability_;
   friend Program;  // to allow Program to construct CFGNodes
 };
+
+typedef map_util::ptr_hash<CFGNode> CFGNodePtrHash;
 
 // std::set uses less-than comparisons to order elements. Provide a custom
 // comparator that compares the underlying elements instead of pointers.
@@ -289,7 +296,7 @@ class Binding {
   // We have to use a hash_map with pointers as bindings (i.e., Origin* instead
   // of just Origin) because hash_map doesn't have emplace.
   // TODO(pludemann): map has emplace(); change to map instead of hash_map?
-  std::unordered_map<const CFGNode*, Origin*> node_to_origin_;
+  std::unordered_map<const CFGNode*, Origin*, CFGNodePtrHash> node_to_origin_;
   Variable* variable_;
   BindingData data_;
   Program* program_;  // for alloc
@@ -367,7 +374,8 @@ class Variable {
   size_t id_;
   std::vector<std::unique_ptr<Binding>> bindings_;
   std::unordered_map<DataType*, Binding*> data_to_binding_;
-  std::unordered_map<const CFGNode*, SourceSet> cfg_node_to_bindings_;
+  std::unordered_map<const CFGNode*, SourceSet, CFGNodePtrHash>
+      cfg_node_to_bindings_;
 
   Program* program_;  // for alloc
   friend Program;     // to allow Program to construct Variables

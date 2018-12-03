@@ -327,7 +327,7 @@ std::vector<Binding*> Variable::Filter(const CFGNode* viewpoint) const {
 
 std::vector<Binding*> Variable::Prune(const CFGNode* viewpoint) {
   std::vector<Binding*> result;  // use a vector for determinism
-  std::unordered_set<Binding*> seen_results;
+  std::set<Binding*, pointer_less<Binding>> seen_results;
   if (!viewpoint) {
     for (const auto& binding : bindings_) {
       result.push_back(binding.get());
@@ -335,7 +335,7 @@ std::vector<Binding*> Variable::Prune(const CFGNode* viewpoint) {
     return result;
   }
   std::stack<const CFGNode*> stack;
-  std::unordered_set<const CFGNode*> seen;
+  CFGNodeSet seen;
   stack.push(viewpoint);
   do {
     const CFGNode* node = stack.top();

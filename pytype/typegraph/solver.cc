@@ -116,7 +116,7 @@ size_t State::Hash() const {
 
 PathFinder::PathFinder()
     : solved_find_queries_(
-          new std::unordered_map<const QueryKey, QueryResult, QueryKeyHasher>){}
+          new QueryMap){}
 
 PathFinder::~PathFinder() {}
 
@@ -146,7 +146,7 @@ const std::deque<const CFGNode*> PathFinder::FindShortestPathToNode(
     const CFGNodeSet& blocked) const {
   std::deque<const CFGNode*> queue;
   queue.push_front(start);
-  std::unordered_map<const CFGNode*, const CFGNode*> previous;
+  std::unordered_map<const CFGNode*, const CFGNode*, CFGNodePtrHash> previous;
   previous[start] = nullptr;
   CFGNodeSet seen;
   const CFGNode* node;
@@ -178,7 +178,8 @@ const std::deque<const CFGNode*> PathFinder::FindShortestPathToNode(
 
 const CFGNode* PathFinder::FindHighestReachableWeight(
     const CFGNode* start, CFGNodeSet seen,
-    const std::unordered_map<const CFGNode*, int>& weight_map) const {
+    const std::unordered_map<const CFGNode*, int, CFGNodePtrHash>& weight_map)
+    const {
   std::vector<const CFGNode*> stack;
   stack.insert(stack.end(), start->incoming().begin(), start->incoming().end());
   int best_weight = -1;
@@ -229,7 +230,7 @@ QueryResult PathFinder::FindNodeBackwards(
   // first articulation point. Set that as new start and continue.
   CFGNodeSet blocked_(blocked);
   blocked_.insert(shortest_path.begin(), shortest_path.end());
-  std::unordered_map<const CFGNode*, int> weights;
+  std::unordered_map<const CFGNode*, int, CFGNodePtrHash> weights;
   int w = 0;
   std::deque<const CFGNode*>::const_iterator it = shortest_path.cbegin();
   for (; it != shortest_path.cend(); w++, it++)
@@ -252,8 +253,7 @@ QueryResult PathFinder::FindNodeBackwards(
 }  // namespace internal
 
 Solver::Solver(const Program* program)
-    : solved_states_(new std::unordered_map<const internal::State, bool,
-                     internal::StateHasher>), program_(program) {}
+    : solved_states_(new internal::StateMap), program_(program) {}
 
 bool Solver::GoalsConflict(const internal::GoalSet& goals) const {
   std::unordered_map<const Variable*, const Binding*> variables;
