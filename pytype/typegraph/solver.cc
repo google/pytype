@@ -49,15 +49,17 @@ static std::vector<RemoveResult> remove_finished_goals(const CFGNode* pos,
   GoalSet goals_to_remove;
   // We can't use set_intersection here because pos->bindings() is a vector.
   for (const auto* goal : pos->bindings()) {
-    if (goals.find(goal) != goals.end())
+    if (goal_set_contains(goals, goal)) {
       goals_to_remove.insert(goal);
+    }
   }
   GoalSet seen_goals;
   GoalSet removed_goals;
   GoalSet new_goals;
   std::set_difference(goals.begin(), goals.end(),
                       goals_to_remove.begin(), goals_to_remove.end(),
-                      std::inserter(new_goals, new_goals.begin()));
+                      std::inserter(new_goals, new_goals.begin()),
+                      pointer_less<Binding>());
   std::vector<std::tuple<GoalSet, GoalSet, GoalSet, GoalSet>> stack;
   stack.push_back(
       std::make_tuple(goals_to_remove, seen_goals, removed_goals, new_goals));
@@ -72,7 +74,7 @@ static std::vector<RemoveResult> remove_finished_goals(const CFGNode* pos,
     }
     const auto* goal = *goals_to_remove.begin();
     goals_to_remove.erase(goals_to_remove.begin());
-    if (seen_goals.find(goal) != seen_goals.end()) {
+    if (goal_set_contains(seen_goals, goal)) {
       // Only process a goal once, to prevent infinite loops.
       stack.push_back(std::make_tuple(
           goals_to_remove, seen_goals, removed_goals, new_goals));

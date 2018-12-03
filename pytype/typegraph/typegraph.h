@@ -88,6 +88,11 @@ class Program {
     default_data_ = new_default;
   }
 
+  size_t next_binding_id() {
+    size_t id = next_binding_id_++;
+    return id;
+  }
+
   CFGNode* entrypoint() { return this->entrypoint_; }
   void set_entrypoint(CFGNode* node) { this->entrypoint_ = node; }
 
@@ -102,6 +107,7 @@ class Program {
  private:
   CFGNode* entrypoint_;
   size_t next_variable_id_;
+  size_t next_binding_id_;
   std::unique_ptr<ReachabilityAnalyzer> backward_reachability_;
   // For deallocation, and for node counting:
   std::vector<std::unique_ptr<CFGNode>> cfg_nodes_;
@@ -193,7 +199,7 @@ typedef std::set<const CFGNode*, pointer_less<CFGNode>> CFGNodeSet;
 // A SourceSet is a combination of Bindings that was used to form a Binding.
 // E.g., for a statement like "z = a.x + y", a, a.x and y would be the
 // SourceSet to create z.
-typedef std::set<Binding*> SourceSet;
+typedef std::set<Binding*, pointer_less<Binding>> SourceSet;
 
 // An "origin" is an explanation of how a binding was constructed. It consists
 // of a CFG node and a set of sourcesets.
@@ -242,8 +248,14 @@ class Binding {
   // Does this Binding depend on a given source?
   bool HasSource(const Binding* binding) const;
 
-  // What Program this binding belongs to, for alloc.
+  // What Program this Binding belongs to, for alloc.
   Program* program() const { return program_; }
+
+  // The ID of this Binding, used for ordering Bindings.
+  size_t id() const { return id_; }
+
+  // "<" is used to order Bindings by id.
+  bool operator<(const Binding& other) const { return id() < other.id(); }
 
   // A binding has history ("origins"): It knows where the binding was
   // originally retrieved from, before being assigned to something else here.
@@ -269,7 +281,8 @@ class Binding {
   Origin* FindOrigin(const CFGNode* node) const;
 
  private:
-  Binding(Program* program, Variable* variable, const BindingData& data);
+  Binding(Program* program, Variable* variable, const BindingData& data,
+          size_t id);
   Origin* FindOrAddOrigin(CFGNode* node);
 
   std::vector<std::unique_ptr<Origin>> origins_;
@@ -280,6 +293,7 @@ class Binding {
   Variable* variable_;
   BindingData data_;
   Program* program_;  // for alloc
+  size_t id_;
   friend Variable;    // to allow Variables to construct Bindings
 };
 

@@ -34,7 +34,7 @@ namespace devtools_python_typegraph {
 
 namespace internal {
 
-typedef std::set<const Binding*> GoalSet;
+typedef std::set<const Binding*, pointer_less<Binding>> GoalSet;
 
 // hash_mix concatenates a hash seed with the hash of the given object.
 // This implementation is based on Google's hash mixing algorithm written by
