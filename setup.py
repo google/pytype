@@ -118,7 +118,7 @@ setup(
     long_description=get_long_description(),
     maintainer='Google',
     maintainer_email='pytype@googlegroups.com',
-    url='http://github.com/google/pytype',
+    url='https://github.com/google/pytype',
     packages=[
         'pytype',
         'pytype/pyc',
