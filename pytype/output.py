@@ -24,6 +24,7 @@ TOP_LEVEL_IGNORE = {
     "__future__",
     "__module__",
     "__name__",
+    "__annotations__",
     "google_type_annotations",
 }
 
@@ -34,6 +35,7 @@ CLASS_LEVEL_IGNORE = {
     "__name__",
     "__qualname__",
     "__slots__",
+    "__annotations__",
 }
 
 

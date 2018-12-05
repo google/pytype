@@ -557,7 +557,7 @@ class TypingTest(test_base.TargetPython3BasicTest):
       def func4(x: List[NoReturn]):
         pass
 
-      bad2 = None  # type: NoReturn
+      bad = None  # type: NoReturn
     """)
     self.assertErrorLogIs(
         errors, [(6, "invalid-annotation", r"NoReturn is not allowed"),
@@ -584,11 +584,11 @@ class TypingTestPython3Feature(test_base.TargetPython3FeatureTest):
         z = foo.f()[2]  # out of bounds, fall back to the combined element type
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo = ...  # type: module
-        w = ...  # type: str
-        x = ...  # type: int
-        y = ...  # type: str
-        z = ...  # type: int or str
+        foo: module
+        w: str
+        x: int
+        y: str
+        z: int or str
       """)
 
 

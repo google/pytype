@@ -249,7 +249,7 @@ class NamedtupleTests(test_base.TargetIndependentTest):
       class Y(X): pass
       z = Y(1)._replace(a=2)
     """)
-    self.assertEqual(pytd.Print(ty.Lookup("z")), "z = ...  # type: Y")
+    self.assertEqual(pytd.Print(ty.Lookup("z")), "z: Y")
 
   def test_subclass_make(self):
     ty = self.Infer("""
@@ -258,7 +258,7 @@ class NamedtupleTests(test_base.TargetIndependentTest):
       class Y(X): pass
       z = Y._make([1])
     """)
-    self.assertEqual(pytd.Print(ty.Lookup("z")), "z = ...  # type: Y")
+    self.assertEqual(pytd.Print(ty.Lookup("z")), "z: Y")
 
   def test_unpacking(self):
     with file_utils.Tempdir() as d:

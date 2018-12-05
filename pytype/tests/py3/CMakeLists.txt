@@ -368,3 +368,30 @@ py_test(
   DEPS
     pytype.tests.test_base
 )
+
+py_test(
+  NAME
+    test_quick
+  SRCS
+    test_quick.py
+  DEPS
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    test_generic
+  SRCS
+    test_generic.py
+  DEPS
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    test_variable_annotations
+  SRCS
+    test_variable_annotations.py
+  DEPS
+    pytype.tests.test_base
+)

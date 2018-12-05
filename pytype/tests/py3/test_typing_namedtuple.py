@@ -91,7 +91,6 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
         _TX = TypeVar('_TX', bound=X)
         class X(tuple):
           __slots__ = ["a", "b"]
-          __annotations__ = ...  # type: collections.OrderedDict[str, type]
           __dict__ = ...  # type: collections.OrderedDict[str, Union[int, str]]
           _field_defaults = ...  # type: collections.OrderedDict[str, Union[int,
             str]]
@@ -212,7 +211,6 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
 
         class SubNamedTuple(tuple):
             __slots__ = ["a"]
-            __annotations__ = ...  # type: collections.OrderedDict[str, type]
             __dict__ = ...  # type: collections.OrderedDict[str, int]
             _field_defaults = ...  # type: collections.OrderedDict[str, int]
             _field_types = ...  # type: collections.OrderedDict[str, type]
@@ -263,24 +261,22 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
         import collections
         from typing import Callable, Iterable, Sized, Tuple, Type, TypeVar, Union
 
-        X = ...  # type: SubNamedTuple
-        a = ...  # type: int
-        b = ...  # type: str
-        c = ...  # type: int
+        X: SubNamedTuple
+        a: int
+        b: str
+        c: int
 
         _TSubNamedTuple = TypeVar('_TSubNamedTuple', bound=SubNamedTuple)
 
         class SubNamedTuple(tuple):
             __slots__ = ["a", "b", "c"]
-            __annotations__ = ...  # type: collections.OrderedDict[str, type]
-            __dict__ = ...  # type: collections.OrderedDict[str, Union[int, str]]
-            _field_defaults = ...  # type: collections.OrderedDict[str,
-              Union[int, str]]
-            _field_types = ...  # type: collections.OrderedDict[str, type]
-            _fields = ...  # type: Tuple[str, str, str]
-            a = ...  # type: int
-            b = ...  # type: str
-            c = ...  # type: int
+            __dict__: collections.OrderedDict[str, Union[int, str]]
+            _field_defaults: collections.OrderedDict[str, Union[int, str]]
+            _field_types: collections.OrderedDict[str, type]
+            _fields: Tuple[str, str, str]
+            a: int
+            b: str
+            c: int
             def __getnewargs__(self) -> Tuple[int, str, int]: ...
             def __getstate__(self) -> None: ...
             def __init__(self, *args, **kwargs) -> None: ...

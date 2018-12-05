@@ -2568,10 +2568,19 @@ class VirtualMachine(object):
     return self.store_local(state, "__annotations__", annotations)
 
   def byte_STORE_ANNOTATION(self, state, op):
+    """Implementation of the STORE_ANNOTATION opcode."""
     state, annotations_var = self.load_local(state, "__annotations__")
     annotations = abstract_utils.get_atomic_value(annotations_var)
     name = self.frame.f_code.co_names[op.arg]
     state, value = state.pop()
+    try:
+      # TODO(ahxun): treat annotated variables as if they always have an
+      # initial value.
+      if self.load_local(state, name):  # variable is defined
+        self.store_local(state, name, self.annotations_util.type_to_value(
+            state.node, name, value))
+    except KeyError:
+      pass
     annotations.set_str_item(state.node, name, value)
     return self.store_local(state, "__annotations__", annotations_var)
 
