@@ -1,5 +1,6 @@
 """Tests for displaying errors."""
 
+import re
 
 from pytype import file_utils
 from pytype.tests import test_base
@@ -496,7 +497,8 @@ class ErrorTest(test_base.TargetIndependentTest):
       s = {1}
       del s[1]
     """, deep=True)
-    self.assertErrorLogIs(errors, [(2, "attribute-error", r"__delitem__")])
+    self.assertErrorLogIs(
+        errors, [(2, "unsupported-operands", r"item deletion")])
 
   def testBadReference(self):
     ty, errors = self.InferWithErrors("""\
@@ -890,7 +892,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       f([])
     """)
     self.assertErrorLogIs(errors, [(2, "unsupported-operands", r"str.*int"),
-                                   (2, "unsupported-operands", r"list.*int")])
+                                   (2, "unsupported-operands", r"List.*int")])
 
   def testKwargOrder(self):
     with file_utils.Tempdir() as d:
@@ -995,24 +997,208 @@ class ErrorTest(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [(3, "attribute-error", r"Optional\[Any\]")])
 
 
-class UnsupportedOperandsTest(test_base.TargetIndependentTest):
-  """Test [unsupported-operands]."""
+class OperationsTest(test_base.TargetIndependentTest):
+  """Test operations."""
 
-  def testUnsupportedXor(self):
+  def testXor(self):
     errors = self.CheckWithErrors("def f(): return 'foo' ^ 3")
     self.assertErrorLogIs(errors, [
         (1, "unsupported-operands",
-         r"__xor__.*str.*int.*str\.__xor__.*int\.__rxor__")])
+         r"\^.*str.*int.*'__xor__' on str.*'__rxor__' on int")])
 
-  def testUnsupportedAdd(self):
+  def testAdd(self):
     errors = self.CheckWithErrors("def f(): return 'foo' + 3")
     self.assertErrorLogIs(errors, [
-        (1, "unsupported-operands", r"\+.*str.*int.*str\.__add__.*str")])
+        (1, "unsupported-operands", r"\+.*str.*int.*__add__ on str.*str")])
 
-  def testUnsupportedInvert(self):
+  def testInvert(self):
     errors = self.CheckWithErrors("def f(): return ~None")
     self.assertErrorLogIs(errors, [
-        (1, "unsupported-operands", r"\~.*None.*None\.__invert__")])
+        (1, "unsupported-operands", r"\~.*None.*'__invert__' on None")])
+
+  def testSub(self):
+    errors = self.CheckWithErrors("def f(): return 'foo' - 3")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"\-.*str.*int.*'__sub__' on str.*'__rsub__' on int")])
+
+  def testMul(self):
+    errors = self.CheckWithErrors("def f(): return 'foo' * None")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands", r"\*.*str.*None.*__mul__ on str.*int")])
+
+  def testDiv(self):
+    errors = self.CheckWithErrors("def f(): return 'foo' / 3")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"\/.*str.*int.*'__(true)?div__' on str.*'__r(true)?div__' on int")])
+
+  def testMod(self):
+    errors = self.CheckWithErrors("def f(): return None % 3")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands", r"\%.*None.*int.*'__mod__' on None")])
+
+  def testLShift(self):
+    errors = self.CheckWithErrors("def f(): return 3 << None")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"\<\<.*int.*None.*__lshift__ on int.*int")])
+
+  def testRShift(self):
+    errors = self.CheckWithErrors("def f(): return 3 >> None")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"\>\>.*int.*None.*__rshift__ on int.*int")])
+
+  def testAnd(self):
+    errors = self.CheckWithErrors("def f(): return 'foo' & 3")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"\&.*str.*int.*'__and__' on str.*'__rand__' on int")])
+
+  def testOr(self):
+    errors = self.CheckWithErrors("def f(): return 'foo' | 3")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"\|.*str.*int.*'__or__' on str.*'__ror__' on int")])
+
+  def testFloorDiv(self):
+    errors = self.CheckWithErrors("def f(): return 3 // 'foo'")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"\/\/.*int.*str.*__floordiv__ on int.*int")])
+
+  def testPow(self):
+    errors = self.CheckWithErrors("def f(): return 3 ** 'foo'")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands", r"\*\*.*int.*str.*__pow__ on int.*int")])
+
+  def testNeg(self):
+    errors = self.CheckWithErrors("def f(): return -None")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands", r"\-.*None.*'__neg__' on None")])
+
+  def testPos(self):
+    errors = self.CheckWithErrors("def f(): return +None")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands", r"\+.*None.*'__pos__' on None")])
+
+
+class InPlaceOperationsTest(test_base.TargetIndependentTest):
+  """Test in-place operations."""
+
+  def testIAdd(self):
+    errors = self.CheckWithErrors("def f(): v = []; v += 3")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"\+\=.*List.*int.*__iadd__ on List.*Iterable")])
+
+  def _testOp(self, op, symbol):
+    errors = self.CheckWithErrors("""\
+      class A(object):
+        def __%s__(self, x: "A"):
+          return None
+      def f():
+        v = A()
+        v %s 3  # line 6
+    """ % (op, symbol))
+    self.assertErrorLogIs(errors, [
+        (6, "unsupported-operands",
+         r"%s.*A.*int.*__%s__ on A.*A" % (re.escape(symbol), op))])
+
+  def testISub(self):
+    self._testOp("isub", "-=")
+
+  def testIMul(self):
+    self._testOp("imul", "*=")
+
+  def testIDiv(self):
+    errors = self.CheckWithErrors("""\
+      class A(object):
+        def __idiv__(self, x: "A"):
+          return None
+        def __itruediv__(self, x: "A"):
+          return None
+      def f():
+        v = A()
+        v /= 3  # line 8
+    """)
+    self.assertErrorLogIs(errors, [
+        (8, "unsupported-operands", r"\/\=.*A.*int.*__i(true)?div__ on A.*A")])
+
+  def testIMod(self):
+    self._testOp("imod", "%=")
+
+  def testIPow(self):
+    self._testOp("ipow", "**=")
+
+  def testILShift(self):
+    self._testOp("ilshift", "<<=")
+
+  def testIRShift(self):
+    self._testOp("irshift", ">>=")
+
+  def testIAnd(self):
+    self._testOp("iand", "&=")
+
+  def testIXor(self):
+    self._testOp("ixor", "^=")
+
+  def testIOr(self):
+    self._testOp("ior", "|=")
+
+  def testIFloorDiv(self):
+    self._testOp("ifloordiv", "//=")
+
+
+class MatrixOperationsTest(test_base.TargetPython3FeatureTest):
+  """Test matrix operations."""
+
+  def testMatMul(self):
+    errors = self.CheckWithErrors("def f(): return 'foo' @ 3")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"\@.*str.*int.*'__matmul__' on str.*'__rmatmul__' on int")])
+
+  def testIMatMul(self):
+    errors = self.CheckWithErrors("""\
+      class A(object):
+        def __imatmul__(self, x: "A"):
+          pass
+      def f():
+        v = A()
+        v @= 3  # line 6
+    """)
+    self.assertErrorLogIs(errors, [
+        (6, "unsupported-operands", r"\@.*A.*int.*__imatmul__ on A.*A")])
+
+
+class NoSymbolOperationsTest(test_base.TargetIndependentTest):
+  """Test operations with no native symbol."""
+
+  def testGetItem(self):
+    errors = self.CheckWithErrors("def f(): v = []; return v['foo']")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"item retrieval.*List.*str.*__getitem__ on List.*int")])
+
+  def testDelItem(self):
+    errors = self.CheckWithErrors("def f(): v = {'foo': 3}; del v[3]")
+    d = r"Dict\[str, int\]"
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"item deletion.*{d}.*int.*__delitem__ on {d}.*str".format(d=d))])
+
+  def testSetItem(self):
+    errors = self.CheckWithErrors("def f(): v = []; v['foo'] = 3")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"item assignment.*List.*str.*__setitem__ on List.*int")])
+
+  def testContains(self):
+    errors = self.CheckWithErrors("def f(): return 'foo' in 3")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands", r"'in'.*int.*str.*'__contains__' on int")])
 
 
 test_base.main(globals(), __name__ == "__main__")

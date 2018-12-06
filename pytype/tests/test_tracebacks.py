@@ -13,7 +13,7 @@ class TracebackTest(test_base.TargetIndependentTest):
       f("world")
     """)
     self.assertErrorLogIs(errors, [(2, "unsupported-operands",
-                                    r"expected str$")])
+                                    r"expects str$")])
 
   def test_same_traceback(self):
     _, errors = self.InferWithErrors("""\

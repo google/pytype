@@ -311,7 +311,7 @@ class PytypeTest(unittest.TestCase):
     self._SetUpChecking("bad.py")
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
-    self.assertIn("[wrong-arg-types]", self.stderr)
+    self.assertIn("[unsupported-operands]", self.stderr)
     self.assertIn("[name-error]", self.stderr)
 
   def testPytypeErrorsCsv(self):
@@ -319,7 +319,7 @@ class PytypeTest(unittest.TestCase):
     self.pytype_args["--output-errors-csv"] = self.errors_csv
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
-    self.assertHasErrors("wrong-arg-types", "name-error")
+    self.assertHasErrors("unsupported-operands", "name-error")
 
   def testPytypeErrorsNoReport(self):
     self._SetUpChecking("bad.py")
@@ -332,7 +332,7 @@ class PytypeTest(unittest.TestCase):
     self.pytype_args["--return-success"] = self.INCLUDE
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=False)
-    self.assertIn("[wrong-arg-types]", self.stderr)
+    self.assertIn("[unsupported-operands]", self.stderr)
     self.assertIn("[name-error]", self.stderr)
 
   def testCompilerError(self):
@@ -383,7 +383,7 @@ class PytypeTest(unittest.TestCase):
 
   def testInferPytypeErrors(self):
     self._InferTypesAndCheckErrors(
-        "bad.py", ["wrong-arg-types", "name-error"])
+        "bad.py", ["unsupported-operands", "name-error"])
     self.assertInferredPyiEquals(filename="bad.pyi")
 
   def testInferCompilerError(self):

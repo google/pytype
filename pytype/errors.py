@@ -579,7 +579,7 @@ class ErrorLog(ErrorLogBase):
   def attribute_error(self, stack, binding, attr_name):
     if attr_name in slots.SYMBOL_MAPPING:
       obj = self._print_as_actual_type(binding.data)
-      details = "No %s.%s" % (obj, attr_name)
+      details = "No attribute %r on %s" % (attr_name, obj)
       self._unsupported_operands(stack, attr_name, obj, details=details)
     elif isinstance(binding.data, abstract.Module):
       self._module_attr(stack, binding, attr_name)
@@ -645,19 +645,39 @@ class ErrorLog(ErrorLogBase):
         len(bad_call.passed_args))
     self._invalid_parameters(stack, message, bad_call)
 
+  def _get_binary_operation(self, function_name, bad_call):
+    """Return (op, left, right) if the function should be treated as a binop."""
+    maybe_left_operand, _, f = function_name.rpartition(".")
+    # Check that
+    # (1) the function is bound to an object (the left operand),
+    # (2) the function has a pretty representation,
+    # (3) either there are exactly two passed args or the function is one we've
+    #     chosen to treat as a binary operation.
+    if (not maybe_left_operand or f not in slots.SYMBOL_MAPPING or
+        (len(bad_call.passed_args) != 2 and
+         f not in ("__setitem__", "__getslice__"))):
+      return None
+    for arg_name, arg_value in bad_call.passed_args[1:]:
+      if arg_name == bad_call.bad_param.name:
+        # maybe_left_operand is something like `dict`, but we want a more
+        # precise type like `Dict[str, int]`.
+        left_operand = self._print_as_actual_type(bad_call.passed_args[0][1])
+        right_operand = self._print_as_actual_type(arg_value)
+        return f, left_operand, right_operand
+    return None
+
   def wrong_arg_types(self, stack, name, bad_call):
     """Log [wrong-arg-types]."""
-    maybe_left_operand, _, f = name.rpartition(".")
-    if maybe_left_operand and f in slots.SYMBOL_MAPPING:
-      unused_self, right_operand_name_and_value = bad_call.passed_args
-      _, right_operand = right_operand_name_and_value
+    operation = self._get_binary_operation(name, bad_call)
+    if operation:
+      operator, left_operand, right_operand = operation
+      operator_name = _function_name(operator, capitalize=True)
       expected_right_operand = self._print_as_expected_type(
           bad_call.bad_param.expected)
-      details = "%s.%s expected %s" % (
-          maybe_left_operand, f, expected_right_operand)
+      details = "%s on %s expects %s" % (
+          operator_name, left_operand, expected_right_operand)
       self._unsupported_operands(
-          stack, f, maybe_left_operand,
-          self._print_as_actual_type(right_operand), details=details)
+          stack, operator, left_operand, right_operand, details=details)
     else:
       self._wrong_arg_types(stack, name, bad_call)
 
@@ -767,25 +787,25 @@ class ErrorLog(ErrorLogBase):
     ])
     self.error(stack, "Invalid instantiation of generic class", details)
 
-  def unsupported_operands(self, stack, operation, var1, var2):
+  def unsupported_operands(self, stack, operator, var1, var2):
     left = self._join_printed_types(
         self._print_as_actual_type(t) for t in var1.data)
     right = self._join_printed_types(
         self._print_as_actual_type(t) for t in var2.data)
-    details = "No %s.%s" % (left, operation)
-    if operation in slots.REVERSE_NAME_MAPPING:
-      details += " or %s.%s" % (right, slots.REVERSE_NAME_MAPPING[operation])
-    self._unsupported_operands(stack, operation, left, right, details=details)
+    details = "No attribute %r on %s" % (operator, left)
+    if operator in slots.REVERSE_NAME_MAPPING:
+      details += " or %r on %s" % (slots.REVERSE_NAME_MAPPING[operator], right)
+    self._unsupported_operands(stack, operator, left, right, details=details)
 
   @_error_name("unsupported-operands")
-  def _unsupported_operands(self, stack, operation, *operands, **details):
+  def _unsupported_operands(self, stack, operator, *operands, **details):
     # TODO(b/114124544): Change the signature to (..., *operands, details=None)
     assert set(details) <= {"details"}
-    # TODO(rechen): Specify a symbol for every operation.
-    self.error(stack, "unsupported operand type(s) for %s: %s" % (
-        slots.SYMBOL_MAPPING.get(operation, operation),
-        " and ".join(repr(operand) for operand in operands)),
-               details=details.get("details"))
+    self.error(
+        stack, "unsupported operand type(s) for %s: %s" % (
+            slots.SYMBOL_MAPPING[operator],
+            " and ".join(repr(operand) for operand in operands)),
+        details=details.get("details"))
 
   def invalid_annotation(self, stack, annot, details=None, name=None):
     if annot is not None:

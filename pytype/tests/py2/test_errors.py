@@ -25,5 +25,11 @@ class ErrorTest(test_base.TargetPython27FeatureTest):
     self.assertErrorLogIs(errors, [(
         4, "wrong-arg-types", r"\n\s*next\s*$")])  # `next` on its own line
 
+  def testGetSlice(self):
+    errors = self.CheckWithErrors("def f(): v = []; return v[:'foo']")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"slicing.*List.*str.*__getslice__ on List.*Optional\[int\]")])
+
 
 test_base.main(globals(), __name__ == "__main__")

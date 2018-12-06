@@ -81,7 +81,7 @@ class ListTest(test_base.TargetPython3FeatureTest):
       s = ...  # type: Any
       t = ...  # type: int
       """)
-    self.assertErrorLogIs(errors, [(5, "wrong-arg-types")])
+    self.assertErrorLogIs(errors, [(5, "unsupported-operands")])
 
   @test_base.skip("Requires more precise slice objects")
   def test_getitem_slice(self):

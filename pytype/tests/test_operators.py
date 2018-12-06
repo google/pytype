@@ -373,8 +373,7 @@ class InplaceTest(test_base.TargetIndependentTest,
       v = []
       v += A()
     """)
-    self.assertErrorLogIs(
-        errors, [(3, "wrong-arg-types", r"y: Iterable.*y: A")])
+    self.assertErrorLogIs(errors, [(3, "unsupported-operands", r"A.*Iterable")])
 
 
 test_base.main(globals(), __name__ == "__main__")

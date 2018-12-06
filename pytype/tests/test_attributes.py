@@ -255,7 +255,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
         return x[0]
     """)
     self.assertErrorLogIs(
-        errors, [(3, "unsupported-operands", r"__getitem__.*None.*int")])
+        errors, [(3, "unsupported-operands", r"item retrieval.*None.*int")])
 
   def testIgnoreGetItem(self):
     self.Check("""
@@ -278,7 +278,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
         return 42 in x
     """)
     self.assertErrorLogIs(
-        errors, [(3, "unsupported-operands", r"__contains__.*None.*int")])
+        errors, [(3, "unsupported-operands", r"'in'.*None.*int")])
 
   def testIgnoreContains(self):
     self.Check("""
@@ -744,7 +744,7 @@ class TestAttributes(test_base.TargetIndependentTest):
     """)
     self.assertErrorLogIs(
         errors, [(5, "unsupported-operands",
-                  r"__contains__.*'Union\[Foo, int\]' and 'int'")])
+                  r"'in'.*'Union\[Foo, int\]' and 'int'")])
 
   def testSubclassShadowing(self):
     with file_utils.Tempdir() as d:
