@@ -538,9 +538,8 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       y = d2["123"]
       z = d3["123"]
     """)
-    self.assertErrorLogIs(errors, [
-        (16, "wrong-arg-types", r"int.*str"),
-        (17, "wrong-arg-types", r"int.*str")])
+    self.assertErrorLogIs(errors, [(16, "unsupported-operands", r"str.*int"),
+                                   (17, "unsupported-operands", r"str.*int")])
 
 
 class GenericFeatureTest(test_base.TargetPython3FeatureTest):

@@ -135,38 +135,38 @@ class ParserTest(_ParserTestBase):
       a = ...
       # type: int""",
                """\
-      a = ...  # type: int""")
+      a: int""")
 
   def test_constant(self):
-    self.check("x = ...", "x = ...  # type: Any", "from typing import Any")
-    self.check("x = ...  # type: str")
-    self.check("x = 0", "x = ...  # type: int")
-    self.check("x = 0.0", "x = ...  # type: float")
+    self.check("x = ...", "x: Any", "from typing import Any")
+    self.check("x: str")
+    self.check("x = 0", "x: int")
+    self.check("x = 0.0", "x: float")
     self.check_error("\nx = 123", 2,
                      "Only '0' allowed as int literal")
-    self.check("x = 0.0", "x = ...  # type: float")
+    self.check("x = 0.0", "x: float")
     self.check_error("\nx = 12.3", 2,
                      "Only '0.0' allowed as float literal")
 
   def test_string_constant(self):
-    self.check("x = b''", "x = ...  # type: bytes")
-    self.check("x = u''", "x = ...  # type: unicode")
-    self.check('x = b""', "x = ...  # type: bytes")
-    self.check('x = u""', "x = ...  # type: unicode")
+    self.check("x = b''", "x: bytes")
+    self.check("x = u''", "x: unicode")
+    self.check('x = b""', "x: bytes")
+    self.check('x = u""', "x: unicode")
 
   def test_constant_pep526(self):
-    self.check("x : str", "x = ...  # type: str")
-    self.check("x : str = ...", "x = ...  # type: str")
+    self.check("x : str", "x: str")
+    self.check("x : str = ...", "x: str")
 
   def test_alias_or_constant(self):
-    self.check("x = True", "x = ...  # type: bool")
-    self.check("x = False", "x = ...  # type: bool")
+    self.check("x = True", "x: bool")
+    self.check("x = False", "x: bool")
     self.check("x = Foo")
     self.check("""\
       class A:
           x = True""", """\
       class A:
-          x = ...  # type: bool
+          x: bool
     """)
     self.check("""\
       class A:
@@ -174,9 +174,9 @@ class ParserTest(_ParserTestBase):
           y = x
           z = y""", """\
       class A:
-          x = ...  # type: int
-          y = ...  # type: int
-          z = ...  # type: int
+          x: int
+          y: int
+          z: int
     """)
 
   def test_method_aliases(self):
@@ -298,18 +298,18 @@ class ParserTest(_ParserTestBase):
       def foo(x: str) -> str: ...""")
 
   def test_type(self):
-    self.check("x = ...  # type: str")
-    self.check("x = ...  # type: (str)", "x = ...  # type: str")
-    self.check("x = ...  # type: foo.bar.Baz", prologue="import foo.bar")
-    self.check("x = ...  # type: ?", "x = ...  # type: Any",
+    self.check("x: str")
+    self.check("x = ...  # type: (str)", "x: str")
+    self.check("x: foo.bar.Baz", prologue="import foo.bar")
+    self.check("x = ...  # type: ?", "x: Any",
                prologue="from typing import Any")
-    self.check("x = ...  # type: nothing")
+    self.check("x: nothing")
     self.check("x = ...  # type: int or str or float", """\
                 from typing import Union
 
-                x = ...  # type: Union[int, str, float]""")
+                x: Union[int, str, float]""")
     self.check("x = ...  # type: int and str and float", """\
-                x = ...  # type: int and str and float""")
+                x: int and str and float""")
 
   def test_empty_union_or_intersection_or_optional(self):
     self.check_error("def f(x: typing.Union): ...", 1,
@@ -328,7 +328,7 @@ class ParserTest(_ParserTestBase):
 
       from somewhere import Foo
 
-      x = ...  # type: somewhere.Foo""")
+      x: somewhere.Foo""")
 
   def test_type_params(self):
     ast = self.check("""\
@@ -395,12 +395,12 @@ class ParserTest(_ParserTestBase):
 
   def test_pep484_translations(self):
     ast = self.check("""\
-      x = ...  # type: None""")
+      x: None""")
     self.assertEqual(pytd.NamedType("NoneType"), ast.constants[0].type)
 
   def test_module_name(self):
     ast = self.check("x = ...  # type: int",
-                     "foo.x = ...  # type: int",
+                     "foo.x: int",
                      name="foo")
     self.assertEqual("foo", ast.name)
 
@@ -409,14 +409,14 @@ class ParserTest(_ParserTestBase):
     src = ""
     ast = self.check(src)
     self.assertEqual(hashlib.md5(src.encode()).hexdigest(), ast.name)
-    src = "x = ...  # type: int"
+    src = "x: int"
     ast = self.check(src)
     self.assertEqual(hashlib.md5(src.encode()).hexdigest(), ast.name)
 
   def test_pep84_aliasing(self):
     # This should not be done for the typing module itself.
     self.check("x = ... # type: Hashable",
-               "typing.x = ...  # type: Hashable",
+               "typing.x: Hashable",
                name="typing")
 
   def test_module_class_clash(self):
@@ -437,47 +437,47 @@ class HomogeneousTypeTest(_ParserTestBase):
     self.check("""\
       from typing import Callable
 
-      x = ...  # type: Callable[[int, str], bool]""")
+      x: Callable[[int, str], bool]""")
     self.check("""\
       from typing import Callable
 
       x = ...  # type: Callable[..., bool]""", """\
       from typing import Any, Callable
 
-      x = ...  # type: Callable[Any, bool]""")
+      x: Callable[Any, bool]""")
     self.check("""\
       from typing import Any, Callable
 
-      x = ...  # type: Callable[Any, bool]""")
+      x: Callable[Any, bool]""")
     self.check("""\
       from typing import Any, Callable
 
-      x = ...  # type: Callable[[Any], bool]""")
+      x: Callable[[Any], bool]""")
     self.check("""\
       from typing import Callable
 
-      x = ...  # type: Callable[[], bool]""")
+      x: Callable[[], bool]""")
     self.check("""\
       from typing import Callable
 
       x = ...  # type: Callable[[nothing], bool]""", """\
       from typing import Callable
 
-      x = ...  # type: Callable[[], bool]""")
+      x: Callable[[], bool]""")
     self.check("""\
       from typing import Callable
 
       x = ...  # type: Callable[[int]]""", """\
       from typing import Any, Callable
 
-      x = ...  # type: Callable[[int], Any]""")
+      x: Callable[[int], Any]""")
     self.check("""\
       from typing import Callable
 
       x = ...  # type: Callable[[], ...]""", """\
       from typing import Any, Callable
 
-      x = ...  # type: Callable[[], Any]""")
+      x: Callable[[], Any]""")
     self.check_error(
         "import typing\n\nx = ...  # type: typing.Callable[int]", 3,
         "First argument to Callable must be a list of argument types")
@@ -488,15 +488,15 @@ class HomogeneousTypeTest(_ParserTestBase):
   def test_ellipsis(self):
     # B[T, ...] becomes B[T].
     self.check("from typing import List\n\nx = ...  # type: List[int, ...]",
-               "from typing import List\n\nx = ...  # type: List[int]")
+               "from typing import List\n\nx: List[int]")
     # Double ellipsis is not allowed.
     self.check_error("x = ...  # type: List[..., ...]", 1,
                      "not supported")
     # Tuple[T] and Tuple[T, ...] are distinct.
     self.check("from typing import Tuple\n\nx = ...  # type: Tuple[int]",
-               "from typing import Tuple\n\nx = ...  # type: Tuple[int]")
+               "from typing import Tuple\n\nx: Tuple[int]")
     self.check("from typing import Tuple\n\nx = ...  # type: Tuple[int, ...]",
-               "from typing import Tuple\n\nx = ...  # type: Tuple[int, ...]")
+               "from typing import Tuple\n\nx: Tuple[int, ...]")
 
   def test_tuple(self):
     self.check("""\
@@ -506,7 +506,7 @@ class HomogeneousTypeTest(_ParserTestBase):
                """\
       from typing import Tuple
 
-      x = ...  # type: Tuple[int, str]""")
+      x: Tuple[int, str]""")
     self.check("""\
       from typing import Tuple
 
@@ -514,31 +514,31 @@ class HomogeneousTypeTest(_ParserTestBase):
                """\
       from typing import Any, Tuple
 
-      x = ...  # type: Tuple[int, str, Any]""")
+      x: Tuple[int, str, Any]""")
 
   def test_simple(self):
-    self.check("x = ...  # type: Foo[int, str]")
+    self.check("x: Foo[int, str]")
 
   def test_implied_tuple(self):
     self.check("x = ...  # type: []",
-               "x = ...  # type: Tuple[nothing, ...]",
+               "x: Tuple[nothing, ...]",
                prologue="from typing import Tuple")
     self.check("x = ...  # type: [int]",
-               "x = ...  # type: Tuple[int]",
+               "x: Tuple[int]",
                prologue="from typing import Tuple")
     self.check("x = ...  # type: [int, str]",
-               "x = ...  # type: Tuple[int, str]",
+               "x: Tuple[int, str]",
                prologue="from typing import Tuple")
 
   def test_type_tuple(self):
     self.check("x = (str, bytes)",
-               "x = ...  # type: tuple")
+               "x: tuple")
     self.check("x = (str, bytes,)",
-               "x = ...  # type: tuple")
+               "x: tuple")
     self.check("x = (str,)",
-               "x = ...  # type: tuple")
+               "x: tuple")
     self.check("x = str,",
-               "x = ...  # type: tuple")
+               "x: tuple")
 
 
 class NamedTupleTest(_ParserTestBase):
@@ -547,19 +547,19 @@ class NamedTupleTest(_ParserTestBase):
     self.check("x = ...  # type: NamedTuple(foo, [])", """\
       from typing import Any, Tuple, Type, TypeVar
 
-      x = ...  # type: `namedtuple-foo-0`
+      x: `namedtuple-foo-0`
 
       _Tnamedtuple-foo-0 = TypeVar('_Tnamedtuple-foo-0', bound=`namedtuple-foo-0`)
 
       class `namedtuple-foo-0`(Tuple[nothing, ...]):
           __slots__ = []
-          _asdict = ...  # type: Any
-          __dict__ = ...  # type: Any
-          _fields = ...  # type: Any
-          __getnewargs__ = ...  # type: Any
-          __getstate__ = ...  # type: Any
-          _make = ...  # type: Any
-          _replace = ...  # type: Any
+          _asdict: Any
+          __dict__: Any
+          _fields: Any
+          __getnewargs__: Any
+          __getstate__: Any
+          _make: Any
+          _replace: Any
           def __new__(cls: Type[`_Tnamedtuple-foo-0`]) -> `_Tnamedtuple-foo-0`: ...
           def __init__(self, *args, **kwargs) -> None: ...
       """)
@@ -568,21 +568,21 @@ class NamedTupleTest(_ParserTestBase):
     expected = """\
       from typing import Any, Tuple, Type, TypeVar
 
-      x = ...  # type: `namedtuple-foo-0`
+      x: `namedtuple-foo-0`
 
       _Tnamedtuple-foo-0 = TypeVar('_Tnamedtuple-foo-0', bound=`namedtuple-foo-0`)
 
       class `namedtuple-foo-0`(Tuple[int, str]):
           __slots__ = ["a", "b"]
-          a = ...  # type: int
-          b = ...  # type: str
-          _asdict = ...  # type: Any
-          __dict__ = ...  # type: Any
-          _fields = ...  # type: Any
-          __getnewargs__ = ...  # type: Any
-          __getstate__ = ...  # type: Any
-          _make = ...  # type: Any
-          _replace = ...  # type: Any
+          a: int
+          b: str
+          _asdict: Any
+          __dict__: Any
+          _fields: Any
+          __getnewargs__: Any
+          __getstate__: Any
+          _make: Any
+          _replace: Any
           def __new__(cls: Type[`_Tnamedtuple-foo-0`], a: int, b: str) -> `_Tnamedtuple-foo-0`: ...
           def __init__(self, *args, **kwargs) -> None: ...
     """
@@ -601,35 +601,35 @@ class NamedTupleTest(_ParserTestBase):
                """\
       from typing import Any, Tuple, Type, TypeVar
 
-      x = ...  # type: `namedtuple-foo-0`
-      y = ...  # type: `namedtuple-foo-1`
+      x: `namedtuple-foo-0`
+      y: `namedtuple-foo-1`
 
       _Tnamedtuple-foo-0 = TypeVar('_Tnamedtuple-foo-0', bound=`namedtuple-foo-0`)
       _Tnamedtuple-foo-1 = TypeVar('_Tnamedtuple-foo-1', bound=`namedtuple-foo-1`)
 
       class `namedtuple-foo-0`(Tuple[int]):
           __slots__ = ["a"]
-          a = ...  # type: int
-          _asdict = ...  # type: Any
-          __dict__ = ...  # type: Any
-          _fields = ...  # type: Any
-          __getnewargs__ = ...  # type: Any
-          __getstate__ = ...  # type: Any
-          _make = ...  # type: Any
-          _replace = ...  # type: Any
+          a: int
+          _asdict: Any
+          __dict__: Any
+          _fields: Any
+          __getnewargs__: Any
+          __getstate__: Any
+          _make: Any
+          _replace: Any
           def __new__(cls: Type[`_Tnamedtuple-foo-0`], a: int) -> `_Tnamedtuple-foo-0`: ...
           def __init__(self, *args, **kwargs) -> None: ...
 
       class `namedtuple-foo-1`(Tuple[str]):
           __slots__ = ["b"]
-          b = ...  # type: str
-          _asdict = ...  # type: Any
-          __dict__ = ...  # type: Any
-          _fields = ...  # type: Any
-          __getnewargs__ = ...  # type: Any
-          __getstate__ = ...  # type: Any
-          _make = ...  # type: Any
-          _replace = ...  # type: Any
+          b: str
+          _asdict: Any
+          __dict__: Any
+          _fields: Any
+          __getnewargs__: Any
+          __getstate__: Any
+          _make: Any
+          _replace: Any
           def __new__(cls: Type[`_Tnamedtuple-foo-1`], b: str) -> `_Tnamedtuple-foo-1`: ...
           def __init__(self, *args, **kwargs) -> None: ...
         """)
@@ -644,13 +644,13 @@ class NamedTupleTest(_ParserTestBase):
 
       class `namedtuple-X-0`(Tuple[nothing, ...]):
           __slots__ = []
-          _asdict = ...  # type: Any
-          __dict__ = ...  # type: Any
-          _fields = ...  # type: Any
-          __getnewargs__ = ...  # type: Any
-          __getstate__ = ...  # type: Any
-          _make = ...  # type: Any
-          _replace = ...  # type: Any
+          _asdict: Any
+          __dict__: Any
+          _fields: Any
+          __getnewargs__: Any
+          __getstate__: Any
+          _make: Any
+          _replace: Any
           def __new__(cls: Type[`_Tnamedtuple-X-0`]) -> `_Tnamedtuple-X-0`: ...
           def __init__(self, *args, **kwargs) -> None: ...
     """)
@@ -663,13 +663,13 @@ class NamedTupleTest(_ParserTestBase):
 
       class `namedtuple-X-0`(Tuple[nothing, ...]):
           __slots__ = []
-          _asdict = ...  # type: Any
-          __dict__ = ...  # type: Any
-          _fields = ...  # type: Any
-          __getnewargs__ = ...  # type: Any
-          __getstate__ = ...  # type: Any
-          _make = ...  # type: Any
-          _replace = ...  # type: Any
+          _asdict: Any
+          __dict__: Any
+          _fields: Any
+          __getnewargs__: Any
+          __getstate__: Any
+          _make: Any
+          _replace: Any
           def __new__(cls: Type[`_Tnamedtuple-X-0`]) -> `_Tnamedtuple-X-0`: ...
           def __init__(self, *args, **kwargs) -> None: ...
 
@@ -751,21 +751,21 @@ class FunctionTest(_ParserTestBase):
           bar: str  # type: ignore
     """, """\
       class Foo:
-          bar = ...  # type: str
+          bar: str
     """)
     self.check("""\
       class Foo:
           bar = ...  # type: str  # type: ignore
     """, """\
       class Foo:
-          bar = ...  # type: str
+          bar: str
     """)
     self.check("""\
       class Foo:
           bar: str = ...  # type: ignore
     """, """\
       class Foo:
-          bar = ...  # type: str
+          bar: str
     """)
 
   def test_decorators(self):
@@ -1050,7 +1050,7 @@ class ClassTest(_ParserTestBase):
   def test_attribute(self):
     self.check("""\
       class Foo:
-          a = ...  # type: int
+          a: int
       """)
 
   def test_method(self):
@@ -1066,7 +1066,7 @@ class ClassTest(_ParserTestBase):
           def a(self) -> int
       """, """\
       class Foo:
-          a = ...  # type: int
+          a: int
       """)
 
   def test_duplicate_name(self):
@@ -1136,7 +1136,7 @@ class IfTest(_ParserTestBase):
       if sys.version_info == (2, 7, 6):
         x = ...  # type: int
       """, """\
-      x = ...  # type: int""")
+      x: int""")
 
   def test_if_false(self):
     self.check("""\
@@ -1151,7 +1151,7 @@ class IfTest(_ParserTestBase):
       else:
         y = ...  # type: str
       """, """\
-      y = ...  # type: str""")
+      y: str""")
 
   def test_else_ignored(self):
     self.check("""\
@@ -1160,7 +1160,7 @@ class IfTest(_ParserTestBase):
       else:
         y = ...  # type: str
       """, """\
-      x = ...  # type: int""")
+      x: int""")
 
   def test_elif_used(self):
     self.check("""\
@@ -1171,7 +1171,7 @@ class IfTest(_ParserTestBase):
       else:
         z = ...  # type: str
       """, """\
-      y = ...  # type: float""")
+      y: float""")
 
   def test_elif_preempted(self):
     self.check("""\
@@ -1182,7 +1182,7 @@ class IfTest(_ParserTestBase):
       else:
         z = ...  # type: str
       """, """\
-      x = ...  # type: int""")
+      x: int""")
 
   def test_elif_ignored(self):
     self.check("""\
@@ -1193,7 +1193,7 @@ class IfTest(_ParserTestBase):
       else:
         z = ...  # type: str
       """, """\
-      z = ...  # type: str""")
+      z: str""")
 
   def test_nested_if(self):
     self.check("""\
@@ -1207,7 +1207,7 @@ class IfTest(_ParserTestBase):
           c = ...  # type: int
         else:
           d = ...  # type: int
-      """, "a = ...  # type: int")
+      """, "a: int")
 
   def test_if_or(self):
     self.check("""\
@@ -1223,10 +1223,10 @@ class IfTest(_ParserTestBase):
           sys.version_info >= (2, 7)):
         e = ...  # type: int
     """, """\
-      a = ...  # type: int
-      b = ...  # type: int
-      d = ...  # type: int
-      e = ...  # type: int""")
+      a: int
+      b: int
+      d: int
+      e: int""")
 
   def test_if_and(self):
     self.check("""\
@@ -1235,7 +1235,7 @@ class IfTest(_ParserTestBase):
       if sys.version_info >= (2, 0) and sys.version_info >= (3, 0):
         b = ...  # type: int
     """, """\
-      a = ...  # type: int""")
+      a: int""")
 
   # The remaining tests verify that actions with side effects only take effect
   # within a true block.
@@ -1286,8 +1286,8 @@ class IfTest(_ParserTestBase):
       x = ...  # type: Dict
       y = ...  # type: List
       """, """\
-      x = ...  # type: Dict
-      y = ...  # type: list
+      x: Dict
+      y: list
 
       class Dict:
           pass
@@ -1326,7 +1326,7 @@ class ClassIfTest(_ParserTestBase):
           z = ...  # type: float
       """, """\
       class Foo:
-          y = ...  # type: str
+          y: str
       """)
 
   def test_conditional_method(self):
@@ -1389,7 +1389,7 @@ class ClassIfTest(_ParserTestBase):
 class ConditionTest(_ParserTestBase):
 
   def check_cond(self, condition, expected, **kwargs):
-    out = "x = ...  # type: int" if expected else ""
+    out = "x: int" if expected else ""
     self.check("""\
       if %s:
         x = ...  # type: int
@@ -1527,7 +1527,7 @@ class PropertyDecoratorTest(_ParserTestBase):
   def test_property_with_type(self):
     expected = """\
       class A(object):
-          name = ...  # type: str
+          name: str
     """
 
     # The return type of @property is used for the property type.
@@ -1545,7 +1545,7 @@ class PropertyDecoratorTest(_ParserTestBase):
       from typing import Any
 
       class A(object):
-          name = ...  # type: Any
+          name: Any
       """)
 
     self.check("""
@@ -1580,7 +1580,7 @@ class PropertyDecoratorTest(_ParserTestBase):
           from typing import Any
 
           class A(object):
-              name = ...  # type: Any
+              name: Any
               """
 
     self.check("""
@@ -1659,7 +1659,7 @@ class PropertyDecoratorTest(_ParserTestBase):
     from typing import Union
 
     class A(object):
-        name = ...  # type: Union[str, int]
+        name: Union[str, int]
     """)
 
 
@@ -1672,7 +1672,7 @@ class MergeSignaturesTest(_ParserTestBase):
           def name(self) -> str: ...
       """, """\
       class A(object):
-          name = ...  # type: str
+          name: str
       """)
 
   def test_merge_property_types(self):
@@ -1687,7 +1687,7 @@ class MergeSignaturesTest(_ParserTestBase):
       from typing import Union
 
       class A(object):
-          name = ...  # type: Union[str, int]
+          name: Union[str, int]
       """)
 
     self.check("""
@@ -1701,7 +1701,7 @@ class MergeSignaturesTest(_ParserTestBase):
       from typing import Any
 
       class A(object):
-          name = ...  # type: Any
+          name: Any
     """)
 
   def test_method(self):
@@ -1822,7 +1822,7 @@ class AnyTest(_ParserTestBase):
                """\
       from typing import Any
 
-      x = ...  # type: Any""")
+      x: Any""")
 
   def test_generic_any_alias(self):
     self.check("""\
@@ -1836,7 +1836,7 @@ class AnyTest(_ParserTestBase):
       Foo = Any
       Bar = Any
 
-      x = ...  # type: Any""")
+      x: Any""")
 
 
 class CanonicalPyiTest(_ParserTestBase):

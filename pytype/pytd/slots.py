@@ -28,17 +28,21 @@ class Slot(object):
     opcode: The name of the opcode that CPython uses to call this
       function. This is only filled in for operators (e.g. BINARY_SUBSCR),
       but not for operations (e.g. STORE_SUBSCR).
-    python_version: "2", "3", or (default) "*"
+    python_version: "2", "3", or (default) "*".
+    symbol: Only filled in for operators. The corresponding symbol, e.g., "+"
+      for __add__, if one exists; otherwise, a human-friendly description, e.g.,
+      "item retrieval" for __getitem__.
   """
 
   def __init__(self, python_name, c_name, function_type, index=None,
-               opcode=None, python_version="*"):
+               opcode=None, python_version="*", symbol=None):
     self.python_name = python_name
     self.c_name = c_name
     self.function_type = function_type
     self.index = index
     self.opcode = opcode
     self.python_version = python_version
+    self.symbol = symbol
 
 
 SLOTS = [
@@ -83,56 +87,56 @@ SLOTS = [
 
     # number methods:
     Slot("__add__", "nb_add", "binary_nb", index=0,
-         opcode="BINARY_ADD"),
+         opcode="BINARY_ADD", symbol="+"),
     Slot("__radd__", "nb_add", "binary_nb", index=1),
     Slot("__sub__", "nb_subtract", "binary_nb", index=0,
-         opcode="BINARY_SUBTRACT"),
+         opcode="BINARY_SUBTRACT", symbol="-"),
     Slot("__rsub__", "nb_subtract", "binary_nb", index=1),
-    Slot("__mul__", "nb_multiply", "binary_nb", index=0),
+    Slot("__mul__", "nb_multiply", "binary_nb", index=0, symbol="*"),
     Slot("__rmul__", "nb_multiply", "binary_nb", index=1),
     Slot("__div__", "nb_divide", "binary_nb", index=0,
-         opcode="BINARY_DIVIDE"),
+         opcode="BINARY_DIVIDE", symbol="/"),
     Slot("__rdiv__", "nb_divide", "binary_nb", index=1),
     Slot("__mod__", "nb_remainder", "binary_nb", index=0,
-         opcode="BINARY_MODULO"),
+         opcode="BINARY_MODULO", symbol="%"),
     Slot("__rmod__", "nb_remainder", "binary_nb", index=1),
     Slot("__divmod__", "nb_divmod", "binary_nb", index=0),
     Slot("__rdivmod__", "nb_divmod", "binary_nb", index=1),
     Slot("__lshift__", "nb_lshift", "binary_nb", index=0,
-         opcode="BINARY_LSHIFT"),
+         opcode="BINARY_LSHIFT", symbol="<<"),
     Slot("__rlshift__", "nb_lshift", "binary_nb", index=1),
     Slot("__rshift__", "nb_rshift", "binary_nb", index=0,
-         opcode="BINARY_RSHIFT"),
+         opcode="BINARY_RSHIFT", symbol=">>"),
     Slot("__rrshift__", "nb_rshift", "binary_nb", index=1),
     Slot("__and__", "nb_and", "binary_nb", index=0,
-         opcode="BINARY_AND"),
+         opcode="BINARY_AND", symbol="&"),
     Slot("__rand__", "nb_and", "binary_nb", index=1),
     Slot("__xor__", "nb_xor", "binary_nb", index=0,
-         opcode="BINARY_XOR"),
+         opcode="BINARY_XOR", symbol="^"),
     Slot("__rxor__", "nb_xor", "binary_nb", index=1),
     Slot("__or__", "nb_or", "binary_nb", index=0,
-         opcode="BINARY_OR"),
+         opcode="BINARY_OR", symbol="|"),
     Slot("__ror__", "nb_or", "binary_nb", index=1),
     # needs Py_TPFLAGS_HAVE_CLASS:
     Slot("__floordiv__", "nb_floor_divide", "binary_nb", index=0,
-         opcode="BINARY_FLOOR_DIVIDE"),
+         opcode="BINARY_FLOOR_DIVIDE", symbol="//"),
     Slot("__rfloordiv__", "nb_floor_divide", "binary_nb", index=1),
     Slot("__truediv__", "nb_true_divide", "binary_nb", index=0,
-         opcode="BINARY_TRUE_DIVIDE"),
+         opcode="BINARY_TRUE_DIVIDE", symbol="/"),
     Slot("__rtruediv__", "nb_true_divide", "binary_nb", index=1),
 
-    Slot("__pow__", "nb_power", "ternary",
-         opcode="BINARY_POWER"),
-    Slot("__rpow__", "nb_power", "ternary"),  # needs wrap_tenary_nb
+    Slot("__pow__", "nb_power", "ternary", index=0,
+         opcode="BINARY_POWER", symbol="**"),
+    Slot("__rpow__", "nb_power", "ternary", index=1),  # needs wrap_tenary_nb
 
     Slot("__neg__", "nb_negative", "unary",
-         opcode="UNARY_NEGATIVE"),
+         opcode="UNARY_NEGATIVE", symbol="-"),
     Slot("__pos__", "nb_positive", "unary",
-         opcode="UNARY_POSITIVE"),
+         opcode="UNARY_POSITIVE", symbol="+"),
     Slot("__abs__", "nb_absolute", "unary"),
     Slot("__nonzero__", "nb_nonzero", "inquiry"),  # inverse of UNARY_NOT opcode
     Slot("__invert__", "nb_invert", "unary",
-         opcode="UNARY_INVERT"),
+         opcode="UNARY_INVERT", symbol="~"),
     Slot("__coerce__", "nb_coerce", "coercion"),  # not needed
     Slot("__int__", "nb_int", "unary"),  # expects exact int as return
     Slot("__long__", "nb_long", "unary"),  # expects exact long as return
@@ -143,39 +147,39 @@ SLOTS = [
     # Added in 2.0.  These are probably largely useless.
     # (For list concatenation, use sl_inplace_concat)
     Slot("__iadd__", "nb_inplace_add", "binary",
-         opcode="INPLACE_ADD"),
+         opcode="INPLACE_ADD", symbol="+="),
     Slot("__isub__", "nb_inplace_subtract", "binary",
-         opcode="INPLACE_SUBTRACT"),
+         opcode="INPLACE_SUBTRACT", symbol="-="),
     Slot("__imul__", "nb_inplace_multiply", "binary",
-         opcode="INPLACE_MULTIPLY"),
+         opcode="INPLACE_MULTIPLY", symbol="*="),
     Slot("__idiv__", "nb_inplace_divide", "binary",
-         opcode="INPLACE_DIVIDE"),
+         opcode="INPLACE_DIVIDE", symbol="/="),
     Slot("__imod__", "nb_inplace_remainder", "binary",
-         opcode="INPLACE_MODULO"),
+         opcode="INPLACE_MODULO", symbol="%="),
     Slot("__ipow__", "nb_inplace_power", "ternary",
-         opcode="INPLACE_POWER"),
+         opcode="INPLACE_POWER", symbol="**="),
     Slot("__ilshift__", "nb_inplace_lshift", "binary",
-         opcode="INPLACE_LSHIFT"),
+         opcode="INPLACE_LSHIFT", symbol="<<="),
     Slot("__irshift__", "nb_inplace_rshift", "binary",
-         opcode="INPLACE_RSHIFT"),
+         opcode="INPLACE_RSHIFT", symbol=">>="),
     Slot("__iand__", "nb_inplace_and", "binary",
-         opcode="INPLACE_AND"),
+         opcode="INPLACE_AND", symbol="&="),
     Slot("__ixor__", "nb_inplace_xor", "binary",
-         opcode="INPLACE_XOR"),
+         opcode="INPLACE_XOR", symbol="^="),
     Slot("__ior__", "nb_inplace_or", "binary",
-         opcode="INPLACE_OR"),
+         opcode="INPLACE_OR", symbol="|="),
     Slot("__ifloordiv__", "nb_inplace_floor_divide", "binary",
-         opcode="INPLACE_FLOOR_DIVIDE"),
+         opcode="INPLACE_FLOOR_DIVIDE", symbol="//="),
     Slot("__itruediv__", "nb_inplace_true_divide", "binary",
-         opcode="INPLACE_TRUE_DIVIDE"),
+         opcode="INPLACE_TRUE_DIVIDE", symbol="/="),
 
     # matrix methods:
     # Added in 3.5
     Slot("__matmul__", "nb_matrix_multiply", "binary_nb", index=0,
-         opcode="BINARY_MATRIX_MULTIPLY"),
+         opcode="BINARY_MATRIX_MULTIPLY", symbol="@"),
     Slot("__rmatmul__", "nb_matrix_multiply", "binary_nb", index=1),
     Slot("__imatmul__", "nb_inplace_matrix_multiply", "binary",
-         opcode="INPLACE_MATRIX_MULTIPLY"),
+         opcode="INPLACE_MATRIX_MULTIPLY", symbol="@="),
 
     # Added in 2.5. Used whenever i acts as a sequence index (a[i])
     Slot("__index__", "nb_index", "unary"),  # needs int/long return
@@ -185,16 +189,18 @@ SLOTS = [
     # __len__: Python first tries sq_length, then mp_length
     # __delitem__: Reuses __setitem__ slot.
     Slot("__getitem__", "mp_subscript", "binary",
-         opcode="BINARY_SUBSCR"),
+         opcode="BINARY_SUBSCR", symbol="item retrieval"),
 
     # In CPython, these two share a slot:
-    Slot("__delitem__", "mp_ass_subscript", "objobjargproc"),
-    Slot("__setitem__", "mp_ass_subscript", "objobjargproc"),
+    Slot("__delitem__", "mp_ass_subscript", "objobjargproc",
+         symbol="item deletion"),
+    Slot("__setitem__", "mp_ass_subscript", "objobjargproc",
+         symbol="item assignment"),
 
     Slot("__len__", "mp_length", "len"),
 
     # sequence
-    Slot("__contains__", "sq_contains", "objobjproc"),
+    Slot("__contains__", "sq_contains", "objobjproc", symbol="'in'"),
 
     # These sequence methods are duplicates of number or mapping methods.
     # For example, in the C API, "add" can be implemented either by sq_concat,
@@ -203,20 +209,21 @@ SLOTS = [
     # Python/ceval.c will try both sq_item and mp_subscript, which is why this
     # opcode appears twice in our list.
     Slot("__add__", "sq_concat", "binary",
-         opcode="BINARY_ADD"),
+         opcode="BINARY_ADD", symbol="+"),
     Slot("__mul__", "sq_repeat", "indexargfunc",
-         opcode="BINARY_MULTIPLY"),
+         opcode="BINARY_MULTIPLY", symbol="*"),
     Slot("__iadd__", "sq_inplace_concat", "binary",
-         opcode="INPLACE_ADD"),
+         opcode="INPLACE_ADD", symbol="+="),
     Slot("__imul__", "sq_inplace_repeat", "indexargfunc",
-         opcode="INPLACE_MUL"),
+         opcode="INPLACE_MUL", symbol="*="),
     Slot("__getitem__", "sq_item", "sq_item",
-         opcode="BINARY_SUBSCR"),
-    Slot("__setitem__", "sq_ass_slice", "sq_ass_item"),
-    Slot("__delitem__", "sq_ass_item", "sq_delitem"),
+         opcode="BINARY_SUBSCR", symbol="item retrieval"),
+    Slot("__setitem__", "sq_ass_slice", "sq_ass_item",
+         symbol="item assignment"),
+    Slot("__delitem__", "sq_ass_item", "sq_delitem", symbol="item deletion"),
 
     # slices are passed as explicit slice objects to mp_subscript.
-    Slot("__getslice__", "sq_slice", "sq_slice"),
+    Slot("__getslice__", "sq_slice", "sq_slice", symbol="slicing"),
     Slot("__setslice__", "sq_ass_slice", "ssizessizeobjarg"),
     Slot("__delslice__", "sq_ass_slice", "delslice"),
 ]
@@ -251,20 +258,17 @@ COMPARES = {
 }
 
 
-def ReversibleOperatorNames():
-  """{__add__, __div__, __mod__, ...}."""
-  return {slot.python_name for slot in SLOTS if slot.index == 0}
+SYMBOL_MAPPING = {slot.python_name: slot.symbol
+                  for slot in SLOTS if slot.symbol}
 
 
-def ReverseOperatorNames():
-  """{__radd__, __rdiv__, __rmod__, ...}."""
-  return {slot.python_name for slot in SLOTS if slot.index == 1}
+def _ReverseNameMapping():
+  """__add__ -> __radd__, __mul__ -> __rmul__ etc."""
+  c_name_to_reverse = {slot.c_name: slot.python_name
+                       for slot in SLOTS
+                       if slot.index == 1}
+  return {slot.python_name: c_name_to_reverse[slot.c_name]
+          for slot in SLOTS if slot.index == 0}
 
 
-def ReverseSlotMapping():
-  """__radd__ -> __add__, __rmul__ -> __mul__ etc."""
-  c_name_to_normal = {slot.c_name: slot.python_name
-                      for slot in SLOTS
-                      if slot.index == 0}
-  return {slot.python_name: c_name_to_normal[slot.c_name]
-          for slot in SLOTS if slot.index == 1}
+REVERSE_NAME_MAPPING = _ReverseNameMapping()

@@ -7,9 +7,27 @@
 #ifndef PYTYPE_TYPEGRAPH_MAP_UTIL_H_
 #define PYTYPE_TYPEGRAPH_MAP_UTIL_H_
 
+#include <cstddef>
+
 namespace devtools_python_typegraph {
 
 namespace map_util {
+
+// Functor for calculating the hash of an object using its Hash() method.
+template<typename Key>
+struct hash {
+  size_t operator()(const Key& key) const noexcept {
+    return key.Hash();
+  }
+};
+
+// Same as hasher, but for pointer-type keys.
+template<typename Key>
+struct ptr_hash {
+  size_t operator()(const Key* key) const noexcept {
+    return key->Hash();
+  }
+};
 
 // Typename aliases for map's key and value types.
 // e.g. for unordered_map<string, int>, M = unordered_map, K = string, V = int.

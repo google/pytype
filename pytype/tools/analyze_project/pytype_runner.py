@@ -116,6 +116,7 @@ class PytypeRunner(object):
     self.ninja_file = os.path.join(conf.output, 'build.ninja')
     self.custom_options = [
         (k, getattr(conf, k)) for k in set(conf.__slots__) - set(config.ITEMS)]
+    self.keep_going = conf.keep_going
 
   def set_custom_options(self, flags_with_values, binary_flags):
     """Merge self.custom_options into flags_with_values and binary_flags."""
@@ -312,9 +313,9 @@ class PytypeRunner(object):
     """Execute the build.ninja file."""
     # -k N     keep going until N jobs fail (0 means infinity)
     # -C DIR   change to DIR before doing anything else
-    # TODO(rechen): The user should be able to customize -k.
-    return subprocess.call(
-        ['ninja', '-k', '0', '-C', os.path.dirname(self.ninja_file)])
+    k = '0' if self.keep_going else '1'
+    c = os.path.dirname(self.ninja_file)
+    return subprocess.call(['ninja', '-k', k, '-C', c])
 
   def run(self):
     """Run pytype over the project."""

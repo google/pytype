@@ -636,6 +636,7 @@ class NewType(abstract.PyTDFunction):
     return node, self.vm.make_class(node, name_arg, (type_arg,),
                                     members.to_variable(node), None)
 
+
 class Generic(TypingContainer):
   """Implementation of typing.Generic."""
 

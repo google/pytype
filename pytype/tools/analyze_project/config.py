@@ -9,6 +9,7 @@ import sys
 import textwrap
 
 from pytype import file_utils
+from pytype import utils
 from pytype.tools import config
 
 
@@ -42,13 +43,16 @@ ITEMS = {
     'inputs': Item(
         '', '.', None,
         'Space-separated list of files or directories to process.'),
+    'keep_going': Item(
+        False, 'False', None,
+        'Keep going past errors to analyze as many files as possible.'),
     'output': Item(
         'pytype_output', 'pytype_output', None, 'All pytype output goes here.'),
     'pythonpath': Item(
         '', '.', None,
         'Paths to source code directories, separated by %r.' % os.pathsep),
     'python_version': Item(
-        '3.6', '3.6', None, 'Python version (major.minor) of the target code.'),
+        '', '3.6', None, 'Python version (major.minor) of the target code.'),
 }
 
 
@@ -70,12 +74,22 @@ def get_pytype_single_item(name):
   return _PYTYPE_SINGLE_ITEMS[name]
 
 
+def string_to_bool(s):
+  return s == 'True' if s in ('True', 'False') else s
+
+
+def get_python_version(v):
+  return v if v else utils.format_version(sys.version_info[:2])
+
+
 def make_converters(cwd=None):
   """For items that need coaxing into their internal representations."""
   return {
       'exclude': lambda v: file_utils.expand_source_files(v, cwd),
+      'keep_going': string_to_bool,
       'inputs': lambda v: file_utils.expand_source_files(v, cwd),
       'output': lambda v: file_utils.expand_path(v, cwd),
+      'python_version': get_python_version,
       'pythonpath': lambda v: file_utils.expand_pythonpath(v, cwd),
   }
 

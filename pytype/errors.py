@@ -16,6 +16,7 @@ from pytype import utils
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+from pytype.pytd import slots
 from pytype.pytd import visitors
 import six
 
@@ -72,45 +73,43 @@ def _maybe_truncate_traceback(traceback):
     return traceback
 
 
-def _make_traceback_str(ops):
-  """Turn a stack of opcodes into a traceback string.
-
-  Args:
-    ops: A list of pyi.opcodes.Opcode objects.
-
-  Returns:
-    A traceback string representing the stack.
-  """
-  ops = ops[:-1]
-  if ops:
-    ops = _maybe_truncate_traceback(ops)
-    traceback = []
-    format_line = "line %d, in %s"
-    for op in ops:
-      if op is _ELLIPSIS:
-        line = "..."
-      elif op.code.co_name == "<module>":
-        line = format_line % (op.line, "current file")
-      else:
-        line = format_line % (op.line, op.code.co_name)
-      traceback.append(line)
-    return TRACEBACK_MARKER + "\n  " + "\n  ".join(traceback)
-  else:
+def _make_traceback_str(frames):
+  """Turn a stack of frames into a traceback string."""
+  if len(frames) < 2 or (
+      frames[-1].f_code and not frames[-1].f_code.get_arg_count()):
+    # A traceback is usually unnecessary when the topmost frame has no
+    # arguments. If this frame ran during module loading, caching prevented it
+    # from running again without a traceback, so we drop the traceback manually.
     return None
+  frames = frames[:-1]
+  frames = _maybe_truncate_traceback(frames)
+  traceback = []
+  format_line = "line %d, in %s"
+  for frame in frames:
+    if frame is _ELLIPSIS:
+      line = "..."
+    elif frame.current_opcode.code.co_name == "<module>":
+      line = format_line % (frame.current_opcode.line, "current file")
+    else:
+      line = format_line % (frame.current_opcode.line,
+                            frame.current_opcode.code.co_name)
+    traceback.append(line)
+  return TRACEBACK_MARKER + "\n  " + "\n  ".join(traceback)
 
 
-def _stack_to_opcodes(stack):
-  """Turn a stack of frames into a stack of opcodes, removing duplicates."""
-  ops = []
+def _dedup_opcodes(stack):
+  """Dedup the opcodes in a stack of frames."""
+  deduped_stack = []
   for frame in stack:
     if frame.current_opcode and (
-        not ops or frame.current_opcode.line != ops[-1].line):
+        not deduped_stack or
+        frame.current_opcode.line != deduped_stack[-1].current_opcode.line):
       # We can have consecutive opcodes with the same line number due to, e.g.,
       # a set comprehension. The first opcode we encounter is the one with the
       # real method name, whereas the second's method name is something like
       # <setcomp>, so we keep the first.
-      ops.append(frame.current_opcode)
-  return ops
+      deduped_stack.append(frame)
+  return deduped_stack
 
 
 def _compare_traceback_strings(left, right):
@@ -203,14 +202,14 @@ class Error(object):
     Returns:
       An Error object.
     """
-    opcodes = _stack_to_opcodes(stack) if stack else None
-    opcode = opcodes[-1] if opcodes else None
+    stack = _dedup_opcodes(stack) if stack else None
+    opcode = stack[-1].current_opcode if stack else None
     if opcode is None:
       return cls(severity, message, details=details, keyword=keyword)
     else:
       return cls(severity, message, filename=opcode.code.co_filename,
                  lineno=opcode.line, methodname=opcode.code.co_name,
-                 details=details, traceback=_make_traceback_str(opcodes),
+                 details=details, traceback=_make_traceback_str(stack),
                  keyword=keyword)
 
   @classmethod
@@ -578,7 +577,11 @@ class ErrorLog(ErrorLogBase):
                keyword=attr_name)
 
   def attribute_error(self, stack, binding, attr_name):
-    if isinstance(binding.data, abstract.Module):
+    if attr_name in slots.SYMBOL_MAPPING:
+      obj = self._print_as_actual_type(binding.data)
+      details = "No attribute %r on %s" % (attr_name, obj)
+      self._unsupported_operands(stack, attr_name, obj, details=details)
+    elif isinstance(binding.data, abstract.Module):
       self._module_attr(stack, binding, attr_name)
     else:
       self._attribute_error(stack, binding, attr_name)
@@ -642,8 +645,44 @@ class ErrorLog(ErrorLogBase):
         len(bad_call.passed_args))
     self._invalid_parameters(stack, message, bad_call)
 
-  @_error_name("wrong-arg-types")
+  def _get_binary_operation(self, function_name, bad_call):
+    """Return (op, left, right) if the function should be treated as a binop."""
+    maybe_left_operand, _, f = function_name.rpartition(".")
+    # Check that
+    # (1) the function is bound to an object (the left operand),
+    # (2) the function has a pretty representation,
+    # (3) either there are exactly two passed args or the function is one we've
+    #     chosen to treat as a binary operation.
+    if (not maybe_left_operand or f not in slots.SYMBOL_MAPPING or
+        (len(bad_call.passed_args) != 2 and
+         f not in ("__setitem__", "__getslice__"))):
+      return None
+    for arg_name, arg_value in bad_call.passed_args[1:]:
+      if arg_name == bad_call.bad_param.name:
+        # maybe_left_operand is something like `dict`, but we want a more
+        # precise type like `Dict[str, int]`.
+        left_operand = self._print_as_actual_type(bad_call.passed_args[0][1])
+        right_operand = self._print_as_actual_type(arg_value)
+        return f, left_operand, right_operand
+    return None
+
   def wrong_arg_types(self, stack, name, bad_call):
+    """Log [wrong-arg-types]."""
+    operation = self._get_binary_operation(name, bad_call)
+    if operation:
+      operator, left_operand, right_operand = operation
+      operator_name = _function_name(operator, capitalize=True)
+      expected_right_operand = self._print_as_expected_type(
+          bad_call.bad_param.expected)
+      details = "%s on %s expects %s" % (
+          operator_name, left_operand, expected_right_operand)
+      self._unsupported_operands(
+          stack, operator, left_operand, right_operand, details=details)
+    else:
+      self._wrong_arg_types(stack, name, bad_call)
+
+  @_error_name("wrong-arg-types")
+  def _wrong_arg_types(self, stack, name, bad_call):
     """A function was called with the wrong parameter types."""
     message = ("%s was called with the wrong arguments" %
                _function_name(name, capitalize=True))
@@ -748,19 +787,30 @@ class ErrorLog(ErrorLogBase):
     ])
     self.error(stack, "Invalid instantiation of generic class", details)
 
-  @_error_name("unsupported-operands")
-  def unsupported_operands(self, stack, operation, var1, var2):
+  def unsupported_operands(self, stack, operator, var1, var2):
     left = self._join_printed_types(
         self._print_as_actual_type(t) for t in var1.data)
     right = self._join_printed_types(
         self._print_as_actual_type(t) for t in var2.data)
-    # TODO(kramm): Display things like '__add__' as '+'
-    self.error(stack, "unsupported operand type(s) for %s: %r and %r" % (
-        operation, left, right))
+    details = "No attribute %r on %s" % (operator, left)
+    if operator in slots.REVERSE_NAME_MAPPING:
+      details += " or %r on %s" % (slots.REVERSE_NAME_MAPPING[operator], right)
+    self._unsupported_operands(stack, operator, left, right, details=details)
+
+  @_error_name("unsupported-operands")
+  def _unsupported_operands(self, stack, operator, *operands, **details):
+    # TODO(b/114124544): Change the signature to (..., *operands, details=None)
+    assert set(details) <= {"details"}
+    self.error(
+        stack, "unsupported operand type(s) for %s: %s" % (
+            slots.SYMBOL_MAPPING[operator],
+            " and ".join(repr(operand) for operand in operands)),
+        details=details.get("details"))
 
   def invalid_annotation(self, stack, annot, details=None, name=None):
-    self._invalid_annotation(stack, self._print_as_expected_type(annot),
-                             details, name)
+    if annot is not None:
+      annot = self._print_as_expected_type(annot)
+    self._invalid_annotation(stack, annot, details, name)
 
   def invalid_ellipses(self, stack, indices, container_name):
     if indices:
@@ -776,11 +826,13 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("invalid-annotation")
   def _invalid_annotation(self, stack, annot_string, details, name):
+    """Log the invalid annotation."""
     if name is None:
       suffix = ""
     else:
-      suffix = " for " + name
-    self.error(stack, "Invalid type annotation %r%s" % (annot_string, suffix),
+      suffix = "for " + name
+    annot_string = "%r " % annot_string if annot_string else ""
+    self.error(stack, "Invalid type annotation %s%s" % (annot_string, suffix),
                details=details)
 
   @_error_name("mro-error")

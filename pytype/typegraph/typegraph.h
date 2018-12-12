@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "reachable.h"
+#include "map_util.h"
 
 namespace devtools_python_typegraph {
 
@@ -88,6 +89,11 @@ class Program {
     default_data_ = new_default;
   }
 
+  size_t next_binding_id() {
+    size_t id = next_binding_id_++;
+    return id;
+  }
+
   CFGNode* entrypoint() { return this->entrypoint_; }
   void set_entrypoint(CFGNode* node) { this->entrypoint_ = node; }
 
@@ -102,6 +108,7 @@ class Program {
  private:
   CFGNode* entrypoint_;
   size_t next_variable_id_;
+  size_t next_binding_id_;
   std::unique_ptr<ReachabilityAnalyzer> backward_reachability_;
   // For deallocation, and for node counting:
   std::vector<std::unique_ptr<CFGNode>> cfg_nodes_;
@@ -161,6 +168,13 @@ class CFGNode {
   // at us through their origin data structures.
   const std::vector<Binding*>& bindings() const { return bindings_; }
 
+  // Ordering CFGNodes is useful for ordered data structures like std::set.
+  bool operator<(const CFGNode& other) const { return id() < other.id(); }
+
+  size_t Hash() const {
+    return id_;
+  }
+
  private:
   CFGNode(Program* program, const std::string& name, size_t id,
           Binding* condition, ReachabilityAnalyzer* backward_reachability);
@@ -176,10 +190,23 @@ class CFGNode {
   friend Program;  // to allow Program to construct CFGNodes
 };
 
+typedef map_util::ptr_hash<CFGNode> CFGNodePtrHash;
+
+// std::set uses less-than comparisons to order elements. Provide a custom
+// comparator that compares the underlying elements instead of pointers.
+template<typename T>
+struct pointer_less {
+  bool operator()(const T* a, const T* b) const {
+    return *a < *b;
+  }
+};
+
+typedef std::set<const CFGNode*, pointer_less<CFGNode>> CFGNodeSet;
+
 // A SourceSet is a combination of Bindings that was used to form a Binding.
 // E.g., for a statement like "z = a.x + y", a, a.x and y would be the
 // SourceSet to create z.
-typedef std::set<Binding*> SourceSet;
+typedef std::set<Binding*, pointer_less<Binding>> SourceSet;
 
 // An "origin" is an explanation of how a binding was constructed. It consists
 // of a CFG node and a set of sourcesets.
@@ -228,8 +255,14 @@ class Binding {
   // Does this Binding depend on a given source?
   bool HasSource(const Binding* binding) const;
 
-  // What Program this binding belongs to, for alloc.
+  // What Program this Binding belongs to, for alloc.
   Program* program() const { return program_; }
+
+  // The ID of this Binding, used for ordering Bindings.
+  size_t id() const { return id_; }
+
+  // "<" is used to order Bindings by id.
+  bool operator<(const Binding& other) const { return id() < other.id(); }
 
   // A binding has history ("origins"): It knows where the binding was
   // originally retrieved from, before being assigned to something else here.
@@ -255,17 +288,19 @@ class Binding {
   Origin* FindOrigin(const CFGNode* node) const;
 
  private:
-  Binding(Program* program, Variable* variable, const BindingData& data);
+  Binding(Program* program, Variable* variable, const BindingData& data,
+          size_t id);
   Origin* FindOrAddOrigin(CFGNode* node);
 
   std::vector<std::unique_ptr<Origin>> origins_;
   // We have to use a hash_map with pointers as bindings (i.e., Origin* instead
   // of just Origin) because hash_map doesn't have emplace.
   // TODO(pludemann): map has emplace(); change to map instead of hash_map?
-  std::unordered_map<const CFGNode*, Origin*> node_to_origin_;
+  std::unordered_map<const CFGNode*, Origin*, CFGNodePtrHash> node_to_origin_;
   Variable* variable_;
   BindingData data_;
   Program* program_;  // for alloc
+  size_t id_;
   friend Variable;    // to allow Variables to construct Bindings
 };
 
@@ -321,7 +356,7 @@ class Variable {
     return bindings_;
   }
   // All nodes in the bindings of this variable.
-  const std::set<const CFGNode*> nodes() const;
+  const CFGNodeSet nodes() const;
 
   // Get the (unfiltered) data of all bindings.
   const std::vector<DataType*> Data() const;
@@ -339,7 +374,8 @@ class Variable {
   size_t id_;
   std::vector<std::unique_ptr<Binding>> bindings_;
   std::unordered_map<DataType*, Binding*> data_to_binding_;
-  std::unordered_map<const CFGNode*, SourceSet> cfg_node_to_bindings_;
+  std::unordered_map<const CFGNode*, SourceSet, CFGNodePtrHash>
+      cfg_node_to_bindings_;
 
   Program* program_;  // for alloc
   friend Program;     // to allow Program to construct Variables

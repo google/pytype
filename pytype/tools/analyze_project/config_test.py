@@ -151,6 +151,14 @@ class TestGenerateConfig(unittest.TestCase):
     self.parser.postprocess(conf, from_strings=True)
     self.assertIsInstance(conf.report_errors, bool)
 
+  def test_keep_going_file_default(self):
+    conf = config.FileConfig()
+    with file_utils.Tempdir() as d:
+      f = os.path.join(d.path, 'sample.cfg')
+      config.generate_sample_config_or_die(f, self.parser.pytype_single_args)
+      conf.read_from_file(f)
+    self.assertIsInstance(conf.keep_going, bool)
+
 
 class TestReadConfig(TestBase):
   """Test config.read_config_file_or_die()."""

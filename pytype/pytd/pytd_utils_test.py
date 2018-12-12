@@ -292,7 +292,7 @@ class TestUtils(parser_test_base.ParserTest):
     src = textwrap.dedent("""
       import typing
 
-      x = ...  # type: typing.List[str]
+      x: typing.List[str]
 
       def List() -> None: ...
     """)
@@ -315,11 +315,11 @@ class TestUtils(parser_test_base.ParserTest):
       import typing
       from typing import Any, List
 
-      x = ...  # type: List[str]
+      x: List[str]
 
       class MyClass(object):
-          List = ...  # type: Any
-          x = ...  # type: typing.List[str]
+          List: Any
+          x: typing.List[str]
     """)
     self.assertMultiLineEqual(pytd_utils.Print(ast).strip("\n"),
                               expected.strip("\n"))

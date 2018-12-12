@@ -3,7 +3,6 @@
 import collections
 import contextlib
 import itertools
-import os
 import re
 import subprocess
 import threading
@@ -68,9 +67,9 @@ def validate_version(python_version):
     # that typing.py isn't introduced until 3.5, anyway.
     raise UsageError(
         "Python versions 3.0 - 3.3 are not supported. Use 3.4 and higher.")
-  elif python_version > (3, 6):
+  elif python_version > (3, 7):
     # We have an explicit per-minor-version mapping in opcodes.py
-    raise UsageError("Python versions > 3.6 are not yet supported.")
+    raise UsageError("Python versions > 3.7 are not yet supported.")
 
 
 def strip_prefix(string, prefix):
@@ -149,15 +148,14 @@ def get_python_exe(python_version):
   return python_exe
 
 
-def is_valid_python_exe(python_exe):
-  """Test that python_exe is a valid executable."""
+def get_python_exe_version(python_exe):
   try:
-    with open(os.devnull, "w") as null:
-      subprocess.check_call(python_exe + " -V",
-                            shell=True, stderr=null, stdout=null)
-      return True
+    python_exe_version = subprocess.check_output(
+        python_exe + " -V", shell=True, stderr=subprocess.STDOUT).decode()
   except subprocess.CalledProcessError:
-    return False
+    return None
+  # Turn "Python major.minor.micro" into (major, minor)
+  return split_version(python_exe_version.split()[-1].rsplit(".", 1)[0])
 
 
 def list_startswith(l, prefix):
@@ -302,7 +300,7 @@ class AnnotatingDecorator(object):
   """A decorator for storing function attributes.
 
   Attributes:
-    mapping: maps functions to their attributes.
+    lookup: maps functions to their attributes.
   """
 
   def __init__(self):

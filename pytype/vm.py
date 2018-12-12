@@ -102,14 +102,7 @@ class _FindIgnoredTypeComments(object):
 
 
 class VirtualMachine(object):
-  """A bytecode VM that generates a cfg as it executes.
-
-  Attributes:
-    program: The cfg.Program used to build the CFG.
-    root_cfg_node: The root CFG node that contains the definitions of builtins.
-    primitive_classes: A mapping from primitive python types to their abstract
-      types.
-  """
+  """A bytecode VM that generates a cfg as it executes."""
 
   def __init__(self,
                errorlog,
@@ -307,20 +300,6 @@ class VirtualMachine(object):
         self._set_frame_return(
             node, frame, self.convert.no_return.to_variable(node))
     return node, frame.return_variable
-
-  reversable_operators = set([
-      "__add__", "__sub__", "__mul__",
-      "__div__", "__truediv__", "__floordiv__",
-      "__mod__", "__divmod__", "__pow__",
-      "__lshift__", "__rshift__", "__and__", "__or__", "__xor__",
-      "__matmul__"
-  ])
-
-  @staticmethod
-  def reverse_operator_name(name):
-    if name in VirtualMachine.reversable_operators:
-      return "__r" + name[2:]
-    return None
 
   def push_block(self, state, t, op, handler=None, level=None):
     if level is None:
@@ -528,6 +507,7 @@ class VirtualMachine(object):
       if cls_var and all(v.data.full_name == "__builtin__.type"
                          for v in cls_var.bindings):
         cls_var = None
+      # pylint: disable=g-long-ternary
       cls = abstract_utils.get_atomic_value(
           cls_var, default=self.convert.unsolvable) if cls_var else None
       try:
@@ -750,7 +730,7 @@ class VirtualMachine(object):
 
   def _call_binop_on_bindings(self, node, name, xval, yval):
     """Call a binary operator on two cfg.Binding objects."""
-    rname = self.reverse_operator_name(name)
+    rname = slots.REVERSE_NAME_MAPPING.get(name)
     if rname and isinstance(xval.data, abstract.AMBIGUOUS_OR_EMPTY):
       # If the reverse operator is possible and x is ambiguous, then we have no
       # way of determining whether __{op} or __r{op}__ is called.  Technically,
@@ -2582,10 +2562,19 @@ class VirtualMachine(object):
     return self.store_local(state, "__annotations__", annotations)
 
   def byte_STORE_ANNOTATION(self, state, op):
+    """Implementation of the STORE_ANNOTATION opcode."""
     state, annotations_var = self.load_local(state, "__annotations__")
     annotations = abstract_utils.get_atomic_value(annotations_var)
     name = self.frame.f_code.co_names[op.arg]
     state, value = state.pop()
+    try:
+      # TODO(ahxun): treat annotated variables as if they always have an
+      # initial value.
+      if self.load_local(state, name):  # variable is defined
+        self.store_local(state, name, self.annotations_util.type_to_value(
+            state.node, name, value))
+    except KeyError:
+      pass
     annotations.set_str_item(state.node, name, value)
     return self.store_local(state, "__annotations__", annotations_var)
 
@@ -2609,7 +2598,7 @@ class VirtualMachine(object):
       else:
         # Some iterable constants (e.g., tuples) already contain variables,
         # whereas others (e.g., strings) need to be wrapped.
-        elements.extend(v if isinstance(v, cfg.Variable)
+        elements.extend(v if isinstance(v, cfg.Variable)  # pylint: disable=g-long-ternary
                         else self.convert.constant_to_var(v) for v in itr)
     return state, elements
 
@@ -2707,3 +2696,19 @@ class VirtualMachine(object):
   def byte_YIELD_FROM(self, state, op):
     # We don't support this feature yet; simply don't crash.
     return state.pop_and_discard()
+
+  def byte_LOAD_METHOD(self, state, op):
+    # We don't support this 3.7 opcode yet; simply don't crash.
+    # TODO(rechen): Implement
+    # https://docs.python.org/3/library/dis.html#opcode-LOAD_METHOD.
+    unused_name = self.frame.f_code.co_names[op.arg]
+    state, unused_self_obj = state.pop()
+    return state
+
+  def byte_CALL_METHOD(self, state, op):
+    # We don't support this 3.7 opcode yet; simply don't crash.
+    # TODO(rechen): Implement
+    # https://docs.python.org/3/library/dis.html#opcode-CALL_METHOD.
+    for _ in range(op.arg):
+      state = state.pop_and_discard()
+    return state.push(self.convert.unsolvable.to_variable(state.node))

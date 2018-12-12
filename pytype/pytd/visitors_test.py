@@ -407,7 +407,7 @@ class TestVisitors(parser_test_base.ParserTest):
         {"foo": ast1, "bar": ast2}, self_name="bar"))
     self.assertMultiLineEqual(pytd.Print(ast2), textwrap.dedent("""\
       class bar.A(object):
-          x = ...  # type: int
+          x: int
     """))
 
   def testLookupTwoStarAliasesWithDefaultPyi(self):
@@ -527,7 +527,7 @@ class TestVisitors(parser_test_base.ParserTest):
     expected_src = textwrap.dedent("""
       from typing import List
 
-      x = ...  # type: List
+      x: List
     """).strip()
     res = pytd.Print(tree)
     self.assertMultiLineEqual(res, expected_src)

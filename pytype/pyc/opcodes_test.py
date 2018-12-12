@@ -1012,5 +1012,18 @@ class Python36Test(_TestBase):
     self.assertEqual(ops[0].arg, 0x102)
     self.assertEqual(ops[1].name, 'JUMP_ABSOLUTE')
 
+
+class Python37Test(_TestBase):
+  """Test bytecodes specific to Python 3.7."""
+
+  PYTHON_VERSION = (3, 7, 0)
+
+  def test_load_method(self):
+    self.assertName([160, 1], 'LOAD_METHOD')
+
+  def test_call_method(self):
+    self.assertName([161, 0], 'CALL_METHOD')
+
+
 if __name__ == '__main__':
   unittest.main()

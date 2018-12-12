@@ -47,6 +47,15 @@ py_test(
 
 py_test(
   NAME
+    test_tracebacks
+  SRCS
+    test_tracebacks.py
+  DEPS
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
     test_cmp
   SRCS
     test_cmp.py
@@ -365,6 +374,33 @@ py_test(
     test_pickle
   SRCS
     test_pickle.py
+  DEPS
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    test_quick
+  SRCS
+    test_quick.py
+  DEPS
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    test_generic
+  SRCS
+    test_generic.py
+  DEPS
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    test_variable_annotations
+  SRCS
+    test_variable_annotations.py
   DEPS
     pytype.tests.test_base
 )

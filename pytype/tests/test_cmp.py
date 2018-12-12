@@ -20,7 +20,7 @@ class InTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
     self.assertErrorLogIs(errors, [(2, "unsupported-operands",
-                                    r"__contains__.*object")])
+                                    r"'in'.*object")])
 
   def test_deep(self):
     ty = self.Infer("""
@@ -54,8 +54,8 @@ class InTest(test_base.TargetIndependentTest):
         del x[""]
     """)
     self.assertErrorLogIs(errors, [
-        (2, "unsupported-operands", r"__contains__.*None"),
-        (3, "attribute-error", r"__delitem__.*None")])
+        (2, "unsupported-operands", r"'in'.*None"),
+        (3, "unsupported-operands", r"item deletion.*None")])
 
 
 class NotInTest(test_base.TargetIndependentTest):
@@ -74,7 +74,7 @@ class NotInTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
     self.assertErrorLogIs(errors, [(2, "unsupported-operands",
-                                    r"__contains__.*object")])
+                                    r"'in'.*object")])
 
   # "not in" maps to the inverse of __contains__
   def test_overloaded(self):
@@ -102,8 +102,8 @@ class NotInTest(test_base.TargetIndependentTest):
         x[""] = 42
     """)
     self.assertErrorLogIs(errors, [
-        (2, "unsupported-operands", r"__contains__.*None"),
-        (3, "attribute-error", r"__setitem__.*None")])
+        (2, "unsupported-operands", r"'in'.*None"),
+        (3, "unsupported-operands", r"item assignment.*None")])
 
 
 class IsTest(test_base.TargetIndependentTest):

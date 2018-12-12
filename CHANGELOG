@@ -1,6 +1,11 @@
-Version (upcoming)
+Version 2018.12.11
+* Add rudimentary support for target Python 3.7.
+* Make error messages for Python operators friendlier.
+* Set the default target python version to the host version.
+* Change default behavior to stop at first error and add a --keep-going option.
 * Flag annotations with the wrong parameter count and invalid uses of NoReturn.
 * Improve pytype and merge-pyi status messages.
+* Support PEP-526 variable annotation syntax.
 
 Version 2018.11.06
 * Use --imports_info to allow preserving generated type stubs between runs.

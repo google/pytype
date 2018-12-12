@@ -42,8 +42,8 @@ class ListTest(test_base.TargetPython27FeatureTest):
       n = ...  # type: List[nothing]
       """)
     self.assertErrorLogIs(errors, [
-        (10, "wrong-arg-types", "list.__getslice__"),
-        (11, "wrong-arg-types", "list.__getslice__")])
+        (10, "unsupported-operands", r"__getslice__ on List"),
+        (11, "unsupported-operands", r"__getslice__ on List")])
 
 
 test_base.main(globals(), __name__ == "__main__")

@@ -140,7 +140,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
         for x in bytes():
           return bytes() + x
     """)
-    self.assertErrorLogIs(errors, [(3, "wrong-arg-types")])
+    self.assertErrorLogIs(errors, [(3, "unsupported-operands")])
 
   def test_inplace_division(self):
     self.Check("""\
@@ -537,6 +537,11 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       ProcessLookupError
       TimeoutError
     """)
+
+  def testRawInput(self):
+    # Removed in Python 3:
+    errors = self.CheckWithErrors("raw_input")
+    self.assertErrorLogIs(errors, [(1, "name-error")])
 
 
 test_base.main(globals(), __name__ == "__main__")

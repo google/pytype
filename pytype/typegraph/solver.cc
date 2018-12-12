@@ -1,6 +1,7 @@
 #include "solver.h"
 
 #include <algorithm>
+#include <functional>
 #include <stack>
 #include <string>
 #include <tuple>
@@ -16,13 +17,12 @@ namespace devtools_python_typegraph {
 namespace internal {
 
 // Helper function for checking set membership.
-template <class T>
-static bool set_contains(const std::set<T>& set, const T elem) {
+template <class T, class U>
+static bool set_contains(const std::set<T, U>& set, const T elem) {
   return set.find(elem) != set.end();
 }
 
-static bool node_set_contains(const std::set<const CFGNode*>& set,
-                              const CFGNode* elem) {
+static bool node_set_contains(const CFGNodeSet& set, const CFGNode* elem) {
   return set_contains<const CFGNode*>(set, elem);
 }
 
@@ -49,15 +49,17 @@ static std::vector<RemoveResult> remove_finished_goals(const CFGNode* pos,
   GoalSet goals_to_remove;
   // We can't use set_intersection here because pos->bindings() is a vector.
   for (const auto* goal : pos->bindings()) {
-    if (goals.find(goal) != goals.end())
+    if (goal_set_contains(goals, goal)) {
       goals_to_remove.insert(goal);
+    }
   }
   GoalSet seen_goals;
   GoalSet removed_goals;
   GoalSet new_goals;
   std::set_difference(goals.begin(), goals.end(),
                       goals_to_remove.begin(), goals_to_remove.end(),
-                      std::inserter(new_goals, new_goals.begin()));
+                      std::inserter(new_goals, new_goals.begin()),
+                      pointer_less<Binding>());
   std::vector<std::tuple<GoalSet, GoalSet, GoalSet, GoalSet>> stack;
   stack.push_back(
       std::make_tuple(goals_to_remove, seen_goals, removed_goals, new_goals));
@@ -72,7 +74,7 @@ static std::vector<RemoveResult> remove_finished_goals(const CFGNode* pos,
     }
     const auto* goal = *goals_to_remove.begin();
     goals_to_remove.erase(goals_to_remove.begin());
-    if (seen_goals.find(goal) != seen_goals.end()) {
+    if (goal_set_contains(seen_goals, goal)) {
       // Only process a goal once, to prevent infinite loops.
       stack.push_back(std::make_tuple(
           goals_to_remove, seen_goals, removed_goals, new_goals));
@@ -114,17 +116,17 @@ size_t State::Hash() const {
 
 PathFinder::PathFinder()
     : solved_find_queries_(
-          new std::unordered_map<const QueryKey, QueryResult, QueryKeyHasher>){}
+          new QueryMap){}
 
 PathFinder::~PathFinder() {}
 
 bool PathFinder::FindAnyPathToNode(
     const CFGNode* start,
     const CFGNode* finish,
-    const std::set<const CFGNode*>& blocked) const {
+    const CFGNodeSet& blocked) const {
   std::vector<const CFGNode*> stack;
   stack.push_back(start);
-  std::set<const CFGNode*> seen;
+  CFGNodeSet seen;
   const CFGNode* node;
   while (!stack.empty()) {
     node = stack.back();
@@ -141,12 +143,12 @@ bool PathFinder::FindAnyPathToNode(
 
 const std::deque<const CFGNode*> PathFinder::FindShortestPathToNode(
     const CFGNode* start, const CFGNode* finish,
-    const std::set<const CFGNode*>& blocked) const {
+    const CFGNodeSet& blocked) const {
   std::deque<const CFGNode*> queue;
   queue.push_front(start);
-  std::unordered_map<const CFGNode*, const CFGNode*> previous;
+  std::unordered_map<const CFGNode*, const CFGNode*, CFGNodePtrHash> previous;
   previous[start] = nullptr;
-  std::set<const CFGNode*> seen;
+  CFGNodeSet seen;
   const CFGNode* node;
   bool found = false;
   while (!queue.empty()) {
@@ -175,8 +177,9 @@ const std::deque<const CFGNode*> PathFinder::FindShortestPathToNode(
 }
 
 const CFGNode* PathFinder::FindHighestReachableWeight(
-    const CFGNode* start, std::set<const CFGNode*> seen,
-    const std::unordered_map<const CFGNode*, int>& weight_map) const {
+    const CFGNode* start, CFGNodeSet seen,
+    const std::unordered_map<const CFGNode*, int, CFGNodePtrHash>& weight_map)
+    const {
   std::vector<const CFGNode*> stack;
   stack.insert(stack.end(), start->incoming().begin(), start->incoming().end());
   int best_weight = -1;
@@ -205,7 +208,7 @@ const CFGNode* PathFinder::FindHighestReachableWeight(
 QueryResult PathFinder::FindNodeBackwards(
     const CFGNode* start,
     const CFGNode* finish,
-    const std::set<const CFGNode*>& blocked) {
+    const CFGNodeSet& blocked) {
   QueryKey query(start, finish, blocked);
   const auto* res = map_util::FindOrNull(*solved_find_queries_, query);
   if (res)
@@ -225,9 +228,9 @@ QueryResult PathFinder::FindNodeBackwards(
   // without using any nodes on it. The furthest node we can reach (described
   // below by the "weight", which is the position on our shortest path) is our
   // first articulation point. Set that as new start and continue.
-  std::set<const CFGNode*> blocked_(blocked);
+  CFGNodeSet blocked_(blocked);
   blocked_.insert(shortest_path.begin(), shortest_path.end());
-  std::unordered_map<const CFGNode*, int> weights;
+  std::unordered_map<const CFGNode*, int, CFGNodePtrHash> weights;
   int w = 0;
   std::deque<const CFGNode*>::const_iterator it = shortest_path.cbegin();
   for (; it != shortest_path.cend(); w++, it++)
@@ -250,8 +253,7 @@ QueryResult PathFinder::FindNodeBackwards(
 }  // namespace internal
 
 Solver::Solver(const Program* program)
-    : solved_states_(new std::unordered_map<const internal::State, bool,
-                     internal::StateHasher>), program_(program) {}
+    : solved_states_(new internal::StateMap), program_(program) {}
 
 bool Solver::GoalsConflict(const internal::GoalSet& goals) const {
   std::unordered_map<const Variable*, const Binding*> variables;
@@ -307,12 +309,12 @@ bool Solver::FindSolution(const internal::State& state, int current_depth) {
       LOG(INFO) << indent << "done!";
       return true;
     }
-    std::set<const CFGNode*> blocked;
+    CFGNodeSet blocked;
     for (const auto* goal : result.new_goals) {
       const auto vnodes = goal->variable()->nodes();
       blocked.insert(vnodes.begin(), vnodes.end());
     }
-    std::set<const CFGNode*> new_positions;
+    CFGNodeSet new_positions;
     for (const Binding* goal : result.new_goals) {
       for (const auto& origin : goal->origins()) {
         internal::QueryResult origin_path = path_finder_.FindNodeBackwards(

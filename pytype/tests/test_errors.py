@@ -1,6 +1,5 @@
 """Tests for displaying errors."""
 
-
 from pytype import file_utils
 from pytype.tests import test_base
 
@@ -58,26 +57,6 @@ class ErrorTest(test_base.TargetIndependentTest):
       foobar
     """)
     self.assertErrorLogIs(errors, [(1, "name-error", r"foobar")])
-
-  def testUnsupportedOperands(self):
-    _, errors = self.InferWithErrors("""\
-      def f():
-        x = "foo"
-        y = "bar"
-        return x ^ y
-    """)
-    self.assertErrorLogIs(errors, [(4, "unsupported-operands",
-                                    r"__xor__.*str.*str")])
-
-  def testUnsupportedOperands2(self):
-    _, errors = self.InferWithErrors("""
-      def f():
-        x = "foo"
-        y = 3
-        return x + y
-    """)
-    self.assertErrorLogIs(errors, [(5, "wrong-arg-types",
-                                    r"Expected.*y: str.*Actual.*y: int")])
 
   def testWrongArgCount(self):
     _, errors = self.InferWithErrors("""\
@@ -516,7 +495,8 @@ class ErrorTest(test_base.TargetIndependentTest):
       s = {1}
       del s[1]
     """, deep=True)
-    self.assertErrorLogIs(errors, [(2, "attribute-error", r"__delitem__")])
+    self.assertErrorLogIs(
+        errors, [(2, "unsupported-operands", r"item deletion")])
 
   def testBadReference(self):
     ty, errors = self.InferWithErrors("""\
@@ -909,8 +889,8 @@ class ErrorTest(test_base.TargetIndependentTest):
       f("hello")
       f([])
     """)
-    self.assertErrorLogIs(errors, [(2, "wrong-arg-types", r"str.*int"),
-                                   (2, "wrong-arg-types", r"list.*int")])
+    self.assertErrorLogIs(errors, [(2, "unsupported-operands", r"str.*int"),
+                                   (2, "unsupported-operands", r"List.*int")])
 
   def testKwargOrder(self):
     with file_utils.Tempdir() as d:
@@ -1013,6 +993,131 @@ class ErrorTest(test_base.TargetIndependentTest):
         return y.groups()
     """)
     self.assertErrorLogIs(errors, [(3, "attribute-error", r"Optional\[Any\]")])
+
+
+class OperationsTest(test_base.TargetIndependentTest):
+  """Test operations."""
+
+  def testXor(self):
+    errors = self.CheckWithErrors("def f(): return 'foo' ^ 3")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"\^.*str.*int.*'__xor__' on str.*'__rxor__' on int")])
+
+  def testAdd(self):
+    errors = self.CheckWithErrors("def f(): return 'foo' + 3")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands", r"\+.*str.*int.*__add__ on str.*str")])
+
+  def testInvert(self):
+    errors = self.CheckWithErrors("def f(): return ~None")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands", r"\~.*None.*'__invert__' on None")])
+
+  def testSub(self):
+    errors = self.CheckWithErrors("def f(): return 'foo' - 3")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"\-.*str.*int.*'__sub__' on str.*'__rsub__' on int")])
+
+  def testMul(self):
+    errors = self.CheckWithErrors("def f(): return 'foo' * None")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands", r"\*.*str.*None.*__mul__ on str.*int")])
+
+  def testDiv(self):
+    errors = self.CheckWithErrors("def f(): return 'foo' / 3")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"\/.*str.*int.*'__(true)?div__' on str.*'__r(true)?div__' on int")])
+
+  def testMod(self):
+    errors = self.CheckWithErrors("def f(): return None % 3")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands", r"\%.*None.*int.*'__mod__' on None")])
+
+  def testLShift(self):
+    errors = self.CheckWithErrors("def f(): return 3 << None")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"\<\<.*int.*None.*__lshift__ on int.*int")])
+
+  def testRShift(self):
+    errors = self.CheckWithErrors("def f(): return 3 >> None")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"\>\>.*int.*None.*__rshift__ on int.*int")])
+
+  def testAnd(self):
+    errors = self.CheckWithErrors("def f(): return 'foo' & 3")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"\&.*str.*int.*'__and__' on str.*'__rand__' on int")])
+
+  def testOr(self):
+    errors = self.CheckWithErrors("def f(): return 'foo' | 3")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"\|.*str.*int.*'__or__' on str.*'__ror__' on int")])
+
+  def testFloorDiv(self):
+    errors = self.CheckWithErrors("def f(): return 3 // 'foo'")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"\/\/.*int.*str.*__floordiv__ on int.*int")])
+
+  def testPow(self):
+    errors = self.CheckWithErrors("def f(): return 3 ** 'foo'")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands", r"\*\*.*int.*str.*__pow__ on int.*int")])
+
+  def testNeg(self):
+    errors = self.CheckWithErrors("def f(): return -None")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands", r"\-.*None.*'__neg__' on None")])
+
+  def testPos(self):
+    errors = self.CheckWithErrors("def f(): return +None")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands", r"\+.*None.*'__pos__' on None")])
+
+
+class InPlaceOperationsTest(test_base.TargetIndependentTest):
+  """Test in-place operations."""
+
+  def testIAdd(self):
+    errors = self.CheckWithErrors("def f(): v = []; v += 3")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"\+\=.*List.*int.*__iadd__ on List.*Iterable")])
+
+
+class NoSymbolOperationsTest(test_base.TargetIndependentTest):
+  """Test operations with no native symbol."""
+
+  def testGetItem(self):
+    errors = self.CheckWithErrors("def f(): v = []; return v['foo']")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"item retrieval.*List.*str.*__getitem__ on List.*int")])
+
+  def testDelItem(self):
+    errors = self.CheckWithErrors("def f(): v = {'foo': 3}; del v[3]")
+    d = r"Dict\[str, int\]"
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"item deletion.*{d}.*int.*__delitem__ on {d}.*str".format(d=d))])
+
+  def testSetItem(self):
+    errors = self.CheckWithErrors("def f(): v = []; v['foo'] = 3")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"item assignment.*List.*str.*__setitem__ on List.*int")])
+
+  def testContains(self):
+    errors = self.CheckWithErrors("def f(): return 'foo' in 3")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands", r"'in'.*int.*str.*'__contains__' on int")])
 
 
 test_base.main(globals(), __name__ == "__main__")

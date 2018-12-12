@@ -1,9 +1,11 @@
 """Tests for parse_args.py."""
 
 import os
+import sys
 
 from pytype import datatypes
 from pytype import file_utils
+from pytype.tools.analyze_project import config
 from pytype.tools.analyze_project import parse_args
 import unittest
 
@@ -27,6 +29,7 @@ class TestParser(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
+    super(TestParser, cls).setUpClass()
     cls.parser = parse_args.make_parser()
 
   def test_parse_filenames(self):
@@ -103,6 +106,10 @@ class TestParser(unittest.TestCase):
     self.assertEqual(self.parser.parse_args(
         ['--python-version', '2.7']).python_version, '2.7')
 
+  def test_python_version_default(self):
+    self.assertEqual(self.parser.config_from_defaults().python_version,
+                     '%s.%s' % (sys.version_info.major, sys.version_info.minor))
+
   def test_output(self):
     self.assertEqual(self.parser.parse_args(
         ['-o', 'pyi']).output, os.path.join(os.getcwd(), 'pyi'))
@@ -116,9 +123,15 @@ class TestParser(unittest.TestCase):
     self.assertSequenceEqual(self.parser.parse_args(
         ['--pythonpath', ':foo']).pythonpath, [d, os.path.join(d, 'foo')])
 
+  def test_keep_going(self):
+    self.assertTrue(self.parser.parse_args(['-k']).keep_going)
+
+  def test_keep_going_default(self):
+    self.assertIsInstance(self.parser.config_from_defaults().keep_going, bool)
+
   def test_defaults(self):
     args = self.parser.parse_args([])
-    for arg in ['python_version', 'output', 'pythonpath']:
+    for arg in config.ITEMS:
       self.assertFalse(hasattr(args, arg))
 
   def test_pytype_single_args(self):

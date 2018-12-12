@@ -122,7 +122,7 @@ def exit(code: ? = ...) -> NoneType:
     raise SystemExit()
 def quit() -> NoneType:
     raise SystemExit()
-def input() -> ?
+def input(prompt: str or unicode = ...) -> ?
 def raw_input(prompt: str or unicode = ...) -> str:
     raise EOFError()
 def print(...) -> NoneType

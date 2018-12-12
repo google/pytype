@@ -10,7 +10,7 @@ class Definition:
   full_name: str
   location: str
   kind: ClassVar[str]
-  def __init__(self, name: str, lineno: int, col_offset: int) -> None: ...
+  def __init__(self, name: str, source: str, lineno: int, col_offset: int) -> None: ...
 
 _TArgument = TypeVar("_TArgument", bound=Argument)
 class Argument(Definition):
@@ -42,11 +42,11 @@ class Class(Definition):
   bases: List[str]
   keyword_bases: Dict[str, str]
   decorators: List[str]
-  fields: List[Variable]
-  methods: List[Function]
-  nested_classes: List[Class]
+  fields: Dict[str, List[Variable]]
+  methods: Dict[str, List[Function]]
+  nested_classes: Dict[str, List[Class]]
   def __init__(self, name: str, source: str, lineno: int, col_offset: int, bases: List[str], keyword_bases: Dict[str, str],
     decorators: List[str], fields: List[Variable], methods: List[Function], nested_classes: List[Class]) -> None: ...
   @classmethod
-  def from_node(cls: Type[_TClass], node: ast3.ClassDef, fields: List[Variable], methods: List[Function],
-    nested_classes: List[Class], source: str=...) -> _TClass: ...
+  def from_node(cls: Type[_TClass], node: ast3.ClassDef, fields: Dict[str, List[Variable]], methods: Dict[str, List[Function]],
+    nested_classes: Dict[str, List[Class]], source: str=...) -> _TClass: ...

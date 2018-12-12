@@ -31,10 +31,7 @@ def convert_string(s):
   try:
     return int(s)
   except ValueError:
-    if s in ('True', 'False'):
-      return s == 'True'
-    else:
-      return s
+    return config.string_to_bool(s)
 
 
 class Parser(object):
@@ -129,6 +126,7 @@ def make_parser():
   for option in [
       (('-x', '--exclude'), {'nargs': '*', 'action': 'flatten'}),
       (('inputs',), {'metavar': 'input', 'nargs': '*', 'action': 'flatten'}),
+      (('-k', '--keep-going'), {'action': 'store_true', 'type': None}),
       (('-o', '--output'),),
       (('-P', '--pythonpath'),),
       (('-V', '--python-version'),)
@@ -172,13 +170,17 @@ def _add_file_argument(parser, types, args, custom_kwargs=None):
             'action': 'store',
             'default': config.ITEMS[dest].default,
             'help': config.ITEMS[dest].comment}
+  kwargs.update(custom_kwargs)  # custom_kwargs takes precedence
+  if kwargs['type'] is None:
+    # None is the default anyway, and for some action types, supplying `type` is
+    # a type error.
+    del kwargs['type']
   if arg.startswith(_ARG_PREFIX):
     # For an optional argument, `dest` should be explicitly given. (For a
     # positional one, it's inferred from `arg`.)
     kwargs['dest'] = dest
-  elif kwargs['type']:
+  elif 'type' in kwargs:
     # For a positional argument, the type function isn't applied to the default,
     # so we do the transformation manually.
     kwargs['default'] = kwargs['type'](kwargs['default'])
-  kwargs.update(custom_kwargs)  # custom_kwargs takes precedence
   parser.add_argument(*args, **kwargs)

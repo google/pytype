@@ -120,9 +120,7 @@ def exit(code: ? = ...) -> NoneType:
     raise SystemExit()
 def quit() -> NoneType:
     raise SystemExit()
-def input() -> ?
-def raw_input(prompt: str = ...) -> str:
-    raise EOFError()
+def input(prompt: str = ...) -> str
 def print(...) -> NoneType
 
 False = ...  # type: bool

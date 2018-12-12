@@ -29,7 +29,7 @@ def func_from_source(source: str) -> definitions.Function:
 
 def class_from_source(source: str) -> definitions.Class:
   node = parse_stmt(source)
-  return definitions.Class.from_node(node, [], [], [])
+  return definitions.Class.from_node(node, {}, {}, {})
 
 
 def make_func(name: str,

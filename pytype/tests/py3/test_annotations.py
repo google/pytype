@@ -1003,10 +1003,7 @@ class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
       a : int = 42
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import Dict, Type
-
-      __annotations__ = ...  # type: Dict[str, Type[int]]
-      a = ...  # type: int
+      a: int
     """)
 
 

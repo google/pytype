@@ -89,7 +89,8 @@ class ListTest(test_base.TargetIndependentTest):
       f = ...  # type: int
       g = ...  # type: List[Union[int, str]]
       """)
-    self.assertErrorLogIs(errors, [(5, "wrong-arg-types", "list.__getitem__")])
+    self.assertErrorLogIs(errors, [(5, "unsupported-operands",
+                                    r"__getitem__ on List")])
 
   def test_index_out_of_range(self):
     ty = self.Infer("""

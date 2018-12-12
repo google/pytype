@@ -46,6 +46,7 @@ size_t Program::CountCFGNodes() const { return cfg_nodes_.size(); }
 Program::Program()
     : entrypoint_(nullptr),
       next_variable_id_(0),
+      next_binding_id_(0),
       backward_reachability_(memory_util::make_unique<ReachabilityAnalyzer>()),
       default_data_(nullptr) {}
 
@@ -129,8 +130,9 @@ void Origin::AddSourceSet(const SourceSet& source_set) {
 }
 
 // Create a Binding, and also registers it with its CFG node.
-Binding::Binding(Program* program, Variable* variable, const BindingData& data)
-    : variable_(variable), data_(data), program_(program) {}
+Binding::Binding(Program* program, Variable* variable, const BindingData& data,
+                 size_t id)
+    : variable_(variable), data_(data), program_(program), id_(id) {}
 
 Binding::~Binding() {}
 
@@ -220,7 +222,8 @@ Binding* Variable::FindOrAddBindingHelper(const BindingData& data) {
     LOG(DEBUG) << "Adding choice to Variable " << id_;
     program_->InvalidateSolver();
     auto binding =
-        std::unique_ptr<Binding>(new Binding(this->program_, this, data));
+        std::unique_ptr<Binding>(new Binding(program_, this, data,
+                                             program_->next_binding_id()));
     Binding* bp = binding.get();
     bindings_.push_back(std::move(binding));
     data_to_binding_[data.get()] = bp;
@@ -283,8 +286,8 @@ void Variable::PasteBinding(Binding* binding, CFGNode* where,
   new_binding->CopyOrigins(binding, nullptr, additional_sources);
 }
 
-const std::set<const CFGNode*> Variable::nodes() const {
-  std::set<const CFGNode*> nodes;
+const CFGNodeSet Variable::nodes() const {
+  CFGNodeSet nodes;
   for (auto kvpair : cfg_node_to_bindings_) {
     nodes.insert(kvpair.first);
   }
@@ -324,7 +327,7 @@ std::vector<Binding*> Variable::Filter(const CFGNode* viewpoint) const {
 
 std::vector<Binding*> Variable::Prune(const CFGNode* viewpoint) {
   std::vector<Binding*> result;  // use a vector for determinism
-  std::unordered_set<Binding*> seen_results;
+  std::set<Binding*, pointer_less<Binding>> seen_results;
   if (!viewpoint) {
     for (const auto& binding : bindings_) {
       result.push_back(binding.get());
@@ -332,7 +335,7 @@ std::vector<Binding*> Variable::Prune(const CFGNode* viewpoint) {
     return result;
   }
   std::stack<const CFGNode*> stack;
-  std::unordered_set<const CFGNode*> seen;
+  CFGNodeSet seen;
   stack.push(viewpoint);
   do {
     const CFGNode* node = stack.top();

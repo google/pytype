@@ -116,11 +116,11 @@ class TestPytd(unittest.TestCase):
 
   def testASTdiff(self):
     src1 = textwrap.dedent("""\
-        a = ...  # type: int
-        b = ...  # type: str""")
+        a: int
+        b: str""")
     src2 = textwrap.dedent("""\
-        a = ...  # type: int
-        b = ...  # type: float""")
+        a: int
+        b: float""")
     tree1 = parser.parse_string(src1, python_version=self.PYTHON_VERSION)
     tree2 = parser.parse_string(src2, python_version=self.PYTHON_VERSION)
     normalize = lambda diff: textwrap.dedent("\n".join(diff))

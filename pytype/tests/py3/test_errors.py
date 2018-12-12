@@ -1,5 +1,7 @@
 """Tests for displaying errors."""
 
+import re
+
 from pytype import file_utils
 from pytype.tests import test_base
 
@@ -33,9 +35,10 @@ class ErrorTest(test_base.TargetPython3BasicTest):
       def f4(x: Union):
         pass
     """)
-    self.assertErrorLogIs(errors, [(4, "invalid-annotation", r"2.*1"),
-                                   (6, "invalid-annotation", r"1.*2"),
-                                   (8, "invalid-annotation", r"Union.*x")])
+    self.assertErrorLogIs(errors, [
+        (4, "invalid-annotation", r"typing.Dict\[_K, _V].*2.*1"),
+        (6, "invalid-annotation", r"typing.List\[_T].*1.*2"),
+        (8, "invalid-annotation", r"Union.*x")])
 
   def testPrintUnsolvable(self):
     _, errors = self.InferWithErrors("""\
@@ -253,6 +256,67 @@ class ErrorTest(test_base.TargetPython3BasicTest):
     self.assertErrorLogIs(errors, [(3, "bad-return-type", r"str.*int")])
 
 
+class InPlaceOperationsTest(test_base.TargetPython3BasicTest):
+  """Test in-place operations."""
+
+  def _testOp(self, op, symbol):
+    errors = self.CheckWithErrors("""\
+      class A(object):
+        def __%s__(self, x: "A"):
+          return None
+      def f():
+        v = A()
+        v %s 3  # line 6
+    """ % (op, symbol))
+    self.assertErrorLogIs(errors, [
+        (6, "unsupported-operands",
+         r"%s.*A.*int.*__%s__ on A.*A" % (re.escape(symbol), op))])
+
+  def testISub(self):
+    self._testOp("isub", "-=")
+
+  def testIMul(self):
+    self._testOp("imul", "*=")
+
+  def testIDiv(self):
+    errors = self.CheckWithErrors("""\
+      class A(object):
+        def __idiv__(self, x: "A"):
+          return None
+        def __itruediv__(self, x: "A"):
+          return None
+      def f():
+        v = A()
+        v /= 3  # line 8
+    """)
+    self.assertErrorLogIs(errors, [
+        (8, "unsupported-operands", r"\/\=.*A.*int.*__i(true)?div__ on A.*A")])
+
+  def testIMod(self):
+    self._testOp("imod", "%=")
+
+  def testIPow(self):
+    self._testOp("ipow", "**=")
+
+  def testILShift(self):
+    self._testOp("ilshift", "<<=")
+
+  def testIRShift(self):
+    self._testOp("irshift", ">>=")
+
+  def testIAnd(self):
+    self._testOp("iand", "&=")
+
+  def testIXor(self):
+    self._testOp("ixor", "^=")
+
+  def testIOr(self):
+    self._testOp("ior", "|=")
+
+  def testIFloorDiv(self):
+    self._testOp("ifloordiv", "//=")
+
+
 class ErrorTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for errors."""
 
@@ -283,6 +347,28 @@ class ErrorTestPy3(test_base.TargetPython3FeatureTest):
         return x
     """)
     self.assertErrorLogIs(errors, [(4, "bad-return-type", r"int.*str")])
+
+
+class MatrixOperationsTest(test_base.TargetPython3FeatureTest):
+  """Test matrix operations."""
+
+  def testMatMul(self):
+    errors = self.CheckWithErrors("def f(): return 'foo' @ 3")
+    self.assertErrorLogIs(errors, [
+        (1, "unsupported-operands",
+         r"\@.*str.*int.*'__matmul__' on str.*'__rmatmul__' on int")])
+
+  def testIMatMul(self):
+    errors = self.CheckWithErrors("""\
+      class A(object):
+        def __imatmul__(self, x: "A"):
+          pass
+      def f():
+        v = A()
+        v @= 3  # line 6
+    """)
+    self.assertErrorLogIs(errors, [
+        (6, "unsupported-operands", r"\@.*A.*int.*__imatmul__ on A.*A")])
 
 
 test_base.main(globals(), __name__ == "__main__")

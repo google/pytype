@@ -225,5 +225,17 @@ TEST_F(TypeGraphTest, testMaxVarSize) {
   EXPECT_EQ(MAX_VAR_SIZE, x->bindings().size());
 }
 
+TEST_F(TypeGraphTest, TestBindingIDs) {
+  // Small sanity check to make sure Binding IDs are created correctly.
+  Program p;
+  Variable* x = p.NewVariable();
+  int one = 1;
+  int two = 2;
+  Binding* ax1 = AddBinding(x, &one);
+  Binding* ax2 = AddBinding(x, &two);
+  EXPECT_EQ(0, ax1->id());
+  EXPECT_EQ(1, ax2->id());
+  EXPECT_EQ(2, p.next_binding_id());
+}
 }  // namespace
 }  // namespace devtools_python_typegraph

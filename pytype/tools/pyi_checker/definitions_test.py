@@ -83,30 +83,35 @@ class DefinitionFromNodeTest(unittest.TestCase):
         class _simple_nested_cls:
           pass
       """)
-    expected_methods = [
-        utils.make_func(
+    expected_methods = {
+        "__init__": utils.make_func(
             name="__init__",
             lineno=3,
             col_offset=2,
             params=[utils.make_arg("self", lineno=3, col_offset=15),
-                    utils.make_arg("arg", lineno=3, col_offset=21)]),
-        utils.make_func(
+                    utils.make_arg("arg", lineno=3, col_offset=21)]
+        ),
+        "a_method": utils.make_func(
             name="a_method",
             lineno=5,
             col_offset=2,
             params=[utils.make_arg("self", lineno=5, col_offset=15),
-                    utils.make_arg("arg", lineno=5, col_offset=21)])
-    ]
-    expected_fields = [
-        definitions.Variable("class_field", source="", lineno=2, col_offset=2),
-        definitions.Variable("instance_field", source="", lineno=4,
-                             col_offset=4)]
-    expected_nests = [
-        definitions.Class(name="_simple_nested_cls", source="",
-                          lineno=7, col_offset=2,
-                          bases=[], keyword_bases=[], decorators=[],
-                          fields=[], methods=[], nested_classes=[])
-    ]
+                    utils.make_arg("arg", lineno=5, col_offset=21)]
+        ),
+    }
+    expected_fields = {
+        "class_field": definitions.Variable(
+            "class_field", source="", lineno=2, col_offset=2),
+        "instance_field": definitions.Variable(
+            "instance_field", source="", lineno=4, col_offset=4)
+    }
+    expected_nests = {
+        "_simple_nested_cls": definitions.Class(
+            name="_simple_nested_cls", source="",
+            lineno=7, col_offset=2,
+            bases=[], keyword_bases=[], decorators=[],
+            fields={}, methods={}, nested_classes={})
+    }
     expected_class = definitions.Class(
         name="A",
         source="",
@@ -125,16 +130,19 @@ class DefinitionFromNodeTest(unittest.TestCase):
     # be a definition for the attr instead of the value. So the Variable
     # definition isn't created with from_node, because attr is a str.
     instance_field = init.body[0].targets[0]
-    actual_fields = [
-        # class_field definition
-        definitions.Variable.from_node(classfield.targets[0]),
-        # self.instance_field definition
-        definitions.Variable(instance_field.attr, "", instance_field.lineno,
-                             instance_field.col_offset)]
-    actual_methods = [
-        definitions.Function.from_node(init),
-        definitions.Function.from_node(method)]
-    actual_nests = [definitions.Class.from_node(nested, [], [], [])]
+    actual_fields = {
+        "class_field": definitions.Variable.from_node(classfield.targets[0]),
+        "instance_field": definitions.Variable(
+            instance_field.attr, "", instance_field.lineno,
+            instance_field.col_offset),
+    }
+    actual_methods = {
+        "__init__": definitions.Function.from_node(init),
+        "a_method": definitions.Function.from_node(method),
+    }
+    actual_nests = {
+        "_simple_nested_cls": definitions.Class.from_node(nested, {}, {}, {}),
+    }
     actual_class = definitions.Class.from_node(
         node, actual_fields, actual_methods, actual_nests)
     self.assertEqual(expected_class, actual_class)

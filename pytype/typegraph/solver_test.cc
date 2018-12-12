@@ -367,7 +367,7 @@ TEST(SolverTest, TestPathFinder) {
               testing::ElementsAre(n4, n2, n1));
   EXPECT_TRUE(f.FindShortestPathToNode(n4, n1, {n4}).empty());
   EXPECT_TRUE(f.FindShortestPathToNode(n4, n1, {n2, n3}).empty());
-  std::unordered_map<const CFGNode*, int> weights;
+  std::unordered_map<const CFGNode*, int, CFGNodePtrHash> weights;
   weights[n5] = 0;
   weights[n4] = 1;
   weights[n2] = 2;
@@ -378,10 +378,10 @@ TEST(SolverTest, TestPathFinder) {
   EXPECT_EQ(n2->id(),
             f.FindHighestReachableWeight(n5, {n2, n3}, weights)->id());
   EXPECT_EQ(f.FindHighestReachableWeight(n1, {}, weights), nullptr);
-  std::unordered_map<const CFGNode*, int> weights2;
+  std::unordered_map<const CFGNode*, int, CFGNodePtrHash> weights2;
   weights2[n5] = 1;
   EXPECT_EQ(f.FindHighestReachableWeight(n5, {n4}, weights2), nullptr);
-  std::unordered_map<const CFGNode*, int> weights3;
+  std::unordered_map<const CFGNode*, int, CFGNodePtrHash> weights3;
   weights3[n4] = 1;
   weights3[n5] = 2;
   EXPECT_EQ(n4->id(),

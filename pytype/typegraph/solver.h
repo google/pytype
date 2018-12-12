@@ -29,12 +29,13 @@
 #include <vector>
 
 #include "typegraph.h"
+#include "map_util.h"
 
 namespace devtools_python_typegraph {
 
 namespace internal {
 
-typedef std::set<const Binding*> GoalSet;
+typedef std::set<const Binding*, pointer_less<Binding>> GoalSet;
 
 // hash_mix concatenates a hash seed with the hash of the given object.
 // This implementation is based on Google's hash mixing algorithm written by
@@ -88,12 +89,7 @@ class State {
   GoalSet goals_;
 };
 
-// Hash functor for use by hashing data structures, e.g. std::unordered_map.
-struct StateHasher {
-  size_t operator()(const State& state) const noexcept {
-    return state.Hash();
-  }
-};
+typedef std::unordered_map<const State, bool, map_util::hash<State>> StateMap;
 
 // The PathFinder uses QueryKeys to cache queries. Each query is characterized
 // by the start and end nodes and the set of blocked nodes.
@@ -103,7 +99,7 @@ class QueryKey {
  public:
   QueryKey(): start_(nullptr), finish_(nullptr) {}
   QueryKey(const CFGNode* s, const CFGNode* f,
-           const std::set<const CFGNode*>& b):
+           const CFGNodeSet& b):
     start_(s), finish_(f), blocked_(b) {}
 
   size_t Hash() const {
@@ -129,14 +125,7 @@ class QueryKey {
  private:
   const CFGNode* start_;
   const CFGNode* finish_;
-  std::set<const CFGNode*> blocked_;
-};
-
-// Hash functor for use by hashing data structures, e.g. std::unordered_map.
-struct QueryKeyHasher {
-  size_t operator()(const QueryKey& key) const noexcept {
-    return key.Hash();
-  }
+  CFGNodeSet blocked_;
 };
 
 // QueryResult represents the result of a PathFinder query. It contains status
@@ -153,6 +142,9 @@ struct QueryResult {
     path_exists(other.path_exists), path(other.path) {}
 };
 
+typedef std::unordered_map<QueryKey, QueryResult, map_util::hash<QueryKey>>
+    QueryMap;
+
 // PathFinder is a helper class for finding paths within a CFG. It memoizes
 // queries to improve performance.
 class PathFinder {
@@ -166,26 +158,26 @@ class PathFinder {
 
   // Determine whether we can reach a node at all.
   bool FindAnyPathToNode(const CFGNode* start, const CFGNode* finish,
-                         const std::set<const CFGNode*>& blocked) const;
+                         const CFGNodeSet& blocked) const;
 
   // Find a shortest path from start to finish, going backwards. Returns an
   // empty path if no path exists.
   const std::deque<const CFGNode*> FindShortestPathToNode(
       const CFGNode* start, const CFGNode* finish,
-      const std::set<const CFGNode*>& blocked) const;
+      const CFGNodeSet& blocked) const;
 
   // Determine the highest weighted node we can reach, going backwards.
   const CFGNode* FindHighestReachableWeight(
-      const CFGNode* start, std::set<const CFGNode*> seen,
-      const std::unordered_map<const CFGNode*, int>& weight_map) const;
+      const CFGNode* start, CFGNodeSet seen,
+      const std::unordered_map<const CFGNode*, int, CFGNodePtrHash>& weight_map)
+      const;
 
   // Determine whether we can reach a CFG Node, going backwards.
   QueryResult FindNodeBackwards(const CFGNode* start, const CFGNode* finish,
-                                const std::set<const CFGNode*>& blocked);
+                                const CFGNodeSet& blocked);
 
  private:
-  const std::unique_ptr<std::unordered_map<const QueryKey, QueryResult,
-        QueryKeyHasher>> solved_find_queries_;
+  const std::unique_ptr<QueryMap> solved_find_queries_;
 };
 
 }  // namespace internal
@@ -224,8 +216,7 @@ class Solver {
   // Are the given Bindings conflicting?
   bool GoalsConflict(const internal::GoalSet& goals) const;
 
-  const std::unique_ptr<std::unordered_map<const internal::State, bool,
-        internal::StateHasher>> solved_states_;
+  const std::unique_ptr<internal::StateMap> solved_states_;
   const Program* program_;
   internal::PathFinder path_finder_;
 };

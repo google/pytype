@@ -15,7 +15,8 @@ class AttributeTest(unittest.TestCase):
   PYTHON_VERSION = (2, 7)
 
   def setUp(self):
-    options = config.Options.create()
+    super(AttributeTest, self).setUp()
+    options = config.Options.create(python_version=self.PYTHON_VERSION)
     self._vm = vm.VirtualMachine(
         errors.ErrorLog(), options, load_pytd.Loader(None, self.PYTHON_VERSION))
 

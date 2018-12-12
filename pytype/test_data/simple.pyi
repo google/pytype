@@ -1,6 +1,6 @@
 from typing import List
 
-hello = ...  # type: List[nothing]
+hello: List[nothing]
 
 class World(object):
     def dominate(self) -> None: ...

@@ -25,26 +25,30 @@ class PytypeTest(unittest.TestCase):
   """Integration test for pytype."""
 
   PYTHON_VERSION = (2, 7)
-  PYTHON_EXE = utils.get_python_exe(PYTHON_VERSION)
 
   DEFAULT_PYI = builtins.DEFAULT_SRC
   INCLUDE = object()
 
   @classmethod
   def setUpClass(cls):
+    super(PytypeTest, cls).setUpClass()
     cls.pytype_dir = os.path.dirname(os.path.dirname(parser.__file__))
 
   def setUp(self):
+    super(PytypeTest, self).setUp()
     self._ResetPytypeArgs()
     self.tmp_dir = tempfile.mkdtemp()
     self.errors_csv = os.path.join(self.tmp_dir, "errors.csv")
 
   def tearDown(self):
+    super(PytypeTest, self).tearDown()
     shutil.rmtree(self.tmp_dir)
 
   def _ResetPytypeArgs(self):
-    self.pytype_args = {"--python_exe": self.PYTHON_EXE,
-                        "--verbosity": 1}
+    self.pytype_args = {
+        "--python_version": utils.format_version(self.PYTHON_VERSION),
+        "--verbosity": 1
+    }
 
   def _DataPath(self, filename):
     if os.path.dirname(filename) == self.tmp_dir:
@@ -103,7 +107,7 @@ class PytypeTest(unittest.TestCase):
     f2 = self._TmpPath("builtins2.pickle")
     for f in (f1, f2):
       self.pytype_args["--generate-builtins"] = f
-      self.pytype_args["--python_exe"] = utils.get_python_exe(python_version)
+      self.pytype_args["--python_version"] = python_version
       self._RunPytype(self.pytype_args)
     return f1, f2
 
@@ -307,7 +311,7 @@ class PytypeTest(unittest.TestCase):
     self._SetUpChecking("bad.py")
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
-    self.assertIn("[wrong-arg-types]", self.stderr)
+    self.assertIn("[unsupported-operands]", self.stderr)
     self.assertIn("[name-error]", self.stderr)
 
   def testPytypeErrorsCsv(self):
@@ -315,7 +319,7 @@ class PytypeTest(unittest.TestCase):
     self.pytype_args["--output-errors-csv"] = self.errors_csv
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
-    self.assertHasErrors("wrong-arg-types", "name-error")
+    self.assertHasErrors("unsupported-operands", "name-error")
 
   def testPytypeErrorsNoReport(self):
     self._SetUpChecking("bad.py")
@@ -328,7 +332,7 @@ class PytypeTest(unittest.TestCase):
     self.pytype_args["--return-success"] = self.INCLUDE
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=False)
-    self.assertIn("[wrong-arg-types]", self.stderr)
+    self.assertIn("[unsupported-operands]", self.stderr)
     self.assertIn("[name-error]", self.stderr)
 
   def testCompilerError(self):
@@ -379,7 +383,7 @@ class PytypeTest(unittest.TestCase):
 
   def testInferPytypeErrors(self):
     self._InferTypesAndCheckErrors(
-        "bad.py", ["wrong-arg-types", "name-error"])
+        "bad.py", ["unsupported-operands", "name-error"])
     self.assertInferredPyiEquals(filename="bad.pyi")
 
   def testInferCompilerError(self):
@@ -527,11 +531,11 @@ class PytypeTest(unittest.TestCase):
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
 
   def testBuiltinsDeterminism2(self):
-    f1, f2 = self._GenerateBuiltinsTwice((2, 7))
+    f1, f2 = self._GenerateBuiltinsTwice("2.7")
     self.assertBuiltinsPickleEqual(f1, f2)
 
   def testBuiltinsDeterminism3(self):
-    f1, f2 = self._GenerateBuiltinsTwice((3, 6))
+    f1, f2 = self._GenerateBuiltinsTwice("3.6")
     self.assertBuiltinsPickleEqual(f1, f2)
 
   def testTimeout(self):

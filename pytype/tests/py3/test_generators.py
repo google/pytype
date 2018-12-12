@@ -89,8 +89,10 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
         yield 5
     """)
     self.assertErrorLogIs(errors, [
-        (7, "invalid-annotation", r"Expected 3.*2"),
-        (10, "invalid-annotation", r"Expected 3.*1")])
+        (7, "invalid-annotation",
+         r"typing.Generator\[_T, _T2, _V].*3.*2"),
+        (10, "invalid-annotation",
+         r"typing.Generator\[_T, _T2, _V].*3.*1")])
 
 
 test_base.main(globals(), __name__ == "__main__")

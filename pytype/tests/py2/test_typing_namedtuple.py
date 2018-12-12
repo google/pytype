@@ -19,24 +19,22 @@ class NamedTupleTest(test_base.TargetPython27FeatureTest):
         """\
         import collections
         from typing import Callable, Iterable, Sized, Tuple, Type, TypeVar, Union
-        typing = ...  # type: module
-        x = ...  # type: X
-        a = ...  # type: int
-        b = ...  # type: str
+        typing: module
+        x: X
+        a: int
+        b: str
         _TX = TypeVar('_TX', bound=X)
         class X(tuple):
           __slots__ = ["a", "b"]
-          __annotations__ = ...  # type: collections.OrderedDict[
-            Union[str, unicode], type]
-          __dict__ = ...  # type: collections.OrderedDict[
+          __dict__: collections.OrderedDict[
             Union[str, unicode], Union[int, str]]
-          _field_defaults = ...  # type: collections.OrderedDict[
+          _field_defaults: collections.OrderedDict[
             Union[str, unicode], Union[int, str]]
-          _field_types = ...  # type: collections.OrderedDict[
+          _field_types: collections.OrderedDict[
             Union[str, unicode], type]
-          _fields = ...  # type: Tuple[str, str]
-          a = ...  # type: int
-          b = ...  # type: str
+          _fields: Tuple[str, str]
+          a: int
+          b: str
           def __getnewargs__(self) -> Tuple[int, str]: ...
           def __getstate__(self) -> None: ...
           def __init__(self, *args, **kwargs) -> None: ...
