@@ -12,6 +12,8 @@ class TestMagic(unittest.TestCase):
     self.assertEqual(magic.magic_word_to_version(b'\xee\x0c'), (3, 4))
     self.assertEqual(magic.magic_word_to_version(b'\x17\x0d'), (3, 5))
     self.assertEqual(magic.magic_word_to_version(b'\x33\x0d'), (3, 6))
+    self.assertEqual(magic.magic_word_to_version(b'\x42\x0d'), (3, 7))
+
 
 if __name__ == '__main__':
   unittest.main()

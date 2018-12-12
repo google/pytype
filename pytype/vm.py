@@ -102,14 +102,7 @@ class _FindIgnoredTypeComments(object):
 
 
 class VirtualMachine(object):
-  """A bytecode VM that generates a cfg as it executes.
-
-  Attributes:
-    program: The cfg.Program used to build the CFG.
-    root_cfg_node: The root CFG node that contains the definitions of builtins.
-    primitive_classes: A mapping from primitive python types to their abstract
-      types.
-  """
+  """A bytecode VM that generates a cfg as it executes."""
 
   def __init__(self,
                errorlog,
@@ -514,6 +507,7 @@ class VirtualMachine(object):
       if cls_var and all(v.data.full_name == "__builtin__.type"
                          for v in cls_var.bindings):
         cls_var = None
+      # pylint: disable=g-long-ternary
       cls = abstract_utils.get_atomic_value(
           cls_var, default=self.convert.unsolvable) if cls_var else None
       try:
@@ -2604,7 +2598,7 @@ class VirtualMachine(object):
       else:
         # Some iterable constants (e.g., tuples) already contain variables,
         # whereas others (e.g., strings) need to be wrapped.
-        elements.extend(v if isinstance(v, cfg.Variable)
+        elements.extend(v if isinstance(v, cfg.Variable)  # pylint: disable=g-long-ternary
                         else self.convert.constant_to_var(v) for v in itr)
     return state, elements
 
@@ -2702,3 +2696,19 @@ class VirtualMachine(object):
   def byte_YIELD_FROM(self, state, op):
     # We don't support this feature yet; simply don't crash.
     return state.pop_and_discard()
+
+  def byte_LOAD_METHOD(self, state, op):
+    # We don't support this 3.7 opcode yet; simply don't crash.
+    # TODO(rechen): Implement
+    # https://docs.python.org/3/library/dis.html#opcode-LOAD_METHOD.
+    unused_name = self.frame.f_code.co_names[op.arg]
+    state, unused_self_obj = state.pop()
+    return state
+
+  def byte_CALL_METHOD(self, state, op):
+    # We don't support this 3.7 opcode yet; simply don't crash.
+    # TODO(rechen): Implement
+    # https://docs.python.org/3/library/dis.html#opcode-CALL_METHOD.
+    for _ in range(op.arg):
+      state = state.pop_and_discard()
+    return state.push(self.convert.unsolvable.to_variable(state.node))

@@ -1,5 +1,6 @@
 """Tests for config.py."""
 
+import subprocess
 import sys
 
 from pytype import config
@@ -59,6 +60,18 @@ class ConfigTest(unittest.TestCase):
         ("--pythonpath=foo", "--imports_info=bar")
     ]:
       self._test_arg_conflict(arg1, arg2)
+
+  # TODO(rechen): Remove this hack once python3.7 is available in all of
+  # pytype's testing environments.
+  try:
+    subprocess.call(["python3.7", "-V"])
+  except OSError:
+    pass
+  else:
+    # pylint: disable=g-wrong-blank-lines
+    def test_v37(self):
+      opts = config.Options(["-V3.7", "test.py"])
+      self.assertEqual(opts.python_version, (3, 7))
 
 
 class PostprocessorTest(unittest.TestCase):

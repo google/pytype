@@ -1,4 +1,5 @@
-Version 2018.12.10
+Version 2018.12.11
+* Add rudimentary support for target Python 3.7.
 * Make error messages for Python operators friendlier.
 * Set the default target python version to the host version.
 * Change default behavior to stop at first error and add a --keep-going option.

@@ -67,9 +67,9 @@ def validate_version(python_version):
     # that typing.py isn't introduced until 3.5, anyway.
     raise UsageError(
         "Python versions 3.0 - 3.3 are not supported. Use 3.4 and higher.")
-  elif python_version > (3, 6):
+  elif python_version > (3, 7):
     # We have an explicit per-minor-version mapping in opcodes.py
-    raise UsageError("Python versions > 3.6 are not yet supported.")
+    raise UsageError("Python versions > 3.7 are not yet supported.")
 
 
 def strip_prefix(string, prefix):
@@ -300,7 +300,7 @@ class AnnotatingDecorator(object):
   """A decorator for storing function attributes.
 
   Attributes:
-    mapping: maps functions to their attributes.
+    lookup: maps functions to their attributes.
   """
 
   def __init__(self):

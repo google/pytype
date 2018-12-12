@@ -1099,6 +1099,11 @@ python_3_6_mapping = _overlay_mapping(python_3_5_mapping, {
     158: BUILD_TUPLE_UNPACK_WITH_CALL,
 })
 
+python_3_7_mapping = _overlay_mapping(python_3_6_mapping, {
+    160: LOAD_METHOD,
+    161: CALL_METHOD,
+})
+
 
 class _LineNumberTableParser(object):
   """State machine for decoding a Python line number array."""
@@ -1273,6 +1278,7 @@ def dis(data, python_version, *args, **kwargs):
       (3, 4): python3_mapping,
       (3, 5): python_3_5_mapping,
       (3, 6): python_3_6_mapping,
+      (3, 7): python_3_7_mapping,
   }[(major, minor)]
   reader = _wordcode_reader if (major, minor) > (3, 5) else _bytecode_reader
   return _dis(data, mapping, reader, *args, **kwargs)
