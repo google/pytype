@@ -196,9 +196,6 @@ class PytypeRunner(object):
     else:
       action = Action.INFER
       report = logging.info
-    if not f.endswith('.py'):
-      report('skipped: non-Python file %s', f)
-      return None
     # For builtin and system files, do not attempt to generate a pyi.
     if module.kind in ('Builtin', 'System'):
       action = Action.GENERATE_DEFAULT
