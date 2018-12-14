@@ -75,12 +75,15 @@ def main():
     import_graph = importlab.graph.ImportGraph.create(
         env, conf.inputs, trim=True)
     unreadable_inputs = conf.inputs & import_graph.unreadable_files
-    assert not unreadable_inputs, '\n  '.join(
+    unreadable_python_inputs = {file for file in unreadable_inputs if file.endswith('.py')}
+    assert not unreadable_python_inputs, '\n  '.join(
         ['Unparseable in Python %s:' % conf.python_version] +
-        sorted(unreadable_inputs))
+        sorted(unreadable_python_inputs))
   except Exception as e:  # pylint: disable=broad-except
     logging.critical('Cannot parse input files:\n%s', str(e))
     sys.exit(1)
+  
+  conf.inputs -= unreadable_inputs
 
   if args.tree:
     print('Source tree:')
