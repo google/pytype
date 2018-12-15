@@ -248,10 +248,6 @@ class TestGetModuleAction(TestBase):
         runner.get_module_action(Module('', 'foo.py', 'foo', 'System')),
         pytype_runner.Action.GENERATE_DEFAULT)
 
-  def test_skip(self):
-    runner = make_runner([], [], self.parser.config_from_defaults())
-    self.assertIsNone(runner.get_module_action(Module('', 'foo.cc', 'foo')))
-
 
 class TestYieldSortedModules(TestBase):
   """Tests for PytypeRunner.yield_sorted_modules()."""
@@ -315,14 +311,6 @@ class TestYieldSortedModules(TestBase):
          (src, Action.INFER, (), Stage.FIRST_PASS),
          (dep, Action.INFER, (dep, src), Stage.SECOND_PASS),
          (src, Action.CHECK, (dep, src), Stage.SECOND_PASS)])
-
-  def test_non_py_dep(self):
-    conf = self.parser.config_from_defaults()
-    d = self.normalize('foo/')
-    conf.pythonpath = [d]
-    dep = Module(d, 'bar.so', 'bar')
-    runner = make_runner([], [((dep,), ())], conf)
-    self.assert_sorted_modules_equal(runner.yield_sorted_modules(), [])
 
   def test_system_dep(self):
     conf = self.parser.config_from_defaults()
