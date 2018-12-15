@@ -80,7 +80,7 @@ def main():
         ['Unparseable in Python %s:' % conf.python_version] +
         sorted(unreadable_python_inputs))
   except Exception as e:  # pylint: disable=broad-except
-    logging.critical('Cannot parse input files:\n%s', str(e))
+    logging.critical('Cannot parse input files:%s')
     sys.exit(1)
 
   conf.inputs -= unreadable_inputs
