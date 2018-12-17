@@ -68,6 +68,7 @@ class TestDepsFromImportGraph(unittest.TestCase):
   """Test deps_from_import_graph."""
 
   def setUp(self):
+    super(TestDepsFromImportGraph, self).setUp()
     init = ImportlabModule('/foo/bar/__init__.py', 'bar/__init__.py', 'bar')
     a = ImportlabModule('/foo/bar/a.py', 'bar/a.py', 'bar.a')
     b = ImportlabModule('/foo/bar/b.py', 'bar/b.py', 'bar.b')
@@ -104,6 +105,7 @@ class TestBase(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
+    super(TestBase, cls).setUpClass()
     cls.parser = parse_args.make_parser()
 
 
@@ -111,6 +113,7 @@ class TestCustomOptions(TestBase):
   """Test PytypeRunner.set_custom_options."""
 
   def setUp(self):
+    super(TestCustomOptions, self).setUp()
     self.conf = self.parser.config_from_defaults()
 
   # --disable tests a flag with a string value.
@@ -180,6 +183,7 @@ class TestGetRunCmd(TestBase):
   """Test PytypeRunner.get_pytype_command_for_ninja()."""
 
   def setUp(self):
+    super(TestGetRunCmd, self).setUp()
     self.runner = make_runner([], [], self.parser.config_from_defaults())
 
   def get_options(self, args):
