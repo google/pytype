@@ -100,6 +100,7 @@ class BaseTest(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
+    super(BaseTest, cls).setUpClass()
     # We use class-wide loader to avoid creating a new loader for every test
     # method if not required.
     cls._loader = None
@@ -156,6 +157,7 @@ class BaseTest(unittest.TestCase):
                                                 (cls.nothing, cls.nothing))
 
   def setUp(self):
+    super(BaseTest, self).setUp()
     # The test class (type of |self|) constructor is required to initialize the
     # 'python_version' attribute.
     assert hasattr(self, "python_version")
@@ -284,11 +286,10 @@ class BaseTest(unittest.TestCase):
                   format(name=func.name,
                          sig=self.PrintSignature(parameter_types, return_type),
                          func=pytd.Print(func)))
-    self.assertEqual(len(func.signatures), len(sigs),
-                     "{func} has the wrong number of signatures ({has}), "
-                     "expected {expect}".
-                     format(func=func,
-                            has=len(func.signatures), expect=len(sigs)))
+    msg = ("{func} has the wrong number of signatures ({has}), "
+           "expected {expect}".format(
+               func=func, has=len(func.signatures), expect=len(sigs)))
+    self.assertEqual(len(func.signatures), len(sigs), msg)
 
   def assertHasSignature(self, func, parameter_types, return_type):
     if not self.HasSignature(func, parameter_types, return_type):

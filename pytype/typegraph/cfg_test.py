@@ -19,7 +19,7 @@ class CFGTest(unittest.TestCase):
     self.assertEqual(0, n1.id)
     self.assertEqual("foo", n1.name)
     self.assertEqual(len(n1.outgoing), 2)
-    self.assertEqual(len(n2.outgoing), 0)
+    self.assertEqual(len(n2.outgoing), 0)  # pylint: disable=g-generic-assert
     self.assertEqual(len(n3.outgoing), 1)
     self.assertEqual(len(n2.incoming), 1)
     self.assertEqual(len(n3.incoming), 1)
@@ -763,7 +763,7 @@ class CFGTest(unittest.TestCase):
     b = x.AddBinding(1)
     b.AddOrigin(source_set=[], where=n1)
     b.AddOrigin(source_set=[], where=n2)
-    self.assertEqual(1, len([v.data for v in x.Bindings(n3)]))
+    self.assertEqual(len([v.data for v in x.Bindings(n3)]), 1)
 
   def testHiddenConflict3(self):
     p = cfg.Program()
