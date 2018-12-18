@@ -268,14 +268,14 @@ class NamedTupleBuilder(abstract.PyTDFunction):
     try:
       name_var, field_names, rename = self._getargs(node, args)
     except abstract_utils.ConversionError:
-      return node, self.vm.convert.unsolvable.to_variable(node)
+      return node, self.vm.new_unsolvable(node)
 
     # We need the bare name for a few things, so pull that out now.
     # The same unicode issue can strike here, so again return Any.
     try:
       name = abstract_utils.get_atomic_python_constant(name_var)
     except abstract_utils.ConversionError:
-      return node, self.vm.convert.unsolvable.to_variable(node)
+      return node, self.vm.new_unsolvable(node)
 
     # namedtuple does some checking and optionally renaming of field names,
     # so we do too.
@@ -283,7 +283,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
       field_names = self._validate_and_rename_args(name, field_names, rename)
     except ValueError as e:
       self.vm.errorlog.invalid_namedtuple_arg(self.vm.frames, utils.message(e))
-      return node, self.vm.convert.unsolvable.to_variable(node)
+      return node, self.vm.new_unsolvable(node)
 
     name = namedtuple_name(name, field_names)
     ast = namedtuple_ast(name, field_names,

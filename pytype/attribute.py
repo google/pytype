@@ -41,7 +41,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       # _process_one_annotation with the current (incomplete) globals, but
       # whether the call succeeds would depend on the order in which the globals
       # are analyzed. It's simpler (although less precise) to just return Any.
-      return node, self.vm.convert.unsolvable.to_variable(node)
+      return node, self.vm.new_unsolvable(node)
     # Some objects have special attributes, like "__get__" or "__iter__"
     special_attribute = obj.get_special_attribute(node, name, valself)
     if special_attribute is not None:
@@ -278,7 +278,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     if attr is None and obj.maybe_missing_members:
       # The VM hit maximum depth while initializing this instance, so it may
       # have attributes that we don't know about.
-      attr = self.vm.convert.unsolvable.to_variable(node)
+      attr = self.vm.new_unsolvable(node)
     return node, attr
 
   def _lookup_from_mro_and_handle_descriptors(
@@ -332,7 +332,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     if isinstance(cls, (abstract.Unknown, abstract.Unsolvable)):
       # We don't know the object's MRO, so it's possible that one of its
       # bases has the attribute.
-      return self.vm.convert.unsolvable.to_variable(node)
+      return self.vm.new_unsolvable(node)
     ret = self.vm.program.NewVariable()
     add_origins = [valself] if valself else []
     for base in cls.mro:

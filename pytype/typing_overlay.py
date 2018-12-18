@@ -183,7 +183,7 @@ class TypeVar(abstract.PyTDFunction):
     except TypeVarError as e:
       self.vm.errorlog.invalid_typevar(
           self.vm.frames, utils.message(e), e.bad_call)
-      return node, self.vm.convert.unsolvable.to_variable(node)
+      return node, self.vm.new_unsolvable(node)
     return node, param.to_variable(node)
 
 
@@ -200,7 +200,7 @@ class Cast(abstract.PyTDFunction):
             self.vm.frames, self.vm.merge_values(args.posargs[0].data),
             "Forward references not allowed in typing.cast.\n"
             "Consider switching to a type comment.")
-        annot = self.vm.convert.create_new_unsolvable(node)
+        annot = self.vm.new_unsolvable(node)
       args = args.replace(posargs=(annot,) + args.posargs[1:])
     return super(Cast, self).call(node, func, args)
 
@@ -370,8 +370,8 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
         kwonly_params=(),
         kwargs_name=None,
         defaults={
-            "new": self.vm.convert.unsolvable.to_variable(node),
-            "len": self.vm.convert.unsolvable.to_variable(node)
+            "new": self.vm.new_unsolvable(node),
+            "len": self.vm.new_unsolvable(node)
         },
         annotations={
             "cls": abstract.ParameterizedClass(
@@ -465,18 +465,18 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     try:
       name_var, field_names, field_types = self._getargs(node, args)
     except abstract_utils.ConversionError:
-      return node, self.vm.convert.unsolvable.to_variable(node)
+      return node, self.vm.new_unsolvable(node)
 
     try:
       name = abstract_utils.get_atomic_python_constant(name_var)
     except abstract_utils.ConversionError:
-      return node, self.vm.convert.unsolvable.to_variable(node)
+      return node, self.vm.new_unsolvable(node)
 
     try:
       field_names = self._validate_and_rename_args(name, field_names, False)
     except ValueError as e:
       self.vm.errorlog.invalid_namedtuple_arg(self.vm.frames, utils.message(e))
-      return node, self.vm.convert.unsolvable.to_variable(node)
+      return node, self.vm.new_unsolvable(node)
 
     annots, late_annots = self.vm.annotations_util.convert_annotations_list(
         moves.zip(field_names, field_types))
@@ -618,7 +618,7 @@ class NewType(abstract.PyTDFunction):
     except abstract_utils.ConversionError:
       # We need the type arg to be an atomic value. If not, we just
       # silently return unsolvable.
-      return node, self.vm.convert.create_new_unsolvable(node)
+      return node, self.vm.new_unsolvable(node)
     value_arg_name = "val"
     constructor = abstract.SimpleFunction(
         name="__init__",

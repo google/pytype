@@ -500,7 +500,7 @@ class VirtualMachine(object):
       # analyzing the class we're now building. Otherwise, if class_dict isn't
       # a constant, then it's an abstract dictionary, and we don't have enough
       # information to continue building the class.
-      var = self.convert.create_new_unsolvable(node)
+      var = self.new_unsolvable(node)
     else:
       if cls_var is None:
         cls_var = class_dict.members.get("__metaclass__")
@@ -519,10 +519,10 @@ class VirtualMachine(object):
             self)
       except mro.MROError as e:
         self.errorlog.mro_error(self.frames, name, e.mro_seqs)
-        var = self.convert.create_new_unsolvable(node)
+        var = self.new_unsolvable(node)
       except abstract_utils.GenericTypeError as e:
         self.errorlog.invalid_annotation(self.frames, e.annot, e.error)
-        var = self.convert.create_new_unsolvable(node)
+        var = self.new_unsolvable(node)
       else:
         if new_class_var:
           var = new_class_var
@@ -822,7 +822,7 @@ class VirtualMachine(object):
                                                    fallback_to_unsolvable=False)
       except function.FailedFunctionCall as e:
         self.errorlog.invalid_function_call(self.frames, e)
-        ret = self.convert.create_new_unsolvable(state.node)
+        ret = self.new_unsolvable(state.node)
     return state, ret
 
   def binary_operator(self, state, name, report_errors=True):
@@ -881,7 +881,7 @@ class VirtualMachine(object):
 
   def _call_with_fake_args(self, node, funcu):
     """Attempt to call the given function with made-up arguments."""
-    return node, self.convert.create_new_unsolvable(node)
+    return node, self.new_unsolvable(node)
 
   def call_function(self, node, funcu, args, fallback_to_unsolvable=True,
                     allow_noreturn=False):
@@ -947,7 +947,7 @@ class VirtualMachine(object):
           if all(abstract_utils.func_name_is_class_init(func.name)
                  for func in funcu.data):
             return self._call_with_fake_args(node, funcu)
-        return node, self.convert.create_new_unsolvable(node)
+        return node, self.new_unsolvable(node)
       else:
         # We were called by something that does its own error handling.
         raise error  # pylint: disable=raising-bad-type
@@ -994,7 +994,7 @@ class VirtualMachine(object):
     assert store.is_lazy
     if name in store.late_annotations:
       # Unresolved late annotation. See attribute.py:get_attribute
-      return state, self.convert.unsolvable.to_variable(state.node)
+      return state, self.new_unsolvable(state.node)
     store.load_lazy_attribute(name)
     bindings = store.members[name].Bindings(state.node)
     if not bindings:
@@ -1120,7 +1120,7 @@ class VirtualMachine(object):
     node, result, errors = self._retrieve_attr(state.node, obj, attr)
     self._attribute_error_detection(state, attr, errors)
     if result is None:
-      result = self.convert.create_new_unsolvable(node)
+      result = self.new_unsolvable(node)
     return state.change_cfg_node(node), result
 
   def _attribute_error_detection(self, state, attr, errors):
@@ -1346,6 +1346,10 @@ class VirtualMachine(object):
             self.errorlog.attribute_error(self.frames, m, "__iter__")
     return state, itr
 
+  def new_unsolvable(self, node):
+    """Create a new unsolvable variable at node."""
+    return self.convert.unsolvable.to_variable(node)
+
   def byte_UNARY_NOT(self, state, op):
     """Implement the UNARY_NOT bytecode."""
     state, var = state.pop()
@@ -1524,8 +1528,7 @@ class VirtualMachine(object):
           if self._is_private(name) or not self.has_unknown_wildcard_imports:
             self.errorlog.name_error(self.frames, name)
           self.trace_opcode(op, name, None)
-          return state.push(
-              self.convert.create_new_unsolvable(state.node))
+          return state.push(self.new_unsolvable(state.node))
     self.check_for_deleted(state, name, val)
     self.trace_opcode(op, name, val)
     return state.push(val)
@@ -1545,7 +1548,7 @@ class VirtualMachine(object):
       state, val = self.load_local(state, name)
     except KeyError:
       self.errorlog.name_error(self.frames, name)
-      val = self.convert.create_new_unsolvable(state.node)
+      val = self.new_unsolvable(state.node)
     self.check_for_deleted(state, name, val)
     self.trace_opcode(op, name, val)
     return state.push(val)
@@ -1574,7 +1577,7 @@ class VirtualMachine(object):
       except KeyError:
         self.errorlog.name_error(self.frames, name)
         self.trace_opcode(op, name, None)
-        return state.push(self.convert.create_new_unsolvable(state.node))
+        return state.push(self.new_unsolvable(state.node))
     self.check_for_deleted(state, name, val)
     self.trace_opcode(op, name, val)
     return state.push(val)
@@ -2402,7 +2405,7 @@ class VirtualMachine(object):
           state.node,
           ret_type.get_formal_type_parameter(abstract_utils.T2))
       return state.push(send_var)
-    return state.push(self.convert.unsolvable.to_variable(state.node))
+    return state.push(self.new_unsolvable(state.node))
 
   def byte_IMPORT_NAME(self, state, op):
     """Import a single module."""
@@ -2412,7 +2415,7 @@ class VirtualMachine(object):
     if op.line in self.director.ignore:
       # "import name  # type: ignore"
       self.trace_opcode(op, full_name, None)
-      return state.push(self.convert.create_new_unsolvable(state.node))
+      return state.push(self.new_unsolvable(state.node))
     # The IMPORT_NAME for an "import a.b.c" will push the module "a".
     # However, for "from a.b.c import Foo" it'll push the module "a.b.c". Those
     # two cases are distinguished by whether fromlist is None or not.
@@ -2438,13 +2441,13 @@ class VirtualMachine(object):
       # TODO(mdemello): Should we add some sort of signal data to indicate that
       # this should be treated as resolvable even though there is no module?
       self.trace_opcode(op, name, None)
-      return state.push(self.convert.create_new_unsolvable(state.node))
+      return state.push(self.new_unsolvable(state.node))
     module = state.top()
     state, attr = self.load_attr_noerror(state, module, name)
     if attr is None:
       full_name = module.data[0].name + "." + name
       self.errorlog.import_error(self.frames, full_name)
-      attr = self.convert.unsolvable.to_variable(state.node)
+      attr = self.new_unsolvable(state.node)
     self.trace_opcode(op, name, attr)
     return state.push(attr)
 
@@ -2594,7 +2597,7 @@ class VirtualMachine(object):
       except abstract_utils.ConversionError:
         # TODO(rechen): The assumption that any abstract iterable unpacks to
         # exactly one element is highly dubious.
-        elements.append(self.convert.unsolvable.to_variable(self.root_cfg_node))
+        elements.append(self.new_unsolvable(self.root_cfg_node))
       else:
         # Some iterable constants (e.g., tuples) already contain variables,
         # whereas others (e.g., strings) need to be wrapped.
@@ -2711,4 +2714,4 @@ class VirtualMachine(object):
     # https://docs.python.org/3/library/dis.html#opcode-CALL_METHOD.
     for _ in range(op.arg):
       state = state.pop_and_discard()
-    return state.push(self.convert.unsolvable.to_variable(state.node))
+    return state.push(self.new_unsolvable(state.node))
