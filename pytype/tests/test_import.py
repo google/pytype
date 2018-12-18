@@ -1137,5 +1137,24 @@ class ImportTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertErrorLogIs(errors, [(3, "module-attr", r"quux.*sub\.bar")])
 
+  def testSubmoduleAttributeError(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("package/__init__.pyi", "submodule: module")
+      d.create_file("package/submodule.pyi", "")
+      errors = self.CheckWithErrors("""\
+        from package import submodule
+        submodule.asd
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(2, "module-attr")])
+
+  def testInitOnlySubmodule(self):
+    """Test a submodule without its own stub file."""
+    with file_utils.Tempdir() as d:
+      d.create_file("package/__init__.pyi", "submodule: module")
+      self.Check("""\
+        from package import submodule
+        submodule.asd
+      """, pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")
