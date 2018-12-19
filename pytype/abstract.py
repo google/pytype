@@ -695,9 +695,10 @@ class SimpleAbstractValue(AtomicAbstractValue):
     if self.cls:
       key.add(self.cls)
     for name, var in self.instance_type_parameters.items():
-      subkey = frozenset(value.data.get_default_type_key() if value.data in seen
-                         else value.data.get_type_key(seen)
-                         for value in var.bindings)
+      subkey = frozenset(
+          value.data.get_default_type_key()  # pylint: disable=g-long-ternary
+          if value.data in seen else value.data.get_type_key(seen)
+          for value in var.bindings)
       key.add((name, subkey))
     if key:
       type_key = frozenset(key)
