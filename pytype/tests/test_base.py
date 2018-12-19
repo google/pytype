@@ -572,7 +572,13 @@ def _ReplaceAttribute(test_case, versions, attr_name):
     return
   for v in versions:
     method = _ReplacementMethod(v, attr)
-    if v == (3, 7):
+    pytype_skip = getattr(attr, "__pytype_skip__", None)
+    if pytype_skip and pytype_skip[0] == v:
+      # test_utils.skipInVersion sets __pytype_skip__ to a tuple of
+      # (version, reason) to indicate that a test should be skipped in the given
+      # version for the specified reason.
+      method = skip(pytype_skip[1])(method)
+    elif v == (3, 7):
       # Hack to work around 3.7 being unavailable in some testing environments.
       method = test_utils.skipUnless37Available(method)
     setattr(test_case, "%s_py%d%d" % ((attr_name,) + v), method)

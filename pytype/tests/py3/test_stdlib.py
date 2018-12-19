@@ -234,6 +234,8 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       v = ...  # type: int
     """)
 
+  @test_utils.skipInVersion(
+      (3, 7), "https://github.com/google/pytype/issues/203")
   def test_async(self):
     """Test various asyncio features."""
     ty = self.Infer("""
@@ -271,6 +273,8 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       def test_with(x) -> None: ...
     """)
 
+  @test_utils.skipInVersion(
+      (3, 7), "https://github.com/google/pytype/issues/203")
   def test_async_iter(self):
     ty = self.Infer("""
       import asyncio
