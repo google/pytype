@@ -104,15 +104,15 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   def get_fullhash(self):
     """Hash this value and all of its children."""
     m = hashlib.md5()
-    seen_ids = set()
+    seen_data = set()
     stack = [self]
     while stack:
       data = stack.pop()
-      data_id = id(data)
-      if data_id in seen_ids:
+      data_hash = hash(data)
+      if data_hash in seen_data:
         continue
-      seen_ids.add(data_id)
-      m.update(compat.bytestring(data_id))
+      seen_data.add(data_hash)
+      m.update(compat.bytestring(data_hash))
       for mapping in data.get_children_maps():
         m.update(compat.bytestring(mapping.changestamp))
         stack.extend(mapping.data)
