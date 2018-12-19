@@ -515,7 +515,10 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
 
   def call(self, node, _, args):
     posargs = args.posargs
-    namedargs = self.vm.convert.value_to_constant(args.namedargs, dict)
+    if isinstance(args.namedargs, dict):
+      namedargs = args.namedargs
+    else:
+      namedargs = self.vm.convert.value_to_constant(args.namedargs, dict)
     if namedargs and self.vm.python_version < (3, 6):
       errmsg = "Keyword syntax for NamedTuple is only supported in Python 3.6+"
       self.vm.errorlog.invalid_namedtuple_arg(self.vm.frames, err_msg=errmsg)

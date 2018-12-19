@@ -16,23 +16,23 @@ The tests in this directory are grouped into three logical buckets:
 directory. They do not depend on any specific feature from the target's version.
 They also should not use type annotations in the target code. The test classes
 for these tests are subclasses of `TargetIndependentTest`. These tests are
-run twice, once with target version set to 2.7, and another time with target
-version set to 3.6.
+run multiple times, once with target version set to 2.7, and another time per
+target Python 3 version supported.
 
-2. The 2.7 Feature Bucket: Tests of this kind live in the `py2`
+2. The Py2 Feature Bucket: Tests of this kind live in the `py2`
 subdirectory. The target code for these tests uses a Python 2.7 specific
 feature. The test classes for these tests are subclasses of
 `TargetPython27FeatureTest`.
 
-3. The 3.6 Basic Bucket: Tests of this kind live in the `py3` subdirectory.
+3. The Py3 Basic Bucket: Tests of this kind live in the `py3` subdirectory.
 The target code for these tests uses type annotations as the only Python 3
 specific feature. Without the type annotations, the target should be version
 agnostic. The test classes for these tests are subclasses of
 `TargetPython3BasicTest`.
 
-4. The 3.6 Feature Bucket: Tests of this kind also live in the `py3`
-subdirectory. The target code for these tests uses a Python 3.6 specific
-feature, with or without type annotations. The test classes for these tests are
+4. The Py3 Feature Bucket: Tests of this kind also live in the `py3`
+subdirectory. The target code for these tests uses a Python 3 specific feature,
+with or without type annotations. The test classes for these tests are
 subclasses of `TargetPython3FeatureTest`.
 
 ## Adding New Tests

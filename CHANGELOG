@@ -1,3 +1,6 @@
+Version (upcoming)
+* Add testing framework for target Python 3.7.
+
 Version 2018.12.11
 * Add rudimentary support for target Python 3.7.
 * Make error messages for Python operators friendlier.

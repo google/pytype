@@ -695,9 +695,10 @@ class SimpleAbstractValue(AtomicAbstractValue):
     if self.cls:
       key.add(self.cls)
     for name, var in self.instance_type_parameters.items():
-      subkey = frozenset(value.data.get_default_type_key() if value.data in seen
-                         else value.data.get_type_key(seen)
-                         for value in var.bindings)
+      subkey = frozenset(
+          value.data.get_default_type_key()  # pylint: disable=g-long-ternary
+          if value.data in seen else value.data.get_type_key(seen)
+          for value in var.bindings)
       key.add((name, subkey))
     if key:
       type_key = frozenset(key)
@@ -3307,7 +3308,10 @@ class BuildClass(AtomicAbstractValue):
 
   def call(self, node, _, args, alias_map=None):
     funcvar, name = args.posargs[0:2]
-    kwargs = args.namedargs.pyval
+    if isinstance(args.namedargs, dict):
+      kwargs = args.namedargs
+    else:
+      kwargs = self.vm.convert.value_to_constant(args.namedargs, dict)
     # TODO(mdemello): Check if there are any changes between python2 and
     # python3 in the final metaclass computation.
     # TODO(mdemello): Any remaining kwargs need to be passed to the metaclass.
