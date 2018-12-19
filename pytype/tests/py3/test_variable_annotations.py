@@ -36,8 +36,7 @@ class VariableAnnotationsBasicTest(test_base.TargetPython3BasicTest):
 class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
   """Tests for PEP526 variable annotations."""
 
-  @test_utils.skipInVersion(
-      (3, 7), "https://github.com/google/pytype/issues/216")
+  @test_utils.skipIn37("https://github.com/google/pytype/issues/216")
   def testInferTypes(self):
     ty = self.Infer("""\
       from typing import List
@@ -64,8 +63,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
           b: int
     """)
 
-  @test_utils.skipInVersion(
-      (3, 7), "https://github.com/google/pytype/issues/216")
+  @test_utils.skipIn37("https://github.com/google/pytype/issues/216")
   def testIllegalAnnotations(self):
     _, errors = self.InferWithErrors("""\
       from typing import List, TypeVar, NoReturn

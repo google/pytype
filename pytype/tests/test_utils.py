@@ -445,11 +445,11 @@ def skipUnless37Available(f):
   return unittest.skipUnless(_IS_37_AVAILABLE, "no python3.7")(f)
 
 
-def skipInVersion(python_version, reason):
-  """Skip the test in the (major, minor) version."""
+def skipIn37(reason):
+  """Skip the test in Python 3.7."""
   def decorate(f):
     # See test_base.main for how this attribute is used to skip the test.
-    f.__pytype_skip__ = (python_version, reason)
+    f.__pytype_skip__ = reason
     return f
   return decorate
 # pylint: enable=invalid-name
