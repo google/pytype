@@ -37,7 +37,7 @@ class TypeNew(abstract.PyTDFunction):
       # TypeVar(bound=Foo), but we can't introduce a type parameter that isn't
       # bound to a class or function, so we'll go with Any.
       self.match_args(node, args)  # May raise FailedFunctionCall.
-      return node, self.vm.convert.unsolvable.to_variable(node)
+      return node, self.vm.new_unsolvable(node)
     return super(TypeNew, self).call(node, func, args)
 
 
@@ -102,7 +102,7 @@ class Abs(BuiltinFunction):
     if fn is not None:
       return self.vm.call_function(node, fn, function.Args(()))
     else:
-      return node, self.vm.convert.create_new_unsolvable(node)
+      return node, self.vm.new_unsolvable(node)
 
 
 class Next(BuiltinFunction):
@@ -130,7 +130,7 @@ class Next(BuiltinFunction):
       return node, ret
     else:
       # TODO(kramm): This needs a test case.
-      return node, self.vm.convert.create_new_unsolvable(node)
+      return node, self.vm.new_unsolvable(node)
 
 
 class ObjectPredicate(BuiltinFunction):
@@ -158,7 +158,7 @@ class ObjectPredicate(BuiltinFunction):
       self.run(node, args, result)
     except function.InvalidParameters as ex:
       self.vm.errorlog.invalid_function_call(self.vm.frames, ex)
-      result = self.vm.convert.create_new_unsolvable(node)
+      result = self.vm.new_unsolvable(node)
     return node, result
 
 
@@ -433,7 +433,7 @@ class SuperInstance(abstract.AtomicAbstractValue):
 
   def call(self, node, _, args):
     self.vm.errorlog.not_callable(self.vm.frames, self)
-    return node, self.vm.convert.unsolvable.to_variable(node)
+    return node, self.vm.new_unsolvable(node)
 
 
 class Super(BuiltinClass):
@@ -460,14 +460,14 @@ class Super(BuiltinClass):
         self.vm.errorlog.invalid_super_call(
             self.vm.frames, message="Missing __class__ closure for super call.",
             details="Is 'super' being called from a method defined in a class?")
-        return node, self.vm.convert.create_new_unsolvable(node)
+        return node, self.vm.new_unsolvable(node)
       # The implicit super object argument is the first positional argument to
       # the function calling 'super'.
       self_arg = self.vm.frame.first_posarg
       if not self_arg:
         self.vm.errorlog.invalid_super_call(
             self.vm.frames, message="Missing 'self' argument to 'super' call.")
-        return node, self.vm.convert.create_new_unsolvable(node)
+        return node, self.vm.new_unsolvable(node)
       super_objects = self_arg.bindings
     elif 1 <= num_args and num_args <= 2:
       cls_var = args.posargs[0]

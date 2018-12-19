@@ -56,7 +56,7 @@ class AttributeTest(unittest.TestCase):
         t, self._vm.convert.primitive_class_instances[str], self._vm)
     node = self._vm.attribute_handler.set_attribute(
         self._vm.root_cfg_node, t_instance, "rumpelstiltskin",
-        self._vm.convert.unsolvable.to_variable(self._vm.root_cfg_node))
+        self._vm.new_unsolvable(self._vm.root_cfg_node))
     self.assertIs(node, self._vm.root_cfg_node)
     self.assertEqual(
         str(self._vm.errorlog).strip(),

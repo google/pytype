@@ -162,7 +162,7 @@ class DictTest(AbstractTestBase):
   def test_compatible_with__after_unambiguous_update(self):
     unambiguous_dict = abstract.Dict(self._vm)
     unambiguous_dict.set_str_item(
-        self._node, "a", self._vm.convert.create_new_unsolvable(self._node))
+        self._node, "a", self._vm.new_unsolvable(self._node))
     self._d.update(self._node, unambiguous_dict)
     self.assertIs(True, self._d.compatible_with(True))
     self.assertIs(False, self._d.compatible_with(False))
@@ -170,8 +170,7 @@ class DictTest(AbstractTestBase):
   def test_compatible_with__after_ambiguous_update(self):
     ambiguous_dict = abstract.Dict(self._vm)
     ambiguous_dict.merge_instance_type_parameter(
-        self._node, abstract_utils.K,
-        self._vm.convert.create_new_unsolvable(self._node))
+        self._node, abstract_utils.K, self._vm.new_unsolvable(self._node))
     ambiguous_dict.could_contain_anything = True
     self._d.update(self._node, ambiguous_dict)
     self.assertIs(True, self._d.compatible_with(True))
@@ -181,8 +180,7 @@ class DictTest(AbstractTestBase):
     self._d.update(self._node, {})
     self.assertIs(False, self._d.compatible_with(True))
     self.assertIs(True, self._d.compatible_with(False))
-    self._d.update(
-        self._node, {"a": self._vm.convert.create_new_unsolvable(self._node)})
+    self._d.update(self._node, {"a": self._vm.new_unsolvable(self._node)})
     self.assertIs(True, self._d.compatible_with(True))
     self.assertIs(False, self._d.compatible_with(False))
 
@@ -925,8 +923,7 @@ class AbstractMethodsTest(AbstractTestBase):
     sized = self._vm.convert.constant_to_value(
         sized_pytd, {}, self._vm.root_cfg_node)
     bases = [sized.to_variable(self._vm.root_cfg_node)]
-    members = {"__len__":
-               self._vm.convert.create_new_unsolvable(self._vm.root_cfg_node)}
+    members = {"__len__": self._vm.new_unsolvable(self._vm.root_cfg_node)}
     cls = abstract.InterpreterClass("X", bases, members, None, self._vm)
     self.assertFalse(cls.abstract_methods)
 
@@ -1405,7 +1402,7 @@ class AbstractTest(AbstractTestBase):
         self._vm.convert.int_type.to_variable(self._vm.root_cfg_node))
     t = abstract.TypeParameter(abstract_utils.T, self._vm)
     t_instance = abstract.TypeParameterInstance(t, instance, self._vm)
-    posargs = (self._vm.convert.create_new_unsolvable(self._node),) * 3
+    posargs = (self._vm.new_unsolvable(self._node),) * 3
     node, ret = t_instance.call(self._node, t_instance.to_binding(self._node),
                                 function.Args(posargs=posargs))
     self.assertIs(node, self._node)

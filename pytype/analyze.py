@@ -194,7 +194,7 @@ class CallTracer(vm.VirtualMachine):
     else:
       node = node0
     log.info("Unable to generate fake arguments for %s", funcv)
-    return node, self.convert.create_new_unsolvable(node)
+    return node, self.new_unsolvable(node)
 
   def analyze_method_var(self, node0, name, var):
     log.info("Analyzing %s", name)

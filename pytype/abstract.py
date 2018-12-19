@@ -142,7 +142,7 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
     del name
     if node is None:
       node = self.vm.root_cfg_node
-    return self.vm.convert.create_new_unsolvable(node)
+    return self.vm.new_unsolvable(node)
 
   def get_formal_type_parameter(self, t):
     """Get the class's type for the type parameter.
@@ -695,9 +695,10 @@ class SimpleAbstractValue(AtomicAbstractValue):
     if self.cls:
       key.add(self.cls)
     for name, var in self.instance_type_parameters.items():
-      subkey = frozenset(value.data.get_default_type_key() if value.data in seen
-                         else value.data.get_type_key(seen)
-                         for value in var.bindings)
+      subkey = frozenset(
+          value.data.get_default_type_key()  # pylint: disable=g-long-ternary
+          if value.data in seen else value.data.get_type_key(seen)
+          for value in var.bindings)
       key.add((name, subkey))
     if key:
       type_key = frozenset(key)
@@ -1028,7 +1029,7 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
     # variable will be inferred as Dict[key_type, Any], but the pyval will
     # contain the data we need for annotations.
     if any(abstract_utils.has_type_parameters(node, x) for x in value_var.data):
-      value_var = self.vm.convert.unsolvable.to_variable(node)
+      value_var = self.vm.new_unsolvable(node)
     return self.call_pytd(node, "__setitem__", name_var, value_var)
 
   def setdefault_slot(self, node, name_var, value_var=None):
@@ -1106,7 +1107,7 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
         k = other_dict.get_instance_type_parameter(abstract_utils.K, node)
         v = other_dict.get_instance_type_parameter(abstract_utils.V, node)
       else:
-        k = v = self.vm.convert.create_new_unsolvable(node)
+        k = v = self.vm.new_unsolvable(node)
       self.merge_instance_type_parameter(node, abstract_utils.K, k)
       self.merge_instance_type_parameter(node, abstract_utils.V, v)
       self.could_contain_anything = True
@@ -2172,7 +2173,7 @@ class PyTDClass(SimpleAbstractValue, mixin.Class):
     except self.vm.convert.TypeParameterError as e:
       self.vm.errorlog.unbound_type_param(
           self.vm.frames, self, name, e.type_param_name)
-      self.members[name] = self.vm.convert.unsolvable.to_variable(
+      self.members[name] = self.vm.new_unsolvable(
           self.vm.root_cfg_node)
 
   def _convert_member(self, _, pyval, subst=None, node=None):
@@ -2467,7 +2468,7 @@ class NativeFunction(Function):
       # Instead of guessing where these arguments should go, overwrite all of
       # the arguments with a list of unsolvables of the correct length, which
       # is guaranteed to give us a correct (but imprecise) analysis.
-      posargs = [self.vm.convert.create_new_unsolvable(node)
+      posargs = [self.vm.new_unsolvable(node)
                  for _ in range(expected_argcount)]
       namedargs = {}
     return self.func(node, *posargs, **namedargs)
@@ -2547,7 +2548,7 @@ class SignedFunction(Function):
         if args.starstarargs or (args.starargs and not kwonly):
           # We assume that because we have *args or **kwargs, we can use these
           # to fill in any parameters we might be missing.
-          callargs[key] = self.vm.convert.create_new_unsolvable(node)
+          callargs[key] = self.vm.new_unsolvable(node)
         else:
           raise function.MissingParameter(sig, args, self.vm, key)
     for key in sig.kwonly_params:
@@ -2803,7 +2804,7 @@ class InterpreterFunction(SignedFunction):
         for b in self.vm.callself_stack[-1].bindings:
           b.data.maybe_missing_members = True
       return (node,
-              self.vm.convert.create_new_unsolvable(node))
+              self.vm.new_unsolvable(node))
     args = args.simplify(node, self.signature, self.vm)
     substs = self.match_args(node, args, alias_map)
     first_posarg = args.posargs[0] if args.posargs else None
@@ -2895,7 +2896,7 @@ class InterpreterFunction(SignedFunction):
             name: self.vm.convert.unsolvable.to_binding(node_after_call)
             for name in callargs}
         combinations = [combination]
-        ret = self.vm.convert.unsolvable.to_variable(node_after_call)
+        ret = self.vm.new_unsolvable(node_after_call)
       for combination in combinations:
         for return_value in ret.bindings:
           values = list(combination.values()) + [return_value]
@@ -3185,7 +3186,7 @@ class Generator(Instance):
         # when the function is called afterwards.
         self.merge_instance_type_parameter(
             node, abstract_utils.T2,
-            self.vm.convert.unsolvable.to_variable(node))
+            self.vm.new_unsolvable(node))
         self.merge_instance_type_parameter(
             node, abstract_utils.V, self.generator_frame.return_variable)
       self.runs += 1
@@ -3279,7 +3280,7 @@ class Module(Instance):
     if mod is not None:
       return mod.to_variable(node)
     elif self.has_getattr():
-      return self.vm.convert.create_new_unsolvable(node)
+      return self.vm.new_unsolvable(node)
     else:
       log.warning("Couldn't find attribute / module %r", full_name)
       return None
@@ -3307,7 +3308,10 @@ class BuildClass(AtomicAbstractValue):
 
   def call(self, node, _, args, alias_map=None):
     funcvar, name = args.posargs[0:2]
-    kwargs = args.namedargs.pyval
+    if isinstance(args.namedargs, dict):
+      kwargs = args.namedargs
+    else:
+      kwargs = self.vm.convert.value_to_constant(args.namedargs, dict)
     # TODO(mdemello): Check if there are any changes between python2 and
     # python3 in the final metaclass computation.
     # TODO(mdemello): Any remaining kwargs need to be passed to the metaclass.

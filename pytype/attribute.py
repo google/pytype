@@ -41,7 +41,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       # _process_one_annotation with the current (incomplete) globals, but
       # whether the call succeeds would depend on the order in which the globals
       # are analyzed. It's simpler (although less precise) to just return Any.
-      return node, self.vm.convert.unsolvable.to_variable(node)
+      return node, self.vm.new_unsolvable(node)
     # Some objects have special attributes, like "__get__" or "__iter__"
     special_attribute = obj.get_special_attribute(node, name, valself)
     if special_attribute is not None:
@@ -190,17 +190,28 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     self.vm.errorlog.not_writable(self.vm.frames, obj, name)
     return False
 
+  def _is_simple_module(self, node, var):
+    # A simple module is an abstract.Instance(module). It returns Any for all
+    # attribute accesses (unlike an abstract.Module, which does ast lookups).
+    cls = self.vm.convert.merge_classes(node, var.data)
+    if cls != self.vm.convert.module_type:
+      return False
+    return not any(isinstance(v, abstract.Module) for v in var.data)
+
   def _get_module_attribute(self, node, module, name, valself=None):
     """Get an attribute from a module."""
     assert isinstance(module, abstract.Module)
 
     # Local variables in __init__.py take precedence over submodules.
     node, var = self._get_instance_attribute(node, module, name, valself)
-    if var is not None:
+    if var is not None and not self._is_simple_module(node, var):
+      # If `var` is a simple module, then we want to try get_submodule, to see
+      # if it can find a more precise value.
       return node, var
 
-    # And finally, look for a submodule.
-    return node, module.get_submodule(node, name)
+    # And finally, look for a submodule. If none is found, then return `var`
+    # instead, which may be a submodule that appears only in __init__.
+    return node, module.get_submodule(node, name) or var
 
   def _get_class_attribute(self, node, cls, name, valself=None):
     """Get an attribute from a class."""
@@ -267,7 +278,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     if attr is None and obj.maybe_missing_members:
       # The VM hit maximum depth while initializing this instance, so it may
       # have attributes that we don't know about.
-      attr = self.vm.convert.unsolvable.to_variable(node)
+      attr = self.vm.new_unsolvable(node)
     return node, attr
 
   def _lookup_from_mro_and_handle_descriptors(
@@ -321,7 +332,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     if isinstance(cls, (abstract.Unknown, abstract.Unsolvable)):
       # We don't know the object's MRO, so it's possible that one of its
       # bases has the attribute.
-      return self.vm.convert.unsolvable.to_variable(node)
+      return self.vm.new_unsolvable(node)
     ret = self.vm.program.NewVariable()
     add_origins = [valself] if valself else []
     for base in cls.mro:

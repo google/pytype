@@ -2,12 +2,18 @@
 
 # These are C modules built into Python. Don't add any modules that are
 # implemented in a .py:
-import imp
 import marshal
 import re
 import sys
 
-MAGIC = imp.get_magic()
+# pylint: disable=g-import-not-at-top
+if sys.version_info[0] == 2:
+  import imp
+  MAGIC = imp.get_magic()
+else:
+  import importlib.util
+  MAGIC = importlib.util.MAGIC_NUMBER
+# pylint: enable=g-import-not-at-top
 
 # This pattern is as per PEP-263.
 ENCODING_PATTERN = "^[ \t\v]*#.*?coding[:=][ \t]*([-_.a-zA-Z0-9]+)"

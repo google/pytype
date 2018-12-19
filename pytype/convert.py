@@ -280,10 +280,6 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     self.vm.trace_unknown(unknown.class_name, val)
     return v
 
-  def create_new_unsolvable(self, node):
-    """Create a new variable containing an unsolvable."""
-    return self.unsolvable.to_variable(node)
-
   def create_new_varargs_value(self, arg_type):
     """Create a varargs argument given its element type."""
     params = {abstract_utils.T: arg_type}
@@ -380,7 +376,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     elif isinstance(pyval, abstract_utils.AsInstance):
       cls = pyval.cls
       if isinstance(cls, pytd.AnythingType):
-        return self.create_new_unsolvable(node)
+        return self.unsolvable.to_variable(node)
       elif (isinstance(pyval, abstract_utils.AsReturnValue) and
             isinstance(cls, pytd.NothingType)):
         return self.no_return.to_variable(node)

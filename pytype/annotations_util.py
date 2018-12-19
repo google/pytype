@@ -217,12 +217,12 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     except abstract_utils.ConversionError:
       error = "Type must be constant for variable annotation"
       self.vm.errorlog.invalid_annotation(self.vm.frames, None, error, name)
-      return self.vm.convert.create_new_unsolvable(node)
+      return self.vm.new_unsolvable(node)
     else:
       if self.get_type_parameters(typ):
         self.vm.errorlog.not_supported_yet(
             self.vm.frames, "using type parameter in variable annotation")
-        return self.vm.convert.create_new_unsolvable(node)
+        return self.vm.new_unsolvable(node)
       try:
         return self.init_annotation(typ, name, self.vm.frames, node)
       except self.LateAnnotationError:
@@ -242,14 +242,14 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     except EvaluationError as e:
       self.vm.errorlog.invalid_type_comment(
           self.vm.frames, comment, details=utils.message(e))
-      value = self.vm.convert.create_new_unsolvable(state.node)
+      value = self.vm.new_unsolvable(state.node)
     else:
       try:
         typ = abstract_utils.get_atomic_value(var)
       except abstract_utils.ConversionError:
         self.vm.errorlog.invalid_type_comment(
             self.vm.frames, comment, details="Must be constant.")
-        value = self.vm.convert.create_new_unsolvable(state.node)
+        value = self.vm.new_unsolvable(state.node)
       else:
         if self.get_type_parameters(typ):
           self.vm.errorlog.not_supported_yet(
@@ -265,7 +265,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     processed = self._process_one_annotation(
         annot, name, stack, node, f_globals, f_locals)
     if processed is None:
-      value = self.vm.convert.unsolvable.to_variable(node)
+      value = self.vm.new_unsolvable(node)
     else:
       _, value = self.vm.init_class(node, processed)
     return value
@@ -275,7 +275,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     for b in var.bindings:
       annot = self._process_one_annotation(b.data, name, stack)
       if annot is None:
-        return self.vm.convert.create_new_unsolvable(node)
+        return self.vm.new_unsolvable(node)
       new_var.AddBinding(annot, {b}, node)
     return new_var
 

@@ -18,6 +18,7 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
+from pytype.tests import test_utils
 
 import unittest
 
@@ -538,17 +539,49 @@ def _ReplacementMethod(python_version, actual_method):
   return Replacement
 
 
-def _ReplaceMethods(toplevel):
+def _GetTargetVersions(toplevel):
+  """Maybe return a list of target versions.
+
+  Arguments:
+    toplevel: the top-level module object.
+
+  Returns:
+    None if toplevel is not a test class or doesn't need to test under at least
+    two versions. Otherwise a list of (major, minor) versions.
+  """
   if not isinstance(toplevel, type):
-    return False
+    return None
   if issubclass(toplevel, TargetIndependentTest):
-    return True
-  # Run the Python 3 basic tests with target Python version set to 2.7 if we
-  # can use type annotations in 2.7.
-  if (utils.USE_ANNOTATIONS_BACKPORT and
-      issubclass(toplevel, TargetPython3BasicTest)):
-    return not issubclass(toplevel, TargetPython3FeatureTest)
-  return False
+    return [(2, 7), (3, 6), (3, 7)]
+  elif issubclass(toplevel, TargetPython3FeatureTest):
+    return [(3, 6), (3, 7)]
+  elif issubclass(toplevel, TargetPython3BasicTest):
+    if utils.USE_ANNOTATIONS_BACKPORT:
+      # Run the Python 3 basic tests with target Python version set to 2.7 if we
+      # can use type annotations in 2.7.
+      return [(2, 7), (3, 6), (3, 7)]
+    else:
+      return [(3, 6), (3, 7)]
+  else:
+    return None
+
+
+def _ReplaceAttribute(test_case, versions, attr_name):
+  attr = getattr(test_case, attr_name)
+  if not attr_name.startswith("test") or not callable(attr):
+    return
+  for v in versions:
+    method = _ReplacementMethod(v, attr)
+    pytype_skip = getattr(attr, "__pytype_skip__", None)
+    if v == (3, 7):
+      if pytype_skip:
+        # test_utils.skipIn37 sets __pytype_skip__ to the reason for skipping.
+        method = skip(pytype_skip)(method)
+      else:
+        # Hack to work around 3.7 unavailability in some testing environments.
+        method = test_utils.skipUnless37Available(method)
+    setattr(test_case, "%s_py%d%d" % ((attr_name,) + v), method)
+  delattr(test_case, attr_name)
 
 
 def main(toplevels, is_main_module=True):
@@ -567,19 +600,13 @@ def main(toplevels, is_main_module=True):
     is_main_module: True if the main test module is the main module in the
                     interpreter.
   """
-  # We want to run tests in a few buckets twice: once with target Python
-  # version set to 2.7, and another time with target Python version set to 3.6.
+  # We want to run tests in a few buckets under multiple target Python versions.
   # So, for tests falling in such buckets, we replace the single test method
-  # with two methods, one each for the target version 2.7 and 3.6 respectively.
+  # with multiple methods, one for each target version.
   for _, tp in toplevels.items():
-    if _ReplaceMethods(tp):
+    versions = _GetTargetVersions(tp)
+    if versions:
       for attr_name in dir(tp):
-        attr = getattr(tp, attr_name)
-        if attr_name.startswith("test") and callable(attr):
-          setattr(tp, "%s_py2" % attr_name,
-                  _ReplacementMethod((2, 7), attr))
-          setattr(tp, "%s_py3" % attr_name,
-                  _ReplacementMethod((3, 6), attr))
-          delattr(tp, attr_name)
+        _ReplaceAttribute(tp, versions, attr_name)
   if is_main_module:
     unittest.main()
