@@ -3307,7 +3307,10 @@ class BuildClass(AtomicAbstractValue):
 
   def call(self, node, _, args, alias_map=None):
     funcvar, name = args.posargs[0:2]
-    kwargs = args.namedargs.pyval
+    if isinstance(args.namedargs, dict):
+      kwargs = args.namedargs
+    else:
+      kwargs = self.vm.convert.value_to_constant(args.namedargs, dict)
     # TODO(mdemello): Check if there are any changes between python2 and
     # python3 in the final metaclass computation.
     # TODO(mdemello): Any remaining kwargs need to be passed to the metaclass.

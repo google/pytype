@@ -2698,17 +2698,18 @@ class VirtualMachine(object):
     return state.pop_and_discard()
 
   def byte_LOAD_METHOD(self, state, op):
-    # We don't support this 3.7 opcode yet; simply don't crash.
-    # TODO(rechen): Implement
-    # https://docs.python.org/3/library/dis.html#opcode-LOAD_METHOD.
-    unused_name = self.frame.f_code.co_names[op.arg]
-    state, unused_self_obj = state.pop()
-    return state
+    name = self.frame.f_code.co_names[op.arg]
+    state, self_obj = state.pop()
+    state, result = self.load_attr(state, self_obj, name)
+    # https://docs.python.org/3/library/dis.html#opcode-LOAD_METHOD says that
+    # this opcode should push two values onto the stack: either the unbound
+    # method and its `self` or NULL and the bound method. However, pushing only
+    # the bound method and modifying CALL_METHOD accordingly works in all cases
+    # we've tested.
+    return state.push(result)
 
   def byte_CALL_METHOD(self, state, op):
-    # We don't support this 3.7 opcode yet; simply don't crash.
-    # TODO(rechen): Implement
-    # https://docs.python.org/3/library/dis.html#opcode-CALL_METHOD.
-    for _ in range(op.arg):
-      state = state.pop_and_discard()
-    return state.push(self.convert.unsolvable.to_variable(state.node))
+    state, args = state.popn(op.arg)
+    state, func = state.pop()
+    state, result = self.call_function_with_state(state, func, args)
+    return state.push(result)
