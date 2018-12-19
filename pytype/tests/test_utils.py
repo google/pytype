@@ -1,10 +1,13 @@
 """Utility class and function for tests."""
 
 import collections
+import subprocess
 
 from pytype import compat
 from pytype import state as frame_state
 from pytype.pyc import loadmarshal
+
+import unittest
 
 
 FakeCode = collections.namedtuple("FakeCode", "co_filename co_name")
@@ -418,3 +421,26 @@ class Py3Opcodes(object):
   BUILD_CONST_KEY_MAP = 156
   BUILD_STRING = 157
   BUILD_TUPLE_UNPACK_WITH_CALL = 158
+
+
+# We compute the availability of python3.7 with subprocess, which is slow, so
+# the result is cached.
+_IS_37_AVAILABLE = None
+
+
+# pylint: disable=invalid-name
+# Use camel-case to match the unittest.skip* methods.
+# TODO(rechen): Remove skipUnless37Available once python3.7 is available in all
+# of pytype's testing environments.
+def skipUnless37Available(f):
+  """Skip the test unless Python 3.7 is available."""
+  global _IS_37_AVAILABLE
+  if _IS_37_AVAILABLE is None:
+    try:
+      subprocess.call(["python3.7", "-V"])
+    except OSError:
+      _IS_37_AVAILABLE = False
+    else:
+      _IS_37_AVAILABLE = True
+  return unittest.skipUnless(_IS_37_AVAILABLE, "no python3.7")(f)
+# pylint: enable=invalid-name
