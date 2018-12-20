@@ -297,6 +297,15 @@ class TypeParameter(node.Node('name: str',
     return super(TypeParameter, cls).__new__(
         cls, name, constraints, bound, scope)
 
+  def __lt__(self, other):
+    try:
+      return super(TypeParameter, self).__lt__(other)
+    except TypeError:
+      # In Python 3, str and None are not comparable. Declare None to be less
+      # than every str so that visitors.AdjustTypeParameters.VisitTypeDeclUnit
+      # can sort type parameters.
+      return self.scope is None
+
   @property
   def full_name(self):
     # There are hard-coded type parameters in the code (e.g., T for sequences),
