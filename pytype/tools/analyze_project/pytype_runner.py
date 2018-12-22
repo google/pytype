@@ -69,13 +69,20 @@ def deps_from_import_graph(import_graph):
     return resolved_file_to_module(import_graph.provenance[filename])
   modules = []
   for node, deps in reversed(import_graph.deps_list()):
-    files = tuple(make_module(f) for f in get_filenames(node))
+    files = tuple(
+        make_module(f) for f in get_filenames(node) if not _is_type_stub(f))
     # flatten and dedup
     seen = set()
     deps = tuple(make_module(d) for dep in deps for d in get_filenames(dep)
-                 if d not in seen and not seen.add(d))
-    modules.append((files, deps))
+                 if d not in seen and not seen.add(d) and not _is_type_stub(d))
+    if files:
+      modules.append((files, deps))
   return modules
+
+
+def _is_type_stub(f):
+  _, ext = os.path.splitext(f)
+  return ext in ('.pyi', '.pytd')
 
 
 def _module_to_output_path(mod):
