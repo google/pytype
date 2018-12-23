@@ -107,17 +107,14 @@ class IteratorType(object):
 NoneType = type(None)
 EllipsisType = type(Ellipsis)
 
-if sys.version_info[0] == 2:
-  # Because pylint doesn't respect version checks:
-  # pylint: disable=undefined-variable
-  BytesType = BytesPy3
+try:
   UnicodeType = unicode
   LongType = long
+  BytesType = BytesPy3
   OldStyleClassType = types.ClassType
-  # pylint: enable=undefined-variable
-elif sys.version_info[0] == 3:
-  BytesType = bytes
+except NameError:
   UnicodeType = UnicodePy2
   LongType = int
+  BytesType = bytes
   OldStyleClassType = OldStyleClassPy3
 # pylint: enable=invalid-name
