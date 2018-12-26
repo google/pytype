@@ -99,6 +99,32 @@ class TestDepsFromImportGraph(unittest.TestCase):
     ]
     self.assertEqual(deps, expected)
 
+  def test_pyi_src(self):
+    pyi_mod = ImportlabModule('/foo/bar/c.pyi', 'bar/c.pyi', 'bar.c')
+    provenance = {pyi_mod.path: pyi_mod}
+    provenance.update(self.provenance)
+    graph = FakeImportGraph(self.sources + [pyi_mod.path], provenance,
+                            collections.defaultdict(list))
+    deps = pytype_runner.deps_from_import_graph(graph)
+    expected = [
+        ((Module('/foo/', 'bar/__init__.py', 'bar.__init__'),), ()),
+        ((Module('/foo/', 'bar/a.py', 'bar.a'),), ()),
+        ((Module('/foo/', 'bar/b.py', 'bar.b'),), ()),
+    ]
+    self.assertEqual(deps, expected)
+
+  def test_pyi_dep(self):
+    pyi_mod = ImportlabModule('/foo/bar/c.pyi', 'bar/c.pyi', 'bar.c')
+    graph = FakeImportGraph(self.sources, self.provenance,
+                            collections.defaultdict(lambda: [pyi_mod.path]))
+    deps = pytype_runner.deps_from_import_graph(graph)
+    expected = [
+        ((Module('/foo/', 'bar/__init__.py', 'bar.__init__'),), ()),
+        ((Module('/foo/', 'bar/a.py', 'bar.a'),), ()),
+        ((Module('/foo/', 'bar/b.py', 'bar.b'),), ()),
+    ]
+    self.assertEqual(deps, expected)
+
 
 class TestBase(unittest.TestCase):
   """Base class for tests using a parser."""

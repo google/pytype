@@ -71,20 +71,7 @@ def main():
   typeshed = environment.initialize_typeshed_or_die()
   env = analyze_project_env.create_importlab_environment(conf, typeshed)
   print('Computing dependencies')
-  try:
-    import_graph = importlab.graph.ImportGraph.create(
-        env, conf.inputs, trim=True)
-    unreadable_inputs = conf.inputs & import_graph.unreadable_files
-    unreadable_python_inputs = {
-        filename for filename in unreadable_inputs if filename.endswith('.py')}
-    assert not unreadable_python_inputs, '\n  '.join(
-        ['Unparseable in Python %s:' % conf.python_version] +
-        sorted(unreadable_python_inputs))
-  except Exception as e:  # pylint: disable=broad-except
-    logging.critical('Cannot parse input files:\n%s', e)
-    sys.exit(1)
-
-  conf.inputs -= unreadable_inputs
+  import_graph = importlab.graph.ImportGraph.create(env, conf.inputs, trim=True)
 
   if args.tree:
     print('Source tree:')
