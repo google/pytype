@@ -279,6 +279,16 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       new_var.AddBinding(annot, {b}, node)
     return new_var
 
+  def init_from_annotations(self, node, name, annots_var):
+    """Instantiate `name` from the given __annotations__ dict."""
+    try:
+      annots = abstract_utils.get_atomic_python_constant(annots_var, dict)
+    except abstract_utils.ConversionError:
+      return None
+    if name not in annots:
+      return None
+    return self.init_annotation_var(node, name, annots[name])
+
   def _eval_multi_arg_annotation(self, node, func, f_globals, f_locals, annot):
     """Evaluate annotation for multiple arguments (from a type comment)."""
     args = self._eval_expr_as_tuple(node, f_globals, f_locals, annot.expr)

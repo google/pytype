@@ -351,6 +351,25 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     else:
       raise NotImplementedError(v.__class__.__name__)
 
+  def annotations_to_instance_types(self, annotations_var):
+    """Convert the members of an __annotations__ dict to instance types.
+
+    Args:
+      annotations_var: __annotations__, a cfg.Variable of an abstract.Dict.
+
+    Yields:
+      A tuple of member name and pytd types.
+    """
+    try:
+      annots = abstract_utils.get_atomic_python_constant(annotations_var, dict)
+    except abstract_utils.ConversionError:
+      return
+    for name, member in annots.items():
+      yield name, [
+          self.value_instance_to_pytd_type(
+              node=None, v=v, instance=None, seen=None, view=None
+          ) for v in member.data]
+
   def _function_call_to_return_type(self, node, v, seen_return, num_returns):
     """Get a function call's pytd return type."""
     if v.signature.has_return_annotation:
@@ -560,6 +579,12 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         # is, at some point, overwriting its own methods with an attribute.
         del methods[name]
         constants[name].add_type(pytd.AnythingType())
+
+    if "__annotations__" in v.members:
+      for name, types in self.annotations_to_instance_types(
+          v.members["__annotations__"]):
+        for t in types:
+          constants[name].add_type(t)
 
     constants = [pytd.Constant(name, builder.build())
                  for name, builder in constants.items() if builder]

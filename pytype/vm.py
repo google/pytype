@@ -1017,7 +1017,12 @@ class VirtualMachine(object):
     Returns:
       A tuple of the state and the value (cfg.Variable)
     """
-    return self.load_from(state, self.frame.f_locals, name)
+    try:
+      return self.load_from(state, self.frame.f_locals, name)
+    except KeyError:
+      # A variable has been declared but not defined, e.g.,
+      #   constant: str
+      return self._load_annotation(state, name)
 
   def load_global(self, state, name):
     return self.load_from(
@@ -1045,6 +1050,17 @@ class VirtualMachine(object):
     const = self.convert.constant_to_var(raw_const, node=state.node)
     self.trace_opcode(op, raw_const, const)
     return state.push(const)
+
+  def _load_annotation(self, state, name):
+    try:
+      state, annots = self.load_from(
+          state, self.frame.f_locals, "__annotations__")
+    except KeyError:
+      raise KeyError(name)
+    ret = self.annotations_util.init_from_annotations(state.node, name, annots)
+    if ret:
+      return state, ret
+    raise KeyError(name)
 
   def _store_value(self, state, name, value, local):
     if local:
