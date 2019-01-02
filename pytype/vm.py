@@ -1015,7 +1015,7 @@ class VirtualMachine(object):
       name: Name of the local
 
     Returns:
-      The value (cfg.Variable)
+      A tuple of the state and the value (cfg.Variable)
     """
     return self.load_from(state, self.frame.f_locals, name)
 
@@ -1723,9 +1723,9 @@ class VirtualMachine(object):
       if isinstance(v, mixin.PythonConstant) and isinstance(v.pyval, bool):
         const = v.pyval is true_val
       elif not v.compatible_with(True):
-        const = False is true_val
+        const = not true_val
       elif not v.compatible_with(False):
-        const = True is true_val
+        const = true_val
       else:
         const = None
       bool_var.AddBinding(self.convert.bool_values[const], {b}, node)
@@ -2567,18 +2567,18 @@ class VirtualMachine(object):
   def byte_STORE_ANNOTATION(self, state, op):
     """Implementation of the STORE_ANNOTATION opcode."""
     state, annotations_var = self.load_local(state, "__annotations__")
-    annotations = abstract_utils.get_atomic_value(annotations_var)
     name = self.frame.f_code.co_names[op.arg]
     state, value = state.pop()
     try:
-      # TODO(ahxun): treat annotated variables as if they always have an
-      # initial value.
-      if self.load_local(state, name):  # variable is defined
-        self.store_local(state, name, self.annotations_util.type_to_value(
-            state.node, name, value))
+      self.load_local(state, name)
     except KeyError:
       pass
-    annotations.set_str_item(state.node, name, value)
+    else:
+      # The variable is defined. Replace its value with the annotation.
+      self.store_local(state, name, self.annotations_util.init_annotation_var(
+          state.node, name, value))
+    name_var = self.convert.build_string(state.node, name)
+    state = self.store_subscr(state, annotations_var, name_var, value)
     return self.store_local(state, "__annotations__", annotations_var)
 
   def byte_GET_YIELD_FROM_ITER(self, state, op):

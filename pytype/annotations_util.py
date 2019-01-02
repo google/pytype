@@ -210,10 +210,10 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     func.signature.check_type_parameter_count(
         self.vm.simple_stack(func.get_first_opcode()))
 
-  def type_to_value(self, node, name, type_var):
+  def init_annotation_var(self, node, name, var):
     """Convert annotation type to instance value."""
     try:
-      typ = abstract_utils.get_atomic_value(type_var)
+      typ = abstract_utils.get_atomic_value(var)
     except abstract_utils.ConversionError:
       error = "Type must be constant for variable annotation"
       self.vm.errorlog.invalid_annotation(self.vm.frames, None, error, name)
