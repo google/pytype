@@ -920,12 +920,7 @@ class VirtualMachine(object):
       node = self.join_cfg_nodes(nodes)
       if not result.bindings:
         result.AddBinding(self.convert.unsolvable, [], node)
-      elif ((not allow_noreturn or len(result.bindings) > 1) and
-            self.convert.no_return in result.data):
-        # TODO(rechen): Once we enforce that NoReturn is allowed to appear only
-        # as the sole return type of a function, when allow_noreturn is True
-        # we should be able to assert that either no_return is not among
-        # result.data or len(result.bindings) == 1.
+      elif not allow_noreturn and self.convert.no_return in result.data:
         new_result = self.program.NewVariable()
         for b in result.bindings:
           if b.data != self.convert.no_return:
