@@ -586,9 +586,9 @@ class IndexVisitor(ScopedVisitor):
       # Search for imported module names
       text = self.source.line(node.lineno)
       name = args["name"]
-      c = text.index(" " + name)
+      c = text.find(" " + name)
       if c == -1:
-        c = text.index("," + name)
+        c = text.find("," + name)
       if c != -1:
         line, col = node.lineno, c + 1
 

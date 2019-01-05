@@ -1,5 +1,6 @@
 # Error classes
 
+
 pytype has the following classes of errors, which can be disabled with a
 `pytype: disable=error-class` directive. For example, to suppress an
 error for a missing attribute `foo`:
@@ -60,7 +61,7 @@ y = a.bar
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2018-09-27T16:00-07:00 -->
+<!-- Added by: rechen, at: 2019-01-04T17:45-08:00 -->
 
 <!--te-->
 
@@ -81,7 +82,6 @@ To make pytype aware of `foo`, declare it as a class attribute (with the literal
 ellipses) and supply the type in a type comment:
 
 ```python {.good}
-
 class A(object):
   foo = ...  # type: int
 ```
@@ -119,7 +119,6 @@ At least one of the possible types for the return value does not match the
 declared return type. Example:
 
 ```python {.bad}
-
 def f(x) -> int:
   if x:
     return 42
@@ -208,7 +207,6 @@ The module being imported was not found.
 Something is wrong with this annotation. Examples:
 
 ```python {.bad}
-
 from typing import List, TypeVar, Union
 
 T = TypeVar("T")
@@ -330,7 +328,6 @@ takes effect for the rest of the file, regardless of indentation, which is
 probably not what you want:
 
 ```python {.bad}
-
 def f() -> bool:
   # pytype: disable=bad-return-type  # late-directive
   return 42
@@ -339,13 +336,11 @@ def f() -> bool:
 Two equally acceptable fixes:
 
 ```python {.good}
-
 def f() -> bool:
   return 42  # pytype: disable=bad-return-type
 ```
 
 ```python {.good}
-
 # pytype: disable=bad-return-type
 def f() -> bool:
   return 42
@@ -472,7 +467,6 @@ Using both inline annotations and a type comment to annotate the same function
 is not allowed. Example:
 
 ```python {.bad}
-
 def f() -> None:
   # type: () -> None  # redundant-function-type-comment
   pass
@@ -533,7 +527,6 @@ add(1, 2, 3)  # wrong-arg-count
 The function was called with the wrong argument types. Example:
 
 ```python {.bad}
-
 def f(x: int):
   pass
 f(42.0)  # wrong-arg-types
@@ -549,4 +542,5 @@ def f(x=True):
   pass
 f(y=False)  # wrong-keyword-args
 ```
+
 

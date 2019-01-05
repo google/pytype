@@ -42,14 +42,13 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
       from typing import List
 
       lst: List[int] = []
-      captain: str  # Note: no initial value!
 
-      x : int = 1
+      x: int = 1
       y = 2
 
       class A(object):
         a: int = 1
-        b: int = 2
+        b = 2
     """)
     self.assertTypesMatchPytd(ty, """\
       from typing import List
@@ -85,6 +84,37 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
         (9, "not-supported-yet", r"type parameter.*variable annotation"),
         (10, "invalid-annotation", r"Type must be constant"),
         (11, "invalid-annotation", r"NoReturn is not allowed")])
+
+  def testUninitializedClassAnnotation(self):
+    ty = self.Infer("""
+      class Foo:
+        bar: int
+        def baz(self):
+          return self.bar
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Foo:
+        bar: int
+        def baz(self) -> int
+    """)
+
+  def testUninitializedModuleAnnotation(self):
+    ty = self.Infer("""
+      foo: int
+      bar = foo
+    """)
+    self.assertTypesMatchPytd(ty, """
+      foo: int
+      bar: int
+    """)
+
+  def testOverwriteAnnotationsDict(self):
+    errors = self.CheckWithErrors("""\
+      __annotations__ = None
+      foo: int
+    """)
+    self.assertErrorLogIs(
+        errors, [(2, "unsupported-operands", r"None.*__setitem__")])
 
 
 test_base.main(globals(), __name__ == "__main__")

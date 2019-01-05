@@ -451,6 +451,10 @@ class CallTracer(vm.VirtualMachine):
   def pytd_for_types(self, defs):
     data = []
     for name, var in defs.items():
+      if name == "__annotations__":
+        for annot_name, types in (
+            self.convert.pytd_convert.annotations_to_instance_types(var)):
+          data.append(pytd.Constant(annot_name, pytd_utils.JoinTypes(types)))
       if name in output.TOP_LEVEL_IGNORE or self._is_builtin(name, var.data):
         continue
       options = var.FilteredData(self.exitpoint)

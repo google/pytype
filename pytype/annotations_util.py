@@ -210,10 +210,10 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     func.signature.check_type_parameter_count(
         self.vm.simple_stack(func.get_first_opcode()))
 
-  def type_to_value(self, node, name, type_var):
+  def init_annotation_var(self, node, name, var):
     """Convert annotation type to instance value."""
     try:
-      typ = abstract_utils.get_atomic_value(type_var)
+      typ = abstract_utils.get_atomic_value(var)
     except abstract_utils.ConversionError:
       error = "Type must be constant for variable annotation"
       self.vm.errorlog.invalid_annotation(self.vm.frames, None, error, name)
@@ -278,6 +278,16 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         return self.vm.new_unsolvable(node)
       new_var.AddBinding(annot, {b}, node)
     return new_var
+
+  def init_from_annotations(self, node, name, annots_var):
+    """Instantiate `name` from the given __annotations__ dict."""
+    try:
+      annots = abstract_utils.get_atomic_python_constant(annots_var, dict)
+    except abstract_utils.ConversionError:
+      return None
+    if name not in annots:
+      return None
+    return self.init_annotation_var(node, name, annots[name])
 
   def _eval_multi_arg_annotation(self, node, func, f_globals, f_locals, annot):
     """Evaluate annotation for multiple arguments (from a type comment)."""

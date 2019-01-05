@@ -920,12 +920,7 @@ class VirtualMachine(object):
       node = self.join_cfg_nodes(nodes)
       if not result.bindings:
         result.AddBinding(self.convert.unsolvable, [], node)
-      elif ((not allow_noreturn or len(result.bindings) > 1) and
-            self.convert.no_return in result.data):
-        # TODO(rechen): Once we enforce that NoReturn is allowed to appear only
-        # as the sole return type of a function, when allow_noreturn is True
-        # we should be able to assert that either no_return is not among
-        # result.data or len(result.bindings) == 1.
+      elif not allow_noreturn and self.convert.no_return in result.data:
         new_result = self.program.NewVariable()
         for b in result.bindings:
           if b.data != self.convert.no_return:
@@ -1015,9 +1010,14 @@ class VirtualMachine(object):
       name: Name of the local
 
     Returns:
-      The value (cfg.Variable)
+      A tuple of the state and the value (cfg.Variable)
     """
-    return self.load_from(state, self.frame.f_locals, name)
+    try:
+      return self.load_from(state, self.frame.f_locals, name)
+    except KeyError:
+      # A variable has been declared but not defined, e.g.,
+      #   constant: str
+      return self._load_annotation(state, name)
 
   def load_global(self, state, name):
     return self.load_from(
@@ -1045,6 +1045,17 @@ class VirtualMachine(object):
     const = self.convert.constant_to_var(raw_const, node=state.node)
     self.trace_opcode(op, raw_const, const)
     return state.push(const)
+
+  def _load_annotation(self, state, name):
+    try:
+      state, annots = self.load_from(
+          state, self.frame.f_locals, "__annotations__")
+    except KeyError:
+      raise KeyError(name)
+    ret = self.annotations_util.init_from_annotations(state.node, name, annots)
+    if ret:
+      return state, ret
+    raise KeyError(name)
 
   def _store_value(self, state, name, value, local):
     if local:
@@ -1723,9 +1734,9 @@ class VirtualMachine(object):
       if isinstance(v, mixin.PythonConstant) and isinstance(v.pyval, bool):
         const = v.pyval is true_val
       elif not v.compatible_with(True):
-        const = False is true_val
+        const = not true_val
       elif not v.compatible_with(False):
-        const = True is true_val
+        const = true_val
       else:
         const = None
       bool_var.AddBinding(self.convert.bool_values[const], {b}, node)
@@ -2567,18 +2578,18 @@ class VirtualMachine(object):
   def byte_STORE_ANNOTATION(self, state, op):
     """Implementation of the STORE_ANNOTATION opcode."""
     state, annotations_var = self.load_local(state, "__annotations__")
-    annotations = abstract_utils.get_atomic_value(annotations_var)
     name = self.frame.f_code.co_names[op.arg]
     state, value = state.pop()
     try:
-      # TODO(ahxun): treat annotated variables as if they always have an
-      # initial value.
-      if self.load_local(state, name):  # variable is defined
-        self.store_local(state, name, self.annotations_util.type_to_value(
-            state.node, name, value))
+      self.load_local(state, name)
     except KeyError:
       pass
-    annotations.set_str_item(state.node, name, value)
+    else:
+      # The variable is defined. Replace its value with the annotation.
+      self.store_local(state, name, self.annotations_util.init_annotation_var(
+          state.node, name, value))
+    name_var = self.convert.build_string(state.node, name)
+    state = self.store_subscr(state, annotations_var, name_var, value)
     return self.store_local(state, "__annotations__", annotations_var)
 
   def byte_GET_YIELD_FROM_ITER(self, state, op):

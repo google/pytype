@@ -37,7 +37,7 @@ def parse_args(argv):
   """Process command line arguments using argparse."""
 
   parser = argparse.ArgumentParser(
-      description='Copy type annotations from file.pyi to file.py.',
+      description='Populate file.py with type annotations from file.pyi.',
       epilog='Outputs merged file to stdout.')
 
   group = parser.add_mutually_exclusive_group()

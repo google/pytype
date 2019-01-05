@@ -24,11 +24,11 @@ ARGS = "_ARGS"
 RET = "_RET"
 
 
+# TODO(rechen): Stop supporting all variants except _HAS_DYNAMIC_ATTRIBUTES.
 DYNAMIC_ATTRIBUTE_MARKERS = [
     "HAS_DYNAMIC_ATTRIBUTES",
     "_HAS_DYNAMIC_ATTRIBUTES",
     "has_dynamic_attributes",
-    "_has_dynamic_attributes",
 ]
 
 
