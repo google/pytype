@@ -1,5 +1,6 @@
 # Error classes
 
+
 pytype has the following classes of errors, which can be disabled with a
 `pytype: disable=error-class` directive. For example, to suppress an
 error for a missing attribute `foo`:
@@ -60,7 +61,7 @@ y = a.bar
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2019-01-04T16:26-08:00 -->
+<!-- Added by: rechen, at: 2019-01-04T17:45-08:00 -->
 
 <!--te-->
 
