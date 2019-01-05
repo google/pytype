@@ -61,7 +61,7 @@ y = a.bar
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2019-01-04T17:45-08:00 -->
+<!-- Added by: rechen, at: 2019-01-04T20:49-08:00 -->
 
 <!--te-->
 
@@ -445,6 +445,8 @@ Foo().z = 42  # not-writable
 
 The pyi file contains a syntax error.
 
+If you encounter this error in a pyi file that you did not create yourself,
+please [file a bug][new-bug].
 
 ## python-compiler-error
 
@@ -460,6 +462,8 @@ class A(B): ...
 class B(A): ...
 ```
 
+If you encounter this error in a pyi file that you did not create yourself,
+please [file a bug][new-bug].
 
 ## redundant-function-type-comment
 
@@ -544,3 +548,5 @@ f(y=False)  # wrong-keyword-args
 ```
 
 
+
+[new-bug]: https://github.com/google/pytype/issues/new
