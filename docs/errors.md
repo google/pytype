@@ -60,7 +60,7 @@ y = a.bar
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2019-01-04T12:17-08:00 -->
+<!-- Added by: rechen, at: 2019-01-04T16:26-08:00 -->
 
 <!--te-->
 
