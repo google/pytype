@@ -291,6 +291,19 @@ class TestExceptions(test_base.TargetIndependentTest):
       def f() -> int
     """)
 
+  def test_return_or_raise_set_attribute(self):
+    errors = self.CheckWithErrors("""\
+      def f():
+        raise ValueError()
+      def g():
+        return ""
+      def h():
+        func = f if __random__ else g
+        v = func()
+        v.attr = None
+    """)
+    self.assertErrorLogIs(errors, [(8, "not-writable")])
+
   def test_bad_type_self(self):
     errors = self.CheckWithErrors("""\
       class Foo(object):

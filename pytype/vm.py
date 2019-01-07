@@ -904,6 +904,7 @@ class VirtualMachine(object):
     result = self.program.NewVariable()
     nodes = []
     error = None
+    has_noreturn = False
     for funcv in funcu.bindings:
       func = funcv.data
       assert isinstance(func, abstract.AtomicAbstractValue), type(func)
@@ -914,18 +915,23 @@ class VirtualMachine(object):
         if e > error:
           error = e
       else:
-        result.PasteVariable(one_result, new_node, {funcv})
+        if self.convert.no_return in one_result.data:
+          if allow_noreturn:
+            # Make sure NoReturn was the only thing returned.
+            assert len(one_result.data) == 1
+            has_noreturn = True
+          else:
+            for b in one_result.bindings:
+              if b.data != self.convert.no_return:
+                result.PasteBinding(b)
+        else:
+          result.PasteVariable(one_result, new_node, {funcv})
         nodes.append(new_node)
     if nodes:
       node = self.join_cfg_nodes(nodes)
       if not result.bindings:
-        result.AddBinding(self.convert.unsolvable, [], node)
-      elif not allow_noreturn and self.convert.no_return in result.data:
-        new_result = self.program.NewVariable()
-        for b in result.bindings:
-          if b.data != self.convert.no_return:
-            new_result.PasteBinding(b)
-        result = new_result
+        v = self.convert.no_return if has_noreturn else self.convert.unsolvable
+        result.AddBinding(v, [], node)
       return node, result
     else:
       if fallback_to_unsolvable:
