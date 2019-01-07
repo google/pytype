@@ -13,7 +13,7 @@
       * [How do I disable all pytype checks for a particular import?](#how-do-i-disable-all-pytype-checks-for-a-particular-import)
       * [How do I write code that is seen by pytype but ignored at runtime?](#how-do-i-write-code-that-is-seen-by-pytype-but-ignored-at-runtime)
 
-<!-- Added by: rechen, at: 2019-01-04T19:58-08:00 -->
+<!-- Added by: rechen, at: 2019-01-07T01:30-08:00 -->
 
 <!--te-->
 
@@ -120,6 +120,7 @@ inserting `Any` where you would have used it. See the
 
 
 <!-- General references -->
+[compatibility]: user_guide#compatibility
 [how-do-i-disable-all-pytype-checks-for-a-particular-file]: #how-do-i-disable-all-pytype-checks-for-a-particular-file
 [why-is-pytype-taking-so-long]: #why-is-pytype-taking-so-long
 
