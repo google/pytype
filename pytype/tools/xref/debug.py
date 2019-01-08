@@ -41,7 +41,7 @@ def show_defs(index):
 
 
 def show_refs(index):
-  for ref, defn in index._links:
+  for ref, defn in index.links:
     print(format_ref(ref))
     if defn:
       print("          :  ", defn.format())
