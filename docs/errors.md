@@ -18,6 +18,7 @@ y = a.bar
 # pytype: enable=attribute-error
 ```
 
+See [Silencing Errors][silencing-errors] for a more detailed example.
 
 <!--ts-->
    * [Error classes](#error-classes)
@@ -61,7 +62,7 @@ y = a.bar
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2019-01-04T17:45-08:00 -->
+<!-- Added by: rechen, at: 2019-01-07T01:30-08:00 -->
 
 <!--te-->
 
@@ -163,6 +164,8 @@ def f(x):
 f(True, x=False)  # duplicate-keyword-argument
 ```
 
+If you believe you are seeing this error due to a bug on pytype's end, see
+[this section][pyi-stub-files] for where the type information we use is located.
 
 ## ignored-abstractmethod
 
@@ -357,6 +360,8 @@ def add(x, y):
 add(42)  # missing-parameter
 ```
 
+If you believe you are seeing this error due to a bug on pytype's end, see
+[this section][pyi-stub-files] for where the type information we use is located.
 
 ## module-attr
 
@@ -445,6 +450,8 @@ Foo().z = 42  # not-writable
 
 The pyi file contains a syntax error.
 
+If you encounter this error in a pyi file that you did not create yourself,
+please [file a bug][new-bug].
 
 ## python-compiler-error
 
@@ -460,6 +467,8 @@ class A(B): ...
 class B(A): ...
 ```
 
+If you encounter this error in a pyi file that you did not create yourself,
+please [file a bug][new-bug].
 
 ## redundant-function-type-comment
 
@@ -521,6 +530,8 @@ def add(x, y):
 add(1, 2, 3)  # wrong-arg-count
 ```
 
+If you believe you are seeing this error due to a bug on pytype's end, see
+[this section][pyi-stub-files] for where the type information we use is located.
 
 ## wrong-arg-types
 
@@ -532,6 +543,8 @@ def f(x: int):
 f(42.0)  # wrong-arg-types
 ```
 
+If you believe you are seeing this error due to a bug on pytype's end, see
+[this section][pyi-stub-files] for where the type information we use is located.
 
 ## wrong-keyword-args
 
@@ -543,4 +556,13 @@ def f(x=True):
 f(y=False)  # wrong-keyword-args
 ```
 
+If you believe you are seeing this error due to a bug on pytype's end, see
+[this section][pyi-stub-files] for where the type information we use is located.
+
+<!-- General references -->
+[pyi-stub-files]: user_guide#pytypes-pyi-stub-files
+[silencing-errors]: user_guide#silencing-errors
+
+<!-- References with different internal and external versions -->
+[new-bug]: https://github.com/google/pytype/issues/new
 

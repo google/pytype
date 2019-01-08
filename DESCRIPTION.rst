@@ -1,60 +1,27 @@
 Pytype
 ------
 
-Statically check and infer types for unannotated Python code.
+Pytype type-checks and type-annotates your Python code - without running
+it. Pytype can:
 
-Abstract
---------
+-  Lint plain Python code, flagging common mistakes such as mispelled
+   attribute names, incorrect function calls, and `much
+   more <docs/errors.md>`__, even across file boundaries.
+-  Enforce user-provided `type
+   annotations <https://www.python.org/dev/peps/pep-0484>`__. While
+   annotations are optional for pytype, it will check and apply them
+   where present.
+-  Generate type annotations in standalone files ("`pyi
+   files <docs/user_guide.md#pyi-stub-files>`__"), which can be merged
+   back into the Python source with a provided
+   `merge-pyi <https://github.com/google/pytype/tree/master/pytype/tools/merge_pyi>`__
+   tool.
 
-Pytype is a static analyzer that helps you find type errors in Python
-code. It can type-check code with or without `type
-annotations <https://www.python.org/dev/peps/pep-0484/>`__, as well as
-generate annotations. Pytype runs under Python 2.7 or 3.5+ and analyzes
-both Python 2 and Python 3 code.
+Thousands of projects at Google rely on pytype to keep their Python code
+well-typed and error-free.
 
-Example
--------
-
-Below, ``print_greeting`` calls ``make_greeting`` incorrectly:
-
-::
-
-    $ cat foo.py
-
-    def make_greeting(user_id):
-        return 'hello, user' + user_id
-
-    def print_greeting():
-        print(make_greeting(0))
-
-Run pytype to catch the bug:
-
-::
-
-    $ pytype foo.py
-
-    File "foo.py", line 2, in make_greeting: unsupported operand type(s) for +: 'str' and 'int' [unsupported-operands]
-      str.__add__ expected str
-    Traceback:
-      line 5, in print_greeting
-
-Merge pytype's generated type information back into ``foo.py``:
-
-::
-
-    $ cat pytype_output/foo.pyi
-
-    def make_greeting(user_id) -> str: ...
-    def print_greeting() -> None: ...
-
-    $ merge-pyi -i foo.py pytype_output/foo.pyi
-    $ cat foo.py
-
-    def make_greeting(user_id) -> str:
-        return 'hello, user' + user_id
-
-    def print_greeting() -> None:
-        print(make_greeting(0))
+For more information, check out the `user guide <docs/user_guide.md>`__
+or `FAQ <docs/faq.md>`__.
 
 Requirements
 ------------
@@ -71,16 +38,40 @@ Platform support:
    higher.
 -  Windows is currently not supported.
 
-Quickstart resources
---------------------
+Quickstart
+----------
 
-The rest of this document provides complete instructions for installing
-and using pytype. To quickly get started with some common workflows,
-check out the following docs:
+To quickly get started with type-checking a file or directory, run the
+following, replacing ``file_or_directory`` with your input:
 
--  `Quickstart <https://github.com/google/pytype/tree/master/docs/quickstart.md>`__
--  `Error
-   classes <https://github.com/google/pytype/tree/master/docs/errors.md>`__
+::
+
+    pip install pytype
+    pytype file_or_directory
+
+To set up pytype on an entire package, add the following to a
+``setup.cfg`` file in the directory immediately above the package,
+replacing ``package_name`` with the package name:
+
+::
+
+    [pytype]
+    inputs = package_name
+
+Now you can run the no-argument command ``pytype`` to type-check the
+package. It's also easy to add pytype to your automated testing; see
+this
+`example <https://github.com/google/importlab/blob/master/.travis.yml>`__
+of a GitHub project that runs pytype on Travis.
+
+Finally, pytype generates files of inferred type information, located by
+default in ``pytype_output/pyi``. You can use this information to
+type-annotate the corresponding source file, replacing ``module.py``
+with the file's import path:
+
+::
+
+    merge-pyi -i module.py pytype_output/pyi/module.pyi
 
 Installing
 ----------
@@ -127,12 +118,9 @@ Common options:
    code. Defaults to ``3.6``.
 -  ``-o, --output``: The directory into which all pytype output goes,
    including generated .pyi files. Defaults to ``pytype_output``.
--  ``-P, --pythonpath``. Paths to source code directories, separated by
-   ':'. Defaults to an educated guess based on ``input``.
 -  ``-d, --disable``. Comma separated list of error names to ignore.
    Detailed explanations of pytype's error names are in `this
-   doc <https://github.com/google/pytype/tree/master/docs/errors.md>`__.
-   Defaults to empty.
+   doc <docs/errors.md>`__. Defaults to empty.
 
 For a full list of options, run ``pytype --help``.
 
@@ -220,7 +208,7 @@ Subtools
 
 Pytype ships with three scripts in addition to ``pytype`` itself:
 
--  ```merge-pyi`` <https://github.com/google/pytype/tree/master/pytype/tools/merge_pyi/README.md>`__,
+-  ```merge-pyi`` <https://github.com/google/pytype/tree/master/pytype/tools/merge_pyi>`__,
    for merging type information from a .pyi file into a Python file.
 -  ``pytd``, a parser for .pyi files.
 -  ``pytype-single``, a debugging tool for pytype developers, which
@@ -231,8 +219,6 @@ Roadmap
 -------
 
 -  Windows support
--  A rerun mode to only reanalyze files that have changed since the last
-   run
 
 License
 -------
