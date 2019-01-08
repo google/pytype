@@ -864,7 +864,7 @@ class Indexer(object):
     self.classmap = None
     self.calls = None
     self.kythe = None
-    self._links = []  # for debugging purposes
+    self.links = []
 
   def index(self, code_ast):
     """Index an AST corresponding to self.source."""
@@ -912,7 +912,7 @@ class Indexer(object):
     """
 
     links = self._lookup_refs()
-    self._links = links
+    self.links = links
     self._process_deflocs()
     self._process_links(links)
     self._process_calls(links)
@@ -1215,7 +1215,7 @@ def process_file(options, source_text=None):
       to by options.input if not supplied.
 
   Returns:
-    An Indexer object with the indexed code.
+    An Indexer object with the indexed code, or None if pytype fails.
   """
 
   # We bind the global ast variable in this function.
@@ -1240,7 +1240,7 @@ def process_file(options, source_text=None):
         tracer_vm=vm)
   except utils.UsageError as e:
     logging.error("Usage error: %s\n", utils.message(e))
-    return 1
+    return None
 
   major, minor = options.python_version
   if major == 2:
