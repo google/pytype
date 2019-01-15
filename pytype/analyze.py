@@ -298,6 +298,26 @@ class CallTracer(vm.VirtualMachine):
       self._instance_cache[key] = instance
     return node, self._instance_cache[key]
 
+  def _call_method(self, node, binding, method_name):
+    node, method = self.attribute_handler.get_attribute(
+        node, binding.data.get_class(), method_name, binding)
+    if method:
+      bound_method = self.bind_method(
+          node, method_name, method, binding.AssignToNewVariable())
+      try:
+        node = self.analyze_method_var(node, method_name, bound_method)
+      except vm.VirtualMachineRecursionError:
+        # We've encountered recursion during a call to __init__, which means
+        # we have another incompletely initialized instance of the same class
+        # (or a subclass) at the same node. (See, e.g.,
+        # testRecursiveConstructor and testRecursiveConstructorSubclass in
+        # test_classes.ClassesTest.) If we allow the
+        # VirtualMachineRecursionError to be raised, initialization of that
+        # first instance will be aborted. Instead, mark this second instance
+        # as incomplete.
+        self._mark_maybe_missing_members([binding.data])
+    return node
+
   def call_init(self, node, instance):
     # Call __init__ on each binding.
     # TODO(kramm): This should do join_cfg_nodes, instead of concatenating them.
@@ -308,23 +328,11 @@ class CallTracer(vm.VirtualMachine):
       if isinstance(b.data, abstract.SimpleAbstractValue):
         for param in b.data.instance_type_parameters.values():
           node = self.call_init(node, param)
-      node, init = self.attribute_handler.get_attribute(
-          node, b.data.get_class(), "__init__", b)
-      if init:
-        bound_init = self.bind_method(
-            node, "__init__", init, b.AssignToNewVariable())
-        try:
-          node = self.analyze_method_var(node, "__init__", bound_init)
-        except vm.VirtualMachineRecursionError:
-          # We've encountered recursion during an __init__ call, which means
-          # we have another incompletely initialized instance of the same class
-          # (or a subclass) at the same node. (See, e.g.,
-          # testRecursiveConstructor and testRecursiveConstructorSubclass in
-          # test_classes.ClassesTest.) If we allow the
-          # VirtualMachineRecursionError to be raised, initialization of that
-          # first instance will be aborted. Instead, mark this second instance
-          # as incomplete.
-          self._mark_maybe_missing_members([b.data])
+      node = self._call_method(node, b, "__init__")
+      # Test classes initialize attributes in setUp() as well.
+      cls = b.data.get_class()
+      if isinstance(cls, abstract.InterpreterClass) and cls.is_test_class:
+        node = self._call_method(node, b, "setUp")
     return node
 
   def analyze_class(self, node, val):
