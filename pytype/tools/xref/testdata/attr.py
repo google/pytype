@@ -34,3 +34,12 @@ class B(object):
     #- @self ref ArgBSelf
     #- @bar defines/binding AttrBar
     self.bar = []
+    return self
+
+  ## Attribute accesses could span several lines
+  def baz(self):
+    (self.
+     #- @init_bar ref FnInitBar
+     init_bar()
+     #- @bar ref AttrBar
+     .bar)

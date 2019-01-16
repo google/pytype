@@ -27,6 +27,7 @@ class Kythe(object):
     self.root = root
     self.corpus = corpus
     self.entries = []
+    self._seen_entries = set()
     self.file_vname = self._add_file(source.text)
 
   def _encode(self, value):
@@ -40,6 +41,13 @@ class Kythe(object):
     self.add_fact(vname, "node/kind", "file")
     self.add_fact(vname, "text", file_contents)
     return vname
+
+  def _add_entry(self, entry):
+    """Make sure we don't have duplicate entries."""
+    if entry in self._seen_entries:
+      return
+    self._seen_entries.add(entry)
+    self.entries.append(entry)
 
   def vname(self, signature, filepath=None):
     return VName(
@@ -64,12 +72,12 @@ class Kythe(object):
 
   def add_fact(self, source, fact_name, fact_value):
     fact = self.fact(source, fact_name, fact_value)
-    self.entries.append(fact)
+    self._add_entry(fact)
     return fact
 
   def add_edge(self, source, edge_name, target):
     edge = self.edge(source, edge_name, target)
-    self.entries.append(edge)
+    self._add_entry(edge)
     return edge
 
   def add_anchor(self, start, end):
