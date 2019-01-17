@@ -194,6 +194,27 @@ class ClassesTest(test_base.TargetPython3BasicTest):
         bar: int
     """)
 
+  def testInitTestClassInInitAndSetup(self):
+    ty = self.Infer("""\
+      import unittest
+      class A(unittest.TestCase):
+        def __init__(self, foo: str):
+          self.foo = foo
+        def setUp(self):
+          self.x = 10
+        def fooTest(self):
+          return self.x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import unittest
+      unittest = ...  # type: module
+      class A(unittest.TestCase):
+          x = ...  # type: int
+          foo = ...  # type: str
+          def __init__(self, foo: str) -> NoneType
+          def fooTest(self) -> int: ...
+    """)
+
 
 class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for classes."""
