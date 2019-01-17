@@ -75,6 +75,16 @@ class UtilsTest(unittest.TestCase):
     with self.assertRaises(utils.UsageError):
       utils.validate_version(python_version)
 
+  def testParseInterpreterVersion(self):
+    test_cases = (
+        ("Python 2.7.8", (2, 7)),
+        ("Python 3.6.3", (3, 6)),
+        ("Python 3.6.4 :: Something custom (64-bit)", (3, 6)),
+        ("[OS-Y 64-bit] Python 3.7.1", (3, 7)),
+    )
+    for version_str, expected in test_cases:
+      self.assertEqual(expected, utils.parse_exe_version_string(version_str))
+
 
 def _make_tuple(x):
   return tuple(range(x))
