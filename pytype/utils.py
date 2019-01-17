@@ -149,13 +149,35 @@ def get_python_exe(python_version):
 
 
 def get_python_exe_version(python_exe):
+  """Determine the major and minor version of given Python executable.
+  
+  Arguments:
+    python_exe: absolute path to the Python executable
+  Returns:
+    Version as (major, minor) tuple"""
   try:
     python_exe_version = subprocess.check_output(
         python_exe + " -V", shell=True, stderr=subprocess.STDOUT).decode()
   except subprocess.CalledProcessError:
     return None
-  # Turn "Python major.minor.micro" into (major, minor)
-  return split_version(python_exe_version.split()[-1].rsplit(".", 1)[0])
+
+  return parse_exe_version_string(python_exe_version)
+
+
+def parse_exe_version_string(version_str):
+  """Parse the version string of a Python executable.
+  
+  Arguments:
+    version_str: Version string as emitted by running `PYTHON_EXE -V`
+  Returns:
+    Version as (major, minor) tuple"""
+  # match the major.minor part of the version string, ignore the micro part
+  matcher = re.search(r'Python (\d+\.\d+)\.\d+', version_str)
+
+  if matcher:
+    return split_version(matcher.group(1))
+  else:
+    return None
 
 
 def list_startswith(l, prefix):
