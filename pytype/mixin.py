@@ -212,6 +212,10 @@ class Class(object):
   def is_abstract(self):
     return self.has_abstract_metaclass and bool(self.abstract_methods)
 
+  @property
+  def is_test_class(self):
+    return any(base.full_name == "unittest.TestCase" for base in self.mro)
+
   def _get_inherited_metaclass(self):
     for base in self.mro[1:]:
       if isinstance(base, Class) and base.cls is not None:
@@ -259,13 +263,21 @@ class Class(object):
         node = self._call_init(node, val, args)
     return node, variable
 
+  def _call_method(self, node, value, method_name, args):
+    node, method = self.vm.attribute_handler.get_attribute(
+        node, value.data, method_name, value)
+    if method:
+      call_repr = "%s.%s(..._)" % (self.name, method_name)
+      log.debug("calling %s", call_repr)
+      node, ret = self.vm.call_function(node, method, args)
+      log.debug("%s returned %r", call_repr, ret)
+    return node
+
   def _call_init(self, node, value, args):
-    node, init = self.vm.attribute_handler.get_attribute(
-        node, value.data, "__init__", value)
-    if init:
-      log.debug("calling %s.__init__(...)", self.name)
-      node, ret = self.vm.call_function(node, init, args)
-      log.debug("%s.__init__(...) returned %r", self.name, ret)
+    node = self._call_method(node, value, "__init__", args)
+    # Test classes initialize attributes in setUp() as well.
+    if self.is_test_class:
+      node = self._call_method(node, value, "setUp", function.Args(()))
     return node
 
   def _new_instance(self):

@@ -158,8 +158,20 @@ class SourceFile(object):
     for l in range(start_line, end_line):
       col = self.line(l).find(text)
       if col > -1:
+        # TODO(mdemello): Temporary hack, replace with a token stream!
+        # This will break if we have a # in a string before our desired text.
+        comment_marker = self.line(l).find("#")
+        if comment_marker > -1 and comment_marker < col:
+          continue
         return (l, col)
     return None, None
+
+  def next_non_comment_line(self, line):
+    for l in range(line + 1, len(self.lines)):
+      if self.line(l).lstrip().startswith("#"):
+        continue
+      return l
+    return None
 
   def display_traces(self):
     """Debug printing of source + traces per line."""
@@ -964,12 +976,52 @@ class Indexer(object):
     # TODO(mdemello): This is pretty crude, and does not for example take into
     # account multiple calls of the same attribute in a line. It is just to get
     # our tests passing till we incorporate asttokens.
-    lineno, col = location
-    line = self.source.line(lineno)
+    line, _ = location
+    src_line = self.source.line(line)
     attr = name.split(".")[-1]
-    offset = line.index("." + attr) - col + 1
-    start, end = self.get_anchor_bounds(location, len(attr))
-    return (start + offset, end + offset)
+    dot_attr = "." + attr
+    if dot_attr in src_line:
+      col = src_line.index(dot_attr)
+      start = self.source.get_offset(line, col) + 1
+      end = start + len(attr)
+      return (start, end)
+    else:
+      # We have something like
+      #   (foo
+      #      .bar)
+      # or
+      #   (foo.
+      #     bar)
+      # Lookahead up to 5 lines to find '.attr' (the ast node always starts from
+      # the beginning of the chain, so foo.\nbar.\nbaz etc could span several
+      # lines).
+      start, end = self.get_multiline_bounds(location, 5, dot_attr)
+      if start:
+        start, end = start + 1, end
+      else:
+        # Find consecutive lines ending with '.' and starting with 'attr'.
+        for l in range(line, line + 5):
+          if self.source.line(l).endswith("."):
+            next_line = self.source.next_non_comment_line(l)
+            text = self.source.line(next_line)
+            if text.lstrip().startswith(attr):
+              c = text.find(attr)
+              start, end = self.get_anchor_bounds((next_line, c), len(attr))
+      if not start:
+        # if all else fails, fall back to just spanning the name
+        start, end = self.get_anchor_bounds(location, len(name))
+      return (start, end)
+
+  def get_multiline_bounds(self, location, n_lines, text):
+    """Get a span of text anywhere within n_lines of location."""
+    line, _ = location
+    text_line, text_col = self.source.find_text(line, line + n_lines, text)
+    if text_line:
+      start = self.source.get_offset(text_line, text_col)
+      end = start + len(text)
+      return (start, end)
+    else:
+      return (None, None)
 
   def get_anchor_bounds(self, location, length):
     """Generate byte offsets from a location and length."""

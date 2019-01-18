@@ -26,6 +26,19 @@ class ConfigTest(unittest.TestCase):
     self.assertEqual(opts.output, "out.pyi")
     self.assertEqual(opts.input, "test.py")
 
+  def test_create(self):
+    opts = config.Options.create(input_filename="foo.py", python_version="3.6",
+                                 use_pickled_files=True, python_exe="foo.exe")
+    self.assertEqual(opts.input, "foo.py")
+    self.assertEqual(opts.use_pickled_files, True)
+    self.assertEqual(opts.python_version, (3, 6))
+    self.assertEqual(opts.python_exe, "foo.exe")
+
+    opts = config.Options.create(python_version=(2, 7), use_pickled_files=True)
+    self.assertEqual(opts.use_pickled_files, True)
+    self.assertEqual(opts.python_version, (2, 7))
+    self.assertIn("2.7", opts.python_exe)
+
   def test_analyze_annotated_check(self):
     argv = ["--check", "test.py"]
     opts = config.Options(argv)

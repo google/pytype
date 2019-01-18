@@ -44,21 +44,38 @@ class Options(object):
     argument_parser = make_parser()
     options = argument_parser.parse_args(argv)
     names = set(vars(options))
+    self._adjust_python_exe = True
     try:
       Postprocessor(names, options, self).process()
     except PostprocessingError as e:
       argument_parser.error(utils.message(e))
 
   @classmethod
-  def create(cls, **kwargs):
+  def create(cls, input_filename=None, **kwargs):
     """Create dummy options for testing."""
-    self = cls(["dummy_input_file"])
+    self = cls([input_filename or "dummy_input_file"])
     self.tweak(**kwargs)
     return self
+
+  def __setattr__(self, name, value):
+    if name == "python_version":
+      if isinstance(value, str):
+        value = utils.split_version(value)
+      if self._adjust_python_exe:
+        super(Options, self).__setattr__("python_exe",
+                                         utils.get_python_exe(value))
+      else:
+        # Python exe adjustment should be unblocked for next time.
+        self._adjust_python_exe = True
+    super(Options, self).__setattr__(name, value)
 
   def tweak(self, **kwargs):
     for k, v in kwargs.items():
       assert hasattr(self, k)  # Don't allow adding arbitrary junk
+      if k == "python_version" and "python_exe" in kwargs:
+        # We do not want to adjust the exe as it will be set (or has been set)
+        # in a different iteration.
+        self._adjust_python_exe = False
       setattr(self, k, v)
 
   def __repr__(self):
