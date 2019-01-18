@@ -3,43 +3,36 @@
 import argparse
 
 from pytype import config as pytype_config
+from pytype.tools import arg_parser
 from pytype.tools.analyze_project import config
 
 
 _ARG_PREFIX = '--'
 
 
-class ParserWrapper(object):
-  """Wrapper that adds arguments to a parser while recording them."""
+class Parser(arg_parser.Parser):
+  """Subclasses Parser to add a config file processor."""
 
-  def __init__(self, parser):
-    self.parser = parser
-    self.actions = {}
+  def config_from_defaults(self):
+    defaults = self.parser.parse_args([])
+    self.postprocess(defaults)
+    conf = config.Config(*self.pytype_single_args)
+    conf.populate_from(defaults)
+    return conf
 
-  def add_argument(self, *args, **kwargs):
-    try:
-      action = self.parser.add_argument(*args, **kwargs)
-    except argparse.ArgumentError:
-      # We deliberately mask some pytype-single options with pytype-all ones.
-      pass
-    else:
-      self.actions[action.dest] = action
+  def clean_args(self, args, keys):
+    """Clean None values out of the arg namespace.
 
+    This lets us check for a config file arg based on whether the None default
+    was overwritten.
 
-def convert_string(s):
-  s = s.replace('\n', '')
-  try:
-    return int(s)
-  except ValueError:
-    return config.string_to_bool(s)
-
-
-class Parser(object):
-  """pytype-all parser."""
-
-  def __init__(self, parser, pytype_single_args):
-    self.parser = parser
-    self.pytype_single_args = pytype_single_args
+    Args:
+      args: an argparse.Namespace.
+      keys: Keys to clean if None
+    """
+    for k in keys:
+      if getattr(args, k) is None:
+        delattr(args, k)
 
   def parse_args(self, argv):
     """Parses argv.
@@ -54,38 +47,11 @@ class Parser(object):
       An argparse.Namespace.
     """
     file_config_names = set(config.ITEMS) | set(self.pytype_single_args)
-    # Creates a namespace that we'll parse argv into, so that we can check for
-    # a file configurable arg by whether the None default was overwritten.
-    args = argparse.Namespace(**{k: None for k in file_config_names})
+    args = self.create_initial_args(file_config_names)
     self.parser.parse_args(argv, args)
-    for k in file_config_names:
-      if getattr(args, k) is None:
-        delattr(args, k)
+    self.clean_args(args, file_config_names)
     self.postprocess(args)
     return args
-
-  def config_from_defaults(self):
-    defaults = self.parser.parse_args([])
-    self.postprocess(defaults)
-    conf = config.Config(*self.pytype_single_args)
-    conf.populate_from(defaults)
-    return conf
-
-  def postprocess(self, args, from_strings=False):
-    """Postprocesses the subset of pytype_single_args that appear in args.
-
-    Args:
-      args: an argparse.Namespace.
-      from_strings: Whether the args are all strings. If so, we'll do our best
-        to convert them to the right types.
-    """
-    names = set()
-    for k in self.pytype_single_args:
-      if hasattr(args, k):
-        names.add(k)
-        if from_strings:
-          setattr(args, k, convert_string(getattr(args, k)))
-    pytype_config.Postprocessor(names, args).process()
 
 
 def make_parser():
@@ -133,7 +99,7 @@ def make_parser():
   ]:
     _add_file_argument(parser, types, *option)
   # Adds options from pytype-single.
-  wrapper = ParserWrapper(parser)
+  wrapper = arg_parser.ParserWrapper(parser)
   pytype_config.add_basic_options(wrapper)
   return Parser(parser, wrapper.actions)
 

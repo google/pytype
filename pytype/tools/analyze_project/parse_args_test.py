@@ -10,20 +10,6 @@ from pytype.tools.analyze_project import parse_args
 import unittest
 
 
-class TestConvertString(unittest.TestCase):
-  """Test parse_args.convert_string."""
-
-  def test_int(self):
-    self.assertEqual(parse_args.convert_string('3'), 3)
-
-  def test_bool(self):
-    self.assertIs(parse_args.convert_string('True'), True)
-    self.assertIs(parse_args.convert_string('False'), False)
-
-  def test_whitespace(self):
-    self.assertEqual(parse_args.convert_string('err1,\nerr2'), 'err1,err2')
-
-
 class TestParser(unittest.TestCase):
   """Test parse_args.Parser."""
 
