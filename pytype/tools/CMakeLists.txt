@@ -2,6 +2,17 @@ add_package()
 
 py_test(
   NAME
+    arg_parser_test
+  SRCS
+    arg_parser_test.py
+  DEPS
+    pytype.libvm
+    pytype.tools
+    pytype.utils
+)
+
+py_test(
+  NAME
     config_test
   SRCS
     config_test.py

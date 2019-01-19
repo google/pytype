@@ -291,11 +291,13 @@ py_library(
     NAME
       tools
     SRCS
+      tools/arg_parser.py
       tools/config.py
       tools/environment.py
       tools/runner.py
       tools/tool_utils.py
     DEPS
+      .libvm
       .utils
 )
 
