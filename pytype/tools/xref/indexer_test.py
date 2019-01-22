@@ -7,6 +7,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 from pytype.tools.xref import indexer
+from pytype.tools.xref import kythe
 from pytype.tools.xref import output
 
 
@@ -91,8 +92,8 @@ class IndexerTest(test_base.TargetIndependentTest):
       self.assertEqual(ix.modules["module.r"], "p.q")
 
       # Collect all the references from the kythe graph.
-      kythe = [json.loads(x) for x in output.json_kythe_graph(ix)]
-      refs = [x for x in kythe
+      kythe_index = [json.loads(x) for x in output.json_kythe_graph(ix)]
+      refs = [x for x in kythe_index
               if x.get("edge_kind") == "/kythe/edge/ref"]
 
       # Extract the span of text and the target symbol for each reference.
@@ -129,6 +130,23 @@ class IndexerTest(test_base.TargetIndependentTest):
     options.tweak(version=self.python_version)
     ix = indexer.process_file(options, source_text=code)
     self.assertDef(ix, "module.f", "f", "FunctionDef")
+
+  def test_kythe_args(self):
+    code = textwrap.dedent("""
+        def f(x):
+          return 42
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("t.py", code)
+      options = config.Options([d["t.py"]])
+      options.tweak(pythonpath=[d.path], version=self.python_version)
+      kythe_args = kythe.Args(corpus="corpus", root="root")
+      ix = indexer.process_file(options, kythe_args=kythe_args)
+      # Collect all the references from the kythe graph.
+      kythe_index = [json.loads(x) for x in output.json_kythe_graph(ix)]
+      k = kythe_index[0]["source"]
+      self.assertEqual(k["corpus"], "corpus")
+      self.assertEqual(k["root"], "root")
 
 
 test_base.main(globals(), __name__ == "__main__")
