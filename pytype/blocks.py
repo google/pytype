@@ -23,7 +23,21 @@ class OrderedCode(object):
   """Code object which knows about instruction ordering.
 
   Attributes:
-    co_*: Same as loadmarshal.CodeType.
+    co_argcount: Same as loadmarshal.CodeType.
+    co_kwonlyargcount: Same as loadmarshal.CodeType.
+    co_nlocals: Same as loadmarshal.CodeType.
+    co_stacksize: Same as loadmarshal.CodeType.
+    co_flags: Same as loadmarshal.CodeType.
+    co_code: Same as loadmarshal.CodeType.
+    co_consts: Same as loadmarshal.CodeType.
+    co_names: Same as loadmarshal.CodeType.
+    co_varnames: Same as loadmarshal.CodeType.
+    co_filename: Same as loadmarshal.CodeType.
+    co_name: Same as loadmarshal.CodeType.
+    co_firstlineno: Same as loadmarshal.CodeType.
+    co_lnotab: Same as loadmarshal.CodeType.
+    co_freevars: Same as loadmarshal.CodeType.
+    co_cellvars: Same as loadmarshal.CodeType.
     order: A list of bytecode blocks. They're ordered ancestors-first, see
       cfg_utils.py:order_nodes.
     python_version: The Python version this bytecode is from.
@@ -49,6 +63,15 @@ class OrderedCode(object):
   def has_opcode(self, op_type):
     return any(isinstance(op, op_type)
                for op in itertools.chain(*(block.code for block in self.order)))
+
+  def has_iterable_coroutine(self):
+    return bool(self.co_flags & loadmarshal.CodeType.CO_ITERABLE_COROUTINE)
+
+  def set_iterable_coroutine(self):
+    self.co_flags |= loadmarshal.CodeType.CO_ITERABLE_COROUTINE
+
+  def has_coroutine(self):
+    return bool(self.co_flags & loadmarshal.CodeType.CO_COROUTINE)
 
   def has_generator(self):
     return bool(self.co_flags & loadmarshal.CodeType.CO_GENERATOR)
@@ -82,6 +105,7 @@ class Block(object):
   if it was a Python list of bytecode instructions.
 
   Attributes:
+    id: Block id
     code: A bytecode object (a list of instances of opcodes.Opcode).
     incoming: Incoming edges. These are blocks that jump to the first
       instruction in our code object.

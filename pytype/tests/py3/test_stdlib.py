@@ -239,7 +239,7 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
     """Test various asyncio features."""
     ty = self.Infer("""
       import asyncio
-      def log(x: str):
+      async def log(x: str):
         return x
       class AsyncContextManager:
         async def __aenter__(self):
@@ -262,14 +262,17 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
     """)
     self.assertTypesMatchPytd(ty, """
       import asyncio.events
-      asyncio = ...  # type: module
-      event_loop = ...  # type: asyncio.events.AbstractEventLoop
+      from typing import Any, Coroutine
+
+      asyncio: module
+      event_loop: asyncio.events.AbstractEventLoop
+
       class AsyncContextManager:
-          def __aenter__(self) -> None: ...
-          def __aexit__(self, exc_type, exc, tb) -> None: ...
-      def log(x: str) -> str: ...
-      def my_coroutine(seconds_to_sleep = ...) -> None: ...
-      def test_with(x) -> None: ...
+          def __aenter__(self) -> Coroutine[Any, Any, None]: ...
+          def __aexit__(self, exc_type, exc, tb) -> Coroutine[Any, Any, None]: ...
+      def log(x: str) -> Coroutine[Any, Any, str]: ...
+      def my_coroutine(seconds_to_sleep = ...) -> Coroutine[Any, Any, None]: ...
+      def test_with(x) -> Coroutine[Any, Any, None]: ...
     """)
 
   @test_utils.skipIn37("https://github.com/google/pytype/issues/203")
@@ -277,7 +280,7 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
     ty = self.Infer("""
       import asyncio
       class AsyncIterable:
-        def __aiter__(self):
+        async def __aiter__(self):
           return self
         async def __anext__(self):
           data = await self.fetch_data()
@@ -286,7 +289,7 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
           else:
             raise StopAsyncIteration
         async def fetch_data(self):
-          pass
+          return 1
       async def iterate(x):
         async for i in x:
           pass
@@ -295,14 +298,13 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       iterate(AsyncIterable())
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import NoReturn, TypeVar
-      asyncio = ...  # type: module
-      _TAsyncIterable = TypeVar('_TAsyncIterable', bound=AsyncIterable)
+      from typing import Any, Coroutine
+      asyncio: module
       class AsyncIterable:
-          def __aiter__(self: _TAsyncIterable) -> _TAsyncIterable: ...
-          def __anext__(self) -> NoReturn: ...
-          def fetch_data(self) -> None: ...
-      def iterate(x) -> None: ...
+          def __aiter__(self) -> Coroutine[Any, Any, AsyncIterable]: ...
+          def __anext__(self) -> Coroutine[Any, Any, int]: ...
+          def fetch_data(self) -> Coroutine[Any, Any, int]: ...
+      def iterate(x) -> Coroutine[Any, Any, None]: ...
     """)
 
   def test_subprocess(self):

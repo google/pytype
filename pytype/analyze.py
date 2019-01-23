@@ -581,7 +581,7 @@ class CallTracer(vm.VirtualMachine):
 
   def _check_return(self, node, actual, formal):
     if not self.options.report_errors:
-      return
+      return True
     bad = self.matcher.bad_matches(actual, formal, node)
     if bad:
       with self.convert.pytd_convert.produce_detailed_output():
@@ -589,6 +589,7 @@ class CallTracer(vm.VirtualMachine):
             view[actual].data.to_type(node, view=view) for view in bad)
         self.errorlog.bad_return_type(
             self.frames, combined, formal.get_instance_type(node))
+    return not bad
 
 
 def check_types(src, filename, errorlog, options, loader,

@@ -404,3 +404,12 @@ py_test(
   DEPS
     pytype.tests.test_base
 )
+
+py_test(
+  NAME
+    test_coroutine
+  SRCS
+    test_coroutine.py
+  DEPS
+    pytype.tests.test_base
+)

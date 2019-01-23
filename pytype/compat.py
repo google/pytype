@@ -99,6 +99,14 @@ class IteratorType(object):
   pass
 
 
+class CoroutineType(object):
+  pass
+
+
+class AwaitableType(object):
+  pass
+
+
 # Native types that we test pyval against. six does not quite do what we want
 # here.
 

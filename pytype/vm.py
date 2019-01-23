@@ -1329,6 +1329,14 @@ class VirtualMachine(object):
 
     return result
 
+  def _get_aiter(self, state, obj):
+    """Get an async iterator from an object."""
+    state, func = self.load_attr(state, obj, "__aiter__")
+    if func:
+      return self.call_function_with_state(state, func, ())
+    else:
+      return state, self.new_unsolvable(state.node)
+
   def _get_iter(self, state, seq, report_errors=True):
     """Get an iterator from a sequence."""
     # TODO(rechen): We should iterate through seq's bindings, in order to fetch
@@ -2503,7 +2511,7 @@ class VirtualMachine(object):
       return state.set_why("reraise")
 
   def _check_return(self, node, actual, formal):
-    pass  # overridden in analyze.py
+    return False  # overridden in analyze.py
 
   def _set_frame_return(self, node, frame, var):
     if frame.allowed_returns is not None:
@@ -2692,30 +2700,66 @@ class VirtualMachine(object):
     return state.push(ret.to_variable(state.node))
 
   def byte_GET_AITER(self, state, op):
-    # We don't support this feature yet; simply don't crash.
+    """Implementation of the GET_AITER opcode."""
+    state, obj = state.pop()
+    state, itr = self._get_aiter(state, obj)
+    if self.python_version <= (3, 6):
+      if not self._check_return(state.node, itr, self.convert.awaitable_type):
+        itr = self.new_unsolvable(state.node)
+    # Push the iterator onto the stack and return.
+    state = state.push(itr)
     return state
 
   def byte_GET_ANEXT(self, state, op):
-    # We don't support this feature yet; simply don't crash.
-    ret = abstract.Instance(self.convert.function_type, self)
-    return state.push(ret.to_variable(state.node))
+    """Implementation of the GET_ANEXT opcode."""
+    state, anext = self.load_attr(state, state.top(), "__anext__")
+    state, ret = self.call_function_with_state(state, anext, ())
+    if not self._check_return(state.node, ret, self.convert.awaitable_type):
+      ret = self.new_unsolvable(state.node)
+    return state.push(ret)
 
   def byte_BEFORE_ASYNC_WITH(self, state, op):
-    # We don't support this feature yet; simply don't crash.
-    # Pop a context manager and push its enter and exit methods.
-    state, _ = state.pop()
-    meth = abstract.Instance(self.convert.function_type, self)
-    state = state.push(meth.to_variable(state.node))
-    state = state.push(meth.to_variable(state.node))
-    return state
+    """Implementation of the BEFORE_ASYNC_WITH opcode."""
+    # Pop a context manager and push its `__aexit__` and `__aenter__()`.
+    state, ctxmgr = state.pop()
+    state, aexit_method = self.load_attr(state, ctxmgr, "__aexit__")
+    state = state.push(aexit_method)
+    state, aenter_method = self.load_attr(state, ctxmgr, "__aenter__")
+    state, ctxmgr_obj = self.call_function_with_state(state, aenter_method, ())
+    return state.push(ctxmgr_obj)
 
   def byte_GET_AWAITABLE(self, state, op):
-    # We don't support this feature yet; simply don't crash.
-    return state
+    """Implementation of the GET_AWAITABLE opcode."""
+    state, obj = state.pop()
+    if not self._check_return(state.node, obj, self.convert.awaitable_type):
+      obj = self.new_unsolvable(state.node)
+    return state.push(obj)
 
   def byte_YIELD_FROM(self, state, op):
-    # We don't support this feature yet; simply don't crash.
-    return state.pop_and_discard()
+    """Implementation of the YIELD_FROM opcode."""
+    state, none_var = state.pop()
+    state, var = state.pop()
+    result = self.program.NewVariable()
+    for b in var.bindings:
+      val = b.data
+      if isinstance(val, (abstract.Generator,
+                          abstract.Coroutine, abstract.Unsolvable)):
+        ret_var = val.get_instance_type_parameter(abstract_utils.V)
+        result.PasteVariable(ret_var, state.node, {b})
+      elif (isinstance(val, abstract.Instance)
+            and isinstance(val.cls,
+                           (abstract.ParameterizedClass, abstract.PyTDClass))
+            and val.cls.full_name in ("typing.Awaitable",
+                                      "__builtin__.coroutine",
+                                      "__builtin__.generator")):
+        if val.cls.full_name == "typing.Awaitable":
+          ret_var = val.get_instance_type_parameter(abstract_utils.T)
+        else:
+          ret_var = val.get_instance_type_parameter(abstract_utils.V)
+        result.PasteVariable(ret_var, state.node, {b})
+      else:
+        result.PasteVariable(none_var, state.node, {b})
+    return state.push(result)
 
   def byte_LOAD_METHOD(self, state, op):
     name = self.frame.f_code.co_names[op.arg]

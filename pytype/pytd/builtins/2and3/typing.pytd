@@ -413,6 +413,20 @@ def no_type_check(arg: _T) -> _T
 def no_type_check_decorator(decorator) -> Callable
 def get_type_hints(obj, ...) -> Optional[Dict[str, Any]]
 
+if sys.version_info >= (3, 5):
+  class Awaitable(Generic[_T], Protocol):
+    @abstractmethod
+    def __await__(self) -> Generator[Any, None, _T]: ...
+
+  class Coroutine(Awaitable[_V], Generic[_T, _T2, _V]):
+    __slots__ = []
+    @abstractmethod
+    def send(self, value: _T2) -> _T: ...
+    @abstractmethod
+    def throw(self, typ: BaseException, val = ..., tb = ...) -> _T: ...
+    @abstractmethod
+    def close(self) -> None: ...
+
 # The following only exist in Python 3's typing.py, not in
 # https://github.com/python/typeshed/blob/master/stdlib/2/typing.pyi
 #
@@ -422,13 +436,11 @@ def get_type_hints(obj, ...) -> Optional[Dict[str, Any]]
 # The version guards below are from
 # https://github.com/python/typeshed/blob/master/stdlib/3/typing.pyi
 #
-# TODO(rechen): Turn Awaitable, AsyncIterable, AsyncIterator, and
+# TODO(rechen): Turn AsyncIterable, AsyncIterator, and
 # AsyncContextManager into protocols when these become full-blown classes.
 if sys.version_info >= (3, 0):
-  Awaitable = Any
   AsyncIterator = Any
   AsyncIterable = Any
-  Coroutine = Any
 
 if sys.version_info >= (3, 5):
   AsyncContextManager = Any

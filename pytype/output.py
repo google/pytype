@@ -373,7 +373,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
   def _function_call_to_return_type(self, node, v, seen_return, num_returns):
     """Get a function call's pytd return type."""
     if v.signature.has_return_annotation:
-      ret = v.signature.annotations["return"].get_instance_type(node)
+      if v.is_coroutine():
+        ret = abstract.Coroutine.make(self.vm, v, node).to_type(node)
+      else:
+        ret = v.signature.annotations["return"].get_instance_type(node)
     else:
       ret = seen_return.data.to_type(node)
       if isinstance(ret, pytd.NothingType) and num_returns == 1:

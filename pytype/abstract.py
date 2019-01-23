@@ -1536,6 +1536,9 @@ class PyTDFunction(Function):
         pyval = vm.loader.import_name(module).Lookup(pyval_name)
       else:
         pyval = vm.lookup_builtin(pyval_name)
+    if (isinstance(pyval, pytd.Alias)
+        and isinstance(pyval.type, pytd.FunctionType)):
+      pyval = pyval.type.function
     f = vm.convert.constant_to_value(pyval, {}, vm.root_cfg_node)
     return cls(function_name, f.signatures, pyval.kind, vm)
 
@@ -2872,9 +2875,17 @@ class InterpreterFunction(SignedFunction):
       # Run the generator right now, even though the program didn't call it,
       # because we need to know the contained type for futher matching.
       node2, _ = generator.run_generator(node)
-      node_after_call, ret = node2, generator.to_variable(node2)
+      if self.is_coroutine():
+        var = generator.get_instance_type_parameter(abstract_utils.V)
+        ret = Coroutine(self.vm, var, node2).to_variable(node2)
+      else:
+        ret = generator.to_variable(node2)
+      node_after_call = node2
     else:
-      node_after_call, ret = self.vm.run_frame(frame, node)
+      node2, ret = self.vm.run_frame(frame, node)
+      if self.is_coroutine():
+        ret = Coroutine(self.vm, ret, node2).to_variable(node2)
+      node_after_call = node2
     self._inner_cls_check(frame)
     mutations = self._mutations_generator(node_after_call, first_posarg, substs)
     node_after_call = abstract_utils.apply_mutations(node_after_call, mutations)
@@ -2955,6 +2966,9 @@ class InterpreterFunction(SignedFunction):
             details="Cannot annotate self argument of __init__", name=self_name)
         self.signature.del_annotation(self_name)
     return super(InterpreterFunction, self).property_get(callself, is_class)
+
+  def is_coroutine(self):
+    return self.code.has_coroutine() or self.code.has_iterable_coroutine()
 
 
 class SimpleFunction(SignedFunction):
@@ -3135,6 +3149,31 @@ class BoundInterpreterFunction(BoundFunction):
 
 class BoundPyTDFunction(BoundFunction):
   pass
+
+
+class Coroutine(Instance):
+  """A representation of instances of coroutine."""
+
+  def __init__(self, vm, ret_var, node):
+    super(Coroutine, self).__init__(vm.convert.coroutine_type, vm)
+    self.merge_instance_type_parameter(
+        node, abstract_utils.T, self.vm.new_unsolvable(node))
+    self.merge_instance_type_parameter(
+        node, abstract_utils.T2, self.vm.new_unsolvable(node))
+    self.merge_instance_type_parameter(
+        node, abstract_utils.V, ret_var.AssignToNewVariable(node))
+
+  @classmethod
+  def make(cls, vm, func, node):
+    """Get return type of coroutine function."""
+    assert func.signature.has_return_annotation
+    ret_val = func.signature.annotations["return"]
+    if func.code.has_coroutine():
+      ret_var = ret_val.instantiate(node)
+    elif func.code.has_iterable_coroutine():
+      ret_var = ret_val.get_formal_type_parameter(
+          abstract_utils.V).instantiate(node)
+    return cls(vm, ret_var, node)
 
 
 class Generator(Instance):

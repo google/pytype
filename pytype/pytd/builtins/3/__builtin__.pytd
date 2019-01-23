@@ -3,9 +3,9 @@
 
 
 from typing import (
-    AbstractSet, AnyStr, BinaryIO, ByteString, Callable, Dict, FrozenSet,
-    Generator, Generic, IO, ItemsView, Iterable, Iterator, KeysView, List,
-    Mapping, MutableSequence, Optional, Reversible, Sequence, Set, Sized,
+    AbstractSet, AnyStr, BinaryIO, ByteString, Callable, Coroutine, Dict,
+    FrozenSet, Generator, Generic, IO, ItemsView, Iterable, Iterator, KeysView,
+    List, Mapping, MutableSequence, Optional, Reversible, Sequence, Set, Sized,
     SupportsAbs, SupportsBytes, SupportsFloat, SupportsInt, Tuple, Type, Union,
     ValuesView)
 
@@ -803,6 +803,12 @@ class generator(Generator[_T, _T2, _V]):
     def __next__(self) -> _T
     def send(self, value: _T2) -> _T
     def close(self) -> NoneType
+
+if sys.version_info >= (3, 5):
+    class coroutine(Coroutine[_T, _T2, _V]):
+        __slots__ = []
+        def close(self) -> NoneType
+        def send(self, value: _T2) -> _T
 
 class instancemethod(object):
     __slots__ = []

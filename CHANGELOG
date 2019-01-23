@@ -1,3 +1,6 @@
+Version (upcoming)
+* Support coroutine annotation
+
 Version 2019.01.18
 * Add support for unittest.TestCase.setUp().
 * Open-source a user guide.
