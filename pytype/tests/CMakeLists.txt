@@ -516,6 +516,15 @@ py_test(
 
 py_test(
   NAME
+    test_future_overlay
+  SRCS
+    test_future_overlay.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
     test_compile_to_pyc
   SRCS
     test_compile_to_pyc.py

@@ -103,6 +103,7 @@ py_library(
     convert_structural.py
     directors.py
     errors.py
+    future_overlay.py
     imports_map_loader.py
     io.py
     matcher.py
