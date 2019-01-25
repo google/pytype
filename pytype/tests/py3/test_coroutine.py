@@ -27,21 +27,26 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
 
   def testCoroutineTypeVarPyi(self):
     ty = self.Infer("""
-      from typing import List, Coroutine
+      from typing import List, Coroutine, Any
 
-      c: Coroutine[List[str], str, int] = None
+      async def f() -> int:
+        return 1
+
+      c: Coroutine[Any, Any, int] = None
+      c = f()
       x = c.send("str")
       async def bar():
         x = await c
         return x
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, Coroutine, List
+      from typing import Any, Coroutine
 
-      c: Coroutine[List[str], str, int]
-      x: List[str]
+      c: Coroutine[Any, Any, int]
+      x: Any
 
       def bar() -> Coroutine[Any, Any, int]: ...
+      def f() -> Coroutine[Any, Any, int]: ...
     """)
 
   def testNativeCoroutinePyi(self):
@@ -223,7 +228,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
   def testAsyncForPyi(self):
     ty = self.Infer("""
       class MyIter(object):
-        async def __aiter__(self):
+        def __aiter__(self):
           return self
 
         async def __anext__(self):
@@ -244,10 +249,12 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
         return res
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, Coroutine, List, Union
+      from typing import Any, Coroutine, List, TypeVar, Union
+
+      _TMyIter = TypeVar('_TMyIter', bound=MyIter)
 
       class MyIter(object):
-          def __aiter__(self) -> Coroutine[Any, Any, MyIter]: ...
+          def __aiter__(self: _TMyIter) -> _TMyIter: ...
           def __anext__(self) -> Coroutine[Any, Any, Union[int, str]]: ...
 
 
@@ -260,16 +267,11 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
         pass
 
       class Iter2(object):
-        # Before python-3.6, `__aiter__` should be async function
         def __aiter__(self):
           return self
 
       class Iter3(object):
-        async def __aiter__(self):
-          return self
-
-      class Iter4(object):
-        async def __aiter__(self):
+        def __aiter__(self):
           return self
 
         def __anext__(self):
@@ -281,8 +283,8 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
           else:
             raise StopAsyncIteration
 
-      class Iter5(object):
-        async def __aiter__(self):
+      class Iter4(object):
+        def __aiter__(self):
           return self
 
         async def __anext__(self):
@@ -304,15 +306,12 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
           res.append(i)
         async for i in Iter4():
           res.append(i)
-        async for i in Iter5():
-          res.append(i)
         return res
     """)
     self.assertErrorLogIs(errors, [
-        (41, "attribute-error", r"No attribute.*__aiter__"),
-        (43, "bad-return-type", r"Awaitable.*Iter2"),
-        (45, "attribute-error", r"No attribute.*__anext__"),
-        (47, "bad-return-type", r"Awaitable.*Union\[int, str]"),
+        (36, "attribute-error", r"No attribute.*__aiter__"),
+        (38, "attribute-error", r"No attribute.*__anext__"),
+        (40, "bad-return-type", r"Awaitable.*Union\[int, str]"),
     ])
 
   def testAsyncWithPyi(self):
@@ -398,7 +397,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
 
 
         class MyIter(object):
-          def __aiter__(self) -> Coroutine[Any, Any, MyIter]: ...
+          def __aiter__(self) -> MyIter: ...
           def __anext__(self) -> Coroutine[Any, Any, str]: ...
 
 

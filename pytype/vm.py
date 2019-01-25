@@ -2703,7 +2703,7 @@ class VirtualMachine(object):
     """Implementation of the GET_AITER opcode."""
     state, obj = state.pop()
     state, itr = self._get_aiter(state, obj)
-    if self.python_version <= (3, 6):
+    if self.python_version < (3, 5):
       if not self._check_return(state.node, itr, self.convert.awaitable_type):
         itr = self.new_unsolvable(state.node)
     # Push the iterator onto the stack and return.
@@ -2737,7 +2737,7 @@ class VirtualMachine(object):
 
   def byte_YIELD_FROM(self, state, op):
     """Implementation of the YIELD_FROM opcode."""
-    state, none_var = state.pop()
+    state, unused_none_var = state.pop()
     state, var = state.pop()
     result = self.program.NewVariable()
     for b in var.bindings:
@@ -2758,7 +2758,7 @@ class VirtualMachine(object):
           ret_var = val.get_instance_type_parameter(abstract_utils.V)
         result.PasteVariable(ret_var, state.node, {b})
       else:
-        result.PasteVariable(none_var, state.node, {b})
+        result.AddBinding(val, {b}, state.node)
     return state.push(result)
 
   def byte_LOAD_METHOD(self, state, op):
