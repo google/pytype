@@ -579,7 +579,8 @@ class SimpleAbstractValue(AtomicAbstractValue):
     # Lazily loaded to handle recursive types.
     # See Instance._load_instance_type_parameters().
     self._instance_type_parameters = datatypes.AliasingMonitorDict()
-    self.maybe_missing_members = False
+    # This attribute depends on self.cls, which isn't yet set to its true value.
+    self._maybe_missing_members = None
     # The latter caches the result of get_type_key. This is a recursive function
     # that has the potential to generate too many calls for large definitions.
     self._cached_type_key = (
@@ -589,6 +590,17 @@ class SimpleAbstractValue(AtomicAbstractValue):
   @property
   def instance_type_parameters(self):
     return self._instance_type_parameters
+
+  @property
+  def maybe_missing_members(self):
+    if self._maybe_missing_members is None:
+      self._maybe_missing_members = isinstance(
+          self.cls, (InterpreterClass, PyTDClass)) and self.cls.is_dynamic
+    return self._maybe_missing_members
+
+  @maybe_missing_members.setter
+  def maybe_missing_members(self, v):
+    self._maybe_missing_members = v
 
   def has_instance_type_parameter(self, name):
     """Check if the key is in `instance_type_parameters`."""
@@ -726,8 +738,6 @@ class Instance(SimpleAbstractValue):
     super(Instance, self).__init__(cls.name, vm)
     self.cls = cls
     self._instance_type_parameters_loaded = False
-    if isinstance(cls, (InterpreterClass, PyTDClass)) and cls.is_dynamic:
-      self.maybe_missing_members = True
     cls.register_instance(self)
 
   def _load_instance_type_parameters(self):

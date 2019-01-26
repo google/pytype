@@ -576,20 +576,40 @@ class TestAttributes(test_base.TargetIndependentTest):
       Foo3().baz
     """)
 
-  def testHasDynamicAttributesUpperCase(self):
-    self.Check("""\
-      class Foo(object):
-        HAS_DYNAMIC_ATTRIBUTES = True
-      Foo().baz
-    """)
-
   def testHasDynamicAttributesSubClass(self):
     self.Check("""\
       class Foo(object):
-        has_dynamic_attributes = True
+        _HAS_DYNAMIC_ATTRIBUTES = True
       class Bar(Foo):
         pass
       Foo().baz
+      Bar().baz
+    """)
+
+  def testHasDynamicAttributesClassAttr(self):
+    # Only instance attributes are dynamic.
+    errors = self.CheckWithErrors("""\
+      class Foo(object):
+        _HAS_DYNAMIC_ATTRIBUTES = True
+      Foo.CONST
+    """)
+    self.assertErrorLogIs(errors, [(3, "attribute-error", "CONST.*Foo")])
+
+  def testHasDynamicAttributesMetaclass(self):
+    # Since class attributes of Foo are instance attributes for the metaclass,
+    # both class and instance attributes of Foo are now dynamic.
+    self.Check("""
+      import six
+      class Metaclass(type):
+        _HAS_DYNAMIC_ATTRIBUTES = True
+      class Foo(six.with_metaclass(Metaclass, object)):
+        pass
+      @six.add_metaclass(Metaclass)
+      class Bar(object):
+        pass
+      Foo.CONST
+      Foo().baz
+      Bar.CONST
       Bar().baz
     """)
 
@@ -602,6 +622,23 @@ class TestAttributes(test_base.TargetIndependentTest):
       self.Check("""\
         import mod
         mod.Foo().baz
+      """, pythonpath=[d.path])
+
+  def testHasDynamicAttributesMetaclassPYI(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("mod.pyi", """
+        class Metaclass(type):
+          _HAS_DYNAMIC_ATTRIBUTES: bool
+        class Foo(metaclass=Metaclass): ...
+      """)
+      self.Check("""
+        import mod
+        class Bar(mod.Foo):
+          pass
+        mod.Foo.CONST
+        mod.Foo().baz
+        Bar.CONST
+        Bar().baz
       """, pythonpath=[d.path])
 
   def testAttrOnStaticMethod(self):
