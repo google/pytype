@@ -450,7 +450,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     # Finally, make the class.
     abs_membs = abstract.Dict(self.vm)
     abs_membs.update(node, members)
-    cls_var = self.vm.make_class(
+    node, cls_var = self.vm.make_class(
         node=node,
         name_var=self.vm.convert.build_string(node, name),
         bases=[self.vm.convert.tuple_type.to_variable(node)],
@@ -459,7 +459,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     # Now that the class has been made, we can complete the TypeParameter used
     # by __new__, _make and _replace.
     cls_type_param.bound = cls_var.data[0]
-    return cls_var
+    return node, cls_var
 
   def call(self, node, _, args):
     try:
@@ -487,7 +487,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
           self.vm.frames, "Forward references in typing.NamedTuple")
     field_types = [annots.get(field_name, self.vm.convert.unsolvable)
                    for field_name in field_names]
-    cls_var = self._build_namedtuple(name, field_names, field_types, node)
+    node, cls_var = self._build_namedtuple(name, field_names, field_types, node)
     self.vm.trace_classdef(cls_var)
     return node, cls_var
 
@@ -636,8 +636,8 @@ class NewType(abstract.PyTDFunction):
     ).to_variable(node)
     members = abstract.Dict(self.vm)
     members.set_str_item(node, "__init__", constructor)
-    return node, self.vm.make_class(node, name_arg, (type_arg,),
-                                    members.to_variable(node), None)
+    return self.vm.make_class(node, name_arg, (type_arg,),
+                              members.to_variable(node), None)
 
 
 class Generic(TypingContainer):

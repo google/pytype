@@ -476,7 +476,7 @@ class VirtualMachine(object):
           variable if returned.
 
     Returns:
-      An instance of Class.
+      A node and an instance of Class.
     """
     name = abstract_utils.get_atomic_python_constant(name_var)
     log.info("Declaring class %s", name)
@@ -529,13 +529,14 @@ class VirtualMachine(object):
         else:
           var = self.program.NewVariable()
         var.AddBinding(val, class_dict_var.bindings, node)
+        node = val.call_metaclass_init(node)
         if not val.is_abstract:
           # Since a class decorator could have made the class inherit from
           # ABCMeta, we have to mark concrete classes now and check for
           # abstract methods at postprocessing time.
           self.concrete_classes.append((val, self.simple_stack()))
     self.trace_opcode(None, name, var)
-    return var
+    return node, var
 
   def _make_function(self, name, node, code, globs, defaults, kw_defaults,
                      closure=None, annotations=None, late_annotations=None):
@@ -2484,9 +2485,9 @@ class VirtualMachine(object):
   def byte_BUILD_CLASS(self, state, op):
     state, (name, _bases, members) = state.popn(3)
     bases = list(abstract_utils.get_atomic_python_constant(_bases))
-    cls = self.make_class(state.node, name, bases, members, None)
+    node, cls = self.make_class(state.node, name, bases, members, None)
     self.trace_classdef(cls)
-    return state.push(cls)
+    return state.change_cfg_node(node).push(cls)
 
   def byte_LOAD_BUILD_CLASS(self, state, op):
     # New in py3

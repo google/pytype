@@ -31,6 +31,10 @@ class AddMetaclassInstance(abstract.AtomicAbstractValue):
       cls = b.data
       log.debug("Adding metaclass %r to class %r", self.meta, cls)
       cls.cls = self.meta
+      # For metaclasses defined natively or using with_metaclass, the
+      # metaclass's initializer is called in vm.make_class. However, with
+      # add_metaclass, the metaclass is not known until the decorator fires.
+      node = cls.call_metaclass_init(node)
     return node, cls_var
 
 

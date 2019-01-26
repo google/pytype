@@ -222,6 +222,25 @@ class Class(object):
         return base.cls
     return None
 
+  def call_metaclass_init(self, node):
+    """Call the metaclass's __init__ method if it does anything interesting."""
+    if not self.cls:
+      return node
+    node, init = self.vm.attribute_handler.get_attribute(
+        node, self.cls, "__init__")
+    if not init or not any(
+        f.isinstance_InterpreterFunction() for f in init.data):
+      # Only an InterpreterFunction has interesting side effects.
+      return node
+    # TODO(rechen): The signature is (cls, name, bases, dict); should we fill in
+    # the last three args more precisely?
+    args = function.Args(posargs=(self.to_variable(node),) + tuple(
+        self.vm.new_unsolvable(node) for _ in range(3)))
+    log.debug("Calling __init__ on metaclass %s of class %s",
+              self.cls.name, self.name)
+    node, _ = self.vm.call_function(node, init, args)
+    return node
+
   def get_own_new(self, node, value):
     """Get this value's __new__ method, if it isn't object.__new__.
 
@@ -255,10 +274,8 @@ class Class(object):
     new_args = args.replace(posargs=(cls,) + args.posargs)
     node, variable = self.vm.call_function(node, new, new_args)
     for val in variable.bindings:
-      # TODO(rechen): If val.data is a class, _call_init mistakenly calls
-      # val.data's __init__ method rather than that of val.data.cls. See
-      # testClasses.testTypeInit for a case in which skipping this __init__
-      # call is problematic.
+      # If val.data is a class, _call_init mistakenly calls val.data's __init__
+      # method rather than that of val.data.cls.
       if not isinstance(val.data, Class) and self == val.data.cls:
         node = self._call_init(node, val, args)
     return node, variable

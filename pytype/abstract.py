@@ -3363,7 +3363,8 @@ class BuildClass(AtomicAbstractValue):
       kwargs = self.vm.convert.value_to_constant(args.namedargs, dict)
     # TODO(mdemello): Check if there are any changes between python2 and
     # python3 in the final metaclass computation.
-    # TODO(mdemello): Any remaining kwargs need to be passed to the metaclass.
+    # TODO(b/123450483): Any remaining kwargs need to be passed to the
+    # metaclass.
     metaclass = kwargs.get("metaclass", None)
     if len(funcvar.bindings) != 1:
       raise abstract_utils.ConversionError(
@@ -3395,7 +3396,7 @@ class BuildClass(AtomicAbstractValue):
         # controled by a metaclass provided to NamedTuple.
         # See: https://github.com/python/typing/blob/master/src/typing.py#L2170
         return base.make_class(node, func.f_locals.to_variable(node))
-    return node, self.vm.make_class(
+    return self.vm.make_class(
         node, name, list(bases), func.f_locals.to_variable(node), metaclass,
         new_class_var=class_closure_var)
 
