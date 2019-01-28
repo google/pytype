@@ -4,6 +4,9 @@ import base64
 import collections
 
 
+Args = collections.namedtuple("Args", ["root", "corpus"])
+
+
 # Kythe nodes
 
 VName = collections.namedtuple(
@@ -22,10 +25,14 @@ Edge = collections.namedtuple(
 class Kythe(object):
   """Store a list of kythe graph entries."""
 
-  def __init__(self, source, root="", corpus=""):
+  def __init__(self, source, args=None):
     self.path = source.filename
-    self.root = root
-    self.corpus = corpus
+    if args:
+      self.root = args.root
+      self.corpus = args.corpus
+    else:
+      self.root = ""
+      self.corpus = ""
     self.entries = []
     self._seen_entries = set()
     self.file_vname = self._add_file(source.text)

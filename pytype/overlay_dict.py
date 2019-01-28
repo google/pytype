@@ -8,7 +8,9 @@ Each entry in custom_overlays maps the module name to the overlay object
 """
 
 from pytype import abc_overlay
+from pytype import asyncio_types_overlay
 from pytype import collections_overlay
+from pytype import future_overlay
 from pytype import six_overlay
 from pytype import sys_overlay
 from pytype import typing_overlay
@@ -17,9 +19,11 @@ from pytype import typing_overlay
 # instead of the module itself. Memoized in the vm itself.
 overlays = {
     "abc": abc_overlay.ABCOverlay,
+    "asyncio": asyncio_types_overlay.AsyncioOverlay,
     "collections": collections_overlay.CollectionsOverlay,
+    "future.utils": future_overlay.FutureUtilsOverlay,
     "six": six_overlay.SixOverlay,
     "sys": sys_overlay.SysOverlay,
+    "types": asyncio_types_overlay.TypesOverlay,
     "typing": typing_overlay.TypingOverlay,
 }
-

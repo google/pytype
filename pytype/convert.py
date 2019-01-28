@@ -109,6 +109,11 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     self.tuple_type = self.constant_to_value(tuple)
     self.generator_type = self.constant_to_value(types.GeneratorType)
     self.iterator_type = self.constant_to_value(compat.IteratorType)
+    # TODO(ahxun): We should clean up/standardize how we initialize
+    # version-specific attributes.
+    if self.vm.python_version >= (3, 5):
+      self.coroutine_type = self.constant_to_value(compat.CoroutineType)
+      self.awaitable_type = self.constant_to_value(compat.AwaitableType)
     self.bool_values = {
         True: self.true,
         False: self.false,
@@ -149,6 +154,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return "__builtin__.classobj"
     elif t is compat.IteratorType:
       return "__builtin__.object"
+    elif t is compat.CoroutineType:
+      return "__builtin__.coroutine"
+    elif t is compat.AwaitableType:
+      return "typing.Awaitable"
     else:
       return "__builtin__." + t.__name__
 

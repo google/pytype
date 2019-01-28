@@ -7,18 +7,18 @@ from __future__ import print_function
 import signal
 import sys
 
-from pytype import config
 from pytype import utils
 from pytype.pytd.parse import node
 
 from pytype.tools.xref import debug
 from pytype.tools.xref import indexer
+from pytype.tools.xref import parse_args
 from pytype.tools.xref import output
 
 
 def main():
   try:
-    options = config.Options(sys.argv[1:])
+    _, kythe_args, options = parse_args.parse_args(sys.argv[1:])
   except utils.UsageError as e:
     print(str(e), file=sys.stderr)
     sys.exit(1)
@@ -28,7 +28,7 @@ def main():
   if options.timeout is not None:
     signal.alarm(options.timeout)
 
-  ix = indexer.process_file(options)
+  ix = indexer.process_file(options, kythe_args=kythe_args)
   if options.debug:
     debug.show_index(ix)
   else:

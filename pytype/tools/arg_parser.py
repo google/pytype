@@ -87,3 +87,16 @@ class Parser(object):
         if from_strings:
           setattr(args, k, convert_string(getattr(args, k)))
     pytype_config.Postprocessor(names, args).process()
+
+  def get_pytype_kwargs(self, args):
+    """Return a set of kwargs to pass to pytype.config.Options.
+
+    Args:
+      args: an argparse.Namespace.
+
+    Returns:
+      A dict of kwargs with pytype_single args as keys.
+    """
+    return {k: getattr(args, k) for k in self.pytype_single_args}
+
+

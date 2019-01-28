@@ -155,6 +155,8 @@ class SourceFile(object):
     return self.lines[n - 1]
 
   def find_text(self, start_line, end_line, text):
+    """Find text within a range of lines."""
+
     for l in range(start_line, end_line):
       col = self.line(l).find(text)
       if col > -1:
@@ -564,7 +566,7 @@ class ScopedVisitor(object):
 class IndexVisitor(ScopedVisitor):
   """Visitor that generates indexes."""
 
-  def __init__(self, source, module_name):
+  def __init__(self, source, module_name, kythe_):
     super(IndexVisitor, self).__init__(module_name)
     self.defs = {}
     self.locs = collections.defaultdict(list)
@@ -575,7 +577,7 @@ class IndexVisitor(ScopedVisitor):
     self.typemap = {}
     self.classmap = {}
     self.calls = []
-    self.kythe = kythe.Kythe(source)
+    self.kythe = kythe_
 
   def _get_location(self, node, args):
     """Get a more accurate node location."""
@@ -862,11 +864,12 @@ class IndexVisitor(ScopedVisitor):
 class Indexer(object):
   """Runs the indexer visitor and collects its results."""
 
-  def __init__(self, source, resolved_modules, module_name):
+  def __init__(self, source, resolved_modules, module_name, kythe_args=None):
     self.source = source
     self.resolved_modules = resolved_modules
     self.module_name = module_name
     self.traces = source.traces
+    self.kythe = kythe.Kythe(source, kythe_args)
     self.defs = None
     self.locs = None
     self.refs = None
@@ -875,13 +878,12 @@ class Indexer(object):
     self.typemap = None
     self.classmap = None
     self.calls = None
-    self.kythe = None
     self.links = []
 
   def index(self, code_ast):
     """Index an AST corresponding to self.source."""
 
-    v = IndexVisitor(self.source, self.module_name)
+    v = IndexVisitor(self.source, self.module_name, self.kythe)
     v.visit(code_ast)
     self.defs = v.defs
     self.locs = v.locs
@@ -891,7 +893,6 @@ class Indexer(object):
     self.typemap = v.typemap
     self.classmap = v.classmap
     self.calls = v.calls
-    self.kythe = v.kythe
 
   def get_def_offsets(self, defloc):
     """Get the byte offsets for a definition."""
@@ -1258,13 +1259,14 @@ class Indexer(object):
     return links
 
 
-def process_file(options, source_text=None):
+def process_file(options, source_text=None, kythe_args=None):
   """Process a single file and return cross references.
 
   Args:
     options: A dictionary of pytype options.
     source_text: Optional text of the file; will be read from the file pointed
       to by options.input if not supplied.
+    kythe_args: Extra args for generating the kythe index
 
   Returns:
     An Indexer object with the indexed code, or None if pytype fails.
@@ -1306,7 +1308,8 @@ def process_file(options, source_text=None):
   # TODO(mdemello): Get from args
   module_name = "module"
   source = SourceFile(src, vm.opcode_traces, filename=options.input)
-  ix = Indexer(source, vm.loader.get_resolved_modules(), module_name)
+  ix = Indexer(source, vm.loader.get_resolved_modules(), module_name,
+               kythe_args)
   ix.index(a)
   ix.finalize()
   return ix
