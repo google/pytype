@@ -1226,6 +1226,19 @@ class ClassesTest(test_base.TargetIndependentTest):
           pass
     """)
 
+  def testMetaclassOnUnknownClass(self):
+    self.Check("""
+      import six
+      class Foo(type):
+        pass
+      def decorate(cls):
+        return __any_object__
+      @six.add_metaclass(Foo)
+      @decorate
+      class Bar(object):
+        pass
+    """)
+
   def testSubclassContainsBase(self):
     ty = self.Infer("""\
       def get_c():

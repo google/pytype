@@ -9,6 +9,7 @@ import logging
 from pytype import abstract
 from pytype import abstract_utils
 from pytype import function
+from pytype import mixin
 
 log = logging.getLogger(__name__)
 
@@ -34,7 +35,8 @@ class AddMetaclassInstance(abstract.AtomicAbstractValue):
       # For metaclasses defined natively or using with_metaclass, the
       # metaclass's initializer is called in vm.make_class. However, with
       # add_metaclass, the metaclass is not known until the decorator fires.
-      node = cls.call_metaclass_init(node)
+      if isinstance(cls, mixin.Class):
+        node = cls.call_metaclass_init(node)
     return node, cls_var
 
 
