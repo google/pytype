@@ -1,4 +1,4 @@
-Version (upcoming)
+Version 2019.01.30
 * Support future.utils.with_metaclass.
 * Support coroutine annotation.
 
