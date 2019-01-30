@@ -114,6 +114,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     if self.vm.python_version >= (3, 5):
       self.coroutine_type = self.constant_to_value(compat.CoroutineType)
       self.awaitable_type = self.constant_to_value(compat.AwaitableType)
+    if self.vm.python_version >= (3, 6):
+      self.async_generator_type = self.constant_to_value(
+          compat.AsyncGeneratorType)
     self.bool_values = {
         True: self.true,
         False: self.false,
@@ -158,6 +161,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return "__builtin__.coroutine"
     elif t is compat.AwaitableType:
       return "typing.Awaitable"
+    elif t is compat.AsyncGeneratorType:
+      return "__builtin__.asyncgenerator"
     else:
       return "__builtin__." + t.__name__
 

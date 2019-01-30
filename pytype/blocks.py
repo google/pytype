@@ -76,6 +76,9 @@ class OrderedCode(object):
   def has_generator(self):
     return bool(self.co_flags & loadmarshal.CodeType.CO_GENERATOR)
 
+  def has_async_generator(self):
+    return bool(self.co_flags & loadmarshal.CodeType.CO_ASYNC_GENERATOR)
+
   def has_varargs(self):
     return bool(self.co_flags & loadmarshal.CodeType.CO_VARARGS)
 

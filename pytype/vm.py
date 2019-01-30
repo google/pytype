@@ -2422,7 +2422,9 @@ class VirtualMachine(object):
   def byte_YIELD_VALUE(self, state, op):
     """Yield a value from a generator."""
     state, ret = state.pop()
-    self.frame.yield_variable.PasteVariable(ret, state.node)
+    value = self.frame.yield_variable.AssignToNewVariable(state.node)
+    value.PasteVariable(ret, state.node)
+    self.frame.yield_variable = value
     if self.frame.check_return:
       ret_type = self.frame.allowed_returns
       self._check_return(state.node, ret,
@@ -2529,7 +2531,7 @@ class VirtualMachine(object):
         ret_type = self.frame.allowed_returns
         self._check_return(state.node, var,
                            ret_type.get_formal_type_parameter(abstract_utils.V))
-      else:
+      elif not self.frame.f_code.has_async_generator():
         self._check_return(state.node, var, self.frame.allowed_returns)
     self._set_frame_return(state.node, self.frame, var)
     return state.set_why("return")

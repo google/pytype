@@ -413,3 +413,12 @@ py_test(
   DEPS
     pytype.tests.test_base
 )
+
+py_test(
+  NAME
+    test_async_generators
+  SRCS
+    test_async_generators.py
+  DEPS
+    pytype.tests.test_base
+)

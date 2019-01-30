@@ -62,6 +62,21 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       y = ...  # type: Generator[int, Any, int]
     """)
 
+  def testYieldTypeInfer(self):
+    ty = self.Infer("""
+      def gen():
+        l = [1, 2, 3]
+        for x in l:
+          yield x
+        x = "str"
+        yield x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Generator, Union
+
+      def gen() -> Generator[Union[int, str], Any, None]: ...
+    """)
+
   def testSendRetType(self):
     ty = self.Infer("""
       from typing import Generator, Any

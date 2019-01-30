@@ -495,14 +495,25 @@ def hash_all_dicts(*hash_args):
   return hashlib.md5(b"".join(_hash_dict(*args) for args in hash_args)).digest()
 
 
-def matches_generator(type_obj):
-  """Check if type_obj matches a Generator type."""
+def _matches_generator(type_obj, allowed_types):
+  """Check if type_obj matches a Generator/AsyncGenerator type."""
   if type_obj.isinstance_Union():
-    return all(matches_generator(sub_type) for sub_type in type_obj.options)
+    return all(_matches_generator(sub_type, allowed_types)
+               for sub_type in type_obj.options)
   else:
     base_cls = type_obj
     if type_obj.isinstance_ParameterizedClass():
       base_cls = type_obj.base_cls
     return ((base_cls.isinstance_PyTDClass() and
-             base_cls.name in ("generator", "Iterable", "Iterator")) or
+             base_cls.name in allowed_types) or
             base_cls.isinstance_AMBIGUOUS_OR_EMPTY())
+
+
+def matches_generator(type_obj):
+  allowed_types = ("generator", "Iterable", "Iterator")
+  return _matches_generator(type_obj, allowed_types)
+
+
+def matches_async_generator(type_obj):
+  allowed_types = ("asyncgenerator", "AsyncIterable", "AsyncIterator")
+  return _matches_generator(type_obj, allowed_types)

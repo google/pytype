@@ -3,11 +3,11 @@
 
 
 from typing import (
-    AbstractSet, AnyStr, BinaryIO, ByteString, Callable, Coroutine, Dict,
-    FrozenSet, Generator, Generic, IO, ItemsView, Iterable, Iterator, KeysView,
-    List, Mapping, MutableSequence, Optional, Reversible, Sequence, Set, Sized,
-    SupportsAbs, SupportsBytes, SupportsFloat, SupportsInt, Tuple, Type, Union,
-    ValuesView)
+    AbstractSet, AnyStr, AsyncGenerator, Awaitable, BinaryIO, ByteString,
+    Callable, Coroutine, Dict, FrozenSet, Generator, Generic, IO, ItemsView,
+    Iterable, Iterator, KeysView, List, Mapping, MutableSequence, Optional,
+    Reversible, Sequence, Set, Sized, SupportsAbs, SupportsBytes, SupportsFloat,
+    SupportsInt, Tuple, Type, Union, ValuesView)
 
 # "_T", "_K", and "_V" are hardcoded in abstract.py
 _T = TypeVar('_T')
@@ -809,6 +809,14 @@ if sys.version_info >= (3, 5):
         __slots__ = []
         def close(self) -> NoneType
         def send(self, value: _T2) -> _T
+
+if sys.version_info >= (3, 6):
+    class asyncgenerator(AsyncGenerator[_T, _T2]):
+        __slots__ = []
+        def __aiter__(self) -> asyncgenerator[_T, _T2]
+        def __anext__(self) -> Awaitable[_T]
+        def asend(self, value: _T2) -> Awaitable[_T]
+        def aclose(self) -> Awaitable[_T]
 
 class instancemethod(object):
     __slots__ = []
