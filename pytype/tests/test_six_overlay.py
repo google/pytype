@@ -54,5 +54,28 @@ class SixTests(test_base.TargetIndependentTest):
       y = Bar().bar()
     """)
 
+  def test_type_init(self):
+    ty = self.Infer("""
+      import six
+      class Foo(type):
+        def __init__(self, *args):
+          self.x = 42
+      @six.add_metaclass(Foo)
+      class Bar(object):
+        pass
+      x1 = Bar.x
+      x2 = Bar().x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      six: module
+      class Foo(type):
+        x: int
+        def __init__(self, *args) -> None
+      class Bar(object, metaclass=Foo):
+        x: int
+      x1: int
+      x2: int
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

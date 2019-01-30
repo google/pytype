@@ -579,7 +579,8 @@ class SimpleAbstractValue(AtomicAbstractValue):
     # Lazily loaded to handle recursive types.
     # See Instance._load_instance_type_parameters().
     self._instance_type_parameters = datatypes.AliasingMonitorDict()
-    self.maybe_missing_members = False
+    # This attribute depends on self.cls, which isn't yet set to its true value.
+    self._maybe_missing_members = None
     # The latter caches the result of get_type_key. This is a recursive function
     # that has the potential to generate too many calls for large definitions.
     self._cached_type_key = (
@@ -589,6 +590,17 @@ class SimpleAbstractValue(AtomicAbstractValue):
   @property
   def instance_type_parameters(self):
     return self._instance_type_parameters
+
+  @property
+  def maybe_missing_members(self):
+    if self._maybe_missing_members is None:
+      self._maybe_missing_members = isinstance(
+          self.cls, (InterpreterClass, PyTDClass)) and self.cls.is_dynamic
+    return self._maybe_missing_members
+
+  @maybe_missing_members.setter
+  def maybe_missing_members(self, v):
+    self._maybe_missing_members = v
 
   def has_instance_type_parameter(self, name):
     """Check if the key is in `instance_type_parameters`."""
@@ -726,8 +738,6 @@ class Instance(SimpleAbstractValue):
     super(Instance, self).__init__(cls.name, vm)
     self.cls = cls
     self._instance_type_parameters_loaded = False
-    if isinstance(cls, (InterpreterClass, PyTDClass)) and cls.is_dynamic:
-      self.maybe_missing_members = True
     cls.register_instance(self)
 
   def _load_instance_type_parameters(self):
@@ -3353,7 +3363,8 @@ class BuildClass(AtomicAbstractValue):
       kwargs = self.vm.convert.value_to_constant(args.namedargs, dict)
     # TODO(mdemello): Check if there are any changes between python2 and
     # python3 in the final metaclass computation.
-    # TODO(mdemello): Any remaining kwargs need to be passed to the metaclass.
+    # TODO(b/123450483): Any remaining kwargs need to be passed to the
+    # metaclass.
     metaclass = kwargs.get("metaclass", None)
     if len(funcvar.bindings) != 1:
       raise abstract_utils.ConversionError(
@@ -3385,7 +3396,7 @@ class BuildClass(AtomicAbstractValue):
         # controled by a metaclass provided to NamedTuple.
         # See: https://github.com/python/typing/blob/master/src/typing.py#L2170
         return base.make_class(node, func.f_locals.to_variable(node))
-    return node, self.vm.make_class(
+    return self.vm.make_class(
         node, name, list(bases), func.f_locals.to_variable(node), metaclass,
         new_class_var=class_closure_var)
 

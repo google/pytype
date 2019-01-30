@@ -18,7 +18,7 @@ class TypeNew(abstract.PyTDFunction):
         if not bases:
           bases = [
               self.vm.convert.object_type.to_variable(self.vm.root_cfg_node)]
-        variable = self.vm.make_class(
+        node, variable = self.vm.make_class(
             node, name_var, bases, class_dict_var, cls)
       except abstract_utils.ConversionError:
         pass

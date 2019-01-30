@@ -860,29 +860,30 @@ class ClassesTest(test_base.TargetIndependentTest):
       x = ...  # type: Any
     """)
 
-  @test_base.skip("A.__init__ needs to be called")
   def testTypeInit(self):
     ty = self.Infer("""
+      import six
       class A(type):
         def __init__(self, name, bases, members):
           self.x = 42
           super(A, self).__init__(name, bases, members)
       B = A("B", (), {})
-      class C(object):
-        __metaclass__ = A
+      class C(six.with_metaclass(A, object)):
+        pass
       x1 = B.x
       x2 = C.x
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Type
+      six: module
       class A(type):
-        x = ...  # type: int
+        x: int
         def __init__(self, name, bases, members) -> None
-      class B(object, metaclass=A): ...
+      class B(object, metaclass=A):
+        x: int
       class C(object, metaclass=A):
-        __metaclass__ = ...  # type: Type[A]
-      x1 = ...  # type: int
-      x2 = ...  # type: int
+        x: int
+      x1: int
+      x2: int
     """)
 
   def testSetMetaclass(self):
@@ -1223,6 +1224,19 @@ class ClassesTest(test_base.TargetIndependentTest):
         @classmethod
         def bar(cls):
           pass
+    """)
+
+  def testMetaclassOnUnknownClass(self):
+    self.Check("""
+      import six
+      class Foo(type):
+        pass
+      def decorate(cls):
+        return __any_object__
+      @six.add_metaclass(Foo)
+      @decorate
+      class Bar(object):
+        pass
     """)
 
   def testSubclassContainsBase(self):
