@@ -279,7 +279,10 @@ def add_debug_options(o):
       "-v", "--verbosity", type=int, action="store",
       dest="verbosity", default=1,
       help=("Set logging verbosity: "
-            "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug"))
+            "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug\n"
+            "If a value less than -1 is provided, then no change to logging "
+            "verbosity is made. This is useful when using Pytype as a "
+            "library."))
   o.add_argument(
       "--verify-pickle", action="store_true", default=False,
       dest="verify_pickle",
@@ -432,10 +435,14 @@ class Postprocessor(object):
       if verbosity >= len(LOG_LEVELS):
         self.error("invalid --verbosity: %s" % verbosity)
       basic_logging_level = LOG_LEVELS[verbosity]
-    else:
+    elif verbosity == -1:
       # "verbosity=-1" can be used to disable all logging, so configure
       # logging accordingly.
       basic_logging_level = logging.CRITICAL + 1
+    else:
+      # If the desired verbosity is less than -1, then don't do anything. This
+      # is useful when calling pytype as a library.
+      return
     if logging.root.handlers:
       # When calling pytype as a library, override the caller's logging level.
       logging.root.setLevel(basic_logging_level)

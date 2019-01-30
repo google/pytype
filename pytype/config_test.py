@@ -1,5 +1,6 @@
 """Tests for config.py."""
 
+import logging
 import sys
 
 from pytype import config
@@ -27,17 +28,24 @@ class ConfigTest(unittest.TestCase):
     self.assertEqual(opts.input, "test.py")
 
   def test_create(self):
+    logging.root.setLevel(level=logging.CRITICAL)
     opts = config.Options.create(input_filename="foo.py", python_version="3.6",
                                  use_pickled_files=True)
     self.assertEqual(opts.input, "foo.py")
     self.assertEqual(opts.use_pickled_files, True)
     self.assertEqual(opts.python_version, (3, 6))
     self.assertIn("3.6", opts.python_exe)
+    # Pytype changes the default logging level to ERROR.
+    self.assertEqual(logging.root.level, logging.ERROR)
 
-    opts = config.Options.create(python_version=(2, 7), use_pickled_files=True)
+    logging.root.setLevel(level=logging.CRITICAL)
+    opts = config.Options.create(python_version=(2, 7), use_pickled_files=True,
+                                 verbosity=-2)
     self.assertEqual(opts.use_pickled_files, True)
     self.assertEqual(opts.python_version, (2, 7))
     self.assertIn("2.7", opts.python_exe)
+    # Since a verbosity of -2 is used, Pytype does not change the logging level.
+    self.assertEqual(logging.root.level, logging.CRITICAL)
 
   def test_analyze_annotated_check(self):
     argv = ["--check", "test.py"]
