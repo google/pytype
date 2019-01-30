@@ -2,7 +2,6 @@
 
 from pytype import file_utils
 from pytype.tests import test_base
-from pytype.tests import test_utils
 
 
 class VariableAnnotationsBasicTest(test_base.TargetPython3BasicTest):
@@ -36,7 +35,6 @@ class VariableAnnotationsBasicTest(test_base.TargetPython3BasicTest):
 class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
   """Tests for PEP526 variable annotations."""
 
-  @test_utils.skipIn37("https://github.com/google/pytype/issues/216")
   def testInferTypes(self):
     ty = self.Infer("""\
       from typing import List
@@ -62,7 +60,6 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
           b: int
     """)
 
-  @test_utils.skipIn37("https://github.com/google/pytype/issues/216")
   def testIllegalAnnotations(self):
     _, errors = self.InferWithErrors("""\
       from typing import List, TypeVar, NoReturn
@@ -115,6 +112,14 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
     """)
     self.assertErrorLogIs(
         errors, [(2, "unsupported-operands", r"None.*__setitem__")])
+
+  def testShadowNone(self):
+    ty = self.Infer("""
+      v: int = None
+    """)
+    self.assertTypesMatchPytd(ty, """
+      v: int
+    """)
 
 
 test_base.main(globals(), __name__ == "__main__")

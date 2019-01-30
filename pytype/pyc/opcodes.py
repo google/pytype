@@ -1090,7 +1090,7 @@ python_3_5_mapping = _overlay_mapping(python3_mapping, {
 
 python_3_6_mapping = _overlay_mapping(python_3_5_mapping, {
     85: SETUP_ANNOTATIONS,
-    127: STORE_ANNOTATION,
+    127: STORE_ANNOTATION,  # removed in Python 3.7
     140: None,
     142: CALL_FUNCTION_EX,  # CALL_FUNCTION_VAR_KW in Python 3.5
     155: FORMAT_VALUE,
@@ -1100,6 +1100,7 @@ python_3_6_mapping = _overlay_mapping(python_3_5_mapping, {
 })
 
 python_3_7_mapping = _overlay_mapping(python_3_6_mapping, {
+    127: None,
     160: LOAD_METHOD,
     161: CALL_METHOD,
 })
