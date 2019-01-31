@@ -44,7 +44,10 @@ class Kythe(object):
     return encoded_bytes.decode("utf-8")
 
   def _add_file(self, file_contents):
-    vname = self.vname("")
+    # File vnames are special-cased to have an empty signature and lang.
+    vname = VName(
+        signature="", lang="", path=self.path, root=self.root,
+        corpus=self.corpus)
     self.add_fact(vname, "node/kind", "file")
     self.add_fact(vname, "text", file_contents)
     return vname
