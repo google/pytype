@@ -357,7 +357,6 @@ class bytearray(MutableSequence[int], ByteString):
     def expandtabs(self, ...) -> bytearray
     def extend(self, iterable_int) -> NoneType
     def find(self, sub: bytes or bytearray, ...) -> int
-    def fromhex(self, string: bytes or bytearray) -> bytearray
     def index(self, sub: bytes or bytearray, ...) -> int
     def insert(self, index: int, int: bytes or int) -> NoneType
     def isalnum(self) -> bool
@@ -391,6 +390,9 @@ class bytearray(MutableSequence[int], ByteString):
     def title(self) -> bytearray
     def upper(self) -> bytearray
     def zfill(self, width: int) -> bytearray
+
+    @classmethod
+    def fromhex(cls, string: bytes or bytearray) -> bytearray
 
 class bytearray_iterator(Iterator[int]):
     __slots__ = []
@@ -771,9 +773,11 @@ class float(SupportsInt, SupportsFloat, SupportsAbs):
     def __trunc__(self, ...) -> int
     def conjugate(self) -> float
     def as_integer_ratio(self) -> tuple[int, int]
-    def fromhex(self, string: str or bytes or bytearray) -> float
     def hex(self) -> str
     def is_integer(self) -> bool
+
+    @classmethod
+    def fromhex(cls, string: str or bytes or bytearray) -> float
 
 class complex(SupportsAbs):
     __slots__ = []
