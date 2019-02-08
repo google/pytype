@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/google/pytype.svg?branch=master)](https://travis-ci.org/google/pytype)
 
-## Pytype
+# Pytype
 
 Pytype type-checks and type-annotates your Python code - without running it.
 Pytype can:
@@ -18,18 +18,6 @@ Thousands of projects at Google rely on pytype to keep their Python code
 well-typed and error-free.
 
 For more information, check out the [user guide][user-guide] or [FAQ][faq].
-
-## Requirements
-
-You need a Python 2.7 or 3.5+ interpreter to run pytype, as well as an
-interpreter in `$PATH` for the Python version of the code you're analyzing.
-
-Platform support:
-
-* Pytype is currently developed and tested on Linux, which is the main supported
-  platform.
-* Installation on MacOSX requires OSX 10.7 or higher and Xcode v8 or higher.
-* Windows is currently not supported.
 
 ## Quickstart
 
@@ -61,6 +49,18 @@ corresponding source file, replacing `module.py` with the file's import path:
 ```
 merge-pyi -i module.py pytype_output/pyi/module.pyi
 ```
+
+## Requirements
+
+You need a Python 2.7 or 3.5+ interpreter to run pytype, as well as an
+interpreter in `$PATH` for the Python version of the code you're analyzing.
+
+Platform support:
+
+* Pytype is currently developed and tested on Linux, which is the main supported
+  platform.
+* Installation on MacOSX requires OSX 10.7 or higher and Xcode v8 or higher.
+* Windows is currently not supported.
 
 ## Installing
 
