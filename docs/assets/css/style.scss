@@ -1,0 +1,13 @@
+---
+---
+
+@import "{{ site.theme }}";
+
+a:hover, a:focus {
+  font-weight: normal;
+  color: black;
+}
+
+h1 a:hover, h1 a:focus {
+  font-weight: bold;
+}
