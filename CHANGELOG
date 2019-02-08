@@ -1,7 +1,10 @@
+Version (upcoming)
+* Support asynchronous generators.
+* Fix variable annotations in Python 3.7.
+
 Version 2019.01.30
 * Support future.utils.with_metaclass.
 * Support coroutine annotation.
-* Support asynchronous generators.
 
 Version 2019.01.18
 * Add support for unittest.TestCase.setUp().
