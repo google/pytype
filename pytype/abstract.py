@@ -2668,12 +2668,17 @@ class InterpreterFunction(SignedFunction):
       An InterpreterFunction.
     """
     annotations = annotations or {}
-    if code.has_generator() and "return" in annotations:
-      # Check Generator return type
+    if "return" in annotations:
+      # Check Generator/AsyncGenerator return type
       ret_type = annotations["return"]
-      if not abstract_utils.matches_generator(ret_type):
-        error = "Expected Generator, Iterable or Iterator"
-        vm.errorlog.invalid_annotation(vm.frames, ret_type, error)
+      if code.has_generator():
+        if not abstract_utils.matches_generator(ret_type):
+          error = "Expected Generator, Iterable or Iterator"
+          vm.errorlog.invalid_annotation(vm.frames, ret_type, error)
+      elif code.has_async_generator():
+        if not abstract_utils.matches_async_generator(ret_type):
+          error = "Expected AsyncGenerator, AsyncIterable or AsyncIterator"
+          vm.errorlog.invalid_annotation(vm.frames, ret_type, error)
     late_annotations = late_annotations or {}
     key = (name, code,
            abstract_utils.hash_all_dicts(
@@ -2891,6 +2896,10 @@ class InterpreterFunction(SignedFunction):
       else:
         ret = generator.to_variable(node2)
       node_after_call = node2
+    elif self.code.has_async_generator():
+      async_generator = AsyncGenerator(frame, self.vm)
+      node2, _ = async_generator.run_generator(node)
+      node_after_call, ret = node2, async_generator.to_variable(node2)
     else:
       node2, ret = self.vm.run_frame(frame, node)
       if self.is_coroutine():
@@ -3186,16 +3195,57 @@ class Coroutine(Instance):
     return cls(vm, ret_var, node)
 
 
-class Generator(Instance):
-  """A representation of instances of generators.
+class BaseGenerator(Instance):
+  """A base class of instances of generators and async generators."""
 
-  (I.e., the return type of coroutines).
-  """
+  def __init__(self, generator_type, frame, vm, is_return_allowed):
+    super(BaseGenerator, self).__init__(generator_type, vm)
+    self.frame = frame
+    self.runs = 0
+    self.is_return_allowed = is_return_allowed  # if return statement is allowed
+
+  def run_generator(self, node):
+    """Run the generator."""
+    if self.runs == 0:  # Optimization: We only run it once.
+      node, _ = self.vm.resume_frame(node, self.frame)
+      ret_type = self.frame.allowed_returns
+      if ret_type:
+        # set type parameters according to annotated Generator return type
+        type_params = [abstract_utils.T, abstract_utils.T2]
+        if self.is_return_allowed:
+          type_params.append(abstract_utils.V)
+        for param_name in type_params:
+          _, param_var = self.vm.init_class(
+              node, ret_type.get_formal_type_parameter(param_name))
+          self.merge_instance_type_parameter(node, param_name, param_var)
+      else:
+        # infer the type parameters based on the collected type information.
+        self.merge_instance_type_parameter(
+            node, abstract_utils.T, self.frame.yield_variable)
+        # For T2 type, it can not be decided until the send/asend function is
+        # called later on. So set T2 type as ANY so that the type check will
+        # not fail when the function is called afterwards.
+        self.merge_instance_type_parameter(
+            node, abstract_utils.T2,
+            self.vm.new_unsolvable(node))
+        if self.is_return_allowed:
+          self.merge_instance_type_parameter(
+              node, abstract_utils.V, self.frame.return_variable)
+      self.runs += 1
+    return node, self.get_instance_type_parameter(abstract_utils.T)
+
+  def call(self, node, func, args, alias_map=None):
+    """Call this generator or (more common) its "next/anext" attribute."""
+    del func, args
+    return self.run_generator(node)
+
+
+class Generator(BaseGenerator):
+  """A representation of instances of generators."""
 
   def __init__(self, generator_frame, vm):
-    super(Generator, self).__init__(vm.convert.generator_type, vm)
-    self.generator_frame = generator_frame
-    self.runs = 0
+    super(Generator, self).__init__(vm.convert.generator_type,
+                                    generator_frame, vm, True)
 
   def get_special_attribute(self, node, name, valself):
     if name == "__iter__":
@@ -3214,37 +3264,13 @@ class Generator(Instance):
   def __iter__(self, node):  # pylint: disable=non-iterator-returned,unexpected-special-method-signature
     return node, self.to_variable(node)
 
-  def run_generator(self, node):
-    """Run the generator."""
-    if self.runs == 0:  # Optimization: We only run the coroutine once.
-      node, _ = self.vm.resume_frame(node, self.generator_frame)
-      ret_type = self.generator_frame.allowed_returns
-      if ret_type:
-        # set type parameters according to annotated Generator return type
-        for param_name in (
-            abstract_utils.T, abstract_utils.T2, abstract_utils.V):
-          _, param_var = self.vm.init_class(
-              node, ret_type.get_formal_type_parameter(param_name))
-          self.merge_instance_type_parameter(node, param_name, param_var)
-      else:
-        # infer the type parameters based on the collected type information.
-        self.merge_instance_type_parameter(
-            node, abstract_utils.T, self.generator_frame.yield_variable)
-        # For T2 type, it can not be decided until the send function is called
-        # later on. So set T2 type as ANY so that the type check will not fail
-        # when the function is called afterwards.
-        self.merge_instance_type_parameter(
-            node, abstract_utils.T2,
-            self.vm.new_unsolvable(node))
-        self.merge_instance_type_parameter(
-            node, abstract_utils.V, self.generator_frame.return_variable)
-      self.runs += 1
-    return node, self.get_instance_type_parameter(abstract_utils.T)
 
-  def call(self, node, func, args, alias_map=None):
-    """Call this generator or (more common) its "next" attribute."""
-    del func, args
-    return self.run_generator(node)
+class AsyncGenerator(BaseGenerator):
+  """A representation of instances of async generators."""
+
+  def __init__(self, async_generator_frame, vm):
+    super(AsyncGenerator, self).__init__(vm.convert.async_generator_type,
+                                         async_generator_frame, vm, False)
 
 
 class Iterator(Instance, mixin.HasSlots):

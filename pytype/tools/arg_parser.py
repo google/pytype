@@ -21,6 +21,11 @@ class ParserWrapper(object):
     else:
       self.actions[action.dest] = action
 
+  def add_argument_group(self, *args, **kwargs):
+    # We don't need to record argument groups, but we should support
+    # pass-through usage.
+    return self.parser.add_argument_group(*args, **kwargs)
+
 
 def string_to_bool(s):
   return s == 'True' if s in ('True', 'False') else s

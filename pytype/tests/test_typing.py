@@ -1,7 +1,6 @@
 """Tests for typing.py."""
 
 from pytype import file_utils
-from pytype.pytd import pep484
 from pytype.tests import test_base
 
 
@@ -99,13 +98,6 @@ class TypingTest(test_base.TargetIndependentTest):
       from typing import Protocol
       class Foo(Protocol): pass
     """)
-
-  def test_import_all(self):
-    python = [
-        "from typing import *  # pytype: disable=not-supported-yet",
-    ] + pep484.PEP484_NAMES
-    ty = self.Infer("\n".join(python), deep=False)
-    self.assertTypesMatchPytd(ty, "")
 
   def test_recursive_tuple(self):
     with file_utils.Tempdir() as d:

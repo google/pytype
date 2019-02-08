@@ -107,6 +107,10 @@ class AwaitableType(object):
   pass
 
 
+class AsyncGeneratorType(object):
+  pass
+
+
 # Native types that we test pyval against. six does not quite do what we want
 # here.
 

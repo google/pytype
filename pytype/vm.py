@@ -43,7 +43,7 @@ from pytype.pytd import slots
 from pytype.pytd import visitors
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
-from six import moves
+import six
 
 log = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ _FUNCTION_TYPE_COMMENT_RE = re.compile(r"^\((.*)\)\s*->\s*(\S.*?)\s*$")
 # Create a repr that won't overflow.
 _TRUNCATE = 120
 _TRUNCATE_STR = 72
-repr_obj = moves.reprlib.Repr()
+repr_obj = six.moves.reprlib.Repr()
 repr_obj.maxother = _TRUNCATE
 repr_obj.maxstring = _TRUNCATE_STR
 repper = repr_obj.repr
@@ -1842,8 +1842,24 @@ class VirtualMachine(object):
     state, _ = self.call_function_with_state(state, f, (key, val))
     return state
 
+  def _is_annotations_dict(self, obj):
+    if "__annotations__" not in self.frame.f_locals.members:
+      return False
+    annotations_var = self.frame.f_locals.members["__annotations__"]
+    return (len(obj.data) == len(annotations_var.data) and
+            v1 is v2 for v1, v2 in zip(obj.data, annotations_var.data))
+
   def byte_STORE_SUBSCR(self, state, op):
+    """Implement obj[subscr] = val."""
     state, (val, obj, subscr) = state.popn(3)
+    if self._is_annotations_dict(obj):
+      try:
+        name = abstract_utils.get_atomic_python_constant(
+            subscr, six.string_types)
+      except abstract_utils.ConversionError:
+        pass
+      else:
+        state = self._store_annotation(state, name, val)
     state = state.forward_cfg_node()
     state = self.store_subscr(state, obj, subscr, val)
     return state
@@ -1873,7 +1889,7 @@ class VirtualMachine(object):
     the_map = self.convert.build_map(state.node)
     if self.python_version >= (3, 5):
       state, args = state.popn(2 * op.arg)
-      for i in moves.range(op.arg):
+      for i in six.moves.range(op.arg):
         key, val = args[2*i], args[2*i+1]
         state = self.store_subscr(state, the_map, key, val)
     else:
@@ -2422,7 +2438,9 @@ class VirtualMachine(object):
   def byte_YIELD_VALUE(self, state, op):
     """Yield a value from a generator."""
     state, ret = state.pop()
-    self.frame.yield_variable.PasteVariable(ret, state.node)
+    value = self.frame.yield_variable.AssignToNewVariable(state.node)
+    value.PasteVariable(ret, state.node)
+    self.frame.yield_variable = value
     if self.frame.check_return:
       ret_type = self.frame.allowed_returns
       self._check_return(state.node, ret,
@@ -2529,7 +2547,7 @@ class VirtualMachine(object):
         ret_type = self.frame.allowed_returns
         self._check_return(state.node, var,
                            ret_type.get_formal_type_parameter(abstract_utils.V))
-      else:
+      elif not self.frame.f_code.has_async_generator():
         self._check_return(state.node, var, self.frame.allowed_returns)
     self._set_frame_return(state.node, self.frame, var)
     return state.set_why("return")
@@ -2590,19 +2608,22 @@ class VirtualMachine(object):
     annotations = self.convert.build_map(state.node)
     return self.store_local(state, "__annotations__", annotations)
 
+  def _store_annotation(self, state, name, value):
+    try:
+      self.load_local(state, name)
+    except KeyError:
+      return state
+    # The variable is defined. Replace its value with the annotation.
+    return self.store_local(
+        state, name, self.annotations_util.init_annotation_var(
+            state.node, name, value))
+
   def byte_STORE_ANNOTATION(self, state, op):
     """Implementation of the STORE_ANNOTATION opcode."""
     state, annotations_var = self.load_local(state, "__annotations__")
     name = self.frame.f_code.co_names[op.arg]
     state, value = state.pop()
-    try:
-      self.load_local(state, name)
-    except KeyError:
-      pass
-    else:
-      # The variable is defined. Replace its value with the annotation.
-      self.store_local(state, name, self.annotations_util.init_annotation_var(
-          state.node, name, value))
+    state = self._store_annotation(state, name, value)
     name_var = self.convert.build_string(state.node, name)
     state = self.store_subscr(state, annotations_var, name_var, value)
     return self.store_local(state, "__annotations__", annotations_var)

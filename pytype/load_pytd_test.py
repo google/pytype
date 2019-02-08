@@ -416,8 +416,7 @@ class Python3Test(unittest.TestCase):
                                 pythonpath=[d.path])
       a = loader.import_name("a")
       cls = a.Lookup("a.A")
-      # New python3 builtins are currently aliases for Any.
-      self.assertIn(pytd.AnythingType(), cls.parents)
+      self.assertEqual("AsyncGenerator[str]", pytd.Print(cls.parents[0]))
 
 
 if __name__ == "__main__":

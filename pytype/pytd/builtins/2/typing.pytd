@@ -323,7 +323,7 @@ class Generator(Iterator[_T], Generic[_T, _T2, _V]):
   else:
     def next(self) -> _T: ...
   def send(self, value: _T2) -> _T: ...
-  def throw(self, typ: BaseException, val = ..., tb = ...) -> None: ...
+  def throw(self, typ: BaseException, val = ..., tb = ...) -> _T: ...
   def close(self) -> None: ...
 
 
@@ -413,6 +413,7 @@ def no_type_check(arg: _T) -> _T
 def no_type_check_decorator(decorator) -> Callable
 def get_type_hints(obj, ...) -> Optional[Dict[str, Any]]
 
+
 if sys.version_info >= (3, 5):
   class Awaitable(Generic[_T], Protocol):
     @abstractmethod
@@ -423,30 +424,47 @@ if sys.version_info >= (3, 5):
     @abstractmethod
     def send(self, value: _T2) -> _T: ...
     @abstractmethod
-    def throw(self, typ: BaseException, val = ..., tb = ...) -> _T: ...
+    def throw(self, typ: Type[BaseException], val = ..., tb = ...) -> _T: ...
     @abstractmethod
     def close(self) -> None: ...
 
-# The following only exist in Python 3's typing.py, not in
-# https://github.com/python/typeshed/blob/master/stdlib/2/typing.pyi
-#
-# We alias them to Any here so pytype can parse pyi files containing them, and
-# not generate any false errors.
-#
-# The version guards below are from
-# https://github.com/python/typeshed/blob/master/stdlib/3/typing.pyi
-#
-# TODO(rechen): Turn AsyncIterable, AsyncIterator, and
-# AsyncContextManager into protocols when these become full-blown classes.
+
 if sys.version_info >= (3, 0):
-  AsyncIterator = Any
-  AsyncIterable = Any
+  class AsyncIterable(Generic[_T], Protocol):
+    __slots__ = []
+    if sys.version_info < (3, 5):
+      @abstractmethod
+      def __aiter__(self) -> Awaitable[AsyncIterator[_T]]: ...
+    else:
+      @abstractmethod
+      def __aiter__(self) -> AsyncIterator[_T]: ...
+
+  class AsyncIterator(AsyncIterable[_T], Protocol):
+    __slots__ = []
+    @abstractmethod
+    def __anext__(self) -> Awaitable[_T]: ...
+
 
 if sys.version_info >= (3, 5):
-  AsyncContextManager = Any
+  class AsyncContextManager(Generic[_T], Protocol):
+    @abstractmethod
+    def __aenter__(self) -> Awaitable[_T]: ...
+    @abstractmethod
+    def __aexit__(self, exc_type: Optional[Type[BaseException]],
+                  exc_value: Optional[BaseException],
+                  traceback: Optional[Any]) -> Awaitable[Optional[bool]]: ...
+
 
 if sys.version_info >= (3, 6):
-  AsyncGenerator = Any
+  # _T is the yield type, _T2 the send type
+  class AsyncGenerator(AsyncIterator[_T], Generic[_T, _T2]):
+    __slots__ = []
+    @abstractmethod
+    def asend(self, value: _T2) -> Awaitable[_T]: ...
+    @abstractmethod
+    def athrow(self, typ: Type[BaseException], val = ..., tb = ...) -> Awaitable[_T]: ...
+    @abstractmethod
+    def aclose(self) -> Awaitable[_T]: ...
 
 
 TYPE_CHECKING = ...  # type: bool

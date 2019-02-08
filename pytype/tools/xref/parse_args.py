@@ -30,6 +30,7 @@ def make_parser():
   # Add options from pytype-single.
   wrapper = arg_parser.ParserWrapper(parser)
   pytype_config.add_basic_options(wrapper)
+  pytype_config.add_infrastructure_options(wrapper)
   return arg_parser.Parser(parser, wrapper.actions)
 
 

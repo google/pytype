@@ -256,6 +256,20 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       ba[1:4:2] = b"at"
     """)
 
+  def testFromHex(self):
+    ty = self.Infer("""
+      f1 = float.fromhex(b"feed")
+      f2 = float.fromhex(bytearray(b"feed"))
+      b1 = bytearray.fromhex(b"beef")
+      b2 = bytearray.fromhex(bytearray("beef"))
+    """)
+    self.assertTypesMatchPytd(ty, """
+      f1 = ...  # type: float
+      f2 = ...  # type: float
+      b1 = ...  # type: bytearray
+      b2 = ...  # type: bytearray
+    """)
+
   def testNoneLength(self):
     errors = self.CheckWithErrors("len(None)")
     self.assertErrorLogIs(errors, [(1, "wrong-arg-types", r"Sized.*None")])

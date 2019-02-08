@@ -84,6 +84,14 @@ class ImportMapLoaderTest(unittest.TestCase):
           d["imports_info"], output)
       self.assertEqual(imports_map["a/b/c"], d["a/b/c.pyi"])
 
+  def testInvalidMapEntry(self):
+    with file_utils.Tempdir() as d:
+      imports_info = "%s %s\n" % ("a/b/c.pyi", d["a/b/c.pyi"])
+      d.create_file("imports_info", imports_info)
+      output = os.path.join(d.path, "a/b.pyi")
+      with self.assertRaises(AssertionError):
+        imports_map_loader.build_imports_map(d["imports_info"], output)
+
 
 if __name__ == "__main__":
   unittest.main()

@@ -24,6 +24,18 @@ class IndexerTest(test_base.TargetIndependentTest):
       options.tweak(**args)
       return indexer.process_file(options)
 
+  def generate_kythe(self, code, **kwargs):
+    """Generate a kythe index from a code string."""
+    with file_utils.Tempdir() as d:
+      d.create_file("t.py", code)
+      options = config.Options([d["t.py"]])
+      options.tweak(pythonpath=[d.path], version=self.python_version)
+      kythe_args = kythe.Args(corpus="corpus", root="root")
+      ix = indexer.process_file(options, kythe_args=kythe_args)
+      # Collect all the references from the kythe graph.
+      kythe_index = [json.loads(x) for x in output.json_kythe_graph(ix)]
+      return kythe_index
+
   def assertDef(self, index, fqname, name, typ):
     self.assertTrue(fqname in index.defs)
     d = index.defs[fqname]
@@ -136,17 +148,26 @@ class IndexerTest(test_base.TargetIndependentTest):
         def f(x):
           return 42
     """)
-    with file_utils.Tempdir() as d:
-      d.create_file("t.py", code)
-      options = config.Options([d["t.py"]])
-      options.tweak(pythonpath=[d.path], version=self.python_version)
-      kythe_args = kythe.Args(corpus="corpus", root="root")
-      ix = indexer.process_file(options, kythe_args=kythe_args)
-      # Collect all the references from the kythe graph.
-      kythe_index = [json.loads(x) for x in output.json_kythe_graph(ix)]
-      k = kythe_index[0]["source"]
-      self.assertEqual(k["corpus"], "corpus")
-      self.assertEqual(k["root"], "root")
+    kythe_index = self.generate_kythe(code)
+    k = kythe_index[0]["source"]
+    self.assertEqual(k["corpus"], "corpus")
+    self.assertEqual(k["root"], "root")
+
+  def test_kythe_file_node(self):
+    code = textwrap.dedent("""
+        def f(x):
+          return 42
+    """)
+    kythe_index = self.generate_kythe(code)
+    # File nodes should have signature and lang empty
+    file_nodes = kythe_index[0:2]
+    for node in file_nodes:
+      self.assertEqual(node["source"]["signature"], "")
+      self.assertEqual(node["source"]["lang"], "")
+
+    # Other nodes should have lang="python"
+    node = kythe_index[3]
+    self.assertEqual(node["source"]["lang"], "python")
 
 
 test_base.main(globals(), __name__ == "__main__")

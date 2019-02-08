@@ -33,16 +33,17 @@ def _validate_imports_map(imports_map):
   Raises:
     AssertionError: If we found an error in the imports map.
   """
+  errors = []
   for short_path, paths in imports_map.items():
     for path in paths:
       if not os.path.exists(path):
-        log.error("imports_map file does not exist: %r (mapped from %r)",
-                  path, short_path)
-        log.error("tree walk of files from '.' (%r):", os.path.abspath("."))
-        for dirpath, _, files in os.walk(".", followlinks=False):
-          log.error("... dir %r: %r", dirpath, files)
-        log.error("end tree walk of files from '.'")
-        raise AssertionError("bad import map")
+        errors.append((short_path, path))
+  if errors:
+    log.error("Invalid imports_map entries (checking from root dir: %s)",
+              os.path.abspath("."))
+    for short_path, path in errors:
+      log.error("  file does not exist: %r (mapped from %r)", path, short_path)
+    raise AssertionError("bad import map")
 
 
 def build_imports_map(options_info_path, output=None):

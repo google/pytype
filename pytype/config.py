@@ -30,21 +30,25 @@ class Options(object):
 
   _HAS_DYNAMIC_ATTRIBUTES = True
 
-  def __init__(self, argv):
+  def __init__(self, argv_or_options):
     """Parse and encapsulate the command-line options.
 
     Also sets up some basic logger configuration.
 
     Args:
-      argv: sys.argv[1:] (sys.argv[0] is the main script).
+      argv_or_options: Either sys.argv[1:] (sys.argv[0] is the main script), or
+                       already parsed options object returned by
+                       ArgumentParser.parse_args.
 
     Raises:
       sys.exit(2): bad option or input filenames.
     """
-    argument_parser = make_parser()
-    options = argument_parser.parse_args(argv)
+    if isinstance(argv_or_options, list):
+      argument_parser = make_parser()
+      options = argument_parser.parse_args(argv_or_options)
+    else:
+      options = argv_or_options
     names = set(vars(options))
-    self._adjust_python_exe = True
     try:
       Postprocessor(names, options, self).process()
     except PostprocessingError as e:
@@ -53,29 +57,16 @@ class Options(object):
   @classmethod
   def create(cls, input_filename=None, **kwargs):
     """Create dummy options for testing."""
-    self = cls([input_filename or "dummy_input_file"])
-    self.tweak(**kwargs)
-    return self
-
-  def __setattr__(self, name, value):
-    if name == "python_version":
-      if isinstance(value, str):
-        value = utils.split_version(value)
-      if self._adjust_python_exe:
-        super(Options, self).__setattr__("python_exe",
-                                         utils.get_python_exe(value))
-      else:
-        # Python exe adjustment should be unblocked for next time.
-        self._adjust_python_exe = True
-    super(Options, self).__setattr__(name, value)
+    argument_parser = make_parser()
+    options = argument_parser.parse_args(
+        [input_filename or "dummpy_input_file"])
+    for k, v in kwargs.items():
+      setattr(options, k, v)
+    return cls(options)
 
   def tweak(self, **kwargs):
     for k, v in kwargs.items():
       assert hasattr(self, k)  # Don't allow adding arbitrary junk
-      if k == "python_version" and "python_exe" in kwargs:
-        # We do not want to adjust the exe as it will be set (or has been set)
-        # in a different iteration.
-        self._adjust_python_exe = False
       setattr(self, k, v)
 
   def __repr__(self):
@@ -288,7 +279,10 @@ def add_debug_options(o):
       "-v", "--verbosity", type=int, action="store",
       dest="verbosity", default=1,
       help=("Set logging verbosity: "
-            "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug"))
+            "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug\n"
+            "If a value less than -1 is provided, then no change to logging "
+            "verbosity is made. This is useful when using Pytype as a "
+            "library."))
   o.add_argument(
       "--verify-pickle", action="store_true", default=False,
       dest="verify_pickle",
@@ -441,10 +435,14 @@ class Postprocessor(object):
       if verbosity >= len(LOG_LEVELS):
         self.error("invalid --verbosity: %s" % verbosity)
       basic_logging_level = LOG_LEVELS[verbosity]
-    else:
+    elif verbosity == -1:
       # "verbosity=-1" can be used to disable all logging, so configure
       # logging accordingly.
       basic_logging_level = logging.CRITICAL + 1
+    else:
+      # If the desired verbosity is less than -1, then don't do anything. This
+      # is useful when calling pytype as a library.
+      return
     if logging.root.handlers:
       # When calling pytype as a library, override the caller's logging level.
       logging.root.setLevel(basic_logging_level)
@@ -459,7 +457,10 @@ class Postprocessor(object):
   def _store_python_version(self, python_version):
     """Configure the python version."""
     if python_version:
-      self.output_options.python_version = utils.split_version(python_version)
+      if isinstance(python_version, str):
+        self.output_options.python_version = utils.split_version(python_version)
+      else:
+        self.output_options.python_version = python_version
     else:
       self.output_options.python_version = sys.version_info[:2]
     if len(self.output_options.python_version) != 2:
