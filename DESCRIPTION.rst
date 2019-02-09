@@ -1,5 +1,5 @@
 Pytype
-------
+======
 
 Pytype type-checks and type-annotates your Python code - without running
 it. Pytype can:
@@ -22,21 +22,6 @@ well-typed and error-free.
 
 For more information, check out the `user guide <docs/user_guide.md>`__
 or `FAQ <docs/faq.md>`__.
-
-Requirements
-------------
-
-You need a Python 2.7 or 3.5+ interpreter to run pytype, as well as an
-interpreter in ``$PATH`` for the Python version of the code you're
-analyzing.
-
-Platform support:
-
--  Pytype is currently developed and tested on Linux, which is the main
-   supported platform.
--  Installation on MacOSX requires OSX 10.7 or higher and Xcode v8 or
-   higher.
--  Windows is currently not supported.
 
 Quickstart
 ----------
@@ -72,6 +57,21 @@ with the file's import path:
 ::
 
     merge-pyi -i module.py pytype_output/pyi/module.pyi
+
+Requirements
+------------
+
+You need a Python 2.7 or 3.5+ interpreter to run pytype, as well as an
+interpreter in ``$PATH`` for the Python version of the code you're
+analyzing.
+
+Platform support:
+
+-  Pytype is currently developed and tested on Linux, which is the main
+   supported platform.
+-  Installation on MacOSX requires OSX 10.7 or higher and Xcode v8 or
+   higher.
+-  Windows is currently not supported.
 
 Installing
 ----------

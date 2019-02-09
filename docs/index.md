@@ -1,5 +1,3 @@
-[![Build Status](https://travis-ci.org/google/pytype.svg?branch=master)](https://travis-ci.org/google/pytype)
-
 # Pytype
 
 Pytype type-checks and type-annotates your Python code - without running it.
@@ -205,11 +203,11 @@ Apache 2.0
 ## Disclaimer
 This is not an official Google product.
 
-[error-classes]: docs/errors.md
-[faq]: docs/faq.md
+[error-classes]: errors.md
+[faq]: faq.md
 [github]: https://github.com/google/pytype/
 [importlab-travis]: https://github.com/google/importlab/blob/master/.travis.yml
 [merge-pyi]: https://github.com/google/pytype/tree/master/pytype/tools/merge_pyi
 [pep-484]: https://www.python.org/dev/peps/pep-0484
-[pyi-stub-files]: docs/user_guide.md#pyi-stub-files
-[user-guide]: docs/user_guide.md
+[pyi-stub-files]: user_guide.md#pyi-stub-files
+[user-guide]: user_guide.md
