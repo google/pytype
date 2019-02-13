@@ -1,6 +1,7 @@
 Version (upcoming)
 * Support asynchronous generators.
 * Fix variable annotations in Python 3.7.
+* Fix a pyi circular import bug.
 
 Version 2019.01.30
 * Support future.utils.with_metaclass.

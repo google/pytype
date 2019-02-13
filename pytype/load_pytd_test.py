@@ -260,6 +260,24 @@ class ImportPathsTest(unittest.TestCase):
       self.assertEqual(module.filename, filename)
       self.assertEqual(module.ast, ast)
 
+  def testCircularImport(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("os2/__init__.pyi", """
+        from . import path as path
+        _PathType = path._PathType
+        def utime(path: _PathType) -> None: ...
+        class stat_result(object): ...
+      """)
+      d.create_file("os2/path.pyi", """
+        import os2
+        _PathType = bytes
+        def samestat(stat1: os2.stat_result) -> bool: ...
+      """)
+      loader = load_pytd.Loader(None, self.PYTHON_VERSION, pythonpath=[d.path])
+      ast = loader.import_name("os2.path")
+      self.assertEqual(ast.Lookup("os2.path._PathType").type.name,
+                       "__builtin__.str")
+
 
 _Module = collections.namedtuple("_", ["module_name", "file_name"])
 
@@ -402,6 +420,7 @@ class Python3Test(unittest.TestCase):
   PYTHON_VERSION = (3, 6)
 
   def setUp(self):
+    super(Python3Test, self).setUp()
     self.options = config.Options.create(python_version=self.PYTHON_VERSION)
 
   def testPython3Builtins(self):
