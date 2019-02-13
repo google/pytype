@@ -1,4 +1,4 @@
-Version (upcoming)
+Version 2019.02.13
 * Support asynchronous generators.
 * Fix variable annotations in Python 3.7.
 * Fix a pyi circular import bug.
