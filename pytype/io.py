@@ -29,7 +29,7 @@ log = logging.getLogger(__name__)
 
 
 # Webpage explaining the pytype error codes
-ERROR_DOC_URL = "https://github.com/google/pytype/blob/master/docs/errors.md"
+ERROR_DOC_URL = "https://google.github.io/pytype/errors.html"
 
 
 def read_source_file(input_filename):

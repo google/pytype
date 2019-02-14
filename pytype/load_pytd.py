@@ -104,11 +104,14 @@ class Loader(object):
   Typically, you'll have one instance of this class, per module.
 
   Attributes:
+    builtins: The builtins ast.
+    typing: The typing ast.
     base_module: The full name of the module we're based in (i.e., the module
       that's importing other modules using this loader).
-    _modules: A map, filename to Module, for caching modules already loaded.
-    _concatenated: A concatenated pytd of all the modules. Refreshed when
-                   necessary.
+    python_version: The target Python version.
+    pythonpath: The PYTHONPATH.
+    imports_map: A short_path -> full_name mapping for imports.
+    use_typeshed: Whether to use https://github.com/python/typeshed.
   """
 
   PREFIX = "pytd:"  # for pytd files that ship with pytype
@@ -178,15 +181,23 @@ class Loader(object):
     assert ast.name == module
     return ast
 
-  def _postprocess_pyi(self, ast):
-    """Apply all the PYI transformations we need."""
+  def _resolve_builtins(self, ast):
     ast = ast.Visit(visitors.LookupBuiltins(self.builtins, full_names=False))
     ast = ast.Visit(visitors.ExpandCompatibleBuiltins(self.builtins))
+    return ast
+
+  def _resolve_external_and_local_types(self, ast):
     dependencies = self._collect_ast_dependencies(ast)
     if dependencies:
       self._load_ast_dependencies(dependencies, ast)
       ast = self._resolve_external_types(ast)
     ast = ast.Visit(visitors.LookupLocalTypes())
+    return ast
+
+  def _postprocess_pyi(self, ast):
+    """Apply all the PYI transformations we need."""
+    ast = self._resolve_builtins(ast)
+    ast = self._resolve_external_and_local_types(ast)
     return ast
 
   def _create_empty(self, module_name, filename):
@@ -226,9 +237,13 @@ class Loader(object):
       The ast (pytd.TypeDeclUnit) as represented in this loader.
     """
     module = Module(module_name, filename, ast)
+    # Builtins need to be resolved before the module is cached so that they are
+    # not mistaken for local types. External types can be left unresolved
+    # because they are unambiguous.
+    module.ast = self._resolve_builtins(module.ast)
     self._modules[module_name] = module
     try:
-      module.ast = self._postprocess_pyi(module.ast)
+      module.ast = self._resolve_external_and_local_types(module.ast)
       # Now that any imported TypeVar instances have been resolved, adjust type
       # parameters in classes and functions.
       module.ast = module.ast.Visit(visitors.AdjustTypeParameters())
