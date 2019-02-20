@@ -27,10 +27,14 @@ def make_parser():
   parser.add_argument("--debug", action="store_true",
                       dest="debug", default=None,
                       help="Display debug output.")
+  # TODO(b/124802213): There should be a cleaner way to do this.
+  parser.add_argument(
+      "--imports_info", type=str, action="store",
+      dest="imports_info", default=None,
+      help="Information for mapping import .pyi to files. ")
   # Add options from pytype-single.
   wrapper = arg_parser.ParserWrapper(parser)
   pytype_config.add_basic_options(wrapper)
-  pytype_config.add_infrastructure_options(wrapper)
   return arg_parser.Parser(parser, wrapper.actions)
 
 
@@ -49,7 +53,12 @@ def parse_args(argv):
 
   parser = make_parser()
   args = parser.parse_args(argv)
-  pytype_options = pytype_config.Options(args.inputs)
+  cli_args = args.inputs
+  # If we are passed an imports map we should look for pickled files as well.
+  if args.imports_info:
+    cli_args += ["--imports_info", args.imports_info,
+                 "--use-pickled-files"]
+  pytype_options = pytype_config.Options(cli_args)
   pytype_options.tweak(**parser.get_pytype_kwargs(args))
   kythe_args = kythe.Args(corpus=args.kythe_corpus, root=args.kythe_root)
   return (args, kythe_args, pytype_options)

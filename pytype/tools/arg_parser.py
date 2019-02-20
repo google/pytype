@@ -8,9 +8,9 @@ from pytype import config as pytype_config
 class ParserWrapper(object):
   """Wrapper that adds arguments to a parser while recording them."""
 
-  def __init__(self, parser):
+  def __init__(self, parser, actions=None):
     self.parser = parser
-    self.actions = {}
+    self.actions = {} if actions is None else actions
 
   def add_argument(self, *args, **kwargs):
     try:
@@ -22,9 +22,9 @@ class ParserWrapper(object):
       self.actions[action.dest] = action
 
   def add_argument_group(self, *args, **kwargs):
-    # We don't need to record argument groups, but we should support
-    # pass-through usage.
-    return self.parser.add_argument_group(*args, **kwargs)
+    group = self.parser.add_argument_group(*args, **kwargs)
+    wrapped_group = self.__class__(group, actions=self.actions)
+    return wrapped_group
 
 
 def string_to_bool(s):
@@ -103,5 +103,3 @@ class Parser(object):
       A dict of kwargs with pytype_single args as keys.
     """
     return {k: getattr(args, k) for k in self.pytype_single_args}
-
-
