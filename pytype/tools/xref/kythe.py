@@ -67,6 +67,14 @@ class Kythe(object):
         root=self.root,
         corpus=self.corpus)
 
+  def builtin_vname(self, signature, filepath=None):
+    return VName(
+        signature=signature,
+        path=filepath or self.path,
+        lang="python",
+        root=self.root,
+        corpus="builtins")
+
   def anchor_vname(self, start, end):
     signature = "@%d:%d" % (start, end)
     return self.vname(signature)

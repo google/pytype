@@ -3,12 +3,15 @@ import textwrap
 
 from pytype import config
 from pytype import file_utils
+from pytype import load_pytd
 
 from pytype.tests import test_base
 
 from pytype.tools.xref import indexer
 from pytype.tools.xref import kythe
 from pytype.tools.xref import output
+
+
 
 
 class IndexerTest(test_base.TargetIndependentTest):
