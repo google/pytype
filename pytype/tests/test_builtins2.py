@@ -352,8 +352,11 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       x5 = reversed({42})
       x6 = reversed(frozenset([42]))
       x7 = reversed({True: 42})
+      x8 = next(reversed([42]))
+      x9 = list(reversed([42]))
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import List
       x1 = ...  # type: reversed[int]
       x2 = ...  # type: reversed[int]
       x3 = ...  # type: reversed[int]
@@ -361,6 +364,8 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       x5 = ...  # type: reversed[nothing]
       x6 = ...  # type: reversed[nothing]
       x7 = ...  # type: reversed[nothing]
+      x8 = ...  # type: int
+      x9 = ...  # type: List[int]
     """)
     self.assertErrorLogIs(errors, [(5, "wrong-arg-types", r"Set\[int\]"),
                                    (6, "wrong-arg-types", r"FrozenSet\[int\]"),
