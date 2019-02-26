@@ -541,6 +541,26 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
     self.assertErrorLogIs(errors, [(16, "unsupported-operands", r"str.*int"),
                                    (17, "unsupported-operands", r"str.*int")])
 
+  def testNoSelfAnnot(self):
+    self.Check("""
+      from typing import Any, Generic, List, TypeVar
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        def __init__(self, children: List['Foo[Any]']):
+          pass
+    """)
+
+  def testIllegalSelfAnnot(self):
+    errors = self.CheckWithErrors("""\
+      from typing import Any, Generic, List, TypeVar
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        def __init__(self: 'Foo', children: List['Foo[Any]']):
+          pass
+    """)
+    self.assertErrorLogIs(
+        errors, [(5, "invalid-annotation", r"self.*__init__")])
+
 
 class GenericFeatureTest(test_base.TargetPython3FeatureTest):
   """Tests for User-defined Generic Type."""

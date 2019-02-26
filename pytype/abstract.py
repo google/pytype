@@ -2509,13 +2509,18 @@ class SignedFunction(Function):
   def __init__(self, signature, vm):
     super(SignedFunction, self).__init__(signature.name, vm)
     self.signature = signature
+    # Track whether we've annotated `self` with `set_self_annot`, since
+    # annotating `self` in `__init__` is otherwise illegal.
+    self._has_self_annot = False
 
   @contextlib.contextmanager
   def set_self_annot(self, annot_class):
     """Set the annotation for `self` in a class."""
     self_name = self.signature.param_names[0]
     old_self = self.signature.annotations.get(self_name)
+    old_has_self_annot = self._has_self_annot
     self.signature.annotations[self_name] = annot_class
+    self._has_self_annot = True
     try:
       yield
     finally:
@@ -2523,6 +2528,7 @@ class SignedFunction(Function):
         self.signature.annotations[self_name] = old_self
       else:
         del self.signature.annotations[self_name]
+      self._has_self_annot = old_has_self_annot
 
   def argcount(self, _):
     return len(self.signature.param_names)
@@ -2987,7 +2993,9 @@ class InterpreterFunction(SignedFunction):
     if (abstract_utils.func_name_is_class_init(self.name) and
         self.signature.param_names):
       self_name = self.signature.param_names[0]
-      if self_name in self.signature.annotations:
+      # If `_has_self_annot` is True, then we've intentionally temporarily
+      # annotated `self`; otherwise, a `self` annotation is illegal.
+      if not self._has_self_annot and self_name in self.signature.annotations:
         self.vm.errorlog.invalid_annotation(
             self.vm.simple_stack(self.get_first_opcode()),
             self.signature.annotations[self_name],
