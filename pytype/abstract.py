@@ -327,9 +327,9 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
     """
     # TODO(rechen): Remember which values were merged under which type keys so
     # we don't have to recompute this information in match_value_against_type.
-    return [{value.data.get_type_key(): value
-             for value in parameter.bindings}.values()
-            for parameter in self._unique_parameters()]
+    def _get_values(parameter):
+      return {b.data.get_type_key(): b for b in parameter.bindings}.values()
+    return [_get_values(parameter) for parameter in self._unique_parameters()]
 
   def compatible_with(self, logical_value):  # pylint: disable=unused-argument
     """Returns the conditions under which the value could be True or False.
@@ -795,7 +795,7 @@ class List(Instance, mixin.HasSlots, mixin.PythonConstant):
     self.set_slot("__getslice__", self.getslice_slot)
 
   def str_of_constant(self, printer):
-    return "[%s]" % ", ".join(" or ".join(printer(v) for v in val.data)
+    return "[%s]" % ", ".join(" or ".join(abstract_utils.var_map(printer, val))
                               for val in self.pyval)
 
   def __repr__(self):
@@ -916,7 +916,7 @@ class Tuple(Instance, mixin.PythonConstant):
     self._hash = None  # memoized due to expensive computation
 
   def str_of_constant(self, printer):
-    content = ", ".join(" or ".join(printer(v) for v in val.data)
+    content = ", ".join(" or ".join(abstract_utils.var_map(printer, val))
                         for val in self.pyval)
     if self.tuple_length == 1:
       content += ","
@@ -939,9 +939,9 @@ class Tuple(Instance, mixin.PythonConstant):
       # Descending into pyval would trigger infinite recursion in the case of a
       # tuple containing itself, so we approximate the inner values with their
       # full names.
+      approximate_hash = lambda var: tuple(v.full_name for v in var.data)
       self._hash = hash((self.tuple_length,) +
-                        tuple(tuple(v.full_name for v in e.data)
-                              for e in self.pyval))
+                        tuple(approximate_hash(e) for e in self.pyval))
     return self._hash
 
 
@@ -969,7 +969,7 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
     mixin.PythonConstant.init_mixin(self, collections.OrderedDict())
 
   def str_of_constant(self, printer):
-    return str({name: " or ".join(printer(v) for v in value.data)
+    return str({name: " or ".join(abstract_utils.var_map(printer, value))
                 for name, value in self.pyval.items()})
 
   def __repr__(self):
@@ -1560,9 +1560,13 @@ class PyTDFunction(Function):
     self.signatures = signatures
     self._signature_cache = {}
     self._return_types = {sig.pytd_sig.return_type for sig in signatures}
-    self._has_mutable = any(param.mutated_type is not None
-                            for sig in signatures
-                            for param in sig.pytd_sig.params)
+    for sig in signatures:
+      for param in sig.pytd_sig.params:
+        if param.mutated_type is not None:
+          self._has_mutable = True
+          break
+      else:
+        self._has_mutable = False
     for sig in signatures:
       sig.function = self
       sig.name = self.name
@@ -1647,10 +1651,14 @@ class PyTDFunction(Function):
     Returns:
       A list of function.Mutation instances.
     """
-    return [function.Mutation(v, name, self.vm.convert.create_new_unknown(
-        node, action="type_param_" + name))
-            for v in values if isinstance(v, SimpleAbstractValue)
-            for name in v.instance_type_parameters]
+    mutations = []
+    for v in values:
+      if isinstance(v, SimpleAbstractValue):
+        for name in v.instance_type_parameters:
+          mutations.append(
+              function.Mutation(v, name, self.vm.convert.create_new_unknown(
+                  node, action="type_param_" + name)))
+    return mutations
 
   def _match_view(self, node, args, view, alias_map=None):
     # If we're calling an overloaded pytd function with an unknown as a
@@ -2332,8 +2340,9 @@ class InterpreterClass(SimpleAbstractValue, mixin.Class):
     return [x for x in values if isinstance(x, InterpreterClass)]
 
   def get_own_abstract_methods(self):
-    return {name for name, var in self.members.items()
-            if any(v.CAN_BE_ABSTRACT and v.is_abstract for v in var.data)}
+    def _can_be_abstract(var):
+      return any(v.CAN_BE_ABSTRACT and v.is_abstract for v in var.data)
+    return {name for name, var in self.members.items() if _can_be_abstract(var)}
 
   def _mangle(self, name):
     """Do name-mangling on an attribute name.
@@ -3536,10 +3545,10 @@ class Unknown(AtomicAbstractValue):
   @classmethod
   def _make_params(cls, node, args):
     """Convert a list of types/variables to pytd parameters."""
-    return tuple(pytd.Parameter("_%d" % (i + 1), cls._to_pytd(node, p),
-                                kwonly=False, optional=False,
-                                mutated_type=None)
-                 for i, p in enumerate(args))
+    def _make_param(i, p):
+      return pytd.Parameter("_%d" % (i + 1), cls._to_pytd(node, p),
+                            kwonly=False, optional=False, mutated_type=None)
+    return tuple(_make_param(i, p) for i, p in enumerate(args))
 
   def get_special_attribute(self, node, name, valself):
     del node, valself
@@ -3583,14 +3592,15 @@ class Unknown(AtomicAbstractValue):
     # TODO(kramm): Record these.
     starargs = None
     starstarargs = None
+    def _make_sig(args, ret):
+      return pytd.Signature(self_param + self._make_params(node, args),
+                            starargs,
+                            starstarargs,
+                            return_type=Unknown._to_pytd(node, ret),
+                            exceptions=(),
+                            template=())
     calls = tuple(pytd_utils.OrderedSet(
-        pytd.Signature(self_param + self._make_params(node, args),
-                       starargs,
-                       starstarargs,
-                       return_type=Unknown._to_pytd(node, ret),
-                       exceptions=(),
-                       template=())
-        for args, _, ret in self._calls))
+        _make_sig(args, ret) for args, _, ret in self._calls))
     if calls:
       methods = (pytd.Function("__call__", calls, pytd.METHOD),)
     else:
