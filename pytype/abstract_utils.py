@@ -517,3 +517,7 @@ def matches_generator(type_obj):
 def matches_async_generator(type_obj):
   allowed_types = ("asyncgenerator", "AsyncIterable", "AsyncIterator")
   return _matches_generator(type_obj, allowed_types)
+
+
+def var_map(func, var):
+  return (func(v) for v in var.data)

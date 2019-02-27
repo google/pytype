@@ -845,5 +845,13 @@ class PYITest(test_base.TargetIndependentTest):
         a = ...  # type: foo.a.A
       """)
 
+  def testTypingAlias(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import typing as _typing
+        def f(x: _typing.Tuple[str, str]) -> None: ...
+      """)
+      self.Check("import foo", pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")

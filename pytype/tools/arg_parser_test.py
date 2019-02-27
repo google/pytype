@@ -39,6 +39,20 @@ def make_parser():
   return arg_parser.Parser(parser, wrapper.actions)
 
 
+class TestWrapper(unittest.TestCase):
+  """Test parser wrapper."""
+
+  def test_group(self):
+    parser = argparse.ArgumentParser()
+    wrapper = arg_parser.ParserWrapper(parser)
+    wrapper.add_argument('--foo', dest='foo')
+    group = wrapper.add_argument_group('test1')
+    group.add_argument('--bar', dest='bar')
+    subgroup = wrapper.add_argument_group('test2')
+    subgroup.add_argument('--baz', dest='baz')
+    self.assertSetEqual(set(wrapper.actions), {'foo', 'bar', 'baz'})
+
+
 class TestParser(unittest.TestCase):
   """Test arg_parser.Parser."""
 

@@ -541,7 +541,7 @@ class reversed(Iterator[_T]):
     __slots__ = []
     def __init__(self, sequence: Reversible[_T2]) -> NoneType:
       self = reversed[_T2]
-    def __iter__(self) -> reversed
+    def __iter__(self) -> reversed[_T]
     def next(self) -> _T
 
 class tuple(Tuple[_T]):

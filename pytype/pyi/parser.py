@@ -391,7 +391,7 @@ class _Parser(object):
     # These fields accumulate definitions that are used to build the
     # final TypeDeclUnit.
     self._constants = []
-    self._aliases = []
+    self._aliases = collections.OrderedDict()
     self._type_params = []
     self._module_path_map = {}
     self._generated_classes = collections.defaultdict(list)
@@ -467,15 +467,14 @@ class _Parser(object):
     assert not aliases  # We handle top-level aliases in add_alias_or_constant.
     constants.extend(self._constants)
 
-    generated_classes = [x for class_list in self._generated_classes.values()
-                         for x in class_list]
+    generated_classes = sum(self._generated_classes.values(), [])
 
     classes = generated_classes + classes
     functions = _merge_method_signatures(functions)
 
     name_to_class = {c.name: c for c in classes}
     aliases = []
-    for a in self._aliases:
+    for a in self._aliases.values():
       t = _maybe_resolve_alias(a, name_to_class)
       if isinstance(t, pytd.Function):
         functions.append(t)
@@ -667,7 +666,7 @@ class _Parser(object):
     elif isinstance(alias_or_constant, pytd.Alias):
       name, value = name_and_value
       self._type_map[name] = value
-      self._aliases.append(alias_or_constant)
+      self._aliases[name] = alias_or_constant
     else:
       assert False, "Unknown type of assignment"
 
@@ -715,7 +714,7 @@ class _Parser(object):
           new_name = t.name
         self._type_map[new_name] = t
         if from_package != "typing" or self._ast_name == "protocols":
-          self._aliases.append(pytd.Alias(new_name, t))
+          self._aliases[new_name] = pytd.Alias(new_name, t)
           self._module_path_map[name] = qualified_name
     else:
       # import a, b as c, ...
@@ -724,7 +723,7 @@ class _Parser(object):
           name, new_name = item
           t = pytd.Module(name=self._qualify_name(new_name),
                           module_name=self._qualify_name(name))
-          self._aliases.append(pytd.Alias(new_name, t))
+          self._aliases[new_name] = pytd.Alias(new_name, t)
         else:
           # We don't care about imports that are not aliased.
           pass
@@ -758,17 +757,34 @@ class _Parser(object):
         raise ParseError("Missing options to %s" % base_type.name)
       return base_type
 
+  def _matches_full_name(self, t, full_name):
+    """Whether t.name matches full_name in format {module}.{member}."""
+    expected_module_name, expected_name = full_name.rsplit(".", 1)
+    if self._ast_name == expected_module_name:
+      # full_name is inside the current module, so check for the name without
+      # the module prefix.
+      return t.name == expected_name
+    elif "." not in t.name:
+      # full_name is not inside the current module, so a local type can't match.
+      return False
+    else:
+      module_name, name = t.name.rsplit(".", 1)
+      if module_name in self._aliases:
+        # Adjust the module name if it has been aliased with `import x as y`.
+        # See test_pyi.PYITest.testTypingAlias.
+        module = self._aliases[module_name].type
+        if isinstance(module, pytd.Module):
+          module_name = module.module_name
+      return module_name == expected_module_name and name == expected_name
+
   def _is_tuple_base_type(self, t):
     return isinstance(t, pytd.NamedType) and (
-        t.name == "tuple" or
-        (self._ast_name != "__builtin__" and t.name == "__builtin__.tuple") or
-        (self._ast_name == "typing" and t.name == "Tuple") or
-        (self._ast_name != "typing" and t.name == "typing.Tuple"))
+        t.name == "tuple" or self._matches_full_name(t, "__builtin__.tuple") or
+        self._matches_full_name(t, "typing.Tuple"))
 
   def _is_callable_base_type(self, t):
-    return isinstance(t, pytd.NamedType) and (
-        (self._ast_name == "typing" and t.name == "Callable") or
-        (self._ast_name != "typing" and t.name == "typing.Callable"))
+    return (isinstance(t, pytd.NamedType) and
+            self._matches_full_name(t, "typing.Callable"))
 
   def _heterogeneous_tuple(self, base_type, parameters):
     if parameters:

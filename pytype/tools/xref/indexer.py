@@ -6,6 +6,8 @@ from __future__ import print_function
 
 import collections
 import logging
+import os
+import re
 
 from pytype import abstract
 from pytype import analyze
@@ -113,6 +115,21 @@ def has_decorator(f, decorator):
 def get_opcodes(traces, lineno, op_list):
   """Get all opcodes in op_list on a given line."""
   return [x for x in traces[lineno] if x[0] in op_list]
+
+
+def get_module_filepath(module):
+  """Recover the path to the py file from a module pyi path."""
+
+  def _clean(path):
+    """Change extension to .py."""
+    prefix, fname = os.path.split(path)
+    fname, _ = os.path.splitext(fname)
+    path = os.path.join(prefix, fname + ".py")
+    return path
+
+  return _clean(module.filename)
+
+
 
 
 # Internal datatypes
@@ -1043,11 +1060,12 @@ class Indexer(object):
     if isinstance(defn, Remote):
       remote = defn.module
       if remote in self.resolved_modules:
-        path = self.resolved_modules[remote].filename
-        if path.endswith(".pyi"):
-          path = path[:-1]
+        path = get_module_filepath(self.resolved_modules[remote])
         sig = "module." + defn.name
-        return self.kythe.vname(sig, path)
+        if path.startswith("pytd:"):
+          return self.kythe.builtin_vname(sig, path)
+        else:
+          return self.kythe.vname(sig, path)
       else:
         # Don't generate vnames for unresolved modules
         return None
