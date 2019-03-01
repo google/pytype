@@ -414,7 +414,10 @@ def no_type_check_decorator(decorator) -> Callable
 def get_type_hints(obj, ...) -> Optional[Dict[str, Any]]
 
 
-if sys.version_info >= (3, 5):
+# TODO(rechen): See https://github.com/google/pytype/issues/241. Due to a
+# typeshed bug, Awaitable and Coroutine need to be defined in 3.4. Once this bug
+# is fixed, we should define these classes only in 3.5+.
+if sys.version_info >= (3, 4):
   class Awaitable(Generic[_T], Protocol):
     @abstractmethod
     def __await__(self) -> Generator[Any, None, _T]: ...

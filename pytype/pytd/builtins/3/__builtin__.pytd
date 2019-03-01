@@ -808,7 +808,10 @@ class generator(Generator[_T, _T2, _V]):
     def send(self, value: _T2) -> _T
     def close(self) -> NoneType
 
-if sys.version_info >= (3, 5):
+# TODO(rechen): See https://github.com/google/pytype/issues/241. Due to a
+# typeshed bug, coroutine needs to be defined in 3.4. Once this bug is fixed, we
+# should define this class only in 3.5+.
+if sys.version_info >= (3, 4):
     class coroutine(Coroutine[_T, _T2, _V]):
         __slots__ = []
         def close(self) -> NoneType
