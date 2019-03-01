@@ -6,4 +6,3 @@ release](https://github.com/google/kythe/releases) and unpack it to `$HOME/kythe
 ````
 xref testdata/testcase.py | ./kythe-verifier.sh testdata/testcase.py
 ````
-
