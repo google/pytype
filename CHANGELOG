@@ -1,4 +1,4 @@
-Version (upcoming)
+Version 2019.03.01
 * Make pytype's type stubs loadable in Python 3.4.
 
 Version 2019.02.13
