@@ -1,8 +1,8 @@
 Pytype
 ======
 
-Pytype type-checks and type-annotates your Python code - without running
-it. Pytype can:
+Pytype checks and infers types for your Python code - without requiring
+type annotations. Pytype can:
 
 -  Lint plain Python code, flagging common mistakes such as mispelled
    attribute names, incorrect function calls, and `much
@@ -16,6 +16,8 @@ it. Pytype can:
    back into the Python source with a provided
    `merge-pyi <https://github.com/google/pytype/tree/master/pytype/tools/merge_pyi>`__
    tool.
+
+Pytype is a static analyzer: it does not execute the code it runs on.
 
 Thousands of projects at Google rely on pytype to keep their Python code
 well-typed and error-free.

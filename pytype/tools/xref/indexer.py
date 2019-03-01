@@ -6,8 +6,6 @@ from __future__ import print_function
 
 import collections
 import logging
-import os
-import re
 
 from pytype import abstract
 from pytype import analyze
@@ -17,6 +15,7 @@ from pytype import load_pytd
 from pytype import module_utils
 from pytype import utils
 
+from pytype.tools.xref import utils as xref_utils
 from pytype.tools.xref import kythe
 
 from typed_ast import ast27t as ast27
@@ -115,21 +114,6 @@ def has_decorator(f, decorator):
 def get_opcodes(traces, lineno, op_list):
   """Get all opcodes in op_list on a given line."""
   return [x for x in traces[lineno] if x[0] in op_list]
-
-
-def get_module_filepath(module):
-  """Recover the path to the py file from a module pyi path."""
-
-  def _clean(path):
-    """Change extension to .py."""
-    prefix, fname = os.path.split(path)
-    fname, _ = os.path.splitext(fname)
-    path = os.path.join(prefix, fname + ".py")
-    return path
-
-  return _clean(module.filename)
-
-
 
 
 # Internal datatypes
@@ -302,6 +286,7 @@ class Definition(collections.namedtuple(
     scope: The namespace id (e.g. module:class A:function f:x)
     target: The LHS of an attribute (e.g. for x.foo, target = typeof(x))
     doc: The docstring, if any, for function and class defs
+    id: The id
   """
 
   def __init__(self, name, typ, scope, target, doc):
@@ -370,7 +355,8 @@ class Reference(collections.namedtuple(
     scope: The namespace id (e.g. module.A.f)
     ref_scope: The namespace id of the referred symbol (if we can determine it)
     target: The LHS of an attribute (e.g. for x.foo, target = typeof(x))
-    location: The line and column of the symbol in the source code.
+    location: The line and column of the symbol in the source code
+    id: The id
   """
 
   def __init__(self, name, typ, data, scope, ref_scope, target, location):
@@ -1060,7 +1046,7 @@ class Indexer(object):
     if isinstance(defn, Remote):
       remote = defn.module
       if remote in self.resolved_modules:
-        path = get_module_filepath(self.resolved_modules[remote])
+        path = xref_utils.get_module_filepath(self.resolved_modules[remote])
         sig = "module." + defn.name
         if path.startswith("pytd:"):
           return self.kythe.builtin_vname(sig, path)

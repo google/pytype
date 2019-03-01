@@ -1,3 +1,6 @@
+Version (upcoming)
+* Make pytype's type stubs loadable in Python 3.4.
+
 Version 2019.02.13
 * Support asynchronous generators.
 * Fix variable annotations in Python 3.7.
