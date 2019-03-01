@@ -13,7 +13,7 @@
 
 %define parse.error verbose
 
-%name-prefix "pytype"
+%define api.prefix {pytype}
 %define api.namespace {pytype}
 
 %code requires {
