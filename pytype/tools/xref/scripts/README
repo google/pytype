@@ -1,4 +1,4 @@
-You can find prebuilt binaries at https://github.com/google/kythe/releases.
+You can find prebuilt binaries at https://github.com/kythe/kythe/releases.
 These scripts assume that they are installed to $HOME/kythe.
 
 If you build the tools yourself or install them to a different location,
