@@ -484,7 +484,7 @@ class listiterator(Iterator[_T]):
     def __iter__(self) -> listiterator[_T]
     def __next__(self) -> _T
 
-class enumerate(Iterator[_T]):
+class enumerate(Iterator[tuple[int, _T]]):
     __slots__ = []
     def __init__(self, iterable: Iterable[_T2], start: int = ...) -> NoneType:
       self = enumerate[_T2]
