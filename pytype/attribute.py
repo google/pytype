@@ -183,7 +183,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         # (object has __setattr__, but that honors __slots__.)
         continue
       if (isinstance(baseclass, abstract.SimpleAbstractValue) and
-          ("__setattr__" in baseclass.members or name in baseclass.members)):
+          ("__setattr__" in baseclass or name in baseclass)):
         return True  # This is a programmatic attribute.
       if baseclass.slots is None or name in baseclass.slots:
         return True  # Found a slot declaration; this is an instance attribute
