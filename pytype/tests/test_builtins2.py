@@ -572,11 +572,13 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       x1 = enumerate([42])
       x2 = enumerate((42,))
       x3 = enumerate(x for x in range(5))
+      x4 = list(enumerate(['']))
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       x1 = ...  # type: enumerate[int]
       x2 = ...  # type: enumerate[int]
       x3 = ...  # type: enumerate[int]
+      x4 = ...  # type: list[tuple[int, str]]
     """)
 
   def testFrozenSetInit(self):

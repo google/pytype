@@ -65,7 +65,7 @@ class PythonConstant(object):
   "r" etc.).
   """
 
-  overloads = ("__repr__", "compatible_with",)
+  overloads = ("__repr__",)
 
   def init_mixin(self, pyval):
     """Mix-in equivalent of __init__."""
@@ -86,9 +86,6 @@ class PythonConstant(object):
 
   def __repr__(self):
     return "<%s %r>" % (self.name, self.str_of_constant(str))
-
-  def compatible_with(self, logical_value):
-    return bool(self.pyval) == logical_value
 
 
 @six.add_metaclass(MixinMeta)

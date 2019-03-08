@@ -1,3 +1,6 @@
+Version 2019.03.08
+* Fix bad type definitions for builtins reversed and enumerate.
+
 Version 2019.03.01
 * Make pytype's type stubs loadable in Python 3.4.
 

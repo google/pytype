@@ -392,6 +392,15 @@ py_test(
 
 py_test(
   NAME
+    compare_test
+  SRCS
+    compare_test.py
+  DEPS
+    .libvm
+)
+
+py_test(
+  NAME
     mixin_test
   SRCS
     mixin_test.py

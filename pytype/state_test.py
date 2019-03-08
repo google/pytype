@@ -1,5 +1,6 @@
 """Test state.py."""
 
+from pytype import compare
 from pytype import state
 from pytype.typegraph import cfg
 
@@ -21,12 +22,9 @@ class FakeValue(object):
 
   def __init__(self, name, true_compat, false_compat):
     self._name = name
-    self._compatible = {
+    self.compatible = {
         True: true_compat,
         False: false_compat}
-
-  def compatible_with(self, logical_value):
-    return self._compatible[logical_value]
 
   def __str__(self):
     return self._name
@@ -37,18 +35,29 @@ ONLY_FALSE = FakeValue("F", False, True)
 AMBIGUOUS = FakeValue("?", True, True)
 
 
+def fake_compatible_with(value, logical_value):
+  return value.compatible[logical_value]
+
+
 class ConditionTestBase(unittest.TestCase):
 
   def setUp(self):
+    super(ConditionTestBase, self).setUp()
     self._program = cfg.Program()
     self._node = self._program.NewCFGNode("test")
+    self._old_compatible_with = compare.compatible_with
+    compare.compatible_with = fake_compatible_with
+
+  def tearDown(self):
+    super(ConditionTestBase, self).tearDown()
+    compare.compatible_with = self._old_compatible_with
 
   def new_binding(self, value=AMBIGUOUS):
     var = self._program.NewVariable()
     return var.AddBinding(value)
 
   def check_binding(self, expected, binding, **varnames):
-    self.assertEqual(1, len(binding.origins))
+    self.assertEqual(len(binding.origins), 1)
     self.assertEqual(self._node, binding.origins[0].where)
     self.assertEqual(expected, source_summary(binding, **varnames))
 
