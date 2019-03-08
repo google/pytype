@@ -331,26 +331,6 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
       return {b.data.get_type_key(): b for b in parameter.bindings}.values()
     return [_get_values(parameter) for parameter in self._unique_parameters()]
 
-  def compatible_with(self, logical_value):  # pylint: disable=unused-argument
-    """Returns the conditions under which the value could be True or False.
-
-    Args:
-      logical_value: Either True or False.
-
-    Returns:
-      False: If the value could not evaluate to logical_value under any
-          circumstance (i.e. value is the empty list and logical_value is True).
-      True: If it is possible for the value to evaluate to the logical_value,
-          and any ambiguity cannot be described by additional bindings.
-      DNF: A list of lists of bindings under which the value can evaluate to
-          the logical value.  For example, isinstance() could be reduced
-          to the set of bindings that would satisfy th isinstance() condition.
-    """
-    # By default a value is ambiguous - if could potentially evaluate to
-    # either True or False, thus we return True here regardless of
-    # logical_value.
-    return True
-
   def update_official_name(self, _):
     """Update the official name."""
     pass
@@ -730,10 +710,6 @@ class SimpleAbstractValue(AtomicAbstractValue):
 class Instance(SimpleAbstractValue):
   """An instance of some object."""
 
-  # Fully qualified names of types that are parameterized containers.
-  _CONTAINER_NAMES = set([
-      "__builtin__.list", "__builtin__.set", "__builtin__.frozenset"])
-
   def __init__(self, cls, vm):
     super(Instance, self).__init__(cls.name, vm)
     self.cls = cls
@@ -759,16 +735,6 @@ class Instance(SimpleAbstractValue):
     # instance_type_parameters during loading will trigger an obvious crash due
     # to infinite recursion, rather than silently returning an incomplete dict.
     self._instance_type_parameters_loaded = True
-
-  def compatible_with(self, logical_value):  # pylint: disable=unused-argument
-    # Containers with unset parameters and NoneType instances cannot match True.
-    name = self.full_name
-    if logical_value and name in Instance._CONTAINER_NAMES:
-      return (self.has_instance_type_parameter(abstract_utils.T) and
-              bool(self.get_instance_type_parameter(abstract_utils.T).bindings))
-    elif name == "__builtin__.NoneType":
-      return not logical_value
-    return True
 
   @property
   def full_name(self):
@@ -807,10 +773,6 @@ class List(Instance, mixin.HasSlots, mixin.PythonConstant):
   def merge_instance_type_parameter(self, node, name, value):
     self.could_contain_anything = True
     super(List, self).merge_instance_type_parameter(node, name, value)
-
-  def compatible_with(self, logical_value):
-    return (self.could_contain_anything or
-            mixin.PythonConstant.compatible_with(self, logical_value))
 
   def getitem_slot(self, node, index_var):
     """Implements __getitem__ for List.
@@ -1122,16 +1084,6 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
       self.merge_instance_type_parameter(node, abstract_utils.V, v)
       self.could_contain_anything = True
 
-  def compatible_with(self, logical_value):
-    if self.could_contain_anything:
-      # Always compatible with False.  Compatible with True only if type
-      # parameters have been established (meaning that the dict can be
-      # non-empty).
-      return (not logical_value or
-              bool(self.get_instance_type_parameter(abstract_utils.K).bindings))
-    else:
-      return mixin.PythonConstant.compatible_with(self, logical_value)
-
 
 class AnnotationClass(SimpleAbstractValue, mixin.HasSlots):
   """Base class of annotations that can be parameterized."""
@@ -1293,8 +1245,8 @@ class LazyConcreteDict(SimpleAbstractValue, mixin.PythonConstant):
   def _convert_member(self, _, pyval):
     return self.vm.convert.constant_to_var(pyval)
 
-  def compatible_with(self, logical_value):
-    return bool(self._member_map) == logical_value
+  def is_empty(self):
+    return not bool(self._member_map)
 
 
 class Union(AtomicAbstractValue):

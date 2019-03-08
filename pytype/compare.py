@@ -1,6 +1,7 @@
-"""Compare two variables."""
+"""Do comparisons involving abstract values."""
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import mixin
 from pytype.pytd import slots
 
@@ -8,6 +9,10 @@ from pytype.pytd import slots
 NUMERIC = {"__builtin__.bool", "__builtin__.int", "__builtin__.float",
            "__builtin__.complex"}
 STRING = {"__builtin__.str", "__builtin__.unicode"}
+
+# Fully qualified names of types that are parameterized containers.
+_CONTAINER_NAMES = {
+    "__builtin__.list", "__builtin__.set", "__builtin__.frozenset"}
 
 
 def _incompatible(left_name, right_name):
@@ -84,3 +89,44 @@ def cmp_rel(vm, op, left, right):
     return _compare_dict(op, left, right)
   else:
     return None
+
+
+def compatible_with(value, logical_value):
+  """Returns the conditions under which the value could be True or False.
+
+  Args:
+    value: An abstract value.
+    logical_value: Either True or False.
+
+  Returns:
+    False: If the value could not evaluate to logical_value under any
+        circumstance (e.g. value is the empty list and logical_value is True).
+    True: If it is possible for the value to evaluate to the logical_value,
+        and any ambiguity cannot be resolved by additional bindings.
+  """
+  if isinstance(value, abstract.List) and value.could_contain_anything:
+    return True
+  elif isinstance(value, abstract.Dict) and value.could_contain_anything:
+    # Always compatible with False. Compatible with True only if type
+    # parameters have been established (meaning that the dict can be
+    # non-empty).
+    return (not logical_value or
+            bool(value.get_instance_type_parameter(abstract_utils.K).bindings))
+  elif isinstance(value, abstract.LazyConcreteDict):
+    return value.is_empty() != logical_value
+  elif isinstance(value, mixin.PythonConstant):
+    return bool(value.pyval) == logical_value
+  elif isinstance(value, abstract.Instance):
+    # Containers with unset parameters and NoneType instances cannot match True.
+    name = value.full_name
+    if logical_value and name in _CONTAINER_NAMES:
+      return (
+          value.has_instance_type_parameter(abstract_utils.T) and
+          bool(value.get_instance_type_parameter(abstract_utils.T).bindings))
+    elif name == "__builtin__.NoneType":
+      return not logical_value
+    return True
+  else:
+    # By default a value is ambiguous - it could potentially evaluate to either
+    # True or False. Thus we return True here regardless of logical_value.
+    return True

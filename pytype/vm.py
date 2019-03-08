@@ -1379,8 +1379,10 @@ class VirtualMachine(object):
   def byte_UNARY_NOT(self, state, op):
     """Implement the UNARY_NOT bytecode."""
     state, var = state.pop()
-    true_bindings = [b for b in var.bindings if b.data.compatible_with(True)]
-    false_bindings = [b for b in var.bindings if b.data.compatible_with(False)]
+    true_bindings = [
+        b for b in var.bindings if compare.compatible_with(b.data, True)]
+    false_bindings = [
+        b for b in var.bindings if compare.compatible_with(b.data, False)]
     if len(true_bindings) == len(false_bindings) == len(var.bindings):
       # No useful information from bindings, use a generic bool value.
       # This is merely an optimization rather than building separate True/False
@@ -1748,9 +1750,9 @@ class VirtualMachine(object):
       v = b.data
       if isinstance(v, mixin.PythonConstant) and isinstance(v.pyval, bool):
         const = v.pyval is true_val
-      elif not v.compatible_with(True):
+      elif not compare.compatible_with(v, True):
         const = not true_val
-      elif not v.compatible_with(False):
+      elif not compare.compatible_with(v, False):
         const = true_val
       else:
         const = None

@@ -3,6 +3,7 @@
 import logging
 
 from pytype import abstract
+from pytype import compare
 from pytype import metrics
 from pytype import mixin
 from pytype import utils
@@ -368,10 +369,10 @@ def _restrict_condition(node, bindings, logical_value):
   dnf = []
   restricted = False
   for b in bindings:
-    match = b.data.compatible_with(logical_value)
-    if match is True:
+    match = compare.compatible_with(b.data, logical_value)
+    if match is True:  # pylint: disable=g-bool-id-comparison
       dnf.append([b])
-    elif match is False:
+    elif match is False:  # pylint: disable=g-bool-id-comparison
       restricted = True
     else:
       dnf.extend(match)
