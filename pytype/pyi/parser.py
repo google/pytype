@@ -739,8 +739,8 @@ class _Parser(object):
       A pytd type node.
 
     Raises:
-      ParseError: if parameters are not supplied for a base_type that requires
-          parameters, such as Union.
+      ParseError: if the wrong number of parameters is supplied for the
+        base_type - e.g., 2 parameters to Optional or no parameters to Union.
     """
     base_type = self._type_map.get(name)
     if base_type is None:
@@ -748,6 +748,9 @@ class _Parser(object):
       full_name = self._module_path_map.get(module, module) + dot + tail
       base_type = pytd.NamedType(full_name)
     if parameters is not None:
+      if (len(parameters) > 1 and isinstance(base_type, pytd.NamedType) and
+          base_type.name == "typing.Optional"):
+        raise ParseError("Too many options to %s" % base_type.name)
       return self._parameterized_type(base_type, parameters)
     else:
       if (isinstance(base_type, pytd.NamedType) and

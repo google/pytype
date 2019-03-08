@@ -60,13 +60,11 @@ class _ParserTestBase(unittest.TestCase):
 
   def check_error(self, src, expected_line, message):
     """Check that parsing the src raises the expected error."""
-    try:
+    with self.assertRaises(parser.ParseError) as e:
       parser.parse_string(textwrap.dedent(src),
                           python_version=self.PYTHON_VERSION)
-      self.fail("ParseError expected")
-    except parser.ParseError as e:
-      six.assertRegex(self, utils.message(e), re.escape(message))
-      self.assertEqual(expected_line, e.line)
+    six.assertRegex(self, utils.message(e.exception), re.escape(message))
+    self.assertEqual(expected_line, e.exception.line)
 
 
 class ParseErrorTest(unittest.TestCase):
@@ -319,6 +317,10 @@ class ParserTest(_ParserTestBase):
     self.check_error("def f(x: typing.Optional): ...", 1,
                      "Missing options to typing.Optional")
 
+  def test_optional_extra_parameters(self):
+    self.check_error("def f(x: typing.Optional[int, str]): ...", 1,
+                     "Too many options to typing.Optional")
+
   def test_alias_lookup(self):
     self.check("""\
       from somewhere import Foo
@@ -381,17 +383,15 @@ class ParserTest(_ParserTestBase):
     src = """\
       class Foo:
         this is not valid"""
-    try:
+    with self.assertRaises(parser.ParseError) as e:
       parser.parse_string(textwrap.dedent(src), filename="foo.py",
                           python_version=self.PYTHON_VERSION)
-      self.fail("ParseError expected")
-    except parser.ParseError as e:
-      self.assertMultiLineEqual(textwrap.dedent("""\
-          File: "foo.py", line 2
-            this is not valid
-                 ^
-        ParseError: syntax error, unexpected NAME, expecting ':' or '='"""
-                                               ), str(e))
+    self.assertMultiLineEqual(textwrap.dedent("""\
+        File: "foo.py", line 2
+          this is not valid
+               ^
+      ParseError: syntax error, unexpected NAME, expecting ':' or '='"""
+                                             ), str(e.exception))
 
   def test_pep484_translations(self):
     ast = self.check("""\
