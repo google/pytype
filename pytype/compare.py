@@ -126,6 +126,9 @@ def compatible_with(value, logical_value):
     elif name == "__builtin__.NoneType":
       return not logical_value
     return True
+  elif isinstance(value, (abstract.Function, mixin.Class)):
+    # Functions and classes always evaluate to True.
+    return logical_value
   else:
     # By default a value is ambiguous - it could potentially evaluate to either
     # True or False. Thus we return True here regardless of logical_value.
