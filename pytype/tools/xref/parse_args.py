@@ -3,6 +3,7 @@
 import argparse
 
 from pytype import config as pytype_config
+from pytype import utils as pytype_utils
 from pytype.tools import arg_parser
 from pytype.tools.xref import kythe
 
@@ -53,11 +54,16 @@ def parse_args(argv):
 
   parser = make_parser()
   args = parser.parse_args(argv)
-  cli_args = args.inputs
+  cli_args = args.inputs.copy()
   # If we are passed an imports map we should look for pickled files as well.
   if args.imports_info:
     cli_args += ["--imports_info", args.imports_info,
                  "--use-pickled-files"]
+
+  # We need to set this when creating Options (b/128032570)
+  if args.python_version:
+    cli_args += ["-V", pytype_utils.format_version(args.python_version)]
+
   pytype_options = pytype_config.Options(cli_args)
   pytype_options.tweak(**parser.get_pytype_kwargs(args))
   kythe_args = kythe.Args(corpus=args.kythe_corpus, root=args.kythe_root)
