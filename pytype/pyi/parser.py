@@ -713,7 +713,9 @@ class _Parser(object):
           assert new_name == name
           new_name = t.name
         self._type_map[new_name] = t
-        if from_package != "typing" or self._ast_name == "protocols":
+        if (new_name != name or
+            from_package != "typing" or
+            self._ast_name == "protocols"):
           self._aliases[new_name] = pytd.Alias(new_name, t)
           self._module_path_map[name] = qualified_name
     else:
