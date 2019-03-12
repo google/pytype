@@ -144,14 +144,17 @@ class _Mutator(visitors.Visitor):
 class _InsertTypeParameters(visitors.Visitor):
   """Visitor for inserting TypeParameter instances."""
 
-  def EnterTypeDeclUnit(self, node):
-    self.type_params = {p.name: p for p in node.type_params}
-
-  def LeaveTypeDeclUnit(self, node):
-    self.type_params = None
+  def __init__(self, type_params):
+    super(_InsertTypeParameters, self).__init__()
+    self.type_params = {p.name: p for p in type_params}
+    self.inserted = []
+    self._seen = set()
 
   def VisitNamedType(self, node):
     if node.name in self.type_params:
+      if node.name not in self._seen:
+        self.inserted.append(node.name)
+        self._seen.add(node.name)
       return self.type_params[node.name]
     else:
       return node
@@ -441,7 +444,7 @@ class _Parser(object):
         raise e
 
     ast = ast.Visit(_PropertyToConstant())
-    ast = ast.Visit(_InsertTypeParameters())
+    ast = ast.Visit(_InsertTypeParameters(ast.type_params))
     ast = ast.Visit(_VerifyMutators())
     # TODO(kramm): This is in the wrong place- it should happen after resolving
     # local names, in load_pytd.
@@ -749,6 +752,15 @@ class _Parser(object):
       module, dot, tail = name.partition(".")
       full_name = self._module_path_map.get(module, module) + dot + tail
       base_type = pytd.NamedType(full_name)
+    else:
+      # We assume that all type parameters have been defined. Since pytype
+      # orders type parameters to appear before classes and functions, this
+      # assumption is generally safe.
+      inserter = _InsertTypeParameters(self._type_params)
+      # Records base_type's template without actually inserting type parameters.
+      base_type.Visit(inserter)
+      if inserter.inserted:
+        return self._type_macro(base_type, inserter.inserted, parameters)
     if parameters is not None:
       if (len(parameters) > 1 and isinstance(base_type, pytd.NamedType) and
           base_type.name == "typing.Optional"):
@@ -761,6 +773,16 @@ class _Parser(object):
                              "typing.Optional"]):
         raise ParseError("Missing options to %s" % base_type.name)
       return base_type
+
+  def _type_macro(self, base_type, template, parameters):
+    if parameters is None:
+      mapping = {t: pytd.AnythingType() for t in template}
+    elif len(template) != len(parameters):
+      raise ParseError("%s expected %d parameters, got %s" % (
+          pytd.Print(base_type), len(template), len(parameters)))
+    else:
+      mapping = dict(zip(template, parameters))
+    return base_type.Visit(visitors.ReplaceTypes(mapping))
 
   def _matches_full_name(self, t, full_name):
     """Whether t.name matches full_name in format {module}.{member}."""
