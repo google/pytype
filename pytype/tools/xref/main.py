@@ -10,10 +10,13 @@ import sys
 from pytype import utils
 from pytype.pytd.parse import node
 
+# pytype: disable=import-error
+# (b/119682838)
 from pytype.tools.xref import debug
 from pytype.tools.xref import indexer
-from pytype.tools.xref import parse_args
 from pytype.tools.xref import output
+from pytype.tools.xref import parse_args
+# pytype: enable=import-error
 
 
 def main():
@@ -28,7 +31,12 @@ def main():
   if options.timeout is not None:
     signal.alarm(options.timeout)
 
-  ix = indexer.process_file(options, kythe_args=kythe_args)
+  try:
+    ix = indexer.process_file(options, kythe_args=kythe_args)
+  except indexer.PytypeError as e:
+    print(e.args[0], file=sys.stderr)
+    sys.exit(1)
+
   if args.debug:
     debug.show_index(ix)
   else:

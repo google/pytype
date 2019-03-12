@@ -5,7 +5,6 @@
 from __future__ import print_function
 
 import collections
-import logging
 
 from pytype import abstract
 from pytype import analyze
@@ -13,7 +12,6 @@ from pytype import errors
 from pytype import io
 from pytype import load_pytd
 from pytype import module_utils
-from pytype import utils
 
 from pytype.tools.xref import utils as xref_utils
 from pytype.tools.xref import kythe
@@ -1263,6 +1261,11 @@ class Indexer(object):
     return links
 
 
+class PytypeError(Exception):
+  """Wrap exceptions raised by the indexer."""
+  pass
+
+
 def process_file(options, source_text=None, kythe_args=None):
   """Process a single file and return cross references.
 
@@ -1273,7 +1276,10 @@ def process_file(options, source_text=None, kythe_args=None):
     kythe_args: Extra args for generating the kythe index
 
   Returns:
-    An Indexer object with the indexed code, or None if pytype fails.
+    An Indexer object with the indexed code
+
+  Raises:
+    PytypeError if pytype fails.
   """
 
   # We bind the global ast variable in this function.
@@ -1288,7 +1294,7 @@ def process_file(options, source_text=None, kythe_args=None):
       generate_unknowns=options.protocols,
       store_all_calls=False,
       loader=loader)
-  try:
+  with io.wrap_pytype_exceptions(PytypeError, filename=options.input):
     analyze.infer_types(
         src=src,
         filename=options.input,
@@ -1296,9 +1302,6 @@ def process_file(options, source_text=None, kythe_args=None):
         options=options,
         loader=loader,
         tracer_vm=vm)
-  except utils.UsageError as e:
-    logging.error("Usage error: %s\n", utils.message(e))
-    return None
 
   major, minor = options.python_version
   if major == 2:

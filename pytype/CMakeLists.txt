@@ -355,6 +355,15 @@ py_test(
 
 py_test(
   NAME
+    io_test
+  SRCS
+    io_test.py
+  DEPS
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
     module_utils_test
   SRCS
     module_utils_test.py
