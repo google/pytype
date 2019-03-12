@@ -278,6 +278,26 @@ class ImportPathsTest(unittest.TestCase):
       self.assertEqual(ast.Lookup("os2.path._PathType").type.name,
                        "__builtin__.str")
 
+  def testCircularImportWithExternalType(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("os2/__init__.pyi", """
+        from posix2 import stat_result as stat_result
+        from . import path as path
+        _PathType = path._PathType
+        def utime(path: _PathType) -> None: ...
+      """)
+      d.create_file("os2/path.pyi", """
+        import os2
+        _PathType = bytes
+        def samestate(stat1: os2.stat_result) -> bool: ...
+      """)
+      d.create_file("posix2.pyi", "class stat_result: ...")
+      loader = load_pytd.Loader(None, self.PYTHON_VERSION, pythonpath=[d.path])
+      # Make sure all three modules were resolved properly.
+      loader.import_name("os2")
+      loader.import_name("os2.path")
+      loader.import_name("posix2")
+
 
 _Module = collections.namedtuple("_", ["module_name", "file_name"])
 
