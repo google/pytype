@@ -171,16 +171,16 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 
   def testAmbiguousAnnotation(self):
     _, errors = self.InferWithErrors("""\
-      def foo(x: int or float):
+      def foo(x: int if __random__ else float):
         return x
-      def foo(x: "int or float"):
+      def foo(x: "int if __random__ else float"):
         return x
     """)
     self.assertErrorLogIs(errors, {
         (1, "invalid-annotation", r"float or int.*x.*constant"),
         # For a late annotation, we print the string literal, which is why
-        # 'int or float' below is not in alphabetical order.
-        (3, "invalid-annotation", r"int or float.*x.*constant")})
+        # the types below are not in alphabetical order.
+        (3, "invalid-annotation", r"int.*float.*x.*constant")})
 
   def testBadStringAnnotation(self):
     _, errors = self.InferWithErrors("""\
@@ -629,9 +629,9 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
   def testAmbiguousInnerAnnotation(self):
     _, errors = self.InferWithErrors("""\
       from typing import List, Union
-      def f(x: List[int or str]):
+      def f(x: List[int if __random__ else str]):
         pass
-      def g(x: Union[int or str]):
+      def g(x: Union[int if __random__ else str]):
         pass
       def h(x: List[Union[int, str]]):  # okay
         pass

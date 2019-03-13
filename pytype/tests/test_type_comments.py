@@ -231,11 +231,11 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
   def testAmbiguousAnnotation(self):
     _, errors = self.InferWithErrors("""\
       def foo(x):
-        # type: (int or str) -> None
+        # type: (int if __random__ else str) -> None
         pass
     """)
     self.assertErrorLogIs(errors, [(2, "invalid-function-type-comment",
-                                    r"int or str.*constant")])
+                                    r"int.*str.*constant")])
 
 
 class AssignmentCommentTest(test_base.TargetIndependentTest):

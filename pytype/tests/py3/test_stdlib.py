@@ -324,5 +324,8 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       f(Foo.foo)
     """)
 
+  def test_contextlib(self):
+    self.Check("from contextlib import AbstractContextManager")
+
 
 test_base.main(globals(), __name__ == "__main__")

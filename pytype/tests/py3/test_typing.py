@@ -134,8 +134,10 @@ class TypingTest(test_base.TargetPython3BasicTest):
       def g1(x: Callable[int, bool]): ...  # bad: _ARGS not a list
       lst = [int] if __random__ else [str]
       def g2(x: Callable[lst, bool]): ...  # bad: _ARGS ambiguous
-      def g3(x: Callable[[], bool or str]): ...  # bad: _RET ambiguous
-      def g4(x: Callable[[int or str], bool]): ...  # bad: _ARGS[0] ambiguous
+      # bad: _RET ambiguous
+      def g3(x: Callable[[], bool if __random__ else str]): ...
+      # bad: _ARGS[0] ambiguous
+      def g4(x: Callable[[int if __random__ else str], bool]): ...
       lst = None  # type: list[int]
       def g5(x: Callable[lst, bool]): ...  # bad: _ARGS not a constant
       def g6(x: Callable[[42], bool]): ...  # bad: _ARGS[0] not a type
@@ -167,15 +169,15 @@ class TypingTest(test_base.TargetPython3BasicTest):
         (10, "invalid-annotation", r"\[int\] or \[str\].*Must be constant"),
         (10, "invalid-annotation",
          r"'Any'.*must be a list of argument types or ellipsis"),
-        (11, "invalid-annotation", r"bool or str.*Must be constant"),
-        (12, "invalid-annotation", r"int or str.*Must be constant"),
-        (14, "invalid-annotation",
+        (12, "invalid-annotation", r"bool or str.*Must be constant"),
+        (14, "invalid-annotation", r"int or str.*Must be constant"),
+        (16, "invalid-annotation",
          r"instance of List\[int\].*Must be constant"),
-        (15, "invalid-annotation", r"instance of int"),
-        (16, "invalid-annotation", r"Callable.*Expected 2.*got 3"),
-        (17, "invalid-annotation",
+        (17, "invalid-annotation", r"instance of int"),
+        (18, "invalid-annotation", r"Callable.*Expected 2.*got 3"),
+        (19, "invalid-annotation",
          r"'Any'.*must be a list of argument types or ellipsis"),
-        (18, "invalid-annotation", r"Callable\[_ARGS, _RET].*2.*1"),])
+        (20, "invalid-annotation", r"Callable\[_ARGS, _RET].*2.*1"),])
 
   def test_callable_bad_args(self):
     ty, errors = self.InferWithErrors("""\

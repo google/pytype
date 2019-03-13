@@ -8,6 +8,7 @@ from pytype import errors
 from pytype import function
 from pytype import load_pytd
 from pytype import vm
+from pytype.pytd import pytd
 
 import unittest
 
@@ -246,6 +247,24 @@ class DictTest(CompareTestBase):
     self.assertIs(True, compare.compatible_with(self._d, True))
     self.assertIs(True, compare.compatible_with(self._d, False))
     self.assertSetEqual(set(ret.data), {val, self._vm.convert.none})
+
+
+class FunctionTest(CompareTestBase):
+
+  def test_compatible_with(self):
+    pytd_sig = pytd.Signature((), None, None, pytd.AnythingType(), (), ())
+    sig = function.PyTDSignature("f", pytd_sig, self._vm)
+    f = abstract.PyTDFunction("f", (sig,), pytd.METHOD, self._vm)
+    self.assertIs(True, compare.compatible_with(f, True))
+    self.assertIs(False, compare.compatible_with(f, False))
+
+
+class ClassTest(CompareTestBase):
+
+  def test_compatible_with(self):
+    cls = abstract.InterpreterClass("X", [], {}, None, self._vm)
+    self.assertIs(True, compare.compatible_with(cls, True))
+    self.assertIs(False, compare.compatible_with(cls, False))
 
 
 if __name__ == "__main__":

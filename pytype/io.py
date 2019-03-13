@@ -3,11 +3,14 @@
 
 from __future__ import print_function
 
+import contextlib
 import logging
 import os
 import sys
 import tokenize
 import traceback
+
+import six
 
 from pytype import __version__
 from pytype import analyze
@@ -268,3 +271,43 @@ def parse_pyi(options):
 
 def get_pytype_version():
   return __version__.__version__
+
+
+@contextlib.contextmanager
+def wrap_pytype_exceptions(exception_type, filename=""):
+  """Catch pytype errors and reraise them as a single exception type.
+
+  NOTE: This will also wrap non-pytype errors thrown within the body of the
+  code block; it is therefore recommended to use this to wrap a single function
+  call.
+
+  Args:
+    exception_type: The class to wrap exceptions in.
+    filename: A filename to use in error messages.
+
+  Yields:
+    nothing, just calls the code block.
+  """
+  try:
+    yield
+  except utils.UsageError as e:
+    raise exception_type("Pytype usage error: %s" % utils.message(e))
+  except pyc.CompileError as e:
+    raise exception_type("Error reading file %s at line %s: %s" %
+                         (filename, e.lineno, e.error))
+  except tokenize.TokenError as e:
+    msg, (lineno, unused_column) = e.args  # pylint: disable=unbalanced-tuple-unpacking
+    raise exception_type("Error reading file %s at line %s: %s" %
+                         (filename, lineno, msg))
+  except directors.SkipFile:
+    raise exception_type("Pytype could not analyze file %s: "
+                         "'# skip-file' directive found" % filename)
+  except Exception as e:  # pylint: disable=broad-except
+    msg = "Pytype error: %s: %s" % (e.__class__.__name__, e.args[0])
+    # We need the version check here because six.reraise doesn't work properly
+    # in python3
+    if sys.version_info[0] == 2:
+      _, _, tb = sys.exc_info()
+      six.reraise(exception_type, exception_type(msg), tb)
+    else:
+      raise exception_type(msg).with_traceback(e.__traceback__)

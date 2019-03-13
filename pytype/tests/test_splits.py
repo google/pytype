@@ -786,5 +786,15 @@ class SplitTest(test_base.TargetIndependentTest):
         name_error
     """)
 
+  def testFunctionAndClassTruthiness(self):
+    self.Check("""
+      def f(x):
+        return {} if x else []
+      def g():
+        return f(lambda: True).values()
+      def h():
+        return f(object).values()
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
