@@ -49,8 +49,6 @@ filegroup(
     pytd/stdlib/3/signal.pytd
     pytd/stdlib/3/xmlrpclib.pytd
 
-    pytd/stdlib/3/asyncio/tasks.pytd
-
     pytd/stdlib/3/importlib/__init__.pytd
 
     pytd/stdlib/3/multiprocessing/pool.pytd
