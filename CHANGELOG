@@ -1,3 +1,8 @@
+Version 2019.03.15
+* Fix pyi parsing of `typing` aliases.
+* Remove mirror of asyncio.tasks stub in favor of the canonical typeshed one.
+* Support type macros in pyi files.
+
 Version 2019.03.08
 * Fix bad type definitions for builtins reversed and enumerate.
 
