@@ -2562,8 +2562,9 @@ class SignedFunction(Function):
         # TODO(kramm): modify type parameters to account for namedargs
         callargs[kwargs_name] = args.starstarargs.AssignToNewVariable(node)
       else:
+        omit = sig.param_names + sig.kwonly_params
         k = Dict(self.vm)
-        k.update(node, args.namedargs, omit=sig.param_names)
+        k.update(node, args.namedargs, omit=omit)
         callargs[kwargs_name] = k.to_variable(node)
     return callargs
 
