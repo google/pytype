@@ -298,6 +298,39 @@ class ImportPathsTest(unittest.TestCase):
       loader.import_name("os2.path")
       loader.import_name("posix2")
 
+  def testUnionAlias(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("test.pyi", """
+        from typing import Union as _UnionT
+        x: _UnionT[int, str]
+      """)
+      loader = load_pytd.Loader(None, self.PYTHON_VERSION, pythonpath=[d.path])
+      ast = loader.import_name("test")
+      x = ast.Lookup("test.x")
+      self.assertIsInstance(x.type, pytd.UnionType)
+
+  def testOptionalAlias(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("test.pyi", """
+        from typing import Optional as _OptionalT
+        x: _OptionalT[int]
+      """)
+      loader = load_pytd.Loader(None, self.PYTHON_VERSION, pythonpath=[d.path])
+      ast = loader.import_name("test")
+      x = ast.Lookup("test.x")
+      self.assertIsInstance(x.type, pytd.UnionType)
+
+  def testIntersectionAlias(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("test.pyi", """
+        from typing import Intersection as _IntersectionT
+        x: _IntersectionT[int, str]
+      """)
+      loader = load_pytd.Loader(None, self.PYTHON_VERSION, pythonpath=[d.path])
+      ast = loader.import_name("test")
+      x = ast.Lookup("test.x")
+      self.assertIsInstance(x.type, pytd.IntersectionType)
+
 
 _Module = collections.namedtuple("_", ["module_name", "file_name"])
 

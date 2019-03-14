@@ -16,6 +16,8 @@ from pytype.pytd.parse import parser_constants  # pylint: disable=g-importing-me
 
 _DEFAULT_VERSION = (2, 7, 6)
 _DEFAULT_PLATFORM = "linux"
+# Typing members that represent sets of types.
+_TYPING_SETS = ("typing.Intersection", "typing.Optional", "typing.Union")
 
 
 _Params = collections.namedtuple("_", ["required",
@@ -479,7 +481,9 @@ class _Parser(object):
     aliases = []
     for a in self._aliases.values():
       t = _maybe_resolve_alias(a, name_to_class)
-      if isinstance(t, pytd.Function):
+      if t is None:
+        continue
+      elif isinstance(t, pytd.Function):
         functions.append(t)
       elif isinstance(t, pytd.Constant):
         constants.append(t)
@@ -768,9 +772,7 @@ class _Parser(object):
       return self._parameterized_type(base_type, parameters)
     else:
       if (isinstance(base_type, pytd.NamedType) and
-          base_type.name in ["typing.Union",
-                             "typing.Intersection",
-                             "typing.Optional"]):
+          base_type.name in _TYPING_SETS):
         raise ParseError("Missing options to %s" % base_type.name)
       return base_type
 
@@ -1518,8 +1520,22 @@ def _merge_method_signatures(signatures):
 
 
 def _maybe_resolve_alias(alias, name_to_class):
-  """If possible, resolve the alias from the class map."""
+  """Resolve the alias if possible.
+
+  Args:
+    alias: A pytd.Alias
+    name_to_class: A class map used for resolution.
+
+  Returns:
+    None, if the alias pointed to an un-aliasable type.
+    The resolved value, if the alias was resolved.
+    The alias, if it was not resolved.
+  """
   if isinstance(alias.type, pytd.NamedType):
+    if alias.type.name in _TYPING_SETS:
+      # Filter out aliases to `typing` members that don't appear in typing.pytd
+      # to avoid lookup errors.
+      return None
     prefix, dot, remainder = alias.type.name.partition(".")
     if dot and prefix in name_to_class:
       try:

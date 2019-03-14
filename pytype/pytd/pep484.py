@@ -82,7 +82,9 @@ class ConvertTypingToNative(visitors.Visitor):
   def VisitGenericType(self, t):
     module, name = self._GetModuleAndName(t)
     if self._IsTyping(module):
-      if name == "Optional":
+      if name == "Intersection":
+        return pytd.IntersectionType(t.parameters)
+      elif name == "Optional":
         return pytd.UnionType(t.parameters + (pytd.NamedType("NoneType"),))
       elif name == "Union":
         return pytd.UnionType(t.parameters)
