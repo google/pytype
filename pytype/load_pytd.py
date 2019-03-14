@@ -335,7 +335,7 @@ class Loader(object):
     path.append(name)
     ast = self._import_name(".".join(path))
     self._lookup_all_classes()
-    ast = self._finish_and_verify_ast(ast)
+    ast = self.finish_and_verify_ast(ast)
     return ast
 
   def import_relative(self, level):
@@ -363,7 +363,7 @@ class Loader(object):
     sub_module = ".".join(components[0:-level])
     ast = self._import_name(sub_module)
     self._lookup_all_classes()
-    ast = self._finish_and_verify_ast(ast)
+    ast = self.finish_and_verify_ast(ast)
     return ast
 
   def import_name(self, module_name):
@@ -372,11 +372,11 @@ class Loader(object):
       return self._import_name_cache[module_name]
     ast = self._import_name(module_name)
     self._lookup_all_classes()
-    ast = self._finish_and_verify_ast(ast)
+    ast = self.finish_and_verify_ast(ast)
     self._import_name_cache[module_name] = ast
     return ast
 
-  def _finish_and_verify_ast(self, ast):
+  def finish_and_verify_ast(self, ast):
     """Verify the ast, doing external type resolution first if necessary."""
     if ast:
       try:
