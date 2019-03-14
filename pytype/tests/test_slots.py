@@ -47,6 +47,12 @@ class SlotsTest(test_base.TargetIndependentTest):
         __slots__ = ("foo", "bar")
     """)
 
+  def testTupleSlot_unicode(self):
+    self.Check("""
+      class Foo(object):
+        __slots__ = (u"foo", u"bar")
+    """)
+
   def testListSlot(self):
     ty = self.Infer("""
       class Foo(object):
