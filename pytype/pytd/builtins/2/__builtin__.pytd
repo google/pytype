@@ -934,6 +934,7 @@ class AttributeError(StandardError):
     pass
 
 class BaseException(object):
+    args: Tuple[?, ...]
     message = ...  # type: str
     def __init__(self, ...) -> NoneType
     def __getitem__(self, i: int) -> ?
