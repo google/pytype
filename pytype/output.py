@@ -351,24 +351,51 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     else:
       raise NotImplementedError(v.__class__.__name__)
 
-  def annotations_to_instance_types(self, annotations_var):
-    """Convert the members of an __annotations__ dict to instance types.
+  def get_annotations_dict(self, members):
+    """Get __annotations__ from a members map."""
+    if "__annotations__" not in members:
+      return {}
+    annots_var = members["__annotations__"]
+    try:
+      annots = abstract_utils.get_atomic_python_constant(annots_var, dict)
+    except abstract_utils.ConversionError:
+      return {}
+    return annots
+
+  def uninitialized_annotations_to_instance_types(self, node, annots, members):
+    """Get instance types for annotations not present in the members map."""
+    for name in annots:
+      if name not in members:
+        yield name, pytd_utils.JoinTypes(
+            value.get_instance_type(node) for value in annots[name].data)
+
+  def get_annotated_values(self, node, name, var, annots):
+    """Get visible values from var, combined with its annotation if present.
 
     Args:
-      annotations_var: __annotations__, a cfg.Variable of an abstract.Dict.
+      node: The current node.
+      name: The variable name.
+      var: A cfg.Variable.
+      annots: A dictionary of annotations.
 
     Yields:
-      A tuple of member name and pytd types.
+      A tuple of an abstract value or pytd annotation and whether the value is
+      an annotation.
     """
-    try:
-      annots = abstract_utils.get_atomic_python_constant(annotations_var, dict)
-    except abstract_utils.ConversionError:
+    if name not in annots:
+      for value in var.FilteredData(self.vm.exitpoint):
+        yield value, False
       return
-    for name, member in annots.items():
-      yield name, [
-          self.value_instance_to_pytd_type(
-              node=None, v=v, instance=None, seen=None, view=None
-          ) for v in member.data]
+    # Merges the annotations and values so they can be filtered as one variable.
+    combined_var = self.vm.program.NewVariable()
+    combined_var.PasteVariable(annots[name])
+    combined_var.PasteVariable(var)
+    values = set(var.data)
+    for value in combined_var.FilteredData(self.vm.exitpoint):
+      if value in values:
+        yield value, False
+      else:
+        yield value.get_instance_type(node), True
 
   def _function_call_to_return_type(self, node, v, seen_return, num_returns):
     """Get a function call's pytd return type."""
@@ -439,18 +466,11 @@ class Converter(utils.VirtualMachineWeakrefMixin):
   def _simple_func_to_def(self, node, v, name):
     """Convert a SimpleFunction to a PyTD definition."""
     sig = v.signature
-    params = [pytd.Parameter(p,
-                             sig.annotations[p].get_instance_type(node),
-                             False,
-                             p in sig.defaults,
-                             None)
-              for p in sig.param_names]
-    kwonly = [pytd.Parameter(p,
-                             sig.annotations[p].get_instance_type(node),
-                             True,
-                             p in sig.defaults,
-                             None)
-              for p in sig.kwonly_params]
+    def get_parameter(p, kwonly):
+      return pytd.Parameter(p, sig.annotations[p].get_instance_type(node),
+                            kwonly, p in sig.defaults, None)
+    params = [get_parameter(p, False) for p in sig.param_names]
+    kwonly = [get_parameter(p, True) for p in sig.kwonly_params]
     if sig.varargs_name:
       star = pytd.Parameter(
           sig.varargs_name,
@@ -524,11 +544,21 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     methods = {}
     constants = collections.defaultdict(pytd_utils.TypeBuilder)
 
+    annots = self.get_annotations_dict(v.members)
+
+    for name, t in self.uninitialized_annotations_to_instance_types(
+        node, annots, v.members):
+      constants[name].add_type(t)
+
     # class-level attributes
     for name, member in v.members.items():
       if name in CLASS_LEVEL_IGNORE:
         continue
-      for value in member.FilteredData(self.vm.exitpoint):
+      for value, is_annotation in self.get_annotated_values(
+          node, name, member, annots):
+        if is_annotation:
+          constants[name].add_type(value)
+          continue
         if isinstance(value, special_builtins.PropertyInstance):
           # For simplicity, output properties as constants, since our parser
           # turns them into constants anyway.
@@ -582,12 +612,6 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         # is, at some point, overwriting its own methods with an attribute.
         del methods[name]
         constants[name].add_type(pytd.AnythingType())
-
-    if "__annotations__" in v.members:
-      for name, types in self.annotations_to_instance_types(
-          v.members["__annotations__"]):
-        for t in types:
-          constants[name].add_type(t)
 
     constants = [pytd.Constant(name, builder.build())
                  for name, builder in constants.items() if builder]
