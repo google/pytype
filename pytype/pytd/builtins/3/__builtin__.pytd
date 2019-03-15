@@ -929,10 +929,15 @@ class AssertionError(StandardError):
 class AttributeError(StandardError):
     pass
 
+# TODO(rechen): __traceback__ and with_traceback should use types.TracebackType,
+# but builtins can't depend on other modules.
 class BaseException(object):
+    args: Tuple[?, ...]
+    __cause__: Optional[BaseException]
+    __context__: Optional[BaseException]
+    __traceback__: Optional[?]
     def __init__(self, ...) -> NoneType
-    def __getitem__(self, i: int) -> ?
-    def __getslice__(self, i: int, j: int) -> tuple
+    def with_traceback(self, tb: Optional[?]) -> BaseException: ...
 
 class BufferError(StandardError):
     pass
