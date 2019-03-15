@@ -458,14 +458,21 @@ class CallTracer(vm.VirtualMachine):
 
   def pytd_for_types(self, defs):
     data = []
+    pytd_convert = self.convert.pytd_convert
+    annots = pytd_convert.get_annotations_dict(defs)
+    for name, t in pytd_convert.uninitialized_annotations_to_instance_types(
+        self.exitpoint, annots, defs):
+      data.append(pytd.Constant(name, t))
     for name, var in defs.items():
-      if name == "__annotations__":
-        for annot_name, types in (
-            self.convert.pytd_convert.annotations_to_instance_types(var)):
-          data.append(pytd.Constant(annot_name, pytd_utils.JoinTypes(types)))
       if name in output.TOP_LEVEL_IGNORE or self._is_builtin(name, var.data):
         continue
-      options = var.FilteredData(self.exitpoint)
+      options = []
+      for value, is_annotation in pytd_convert.get_annotated_values(
+          self.exitpoint, name, var, annots):
+        if is_annotation:
+          data.append(pytd.Constant(name, value))
+        else:
+          options.append(value)
       if (len(options) > 1 and not
           all(isinstance(o, (abstract.Function, abstract.BoundFunction))
               for o in options)):

@@ -121,5 +121,23 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
       v: int
     """)
 
+  def testOverwriteAnnotation(self):
+    ty = self.Infer("""
+      x: int
+      x = ""
+    """)
+    self.assertTypesMatchPytd(ty, "x: str")
+
+  def testOverwriteAnnotationInClass(self):
+    ty = self.Infer("""
+      class Foo:
+        x: int
+        x = ""
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Foo:
+        x: str
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
