@@ -1985,7 +1985,8 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):
     for i in range(self.tuple_length):
       p = self.formal_type_parameters[i]
       if container is self.vm.annotations_util.DUMMY_CONTAINER or (
-          container and isinstance(p, TypeParameter) and
+          isinstance(container, SimpleAbstractValue) and
+          isinstance(p, TypeParameter) and
           p.full_name in container.all_template_names):
         content.append(p.instantiate(self.vm.root_cfg_node, container))
       else:
