@@ -593,5 +593,16 @@ class GenericFeatureTest(test_base.TargetPython3FeatureTest):
         def f() -> a.A[int]: ...
       """)
 
+  def testTypeVarUnderDecorator(self):
+    self.Check("""
+      import abc
+      from typing import Generic, Tuple, TypeVar
+      T = TypeVar('T')
+      class Foo(abc.ABC, Generic[T]):
+        @abc.abstractmethod
+        def parse(self) -> Tuple[T]:
+          raise NotImplementedError()
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
