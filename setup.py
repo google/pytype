@@ -87,7 +87,7 @@ def get_builtin_files():
   builtins = scan_package_data(['pytd', 'builtins'], '*.py*',
                                check=['3', '*.py*'])
   stdlib = scan_package_data(['pytd', 'stdlib'], '*.pytd',
-                             check=['3', 'asyncio', '*.pytd'])
+                             check=['3', '*.pytd'])
   typeshed = scan_package_data(['typeshed'], '*.pyi',
                                check=['stdlib', '2', '*.pyi'])
   return builtins + stdlib + typeshed
