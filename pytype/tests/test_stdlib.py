@@ -210,5 +210,19 @@ class StdlibTests(test_base.TargetIndependentTest):
       import xmlrpclib
     """)
 
+  def testSysVersionInfo(self):
+    ty = self.Infer("""
+      import sys
+      major, minor, micro, releaselevel, serial = sys.version_info
+    """)
+    self.assertTypesMatchPytd(ty, """
+      sys: module
+      major: int
+      minor: int
+      micro: int
+      releaselevel: str
+      serial: int
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
