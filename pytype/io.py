@@ -10,8 +10,6 @@ import sys
 import tokenize
 import traceback
 
-import six
-
 from pytype import __version__
 from pytype import analyze
 from pytype import directors
@@ -26,6 +24,8 @@ from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
 from pytype.pytd.parse import builtins as pytd_builtins
+
+import six
 
 
 log = logging.getLogger(__name__)
@@ -263,6 +263,7 @@ def parse_pyi(options):
   """Tries parsing a PYI file."""
   loader = load_pytd.create_loader(options)
   ast = loader.load_file(options.module_name, options.input)
+  ast = loader.finish_and_verify_ast(ast)
   if options.output:
     result = "# Internal AST parsed and postprocessed from %s\n\n%s" % (
         options.input, pytd.Print(ast))

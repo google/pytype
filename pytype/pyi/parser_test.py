@@ -1858,5 +1858,108 @@ class CanonicalPyiTest(_ParserTestBase):
         parser.canonical_pyi(src, self.PYTHON_VERSION), expected)
 
 
+class TypeMacroTest(_ParserTestBase):
+
+  def test_simple(self):
+    self.check("""\
+      from typing import List, TypeVar
+      Alias = List[List[T]]
+      T = TypeVar('T')
+      S = TypeVar('S')
+      def f(x: Alias[S]) -> S: ...
+      def g(x: Alias[str]) -> str: ...""", """\
+      from typing import List, TypeVar
+
+      Alias = List[List[T]]
+
+      S = TypeVar('S')
+      T = TypeVar('T')
+
+      def f(x: List[List[S]]) -> S: ...
+      def g(x: List[List[str]]) -> str: ...""")
+
+  def test_partial_replacement(self):
+    self.check("""\
+      from typing import Dict, TypeVar
+      DictAlias = Dict[int, V]
+      V = TypeVar('V')
+      def f(x: DictAlias[str]) -> None: ...""", """\
+      from typing import Dict, TypeVar
+
+      DictAlias = Dict[int, V]
+
+      V = TypeVar('V')
+
+      def f(x: Dict[int, str]) -> None: ...""")
+
+  def test_multiple_parameters(self):
+    self.check("""\
+      from typing import Dict, List, TypeVar
+      Alias = List[Dict[K, V]]
+      K = TypeVar('K')
+      V = TypeVar('V')
+      def f(x: Alias[K, V]) -> Dict[K, V]: ...""", """\
+      from typing import Dict, List, TypeVar
+
+      Alias = List[Dict[K, V]]
+
+      K = TypeVar('K')
+      V = TypeVar('V')
+
+      def f(x: List[Dict[K, V]]) -> Dict[K, V]: ...""")
+
+  def test_no_parameters(self):
+    self.check("""\
+      from typing import List, TypeVar
+      Alias = List[List[T]]
+      T = TypeVar('T')
+      def f(x: Alias) -> None: ...""", """\
+      from typing import Any, List, TypeVar
+
+      Alias = List[List[T]]
+
+      T = TypeVar('T')
+
+      def f(x: List[List[Any]]) -> None: ...""")
+
+  def test_union(self):
+    self.check("""\
+      from typing import List, TypeVar, Union
+      Alias = Union[List[T], List[S]]
+      T = TypeVar('T')
+      S = TypeVar('S')
+      def f(x: Alias[S, T]) -> Union[S, T]: ...""", """\
+      from typing import List, TypeVar, Union
+
+      Alias = Union[List[T], List[S]]
+
+      S = TypeVar('S')
+      T = TypeVar('T')
+
+      def f(x: Union[List[S], List[T]]) -> Union[S, T]: ...""")
+
+  def test_repeated_type_parameter(self):
+    self.check("""\
+      from typing import Dict, TypeVar
+      Alias = Dict[T, T]
+      T = TypeVar('T')
+      def f(x: Alias[str]) -> None: ...""", """\
+      from typing import Dict, TypeVar
+
+      Alias = Dict[T, T]
+
+      T = TypeVar('T')
+
+      def f(x: Dict[str, str]) -> None: ...""")
+
+  def test_wrong_parameter_count(self):
+    self.check_error("""\
+      from typing import List, TypeVar
+      Alias = List[List[T]]
+      T = TypeVar('T')
+      def f(x: Alias[T, T]) -> T: ...
+    """, 4, "List[List[T]] expected 1 parameters, got 2")
+
+
 if __name__ == "__main__":
   unittest.main()

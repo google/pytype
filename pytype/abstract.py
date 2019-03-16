@@ -2335,14 +2335,24 @@ class InterpreterClass(SimpleAbstractValue, mixin.Class):
       return None  # Happens e.g. for __slots__ = ["x" if b else "y"]
     for s in strings:
       # The identity check filters out compat.py subclasses.
-      if s.__class__ is not str:
-        if isinstance(s, six.text_type):
-          name = s.encode("utf8", "ignore")
+      if s.__class__ is str:
+        continue
+      elif s.__class__ is compat.UnicodeType:
+        # Unicode values should be ASCII.
+        try:
+          s = s.encode("ascii")
+        except (UnicodeDecodeError, UnicodeEncodeError):
+          pass
         else:
-          name = str(s)
-        self.vm.errorlog.bad_slots(self.vm.frames,
-                                   "Invalid __slot__ entry: %r" % name)
-        return None
+          continue
+      if isinstance(s, six.text_type):
+        name = s.encode("utf8", "ignore")
+      else:
+        name = str(s)
+      self.vm.errorlog.bad_slots(self.vm.frames,
+                                 "Invalid __slot__ entry: %r" % name)
+      return None
+
     return tuple(self._mangle(compat.native_str(s)) for s in strings)
 
   def register_instance(self, instance):
@@ -2552,8 +2562,9 @@ class SignedFunction(Function):
         # TODO(kramm): modify type parameters to account for namedargs
         callargs[kwargs_name] = args.starstarargs.AssignToNewVariable(node)
       else:
+        omit = sig.param_names + sig.kwonly_params
         k = Dict(self.vm)
-        k.update(node, args.namedargs, omit=sig.param_names)
+        k.update(node, args.namedargs, omit=omit)
         callargs[kwargs_name] = k.to_variable(node)
     return callargs
 

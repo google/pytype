@@ -335,8 +335,7 @@ class Loader(object):
     path.append(name)
     ast = self._import_name(".".join(path))
     self._lookup_all_classes()
-    if ast:
-      self._verify_ast(ast)
+    ast = self.finish_and_verify_ast(ast)
     return ast
 
   def import_relative(self, level):
@@ -364,8 +363,7 @@ class Loader(object):
     sub_module = ".".join(components[0:-level])
     ast = self._import_name(sub_module)
     self._lookup_all_classes()
-    if ast:
-      self._verify_ast(ast)
+    ast = self.finish_and_verify_ast(ast)
     return ast
 
   def import_name(self, module_name):
@@ -374,9 +372,21 @@ class Loader(object):
       return self._import_name_cache[module_name]
     ast = self._import_name(module_name)
     self._lookup_all_classes()
-    if ast:
-      self._verify_ast(ast)
+    ast = self.finish_and_verify_ast(ast)
     self._import_name_cache[module_name] = ast
+    return ast
+
+  def finish_and_verify_ast(self, ast):
+    """Verify the ast, doing external type resolution first if necessary."""
+    if ast:
+      try:
+        self._verify_ast(ast)
+      except BadDependencyError:
+        # In the case of a circular import, an external type may be left
+        # unresolved. As long as the module containing the unresolved type does
+        # not also contain a circular import, an extra lookup should resolve it.
+        ast = self._resolve_external_types(ast)
+        self._verify_ast(ast)
     return ast
 
   def add_module_prefixes(self, module_name):
