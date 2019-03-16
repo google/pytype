@@ -1280,10 +1280,18 @@ class VirtualMachine(object):
       if level <= 0:
         assert level in [-1, 0]
         if name in overlay_dict.overlays:
-          if name not in self.loaded_overlays:
-            self.loaded_overlays[name] = overlay_dict.overlays[name](self)
-          return self.loaded_overlays[name]
-        elif level == -1 and self.loader.base_module:
+          if name in self.loaded_overlays:
+            overlay = self.loaded_overlays[name]
+          else:
+            overlay = overlay_dict.overlays[name](self)
+            # The overlay should be available only if the underlying pyi is.
+            if overlay.ast:
+              self.loaded_overlays[name] = overlay
+            else:
+              overlay = self.loaded_overlays[name] = None
+          if overlay:
+            return overlay
+        if level == -1 and self.loader.base_module:
           # Python 2 tries relative imports first.
           ast = (self.loader.import_relative_name(name) or
                  self.loader.import_name(name))
