@@ -234,6 +234,19 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       v = ...  # type: int
     """)
 
+  def testSysVersionInfoNamedAttribute(self):
+    ty = self.Infer("""
+      import sys
+      if sys.version_info.major == 2:
+        v = 42
+      else:
+        v = "hello world"
+    """)
+    self.assertTypesMatchPytd(ty, """
+      sys: module
+      v: str
+    """)
+
   @test_utils.skipIn37("https://github.com/google/pytype/issues/203")
   def test_async(self):
     """Test various asyncio features."""
