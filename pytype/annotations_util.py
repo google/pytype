@@ -8,14 +8,8 @@ from pytype import function
 from pytype import mixin
 from pytype import typing_overlay
 from pytype import utils
-from pytype.pyc import pyc
 
 import six
-
-
-class EvaluationError(Exception):
-  """Used to signal an errorlog error during type comment evaluation."""
-  pass
 
 
 LateAnnotation = collections.namedtuple(
@@ -196,7 +190,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         try:
           self._eval_multi_arg_annotation(node, func, f_globals, f_locals,
                                           annot)
-        except EvaluationError as e:
+        except abstract_utils.EvaluationError as e:
           self.vm.errorlog.invalid_function_type_comment(
               annot.stack, annot.expr, details=utils.message(e))
         except abstract_utils.ConversionError:
@@ -237,9 +231,10 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       return value
     comment = op.type_comment
     try:
-      var = self._eval_expr(state.node, self.vm.frame.f_globals,
-                            self.vm.frame.f_locals, comment)
-    except EvaluationError as e:
+      frame = self.vm.frame
+      var = abstract_utils.eval_expr(
+          self.vm, state.node, frame.f_globals, frame.f_locals, comment)
+    except abstract_utils.EvaluationError as e:
       self.vm.errorlog.invalid_type_comment(
           self.vm.frames, comment, details=utils.message(e))
       value = self.vm.new_unsolvable(state.node)
@@ -341,8 +336,9 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
           raise self.LateAnnotationError()
         else:
           try:
-            v = self._eval_expr(node, f_globals, f_locals, annotation.pyval)
-          except EvaluationError as e:
+            v = abstract_utils.eval_expr(
+                self.vm, node, f_globals, f_locals, annotation.pyval)
+          except abstract_utils.EvaluationError as e:
             self.vm.errorlog.invalid_annotation(
                 stack, annotation, utils.message(e))
             return None
@@ -390,52 +386,13 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       self.vm.errorlog.invalid_annotation(stack, annotation, "Not a type", name)
       return None
 
-  def _eval_expr(self, node, f_globals, f_locals, expr):
-    """Evaluate and expression with the given node and globals."""
-    # We don't chain node and f_globals as we want to remain in the context
-    # where we've just finished evaluating the module. This would prevent
-    # nasty things like:
-    #
-    # def f(a: "A = 1"):
-    #   pass
-    #
-    # def g(b: "A"):
-    #   pass
-    #
-    # Which should simply complain at both annotations that 'A' is not defined
-    # in both function annotations. Chaining would cause 'b' in 'g' to yield a
-    # different error message.
-
-    # Any errors logged here will have a filename of None and a linenumber of 1
-    # when what we really want is to allow the caller to handle/log the error
-    # themselves.  Thus we checkpoint the errorlog and then restore and raise
-    # an exception if anything was logged.
-    checkpoint = self.vm.errorlog.save()
-    prior_errors = len(self.vm.errorlog)
-    try:
-      code = self.vm.compile_src(expr, mode="eval")
-    except pyc.CompileError as e:
-      # We only want the error, not the full message, which includes a
-      # temporary filename and line number.
-      raise EvaluationError(e.error)
-    if not f_locals:
-      f_locals = self.vm.convert_locals_or_globals({}, "locals")
-    _, _, _, ret = self.vm.run_bytecode(node, code, f_globals, f_locals)
-    if len(self.vm.errorlog) > prior_errors:
-      # Annotations are constants, so tracebacks aren't needed.
-      new_messages = [self.vm.errorlog[i].drop_traceback().message
-                      for i in range(prior_errors, len(self.vm.errorlog))]
-      self.vm.errorlog.revert_to(checkpoint)
-      raise EvaluationError("\n".join(new_messages))
-    return ret
-
   def _eval_expr_as_tuple(self, node, f_globals, f_locals, expr):
     """Evaluate an expression as a tuple."""
     if not expr:
       return ()
 
     result = abstract_utils.get_atomic_value(
-        self._eval_expr(node, f_globals, f_locals, expr))
+        abstract_utils.eval_expr(self.vm, node, f_globals, f_locals, expr))
     # If the result is a tuple, expand it.
     if (isinstance(result, mixin.PythonConstant) and
         isinstance(result.pyval, tuple)):

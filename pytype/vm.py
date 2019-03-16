@@ -123,6 +123,7 @@ class VirtualMachine(object):
     self.frames = []  # The call stack of frames.
     self.functions_with_late_annotations = []
     self.functions_type_params_check = []
+    self.params_with_late_types = []
     self.concrete_classes = []
     self.frame = None  # The current frame.
     self.program = cfg.Program()
@@ -685,6 +686,11 @@ class VirtualMachine(object):
         for member in sum((var.data for var in val.members.values()), []):
           if isinstance(member, abstract.Function) and member.is_abstract:
             self.errorlog.ignored_abstractmethod(frames, val.name, member.name)
+    for param, frames in self.params_with_late_types:
+      try:
+        param.resolve_late_types(node, f_globals, f_locals)
+      except abstract.TypeParameterError as e:
+        self.errorlog.invalid_typevar(frames, utils.message(e))
     for func in self.functions_with_late_annotations:
       self.annotations_util.eval_late_annotations(node, func, f_globals,
                                                   f_locals)

@@ -6,6 +6,7 @@ import logging
 
 from pytype import compat
 from pytype import datatypes
+from pytype.pyc import pyc
 from pytype.pytd import mro
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
@@ -33,6 +34,11 @@ DYNAMIC_ATTRIBUTE_MARKERS = [
 
 
 class ConversionError(ValueError):
+  pass
+
+
+class EvaluationError(Exception):
+  """Used to signal an errorlog error during type name evaluation."""
   pass
 
 
@@ -521,3 +527,47 @@ def matches_async_generator(type_obj):
 
 def var_map(func, var):
   return (func(v) for v in var.data)
+
+
+def eval_expr(vm, node, f_globals, f_locals, expr):
+  """Evaluate and expression with the given node and globals."""
+  # This is used in two places:
+  # * Resolving late type annotations
+  # * Resolving late types in type parameter constraints
+  #
+  # We don't chain node and f_globals as we want to remain in the context
+  # where we've just finished evaluating the module. This would prevent
+  # nasty things like:
+  #
+  # def f(a: "A = 1"):
+  #   pass
+  #
+  # def g(b: "A"):
+  #   pass
+  #
+  # Which should simply complain at both annotations that 'A' is not defined
+  # in both function annotations. Chaining would cause 'b' in 'g' to yield a
+  # different error message.
+
+  # Any errors logged here will have a filename of None and a linenumber of 1
+  # when what we really want is to allow the caller to handle/log the error
+  # themselves.  Thus we checkpoint the errorlog and then restore and raise
+  # an exception if anything was logged.
+  checkpoint = vm.errorlog.save()
+  prior_errors = len(vm.errorlog)
+  try:
+    code = vm.compile_src(expr, mode="eval")
+  except pyc.CompileError as e:
+    # We only want the error, not the full message, which includes a
+    # temporary filename and line number.
+    raise EvaluationError(e.error)
+  if not f_locals:
+    f_locals = vm.convert_locals_or_globals({}, "locals")
+  _, _, _, ret = vm.run_bytecode(node, code, f_globals, f_locals)
+  if len(vm.errorlog) > prior_errors:
+    # Annotations are constants, so tracebacks aren't needed.
+    new_messages = [vm.errorlog[i].drop_traceback().message
+                    for i in range(prior_errors, len(vm.errorlog))]
+    vm.errorlog.revert_to(checkpoint)
+    raise EvaluationError("\n".join(new_messages))
+  return ret
