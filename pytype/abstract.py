@@ -433,6 +433,11 @@ class Deleted(Empty):
     self.name = "deleted"
 
 
+class TypeParameterError(Exception):
+  """Raised when resolving late types in type parameters."""
+  pass
+
+
 class TypeParameter(AtomicAbstractValue):
   """Parameter of a type."""
 
@@ -480,7 +485,59 @@ class TypeParameter(AtomicAbstractValue):
     return "TypeParameter(%r, constraints=%r, bound=%r, module=%r)" % (
         self.name, self.constraints, self.bound, self.module)
 
+  def _eval_type(self, node, f_globals, f_locals, var_name, name_or_type):
+    """Convert a string typename to the type."""
+    if isinstance(name_or_type, str):
+      assert name_or_type
+      try:
+        cls = abstract_utils.eval_expr(
+            self.vm, node, f_globals, f_locals, name_or_type)
+        return abstract_utils.get_atomic_value(cls, mixin.Class), None
+      except abstract_utils.EvaluationError as e:
+        message = "In %s of TypeVar(%s): %s" % (
+            var_name, self.name, utils.message(e))
+        return self.vm.convert.unsolvable, message
+      except abstract_utils.ConversionError:
+        message = (
+            "In TypeVar(%s): %s must be an unambiguous type (given: %s)" % (
+                self.name, var_name, name_or_type))
+        return self.vm.convert.unsolvable, message
+    else:
+      # If arg is not a string, just return it (makes this method idempotent).
+      return name_or_type, None
+
+  def has_late_types(self):
+    return (isinstance(self.bound, str) or
+            any(isinstance(c, str) for c in self.constraints))
+
+  def resolve_late_types(self, node, f_globals, f_locals):
+    """Resolve string typenames to their associated types."""
+    # We need to replace all string values with either a type or Unsolvable
+    # before failing, so just collect error messages and raise at the end.
+    errors = []
+
+    self.bound, error = self._eval_type(
+        node, f_globals, f_locals, "bound", self.bound)
+    if error:
+      errors.append(error)
+
+    constraints = []
+    for c in self.constraints:
+      constraint, error = self._eval_type(
+          node, f_globals, f_locals, "constraint", c)
+      constraints.append(constraint)
+      if error:
+        errors.append(error)
+    self.constraints = tuple(constraints)
+
+    if errors:
+      # Just report the first error we found.
+      raise TypeParameterError(errors[0])
+
   def instantiate(self, node, container=None):
+    if self.has_late_types():
+      frame = self.vm.frame
+      self.resolve_late_types(node, frame.f_globals, frame.f_locals)
     var = self.vm.program.NewVariable()
     if container and (not isinstance(container, SimpleAbstractValue) or
                       self.full_name in container.all_template_names):
