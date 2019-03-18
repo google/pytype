@@ -24,7 +24,7 @@ else:
 
 # This function does not exist in typing.py. It is here for documentation
 # purposes and to make it easier for pytype to type-check arguments to TypeVar.
-def _typevar_new(name: Text, *constraints: type, bound: type=None, covariant: bool=False, contravariant: bool=False): ...
+def _typevar_new(name: Text, *constraints: Union[type, Text], bound: Union[type, Text]=None, covariant: bool=False, contravariant: bool=False): ...
 
 
 class Callable(Generic[_ARGS, _RET], Protocol):

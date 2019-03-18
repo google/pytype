@@ -120,7 +120,8 @@ class TypeVar(abstract.PyTDFunction):
   """Representation of typing.TypeVar, as a function."""
 
   # See b/74212131: we allow Any for bounds and constraints.
-  _CLASS_TYPE = (mixin.Class, abstract.Unsolvable)
+  _CLASS_TYPE = (abstract.AbstractOrConcreteValue, mixin.Class,
+                 abstract.Unsolvable)
 
   def _get_class_or_constant(self, var, name, arg_type, arg_type_desc=None):
     if arg_type is self._CLASS_TYPE:
@@ -130,7 +131,14 @@ class TypeVar(abstract.PyTDFunction):
       convert_func = abstract_utils.get_atomic_python_constant
       type_desc = arg_type_desc or "a constant " + arg_type.__name__
     try:
-      return convert_func(var, arg_type)
+      ret = convert_func(var, arg_type)
+      # If we have a class type as an AbstractOrConcreteValue, we want to return
+      # it as a string.
+      if isinstance(ret, abstract.AbstractOrConcreteValue):
+        ret = abstract_utils.get_atomic_python_constant(var, str)
+        if not ret:
+          raise TypeVarError("%s cannot be an empty string" % name)
+      return ret
     except abstract_utils.ConversionError:
       raise TypeVarError("%s must be %s" % (name, type_desc))
 
@@ -184,6 +192,8 @@ class TypeVar(abstract.PyTDFunction):
       self.vm.errorlog.invalid_typevar(
           self.vm.frames, utils.message(e), e.bad_call)
       return node, self.vm.new_unsolvable(node)
+    if param.has_late_types():
+      self.vm.params_with_late_types.append((param, self.vm.simple_stack()))
     return node, param.to_variable(node)
 
 

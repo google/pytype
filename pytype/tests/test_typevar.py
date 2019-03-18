@@ -55,7 +55,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
         (5, "invalid-typevar", r"Expected.*str.*Actual.*int"),
         (6, "invalid-typevar", r"constant str"),
         (7, "invalid-typevar", r"unambiguous type"),
-        (8, "invalid-typevar", r"Expected.*_1: type.*Actual.*_1: int"),
+        (8, "invalid-typevar", r"Expected.*_1:.*type.*Actual.*_1: int"),
         (9, "invalid-typevar", r"0 or more than 1"),
     ])
 
@@ -154,7 +154,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorLogIs(errors, [
         (2, "invalid-typevar", r"mutually exclusive"),
-        (3, "invalid-typevar", r"Expected.*type.*Actual.*str"),
+        (3, "invalid-typevar", r"empty string"),
         (5, "invalid-typevar", r"unambiguous")])
 
   def testCovariant(self):
@@ -378,5 +378,42 @@ class TypeVarTest(test_base.TargetIndependentTest):
       T = TypeVar('T')
     """)
 
+  def testLateBound(self):
+    _, errors = self.InferWithErrors("""\
+      from typing import TypeVar, Union
+      T = TypeVar("T", int, float, bound="str")
+      S = TypeVar("S", bound="")
+      U = TypeVar("U", bound="str")  # ok
+      V = TypeVar("V", bound="Union[int, float]")
+      W = TypeVar("W", bound="Foo") # ok, forward reference
+      X = TypeVar("X", bound="Bar")
+      class Foo:
+        pass
+    """)
+    self.assertErrorLogIs(errors, [
+        (2, "invalid-typevar", r"mutually exclusive"),
+        (3, "invalid-typevar", r"empty string"),
+        (5, "invalid-typevar", r"unambiguous"),
+        (7, "invalid-typevar", r"Name.*Bar")])
+
+  def testLateConstraints(self):
+    ty = self.Infer("""
+      from typing import List, TypeVar
+      S = TypeVar("S", int, float)
+      T = TypeVar("T", "int", "float")
+      U = TypeVar("U", "List[int]", List[float])
+      V = TypeVar("V", "Foo", "List[Foo]")
+      class Foo:
+        pass
+    """, deep=False)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List, TypeVar
+      S = TypeVar("S", int, float)
+      T = TypeVar("T", int, float)
+      U = TypeVar("U", List[int], List[float])
+      V = TypeVar("V", Foo, List[Foo])
+      class Foo:
+        pass
+    """)
 
 test_base.main(globals(), __name__ == "__main__")

@@ -14,7 +14,7 @@ optional for pytype, it will check and apply them where present.
 which can be merged back into the Python source with a provided
 [merge-pyi][merge-pyi] tool.
 
-Pytype is a static analyzer: it does not execute the code it runs on.
+Pytype is a static analyzer, meaning it does not execute the code it runs on.
 
 Thousands of projects at Google rely on pytype to keep their Python code
 well-typed and error-free.

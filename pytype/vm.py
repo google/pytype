@@ -123,6 +123,7 @@ class VirtualMachine(object):
     self.frames = []  # The call stack of frames.
     self.functions_with_late_annotations = []
     self.functions_type_params_check = []
+    self.params_with_late_types = []
     self.concrete_classes = []
     self.frame = None  # The current frame.
     self.program = cfg.Program()
@@ -685,6 +686,11 @@ class VirtualMachine(object):
         for member in sum((var.data for var in val.members.values()), []):
           if isinstance(member, abstract.Function) and member.is_abstract:
             self.errorlog.ignored_abstractmethod(frames, val.name, member.name)
+    for param, frames in self.params_with_late_types:
+      try:
+        param.resolve_late_types(node, f_globals, f_locals)
+      except abstract.TypeParameterError as e:
+        self.errorlog.invalid_typevar(frames, utils.message(e))
     for func in self.functions_with_late_annotations:
       self.annotations_util.eval_late_annotations(node, func, f_globals,
                                                   f_locals)
@@ -1280,10 +1286,18 @@ class VirtualMachine(object):
       if level <= 0:
         assert level in [-1, 0]
         if name in overlay_dict.overlays:
-          if name not in self.loaded_overlays:
-            self.loaded_overlays[name] = overlay_dict.overlays[name](self)
-          return self.loaded_overlays[name]
-        elif level == -1 and self.loader.base_module:
+          if name in self.loaded_overlays:
+            overlay = self.loaded_overlays[name]
+          else:
+            overlay = overlay_dict.overlays[name](self)
+            # The overlay should be available only if the underlying pyi is.
+            if overlay.ast:
+              self.loaded_overlays[name] = overlay
+            else:
+              overlay = self.loaded_overlays[name] = None
+          if overlay:
+            return overlay
+        if level == -1 and self.loader.base_module:
           # Python 2 tries relative imports first.
           ast = (self.loader.import_relative_name(name) or
                  self.loader.import_name(name))
@@ -1854,6 +1868,7 @@ class VirtualMachine(object):
   def byte_STORE_SUBSCR(self, state, op):
     """Implement obj[subscr] = val."""
     state, (val, obj, subscr) = state.popn(3)
+    state = state.forward_cfg_node()
     if self._is_annotations_dict(obj):
       try:
         name = abstract_utils.get_atomic_python_constant(
@@ -1862,7 +1877,6 @@ class VirtualMachine(object):
         pass
       else:
         state = self._store_annotation(state, name, val)
-    state = state.forward_cfg_node()
     state = self.store_subscr(state, obj, subscr, val)
     return state
 

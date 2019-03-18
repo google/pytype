@@ -133,6 +133,7 @@ py_library(
     abstract_utils.py
   DEPS
     .cfg_utils
+    .pyc
     .pytd_for_parser
     .utils
 )

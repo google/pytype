@@ -351,6 +351,8 @@ class bytearray(MutableSequence[int], ByteString):
     def append(self, int: int) -> NoneType
     def capitalize(self) -> bytearray
     def center(self, width: int, ...) -> bytearray
+    def clear(self) -> None
+    def copy(self) -> bytearray
     def count(self, sub: bytearray, ...) -> int
     def decode(self, ...) -> str
     def endswith(self, suffix: bytes or bytearray or tuple[bytes or bytearray, ...], ...) -> bool
@@ -523,6 +525,9 @@ class list(List[_T]):
       self = list[_T or _T2]
     def extend(self, i: Iterable[_T2]) -> NoneType:
       self = list[_T or _T2]
+    def clear(self) -> NoneType:
+      self = list[nothing]
+    def copy(self) -> list[_T]
     def count(self, value: _T) -> int
     def index(self, value, ...) -> int
     def insert(self, index: int, object: _T2) -> NoneType:
@@ -929,10 +934,15 @@ class AssertionError(StandardError):
 class AttributeError(StandardError):
     pass
 
+# TODO(rechen): __traceback__ and with_traceback should use types.TracebackType,
+# but builtins can't depend on other modules.
 class BaseException(object):
+    args: Tuple[?, ...]
+    __cause__: Optional[BaseException]
+    __context__: Optional[BaseException]
+    __traceback__: Optional[?]
     def __init__(self, ...) -> NoneType
-    def __getitem__(self, i: int) -> ?
-    def __getslice__(self, i: int, j: int) -> tuple
+    def with_traceback(self, tb: Optional[?]) -> BaseException: ...
 
 class BufferError(StandardError):
     pass

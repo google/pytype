@@ -112,5 +112,18 @@ class StdlibTests(test_base.TargetPython27FeatureTest):
       v = ...  # type: str
     """)
 
+  def testSysVersionInfoNamedAttribute(self):
+    ty = self.Infer("""
+      import sys
+      if sys.version_info.major == 2:
+        v = 42
+      else:
+        v = "hello world"
+    """)
+    self.assertTypesMatchPytd(ty, """
+      sys: module
+      v: int
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

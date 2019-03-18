@@ -543,5 +543,19 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
     errors = self.CheckWithErrors("raw_input")
     self.assertErrorLogIs(errors, [(1, "name-error")])
 
+  def testClear(self):
+    # new in Python 3
+    self.Check("""
+      bytearray().clear()
+      [].clear()
+    """)
+
+  def testCopy(self):
+    # new in python 3
+    self.Check("""
+      bytearray().copy()
+      [].copy()
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
