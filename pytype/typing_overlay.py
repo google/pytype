@@ -6,6 +6,7 @@
 from pytype import abstract
 from pytype import abstract_utils
 from pytype import collections_overlay
+from pytype import compat
 from pytype import function
 from pytype import mixin
 from pytype import overlay
@@ -256,7 +257,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
 
   def _is_str_instance(self, val):
     return (isinstance(val, abstract.Instance) and
-            val.full_name == "__builtin__.str")
+            val.full_name in ("__builtin__.str", "__builtin__.unicode"))
 
   def _getargs(self, node, args):
     self.match_args(node, args)
@@ -281,7 +282,11 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
         bad_param = function.BadParam(name="fields", expected=self._fields_type)
         raise function.WrongArgTypes(sig.signature, args, self.vm, bad_param)
       name, typ = field
-      names.append(abstract_utils.get_atomic_python_constant(name))
+      name_py_constant = abstract_utils.get_atomic_python_constant(name)
+      if name_py_constant.__class__ is compat.UnicodeType:
+        # Unicode values should be ASCII.
+        name_py_constant = compat.native_str(name_py_constant.encode("ascii"))
+      names.append(name_py_constant)
       types.append(abstract_utils.get_atomic_value(typ))
     return name_var, names, types
 
@@ -460,6 +465,9 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     # Finally, make the class.
     abs_membs = abstract.Dict(self.vm)
     abs_membs.update(node, members)
+    if name.__class__ is compat.UnicodeType:
+      # Unicode values should be ASCII.
+      name = compat.native_str(name.encode("ascii"))
     node, cls_var = self.vm.make_class(
         node=node,
         name_var=self.vm.convert.build_string(node, name),
