@@ -1,3 +1,6 @@
+Version (upcoming)
+* Add missing Python 3 methods {bytearray,list}.{clear,copy}.
+
 Version 2019.03.15
 * Make --parse-pyi verify that the AST has been resolved.
 * Fix pyi parsing of `typing` aliases.
