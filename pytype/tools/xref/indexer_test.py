@@ -80,7 +80,8 @@ class IndexerTest(test_base.TargetIndependentTest):
         fx = f.X()
         cx = c.X()
         bx = b.X()
-        rx = r.x()
+        rx = r.X()
+        yx = x.y.X()
     """
     stub = "class X: pass"
     with file_utils.Tempdir() as d:
@@ -118,19 +119,31 @@ class IndexerTest(test_base.TargetIndependentTest):
         text = src[start:end]
         out.append((text, r["target"]["signature"], r["target"]["path"]))
 
-      expected = [
+      expected = {
+          # Imports as declarations in the source file
           ("f", "module.f", "t.py"),
-          ("X", "module.X", "f.py"),
           ("c", "module.c", "t.py"),
-          ("X", "module.X", "a/b.py"),
           ("b", "module.b", "t.py"),
+          # Class X in remote files
+          ("X", "module.X", "f.py"),
           ("X", "module.X", "a/b.py"),
+          ("X", "module.X", "x/y.py"),
+          ("X", "module.X", "p/q.py"),
+          # Imports as references to remote files
           ("r", "module.r", "t.py"),
-          ("x", "module.x", "p/q.py")]
+          ("b", "", "a/b.py"),
+          ("c", "", "a/b.py"),
+          ("f", "", "f.py"),
+          ("r", "", "p/q.py"),
+          ("x.y", "", "x/y.py"),
+          # x.y as references to remote files
+          ("x", "", "x/__init__.py"),
+          ("y", "", "x/y.py"),
+      }
 
       # Resolve filepaths within the tempdir.
       expected = [(ref, target, d[path]) for (ref, target, path) in expected]
-      self.assertEqual(out, expected)
+      self.assertEqual(set(out), set(expected))
 
   def test_source_text(self):
     # Don't try to read from the filesystem if we supply source_text
