@@ -1,4 +1,5 @@
-Version (upcoming)
+Version 2019.03.21
+* Update typeshed pin to March 16.
 * Add missing Python 3 methods {bytearray,list}.{clear,copy}.
 
 Version 2019.03.15
