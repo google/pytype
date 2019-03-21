@@ -779,6 +779,8 @@ class IndexVisitor(ScopedVisitor):
   def visit_Call(self, node):
     if isinstance(node.func, str):
       name = node.func
+    elif isinstance(node.func, ast.Lambda):
+      name = "<lambda>"
     else:
       name = node.func.id
     if "." in name:

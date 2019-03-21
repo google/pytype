@@ -24,3 +24,14 @@ def foo(x):
 #- @test ref/call FnTest
 #- VarY.node/kind variable
 y = test(2)
+
+
+# We don't index this, but it shouldn't crash.
+z = (lambda x: x)(1)
+
+
+#- @bar defines/binding VarBar
+bar = lambda x: x
+# We don't generate ref/call here.
+#- @bar ref VarBar
+bar(1)
