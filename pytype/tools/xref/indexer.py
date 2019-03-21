@@ -35,6 +35,10 @@ DEF_OFFSETS = {
 }
 
 
+# Marker for a link to a file rather than a node within the file.
+IMPORT_FILE_MARKER = "<__FILE__>"
+
+
 def children(node):
   """Children to recurse over."""
 
@@ -212,6 +216,8 @@ class PytypeValue(object):
         # This is a namedtuple or some other special case pytype has generated a
         # local PyTDClass for. We need special cases for them too.
         return None
+    elif isinstance(data, abstract.Module):
+      return Remote(data.name, IMPORT_FILE_MARKER, resolved=True)
     elif isinstance(data, abstract.InterpreterClass):
       return cls("module", data.name, "Class")
     elif isinstance(data, abstract.BoundFunction):
@@ -243,6 +249,9 @@ class Module(object):
   def attr(self, attr_name):
     return Remote(self.name, attr_name, resolved=True)
 
+  def submodule(self, attr_name):
+    name = self.name + "." + attr_name
+    return Remote(name, IMPORT_FILE_MARKER, resolved=True)
 
 class Dummy(object):
   """Work around a python3 issue with calling super with kwargs."""
@@ -770,6 +779,8 @@ class IndexVisitor(ScopedVisitor):
   def visit_Call(self, node):
     if isinstance(node.func, str):
       name = node.func
+    elif isinstance(node.func, ast.Lambda):
+      name = "<lambda>"
     else:
       name = node.func.id
     if "." in name:
@@ -825,37 +836,48 @@ class IndexVisitor(ScopedVisitor):
   def visit_ListComp(self, _node):
     return "<expr>"
 
-  def visit_Import(self, node):
+  def process_import(self, node, is_from):
+    """Common code for Import and ImportFrom."""
+
     store_ops = get_opcodes(self.traces, node.lineno, "STORE_NAME")
     import_ops = get_opcodes(self.traces, node.lineno, "IMPORT_NAME")
+
+    # Only record modules that pytype has resolved in self.modules
+    def is_resolved(defn, symbol, data):
+      return (symbol == defn.name and data and
+              isinstance(data[0], abstract.Module))
+
+    def filter_ops(op_list, defn):
+      return [(symbol, data) for _, symbol, data in op_list
+              if is_resolved(defn, symbol, data)]
+
+    def add_import_ref(name, data, loc):
+      self.add_global_ref(
+          node, name=name, data=data, location=loc, typ="Import")
+
     for alias in node.names:
       name = alias.asname if alias.asname else alias.name
       d = self.add_local_def(node, name=name)
-      # Only record modules that pytype has resolved in self.modules
-      if alias.asname:
-        # for |import x.y as z| we want {z: x.y}
-        for _, symbol, data in store_ops:
-          if (symbol == d.name and data and
-              isinstance(data[0], abstract.Module)):
-            self.modules[d.id] = data[0].full_name
+      loc = self.locs[d.id][-1].location
+
+      if alias.asname or is_from:
+        # for |import x.y as z| or |from x import y as z| we want {z: x.y}
+        for symbol, data in filter_ops(store_ops, d):
+          self.modules[d.id] = data[0].full_name
+          add_import_ref(name=symbol, data=data, loc=loc)
       else:
-        for _, symbol, data in import_ops:
-          if (symbol == d.name and data and
-              isinstance(data[0], abstract.Module)):
-            # |import x.y| puts both {x: x} and {x.y: x.y} in modules
-            for mod in module_utils.get_all_prefixes(name):
-              self.modules[d.scope + "." + mod] = mod
+        # |import x.y| puts both {x: x} and {x.y: x.y} in modules
+        for symbol, data in filter_ops(import_ops, d):
+          add_import_ref(name=symbol, data=data, loc=loc)
+          for mod in module_utils.get_all_prefixes(name):
+            # TODO(mdemello): Create references for every element.
+            self.modules[d.scope + "." + mod] = mod
+
+  def visit_Import(self, node):
+    self.process_import(node, is_from=False)
 
   def visit_ImportFrom(self, node):
-    store_ops = get_opcodes(self.traces, node.lineno, "STORE_NAME")
-    for alias in node.names:
-      name = alias.asname if alias.asname else alias.name
-      d = self.add_local_def(node, name=name)
-      for _, symbol, data in store_ops:
-        if (symbol == d.name and data and
-            isinstance(data[0], abstract.Module)):
-          # Only record modules that pytype has resolved in self.modules
-          self.modules[d.id] = data[0].full_name
+    self.process_import(node, is_from=True)
 
 
 # pylint: enable=invalid-name
@@ -865,9 +887,11 @@ class IndexVisitor(ScopedVisitor):
 class Indexer(object):
   """Runs the indexer visitor and collects its results."""
 
-  def __init__(self, source, resolved_modules, module_name, kythe_args=None):
+  def __init__(self, source, loader, module_name, kythe_args=None):
     self.source = source
-    self.resolved_modules = resolved_modules
+    self.loader = loader
+    self.resolved_modules = loader.get_resolved_modules()
+    self.imports = xref_utils.process_imports_map(loader.imports_map)
     self.module_name = module_name
     self.traces = source.traces
     self.kythe = kythe.Kythe(source, kythe_args)
@@ -1044,14 +1068,26 @@ class Indexer(object):
     if isinstance(defn, Remote):
       remote = defn.module
       if remote in self.resolved_modules:
-        path = xref_utils.get_module_filepath(self.resolved_modules[remote])
-        sig = "module." + defn.name
+        if remote in self.imports:
+          # The canonical path from the imports_map is the best bet for
+          # module->filepath translation.
+          path = self.imports[remote]
+        else:
+          # Fallback to the filepath of the stub file, though this is not always
+          # accurate due to overrides.
+          path = self.resolved_modules[remote].filename
+        path = xref_utils.get_module_filepath(path)
+        if defn.name == IMPORT_FILE_MARKER:
+          # file nodes have empty signatures
+          sig = ""
+        else:
+          sig = "module." + defn.name
         if path.startswith("pytd:"):
           return self.kythe.builtin_vname(sig, path)
         else:
           return self.kythe.vname(sig, path)
       else:
-        # Don't generate vnames for unresolved modules
+        # Don't generate vnames for unresolved modules.
         return None
     else:
       return self.kythe.vname(defn.to_signature())
@@ -1178,7 +1214,7 @@ class Indexer(object):
   def _lookup_attribute_by_type(self, r, attr_name):
     """Look up an attribute using pytype annotations."""
 
-    lhs, _ = r.data
+    lhs, rhs = r.data
     links = []
     for l in lhs:
       if self._is_pytype_module(l):
@@ -1200,7 +1236,16 @@ class Indexer(object):
             if attr_value:
               links.append((r, attr_value))
               break
-          elif isinstance(cls, (Module, Remote)):
+          elif isinstance(cls, Module):
+            # Probably extra-cautious about rhs not being a single binding, but
+            # better to check than crash here.
+            if len(rhs) == 1 and self._is_pytype_module(rhs[0]):
+              # e.g. import x.y; a = x.y
+              links.append((r, cls.submodule(attr_name)))
+            else:
+              links.append((r, cls.attr(attr_name)))
+            break
+          elif isinstance(cls, Remote):
             links.append((r, cls.attr(attr_name)))
             break
     return links
@@ -1244,6 +1289,13 @@ class Indexer(object):
                     links.append((r, x))
               else:
                 links.append((r, defn))
+      elif r.typ == "Import":
+        if r.name in self.resolved_modules:
+          module = r.name
+        else:
+          module = r.data[0].full_name
+        remote = Remote(module=module, name=IMPORT_FILE_MARKER, resolved=True)
+        links.append((r, remote))
       else:
         try:
           env, defn = self.envs[r.scope].lookup(r.name)
@@ -1315,8 +1367,7 @@ def process_file(options, source_text=None, kythe_args=None):
   # TODO(mdemello): Get from args
   module_name = "module"
   source = SourceFile(src, vm.opcode_traces, filename=options.input)
-  ix = Indexer(source, vm.loader.get_resolved_modules(), module_name,
-               kythe_args)
+  ix = Indexer(source, vm.loader, module_name, kythe_args)
   ix.index(a)
   ix.finalize()
   return ix
