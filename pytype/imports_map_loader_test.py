@@ -89,7 +89,7 @@ class ImportMapLoaderTest(unittest.TestCase):
       imports_info = "%s %s\n" % ("a/b/c.pyi", d["a/b/c.pyi"])
       d.create_file("imports_info", imports_info)
       output = os.path.join(d.path, "a/b.pyi")
-      with self.assertRaises(AssertionError):
+      with self.assertRaises(ValueError):
         imports_map_loader.build_imports_map(d["imports_info"], output)
 
 
