@@ -1,6 +1,5 @@
 os: linux
 dist: xenial  # Python3.7 virtualenv is available only on Travis Xenial VMs.
-sudo: enabled
 
 git:
   submodules: true
