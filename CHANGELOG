@@ -1,3 +1,6 @@
+Version 2019.03.27
+* Support `# type: ignore` on import lines in pyi files.
+
 Version 2019.03.21
 * Update typeshed pin to March 16.
 * Add missing Python 3 methods {bytearray,list}.{clear,copy}.

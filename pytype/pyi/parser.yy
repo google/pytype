@@ -366,21 +366,21 @@ constantdef
   ;
 
 importdef
-  : IMPORT import_items {
+  : IMPORT import_items maybe_type_ignore {
       $$ = ctx->Call(kAddImport, "(ON)", Py_None, $2);
       CHECK($$, @$);
     }
-  | FROM import_name IMPORT from_list {
+  | FROM import_name IMPORT from_list maybe_type_ignore {
       $$ = ctx->Call(kAddImport, "(NN)", $2, $4);
       CHECK($$, @$);
     }
-  | FROM '.' IMPORT from_list {
+  | FROM '.' IMPORT from_list maybe_type_ignore {
       // Special-case "from . import" and pass in a __PACKAGE__ token that
       // the Python parser code will rewrite to the current package name.
       $$ = ctx->Call(kAddImport, "(sN)", "__PACKAGE__", $4);
       CHECK($$, @$);
     }
-  | FROM '.' '.' IMPORT from_list {
+  | FROM '.' '.' IMPORT from_list maybe_type_ignore {
       // Special-case "from .. import" and pass in a __PARENT__ token that
       // the Python parser code will rewrite to the parent package name.
       $$ = ctx->Call(kAddImport, "(sN)", "__PARENT__", $5);

@@ -12,7 +12,7 @@
       * [Pytype's pyi stub files](#pytypes-pyi-stub-files)
       * [Compatibility](#compatibility)
 
-<!-- Added by: rechen, at: 2019-02-01T14:13-08:00 -->
+<!-- Added by: rechen, at: 2019-03-27T11:49-07:00 -->
 
 <!--te-->
 
@@ -43,10 +43,11 @@ def annotated(x: int, y: float = 0.0) -> int:
 ```
 
 The above code uses the syntax from [PEP 3107][pep-3107] and [PEP 484][pep-484]
-to declare the parameter and return types of the function `annotated`. This
-syntax is available natively in Python 3. In Python 2, you can access it with
-an interpreter patch (available by default in Google) and a
-`from __future__ import google_type_annotations` import. See the
+to declare the parameter and return types of the function `annotated`. In Python
+2, you can access this syntax with an interpreter patch (available by default in
+Google) and a `from __future__ import google_type_annotations` import. In Python
+3, the syntax is available natively, so you do not need the import, although you
+may include it to allow your code to run under both Python 2 and 3. See the
 [compatibility][compatibility] section for additional Python 2 options.
 
 Note that the return type of `annotated` is declared to be an integer, but the
@@ -184,7 +185,7 @@ class Server:
   socket: socket.socket
 ```
 
-In lower versions, a type comment may be used:
+In versions earlier than 3.6, a type comment may be used:
 
 ```python
 class Server:

@@ -1961,5 +1961,44 @@ class TypeMacroTest(_ParserTestBase):
     """, 4, "List[List[T]] expected 1 parameters, got 2")
 
 
+class ImportTypeIgnoreTest(_ParserTestBase):
+
+  def test_import(self):
+    self.check("""
+      import mod  # type: ignore
+      def f(x: mod.attr) -> None: ...
+    """, """\
+      import mod
+
+      def f(x: mod.attr) -> None: ...""")
+
+  def test_from_import(self):
+    src = textwrap.dedent("""
+      from mod import attr  # type: ignore
+      def f(x: attr) -> None: ...
+    """)
+    ast = parser.parse_string(src, python_version=self.PYTHON_VERSION)
+    self.assertTrue(ast.Lookup("attr"))
+    self.assertTrue(ast.Lookup("f"))
+
+  def test_relative_import(self):
+    src = textwrap.dedent("""
+      from . import attr  # type: ignore
+      def f(x: attr) -> None: ...
+    """)
+    ast = parser.parse_string(src, python_version=self.PYTHON_VERSION)
+    self.assertTrue(ast.Lookup("attr"))
+    self.assertTrue(ast.Lookup("f"))
+
+  def test_relative_import_parent(self):
+    src = textwrap.dedent("""
+      from .. import attr  # type: ignore
+      def f(x: attr) -> None: ...
+    """)
+    ast = parser.parse_string(src, python_version=self.PYTHON_VERSION)
+    self.assertTrue(ast.Lookup("attr"))
+    self.assertTrue(ast.Lookup("f"))
+
+
 if __name__ == "__main__":
   unittest.main()

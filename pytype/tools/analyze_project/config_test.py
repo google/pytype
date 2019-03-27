@@ -1,6 +1,7 @@
 """Tests for config.py."""
 
 import os
+import sys
 
 from pytype import datatypes
 from pytype import file_utils
@@ -113,6 +114,7 @@ class TestGenerateConfig(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
+    super(TestGenerateConfig, cls).setUpClass()
     cls.parser = parse_args.make_parser()
 
   def test_bad_location(self):
@@ -141,6 +143,8 @@ class TestGenerateConfig(unittest.TestCase):
       expected_protocols = config._PYTYPE_SINGLE_ITEMS['protocols'].sample
       self.assertEqual(conf.pythonpath, expected_pythonpath)
       self.assertEqual(conf.protocols, expected_protocols)
+      self.assertEqual(conf.python_version,
+                       '{}.{}'.format(*sys.version_info[:2]))
 
   def test_read(self):
     with file_utils.Tempdir() as d:

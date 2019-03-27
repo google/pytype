@@ -30,8 +30,8 @@ def _validate_imports_map(imports_map):
 
   Args:
     imports_map: The map returned by _read_imports_map.
-  Raises:
-    AssertionError: If we found an error in the imports map.
+  Returns:
+    A list of invalid entries, in the form (short_path, long_path)
   """
   errors = []
   for short_path, paths in imports_map.items():
@@ -43,7 +43,7 @@ def _validate_imports_map(imports_map):
               os.path.abspath("."))
     for short_path, path in errors:
       log.error("  file does not exist: %r (mapped from %r)", path, short_path)
-    raise AssertionError("bad import map")
+  return errors
 
 
 def build_imports_map(options_info_path, output=None):
@@ -58,6 +58,8 @@ def build_imports_map(options_info_path, output=None):
              imports_info, this output should *not* exist.
   Returns:
     Dict of .py short_path to list of .pytd path or None if no options_info_path
+  Raises:
+    ValueError if the imports map is invalid
   """
   imports_multimap = _read_imports_map(options_info_path)
 
@@ -81,7 +83,11 @@ def build_imports_map(options_info_path, output=None):
         del imports_map[k]
         break
 
-  _validate_imports_map(imports_multimap)
+  errors = _validate_imports_map(imports_multimap)
+  if errors:
+    msg = "Invalid imports_map: %s\nBad entries:\n" % options_info_path
+    msg += "\n".join("  %s -> %s" % (k, v) for k, v in errors)
+    raise ValueError(msg)
 
   # Add the potential directory nodes for adding "__init__", because some build
   # systems automatically create __init__.py in empty directories. These are
