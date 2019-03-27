@@ -52,7 +52,8 @@ ITEMS = {
         '', '.', None,
         'Paths to source code directories, separated by %r.' % os.pathsep),
     'python_version': Item(
-        '', '3.6', None, 'Python version (major.minor) of the target code.'),
+        '', "{}.{}".format(*sys.version_info[:2]),
+        None, 'Python version (major.minor) of the target code.'),
 }
 
 
