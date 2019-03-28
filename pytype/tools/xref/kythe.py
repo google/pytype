@@ -36,6 +36,7 @@ class Kythe(object):
     self.entries = []
     self._seen_entries = set()
     self.file_vname = self._add_file(source.text)
+    self._add_file_anchor()
 
   def _encode(self, value):
     """Encode fact values as base64."""
@@ -51,6 +52,13 @@ class Kythe(object):
     self.add_fact(vname, "node/kind", "file")
     self.add_fact(vname, "text", file_contents)
     return vname
+
+  def _add_file_anchor(self):
+    # Add a special anchor for the first byte of a file, so we can link to it.
+    anchor_vname = self.add_anchor(0, 1)
+    mod_vname = self.vname("module")
+    self.add_fact(mod_vname, "node/kind", "record")
+    self.add_edge(anchor_vname, "defines/binding", mod_vname)
 
   def _add_entry(self, entry):
     """Make sure we don't have duplicate entries."""
