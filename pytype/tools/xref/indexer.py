@@ -16,7 +16,7 @@ from pytype import module_utils
 from pytype.tools.xref import utils as xref_utils
 from pytype.tools.xref import kythe
 
-from typed_ast import ast27t as ast27
+from typed_ast import ast27 as ast27
 from typed_ast import ast3
 
 
@@ -1078,8 +1078,7 @@ class Indexer(object):
           path = self.resolved_modules[remote].filename
         path = xref_utils.get_module_filepath(path)
         if defn.name == IMPORT_FILE_MARKER:
-          # file nodes have empty signatures
-          sig = ""
+          sig = kythe.FILE_ANCHOR_SIGNATURE
         else:
           sig = "module." + defn.name
         if path.startswith("pytd:"):
