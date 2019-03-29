@@ -1,6 +1,6 @@
 # pylint: skip-file
 
-#- Mod=vname("module", _, _, _, _).node/kind record
+#- Mod=vname(":module:", _, _, _, _).node/kind record
 
 # The first byte in the module is tagged as defining the module.
 # (Idea copied from the typescript indexer)

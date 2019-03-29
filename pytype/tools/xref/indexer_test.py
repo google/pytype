@@ -131,14 +131,14 @@ class IndexerTest(test_base.TargetIndependentTest):
           ("X", "module.X", "p/q.py"),
           # Imports as references to remote files
           ("r", "module.r", "t.py"),
-          ("b", "", "a/b.py"),
-          ("c", "", "a/b.py"),
-          ("f", "", "f.py"),
-          ("r", "", "p/q.py"),
-          ("x.y", "", "x/y.py"),
+          ("b", ":module:", "a/b.py"),
+          ("c", ":module:", "a/b.py"),
+          ("f", ":module:", "f.py"),
+          ("r", ":module:", "p/q.py"),
+          ("x.y", ":module:", "x/y.py"),
           # x.y as references to remote files
-          ("x", "", "x/__init__.py"),
-          ("y", "", "x/y.py"),
+          ("x", ":module:", "x/__init__.py"),
+          ("y", ":module:", "x/y.py"),
       }
 
       # Resolve filepaths within the tempdir.

@@ -1078,8 +1078,7 @@ class Indexer(object):
           path = self.resolved_modules[remote].filename
         path = xref_utils.get_module_filepath(path)
         if defn.name == IMPORT_FILE_MARKER:
-          # file nodes have empty signatures
-          sig = ""
+          sig = kythe.FILE_ANCHOR_SIGNATURE
         else:
           sig = "module." + defn.name
         if path.startswith("pytd:"):

@@ -4,6 +4,8 @@ import base64
 import collections
 
 
+FILE_ANCHOR_SIGNATURE = ":module:"
+
 Args = collections.namedtuple("Args", ["root", "corpus"])
 
 
@@ -56,7 +58,7 @@ class Kythe(object):
   def _add_file_anchor(self):
     # Add a special anchor for the first byte of a file, so we can link to it.
     anchor_vname = self.add_anchor(0, 1)
-    mod_vname = self.vname("module")
+    mod_vname = self.vname(FILE_ANCHOR_SIGNATURE)
     self.add_fact(mod_vname, "node/kind", "record")
     self.add_edge(anchor_vname, "defines/binding", mod_vname)
 
