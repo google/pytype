@@ -16,7 +16,7 @@ from pytype import module_utils
 from pytype.tools.xref import utils as xref_utils
 from pytype.tools.xref import kythe
 
-from typed_ast import ast27t as ast27
+from typed_ast import ast27 as ast27
 from typed_ast import ast3
 
 
