@@ -128,6 +128,7 @@ setup(
         'pytype/tools',
         'pytype/tools/analyze_project',
         'pytype/tools/merge_pyi',
+        'pytype/tools/xref',
         'pytype/typegraph',
     ],
     entry_points={
@@ -136,6 +137,7 @@ setup(
             'pytype-single = pytype.main:main',
             'pytd = pytype.pytd.main:main',
             'pytype = pytype.tools.analyze_project.main:main',
+            'pyxref = pytype.tools.xref.main:main',
         ]
     },
     package_data={'pytype': get_builtin_files()},
