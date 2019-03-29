@@ -6,6 +6,7 @@ from __future__ import print_function
 
 import signal
 import sys
+import traceback
 
 from pytype import utils
 from pytype.pytd.parse import node
@@ -32,6 +33,10 @@ def main():
     ix = indexer.process_file(options, kythe_args=kythe_args)
   except indexer.PytypeError as e:
     print(e.args[0], file=sys.stderr)
+    if args.debug:
+      traceback.print_exc()
+    else:
+      print("Run with --debug to see a traceback.")
     sys.exit(1)
 
   if args.debug:
