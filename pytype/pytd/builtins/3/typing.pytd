@@ -414,6 +414,27 @@ def no_type_check_decorator(decorator) -> Callable
 def get_type_hints(obj, ...) -> Optional[Dict[str, Any]]
 
 
+# Strictly speaking, this should be Dict[?, ?]. (E.g. it's legal to do
+# typing.Counter()[x] = 'foobar'.) But the counts are typically integers.
+class Counter(Dict[?, int]):
+  __doc__ = ...  # type: str
+  fromkeys = ...  # type: classmethod
+  def __add__(self, other: Counter) -> Counter
+  def __and__(self, other: Counter) -> Counter
+  def __delitem__(self, elem) -> None
+  def __init__(self, ...) -> None
+  def __missing__(self, key) -> int
+  def __or__(self, other: Counter) -> Counter
+  def __reduce__(self) -> Tuple
+  def __repr__(self) -> str
+  def __sub__(self, other: Counter) -> Counter
+  def copy(self) -> ?
+  def elements(self) -> ?
+  def most_common(self, ...) -> ?
+  def subtract(self, other: Iterable) -> None
+  def update(self, other: Iterable) -> None
+
+
 if sys.version_info >= (3, 0):
   class AsyncIterable(Generic[_T], Protocol):
     __slots__ = []
@@ -428,6 +449,14 @@ if sys.version_info >= (3, 0):
     __slots__ = []
     @abstractmethod
     def __anext__(self) -> Awaitable[_T]: ...
+
+  class ChainMap(MutableMapping[_K, _V]):
+    def __delitem__(self, k) -> None: ...
+    def __getitem__(self, key: _K) -> _V: ...
+    def __iter__(self) -> Iterator[_K]: ...
+    def __len__(self) -> int: ...
+    def __setitem__(self, k: _K2, v: _V2) -> None:
+      self = ChainMap[_K or _K2, _V or _V2]
 
 
 # TODO(rechen): See https://github.com/google/pytype/issues/241. Due to a
