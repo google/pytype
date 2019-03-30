@@ -414,6 +414,22 @@ def no_type_check_decorator(decorator) -> Callable
 def get_type_hints(obj, ...) -> Optional[Dict[str, Any]]
 
 
+if sys.version_info >= (3, 0):
+  class AsyncIterable(Generic[_T], Protocol):
+    __slots__ = []
+    if sys.version_info < (3, 5):
+      @abstractmethod
+      def __aiter__(self) -> Awaitable[AsyncIterator[_T]]: ...
+    else:
+      @abstractmethod
+      def __aiter__(self) -> AsyncIterator[_T]: ...
+
+  class AsyncIterator(AsyncIterable[_T], Protocol):
+    __slots__ = []
+    @abstractmethod
+    def __anext__(self) -> Awaitable[_T]: ...
+
+
 # TODO(rechen): See https://github.com/google/pytype/issues/241. Due to a
 # typeshed bug, Awaitable and Coroutine need to be defined in 3.4. Once this bug
 # is fixed, we should define these classes only in 3.5+.
@@ -430,22 +446,6 @@ if sys.version_info >= (3, 4):
     def throw(self, typ: Type[BaseException], val = ..., tb = ...) -> _T: ...
     @abstractmethod
     def close(self) -> None: ...
-
-
-if sys.version_info >= (3, 0):
-  class AsyncIterable(Generic[_T], Protocol):
-    __slots__ = []
-    if sys.version_info < (3, 5):
-      @abstractmethod
-      def __aiter__(self) -> Awaitable[AsyncIterator[_T]]: ...
-    else:
-      @abstractmethod
-      def __aiter__(self) -> AsyncIterator[_T]: ...
-
-  class AsyncIterator(AsyncIterable[_T], Protocol):
-    __slots__ = []
-    @abstractmethod
-    def __anext__(self) -> Awaitable[_T]: ...
 
 
 if sys.version_info >= (3, 5):
