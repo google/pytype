@@ -142,11 +142,11 @@ setup(
     },
     package_data={'pytype': get_builtin_files()},
     install_requires=[
-        'typed_ast',
         'importlab (>=0.5)',
         'ninja',
         'pyyaml (>=3.11)',
         'six'
+        'typed_ast',
     ],
     classifiers=[
         'Development Status :: 5 - Stable',
