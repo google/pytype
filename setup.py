@@ -142,13 +142,14 @@ setup(
     },
     package_data={'pytype': get_builtin_files()},
     install_requires=[
-        'importlab (>=0.4)',
+        'importlab (>=0.5)',
         'ninja',
         'pyyaml (>=3.11)',
-        'six'
+        'six',
+        'typed_ast',
     ],
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 5 - Stable',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python',
