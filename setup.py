@@ -145,7 +145,7 @@ setup(
         'importlab (>=0.5)',
         'ninja',
         'pyyaml (>=3.11)',
-        'six'
+        'six',
         'typed_ast',
     ],
     classifiers=[
