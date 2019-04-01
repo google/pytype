@@ -26,20 +26,6 @@ class BuiltinTests(test_base.TargetPython3BasicTest):
         return sum(x)
     """)
 
-  def testFilter(self):
-    ty = self.Infer("""
-      def f(x: int):
-        pass
-      x1 = filter(f, {1: None}.keys())
-      x2 = filter(None, {1: None}.keys())
-    """)
-    self.assertTypesMatchPytd(ty, """
-      from typing import List
-      def f(x: int) -> None
-      x1 = ...  # type: List[int]
-      x2 = ...  # type: List[int]
-      """)
-
   def testPrintFunction(self):
     self.Check("""
       from __future__ import print_function
@@ -275,10 +261,24 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
 
   def testFilter(self):
     ty = self.Infer("""
-      x = filter(None, u"")
+      def f(x: int):
+        pass
+      x1 = filter(None, "")
+      x2 = filter(None, bytearray(""))
+      x3 = filter(None, (True, False))
+      x4 = filter(None, {True, False})
+      x5 = filter(f, {1: None}.keys())
+      x6 = filter(None, {1: None}.keys())
     """)
     self.assertTypesMatchPytd(ty, """
-      x = ...  # type: str
+      from typing import Iterator
+      def f(x: int) -> None
+      x1 = ...  # type: Iterator[str]
+      x2 = ...  # type: Iterator[int]
+      x3 = ...  # type: Iterator[bool, ...]
+      x4 = ...  # type: Iterator[bool]
+      x5 = ...  # type: Iterator[int]
+      x6 = ...  # type: Iterator[int]
       """)
 
   def testSorted(self):
