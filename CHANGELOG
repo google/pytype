@@ -1,3 +1,6 @@
+Version (upcoming)
+* Simplify the text pytype prints to the terminal.
+
 Version 2019.03.27
 * Support `# type: ignore` on import lines in pyi files.
 
