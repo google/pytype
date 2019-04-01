@@ -1,5 +1,6 @@
 Version (upcoming)
 * Simplify the text pytype prints to the terminal.
+* Rename the default pytype output directory from pytype_output to .pytype.
 
 Version 2019.03.27
 * Support `# type: ignore` on import lines in pyi files.

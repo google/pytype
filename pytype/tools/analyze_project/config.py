@@ -47,7 +47,7 @@ ITEMS = {
         False, 'False', None,
         'Keep going past errors to analyze as many files as possible.'),
     'output': Item(
-        'pytype_output', 'pytype_output', None, 'All pytype output goes here.'),
+        '.pytype', '.pytype', None, 'All pytype output goes here.'),
     'pythonpath': Item(
         '', '.', None,
         'Paths to source code directories, separated by %r.' % os.pathsep),

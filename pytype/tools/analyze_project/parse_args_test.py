@@ -127,7 +127,7 @@ class TestParser(unittest.TestCase):
   def test_config_file(self):
     conf = self.parser.config_from_defaults()
     # Spot check a pytype-all arg.
-    self.assertEqual(conf.output, os.path.join(os.getcwd(), 'pytype_output'))
+    self.assertEqual(conf.output, os.path.join(os.getcwd(), '.pytype'))
     # And a pytype-single arg.
     self.assertIsInstance(conf.disable, list)
     self.assertFalse(conf.disable)
