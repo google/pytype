@@ -43,11 +43,11 @@ also easy to add pytype to your automated testing; see this
 [example][importlab-travis] of a GitHub project that runs pytype on Travis.
 
 Finally, pytype generates files of inferred type information, located by default
-in `pytype_output/pyi`. You can use this information to type-annotate the
+in `.pytype/pyi`. You can use this information to type-annotate the
 corresponding source file, replacing `module.py` with the file's import path:
 
 ```
-merge-pyi -i module.py pytype_output/pyi/module.pyi
+merge-pyi -i module.py .pytype/pyi/module.pyi
 ```
 
 ## Requirements
@@ -103,7 +103,7 @@ Common options:
 * `-V, --python-version`: Python version (major.minor) of the target code.
   Defaults to `3.6`.
 * `-o, --output`: The directory into which all pytype output goes, including
-  generated .pyi files. Defaults to `pytype_output`.
+  generated .pyi files. Defaults to `.pytype`.
 * `-d, --disable`. Comma separated list of error names to ignore. Detailed
   explanations of pytype's error names are in [this doc][error-classes].
   Defaults to empty.

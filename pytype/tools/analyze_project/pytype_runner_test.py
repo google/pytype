@@ -29,7 +29,7 @@ ExpectedBuildStatement = collections.namedtuple(
 
 
 # number of lines in the build.ninja preamble
-_PREAMBLE_LENGTH = 4
+_PREAMBLE_LENGTH = 6
 
 
 class FakeImportGraph(object):
@@ -367,16 +367,18 @@ class TestNinjaPreamble(TestBase):
       with open(runner.ninja_file, 'r') as f:
         preamble = f.read().splitlines()
     self.assertEqual(len(preamble), _PREAMBLE_LENGTH)
-    # The preamble consists of pairs of lines of the format:
+    # The preamble consists of triples of lines of the format:
     # rule {name}
     #   command = pytype-single {args} $in
-    # Check that all even-numbered lines follow the first pattern, all
-    # odd-numbered lines the second.
+    #   description = {name} $module
+    # Check that the lines cycle through these patterns.
     for i, line in enumerate(preamble):
-      if not i % 2:
+      if not i % 3:
         self.assertRegexpMatches(line, r'rule \w*')
-      else:
+      elif i % 3 == 1:
         self.assertRegexpMatches(line, r'  command = pytype-single .* \$in')
+      else:
+        self.assertRegexpMatches(line, r'  description = \w* \$module')
 
 
 class TestNinjaBuildStatement(TestBase):

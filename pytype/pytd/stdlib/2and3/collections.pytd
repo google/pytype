@@ -29,27 +29,30 @@ loads = ...  # type: Callable
 
 class deque(typing.Deque[T]): ...
 
+Callable = typing.Callable
 Container = typing.Container
+Counter = typing.Counter
 Hashable = typing.Hashable
+ItemsView = typing.ItemsView
 Iterable = typing.Iterable
 Iterator = typing.Iterator
-Sized = typing.Sized
-Callable = typing.Callable
-Sequence = typing.Sequence
-MutableSequence = typing.MutableSequence
-Set = typing.Set
-MutableSet = typing.MutableSet
-Mapping = typing.Mapping
-MutableMapping = typing.MutableMapping
-MappingView = typing.MappingView
-ItemsView = typing.ItemsView
 KeysView = typing.KeysView
+Mapping = typing.Mapping
+MappingView = typing.MappingView
+MutableMapping = typing.MutableMapping
+MutableSequence = typing.MutableSequence
+MutableSet = typing.MutableSet
+Sequence = typing.Sequence
+Set = typing.Set
+Sized = typing.Sized
 ValuesView = typing.ValuesView
+
 if sys.version_info[0] >= 3:
   AsyncIterable = typing.AsyncIterable
   AsyncIterator = typing.AsyncIterator
   Awaitable = typing.Awaitable
   ByteString = typing.ByteString
+  ChainMap = typing.ChainMap
   Coroutine = typing.Coroutine
   Collection = typing.Collection
   Generator = typing.Generator
@@ -97,29 +100,8 @@ class defaultdict(DefaultDict[K, V]):
   def __getitem__(self, key: K2) -> Any:
     self = defaultdict[K or K2, Any]
 
-# Strictly speaking, this should be dict[?, ?]. (E.g. it's legal to do
-# collections.Counter()[x] = 'foobar'.) But the counts are typically integers.
-class Counter(dict[?, int]):
-    __doc__ = ...  # type: str
-    fromkeys = ...  # type: classmethod
-    def __add__(self, other: Counter) -> Counter
-    def __and__(self, other: Counter) -> Counter
-    def __delitem__(self, elem) -> NoneType
-    def __init__(self, ...) -> NoneType
-    def __missing__(self, key) -> int
-    def __or__(self, other: Counter) -> Counter
-    def __reduce__(self) -> tuple
-    def __repr__(self) -> str
-    def __sub__(self, other: Counter) -> Counter
-    def copy(self) -> ?
-    def elements(self) -> ?
-    def most_common(self, ...) -> ?
-    def subtract(self, other: Iterable) -> NoneType
-    def update(self, other: Iterable) -> NoneType
-
 if sys.version_info[0] >= 3:
     # TODO(kramm): Implement these
-    ChainMap = ...  # type: ?
     UserDict = ...  # type: ?
     UserList = ...  # type: ?
     UserString = ...  # type: ?

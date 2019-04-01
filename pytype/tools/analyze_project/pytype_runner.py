@@ -73,10 +73,16 @@ def deps_from_import_graph(import_graph):
         make_module(f) for f in get_filenames(node) if not _is_type_stub(f))
     # flatten and dedup
     seen = set()
-    deps = tuple(make_module(d) for dep in deps for d in get_filenames(dep)
-                 if d not in seen and not seen.add(d) and not _is_type_stub(d))
+    final_deps = []
+    for dep in deps:
+      for d in get_filenames(dep):
+        if d in seen:
+          continue
+        seen.add(d)
+        if not _is_type_stub(d):
+          final_deps.append(make_module(d))
     if files:
-      modules.append((files, deps))
+      modules.append((files, tuple(final_deps)))
   return modules
 
 
@@ -243,7 +249,12 @@ class PytypeRunner(object):
         command = ' '.join(
             self.get_pytype_command_for_ninja(report_errors=report_errors))
         logging.info('%s command: %s', action, command)
-        f.write('rule %s\n  command = %s\n' % (action, command))
+        f.write(
+            'rule {action}\n'
+            '  command = {command}\n'
+            '  description = {action} $module\n'.format(
+                action=action, command=command)
+        )
 
   def write_build_statement(self, module, action, deps, imports, suffix):
     """Write a build statement for the given module.
@@ -317,9 +328,13 @@ class PytypeRunner(object):
     """Execute the build.ninja file."""
     # -k N     keep going until N jobs fail (0 means infinity)
     # -C DIR   change to DIR before doing anything else
+    # -v       show all command lines while building
     k = '0' if self.keep_going else '1'
     c = os.path.dirname(self.ninja_file)
-    return subprocess.call(['ninja', '-k', k, '-C', c])
+    command = ['ninja', '-k', k, '-C', c]
+    if logging.getLogger().isEnabledFor(logging.INFO):
+      command.append('-v')
+    return subprocess.call(command)
 
   def run(self):
     """Run pytype over the project."""

@@ -4,7 +4,7 @@ from pytype.tests import test_base
 from pytype.tests import test_utils
 
 
-class StrLibTestsBasic(test_base.TargetPython3BasicTest,
+class StdLibTestsBasic(test_base.TargetPython3BasicTest,
                        test_utils.TestCollectionsMixin):
   """Tests for files in typeshed/stdlib."""
 
@@ -350,6 +350,23 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
 
   def test_contextlib(self):
     self.Check("from contextlib import AbstractContextManager")
+
+  def test_chainmap(self):
+    ty = self.Infer("""
+      import collections
+      v1 = collections.ChainMap({'a': 'b'}, {b'c': 0})
+      v2 = v1.maps
+      v3 = v1.parents
+      v4 = v1.new_child()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import ChainMap, List, Mapping, Union
+      collections: module
+      v1: ChainMap[Union[bytes, str], Union[int, str]]
+      v2: List[Mapping[Union[bytes, str], Union[int, str]]]
+      v3: ChainMap[Union[bytes, str], Union[int, str]]
+      v4: ChainMap[Union[bytes, str], Union[int, str]]
+    """)
 
 
 test_base.main(globals(), __name__ == "__main__")

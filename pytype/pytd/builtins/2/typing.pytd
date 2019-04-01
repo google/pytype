@@ -6,6 +6,7 @@ else:
   AnyStr = TypeVar('AnyStr', str, unicode)
 _ARGS = TypeVar('_ARGS')
 _RET = TypeVar('_RET')
+
 # "_T", "_K", and "_V" are hardcoded in abstract.py
 _T = TypeVar('_T')
 _K = TypeVar('_K')
@@ -14,6 +15,14 @@ _K2 = TypeVar('_K2')
 _V2 = TypeVar('_V2')
 _T2 = TypeVar('_T2')
 _T_IO = TypeVar('_T_IO', bound=IO)
+
+# Used by ChainMap to approximate a variadic type variable.
+_K1 = TypeVar('_K1')
+_K3 = TypeVar('_K3')
+_K4 = TypeVar('_K4')
+_V1 = TypeVar('_V1')
+_V3 = TypeVar('_V3')
+_V4 = TypeVar('_V4')
 
 
 if sys.version_info >= (3, 0):
@@ -414,22 +423,25 @@ def no_type_check_decorator(decorator) -> Callable
 def get_type_hints(obj, ...) -> Optional[Dict[str, Any]]
 
 
-# TODO(rechen): See https://github.com/google/pytype/issues/241. Due to a
-# typeshed bug, Awaitable and Coroutine need to be defined in 3.4. Once this bug
-# is fixed, we should define these classes only in 3.5+.
-if sys.version_info >= (3, 4):
-  class Awaitable(Generic[_T], Protocol):
-    @abstractmethod
-    def __await__(self) -> Generator[Any, None, _T]: ...
-
-  class Coroutine(Awaitable[_V], Generic[_T, _T2, _V]):
-    __slots__ = []
-    @abstractmethod
-    def send(self, value: _T2) -> _T: ...
-    @abstractmethod
-    def throw(self, typ: Type[BaseException], val = ..., tb = ...) -> _T: ...
-    @abstractmethod
-    def close(self) -> None: ...
+# Strictly speaking, this should be Dict[?, ?]. (E.g. it's legal to do
+# typing.Counter()[x] = 'foobar'.) But the counts are typically integers.
+class Counter(Dict[?, int]):
+  __doc__ = ...  # type: str
+  fromkeys = ...  # type: classmethod
+  def __add__(self, other: Counter) -> Counter
+  def __and__(self, other: Counter) -> Counter
+  def __delitem__(self, elem) -> None
+  def __init__(self, ...) -> None
+  def __missing__(self, key) -> int
+  def __or__(self, other: Counter) -> Counter
+  def __reduce__(self) -> Tuple
+  def __repr__(self) -> str
+  def __sub__(self, other: Counter) -> Counter
+  def copy(self) -> ?
+  def elements(self) -> ?
+  def most_common(self, ...) -> ?
+  def subtract(self, other: Iterable) -> None
+  def update(self, other: Iterable) -> None
 
 
 if sys.version_info >= (3, 0):
@@ -446,6 +458,65 @@ if sys.version_info >= (3, 0):
     __slots__ = []
     @abstractmethod
     def __anext__(self) -> Awaitable[_T]: ...
+
+  class ChainMap(MutableMapping[_K, _V]):
+    maps: List[Mapping[_K, _V]]
+    parents: ChainMap[_K, _V]
+    def __init__(self) -> None:
+      self = ChainMap[nothing, nothing]
+    def __init__(self, map1: Mapping[_K1, _V1]) -> None:
+      self = ChainMap[_K1, _V1]
+    def __init__(
+        self,
+        map1: Mapping[_K1, _V1],
+        map2: Mapping[_K2, _V2]
+    ) -> None:
+      self = ChainMap[Union[_K1, _K2], Union[_V1, _V2]]
+    def __init__(
+        self,
+        map1: Mapping[_K1, _V1],
+        map2: Mapping[_K2, _V2],
+        map3: Mapping[_K3, _V3]
+    ) -> None:
+      self = ChainMap[Union[_K1, _K2, _K3], Union[_V1, _V2, _V3]]
+    def __init__(
+        self,
+        map1: Mapping[_K1, _V1],
+        map2: Mapping[_K2, _V2],
+        map3: Mapping[_K3, _V3],
+        map4: Mapping[_K4, _V4]
+    ) -> None:
+      self = ChainMap[Union[_K1, _K2, _K3, _K4], Union[_V1, _V2, _V3, _V4]]
+    def __init__(self, *maps: Mapping[Any, Any]) -> None:
+      self = ChainMap[Any, Any]
+    def __delitem__(self, k) -> None: ...
+    def __getitem__(self, key: _K) -> _V: ...
+    def __iter__(self) -> Iterator[_K]: ...
+    def __len__(self) -> int: ...
+    def __setitem__(self, k: _K2, v: _V2) -> None:
+      self = ChainMap[_K or _K2, _V or _V2]
+    def new_child(self, m: None = ...) -> ChainMap[_K, _V]: ...
+    def new_child(
+        self, m: Mapping[_K2, _V2]
+    ) -> ChainMap[Union[_K, _K2], Union[_V2, _V2]]: ...
+
+
+# TODO(rechen): See https://github.com/google/pytype/issues/241. Due to a
+# typeshed bug, Awaitable and Coroutine need to be defined in 3.4. Once this bug
+# is fixed, we should define these classes only in 3.5+.
+if sys.version_info >= (3, 4):
+  class Awaitable(Generic[_T], Protocol):
+    @abstractmethod
+    def __await__(self) -> Generator[Any, None, _T]: ...
+
+  class Coroutine(Awaitable[_V], Generic[_T, _T2, _V]):
+    __slots__ = []
+    @abstractmethod
+    def send(self, value: _T2) -> _T: ...
+    @abstractmethod
+    def throw(self, typ: Type[BaseException], val = ..., tb = ...) -> _T: ...
+    @abstractmethod
+    def close(self) -> None: ...
 
 
 if sys.version_info >= (3, 5):
