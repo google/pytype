@@ -93,11 +93,16 @@ def make_parser():
       (('-x', '--exclude'), {'nargs': '*', 'action': 'flatten'}),
       (('inputs',), {'metavar': 'input', 'nargs': '*', 'action': 'flatten'}),
       (('-k', '--keep-going'), {'action': 'store_true', 'type': None}),
-      (('-o', '--output'),),
       (('-P', '--pythonpath'),),
       (('-V', '--python-version'),)
   ]:
     _add_file_argument(parser, types, *option)
+  output = parser.add_mutually_exclusive_group()
+  _add_file_argument(output, types, ('-o', '--output'))
+  output.add_argument(
+      '-n', '--no-cache', dest='no_cache', action='store_true', default=False,
+      help='Send pytype output to a temporary directory.')
+
   # Adds options from pytype-single.
   wrapper = arg_parser.ParserWrapper(parser)
   pytype_config.add_basic_options(wrapper)
