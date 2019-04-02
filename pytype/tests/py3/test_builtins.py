@@ -261,6 +261,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
 
   def testFilter(self):
     ty = self.Infer("""
+      import re
       def f(x: int):
         pass
       x1 = filter(None, "")
@@ -269,9 +270,11 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       x4 = filter(None, {True, False})
       x5 = filter(f, {1: None}.keys())
       x6 = filter(None, {1: None}.keys())
+      x7 = filter(re.compile("").search, ("",))
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Iterator
+      re: module
       def f(x: int) -> None
       x1 = ...  # type: Iterator[str]
       x2 = ...  # type: Iterator[int]
@@ -279,6 +282,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       x4 = ...  # type: Iterator[bool]
       x5 = ...  # type: Iterator[int]
       x6 = ...  # type: Iterator[int]
+      x7 = ...  # type: Iterator[str]
       """)
 
   def testSorted(self):

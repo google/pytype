@@ -54,6 +54,8 @@ def divmod(x: int or float or complex, y: int or float or complex) -> tuple[comp
 def eval(src, ...) -> ?  # Can't say *anything* about the result -- different from "-> object"
 def exec(src, ...) -> NoneType
 def execfile(filename: str, ...) -> NoneType
+# TODO(b/110955093): Remove this redundant AnyStr overload.
+def filter(function: Optional[Callable[[AnyStr], ?]], iterable: Iterable[AnyStr]) -> Iterator[AnyStr]
 def filter(function: Optional[Callable[[_T], ?]], iterable: Iterable[_T]) -> Iterator[_T]
 def format(value, ...) -> str
 def getattr(value, attr: str, ...) -> ?
