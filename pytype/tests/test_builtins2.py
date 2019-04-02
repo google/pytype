@@ -372,21 +372,6 @@ class BuiltinTests2(test_base.TargetIndependentTest):
                                    (7, "wrong-arg-types",
                                     r"Dict\[bool, int\]")])
 
-  def testFilter(self):
-    ty = self.Infer("""
-      x1 = filter(None, "")
-      x2 = filter(None, bytearray(""))
-      x3 = filter(None, (True, False))
-      x4 = filter(None, {True, False})
-    """)
-    self.assertTypesMatchPytd(ty, """
-      from typing import List, Tuple
-      x1 = ...  # type: str
-      x2 = ...  # type: List[int]
-      x3 = ...  # type: Tuple[bool, ...]
-      x4 = ...  # type: List[bool]
-    """)
-
   def testStrJoin(self):
     ty = self.Infer("""
       a = ",".join([])
