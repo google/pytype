@@ -1,4 +1,4 @@
-Version (upcoming)
+Version 2019.04.02
 * Simplify the text pytype prints to the terminal.
 * Rename the default pytype output directory from pytype_output to .pytype.
 * Add a --no-cache option to send pytype output to a temporary directory.
