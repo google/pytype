@@ -27,7 +27,8 @@ class IntEnum(Enum, int):
 def unique(enumeration: _EnumType) -> _EnumType
 
 # Everything below this point is copied directly from the typeshed version,
-# with the exception of a tweak to the definition of IntFlag, documented below.
+# with the exception of a tweak to the definition of IntFlag, documented below,
+# and the addition of the signature of auto.__init__.
 
 _auto_null = ...  # type: Any
 
@@ -35,6 +36,7 @@ _auto_null = ...  # type: Any
 # modeling behavior of enum.auto()
 class auto(IntFlag):
   value = ...  # type: Any
+  def __init__(self) -> None: ...
 
 class Flag(Enum):
   def __contains__(self: _T, other: _T) -> bool: ...

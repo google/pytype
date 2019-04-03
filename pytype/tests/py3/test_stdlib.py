@@ -343,6 +343,7 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       import enum
       class Foo(enum.Enum):
         foo = 0
+        bar = enum.auto()
       def f(x: Foo):
         pass
       f(Foo.foo)
