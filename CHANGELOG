@@ -1,3 +1,6 @@
+Version 2019.04.02.1
+* Require typed_ast only in Python 3.3+.
+
 Version 2019.04.02
 * Simplify the text pytype prints to the terminal.
 * Rename the default pytype output directory from pytype_output to .pytype.

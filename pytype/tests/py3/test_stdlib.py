@@ -343,6 +343,7 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       import enum
       class Foo(enum.Enum):
         foo = 0
+        bar = enum.auto()
       def f(x: Foo):
         pass
       f(Foo.foo)
@@ -366,6 +367,22 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       v2: List[Mapping[Union[bytes, str], Union[int, str]]]
       v3: ChainMap[Union[bytes, str], Union[int, str]]
       v4: ChainMap[Union[bytes, str], Union[int, str]]
+    """)
+
+  def test_re(self):
+    ty = self.Infer("""
+      import re
+      pattern = re.compile('')
+      match = pattern.fullmatch('')
+      if match:
+        group = match[0]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Match, Optional, Pattern
+      re: module
+      pattern: Pattern[str]
+      match: Optional[Match[str]]
+      group: str
     """)
 
 
