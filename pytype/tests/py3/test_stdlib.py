@@ -369,5 +369,21 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       v4: ChainMap[Union[bytes, str], Union[int, str]]
     """)
 
+  def test_re(self):
+    ty = self.Infer("""
+      import re
+      pattern = re.compile('')
+      match = pattern.fullmatch('')
+      if match:
+        group = match[0]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Match, Optional, Pattern
+      re: module
+      pattern: Pattern[str]
+      match: Optional[Match[str]]
+      group: str
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
