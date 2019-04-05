@@ -1,3 +1,6 @@
+Version 2019.04.05
+* Improve Python 3 definitions in pytype's enum and typing stubs.
+
 Version 2019.04.02.1
 * Require typed_ast only in Python 3.3+.
 
