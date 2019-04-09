@@ -1,3 +1,6 @@
+Version (upcoming)
+* Update typeshed pin to commit cfa65b8 from April 8.
+
 Version 2019.04.05
 * Improve Python 3 definitions in pytype's enum and typing stubs.
 
@@ -8,14 +11,14 @@ Version 2019.04.02
 * Simplify the text pytype prints to the terminal.
 * Rename the default pytype output directory from pytype_output to .pytype.
 * Add a --no-cache option to send pytype output to a temporary directory.
-* Update typeshed pin to March 29.
+* Update typeshed pin to commit 9b9ff64 from March 29.
 * Support typing.ChainMap and typing.Counter.
 
 Version 2019.03.27
 * Support `# type: ignore` on import lines in pyi files.
 
 Version 2019.03.21
-* Update typeshed pin to March 16.
+* Update typeshed pin to commit afe6656 from March 16.
 * Add missing Python 3 methods {bytearray,list}.{clear,copy}.
 
 Version 2019.03.15
@@ -91,7 +94,7 @@ Version 2018.09.18
 * Officially support running under Python 3.7.
 
 Version 2018.09.07.1
-* Update the typeshed submodule.
+* Update typeshed pin to commit c968124 from September 6.
 
 Version 2018.09.07
 * Make typing.NamedTuple a class for Python 3.6+.
