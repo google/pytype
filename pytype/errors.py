@@ -37,6 +37,9 @@ _CURRENT_ERROR_NAME = utils.DynamicVar()
 # Max number of calls in the traceback string.
 MAX_TRACEBACK_LENGTH = 3
 
+# Max number of tracebacks to show for the same error.
+MAX_TRACEBACKS = 3
+
 # Marker indicating the start of a traceback.
 TRACEBACK_MARKER = "Called from (traceback):"
 
@@ -401,7 +404,8 @@ class ErrorLogBase(object):
           # one, so the latter can be discarded.
           break
       else:
-        errors.append(error)
+        if len(errors) < MAX_TRACEBACKS:
+          errors.append(error)
     return sum(unique_errors.values(), [])
 
   def _sorted_errors(self):

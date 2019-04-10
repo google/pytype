@@ -68,5 +68,19 @@ class TracebackTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorLogIs(errors, [(2, "attribute-error", r"attr.*None$")])
 
+  def test_max_callsites(self):
+    errors = self.CheckWithErrors("""\
+      def f(s):
+        return "hello, " + s
+      f(0)
+      f(1)
+      f(2)
+      f(3)
+    """)
+    # We limit the number of tracebacks shown for the same error.
+    self.assertErrorLogIs(errors, [(2, "unsupported-operands", r"line 3"),
+                                   (2, "unsupported-operands", r"line 4"),
+                                   (2, "unsupported-operands", r"line 5")])
+
 
 test_base.main(globals(), __name__ == "__main__")
