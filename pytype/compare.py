@@ -17,6 +17,8 @@ _CONTAINER_NAMES = {
 
 def _incompatible(left_name, right_name):
   """Incompatible primitive types can never be equal."""
+  if left_name == right_name:
+    return False
   for group in NUMERIC, STRING:
     if left_name in group and right_name in group:
       return False

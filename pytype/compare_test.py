@@ -9,6 +9,7 @@ from pytype import function
 from pytype import load_pytd
 from pytype import vm
 from pytype.pytd import pytd
+from pytype.pytd import slots
 
 import unittest
 
@@ -27,11 +28,6 @@ class CompareTestBase(unittest.TestCase):
 
 
 class InstanceTest(CompareTestBase):
-
-  # TODO(dbaum): Is it worth adding a test for frozenset()?  There isn't
-  # an easy way to create one directly from the vm, it is already covered
-  # in test_splits.py, and there aren't any new code paths.  Perhaps it isn't
-  # worth the effort.
 
   def test_compatible_with_non_container(self):
     # Compatible with either True or False.
@@ -69,6 +65,13 @@ class InstanceTest(CompareTestBase):
     i = abstract.Instance(self._vm.convert.none_type, self._vm)
     self.assertIs(False, compare.compatible_with(i, True))
     self.assertIs(True, compare.compatible_with(i, False))
+
+  def test_compare_frozensets(self):
+    """Test that two frozensets can be compared for equality."""
+    fset = self._vm.convert.frozenset_type
+    i = abstract.Instance(fset, self._vm)
+    j = abstract.Instance(fset, self._vm)
+    self.assertIs(None, compare.cmp_rel(self._vm, slots.EQ, i, j))
 
 
 class TupleTest(CompareTestBase):

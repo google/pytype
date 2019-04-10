@@ -102,6 +102,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
 
     self.list_type = self.constant_to_value(list)
     self.set_type = self.constant_to_value(set)
+    self.frozenset_type = self.constant_to_value(frozenset)
     self.dict_type = self.constant_to_value(dict)
     self.type_type = self.constant_to_value(type)
     self.module_type = self.constant_to_value(types.ModuleType)
