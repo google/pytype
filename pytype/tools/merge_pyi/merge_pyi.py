@@ -78,16 +78,23 @@ Finally, it knows that __init__() is supposed to return None.
 
 from __future__ import print_function
 
-from collections import namedtuple
+import collections
 import itertools
 import logging
 
-from lib2to3 import pygram, pytree, refactor
+from lib2to3 import pygram
+from lib2to3 import pytree
+from lib2to3 import refactor
 from lib2to3.fixer_base import BaseFix
-from lib2to3.fixer_util import token, syms, touch_import, find_indentation, find_root
+from lib2to3.fixer_util import find_indentation
+from lib2to3.fixer_util import find_root
+from lib2to3.fixer_util import syms
+from lib2to3.fixer_util import token
+from lib2to3.fixer_util import touch_import
 from lib2to3.patcomp import compile_pattern
 from lib2to3.pgen2 import driver
-from lib2to3.pytree import Leaf, Node
+from lib2to3.pytree import Leaf
+from lib2to3.pytree import Node
 
 __all__ = ['KnownError',
            'FixMergePyi',
@@ -95,7 +102,7 @@ __all__ = ['KnownError',
 
 
 class KnownError(Exception):
-  """Exceptions we already know about"""
+  """Exceptions we already know about."""
   pass
 
 
@@ -141,7 +148,7 @@ class Util(object):
 
 
 class ArgSignature(object):
-  """Partially parsed representation of a function argument"""
+  """Partially parsed representation of a function argument."""
 
   def __init__(self, arg_nodes):
     sig = ArgSignature._split_arg(arg_nodes)
@@ -255,7 +262,7 @@ class ArgSignature(object):
 
       is_tuple = True
 
-      assert stars == ''
+      assert stars == ''  # pylint: disable=g-explicit-bool-comparison
       assert arg_type is None  # type declaration goes inside tuple
 
       return is_tuple, stars, arg_type, arg, default
@@ -507,7 +514,7 @@ class FixMergePyi(BaseFix):
   """Specialized lib2to3 fixer for applying pyi annotations."""
 
   # This fixer is compatible with the bottom matcher.
-  BM_compatible = True
+  BM_compatible = True  # pylint: disable=invalid-name
 
   # This fixer shouldn't run by default.
   explicit = True
@@ -805,9 +812,7 @@ class FixMergePyi(BaseFix):
 
 
 class StandaloneRefactoringTool(refactor.RefactoringTool):
-  """Slightly modified RefactoringTool that makes the fixer accessible, for
-  running outside of the standard 2to3 installation.
-  """
+  """Modified RefactoringTool for running outside the standard 2to3 install."""
 
   def __init__(self, options):
     self._fixer = None
@@ -826,7 +831,7 @@ class StandaloneRefactoringTool(refactor.RefactoringTool):
     return self._fixer
 
 
-ParsedPyi = namedtuple('ParsedPyi', 'imports top_lines funcs')
+ParsedPyi = collections.namedtuple('ParsedPyi', 'imports top_lines funcs')
 
 
 def is_top_level(node):
