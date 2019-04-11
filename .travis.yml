@@ -37,10 +37,9 @@ addons:
 
 install:
   - pip install importlab
+  - pip install pylint
   - pip install pyyaml
   - pip install six
-  - pip install pylint
 
 script: 
   - python build_scripts/travis_script.py
-  - pylint pytype

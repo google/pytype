@@ -59,15 +59,15 @@ def build_backported_interpreter(clobber=False):
   print("Building Python-2.7 interpreter...\n")
   _prepare_directories(clobber)
   task_list = [
-    (_apply_patch, "Applying type annotations patch"),
-    ( _configure_build, "Configuring CPython build"),
-    ( _build, "Building patched CPython interpreter"),
-    ( _install, "Installing the CPython interpreter"),
-    ( _revert_patch, "Reverting type annotations patch"),
+      (_apply_patch, "Applying type annotations patch"),
+      (_configure_build, "Configuring CPython build"),
+      (_build, "Building patched CPython interpreter"),
+      (_install, "Installing the CPython interpreter"),
+      (_revert_patch, "Reverting type annotations patch"),
   ]
   for task, task_info in task_list:
     print("Python-2.7 build step: %s... " % task_info, end='')
-    returncode, stdout = task()
+    returncode, _ = task()
     if returncode != 0:
       print("FAILED\n" % task_info)
       return returncode

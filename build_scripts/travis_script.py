@@ -41,13 +41,15 @@ def _run_steps(steps):
 
 
 def main():
-  s1 = STEP(name="Build",
+  s1 = STEP(name="Lint",
+            command=["pylint", "build_scripts/", "pytype/", "setup.py"])
+  s2 = STEP(name="Build",
             command=["python", build_utils.build_script("build.py")])
-  s2 = STEP(name="Run Tests",
+  s3 = STEP(name="Run Tests",
             command=["python", build_utils.build_script("run_tests.py"), "-f"])
-  s3 = STEP(name="Type Check",
+  s4 = STEP(name="Type Check",
             command=[os.path.join("out", "bin", "pytype")])
-  _run_steps([s1, s2, s3])
+  _run_steps([s1, s2, s3, s4])
   print("\n*** All build steps completed successfully! ***\n")
 
 

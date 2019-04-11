@@ -12,8 +12,6 @@ CMake files will be run.
 
 from __future__ import print_function
 import argparse
-import os
-import subprocess
 import sys
 
 import build_utils
