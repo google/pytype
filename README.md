@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/google/pytype.svg?branch=master)](https://travis-ci.org/google/pytype)
 
-# Pytype
+# pytype
 
 Pytype checks and infers types for your Python code - without requiring type
 annotations. Pytype can:
