@@ -1,0 +1,158 @@
+[MASTER]
+# Add <file or directory> to the black list. It should be a base name, not a
+# path. You may set this option multiple times.
+ignore=test_data
+
+[MESSAGES CONTROL]
+
+# Disable the message, report, category or checker with the given id(s). You
+# can either give multiple identifier separated by comma (,) or put this option
+# multiple time (only on the command line, not in the configuration file where
+disable=no-member,no-self-use,no-else-return,protected-access,attribute-defined-outside-init,invalid-name,missing-docstring,too-many-arguments,wrong-import-order,too-few-public-methods,too-many-public-methods,duplicate-code,arguments-differ,too-many-branches,blacklisted-name,unused-argument,bad-option-value,too-many-locals,abstract-method,inconsistent-return-statements,too-many-return-statements,too-many-instance-attributes,too-many-ancestors,import-error,misplaced-comparison-constant,global-statement,assigning-non-slot,slots-on-old-class,too-many-nested-blocks,unbalanced-tuple-unpacking,too-many-statements,redefined-argument-from-local,cyclic-import,no-value-for-parameter,deprecated-method,no-name-in-module,method-hidden,raising-format-tuple,multiple-statements,len-as-condition,useless-super-delegation,trailing-newlines,syntax-error,signature-differs,redefined-outer-name,parse-error,consider-using-ternary,consider-using-enumerate,consider-iterating-dictionary,unnecessary-pass,useless-object-inheritance,comparison-with-itself,consider-using-in,chained-comparison,useless-import-alias,comparison-with-callable,no-else-raise
+
+[REFACTORING]
+no-else-return=no
+
+[REPORTS]
+# Set the output format. Available formats are text, parseable, colorized, msvs
+# (visual studio) and html
+output-format=text
+
+# Include message's id in output
+include-ids=no
+
+# Put messages in a separate file for each module / package specified on the
+# command line instead of printing them on stdout. Reports (if any) will be
+# written in a file name "pylint_global.[txt|html]".
+files-output=no
+
+# Tells whether to display a full report or only the messages
+reports=yes
+
+# Python expression which should return a note less than 10 (10 is the highest
+# note). You have access to the variables errors warning, statement which
+# respectively contain the number of errors / warnings messages and the total
+# number of statements analyzed. This is used by the global evaluation report
+# (R0004).
+evaluation=10.0 - ((float(5 * error + warning + refactor + convention) / statement) * 10)
+
+# Add a comment according to your evaluation note. This is used by the global
+# evaluation report (R0004).
+comment=no
+
+[VARIABLES]
+
+# Tells whether we should check for unused import in __init__ files.
+init-import=no
+
+# A regular expression matching names used for dummy variables (i.e. not used).
+dummy-variables-rgx=\*{0,2}(_$|unused_|dummy_)
+
+[BASIC]
+
+# List of builtins function names that should not be used, separated by a comma
+bad-functions=apply,input,reduce
+
+# Regular expression which should only match correct module names
+module-rgx=(([a-z_][a-z0-9_]*)|([A-Z][a-zA-Z0-9]+))$
+
+# Regular expression which should only match correct module level names
+const-rgx=(([A-Z_][A-Z0-9_]*)|(__.*__))$
+
+# Regular expression which should only match correct class names
+class-rgx=[A-Z_][a-zA-Z0-9]+$
+
+# Regular expression which should only match correct method names
+method-rgx=^(?:(?P<exempt>__[a-z0-9_]+__|next)|(?P<camel_case>_{0,2}(?:test|assert)?[A-Z][a-zA-Z0-9]*)|(?:_{0,2}[a-z][a-z0-9_]*))$
+
+# Regular expression which should only match correct instance attribute names
+attr-rgx=^_{0,2}[a-z][a-z0-9_]*$
+
+# Regular expression which should only match correct argument names
+argument-rgx=^[a-z][a-z0-9_]*$
+
+# Regular expression which should only match correct variable names
+variable-rgx=^[a-z][a-z0-9_]*$
+
+# Regular expression which should only match correct list comprehension /
+# generator expression variable names
+inlinevar-rgx=^[a-z][a-z0-9_]*$
+
+# Good variable names which should always be accepted, separated by a comma
+good-names=i,j,k,ex,main,Run,_,UnpackUnion,MakeClassOrContainerType,Concat,JoinTypes,ast
+
+# Bad variable names which should always be refused, separated by a comma
+bad-names=foo,bar,baz,toto,tutu,tata
+
+# Regular expression which should only match functions or classes name which do
+# not require a docstring
+no-docstring-rgx=(__.*__|main|test.*|.*Test|Module)
+
+# Minimum length for a docstring
+docstring-min-length=10
+
+[MISCELLANEOUS]
+
+# List of note tags to take in consideration, separated by a comma.
+notes=FIXME,XXX
+
+[FORMAT]
+
+# Maximum number of characters on a single line.
+max-line-length=80
+ignore-long-lines=(^.{1,80}\s\s# pytype:\s)|(^\s*# http)
+
+# Maximum number of lines in a module
+max-module-lines=99999
+
+# String used as indentation unit. This is usually " " (4 spaces) or "\t" (1
+# tab).
+indent-string='  '
+
+[TYPECHECK]
+
+# Tells whether missing members accessed in mixin class should be ignored. A
+# mixin class is detected if its name ends with "mixin" (case insensitive).
+ignore-mixin-members=yes
+
+# List of members which are set dynamically and missed by pylint inference
+# system, and so shouldn't trigger E0201 when accessed.
+generated-members=old_node
+
+[DESIGN]
+
+# Maximum number of arguments for function / method
+max-args=5
+
+# Argument names that match this expression will be ignored. Default to name
+# with leading underscore
+ignored-argument-names=_.*
+
+# Maximum number of locals for function / method body
+max-locals=15
+
+# Maximum number of return / yield for function / method body
+max-returns=6
+
+# Maximum number of branch for function / method body
+max-branchs=12
+
+# Maximum number of statements in function / method body
+max-statements=50
+
+# Maximum number of parents for a class (see R0901).
+max-parents=7
+
+# Maximum number of attributes for a class (see R0902).
+max-attributes=7
+
+# Minimum number of public methods for a class (see R0903).
+min-public-methods=2
+
+# Maximum number of public methods for a class (see R0904).
+max-public-methods=20
+
+[CLASSES]
+
+# List of method names used to declare (i.e. assign) instance attributes.
+defining-attr-methods=__init__
