@@ -51,14 +51,14 @@ def parse_args():
       "--main_module", "-m", required=True,
       help="The fully qualified name of the target main module of the exe.")
   parser.add_argument("--exe_path", "-x", required=True,
-                      help="Path to the Python executable.") 
+                      help="Path to the Python executable.")
   args = parser.parse_args()
   for env in args.env:
     if "=" not in env:
       sys.exit(
           "Environment variables should be specified in the form VAR=VALUE.")
   return args
-   
+
 
 def main():
   options = parse_args()
@@ -69,7 +69,7 @@ def main():
   env_adjustment = ""
   for env in options.env:
     var, value = env.split("=")
-    env_adjustment += "os.environ['%s'] = '%s'\n" % (var, value)    
+    env_adjustment += "os.environ['%s'] = '%s'\n" % (var, value)
 
   if "." in options.main_module:
     pkg, modname = options.main_module.rsplit(".", 1)

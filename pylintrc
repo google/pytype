@@ -1,4 +1,5 @@
 [MASTER]
+
 # Add <file or directory> to the black list. It should be a base name, not a
 # path. You may set this option multiple times.
 ignore=test_data
@@ -8,12 +9,68 @@ ignore=test_data
 # Disable the message, report, category or checker with the given id(s). You
 # can either give multiple identifier separated by comma (,) or put this option
 # multiple time (only on the command line, not in the configuration file where
-disable=no-member,no-self-use,no-else-return,protected-access,attribute-defined-outside-init,invalid-name,missing-docstring,too-many-arguments,wrong-import-order,too-few-public-methods,too-many-public-methods,duplicate-code,arguments-differ,too-many-branches,blacklisted-name,unused-argument,bad-option-value,too-many-locals,abstract-method,inconsistent-return-statements,too-many-return-statements,too-many-instance-attributes,too-many-ancestors,import-error,misplaced-comparison-constant,global-statement,assigning-non-slot,slots-on-old-class,too-many-nested-blocks,unbalanced-tuple-unpacking,too-many-statements,redefined-argument-from-local,cyclic-import,no-value-for-parameter,deprecated-method,no-name-in-module,method-hidden,raising-format-tuple,multiple-statements,len-as-condition,useless-super-delegation,trailing-newlines,syntax-error,signature-differs,redefined-outer-name,parse-error,consider-using-ternary,consider-using-enumerate,consider-iterating-dictionary,unnecessary-pass,useless-object-inheritance,comparison-with-itself,consider-using-in,chained-comparison,useless-import-alias,comparison-with-callable,no-else-raise
-
-[REFACTORING]
-no-else-return=no
+disable=
+  abstract-method,
+  arguments-differ,
+  assigning-non-slot,
+  attribute-defined-outside-init,
+  bad-option-value,
+  blacklisted-name,
+  chained-comparison,
+  comparison-with-callable,
+  comparison-with-itself,
+  consider-iterating-dictionary,
+  consider-using-enumerate,
+  consider-using-in,
+  consider-using-ternary,
+  cyclic-import,
+  deprecated-method,
+  duplicate-code,
+  global-statement,
+  import-error,
+  inconsistent-return-statements,
+  invalid-name,
+  len-as-condition,
+  method-hidden,
+  misplaced-comparison-constant,
+  missing-docstring,
+  multiple-statements,
+  no-else-raise,
+  no-else-return,
+  no-member,
+  no-name-in-module,
+  no-self-use,
+  no-value-for-parameter,
+  parse-error,
+  protected-access,
+  raising-format-tuple,
+  redefined-argument-from-local,
+  redefined-outer-name,
+  relative-import,
+  signature-differs,
+  slots-on-old-class,
+  syntax-error,
+  too-few-public-methods,
+  too-many-ancestors,
+  too-many-arguments,
+  too-many-branches,
+  too-many-instance-attributes,
+  too-many-locals,
+  too-many-nested-blocks,
+  too-many-public-methods,
+  too-many-return-statements,
+  too-many-statements,
+  trailing-newlines,
+  unbalanced-tuple-unpacking,
+  unnecessary-pass,
+  unused-argument,
+  useless-import-alias,
+  useless-object-inheritance,
+  useless-super-delegation,
+  wrong-import-order,
 
 [REPORTS]
+
 # Set the output format. Available formats are text, parseable, colorized, msvs
 # (visual studio) and html
 output-format=text
@@ -27,7 +84,7 @@ include-ids=no
 files-output=no
 
 # Tells whether to display a full report or only the messages
-reports=yes
+reports=no
 
 # Python expression which should return a note less than 10 (10 is the highest
 # note). You have access to the variables errors warning, statement which
@@ -100,6 +157,8 @@ notes=FIXME,XXX
 
 # Maximum number of characters on a single line.
 max-line-length=80
+
+# Regexp for a line that is allowed to be longer than the limit.
 ignore-long-lines=(^.{1,80}\s\s# pytype:\s)|(^\s*# http)
 
 # Maximum number of lines in a module

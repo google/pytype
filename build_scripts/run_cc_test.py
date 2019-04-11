@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Script to run a C++ unit test binary.
 
-Usage: 
+Usage:
 
 $> python run_cc_test.py -t TARGET -b BINARY [-l LOGFILE]
 

@@ -103,7 +103,7 @@ def get_version():
   # Load the package's __version__.py module as a dictionary.
   about = {}
   with open(os.path.join(here, 'pytype', '__version__.py')) as f:
-    exec (f.read(), about)  # pylint: disable=exec-used
+    exec(f.read(), about)  # pylint: disable=exec-used
   return about['__version__']
 
 
