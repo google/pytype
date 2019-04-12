@@ -1,5 +1,7 @@
-Version (upcoming)
+Version 2019.04.12
 * Update typeshed pin to commit cfa65b8 from April 8.
+* Fix comparisons of primitive objects of the same type.
+* Limit the number of tracebacks shown for one error.
 
 Version 2019.04.05
 * Improve Python 3 definitions in pytype's enum and typing stubs.
