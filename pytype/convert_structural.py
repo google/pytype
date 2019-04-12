@@ -22,9 +22,8 @@ is_partial = type_match.is_partial
 is_complete = type_match.is_complete
 
 
-class FlawedQuery(Exception):
+class FlawedQuery(Exception):  # pylint: disable=g-bad-exception-name
   """Thrown if there is a fundamental flaw in the query."""
-  pass
 
 
 class TypeSolver(object):

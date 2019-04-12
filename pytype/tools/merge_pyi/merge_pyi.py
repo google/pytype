@@ -103,7 +103,6 @@ __all__ = ['KnownError',
 
 class KnownError(Exception):
   """Exceptions we already know about."""
-  pass
 
 
 class Util(object):
@@ -255,7 +254,7 @@ class ArgSignature(object):
     # Node, is handled below)
     arg, arg_type = split_colon(arg)
 
-    if 3 == len(arg):
+    if len(arg) == 3:
       assert arg[0].type == token.LPAR
       assert arg[2].type == token.RPAR
       assert arg[1].type in (syms.tfpdef, syms.tfplist)
@@ -267,7 +266,7 @@ class ArgSignature(object):
 
       return is_tuple, stars, arg_type, arg, default
 
-    if 1 != len(arg):
+    if len(arg) != 1:
       raise KnownError()  # expected/parse_error.py
 
     node = arg[0]
@@ -499,7 +498,7 @@ class FuncSignature(object):
     if args is None:
       return []
 
-    assert isinstance(args, list) and 1 == len(args), repr(args)
+    assert isinstance(args, list) and len(args) == 1, repr(args)
 
     args = args[0]
     if isinstance(args, Leaf) or args.type == syms.tname:
@@ -643,8 +642,8 @@ class FixMergePyi(BaseFix):
     root = find_root(node)
 
     import_idx = [
-        idx for idx, node in enumerate(root.children)
-        if self.import_pattern.match(node)
+        idx for idx, idx_node in enumerate(root.children)
+        if self.import_pattern.match(idx_node)
     ]
     if import_idx:
       insert_pos = import_idx[-1] + 1
@@ -652,16 +651,16 @@ class FixMergePyi(BaseFix):
       insert_pos = 0
 
       # first string (normally docstring)
-      for idx, node in enumerate(root.children):
-        if (node.type == syms.simple_stmt and node.children and
-            node.children[0].type == token.STRING):
+      for idx, idx_node in enumerate(root.children):
+        if (idx_node.type == syms.simple_stmt and idx_node.children and
+            idx_node.children[0].type == token.STRING):
           insert_pos = idx + 1
           break
 
     top_lines = '\n'.join(top_lines)
     top_lines = Util.parse_string(top_lines)  # strips some newlines
-    for offset, node in enumerate(top_lines.children[:-1]):
-      root.insert_child(insert_pos + offset, node)
+    for offset, offset_node in enumerate(top_lines.children[:-1]):
+      root.insert_child(insert_pos + offset, offset_node)
 
   @staticmethod
   def func_sig_compatible(src_sig, pyi_sig):
@@ -706,7 +705,7 @@ class FixMergePyi(BaseFix):
     if func.is_method and at_start and 'staticmethod' not in func.decorators:
       # Don't annotate the first argument if it's named 'self'.
       # Don't annotate the first argument of a class method.
-      if 'self' == arg.name or 'classmethod' in func.decorators:
+      if arg.name == 'self' or 'classmethod' in func.decorators:
         return False
 
     return True
@@ -741,7 +740,7 @@ class FixMergePyi(BaseFix):
 
       # hack to avoid shadowing real variables -- proper solution is more
       # complicated, use util.find_binding
-      if 'TypeVar' in text or (text and '_' == text[0]):
+      if 'TypeVar' in text or (text and text[0] == '_'):
         top_lines.append(text)
       else:
         self.logger.warning('ignoring %s', repr(text))
@@ -804,7 +803,7 @@ class FixMergePyi(BaseFix):
 
       names = split_comma(names.leaves())
       for name in names:
-        assert 1 == len(name)
+        assert len(name) == 1
         assert name[0].type in (token.NAME, token.STAR)
       names = [name[0].value for name in names]
 
@@ -849,10 +848,10 @@ def generate_matches(tree, pattern):
 
 def generate_top_matches(node, pattern):
   """Generator yielding direct children of node that match pattern."""
-  for node in node.children:
+  for child in node.children:
     results = {}
-    if pattern.match(node, results):
-      yield node, results
+    if pattern.match(child, results):
+      yield child, results
 
 
 def clean_clone(node, strip_formatting):
@@ -871,7 +870,7 @@ def clean_clone(node, strip_formatting):
 
     # parse back into a Node
     node = Util.parse_string(s)
-    assert 2 == len(node.children)
+    assert len(node.children) == 2
     node = node.children[0]
   else:
     node = node.clone()

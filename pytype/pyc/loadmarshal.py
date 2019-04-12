@@ -75,7 +75,6 @@ REF = 0x80
 
 class _NULL(object):
   """Used internally, e.g. as a sentinel in dictionary entry lists."""
-  pass
 
 
 class CodeType(object):

@@ -23,7 +23,6 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
   # typing_overlay.py.
   class LateAnnotationError(Exception):
     """Used to break out of annotation evaluation if we discover a string."""
-    pass
 
   # A dummy container object for use in instantiating type parameters.
   DUMMY_CONTAINER = object()
@@ -54,10 +53,11 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
   def sub_one_annotation(self, node, annot, substs, instantiate_unbound=True):
     """Apply type parameter substitutions to an annotation."""
     if isinstance(annot, abstract.TypeParameter):
-      if all(annot.full_name in subst and subst[annot.full_name].bindings and
-             not any(isinstance(v, abstract.AMBIGUOUS_OR_EMPTY)
-                     for v in subst[annot.full_name].data)
-             for subst in substs):
+      def contains(subst, annot):
+        return (annot.full_name in subst and subst[annot.full_name].bindings and
+                not any(isinstance(v, abstract.AMBIGUOUS_OR_EMPTY)
+                        for v in subst[annot.full_name].data))
+      if all(contains(subst, annot) for subst in substs):
         vals = sum((subst[annot.full_name].data for subst in substs), [])
       elif instantiate_unbound:
         vals = annot.instantiate(node).data

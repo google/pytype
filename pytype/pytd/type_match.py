@@ -89,11 +89,11 @@ def get_all_subclasses(asts):
   hierarchy = {}
   for ast in asts:
     hierarchy.update(ast.Visit(visitors.ExtractSuperClasses()))
-  hierarchy = {cls: [superclass for superclass in superclasses
-                     if (hasattr(superclass, "name") and
-                         is_complete(superclass))]
-               for cls, superclasses in hierarchy.items()
-               if is_complete(cls)}
+  def filter_superclasses(superclasses):
+    return [superclass for superclass in superclasses
+            if hasattr(superclass, "name") and is_complete(superclass)]
+  hierarchy = {cls: filter_superclasses(superclasses)
+               for cls, superclasses in hierarchy.items() if is_complete(cls)}
   # typically this is a fairly short list, e.g.:
   #  [ClassType(basestring), ClassType(int), ClassType(object)]
   return utils.invert_dict(hierarchy)
@@ -130,9 +130,8 @@ class TypeMatch(pytd_utils.TypeMatcher):
 
   def default_match(self, t1, t2, *unused_args, **unused_kwargs):
     # Don't allow pytd_utils.TypeMatcher to do default matching.
-    raise AssertionError("Can't compare %s and %s",
-                         type(t1).__name__,
-                         type(t2).__name__)
+    raise AssertionError(
+        "Can't compare %s and %s" % (type(t1).__name__, type(t2).__name__))
 
   def get_superclasses(self, t):
     """Get all base classes of this type.
@@ -166,7 +165,7 @@ class TypeMatch(pytd_utils.TypeMatcher):
       return sum((self.get_subclasses(pytd.ClassType(c.name, c))
                   for c in subclasses), [t])
     else:
-      raise NotImplementedError("Can't extract subclasses from %s", type(t))
+      raise NotImplementedError("Can't extract subclasses from %s" % type(t))
 
   def type_parameter(self, unknown, base_class, item):
     """This generates the type parameter when matching against a generic type.
@@ -455,11 +454,11 @@ class TypeMatch(pytd_utils.TypeMatcher):
     return booleq.And(equalities)
 
   def match_Signature_against_Function(self, sig, f, subst, skip_self=False):  # pylint: disable=invalid-name
-    return booleq.And(
-        booleq.Or(
-            self.match_Signature_against_Signature(inner, s, subst, skip_self)
-            for s in f.signatures)
-        for inner in visitors.ExpandSignature(sig))
+    def make_or(inner):
+      return booleq.Or(
+          self.match_Signature_against_Signature(inner, s, subst, skip_self)
+          for s in f.signatures)
+    return booleq.And(make_or(inner) for inner in visitors.ExpandSignature(sig))
 
   def match_Function_against_Function(self, f1, f2, subst, skip_self=False):  # pylint: disable=invalid-name
     return booleq.And(

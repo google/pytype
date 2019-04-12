@@ -99,8 +99,8 @@ def _GetAncestorMap():
 
     predecessors = cfg_utils.compute_predecessors(node_classes.values())
     # Convert predecessors keys and values to use names instead of info objects.
-    _ancestor_map = {
-        k.name: {n.name for n in v} for k, v in predecessors.items()}
+    get_names = lambda v: {n.name for n in v}
+    _ancestor_map = {k.name: get_names(v) for k, v in predecessors.items()}
   return _ancestor_map
 
 
@@ -1600,9 +1600,8 @@ class RaiseIfContainsUnknown(Visitor):
   It throws HasUnknown on the first occurrence.
   """
 
-  class HasUnknown(Exception):
+  class HasUnknown(Exception):  # pylint: disable=g-bad-exception-name
     """Used for aborting the RaiseIfContainsUnknown visitor early."""
-    pass
 
   # COV_NF_START
   def EnterNamedType(self, _):
@@ -1631,9 +1630,8 @@ class VerifyVisitor(Visitor):
 
   def _AssertNoDuplicates(self, node, attrs):
     """Checks that we don't have duplicate top-level names."""
-
-    attr_to_set = {attr: {entry.name for entry in getattr(node, attr)}
-                   for attr in attrs}
+    get_set = lambda attr: {entry.name for entry in getattr(node, attr)}
+    attr_to_set = {attr: get_set(attr) for attr in attrs}
     # Do a quick sanity check first, and a deeper check if that fails.
     total1 = len(set.union(*attr_to_set.values()))  # all distinct names
     total2 = sum(map(len, attr_to_set.values()), 0)  # all names

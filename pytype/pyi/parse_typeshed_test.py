@@ -26,7 +26,7 @@ def _filename_to_testname(f):
 def _test_parse(pyi_file):
   python_version = (2, 7)
   module = os.path.splitext(os.path.basename(pyi_file))[0]
-  if "__init__" == module:
+  if module == "__init__":
     module = os.path.basename(os.path.dirname(pyi_file))
   with open(pyi_file) as f:
     src = f.read()

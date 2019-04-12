@@ -1038,7 +1038,7 @@ class ClassTest(_ParserTestBase):
       class Foo():
           """docstring"""
       ''', canonical)
-    # type: ignore with empty body
+    # Accept type: ignore with empty body
     self.check("""\
       class Foo: ...  # type: ignore
       """, canonical)

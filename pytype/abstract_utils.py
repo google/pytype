@@ -39,7 +39,6 @@ class ConversionError(ValueError):
 
 class EvaluationError(Exception):
   """Used to signal an errorlog error during type name evaluation."""
-  pass
 
 
 class GenericTypeError(Exception):

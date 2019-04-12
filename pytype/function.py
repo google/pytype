@@ -41,9 +41,12 @@ class Signature(object):
       param_names. Ordered like in the source file.
     kwargs_name: Name of the kwargs parameter. (The "kwargs" in **kwargs)
     defaults: Dictionary, name to value, for all parameters with default values.
-    annotations: A dictionary of type annotations (string to type)
+    annotations: A dictionary of type annotations. (string to type)
+    late_annotations: A dictionary of late type annotations.
     excluded_types: A set of type names that will be ignored when checking the
-      count of type parameters
+      count of type parameters.
+    has_return_annotation: Whether the function has a return annotation.
+    has_param_annotations: Whether the function has parameter annotations.
   """
 
   def __init__(self, name, param_names, varargs_name, kwonly_params,
@@ -59,8 +62,8 @@ class Signature(object):
     self.late_annotations = late_annotations
     self.excluded_types = set()
     if postprocess_annotations:
-      for name, annot in six.iteritems(self.annotations):
-        self.annotations[name] = self._postprocess_annotation(name, annot)
+      for k, annot in six.iteritems(self.annotations):
+        self.annotations[k] = self._postprocess_annotation(k, annot)
 
   @property
   def has_return_annotation(self):
@@ -132,16 +135,16 @@ class Signature(object):
                         for p in sig.params + (sig.starargs, sig.starstarargs)
                         if p is not None]
     pytd_annotations.append(("return", sig.return_type))
+    def param_to_var(p):
+      return vm.convert.constant_to_var(
+          p.type, subst=datatypes.AliasingDict(), node=vm.root_cfg_node)
     return cls(
         name=name,
         param_names=tuple(p.name for p in sig.params if not p.kwonly),
         varargs_name=None if sig.starargs is None else sig.starargs.name,
         kwonly_params=set(p.name for p in sig.params if p.kwonly),
         kwargs_name=None if sig.starstarargs is None else sig.starstarargs.name,
-        defaults={p.name: vm.convert.constant_to_var(
-            p.type, subst=datatypes.AliasingDict(), node=vm.root_cfg_node)
-                  for p in sig.params
-                  if p.optional},
+        defaults={p.name: param_to_var(p) for p in sig.params if p.optional},
         annotations={name: vm.convert.constant_to_value(
             typ, subst=datatypes.AliasingDict(), node=vm.root_cfg_node)
                      for name, typ in pytd_annotations},
@@ -424,7 +427,6 @@ class WrongArgTypes(InvalidParameters):
 
 class WrongArgCount(InvalidParameters):
   """E.g. if a function expecting 4 parameters is called with 3."""
-  pass
 
 
 class WrongKeywordArgs(InvalidParameters):
