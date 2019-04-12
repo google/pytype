@@ -857,8 +857,18 @@ class IndexVisitor(ScopedVisitor):
 
     for alias in node.names:
       name = alias.asname if alias.asname else alias.name
+      # defn, defloc = self.make_def(node, **kwargs)
       d = self.add_local_def(node, name=name)
-      loc = self.locs[d.id][-1].location
+      defloc = self.locs[d.id][-1]
+      loc = defloc.location
+
+      # tweak the definition location slightly
+      line, _ = loc
+      text = self.source.line(line)
+      c = text.find("import ")
+      if c > -1:
+        # (If we haven't found "import " on the line, give up for now.)
+        self.locs[d.id][-1] = DefLocation(defloc.def_id, (line, c))
 
       if alias.asname or is_from:
         # for |import x.y as z| or |from x import y as z| we want {z: x.y}
@@ -924,6 +934,7 @@ class Indexer(object):
 
     defn = self.defs[defloc.def_id]
     typ = defn.typ
+    print("typ: ", typ)
     if typ == "Attribute":
       start, end = self._get_attr_bounds(defn.name, defloc.location)
     else:
@@ -931,7 +942,11 @@ class Indexer(object):
       start = self.source.get_offset(line, col)
       if typ in DEF_OFFSETS:
         start += DEF_OFFSETS[typ]
-      end = start + len(defn.name)
+      if typ == "Import" or typ == "ImportFrom":
+        # We link an import def to the word "import"
+        end = start + len("import")
+      else:
+        end = start + len(defn.name)
     return (start, end)
 
   def get_doc_offsets(self, doc):
