@@ -166,7 +166,7 @@ class SourceFile(object):
         # TODO(mdemello): Temporary hack, replace with a token stream!
         # This will break if we have a # in a string before our desired text.
         comment_marker = self.line(l).find("#")
-        if comment_marker > -1 and comment_marker < col:
+        if -1 < comment_marker < col:
           continue
         return (l, col)
     return None, None
@@ -242,6 +242,7 @@ class PytypeValue(object):
 
 
 class Module(object):
+  """Module representation."""
 
   def __init__(self, name):
     self.name = name
@@ -252,6 +253,7 @@ class Module(object):
   def submodule(self, attr_name):
     name = self.name + "." + attr_name
     return Remote(name, IMPORT_FILE_MARKER, resolved=True)
+
 
 class Dummy(object):
   """Work around a python3 issue with calling super with kwargs."""
@@ -345,8 +347,6 @@ class DefLocation(collections.namedtuple("defloc", ["def_id", "location"])):
   Note that a single definition can have multiple locations, for symbols that
   are redefined in the code.
   """
-
-  pass
 
 
 class Reference(collections.namedtuple(
@@ -1314,7 +1314,6 @@ class Indexer(object):
 
 class PytypeError(Exception):
   """Wrap exceptions raised by the indexer."""
-  pass
 
 
 def process_file(options, source_text=None, kythe_args=None):

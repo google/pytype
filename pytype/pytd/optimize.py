@@ -725,13 +725,18 @@ class AddInheritedMethods(visitors.Visitor):
     # TODO(kramm): This should do full-blown MRO.
     adjust_self = visitors.AdjustSelf(force=True)
     adjust_self.class_types.append(visitors.ClassAsType(cls))
-    new_methods = cls.methods + tuple(
-        m.Visit(adjust_self) for base in bases for m in base.methods
-        if m.name not in names)
-    new_constants = cls.constants + tuple(
-        c for base in bases for c in base.constants
-        if c.name not in names)
-    return cls.Replace(methods=new_methods, constants=new_constants)
+    new_methods = list(cls.methods)
+    for base in bases:
+      for m in base.methods:
+        if m.name not in names:
+          new_methods.append(m.Visit(adjust_self))
+    new_constants = list(cls.constants)
+    for base in bases:
+      for c in base.constants:
+        if c.name not in names:
+          new_constants.append(c)
+    return cls.Replace(methods=tuple(new_methods),
+                       constants=tuple(new_constants))
 
 
 class RemoveInheritedMethods(visitors.Visitor):
@@ -1053,7 +1058,9 @@ class MergeTypeParameters(TypeParameterScope):
   def _AppendNew(self, l1, l2):
     """Appends all items to l1 that are not in l2."""
     # l1 and l2 are small (2-3 elements), so just use two loops.
-    l1.extend(e2 for e2 in l2 if not any(e1 is e2 for e1 in l1))
+    for e2 in l2:
+      if not any(e1 is e2 for e1 in l1):
+        l1.append(e2)
 
   def EnterSignature(self, node):
     # Necessary because TypeParameterScope also defines this function
@@ -1111,7 +1118,7 @@ class MergeTypeParameters(TypeParameterScope):
 
   def VisitSignature(self, sig):
     new_template = []
-    substitutions = {k: k for k in self.type_params_stack[-1].keys()}
+    substitutions = {k: k for k in self.type_params_stack[-1]}
     for item in sig.template:
       new_template += self._ReplaceByOuterIfNecessary(item, substitutions)
     if sig.template == new_template:

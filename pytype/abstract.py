@@ -222,12 +222,11 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
     """Treating self as a class definition, register an instance of it.
 
     This is used for keeping merging call records on instances when generating
-    the formal definition of a class.
+    the formal definition of a class. See InterpreterClass and TupleClass.
 
     Args:
       instance: An instance of this class (as an AtomicAbstractValue)
     """
-    pass  # overridden by InterpreterClass and TupleClass
 
   def get_class(self):
     """Return the class of this object. Equivalent of x.__class__ in Python."""
@@ -333,7 +332,6 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
 
   def update_official_name(self, _):
     """Update the official name."""
-    pass
 
   # The below methods allow code to do isinstance() checks on abstract values
   # without importing abstract.py, making it easier to avoid import cycles.
@@ -435,7 +433,6 @@ class Deleted(Empty):
 
 class TypeParameterError(Exception):
   """Raised when resolving late types in type parameters."""
-  pass
 
 
 class TypeParameter(AtomicAbstractValue):

@@ -117,34 +117,6 @@ def JoinTypes(types):
 
 
 # pylint: disable=invalid-name
-def prevent_direct_instantiation(cls, *args, **kwargs):
-  """Mix-in method for creating abstract (base) classes.
-
-  Use it like this to prevent instantiation of classes:
-
-    class Foo(object):
-      __new__ = prevent_direct_instantiation
-
-  This will apply to the class itself, not its subclasses, so it can be used to
-  create base classes that are abstract, but will become concrete once inherited
-  from.
-
-  Arguments:
-    cls: The class to instantiate, passed to __new__.
-    *args: Additional arguments, passed to __new__.
-    **kwargs: Additional keyword arguments, passed to __new__.
-  Returns:
-    A new instance.
-  Raises:
-    AssertionError: If something tried to instantiate the base class.
-  """
-  new = cls.__dict__.get("__new__")
-  if getattr(new, "__func__", None) == prevent_direct_instantiation:
-    raise AssertionError("Can't instantiate %s directly" % cls.__name__)
-  # TODO(b/117657518): Remove the disable after the pytype bug is fixed.
-  return object.__new__(cls, *args, **kwargs)  # pytype: disable=wrong-arg-count
-
-
 def disabled_function(*unused_args, **unused_kwargs):
   """Disable a function.
 
@@ -205,7 +177,7 @@ def GetAllSubClasses(ast):
     pytd.Class (the derived classes).
   """
   hierarchy = ast.Visit(visitors.ExtractSuperClasses())
-  hierarchy = {cls: [superclass for superclass in superclasses]
+  hierarchy = {cls: list(superclasses)
                for cls, superclasses in hierarchy.items()}
   return utils.invert_dict(hierarchy)
 
@@ -537,10 +509,10 @@ def DummyMethod(name, *params):
   Returns:
     A pytd.Function.
   """
-  sig = pytd.Signature(tuple(pytd.Parameter(param, type=pytd.AnythingType(),
-                                            kwonly=False, optional=False,
-                                            mutated_type=None)
-                             for param in params),
+  def make_param(param):
+    return pytd.Parameter(param, type=pytd.AnythingType(), kwonly=False,
+                          optional=False, mutated_type=None)
+  sig = pytd.Signature(tuple(make_param(param) for param in params),
                        starargs=None, starstarargs=None,
                        return_type=pytd.AnythingType(),
                        exceptions=(), template=())

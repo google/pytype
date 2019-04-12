@@ -204,7 +204,7 @@ class BaseTest(unittest.TestCase):
           errorlog=errorlog, options=self.options, **kwargs)
     except directors.SkipFile:
       pass
-    if report_errors and len(errorlog):
+    if report_errors and errorlog:
       errorlog.print_to_stderr()
       self.fail("Checker found {} errors:\n{}".format(len(errorlog), errorlog))
 
@@ -425,7 +425,7 @@ class BaseTest(unittest.TestCase):
     unit, builtins_pytd = analyze.infer_types(
         src, errorlog, self.options, loader=self.loader, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
-    if report_errors and len(errorlog):
+    if report_errors and errorlog:
       errorlog.print_to_stderr()
       self.fail("Inferencer found %d errors" % len(errorlog))
     return unit, builtins_pytd
@@ -512,7 +512,6 @@ class TargetPython3FeatureTest(TargetPython3BasicTest):
 
   Test methods in subclasses will test Pytype on a Python 3.6 feature.
   """
-  pass
 
 
 def _PrintErrorDebug(descr, value):

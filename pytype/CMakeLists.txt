@@ -445,15 +445,6 @@ py_test(
 
 py_test(
   NAME
-    convert_structural_test
-  SRCS
-    convert_structural_test.py
-  DEPS
-    pytype.tests.test_base
-)
-
-py_test(
-  NAME
     blocks_test
   SRCS
     blocks_test.py

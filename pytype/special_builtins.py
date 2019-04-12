@@ -469,7 +469,7 @@ class Super(BuiltinClass):
             self.vm.frames, message="Missing 'self' argument to 'super' call.")
         return node, self.vm.new_unsolvable(node)
       super_objects = self_arg.bindings
-    elif 1 <= num_args and num_args <= 2:
+    elif 1 <= num_args <= 2:
       cls_var = args.posargs[0]
       super_objects = args.posargs[1].bindings if num_args == 2 else [None]
     else:
@@ -692,7 +692,6 @@ class StaticMethod(BuiltinClass):
 
 class ClassMethodCallable(abstract.BoundFunction):
   """Tag a ClassMethod bound function so we can dispatch on it."""
-  pass
 
 
 class ClassMethodInstance(abstract.SimpleAbstractValue, mixin.HasSlots):

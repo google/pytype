@@ -34,7 +34,6 @@ def message(error):
 
 class UsageError(Exception):
   """Raise this for top-level usage errors."""
-  pass
 
 
 def format_version(python_version):

@@ -1490,7 +1490,7 @@ def _merge_method_signatures(signatures):
     _add_flag_overload(name_to_is_abstract, name, is_abstract, "abstractmethod")
     _add_flag_overload(name_to_is_coroutine, name, is_coroutine, "coroutine")
   methods = []
-  for name, signatures in name_to_signatures.items():
+  for name, sigs in name_to_signatures.items():
     decorator = name_to_decorator[name]
     is_abstract = name_to_is_abstract[name]
     is_coroutine = name_to_is_coroutine[name]
@@ -1498,7 +1498,7 @@ def _merge_method_signatures(signatures):
       kind = pytd.STATICMETHOD
     elif decorator == "classmethod":
       kind = pytd.CLASSMETHOD
-    elif _is_property(name, decorator, signatures[0]):
+    elif _is_property(name, decorator, sigs[0]):
       kind = pytd.PROPERTY
       # If we have only setters and/or deleters, replace them with a single
       # method foo(...) -> Any, so that we infer a constant `foo: Any` even if
@@ -1507,7 +1507,7 @@ def _merge_method_signatures(signatures):
       # fall back on Any since we cannot say anything about what the setter sets
       # the type of foo to.)
       if decorator.endswith(".setter") or decorator.endswith(".deleter"):
-        signatures = [signatures[0].Replace(return_type=pytd.AnythingType())]
+        sigs = [sigs[0].Replace(return_type=pytd.AnythingType())]
     else:
       kind = pytd.METHOD
     flags = 0
@@ -1515,7 +1515,7 @@ def _merge_method_signatures(signatures):
       flags |= pytd.Function.IS_ABSTRACT
     if is_coroutine:
       flags |= pytd.Function.IS_COROUTINE
-    methods.append(pytd.Function(name, tuple(signatures), kind, flags))
+    methods.append(pytd.Function(name, tuple(sigs), kind, flags))
   return methods
 
 

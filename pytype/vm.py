@@ -69,7 +69,6 @@ class VirtualMachineRecursionError(Exception):
 
 class VirtualMachineError(Exception):
   """For raising errors in the operation of the VM."""
-  pass
 
 
 class _FindIgnoredTypeComments(object):

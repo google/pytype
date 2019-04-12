@@ -30,16 +30,15 @@ def MergeSequences(seqs):
       cand = seq[0]
       if getattr(cand, "SINGLETON", False):
         # Special class. Cycles are allowed. Emit and remove duplicates.
-        seqs = [[s for s in seq if s != cand]
-                for seq in seqs]
+        seqs = [[s for s in seq if s != cand] for seq in seqs]  # pylint: disable=g-complex-comprehension
         break
       if any(s for s in seqs if cand in s[1:] and s is not seq):
         cand = None  # reject candidate
       else:
         # Remove and emit. The candidate can be head of more than one list.
-        for seq in seqs:
-          if seq and seq[0] == cand:
-            del seq[0]
+        for other_seq in seqs:
+          if other_seq and other_seq[0] == cand:
+            del other_seq[0]
         break
     if cand is None:
       raise ValueError
@@ -57,7 +56,7 @@ def Dedup(seq):
   return result
 
 
-class MROError(Exception):
+class MROError(Exception):  # pylint: disable=g-bad-exception-name
 
   def __init__(self, seqs):
     super(MROError, self).__init__()
@@ -96,6 +95,7 @@ def _Degenerify(types):
 
 
 def _ComputeMRO(t, mros, lookup_ast):
+  """Compute the MRO."""
   if isinstance(t, pytd.ClassType):
     if t not in mros:
       mros[t] = None

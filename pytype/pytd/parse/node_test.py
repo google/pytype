@@ -26,42 +26,34 @@ import unittest
 
 class Node1(node.Node("a", "b")):
   """Simple node for equality testing. Not equal to anything else."""
-  pass
 
 
 class Node2(node.Node("x", "y")):
   """For equality testing. Same attributes as Node3."""
-  pass
 
 
 class Node3(node.Node("x", "y")):
   """For equality testing: Same attributes as Node2."""
-  pass
 
 
 class Data(node.Node("d1", "d2", "d3")):
   """'Data' node. Visitor tests use this to store numbers in leafs."""
-  pass
 
 
 class V(node.Node("x")):
   """Inner node 'V', with one child. See testVisitor[...]() below."""
-  pass
 
 
 class X(node.Node("a", "b")):
   """Inner node 'X', with two children. See testVisitor[...]() below."""
-  pass
 
 
 class Y(node.Node("c", "d")):
   """Inner node 'Y', with two children. See testVisitor[...]() below."""
-  pass
 
 
 class XY(node.Node("x", "y")):
   """Inner node 'XY', with two children. See testVisitor[...]() below."""
-  pass
 
 
 class NodeWithVisit(node.Node("x", "y")):
