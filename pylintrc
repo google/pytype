@@ -15,11 +15,7 @@ disable=
   assigning-non-slot,
   attribute-defined-outside-init,
   bad-option-value,
-  blacklisted-name,
-  chained-comparison,
-  comparison-with-callable,
   comparison-with-itself,
-  consider-iterating-dictionary,
   consider-using-enumerate,
   consider-using-in,
   consider-using-ternary,
@@ -30,9 +26,7 @@ disable=
   import-error,
   inconsistent-return-statements,
   invalid-name,
-  len-as-condition,
   method-hidden,
-  misplaced-comparison-constant,
   missing-docstring,
   multiple-statements,
   no-else-raise,
@@ -40,16 +34,10 @@ disable=
   no-member,
   no-name-in-module,
   no-self-use,
-  no-value-for-parameter,
-  parse-error,
   protected-access,
-  raising-format-tuple,
-  redefined-argument-from-local,
-  redefined-outer-name,
   relative-import,
   signature-differs,
   slots-on-old-class,
-  syntax-error,
   too-few-public-methods,
   too-many-ancestors,
   too-many-arguments,
@@ -60,9 +48,7 @@ disable=
   too-many-public-methods,
   too-many-return-statements,
   too-many-statements,
-  trailing-newlines,
   unbalanced-tuple-unpacking,
-  unnecessary-pass,
   unused-argument,
   useless-import-alias,
   useless-object-inheritance,
@@ -139,7 +125,7 @@ inlinevar-rgx=^[a-z][a-z0-9_]*$
 good-names=i,j,k,ex,main,Run,_,UnpackUnion,MakeClassOrContainerType,Concat,JoinTypes,ast
 
 # Bad variable names which should always be refused, separated by a comma
-bad-names=foo,bar,baz,toto,tutu,tata
+bad-names=toto,tutu,tata
 
 # Regular expression which should only match functions or classes name which do
 # not require a docstring
