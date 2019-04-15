@@ -125,7 +125,7 @@ inlinevar-rgx=^[a-z][a-z0-9_]*$
 good-names=i,j,k,ex,main,Run,_,UnpackUnion,MakeClassOrContainerType,Concat,JoinTypes,ast
 
 # Bad variable names which should always be refused, separated by a comma
-bad-names=toto,tutu,tata
+bad-names=
 
 # Regular expression which should only match functions or classes name which do
 # not require a docstring
