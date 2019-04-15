@@ -934,7 +934,6 @@ class Indexer(object):
 
     defn = self.defs[defloc.def_id]
     typ = defn.typ
-    print("typ: ", typ)
     if typ == "Attribute":
       start, end = self._get_attr_bounds(defn.name, defloc.location)
     else:
