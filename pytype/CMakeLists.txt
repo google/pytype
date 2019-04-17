@@ -12,11 +12,13 @@ filegroup(
     pytd/builtins/2/mypy_extensions.pytd
     pytd/builtins/2/protocols.pytd
     pytd/builtins/2/typing.pytd
+    pytd/builtins/2/typing_extensions.pytd
 
     pytd/builtins/2and3/array.pytd
     pytd/builtins/2and3/mypy_extensions.pytd
     pytd/builtins/2and3/protocols.pytd
     pytd/builtins/2and3/typing.pytd
+    pytd/builtins/2and3/typing_extensions.pytd
 
     pytd/builtins/3/__builtin__.pytd
     pytd/builtins/3/array.pytd
@@ -24,6 +26,7 @@ filegroup(
     pytd/builtins/3/mypy_extensions.pytd
     pytd/builtins/3/protocols.pytd
     pytd/builtins/3/typing.pytd
+    pytd/builtins/3/typing_extensions.pytd
 
     pytd/stdlib/2/_ctypes.pytd
     pytd/stdlib/2/collections.pytd
