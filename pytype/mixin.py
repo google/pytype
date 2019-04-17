@@ -201,13 +201,10 @@ class Class(object):
     self.abstract_methods = abstract_methods
 
   @property
-  def has_abstract_metaclass(self):
-    return self.cls and "abc.ABCMeta" in (
-        parent.full_name for parent in self.cls.mro)
-
-  @property
   def is_abstract(self):
-    return self.has_abstract_metaclass and bool(self.abstract_methods)
+    has_abstract_metaclass = self.cls and any(
+        parent.full_name == "abc.ABCMeta" for parent in self.cls.mro)
+    return has_abstract_metaclass and bool(self.abstract_methods)
 
   @property
   def is_test_class(self):
