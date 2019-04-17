@@ -2888,14 +2888,17 @@ class InterpreterFunction(SignedFunction):
     frame = self.vm.make_frame(
         node, self.code, callargs, self.f_globals, self.f_locals, self.closure,
         new_locals=new_locals, func=func, first_posarg=first_posarg)
-    if self.signature.param_names:
-      self_var = callargs.get(self.signature.param_names[0])
-      caller_is_abstract = self_var and all(
-          isinstance(v.cls, mixin.Class) and v.cls.is_abstract
-          for v in self_var.data if v.cls)
-    else:
-      caller_is_abstract = False
-    check_return = not (caller_is_abstract and self.is_abstract)
+    self_var = (self.signature.param_names and
+                callargs.get(self.signature.param_names[0]))
+    caller_is_abstract = abstract_utils.check_classes(
+        self_var, lambda cls: cls.is_abstract)
+    caller_is_protocol = abstract_utils.check_classes(
+        self_var, lambda cls: cls.is_protocol)
+    # We should avoid checking the return value against any return annotation
+    # when we are analyzing an attribute of a protocol or an abstract class's
+    # abstract method.
+    check_return = (not (self.is_attribute_of_class and caller_is_protocol) and
+                    not (caller_is_abstract and self.is_abstract))
     if self.signature.has_return_annotation or not check_return:
       frame.allowed_returns = annotations.get(
           "return", self.vm.convert.unsolvable)

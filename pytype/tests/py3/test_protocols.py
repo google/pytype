@@ -500,6 +500,27 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
         f(MyRemovable())
       """, pythonpath=[d.path])
 
+  def test_ignore_method_body(self):
+    self.Check("""
+      from typing_extensions import Protocol
+      class Countable(Protocol):
+        def count(self) -> int:
+          ...
+    """)
+
+  def test_check_method_body(self):
+    errors = self.CheckWithErrors("""\
+      from typing_extensions import Protocol
+      class Countable(Protocol):
+        def count(self) -> int:
+          ...
+      class MyCountable(Countable):
+        def count(self):
+          return super(MyCountable, self).count()
+    """)
+    self.assertErrorLogIs(
+        errors, [(4, "bad-return-type", r"int.*None.*line 7")])
+
 
 class ProtocolsTestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for protocol implementation on a target using a Python 3 feature."""

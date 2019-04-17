@@ -570,3 +570,17 @@ def eval_expr(vm, node, f_globals, f_locals, expr):
     vm.errorlog.revert_to(checkpoint)
     raise EvaluationError("\n".join(new_messages))
   return ret
+
+
+def check_classes(var, check):
+  """Check whether the cls of each value in `var` is a class and passes `check`.
+
+  Args:
+    var: A cfg.Variable or empty.
+    check: (AtomicAbstractValue) -> bool.
+
+  Returns:
+    Whether the check passes.
+  """
+  return var and all(
+      v.cls.isinstance_Class() and check(v.cls) for v in var.data if v.cls)
