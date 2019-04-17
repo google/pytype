@@ -1,13 +1,15 @@
 # pylint: skip-file
 
-#- @"x.y" defines/binding ImportXY
-#- @"p.q" defines/binding ImportPQ
+#- @import defines/binding ImportXY
 #- ImportXY.node/kind variable
+import x.y
+#- @import defines/binding ImportPQ
 #- ImportPQ.node/kind variable
-import x.y, p.q
+import p.q
 
-#- @bar defines/binding ImportBar
-#- @quux defines/binding ImportQuux
+#- @import defines/binding ImportBar
 #- ImportBar.node/kind variable
+from foo import bar
+#- @import defines/binding ImportQuux
 #- ImportQuux.node/kind variable
-from foo import bar, baz as quux
+from foo import baz as quux

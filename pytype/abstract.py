@@ -1903,6 +1903,9 @@ class ParameterizedClass(AtomicAbstractValue, mixin.Class):
       # TODO(rechen): A missing parameter should be an error.
       yield name, parameters[i] if i < len(parameters) else None
 
+  def get_own_methods(self):
+    return self.base_cls.get_own_methods()
+
   def get_own_abstract_methods(self):
     return self.base_cls.get_own_abstract_methods()
 
@@ -2185,6 +2188,10 @@ class PyTDClass(SimpleAbstractValue, mixin.Class):
     self.is_dynamic = self.compute_is_dynamic()
     mixin.Class.init_mixin(self, metaclass)
 
+  def get_own_methods(self):
+    return {name for name, member in self._member_map.items()
+            if isinstance(member, pytd.Function)}
+
   def get_own_abstract_methods(self):
     return {name for name, member in self._member_map.items()
             if isinstance(member, pytd.Function) and member.is_abstract}
@@ -2345,6 +2352,11 @@ class InterpreterClass(SimpleAbstractValue, mixin.Class):
         abstract_utils.get_atomic_value(mbr, default=self.vm.convert.unsolvable)
         for mbr in self.members.values()]
     return [x for x in values if isinstance(x, InterpreterClass)]
+
+  def get_own_methods(self):
+    def _can_be_function(var):
+      return any(isinstance(v, (BoundFunction, Function)) for v in var.data)
+    return {name for name, var in self.members.items() if _can_be_function(var)}
 
   def get_own_abstract_methods(self):
     def _can_be_abstract(var):
@@ -2876,14 +2888,17 @@ class InterpreterFunction(SignedFunction):
     frame = self.vm.make_frame(
         node, self.code, callargs, self.f_globals, self.f_locals, self.closure,
         new_locals=new_locals, func=func, first_posarg=first_posarg)
-    if self.signature.param_names:
-      self_var = callargs.get(self.signature.param_names[0])
-      caller_is_abstract = self_var and all(
-          isinstance(v.cls, mixin.Class) and v.cls.is_abstract
-          for v in self_var.data if v.cls)
-    else:
-      caller_is_abstract = False
-    check_return = not (caller_is_abstract and self.is_abstract)
+    self_var = (self.signature.param_names and
+                callargs.get(self.signature.param_names[0]))
+    caller_is_abstract = abstract_utils.check_classes(
+        self_var, lambda cls: cls.is_abstract)
+    caller_is_protocol = abstract_utils.check_classes(
+        self_var, lambda cls: cls.is_protocol)
+    # We should avoid checking the return value against any return annotation
+    # when we are analyzing an attribute of a protocol or an abstract class's
+    # abstract method.
+    check_return = (not (self.is_attribute_of_class and caller_is_protocol) and
+                    not (caller_is_abstract and self.is_abstract))
     if self.signature.has_return_annotation or not check_return:
       frame.allowed_returns = annotations.get(
           "return", self.vm.convert.unsolvable)

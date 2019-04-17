@@ -1,3 +1,6 @@
+Version (upcoming)
+* Support custom PEP 544 protocols.
+
 Version 2019.04.12
 * Update typeshed pin to commit cfa65b8 from April 8.
 * Fix comparisons of primitive objects of the same type.

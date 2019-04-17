@@ -95,7 +95,7 @@ class TypingTest(test_base.TargetIndependentTest):
 
   def test_protocol(self):
     self.Check("""\
-      from typing import Protocol
+      from typing_extensions import Protocol
       class Foo(Protocol): pass
     """)
 
