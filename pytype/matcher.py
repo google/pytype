@@ -647,7 +647,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     if isinstance(other_type, mixin.Class):
       base = self.match_from_mro(left, other_type)
       if base is None:
-        if self.is_protocol(other_type):
+        if other_type.is_protocol:
           with self._track_partially_matched_protocols():
             return self._match_against_protocol(left, other_type, subst, node,
                                                 view)
@@ -665,23 +665,6 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     else:
       raise NotImplementedError(
           "Can't match instance %r against %r" % (left, other_type))
-
-  def is_protocol(self, other_type):
-    """Protocol matching other_type if it is a subtype of typing.Protocol.
-
-    Args:
-      other_type: A formal type of type mixin.Class
-    Returns:
-      Whether other_type is a protocol.
-    """
-    if isinstance(other_type, abstract.ParameterizedClass):
-      other_type = other_type.base_cls
-    if isinstance(other_type, abstract.PyTDClass):
-      for parent in other_type.pytd_cls.parents:
-        if isinstance(
-            parent, pytd.ClassType) and parent.name == "typing.Protocol":
-          return True
-    return False
 
   def _fill_in_implicit_protocol_methods(self, methods):
     if "__getitem__" in methods and "__iter__" not in methods:
@@ -714,11 +697,11 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
 
   def unimplemented_protocol_methods(self, left, other_type):
     """Get a list of the protocol methods not implemented by `left`."""
-    assert self.is_protocol(other_type)
+    assert other_type.is_protocol
     if left.cls:
       methods = self._get_methods_dict(left.cls)
       unimplemented = [
-          method for method in other_type.abstract_methods
+          method for method in other_type.protocol_methods
           if method not in methods]
       if unimplemented:
         return unimplemented
@@ -746,7 +729,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       return None
     left_methods = self._get_methods_dict(left)
     method_names_matched = all(
-        method in left_methods for method in other_type.abstract_methods)
+        method in left_methods for method in other_type.protocol_methods)
     if method_names_matched and isinstance(other_type,
                                            abstract.ParameterizedClass):
       key = (node, left, other_type)
@@ -775,7 +758,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       A new type parameter assignment if the matching succeeded, None otherwise.
     """
     new_substs = []
-    for name in other_type.abstract_methods:
+    for name in other_type.protocol_methods:
       abstract_method = other_type.get_method(name)
       if name in left_methods:
         matching_left_method = left_methods[name]

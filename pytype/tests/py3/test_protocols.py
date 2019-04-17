@@ -4,6 +4,7 @@ Based on PEP 544 https://www.python.org/dev/peps/pep-0544/.
 """
 
 from pytype import file_utils
+from pytype.pytd import pytd
 from pytype.tests import test_base
 
 
@@ -374,6 +375,98 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
           return collections.OrderedDict(
               (name, port) for name, port in self._flattened_ports)
     """)
+
+  def test_reingest_custom_protocol(self):
+    ty = self.Infer("""
+      from typing_extensions import Protocol
+      class Appendable(Protocol):
+        def append(self) -> None:
+          pass
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd.Print(ty))
+      self.Check("""
+        import foo
+        class MyAppendable(object):
+          def append(self):
+            pass
+        def f(x: foo.Appendable):
+          pass
+        f([])
+        f(MyAppendable())
+      """, pythonpath=[d.path])
+
+  def test_reingest_custom_protocol_error(self):
+    ty = self.Infer("""
+      from typing_extensions import Protocol
+      class Appendable(Protocol):
+        def append(self) -> None:
+          pass
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd.Print(ty))
+      errors = self.CheckWithErrors("""\
+        import foo
+        class NotAppendable(object):
+          pass
+        def f(x: foo.Appendable):
+          pass
+        f(42)  # error
+        f(NotAppendable())  # error
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [
+          (6, "wrong-arg-types", r"Appendable.*int.*append"),
+          (7, "wrong-arg-types", r"Appendable.*NotAppendable.*append")])
+
+  def test_reingest_custom_protocol_inherit_method(self):
+    ty = self.Infer("""
+      from typing_extensions import Protocol
+      class Appendable(Protocol):
+        def append(self):
+          pass
+      class Mutable(Appendable, Protocol):
+        def remove(self):
+          pass
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd.Print(ty))
+      errors = self.CheckWithErrors("""\
+        from foo import Mutable
+        class NotMutable(object):
+          def remove(self):
+            pass
+        def f(x: Mutable):
+          pass
+        f([])  # ok
+        f(NotMutable())  # error
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [
+          (8, "wrong-arg-types", r"Mutable.*NotMutable.*append")])
+
+  def test_reingest_custom_protocol_implement_method(self):
+    ty = self.Infer("""
+      from typing_extensions import Protocol
+      class Appendable(Protocol):
+        def append(self):
+          pass
+      class Mixin(object):
+        def append(self):
+          pass
+      class Removable(Mixin, Appendable, Protocol):
+        def remove(self):
+          pass
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd.Print(ty))
+      self.Check("""
+        from foo import Removable
+        def f(x: Removable):
+          pass
+        class MyRemovable(object):
+          def remove(self):
+            pass
+        f(MyRemovable())
+      """, pythonpath=[d.path])
 
 
 class ProtocolsTestPython3Feature(test_base.TargetPython3FeatureTest):

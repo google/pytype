@@ -6,6 +6,7 @@ from pytype import abstract_utils
 from pytype import datatypes
 from pytype import function
 from pytype.pytd import mro
+from pytype.pytd import pytd
 
 import six
 
@@ -154,6 +155,7 @@ class Class(object):
       self.cls = metaclass
     self._instance_cache = {}
     self._init_abstract_methods()
+    self._init_protocol_methods()
     self._all_formal_type_parameters = datatypes.AliasingMonitorDict()
     self._all_formal_type_parameters_loaded = False
 
@@ -178,6 +180,48 @@ class Class(object):
           base, self.full_name, self._all_formal_type_parameters)
 
     self._all_formal_type_parameters_loaded = True
+
+  def get_own_methods(self):
+    """Get the methods defined by this class."""
+    raise NotImplementedError(self.__class__.__name__)
+
+  def _is_protocol(self):
+    if self.isinstance_PyTDClass():
+      for parent in self.pytd_cls.parents:
+        if isinstance(
+            parent, pytd.ClassType) and parent.name == "typing.Protocol":
+          return True
+    return False
+
+  def _init_protocol_methods(self):
+    """Compute this class's protocol methods."""
+    if self.isinstance_ParameterizedClass():
+      self.protocol_methods = self.base_cls.protocol_methods
+      return
+    if not self._is_protocol():
+      self.protocol_methods = set()
+      return
+    if self.isinstance_PyTDClass() and self.pytd_cls.name.startswith("typing."):
+      # In typing.pytd, we've experimentally marked some classes such as
+      # Sequence, which contains a mix of abstract and non-abstract methods, as
+      # protocols, with only the abstract methods being required.
+      self.protocol_methods = self.abstract_methods
+      return
+    # For the algorithm to run, protocol_methods needs to be populated with the
+    # protocol methods defined by this class. We'll overwrite the attribute
+    # with the full set of protocol methods later.
+    self.protocol_methods = self.get_own_methods()
+    protocol_methods = set()
+    for cls in reversed(self.mro):
+      if not isinstance(cls, Class):
+        continue
+      if cls.is_protocol:
+        # Add protocol methods defined by this class.
+        protocol_methods |= {m for m in cls.protocol_methods if m in cls}
+      else:
+        # Remove methods implemented by this class.
+        protocol_methods = {m for m in protocol_methods if m not in cls}
+    self.protocol_methods = protocol_methods
 
   def get_own_abstract_methods(self):
     """Get the abstract methods defined by this class."""
@@ -209,6 +253,10 @@ class Class(object):
   @property
   def is_test_class(self):
     return any(base.full_name == "unittest.TestCase" for base in self.mro)
+
+  @property
+  def is_protocol(self):
+    return bool(self.protocol_methods)
 
   def _get_inherited_metaclass(self):
     for base in self.mro[1:]:

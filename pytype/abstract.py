@@ -1903,6 +1903,9 @@ class ParameterizedClass(AtomicAbstractValue, mixin.Class):
       # TODO(rechen): A missing parameter should be an error.
       yield name, parameters[i] if i < len(parameters) else None
 
+  def get_own_methods(self):
+    return self.base_cls.get_own_methods()
+
   def get_own_abstract_methods(self):
     return self.base_cls.get_own_abstract_methods()
 
@@ -2185,6 +2188,10 @@ class PyTDClass(SimpleAbstractValue, mixin.Class):
     self.is_dynamic = self.compute_is_dynamic()
     mixin.Class.init_mixin(self, metaclass)
 
+  def get_own_methods(self):
+    return {name for name, member in self._member_map.items()
+            if isinstance(member, pytd.Function)}
+
   def get_own_abstract_methods(self):
     return {name for name, member in self._member_map.items()
             if isinstance(member, pytd.Function) and member.is_abstract}
@@ -2345,6 +2352,11 @@ class InterpreterClass(SimpleAbstractValue, mixin.Class):
         abstract_utils.get_atomic_value(mbr, default=self.vm.convert.unsolvable)
         for mbr in self.members.values()]
     return [x for x in values if isinstance(x, InterpreterClass)]
+
+  def get_own_methods(self):
+    def _can_be_function(var):
+      return any(isinstance(v, (BoundFunction, Function)) for v in var.data)
+    return {name for name, var in self.members.items() if _can_be_function(var)}
 
   def get_own_abstract_methods(self):
     def _can_be_abstract(var):

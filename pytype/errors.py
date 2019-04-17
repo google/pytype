@@ -609,8 +609,9 @@ class ErrorLog(ErrorLogBase):
     """Return possibly extra protocol details about an argument mismatch."""
     if not protocol_param:
       return []
-    vm = protocol_param.expected.vm
-    if not vm.matcher.is_protocol(protocol_param.expected):
+    expected = protocol_param.expected
+    vm = expected.vm
+    if not isinstance(expected, mixin.Class) or not expected.is_protocol:
       return []
     p = None  # make pylint happy
     for name, p in passed_params:
@@ -618,8 +619,7 @@ class ErrorLog(ErrorLogBase):
         break
     else:
       return []
-    methods = vm.matcher.unimplemented_protocol_methods(
-        p, protocol_param.expected)
+    methods = vm.matcher.unimplemented_protocol_methods(p, expected)
     if not methods:
       # Happens if all the protocol methods are implemented, but with the wrong
       # types. We don't yet provide more detail about that.
