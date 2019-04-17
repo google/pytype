@@ -186,11 +186,18 @@ class Class(object):
     raise NotImplementedError(self.__class__.__name__)
 
   def _is_protocol(self):
+    """Whether this class is a protocol."""
     if self.isinstance_PyTDClass():
       for parent in self.pytd_cls.parents:
         if isinstance(
             parent, pytd.ClassType) and parent.name == "typing.Protocol":
           return True
+    elif self.isinstance_InterpreterClass():
+      for parent_var in self._bases:
+        for parent in parent_var.data:
+          if (parent.isinstance_PyTDClass() and
+              parent.full_name == "typing.Protocol"):
+            return True
     return False
 
   def _init_protocol_methods(self):

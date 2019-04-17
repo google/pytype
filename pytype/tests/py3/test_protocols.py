@@ -376,6 +376,38 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
               (name, port) for name, port in self._flattened_ports)
     """)
 
+  def test_custom_protocol(self):
+    self.Check("""
+      from typing_extensions import Protocol
+      class Appendable(Protocol):
+        def append(self):
+          pass
+      class MyAppendable(object):
+        def append(self):
+          pass
+      def f(x: Appendable):
+        pass
+      f([])
+      f(MyAppendable())
+    """)
+
+  def test_custom_protocol_error(self):
+    errors = self.CheckWithErrors("""\
+      from typing_extensions import Protocol
+      class Appendable(Protocol):
+        def append(self):
+          pass
+      class NotAppendable(object):
+        pass
+      def f(x: Appendable):
+        pass
+      f(42)  # error
+      f(NotAppendable())  # error
+    """)
+    self.assertErrorLogIs(errors, [
+        (9, "wrong-arg-types", r"Appendable.*int.*append"),
+        (10, "wrong-arg-types", r"Appendable.*NotAppendable.*append")])
+
   def test_reingest_custom_protocol(self):
     ty = self.Infer("""
       from typing_extensions import Protocol
