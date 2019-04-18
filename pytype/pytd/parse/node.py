@@ -137,7 +137,7 @@ def Node(*child_names):
 
     def __hash__(self):
       """Return a hash of the node type and the underlying tuple."""
-      return hash((self.__class__.__name__,) + tuple(self))
+      return hash((self.__class__.__name__,) + self)
 
     def __ne__(self, other):
       """Compare two nodes for inequality. See __eq__."""
@@ -232,6 +232,7 @@ _visiting = set()
 
 
 def _Visit(node, visitor, *args, **kwargs):
+  """Visit the node."""
   name = type(visitor).__name__
   recursive = name in _visiting
   _visiting.add(name)
@@ -314,7 +315,7 @@ def _VisitNode(node, visitor, *args, **kwargs):
     status = visitor.Enter(node, *args, **kwargs)
     # Don't descend if Enter<Node> explicitly returns False, but not None,
     # since None is the default return of Python functions.
-    if status is False:
+    if status is False:  # pylint: disable=g-bool-id-comparison
       return node
     # Any other value returned from Enter is ignored, so check:
     assert status is None, repr((node_class_name, status))
