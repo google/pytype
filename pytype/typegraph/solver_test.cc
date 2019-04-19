@@ -455,5 +455,25 @@ TEST(SolverTest, TestConflict) {
   EXPECT_FALSE(solver->Solve({xa, ya}, n3));
 }
 
+TEST(SolverTest, TestStrict) {
+  // Is a binding visible from the other branch?
+  Program p;
+  CFGNode* root = p.NewCFGNode("root");
+  CFGNode* left = root->ConnectNew("left");
+  CFGNode* right = root->ConnectNew("right");
+  std::string a("a");
+  Variable* x = p.NewVariable();
+  AddBinding(x, &a, left, {});
+  EXPECT_THAT(x->FilteredData(left, true),
+              testing::UnorderedElementsAre(AsDataType(&a)));
+  EXPECT_THAT(x->FilteredData(left, false),
+              testing::UnorderedElementsAre(AsDataType(&a)));
+  EXPECT_THAT(x->FilteredData(right, true), testing::IsEmpty());
+  // The result should be empty, but with strict=false, the solver thinks that
+  // the binding is visible.
+  EXPECT_THAT(x->FilteredData(right, false),
+              testing::UnorderedElementsAre(AsDataType(&a)));
+}
+
 }  // namespace
 }  // namespace devtools_python_typegraph

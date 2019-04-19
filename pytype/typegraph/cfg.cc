@@ -1139,19 +1139,23 @@ static PyObject* VariablePruneData(PyVariableObj* self,
 
 PyDoc_STRVAR(
     variable_filter_doc,
-    "Filter(cfg_node)\n\n"
+    "Filter(cfg_node, strict=True)\n\n"
     "Filters down the possibilities of bindings for this variable, by "
-    "analyzing the control flow graph and the source sets. Any definition for "
-    "this impossible at the current point in the CFG is filtered out.");
+    "analyzing the control flow graph and the source sets. Any definition that "
+    "is impossible at the current point in the CFG is filtered out. When the "
+    "strict flag is not set, may make performance-improving approximations.");
 
 static PyObject* VariableFilter(PyVariableObj* self,
                                 PyObject* args, PyObject* kwargs) {
   PyProgramObj* program = get_program(self);
-  static const char *kwlist[] = {"cfg_node", nullptr};
+  static const char *kwlist[] = {"cfg_node", "strict", nullptr};
   PyCFGNodeObj* cfg_node;
-  if (!SafeParseTupleAndKeywords(args, kwargs, "O", kwlist, &cfg_node))
+  PyObject* strict_obj = nullptr;
+  if (!SafeParseTupleAndKeywords(args, kwargs, "O|O", kwlist, &cfg_node,
+                                 &strict_obj))
     return nullptr;
-  auto bindings = self->u->Filter(cfg_node->cfg_node);
+  const bool strict = strict_obj == nullptr ? 1 : PyObject_IsTrue(strict_obj);
+  auto bindings = self->u->Filter(cfg_node->cfg_node, strict);
   PyObject* list = PyList_New(0);
   for (typegraph::Binding* attr : bindings) {
     PyObject* binding = WrapBinding(program, attr);
@@ -1162,17 +1166,19 @@ static PyObject* VariableFilter(PyVariableObj* self,
 }
 
 PyDoc_STRVAR(variable_filtered_data_doc,
-    "FilteredData(cfg_node)\n\n"
-    "Like Filter(cfg_node), but only return the data.\n\n");
+    "FilteredData(cfg_node, strict=True)\n\n"
+    "Like Filter(cfg_node, strict), but only return the data.\n\n");
 
 static PyObject* VariableFilteredData(PyVariableObj* self,
                                       PyObject* args, PyObject* kwargs) {
-  static const char *kwlist[] = {"cfg_node", nullptr};
+  static const char *kwlist[] = {"cfg_node", "strict", nullptr};
   PyCFGNodeObj* cfg_node;
-  if (!SafeParseTupleAndKeywords(args, kwargs, "O!", kwlist, &PyCFGNode,
-                                 &cfg_node))
+  PyObject* strict_obj = nullptr;
+  if (!SafeParseTupleAndKeywords(args, kwargs, "O!|O", kwlist, &PyCFGNode,
+                                 &cfg_node, &strict_obj))
     return nullptr;
-  auto bindings = self->u->FilteredData(cfg_node->cfg_node);
+  const bool strict = strict_obj == nullptr ? 1 : PyObject_IsTrue(strict_obj);
+  auto bindings = self->u->FilteredData(cfg_node->cfg_node, strict);
   PyObject* list = PyList_New(0);
   for (void* attr_data : bindings) {
     PyObject* data = reinterpret_cast<PyObject*>(attr_data);

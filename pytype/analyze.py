@@ -452,7 +452,7 @@ class CallTracer(vm.VirtualMachine):
   def pytd_classes_for_unknowns(self):
     classes = []
     for name, val in self._unknowns.items():
-      if val in val.variable.Filter(self.exitpoint):
+      if val in val.variable.Filter(self.exitpoint, strict=False):
         classes.append(val.data.to_structural_def(self.exitpoint, name))
     return classes
 

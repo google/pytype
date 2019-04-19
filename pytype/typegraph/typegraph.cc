@@ -304,8 +304,8 @@ const std::vector<DataType*> Variable::Data() const {
 }
 
 const std::vector<DataType*> Variable::FilteredData(
-    const CFGNode* viewpoint) const {
-  std::vector<Binding*> filtered = Filter(viewpoint);
+    const CFGNode* viewpoint, const bool strict) const {
+  std::vector<Binding*> filtered = Filter(viewpoint, strict);
   std::vector<DataType*> data;
   data.reserve(filtered.size());
   for (const auto& a : filtered) {
@@ -314,11 +314,14 @@ const std::vector<DataType*> Variable::FilteredData(
   return data;
 }
 
-std::vector<Binding*> Variable::Filter(const CFGNode* viewpoint) const {
+std::vector<Binding*> Variable::Filter(
+    const CFGNode* viewpoint, const bool strict) const {
+  const auto size = bindings_.size();
   std::vector<Binding*> filtered;
-  filtered.reserve(bindings_.size());
+  filtered.reserve(size);
   for (const auto& binding : bindings_) {
-    if (binding->IsVisible(viewpoint)) {
+    // Optimization: when only one binding exists, assume it is visible.
+    if ((!strict && size == 1) || binding->IsVisible(viewpoint)) {
       filtered.push_back(binding.get());
     }
   }
