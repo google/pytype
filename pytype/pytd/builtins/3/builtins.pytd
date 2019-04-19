@@ -103,6 +103,7 @@ def reduce(function: Callable[..., _T], iterable: Iterable, initial) -> _T
 # No reload() in Python3
 def reload(mod: module) -> module
 def repr(x) -> str
+def round(number: int or float or typing.SupportsRound) -> int
 def round(number: int or float or typing.SupportsRound, ...) -> float
 def setattr(object, name: str, value) -> NoneType
 def sorted(iterable: Iterable[_T], ...) -> list[_T]

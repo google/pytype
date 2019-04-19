@@ -561,5 +561,15 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       [].copy()
     """)
 
+  def testRound(self):
+    ty = self.Infer("""
+      v1 = round(4.2)
+      v2 = round(4.2, 1)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      v1: int
+      v2: float
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
