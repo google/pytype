@@ -571,5 +571,15 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       v2: float
     """)
 
+  def testIntBytesConversion(self):
+    ty = self.Infer("""
+      bytes_obj = (42).to_bytes(1, "little")
+      int_obj = int.from_bytes(b"*", "little")
+    """)
+    self.assertTypesMatchPytd(ty, """
+      bytes_obj: bytes
+      int_obj: int
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
