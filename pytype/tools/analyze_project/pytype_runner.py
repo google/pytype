@@ -5,6 +5,7 @@ from __future__ import print_function
 import logging
 import os
 import subprocess
+import sys
 
 from pytype import file_utils
 from pytype import module_utils
@@ -273,13 +274,20 @@ class PytypeRunner(object):
                           _module_to_output_path(module) + '.pyi' + suffix)
     logging.info('%s %s\n  imports: %s\n  deps: %s\n  output: %s',
                  action, module.name, imports, deps, output)
+    input_path = module.full_path
+
+    if sys.platform == 'win32':
+      output = output.replace('C:', 'C$:')
+      input_path = module.full_path.replace('C:', 'C$:')
+      imports = imports.replace('C:', 'C$:')
+
     with open(self.ninja_file, 'a') as f:
       f.write('build {output}: {action} {input}{deps}\n'
               '  imports = {imports}\n'
               '  module = {module}\n'.format(
                   output=output,
                   action=action,
-                  input=module.full_path,
+                  input=input_path,
                   deps=' | ' + ' '.join(deps) if deps else '',
                   imports=imports,
                   module=module.name))

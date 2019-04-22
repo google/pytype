@@ -8,6 +8,7 @@ import subprocess
 import threading
 import types
 import weakref
+import sys
 
 from pytype import pytype_source_utils
 
@@ -156,8 +157,13 @@ def get_python_exe_version(python_exe):
     Version as (major, minor) tuple.
   """
   try:
-    python_exe_version = subprocess.check_output(
-        python_exe + " -V", shell=True, stderr=subprocess.STDOUT).decode()
+    if sys.platform == 'win32':
+      python_exe_version = subprocess.check_output(
+          "python" + " -V", shell=True, stderr=subprocess.STDOUT).decode()
+    else:
+      python_exe_version = subprocess.check_output(
+          python_exe + " -V", shell=True, stderr=subprocess.STDOUT).decode()
+
   except subprocess.CalledProcessError:
     return None
 

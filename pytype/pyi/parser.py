@@ -2,6 +2,7 @@
 
 import collections
 import hashlib
+import sys
 
 from pytype import file_utils
 from pytype import module_utils
@@ -431,6 +432,10 @@ class _Parser(object):
     self._parent_name = module_utils.get_package_name(self._package_name, False)
 
     try:
+      if sys.platform == 'win32':
+        if type(src) is type(bytes):
+          src = src.decode('utf-8').replace('\r', '')
+          src = src.encode('utf-8')
       defs = parser_ext.parse(self, src)
       ast = self._build_type_decl_unit(defs)
     except ParseError as e:
