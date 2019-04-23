@@ -1081,7 +1081,7 @@ static int VariableSetAttro(PyObject* self, PyObject* attr, PyObject* val) {
 
 PyDoc_STRVAR(
     variable_prune_doc,
-    "Bindings(cfg_node)\n\n"
+    "Bindings(cfg_node, strict=True)\n\n"
     "Filters down the possibilities of bindings for this variable, by "
     "analyzing "
     "the control flow graph. Any definition for this variable that is "
@@ -1091,16 +1091,19 @@ PyDoc_STRVAR(
 
 static PyObject* VariablePrune(PyVariableObj* self,
                                PyObject* args, PyObject* kwargs) {
-  static const char *kwlist[] = {"cfg_node", nullptr};
+  static const char *kwlist[] = {"cfg_node", "strict", nullptr};
   PyObject* cfg_node_obj;
-  if (!SafeParseTupleAndKeywords(args, kwargs, "O", kwlist, &cfg_node_obj))
+  PyObject* strict_obj = nullptr;
+  if (!SafeParseTupleAndKeywords(args, kwargs, "O|O", kwlist, &cfg_node_obj,
+                                 &strict_obj))
     return nullptr;
   typegraph::CFGNode* cfg_node = nullptr;
   if (!IsCFGNodeOrNone(cfg_node_obj, &cfg_node)) {
     PyErr_SetString(PyExc_TypeError, "where must be a CFGNode or None.");
     return nullptr;
   }
-  auto bindings = self->u->Prune(cfg_node);
+  const bool strict = strict_obj == nullptr ? 1 : PyObject_IsTrue(strict_obj);
+  auto bindings = self->u->Prune(cfg_node, strict);
   PyObject* list = PyList_New(0);
   PyProgramObj* program = get_program(self);
   for (typegraph::Binding* attr : bindings) {

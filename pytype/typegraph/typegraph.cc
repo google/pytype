@@ -328,10 +328,12 @@ std::vector<Binding*> Variable::Filter(
   return filtered;
 }
 
-std::vector<Binding*> Variable::Prune(const CFGNode* viewpoint) {
+std::vector<Binding*> Variable::Prune(
+    const CFGNode* viewpoint, const bool strict) {
   std::vector<Binding*> result;  // use a vector for determinism
   std::set<Binding*, pointer_less<Binding>> seen_results;
-  if (!viewpoint) {
+  // Optimization: when only one binding exists, assume it is visible.
+  if (!viewpoint || (!strict && bindings_.size() == 1)) {
     for (const auto& binding : bindings_) {
       result.push_back(binding.get());
     }
