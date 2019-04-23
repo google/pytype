@@ -236,6 +236,10 @@ static bool IsCFGNodeOrNone(PyObject* obj, typegraph::CFGNode** ret) {
   return false;
 }
 
+static bool IsTruthy(PyObject* obj, bool default_bool = true) {
+  return obj == nullptr ? default_bool : PyObject_IsTrue(obj);
+}
+
 // --- Program -----------------------------------------------------------------
 
 static void ProgramDealloc(PyObject* self) {
@@ -1102,7 +1106,7 @@ static PyObject* VariablePrune(PyVariableObj* self,
     PyErr_SetString(PyExc_TypeError, "where must be a CFGNode or None.");
     return nullptr;
   }
-  const bool strict = strict_obj == nullptr ? 1 : PyObject_IsTrue(strict_obj);
+  const auto strict = IsTruthy(strict_obj);
   auto bindings = self->u->Prune(cfg_node, strict);
   PyObject* list = PyList_New(0);
   PyProgramObj* program = get_program(self);
@@ -1157,7 +1161,7 @@ static PyObject* VariableFilter(PyVariableObj* self,
   if (!SafeParseTupleAndKeywords(args, kwargs, "O|O", kwlist, &cfg_node,
                                  &strict_obj))
     return nullptr;
-  const bool strict = strict_obj == nullptr ? 1 : PyObject_IsTrue(strict_obj);
+  const auto strict = IsTruthy(strict_obj);
   auto bindings = self->u->Filter(cfg_node->cfg_node, strict);
   PyObject* list = PyList_New(0);
   for (typegraph::Binding* attr : bindings) {
@@ -1180,7 +1184,7 @@ static PyObject* VariableFilteredData(PyVariableObj* self,
   if (!SafeParseTupleAndKeywords(args, kwargs, "O!|O", kwlist, &PyCFGNode,
                                  &cfg_node, &strict_obj))
     return nullptr;
-  const bool strict = strict_obj == nullptr ? 1 : PyObject_IsTrue(strict_obj);
+  const auto strict = IsTruthy(strict_obj);
   auto bindings = self->u->FilteredData(cfg_node->cfg_node, strict);
   PyObject* list = PyList_New(0);
   for (void* attr_data : bindings) {
