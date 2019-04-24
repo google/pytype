@@ -911,6 +911,16 @@ class CFGTest(unittest.TestCase):
     b_out = p.NewVariable().AddBinding("x", [bx], node_out)
     self.assertFalse(b_out.IsVisible(node_out))
 
+  def testStrict(self):
+    # Tests the existence of the strict keyword (but not its behavior).
+    p = cfg.Program()
+    node = p.NewCFGNode("root")
+    v = p.NewVariable()
+    b = v.AddBinding("x", [], node)
+    self.assertEqual(v.Filter(node, strict=False), [b])
+    self.assertEqual(v.FilteredData(node, strict=False), [b.data])
+    self.assertEqual(v.Bindings(node, strict=False), [b])
+
 
 if __name__ == "__main__":
   unittest.main()

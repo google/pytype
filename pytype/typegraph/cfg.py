@@ -339,7 +339,7 @@ class Variable(object):
 
   __str__ = __repr__
 
-  def Bindings(self, viewpoint):
+  def Bindings(self, viewpoint, strict=True):
     """Filters down the possibilities of bindings for this variable.
 
     It determines this by analyzing the control flow graph. Any definition for
@@ -349,11 +349,12 @@ class Variable(object):
 
     Arguments:
       viewpoint: The CFG node at which to determine the possible bindings.
+      strict: Whether to allow approximations for speed.
 
     Returns:
       A filtered list of bindings for this variable.
     """
-    if viewpoint is None:
+    if viewpoint is None or (not strict and len(self.bindings) == 1):
       return self.bindings
 
     num_bindings = len(self.bindings)
@@ -380,7 +381,7 @@ class Variable(object):
     """Like Bindings(cfg_node), but only return the data."""
     return [binding.data for binding in self.Bindings(viewpoint)]
 
-  def Filter(self, viewpoint):
+  def Filter(self, viewpoint, strict=True):
     """Filters down the possibilities of this variable.
 
     It analyzes the control flow graph. Any definition for this variable that is
@@ -388,15 +389,22 @@ class Variable(object):
 
     Arguments:
       viewpoint: The CFG node at which to determine the possible bindings.
+      strict: Whether to allow approximations for speed.
 
     Returns:
       A filtered list of bindings for this variable.
     """
-    return [b for b in self.bindings if b.IsVisible(viewpoint)]
+    if not strict and len(self.bindings) == 1:
+      return self.bindings
+    else:
+      return [b for b in self.bindings if b.IsVisible(viewpoint)]
 
-  def FilteredData(self, viewpoint):
+  def FilteredData(self, viewpoint, strict=True):
     """Like Filter(viewpoint), but only return the data."""
-    return [b.data for b in self.bindings if b.IsVisible(viewpoint)]
+    if not strict and len(self.bindings) == 1:
+      return self.data
+    else:
+      return [b.data for b in self.bindings if b.IsVisible(viewpoint)]
 
   def _FindOrAddBinding(self, data):
     """Add a new binding if necessary, otherwise return existing binding."""
