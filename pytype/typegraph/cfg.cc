@@ -236,6 +236,10 @@ static bool IsCFGNodeOrNone(PyObject* obj, typegraph::CFGNode** ret) {
   return false;
 }
 
+static bool IsTruthy(PyObject* obj, bool default_bool = true) {
+  return obj == nullptr ? default_bool : PyObject_IsTrue(obj);
+}
+
 // --- Program -----------------------------------------------------------------
 
 static void ProgramDealloc(PyObject* self) {
@@ -1081,7 +1085,7 @@ static int VariableSetAttro(PyObject* self, PyObject* attr, PyObject* val) {
 
 PyDoc_STRVAR(
     variable_prune_doc,
-    "Bindings(cfg_node)\n\n"
+    "Bindings(cfg_node, strict=True)\n\n"
     "Filters down the possibilities of bindings for this variable, by "
     "analyzing "
     "the control flow graph. Any definition for this variable that is "
@@ -1091,16 +1095,19 @@ PyDoc_STRVAR(
 
 static PyObject* VariablePrune(PyVariableObj* self,
                                PyObject* args, PyObject* kwargs) {
-  static const char *kwlist[] = {"cfg_node", nullptr};
+  static const char *kwlist[] = {"cfg_node", "strict", nullptr};
   PyObject* cfg_node_obj;
-  if (!SafeParseTupleAndKeywords(args, kwargs, "O", kwlist, &cfg_node_obj))
+  PyObject* strict_obj = nullptr;
+  if (!SafeParseTupleAndKeywords(args, kwargs, "O|O", kwlist, &cfg_node_obj,
+                                 &strict_obj))
     return nullptr;
   typegraph::CFGNode* cfg_node = nullptr;
   if (!IsCFGNodeOrNone(cfg_node_obj, &cfg_node)) {
     PyErr_SetString(PyExc_TypeError, "where must be a CFGNode or None.");
     return nullptr;
   }
-  auto bindings = self->u->Prune(cfg_node);
+  const auto strict = IsTruthy(strict_obj);
+  auto bindings = self->u->Prune(cfg_node, strict);
   PyObject* list = PyList_New(0);
   PyProgramObj* program = get_program(self);
   for (typegraph::Binding* attr : bindings) {
@@ -1139,19 +1146,23 @@ static PyObject* VariablePruneData(PyVariableObj* self,
 
 PyDoc_STRVAR(
     variable_filter_doc,
-    "Filter(cfg_node)\n\n"
+    "Filter(cfg_node, strict=True)\n\n"
     "Filters down the possibilities of bindings for this variable, by "
-    "analyzing the control flow graph and the source sets. Any definition for "
-    "this impossible at the current point in the CFG is filtered out.");
+    "analyzing the control flow graph and the source sets. Any definition that "
+    "is impossible at the current point in the CFG is filtered out. When the "
+    "strict flag is not set, may make performance-improving approximations.");
 
 static PyObject* VariableFilter(PyVariableObj* self,
                                 PyObject* args, PyObject* kwargs) {
   PyProgramObj* program = get_program(self);
-  static const char *kwlist[] = {"cfg_node", nullptr};
+  static const char *kwlist[] = {"cfg_node", "strict", nullptr};
   PyCFGNodeObj* cfg_node;
-  if (!SafeParseTupleAndKeywords(args, kwargs, "O", kwlist, &cfg_node))
+  PyObject* strict_obj = nullptr;
+  if (!SafeParseTupleAndKeywords(args, kwargs, "O|O", kwlist, &cfg_node,
+                                 &strict_obj))
     return nullptr;
-  auto bindings = self->u->Filter(cfg_node->cfg_node);
+  const auto strict = IsTruthy(strict_obj);
+  auto bindings = self->u->Filter(cfg_node->cfg_node, strict);
   PyObject* list = PyList_New(0);
   for (typegraph::Binding* attr : bindings) {
     PyObject* binding = WrapBinding(program, attr);
@@ -1162,17 +1173,19 @@ static PyObject* VariableFilter(PyVariableObj* self,
 }
 
 PyDoc_STRVAR(variable_filtered_data_doc,
-    "FilteredData(cfg_node)\n\n"
-    "Like Filter(cfg_node), but only return the data.\n\n");
+    "FilteredData(cfg_node, strict=True)\n\n"
+    "Like Filter(cfg_node, strict), but only return the data.\n\n");
 
 static PyObject* VariableFilteredData(PyVariableObj* self,
                                       PyObject* args, PyObject* kwargs) {
-  static const char *kwlist[] = {"cfg_node", nullptr};
+  static const char *kwlist[] = {"cfg_node", "strict", nullptr};
   PyCFGNodeObj* cfg_node;
-  if (!SafeParseTupleAndKeywords(args, kwargs, "O!", kwlist, &PyCFGNode,
-                                 &cfg_node))
+  PyObject* strict_obj = nullptr;
+  if (!SafeParseTupleAndKeywords(args, kwargs, "O!|O", kwlist, &PyCFGNode,
+                                 &cfg_node, &strict_obj))
     return nullptr;
-  auto bindings = self->u->FilteredData(cfg_node->cfg_node);
+  const auto strict = IsTruthy(strict_obj);
+  auto bindings = self->u->FilteredData(cfg_node->cfg_node, strict);
   PyObject* list = PyList_New(0);
   for (void* attr_data : bindings) {
     PyObject* data = reinterpret_cast<PyObject*>(attr_data);

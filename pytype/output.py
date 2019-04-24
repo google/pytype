@@ -66,7 +66,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     if var.bindings and view is not None:
       return [view[var].data]
     elif node:
-      return var.FilteredData(node)
+      return var.FilteredData(node, strict=False)
     else:
       return var.data
 
@@ -383,7 +383,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       an annotation.
     """
     if name not in annots:
-      for value in var.FilteredData(self.vm.exitpoint):
+      for value in var.FilteredData(self.vm.exitpoint, strict=False):
         yield value, False
       return
     # Merges the annotations and values so they can be filtered as one variable.
@@ -500,7 +500,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
 
   def _function_to_return_types(self, node, fvar):
     """Convert a function variable to a list of PyTD return types."""
-    options = fvar.FilteredData(self.vm.exitpoint)
+    options = fvar.FilteredData(self.vm.exitpoint, strict=False)
     if not all(isinstance(o, abstract.Function) for o in options):
       return [pytd.AnythingType()]
     types = []
@@ -603,7 +603,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     for instance in v.instances:
       for name, member in instance.members.items():
         if name not in CLASS_LEVEL_IGNORE:
-          for value in member.FilteredData(self.vm.exitpoint):
+          for value in member.FilteredData(self.vm.exitpoint, strict=False):
             constants[name].add_type(value.to_type(node))
 
     for name in list(methods):

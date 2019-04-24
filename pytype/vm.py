@@ -1661,7 +1661,7 @@ class VirtualMachine(object):
       A new state.
     """
     cell = self.frame.cells[op.arg]
-    visible_bindings = cell.Filter(state.node)
+    visible_bindings = cell.Filter(state.node, strict=False)
     if len(visible_bindings) != len(cell.bindings):
       # We need to filter here because the closure will be analyzed outside of
       # its creating context, when information about what values are visible

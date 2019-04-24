@@ -319,13 +319,16 @@ class Variable {
 
   // Filters down the possibilities of this variable, by analyzing the
   // control flow graph. Any definition for this variable that is impossible
-  // at the current point in the CFG is filtered out.
-  std::vector<Binding*> Filter(const CFGNode* viewpoint) const;
+  // at the current point in the CFG is filtered out. When the strict flag is
+  // not set, may make performance-improving approximations.
+  std::vector<Binding*> Filter(const CFGNode* viewpoint,
+                               const bool strict = true) const;
 
   // Prunes all bindings of this variable that are invisible at the CFG node.
   // This only takes the CFG into account, and ignores source sets. It's faster
   // than Filter().
-  std::vector<Binding*> Prune(const CFGNode* viewpoint);
+  std::vector<Binding*> Prune(const CFGNode* viewpoint,
+                              const bool strict = true);
 
   // Add another choice to this variable. This will not overwrite this variable
   // in the current CFG node - do that explicitly with RemoveChoicesFromCFGNode.
@@ -362,7 +365,8 @@ class Variable {
   const std::vector<DataType*> Data() const;
 
   // Convenience function for retrieving the filtered data of all bindings.
-  const std::vector<DataType*> FilteredData(const CFGNode* viewpoint) const;
+  const std::vector<DataType*> FilteredData(const CFGNode* viewpoint,
+                                            const bool strict = true) const;
 
  private:
   // Initialize an empty variable

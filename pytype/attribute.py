@@ -424,7 +424,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     # First, check if we need to do any filtering at all. This method is
     # heavily called, so creating the `ret` variable judiciously reduces the
     # number of variables per pytype run by as much as 20%.
-    bindings = var.Bindings(node)
+    bindings = var.Bindings(node, strict=False)
     if not bindings:
       return None
     if len(bindings) == len(var.bindings) and not any(

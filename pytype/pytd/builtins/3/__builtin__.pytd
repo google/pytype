@@ -739,6 +739,9 @@ class int(SupportsInt, SupportsFloat, SupportsAbs[int]):
     def __xor__(self, y: int) -> int
     def bit_length(self) -> int
     def conjugate(self) -> int
+    def to_bytes(self, length: int, byteorder: str, *, signed: bool = ...) -> bytes
+    @classmethod
+    def from_bytes(cls, bytes: Sequence[int], byteorder: str, *, signed: bool = ...) -> int
 
 class float(SupportsInt, SupportsFloat, SupportsAbs):
     __slots__ = []

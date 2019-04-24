@@ -237,7 +237,7 @@ class CallTracer(vm.VirtualMachine):
   def instantiate(self, node, clsv):
     """Build an (dummy) instance from a class, for analyzing it."""
     n = self.program.NewVariable()
-    for cls in clsv.Bindings(node):
+    for cls in clsv.Bindings(node, strict=False):
       node, var = self._instantiate_binding(node, cls)
       n.PasteVariable(var)
     return node, n
@@ -452,7 +452,7 @@ class CallTracer(vm.VirtualMachine):
   def pytd_classes_for_unknowns(self):
     classes = []
     for name, val in self._unknowns.items():
-      if val in val.variable.Filter(self.exitpoint):
+      if val in val.variable.Filter(self.exitpoint, strict=False):
         classes.append(val.data.to_structural_def(self.exitpoint, name))
     return classes
 
