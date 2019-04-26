@@ -2982,7 +2982,9 @@ class InterpreterFunction(SignedFunction):
           if data in signature_data:
             # This combination yields a signature we already know is possible
             continue
-          if node_after_call.HasCombination(values):
+          # Optimization: when only one combination exists, assume it's visible.
+          if (len(combinations) == 1 and len(ret.bindings) == 1 or
+              node_after_call.HasCombination(values)):
             signature_data.add(data)
             all_combinations.append(
                 (node_after_call, combination, return_value))
