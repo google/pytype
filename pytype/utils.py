@@ -160,7 +160,7 @@ def get_python_exe_version(python_exe):
     python_exe = "py -" + python_exe.replace('python', '')
   try:
     python_exe_version = subprocess.check_output(
-      python_exe + " -V", shell=True, stderr=subprocess.STDOUT).decode()
+        python_exe + " -V", shell=True, stderr=subprocess.STDOUT).decode()
   except subprocess.CalledProcessError:
     return None
 
