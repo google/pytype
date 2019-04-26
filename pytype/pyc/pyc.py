@@ -70,16 +70,17 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
     # In order to be able to compile pyc files for both Python 2 and Python 3,
     # we spawn an external process.
     if python_exe:
-      # Allow python_exe to contain parameters (E.g. "-T")
-      exe = python_exe.split()
+      if sys.platform == 'win32':
+        exe = ["py"]
+        exe.append("-" + ".".join(map(str, python_version)))
+      else:
+        # Allow python_exe to contain parameters (E.g. "-T")
+        exe = python_exe.split()
     else:
       exe = ["python" + ".".join(map(str, python_version))]
     # We pass -E to ignore the environment so that PYTHONPATH and sitecustomize
     # on some people's systems don't mess with the interpreter.
     cmd = exe + ["-E", "-", fi.name, filename or fi.name, mode]
-    if sys.platform == 'win32':
-      cmd = ["python", "-E", "-", fi.name, filename or fi.name, mode]
-
     compile_script_src = pytype_source_utils.load_pytype_file(COMPILE_SCRIPT)
 
     p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)

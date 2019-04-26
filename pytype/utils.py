@@ -156,14 +156,11 @@ def get_python_exe_version(python_exe):
   Returns:
     Version as (major, minor) tuple.
   """
+  if sys.platform == 'win32':
+    python_exe = "py -" + python_exe.replace('python', '')
   try:
-    if sys.platform == 'win32':
-      python_exe_version = subprocess.check_output(
-          "python" + " -V", shell=True, stderr=subprocess.STDOUT).decode()
-    else:
-      python_exe_version = subprocess.check_output(
-          python_exe + " -V", shell=True, stderr=subprocess.STDOUT).decode()
-
+    python_exe_version = subprocess.check_output(
+      python_exe + " -V", shell=True, stderr=subprocess.STDOUT).decode()
   except subprocess.CalledProcessError:
     return None
 
