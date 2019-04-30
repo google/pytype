@@ -6,7 +6,7 @@ import re
 import subprocess
 import tempfile
 import sys
-
+import logging
 from pytype import pytype_source_utils
 from pytype import utils
 from pytype.pyc import loadmarshal
@@ -83,7 +83,10 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
     cmd = exe + ["-E", "-", fi.name, filename or fi.name, mode]
     compile_script_src = pytype_source_utils.load_pytype_file(COMPILE_SCRIPT)
 
-    p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    try:
+      p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    except subprocess.CalledProcessError as e:
+      logging.error("CalledProcessError error: %s\n", str(e))
     bytecode, _ = p.communicate(compile_script_src)
     assert p.poll() == 0, "Child process failed"
   finally:

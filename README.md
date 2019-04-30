@@ -62,7 +62,7 @@ Platform support:
 * Pytype is currently developed and tested on Linux, which is the main supported
   platform.
 * Installation on MacOSX requires OSX 10.7 or higher and Xcode v8 or higher.
-* Windows is currently not supported.
+* Windows, pytype requires Python 3.3+ to analyze a different Python version from the one it's running under, and also report an error in the code when the launcher isn't found.
 
 ## Installing
 
@@ -199,7 +199,6 @@ of its dependencies.
 
 ## Roadmap
 
-* Windows support
 
 ## License
 Apache 2.0
