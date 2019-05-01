@@ -1,3 +1,6 @@
+Version (upcoming)
+* Update typeshed pin to commit 4e572ae from April 23.
+
 Version 2019.04.26
 * Improve typegraph performance.
 
