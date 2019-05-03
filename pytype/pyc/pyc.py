@@ -71,8 +71,7 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
     # we spawn an external process.
     if python_exe:
       if sys.platform == 'win32':
-        exe = ["py"]
-        exe.append("-" + ".".join(map(str, python_version)))
+        exe = ["py", "-" + ".".join(map(str, python_version))]
       else:
         # Allow python_exe to contain parameters (E.g. "-T")
         exe = python_exe.split()
@@ -85,8 +84,8 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
 
     try:
       p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    except subprocess.CalledProcessError as e:
-      logging.error("CalledProcessError error: %s\n", str(e))
+    except IOError:
+      return None
     bytecode, _ = p.communicate(compile_script_src)
     assert p.poll() == 0, "Child process failed"
   finally:
