@@ -6,7 +6,6 @@ import re
 import subprocess
 import tempfile
 import sys
-import logging
 from pytype import pytype_source_utils
 from pytype import utils
 from pytype.pyc import loadmarshal
