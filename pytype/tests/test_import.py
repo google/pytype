@@ -1156,5 +1156,15 @@ class ImportTest(test_base.TargetIndependentTest):
         submodule.asd
       """, pythonpath=[d.path])
 
+  def testImportAlias(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo/__init__.pyi", "")
+      d.create_file("foo/bar.pyi", """
+        from foo import baz as qux
+        X = qux.X
+      """)
+      d.create_file("foo/baz.pyi", "X = str")
+      self.Check("from foo import bar", pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")

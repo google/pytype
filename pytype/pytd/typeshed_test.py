@@ -34,8 +34,7 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
   def test_get_typeshed_missing(self):
     if not self.ts.missing:
       return  # nothing to test
-    self.assertIn(os.path.join("stdlib", "2.7", "pytypecanary"),
-                  self.ts.missing)
+    self.assertIn(os.path.join("stdlib", "2", "pytypecanary"), self.ts.missing)
     _, data = self.ts.get_module_file("stdlib", "pytypecanary", (2, 7))
     self.assertEqual(data, builtins.DEFAULT_SRC)
 
