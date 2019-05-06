@@ -264,35 +264,36 @@ static void add_token(PyObject* dict, const char* name, int value) {
 // Create a TOKENS attribute that maps token names to integer values.
 static void add_tokens_dict(PyObject* module) {
   PyObject* tokens = PyDict_New();
-  add_token(tokens, "NAME",         t::NAME);
-  add_token(tokens, "NUMBER",       t::NUMBER);
-  add_token(tokens, "TRIPLEQUOTED", t::TRIPLEQUOTED);
-  add_token(tokens, "TYPECOMMENT",  t::TYPECOMMENT);
-  add_token(tokens, "ARROW",        t::ARROW);
-  add_token(tokens, "ELLIPSIS",     t::ELLIPSIS);
-  add_token(tokens, "EQ",           t::EQ);
-  add_token(tokens, "NE",           t::NE);
-  add_token(tokens, "LE",           t::LE);
-  add_token(tokens, "GE",           t::GE);
-  add_token(tokens, "INDENT",       t::INDENT);
-  add_token(tokens, "DEDENT",       t::DEDENT);
-  add_token(tokens, "LEXERROR",     t::LEXERROR);
+  add_token(tokens, "NAME",            t::NAME);
+  add_token(tokens, "NUMBER",          t::NUMBER);
+  add_token(tokens, "TRIPLEQUOTED",    t::TRIPLEQUOTED);
+  add_token(tokens, "TYPECOMMENT",     t::TYPECOMMENT);
+  add_token(tokens, "ARROW",           t::ARROW);
+  add_token(tokens, "ELLIPSIS",        t::ELLIPSIS);
+  add_token(tokens, "EQ",              t::EQ);
+  add_token(tokens, "NE",              t::NE);
+  add_token(tokens, "LE",              t::LE);
+  add_token(tokens, "GE",              t::GE);
+  add_token(tokens, "INDENT",          t::INDENT);
+  add_token(tokens, "DEDENT",          t::DEDENT);
+  add_token(tokens, "LEXERROR",        t::LEXERROR);
 
   // reserved words.
-  add_token(tokens, "CLASS",        t::CLASS);
-  add_token(tokens, "DEF",          t::DEF);
-  add_token(tokens, "ELSE",         t::ELSE);
-  add_token(tokens, "ELIF",         t::ELIF);
-  add_token(tokens, "IF",           t::IF);
-  add_token(tokens, "OR",           t::OR);
-  add_token(tokens, "PASS",         t::PASS);
-  add_token(tokens, "IMPORT",       t::IMPORT);
-  add_token(tokens, "FROM",         t::FROM);
-  add_token(tokens, "AS",           t::AS);
-  add_token(tokens, "RAISE",        t::RAISE);
-  add_token(tokens, "NOTHING",      t::NOTHING);
-  add_token(tokens, "NAMEDTUPLE",   t::NAMEDTUPLE);
-  add_token(tokens, "TYPEVAR",      t::TYPEVAR);
+  add_token(tokens, "CLASS",           t::CLASS);
+  add_token(tokens, "DEF",             t::DEF);
+  add_token(tokens, "ELSE",            t::ELSE);
+  add_token(tokens, "ELIF",            t::ELIF);
+  add_token(tokens, "IF",              t::IF);
+  add_token(tokens, "OR",              t::OR);
+  add_token(tokens, "PASS",            t::PASS);
+  add_token(tokens, "IMPORT",          t::IMPORT);
+  add_token(tokens, "FROM",            t::FROM);
+  add_token(tokens, "AS",              t::AS);
+  add_token(tokens, "RAISE",           t::RAISE);
+  add_token(tokens, "NOTHING",         t::NOTHING);
+  add_token(tokens, "NAMEDTUPLE",      t::NAMEDTUPLE);
+  add_token(tokens, "COLL_NAMEDTUPLE", t::COLL_NAMEDTUPLE);
+  add_token(tokens, "TYPEVAR",         t::TYPEVAR);
 
   // Add dict to module.
   PyObject_SetAttrString(module, "TOKENS", tokens);

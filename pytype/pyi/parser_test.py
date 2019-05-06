@@ -677,6 +677,32 @@ class NamedTupleTest(_ParserTestBase):
           pass
     """)
 
+  def test_collections_namedtuple(self):
+    self.check("""
+      from collections import namedtuple
+      X = namedtuple("X", ["y"])
+    """, """\
+      from typing import Any, Tuple, Type, TypeVar
+
+      from collections import namedtuple
+      X = `namedtuple-X-0`
+
+      _Tnamedtuple-X-0 = TypeVar('_Tnamedtuple-X-0', bound=`namedtuple-X-0`)
+
+      class `namedtuple-X-0`(Tuple[Any]):
+          __slots__ = ["y"]
+          y: Any
+          _asdict: Any
+          __dict__: Any
+          _fields: Any
+          __getnewargs__: Any
+          __getstate__: Any
+          _make: Any
+          _replace: Any
+          def __new__(cls: Type[`_Tnamedtuple-X-0`], y) -> `_Tnamedtuple-X-0`: ...
+          def __init__(self, *args, **kwargs) -> None: ...
+    """)
+
 
 class FunctionTest(_ParserTestBase):
 

@@ -276,5 +276,10 @@ class LexerTest(unittest.TestCase):
     self.check(["NAMEDTUPLE"], "NamedTuple")
     self.check(["NAMEDTUPLE"], "typing.NamedTuple")
 
+  def test_collections_namedtuple(self):
+    self.check(["COLL_NAMEDTUPLE"], "namedtuple")
+    self.check(["COLL_NAMEDTUPLE"], "collections.namedtuple")
+
+
 if __name__ == "__main__":
   unittest.main()

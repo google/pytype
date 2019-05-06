@@ -91,6 +91,8 @@ u\"\" { return t::UNICODESTRING; }
 "nothing" { return t::NOTHING; }
 "NamedTuple" { return t::NAMEDTUPLE; }
 "typing.NamedTuple" { return t::NAMEDTUPLE; }
+"namedtuple" { return t::COLL_NAMEDTUPLE; }
+"collections.namedtuple" { return t::COLL_NAMEDTUPLE; }
 "TypeVar" { return t::TYPEVAR; }
 "typing.TypeVar" { return t::TYPEVAR; }
 

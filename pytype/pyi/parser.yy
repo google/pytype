@@ -70,7 +70,7 @@ int pytypelex(pytype::parser::semantic_type* lvalp, pytype::location* llocp,
 
 /* Reserved words. */
 %token CLASS DEF ELSE ELIF IF OR AND PASS IMPORT FROM AS RAISE
-%token NOTHING NAMEDTUPLE TYPEVAR
+%token NOTHING NAMEDTUPLE COLL_NAMEDTUPLE TYPEVAR
 /* Punctuation. */
 %token ARROW ELLIPSIS EQ NE LE GE
 /* Other. */
@@ -85,11 +85,12 @@ int pytypelex(pytype::parser::semantic_type* lvalp, pytype::location* llocp,
 %type <obj> classdef class_name parents parent_list parent maybe_class_funcs
 %type <obj> class_funcs funcdefs
 %type <obj> importdef import_items import_item from_list from_items from_item import_name
-%type <obj> funcdef decorators decorator params param_list param param_type
+%type <obj> funcdef funcname decorators decorator params param_list param param_type
 %type <obj> param_default param_star_name return maybe_body
 %type <obj> body body_stmt
 %type <obj> type type_parameters type_parameter
 %type <obj> named_tuple_fields named_tuple_field_list named_tuple_field
+%type <obj> coll_named_tuple_fields coll_named_tuple_field_list coll_named_tuple_field
 %type <obj> maybe_type_list type_list type_tuple_elements type_tuple_literal
 %type <obj> dotted_name
 %type <obj> getitem_key
@@ -420,14 +421,17 @@ from_items
 from_item
   : NAME
   | NAMEDTUPLE {
- $$ = PyString_FromString("NamedTuple");
- }
+      $$ = PyString_FromString("NamedTuple");
+    }
+  | COLL_NAMEDTUPLE {
+      $$ = PyString_FromString("namedtuple");
+    }
   | TYPEVAR {
- $$ = PyString_FromString("TypeVar");
- }
+      $$ = PyString_FromString("TypeVar");
+    }
   | '*' {
- $$ = PyString_FromString("*");
- }
+      $$ = PyString_FromString("*");
+    }
   | NAME AS NAME { $$ = Py_BuildValue("(NN)", $1, $3); }
   ;
 
@@ -459,7 +463,7 @@ typevar_kwarg
   ;
 
 funcdef
-  : decorators DEF NAME '(' params ')' return maybe_body {
+  : decorators DEF funcname '(' params ')' return maybe_body {
       $$ = ctx->Call(kNewFunction, "(NNNNN)", $1, $3, $5, $7, $8);
       // Decorators is nullable and messes up the location tracking by
       // using the previous symbol as the start location for this production,
@@ -473,6 +477,11 @@ funcdef
       @$.begin = @2.begin;
       CHECK($$, @$);
     }
+  ;
+
+funcname
+  : NAME { $$ = $1; }
+  | COLL_NAMEDTUPLE { $$ = PyString_FromString("namedtuple"); }
   ;
 
 decorators
@@ -590,6 +599,10 @@ type
       $$ = ctx->Call(kNewNamedTuple, "(NN)", $3, $5);
       CHECK($$, @$);
     }
+  | COLL_NAMEDTUPLE '(' NAME ',' coll_named_tuple_fields ')' {
+      $$ = ctx->Call(kNewNamedTuple, "(NN)", $3, $5);
+      CHECK($$, @$);
+    }
   | '(' type ')' { $$ = $2; }
   | type AND type { $$ = ctx->Call(kNewIntersectionType, "([NN])", $1, $3); }
   | type OR type { $$ = ctx->Call(kNewUnionType, "([NN])", $1, $3); }
@@ -615,6 +628,21 @@ maybe_comma
   : ','
   | /* EMPTY */
   ;
+
+coll_named_tuple_fields
+  : '[' coll_named_tuple_field_list maybe_comma ']' { $$ = $2; }
+  | '[' ']' { $$ = PyList_New(0); }
+  ;
+
+coll_named_tuple_field_list
+  : coll_named_tuple_field_list ',' coll_named_tuple_field {
+      $$ = AppendList($1, $3);
+    }
+  | coll_named_tuple_field { $$ = StartList($1); }
+  ;
+
+coll_named_tuple_field
+  : NAME { $$ = Py_BuildValue("(NN)", $1, ctx->Value(kAnything)); }
 
 maybe_type_list
   : type_list { $$ = $1; }
