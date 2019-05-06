@@ -1,6 +1,7 @@
 Version 2019.05.06
 * Update typeshed pin to commit 4e572ae from April 23.
 * Support collections.namedtuple in pyi files.
+* Support module aliases in pyi files.
 
 Version 2019.04.26
 * Improve typegraph performance.

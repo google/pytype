@@ -724,7 +724,7 @@ class _Parser(object):
             from_package != "typing" or
             self._ast_name == "protocols"):
           self._aliases[new_name] = pytd.Alias(new_name, t)
-          self._module_path_map[name] = qualified_name
+          self._module_path_map[new_name] = qualified_name
     else:
       # import a, b as c, ...
       for item in import_list:
