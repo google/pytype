@@ -24,13 +24,13 @@ class PickleTest(test_base.TargetIndependentTest):
   def _verifyDeps(self, module, immediate_deps, late_deps):
     if isinstance(module, bytes):
       data = cPickle.loads(module)
-      six.assertCountEqual(self, data.dependencies, immediate_deps)
-      six.assertCountEqual(self, data.late_dependencies, late_deps)
+      six.assertCountEqual(self, dict(data.dependencies), immediate_deps)
+      six.assertCountEqual(self, dict(data.late_dependencies), late_deps)
     else:
       c = visitors.CollectDependencies()
       module.Visit(c)
-      six.assertCountEqual(self, c.modules, immediate_deps)
-      six.assertCountEqual(self, c.late_modules, late_deps)
+      six.assertCountEqual(self, c.dependencies, immediate_deps)
+      six.assertCountEqual(self, c.late_dependencies, late_deps)
 
   def testType(self):
     pickled = self.Infer("""

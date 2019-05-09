@@ -67,7 +67,10 @@ class Module(object):
   Attributes:
     module_name: The module name, e.g. "numpy.fft.fftpack".
     filename: The filename of the pytd that describes the module. Needs to be
-      unique.
+      unique. Will be in one of the following formats:
+      - "pytd:{module_name}" for pytd files that ship with pytype.
+      - "pytd:{filename}" for pyi files that ship with typeshed.
+      - "{filename}" for other pyi files.
     ast: The parsed PyTD. Internal references will be resolved, but
       NamedType nodes referencing other modules might still be unresolved.
     pickle: The AST as a pickled string. As long as this field is not None, the
@@ -266,7 +269,7 @@ class Loader(object):
     """Goes over an ast and returns all references module names."""
     deps = visitors.CollectDependencies()
     ast.Visit(deps)
-    return deps.modules
+    return deps.dependencies
 
   def _resolve_module_alias(self, name, ast, ast_name=None):
     """Check if a given name is an alias and resolve it if so."""
@@ -286,11 +289,31 @@ class Loader(object):
       if dep_name != name:
         # We have an alias. Store it in the aliases map.
         self._aliases[dep_name] = name
-      if name not in self._modules or not self._modules[name].ast:
+      if name in self._modules and self._modules[name].ast:
+        other_ast = self._modules[name].ast
+      else:
         other_ast = self._import_name(name)
         if other_ast is None:
           error = "Can't find pyi for %r" % name
           raise BadDependencyError(error, ast_name or ast.name)
+      # If `name` is a package, try to load any base names not defined in
+      # __init__ as submodules.
+      if (not self._modules[name].filename or
+          os.path.basename(self._modules[name].filename) != "__init__.pyi"):
+        continue
+      try:
+        other_ast.Lookup("__getattr__")
+      except KeyError:
+        for base_name in dependencies[dep_name]:
+          if base_name == "*":
+            continue
+          full_name = "%s.%s" % (name, base_name)
+          try:
+            other_ast.Lookup(full_name)
+          except KeyError:
+            # Don't check the import result - _resolve_external_types will raise
+            # a better error.
+            self._import_name(full_name)
 
   def _resolve_external_types(self, ast):
     try:
@@ -414,10 +437,11 @@ class Loader(object):
 
   def _load_typeshed_builtin(self, subdir, module_name):
     """Load a pyi from typeshed."""
-    mod = typeshed.parse_type_definition(
+    loaded = typeshed.parse_type_definition(
         subdir, module_name, self.python_version)
-    if mod:
-      return self.load_file(filename=self.PREFIX + module_name,
+    if loaded:
+      filename, mod = loaded
+      return self.load_file(filename=self.PREFIX + filename,
                             module_name=module_name, ast=mod)
     return None
 
@@ -592,7 +616,7 @@ class PickledPyiLoader(Loader):
       if not m.pickle:
         continue
       loaded_ast = cPickle.loads(m.pickle)
-      deps = [d for d in loaded_ast.dependencies if d != loaded_ast.ast.name]
+      deps = [d for d, _ in loaded_ast.dependencies if d != loaded_ast.ast.name]
       loaded_ast = serialize_ast.EnsureAstName(loaded_ast, m.module_name)
       assert m.module_name in self._modules
       todo.extend(self._modules[dependency] for dependency in deps)
@@ -616,8 +640,8 @@ class PickledPyiLoader(Loader):
     loaded_ast = pytd_utils.LoadPickle(filename)
     # At this point ast.name and module_name could be different.
     # They are later synced in ProcessAst.
-    dependencies = [d for d in loaded_ast.dependencies
-                    if d != loaded_ast.ast.name]
+    dependencies = {d: names for d, names in loaded_ast.dependencies
+                    if d != loaded_ast.ast.name}
     loaded_ast = serialize_ast.EnsureAstName(loaded_ast, module_name, fix=True)
     self._modules[module_name] = Module(module_name, filename, loaded_ast.ast)
     self._load_ast_dependencies(dependencies, ast, module_name)
@@ -627,7 +651,7 @@ class PickledPyiLoader(Loader):
       del self._modules[module_name]
       raise BadDependencyError(utils.message(e), module_name)
     # Mark all the module's late dependencies as explicitly imported.
-    for d in loaded_ast.late_dependencies:
+    for d, _ in loaded_ast.late_dependencies:
       if d != loaded_ast.ast.name:
         self.add_module_prefixes(d)
 

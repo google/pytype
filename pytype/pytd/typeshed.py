@@ -224,7 +224,8 @@ def parse_type_definition(pyi_subdir, module, python_version):
     python_version: sys.version_info[:2]
 
   Returns:
-    The AST of the module; None if the module doesn't have a definition.
+    None if the module doesn't have a definition.
+    Else a tuple of the filename and the AST of the module.
   """
   assert python_version
   typeshed = _get_typeshed()
@@ -234,5 +235,5 @@ def parse_type_definition(pyi_subdir, module, python_version):
   except IOError:
     return None
 
-  return parser.parse_string(src, filename=filename, name=module,
-                             python_version=python_version)
+  return filename, parser.parse_string(src, filename=filename, name=module,
+                                       python_version=python_version)

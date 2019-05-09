@@ -6,6 +6,7 @@ from pytype import load_pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
+import six
 
 import unittest
 
@@ -162,8 +163,8 @@ class SerializeAstTest(unittest.TestCase):
       with open(pickled_ast_filename, "rb") as fi:
         serialized_ast = pickle.load(fi)
       self.assertTrue(serialized_ast.ast)
-      self.assertEqual(serialized_ast.dependencies,
-                       ["__builtin__", "foo.bar.module1", "module2"])
+      six.assertCountEqual(self, dict(serialized_ast.dependencies),
+                           ["__builtin__", "foo.bar.module1", "module2"])
 
   def testUnrestorableChild(self):
     # Assume .cls in a ClassType X in module1 was referencing something for

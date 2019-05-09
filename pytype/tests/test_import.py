@@ -1166,5 +1166,39 @@ class ImportTest(test_base.TargetIndependentTest):
       d.create_file("foo/baz.pyi", "X = str")
       self.Check("from foo import bar", pythonpath=[d.path])
 
+  def testSubpackage(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo/__init__.pyi", "from .bar import baz as baz")
+      d.create_file("foo/bar/baz.pyi", "v: str")
+      ty = self.Infer("""
+        import foo
+        v = foo.baz.v
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo: module
+        v: str
+      """)
+
+  def testAttrAndModule(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo/__init__.pyi", "class X: ...")
+      d.create_file("foo/bar.pyi", "v: str")
+      d.create_file("other.pyi", """
+        from foo import X as X
+        from foo import bar as bar
+      """)
+      ty = self.Infer("""
+        import other
+        X = other.X
+        v = other.bar.v
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Type
+        import foo
+        other: module
+        X: Type[foo.X]
+        v: str
+      """)
+
 
 test_base.main(globals(), __name__ == "__main__")

@@ -28,7 +28,8 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     self.assertIn(b"LogRecord", data)
 
   def test_parse_type_definition(self):
-    ast = typeshed.parse_type_definition("stdlib", "_random", (2, 7))
+    filename, ast = typeshed.parse_type_definition("stdlib", "_random", (2, 7))
+    self.assertEqual(os.path.basename(filename), "_random.pyi")
     self.assertIn("_random.Random", [cls.name for cls in ast.classes])
 
   def test_get_typeshed_missing(self):

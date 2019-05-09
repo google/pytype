@@ -476,7 +476,7 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     deps = visitors.CollectDependencies()
     self.Parse(src).Visit(deps)
-    self.assertSetEqual({"baz", "bar", "foo.bar"}, deps.modules)
+    six.assertCountEqual(self, {"baz", "bar", "foo.bar"}, deps.dependencies)
 
   def testCollectDependenciesOnFunctionType(self):
     other = self.Parse("""
@@ -485,7 +485,7 @@ class TestVisitors(parser_test_base.ParserTest):
     ast = pytd.FunctionType("foo.bar", other.Lookup("f"))
     deps = visitors.CollectDependencies()
     ast.Visit(deps)
-    self.assertSetEqual({"foo"}, deps.modules)
+    six.assertCountEqual(self, {"foo"}, deps.dependencies)
 
   def testExpand(self):
     src = textwrap.dedent("""
