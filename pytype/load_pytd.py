@@ -294,6 +294,13 @@ class Loader(object):
       else:
         other_ast = self._import_name(name)
         if other_ast is None:
+          if "." in name:
+            # If this prefix is a valid module, then we'll assume that we're
+            # importing a nested class.
+            maybe_module, _ = name.rsplit(".", 1)
+            other_ast = self._import_name(maybe_module)
+            if other_ast:
+              continue
           error = "Can't find pyi for %r" % name
           raise BadDependencyError(error, ast_name or ast.name)
       # If `name` is a package, try to load any base names not defined in

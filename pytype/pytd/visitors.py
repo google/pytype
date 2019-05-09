@@ -1061,6 +1061,15 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
     else:
       raise KeyError("Unknown module %s" % name)
 
+  def _LookupItemRecursive(self, module, module_name, name):
+    parts = name.split(".")
+    partial_name = module_name
+    item = module
+    for part in parts:
+      partial_name += "." + part
+      item = item.Lookup(partial_name)
+    return item
+
   def VisitNamedType(self, t):
     """Try to look up a NamedType.
 
@@ -1086,13 +1095,21 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
       return t
     if module_name in self._module_alias_map:
       module_name = self._module_alias_map[module_name]
-    module = self._LookupModuleName(module_name)
+    try:
+      module = self._LookupModuleName(module_name)
+    except KeyError:
+      if "." in module_name:
+        module_name, cls = module_name.rsplit(".", 1)
+        module = self._LookupModuleName(module_name)
+        name = cls + "." + name
+      else:
+        raise
     try:
       if name == "*":
         self._star_imports.add(module_name)
         item = t  # VisitTypeDeclUnit will remove this unneeded item.
       else:
-        item = module.Lookup(module_name + "." + name)
+        item = self._LookupItemRecursive(module, module_name, name)
     except KeyError:
       item = self._ResolveUsingGetattr(module_name, module)
       if item is None:

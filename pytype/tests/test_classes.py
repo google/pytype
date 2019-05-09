@@ -1,6 +1,7 @@
 """Tests for classes."""
 
 from pytype import file_utils
+from pytype.pytd import pytd
 from pytype.tests import test_base
 
 
@@ -1402,5 +1403,36 @@ class ClassesTest(test_base.TargetIndependentTest):
           x = ...  # type: int
           def fooTest(self) -> int: ...
     """)
+
+  def testPyiNestedClass(self):
+    # Test that pytype can look up a pyi nested class in a py file and reconsume
+    # the inferred pyi.
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class X:
+          class Y: ...
+      """)
+      ty = self.Infer("""
+        import foo
+        Y = foo.X.Y
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Type
+        import foo
+        foo: module
+        Y: Type[foo.X.Y]
+      """)
+      d.create_file("bar.pyi", pytd.Print(ty))
+      ty = self.Infer("""
+        import bar
+        Y = bar.Y
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Type
+        import foo
+        bar: module
+        Y: Type[foo.X.Y]
+      """)
+
 
 test_base.main(globals(), __name__ == "__main__")

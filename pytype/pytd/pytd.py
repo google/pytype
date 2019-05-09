@@ -147,6 +147,7 @@ class Class(node.Node('name: str',
     methods: Tuple of methods, classmethods, staticmethods
       (instances of pytd.Function).
     constants: Tuple of constant class attributes (instances of pytd.Constant).
+    classes: Tuple of nested classes.
     slots: A.k.a. __slots__, declaring which instance attributes are writable.
     template: Tuple of pytd.TemplateItem instances.
   """
@@ -172,7 +173,7 @@ class Class(node.Node('name: str',
       return self._name2item[name]
     except AttributeError:
       self._name2item = {}
-      for x in self.methods + self.constants:
+      for x in self.methods + self.constants + self.classes:
         self._name2item[x.name] = x
       return self._name2item[name]
 
