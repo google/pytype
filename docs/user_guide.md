@@ -239,7 +239,7 @@ that's only evaluated during type-checking. See Google's
 
 ## Pyi stub files
 
-In some cases it's not possible to add annotations to a module by editing its
+In some cases, it's not possible to add annotations to a module by editing its
 source: C extension modules, external python source files, etc . For those
 cases, [PEP 484][pep-484-stub-files] allows you to declare a module's types in a
 separate "stub" file with a `.pyi` extension. Pyi files follow a subset of the

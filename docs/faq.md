@@ -3,6 +3,7 @@
 
 <!--ts-->
    * [FAQ](#faq)
+      * [How is pytype different from other type checkers?](#how-is-pytype-different-from-other-type-checkers)
       * [Can I find out what pytype thinks the type of my expression is?](#can-i-find-out-what-pytype-thinks-the-type-of-my-expression-is)
       * [How do I reference a type from within its definition? (Forward References)](#how-do-i-reference-a-type-from-within-its-definition-forward-references)
       * [I'm dynamically populating a class / module using setattr or by modifying <code>locals()</code> / <code>globals()</code>. Now pytype complains about missing attributes or module members. How do I fix this?](#im-dynamically-populating-a-class--module-using-setattr-or-by-modifying-locals--globals-now-pytype-complains-about-missing-attributes-or-module-members-how-do-i-fix-this)
@@ -13,9 +14,18 @@
       * [How do I disable all pytype checks for a particular import?](#how-do-i-disable-all-pytype-checks-for-a-particular-import)
       * [How do I write code that is seen by pytype but ignored at runtime?](#how-do-i-write-code-that-is-seen-by-pytype-but-ignored-at-runtime)
 
-<!-- Added by: rechen, at: 2019-02-01T14:13-08:00 -->
+<!-- Added by: rechen, at: 2019-05-07T12:13-07:00 -->
 
 <!--te-->
+
+## How is pytype different from other type checkers?
+
+pytype has the ability to infer types for unannotated code. For more
+information, check out:
+
+* A [PyCon lightning talk][lightning-talk] comparing pytype and mypy,
+another popular type checker. The slides are [here][lightning-talk-slides].
+* A more detailed written discussion in a [Lobste.rs post][lobsters-comment].
 
 ## Can I find out what pytype thinks the type of my expression is?
 
@@ -122,6 +132,9 @@ inserting `Any` where you would have used it. See the
 <!-- General references -->
 [compatibility]: user_guide.md#compatibility
 [how-do-i-disable-all-pytype-checks-for-a-particular-file]: #how-do-i-disable-all-pytype-checks-for-a-particular-file
+[lightning-talk]: https://youtu.be/yFcCuinRVnU?t=2300
+[lightning-talk-slides]: https://docs.google.com/presentation/d/1GYqLeLkknjYaYX2JrMzxX8LGw_rlO-6kTk-VNPVG9gY/edit?usp=sharing
+[lobsters-comment]: https://lobste.rs/s/0uv5hy/how_quickly_find_type_issues_your_python#c_6ojqaj
 [why-is-pytype-taking-so-long]: #why-is-pytype-taking-so-long
 
 <!-- References with different internal and external versions -->
