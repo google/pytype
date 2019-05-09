@@ -1,3 +1,6 @@
+Version 2019.05.08
+* Fix a bug in pyi lookup of re-exported imports.
+
 Version 2019.05.06
 * Update typeshed pin to commit 4e572ae from April 23.
 * Support collections.namedtuple in pyi files.

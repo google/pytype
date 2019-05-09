@@ -1096,7 +1096,8 @@ class Indexer(object):
         else:
           sig = "module." + defn.name
         if path.startswith("pytd:"):
-          return self.kythe.builtin_vname(sig, path)
+          return self.kythe.builtin_vname(
+              sig, "pytd:" + self.resolved_modules[remote].module_name)
         else:
           return self.kythe.vname(sig, path)
       else:

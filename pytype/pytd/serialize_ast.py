@@ -149,8 +149,8 @@ def StoreAst(ast, filename=None):
   # Collect dependencies
   deps = visitors.CollectDependencies()
   ast.Visit(deps)
-  dependencies = deps.modules
-  late_dependencies = deps.late_modules
+  dependencies = deps.dependencies
+  late_dependencies = deps.late_dependencies
 
   # Clean external references
   ast.Visit(visitors.ClearClassPointers())
@@ -158,10 +158,10 @@ def StoreAst(ast, filename=None):
   ast.Visit(indexer)
   ast = ast.Visit(visitors.CanonicalOrderingVisitor())
   return pytd_utils.SavePickle(SerializableAst(
-      ast, list(sorted(dependencies)),
-      list(sorted(late_dependencies)),
-      list(sorted(indexer.class_type_nodes)),
-      list(sorted(indexer.function_type_nodes))), filename)
+      ast, sorted(dependencies.items()),
+      sorted(late_dependencies.items()),
+      sorted(indexer.class_type_nodes),
+      sorted(indexer.function_type_nodes)), filename)
 
 
 def EnsureAstName(ast, module_name, fix=False):

@@ -1843,15 +1843,18 @@ class CollectDependencies(Visitor):
 
   def __init__(self):
     super(CollectDependencies, self).__init__()
-    self.modules = set()
-    self.late_modules = set()
+    self.dependencies = {}
+    self.late_dependencies = {}
 
-  def _ProcessName(self, name, modules):
+  def _ProcessName(self, name, dependencies):
     """Retrieve a module name from a node name."""
-    module_name, dot, unused_name = name.rpartition(".")
+    module_name, dot, base_name = name.rpartition(".")
     if dot:
       if module_name:
-        modules.add(module_name)
+        if module_name in dependencies:
+          dependencies[module_name].add(base_name)
+        else:
+          dependencies[module_name] = {base_name}
       else:
         # If we have a relative import that did not get qualified (usually due
         # to an empty package_name), don't insert module_name='' into the
@@ -1860,16 +1863,16 @@ class CollectDependencies(Visitor):
         logging.warning("Empty package name: %s", name)
 
   def EnterClassType(self, node):
-    self._ProcessName(node.name, self.modules)
+    self._ProcessName(node.name, self.dependencies)
 
   def EnterNamedType(self, node):
-    self._ProcessName(node.name, self.modules)
+    self._ProcessName(node.name, self.dependencies)
 
   def EnterFunctionType(self, node):
-    self._ProcessName(node.name, self.modules)
+    self._ProcessName(node.name, self.dependencies)
 
   def EnterLateType(self, node):
-    self._ProcessName(node.name, self.late_modules)
+    self._ProcessName(node.name, self.late_dependencies)
 
 
 def ExpandSignature(sig):
