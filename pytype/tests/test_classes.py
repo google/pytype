@@ -1434,5 +1434,23 @@ class ClassesTest(test_base.TargetIndependentTest):
         Y: Type[foo.X.Y]
       """)
 
+  def testPyiNestedClassAlias(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class X:
+          class Y: ...
+          Z = Y
+      """)
+      ty = self.Infer("""
+        import foo
+        Z = foo.X.Z
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Type
+        import foo
+        foo: module
+        Z: Type[foo.X.Y]
+      """)
+
 
 test_base.main(globals(), __name__ == "__main__")

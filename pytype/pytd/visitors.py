@@ -554,13 +554,20 @@ class PrintVisitor(Visitor):
 
   def VisitNamedType(self, node):
     """Convert a type to a string."""
-    module, _, suffix = node.name.rpartition(".")
-    if self._IsBuiltin(module) and not self._NameCollision(suffix):
+    prefix, _, suffix = node.name.rpartition(".")
+    if self._IsBuiltin(prefix) and not self._NameCollision(suffix):
       node_name = suffix
-    elif module == "typing":
+    elif prefix == "typing":
       node_name = self._FromTyping(suffix)
-    elif module:
-      self._RequireImport(module)
+    elif prefix:
+      if self.class_names and "." in self.class_names[-1]:
+        # We've already fully qualified the class names.
+        class_prefix = self.class_names[-1]
+      else:
+        class_prefix = ".".join(self.class_names)
+      if prefix != class_prefix:
+        # If the prefix doesn't match the class scope, then it's an import.
+        self._RequireImport(prefix)
       node_name = node.name
     else:
       node_name = node.name
@@ -1787,6 +1794,9 @@ class AddNamePrefix(Visitor):
     self.prefix = None
     self.name = None
 
+  def _ClassStackString(self):
+    return ".".join(cls.name for cls in self.cls_stack)
+
   def EnterTypeDeclUnit(self, node):
     self.classes = {cls.name for cls in node.classes}
     self.name = node.name
@@ -1810,6 +1820,15 @@ class AddNamePrefix(Visitor):
       # This is an external type; do not prefix it. StripExternalNamePrefix will
       # remove it later.
       return node
+    elif "." in node.name and self.cls_stack:
+      prefix, base = node.name.rsplit(".", 1)
+      if prefix == self.cls_stack[-1].name:
+        # The parser leaves references to nested classes as
+        # ImmediateOuter.Nested, so we need to insert the full class stack.
+        name = self.prefix + self._ClassStackString() + "." + base
+        return node.Replace(name=name)
+      else:
+        return node
     elif node.name.split(".")[0] in self.classes:
       # We need to check just the first part, in case we have a class constant
       # like Foo.BAR, or some similarly nested name.
@@ -1818,7 +1837,7 @@ class AddNamePrefix(Visitor):
       return node
 
   def VisitClass(self, node):
-    name = self.prefix + ".".join(x.name for x in self.cls_stack)
+    name = self.prefix + self._ClassStackString()
     return node.Replace(name=name)
 
   def VisitTypeParameter(self, node):

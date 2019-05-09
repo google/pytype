@@ -1092,7 +1092,8 @@ class _Parser(object):
       return
 
     if aliases:
-      vals_dict = {val.name: val for val in constants + aliases + methods}
+      vals_dict = {val.name: val
+                   for val in constants + aliases + methods + classes}
       for val in aliases:
         name = val.name
         while isinstance(val, pytd.Alias):
@@ -1105,7 +1106,12 @@ class _Parser(object):
         if isinstance(val, _NameAndSig):
           methods.append(val._replace(name=name))
         else:
-          constants.append(pytd.Constant(name, val.type))
+          if isinstance(val, pytd.Class):
+            t = pytd.GenericType(pytd.NamedType("typing.Type"),
+                                 (pytd.NamedType(class_name + "." + val.name),))
+          else:
+            t = val.type
+          constants.append(pytd.Constant(name, t))
 
     # TODO(dbaum): Is NothingType even legal here?  The grammar accepts it but
     # perhaps it should be a ParseError.
