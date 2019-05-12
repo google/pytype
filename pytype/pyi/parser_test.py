@@ -242,7 +242,7 @@ class ParserTest(_ParserTestBase):
     self.check("""\
       class A:
           class B: ...
-          C = B
+          C = A.B
     """, """\
       from typing import Type
 
@@ -250,6 +250,21 @@ class ParserTest(_ParserTestBase):
           class B:
               pass
           C: Type[A.B]
+    """)
+
+  def test_nested_class_module_alias(self):
+    self.check("""\
+      class A:
+          class B: ...
+      C = A.B
+    """, """\
+      from typing import Type
+
+      C: Type[A.B]
+
+      class A:
+          class B:
+              pass
     """)
 
   def test_import(self):

@@ -1439,7 +1439,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         class X:
           class Y: ...
-          Z = Y
+          Z = X.Y
       """)
       ty = self.Infer("""
         import foo
@@ -1450,6 +1450,24 @@ class ClassesTest(test_base.TargetIndependentTest):
         import foo
         foo: module
         Z: Type[foo.X.Y]
+      """)
+
+  def testPyiDeeplyNestedClass(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class X:
+          class Y:
+            class Z: ...
+      """)
+      ty = self.Infer("""
+        import foo
+        Z = foo.X.Y.Z
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Type
+        import foo
+        foo: module
+        Z: Type[foo.X.Y.Z]
       """)
 
 

@@ -974,8 +974,7 @@ class _Parser(object):
     """
     type_param = pytd.TypeParameter("_T" + name, bound=pytd.NamedType(name))
     self._type_params.append(type_param)
-    cls_arg = (
-        "cls", pytd.GenericType(pytd.NamedType("type"), (type_param,)), None)
+    cls_arg = ("cls", _make_type_type(type_param), None)
     args = [cls_arg] + [(n, t, None) for n, t in fields]
     return self.new_function((), "__new__", args, type_param, ())
 
@@ -1097,18 +1096,19 @@ class _Parser(object):
       for val in aliases:
         name = val.name
         while isinstance(val, pytd.Alias):
-          if (not isinstance(val.type, pytd.NamedType) or
-              val.type.name not in vals_dict):
-            raise ParseError(
-                "Illegal value for alias %r. Value must be an attribute "
-                "or method on the same class." % val.name)
-          val = vals_dict[val.type.name]
+          if isinstance(val.type, pytd.NamedType):
+            _, _, base_name = val.type.name.rpartition(".")
+            if base_name in vals_dict:
+              val = vals_dict[base_name]
+              continue
+          raise ParseError(
+              "Illegal value for alias %r. Value must be an attribute "
+              "on the same class." % val.name)
         if isinstance(val, _NameAndSig):
           methods.append(val._replace(name=name))
         else:
           if isinstance(val, pytd.Class):
-            t = pytd.GenericType(pytd.NamedType("typing.Type"),
-                                 (pytd.NamedType(class_name + "." + val.name),))
+            t = _make_type_type(pytd.NamedType(class_name + "." + val.name))
           else:
             t = val.type
           constants.append(pytd.Constant(name, t))
@@ -1537,19 +1537,35 @@ def _maybe_resolve_alias(alias, name_to_class):
     The resolved value, if the alias was resolved.
     The alias, if it was not resolved.
   """
-  if isinstance(alias.type, pytd.NamedType):
-    if alias.type.name in _TYPING_SETS:
-      # Filter out aliases to `typing` members that don't appear in typing.pytd
-      # to avoid lookup errors.
-      return None
-    prefix, dot, remainder = alias.type.name.partition(".")
-    if dot and prefix in name_to_class:
-      try:
-        value = name_to_class[prefix].Lookup(remainder)
-      except KeyError:
-        # There's no need to report an error here, as load_pytd will
-        # complain if it can't resolve `prefix`.
-        pass
-      else:
-        return value.Replace(name=alias.name)
-  return alias
+  if not isinstance(alias.type, pytd.NamedType):
+    return alias
+  if alias.type.name in _TYPING_SETS:
+    # Filter out aliases to `typing` members that don't appear in typing.pytd
+    # to avoid lookup errors.
+    return None
+  if "." not in alias.type.name:
+    # We'll handle nested classes specially, since they need to be represented
+    # as constants to distinguish them from imports.
+    return alias
+  parts = alias.type.name.split(".")
+  if parts[0] not in name_to_class:
+    return alias
+  value = name_to_class[parts[0]]
+  for part in parts[1:]:
+    # We can immediately return upon encountering an error, as load_pytd will
+    # complain when it can't resolve the alias.
+    if not isinstance(value, pytd.Class):
+      return alias
+    try:
+      value = value.Lookup(part)
+    except KeyError:
+      return alias
+  if isinstance(value, pytd.Class):
+    return pytd.Constant(
+        alias.name, _make_type_type(pytd.NamedType(alias.type.name)))
+  else:
+    return value.Replace(name=alias.name)
+
+
+def _make_type_type(value):
+  return pytd.GenericType(pytd.NamedType("type"), (value,))

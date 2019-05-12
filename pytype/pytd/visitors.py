@@ -229,6 +229,7 @@ class PrintVisitor(Visitor):
     self.imports = collections.defaultdict(set)
     self.in_alias = False
     self.in_parameter = False
+    self._unit_name = None
     self._local_names = set()
     self._class_members = set()
     self._typing_import_counts = collections.defaultdict(int)
@@ -337,11 +338,13 @@ class PrintVisitor(Visitor):
       return name
 
   def EnterTypeDeclUnit(self, unit):
+    self._unit_name = unit.name
     definitions = (unit.classes + unit.functions + unit.constants +
                    unit.type_params + unit.aliases)
     self._local_names = {c.name for c in definitions}
 
   def LeaveTypeDeclUnit(self, _):
+    self._unit_name = None
     self._local_names = set()
 
   def VisitTypeDeclUnit(self, node):
@@ -559,7 +562,9 @@ class PrintVisitor(Visitor):
       node_name = suffix
     elif prefix == "typing":
       node_name = self._FromTyping(suffix)
-    elif prefix:
+    elif (prefix and
+          prefix != self._unit_name and
+          prefix not in self._local_names):
       if self.class_names and "." in self.class_names[-1]:
         # We've already fully qualified the class names.
         class_prefix = self.class_names[-1]
@@ -1061,10 +1066,13 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
     assert self._alias_name
     self._alias_name = None
 
-  def _LookupModuleName(self, name):
-    if name in self._module_map:
-      # If we have loaded this, return the ast
-      return self._module_map[name]
+  def _LookupModuleRecursive(self, name):
+    module_name, cls_prefix = name, ""
+    while module_name not in self._module_map and "." in module_name:
+      module_name, class_name = module_name.rsplit(".", 1)
+      cls_prefix = class_name + "." + cls_prefix
+    if module_name in self._module_map:
+      return self._module_map[module_name], module_name, cls_prefix
     else:
       raise KeyError("Unknown module %s" % name)
 
@@ -1102,15 +1110,8 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
       return t
     if module_name in self._module_alias_map:
       module_name = self._module_alias_map[module_name]
-    try:
-      module = self._LookupModuleName(module_name)
-    except KeyError:
-      if "." in module_name:
-        module_name, cls = module_name.rsplit(".", 1)
-        module = self._LookupModuleName(module_name)
-        name = cls + "." + name
-      else:
-        raise
+    module, module_name, cls_prefix = self._LookupModuleRecursive(module_name)
+    name = cls_prefix + name
     try:
       if name == "*":
         self._star_imports.add(module_name)
@@ -1820,21 +1821,22 @@ class AddNamePrefix(Visitor):
       # This is an external type; do not prefix it. StripExternalNamePrefix will
       # remove it later.
       return node
-    elif "." in node.name and self.cls_stack:
-      prefix, base = node.name.rsplit(".", 1)
-      if prefix == self.cls_stack[-1].name:
-        # The parser leaves references to nested classes as
-        # ImmediateOuter.Nested, so we need to insert the full class stack.
-        name = self.prefix + self._ClassStackString() + "." + base
-        return node.Replace(name=name)
-      else:
-        return node
-    elif node.name.split(".")[0] in self.classes:
+    if self.cls_stack:
+      if node.name == self.cls_stack[-1].name:
+        # We're referencing a class from within itself.
+        return node.Replace(name=self.prefix + self._ClassStackString())
+      elif "." in node.name:
+        prefix, base = node.name.rsplit(".", 1)
+        if prefix == self.cls_stack[-1].name:
+          # The parser leaves aliases to nested classes as
+          # ImmediateOuter.Nested, so we need to insert the full class stack.
+          name = self.prefix + self._ClassStackString() + "." + base
+          return node.Replace(name=name)
+    if node.name.split(".")[0] in self.classes:
       # We need to check just the first part, in case we have a class constant
       # like Foo.BAR, or some similarly nested name.
       return node.Replace(name=self.prefix + node.name)
-    else:
-      return node
+    return node
 
   def VisitClass(self, node):
     name = self.prefix + self._ClassStackString()
