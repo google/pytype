@@ -238,6 +238,35 @@ class ParserTest(_ParserTestBase):
               pass
     """)
 
+  def test_nested_class_alias(self):
+    self.check("""\
+      class A:
+          class B: ...
+          C = A.B
+    """, """\
+      from typing import Type
+
+      class A:
+          class B:
+              pass
+          C: Type[A.B]
+    """)
+
+  def test_nested_class_module_alias(self):
+    self.check("""\
+      class A:
+          class B: ...
+      C = A.B
+    """, """\
+      from typing import Type
+
+      C: Type[A.B]
+
+      class A:
+          class B:
+              pass
+    """)
+
   def test_import(self):
     self.check("import foo.bar.baz", "")
     self.check("import a as b")

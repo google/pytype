@@ -1,3 +1,6 @@
+Version (upcoming)
+* Support nested classes in pyi files.
+
 Version 2019.05.08
 * Fix a bug in pyi lookup of re-exported imports.
 

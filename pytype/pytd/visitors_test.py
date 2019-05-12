@@ -746,6 +746,69 @@ class TestVisitors(parser_test_base.ParserTest):
     tree = tree.Visit(visitors.AddNamePrefix())
     self.assertEqual("foo.Y", tree.Lookup("foo.x").type.name)
 
+  def testAddNamePrefixOnNestedClassAlias(self):
+    src = textwrap.dedent("""
+      class A:
+        class B:
+          class C: ...
+          D = A.B.C
+    """)
+    expected = textwrap.dedent("""\
+      from typing import Type
+
+      class foo.A:
+          class foo.A.B:
+              class foo.A.B.C:
+                  pass
+              D: Type[foo.A.B.C]
+    """)
+    self.assertMultiLineEqual(expected, pytd.Print(
+        self.Parse(src).Replace(name="foo").Visit(visitors.AddNamePrefix())))
+
+  def testAddNamePrefixOnNestedClassOutsideRef(self):
+    src = textwrap.dedent("""
+      class A:
+        class B: ...
+      b: A.B
+      C = A.B
+      def f(x: A.B) -> A.B: ...
+      class D:
+        b: A.B
+        def f(self, x: A.B) -> A.B: ...
+    """)
+    expected = textwrap.dedent("""\
+      from typing import Type
+
+      foo.b: foo.A.B
+      foo.C: Type[foo.A.B]
+
+      class foo.A:
+          class foo.A.B:
+              pass
+
+      class foo.D:
+          b: foo.A.B
+          def f(self, x: foo.A.B) -> foo.A.B: ...
+
+
+      def foo.f(x: foo.A.B) -> foo.A.B: ...""")
+    self.assertMultiLineEqual(expected, pytd.Print(
+        self.Parse(src).Replace(name="foo").Visit(visitors.AddNamePrefix())))
+
+  def testAddNamePrefixOnNestedClassMethod(self):
+    src = textwrap.dedent("""
+      class A:
+        class B:
+          def copy(self) -> A.B: ...
+    """)
+    expected = textwrap.dedent("""\
+      class foo.A:
+          class foo.A.B:
+              def copy(self) -> foo.A.B: ...
+    """)
+    self.assertMultiLineEqual(expected, pytd.Print(
+        self.Parse(src).Replace(name="foo").Visit(visitors.AddNamePrefix())))
+
   def testPrintMergeTypes(self):
     src = textwrap.dedent("""
       from typing import Union

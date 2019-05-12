@@ -2176,6 +2176,8 @@ class PyTDClass(SimpleAbstractValue, mixin.Class):
     mm = {}
     for val in pytd_cls.constants + pytd_cls.methods:
       mm[val.name] = val
+    for val in pytd_cls.classes:
+      mm[val.name.rsplit(".", 1)[-1]] = val
     self._member_map = mm
     if pytd_cls.metaclass is None:
       metaclass = None
@@ -2222,6 +2224,8 @@ class PyTDClass(SimpleAbstractValue, mixin.Class):
       c = self.vm.convert.constant_to_value(pyval, subst=subst, node=node)
       c.parent = self
       return c.to_variable(self.vm.root_cfg_node)
+    elif isinstance(pyval, pytd.Class):
+      return self.vm.convert.constant_to_var(pyval, subst=subst, node=node)
     else:
       raise AssertionError("Invalid class member %s" % pytd.Print(pyval))
 
