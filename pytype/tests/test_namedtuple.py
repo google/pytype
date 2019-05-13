@@ -28,12 +28,12 @@ class NamedtupleTests(test_base.TargetIndependentTest):
     Returns:
       The expected pyi for the namedtuple instance.
     """
-    (alias, (name, fields)), = kws.items()
+    (alias, (name, fields)), = kws.items()  # pylint: disable=unbalanced-tuple-unpacking
     name = collections_overlay.namedtuple_name(name, fields)
     suffix += textwrap.dedent("""
       collections = ...  # type: module
       {alias} = {name}""").format(alias=alias, name=name)
-    return pytd.Print(self._namedtuple_ast(name, fields)) + suffix
+    return pytd.Print(self._namedtuple_ast(name, fields)) + "\n" + suffix
 
   def test_basic_namedtuple(self):
     ty = self.Infer("""
@@ -219,7 +219,7 @@ class NamedtupleTests(test_base.TargetIndependentTest):
     ast_x = self._namedtuple_ast(name_x, [])
     ast_z = self._namedtuple_ast(name_z, ["a"])
     ast = pytd_utils.Concat(ast_x, ast_z)
-    expected = pytd.Print(ast) + textwrap.dedent("""\
+    expected = pytd.Print(ast) + textwrap.dedent("""
       collections = ...  # type: module
       X = {name_x}
       Y = {name_x}
@@ -235,7 +235,7 @@ class NamedtupleTests(test_base.TargetIndependentTest):
     """)
     name = collections_overlay.namedtuple_name("X", [])
     ast = self._namedtuple_ast(name, [])
-    expected = pytd.Print(ast) + textwrap.dedent("""\
+    expected = pytd.Print(ast) + textwrap.dedent("""
       collections = ...  # type: module
       _TX = TypeVar("_TX", bound=X)
       class X({name}):
