@@ -104,6 +104,7 @@ py_library(
     convert_structural.py
     directors.py
     errors.py
+    functools_overlay.py
     future_overlay.py
     imports_map_loader.py
     io.py

@@ -865,5 +865,58 @@ class TestFunctions(test_base.TargetIndependentTest):
         foo(an_arg, *args, **kwargs)
     """)
 
+  def test_functools_partial(self):
+    ty = self.Infer("""
+      import functools
+      def f(a, b):
+        pass
+      partial_f = functools.partial(f, 0)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Callable
+      functools: module
+      def f(a, b) -> None: ...
+      partial_f: Callable[[Any], Any]
+    """)
+
+  def test_functools_partial_kw(self):
+    self.Check("""
+      import functools
+      def f(a, b=None):
+        pass
+      partial_f = functools.partial(f, 0)
+      partial_f(0)
+    """)
+
+  def test_functools_partial_class(self):
+    self.Check("""
+      import functools
+      class X(object):
+        def __init__(self, a, b):
+          pass
+      PartialX = functools.partial(X, 0)
+      PartialX(0)
+    """)
+
+  def test_functools_partial_class_kw(self):
+    self.Check("""
+      import functools
+      class X(object):
+        def __init__(self, a, b=None):
+          pass
+      PartialX = functools.partial(X, 0)
+      PartialX(0)
+    """)
+
+  def test_functools_partial_bad_call(self):
+    errors = self.CheckWithErrors("""\
+      import functools
+      functools.partial()
+      functools.partial(42)
+    """)
+    self.assertErrorLogIs(errors, [
+        (2, "missing-parameter"),
+        (3, "wrong-arg-types", r"Callable.*int")])
+
 
 test_base.main(globals(), __name__ == "__main__")
