@@ -259,7 +259,8 @@ class Class(object):
 
   @property
   def is_test_class(self):
-    return any(base.full_name == "unittest.TestCase" for base in self.mro)
+    return any(base.full_name in ("unittest.TestCase", "unittest.case.TestCase")
+               for base in self.mro)
 
   @property
   def is_protocol(self):
