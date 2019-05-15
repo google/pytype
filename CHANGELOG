@@ -1,4 +1,5 @@
-Version (upcoming)
+Version 2019.05.15
+* Update typeshed pin to commit 50d98ac from May 13.
 * Support nested classes in pyi files.
 
 Version 2019.05.08

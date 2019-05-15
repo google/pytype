@@ -360,6 +360,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         return self._instantiate_and_match(left, other_type, subst, node, view)
       elif (other_type.full_name == "typing.Callable" and
             isinstance(other_type, abstract.ParameterizedClass)):
+        # TODO(rechen): Check left's constructor against the callable's params.
         other_type = other_type.get_formal_type_parameter(abstract_utils.RET)
         return self._instantiate_and_match(left, other_type, subst, node, view)
       elif other_type.full_name in [
