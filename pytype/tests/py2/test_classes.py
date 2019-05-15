@@ -23,5 +23,42 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
       x = ...  # type: Any
     """)
 
+  def testInitTestClassInSetup(self):
+    ty = self.Infer("""\
+      import unittest
+      class A(unittest.TestCase):
+        def setUp(self):
+          self.x = 10
+        def fooTest(self):
+          return self.x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import unittest
+      unittest = ...  # type: module
+      class A(unittest.TestCase):
+          x = ...  # type: int
+          def fooTest(self) -> int: ...
+    """)
+
+  def testInitInheritedTestClassInSetup(self):
+    ty = self.Infer("""\
+      import unittest
+      class A(unittest.TestCase):
+        def setUp(self):
+          self.x = 10
+      class B(A):
+        def fooTest(self):
+          return self.x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import unittest
+      unittest = ...  # type: module
+      class A(unittest.TestCase):
+          x = ...  # type: int
+      class B(A):
+          x = ...  # type: int
+          def fooTest(self) -> int: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
