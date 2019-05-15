@@ -94,13 +94,9 @@ def generate_pyi(input_filename, errorlog, options, loader):
   log.info("\n%s", result)
   log.info("========================================")
 
-  if not result.endswith("\n"):
-    result += "\n"
-  result_prefix = ""
+  result += "\n"
   if options.quick:
-    result_prefix += "# (generated with --quick)\n"
-  if result_prefix:
-    result = result_prefix + "\n" + result
+    result = "# (generated with --quick)\n\n" + result
   return result, mod
 
 

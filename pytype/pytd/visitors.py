@@ -355,7 +355,9 @@ class PrintVisitor(Visitor):
                 self._FormatTypeParams(self.old_node.type_params), node.classes,
                 node.functions]
 
-    sections_as_string = ("\n".join(section_suite)
+    # We put one blank line after every class,so we need to strip the blank line
+    # after the last class.
+    sections_as_string = ("\n".join(section_suite).rstrip()
                           for section_suite in sections
                           if section_suite)
     return "\n\n".join(sections_as_string)
@@ -422,9 +424,10 @@ class PrintVisitor(Visitor):
       method_lines = sum((m.splitlines() for m in node.methods), [])
       methods = [self.INDENT + m for m in method_lines]
     else:
+      header[-1] += " ..."
       constants = []
       classes = []
-      methods = [self.INDENT + "pass"]
+      methods = []
     return "\n".join(header + slots + classes + constants + methods) + "\n"
 
   def VisitFunction(self, node):

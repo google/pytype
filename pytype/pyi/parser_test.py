@@ -55,7 +55,8 @@ class _ParserTestBase(unittest.TestCase):
       expected = src if expected is None else textwrap.dedent(expected)
       if prologue:
         expected = "%s\n\n%s" % (textwrap.dedent(prologue), expected)
-      self.assertMultiLineEqual(expected, actual)
+      # Allow blank lines at the end of `expected` for prettier tests.
+      self.assertMultiLineEqual(expected.rstrip(), actual)
     return ast
 
   def check_error(self, src, expected_line, message):
@@ -204,8 +205,7 @@ class ParserTest(_ParserTestBase):
       class A:
           __slots__ = ...  # type: tuple
     """, """\
-      class A:
-          pass
+      class A: ...
     """)
     self.check("""\
       class A:
@@ -232,10 +232,6 @@ class ParserTest(_ParserTestBase):
     self.check("""\
       class A:
           class B: ...
-    """, """\
-      class A:
-          class B:
-              pass
     """)
 
   def test_nested_class_alias(self):
@@ -247,8 +243,7 @@ class ParserTest(_ParserTestBase):
       from typing import Type
 
       class A:
-          class B:
-              pass
+          class B: ...
           C: Type[A.B]
     """)
 
@@ -263,8 +258,7 @@ class ParserTest(_ParserTestBase):
       C: Type[A.B]
 
       class A:
-          class B:
-              pass
+          class B: ...
     """)
 
   def test_import(self):
@@ -702,8 +696,7 @@ class NamedTupleTest(_ParserTestBase):
           def __new__(cls: Type[`_Tnamedtuple-X-0`]) -> `_Tnamedtuple-X-0`: ...
           def __init__(self, *args, **kwargs) -> None: ...
 
-      class X(`namedtuple-X-0`):
-          pass
+      class X(`namedtuple-X-0`): ...
     """)
 
   def test_collections_namedtuple(self):
@@ -987,8 +980,7 @@ class ClassTest(_ParserTestBase):
 
   def test_no_parents(self):
     canonical = """\
-      class Foo:
-          pass
+      class Foo: ...
       """
 
     self.check(canonical, canonical)
@@ -999,28 +991,22 @@ class ClassTest(_ParserTestBase):
 
   def test_parents(self):
     self.check("""\
-      class Foo(Bar):
-          pass
+      class Foo(Bar): ...
     """)
     self.check("""\
-      class Foo(Bar, Baz):
-          pass
+      class Foo(Bar, Baz): ...
       """)
 
   def test_parent_remove_nothingtype(self):
     self.check("""\
-      class Foo(nothing):
-          pass
+      class Foo(nothing): ...
       """, """\
-      class Foo:
-          pass
+      class Foo: ...
       """)
     self.check("""\
-      class Foo(Bar, nothing):
-          pass
+      class Foo(Bar, nothing): ...
       """, """\
-      class Foo(Bar):
-          pass
+      class Foo(Bar): ...
       """)
 
   def test_class_type_ignore(self):
@@ -1031,29 +1017,23 @@ class ClassTest(_ParserTestBase):
           pass
       """
     self.check(canonical, """\
-      class Foo:
-          pass
+      class Foo: ...
 
-      class Bar(Foo):
-          pass
+      class Bar(Foo): ...
     """)
 
   def test_metaclass(self):
     self.check("""\
-      class Foo(metaclass=Meta):
-          pass
+      class Foo(metaclass=Meta): ...
       """)
     self.check("""\
-      class Foo(Bar, metaclass=Meta):
-          pass
+      class Foo(Bar, metaclass=Meta): ...
       """)
     self.check_error("""\
-      class Foo(badkeyword=Meta):
-          pass
+      class Foo(badkeyword=Meta): ...
       """, 1, "Only 'metaclass' allowed as classdef kwarg")
     self.check_error("""\
-      class Foo(metaclass=Meta, Bar):
-          pass
+      class Foo(metaclass=Meta, Bar): ...
       """, 1, "metaclass must be last argument")
 
   def test_shadow_pep484(self):
@@ -1064,8 +1044,7 @@ class ClassTest(_ParserTestBase):
 
   def test_no_body(self):
     canonical = """\
-      class Foo:
-          pass
+      class Foo: ...
       """
     # There are numerous ways to indicate an empty body.
     self.check(canonical, canonical)
@@ -1073,11 +1052,8 @@ class ClassTest(_ParserTestBase):
       class Foo(): pass
       """, canonical)
     self.check("""\
-      class Foo(): ...
-      """, canonical)
-    self.check("""\
       class Foo():
-          ...
+          pass
       """, canonical)
     self.check("""\
       class Foo():
@@ -1148,8 +1124,7 @@ class ClassTest(_ParserTestBase):
     self.check("""\
       from typing import Protocol
 
-      class Foo(Protocol):
-          pass
+      class Foo(Protocol): ...
     """)
 
   def test_parameterized_protocol_parent(self):
@@ -1158,15 +1133,13 @@ class ClassTest(_ParserTestBase):
 
       T = TypeVar('T')
 
-      class Foo(Protocol[T]):
-          pass
+      class Foo(Protocol[T]): ...
     """, """\
       from typing import Generic, Protocol, TypeVar
 
       T = TypeVar('T')
 
-      class Foo(Protocol, Generic[T]):
-          pass
+      class Foo(Protocol, Generic[T]): ...
     """)
 
   def test_bad_typevar_in_mutation(self):
@@ -1314,12 +1287,11 @@ class IfTest(_ParserTestBase):
   def test_conditional_class(self):
     self.check("""\
       if sys.version_info == (2, 7, 6):
-        class Processed: pass
+        class Processed: ...
       else:
-        class Ignored: pass
+        class Ignored: ...
       """, """\
-      class Processed:
-          pass
+      class Processed: ...
       """)
 
   def test_conditional_class_registration(self):
@@ -1334,9 +1306,9 @@ class IfTest(_ParserTestBase):
     self.check("""\
       from typing import List
       if sys.version_info == (2, 7, 6):
-        class Dict: pass
+        class Dict: ...
       else:
-        class List: pass
+        class List: ...
 
       x = ...  # type: Dict
       y = ...  # type: List
@@ -1344,8 +1316,7 @@ class IfTest(_ParserTestBase):
       x: Dict
       y: list
 
-      class Dict:
-          pass
+      class Dict: ...
       """)
 
   def test_conditional_typevar(self):
@@ -1429,8 +1400,7 @@ class ClassIfTest(_ParserTestBase):
         if sys.version_info <= (2, 7, 0):
           class Bar: ...
     """, """\
-      class Foo:
-          pass
+      class Foo: ...
     """)
 
   def test_no_typevar(self):

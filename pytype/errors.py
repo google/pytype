@@ -167,10 +167,30 @@ class CheckPoint(object):
 
 
 class Error(object):
-  """Representation of an error in the error log."""
+  """Representation of an error in the error log.
+
+  Attributes:
+    bad_call: Optionally, a `pytype.function.BadCall` of details of a bad
+              function call.
+    details: Optionally, a string of message details.
+    filename: The file in which the error occurred.
+    lineno: The line number at which the error occurred.
+    message: The error message string.
+    methodname: The method in which the error occurred.
+    severity: The error level (error or warning), an integer.
+    keyword: Optionally, the culprit keyword in the line where error is.
+             e.g.,
+             message = "No attribute '_submatch' on BasePattern"
+             keyword = _submatch
+    keyword_context: Optionally, a string naming the object on which `keyword`
+                     occurs. e.g. the fully qualified module name that a
+                     non-existent function doesn't exist on.
+    traceback: Optionally, an error traceback.
+  """
 
   def __init__(self, severity, message, filename=None, lineno=0,
-               methodname=None, details=None, traceback=None, keyword=None):
+               methodname=None, details=None, traceback=None, keyword=None,
+               keyword_context=None, bad_call=None):
     name = _CURRENT_ERROR_NAME.get()
     assert name, ("Errors must be created from a caller annotated "
                   "with @error_name.")
@@ -186,21 +206,19 @@ class Error(object):
     self._lineno = lineno or 0
     self._methodname = methodname
     self._traceback = traceback
+    self._keyword_context = keyword_context
     self._keyword = keyword
+    self._bad_call = bad_call
 
   @classmethod
-  def with_stack(cls, stack, severity, message, details=None, keyword=None):
+  def with_stack(cls, stack, severity, message, **kwargs):
     """Return an error using a stack for position information.
 
     Args:
       stack: A list of state.Frame or state.SimpleFrame objects.
       severity: The error level (error or warning), an integer.
       message: The error message string.
-      details: Optionally, a string of message details.
-      keyword: Optionally, the culprit keyword in the line where error is.
-               Eg
-               message = "No attribute '_submatch' on BasePattern"
-               keyword = _submatch
+      **kwargs: Additional keyword args to pass onto the class ctor.
 
     Returns:
       An Error object.
@@ -208,12 +226,11 @@ class Error(object):
     stack = _dedup_opcodes(stack) if stack else None
     opcode = stack[-1].current_opcode if stack else None
     if opcode is None:
-      return cls(severity, message, details=details, keyword=keyword)
+      return cls(severity, message, **kwargs)
     else:
       return cls(severity, message, filename=opcode.code.co_filename,
                  lineno=opcode.line, methodname=opcode.code.co_name,
-                 details=details, traceback=_make_traceback_str(stack),
-                 keyword=keyword)
+                 traceback=_make_traceback_str(stack), **kwargs)
 
   @classmethod
   def for_test(cls, severity, message, name, **kwargs):
@@ -251,12 +268,20 @@ class Error(object):
     return self._methodname
 
   @property
+  def bad_call(self):
+    return self._bad_call
+
+  @property
   def details(self):
     return self._details
 
   @property
   def keyword(self):
     return self._keyword
+
+  @property
+  def keyword_context(self):
+    return self._keyword_context
 
   def _position(self):
     """Return human-readable filename + line number."""
@@ -340,9 +365,11 @@ class ErrorLogBase(object):
   def warn(self, stack, message, *args):
     self._add(Error.with_stack(stack, SEVERITY_WARNING, message % args))
 
-  def error(self, stack, message, details=None, keyword=None):
+  def error(self, stack, message, details=None, keyword=None, bad_call=None,
+            keyword_context=None):
     self._add(Error.with_stack(stack, SEVERITY_ERROR, message, details=details,
-                               keyword=keyword))
+                               keyword=keyword, bad_call=bad_call,
+                               keyword_context=keyword_context))
 
   def save(self):
     """Returns a checkpoint that represents the log messages up to now."""
@@ -572,13 +599,13 @@ class ErrorLog(ErrorLogBase):
     obj_values = obj.vm.merge_values([obj])
     obj_repr = self._print_as_actual_type(obj_values)
     self.error(stack, "Can't assign attribute %r on %s" % (attr_name, obj_repr),
-               keyword=attr_name)
+               keyword=attr_name, keyword_context=obj_repr)
 
   @_error_name("module-attr")
   def _module_attr(self, stack, binding, attr_name):
     module_name = binding.data.name
     self.error(stack, "No attribute %r on module %r" % (attr_name, module_name),
-               keyword=attr_name)
+               keyword=attr_name, keyword_context=module_name)
 
   def attribute_error(self, stack, binding, attr_name):
     if attr_name in slots.SYMBOL_MAPPING:
@@ -594,7 +621,8 @@ class ErrorLog(ErrorLogBase):
   def unbound_type_param(self, stack, obj, attr_name, type_param_name):
     self.error(
         stack, "Can't access attribute %r on %s" % (attr_name, obj.name),
-        "No binding for type parameter %s" % type_param_name, keyword=attr_name)
+        "No binding for type parameter %s" % type_param_name, keyword=attr_name,
+        keyword_context=obj.name)
 
   @_error_name("name-error")
   def name_error(self, stack, name):
@@ -639,7 +667,7 @@ class ErrorLog(ErrorLogBase):
         "Actually passed: (", actual,
         ")"]
     details += self._explain_protocol_mismatch(bad_param, passed_args)
-    self.error(stack, message, "".join(details))
+    self.error(stack, message, "".join(details), bad_call=bad_call)
 
   @_error_name("wrong-arg-count")
   def wrong_arg_count(self, stack, name, bad_call):
