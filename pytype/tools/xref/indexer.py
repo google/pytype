@@ -12,6 +12,7 @@ from pytype import errors
 from pytype import io
 from pytype import load_pytd
 from pytype import module_utils
+from pytype.pytd import pytd_utils
 
 from pytype.tools.xref import utils as xref_utils
 from pytype.tools.xref import kythe
@@ -116,6 +117,24 @@ def has_decorator(f, decorator):
 def get_opcodes(traces, lineno, op_list):
   """Get all opcodes in op_list on a given line."""
   return [x for x in traces[lineno] if x[0] in op_list]
+
+
+def _to_type(vals):
+  """Convert a Reference.data item to a string type.
+
+  This is a helper function for Indexer._finalize_refs.
+
+  Args:
+    vals: A Reference.data item. Its type is
+      Optional[List[Optional[abstract.AtomicAbstractValue]]]. The data field
+      contains either one item or a list of two items.
+
+  Returns:
+    A string.
+  """
+  if not vals:
+    return "Any"
+  return pytd_utils.Print(pytd_utils.JoinTypes(v.to_type() for v in vals if v))
 
 
 # Internal datatypes
@@ -970,10 +989,13 @@ class Indexer(object):
       keep_pytype_data: Whether to preserve the Reference.data field.
     """
 
-    # TODO(rechen): when keep_pytype_data is set, call to_type() and
-    # pytd.Print() on the pytype data in refs.
-    del keep_pytype_data
     links = self._lookup_refs()
+    # Finalize refs as early as possible to avoid accidentally copying pointers
+    # to the old `data` field.
+    if keep_pytype_data:
+      # TODO(rechen): Once this code has been sufficiently vetted, remove the
+      # `keep_pytype_data` option and always finalize refs.
+      self.refs, links = self._finalize_refs(self.refs, links)
     self.links = links
     self._process_deflocs()
     self._process_links(links)
@@ -1176,6 +1198,24 @@ class Indexer(object):
                   edge_name="childof")
             else:
               assert False, ref
+
+  def _finalize_refs(self, refs, links):
+    """Preserve the pytype data in references."""
+    final_refs = []
+    final_links = []
+    final_ref_cache = {}
+    for ref in refs:
+      if ref.typ == "Attribute":
+        obj, attr = ref.data
+        t = (_to_type(obj), _to_type(attr))
+      else:
+        t = _to_type(ref.data)
+      final_ref = ref._replace(data=t)
+      final_refs.append(final_ref)
+      final_ref_cache[ref.id] = final_ref
+    for ref, defn in links:
+      final_links.append((final_ref_cache[ref.id], defn))
+    return final_refs, final_links
 
   def _lookup_remote_symbol(self, ref, defn):
     """Try to look up a definition in an imported module."""
