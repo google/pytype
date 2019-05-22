@@ -87,6 +87,24 @@ py_library(
 
 py_library(
   NAME
+    config
+  SRCS
+    config.py
+  DEPS
+    .libvm
+)
+
+py_library(
+  NAME
+    io
+  SRCS
+    io.py
+  DEPS
+    .libvm
+)
+
+py_library(
+  NAME
     libvm
   SRCS
     __version__.py
@@ -99,7 +117,6 @@ py_library(
     blocks.py
     collections_overlay.py
     compare.py
-    config.py
     convert.py
     convert_structural.py
     directors.py
@@ -107,7 +124,6 @@ py_library(
     functools_overlay.py
     future_overlay.py
     imports_map_loader.py
-    io.py
     matcher.py
     metaclass.py
     output.py
@@ -302,6 +318,7 @@ py_library(
       tools/runner.py
       tools/tool_utils.py
     DEPS
+      .config
       .libvm
       .utils
 )
@@ -315,7 +332,8 @@ py_library(
       tools/analyze_project/parse_args.py
       tools/analyze_project/pytype_runner.py
     DEPS
-      .libvm
+      .config
+      .io
       .tools
       .utils
 )
@@ -326,6 +344,7 @@ py_test(
   SRCS
     config_test.py
   DEPS
+    .config
     pytype.tests.test_base
 )
 
@@ -362,6 +381,7 @@ py_test(
   SRCS
     io_test.py
   DEPS
+    .io
     pytype.tests.test_base
 )
 
@@ -389,6 +409,7 @@ py_test(
   SRCS
     abstract_test.py
   DEPS
+    .config
     .libvm
 )
 
@@ -399,6 +420,7 @@ py_test(
     abstract_utils_test.py
   DEPS
     .abstract_utils
+    .config
     .libvm
 )
 
@@ -408,6 +430,7 @@ py_test(
   SRCS
     compare_test.py
   DEPS
+    .config
     .libvm
 )
 
@@ -426,6 +449,7 @@ py_test(
   SRCS
     matcher_test.py
   DEPS
+    .config
     .libvm
 )
 
@@ -435,6 +459,7 @@ py_test(
   SRCS
     convert_test.py
   DEPS
+    .config
     .libvm
 )
 
@@ -444,6 +469,7 @@ py_test(
   SRCS
     attribute_test.py
   DEPS
+    .config
     .libvm
 )
 
@@ -481,6 +507,7 @@ py_test(
     load_pytd_test.py
   DEPS
     .builtins_pytd
+    .config
     .libvm
 )
 
@@ -539,6 +566,8 @@ toplevel_py_binary(
   MAIN
     main.py
   DEPS
+    .config
+    .io
     .libvm
 )
 

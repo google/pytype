@@ -26,7 +26,8 @@ py_test(
     pytype_runner_test.py
   DEPS
     pytype.analyze_project
-    pytype.libvm
+    pytype.config
+    pytype.utils
 )
 
 toplevel_py_binary(
