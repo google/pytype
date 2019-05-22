@@ -65,6 +65,14 @@ class BuiltinFunction(abstract.PyTDFunction):
       return node, None
 
 
+def get_file_mode(sig, args):
+  callargs = {name: var for name, var, _ in sig.signature.iter_args(args)}
+  if "mode" in callargs:
+    return abstract_utils.get_atomic_python_constant(callargs["mode"])
+  else:
+    return ""
+
+
 class Open(BuiltinFunction):
   """Implementation of open(...)."""
 
@@ -75,16 +83,13 @@ class Open(BuiltinFunction):
       # In Python 3, the type of IO object returned depends on the mode.
       self.match_args(node, args)  # May raise FailedFunctionCall.
       sig, = self.signatures
-      callargs = {name: var for name, var, _ in sig.signature.iter_args(args)}
       try:
-        if "mode" not in callargs:
-          io_type = "Text"  # The default mode is 'r'.
-        else:
-          mode = abstract_utils.get_atomic_python_constant(callargs["mode"])
-          io_type = "Binary" if "b" in mode else "Text"
+        mode = get_file_mode(sig, args)
       except abstract_utils.ConversionError:
         pass
       else:
+        # The default mode is 'r'.
+        io_type = "Binary" if "b" in mode else "Text"
         return node, self.vm.convert.constant_to_var(abstract_utils.AsInstance(
             self.vm.lookup_builtin("typing.%sIO" % io_type)), {}, node)
     return super(Open, self).call(node, func, args)
