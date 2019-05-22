@@ -182,5 +182,14 @@ class IndexerTest(test_base.TargetIndependentTest):
     node = kythe_index[3]
     self.assertEqual(node["source"]["lang"], "python")
 
+  def test_multiline_attr(self):
+    # Test that lookahead doesn't crash.
+    self.index_code(textwrap.dedent("""
+        x = ""
+        def f():
+          return (x.
+                  upper())
+    """))
+
 
 test_base.main(globals(), __name__ == "__main__")

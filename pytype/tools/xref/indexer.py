@@ -157,10 +157,14 @@ class SourceFile(object):
     """Index source lines from 1."""
     return self.lines[n - 1]
 
+  def get_closest_line_range(self, start, end):
+    """Get as close as we can to the given range without going out of bounds."""
+    return range(start, min(end, len(self.lines)))
+
   def find_text(self, start_line, end_line, text):
     """Find text within a range of lines."""
 
-    for l in range(start_line, end_line):
+    for l in self.get_closest_line_range(start_line, end_line):
       col = self.line(l).find(text)
       if col > -1:
         # TODO(mdemello): Temporary hack, replace with a token stream!
@@ -1040,7 +1044,7 @@ class Indexer(object):
         start, end = start + 1, end
       else:
         # Find consecutive lines ending with '.' and starting with 'attr'.
-        for l in range(line, line + 5):
+        for l in self.source.get_closest_line_range(line, line + 5):
           if self.source.line(l).endswith("."):
             next_line = self.source.next_non_comment_line(l)
             text = self.source.line(next_line)
