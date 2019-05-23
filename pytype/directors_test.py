@@ -1,3 +1,4 @@
+# coding=utf8
 """Tests for directors.py."""
 
 from pytype import directors
@@ -130,6 +131,11 @@ class DirectorTest(unittest.TestCase):
     self._should_report(True, 2)
     self._should_report(False, 3)
     self._should_report(True, 4)
+
+  def test_utf8(self):
+    self._create("""
+    x = u"abc□def\n"
+    """)
 
   def test_ignore_extra_characters(self):
     self._create("""

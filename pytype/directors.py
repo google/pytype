@@ -164,7 +164,7 @@ class Director(object):
 
   def _parse_source(self, src):
     """Parse a source file, extracting directives from comments."""
-    f = moves.cStringIO(src)
+    f = moves.StringIO(src)
     defs_start = None
     closing_bracket_lines = set()
     whitespace_lines = set()

@@ -61,10 +61,15 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
   tempfile_options = {"mode": "w", "suffix": ".py", "delete": False}
   if six.PY3:
     tempfile_options.update({"encoding": "utf-8"})
+  else:
+    tempfile_options.update({"mode": "wb"})
   fi = tempfile.NamedTemporaryFile(**tempfile_options)
 
   try:
-    fi.write(src)
+    if six.PY3:
+      fi.write(src)
+    else:
+      fi.write(src.encode("utf-8"))
     fi.close()
     # In order to be able to compile pyc files for both Python 2 and Python 3,
     # we spawn an external process.

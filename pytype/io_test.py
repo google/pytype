@@ -1,15 +1,33 @@
+# coding=utf8
 """Tests for io.py."""
 
+import six
 import sys
+import tempfile
 import traceback
 
 from pytype import io
 
 import unittest
 
-
 class IOTest(unittest.TestCase):
   """Test IO functions."""
+
+  def testReadSourceFileUtf8(self):
+    with self._tmpfile(u"abc□def\n") as f:
+      self.assertEqual(io.read_source_file(f.name), u"abc□def\n")
+
+  def _tmpfile(self, contents):
+    tempfile_options = {"mode": "w", "suffix": ".txt"}
+    if six.PY3:
+      tempfile_options.update({"encoding": "utf-8"})
+    f = tempfile.NamedTemporaryFile(**tempfile_options)
+    if six.PY3:
+      f.write(contents)
+    else:
+      f.write(contents.encode("utf-8"))
+    f.flush()
+    return f
 
   def testWrapPytypeExceptions(self):
     with self.assertRaises(ValueError):

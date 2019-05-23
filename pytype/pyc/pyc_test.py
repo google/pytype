@@ -1,7 +1,9 @@
+# coding=utf8
 """Tests for pyc.py."""
 
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
+import six
 import unittest
 
 
@@ -33,6 +35,14 @@ class TestPyc(unittest.TestCase):
 
   def test_compile(self):
     code = self._compile("foobar = 3")
+    self.assertIn("foobar", code.co_names)
+    self.assertEqual(self.python_version, code.python_version)
+
+  def test_compile_utf8(self):
+    src = "foobar = \"abc□def\""
+    if six.PY2:
+      src = src.decode("utf8")
+    code = self._compile(src)
     self.assertIn("foobar", code.co_names)
     self.assertEqual(self.python_version, code.python_version)
 
