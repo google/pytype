@@ -1,0 +1,126 @@
+"""Tests for pytd_visitors."""
+
+from pytype.pytd import pytd_visitors
+from pytype.pytd.parse import parser_test_base
+import unittest
+
+
+class PytdVisitorsTest(parser_test_base.ParserTest):
+
+  PYTHON_VERSION = (2, 7)
+
+  def testRenameModule(self):
+    module_name = "foo.bar"
+    src = """
+        import module2
+        from module2 import f
+        from typing import List
+
+        constant = True
+
+        x = List[int]
+        b = List[int]
+
+        class SomeClass(object):
+          def __init__(self, a: module2.ObjectMod2):
+            pass
+
+        def ModuleFunction():
+          pass
+    """
+    ast = self.Parse(src, name=module_name)
+    new_ast = ast.Visit(pytd_visitors.RenameModuleVisitor(module_name,
+                                                          "other.name"))
+
+    self.assertEqual("other.name", new_ast.name)
+    self.assertTrue(new_ast.Lookup("other.name.SomeClass"))
+    self.assertTrue(new_ast.Lookup("other.name.constant"))
+    self.assertTrue(new_ast.Lookup("other.name.ModuleFunction"))
+
+    with self.assertRaises(KeyError):
+      new_ast.Lookup("foo.bar.SomeClass")
+
+  def testRenameModuleWithTypeParameter(self):
+    module_name = "foo.bar"
+    src = """
+      import typing
+
+      T = TypeVar('T')
+
+      class SomeClass(typing.Generic[T]):
+        def __init__(self, foo: T) -> None:
+          pass
+    """
+    ast = self.Parse(src, name=module_name)
+    new_ast = ast.Visit(pytd_visitors.RenameModuleVisitor(module_name,
+                                                          "other.name"))
+
+    some_class = new_ast.Lookup("other.name.SomeClass")
+    self.assertTrue(some_class)
+    init_function = some_class.Lookup("__init__")
+    self.assertTrue(init_function)
+    self.assertEqual(len(init_function.signatures), 1)
+    signature, = init_function.signatures
+    _, param2 = signature.params
+    self.assertEqual(param2.type.scope, "other.name.SomeClass")
+
+  def testCanonicalOrderingVisitor(self):
+    src1 = """
+      from typing import TypeVar
+      def f() -> ?:
+        raise MemoryError()
+        raise IOError()
+      def f(x: list[a]) -> ?
+      def f(x: list[b or c]) -> ?
+      def f(x: list[tuple[d]]) -> ?
+      A = TypeVar("A")
+      C = TypeVar("C")
+      B = TypeVar("B")
+      D = TypeVar("D")
+      def f(d: A, c: B, b: C, a: D) -> ?
+    """
+    src2 = """
+      def f() -> ?:
+        raise IOError()
+        raise MemoryError()
+      def f(x: list[tuple[d]]) -> ?
+      def f(x: list[a]) -> ?
+      def f(x: list[b or c]) -> ?
+      A = TypeVar("A")
+      C = TypeVar("C")
+      B = TypeVar("B")
+      D = TypeVar("D")
+      def f(d: A, c: B, b: C, a: D) -> ?
+    """
+    tree1 = self.Parse(src1)
+    tree1 = tree1.Visit(
+        pytd_visitors.CanonicalOrderingVisitor(sort_signatures=True))
+    tree2 = self.Parse(src2)
+    tree2 = tree2.Visit(
+        pytd_visitors.CanonicalOrderingVisitor(sort_signatures=True))
+    self.AssertSourceEquals(tree1, tree2)
+    self.assertEqual(tree1.Lookup("f").signatures[0].template,
+                     tree2.Lookup("f").signatures[0].template)
+
+
+class TestAncestorMap(unittest.TestCase):
+
+  def testGetAncestorMap(self):
+    ancestors = pytd_visitors._GetAncestorMap()
+    # TypeDeclUnit is the top of the food chain - no ancestors other than
+    # itself.
+    self.assertEqual({"TypeDeclUnit"}, ancestors["TypeDeclUnit"])
+    # NamedType can appear in quite a few places, spot check a few.
+    named_type = ancestors["NamedType"]
+    self.assertIn("TypeDeclUnit", named_type)
+    self.assertIn("Parameter", named_type)
+    self.assertIn("GenericType", named_type)
+    self.assertIn("NamedType", named_type)
+    # Check a few places where NamedType cannot appear.
+    self.assertNotIn("ClassType", named_type)
+    self.assertNotIn("NothingType", named_type)
+    self.assertNotIn("AnythingType", named_type)
+
+
+if __name__ == "__main__":
+  unittest.main()

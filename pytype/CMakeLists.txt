@@ -250,6 +250,16 @@ py_library(
 
 py_library(
   NAME
+    pytd_visitors
+  SRCS
+    pytd/pytd_visitors.py
+  DEPS
+    .cfg_utils
+    .pytd_defs
+)
+
+py_library(
+  NAME
     pytd_for_parser
   SRCS
     pytd/abc_hierarchy.py
@@ -265,11 +275,11 @@ py_library(
     pytd/visitors.py
   DEPS
     .builtins_pytd  # TODO(sivachandra): Move this into a data dependency
-    .cfg_utils
     .debug
     .metrics
     .node
     .pytd_defs
+    .pytd_visitors
     .utils
     pytype.typegraph.cfg
 )

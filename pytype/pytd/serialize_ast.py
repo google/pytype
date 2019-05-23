@@ -58,80 +58,6 @@ class SerializableAst(SerializableTupleClass):
   Replace = SerializableTupleClass._replace  # pylint: disable=no-member,invalid-name
 
 
-class RenameModuleVisitor(visitors.Visitor):
-  """Renames a TypeDeclUnit."""
-
-  def __init__(self, old_module_name, new_module_name):
-    """Constructor.
-
-    Args:
-      old_module_name: The old name of the module as a string,
-        e.g. "foo.bar.module1"
-      new_module_name: The new name of the module as a string,
-        e.g. "barfoo.module2"
-
-    Raises:
-      ValueError: If the old_module name is an empty string.
-    """
-    super(RenameModuleVisitor, self).__init__()
-    if not old_module_name:
-      raise ValueError("old_module_name must be a non empty string.")
-    assert not old_module_name.endswith(".")
-    assert not new_module_name.endswith(".")
-    self._module_name = new_module_name
-    self._old = old_module_name + "." if old_module_name else ""
-    self._new = new_module_name + "." if new_module_name else ""
-
-  def _MaybeNewName(self, name):
-    """Decides if a name should be replaced.
-
-    Args:
-      name: A name for which a prefix should be changed.
-
-    Returns:
-      If name is local to the module described by old_module_name the
-      old_module_part will be replaced by new_module_name and returned,
-      otherwise node.name will be returned.
-    """
-    if not name:
-      return name
-    before, match, after = name.partition(self._old)
-    if match and not before and "." not in after:
-      return self._new + after
-    else:
-      return name
-
-  def _ReplaceModuleName(self, node):
-    new_name = self._MaybeNewName(node.name)
-    if new_name != node.name:
-      return node.Replace(name=new_name)
-    else:
-      return node
-
-  def VisitClassType(self, node):
-    new_name = self._MaybeNewName(node.name)
-    if new_name != node.name:
-      return pytd.ClassType(new_name, node.cls)
-    else:
-      return node
-
-  def VisitTypeDeclUnit(self, node):
-    return node.Replace(name=self._module_name)
-
-  def VisitTypeParameter(self, node):
-    new_scope = self._MaybeNewName(node.scope)
-    if new_scope != node.scope:
-      return node.Replace(scope=new_scope)
-    return node
-
-  VisitConstant = _ReplaceModuleName  # pylint: disable=invalid-name
-  VisitAlias = _ReplaceModuleName  # pylint: disable=invalid-name
-  VisitClass = _ReplaceModuleName  # pylint: disable=invalid-name
-  VisitFunction = _ReplaceModuleName  # pylint: disable=invalid-name
-  VisitStrictType = _ReplaceModuleName  # pylint: disable=invalid-name
-  VisitNamedType = _ReplaceModuleName  # pylint: disable=invalid-name
-
-
 def StoreAst(ast, filename=None):
   """Loads and stores an ast to disk.
 
@@ -144,7 +70,7 @@ def StoreAst(ast, filename=None):
     The pickled string, if no filename was given. (None otherwise.)
   """
   if ast.name.endswith(".__init__"):
-    ast = ast.Visit(RenameModuleVisitor(
+    ast = ast.Visit(visitors.RenameModuleVisitor(
         ast.name, ast.name.rsplit(".__init__", 1)[0]))
   # Collect dependencies
   deps = visitors.CollectDependencies()
@@ -182,8 +108,8 @@ def EnsureAstName(ast, module_name, fix=False):
   # when the ast has been pickled.
   if fix and module_name != raw_ast.name:
     ast = ast.Replace(class_type_nodes=None, function_type_nodes=None)
-    ast = ast.Replace(
-        ast=raw_ast.Visit(RenameModuleVisitor(raw_ast.name, module_name)))
+    ast = ast.Replace(ast=raw_ast.Visit(
+        visitors.RenameModuleVisitor(raw_ast.name, module_name)))
   else:
     assert module_name == raw_ast.name
   return ast

@@ -77,6 +77,15 @@ py_test(
 
 py_test(
   NAME
+    pytd_visitors_test
+  SRCS
+    pytd_visitors_test.py
+  DEPS
+    pytype.pytdtest
+)
+
+py_test(
+  NAME
     visitors_test
   SRCS
     visitors_test.py
