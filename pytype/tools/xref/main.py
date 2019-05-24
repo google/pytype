@@ -30,7 +30,8 @@ def main():
     signal.alarm(options.timeout)
 
   try:
-    ix = indexer.process_file(options, kythe_args=kythe_args)
+    ix = indexer.process_file(
+        options, kythe_args=kythe_args, keep_pytype_data=args.debug)
   except indexer.PytypeError as e:
     print(e.args[0], file=sys.stderr)
     if args.debug:
@@ -40,7 +41,7 @@ def main():
     sys.exit(1)
 
   if args.debug:
-    debug.show_index(ix)
+    debug.show_index(ix, keep_pytype_data=True)
   else:
     output.output_kythe_graph(ix)
 

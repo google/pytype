@@ -16,13 +16,14 @@ class IndexerTest(test_base.TargetIndependentTest):
 
   def index_code(self, code, **kwargs):
     """Generate references from a code string."""
+    keep_pytype_data = kwargs.pop("keep_pytype_data", False)
     args = {"version": self.python_version}
     args.update(kwargs)
     with file_utils.Tempdir() as d:
       d.create_file("t.py", code)
       options = config.Options([d["t.py"]])
       options.tweak(**args)
-      return indexer.process_file(options)
+      return indexer.process_file(options, keep_pytype_data=keep_pytype_data)
 
   def generate_kythe(self, code, **kwargs):
     """Generate a kythe index from a code string."""
@@ -181,6 +182,27 @@ class IndexerTest(test_base.TargetIndependentTest):
     # Other nodes should have lang="python"
     node = kythe_index[3]
     self.assertEqual(node["source"]["lang"], "python")
+
+  def test_multiline_attr(self):
+    # Test that lookahead doesn't crash.
+    self.index_code(textwrap.dedent("""
+        x = ""
+        def f():
+          return (x.
+                  upper())
+    """))
+
+  def test_finalize_refs(self):
+    code = textwrap.dedent("""
+      x = ""
+      def f():
+        return x.upper()
+    """)
+    ix = self.index_code(code, keep_pytype_data=True)
+    expected_refs = (("x", "str"), ("x.upper", ("str", "Callable[[], str]")))
+    get_data = lambda ref: (ref.name, ref.data)
+    self.assertCountEqual((get_data(ref) for ref in ix.refs), expected_refs)
+    self.assertCountEqual((get_data(ref) for ref, _ in ix.links), expected_refs)
 
 
 test_base.main(globals(), __name__ == "__main__")

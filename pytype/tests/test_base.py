@@ -3,6 +3,7 @@
 import collections
 import logging
 import re
+import six
 import sys
 import textwrap
 
@@ -199,8 +200,13 @@ class BaseTest(unittest.TestCase):
                           pythonpath=pythonpath, quick=quick)
     errorlog = errors.ErrorLog()
     try:
+      src = ""
+      if six.PY3:
+        src = textwrap.dedent(code)
+      else:
+        src = textwrap.dedent(code.decode("utf-8"))
       analyze.check_types(
-          textwrap.dedent(code), filename, loader=self.loader,
+          src, filename, loader=self.loader,
           errorlog=errorlog, options=self.options, **kwargs)
     except directors.SkipFile:
       pass

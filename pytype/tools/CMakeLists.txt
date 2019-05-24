@@ -6,7 +6,7 @@ py_test(
   SRCS
     arg_parser_test.py
   DEPS
-    pytype.libvm
+    pytype.config
     pytype.tools
     pytype.utils
 )

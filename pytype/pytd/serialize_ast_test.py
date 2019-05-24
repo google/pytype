@@ -93,65 +93,6 @@ class SerializeAstTest(unittest.TestCase):
           ValueError, "Unresolved class: '__builtin__.NoneType'"):
         loaded_ast.Visit(visitors.VerifyLookup())
 
-  def testRenameModule(self):
-    module_name = "foo.bar"
-    with file_utils.Tempdir() as d:
-      ast, _ = self._GetAst(temp_dir=d, module_name=module_name)
-
-    new_ast = ast.Visit(serialize_ast.RenameModuleVisitor(module_name,
-                                                          "other.name"))
-
-    self.assertEqual("other.name", new_ast.name)
-    self.assertTrue(new_ast.Lookup("other.name.SomeClass"))
-    self.assertTrue(new_ast.Lookup("other.name.constant"))
-    self.assertTrue(new_ast.Lookup("other.name.ModuleFunction"))
-
-    with self.assertRaises(KeyError):
-      new_ast.Lookup("foo.bar.SomeClass")
-
-  def testRenameModuleWithTypeParameter(self):
-    module_name = "foo.bar"
-    src = """
-      import typing
-
-      T = TypeVar('T')
-
-      class SomeClass(typing.Generic[T]):
-        def __init__(self, foo: T) -> None:
-          pass
-    """
-    with file_utils.Tempdir() as d:
-      ast, _ = self._GetAst(temp_dir=d, module_name=module_name, src=src)
-    new_ast = ast.Visit(serialize_ast.RenameModuleVisitor(module_name,
-                                                          "other.name"))
-
-    some_class = new_ast.Lookup("other.name.SomeClass")
-    self.assertTrue(some_class)
-    init_function = some_class.Lookup("__init__")
-    self.assertTrue(init_function)
-    self.assertEqual(len(init_function.signatures), 1)
-    signature, = init_function.signatures
-    _, param2 = signature.params
-    self.assertEqual(param2.type.scope, "other.name.SomeClass")
-
-  def testRenameInitModule(self):
-    module_name = "foo.bar"
-    src = """
-      def f() -> foo.bar.baz.Foo: ...
-    """
-    with file_utils.Tempdir() as d:
-      d.create_file("foo/__init__.pyi", "")
-      d.create_file("foo/bar/__init__.pyi", "")
-      d.create_file("foo/bar/baz.pyi", """
-        class Foo(object): ...
-      """)
-      ast, _ = self._GetAst(temp_dir=d, module_name=module_name, src=src)
-    new_ast = ast.Visit(
-        serialize_ast.RenameModuleVisitor(module_name, "other.name"))
-    f = new_ast.Lookup("other.name.f")
-    ret = f.signatures[0].return_type
-    self.assertEqual(ret.name, "foo.bar.baz.Foo")
-
   def testPickle(self):
     with file_utils.Tempdir() as d:
       ast, _ = self._GetAst(temp_dir=d, module_name="foo.bar.module1")
