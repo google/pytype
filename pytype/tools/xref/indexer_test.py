@@ -204,5 +204,65 @@ class IndexerTest(test_base.TargetIndependentTest):
     self.assertCountEqual((get_data(ref) for ref in ix.refs), expected_refs)
     self.assertCountEqual((get_data(ref) for ref, _ in ix.links), expected_refs)
 
+  def test_type_map(self):
+    code = textwrap.dedent("""\
+      def f():
+        x = ""
+        return x
+    """)
+    ix = self.index_code(code, keep_pytype_data=True)
+    type_map = output.type_map(ix)
+    self.assertEqual(type_map, {(3, 9): "str"})
+
+  def test_type_map_attr(self):
+    code = textwrap.dedent("""\
+      class X:
+        n = 42
+      def f():
+        return X.n
+    """)
+    ix = self.index_code(code, keep_pytype_data=True)
+    type_map = output.type_map(ix)
+    self.assertEqual(type_map, {(4, 9): "Type[X]", (4, 11): "int"})
+
+  def test_type_map_multiline_attr(self):
+    code = textwrap.dedent("""\
+      class X:
+        n = 42
+      def f():
+        return (X.
+          n)
+    """)
+    ix = self.index_code(code, keep_pytype_data=True)
+    type_map = output.type_map(ix)
+    self.assertEqual(type_map, {(4, 10): "Type[X]", (5, 4): "int"})
+
+  def test_type_map_multiline_dotattr(self):
+    code = textwrap.dedent("""\
+      class X:
+        n = 42
+      def f():
+        return (X
+          .n)
+    """)
+    ix = self.index_code(code, keep_pytype_data=True)
+    type_map = output.type_map(ix)
+    self.assertEqual(type_map, {(4, 10): "Type[X]", (5, 5): "int"})
+
+  def test_type_map_missing(self):
+    # For obj.attr, sometimes we fail to find the location of attr. Test that
+    # the type of obj is still accurate.
+    code = textwrap.dedent("""\
+      class X:
+        n = 42
+      def f():
+        return (X
+        {}
+          .n)
+    """).format("\n" * 10)
+    ix = self.index_code(code, keep_pytype_data=True)
+    type_map = output.type_map(ix)
+    self.assertEqual(type_map, {(4, 10): "Type[X]"})
+
 
 test_base.main(globals(), __name__ == "__main__")
