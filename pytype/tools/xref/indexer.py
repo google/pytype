@@ -1045,6 +1045,10 @@ class Indexer(object):
 
   def _get_attr_bounds(self, name, location):
     """Calculate the anchor bounds for an attr access."""
+    return self.get_anchor_bounds(*self._get_attr_location(name, location))
+
+  def _get_attr_location(self, name, location):
+    """Calculate ((line, col), len(attr)) for an attr access."""
     # TODO(mdemello): This is pretty crude, and does not for example take into
     # account multiple calls of the same attribute in a line. It is just to get
     # our tests passing till we incorporate asttokens.
@@ -1054,9 +1058,7 @@ class Indexer(object):
     dot_attr = "." + attr
     if dot_attr in src_line:
       col = src_line.index(dot_attr)
-      start = self.source.get_offset(line, col) + 1
-      end = start + len(attr)
-      return (start, end)
+      return ((line, col + 1), len(attr))
     else:
       # We have something like
       #   (foo
@@ -1067,9 +1069,9 @@ class Indexer(object):
       # Lookahead up to 5 lines to find '.attr' (the ast node always starts from
       # the beginning of the chain, so foo.\nbar.\nbaz etc could span several
       # lines).
-      start, end = self.get_multiline_bounds(location, 5, dot_attr)
-      if start:
-        start, end = start + 1, end
+      attr_line, attr_col = self.get_multiline_location(location, 5, dot_attr)
+      if attr_line:
+        return ((attr_line, attr_col + 1), len(attr))
       else:
         # Find consecutive lines ending with '.' and starting with 'attr'.
         for l in self.source.get_closest_line_range(line, line + 5):
@@ -1077,21 +1079,17 @@ class Indexer(object):
             next_line = self.source.next_non_comment_line(l)
             text = self.source.line(next_line)
             if text.lstrip().startswith(attr):
-              c = text.find(attr)
-              start, end = self.get_anchor_bounds((next_line, c), len(attr))
-      if not start:
-        # if all else fails, fall back to just spanning the name
-        start, end = self.get_anchor_bounds(location, len(name))
-      return (start, end)
+              c = text.index(attr)
+              return ((next_line, c), len(attr))
+      # if all else fails, fall back to just spanning the name
+      return (location, len(name))
 
-  def get_multiline_bounds(self, location, n_lines, text):
-    """Get a span of text anywhere within n_lines of location."""
+  def get_multiline_location(self, location, n_lines, text):
+    """Get the start location of text anywhere within n_lines of location."""
     line, _ = location
     text_line, text_col = self.source.find_text(line, line + n_lines, text)
     if text_line:
-      start = self.source.get_offset(text_line, text_col)
-      end = start + len(text)
-      return (start, end)
+      return (text_line, text_col)
     else:
       return (None, None)
 
@@ -1108,6 +1106,16 @@ class Indexer(object):
       return self._get_attr_bounds(ref.name, ref.location)
     else:
       return self.get_anchor_bounds(ref.location, len(ref.name))
+
+  def get_ref_location_and_python_type(self, ref):
+    if ref.typ == "Attribute":
+      # For an attribute, return information about the attribute itself,
+      # ignoring the object it was accessed on.
+      loc, _ = self._get_attr_location(ref.name, ref.location)
+      _, t = ref.data
+    else:
+      loc, t = ref.location, ref.data
+    return loc, t
 
   def _make_defn_vname(self, defn):
     """Convert a definition into a kythe vname."""
