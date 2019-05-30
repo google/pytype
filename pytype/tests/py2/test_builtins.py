@@ -124,21 +124,27 @@ class BuiltinTests(test_base.TargetPython27FeatureTest):
 
   def testFilter(self):
     ty = self.Infer("""
+      import re
       x1 = filter(None, "")
       x2 = filter(None, bytearray(""))
       x3 = filter(None, (True, False))
       x4 = filter(None, {True, False})
       x5 = filter(None, {1: None}.iterkeys())
       x6 = filter(None, u"")
+      x7 = filter(re.compile("").search, ("",))
+      x8 = filter(re.compile("").search, [""])
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Tuple
-      x1 = ...  # type: str
-      x2 = ...  # type: List[int]
-      x3 = ...  # type: Tuple[bool, ...]
-      x4 = ...  # type: List[bool]
-      x5 = ...  # type: List[int]
-      x6 = ...  # type: unicode
+      re: module
+      x1: str
+      x2: List[int]
+      x3: Tuple[bool, ...]
+      x4: List[bool]
+      x5: List[int]
+      x6: unicode
+      x7: Tuple[str, ...]
+      x8: List[str]
     """)
 
   def testSorted(self):
