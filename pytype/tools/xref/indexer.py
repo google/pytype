@@ -1392,7 +1392,8 @@ class PytypeError(Exception):
 def process_file(options,
                  source_text=None,
                  kythe_args=None,
-                 keep_pytype_data=False):
+                 keep_pytype_data=False,
+                 ast_factory=None):
   """Process a single file and return cross references.
 
   Args:
@@ -1403,6 +1404,9 @@ def process_file(options,
     keep_pytype_data: Whether to preserve the Reference.data field. If true,
       the field will hold the type of the reference as a str or Tuple[str, str]
       (for attributes). Otherwise, it will be inaccessible.
+    ast_factory: Callable to return an ast-module-compatible object to parse
+      the source text into an ast-compatible object. It is passed the pytype
+      Options object. If not specified, typed_ast will be used.
 
   Returns:
     An Indexer object with the indexed code
@@ -1432,14 +1436,18 @@ def process_file(options,
         loader=loader,
         tracer_vm=vm)
 
-  major, minor = options.python_version
-  if major == 2:
-    # python2.7 is the only supported py2 version.
-    a = ast27.parse(src, options.input)
-    ast = ast27
+  if ast_factory:
+    ast = ast_factory(options)
+    a = ast.parse(src, options.input)
   else:
-    a = ast3.parse(src, options.input, feature_version=minor)
-    ast = ast3
+    major, minor = options.python_version
+    if major == 2:
+      # python2.7 is the only supported py2 version.
+      a = ast27.parse(src, options.input)
+      ast = ast27
+    else:
+      a = ast3.parse(src, options.input, feature_version=minor)
+      ast = ast3
 
   # TODO(mdemello): Get from args
   module_name = "module"

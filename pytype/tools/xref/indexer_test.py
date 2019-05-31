@@ -1,3 +1,4 @@
+import ast
 import json
 import textwrap
 
@@ -16,6 +17,7 @@ class IndexerTest(test_base.TargetIndependentTest):
 
   def index_code(self, code, **kwargs):
     """Generate references from a code string."""
+    ast_factory = kwargs.pop("ast_factory", None)
     keep_pytype_data = kwargs.pop("keep_pytype_data", False)
     args = {"version": self.python_version}
     args.update(kwargs)
@@ -23,7 +25,8 @@ class IndexerTest(test_base.TargetIndependentTest):
       d.create_file("t.py", code)
       options = config.Options([d["t.py"]])
       options.tweak(**args)
-      return indexer.process_file(options, keep_pytype_data=keep_pytype_data)
+      return indexer.process_file(
+          options, keep_pytype_data=keep_pytype_data, ast_factory=ast_factory)
 
   def generate_kythe(self, code, **kwargs):
     """Generate a kythe index from a code string."""
@@ -47,6 +50,16 @@ class IndexerTest(test_base.TargetIndependentTest):
     self.assertTrue(fqname in index.locs)
     deflocs = index.locs[fqname]
     self.assertCountEqual([x.location for x in deflocs], locs)
+
+  def test_custom_ast_parser(self):
+    called = [False]
+    def ast_factory(options):
+      del options  # Unused
+      called[0] = True
+      return ast
+
+    self.index_code("x = {}", ast_factory=ast_factory)
+    self.assertTrue(called[0])
 
   def test_param_reuse(self):
     ix = self.index_code("""\
