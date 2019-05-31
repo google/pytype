@@ -17,7 +17,6 @@ from pytype.pytd import pytd_utils
 from pytype.tools.xref import utils as xref_utils
 from pytype.tools.xref import kythe
 
-from typing import Optional, Callable
 from typed_ast import ast27 as ast27
 from typed_ast import ast3
 
@@ -1394,7 +1393,7 @@ def process_file(options,
                  source_text=None,
                  kythe_args=None,
                  keep_pytype_data=False,
-                 ast_factory: Optional[Callable] = None):
+                 ast_factory=None):
   """Process a single file and return cross references.
 
   Args:
