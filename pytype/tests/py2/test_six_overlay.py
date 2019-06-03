@@ -21,5 +21,28 @@ class SixTests(test_base.TargetPython27FeatureTest):
       v = ...  # type: int
     """)
 
+  def test_string_types(self):
+    ty = self.Infer("""
+      from typing import List, Text, Union
+      import six
+      a = ''  # type: Union[str, List[str]]
+      if isinstance(a, six.string_types):
+        a = [a]
+      b = u''
+      if isinstance(b, six.string_types):
+        b = [b]
+      c = ''  # type: Text
+      if isinstance(c, six.string_types):
+        c = len(c)
+    """)
+    self.assertTypesMatchPytd(
+        ty, """
+      from typing import List
+      six: module = ...
+      a: List[str] = ...
+      b: List[unicode] = ...
+      c: int = ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

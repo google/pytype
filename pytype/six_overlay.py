@@ -11,6 +11,7 @@ class SixOverlay(overlay.Overlay):
     member_map = {
         "add_metaclass": build_add_metaclass,
         "with_metaclass": build_with_metaclass,
+        "string_types": build_string_types,
         "PY2": build_version_bool(2),
         "PY3": build_version_bool(3),
     }
@@ -28,3 +29,15 @@ def build_with_metaclass(name, vm):
 
 def build_version_bool(major):
   return lambda _, vm: vm.convert.bool_values[vm.python_version[0] == major]
+
+
+def build_string_types(_, vm):
+  # six.string_types is defined as a tuple, even though it's only a single value
+  # in Py3.
+  # We're following the pyi definition of string_types here, because the real
+  # value in Py2 is `basestring`, which we don't have available.
+  node = vm.root_cfg_node
+  classes = [vm.convert.str_type.to_variable(node)]
+  if vm.PY2:
+    classes.append(vm.convert.unicode_type.to_variable(node))
+  return vm.convert.tuple_to_value(classes)
