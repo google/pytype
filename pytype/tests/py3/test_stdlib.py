@@ -385,5 +385,11 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       group: str
     """)
 
+  def test_textio_buffer(self):
+    self.Check("""
+      import sys
+      sys.stdout.buffer
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
