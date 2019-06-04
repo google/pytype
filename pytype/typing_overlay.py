@@ -250,9 +250,10 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     # some of our own in _getargs. _NamedTupleFields is an alias to
     # List[Tuple[str, type]], which gives a more understandable error message.
     fields_pyval = typing_ast.Lookup("typing._NamedTupleFields").type
-    # pylint: disable=protected-access
-    self._fields_type = vm.convert.constant_to_value(
+    fields_type = vm.convert.constant_to_value(
         fields_pyval, {}, vm.root_cfg_node)
+    # pylint: disable=protected-access
+    self._fields_param = function.BadParam(name="fields", expected=fields_type)
     return self
 
   def _is_str_instance(self, val):
@@ -267,6 +268,10 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     name_var = callargs["typename"]
     fields_var = callargs["fields"]
     fields = abstract_utils.get_atomic_python_constant(fields_var)
+    if isinstance(fields, six.string_types):
+      # Since str matches Sequence, we have to manually check for it.
+      raise function.WrongArgTypes(
+          sig.signature, args, self.vm, self._fields_param)
     # The fields is a list of tuples, so we need to deeply unwrap them.
     fields = [abstract_utils.get_atomic_python_constant(t) for t in fields]
     # We need the actual string for the field names and the AtomicAbstractValue
@@ -274,13 +279,16 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     names = []
     types = []
     for field in fields:
+      if isinstance(field, six.string_types):
+        # Since str matches Sequence, we have to manually check for it.
+        raise function.WrongArgTypes(
+            sig.signature, args, self.vm, self._fields_param)
       if (len(field) != 2 or
           any(not self._is_str_instance(v) for v in field[0].data)):
         # Note that we don't need to check field[1] because both 'str'
         # (forward reference) and 'type' are valid for it.
-        sig, = self.signatures
-        bad_param = function.BadParam(name="fields", expected=self._fields_type)
-        raise function.WrongArgTypes(sig.signature, args, self.vm, bad_param)
+        raise function.WrongArgTypes(
+            sig.signature, args, self.vm, self._fields_param)
       name, typ = field
       name_py_constant = abstract_utils.get_atomic_python_constant(name)
       if name_py_constant.__class__ is compat.UnicodeType:

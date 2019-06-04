@@ -123,5 +123,14 @@ class NamedTupleTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorLogIs(errors, [(4, "wrong-arg-types", r"str.*int")])
 
+  def test_str_fields_error(self):
+    errors = self.CheckWithErrors("""\
+      from typing import NamedTuple
+      X = NamedTuple("X", "a b")
+      Y = NamedTuple("Y", ["ab"])
+    """)
+    self.assertErrorLogIs(errors, [(2, "wrong-arg-types", r"List.*str"),
+                                   (3, "wrong-arg-types", r"Tuple.*str")])
+
 
 test_base.main(globals(), __name__ == "__main__")
