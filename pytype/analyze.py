@@ -145,16 +145,16 @@ class CallTracer(vm.VirtualMachine):
   def maybe_analyze_method(self, node, val):
     method = val.data
     fname = val.data.name
-    if isinstance(method, (abstract.InterpreterFunction,
-                           abstract.BoundInterpreterFunction)):
+    if isinstance(method, abstract.INTERPRETER_FUNCTION_TYPES):
       self._analyzed_functions.add(method.get_first_opcode())
       if (not self.options.analyze_annotated and
-          method.signature.has_return_annotation and
+          (method.signature.has_return_annotation or method.has_overloads) and
           fname.rsplit(".", 1)[-1] not in self._CONSTRUCTORS):
-        log.info("%r has return annotation, not analyzing further.", fname)
+        log.info("%r has annotations, not analyzing further.", fname)
       else:
-        node, args = self.create_method_arguments(node, method)
-        node, _ = self.call_function_with_args(node, val, args)
+        for f in method.iter_signature_functions():
+          node, args = self.create_method_arguments(node, f)
+          node, _ = self.call_function_with_args(node, val, args)
     return node
 
   def _call_with_fake_args(self, node0, funcv):
@@ -167,8 +167,7 @@ class CallTracer(vm.VirtualMachine):
       func = funcb.data
       log.info("Trying %s with fake arguments", func)
 
-      if isinstance(func, (abstract.InterpreterFunction,
-                           abstract.BoundInterpreterFunction)):
+      if isinstance(func, abstract.INTERPRETER_FUNCTION_TYPES):
         node1, args = self.create_method_arguments(node0, func)
         # Once the args are generated, try calling the function.
         # call_function will check fallback_to_unsolvable if a DictKeyMissing or
@@ -369,8 +368,8 @@ class CallTracer(vm.VirtualMachine):
         for value in var.bindings:
           if isinstance(value.data, abstract.InterpreterClass):
             new_node = self.analyze_class(node, value)
-          elif isinstance(value.data, (abstract.InterpreterFunction,
-                                       abstract.BoundInterpreterFunction)):
+          elif (isinstance(value.data, abstract.INTERPRETER_FUNCTION_TYPES) and
+                not value.data.is_overload):
             new_node = self.analyze_function(node, value)
           else:
             continue
@@ -387,6 +386,9 @@ class CallTracer(vm.VirtualMachine):
           node = self.analyze_class(node, value)
     for f in self._interpreter_functions:
       for value in f.bindings:
+        if (isinstance(value.data, abstract.InterpreterFunction) and
+            value.data.is_overload):
+          continue
         # We record analyzed functions by opcode rather than function object.
         # The two ways of recording are equivalent except for closures, which
         # are re-generated when the variables they close over change, but we
@@ -473,9 +475,8 @@ class CallTracer(vm.VirtualMachine):
           data.append(pytd.Constant(name, value))
         else:
           options.append(value)
-      if (len(options) > 1 and not
-          all(isinstance(o, (abstract.Function, abstract.BoundFunction))
-              for o in options)):
+      if (len(options) > 1 and
+          not all(isinstance(o, abstract.FUNCTION_TYPES) for o in options)):
         # It's ambiguous whether this is a type, a function or something
         # else, so encode it as a constant.
         combined_types = pytd_utils.JoinTypes(t.to_type(self.exitpoint)

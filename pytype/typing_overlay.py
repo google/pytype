@@ -658,6 +658,24 @@ class NewType(abstract.PyTDFunction):
                               members.to_variable(node), None)
 
 
+class Overload(abstract.PyTDFunction):
+  """Implementation of typing.overload."""
+
+  def call(self, node, unused_func, args):
+    """Marks that the given function is an overload."""
+    self.match_args(node, args)
+
+    # Since we have only 1 argument, it's easy enough to extract.
+    func_var = args.posargs[0] if args.posargs else args.namedargs["func"]
+
+    for func in func_var.data:
+      if isinstance(func, abstract.INTERPRETER_FUNCTION_TYPES):
+        func.is_overload = True
+        self.vm.frame.overloads[func.name].append(func)
+
+    return node, func_var
+
+
 class Generic(TypingContainer):
   """Implementation of typing.Generic."""
 
@@ -716,6 +734,10 @@ def build_noreturn(name, vm):
   return vm.convert.no_return
 
 
+def build_overload(name, vm):
+  return Overload.make(name, vm, "typing")
+
+
 def build_typevar(name, vm):
   return TypeVar.make(name, vm, "typing", pyval_name="_typevar_new")
 
@@ -743,4 +765,5 @@ typing_overload = {
     "Union": Union,
     "TYPE_CHECKING": build_typechecking,
     "cast": build_cast,
+    "overload": build_overload,
 }

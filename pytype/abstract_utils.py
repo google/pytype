@@ -161,7 +161,7 @@ def get_signatures(func):
   if func.isinstance_PyTDFunction():
     return [sig.signature for sig in func.signatures]
   elif func.isinstance_InterpreterFunction():
-    return [func.signature]
+    return [f.signature for f in func.signature_functions()]
   elif func.isinstance_BoundFunction():
     sigs = get_signatures(func.underlying)
     return [sig.drop_first_parameter() for sig in sigs]  # drop "self"

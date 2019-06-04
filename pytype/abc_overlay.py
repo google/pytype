@@ -35,7 +35,7 @@ class AbstractMethod(abstract.PyTDFunction):
       func_var = args.namedargs["function"]
 
     for func in func_var.data:
-      if isinstance(func, (abstract.Function, abstract.BoundFunction)):
+      if isinstance(func, abstract.FUNCTION_TYPES):
         func.is_abstract = True
 
     return node, func_var

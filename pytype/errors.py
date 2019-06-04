@@ -170,6 +170,7 @@ class Error(object):
   """Representation of an error in the error log.
 
   Attributes:
+    name: The error name.
     bad_call: Optionally, a `pytype.function.BadCall` of details of a bad
               function call.
     details: Optionally, a string of message details.
@@ -742,7 +743,11 @@ class ErrorLog(ErrorLogBase):
   @_error_name("not-callable")
   def not_callable(self, stack, func):
     """Calling an object that isn't callable."""
-    message = "%r object is not callable" % (func.name)
+    if isinstance(func, abstract.InterpreterFunction) and func.is_overload:
+      prefix = "@typing.overload-decorated "
+    else:
+      prefix = ""
+    message = "%s%r object is not callable" % (prefix, func.name)
     self.error(stack, message, keyword=func.name)
 
   @_error_name("not-indexable")

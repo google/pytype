@@ -431,3 +431,12 @@ py_test(
   DEPS
     pytype.tests.test_base
 )
+
+py_test(
+  NAME
+    test_overload
+  SRCS
+    test_overload.py
+  DEPS
+    pytype.tests.test_base
+)
