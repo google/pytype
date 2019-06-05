@@ -20,7 +20,6 @@ from pytype.tools.xref import kythe
 from typed_ast import ast27 as ast27
 from typed_ast import ast3
 
-
 # A global "ast" variable that we set to ast27 or ast3 depending on the target
 # python version.
 #
@@ -134,7 +133,11 @@ def _to_type(vals):
   """
   if not vals:
     return "Any"
-  return pytd_utils.Print(pytd_utils.JoinTypes(v.to_type() for v in vals if v))
+  return pytd_utils.Print(_join_types(vals))
+
+
+def _join_types(vals):
+  return pytd_utils.JoinTypes(v.to_type() for v in vals if v)
 
 
 # Internal datatypes
@@ -599,8 +602,9 @@ class ScopedVisitor(object):
 class IndexVisitor(ScopedVisitor):
   """Visitor that generates indexes."""
 
-  def __init__(self, source, module_name, kythe_):
+  def __init__(self, source, module_name, kythe_, annotate_ast):
     super(IndexVisitor, self).__init__(module_name)
+    self._annotate_ast = annotate_ast
     self.defs = {}
     self.locs = collections.defaultdict(list)
     self.refs = []
@@ -795,6 +799,9 @@ class IndexVisitor(ScopedVisitor):
             break
           elif op in ["STORE_FAST", "STORE_NAME", "STORE_DEREF"]:
             defn = self.add_local_def(node, name=symbol)
+            if self._annotate_ast:
+              node.resolved_annotation = _to_type(data)
+              node.resolved_type = _join_types(data)
             self.typemap[defn.id] = data
             break
     return node.id
@@ -920,7 +927,12 @@ class IndexVisitor(ScopedVisitor):
 class Indexer(object):
   """Runs the indexer visitor and collects its results."""
 
-  def __init__(self, source, loader, module_name, kythe_args=None):
+  def __init__(self,
+               source,
+               loader,
+               module_name,
+               kythe_args=None,
+               annotate_ast=False):
     self.source = source
     self.loader = loader
     self.resolved_modules = loader.get_resolved_modules()
@@ -928,6 +940,7 @@ class Indexer(object):
     self.module_name = module_name
     self.traces = source.traces
     self.kythe = kythe.Kythe(source, kythe_args)
+    self._annotate_ast = annotate_ast
     self.defs = None
     self.locs = None
     self.refs = None
@@ -941,7 +954,11 @@ class Indexer(object):
   def index(self, code_ast):
     """Index an AST corresponding to self.source."""
 
-    v = IndexVisitor(self.source, self.module_name, self.kythe)
+    v = IndexVisitor(
+        self.source,
+        self.module_name,
+        self.kythe,
+        annotate_ast=self._annotate_ast)
     v.visit(code_ast)
     self.defs = v.defs
     self.locs = v.locs
@@ -1393,7 +1410,8 @@ def process_file(options,
                  source_text=None,
                  kythe_args=None,
                  keep_pytype_data=False,
-                 ast_factory=None):
+                 ast_factory=None,
+                 annotate_ast=False):
   """Process a single file and return cross references.
 
   Args:
@@ -1401,20 +1419,25 @@ def process_file(options,
     source_text: Optional text of the file; will be read from the file pointed
       to by options.input if not supplied.
     kythe_args: Extra args for generating the kythe index
-    keep_pytype_data: Whether to preserve the Reference.data field. If true,
-      the field will hold the type of the reference as a str or Tuple[str, str]
-      (for attributes). Otherwise, it will be inaccessible.
-    ast_factory: Callable to return an ast-module-compatible object to parse
-      the source text into an ast-compatible object. It is passed the pytype
-      Options object. If not specified, typed_ast will be used.
+    keep_pytype_data: Whether to preserve the Reference.data field. If true, the
+      field will hold the type of the reference as a str or Tuple[str, str] (for
+      attributes). Otherwise, it will be inaccessible.
+    ast_factory: Callable to return an ast-module-compatible object to parse the
+      source text into an ast-compatible object. It is passed the pytype Options
+      object. If not specified, typed_ast will be used.
+    annotate_ast: Whether to annotate the ast with type information. Nodes with
+      type information will have these attributes added:
+        * `.resolved_type`: the pytd information about the type
+        * `.resolved_annotation`: A string representation of the type, as would
+          be written in an annotation.
 
   Returns:
-    An Indexer object with the indexed code
+    The Indexer object used for indexing, and the created AST object. The
+    AST object may have been modified if `annotate_ast=True`.
 
   Raises:
     PytypeError if pytype fails.
   """
-
   # We bind the global ast variable in this function.
   global ast
 
@@ -1438,21 +1461,22 @@ def process_file(options,
 
   if ast_factory:
     ast = ast_factory(options)
-    a = ast.parse(src, options.input)
+    ast_root_node = ast.parse(src, options.input)
   else:
     major, minor = options.python_version
     if major == 2:
       # python2.7 is the only supported py2 version.
-      a = ast27.parse(src, options.input)
+      ast_root_node = ast27.parse(src, options.input)
       ast = ast27
     else:
-      a = ast3.parse(src, options.input, feature_version=minor)
+      ast_root_node = ast3.parse(src, options.input, feature_version=minor)
       ast = ast3
 
   # TODO(mdemello): Get from args
   module_name = "module"
   source = SourceFile(src, vm.opcode_traces, filename=options.input)
-  ix = Indexer(source, vm.loader, module_name, kythe_args)
-  ix.index(a)
+  ix = Indexer(
+      source, vm.loader, module_name, kythe_args, annotate_ast=annotate_ast)
+  ix.index(ast_root_node)
   ix.finalize(keep_pytype_data)
-  return ix
+  return ix, ast_root_node

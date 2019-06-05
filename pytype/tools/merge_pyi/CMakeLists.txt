@@ -5,7 +5,111 @@ toplevel_py_binary(
     merge-pyi
   SRCS
     main.py
-    merge_pyi.py
   MAIN
     main.py
+  DEPS
+    .merge_pyi
+)
+
+py_library(
+  NAME
+    merge_pyi
+  SRCS
+    merge_pyi.py
+)
+
+py_test(
+  NAME
+    merge_pyi_test
+  SRCS
+    merge_pyi_test.py
+  DEPS
+    .merge_pyi
+    .test_data
+)
+
+# List the files individually so that CMake will track them as build inputs.
+filegroup(
+  NAME
+    test_data
+  SRCS
+    test_data/decoration.comment.py
+    test_data/decoration.pep484.py
+    test_data/decoration.py
+    test_data/decoration.pyi
+    test_data/defaults.comment.py
+    test_data/defaults.pep484.py
+    test_data/defaults.py
+    test_data/defaults.pyi
+    test_data/heuristics.comment.py
+    test_data/heuristics.pep484.py
+    test_data/heuristics.py
+    test_data/heuristics.pyi
+    test_data/imports.comment.py
+    test_data/imports.pep484.py
+    test_data/imports.py
+    test_data/imports.pyi
+    test_data/imports_notouch.comment.py
+    test_data/imports_notouch.pep484.py
+    test_data/imports_notouch.py
+    test_data/imports_notouch.pyi
+    test_data/member_var.comment.py
+    test_data/member_var.pep484.py
+    test_data/member_var.py
+    test_data/member_var.pyi
+    test_data/mismatch.comment.py
+    test_data/mismatch.pep484.py
+    test_data/mismatch.py
+    test_data/mismatch.pyi
+    test_data/nonearg.comment.py
+    test_data/nonearg.pep484.py
+    test_data/nonearg.py
+    test_data/nonearg.pyi
+    test_data/oneliner.comment.py
+    test_data/oneliner.pep484.py
+    test_data/oneliner.py
+    test_data/oneliner.pyi
+    test_data/packed_tuple.comment.py
+    test_data/packed_tuple.pep484.py
+    test_data/packed_tuple.py
+    test_data/packed_tuple.pyi
+    test_data/parse_error.py
+    test_data/parse_error.pyi
+    test_data/partial.comment.py
+    test_data/partial.pep484.py
+    test_data/partial.py
+    test_data/partial.pyi
+    test_data/pyi_variations.comment.py
+    test_data/pyi_variations.pep484.py
+    test_data/pyi_variations.py
+    test_data/pyi_variations.pyi
+    test_data/redefine.comment.py
+    test_data/redefine.pep484.py
+    test_data/redefine.py
+    test_data/redefine.pyi
+    test_data/retval_heuristics.comment.py
+    test_data/retval_heuristics.pep484.py
+    test_data/retval_heuristics.py
+    test_data/retval_heuristics.pyi
+    test_data/scope.comment.py
+    test_data/scope.pep484.py
+    test_data/scope.py
+    test_data/scope.pyi
+    test_data/simple.comment.py
+    test_data/simple.pep484.py
+    test_data/simple.py
+    test_data/simple.pyi
+    test_data/simple_defaults.py
+    test_data/stars.comment.py
+    test_data/stars.pep484.py
+    test_data/stars.py
+    test_data/stars.pyi
+    test_data/trailing_comma.comment.py
+    test_data/trailing_comma.pep484.py
+    test_data/trailing_comma.py
+    test_data/trailing_comma.pyi
+    test_data/typevar.comment.py
+    test_data/typevar.pep484.py
+    test_data/typevar.py
+    test_data/typevar.pyi
 )

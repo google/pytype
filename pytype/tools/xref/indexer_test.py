@@ -15,18 +15,27 @@ from pytype.tools.xref import output
 class IndexerTest(test_base.TargetIndependentTest):
   """Tests for the indexer."""
 
-  def index_code(self, code, **kwargs):
+  def index_code(self, code, return_ast=False, **kwargs):
     """Generate references from a code string."""
     ast_factory = kwargs.pop("ast_factory", None)
     keep_pytype_data = kwargs.pop("keep_pytype_data", False)
+    annotate_ast = kwargs.pop("annotate_ast", False)
+
     args = {"version": self.python_version}
     args.update(kwargs)
     with file_utils.Tempdir() as d:
       d.create_file("t.py", code)
       options = config.Options([d["t.py"]])
       options.tweak(**args)
-      return indexer.process_file(
-          options, keep_pytype_data=keep_pytype_data, ast_factory=ast_factory)
+      ix, ast_root = indexer.process_file(
+          options,
+          keep_pytype_data=keep_pytype_data,
+          ast_factory=ast_factory,
+          annotate_ast=annotate_ast)
+      if return_ast:
+        return ix, ast_root
+      else:
+        return ix
 
   def generate_kythe(self, code, **kwargs):
     """Generate a kythe index from a code string."""
@@ -35,7 +44,7 @@ class IndexerTest(test_base.TargetIndependentTest):
       options = config.Options([d["t.py"]])
       options.tweak(pythonpath=[d.path], version=self.python_version)
       kythe_args = kythe.Args(corpus="corpus", root="root")
-      ix = indexer.process_file(options, kythe_args=kythe_args)
+      ix, _ = indexer.process_file(options, kythe_args=kythe_args)
       # Collect all the references from the kythe graph.
       kythe_index = [json.loads(x) for x in output.json_kythe_graph(ix)]
       return kythe_index
@@ -58,8 +67,12 @@ class IndexerTest(test_base.TargetIndependentTest):
       called[0] = True
       return ast
 
-    self.index_code("x = {}", ast_factory=ast_factory)
+    unused_indexer, ast_root = self.index_code(
+        "x = {}", return_ast=True, ast_factory=ast_factory, annotate_ast=True)
     self.assertTrue(called[0])
+    name_node = ast_root.body[0].targets[0]
+    self.assertIsNotNone(name_node.resolved_type)
+    self.assertIsNotNone(name_node.resolved_annotation)
 
   def test_param_reuse(self):
     ix = self.index_code("""\
@@ -106,7 +119,7 @@ class IndexerTest(test_base.TargetIndependentTest):
       d.create_file("p/q.pyi", stub)
       options = config.Options([d["t.py"]])
       options.tweak(pythonpath=[d.path], version=self.python_version)
-      ix = indexer.process_file(options)
+      ix, _ = indexer.process_file(options)
       self.assertDef(ix, "module.f", "f", "Import")
       self.assertDef(ix, "module.x.y", "x.y", "Import")
       self.assertDef(ix, "module.c", "c", "Import")
@@ -167,7 +180,7 @@ class IndexerTest(test_base.TargetIndependentTest):
     """)
     options = config.Options(["/path/to/nonexistent/file.py"])
     options.tweak(version=self.python_version)
-    ix = indexer.process_file(options, source_text=code)
+    ix, _ = indexer.process_file(options, source_text=code)
     self.assertDef(ix, "module.f", "f", "FunctionDef")
 
   def test_kythe_args(self):

@@ -343,7 +343,7 @@ class VirtualMachine(object):
     log.info("%s | data_stack: %s", indent, stack_rep)
     log.info("%s | block_stack: %s", indent, block_stack_rep)
     log.info("%s | node: <%d>%s", indent, state.node.id, state.node.name)
-    log.info("%s %s", indent, utils.maybe_truncate(str(op), _TRUNCATE))
+    log.info("%s ## %s", indent, utils.maybe_truncate(str(op), _TRUNCATE))
 
   def repper(self, s):
     return repr_obj.repr(s)

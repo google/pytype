@@ -40,6 +40,16 @@ def parse_args(argv):
       description='Populate file.py with type annotations from file.pyi.',
       epilog='Outputs merged file to stdout.')
 
+  def check_verbosity(v):
+    v = int(v)  # may raise ValueError
+    if -1 <= v <= 4:
+      return v
+    raise ValueError()
+  parser.add_argument(
+      '-v', type=check_verbosity, action='store', default=1,
+      help=('Set logging verbosity: '
+            '-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug'))
+
   group = parser.add_mutually_exclusive_group()
 
   group.add_argument('-i', action='store_true', help='overwrite file.py')
@@ -75,11 +85,13 @@ def main(argv=None):
     argv: Flags and files to process.
   """
 
-  logging.basicConfig(level=logging.DEBUG)
-
   if argv is None:
     argv = sys.argv
   args = parse_args(argv)
+
+  # Log levels range from 10 (DEBUG) to 50 (CRITICAL) in increments of 10. A
+  # level >50 prevents anything from being logged.
+  logging.basicConfig(level=50-args.v*10)
 
   py_src = args.py.read()
   pyi_src = args.pyi.read()

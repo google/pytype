@@ -16,7 +16,8 @@ OVERWRITE_EXPECTED = 0  # flip to regenerate expected files
 
 
 def load_tests(unused_loader, standard_tests, unused_pattern):
-  standard_tests.addTests(TestBuilder().build('test_data'))
+  path = os.path.join(os.path.dirname(__file__), 'test_data')
+  standard_tests.addTests(TestBuilder().build(path))
   return standard_tests
 
 
@@ -46,7 +47,7 @@ class TestBuilder(object):
         py, pyi = [files_by_ext[x] for x in (PY, PYI)]
         outfile = os.path.join(data_dir, base + '.' + args.expected_ext)
 
-        test = RegressionTest(args, py, pyi, outfile)
+        test = build_regression_test(args, py, pyi, outfile)
         arg_suite.addTest(test)
 
     return suite
@@ -79,29 +80,24 @@ class Args(object):
     return exts[int(self.as_comments)] + '.py'
 
 
-class RegressionTest(unittest.TestCase):
+def build_regression_test(args, py, pyi, outfile):
 
-  def __init__(self, args, py, pyi, outfile):
-    super(RegressionTest, self).__init__('run_test')
-    self.args = args  # merge_pyi args
-    self.py = py
-    self.pyi = pyi
-    self.outfile = outfile
+  def regression_test(test_case):
+    py_input, pyi_src = [_read_file(f) for f in (py, pyi)]
 
-  def __str__(self):
-    return os.path.basename(self.outfile)
-
-  def run_test(self):
-    py_input, pyi_src = [_read_file(f) for f in (self.py, self.pyi)]
-
-    output = merge_pyi.annotate_string(self.args, py_input, pyi_src)
+    output = merge_pyi.annotate_string(args, py_input, pyi_src)
 
     if OVERWRITE_EXPECTED:
-      with open(self.outfile, 'w') as f:
+      with open(outfile, 'w') as f:
         f.write(output)
     else:
-      expected = _read_file(self.outfile)
-      self.assertEqual(expected, output, _get_diff(expected, output))
+      expected = _read_file(outfile)
+      test_case.assertEqual(expected, output, _get_diff(expected, output))
+
+  name = os.path.splitext(os.path.basename(outfile))[0].replace('.', '_')
+  test = 'test_%s' % name
+  case = type('RegressionTest', (unittest.TestCase,), {test: regression_test})
+  return case(test)
 
 
 def _read_file(filename):
