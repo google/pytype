@@ -1075,6 +1075,21 @@ class VirtualMachine(object):
       return state, ret
     raise KeyError(name)
 
+  def _record_local_assignment(self, name, value, orig_val):
+    self.ordered_locals[self.frame.f_code.co_name].append(
+        (name, value, orig_val))
+
+  def _update_local_assignment(self, name, value):
+    locs = self.ordered_locals[self.frame.f_code.co_name]
+    new_locs = []
+    for loc in locs:
+      _name, _, _orig = loc
+      if _name == name:
+        new_locs.append((name, value, _orig))
+      else:
+        new_locs.append(loc)
+    self.ordered_locals[self.frame.f_code.co_name] = new_locs
+
   def _store_value(self, state, name, value, local):
     if local:
       target = self.frame.f_locals
@@ -1095,8 +1110,7 @@ class VirtualMachine(object):
     state, orig_val = state.pop()
     value = self.annotations_util.apply_type_comment(state, op, name, orig_val)
     if local:
-      self.ordered_locals[self.frame.f_code.co_name].append(
-          (name, value, orig_val))
+      self._record_local_assignment(name, value, orig_val)
     state = state.forward_cfg_node()
     state = self._store_value(state, name, value, local)
     self.trace_opcode(op, name, value)
@@ -2638,9 +2652,10 @@ class VirtualMachine(object):
     except KeyError:
       return state
     # The variable is defined. Replace its value with the annotation.
-    return self.store_local(
-        state, name, self.annotations_util.init_annotation_var(
-            state.node, name, value))
+    new_value = self.annotations_util.init_annotation_var(
+        state.node, name, value)
+    self._update_local_assignment(name, new_value)
+    return self.store_local(state, name, new_value)
 
   def byte_STORE_ANNOTATION(self, state, op):
     """Implementation of the STORE_ANNOTATION opcode."""

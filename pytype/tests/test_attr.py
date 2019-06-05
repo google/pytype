@@ -1,29 +1,12 @@
 """Tests for attrs library in attr_overlay.py."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
-ATTR_PYI = """
-from typing import Optional, Type, TypeVar
-T = TypeVar('T')
-def s(cls: Type[T]) -> Type[T]: ...
-def ib(type: T = Nonei, **kwargs) -> T: ...
-"""
-
-
-class TestAttrib(test_base.TargetIndependentTest):
+class TestAttrib(test_utils.TestAttrMixin,
+                 test_base.TargetIndependentTest):
   """Tests for attr.ib."""
-
-  def Infer(self, code):
-    with file_utils.Tempdir() as d:
-      d.create_file("attr.pyi", ATTR_PYI)
-      return super(TestAttrib, self).Infer(code, pythonpath=[d.path])
-
-  def InferWithErrors(self, code):
-    with file_utils.Tempdir() as d:
-      d.create_file("attr.pyi", ATTR_PYI)
-      return super(TestAttrib, self).InferWithErrors(code, pythonpath=[d.path])
 
   def test_basic(self):
     ty = self.Infer("""
