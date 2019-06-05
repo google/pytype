@@ -508,6 +508,15 @@ py_test(
 
 py_test(
   NAME
+    test_attr
+  SRCS
+    test_attr.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
     test_six_overlay
   SRCS
     test_six_overlay.py

@@ -9,6 +9,7 @@ Each entry in custom_overlays maps the module name to the overlay object
 
 from pytype import abc_overlay
 from pytype import asyncio_types_overlay
+from pytype import attr_overlay
 from pytype import collections_overlay
 from pytype import functools_overlay
 from pytype import future_overlay
@@ -21,6 +22,7 @@ from pytype import typing_overlay
 overlays = {
     "abc": abc_overlay.ABCOverlay,
     "asyncio": asyncio_types_overlay.AsyncioOverlay,
+    "attr": attr_overlay.AttrOverlay,
     "collections": collections_overlay.CollectionsOverlay,
     "functools": functools_overlay.FunctoolsOverlay,
     "future.utils": future_overlay.FutureUtilsOverlay,
