@@ -191,6 +191,20 @@ def run_tests_in_module(options, reporter):
     traceback.print_exc(file=options.output_file)
     return 1
   result = 0
+  # Support the load_tests protocol:
+  # https://docs.python.org/3/library/unittest.html#load-tests-protocol
+  if hasattr(mod_object, "load_tests"):
+    top_suite = unittest.suite.TestSuite()
+    mod_object.load_tests(unittest.TestLoader(), top_suite, None)
+    suites = [top_suite]
+    while suites:
+      suite = suites.pop(0)
+      for obj in suite:
+        if isinstance(obj, unittest.TestSuite):
+          suites.append(obj)
+        else:
+          assert isinstance(obj, unittest.TestCase), (obj, type(obj))
+          result += run_tests_in_class(obj.__class__, options, reporter)
   for _, class_object in _get_members_list(mod_object):
     if (isinstance(class_object, type) and
         issubclass(class_object, unittest.TestCase)):
