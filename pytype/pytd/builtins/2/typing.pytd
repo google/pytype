@@ -235,7 +235,8 @@ class BinaryIO(IO[bytes]): ...
 
 
 if sys.version_info >= (3, 0):
-  class TextIO(IO[str]): ...
+  class TextIO(IO[str]):
+    buffer: BinaryIO
 else:
   class TextIO(IO[unicode]): ...
 

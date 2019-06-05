@@ -217,16 +217,12 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         return pytd.AnythingType()
     elif isinstance(v, typing_overlay.TypeVar):
       return pytd.NamedType("__builtin__.type")
-    elif isinstance(v, (abstract.InterpreterFunction,
-                        abstract.BoundInterpreterFunction)):
-      sig, = abstract_utils.get_signatures(v)
-      return self.value_instance_to_pytd_type(
-          node, self.signature_to_callable(sig, self.vm), None, seen, view)
-    elif isinstance(v, (abstract.PyTDFunction, abstract.BoundPyTDFunction)):
+    elif isinstance(v, abstract.FUNCTION_TYPES):
       signatures = abstract_utils.get_signatures(v)
       if len(signatures) == 1:
         val = self.signature_to_callable(signatures[0], self.vm)
-        if not self.vm.annotations_util.get_type_parameters(val):
+        if (not isinstance(v, abstract.PYTD_FUNCTION_TYPES) or
+            not self.vm.annotations_util.get_type_parameters(val)):
           # This is a workaround to make sure we don't put unexpected type
           # parameters in call traces.
           return self.value_instance_to_pytd_type(node, val, None, seen, view)
@@ -397,13 +393,14 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       else:
         yield value.get_instance_type(node), True
 
-  def _function_call_to_return_type(self, node, v, seen_return, num_returns):
+  def _function_call_to_return_type(
+      self, sig, node, v, seen_return, num_returns):
     """Get a function call's pytd return type."""
-    if v.signature.has_return_annotation:
+    if sig.has_return_annotation:
       if v.is_coroutine():
         ret = abstract.Coroutine.make(self.vm, v, node).to_type(node)
       else:
-        ret = v.signature.annotations["return"].get_instance_type(node)
+        ret = sig.annotations["return"].get_instance_type(node)
     else:
       ret = seen_return.data.to_type(node)
       if isinstance(ret, pytd.NothingType) and num_returns == 1:
@@ -417,11 +414,11 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     """Convert an InterpreterFunction to a PyTD definition."""
     signatures = []
     combinations = v.get_call_combinations(node)
-    for node_after, combination, return_value in combinations:
+    for sig, node_after, combination, return_value in combinations:
       params = []
       for i, (name, kwonly, optional) in enumerate(v.get_parameters()):
-        if i < v.nonstararg_count and name in v.signature.annotations:
-          t = v.signature.annotations[name].get_instance_type(node_after)
+        if i < v.nonstararg_count and name in sig.annotations:
+          t = sig.annotations[name].get_instance_type(node_after)
         else:
           t = combination[name].data.to_type(node_after)
         # Python uses ".0" etc. for the names of parameters that are tuples,
@@ -429,25 +426,23 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         params.append(
             pytd.Parameter(name.replace(".", "_"), t, kwonly, optional, None))
       ret = self._function_call_to_return_type(
-          node_after, v, return_value, len(combinations))
+          sig, node_after, v, return_value, len(combinations))
       if v.has_varargs():
-        if v.signature.varargs_name in v.signature.annotations:
-          annot = v.signature.annotations[v.signature.varargs_name]
+        if sig.varargs_name in sig.annotations:
+          annot = sig.annotations[sig.varargs_name]
           typ = annot.get_instance_type(node_after)
         else:
           typ = pytd.NamedType("__builtin__.tuple")
-        starargs = pytd.Parameter(
-            v.signature.varargs_name, typ, False, True, None)
+        starargs = pytd.Parameter(sig.varargs_name, typ, False, True, None)
       else:
         starargs = None
       if v.has_kwargs():
-        if v.signature.kwargs_name in v.signature.annotations:
-          annot = v.signature.annotations[v.signature.kwargs_name]
+        if sig.kwargs_name in sig.annotations:
+          annot = sig.annotations[sig.kwargs_name]
           typ = annot.get_instance_type(node_after)
         else:
           typ = pytd.NamedType("__builtin__.dict")
-        starstarargs = pytd.Parameter(
-            v.signature.kwargs_name, typ, False, True, None)
+        starstarargs = pytd.Parameter(sig.kwargs_name, typ, False, True, None)
       else:
         starstarargs = None
       signatures.append(pytd.Signature(
@@ -507,9 +502,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     for val in options:
       if isinstance(val, abstract.InterpreterFunction):
         combinations = val.get_call_combinations(node)
-        for node_after, _, return_value in combinations:
+        for sig, node_after, _, return_value in combinations:
           types.append(self._function_call_to_return_type(
-              node_after, val, return_value, len(combinations)))
+              sig, node_after, val, return_value, len(combinations)))
       elif isinstance(val, abstract.PyTDFunction):
         types.extend(sig.pytd_sig.return_type for sig in val.signatures)
       else:

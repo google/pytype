@@ -1,5 +1,6 @@
 """Objects modelling VM state. (Frames etc.)."""
 
+import collections
 import logging
 
 from pytype import abstract
@@ -276,6 +277,10 @@ class Frame(utils.VirtualMachineWeakrefMixin):
     self.check_return = False
     self.return_variable = self.vm.program.NewVariable()
     self.yield_variable = self.vm.program.NewVariable()
+
+    # A map from function name to @typing.overload-decorated signatures. The
+    # overloads are copied to the implementation in InterpreterFunction.make.
+    self.overloads = collections.defaultdict(list)
 
     # A closure g communicates with its outer function f through two
     # fields in CodeType (both of which are tuples of strings):

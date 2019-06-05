@@ -2359,7 +2359,7 @@ class InterpreterClass(SimpleAbstractValue, mixin.Class):
 
   def get_own_methods(self):
     def _can_be_function(var):
-      return any(isinstance(v, (BoundFunction, Function)) for v in var.data)
+      return any(isinstance(v, FUNCTION_TYPES) for v in var.data)
     return {name for name, var in self.members.items() if _can_be_function(var)}
 
   def get_own_abstract_methods(self):
@@ -2571,6 +2571,10 @@ class SignedFunction(Function):
             for n in self.signature.param_names
             if n not in self.signature.defaults)
 
+  def match_and_map_args(self, node, args, alias_map):
+    """Calls match_args() and _map_args()."""
+    return self.match_args(node, args, alias_map), self._map_args(node, args)
+
   def _map_args(self, node, args):
     """Map call args to function args.
 
@@ -2729,6 +2733,7 @@ class InterpreterFunction(SignedFunction):
           error = "Expected AsyncGenerator, AsyncIterable or AsyncIterator"
           vm.errorlog.invalid_annotation(vm.frames, ret_type, error)
     late_annotations = late_annotations or {}
+    overloads = vm.frame.overloads[name]
     key = (name, code,
            abstract_utils.hash_all_dicts(
                (f_globals.members, set(code.co_names)),
@@ -2736,16 +2741,18 @@ class InterpreterFunction(SignedFunction):
                 set(f_locals.members) - set(code.co_varnames)),
                ({key: vm.program.NewVariable([value], [], vm.root_cfg_node)
                  for key, value in annotations.items()}, None),
+               (dict(enumerate(vm.program.NewVariable([f], [], vm.root_cfg_node)
+                               for f in overloads)), None),
                (dict(enumerate(defaults)), None),
                (dict(enumerate(closure or ())), None)))
     if key not in cls._function_cache:
       cls._function_cache[key] = cls(
           name, code, f_locals, f_globals, defaults, kw_defaults,
-          closure, annotations, late_annotations, vm)
+          closure, annotations, late_annotations, overloads, vm)
     return cls._function_cache[key]
 
   def __init__(self, name, code, f_locals, f_globals, defaults, kw_defaults,
-               closure, annotations, late_annotations, vm):
+               closure, annotations, late_annotations, overloads, vm):
     log.debug("Creating InterpreterFunction %r for %r", name, code.co_name)
     self.bound_class = BoundInterpreterFunction
     self.doc = code.co_consts[0] if code.co_consts else None
@@ -2757,6 +2764,11 @@ class InterpreterFunction(SignedFunction):
     self.closure = closure
     self._call_cache = {}
     self._call_records = []
+    # TODO(b/78034005): Combine this and PyTDFunction.signatures into a single
+    # way to handle multiple signatures that SignedFunction can also use.
+    self._overloads = overloads
+    self.has_overloads = bool(overloads)
+    self.is_overload = False  # will be set by typing_overlay.Overload.call
     self.nonstararg_count = self.code.co_argcount
     if self.code.co_kwonlyargcount >= 0:  # This is usually -1 or 0 (fast call)
       self.nonstararg_count += self.code.co_kwonlyargcount
@@ -2863,7 +2875,41 @@ class InterpreterFunction(SignedFunction):
     # extra time.
     return generator
 
+  def signature_functions(self):
+    """Get the functions that describe this function's signature."""
+    return self._overloads or [self]
+
+  def iter_signature_functions(self):
+    """Loop through signatures, setting each as the primary one in turn."""
+    if not self._overloads:
+      yield self
+      return
+    for f in self._overloads:
+      old_overloads = self._overloads
+      self._overloads = [f]
+      try:
+        yield f
+      finally:
+        self._overloads = old_overloads
+
+  def _find_matching_sig(self, node, args, alias_map):
+    error = None
+    for f in self.signature_functions():
+      try:
+        # match_args and _map_args both do some matching, so together they fully
+        # type-check the arguments.
+        substs, callargs = f.match_and_map_args(node, args, alias_map)
+      except function.FailedFunctionCall as e:
+        if e > error:
+          error = e
+      else:
+        # We use the first matching overload.
+        return f.signature, substs, callargs
+    raise error  # pylint: disable=raising-bad-type
+
   def call(self, node, func, args, new_locals=None, alias_map=None):
+    if self.is_overload:
+      raise function.NotCallable(self)
     if (self.vm.is_at_maximum_depth() and
         not abstract_utils.func_name_is_class_init(self.name)):
       log.info("Maximum depth reached. Not analyzing %r", self.name)
@@ -2873,13 +2919,16 @@ class InterpreterFunction(SignedFunction):
       return (node,
               self.vm.new_unsolvable(node))
     args = args.simplify(node, self.signature, self.vm)
-    substs = self.match_args(node, args, alias_map)
+    sig, substs, callargs = self._find_matching_sig(node, args, alias_map)
+    if sig is not self.signature:
+      # We've matched an overload; remap the callargs using the implementation
+      # so that optional parameters, etc, are correctly defined.
+      callargs = self._map_args(node, args)
     first_posarg = args.posargs[0] if args.posargs else None
-    callargs = self._map_args(node, args)
     # Keep type parameters without substitutions, as they may be needed for
     # type-checking down the road.
     annotations = self.vm.annotations_util.sub_annotations(
-        node, self.signature.annotations, substs, instantiate_unbound=False)
+        node, sig.annotations, substs, instantiate_unbound=False)
     if annotations:
       for name in callargs:
         if (name in annotations and (not self.is_attribute_of_class or
@@ -2903,7 +2952,7 @@ class InterpreterFunction(SignedFunction):
     # abstract method.
     check_return = (not (self.is_attribute_of_class and caller_is_protocol) and
                     not (caller_is_abstract and self.is_abstract))
-    if self.signature.has_return_annotation or not check_return:
+    if sig.has_return_annotation or not check_return:
       frame.allowed_returns = annotations.get(
           "return", self.vm.convert.unsolvable)
       frame.check_return = check_return
@@ -2935,7 +2984,7 @@ class InterpreterFunction(SignedFunction):
         ret = old_ret.AssignToNewVariable(node)
         if self._store_call_records:
           # Even if the call is cached, we might not have been recording it.
-          self._call_records.append((callargs, ret, node))
+          self._call_records.append((sig, callargs, ret, node))
         return node, ret
     if self.code.has_generator():
       generator = Generator(frame, self.vm)
@@ -2962,7 +3011,7 @@ class InterpreterFunction(SignedFunction):
     node_after_call = abstract_utils.apply_mutations(node_after_call, mutations)
     self._call_cache[callkey] = ret, self.vm.remaining_depth()
     if self._store_call_records or self.vm.store_all_calls:
-      self._call_records.append((callargs, ret, node_after_call))
+      self._call_records.append((sig, callargs, ret, node_after_call))
     self.last_frame = frame
     return node_after_call, ret
 
@@ -2970,7 +3019,7 @@ class InterpreterFunction(SignedFunction):
     """Get this function's call records."""
     all_combinations = []
     signature_data = set()
-    for callargs, ret, node_after_call in self._call_records:
+    for sig, callargs, ret, node_after_call in self._call_records:
       try:
         combinations = cfg_utils.variable_product_dict(callargs)
       except cfg_utils.TooComplexError:
@@ -2991,14 +3040,15 @@ class InterpreterFunction(SignedFunction):
               node_after_call.HasCombination(values)):
             signature_data.add(data)
             all_combinations.append(
-                (node_after_call, combination, return_value))
+                (sig, node_after_call, combination, return_value))
     if not all_combinations:
-      # Fallback: Generate a PyTD signature only from the definition of the
+      # Fallback: Generate signatures only from the definition of the
       # method, not the way it's being used.
       param_binding = self.vm.convert.unsolvable.to_binding(node)
       params = collections.defaultdict(lambda: param_binding)
       ret = self.vm.convert.unsolvable.to_binding(node)
-      all_combinations.append((node, params, ret))
+      for f in self.signature_functions():
+        all_combinations.append((f.signature, node, params, ret))
     return all_combinations
 
   def get_positional_names(self):
@@ -3220,6 +3270,22 @@ class BoundInterpreterFunction(BoundFunction):
 
   def get_first_opcode(self):
     return self.underlying.code.co_code[0]
+
+  @property
+  def has_overloads(self):
+    return self.underlying.has_overloads
+
+  @property
+  def is_overload(self):
+    return self.underlying.is_overload
+
+  @is_overload.setter
+  def is_overload(self, value):
+    self.underlying.is_overload = value
+
+  def iter_signature_functions(self):
+    for f in self.underlying.iter_signature_functions():
+      yield self.underlying.bound_class(self._callself, f)
 
 
 class BoundPyTDFunction(BoundFunction):
@@ -3674,3 +3740,6 @@ class Unknown(AtomicAbstractValue):
 
 AMBIGUOUS = (Unknown, Unsolvable)
 AMBIGUOUS_OR_EMPTY = AMBIGUOUS + (Empty,)
+FUNCTION_TYPES = (BoundFunction, Function)
+INTERPRETER_FUNCTION_TYPES = (BoundInterpreterFunction, InterpreterFunction)
+PYTD_FUNCTION_TYPES = (BoundPyTDFunction, PyTDFunction)

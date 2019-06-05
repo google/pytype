@@ -250,9 +250,10 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     # some of our own in _getargs. _NamedTupleFields is an alias to
     # List[Tuple[str, type]], which gives a more understandable error message.
     fields_pyval = typing_ast.Lookup("typing._NamedTupleFields").type
-    # pylint: disable=protected-access
-    self._fields_type = vm.convert.constant_to_value(
+    fields_type = vm.convert.constant_to_value(
         fields_pyval, {}, vm.root_cfg_node)
+    # pylint: disable=protected-access
+    self._fields_param = function.BadParam(name="fields", expected=fields_type)
     return self
 
   def _is_str_instance(self, val):
@@ -267,6 +268,10 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     name_var = callargs["typename"]
     fields_var = callargs["fields"]
     fields = abstract_utils.get_atomic_python_constant(fields_var)
+    if isinstance(fields, six.string_types):
+      # Since str matches Sequence, we have to manually check for it.
+      raise function.WrongArgTypes(
+          sig.signature, args, self.vm, self._fields_param)
     # The fields is a list of tuples, so we need to deeply unwrap them.
     fields = [abstract_utils.get_atomic_python_constant(t) for t in fields]
     # We need the actual string for the field names and the AtomicAbstractValue
@@ -274,13 +279,16 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     names = []
     types = []
     for field in fields:
+      if isinstance(field, six.string_types):
+        # Since str matches Sequence, we have to manually check for it.
+        raise function.WrongArgTypes(
+            sig.signature, args, self.vm, self._fields_param)
       if (len(field) != 2 or
           any(not self._is_str_instance(v) for v in field[0].data)):
         # Note that we don't need to check field[1] because both 'str'
         # (forward reference) and 'type' are valid for it.
-        sig, = self.signatures
-        bad_param = function.BadParam(name="fields", expected=self._fields_type)
-        raise function.WrongArgTypes(sig.signature, args, self.vm, bad_param)
+        raise function.WrongArgTypes(
+            sig.signature, args, self.vm, self._fields_param)
       name, typ = field
       name_py_constant = abstract_utils.get_atomic_python_constant(name)
       if name_py_constant.__class__ is compat.UnicodeType:
@@ -658,6 +666,24 @@ class NewType(abstract.PyTDFunction):
                               members.to_variable(node), None)
 
 
+class Overload(abstract.PyTDFunction):
+  """Implementation of typing.overload."""
+
+  def call(self, node, unused_func, args):
+    """Marks that the given function is an overload."""
+    self.match_args(node, args)
+
+    # Since we have only 1 argument, it's easy enough to extract.
+    func_var = args.posargs[0] if args.posargs else args.namedargs["func"]
+
+    for func in func_var.data:
+      if isinstance(func, abstract.INTERPRETER_FUNCTION_TYPES):
+        func.is_overload = True
+        self.vm.frame.overloads[func.name].append(func)
+
+    return node, func_var
+
+
 class Generic(TypingContainer):
   """Implementation of typing.Generic."""
 
@@ -716,6 +742,10 @@ def build_noreturn(name, vm):
   return vm.convert.no_return
 
 
+def build_overload(name, vm):
+  return Overload.make(name, vm, "typing")
+
+
 def build_typevar(name, vm):
   return TypeVar.make(name, vm, "typing", pyval_name="_typevar_new")
 
@@ -743,4 +773,5 @@ typing_overload = {
     "Union": Union,
     "TYPE_CHECKING": build_typechecking,
     "cast": build_cast,
+    "overload": build_overload,
 }

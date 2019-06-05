@@ -373,7 +373,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       if other_type.full_name in [
           "__builtin__.module", "__builtin__.object", "types.ModuleType"]:
         return subst
-    elif isinstance(left, (abstract.Function, abstract.BoundFunction)):
+    elif isinstance(left, abstract.FUNCTION_TYPES):
       if other_type.full_name == "typing.Callable":
         if not isinstance(other_type, abstract.ParameterizedClass):
           # The callable has no parameters, so any function matches it.
