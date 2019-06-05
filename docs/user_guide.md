@@ -12,7 +12,7 @@
       * [Pytype's pyi stub files](#pytypes-pyi-stub-files)
       * [Compatibility](#compatibility)
 
-<!-- Added by: rechen, at: 2019-03-27T11:49-07:00 -->
+<!-- Added by: rechen, at: 2019-06-05T16:36-07:00 -->
 
 <!--te-->
 
@@ -176,37 +176,49 @@ It's preferred to use the precise form (`pytype: disable=some-error`) instead of
 ## Variable annotations
 
 Above, we only silenced the error pytype gave us. A better fix is to make pytype
-aware of the attributes `Server` has (or is going to have). For this, we can add
-a *variable annotation*. In Python 3.6+, the preferred approach is to add a
-[PEP 526][pep-526]-style annotation:
+aware of the attributes `Server` has (or is going to have). For this, we use
+the following approaches to add a *variable annotation*.
 
-```python
-class Server:
-  socket: socket.socket
-```
+1. [PEP 526][pep-526]-style annotation (only in Python 3.6+).
 
-In versions earlier than 3.6, a type comment may be used:
+   In Python 3.6+, the preferred approach is to add a
+   [PEP 526][pep-526]-style annotation:
 
-```python
-class Server:
-  def __init__(self):
-    socket = None  # type: socket.socket
-```
+   ```python
+   class Server:
+     socket: socket.socket
+   ```
 
-or
+   However, this way uses new syntax that is not available before Python 3.6.
 
-```python
-class Server:
-  socket = ...  # type: socket.socket
-```
+2. Type comment in `__init___`.
 
-Now pytype knows about the attribute, and the attribute-error on line 13
-disappears. Note that the Ellipsis literal, `...`, is another Python 3 syntax
-extension that you get in Python 2 when you include
-`from __future__ import google_type_annotations`.
+   ```python
+   class Server:
+     def __init__(self):
+       self.socket = None  # type: socket.socket
+   ```
 
-When using a type comment, it is preferable to declare the attribute in
-`__init__`, to avoid creating a class attribute.
+   While this method doesn't look as clear as the first, it works in both Python
+   2 and Python 3.
+
+3. Type comment as class attribute.
+
+   ```python
+   class Server:
+     socket = ...  # type: socket.socket
+   ```
+
+   This method is not recommended unless you want to define a class attribute
+   for reasons other than typing, since it creates an unnecessary class
+   attribute compared with the first two methods.
+
+   Note that the Ellipsis literal, `...`, is another Python 3 syntax
+   extension that you get in Python 2 when you include
+   `from __future__ import google_type_annotations`. Assigning to `...` is a
+   convention to indicate that the attribute has no value yet. If the attribute
+   will be accessed before being set to its actual value, you should instead
+   assign it a sensible initial value such as `None`.
 
 ## Hiding extra dependencies
 
