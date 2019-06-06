@@ -113,6 +113,7 @@ py_library(
     analyze.py
     annotations_util.py
     asyncio_types_overlay.py
+    attr_overlay.py
     attribute.py
     blocks.py
     collections_overlay.py

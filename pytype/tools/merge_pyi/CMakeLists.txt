@@ -16,6 +16,8 @@ py_library(
     merge_pyi
   SRCS
     merge_pyi.py
+  DEPS
+    .grammar
 )
 
 py_test(
@@ -26,6 +28,13 @@ py_test(
   DEPS
     .merge_pyi
     .test_data
+)
+
+filegroup(
+  NAME
+    grammar
+  SRCS
+    Grammar.txt
 )
 
 # List the files individually so that CMake will track them as build inputs.
@@ -112,4 +121,12 @@ filegroup(
     test_data/typevar.pep484.py
     test_data/typevar.py
     test_data/typevar.pyi
+    test_data/var_annot.comment.py
+    test_data/var_annot.pep484.py
+    test_data/var_annot.py
+    test_data/var_annot.pyi
+    test_data/py36/async.comment.py
+    test_data/py36/async.pep484.py
+    test_data/py36/async.py
+    test_data/py36/async.pyi
 )

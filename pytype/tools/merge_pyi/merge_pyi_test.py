@@ -3,6 +3,7 @@ import difflib
 import logging
 import os
 import re
+import sys
 
 from pytype.tools.merge_pyi import merge_pyi
 import unittest
@@ -16,8 +17,12 @@ OVERWRITE_EXPECTED = 0  # flip to regenerate expected files
 
 
 def load_tests(unused_loader, standard_tests, unused_pattern):
-  path = os.path.join(os.path.dirname(__file__), 'test_data')
-  standard_tests.addTests(TestBuilder().build(path))
+  root = os.path.join(os.path.dirname(__file__), 'test_data')
+  paths = [root]
+  if sys.version_info >= (3, 6):
+    paths.append(os.path.join(root, 'py36'))
+  for path in paths:
+    standard_tests.addTests(TestBuilder().build(path))
   return standard_tests
 
 

@@ -29,6 +29,15 @@ py_test(
 
 py_test(
   NAME
+    test_attr
+  SRCS
+    test_attr.py
+  DEPS
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
     test_checker
   SRCS
     test_checker.py

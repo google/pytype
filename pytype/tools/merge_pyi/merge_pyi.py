@@ -81,6 +81,8 @@ from __future__ import print_function
 import collections
 import itertools
 import logging
+import os
+import sys
 
 from lib2to3 import pygram
 from lib2to3 import pytree
@@ -99,6 +101,25 @@ from lib2to3.pytree import Node
 __all__ = ['KnownError',
            'FixMergePyi',
            'annotate_string']
+
+
+_GRAMMAR_FILE = os.path.join(os.path.dirname(__file__), 'Grammar.txt')
+
+
+def patch_grammar(grammar_file):
+  """Patch in the given lib2to3 grammar."""
+  grammar = driver.load_grammar(grammar_file)
+  for name, symbol in pygram.python_grammar.symbol2number.items():
+    delattr(pygram.python_symbols, name)
+  for name, symbol in grammar.symbol2number.items():
+    setattr(pygram.python_symbols, name, symbol)
+  pygram.python_grammar = grammar
+
+
+if sys.version_info < (3, 6):
+  # Before Python 3.6, lib2to3's grammar cannot parse PEP 526-style variable
+  # annotations, so we patch in an improved grammar that can.
+  patch_grammar(_GRAMMAR_FILE)
 
 
 class KnownError(Exception):
@@ -137,7 +158,7 @@ class Util(object):
 
     text = text.strip()
     if not text:
-      # self.driver.parse_string just returns the ENDMARKER Leaf, wrap in
+      # cls.driver.parse_string just returns the ENDMARKER Leaf, wrap in
       # a Node for consistency
       return Node(syms.file_input, [Leaf(token.ENDMARKER, '')])
 
