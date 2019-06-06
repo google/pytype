@@ -21,7 +21,7 @@ class TestAttrib(test_utils.TestAttrMixin,
       class Foo(object):
         x: int
         y: str
-        def __init__(self, x, y) -> None: ...
+        def __init__(self, x: int, y: str) -> None: ...
     """)
 
   def test_classvar(self):
@@ -39,7 +39,7 @@ class TestAttrib(test_utils.TestAttrMixin,
         x: int
         y: str
         z: int
-        def __init__(self, x, y) -> None: ...
+        def __init__(self, x: int, y: str) -> None: ...
     """)
 
   def test_type_clash(self):

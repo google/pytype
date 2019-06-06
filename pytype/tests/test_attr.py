@@ -24,7 +24,7 @@ class TestAttrib(test_utils.TestAttrMixin,
         x: Any
         y: int
         z: str
-        def __init__(self, x, y, z) -> None: ...
+        def __init__(self, x, y: int, z: str) -> None: ...
     """)
 
   def test_interpreter_class(self):
@@ -40,7 +40,7 @@ class TestAttrib(test_utils.TestAttrMixin,
       class A(object): ...
       class Foo(object):
         x: A
-        def __init__(self, x) -> None: ...
+        def __init__(self, x: A) -> None: ...
     """)
 
   def test_typing(self):
@@ -56,7 +56,7 @@ class TestAttrib(test_utils.TestAttrMixin,
       attr: module
       class Foo(object):
         x: List[int]
-        def __init__(self, x) -> None: ...
+        def __init__(self, x: List[int]) -> None: ...
     """)
 
   def test_comment_annotations(self):
@@ -72,7 +72,7 @@ class TestAttrib(test_utils.TestAttrMixin,
       class Foo(object):
         x: int
         y: str
-        def __init__(self, x, y) -> None: ...
+        def __init__(self, x: int, y: str) -> None: ...
     """)
 
   def test_classvar(self):
@@ -90,7 +90,7 @@ class TestAttrib(test_utils.TestAttrMixin,
         x: int
         y: str
         z: int
-        def __init__(self, x, y) -> None: ...
+        def __init__(self, x: int, y: str) -> None: ...
     """)
 
   def test_type_clash(self):
@@ -101,6 +101,25 @@ class TestAttrib(test_utils.TestAttrMixin,
         x = attr.ib(type=str) # type: int
     """)
     self.assertErrorLogIs(errors, [(4, "invalid-annotation")])
+
+  def test_name_mangling(self):
+    # NOTE: Python itself mangles names starting with two underscores.
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class Foo(object):
+        _x = attr.ib(type=int)
+        __y = attr.ib(type=int)
+        ___z = attr.ib(type=int)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      attr: module
+      class Foo(object):
+        _x: int
+        _Foo__y: int
+        _Foo___z: int
+        def __init__(self, x: int, Foo__y: int, Foo___z: int) -> None: ...
+    """)
 
 
 test_base.main(globals(), __name__ == "__main__")

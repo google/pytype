@@ -24,7 +24,14 @@ class Attrs(abstract.PyTDFunction):
     return super(Attrs, cls).make(name, vm, "attr")
 
   def _make_init(self, node, attrs):
-    params = [name for name, _ in attrs]
+    # attrs removes leading underscores from attrib names when
+    # generating kwargs for __init__.
+    attrs = [(name.lstrip("_"), typ, orig) for name, typ, orig in attrs]
+    params = [name for name, _, _ in attrs]
+    annotations = {}
+    for name, typ, _ in attrs:
+      if typ.data[0].cls:
+        annotations[name] = typ.data[0].cls
     return abstract.SimpleFunction(
         name="__init__",
         param_names=("self",) + tuple(params),
@@ -32,7 +39,7 @@ class Attrs(abstract.PyTDFunction):
         kwonly_params=(),
         kwargs_name=None,
         defaults={},
-        annotations={},
+        annotations=annotations,
         late_annotations={},
         vm=self.vm).to_variable(node)
 
@@ -51,20 +58,25 @@ class Attrs(abstract.PyTDFunction):
     # add support for auto_attribs those will convert all classvars except for
     # those tagged with typing.ClassVar
     ordered_attrs = []
-    for k, v, orig in self.vm.ordered_locals[cls.name]:
+    for name, value, orig in self.vm.ordered_locals[cls.name]:
       if is_attrib(orig):
-        if not is_attrib(v) and orig.data[0].has_type:
+        if not is_attrib(value) and orig.data[0].has_type:
           # We cannot have both a type annotation and a type argument.
-          self.vm.errorlog.invalid_annotation(self.vm.frames, v.data[0].cls)
+          self.vm.errorlog.invalid_annotation(
+              self.vm.frames, value.data[0].cls)
         else:
-          ordered_attrs.append((k, v))
+          if is_attrib(value):
+            # Replace the attrib in the class dict with its type.
+            typ = value.data[0].typ
+            cls.members[name] = typ
+          else:
+            typ = value
+          ordered_attrs.append((name, typ, orig))
 
-    # Adjust the class members.
+    # Add an __init__ method
     init_method = self._make_init(node, ordered_attrs)
     cls.members["__init__"] = init_method
-    for name, attr_var in ordered_attrs:
-      if is_attrib(attr_var):
-        cls.members[name] = attr_var.data[0].typ
+
     return node, cls_var
 
 
