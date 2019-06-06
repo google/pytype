@@ -24,6 +24,23 @@ class TestAttrib(test_utils.TestAttrMixin,
         def __init__(self, x: int, y: str) -> None: ...
     """)
 
+  def test_late_annotations(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class Foo(object):
+        x : 'Foo' = attr.ib()
+        y = attr.ib(type=str)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo(object):
+        x: Any
+        y: str
+        def __init__(self, x: Foo, y: str) -> None: ...
+    """)
+
   def test_classvar(self):
     ty = self.Infer("""
       import attr

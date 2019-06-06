@@ -1,6 +1,7 @@
 """Support for the 'attrs' library."""
 
 from pytype import abstract
+from pytype import annotations_util
 from pytype import overlay
 
 
@@ -29,10 +30,17 @@ class Attrs(abstract.PyTDFunction):
     attrs = [(name.lstrip("_"), typ, orig) for name, typ, orig in attrs]
     params = [name for name, _, _ in attrs]
     annotations = {}
+    late_annotations = {}
     for name, typ, _ in attrs:
-      if typ.data[0].cls:
-        annotations[name] = typ.data[0].cls
-    return abstract.SimpleFunction(
+      if is_late_annotation(typ):
+        late_annotations[name] = typ
+      elif all(t.cls for t in typ.data):
+        if len(typ.data) == 1:
+          annotations[name] = typ.data[0].cls
+        else:
+          t = abstract.Union([t.cls for t in typ.data], self.vm)
+          annotations[name] = t
+    init = abstract.SimpleFunction(
         name="__init__",
         param_names=("self",) + tuple(params),
         varargs_name=None,
@@ -40,8 +48,12 @@ class Attrs(abstract.PyTDFunction):
         kwargs_name=None,
         defaults={},
         annotations=annotations,
-        late_annotations={},
-        vm=self.vm).to_variable(node)
+        late_annotations=late_annotations,
+        vm=self.vm)
+    # TODO(mdemello): Should we move this to the SimpleFunction constructor?
+    if late_annotations:
+      self.vm.functions_with_late_annotations.append(init)
+    return init.to_variable(node)
 
   def call(self, node, unused_func, args):
     """Processes the attrib members of a class."""
@@ -62,10 +74,25 @@ class Attrs(abstract.PyTDFunction):
       if is_attrib(orig):
         if not is_attrib(value) and orig.data[0].has_type:
           # We cannot have both a type annotation and a type argument.
-          self.vm.errorlog.invalid_annotation(
-              self.vm.frames, value.data[0].cls)
+          if is_late_annotation(value):
+            err = value.expr
+          else:
+            err = value.data[0].cls
+          self.vm.errorlog.invalid_annotation(self.vm.frames, err)
         else:
-          if is_attrib(value):
+          if is_late_annotation(value):
+            # TODO(b/134687045): Resolve the type later. We will just set it to
+            # the attr.ib type (which should be Any) for now, but preserve the
+            # type in the constructor. e.g.
+            #   class Foo
+            #     x = attr.ib() # type: 'Foo'
+            # will annotate as
+            #   class Foo
+            #     x: Any
+            #     def __init__(x: Foo): ...
+            typ = value
+            cls.members[name] = orig.data[0].typ
+          elif is_attrib(value):
             # Replace the attrib in the class dict with its type.
             typ = value.data[0].typ
             cls.members[name] = typ
@@ -110,4 +137,10 @@ class Attrib(abstract.PyTDFunction):
 
 
 def is_attrib(var):
+  if is_late_annotation(var):
+    return False
   return isinstance(var.data[0], AttribInstance)
+
+
+def is_late_annotation(val):
+  return isinstance(val, annotations_util.LateAnnotation)

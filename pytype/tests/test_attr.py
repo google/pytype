@@ -59,20 +59,55 @@ class TestAttrib(test_utils.TestAttrMixin,
         def __init__(self, x: List[int]) -> None: ...
     """)
 
+  def test_union_types(self):
+    ty = self.Infer("""
+      from typing import Union
+      import attr
+      @attr.s
+      class Foo(object):
+        x = attr.ib(type=Union[str, int])
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Union
+      attr: module
+      class Foo(object):
+        x: Union[str, int]
+        def __init__(self, x: Union[str, int]) -> None: ...
+    """)
+
   def test_comment_annotations(self):
+    ty = self.Infer("""
+      from typing import Union
+      import attr
+      @attr.s
+      class Foo(object):
+        x = attr.ib() # type: Union[str, int]
+        y = attr.ib(type=str)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Union
+      attr: module
+      class Foo(object):
+        x: Union[str, int]
+        y: str
+        def __init__(self, x: Union[str, int], y: str) -> None: ...
+    """)
+
+  def test_late_annotations(self):
     ty = self.Infer("""
       import attr
       @attr.s
       class Foo(object):
-        x = attr.ib() # type: int
-        y = attr.ib(type=str)
+        x = attr.ib() # type: 'Foo'
+        y = attr.ib() # type: str
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       attr: module
       class Foo(object):
-        x: int
+        x: Any
         y: str
-        def __init__(self, x: int, y: str) -> None: ...
+        def __init__(self, x: Foo, y: str) -> None: ...
     """)
 
   def test_classvar(self):
