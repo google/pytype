@@ -69,4 +69,28 @@ class TestAttrib(test_utils.TestAttrMixin,
     self.assertErrorLogIs(errors, [(4, "invalid-annotation")])
 
 
+class TestAttrs(test_utils.TestAttrMixin,
+                test_base.TargetPython3FeatureTest):
+  """Tests for attr.s."""
+
+  def test_kw_only(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s(kw_only=True)
+      class Foo(object):
+        x = attr.ib()
+        y = attr.ib(type=int)
+        z = attr.ib(type=str)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo(object):
+        x: Any
+        y: int
+        z: str
+        def __init__(self, *, x, y: int, z: str) -> None: ...
+    """)
+
+
 test_base.main(globals(), __name__ == "__main__")

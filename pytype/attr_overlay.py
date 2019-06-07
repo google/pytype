@@ -3,6 +3,7 @@
 import logging
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import annotations_util
 from pytype import overlay
 
@@ -29,6 +30,15 @@ class Attrs(abstract.PyTDFunction):
   def make(cls, name, vm):
     return super(Attrs, cls).make(name, vm, "attr")
 
+  def __init__(self, *args, **kwargs):
+    super(Attrs, self).__init__(*args, **kwargs)
+    # Defaults for the args to attr.s that we support.
+    # TODO(mdemello): Add auto_attribs.
+    self.args = {
+        "init": True,
+        "kw_only": False,
+    }
+
   def _make_init(self, node, attrs):
     # attrs removes leading underscores from attrib names when
     # generating kwargs for __init__.
@@ -45,11 +55,20 @@ class Attrs(abstract.PyTDFunction):
         else:
           t = abstract.Union([t.cls for t in typ.data], self.vm)
           annotations[name] = t
+
+    # The kw_only arg is ignored in python2; using it is not an error.
+    if self.args["kw_only"] and self.vm.PY3:
+      param_names = ("self",)
+      kwonly_params = tuple(params)
+    else:
+      param_names = ("self",) + tuple(params)
+      kwonly_params = ()
+
     init = abstract.SimpleFunction(
         name="__init__",
-        param_names=("self",) + tuple(params),
+        param_names=param_names,
         varargs_name=None,
-        kwonly_params=(),
+        kwonly_params=kwonly_params,
         kwargs_name=None,
         defaults={},
         annotations=annotations,
@@ -60,20 +79,41 @@ class Attrs(abstract.PyTDFunction):
       self.vm.functions_with_late_annotations.append(init)
     return init.to_variable(node)
 
-  def call(self, node, unused_func, args):
+  def _update_kwargs(self, args):
+    for k, v in args.namedargs.items():
+      if k in self.args:
+        try:
+          self.args[k] = abstract_utils.get_atomic_python_constant(v)
+        except abstract_utils.ConversionError:
+          self.vm.errorlog.not_supported_yet(
+              self.vm.frames,
+              "Non-constant attr.s argument %r" % k)
+
+  def call(self, node, func, args):
     """Processes the attrib members of a class."""
     self.match_args(node, args)
+
+    if args.namedargs:
+      self._update_kwargs(args)
+
+    # @attr.s does not take positional arguments in typical usage, but
+    # technically this works:
+    #   class Foo:
+    #     x = attr.ib()
+    #   Foo = attr.s(Foo, **kwargs)
+    #
+    # Unfortunately, it also works to pass kwargs as posargs; we will at least
+    # reject posargs if the first arg is not a Callable.
+    if not args.posargs:
+      return node, self.to_variable(node)
+
     cls_var = args.posargs[0]
     # We should only have a single binding here
     cls, = cls_var.data
 
     # Collect classvars to convert them to attrs.
     #
-    # TODO(mdemello): This is incomplete; we need to dig through the attrs
-    # code/docs and see which classvars get converted by @attr.s.  For now, we
-    # only record attrs that are explicitly created using attr.ib, but when we
-    # add support for auto_attribs those will convert all classvars except for
-    # those tagged with typing.ClassVar
+    # TODO(mdemello): Need support for auto_attribs and defaults.
     ordered_attrs = []
     for name, value, orig in self.vm.ordered_locals[cls.name]:
       if is_attrib(orig):
@@ -101,8 +141,9 @@ class Attrs(abstract.PyTDFunction):
           ordered_attrs.append((name, typ, orig))
 
     # Add an __init__ method
-    init_method = self._make_init(node, ordered_attrs)
-    cls.members["__init__"] = init_method
+    if self.args["init"]:
+      init_method = self._make_init(node, ordered_attrs)
+      cls.members["__init__"] = init_method
 
     return node, cls_var
 

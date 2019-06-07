@@ -157,4 +157,57 @@ class TestAttrib(test_utils.TestAttrMixin,
     """)
 
 
+class TestAttrs(test_utils.TestAttrMixin,
+                test_base.TargetIndependentTest):
+  """Tests for attr.s."""
+
+  def test_basic(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s()
+      class Foo(object):
+        x = attr.ib()
+        y = attr.ib(type=int)
+        z = attr.ib(type=str)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo(object):
+        x: Any
+        y: int
+        z: str
+        def __init__(self, x, y: int, z: str) -> None: ...
+    """)
+
+  def test_no_init(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s(init=False)
+      class Foo(object):
+        x = attr.ib()
+        y = attr.ib(type=int)
+        z = attr.ib(type=str)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo(object):
+        x: Any
+        y: int
+        z: str
+    """)
+
+  def test_bad_kwarg(self):
+    _, err = self.InferWithErrors("""
+      import attr
+      class A:
+        pass
+      @attr.s(init=A())
+      class Foo:
+        pass
+    """)
+    self.assertErrorLogIs(err, [(5, "not-supported-yet")])
+
+
 test_base.main(globals(), __name__ == "__main__")
