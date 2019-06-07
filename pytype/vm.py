@@ -1818,6 +1818,11 @@ class VirtualMachine(object):
       ret = self.convert.build_bool(state.node)
     return state, ret
 
+  def _cmp_is_always_supported(self, op_arg):
+    """Checks if the comparison should always succeed."""
+    return op_arg in (slots.CMP_ALWAYS_SUPPORTED_PY2 if self.PY2 else
+                      slots.CMP_ALWAYS_SUPPORTED_PY3)
+
   def byte_COMPARE_OP(self, state, op):
     """Pops and compares the top two stack values and pushes a boolean."""
     state, (x, y) = state.popn(2)
@@ -1849,9 +1854,11 @@ class VirtualMachine(object):
       ret = self.convert.build_bool(state.node)
     else:
       raise VirtualMachineError("Invalid argument to COMPARE_OP: %d" % op.arg)
-    if not ret.bindings and op.arg in slots.CMP_ALWAYS_SUPPORTED:
-      # Some comparison operations are always supported.
-      # (https://docs.python.org/2/library/stdtypes.html#comparisons)
+    if not ret.bindings and self._cmp_is_always_supported(op.arg):
+      # Some comparison operations are always supported, depending on the target
+      # Python version. In this case, always return a (boolean) value.
+      # (https://docs.python.org/2/library/stdtypes.html#comparisons or
+      # (https://docs.python.org/3/library/stdtypes.html#comparisons)
       ret.AddBinding(
           self.convert.primitive_class_instances[bool], [], state.node)
     return state.push(ret)
