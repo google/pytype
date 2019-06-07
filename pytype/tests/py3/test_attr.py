@@ -36,7 +36,7 @@ class TestAttrib(test_utils.TestAttrMixin,
       from typing import Any
       attr: module
       class Foo(object):
-        x: Any
+        x: Foo
         y: str
         def __init__(self, x: Foo, y: str) -> None: ...
     """)

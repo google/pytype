@@ -1,8 +1,13 @@
 """Support for the 'attrs' library."""
 
+import logging
+
 from pytype import abstract
 from pytype import annotations_util
 from pytype import overlay
+
+
+log = logging.getLogger(__name__)
 
 
 class AttrOverlay(overlay.Overlay):
@@ -50,7 +55,7 @@ class Attrs(abstract.PyTDFunction):
         annotations=annotations,
         late_annotations=late_annotations,
         vm=self.vm)
-    # TODO(mdemello): Should we move this to the SimpleFunction constructor?
+    # This should never happen (see comment in call())
     if late_annotations:
       self.vm.functions_with_late_annotations.append(init)
     return init.to_variable(node)
@@ -81,15 +86,10 @@ class Attrs(abstract.PyTDFunction):
           self.vm.errorlog.invalid_annotation(self.vm.frames, err)
         else:
           if is_late_annotation(value):
-            # TODO(b/134687045): Resolve the type later. We will just set it to
-            # the attr.ib type (which should be Any) for now, but preserve the
-            # type in the constructor. e.g.
-            #   class Foo
-            #     x = attr.ib() # type: 'Foo'
-            # will annotate as
-            #   class Foo
-            #     x: Any
-            #     def __init__(x: Foo): ...
+            # This should never happen; we should have resolved all late types
+            # in the class by the time @attr.s is invoked.
+            log.warning("Found late annotation %s: %s in @attr.s",
+                        value.name, value.expr)
             typ = value
             cls.members[name] = orig.data[0].typ
           elif is_attrib(value):

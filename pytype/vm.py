@@ -121,6 +121,7 @@ class VirtualMachine(object):
     self.loader = loader
     self.frames = []  # The call stack of frames.
     self.functions_with_late_annotations = []
+    self.classes_with_late_annotations = []
     self.functions_type_params_check = []
     self.params_with_late_types = []
     self.concrete_classes = []
@@ -523,6 +524,9 @@ class VirtualMachine(object):
             class_dict.pyval,
             cls,
             self)
+        if class_dict.late_annotations:
+          val.late_annotations = class_dict.late_annotations
+          self.classes_with_late_annotations.append(val)
       except mro.MROError as e:
         self.errorlog.mro_error(self.frames, name, e.mro_seqs)
         var = self.new_unsolvable(node)
@@ -697,8 +701,11 @@ class VirtualMachine(object):
       except abstract.TypeParameterError as e:
         self.errorlog.invalid_typevar(frames, utils.message(e))
     for func in self.functions_with_late_annotations:
-      self.annotations_util.eval_late_annotations(node, func, f_globals,
-                                                  f_locals)
+      self.annotations_util.eval_function_late_annotations(
+          node, func, f_globals, f_locals)
+    for cls in self.classes_with_late_annotations:
+      self.annotations_util.eval_class_late_annotations(
+          node, cls, f_globals, f_locals)
     for func, opcode in self.functions_type_params_check:
       func.signature.check_type_parameter_count(self.simple_stack(opcode))
     while f_globals.late_annotations:

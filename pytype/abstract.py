@@ -2453,6 +2453,10 @@ class InterpreterClass(SimpleAbstractValue, mixin.Class):
   def __contains__(self, name):
     return name in self.members
 
+  def set_annotation(self, name, val):
+    """Used when resolving forward references."""
+    self.members[name] = val
+
   def update_official_name(self, name):
     assert isinstance(name, str)
     if (self.official_name is None or
