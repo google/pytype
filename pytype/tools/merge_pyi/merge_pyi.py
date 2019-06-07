@@ -89,7 +89,6 @@ from lib2to3 import pytree
 from lib2to3 import refactor
 from lib2to3.fixer_base import BaseFix
 from lib2to3.fixer_util import find_indentation
-from lib2to3.fixer_util import find_root
 from lib2to3.fixer_util import syms
 from lib2to3.fixer_util import token
 from lib2to3.fixer_util import touch_import
@@ -380,6 +379,10 @@ class FuncSignature(object):
     """List[ArgSignature]."""
     return self._arg_sigs
 
+  @property
+  def node(self):
+    return self._node
+
   # The parse tree has a different shape when there is a single
   # decorator vs. when there are multiple decorators.
   decorated_pattern = compile_pattern("""
@@ -544,11 +547,10 @@ class FixMergePyi(BaseFix):
   def __init__(self, options, log):
     super(FixMergePyi, self).__init__(options, log)
 
-    # ParsedPyi obtained from .pyi file
-    self.parsed_pyi = None
+    # name -> FuncSignature map obtained from .pyi file
+    self.pyi_funcs = None
 
-    # Did we add globals required by pyi to the top of the py file
-    self.added_pyi_globals = False
+    self.inserted_types = []
 
     self.logger = logging.getLogger(self.__class__.__name__)
 
@@ -566,36 +568,38 @@ class FixMergePyi(BaseFix):
     self._annotate_pep484 = bool(value)
 
   def transform(self, node, results):
-    assert self.parsed_pyi, 'must provide pyi_string'
+    assert self.pyi_funcs is not None, 'must provide function annotations'
 
     src_sig = FuncSignature(node, results)
     if not self.can_annotate(src_sig):
       return
-    pyi_sig = self.parsed_pyi.funcs[src_sig.full_name]
+    pyi_sig = self.pyi_funcs[src_sig.full_name]
 
     if self.annotate_pep484:
-      self.insert_annotation(src_sig, pyi_sig)
+      self.inserted_types.extend(self.insert_annotation(src_sig, pyi_sig))
     else:
-      annot = self.get_comment_annotation(src_sig, pyi_sig)
-      if src_sig.try_insert_comment_annotation(annot) and 'Any' in annot:
-        touch_import('typing', 'Any', node)
-
-    self.add_globals(node)
+      self.inserted_types.extend(
+          self.insert_comment_annotation(src_sig, pyi_sig))
 
   def insert_annotation(self, src_sig, pyi_sig):
     """Insert annotation in PEP484 format."""
+    inserted_types = []
     for arg_sig, pyi_arg_sig in zip(src_sig.arg_sigs, pyi_sig.arg_sigs):
       if not pyi_arg_sig.arg_type:
         continue
       new_type = clean_clone(pyi_arg_sig.arg_type, False)
       arg_sig.insert_annotation(new_type)
+      inserted_types.append(new_type)
 
     if pyi_sig.ret_type:
       src_sig.insert_ret_annotation(pyi_sig.ret_type)
+      inserted_types.append(pyi_sig.ret_type)
+    return inserted_types
 
-  def get_comment_annotation(self, src_sig, pyi_sig):
-    """Return function annotation as a comment string, doesn't modify tree."""
-    arg_types = []
+  def insert_comment_annotation(self, src_sig, pyi_sig):
+    """Insert function annotation as a comment string."""
+    inserted_types = []
+    str_arg_types = []
     for i, (arg_sig, pyi_arg_sig) in enumerate(
         zip(src_sig.arg_sigs, pyi_sig.arg_sigs)):
       is_first = (i == 0)
@@ -603,29 +607,38 @@ class FixMergePyi(BaseFix):
 
       if new_type:
         new_type_str = str(new_type).strip()
+        inserted_types.append(new_type)
       elif self.infer_should_annotate(src_sig, arg_sig, is_first):
         new_type_str = 'Any'
       else:
         continue
 
-      arg_types.append(arg_sig.stars + new_type_str)
+      str_arg_types.append(arg_sig.stars + new_type_str)
 
     ret_type = pyi_sig.ret_type
-    if not ret_type:
+    if ret_type:
+      inserted_types.append(ret_type)
+    else:
       ret_type = self.infer_ret_type(src_sig)
 
-    return '(' + ', '.join(arg_types) + ') -> ' + str(ret_type).strip()
+    annot = '(' + ', '.join(str_arg_types) + ') -> ' + str(ret_type).strip()
+    if src_sig.try_insert_comment_annotation(annot):
+      if 'Any' in annot:
+        touch_import('typing', 'Any', src_sig.node)
+      return inserted_types
+    else:
+      return []
 
   def can_annotate(self, src_sig):
     if src_sig.has_pep484_annotations or src_sig.has_comment_annotations:
       self.logger.warning('already annotated, skipping %s', src_sig)
       return False
 
-    if src_sig.full_name not in self.parsed_pyi.funcs:
+    if src_sig.full_name not in self.pyi_funcs:
       self.logger.warning('no signature for %s, skipping', src_sig)
       return False
 
-    pyi_sig = self.parsed_pyi.funcs[src_sig.full_name]
+    pyi_sig = self.pyi_funcs[src_sig.full_name]
 
     if not pyi_sig.has_pep484_annotations:
       self.logger.warning('ignoring pyi definition with no annotations: %s',
@@ -637,51 +650,6 @@ class FixMergePyi(BaseFix):
       return False
 
     return True
-
-  def add_globals(self, node):
-    """Add required globals to the root of node. Idempotent."""
-    if self.added_pyi_globals:
-      return
-    # TODO(tsudol): get rid of this -- added to prevent adding
-    # .parsed_pyi.top_lines every time we annotate a different function in the
-    # same file, but can break when we run the tool twice on the same file. Have
-    # to do something like what touch_import does.
-    self.added_pyi_globals = True
-
-    imports, top_lines = self.parsed_pyi.imports, self.parsed_pyi.top_lines
-
-    # Copy imports if not already present
-    for pkg, names in imports:
-      if names is None:
-        # TODO(tsudol): do ourselves, touch_import puts stuff above license
-        # headers.
-        touch_import(None, pkg, node)  # == 'import pkg'
-      else:
-        for name in names:
-          touch_import(pkg, name, node)
-
-    root = find_root(node)
-
-    import_idx = [
-        idx for idx, idx_node in enumerate(root.children)
-        if self.import_pattern.match(idx_node)
-    ]
-    if import_idx:
-      insert_pos = import_idx[-1] + 1
-    else:
-      insert_pos = 0
-
-      # first string (normally docstring)
-      for idx, idx_node in enumerate(root.children):
-        if (idx_node.type == syms.simple_stmt and idx_node.children and
-            idx_node.children[0].type == token.STRING):
-          insert_pos = idx + 1
-          break
-
-    top_lines = '\n'.join(top_lines)
-    top_lines = Util.parse_string(top_lines)  # strips some newlines
-    for offset, offset_node in enumerate(top_lines.children[:-1]):
-      root.insert_child(insert_pos + offset, offset_node)
 
   @staticmethod
   def func_sig_compatible(src_sig, pyi_sig):
@@ -731,42 +699,105 @@ class FixMergePyi(BaseFix):
 
     return True
 
-  def set_pyi_string(self, pyi_string):
+  def set_pyi_funcs(self, pyi_funcs):
     """Set the annotations the fixer will use."""
-    self.parsed_pyi = self.parse_pyi_string(pyi_string)
-    self.added_pyi_globals = False
+    self.pyi_funcs = pyi_funcs
 
-  def parse_pyi_string(self, text):
-    """Parse .pyi string, return as ParsedPyi."""
+
+class Pyi(collections.namedtuple('Pyi', 'imports assignments funcs')):
+  """A parsed pyi."""
+
+  def _get_imports(self, inserted_types):
+    """Get the imports that provide the given types."""
+    used_names = set()
+    for node in inserted_types + self.assignments:
+      for leaf in node.leaves():
+        if leaf.type == token.NAME:
+          used_names.add(leaf.value)
+          # All prefixes are possible imports.
+          while '.' in leaf.value:
+            value, _ = leaf.rsplit('.', 1)
+            used_names.add(value)
+    for pkg, names in self.imports:
+      if names is None:
+        if pkg in used_names:
+          yield (pkg, names)
+      else:
+        names = [name for name in names if name == '*' or name in used_names]
+        if names:
+          yield (pkg, names)
+
+  def add_globals(self, tree, inserted_types):
+    """Add required globals to the tree. Idempotent."""
+    # Copy imports if not already present
+    for pkg, names in self._get_imports(inserted_types):
+      if names is None:
+        touch_import(None, pkg, tree)  # == 'import pkg'
+      else:
+        for name in names:
+          touch_import(pkg, name, tree)
+
+    import_idx = [
+        idx for idx, idx_node in enumerate(tree.children)
+        if self.import_pattern.match(idx_node)
+    ]
+    if import_idx:
+      insert_pos = import_idx[-1] + 1
+    else:
+      insert_pos = 0
+
+      # first string (normally docstring)
+      for idx, idx_node in enumerate(tree.children):
+        if (idx_node.type == syms.simple_stmt and idx_node.children and
+            idx_node.children[0].type == token.STRING):
+          insert_pos = idx + 1
+          break
+
+    # strips some newlines
+    top_lines = '\n'.join(str(a).strip() for a in self.assignments)
+    top_lines = Util.parse_string(top_lines)
+    for offset, offset_node in enumerate(top_lines.children[:-1]):
+      tree.insert_child(insert_pos + offset, offset_node)
+
+  @classmethod
+  def _log_warning(cls, *args):
+    logger = logging.getLogger(cls.__name__)
+    logger.warning(*args)
+
+  @classmethod
+  def parse(cls, text):
+    """Parse .pyi string, return as Pyi."""
     tree = Util.parse_string(text)
 
     funcs = {}
-    for node, match_results in generate_matches(tree, self.pattern):
+    for node, match_results in generate_matches(tree, cls.function_pattern):
       sig = FuncSignature(node, match_results)
 
       if sig.full_name in funcs:
-        self.logger.warning('Ignoring redefinition: %s', sig)
+        cls._log_warning('Ignoring redefinition: %s', sig)
       else:
         funcs[sig.full_name] = sig
 
     imports = []
-    for node, match_results in generate_top_matches(tree, self.import_pattern):
-      imp = self.parse_top_import(node, match_results)
+    for node, match_results in generate_top_matches(tree, cls.import_pattern):
+      imp = cls.parse_top_import(node, match_results)
       if imp:
         imports.append(imp)
 
-    top_lines = []
-    for node, match_results in generate_top_matches(tree, self.assign_pattern):
-      text = str(node).strip()
+    assignments = []
+    for node, match_results in generate_top_matches(tree, cls.assign_pattern):
+      text = str(node)
 
       # hack to avoid shadowing real variables -- proper solution is more
       # complicated, use util.find_binding
       if 'TypeVar' in text or (text and text[0] == '_'):
-        top_lines.append(text)
+        assignments.append(node)
       else:
-        self.logger.warning('ignoring %s', repr(text))
+        cls._log_warning('ignoring %s', repr(text))
 
-    return ParsedPyi(tuple(imports), top_lines, funcs)
+    return cls(tuple(imports), tuple(assignments), funcs)
+
+  function_pattern = compile_pattern(FuncSignature.PATTERN)
 
   assign_pattern = compile_pattern("""
     simple_stmt< expr_stmt<any+> any* >
@@ -781,7 +812,8 @@ class FixMergePyi(BaseFix):
     """)
   import_as_pattern = compile_pattern("""import_as_name<NAME 'as' NAME>""")
 
-  def parse_top_import(self, node, results):
+  @classmethod
+  def parse_top_import(cls, node, results):
     """Splits the result of import_pattern into component strings.
 
     Examples:
@@ -803,23 +835,18 @@ class FixMergePyi(BaseFix):
       of strings).
     """
 
-    # TODO(tsudol): this might have to be generalized to "get top-level
-    # statements that aren't class or function definitions":
-    # _T = typing.TypeVar('_T') is used in pyis.
-    # Still not clear what is and isn't valid in a pyi... Could we have a loop?
-
     pkg, names = results['pkg'], results.get('names', None)
     pkg = ''.join(map(str, pkg)).strip()
 
     if names:
       is_import_as = any(
-          True for _ in generate_matches(names, self.import_as_pattern))
+          True for _ in generate_matches(names, cls.import_as_pattern))
 
       if is_import_as:
         # fixer_util.touch_import doesn't handle this
         # If necessary, will have to stick import at top of .py file
-        self.logger.warning('Ignoring unhandled import-as: %s',
-                            repr(str(node).strip()))
+        cls._log_warning('Ignoring unhandled import-as: %s',
+                         repr(str(node).strip()))
         return None
 
       names = split_comma(names.leaves())
@@ -849,9 +876,6 @@ class StandaloneRefactoringTool(refactor.RefactoringTool):
     if not self._fixer:
       self._fixer = FixMergePyi(self.options, self.fixer_log)
     return self._fixer
-
-
-ParsedPyi = collections.namedtuple('ParsedPyi', 'imports top_lines funcs')
 
 
 def is_top_level(node):
@@ -919,11 +943,13 @@ def annotate_string(args, py_src, pyi_src):
   fixer = tool.fixer
 
   fixer.annotate_pep484 = not args.as_comments
-  fixer.set_pyi_string(pyi_src)
+  parsed_pyi = Pyi.parse(pyi_src)
+  fixer.set_pyi_funcs(parsed_pyi.funcs)
 
   # TODO(tsudol): tool.refactor_file knows how to handle encodings, look into
   # using that instead.
   tree = tool.refactor_string(py_src + '\n', None)
+  parsed_pyi.add_globals(tree, tuple(fixer.inserted_types))
 
   annotated_src = str(tree)[:-1]
 
