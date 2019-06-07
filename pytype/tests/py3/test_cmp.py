@@ -17,4 +17,23 @@ class InstanceUnequalityTest(test_base.TargetPython3BasicTest):
       """)
 
 
+class CmpOpTest(test_base.TargetPython3FeatureTest):
+  """Tests comparison operator behavior in Python 3."""
+
+  def test_lt(self):
+    # In Python 3, comparisons between two types that don't define their own
+    # comparison dunder methods is not guaranteed to succeed, except for ==, !=,
+    # is and is not.
+    # pytype infers a boolean value for those comparisons that always succeed,
+    # and currently infers Any for ones that don't.
+    # In Python 2, "x" would be bool. (See tests/py2/test_cmp.py)
+    # Comparison between types is necessary to trigger the "comparison always
+    # succeeds" behavior in vm.py.
+    ty = self.Infer("res = (1).__class__ < ''.__class__")
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      res: Any
+    """)
+
+
 test_base.main(globals(), __name__ == "__main__")
