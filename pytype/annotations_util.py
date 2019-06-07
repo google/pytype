@@ -183,7 +183,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         annotations[name] = annot or self.vm.convert.unsolvable
     return annotations
 
-  def eval_late_annotations(self, node, func, f_globals, f_locals):
+  def eval_function_late_annotations(self, node, func, f_globals, f_locals):
     """Resolves an instance of LateAnnotation's expression."""
     for name, annot in six.iteritems(func.signature.late_annotations):
       if name == function.MULTI_ARG_ANNOTATION:
@@ -203,6 +203,14 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
           func.signature.set_annotation(name, resolved)
     func.signature.check_type_parameter_count(
         self.vm.simple_stack(func.get_first_opcode()))
+
+  def eval_class_late_annotations(self, node, cls, f_globals, f_locals):
+    """Resolves an instance of LateAnnotation's expression."""
+    for name, annot in six.iteritems(cls.late_annotations):
+      resolved = self._process_one_annotation(
+          annot.expr, annot.name, annot.stack, node, f_globals, f_locals)
+      if resolved is not None:
+        cls.set_annotation(name, resolved.instantiate(node))
 
   def init_annotation_var(self, node, name, var):
     """Convert annotation type to instance value."""

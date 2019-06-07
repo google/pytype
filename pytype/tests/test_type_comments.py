@@ -394,6 +394,19 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorLogIs(errors, [(2, "invalid-annotation", r"Nonexistent")])
 
+  def testClassVariableForwardReference(self):
+    ty = self.Infer("""\
+      class A(object):
+        a = ... # type: 'A'
+        def __init__(self):
+          self.x = 42
+    """)
+    self.assertTypesMatchPytd(ty, """\
+      class A(object):
+        a: A
+        x: int
+    """)
+
   def testUseForwardReference(self):
     ty = self.Infer("""\
       a = None  # type: "A"
@@ -409,6 +422,37 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       a = ...  # type: A
       x = ...  # type: Any
     """)
+
+  def testUseClassVariableForwardReference(self):
+    # Attribute accesses for A().a all get resolved to Any (b/134706992)
+    ty = self.Infer("""\
+      class A(object):
+        a = ... # type: 'A'
+        def f(self):
+          return self.a
+      x = A().a
+      def g():
+        return A().a
+      y = g()
+    """)
+    self.assertTypesMatchPytd(ty, """\
+      from typing import Any
+      class A(object):
+        a: A
+        def f(self) -> Any: ...
+      x: Any
+      y: Any
+      def g() -> Any: ...
+    """)
+
+  @test_base.skip("b/134706992")
+  def testClassVariableForwardReferenceError(self):
+    _, err = self.InferWithErrors("""\
+      class A(object):
+        a = ... # type: 'A'
+      g = A().a.foo()
+    """)
+    self.assertErrorLogIs(err, [(3, "attribute-error")])
 
   def testMultilineValue(self):
     ty, errors = self.InferWithErrors("""\
