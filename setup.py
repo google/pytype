@@ -83,14 +83,15 @@ def scan_package_data(path, pattern, check):
   return result
 
 
-def get_builtin_files():
+def get_data_files():
   builtins = scan_package_data(['pytd', 'builtins'], '*.py*',
                                check=['3', '*.py*'])
   stdlib = scan_package_data(['pytd', 'stdlib'], '*.pytd',
                              check=['3', '*.pytd'])
   typeshed = scan_package_data(['typeshed'], '*.pyi',
                                check=['stdlib', '2', '*.pyi'])
-  return builtins + stdlib + typeshed
+  merge_pyi_grammar = ['tools/merge_pyi/Grammar.txt']
+  return builtins + stdlib + typeshed + merge_pyi_grammar
 
 
 def get_long_description():
@@ -152,7 +153,7 @@ setup(
             'pyxref = pytype.tools.xref.main:main',
         ]
     },
-    package_data={'pytype': get_builtin_files()},
+    package_data={'pytype': get_data_files()},
     install_requires=get_install_requires(),
     classifiers=[
         'Development Status :: 5 - Production/Stable',
