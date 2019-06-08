@@ -38,6 +38,15 @@ py_test(
 
 py_test(
   NAME
+    test_cmp
+  SRCS
+    test_cmp.py
+  DEPS
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
     test_functions
   SRCS
     test_functions.py

@@ -105,7 +105,7 @@ class TestAttrib(test_utils.TestAttrMixin,
       from typing import Any
       attr: module
       class Foo(object):
-        x: Any
+        x: Foo
         y: str
         def __init__(self, x: Foo, y: str) -> None: ...
     """)
@@ -155,6 +155,96 @@ class TestAttrib(test_utils.TestAttrMixin,
         _Foo___z: int
         def __init__(self, x: int, Foo__y: int, Foo___z: int) -> None: ...
     """)
+
+  def test_defaults(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class Foo(object):
+        x = attr.ib(default=42)
+        y = attr.ib(type=int, default=6)
+        z = attr.ib(type=str, default=28)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo(object):
+        x: int
+        y: int
+        z: str
+        def __init__(self, x: int = ..., y: int = ..., z: str = ...) -> None: ...
+    """)
+
+  def test_defaults_with_typecomment(self):
+    # Typecomments should override the type of default
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class Foo(object):
+        x = attr.ib(default=42) # type: int
+        y = attr.ib(default=42) # type: str
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo(object):
+        x: int
+        y: str
+        def __init__(self, x: int = ..., y: str = ...) -> None: ...
+    """)
+
+
+class TestAttrs(test_utils.TestAttrMixin,
+                test_base.TargetIndependentTest):
+  """Tests for attr.s."""
+
+  def test_basic(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s()
+      class Foo(object):
+        x = attr.ib()
+        y = attr.ib(type=int)
+        z = attr.ib(type=str)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo(object):
+        x: Any
+        y: int
+        z: str
+        def __init__(self, x, y: int, z: str) -> None: ...
+    """)
+
+  def test_no_init(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s(init=False)
+      class Foo(object):
+        x = attr.ib()
+        y = attr.ib(type=int)
+        z = attr.ib(type=str)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo(object):
+        x: Any
+        y: int
+        z: str
+    """)
+
+  def test_bad_kwarg(self):
+    _, err = self.InferWithErrors("""
+      import attr
+      class A:
+        pass
+      @attr.s(init=A())
+      class Foo:
+        pass
+    """)
+    self.assertErrorLogIs(err, [(5, "not-supported-yet")])
 
 
 test_base.main(globals(), __name__ == "__main__")

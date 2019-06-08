@@ -139,5 +139,17 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
         x: str
     """)
 
+  def testClassVariableForwardReference(self):
+    ty = self.Infer("""\
+      class A(object):
+        a: 'A' = ...
+        x = 42
+    """)
+    self.assertTypesMatchPytd(ty, """\
+      class A(object):
+        a: A
+        x: int
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

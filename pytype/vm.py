@@ -121,6 +121,7 @@ class VirtualMachine(object):
     self.loader = loader
     self.frames = []  # The call stack of frames.
     self.functions_with_late_annotations = []
+    self.classes_with_late_annotations = []
     self.functions_type_params_check = []
     self.params_with_late_types = []
     self.concrete_classes = []
@@ -523,6 +524,9 @@ class VirtualMachine(object):
             class_dict.pyval,
             cls,
             self)
+        if class_dict.late_annotations:
+          val.late_annotations = class_dict.late_annotations
+          self.classes_with_late_annotations.append(val)
       except mro.MROError as e:
         self.errorlog.mro_error(self.frames, name, e.mro_seqs)
         var = self.new_unsolvable(node)
@@ -697,8 +701,11 @@ class VirtualMachine(object):
       except abstract.TypeParameterError as e:
         self.errorlog.invalid_typevar(frames, utils.message(e))
     for func in self.functions_with_late_annotations:
-      self.annotations_util.eval_late_annotations(node, func, f_globals,
-                                                  f_locals)
+      self.annotations_util.eval_function_late_annotations(
+          node, func, f_globals, f_locals)
+    for cls in self.classes_with_late_annotations:
+      self.annotations_util.eval_class_late_annotations(
+          node, cls, f_globals, f_locals)
     for func, opcode in self.functions_type_params_check:
       func.signature.check_type_parameter_count(self.simple_stack(opcode))
     while f_globals.late_annotations:
@@ -1811,6 +1818,11 @@ class VirtualMachine(object):
       ret = self.convert.build_bool(state.node)
     return state, ret
 
+  def _cmp_is_always_supported(self, op_arg):
+    """Checks if the comparison should always succeed."""
+    return op_arg in (slots.CMP_ALWAYS_SUPPORTED_PY2 if self.PY2 else
+                      slots.CMP_ALWAYS_SUPPORTED_PY3)
+
   def byte_COMPARE_OP(self, state, op):
     """Pops and compares the top two stack values and pushes a boolean."""
     state, (x, y) = state.popn(2)
@@ -1842,9 +1854,11 @@ class VirtualMachine(object):
       ret = self.convert.build_bool(state.node)
     else:
       raise VirtualMachineError("Invalid argument to COMPARE_OP: %d" % op.arg)
-    if not ret.bindings and op.arg in slots.CMP_ALWAYS_SUPPORTED:
-      # Some comparison operations are always supported.
-      # (https://docs.python.org/2/library/stdtypes.html#comparisons)
+    if not ret.bindings and self._cmp_is_always_supported(op.arg):
+      # Some comparison operations are always supported, depending on the target
+      # Python version. In this case, always return a (boolean) value.
+      # (https://docs.python.org/2/library/stdtypes.html#comparisons or
+      # (https://docs.python.org/3/library/stdtypes.html#comparisons)
       ret.AddBinding(
           self.convert.primitive_class_instances[bool], [], state.node)
     return state.push(ret)

@@ -36,7 +36,7 @@ class TestAttrib(test_utils.TestAttrMixin,
       from typing import Any
       attr: module
       class Foo(object):
-        x: Any
+        x: Foo
         y: str
         def __init__(self, x: Foo, y: str) -> None: ...
     """)
@@ -67,6 +67,47 @@ class TestAttrib(test_utils.TestAttrMixin,
         x : int = attr.ib(type=str)
     """)
     self.assertErrorLogIs(errors, [(4, "invalid-annotation")])
+
+  def test_defaults_with_annotation(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class Foo(object):
+        x: int = attr.ib(default=42)
+        y: str = attr.ib(default=42)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo(object):
+        x: int
+        y: str
+        def __init__(self, x: int = ..., y: str = ...) -> None: ...
+    """)
+
+
+class TestAttrs(test_utils.TestAttrMixin,
+                test_base.TargetPython3FeatureTest):
+  """Tests for attr.s."""
+
+  def test_kw_only(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s(kw_only=True)
+      class Foo(object):
+        x = attr.ib()
+        y = attr.ib(type=int)
+        z = attr.ib(type=str)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo(object):
+        x: Any
+        y: int
+        z: str
+        def __init__(self, *, x, y: int, z: str) -> None: ...
+    """)
 
 
 test_base.main(globals(), __name__ == "__main__")

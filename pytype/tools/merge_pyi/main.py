@@ -46,13 +46,14 @@ def parse_args(argv):
       return v
     raise ValueError()
   parser.add_argument(
-      '-v', type=check_verbosity, action='store', default=1,
+      '-v', '--verbosity', type=check_verbosity, action='store', default=1,
       help=('Set logging verbosity: '
             '-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug'))
 
   group = parser.add_mutually_exclusive_group()
 
-  group.add_argument('-i', action='store_true', help='overwrite file.py')
+  group.add_argument(
+      '-i', '--in-place', action='store_true', help='overwrite file.py')
 
   parser.add_argument(
       '--as-comments',
@@ -91,7 +92,7 @@ def main(argv=None):
 
   # Log levels range from 10 (DEBUG) to 50 (CRITICAL) in increments of 10. A
   # level >50 prevents anything from being logged.
-  logging.basicConfig(level=50-args.v*10)
+  logging.basicConfig(level=50-args.verbosity*10)
 
   py_src = args.py.read()
   pyi_src = args.pyi.read()
@@ -103,7 +104,7 @@ def main(argv=None):
     if src_changed:
       diff = get_diff(py_src, annotated_src)
       print(diff)
-  elif args.i:
+  elif args.in_place:
     if src_changed:
       with open(args.py.name, 'w') as f:
         f.write(annotated_src)

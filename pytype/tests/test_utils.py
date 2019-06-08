@@ -172,10 +172,13 @@ class MakeCodeMixin(object):
 
 
 ATTR_PYI = """
-from typing import Optional, Type, TypeVar
+from typing import Any, Optional, Type, TypeVar
 T = TypeVar('T')
-def s(cls: Type[T]) -> Type[T]: ...
-def ib(type: T = Nonei, **kwargs) -> T: ...
+@overload
+def s(cls: Type[T], **kwargs) -> Type[T]: ...
+@overload
+def s(**kwargs) -> Any: ...
+def ib(type: T = None, **kwargs) -> T: ...
 """
 
 
