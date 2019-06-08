@@ -397,7 +397,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
   def testClassVariableForwardReference(self):
     ty = self.Infer("""\
       class A(object):
-        a = ... # type: 'A'
+        a = None  # type: 'A'
         def __init__(self):
           self.x = 42
     """)
@@ -427,7 +427,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
     # Attribute accesses for A().a all get resolved to Any (b/134706992)
     ty = self.Infer("""\
       class A(object):
-        a = ... # type: 'A'
+        a = None  # type: 'A'
         def f(self):
           return self.a
       x = A().a
@@ -449,7 +449,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
   def testClassVariableForwardReferenceError(self):
     _, err = self.InferWithErrors("""\
       class A(object):
-        a = ... # type: 'A'
+        a = None  # type: 'A'
       g = A().a.foo()
     """)
     self.assertErrorLogIs(err, [(3, "attribute-error")])
