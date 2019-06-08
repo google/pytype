@@ -33,10 +33,10 @@ class Attrs(abstract.PyTDFunction):
   def __init__(self, *args, **kwargs):
     super(Attrs, self).__init__(*args, **kwargs)
     # Defaults for the args to attr.s that we support.
-    # TODO(mdemello): Add auto_attribs.
     self.args = {
         "init": True,
         "kw_only": False,
+        "auto_attribs": False
     }
 
   def _make_init(self, node, attrs):
@@ -79,7 +79,6 @@ class Attrs(abstract.PyTDFunction):
         annotations=annotations,
         late_annotations=late_annotations,
         vm=self.vm)
-    # This should never happen (see comment in call())
     if late_annotations:
       self.vm.functions_with_late_annotations.append(init)
     return init.to_variable(node)
@@ -93,6 +92,13 @@ class Attrs(abstract.PyTDFunction):
           self.vm.errorlog.not_supported_yet(
               self.vm.frames,
               "Non-constant attr.s argument %r" % k)
+
+  def _type_clash_error(self, value):
+    if is_late_annotation(value):
+      err = value.expr
+    else:
+      err = value.data[0].cls
+    self.vm.errorlog.invalid_annotation(self.vm.frames, err)
 
   def call(self, node, func, args):
     """Processes the attrib members of a class."""
@@ -117,24 +123,18 @@ class Attrs(abstract.PyTDFunction):
     cls, = cls_var.data
 
     # Collect classvars to convert them to attrs.
-    #
-    # TODO(mdemello): Need support for auto_attribs and defaults.
+    ordered_locals = self.vm.ordered_locals[cls.name]
     ordered_attrs = []
-    for name, value, orig in self.vm.ordered_locals[cls.name]:
+    late_annotation = False  # True if we find a bare late annotation
+    for name, value, orig in ordered_locals:
+      if name.startswith("__") and name.endswith("__"):
+        continue
       if is_attrib(orig):
         if not is_attrib(value) and orig.data[0].has_type:
           # We cannot have both a type annotation and a type argument.
-          if is_late_annotation(value):
-            err = value.expr
-          else:
-            err = value.data[0].cls
-          self.vm.errorlog.invalid_annotation(self.vm.frames, err)
+          self._type_clash_error(value)
         else:
           if is_late_annotation(value):
-            # This should never happen; we should have resolved all late types
-            # in the class by the time @attr.s is invoked.
-            log.warning("Found late annotation %s: %s in @attr.s",
-                        value.name, value.expr)
             attr = InitParam(name=name,
                              typ=value,
                              default=orig.data[0].default)
@@ -151,6 +151,25 @@ class Attrs(abstract.PyTDFunction):
                              typ=value,
                              default=orig.data[0].default)
           ordered_attrs.append(attr)
+      elif self.args["auto_attribs"]:
+        # NOTE: This code should be much of what we need to implement
+        # dataclasses too.
+        #
+        # TODO(b/72678203): typing.ClassVar is the only way to filter a variable
+        # out from auto_attribs, but we don't even support importing it.
+        attr = InitParam(name=name,
+                         typ=value,
+                         default=orig)
+        if is_late_annotation(value) and orig is None:
+          # We are generating a class member from a bare annotation.
+          cls.members[name] = self.vm.convert.none.to_variable(node)
+          cls.late_annotations[name] = value
+          late_annotation = True
+        ordered_attrs.append(attr)
+
+    # See if we need to resolve any late annotations
+    if late_annotation:
+      self.vm.classes_with_late_annotations.append(cls)
 
     # Add an __init__ method
     if self.args["init"]:
@@ -203,7 +222,7 @@ class Attrib(abstract.PyTDFunction):
 
 
 def is_attrib(var):
-  if is_late_annotation(var):
+  if var is None or is_late_annotation(var):
     return False
   return isinstance(var.data[0], AttribInstance)
 

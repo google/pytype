@@ -1087,14 +1087,22 @@ class VirtualMachine(object):
         (name, value, orig_val))
 
   def _update_local_assignment(self, name, value):
+    """Record a type annotation on a local variable."""
     locs = self.ordered_locals[self.frame.f_code.co_name]
     new_locs = []
+    added = False
     for loc in locs:
       _name, _, _orig = loc
       if _name == name:
         new_locs.append((name, value, _orig))
+        added = True
       else:
         new_locs.append(loc)
+    if not added:
+      # We have an annotation with no corresponding value, e.g.
+      #   class A:
+      #     x: int
+      new_locs.append((name, value, None))
     self.ordered_locals[self.frame.f_code.co_name] = new_locs
 
   def _store_value(self, state, name, value, local):
@@ -2661,14 +2669,17 @@ class VirtualMachine(object):
     return self.store_local(state, "__annotations__", annotations)
 
   def _store_annotation(self, state, name, value):
+    """Store an annotation in the current locals dict."""
+    # Store the annotation, for use in attrs and dataclasses.
+    new_value = self.annotations_util.init_annotation_var(
+        state.node, name, value)
+    self._update_local_assignment(name, new_value)
+    # Now see if the variable is defined. If it is, replace its value with the
+    # new_value derived from the annotation.
     try:
       self.load_local(state, name)
     except KeyError:
       return state
-    # The variable is defined. Replace its value with the annotation.
-    new_value = self.annotations_util.init_annotation_var(
-        state.node, name, value)
-    self._update_local_assignment(name, new_value)
     return self.store_local(state, name, new_value)
 
   def byte_STORE_ANNOTATION(self, state, op):

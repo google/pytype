@@ -109,5 +109,25 @@ class TestAttrs(test_utils.TestAttrMixin,
         def __init__(self, *, x, y: int, z: str) -> None: ...
     """)
 
+  def test_auto_attrs(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s(auto_attribs=True)
+      class Foo(object):
+        x = 10
+        y: int
+        z: str = 'hello'
+        a: 'Foo'
+    """)
+    self.assertTypesMatchPytd(ty, """
+      attr: module
+      class Foo(object):
+        x: int
+        y: int
+        z: str
+        a: Foo
+        def __init__(self, x: int = ..., y: int, z: str = ..., a: Foo) -> None: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
