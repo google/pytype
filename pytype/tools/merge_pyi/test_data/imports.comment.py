@@ -1,5 +1,6 @@
 # Copyright (c) 2016 Google Inc. (under http://www.apache.org/licenses/LICENSE-2.0)
 import existing_import
+from existing_import import d
 from m1 import A
 from m2 import B
 import m3
@@ -15,6 +16,6 @@ def f(a1, a2, a3, a4, a5, a6):
     # type: (A, B, m3.C, D, E, F) -> G
     pass
 
-def g(a7, a8, a9):
-    # type: (a, b, c) -> existing_import
+def g(a7, a8, a9, a10):
+    # type: (a, b, c, d) -> existing_import
     pass

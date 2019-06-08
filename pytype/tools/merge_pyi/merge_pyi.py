@@ -88,10 +88,10 @@ from lib2to3 import pygram
 from lib2to3 import pytree
 from lib2to3 import refactor
 from lib2to3.fixer_base import BaseFix
+from lib2to3.fixer_util import does_tree_import
 from lib2to3.fixer_util import find_indentation
 from lib2to3.fixer_util import syms
 from lib2to3.fixer_util import token
-from lib2to3.fixer_util import touch_import
 from lib2to3.patcomp import compile_pattern
 from lib2to3.pgen2 import driver
 from lib2to3.pytree import Leaf
@@ -379,10 +379,6 @@ class FuncSignature(object):
     """List[ArgSignature]."""
     return self._arg_sigs
 
-  @property
-  def node(self):
-    return self._node
-
   # The parse tree has a different shape when there is a single
   # decorator vs. when there are multiple decorators.
   decorated_pattern = compile_pattern("""
@@ -624,7 +620,7 @@ class FixMergePyi(BaseFix):
     annot = '(' + ', '.join(str_arg_types) + ') -> ' + str(ret_type).strip()
     if src_sig.try_insert_comment_annotation(annot):
       if 'Any' in annot:
-        touch_import('typing', 'Any', src_sig.node)
+        inserted_types.append(Leaf(token.NAME, 'Any'))
       return inserted_types
     else:
       return []
@@ -718,24 +714,37 @@ class Pyi(collections.namedtuple('Pyi', 'imports assignments funcs')):
           while '.' in leaf.value:
             value, _ = leaf.rsplit('.', 1)
             used_names.add(value)
-    for pkg, names in self.imports:
-      if names is None:
-        if pkg in used_names:
-          yield (pkg, names)
+    for (pkg, pkg_alias), names in self.imports:
+      if not names:
+        if (pkg_alias or pkg) in used_names:
+          yield ((pkg, pkg_alias), names)
       else:
-        names = [name for name in names if name == '*' or name in used_names]
+        names = [(name, alias) for name, alias in names
+                 if name == '*' or (alias or name) in used_names]
         if names:
-          yield (pkg, names)
+          yield ((pkg, pkg_alias), names)
 
   def add_globals(self, tree, inserted_types):
     """Add required globals to the tree. Idempotent."""
     # Copy imports if not already present
-    for pkg, names in self._get_imports(inserted_types):
-      if names is None:
-        touch_import(None, pkg, tree)  # == 'import pkg'
+    top_lines = []
+    def import_name(name, alias):
+      return name + ('' if alias is None else ' as %s' % alias)
+    for (pkg, pkg_alias), names in self._get_imports(inserted_types):
+      if not names:
+        if does_tree_import(None, pkg_alias or pkg, tree):
+          continue
+        top_lines.append('import %s\n' % import_name(pkg, pkg_alias))
       else:
-        for name in names:
-          touch_import(pkg, name, tree)
+        assert pkg_alias is None
+        import_names = []
+        for name, alias in names:
+          if does_tree_import(pkg, alias or name, tree):
+            continue
+          import_names.append(import_name(name, alias))
+        if not import_names:
+          continue
+        top_lines.append('from %s import %s\n' % (pkg, ', '.join(import_names)))
 
     import_idx = [
         idx for idx, idx_node in enumerate(tree.children)
@@ -753,9 +762,10 @@ class Pyi(collections.namedtuple('Pyi', 'imports assignments funcs')):
           insert_pos = idx + 1
           break
 
-    # strips some newlines
-    top_lines = '\n'.join(str(a).strip() for a in self.assignments)
-    top_lines = Util.parse_string(top_lines)
+    if self.assignments:
+      top_lines.append('\n')
+      top_lines.extend(str(a).strip() + '\n' for a in self.assignments)
+    top_lines = Util.parse_string(''.join(top_lines))
     for offset, offset_node in enumerate(top_lines.children[:-1]):
       tree.insert_child(insert_pos + offset, offset_node)
 
@@ -779,10 +789,18 @@ class Pyi(collections.namedtuple('Pyi', 'imports assignments funcs')):
         funcs[sig.full_name] = sig
 
     imports = []
+    # Any is sometimes inserted as a default type, so make sure typing.Any is
+    # always importable.
+    any_import = False
     for node, match_results in generate_top_matches(tree, cls.import_pattern):
-      imp = cls.parse_top_import(node, match_results)
-      if imp:
-        imports.append(imp)
+      pkg, names = cls.parse_top_import(match_results)
+      if pkg == ('typing', None) and names:
+        if ('Any', None) not in names:
+          names.insert(0, ('Any', None))
+        any_import = True
+      imports.append((pkg, names))
+    if not any_import:
+      imports.append((('typing', None), [('Any', None)]))
 
     assignments = []
     for node, match_results in generate_top_matches(tree, cls.assign_pattern):
@@ -810,52 +828,57 @@ class Pyi(collections.namedtuple('Pyi', 'imports assignments funcs')):
         any*
     >
     """)
-  import_as_pattern = compile_pattern("""import_as_name<NAME 'as' NAME>""")
 
   @classmethod
-  def parse_top_import(cls, node, results):
+  def _parse_import_alias(cls, leaves):
+    assert [leaf.type for leaf in leaves] == [token.NAME] * 3
+    assert leaves[1].value == 'as'
+    return (leaves[0].value, leaves[2].value)
+
+  @classmethod
+  def parse_top_import(cls, results):
     """Splits the result of import_pattern into component strings.
 
     Examples:
 
     'from pkg import a,b,c' gives
-    ('pkg', ('a', 'b', 'c'))
+    (('pkg', None), [('a', None), ('b', None), ('c', None)])
 
     'import pkg' gives
-    ('pkg', None)
+    (('pkg', None), [])
 
-    'from pkg import a as b' or 'import pkg as pkg2' are not supported.
+    'from pkg import a as b' gives
+    (('pkg', None), [('a', 'b')])
+
+    'import pkg as pkg2' gives
+    (('pkg', 'pkg2'), [])
 
     Args:
-      node: The import statement node.
       results: The values from import_pattern.
 
     Returns:
-      A tuple of the package name (string) and the list of imported names (list
-      of strings).
+      A tuple of the package name and the list of imported names. Each name is a
+      tuple of original name and alias.
     """
 
     pkg, names = results['pkg'], results.get('names', None)
-    pkg = ''.join(map(str, pkg)).strip()
 
+    if len(pkg) == 1 and pkg[0].type == pygram.python_symbols.dotted_as_name:
+      pkg_out = cls._parse_import_alias(list(pkg[0].leaves()))
+    else:
+      pkg_out = (''.join(map(str, pkg)).strip(), None)
+
+    names_out = []
     if names:
-      is_import_as = any(
-          True for _ in generate_matches(names, cls.import_as_pattern))
-
-      if is_import_as:
-        # fixer_util.touch_import doesn't handle this
-        # If necessary, will have to stick import at top of .py file
-        cls._log_warning('Ignoring unhandled import-as: %s',
-                         repr(str(node).strip()))
-        return None
-
       names = split_comma(names.leaves())
       for name in names:
-        assert len(name) == 1
-        assert name[0].type in (token.NAME, token.STAR)
-      names = [name[0].value for name in names]
+        if len(name) == 1:
+          assert name[0].type in (token.NAME, token.STAR)
+          names_out.append((name[0].value, None))
+        else:
+          names_out.append(cls._parse_import_alias(name))
 
-    return pkg, names
+    return pkg_out, names_out
 
 
 class StandaloneRefactoringTool(refactor.RefactoringTool):
