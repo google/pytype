@@ -68,6 +68,23 @@ class TestAttrib(test_utils.TestAttrMixin,
     """)
     self.assertErrorLogIs(errors, [(4, "invalid-annotation")])
 
+  def test_defaults_with_annotation(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class Foo(object):
+        x: int = attr.ib(default=42)
+        y: str = attr.ib(default=42)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo(object):
+        x: int
+        y: str
+        def __init__(self, x: int = ..., y: str = ...) -> None: ...
+    """)
+
 
 class TestAttrs(test_utils.TestAttrMixin,
                 test_base.TargetPython3FeatureTest):

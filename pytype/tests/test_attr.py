@@ -156,6 +156,43 @@ class TestAttrib(test_utils.TestAttrMixin,
         def __init__(self, x: int, Foo__y: int, Foo___z: int) -> None: ...
     """)
 
+  def test_defaults(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class Foo(object):
+        x = attr.ib(default=42)
+        y = attr.ib(type=int, default=6)
+        z = attr.ib(type=str, default=28)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo(object):
+        x: int
+        y: int
+        z: str
+        def __init__(self, x: int = ..., y: int = ..., z: str = ...) -> None: ...
+    """)
+
+  def test_defaults_with_typecomment(self):
+    # Typecomments should override the type of default
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class Foo(object):
+        x = attr.ib(default=42) # type: int
+        y = attr.ib(default=42) # type: str
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo(object):
+        x: int
+        y: str
+        def __init__(self, x: int = ..., y: str = ...) -> None: ...
+    """)
+
 
 class TestAttrs(test_utils.TestAttrMixin,
                 test_base.TargetIndependentTest):

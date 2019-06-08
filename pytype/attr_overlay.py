@@ -42,21 +42,24 @@ class Attrs(abstract.PyTDFunction):
   def _make_init(self, node, attrs):
     # attrs removes leading underscores from attrib names when
     # generating kwargs for __init__.
-    attrs = [(name.lstrip("_"), typ, orig) for name, typ, orig in attrs]
-    params = [name for name, _, _ in attrs]
+    for attr in attrs:
+      attr.name = attr.name.lstrip("_")
+
     annotations = {}
     late_annotations = {}
-    for name, typ, _ in attrs:
-      if is_late_annotation(typ):
-        late_annotations[name] = typ
-      elif all(t.cls for t in typ.data):
-        if len(typ.data) == 1:
-          annotations[name] = typ.data[0].cls
+    for attr in attrs:
+      if is_late_annotation(attr.typ):
+        late_annotations[attr.name] = attr.typ
+      elif all(t.cls for t in attr.typ.data):
+        types = attr.typ.data
+        if len(types) == 1:
+          annotations[attr.name] = types[0].cls
         else:
-          t = abstract.Union([t.cls for t in typ.data], self.vm)
-          annotations[name] = t
+          t = abstract.Union([t.cls for t in types], self.vm)
+          annotations[attr.name] = t
 
     # The kw_only arg is ignored in python2; using it is not an error.
+    params = [x.name for x in attrs]
     if self.args["kw_only"] and self.vm.PY3:
       param_names = ("self",)
       kwonly_params = tuple(params)
@@ -64,13 +67,15 @@ class Attrs(abstract.PyTDFunction):
       param_names = ("self",) + tuple(params)
       kwonly_params = ()
 
+    defaults = {x.name: x.default for x in attrs if x.default}
+
     init = abstract.SimpleFunction(
         name="__init__",
         param_names=param_names,
         varargs_name=None,
         kwonly_params=kwonly_params,
         kwargs_name=None,
-        defaults={},
+        defaults=defaults,
         annotations=annotations,
         late_annotations=late_annotations,
         vm=self.vm)
@@ -130,15 +135,22 @@ class Attrs(abstract.PyTDFunction):
             # in the class by the time @attr.s is invoked.
             log.warning("Found late annotation %s: %s in @attr.s",
                         value.name, value.expr)
-            typ = value
+            attr = InitParam(name=name,
+                             typ=value,
+                             default=orig.data[0].default)
             cls.members[name] = orig.data[0].typ
           elif is_attrib(value):
             # Replace the attrib in the class dict with its type.
-            typ = value.data[0].typ
-            cls.members[name] = typ
+            attr = InitParam(name=name,
+                             typ=value.data[0].typ,
+                             default=value.data[0].default)
+            cls.members[name] = attr.typ
           else:
-            typ = value
-          ordered_attrs.append((name, typ, orig))
+            # cls.members[name] has already been set via a typecomment
+            attr = InitParam(name=name,
+                             typ=value,
+                             default=orig.data[0].default)
+          ordered_attrs.append(attr)
 
     # Add an __init__ method
     if self.args["init"]:
@@ -148,13 +160,23 @@ class Attrs(abstract.PyTDFunction):
     return node, cls_var
 
 
+class InitParam(object):
+  """Parameters for the __init__ method."""
+
+  def __init__(self, name, typ, default):
+    self.name = name
+    self.typ = typ
+    self.default = default
+
+
 class AttribInstance(abstract.SimpleAbstractValue):
   """Return value of an attr.ib() call."""
 
-  def __init__(self, vm, typ, has_type):
+  def __init__(self, vm, typ, has_type, default=None):
     super(AttribInstance, self).__init__("attrib", vm)
     self.typ = typ
     self.has_type = has_type
+    self.default = default
 
 
 class Attrib(abstract.PyTDFunction):
@@ -168,12 +190,15 @@ class Attrib(abstract.PyTDFunction):
     """Returns a type corresponding to an attr."""
     self.match_args(node, args)
     type_var = args.namedargs.get("type")
+    default_var = args.namedargs.get("default")
     has_type = type_var is not None
     if type_var:
       typ = type_var.data[0].instantiate(node)
+    elif default_var:
+      typ = default_var
     else:
       typ = self.vm.new_unsolvable(node)
-    typ = AttribInstance(self.vm, typ, has_type).to_variable(node)
+    typ = AttribInstance(self.vm, typ, has_type, default_var).to_variable(node)
     return node, typ
 
 
