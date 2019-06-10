@@ -273,6 +273,21 @@ class TestAttrib(test_utils.TestAttrMixin,
     self.assertErrorLogIs(
         errors, [(4, "duplicate-keyword-argument", r"default")])
 
+  def test_default_none(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class Foo(object):
+        x = attr.ib(default=None)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo(object):
+        x: Any
+        def __init__(self, x: Any = ...) -> None: ...
+    """)
+
 
 class TestAttrs(test_utils.TestAttrMixin,
                 test_base.TargetIndependentTest):

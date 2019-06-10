@@ -232,11 +232,18 @@ class Attrib(abstract.PyTDFunction):
     if type_var:
       typ = type_var.data[0].instantiate(node)
     elif default_var:
-      typ = default_var
+      typ = self._get_type(node, default_var)
     else:
       typ = self.vm.new_unsolvable(node)
     typ = AttribInstance(self.vm, typ, has_type, default_var).to_variable(node)
     return node, typ
+
+  def _get_type(self, node, default_var):
+    if default_var and default_var.data == [self.vm.convert.none]:
+      # A default of None doesn't give us any information about the actual type.
+      return self.vm.program.NewVariable(
+          [self.vm.convert.unsolvable], [default_var.bindings[0]], node)
+    return default_var
 
 
 def is_attrib(var):
