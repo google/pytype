@@ -1,11 +1,14 @@
 """Support for the 'attrs' library."""
 
 import logging
+import textwrap
 
 from pytype import abstract
 from pytype import abstract_utils
 from pytype import annotations_util
+from pytype import function
 from pytype import overlay
+from pytype.pyi import parser
 
 
 log = logging.getLogger(__name__)
@@ -18,6 +21,7 @@ class AttrOverlay(overlay.Overlay):
     member_map = {
         "s": Attrs.make,
         "ib": Attrib.make,
+        "Factory": Factory.make,
     }
     ast = vm.loader.import_name("attr")
     super(AttrOverlay, self).__init__(vm, "attr", member_map, ast)
@@ -209,7 +213,21 @@ class Attrib(abstract.PyTDFunction):
     """Returns a type corresponding to an attr."""
     self.match_args(node, args)
     type_var = args.namedargs.get("type")
-    default_var = args.namedargs.get("default")
+    if "default" in args.namedargs and "factory" in args.namedargs:
+      # attr.ib(factory=x) is syntactic sugar for attr.ib(default=Factory(x)).
+      raise function.DuplicateKeyword(
+          self.signatures[0].signature, args, self.vm, "default")
+    elif "default" in args.namedargs:
+      default_var = args.namedargs["default"]
+    elif "factory" in args.namedargs:
+      mod = self.vm.import_module("attr", "attr", 0)
+      node, attr = self.vm.attribute_handler.get_attribute(node, mod, "Factory")
+      # We know there is only one value because Factory is in the overlay.
+      factory, = attr.data
+      factory_args = function.Args(posargs=(args.namedargs["factory"],))
+      node, default_var = factory.call(node, attr.bindings[0], factory_args)
+    else:
+      default_var = None
     has_type = type_var is not None
     if type_var:
       typ = type_var.data[0].instantiate(node)
@@ -229,3 +247,26 @@ def is_attrib(var):
 
 def is_late_annotation(val):
   return isinstance(val, annotations_util.LateAnnotation)
+
+
+class Factory(abstract.PyTDFunction):
+  """Implementation of attr.Factory."""
+
+  # TODO(rechen): This snippet is necessary because we can't yet parse the
+  # typeshed attr stubs and pytype infers the type of attr.Factory as Any.
+  # Remove it once
+  # https://github.com/google/pytype/issues/321 and
+  # https://github.com/google/pytype/issues/315 are fixed and pytype is using
+  # the canonical attr stubs.
+  PYTD = textwrap.dedent("""
+    from typing import Callable, TypeVar
+    _T = TypeVar("_T")
+    def Factory(factory: Callable[[], _T]) -> _T: ...
+  """)
+
+  @classmethod
+  def make(cls, name, vm):
+    ast = vm.loader.resolve_ast(parser.parse_string(
+        cls.PYTD, name="attr", python_version=vm.python_version))
+    pyval = ast.Lookup("attr.Factory")
+    return super(Factory, cls).make(name, vm, "attr", pyval=pyval)

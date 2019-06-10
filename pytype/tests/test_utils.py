@@ -179,6 +179,7 @@ def s(cls: Type[T], **kwargs) -> Type[T]: ...
 @overload
 def s(**kwargs) -> Any: ...
 def ib(type: T = None, **kwargs) -> T: ...
+Factory: Any
 """
 
 
@@ -199,6 +200,18 @@ class TestAttrMixin(object):
     with file_utils.Tempdir() as d:
       d.create_file("attr.pyi", ATTR_PYI)
       return super(TestAttrMixin, self).InferWithErrors(
+          code, pythonpath=[d.path], **kwargs)
+
+  def Check(self, code, **kwargs):  # pylint: disable=invalid-name
+    with file_utils.Tempdir() as d:
+      d.create_file("attr.pyi", ATTR_PYI)
+      return super(TestAttrMixin, self).Check(
+          code, pythonpath=[d.path], **kwargs)
+
+  def CheckWithErrors(self, code, **kwargs):  # pylint: disable=invalid-name
+    with file_utils.Tempdir() as d:
+      d.create_file("attr.pyi", ATTR_PYI)
+      return super(TestAttrMixin, self).CheckWithErrors(
           code, pythonpath=[d.path], **kwargs)
 
 

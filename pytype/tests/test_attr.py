@@ -190,6 +190,89 @@ class TestAttrib(test_utils.TestAttrMixin,
         def __init__(self, x: int = ..., y: str = ...) -> None: ...
     """)
 
+  def test_factory_class(self):
+    ty = self.Infer("""
+      import attr
+      class CustomClass(object):
+        z = None
+      @attr.s
+      class Foo(object):
+        x = attr.ib(factory=list)
+        y = attr.ib(factory=CustomClass)
+      foo = Foo()
+      foo.y.z  # make sure the factory was fully instantiated
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List
+      attr: module
+      class CustomClass(object):
+        z: None
+      class Foo(object):
+        x: list
+        y: CustomClass
+        def __init__(self, x: list = ..., y: CustomClass = ...) -> None: ...
+      foo: Foo
+    """)
+
+  def test_factory_function(self):
+    ty = self.Infer("""
+      import attr
+      class CustomClass(object):
+        pass
+      def unannotated_func():
+        return CustomClass()
+      @attr.s
+      class Foo(object):
+        x = attr.ib(factory=locals)
+        y = attr.ib(factory=unannotated_func)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Dict
+      attr: module
+      class CustomClass(object): ...
+      def unannotated_func() -> CustomClass: ...
+      class Foo(object):
+        x: Dict[str, Any]
+        y: Any  # b/64832148: the return type isn't inferred early enough
+        def __init__(self, x: Dict[str, object] = ..., y = ...) -> None: ...
+    """)
+
+  def test_verbose_factory(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class Foo(object):
+        x = attr.ib(default=attr.Factory(list))
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List
+      attr: module
+      class Foo(object):
+        x: list
+        def __init__(self, x: list = ...) -> None: ...
+    """)
+
+  def test_bad_factory(self):
+    errors = self.CheckWithErrors("""\
+      import attr
+      @attr.s
+      class Foo(object):
+        x = attr.ib(default=attr.Factory(42))
+        y = attr.ib(factory=42)
+    """)
+    self.assertErrorLogIs(errors, [(4, "wrong-arg-types", r"Callable.*int"),
+                                   (5, "wrong-arg-types", r"Callable.*int")])
+
+  def test_default_factory_clash(self):
+    errors = self.CheckWithErrors("""\
+      import attr
+      @attr.s
+      class Foo(object):
+        x = attr.ib(default=None, factory=list)
+    """)
+    self.assertErrorLogIs(
+        errors, [(4, "duplicate-keyword-argument", r"default")])
+
 
 class TestAttrs(test_utils.TestAttrMixin,
                 test_base.TargetIndependentTest):
