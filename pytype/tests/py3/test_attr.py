@@ -33,7 +33,6 @@ class TestAttrib(test_utils.TestAttrMixin,
         y = attr.ib(type=str)
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
       attr: module
       class Foo(object):
         x: Foo
@@ -77,7 +76,6 @@ class TestAttrib(test_utils.TestAttrMixin,
         y: str = attr.ib(default=42)
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
       attr: module
       class Foo(object):
         x: int
