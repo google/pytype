@@ -215,7 +215,19 @@ class Attrib(abstract.PyTDFunction):
   def call(self, node, unused_func, args):
     """Returns a type corresponding to an attr."""
     self.match_args(node, args)
+    node, default_var = self._get_default_var(node, args)
     type_var = args.namedargs.get("type")
+    has_type = type_var is not None
+    if type_var:
+      typ = self._instantiate_type(node, args, type_var)
+    elif default_var:
+      typ = self._get_type_from_default(node, default_var)
+    else:
+      typ = self.vm.new_unsolvable(node)
+    typ = AttribInstance(self.vm, typ, has_type, default_var).to_variable(node)
+    return node, typ
+
+  def _get_default_var(self, node, args):
     if "default" in args.namedargs and "factory" in args.namedargs:
       # attr.ib(factory=x) is syntactic sugar for attr.ib(default=Factory(x)).
       raise function.DuplicateKeyword(
@@ -231,20 +243,17 @@ class Attrib(abstract.PyTDFunction):
       node, default_var = factory.call(node, attr.bindings[0], factory_args)
     else:
       default_var = None
-    has_type = type_var is not None
-    if type_var:
-      typ = self._instantiate_type(node, type_var)
-    elif default_var:
-      typ = self._get_type_from_default(node, default_var)
-    else:
-      typ = self.vm.new_unsolvable(node)
-    typ = AttribInstance(self.vm, typ, has_type, default_var).to_variable(node)
-    return node, typ
+    return node, default_var
 
-  def _instantiate_type(self, node, type_var):
+  def _instantiate_type(self, node, args, type_var):
     cls = type_var.data[0]
     if isinstance(cls, abstract.AnnotationContainer):
       cls = cls.base_cls
+    if not isinstance(cls, abstract.TYPE_TYPES):
+      sig = function.Signature.from_param_names("attr.ib", ("type",))
+      sig.varargs_name = "*args"
+      bad = function.BadParam(name="type", expected=self.vm.convert.type_type)
+      raise function.WrongArgTypes(sig, args, self.vm, bad_param=bad)
     return cls.instantiate(node)
 
   def _get_type_from_default(self, node, default_var):

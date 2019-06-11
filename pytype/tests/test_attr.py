@@ -137,6 +137,15 @@ class TestAttrib(test_utils.TestAttrMixin,
     """)
     self.assertErrorLogIs(errors, [(4, "invalid-annotation")])
 
+  def test_bad_type(self):
+    _, errors = self.InferWithErrors("""
+      import attr
+      @attr.s
+      class Foo(object):
+        x = attr.ib(type=10)
+    """)
+    self.assertErrorLogIs(errors, [(5, "wrong-arg-types")])
+
   def test_name_mangling(self):
     # NOTE: Python itself mangles names starting with two underscores.
     ty = self.Infer("""
