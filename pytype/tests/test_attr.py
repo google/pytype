@@ -288,6 +288,23 @@ class TestAttrib(test_utils.TestAttrMixin,
         def __init__(self, x: Any = ...) -> None: ...
     """)
 
+  def test_annotation_type(self):
+    ty = self.Infer("""
+      from typing import List
+      import attr
+      @attr.s
+      class Foo(object):
+        x = attr.ib(type=List)
+      x = Foo([]).x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      attr: module
+      class Foo(object):
+        x: list
+        def __init__(self, x: list) -> None: ...
+      x: list
+    """)
+
 
 class TestAttrs(test_utils.TestAttrMixin,
                 test_base.TargetIndependentTest):

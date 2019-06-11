@@ -230,15 +230,21 @@ class Attrib(abstract.PyTDFunction):
       default_var = None
     has_type = type_var is not None
     if type_var:
-      typ = type_var.data[0].instantiate(node)
+      typ = self._instantiate_type(node, type_var)
     elif default_var:
-      typ = self._get_type(node, default_var)
+      typ = self._get_type_from_default(node, default_var)
     else:
       typ = self.vm.new_unsolvable(node)
     typ = AttribInstance(self.vm, typ, has_type, default_var).to_variable(node)
     return node, typ
 
-  def _get_type(self, node, default_var):
+  def _instantiate_type(self, node, type_var):
+    cls = type_var.data[0]
+    if isinstance(cls, abstract.AnnotationContainer):
+      cls = cls.base_cls
+    return cls.instantiate(node)
+
+  def _get_type_from_default(self, node, default_var):
     if default_var and default_var.data == [self.vm.convert.none]:
       # A default of None doesn't give us any information about the actual type.
       return self.vm.program.NewVariable(
