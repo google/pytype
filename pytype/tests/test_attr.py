@@ -133,6 +133,7 @@ class TestAttrib(test_utils.TestAttrMixin,
       @attr.s
       class Foo(object):
         x = attr.ib(type=str) # type: int
+      Foo(x="")  # should not report an error
     """)
     self.assertErrorLogIs(errors, [(4, "invalid-annotation")])
 

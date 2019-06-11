@@ -137,6 +137,9 @@ class Attrs(abstract.PyTDFunction):
         if not is_attrib(value) and orig.data[0].has_type:
           # We cannot have both a type annotation and a type argument.
           self._type_clash_error(value)
+          attr = InitParam(name=name,
+                           typ=self.vm.new_unsolvable(node),
+                           default=None)
         else:
           if is_late_annotation(value):
             attr = InitParam(name=name,
@@ -154,7 +157,7 @@ class Attrs(abstract.PyTDFunction):
             attr = InitParam(name=name,
                              typ=value,
                              default=orig.data[0].default)
-          ordered_attrs.append(attr)
+        ordered_attrs.append(attr)
       elif self.args["auto_attribs"]:
         # NOTE: This code should be much of what we need to implement
         # dataclasses too.
