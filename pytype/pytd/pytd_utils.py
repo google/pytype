@@ -22,9 +22,11 @@ locally or within a larger repository.
 # pylint: disable=g-explicit-length-test
 
 import collections
+import difflib
 import gzip
 import itertools
 import os
+import pickletools
 import re
 import sys
 
@@ -486,6 +488,13 @@ def DiffNamedPickles(named_pickles1, named_pickles2):
       ast1, ast2 = cPickle.loads(pickle1), cPickle.loads(pickle2)
       if ast1.ast.ASTeq(ast2.ast):
         diff.append("asts match but pickles differ: %s" % name1)
+        p1 = six.StringIO()
+        p2 = six.StringIO()
+        pickletools.dis(pickle1, out=p1)
+        pickletools.dis(pickle2, out=p2)
+        diff.extend(difflib.unified_diff(
+            p1.getvalue().splitlines(),
+            p2.getvalue().splitlines()))
       else:
         diff.append("asts differ: %s" % name1)
         diff.append("-" * 50)
