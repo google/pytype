@@ -11,24 +11,20 @@ class TestAttrib(test_utils.TestAttrMixin, test_base.TargetPython3BasicTest):
     ty = self.Infer("""
       import attr
       class CustomClass(object):
-        y = None
+        pass
       def annotated_func() -> CustomClass:
         return CustomClass()
       @attr.s
       class Foo(object):
         x = attr.ib(factory=annotated_func)
-      foo = Foo()
-      foo.x.y  # make sure the factory was fully instantiated
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
-      class CustomClass(object):
-        y: None
+      class CustomClass(object): ...
       def annotated_func() -> CustomClass: ...
       class Foo(object):
         x: CustomClass
         def __init__(self, x: CustomClass = ...) -> None: ...
-      foo: Foo
     """)
 
 

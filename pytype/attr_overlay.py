@@ -247,14 +247,8 @@ class Attrib(abstract.PyTDFunction):
 
   def _instantiate_type(self, node, args, type_var):
     cls = type_var.data[0]
-    if isinstance(cls, abstract.AnnotationContainer):
-      cls = cls.base_cls
-    if not isinstance(cls, abstract.TYPE_TYPES):
-      sig = function.Signature.from_param_names("attr.ib", ("type",))
-      sig.varargs_name = "*args"
-      bad = function.BadParam(name="type", expected=self.vm.convert.type_type)
-      raise function.WrongArgTypes(sig, args, self.vm, bad_param=bad)
-    return cls.instantiate(node)
+    return self.vm.annotations_util.init_annotation(
+        cls, "attr.ib", self.vm.frames, node)
 
   def _get_type_from_default(self, node, default_var):
     if default_var and default_var.data == [self.vm.convert.none]:

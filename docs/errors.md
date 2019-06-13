@@ -1,6 +1,5 @@
 # Error classes
 
-
 pytype has the following classes of errors, which can be disabled with a
 `pytype: disable=error-class` directive. For example, to suppress an
 error for a missing attribute `foo`:
@@ -62,7 +61,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2019-02-01T14:13-08:00 -->
+<!-- Added by: rechen, at: 2019-06-13T12:09-07:00 -->
 
 <!--te-->
 
@@ -216,7 +215,6 @@ def f():
 
 The module being imported was not found.
 
-
 ## invalid-annotation
 
 Something is wrong with this annotation. Examples:
@@ -243,24 +241,36 @@ def f(x: int if condition else str):  # bad: ambiguous type
   pass
 ```
 
-You will also see this error if you use a forward reference in typing.cast:
+You will also see this error if you use a forward reference in typing.cast or
+pass a bad type to `attr.ib`:
 
 <!-- bad -->
 ```python
+import attr
 import typing
 
 v = typing.cast("A", None)  # invalid-annotation
 class A(object):
   pass
+
+@attr.s
+class Foo(object):
+  v = attr.ib(type=zip)  # invalid-annotation
 ```
 
-The solution is to use a type comment instead:
+The solutions are to use a type comment and to fix the type:
 
 <!-- good -->
 ```python
+import attr
+
 v = None  # type: "A"
 class A(object):
   pass
+
+@attr.s
+class Foo(object):
+  v = attr.ib(type=list)
 ```
 
 ## invalid-directive
@@ -489,7 +499,6 @@ please [file a bug][new-bug].
 
 The Python code contains a syntax error.
 
-
 ## recursion-error
 
 A recursive definition was found in a pyi file. Example:
@@ -606,4 +615,3 @@ If you believe you are seeing this error due to a bug on pytype's end, see
 
 <!-- References with different internal and external versions -->
 [new-bug]: https://github.com/google/pytype/issues/new
-

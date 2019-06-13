@@ -144,7 +144,7 @@ class TestAttrib(test_utils.TestAttrMixin,
       class Foo(object):
         x = attr.ib(type=10)
     """)
-    self.assertErrorLogIs(errors, [(5, "wrong-arg-types")])
+    self.assertErrorLogIs(errors, [(5, "invalid-annotation")])
 
   def test_name_mangling(self):
     # NOTE: Python itself mangles names starting with two underscores.
@@ -204,24 +204,20 @@ class TestAttrib(test_utils.TestAttrMixin,
     ty = self.Infer("""
       import attr
       class CustomClass(object):
-        z = None
+        pass
       @attr.s
       class Foo(object):
         x = attr.ib(factory=list)
         y = attr.ib(factory=CustomClass)
-      foo = Foo()
-      foo.y.z  # make sure the factory was fully instantiated
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       attr: module
-      class CustomClass(object):
-        z: None
+      class CustomClass(object): ...
       class Foo(object):
         x: list
         y: CustomClass
         def __init__(self, x: list = ..., y: CustomClass = ...) -> None: ...
-      foo: Foo
     """)
 
   def test_factory_function(self):
@@ -313,6 +309,23 @@ class TestAttrib(test_utils.TestAttrMixin,
         x: list
         def __init__(self, x: list) -> None: ...
       x: list
+    """)
+
+  def test_instantiation(self):
+    self.Check("""
+      import attr
+      class A(object):
+        def __init__(self):
+          self.w = None
+      @attr.s
+      class Foo(object):
+        x = attr.ib(type=A)
+        y = attr.ib()  # type: A
+        z = attr.ib(factory=A)
+      foo = Foo(A(), A())
+      foo.x.w
+      foo.y.w
+      foo.z.w
     """)
 
 

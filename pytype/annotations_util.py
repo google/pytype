@@ -207,11 +207,9 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
   def eval_class_late_annotations(self, node, cls, f_globals, f_locals):
     """Resolves an instance of LateAnnotation's expression."""
     for name, annot in six.iteritems(cls.late_annotations):
-      resolved = self._process_one_annotation(
+      instance = self.init_annotation(
           annot.expr, annot.name, annot.stack, node, f_globals, f_locals)
-      if resolved is not None:
-        _, instance = self.vm.init_class(node, resolved)
-        cls.set_annotation(name, instance)
+      cls.set_annotation(name, instance)
 
   def init_annotation_var(self, node, name, var):
     """Convert annotation type to instance value."""
