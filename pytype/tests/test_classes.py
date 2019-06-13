@@ -1433,5 +1433,25 @@ class ClassesTest(test_base.TargetIndependentTest):
         Z: Type[foo.X.Y.Z]
       """)
 
+  def testLateAnnotation(self):
+    ty = self.Infer("""
+      class Foo(object):
+        bar = None  # type: 'Bar'
+      class Bar(object):
+        def __init__(self):
+          self.x = 0
+      class Baz(Foo):
+        def f(self):
+          return self.bar.x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Foo(object):
+        bar: Bar
+      class Bar(object):
+        x: int
+      class Baz(Foo):
+        def f(self) -> int: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
