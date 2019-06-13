@@ -139,7 +139,7 @@ class Attrs(abstract.PyTDFunction):
           self._type_clash_error(value)
           attr = InitParam(name=name,
                            typ=self.vm.new_unsolvable(node),
-                           default=None)
+                           default=orig.data[0].default)
         else:
           if is_late_annotation(value):
             attr = InitParam(name=name,

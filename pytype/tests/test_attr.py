@@ -128,17 +128,18 @@ class TestAttrib(test_utils.TestAttrMixin,
     """)
 
   def test_type_clash(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       import attr
       @attr.s
       class Foo(object):
         x = attr.ib(type=str) # type: int
+        y = attr.ib(type=str, default="")  # type: int
       Foo(x="")  # should not report an error
     """)
     self.assertErrorLogIs(errors, [(4, "invalid-annotation")])
 
   def test_bad_type(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       import attr
       @attr.s
       class Foo(object):
@@ -371,7 +372,7 @@ class TestAttrs(test_utils.TestAttrMixin,
     """)
 
   def test_bad_kwarg(self):
-    _, err = self.InferWithErrors("""
+    err = self.CheckWithErrors("""
       import attr
       class A:
         pass

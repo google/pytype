@@ -83,7 +83,7 @@ class TestAttribPy3(test_utils.TestAttrMixin,
     """)
 
   def test_type_clash(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       import attr
       @attr.s
       class Foo(object):
