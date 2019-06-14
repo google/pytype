@@ -130,6 +130,7 @@ py_library(
     output.py
     overlay.py
     overlay_dict.py
+    overlay_utils.py
     six_overlay.py
     special_builtins.py
     state.py

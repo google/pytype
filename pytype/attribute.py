@@ -3,7 +3,6 @@ import logging
 
 from pytype import abstract
 from pytype import abstract_utils
-from pytype import annotations_util
 from pytype import function
 from pytype import mixin
 from pytype import overlay
@@ -132,7 +131,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       # We ignore the write of an attribute that's not in __slots__, since it
       # wouldn't happen in the Python interpreter, either.
       return node
-    if isinstance(value, annotations_util.LateAnnotation):
+    if isinstance(value, abstract.LateAnnotation):
       obj.late_annotations[name] = value
       return node
     assert isinstance(value, cfg.Variable)

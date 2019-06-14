@@ -1139,6 +1139,10 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
       self.could_contain_anything = True
 
 
+LateAnnotation = collections.namedtuple(
+    "LateAnnotation", ["expr", "name", "stack"])
+
+
 class AnnotationClass(SimpleAbstractValue, mixin.HasSlots):
   """Base class of annotations that can be parameterized."""
 
