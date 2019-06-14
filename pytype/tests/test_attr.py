@@ -329,6 +329,45 @@ class TestAttrib(test_utils.TestAttrMixin,
       foo.z.w
     """)
 
+  def test_init(self):
+    self.Check("""
+      import attr
+      @attr.s
+      class Foo(object):
+        x = attr.ib(init=False, default='')  # type: str
+        y = attr.ib()  # type: int
+      foo = Foo(42)
+      foo.x
+      foo.y
+    """)
+
+  def test_init_type(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class Foo(object):
+        x = attr.ib(init=False, default='')  # type: str
+        y = attr.ib()  # type: int
+    """)
+    self.assertTypesMatchPytd(ty, """
+      attr: module
+      class Foo(object):
+        x: str
+        y: int
+        def __init__(self, y: int) -> None: ...
+    """)
+
+  def test_init_bad_kwarg(self):
+    err = self.CheckWithErrors("""
+      import attr
+      class A:
+        pass
+      @attr.s
+      class Foo:
+        x = attr.ib(init=A())  # type: str
+    """)
+    self.assertErrorLogIs(err, [(7, "not-supported-yet")])
+
 
 class TestAttrs(test_utils.TestAttrMixin,
                 test_base.TargetIndependentTest):
