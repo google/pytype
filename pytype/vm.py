@@ -2409,12 +2409,12 @@ class VirtualMachine(object):
 
     # Add type info to late_annotations.
     if args != "...":
-      annot = annotations_util.LateAnnotation(
+      annot = abstract.LateAnnotation(
           args.strip(), function.MULTI_ARG_ANNOTATION, fake_stack)
       late_annotations[function.MULTI_ARG_ANNOTATION] = annot
 
     ret = self.convert.build_string(None, return_type).data[0]
-    late_annotations["return"] = annotations_util.LateAnnotation(
+    late_annotations["return"] = abstract.LateAnnotation(
         ret, "return", fake_stack)
 
   def byte_MAKE_FUNCTION(self, state, op):

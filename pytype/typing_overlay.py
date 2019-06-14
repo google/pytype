@@ -10,12 +10,17 @@ from pytype import compat
 from pytype import function
 from pytype import mixin
 from pytype import overlay
+from pytype import overlay_utils
 from pytype import utils
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import visitors
 import six
 from six import moves
+
+
+# type alias
+Param = overlay_utils.Param
 
 
 class TypingOverlay(overlay.Overlay):
@@ -339,13 +344,8 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
         self.vm)
     members["_field_types"] = field_types_cls.instantiate(node)
     members["__annotations__"] = field_types_cls.instantiate(node)
+
     # __new__
-    new_annots = {}
-    new_lates = {}
-    for (n, t) in moves.zip(field_names, field_types):
-      # We don't support late annotations yet, but once we do, they'll show up
-      # as LateAnnotation objects to be stored in new_lates.
-      new_annots[n] = t
     # We set the bound on this TypeParameter later. This gives __new__ the
     # signature: def __new__(cls: Type[_Tname], ...) -> _Tname, i.e. the same
     # signature that visitor.CreateTypeParametersForSignatures would create.
@@ -354,30 +354,24 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     cls_type_param = abstract.TypeParameter(
         visitors.CreateTypeParametersForSignatures.PREFIX + name,
         self.vm, bound=None)
-    new_annots["cls"] = abstract.ParameterizedClass(
+    cls_type = abstract.ParameterizedClass(
         self.vm.convert.type_type, {abstract_utils.T: cls_type_param}, self.vm)
-    new_annots["return"] = cls_type_param
-    members["__new__"] = abstract.SimpleFunction(
+    params = [Param(n, t) for n, t in moves.zip(field_names, field_types)]
+    members["__new__"] = overlay_utils.make_method(
+        self.vm, node,
         name="__new__",
-        param_names=("cls",) + tuple(field_names),
-        varargs_name=None,
-        kwonly_params=(),
-        kwargs_name=None,
-        defaults={},
-        annotations=new_annots,
-        late_annotations=new_lates,
-        vm=self.vm).to_variable(node)
+        self_param=Param("cls", cls_type),
+        params=params,
+        return_type=cls_type_param
+    )
+
     # __init__
-    members["__init__"] = abstract.SimpleFunction(
+    members["__init__"] = overlay_utils.make_method(
+        self.vm, node,
         name="__init__",
-        param_names=("self",),
-        varargs_name="args",
-        kwonly_params=(),
-        kwargs_name="kwargs",
-        defaults={},
-        annotations={},
-        late_annotations={},
-        vm=self.vm).to_variable(node)
+        varargs=Param("args"),
+        kwargs=Param("kwargs"))
+
     # _make
     # _make is a classmethod, so it needs to be wrapped by
     # specialibuiltins.ClassMethodInstance.
@@ -386,90 +380,60 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     iterable_type = abstract.ParameterizedClass(
         self.vm.convert.name_to_value("typing.Iterable"),
         {abstract_utils.T: field_types_union}, self.vm)
-    make = abstract.SimpleFunction(
+    cls_type = abstract.ParameterizedClass(
+        self.vm.convert.type_type,
+        {abstract_utils.T: cls_type_param}, self.vm)
+    len_type = abstract.Callable(
+        self.vm.convert.name_to_value("typing.Callable"),
+        {0: sized_cls,
+         abstract_utils.ARGS: sized_cls,
+         abstract_utils.RET: self.vm.convert.int_type},
+        self.vm)
+    params = [
+        Param("iterable", iterable_type),
+        Param("new").unsolvable(self.vm, node),
+        Param("len", len_type).unsolvable(self.vm, node)]
+    make = overlay_utils.make_method(
+        self.vm, node,
         name="_make",
-        param_names=("cls", "iterable", "new", "len"),
-        varargs_name=None,
-        kwonly_params=(),
-        kwargs_name=None,
-        defaults={
-            "new": self.vm.new_unsolvable(node),
-            "len": self.vm.new_unsolvable(node)
-        },
-        annotations={
-            "cls": abstract.ParameterizedClass(
-                self.vm.convert.type_type,
-                {abstract_utils.T: cls_type_param}, self.vm),
-            "iterable": iterable_type,
-            "new": self.vm.convert.unsolvable,
-            "len": abstract.Callable(
-                self.vm.convert.name_to_value("typing.Callable"),
-                {0: sized_cls,
-                 abstract_utils.ARGS: sized_cls,
-                 abstract_utils.RET: self.vm.convert.int_type},
-                self.vm),
-            "return": cls_type_param
-        },
-        late_annotations={},
-        vm=self.vm).to_variable(node)
+        params=params,
+        self_param=Param("cls", cls_type),
+        return_type=cls_type_param)
     make_args = function.Args(posargs=(make,))
     _, members["_make"] = self.vm.special_builtins["classmethod"].call(
         node, None, make_args)
+
     # _replace
     # Like __new__, it uses the _Tname TypeVar. We have to annotate the `self`
     # param to make sure the TypeVar is substituted correctly.
-    members["_replace"] = abstract.SimpleFunction(
+    members["_replace"] = overlay_utils.make_method(
+        self.vm, node,
         name="_replace",
-        param_names=("self",),
-        varargs_name=None,
-        kwonly_params=(),
-        kwargs_name="kwds",
-        defaults={},
-        annotations={
-            "self": cls_type_param,
-            "kwds": field_types_union,
-            "return": cls_type_param
-        },
-        late_annotations={},
-        vm=self.vm).to_variable(node)
+        self_param=Param("self", cls_type_param),
+        return_type=cls_type_param,
+        kwargs=Param("kwds", field_types_union))
+
     # __getnewargs__
     getnewargs_tuple_params = dict(
         tuple(enumerate(field_types)) +
         ((abstract_utils.T, field_types_union),))
     getnewargs_tuple = abstract.TupleClass(self.vm.convert.tuple_type,
                                            getnewargs_tuple_params, self.vm)
-    members["__getnewargs__"] = abstract.SimpleFunction(
+    members["__getnewargs__"] = overlay_utils.make_method(
+        self.vm, node,
         name="__getnewargs__",
-        param_names=("self",),
-        varargs_name=None,
-        kwonly_params=(),
-        kwargs_name=None,
-        defaults={},
-        annotations={"return": getnewargs_tuple},
-        late_annotations={},
-        vm=self.vm).to_variable(node)
+        return_type=getnewargs_tuple)
+
     # __getstate__
-    members["__getstate__"] = abstract.SimpleFunction(
-        name="__getstate__",
-        param_names=("self",),
-        varargs_name=None,
-        kwonly_params=(),
-        kwargs_name=None,
-        defaults={},
-        annotations={},
-        late_annotations={},
-        vm=self.vm).to_variable(node)
+    members["__getstate__"] = overlay_utils.make_method(
+        self.vm, node, name="__getstate__")
+
     # _asdict
-    members["_asdict"] = abstract.SimpleFunction(
+    members["_asdict"] = overlay_utils.make_method(
+        self.vm, node,
         name="_asdict",
-        param_names=("self",),
-        varargs_name=None,
-        kwonly_params=(),
-        kwargs_name=None,
-        defaults={},
-        annotations={"return": field_dict_cls},
-        late_annotations={},
-        vm=self.vm).to_variable(node)
+        return_type=field_dict_cls)
+
     # Finally, make the class.
     abs_membs = abstract.Dict(self.vm)
     abs_membs.update(node, members)
@@ -482,6 +446,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
         bases=[self.vm.convert.tuple_type.to_variable(node)],
         class_dict_var=abs_membs.to_variable(node),
         cls_var=None)
+
     # Now that the class has been made, we can complete the TypeParameter used
     # by __new__, _make and _replace.
     cls_type_param.bound = cls_var.data[0]
@@ -649,17 +614,10 @@ class NewType(abstract.PyTDFunction):
       # silently return unsolvable.
       return node, self.vm.new_unsolvable(node)
     value_arg_name = "val"
-    constructor = abstract.SimpleFunction(
+    constructor = overlay_utils.make_method(
+        self.vm, node,
         name="__init__",
-        param_names=("self", value_arg_name),
-        varargs_name=None,
-        kwonly_params=(),
-        kwargs_name=None,
-        defaults={},
-        annotations={value_arg_name: type_value},
-        late_annotations={},
-        vm=self.vm,
-    ).to_variable(node)
+        params=[Param(value_arg_name, type_value)])
     members = abstract.Dict(self.vm)
     members.set_str_item(node, "__init__", constructor)
     return self.vm.make_class(node, name_arg, (type_arg,),
