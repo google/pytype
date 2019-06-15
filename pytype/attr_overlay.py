@@ -1,12 +1,14 @@
 """Support for the 'attrs' library."""
 
 import logging
+import textwrap
 
 from pytype import abstract
 from pytype import abstract_utils
 from pytype import annotations_util
+from pytype import function
 from pytype import overlay
-
+from pytype.pyi import parser
 
 log = logging.getLogger(__name__)
 
@@ -18,6 +20,7 @@ class AttrOverlay(overlay.Overlay):
     member_map = {
         "s": Attrs.make,
         "ib": Attrib.make,
+        "Factory": Factory.make,
     }
     ast = vm.loader.import_name("attr")
     super(AttrOverlay, self).__init__(vm, "attr", member_map, ast)
@@ -33,10 +36,10 @@ class Attrs(abstract.PyTDFunction):
   def __init__(self, *args, **kwargs):
     super(Attrs, self).__init__(*args, **kwargs)
     # Defaults for the args to attr.s that we support.
-    # TODO(mdemello): Add auto_attribs.
     self.args = {
         "init": True,
         "kw_only": False,
+        "auto_attribs": False,
     }
 
   def _make_init(self, node, attrs):
@@ -79,7 +82,6 @@ class Attrs(abstract.PyTDFunction):
         annotations=annotations,
         late_annotations=late_annotations,
         vm=self.vm)
-    # This should never happen (see comment in call())
     if late_annotations:
       self.vm.functions_with_late_annotations.append(init)
     return init.to_variable(node)
@@ -91,8 +93,14 @@ class Attrs(abstract.PyTDFunction):
           self.args[k] = abstract_utils.get_atomic_python_constant(v)
         except abstract_utils.ConversionError:
           self.vm.errorlog.not_supported_yet(
-              self.vm.frames,
-              "Non-constant attr.s argument %r" % k)
+              self.vm.frames, "Non-constant attr.s argument %r" % k)
+
+  def _type_clash_error(self, value):
+    if is_late_annotation(value):
+      err = value.expr
+    else:
+      err = value.data[0].cls
+    self.vm.errorlog.invalid_annotation(self.vm.frames, err)
 
   def call(self, node, func, args):
     """Processes the attrib members of a class."""
@@ -117,44 +125,55 @@ class Attrs(abstract.PyTDFunction):
     cls, = cls_var.data
 
     # Collect classvars to convert them to attrs.
-    #
-    # TODO(mdemello): Need support for auto_attribs and defaults.
-    ordered_attrs = []
-    for name, value, orig in self.vm.ordered_locals[cls.name]:
+    ordered_locals = self.vm.ordered_locals[cls.name]
+    init_attrs = []
+    late_annotation = False  # True if we find a bare late annotation
+    for name, value, orig in ordered_locals:
+      if name.startswith("__") and name.endswith("__"):
+        continue
       if is_attrib(orig):
         if not is_attrib(value) and orig.data[0].has_type:
           # We cannot have both a type annotation and a type argument.
-          if is_late_annotation(value):
-            err = value.expr
-          else:
-            err = value.data[0].cls
-          self.vm.errorlog.invalid_annotation(self.vm.frames, err)
+          self._type_clash_error(value)
+          attr = InitParam(
+              name=name,
+              typ=self.vm.new_unsolvable(node),
+              default=orig.data[0].default)
         else:
           if is_late_annotation(value):
-            # This should never happen; we should have resolved all late types
-            # in the class by the time @attr.s is invoked.
-            log.warning("Found late annotation %s: %s in @attr.s",
-                        value.name, value.expr)
-            attr = InitParam(name=name,
-                             typ=value,
-                             default=orig.data[0].default)
+            attr = InitParam(name=name, typ=value, default=orig.data[0].default)
             cls.members[name] = orig.data[0].typ
           elif is_attrib(value):
             # Replace the attrib in the class dict with its type.
-            attr = InitParam(name=name,
-                             typ=value.data[0].typ,
-                             default=value.data[0].default)
+            attr = InitParam(
+                name=name, typ=value.data[0].typ, default=value.data[0].default)
             cls.members[name] = attr.typ
           else:
             # cls.members[name] has already been set via a typecomment
-            attr = InitParam(name=name,
-                             typ=value,
-                             default=orig.data[0].default)
-          ordered_attrs.append(attr)
+            attr = InitParam(name=name, typ=value, default=orig.data[0].default)
+        if orig.data[0].init:
+          init_attrs.append(attr)
+      elif self.args["auto_attribs"]:
+        # NOTE: This code should be much of what we need to implement
+        # dataclasses too.
+        #
+        # TODO(b/72678203): typing.ClassVar is the only way to filter a variable
+        # out from auto_attribs, but we don't even support importing it.
+        attr = InitParam(name=name, typ=value, default=orig)
+        if is_late_annotation(value) and orig is None:
+          # We are generating a class member from a bare annotation.
+          cls.members[name] = self.vm.convert.none.to_variable(node)
+          cls.late_annotations[name] = value
+          late_annotation = True
+        init_attrs.append(attr)
+
+    # See if we need to resolve any late annotations
+    if late_annotation:
+      self.vm.classes_with_late_annotations.append(cls)
 
     # Add an __init__ method
     if self.args["init"]:
-      init_method = self._make_init(node, ordered_attrs)
+      init_method = self._make_init(node, init_attrs)
       cls.members["__init__"] = init_method
 
     return node, cls_var
@@ -172,10 +191,11 @@ class InitParam(object):
 class AttribInstance(abstract.SimpleAbstractValue):
   """Return value of an attr.ib() call."""
 
-  def __init__(self, vm, typ, has_type, default=None):
+  def __init__(self, vm, typ, has_type, init, default=None):
     super(AttribInstance, self).__init__("attrib", vm)
     self.typ = typ
     self.has_type = has_type
+    self.init = init
     self.default = default
 
 
@@ -189,24 +209,90 @@ class Attrib(abstract.PyTDFunction):
   def call(self, node, unused_func, args):
     """Returns a type corresponding to an attr."""
     self.match_args(node, args)
+    node, default_var = self._get_default_var(node, args)
     type_var = args.namedargs.get("type")
-    default_var = args.namedargs.get("default")
+    # TODO(mdemello): Check that init is a bool.
+    init = self._get_kwarg(args, "init", True)
     has_type = type_var is not None
     if type_var:
-      typ = type_var.data[0].instantiate(node)
+      typ = self._instantiate_type(node, args, type_var)
     elif default_var:
-      typ = default_var
+      typ = self._get_type_from_default(node, default_var)
     else:
       typ = self.vm.new_unsolvable(node)
-    typ = AttribInstance(self.vm, typ, has_type, default_var).to_variable(node)
+    typ = AttribInstance(self.vm, typ, has_type, init,
+                         default_var).to_variable(node)
     return node, typ
+
+  def _get_default_var(self, node, args):
+    if "default" in args.namedargs and "factory" in args.namedargs:
+      # attr.ib(factory=x) is syntactic sugar for attr.ib(default=Factory(x)).
+      raise function.DuplicateKeyword(self.signatures[0].signature, args,
+                                      self.vm, "default")
+    elif "default" in args.namedargs:
+      default_var = args.namedargs["default"]
+    elif "factory" in args.namedargs:
+      mod = self.vm.import_module("attr", "attr", 0)
+      node, attr = self.vm.attribute_handler.get_attribute(node, mod, "Factory")
+      # We know there is only one value because Factory is in the overlay.
+      factory, = attr.data
+      factory_args = function.Args(posargs=(args.namedargs["factory"],))
+      node, default_var = factory.call(node, attr.bindings[0], factory_args)
+    else:
+      default_var = None
+    return node, default_var
+
+  def _get_kwarg(self, args, name, default):
+    if name not in args.namedargs:
+      return default
+    try:
+      return abstract_utils.get_atomic_python_constant(args.namedargs[name])
+    except abstract_utils.ConversionError:
+      self.vm.errorlog.not_supported_yet(
+          self.vm.frames, "Non-constant attr.ib argument %r" % name)
+
+  def _instantiate_type(self, node, args, type_var):
+    cls = type_var.data[0]
+    return self.vm.annotations_util.init_annotation(cls, "attr.ib",
+                                                    self.vm.frames, node)
+
+  def _get_type_from_default(self, node, default_var):
+    if default_var and default_var.data == [self.vm.convert.none]:
+      # A default of None doesn't give us any information about the actual type.
+      return self.vm.program.NewVariable([self.vm.convert.unsolvable],
+                                         [default_var.bindings[0]], node)
+    return default_var
 
 
 def is_attrib(var):
-  if is_late_annotation(var):
+  if var is None or is_late_annotation(var):
     return False
   return isinstance(var.data[0], AttribInstance)
 
 
 def is_late_annotation(val):
   return isinstance(val, annotations_util.LateAnnotation)
+
+
+class Factory(abstract.PyTDFunction):
+  """Implementation of attr.Factory."""
+
+  # TODO(rechen): This snippet is necessary because we can't yet parse the
+  # typeshed attr stubs and pytype infers the type of attr.Factory as Any.
+  # Remove it once
+  # https://github.com/google/pytype/issues/321 and
+  # https://github.com/google/pytype/issues/315 are fixed and pytype is using
+  # the canonical attr stubs.
+  PYTD = textwrap.dedent("""
+    from typing import Callable, TypeVar
+    _T = TypeVar("_T")
+    def Factory(factory: Callable[[], _T]) -> _T: ...
+  """)
+
+  @classmethod
+  def make(cls, name, vm):
+    ast = vm.loader.resolve_ast(
+        parser.parse_string(
+            cls.PYTD, name="attr", python_version=vm.python_version))
+    pyval = ast.Lookup("attr.Factory")
+    return super(Factory, cls).make(name, vm, "attr", pyval=pyval)

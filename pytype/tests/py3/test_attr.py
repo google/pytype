@@ -4,8 +4,32 @@ from pytype.tests import test_base
 from pytype.tests import test_utils
 
 
-class TestAttrib(test_utils.TestAttrMixin,
-                 test_base.TargetPython3FeatureTest):
+class TestAttrib(test_utils.TestAttrMixin, test_base.TargetPython3BasicTest):
+  """Tests for attr.ib using type annotations."""
+
+  def test_factory_function(self):
+    ty = self.Infer("""
+      import attr
+      class CustomClass(object):
+        pass
+      def annotated_func() -> CustomClass:
+        return CustomClass()
+      @attr.s
+      class Foo(object):
+        x = attr.ib(factory=annotated_func)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      attr: module
+      class CustomClass(object): ...
+      def annotated_func() -> CustomClass: ...
+      class Foo(object):
+        x: CustomClass
+        def __init__(self, x: CustomClass = ...) -> None: ...
+    """)
+
+
+class TestAttribPy3(test_utils.TestAttrMixin,
+                    test_base.TargetPython3FeatureTest):
   """Tests for attr.ib using PEP526 syntax."""
 
   def test_variable_annotations(self):
@@ -33,7 +57,6 @@ class TestAttrib(test_utils.TestAttrMixin,
         y = attr.ib(type=str)
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
       attr: module
       class Foo(object):
         x: Foo
@@ -60,7 +83,7 @@ class TestAttrib(test_utils.TestAttrMixin,
     """)
 
   def test_type_clash(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       import attr
       @attr.s
       class Foo(object):
@@ -77,7 +100,6 @@ class TestAttrib(test_utils.TestAttrMixin,
         y: str = attr.ib(default=42)
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
       attr: module
       class Foo(object):
         x: int
@@ -107,6 +129,26 @@ class TestAttrs(test_utils.TestAttrMixin,
         y: int
         z: str
         def __init__(self, *, x, y: int, z: str) -> None: ...
+    """)
+
+  def test_auto_attrs(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s(auto_attribs=True)
+      class Foo(object):
+        x = 10
+        y: int
+        z: str = 'hello'
+        a: 'Foo'
+    """)
+    self.assertTypesMatchPytd(ty, """
+      attr: module
+      class Foo(object):
+        x: int
+        y: int
+        z: str
+        a: Foo
+        def __init__(self, x: int = ..., y: int, z: str = ..., a: Foo) -> None: ...
     """)
 
 
