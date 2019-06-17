@@ -63,7 +63,6 @@ class Attrs(abstract.PyTDFunction):
     return overlay_utils.make_method(
         self.vm, node, "__init__", params, kwonly_params)
 
-
   def _update_kwargs(self, args):
     for k, v in args.namedargs.items():
       if k in self.args:
@@ -164,6 +163,8 @@ class AttribInstance(abstract.SimpleAbstractValue):
     self.has_type = has_type
     self.init = init
     self.default = default
+    # TODO(rechen): attr.ib() returns an instance of attr._make._CountingAttr.
+    self.cls = vm.convert.unsolvable
 
 
 class Attrib(abstract.PyTDFunction):
