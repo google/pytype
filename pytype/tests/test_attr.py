@@ -368,6 +368,13 @@ class TestAttrib(test_utils.TestAttrMixin,
     """)
     self.assertErrorLogIs(err, [(7, "not-supported-yet")])
 
+  def test_class(self):
+    self.assertNoCrash(self.Check, """
+      import attr
+      class X(attr.make_class('X', {'y': attr.ib(default=None)})):
+        pass
+    """)
+
 
 class TestAttrs(test_utils.TestAttrMixin,
                 test_base.TargetIndependentTest):
