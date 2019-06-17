@@ -375,6 +375,118 @@ class TestAttrib(test_utils.TestAttrMixin,
         pass
     """)
 
+  def test_base_class_attrs(self):
+    self.Check("""
+      import attr
+      @attr.s
+      class A(object):
+        a = attr.ib()  # type: int
+      @attr.s
+      class B(object):
+        b = attr.ib()  # type: str
+      @attr.s
+      class C(A, B):
+        c = attr.ib()  # type: int
+      x = C(10, 'foo', 42)
+      x.a
+      x.b
+      x.c
+    """)
+
+  def test_base_class_attrs_type(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class A(object):
+        a = attr.ib()  # type: int
+      @attr.s
+      class B(object):
+        b = attr.ib()  # type: str
+      @attr.s
+      class C(A, B):
+        c = attr.ib()  # type: int
+    """)
+    self.assertTypesMatchPytd(ty, """
+      attr: module
+      class A(object):
+        a: int
+        def __init__(self, a: int) -> None: ...
+      class B(object):
+        b: str
+        def __init__(self, b: str) -> None: ...
+      class C(A, B):
+        c: int
+        def __init__(self, a: int, b: str, c: int) -> None: ...
+    """)
+
+  def test_base_class_attrs_override_type(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class A(object):
+        a = attr.ib()  # type: int
+      @attr.s
+      class B(object):
+        b = attr.ib()  # type: str
+      @attr.s
+      class C(A, B):
+        a = attr.ib()  # type: str
+        c = attr.ib()  # type: int
+    """)
+    self.assertTypesMatchPytd(ty, """
+      attr: module
+      class A(object):
+        a: int
+        def __init__(self, a: int) -> None: ...
+      class B(object):
+        b: str
+        def __init__(self, b: str) -> None: ...
+      class C(A, B):
+        a: str
+        c: int
+        def __init__(self, b: str, a: str, c: int) -> None: ...
+    """)
+
+  def test_base_class_attrs_init(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class A(object):
+        a = attr.ib(init=False)  # type: int
+      @attr.s
+      class B(object):
+        b = attr.ib()  # type: str
+      @attr.s
+      class C(A, B):
+        c = attr.ib()  # type: int
+    """)
+    self.assertTypesMatchPytd(ty, """
+      attr: module
+      class A(object):
+        a: int
+      class B(object):
+        b: str
+        def __init__(self, b: str) -> None: ...
+      class C(A, B):
+        c: int
+        def __init__(self, b: str, c: int) -> None: ...
+    """)
+
+  def test_base_class_attrs_abstract_type(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class Foo(__any_object__):
+        a = attr.ib()  # type: int
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo(Any):
+        a: int
+        def __init__(self, a: int) -> None: ...
+    """)
+
 
 class TestAttrs(test_utils.TestAttrMixin,
                 test_base.TargetIndependentTest):

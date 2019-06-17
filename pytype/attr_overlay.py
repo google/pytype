@@ -6,15 +6,17 @@ import textwrap
 from pytype import abstract
 from pytype import abstract_utils
 from pytype import function
+from pytype import mixin
 from pytype import overlay
 from pytype import overlay_utils
 from pytype.pyi import parser
 
 log = logging.getLogger(__name__)
 
-
 # type alias for convenience
 Param = overlay_utils.Param
+
+_ATTRS_METADATA_KEY = "__attrs_attrs__"
 
 
 class AttrOverlay(overlay.Overlay):
@@ -47,21 +49,25 @@ class Attrs(abstract.PyTDFunction):
     }
 
   def _make_init(self, node, attrs):
-    # attrs removes leading underscores from attrib names when
-    # generating kwargs for __init__.
+    attr_params = []
     for attr in attrs:
-      attr.name = attr.name.lstrip("_")
+      if attr.init:
+        # attrs removes leading underscores from attrib names when
+        # generating kwargs for __init__.
+        attr_params.append(
+            Param(
+                name=attr.name.lstrip("_"), typ=attr.typ, default=attr.default))
 
     # The kw_only arg is ignored in python2; using it is not an error.
     if self.args["kw_only"] and self.vm.PY3:
       params = []
-      kwonly_params = attrs
+      kwonly_params = attr_params
     else:
-      params = attrs
+      params = attr_params
       kwonly_params = []
 
-    return overlay_utils.make_method(
-        self.vm, node, "__init__", params, kwonly_params)
+    return overlay_utils.make_method(self.vm, node, "__init__", params,
+                                     kwonly_params)
 
   def _update_kwargs(self, args):
     for k, v in args.namedargs.items():
@@ -103,7 +109,7 @@ class Attrs(abstract.PyTDFunction):
 
     # Collect classvars to convert them to attrs.
     ordered_locals = self.vm.ordered_locals[cls.name]
-    init_attrs = []
+    own_attrs = []
     late_annotation = False  # True if we find a bare late annotation
     for name, value, orig in ordered_locals:
       if name.startswith("__") and name.endswith("__"):
@@ -112,46 +118,90 @@ class Attrs(abstract.PyTDFunction):
         if not is_attrib(value) and orig.data[0].has_type:
           # We cannot have both a type annotation and a type argument.
           self._type_clash_error(value)
-          attr = Param(name=name, typ=self.vm.new_unsolvable(node),
-                       default=orig.data[0].default)
+          attr = Attribute(
+              name=name,
+              typ=self.vm.new_unsolvable(node),
+              init=orig.data[0].init,
+              default=orig.data[0].default)
         else:
           if is_late_annotation(value):
-            attr = Param(name=name, typ=value, default=orig.data[0].default)
+            attr = Attribute(
+                name=name,
+                typ=value,
+                init=orig.data[0].init,
+                default=orig.data[0].default)
             cls.members[name] = orig.data[0].typ
           elif is_attrib(value):
             # Replace the attrib in the class dict with its type.
-            attr = Param(
-                name=name, typ=value.data[0].typ, default=value.data[0].default)
+            attr = Attribute(
+                name=name,
+                typ=value.data[0].typ,
+                init=orig.data[0].init,
+                default=value.data[0].default)
             cls.members[name] = attr.typ
           else:
             # cls.members[name] has already been set via a typecomment
-            attr = Param(name=name, typ=value, default=orig.data[0].default)
-        if orig.data[0].init:
-          init_attrs.append(attr)
+            attr = Attribute(
+                name=name,
+                typ=value,
+                init=orig.data[0].init,
+                default=orig.data[0].default)
+        own_attrs.append(attr)
       elif self.args["auto_attribs"]:
         # NOTE: This code should be much of what we need to implement
         # dataclasses too.
         #
         # TODO(b/72678203): typing.ClassVar is the only way to filter a variable
         # out from auto_attribs, but we don't even support importing it.
-        attr = Param(name=name, typ=value, default=orig)
+        attr = Attribute(name=name, typ=value, init=True, default=orig)
         if is_late_annotation(value) and orig is None:
           # We are generating a class member from a bare annotation.
           cls.members[name] = self.vm.convert.none.to_variable(node)
           cls.late_annotations[name] = value
           late_annotation = True
-        init_attrs.append(attr)
+        own_attrs.append(attr)
 
     # See if we need to resolve any late annotations
     if late_annotation:
       self.vm.classes_with_late_annotations.append(cls)
 
+    taken_attr_names = {a.name for a in own_attrs}
+
+    # Traverse the MRO and collect base class attributes. We only add an
+    # attribute if it hasn't been defined before.
+    base_attrs = []
+    for base_cls in cls.compute_mro()[1:]:
+      log.info("cls.name: %s base_cls.name: %s", cls.name, base_cls.name)
+      if not isinstance(base_cls, mixin.Class):
+        continue
+      sub_attrs = base_cls.metadata.get(_ATTRS_METADATA_KEY, None)
+      if sub_attrs is None:
+        continue
+      for a in sub_attrs:
+        if a.name not in taken_attr_names:
+          taken_attr_names.add(a.name)
+          base_attrs.append(a)
+
+    attrs = base_attrs + own_attrs
+    # Stash attributes in class metadata for subclasses.
+    cls.metadata[_ATTRS_METADATA_KEY] = attrs
+
     # Add an __init__ method
     if self.args["init"]:
-      init_method = self._make_init(node, init_attrs)
+      init_method = self._make_init(node, attrs)
       cls.members["__init__"] = init_method
 
     return node, cls_var
+
+
+class Attribute(object):
+  """Represents an 'attr' module attribute."""
+
+  def __init__(self, name, typ, init, default):
+    self.name = name
+    self.typ = typ
+    self.init = init
+    self.default = default
 
 
 class AttribInstance(abstract.SimpleAbstractValue):

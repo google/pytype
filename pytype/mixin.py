@@ -153,6 +153,8 @@ class Class(object):
       # TODO(rechen): Check that the metaclass is a (non-strict) subclass of the
       # metaclasses of the base classes.
       self.cls = metaclass
+    # Key-value store of metadata for overlays to use.
+    self.metadata = {}
     self._instance_cache = {}
     self._init_abstract_methods()
     self._init_protocol_methods()
