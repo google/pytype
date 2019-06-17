@@ -33,7 +33,7 @@ detect issues with code like this, which other type checkers would miss:
         return f() + 2019
     
     # pytype: line 4, in g: unsupported operand type(s) for +: 'str' 
-    * and 'int' [unsupported-operands]
+    # * and 'int' [unsupported-operands]
     ```
 1. Pytype is **lenient** instead of strict. That means it allows all
 operations that succeed at runtime and don't contradict annotations. For
