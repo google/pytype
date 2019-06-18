@@ -3751,5 +3751,3 @@ AMBIGUOUS_OR_EMPTY = AMBIGUOUS + (Empty,)
 FUNCTION_TYPES = (BoundFunction, Function)
 INTERPRETER_FUNCTION_TYPES = (BoundInterpreterFunction, InterpreterFunction)
 PYTD_FUNCTION_TYPES = (BoundPyTDFunction, PyTDFunction)
-# Types that can be used to annotate a class variable in dataclasses etc.
-TYPE_TYPES = (mixin.Class, Union) + AMBIGUOUS_OR_EMPTY

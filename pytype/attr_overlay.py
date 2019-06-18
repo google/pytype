@@ -107,6 +107,11 @@ class Attrs(abstract.PyTDFunction):
     # We should only have a single binding here
     cls, = cls_var.data
 
+    if not isinstance(cls, mixin.Class):
+      # There are other valid types like abstract.Unsolvable that we don't need
+      # to do anything with.
+      return node, cls_var
+
     # Collect classvars to convert them to attrs.
     ordered_locals = self.vm.ordered_locals[cls.name]
     own_attrs = []

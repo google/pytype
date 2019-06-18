@@ -540,5 +540,14 @@ class TestAttrs(test_utils.TestAttrMixin,
     """)
     self.assertErrorLogIs(err, [(5, "not-supported-yet")])
 
+  def test_depth(self):
+    self.Check("""
+      import attr
+      def f():
+        @attr.s
+        class Foo:
+          pass
+    """, maximum_depth=1)
+
 
 test_base.main(globals(), __name__ == "__main__")
