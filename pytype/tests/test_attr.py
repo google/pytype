@@ -369,16 +369,23 @@ class TestAttrib(test_base.TargetIndependentTest):
         def __init__(self, y: int) -> None: ...
     """)
 
+  def test_init_bad_constant(self):
+    err = self.CheckWithErrors("""\
+      import attr
+      @attr.s
+      class Foo(object):
+        x = attr.ib(init=0)
+    """)
+    self.assertErrorLogIs(err, [(4, "wrong-arg-types", r"bool.*int")])
+
   def test_init_bad_kwarg(self):
     err = self.CheckWithErrors("""
       import attr
-      class A:
-        pass
       @attr.s
       class Foo:
-        x = attr.ib(init=A())  # type: str
+        x = attr.ib(init=__random__)  # type: str
     """)
-    self.assertErrorLogIs(err, [(7, "not-supported-yet")])
+    self.assertErrorLogIs(err, [(5, "not-supported-yet")])
 
   def test_class(self):
     self.assertNoCrash(self.Check, """
@@ -540,16 +547,23 @@ class TestAttrs(test_base.TargetIndependentTest):
         z: str
     """)
 
-  def test_bad_kwarg(self):
-    err = self.CheckWithErrors("""
+  def test_init_bad_constant(self):
+    err = self.CheckWithErrors("""\
       import attr
-      class A:
-        pass
-      @attr.s(init=A())
+      @attr.s(init=0)
       class Foo:
         pass
     """)
-    self.assertErrorLogIs(err, [(5, "not-supported-yet")])
+    self.assertErrorLogIs(err, [(2, "wrong-arg-types", r"bool.*int")])
+
+  def test_bad_kwarg(self):
+    err = self.CheckWithErrors("""
+      import attr
+      @attr.s(init=__random__)
+      class Foo:
+        pass
+    """)
+    self.assertErrorLogIs(err, [(3, "not-supported-yet")])
 
   def test_depth(self):
     self.Check("""
