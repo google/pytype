@@ -1,0 +1,46 @@
+import __future__
+import sys
+if sys.version_info < (3,):
+    import UserDict
+    from typing import Mapping, NoReturn
+else:
+    import types
+import collections
+from typing import Any, Type
+
+OrderedDict: Type[collections.OrderedDict]
+PY2: bool
+PYPY: bool
+TYPE: str
+absolute_import: __future__._Feature
+division: __future__._Feature
+ordered_dict: Type[dict]
+platform: module
+print_function: __future__._Feature
+set_closure_cell: Any
+sys: module
+types: module
+warnings: module
+
+if sys.version_info < (3,):
+    IterableUserDict: Type[UserDict.IterableUserDict]
+    class ReadOnlyDict(UserDict.IterableUserDict):
+        __doc__: str
+        data: Mapping
+        def __delitem__(self, _) -> NoReturn: ...
+        def __setitem__(self, key, val) -> NoReturn: ...
+        def clear(self) -> NoReturn: ...
+        def pop(self, key, default = ...) -> NoReturn: ...
+        def popitem(self) -> NoReturn: ...
+        def setdefault(self, key, default = ...) -> NoReturn: ...
+        def update(self, _) -> NoReturn: ...
+
+def import_ctypes() -> module: ...
+def isclass(klass) -> bool: ...
+def iteritems(d) -> Any: ...
+def just_warn(*args, **kw) -> None: ...
+def make_set_closure_cell() -> Any: ...
+if sys.version_info < (3,):
+    def metadata_proxy(d) -> ReadOnlyDict: ...
+else:
+    def metadata_proxy(d) -> types.MappingProxyType[nothing, nothing]: ...

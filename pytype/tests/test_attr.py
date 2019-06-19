@@ -1,11 +1,9 @@
 """Tests for attrs library in attr_overlay.py."""
 
 from pytype.tests import test_base
-from pytype.tests import test_utils
 
 
-class TestAttrib(test_utils.TestAttrMixin,
-                 test_base.TargetIndependentTest):
+class TestAttrib(test_base.TargetIndependentTest):
   """Tests for attr.ib."""
 
   def test_basic(self):
@@ -280,6 +278,20 @@ class TestAttrib(test_utils.TestAttrMixin,
     self.assertErrorLogIs(
         errors, [(4, "duplicate-keyword-argument", r"default")])
 
+  def test_takes_self(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class Foo(object):
+        x = attr.ib(default=attr.Factory(len, takes_self=True))
+    """)
+    self.assertTypesMatchPytd(ty, """
+      attr: module
+      class Foo(object):
+        x: int
+        def __init__(self, x: int = ...) -> None: ...
+    """)
+
   def test_default_none(self):
     ty = self.Infer("""
       import attr
@@ -488,8 +500,7 @@ class TestAttrib(test_utils.TestAttrMixin,
     """)
 
 
-class TestAttrs(test_utils.TestAttrMixin,
-                test_base.TargetIndependentTest):
+class TestAttrs(test_base.TargetIndependentTest):
   """Tests for attr.s."""
 
   def test_basic(self):

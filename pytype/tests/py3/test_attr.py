@@ -1,10 +1,9 @@
 """Tests for attrs library in attr_overlay.py."""
 
 from pytype.tests import test_base
-from pytype.tests import test_utils
 
 
-class TestAttrib(test_utils.TestAttrMixin, test_base.TargetPython3BasicTest):
+class TestAttrib(test_base.TargetPython3BasicTest):
   """Tests for attr.ib using type annotations."""
 
   def test_factory_function(self):
@@ -28,8 +27,7 @@ class TestAttrib(test_utils.TestAttrMixin, test_base.TargetPython3BasicTest):
     """)
 
 
-class TestAttribPy3(test_utils.TestAttrMixin,
-                    test_base.TargetPython3FeatureTest):
+class TestAttribPy3(test_base.TargetPython3FeatureTest):
   """Tests for attr.ib using PEP526 syntax."""
 
   def test_variable_annotations(self):
@@ -108,8 +106,7 @@ class TestAttribPy3(test_utils.TestAttrMixin,
     """)
 
 
-class TestAttrs(test_utils.TestAttrMixin,
-                test_base.TargetPython3FeatureTest):
+class TestAttrs(test_base.TargetPython3FeatureTest):
   """Tests for attr.s."""
 
   def test_kw_only(self):
