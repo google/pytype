@@ -21,6 +21,40 @@ well-typed and error-free.
 
 For more information, check out the [user guide][user-guide] or [FAQ][faq].
 
+## How is pytype different from other type checkers?
+
+1. Pytype uses **inference** instead of gradual typing. This means it will
+infer types on code even when the code has no type hints on it. So it can
+detect issues with code like this, which other type checkers would miss:
+
+    ```python
+    def f():
+        return "PyCon"
+    def g():
+        return f() + 2019
+
+    # pytype: line 4, in g: unsupported operand type(s) for +: 'str'
+    # and 'int' [unsupported-operands]
+    ```
+
+1. Pytype is **lenient** instead of strict. That means it allows all
+operations that succeed at runtime and don't contradict annotations. For
+instance, this code will pass as safe in pytype, but fail in other type
+checkers, which assign types to variables as soon as they are initialized:
+
+    ```python
+    from typing import List
+    def get_list() -> List[str]:
+        lst = ["PyCon"]
+        lst.append(2019)
+        return list(map(str, lst))
+
+    # mypy: line 4: error: Argument 1 to "append" of "list" has
+    # incompatible type "int"; expected "str"
+    ```
+
+Also see the corresponding [FAQ entry][faq-diff].
+
 ## Quickstart
 
 To quickly get started with type-checking a file or directory, run the
@@ -209,6 +243,7 @@ This is not an official Google product.
 
 [error-classes]: docs/errors.md
 [faq]: docs/faq.md
+[faq-diff]: docs/faq.md#how-is-pytype-different-from-other-type-checkers
 [github]: https://github.com/google/pytype/
 [importlab-travis]: https://github.com/google/importlab/blob/master/.travis.yml
 [merge-pyi]: https://github.com/google/pytype/tree/master/pytype/tools/merge_pyi

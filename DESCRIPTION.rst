@@ -11,8 +11,8 @@ type annotations. Pytype can:
    annotations <https://www.python.org/dev/peps/pep-0484>`__. While
    annotations are optional for pytype, it will check and apply them
    where present.
--  Generate type annotations in standalone files ("`pyi
-   files <docs/user_guide.md#pyi-stub-files>`__"), which can be merged
+-  Generate type annotations in standalone files (“`pyi
+   files <docs/user_guide.md#pyi-stub-files>`__”), which can be merged
    back into the Python source with a provided
    `merge-pyi <https://github.com/google/pytype/tree/master/pytype/tools/merge_pyi>`__
    tool.
@@ -26,6 +26,44 @@ well-typed and error-free.
 For more information, check out the `user guide <docs/user_guide.md>`__
 or `FAQ <docs/faq.md>`__.
 
+How is pytype different from other type checkers?
+-------------------------------------------------
+
+1. Pytype uses **inference** instead of gradual typing. This means it
+   will infer types on code even when the code has no type hints on it.
+   So it can detect issues with code like this, which other type
+   checkers would miss:
+
+   .. code:: python
+
+      def f():
+          return "PyCon"
+      def g():
+          return f() + 2019
+
+      # pytype: line 4, in g: unsupported operand type(s) for +: 'str'
+      # and 'int' [unsupported-operands]
+
+2. Pytype is **lenient** instead of strict. That means it allows all
+   operations that succeed at runtime and don’t contradict annotations.
+   For instance, this code will pass as safe in pytype, but fail in
+   other type checkers, which assign types to variables as soon as they
+   are initialized:
+
+   .. code:: python
+
+      from typing import List
+      def get_list() -> List[str]:
+          lst = ["PyCon"]
+          lst.append(2019)
+          return list(map(str, lst))
+
+      # mypy: line 4: error: Argument 1 to "append" of "list" has
+      # incompatible type "int"; expected "str"
+
+Also see the corresponding `FAQ
+entry <docs/faq.md#how-is-pytype-different-from-other-type-checkers>`__.
+
 Quickstart
 ----------
 
@@ -34,8 +72,8 @@ following, replacing ``file_or_directory`` with your input:
 
 ::
 
-    pip install pytype
-    pytype file_or_directory
+   pip install pytype
+   pytype file_or_directory
 
 To set up pytype on an entire package, add the following to a
 ``setup.cfg`` file in the directory immediately above the package,
@@ -43,11 +81,11 @@ replacing ``package_name`` with the package name:
 
 ::
 
-    [pytype]
-    inputs = package_name
+   [pytype]
+   inputs = package_name
 
 Now you can run the no-argument command ``pytype`` to type-check the
-package. It's also easy to add pytype to your automated testing; see
+package. It’s also easy to add pytype to your automated testing; see
 this
 `example <https://github.com/google/importlab/blob/master/.travis.yml>`__
 of a GitHub project that runs pytype on Travis.
@@ -55,17 +93,17 @@ of a GitHub project that runs pytype on Travis.
 Finally, pytype generates files of inferred type information, located by
 default in ``.pytype/pyi``. You can use this information to
 type-annotate the corresponding source file, replacing ``module.py``
-with the file's import path:
+with the file’s import path:
 
 ::
 
-    merge-pyi -i module.py .pytype/pyi/module.pyi
+   merge-pyi -i module.py .pytype/pyi/module.pyi
 
 Requirements
 ------------
 
 You need a Python 2.7 or 3.5+ interpreter to run pytype, as well as an
-interpreter in ``$PATH`` for the Python version of the code you're
+interpreter in ``$PATH`` for the Python version of the code you’re
 analyzing.
 
 Platform support:
@@ -80,28 +118,28 @@ Installing
 ----------
 
 Pytype can be installed via pip. Note that the installation requires
-``wheel`` and ``setuptools``. (If you're working in a virtualenv, these
+``wheel`` and ``setuptools``. (If you’re working in a virtualenv, these
 two packages should already be present.)
 
 ::
 
-    pip install pytype
+   pip install pytype
 
 Or from the source code `on
 GitHub <https://github.com/google/pytype/>`__.
 
 ::
 
-    git clone --recurse-submodules https://github.com/google/pytype.git
-    cd pytype
-    pip install -U .
+   git clone --recurse-submodules https://github.com/google/pytype.git
+   cd pytype
+   pip install -U .
 
 Instead of using ``--recurse-submodules``, you could also have run
 
 ::
 
-    git submodule init
-    git submodule update
+   git submodule init
+   git submodule update
 
 in the ``pytype`` directory.
 
@@ -110,10 +148,10 @@ Usage
 
 ::
 
-    usage: pytype [options] input [input ...]
+   usage: pytype [options] input [input ...]
 
-    positional arguments:
-      input                 file or directory to process
+   positional arguments:
+     input                 file or directory to process
 
 Common options:
 
@@ -122,7 +160,7 @@ Common options:
 -  ``-o, --output``: The directory into which all pytype output goes,
    including generated .pyi files. Defaults to ``.pytype``.
 -  ``-d, --disable``. Comma separated list of error names to ignore.
-   Detailed explanations of pytype's error names are in `this
+   Detailed explanations of pytype’s error names are in `this
    doc <docs/errors.md>`__. Defaults to empty.
 
 For a full list of options, run ``pytype --help``.
@@ -144,7 +182,7 @@ Start off by generating a sample config file:
 
 ::
 
-    $ pytype --generate-config pytype.cfg
+   $ pytype --generate-config pytype.cfg
 
 Now customize the file based on your local setup, keeping only the
 sections you need. Directories may be relative to the location of the
@@ -157,15 +195,15 @@ to analyze package ``~/repo1/foo``, which depends on package
 
 ::
 
-    ~/
-    ├── repo1
-    │   └── foo
-    │       ├── __init__.py
-    │       └── file_to_check.py
-    └── repo2
-        └── bar
-            ├── __init__.py
-            └── dependency.py
+   ~/
+   ├── repo1
+   │   └── foo
+   │       ├── __init__.py
+   │       └── file_to_check.py
+   └── repo2
+       └── bar
+           ├── __init__.py
+           └── dependency.py
 
 Here is the filled-in config file, which instructs pytype to type-check
 ``~/repo1/foo`` as Python 3.6 code, look for packages in ``~/repo1`` and
@@ -174,37 +212,37 @@ package does not include the package itself.
 
 ::
 
-    $ cat ~/repo1/pytype.cfg
+   $ cat ~/repo1/pytype.cfg
 
-    # NOTE: All relative paths are relative to the location of this file.
+   # NOTE: All relative paths are relative to the location of this file.
 
-    [pytype]
+   [pytype]
 
-    # Space-separated list of files or directories to process.
-    inputs =
-        foo
+   # Space-separated list of files or directories to process.
+   inputs =
+       foo
 
-    # Python version (major.minor) of the target code.
-    python_version = 3.6
+   # Python version (major.minor) of the target code.
+   python_version = 3.6
 
-    # Paths to source code directories, separated by ':'.
-    pythonpath =
-        .:
-        ~/repo2
+   # Paths to source code directories, separated by ':'.
+   pythonpath =
+       .:
+       ~/repo2
 
-    # Comma separated list of error names to ignore.
-    disable =
-        attribute-error
+   # Comma separated list of error names to ignore.
+   disable =
+       attribute-error
 
-We could've discovered that ``~/repo2`` needed to be added to the
-pythonpath by running pytype's broken dependency checker:
+We could’ve discovered that ``~/repo2`` needed to be added to the
+pythonpath by running pytype’s broken dependency checker:
 
 ::
 
-    $ pytype --config=~/repo1/pytype.cfg ~/repo1/foo/*.py --unresolved
+   $ pytype --config=~/repo1/pytype.cfg ~/repo1/foo/*.py --unresolved
 
-    Unresolved dependencies:
-      bar.dependency
+   Unresolved dependencies:
+     bar.dependency
 
 Subtools
 ~~~~~~~~
