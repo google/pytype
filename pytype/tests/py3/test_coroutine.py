@@ -214,7 +214,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       def f3() -> Coroutine[Any, Any, None]: ...
     """)
 
-  def testInvalidAwatiable(self):
+  def testInvalidAwaitable(self):
     errors = self.CheckWithErrors("""\
       class A(object):
         pass
@@ -471,5 +471,58 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       def f1() -> Coroutine[Any, Any, int]: ...
       def f2() -> Coroutine[Any, Any, str]: ...
     """)
+
+  def testAwaitGenerator(self):
+    ty = self.Infer("""
+      import asyncio
+
+      async def tcp_echo_client(message):
+        return await asyncio.open_connection( '127.0.0.1', 8888)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Coroutine, Tuple
+      asyncio: module
+      def tcp_echo_client(message) -> Coroutine[
+        Any, Any,
+        Tuple[asyncio.streams.StreamReader, asyncio.streams.StreamWriter]]: ...
+    """)
+
+  def testQueue(self):
+    ty = self.Infer("""
+      import asyncio
+
+      async def worker(queue):
+        return await queue.get()
+
+      async def main():
+        queue = asyncio.Queue()
+        worker(queue)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Coroutine
+      asyncio: module
+      def worker(queue) -> coroutine: ...
+      def main() -> Coroutine[Any, Any, None]: ...
+    """)
+
+  def testFuture(self):
+    ty = self.Infer("""
+      import asyncio
+
+      async def foo() -> int:
+        return 1
+
+      async def call_foo():
+        for future in asyncio.as_completed([foo()]):
+          return await future
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import asyncio.futures
+      from typing import Any, Coroutine, Optional
+      asyncio: module
+      def foo() -> Coroutine[Any, Any, int]: ...
+      def call_foo() -> Coroutine[Any, Any, Optional[int]]: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
