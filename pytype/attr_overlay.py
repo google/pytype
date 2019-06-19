@@ -232,7 +232,6 @@ class Attrib(abstract.PyTDFunction):
     self.match_args(node, args)
     node, default_var = self._get_default_var(node, args)
     type_var = args.namedargs.get("type")
-    # TODO(mdemello): Check that init is a bool.
     init = self._get_kwarg(args, "init", True)
     has_type = type_var is not None
     if type_var:
