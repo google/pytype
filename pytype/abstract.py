@@ -3000,6 +3000,10 @@ class InterpreterFunction(SignedFunction):
       # because we need to know the contained type for futher matching.
       node2, _ = generator.run_generator(node)
       if self.is_coroutine():
+        # This function is a generator-based coroutine. We convert the return
+        # value here even though byte_GET_AWAITABLE repeats the conversion so
+        # that matching against a typing.Awaitable annotation succeeds.
+        # TODO(rechen): PyTDFunction probably also needs to do this.
         var = generator.get_instance_type_parameter(abstract_utils.V)
         ret = Coroutine(self.vm, var, node2).to_variable(node2)
       else:

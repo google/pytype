@@ -2814,12 +2814,82 @@ class VirtualMachine(object):
     state, ctxmgr_obj = self.call_function_with_state(state, aenter_method, ())
     return state.push(ctxmgr_obj)
 
+  def _to_coroutine(self, state, obj, top=True):
+    """Convert any awaitables and generators in obj to coroutines.
+
+    Implements the GET_AWAITABLE opcode, which returns obj unchanged if it is a
+    coroutine or generator and otherwise resolves obj.__await__
+    (https://docs.python.org/3/library/dis.html#opcode-GET_AWAITABLE). So that
+    we don't have to handle awaitable generators specially, our implementation
+    converts generators to coroutines.
+
+    Args:
+      state: The current state.
+      obj: The object, a cfg.Variable.
+      top: Whether this is the top-level recursive call, to prevent incorrectly
+        recursing into the result of obj.__await__.
+
+    Returns:
+      A tuple of the state and a cfg.Variable of coroutines.
+    """
+    bad = self.matcher.bad_matches(obj, self.convert.coroutine_type, state.node)
+    if not bad:  # there are no non-coroutines
+      return state, obj
+    ret = self.program.NewVariable()
+    bad_views = {view[obj]: view for view in bad}
+    for b in obj.bindings:
+      state = self._binding_to_coroutine(state, b, bad_views, ret, top)
+    return state, ret
+
+  def _binding_to_coroutine(self, state, b, bad_views, ret, top):
+    """Helper for _to_coroutine.
+
+    Args:
+      state: The current state.
+      b: A cfg.Binding.
+      bad_views: Map from binding to a view in which it is not a coroutine.
+      ret: A return variable that this helper will add to.
+      top: Whether this is the top-level recursive call.
+
+    Returns:
+      The state.
+    """
+    if b not in bad_views:  # this is already a coroutine
+      ret.PasteBinding(b)
+      return state
+    if self.matcher.match_var_against_type(
+        b.variable, self.convert.generator_type, {}, state.node, bad_views[b]
+    ) is not None:
+      # This is a generator; convert it to a coroutine. This conversion is
+      # necessary even though generator-based coroutines convert their return
+      # values themselves because __await__ can return a generator.
+      ret_param = b.data.get_instance_type_parameter(abstract_utils.V)
+      coroutine = abstract.Coroutine(self, ret_param, state.node)
+      ret.AddBinding(coroutine, [b], state.node)
+      return state
+    # This is neither a coroutine or a generator; call __await__.
+    if not top:  # we've already called __await__
+      ret.PasteBinding(b)
+      return state
+    _, await_method = self.attribute_handler.get_attribute(
+        state.node, b.data, "__await__", b)
+    if await_method is None or not await_method.bindings:
+      # We don't need to log an error here; byte_GET_AWAITABLE will check
+      # that the final result is awaitable.
+      ret.PasteBinding(b)
+      return state
+    state, await_obj = self.call_function_with_state(state, await_method, ())
+    state, subret = self._to_coroutine(state, await_obj, top=False)
+    ret.PasteVariable(subret)
+    return state
+
   def byte_GET_AWAITABLE(self, state, op):
     """Implementation of the GET_AWAITABLE opcode."""
     state, obj = state.pop()
-    if not self._check_return(state.node, obj, self.convert.awaitable_type):
-      obj = self.new_unsolvable(state.node)
-    return state.push(obj)
+    state, ret = self._to_coroutine(state, obj)
+    if not self._check_return(state.node, ret, self.convert.awaitable_type):
+      ret = self.new_unsolvable(state.node)
+    return state.push(ret)
 
   def byte_YIELD_FROM(self, state, op):
     """Implementation of the YIELD_FROM opcode."""
