@@ -1,7 +1,6 @@
 """Support for the 'attrs' library."""
 
 import logging
-import textwrap
 
 from pytype import abstract
 from pytype import abstract_utils
@@ -9,7 +8,6 @@ from pytype import function
 from pytype import mixin
 from pytype import overlay
 from pytype import overlay_utils
-from pytype.pyi import parser
 
 log = logging.getLogger(__name__)
 
@@ -300,22 +298,6 @@ def is_late_annotation(val):
 class Factory(abstract.PyTDFunction):
   """Implementation of attr.Factory."""
 
-  # TODO(rechen): This snippet is necessary because we can't yet parse the
-  # typeshed attr stubs and pytype infers the type of attr.Factory as Any.
-  # Remove it once
-  # https://github.com/google/pytype/issues/321 and
-  # https://github.com/google/pytype/issues/315 are fixed and pytype is using
-  # the canonical attr stubs.
-  PYTD = textwrap.dedent("""
-    from typing import Callable, TypeVar
-    _T = TypeVar("_T")
-    def Factory(factory: Callable[[], _T]) -> _T: ...
-  """)
-
   @classmethod
   def make(cls, name, vm):
-    ast = vm.loader.resolve_ast(
-        parser.parse_string(
-            cls.PYTD, name="attr", python_version=vm.python_version))
-    pyval = ast.Lookup("attr.Factory")
-    return super(Factory, cls).make(name, vm, "attr", pyval=pyval)
+    return super(Factory, cls).make(name, vm, "attr")

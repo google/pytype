@@ -4,7 +4,6 @@ import collections
 import subprocess
 
 from pytype import compat
-from pytype import file_utils
 from pytype import state as frame_state
 from pytype.pyc import loadmarshal
 
@@ -169,50 +168,6 @@ class MakeCodeMixin(object):
         name=name, firstlineno=1, lnotab=[], freevars=[], cellvars=[],
         code=compat.int_array_to_bytes(int_array),
         python_version=self.python_version)
-
-
-ATTR_PYI = """
-from typing import Any, Optional, Type, TypeVar
-T = TypeVar('T')
-@overload
-def s(cls: Type[T], **kwargs) -> Type[T]: ...
-@overload
-def s(**kwargs) -> Any: ...
-def ib(type: T = None, **kwargs) -> T: ...
-Factory: Any
-"""
-
-
-class TestAttrMixin(object):
-  """Mixin for testing the attrs library.
-
-  Note that this needs to be in the list of bases before test_base.*Test since
-  it overrides Infer.
-  """
-
-  def Infer(self, code, **kwargs):  # pylint: disable=invalid-name
-    with file_utils.Tempdir() as d:
-      d.create_file("attr.pyi", ATTR_PYI)
-      return super(TestAttrMixin, self).Infer(
-          code, pythonpath=[d.path], **kwargs)
-
-  def InferWithErrors(self, code, **kwargs):  # pylint: disable=invalid-name
-    with file_utils.Tempdir() as d:
-      d.create_file("attr.pyi", ATTR_PYI)
-      return super(TestAttrMixin, self).InferWithErrors(
-          code, pythonpath=[d.path], **kwargs)
-
-  def Check(self, code, **kwargs):  # pylint: disable=invalid-name
-    with file_utils.Tempdir() as d:
-      d.create_file("attr.pyi", ATTR_PYI)
-      return super(TestAttrMixin, self).Check(
-          code, pythonpath=[d.path], **kwargs)
-
-  def CheckWithErrors(self, code, **kwargs):  # pylint: disable=invalid-name
-    with file_utils.Tempdir() as d:
-      d.create_file("attr.pyi", ATTR_PYI)
-      return super(TestAttrMixin, self).CheckWithErrors(
-          code, pythonpath=[d.path], **kwargs)
 
 
 class Py2Opcodes(object):

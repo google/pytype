@@ -1,7 +1,6 @@
 """Utilities for writing overlays."""
 
 from pytype import abstract
-from pytype import function
 from pytype import mixin
 from pytype.typegraph import cfg
 
@@ -113,12 +112,3 @@ def make_method(vm, node, name, params=None, kwonly_params=None,
   if late_annotations:
     vm.functions_with_late_annotations.append(ret)
   return ret.to_variable(node)
-
-
-def raise_wrong_type_for_single_arg(vm, function_name, arg_name, arg_type,
-                                    passed_args):
-  """Raise wrong-arg-types with signature f(arg: type, ...)"""
-  sig = function.Signature.from_param_names(function_name, (arg_name,))
-  sig.varargs_name = "*args"
-  bad = function.BadParam(name=arg_name, expected=arg_type)
-  raise function.WrongArgTypes(sig, passed_args, vm, bad_param=bad)
