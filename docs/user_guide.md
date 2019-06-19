@@ -1,6 +1,5 @@
 # User guide
 
-
 <!--ts-->
    * [User guide](#user-guide)
       * [Introduction](#introduction)
@@ -12,7 +11,7 @@
       * [Pytype's pyi stub files](#pytypes-pyi-stub-files)
       * [Compatibility](#compatibility)
 
-<!-- Added by: rechen, at: 2019-06-05T16:36-07:00 -->
+<!-- Added by: rechen, at: 2019-06-18T19:56-07:00 -->
 
 <!--te-->
 
@@ -36,7 +35,6 @@ File "t.py", line 2, in unannotated: Function str.join expects 2 arg(s), got 3 [
 
 Here's an example of type annotations:
 
-
 ```python
 def annotated(x: int, y: float = 0.0) -> int:
   return x + y
@@ -52,7 +50,6 @@ may include it to allow your code to run under both Python 2 and 3. See the
 
 Note that the return type of `annotated` is declared to be an integer, but the
 function actually returns a float. pytype will also find this bug:
-
 
 ```
 File "t.py", line 2, in annotated: bad option in return type [bad-return-type]
@@ -257,7 +254,6 @@ cases, [PEP 484][pep-484-stub-files] allows you to declare a module's types in a
 separate "stub" file with a `.pyi` extension. Pyi files follow a subset of the
 python syntax and are analogous to header files in C ([examples][pyi-examples]).
 
-
 If you already have a `.pyi` and would like to merge it back into a `.py` file,
 we provide a [tool][merge-pyi] to automate this.
 
@@ -274,7 +270,6 @@ and [typeshed][typeshed]. If you find a mistake in one of these files, please
 Both [PEP 3107][pep-3107] as well as [PEP 484][pep-484] are Python 3 features.
 However, we [backported][type-annotations-backport] them to the Python 2.7 we
 run at Google, and the patch is available as part of pytype.
-
 
 To run annotated code under normal Python 2,
 you can use a restricted form of comment annotation syntax. See
@@ -311,4 +306,3 @@ syntax; the one-type-comment-per-parameter syntax isn't supported
 [type-annotations-backport]: https://github.com/google/pytype/blob/master/2.7_patches/python_2_7_type_annotations.diff
 
 [typeshed]: https://github.com/python/typeshed
-
