@@ -4,6 +4,7 @@ import textwrap
 from pytype import config
 from pytype.tests import test_base
 from pytype.tools.annotate_ast import annotate_ast
+import six
 
 
 class AnnotaterTest(test_base.TargetIndependentTest):
@@ -41,7 +42,7 @@ class AnnotaterTest(test_base.TargetIndependentTest):
             'Expected to find node {} annotated, but it was not.'.format(key))
       msg = ('Resolved annotation value does not match {!r}: Node {} annotated '
              'with {}').format(expected_pattern, key, actual_text)
-      self.assertRegex(actual_text, expected_pattern, msg=msg)
+      six.assertRegex(self, actual_text, expected_pattern, msg=msg)
 
   def _get_node_key(self, node):
     base = (node.lineno, node.__class__.__name__)

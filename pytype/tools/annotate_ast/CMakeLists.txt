@@ -19,3 +19,4 @@ py_test(
     .annotate_ast
     pytype.config
     pytype.tests.test_base
+)
