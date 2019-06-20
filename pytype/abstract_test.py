@@ -2,7 +2,6 @@
 
 from pytype import abstract
 from pytype import abstract_utils
-from pytype import annotations_util
 from pytype import config
 from pytype import errors
 from pytype import function
@@ -414,8 +413,8 @@ class FunctionTest(AbstractTestBase):
         defaults={},
         annotations={},
         late_annotations={
-            "v": annotations_util.LateAnnotation("X", "v", None),
-            "return": annotations_util.LateAnnotation("Y", "return", None)
+            "v": abstract.LateAnnotation("X", "v", None),
+            "return": abstract.LateAnnotation("Y", "return", None)
         }
     )
     self.assertEqual(repr(sig), "def f(v: 'X') -> 'Y'")

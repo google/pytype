@@ -1,6 +1,5 @@
 # FAQ
 
-
 <!--ts-->
    * [FAQ](#faq)
       * [How is pytype different from other type checkers?](#how-is-pytype-different-from-other-type-checkers)
@@ -14,7 +13,7 @@
       * [How do I disable all pytype checks for a particular import?](#how-do-i-disable-all-pytype-checks-for-a-particular-import)
       * [How do I write code that is seen by pytype but ignored at runtime?](#how-do-i-write-code-that-is-seen-by-pytype-but-ignored-at-runtime)
 
-<!-- Added by: rechen, at: 2019-05-07T12:13-07:00 -->
+<!-- Added by: rechen, at: 2019-06-18T19:56-07:00 -->
 
 <!--te-->
 
@@ -69,7 +68,6 @@ that this is different to attribute checking, where e.g.
 
 will indeed result in a type error.
 
-
 ## How do I declare that something can be either byte string or unicode?
 
 Using `typing.Text` if it is conceptually a text object,
@@ -86,7 +84,6 @@ the analysis:
 * Annotate the return types of functions to speed up inference.
 * Simplify function inputs (e.g., by reducing the number of types in unions) to
   speed up checking.
-
 
 ## How do I disable all pytype checks for a particular file?
 
@@ -119,7 +116,6 @@ needed to, for instance,
 [conditionally import a module][style-guide-conditional-imports] that is only
 used to provide type annotations.
 
-
 Note that regardless of whether you use `TYPE_CHECKING`, if you're using a build
 system, you'll need to list all modules you import as dependencies of your
 target. That can lead to cycles in your build graph. Typically, that means that,
@@ -127,7 +123,6 @@ short of rearranging your source tree, you won't be able to annotate with that
 specific type. You can typically work around the "inexpressible" type by
 inserting `Any` where you would have used it. See the
 [style guide][style-guide-circular-dependencies] for more information.
-
 
 <!-- General references -->
 [compatibility]: user_guide.md#compatibility
@@ -144,4 +139,3 @@ inserting `Any` where you would have used it. See the
 [style-guide-conditional-imports]: https://google.github.io/styleguide/pyguide.html#31913-conditional-imports
 
 [style-guide-string-types]: https://google.github.io/styleguide/pyguide.html#31911-string-types
-

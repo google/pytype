@@ -1139,6 +1139,10 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
       self.could_contain_anything = True
 
 
+LateAnnotation = collections.namedtuple(
+    "LateAnnotation", ["expr", "name", "stack"])
+
+
 class AnnotationClass(SimpleAbstractValue, mixin.HasSlots):
   """Base class of annotations that can be parameterized."""
 
@@ -2996,6 +3000,10 @@ class InterpreterFunction(SignedFunction):
       # because we need to know the contained type for futher matching.
       node2, _ = generator.run_generator(node)
       if self.is_coroutine():
+        # This function is a generator-based coroutine. We convert the return
+        # value here even though byte_GET_AWAITABLE repeats the conversion so
+        # that matching against a typing.Awaitable annotation succeeds.
+        # TODO(rechen): PyTDFunction probably also needs to do this.
         var = generator.get_instance_type_parameter(abstract_utils.V)
         ret = Coroutine(self.vm, var, node2).to_variable(node2)
       else:
@@ -3747,5 +3755,3 @@ AMBIGUOUS_OR_EMPTY = AMBIGUOUS + (Empty,)
 FUNCTION_TYPES = (BoundFunction, Function)
 INTERPRETER_FUNCTION_TYPES = (BoundInterpreterFunction, InterpreterFunction)
 PYTD_FUNCTION_TYPES = (BoundPyTDFunction, PyTDFunction)
-# Types that can be used to annotate a class variable in dataclasses etc.
-TYPE_TYPES = (mixin.Class, Union) + AMBIGUOUS_OR_EMPTY

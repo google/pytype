@@ -1,7 +1,5 @@
 """Utilities for inline type annotations."""
 
-import collections
-
 from pytype import abstract
 from pytype import abstract_utils
 from pytype import function
@@ -10,10 +8,6 @@ from pytype import typing_overlay
 from pytype import utils
 
 import six
-
-
-LateAnnotation = collections.namedtuple(
-    "LateAnnotation", ["expr", "name", "stack"])
 
 
 class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
@@ -159,7 +153,8 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       try:
         annot = self._process_one_annotation(t, name, self.vm.frames)
       except self.LateAnnotationError:
-        late_annotations[name] = LateAnnotation(t, name, self.vm.simple_stack())
+        late_annotations[name] = abstract.LateAnnotation(
+            t, name, self.vm.simple_stack())
       else:
         if annot is not None:
           annotations[name] = annot
@@ -227,7 +222,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       try:
         return self.init_annotation(typ, name, self.vm.frames, node)
       except self.LateAnnotationError:
-        return LateAnnotation(typ, name, self.vm.simple_stack())
+        return abstract.LateAnnotation(typ, name, self.vm.simple_stack())
 
   def apply_type_comment(self, state, op, name, value):
     """If there is a type comment for the op, return its value."""
@@ -259,7 +254,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         try:
           value = self.init_annotation(typ, name, self.vm.frames, state.node)
         except self.LateAnnotationError:
-          value = LateAnnotation(typ, name, self.vm.simple_stack())
+          value = abstract.LateAnnotation(typ, name, self.vm.simple_stack())
     return value
 
   def init_annotation(self, annot, name, stack, node, f_globals=None,

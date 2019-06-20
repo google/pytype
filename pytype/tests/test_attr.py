@@ -1,11 +1,9 @@
 """Tests for attrs library in attr_overlay.py."""
 
 from pytype.tests import test_base
-from pytype.tests import test_utils
 
 
-class TestAttrib(test_utils.TestAttrMixin,
-                 test_base.TargetIndependentTest):
+class TestAttrib(test_base.TargetIndependentTest):
   """Tests for attr.ib."""
 
   def test_basic(self):
@@ -280,6 +278,20 @@ class TestAttrib(test_utils.TestAttrMixin,
     self.assertErrorLogIs(
         errors, [(4, "duplicate-keyword-argument", r"default")])
 
+  def test_takes_self(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class Foo(object):
+        x = attr.ib(default=attr.Factory(len, takes_self=True))
+    """)
+    self.assertTypesMatchPytd(ty, """
+      attr: module
+      class Foo(object):
+        x: int
+        def __init__(self, x: int = ...) -> None: ...
+    """)
+
   def test_default_none(self):
     ty = self.Infer("""
       import attr
@@ -357,20 +369,145 @@ class TestAttrib(test_utils.TestAttrMixin,
         def __init__(self, y: int) -> None: ...
     """)
 
+  def test_init_bad_constant(self):
+    err = self.CheckWithErrors("""\
+      import attr
+      @attr.s
+      class Foo(object):
+        x = attr.ib(init=0)
+    """)
+    self.assertErrorLogIs(err, [(4, "wrong-arg-types", r"bool.*int")])
+
   def test_init_bad_kwarg(self):
     err = self.CheckWithErrors("""
       import attr
-      class A:
-        pass
       @attr.s
       class Foo:
-        x = attr.ib(init=A())  # type: str
+        x = attr.ib(init=__random__)  # type: str
     """)
-    self.assertErrorLogIs(err, [(7, "not-supported-yet")])
+    self.assertErrorLogIs(err, [(5, "not-supported-yet")])
+
+  def test_class(self):
+    self.assertNoCrash(self.Check, """
+      import attr
+      class X(attr.make_class('X', {'y': attr.ib(default=None)})):
+        pass
+    """)
+
+  def test_base_class_attrs(self):
+    self.Check("""
+      import attr
+      @attr.s
+      class A(object):
+        a = attr.ib()  # type: int
+      @attr.s
+      class B(object):
+        b = attr.ib()  # type: str
+      @attr.s
+      class C(A, B):
+        c = attr.ib()  # type: int
+      x = C(10, 'foo', 42)
+      x.a
+      x.b
+      x.c
+    """)
+
+  def test_base_class_attrs_type(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class A(object):
+        a = attr.ib()  # type: int
+      @attr.s
+      class B(object):
+        b = attr.ib()  # type: str
+      @attr.s
+      class C(A, B):
+        c = attr.ib()  # type: int
+    """)
+    self.assertTypesMatchPytd(ty, """
+      attr: module
+      class A(object):
+        a: int
+        def __init__(self, a: int) -> None: ...
+      class B(object):
+        b: str
+        def __init__(self, b: str) -> None: ...
+      class C(A, B):
+        c: int
+        def __init__(self, a: int, b: str, c: int) -> None: ...
+    """)
+
+  def test_base_class_attrs_override_type(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class A(object):
+        a = attr.ib()  # type: int
+      @attr.s
+      class B(object):
+        b = attr.ib()  # type: str
+      @attr.s
+      class C(A, B):
+        a = attr.ib()  # type: str
+        c = attr.ib()  # type: int
+    """)
+    self.assertTypesMatchPytd(ty, """
+      attr: module
+      class A(object):
+        a: int
+        def __init__(self, a: int) -> None: ...
+      class B(object):
+        b: str
+        def __init__(self, b: str) -> None: ...
+      class C(A, B):
+        a: str
+        c: int
+        def __init__(self, b: str, a: str, c: int) -> None: ...
+    """)
+
+  def test_base_class_attrs_init(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class A(object):
+        a = attr.ib(init=False)  # type: int
+      @attr.s
+      class B(object):
+        b = attr.ib()  # type: str
+      @attr.s
+      class C(A, B):
+        c = attr.ib()  # type: int
+    """)
+    self.assertTypesMatchPytd(ty, """
+      attr: module
+      class A(object):
+        a: int
+      class B(object):
+        b: str
+        def __init__(self, b: str) -> None: ...
+      class C(A, B):
+        c: int
+        def __init__(self, b: str, c: int) -> None: ...
+    """)
+
+  def test_base_class_attrs_abstract_type(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class Foo(__any_object__):
+        a = attr.ib()  # type: int
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo(Any):
+        a: int
+        def __init__(self, a: int) -> None: ...
+    """)
 
 
-class TestAttrs(test_utils.TestAttrMixin,
-                test_base.TargetIndependentTest):
+class TestAttrs(test_base.TargetIndependentTest):
   """Tests for attr.s."""
 
   def test_basic(self):
@@ -410,16 +547,32 @@ class TestAttrs(test_utils.TestAttrMixin,
         z: str
     """)
 
-  def test_bad_kwarg(self):
-    err = self.CheckWithErrors("""
+  def test_init_bad_constant(self):
+    err = self.CheckWithErrors("""\
       import attr
-      class A:
-        pass
-      @attr.s(init=A())
+      @attr.s(init=0)
       class Foo:
         pass
     """)
-    self.assertErrorLogIs(err, [(5, "not-supported-yet")])
+    self.assertErrorLogIs(err, [(2, "wrong-arg-types", r"bool.*int")])
+
+  def test_bad_kwarg(self):
+    err = self.CheckWithErrors("""
+      import attr
+      @attr.s(init=__random__)
+      class Foo:
+        pass
+    """)
+    self.assertErrorLogIs(err, [(3, "not-supported-yet")])
+
+  def test_depth(self):
+    self.Check("""
+      import attr
+      def f():
+        @attr.s
+        class Foo:
+          pass
+    """, maximum_depth=1)
 
 
 test_base.main(globals(), __name__ == "__main__")
