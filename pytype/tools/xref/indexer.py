@@ -839,12 +839,17 @@ class IndexVisitor(ScopedVisitor):
 
   def visit_Attribute(self, node):
     ops = self.traces[node.lineno]
+    if isinstance(node.value, str):
+      node_str = "{}.{}".format(node.value, node.attr)
+    else:
+      # Prevents a crash when an attr is called on an inline literal.
+      node_str = "<{}>.{}".format(node.value.__class__.__name__, node.attr)
     for op, symbol, data in ops:
       if symbol == node.attr and op in ["LOAD_ATTR"]:
         ref = self.add_local_ref(
             node,
             target=node.value,
-            name=node.value + "." + symbol,
+            name=node_str,
             data=data)
         if data and len(data) == 2:
           _, rhs = data
@@ -855,7 +860,7 @@ class IndexVisitor(ScopedVisitor):
         if self.current_class:
           # We only support attr definitions within a class definition.
           self.current_env.setattr(node.attr, defn)
-    return node.value + "." + node.attr
+    return node_str
 
   def visit_Subscript(self, node):
     return node.value
