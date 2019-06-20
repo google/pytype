@@ -1,4 +1,5 @@
 import ast
+import itertools
 import textwrap
 
 from pytype import config
@@ -31,8 +32,7 @@ class AnnotaterTest(test_base.TargetIndependentTest):
       actual[key] = '{} :: {!r}'.format(node.resolved_annotation,
                                         node.resolved_type)
 
-    keys = expected.keys() + actual.keys()
-    for key in keys:
+    for key in sorted(set(itertools.chain(expected, actual))):
       expected_pattern = expected.get(key)
       if not expected_pattern:
         self.fail('Unexpected annotation: {} -> {}'.format(key, actual[key]))
