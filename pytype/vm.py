@@ -1083,8 +1083,12 @@ class VirtualMachine(object):
     raise KeyError(name)
 
   def _record_local_assignment(self, name, value, orig_val):
-    self.ordered_locals[self.frame.f_code.co_name].append(
-        (name, value, orig_val))
+    """Record a type annotation on a local variable."""
+    locs = self.ordered_locals[self.frame.f_code.co_name]
+    # If 'name' is already recorded, delete it and move it to the end.
+    new_locs = [x for x in locs if x[0] != name]
+    new_locs.append((name, value, orig_val))
+    self.ordered_locals[self.frame.f_code.co_name] = new_locs
 
   def _update_local_assignment(self, name, value):
     """Record a type annotation on a local variable."""

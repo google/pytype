@@ -148,5 +148,48 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
         def __init__(self, x: int = ..., y: int, z: str = ..., a: Foo) -> None: ...
     """)
 
+  def test_redefined_auto_attrs(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s(auto_attribs=True)
+      class Foo(object):
+        x = 10
+        y: int
+        x: str = 'hello'
+    """)
+    self.assertTypesMatchPytd(ty, """
+      attr: module
+      class Foo(object):
+        y: int
+        x: str
+        def __init__(self, y: int, x: str = ...) -> None: ...
+    """)
+
+  def test_non_attrs(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s(auto_attribs=True)
+      class Foo(object):
+        _x = 10
+        y: str
+        @property
+        def x(self):
+          return self._x
+        @x.setter
+        def x(self, x):
+          self._x = x
+        def f(self):
+          pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo(object):
+        _x: int
+        x: Any
+        y: str
+        def __init__(self, x: int = ..., y: str) -> None: ...
+        def f(self) -> None: ...
+    """)
 
 test_base.main(globals(), __name__ == "__main__")

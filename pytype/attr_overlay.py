@@ -8,6 +8,7 @@ from pytype import function
 from pytype import mixin
 from pytype import overlay
 from pytype import overlay_utils
+from pytype import special_builtins
 
 log = logging.getLogger(__name__)
 
@@ -117,6 +118,8 @@ class Attrs(abstract.PyTDFunction):
     for name, value, orig in ordered_locals:
       if name.startswith("__") and name.endswith("__"):
         continue
+      if is_method(orig):
+        continue
       if is_attrib(orig):
         if not is_attrib(value) and orig.data[0].has_type:
           # We cannot have both a type annotation and a type argument.
@@ -206,6 +209,10 @@ class Attribute(object):
     self.init = init
     self.default = default
 
+  def __repr__(self):
+    return str({"name": self.name, "typ": self.typ, "init": self.init,
+                "default": self.default})
+
 
 class AttribInstance(abstract.SimpleAbstractValue):
   """Return value of an attr.ib() call."""
@@ -282,6 +289,15 @@ class Attrib(abstract.PyTDFunction):
       return self.vm.program.NewVariable([self.vm.convert.unsolvable],
                                          [default_var.bindings[0]], node)
     return default_var
+
+
+def is_method(var):
+  if var is None or is_late_annotation(var):
+    return False
+  return isinstance(var.data[0], (
+      abstract.INTERPRETER_FUNCTION_TYPES,
+      special_builtins.PropertyInstance
+  ))
 
 
 def is_attrib(var):
