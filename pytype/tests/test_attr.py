@@ -107,6 +107,20 @@ class TestAttrib(test_base.TargetIndependentTest):
         def __init__(self, x: Foo, y: str) -> None: ...
     """)
 
+  def test_late_annotation_in_type(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class Foo(object):
+        x = attr.ib(type='Foo')
+    """)
+    self.assertTypesMatchPytd(ty, """
+      attr: module
+      class Foo(object):
+        x: Foo
+        def __init__(self, x: Foo) -> None: ...
+    """)
+
   def test_classvar(self):
     ty = self.Infer("""
       import attr

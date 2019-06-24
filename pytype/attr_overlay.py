@@ -144,7 +144,12 @@ class Attrs(abstract.PyTDFunction):
                 typ=value.data[0].typ,
                 init=orig.data[0].init,
                 default=value.data[0].default)
-            cls.members[name] = attr.typ
+            if is_late_annotation(attr.typ):
+              cls.members[name] = self.vm.new_unsolvable(node)
+              cls.late_annotations[name] = attr.typ
+              late_annotation = True
+            else:
+              cls.members[name] = attr.typ
           else:
             # cls.members[name] has already been set via a typecomment
             attr = Attribute(
@@ -280,8 +285,11 @@ class Attrib(abstract.PyTDFunction):
 
   def _instantiate_type(self, node, args, type_var):
     cls = type_var.data[0]
-    return self.vm.annotations_util.init_annotation(cls, "attr.ib",
-                                                    self.vm.frames, node)
+    try:
+      return self.vm.annotations_util.init_annotation(cls, "attr.ib",
+                                                      self.vm.frames, node)
+    except self.vm.annotations_util.LateAnnotationError:
+      return abstract.LateAnnotation(cls, "attr.ib", self.vm.simple_stack())
 
   def _get_type_from_default(self, node, default_var):
     if default_var and default_var.data == [self.vm.convert.none]:
