@@ -312,5 +312,108 @@ class TestExceptions(test_base.TargetIndependentTest):
     """)
     self.assertErrorLogIs(errors, [(3, "wrong-arg-count", r"2.*3")])
 
+  def test_value(self):
+    ty = self.Infer("""
+      def f():
+        try:
+          raise KeyError()
+        except KeyError as e:
+          return e
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> KeyError: ...
+    """)
+
+  def test_value_from_tuple(self):
+    ty = self.Infer("""
+      from typing import Tuple, Type
+      def f():
+        try:
+          raise KeyError()
+        except (KeyError, ValueError) as e:
+          return e
+      def g():
+        try:
+          raise KeyError()
+        except ((KeyError,),) as e:
+          return e
+      def h():
+        tup = None  # type: Tuple[Type[KeyError], ...]
+        try:
+          raise KeyError()
+        except tup as e:
+          return e
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Union
+      def f() -> Union[KeyError, ValueError]: ...
+      def g() -> KeyError: ...
+      def h() -> KeyError: ...
+    """)
+
+  def test_bad_type(self):
+    errors = self.CheckWithErrors("""\
+      try:
+        pass
+      except None:
+        pass
+      try:
+        pass
+      except type(None):
+        pass
+    """)
+    self.assertErrorLogIs(
+        errors, [(3, "mro-error", r"Not a class"),
+                 (7, "mro-error", r"None.*BaseException")])
+
+  def test_unknown_type(self):
+    self.Check("""
+      try:
+        pass
+      except __any_object__:
+        pass
+    """)
+
+  def test_attribute(self):
+    ty = self.Infer("""
+      class MyException(BaseException):
+        def __init__(self):
+          self.x = ""
+      def f():
+        try:
+          raise MyException()
+        except MyException as e:
+          return e.x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class MyException(BaseException):
+        x: str
+        def __init__(self) -> None: ...
+      def f() -> str: ...
+    """)
+
+  def test_reuse_name(self):
+    self.Check("""
+      def f():
+        try:
+          pass
+        except __any_object__ as e:
+          return e
+        try:
+          pass
+        except __any_object__ as e:
+          return e
+    """)
+
+  def test_unknown_base(self):
+    self.Check("""
+      class MyException(__any_object__):
+        pass
+      try:
+        pass
+      except MyException:
+        pass
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

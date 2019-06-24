@@ -873,12 +873,13 @@ class ErrorLog(ErrorLogBase):
                details=details)
 
   @_error_name("mro-error")
-  def mro_error(self, stack, name, mro_seqs):
+  def mro_error(self, stack, name, mro_seqs, details=None):
     seqs = []
     for seq in mro_seqs:
       seqs.append("[%s]" % ", ".join(cls.name for cls in seq))
-    self.error(stack, "Class %s has invalid (cyclic?) inheritance: %s." % (
-        name, ", ".join(seqs)), keyword=name)
+    suffix = ": %s" % ", ".join(seqs) if seqs else ""
+    msg = "%s has invalid inheritance%s." % (name, suffix)
+    self.error(stack, msg, keyword=name, details=details)
 
   @_error_name("invalid-directive")
   def invalid_directive(self, filename, lineno, message):

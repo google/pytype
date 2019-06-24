@@ -1835,6 +1835,51 @@ class VirtualMachine(object):
     return op_arg in (slots.CMP_ALWAYS_SUPPORTED_PY2 if self.PY2 else
                       slots.CMP_ALWAYS_SUPPORTED_PY3)
 
+  def _instantiate_exception(self, node, exc_type):
+    """Instantiate an exception type.
+
+    Args:
+      node: The current node.
+      exc_type: A cfg.Variable of the exception type.
+
+    Returns:
+      A tuple of a cfg.Variable of the instantiated type and a list of
+      the flattened exception types in the data of exc_type. None takes the
+      place of invalid types.
+    """
+    value = self.program.NewVariable()
+    types = []
+    for e in exc_type.data:
+      if isinstance(e, abstract.Tuple):
+        for sub_exc_type in e.pyval:
+          sub_value, sub_types = self._instantiate_exception(node, sub_exc_type)
+          value.PasteVariable(sub_value)
+          types.extend(sub_types)
+      elif (isinstance(e, abstract.Instance) and
+            e.cls.full_name == "__builtin__.tuple"):
+        sub_exc_type = e.get_instance_type_parameter(abstract_utils.T)
+        sub_value, sub_types = self._instantiate_exception(node, sub_exc_type)
+        value.PasteVariable(sub_value)
+        types.extend(sub_types)
+      elif isinstance(e, mixin.Class) and any(
+          base.full_name == "__builtin__.BaseException" or
+          isinstance(base, abstract.AMBIGUOUS_OR_EMPTY) for base in e.mro):
+        node, instance = self.init_class(node, e)
+        value.PasteVariable(instance)
+        types.append(e)
+      else:
+        if not isinstance(e, abstract.AMBIGUOUS_OR_EMPTY):
+          if isinstance(e, mixin.Class):
+            mro_seqs = [e.mro] if isinstance(e, mixin.Class) else []
+            msg = "%s does not inherit from BaseException" % e.name
+          else:
+            mro_seqs = []
+            msg = "Not a class"
+          self.errorlog.mro_error(self.frames, e.name, mro_seqs, details=msg)
+        value.AddBinding(self.convert.unsolvable, [], node)
+        types.append(None)
+    return value, types
+
   def byte_COMPARE_OP(self, state, op):
     """Pops and compares the top two stack values and pushes a boolean."""
     state, (x, y) = state.popn(2)
@@ -1863,6 +1908,16 @@ class VirtualMachine(object):
     elif op.arg == slots.CMP_IN:
       state, ret = self._cmp_in(state, x, y)
     elif op.arg == slots.CMP_EXC_MATCH:
+      # When the `try` block is set up, push_abstract_exception pushes on
+      # unknowns for the value and exception type. CMP_EXC_MATCH occurs at the
+      # beginning  of the `except` block, when we know the exception being
+      # caught, so we can replace the unknowns with more useful variables.
+      state, _ = state.popn(2)
+      exc_type = y
+      value, types = self._instantiate_exception(state.node, exc_type)
+      if None in types:
+        exc_type = self.new_unsolvable(state.node)
+      state = state.push(value, exc_type)
       ret = self.convert.build_bool(state.node)
     else:
       raise VirtualMachineError("Invalid argument to COMPARE_OP: %d" % op.arg)

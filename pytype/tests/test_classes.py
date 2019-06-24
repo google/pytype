@@ -978,7 +978,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         import foo
         foo.f()
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(2, "mro-error", r"Class C")])
+      self.assertErrorLogIs(errors, [(2, "mro-error", r"C")])
 
   def testCallParameterizedClass(self):
     _, errors = self.InferWithErrors("""\
