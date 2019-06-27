@@ -8,6 +8,7 @@ from pytype import function
 from pytype import mixin
 from pytype import overlay
 from pytype import overlay_utils
+from pytype import special_builtins
 
 log = logging.getLogger(__name__)
 
@@ -117,6 +118,8 @@ class Attrs(abstract.PyTDFunction):
     for name, value, orig in ordered_locals:
       if name.startswith("__") and name.endswith("__"):
         continue
+      if is_method(orig):
+        continue
       if is_attrib(orig):
         if not is_attrib(value) and orig.data[0].has_type:
           # We cannot have both a type annotation and a type argument.
@@ -141,7 +144,12 @@ class Attrs(abstract.PyTDFunction):
                 typ=value.data[0].typ,
                 init=orig.data[0].init,
                 default=value.data[0].default)
-            cls.members[name] = attr.typ
+            if is_late_annotation(attr.typ):
+              cls.members[name] = self.vm.new_unsolvable(node)
+              cls.late_annotations[name] = attr.typ
+              late_annotation = True
+            else:
+              cls.members[name] = attr.typ
           else:
             # cls.members[name] has already been set via a typecomment
             attr = Attribute(
@@ -205,6 +213,10 @@ class Attribute(object):
     self.typ = typ
     self.init = init
     self.default = default
+
+  def __repr__(self):
+    return str({"name": self.name, "typ": self.typ, "init": self.init,
+                "default": self.default})
 
 
 class AttribInstance(abstract.SimpleAbstractValue):
@@ -273,8 +285,11 @@ class Attrib(abstract.PyTDFunction):
 
   def _instantiate_type(self, node, args, type_var):
     cls = type_var.data[0]
-    return self.vm.annotations_util.init_annotation(cls, "attr.ib",
-                                                    self.vm.frames, node)
+    try:
+      return self.vm.annotations_util.init_annotation(cls, "attr.ib",
+                                                      self.vm.frames, node)
+    except self.vm.annotations_util.LateAnnotationError:
+      return abstract.LateAnnotation(cls, "attr.ib", self.vm.simple_stack())
 
   def _get_type_from_default(self, node, default_var):
     if default_var and default_var.data == [self.vm.convert.none]:
@@ -282,6 +297,15 @@ class Attrib(abstract.PyTDFunction):
       return self.vm.program.NewVariable([self.vm.convert.unsolvable],
                                          [default_var.bindings[0]], node)
     return default_var
+
+
+def is_method(var):
+  if var is None or is_late_annotation(var):
+    return False
+  return isinstance(var.data[0], (
+      abstract.INTERPRETER_FUNCTION_TYPES,
+      special_builtins.PropertyInstance
+  ))
 
 
 def is_attrib(var):

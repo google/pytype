@@ -218,7 +218,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     elif isinstance(v, typing_overlay.TypeVar):
       return pytd.NamedType("__builtin__.type")
     elif isinstance(v, abstract.FUNCTION_TYPES):
-      signatures = abstract_utils.get_signatures(v)
+      try:
+        signatures = abstract_utils.get_signatures(v)
+      except NotImplementedError:
+        return pytd.NamedType("typing.Callable")
       if len(signatures) == 1:
         val = self.signature_to_callable(signatures[0], self.vm)
         if (not isinstance(v, abstract.PYTD_FUNCTION_TYPES) or

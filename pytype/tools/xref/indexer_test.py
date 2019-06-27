@@ -218,6 +218,13 @@ class IndexerTest(test_base.TargetIndependentTest):
                   upper())
     """))
 
+  def test_literal_attr(self):
+    # Test that creating a ref id from a literal doesn't crash.
+    self.index_code(textwrap.dedent("""
+      x = {1: 2}.items()
+      y = [1, 2].reverse()
+    """))
+
   def test_finalize_refs(self):
     code = textwrap.dedent("""
       x = ""
