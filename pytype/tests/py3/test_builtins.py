@@ -581,5 +581,11 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       int_obj: int
     """)
 
+  def testUnicodeError(self):
+    self.Check("""
+      UnicodeDecodeError("", b"", 0, 0, "")
+      UnicodeEncodeError("", u"", 0, 0, "")
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

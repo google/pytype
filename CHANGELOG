@@ -1,3 +1,7 @@
+Version 2019.06.28
+* Fix attrs bugs.
+* Check exception types in `except` blocks.
+
 Version 2019.06.21
 * Support typing.overload in source files.
 * Fix merge-pyi bugs.

@@ -1068,7 +1068,7 @@ class UnicodeDecodeError(UnicodeError):
     start = ...  # type: int
     end = ...  # type: int
     reason = ...  # type: str
-    def __init__(self, encoding: str, object: str, start: int, end: int, reason: str) -> None: ...
+    def __init__(self, encoding: str, object: bytes, start: int, end: int, reason: str) -> None: ...
 
 class UnicodeEncodeError(UnicodeError):
     encoding = ...  # type: str
