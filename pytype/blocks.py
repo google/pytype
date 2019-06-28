@@ -1,5 +1,6 @@
 """Functions for computing the execution order of bytecode."""
 
+import bisect
 import collections
 import itertools
 
@@ -319,6 +320,25 @@ class CollectTypeCommentTargetsVisitor(object):
     return code
 
 
+def _is_function_def(fn_code):
+  """Helper function for CollectFunctionTypeCommentTargetsVisitor."""
+  assert isinstance(fn_code, pyc.loadmarshal.CodeType)
+
+  # Reject anything that is not a named function (e.g. <lambda>).
+  first = fn_code.co_name[0]
+  if not (first == "_" or first.isalpha()):
+    return False
+
+  # Class definitions generate a constructor function. We can distinguish them
+  # by checking for code blocks that start with LOAD_NAME __name__
+  op = fn_code.co_code[0]
+  if (isinstance(op, opcodes.LOAD_NAME) and
+      op.pretty_arg == "__name__"):
+    return False
+
+  return True
+
+
 class CollectFunctionTypeCommentTargetsVisitor(object):
   """Collect opcodes that might have function type comments attached.
 
@@ -345,20 +365,22 @@ class CollectFunctionTypeCommentTargetsVisitor(object):
         code_op = code.co_code[i - offset]
         assert isinstance(code_op, CODE_LOADING_OPCODES)
         fn_code = code.co_consts[code_op.arg]
-        assert isinstance(fn_code, pyc.loadmarshal.CodeType)
+        if not _is_function_def(fn_code):
+          continue
         end_line = fn_code.co_code[0].line  # First line of code in body.
         self.make_function_ops.append((op.line + 1, end_line, op))
     return code
 
 
-def merge_type_comments(code, type_comments):
+def merge_type_comments(code, type_comments, docstrings):
   """Merges type comments into their associated opcodes.
 
   Modifies code in place.
 
   Args:
     code: CodeType object that has been disassembled (see DisCodeVisitor).
-    type_comments: Map of type comments from the director.
+    type_comments: A map of lines to type comments.
+    docstrings: A sorted list of lines starting docstrings.
 
   Returns:
     The code with type comments added to the relevant opcodes.
@@ -375,6 +397,13 @@ def merge_type_comments(code, type_comments):
   visitor = CollectFunctionTypeCommentTargetsVisitor()
   code = pyc.visit(code, visitor)
   for start, end, op in visitor.make_function_ops:
+    if start > end:
+      # This is a function with no body code, just a docstring. Find the
+      # associated docstring and use it as the new 'end'
+      i = bisect.bisect_left(docstrings, start)
+      if i != len(docstrings):
+        end = docstrings[i]
+
     for i in range(start, end):
       # Take the first comment we find as the function typecomment.
       if i in type_comments:
@@ -385,7 +414,7 @@ def merge_type_comments(code, type_comments):
   return code
 
 
-def process_code(code, type_comments):
+def process_code(code, type_comments, docstrings):
   code = pyc.visit(code, DisCodeVisitor())
-  code = merge_type_comments(code, type_comments)
+  code = merge_type_comments(code, type_comments, docstrings)
   return pyc.visit(code, OrderCodeVisitor())

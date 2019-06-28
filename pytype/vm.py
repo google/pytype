@@ -651,7 +651,8 @@ class VirtualMachine(object):
         src, python_version=self.python_version,
         python_exe=self.options.python_exe,
         filename=filename, mode=mode)
-    return blocks.process_code(code, self.director.type_comments)
+    return blocks.process_code(code, self.director.type_comments,
+                               self.director.docstrings)
 
   def run_bytecode(self, node, code, f_globals=None, f_locals=None):
     frame = self.make_frame(node, code, f_globals=f_globals, f_locals=f_locals)

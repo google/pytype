@@ -164,6 +164,32 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
         def __init__(self, **kwargs: int) -> None: ...
     """)
 
+  def testFunctionWithoutBody(self):
+    ty = self.Infer("""
+      def foo(x, y):
+        # type: (int, str) -> None
+        '''Docstring but no body.'''
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def foo(x: int, y: str) -> None
+    """)
+
+  def testFilterOutClassConstructor(self):
+    # We should not associate the typecomment with the function A()
+    self.Check("""
+      class A:
+        x = 0 # type: int
+    """)
+
+  def testTypeCommentAfterDocstring(self):
+    """Type comments after the docstring should not be picked up."""
+    _, errors = self.InferWithErrors("""\
+      def foo(x, y):
+        '''Ceci n'est pas une type.'''
+        # type: (int, str) -> None
+    """)
+    self.assertErrorLogIs(errors, [(3, "ignored-type-comment")])
+
   def testFunctionNoReturn(self):
     _, errors = self.InferWithErrors("""\
       def foo():

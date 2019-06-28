@@ -13,6 +13,7 @@ _DIRECTIVE_RE = re.compile(r"#\s*(pytype|type)\s*:\s([^#]*)")
 _CLOSING_BRACKETS_RE = re.compile(r"^(\s*[]})]\s*)+(#.*)?$")
 _WHITESPACE_RE = re.compile(r"^\s*(#.*)?$")
 _CLASS_OR_FUNC_RE = re.compile(r"^(def|class)\s")
+_DOCSTRING_RE = re.compile(r"^\s*(\"\"\"|''')")
 _ALL_ERRORS = "*"  # Wildcard for disabling all errors.
 
 
@@ -112,6 +113,7 @@ class Director(object):
     self._filename = filename
     self._errorlog = errorlog
     self._type_comments = {}  # Map from line number to (code, comment).
+    self._docstrings = set()  # Start lines of docstrings.
     # Lines that have "type: ignore".  These will disable all errors, and in
     # the future may have other impact (such as not attempting an import).
     self._ignore = _LineSet()
@@ -127,6 +129,10 @@ class Director(object):
   @property
   def type_comments(self):
     return self._type_comments
+
+  @property
+  def docstrings(self):
+    return sorted(self._docstrings)
 
   @property
   def ignore(self):
@@ -176,6 +182,8 @@ class Director(object):
         closing_bracket_lines.add(lineno)
       elif _WHITESPACE_RE.match(line):
         whitespace_lines.add(lineno)
+      elif _DOCSTRING_RE.match(line):
+        self._docstrings.add(lineno)
       else:
         if closing_bracket_lines:
           self._adjust_type_comments(closing_bracket_lines, whitespace_lines)
