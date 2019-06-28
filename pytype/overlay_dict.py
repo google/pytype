@@ -11,6 +11,7 @@ from pytype import abc_overlay
 from pytype import asyncio_types_overlay
 from pytype import attr_overlay
 from pytype import collections_overlay
+from pytype import functools_overlay
 from pytype import future_overlay
 from pytype import six_overlay
 from pytype import sys_overlay
@@ -23,6 +24,7 @@ overlays = {
     "asyncio": asyncio_types_overlay.AsyncioOverlay,
     "attr": attr_overlay.AttrOverlay,
     "collections": collections_overlay.CollectionsOverlay,
+    "functools": functools_overlay.FunctoolsOverlay,
     "future.utils": future_overlay.FutureUtilsOverlay,
     "six": six_overlay.SixOverlay,
     "sys": sys_overlay.SysOverlay,
