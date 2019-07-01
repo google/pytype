@@ -6,6 +6,17 @@ from pytype.tests import test_base
 class StdlibTests(test_base.TargetIndependentTest):
   """Tests for files in typeshed/stdlib."""
 
+  def testAST(self):
+    ty = self.Infer("""
+      import ast
+      def f():
+        return ast.parse("True")
+    """)
+    self.assertTypesMatchPytd(ty, """
+      ast = ...  # type: module
+      def f() -> _ast.Module
+    """)
+
   def testUrllib(self):
     ty = self.Infer("""
       import urllib
