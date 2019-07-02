@@ -83,17 +83,6 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
                           test_utils.TestCollectionsMixin):
   """Tests for files in typeshed/stdlib."""
 
-  def testAST(self):
-    ty = self.Infer("""
-      import ast
-      def f():
-        return ast.parse("True")
-    """)
-    self.assertTypesMatchPytd(ty, """
-      ast = ...  # type: module
-      def f() -> _ast.AST
-    """)
-
   def testCollectionsSmokeTest(self):
     # These classes are not fully implemented in typing.py.
     self.Check("""
