@@ -61,7 +61,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2019-06-13T12:09-07:00 -->
+<!-- Added by: rechen, at: 2019-06-28T11:29-07:00 -->
 
 <!--te-->
 
@@ -339,7 +339,7 @@ Something was wrong with this TypeVar definition. Examples:
 from typing import TypeVar
 T = TypeVar("S")  # bad: storing TypeVar "S" as "T"
 T = TypeVar(42)  # bad: using a non-str value for the TypeVar name
-T = TypeVar("T", str)  # bad: supplying a single constraint
+T = TypeVar("T", str)  # bad: supplying a single constraint (did you mean `bound=str`?)
 T = TypeVar("T", 0, 100)  # bad: 0 and 100 are not types
 ```
 
