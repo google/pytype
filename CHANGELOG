@@ -1,3 +1,6 @@
+Version 2019.07.03
+* Update typeshed pin to commit e1e5c83 from July 1.
+
 Version 2019.06.28
 * Fix attrs bugs.
 * Check exception types in `except` blocks.
