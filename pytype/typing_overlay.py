@@ -303,15 +303,18 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
       types.append(abstract_utils.get_atomic_value(typ))
     return name_var, names, types
 
-  def _build_namedtuple(self, name, field_names, field_types, node):
+  def _build_namedtuple(self, name, field_names, field_types, late_annots,
+                        node):
     # Build an InterpreterClass representing the namedtuple.
     if field_types:
+      # TODO(mdemello): Fix this to support late types.
       field_types_union = abstract.Union(field_types, self.vm)
     else:
       field_types_union = self.vm.convert.none_type
 
     members = {n: t.instantiate(node)
                for n, t in moves.zip(field_names, field_types)}
+
     # collections.namedtuple has: __dict__, __slots__ and _fields.
     # typing.NamedTuple adds: _field_types, __annotations__ and _field_defaults.
     # __slots__ and _fields are tuples containing the names of the fields.
@@ -356,13 +359,15 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
         self.vm, bound=None)
     cls_type = abstract.ParameterizedClass(
         self.vm.convert.type_type, {abstract_utils.T: cls_type_param}, self.vm)
-    params = [Param(n, t) for n, t in moves.zip(field_names, field_types)]
+    # Use late annotations as field types if they exist.
+    params = [Param(n, late_annots.get(n, t))
+              for n, t in moves.zip(field_names, field_types)]
     members["__new__"] = overlay_utils.make_method(
         self.vm, node,
         name="__new__",
         self_param=Param("cls", cls_type),
         params=params,
-        return_type=cls_type_param
+        return_type=cls_type_param,
     )
 
     # __init__
@@ -435,21 +440,29 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
         return_type=field_dict_cls)
 
     # Finally, make the class.
-    abs_membs = abstract.Dict(self.vm)
-    abs_membs.update(node, members)
+    cls_dict = abstract.Dict(self.vm)
+    cls_dict.update(node, members)
     if name.__class__ is compat.UnicodeType:
       # Unicode values should be ASCII.
       name = compat.native_str(name.encode("ascii"))
+
     node, cls_var = self.vm.make_class(
         node=node,
         name_var=self.vm.convert.build_string(node, name),
         bases=[self.vm.convert.tuple_type.to_variable(node)],
-        class_dict_var=abs_membs.to_variable(node),
+        class_dict_var=cls_dict.to_variable(node),
         cls_var=None)
+    cls = cls_var.data[0]
 
     # Now that the class has been made, we can complete the TypeParameter used
     # by __new__, _make and _replace.
-    cls_type_param.bound = cls_var.data[0]
+    cls_type_param.bound = cls
+
+    # Add late annotations to the new class
+    if late_annots:
+      cls.late_annotations = late_annots
+      self.vm.classes_with_late_annotations.append(cls)
+
     return node, cls_var
 
   def call(self, node, _, args):
@@ -471,14 +484,11 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
 
     annots, late_annots = self.vm.annotations_util.convert_annotations_list(
         moves.zip(field_names, field_types))
-    if late_annots:
-      # We currently don't support forward references. Report if we find any,
-      # then continue by using Unsolvable instead.
-      self.vm.errorlog.not_supported_yet(
-          self.vm.frames, "Forward references in typing.NamedTuple")
     field_types = [annots.get(field_name, self.vm.convert.unsolvable)
                    for field_name in field_names]
-    node, cls_var = self._build_namedtuple(name, field_names, field_types, node)
+    node, cls_var = self._build_namedtuple(name, field_names, field_types,
+                                           late_annots, node)
+
     self.vm.trace_classdef(cls_var)
     return node, cls_var
 
