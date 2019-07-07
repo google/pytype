@@ -569,6 +569,14 @@ class TypingTest(test_base.TargetPython3BasicTest):
                  (16, "invalid-annotation", r"NoReturn is not allowed"),
                  (19, "invalid-annotation", r"NoReturn is not allowed")])
 
+  def test_SupportsComplex(self):
+    self.Check("""\
+      from typing import SupportsComplex
+      def foo(x: SupportsComplex):
+        pass
+      foo(1j)
+    """)
+
 
 class TypingTestPython3Feature(test_base.TargetPython3FeatureTest):
   """Typing tests (Python 3.6)."""
