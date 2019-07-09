@@ -31,8 +31,16 @@ LOADER_ATTR_TO_CONFIG_OPTION_MAP = {
 PICKLE_EXT = ".pickled"
 
 
+# Allow a file to be used as the designated default pyi for blacklisted files
+DEFAULT_PYI_PATH_SUFFIX = None
+
+
 def is_pickle(filename):
   return os.path.splitext(filename)[1].startswith(PICKLE_EXT)
+
+
+def _is_default_pyi(path):
+  return DEFAULT_PYI_PATH_SUFFIX and path.endswith(DEFAULT_PYI_PATH_SUFFIX)
 
 
 def create_loader(options):
@@ -480,9 +488,15 @@ class Loader(object):
     if mod:
       return mod
 
-    file_ast = self._import_file(module_name, module_name.split("."))
+    file_ast, path = self._import_file(module_name, module_name.split("."))
     if file_ast:
-      return file_ast
+      if _is_default_pyi(path):
+        # Remove the default module from the cache; we will return it later if
+        # nothing else supplies the module AST.
+        default = self._modules.get(module_name)
+        del self._modules[module_name]
+      else:
+        return file_ast
 
     # The standard library is (typically) towards the end of PYTHONPATH.
     mod = self._load_builtin("stdlib", module_name)
@@ -493,6 +507,11 @@ class Loader(object):
     mod = self._load_builtin("third_party", module_name, third_party_only=True)
     if mod:
       return mod
+
+    # Now return the default module if we have found nothing better.
+    if file_ast:
+      self._modules[module_name] = default
+      return file_ast
 
     log.warning("Couldn't import module %s %r in (path=%r) imports_map: %s",
                 module_name, module_name, self.pythonpath,
@@ -515,7 +534,7 @@ class Loader(object):
       module_name: The name of the module. May contain dots.
       module_name_split: module_name.split(".")
     Returns:
-      The parsed file (AST) if found, otherwise None.
+      The parsed file (AST) and file path if found, otherwise None.
 
     """
     for searchdir in self.pythonpath:
@@ -523,23 +542,24 @@ class Loader(object):
       # See if this is a directory with a "__init__.py" defined.
       # (These also get automatically created in imports_map_loader.py)
       init_path = os.path.join(path, "__init__")
-      init_ast = self._load_pyi(init_path, module_name)
+      init_ast, full_path = self._load_pyi(init_path, module_name)
       if init_ast is not None:
         log.debug("Found module %r with path %r", module_name, init_path)
-        return init_ast
+        return init_ast, full_path
       elif self.imports_map is None and os.path.isdir(path):
         # We allow directories to not have an __init__ file.
         # The module's empty, but you can still load submodules.
         log.debug("Created empty module %r with path %r",
                   module_name, init_path)
-        return self._create_empty(filename=os.path.join(path, "__init__.pyi"),
-                                  module_name=module_name)
+        filename = os.path.join(path, "__init__.pyi")
+        ast = self._create_empty(filename=filename, module_name=module_name)
+        return ast, filename
       else:  # Not a directory
-        file_ast = self._load_pyi(path, module_name)
+        file_ast, full_path = self._load_pyi(path, module_name)
         if file_ast is not None:
           log.debug("Found module %r in path %r", module_name, path)
-          return file_ast
-    return None
+          return file_ast, full_path
+    return None, None
 
   def _load_pyi(self, path, module_name):
     """Load a pyi from the path.
@@ -548,23 +568,24 @@ class Loader(object):
       path: Path to the file (without '.pyi' or similar extension).
       module_name: Name of the module (may contain dots).
     Returns:
-      The parsed pyi, instance of pytd.TypeDeclUnit, or None if we didn't
-      find the module.
+      The parsed pyi, instance of pytd.TypeDeclUnit, and full path, or None if
+      we didn't find the module.
     """
     if self.imports_map is not None:
       if path in self.imports_map:
         full_path = self.imports_map[path]
       else:
-        return None
+        return None, None
     else:
       full_path = path + ".pyi"
 
     # We have /dev/null entries in the import_map - os.path.isfile() returns
     # False for those. However, we *do* want to load them. Hence exists / isdir.
     if os.path.exists(full_path) and not os.path.isdir(full_path):
-      return self.load_file(filename=full_path, module_name=module_name)
+      ast = self.load_file(filename=full_path, module_name=module_name)
+      return ast, full_path
     else:
-      return None
+      return None, None
 
   def concat_all(self):
     if not self._concatenated:
