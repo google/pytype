@@ -76,6 +76,7 @@ u\"\" { return t::UNICODESTRING; }
   * parser_constant.py).
   */
 
+"async" { return t::ASYNC; }
 "class" { return t::CLASS; }
 "def" { return t::DEF; }
 "else" { return t::ELSE; }

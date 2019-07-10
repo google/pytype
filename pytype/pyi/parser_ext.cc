@@ -279,6 +279,7 @@ static void add_tokens_dict(PyObject* module) {
   add_token(tokens, "LEXERROR",        t::LEXERROR);
 
   // reserved words.
+  add_token(tokens, "ASYNC",           t::ASYNC);
   add_token(tokens, "CLASS",           t::CLASS);
   add_token(tokens, "DEF",             t::DEF);
   add_token(tokens, "ELSE",            t::ELSE);

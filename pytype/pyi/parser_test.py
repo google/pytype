@@ -866,17 +866,14 @@ class FunctionTest(_ParserTestBase):
       def foo() -> int: ...""")
 
     self.check("""\
-      @async.coroutine
+      @asyncio.coroutine
       def foo() -> int: ...""",
                """\
       @coroutine
       def foo() -> int: ...""")
 
-    # There are two separate coroutine decorators, async.coroutine and
-    # coroutines.coroutine. We are collapsing them into a single decorator for
-    # now, though we should probably maintain the distinction at some point.
     self.check("""\
-      @async.coroutine
+      @asyncio.coroutine
       def foo() -> int: ...
       @coroutines.coroutine
       def foo() -> int: ...
@@ -974,6 +971,11 @@ class FunctionTest(_ParserTestBase):
     self.check("def foo(): ...",
                "def foo() -> Any: ...",
                prologue="from typing import Any")
+
+  def test_async(self):
+    self.check("async def foo() -> int: ...",
+               "def foo() -> Coroutine[Any, Any, int]: ...",
+               prologue="from typing import Any, Coroutine")
 
 
 class ClassTest(_ParserTestBase):

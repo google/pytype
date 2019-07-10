@@ -524,5 +524,20 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       def call_foo() -> Coroutine[Any, Any, Optional[int]]: ...
     """)
 
+  def testPyiAsyncDef(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        async def f() -> int: ...
+      """)
+      ty = self.Infer("""
+        import foo
+        c = foo.f()
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Any, Coroutine
+        foo: module
+        c: Coroutine[Any, Any, int]
+      """)
+
 
 test_base.main(globals(), __name__ == "__main__")

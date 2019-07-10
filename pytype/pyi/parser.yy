@@ -69,7 +69,7 @@ int pytypelex(pytype::parser::semantic_type* lvalp, pytype::location* llocp,
 %token <obj> NAME NUMBER LEXERROR
 
 /* Reserved words. */
-%token CLASS DEF ELSE ELIF IF OR AND PASS IMPORT FROM AS RAISE
+%token ASYNC CLASS DEF ELSE ELIF IF OR AND PASS IMPORT FROM AS RAISE
 %token NOTHING NAMEDTUPLE COLL_NAMEDTUPLE TYPEVAR
 /* Punctuation. */
 %token ARROW ELLIPSIS EQ NE LE GE
@@ -85,7 +85,7 @@ int pytypelex(pytype::parser::semantic_type* lvalp, pytype::location* llocp,
 %type <obj> classdef class_name parents parent_list parent maybe_class_funcs
 %type <obj> class_funcs funcdefs
 %type <obj> importdef import_items import_item from_list from_items from_item import_name
-%type <obj> funcdef funcname decorators decorator params param_list param param_type
+%type <obj> funcdef funcname decorators decorator maybe_async params param_list param param_type
 %type <obj> param_default param_star_name return maybe_body
 %type <obj> body body_stmt
 %type <obj> type type_parameters type_parameter
@@ -463,8 +463,8 @@ typevar_kwarg
   ;
 
 funcdef
-  : decorators DEF funcname '(' params ')' return maybe_body {
-      $$ = ctx->Call(kNewFunction, "(NNNNN)", $1, $3, $5, $7, $8);
+  : decorators maybe_async DEF funcname '(' params ')' return maybe_body {
+      $$ = ctx->Call(kNewFunction, "(NONNNN)", $1, $2, $4, $6, $8, $9);
       // Decorators is nullable and messes up the location tracking by
       // using the previous symbol as the start location for this production,
       // which is very misleading.  It is better to ignore decorators and
@@ -474,7 +474,7 @@ funcdef
       // TODO(dbaum): Consider making this smarter and only ignoring decorators
       // when they are empty.  Making decorators non-nullable and having two
       // productions for funcdef would be a reasonable solution.
-      @$.begin = @2.begin;
+      @$.begin = @3.begin;
       CHECK($$, @$);
     }
   ;
@@ -491,6 +491,11 @@ decorators
 
 decorator
   : '@' dotted_name maybe_type_ignore { $$ = $2; }
+  ;
+
+maybe_async
+  : ASYNC { $$ = Py_True; }
+  | /* EMPTY */ { $$ = Py_False; }
   ;
 
 params
