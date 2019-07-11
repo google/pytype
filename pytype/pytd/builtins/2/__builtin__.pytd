@@ -2,7 +2,8 @@ from typing import (
     AbstractSet, AnyStr, BinaryIO, Callable, Dict, FrozenSet, Generator,
     Generic, ItemsView, Iterable, Iterator, KeysView, List, Mapping,
     MutableSequence, Optional, Reversible, Sequence, Set, Sized, SupportsAbs,
-    SupportsFloat, SupportsInt, Text, Tuple, Type, Union, ValuesView)
+    SupportsComplex, SupportsFloat, SupportsInt, Text, Tuple, Type, Union,
+    ValuesView)
 
 # "_T", "_K", and "_V" are hardcoded in abstract.py
 _T = TypeVar('_T')
@@ -788,7 +789,8 @@ class float(SupportsInt, SupportsFloat, SupportsAbs):
     @classmethod
     def fromhex(cls, string: str or unicode or bytearray) -> float
 
-class complex(SupportsAbs):
+# TODO(b/136684177): SupportsComplex should accept complex.
+class complex(SupportsAbs, SupportsInt, SupportsFloat, SupportsComplex):
     __slots__ = []
     real = ... # type: float
     imag = ... # type: float

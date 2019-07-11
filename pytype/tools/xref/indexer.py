@@ -13,6 +13,7 @@ from pytype import io
 from pytype import load_pytd
 from pytype import module_utils
 from pytype.pytd import pytd_utils
+from pytype.pytd import visitors
 
 from pytype.tools.xref import utils as xref_utils
 from pytype.tools.xref import kythe
@@ -133,7 +134,8 @@ def _to_type(vals):
   """
   if not vals:
     return "Any"
-  return pytd_utils.Print(_join_types(vals))
+  return pytd_utils.Print(
+      _join_types(vals).Visit(visitors.RemoveUnknownClasses()))
 
 
 def _join_types(vals):

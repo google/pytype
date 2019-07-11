@@ -1,5 +1,6 @@
-Version 2019.07.03
+Version 2019.07.11
 * Update typeshed pin to commit e1e5c83 from July 1.
+* Support `async def` in pyi files.
 
 Version 2019.06.28
 * Fix attrs bugs.

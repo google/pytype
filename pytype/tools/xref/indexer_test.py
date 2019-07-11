@@ -50,13 +50,13 @@ class IndexerTest(test_base.TargetIndependentTest):
       return kythe_index
 
   def assertDef(self, index, fqname, name, typ):
-    self.assertTrue(fqname in index.defs)
+    self.assertIn(fqname, index.defs)
     d = index.defs[fqname]
     self.assertEqual(d.name, name)
     self.assertEqual(d.typ, typ)
 
   def assertDefLocs(self, index, fqname, locs):
-    self.assertTrue(fqname in index.locs)
+    self.assertIn(fqname, index.locs)
     deflocs = index.locs[fqname]
     self.assertCountEqual([x.location for x in deflocs], locs)
 
@@ -296,6 +296,16 @@ class IndexerTest(test_base.TargetIndependentTest):
     ix = self.index_code(code, keep_pytype_data=True)
     type_map = output.type_map(ix)
     self.assertEqual(type_map, {(4, 10): "Type[X]"})
+
+  def test_unknown(self):
+    # pytype represents unannotated function parameters as unknowns. Make sure
+    # unknowns don't appear in the type map.
+    code = textwrap.dedent("""\
+      def f(x): return x
+    """)
+    ix = self.index_code(code, keep_pytype_data=True)
+    type_map = output.type_map(ix)
+    self.assertEqual(type_map, {(1, 17): "Any"})
 
 
 test_base.main(globals(), __name__ == "__main__")

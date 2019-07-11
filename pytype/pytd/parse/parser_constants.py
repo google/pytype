@@ -4,6 +4,7 @@ import re
 
 # PyTD keywords
 RESERVED = [
+    'async',
     'class',
     'def',
     'else',

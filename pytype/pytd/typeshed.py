@@ -235,5 +235,6 @@ def parse_type_definition(pyi_subdir, module, python_version):
   except IOError:
     return None
 
-  return filename, parser.parse_string(src, filename=filename, name=module,
-                                       python_version=python_version)
+  ast = parser.parse_string(src, filename=filename, name=module,
+                            python_version=python_version)
+  return filename, ast

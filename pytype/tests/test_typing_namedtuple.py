@@ -50,6 +50,16 @@ class NamedTupleTest(test_base.TargetIndependentTest):
         (7, "missing-parameter"),
         (8, "missing-parameter")])
 
+  def test_late_annotation(self):
+    errors = self.CheckWithErrors("""\
+      import typing
+      class Foo(object):
+        pass
+      X = typing.NamedTuple("X", [('a', 'Foo')]) # should be fine
+      Y = typing.NamedTuple("Y", [('a', 'Bar')]) # should fail
+      """)
+    self.assertErrorLogIs(errors, [(5, "invalid-annotation", "Bar")])
+
   def test_nested_containers(self):
     errors = self.CheckWithErrors("""\
       import typing
@@ -87,16 +97,14 @@ class NamedTupleTest(test_base.TargetIndependentTest):
         typing.NamedTuple("_", ["abc", "def", "ghi"])
         # "def" is a keyword, so the call on the next line fails.
         typing.NamedTuple("_", [("abc", int), ("def", int), ("ghi", int)])
-        typing.NamedTuple("_", [("abc", "int")])
         typing.NamedTuple("1", [("a", int)])
         typing.NamedTuple("_", [[int, "a"]])
         """)
     self.assertErrorLogIs(errorlog,
                           [(2, "wrong-arg-types"),
                            (4, "invalid-namedtuple-arg"),
-                           (5, "not-supported-yet"),
-                           (6, "invalid-namedtuple-arg"),
-                           (7, "wrong-arg-types")])
+                           (5, "invalid-namedtuple-arg"),
+                           (6, "wrong-arg-types")])
 
   def test_empty_args(self):
     self.Check(

@@ -889,11 +889,13 @@ class _Parser(object):
     # IntersectionType flattens any contained IntersectionType's.
     return pytd.IntersectionType(tuple(types))
 
-  def new_function(self, decorators, name, param_list, return_type, body):
+  def new_function(
+      self, decorators, is_async, name, param_list, return_type, body):
     """Return a _NameAndSig object for the function.
 
     Args:
       decorators: List of decorator names.
+      is_async: Whether this is an async function.
       name: Name of function.
       param_list: List of parameters, where a paremeter is either a tuple
         (name, type, default) or the ELLIPSIS special object.  See
@@ -909,6 +911,12 @@ class _Parser(object):
     """
     if name == "__init__" and isinstance(return_type, pytd.AnythingType):
       ret = pytd.NamedType("NoneType")
+    elif is_async:
+      base = pytd.NamedType("typing.Coroutine")
+      params = (pytd.NamedType("typing.Any"),
+                pytd.NamedType("typing.Any"),
+                return_type)
+      ret = pytd.GenericType(base, params)
     else:
       ret = return_type
     params = _validate_params(param_list)
@@ -946,7 +954,7 @@ class _Parser(object):
     is_abstract = _check_decorator(
         decorators, {"abstractmethod", "abc.abstractmethod"})
     is_coroutine = _check_decorator(
-        decorators, {"coroutine", "async.coroutine", "coroutines.coroutine"})
+        decorators, {"coroutine", "asyncio.coroutine", "coroutines.coroutine"})
     # TODO(acaceres): if not inside a class, any decorator should be an error
     if len(decorators) > 1:
       raise ParseError("Too many decorators for %s" % name)
@@ -976,7 +984,7 @@ class _Parser(object):
     self._type_params.append(type_param)
     cls_arg = ("cls", _make_type_type(type_param), None)
     args = [cls_arg] + [(n, t, None) for n, t in fields]
-    return self.new_function((), "__new__", args, type_param, ())
+    return self.new_function((), False, "__new__", args, type_param, ())
 
   def _namedtuple_init(self):
     """Build an __init__ method for a namedtuple.
@@ -990,7 +998,7 @@ class _Parser(object):
     args = [(name, pytd.AnythingType(), None)
             for name in ("self", "*args", "**kwargs")]
     ret = pytd.NamedType("NoneType")
-    return self.new_function((), "__init__", args, ret, ())
+    return self.new_function((), False, "__init__", args, ret, ())
 
   def new_named_tuple(self, base_name, fields):
     """Return a type for a named tuple (implicitly generates a class).
