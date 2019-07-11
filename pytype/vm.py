@@ -2629,7 +2629,9 @@ class VirtualMachine(object):
 
   def byte_LOAD_BUILD_CLASS(self, state, op):
     # New in py3
-    return state.push(abstract.BuildClass(self).to_variable(state.node))
+    cls = abstract.BuildClass(self).to_variable(state.node)
+    self.trace_opcode(op, "", cls)
+    return state.push(cls)
 
   def byte_STORE_LOCALS(self, state, op):
     state, locals_dict = state.pop()

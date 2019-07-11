@@ -33,6 +33,7 @@ def typename(node):
 
 
 def show_defs(index):
+  """Show definitions."""
   for def_id in index.locs:
     defn = index.defs[def_id]
     for loc in index.locs[def_id]:
@@ -42,12 +43,16 @@ def show_defs(index):
 
 
 def show_refs(index, keep_pytype_data=False):
+  """Show references and associated definitions."""
+  indent = "          :  "
   for ref, defn in index.links:
     print(format_ref(ref, keep_pytype_data))
     if defn:
-      print("          :  ", defn.format())
+      print(indent, defn.format())
+      for loc in index.locs[defn.id]:
+        print(indent, format_def_with_location(defn, loc.location))
     else:
-      print("          :   None")
+      print(indent, "None")
     continue
 
 

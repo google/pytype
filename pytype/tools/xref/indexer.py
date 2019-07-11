@@ -119,6 +119,25 @@ def get_opcodes(traces, lineno, op_list):
   return [x for x in traces[lineno] if x[0] in op_list]
 
 
+def match_opcodes(traces, lineno, op_match_list):
+  """Get all opcodes matching op_match_list on a given line.
+
+  Args:
+    traces: traces
+    lineno: line number to get ops from.
+    op_match_list: [(opcode_name, symbol|None), ...]; None matches any symbol.
+
+  Returns:
+    A list of matching opcodes.
+  """
+  out = []
+  for op, symbol, data in traces[lineno]:
+    for match_op, match_symbol in op_match_list:
+      if op == match_op and match_symbol in [None, symbol]:
+        out.append((op, symbol, data))
+  return out
+
+
 def _to_type(vals):
   """Convert a Reference.data item to a string type.
 
@@ -747,10 +766,21 @@ class IndexVisitor(ScopedVisitor):
     # Likewise, when a class definition spans multiple lines, the AST node
     # starts on the first line but the BUILD_CLASS opcode starts on the last
     # one. Fix when we incorporate asttokens.
-    ops = get_opcodes(self.traces, node.lineno, ["BUILD_CLASS"])
     class_name = get_name(node)
-    for _, symbol, data in ops:
-      if symbol == class_name:
+
+    # Python2
+    ops = match_opcodes(self.traces, node.lineno, [("BUILD_CLASS", class_name)])
+    if ops:
+      _, _, data = ops[0]
+      self.classmap[data[0]] = defn
+    else:
+      # Python3
+      ops = match_opcodes(self.traces, node.lineno, [
+          ("LOAD_BUILD_CLASS", None),
+          ("STORE_NAME", class_name)
+      ])
+      if len(ops) == 2:
+        _, _, data = ops[1]
         self.classmap[data[0]] = defn
     super(IndexVisitor, self).enter_ClassDef(node)
 
@@ -823,6 +853,9 @@ class IndexVisitor(ScopedVisitor):
            if x[0].startswith("CALL_FUNCTION")]
     seen = set()
     for _, symbol, data in ops:
+      # pytype returns different things for Function(A.foo()).name
+      # In 2.7 the name is 'foo' but in 3.6 it is 'A.foo'.
+      symbol = symbol.split(".")[-1]
       if symbol == basename:
         for d in data:
           if not isinstance(d, list):
