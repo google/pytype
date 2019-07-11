@@ -107,6 +107,26 @@ def get_location(node):
   return (node.lineno, node.col_offset)
 
 
+def get_last_line(node):
+  """Walk a node, returning the latest line number of any of its children."""
+
+  # We define the class within the function since ast is late-bound.
+  class LineNumberVisitor(ast.NodeVisitor):
+
+    def __init__(self):
+      self.line = 0
+
+    def generic_visit(self, node):
+      lineno = getattr(node, "lineno", 0)
+      if lineno > self.line:
+        self.line = lineno
+      super(LineNumberVisitor, self).generic_visit(node)
+
+  v = LineNumberVisitor()
+  v.visit(node)
+  return v.line
+
+
 def has_decorator(f, decorator):
   for d in f.decorator_list:
     if isinstance(d, ast.Name) and d.id == decorator:
@@ -519,6 +539,11 @@ class ScopedVisitor(object):
     self.envs = {}
     self.module_name = module_name
 
+    # Track the last line for multiline assign statements. This is safe because
+    # assign is not an expression and hence cannot be nested.
+    # TODO(mdemello): Handle multiline class definitions similarly.
+    self.assign_end_line = None
+
   def get_id(self, node):
     """Construct an id based on node type."""
 
@@ -597,11 +622,20 @@ class ScopedVisitor(object):
     # We need to set the env's cls to the new class, not the enclosing one.
     new_env.cls = self.current_class
 
+  def leave_ClassDef(self, _):
+    self.class_ids.pop()
+
   def enter_FunctionDef(self, node):
     self.add_scope(node)
 
   def enter_Module(self, node):
     self.add_scope(node)
+
+  def enter_Assign(self, node):
+    self.assign_end_line = get_last_line(node.value)
+
+  def leave_Assign(self, _):
+    self.assign_end_line = None
 
   def generic_visit(self, node):
     if node.__class__ in self.get_suppressed_nodes():
@@ -614,10 +648,12 @@ class ScopedVisitor(object):
 
   def leave(self, node):
     """If the node has introduced a new scope, we need to pop it off."""
+    method = "leave_" + node.__class__.__name__
+    visitor = getattr(self, method, None)
+    if visitor:
+      visitor(node)
     if node == self.stack[-1]:
       self.stack.pop()
-    if isinstance(node, ast.ClassDef):
-      self.class_ids.pop()
 
 
 class IndexVisitor(ScopedVisitor):
@@ -822,7 +858,8 @@ class IndexVisitor(ScopedVisitor):
             break
 
     elif isinstance(node.ctx, ast.Store):
-      ops = self.traces[node.lineno]
+      lineno = self.assign_end_line or node.lineno
+      ops = self.traces[lineno]
       for op, symbol, data in ops:
         if symbol == node.id:
           if op == "STORE_GLOBAL":
