@@ -543,6 +543,8 @@ class ScopedVisitor(object):
     # assign is not an expression and hence cannot be nested.
     # TODO(mdemello): Handle multiline class definitions similarly.
     self.assign_end_line = None
+    # Needed for x[i] = <multiline statement>
+    self.assign_subscr = None
 
   def get_id(self, node):
     """Construct an id based on node type."""
@@ -633,9 +635,12 @@ class ScopedVisitor(object):
 
   def enter_Assign(self, node):
     self.assign_end_line = get_last_line(node.value)
+    if isinstance(node.targets[0], ast.Subscript):
+      self.assign_subscr = node.targets[0].value
 
   def leave_Assign(self, _):
     self.assign_end_line = None
+    self.assign_subscr = None
 
   def generic_visit(self, node):
     if node.__class__ in self.get_suppressed_nodes():
@@ -841,7 +846,10 @@ class IndexVisitor(ScopedVisitor):
     # We use pytype trace data to distinguish between local and global
     # variables.
     if isinstance(node.ctx, ast.Load):
-      ops = self.traces[node.lineno]
+      lineno = node.lineno
+      if node == self.assign_subscr:
+        lineno = self.assign_end_line
+      ops = self.traces[lineno]
       for op, symbol, data in ops:
         if symbol == node.id:
           if op == "LOAD_GLOBAL":
@@ -1316,7 +1324,10 @@ class Indexer(object):
       final_refs.append(final_ref)
       final_ref_cache[ref.id] = final_ref
     for ref, defn in links:
-      final_links.append((final_ref_cache[ref.id], defn))
+      # Update ref.data from the final ref cache
+      cached = final_ref_cache[ref.id]
+      new_ref = ref._replace(data=cached.data)
+      final_links.append((new_ref, defn))
     return final_refs, final_links
 
   def _lookup_remote_symbol(self, ref, defn):

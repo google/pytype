@@ -23,4 +23,9 @@ y = list(a,
 
 #- @x ref VarX
 #- @y ref VarY
+#- @z defines/binding VarZ
 z = (x, y)
+
+#- @z ref VarZ
+z[1] = (1,
+        2)

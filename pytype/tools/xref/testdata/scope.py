@@ -19,3 +19,10 @@ def fun():
     bar
     #- @baz ref VarBaz
     baz
+    # Two references to the same variable should both get linked correctly.
+    #- @foo ref VarFoo
+    foo
+    #- @bar ref VarBar
+    bar
+    #- @baz ref VarBaz
+    baz
