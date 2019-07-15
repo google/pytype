@@ -12,6 +12,7 @@ from pytype import errors
 from pytype import io
 from pytype import load_pytd
 from pytype import module_utils
+from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 
@@ -173,12 +174,12 @@ def _to_type(vals):
   """
   if not vals:
     return "Any"
-  return pytd_utils.Print(
-      _join_types(vals).Visit(visitors.RemoveUnknownClasses()))
+  return pytd_utils.Print(_join_types(vals))
 
 
 def _join_types(vals):
-  return pytd_utils.JoinTypes(v.to_type() for v in vals if v)
+  return pytd_utils.JoinTypes(v.to_type() for v in vals if v).Visit(
+      visitors.RemoveUnknownClasses())
 
 
 # Internal datatypes
@@ -1081,7 +1082,7 @@ class Indexer(object):
     end = start + doc.length
     return (start, end)
 
-  def finalize(self, keep_pytype_data):
+  def finalize(self, keep_pytype_data, pytype_ast):
     """Postprocess the information gathered by the tree visitor.
 
     Note that these functions need to be run in order; some of them depend on
@@ -1089,6 +1090,7 @@ class Indexer(object):
 
     Args:
       keep_pytype_data: Whether to preserve the Reference.data field.
+      pytype_ast: A pytd.TypeDeclUnit representing the inferred types.
     """
 
     links = self._lookup_refs()
@@ -1097,7 +1099,7 @@ class Indexer(object):
     if keep_pytype_data:
       # TODO(rechen): Once this code has been sufficiently vetted, remove the
       # `keep_pytype_data` option and always finalize refs.
-      self.refs, links = self._finalize_refs(self.refs, links)
+      self.refs, links = self._finalize_refs(self.refs, links, pytype_ast)
     self.links = links
     self._process_deflocs()
     self._process_links(links)
@@ -1309,7 +1311,13 @@ class Indexer(object):
             else:
               assert False, ref
 
-  def _finalize_refs(self, refs, links):
+  def _to_pytd(self, vals, pytype_ast):
+    if not vals:
+      return pytd.AnythingType()
+    with io.wrap_pytype_exceptions(PytypeError, filename=self.source.filename):
+      return self.loader.resolve_type(_join_types(vals), pytype_ast)
+
+  def _finalize_refs(self, refs, links, pytype_ast):
     """Preserve the pytype data in references."""
     final_refs = []
     final_links = []
@@ -1317,9 +1325,9 @@ class Indexer(object):
     for ref in refs:
       if ref.typ == "Attribute":
         obj, attr = ref.data
-        t = (_to_type(obj), _to_type(attr))
+        t = (self._to_pytd(obj, pytype_ast), self._to_pytd(attr, pytype_ast))
       else:
-        t = _to_type(ref.data)
+        t = self._to_pytd(ref.data, pytype_ast)
       final_ref = ref._replace(data=t)
       final_refs.append(final_ref)
       final_ref_cache[ref.id] = final_ref
@@ -1539,7 +1547,7 @@ def process_file(options,
       store_all_calls=False,
       loader=loader)
   with io.wrap_pytype_exceptions(PytypeError, filename=options.input):
-    analyze.infer_types(
+    pytype_ast, _ = analyze.infer_types(
         src=src,
         filename=options.input,
         errorlog=errorlog,
@@ -1566,5 +1574,5 @@ def process_file(options,
   ix = Indexer(
       source, vm.loader, module_name, kythe_args, annotate_ast=annotate_ast)
   ix.index(ast_root_node)
-  ix.finalize(keep_pytype_data)
+  ix.finalize(keep_pytype_data, pytype_ast)
   return ix, ast_root_node
