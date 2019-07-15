@@ -588,3 +588,30 @@ def IsContainer(t):
       if isinstance(base, ClassType) and IsContainer(base.cls):
         return True
   return False
+
+
+def ToType(item, allow_constants=True):
+  """Convert a pytd AST item into a type."""
+  if isinstance(item, TYPE):
+    return item
+  elif isinstance(item, Module):
+    return item
+  elif isinstance(item, Class):
+    return ClassType(item.name, item)
+  elif isinstance(item, Function):
+    return FunctionType(item.name, item)
+  elif isinstance(item, Constant):
+    if allow_constants:
+      # TODO(kramm): This is wrong. It would be better if we resolve Alias
+      # in the same way we resolve NamedType.
+      return item
+    else:
+      # TODO(kramm): We should be more picky here. In particular, we shouldn't
+      # allow pyi like this:
+      #  object = ...  # type: int
+      #  def f(x: object) -> Any
+      return AnythingType()
+  elif isinstance(item, Alias):
+    return item.type
+  else:
+    raise NotImplementedError("Can't convert %s: %s" % (type(item), item))

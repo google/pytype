@@ -18,7 +18,6 @@ from pytype.pyc import loadmarshal
 from pytype.pytd import mro
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
-from pytype.pytd import visitors
 from pytype.typegraph import cfg
 
 
@@ -62,13 +61,14 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     self.no_return = typing_overlay.NoReturn(self.vm)
 
     # Now fill primitive_classes with the real values using constant_to_value.
-    self.primitive_classes = {v: self.constant_to_value(v)
-                              for v in [
-                                  int, float, str, object, frozenset,
-                                  compat.NoneType, complex, bool, slice,
-                                  types.CodeType, compat.EllipsisType,
-                                  compat.OldStyleClassType, super
-                              ] + version_specific}
+    primitive_classes = [
+        int, float, str, object, frozenset, compat.NoneType, complex, bool,
+        slice, types.CodeType, compat.EllipsisType, compat.OldStyleClassType,
+        super
+    ] + version_specific
+    self.primitive_classes = {
+        v: self.constant_to_value(v) for v in primitive_classes
+    }
     self.primitive_class_names = [
         self._type_to_name(x) for x in self.primitive_classes]
     self.none = abstract.AbstractOrConcreteValue(
@@ -193,6 +193,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     return self.none.to_variable(node)
 
   def build_bool(self, node, value=None):
+    # pylint: disable=g-bool-id-comparison
     if value is None:
       return self.primitive_class_instances[bool].to_variable(node)
     elif value is True:
@@ -492,7 +493,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       ast = self.vm.loader.import_name(module)
       if ast is not None:
         try:
-          # TODO(kramm): Should this use visitor.py:ToType?
+          # TODO(kramm): Should this use pytd.py:ToType?
           cls = ast.Lookup(late_type.name)
         except KeyError:
           try:
@@ -501,7 +502,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
             log.warning("Couldn't resolve %s", late_type.name)
           t = pytd.AnythingType()
         else:
-          t = visitors.ToType(cls, allow_constants=False)
+          t = pytd.ToType(cls, allow_constants=False)
       else:
         # A pickle file refers to a module that went away in the mean time.
         log.error("During dependency resolution, couldn't import %r", module)
@@ -541,7 +542,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     elif isinstance(pyval, compat.BytesType):
       return abstract.AbstractOrConcreteValue(pyval, self.bytes_type, self.vm)
     elif isinstance(pyval, bool):
-      return self.true if pyval is True else self.false
+      return self.true if pyval else self.false
     elif isinstance(pyval, int) and -1 <= pyval <= MAX_IMPORT_DEPTH:
       # For small integers, preserve the actual value (for things like the
       # level in IMPORT_NAME).

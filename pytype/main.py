@@ -93,7 +93,8 @@ def _run_pytype(options):
   if options.generate_builtins:
     return _generate_builtins_pickle(options)
   elif options.parse_pyi:
-    return io.parse_pyi(options)
+    unused_ast = io.parse_pyi(options)
+    return 0
   else:
     return io.process_one_file(options)
 
