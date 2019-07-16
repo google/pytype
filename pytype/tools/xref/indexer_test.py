@@ -4,6 +4,7 @@ import textwrap
 
 from pytype import config
 from pytype import file_utils
+from pytype.pytd import pytd
 
 from pytype.tests import test_base
 
@@ -59,6 +60,9 @@ class IndexerTest(test_base.TargetIndependentTest):
     self.assertIn(fqname, index.locs)
     deflocs = index.locs[fqname]
     self.assertCountEqual([x.location for x in deflocs], locs)
+
+  def assertTypeMapEqual(self, type_map, expected):
+    self.assertEqual({k: pytd.Print(v) for k, v in type_map.items()}, expected)
 
   def test_custom_ast_parser(self):
     called = [False]
@@ -233,7 +237,13 @@ class IndexerTest(test_base.TargetIndependentTest):
     """)
     ix = self.index_code(code, keep_pytype_data=True)
     expected_refs = (("x", "str"), ("x.upper", ("str", "Callable[[], str]")))
-    get_data = lambda ref: (ref.name, ref.data)
+
+    def get_data(ref):
+      if ref.data.__class__ is tuple:
+        return (ref.name, tuple(pytd.Print(t) for t in ref.data))
+      else:
+        return (ref.name, pytd.Print(ref.data))
+
     self.assertCountEqual((get_data(ref) for ref in ix.refs), expected_refs)
     self.assertCountEqual((get_data(ref) for ref, _ in ix.links), expected_refs)
 
@@ -245,7 +255,7 @@ class IndexerTest(test_base.TargetIndependentTest):
     """)
     ix = self.index_code(code, keep_pytype_data=True)
     type_map = output.type_map(ix)
-    self.assertEqual(type_map, {(3, 9): "str"})
+    self.assertTypeMapEqual(type_map, {(3, 9): "str"})
 
   def test_type_map_attr(self):
     code = textwrap.dedent("""\
@@ -256,7 +266,7 @@ class IndexerTest(test_base.TargetIndependentTest):
     """)
     ix = self.index_code(code, keep_pytype_data=True)
     type_map = output.type_map(ix)
-    self.assertEqual(type_map, {(4, 9): "Type[X]", (4, 11): "int"})
+    self.assertTypeMapEqual(type_map, {(4, 9): "Type[X]", (4, 11): "int"})
 
   def test_type_map_multiline_attr(self):
     code = textwrap.dedent("""\
@@ -268,7 +278,7 @@ class IndexerTest(test_base.TargetIndependentTest):
     """)
     ix = self.index_code(code, keep_pytype_data=True)
     type_map = output.type_map(ix)
-    self.assertEqual(type_map, {(4, 10): "Type[X]", (5, 4): "int"})
+    self.assertTypeMapEqual(type_map, {(4, 10): "Type[X]", (5, 4): "int"})
 
   def test_type_map_multiline_dotattr(self):
     code = textwrap.dedent("""\
@@ -280,7 +290,7 @@ class IndexerTest(test_base.TargetIndependentTest):
     """)
     ix = self.index_code(code, keep_pytype_data=True)
     type_map = output.type_map(ix)
-    self.assertEqual(type_map, {(4, 10): "Type[X]", (5, 5): "int"})
+    self.assertTypeMapEqual(type_map, {(4, 10): "Type[X]", (5, 5): "int"})
 
   def test_type_map_missing(self):
     # For obj.attr, sometimes we fail to find the location of attr. Test that
@@ -295,7 +305,7 @@ class IndexerTest(test_base.TargetIndependentTest):
     """).format("\n" * 10)
     ix = self.index_code(code, keep_pytype_data=True)
     type_map = output.type_map(ix)
-    self.assertEqual(type_map, {(4, 10): "Type[X]"})
+    self.assertTypeMapEqual(type_map, {(4, 10): "Type[X]"})
 
   def test_unknown(self):
     # pytype represents unannotated function parameters as unknowns. Make sure
@@ -305,7 +315,20 @@ class IndexerTest(test_base.TargetIndependentTest):
     """)
     ix = self.index_code(code, keep_pytype_data=True)
     type_map = output.type_map(ix)
-    self.assertEqual(type_map, {(1, 17): "Any"})
+    self.assertTypeMapEqual(type_map, {(1, 17): "Any"})
+
+  def test_type_resolution(self):
+    code = textwrap.dedent("""\
+      class X:
+        pass
+      Y = X
+    """)
+    ix = self.index_code(code, keep_pytype_data=True)
+    pyval = output.type_map(ix)[(3, 4)]
+    # Make sure we have pytd.ClassType objects with the right .cls pointers.
+    self.assertEqual(pyval.base_type.cls,
+                     self.loader.builtins.Lookup("__builtin__.type"))
+    self.assertEqual(pyval.parameters[0].cls.name, "X")
 
 
 test_base.main(globals(), __name__ == "__main__")

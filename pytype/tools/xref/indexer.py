@@ -12,6 +12,7 @@ from pytype import errors
 from pytype import io
 from pytype import load_pytd
 from pytype import module_utils
+from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 
@@ -107,6 +108,26 @@ def get_location(node):
   return (node.lineno, node.col_offset)
 
 
+def get_last_line(node):
+  """Walk a node, returning the latest line number of any of its children."""
+
+  # We define the class within the function since ast is late-bound.
+  class LineNumberVisitor(ast.NodeVisitor):
+
+    def __init__(self):
+      self.line = 0
+
+    def generic_visit(self, node):
+      lineno = getattr(node, "lineno", 0)
+      if lineno > self.line:
+        self.line = lineno
+      super(LineNumberVisitor, self).generic_visit(node)
+
+  v = LineNumberVisitor()
+  v.visit(node)
+  return v.line
+
+
 def has_decorator(f, decorator):
   for d in f.decorator_list:
     if isinstance(d, ast.Name) and d.id == decorator:
@@ -117,6 +138,25 @@ def has_decorator(f, decorator):
 def get_opcodes(traces, lineno, op_list):
   """Get all opcodes in op_list on a given line."""
   return [x for x in traces[lineno] if x[0] in op_list]
+
+
+def match_opcodes(traces, lineno, op_match_list):
+  """Get all opcodes matching op_match_list on a given line.
+
+  Args:
+    traces: traces
+    lineno: line number to get ops from.
+    op_match_list: [(opcode_name, symbol|None), ...]; None matches any symbol.
+
+  Returns:
+    A list of matching opcodes.
+  """
+  out = []
+  for op, symbol, data in traces[lineno]:
+    for match_op, match_symbol in op_match_list:
+      if op == match_op and match_symbol in [None, symbol]:
+        out.append((op, symbol, data))
+  return out
 
 
 def _to_type(vals):
@@ -134,12 +174,12 @@ def _to_type(vals):
   """
   if not vals:
     return "Any"
-  return pytd_utils.Print(
-      _join_types(vals).Visit(visitors.RemoveUnknownClasses()))
+  return pytd_utils.Print(_join_types(vals))
 
 
 def _join_types(vals):
-  return pytd_utils.JoinTypes(v.to_type() for v in vals if v)
+  return pytd_utils.JoinTypes(v.to_type() for v in vals if v).Visit(
+      visitors.RemoveUnknownClasses())
 
 
 # Internal datatypes
@@ -500,6 +540,13 @@ class ScopedVisitor(object):
     self.envs = {}
     self.module_name = module_name
 
+    # Track the last line for multiline assign statements. This is safe because
+    # assign is not an expression and hence cannot be nested.
+    # TODO(mdemello): Handle multiline class definitions similarly.
+    self.assign_end_line = None
+    # Needed for x[i] = <multiline statement>
+    self.assign_subscr = None
+
   def get_id(self, node):
     """Construct an id based on node type."""
 
@@ -578,11 +625,23 @@ class ScopedVisitor(object):
     # We need to set the env's cls to the new class, not the enclosing one.
     new_env.cls = self.current_class
 
+  def leave_ClassDef(self, _):
+    self.class_ids.pop()
+
   def enter_FunctionDef(self, node):
     self.add_scope(node)
 
   def enter_Module(self, node):
     self.add_scope(node)
+
+  def enter_Assign(self, node):
+    self.assign_end_line = get_last_line(node.value)
+    if isinstance(node.targets[0], ast.Subscript):
+      self.assign_subscr = node.targets[0].value
+
+  def leave_Assign(self, _):
+    self.assign_end_line = None
+    self.assign_subscr = None
 
   def generic_visit(self, node):
     if node.__class__ in self.get_suppressed_nodes():
@@ -595,10 +654,12 @@ class ScopedVisitor(object):
 
   def leave(self, node):
     """If the node has introduced a new scope, we need to pop it off."""
+    method = "leave_" + node.__class__.__name__
+    visitor = getattr(self, method, None)
+    if visitor:
+      visitor(node)
     if node == self.stack[-1]:
       self.stack.pop()
-    if isinstance(node, ast.ClassDef):
-      self.class_ids.pop()
 
 
 class IndexVisitor(ScopedVisitor):
@@ -747,10 +808,21 @@ class IndexVisitor(ScopedVisitor):
     # Likewise, when a class definition spans multiple lines, the AST node
     # starts on the first line but the BUILD_CLASS opcode starts on the last
     # one. Fix when we incorporate asttokens.
-    ops = get_opcodes(self.traces, node.lineno, ["BUILD_CLASS"])
     class_name = get_name(node)
-    for _, symbol, data in ops:
-      if symbol == class_name:
+
+    # Python2
+    ops = match_opcodes(self.traces, node.lineno, [("BUILD_CLASS", class_name)])
+    if ops:
+      _, _, data = ops[0]
+      self.classmap[data[0]] = defn
+    else:
+      # Python3
+      ops = match_opcodes(self.traces, node.lineno, [
+          ("LOAD_BUILD_CLASS", None),
+          ("STORE_NAME", class_name)
+      ])
+      if len(ops) == 2:
+        _, _, data = ops[1]
         self.classmap[data[0]] = defn
     super(IndexVisitor, self).enter_ClassDef(node)
 
@@ -775,7 +847,10 @@ class IndexVisitor(ScopedVisitor):
     # We use pytype trace data to distinguish between local and global
     # variables.
     if isinstance(node.ctx, ast.Load):
-      ops = self.traces[node.lineno]
+      lineno = node.lineno
+      if node == self.assign_subscr:
+        lineno = self.assign_end_line
+      ops = self.traces[lineno]
       for op, symbol, data in ops:
         if symbol == node.id:
           if op == "LOAD_GLOBAL":
@@ -792,7 +867,8 @@ class IndexVisitor(ScopedVisitor):
             break
 
     elif isinstance(node.ctx, ast.Store):
-      ops = self.traces[node.lineno]
+      lineno = self.assign_end_line or node.lineno
+      ops = self.traces[lineno]
       for op, symbol, data in ops:
         if symbol == node.id:
           if op == "STORE_GLOBAL":
@@ -823,6 +899,9 @@ class IndexVisitor(ScopedVisitor):
            if x[0].startswith("CALL_FUNCTION")]
     seen = set()
     for _, symbol, data in ops:
+      # pytype returns different things for Function(A.foo()).name
+      # In 2.7 the name is 'foo' but in 3.6 it is 'A.foo'.
+      symbol = symbol.split(".")[-1]
       if symbol == basename:
         for d in data:
           if not isinstance(d, list):
@@ -1003,7 +1082,7 @@ class Indexer(object):
     end = start + doc.length
     return (start, end)
 
-  def finalize(self, keep_pytype_data):
+  def finalize(self, keep_pytype_data, pytype_ast):
     """Postprocess the information gathered by the tree visitor.
 
     Note that these functions need to be run in order; some of them depend on
@@ -1011,6 +1090,7 @@ class Indexer(object):
 
     Args:
       keep_pytype_data: Whether to preserve the Reference.data field.
+      pytype_ast: A pytd.TypeDeclUnit representing the inferred types.
     """
 
     links = self._lookup_refs()
@@ -1019,7 +1099,7 @@ class Indexer(object):
     if keep_pytype_data:
       # TODO(rechen): Once this code has been sufficiently vetted, remove the
       # `keep_pytype_data` option and always finalize refs.
-      self.refs, links = self._finalize_refs(self.refs, links)
+      self.refs, links = self._finalize_refs(self.refs, links, pytype_ast)
     self.links = links
     self._process_deflocs()
     self._process_links(links)
@@ -1231,7 +1311,13 @@ class Indexer(object):
             else:
               assert False, ref
 
-  def _finalize_refs(self, refs, links):
+  def _to_pytd(self, vals, pytype_ast):
+    if not vals:
+      return pytd.AnythingType()
+    with io.wrap_pytype_exceptions(PytypeError, filename=self.source.filename):
+      return self.loader.resolve_type(_join_types(vals), pytype_ast)
+
+  def _finalize_refs(self, refs, links, pytype_ast):
     """Preserve the pytype data in references."""
     final_refs = []
     final_links = []
@@ -1239,14 +1325,17 @@ class Indexer(object):
     for ref in refs:
       if ref.typ == "Attribute":
         obj, attr = ref.data
-        t = (_to_type(obj), _to_type(attr))
+        t = (self._to_pytd(obj, pytype_ast), self._to_pytd(attr, pytype_ast))
       else:
-        t = _to_type(ref.data)
+        t = self._to_pytd(ref.data, pytype_ast)
       final_ref = ref._replace(data=t)
       final_refs.append(final_ref)
       final_ref_cache[ref.id] = final_ref
     for ref, defn in links:
-      final_links.append((final_ref_cache[ref.id], defn))
+      # Update ref.data from the final ref cache
+      cached = final_ref_cache[ref.id]
+      new_ref = ref._replace(data=cached.data)
+      final_links.append((new_ref, defn))
     return final_refs, final_links
 
   def _lookup_remote_symbol(self, ref, defn):
@@ -1458,7 +1547,7 @@ def process_file(options,
       store_all_calls=False,
       loader=loader)
   with io.wrap_pytype_exceptions(PytypeError, filename=options.input):
-    analyze.infer_types(
+    pytype_ast, _ = analyze.infer_types(
         src=src,
         filename=options.input,
         errorlog=errorlog,
@@ -1485,5 +1574,5 @@ def process_file(options,
   ix = Indexer(
       source, vm.loader, module_name, kythe_args, annotate_ast=annotate_ast)
   ix.index(ast_root_node)
-  ix.finalize(keep_pytype_data)
+  ix.finalize(keep_pytype_data, pytype_ast)
   return ix, ast_root_node

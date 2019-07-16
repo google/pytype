@@ -45,6 +45,7 @@ def read_source_file(input_filename):
   except IOError:
     raise utils.UsageError("Could not load input file %s" % input_filename)
 
+
 def _call(analyze_types, input_filename, errorlog, options, loader):
   """Helper function to call analyze.check/infer_types."""
   src = read_source_file(input_filename)
@@ -266,6 +267,7 @@ def parse_pyi(options):
     result = "# Internal AST parsed and postprocessed from %s\n\n%s" % (
         options.input, pytd.Print(ast))
     _write_pyi_output(options, result, options.output)
+  return ast
 
 
 def get_pytype_version():

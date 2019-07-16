@@ -647,33 +647,6 @@ class FillInLocalPointers(Visitor):
                         prefix + node.name, type(func))
 
 
-def ToType(item, allow_constants=True):
-  """Convert a pytd AST item into a type."""
-  if isinstance(item, pytd.TYPE):
-    return item
-  elif isinstance(item, pytd.Module):
-    return item
-  elif isinstance(item, pytd.Class):
-    return pytd.ClassType(item.name, item)
-  elif isinstance(item, pytd.Function):
-    return pytd.FunctionType(item.name, item)
-  elif isinstance(item, pytd.Constant):
-    if allow_constants:
-      # TODO(kramm): This is wrong. It would be better if we resolve pytd.Alias
-      # in the same way we resolve pytd.NamedType.
-      return item
-    else:
-      # TODO(kramm): We should be more picky here. In particular, we shouldn't
-      # allow pyi like this:
-      #  object = ...  # type: int
-      #  def f(x: object) -> Any
-      return pytd.AnythingType()
-  elif isinstance(item, pytd.Alias):
-    return item.type
-  else:
-    raise NotImplementedError("Can't convert %s: %s" % (type(item), item))
-
-
 class RemoveTypeParametersFromGenericAny(Visitor):
   """Adjusts GenericType nodes to handle base type changes."""
 
@@ -859,7 +832,7 @@ class LookupBuiltins(Visitor):
       except KeyError:
         return t
       else:
-        return ToType(item)
+        return pytd.ToType(item)
     else:
       return t
 
@@ -945,7 +918,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
     if t.name in self._module_map:
       if self._alias_name and "." in self._alias_name:
         # Module aliases appear only in asts that use fully-qualified names.
-        return ToType(pytd.Module(name=t.name, module_name=t.name))
+        return pytd.ToType(pytd.Module(name=t.name, module_name=t.name))
       else:
         # We have a class with the same name as a module.
         return t
@@ -968,7 +941,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
       item = self._ResolveUsingGetattr(module_name, module)
       if item is None:
         raise KeyError("No %s in module %s" % (name, module_name))
-    return ToType(item, allow_constants=not self._in_constant)
+    return pytd.ToType(item, allow_constants=not self._in_constant)
 
   def VisitClassType(self, t):
     new_type = self.VisitNamedType(t)
@@ -1004,7 +977,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
         # than aliased.
         getattrs.add(member.Replace(name=new_name))
       else:
-        aliases.append(pytd.Alias(new_name, ToType(member)))
+        aliases.append(pytd.Alias(new_name, pytd.ToType(member)))
     return aliases, getattrs
 
   def _DiscardExistingNames(self, node, potential_members):
@@ -1109,9 +1082,9 @@ class LookupLocalTypes(RemoveTypeParametersFromGenericAny):
         except KeyError:
           raise SymbolLookupError("Couldn't find %s in %s" % (
               node.name, self.unit.name))
-      return ToType(item, allow_constants=False)
+      return pytd.ToType(item, allow_constants=False)
     elif module_name == self.unit.name:
-      return ToType(self.unit.Lookup(node.name), allow_constants=False)
+      return pytd.ToType(self.unit.Lookup(node.name), allow_constants=False)
     else:
       return node
 

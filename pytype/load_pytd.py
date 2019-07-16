@@ -192,24 +192,30 @@ class Loader(object):
     assert ast.name == module
     return ast
 
-  def _resolve_builtins(self, ast):
-    ast = ast.Visit(visitors.LookupBuiltins(self.builtins, full_names=False))
-    ast = ast.Visit(visitors.ExpandCompatibleBuiltins(self.builtins))
-    return ast
+  def _resolve_builtins(self, pyval, ast=None):
+    builtins_lookup = visitors.LookupBuiltins(self.builtins, full_names=False)
+    if ast:
+      builtins_lookup.EnterTypeDeclUnit(ast)
+    pyval = pyval.Visit(builtins_lookup)
+    pyval = pyval.Visit(visitors.ExpandCompatibleBuiltins(self.builtins))
+    return pyval
 
-  def _resolve_external_and_local_types(self, ast):
-    dependencies = self._collect_ast_dependencies(ast)
+  def _resolve_external_and_local_types(self, pyval, ast=None):
+    dependencies = self._collect_ast_dependencies(pyval)
     if dependencies:
-      self._load_ast_dependencies(dependencies, ast)
-      ast = self._resolve_external_types(ast)
-    ast = ast.Visit(visitors.LookupLocalTypes())
-    return ast
+      self._load_ast_dependencies(dependencies, ast or pyval)
+      pyval = self._resolve_external_types(pyval, ast and ast.name)
+    local_lookup = visitors.LookupLocalTypes()
+    if ast:
+      local_lookup.EnterTypeDeclUnit(ast)
+    pyval = pyval.Visit(local_lookup)
+    return pyval
 
-  def _postprocess_pyi(self, ast):
+  def _postprocess_pyi(self, pyval, ast):
     """Apply all the PYI transformations we need."""
-    ast = self._resolve_builtins(ast)
-    ast = self._resolve_external_and_local_types(ast)
-    return ast
+    pyval = self._resolve_builtins(pyval, ast)
+    pyval = self._resolve_external_and_local_types(pyval, ast)
+    return pyval
 
   def _create_empty(self, module_name, filename):
     return self.load_file(module_name, filename,
@@ -334,39 +340,44 @@ class Loader(object):
             # a better error.
             self._import_name(full_name)
 
-  def _resolve_external_types(self, ast):
+  def _resolve_external_types(self, pyval, ast_name=None):
+    name = ast_name or pyval.name
     try:
-      ast = ast.Visit(visitors.LookupExternalTypes(
-          self._get_module_map(), self_name=ast.name,
+      pyval = pyval.Visit(visitors.LookupExternalTypes(
+          self._get_module_map(), self_name=name,
           module_alias_map=self._aliases))
     except KeyError as e:
-      raise BadDependencyError(utils.message(e), ast.name)
-    return ast
+      raise BadDependencyError(utils.message(e), name)
+    return pyval
 
-  def _finish_ast(self, ast):
+  def _finish_pyi(self, pyval, ast=None):
     module_map = self._get_module_map()
-    module_map[""] = ast  # The module itself (local lookup)
-    ast.Visit(visitors.FillInLocalPointers(module_map))
+    module_map[""] = ast or pyval  # The module itself (local lookup)
+    pyval.Visit(visitors.FillInLocalPointers(module_map))
 
-  def _verify_ast(self, ast):
+  def _verify_pyi(self, pyval, ast_name=None):
     try:
-      ast.Visit(visitors.VerifyLookup(ignore_late_types=True))
+      pyval.Visit(visitors.VerifyLookup(ignore_late_types=True))
     except ValueError as e:
-      raise BadDependencyError(utils.message(e), ast.name)
-    ast.Visit(visitors.VerifyContainers())
+      raise BadDependencyError(utils.message(e), ast_name or pyval.name)
+    pyval.Visit(visitors.VerifyContainers())
+
+  def resolve_type(self, pyval, ast):
+    """Resolve a pytd value, using the given ast for local lookup."""
+    pyval = self._postprocess_pyi(pyval, ast)
+    self._lookup_all_classes()
+    self._finish_pyi(pyval, ast)
+    self._verify_pyi(pyval, ast.name)
+    return pyval
 
   def resolve_ast(self, ast):
     """Resolve the dependencies of an AST, without adding it to our modules."""
-    ast = self._postprocess_pyi(ast)
-    self._lookup_all_classes()
-    self._finish_ast(ast)
-    self._verify_ast(ast)
-    return ast
+    return self.resolve_type(ast, ast)
 
   def _lookup_all_classes(self):
     for module in self._modules.values():
       if module.dirty:
-        self._finish_ast(module.ast)
+        self._finish_pyi(module.ast)
         module.dirty = False
 
   def import_relative_name(self, name):
@@ -422,13 +433,13 @@ class Loader(object):
     """Verify the ast, doing external type resolution first if necessary."""
     if ast:
       try:
-        self._verify_ast(ast)
+        self._verify_pyi(ast)
       except BadDependencyError:
         # In the case of a circular import, an external type may be left
         # unresolved. As long as the module containing the unresolved type does
         # not also contain a circular import, an extra lookup should resolve it.
         ast = self._resolve_external_types(ast)
-        self._verify_ast(ast)
+        self._verify_pyi(ast)
     return ast
 
   def add_module_prefixes(self, module_name):
