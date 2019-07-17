@@ -955,8 +955,8 @@ class IndexVisitor(ScopedVisitor):
   def process_import(self, node, is_from):
     """Common code for Import and ImportFrom."""
 
-    store_ops = get_opcodes(self.traces, node.lineno, "STORE_NAME")
-    import_ops = get_opcodes(self.traces, node.lineno, "IMPORT_NAME")
+    store_ops = get_opcodes(self.traces, node.lineno, ["STORE_NAME"])
+    import_ops = get_opcodes(self.traces, node.lineno, ["IMPORT_NAME"])
 
     # Only record modules that pytype has resolved in self.modules
     def is_resolved(defn, symbol, data):

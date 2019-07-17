@@ -4,7 +4,7 @@ pytype
 Pytype checks and infers types for your Python code - without requiring
 type annotations. Pytype can:
 
--  Lint plain Python code, flagging common mistakes such as mispelled
+-  Lint plain Python code, flagging common mistakes such as misspelled
    attribute names, incorrect function calls, and `much
    more <docs/errors.md>`__, even across file boundaries.
 -  Enforce user-provided `type
