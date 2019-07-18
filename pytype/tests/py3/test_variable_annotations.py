@@ -151,5 +151,20 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
         x: int
     """)
 
+  def testCallableForwardReference(self):
+    # Callable[['A']...] creates an instance of A during output generation,
+    # which previously caused a crash when iterating over existing instances.
+    ty = self.Infer("""\
+      from typing import Callable
+      class A(object):
+        def __init__(self, fn: Callable[['A'], bool]):
+          self.fn = fn
+    """)
+    self.assertTypesMatchPytd(ty, """\
+      from typing import Callable
+      class A(object):
+        fn: Callable[[A], bool]
+        def __init__(self, fn: Callable[[A], bool]) -> None: ...
+    """)
 
 test_base.main(globals(), __name__ == "__main__")
