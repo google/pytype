@@ -6,6 +6,7 @@ import re
 import subprocess
 import tempfile
 
+from pytype import compat
 from pytype import pytype_source_utils
 from pytype import utils
 from pytype.pyc import loadmarshal
@@ -93,7 +94,8 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
   if first_byte == 0:  # compile OK
     return bytecode[1:]
   elif first_byte == 1:  # compile error
-    raise CompileError(bytecode[1:].decode("utf-8"))
+    code = bytecode[1:]  # type: bytes
+    raise CompileError(compat.native_str(code))
   else:
     raise IOError("_compile.py produced invalid result")
 
