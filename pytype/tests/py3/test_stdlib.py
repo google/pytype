@@ -327,6 +327,73 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       subprocess.run
     """)
 
+  def test_popen_bytes(self):
+    ty = self.Infer("""
+      import subprocess
+      def run(cmd):
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        stdout, _ = proc.communicate()
+        return stdout
+    """)
+    self.assertTypesMatchPytd(ty, """
+      subprocess: module
+      def run(cmd) -> bytes: ...
+    """)
+
+  def test_popen_bytes_no_encoding(self):
+    ty = self.Infer("""
+      import subprocess
+      def run(cmd):
+        proc = subprocess.Popen(cmd, encoding=None, stdout=subprocess.PIPE)
+        stdout, _ = proc.communicate()
+        return stdout
+    """)
+    self.assertTypesMatchPytd(ty, """
+      subprocess: module
+      def run(cmd) -> bytes: ...
+    """)
+
+  def test_popen_bytes_no_universal_newlines(self):
+    ty = self.Infer("""
+      import subprocess
+      def run(cmd):
+        proc = subprocess.Popen(
+            cmd, universal_newlines=False, stdout=subprocess.PIPE)
+        stdout, _ = proc.communicate()
+        return stdout
+    """)
+    self.assertTypesMatchPytd(ty, """
+      subprocess: module
+      def run(cmd) -> bytes: ...
+    """)
+
+  def test_popen_str_encoding(self):
+    ty = self.Infer("""
+      import subprocess
+      def run(cmd):
+        proc = subprocess.Popen(cmd, encoding='utf-8', stdout=subprocess.PIPE)
+        stdout, _ = proc.communicate()
+        return stdout
+    """)
+    self.assertTypesMatchPytd(ty, """
+      subprocess: module
+      def run(cmd) -> str: ...
+    """)
+
+  def test_popen_str_universal_newlines(self):
+    ty = self.Infer("""
+      import subprocess
+      def run(cmd):
+        proc = subprocess.Popen(
+            cmd, universal_newlines=True, stdout=subprocess.PIPE)
+        stdout, _ = proc.communicate()
+        return stdout
+    """)
+    self.assertTypesMatchPytd(ty, """
+      subprocess: module
+      def run(cmd) -> str: ...
+    """)
+
   def test_enum(self):
     self.Check("""
       import enum

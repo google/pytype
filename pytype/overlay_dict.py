@@ -13,6 +13,7 @@ from pytype import attr_overlay
 from pytype import collections_overlay
 from pytype import future_overlay
 from pytype import six_overlay
+from pytype import subprocess_overlay
 from pytype import sys_overlay
 from pytype import typing_overlay
 
@@ -25,6 +26,7 @@ overlays = {
     "collections": collections_overlay.CollectionsOverlay,
     "future.utils": future_overlay.FutureUtilsOverlay,
     "six": six_overlay.SixOverlay,
+    "subprocess": subprocess_overlay.SubprocessOverlay,
     "sys": sys_overlay.SysOverlay,
     "types": asyncio_types_overlay.TypesOverlay,
     "typing": typing_overlay.TypingOverlay,

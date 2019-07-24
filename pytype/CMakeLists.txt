@@ -160,6 +160,7 @@ py_library(
     six_overlay.py
     special_builtins.py
     state.py
+    subprocess_overlay.py
     sys_overlay.py
     typing_overlay.py
     vm.py

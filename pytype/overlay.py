@@ -45,6 +45,10 @@ class Overlay(abstract.Module):
   def _convert_member(self, name, member):
     val = member(name, self.vm)
     val.module = self.name
+    if isinstance(val, abstract.PyTDClass):
+      # We need to cache this value so that future constant_to_value() calls
+      # will use our custom object rather than building a new PyTDClass.
+      self.vm.convert.cache(val)
     var = val.to_variable(self.vm.root_cfg_node)
     self.vm.trace_module_member(self, name, var)
     return var
