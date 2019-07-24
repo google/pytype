@@ -224,5 +224,23 @@ class StdlibTests(test_base.TargetIndependentTest):
       serial: int
     """)
 
+  def testSubprocess(self):
+    # Sanity check to make sure basic type-checking works in both py2 and py3.
+    # The subprocess module changed significantly between versions.
+    self.Check("""
+      import subprocess
+      def run(cmd):
+        proc = subprocess.Popen(cmd)
+        return proc.communicate()
+    """)
+
+  def testSubprocessSubclass(self):
+    self.Check("""
+      import subprocess
+      class Popen(subprocess.Popen):
+        def wait(self, *args, **kwargs):
+          return super(Popen, self).wait(*args, **kwargs)
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

@@ -437,6 +437,12 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     raise ValueError(
         "Cannot convert {} to an abstract value".format(pyval.__class__))
 
+  def cache(self, pytd_cls):
+    # Method to customize caching of PyTDClass objects. Needed for overlays that
+    # subclass PyTDClass.
+    key = ("constant", pytd_cls.pytd_cls, type(pytd_cls.pytd_cls))
+    self._convert_cache[key] = pytd_cls
+
   def constant_to_value(self, pyval, subst=None, node=None):
     """Like constant_to_var, but convert to an abstract.AtomicAbstractValue.
 

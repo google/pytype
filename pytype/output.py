@@ -598,7 +598,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
             constants[name].add_type(value.to_type(node))
 
     # instance-level attributes
-    for instance in v.instances:
+    for instance in set(v.instances):
       for name, member in instance.members.items():
         if name not in CLASS_LEVEL_IGNORE:
           for value in member.FilteredData(self.vm.exitpoint, strict=False):
