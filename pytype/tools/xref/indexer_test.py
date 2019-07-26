@@ -26,7 +26,7 @@ class IndexerTest(test_base.TargetIndependentTest):
     args.update(kwargs)
     with file_utils.Tempdir() as d:
       d.create_file("t.py", code)
-      options = config.Options([d["t.py"]])
+      options = config.Options.create(d["t.py"])
       options.tweak(**args)
       ix, ast_root = indexer.process_file(
           options,
@@ -42,7 +42,7 @@ class IndexerTest(test_base.TargetIndependentTest):
     """Generate a kythe index from a code string."""
     with file_utils.Tempdir() as d:
       d.create_file("t.py", code)
-      options = config.Options([d["t.py"]])
+      options = config.Options.create(d["t.py"])
       options.tweak(pythonpath=[d.path], version=self.python_version)
       kythe_args = kythe.Args(corpus="corpus", root="root")
       ix, _ = indexer.process_file(options, kythe_args=kythe_args)
@@ -121,7 +121,7 @@ class IndexerTest(test_base.TargetIndependentTest):
       d.create_file("x/y.pyi", stub)
       d.create_file("a/b.pyi", stub)
       d.create_file("p/q.pyi", stub)
-      options = config.Options([d["t.py"]])
+      options = config.Options.create(d["t.py"])
       options.tweak(pythonpath=[d.path], version=self.python_version)
       ix, _ = indexer.process_file(options)
       self.assertDef(ix, "module.f", "f", "Import")
@@ -182,7 +182,7 @@ class IndexerTest(test_base.TargetIndependentTest):
         def f(x):
           return 42
     """)
-    options = config.Options(["/path/to/nonexistent/file.py"])
+    options = config.Options.create("/path/to/nonexistent/file.py")
     options.tweak(version=self.python_version)
     ix, _ = indexer.process_file(options, source_text=code)
     self.assertDef(ix, "module.f", "f", "FunctionDef")

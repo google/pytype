@@ -56,7 +56,7 @@ class Options(object):
 
   @classmethod
   def create(cls, input_filename=None, **kwargs):
-    """Create dummy options for testing."""
+    """Create options from kwargs."""
     argument_parser = make_parser()
     options = argument_parser.parse_args(
         [input_filename or "dummpy_input_file"])
