@@ -132,6 +132,7 @@ class VirtualMachine(object):
     self.annotations_util = annotations_util.AnnotationsUtil(self)
     self.attribute_handler = attribute.AbstractAttributeHandler(self)
     self.matcher = matcher.AbstractMatcher(self)
+    self.loaded_overlays = {}  # memoize which overlays are loaded
     self.convert = convert.Converter(self)
     self.program.default_data = self.convert.unsolvable
     self.has_unknown_wildcard_imports = False
@@ -177,9 +178,6 @@ class VirtualMachine(object):
         special_builtins.Open
     ):
       self.special_builtins[cls.name] = cls.make(self)
-
-    # Memoize which overlays are loaded.
-    self.loaded_overlays = {}
 
   def trace_opcode(self, op, symbol, val):
     """Record trace data for other tools to use."""
