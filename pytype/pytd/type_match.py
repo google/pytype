@@ -83,7 +83,7 @@ def get_all_subclasses(asts):
     asts: A list of ASTs.
 
   Returns:
-    A dictionary, mapping instances of pytd.TYPE (types) to lists of
+    A dictionary, mapping instances of pytd.Type (types) to lists of
     pytd.Class (the derived classes).
   """
   hierarchy = {}
@@ -117,7 +117,7 @@ class TypeMatch(pytd_utils.TypeMatcher):
     """Construct.
 
     Args:
-      direct_subclasses: A dictionary, mapping pytd.TYPE to lists of pytd.TYPE.
+      direct_subclasses: A dictionary, mapping pytd.Type to lists of pytd.Type.
       any_also_is_bottom: Whether we should, (if True) consider
         pytd.AnythingType() to also be at the bottom of the type hierarchy,
         thus making it a subclass of everything, or (if False) to be only
@@ -137,9 +137,9 @@ class TypeMatch(pytd_utils.TypeMatcher):
     """Get all base classes of this type.
 
     Args:
-        t: A pytd.TYPE
+        t: A pytd.Type
     Returns:
-        A list of pytd.TYPE.
+        A list of pytd.Type.
     """
     if isinstance(t, pytd.ClassType):
       return sum((self.get_superclasses(c) for c in t.cls.parents), [t])
@@ -156,9 +156,9 @@ class TypeMatch(pytd_utils.TypeMatcher):
     """Get all classes derived from this type.
 
     Args:
-        t: A pytd.TYPE
+        t: A pytd.Type
     Returns:
-        A list of pytd.TYPE.
+        A list of pytd.Type.
     """
     if isinstance(t, pytd.ClassType):
       subclasses = self.direct_subclasses.get(t, [])
@@ -313,7 +313,7 @@ class TypeMatch(pytd_utils.TypeMatcher):
     return t.name
 
   def _match_type_against_type(self, t1, t2, subst):
-    """Match a pytd.TYPE against another pytd.TYPE."""
+    """Match a pytd.Type against another pytd.Type."""
     t1 = self.maybe_lookup_type_param(t1, subst)
     t2 = self.maybe_lookup_type_param(t2, subst)
     # TODO(kramm): Use utils:TypeMatcher to simplify this?

@@ -1130,7 +1130,7 @@ class ExtractSuperClasses(Visitor):
   """Visitor for extracting all superclasses (i.e., the class hierarchy).
 
   When called on a TypeDeclUnit, this yields a dictionary mapping pytd.Class
-  to lists of pytd.TYPE.
+  to lists of pytd.Type.
   """
 
   def __init__(self):
@@ -1195,7 +1195,7 @@ class CollectTypeParameters(Visitor):
 
 
 def ClassAsType(cls):
-  """Converts a pytd.Class to an instance of pytd.TYPE."""
+  """Converts a pytd.Class to an instance of pytd.Type."""
   params = tuple(item.type_param for item in cls.template)
   if not params:
     return pytd.NamedType(cls.name)

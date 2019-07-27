@@ -763,7 +763,7 @@ class RemoveInheritedMethods(visitors.Visitor):
     """Given a class, list method name + signature without "self".
 
     Args:
-      t: A pytd.TYPE.
+      t: A pytd.Type.
 
     Returns:
       A set of name + signature tuples, with the self parameter of the

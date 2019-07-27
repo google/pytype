@@ -143,7 +143,7 @@ class Class(node.Node('name: str',
 
   Attributes:
     name: Class name (string)
-    parents: The super classes of this class (instances of pytd.TYPE).
+    parents: The super classes of this class (instances of pytd.Type).
     methods: Tuple of methods, classmethods, staticmethods
       (instances of pytd.Function).
     constants: Tuple of constant class attributes (instances of pytd.Constant).
@@ -559,14 +559,6 @@ class CallableType(GenericType):
   def ret(self):
     return self.parameters[-1]
 
-
-# TODO(dbaum): Remove TYPE since Type serves a very similar role.  At present
-# the only difference is that FunctionType is a Type, but not in TYPE.
-
-# So we can do "isinstance(node, pytd.TYPE)":
-TYPE = (NamedType, ClassType, AnythingType, UnionType, NothingType,
-        GenericType, TypeParameter)
-
 # Types that can be a base type of GenericType:
 GENERIC_BASE_TYPE = (NamedType, ClassType)
 
@@ -592,7 +584,7 @@ def IsContainer(t):
 
 def ToType(item, allow_constants=True):
   """Convert a pytd AST item into a type."""
-  if isinstance(item, TYPE):
+  if isinstance(item, Type):
     return item
   elif isinstance(item, Module):
     return item

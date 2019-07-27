@@ -175,7 +175,7 @@ def GetAllSubClasses(ast):
     ast: Parsed PYTD.
 
   Returns:
-    A dictionary, mapping instances of pytd.TYPE (types) to lists of
+    A dictionary, mapping instances of pytd.Type (types) to lists of
     pytd.Class (the derived classes).
   """
   hierarchy = ast.Visit(visitors.ExtractSuperClasses())
