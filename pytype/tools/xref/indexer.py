@@ -105,7 +105,7 @@ def get_name(node):
 def get_location(node):
   # TODO(mdemello): The column offset for nodes like "class A" needs to be
   # adjusted to the start of the symbol.
-  return (node.lineno, node.col_offset)
+  return SourceLocation(node.lineno, node.col_offset)
 
 
 def get_last_line(node):
@@ -189,6 +189,9 @@ class AttrError(Exception):
   pass
 
 
+SourceLocation = collections.namedtuple("SourceLocation", ("line", "column"))
+
+
 class SourceFile(object):
   """Line-based source code access."""
 
@@ -206,8 +209,8 @@ class SourceFile(object):
       self.offsets.append(offset)
       offset += len(line) + 1  # account for the \n
 
-  def get_offset(self, line, column):
-    return self.offsets[line - 1] + column
+  def get_offset(self, location):
+    return self.offsets[location.line - 1] + location.column
 
   def collect_traces(self, raw_traces):
     """Postprocess pytype's opcode traces."""
@@ -236,8 +239,8 @@ class SourceFile(object):
         comment_marker = self.line(l).find("#")
         if -1 < comment_marker < col:
           continue
-        return (l, col)
-    return None, None
+        return SourceLocation(l, col)
+    return None
 
   def next_non_comment_line(self, line):
     for l in range(line + 1, len(self.lines)):
@@ -682,7 +685,7 @@ class IndexVisitor(ScopedVisitor):
   def _get_location(self, node, args):
     """Get a more accurate node location."""
 
-    line, col = None, None
+    loc = None
 
     if isinstance(node, ast.ClassDef):
       # For class and function definitions, search for the string
@@ -691,11 +694,11 @@ class IndexVisitor(ScopedVisitor):
       # offset for decorated functions/classes.
       body_start = node.body[0].lineno
       text = "class %s" % args["name"]
-      line, col = self.source.find_text(node.lineno, body_start, text)
+      loc = self.source.find_text(node.lineno, body_start, text)
     elif isinstance(node, ast.FunctionDef):
       body_start = node.body[0].lineno
       text = "def %s" % args["name"]
-      line, col = self.source.find_text(node.lineno, body_start, text)
+      loc = self.source.find_text(node.lineno, body_start, text)
     elif isinstance(node, (ast.Import, ast.ImportFrom)):
       # Search for imported module names
       text = self.source.line(node.lineno)
@@ -704,12 +707,12 @@ class IndexVisitor(ScopedVisitor):
       if c == -1:
         c = text.find("," + name)
       if c != -1:
-        line, col = node.lineno, c + 1
+        loc = SourceLocation(node.lineno, c + 1)
 
-    if line is None:
-      line, col = get_location(node)
+    if loc is None:
+      loc = get_location(node)
 
-    return (line, col)
+    return loc
 
   def get_suppressed_nodes(self):
     return [ast.Module, ast.BinOp, ast.BoolOp, ast.Return, ast.Assign, ast.Num,
@@ -735,7 +738,7 @@ class IndexVisitor(ScopedVisitor):
     defn = Definition(**args)
     line, col = self._get_location(node, args)
     assert line is not None
-    defloc = DefLocation(defn.id, (line, col))
+    defloc = DefLocation(defn.id, SourceLocation(line, col))
     return (defn, defloc)
 
   def make_ref(self, node, **kwargs):
@@ -984,7 +987,8 @@ class IndexVisitor(ScopedVisitor):
       c = text.find("import ")
       if c > -1:
         # (If we haven't found "import " on the line, give up for now.)
-        self.locs[d.id][-1] = DefLocation(defloc.def_id, (line, c))
+        self.locs[d.id][-1] = DefLocation(
+            defloc.def_id, SourceLocation(line, c))
 
       if alias.asname or is_from:
         # for |import x.y as z| or |from x import y as z| we want {z: x.y}
@@ -1063,8 +1067,7 @@ class Indexer(object):
     if typ == "Attribute":
       start, end = self._get_attr_bounds(defn.name, defloc.location)
     else:
-      line, col = defloc.location
-      start = self.source.get_offset(line, col)
+      start = self.source.get_offset(defloc.location)
       if typ in DEF_OFFSETS:
         start += DEF_OFFSETS[typ]
       if typ == "Import" or typ == "ImportFrom":
@@ -1077,8 +1080,7 @@ class Indexer(object):
   def get_doc_offsets(self, doc):
     """Get the byte offsets for a docstring."""
 
-    line, col = doc.location
-    start = self.source.get_offset(line, col)
+    start = self.source.get_offset(doc.location)
     end = start + doc.length
     return (start, end)
 
@@ -1162,7 +1164,7 @@ class Indexer(object):
     dot_attr = "." + attr
     if dot_attr in src_line:
       col = src_line.index(dot_attr)
-      return ((line, col + 1), len(attr))
+      return (SourceLocation(line, col + 1), len(attr))
     else:
       # We have something like
       #   (foo
@@ -1173,9 +1175,9 @@ class Indexer(object):
       # Lookahead up to 5 lines to find '.attr' (the ast node always starts from
       # the beginning of the chain, so foo.\nbar.\nbaz etc could span several
       # lines).
-      attr_line, attr_col = self.get_multiline_location(location, 5, dot_attr)
-      if attr_line:
-        return ((attr_line, attr_col + 1), len(attr))
+      attr_loc = self.get_multiline_location(location, 5, dot_attr)
+      if attr_loc:
+        return (SourceLocation(attr_loc.line, attr_loc.column + 1), len(attr))
       else:
         # Find consecutive lines ending with '.' and starting with 'attr'.
         for l in self.source.get_closest_line_range(line, line + 5):
@@ -1184,24 +1186,23 @@ class Indexer(object):
             text = self.source.line(next_line)
             if text.lstrip().startswith(attr):
               c = text.index(attr)
-              return ((next_line, c), len(attr))
+              return (SourceLocation(next_line, c), len(attr))
       # if all else fails, fall back to just spanning the name
       return (location, len(name))
 
   def get_multiline_location(self, location, n_lines, text):
     """Get the start location of text anywhere within n_lines of location."""
     line, _ = location
-    text_line, text_col = self.source.find_text(line, line + n_lines, text)
-    if text_line:
-      return (text_line, text_col)
+    text_loc = self.source.find_text(line, line + n_lines, text)
+    if text_loc:
+      return text_loc
     else:
-      return (None, None)
+      return None
 
   def get_anchor_bounds(self, location, length):
     """Generate byte offsets from a location and length."""
 
-    line, col = location
-    start = self.source.get_offset(line, col)
+    start = self.source.get_offset(location)
     end = start + length
     return (start, end)
 
