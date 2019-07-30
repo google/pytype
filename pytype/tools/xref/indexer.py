@@ -149,8 +149,8 @@ def _to_type(vals):
 
   Args:
     vals: A Reference.data item. Its type is
-      Optional[List[Optional[abstract.AtomicAbstractValue]]]. The data field
-      contains either one item or a list of two items.
+      Optional[List[abstract.AtomicAbstractValue]]. The data field contains a
+      tuple of items.
 
   Returns:
     A string.
@@ -161,8 +161,13 @@ def _to_type(vals):
 
 
 def _join_types(vals):
-  return pytd_utils.JoinTypes(v.to_type() for v in vals if v).Visit(
+  return pytd_utils.JoinTypes(v.to_type() for v in vals).Visit(
       visitors.RemoveUnknownClasses())
+
+
+def _unwrap(data):
+  assert len(data) == 1
+  return data[0]
 
 
 # Internal datatypes
@@ -237,8 +242,8 @@ class SourceFile(object):
     for line in sorted(self.traces.keys()):
       print("%d %s" % (line, self.line(line)))
       for name, symbol, data in self.traces[line]:
-        print("  %s : %s <- %s %s" % (
-            name, symbol, data, data and [typename(x) for x in data]))
+        data_types = tuple(d and [typename(x) for x in d] for d in data)
+        print("  %s : %s <- %s %s" % (name, symbol, data, data_types))
       print("-------------------")
 
 
@@ -258,9 +263,6 @@ class PytypeValue(object):
   @classmethod
   def _from_data(cls, data):
     """Construct a PytypeValue from a single datum."""
-
-    if not data:
-      return None
 
     if isinstance(data, abstract.PyTDClass):
       if data.module:
@@ -685,6 +687,7 @@ class IndexVisitor(ScopedVisitor):
   def make_ref(self, node, **kwargs):
     """Make a reference from a node."""
 
+    assert "data" in kwargs  # required kwarg
     args = {
         "name": get_name(node),
         "scope": self.scope_id(),
@@ -692,7 +695,6 @@ class IndexVisitor(ScopedVisitor):
         "typ": typename(node),
         "location": get_location(node),
         "target": None,
-        "data": None
     }
     args.update(kwargs)
     return Reference(**args)
@@ -758,7 +760,7 @@ class IndexVisitor(ScopedVisitor):
     ops = match_opcodes(self.traces, node.lineno, [("BUILD_CLASS", class_name)])
     if ops:
       _, _, data = ops[0]
-      self.classmap[data[0]] = defn
+      self.classmap[_unwrap(data)[0]] = defn
     else:
       # Python3
       ops = match_opcodes(self.traces, node.lineno, [
@@ -767,7 +769,7 @@ class IndexVisitor(ScopedVisitor):
       ])
       if len(ops) == 2:
         _, _, data = ops[1]
-        self.classmap[data[0]] = defn
+        self.classmap[_unwrap(data)[0]] = defn
     super(IndexVisitor, self).enter_ClassDef(node)
 
   def enter_FunctionDef(self, node):
@@ -797,17 +799,18 @@ class IndexVisitor(ScopedVisitor):
       ops = self.traces[lineno]
       for op, symbol, data in ops:
         if symbol == node.id:
+          d = _unwrap(data)
           if op == "LOAD_GLOBAL":
             ref = self.add_global_ref(node, name=symbol, data=data)
-            self.typemap[ref.id] = data
+            self.typemap[ref.id] = d
             break
           elif op in ["LOAD_FAST", "LOAD_NAME"]:
             ref = self.add_local_ref(node, name=symbol, data=data)
-            self.typemap[ref.id] = data
+            self.typemap[ref.id] = d
             break
           elif op in ["LOAD_DEREF"]:
             ref = self.add_closure_ref(node, name=symbol, data=data)
-            self.typemap[ref.id] = data
+            self.typemap[ref.id] = d
             break
 
     elif isinstance(node.ctx, ast.Store):
@@ -815,16 +818,17 @@ class IndexVisitor(ScopedVisitor):
       ops = self.traces[lineno]
       for op, symbol, data in ops:
         if symbol == node.id:
+          d = _unwrap(data)
           if op == "STORE_GLOBAL":
             defn = self.add_global_def(node, name=symbol)
-            self.typemap[defn.id] = data
+            self.typemap[defn.id] = d
             break
           elif op in ["STORE_FAST", "STORE_NAME", "STORE_DEREF"]:
             defn = self.add_local_def(node, name=symbol)
             if self._annotate_ast:
-              node.resolved_annotation = _to_type(data)
-              node.resolved_type = _join_types(data)
-            self.typemap[defn.id] = data
+              node.resolved_annotation = _to_type(d)
+              node.resolved_type = _join_types(d or [])
+            self.typemap[defn.id] = d
             break
     return node.id
 
@@ -848,8 +852,8 @@ class IndexVisitor(ScopedVisitor):
       symbol = symbol.split(".")[-1]
       if symbol == basename:
         for d in data:
-          if not isinstance(d, list):
-            d = [d]
+          if d is None:
+            continue
           for d1 in d:
             for f in qualified_method(d1):
               if f not in seen:
@@ -876,7 +880,7 @@ class IndexVisitor(ScopedVisitor):
             target=node.value,
             name=node_str,
             data=data)
-        if data and len(data) == 2:
+        if len(data) == 2:
           _, rhs = data
           self.typemap[ref.id] = rhs
         break
@@ -909,7 +913,7 @@ class IndexVisitor(ScopedVisitor):
 
     def filter_ops(op_list, defn):
       return [(symbol, data) for _, symbol, data in op_list
-              if is_resolved(defn, symbol, data)]
+              if is_resolved(defn, symbol, _unwrap(data))]
 
     def add_import_ref(name, data, loc):
       self.add_global_ref(
@@ -934,7 +938,7 @@ class IndexVisitor(ScopedVisitor):
       if alias.asname or is_from:
         # for |import x.y as z| or |from x import y as z| we want {z: x.y}
         for symbol, data in filter_ops(store_ops, d):
-          self.modules[d.id] = data[0].full_name
+          self.modules[d.id] = _unwrap(data)[0].full_name
           add_import_ref(name=symbol, data=data, loc=loc)
       else:
         # |import x.y| puts both {x: x} and {x.y: x.y} in modules
@@ -1158,10 +1162,9 @@ class Indexer(object):
       # For an attribute, return information about the attribute itself,
       # ignoring the object it was accessed on.
       loc, _ = self._get_attr_location(ref.name, ref.location)
-      _, t = ref.data
     else:
-      loc, t = ref.location, ref.data
-    return loc, t
+      loc = ref.location
+    return loc, ref.data[-1]
 
   def _make_defn_vname(self, defn):
     """Convert a definition into a kythe vname."""
@@ -1265,11 +1268,7 @@ class Indexer(object):
     final_links = []
     final_ref_cache = {}
     for ref in refs:
-      if ref.typ == "Attribute":
-        obj, attr = ref.data
-        t = (self._to_pytd(obj, pytype_ast), self._to_pytd(attr, pytype_ast))
-      else:
-        t = self._to_pytd(ref.data, pytype_ast)
+      t = tuple(self._to_pytd(d, pytype_ast) for d in ref.data)
       final_ref = ref._replace(data=t)
       final_refs.append(final_ref)
       final_ref_cache[ref.id] = final_ref
@@ -1420,7 +1419,7 @@ class Indexer(object):
         if r.name in self.resolved_modules:
           module = r.name
         else:
-          module = r.data[0].full_name
+          module = _unwrap(r.data)[0].full_name
         remote = Remote(module=module, name=IMPORT_FILE_MARKER, resolved=True)
         links.append((r, remote))
       else:
@@ -1432,7 +1431,7 @@ class Indexer(object):
         if defn:
           links.append((r, defn))
         else:
-          data = PytypeValue.from_data(r.data)
+          data = PytypeValue.from_data(_unwrap(r.data))
           if data:
             for x in data:
               links.append((r, x))

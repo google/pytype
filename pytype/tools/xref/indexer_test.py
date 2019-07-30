@@ -236,7 +236,7 @@ class IndexerTest(test_base.TargetIndependentTest):
         return x.upper()
     """)
     ix = self.index_code(code, keep_pytype_data=True)
-    expected_refs = (("x", "str"), ("x.upper", ("str", "Callable[[], str]")))
+    expected_refs = (("x", ("str",)), ("x.upper", ("str", "Callable[[], str]")))
 
     def get_data(ref):
       if ref.data.__class__ is tuple:
