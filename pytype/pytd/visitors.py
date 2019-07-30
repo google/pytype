@@ -554,6 +554,13 @@ class PrintVisitor(Visitor):
     else:
       return " and ".join(type_list)
 
+  def VisitLiteral(self, node):
+    base = "Literal"
+    # Check whether Literal is already imported from typing_extensions.
+    if base not in self._local_names:
+      base = self._FromTyping(base)
+    return "%s[%s]" % (base, node.value)
+
 
 class StripSelf(Visitor):
   """Transforms the tree into one where methods don't have the "self" parameter.

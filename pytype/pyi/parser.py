@@ -270,6 +270,12 @@ class _PropertyToConstant(visitors.Visitor):
         return True
 
 
+class _RemoveLiterals(visitors.Visitor):
+
+  def VisitLiteral(self, unused_node):
+    return pytd.AnythingType()
+
+
 class _Parser(object):
   """A class used to parse a single PYI file.
 
@@ -401,7 +407,7 @@ class _Parser(object):
     self._module_path_map = {}
     self._generated_classes = collections.defaultdict(list)
 
-  def parse(self, src, name, filename):
+  def parse(self, src, name, filename, keep_literals=False):
     """Parse a PYI file and return the corresponding AST.
 
     Note that parse() should be called exactly once per _Parser instance.  It
@@ -411,6 +417,7 @@ class _Parser(object):
       src: The source text to parse.
       name: The name of the module to be created.
       filename: The name of the source file.
+      keep_literals: Whether to keep typing.Literal. Temporary flag for testing.
 
     Returns:
       A pytd.TypeDeclUnit() representing the parsed pyi.
@@ -445,6 +452,8 @@ class _Parser(object):
       else:
         raise e
 
+    if not keep_literals:
+      ast = ast.Visit(_RemoveLiterals())
     ast = ast.Visit(_PropertyToConstant())
     ast = ast.Visit(_InsertTypeParameters(ast.type_params))
     ast = ast.Visit(_VerifyMutators())
@@ -804,7 +813,10 @@ class _Parser(object):
         module = self._aliases[module_name].type
         if isinstance(module, pytd.Module):
           module_name = module.module_name
-      return module_name == expected_module_name and name == expected_name
+      expected_module_names = {
+          expected_module_name,
+          parser_constants.EXTERNAL_NAME_PREFIX + expected_module_name}
+      return module_name in expected_module_names and name == expected_name
 
   def _is_tuple_base_type(self, t):
     return isinstance(t, pytd.NamedType) and (
@@ -814,6 +826,11 @@ class _Parser(object):
   def _is_callable_base_type(self, t):
     return (isinstance(t, pytd.NamedType) and
             self._matches_full_name(t, "typing.Callable"))
+
+  def _is_literal_base_type(self, t):
+    return isinstance(t, pytd.NamedType) and (
+        self._matches_full_name(t, "typing.Literal") or
+        self._matches_full_name(t, "typing_extensions.Literal"))
 
   def _heterogeneous_tuple(self, base_type, parameters):
     if parameters:
@@ -836,21 +853,31 @@ class _Parser(object):
   def _is_any(self, t):
     return isinstance(t, pytd.AnythingType) or t == pytd.NamedType("typing.Any")
 
+  def _is_none(self, t):
+    return isinstance(t, pytd.NamedType) and t.name in ("None", "NoneType")
+
   def _is_parameterized_protocol(self, t):
     return (isinstance(t, pytd.GenericType) and
             t.base_type.name == "typing.Protocol")
 
   def _parameterized_type(self, base_type, parameters):
     """Return a parameterized type."""
-    if self._is_any(base_type):
+    if self._is_literal_base_type(base_type):
+      return pytd_utils.JoinTypes(
+          p if self._is_none(p) else pytd.Literal(p) for p in parameters)
+    elif any(isinstance(p, int) for p in parameters):
+      parameters = ", ".join(
+          str(p) if isinstance(p, int) else "_" for p in parameters)
+      raise ParseError(
+          "%s[%s] not supported" % (pytd.Print(base_type), parameters))
+    elif self._is_any(base_type):
       return pytd.AnythingType()
     elif len(parameters) == 2 and parameters[-1] is self.ELLIPSIS and (
         not self._is_callable_base_type(base_type)):
       element_type = parameters[0]
       if element_type is self.ELLIPSIS:
         raise ParseError("[..., ...] not supported")
-      return pytd.GenericType(base_type=base_type,
-                              parameters=(element_type,))
+      return pytd.GenericType(base_type=base_type, parameters=(element_type,))
     else:
       parameters = tuple(pytd.AnythingType() if p is self.ELLIPSIS else p
                          for p in parameters)
@@ -1196,10 +1223,11 @@ class _Parser(object):
     return orig_name
 
 
+# TODO(b/123775699): Default `keep_literals` to True and remove the flag.
 def parse_string(src, name=None, filename=None, python_version=None,
-                 platform=None):
+                 platform=None, keep_literals=False):
   return _Parser(version=python_version, platform=platform).parse(
-      src, name, filename)
+      src, name, filename, keep_literals)
 
 
 def parse_file(filename=None, name=None, python_version=None,

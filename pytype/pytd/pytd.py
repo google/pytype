@@ -559,6 +559,11 @@ class CallableType(GenericType):
   def ret(self):
     return self.parameters[-1]
 
+
+class Literal(node.Node('value: int or {Type}'), Type):
+  __slots__ = ()
+
+
 # Types that can be a base type of GenericType:
 GENERIC_BASE_TYPE = (NamedType, ClassType)
 

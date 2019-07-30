@@ -584,6 +584,10 @@ type_parameters
 type_parameter
   : type { $$ = $1; }
   | ELLIPSIS { $$ = ctx->Value(kEllipsis); }
+  // These rules are needed for typing.Literal
+  | NUMBER { $$ = $1; }
+  | BYTESTRING { $$ = ctx->Value(kByteString); }
+  | UNICODESTRING { $$ = ctx->Value(kUnicodeString); }
   ;
 
 type
