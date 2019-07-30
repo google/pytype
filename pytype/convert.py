@@ -437,12 +437,6 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     raise ValueError(
         "Cannot convert {} to an abstract value".format(pyval.__class__))
 
-  def cache(self, pytd_cls):
-    # Method to customize caching of PyTDClass objects. Needed for overlays that
-    # subclass PyTDClass.
-    key = ("constant", pytd_cls.pytd_cls, type(pytd_cls.pytd_cls))
-    self._convert_cache[key] = pytd_cls
-
   def constant_to_value(self, pyval, subst=None, node=None):
     """Like constant_to_var, but convert to an abstract.AtomicAbstractValue.
 
@@ -592,6 +586,12 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         return self.module_type
       else:
         module, dot, base_name = pyval.name.rpartition(".")
+        # typing.TypingContainer intentionally loads the underlying pytd types.
+        if module != "typing" and module in self.vm.loaded_overlays:
+          overlay = self.vm.loaded_overlays[module]
+          if overlay.get_module(base_name) is overlay:
+            overlay.load_lazy_attribute(base_name)
+            return abstract_utils.get_atomic_value(overlay.members[base_name])
         try:
           cls = abstract.PyTDClass(base_name, pyval, self.vm)
         except mro.MROError as e:

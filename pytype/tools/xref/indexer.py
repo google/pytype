@@ -15,6 +15,7 @@ from pytype import module_utils
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
+from pytype.tools.traces import visitor as ast_visitor
 
 from pytype.tools.xref import utils as xref_utils
 from pytype.tools.xref import kythe
@@ -39,24 +40,6 @@ DEF_OFFSETS = {
 
 # Marker for a link to a file rather than a node within the file.
 IMPORT_FILE_MARKER = "<__FILE__>"
-
-
-def children(node):
-  """Children to recurse over."""
-
-  # Children to recurse into for each node type.
-  node_children = {
-      ast.Module: ["body"],
-      ast.ClassDef: ["bases", "body"],
-      ast.FunctionDef: ["body"],
-      ast.Assign: ["targets", "value"],
-  }
-
-  ks = node_children.get(node.__class__, None)
-  if ks:
-    return [(k, getattr(node, k)) for k in ks]
-  else:
-    return ast.iter_fields(node)
 
 
 def typename(node):
@@ -105,7 +88,7 @@ def get_name(node):
 def get_location(node):
   # TODO(mdemello): The column offset for nodes like "class A" needs to be
   # adjusted to the start of the symbol.
-  return (node.lineno, node.col_offset)
+  return SourceLocation(node.lineno, node.col_offset)
 
 
 def get_last_line(node):
@@ -189,6 +172,9 @@ class AttrError(Exception):
   pass
 
 
+SourceLocation = collections.namedtuple("SourceLocation", ("line", "column"))
+
+
 class SourceFile(object):
   """Line-based source code access."""
 
@@ -206,8 +192,8 @@ class SourceFile(object):
       self.offsets.append(offset)
       offset += len(line) + 1  # account for the \n
 
-  def get_offset(self, line, column):
-    return self.offsets[line - 1] + column
+  def get_offset(self, location):
+    return self.offsets[location.line - 1] + location.column
 
   def collect_traces(self, raw_traces):
     """Postprocess pytype's opcode traces."""
@@ -236,8 +222,8 @@ class SourceFile(object):
         comment_marker = self.line(l).find("#")
         if -1 < comment_marker < col:
           continue
-        return (l, col)
-    return None, None
+        return SourceLocation(l, col)
+    return None
 
   def next_non_comment_line(self, line):
     for l in range(line + 1, len(self.lines)):
@@ -522,7 +508,7 @@ class Env(object):
 # Also names like visit_Name are self-documenting and do not need docstrings.
 
 
-class ScopedVisitor(object):
+class ScopedVisitor(ast_visitor.BaseVisitor):
   """An AST node visitor that keeps track of scopes and environments.
 
   A "scope" is the abstract namespace (represented by a string key that tracks
@@ -535,6 +521,7 @@ class ScopedVisitor(object):
   # anything by way of maintainability or readability?
 
   def __init__(self, module_name):
+    super(ScopedVisitor, self).__init__(ast)
     self.stack = []
     self.class_ids = []
     self.envs = {}
@@ -560,33 +547,12 @@ class ScopedVisitor(object):
     else:
       raise Exception("Unexpected scope: %r" % node)
 
-  def get_suppressed_nodes(self):
-    """Nodes whose subtrees will be pruned during generic_visit."""
-    return []
-
   def iprint(self, x):
     """Print messages indented by scope level, for debugging."""
     print("  " * len(self.stack), x)
 
   def scope_id(self):
     return ".".join(self.get_id(x) for x in self.stack)
-
-  def visit(self, node):
-    """Visit a node."""
-
-    if isinstance(node, ast.AST):
-      self.enter(node)
-      for k, v in children(node):
-        ret = self.visit(v)
-        if ret:
-          setattr(node, k, ret)
-      out = self.call_visitor(node)
-      self.leave(node)
-      if out:
-        return out
-    elif isinstance(node, list):
-      for v in node:
-        self.visit(v)
 
   @property
   def current_class(self):
@@ -613,12 +579,6 @@ class ScopedVisitor(object):
     self.envs[new_scope] = new_env
     return new_env
 
-  def enter(self, node):
-    method = "enter_" + node.__class__.__name__
-    visitor = getattr(self, method, None)
-    if visitor:
-      return visitor(node)
-
   def enter_ClassDef(self, node):
     new_env = self.add_scope(node, is_class=True)
     self.class_ids.append(self.scope_id())
@@ -643,21 +603,9 @@ class ScopedVisitor(object):
     self.assign_end_line = None
     self.assign_subscr = None
 
-  def generic_visit(self, node):
-    if node.__class__ in self.get_suppressed_nodes():
-      return "<node>"
-
-  def call_visitor(self, node):
-    method = "visit_" + node.__class__.__name__
-    visitor = getattr(self, method, self.generic_visit)
-    return visitor(node)
-
   def leave(self, node):
     """If the node has introduced a new scope, we need to pop it off."""
-    method = "leave_" + node.__class__.__name__
-    visitor = getattr(self, method, None)
-    if visitor:
-      visitor(node)
+    super(ScopedVisitor, self).leave(node)
     if node == self.stack[-1]:
       self.stack.pop()
 
@@ -682,7 +630,7 @@ class IndexVisitor(ScopedVisitor):
   def _get_location(self, node, args):
     """Get a more accurate node location."""
 
-    line, col = None, None
+    loc = None
 
     if isinstance(node, ast.ClassDef):
       # For class and function definitions, search for the string
@@ -691,11 +639,11 @@ class IndexVisitor(ScopedVisitor):
       # offset for decorated functions/classes.
       body_start = node.body[0].lineno
       text = "class %s" % args["name"]
-      line, col = self.source.find_text(node.lineno, body_start, text)
+      loc = self.source.find_text(node.lineno, body_start, text)
     elif isinstance(node, ast.FunctionDef):
       body_start = node.body[0].lineno
       text = "def %s" % args["name"]
-      line, col = self.source.find_text(node.lineno, body_start, text)
+      loc = self.source.find_text(node.lineno, body_start, text)
     elif isinstance(node, (ast.Import, ast.ImportFrom)):
       # Search for imported module names
       text = self.source.line(node.lineno)
@@ -704,16 +652,12 @@ class IndexVisitor(ScopedVisitor):
       if c == -1:
         c = text.find("," + name)
       if c != -1:
-        line, col = node.lineno, c + 1
+        loc = SourceLocation(node.lineno, c + 1)
 
-    if line is None:
-      line, col = get_location(node)
+    if loc is None:
+      loc = get_location(node)
 
-    return (line, col)
-
-  def get_suppressed_nodes(self):
-    return [ast.Module, ast.BinOp, ast.BoolOp, ast.Return, ast.Assign, ast.Num,
-            ast.Add, ast.Str]
+    return loc
 
   def make_def(self, node, **kwargs):
     """Make a definition from a node."""
@@ -735,7 +679,7 @@ class IndexVisitor(ScopedVisitor):
     defn = Definition(**args)
     line, col = self._get_location(node, args)
     assert line is not None
-    defloc = DefLocation(defn.id, (line, col))
+    defloc = DefLocation(defn.id, SourceLocation(line, col))
     return (defn, defloc)
 
   def make_ref(self, node, **kwargs):
@@ -984,7 +928,8 @@ class IndexVisitor(ScopedVisitor):
       c = text.find("import ")
       if c > -1:
         # (If we haven't found "import " on the line, give up for now.)
-        self.locs[d.id][-1] = DefLocation(defloc.def_id, (line, c))
+        self.locs[d.id][-1] = DefLocation(
+            defloc.def_id, SourceLocation(line, c))
 
       if alias.asname or is_from:
         # for |import x.y as z| or |from x import y as z| we want {z: x.y}
@@ -1063,8 +1008,7 @@ class Indexer(object):
     if typ == "Attribute":
       start, end = self._get_attr_bounds(defn.name, defloc.location)
     else:
-      line, col = defloc.location
-      start = self.source.get_offset(line, col)
+      start = self.source.get_offset(defloc.location)
       if typ in DEF_OFFSETS:
         start += DEF_OFFSETS[typ]
       if typ == "Import" or typ == "ImportFrom":
@@ -1077,8 +1021,7 @@ class Indexer(object):
   def get_doc_offsets(self, doc):
     """Get the byte offsets for a docstring."""
 
-    line, col = doc.location
-    start = self.source.get_offset(line, col)
+    start = self.source.get_offset(doc.location)
     end = start + doc.length
     return (start, end)
 
@@ -1162,7 +1105,7 @@ class Indexer(object):
     dot_attr = "." + attr
     if dot_attr in src_line:
       col = src_line.index(dot_attr)
-      return ((line, col + 1), len(attr))
+      return (SourceLocation(line, col + 1), len(attr))
     else:
       # We have something like
       #   (foo
@@ -1173,9 +1116,9 @@ class Indexer(object):
       # Lookahead up to 5 lines to find '.attr' (the ast node always starts from
       # the beginning of the chain, so foo.\nbar.\nbaz etc could span several
       # lines).
-      attr_line, attr_col = self.get_multiline_location(location, 5, dot_attr)
-      if attr_line:
-        return ((attr_line, attr_col + 1), len(attr))
+      attr_loc = self.get_multiline_location(location, 5, dot_attr)
+      if attr_loc:
+        return (SourceLocation(attr_loc.line, attr_loc.column + 1), len(attr))
       else:
         # Find consecutive lines ending with '.' and starting with 'attr'.
         for l in self.source.get_closest_line_range(line, line + 5):
@@ -1184,24 +1127,23 @@ class Indexer(object):
             text = self.source.line(next_line)
             if text.lstrip().startswith(attr):
               c = text.index(attr)
-              return ((next_line, c), len(attr))
+              return (SourceLocation(next_line, c), len(attr))
       # if all else fails, fall back to just spanning the name
       return (location, len(name))
 
   def get_multiline_location(self, location, n_lines, text):
     """Get the start location of text anywhere within n_lines of location."""
     line, _ = location
-    text_line, text_col = self.source.find_text(line, line + n_lines, text)
-    if text_line:
-      return (text_line, text_col)
+    text_loc = self.source.find_text(line, line + n_lines, text)
+    if text_loc:
+      return text_loc
     else:
-      return (None, None)
+      return None
 
   def get_anchor_bounds(self, location, length):
     """Generate byte offsets from a location and length."""
 
-    line, col = location
-    start = self.source.get_offset(line, col)
+    start = self.source.get_offset(location)
     end = start + length
     return (start, end)
 

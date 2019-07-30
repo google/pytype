@@ -1,5 +1,6 @@
 """Tests of selected stdlib functions."""
 
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -241,6 +242,25 @@ class StdlibTests(test_base.TargetIndependentTest):
         def wait(self, *args, **kwargs):
           return super(Popen, self).wait(*args, **kwargs)
     """)
+
+  def testSubprocessSrcAndPyi(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import subprocess
+        def f() -> subprocess.Popen: ...
+      """)
+      self.Check("""
+        import foo
+        import subprocess
+
+        def f():
+          p = foo.f()
+          return p.communicate()
+
+        def g():
+          p = subprocess.Popen(__any_object__)
+          return p.communicate()
+      """, pythonpath=[d.path])
 
 
 test_base.main(globals(), __name__ == "__main__")

@@ -7,13 +7,14 @@
       * [How do I reference a type from within its definition? (Forward References)](#how-do-i-reference-a-type-from-within-its-definition-forward-references)
       * [I'm dynamically populating a class / module using setattr or by modifying <code>locals()</code> / <code>globals()</code>. Now pytype complains about missing attributes or module members. How do I fix this?](#im-dynamically-populating-a-class--module-using-setattr-or-by-modifying-locals--globals-now-pytype-complains-about-missing-attributes-or-module-members-how-do-i-fix-this)
       * [Why didn't pytype catch that my program (might) pass an invalid argument to a function?](#why-didnt-pytype-catch-that-my-program-might-pass-an-invalid-argument-to-a-function)
+      * [Why didn't pytype catch that I changed the type of an annotated variable?](#why-didnt-pytype-catch-that-i-changed-the-type-of-an-annotated-variable)
       * [How do I declare that something can be either byte string or unicode?](#how-do-i-declare-that-something-can-be-either-byte-string-or-unicode)
       * [Why is pytype taking so long?](#why-is-pytype-taking-so-long)
       * [How do I disable all pytype checks for a particular file?](#how-do-i-disable-all-pytype-checks-for-a-particular-file)
       * [How do I disable all pytype checks for a particular import?](#how-do-i-disable-all-pytype-checks-for-a-particular-import)
       * [How do I write code that is seen by pytype but ignored at runtime?](#how-do-i-write-code-that-is-seen-by-pytype-but-ignored-at-runtime)
 
-<!-- Added by: rechen, at: 2019-06-18T19:56-07:00 -->
+<!-- Added by: rechen, at: 2019-07-29T11:02-07:00 -->
 
 <!--te-->
 
@@ -59,7 +60,7 @@ f(random.random() or "foo")
 ```
 
 is not considered an error, because `f()` works for `float`. I.e., the `str`
-argument isn't considered. (This might change at some point in the future) Note
+argument isn't considered. (This will change at some point in the future.) Note
 that this is different to attribute checking, where e.g.
 
 ```python
@@ -67,6 +68,25 @@ that this is different to attribute checking, where e.g.
 ```
 
 will indeed result in a type error.
+
+## Why didn't pytype catch that I changed the type of an annotated variable?
+
+pytype uses an annotation as the initial type of a variable but does not protect
+against the type from changing. For example, the following patterns are allowed:
+
+```python
+x: str = ""
+x = 0
+```
+
+and
+
+```python
+x: List[str] = []
+x.append(0)
+```
+
+We will disallow both of these patterns at some point in the future.
 
 ## How do I declare that something can be either byte string or unicode?
 

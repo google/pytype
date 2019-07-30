@@ -14,7 +14,7 @@ class AnnotaterTest(test_base.TargetIndependentTest):
     source = textwrap.dedent(source.lstrip('\n'))
     filename = 'unused.py'
     ast_factory = lambda unused_options: ast
-    pytype_options = config.Options([filename])
+    pytype_options = config.Options.create(filename)
     pytype_options.tweak(version=self.python_version)
 
     module = annotate_ast.annotate_source(
