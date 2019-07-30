@@ -591,7 +591,7 @@ type
       $$ = ctx->Call(kNewType, "(N)", $1);
       CHECK($$, @$);
     }
-  | dotted_name '[' type_parameters ']' {
+  | dotted_name '[' type_parameters maybe_comma ']' {
       $$ = ctx->Call(kNewType, "(NN)", $1, $3);
       CHECK($$, @$);
     }
@@ -650,7 +650,7 @@ coll_named_tuple_field
   : NAME { $$ = Py_BuildValue("(NN)", $1, ctx->Value(kAnything)); }
 
 maybe_type_list
-  : type_list { $$ = $1; }
+  : type_list maybe_comma { $$ = $1; }
   | /* EMPTY */ { $$ = PyList_New(0); }
   ;
 

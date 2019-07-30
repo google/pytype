@@ -1,3 +1,6 @@
+Version 2019.07.30
+* Allow trailing commas in lists in type stubs.
+
 Version 2019.07.26
 * Update typeshed pin to commit 40215d1 from July 18.
 * Improve support for subprocess.Popen in Python 3.

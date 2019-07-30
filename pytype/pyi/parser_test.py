@@ -453,6 +453,23 @@ class ParserTest(_ParserTestBase):
     self.assertEqual("foo.bar.X.Baz", ast.Lookup("foo.y").type.name)
     self.assertEqual("bar.X.Baz", ast.Lookup("foo.z").type.name)
 
+  def test_trailing_list_comma(self):
+    self.check("""\
+      from typing import Any, Callable
+
+      x: Callable[
+        [
+          int,
+          int,
+        ],
+        Any,
+      ]
+    """, """\
+      from typing import Any, Callable
+
+      x: Callable[[int, int], Any]
+    """)
+
 
 class HomogeneousTypeTest(_ParserTestBase):
 
@@ -700,10 +717,7 @@ class NamedTupleTest(_ParserTestBase):
     """)
 
   def test_collections_namedtuple(self):
-    self.check("""
-      from collections import namedtuple
-      X = namedtuple("X", ["y"])
-    """, """\
+    expected = """\
       from typing import Any, Tuple, Type, TypeVar
 
       from collections import namedtuple
@@ -723,7 +737,15 @@ class NamedTupleTest(_ParserTestBase):
           _replace: Any
           def __new__(cls: Type[`_Tnamedtuple-X-0`], y) -> `_Tnamedtuple-X-0`: ...
           def __init__(self, *args, **kwargs) -> None: ...
-    """)
+    """
+    self.check("""
+      from collections import namedtuple
+      X = namedtuple("X", ["y"])
+    """, expected)
+    self.check("""
+      from collections import namedtuple
+      X = namedtuple("X", ["y",])
+    """, expected)
 
 
 class FunctionTest(_ParserTestBase):
