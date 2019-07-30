@@ -2,6 +2,13 @@ add_package()
 
 py_library(
   NAME
+    source
+  SRCS
+    source.py
+)
+
+py_library(
+  NAME
     visitor
   SRCS
     visitor.py

@@ -15,6 +15,7 @@ from pytype import module_utils
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
+from pytype.tools.traces import source
 from pytype.tools.traces import visitor as ast_visitor
 
 from pytype.tools.xref import utils as xref_utils
@@ -88,7 +89,7 @@ def get_name(node):
 def get_location(node):
   # TODO(mdemello): The column offset for nodes like "class A" needs to be
   # adjusted to the start of the symbol.
-  return SourceLocation(node.lineno, node.col_offset)
+  return source.Location(node.lineno, node.col_offset)
 
 
 def get_last_line(node):
@@ -175,76 +176,6 @@ def _unwrap(data):
 
 class AttrError(Exception):
   pass
-
-
-SourceLocation = collections.namedtuple("SourceLocation", ("line", "column"))
-
-
-class SourceFile(object):
-  """Line-based source code access."""
-
-  def __init__(self, src, raw_traces, filename):
-    self.text = src
-    self.traces = self.collect_traces(raw_traces)
-    self.filename = filename
-    self.lines = src.split("\n")
-    self.offsets = []
-    self._init_byte_offsets()
-
-  def _init_byte_offsets(self):
-    offset = 0
-    for line in self.lines:
-      self.offsets.append(offset)
-      offset += len(line) + 1  # account for the \n
-
-  def get_offset(self, location):
-    return self.offsets[location.line - 1] + location.column
-
-  def collect_traces(self, raw_traces):
-    """Postprocess pytype's opcode traces."""
-
-    out = collections.defaultdict(list)
-    for op, symbol, data in raw_traces:
-      out[op.line].append((op.name, symbol, data))
-    return out
-
-  def line(self, n):
-    """Index source lines from 1."""
-    return self.lines[n - 1]
-
-  def get_closest_line_range(self, start, end):
-    """Get as close as we can to the given range without going out of bounds."""
-    return range(start, min(end, len(self.lines)))
-
-  def find_text(self, start_line, end_line, text):
-    """Find text within a range of lines."""
-
-    for l in self.get_closest_line_range(start_line, end_line):
-      col = self.line(l).find(text)
-      if col > -1:
-        # TODO(mdemello): Temporary hack, replace with a token stream!
-        # This will break if we have a # in a string before our desired text.
-        comment_marker = self.line(l).find("#")
-        if -1 < comment_marker < col:
-          continue
-        return SourceLocation(l, col)
-    return None
-
-  def next_non_comment_line(self, line):
-    for l in range(line + 1, len(self.lines)):
-      if self.line(l).lstrip().startswith("#"):
-        continue
-      return l
-    return None
-
-  def display_traces(self):
-    """Debug printing of source + traces per line."""
-    for line in sorted(self.traces.keys()):
-      print("%d %s" % (line, self.line(line)))
-      for name, symbol, data in self.traces[line]:
-        data_types = tuple(d and [typename(x) for x in d] for d in data)
-        print("  %s : %s <- %s %s" % (name, symbol, data, data_types))
-      print("-------------------")
 
 
 class PytypeValue(object):
@@ -615,15 +546,15 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
 class IndexVisitor(ScopedVisitor):
   """Visitor that generates indexes."""
 
-  def __init__(self, source, module_name, kythe_, annotate_ast):
+  def __init__(self, src, module_name, kythe_, annotate_ast):
     super(IndexVisitor, self).__init__(module_name)
     self._annotate_ast = annotate_ast
     self.defs = {}
     self.locs = collections.defaultdict(list)
     self.refs = []
     self.modules = {}
-    self.source = source
-    self.traces = source.traces
+    self.source = src
+    self.traces = src.traces
     self.typemap = {}
     self.classmap = {}
     self.calls = []
@@ -654,7 +585,7 @@ class IndexVisitor(ScopedVisitor):
       if c == -1:
         c = text.find("," + name)
       if c != -1:
-        loc = SourceLocation(node.lineno, c + 1)
+        loc = source.Location(node.lineno, c + 1)
 
     if loc is None:
       loc = get_location(node)
@@ -681,7 +612,7 @@ class IndexVisitor(ScopedVisitor):
     defn = Definition(**args)
     line, col = self._get_location(node, args)
     assert line is not None
-    defloc = DefLocation(defn.id, SourceLocation(line, col))
+    defloc = DefLocation(defn.id, source.Location(line, col))
     return (defn, defloc)
 
   def make_ref(self, node, **kwargs):
@@ -933,7 +864,7 @@ class IndexVisitor(ScopedVisitor):
       if c > -1:
         # (If we haven't found "import " on the line, give up for now.)
         self.locs[d.id][-1] = DefLocation(
-            defloc.def_id, SourceLocation(line, c))
+            defloc.def_id, source.Location(line, c))
 
       if alias.asname or is_from:
         # for |import x.y as z| or |from x import y as z| we want {z: x.y}
@@ -963,18 +894,18 @@ class Indexer(object):
   """Runs the indexer visitor and collects its results."""
 
   def __init__(self,
-               source,
+               src,
                loader,
                module_name,
                kythe_args=None,
                annotate_ast=False):
-    self.source = source
+    self.source = src
     self.loader = loader
     self.resolved_modules = loader.get_resolved_modules()
     self.imports = xref_utils.process_imports_map(loader.imports_map)
     self.module_name = module_name
-    self.traces = source.traces
-    self.kythe = kythe.Kythe(source, kythe_args)
+    self.traces = src.traces
+    self.kythe = kythe.Kythe(src, kythe_args)
     self._annotate_ast = annotate_ast
     self.defs = None
     self.locs = None
@@ -1096,53 +1027,8 @@ class Indexer(object):
 
   def _get_attr_bounds(self, name, location):
     """Calculate the anchor bounds for an attr access."""
-    return self.get_anchor_bounds(*self._get_attr_location(name, location))
-
-  def _get_attr_location(self, name, location):
-    """Calculate ((line, col), len(attr)) for an attr access."""
-    # TODO(mdemello): This is pretty crude, and does not for example take into
-    # account multiple calls of the same attribute in a line. It is just to get
-    # our tests passing till we incorporate asttokens.
-    line, _ = location
-    src_line = self.source.line(line)
-    attr = name.split(".")[-1]
-    dot_attr = "." + attr
-    if dot_attr in src_line:
-      col = src_line.index(dot_attr)
-      return (SourceLocation(line, col + 1), len(attr))
-    else:
-      # We have something like
-      #   (foo
-      #      .bar)
-      # or
-      #   (foo.
-      #     bar)
-      # Lookahead up to 5 lines to find '.attr' (the ast node always starts from
-      # the beginning of the chain, so foo.\nbar.\nbaz etc could span several
-      # lines).
-      attr_loc = self.get_multiline_location(location, 5, dot_attr)
-      if attr_loc:
-        return (SourceLocation(attr_loc.line, attr_loc.column + 1), len(attr))
-      else:
-        # Find consecutive lines ending with '.' and starting with 'attr'.
-        for l in self.source.get_closest_line_range(line, line + 5):
-          if self.source.line(l).endswith("."):
-            next_line = self.source.next_non_comment_line(l)
-            text = self.source.line(next_line)
-            if text.lstrip().startswith(attr):
-              c = text.index(attr)
-              return (SourceLocation(next_line, c), len(attr))
-      # if all else fails, fall back to just spanning the name
-      return (location, len(name))
-
-  def get_multiline_location(self, location, n_lines, text):
-    """Get the start location of text anywhere within n_lines of location."""
-    line, _ = location
-    text_loc = self.source.find_text(line, line + n_lines, text)
-    if text_loc:
-      return text_loc
-    else:
-      return None
+    return self.get_anchor_bounds(
+        *self.source.get_attr_location(name, location))
 
   def get_anchor_bounds(self, location, length):
     """Generate byte offsets from a location and length."""
@@ -1161,7 +1047,7 @@ class Indexer(object):
     if ref.typ == "Attribute":
       # For an attribute, return information about the attribute itself,
       # ignoring the object it was accessed on.
-      loc, _ = self._get_attr_location(ref.name, ref.location)
+      loc, _ = self.source.get_attr_location(ref.name, ref.location)
     else:
       loc = ref.location
     return loc, ref.data[-1]
@@ -1511,9 +1397,9 @@ def process_file(options,
 
   # TODO(mdemello): Get from args
   module_name = "module"
-  source = SourceFile(src, vm.opcode_traces, filename=options.input)
+  src_code = source.Code(src, vm.opcode_traces, filename=options.input)
   ix = Indexer(
-      source, vm.loader, module_name, kythe_args, annotate_ast=annotate_ast)
+      src_code, vm.loader, module_name, kythe_args, annotate_ast=annotate_ast)
   ix.index(ast_root_node)
   ix.finalize(keep_pytype_data, pytype_ast)
   return ix, ast_root_node
