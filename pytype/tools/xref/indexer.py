@@ -15,6 +15,7 @@ from pytype import module_utils
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
+from pytype.tools.traces import visitor as ast_visitor
 
 from pytype.tools.xref import utils as xref_utils
 from pytype.tools.xref import kythe
@@ -39,24 +40,6 @@ DEF_OFFSETS = {
 
 # Marker for a link to a file rather than a node within the file.
 IMPORT_FILE_MARKER = "<__FILE__>"
-
-
-def children(node):
-  """Children to recurse over."""
-
-  # Children to recurse into for each node type.
-  node_children = {
-      ast.Module: ["body"],
-      ast.ClassDef: ["bases", "body"],
-      ast.FunctionDef: ["body"],
-      ast.Assign: ["targets", "value"],
-  }
-
-  ks = node_children.get(node.__class__, None)
-  if ks:
-    return [(k, getattr(node, k)) for k in ks]
-  else:
-    return ast.iter_fields(node)
 
 
 def typename(node):
@@ -525,7 +508,7 @@ class Env(object):
 # Also names like visit_Name are self-documenting and do not need docstrings.
 
 
-class ScopedVisitor(object):
+class ScopedVisitor(ast_visitor.BaseVisitor):
   """An AST node visitor that keeps track of scopes and environments.
 
   A "scope" is the abstract namespace (represented by a string key that tracks
@@ -538,6 +521,7 @@ class ScopedVisitor(object):
   # anything by way of maintainability or readability?
 
   def __init__(self, module_name):
+    super(ScopedVisitor, self).__init__(ast)
     self.stack = []
     self.class_ids = []
     self.envs = {}
@@ -563,33 +547,12 @@ class ScopedVisitor(object):
     else:
       raise Exception("Unexpected scope: %r" % node)
 
-  def get_suppressed_nodes(self):
-    """Nodes whose subtrees will be pruned during generic_visit."""
-    return []
-
   def iprint(self, x):
     """Print messages indented by scope level, for debugging."""
     print("  " * len(self.stack), x)
 
   def scope_id(self):
     return ".".join(self.get_id(x) for x in self.stack)
-
-  def visit(self, node):
-    """Visit a node."""
-
-    if isinstance(node, ast.AST):
-      self.enter(node)
-      for k, v in children(node):
-        ret = self.visit(v)
-        if ret:
-          setattr(node, k, ret)
-      out = self.call_visitor(node)
-      self.leave(node)
-      if out:
-        return out
-    elif isinstance(node, list):
-      for v in node:
-        self.visit(v)
 
   @property
   def current_class(self):
@@ -616,12 +579,6 @@ class ScopedVisitor(object):
     self.envs[new_scope] = new_env
     return new_env
 
-  def enter(self, node):
-    method = "enter_" + node.__class__.__name__
-    visitor = getattr(self, method, None)
-    if visitor:
-      return visitor(node)
-
   def enter_ClassDef(self, node):
     new_env = self.add_scope(node, is_class=True)
     self.class_ids.append(self.scope_id())
@@ -646,21 +603,9 @@ class ScopedVisitor(object):
     self.assign_end_line = None
     self.assign_subscr = None
 
-  def generic_visit(self, node):
-    if node.__class__ in self.get_suppressed_nodes():
-      return "<node>"
-
-  def call_visitor(self, node):
-    method = "visit_" + node.__class__.__name__
-    visitor = getattr(self, method, self.generic_visit)
-    return visitor(node)
-
   def leave(self, node):
     """If the node has introduced a new scope, we need to pop it off."""
-    method = "leave_" + node.__class__.__name__
-    visitor = getattr(self, method, None)
-    if visitor:
-      visitor(node)
+    super(ScopedVisitor, self).leave(node)
     if node == self.stack[-1]:
       self.stack.pop()
 
@@ -713,10 +658,6 @@ class IndexVisitor(ScopedVisitor):
       loc = get_location(node)
 
     return loc
-
-  def get_suppressed_nodes(self):
-    return [ast.Module, ast.BinOp, ast.BoolOp, ast.Return, ast.Assign, ast.Num,
-            ast.Add, ast.Str]
 
   def make_def(self, node, **kwargs):
     """Make a definition from a node."""
