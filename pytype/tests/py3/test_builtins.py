@@ -587,5 +587,19 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       UnicodeEncodeError("", u"", 0, 0, "")
     """)
 
+  def testMinMax(self):
+    ty = self.Infer("""
+      x1 = min([1, 2, 3], default=3)
+      x2 = min((), default='')
+      y1 = max([1, 2, 3], default=3)
+      y2 = max((), default='')
+    """, deep=False)
+    self.assertTypesMatchPytd(ty, """
+      x1 = ...  # type: int
+      x2 = ...  # type: str
+      y1 = ...  # type: int
+      y2 = ...  # type: str
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
