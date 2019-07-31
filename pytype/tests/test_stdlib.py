@@ -204,11 +204,9 @@ class StdlibTests(test_base.TargetIndependentTest):
     self.Check("""
       import collections
       import _ctypes
-      import ctypes
       import dummy_thread
       import encodings
       import __future__
-      import xmlrpclib
     """)
 
   def testSysVersionInfo(self):
