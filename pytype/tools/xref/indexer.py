@@ -730,18 +730,17 @@ class IndexVisitor(ScopedVisitor):
       ops = self.traces[lineno]
       for op, symbol, data in ops:
         if symbol == node.id:
-          d = _unwrap(data)
           if op == "LOAD_GLOBAL":
             ref = self.add_global_ref(node, name=symbol, data=data)
-            self.typemap[ref.id] = d
+            self.typemap[ref.id] = _unwrap(data)
             break
           elif op in ["LOAD_FAST", "LOAD_NAME"]:
             ref = self.add_local_ref(node, name=symbol, data=data)
-            self.typemap[ref.id] = d
+            self.typemap[ref.id] = _unwrap(data)
             break
           elif op in ["LOAD_DEREF"]:
             ref = self.add_closure_ref(node, name=symbol, data=data)
-            self.typemap[ref.id] = d
+            self.typemap[ref.id] = _unwrap(data)
             break
 
     elif isinstance(node.ctx, ast.Store):
@@ -749,13 +748,13 @@ class IndexVisitor(ScopedVisitor):
       ops = self.traces[lineno]
       for op, symbol, data in ops:
         if symbol == node.id:
-          d = _unwrap(data)
           if op == "STORE_GLOBAL":
             defn = self.add_global_def(node, name=symbol)
-            self.typemap[defn.id] = d
+            self.typemap[defn.id] = _unwrap(data)
             break
           elif op in ["STORE_FAST", "STORE_NAME", "STORE_DEREF"]:
             defn = self.add_local_def(node, name=symbol)
+            d = _unwrap(data)
             if self._annotate_ast:
               node.resolved_annotation = _to_type(d)
               node.resolved_type = _join_types(d or [])
