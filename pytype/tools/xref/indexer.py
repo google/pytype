@@ -572,11 +572,11 @@ class IndexVisitor(ScopedVisitor):
       # offset for decorated functions/classes.
       body_start = node.body[0].lineno
       text = "class %s" % args["name"]
-      loc = self.source.find_text(node.lineno, body_start, text)
+      loc = self.source.find_first_text(node.lineno, body_start, text)
     elif isinstance(node, ast.FunctionDef):
       body_start = node.body[0].lineno
       text = "def %s" % args["name"]
-      loc = self.source.find_text(node.lineno, body_start, text)
+      loc = self.source.find_first_text(node.lineno, body_start, text)
     elif isinstance(node, (ast.Import, ast.ImportFrom)):
       # Search for imported module names
       text = self.source.line(node.lineno)

@@ -7,6 +7,15 @@ py_library(
     source.py
 )
 
+py_test(
+  NAME
+    source_test
+  SRCS
+    source_test.py
+  DEPS
+    .source
+)
+
 py_library(
   NAME
     visitor

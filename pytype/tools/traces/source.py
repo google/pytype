@@ -8,7 +8,14 @@ Location = collections.namedtuple("Location", ("line", "column"))
 
 
 class Code(object):
-  """Line-based source code access."""
+  """Line-based source code access.
+
+  Attributes:
+    text: The source text.
+    traces: A dictionary from line number to traces.
+    filename: The filename - when using traces.trace(), this value is meaningful
+      only if an options object containing the filename was provided.
+  """
 
   def __init__(self, src, raw_traces, filename):
     self.text = src
@@ -25,20 +32,21 @@ class Code(object):
       offset += len(line) + 1  # account for the \n
 
   def get_offset(self, location):
+    """Gets the utf-8 byte offset of a source.Location from start of source."""
     return self._offsets[location.line - 1] + location.column
 
   def line(self, n):
-    """Index source lines from 1."""
+    """Gets the text at a line number."""
     return self._lines[n - 1]
 
   def get_closest_line_range(self, start, end):
-    """Get as close as we can to the given range without going out of bounds."""
-    return range(start, min(end, len(self._lines)))
+    """Gets all valid line numbers in the [start, end) line range."""
+    return range(start, min(end, len(self._lines) + 1))
 
-  def find_text(self, start_line, end_line, text):
-    """Find text within a range of lines."""
+  def find_first_text(self, start, end, text):
+    """Gets first location, if any, the string appears at in the line range."""
 
-    for l in self.get_closest_line_range(start_line, end_line):
+    for l in self.get_closest_line_range(start, end):
       col = self.line(l).find(text)
       if col > -1:
         # TODO(mdemello): Temporary hack, replace with a token stream!
@@ -50,14 +58,15 @@ class Code(object):
     return None
 
   def next_non_comment_line(self, line):
-    for l in range(line + 1, len(self._lines)):
+    """Gets the next non-comment line, if any, after the given line."""
+    for l in range(line + 1, len(self._lines) + 1):
       if self.line(l).lstrip().startswith("#"):
         continue
       return l
     return None
 
   def display_traces(self):
-    """Debug printing of source + traces per line."""
+    """Prints the source file with traces for debugging."""
     for line in sorted(self.traces):
       print("%d %s" % (line, self.line(line)))
       for name, symbol, data in self.traces[line]:
@@ -67,7 +76,12 @@ class Code(object):
       print("-------------------")
 
   def get_attr_location(self, name, location):
-    """Calculate ((line, col), len(attr)) for an attr access."""
+    """Returns the location and span of the attribute in an attribute access.
+
+    Args:
+      name: The attribute name.
+      location: The location of the value the attribute is accessed on.
+    """
     # TODO(mdemello): This is pretty crude, and does not for example take into
     # account multiple calls of the same attribute in a line. It is just to get
     # our tests passing until we incorporate asttokens.
@@ -104,9 +118,9 @@ class Code(object):
       return (location, len(name))
 
   def _get_multiline_location(self, location, n_lines, text):
-    """Get the start location of text anywhere within n_lines of location."""
+    """Gets the start location of text anywhere within n_lines of location."""
     line, _ = location
-    text_loc = self.find_text(line, line + n_lines, text)
+    text_loc = self.find_first_text(line, line + n_lines, text)
     if text_loc:
       return text_loc
     else:
@@ -114,7 +128,7 @@ class Code(object):
 
 
 def _collect_traces(raw_traces):
-  """Postprocess pytype's opcode traces."""
+  """Postprocesses pytype's opcode traces."""
   out = collections.defaultdict(list)
   for op, symbol, data in raw_traces:
     out[op.line].append((op.name, symbol, data))
