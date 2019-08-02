@@ -6,7 +6,12 @@ py_library(
   SRCS
     traces.py
   DEPS
+    .source
     .visitor
+    pytype.config
+    pytype.libvm
+    pytype.pytd_defs
+    pytype.pytd_for_parser
 )
 
 py_test(
@@ -17,6 +22,7 @@ py_test(
   DEPS
     .source
     .traces
+    pytype.config
 )
 
 py_library(
