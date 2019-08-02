@@ -12,6 +12,25 @@ from pytype.pytd import visitors
 from pytype.tools.traces import source
 from pytype.tools.traces import visitor
 
+_ATTR_OPS = frozenset((
+    "LOAD_ATTR",
+    "STORE_ATTR",
+))
+
+_LOAD_OPS = frozenset((
+    "LOAD_DEREF",
+    "LOAD_FAST",
+    "LOAD_GLOBAL",
+    "LOAD_NAME",
+))
+
+_STORE_OPS = frozenset((
+    "STORE_DEREF",
+    "STORE_FAST",
+    "STORE_GLOBAL",
+    "STORE_NAME",
+))
+
 
 class TypeTrace(source.AbstractTrace):
   """Traces of inferred type information."""
@@ -98,6 +117,58 @@ class MatchAstVisitor(visitor.BaseVisitor):
     except AttributeError:
       raise NotImplementedError(method)
     return match(node)
+
+  def match_Attribute(self, node):
+    return [(self._get_match_location(node, tr.symbol), tr)
+            for tr in self._get_traces(node.lineno, _ATTR_OPS, node.attr)]
+
+  def match_Import(self, node):
+    return list(self._match_import(node, is_from=False))
+
+  def match_ImportFrom(self, node):
+    return list(self._match_import(node, is_from=True))
+
+  def match_Name(self, node):
+    if isinstance(node.ctx, self._ast.Load):
+      lineno = self._assign_end_line if self._assign_subscr else node.lineno
+      ops = _LOAD_OPS
+    elif isinstance(node.ctx, self._ast.Store):
+      lineno = self._assign_end_line or node.lineno
+      ops = _STORE_OPS
+    else:
+      return []
+    return [(self._get_match_location(node), tr)
+            for tr in self._get_traces(lineno, ops, node.id)]
+
+  def _get_traces(self, lineno, ops, symbol):
+    for tr in self.source.traces[lineno]:
+      if tr.op in ops and tr.symbol == symbol:
+        yield tr
+
+  def _get_match_location(self, node, name=None):
+    loc = source.Location(node.lineno, node.col_offset)
+    if not name:
+      return loc
+    if isinstance(node, (self._ast.Import, self._ast.ImportFrom)):
+      # Search for imported module names
+      text = self.source.line(node.lineno)
+      c = text.find(" " + name)
+      if c == -1:
+        c = text.find("," + name)
+      if c != -1:
+        return source.Location(node.lineno, c + 1)
+    elif isinstance(node, self._ast.Attribute):
+      attr_loc, _ = self.source.get_attr_location(name, loc)
+      return attr_loc
+    return loc
+
+  def _match_import(self, node, is_from):
+    for alias in node.names:
+      name = alias.asname if alias.asname else alias.name
+      op = "STORE_NAME" if alias.asname or is_from else "IMPORT_NAME"
+      for tr in self._get_traces(node.lineno, [op], name):
+        yield self._get_match_location(node, name), tr
+        break
 
 
 class _LineNumberVisitor(visitor.BaseVisitor):

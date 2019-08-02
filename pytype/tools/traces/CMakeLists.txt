@@ -20,9 +20,9 @@ py_test(
   SRCS
     traces_test.py
   DEPS
-    .source
     .traces
     pytype.config
+    pytype.pytd_defs
 )
 
 py_library(

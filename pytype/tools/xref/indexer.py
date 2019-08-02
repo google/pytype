@@ -100,11 +100,6 @@ def has_decorator(f, decorator):
   return False
 
 
-def get_opcodes(opcode_traces, lineno, op_list):
-  """Get all opcodes in op_list on a given line."""
-  return [x for x in opcode_traces[lineno] if x[0] in op_list]
-
-
 def match_opcodes(opcode_traces, lineno, op_match_list):
   """Get all opcodes matching op_match_list on a given line.
 
@@ -548,15 +543,6 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
       body_start = node.body[0].lineno
       text = "def %s" % args["name"]
       loc = self.source.find_first_text(node.lineno, body_start, text)
-    elif isinstance(node, (ast.Import, ast.ImportFrom)):
-      # Search for imported module names
-      text = self.source.line(node.lineno)
-      name = args["name"]
-      c = text.find(" " + name)
-      if c == -1:
-        c = text.find("," + name)
-      if c != -1:
-        loc = source.Location(node.lineno, c + 1)
 
     if loc is None:
       loc = get_location(node)
@@ -692,45 +678,35 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
           env.self_var = params[0]
 
   def visit_Name(self, node):
+    # We ignore the location returned by match() because we'll recompute the
+    # same location anyways.
     # We use pytype trace data to distinguish between local and global
     # variables.
-    if isinstance(node.ctx, ast.Load):
-      lineno = node.lineno
-      if node == self._assign_subscr:
-        lineno = self._assign_end_line
-      ops = self.traces[lineno]
-      for op, symbol, data in ops:
-        if symbol == node.id:
-          if op == "LOAD_GLOBAL":
-            ref = self.add_global_ref(node, name=symbol, data=data)
-            self.typemap[ref.id] = _unwrap(data)
-            break
-          elif op in ["LOAD_FAST", "LOAD_NAME"]:
-            ref = self.add_local_ref(node, name=symbol, data=data)
-            self.typemap[ref.id] = _unwrap(data)
-            break
-          elif op in ["LOAD_DEREF"]:
-            ref = self.add_closure_ref(node, name=symbol, data=data)
-            self.typemap[ref.id] = _unwrap(data)
-            break
-
-    elif isinstance(node.ctx, ast.Store):
-      lineno = self._assign_end_line or node.lineno
-      ops = self.traces[lineno]
-      for op, symbol, data in ops:
-        if symbol == node.id:
-          if op == "STORE_GLOBAL":
-            defn = self.add_global_def(node, name=symbol)
-            self.typemap[defn.id] = _unwrap(data)
-            break
-          elif op in ["STORE_FAST", "STORE_NAME", "STORE_DEREF"]:
-            defn = self.add_local_def(node, name=symbol)
-            d = _unwrap(data)
-            if self._annotate_ast:
-              node.resolved_annotation = _to_type(d)
-              node.resolved_type = _join_types(d or [])
-            self.typemap[defn.id] = d
-            break
+    for unused_loc, (op, symbol, data) in self.match(node):
+      d = _unwrap(data)
+      if op == "LOAD_GLOBAL":
+        ref = self.add_global_ref(node, name=symbol, data=data)
+        self.typemap[ref.id] = d
+        break
+      elif op in ["LOAD_FAST", "LOAD_NAME"]:
+        ref = self.add_local_ref(node, name=symbol, data=data)
+        self.typemap[ref.id] = d
+        break
+      elif op in ["LOAD_DEREF"]:
+        ref = self.add_closure_ref(node, name=symbol, data=data)
+        self.typemap[ref.id] = d
+        break
+      elif op == "STORE_GLOBAL":
+        defn = self.add_global_def(node, name=symbol)
+        self.typemap[defn.id] = d
+        break
+      elif op in ["STORE_FAST", "STORE_NAME", "STORE_DEREF"]:
+        defn = self.add_local_def(node, name=symbol)
+        if self._annotate_ast:
+          node.resolved_annotation = _to_type(d)
+          node.resolved_type = _join_types(d or [])
+        self.typemap[defn.id] = d
+        break
     return node.id
 
   def visit_Call(self, node):
@@ -768,14 +744,16 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
         self.add_attr(v)
 
   def visit_Attribute(self, node):
-    ops = self.traces[node.lineno]
     if isinstance(node.value, str):
       node_str = "{}.{}".format(node.value, node.attr)
     else:
       # Prevents a crash when an attr is called on an inline literal.
       node_str = "<{}>.{}".format(node.value.__class__.__name__, node.attr)
-    for op, symbol, data in ops:
-      if symbol == node.attr and op in ["LOAD_ATTR"]:
+    # match() returns the location of the attribute, whereas the indexer needs
+    # the location of the value on which the attribute is accessed, in order to
+    # link function calls. We'll manually adjust the location later.
+    for unused_loc, (op, unused_symbol, data) in self.match(node):
+      if op == "LOAD_ATTR":
         ref = self.add_local_ref(
             node,
             target=node.value,
@@ -785,11 +763,12 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
           _, rhs = data
           self.typemap[ref.id] = rhs
         break
-      elif symbol == node.attr and op in ["STORE_ATTR"]:
+      elif op == "STORE_ATTR":
         defn = self.add_local_def(node)
         if self.current_class:
           # We only support attr definitions within a class definition.
           self.current_env.setattr(node.attr, defn)
+        break
     return node_str
 
   def visit_Subscript(self, node):
@@ -801,59 +780,46 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
   def visit_ListComp(self, _node):
     return "<expr>"
 
-  def process_import(self, node, is_from):
+  def process_import(self, node):
     """Common code for Import and ImportFrom."""
 
-    store_ops = get_opcodes(self.traces, node.lineno, ["STORE_NAME"])
-    import_ops = get_opcodes(self.traces, node.lineno, ["IMPORT_NAME"])
-
     # Only record modules that pytype has resolved in self.modules
-    def is_resolved(defn, symbol, data):
-      return (symbol == defn.name and data and
-              isinstance(data[0], abstract.Module))
-
-    def filter_ops(op_list, defn):
-      return [(symbol, data) for _, symbol, data in op_list
-              if is_resolved(defn, symbol, _unwrap(data))]
+    def is_resolved(data):
+      return data and isinstance(data[0], abstract.Module)
 
     def add_import_ref(name, data, loc):
       self.add_global_ref(
           node, name=name, data=data, location=loc, typ="Import")
 
-    for alias in node.names:
-      name = alias.asname if alias.asname else alias.name
-      # defn, defloc = self.make_def(node, **kwargs)
-      d = self.add_local_def(node, name=name)
+    for loc, (op, symbol, data) in self.match(node):
+      d = self.add_local_def(node, name=symbol)
       defloc = self.locs[d.id][-1]
-      loc = defloc.location
 
       # tweak the definition location slightly
       line, _ = loc
       text = self.source.line(line)
       c = text.find("import ")
-      if c > -1:
-        # (If we haven't found "import " on the line, give up for now.)
-        self.locs[d.id][-1] = DefLocation(
-            defloc.def_id, source.Location(line, c))
+      new_loc = source.Location(line, c) if c > -1 else loc
+      self.locs[d.id][-1] = DefLocation(defloc.def_id, new_loc)
 
-      if alias.asname or is_from:
+      if not is_resolved(_unwrap(data)):
+        continue
+      elif op == "STORE_NAME":
         # for |import x.y as z| or |from x import y as z| we want {z: x.y}
-        for symbol, data in filter_ops(store_ops, d):
-          self.modules[d.id] = _unwrap(data)[0].full_name
-          add_import_ref(name=symbol, data=data, loc=loc)
-      else:
+        self.modules[d.id] = _unwrap(data)[0].full_name
+        add_import_ref(name=symbol, data=data, loc=loc)
+      elif op == "IMPORT_NAME":
         # |import x.y| puts both {x: x} and {x.y: x.y} in modules
-        for symbol, data in filter_ops(import_ops, d):
-          add_import_ref(name=symbol, data=data, loc=loc)
-          for mod in module_utils.get_all_prefixes(name):
-            # TODO(mdemello): Create references for every element.
-            self.modules[d.scope + "." + mod] = mod
+        add_import_ref(name=symbol, data=data, loc=loc)
+        for mod in module_utils.get_all_prefixes(symbol):
+          # TODO(mdemello): Create references for every element.
+          self.modules[d.scope + "." + mod] = mod
 
   def visit_Import(self, node):
-    self.process_import(node, is_from=False)
+    self.process_import(node)
 
   def visit_ImportFrom(self, node):
-    self.process_import(node, is_from=True)
+    self.process_import(node)
 
 
 # pylint: enable=invalid-name
