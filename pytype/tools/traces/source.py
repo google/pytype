@@ -7,6 +7,18 @@ import collections
 Location = collections.namedtuple("Location", ("line", "column"))
 
 
+class AbstractTrace(
+    collections.namedtuple("AbstractTrace", ("op", "symbol", "types"))):
+
+  def __new__(cls, op, symbol, types):
+    if cls is AbstractTrace:
+      raise TypeError("cannot instantiate AbstractTrace")
+    return super(AbstractTrace, cls).__new__(cls, op, symbol, types)
+
+  def __repr__(self):
+    return "%s : %s <- %s" % self
+
+
 class Code(object):
   """Line-based source code access.
 
@@ -17,9 +29,18 @@ class Code(object):
       only if an options object containing the filename was provided.
   """
 
-  def __init__(self, src, raw_traces, filename):
+  def __init__(self, src, raw_traces, trace_factory, filename):
+    """Initializer.
+
+    Args:
+      src: The source text.
+      raw_traces: Raw (opcode, symbol, types) values.
+      trace_factory: A subclass of source.AbstractTrace that will be used to
+        instantiate traces from raw values.
+      filename: The filename.
+    """
     self.text = src
-    self.traces = _collect_traces(raw_traces)
+    self.traces = _collect_traces(raw_traces, trace_factory)
     self.filename = filename
     self._lines = src.split("\n")
     self._offsets = []
@@ -69,10 +90,8 @@ class Code(object):
     """Prints the source file with traces for debugging."""
     for line in sorted(self.traces):
       print("%d %s" % (line, self.line(line)))
-      for name, symbol, data in self.traces[line]:
-        data_types = tuple(d and [x.__class__.__name__ for x in d]
-                           for d in data)
-        print("  %s : %s <- %s %s" % (name, symbol, data, data_types))
+      for trace in self.traces[line]:
+        print("  %s" % (trace,))
       print("-------------------")
 
   def get_attr_location(self, name, location):
@@ -127,9 +146,9 @@ class Code(object):
       return None
 
 
-def _collect_traces(raw_traces):
+def _collect_traces(raw_traces, trace_factory):
   """Postprocesses pytype's opcode traces."""
   out = collections.defaultdict(list)
   for op, symbol, data in raw_traces:
-    out[op.line].append((op.name, symbol, data))
+    out[op.line].append(trace_factory(op.name, symbol, data))
   return out

@@ -2,6 +2,25 @@ add_package()
 
 py_library(
   NAME
+    traces
+  SRCS
+    traces.py
+  DEPS
+    .visitor
+)
+
+py_test(
+  NAME
+    traces_test
+  SRCS
+    traces_test.py
+  DEPS
+    .source
+    .traces
+)
+
+py_library(
+  NAME
     source
   SRCS
     source.py

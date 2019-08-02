@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import ast
 import json
 import textwrap
@@ -329,6 +331,13 @@ class IndexerTest(test_base.TargetIndependentTest):
     self.assertEqual(pyval.base_type.cls,
                      self.loader.builtins.Lookup("__builtin__.type"))
     self.assertEqual(pyval.parameters[0].cls.name, "X")
+
+
+class VmTraceTest(test_base.TargetIndependentTest):
+
+  def test_repr(self):
+    trace = indexer.VmTrace("LOAD_NAME", "x", (["t"],))
+    print(repr(trace))  # smoke test
 
 
 test_base.main(globals(), __name__ == "__main__")

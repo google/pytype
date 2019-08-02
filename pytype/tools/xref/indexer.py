@@ -16,6 +16,7 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.tools.traces import source
+from pytype.tools.traces import traces
 from pytype.tools.traces import visitor as ast_visitor
 
 from pytype.tools.xref import utils as xref_utils
@@ -92,26 +93,6 @@ def get_location(node):
   return source.Location(node.lineno, node.col_offset)
 
 
-def get_last_line(node):
-  """Walk a node, returning the latest line number of any of its children."""
-
-  # We define the class within the function since ast is late-bound.
-  class LineNumberVisitor(ast.NodeVisitor):
-
-    def __init__(self):
-      self.line = 0
-
-    def generic_visit(self, node):
-      lineno = getattr(node, "lineno", 0)
-      if lineno > self.line:
-        self.line = lineno
-      super(LineNumberVisitor, self).generic_visit(node)
-
-  v = LineNumberVisitor()
-  v.visit(node)
-  return v.line
-
-
 def has_decorator(f, decorator):
   for d in f.decorator_list:
     if isinstance(d, ast.Name) and d.id == decorator:
@@ -119,16 +100,16 @@ def has_decorator(f, decorator):
   return False
 
 
-def get_opcodes(traces, lineno, op_list):
+def get_opcodes(opcode_traces, lineno, op_list):
   """Get all opcodes in op_list on a given line."""
-  return [x for x in traces[lineno] if x[0] in op_list]
+  return [x for x in opcode_traces[lineno] if x[0] in op_list]
 
 
-def match_opcodes(traces, lineno, op_match_list):
+def match_opcodes(opcode_traces, lineno, op_match_list):
   """Get all opcodes matching op_match_list on a given line.
 
   Args:
-    traces: traces
+    opcode_traces: traces
     lineno: line number to get ops from.
     op_match_list: [(opcode_name, symbol|None), ...]; None matches any symbol.
 
@@ -136,7 +117,7 @@ def match_opcodes(traces, lineno, op_match_list):
     A list of matching opcodes.
   """
   out = []
-  for op, symbol, data in traces[lineno]:
+  for op, symbol, data in opcode_traces[lineno]:
     for match_op, match_symbol in op_match_list:
       if op == match_op and match_symbol in [None, symbol]:
         out.append((op, symbol, data))
@@ -450,6 +431,12 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
   hierarchical, it's just a flat mapping of scope keys to environments.
   """
 
+  # TODO(b/138541525): Remove these unnecessary class attributes.
+  stack = None  # type: list
+  class_ids = None  # type: list
+  envs = None  # type: dict
+  module_name = None  # type: str
+
   # TODO(mdemello): Is the two-level visitor hierarchy really buying us
   # anything by way of maintainability or readability?
 
@@ -459,13 +446,6 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
     self.class_ids = []
     self.envs = {}
     self.module_name = module_name
-
-    # Track the last line for multiline assign statements. This is safe because
-    # assign is not an expression and hence cannot be nested.
-    # TODO(mdemello): Handle multiline class definitions similarly.
-    self.assign_end_line = None
-    # Needed for x[i] = <multiline statement>
-    self.assign_subscr = None
 
   def get_id(self, node):
     """Construct an id based on node type."""
@@ -527,15 +507,6 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
   def enter_Module(self, node):
     self.add_scope(node)
 
-  def enter_Assign(self, node):
-    self.assign_end_line = get_last_line(node.value)
-    if isinstance(node.targets[0], ast.Subscript):
-      self.assign_subscr = node.targets[0].value
-
-  def leave_Assign(self, _):
-    self.assign_end_line = None
-    self.assign_subscr = None
-
   def leave(self, node):
     """If the node has introduced a new scope, we need to pop it off."""
     super(ScopedVisitor, self).leave(node)
@@ -543,11 +514,11 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
       self.stack.pop()
 
 
-class IndexVisitor(ScopedVisitor):
+class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
   """Visitor that generates indexes."""
 
   def __init__(self, src, module_name, kythe_, annotate_ast):
-    super(IndexVisitor, self).__init__(module_name)
+    super(IndexVisitor, self).__init__(src, module_name)
     self._annotate_ast = annotate_ast
     self.defs = {}
     self.locs = collections.defaultdict(list)
@@ -725,8 +696,8 @@ class IndexVisitor(ScopedVisitor):
     # variables.
     if isinstance(node.ctx, ast.Load):
       lineno = node.lineno
-      if node == self.assign_subscr:
-        lineno = self.assign_end_line
+      if node == self._assign_subscr:
+        lineno = self._assign_end_line
       ops = self.traces[lineno]
       for op, symbol, data in ops:
         if symbol == node.id:
@@ -744,7 +715,7 @@ class IndexVisitor(ScopedVisitor):
             break
 
     elif isinstance(node.ctx, ast.Store):
-      lineno = self.assign_end_line or node.lineno
+      lineno = self._assign_end_line or node.lineno
       ops = self.traces[lineno]
       for op, symbol, data in ops:
         if symbol == node.id:
@@ -1328,6 +1299,13 @@ class PytypeError(Exception):
   """Wrap exceptions raised by the indexer."""
 
 
+class VmTrace(source.AbstractTrace):
+
+  def __repr__(self):
+    types_repr = tuple(t and [typename(x) for x in t] for t in self.types)
+    return "%s %s" % (super(VmTrace, self).__repr__(), types_repr)
+
+
 def process_file(options,
                  source_text=None,
                  kythe_args=None,
@@ -1396,7 +1374,7 @@ def process_file(options,
 
   # TODO(mdemello): Get from args
   module_name = "module"
-  src_code = source.Code(src, vm.opcode_traces, filename=options.input)
+  src_code = source.Code(src, vm.opcode_traces, VmTrace, filename=options.input)
   ix = Indexer(
       src_code, vm.loader, module_name, kythe_args, annotate_ast=annotate_ast)
   ix.index(ast_root_node)
