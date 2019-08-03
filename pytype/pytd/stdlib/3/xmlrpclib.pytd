@@ -1,3 +1,0 @@
-# TODO(acaceres): remove when typeshed version can be used
-from typing import Any
-def __getattr__(name) -> Any: ...

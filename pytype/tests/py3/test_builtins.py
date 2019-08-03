@@ -587,5 +587,22 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       UnicodeEncodeError("", u"", 0, 0, "")
     """)
 
+  def testMinMax(self):
+    ty = self.Infer("""
+      x1 = min([1, 2, 3], default=3)
+      x2 = min((), default='')
+      y1 = max([1, 2, 3], default=3)
+      y2 = max((), default='')
+    """)
+    # TODO(rechen): The types of x2 and y2 should be str, but we're not able to
+    # type an optional argument as a typevar.
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      x1 = ...  # type: int
+      x2 = ...  # type: Any
+      y1 = ...  # type: int
+      y2 = ...  # type: Any
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

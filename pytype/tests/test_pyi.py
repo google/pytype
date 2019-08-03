@@ -853,5 +853,25 @@ class PYITest(test_base.TargetIndependentTest):
       """)
       self.Check("import foo", pythonpath=[d.path])
 
+  def testLiteral(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Literal
+        x: Literal[True]
+        y: Literal[None]
+      """)
+      ty = self.Infer("""
+        import foo
+        x = foo.x
+        y = foo.y
+      """, pythonpath=[d.path])
+      # TODO(b/123775699): Support Literal rather than rewrite to Any.
+      self.assertTypesMatchPytd(ty, """
+        from typing import Any
+        foo: module
+        x: Any
+        y: None
+      """)
+
 
 test_base.main(globals(), __name__ == "__main__")

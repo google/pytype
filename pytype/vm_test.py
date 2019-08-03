@@ -199,7 +199,7 @@ class TraceTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     """Test that we can trace values without data."""
     op = test_utils.FakeOpcode("foo.py", 123, "foo")
     self.trace_vm.trace_opcode(op, "x", 42)
-    self.assertEquals(self.trace_vm.opcode_traces, [(op, "x", None)])
+    self.assertEqual(self.trace_vm.opcode_traces, [(op, "x", (None,))])
 
   def test_const(self):
     src = textwrap.dedent("""\

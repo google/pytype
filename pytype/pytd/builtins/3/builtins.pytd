@@ -79,12 +79,12 @@ def len(obj: Sized) -> int
 def locals() -> dict[str, object]
 def map(function, *sequences: Iterable[nothing]) -> Iterator[nothing]
 def map(function: Callable[..., _T], *sequences: Iterable) -> Iterator[_T]
-def max(iterable: Iterable[_T], key: Callable = ...) -> _T
+def max(iterable: Iterable[_T], key: Callable = ..., default: ? = ...) -> _T
 def max(arg1: _T, arg2: _T2, *, key: Callable = ...) -> _T or _T2
 def max(arg1: _T, arg2: _T2, arg3: _T3, *, key: Callable = ...) -> _T or _T2 or _T3
 def max(arg1: _T, arg2: _T2, arg3: _T3, arg4: _T4, *, key = Callable) -> _T or _T2 or _T3 or _T4
 def max(arg1: _T, arg2: _T, arg3: _T, arg4: _T, arg5: _T, *args: _T, key: Callable = ...) -> _T
-def min(iterable: Iterable[_T], key: Callable = ...) -> _T
+def min(iterable: Iterable[_T], key: Callable = ..., default: ? = ...) -> _T
 def min(arg1: _T, arg2: _T2, *, key: Callable = ...) -> _T or _T2
 def min(arg1: _T, arg2: _T2, arg3: _T3, *, key: Callable = ...) -> _T or _T2 or _T3
 def min(arg1: _T, arg2: _T2, arg3: _T3, arg4: _T4, *, key = Callable) -> _T or _T2 or _T3 or _T4

@@ -193,12 +193,13 @@ class VirtualMachine(object):
       return
 
     if isinstance(val, tuple):
-      data = [getattr(v, "data", None) for v in val]
+      data = tuple(getattr(v, "data", None) for v in val)
     else:
       data = getattr(val, "data", None)
-    # Sometimes val is a binding.
-    if data and not isinstance(data, list):
-      data = [data]
+      # Sometimes val is a binding.
+      if data and not isinstance(data, list):
+        data = [data]
+      data = (data,)
     rec = (op, symbol, data)
     self.opcode_traces.append(rec)
 

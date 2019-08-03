@@ -230,11 +230,11 @@ class TestUtils(parser_test_base.ParserTest):
     a.m = {}
     a.m = {"foo": 1, "bar": 2}
     self.assertEqual(a.get("x", "baz"), "baz")
-    self.assertFalse("x" in a)
+    self.assertNotIn("x", a)
     self.assertEqual(a.get("foo"), 1)
     self.assertEqual(a["foo"], 1)
-    self.assertTrue("foo" in a)
-    self.assertTrue("bar" in a)
+    self.assertIn("foo", a)
+    self.assertIn("bar", a)
     self.assertEqual(a.copy(), a.m)
     six.assertCountEqual(self, iter(a), ["foo", "bar"])
     six.assertCountEqual(self, a.keys(), ["foo", "bar"])
@@ -325,12 +325,12 @@ class TestUtils(parser_test_base.ParserTest):
                               expected.strip("\n"))
 
   def testDummyMethod(self):
-    self.assertEquals("def foo() -> Any: ...",
-                      pytd.Print(pytd_utils.DummyMethod("foo")))
-    self.assertEquals("def foo(x) -> Any: ...",
-                      pytd.Print(pytd_utils.DummyMethod("foo", "x")))
-    self.assertEquals("def foo(x, y) -> Any: ...",
-                      pytd.Print(pytd_utils.DummyMethod("foo", "x", "y")))
+    self.assertEqual("def foo() -> Any: ...",
+                     pytd.Print(pytd_utils.DummyMethod("foo")))
+    self.assertEqual("def foo(x) -> Any: ...",
+                     pytd.Print(pytd_utils.DummyMethod("foo", "x")))
+    self.assertEqual("def foo(x, y) -> Any: ...",
+                     pytd.Print(pytd_utils.DummyMethod("foo", "x", "y")))
 
   def testLoadPickleFromFile(self):
     d1 = {1, 2j, "3"}
@@ -433,10 +433,9 @@ class TestDataFiles(parser_test_base.ParserTest):
     self.assertMultiLineEqual(import_contents.decode("utf-8"), file_contents)
 
   def testPytdBuiltinIsPackage(self):
-    """Verify 'import importlib' for python3."""
-    subdir = "stdlib/3"
-    path, _ = pytd_utils.GetPredefinedFile(subdir, "importlib", as_package=True)
-    self.assertEqual(path, "pytd/stdlib/3/importlib/__init__.pytd")
+    subdir = "builtins/2and3"
+    path, _ = pytd_utils.GetPredefinedFile(subdir, "attr", as_package=True)
+    self.assertEqual(path, "pytd/builtins/2and3/attr/__init__.pytd")
 
   def testTypeBuilder(self):
     t = pytd_utils.TypeBuilder()

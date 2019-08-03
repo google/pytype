@@ -1,5 +1,5 @@
 # Lint as: python2, python3
-"""Tests for AST visiting."""
+"""Tests for traces.visitor."""
 
 import ast
 import textwrap
@@ -8,7 +8,7 @@ import unittest
 
 
 class _VisitOrderVisitor(visitor.BaseVisitor):
-  """Test visit order."""
+  """Tests visit order."""
 
   def __init__(self, *args, **kwargs):
     super(_VisitOrderVisitor, self).__init__(*args, **kwargs)
@@ -19,7 +19,7 @@ class _VisitOrderVisitor(visitor.BaseVisitor):
 
 
 class _VisitReplaceVisitor(visitor.BaseVisitor):
-  """Test visit()'s node replacement functionality."""
+  """Tests visit()'s node replacement functionality."""
 
   def visit_Name(self, node):
     if node.id == "x":
@@ -31,7 +31,7 @@ class _VisitReplaceVisitor(visitor.BaseVisitor):
 
 
 class _GenericVisitVisitor(visitor.BaseVisitor):
-  """Test generic_visit()."""
+  """Tests generic_visit()."""
 
   def __init__(self, *args, **kwargs):
     super(_GenericVisitVisitor, self).__init__(*args, **kwargs)
@@ -42,7 +42,7 @@ class _GenericVisitVisitor(visitor.BaseVisitor):
 
 
 class _EnterVisitor(visitor.BaseVisitor):
-  """Test enter() by recording names."""
+  """Tests enter() by recording names."""
 
   def __init__(self, *args, **kwargs):
     super(_EnterVisitor, self).__init__(*args, **kwargs)
@@ -53,14 +53,14 @@ class _EnterVisitor(visitor.BaseVisitor):
 
 
 class _LeaveVisitor(_EnterVisitor):
-  """Test leave() by discarding names recorded by enter()."""
+  """Tests leave() by discarding names recorded by enter()."""
 
   def leave_Name(self, node):
     self.names.pop()
 
 
 class custom_ast(object):  # pylint: disable=invalid-name
-  """Test a custom ast module."""
+  """Tests a custom ast module."""
 
   class AST(object):
     pass

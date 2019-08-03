@@ -1,5 +1,5 @@
-pytype
-======
+pytype - 🦆✔
+===========
 
 Pytype checks and infers types for your Python code - without requiring
 type annotations. Pytype can:

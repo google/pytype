@@ -137,7 +137,7 @@ class Trace(object):
   def __init__(self, op, symbol, type_defs):
     self._op = op
     self._symbol = symbol
-    self._type_def = _join_type_defs(type_defs)
+    self._type_def = _join_type_defs(type_defs[-1] or [])
     self._type_def_annotation = _annotation_str_from_type_def(self.type_def)
     self.associated = False
 
@@ -229,11 +229,8 @@ class PytypeError(Exception):
 
 
 def _join_type_defs(type_defs):
-  return pytd_utils.JoinTypes(v.to_type() for v in type_defs if v)
+  return pytd_utils.JoinTypes(v.to_type() for v in type_defs)
 
 
 def _annotation_str_from_type_def(type_def):
-  if not type_def:
-    return "Any"
-  else:
-    return pytd_utils.Print(type_def)
+  return pytd_utils.Print(type_def)

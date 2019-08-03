@@ -49,7 +49,7 @@ class _ParserTestBase(unittest.TestCase):
     version = version or self.PYTHON_VERSION
     src = textwrap.dedent(src)
     ast = parser.parse_string(src, name=name, python_version=version,
-                              platform=platform)
+                              platform=platform, keep_literals=True)
     actual = pytd.Print(ast)
     if expected != IGNORE:
       expected = src if expected is None else textwrap.dedent(expected)
@@ -63,7 +63,8 @@ class _ParserTestBase(unittest.TestCase):
     """Check that parsing the src raises the expected error."""
     with self.assertRaises(parser.ParseError) as e:
       parser.parse_string(textwrap.dedent(src),
-                          python_version=self.PYTHON_VERSION)
+                          python_version=self.PYTHON_VERSION,
+                          keep_literals=True)
     six.assertRegex(self, utils.message(e.exception), re.escape(message))
     self.assertEqual(expected_line, e.exception.line)
 
@@ -2047,6 +2048,94 @@ class ImportTypeIgnoreTest(_ParserTestBase):
     ast = parser.parse_string(src, python_version=self.PYTHON_VERSION)
     self.assertTrue(ast.Lookup("attr"))
     self.assertTrue(ast.Lookup("f"))
+
+
+class LiteralTest(_ParserTestBase):
+
+  def test_bool(self):
+    self.check("""\
+      from typing import Literal
+
+      x: Literal[False]
+      y: Literal[True]
+    """)
+
+  def test_int(self):
+    self.check("""\
+      from typing import Literal
+
+      x: Literal[42]
+    """)
+
+  # TODO(b/123775699): this output is all wrong. The parser ignores normal
+  # quotation marks, treats b"" and u"" as constants, and cannot handle empty
+  # non-prefixed strings or non-empty prefixed strings.
+  def test_string(self):
+    self.check("""\
+      from typing import Literal
+
+      x: Literal["x"]
+      y: Literal[b""]
+      z: Literal[u""]
+    """, """\
+      from typing import Literal
+
+      x: Literal[x]
+      y: Literal[bytes]
+      z: Literal[unicode]
+    """)
+
+  def test_none(self):
+    self.check("""\
+      from typing import Literal
+
+      x: Literal[None]
+    """, "x: None")
+
+  def test_enum(self):
+    self.check("""\
+      import enum
+      from typing import Literal
+
+      x: Literal[Color.RED]
+
+      class Color(enum.Enum):
+          RED: str
+    """)
+
+  def test_multiple_parameters(self):
+    self.check("""\
+      import enum
+      from typing import Literal
+
+      x: Literal[True, 0, "x", b"", u"", None, Color.RED]
+
+      class Color(enum.Enum):
+          RED: str
+    """, """\
+      import enum
+      from typing import Literal, Optional, Union
+
+      x: Optional[Union[Literal[True], Literal[0], Literal[x], Literal[bytes], Literal[unicode], Literal[Color.RED]]]
+
+      class Color(enum.Enum):
+          RED: str
+    """)
+
+  # TODO(rechen): Also catch stray byte- and unicode-strings.
+  def test_stray_number(self):
+    self.check_error("""\
+      from typing import Tuple
+
+      x: Tuple[int, int, 0, int]
+    """, 3, "Tuple[_, _, 0, _] not supported")
+
+  def test_typing_extensions(self):
+    self.check("""\
+      from typing_extensions import Literal
+
+      x: Literal[42]
+    """)
 
 
 if __name__ == "__main__":

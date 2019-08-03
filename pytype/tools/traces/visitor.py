@@ -10,14 +10,15 @@ class BaseVisitor(object):
     with that value.
 
     Attributes:
-      _ast: Any module whose interface matches the standard ast library.
+      _ast: Any module whose interface matches the standard ast library, such as
+        typed_ast. The same module must be used to generate the AST to visit.
   """
 
   def __init__(self, ast):
     self._ast = ast
 
   def visit(self, node):
-    """Do a post-order traversal of the AST."""
+    """Does a post-order traversal of the AST."""
     if isinstance(node, self._ast.AST):
       self.enter(node)
       for k, v in self._children(node):
@@ -56,7 +57,7 @@ class BaseVisitor(object):
     del node  # unused
 
   def enter(self, node):
-    """Do a pre-order traversal of the AST."""
+    """Does a pre-order traversal of the AST."""
     method = "enter_" + node.__class__.__name__
     visitor = getattr(self, method, None)
     if visitor:

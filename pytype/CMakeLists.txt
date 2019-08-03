@@ -57,31 +57,19 @@ filegroup(
 
     pytd/stdlib/2/_ctypes.pytd
     pytd/stdlib/2/collections.pytd
-    pytd/stdlib/2/ctypes.pytd
     pytd/stdlib/2/dummy_thread.pytd
     pytd/stdlib/2/encodings.pytd
-    pytd/stdlib/2/xmlrpclib.pytd
 
     pytd/stdlib/2and3/_ctypes.pytd
     pytd/stdlib/2and3/collections.pytd
-    pytd/stdlib/2and3/ctypes.pytd
     pytd/stdlib/2and3/dummy_thread.pytd
     pytd/stdlib/2and3/encodings.pytd
-    pytd/stdlib/2and3/xmlrpclib.pytd
 
     pytd/stdlib/3/_ctypes.pytd
     pytd/stdlib/3/collections.pytd
-    pytd/stdlib/3/ctypes.pytd
     pytd/stdlib/3/dummy_thread.pytd
     pytd/stdlib/3/encodings.pytd
     pytd/stdlib/3/enum.pytd
-    pytd/stdlib/3/re.pytd
-    pytd/stdlib/3/signal.pytd
-    pytd/stdlib/3/xmlrpclib.pytd
-
-    pytd/stdlib/3/importlib/__init__.pytd
-
-    pytd/stdlib/3/multiprocessing/pool.pytd
 )
 
 py_library(

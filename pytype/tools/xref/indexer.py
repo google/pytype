@@ -15,6 +15,8 @@ from pytype import module_utils
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
+from pytype.tools.traces import source
+from pytype.tools.traces import traces
 from pytype.tools.traces import visitor as ast_visitor
 
 from pytype.tools.xref import utils as xref_utils
@@ -88,27 +90,7 @@ def get_name(node):
 def get_location(node):
   # TODO(mdemello): The column offset for nodes like "class A" needs to be
   # adjusted to the start of the symbol.
-  return SourceLocation(node.lineno, node.col_offset)
-
-
-def get_last_line(node):
-  """Walk a node, returning the latest line number of any of its children."""
-
-  # We define the class within the function since ast is late-bound.
-  class LineNumberVisitor(ast.NodeVisitor):
-
-    def __init__(self):
-      self.line = 0
-
-    def generic_visit(self, node):
-      lineno = getattr(node, "lineno", 0)
-      if lineno > self.line:
-        self.line = lineno
-      super(LineNumberVisitor, self).generic_visit(node)
-
-  v = LineNumberVisitor()
-  v.visit(node)
-  return v.line
+  return source.Location(node.lineno, node.col_offset)
 
 
 def has_decorator(f, decorator):
@@ -118,16 +100,11 @@ def has_decorator(f, decorator):
   return False
 
 
-def get_opcodes(traces, lineno, op_list):
-  """Get all opcodes in op_list on a given line."""
-  return [x for x in traces[lineno] if x[0] in op_list]
-
-
-def match_opcodes(traces, lineno, op_match_list):
+def match_opcodes(opcode_traces, lineno, op_match_list):
   """Get all opcodes matching op_match_list on a given line.
 
   Args:
-    traces: traces
+    opcode_traces: traces
     lineno: line number to get ops from.
     op_match_list: [(opcode_name, symbol|None), ...]; None matches any symbol.
 
@@ -135,7 +112,7 @@ def match_opcodes(traces, lineno, op_match_list):
     A list of matching opcodes.
   """
   out = []
-  for op, symbol, data in traces[lineno]:
+  for op, symbol, data in opcode_traces[lineno]:
     for match_op, match_symbol in op_match_list:
       if op == match_op and match_symbol in [None, symbol]:
         out.append((op, symbol, data))
@@ -149,8 +126,8 @@ def _to_type(vals):
 
   Args:
     vals: A Reference.data item. Its type is
-      Optional[List[Optional[abstract.AtomicAbstractValue]]]. The data field
-      contains either one item or a list of two items.
+      Optional[List[abstract.AtomicAbstractValue]]. The data field contains a
+      tuple of items.
 
   Returns:
     A string.
@@ -161,8 +138,13 @@ def _to_type(vals):
 
 
 def _join_types(vals):
-  return pytd_utils.JoinTypes(v.to_type() for v in vals if v).Visit(
+  return pytd_utils.JoinTypes(v.to_type() for v in vals).Visit(
       visitors.RemoveUnknownClasses())
+
+
+def _unwrap(data):
+  assert len(data) == 1
+  return data[0]
 
 
 # Internal datatypes
@@ -170,76 +152,6 @@ def _join_types(vals):
 
 class AttrError(Exception):
   pass
-
-
-SourceLocation = collections.namedtuple("SourceLocation", ("line", "column"))
-
-
-class SourceFile(object):
-  """Line-based source code access."""
-
-  def __init__(self, src, raw_traces, filename):
-    self.text = src
-    self.traces = self.collect_traces(raw_traces)
-    self.filename = filename
-    self.lines = src.split("\n")
-    self.offsets = []
-    self._init_byte_offsets()
-
-  def _init_byte_offsets(self):
-    offset = 0
-    for line in self.lines:
-      self.offsets.append(offset)
-      offset += len(line) + 1  # account for the \n
-
-  def get_offset(self, location):
-    return self.offsets[location.line - 1] + location.column
-
-  def collect_traces(self, raw_traces):
-    """Postprocess pytype's opcode traces."""
-
-    out = collections.defaultdict(list)
-    for op, symbol, data in raw_traces:
-      out[op.line].append((op.name, symbol, data))
-    return out
-
-  def line(self, n):
-    """Index source lines from 1."""
-    return self.lines[n - 1]
-
-  def get_closest_line_range(self, start, end):
-    """Get as close as we can to the given range without going out of bounds."""
-    return range(start, min(end, len(self.lines)))
-
-  def find_text(self, start_line, end_line, text):
-    """Find text within a range of lines."""
-
-    for l in self.get_closest_line_range(start_line, end_line):
-      col = self.line(l).find(text)
-      if col > -1:
-        # TODO(mdemello): Temporary hack, replace with a token stream!
-        # This will break if we have a # in a string before our desired text.
-        comment_marker = self.line(l).find("#")
-        if -1 < comment_marker < col:
-          continue
-        return SourceLocation(l, col)
-    return None
-
-  def next_non_comment_line(self, line):
-    for l in range(line + 1, len(self.lines)):
-      if self.line(l).lstrip().startswith("#"):
-        continue
-      return l
-    return None
-
-  def display_traces(self):
-    """Debug printing of source + traces per line."""
-    for line in sorted(self.traces.keys()):
-      print("%d %s" % (line, self.line(line)))
-      for name, symbol, data in self.traces[line]:
-        print("  %s : %s <- %s %s" % (
-            name, symbol, data, data and [typename(x) for x in data]))
-      print("-------------------")
 
 
 class PytypeValue(object):
@@ -258,9 +170,6 @@ class PytypeValue(object):
   @classmethod
   def _from_data(cls, data):
     """Construct a PytypeValue from a single datum."""
-
-    if not data:
-      return None
 
     if isinstance(data, abstract.PyTDClass):
       if data.module:
@@ -517,6 +426,12 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
   hierarchical, it's just a flat mapping of scope keys to environments.
   """
 
+  # TODO(b/138541525): Remove these unnecessary class attributes.
+  stack = None  # type: list
+  class_ids = None  # type: list
+  envs = None  # type: dict
+  module_name = None  # type: str
+
   # TODO(mdemello): Is the two-level visitor hierarchy really buying us
   # anything by way of maintainability or readability?
 
@@ -526,13 +441,6 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
     self.class_ids = []
     self.envs = {}
     self.module_name = module_name
-
-    # Track the last line for multiline assign statements. This is safe because
-    # assign is not an expression and hence cannot be nested.
-    # TODO(mdemello): Handle multiline class definitions similarly.
-    self.assign_end_line = None
-    # Needed for x[i] = <multiline statement>
-    self.assign_subscr = None
 
   def get_id(self, node):
     """Construct an id based on node type."""
@@ -594,15 +502,6 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
   def enter_Module(self, node):
     self.add_scope(node)
 
-  def enter_Assign(self, node):
-    self.assign_end_line = get_last_line(node.value)
-    if isinstance(node.targets[0], ast.Subscript):
-      self.assign_subscr = node.targets[0].value
-
-  def leave_Assign(self, _):
-    self.assign_end_line = None
-    self.assign_subscr = None
-
   def leave(self, node):
     """If the node has introduced a new scope, we need to pop it off."""
     super(ScopedVisitor, self).leave(node)
@@ -610,18 +509,18 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
       self.stack.pop()
 
 
-class IndexVisitor(ScopedVisitor):
+class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
   """Visitor that generates indexes."""
 
-  def __init__(self, source, module_name, kythe_, annotate_ast):
-    super(IndexVisitor, self).__init__(module_name)
+  def __init__(self, src, module_name, kythe_, annotate_ast):
+    super(IndexVisitor, self).__init__(src, module_name)
     self._annotate_ast = annotate_ast
     self.defs = {}
     self.locs = collections.defaultdict(list)
     self.refs = []
     self.modules = {}
-    self.source = source
-    self.traces = source.traces
+    self.source = src
+    self.traces = src.traces
     self.typemap = {}
     self.classmap = {}
     self.calls = []
@@ -639,20 +538,11 @@ class IndexVisitor(ScopedVisitor):
       # offset for decorated functions/classes.
       body_start = node.body[0].lineno
       text = "class %s" % args["name"]
-      loc = self.source.find_text(node.lineno, body_start, text)
+      loc = self.source.find_first_text(node.lineno, body_start, text)
     elif isinstance(node, ast.FunctionDef):
       body_start = node.body[0].lineno
       text = "def %s" % args["name"]
-      loc = self.source.find_text(node.lineno, body_start, text)
-    elif isinstance(node, (ast.Import, ast.ImportFrom)):
-      # Search for imported module names
-      text = self.source.line(node.lineno)
-      name = args["name"]
-      c = text.find(" " + name)
-      if c == -1:
-        c = text.find("," + name)
-      if c != -1:
-        loc = SourceLocation(node.lineno, c + 1)
+      loc = self.source.find_first_text(node.lineno, body_start, text)
 
     if loc is None:
       loc = get_location(node)
@@ -679,12 +569,13 @@ class IndexVisitor(ScopedVisitor):
     defn = Definition(**args)
     line, col = self._get_location(node, args)
     assert line is not None
-    defloc = DefLocation(defn.id, SourceLocation(line, col))
+    defloc = DefLocation(defn.id, source.Location(line, col))
     return (defn, defloc)
 
   def make_ref(self, node, **kwargs):
     """Make a reference from a node."""
 
+    assert "data" in kwargs  # required kwarg
     args = {
         "name": get_name(node),
         "scope": self.scope_id(),
@@ -692,7 +583,6 @@ class IndexVisitor(ScopedVisitor):
         "typ": typename(node),
         "location": get_location(node),
         "target": None,
-        "data": None
     }
     args.update(kwargs)
     return Reference(**args)
@@ -758,7 +648,7 @@ class IndexVisitor(ScopedVisitor):
     ops = match_opcodes(self.traces, node.lineno, [("BUILD_CLASS", class_name)])
     if ops:
       _, _, data = ops[0]
-      self.classmap[data[0]] = defn
+      self.classmap[_unwrap(data)[0]] = defn
     else:
       # Python3
       ops = match_opcodes(self.traces, node.lineno, [
@@ -767,7 +657,7 @@ class IndexVisitor(ScopedVisitor):
       ])
       if len(ops) == 2:
         _, _, data = ops[1]
-        self.classmap[data[0]] = defn
+        self.classmap[_unwrap(data)[0]] = defn
     super(IndexVisitor, self).enter_ClassDef(node)
 
   def enter_FunctionDef(self, node):
@@ -788,44 +678,35 @@ class IndexVisitor(ScopedVisitor):
           env.self_var = params[0]
 
   def visit_Name(self, node):
+    # We ignore the location returned by match() because we'll recompute the
+    # same location anyways.
     # We use pytype trace data to distinguish between local and global
     # variables.
-    if isinstance(node.ctx, ast.Load):
-      lineno = node.lineno
-      if node == self.assign_subscr:
-        lineno = self.assign_end_line
-      ops = self.traces[lineno]
-      for op, symbol, data in ops:
-        if symbol == node.id:
-          if op == "LOAD_GLOBAL":
-            ref = self.add_global_ref(node, name=symbol, data=data)
-            self.typemap[ref.id] = data
-            break
-          elif op in ["LOAD_FAST", "LOAD_NAME"]:
-            ref = self.add_local_ref(node, name=symbol, data=data)
-            self.typemap[ref.id] = data
-            break
-          elif op in ["LOAD_DEREF"]:
-            ref = self.add_closure_ref(node, name=symbol, data=data)
-            self.typemap[ref.id] = data
-            break
-
-    elif isinstance(node.ctx, ast.Store):
-      lineno = self.assign_end_line or node.lineno
-      ops = self.traces[lineno]
-      for op, symbol, data in ops:
-        if symbol == node.id:
-          if op == "STORE_GLOBAL":
-            defn = self.add_global_def(node, name=symbol)
-            self.typemap[defn.id] = data
-            break
-          elif op in ["STORE_FAST", "STORE_NAME", "STORE_DEREF"]:
-            defn = self.add_local_def(node, name=symbol)
-            if self._annotate_ast:
-              node.resolved_annotation = _to_type(data)
-              node.resolved_type = _join_types(data)
-            self.typemap[defn.id] = data
-            break
+    for unused_loc, (op, symbol, data) in self.match(node):
+      d = _unwrap(data)
+      if op == "LOAD_GLOBAL":
+        ref = self.add_global_ref(node, name=symbol, data=data)
+        self.typemap[ref.id] = d
+        break
+      elif op in ["LOAD_FAST", "LOAD_NAME"]:
+        ref = self.add_local_ref(node, name=symbol, data=data)
+        self.typemap[ref.id] = d
+        break
+      elif op in ["LOAD_DEREF"]:
+        ref = self.add_closure_ref(node, name=symbol, data=data)
+        self.typemap[ref.id] = d
+        break
+      elif op == "STORE_GLOBAL":
+        defn = self.add_global_def(node, name=symbol)
+        self.typemap[defn.id] = d
+        break
+      elif op in ["STORE_FAST", "STORE_NAME", "STORE_DEREF"]:
+        defn = self.add_local_def(node, name=symbol)
+        if self._annotate_ast:
+          node.resolved_annotation = _to_type(d)
+          node.resolved_type = _join_types(d or [])
+        self.typemap[defn.id] = d
+        break
     return node.id
 
   def visit_Call(self, node):
@@ -848,8 +729,8 @@ class IndexVisitor(ScopedVisitor):
       symbol = symbol.split(".")[-1]
       if symbol == basename:
         for d in data:
-          if not isinstance(d, list):
-            d = [d]
+          if d is None:
+            continue
           for d1 in d:
             for f in qualified_method(d1):
               if f not in seen:
@@ -863,28 +744,31 @@ class IndexVisitor(ScopedVisitor):
         self.add_attr(v)
 
   def visit_Attribute(self, node):
-    ops = self.traces[node.lineno]
     if isinstance(node.value, str):
       node_str = "{}.{}".format(node.value, node.attr)
     else:
       # Prevents a crash when an attr is called on an inline literal.
       node_str = "<{}>.{}".format(node.value.__class__.__name__, node.attr)
-    for op, symbol, data in ops:
-      if symbol == node.attr and op in ["LOAD_ATTR"]:
+    # match() returns the location of the attribute, whereas the indexer needs
+    # the location of the value on which the attribute is accessed, in order to
+    # link function calls. We'll manually adjust the location later.
+    for unused_loc, (op, unused_symbol, data) in self.match(node):
+      if op == "LOAD_ATTR":
         ref = self.add_local_ref(
             node,
             target=node.value,
             name=node_str,
             data=data)
-        if data and len(data) == 2:
+        if len(data) == 2:
           _, rhs = data
           self.typemap[ref.id] = rhs
         break
-      elif symbol == node.attr and op in ["STORE_ATTR"]:
+      elif op == "STORE_ATTR":
         defn = self.add_local_def(node)
         if self.current_class:
           # We only support attr definitions within a class definition.
           self.current_env.setattr(node.attr, defn)
+        break
     return node_str
 
   def visit_Subscript(self, node):
@@ -896,59 +780,46 @@ class IndexVisitor(ScopedVisitor):
   def visit_ListComp(self, _node):
     return "<expr>"
 
-  def process_import(self, node, is_from):
+  def process_import(self, node):
     """Common code for Import and ImportFrom."""
 
-    store_ops = get_opcodes(self.traces, node.lineno, ["STORE_NAME"])
-    import_ops = get_opcodes(self.traces, node.lineno, ["IMPORT_NAME"])
-
     # Only record modules that pytype has resolved in self.modules
-    def is_resolved(defn, symbol, data):
-      return (symbol == defn.name and data and
-              isinstance(data[0], abstract.Module))
-
-    def filter_ops(op_list, defn):
-      return [(symbol, data) for _, symbol, data in op_list
-              if is_resolved(defn, symbol, data)]
+    def is_resolved(data):
+      return data and isinstance(data[0], abstract.Module)
 
     def add_import_ref(name, data, loc):
       self.add_global_ref(
           node, name=name, data=data, location=loc, typ="Import")
 
-    for alias in node.names:
-      name = alias.asname if alias.asname else alias.name
-      # defn, defloc = self.make_def(node, **kwargs)
-      d = self.add_local_def(node, name=name)
+    for loc, (op, symbol, data) in self.match(node):
+      d = self.add_local_def(node, name=symbol)
       defloc = self.locs[d.id][-1]
-      loc = defloc.location
 
       # tweak the definition location slightly
       line, _ = loc
       text = self.source.line(line)
       c = text.find("import ")
-      if c > -1:
-        # (If we haven't found "import " on the line, give up for now.)
-        self.locs[d.id][-1] = DefLocation(
-            defloc.def_id, SourceLocation(line, c))
+      new_loc = source.Location(line, c) if c > -1 else loc
+      self.locs[d.id][-1] = DefLocation(defloc.def_id, new_loc)
 
-      if alias.asname or is_from:
+      if not is_resolved(_unwrap(data)):
+        continue
+      elif op == "STORE_NAME":
         # for |import x.y as z| or |from x import y as z| we want {z: x.y}
-        for symbol, data in filter_ops(store_ops, d):
-          self.modules[d.id] = data[0].full_name
-          add_import_ref(name=symbol, data=data, loc=loc)
-      else:
+        self.modules[d.id] = _unwrap(data)[0].full_name
+        add_import_ref(name=symbol, data=data, loc=loc)
+      elif op == "IMPORT_NAME":
         # |import x.y| puts both {x: x} and {x.y: x.y} in modules
-        for symbol, data in filter_ops(import_ops, d):
-          add_import_ref(name=symbol, data=data, loc=loc)
-          for mod in module_utils.get_all_prefixes(name):
-            # TODO(mdemello): Create references for every element.
-            self.modules[d.scope + "." + mod] = mod
+        add_import_ref(name=symbol, data=data, loc=loc)
+        for mod in module_utils.get_all_prefixes(symbol):
+          # TODO(mdemello): Create references for every element.
+          self.modules[d.scope + "." + mod] = mod
 
   def visit_Import(self, node):
-    self.process_import(node, is_from=False)
+    self.process_import(node)
 
   def visit_ImportFrom(self, node):
-    self.process_import(node, is_from=True)
+    self.process_import(node)
 
 
 # pylint: enable=invalid-name
@@ -959,18 +830,18 @@ class Indexer(object):
   """Runs the indexer visitor and collects its results."""
 
   def __init__(self,
-               source,
+               src,
                loader,
                module_name,
                kythe_args=None,
                annotate_ast=False):
-    self.source = source
+    self.source = src
     self.loader = loader
     self.resolved_modules = loader.get_resolved_modules()
     self.imports = xref_utils.process_imports_map(loader.imports_map)
     self.module_name = module_name
-    self.traces = source.traces
-    self.kythe = kythe.Kythe(source, kythe_args)
+    self.traces = src.traces
+    self.kythe = kythe.Kythe(src, kythe_args)
     self._annotate_ast = annotate_ast
     self.defs = None
     self.locs = None
@@ -1092,53 +963,8 @@ class Indexer(object):
 
   def _get_attr_bounds(self, name, location):
     """Calculate the anchor bounds for an attr access."""
-    return self.get_anchor_bounds(*self._get_attr_location(name, location))
-
-  def _get_attr_location(self, name, location):
-    """Calculate ((line, col), len(attr)) for an attr access."""
-    # TODO(mdemello): This is pretty crude, and does not for example take into
-    # account multiple calls of the same attribute in a line. It is just to get
-    # our tests passing till we incorporate asttokens.
-    line, _ = location
-    src_line = self.source.line(line)
-    attr = name.split(".")[-1]
-    dot_attr = "." + attr
-    if dot_attr in src_line:
-      col = src_line.index(dot_attr)
-      return (SourceLocation(line, col + 1), len(attr))
-    else:
-      # We have something like
-      #   (foo
-      #      .bar)
-      # or
-      #   (foo.
-      #     bar)
-      # Lookahead up to 5 lines to find '.attr' (the ast node always starts from
-      # the beginning of the chain, so foo.\nbar.\nbaz etc could span several
-      # lines).
-      attr_loc = self.get_multiline_location(location, 5, dot_attr)
-      if attr_loc:
-        return (SourceLocation(attr_loc.line, attr_loc.column + 1), len(attr))
-      else:
-        # Find consecutive lines ending with '.' and starting with 'attr'.
-        for l in self.source.get_closest_line_range(line, line + 5):
-          if self.source.line(l).endswith("."):
-            next_line = self.source.next_non_comment_line(l)
-            text = self.source.line(next_line)
-            if text.lstrip().startswith(attr):
-              c = text.index(attr)
-              return (SourceLocation(next_line, c), len(attr))
-      # if all else fails, fall back to just spanning the name
-      return (location, len(name))
-
-  def get_multiline_location(self, location, n_lines, text):
-    """Get the start location of text anywhere within n_lines of location."""
-    line, _ = location
-    text_loc = self.source.find_text(line, line + n_lines, text)
-    if text_loc:
-      return text_loc
-    else:
-      return None
+    return self.get_anchor_bounds(
+        *self.source.get_attr_location(name, location))
 
   def get_anchor_bounds(self, location, length):
     """Generate byte offsets from a location and length."""
@@ -1157,11 +983,10 @@ class Indexer(object):
     if ref.typ == "Attribute":
       # For an attribute, return information about the attribute itself,
       # ignoring the object it was accessed on.
-      loc, _ = self._get_attr_location(ref.name, ref.location)
-      _, t = ref.data
+      loc, _ = self.source.get_attr_location(ref.name, ref.location)
     else:
-      loc, t = ref.location, ref.data
-    return loc, t
+      loc = ref.location
+    return loc, ref.data[-1]
 
   def _make_defn_vname(self, defn):
     """Convert a definition into a kythe vname."""
@@ -1265,11 +1090,7 @@ class Indexer(object):
     final_links = []
     final_ref_cache = {}
     for ref in refs:
-      if ref.typ == "Attribute":
-        obj, attr = ref.data
-        t = (self._to_pytd(obj, pytype_ast), self._to_pytd(attr, pytype_ast))
-      else:
-        t = self._to_pytd(ref.data, pytype_ast)
+      t = tuple(self._to_pytd(d, pytype_ast) for d in ref.data)
       final_ref = ref._replace(data=t)
       final_refs.append(final_ref)
       final_ref_cache[ref.id] = final_ref
@@ -1420,7 +1241,7 @@ class Indexer(object):
         if r.name in self.resolved_modules:
           module = r.name
         else:
-          module = r.data[0].full_name
+          module = _unwrap(r.data)[0].full_name
         remote = Remote(module=module, name=IMPORT_FILE_MARKER, resolved=True)
         links.append((r, remote))
       else:
@@ -1432,7 +1253,7 @@ class Indexer(object):
         if defn:
           links.append((r, defn))
         else:
-          data = PytypeValue.from_data(r.data)
+          data = PytypeValue.from_data(_unwrap(r.data))
           if data:
             for x in data:
               links.append((r, x))
@@ -1442,6 +1263,13 @@ class Indexer(object):
 
 class PytypeError(Exception):
   """Wrap exceptions raised by the indexer."""
+
+
+class VmTrace(source.AbstractTrace):
+
+  def __repr__(self):
+    types_repr = tuple(t and [typename(x) for x in t] for t in self.types)
+    return "%s %s" % (super(VmTrace, self).__repr__(), types_repr)
 
 
 def process_file(options,
@@ -1512,9 +1340,9 @@ def process_file(options,
 
   # TODO(mdemello): Get from args
   module_name = "module"
-  source = SourceFile(src, vm.opcode_traces, filename=options.input)
+  src_code = source.Code(src, vm.opcode_traces, VmTrace, filename=options.input)
   ix = Indexer(
-      source, vm.loader, module_name, kythe_args, annotate_ast=annotate_ast)
+      src_code, vm.loader, module_name, kythe_args, annotate_ast=annotate_ast)
   ix.index(ast_root_node)
   ix.finalize(keep_pytype_data, pytype_ast)
   return ix, ast_root_node
