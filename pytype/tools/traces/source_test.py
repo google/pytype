@@ -3,6 +3,7 @@
 
 from __future__ import print_function
 from pytype.tools.traces import source
+import six
 import unittest
 
 
@@ -39,7 +40,7 @@ class CodeTest(unittest.TestCase):
     src = source.Code("text", raw_traces, _FakeTrace, "name")
     self.assertEqual(src.text, "text")
     self.assertEqual(src.filename, "name")
-    self.assertCountEqual(src.traces, [1, 4])
+    six.assertCountEqual(self, src.traces, [1, 4])
     self.assertEqual(
         src.traces[1],
         [("op1", "symbol1", (["data1"],)), ("op3", "symbol3", (["data3"],))])
@@ -57,8 +58,8 @@ class CodeTest(unittest.TestCase):
 
   def test_get_closest_line_range(self):
     src = source.Code("line1\nline2\nline3", [], _FakeTrace, "")
-    self.assertCountEqual(src.get_closest_line_range(1, 3), [1, 2])
-    self.assertCountEqual(src.get_closest_line_range(2, 5), [2, 3])
+    six.assertCountEqual(self, src.get_closest_line_range(1, 3), [1, 2])
+    six.assertCountEqual(self, src.get_closest_line_range(2, 5), [2, 3])
 
   def test_find_first_text(self):
     src = source.Code("line1\nline2\nline3", [], _FakeTrace, "")

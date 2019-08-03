@@ -1,6 +1,8 @@
 # Lint as: python2, python3
 """A library for accessing pytype's inferred local types."""
 
+import sys
+
 from pytype import analyze
 from pytype import config
 from pytype import errors
@@ -87,7 +89,9 @@ class MatchAstVisitor(visitor.BaseVisitor):
   def __init__(self, src_code, *args, **kwargs):
     super(MatchAstVisitor, self).__init__(*args, **kwargs)
     self.source = src_code
-    # Track the last line for multiline assign statements. This is safe because
+    # In Python versions before 3.7, there is a mismatch between where the ast
+    # and bytecode representations think some nodes are located, so we manually
+    # track the last line for multiline assign statements. This is safe because
     # assign is not an expression and hence cannot be nested.
     # TODO(mdemello): Handle multiline class definitions similarly.
     self._assign_end_line = None
@@ -130,10 +134,16 @@ class MatchAstVisitor(visitor.BaseVisitor):
 
   def match_Name(self, node):
     if isinstance(node.ctx, self._ast.Load):
-      lineno = self._assign_end_line if self._assign_subscr else node.lineno
+      if self._assign_subscr and sys.version_info < (3, 7):
+        lineno = self._assign_end_line
+      else:
+        lineno = node.lineno
       ops = _LOAD_OPS
     elif isinstance(node.ctx, self._ast.Store):
-      lineno = self._assign_end_line or node.lineno
+      if self._assign_end_line and sys.version_info < (3, 7):
+        lineno = self._assign_end_line
+      else:
+        lineno = node.lineno
       ops = _STORE_OPS
     else:
       return []

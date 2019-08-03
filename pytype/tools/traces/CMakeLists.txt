@@ -23,6 +23,7 @@ py_test(
     .traces
     pytype.config
     pytype.pytd_defs
+    pytype.utils
 )
 
 py_library(

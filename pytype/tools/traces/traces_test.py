@@ -5,6 +5,7 @@ import ast
 import collections
 import textwrap
 from pytype import config
+from pytype import file_utils
 from pytype.pytd import pytd
 from pytype.tools.traces import traces
 import unittest
@@ -47,12 +48,12 @@ class TraceTest(unittest.TestCase):
     self.assertEqual(src.filename, "rumpelstiltskin")
 
   def test_external_type(self):
-    pyi = self.create_tempfile(
-        file_path="foo.pyi", content="class Foo(object): ...")
-    imports_info = self.create_tempfile(content="foo %s" % pyi.full_path)
-    src = traces.trace(
-        "import foo\nx = foo.Foo()",
-        config.Options.create(imports_map=imports_info.full_path))
+    with file_utils.Tempdir() as d:
+      pyi_path = d.create_file("foo.pyi", "class Foo(object): ...")
+      imports_info = d.create_file("imports_info", "foo %s" % pyi_path)
+      src = traces.trace(
+          "import foo\nx = foo.Foo()",
+          config.Options.create(imports_map=imports_info))
     trace, = (x for x in src.traces[2] if x.op == "STORE_NAME")
     pyval, = trace.types
     self.assertEqual(pyval.name, "foo.Foo")
@@ -90,11 +91,10 @@ class MatchAstVisitorTest(unittest.TestCase):
 
   def test_attr(self):
     trace, = self._get_traces("""\
-      x = ''
-      print(x.upper())
+      x = 0
+      print(x.real)
     """, ast.Attribute)
-    self.assertTraceEqual(
-        trace, (2, 8), "LOAD_ATTR", "upper", ("str", "Callable[[], str]"))
+    self.assertTraceEqual(trace, (2, 8), "LOAD_ATTR", "real", ("int", "int"))
 
   def test_import(self):
     os_trace, tzt_trace = self._get_traces("import os, sys as tzt", ast.Import)
