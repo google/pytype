@@ -7,7 +7,8 @@ py_library(
     annotate_ast.py
   DEPS
     pytype.io
-    pytype.libvm
+    pytype.pytd_for_parser
+    pytype.tools.traces.traces
 )
 
 py_test(

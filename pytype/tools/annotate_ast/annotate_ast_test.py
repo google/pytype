@@ -12,13 +12,10 @@ class AnnotaterTest(test_base.TargetIndependentTest):
 
   def annotate(self, source):
     source = textwrap.dedent(source.lstrip('\n'))
-    filename = 'unused.py'
     ast_factory = lambda unused_options: ast
-    pytype_options = config.Options.create(filename)
-    pytype_options.tweak(version=self.python_version)
+    pytype_options = config.Options.create(python_version=self.python_version)
 
-    module = annotate_ast.annotate_source(
-        source, ast_factory, pytype_options, filename=filename)
+    module = annotate_ast.annotate_source(source, ast_factory, pytype_options)
     return module
 
   def assert_annotations_equal(self, expected, module):
