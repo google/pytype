@@ -862,7 +862,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
     self._module_map = module_map
     self._module_alias_map = module_alias_map or {}
     self.name = self_name
-    self._in_constant = False
+    self._in_constant = []
     self._alias_name = None
     self._star_imports = set()
 
@@ -877,12 +877,10 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
     return g.signatures[0].return_type
 
   def EnterConstant(self, _):
-    assert not self._in_constant
-    self._in_constant = True
+    self._in_constant.append(True)
 
   def LeaveConstant(self, _):
-    assert self._in_constant
-    self._in_constant = False
+    self._in_constant.pop()
 
   def EnterAlias(self, t):
     assert not self._alias_name
@@ -2145,6 +2143,14 @@ class ExpandCompatibleBuiltins(Visitor):
     self.in_type_parameter = True
 
   def LeaveTypeParameter(self, _):
+    assert self.in_type_parameter
+    self.in_type_parameter = False
+
+  def EnterLiteral(self, _):
+    assert not self.in_type_parameter
+    self.in_type_parameter = True
+
+  def LeaveLiteral(self, _):
     assert self.in_type_parameter
     self.in_type_parameter = False
 

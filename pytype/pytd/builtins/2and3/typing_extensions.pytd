@@ -1,3 +1,4 @@
 import typing
+Literal = typing.Literal
 Protocol = typing.Protocol
 def __getattr__(name) -> ?

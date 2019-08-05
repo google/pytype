@@ -49,7 +49,7 @@ class _ParserTestBase(unittest.TestCase):
     version = version or self.PYTHON_VERSION
     src = textwrap.dedent(src)
     ast = parser.parse_string(src, name=name, python_version=version,
-                              platform=platform, keep_literals=True)
+                              platform=platform)
     actual = pytd.Print(ast)
     if expected != IGNORE:
       expected = src if expected is None else textwrap.dedent(expected)
@@ -63,8 +63,7 @@ class _ParserTestBase(unittest.TestCase):
     """Check that parsing the src raises the expected error."""
     with self.assertRaises(parser.ParseError) as e:
       parser.parse_string(textwrap.dedent(src),
-                          python_version=self.PYTHON_VERSION,
-                          keep_literals=True)
+                          python_version=self.PYTHON_VERSION)
     six.assertRegex(self, utils.message(e.exception), re.escape(message))
     self.assertEqual(expected_line, e.exception.line)
 

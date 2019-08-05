@@ -270,12 +270,6 @@ class _PropertyToConstant(visitors.Visitor):
         return True
 
 
-class _RemoveLiterals(visitors.Visitor):
-
-  def VisitLiteral(self, unused_node):
-    return pytd.AnythingType()
-
-
 class _Parser(object):
   """A class used to parse a single PYI file.
 
@@ -407,7 +401,7 @@ class _Parser(object):
     self._module_path_map = {}
     self._generated_classes = collections.defaultdict(list)
 
-  def parse(self, src, name, filename, keep_literals=False):
+  def parse(self, src, name, filename):
     """Parse a PYI file and return the corresponding AST.
 
     Note that parse() should be called exactly once per _Parser instance.  It
@@ -417,7 +411,6 @@ class _Parser(object):
       src: The source text to parse.
       name: The name of the module to be created.
       filename: The name of the source file.
-      keep_literals: Whether to keep typing.Literal. Temporary flag for testing.
 
     Returns:
       A pytd.TypeDeclUnit() representing the parsed pyi.
@@ -452,8 +445,6 @@ class _Parser(object):
       else:
         raise e
 
-    if not keep_literals:
-      ast = ast.Visit(_RemoveLiterals())
     ast = ast.Visit(_PropertyToConstant())
     ast = ast.Visit(_InsertTypeParameters(ast.type_params))
     ast = ast.Visit(_VerifyMutators())
@@ -1223,11 +1214,10 @@ class _Parser(object):
     return orig_name
 
 
-# TODO(b/123775699): Default `keep_literals` to True and remove the flag.
 def parse_string(src, name=None, filename=None, python_version=None,
-                 platform=None, keep_literals=False):
+                 platform=None):
   return _Parser(version=python_version, platform=platform).parse(
-      src, name, filename, keep_literals)
+      src, name, filename)
 
 
 def parse_file(filename=None, name=None, python_version=None,

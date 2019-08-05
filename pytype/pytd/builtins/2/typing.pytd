@@ -46,6 +46,12 @@ class Generic(object):
   __slots__ = []
 
 
+# This class is the implementation of PEP 586
+# (https://www.python.org/dev/peps/pep-0586/)
+class Literal(Generic[_T]):
+  __slots__ = []
+
+
 # This class is the implementation of PEP 544
 # (https://www.python.org/dev/peps/pep-0544/)
 class Protocol(object):

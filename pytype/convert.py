@@ -516,6 +516,14 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     members = {val.name.rsplit(".")[-1]: val for val in data}
     return abstract.Module(self.vm, ast.name, members, ast)
 
+  def _get_literal_value(self, pyval):
+    if pyval == self.vm.lookup_builtin("__builtin__.True"):
+      return True
+    elif pyval == self.vm.lookup_builtin("__builtin__.False"):
+      return False
+    else:
+      return pyval
+
   def _constant_to_value(self, pyval, subst, get_node):
     """Create a AtomicAbstractValue that represents a python constant.
 
@@ -719,6 +727,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           log.info("New pytd instance for %s: %r", cls.name, instance)
           self._convert_cache[key] = instance
         return self._convert_cache[key]
+      elif isinstance(cls, pytd.Literal):
+        return self.constant_to_value(
+            self._get_literal_value(cls.value), subst, self.vm.root_cfg_node)
       else:
         return self.constant_to_value(cls, subst, self.vm.root_cfg_node)
     elif (isinstance(pyval, pytd.GenericType) and
@@ -764,6 +775,12 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       type_parameters = abstract_utils.LazyFormalTypeParameters(
           template, parameters, subst)
       return abstract_class(base_cls, type_parameters, self.vm)
+    elif isinstance(pyval, pytd.Literal):
+      # TODO(b/123775699): Create a ParameterizedClass(Literal) to record that
+      # this type is a literal.
+      value = self.constant_to_value(
+          self._get_literal_value(pyval.value), subst, self.vm.root_cfg_node)
+      return value.get_class()
     elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node
       return self.tuple_to_value([self.constant_to_var(item, subst,
                                                        self.vm.root_cfg_node)
