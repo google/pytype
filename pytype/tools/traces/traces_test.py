@@ -59,6 +59,15 @@ class TraceTest(unittest.TestCase):
     self.assertEqual(pyval.name, "foo.Foo")
     self.assertEqual(pyval.cls.name, "foo.Foo")
 
+  def test_py3_class(self):
+    src = traces.trace(textwrap.dedent("""\
+      class Foo(object):
+        pass
+    """), config.Options.create(python_version=(3, 6)))
+    trace, = (x for x in src.traces[1] if x.op == "LOAD_BUILD_CLASS")
+    pyval, = trace.types
+    self.assertEqual(pyval.name, "typing.Callable")
+
 
 class MatchAstVisitorTest(unittest.TestCase):
   """Tests for traces.MatchAstVisitor."""
