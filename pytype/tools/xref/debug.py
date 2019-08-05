@@ -17,10 +17,9 @@ def format_def_with_location(defn, loc):
       format_loc(loc), defn.typ.ljust(15), defn.format()))
 
 
-def format_ref(ref, keep_pytype_data=False):
-  suffix = " : %s" % (ref.data,) if keep_pytype_data else ""
-  return ("%s  | %s  %s.%s%s" % (format_loc(
-      ref.location), ref.typ.ljust(15), ref.scope, ref.name, suffix))
+def format_ref(ref):
+  return ("%s  | %s  %s.%s" % (
+      format_loc(ref.location), ref.typ.ljust(15), ref.scope, ref.name))
 
 
 def format_call(call):
@@ -42,11 +41,11 @@ def show_defs(index):
         print(" "*28 + str(defn.doc))
 
 
-def show_refs(index, keep_pytype_data=False):
+def show_refs(index):
   """Show references and associated definitions."""
   indent = "          :  "
   for ref, defn in index.links:
-    print(format_ref(ref, keep_pytype_data))
+    print(format_ref(ref))
     if defn:
       print(indent, defn.format())
       for loc in index.locs[defn.id]:
@@ -61,7 +60,7 @@ def show_calls(index):
     print(format_call(call))
 
 
-def show_index(index, keep_pytype_data=False):
+def show_index(index):
   """Display output in human-readable format."""
 
   def separator():
@@ -69,7 +68,7 @@ def show_index(index, keep_pytype_data=False):
 
   show_defs(index)
   separator()
-  show_refs(index, keep_pytype_data)
+  show_refs(index)
   separator()
   show_calls(index)
   separator()

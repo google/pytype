@@ -68,6 +68,14 @@ class TraceTest(unittest.TestCase):
     pyval, = trace.types
     self.assertEqual(pyval.name, "typing.Callable")
 
+  def test_unknown(self):
+    # pytype represents unannotated function parameters as unknowns. Make sure
+    # unknowns don't appear in the traced types.
+    src = traces.trace("def f(x): return x")
+    trace, = (x for x in src.traces[1] if x.op == "LOAD_FAST")
+    pyval, = trace.types
+    self.assertIsInstance(pyval, pytd.AnythingType)
+
 
 class MatchAstVisitorTest(unittest.TestCase):
   """Tests for traces.MatchAstVisitor."""

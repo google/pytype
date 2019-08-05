@@ -19,15 +19,13 @@ class IndexerTest(test_base.TargetIndependentTest):
 
   def index_code(self, code, **kwargs):
     """Generate references from a code string."""
-    keep_pytype_data = kwargs.pop("keep_pytype_data", False)
-
     args = {"version": self.python_version}
     args.update(kwargs)
     with file_utils.Tempdir() as d:
       d.create_file("t.py", code)
       options = config.Options.create(d["t.py"])
       options.tweak(**args)
-      return indexer.process_file(options, keep_pytype_data=keep_pytype_data)
+      return indexer.process_file(options)
 
   def generate_kythe(self, code, **kwargs):
     """Generate a kythe index from a code string."""
@@ -205,107 +203,6 @@ class IndexerTest(test_base.TargetIndependentTest):
       x = {1: 2}.items()
       y = [1, 2].reverse()
     """))
-
-  def test_finalize_refs(self):
-    code = textwrap.dedent("""
-      x = ""
-      def f():
-        return x.upper()
-    """)
-    ix = self.index_code(code, keep_pytype_data=True)
-    expected_refs = (("x", ("str",)), ("x.upper", ("str", "Callable[[], str]")))
-
-    def get_data(ref):
-      if ref.data.__class__ is tuple:
-        return (ref.name, tuple(pytd.Print(t) for t in ref.data))
-      else:
-        return (ref.name, pytd.Print(ref.data))
-
-    self.assertCountEqual((get_data(ref) for ref in ix.refs), expected_refs)
-    self.assertCountEqual((get_data(ref) for ref, _ in ix.links), expected_refs)
-
-  def test_type_map(self):
-    code = textwrap.dedent("""\
-      def f():
-        x = ""
-        return x
-    """)
-    ix = self.index_code(code, keep_pytype_data=True)
-    type_map = output.type_map(ix)
-    self.assertTypeMapEqual(type_map, {(3, 9): "str"})
-
-  def test_type_map_attr(self):
-    code = textwrap.dedent("""\
-      class X:
-        n = 42
-      def f():
-        return X.n
-    """)
-    ix = self.index_code(code, keep_pytype_data=True)
-    type_map = output.type_map(ix)
-    self.assertTypeMapEqual(type_map, {(4, 9): "Type[X]", (4, 11): "int"})
-
-  def test_type_map_multiline_attr(self):
-    code = textwrap.dedent("""\
-      class X:
-        n = 42
-      def f():
-        return (X.
-          n)
-    """)
-    ix = self.index_code(code, keep_pytype_data=True)
-    type_map = output.type_map(ix)
-    self.assertTypeMapEqual(type_map, {(4, 10): "Type[X]", (5, 4): "int"})
-
-  def test_type_map_multiline_dotattr(self):
-    code = textwrap.dedent("""\
-      class X:
-        n = 42
-      def f():
-        return (X
-          .n)
-    """)
-    ix = self.index_code(code, keep_pytype_data=True)
-    type_map = output.type_map(ix)
-    self.assertTypeMapEqual(type_map, {(4, 10): "Type[X]", (5, 5): "int"})
-
-  def test_type_map_missing(self):
-    # For obj.attr, sometimes we fail to find the location of attr. Test that
-    # the type of obj is still accurate.
-    code = textwrap.dedent("""\
-      class X:
-        n = 42
-      def f():
-        return (X
-        {}
-          .n)
-    """).format("\n" * 10)
-    ix = self.index_code(code, keep_pytype_data=True)
-    type_map = output.type_map(ix)
-    self.assertTypeMapEqual(type_map, {(4, 10): "Type[X]"})
-
-  def test_unknown(self):
-    # pytype represents unannotated function parameters as unknowns. Make sure
-    # unknowns don't appear in the type map.
-    code = textwrap.dedent("""\
-      def f(x): return x
-    """)
-    ix = self.index_code(code, keep_pytype_data=True)
-    type_map = output.type_map(ix)
-    self.assertTypeMapEqual(type_map, {(1, 17): "Any"})
-
-  def test_type_resolution(self):
-    code = textwrap.dedent("""\
-      class X:
-        pass
-      Y = X
-    """)
-    ix = self.index_code(code, keep_pytype_data=True)
-    pyval = output.type_map(ix)[(3, 4)]
-    # Make sure we have pytd.ClassType objects with the right .cls pointers.
-    self.assertEqual(pyval.base_type.cls,
-                     self.loader.builtins.Lookup("__builtin__.type"))
-    self.assertEqual(pyval.parameters[0].cls.name, "X")
 
 
 class VmTraceTest(test_base.TargetIndependentTest):
