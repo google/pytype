@@ -119,24 +119,6 @@ def match_opcodes(opcode_traces, lineno, op_match_list):
   return out
 
 
-def _to_type(vals):
-  """Convert a Reference.data item to a string type.
-
-  This is a helper function for Indexer._finalize_refs.
-
-  Args:
-    vals: A Reference.data item. Its type is
-      Optional[List[abstract.AtomicAbstractValue]]. The data field contains a
-      tuple of items.
-
-  Returns:
-    A string.
-  """
-  if not vals:
-    return "Any"
-  return pytd_utils.Print(_join_types(vals))
-
-
 def _join_types(vals):
   return pytd_utils.JoinTypes(v.to_type() for v in vals).Visit(
       visitors.RemoveUnknownClasses())
@@ -512,9 +494,8 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
 class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
   """Visitor that generates indexes."""
 
-  def __init__(self, src, module_name, kythe_, annotate_ast):
+  def __init__(self, src, module_name, kythe_):
     super(IndexVisitor, self).__init__(src, module_name)
-    self._annotate_ast = annotate_ast
     self.defs = {}
     self.locs = collections.defaultdict(list)
     self.refs = []
@@ -702,9 +683,6 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
         break
       elif op in ["STORE_FAST", "STORE_NAME", "STORE_DEREF"]:
         defn = self.add_local_def(node, name=symbol)
-        if self._annotate_ast:
-          node.resolved_annotation = _to_type(d)
-          node.resolved_type = _join_types(d or [])
         self.typemap[defn.id] = d
         break
     return node.id
@@ -833,8 +811,7 @@ class Indexer(object):
                src,
                loader,
                module_name,
-               kythe_args=None,
-               annotate_ast=False):
+               kythe_args=None):
     self.source = src
     self.loader = loader
     self.resolved_modules = loader.get_resolved_modules()
@@ -842,7 +819,6 @@ class Indexer(object):
     self.module_name = module_name
     self.traces = src.traces
     self.kythe = kythe.Kythe(src, kythe_args)
-    self._annotate_ast = annotate_ast
     self.defs = None
     self.locs = None
     self.refs = None
@@ -856,11 +832,7 @@ class Indexer(object):
   def index(self, code_ast):
     """Index an AST corresponding to self.source."""
 
-    v = IndexVisitor(
-        self.source,
-        self.module_name,
-        self.kythe,
-        annotate_ast=self._annotate_ast)
+    v = IndexVisitor(self.source, self.module_name, self.kythe)
     v.visit(code_ast)
     self.defs = v.defs
     self.locs = v.locs
@@ -1275,9 +1247,7 @@ class VmTrace(source.AbstractTrace):
 def process_file(options,
                  source_text=None,
                  kythe_args=None,
-                 keep_pytype_data=False,
-                 ast_factory=None,
-                 annotate_ast=False):
+                 keep_pytype_data=False):
   """Process a single file and return cross references.
 
   Args:
@@ -1288,18 +1258,9 @@ def process_file(options,
     keep_pytype_data: Whether to preserve the Reference.data field. If true, the
       field will hold the type of the reference as a str or Tuple[str, str] (for
       attributes). Otherwise, it will be inaccessible.
-    ast_factory: Callable to return an ast-module-compatible object to parse the
-      source text into an ast-compatible object. It is passed the pytype Options
-      object. If not specified, typed_ast will be used.
-    annotate_ast: Whether to annotate the ast with type information. Nodes with
-      type information will have these attributes added:
-        * `.resolved_type`: the pytd information about the type
-        * `.resolved_annotation`: A string representation of the type, as would
-          be written in an annotation.
 
   Returns:
-    The Indexer object used for indexing, and the created AST object. The
-    AST object may have been modified if `annotate_ast=True`.
+    The Indexer object used for indexing.
 
   Raises:
     PytypeError if pytype fails.
@@ -1325,24 +1286,19 @@ def process_file(options,
         loader=loader,
         tracer_vm=vm)
 
-  if ast_factory:
-    ast = ast_factory(options)
-    ast_root_node = ast.parse(src, options.input)
+  major, minor = options.python_version
+  if major == 2:
+    # python2.7 is the only supported py2 version.
+    ast_root_node = ast27.parse(src, options.input)
+    ast = ast27
   else:
-    major, minor = options.python_version
-    if major == 2:
-      # python2.7 is the only supported py2 version.
-      ast_root_node = ast27.parse(src, options.input)
-      ast = ast27
-    else:
-      ast_root_node = ast3.parse(src, options.input, feature_version=minor)
-      ast = ast3
+    ast_root_node = ast3.parse(src, options.input, feature_version=minor)
+    ast = ast3
 
   # TODO(mdemello): Get from args
   module_name = "module"
   src_code = source.Code(src, vm.opcode_traces, VmTrace, filename=options.input)
-  ix = Indexer(
-      src_code, vm.loader, module_name, kythe_args, annotate_ast=annotate_ast)
+  ix = Indexer(src_code, vm.loader, module_name, kythe_args)
   ix.index(ast_root_node)
   ix.finalize(keep_pytype_data, pytype_ast)
-  return ix, ast_root_node
+  return ix

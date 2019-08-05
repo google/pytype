@@ -30,7 +30,7 @@ def main():
     signal.alarm(options.timeout)
 
   try:
-    ix, _ = indexer.process_file(
+    ix = indexer.process_file(
         options, kythe_args=kythe_args, keep_pytype_data=args.debug)
   except indexer.PytypeError as e:
     print(e.args[0], file=sys.stderr)
