@@ -1,5 +1,15 @@
 add_package()
 
+toplevel_py_binary(
+  NAME
+    annotate
+  SRCS
+    main.py
+  DEPS
+    .annotate_ast
+    pytype.tools
+)
+
 py_library(
   NAME
     annotate_ast
