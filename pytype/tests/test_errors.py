@@ -110,14 +110,24 @@ class ErrorTest(test_base.TargetIndependentTest):
         [(1, "wrong-arg-types", r"Built-in function len")]
     )
 
-  def BoundMethodNameInMsg(self):
+  def testBoundMethodNameInMsg(self):
     _, errors = self.InferWithErrors("""\
       "".join(1)
       """)
     self.assertErrorLogIs(
         errors,
-        [(1, "missing-parameter", r"Function str.join")]
+        [(1, "wrong-arg-types", r"Function str.join")]
     )
+
+  def testNestedClassMethodNameIsMsg(self):
+    errors = self.CheckWithErrors("""\
+      class A(object):
+        class B(object):
+          def f(self):
+            pass
+      A.B().f("oops")
+    """)
+    self.assertErrorLogIs(errors, [(5, "wrong-arg-count", r"Function B.f")])
 
   def testPrettyPrintWrongArgs(self):
     with file_utils.Tempdir() as d:

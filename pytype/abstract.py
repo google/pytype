@@ -3216,7 +3216,7 @@ class BoundFunction(AtomicAbstractValue):
         if "." in e.name:
           # match_args will try to prepend the parent's name to the error name.
           # Overwrite it with _callself instead, which may be more exact.
-          _, _, e.name = e.name.partition(".")
+          _, _, e.name = e.name.rpartition(".")
         e.name = "%s.%s" % (self._callself.data[0].name, e.name)
       raise
     finally:
