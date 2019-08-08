@@ -1,22 +1,27 @@
 from __future__ import print_function
 
 import json
+import sys
 import textwrap
 
 from pytype import abstract
 from pytype import config
 from pytype import file_utils
-from pytype.pytd import pytd
+from pytype import utils
 
 from pytype.tests import test_base
 
-from pytype.tools.xref import indexer
 from pytype.tools.xref import kythe
 from pytype.tools.xref import output
 
+# xref is available only in Python 3.3+, but in our opensource tests, there is
+# no easy way to exclude this test in earlier Python versions.
+if sys.version_info >= (3, 3):
+  from pytype.tools.xref import indexer  # pylint: disable=g-import-not-at-top
 
-class IndexerTest(test_base.TargetIndependentTest):
-  """Tests for the indexer."""
+
+class IndexerTestMixin(object):
+  """Mixin for indexer tests."""
 
   def index_code(self, code, **kwargs):
     """Generate references from a code string."""
@@ -28,7 +33,7 @@ class IndexerTest(test_base.TargetIndependentTest):
       options.tweak(**args)
       return indexer.process_file(options, preserve_pytype_vm=True)
 
-  def generate_kythe(self, code, **kwargs):
+  def generate_kythe(self, code):
     """Generate a kythe index from a code string."""
     with file_utils.Tempdir() as d:
       d.create_file("t.py", code)
@@ -51,8 +56,9 @@ class IndexerTest(test_base.TargetIndependentTest):
     deflocs = index.locs[fqname]
     self.assertCountEqual([x.location for x in deflocs], locs)
 
-  def assertTypeMapEqual(self, type_map, expected):
-    self.assertEqual({k: pytd.Print(v) for k, v in type_map.items()}, expected)
+
+class IndexerTest(test_base.TargetIndependentTest, IndexerTestMixin):
+  """Tests for the indexer."""
 
   def test_param_reuse(self):
     ix = self.index_code("""\
@@ -64,17 +70,8 @@ class IndexerTest(test_base.TargetIndependentTest):
     self.assertDefLocs(ix, "module.f", [(1, 0)])
     self.assertDefLocs(ix, "module.f.x", [(1, 6), (2, 2)])
 
-  def test_type_annotations(self):
-    ix = self.index_code("""\
-       from __future__ import google_type_annotations
-       def f(x: int) -> int:
-         return x
-    """)
-    self.assertDef(ix, "module.f", "f", "FunctionDef")
-    self.assertDef(ix, "module.f.x", "x", "Param")
-    self.assertDefLocs(ix, "module.f", [(2, 0)])
-    self.assertDefLocs(ix, "module.f.x", [(2, 6)])
-
+  @test_base.skip_if(sys.version_info >= (3, 7),
+                     "a/b.py, f.py, p/q.py, x/y.py not found")
   def test_resolved_imports(self):
     # We need all imports to be valid for pytype
     code = """\
@@ -224,11 +221,40 @@ class IndexerTest(test_base.TargetIndependentTest):
     assert_data_type("module.f.x", abstract.Instance)
 
 
+class IndexerTestPy3(test_base.TargetPython3BasicTest, IndexerTestMixin):
+
+  def index_code(self, code, *args, **kwargs):
+    if utils.USE_ANNOTATIONS_BACKPORT and self.options.python_version == (2, 7):
+      code = test_base.WithAnnotationsImport(code)
+    return super(IndexerTestPy3, self).index_code(code, *args, **kwargs)
+
+  def assertDefLocs(self, index, fqname, locs):
+    if utils.USE_ANNOTATIONS_BACKPORT and self.options.python_version == (2, 7):
+      locs = [(line + 1, col) for line, col in locs]
+    return super(IndexerTestPy3, self).assertDefLocs(index, fqname, locs)
+
+  def test_type_annotations(self):
+    ix = self.index_code("""\
+       def f(x: int) -> int:
+         return x
+    """)
+    self.assertDef(ix, "module.f", "f", "FunctionDef")
+    self.assertDef(ix, "module.f.x", "x", "Param")
+    self.assertDefLocs(ix, "module.f", [(1, 0)])
+    self.assertDefLocs(ix, "module.f.x", [(1, 6)])
+
+
 class VmTraceTest(test_base.TargetIndependentTest):
 
   def test_repr(self):
     trace = indexer.VmTrace("LOAD_NAME", "x", (["t"],))
     print(repr(trace))  # smoke test
+
+
+# xref is available only in Python 3.3+, but in our opensource tests, there is
+# no easy way to exclude this test in earlier Python versions.
+if sys.version_info < (3, 3):
+  del IndexerTest, IndexerTestPy3, VmTraceTest
 
 
 test_base.main(globals(), __name__ == "__main__")

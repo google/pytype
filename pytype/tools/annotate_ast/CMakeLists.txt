@@ -5,6 +5,8 @@ toplevel_py_binary(
     annotate
   SRCS
     main.py
+  MAIN
+    main.py
   DEPS
     .annotate_ast
     pytype.tools

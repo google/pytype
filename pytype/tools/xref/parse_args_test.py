@@ -1,5 +1,7 @@
 """Tests for parse_args.py."""
 
+import sys
+
 from pytype import file_utils
 from pytype.tools.xref import parse_args
 import unittest
@@ -35,6 +37,12 @@ class TestParseArgs(unittest.TestCase):
       self.assertEqual(args.imports_info, imports_info)
       self.assertEqual(opts.imports_map, {"bar": pyi_file})
       self.assertTrue(opts.use_pickled_files)
+
+
+# xref is available only in Python 3.3+, but in our opensource tests, there is
+# no easy way to exclude this test in earlier Python versions.
+if sys.version_info < (3, 3):
+  del TestParseArgs
 
 
 if __name__ == "__main__":
