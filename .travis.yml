@@ -40,6 +40,7 @@ install:
   - pip install pylint
   - pip install pyyaml
   - pip install six
+  - if [[ $TRAVIS_PYTHON_VERSION != 2.7 ]]; then pip install typed_ast; fi
 
 script: 
   - python build_scripts/travis_script.py
