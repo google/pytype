@@ -223,20 +223,21 @@ class DocString(collections.namedtuple(
 
 
 class Definition(collections.namedtuple(
-    "defn", ["name", "typ", "scope", "target", "doc"]), Dummy):
+    "defn", ["name", "typ", "data", "scope", "target", "doc"]), Dummy):
   """A symbol definition.
 
   Attributes:
     name: The symbol name
     typ: The definition type (e.g. ClassDef)
+    data: Pytype data from the opcode traces
     scope: The namespace id (e.g. module:class A:function f:x)
     target: The LHS of an attribute (e.g. for x.foo, target = typeof(x))
     doc: The docstring, if any, for function and class defs
     id: The id
   """
 
-  def __init__(self, name, typ, scope, target, doc):
-    super(Definition, self).__init__(name, typ, scope, target, doc)
+  def __init__(self, name, typ, data, scope, target, doc):
+    super(Definition, self).__init__(name, typ, data, scope, target, doc)
     self.id = self.scope + "." + self.name
 
   def format(self):
@@ -535,6 +536,7 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
         "name": get_name(node),
         "scope": self.scope_id(),
         "typ": t,
+        "data": None,
         "target": None,
         "doc": None,
     }
@@ -609,7 +611,6 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
       self.envs[self.scope_id()].setattr(node.attr, defn)
 
   def enter_ClassDef(self, node):
-    defn = self.add_local_def(node, doc=DocString.from_node(node))
     # TODO(mdemello): For decorated classes, the node's lineno starts at the
     # first decorator, and therefore does not match the opcode's lineno.
     # Likewise, when a class definition spans multiple lines, the AST node
@@ -619,9 +620,10 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
 
     # Python2
     ops = match_opcodes(self.traces, node.lineno, [("BUILD_CLASS", class_name)])
+    d = None
     if ops:
       _, _, data = ops[0]
-      self.classmap[_unwrap(data)[0]] = defn
+      d = _unwrap(data)
     else:
       # Python3
       ops = match_opcodes(self.traces, node.lineno, [
@@ -630,12 +632,26 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
       ])
       if len(ops) == 2:
         _, _, data = ops[1]
-        self.classmap[_unwrap(data)[0]] = defn
+        d = _unwrap(data)
+    assert d, "Did not get pytype data for class %s" % class_name
+    defn = self.add_local_def(node, data=data, doc=DocString.from_node(node))
+    self.classmap[d[0]] = defn
     super(IndexVisitor, self).enter_ClassDef(node)
 
   def enter_FunctionDef(self, node):
-    fn_def = self.add_local_def(node, doc=DocString.from_node(node))
+    ops = match_opcodes(self.traces, node.lineno, [
+        ("MAKE_FUNCTION", None),  # py2 has no symbol, py3 has node.name
+        ("LOAD_CLOSURE", None)  # Nested functions
+    ])
+    if ops:
+      _, _, data = ops[0]
+    else:
+      # TODO(mdemello): Add an assert; this should not happen but I would rather
+      # not break grok indexing if it does.
+      data = None
+    fn_def = self.add_local_def(node, data=data, doc=DocString.from_node(node))
     env = self.add_scope(node)
+    # TODO(mdemello): Get pytype data for params
     params = [self.add_local_def(v) for v in node.args.args]
     for i, param in enumerate(params):
       self.kythe.add_edge(
@@ -670,11 +686,11 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
         self.typemap[ref.id] = d
         break
       elif op == "STORE_GLOBAL":
-        defn = self.add_global_def(node, name=symbol)
+        defn = self.add_global_def(node, name=symbol, data=data)
         self.typemap[defn.id] = d
         break
       elif op in ["STORE_FAST", "STORE_NAME", "STORE_DEREF"]:
-        defn = self.add_local_def(node, name=symbol)
+        defn = self.add_local_def(node, name=symbol, data=data)
         self.typemap[defn.id] = d
         break
     return node.id
@@ -820,6 +836,9 @@ class Indexer(object):
     self.classmap = None
     self.calls = None
     self.links = []
+
+    # Optionally preserve the pytype vm so we can access the types later
+    self.vm = None
 
   def index(self, code_ast):
     """Index an AST corresponding to self.source."""
@@ -1194,7 +1213,8 @@ class VmTrace(source.AbstractTrace):
     return "%s %s" % (super(VmTrace, self).__repr__(), types_repr)
 
 
-def process_file(options, source_text=None, kythe_args=None):
+def process_file(options, source_text=None, kythe_args=None,
+                 preserve_pytype_vm=False):
   """Process a single file and return cross references.
 
   Args:
@@ -1202,6 +1222,7 @@ def process_file(options, source_text=None, kythe_args=None):
     source_text: Optional text of the file; will be read from the file pointed
       to by options.input if not supplied.
     kythe_args: Extra args for generating the kythe index
+    preserve_pytype_vm: Preserve the pytype vm in the indexer
 
   Returns:
     The Indexer object used for indexing.
@@ -1245,4 +1266,6 @@ def process_file(options, source_text=None, kythe_args=None):
   ix = Indexer(src_code, vm.loader, module_name, kythe_args)
   ix.index(ast_root_node)
   ix.finalize()
+  if preserve_pytype_vm:
+    ix.vm = vm
   return ix

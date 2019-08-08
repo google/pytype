@@ -3,6 +3,7 @@ from __future__ import print_function
 import json
 import textwrap
 
+from pytype import abstract
 from pytype import config
 from pytype import file_utils
 from pytype.pytd import pytd
@@ -25,7 +26,7 @@ class IndexerTest(test_base.TargetIndependentTest):
       d.create_file("t.py", code)
       options = config.Options.create(d["t.py"])
       options.tweak(**args)
-      return indexer.process_file(options)
+      return indexer.process_file(options, preserve_pytype_vm=True)
 
   def generate_kythe(self, code, **kwargs):
     """Generate a kythe index from a code string."""
@@ -203,6 +204,24 @@ class IndexerTest(test_base.TargetIndependentTest):
       x = {1: 2}.items()
       y = [1, 2].reverse()
     """))
+
+  def test_def_types(self):
+    # Basic sanity test of definition data
+    ix = self.index_code("""\
+        def f():
+          x = 42
+          return x
+    """)
+
+    def assert_data_type(fqname, cls):
+      self.assertIn(fqname, ix.defs)
+      d = ix.defs[fqname]
+      self.assertEqual(len(d.data), 1)
+      pytype_cls = d.data[0][0]
+      self.assertIsInstance(pytype_cls, cls)
+
+    assert_data_type("module.f", abstract.InterpreterFunction)
+    assert_data_type("module.f.x", abstract.Instance)
 
 
 class VmTraceTest(test_base.TargetIndependentTest):
