@@ -523,6 +523,15 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
 
     return loc
 
+  def _get_node_name(self, node):
+    if isinstance(node, str):
+      # We replace nodes with their names after visiting them.
+      return node
+    try:
+      return super(IndexVisitor, self)._get_node_name(node)
+    except NotImplementedError:
+      return typename(node)
+
   def make_def(self, node, **kwargs):
     """Make a definition from a node."""
 
@@ -696,32 +705,17 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
     return node.id
 
   def visit_Call(self, node):
-    if isinstance(node.func, str):
-      name = node.func
-    elif isinstance(node.func, ast.Lambda):
-      name = "<lambda>"
-    else:
-      name = node.func.id
-    if "." in name:
-      basename = name.split(".")[-1]
-    else:
-      basename = name
-    ops = [x for x in self.traces[node.lineno]
-           if x[0].startswith("CALL_FUNCTION")]
+    name = self._get_node_name(node)
     seen = set()
-    for _, symbol, data in ops:
-      # pytype returns different things for Function(A.foo()).name
-      # In 2.7 the name is 'foo' but in 3.6 it is 'A.foo'.
-      symbol = symbol.split(".")[-1]
-      if symbol == basename:
-        for d in data:
-          if d is None:
-            continue
-          for d1 in d:
-            for f in qualified_method(d1):
-              if f not in seen:
-                self.add_call(node, name, f)
-                seen.add(f)
+    for _, (_, _, data) in self.match(node):
+      for d in data:
+        if d is None:
+          continue
+        for d1 in d:
+          for f in qualified_method(d1):
+            if f not in seen:
+              self.add_call(node, name, f)
+              seen.add(f)
     return name
 
   def visit_Assign(self, node):
@@ -730,11 +724,7 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
         self.add_attr(v)
 
   def visit_Attribute(self, node):
-    if isinstance(node.value, str):
-      node_str = "{}.{}".format(node.value, node.attr)
-    else:
-      # Prevents a crash when an attr is called on an inline literal.
-      node_str = "<{}>.{}".format(node.value.__class__.__name__, node.attr)
+    node_str = self._get_node_name(node)
     # match() returns the location of the attribute, whereas the indexer needs
     # the location of the value on which the attribute is accessed, in order to
     # link function calls. We'll manually adjust the location later.

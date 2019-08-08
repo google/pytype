@@ -192,14 +192,15 @@ class VirtualMachine(object):
     if op.name == "LOAD_ATTR" and not isinstance(val, tuple):
       return
 
+    def get_data(v):
+      data = getattr(v, "data", None)
+      # Sometimes v is a binding.
+      return [data] if data and not isinstance(data, list) else data
+
     if isinstance(val, tuple):
-      data = tuple(getattr(v, "data", None) for v in val)
+      data = tuple(get_data(v) for v in val)
     else:
-      data = getattr(val, "data", None)
-      # Sometimes val is a binding.
-      if data and not isinstance(data, list):
-        data = [data]
-      data = (data,)
+      data = (get_data(val),)
     rec = (op, symbol, data)
     self.opcode_traces.append(rec)
 
@@ -927,7 +928,7 @@ class VirtualMachine(object):
     for funcv in funcu.bindings:
       func = funcv.data
       assert isinstance(func, abstract.AtomicAbstractValue), type(func)
-      self.trace_opcode(None, func.name, funcv)
+      one_result = None
       try:
         new_node, one_result = func.call(node, funcv, args)
       except (function.DictKeyMissing, function.FailedFunctionCall) as e:
@@ -946,6 +947,9 @@ class VirtualMachine(object):
         else:
           result.PasteVariable(one_result, new_node, {funcv})
         nodes.append(new_node)
+      finally:
+        self.trace_opcode(
+            None, func.name.rpartition(".")[-1], (funcv, one_result))
     if nodes:
       node = self.join_cfg_nodes(nodes)
       if not result.bindings:
