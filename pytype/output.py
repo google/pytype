@@ -266,6 +266,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return pytd.AnythingType()
     elif isinstance(v, abstract.Unknown):
       return pytd.NamedType(v.class_name)
+    elif isinstance(v, abstract.BuildClass):
+      return pytd.NamedType("typing.Callable")
     else:
       raise NotImplementedError(v.__class__.__name__)
 

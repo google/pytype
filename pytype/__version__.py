@@ -1,2 +1,2 @@
 # pylint: skip-file
-__version__ = '2019.07.30'
+__version__ = '2019.08.09'

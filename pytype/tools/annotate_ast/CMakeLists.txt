@@ -1,5 +1,17 @@
 add_package()
 
+toplevel_py_binary(
+  NAME
+    annotate
+  SRCS
+    main.py
+  MAIN
+    main.py
+  DEPS
+    .annotate_ast
+    pytype.tools
+)
+
 py_library(
   NAME
     annotate_ast
@@ -7,7 +19,8 @@ py_library(
     annotate_ast.py
   DEPS
     pytype.io
-    pytype.libvm
+    pytype.pytd_for_parser
+    pytype.tools.traces.traces
 )
 
 py_test(

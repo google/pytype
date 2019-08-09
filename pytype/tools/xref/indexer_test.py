@@ -1,53 +1,46 @@
 from __future__ import print_function
 
-import ast
 import json
+import sys
 import textwrap
 
+from pytype import abstract
 from pytype import config
 from pytype import file_utils
-from pytype.pytd import pytd
+from pytype import utils
 
 from pytype.tests import test_base
 
-from pytype.tools.xref import indexer
 from pytype.tools.xref import kythe
 from pytype.tools.xref import output
 
+# xref is available only in Python 3.3+, but in our opensource tests, there is
+# no easy way to exclude this test in earlier Python versions.
+if sys.version_info >= (3, 3):
+  from pytype.tools.xref import indexer  # pylint: disable=g-import-not-at-top
 
-class IndexerTest(test_base.TargetIndependentTest):
-  """Tests for the indexer."""
 
-  def index_code(self, code, return_ast=False, **kwargs):
+class IndexerTestMixin(object):
+  """Mixin for indexer tests."""
+
+  def index_code(self, code, **kwargs):
     """Generate references from a code string."""
-    ast_factory = kwargs.pop("ast_factory", None)
-    keep_pytype_data = kwargs.pop("keep_pytype_data", False)
-    annotate_ast = kwargs.pop("annotate_ast", False)
-
     args = {"version": self.python_version}
     args.update(kwargs)
     with file_utils.Tempdir() as d:
       d.create_file("t.py", code)
       options = config.Options.create(d["t.py"])
       options.tweak(**args)
-      ix, ast_root = indexer.process_file(
-          options,
-          keep_pytype_data=keep_pytype_data,
-          ast_factory=ast_factory,
-          annotate_ast=annotate_ast)
-      if return_ast:
-        return ix, ast_root
-      else:
-        return ix
+      return indexer.process_file(options, preserve_pytype_vm=True)
 
-  def generate_kythe(self, code, **kwargs):
+  def generate_kythe(self, code):
     """Generate a kythe index from a code string."""
     with file_utils.Tempdir() as d:
       d.create_file("t.py", code)
       options = config.Options.create(d["t.py"])
       options.tweak(pythonpath=[d.path], version=self.python_version)
       kythe_args = kythe.Args(corpus="corpus", root="root")
-      ix, _ = indexer.process_file(options, kythe_args=kythe_args)
+      ix = indexer.process_file(options, kythe_args=kythe_args)
       # Collect all the references from the kythe graph.
       kythe_index = [json.loads(x) for x in output.json_kythe_graph(ix)]
       return kythe_index
@@ -63,22 +56,9 @@ class IndexerTest(test_base.TargetIndependentTest):
     deflocs = index.locs[fqname]
     self.assertCountEqual([x.location for x in deflocs], locs)
 
-  def assertTypeMapEqual(self, type_map, expected):
-    self.assertEqual({k: pytd.Print(v) for k, v in type_map.items()}, expected)
 
-  def test_custom_ast_parser(self):
-    called = [False]
-    def ast_factory(options):
-      del options  # Unused
-      called[0] = True
-      return ast
-
-    unused_indexer, ast_root = self.index_code(
-        "x = {}", return_ast=True, ast_factory=ast_factory, annotate_ast=True)
-    self.assertTrue(called[0])
-    name_node = ast_root.body[0].targets[0]
-    self.assertIsNotNone(name_node.resolved_type)
-    self.assertIsNotNone(name_node.resolved_annotation)
+class IndexerTest(test_base.TargetIndependentTest, IndexerTestMixin):
+  """Tests for the indexer."""
 
   def test_param_reuse(self):
     ix = self.index_code("""\
@@ -90,17 +70,8 @@ class IndexerTest(test_base.TargetIndependentTest):
     self.assertDefLocs(ix, "module.f", [(1, 0)])
     self.assertDefLocs(ix, "module.f.x", [(1, 6), (2, 2)])
 
-  def test_type_annotations(self):
-    ix = self.index_code("""\
-       from __future__ import google_type_annotations
-       def f(x: int) -> int:
-         return x
-    """)
-    self.assertDef(ix, "module.f", "f", "FunctionDef")
-    self.assertDef(ix, "module.f.x", "x", "Param")
-    self.assertDefLocs(ix, "module.f", [(2, 0)])
-    self.assertDefLocs(ix, "module.f.x", [(2, 6)])
-
+  @test_base.skip_if(sys.version_info >= (3, 7),
+                     "a/b.py, f.py, p/q.py, x/y.py not found")
   def test_resolved_imports(self):
     # We need all imports to be valid for pytype
     code = """\
@@ -125,7 +96,7 @@ class IndexerTest(test_base.TargetIndependentTest):
       d.create_file("p/q.pyi", stub)
       options = config.Options.create(d["t.py"])
       options.tweak(pythonpath=[d.path], version=self.python_version)
-      ix, _ = indexer.process_file(options)
+      ix = indexer.process_file(options)
       self.assertDef(ix, "module.f", "f", "Import")
       self.assertDef(ix, "module.x.y", "x.y", "Import")
       self.assertDef(ix, "module.c", "c", "Import")
@@ -186,7 +157,7 @@ class IndexerTest(test_base.TargetIndependentTest):
     """)
     options = config.Options.create("/path/to/nonexistent/file.py")
     options.tweak(version=self.python_version)
-    ix, _ = indexer.process_file(options, source_text=code)
+    ix = indexer.process_file(options, source_text=code)
     self.assertDef(ix, "module.f", "f", "FunctionDef")
 
   def test_kythe_args(self):
@@ -231,106 +202,46 @@ class IndexerTest(test_base.TargetIndependentTest):
       y = [1, 2].reverse()
     """))
 
-  def test_finalize_refs(self):
-    code = textwrap.dedent("""
-      x = ""
-      def f():
-        return x.upper()
+  def test_def_types(self):
+    # Basic sanity test of definition data
+    ix = self.index_code("""\
+        def f():
+          x = 42
+          return x
     """)
-    ix = self.index_code(code, keep_pytype_data=True)
-    expected_refs = (("x", ("str",)), ("x.upper", ("str", "Callable[[], str]")))
 
-    def get_data(ref):
-      if ref.data.__class__ is tuple:
-        return (ref.name, tuple(pytd.Print(t) for t in ref.data))
-      else:
-        return (ref.name, pytd.Print(ref.data))
+    def assert_data_type(fqname, cls):
+      self.assertIn(fqname, ix.defs)
+      d = ix.defs[fqname]
+      self.assertEqual(len(d.data), 1)
+      pytype_cls = d.data[0][0]
+      self.assertIsInstance(pytype_cls, cls)
 
-    self.assertCountEqual((get_data(ref) for ref in ix.refs), expected_refs)
-    self.assertCountEqual((get_data(ref) for ref, _ in ix.links), expected_refs)
+    assert_data_type("module.f", abstract.InterpreterFunction)
+    assert_data_type("module.f.x", abstract.Instance)
 
-  def test_type_map(self):
-    code = textwrap.dedent("""\
-      def f():
-        x = ""
-        return x
+
+class IndexerTestPy3(test_base.TargetPython3BasicTest, IndexerTestMixin):
+
+  def index_code(self, code, *args, **kwargs):
+    if utils.USE_ANNOTATIONS_BACKPORT and self.options.python_version == (2, 7):
+      code = test_base.WithAnnotationsImport(code)
+    return super(IndexerTestPy3, self).index_code(code, *args, **kwargs)
+
+  def assertDefLocs(self, index, fqname, locs):
+    if utils.USE_ANNOTATIONS_BACKPORT and self.options.python_version == (2, 7):
+      locs = [(line + 1, col) for line, col in locs]
+    return super(IndexerTestPy3, self).assertDefLocs(index, fqname, locs)
+
+  def test_type_annotations(self):
+    ix = self.index_code("""\
+       def f(x: int) -> int:
+         return x
     """)
-    ix = self.index_code(code, keep_pytype_data=True)
-    type_map = output.type_map(ix)
-    self.assertTypeMapEqual(type_map, {(3, 9): "str"})
-
-  def test_type_map_attr(self):
-    code = textwrap.dedent("""\
-      class X:
-        n = 42
-      def f():
-        return X.n
-    """)
-    ix = self.index_code(code, keep_pytype_data=True)
-    type_map = output.type_map(ix)
-    self.assertTypeMapEqual(type_map, {(4, 9): "Type[X]", (4, 11): "int"})
-
-  def test_type_map_multiline_attr(self):
-    code = textwrap.dedent("""\
-      class X:
-        n = 42
-      def f():
-        return (X.
-          n)
-    """)
-    ix = self.index_code(code, keep_pytype_data=True)
-    type_map = output.type_map(ix)
-    self.assertTypeMapEqual(type_map, {(4, 10): "Type[X]", (5, 4): "int"})
-
-  def test_type_map_multiline_dotattr(self):
-    code = textwrap.dedent("""\
-      class X:
-        n = 42
-      def f():
-        return (X
-          .n)
-    """)
-    ix = self.index_code(code, keep_pytype_data=True)
-    type_map = output.type_map(ix)
-    self.assertTypeMapEqual(type_map, {(4, 10): "Type[X]", (5, 5): "int"})
-
-  def test_type_map_missing(self):
-    # For obj.attr, sometimes we fail to find the location of attr. Test that
-    # the type of obj is still accurate.
-    code = textwrap.dedent("""\
-      class X:
-        n = 42
-      def f():
-        return (X
-        {}
-          .n)
-    """).format("\n" * 10)
-    ix = self.index_code(code, keep_pytype_data=True)
-    type_map = output.type_map(ix)
-    self.assertTypeMapEqual(type_map, {(4, 10): "Type[X]"})
-
-  def test_unknown(self):
-    # pytype represents unannotated function parameters as unknowns. Make sure
-    # unknowns don't appear in the type map.
-    code = textwrap.dedent("""\
-      def f(x): return x
-    """)
-    ix = self.index_code(code, keep_pytype_data=True)
-    type_map = output.type_map(ix)
-    self.assertTypeMapEqual(type_map, {(1, 17): "Any"})
-
-  def test_type_resolution(self):
-    code = textwrap.dedent("""\
-      class X:
-        pass
-      Y = X
-    """)
-    ix = self.index_code(code, keep_pytype_data=True)
-    pyval = output.type_map(ix)[(3, 4)]
-    # Make sure we have pytd.ClassType objects with the right .cls pointers.
-    self.assertEqual(pyval.base_type.cls,
-                     self.loader.builtins.Lookup("__builtin__.type"))
-    self.assertEqual(pyval.parameters[0].cls.name, "X")
+    self.assertDef(ix, "module.f", "f", "FunctionDef")
+    self.assertDef(ix, "module.f.x", "x", "Param")
+    self.assertDefLocs(ix, "module.f", [(1, 0)])
+    self.assertDefLocs(ix, "module.f.x", [(1, 6)])
 
 
 class VmTraceTest(test_base.TargetIndependentTest):
@@ -338,6 +249,12 @@ class VmTraceTest(test_base.TargetIndependentTest):
   def test_repr(self):
     trace = indexer.VmTrace("LOAD_NAME", "x", (["t"],))
     print(repr(trace))  # smoke test
+
+
+# xref is available only in Python 3.3+, but in our opensource tests, there is
+# no easy way to exclude this test in earlier Python versions.
+if sys.version_info < (3, 3):
+  del IndexerTest, IndexerTestPy3, VmTraceTest
 
 
 test_base.main(globals(), __name__ == "__main__")

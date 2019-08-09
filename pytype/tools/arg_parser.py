@@ -3,6 +3,7 @@
 import argparse
 
 from pytype import config as pytype_config
+from pytype import utils as pytype_utils
 
 
 class ParserWrapper(object):
@@ -103,3 +104,49 @@ class Parser(object):
       A dict of kwargs with pytype_single args as keys.
     """
     return {k: getattr(args, k) for k in self.pytype_single_args}
+
+
+def add_pytype_and_parse(parser, argv):
+  """Add basic pytype options and parse args.
+
+  Useful to generate a quick CLI for a library.
+
+  Args:
+    parser: An argparse.ArgumentParser
+    argv: Raw command line args, typically sys.argv[1:]
+
+  Returns:
+    A tuple of (
+      parsed_args: argparse.Namespace,
+      pytype_options: pytype.config.Options)
+  """
+  # Add default --debug and input arguments.
+  parser.add_argument("--debug", action="store_true",
+                      dest="debug", default=None,
+                      help="Display debug output.")
+  parser.add_argument("inputs", metavar="input", nargs=1,
+                      help="A .py file to index")
+
+  # Add options from pytype-single.
+  wrapper = ParserWrapper(parser)
+  pytype_config.add_basic_options(wrapper)
+  parser = Parser(parser, wrapper.actions)
+
+  # Parse argv
+  args = parser.parse_args(argv)
+  cli_args = args.inputs.copy()
+
+  # Make sure we have a valid set of CLI options to pytype
+
+  ## If we are passed an imports map we should look for pickled files as well.
+  if getattr(args, "imports_info", None):
+    cli_args += ["--imports_info", args.imports_info,
+                 "--use-pickled-files"]
+
+  ## We need to set this when creating Options (b/128032570)
+  if args.python_version:
+    cli_args += ["-V", pytype_utils.format_version(args.python_version)]
+
+  pytype_options = pytype_config.Options(cli_args)
+  pytype_options.tweak(**parser.get_pytype_kwargs(args))
+  return (args, pytype_options)

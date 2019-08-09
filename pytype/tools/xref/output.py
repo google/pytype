@@ -30,14 +30,3 @@ def json_kythe_graph(index):
 def output_kythe_graph(index):
   for x in json_kythe_graph(index):
     print(x)
-
-
-def type_map(index):
-  """Return a map of (line, col) -> python type for all references."""
-
-  m = {}
-  for ref in index.refs:
-    loc, t = index.get_ref_location_and_python_type(ref)
-    if loc not in m:
-      m[loc] = t
-  return m

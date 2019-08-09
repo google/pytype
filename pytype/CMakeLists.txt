@@ -341,6 +341,7 @@ py_library(
     SRCS
       tools/arg_parser.py
       tools/config.py
+      tools/debug.py
       tools/environment.py
       tools/runner.py
       tools/tool_utils.py

@@ -732,6 +732,7 @@ typing_overload = {
     "Callable": Callable,
     "ClassVar": not_supported_yet,
     "Generic": Generic,
+    "Literal": not_supported_yet,
     "NamedTuple": build_namedtuple,
     "NewType": build_newtype,
     "NoReturn": build_noreturn,

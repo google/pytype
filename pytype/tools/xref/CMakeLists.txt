@@ -1,0 +1,65 @@
+add_package()
+
+py_library(
+  NAME
+    indexer
+  SRCS
+    __init__.py
+    debug.py
+    indexer.py
+    kythe.py
+    output.py
+    utils.py
+  DEPS
+    pytype.io
+    pytype.libvm
+    pytype.tools
+    pytype.tools.traces.traces
+)
+
+py_library(
+  NAME
+    parse_args
+  SRCS
+    parse_args.py
+  DEPS
+    .indexer
+    pytype.config
+    pytype.tools
+    pytype.utils
+)
+
+py_test(
+  NAME
+    parse_args_test
+  SRCS
+    parse_args_test.py
+  DEPS
+    .parse_args
+    pytype.utils
+)
+
+py_test(
+  NAME
+    indexer_test
+  SRCS
+    indexer_test.py
+  DEPS
+    .indexer
+    pytype.config
+    pytype.utils
+    pytype.tests.test_base
+)
+
+toplevel_py_binary(
+  NAME
+    xref
+  SRCS
+    main.py
+  MAIN
+    main.py
+  DEPS
+    .indexer
+    .parse_args
+    pytype.libvm
+)

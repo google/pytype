@@ -188,4 +188,122 @@ class TypingTest(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [(1, "pyi-error", r"ClassVar.*1.*2")])
 
 
+class LiteralTest(test_base.TargetIndependentTest):
+  """Tests for typing.Literal."""
+
+  def test_py(self):
+    errors = self.CheckWithErrors("from typing import Literal")
+    self.assertErrorLogIs(errors, [(1, "not-supported-yet")])
+
+  def test_pyi_parameter(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Literal
+        def f(x: Literal[True]) -> int
+        def f(x: Literal[False]) -> float
+        def f(x: bool) -> complex
+      """)
+      ty = self.Infer("""
+        import foo
+        x = None  # type: bool
+        v1 = foo.f(True)
+        v2 = foo.f(False)
+        v3 = foo.f(x)
+      """, pythonpath=[d.path])
+      # TODO(b/123775699): Check the inference output.
+      del ty
+
+  def test_pyi_return(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Literal
+        def okay() -> Literal[True]: ...
+      """)
+      ty = self.Infer("""
+        import foo
+        if not foo.okay():
+          x = "oh no"
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, "foo: module")
+
+  def test_pyi_variable(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Literal
+        OKAY: Literal[True]
+      """)
+      ty = self.Infer("""
+        import foo
+        if not foo.OKAY:
+          x = "oh no"
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, "foo: module")
+
+  def test_pyi_typing_extensions(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing_extensions import Literal
+        OKAY: Literal[True]
+      """)
+      ty = self.Infer("""
+        import foo
+        if not foo.OKAY:
+          x = "oh no"
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, "foo: module")
+
+  # TODO(b/123775699): Include native strings, bytestrings, unicode strings, and
+  # enums once pytype supports parsing strings and looking up local enums.
+  def test_pyi_value(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Literal
+
+        def f1(x: Literal[True]) -> None: ...
+        def f2(x: Literal[2]) -> None: ...
+        def f3(x: Literal[None]) -> None: ...
+      """)
+      self.Check("""
+        import foo
+        foo.f1(True)
+        foo.f2(2)
+        foo.f3(None)
+      """, pythonpath=[d.path])
+
+  def test_pyi_multiple(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Literal
+        def f(x: Literal[False, None]) -> int
+        def f(x) -> str
+      """)
+      ty = self.Infer("""
+        import foo
+        v1 = foo.f(False)
+        v2 = foo.f(None)
+        v3 = foo.f(True)
+      """, pythonpath=[d.path])
+      # TODO(b/123775699): Check the inference output.
+      del ty
+
+  def test_reexport(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Literal
+        x: Literal[True]
+        y: Literal[None]
+      """)
+      ty = self.Infer("""
+        import foo
+        x = foo.x
+        y = foo.y
+      """, pythonpath=[d.path])
+      # TODO(b/123775699): The type of x should be Literal[True].
+      self.assertTypesMatchPytd(ty, """
+        foo: module
+        x: bool
+        y: None
+      """)
+
+
 test_base.main(globals(), __name__ == "__main__")

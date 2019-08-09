@@ -3,7 +3,6 @@
 import collections
 import logging
 import re
-import six
 import sys
 import textwrap
 
@@ -20,6 +19,7 @@ from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
 from pytype.tests import test_utils
+import six
 
 import unittest
 
@@ -30,8 +30,10 @@ log = logging.getLogger(__name__)
 CAPTURE_STDOUT = ("-s" not in sys.argv)
 
 
-# For ease of importing, re-export unittest.skip.
+# For ease of importing, re-export unittest.skip*. Tweak the name to keep the
+# linter happy.
 skip = unittest.skip
+skip_if = unittest.skipIf
 
 
 # Pytype offers a Python 2.7 interpreter with type annotations backported as a

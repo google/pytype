@@ -12,9 +12,6 @@ from pytype import errors
 from pytype import io
 from pytype import load_pytd
 from pytype import module_utils
-from pytype.pytd import pytd
-from pytype.pytd import pytd_utils
-from pytype.pytd import visitors
 from pytype.tools.traces import source
 from pytype.tools.traces import traces
 from pytype.tools.traces import visitor as ast_visitor
@@ -117,29 +114,6 @@ def match_opcodes(opcode_traces, lineno, op_match_list):
       if op == match_op and match_symbol in [None, symbol]:
         out.append((op, symbol, data))
   return out
-
-
-def _to_type(vals):
-  """Convert a Reference.data item to a string type.
-
-  This is a helper function for Indexer._finalize_refs.
-
-  Args:
-    vals: A Reference.data item. Its type is
-      Optional[List[abstract.AtomicAbstractValue]]. The data field contains a
-      tuple of items.
-
-  Returns:
-    A string.
-  """
-  if not vals:
-    return "Any"
-  return pytd_utils.Print(_join_types(vals))
-
-
-def _join_types(vals):
-  return pytd_utils.JoinTypes(v.to_type() for v in vals).Visit(
-      visitors.RemoveUnknownClasses())
 
 
 def _unwrap(data):
@@ -249,20 +223,21 @@ class DocString(collections.namedtuple(
 
 
 class Definition(collections.namedtuple(
-    "defn", ["name", "typ", "scope", "target", "doc"]), Dummy):
+    "defn", ["name", "typ", "data", "scope", "target", "doc"]), Dummy):
   """A symbol definition.
 
   Attributes:
     name: The symbol name
     typ: The definition type (e.g. ClassDef)
+    data: Pytype data from the opcode traces
     scope: The namespace id (e.g. module:class A:function f:x)
     target: The LHS of an attribute (e.g. for x.foo, target = typeof(x))
     doc: The docstring, if any, for function and class defs
     id: The id
   """
 
-  def __init__(self, name, typ, scope, target, doc):
-    super(Definition, self).__init__(name, typ, scope, target, doc)
+  def __init__(self, name, typ, data, scope, target, doc):
+    super(Definition, self).__init__(name, typ, data, scope, target, doc)
     self.id = self.scope + "." + self.name
 
   def format(self):
@@ -512,9 +487,8 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
 class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
   """Visitor that generates indexes."""
 
-  def __init__(self, src, module_name, kythe_, annotate_ast):
+  def __init__(self, src, module_name, kythe_):
     super(IndexVisitor, self).__init__(src, module_name)
-    self._annotate_ast = annotate_ast
     self.defs = {}
     self.locs = collections.defaultdict(list)
     self.refs = []
@@ -549,6 +523,15 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
 
     return loc
 
+  def _get_node_name(self, node):
+    if isinstance(node, str):
+      # We replace nodes with their names after visiting them.
+      return node
+    try:
+      return super(IndexVisitor, self)._get_node_name(node)
+    except NotImplementedError:
+      return typename(node)
+
   def make_def(self, node, **kwargs):
     """Make a definition from a node."""
 
@@ -562,6 +545,7 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
         "name": get_name(node),
         "scope": self.scope_id(),
         "typ": t,
+        "data": None,
         "target": None,
         "doc": None,
     }
@@ -636,7 +620,6 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
       self.envs[self.scope_id()].setattr(node.attr, defn)
 
   def enter_ClassDef(self, node):
-    defn = self.add_local_def(node, doc=DocString.from_node(node))
     # TODO(mdemello): For decorated classes, the node's lineno starts at the
     # first decorator, and therefore does not match the opcode's lineno.
     # Likewise, when a class definition spans multiple lines, the AST node
@@ -646,9 +629,10 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
 
     # Python2
     ops = match_opcodes(self.traces, node.lineno, [("BUILD_CLASS", class_name)])
+    d = None
     if ops:
       _, _, data = ops[0]
-      self.classmap[_unwrap(data)[0]] = defn
+      d = _unwrap(data)
     else:
       # Python3
       ops = match_opcodes(self.traces, node.lineno, [
@@ -657,12 +641,26 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
       ])
       if len(ops) == 2:
         _, _, data = ops[1]
-        self.classmap[_unwrap(data)[0]] = defn
+        d = _unwrap(data)
+    assert d, "Did not get pytype data for class %s" % class_name
+    defn = self.add_local_def(node, data=data, doc=DocString.from_node(node))
+    self.classmap[d[0]] = defn
     super(IndexVisitor, self).enter_ClassDef(node)
 
   def enter_FunctionDef(self, node):
-    fn_def = self.add_local_def(node, doc=DocString.from_node(node))
+    ops = match_opcodes(self.traces, node.lineno, [
+        ("MAKE_FUNCTION", None),  # py2 has no symbol, py3 has node.name
+        ("LOAD_CLOSURE", None)  # Nested functions
+    ])
+    if ops:
+      _, _, data = ops[0]
+    else:
+      # TODO(mdemello): Add an assert; this should not happen but I would rather
+      # not break grok indexing if it does.
+      data = None
+    fn_def = self.add_local_def(node, data=data, doc=DocString.from_node(node))
     env = self.add_scope(node)
+    # TODO(mdemello): Get pytype data for params
     params = [self.add_local_def(v) for v in node.args.args]
     for i, param in enumerate(params):
       self.kythe.add_edge(
@@ -697,45 +695,27 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
         self.typemap[ref.id] = d
         break
       elif op == "STORE_GLOBAL":
-        defn = self.add_global_def(node, name=symbol)
+        defn = self.add_global_def(node, name=symbol, data=data)
         self.typemap[defn.id] = d
         break
       elif op in ["STORE_FAST", "STORE_NAME", "STORE_DEREF"]:
-        defn = self.add_local_def(node, name=symbol)
-        if self._annotate_ast:
-          node.resolved_annotation = _to_type(d)
-          node.resolved_type = _join_types(d or [])
+        defn = self.add_local_def(node, name=symbol, data=data)
         self.typemap[defn.id] = d
         break
     return node.id
 
   def visit_Call(self, node):
-    if isinstance(node.func, str):
-      name = node.func
-    elif isinstance(node.func, ast.Lambda):
-      name = "<lambda>"
-    else:
-      name = node.func.id
-    if "." in name:
-      basename = name.split(".")[-1]
-    else:
-      basename = name
-    ops = [x for x in self.traces[node.lineno]
-           if x[0].startswith("CALL_FUNCTION")]
+    name = self._get_node_name(node)
     seen = set()
-    for _, symbol, data in ops:
-      # pytype returns different things for Function(A.foo()).name
-      # In 2.7 the name is 'foo' but in 3.6 it is 'A.foo'.
-      symbol = symbol.split(".")[-1]
-      if symbol == basename:
-        for d in data:
-          if d is None:
-            continue
-          for d1 in d:
-            for f in qualified_method(d1):
-              if f not in seen:
-                self.add_call(node, name, f)
-                seen.add(f)
+    for _, (_, _, data) in self.match(node):
+      for d in data:
+        if d is None:
+          continue
+        for d1 in d:
+          for f in qualified_method(d1):
+            if f not in seen:
+              self.add_call(node, name, f)
+              seen.add(f)
     return name
 
   def visit_Assign(self, node):
@@ -744,11 +724,7 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
         self.add_attr(v)
 
   def visit_Attribute(self, node):
-    if isinstance(node.value, str):
-      node_str = "{}.{}".format(node.value, node.attr)
-    else:
-      # Prevents a crash when an attr is called on an inline literal.
-      node_str = "<{}>.{}".format(node.value.__class__.__name__, node.attr)
+    node_str = self._get_node_name(node)
     # match() returns the location of the attribute, whereas the indexer needs
     # the location of the value on which the attribute is accessed, in order to
     # link function calls. We'll manually adjust the location later.
@@ -833,8 +809,7 @@ class Indexer(object):
                src,
                loader,
                module_name,
-               kythe_args=None,
-               annotate_ast=False):
+               kythe_args=None):
     self.source = src
     self.loader = loader
     self.resolved_modules = loader.get_resolved_modules()
@@ -842,7 +817,6 @@ class Indexer(object):
     self.module_name = module_name
     self.traces = src.traces
     self.kythe = kythe.Kythe(src, kythe_args)
-    self._annotate_ast = annotate_ast
     self.defs = None
     self.locs = None
     self.refs = None
@@ -853,14 +827,13 @@ class Indexer(object):
     self.calls = None
     self.links = []
 
+    # Optionally preserve the pytype vm so we can access the types later
+    self.vm = None
+
   def index(self, code_ast):
     """Index an AST corresponding to self.source."""
 
-    v = IndexVisitor(
-        self.source,
-        self.module_name,
-        self.kythe,
-        annotate_ast=self._annotate_ast)
+    v = IndexVisitor(self.source, self.module_name, self.kythe)
     v.visit(code_ast)
     self.defs = v.defs
     self.locs = v.locs
@@ -896,24 +869,14 @@ class Indexer(object):
     end = start + doc.length
     return (start, end)
 
-  def finalize(self, keep_pytype_data, pytype_ast):
+  def finalize(self):
     """Postprocess the information gathered by the tree visitor.
 
     Note that these functions need to be run in order; some of them depend on
     information generated by previous ones.
-
-    Args:
-      keep_pytype_data: Whether to preserve the Reference.data field.
-      pytype_ast: A pytd.TypeDeclUnit representing the inferred types.
     """
 
     links = self._lookup_refs()
-    # Finalize refs as early as possible to avoid accidentally copying pointers
-    # to the old `data` field.
-    if keep_pytype_data:
-      # TODO(rechen): Once this code has been sufficiently vetted, remove the
-      # `keep_pytype_data` option and always finalize refs.
-      self.refs, links = self._finalize_refs(self.refs, links, pytype_ast)
     self.links = links
     self._process_deflocs()
     self._process_links(links)
@@ -978,15 +941,6 @@ class Indexer(object):
       return self._get_attr_bounds(ref.name, ref.location)
     else:
       return self.get_anchor_bounds(ref.location, len(ref.name))
-
-  def get_ref_location_and_python_type(self, ref):
-    if ref.typ == "Attribute":
-      # For an attribute, return information about the attribute itself,
-      # ignoring the object it was accessed on.
-      loc, _ = self.source.get_attr_location(ref.name, ref.location)
-    else:
-      loc = ref.location
-    return loc, ref.data[-1]
 
   def _make_defn_vname(self, defn):
     """Convert a definition into a kythe vname."""
@@ -1077,29 +1031,6 @@ class Indexer(object):
                   edge_name="childof")
             else:
               assert False, ref
-
-  def _to_pytd(self, vals, pytype_ast):
-    if not vals:
-      return pytd.AnythingType()
-    with io.wrap_pytype_exceptions(PytypeError, filename=self.source.filename):
-      return self.loader.resolve_type(_join_types(vals), pytype_ast)
-
-  def _finalize_refs(self, refs, links, pytype_ast):
-    """Preserve the pytype data in references."""
-    final_refs = []
-    final_links = []
-    final_ref_cache = {}
-    for ref in refs:
-      t = tuple(self._to_pytd(d, pytype_ast) for d in ref.data)
-      final_ref = ref._replace(data=t)
-      final_refs.append(final_ref)
-      final_ref_cache[ref.id] = final_ref
-    for ref, defn in links:
-      # Update ref.data from the final ref cache
-      cached = final_ref_cache[ref.id]
-      new_ref = ref._replace(data=cached.data)
-      final_links.append((new_ref, defn))
-    return final_refs, final_links
 
   def _lookup_remote_symbol(self, ref, defn):
     """Try to look up a definition in an imported module."""
@@ -1272,12 +1203,8 @@ class VmTrace(source.AbstractTrace):
     return "%s %s" % (super(VmTrace, self).__repr__(), types_repr)
 
 
-def process_file(options,
-                 source_text=None,
-                 kythe_args=None,
-                 keep_pytype_data=False,
-                 ast_factory=None,
-                 annotate_ast=False):
+def process_file(options, source_text=None, kythe_args=None,
+                 preserve_pytype_vm=False):
   """Process a single file and return cross references.
 
   Args:
@@ -1285,21 +1212,10 @@ def process_file(options,
     source_text: Optional text of the file; will be read from the file pointed
       to by options.input if not supplied.
     kythe_args: Extra args for generating the kythe index
-    keep_pytype_data: Whether to preserve the Reference.data field. If true, the
-      field will hold the type of the reference as a str or Tuple[str, str] (for
-      attributes). Otherwise, it will be inaccessible.
-    ast_factory: Callable to return an ast-module-compatible object to parse the
-      source text into an ast-compatible object. It is passed the pytype Options
-      object. If not specified, typed_ast will be used.
-    annotate_ast: Whether to annotate the ast with type information. Nodes with
-      type information will have these attributes added:
-        * `.resolved_type`: the pytd information about the type
-        * `.resolved_annotation`: A string representation of the type, as would
-          be written in an annotation.
+    preserve_pytype_vm: Preserve the pytype vm in the indexer
 
   Returns:
-    The Indexer object used for indexing, and the created AST object. The
-    AST object may have been modified if `annotate_ast=True`.
+    The Indexer object used for indexing.
 
   Raises:
     PytypeError if pytype fails.
@@ -1317,7 +1233,7 @@ def process_file(options,
       store_all_calls=False,
       loader=loader)
   with io.wrap_pytype_exceptions(PytypeError, filename=options.input):
-    pytype_ast, _ = analyze.infer_types(
+    analyze.infer_types(
         src=src,
         filename=options.input,
         errorlog=errorlog,
@@ -1325,24 +1241,21 @@ def process_file(options,
         loader=loader,
         tracer_vm=vm)
 
-  if ast_factory:
-    ast = ast_factory(options)
-    ast_root_node = ast.parse(src, options.input)
+  major, minor = options.python_version
+  if major == 2:
+    # python2.7 is the only supported py2 version.
+    ast_root_node = ast27.parse(src, options.input)
+    ast = ast27
   else:
-    major, minor = options.python_version
-    if major == 2:
-      # python2.7 is the only supported py2 version.
-      ast_root_node = ast27.parse(src, options.input)
-      ast = ast27
-    else:
-      ast_root_node = ast3.parse(src, options.input, feature_version=minor)
-      ast = ast3
+    ast_root_node = ast3.parse(src, options.input, feature_version=minor)
+    ast = ast3
 
   # TODO(mdemello): Get from args
   module_name = "module"
   src_code = source.Code(src, vm.opcode_traces, VmTrace, filename=options.input)
-  ix = Indexer(
-      src_code, vm.loader, module_name, kythe_args, annotate_ast=annotate_ast)
+  ix = Indexer(src_code, vm.loader, module_name, kythe_args)
   ix.index(ast_root_node)
-  ix.finalize(keep_pytype_data, pytype_ast)
-  return ix, ast_root_node
+  ix.finalize()
+  if preserve_pytype_vm:
+    ix.vm = vm
+  return ix

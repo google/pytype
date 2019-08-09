@@ -1,3 +1,9 @@
+Version 2019.08.09
+* Partially support typing[_extensions].Literal in pyi files.
+* Adopt a unicode pytype logo.
+* Add a traces library for accessing pytype's inferred type information.
+* Add `annotate-ast` subtool for annotating ASTs with type information (WIP).
+
 Version 2019.07.30
 * Allow trailing commas in lists in type stubs.
 

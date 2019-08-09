@@ -19,6 +19,15 @@ _ATTR_OPS = frozenset((
     "STORE_ATTR",
 ))
 
+_CALL_OPS = frozenset((
+    "CALL_FUNCTION",
+    "CALL_FUNCTION_EX",
+    "CALL_FUNCTION_KW",
+    "CALL_FUNCTION_VAR",
+    "CALL_FUNCTION_VAR_KW",
+    "CALL_METHOD",
+))
+
 _LOAD_OPS = frozenset((
     "LOAD_DEREF",
     "LOAD_FAST",
@@ -126,6 +135,13 @@ class MatchAstVisitor(visitor.BaseVisitor):
     return [(self._get_match_location(node, tr.symbol), tr)
             for tr in self._get_traces(node.lineno, _ATTR_OPS, node.attr)]
 
+  def match_Call(self, node):
+    # When calling a method of a class, the node name is <value>.<method>, but
+    # only the method name is traced.
+    name = self._get_node_name(node).rpartition(".")[-1]
+    return [(self._get_match_location(node), tr)
+            for tr in self._get_traces(node.lineno, _CALL_OPS, name)]
+
   def match_Import(self, node):
     return list(self._match_import(node, is_from=False))
 
@@ -171,6 +187,18 @@ class MatchAstVisitor(visitor.BaseVisitor):
       attr_loc, _ = self.source.get_attr_location(name, loc)
       return attr_loc
     return loc
+
+  def _get_node_name(self, node):
+    if isinstance(node, self._ast.Attribute):
+      return "{}.{}".format(self._get_node_name(node.value), node.attr)
+    elif isinstance(node, self._ast.Call):
+      return self._get_node_name(node.func)
+    elif isinstance(node, self._ast.Lambda):
+      return "<lambda>"
+    elif isinstance(node, self._ast.Name):
+      return node.id
+    else:
+      raise NotImplementedError(node.__class__.__name__)
 
   def _match_import(self, node, is_from):
     for alias in node.names:
