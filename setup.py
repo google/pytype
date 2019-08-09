@@ -149,10 +149,11 @@ setup(
     ],
     entry_points={
         'console_scripts': [
+            'annotate-ast = pytype.tools.annotate_ast.main:main',
             'merge-pyi = pytype.tools.merge_pyi.main:main',
-            'pytype-single = pytype.main:main',
             'pytd = pytype.pytd.main:main',
             'pytype = pytype.tools.analyze_project.main:main',
+            'pytype-single = pytype.main:main',
             'pyxref = pytype.tools.xref.main:main',
         ]
     },
