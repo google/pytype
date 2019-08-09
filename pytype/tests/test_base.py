@@ -284,8 +284,9 @@ class BaseTest(unittest.TestCase):
 
   @classmethod
   def PrintSignature(cls, parameter_types, return_type):
-    return "(%s) -> %s" % (", ".join(pytd.Print(t) for t in parameter_types),
-                           pytd.Print(return_type))
+    return "(%s) -> %s" % (
+        ", ".join(pytd_utils.Print(t) for t in parameter_types),
+        pytd_utils.Print(return_type))
 
   def assertHasOnlySignatures(self, func, *sigs):
     self.assertIsInstance(func, pytd.Function)
@@ -294,7 +295,7 @@ class BaseTest(unittest.TestCase):
         self.fail("Could not find signature: {name}{sig} in {func}".
                   format(name=func.name,
                          sig=self.PrintSignature(parameter_types, return_type),
-                         func=pytd.Print(func)))
+                         func=pytd_utils.Print(func)))
     msg = ("{func} has the wrong number of signatures ({has}), "
            "expected {expect}".format(
                func=func, has=len(func.signatures), expect=len(sigs)))
@@ -303,25 +304,27 @@ class BaseTest(unittest.TestCase):
   def assertHasSignature(self, func, parameter_types, return_type):
     if not self.HasSignature(func, parameter_types, return_type):
       self.fail("Could not find signature: f{} in {}".format(
-          self.PrintSignature(parameter_types, return_type), pytd.Print(func)))
+          self.PrintSignature(parameter_types, return_type),
+          pytd_utils.Print(func)))
 
   def assertNotHasSignature(self, func, parameter_types, return_type):
     if self.HasSignature(func, parameter_types, return_type):
       self.fail("Found signature: f{} in {}".format(
-          self.PrintSignature(parameter_types, return_type), pytd.Print(func)))
+          self.PrintSignature(parameter_types, return_type),
+          pytd_utils.Print(func)))
 
   def assertTypeEquals(self, t1, t2):
     self.assertEqual(t1, t2,
-                     "Type %r != %r" % (pytd.Print(t1),
-                                        pytd.Print(t2)))
+                     "Type %r != %r" % (pytd_utils.Print(t1),
+                                        pytd_utils.Print(t2)))
 
   def assertOnlyHasReturnType(self, func, t):
     """Test that a given return type is the only one."""
     ret = pytd_utils.JoinTypes(sig.return_type
                                for sig in func.signatures)
     self.assertEqual(t, ret,
-                     "Return type %r != %r" % (pytd.Print(t),
-                                               pytd.Print(ret)))
+                     "Return type %r != %r" % (pytd_utils.Print(t),
+                                               pytd_utils.Print(ret)))
 
   def assertHasReturnType(self, func, t):
     """Test that a given return type is present. Ignore extras."""
@@ -329,12 +332,12 @@ class BaseTest(unittest.TestCase):
                                for sig in func.signatures)
     if isinstance(ret, pytd.UnionType):
       self.assertIn(t, ret.type_list,
-                    "Return type %r not found in %r" % (pytd.Print(t),
-                                                        pytd.Print(ret)))
+                    "Return type %r not found in %r" % (pytd_utils.Print(t),
+                                                        pytd_utils.Print(ret)))
     else:
       self.assertEqual(t, ret,
-                       "Return type %r != %r" % (pytd.Print(ret),
-                                                 pytd.Print(t)))
+                       "Return type %r != %r" % (pytd_utils.Print(ret),
+                                                 pytd_utils.Print(t)))
 
   def assertHasAllReturnTypes(self, func, types):
     """Test that all given return types are present. Ignore extras."""
@@ -348,7 +351,7 @@ class BaseTest(unittest.TestCase):
       self.assertEqual(len(sig.params), 1)
       param1, = sig.params
       self.assertEqual(param1.type, sig.return_type,
-                       "Not identity: %r" % pytd.Print(func))
+                       "Not identity: %r" % pytd_utils.Print(func))
 
   def assertErrorLogIs(self, errorlog, expected_errors):
     expected_errors = collections.Counter(expected_errors)
@@ -455,8 +458,8 @@ class BaseTest(unittest.TestCase):
     ty = ty.Visit(visitors.CanonicalOrderingVisitor(sort_signatures=True))
     ty.Visit(visitors.VerifyVisitor())
 
-    ty_src = pytd.Print(ty) + "\n"
-    pytd_tree_src = pytd.Print(pytd_tree) + "\n"
+    ty_src = pytd_utils.Print(ty) + "\n"
+    pytd_tree_src = pytd_utils.Print(pytd_tree) + "\n"
 
     log.info("========== result   ==========")
     _LogLines(log.info, ty_src)

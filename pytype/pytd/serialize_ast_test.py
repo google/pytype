@@ -187,7 +187,7 @@ class SerializeAstTest(unittest.TestCase):
       self.assertTrue(loaded_ast)
       self.assertIsNot(loaded_ast, original_ast)
       self.assertEqual(loaded_ast.name, module_name)
-      self.assertTrue(original_ast.ASTeq(loaded_ast))
+      self.assertTrue(pytd_utils.ASTeq(original_ast, loaded_ast))
       loaded_ast.Visit(visitors.VerifyLookup())
 
   def testLoadWithSameModuleName(self):
@@ -210,7 +210,7 @@ class SerializeAstTest(unittest.TestCase):
       self.assertTrue(loaded_ast)
       self.assertIsNot(loaded_ast, original_ast)
       self.assertEqual(loaded_ast.name, "foo.bar.module1")
-      self.assertTrue(original_ast.ASTeq(loaded_ast))
+      self.assertTrue(pytd_utils.ASTeq(original_ast, loaded_ast))
       loaded_ast.Visit(visitors.VerifyLookup())
 
   def testUnrestorableDependencyErrorWithModuleIndex(self):
@@ -255,9 +255,9 @@ class SerializeAstTest(unittest.TestCase):
       self.assertIsNot(loaded_ast, original_ast)
       self.assertEqual(loaded_ast.name, new_module_name)
       loaded_ast.Visit(visitors.VerifyLookup())
-      self.assertFalse(original_ast.ASTeq(loaded_ast))
+      self.assertFalse(pytd_utils.ASTeq(original_ast, loaded_ast))
       ast_new_module, _ = self._GetAst(temp_dir=d, module_name=new_module_name)
-      self.assertTrue(ast_new_module.ASTeq(loaded_ast))
+      self.assertTrue(pytd_utils.ASTeq(ast_new_module, loaded_ast))
 
   def testStoreRemovesInit(self):
     with file_utils.Tempdir() as d:

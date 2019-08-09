@@ -207,7 +207,7 @@ class _VerifyMutators(visitors.Visitor):
       params = self._GetTypeParameters(node.mutated_type)
       extra = params - self.type_params_in_scope[-1]
       if extra:
-        fn = pytd.Print(self.current_function)
+        fn = pytd_utils.Print(self.current_function)
         msg = "Type parameter(s) {%s} not in scope in\n\n%s" % (
             ", ".join(sorted(extra)), fn)
         raise ParseError(msg)
@@ -781,7 +781,7 @@ class _Parser(object):
       mapping = {t: pytd.AnythingType() for t in template}
     elif len(template) != len(parameters):
       raise ParseError("%s expected %d parameters, got %s" % (
-          pytd.Print(base_type), len(template), len(parameters)))
+          pytd_utils.Print(base_type), len(template), len(parameters)))
     else:
       mapping = dict(zip(template, parameters))
     return base_type.Visit(visitors.ReplaceTypes(mapping))
@@ -860,7 +860,7 @@ class _Parser(object):
       parameters = ", ".join(
           str(p) if isinstance(p, int) else "_" for p in parameters)
       raise ParseError(
-          "%s[%s] not supported" % (pytd.Print(base_type), parameters))
+          "%s[%s] not supported" % (pytd_utils.Print(base_type), parameters))
     elif self._is_any(base_type):
       return pytd.AnythingType()
     elif len(parameters) == 2 and parameters[-1] is self.ELLIPSIS and (

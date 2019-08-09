@@ -33,7 +33,7 @@ import sys
 from pytype import pytype_source_utils
 from pytype import utils
 from pytype.pytd import pytd
-from pytype.pytd import visitors
+from pytype.pytd import pytd_visitors
 import six
 from six.moves import cPickle
 
@@ -165,7 +165,7 @@ class TypeMatcher(object):
 def CanonicalOrdering(n, sort_signatures=False):
   """Convert a PYTD node to a canonical (sorted) ordering."""
   return n.Visit(
-      visitors.CanonicalOrderingVisitor(sort_signatures=sort_signatures))
+      pytd_visitors.CanonicalOrderingVisitor(sort_signatures=sort_signatures))
 
 
 def GetAllSubClasses(ast):
@@ -178,14 +178,14 @@ def GetAllSubClasses(ast):
     A dictionary, mapping instances of pytd.Type (types) to lists of
     pytd.Class (the derived classes).
   """
-  hierarchy = ast.Visit(visitors.ExtractSuperClasses())
+  hierarchy = ast.Visit(pytd_visitors.ExtractSuperClasses())
   hierarchy = {cls: list(superclasses)
                for cls, superclasses in hierarchy.items()}
   return utils.invert_dict(hierarchy)
 
 
 def Print(ast, multiline_args=False):
-  return ast.Visit(visitors.PrintVisitor(multiline_args))
+  return ast.Visit(pytd_visitors.PrintVisitor(multiline_args))
 
 
 def CreateModule(name="<empty>", **kwargs):
@@ -475,6 +475,18 @@ def SavePickle(data, filename=None, compress=False):
     sys.setrecursionlimit(recursion_limit)
 
 
+def ASTeq(ast1, ast2):
+  return (ast1.constants == ast2.constants and
+          ast1.type_params == ast2.type_params and
+          ast1.classes == ast2.classes and
+          ast1.functions == ast2.functions and
+          ast1.aliases == ast2.aliases)
+
+
+def ASTdiff(ast1, ast2):
+  return difflib.ndiff(Print(ast1).splitlines(), Print(ast2).splitlines())
+
+
 def DiffNamedPickles(named_pickles1, named_pickles2):
   """Diff two lists of (name, pickled_module)."""
   len1, len2 = len(named_pickles1), len(named_pickles2)
@@ -486,7 +498,7 @@ def DiffNamedPickles(named_pickles1, named_pickles2):
       diff.append("different ordering of pyi files: %s, %s" % (name1, name2))
     elif pickle1 != pickle2:
       ast1, ast2 = cPickle.loads(pickle1), cPickle.loads(pickle2)
-      if ast1.ast.ASTeq(ast2.ast):
+      if ASTeq(ast1.ast, ast2.ast):
         diff.append("asts match but pickles differ: %s" % name1)
         p1 = six.StringIO()
         p2 = six.StringIO()
@@ -498,13 +510,13 @@ def DiffNamedPickles(named_pickles1, named_pickles2):
       else:
         diff.append("asts differ: %s" % name1)
         diff.append("-" * 50)
-        diff.extend(ast1.ast.ASTdiff(ast2.ast))
+        diff.extend(ASTdiff(ast1.ast, ast2.ast))
         diff.append("-" * 50)
   return diff
 
 
 def GetTypeParameters(node):
-  collector = visitors.CollectTypeParameters()
+  collector = pytd_visitors.CollectTypeParameters()
   node.Visit(collector)
   return collector.params
 

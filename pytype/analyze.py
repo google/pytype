@@ -688,7 +688,8 @@ def infer_types(src, errorlog, options, loader,
   # Insert type parameters, where appropriate
   ast = ast.Visit(visitors.CreateTypeParametersForSignatures())
   if options.protocols:
-    log.info("=========== PyTD to solve =============\n%s", pytd.Print(ast))
+    log.info("=========== PyTD to solve =============\n%s",
+             pytd_utils.Print(ast))
     ast = convert_structural.convert_pytd(ast, builtins_pytd, protocols_pytd)
   elif not show_library_calls:
     log.info("Solving is turned off. Discarding call traces.")

@@ -99,13 +99,13 @@ class TypeSolver(object):
         formula = matcher.match_Signature_against_Function(
             signature, complete, {})
         if formula is booleq.FALSE:
-          faulty_signature = pytd.Print(signature)
+          faulty_signature = pytd_utils.Print(signature)
           break
       else:
         faulty_signature = ""
       raise FlawedQuery("Bad call\n%s%s\nagainst:\n%s" % (
           type_match.unpack_name_of_partial(call_record.name),
-          faulty_signature, pytd.Print(complete)))
+          faulty_signature, pytd_utils.Print(complete)))
     solver.always_true(formula)
 
   def solve(self):
@@ -281,7 +281,8 @@ def convert_pytd(ast, builtins_pytd, protocols_pytd):
   lookup = pytd_utils.Concat(builtins_pytd, result)
   result = insert_solution(result, mapping, lookup)
   if log.isEnabledFor(logging.INFO):
-    log.info("=========== solve result =============\n%s", pytd.Print(result))
+    log.info("=========== solve result =============\n%s",
+             pytd_utils.Print(result))
     log.info("=========== solve result (end) =============")
   return result
 

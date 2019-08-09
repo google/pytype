@@ -6,6 +6,7 @@ import textwrap
 from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 import six
 
 import unittest
@@ -50,7 +51,7 @@ class _ParserTestBase(unittest.TestCase):
     src = textwrap.dedent(src)
     ast = parser.parse_string(src, name=name, python_version=version,
                               platform=platform)
-    actual = pytd.Print(ast)
+    actual = pytd_utils.Print(ast)
     if expected != IGNORE:
       expected = src if expected is None else textwrap.dedent(expected)
       if prologue:

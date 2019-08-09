@@ -182,8 +182,8 @@ class PytypeTest(unittest.TestCase):
         expected_pyi = f.read()
     message = ("\n==Expected pyi==\n" + expected_pyi +
                "\n==Actual pyi==\n" + self.stdout)
-    self.assertTrue(self._ParseString(self.stdout).ASTeq(
-        self._ParseString(expected_pyi)), message)
+    self.assertTrue(pytd_utils.ASTeq(self._ParseString(self.stdout),
+                                     self._ParseString(expected_pyi)), message)
 
   def GeneratePickledSimpleFile(self, pickle_name, verify_pickle=True):
     pickled_location = os.path.join(self.tmp_dir, pickle_name)
@@ -417,8 +417,8 @@ class PytypeTest(unittest.TestCase):
       pyi = f.read()
     with open(self._DataPath("simple.pyi"), "r") as f:
       expected_pyi = f.read()
-    self.assertTrue(self._ParseString(pyi).ASTeq(
-        self._ParseString(expected_pyi)))
+    self.assertTrue(pytd_utils.ASTeq(self._ParseString(pyi),
+                                     self._ParseString(expected_pyi)))
 
   def testParsePyi(self):
     self.pytype_args[self._DataPath("complex.pyi")] = self.INCLUDE

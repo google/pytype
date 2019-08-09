@@ -22,7 +22,7 @@ import textwrap
 
 from pytype import load_pytd
 from pytype.pyi import parser
-from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 import six
 import unittest
@@ -35,6 +35,7 @@ class ParserTest(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
+    super(ParserTest, cls).setUpClass()
     cls.loader = load_pytd.Loader(None, cls.PYTHON_VERSION)
 
   def Parse(self, src, name=None, version=None, platform=None):
@@ -73,17 +74,17 @@ class ParserTest(unittest.TestCase):
     # Strip leading "\n"s for convenience
     ast1 = self.ToAST(src_or_tree_1)
     ast2 = self.ToAST(src_or_tree_2)
-    src1 = pytd.Print(ast1).strip() + "\n"
-    src2 = pytd.Print(ast2).strip() + "\n"
+    src1 = pytd_utils.Print(ast1).strip() + "\n"
+    src2 = pytd_utils.Print(ast2).strip() + "\n"
     # Verify printed versions are the same and ASTs are the same.
     ast1 = ast1.Visit(visitors.ClassTypeToNamedType())
     ast2 = ast2.Visit(visitors.ClassTypeToNamedType())
-    if src1 != src2 or not ast1.ASTeq(ast2):
+    if src1 != src2 or not pytd_utils.ASTeq(ast1, ast2):
       # Due to differing opinions on the form of debug output, allow an
       # environment variable to control what output you want. Set
       # PY_UNITTEST_DIFF to get diff output.
       if os.getenv("PY_UNITTEST_DIFF"):
-        self.maxDiff = None  # for better diff output (assertMultiLineEqual)
+        self.maxDiff = None  # for better diff output (assertMultiLineEqual)  # pylint: disable=invalid-name
         self.assertMultiLineEqual(src1, src2)
       else:
         sys.stdout.flush()
@@ -94,7 +95,7 @@ class ParserTest(unittest.TestCase):
         print("-" * 36, "Expected", "-" * 36, file=sys.stderr)
         print(textwrap.dedent(src2).strip(), file=sys.stderr)
         print("-" * 80, file=sys.stderr)
-      if not ast1.ASTeq(ast2):
+      if not pytd_utils.ASTeq(ast1, ast2):
         print("Actual AST:", ast1, file=sys.stderr)
         print("Expect AST:", ast2, file=sys.stderr)
       self.fail("source files differ")
@@ -102,4 +103,4 @@ class ParserTest(unittest.TestCase):
   def ApplyVisitorToString(self, data, visitor):
     tree = self.Parse(data)
     new_tree = tree.Visit(visitor)
-    return pytd.Print(new_tree)
+    return pytd_utils.Print(new_tree)

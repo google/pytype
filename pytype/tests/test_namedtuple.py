@@ -4,7 +4,6 @@ import textwrap
 
 from pytype import collections_overlay
 from pytype import file_utils
-from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
@@ -33,7 +32,7 @@ class NamedtupleTests(test_base.TargetIndependentTest):
     suffix += textwrap.dedent("""
       collections = ...  # type: module
       {alias} = {name}""").format(alias=alias, name=name)
-    return pytd.Print(self._namedtuple_ast(name, fields)) + "\n" + suffix
+    return pytd_utils.Print(self._namedtuple_ast(name, fields)) + "\n" + suffix
 
   def test_basic_namedtuple(self):
     ty = self.Infer("""
@@ -219,7 +218,7 @@ class NamedtupleTests(test_base.TargetIndependentTest):
     ast_x = self._namedtuple_ast(name_x, [])
     ast_z = self._namedtuple_ast(name_z, ["a"])
     ast = pytd_utils.Concat(ast_x, ast_z)
-    expected = pytd.Print(ast) + textwrap.dedent("""
+    expected = pytd_utils.Print(ast) + textwrap.dedent("""
       collections = ...  # type: module
       X = {name_x}
       Y = {name_x}
@@ -235,7 +234,7 @@ class NamedtupleTests(test_base.TargetIndependentTest):
     """)
     name = collections_overlay.namedtuple_name("X", [])
     ast = self._namedtuple_ast(name, [])
-    expected = pytd.Print(ast) + textwrap.dedent("""
+    expected = pytd_utils.Print(ast) + textwrap.dedent("""
       collections = ...  # type: module
       _TX = TypeVar("_TX", bound=X)
       class X({name}):
@@ -249,7 +248,7 @@ class NamedtupleTests(test_base.TargetIndependentTest):
       class Y(X): pass
       z = Y(1)._replace(a=2)
     """)
-    self.assertEqual(pytd.Print(ty.Lookup("z")), "z: Y")
+    self.assertEqual(pytd_utils.Print(ty.Lookup("z")), "z: Y")
 
   def test_subclass_make(self):
     ty = self.Infer("""
@@ -258,7 +257,7 @@ class NamedtupleTests(test_base.TargetIndependentTest):
       class Y(X): pass
       z = Y._make([1])
     """)
-    self.assertEqual(pytd.Print(ty.Lookup("z")), "z: Y")
+    self.assertEqual(pytd_utils.Print(ty.Lookup("z")), "z: Y")
 
   def test_unpacking(self):
     with file_utils.Tempdir() as d:

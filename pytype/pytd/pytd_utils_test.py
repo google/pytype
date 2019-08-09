@@ -22,6 +22,7 @@ from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
+from pytype.pytd import visitors
 from pytype.pytd.parse import parser_test_base
 
 import six
@@ -326,11 +327,11 @@ class TestUtils(parser_test_base.ParserTest):
 
   def testDummyMethod(self):
     self.assertEqual("def foo() -> Any: ...",
-                     pytd.Print(pytd_utils.DummyMethod("foo")))
+                     pytd_utils.Print(pytd_utils.DummyMethod("foo")))
     self.assertEqual("def foo(x) -> Any: ...",
-                     pytd.Print(pytd_utils.DummyMethod("foo", "x")))
+                     pytd_utils.Print(pytd_utils.DummyMethod("foo", "x")))
     self.assertEqual("def foo(x, y) -> Any: ...",
-                     pytd.Print(pytd_utils.DummyMethod("foo", "x", "y")))
+                     pytd_utils.Print(pytd_utils.DummyMethod("foo", "x", "y")))
 
   def testLoadPickleFromFile(self):
     d1 = {1, 2j, "3"}
@@ -393,6 +394,73 @@ class TestUtils(parser_test_base.ParserTest):
     named_pickles1 = []
     named_pickles2 = [("foo", data)]
     self.assertTrue(pytd_utils.DiffNamedPickles(named_pickles1, named_pickles2))
+
+  def testASTeq(self):
+    # This creates two ASts that are equivalent but whose sources are slightly
+    # different. The union types are different (int,str) vs (str,int) but the
+    # ordering is ignored when testing for equality (which ASTeq uses).
+    src1 = textwrap.dedent("""
+        def foo(a: int or str) -> C
+        T = TypeVar('T')
+        class C(typing.Generic[T], object):
+            def bar(x: T) -> NoneType
+        CONSTANT = ...  # type: C[float]
+        """)
+    src2 = textwrap.dedent("""
+        CONSTANT = ...  # type: C[float]
+        T = TypeVar('T')
+        class C(typing.Generic[T], object):
+            def bar(x: T) -> NoneType
+        def foo(a: str or int) -> C
+        """)
+    tree1 = parser.parse_string(src1, python_version=self.PYTHON_VERSION)
+    tree2 = parser.parse_string(src2, python_version=self.PYTHON_VERSION)
+    tree1.Visit(visitors.VerifyVisitor())
+    tree2.Visit(visitors.VerifyVisitor())
+    self.assertTrue(tree1.constants)
+    self.assertTrue(tree1.classes)
+    self.assertTrue(tree1.functions)
+    self.assertTrue(tree2.constants)
+    self.assertTrue(tree2.classes)
+    self.assertTrue(tree2.functions)
+    self.assertIsInstance(tree1, pytd.TypeDeclUnit)
+    self.assertIsInstance(tree2, pytd.TypeDeclUnit)
+    # For the ==, != tests, TypeDeclUnit uses identity
+    # pylint: disable=g-generic-assert
+    self.assertTrue(tree1 == tree1)
+    self.assertTrue(tree2 == tree2)
+    self.assertFalse(tree1 == tree2)
+    self.assertFalse(tree2 == tree1)
+    self.assertFalse(tree1 != tree1)
+    self.assertFalse(tree2 != tree2)
+    self.assertTrue(tree1 != tree2)
+    self.assertTrue(tree2 != tree1)
+    # pylint: enable=g-generic-assert
+    self.assertEqual(tree1, tree1)
+    self.assertEqual(tree2, tree2)
+    self.assertNotEqual(tree1, tree2)
+    self.assertTrue(pytd_utils.ASTeq(tree1, tree2))
+    self.assertTrue(pytd_utils.ASTeq(tree1, tree1))
+    self.assertTrue(pytd_utils.ASTeq(tree2, tree1))
+    self.assertTrue(pytd_utils.ASTeq(tree2, tree2))
+
+  def testASTdiff(self):
+    src1 = textwrap.dedent("""\
+        a: int
+        b: str""")
+    src2 = textwrap.dedent("""\
+        a: int
+        b: float""")
+    tree1 = parser.parse_string(src1, python_version=self.PYTHON_VERSION)
+    tree2 = parser.parse_string(src2, python_version=self.PYTHON_VERSION)
+    normalize = lambda diff: textwrap.dedent("\n".join(diff))
+    self.assertEqual(normalize(pytd_utils.ASTdiff(tree1, tree1)), src1)
+    self.assertEqual(normalize(pytd_utils.ASTdiff(tree2, tree2)), src2)
+    diff_pattern = r"(?s)- b.*\+ b"
+    self.assertRegexpMatches(normalize(pytd_utils.ASTdiff(tree1, tree2)),
+                             diff_pattern)
+    self.assertRegexpMatches(normalize(pytd_utils.ASTdiff(tree2, tree1)),
+                             diff_pattern)
 
 
 class TestDataFiles(parser_test_base.ParserTest):

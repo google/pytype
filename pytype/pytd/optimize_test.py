@@ -19,6 +19,7 @@ import textwrap
 from pytype import load_pytd
 from pytype.pytd import optimize
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.pytd.parse import parser_test_base
 import six
@@ -30,6 +31,7 @@ class TestOptimize(parser_test_base.ParserTest):
 
   @classmethod
   def setUpClass(cls):
+    super(TestOptimize, cls).setUpClass()
     cls.loader = load_pytd.Loader(None, cls.PYTHON_VERSION)
     cls.builtins = cls.loader.builtins
     cls.typing = cls.loader.typing
@@ -44,7 +46,7 @@ class TestOptimize(parser_test_base.ParserTest):
   def OptimizedString(self, data):
     tree = self.Parse(data) if isinstance(data, six.string_types) else data
     new_tree = self.Optimize(tree)
-    return pytd.Print(new_tree)
+    return pytd_utils.Print(new_tree)
 
   def AssertOptimizeEquals(self, src, new_src):
     self.AssertSourceEquals(self.OptimizedString(src), new_src)
@@ -766,7 +768,8 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = self.Parse(src)
     ast = visitors.LookupClasses(ast, self.builtins)
     ast = ast.Visit(optimize.AddInheritedMethods())
-    self.assertMultiLineEqual(pytd.Print(ast.Lookup("B")), textwrap.dedent("""\
+    self.assertMultiLineEqual(pytd_utils.Print(ast.Lookup("B")),
+                              textwrap.dedent("""\
         class B(A):
             def f(self) -> float: ...
     """))

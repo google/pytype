@@ -1,9 +1,12 @@
+"""Tests for methods."""
 from pytype import file_utils
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
 class MethodsTest(test_base.TargetIndependentTest):
+  """Tests for methods."""
 
   def testFlowAndReplacementSanity(self):
     ty = self.Infer("""
@@ -747,8 +750,8 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     cls = ty.Lookup("Cloneable")
     method = cls.Lookup("clone")
-    self.assertEqual(
-        pytd.Print(method), "def clone(self: _TCloneable) -> _TCloneable: ...")
+    self.assertEqual(pytd_utils.Print(method),
+                     "def clone(self: _TCloneable) -> _TCloneable: ...")
 
   @test_base.skip("pytype thinks 'clone' returns a TypeVar(bound=Cloneable)")
   def testSimpleClone(self):

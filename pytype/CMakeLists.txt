@@ -317,7 +317,26 @@ py_library(
     pytd/pytd_visitors.py
   DEPS
     .cfg_utils
+    .parser_constants
     .pytd_defs
+)
+
+py_library(
+  NAME
+    pytd_utils
+  SRCS
+    pytd/pytd_utils.py
+  DEPS
+    .pytd_defs
+    .pytd_visitors
+    .utils
+)
+
+py_library(
+  NAME
+    parser_constants
+  SRCS
+    pytd/parse/parser_constants.py
 )
 
 py_library(
@@ -328,9 +347,7 @@ py_library(
     pytd/booleq.py
     pytd/mro.py
     pytd/optimize.py
-    pytd/parse/parser_constants.py
     pytd/pep484.py
-    pytd/pytd_utils.py
     pytd/slots.py
     pytd/transforms.py
     pytd/type_match.py
@@ -340,7 +357,9 @@ py_library(
     .debug
     .metrics
     .node
+    .parser_constants
     .pytd_defs
+    .pytd_utils
     .pytd_visitors
     .utils
     pytype.typegraph.cfg

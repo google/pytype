@@ -1,7 +1,7 @@
 """Tests for dictionaries."""
 
 from pytype import file_utils
-from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
@@ -111,7 +111,7 @@ class DictTest(test_base.TargetIndependentTest):
               if __random__:
                 d[__any_object__] = None
       """)
-      out = pytd.Print(ty)
+      out = pytd_utils.Print(ty)
       if canonical is None:
         canonical = out
       else:

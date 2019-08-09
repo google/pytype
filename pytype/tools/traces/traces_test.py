@@ -8,6 +8,7 @@ import textwrap
 from pytype import config
 from pytype import file_utils
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.tools.traces import traces
 import unittest
 
@@ -102,7 +103,7 @@ class MatchAstTestCase(unittest.TestCase):
       self.assertEqual(trace.symbol, expected_symbol)
       self.assertEqual(len(trace.types), len(expected_annots))
       for t, annot in zip(trace.types, expected_annots):
-        self.assertEqual(pytd.Print(t), annot)
+        self.assertEqual(pytd_utils.Print(t), annot)
 
 
 class MatchAstVisitorTest(MatchAstTestCase):
