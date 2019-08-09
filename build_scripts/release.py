@@ -1,9 +1,9 @@
 #! /usr/bin/python
 """A script to push a new Pytype release to PyPI.
 
-This script assumes that you have twine and pandoc installed. The easiest way to
-run this script is to run from inside of a virtualenv after "pip" installing
-"twine". Also, this virtualenv should not have pytype installed already.
+This script assumes that you have twine installed. The easiest way to run this
+script is to run from inside of a virtualenv after "pip" installing "twine".
+Also, this virtualenv should not have pytype installed already.
 
 USAGE:
 
@@ -19,7 +19,6 @@ import argparse
 import os
 import shutil
 import sys
-import tempfile
 
 import build_utils
 
@@ -63,36 +62,6 @@ def verify_pypirc_exists():
   pypirc_path = os.path.join(os.path.expanduser("~"), ".pypirc")
   if not os.path.exists(pypirc_path):
     sys.exit("ERROR: '.pypirc' file not found.")
-
-
-def verify_description_rst_is_up_to_date():
-  """If the DESCRIPTION.rst file is not up to date, abort."""
-  temp_dir = tempfile.mkdtemp()
-  readme_md = os.path.join(build_utils.PYTYPE_SRC_ROOT, "README.md")
-  temp_readme_md = os.path.join(temp_dir, "README.md")
-  with open(readme_md) as readme_md_file:
-    readme_lines = readme_md_file.readlines()
-  with open(temp_readme_md, "w") as temp_readme_md_file:
-    readme_text = "".join(readme_lines[2:])  # We strip the build status line.
-    temp_readme_md_file.write(readme_text)
-
-  description_rst = os.path.join(build_utils.PYTYPE_SRC_ROOT, "DESCRIPTION.rst")
-  new_description_rst = os.path.join(temp_dir, "DESCRIPTION.rst")
-  pandoc_cmd = [
-      "pandoc", "--from=markdown", "--to=rst",
-      "--output=%s" % new_description_rst,
-      temp_readme_md,
-  ]
-  returncode, stdout = build_utils.run_cmd(pandoc_cmd)
-  if returncode != 0:
-    sys.exit("Running 'pandoc' failed:\n%s" % stdout)
-
-  with open(description_rst) as description_rst_file:
-    contents = set(description_rst_file.readlines())
-    with open(new_description_rst) as new_description_rst_file:
-      new_contents = set(new_description_rst_file.readlines())
-  if contents.symmetric_difference(new_contents):
-    sys.exit("ERROR: DESCRIPTION.rst is not up to date.")
 
 
 def check_if_version_is_ok():
@@ -142,7 +111,6 @@ def main():
   args = parse_args()
 
   verify_no_pytype_installation_exists()
-  verify_description_rst_is_up_to_date()
   check_if_version_is_ok()
   verify_pypirc_exists()
 

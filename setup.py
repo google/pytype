@@ -96,7 +96,7 @@ def get_data_files():
 
 def get_long_description():
   # Read the long-description from a file.
-  with io.open(os.path.join(here, 'DESCRIPTION.rst'), encoding='utf-8') as f:
+  with io.open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
     return '\n' + f.read()
 
 
@@ -129,6 +129,7 @@ setup(
     version=get_version(),
     description='Python type inferencer',
     long_description=get_long_description(),
+    long_description_content_type='text/markdown',
     maintainer='Google',
     maintainer_email='pytype@googlegroups.com',
     url='https://google.github.io/pytype',
