@@ -2067,9 +2067,10 @@ class LiteralTest(_ParserTestBase):
       x: Literal[42]
     """)
 
-  # TODO(b/123775699): this output is all wrong. The parser ignores normal
-  # quotation marks, treats b"" and u"" as constants, and cannot handle empty
-  # non-prefixed strings or non-empty prefixed strings.
+  # TODO(b/123775699): The parser ignores normal quotation marks, treats b"" and
+  # u"" as constants, and cannot handle empty non-prefixed strings or non-empty
+  # prefixed strings. To avoid parse errors from non-prefixed strings being
+  # treated as names, we map all strings to Any for now.
   def test_string(self):
     self.check("""\
       from typing import Literal
@@ -2078,11 +2079,11 @@ class LiteralTest(_ParserTestBase):
       y: Literal[b""]
       z: Literal[u""]
     """, """\
-      from typing import Literal
+      from typing import Any
 
-      x: Literal[x]
-      y: Literal[bytes]
-      z: Literal[unicode]
+      x: Any
+      y: Any
+      z: Any
     """)
 
   def test_none(self):
@@ -2093,6 +2094,7 @@ class LiteralTest(_ParserTestBase):
     """, "x: None")
 
   def test_enum(self):
+    # TODO(b/123775699): support enums.
     self.check("""\
       import enum
       from typing import Literal
@@ -2101,28 +2103,28 @@ class LiteralTest(_ParserTestBase):
 
       class Color(enum.Enum):
           RED: str
+    """, """\
+      import enum
+      from typing import Any
+
+      x: Any
+
+      class Color(enum.Enum):
+          RED: str
     """)
 
   def test_multiple_parameters(self):
     self.check("""\
-      import enum
       from typing import Literal
 
-      x: Literal[True, 0, "x", b"", u"", None, Color.RED]
-
-      class Color(enum.Enum):
-          RED: str
+      x: Literal[True, 0, None]
     """, """\
-      import enum
       from typing import Literal, Optional, Union
 
-      x: Optional[Union[Literal[True], Literal[0], Literal[x], Literal[bytes], Literal[unicode], Literal[Color.RED]]]
-
-      class Color(enum.Enum):
-          RED: str
+      x: Optional[Union[Literal[True], Literal[0]]]
     """)
 
-  # TODO(rechen): Also catch stray byte- and unicode-strings.
+  # TODO(b/123775699): Also catch stray byte- and unicode-strings.
   def test_stray_number(self):
     self.check_error("""\
       from typing import Tuple

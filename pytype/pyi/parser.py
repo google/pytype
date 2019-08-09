@@ -854,8 +854,16 @@ class _Parser(object):
   def _parameterized_type(self, base_type, parameters):
     """Return a parameterized type."""
     if self._is_literal_base_type(base_type):
-      return pytd_utils.JoinTypes(
-          p if self._is_none(p) else pytd.Literal(p) for p in parameters)
+      literal_parameters = []
+      for p in parameters:
+        if self._is_none(p):
+          literal_parameters.append(p)
+        elif isinstance(p, pytd.NamedType) and p.name not in ("True", "False"):
+          # TODO(b/123775699): support strings and enums.
+          literal_parameters.append(pytd.AnythingType())
+        else:
+          literal_parameters.append(pytd.Literal(p))
+      return pytd_utils.JoinTypes(literal_parameters)
     elif any(isinstance(p, int) for p in parameters):
       parameters = ", ".join(
           str(p) if isinstance(p, int) else "_" for p in parameters)
