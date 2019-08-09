@@ -25,6 +25,7 @@ _CALL_OPS = frozenset((
     "CALL_FUNCTION_KW",
     "CALL_FUNCTION_VAR",
     "CALL_FUNCTION_VAR_KW",
+    "CALL_METHOD",
 ))
 
 _LOAD_OPS = frozenset((

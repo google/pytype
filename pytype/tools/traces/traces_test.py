@@ -3,6 +3,7 @@
 
 import ast
 import collections
+import sys
 import textwrap
 from pytype import config
 from pytype import file_utils
@@ -179,9 +180,13 @@ class MatchCallTest(MatchAstTestCase):
           return x
       Foo().f(42)
     """, ast.Call)
+    if sys.version_info >= (3, 7):
+      call_method_op = "CALL_METHOD"
+    else:
+      call_method_op = "CALL_FUNCTION"
     self.assertTracesEqual(matches, [
         ((4, 0), "CALL_FUNCTION", "Foo", ("Type[Foo]", "Foo")),
-        ((4, 0), "CALL_FUNCTION", "f", ("Callable[[Any], Any]", "int"))])
+        ((4, 0), call_method_op, "f", ("Callable[[Any], Any]", "int"))])
 
   def test_multiple_bindings(self):
     matches = self._get_traces("""\
