@@ -72,6 +72,19 @@ filegroup(
     pytd/stdlib/3/enum.pytd
 )
 
+toplevel_py_binary(
+  NAME
+    pytype-single
+  SRCS
+    main.py
+  MAIN
+    main.py
+  DEPS
+    .config
+    .io
+    .libvm
+)
+
 py_library(
   NAME
     metrics
@@ -200,6 +213,51 @@ py_library(
 
 py_library(
   NAME
+    pytd
+  SRCS
+    load_pytd.py
+    pytd/parse/builtins.py
+    pytd/serialize_ast.py
+    pytd/typeshed.py
+  DEPS
+    .parser
+    .pytd_for_parser
+    .utils
+)
+
+py_library(
+    NAME
+      tools
+    SRCS
+      tools/arg_parser.py
+      tools/config.py
+      tools/debug.py
+      tools/environment.py
+      tools/runner.py
+      tools/tool_utils.py
+    DEPS
+      .config
+      .libvm
+      .utils
+)
+
+py_library(
+    NAME
+      analyze_project
+    SRCS
+      tools/analyze_project/config.py
+      tools/analyze_project/environment.py
+      tools/analyze_project/parse_args.py
+      tools/analyze_project/pytype_runner.py
+    DEPS
+      .config
+      .io
+      .tools
+      .utils
+)
+
+py_library(
+  NAME
     cfg_py
   SRCS
     typegraph/cfg.py
@@ -222,19 +280,6 @@ py_library(
     preconditions
   SRCS
     pytd/parse/preconditions.py
-  DEPS
-    .utils
-)
-
-py_library(
-  NAME
-    pyc
-  SRCS
-    pyc/compile_bytecode.py
-    pyc/loadmarshal.py
-    pyc/magic.py
-    pyc/opcodes.py
-    pyc/pyc.py
   DEPS
     .utils
 )
@@ -303,6 +348,19 @@ py_library(
 
 py_library(
   NAME
+    pyc
+  SRCS
+    pyc/compile_bytecode.py
+    pyc/loadmarshal.py
+    pyc/magic.py
+    pyc/opcodes.py
+    pyc/pyc.py
+  DEPS
+    .utils
+)
+
+py_library(
+  NAME
     parser
   SRCS
     pyi/parser.py
@@ -310,60 +368,6 @@ py_library(
     .pytd_for_parser
     .utils
     pytype.pyi.parser_ext
-)
-
-py_library(
-  NAME
-    pytd
-  SRCS
-    load_pytd.py
-    pytd/parse/builtins.py
-    pytd/serialize_ast.py
-    pytd/typeshed.py
-  DEPS
-    .parser
-    .pytd_for_parser
-    .utils
-)
-
-py_library(
-  NAME
-    pytdtest
-  SRCS
-    pytd/parse/parser_test_base.py
-  DEPS
-    .pytd
-)
-
-py_library(
-    NAME
-      tools
-    SRCS
-      tools/arg_parser.py
-      tools/config.py
-      tools/debug.py
-      tools/environment.py
-      tools/runner.py
-      tools/tool_utils.py
-    DEPS
-      .config
-      .libvm
-      .utils
-)
-
-py_library(
-    NAME
-      analyze_project
-    SRCS
-      tools/analyze_project/config.py
-      tools/analyze_project/environment.py
-      tools/analyze_project/parse_args.py
-      tools/analyze_project/pytype_runner.py
-    DEPS
-      .config
-      .io
-      .tools
-      .utils
 )
 
 py_test(
@@ -378,15 +382,6 @@ py_test(
 
 py_test(
   NAME
-    datatypes_test
-  SRCS
-    datatypes_test.py
-  DEPS
-    pytype.tests.test_base
-)
-
-py_test(
-  NAME
     compat_test
   SRCS
     compat_test.py
@@ -396,9 +391,9 @@ py_test(
 
 py_test(
   NAME
-    file_utils_test
+    datatypes_test
   SRCS
-    file_utils_test.py
+    datatypes_test.py
   DEPS
     pytype.tests.test_base
 )
@@ -410,6 +405,15 @@ py_test(
     io_test.py
   DEPS
     .io
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    file_utils_test
+  SRCS
+    file_utils_test.py
+  DEPS
     pytype.tests.test_base
 )
 
@@ -576,6 +580,15 @@ py_test(
     .libvm
 )
 
+py_library(
+  NAME
+    pytdtest
+  SRCS
+    pytd/parse/parser_test_base.py
+  DEPS
+    .pytd
+)
+
 py_test(
   NAME
     debug_test
@@ -584,19 +597,6 @@ py_test(
   DEPS
     .debug
     .pytd
-)
-
-toplevel_py_binary(
-  NAME
-    pytype-single
-  SRCS
-    main.py
-  MAIN
-    main.py
-  DEPS
-    .config
-    .io
-    .libvm
 )
 
 add_subdirectory(pyc)
