@@ -571,7 +571,8 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
         signature = self.signature.insert_varargs_and_kwargs(arg_dict)
       raise WrongArgTypes(signature, args, self.vm, bad_param=bad_arg)
     if log.isEnabledFor(logging.DEBUG):
-      log.debug("Matched arguments against sig%s", pytd.Print(self.pytd_sig))
+      log.debug("Matched arguments against sig%s",
+                pytd_utils.Print(self.pytd_sig))
     for nr, p in enumerate(self.pytd_sig.params):
       log.info("param %d) %s: %s <=> %s", nr, p.name, p.type, arg_dict[p.name])
     for name, var in sorted(subst.items()):
@@ -658,14 +659,14 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
           for tparam, type_actual in names_actuals:
             log.info("Mutating %s to %s",
                      tparam.name,
-                     pytd.Print(type_actual))
+                     pytd_utils.Print(type_actual))
             type_actual_val = self.vm.convert.constant_to_var(
                 abstract_utils.AsInstance(type_actual), subst, node,
                 discard_concrete_values=True)
             mutations.append(Mutation(arg, tparam.full_name, type_actual_val))
         else:
-          log.error("Old: %s", pytd.Print(formal.type))
-          log.error("New: %s", pytd.Print(formal.mutated_type))
+          log.error("Old: %s", pytd_utils.Print(formal.type))
+          log.error("New: %s", pytd_utils.Print(formal.mutated_type))
           log.error("Actual: %r", actual)
           raise ValueError("Mutable parameters setting a type to a "
                            "different base type is not allowed.")
@@ -722,4 +723,4 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
     return self
 
   def __repr__(self):
-    return pytd.Print(self.pytd_sig)
+    return pytd_utils.Print(self.pytd_sig)

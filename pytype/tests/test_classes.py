@@ -1,7 +1,7 @@
 """Tests for classes."""
 
 from pytype import file_utils
-from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
@@ -1385,7 +1385,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         foo: module
         Y: Type[foo.X.Y]
       """)
-      d.create_file("bar.pyi", pytd.Print(ty))
+      d.create_file("bar.pyi", pytd_utils.Print(ty))
       ty = self.Infer("""
         import bar
         Y = bar.Y

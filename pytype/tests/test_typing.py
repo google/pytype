@@ -305,5 +305,15 @@ class LiteralTest(test_base.TargetIndependentTest):
         y: None
       """)
 
+  def test_string(self):
+    # TODO(b/123775699): test that we do the right thing for string literals,
+    # not just that we don't barf.
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Literal
+        def open(f: str, mode: Literal["r"]) -> None: ...
+      """)
+      self.Check("import foo", pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")

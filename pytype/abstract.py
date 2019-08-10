@@ -1702,7 +1702,7 @@ class PyTDFunction(Function):
       result = self.vm.convert.create_new_unknown(
           node, action="pytd_call")
     else:
-      log.debug("Unknown args. But return is %s", pytd.Print(ret_type))
+      log.debug("Unknown args. But return is %s", pytd_utils.Print(ret_type))
       result = self.vm.convert.constant_to_var(
           abstract_utils.AsReturnValue(ret_type), {}, node)
     for i, arg in enumerate(args.posargs):
@@ -2231,7 +2231,7 @@ class PyTDClass(SimpleAbstractValue, mixin.Class):
     elif isinstance(pyval, pytd.Class):
       return self.vm.convert.constant_to_var(pyval, subst=subst, node=node)
     else:
-      raise AssertionError("Invalid class member %s" % pytd.Print(pyval))
+      raise AssertionError("Invalid class member %s" % pytd_utils.Print(pyval))
 
   def call(self, node, func, args, alias_map=None):
     if self.is_abstract:

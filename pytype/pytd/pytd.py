@@ -21,7 +21,6 @@
 
 
 import collections
-import difflib
 import itertools
 
 from pytype.pytd.parse import node
@@ -94,16 +93,6 @@ class TypeDeclUnit(node.Node('name: str or None',
 
   def __ne__(self, other):
     return id(self) != id(other)
-
-  def ASTeq(self, other):
-    return (self.constants == other.constants and
-            self.type_params == other.type_params and
-            self.classes == other.classes and
-            self.functions == other.functions and
-            self.aliases == other.aliases)
-
-  def ASTdiff(self, other):
-    return difflib.ndiff(Print(self).splitlines(), Print(other).splitlines())
 
 
 class Constant(node.Node('name: str', 'type: {Type}')):
@@ -566,13 +555,6 @@ class Literal(node.Node('value: int or {Type}'), Type):
 
 # Types that can be a base type of GenericType:
 GENERIC_BASE_TYPE = (NamedType, ClassType)
-
-
-def Print(n, multiline_args=False):
-  """Convert a PYTD node to a string."""
-  # TODO(kramm): fix circular import
-  from pytype.pytd import pytd_utils  # pylint: disable=g-import-not-at-top
-  return pytd_utils.Print(n, multiline_args)
 
 
 def IsContainer(t):

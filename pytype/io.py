@@ -18,7 +18,6 @@ from pytype import utils
 from pytype.pyc import pyc
 from pytype.pyi import parser
 from pytype.pytd import optimize
-from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
@@ -92,7 +91,7 @@ def generate_pyi(input_filename, errorlog, options, loader):
                           max_union=7,
                           remove_mutable=False)
   mod = pytd_utils.CanonicalOrdering(mod, sort_signatures=True)
-  result = pytd.Print(mod)
+  result = pytd_utils.Print(mod)
   log.info("=========== pyi optimized =============")
   log.info("\n%s", result)
   log.info("========================================")
@@ -229,7 +228,7 @@ def write_pickle(ast, loader, options):
     ast1 = ast1.Visit(visitors.ClearClassPointers())
     ast2 = loader.load_file(options.module_name, options.verify_pickle)
     ast2 = ast2.Visit(visitors.ClearClassPointers())
-    if not ast1.ASTeq(ast2):
+    if not pytd_utils.ASTeq(ast1, ast2):
       raise AssertionError()
   serialize_ast.StoreAst(ast, options.output)
 
@@ -265,7 +264,7 @@ def parse_pyi(options):
   ast = loader.finish_and_verify_ast(ast)
   if options.output:
     result = "# Internal AST parsed and postprocessed from %s\n\n%s" % (
-        options.input, pytd.Print(ast))
+        options.input, pytd_utils.Print(ast))
     _write_pyi_output(options, result, options.output)
   return ast
 

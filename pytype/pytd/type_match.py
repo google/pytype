@@ -500,7 +500,7 @@ class TypeMatch(pytd_utils.TypeMatcher):
           # Funky types like UnionType are hard to match against (and shouldn't
           # appear as a base class) so we treat them as catch-all.
           log.warning("Assuming that %s has method %s",
-                      pytd.Print(base), f1.name)
+                      pytd_utils.Print(base), f1.name)
           return booleq.TRUE
       return booleq.FALSE
     else:

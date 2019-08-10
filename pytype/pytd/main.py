@@ -16,7 +16,7 @@ import sys
 from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import optimize
-from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.pytd.parse import builtins
 
 
@@ -92,7 +92,7 @@ def main():
                                can_do_lookup=False)
 
   if opts.output is not None:
-    out_text = pytd.Print(parsed, opts.multiline_args)
+    out_text = pytd_utils.Print(parsed, opts.multiline_args)
     if opts.output == "-":
       sys.stdout.write(out_text)
     else:

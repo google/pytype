@@ -8,6 +8,7 @@ from pytype import config
 from pytype import file_utils
 from pytype import load_pytd
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
 
@@ -169,7 +170,7 @@ class ImportPathsTest(unittest.TestCase):
           "base", self.PYTHON_VERSION, pythonpath=[d.path])
       module2 = loader.import_name("module2")
       f, = module2.Lookup("module2.f").signatures
-      self.assertEqual("List[int]", pytd.Print(f.return_type))
+      self.assertEqual("List[int]", pytd_utils.Print(f.return_type))
 
   def testImportMapCongruence(self):
     with file_utils.Tempdir() as d:
@@ -400,7 +401,7 @@ class PickledPyiLoaderTest(unittest.TestCase):
       loaded_ast = self._LoadPickledModule(d, module1)
       self.assertTrue(loaded_ast)
       self.assertIsNot(loaded_ast, ast)
-      self.assertTrue(ast.ASTeq(loaded_ast))
+      self.assertTrue(pytd_utils.ASTeq(ast, loaded_ast))
       loaded_ast.Visit(visitors.VerifyLookup())
 
   def testStarImport(self):
@@ -413,7 +414,8 @@ class PickledPyiLoaderTest(unittest.TestCase):
       self._PickleModules(loader, d, foo, bar)
       loaded_ast = self._LoadPickledModule(d, bar)
       loaded_ast.Visit(visitors.VerifyLookup())
-      self.assertMultiLineEqual(pytd.Print(loaded_ast), textwrap.dedent("""\
+      self.assertMultiLineEqual(pytd_utils.Print(loaded_ast),
+                                textwrap.dedent("""\
         import foo
 
         bar.A = foo.A"""))
@@ -488,7 +490,7 @@ class Python3Test(unittest.TestCase):
                                 pythonpath=[d.path])
       a = loader.import_name("a")
       cls = a.Lookup("a.A")
-      self.assertEqual("AsyncGenerator[str]", pytd.Print(cls.parents[0]))
+      self.assertEqual("AsyncGenerator[str]", pytd_utils.Print(cls.parents[0]))
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ Based on PEP 544 https://www.python.org/dev/peps/pep-0544/.
 """
 
 from pytype import file_utils
-from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
@@ -416,7 +416,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
           pass
     """)
     with file_utils.Tempdir() as d:
-      d.create_file("foo.pyi", pytd.Print(ty))
+      d.create_file("foo.pyi", pytd_utils.Print(ty))
       self.Check("""
         import foo
         class MyAppendable(object):
@@ -436,7 +436,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
           pass
     """)
     with file_utils.Tempdir() as d:
-      d.create_file("foo.pyi", pytd.Print(ty))
+      d.create_file("foo.pyi", pytd_utils.Print(ty))
       errors = self.CheckWithErrors("""\
         import foo
         class NotAppendable(object):
@@ -461,7 +461,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
           pass
     """)
     with file_utils.Tempdir() as d:
-      d.create_file("foo.pyi", pytd.Print(ty))
+      d.create_file("foo.pyi", pytd_utils.Print(ty))
       errors = self.CheckWithErrors("""\
         from foo import Mutable
         class NotMutable(object):
@@ -489,7 +489,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
           pass
     """)
     with file_utils.Tempdir() as d:
-      d.create_file("foo.pyi", pytd.Print(ty))
+      d.create_file("foo.pyi", pytd_utils.Print(ty))
       self.Check("""
         from foo import Removable
         def f(x: Removable):

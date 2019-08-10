@@ -1,7 +1,7 @@
 """Tests for reloading generated pyi."""
 
 from pytype import file_utils
-from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
@@ -15,7 +15,7 @@ class ReingestTest(test_base.TargetPython3BasicTest):
       def f(x: T) -> T: return x
     """, deep=False)
     with file_utils.Tempdir() as d:
-      d.create_file("foo.pyi", pytd.Print(foo))
+      d.create_file("foo.pyi", pytd_utils.Print(foo))
       _, errors = self.InferWithErrors("""\
         import foo
         foo.f("")
@@ -31,7 +31,7 @@ class ReingestTest(test_base.TargetPython3BasicTest):
       def g(x: Callable[[T], Any]) -> T: ...
     """)
     with file_utils.Tempdir() as d:
-      d.create_file("foo.pyi", pytd.Print(foo))
+      d.create_file("foo.pyi", pytd_utils.Print(foo))
       self.Check("""
         import foo
         foo.g(foo.f).upper()

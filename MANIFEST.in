@@ -1,4 +1,3 @@
-include DESCRIPTION.rst
 include LICENSE
 include pytype/pyi/*
 include pytype/test_data/*

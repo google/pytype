@@ -1,7 +1,7 @@
 """Tests for typing.overload."""
 
 from pytype import file_utils
-from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
@@ -117,7 +117,8 @@ class OverloadTest(test_base.TargetPython3BasicTest):
         return f
     """
     ty = self.Infer(src, analyze_annotated=False)
-    self.assertTrue(ty.ASTeq(self.Infer(src, analyze_annotated=True)))
+    self.assertTrue(
+        pytd_utils.ASTeq(ty, self.Infer(src, analyze_annotated=True)))
     self.assertTypesMatchPytd(ty, """
       from typing import Callable
       @overload
@@ -127,7 +128,7 @@ class OverloadTest(test_base.TargetPython3BasicTest):
       def g() -> Callable: ...
     """)
     with file_utils.Tempdir() as d:
-      d.create_file("foo.pyi", pytd.Print(ty))
+      d.create_file("foo.pyi", pytd_utils.Print(ty))
       errors = self.CheckWithErrors("""\
         import foo
         foo.f(0)  # ok
@@ -165,7 +166,8 @@ class OverloadTest(test_base.TargetPython3BasicTest):
           return x
     """
     ty = self.Infer(src, analyze_annotated=False)
-    self.assertTrue(ty.ASTeq(self.Infer(src, analyze_annotated=True)))
+    self.assertTrue(
+        pytd_utils.ASTeq(ty, self.Infer(src, analyze_annotated=True)))
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         @overload

@@ -6,7 +6,7 @@ File 1/3. Split into parts to enable better test parallelism.
 import textwrap
 
 from pytype import collections_overlay
-from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
@@ -476,7 +476,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
     name = collections_overlay.namedtuple_name("_Foo", ["x", "y", "z"])
     ast = collections_overlay.namedtuple_ast(name, ["x", "y", "z"],
                                              self.python_version)
-    expected = pytd.Print(ast) + textwrap.dedent("""
+    expected = pytd_utils.Print(ast) + textwrap.dedent("""
       collections = ...  # type: module
       class Foo({name}): ...""").format(name=name)
     self.assertTypesMatchPytd(ty, expected)
@@ -495,7 +495,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
     name = collections_overlay.namedtuple_name("t", ["x", "y", "z"])
     ast = collections_overlay.namedtuple_ast(name, ["x", "y", "z"],
                                              self.python_version)
-    expected = pytd.Print(ast) + textwrap.dedent("""
+    expected = pytd_utils.Print(ast) + textwrap.dedent("""
       collections = ...  # type: module
       t = {name}
       x = ...  # type: int

@@ -1,6 +1,6 @@
 """Tests for the typing.NamedTuple overlay."""
 
-from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
@@ -53,7 +53,7 @@ class NamedTupleTest(test_base.TargetPython3BasicTest):
       def foo(x: X):
         return x.f
     """)
-    self.assertMultiLineEqual(pytd.Print(ty.Lookup("foo")),
+    self.assertMultiLineEqual(pytd_utils.Print(ty.Lookup("foo")),
                               "def foo(x: X) -> Callable: ...")
 
   def test_bare_union_attribute(self):
@@ -63,7 +63,7 @@ class NamedTupleTest(test_base.TargetPython3BasicTest):
       def foo(x: X):
         return x.x
     """)
-    self.assertMultiLineEqual(pytd.Print(ty.Lookup("foo")),
+    self.assertMultiLineEqual(pytd_utils.Print(ty.Lookup("foo")),
                               "def foo(x: X) -> Any: ...")
     self.assertErrorLogIs(errors, [(2, "invalid-annotation", r"Union.*x")])
 
@@ -117,7 +117,7 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
       def foo(x: X):
         return x.x
     """)
-    self.assertMultiLineEqual(pytd.Print(ty.Lookup("foo")),
+    self.assertMultiLineEqual(pytd_utils.Print(ty.Lookup("foo")),
                               "def foo(x: X) -> Union[bytes, str]: ...")
 
   def test_bad_call(self):

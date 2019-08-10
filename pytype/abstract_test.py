@@ -1018,7 +1018,7 @@ class SimpleFunctionTest(AbstractTestBase):
     node = self._vm.root_cfg_node
     f = self._make_func(name="basic", param_names=("a", "b"))
     fp = self._vm.convert.pytd_convert.value_to_pytd_def(node, f, f.name)
-    self.assertEqual(pytd.Print(fp), "def basic(a, b) -> None: ...")
+    self.assertEqual(pytd_utils.Print(fp), "def basic(a, b) -> None: ...")
 
   def test_signature_func_output_annotations(self):
     node = self._vm.root_cfg_node
@@ -1032,7 +1032,8 @@ class SimpleFunctionTest(AbstractTestBase):
         }
     )
     fp = self._vm.convert.pytd_convert.value_to_pytd_def(node, f, f.name)
-    self.assertEqual(pytd.Print(fp), "def annots(a: int, b: str) -> int: ...")
+    self.assertEqual(pytd_utils.Print(fp),
+                     "def annots(a: int, b: str) -> int: ...")
 
   def test_signature_func_output(self):
     node = self._vm.root_cfg_node
@@ -1064,7 +1065,7 @@ class SimpleFunctionTest(AbstractTestBase):
     fp = self._vm.convert.pytd_convert.value_to_pytd_def(node, f, f.name)
     f_str = ("def test(a: str, b: int = ..., *c: str, d: Dict[str, int] = ...,"
              " e: int, **f: str) -> str: ...")
-    self.assertEqual(pytd.Print(fp), f_str)
+    self.assertEqual(pytd_utils.Print(fp), f_str)
 
 
 class AbstractTest(AbstractTestBase):

@@ -1,7 +1,12 @@
 """Tests for pytd_visitors."""
 
+import textwrap
+
 from pytype.pytd import pytd_visitors
+from pytype.pytd import visitors
 from pytype.pytd.parse import parser_test_base
+import six
+
 import unittest
 
 
@@ -101,6 +106,33 @@ class PytdVisitorsTest(parser_test_base.ParserTest):
     self.AssertSourceEquals(tree1, tree2)
     self.assertEqual(tree1.Lookup("f").signatures[0].template,
                      tree2.Lookup("f").signatures[0].template)
+
+  def testSuperClasses(self):
+    src = textwrap.dedent("""
+      class classobj:
+          pass
+      class A():
+          pass
+      class B():
+          pass
+      class C(A):
+          pass
+      class D(A,B):
+          pass
+      class E(C,D,A):
+          pass
+    """)
+    ast = visitors.LookupClasses(self.Parse(src))
+    data = ast.Visit(pytd_visitors.ExtractSuperClasses())
+    six.assertCountEqual(self,
+                         ["classobj"], [t.name for t in data[ast.Lookup("A")]])
+    six.assertCountEqual(self,
+                         ["classobj"], [t.name for t in data[ast.Lookup("B")]])
+    six.assertCountEqual(self, ["A"], [t.name for t in data[ast.Lookup("C")]])
+    six.assertCountEqual(self,
+                         ["A", "B"], [t.name for t in data[ast.Lookup("D")]])
+    six.assertCountEqual(self, ["C", "D", "A"],
+                         [t.name for t in data[ast.Lookup("E")]])
 
 
 class TestAncestorMap(unittest.TestCase):

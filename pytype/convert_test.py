@@ -8,6 +8,7 @@ from pytype import file_utils
 from pytype import load_pytd
 from pytype import vm
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 import six
 
 import unittest
@@ -203,7 +204,8 @@ class ConvertTest(unittest.TestCase):
         ast.Lookup("a.f"), {}, self._vm.root_cfg_node)
     sig, = f.signatures
     annot = sig.signature.annotations["args"]
-    self.assertEqual(pytd.Print(annot.get_instance_type()), "Tuple[int, ...]")
+    self.assertEqual(pytd_utils.Print(annot.get_instance_type()),
+                     "Tuple[int, ...]")
 
   def test_function_with_starstarargs(self):
     ast = self._load_ast("a", """
@@ -213,7 +215,8 @@ class ConvertTest(unittest.TestCase):
         ast.Lookup("a.f"), {}, self._vm.root_cfg_node)
     sig, = f.signatures
     annot = sig.signature.annotations["kwargs"]
-    self.assertEqual(pytd.Print(annot.get_instance_type()), "Dict[str, int]")
+    self.assertEqual(pytd_utils.Print(annot.get_instance_type()),
+                     "Dict[str, int]")
 
   def test_mro(self):
     ast = self._load_ast("a", """
@@ -234,12 +237,12 @@ class ConvertTest(unittest.TestCase):
     x = ast.Lookup("a.x").type
     tup = self._vm.convert.constant_to_value(x, {}, self._vm.root_cfg_node)
     widened_tup = self._vm.convert.widen_type(tup)
-    self.assertEqual(pytd.Print(widened_tup.get_instance_type()),
+    self.assertEqual(pytd_utils.Print(widened_tup.get_instance_type()),
                      "Iterable[int]")
     y = ast.Lookup("a.y").type
     dct = self._vm.convert.constant_to_value(y, {}, self._vm.root_cfg_node)
     widened_dct = self._vm.convert.widen_type(dct)
-    self.assertEqual(pytd.Print(widened_dct.get_instance_type()),
+    self.assertEqual(pytd_utils.Print(widened_dct.get_instance_type()),
                      "Mapping[str, int]")
 
   def test_abstract_method_round_trip(self):

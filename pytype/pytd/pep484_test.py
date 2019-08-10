@@ -1,5 +1,6 @@
 from pytype.pytd import pep484
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.pytd.parse import parser_test_base
 import unittest
 
@@ -11,7 +12,7 @@ class TestPEP484(parser_test_base.ParserTest):
 
   def convert(self, t, python_version=None):
     """Run ConvertTypingToNative and return the result as a string."""
-    return pytd.Print(t.Visit(pep484.ConvertTypingToNative(None)))
+    return pytd_utils.Print(t.Visit(pep484.ConvertTypingToNative(None)))
 
   def test_convert_optional(self):
     t = pytd.GenericType(pytd.NamedType("typing.Optional"),
