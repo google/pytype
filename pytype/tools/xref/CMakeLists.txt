@@ -29,6 +29,15 @@ py_library(
     pytype.utils
 )
 
+py_library(
+  NAME
+    callgraph
+  SRCS
+    callgraph.py
+  DEPS
+    .indexer
+)
+
 py_test(
   NAME
     parse_args_test
@@ -37,6 +46,18 @@ py_test(
   DEPS
     .parse_args
     pytype.utils
+)
+
+py_test(
+  NAME
+    callgraph_test
+  SRCS
+    callgraph_test.py
+  DEPS
+    .callgraph
+    .indexer
+    pytype.utils
+    pytype.tests.test_base
 )
 
 py_test(
