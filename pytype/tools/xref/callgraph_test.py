@@ -35,7 +35,7 @@ class CallgraphTest(test_base.TargetIndependentTest):
 
   def test_basic(self):
     ix = self.index_code("""\
-        def f(x):
+        def f(x: str):
           y = x.strip()
           return y
 
@@ -48,10 +48,13 @@ class CallgraphTest(test_base.TargetIndependentTest):
     fns = callgraph.collect_functions(ix)
     self.assertCountEqual(fns.keys(), ["module.f", "module.g"])
     f = fns["module.f"]
-    self.assertAttrsEqual(f.param_attrs, {("x", "typing.Any", "x.strip")})
+    self.assertAttrsEqual(f.param_attrs,
+                          {("x", "__builtin__.str", "x.strip")})
     self.assertAttrsEqual(f.local_attrs, set())
-    self.assertCallsEqual(f.calls, [])
+    self.assertCallsEqual(f.calls, [("str.strip", [])])
     self.assertEqual(f.ret.id, "module.f.y")
+    self.assertEqual(f.params, [("x", "str")])
+
     g = fns["module.g"]
     self.assertAttrsEqual(g.param_attrs, set())
     self.assertAttrsEqual(g.local_attrs,
@@ -61,6 +64,7 @@ class CallgraphTest(test_base.TargetIndependentTest):
         ("complex", [])
     ])
     self.assertEqual(g.ret.id, "module.g.c")
+    self.assertEqual(g.params, [("y", "typing.Any")])
 
   def test_remote(self):
     code = """\
@@ -83,7 +87,7 @@ class CallgraphTest(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", stub)
       options = config.Options.create(d["t.py"], pythonpath=d.path,
                                       version=self.python_version)
-      ix = indexer.process_file(options)
+      ix = indexer.process_file(options, preserve_pytype_vm=True)
     fns = callgraph.collect_functions(ix)
     self.assertCountEqual(fns.keys(), ["module.f"])
     f = fns["module.f"]
@@ -94,6 +98,20 @@ class CallgraphTest(test_base.TargetIndependentTest):
         ("Y", [("a", "Param", "typing.Any"), ("b", "Param", "typing.Any")]),
         ("Y.bar", [])
     ])
+
+  def test_no_outgoing_calls(self):
+    """Capture a function with no outgoing calls."""
+    ix = self.index_code("""\
+        def f(x: int):
+          return "hello"
+    """)
+    fns = callgraph.collect_functions(ix)
+    self.assertCountEqual(fns.keys(), ["module.f"])
+    f = fns["module.f"]
+    self.assertAttrsEqual(f.param_attrs, [])
+    self.assertAttrsEqual(f.local_attrs, [])
+    self.assertCallsEqual(f.calls, [])
+    self.assertEqual(f.params, [("x", "int")])
 
 
 test_base.main(globals(), __name__ == "__main__")

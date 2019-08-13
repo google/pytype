@@ -1247,6 +1247,11 @@ class Indexer(object):
 
     return links
 
+  def get_pytd_def(self, data, name):
+    assert self.vm, "Indexer vm has not been preserved."
+    node = self.vm.root_cfg_node
+    return self.vm.convert.pytd_convert.value_to_pytd_def(node, data, name)
+
 
 class PytypeError(Exception):
   """Wrap exceptions raised by the indexer."""
