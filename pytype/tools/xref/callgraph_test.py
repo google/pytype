@@ -7,8 +7,12 @@ from pytype import file_utils
 
 from pytype.tests import test_base
 
-from pytype.tools.xref import callgraph
-from pytype.tools.xref import indexer
+# These modules need typed_ast, which is available only in Python 3.3+, but in
+# our oss tests, there is no easy way to exclude a test in some Python versions.
+if sys.version_info >= (3, 3):
+  # pylint: disable=g-import-not-at-top
+  from pytype.tools.xref import callgraph
+  from pytype.tools.xref import indexer
 
 
 class CallgraphTest(test_base.TargetIndependentTest):
