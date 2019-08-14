@@ -18,15 +18,10 @@ from pytype.tools.traces import visitor as ast_visitor
 
 from pytype.tools.xref import utils as xref_utils
 from pytype.tools.xref import kythe
+from pytype.tools.xref import node_utils
 
 from typed_ast import ast27 as ast27
 from typed_ast import ast3
-
-# A global "ast" variable that we set to ast27 or ast3 depending on the target
-# python version.
-#
-# TODO(mdemello): Use typed_ast.convert to coerce everything into ast3
-ast = None
 
 
 # A mapping of offsets between a node's start position and the symbol being
@@ -45,24 +40,6 @@ IMPORT_FILE_MARKER = "<__FILE__>"
 _RETURNING_NAME = "RETURNING NAME"
 
 
-def typename(node):
-  return node.__class__.__name__
-
-
-def get_id(node):
-  """Construct an id based on node type."""
-
-  c = node.__class__
-  if c == ast.FunctionDef:
-    return "function %s" % node.name
-  elif c == ast.ClassDef:
-    return "class %s" % node.name
-  elif c == ast.Module:
-    return "module"
-  else:
-    raise ValueError("Unexpected scope: %r" % node)
-
-
 def qualified_method(data):
   """Fully qualify a method call with its class scope."""
   if isinstance(data, abstract.BoundFunction):
@@ -71,34 +48,10 @@ def qualified_method(data):
     return [data.name]
 
 
-def get_name(node):
-  """Nodes have different name attributes."""
-
-  if isinstance(node, ast.Attribute):
-    return get_name(node.value) + "." + node.attr
-  elif isinstance(node, ast.arg):
-    return node.arg
-  elif isinstance(node, str):
-    return node
-  elif hasattr(node, "name"):
-    return node.name
-  elif hasattr(node, "id"):
-    return node.id
-  else:
-    return "[" + typename(node) + "]"
-
-
 def get_location(node):
   # TODO(mdemello): The column offset for nodes like "class A" needs to be
   # adjusted to the start of the symbol.
   return source.Location(node.lineno, node.col_offset)
-
-
-def has_decorator(f, decorator):
-  for d in f.decorator_list:
-    if isinstance(d, ast.Name) and d.id == decorator:
-      return True
-  return False
 
 
 def match_opcodes(opcode_traces, lineno, op_match_list):
@@ -163,11 +116,11 @@ class PytypeValue(object):
       return cls("module", data.name, "Class")
     elif isinstance(data, abstract.BoundFunction):
       # TODO(mdemello): Handle multiple class bindings.
-      name = data.repr_names(callself_repr=typename)[0]
+      name = data.repr_names(callself_repr=node_utils.typename)[0]
       return cls("module", name, "BoundFunction")
     else:
       # TODO(mdemello): We need to infer the module here.
-      return cls("module", str(data), typename(data))
+      return cls("module", str(data), node_utils.typename(data))
 
   @classmethod
   def from_data(cls, data):
@@ -212,7 +165,7 @@ class DocString(collections.namedtuple(
   """Store the text and location of a docstring."""
 
   @classmethod
-  def from_node(cls, node):
+  def from_node(cls, ast, node):
     """If the first element in node.body is a string, create a docstring."""
 
     # This should only be called on ClassDef and FunctionDef
@@ -353,10 +306,11 @@ class Funcall(object):
 class Env(object):
   """A collection of namespaced symbols."""
 
-  def __init__(self, scope, parent, cls):
+  def __init__(self, ast, scope, parent, cls):
     """Initialize an environment.
 
     Arguments:
+      ast: An ast module
       scope: The namespace key (e.g. module:class A:function f)
       parent: The env of the directly enclosing namespace
       cls: The class currently being defined
@@ -369,6 +323,7 @@ class Env(object):
       ret: The `return` variable for functions
     """
 
+    self.ast = ast
     self.scope = scope
     self.parent = parent
     self.cls = cls
@@ -394,8 +349,8 @@ class Env(object):
   def is_self_attr(self, node):
     return (
         self.self_var and
-        isinstance(node, ast.Attribute) and
-        isinstance(node.value, ast.Name) and
+        isinstance(node, self.ast.Attribute) and
+        isinstance(node.value, self.ast.Name) and
         node.value.id == self.self_var.name)
 
   def getattr(self, attr):
@@ -425,12 +380,12 @@ class Env(object):
 class CollectNamesVisitor(ast_visitor.BaseVisitor):
   """Collect all occurences of Name in a subtree."""
 
-  def __init__(self):
+  def __init__(self, ast):
     super(CollectNamesVisitor, self).__init__(ast)
     self.names = []
 
   def visit_Name(self, node):
-    if isinstance(node.ctx, ast.Load):
+    if isinstance(node.ctx, self._ast.Load):
       self.names.append(node)
 
 
@@ -452,7 +407,7 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
   # TODO(mdemello): Is the two-level visitor hierarchy really buying us
   # anything by way of maintainability or readability?
 
-  def __init__(self, module_name):
+  def __init__(self, ast, module_name):
     super(ScopedVisitor, self).__init__(ast)
     self.stack = []
     self.class_ids = []
@@ -463,11 +418,11 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
     """Construct an id based on node type."""
 
     c = node.__class__
-    if c == ast.FunctionDef:
+    if c == self._ast.FunctionDef:
       return node.name
-    elif c == ast.ClassDef:
+    elif c == self._ast.ClassDef:
       return node.name
-    elif c == ast.Module:
+    elif c == self._ast.Module:
       return self.module_name
     else:
       raise Exception("Unexpected scope: %r" % node)
@@ -497,7 +452,9 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
       parent = None
     self.stack.append(node)
     new_scope = self.scope_id()
-    new_env = Env(scope=new_scope, parent=parent,
+    new_env = Env(ast=self._ast,
+                  scope=new_scope,
+                  parent=parent,
                   cls=self.current_class)
     if is_class:
       new_env.attrs = {}
@@ -529,8 +486,10 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
 class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
   """Visitor that generates indexes."""
 
-  def __init__(self, src, module_name, kythe_):
-    super(IndexVisitor, self).__init__(src, module_name)
+  def __init__(self, ast, src, module_name, kythe_):
+    super(IndexVisitor, self).__init__(ast=ast,
+                                       src_code=src,
+                                       module_name=module_name)
     self.defs = {}
     self.locs = collections.defaultdict(list)
     self.refs = []
@@ -547,7 +506,7 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
 
     loc = None
 
-    if isinstance(node, ast.ClassDef):
+    if isinstance(node, self._ast.ClassDef):
       # For class and function definitions, search for the string
       #   (class|def) <name>
       # between the start of the AST node and the start of the body. Handles the
@@ -555,7 +514,7 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
       body_start = node.body[0].lineno
       text = "class %s" % args["name"]
       loc = self.source.find_first_text(node.lineno, body_start, text)
-    elif isinstance(node, ast.FunctionDef):
+    elif isinstance(node, self._ast.FunctionDef):
       body_start = node.body[0].lineno
       text = "def %s" % args["name"]
       loc = self.source.find_first_text(node.lineno, body_start, text)
@@ -572,19 +531,19 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
     try:
       return super(IndexVisitor, self)._get_node_name(node)
     except NotImplementedError:
-      return typename(node)
+      return node_utils.typename(node)
 
   def make_def(self, node, **kwargs):
     """Make a definition from a node."""
 
-    if isinstance(node, ast.Name):
-      t = typename(node.ctx)
-    elif isinstance(node, ast.arg):
+    if isinstance(node, self._ast.Name):
+      t = node_utils.typename(node.ctx)
+    elif isinstance(node, self._ast.arg):
       t = "Param"
     else:
-      t = typename(node)
+      t = node_utils.typename(node)
     args = {
-        "name": get_name(node),
+        "name": node_utils.get_name(node, self._ast),
         "scope": self.scope_id(),
         "typ": t,
         "data": None,
@@ -603,10 +562,10 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
 
     assert "data" in kwargs  # required kwarg
     args = {
-        "name": get_name(node),
+        "name": node_utils.get_name(node, self._ast),
         "scope": self.scope_id(),
         "ref_scope": None,
-        "typ": typename(node),
+        "typ": node_utils.typename(node),
         "location": get_location(node),
         "target": None,
     }
@@ -633,7 +592,7 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
 
   def add_closure_ref(self, node, **kwargs):
     """Look for node.name up the chain of scopes."""
-    name = get_name(node)
+    name = node_utils.get_name(node, self._ast)
     env, _ = self.current_env.lookup(name)
     if env:
       kwargs.update({"ref_scope": env.scope})
@@ -663,13 +622,19 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
     if env.is_self_attr(node):
       self.envs[self.scope_id()].setattr(node.attr, defn)
 
+  def _has_decorator(self, f, decorator):
+    for d in f.decorator_list:
+      if isinstance(d, self._ast.Name) and d.id == decorator:
+        return True
+    return False
+
   def enter_ClassDef(self, node):
     # TODO(mdemello): For decorated classes, the node's lineno starts at the
     # first decorator, and therefore does not match the opcode's lineno.
     # Likewise, when a class definition spans multiple lines, the AST node
     # starts on the first line but the BUILD_CLASS opcode starts on the last
     # one. Fix when we incorporate asttokens.
-    class_name = get_name(node)
+    class_name = node_utils.get_name(node, self._ast)
 
     # Python2
     ops = match_opcodes(self.traces, node.lineno, [("BUILD_CLASS", class_name)])
@@ -687,7 +652,8 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
         _, _, data = ops[1]
         d = _unwrap(data)
     assert d, "Did not get pytype data for class %s" % class_name
-    defn = self.add_local_def(node, data=data, doc=DocString.from_node(node))
+    defn = self.add_local_def(node, data=data,
+                              doc=DocString.from_node(self._ast, node))
     self.classmap[d[0]] = defn
     super(IndexVisitor, self).enter_ClassDef(node)
 
@@ -702,7 +668,8 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
       # TODO(mdemello): Add an assert; this should not happen but I would rather
       # not break grok indexing if it does.
       data = None
-    fn_def = self.add_local_def(node, data=data, doc=DocString.from_node(node))
+    fn_def = self.add_local_def(node, data=data,
+                                doc=DocString.from_node(self._ast, node))
     env = self.add_scope(node)
     # TODO(mdemello): Get pytype data for params
     params = [self.add_local_def(v) for v in node.args.args]
@@ -712,8 +679,8 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
           edge_name="param.%d" % i,
           target=self.kythe.vname(param.to_signature()))
     if env.cls:
-      if (not has_decorator(node, "classmethod") and
-          not has_decorator(node, "staticmethod")):
+      if (not self._has_decorator(node, "classmethod") and
+          not self._has_decorator(node, "staticmethod")):
         # Don't crash if we have buggy code like
         # class A(): def f(): ...
         if params:
@@ -751,7 +718,7 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
 
   def visit_Call(self, node):
     name = self._get_node_name(node)
-    name_visitor = CollectNamesVisitor()
+    name_visitor = CollectNamesVisitor(self._ast)
     name_visitor.visit(node)
     arg_names = name_visitor.names
     seen = set()
@@ -768,7 +735,7 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
 
   def visit_Assign(self, node):
     for v in node.targets:
-      if isinstance(v, ast.Attribute):
+      if isinstance(v, self._ast.Attribute):
         self.add_attr(v)
 
   def visit_Attribute(self, node):
@@ -846,7 +813,7 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
     self.process_import(node)
 
   def enter_Return(self, node):
-    if isinstance(node.value, ast.Name):
+    if isinstance(node.value, self._ast.Name):
       self.current_env.ret = _RETURNING_NAME
 
   def leave_Return(self, node):
@@ -862,10 +829,12 @@ class Indexer(object):
   """Runs the indexer visitor and collects its results."""
 
   def __init__(self,
+               ast,
                src,
                loader,
                module_name,
                kythe_args=None):
+    self.ast = ast
     self.source = src
     self.loader = loader
     self.resolved_modules = loader.get_resolved_modules()
@@ -889,7 +858,7 @@ class Indexer(object):
   def index(self, code_ast):
     """Index an AST corresponding to self.source."""
 
-    v = IndexVisitor(self.source, self.module_name, self.kythe)
+    v = IndexVisitor(self.ast, self.source, self.module_name, self.kythe)
     v.visit(code_ast)
     self.defs = v.defs
     self.locs = v.locs
@@ -1260,7 +1229,9 @@ class PytypeError(Exception):
 class VmTrace(source.AbstractTrace):
 
   def __repr__(self):
-    types_repr = tuple(t and [typename(x) for x in t] for t in self.types)
+    types_repr = tuple(
+        t and [node_utils.typename(x) for x in t]
+        for t in self.types)
     return "%s %s" % (super(VmTrace, self).__repr__(), types_repr)
 
 
@@ -1281,9 +1252,6 @@ def process_file(options, source_text=None, kythe_args=None,
   Raises:
     PytypeError if pytype fails.
   """
-  # We bind the global ast variable in this function.
-  global ast
-
   errorlog = errors.ErrorLog()
   loader = load_pytd.create_loader(options)
   src = source_text or io.read_source_file(options.input)
@@ -1314,7 +1282,7 @@ def process_file(options, source_text=None, kythe_args=None,
   # TODO(mdemello): Get from args
   module_name = "module"
   src_code = source.Code(src, vm.opcode_traces, VmTrace, filename=options.input)
-  ix = Indexer(src_code, vm.loader, module_name, kythe_args)
+  ix = Indexer(ast, src_code, vm.loader, module_name, kythe_args)
   ix.index(ast_root_node)
   ix.finalize()
   if preserve_pytype_vm:

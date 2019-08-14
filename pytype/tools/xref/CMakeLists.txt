@@ -8,6 +8,7 @@ py_library(
     debug.py
     indexer.py
     kythe.py
+    node_utils.py
     output.py
     utils.py
   DEPS

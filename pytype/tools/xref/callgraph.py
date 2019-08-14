@@ -3,7 +3,7 @@
 import collections
 
 from pytype.pytd import pytd_utils
-from pytype.tools.xref import indexer
+from pytype.tools.xref import node_utils
 
 
 Attr = collections.namedtuple(
@@ -63,8 +63,8 @@ def collect_functions(index):
     env = index.envs[call.scope]
     args = []
     for node in call.args:
-      name = indexer.get_name(node)
-      if indexer.typename(node) == 'Name':
+      name = node_utils.get_name(node, index.ast)
+      if node_utils.typename(node) == 'Name':
         defn = env.env[node.id]
         node_type = defn.typ
         typename = unknown_to_any(defn.typename)
