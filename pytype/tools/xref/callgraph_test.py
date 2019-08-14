@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+import sys
+
 from pytype import config
 from pytype import file_utils
 
@@ -112,6 +114,12 @@ class CallgraphTest(test_base.TargetIndependentTest):
     self.assertAttrsEqual(f.local_attrs, [])
     self.assertCallsEqual(f.calls, [])
     self.assertEqual(f.params, [("x", "int")])
+
+
+# The callgraph code only works in Python 3.5-6, but in our opensource tests,
+# there is no easy way to exclude a test in some Python versions.
+if not (3, 5) <= sys.version_info[:2] <= (3, 6):
+  del CallgraphTest
 
 
 test_base.main(globals(), __name__ == "__main__")
