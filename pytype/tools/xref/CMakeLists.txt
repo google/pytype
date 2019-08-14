@@ -11,6 +11,7 @@ py_library(
     output.py
     utils.py
   DEPS
+    pytype.errors
     pytype.io
     pytype.libvm
     pytype.tools

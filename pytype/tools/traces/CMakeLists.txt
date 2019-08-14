@@ -9,6 +9,7 @@ py_library(
     .source
     .visitor
     pytype.config
+    pytype.errors
     pytype.libvm
     pytype.pytd_defs
     pytype.pytd_for_parser
