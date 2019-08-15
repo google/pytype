@@ -110,6 +110,7 @@ def get_version():
 
 def get_install_requires():
   requires = [
+      'attrs',
       'importlab (>=0.5.1)',
       'ninja',
       'pyyaml (>=3.11)',
