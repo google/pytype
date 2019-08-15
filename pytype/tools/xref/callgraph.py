@@ -36,7 +36,7 @@ def get_function_params(pytd_fn):
           for x in sig.params]
 
 
-def collect_functions(index):
+def collect_function_map(index):
   """Track types and outgoing calls within a function."""
 
   def pytd_of_fn(f):

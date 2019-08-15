@@ -11,7 +11,6 @@ from pytype.tests import test_base
 # our oss tests, there is no easy way to exclude a test in some Python versions.
 if sys.version_info >= (3, 3):
   # pylint: disable=g-import-not-at-top
-  from pytype.tools.xref import callgraph
   from pytype.tools.xref import indexer
 
 
@@ -26,7 +25,7 @@ class CallgraphTest(test_base.TargetIndependentTest):
       d.create_file("t.py", code)
       options = config.Options.create(d["t.py"])
       options.tweak(**args)
-      return indexer.process_file(options, preserve_pytype_vm=True)
+      return indexer.process_file(options, generate_callgraphs=True)
 
   def assertAttrsEqual(self, attrs, expected):
     actual = {(x.name, x.type, x.attr) for x in attrs}
@@ -51,7 +50,7 @@ class CallgraphTest(test_base.TargetIndependentTest):
           c = b.real
           return c
     """)
-    fns = callgraph.collect_functions(ix)
+    fns = ix.function_map
     self.assertCountEqual(fns.keys(), ["module.f", "module.g"])
     f = fns["module.f"]
     self.assertAttrsEqual(f.param_attrs,
@@ -93,8 +92,8 @@ class CallgraphTest(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", stub)
       options = config.Options.create(d["t.py"], pythonpath=d.path,
                                       version=self.python_version)
-      ix = indexer.process_file(options, preserve_pytype_vm=True)
-    fns = callgraph.collect_functions(ix)
+      ix = indexer.process_file(options, generate_callgraphs=True)
+    fns = ix.function_map
     self.assertCountEqual(fns.keys(), ["module.f"])
     f = fns["module.f"]
     self.assertAttrsEqual(f.param_attrs, [])
@@ -111,7 +110,7 @@ class CallgraphTest(test_base.TargetIndependentTest):
         def f(x: int):
           return "hello"
     """)
-    fns = callgraph.collect_functions(ix)
+    fns = ix.function_map
     self.assertCountEqual(fns.keys(), ["module.f"])
     f = fns["module.f"]
     self.assertAttrsEqual(f.param_attrs, [])

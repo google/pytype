@@ -16,6 +16,7 @@ from pytype.tools.traces import source
 from pytype.tools.traces import traces
 from pytype.tools.traces import visitor as ast_visitor
 
+from pytype.tools.xref import callgraph
 from pytype.tools.xref import utils as xref_utils
 from pytype.tools.xref import kythe
 from pytype.tools.xref import node_utils
@@ -851,6 +852,7 @@ class Indexer(object):
     self.classmap = None
     self.calls = None
     self.links = []
+    self.function_map = None
 
     # Optionally preserve the pytype vm so we can access the types later
     self.vm = None
@@ -1236,7 +1238,7 @@ class VmTrace(source.AbstractTrace):
 
 
 def process_file(options, source_text=None, kythe_args=None,
-                 preserve_pytype_vm=False):
+                 generate_callgraphs=False, preserve_pytype_vm=False):
   """Process a single file and return cross references.
 
   Args:
@@ -1244,6 +1246,7 @@ def process_file(options, source_text=None, kythe_args=None,
     source_text: Optional text of the file; will be read from the file pointed
       to by options.input if not supplied.
     kythe_args: Extra args for generating the kythe index
+    generate_callgraphs: Collect call graph information
     preserve_pytype_vm: Preserve the pytype vm in the indexer
 
   Returns:
@@ -1285,6 +1288,17 @@ def process_file(options, source_text=None, kythe_args=None,
   ix = Indexer(ast, src_code, vm.loader, module_name, kythe_args)
   ix.index(ast_root_node)
   ix.finalize()
-  if preserve_pytype_vm:
-    ix.vm = vm
+
+  # Make the vm available via indexer.vm for post-finalize() functions.
+  ix.vm = vm
+
+  # Use the indexer as a single object to hold data for calling processes.
+  # TODO(mdemello): Move kythe generation here and make it optional.
+  if generate_callgraphs:
+    ix.function_map = callgraph.collect_function_map(ix)
+
+  # Release the vm before returning
+  if not preserve_pytype_vm:
+    ix.vm = None
+
   return ix

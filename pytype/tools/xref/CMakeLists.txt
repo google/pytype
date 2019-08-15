@@ -12,11 +12,20 @@ py_library(
     output.py
     utils.py
   DEPS
+    .callgraph
+    .node_utils
     pytype.errors
     pytype.io
     pytype.libvm
     pytype.tools
     pytype.tools.traces.traces
+)
+
+py_library(
+  NAME
+    node_utils
+  SRCS
+    node_utils.py
 )
 
 py_library(
@@ -37,7 +46,8 @@ py_library(
   SRCS
     callgraph.py
   DEPS
-    .indexer
+    .node_utils
+    pytype.pytd_lib
 )
 
 py_test(
