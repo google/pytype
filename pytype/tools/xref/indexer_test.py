@@ -220,6 +220,25 @@ class IndexerTest(test_base.TargetIndependentTest, IndexerTestMixin):
     assert_data_type("module.f", abstract.InterpreterFunction)
     assert_data_type("module.f.x", abstract.Instance)
 
+  def test_make_serializable(self):
+    ix = self.index_code("""\
+        def f():
+          x = 42
+          y = x
+          return y
+    """)
+    for d in ix.defs.values():
+      self.assertIsNotNone(d.data)
+    for r in ix.refs:
+      self.assertIsNotNone(r.data)
+
+    ix.make_serializable()
+
+    for d in ix.defs.values():
+      self.assertIsNone(d.data)
+    for r in ix.refs:
+      self.assertIsNone(r.data)
+
 
 class IndexerTestPy3(test_base.TargetPython3BasicTest, IndexerTestMixin):
 

@@ -1242,6 +1242,14 @@ class Indexer(object):
     node = self.vm.root_cfg_node
     return self.vm.convert.pytd_convert.value_to_pytd_def(node, data, name)
 
+  def make_serializable(self):
+    """Delete all data that cannot be pickled."""
+    for r in self.refs:
+      r.data = None
+
+    for d in self.defs.values():
+      d.data = None
+
 
 class PytypeError(Exception):
   """Wrap exceptions raised by the indexer."""
