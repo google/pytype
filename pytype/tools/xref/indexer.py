@@ -6,6 +6,7 @@ from __future__ import print_function
 
 import collections
 
+import attr
 from pytype import abstract
 from pytype import analyze
 from pytype import errors
@@ -86,13 +87,16 @@ class AttrError(Exception):
   pass
 
 
+@attr.s
 class PytypeValue(object):
   """Stores a value inferred by pytype."""
 
-  def __init__(self, module, name, typ):
-    self.module = module
-    self.name = name
-    self.typ = typ
+  module = attr.ib()
+  name = attr.ib()
+  typ = attr.ib()
+  id = attr.ib(default=None, init=False)
+
+  def __attrs_post_init__(self):
     self.id = self.module + "." + self.name
 
   def format(self):
@@ -140,11 +144,10 @@ class PytypeValue(object):
     return self.to_signature()
 
 
+@attr.s
 class Module(object):
   """Module representation."""
-
-  def __init__(self, name):
-    self.name = name
+  name = attr.ib()
 
   def attr(self, attr_name):
     return Remote(self.name, attr_name, resolved=True)
@@ -154,16 +157,13 @@ class Module(object):
     return Remote(name, IMPORT_FILE_MARKER, resolved=True)
 
 
-class Dummy(object):
-  """Work around a python3 issue with calling super with kwargs."""
-
-  def __init__(self, *args, **kwargs):
-    pass
-
-
-class DocString(collections.namedtuple(
-    "docstring", ["text", "location", "length"])):
+@attr.s
+class DocString(object):
   """Store the text and location of a docstring."""
+
+  text = attr.ib()
+  location = attr.ib()
+  length = attr.ib()
 
   @classmethod
   def from_node(cls, ast, node):
@@ -184,10 +184,9 @@ class DocString(collections.namedtuple(
     return None
 
 
-class Definition(collections.namedtuple(
-    "defn", ["name", "typ", "data", "scope", "target", "doc"]), Dummy):
+@attr.s
+class Definition(object):
   """A symbol definition.
-
   Attributes:
     name: The symbol name
     typ: The definition type (e.g. ClassDef)
@@ -198,8 +197,15 @@ class Definition(collections.namedtuple(
     id: The id
   """
 
-  def __init__(self, name, typ, data, scope, target, doc):
-    super(Definition, self).__init__(name, typ, data, scope, target, doc)
+  name = attr.ib()
+  typ = attr.ib()
+  data = attr.ib()
+  scope = attr.ib()
+  target = attr.ib()
+  doc = attr.ib()
+  id = attr.ib(default=None, init=False)
+
+  def __attrs_post_init__(self):
     self.id = self.scope + "." + self.name
 
   def format(self):
@@ -234,12 +240,16 @@ class Definition(collections.namedtuple(
       return "typing.Any"
 
 
-class Remote(collections.namedtuple(
-    "remote", ["module", "name", "resolved"]), Dummy):
+@attr.s
+class Remote(object):
   """A symbol from another module."""
 
-  def __init__(self, module, name, resolved):
-    super(Remote, self).__init__(module, name, resolved)
+  module = attr.ib()
+  name = attr.ib()
+  resolved = attr.ib()
+  id = attr.ib(default=None, init=False)
+
+  def __attrs_post_init__(self):
     self.id = self.module + "/module." + self.name
 
   def attr(self, attr_name):
@@ -254,7 +264,8 @@ class Remote(collections.namedtuple(
     return self.module + "." + name
 
 
-class DefLocation(collections.namedtuple("defloc", ["def_id", "location"])):
+@attr.s
+class DefLocation(object):
   """A location of a symbol definition.
 
   Attributes:
@@ -265,11 +276,12 @@ class DefLocation(collections.namedtuple("defloc", ["def_id", "location"])):
   are redefined in the code.
   """
 
+  def_id = attr.ib()
+  location = attr.ib()
 
-class Reference(collections.namedtuple(
-    "refr", [
-        "name", "typ", "data", "scope", "ref_scope", "target", "location"])
-                , Dummy):
+
+@attr.s
+class Reference(object):
   """A symbol holding a reference to a definition.
 
   Attributes:
@@ -283,25 +295,32 @@ class Reference(collections.namedtuple(
     id: The id
   """
 
-  def __init__(self, name, typ, data, scope, ref_scope, target, location):
-    super(Reference, self).__init__(
-        name, typ, data, scope, ref_scope, target, location)
+  name = attr.ib()
+  typ = attr.ib()
+  data = attr.ib()
+  scope = attr.ib()
+  ref_scope = attr.ib()
+  target = attr.ib()
+  location = attr.ib()
+  id = attr.ib(default=None, init=False)
+
+  def __attrs_post_init__(self):
     self.id = self.scope + "." + self.name
 
   def format(self):
     return self.id
 
 
+@attr.s
 class Funcall(object):
   """Representation of a function call."""
 
-  def __init__(self, name, scope, func, location, args, return_type):
-    self.name = name
-    self.scope = scope
-    self.func = func
-    self.location = location
-    self.args = args
-    self.return_type = return_type
+  name = attr.ib()
+  scope = attr.ib()
+  func = attr.ib()
+  location = attr.ib()
+  args = attr.ib()
+  return_type = attr.ib()
 
 
 class Env(object):
