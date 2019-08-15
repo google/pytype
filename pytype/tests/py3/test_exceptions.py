@@ -21,5 +21,8 @@ class TestExceptionsPy3(test_base.TargetPython3FeatureTest):
     errors = self.CheckWithErrors("ValueError().message")
     self.assertErrorLogIs(errors, [(1, "attribute-error")])
 
+  def test_suppress_context(self):
+    self.Check("ValueError().__suppress_context__")
+
 
 test_base.main(globals(), __name__ == "__main__")

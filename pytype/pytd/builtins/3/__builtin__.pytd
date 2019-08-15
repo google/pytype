@@ -945,6 +945,7 @@ class BaseException(object):
     args: Tuple[?, ...]
     __cause__: Optional[BaseException]
     __context__: Optional[BaseException]
+    __suppress_context__: bool
     __traceback__: Optional[?]
     def __init__(self, ...) -> NoneType
     def with_traceback(self, tb: Optional[?]) -> BaseException: ...

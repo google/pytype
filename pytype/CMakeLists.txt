@@ -119,6 +119,16 @@ py_library(
   SRCS
     config.py
   DEPS
+    .errors
+    .libvm
+)
+
+py_library(
+  NAME
+    errors
+  SRCS
+    errors.py
+  DEPS
     .libvm
 )
 
@@ -128,6 +138,7 @@ py_library(
   SRCS
     io.py
   DEPS
+    .errors
     .libvm
 )
 
@@ -149,7 +160,6 @@ py_library(
     convert.py
     convert_structural.py
     directors.py
-    errors.py
     future_overlay.py
     imports_map_loader.py
     matcher.py
@@ -548,6 +558,7 @@ py_test(
   SRCS
     directors_test.py
   DEPS
+    .errors
     .libvm
 )
 

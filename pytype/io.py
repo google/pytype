@@ -11,6 +11,7 @@ import traceback
 
 from pytype import __version__
 from pytype import analyze
+from pytype import config
 from pytype import directors
 from pytype import errors
 from pytype import load_pytd
@@ -45,12 +46,14 @@ def read_source_file(input_filename):
     raise utils.UsageError("Could not load input file %s" % input_filename)
 
 
-def _call(analyze_types, input_filename, errorlog, options, loader):
+def _call(analyze_types, input_filename, options, loader):
   """Helper function to call analyze.check/infer_types."""
   src = read_source_file(input_filename)
+  errorlog = errors.ErrorLog()
   # 'deep' tells the analyzer whether to analyze functions not called from main.
   deep = not options.main_only
-  return analyze_types(
+  loader = loader or load_pytd.create_loader(options)
+  return errorlog, analyze_types(
       src=src,
       filename=input_filename,
       errorlog=errorlog,
@@ -59,29 +62,31 @@ def _call(analyze_types, input_filename, errorlog, options, loader):
       deep=deep)
 
 
-def check_py(input_filename, errorlog, options, loader):
+def check_py(input_filename, options=None, loader=None):
   """Check the types of one file."""
-  _call(analyze.check_types, input_filename, errorlog, options, loader)
+  options = options or config.Options.create(input_filename)
+  errorlog, _ = _call(analyze.check_types, input_filename, options, loader)
+  return errorlog
 
 
-def generate_pyi(input_filename, errorlog, options, loader):
+def generate_pyi(input_filename, options=None, loader=None):
   """Run the inferencer on one file, producing output.
 
   Args:
     input_filename: name of the file to process
-    errorlog: Where error messages go. Instance of errors.ErrorLog.
     options: config.Options object.
     loader: A load_pytd.Loader instance.
 
   Returns:
-    A tuple, (PYI Ast as string, TypeDeclUnit).
+    A tuple, (errors.ErrorLog, PYI Ast as string, TypeDeclUnit).
 
   Raises:
     CompileError: If we couldn't parse the input file.
     UsageError: If the input filepath is invalid.
   """
-  mod, builtins = _call(
-      analyze.infer_types, input_filename, errorlog, options, loader)
+  options = options or config.Options.create(input_filename)
+  errorlog, (mod, builtins) = _call(
+      analyze.infer_types, input_filename, options, loader)
   mod.Visit(visitors.VerifyVisitor())
   mod = optimize.Optimize(mod,
                           builtins,
@@ -99,35 +104,31 @@ def generate_pyi(input_filename, errorlog, options, loader):
   result += "\n"
   if options.quick:
     result = "# (generated with --quick)\n\n" + result
-  return result, mod
+  return errorlog, result, mod
 
 
-def check_or_generate_pyi(options, errorlog, loader):
+def check_or_generate_pyi(options, loader=None):
   """Returns generated errors and result pyi or None if it's only check.
 
   Args:
     options: config.Options object.
-    errorlog: errors.ErrorLog object.
     loader: load_pytd.Loader object.
 
   Returns:
-    A tuple, (PYI Ast as string, AST) or None.
+    A tuple, (errors.ErrorLog, PYI Ast as string or None, AST or None).
   """
 
+  errorlog = errors.ErrorLog()
   result = pytd_builtins.DEFAULT_SRC
   ast = pytd_builtins.GetDefaultAst(options.python_version)
   try:
     if options.check:
-      check_py(input_filename=options.input,
-               errorlog=errorlog,
-               options=options,
-               loader=loader)
-      return None
+      return check_py(
+          input_filename=options.input, options=options, loader=loader
+      ), None, None
     else:
-      result, ast = generate_pyi(input_filename=options.input,
-                                 errorlog=errorlog,
-                                 options=options,
-                                 loader=loader)
+      errorlog, result, ast = generate_pyi(
+          input_filename=options.input, options=options, loader=loader)
   except utils.UsageError as e:
     raise
   except pyc.CompileError as e:
@@ -151,7 +152,7 @@ def check_or_generate_pyi(options, errorlog, loader):
           str(utils.message(e)) + "\nFile: %s" % options.input,) + e.args[1:]
       raise
 
-  return (result, ast)
+  return (errorlog, None, None) if options.check else (errorlog, result, ast)
 
 
 def _write_pyi_output(options, contents, filename):
@@ -175,16 +176,14 @@ def process_one_file(options):
   """
 
   log.info("Process %s => %s", options.input, options.output)
-  errorlog = errors.ErrorLog()
   loader = load_pytd.create_loader(options)
   try:
-    generated_values = check_or_generate_pyi(options, errorlog, loader)
+    errorlog, result, ast = check_or_generate_pyi(options, loader)
   except utils.UsageError as e:
     logging.error("Usage error: %s\n", utils.message(e))
     return 1
 
   if not options.check:
-    result, ast = generated_values
     if options.pickle_output:
       pyi_output = options.verify_pickle
     else:
@@ -195,7 +194,7 @@ def process_one_file(options):
     # Write out the pickle file.
     if options.pickle_output:
       log.info("write pickle %r => %r", options.input, options.output)
-      write_pickle(ast, loader, options)
+      write_pickle(ast, options, loader)
   exit_status = handle_errors(errorlog, options)
 
   # If we have set return_success, set exit_status to 0 after the regular error
@@ -210,8 +209,9 @@ def process_one_file(options):
   return exit_status
 
 
-def write_pickle(ast, loader, options):
+def write_pickle(ast, options, loader=None):
   """Dump a pickle of the ast to a file."""
+  loader = loader or load_pytd.create_loader(options)
   try:
     ast = serialize_ast.PrepareForExport(
         options.module_name, options.python_version, ast, loader)

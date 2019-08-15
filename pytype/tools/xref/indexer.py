@@ -41,6 +41,10 @@ DEF_OFFSETS = {
 IMPORT_FILE_MARKER = "<__FILE__>"
 
 
+# Marker to capture a pending return value while traversing an AST
+_RETURNING_NAME = "RETURNING NAME"
+
+
 def typename(node):
   return node.__class__.__name__
 
@@ -177,6 +181,10 @@ class PytypeValue(object):
   def to_signature(self):
     return self.module + "." + self.name
 
+  @property
+  def typename(self):
+    return self.to_signature()
+
 
 class Module(object):
   """Module representation."""
@@ -259,6 +267,18 @@ class Definition(collections.namedtuple(
     else:
       return "variable"
 
+  @property
+  def typename(self):
+    """The fully qualified type of the object the definition is bound to."""
+    if self.data and self.data[0]:
+      d = self.data[0][0]
+      if d.cls:
+        return d.cls.full_name
+      else:
+        return "typing.Any"
+    else:
+      return "typing.Any"
+
 
 class Remote(collections.namedtuple(
     "remote", ["module", "name", "resolved"]), Dummy):
@@ -273,6 +293,11 @@ class Remote(collections.namedtuple(
 
   def format(self):
     return self.id
+
+  @property
+  def typename(self):
+    name = self.name.split(".")[0]
+    return self.module + "." + name
 
 
 class DefLocation(collections.namedtuple("defloc", ["def_id", "location"])):
@@ -316,10 +341,13 @@ class Reference(collections.namedtuple(
 class Funcall(object):
   """Representation of a function call."""
 
-  def __init__(self, name, func, location):
+  def __init__(self, name, scope, func, location, args, return_type):
     self.name = name
+    self.scope = scope
     self.func = func
     self.location = location
+    self.args = args
+    self.return_type = return_type
 
 
 class Env(object):
@@ -338,6 +366,7 @@ class Env(object):
       env: The dictionary holding the symbol table for this environment
       attrs: Attributes defined on the current class
       self_var: The `self` variable in method definitions
+      ret: The `return` variable for functions
     """
 
     self.scope = scope
@@ -346,6 +375,7 @@ class Env(object):
     self.env = {}
     self.attrs = None
     self.self_var = parent and parent.self_var
+    self.ret = None
 
   def lookup(self, symbol):
     if symbol in self.env:
@@ -390,6 +420,18 @@ class Env(object):
 #
 # Visitors use generated method names that don't follow the pylint spec.
 # Also names like visit_Name are self-documenting and do not need docstrings.
+
+
+class CollectNamesVisitor(ast_visitor.BaseVisitor):
+  """Collect all occurences of Name in a subtree."""
+
+  def __init__(self):
+    super(CollectNamesVisitor, self).__init__(ast)
+    self.names = []
+
+  def visit_Name(self, node):
+    if isinstance(node.ctx, ast.Load):
+      self.names.append(node)
 
 
 class ScopedVisitor(ast_visitor.BaseVisitor):
@@ -609,8 +651,10 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
     kwargs.update({"ref_scope": "module"})
     return self.add_local_ref(node, **kwargs)
 
-  def add_call(self, node, name, func):
-    self.calls.append(Funcall(name, func, get_location(node)))
+  def add_call(self, node, name, func, arg_names, return_type):
+    self.calls.append(
+        Funcall(name, self.scope_id(), func, get_location(node), arg_names,
+                return_type))
 
   def add_attr(self, node):
     defn, _ = self.make_def(node)
@@ -682,40 +726,44 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
     # variables.
     for unused_loc, (op, symbol, data) in self.match(node):
       d = _unwrap(data)
+      ref = defn = None
       if op == "LOAD_GLOBAL":
         ref = self.add_global_ref(node, name=symbol, data=data)
         self.typemap[ref.id] = d
-        break
       elif op in ["LOAD_FAST", "LOAD_NAME"]:
         ref = self.add_local_ref(node, name=symbol, data=data)
         self.typemap[ref.id] = d
-        break
       elif op in ["LOAD_DEREF"]:
         ref = self.add_closure_ref(node, name=symbol, data=data)
         self.typemap[ref.id] = d
-        break
       elif op == "STORE_GLOBAL":
         defn = self.add_global_def(node, name=symbol, data=data)
         self.typemap[defn.id] = d
-        break
       elif op in ["STORE_FAST", "STORE_NAME", "STORE_DEREF"]:
         defn = self.add_local_def(node, name=symbol, data=data)
         self.typemap[defn.id] = d
+      if ref and self.current_env.ret == _RETURNING_NAME:
+        self.current_env.ret = ref
+      if ref or defn:
         break
+
     return node.id
 
   def visit_Call(self, node):
     name = self._get_node_name(node)
+    name_visitor = CollectNamesVisitor()
+    name_visitor.visit(node)
+    arg_names = name_visitor.names
     seen = set()
     for _, (_, _, data) in self.match(node):
-      for d in data:
-        if d is None:
-          continue
-        for d1 in d:
-          for f in qualified_method(d1):
-            if f not in seen:
-              self.add_call(node, name, f)
-              seen.add(f)
+      call, return_type = data
+      if call is None:
+        continue
+      for d in call:
+        for f in qualified_method(d):
+          if f not in seen:
+            self.add_call(node, name, f, arg_names, return_type)
+            seen.add(f)
     return name
 
   def visit_Assign(self, node):
@@ -796,6 +844,14 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
 
   def visit_ImportFrom(self, node):
     self.process_import(node)
+
+  def enter_Return(self, node):
+    if isinstance(node.value, ast.Name):
+      self.current_env.ret = _RETURNING_NAME
+
+  def leave_Return(self, node):
+    if self.current_env.ret == _RETURNING_NAME:
+      self.current_env.ret = None
 
 
 # pylint: enable=invalid-name
@@ -1190,6 +1246,11 @@ class Indexer(object):
               links.append((r, x))
 
     return links
+
+  def get_pytd_def(self, data, name):
+    assert self.vm, "Indexer vm has not been preserved."
+    node = self.vm.root_cfg_node
+    return self.vm.convert.pytd_convert.value_to_pytd_def(node, data, name)
 
 
 class PytypeError(Exception):
