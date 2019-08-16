@@ -20,3 +20,14 @@ class B(A):
 #- ClassFoo.node/kind class
 class Foo(A, B):
   pass
+
+
+#- @Bar defines/binding ClassBar
+#- ClassBar.node/kind class
+class Bar(
+#- @A ref ClassA
+    A,
+#- @B ref ClassB
+    B
+):
+  pass

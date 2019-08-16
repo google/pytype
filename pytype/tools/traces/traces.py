@@ -102,7 +102,6 @@ class MatchAstVisitor(visitor.BaseVisitor):
     # and bytecode representations think some nodes are located, so we manually
     # track the last line for multiline assign statements. This is safe because
     # assign is not an expression and hence cannot be nested.
-    # TODO(mdemello): Handle multiline class definitions similarly.
     self._assign_end_line = None
     # Needed for x[i] = <multiline statement>
     self._assign_subscr = None

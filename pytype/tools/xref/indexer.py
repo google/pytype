@@ -75,6 +75,14 @@ def match_opcodes(opcode_traces, lineno, op_match_list):
   return out
 
 
+def match_opcodes_multiline(opcode_traces, start, end, op_match_list):
+  """Get all opcodes matching op_match_list in a range of lines."""
+  out = []
+  for line in range(start, end + 1):
+    out.extend(match_opcodes(opcode_traces, line, op_match_list))
+  return out
+
+
 def _unwrap(data):
   assert len(data) == 1
   return data[0]
@@ -649,22 +657,20 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
     return False
 
   def enter_ClassDef(self, node):
-    # TODO(mdemello): For decorated classes, the node's lineno starts at the
-    # first decorator, and therefore does not match the opcode's lineno.
-    # Likewise, when a class definition spans multiple lines, the AST node
-    # starts on the first line but the BUILD_CLASS opcode starts on the last
-    # one. Fix when we incorporate asttokens.
     class_name = node_utils.get_name(node, self._ast)
+    last_line = max(x.lineno for x in [node] + node.bases)
 
     # Python2
-    ops = match_opcodes(self.traces, node.lineno, [("BUILD_CLASS", class_name)])
+    ops = match_opcodes_multiline(self.traces, node.lineno, last_line, [
+        ("BUILD_CLASS", class_name)
+    ])
     d = None
     if ops:
       _, _, data = ops[0]
       d = _unwrap(data)
     else:
       # Python3
-      ops = match_opcodes(self.traces, node.lineno, [
+      ops = match_opcodes_multiline(self.traces, node.lineno, last_line, [
           ("LOAD_BUILD_CLASS", None),
           ("STORE_NAME", class_name)
       ])
