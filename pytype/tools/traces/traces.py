@@ -142,12 +142,18 @@ class MatchAstVisitor(visitor.BaseVisitor):
     return [(self._get_match_location(node, tr.symbol), tr)
             for tr in self._get_traces(node.lineno, _ATTR_OPS, node.attr, 1)]
 
+  def match_Bytes(self, node):
+    return self._match_constant(node, node.s)
+
   def match_Call(self, node):
     # When calling a method of a class, the node name is <value>.<method>, but
     # only the method name is traced.
     name = self._get_node_name(node).rpartition(".")[-1]
     return [(self._get_match_location(node), tr)
             for tr in self._get_traces(node.lineno, _CALL_OPS, name)]
+
+  def match_Ellipsis(self, node):
+    return self._match_constant(node, Ellipsis)
 
   def match_Import(self, node):
     return list(self._match_import(node, is_from=False))
@@ -172,6 +178,15 @@ class MatchAstVisitor(visitor.BaseVisitor):
       return []
     return [(self._get_match_location(node), tr)
             for tr in self._get_traces(lineno, ops, node.id, 1)]
+
+  def match_NameConstant(self, node):
+    return self._match_constant(node, node.value)
+
+  def match_Num(self, node):
+    return self._match_constant(node, node.n)
+
+  def match_Str(self, node):
+    return self._match_constant(node, node.s)
 
   def _get_traces(self, lineno, ops, symbol, maxmatch=-1):
     """Yields matching traces.
@@ -217,7 +232,11 @@ class MatchAstVisitor(visitor.BaseVisitor):
     elif isinstance(node, self._ast.Name):
       return node.id
     else:
-      raise NotImplementedError(node.__class__.__name__)
+      return node.__class__.__name__
+
+  def _match_constant(self, node, value):
+    return [(self._get_match_location(node), tr)
+            for tr in self._get_traces(node.lineno, ["LOAD_CONST"], value, 1)]
 
   def _match_import(self, node, is_from):
     for alias in node.names:

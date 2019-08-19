@@ -552,10 +552,7 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
     if isinstance(node, str):
       # We replace nodes with their names after visiting them.
       return node
-    try:
-      return super(IndexVisitor, self)._get_node_name(node)
-    except NotImplementedError:
-      return node_utils.typename(node)
+    return super(IndexVisitor, self)._get_node_name(node)
 
   def make_def(self, node, **kwargs):
     """Make a definition from a node."""
