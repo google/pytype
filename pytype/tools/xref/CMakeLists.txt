@@ -8,7 +8,6 @@ py_library(
     debug.py
     indexer.py
     kythe.py
-    node_utils.py
     output.py
     utils.py
   DEPS
@@ -47,7 +46,7 @@ py_library(
     callgraph.py
   DEPS
     .node_utils
-    pytype.pytd_lib
+    pytype.pytd_utils
 )
 
 py_test(

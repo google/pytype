@@ -1,3 +1,7 @@
+Version (upcoming)
+* Improve the usability of the pytype.io module.
+* Add basic callgraph generation to pytype.tools.xref.
+
 Version 2019.08.09
 * Partially support typing[_extensions].Literal in pyi files.
 * Adopt a unicode pytype logo.
