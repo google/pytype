@@ -105,6 +105,8 @@ class MatchAstVisitor(visitor.BaseVisitor):
     self._assign_end_line = None
     # Needed for x[i] = <multiline statement>
     self._assign_subscr = None
+    # For tracking already matched traces
+    self._matched = None
 
   def enter_Assign(self, node):
     self._assign_end_line = self._get_last_line(node.value)
@@ -121,6 +123,12 @@ class MatchAstVisitor(visitor.BaseVisitor):
     self._assign_end_line = None
     self._assign_subscr = None
 
+  def enter_Module(self, _):
+    self._matched = set()
+
+  def leave_Module(self, _):
+    self._matched = None
+
   def match(self, node):
     """Gets the traces for the given node, along with their locations."""
     method = "match_" + node.__class__.__name__
@@ -132,7 +140,7 @@ class MatchAstVisitor(visitor.BaseVisitor):
 
   def match_Attribute(self, node):
     return [(self._get_match_location(node, tr.symbol), tr)
-            for tr in self._get_traces(node.lineno, _ATTR_OPS, node.attr)]
+            for tr in self._get_traces(node.lineno, _ATTR_OPS, node.attr, 1)]
 
   def match_Call(self, node):
     # When calling a method of a class, the node name is <value>.<method>, but
@@ -163,11 +171,23 @@ class MatchAstVisitor(visitor.BaseVisitor):
     else:
       return []
     return [(self._get_match_location(node), tr)
-            for tr in self._get_traces(lineno, ops, node.id)]
+            for tr in self._get_traces(lineno, ops, node.id, 1)]
 
-  def _get_traces(self, lineno, ops, symbol):
+  def _get_traces(self, lineno, ops, symbol, maxmatch=-1):
+    """Yields matching traces.
+
+    Args:
+      lineno: A line number.
+      ops: A list of opcode names to match on.
+      symbol: A symbol value to match on.
+      maxmatch: The maximum number of traces to yield. -1 for no maximum.
+    """
     for tr in self.source.traces[lineno]:
-      if tr.op in ops and tr.symbol == symbol:
+      if maxmatch == 0:
+        break
+      if id(tr) not in self._matched and tr.op in ops and tr.symbol == symbol:
+        maxmatch -= 1
+        self._matched.add(id(tr))
         yield tr
 
   def _get_match_location(self, node, name=None):
@@ -203,9 +223,8 @@ class MatchAstVisitor(visitor.BaseVisitor):
     for alias in node.names:
       name = alias.asname if alias.asname else alias.name
       op = "STORE_NAME" if alias.asname or is_from else "IMPORT_NAME"
-      for tr in self._get_traces(node.lineno, [op], name):
+      for tr in self._get_traces(node.lineno, [op], name, 1):
         yield self._get_match_location(node, name), tr
-        break
 
 
 class _LineNumberVisitor(visitor.BaseVisitor):

@@ -123,6 +123,20 @@ class MatchAstVisitorTest(MatchAstTestCase):
     self.assertTracesEqual(matches, [
         ((2, 8), "LOAD_ATTR", "real", ("int", "int"))])
 
+  def test_multi_attr(self):
+    matches = self._get_traces("""\
+      class Foo(object):
+        real = True
+      x = 0
+      (Foo.real, x.real)
+    """, ast.Attribute)
+    # The second attribute is at the wrong location due to limitations of
+    # source.Code.get_attr_location(), but we can at least test that we get the
+    # right number of traces with the right types.
+    self.assertTracesEqual(matches, [
+        ((4, 5), "LOAD_ATTR", "real", ("Type[Foo]", "bool")),
+        ((4, 5), "LOAD_ATTR", "real", ("int", "int"))])
+
   def test_import(self):
     matches = self._get_traces("import os, sys as tzt", ast.Import)
     self.assertTracesEqual(matches, [

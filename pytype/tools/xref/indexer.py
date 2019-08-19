@@ -195,6 +195,7 @@ class DocString(object):
 @attr.s
 class Definition(object):
   """A symbol definition.
+
   Attributes:
     name: The symbol name
     typ: The definition type (e.g. ClassDef)
@@ -381,19 +382,19 @@ class Env(object):
         isinstance(node.value, self.ast.Name) and
         node.value.id == self.self_var.name)
 
-  def getattr(self, attr):
-    if self.attrs is not None and attr in self.attrs:
-      return self.attrs[attr]
+  def getattr(self, attrib):
+    if self.attrs is not None and attrib in self.attrs:
+      return self.attrs[attrib]
     elif self.cls and self.cls.scope != self.scope:
-      return self.cls.getattr(attr)
+      return self.cls.getattr(attrib)
     else:
       raise AttrError("called getattr in non-class context")
 
-  def setattr(self, attr, value):
+  def setattr(self, attrib, value):
     if self.attrs is not None:
-      self.attrs[attr] = value
+      self.attrs[attrib] = value
     elif self.cls is not None:
-      return self.cls.setattr(attr, value)
+      return self.cls.setattr(attrib, value)
     else:
       raise AttrError("called setattr in non-class context")
 
@@ -426,17 +427,11 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
   hierarchical, it's just a flat mapping of scope keys to environments.
   """
 
-  # TODO(b/138541525): Remove these unnecessary class attributes.
-  stack = None  # type: list
-  class_ids = None  # type: list
-  envs = None  # type: dict
-  module_name = None  # type: str
-
   # TODO(mdemello): Is the two-level visitor hierarchy really buying us
   # anything by way of maintainability or readability?
 
-  def __init__(self, ast, module_name):
-    super(ScopedVisitor, self).__init__(ast)
+  def __init__(self, ast, module_name, **kwargs):
+    super(ScopedVisitor, self).__init__(ast=ast, **kwargs)  # pytype: disable=wrong-keyword-args
     self.stack = []
     self.class_ids = []
     self.envs = {}
@@ -502,6 +497,7 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
     self.add_scope(node)
 
   def enter_Module(self, node):
+    super(ScopedVisitor, self).enter_Module(node)  # pytype: disable=attribute-error
     self.add_scope(node)
 
   def leave(self, node):
@@ -511,7 +507,7 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
       self.stack.pop()
 
 
-class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
+class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
   """Visitor that generates indexes."""
 
   def __init__(self, ast, src, module_name, kythe_):
@@ -719,7 +715,7 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
     # variables.
     for unused_loc, (op, symbol, data) in self.match(node):
       d = _unwrap(data)
-      ref = defn = None
+      ref = None
       if op == "LOAD_GLOBAL":
         ref = self.add_global_ref(node, name=symbol, data=data)
         self.typemap[ref.id] = d
@@ -737,8 +733,6 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
         self.typemap[defn.id] = d
       if ref and self.current_env.ret == _RETURNING_NAME:
         self.current_env.ret = ref
-      if ref or defn:
-        break
 
     return node.id
 
@@ -779,13 +773,11 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
         if len(data) == 2:
           _, rhs = data
           self.typemap[ref.id] = rhs
-        break
       elif op == "STORE_ATTR":
         defn = self.add_local_def(node)
         if self.current_class:
           # We only support attr definitions within a class definition.
           self.current_env.setattr(node.attr, defn)
-        break
     return node_str
 
   def visit_Subscript(self, node):
@@ -1101,7 +1093,7 @@ class Indexer(object):
       name = name[(len(remote) + 1):]
     return Remote(module=remote, name=name, resolved=resolved)
 
-  def _lookup_class_attr(self, name, attr):
+  def _lookup_class_attr(self, name, attrib):
     """Look up a class attribute in the environment."""
 
     env = self.envs["module"]
@@ -1109,7 +1101,7 @@ class Indexer(object):
       return None
     d = env.env[name]
     class_env = self.envs[d.id]
-    _, defn = class_env.lookup(attr)
+    _, defn = class_env.lookup(attrib)
     return defn
 
   def _get_attribute_class(self, obj):
