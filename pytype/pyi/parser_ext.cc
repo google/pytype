@@ -29,8 +29,6 @@ static const SelectorEntry<ValueSelector> value_attributes[] = {
   {kParseError, "PARSE_ERROR"},
   {kNothing, "NOTHING"},
   {kAnything, "ANYTHING"},
-  {kByteString, "BYTESTRING"},
-  {kUnicodeString, "UNICODESTRING"},
   {kTuple, "TUPLE"},
 };
 
@@ -266,6 +264,7 @@ static void add_tokens_dict(PyObject* module) {
   PyObject* tokens = PyDict_New();
   add_token(tokens, "NAME",            t::NAME);
   add_token(tokens, "NUMBER",          t::NUMBER);
+  add_token(tokens, "STRING",          t::STRING);
   add_token(tokens, "TRIPLEQUOTED",    t::TRIPLEQUOTED);
   add_token(tokens, "TYPECOMMENT",     t::TYPECOMMENT);
   add_token(tokens, "ARROW",           t::ARROW);

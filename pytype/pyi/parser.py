@@ -2,6 +2,7 @@
 
 import collections
 import hashlib
+import re
 
 from pytype import file_utils
 from pytype import module_utils
@@ -18,6 +19,7 @@ _DEFAULT_VERSION = (2, 7, 6)
 _DEFAULT_PLATFORM = "linux"
 # Typing members that represent sets of types.
 _TYPING_SETS = ("typing.Intersection", "typing.Optional", "typing.Union")
+_STRING_RE = re.compile("^([bu]?)(('[^']*')|(\"[^\"]*\"))$")
 
 
 _Params = collections.namedtuple("_", ["required",
@@ -292,8 +294,6 @@ class _Parser(object):
     PARSE_ERROR
     NOTHING
     ANYTHING
-    BYTESTRING
-    UNICODESTRING
     TUPLE
 
   Methods used in AST construction:
@@ -364,8 +364,6 @@ class _Parser(object):
   PARSE_ERROR = ParseError  # The class object (not an instance of it).
   NOTHING = pytd.NothingType()
   ANYTHING = pytd.AnythingType()
-  BYTESTRING = pytd.NamedType("bytes")
-  UNICODESTRING = pytd.NamedType("unicode")
   TUPLE = pytd.NamedType("tuple")
 
   # Attributes that all namedtuple instances have.
@@ -587,6 +585,7 @@ class _Parser(object):
         raise ParseError(
             "sys.platform must be compared using %s or %s" % valid_cmps)
       actual = self._platform
+      value = _handle_string_literal(value)
     else:
       raise ParseError("Unsupported condition: '%s'." % name)
     return cmp_slots.COMPARES[op](actual, value)
@@ -638,6 +637,15 @@ class _Parser(object):
       if value != 0.0:
         raise ParseError("Only '0.0' allowed as float literal")
       t = pytd.NamedType("float")
+    elif isinstance(value, str):
+      if value not in ("''", '""', "b''", 'b""', "u''", 'u""'):
+        raise ParseError("Only '', b'', and u'' allowed as string literals")
+      elif value.startswith("b"):
+        t = pytd.NamedType("bytes")
+      elif value.startswith("u"):
+        t = pytd.NamedType("unicode")
+      else:
+        t = pytd.NamedType("str")
     else:
       t = value
     return pytd.Constant(name, t)
@@ -645,7 +653,9 @@ class _Parser(object):
   def new_alias_or_constant(self, name_and_value):
     name, value = name_and_value
     if name == "__slots__":
-      return _SlotDecl(value)
+      if not isinstance(value, list):
+        raise ParseError("__slots__ must be a list of strings")
+      return _SlotDecl(tuple(_handle_string_literal(s) for s in value))
     elif value in [pytd.NamedType("True"), pytd.NamedType("False")]:
       return pytd.Constant(name, pytd.NamedType("bool"))
     else:
@@ -859,14 +869,14 @@ class _Parser(object):
         if self._is_none(p):
           literal_parameters.append(p)
         elif isinstance(p, pytd.NamedType) and p.name not in ("True", "False"):
-          # TODO(b/123775699): support strings and enums.
+          # TODO(b/123775699): support enums.
           literal_parameters.append(pytd.AnythingType())
         else:
           literal_parameters.append(pytd.Literal(p))
       return pytd_utils.JoinTypes(literal_parameters)
-    elif any(isinstance(p, int) for p in parameters):
+    elif any(isinstance(p, (int, str)) for p in parameters):
       parameters = ", ".join(
-          str(p) if isinstance(p, int) else "_" for p in parameters)
+          str(p) if isinstance(p, (int, str)) else "_" for p in parameters)
       raise ParseError(
           "%s[%s] not supported" % (pytd_utils.Print(base_type), parameters))
     elif self._is_any(base_type):
@@ -1036,6 +1046,8 @@ class _Parser(object):
     Returns:
       A NamedType() for the generated class that describes the named tuple.
     """
+    base_name = _handle_string_literal(base_name)
+    fields = [(_handle_string_literal(n), t) for n, t in fields]
     # Handle previously defined NamedTuples with the same name
     prev_list = self._generated_classes[base_name]
     class_name = "namedtuple-%s-%d" % (base_name, len(prev_list))
@@ -1164,6 +1176,7 @@ class _Parser(object):
 
   def add_type_var(self, name, name_arg, args):
     """Add a type variable, <name> = TypeVar(<name_arg>, <args>)."""
+    name_arg = _handle_string_literal(name_arg)
     if name != name_arg:
       raise ParseError("TypeVar name needs to be %r (not %r)" % (
           name_arg, name))
@@ -1178,10 +1191,13 @@ class _Parser(object):
       raise ParseError("Unrecognized keyword(s): %s" % ", ".join(extra))
     if not self._current_condition.active:
       return
+    bound = _handle_string_literal(named_args.get("bound"))
+    if isinstance(bound, str):
+      bound = pytd.NamedType(bound)
     self._type_params.append(pytd.TypeParameter(
         name=name,
         constraints=() if constraints is None else tuple(constraints),
-        bound=named_args.get("bound")))
+        bound=bound))
 
   def _qualify_name_with_special_dir(self, orig_name):
     """Handle the case of '.' and '..' as package names."""
@@ -1416,12 +1432,7 @@ def _split_definitions(defs):
     elif isinstance(d, _SlotDecl):
       if slots is not None:
         raise ParseError("Duplicate __slots__ declaration")
-      # Empty tuples are stored as (pytd.NothingType(),).
-      if not all(isinstance(p, (pytd.NamedType, pytd.NothingType))
-                 for p in d.slots.parameters):
-        raise ParseError("Entries in __slots__ can only be strings")
-      slots = tuple(p.name for p in d.slots.parameters
-                    if isinstance(p, pytd.NamedType))
+      slots = d.slots
     else:
       raise TypeError("Unexpected definition type %s" % type(d))
   return constants, functions, aliases, slots, classes
@@ -1603,3 +1614,12 @@ def _maybe_resolve_alias(alias, name_to_class):
 
 def _make_type_type(value):
   return pytd.GenericType(pytd.NamedType("type"), (value,))
+
+
+def _handle_string_literal(value):
+  if not isinstance(value, str):
+    return value
+  match = _STRING_RE.match(value)
+  if not match:
+    return value
+  return match.groups()[1][1:-1]

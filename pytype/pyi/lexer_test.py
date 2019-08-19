@@ -85,8 +85,9 @@ class LexerTest(unittest.TestCase):
     punctuation = "@*:,.=?<>().[]"
     self.check(list(punctuation), punctuation)
 
-  def test_quotes_are_ignored(self):
-    self.check([1, 2, 3], "1 '2' \"3\"")
+  def test_quotes(self):
+    self.check([("NUMBER", 1), ("STRING", "'2'"), ("STRING", '"3"')],
+               "1 '2' \"3\"")
 
   def test_multi_char(self):
     self.check(["ARROW"], "->")

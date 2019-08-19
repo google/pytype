@@ -153,6 +153,14 @@ class ParserTest(_ParserTestBase):
     self.check("x = u''", "x: unicode")
     self.check('x = b""', "x: bytes")
     self.check('x = u""', "x: unicode")
+    self.check("x = ''", "x: str")
+    self.check('x = ""', "x: str")
+    self.check_error("x = b'x'", 1,
+                     "Only '', b'', and u'' allowed as string literals")
+    self.check_error("x = u'x'", 1,
+                     "Only '', b'', and u'' allowed as string literals")
+    self.check_error("x = 'x'", 1,
+                     "Only '', b'', and u'' allowed as string literals")
 
   def test_constant_pep526(self):
     self.check("x : str", "x: str")
@@ -227,7 +235,11 @@ class ParserTest(_ParserTestBase):
     self.check_error("""\
       class A:
           __slots__ = ["foo", ?]
-    """, 1, "Entries in __slots__ can only be strings")
+    """, 2, "syntax error")
+    self.check_error("""\
+      class A:
+          __slots__ = int
+    """, 2, "__slots__ must be a list of strings")
 
   def test_nested_class(self):
     self.check("""\
@@ -560,17 +572,6 @@ class HomogeneousTypeTest(_ParserTestBase):
   def test_simple(self):
     self.check("x: Foo[int, str]")
 
-  def test_implied_tuple(self):
-    self.check("x = ...  # type: []",
-               "x: Tuple[nothing, ...]",
-               prologue="from typing import Tuple")
-    self.check("x = ...  # type: [int]",
-               "x: Tuple[int]",
-               prologue="from typing import Tuple")
-    self.check("x = ...  # type: [int, str]",
-               "x: Tuple[int, str]",
-               prologue="from typing import Tuple")
-
   def test_type_tuple(self):
     self.check("x = (str, bytes)",
                "x: tuple")
@@ -585,7 +586,7 @@ class HomogeneousTypeTest(_ParserTestBase):
 class NamedTupleTest(_ParserTestBase):
 
   def test_no_fields(self):
-    self.check("x = ...  # type: NamedTuple(foo, [])", """\
+    self.check("x = ...  # type: NamedTuple('foo', [])", """\
       from typing import Any, Tuple, Type, TypeVar
 
       x: `namedtuple-foo-0`
@@ -627,18 +628,18 @@ class NamedTupleTest(_ParserTestBase):
           def __new__(cls: Type[`_Tnamedtuple-foo-0`], a: int, b: str) -> `_Tnamedtuple-foo-0`: ...
           def __init__(self, *args, **kwargs) -> None: ...
     """
-    self.check("x = ...  # type: NamedTuple(foo, [(a, int), (b, str)])",
+    self.check("x = ...  # type: NamedTuple('foo', [('a', int), ('b', str)])",
                expected)
-    self.check("x = ...  # type: NamedTuple(foo, [(a, int), (b, str),])",
+    self.check("x = ...  # type: NamedTuple('foo', [('a', int), ('b', str),])",
                expected)
-    self.check("x = ...  # type: NamedTuple(foo, [(a, int,), (b, str),])",
+    self.check("x = ...  # type: NamedTuple('foo', [('a', int,), ('b', str),])",
                expected)
 
   def test_dedup_basename(self):
     # pylint: disable=line-too-long
     self.check("""\
-      x = ...  # type: NamedTuple(foo, [(a, int,)])
-      y = ...  # type: NamedTuple(foo, [(b, str,)])""",
+      x = ...  # type: NamedTuple('foo', [('a', int,)])
+      y = ...  # type: NamedTuple('foo', [('b', str,)])""",
                """\
       from typing import Any, Tuple, Type, TypeVar
 
@@ -676,7 +677,7 @@ class NamedTupleTest(_ParserTestBase):
         """)
 
   def test_assign_namedtuple(self):
-    self.check("X = NamedTuple(X, [])", """\
+    self.check("X = NamedTuple('X', [])", """\
       from typing import Any, Tuple, Type, TypeVar
 
       X = `namedtuple-X-0`
@@ -697,7 +698,7 @@ class NamedTupleTest(_ParserTestBase):
     """)
 
   def test_subclass_namedtuple(self):
-    self.check("class X(NamedTuple(X, [])): ...", """\
+    self.check("class X(NamedTuple('X', [])): ...", """\
       from typing import Any, Tuple, Type, TypeVar
 
       _Tnamedtuple-X-0 = TypeVar('_Tnamedtuple-X-0', bound=`namedtuple-X-0`)
@@ -1098,7 +1099,7 @@ class ClassTest(_ParserTestBase):
     self.check("""\
       class Foo: ...  # type: ignore
       """, canonical)
-    self.check(""""\
+    self.check("""\
       class Foo: # type: ignore
           pass
       """, canonical)
@@ -2067,23 +2068,30 @@ class LiteralTest(_ParserTestBase):
       x: Literal[42]
     """)
 
-  # TODO(b/123775699): The parser ignores normal quotation marks, treats b"" and
-  # u"" as constants, and cannot handle empty non-prefixed strings or non-empty
-  # prefixed strings. To avoid parse errors from non-prefixed strings being
-  # treated as names, we map all strings to Any for now.
   def test_string(self):
     self.check("""\
       from typing import Literal
 
       x: Literal["x"]
-      y: Literal[b""]
-      z: Literal[u""]
-    """, """\
-      from typing import Any
+      y: Literal[""]
+    """)
 
-      x: Any
-      y: Any
-      z: Any
+  def test_bytestring(self):
+    self.check("""\
+      from typing import Literal
+
+      x: Literal[b""]
+      y: Literal[b'']
+      z: Literal[b"xyz"]
+    """)
+
+  def test_unicodestring(self):
+    self.check("""\
+      from typing import Literal
+
+      x: Literal[u""]
+      y: Literal[u'']
+      z: Literal[u"xyz"]
     """)
 
   def test_none(self):
@@ -2117,20 +2125,40 @@ class LiteralTest(_ParserTestBase):
     self.check("""\
       from typing import Literal
 
-      x: Literal[True, 0, None]
+      x: Literal[True, 0, b"", u"", None]
     """, """\
       from typing import Literal, Optional, Union
 
-      x: Optional[Union[Literal[True], Literal[0]]]
+      x: Optional[Union[Literal[True], Literal[0], Literal[b""], Literal[u""]]]
     """)
 
-  # TODO(b/123775699): Also catch stray byte- and unicode-strings.
   def test_stray_number(self):
     self.check_error("""\
       from typing import Tuple
 
       x: Tuple[int, int, 0, int]
     """, 3, "Tuple[_, _, 0, _] not supported")
+
+  def test_stray_string(self):
+    self.check_error("""\
+      from typing import Tuple
+
+      x: Tuple[str, str, '', str]
+    """, 3, "Tuple[_, _, '', _] not supported")
+
+  def test_stray_bytestring(self):
+    self.check_error("""\
+      from typing import Tuple
+
+      x: Tuple[str, b'', str, str]
+    """, 3, "Tuple[_, b'', _, _] not supported")
+
+  def test_stray_unicodestring(self):
+    self.check_error("""\
+      from typing import Tuple
+
+      x: Tuple[str, u'', str, str]
+    """, 3, "Tuple[_, u'', _, _] not supported")
 
   def test_typing_extensions(self):
     self.check("""\

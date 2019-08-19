@@ -56,13 +56,20 @@ typedef pytype::parser::token t;
 \( { ++yyextra->bracket_count_; return yytext[0]; }
 \) { --yyextra->bracket_count_; return yytext[0]; }
 
-b'' { return t::BYTESTRING; }
-b\"\" { return t::BYTESTRING; }
-u'' { return t::UNICODESTRING; }
-u\"\" { return t::UNICODESTRING; }
+ /* STRING */
+ /* TODO(rechen): the string parsing below doesn't handle escaped quotes. */
 
- /* Ignore all other quotes, to simplify processing of forward references. */
-['"] { }
+ /* Omit \x27, the single quote character. */
+[bu]?'[\x20-\x26 \x28-\x7E]*' {
+  yylval->obj=PyString_FromString(yytext);
+  return t::STRING;
+}
+
+ /* Omit \x22, the double quote character. */
+[bu]?\"[\x20-\x21 \x23-\x7E]*\" {
+  yylval->obj=PyString_FromString(yytext);
+  return t::STRING;
+}
 
  /* Multi-character punctuation. */
 "->" { return t::ARROW; }
