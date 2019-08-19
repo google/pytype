@@ -638,9 +638,9 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
     kwargs.update({"ref_scope": "module"})
     return self.add_local_ref(node, **kwargs)
 
-  def add_call(self, node, name, func, arg_names, return_type):
+  def add_call(self, node, name, func, arg_varnames, return_type):
     self.calls.append(
-        Funcall(name, self.scope_id(), func, get_location(node), arg_names,
+        Funcall(name, self.scope_id(), func, get_location(node), arg_varnames,
                 return_type))
 
   def add_attr(self, node):
@@ -746,7 +746,7 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
     name = self._get_node_name(node)
     name_visitor = CollectNamesVisitor(self._ast)
     name_visitor.visit(node)
-    arg_names = name_visitor.names
+    arg_varnames = [x.id for x in name_visitor.names]
     seen = set()
     for _, (_, _, data) in self.match(node):
       call, return_type = data
@@ -755,7 +755,7 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
       for d in call:
         for f in qualified_method(d):
           if f not in seen:
-            self.add_call(node, name, f, arg_names, return_type)
+            self.add_call(node, name, f, arg_varnames, return_type)
             seen.add(f)
     return name
 
@@ -1251,10 +1251,29 @@ class Indexer(object):
   def make_serializable(self):
     """Delete all data that cannot be pickled."""
     for r in self.refs:
+      r.target = None
       r.data = None
 
     for d in self.defs.values():
       d.data = None
+
+    for call in self.calls:
+      call.return_type = None
+
+    # This is all internal data used when building up the final index; if any of
+    # it proves to be needed we can look at just stripping out the non-picklable
+    # bits, or converting it to a final form in finalize()
+    self.ast = None
+    self.source = None
+    self.loader = None
+    self.resolved_modules = None
+    self.imports = None
+    self.traces = None
+    self.kythe = None
+    self.modules = None
+    self.typemap = None
+    self.classmap = None
+    self.envs = None
 
 
 class PytypeError(Exception):

@@ -62,10 +62,9 @@ def collect_function_map(index):
   for call in index.calls:
     env = index.envs[call.scope]
     args = []
-    for node in call.args:
-      name = node_utils.get_name(node, index.ast)
-      if node_utils.typename(node) == 'Name':
-        defn = env.env[node.id]
+    for name in call.args:
+      if name in env.env:
+        defn = env.env[name]
         node_type = defn.typ
         typename = unknown_to_any(defn.typename)
       else:
