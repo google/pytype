@@ -13,6 +13,9 @@ from pytype import errors
 from pytype import io
 from pytype import load_pytd
 from pytype import module_utils
+from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
+from pytype.pytd import visitors
 from pytype.tools.traces import source
 from pytype.tools.traces import traces
 from pytype.tools.traces import visitor as ast_visitor
@@ -256,6 +259,7 @@ class Remote(object):
   name = attr.ib()
   resolved = attr.ib()
   id = attr.ib(default=None, init=False)
+  typ = attr.ib(default=None, init=False)
 
   def __attrs_post_init__(self):
     self.id = self.module + "/module." + self.name
@@ -326,6 +330,22 @@ class Reference(object):
 
   def format(self):
     return self.id
+
+
+@attr.s
+class NameArg(object):
+  """Representation of a single-variable function call argument."""
+
+  name = attr.ib()
+  type = attr.ib()
+
+
+@attr.s
+class ExprArg(object):
+  """Representation of an expression function call argument."""
+
+  names = attr.ib()
+  type = attr.ib()
 
 
 @attr.s
@@ -750,6 +770,10 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
       if call is None:
         continue
       for d in call:
+        # TODO(mdemello): Capture call records:
+        # if isinstance(d, abstract.InterpreterFunction):
+        #   for sig, args, ret, _ in d._call_records:
+        #     ...
         for f in qualified_method(d):
           if f not in seen:
             self.add_call(node, name, f, arg_varnames, return_type)
@@ -850,13 +874,16 @@ class Indexer(object):
   """Runs the indexer visitor and collects its results."""
 
   def __init__(self,
+               *,
                ast,
                src,
                loader,
+               pytd_module,
                module_name):
     self.ast = ast
     self.source = src
     self.loader = loader
+    self.pytd_module = pytd_module
     self.resolved_modules = loader.get_resolved_modules()
     self.imports = xref_utils.process_imports_map(loader.imports_map)
     self.module_name = module_name
@@ -1102,6 +1129,13 @@ class Indexer(object):
     node = self.vm.root_cfg_node
     return self.vm.convert.pytd_convert.value_to_pytd_def(node, data, name)
 
+  def get_pytd(self, datum):
+    if not datum:
+      return pytd.AnythingType()
+    t = pytd_utils.JoinTypes(v.to_type() for v in datum).Visit(
+        visitors.RemoveUnknownClasses())
+    return self.loader.resolve_type(t, self.pytd_module)
+
   def make_serializable(self):
     """Delete all data that cannot be pickled."""
     for r in self.refs:
@@ -1169,7 +1203,7 @@ def process_file(options, source_text=None, generate_callgraphs=False,
       store_all_calls=False,
       loader=loader)
   with io.wrap_pytype_exceptions(PytypeError, filename=options.input):
-    analyze.infer_types(
+    pytd_module, _ = analyze.infer_types(
         src=src,
         filename=options.input,
         errorlog=errorlog,
@@ -1189,7 +1223,11 @@ def process_file(options, source_text=None, generate_callgraphs=False,
   # TODO(mdemello): Get from args
   module_name = "module"
   src_code = source.Code(src, vm.opcode_traces, VmTrace, filename=options.input)
-  ix = Indexer(ast, src_code, vm.loader, module_name)
+  ix = Indexer(ast=ast,
+               src=src_code,
+               loader=vm.loader,
+               module_name=module_name,
+               pytd_module=pytd_module)
   ix.index(ast_root_node)
   ix.finalize()
 

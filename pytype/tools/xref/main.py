@@ -31,7 +31,7 @@ def main():
     signal.alarm(options.timeout)
 
   try:
-    ix = indexer.process_file(options)
+    ix = indexer.process_file(options, generate_callgraphs=True)
   except indexer.PytypeError as e:
     print(e.args[0], file=sys.stderr)
     if args.debug:

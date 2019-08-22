@@ -28,7 +28,7 @@ class CallgraphTest(test_base.TargetIndependentTest):
       return indexer.process_file(options, generate_callgraphs=True)
 
   def assertAttrsEqual(self, attrs, expected):
-    actual = {(x.name, x.type, x.attr) for x in attrs}
+    actual = {(x.name, x.type, x.attrib) for x in attrs}
     self.assertCountEqual(actual, expected)
 
   def assertCallsEqual(self, calls, expected):
@@ -36,6 +36,15 @@ class CallgraphTest(test_base.TargetIndependentTest):
     for c in calls:
       actual.append(
           (c.function_id, [(a.name, a.node_type, a.type) for a in c.args]))
+    self.assertCountEqual(actual, expected)
+
+  def assertParamsEqual(self, params, expected):
+    actual = {(x.name, x.type) for x in params}
+    self.assertCountEqual(actual, expected)
+
+  def assertHasFunctions(self, fns, expected):
+    actual = fns.keys()
+    expected = ["module"] + ["module.%s" % x for x in expected]
     self.assertCountEqual(actual, expected)
 
   def test_basic(self):
@@ -51,14 +60,15 @@ class CallgraphTest(test_base.TargetIndependentTest):
           return c
     """)
     fns = ix.function_map
-    self.assertCountEqual(fns.keys(), ["module.f", "module.g"])
+    self.assertHasFunctions(fns, ["f", "g"])
     f = fns["module.f"]
     self.assertAttrsEqual(f.param_attrs,
                           {("x", "__builtin__.str", "x.strip")})
     self.assertAttrsEqual(f.local_attrs, set())
     self.assertCallsEqual(f.calls, [("str.strip", [])])
     self.assertEqual(f.ret.id, "module.f.y")
-    self.assertEqual(f.params, [("x", "str")])
+    self.assertParamsEqual(
+        f.params, [("x", "__builtin__.str")])
 
     g = fns["module.g"]
     self.assertAttrsEqual(g.param_attrs, set())
@@ -69,7 +79,7 @@ class CallgraphTest(test_base.TargetIndependentTest):
         ("complex", [])
     ])
     self.assertEqual(g.ret.id, "module.g.c")
-    self.assertEqual(g.params, [("y", "typing.Any")])
+    self.assertParamsEqual(g.params, [("y", "typing.Any")])
 
   def test_remote(self):
     code = """\
@@ -94,7 +104,7 @@ class CallgraphTest(test_base.TargetIndependentTest):
                                       version=self.python_version)
       ix = indexer.process_file(options, generate_callgraphs=True)
     fns = ix.function_map
-    self.assertCountEqual(fns.keys(), ["module.f"])
+    self.assertHasFunctions(fns, ["f"])
     f = fns["module.f"]
     self.assertAttrsEqual(f.param_attrs, [])
     self.assertAttrsEqual(f.local_attrs, [("y", "foo.Y", "y.bar")])
@@ -111,12 +121,12 @@ class CallgraphTest(test_base.TargetIndependentTest):
           return "hello"
     """)
     fns = ix.function_map
-    self.assertCountEqual(fns.keys(), ["module.f"])
+    self.assertHasFunctions(fns, ["f"])
     f = fns["module.f"]
     self.assertAttrsEqual(f.param_attrs, [])
     self.assertAttrsEqual(f.local_attrs, [])
     self.assertCallsEqual(f.calls, [])
-    self.assertEqual(f.params, [("x", "int")])
+    self.assertParamsEqual(f.params, [("x", "__builtin__.int")])
 
 
 # The callgraph code only works in Python 3.5-6, but in our opensource tests,
