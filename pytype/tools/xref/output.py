@@ -20,13 +20,13 @@ def unpack(obj):
     return obj
 
 
-def json_kythe_graph(index):
+def json_kythe_graph(kythe_graph):
   """Generate kythe entries."""
 
-  for x in index.kythe.entries:
+  for x in kythe_graph.entries:
     yield json.dumps(unpack(x))
 
 
-def output_kythe_graph(index):
-  for x in json_kythe_graph(index):
+def output_kythe_graph(kythe_graph):
+  for x in json_kythe_graph(kythe_graph):
     print(x)

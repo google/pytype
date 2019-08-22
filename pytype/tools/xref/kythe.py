@@ -3,6 +3,9 @@
 import base64
 import collections
 
+from pytype.tools.xref import utils as xref_utils
+from pytype.tools.xref import indexer
+
 
 FILE_ANCHOR_SIGNATURE = ":module:"
 
@@ -115,3 +118,162 @@ class Kythe(object):
     self.add_fact(vname, "loc/end", str(end))
     self.add_edge(vname, "childof", self.file_vname)
     return vname
+
+
+# ----------------------------------------------------------------
+# Generate kythe facts from an indexer.Indexer
+
+
+def _process_deflocs(kythe, index):
+  """Generate kythe edges for definitions."""
+
+  for def_id in index.locs:
+    defn = index.defs[def_id]
+    for defloc in index.locs[def_id]:
+      defn = index.defs[defloc.def_id]
+      defn_vname = kythe.vname(defn.to_signature())
+      start, end = index.get_def_offsets(defloc)
+      anchor_vname = kythe.add_anchor(start, end)
+      kythe.add_fact(
+          source=defn_vname,
+          fact_name="node/kind",
+          fact_value=defn.node_kind())
+      kythe.add_edge(
+          source=anchor_vname,
+          target=defn_vname,
+          edge_name="defines/binding")
+
+      # Emit a docstring if we have one.
+      doc = defn.doc
+      if doc:
+        doc_vname = kythe.vname(defn.doc_signature())
+        start, end = index.get_doc_offsets(defn.doc)
+        anchor_vname = kythe.add_anchor(start, end)
+        kythe.add_fact(
+            source=doc_vname,
+            fact_name="node/kind",
+            fact_value="doc")
+        kythe.add_fact(
+            source=doc_vname,
+            fact_name="text",
+            fact_value=doc.text)
+        kythe.add_edge(
+            source=anchor_vname,
+            target=doc_vname,
+            edge_name="defines")
+        kythe.add_edge(
+            source=doc_vname,
+            target=defn_vname,
+            edge_name="documents")
+
+
+def _process_params(kythe, index):
+  """Generate kythe edges for function parameters."""
+
+  for fp in index.function_params:
+    fn_def = index.defs[fp.def_id]
+    param = index.defs[fp.param_id]
+    kythe.add_edge(
+        source=kythe.vname(fn_def.to_signature()),
+        edge_name="param.%d" % fp.position,
+        target=kythe.vname(param.to_signature()))
+
+
+def _make_defn_vname(kythe, index, defn):
+  """Convert a definition into a kythe vname."""
+
+  if isinstance(defn, indexer.Remote):
+    remote = defn.module
+    if remote in index.resolved_modules:
+      if remote in index.imports:
+        # The canonical path from the imports_map is the best bet for
+        # module->filepath translation.
+        path = index.imports[remote]
+      else:
+        # Fallback to the filepath of the stub file, though this is not always
+        # accurate due to overrides.
+        path = index.resolved_modules[remote].filename
+      path = xref_utils.get_module_filepath(path)
+      if defn.name == indexer.IMPORT_FILE_MARKER:
+        sig = FILE_ANCHOR_SIGNATURE
+      else:
+        sig = "module." + defn.name
+      if path.startswith("pytd:"):
+        return kythe.builtin_vname(
+            sig, "pytd:" + index.resolved_modules[remote].module_name)
+      else:
+        return kythe.vname(sig, path)
+    else:
+      # Don't generate vnames for unresolved modules.
+      return None
+  else:
+    return kythe.vname(defn.to_signature())
+
+
+def _process_links(kythe, index):
+  """Generate kythe edges for references."""
+
+  for ref, defn in index.links:
+    supported_types = (indexer.Definition, indexer.Remote, indexer.Module)
+    if not isinstance(defn, supported_types):
+      # TODO(mdemello): Fixes needed for chained method calls.
+      continue
+    start, end = index.get_ref_bounds(ref)
+    vname = kythe.add_anchor(start, end)
+    target = _make_defn_vname(kythe, index, defn)
+    if target:
+      kythe.add_edge(
+          source=vname,
+          target=target,
+          edge_name="ref")
+
+
+def _process_calls(kythe, index):
+  """Generate kythe edges for function calls."""
+
+  # Checks if a function call corresponds to a resolved reference, and generates
+  # a ref/call to that reference's source definition if so.
+
+  link_map = collections.defaultdict(list)
+  for ref, defn in index.links:
+    link_map[ref.location].append((ref, defn))
+
+  for call in index.calls:
+    call_links = link_map[call.location]
+    call_ref = None
+    call_defn = None
+    for ref, d in call_links:
+      if ref.name == call.name:
+        call_ref = ref
+        call_defn = d
+        break
+    if call_defn:
+      target = _make_defn_vname(kythe, index, call_defn)
+      if target:
+        start, end = index.get_ref_bounds(call_ref)
+        anchor_vname = kythe.anchor_vname(start, end)
+        kythe.add_edge(
+            source=anchor_vname,
+            target=target,
+            edge_name="ref/call")
+        # The call is a child of the enclosing function/class (this lets us
+        # generate call graphs).
+        if ref.scope != "module":
+          parent_defn = index.defs.get(call_ref.scope)
+          if parent_defn:
+            # TODO(mdemello): log the 'else' case; it should never happen.
+            kythe.add_edge(
+                source=anchor_vname,
+                target=kythe.vname(parent_defn.to_signature()),
+                edge_name="childof")
+          else:
+            assert False, ref
+
+
+def generate_graph(index, kythe_args):
+  kythe = Kythe(index.source, kythe_args)
+  _process_deflocs(kythe, index)
+  _process_params(kythe, index)
+  _process_links(kythe, index)
+  _process_calls(kythe, index)
+  return kythe

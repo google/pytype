@@ -40,9 +40,10 @@ class IndexerTestMixin(object):
       options = config.Options.create(d["t.py"])
       options.tweak(pythonpath=[d.path], version=self.python_version)
       kythe_args = kythe.Args(corpus="corpus", root="root")
-      ix = indexer.process_file(options, kythe_args=kythe_args)
+      ix = indexer.process_file(options)
+      kg = kythe.generate_graph(ix, kythe_args)
       # Collect all the references from the kythe graph.
-      kythe_index = [json.loads(x) for x in output.json_kythe_graph(ix)]
+      kythe_index = [json.loads(x) for x in output.json_kythe_graph(kg)]
       return kythe_index
 
   def assertDef(self, index, fqname, name, typ):
@@ -109,7 +110,8 @@ class IndexerTest(test_base.TargetIndependentTest, IndexerTestMixin):
       self.assertEqual(ix.modules["module.r"], "p.q")
 
       # Collect all the references from the kythe graph.
-      kythe_index = [json.loads(x) for x in output.json_kythe_graph(ix)]
+      kg = kythe.generate_graph(ix, kythe_args=None)
+      kythe_index = [json.loads(x) for x in output.json_kythe_graph(kg)]
       refs = [x for x in kythe_index
               if x.get("edge_kind") == "/kythe/edge/ref"]
 
