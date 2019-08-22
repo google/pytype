@@ -107,7 +107,7 @@ class Callable(TypingContainer):
       combined_args = self.vm.merge_values(inner[0])
       inner = tuple(inner[0]) + (combined_args,) + inner[1:]
       self.vm.errorlog.invalid_ellipses(self.vm.frames, ellipses, self.name)
-      return template, inner, abstract.Callable
+      return template, inner, abstract.CallableClass
     else:
       # An ellipsis may take the place of the ARGS list.
       return super(Callable, self)._get_value_info(
@@ -388,7 +388,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     cls_type = abstract.ParameterizedClass(
         self.vm.convert.type_type,
         {abstract_utils.T: cls_type_param}, self.vm)
-    len_type = abstract.Callable(
+    len_type = abstract.CallableClass(
         self.vm.convert.name_to_value("typing.Callable"),
         {0: sized_cls,
          abstract_utils.ARGS: sized_cls,

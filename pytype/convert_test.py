@@ -135,7 +135,7 @@ class ConvertTest(unittest.TestCase):
     cls = self._vm.convert.constant_to_value(x, {}, self._vm.root_cfg_node)
     instance = self._vm.convert.constant_to_value(
         abstract_utils.AsInstance(x), {}, self._vm.root_cfg_node)
-    self.assertIsInstance(cls, abstract.Callable)
+    self.assertIsInstance(cls, abstract.CallableClass)
     six.assertCountEqual(
         self,
         cls.formal_type_parameters.items(),

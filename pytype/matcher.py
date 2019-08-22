@@ -224,7 +224,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     assert isinstance(other_type, abstract.AtomicAbstractValue), other_type
 
     if isinstance(left, abstract.TypeParameterInstance) and (
-        isinstance(left.instance, (abstract.Callable, function.Signature))):
+        isinstance(left.instance, (abstract.CallableClass,
+                                   function.Signature))):
       if isinstance(other_type, abstract.TypeParameter):
         new_subst = self._match_type_param_against_type_param(
             left.param, other_type, subst, node, view)
@@ -244,7 +245,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
                   left.param.name: left_dummy,
                   other_type.name: right_dummy}]))
           return None
-      elif isinstance(left.instance, abstract.Callable):
+      elif isinstance(left.instance, abstract.CallableClass):
         # We're doing argument-matching against a callable. We flipped the
         # argument types to enforce contravariance, but if the expected type is
         # a type parameter, we need it on the right in order to fill in subst.
@@ -437,7 +438,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         subst, node, view, container=sig)
     if subst is None:
       return subst
-    if not isinstance(other_type, abstract.Callable):
+    if not isinstance(other_type, abstract.CallableClass):
       # other_type does not specify argument types, so any arguments are fine.
       return subst
     if sig.mandatory_param_count() > other_type.num_args:
@@ -512,8 +513,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         isinstance(other_type, abstract.TupleClass)):
       return self._match_heterogeneous_tuple_instance(
           left, instance, other_type, subst, node, view)
-    elif (isinstance(left, abstract.Callable) or
-          isinstance(other_type, abstract.Callable)):
+    elif (isinstance(left, abstract.CallableClass) or
+          isinstance(other_type, abstract.CallableClass)):
       return self._match_callable_instance(
           left, instance, other_type, subst, node, view)
     return self._match_maybe_parameterized_instance(
@@ -616,8 +617,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
             abstract_utils.RET), subst, node, view)
     if subst is None:
       return None
-    if (not isinstance(left, abstract.Callable) or
-        not isinstance(other_type, abstract.Callable)):
+    if (not isinstance(left, abstract.CallableClass) or
+        not isinstance(other_type, abstract.CallableClass)):
       # One of the types doesn't specify arg types, so no need to check them.
       return subst
     if left.num_args != other_type.num_args:
@@ -769,7 +770,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       for signature in abstract_method.signatures:
         callable_signature = converter.signature_to_callable(
             signature.signature, self.vm)
-        if isinstance(callable_signature, abstract.Callable):
+        if isinstance(callable_signature, abstract.CallableClass):
           # Prevent the matcher from trying to enforce contravariance on 'self'.
           callable_signature.formal_type_parameters[0] = (
               self.vm.convert.unsolvable)

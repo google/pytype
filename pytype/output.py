@@ -76,7 +76,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
 
   def _value_to_parameter_types(self, node, v, instance, template, seen, view):
     """Get PyTD types for the parameters of an instance of an abstract value."""
-    if isinstance(v, abstract.Callable):
+    if isinstance(v, abstract.CallableClass):
       assert template == (abstract_utils.ARGS, abstract_utils.RET), template
       template = list(moves.range(v.num_args)) + [template[1]]
     if self._is_tuple(v, instance):
@@ -103,7 +103,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         elif instance.has_instance_type_parameter(t):
           param_values = self._get_values(
               node, instance.get_instance_type_parameter(t), view)
-        elif isinstance(v, abstract.Callable):
+        elif isinstance(v, abstract.CallableClass):
           param_values = v.get_formal_type_parameter(t).instantiate(
               node or self.vm.root_cfg_node).data
         else:
@@ -170,7 +170,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           homogeneous = True
           type_arguments = [pytd.NothingType()]
       elif v.full_name == "typing.Callable":
-        homogeneous = not isinstance(v, abstract.Callable)
+        homogeneous = not isinstance(v, abstract.CallableClass)
       else:
         homogeneous = len(type_arguments) == 1
       return pytd_utils.MakeClassOrContainerType(
@@ -279,7 +279,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       vm: The vm instance.
 
     Returns:
-      An abstract.Callable representing the signature, or an
+      An abstract.CallableClass representing the signature, or an
       abstract.ParameterizedClass if the signature has a variable number of
       arguments.
     """
@@ -295,7 +295,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       params = {abstract_utils.ARGS: vm.merge_values(args),
                 abstract_utils.RET: ret}
       params.update(enumerate(args))
-      return abstract.Callable(base_cls, params, vm)
+      return abstract.CallableClass(base_cls, params, vm)
     else:
       # The only way to indicate a variable number of arguments in a Callable
       # is to not specify argument types at all.
