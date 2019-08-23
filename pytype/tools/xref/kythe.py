@@ -3,7 +3,7 @@
 import base64
 import collections
 
-from pytype.tools.xref import google_utils as xref_utils
+from pytype.tools.xref import utils as xref_utils
 from pytype.tools.xref import indexer
 
 
