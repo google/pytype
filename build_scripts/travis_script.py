@@ -40,9 +40,16 @@ def _run_steps(steps):
     _end_step(s)
 
 
+def _pylint_command():
+  cmd = ["pylint", "build_scripts/", "pytype/", "setup.py"]
+  if sys.version_info.major == 2:
+    cmd.append("--ignore=xref")
+  return cmd
+
+
 def main():
   s1 = STEP(name="Lint",
-            command=["pylint", "build_scripts/", "pytype/", "setup.py"])
+            command=_pylint_command())
   s2 = STEP(name="Build",
             command=["python", build_utils.build_script("build.py")])
   s3 = STEP(name="Run Tests",

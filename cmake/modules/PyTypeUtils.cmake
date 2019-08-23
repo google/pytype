@@ -42,6 +42,11 @@ add_custom_target(
   ${ALL_TESTS_TARGET}
 )
 
+set(ALL_TESTS_TARGET_PY2 "test_all_py2")
+add_custom_target(
+  ${ALL_TESTS_TARGET_PY2}
+)
+
 string(COMPARE EQUAL "${CMAKE_BUILD_TYPE}" "Debug" is_debug_build)
 if(is_debug_build)
   add_definitions(-DPYTYPE_ENABLE_CPP_LOGGING)
@@ -349,6 +354,7 @@ function(cc_test)
   )
 
   add_dependencies(${ALL_TESTS_TARGET} ${fq_target_name})
+  add_dependencies(${ALL_TESTS_TARGET_PY2} ${fq_target_name})
 endfunction(cc_test)
 
 # Function implementing a rule 'py_extension' to compile a set of CC and headers
@@ -515,7 +521,7 @@ function(py_test)
     ${ARGN}
   )
   if(NOT PY_TEST_NAME)
-    message(FATAL_ERROR "'py_library' rule requires a NAME argument.")
+    message(FATAL_ERROR "'py_test' rule requires a NAME argument.")
   endif()
 
   _gen_fq_target_name(${PY_TEST_NAME} fq_target_name)
@@ -554,6 +560,9 @@ function(py_test)
   endif()
 
   add_dependencies(${ALL_TESTS_TARGET} ${fq_target_name})
+  if(NOT ${CMAKE_CURRENT_BINARY_DIR} MATCHES "xref$")
+    add_dependencies(${ALL_TESTS_TARGET_PY2} ${fq_target_name})
+  endif()
 endfunction(py_test)
 
 function(filegroup)
