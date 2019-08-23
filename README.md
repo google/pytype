@@ -129,7 +129,9 @@ in the `pytype` directory.
 
 Follow the steps above, but make sure you have the correct libraries first:
 
-> sudo apt install build-essential python3-dev libpython3-dev
+```shell
+sudo apt install build-essential python3-dev libpython3-dev
+```
 
 ## Usage
 
