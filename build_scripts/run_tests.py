@@ -38,7 +38,12 @@ def parse_args():
 
 def main():
   opts = parse_args()
-  targets = opts.targets or ["test_all"]
+  if opts.targets:
+    targets = opts.targets
+  elif sys.version_info.major == 2:
+    targets = ["test_all_py2"]
+  else:
+    targets = ["test_all"]
   if not build_utils.run_cmake(log_output=True, debug_build=opts.debug):
     sys.exit(1)
   fail_collector = build_utils.FailCollector()
