@@ -2162,6 +2162,25 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):
     return super(CallableClass, self).get_special_attribute(node, name, valself)
 
 
+class LiteralClass(ParameterizedClass):
+  """The class of a typing.Literal."""
+
+  def __init__(self, base_cls, instance, vm):
+    formal_type_parameters = {abstract_utils.T: instance.get_class()}
+    super(LiteralClass, self).__init__(base_cls, formal_type_parameters, vm)
+    self._instance = instance
+
+  def __repr__(self):
+    return "LiteralClass(%s)" % self._instance
+
+  @property
+  def value(self):
+    if isinstance(self._instance, AbstractOrConcreteValue):
+      return self._instance
+    # TODO(b/123775699): Remove this workaround once we support literal enums.
+    return None
+
+
 class PyTDClass(SimpleAbstractValue, mixin.Class):
   """An abstract wrapper for PyTD class objects.
 

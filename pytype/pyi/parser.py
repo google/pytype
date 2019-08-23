@@ -2,7 +2,6 @@
 
 import collections
 import hashlib
-import re
 
 from pytype import file_utils
 from pytype import module_utils
@@ -19,7 +18,6 @@ _DEFAULT_VERSION = (2, 7, 6)
 _DEFAULT_PLATFORM = "linux"
 # Typing members that represent sets of types.
 _TYPING_SETS = ("typing.Intersection", "typing.Optional", "typing.Union")
-_STRING_RE = re.compile("^([bu]?)(('[^']*')|(\"[^\"]*\"))$")
 
 
 _Params = collections.namedtuple("_", ["required",
@@ -1619,7 +1617,7 @@ def _make_type_type(value):
 def _handle_string_literal(value):
   if not isinstance(value, str):
     return value
-  match = _STRING_RE.match(value)
+  match = parser_constants.STRING_RE.match(value)
   if not match:
     return value
   return match.groups()[1][1:-1]

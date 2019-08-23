@@ -776,11 +776,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           template, parameters, subst)
       return abstract_class(base_cls, type_parameters, self.vm)
     elif isinstance(pyval, pytd.Literal):
-      # TODO(b/123775699): Create a ParameterizedClass(Literal) to record that
-      # this type is a literal.
       value = self.constant_to_value(
           self._get_literal_value(pyval.value), subst, self.vm.root_cfg_node)
-      return value.get_class()
+      return abstract.LiteralClass(
+          self.name_to_value("typing.Literal"), value, self.vm)
     elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node
       return self.tuple_to_value([self.constant_to_var(item, subst,
                                                        self.vm.root_cfg_node)

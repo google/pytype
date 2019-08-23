@@ -64,7 +64,12 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
               node, param, substs, instantiate_unbound)
           for name, param in annot.formal_type_parameters.items()}
       # annot may be a subtype of ParameterizedClass, such as TupleClass.
-      return type(annot)(annot.base_cls, type_parameters, self.vm)
+      if isinstance(annot, abstract.LiteralClass):
+        # We can't create a LiteralClass because we don't have a concrete value.
+        typ = abstract.ParameterizedClass
+      else:
+        typ = type(annot)
+      return typ(annot.base_cls, type_parameters, self.vm)
     elif isinstance(annot, abstract.Union):
       options = tuple(self.sub_one_annotation(node, o, substs,
                                               instantiate_unbound)
