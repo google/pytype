@@ -6,12 +6,7 @@ from pytype import config
 from pytype import file_utils
 
 from pytype.tests import test_base
-
-# These modules need typed_ast, which is available only in Python 3.3+, but in
-# our oss tests, there is no easy way to exclude a test in some Python versions.
-if sys.version_info >= (3, 3):
-  # pylint: disable=g-import-not-at-top
-  from pytype.tools.xref import indexer
+from pytype.tools.xref import indexer
 
 
 class CallgraphTest(test_base.TargetIndependentTest):
@@ -129,8 +124,7 @@ class CallgraphTest(test_base.TargetIndependentTest):
     self.assertParamsEqual(f.params, [("x", "__builtin__.int")])
 
 
-# The callgraph code only works in Python 3.5-6, but in our opensource tests,
-# there is no easy way to exclude a test in some Python versions.
+# The callgraph code only works in Python 3.5-6.
 if not (3, 5) <= sys.version_info[:2] <= (3, 6):
   del CallgraphTest
 

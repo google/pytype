@@ -11,13 +11,9 @@ from pytype import utils
 
 from pytype.tests import test_base
 
+from pytype.tools.xref import indexer
 from pytype.tools.xref import kythe
 from pytype.tools.xref import output
-
-# xref is available only in Python 3.3+, but in our opensource tests, there is
-# no easy way to exclude this test in earlier Python versions.
-if sys.version_info >= (3, 3):
-  from pytype.tools.xref import indexer  # pylint: disable=g-import-not-at-top
 
 
 class IndexerTestMixin(object):
@@ -270,12 +266,6 @@ class VmTraceTest(test_base.TargetIndependentTest):
   def test_repr(self):
     trace = indexer.VmTrace("LOAD_NAME", "x", (["t"],))
     print(repr(trace))  # smoke test
-
-
-# xref is available only in Python 3.3+, but in our opensource tests, there is
-# no easy way to exclude this test in earlier Python versions.
-if sys.version_info < (3, 3):
-  del IndexerTest, IndexerTestPy3, VmTraceTest
 
 
 test_base.main(globals(), __name__ == "__main__")

@@ -1,11 +1,8 @@
 """Trace function arguments, return values and calls to other functions."""
 
-import collections
-
 import attr
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
-from pytype.tools.xref import node_utils
 
 
 @attr.s
