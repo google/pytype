@@ -549,7 +549,7 @@ class CallableType(GenericType):
     return self.parameters[-1]
 
 
-class Literal(node.Node('value: int or {Type}'), Type):
+class Literal(node.Node('value: int or str or {Type}'), Type):
   __slots__ = ()
 
 

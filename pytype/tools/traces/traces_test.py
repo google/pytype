@@ -33,6 +33,20 @@ class _TestVisitor(traces.MatchAstVisitor):
     self.traces_by_node_type[node.__class__].extend(matches)
 
 
+py2 = unittest.skipUnless(sys.version_info.major == 2, "not py2")
+py3 = unittest.skipUnless(sys.version_info.major == 3, "not py3")
+
+
+def before_py(major, minor):
+  v = (major, minor)
+  return unittest.skipUnless(sys.version_info < v, ">=py%d.%d" % v)
+
+
+def from_py(major, minor):
+  v = (major, minor)
+  return unittest.skipUnless(sys.version_info >= v, "<py%d.%d" % v)
+
+
 class TraceTest(unittest.TestCase):
   """Tests for traces.trace."""
 
@@ -82,12 +96,12 @@ class TraceTest(unittest.TestCase):
 class MatchAstTestCase(unittest.TestCase):
   """Base class for testing traces.MatchAstVisitor."""
 
-  def _parse(self, text):
+  def _parse(self, text, options=None):
     text = textwrap.dedent(text)
-    return ast.parse(text), traces.trace(text)
+    return ast.parse(text), traces.trace(text, options)
 
-  def _get_traces(self, text, node_type):
-    module, src = self._parse(text)
+  def _get_traces(self, text, node_type, options=None):
+    module, src = self._parse(text, options)
     v = _TestVisitor(src, ast)
     v.visit(module)
     return v.traces_by_node_type[node_type]
@@ -122,6 +136,20 @@ class MatchAstVisitorTest(MatchAstTestCase):
     """, ast.Attribute)
     self.assertTracesEqual(matches, [
         ((2, 8), "LOAD_ATTR", "real", ("int", "int"))])
+
+  def test_multi_attr(self):
+    matches = self._get_traces("""\
+      class Foo(object):
+        real = True
+      x = 0
+      (Foo.real, x.real)
+    """, ast.Attribute)
+    # The second attribute is at the wrong location due to limitations of
+    # source.Code.get_attr_location(), but we can at least test that we get the
+    # right number of traces with the right types.
+    self.assertTracesEqual(matches, [
+        ((4, 5), "LOAD_ATTR", "real", ("Type[Foo]", "bool")),
+        ((4, 5), "LOAD_ATTR", "real", ("int", "int"))])
 
   def test_import(self):
     matches = self._get_traces("import os, sys as tzt", ast.Import)
@@ -174,20 +202,24 @@ class MatchCallTest(MatchAstTestCase):
     self.assertTracesEqual(matches, [
         ((3, 0), "CALL_FUNCTION", "f", ("Callable[[Any], Any]", "float"))])
 
-  def test_chain(self):
+  def _test_chain(self, call_method_op):
     matches = self._get_traces("""\
       class Foo(object):
         def f(self, x):
           return x
       Foo().f(42)
     """, ast.Call)
-    if sys.version_info >= (3, 7):
-      call_method_op = "CALL_METHOD"
-    else:
-      call_method_op = "CALL_FUNCTION"
     self.assertTracesEqual(matches, [
         ((4, 0), "CALL_FUNCTION", "Foo", ("Type[Foo]", "Foo")),
         ((4, 0), call_method_op, "f", ("Callable[[Any], Any]", "int"))])
+
+  @before_py(3, 7)
+  def test_chain_pre37(self):
+    self._test_chain("CALL_FUNCTION")
+
+  @from_py(3, 7)
+  def test_chain_37(self):
+    self._test_chain("CALL_METHOD")
 
   def test_multiple_bindings(self):
     matches = self._get_traces("""\
@@ -213,6 +245,67 @@ class MatchCallTest(MatchAstTestCase):
     """, ast.Call)
     self.assertTracesEqual(
         matches, [((2, 0), "CALL_FUNCTION", "f", ("Callable[[], Any]", "Any"))])
+
+  def _test_literal(self, call_method_op):
+    matches = self._get_traces("''.upper()", ast.Call)
+    self.assertTracesEqual(matches, [
+        ((1, 0), call_method_op, "upper", ("Callable[[], str]", "str"))])
+
+  @before_py(3, 7)
+  def test_literal_pre37(self):
+    self._test_literal("CALL_FUNCTION")
+
+  @from_py(3, 7)
+  def test_literal_37(self):
+    self._test_literal("CALL_METHOD")
+
+
+class MatchConstantTest(MatchAstTestCase):
+
+  def test_num(self):
+    matches = self._get_traces("v = 42", ast.Num)
+    self.assertTracesEqual(matches, [((1, 4), "LOAD_CONST", 42, ("int",))])
+
+  def test_str(self):
+    matches = self._get_traces("v = 'hello'", ast.Str)
+    self.assertTracesEqual(matches, [((1, 4), "LOAD_CONST", "hello", ("str",))])
+
+  def test_unicode(self):
+    matches = self._get_traces(
+        "v = u'hello'", ast.Str, config.Options.create(python_version=(3, 6)))
+    self.assertTracesEqual(matches, [((1, 4), "LOAD_CONST", "hello", ("str",))])
+
+  def _test_bytes(self, bytes_node):
+    matches = self._get_traces("v = b'hello'", bytes_node,
+                               config.Options.create(python_version=(3, 6)))
+    self.assertTracesEqual(
+        matches, [((1, 4), "LOAD_CONST", b"hello", ("bytes",))])
+
+  @py2
+  def test_bytes_2(self):
+    self._test_bytes(ast.Str)
+
+  @py3
+  def test_bytes_3(self):
+    self._test_bytes(ast.Bytes)
+
+  @py2
+  def test_bool_2(self):
+    matches = self._get_traces("v = True", ast.Name)
+    self.assertTracesEqual(matches, [
+        ((1, 0), "STORE_NAME", "v", ("bool",)),
+        ((1, 4), "LOAD_NAME", "True", ("bool",))])
+
+  @py3
+  def test_bool_3(self):
+    matches = self._get_traces("v = True", ast.NameConstant)
+    self.assertTracesEqual(matches, [((1, 4), "LOAD_CONST", True, ("bool",))])
+
+  @py3
+  def test_ellipsis(self):
+    matches = self._get_traces("v = ...", ast.Ellipsis)
+    self.assertTracesEqual(
+        matches, [((1, 4), "LOAD_CONST", Ellipsis, ("ellipsis",))])
 
 
 if __name__ == "__main__":

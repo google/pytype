@@ -367,7 +367,7 @@ class FunctionTest(AbstractTestBase):
     params[abstract_utils.ARGS] = abstract.Union(
         (params[0], params[1]), self._vm)
     params[abstract_utils.RET] = self._vm.convert.unsolvable
-    callable_val = abstract.Callable(
+    callable_val = abstract.CallableClass(
         self._vm.convert.function_type, params, self._vm)
     sig = function.Signature.from_callable(callable_val)
     self.assertEqual(repr(sig), "def <callable>(_0: int, _1: str) -> Any")

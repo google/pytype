@@ -2095,27 +2095,27 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):
     return super(TupleClass, self).get_special_attribute(node, name, valself)
 
 
-class Callable(ParameterizedClass, mixin.HasSlots):
+class CallableClass(ParameterizedClass, mixin.HasSlots):
   """A Callable with a list of argument types.
 
   The formal_type_parameters attribute stores the types of the individual
   arguments under their indices, the overall argument type under "ARGS", and the
   return type under "RET". So for
-    Callable[[int, bool], str]
+    CallableClass[[int, bool], str]
   formal_type_parameters is
     {0: int, 1: bool, ARGS: int or bool, RET: str}
-  When there are no args (Callable[[], ...]), ARGS contains abstract.Empty.
+  When there are no args (CallableClass[[], ...]), ARGS contains abstract.Empty.
   """
 
   def __init__(self, base_cls, formal_type_parameters, vm):
-    super(Callable, self).__init__(base_cls, formal_type_parameters, vm)
+    super(CallableClass, self).__init__(base_cls, formal_type_parameters, vm)
     mixin.HasSlots.init_mixin(self)
     self.set_slot("__call__", self.call_slot)
     # We subtract two to account for "ARGS" and "RET".
     self.num_args = len(self.formal_type_parameters) - 2
 
   def __repr__(self):
-    return "Callable(%s)" % self.formal_type_parameters
+    return "CallableClass(%s)" % self.formal_type_parameters
 
   def get_formal_type_parameters(self):
     return {
@@ -2125,7 +2125,7 @@ class Callable(ParameterizedClass, mixin.HasSlots):
             self.formal_type_parameters[abstract_utils.RET])}
 
   def call_slot(self, node, *args, **kwargs):
-    """Implementation of Callable.__call__."""
+    """Implementation of CallableClass.__call__."""
     if kwargs:
       raise function.WrongKeywordArgs(
           function.Signature.from_callable(self),
@@ -2159,7 +2159,7 @@ class Callable(ParameterizedClass, mixin.HasSlots):
     if (valself and not abstract_utils.equivalent_to(valself, self) and
         name in self._slots):
       return mixin.HasSlots.get_special_attribute(self, node, name, valself)
-    return super(Callable, self).get_special_attribute(node, name, valself)
+    return super(CallableClass, self).get_special_attribute(node, name, valself)
 
 
 class PyTDClass(SimpleAbstractValue, mixin.Class):

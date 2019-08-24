@@ -756,7 +756,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         template = list(range(len(pyval.parameters))) + [abstract_utils.T]
         parameters = pyval.parameters + (pytd.UnionType(pyval.parameters),)
       elif isinstance(pyval, pytd.CallableType):
-        abstract_class = abstract.Callable
+        abstract_class = abstract.CallableClass
         template = list(range(len(pyval.args))) + [abstract_utils.ARGS,
                                                    abstract_utils.RET]
         parameters = pyval.args + (pytd_utils.JoinTypes(pyval.args), pyval.ret)

@@ -96,7 +96,7 @@ Platform support:
 * Pytype is currently developed and tested on Linux, which is the main supported
   platform.
 * Installation on MacOSX requires OSX 10.7 or higher and Xcode v8 or higher.
-* Windows is currently not supported unless you use [WSL](https://docs.microsoft.com/en-us/windows/wsl/faq).
+* Windows is currently not supported unless you use [WSL][wsl].
 
 ## Installing
 
@@ -260,3 +260,4 @@ This is not an official Google product.
 [pep-484]: https://www.python.org/dev/peps/pep-0484
 [pyi-stub-files]: docs/user_guide.md#pyi-stub-files
 [user-guide]: docs/user_guide.md
+[wsl]: https://docs.microsoft.com/en-us/windows/wsl/faq

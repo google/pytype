@@ -6,13 +6,7 @@ from pytype import config
 from pytype import file_utils
 
 from pytype.tests import test_base
-
-# These modules need typed_ast, which is available only in Python 3.3+, but in
-# our oss tests, there is no easy way to exclude a test in some Python versions.
-if sys.version_info >= (3, 3):
-  # pylint: disable=g-import-not-at-top
-  from pytype.tools.xref import callgraph
-  from pytype.tools.xref import indexer
+from pytype.tools.xref import indexer
 
 
 class CallgraphTest(test_base.TargetIndependentTest):
@@ -26,10 +20,10 @@ class CallgraphTest(test_base.TargetIndependentTest):
       d.create_file("t.py", code)
       options = config.Options.create(d["t.py"])
       options.tweak(**args)
-      return indexer.process_file(options, preserve_pytype_vm=True)
+      return indexer.process_file(options, generate_callgraphs=True)
 
   def assertAttrsEqual(self, attrs, expected):
-    actual = {(x.name, x.type, x.attr) for x in attrs}
+    actual = {(x.name, x.type, x.attrib) for x in attrs}
     self.assertCountEqual(actual, expected)
 
   def assertCallsEqual(self, calls, expected):
@@ -37,6 +31,15 @@ class CallgraphTest(test_base.TargetIndependentTest):
     for c in calls:
       actual.append(
           (c.function_id, [(a.name, a.node_type, a.type) for a in c.args]))
+    self.assertCountEqual(actual, expected)
+
+  def assertParamsEqual(self, params, expected):
+    actual = {(x.name, x.type) for x in params}
+    self.assertCountEqual(actual, expected)
+
+  def assertHasFunctions(self, fns, expected):
+    actual = fns.keys()
+    expected = ["module"] + ["module.%s" % x for x in expected]
     self.assertCountEqual(actual, expected)
 
   def test_basic(self):
@@ -51,15 +54,16 @@ class CallgraphTest(test_base.TargetIndependentTest):
           c = b.real
           return c
     """)
-    fns = callgraph.collect_functions(ix)
-    self.assertCountEqual(fns.keys(), ["module.f", "module.g"])
+    fns = ix.function_map
+    self.assertHasFunctions(fns, ["f", "g"])
     f = fns["module.f"]
     self.assertAttrsEqual(f.param_attrs,
                           {("x", "__builtin__.str", "x.strip")})
     self.assertAttrsEqual(f.local_attrs, set())
     self.assertCallsEqual(f.calls, [("str.strip", [])])
     self.assertEqual(f.ret.id, "module.f.y")
-    self.assertEqual(f.params, [("x", "str")])
+    self.assertParamsEqual(
+        f.params, [("x", "__builtin__.str")])
 
     g = fns["module.g"]
     self.assertAttrsEqual(g.param_attrs, set())
@@ -70,7 +74,7 @@ class CallgraphTest(test_base.TargetIndependentTest):
         ("complex", [])
     ])
     self.assertEqual(g.ret.id, "module.g.c")
-    self.assertEqual(g.params, [("y", "typing.Any")])
+    self.assertParamsEqual(g.params, [("y", "typing.Any")])
 
   def test_remote(self):
     code = """\
@@ -93,9 +97,9 @@ class CallgraphTest(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", stub)
       options = config.Options.create(d["t.py"], pythonpath=d.path,
                                       version=self.python_version)
-      ix = indexer.process_file(options, preserve_pytype_vm=True)
-    fns = callgraph.collect_functions(ix)
-    self.assertCountEqual(fns.keys(), ["module.f"])
+      ix = indexer.process_file(options, generate_callgraphs=True)
+    fns = ix.function_map
+    self.assertHasFunctions(fns, ["f"])
     f = fns["module.f"]
     self.assertAttrsEqual(f.param_attrs, [])
     self.assertAttrsEqual(f.local_attrs, [("y", "foo.Y", "y.bar")])
@@ -111,17 +115,16 @@ class CallgraphTest(test_base.TargetIndependentTest):
         def f(x: int):
           return "hello"
     """)
-    fns = callgraph.collect_functions(ix)
-    self.assertCountEqual(fns.keys(), ["module.f"])
+    fns = ix.function_map
+    self.assertHasFunctions(fns, ["f"])
     f = fns["module.f"]
     self.assertAttrsEqual(f.param_attrs, [])
     self.assertAttrsEqual(f.local_attrs, [])
     self.assertCallsEqual(f.calls, [])
-    self.assertEqual(f.params, [("x", "int")])
+    self.assertParamsEqual(f.params, [("x", "__builtin__.int")])
 
 
-# The callgraph code only works in Python 3.5-6, but in our opensource tests,
-# there is no easy way to exclude a test in some Python versions.
+# The callgraph code only works in Python 3.5-6.
 if not (3, 5) <= sys.version_info[:2] <= (3, 6):
   del CallgraphTest
 

@@ -66,7 +66,7 @@ int pytypelex(pytype::parser::semantic_type* lvalp, pytype::location* llocp,
 %token END 0 "end of file"
 
 /* Tokens with PyObject values */
-%token <obj> NAME NUMBER LEXERROR
+%token <obj> NAME NUMBER STRING LEXERROR
 
 /* Reserved words. */
 %token ASYNC CLASS DEF ELSE ELIF IF OR AND PASS IMPORT FROM AS RAISE
@@ -74,7 +74,7 @@ int pytypelex(pytype::parser::semantic_type* lvalp, pytype::location* llocp,
 /* Punctuation. */
 %token ARROW ELLIPSIS EQ NE LE GE
 /* Other. */
-%token INDENT DEDENT TRIPLEQUOTED TYPECOMMENT BYTESTRING UNICODESTRING
+%token INDENT DEDENT TRIPLEQUOTED TYPECOMMENT
 
 /* Most nonterminals have an obj value. */
 %type <obj> start unit alldefs if_stmt if_and_elifs
@@ -91,6 +91,7 @@ int pytypelex(pytype::parser::semantic_type* lvalp, pytype::location* llocp,
 %type <obj> type type_parameters type_parameter
 %type <obj> named_tuple_fields named_tuple_field_list named_tuple_field
 %type <obj> coll_named_tuple_fields coll_named_tuple_field_list coll_named_tuple_field
+%type <obj> maybe_string_list string_list
 %type <obj> maybe_type_list type_list type_tuple_elements type_tuple_literal
 %type <obj> dotted_name
 %type <obj> getitem_key
@@ -161,6 +162,7 @@ alldefs
 maybe_type_ignore
   : typeignore
   |
+  ;
 
 /* TODO(rechen): maybe_class_funcs contains all class attributes, not just
  * functions; rename it to something less confusing.
@@ -296,7 +298,7 @@ else_cond
   ;
 
 condition
-  : dotted_name condition_op NAME {
+  : dotted_name condition_op STRING {
       $$ = Py_BuildValue("((NO)sN)", $1, Py_None, $2, $3);
     }
   | dotted_name condition_op version_tuple {
@@ -336,12 +338,8 @@ constantdef
       $$ = ctx->Call(kNewConstant, "(NN)", $1, $3);
       CHECK($$, @$);
     }
-  | NAME '=' BYTESTRING {
-      $$ = ctx->Call(kNewConstant, "(NN)", $1, ctx->Value(kByteString));
-      CHECK($$, @$);
-    }
-  | NAME '=' UNICODESTRING {
-      $$ = ctx->Call(kNewConstant, "(NN)", $1, ctx->Value(kUnicodeString));
+  | NAME '=' STRING {
+      $$ = ctx->Call(kNewConstant, "(NN)", $1, $3);
       CHECK($$, @$);
     }
   | NAME '=' type_tuple_literal {
@@ -392,6 +390,7 @@ importdef
 import_items
   : import_items ',' import_item { $$ = AppendList($1, $3); }
   | import_item { $$ = StartList($1); }
+  ;
 
 import_item
   : dotted_name
@@ -437,10 +436,21 @@ from_item
 
 alias_or_constant
   : NAME '=' type { $$ = Py_BuildValue("(NN)", $1, $3); }
+  | NAME '=' '[' maybe_string_list ']' { $$ = Py_BuildValue("(NN)", $1, $4); }
+  ;
+
+maybe_string_list
+  : string_list maybe_comma { $$ = $1; }
+  | /* EMPTY */ { $$ = PyList_New(0); }
+  ;
+
+string_list
+  : string_list ',' STRING { $$ = AppendList($1, $3); }
+  | STRING { $$ = StartList($1); }
   ;
 
 typevardef
-  : NAME '=' TYPEVAR '(' NAME typevar_args ')' {
+  : NAME '=' TYPEVAR '(' STRING typevar_args ')' {
       $$ = ctx->Call(kAddTypeVar, "(NNN)", $1, $5, $6);
       CHECK($$, @$);
     }
@@ -460,6 +470,8 @@ typevar_kwargs
 
 typevar_kwarg
   : NAME '=' type { $$ = Py_BuildValue("(NN)", $1, $3); }
+  // for typeshed
+  | NAME '=' STRING { $$ = Py_BuildValue("(NN)", $1, $3); }
   ;
 
 funcdef
@@ -586,8 +598,22 @@ type_parameter
   | ELLIPSIS { $$ = ctx->Value(kEllipsis); }
   // These rules are needed for typing.Literal
   | NUMBER { $$ = $1; }
-  | BYTESTRING { $$ = ctx->Value(kByteString); }
-  | UNICODESTRING { $$ = ctx->Value(kUnicodeString); }
+  | STRING { $$ = $1; }
+  // This rule is needed for Callable[[...], ...]
+  | '[' maybe_type_list ']' {
+      $$ = ctx->Call(kNewType, "(sN)", "tuple", $2);
+      CHECK($$, @$);
+    }
+  ;
+
+maybe_type_list
+  : type_list maybe_comma { $$ = $1; }
+  | /* EMPTY */ { $$ = PyList_New(0); }
+  ;
+
+type_list
+  : type_list ',' type { $$ = AppendList($1, $3); }
+  | type { $$ = StartList($1); }
   ;
 
 type
@@ -599,16 +625,11 @@ type
       $$ = ctx->Call(kNewType, "(NN)", $1, $3);
       CHECK($$, @$);
     }
-  | '[' maybe_type_list ']' {
-      // This rule is needed for Callable[[...], ...]
-      $$ = ctx->Call(kNewType, "(sN)", "tuple", $2);
-      CHECK($$, @$);
-    }
-  | NAMEDTUPLE '(' NAME ',' named_tuple_fields ')' {
+  | NAMEDTUPLE '(' STRING ',' named_tuple_fields ')' {
       $$ = ctx->Call(kNewNamedTuple, "(NN)", $3, $5);
       CHECK($$, @$);
     }
-  | COLL_NAMEDTUPLE '(' NAME ',' coll_named_tuple_fields ')' {
+  | COLL_NAMEDTUPLE '(' STRING ',' coll_named_tuple_fields ')' {
       $$ = ctx->Call(kNewNamedTuple, "(NN)", $3, $5);
       CHECK($$, @$);
     }
@@ -630,7 +651,7 @@ named_tuple_field_list
   ;
 
 named_tuple_field
-  : '(' NAME ',' type maybe_comma ')'  { $$ = Py_BuildValue("(NN)", $2, $4); }
+  : '(' STRING ',' type maybe_comma ')'  { $$ = Py_BuildValue("(NN)", $2, $4); }
   ;
 
 maybe_comma
@@ -651,16 +672,7 @@ coll_named_tuple_field_list
   ;
 
 coll_named_tuple_field
-  : NAME { $$ = Py_BuildValue("(NN)", $1, ctx->Value(kAnything)); }
-
-maybe_type_list
-  : type_list maybe_comma { $$ = $1; }
-  | /* EMPTY */ { $$ = PyList_New(0); }
-  ;
-
-type_list
-  : type_list ',' type { $$ = AppendList($1, $3); }
-  | type { $$ = StartList($1); }
+  : STRING { $$ = Py_BuildValue("(NN)", $1, ctx->Value(kAnything)); }
   ;
 
 /* Handle the case of a "regular" tuple of at least two elements, separated by

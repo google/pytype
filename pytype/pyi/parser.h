@@ -15,8 +15,6 @@ enum ValueSelector {
   kParseError,
   kNothing,
   kAnything,
-  kByteString,
-  kUnicodeString,
   kTuple,
 
   // This must be last, it isn't an actual selector.

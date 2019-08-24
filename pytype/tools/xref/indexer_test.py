@@ -11,13 +11,9 @@ from pytype import utils
 
 from pytype.tests import test_base
 
+from pytype.tools.xref import indexer
 from pytype.tools.xref import kythe
 from pytype.tools.xref import output
-
-# xref is available only in Python 3.3+, but in our opensource tests, there is
-# no easy way to exclude this test in earlier Python versions.
-if sys.version_info >= (3, 3):
-  from pytype.tools.xref import indexer  # pylint: disable=g-import-not-at-top
 
 
 class IndexerTestMixin(object):
@@ -40,9 +36,10 @@ class IndexerTestMixin(object):
       options = config.Options.create(d["t.py"])
       options.tweak(pythonpath=[d.path], version=self.python_version)
       kythe_args = kythe.Args(corpus="corpus", root="root")
-      ix = indexer.process_file(options, kythe_args=kythe_args)
+      ix = indexer.process_file(options)
+      kg = kythe.generate_graph(ix, kythe_args)
       # Collect all the references from the kythe graph.
-      kythe_index = [json.loads(x) for x in output.json_kythe_graph(ix)]
+      kythe_index = [json.loads(x) for x in output.json_kythe_graph(kg)]
       return kythe_index
 
   def assertDef(self, index, fqname, name, typ):
@@ -109,7 +106,8 @@ class IndexerTest(test_base.TargetIndependentTest, IndexerTestMixin):
       self.assertEqual(ix.modules["module.r"], "p.q")
 
       # Collect all the references from the kythe graph.
-      kythe_index = [json.loads(x) for x in output.json_kythe_graph(ix)]
+      kg = kythe.generate_graph(ix, kythe_args=None)
+      kythe_index = [json.loads(x) for x in output.json_kythe_graph(kg)]
       refs = [x for x in kythe_index
               if x.get("edge_kind") == "/kythe/edge/ref"]
 
@@ -220,6 +218,25 @@ class IndexerTest(test_base.TargetIndependentTest, IndexerTestMixin):
     assert_data_type("module.f", abstract.InterpreterFunction)
     assert_data_type("module.f.x", abstract.Instance)
 
+  def test_make_serializable(self):
+    ix = self.index_code("""\
+        def f():
+          x = 42
+          y = x
+          return y
+    """)
+    for d in ix.defs.values():
+      self.assertIsNotNone(d.data)
+    for r in ix.refs:
+      self.assertIsNotNone(r.data)
+
+    ix.make_serializable()
+
+    for d in ix.defs.values():
+      self.assertIsNone(d.data)
+    for r in ix.refs:
+      self.assertIsNone(r.data)
+
 
 class IndexerTestPy3(test_base.TargetPython3BasicTest, IndexerTestMixin):
 
@@ -249,12 +266,6 @@ class VmTraceTest(test_base.TargetIndependentTest):
   def test_repr(self):
     trace = indexer.VmTrace("LOAD_NAME", "x", (["t"],))
     print(repr(trace))  # smoke test
-
-
-# xref is available only in Python 3.3+, but in our opensource tests, there is
-# no easy way to exclude this test in earlier Python versions.
-if sys.version_info < (3, 3):
-  del IndexerTest, IndexerTestPy3, VmTraceTest
 
 
 test_base.main(globals(), __name__ == "__main__")

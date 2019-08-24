@@ -13,6 +13,7 @@ from pytype.pytd.parse import node
 
 from pytype.tools.xref import debug
 from pytype.tools.xref import indexer
+from pytype.tools.xref import kythe
 from pytype.tools.xref import output
 from pytype.tools.xref import parse_args
 
@@ -30,7 +31,7 @@ def main():
     signal.alarm(options.timeout)
 
   try:
-    ix = indexer.process_file(options, kythe_args=kythe_args)
+    ix = indexer.process_file(options, generate_callgraphs=True)
   except indexer.PytypeError as e:
     print(e.args[0], file=sys.stderr)
     if args.debug:
@@ -42,7 +43,8 @@ def main():
   if args.debug:
     debug.show_index(ix)
   else:
-    output.output_kythe_graph(ix)
+    kythe_graph = kythe.generate_graph(ix, kythe_args)
+    output.output_kythe_graph(kythe_graph)
 
 
 if __name__ == "__main__":

@@ -102,10 +102,11 @@ class MatchAstVisitor(visitor.BaseVisitor):
     # and bytecode representations think some nodes are located, so we manually
     # track the last line for multiline assign statements. This is safe because
     # assign is not an expression and hence cannot be nested.
-    # TODO(mdemello): Handle multiline class definitions similarly.
     self._assign_end_line = None
     # Needed for x[i] = <multiline statement>
     self._assign_subscr = None
+    # For tracking already matched traces
+    self._matched = None
 
   def enter_Assign(self, node):
     self._assign_end_line = self._get_last_line(node.value)
@@ -122,6 +123,12 @@ class MatchAstVisitor(visitor.BaseVisitor):
     self._assign_end_line = None
     self._assign_subscr = None
 
+  def enter_Module(self, _):
+    self._matched = set()
+
+  def leave_Module(self, _):
+    self._matched = None
+
   def match(self, node):
     """Gets the traces for the given node, along with their locations."""
     method = "match_" + node.__class__.__name__
@@ -133,7 +140,10 @@ class MatchAstVisitor(visitor.BaseVisitor):
 
   def match_Attribute(self, node):
     return [(self._get_match_location(node, tr.symbol), tr)
-            for tr in self._get_traces(node.lineno, _ATTR_OPS, node.attr)]
+            for tr in self._get_traces(node.lineno, _ATTR_OPS, node.attr, 1)]
+
+  def match_Bytes(self, node):
+    return self._match_constant(node, node.s)
 
   def match_Call(self, node):
     # When calling a method of a class, the node name is <value>.<method>, but
@@ -141,6 +151,9 @@ class MatchAstVisitor(visitor.BaseVisitor):
     name = self._get_node_name(node).rpartition(".")[-1]
     return [(self._get_match_location(node), tr)
             for tr in self._get_traces(node.lineno, _CALL_OPS, name)]
+
+  def match_Ellipsis(self, node):
+    return self._match_constant(node, Ellipsis)
 
   def match_Import(self, node):
     return list(self._match_import(node, is_from=False))
@@ -164,11 +177,32 @@ class MatchAstVisitor(visitor.BaseVisitor):
     else:
       return []
     return [(self._get_match_location(node), tr)
-            for tr in self._get_traces(lineno, ops, node.id)]
+            for tr in self._get_traces(lineno, ops, node.id, 1)]
 
-  def _get_traces(self, lineno, ops, symbol):
+  def match_NameConstant(self, node):
+    return self._match_constant(node, node.value)
+
+  def match_Num(self, node):
+    return self._match_constant(node, node.n)
+
+  def match_Str(self, node):
+    return self._match_constant(node, node.s)
+
+  def _get_traces(self, lineno, ops, symbol, maxmatch=-1):
+    """Yields matching traces.
+
+    Args:
+      lineno: A line number.
+      ops: A list of opcode names to match on.
+      symbol: A symbol value to match on.
+      maxmatch: The maximum number of traces to yield. -1 for no maximum.
+    """
     for tr in self.source.traces[lineno]:
-      if tr.op in ops and tr.symbol == symbol:
+      if maxmatch == 0:
+        break
+      if id(tr) not in self._matched and tr.op in ops and tr.symbol == symbol:
+        maxmatch -= 1
+        self._matched.add(id(tr))
         yield tr
 
   def _get_match_location(self, node, name=None):
@@ -198,15 +232,18 @@ class MatchAstVisitor(visitor.BaseVisitor):
     elif isinstance(node, self._ast.Name):
       return node.id
     else:
-      raise NotImplementedError(node.__class__.__name__)
+      return node.__class__.__name__
+
+  def _match_constant(self, node, value):
+    return [(self._get_match_location(node), tr)
+            for tr in self._get_traces(node.lineno, ["LOAD_CONST"], value, 1)]
 
   def _match_import(self, node, is_from):
     for alias in node.names:
       name = alias.asname if alias.asname else alias.name
       op = "STORE_NAME" if alias.asname or is_from else "IMPORT_NAME"
-      for tr in self._get_traces(node.lineno, [op], name):
+      for tr in self._get_traces(node.lineno, [op], name, 1):
         yield self._get_match_location(node, name), tr
-        break
 
 
 class _LineNumberVisitor(visitor.BaseVisitor):

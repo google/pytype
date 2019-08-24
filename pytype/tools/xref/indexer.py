@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+# python3
 
 """Generate cross references from a project."""
 
@@ -6,27 +6,26 @@ from __future__ import print_function
 
 import collections
 
+import attr
 from pytype import abstract
 from pytype import analyze
 from pytype import errors
 from pytype import io
 from pytype import load_pytd
 from pytype import module_utils
+from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
+from pytype.pytd import visitors
 from pytype.tools.traces import source
 from pytype.tools.traces import traces
 from pytype.tools.traces import visitor as ast_visitor
 
+from pytype.tools.xref import callgraph
 from pytype.tools.xref import utils as xref_utils
-from pytype.tools.xref import kythe
+from pytype.tools.xref import node_utils
 
 from typed_ast import ast27 as ast27
 from typed_ast import ast3
-
-# A global "ast" variable that we set to ast27 or ast3 depending on the target
-# python version.
-#
-# TODO(mdemello): Use typed_ast.convert to coerce everything into ast3
-ast = None
 
 
 # A mapping of offsets between a node's start position and the symbol being
@@ -45,24 +44,6 @@ IMPORT_FILE_MARKER = "<__FILE__>"
 _RETURNING_NAME = "RETURNING NAME"
 
 
-def typename(node):
-  return node.__class__.__name__
-
-
-def get_id(node):
-  """Construct an id based on node type."""
-
-  c = node.__class__
-  if c == ast.FunctionDef:
-    return "function %s" % node.name
-  elif c == ast.ClassDef:
-    return "class %s" % node.name
-  elif c == ast.Module:
-    return "module"
-  else:
-    raise ValueError("Unexpected scope: %r" % node)
-
-
 def qualified_method(data):
   """Fully qualify a method call with its class scope."""
   if isinstance(data, abstract.BoundFunction):
@@ -71,34 +52,10 @@ def qualified_method(data):
     return [data.name]
 
 
-def get_name(node):
-  """Nodes have different name attributes."""
-
-  if isinstance(node, ast.Attribute):
-    return get_name(node.value) + "." + node.attr
-  elif isinstance(node, ast.arg):
-    return node.arg
-  elif isinstance(node, str):
-    return node
-  elif hasattr(node, "name"):
-    return node.name
-  elif hasattr(node, "id"):
-    return node.id
-  else:
-    return "[" + typename(node) + "]"
-
-
 def get_location(node):
   # TODO(mdemello): The column offset for nodes like "class A" needs to be
   # adjusted to the start of the symbol.
   return source.Location(node.lineno, node.col_offset)
-
-
-def has_decorator(f, decorator):
-  for d in f.decorator_list:
-    if isinstance(d, ast.Name) and d.id == decorator:
-      return True
-  return False
 
 
 def match_opcodes(opcode_traces, lineno, op_match_list):
@@ -120,6 +77,14 @@ def match_opcodes(opcode_traces, lineno, op_match_list):
   return out
 
 
+def match_opcodes_multiline(opcode_traces, start, end, op_match_list):
+  """Get all opcodes matching op_match_list in a range of lines."""
+  out = []
+  for line in range(start, end + 1):
+    out.extend(match_opcodes(opcode_traces, line, op_match_list))
+  return out
+
+
 def _unwrap(data):
   assert len(data) == 1
   return data[0]
@@ -132,13 +97,16 @@ class AttrError(Exception):
   pass
 
 
+@attr.s
 class PytypeValue(object):
   """Stores a value inferred by pytype."""
 
-  def __init__(self, module, name, typ):
-    self.module = module
-    self.name = name
-    self.typ = typ
+  module = attr.ib()
+  name = attr.ib()
+  typ = attr.ib()
+  id = attr.ib(default=None, init=False)
+
+  def __attrs_post_init__(self):
     self.id = self.module + "." + self.name
 
   def format(self):
@@ -163,11 +131,11 @@ class PytypeValue(object):
       return cls("module", data.name, "Class")
     elif isinstance(data, abstract.BoundFunction):
       # TODO(mdemello): Handle multiple class bindings.
-      name = data.repr_names(callself_repr=typename)[0]
+      name = data.repr_names(callself_repr=node_utils.typename)[0]
       return cls("module", name, "BoundFunction")
     else:
       # TODO(mdemello): We need to infer the module here.
-      return cls("module", str(data), typename(data))
+      return cls("module", str(data), node_utils.typename(data))
 
   @classmethod
   def from_data(cls, data):
@@ -186,11 +154,10 @@ class PytypeValue(object):
     return self.to_signature()
 
 
+@attr.s
 class Module(object):
   """Module representation."""
-
-  def __init__(self, name):
-    self.name = name
+  name = attr.ib()
 
   def attr(self, attr_name):
     return Remote(self.name, attr_name, resolved=True)
@@ -200,19 +167,16 @@ class Module(object):
     return Remote(name, IMPORT_FILE_MARKER, resolved=True)
 
 
-class Dummy(object):
-  """Work around a python3 issue with calling super with kwargs."""
-
-  def __init__(self, *args, **kwargs):
-    pass
-
-
-class DocString(collections.namedtuple(
-    "docstring", ["text", "location", "length"])):
+@attr.s
+class DocString(object):
   """Store the text and location of a docstring."""
 
+  text = attr.ib()
+  location = attr.ib()
+  length = attr.ib()
+
   @classmethod
-  def from_node(cls, node):
+  def from_node(cls, ast, node):
     """If the first element in node.body is a string, create a docstring."""
 
     # This should only be called on ClassDef and FunctionDef
@@ -230,8 +194,8 @@ class DocString(collections.namedtuple(
     return None
 
 
-class Definition(collections.namedtuple(
-    "defn", ["name", "typ", "data", "scope", "target", "doc"]), Dummy):
+@attr.s
+class Definition(object):
   """A symbol definition.
 
   Attributes:
@@ -244,8 +208,15 @@ class Definition(collections.namedtuple(
     id: The id
   """
 
-  def __init__(self, name, typ, data, scope, target, doc):
-    super(Definition, self).__init__(name, typ, data, scope, target, doc)
+  name = attr.ib()
+  typ = attr.ib()
+  data = attr.ib()
+  scope = attr.ib()
+  target = attr.ib()
+  doc = attr.ib()
+  id = attr.ib(default=None, init=False)
+
+  def __attrs_post_init__(self):
     self.id = self.scope + "." + self.name
 
   def format(self):
@@ -280,12 +251,17 @@ class Definition(collections.namedtuple(
       return "typing.Any"
 
 
-class Remote(collections.namedtuple(
-    "remote", ["module", "name", "resolved"]), Dummy):
+@attr.s
+class Remote(object):
   """A symbol from another module."""
 
-  def __init__(self, module, name, resolved):
-    super(Remote, self).__init__(module, name, resolved)
+  module = attr.ib()
+  name = attr.ib()
+  resolved = attr.ib()
+  id = attr.ib(default=None, init=False)
+  typ = attr.ib(default=None, init=False)
+
+  def __attrs_post_init__(self):
     self.id = self.module + "/module." + self.name
 
   def attr(self, attr_name):
@@ -300,7 +276,8 @@ class Remote(collections.namedtuple(
     return self.module + "." + name
 
 
-class DefLocation(collections.namedtuple("defloc", ["def_id", "location"])):
+@attr.s
+class DefLocation(object):
   """A location of a symbol definition.
 
   Attributes:
@@ -311,11 +288,21 @@ class DefLocation(collections.namedtuple("defloc", ["def_id", "location"])):
   are redefined in the code.
   """
 
+  def_id = attr.ib()
+  location = attr.ib()
 
-class Reference(collections.namedtuple(
-    "refr", [
-        "name", "typ", "data", "scope", "ref_scope", "target", "location"])
-                , Dummy):
+
+@attr.s
+class FunctionParam(object):
+  """A link between a function def and the defs of its params."""
+
+  def_id = attr.ib(type=str)
+  param_id = attr.ib(type=str)
+  position = attr.ib(type=int)
+
+
+@attr.s
+class Reference(object):
   """A symbol holding a reference to a definition.
 
   Attributes:
@@ -329,34 +316,58 @@ class Reference(collections.namedtuple(
     id: The id
   """
 
-  def __init__(self, name, typ, data, scope, ref_scope, target, location):
-    super(Reference, self).__init__(
-        name, typ, data, scope, ref_scope, target, location)
+  name = attr.ib()
+  typ = attr.ib()
+  data = attr.ib()
+  scope = attr.ib()
+  ref_scope = attr.ib()
+  target = attr.ib()
+  location = attr.ib()
+  id = attr.ib(default=None, init=False)
+
+  def __attrs_post_init__(self):
     self.id = self.scope + "." + self.name
 
   def format(self):
     return self.id
 
 
+@attr.s
+class NameArg(object):
+  """Representation of a single-variable function call argument."""
+
+  name = attr.ib()
+  type = attr.ib()
+
+
+@attr.s
+class ExprArg(object):
+  """Representation of an expression function call argument."""
+
+  names = attr.ib()
+  type = attr.ib()
+
+
+@attr.s
 class Funcall(object):
   """Representation of a function call."""
 
-  def __init__(self, name, scope, func, location, args, return_type):
-    self.name = name
-    self.scope = scope
-    self.func = func
-    self.location = location
-    self.args = args
-    self.return_type = return_type
+  name = attr.ib()
+  scope = attr.ib()
+  func = attr.ib()
+  location = attr.ib()
+  args = attr.ib()
+  return_type = attr.ib()
 
 
 class Env(object):
   """A collection of namespaced symbols."""
 
-  def __init__(self, scope, parent, cls):
+  def __init__(self, ast, scope, parent, cls):
     """Initialize an environment.
 
     Arguments:
+      ast: An ast module
       scope: The namespace key (e.g. module:class A:function f)
       parent: The env of the directly enclosing namespace
       cls: The class currently being defined
@@ -369,6 +380,7 @@ class Env(object):
       ret: The `return` variable for functions
     """
 
+    self.ast = ast
     self.scope = scope
     self.parent = parent
     self.cls = cls
@@ -394,23 +406,23 @@ class Env(object):
   def is_self_attr(self, node):
     return (
         self.self_var and
-        isinstance(node, ast.Attribute) and
-        isinstance(node.value, ast.Name) and
+        isinstance(node, self.ast.Attribute) and
+        isinstance(node.value, self.ast.Name) and
         node.value.id == self.self_var.name)
 
-  def getattr(self, attr):
-    if self.attrs is not None and attr in self.attrs:
-      return self.attrs[attr]
+  def getattr(self, attrib):
+    if self.attrs is not None and attrib in self.attrs:
+      return self.attrs[attrib]
     elif self.cls and self.cls.scope != self.scope:
-      return self.cls.getattr(attr)
+      return self.cls.getattr(attrib)
     else:
       raise AttrError("called getattr in non-class context")
 
-  def setattr(self, attr, value):
+  def setattr(self, attrib, value):
     if self.attrs is not None:
-      self.attrs[attr] = value
+      self.attrs[attrib] = value
     elif self.cls is not None:
-      return self.cls.setattr(attr, value)
+      return self.cls.setattr(attrib, value)
     else:
       raise AttrError("called setattr in non-class context")
 
@@ -425,12 +437,12 @@ class Env(object):
 class CollectNamesVisitor(ast_visitor.BaseVisitor):
   """Collect all occurences of Name in a subtree."""
 
-  def __init__(self):
+  def __init__(self, ast):
     super(CollectNamesVisitor, self).__init__(ast)
     self.names = []
 
   def visit_Name(self, node):
-    if isinstance(node.ctx, ast.Load):
+    if isinstance(node.ctx, self._ast.Load):
       self.names.append(node)
 
 
@@ -443,17 +455,11 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
   hierarchical, it's just a flat mapping of scope keys to environments.
   """
 
-  # TODO(b/138541525): Remove these unnecessary class attributes.
-  stack = None  # type: list
-  class_ids = None  # type: list
-  envs = None  # type: dict
-  module_name = None  # type: str
-
   # TODO(mdemello): Is the two-level visitor hierarchy really buying us
   # anything by way of maintainability or readability?
 
-  def __init__(self, module_name):
-    super(ScopedVisitor, self).__init__(ast)
+  def __init__(self, ast, module_name, **kwargs):
+    super(ScopedVisitor, self).__init__(ast=ast, **kwargs)  # pytype: disable=wrong-keyword-args
     self.stack = []
     self.class_ids = []
     self.envs = {}
@@ -463,11 +469,11 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
     """Construct an id based on node type."""
 
     c = node.__class__
-    if c == ast.FunctionDef:
+    if c == self._ast.FunctionDef:
       return node.name
-    elif c == ast.ClassDef:
+    elif c == self._ast.ClassDef:
       return node.name
-    elif c == ast.Module:
+    elif c == self._ast.Module:
       return self.module_name
     else:
       raise Exception("Unexpected scope: %r" % node)
@@ -497,7 +503,9 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
       parent = None
     self.stack.append(node)
     new_scope = self.scope_id()
-    new_env = Env(scope=new_scope, parent=parent,
+    new_env = Env(ast=self._ast,
+                  scope=new_scope,
+                  parent=parent,
                   cls=self.current_class)
     if is_class:
       new_env.attrs = {}
@@ -517,6 +525,7 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
     self.add_scope(node)
 
   def enter_Module(self, node):
+    super(ScopedVisitor, self).enter_Module(node)  # pytype: disable=attribute-error
     self.add_scope(node)
 
   def leave(self, node):
@@ -526,11 +535,13 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
       self.stack.pop()
 
 
-class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
+class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
   """Visitor that generates indexes."""
 
-  def __init__(self, src, module_name, kythe_):
-    super(IndexVisitor, self).__init__(src, module_name)
+  def __init__(self, ast, src, module_name):
+    super(IndexVisitor, self).__init__(ast=ast,
+                                       src_code=src,
+                                       module_name=module_name)
     self.defs = {}
     self.locs = collections.defaultdict(list)
     self.refs = []
@@ -540,14 +551,14 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
     self.typemap = {}
     self.classmap = {}
     self.calls = []
-    self.kythe = kythe_
+    self.function_params = []
 
   def _get_location(self, node, args):
     """Get a more accurate node location."""
 
     loc = None
 
-    if isinstance(node, ast.ClassDef):
+    if isinstance(node, self._ast.ClassDef):
       # For class and function definitions, search for the string
       #   (class|def) <name>
       # between the start of the AST node and the start of the body. Handles the
@@ -555,7 +566,7 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
       body_start = node.body[0].lineno
       text = "class %s" % args["name"]
       loc = self.source.find_first_text(node.lineno, body_start, text)
-    elif isinstance(node, ast.FunctionDef):
+    elif isinstance(node, self._ast.FunctionDef):
       body_start = node.body[0].lineno
       text = "def %s" % args["name"]
       loc = self.source.find_first_text(node.lineno, body_start, text)
@@ -569,22 +580,19 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
     if isinstance(node, str):
       # We replace nodes with their names after visiting them.
       return node
-    try:
-      return super(IndexVisitor, self)._get_node_name(node)
-    except NotImplementedError:
-      return typename(node)
+    return super(IndexVisitor, self)._get_node_name(node)
 
   def make_def(self, node, **kwargs):
     """Make a definition from a node."""
 
-    if isinstance(node, ast.Name):
-      t = typename(node.ctx)
-    elif isinstance(node, ast.arg):
+    if isinstance(node, self._ast.Name):
+      t = node_utils.typename(node.ctx)
+    elif isinstance(node, self._ast.arg):
       t = "Param"
     else:
-      t = typename(node)
+      t = node_utils.typename(node)
     args = {
-        "name": get_name(node),
+        "name": node_utils.get_name(node, self._ast),
         "scope": self.scope_id(),
         "typ": t,
         "data": None,
@@ -603,10 +611,10 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
 
     assert "data" in kwargs  # required kwarg
     args = {
-        "name": get_name(node),
+        "name": node_utils.get_name(node, self._ast),
         "scope": self.scope_id(),
         "ref_scope": None,
-        "typ": typename(node),
+        "typ": node_utils.typename(node),
         "location": get_location(node),
         "target": None,
     }
@@ -633,7 +641,7 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
 
   def add_closure_ref(self, node, **kwargs):
     """Look for node.name up the chain of scopes."""
-    name = get_name(node)
+    name = node_utils.get_name(node, self._ast)
     env, _ = self.current_env.lookup(name)
     if env:
       kwargs.update({"ref_scope": env.scope})
@@ -651,9 +659,9 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
     kwargs.update({"ref_scope": "module"})
     return self.add_local_ref(node, **kwargs)
 
-  def add_call(self, node, name, func, arg_names, return_type):
+  def add_call(self, node, name, func, arg_varnames, return_type):
     self.calls.append(
-        Funcall(name, self.scope_id(), func, get_location(node), arg_names,
+        Funcall(name, self.scope_id(), func, get_location(node), arg_varnames,
                 return_type))
 
   def add_attr(self, node):
@@ -663,23 +671,27 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
     if env.is_self_attr(node):
       self.envs[self.scope_id()].setattr(node.attr, defn)
 
+  def _has_decorator(self, f, decorator):
+    for d in f.decorator_list:
+      if isinstance(d, self._ast.Name) and d.id == decorator:
+        return True
+    return False
+
   def enter_ClassDef(self, node):
-    # TODO(mdemello): For decorated classes, the node's lineno starts at the
-    # first decorator, and therefore does not match the opcode's lineno.
-    # Likewise, when a class definition spans multiple lines, the AST node
-    # starts on the first line but the BUILD_CLASS opcode starts on the last
-    # one. Fix when we incorporate asttokens.
-    class_name = get_name(node)
+    class_name = node_utils.get_name(node, self._ast)
+    last_line = max(x.lineno for x in [node] + node.bases)
 
     # Python2
-    ops = match_opcodes(self.traces, node.lineno, [("BUILD_CLASS", class_name)])
+    ops = match_opcodes_multiline(self.traces, node.lineno, last_line, [
+        ("BUILD_CLASS", class_name)
+    ])
     d = None
     if ops:
       _, _, data = ops[0]
       d = _unwrap(data)
     else:
       # Python3
-      ops = match_opcodes(self.traces, node.lineno, [
+      ops = match_opcodes_multiline(self.traces, node.lineno, last_line, [
           ("LOAD_BUILD_CLASS", None),
           ("STORE_NAME", class_name)
       ])
@@ -687,7 +699,8 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
         _, _, data = ops[1]
         d = _unwrap(data)
     assert d, "Did not get pytype data for class %s" % class_name
-    defn = self.add_local_def(node, data=data, doc=DocString.from_node(node))
+    defn = self.add_local_def(node, data=data,
+                              doc=DocString.from_node(self._ast, node))
     self.classmap[d[0]] = defn
     super(IndexVisitor, self).enter_ClassDef(node)
 
@@ -702,18 +715,17 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
       # TODO(mdemello): Add an assert; this should not happen but I would rather
       # not break grok indexing if it does.
       data = None
-    fn_def = self.add_local_def(node, data=data, doc=DocString.from_node(node))
+    fn_def = self.add_local_def(node, data=data,
+                                doc=DocString.from_node(self._ast, node))
     env = self.add_scope(node)
     # TODO(mdemello): Get pytype data for params
     params = [self.add_local_def(v) for v in node.args.args]
     for i, param in enumerate(params):
-      self.kythe.add_edge(
-          source=self.kythe.vname(fn_def.to_signature()),
-          edge_name="param.%d" % i,
-          target=self.kythe.vname(param.to_signature()))
+      self.function_params.append(FunctionParam(
+          def_id=fn_def.id, param_id=param.id, position=i))
     if env.cls:
-      if (not has_decorator(node, "classmethod") and
-          not has_decorator(node, "staticmethod")):
+      if (not self._has_decorator(node, "classmethod") and
+          not self._has_decorator(node, "staticmethod")):
         # Don't crash if we have buggy code like
         # class A(): def f(): ...
         if params:
@@ -726,7 +738,7 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
     # variables.
     for unused_loc, (op, symbol, data) in self.match(node):
       d = _unwrap(data)
-      ref = defn = None
+      ref = None
       if op == "LOAD_GLOBAL":
         ref = self.add_global_ref(node, name=symbol, data=data)
         self.typemap[ref.id] = d
@@ -744,31 +756,33 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
         self.typemap[defn.id] = d
       if ref and self.current_env.ret == _RETURNING_NAME:
         self.current_env.ret = ref
-      if ref or defn:
-        break
 
     return node.id
 
   def visit_Call(self, node):
     name = self._get_node_name(node)
-    name_visitor = CollectNamesVisitor()
+    name_visitor = CollectNamesVisitor(self._ast)
     name_visitor.visit(node)
-    arg_names = name_visitor.names
+    arg_varnames = [x.id for x in name_visitor.names]
     seen = set()
     for _, (_, _, data) in self.match(node):
       call, return_type = data
       if call is None:
         continue
       for d in call:
+        # TODO(mdemello): Capture call records:
+        # if isinstance(d, abstract.InterpreterFunction):
+        #   for sig, args, ret, _ in d._call_records:
+        #     ...
         for f in qualified_method(d):
           if f not in seen:
-            self.add_call(node, name, f, arg_names, return_type)
+            self.add_call(node, name, f, arg_varnames, return_type)
             seen.add(f)
     return name
 
   def visit_Assign(self, node):
     for v in node.targets:
-      if isinstance(v, ast.Attribute):
+      if isinstance(v, self._ast.Attribute):
         self.add_attr(v)
 
   def visit_Attribute(self, node):
@@ -786,13 +800,11 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
         if len(data) == 2:
           _, rhs = data
           self.typemap[ref.id] = rhs
-        break
       elif op == "STORE_ATTR":
         defn = self.add_local_def(node)
         if self.current_class:
           # We only support attr definitions within a class definition.
           self.current_env.setattr(node.attr, defn)
-        break
     return node_str
 
   def visit_Subscript(self, node):
@@ -846,7 +858,7 @@ class IndexVisitor(traces.MatchAstVisitor, ScopedVisitor):
     self.process_import(node)
 
   def enter_Return(self, node):
-    if isinstance(node.value, ast.Name):
+    if isinstance(node.value, self._ast.Name):
       self.current_env.ret = _RETURNING_NAME
 
   def leave_Return(self, node):
@@ -862,17 +874,20 @@ class Indexer(object):
   """Runs the indexer visitor and collects its results."""
 
   def __init__(self,
+               *,
+               ast,
                src,
                loader,
-               module_name,
-               kythe_args=None):
+               pytd_module,
+               module_name):
+    self.ast = ast
     self.source = src
     self.loader = loader
+    self.pytd_module = pytd_module
     self.resolved_modules = loader.get_resolved_modules()
     self.imports = xref_utils.process_imports_map(loader.imports_map)
     self.module_name = module_name
     self.traces = src.traces
-    self.kythe = kythe.Kythe(src, kythe_args)
     self.defs = None
     self.locs = None
     self.refs = None
@@ -882,6 +897,8 @@ class Indexer(object):
     self.classmap = None
     self.calls = None
     self.links = []
+    self.function_params = None
+    self.function_map = None
 
     # Optionally preserve the pytype vm so we can access the types later
     self.vm = None
@@ -889,7 +906,7 @@ class Indexer(object):
   def index(self, code_ast):
     """Index an AST corresponding to self.source."""
 
-    v = IndexVisitor(self.source, self.module_name, self.kythe)
+    v = IndexVisitor(self.ast, self.source, self.module_name)
     v.visit(code_ast)
     self.defs = v.defs
     self.locs = v.locs
@@ -899,6 +916,7 @@ class Indexer(object):
     self.typemap = v.typemap
     self.classmap = v.classmap
     self.calls = v.calls
+    self.function_params = v.function_params
 
   def get_def_offsets(self, defloc):
     """Get the byte offsets for a definition."""
@@ -926,59 +944,8 @@ class Indexer(object):
     return (start, end)
 
   def finalize(self):
-    """Postprocess the information gathered by the tree visitor.
-
-    Note that these functions need to be run in order; some of them depend on
-    information generated by previous ones.
-    """
-
-    links = self._lookup_refs()
-    self.links = links
-    self._process_deflocs()
-    self._process_links(links)
-    self._process_calls(links)
-
-  def _process_deflocs(self):
-    """Generate kythe edges for definitions."""
-
-    for def_id in self.locs:
-      defn = self.defs[def_id]
-      for defloc in self.locs[def_id]:
-        defn = self.defs[defloc.def_id]
-        defn_vname = self.kythe.vname(defn.to_signature())
-        start, end = self.get_def_offsets(defloc)
-        anchor_vname = self.kythe.add_anchor(start, end)
-        self.kythe.add_fact(
-            source=defn_vname,
-            fact_name="node/kind",
-            fact_value=defn.node_kind())
-        self.kythe.add_edge(
-            source=anchor_vname,
-            target=defn_vname,
-            edge_name="defines/binding")
-
-        # Emit a docstring if we have one.
-        doc = defn.doc
-        if doc:
-          doc_vname = self.kythe.vname(defn.doc_signature())
-          start, end = self.get_doc_offsets(defn.doc)
-          anchor_vname = self.kythe.add_anchor(start, end)
-          self.kythe.add_fact(
-              source=doc_vname,
-              fact_name="node/kind",
-              fact_value="doc")
-          self.kythe.add_fact(
-              source=doc_vname,
-              fact_name="text",
-              fact_value=doc.text)
-          self.kythe.add_edge(
-              source=anchor_vname,
-              target=doc_vname,
-              edge_name="defines")
-          self.kythe.add_edge(
-              source=doc_vname,
-              target=defn_vname,
-              edge_name="documents")
+    """Postprocess the information gathered by the tree visitor."""
+    self.links = self._lookup_refs()
 
   def _get_attr_bounds(self, name, location):
     """Calculate the anchor bounds for an attr access."""
@@ -998,96 +965,6 @@ class Indexer(object):
     else:
       return self.get_anchor_bounds(ref.location, len(ref.name))
 
-  def _make_defn_vname(self, defn):
-    """Convert a definition into a kythe vname."""
-    if isinstance(defn, Remote):
-      remote = defn.module
-      if remote in self.resolved_modules:
-        if remote in self.imports:
-          # The canonical path from the imports_map is the best bet for
-          # module->filepath translation.
-          path = self.imports[remote]
-        else:
-          # Fallback to the filepath of the stub file, though this is not always
-          # accurate due to overrides.
-          path = self.resolved_modules[remote].filename
-        path = xref_utils.get_module_filepath(path)
-        if defn.name == IMPORT_FILE_MARKER:
-          sig = kythe.FILE_ANCHOR_SIGNATURE
-        else:
-          sig = "module." + defn.name
-        if path.startswith("pytd:"):
-          return self.kythe.builtin_vname(
-              sig, "pytd:" + self.resolved_modules[remote].module_name)
-        else:
-          return self.kythe.vname(sig, path)
-      else:
-        # Don't generate vnames for unresolved modules.
-        return None
-    else:
-      return self.kythe.vname(defn.to_signature())
-
-  def _process_links(self, links):
-    """Generate kythe edges for references."""
-
-    for ref, defn in links:
-      if not isinstance(defn, (Definition, Remote, Module)):
-        # TODO(mdemello): Fixes needed for chained method calls.
-        continue
-      start, end = self.get_ref_bounds(ref)
-      vname = self.kythe.add_anchor(start, end)
-      target = self._make_defn_vname(defn)
-      if target:
-        self.kythe.add_edge(
-            source=vname,
-            target=target,
-            edge_name="ref")
-
-  def _process_calls(self, links):
-    """Generate kythe edges for function calls.
-
-    Checks if a function call corresponds to a resolved reference, and generates
-    a ref/call to that references's source definition if so.
-
-    Args:
-      links: A list of (reference, definition) tuples.
-    """
-
-    link_map = collections.defaultdict(list)
-    for ref, defn in links:
-      link_map[ref.location].append((ref, defn))
-
-    for call in self.calls:
-      call_links = link_map[call.location]
-      call_ref = None
-      call_defn = None
-      for ref, d in call_links:
-        if ref.name == call.name:
-          call_ref = ref
-          call_defn = d
-          break
-      if call_defn:
-        target = self._make_defn_vname(call_defn)
-        if target:
-          start, end = self.get_ref_bounds(call_ref)
-          anchor_vname = self.kythe.anchor_vname(start, end)
-          self.kythe.add_edge(
-              source=anchor_vname,
-              target=target,
-              edge_name="ref/call")
-          # The call is a child of the enclosing function/class (this lets us
-          # generate call graphs).
-          if ref.scope != "module":
-            parent_defn = self.defs.get(call_ref.scope)
-            if parent_defn:
-              # TODO(mdemello): log the 'else' case; it should never happen.
-              self.kythe.add_edge(
-                  source=anchor_vname,
-                  target=self.kythe.vname(parent_defn.to_signature()),
-                  edge_name="childof")
-            else:
-              assert False, ref
-
   def _lookup_remote_symbol(self, ref, defn):
     """Try to look up a definition in an imported module."""
 
@@ -1105,7 +982,7 @@ class Indexer(object):
       name = name[(len(remote) + 1):]
     return Remote(module=remote, name=name, resolved=resolved)
 
-  def _lookup_class_attr(self, name, attr):
+  def _lookup_class_attr(self, name, attrib):
     """Look up a class attribute in the environment."""
 
     env = self.envs["module"]
@@ -1113,7 +990,7 @@ class Indexer(object):
       return None
     d = env.env[name]
     class_env = self.envs[d.id]
-    _, defn = class_env.lookup(attr)
+    _, defn = class_env.lookup(attrib)
     return defn
 
   def _get_attribute_class(self, obj):
@@ -1252,6 +1129,39 @@ class Indexer(object):
     node = self.vm.root_cfg_node
     return self.vm.convert.pytd_convert.value_to_pytd_def(node, data, name)
 
+  def get_pytd(self, datum):
+    if not datum:
+      return pytd.AnythingType()
+    t = pytd_utils.JoinTypes(v.to_type() for v in datum).Visit(
+        visitors.RemoveUnknownClasses())
+    return self.loader.resolve_type(t, self.pytd_module)
+
+  def make_serializable(self):
+    """Delete all data that cannot be pickled."""
+    for r in self.refs:
+      r.target = None
+      r.data = None
+
+    for d in self.defs.values():
+      d.data = None
+
+    for call in self.calls:
+      call.return_type = None
+
+    # This is all internal data used when building up the final index; if any of
+    # it proves to be needed we can look at just stripping out the non-picklable
+    # bits, or converting it to a final form in finalize()
+    self.ast = None
+    self.source = None
+    self.loader = None
+    self.resolved_modules = None
+    self.imports = None
+    self.traces = None
+    self.modules = None
+    self.typemap = None
+    self.classmap = None
+    self.envs = None
+
 
 class PytypeError(Exception):
   """Wrap exceptions raised by the indexer."""
@@ -1260,11 +1170,13 @@ class PytypeError(Exception):
 class VmTrace(source.AbstractTrace):
 
   def __repr__(self):
-    types_repr = tuple(t and [typename(x) for x in t] for t in self.types)
+    types_repr = tuple(
+        t and [node_utils.typename(x) for x in t]
+        for t in self.types)
     return "%s %s" % (super(VmTrace, self).__repr__(), types_repr)
 
 
-def process_file(options, source_text=None, kythe_args=None,
+def process_file(options, source_text=None, generate_callgraphs=False,
                  preserve_pytype_vm=False):
   """Process a single file and return cross references.
 
@@ -1272,7 +1184,7 @@ def process_file(options, source_text=None, kythe_args=None,
     options: A dictionary of pytype options.
     source_text: Optional text of the file; will be read from the file pointed
       to by options.input if not supplied.
-    kythe_args: Extra args for generating the kythe index
+    generate_callgraphs: Collect call graph information
     preserve_pytype_vm: Preserve the pytype vm in the indexer
 
   Returns:
@@ -1281,9 +1193,6 @@ def process_file(options, source_text=None, kythe_args=None,
   Raises:
     PytypeError if pytype fails.
   """
-  # We bind the global ast variable in this function.
-  global ast
-
   errorlog = errors.ErrorLog()
   loader = load_pytd.create_loader(options)
   src = source_text or io.read_source_file(options.input)
@@ -1294,7 +1203,7 @@ def process_file(options, source_text=None, kythe_args=None,
       store_all_calls=False,
       loader=loader)
   with io.wrap_pytype_exceptions(PytypeError, filename=options.input):
-    analyze.infer_types(
+    pytd_module, _ = analyze.infer_types(
         src=src,
         filename=options.input,
         errorlog=errorlog,
@@ -1314,9 +1223,23 @@ def process_file(options, source_text=None, kythe_args=None,
   # TODO(mdemello): Get from args
   module_name = "module"
   src_code = source.Code(src, vm.opcode_traces, VmTrace, filename=options.input)
-  ix = Indexer(src_code, vm.loader, module_name, kythe_args)
+  ix = Indexer(ast=ast,
+               src=src_code,
+               loader=vm.loader,
+               module_name=module_name,
+               pytd_module=pytd_module)
   ix.index(ast_root_node)
   ix.finalize()
-  if preserve_pytype_vm:
-    ix.vm = vm
+
+  # Make the vm available via indexer.vm for post-finalize() functions.
+  ix.vm = vm
+
+  # Use the indexer as a single object to hold data for calling processes.
+  if generate_callgraphs:
+    ix.function_map = callgraph.collect_function_map(ix)
+
+  # Release the vm before returning
+  if not preserve_pytype_vm:
+    ix.vm = None
+
   return ix
