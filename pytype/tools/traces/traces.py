@@ -35,6 +35,15 @@ _LOAD_OPS = frozenset((
     "LOAD_NAME",
 ))
 
+_LOAD_SUBSCR_METHODS = ("__getitem__", "__getslice__")
+_LOAD_SUBSCR_OPS = frozenset((
+    "BINARY_SUBSCR",
+    "SLICE_0",
+    "SLICE_1",
+    "SLICE_2",
+    "SLICE_3",
+))
+
 _STORE_OPS = frozenset((
     "STORE_DEREF",
     "STORE_FAST",
@@ -188,19 +197,24 @@ class MatchAstVisitor(visitor.BaseVisitor):
   def match_Str(self, node):
     return self._match_constant(node, node.s)
 
+  def match_Subscript(self, node):
+    return [(self._get_match_location(node), tr) for tr in self._get_traces(
+        node.lineno, _LOAD_SUBSCR_OPS, _LOAD_SUBSCR_METHODS, 1)]
+
   def _get_traces(self, lineno, ops, symbol, maxmatch=-1):
     """Yields matching traces.
 
     Args:
       lineno: A line number.
       ops: A list of opcode names to match on.
-      symbol: A symbol value to match on.
+      symbol: A symbol or tuple of symbols to match on.
       maxmatch: The maximum number of traces to yield. -1 for no maximum.
     """
+    symbols = symbol if isinstance(symbol, tuple) else (symbol,)
     for tr in self.source.traces[lineno]:
       if maxmatch == 0:
         break
-      if id(tr) not in self._matched and tr.op in ops and tr.symbol == symbol:
+      if id(tr) not in self._matched and tr.op in ops and tr.symbol in symbols:
         maxmatch -= 1
         self._matched.add(id(tr))
         yield tr
