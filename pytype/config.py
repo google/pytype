@@ -133,6 +133,10 @@ def add_basic_options(o):
       "--strict-import", action="store_true",
       dest="strict_import", default=False,
       help="Experimental: Only load submodules that are explicitly imported.")
+  o.add_argument(
+      "--precise-return", action="store_true", dest="precise_return",
+      default=False, help=("Experimental: Infer precise return types even for "
+                           "invalid function calls."))
 
 
 def add_subtools(o):

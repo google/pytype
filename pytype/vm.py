@@ -818,11 +818,13 @@ class VirtualMachine(object):
     if not result.bindings and report_errors and self.options.report_errors:
       if error is None:
         self.errorlog.unsupported_operands(self.frames, name, x, y)
+        result = self.new_unsolvable(state.node)
       elif isinstance(error, function.DictKeyMissing):
         self.errorlog.key_error(self.frames, error.name)
+        state, result = error.get_return(state)
       else:
         self.errorlog.invalid_function_call(self.frames, error)
-      result.AddBinding(self.convert.unsolvable, [], state.node)
+        state, result = error.get_return(state)
     return state, result
 
   def call_inplace_operator(self, state, iname, x, y):
@@ -842,7 +844,7 @@ class VirtualMachine(object):
                                                    fallback_to_unsolvable=False)
       except function.FailedFunctionCall as e:
         self.errorlog.invalid_function_call(self.frames, e)
-        ret = self.new_unsolvable(state.node)
+        state, ret = e.get_return(state)
     return state, ret
 
   def binary_operator(self, state, name, report_errors=True):
@@ -956,25 +958,40 @@ class VirtualMachine(object):
         v = self.convert.no_return if has_noreturn else self.convert.unsolvable
         result.AddBinding(v, [], node)
       return node, result
-    else:
-      if fallback_to_unsolvable:
-        if isinstance(error, function.DictKeyMissing):
-          self.errorlog.key_error(self.frames, error.name)
-        else:
-          self.errorlog.invalid_function_call(self.frames, error)
-          # If the function failed with a FailedFunctionCall exception, try
-          # calling it again with fake arguments. This allows for calls to
-          # __init__ to always succeed, ensuring pytype has a full view of the
-          # class and its attributes.
-          # If the call still fails, _call_with_fake_args will return
-          # abstract.Unsolvable.
-          if all(abstract_utils.func_name_is_class_init(func.name)
-                 for func in funcu.data):
-            return self._call_with_fake_args(node, funcu)
-        return node, self.new_unsolvable(node)
+    if (isinstance(error, function.FailedFunctionCall) and
+        all(abstract_utils.func_name_is_class_init(func.name)
+            for func in funcu.data)):
+      # If the function failed with a FailedFunctionCall exception, try calling
+      # it again with fake arguments. This allows for calls to __init__ to
+      # always succeed, ensuring pytype has a full view of the class and its
+      # attributes. If the call still fails, _call_with_fake_args will return
+      # abstract.Unsolvable.
+      node, result = self._call_with_fake_args(node, funcu)
+    elif self.options.precise_return and len(funcu.bindings) == 1:
+      funcv, = funcu.bindings
+      func = funcv.data
+      if isinstance(func, abstract.BoundFunction):
+        func = func.underlying
+      if isinstance(func, abstract.PyTDFunction):
+        node, result = func.signatures[0].instantiate_return(node, {}, [funcv])
+      elif isinstance(func, abstract.InterpreterFunction):
+        sig = func.signature_functions()[0].signature
+        ret = sig.annotations.get("return", self.convert.unsolvable)
+        node, result = self.init_class(node, ret)
       else:
-        # We were called by something that does its own error handling.
-        raise error  # pylint: disable=raising-bad-type
+        result = self.new_unsolvable(node)
+    else:
+      result = self.new_unsolvable(node)
+    if fallback_to_unsolvable:
+      if isinstance(error, function.DictKeyMissing):
+        self.errorlog.key_error(self.frames, error.name)
+      else:
+        self.errorlog.invalid_function_call(self.frames, error)
+      return node, result
+    else:
+      # We were called by something that does its own error handling.
+      error.set_return(node, result)
+      raise error  # pylint: disable=raising-bad-type
 
   def call_function_from_stack(self, state, num, starargs, starstarargs):
     """Pop arguments for a function and call it."""
