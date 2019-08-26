@@ -965,18 +965,14 @@ class VirtualMachine(object):
         else:
           result.PasteVariable(one_result, new_node, {funcv})
         nodes.append(new_node)
-      finally:
-        self.trace_opcode(
-            None, func.name.rpartition(".")[-1], (funcv, one_result))
     if nodes:
       node = self.join_cfg_nodes(nodes)
       if not result.bindings:
         v = self.convert.no_return if has_noreturn else self.convert.unsolvable
         result.AddBinding(v, [], node)
-      return node, result
-    if (isinstance(error, function.FailedFunctionCall) and
-        all(abstract_utils.func_name_is_class_init(func.name)
-            for func in funcu.data)):
+    elif (isinstance(error, function.FailedFunctionCall) and
+          all(abstract_utils.func_name_is_class_init(func.name)
+              for func in funcu.data)):
       # If the function failed with a FailedFunctionCall exception, try calling
       # it again with fake arguments. This allows for calls to __init__ to
       # always succeed, ensuring pytype has a full view of the class and its
@@ -998,7 +994,11 @@ class VirtualMachine(object):
         result = self.new_unsolvable(node)
     else:
       result = self.new_unsolvable(node)
-    if fallback_to_unsolvable:
+    self.trace_opcode(
+        None, funcu.data[0].name.rpartition(".")[-1], (funcu, result))
+    if nodes:
+      return node, result
+    elif fallback_to_unsolvable:
       if isinstance(error, function.DictKeyMissing):
         self.errorlog.key_error(self.frames, error.name)
       else:

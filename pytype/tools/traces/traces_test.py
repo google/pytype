@@ -250,8 +250,8 @@ class MatchCallTest(MatchAstTestCase):
       f(42)
     """, ast.Call)
     self.assertTracesEqual(matches, [
-        ((10, 0), "CALL_FUNCTION", "f", ("Callable[[Any], Any]", "int")),
-        ((10, 0), "CALL_FUNCTION", "f", ("Callable[[Any], Any]", "float"))])
+        ((10, 0), "CALL_FUNCTION", "f",
+         ("Callable[[Any], Any]", "Union[int, float]"))])
 
   def test_bad_call(self):
     matches = self._get_traces("""\

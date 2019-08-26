@@ -159,7 +159,7 @@ class MatchAstVisitor(visitor.BaseVisitor):
     # only the method name is traced.
     name = self._get_node_name(node).rpartition(".")[-1]
     return [(self._get_match_location(node), tr)
-            for tr in self._get_traces(node.lineno, _CALL_OPS, name)]
+            for tr in self._get_traces(node.lineno, _CALL_OPS, name, 1)]
 
   def match_Ellipsis(self, node):
     return self._match_constant(node, Ellipsis)
