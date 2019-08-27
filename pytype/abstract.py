@@ -2334,15 +2334,29 @@ class InterpreterClass(SimpleAbstractValue, mixin.Class):
 
   def type_param_check(self):
     """Throw exception for invalid type parameters."""
+
+    def update_sig(method):
+      method.signature.excluded_types.update(
+          [t.name for t in self.template])
+      method.signature.add_scope(self.full_name)
+
     if self.template:
       # For function type parameters check
       for mbr in self.members.values():
-        mbr = abstract_utils.get_atomic_value(
+        m = abstract_utils.get_atomic_value(
             mbr, default=self.vm.convert.unsolvable)
-        if isinstance(mbr, InterpreterFunction):
-          mbr.signature.excluded_types.update(
-              [t.name for t in self.template])
-          mbr.signature.add_scope(self.full_name)
+        if isinstance(m, InterpreterFunction):
+          update_sig(m)
+        elif all(x.__class__.__name__ == "PropertyInstance" for x in mbr.data):
+          # We generate a new variable every time we add a property slot, so we
+          # take the last one (which contains bindings for all defined slots).
+          prop = mbr.data[-1]
+          for slot in (prop.fget, prop.fset, prop.fdel):
+            if slot:
+              for d in slot.data:
+                if isinstance(d, InterpreterFunction):
+                  update_sig(d)
+
       # nested class can not use the same type parameter
       # in current generic class
       inner_cls_types = self.collect_inner_cls_types()
