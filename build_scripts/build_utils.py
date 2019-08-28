@@ -187,8 +187,9 @@ def run_cmake(force_clean=False, log_output=False, debug_build=False):
 class FailCollector(object):
   """A class to collect failures."""
 
-  def __init__(self):
+  def __init__(self, verbose):
     self._failures = []
+    self._verbose = verbose
 
   def add_failure(self, mod_name, log_file):
     self._failures.append((mod_name, log_file))
@@ -201,7 +202,11 @@ class FailCollector(object):
     for mod_name, log_file in self._failures:
       msg = "** %s" % mod_name
       if log_file:
-        msg += " - %s" % log_file
+        if self._verbose:
+          with open(log_file.strip(), 'r') as f:
+            msg += '\n' + f.read()
+        else:
+          msg += " - %s" % log_file
       print(msg)
 
 
