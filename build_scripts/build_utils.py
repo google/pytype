@@ -202,12 +202,11 @@ class FailCollector(object):
     for mod_name, log_file in self._failures:
       msg = "** %s" % mod_name
       if log_file:
-        if self._verbose:
-          with open(log_file.strip(), 'r') as f:
-            msg += '\n' + f.read()
-        else:
-          msg += " - %s" % log_file
+        msg += " - %s" % log_file
       print(msg)
+      if log_file and self._verbose:
+        with open(log_file.strip(), 'r') as f:
+          print(f.read(), file=sys.stderr)
 
 
 def run_ninja(targets, fail_collector=None, fail_fast=False):

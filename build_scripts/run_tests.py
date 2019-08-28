@@ -26,7 +26,7 @@ def parse_args():
   parser.add_argument("--debug", "-d", action="store_true", default=False,
                       help="Build targets in the debug mode.")
   parser.add_argument("--verbose", "-v", action="store_true", default=False,
-                      help="Print failing test logs to stdout.")
+                      help="Print failing test logs to stderr.")
   args = parser.parse_args()
   for target in args.targets:
     if "." in target:
