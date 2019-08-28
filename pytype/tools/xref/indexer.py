@@ -679,7 +679,7 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
 
   def enter_ClassDef(self, node):
     class_name = node_utils.get_name(node, self._ast)
-    last_line = max(x.lineno for x in [node] + node.bases)
+    last_line = max(node.lineno, node.body[0].lineno - 1)
 
     # Python2
     ops = match_opcodes_multiline(self.traces, node.lineno, last_line, [
@@ -770,10 +770,6 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
       if call is None:
         continue
       for d in call:
-        # TODO(mdemello): Capture call records:
-        # if isinstance(d, abstract.InterpreterFunction):
-        #   for sig, args, ret, _ in d._call_records:
-        #     ...
         for f in qualified_method(d):
           if f not in seen:
             self.add_call(node, name, f, arg_varnames, return_type)
@@ -1200,7 +1196,7 @@ def process_file(options, source_text=None, generate_callgraphs=False,
       errorlog=errorlog,
       options=options,
       generate_unknowns=options.protocols,
-      store_all_calls=False,
+      store_all_calls=True,
       loader=loader)
   with io.wrap_pytype_exceptions(PytypeError, filename=options.input):
     pytd_module, _ = analyze.infer_types(

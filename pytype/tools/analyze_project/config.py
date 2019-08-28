@@ -62,6 +62,8 @@ _PYTYPE_SINGLE_ITEMS = {
     'disable': Item(None, 'pyi-error', ArgInfo('--disable', ','.join), None),
     'report_errors': Item(
         None, 'True', ArgInfo('--no-report-errors', lambda v: not v), None),
+    'precise_return': Item(
+        None, 'False', ArgInfo('--precise-return', None), None),
     'protocols': Item(None, 'False', ArgInfo('--protocols', None), None),
     'strict_import': Item(
         None, 'False', ArgInfo('--strict-import', None), None),

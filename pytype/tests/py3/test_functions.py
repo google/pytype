@@ -116,6 +116,56 @@ class TestClosuresPy3(test_base.TargetPython3FeatureTest):
     self.assertErrorLogIs(errors, [(10, "name-error")])
 
 
+class PreciseReturnTest(test_base.TargetPython3BasicTest):
+  """Tests for --precise-return."""
+
+  def setUp(self):
+    super(PreciseReturnTest, self).setUp()
+    self.options.tweak(precise_return=True)
+
+  def test_interpreter_return(self):
+    ty, errors = self.InferWithErrors("""\
+      def f(x: str) -> str:
+        return x
+      x = f(0)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f(x: str) -> str: ...
+      x: str
+    """)
+    self.assertErrorLogIs(errors, [(3, "wrong-arg-types", r"str.*int")])
+
+  def test_interpreter_unknown_return(self):
+    ty, errors = self.InferWithErrors("""\
+      def f(x: str):
+        return x
+      x = f(0)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      def f(x: str) -> str: ...
+      x: Any
+    """)
+    self.assertErrorLogIs(errors, [(3, "wrong-arg-types", r"str.*int")])
+
+  def test_interpreter_overload(self):
+    ty, errors = self.InferWithErrors("""\
+      from typing import overload
+      @overload
+      def f(x: str) -> str: ...
+      def f(x):
+        return x
+      x = f(0)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import overload
+      @overload
+      def f(x: str) -> str: ...
+      x: str
+    """)
+    self.assertErrorLogIs(errors, [(6, "wrong-arg-types", r"str.*int")])
+
+
 class TestFunctions(test_base.TargetPython3BasicTest):
   """Tests for functions."""
 

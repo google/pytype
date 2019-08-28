@@ -371,9 +371,25 @@ class Args(collections.namedtuple(
     return variables
 
 
+class ReturnValueMixin(object):
+  """Mixin for exceptions that hold a return node and variable."""
+
+  def __init__(self):
+    super(ReturnValueMixin, self).__init__()
+    self.return_node = None
+    self.return_variable = None
+
+  def set_return(self, node, var):
+    self.return_node = node
+    self.return_variable = var
+
+  def get_return(self, state):
+    return state.change_cfg_node(self.return_node), self.return_variable
+
+
 # These names are chosen to match pytype error classes.
 # pylint: disable=g-bad-exception-name
-class FailedFunctionCall(Exception):
+class FailedFunctionCall(Exception, ReturnValueMixin):
   """Exception for failed function calls."""
 
   def __gt__(self, other):
@@ -388,7 +404,7 @@ class NotCallable(FailedFunctionCall):
     self.obj = obj
 
 
-class DictKeyMissing(Exception):
+class DictKeyMissing(Exception, ReturnValueMixin):
   """When retrieving a key that does not exist in a dict."""
 
   def __init__(self, name):
@@ -580,39 +596,41 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
 
     return arg_dict, subst
 
+  def instantiate_return(self, node, subst, sources):
+    return_type = self.pytd_sig.return_type
+    for param in pytd_utils.GetTypeParameters(return_type):
+      if param.full_name in subst:
+        # This value, which was instantiated by the matcher, will end up in the
+        # return value. Since the matcher does not call __init__, we need to do
+        # that now.
+        node = self.vm.call_init(node, subst[param.full_name])
+    try:
+      ret = self.vm.convert.constant_to_var(
+          abstract_utils.AsReturnValue(return_type), subst, node,
+          source_sets=[sources])
+    except self.vm.convert.TypeParameterError:
+      # The return type contains a type parameter without a substitution.
+      subst = subst.copy()
+      visitor = visitors.CollectTypeParameters()
+      return_type.Visit(visitor)
+
+      for t in visitor.params:
+        if t.full_name not in subst:
+          subst[t.full_name] = self.vm.convert.empty.to_variable(node)
+      return node, self.vm.convert.constant_to_var(
+          abstract_utils.AsReturnValue(return_type), subst, node,
+          source_sets=[sources])
+    if not ret.bindings and isinstance(return_type, pytd.TypeParameter):
+      ret.AddBinding(self.vm.convert.empty, [], node)
+    return node, ret
+
   def call_with_args(self, node, func, arg_dict,
                      subst, ret_map, alias_map=None):
     """Call this signature. Used by PyTDFunction."""
-    return_type = self.pytd_sig.return_type
-    t = (return_type, subst)
+    t = (self.pytd_sig.return_type, subst)
     sources = [func] + list(arg_dict.values())
     if t not in ret_map:
-      for param in pytd_utils.GetTypeParameters(return_type):
-        if param.full_name in subst:
-          # This value, which was instantiated by the matcher, will end up in
-          # the return value. Since the matcher does not call __init__, we need
-          # to do that now.
-          node = self.vm.call_init(node, subst[param.full_name])
-      try:
-        ret_map[t] = self.vm.convert.constant_to_var(
-            abstract_utils.AsReturnValue(return_type), subst, node,
-            source_sets=[sources])
-      except self.vm.convert.TypeParameterError:
-        # The return type contains a type parameter without a substitution.
-        subst = subst.copy()
-        visitor = visitors.CollectTypeParameters()
-        return_type.Visit(visitor)
-
-        for t in visitor.params:
-          if t.full_name not in subst:
-            subst[t.full_name] = self.vm.convert.empty.to_variable(node)
-        ret_map[t] = self.vm.convert.constant_to_var(
-            abstract_utils.AsReturnValue(return_type), subst, node,
-            source_sets=[sources])
-      else:
-        if (not ret_map[t].bindings and
-            isinstance(return_type, pytd.TypeParameter)):
-          ret_map[t].AddBinding(self.vm.convert.empty, [], node)
+      node, ret_map[t] = self.instantiate_return(node, subst, sources)
     else:
       # add the new sources
       for data in ret_map[t].data:
@@ -620,8 +638,7 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
     mutations = self._get_mutation(node, arg_dict, subst)
     self.vm.trace_call(node, func, (self,),
                        tuple(arg_dict[p.name] for p in self.pytd_sig.params),
-                       {},
-                       ret_map[t])
+                       {}, ret_map[t])
     return node, ret_map[t], mutations
 
   def _get_mutation(self, node, arg_dict, subst):

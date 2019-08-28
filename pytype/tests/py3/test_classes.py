@@ -194,6 +194,19 @@ class ClassesTest(test_base.TargetPython3BasicTest):
         bar: int
     """)
 
+  def testGenericSuper(self):
+    self.Check("""
+      from typing import Callable, Generic, TypeVar
+      T = TypeVar('T')
+      Func = Callable[[T], str]
+      class Foo(Generic[T]):
+        def __init__(self, func: Func = str) -> None:
+          super(Foo, self).__init__()
+          self._func = func
+        def f(self, value: T) -> str:
+          return self._func(value)
+    """)
+
 
 class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for classes."""

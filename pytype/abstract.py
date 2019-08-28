@@ -2162,6 +2162,25 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):
     return super(CallableClass, self).get_special_attribute(node, name, valself)
 
 
+class LiteralClass(ParameterizedClass):
+  """The class of a typing.Literal."""
+
+  def __init__(self, base_cls, instance, vm):
+    formal_type_parameters = {abstract_utils.T: instance.get_class()}
+    super(LiteralClass, self).__init__(base_cls, formal_type_parameters, vm)
+    self._instance = instance
+
+  def __repr__(self):
+    return "LiteralClass(%s)" % self._instance
+
+  @property
+  def value(self):
+    if isinstance(self._instance, AbstractOrConcreteValue):
+      return self._instance
+    # TODO(b/123775699): Remove this workaround once we support literal enums.
+    return None
+
+
 class PyTDClass(SimpleAbstractValue, mixin.Class):
   """An abstract wrapper for PyTD class objects.
 
@@ -2315,15 +2334,30 @@ class InterpreterClass(SimpleAbstractValue, mixin.Class):
 
   def type_param_check(self):
     """Throw exception for invalid type parameters."""
+
+    def update_sig(method):
+      method.signature.excluded_types.update(
+          [t.name for t in self.template])
+      method.signature.add_scope(self.full_name)
+
     if self.template:
       # For function type parameters check
       for mbr in self.members.values():
-        mbr = abstract_utils.get_atomic_value(
+        m = abstract_utils.get_atomic_value(
             mbr, default=self.vm.convert.unsolvable)
-        if isinstance(mbr, InterpreterFunction):
-          mbr.signature.excluded_types.update(
-              [t.name for t in self.template])
-          mbr.signature.add_scope(self.full_name)
+        if isinstance(m, InterpreterFunction):
+          update_sig(m)
+        elif mbr.data and all(
+            x.__class__.__name__ == "PropertyInstance" for x in mbr.data):
+          # We generate a new variable every time we add a property slot, so we
+          # take the last one (which contains bindings for all defined slots).
+          prop = mbr.data[-1]
+          for slot in (prop.fget, prop.fset, prop.fdel):
+            if slot:
+              for d in slot.data:
+                if isinstance(d, InterpreterFunction):
+                  update_sig(d)
+
       # nested class can not use the same type parameter
       # in current generic class
       inner_cls_types = self.collect_inner_cls_types()

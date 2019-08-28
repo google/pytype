@@ -1,5 +1,8 @@
 # pylint: skip-file
 
+import collections
+
+
 #- @A defines/binding ClassA
 #- @object ref vname("module.object", _, _, "pytd:__builtin__", _)
 #- ClassA.node/kind class
@@ -31,3 +34,13 @@ class Bar(
     B
 ):
   pass
+
+
+#- @Baz defines/binding ClassBaz
+#- ClassBaz.node/kind class
+class Baz(
+    collections.namedtuple(
+        'Foo',
+        ['bar', 'baz',
+         'quux'])
+): pass

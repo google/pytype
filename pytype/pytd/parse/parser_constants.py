@@ -57,3 +57,6 @@ BACKTICK_NAME = re.compile(r'[-]|^~')
 # Marks external NamedTypes so that they do not get prefixed by the current
 # module name.
 EXTERNAL_NAME_PREFIX = '$external$'
+
+# Regex for string literals.
+STRING_RE = re.compile("^([bu]?)(('[^']*')|(\"[^\"]*\"))$")

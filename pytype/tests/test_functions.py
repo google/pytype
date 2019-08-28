@@ -188,6 +188,53 @@ class TestGenerators(test_base.TargetIndependentTest):
       """)
 
 
+class PreciseReturnTest(test_base.TargetIndependentTest):
+  """Tests for --precise-return."""
+
+  def setUp(self):
+    super(PreciseReturnTest, self).setUp()
+    self.options.tweak(precise_return=True)
+
+  def test_pytd_return(self):
+    ty, errors = self.InferWithErrors("x = 'hello'.startswith(0)")
+    self.assertTypesMatchPytd(ty, "x: bool")
+    self.assertErrorLogIs(errors, [(1, "wrong-arg-types", r"str.*int")])
+
+  def test_param_return(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import TypeVar
+        T = TypeVar("T")
+        def f(x: T) -> T: ...
+      """)
+      ty, errors = self.InferWithErrors("""\
+        import foo
+        x = foo.f()
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Any
+        foo: module
+        x: Any
+      """)
+      self.assertErrorLogIs(errors, [(2, "missing-parameter")])
+
+  def test_binop(self):
+    ty, errors = self.InferWithErrors("x = 'oops' + 0")
+    self.assertTypesMatchPytd(ty, "x: str")
+    self.assertErrorLogIs(errors, [(1, "unsupported-operands")])
+
+  def test_inplace_op(self):
+    ty, errors = self.InferWithErrors("""\
+      x = []
+      x += 0
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List
+      x: List[nothing]
+    """)
+    self.assertErrorLogIs(errors, [(2, "unsupported-operands")])
+
+
 class TestFunctions(test_base.TargetIndependentTest):
   """Tests for functions."""
 

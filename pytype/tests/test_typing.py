@@ -210,8 +210,13 @@ class LiteralTest(test_base.TargetIndependentTest):
         v2 = foo.f(False)
         v3 = foo.f(x)
       """, pythonpath=[d.path])
-      # TODO(b/123775699): Check the inference output.
-      del ty
+      self.assertTypesMatchPytd(ty, """
+        foo: module
+        x: bool
+        v1: int
+        v2: float
+        v3: complex
+      """)
 
   def test_pyi_return(self):
     with file_utils.Tempdir() as d:
@@ -252,8 +257,7 @@ class LiteralTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, "foo: module")
 
-  # TODO(b/123775699): Include native strings, bytestrings, unicode strings, and
-  # enums once pytype supports parsing strings and looking up local enums.
+  # TODO(b/123775699): Include enums once we support looking up local enums.
   def test_pyi_value(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
@@ -262,12 +266,18 @@ class LiteralTest(test_base.TargetIndependentTest):
         def f1(x: Literal[True]) -> None: ...
         def f2(x: Literal[2]) -> None: ...
         def f3(x: Literal[None]) -> None: ...
+        def f4(x: Literal['hello']) -> None: ...
+        def f5(x: Literal[b'hello']) -> None: ...
+        def f6(x: Literal[u'hello']) -> None: ...
       """)
       self.Check("""
         import foo
         foo.f1(True)
         foo.f2(2)
         foo.f3(None)
+        foo.f4('hello')
+        foo.f5(b'hello')
+        foo.f6(u'hello')
       """, pythonpath=[d.path])
 
   def test_pyi_multiple(self):
@@ -283,8 +293,12 @@ class LiteralTest(test_base.TargetIndependentTest):
         v2 = foo.f(None)
         v3 = foo.f(True)
       """, pythonpath=[d.path])
-      # TODO(b/123775699): Check the inference output.
-      del ty
+      self.assertTypesMatchPytd(ty, """
+        foo: module
+        v1: int
+        v2: int
+        v3: str
+      """)
 
   def test_reexport(self):
     with file_utils.Tempdir() as d:
@@ -306,14 +320,46 @@ class LiteralTest(test_base.TargetIndependentTest):
       """)
 
   def test_string(self):
-    # TODO(b/123775699): test that we do the right thing for string literals,
-    # not just that we don't barf.
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import IO, Literal
+        def open(f: str, mode: Literal["r", "rt"]) -> str: ...
+        def open(f: str, mode: Literal["rb"]) -> int: ...
+      """)
+      ty = self.Infer("""
+        import foo
+        def f1(f):
+          return foo.open(f, mode="r")
+        def f2(f):
+          return foo.open(f, mode="rt")
+        def f3(f):
+          return foo.open(f, mode="rb")
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo: module
+        def f1(f) -> str: ...
+        def f2(f) -> str: ...
+        def f3(f) -> int: ...
+      """)
+
+  def test_unknown(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Literal
-        def open(f: str, mode: Literal["r"]) -> None: ...
+        def f(x: Literal[True]) -> int: ...
+        def f(x: Literal[False]) -> str: ...
       """)
-      self.Check("import foo", pythonpath=[d.path])
+      ty = self.Infer("""
+        import foo
+        v = foo.f(__any_object__)
+      """, pythonpath=[d.path])
+      # Inference completing without type errors shows that `__any_object__`
+      # matched both Literal[True] and Literal[False].
+      self.assertTypesMatchPytd(ty, """
+        from typing import Any
+        foo: module
+        v: Any
+      """)
 
 
 test_base.main(globals(), __name__ == "__main__")

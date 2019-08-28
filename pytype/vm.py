@@ -11,6 +11,7 @@ program execution.
 # pylint: disable=unused-argument
 
 import collections
+import contextlib
 import logging
 import os
 import re
@@ -142,6 +143,7 @@ class VirtualMachine(object):
     self._analyzing = False  # Are we in self.analyze()?
     self.opcode_traces = []
     self._importing = False  # Are we importing another file?
+    self._trace_opcodes = True  # whether to trace opcodes
 
     # Track the order of creation of local vars, for attrs and dataclasses.
     # { code.co_name: (var_name, value-or-type, original value) }
@@ -179,17 +181,24 @@ class VirtualMachine(object):
     ):
       self.special_builtins[cls.name] = cls.make(self)
 
+  @contextlib.contextmanager
+  def _suppress_opcode_tracing(self):
+    old_trace_opcodes = self._trace_opcodes
+    self._trace_opcodes = False
+    try:
+      yield
+    finally:
+      self._trace_opcodes = old_trace_opcodes
+
   def trace_opcode(self, op, symbol, val):
     """Record trace data for other tools to use."""
+    if not self._trace_opcodes:
+      return
+
     if self.frame and not op:
       op = self.frame.current_opcode
     if not op:
       # If we don't have a current opcode, don't emit a trace.
-      return
-
-    # Hack: LOAD_ATTR for @property methods generates an extra opcode trace for
-    # the implicit function call, which we do not want.
-    if op.name == "LOAD_ATTR" and not isinstance(val, tuple):
       return
 
     def get_data(v):
@@ -392,15 +401,20 @@ class VirtualMachine(object):
   def get_slice(self, state, count):
     """Common implementation of all GETSLICE+<n> opcodes."""
     state, (start, end), obj = self.pop_slice_and_obj(state, count)
-    state, f = self.load_attr_noerror(state, obj, "__getslice__")
+    method = "__getslice__"
+    state, f = self.load_attr_noerror(state, obj, method)
     if f and f.bindings:
       start = start or self.convert.build_int(state.node)
       end = end or self.convert.build_int(state.node)
-      state, ret = self.call_function_with_state(state, f, (start, end))
+      args = (start, end)
     else:
+      method = "__getitem__"
+      state, f = self.load_attr(state, obj, method)
       slice_obj = self.convert.build_slice(state.node, start, end)
-      state, f = self.load_attr(state, obj, "__getitem__")
-      state, ret = self.call_function_with_state(state, f, (slice_obj,))
+      args = (slice_obj,)
+    with self._suppress_opcode_tracing():  # don't trace the magic method call
+      state, ret = self.call_function_with_state(state, f, args)
+    self.trace_opcode(None, method, ret)
     return state.push(ret)
 
   # Importing
@@ -818,11 +832,13 @@ class VirtualMachine(object):
     if not result.bindings and report_errors and self.options.report_errors:
       if error is None:
         self.errorlog.unsupported_operands(self.frames, name, x, y)
+        result = self.new_unsolvable(state.node)
       elif isinstance(error, function.DictKeyMissing):
         self.errorlog.key_error(self.frames, error.name)
+        state, result = error.get_return(state)
       else:
         self.errorlog.invalid_function_call(self.frames, error)
-      result.AddBinding(self.convert.unsolvable, [], state.node)
+        state, result = error.get_return(state)
     return state, result
 
   def call_inplace_operator(self, state, iname, x, y):
@@ -842,13 +858,15 @@ class VirtualMachine(object):
                                                    fallback_to_unsolvable=False)
       except function.FailedFunctionCall as e:
         self.errorlog.invalid_function_call(self.frames, e)
-        ret = self.new_unsolvable(state.node)
+        state, ret = e.get_return(state)
     return state, ret
 
   def binary_operator(self, state, name, report_errors=True):
     state, (x, y) = state.popn(2)
-    state, ret = self.call_binary_operator(
-        state, name, x, y, report_errors=report_errors)
+    with self._suppress_opcode_tracing():  # don't trace the magic method call
+      state, ret = self.call_binary_operator(
+          state, name, x, y, report_errors=report_errors)
+    self.trace_opcode(None, name, ret)
     return state.push(ret)
 
   def inplace_operator(self, state, name):
@@ -947,34 +965,49 @@ class VirtualMachine(object):
         else:
           result.PasteVariable(one_result, new_node, {funcv})
         nodes.append(new_node)
-      finally:
-        self.trace_opcode(
-            None, func.name.rpartition(".")[-1], (funcv, one_result))
     if nodes:
       node = self.join_cfg_nodes(nodes)
       if not result.bindings:
         v = self.convert.no_return if has_noreturn else self.convert.unsolvable
         result.AddBinding(v, [], node)
+    elif (isinstance(error, function.FailedFunctionCall) and
+          all(abstract_utils.func_name_is_class_init(func.name)
+              for func in funcu.data)):
+      # If the function failed with a FailedFunctionCall exception, try calling
+      # it again with fake arguments. This allows for calls to __init__ to
+      # always succeed, ensuring pytype has a full view of the class and its
+      # attributes. If the call still fails, _call_with_fake_args will return
+      # abstract.Unsolvable.
+      node, result = self._call_with_fake_args(node, funcu)
+    elif self.options.precise_return and len(funcu.bindings) == 1:
+      funcv, = funcu.bindings
+      func = funcv.data
+      if isinstance(func, abstract.BoundFunction):
+        func = func.underlying
+      if isinstance(func, abstract.PyTDFunction):
+        node, result = func.signatures[0].instantiate_return(node, {}, [funcv])
+      elif isinstance(func, abstract.InterpreterFunction):
+        sig = func.signature_functions()[0].signature
+        ret = sig.annotations.get("return", self.convert.unsolvable)
+        node, result = self.init_class(node, ret)
+      else:
+        result = self.new_unsolvable(node)
+    else:
+      result = self.new_unsolvable(node)
+    self.trace_opcode(
+        None, funcu.data[0].name.rpartition(".")[-1], (funcu, result))
+    if nodes:
+      return node, result
+    elif fallback_to_unsolvable:
+      if isinstance(error, function.DictKeyMissing):
+        self.errorlog.key_error(self.frames, error.name)
+      else:
+        self.errorlog.invalid_function_call(self.frames, error)
       return node, result
     else:
-      if fallback_to_unsolvable:
-        if isinstance(error, function.DictKeyMissing):
-          self.errorlog.key_error(self.frames, error.name)
-        else:
-          self.errorlog.invalid_function_call(self.frames, error)
-          # If the function failed with a FailedFunctionCall exception, try
-          # calling it again with fake arguments. This allows for calls to
-          # __init__ to always succeed, ensuring pytype has a full view of the
-          # class and its attributes.
-          # If the call still fails, _call_with_fake_args will return
-          # abstract.Unsolvable.
-          if all(abstract_utils.func_name_is_class_init(func.name)
-                 for func in funcu.data):
-            return self._call_with_fake_args(node, funcu)
-        return node, self.new_unsolvable(node)
-      else:
-        # We were called by something that does its own error handling.
-        raise error  # pylint: disable=raising-bad-type
+      # We were called by something that does its own error handling.
+      error.set_return(node, result)
+      raise error  # pylint: disable=raising-bad-type
 
   def call_function_from_stack(self, state, num, starargs, starstarargs):
     """Pop arguments for a function and call it."""
@@ -1939,7 +1972,10 @@ class VirtualMachine(object):
     name = self.frame.f_code.co_names[op.arg]
     state, obj = state.pop()
     log.debug("LOAD_ATTR: %r %r", obj, name)
-    state, val = self.load_attr(state, obj, name)
+    with self._suppress_opcode_tracing():
+      # LOAD_ATTR for @property methods generates an extra opcode trace for the
+      # implicit function call, which we do not want.
+      state, val = self.load_attr(state, obj, name)
     # We need to trace both the object and the attribute.
     self.trace_opcode(op, name, (obj, val))
     return state.push(val)

@@ -378,6 +378,33 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
         return foo.x
     """)
 
+  def testPropertyTypeParam(self):
+    # We should allow property signatures of the form f(self) -> X[T] without
+    # needing to annotate 'self' if the class is generic and we use its type
+    # parameter in the property's signature.
+    ty = self.Infer("""
+      from typing import TypeVar, Generic
+      T = TypeVar('T')
+      class A(Generic[T]):
+          def __init__(self, foo: T):
+              self._foo = foo
+          @property
+          def foo(self) -> T:
+              return self._foo
+          @foo.setter
+          def foo(self, foo: T) -> None:
+              self._foo = foo
+    """)
+    # types inferred as Any due to b/123835298
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypeVar, Generic, Any
+      T = TypeVar('T')
+      class A(Generic[T]):
+          _foo: Any
+          foo: Any
+          def __init__(self, foo: T) -> None
+    """)
+
 
 class TypeVarTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for TypeVar in Python 3."""

@@ -129,7 +129,24 @@ class MatchAstVisitorTest(MatchAstTestCase):
     with self.assertRaises(NotImplementedError):
       v.visit(module)
 
-  def test_attr(self):
+  def test_import(self):
+    matches = self._get_traces("import os, sys as tzt", ast.Import)
+    self.assertTracesEqual(matches, [
+        ((1, 7), "IMPORT_NAME", "os", ("module",)),
+        ((1, 18), "STORE_NAME", "tzt", ("module",))])
+
+  def test_import_from(self):
+    matches = self._get_traces(
+        "from os import path as _path, environ", ast.ImportFrom)
+    self.assertTracesEqual(matches, [
+        ((1, 23), "STORE_NAME", "_path", ("module",)),
+        ((1, 30), "STORE_NAME", "environ", ("os._Environ[str]",))])
+
+
+class MatchAttributeTest(MatchAstTestCase):
+  """Tests for traces.MatchAstVisit.match_Attribute."""
+
+  def test_basic(self):
     matches = self._get_traces("""\
       x = 0
       print(x.real)
@@ -137,7 +154,7 @@ class MatchAstVisitorTest(MatchAstTestCase):
     self.assertTracesEqual(matches, [
         ((2, 8), "LOAD_ATTR", "real", ("int", "int"))])
 
-  def test_multi_attr(self):
+  def test_multi(self):
     matches = self._get_traces("""\
       class Foo(object):
         real = True
@@ -151,18 +168,16 @@ class MatchAstVisitorTest(MatchAstTestCase):
         ((4, 5), "LOAD_ATTR", "real", ("Type[Foo]", "bool")),
         ((4, 5), "LOAD_ATTR", "real", ("int", "int"))])
 
-  def test_import(self):
-    matches = self._get_traces("import os, sys as tzt", ast.Import)
+  def test_property(self):
+    matches = self._get_traces("""\
+      class Foo(object):
+        @property
+        def x(self):
+          return 42
+      v = Foo().x
+    """, ast.Attribute)
     self.assertTracesEqual(matches, [
-        ((1, 7), "IMPORT_NAME", "os", ("module",)),
-        ((1, 18), "STORE_NAME", "tzt", ("module",))])
-
-  def test_import_from(self):
-    matches = self._get_traces(
-        "from os import path as _path, environ", ast.ImportFrom)
-    self.assertTracesEqual(matches, [
-        ((1, 23), "STORE_NAME", "_path", ("module",)),
-        ((1, 30), "STORE_NAME", "environ", ("os._Environ[str]",))])
+        ((5, 10), "LOAD_ATTR", "x", ("Foo", "int"))])
 
 
 class MatchNameTest(MatchAstTestCase):
@@ -235,8 +250,8 @@ class MatchCallTest(MatchAstTestCase):
       f(42)
     """, ast.Call)
     self.assertTracesEqual(matches, [
-        ((10, 0), "CALL_FUNCTION", "f", ("Callable[[Any], Any]", "int")),
-        ((10, 0), "CALL_FUNCTION", "f", ("Callable[[Any], Any]", "float"))])
+        ((10, 0), "CALL_FUNCTION", "f",
+         ("Callable[[Any], Any]", "Union[int, float]"))])
 
   def test_bad_call(self):
     matches = self._get_traces("""\
@@ -306,6 +321,40 @@ class MatchConstantTest(MatchAstTestCase):
     matches = self._get_traces("v = ...", ast.Ellipsis)
     self.assertTracesEqual(
         matches, [((1, 4), "LOAD_CONST", Ellipsis, ("ellipsis",))])
+
+
+class MatchSubscriptTest(MatchAstTestCase):
+
+  def test_index(self):
+    matches = self._get_traces("""\
+      v = "hello"
+      print(v[0])
+    """, ast.Subscript)
+    self.assertTracesEqual(
+        matches, [((2, 6), "BINARY_SUBSCR", "__getitem__", ("str",))])
+
+  def _test_simple_slice(self, slice_op, method):
+    matches = self._get_traces("""\
+      v = "hello"
+      print(v[:-1])
+    """, ast.Subscript)
+    self.assertTracesEqual(matches, [((2, 6), slice_op, method, ("str",))])
+
+  @py2
+  def test_simple_slice_2(self):
+    self._test_simple_slice("SLICE_2", "__getslice__")
+
+  @py3
+  def test_simple_slice_3(self):
+    self._test_simple_slice("BINARY_SUBSCR", "__getitem__")
+
+  def test_complex_slice(self):
+    matches = self._get_traces("""\
+      v = "hello"
+      print(v[0:4:2])
+    """, ast.Subscript)
+    self.assertTracesEqual(
+        matches, [((2, 6), "BINARY_SUBSCR", "__getitem__", ("str",))])
 
 
 if __name__ == "__main__":
