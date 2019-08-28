@@ -1,5 +1,7 @@
 """Trace function arguments, return values and calls to other functions."""
 
+import collections
+
 import attr
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -54,6 +56,8 @@ def unknown_to_any(typename):
 def unwrap_type(typ):
   if isinstance(typ, (pytd.ClassType, pytd.NamedType)):
     typ_name = typ.name
+  elif isinstance(typ, pytd.UnionType):
+    typ_name = 'Union[' + ', '.join(unwrap_type(t) for t in typ.type_list) + ']'
   elif isinstance(typ, pytd.AnythingType):
     typ_name = 'typing.Any'
   else:
@@ -62,10 +66,21 @@ def unwrap_type(typ):
 
 
 def get_function_params(pytd_fn):
-  # The pytd def of an InterpreterFunction should have a single signature.
-  assert len(pytd_fn.signatures) == 1
-  sig = pytd_fn.signatures[0]
-  return [(x.name, unwrap_type(x.type)) for x in sig.params]
+  """Collect function param types from pytype."""
+  # We have turned call records on in the indexer, so a function will have a
+  # pytd signature for every tuple of call args. Here we iterate through those
+  # signatures and set every param's type to the union of every non-"unknown"
+  # call type for that param.
+  params = collections.OrderedDict()
+  for sig in pytd_fn.signatures:
+    for p in sig.params:
+      if p.name not in params:
+        params[p.name] = []
+      if '~unknown' not in str(p.type):
+        params[p.name].append(p.type)
+  for k in params:
+    params[k] = pytd_utils.JoinTypes(params[k])
+  return [(k, unwrap_type(v)) for k, v in params.items()]
 
 
 class FunctionMap(object):
@@ -123,7 +138,8 @@ class FunctionMap(object):
     """Add a function parameter definition."""
     fn = self.fmap[ref.ref_scope]
     for param in fn.params:
-      if param.name == defn.name:
+      # Don't override a type inferred from call sites.
+      if param.name == defn.name and param.type in ('nothing', 'typing.Any'):
         param.type = unwrap_type(self.index.get_pytd(ref.data[0]))
         break
 

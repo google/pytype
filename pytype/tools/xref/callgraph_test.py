@@ -123,6 +123,42 @@ class CallgraphTest(test_base.TargetIndependentTest):
     self.assertCallsEqual(f.calls, [])
     self.assertParamsEqual(f.params, [("x", "__builtin__.int")])
 
+  def test_call_records(self):
+    """Use a function's call records to infer param types."""
+    ix = self.index_code("""\
+        class A:
+          def foo(self, x):
+            return x + "1"
+
+        def f(x, y):
+          z = x + y
+          return z
+
+        def g(a):
+          return f(a, 3)
+
+        def h(b):
+          y = b
+          return y
+
+        x = g(10)
+        y = A()
+        p = h(y)
+        q = h("hello")
+        a = y.foo("1")
+    """)
+    fns = ix.function_map
+    self.assertHasFunctions(fns, ["A.foo", "f", "g", "h"])
+    expected = [
+        ("f", [("x", "__builtin__.int"), ("y", "__builtin__.int")]),
+        ("g", [("a", "__builtin__.int")]),
+        ("h", [("b", "Union[A, __builtin__.str]")]),
+        ("A.foo", [("self", "A"), ("x", "__builtin__.str")])
+    ]
+    for fn, params in expected:
+      f = fns["module.%s" % fn]
+      self.assertParamsEqual(f.params, params)
+
 
 # The callgraph code only works in Python 3.5-6.
 if not (3, 5) <= sys.version_info[:2] <= (3, 6):

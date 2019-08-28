@@ -770,10 +770,6 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
       if call is None:
         continue
       for d in call:
-        # TODO(mdemello): Capture call records:
-        # if isinstance(d, abstract.InterpreterFunction):
-        #   for sig, args, ret, _ in d._call_records:
-        #     ...
         for f in qualified_method(d):
           if f not in seen:
             self.add_call(node, name, f, arg_varnames, return_type)
@@ -1200,7 +1196,7 @@ def process_file(options, source_text=None, generate_callgraphs=False,
       errorlog=errorlog,
       options=options,
       generate_unknowns=options.protocols,
-      store_all_calls=False,
+      store_all_calls=True,
       loader=loader)
   with io.wrap_pytype_exceptions(PytypeError, filename=options.input):
     pytd_module, _ = analyze.infer_types(
