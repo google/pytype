@@ -2347,7 +2347,8 @@ class InterpreterClass(SimpleAbstractValue, mixin.Class):
             mbr, default=self.vm.convert.unsolvable)
         if isinstance(m, InterpreterFunction):
           update_sig(m)
-        elif all(x.__class__.__name__ == "PropertyInstance" for x in mbr.data):
+        elif mbr.data and all(
+            x.__class__.__name__ == "PropertyInstance" for x in mbr.data):
           # We generate a new variable every time we add a property slot, so we
           # take the last one (which contains bindings for all defined slots).
           prop = mbr.data[-1]
