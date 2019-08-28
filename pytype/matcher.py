@@ -16,8 +16,6 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd.parse import parser_constants
 
-import six
-
 
 log = logging.getLogger(__name__)
 
@@ -649,7 +647,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     else:
       return None
     # needs to be native str to match `string`
-    left_value = six.ensure_str(pyval)
+    left_value = compat.native_str(pyval)
 
     right_prefix, right_value = (
         parser_constants.STRING_RE.match(string).groups()[:2])
