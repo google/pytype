@@ -278,33 +278,6 @@ class TypeVarTest(test_base.TargetIndependentTest):
         x = ...  # type: List[int]
       """)
 
-  def testPropertyTypeParam4(self):
-    # We should allow property signatures of the form f(self) -> X[T] without
-    # needing to annotate 'self' if the class is generic and we use its type
-    # parameter in the property's signature.
-    ty = self.Infer("""
-      from typing import TypeVar, Generic
-      T = TypeVar('T')
-      class A(Generic[T]):
-          def __init__(self, foo: T):
-              self._foo = foo
-          @property
-          def foo(self) -> T:
-              return self._foo
-          @foo.setter
-          def foo(self, foo: T) -> None:
-              self._foo = foo
-    """)
-    # types inferred as Any due to b/123835298
-    self.assertTypesMatchPytd(ty, """
-      from typing import TypeVar, Generic, Any
-      T = TypeVar('T')
-      class A(Generic[T]):
-          _foo: Any
-          foo: Any
-          def __init__(self, foo: T) -> None
-    """)
-
   def testPropertyTypeParamWithConstraints(self):
     # Test setting self to a constrained type
     with file_utils.Tempdir() as d:
