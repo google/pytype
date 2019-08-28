@@ -53,7 +53,8 @@ def main():
   s2 = STEP(name="Build",
             command=["python", build_utils.build_script("build.py")])
   s3 = STEP(name="Run Tests",
-            command=["python", build_utils.build_script("run_tests.py"), "-f"])
+            command=[
+                "python", build_utils.build_script("run_tests.py"), "-f", "-v"])
   s4 = STEP(name="Type Check",
             command=[os.path.join("out", "bin", "pytype")])
   _run_steps([s1, s2, s3, s4])

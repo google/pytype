@@ -187,8 +187,9 @@ def run_cmake(force_clean=False, log_output=False, debug_build=False):
 class FailCollector(object):
   """A class to collect failures."""
 
-  def __init__(self):
+  def __init__(self, verbose):
     self._failures = []
+    self._verbose = verbose
 
   def add_failure(self, mod_name, log_file):
     self._failures.append((mod_name, log_file))
@@ -203,6 +204,9 @@ class FailCollector(object):
       if log_file:
         msg += " - %s" % log_file
       print(msg)
+      if log_file and self._verbose:
+        with open(log_file.strip(), 'r') as f:
+          print(f.read(), file=sys.stderr)
 
 
 def run_ninja(targets, fail_collector=None, fail_fast=False):

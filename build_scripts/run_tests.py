@@ -25,6 +25,8 @@ def parse_args():
                       help="Fail as soon as one build target fails.")
   parser.add_argument("--debug", "-d", action="store_true", default=False,
                       help="Build targets in the debug mode.")
+  parser.add_argument("--verbose", "-v", action="store_true", default=False,
+                      help="Print failing test logs to stderr.")
   args = parser.parse_args()
   for target in args.targets:
     if "." in target:
@@ -46,7 +48,7 @@ def main():
     targets = ["test_all"]
   if not build_utils.run_cmake(log_output=True, debug_build=opts.debug):
     sys.exit(1)
-  fail_collector = build_utils.FailCollector()
+  fail_collector = build_utils.FailCollector(opts.verbose)
   print("Running tests (build steps will be executed as required) ...\n")
   if not build_utils.run_ninja(targets, fail_collector, opts.fail_fast):
     fail_collector.print_report()
