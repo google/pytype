@@ -679,7 +679,7 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
 
   def enter_ClassDef(self, node):
     class_name = node_utils.get_name(node, self._ast)
-    last_line = max(x.lineno for x in [node] + node.bases)
+    last_line = max(node.lineno, node.body[0].lineno - 1)
 
     # Python2
     ops = match_opcodes_multiline(self.traces, node.lineno, last_line, [
