@@ -1144,10 +1144,15 @@ class Indexer(object):
     for call in self.calls:
       call.return_type = None
 
+    for r, d in self.links:
+      r.data = None
+      d.data = None
+
     # This is all internal data used when building up the final index; if any of
     # it proves to be needed we can look at just stripping out the non-picklable
     # bits, or converting it to a final form in finalize()
     self.ast = None
+    self.pytd_module = None
     self.source = None
     self.loader = None
     self.resolved_modules = None
@@ -1157,6 +1162,8 @@ class Indexer(object):
     self.typemap = None
     self.classmap = None
     self.envs = None
+    self.function_params = None
+    self.calls = None
 
 
 class PytypeError(Exception):
