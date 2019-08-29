@@ -1,6 +1,8 @@
-Version (upcoming)
+Version 2019.08.29
 * Improve the usability of the pytype.io module.
 * Add basic callgraph generation to pytype.tools.xref.
+* Update typeshed pin to commit fab2ee0 from August 16.
+* Add an experimental --precise-return mode.
 
 Version 2019.08.09
 * Partially support typing[_extensions].Literal in pyi files.
