@@ -188,7 +188,7 @@ class Error(object):
     traceback: Optionally, an error traceback.
   """
 
-  def __init__(self, severity, message, filename=None, lineno=0,
+  def __init__(self, severity, message, filename='', lineno=0,
                methodname=None, details=None, traceback=None, keyword=None,
                keyword_context=None, bad_call=None):
     name = _CURRENT_ERROR_NAME.get()
@@ -201,8 +201,7 @@ class Error(object):
     # Optional information about the error.
     self._details = details
     # Optional information about error position.
-    # TODO(dbaum): Do not allow filename (and maybe lineno) of None.
-    self._filename = filename
+    self._filename = filename or ''
     self._lineno = lineno or 0
     self._methodname = methodname
     self._traceback = traceback

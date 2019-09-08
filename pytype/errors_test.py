@@ -38,7 +38,7 @@ class ErrorTest(unittest.TestCase):
     self.assertEqual(errors.SEVERITY_ERROR, e._severity)
     self.assertEqual(_MESSAGE, e._message)
     self.assertEqual(e._name, _TEST_ERROR)
-    self.assertEqual(None, e._filename)
+    self.assertEqual('', e._filename)
     self.assertEqual(0, e._lineno)
     self.assertEqual(None, e._methodname)
     self.assertEqual("here", e.keyword)
@@ -205,6 +205,16 @@ class ErrorLogBaseTest(unittest.TestCase):
     unique_errors = errorlog.unique_sorted_errors()
     self.assertEqual(1, len(unique_errors))
     self.assertIsNone(unique_errors[0]._traceback)
+
+  @errors._error_name(_TEST_ERROR)
+  def test_error_without_stack(self):
+    errorlog = errors.ErrorLog()
+    stack = test_utils.fake_stack(1)
+    errorlog.error(stack, "error_with_stack")
+    errorlog.error([], "error_without_stack")
+    unique_errors = errorlog.unique_sorted_errors()
+    unique_errors = [(error.message, error.filename, error.lineno) for error in unique_errors]
+    self.assertEqual([('error_without_stack', '', 0), ('error_with_stack', 'foo.py', 0)], unique_errors)
 
   @errors._error_name(_TEST_ERROR)
   def test_duplicate_error_shorter_traceback(self):
