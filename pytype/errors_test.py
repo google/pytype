@@ -213,8 +213,13 @@ class ErrorLogBaseTest(unittest.TestCase):
     errorlog.error(stack, "error_with_stack")
     errorlog.error([], "error_without_stack")
     unique_errors = errorlog.unique_sorted_errors()
-    unique_errors = [(error.message, error.filename, error.lineno) for error in unique_errors]
-    self.assertEqual([('error_without_stack', '', 0), ('error_with_stack', 'foo.py', 0)], unique_errors)
+    unique_errors = [(error.message, error.filename, error.lineno)
+                     for error in unique_errors
+                     ]
+    self.assertEqual(
+        [('error_without_stack', '', 0), ('error_with_stack', 'foo.py', 0)],
+        unique_errors,
+    )
 
   @errors._error_name(_TEST_ERROR)
   def test_duplicate_error_shorter_traceback(self):
