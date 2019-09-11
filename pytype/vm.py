@@ -206,7 +206,9 @@ class VirtualMachine(object):
       # Sometimes v is a binding.
       return [data] if data and not isinstance(data, list) else data
 
-    if isinstance(val, tuple):
+    # isinstance(val, tuple) generates false positives for internal classes like
+    # LateAnnotations that are namedtuples.
+    if val.__class__ == tuple:
       data = tuple(get_data(v) for v in val)
     else:
       data = (get_data(val),)

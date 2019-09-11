@@ -29,3 +29,10 @@ z = (x, y)
 #- @z ref VarZ
 z[1] = (1,
         2)
+
+#- @foo defines/binding Foo
+#- Foo.node/kind function
+def foo(x,
+        y,
+        z):
+  pass

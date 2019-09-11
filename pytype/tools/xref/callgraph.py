@@ -91,15 +91,25 @@ class FunctionMap(object):
     self.fmap = self.init_from_index(index)
 
   def pytd_of_fn(self, f):
-    d = f.data[0][0]
-    return self.index.get_pytd_def(d, f.name)
+    if f.data and f.data[0]:
+      d = f.data[0][0]
+      return self.index.get_pytd_def(d, f.name)
+    else:
+      # TODO(mdemello): log this
+      return None
 
   def init_from_index(self, index):
     """Initialize the function map."""
     out = {}
     fn_defs = [(k, v) for k, v in index.defs.items() if v.typ == 'FunctionDef']
     for fn_id, fn in fn_defs:
-      params = get_function_params(self.pytd_of_fn(fn))
+      pytd_fn = self.pytd_of_fn(fn)
+      if isinstance(pytd_fn, pytd.Function):
+        params = get_function_params(pytd_fn)
+      else:
+        # Sometimes pytype cannot infer the type of a function, and falls back
+        # to Any. Don't crash the indexer if this happens.
+        params = []
       params = [Param(name, typ) for name, typ in params]
       ret = index.envs[fn_id].ret
       if fn_id in index.locs:
@@ -152,6 +162,9 @@ class FunctionMap(object):
   def add_call(self, call):
     """Add a function call."""
     scope = call.scope
+    if scope not in self.fmap:
+      # This call was not within a function body.
+      return
     env = self.index.envs[scope]
     args = []
     for name in call.args:
