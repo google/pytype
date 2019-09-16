@@ -5,13 +5,13 @@
 
 from pytype import abstract
 from pytype import abstract_utils
-from pytype import collections_overlay
 from pytype import compat
 from pytype import function
 from pytype import mixin
 from pytype import overlay
 from pytype import overlay_utils
 from pytype import utils
+from pytype.overlays import collections_overlay
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import visitors

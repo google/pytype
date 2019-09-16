@@ -12,8 +12,8 @@ from pytype import function
 from pytype import mixin
 from pytype import output
 from pytype import special_builtins
-from pytype import typing_overlay
 from pytype import utils
+from pytype.overlays import typing_overlay
 from pytype.pyc import loadmarshal
 from pytype.pytd import mro
 from pytype.pytd import pytd

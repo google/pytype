@@ -2,8 +2,8 @@
 
 import textwrap
 
-from pytype import collections_overlay
 from pytype import file_utils
+from pytype.overlays import collections_overlay
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 

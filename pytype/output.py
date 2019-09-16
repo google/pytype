@@ -8,8 +8,8 @@ from pytype import abstract
 from pytype import abstract_utils
 from pytype import mixin
 from pytype import special_builtins
-from pytype import typing_overlay
 from pytype import utils
+from pytype.overlays import typing_overlay
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors

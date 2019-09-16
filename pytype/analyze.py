@@ -12,8 +12,8 @@ from pytype import function
 from pytype import metrics
 from pytype import output
 from pytype import state as frame_state
-from pytype import typing_overlay
 from pytype import vm
+from pytype.overlays import typing_overlay
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
