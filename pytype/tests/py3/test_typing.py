@@ -344,13 +344,6 @@ class TypingTest(test_base.TargetPython3BasicTest):
         fn.foo # pytype: disable=attribute-error
     """)
 
-  def test_callable_func_name(self):
-    self.Check("""\
-      from typing import Any, Callable
-      def foo(fn: Callable[[Any], Any]) -> str:
-        return fn.func_name
-    """)
-
   def test_items_view(self):
     self.Check("""
       from typing import ItemsView
@@ -608,6 +601,13 @@ class TypingTestPython3Feature(test_base.TargetPython3FeatureTest):
     ] + pep484.PEP484_NAMES
     ty = self.Infer("\n".join(python), deep=False)
     self.assertTypesMatchPytd(ty, "")
+
+  def test_callable_func_name(self):
+    self.Check("""\
+      from typing import Any, Callable
+      def foo(fn: Callable[[Any], Any]) -> str:
+        return fn.__qualname__
+    """)
 
 
 test_base.main(globals(), __name__ == "__main__")
