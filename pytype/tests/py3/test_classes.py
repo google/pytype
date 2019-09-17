@@ -337,5 +337,84 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
           def fooTest(self) -> int: ...
     """)
 
+  def testSetMetaclass(self):
+    ty = self.Infer("""
+      class A(type):
+        def f(self):
+          return 3.14
+      class X(metaclass=A):
+        pass
+      v = X.f()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Type
+      class A(type):
+        def f(self) -> float
+      class X(metaclass=A):
+        pass
+      v = ...  # type: float
+    """)
+
+  def testNoMetaclass(self):
+    # In this case, the metaclass should not actually be set.
+    ty = self.Infer("""
+      class X(metaclass=type):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class X:
+        pass
+    """)
+
+  def testMetaclass(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        T = TypeVar("T")
+        class MyMeta(type):
+          def register(self, cls: type) -> None
+        def mymethod(funcobj: T) -> T
+      """)
+      ty = self.Infer("""
+        import foo
+        class X(metaclass=foo.MyMeta):
+          @foo.mymethod
+          def f(self):
+            return 42
+        X.register(tuple)
+        v = X().f()
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Type
+        foo = ...  # type: module
+        class X(metaclass=foo.MyMeta):
+          def f(self) -> int
+        v = ...  # type: int
+      """)
+
+  @test_base.skip("Setting metaclass to a function doesn't work yet.")
+  def testFunctionAsMetaclass(self):
+    ty = self.Infer("""
+      def MyMeta(name, bases, members):
+        return type(name, bases, members)
+      class X(metaclass=MyMeta):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      def MyMeta(names, bases, members) -> Any
+      class X(metaclass=MyMeta):
+        pass
+    """)
+
+  def testUnknownMetaclass(self):
+    self.Check("""
+      class Foo(metaclass=__any_object__):
+        def foo(self):
+          self.bar()
+        @classmethod
+        def bar(cls):
+          pass
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

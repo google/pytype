@@ -38,4 +38,28 @@ class ReingestTest(test_base.TargetPython3BasicTest):
       """, pythonpath=[d.path])
 
 
+class ReingestTestPy3(test_base.TargetPython3FeatureTest):
+  """Python 3 tests for reloading the pyi we generate."""
+
+  def testInstantiatePyiClass(self):
+    foo = self.Infer("""
+      import abc
+      class Foo(metaclass=abc.ABCMeta):
+        @abc.abstractmethod
+        def foo(self):
+          pass
+      class Bar(Foo):
+        def foo(self):
+          pass
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo))
+      _, errors = self.InferWithErrors("""\
+        import foo
+        foo.Foo()
+        foo.Bar()
+      """, pythonpath=[d.path])
+      self.assertErrorLogIs(errors, [(2, "not-instantiable", r"foo\.Foo.*foo")])
+
+
 test_base.main(globals(), __name__ == "__main__")

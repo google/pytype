@@ -148,5 +148,31 @@ class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):
           self.objects.append(holder.unnamed)
     """)
 
+  @test_base.skip("Needs vm._get_iter() to iterate over individual bindings.")
+  def testMetaclassIter(self):
+    self.Check("""
+      class Meta(type):
+        def __iter__(cls):
+          return iter([])
+      class Foo(metaclass=Meta):
+        def __iter__(self):
+          return iter([])
+      for _ in Foo:
+        pass
+    """)
+
+  @test_base.skip("Needs better handling of __getitem__ in vm._get_iter().")
+  def testMetaclassGetItem(self):
+    self.Check("""
+      class Meta(type):
+        def __getitem__(cls, x):
+          return 0
+      class Foo(metaclass=Meta):
+        def __getitem__(self, x):
+          return 0
+      for _ in Foo:
+        pass
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

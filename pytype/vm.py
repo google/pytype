@@ -525,7 +525,7 @@ class VirtualMachine(object):
       # information to continue building the class.
       var = self.new_unsolvable(node)
     else:
-      if cls_var is None:
+      if cls_var is None and self.PY2:
         cls_var = class_dict.members.get("__metaclass__")
       if cls_var and all(v.data.full_name == "__builtin__.type"
                          for v in cls_var.bindings):
