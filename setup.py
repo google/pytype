@@ -136,6 +136,7 @@ setup(
     url='https://google.github.io/pytype',
     packages=[
         'pytype',
+        'pytype/overlays',
         'pytype/pyc',
         'pytype/pyi',
         'pytype/pytd',
