@@ -629,6 +629,7 @@ py_test(
     .pytd
 )
 
+add_subdirectory(overlays)
 add_subdirectory(pyc)
 add_subdirectory(pyi)
 add_subdirectory(pytd)
