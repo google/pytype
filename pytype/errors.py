@@ -436,7 +436,7 @@ class ErrorLogBase(object):
     return sum(unique_errors.values(), [])
 
   def _sorted_errors(self):
-    return sorted(self._errors, key=lambda x: (x.filename, x.lineno))
+    return sorted(self._errors, key=lambda x: (x.filename or "", x.lineno))
 
   def print_to_stderr(self):
     self.print_to_file(sys.stderr)

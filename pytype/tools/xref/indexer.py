@@ -693,7 +693,9 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
       # Python3
       ops = match_opcodes_multiline(self.traces, node.lineno, last_line, [
           ("LOAD_BUILD_CLASS", None),
-          ("STORE_NAME", class_name)
+          ("STORE_NAME", class_name),
+          # Classes defined within a function generate a STORE_FAST op.
+          ("STORE_FAST", class_name),
       ])
       if len(ops) == 2:
         _, _, data = ops[1]
@@ -705,7 +707,8 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
     super(IndexVisitor, self).enter_ClassDef(node)
 
   def enter_FunctionDef(self, node):
-    ops = match_opcodes(self.traces, node.lineno, [
+    last_line = max(node.lineno, node.body[0].lineno - 1)
+    ops = match_opcodes_multiline(self.traces, node.lineno, last_line, [
         ("MAKE_FUNCTION", None),  # py2 has no symbol, py3 has node.name
         ("LOAD_CLOSURE", None)  # Nested functions
     ])

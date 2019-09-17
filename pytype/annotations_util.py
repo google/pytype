@@ -4,8 +4,8 @@ from pytype import abstract
 from pytype import abstract_utils
 from pytype import function
 from pytype import mixin
-from pytype import typing_overlay
 from pytype import utils
+from pytype.overlays import typing_overlay
 
 import six
 

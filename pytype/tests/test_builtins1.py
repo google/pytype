@@ -5,7 +5,7 @@ File 1/3. Split into parts to enable better test parallelism.
 
 import textwrap
 
-from pytype import collections_overlay
+from pytype.overlays import collections_overlay
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 

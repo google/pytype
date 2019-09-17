@@ -147,20 +147,15 @@ py_library(
     libvm
   SRCS
     __version__.py
-    abc_overlay.py
     abstract.py
     analyze.py
     annotations_util.py
-    asyncio_types_overlay.py
-    attr_overlay.py
     attribute.py
     blocks.py
-    collections_overlay.py
     compare.py
     convert.py
     convert_structural.py
     directors.py
-    future_overlay.py
     imports_map_loader.py
     matcher.py
     metaclass.py
@@ -168,12 +163,17 @@ py_library(
     overlay.py
     overlay_dict.py
     overlay_utils.py
-    six_overlay.py
+    overlays/abc_overlay.py
+    overlays/asyncio_types_overlay.py
+    overlays/attr_overlay.py
+    overlays/collections_overlay.py
+    overlays/future_overlay.py
+    overlays/six_overlay.py
+    overlays/subprocess_overlay.py
+    overlays/sys_overlay.py
+    overlays/typing_overlay.py
     special_builtins.py
     state.py
-    subprocess_overlay.py
-    sys_overlay.py
-    typing_overlay.py
     vm.py
   DEPS
     .abstract_utils
@@ -629,6 +629,7 @@ py_test(
     .pytd
 )
 
+add_subdirectory(overlays)
 add_subdirectory(pyc)
 add_subdirectory(pyi)
 add_subdirectory(pytd)

@@ -2,20 +2,21 @@
 
 Some libraries need custom overlays to provide useful type information. Pytype
 has some built-in overlays, and additional overlays may be added to the overlays
-dictionary. See overlay.py for the overlay interface and the *_overlay.py files
-for examples.
-Each entry in custom_overlays maps the module name to the overlay object
+dictionary. See overlay.py for the overlay interface and the files under
+overlays/ for examples.
+
+Each entry in overlays maps the module name to the overlay object
 """
 
-from pytype import abc_overlay
-from pytype import asyncio_types_overlay
-from pytype import attr_overlay
-from pytype import collections_overlay
-from pytype import future_overlay
-from pytype import six_overlay
-from pytype import subprocess_overlay
-from pytype import sys_overlay
-from pytype import typing_overlay
+from pytype.overlays import abc_overlay
+from pytype.overlays import asyncio_types_overlay
+from pytype.overlays import attr_overlay
+from pytype.overlays import collections_overlay
+from pytype.overlays import future_overlay
+from pytype.overlays import six_overlay
+from pytype.overlays import subprocess_overlay
+from pytype.overlays import sys_overlay
+from pytype.overlays import typing_overlay
 
 # Collection of module overlays, used by the vm to fetch an overlay
 # instead of the module itself. Memoized in the vm itself.
