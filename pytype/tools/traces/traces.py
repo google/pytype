@@ -151,6 +151,13 @@ class MatchAstVisitor(visitor.BaseVisitor):
     return [(self._get_match_location(node, tr.symbol), tr)
             for tr in self._get_traces(node.lineno, _ATTR_OPS, node.attr, 1)]
 
+  def match_BinOp(self, node):
+    if not isinstance(node.op, self._ast.Mod):
+      raise NotImplementedError("match_Binop:%s" % node.op.__class__.__name__)
+    return [(self._get_match_location(node), tr)
+            for tr in self._get_traces(
+                node.lineno, ["BINARY_MODULO"], "__mod__", 1)]
+
   def match_Bytes(self, node):
     return self._match_constant(node, node.s)
 

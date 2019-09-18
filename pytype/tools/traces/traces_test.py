@@ -371,5 +371,16 @@ class MatchSubscriptTest(MatchAstTestCase):
         matches, [((2, 6), "BINARY_SUBSCR", "__getitem__", ("str",))])
 
 
+class MatchBinOpTest(MatchAstTestCase):
+
+  def test_modulo(self):
+    matches = self._get_traces("""\
+      v = "hello %s"
+      print(v % "world")
+    """, ast.BinOp)
+    self.assertTracesEqual(
+        matches, [((2, 6), "BINARY_MODULO", "__mod__", ("str",))])
+
+
 if __name__ == "__main__":
   unittest.main()
