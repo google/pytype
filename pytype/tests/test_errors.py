@@ -1129,5 +1129,14 @@ class NoSymbolOperationsTest(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [
         (1, "unsupported-operands", r"'in'.*int.*str.*'__contains__' on int")])
 
+  def testRecursion(self):
+    errors = self.CheckWithErrors("""\
+      def f():
+        if __random__:
+          f()
+          name_error
+    """)
+    self.assertErrorLogIs(errors, [(4, "name-error")])
+
 
 test_base.main(globals(), __name__ == "__main__")
