@@ -274,6 +274,20 @@ class MatchCallTest(MatchAstTestCase):
   def test_literal_37(self):
     self._test_literal("CALL_METHOD")
 
+  def test_lookahead(self):
+    matches = self._get_traces("""\
+      def f(x, y, z):
+        return x + y + z
+      f(
+        0,
+        1,
+        2,
+      )
+    """, ast.Call)
+    self.assertTracesEqual(matches, [
+        ((3, 0), "CALL_FUNCTION", "f",
+         ("Callable[[Any, Any, Any], Any]", "int"))])
+
 
 class MatchConstantTest(MatchAstTestCase):
 
