@@ -12,6 +12,7 @@ from pytype.overlays import abc_overlay
 from pytype.overlays import asyncio_types_overlay
 from pytype.overlays import attr_overlay
 from pytype.overlays import collections_overlay
+from pytype.overlays import dataclass_overlay
 from pytype.overlays import future_overlay
 from pytype.overlays import six_overlay
 from pytype.overlays import subprocess_overlay
@@ -25,6 +26,7 @@ overlays = {
     "asyncio": asyncio_types_overlay.AsyncioOverlay,
     "attr": attr_overlay.AttrOverlay,
     "collections": collections_overlay.CollectionsOverlay,
+    "dataclasses": dataclass_overlay.DataclassOverlay,
     "future.utils": future_overlay.FutureUtilsOverlay,
     "six": six_overlay.SixOverlay,
     "subprocess": subprocess_overlay.SubprocessOverlay,

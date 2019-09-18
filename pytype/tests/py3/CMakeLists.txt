@@ -449,3 +449,12 @@ py_test(
   DEPS
     pytype.tests.test_base
 )
+
+py_test(
+  NAME
+    test_dataclasses
+  SRCS
+    test_dataclasses.py
+  DEPS
+    pytype.tests.test_base
+)

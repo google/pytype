@@ -166,7 +166,9 @@ py_library(
     overlays/abc_overlay.py
     overlays/asyncio_types_overlay.py
     overlays/attr_overlay.py
+    overlays/classgen.py
     overlays/collections_overlay.py
+    overlays/dataclass_overlay.py
     overlays/future_overlay.py
     overlays/six_overlay.py
     overlays/subprocess_overlay.py
