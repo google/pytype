@@ -771,6 +771,11 @@ class ErrorLog(ErrorLogBase):
     self.error(stack, message,
                details="(%s does not have metaclass abc.ABCMeta)" % cls_name)
 
+  @_error_name("ignored-metaclass")
+  def ignored_metaclass(self, stack, cls, metaclass):
+    message = "Metaclass %s on class %s ignored in Python 3" % (metaclass, cls)
+    self.error(stack, message)
+
   @_error_name("duplicate-keyword-argument")
   def duplicate_keyword(self, stack, name, bad_call, duplicate):
     message = ("%s got multiple values for keyword argument %r" %

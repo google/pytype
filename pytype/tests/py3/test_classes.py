@@ -416,5 +416,16 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
           pass
     """)
 
+  def testPy2Metaclass(self):
+    errors = self.CheckWithErrors("""\
+      import abc
+      class Foo(object):
+        __metaclass__ = abc.ABCMeta
+        @abc.abstractmethod
+        def f(self) -> int: ...
+    """)
+    self.assertErrorLogIs(
+        errors, [(2, "ignored-metaclass", r"abc\.ABCMeta.*Foo")])
+
 
 test_base.main(globals(), __name__ == "__main__")

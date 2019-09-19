@@ -30,6 +30,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [base-class-error](#base-class-error)
       * [duplicate-keyword-argument](#duplicate-keyword-argument)
       * [ignored-abstractmethod](#ignored-abstractmethod)
+      * [ignored-metaclass](#ignored-metaclass)
       * [ignored-type-comment](#ignored-type-comment)
       * [import-error](#import-error)
       * [invalid-annotation](#invalid-annotation)
@@ -61,7 +62,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2019-09-16T16:35-07:00 -->
+<!-- Added by: rechen, at: 2019-09-19T15:33-07:00 -->
 
 <!--te-->
 
@@ -197,6 +198,43 @@ class A(metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def f(self):
     pass
+```
+
+## ignored-metaclass
+
+A Python 2-only metaclass declaration was found. Example:
+
+<!-- bad -->
+```python
+class A(object):
+  __metaclass__ = Meta
+```
+
+For Python 3-only code, the fix is:
+
+<!-- good -->
+```python
+class A(metaclass=Meta):
+  ...
+```
+
+For Python 2-and-3 code, two equally good fixes are:
+
+<!-- good -->
+```python
+import six
+@six.add_metaclass(Meta)
+class A(object):
+  ...
+```
+
+or:
+
+<!-- good -->
+```python
+import six
+class A(six.with_metaclass(Meta, object)):
+  ...
 ```
 
 ## ignored-type-comment
