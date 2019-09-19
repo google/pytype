@@ -256,6 +256,50 @@ class MatchTest(test_base.TargetPython3BasicTest):
         f(Foo(), Bar())
       """, pythonpath=[d.path])
 
+  def testAnyStrAgainstCallable(self):
+    # Because `T` appears only once in the callable, it does not do any
+    # intra-callable type enforcement, so AnyStr is allowed to match it.
+    self.Check("""
+      from typing import Any, AnyStr, Callable, TypeVar
+      T = TypeVar('T')
+      def f(x: AnyStr) -> AnyStr:
+        return x
+      def g(f: Callable[[T], Any], x: T):
+        pass
+      g(f, 'hello')
+    """)
+
+  def testAnyStrAgainstBoundedCallable(self):
+    # Constraints and bounds should still be enforced when a type parameter
+    # appears only once in a callable.
+    errors = self.CheckWithErrors("""\
+      from typing import Any, AnyStr, Callable, TypeVar
+      IntVar = TypeVar('IntVar', bound=int)
+      def f(x: AnyStr) -> AnyStr:
+        return x
+      def g(f: Callable[[IntVar], Any], x: IntVar):
+        pass
+      g(f, 0)
+    """)
+    self.assertErrorLogIs(errors, [
+        (7, "wrong-arg-types",
+         r"Callable\[\[IntVar\], Any\].*Callable\[\[AnyStr\], AnyStr\]")])
+
+  def testAnyStrAgainstMultipleParamCallable(self):
+    # Callable[[T], T] needs to accept any argument, so AnyStr cannot match it.
+    errors = self.CheckWithErrors("""\
+      from typing import Any, AnyStr, Callable, TypeVar
+      T = TypeVar('T')
+      def f(x: AnyStr) -> AnyStr:
+        return x
+      def g(f: Callable[[T], T]):
+        pass
+      g(f)
+    """)
+    self.assertErrorLogIs(errors, [
+        (7, "wrong-arg-types",
+         r"Callable\[\[T\], T\].*Callable\[\[AnyStr\], AnyStr\]")])
+
 
 class MatchTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for matching types."""
