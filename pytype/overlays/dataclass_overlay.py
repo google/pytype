@@ -41,21 +41,8 @@ class Dataclass(classgen.Decorator):
   def make(cls, name, vm):
     return super(Dataclass, cls).make(name, vm, "dataclasses")
 
-  def call(self, node, func, args):
+  def decorate(self, node, cls):
     """Processes class members."""
-    self.match_args(node, args)
-
-    if args.namedargs:
-      self.update_kwargs(args)
-
-    cls_var = args.posargs[0]
-    # We should only have a single binding here
-    cls, = cls_var.data
-
-    if not isinstance(cls, mixin.Class):
-      # There are other valid types like abstract.Unsolvable that we don't need
-      # to do anything with.
-      return node, cls_var
 
     # Collect classvars to convert them to attrs. @dataclass collects vars with
     # an explicit type annotation, in order of annotation, so that e.g.
@@ -90,5 +77,3 @@ class Dataclass(classgen.Decorator):
     if self.args["init"]:
       init_method = self.make_init(node, attrs)
       cls.members["__init__"] = init_method
-
-    return node, cls_var

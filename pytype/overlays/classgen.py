@@ -3,7 +3,10 @@
 Contains common functionality used by dataclasses, attrs and namedtuples.
 """
 
+import abc
 import logging
+
+import six
 
 from pytype import abstract
 from pytype import abstract_utils
@@ -40,6 +43,7 @@ class Attribute(object):
                 "default": self.default})
 
 
+@six.add_metaclass(abc.ABCMeta)
 class Decorator(abstract.PyTDFunction):
   """Base class for decorators that generate classes from data declarations."""
 
@@ -52,6 +56,10 @@ class Decorator(abstract.PyTDFunction):
         "kw_only": False,
         "auto_attribs": False,
     }
+
+  @abc.abstractmethod
+  def decorate(self, node, cls):
+    """Apply the decorator to cls."""
 
   def update_kwargs(self, args):
     for k, v in args.namedargs.items():
@@ -148,6 +156,43 @@ class Decorator(abstract.PyTDFunction):
           taken_attr_names.add(a.name)
           base_attrs.append(a)
     return base_attrs
+
+  def call(self, node, func, args):
+    """Construct a decorator, and call it on the class."""
+    # call() is invoked twice, once with kwargs to create the decorator object
+    # and once with the decorated class as a posarg.
+
+    self.match_args(node, args)
+
+    if args.namedargs:
+      self.update_kwargs(args)
+
+    # NOTE: @dataclass is py3-only and has explicitly kwonly args in its
+    # constructor.
+    #
+    # @attr.s does not take positional arguments in typical usage, but
+    # technically this works:
+    #   class Foo:
+    #     x = attr.ib()
+    #   Foo = attr.s(Foo, **kwargs)
+    #
+    # Unfortunately, it also works to pass kwargs as posargs; we will at least
+    # reject posargs if the first arg is not a Callable.
+    if not args.posargs:
+      return node, self.to_variable(node)
+
+    cls_var = args.posargs[0]
+    # We should only have a single binding here
+    cls, = cls_var.data
+
+    if not isinstance(cls, mixin.Class):
+      # There are other valid types like abstract.Unsolvable that we don't need
+      # to do anything with.
+      return node, cls_var
+
+    # decorate() modifies the cls object in place
+    self.decorate(node, cls)
+    return node, cls_var
 
 
 def is_method(var):

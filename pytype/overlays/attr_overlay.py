@@ -49,32 +49,8 @@ class Attrs(classgen.Decorator):
     # for __init__.
     return attr.name.lstrip("_")
 
-  def call(self, node, func, args):
+  def decorate(self, node, cls):
     """Processes the attrib members of a class."""
-    self.match_args(node, args)
-
-    if args.namedargs:
-      self.update_kwargs(args)
-
-    # @attr.s does not take positional arguments in typical usage, but
-    # technically this works:
-    #   class Foo:
-    #     x = attr.ib()
-    #   Foo = attr.s(Foo, **kwargs)
-    #
-    # Unfortunately, it also works to pass kwargs as posargs; we will at least
-    # reject posargs if the first arg is not a Callable.
-    if not args.posargs:
-      return node, self.to_variable(node)
-
-    cls_var = args.posargs[0]
-    # We should only have a single binding here
-    cls, = cls_var.data
-
-    if not isinstance(cls, mixin.Class):
-      # There are other valid types like abstract.Unsolvable that we don't need
-      # to do anything with.
-      return node, cls_var
 
     # Collect classvars to convert them to attrs.
     ordered_locals = self.get_class_locals(cls)
@@ -143,8 +119,6 @@ class Attrs(classgen.Decorator):
     if self.args["init"]:
       init_method = self.make_init(node, attrs)
       cls.members["__init__"] = init_method
-
-    return node, cls_var
 
 
 class Attribute(object):

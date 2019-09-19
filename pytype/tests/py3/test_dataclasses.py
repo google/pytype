@@ -80,5 +80,22 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         def x(self) -> int: ...
     """)
 
+  def test_no_init(self):
+    ty = self.Infer("""
+      import dataclasses
+      @dataclasses.dataclass(init=False)
+      class Foo(object):
+        x: bool
+        y: int
+        z: str
+    """)
+    self.assertTypesMatchPytd(ty, """
+      dataclasses: module
+      class Foo(object):
+        x: bool
+        y: int
+        z: str
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
