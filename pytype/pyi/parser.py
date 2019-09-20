@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 """Fast PYI parser."""
 
 import collections
@@ -10,6 +11,7 @@ from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import visitors
 from pytype.pytd.parse import parser_constants  # pylint: disable=g-importing-member
+import six
 
 _DEFAULT_VERSION = (2, 7, 6)
 _DEFAULT_PLATFORM = "linux"
@@ -106,7 +108,7 @@ class ParseError(Exception):
       # Output a pointer below the error column, adjusting for stripped spaces.
       pos = indent + (self._column - 1) - (len(self._text) - len(stripped))
       lines.append("%*s^" % (pos, ""))
-    lines.append("%s: %s" % (type(self).__name__, self.message))
+    lines.append("%s: %s" % (type(self).__name__, str(self)))
     return "\n".join(lines)
 
 
@@ -115,7 +117,7 @@ class OverloadedDecoratorError(ParseError):
 
   def __init__(self, name, typ, *args, **kwargs):
     msg = "Overloaded signatures for %s disagree on %sdecorators" % (
-        name, (typ + " " if typ else ""))
+        name, (six.ensure_str(typ) + " " if typ else ""))
     super(OverloadedDecoratorError, self).__init__(msg, *args, **kwargs)
 
 
@@ -383,7 +385,7 @@ class _Parser(object):
           text = src.splitlines()[line-1]
         except IndexError:
           text = None
-        raise ParseError(e.message, line=line, filename=self._filename,
+        raise ParseError(str(e), line=line, filename=self._filename,
                          column=self._error_location[1], text=text)
       else:
         raise e
@@ -399,7 +401,7 @@ class _Parser(object):
       ast = ast.Visit(visitors.AddNamePrefix())
     else:
       # If there's no unique name, hash the sourcecode.
-      ast = ast.Replace(name=hashlib.md5(src).hexdigest())
+      ast = ast.Replace(name=hashlib.md5(six.ensure_binary(src)).hexdigest())
     ast = ast.Visit(visitors.StripExternalNamePrefix())
 
     # Typeshed files that explicitly import and refer to "builtins" need to have
@@ -507,7 +509,7 @@ class _Parser(object):
       try:
         actual = self._version[key]
       except IndexError as e:
-        raise ParseError(e.message)
+        raise ParseError(str(e))
       if isinstance(key, slice):
         actual = _three_tuple(actual)
         value = _three_tuple(value)
@@ -637,7 +639,7 @@ class _Parser(object):
           if not qualified_name.startswith("typing.") and name != "*":
             # Mark this as an externally imported type, so that AddNamePrefix
             # does not prefix it with the current package name.
-            qualified_name = (parser_constants.EXTERNAL_NAME_PREFIX +
+            qualified_name = (six.ensure_str(parser_constants.EXTERNAL_NAME_PREFIX) +
                               qualified_name)
           t = pytd.NamedType(qualified_name)
         if name == "*":
@@ -815,7 +817,7 @@ class _Parser(object):
       try:
         signature = signature.Visit(mutator)
       except NotImplementedError as e:
-        raise ParseError(e.message)
+        raise ParseError(str(e))
       if not mutator.successful:
         raise ParseError("No parameter named %s" % mutator.name)
 
@@ -857,7 +859,7 @@ class _Parser(object):
     Returns:
       A _NameAndSig object for a __new__ method.
     """
-    type_param = pytd.TypeParameter("_T" + name, bound=pytd.NamedType(name))
+    type_param = pytd.TypeParameter("_T" + six.ensure_str(name), bound=pytd.NamedType(name))
     self._type_params.append(type_param)
     cls_arg = (
         "cls", pytd.GenericType(pytd.NamedType("type"), (type_param,)), None)
@@ -1271,9 +1273,9 @@ def _property_decorators(name):
   """
   return {
       "property": _Property(2, 1),
-      (name + ".getter"): _Property(2, 1),
-      (name + ".setter"): _Property(1, 2),
-      (name + ".deleter"): _Property(1, 1)
+      (six.ensure_str(name) + ".getter"): _Property(2, 1),
+      (six.ensure_str(name) + ".setter"): _Property(1, 2),
+      (six.ensure_str(name) + ".deleter"): _Property(1, 1)
   }
 
 
@@ -1367,7 +1369,7 @@ def _merge_method_signatures(signatures):
       # getter we use its return type, but in the absence of a getter we want to
       # fall back on Any since we cannot say anything about what the setter sets
       # the type of foo to.)
-      if decorator.endswith(".setter") or decorator.endswith(".deleter"):
+      if six.ensure_str(decorator).endswith(".setter") or six.ensure_str(decorator).endswith(".deleter"):
         signatures = [signatures[0].Replace(return_type=pytd.AnythingType())]
     else:
       kind = pytd.METHOD

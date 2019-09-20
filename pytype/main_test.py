@@ -1,4 +1,9 @@
+# Lint as: python2, python3
 """Integration test for pytype."""
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 import csv
 import hashlib
@@ -8,13 +13,15 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import unittest
 
 from pytype import config
 from pytype import main as main_module
 from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd.parse import builtins
-import unittest
+import six
+from six.moves import zip
 
 
 class PytypeTest(unittest.TestCase):
@@ -52,9 +59,9 @@ class PytypeTest(unittest.TestCase):
 
   def _MakeFile(self, contents):
     contents = textwrap.dedent(contents)
-    path = self._TmpPath(hashlib.md5(contents).hexdigest() + ".py")
+    path = self._TmpPath(hashlib.md5(contents.encode('utf-8')).hexdigest() + ".py")
     with open(path, "w") as f:
-      print >>f, contents
+      print(contents, file=f)
     return path
 
   def _RunPytype(self, pytype_args_dict):
@@ -121,7 +128,7 @@ class PytypeTest(unittest.TestCase):
         self.assertEqual(expected_error, error[2],
                          "Expected %r, got %r" % (expected_error, error[2]))
     except:
-      print >>sys.stderr, "\n".join(" | ".join(error) for error in errors)
+      print("\n".join(" | ".join(error) for error in errors), file=sys.stderr)
       raise
 
   def _SetUpChecking(self, filename):
@@ -148,8 +155,8 @@ class PytypeTest(unittest.TestCase):
     if filename:
       with open(self._DataPath(filename), "r") as f:
         expected_pyi = f.read()
-    message = ("\n==Expected pyi==\n" + expected_pyi +
-               "\n==Actual pyi==\n" + self.stdout)
+    message = ("\n==Expected pyi==\n" + six.ensure_str(expected_pyi) +
+               "\n==Actual pyi==\n" + self.stdout.decode('utf-8'))
     self.assertTrue(self._ParseString(self.stdout).ASTeq(
         self._ParseString(expected_pyi)), message)
 
