@@ -274,6 +274,20 @@ class MatchCallTest(MatchAstTestCase):
   def test_literal_37(self):
     self._test_literal("CALL_METHOD")
 
+  def test_lookahead(self):
+    matches = self._get_traces("""\
+      def f(x, y, z):
+        return x + y + z
+      f(
+        0,
+        1,
+        2,
+      )
+    """, ast.Call)
+    self.assertTracesEqual(matches, [
+        ((3, 0), "CALL_FUNCTION", "f",
+         ("Callable[[Any, Any, Any], Any]", "int"))])
+
 
 class MatchConstantTest(MatchAstTestCase):
 
@@ -355,6 +369,17 @@ class MatchSubscriptTest(MatchAstTestCase):
     """, ast.Subscript)
     self.assertTracesEqual(
         matches, [((2, 6), "BINARY_SUBSCR", "__getitem__", ("str",))])
+
+
+class MatchBinOpTest(MatchAstTestCase):
+
+  def test_modulo(self):
+    matches = self._get_traces("""\
+      v = "hello %s"
+      print(v % "world")
+    """, ast.BinOp)
+    self.assertTracesEqual(
+        matches, [((2, 6), "BINARY_MODULO", "__mod__", ("str",))])
 
 
 if __name__ == "__main__":

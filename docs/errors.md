@@ -61,7 +61,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2019-06-28T11:29-07:00 -->
+<!-- Added by: rechen, at: 2019-09-16T16:35-07:00 -->
 
 <!--te-->
 
@@ -193,8 +193,7 @@ Add the `abc.ABCMeta` metaclass to fix this issue:
 <!-- good -->
 ```python
 import abc
-class A(object):
-  __metaclass__ = abc.ABCMeta
+class A(metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def f(self):
     pass
@@ -463,8 +462,7 @@ The class cannot be instantiated because it has abstract methods. Example:
 <!-- bad -->
 ```python
 import abc
-class A(object):
-  __metaclass__ = abc.ABCMeta
+class A(metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def f(self):
     pass

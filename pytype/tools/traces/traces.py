@@ -151,6 +151,13 @@ class MatchAstVisitor(visitor.BaseVisitor):
     return [(self._get_match_location(node, tr.symbol), tr)
             for tr in self._get_traces(node.lineno, _ATTR_OPS, node.attr, 1)]
 
+  def match_BinOp(self, node):
+    if not isinstance(node.op, self._ast.Mod):
+      raise NotImplementedError("match_Binop:%s" % node.op.__class__.__name__)
+    return [(self._get_match_location(node), tr)
+            for tr in self._get_traces(
+                node.lineno, ["BINARY_MODULO"], "__mod__", 1)]
+
   def match_Bytes(self, node):
     return self._match_constant(node, node.s)
 
@@ -158,8 +165,14 @@ class MatchAstVisitor(visitor.BaseVisitor):
     # When calling a method of a class, the node name is <value>.<method>, but
     # only the method name is traced.
     name = self._get_node_name(node).rpartition(".")[-1]
-    return [(self._get_match_location(node), tr)
-            for tr in self._get_traces(node.lineno, _CALL_OPS, name, 1)]
+    # The node's lineno is the first line of the call, but the opcode's lineno
+    # is the last line, so we look ahead to try to find the last line.
+    for lineno in range(node.lineno, node.lineno + 5):
+      matches = [(self._get_match_location(node), tr)
+                 for tr in self._get_traces(lineno, _CALL_OPS, name, 1)]
+      if matches:
+        return matches
+    return []
 
   def match_Ellipsis(self, node):
     return self._match_constant(node, Ellipsis)

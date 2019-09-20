@@ -127,19 +127,9 @@ class CallTracer(vm.VirtualMachine):
     self.push_frame(frame)
     log.info("Analyzing %r", [v.name for v in var.data])
     state = frame_state.FrameState.init(node, self)
-    try:
-      state, ret = self.call_function_with_state(
-          state, var, args, kwargs, starargs, starstarargs)
-    except vm.VirtualMachineRecursionError:
-      # A legitimate exception, which will be handled in run_instruction. (See,
-      # e.g., CheckerTest.testRecursion.) Note that we don't want to pop the
-      # frame in the case of a crash (any exception besides the ones we catch
-      # here), since the crash might have left us in a bad state that will
-      # cause pop_frame to raise an error, masking the actual problem.
-      self.pop_frame(frame)
-      raise
-    else:
-      self.pop_frame(frame)
+    state, ret = self.call_function_with_state(
+        state, var, args, kwargs, starargs, starstarargs)
+    self.pop_frame(frame)
     return state.node, ret
 
   def maybe_analyze_method(self, node, val):
@@ -303,18 +293,7 @@ class CallTracer(vm.VirtualMachine):
     if method:
       bound_method = self.bind_method(
           node, method_name, method, binding.AssignToNewVariable())
-      try:
-        node = self.analyze_method_var(node, method_name, bound_method)
-      except vm.VirtualMachineRecursionError:
-        # We've encountered recursion during a call to __init__, which means
-        # we have another incompletely initialized instance of the same class
-        # (or a subclass) at the same node. (See, e.g.,
-        # testRecursiveConstructor and testRecursiveConstructorSubclass in
-        # test_classes.ClassesTest.) If we allow the
-        # VirtualMachineRecursionError to be raised, initialization of that
-        # first instance will be aborted. Instead, mark this second instance
-        # as incomplete.
-        self._mark_maybe_missing_members([binding.data])
+      node = self.analyze_method_var(node, method_name, bound_method)
     return node
 
   def call_init(self, node, instance):

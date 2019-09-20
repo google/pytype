@@ -1,5 +1,6 @@
 """Tests for classes."""
 
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -58,6 +59,94 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
       class B(A):
           x = ...  # type: int
           def fooTest(self) -> int: ...
+    """)
+
+  def testSetMetaclass(self):
+    ty = self.Infer("""
+      class A(type):
+        def f(self):
+          return 3.14
+      class X(object):
+        __metaclass__ = A
+      v = X.f()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Type
+      class A(type):
+        def f(self) -> float
+      class X(object, metaclass=A):
+        __metaclass__ = ...  # type: Type[A]
+      v = ...  # type: float
+    """)
+
+  def testNoMetaclass(self):
+    # In both of these cases, the metaclass should not actually be set.
+    ty = self.Infer("""
+      class A(type): pass
+      X1 = type("X1", (), {"__metaclass__": A})
+      class X2(object):
+        __metaclass__ = type
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Type
+      class A(type): ...
+      class X1(object):
+        __metaclass__ = ...  # type: Type[A]
+      class X2(object):
+        __metaclass__ = ...  # type: Type[type]
+    """)
+
+  def testMetaclass(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        T = TypeVar("T")
+        class MyMeta(type):
+          def register(self, cls: type) -> None
+        def mymethod(funcobj: T) -> T
+      """)
+      ty = self.Infer("""
+        import foo
+        class X(object):
+          __metaclass__ = foo.MyMeta
+          @foo.mymethod
+          def f(self):
+            return 42
+        X.register(tuple)
+        v = X().f()
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Type
+        foo = ...  # type: module
+        class X(object, metaclass=foo.MyMeta):
+          __metaclass__ = ...  # type: Type[foo.MyMeta]
+          def f(self) -> int
+        v = ...  # type: int
+      """)
+
+  @test_base.skip("Setting __metaclass__ to a function doesn't work yet.")
+  def testFunctionAsMetaclass(self):
+    ty = self.Infer("""
+      def MyMeta(name, bases, members):
+        return type(name, bases, members)
+      class X(object):
+        __metaclass__ = MyMeta
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      def MyMeta(names, bases, members) -> Any
+      class X(object, metaclass=MyMeta):
+        def __metaclass__(names, bases, members) -> Any
+    """)
+
+  def testUnknownMetaclass(self):
+    self.Check("""
+      class Foo(object):
+        __metaclass__ = __any_object__
+        def foo(self):
+          self.bar()
+        @classmethod
+        def bar(cls):
+          pass
     """)
 
 

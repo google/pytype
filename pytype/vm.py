@@ -64,10 +64,6 @@ Block = collections.namedtuple("Block", ["type", "op", "handler", "level"])
 _opcode_counter = metrics.MapCounter("vm_opcode")
 
 
-class VirtualMachineRecursionError(Exception):
-  pass
-
-
 class VirtualMachineError(Exception):
   """For raising errors in the operation of the VM."""
 
@@ -103,6 +99,10 @@ class _FindIgnoredTypeComments(object):
 
 class VirtualMachine(object):
   """A bytecode VM that generates a cfg as it executes."""
+
+  # This class is defined inside VirtualMachine so abstract.py can use it.
+  class VirtualMachineRecursionError(Exception):
+    pass
 
   def __init__(self,
                errorlog,
@@ -239,22 +239,19 @@ class VirtualMachine(object):
       this function (e.g. through a 'raise'), or None otherwise. "state" is the
       FrameState right after this instruction that should roll over to the
       subsequent instruction.
+    Raises:
+      VirtualMachineError: if a fatal error occurs.
     """
     _opcode_counter.inc(op.name)
     self.frame.current_opcode = op
     self._importing = "IMPORT" in op.__class__.__name__
     if log.isEnabledFor(logging.INFO):
       self.log_opcode(op, state)
-    try:
-      # dispatch
-      bytecode_fn = getattr(self, "byte_%s" % op.name, None)
-      if bytecode_fn is None:
-        raise VirtualMachineError("Unknown opcode: %s" % op.name)
-      state = bytecode_fn(state, op)
-    except VirtualMachineRecursionError:
-      # This is not an error - it just means that the block we're analyzing
-      # goes into a recursion, and we're already two levels deep.
-      state = state.set_why("recursion")
+    # dispatch
+    bytecode_fn = getattr(self, "byte_%s" % op.name, None)
+    if bytecode_fn is None:
+      raise VirtualMachineError("Unknown opcode: %s" % op.name)
+    state = bytecode_fn(state, op)
     if state.why in ("reraise", "NoReturn"):
       state = state.set_why("exception")
     self.frame.current_opcode = None
@@ -295,7 +292,7 @@ class VirtualMachine(object):
           break
       if state.why:
         # return, raise, or yield. Leave the current frame.
-        can_return |= state.why in ("recursion", "return", "yield")
+        can_return |= state.why in ("return", "yield")
         return_nodes.append(state.node)
       elif op.carry_on_to_next():
         # We're starting a new block, so start a new CFG node. We don't want
@@ -525,7 +522,7 @@ class VirtualMachine(object):
       # information to continue building the class.
       var = self.new_unsolvable(node)
     else:
-      if cls_var is None:
+      if cls_var is None and self.PY2:
         cls_var = class_dict.members.get("__metaclass__")
       if cls_var and all(v.data.full_name == "__builtin__.type"
                          for v in cls_var.bindings):
@@ -599,7 +596,7 @@ class VirtualMachine(object):
     """Create a new frame object, using the given args, globals and locals."""
     if any(code is f.f_code for f in self.frames):
       log.info("Detected recursion in %s", code.co_name or code.co_filename)
-      raise VirtualMachineRecursionError()
+      raise self.VirtualMachineRecursionError()
 
     log.info("make_frame: callargs=%s, f_globals=[%s@%x], f_locals=[%s@%x]",
              self.repper(callargs),

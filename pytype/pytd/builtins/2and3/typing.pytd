@@ -37,7 +37,10 @@ def _typevar_new(name: Text, *constraints: Union[type, Text], bound: Union[type,
 
 
 class Callable(Generic[_ARGS, _RET], Protocol):
-  func_name = ...  # type: str
+  if sys.version_info < (3, 0):
+    func_name = ...  # type: str
+  else:
+    __qualname__ = ...  # type: str
   @abstractmethod
   def __call__(self, ...) -> _RET
 

@@ -2949,17 +2949,19 @@ class InterpreterFunction(SignedFunction):
         return f.signature, substs, callargs
     raise error  # pylint: disable=raising-bad-type
 
+  def _set_callself_maybe_missing_members(self):
+    if self.vm.callself_stack:
+      for b in self.vm.callself_stack[-1].bindings:
+        b.data.maybe_missing_members = True
+
   def call(self, node, func, args, new_locals=None, alias_map=None):
     if self.is_overload:
       raise function.NotCallable(self)
     if (self.vm.is_at_maximum_depth() and
         not abstract_utils.func_name_is_class_init(self.name)):
       log.info("Maximum depth reached. Not analyzing %r", self.name)
-      if self.vm.callself_stack:
-        for b in self.vm.callself_stack[-1].bindings:
-          b.data.maybe_missing_members = True
-      return (node,
-              self.vm.new_unsolvable(node))
+      self._set_callself_maybe_missing_members()
+      return node, self.vm.new_unsolvable(node)
     args = args.simplify(node, self.signature, self.vm)
     sig, substs, callargs = self._find_matching_sig(node, args, alias_map)
     if sig is not self.signature:
@@ -2979,10 +2981,21 @@ class InterpreterFunction(SignedFunction):
           extra_key = (self.get_first_opcode(), name)
           node, callargs[name] = self.vm.init_class(
               node, annotations[name], extra_key=extra_key)
-    # Might throw VirtualMachineRecursionError:
-    frame = self.vm.make_frame(
-        node, self.code, callargs, self.f_globals, self.f_locals, self.closure,
-        new_locals=new_locals, func=func, first_posarg=first_posarg)
+    try:
+      frame = self.vm.make_frame(
+          node, self.code, callargs, self.f_globals, self.f_locals,
+          self.closure, new_locals=new_locals, func=func,
+          first_posarg=first_posarg)
+    except self.vm.VirtualMachineRecursionError:
+      # If we've encountered recursion in a constructor, then we have another
+      # incompletely initialized instance of the same class (or a subclass) at
+      # the same node. (See, e.g., testRecursiveConstructor and
+      # testRecursiveConstructorSubclass in test_classes.ClassesTest.) If we
+      # allow the VirtualMachineRecursionError to be raised, initialization of
+      # that first instance will be aborted. Instead, mark this second instance
+      # as incomplete.
+      self._set_callself_maybe_missing_members()
+      return node, self.vm.new_unsolvable(node)
     self_var = (self.signature.param_names and
                 callargs.get(self.signature.param_names[0]))
     caller_is_abstract = abstract_utils.check_classes(
