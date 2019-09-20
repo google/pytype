@@ -979,6 +979,27 @@ class ErrorLog(ErrorLogBase):
              if node.HasCombination([b])]
     self.error(stack, self._join_printed_types(types))
 
+  @_error_name("annotation-type-mismatch")
+  def annotation_type_mismatch(self, stack, annot, binding, name):
+    """Invalid combination of annotation and assignment."""
+    if annot is None:
+      return
+    annot_string = self._print_as_expected_type(annot)
+    actual_string = self._print_as_actual_type(binding.data)
+    if len(binding.variable.bindings) > 1:
+      # Joining the printed types rather than merging them before printing
+      # ensures that we print all of the options when 'Any' is among them.
+      details = "In assignment of type: %s" % self._join_printed_types(
+          self._print_as_actual_type(v) for v in binding.variable.data)
+    else:
+      details = None
+    suffix = "" if name is None else " for " + name
+    err_msg = "\n".join([
+        "Type annotation%s does not match type of assignment" % suffix,
+        "Annotation: %s" % annot_string,
+        "Assignment: %s" % actual_string])
+    self.error(stack, err_msg, details=details)
+
 
 def get_error_names_set():
   return _ERROR_NAMES

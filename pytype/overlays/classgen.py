@@ -195,6 +195,26 @@ class Decorator(abstract.PyTDFunction):
     return node, cls_var
 
 
+class FieldConstructor(abstract.PyTDFunction):
+  """Implements constructors for fields."""
+
+  def get_kwarg(self, args, name, default):
+    if name not in args.namedargs:
+      return default
+    try:
+      return abstract_utils.get_atomic_python_constant(args.namedargs[name])
+    except abstract_utils.ConversionError:
+      self.vm.errorlog.not_supported_yet(
+          self.vm.frames, "Non-constant argument %r" % name)
+
+  def get_type_from_default(self, node, default_var):
+    if default_var and default_var.data == [self.vm.convert.none]:
+      # A default of None doesn't give us any information about the actual type.
+      return self.vm.program.NewVariable([self.vm.convert.unsolvable],
+                                         [default_var.bindings[0]], node)
+    return default_var
+
+
 def is_method(var):
   if var is None or is_late_annotation(var):
     return False

@@ -21,6 +21,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
 
 <!--ts-->
    * [Error classes](#error-classes)
+      * [annotation-type-mismatch](#annotation-type-mismatch)
       * [attribute-error](#attribute-error)
       * [bad-concrete-type](#bad-concrete-type)
       * [bad-function-defaults](#bad-function-defaults)
@@ -62,9 +63,21 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2019-09-19T15:33-07:00 -->
+<!-- Added by: mdemello, at: 2019-09-19T16:10-07:00 -->
 
 <!--te-->
+
+## annotation-type-mismatch
+
+A variable had a type annotation and an assignment with incompatible types.
+
+Example:
+<!-- bad -->
+```python
+x : int = 'hello world'
+```
+
+NOTE: This is currently only checked for fields within a @dataclass definition.
 
 ## attribute-error
 

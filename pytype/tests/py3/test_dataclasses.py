@@ -97,5 +97,67 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         z: str
     """)
 
+  def test_field(self):
+    ty = self.Infer("""
+      from typing import List
+      import dataclasses
+      @dataclasses.dataclass()
+      class Foo(object):
+        x: bool = dataclasses.field(default=True)
+        y: List[int] = dataclasses.field(default_factory=list)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List
+      dataclasses: module
+      class Foo(object):
+        x: bool
+        y: List[int]
+        def __init__(self, x: bool = ..., y: List[int] = ...) -> None: ...
+    """)
+
+  def test_type_mismatch(self):
+    err = self.CheckWithErrors("""
+      import dataclasses
+      @dataclasses.dataclass()
+      class Foo(object):
+        x: bool = 10
+    """)
+    self.assertErrorLogIs(err, [(4, "annotation-type-mismatch")])
+
+  def test_field_type_mismatch(self):
+    err = self.CheckWithErrors("""
+      import dataclasses
+      @dataclasses.dataclass()
+      class Foo(object):
+        x: bool = dataclasses.field(default=10)
+    """)
+    self.assertErrorLogIs(err, [(4, "annotation-type-mismatch")])
+
+  def test_factory_type_mismatch(self):
+    err = self.CheckWithErrors("""
+      import dataclasses
+      @dataclasses.dataclass()
+      class Foo(object):
+        x: bool = dataclasses.field(default_factory=set)
+    """)
+    self.assertErrorLogIs(err, [(4, "annotation-type-mismatch")])
+
+  def test_field_no_init(self):
+    ty = self.Infer("""
+      import dataclasses
+      @dataclasses.dataclass()
+      class Foo(object):
+        x: bool = dataclasses.field(default=True)
+        y: int = dataclasses.field(init=False)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List
+      dataclasses: module
+      class Foo(object):
+        x: bool
+        y: int
+        def __init__(self, x: bool = ...) -> None: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

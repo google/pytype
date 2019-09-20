@@ -11,7 +11,7 @@
       * [Pytype's pyi stub files](#pytypes-pyi-stub-files)
       * [Compatibility](#compatibility)
 
-<!-- Added by: rechen, at: 2019-06-18T19:56-07:00 -->
+<!-- Added by: mdemello, at: 2019-09-19T16:10-07:00 -->
 
 <!--te-->
 

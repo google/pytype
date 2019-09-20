@@ -3,12 +3,9 @@
 import logging
 
 from pytype import abstract
-from pytype import abstract_utils
 from pytype import function
-from pytype import mixin
 from pytype import overlay
 from pytype import overlay_utils
-from pytype import special_builtins
 from pytype.overlays import classgen
 
 log = logging.getLogger(__name__)
@@ -40,9 +37,6 @@ class Attrs(classgen.Decorator):
   @classmethod
   def make(cls, name, vm):
     return super(Attrs, cls).make(name, vm, "attr")
-
-  def __init__(self, *args, **kwargs):
-    super(Attrs, self).__init__(*args, **kwargs)
 
   def init_name(self, attr):
     # attrs removes leading underscores from attrib names when generating kwargs
@@ -96,9 +90,6 @@ class Attrs(classgen.Decorator):
                 default=orig.data[0].default)
         own_attrs.append(attr)
       elif self.args["auto_attribs"]:
-        # NOTE: This code should be much of what we need to implement
-        # dataclasses too.
-        #
         # TODO(b/72678203): typing.ClassVar is the only way to filter a variable
         # out from auto_attribs, but we don't even support importing it.
         attr = Attribute(name=name, typ=value, init=True, default=orig)
@@ -121,20 +112,6 @@ class Attrs(classgen.Decorator):
       cls.members["__init__"] = init_method
 
 
-class Attribute(object):
-  """Represents an 'attr' module attribute."""
-
-  def __init__(self, name, typ, init, default):
-    self.name = name
-    self.typ = typ
-    self.init = init
-    self.default = default
-
-  def __repr__(self):
-    return str({"name": self.name, "typ": self.typ, "init": self.init,
-                "default": self.default})
-
-
 class AttribInstance(abstract.SimpleAbstractValue):
   """Return value of an attr.ib() call."""
 
@@ -148,7 +125,7 @@ class AttribInstance(abstract.SimpleAbstractValue):
     self.cls = vm.convert.unsolvable
 
 
-class Attrib(abstract.PyTDFunction):
+class Attrib(classgen.FieldConstructor):
   """Implements attr.ib."""
 
   @classmethod
@@ -160,12 +137,12 @@ class Attrib(abstract.PyTDFunction):
     self.match_args(node, args)
     node, default_var = self._get_default_var(node, args)
     type_var = args.namedargs.get("type")
-    init = self._get_kwarg(args, "init", True)
+    init = self.get_kwarg(args, "init", True)
     has_type = type_var is not None
     if type_var:
       typ = self._instantiate_type(node, args, type_var)
     elif default_var:
-      typ = self._get_type_from_default(node, default_var)
+      typ = self.get_type_from_default(node, default_var)
     else:
       typ = self.vm.new_unsolvable(node)
     typ = AttribInstance(self.vm, typ, has_type, init,
@@ -190,15 +167,6 @@ class Attrib(abstract.PyTDFunction):
       default_var = None
     return node, default_var
 
-  def _get_kwarg(self, args, name, default):
-    if name not in args.namedargs:
-      return default
-    try:
-      return abstract_utils.get_atomic_python_constant(args.namedargs[name])
-    except abstract_utils.ConversionError:
-      self.vm.errorlog.not_supported_yet(
-          self.vm.frames, "Non-constant attr.ib argument %r" % name)
-
   def _instantiate_type(self, node, args, type_var):
     cls = type_var.data[0]
     try:
@@ -206,13 +174,6 @@ class Attrib(abstract.PyTDFunction):
                                                       self.vm.frames, node)
     except self.vm.annotations_util.LateAnnotationError:
       return abstract.LateAnnotation(cls, "attr.ib", self.vm.simple_stack())
-
-  def _get_type_from_default(self, node, default_var):
-    if default_var and default_var.data == [self.vm.convert.none]:
-      # A default of None doesn't give us any information about the actual type.
-      return self.vm.program.NewVariable([self.vm.convert.unsolvable],
-                                         [default_var.bindings[0]], node)
-    return default_var
 
 
 def is_attrib(var):
