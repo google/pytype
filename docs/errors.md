@@ -36,7 +36,6 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [import-error](#import-error)
       * [invalid-annotation](#invalid-annotation)
       * [invalid-directive](#invalid-directive)
-      * [invalid-function-definition](#invalid-function-definition)
       * [invalid-function-type-comment](#invalid-function-type-comment)
       * [invalid-namedtuple-arg](#invalid-namedtuple-arg)
       * [invalid-super-call](#invalid-super-call)
@@ -64,7 +63,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: mdemello, at: 2019-09-19T16:24-07:00 -->
+<!-- Added by: mdemello, at: 2019-09-19T16:10-07:00 -->
 
 <!--te-->
 
@@ -333,31 +332,6 @@ a misspelled `name-error`:
 ```python
 x = TypeDefinedAtRuntime  # pytype: disable=nmae-error  # invalid-directive
 ```
-
-## invalid-function-definition
-
-An invalid function was constructed via metaprogramming (typically with a
-decorator such as `@dataclass`). Example:
-
-<!-- bad -->
-```python
-from dataclasses import dataclass
-
-@dataclass
-class A:
-  x : int = 10
-  y : str
-```
-
-which creates
-
-<!-- bad -->
-```python
-def __init__(x: int = 10, y: str):
-  ...
-```
-
-with a non-default argument following a default one.
 
 ## invalid-function-type-comment
 

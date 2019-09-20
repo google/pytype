@@ -1,6 +1,7 @@
 """Support for dataclasses."""
 
 # TODO(mdemello):
+# - Raise a type error if a field with no default follows a field with a default
 # - Handle dataclasses.InitVar
 # - Raise an error if we see a duplicate annotation, even though python allows
 #     it, since there is no good reason to do that.

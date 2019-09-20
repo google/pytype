@@ -1000,11 +1000,6 @@ class ErrorLog(ErrorLogBase):
         "Assignment: %s" % actual_string])
     self.error(stack, err_msg, details=details)
 
-  @_error_name("invalid-function-definition")
-  def invalid_function_definition(self, stack, msg):
-    """Invalid function constructed via metaprogramming."""
-    self.error(stack, msg)
-
 
 def get_error_names_set():
   return _ERROR_NAMES
