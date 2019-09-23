@@ -11,7 +11,6 @@ import logging
 from pytype import abstract
 from pytype import function
 from pytype import overlay
-from pytype import overlay_utils
 from pytype.overlays import classgen
 
 log = logging.getLogger(__name__)
