@@ -51,10 +51,7 @@ def eval(src, ...) -> ?  # Can't say *anything* about the result -- different fr
 def exec(src, ...) -> NoneType
 def execfile(filename: str, ...) -> NoneType
 def filter(function: Optional[Callable[[AnyStr], ?]], iterable: AnyStr) -> AnyStr
-# TODO(b/110955093): Remove redundant AnyStr overloads.
-def filter(function: Optional[Callable[[AnyStr], ?]], iterable: Tuple[AnyStr, ...]) -> Tuple[AnyStr, ...]
 def filter(function: Optional[Callable[[_T], ?]], iterable: Tuple[_T, ...]) -> Tuple[_T, ...]
-def filter(function: Optional[Callable[[AnyStr], ?]], iterable: Iterable[AnyStr]) -> List[AnyStr]
 def filter(function: Optional[Callable[[_T], ?]], iterable: Iterable[_T]) -> List[_T]
 def format(value, ...) -> str
 def format(value: unicode, ...) -> unicode

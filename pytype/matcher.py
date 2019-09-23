@@ -1,4 +1,5 @@
 """Matching logic for abstract values."""
+import collections
 import contextlib
 import logging
 
@@ -431,15 +432,51 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     new_subst = {p.full_name: value.to_variable(node) for p in params}
     return self._merge_substs(subst, [new_subst])
 
+  def _get_param_matcher(self, callable_type):
+    """Helper for _match_signature_against_callable."""
+    # Any type parameter should match an unconstrained, unbounded type parameter
+    # that appears exactly once in a callable, in order for matching to succeed
+    # in cases like:
+    #   def f(x: AnyStr) -> AnyStr: ...
+    #   def g(f: Callable[[T], Any], x: T): ...
+    #   g(f)
+    # Normally, we would treat the `T` in `Callable[[T], Any]` as meaning that
+    # the callable must accept any argument, but here, it means that the
+    # argument must be the same type as `x`.
+    callable_param_count = collections.Counter(
+        self.vm.annotations_util.get_type_parameters(callable_type))
+    if isinstance(callable_type, abstract.CallableClass):
+      # In CallableClass, type parameters in arguments are double-counted
+      # because ARGS contains the union of the individual arguments.
+      callable_param_count.subtract(
+          self.vm.annotations_util.get_type_parameters(
+              callable_type.get_formal_type_parameter(abstract_utils.ARGS)))
+    def match(left, right, subst, node):
+      if (not isinstance(left, abstract.TypeParameter) or
+          not isinstance(right, abstract.TypeParameter) or
+          right.constraints or right.bound or callable_param_count[right] != 1):
+        return None
+      subst = subst.copy()
+      subst[right.full_name] = node.program.NewVariable([], [], node)
+      return subst
+    return match
+
   def _match_signature_against_callable(
       self, sig, other_type, subst, node, view):
     """Match a function.Signature against a parameterized callable."""
+    # a special type param against type param matcher that takes priority over
+    # normal matching
+    param_match = self._get_param_matcher(other_type)
     ret_type = sig.annotations.get("return", self.vm.convert.unsolvable)
-    subst = self._instantiate_and_match(
-        ret_type, other_type.get_formal_type_parameter(abstract_utils.RET),
-        subst, node, view, container=sig)
-    if subst is None:
-      return subst
+    other_ret_type = other_type.get_formal_type_parameter(abstract_utils.RET)
+    new_subst = param_match(ret_type, other_ret_type, subst, node)
+    if new_subst is None:
+      subst = self._instantiate_and_match(
+          ret_type, other_ret_type, subst, node, view, container=sig)
+      if subst is None:
+        return subst
+    else:
+      subst = new_subst
     if not isinstance(other_type, abstract.CallableClass):
       # other_type does not specify argument types, so any arguments are fine.
       return subst
@@ -452,11 +489,15 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
                                   (other_type.formal_type_parameters[i]
                                    for i in range(other_type.num_args))):
       actual_arg = sig.annotations.get(name, self.vm.convert.unsolvable)
-      # Flip actual and expected, since argument types are contravariant.
-      subst = self._instantiate_and_match(
-          expected_arg, actual_arg, subst, node, view, container=other_type)
-      if subst is None:
-        return None
+      new_subst = param_match(actual_arg, expected_arg, subst, node)
+      if new_subst is None:
+        # Flip actual and expected, since argument types are contravariant.
+        subst = self._instantiate_and_match(
+            expected_arg, actual_arg, subst, node, view, container=other_type)
+        if subst is None:
+          return None
+      else:
+        subst = new_subst
     return subst
 
   def _merge_substs(self, subst, new_substs):

@@ -21,6 +21,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
 
 <!--ts-->
    * [Error classes](#error-classes)
+      * [annotation-type-mismatch](#annotation-type-mismatch)
       * [attribute-error](#attribute-error)
       * [bad-concrete-type](#bad-concrete-type)
       * [bad-function-defaults](#bad-function-defaults)
@@ -30,6 +31,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [base-class-error](#base-class-error)
       * [duplicate-keyword-argument](#duplicate-keyword-argument)
       * [ignored-abstractmethod](#ignored-abstractmethod)
+      * [ignored-metaclass](#ignored-metaclass)
       * [ignored-type-comment](#ignored-type-comment)
       * [import-error](#import-error)
       * [invalid-annotation](#invalid-annotation)
@@ -61,9 +63,21 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2019-09-16T16:35-07:00 -->
+<!-- Added by: mdemello, at: 2019-09-19T16:10-07:00 -->
 
 <!--te-->
+
+## annotation-type-mismatch
+
+A variable had a type annotation and an assignment with incompatible types.
+
+Example:
+<!-- bad -->
+```python
+x : int = 'hello world'
+```
+
+NOTE: This is currently only checked for fields within a @dataclass definition.
 
 ## attribute-error
 
@@ -197,6 +211,43 @@ class A(metaclass=abc.ABCMeta):
   @abc.abstractmethod
   def f(self):
     pass
+```
+
+## ignored-metaclass
+
+A Python 2-only metaclass declaration was found. Example:
+
+<!-- bad -->
+```python
+class A(object):
+  __metaclass__ = Meta
+```
+
+For Python 3-only code, the fix is:
+
+<!-- good -->
+```python
+class A(metaclass=Meta):
+  ...
+```
+
+For Python 2-and-3 code, two equally good fixes are:
+
+<!-- good -->
+```python
+import six
+@six.add_metaclass(Meta)
+class A(object):
+  ...
+```
+
+or:
+
+<!-- good -->
+```python
+import six
+class A(six.with_metaclass(Meta, object)):
+  ...
 ```
 
 ## ignored-type-comment
