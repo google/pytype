@@ -201,7 +201,6 @@ class Error(object):
     # Optional information about the error.
     self._details = details
     # Optional information about error position.
-    # TODO(dbaum): Do not allow filename (and maybe lineno) of None.
     self._filename = filename
     self._lineno = lineno or 0
     self._methodname = methodname

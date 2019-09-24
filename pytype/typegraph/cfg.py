@@ -32,6 +32,9 @@ class Program(object):
   Attributes:
     entrypoint: Entrypoint of the program, if it has one. (None otherwise)
     cfg_nodes: CFG nodes in use. Will be used for assigning node IDs.
+    next_variable_id: The next id to assign to a variable.
+    solver: the active Solver instance.
+    default_data: Default value for data.
     variables: Variables in use. Will be used for assigning variable IDs.
   """
 
@@ -60,7 +63,10 @@ class Program(object):
 
   @property
   def variables(self):
-    return {b.variable for node in self.cfg_nodes for b in node.bindings}
+    ret = set()
+    for node in self.cfg_nodes:
+      ret.update(b.variable for b in node.bindings)
+    return ret
 
   def NewVariable(self, bindings=None, source_set=None, where=None):
     """Create a new Variable.
@@ -143,7 +149,6 @@ class CFGNode(object):
     goals = set(bindings)
     seen = set()
     stack = [self]
-    # TODO(kramm): Take blocked nodes into account, like in Bindings()?
     while stack and goals:
       node = stack.pop()
       if node in seen:

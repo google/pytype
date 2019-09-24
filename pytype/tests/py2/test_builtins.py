@@ -105,23 +105,6 @@ class BuiltinTests(test_base.TargetPython27FeatureTest):
       d = ...  # type: Set[int or str]
     """)
 
-  # TODO(sivachandra): Move this to a target independent test after
-  # b/78373730 is fixed.
-  def testSetDefaultError(self):
-    ty, errors = self.InferWithErrors("""\
-      x = {}
-      y = x.setdefault()
-      z = x.setdefault(1, 2, 3, *[])
-    """)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Any, Dict
-      x = ...  # type: Dict[nothing, nothing]
-      y = ...  # type: Any
-      z = ...  # type: Any
-    """)
-    self.assertErrorLogIs(errors, [(2, "wrong-arg-count", "2.*0"),
-                                   (3, "wrong-arg-count", "2.*3")])
-
   def testFilter(self):
     ty = self.Infer("""
       import re
@@ -189,24 +172,6 @@ class BuiltinTests(test_base.TargetPython27FeatureTest):
 
       def f() -> file
       def g() -> int
-    """)
-
-  # TODO(sivachandra): Move this to a target independent test after
-  # b/78373730 is fixed.
-  def testTuple2(self):
-    ty = self.Infer("""
-      def f(x, y):
-        return y
-      def g():
-        args = (4, )
-        return f(3, *args)
-      g()
-    """)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Any, TypeVar
-      _T1 = TypeVar("_T1")
-      def f(x, y: _T1) -> _T1: ...
-      def g() -> int: ...
     """)
 
   def testMapBasic(self):

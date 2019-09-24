@@ -159,7 +159,6 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       import typing
       if typing.TYPE_CHECKING:
         import calendar
-      # TODO(kramm): should use quotes
       def f(c: "calendar.Calendar") -> int:
         return c.getfirstweekday()
     """)

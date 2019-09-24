@@ -94,7 +94,6 @@ def build_imports_map(options_info_path, output=None):
   # added with the path name appended with "/" (os.sep), mapping to the empty
   # file.  See also load_pytd._import_file which also checks for an empty
   # directory and acts as if an empty __init__.py is there.
-  # TODO(pludemann): remove either this code or the code in pytd_load.
   dir_paths = {}
   for short_path, path in sorted(imports_map.items()):
     dir_paths[short_path] = path
