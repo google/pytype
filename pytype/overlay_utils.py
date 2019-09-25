@@ -111,4 +111,12 @@ def make_method(vm, node, name, params=None, kwonly_params=None,
       vm=vm)
   if late_annotations:
     vm.functions_with_late_annotations.append(ret)
+
+  # Check that the constructed function has a valid signature
+  bad_param = ret.signature.check_defaults()
+  if bad_param:
+    msg = "In method %s, non-default argument %s follows default argument" % (
+        name, bad_param)
+    vm.errorlog.invalid_function_definition(vm.frames, msg)
+
   return ret.to_variable(node)

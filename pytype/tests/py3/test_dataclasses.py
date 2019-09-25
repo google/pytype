@@ -159,5 +159,15 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         def __init__(self, x: bool = ...) -> None: ...
     """)
 
+  def test_bad_default_param_order(self):
+    err = self.CheckWithErrors("""
+      import dataclasses
+      @dataclasses.dataclass()
+      class Foo(object):
+        x: int = 10
+        y: str
+    """)
+    self.assertErrorLogIs(err, [(4, "invalid-function-definition")])
+
 
 test_base.main(globals(), __name__ == "__main__")
