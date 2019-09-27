@@ -200,15 +200,6 @@ py_test(
 
 py_test(
   NAME
-    test_methods
-  SRCS
-    test_methods.py
-  DEPS
-    pytype.tests.test_base
-)
-
-py_test(
-  NAME
     test_six_overlay
   SRCS
     test_six_overlay.py

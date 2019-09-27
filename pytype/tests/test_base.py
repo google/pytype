@@ -175,6 +175,10 @@ class BaseTest(unittest.TestCase):
       # object which can be configured by the test runner.
       self.options = config.Options.create()
 
+  def __init__(self, *args, **kwargs):
+    super(BaseTest, self).__init__(*args, **kwargs)
+    self.python_version = None
+
   @property
   def loader(self):
     if not _MatchLoaderConfig(self.options, self._loader):
@@ -485,12 +489,6 @@ class TargetIndependentTest(BaseTest):
   Test methods in subclasses will operate on Python code which does not use any
   feature specific to a Python version, including type annotations.
   """
-
-  # TODO(sivachandra): Move this constructor to BaseTest once test bucketization
-  # is complete.
-  def __init__(self, *args, **kwargs):
-    super(TargetIndependentTest, self).__init__(*args, **kwargs)
-    self.python_version = None
 
 
 class TargetPython27FeatureTest(BaseTest):

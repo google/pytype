@@ -341,5 +341,36 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       input('input: ')
     """)
 
+  def testSetDefaultError(self):
+    ty, errors = self.InferWithErrors("""\
+      x = {}
+      y = x.setdefault()
+      z = x.setdefault(1, 2, 3, *[])
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Dict
+      x = ...  # type: Dict[nothing, nothing]
+      y = ...  # type: Any
+      z = ...  # type: Any
+    """)
+    self.assertErrorLogIs(errors, [(2, "wrong-arg-count", "2.*0"),
+                                   (3, "wrong-arg-count", "2.*3")])
+
+  def testTuple(self):
+    ty = self.Infer("""
+      def f(x, y):
+        return y
+      def g():
+        args = (4, )
+        return f(3, *args)
+      g()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, TypeVar
+      _T1 = TypeVar("_T1")
+      def f(x, y: _T1) -> _T1: ...
+      def g() -> int: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

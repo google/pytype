@@ -18,8 +18,6 @@ def replace_extension(filename, new_extension):
     return name + "." + new_extension
 
 
-# TODO(mdemello): Should this go into pytd_utils instead, since no one else
-# wants a versioned path?
 def get_versioned_path(subdir, python_version):
   major_version = python_version[0]
   assert(major_version == 2 or major_version == 3)
