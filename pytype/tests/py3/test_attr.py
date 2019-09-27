@@ -133,19 +133,19 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
       import attr
       @attr.s(auto_attribs=True)
       class Foo(object):
-        x = 10
-        y: int
-        z: str = 'hello'
-        a: 'Foo'
+        x: int
+        y: 'Foo'
+        z = 10
+        a: str = 'hello'
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
       class Foo(object):
         x: int
-        y: int
-        z: str
-        a: Foo
-        def __init__(self, x: int = ..., y: int, z: str = ..., a: Foo) -> None: ...
+        y: Foo
+        z: int
+        a: str
+        def __init__(self, x: int, y: Foo, z: int = ..., a: str = ...) -> None: ...
     """)
 
   def test_redefined_auto_attrs(self):
@@ -171,7 +171,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
       @attr.s(auto_attribs=True)
       class Foo(object):
         _x = 10
-        y: str
+        y: str = 'hello'
         @property
         def x(self):
           return self._x
@@ -188,8 +188,19 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
         _x: int
         x: Any
         y: str
-        def __init__(self, x: int = ..., y: str) -> None: ...
+        def __init__(self, x: int = ..., y: str = ...) -> None: ...
         def f(self) -> None: ...
     """)
+
+  def test_bad_default_param_order(self):
+    err = self.CheckWithErrors("""
+      import attr
+      @attr.s(auto_attribs=True)
+      class Foo(object):
+        x: int = 10
+        y: str
+    """)
+    self.assertErrorLogIs(err, [(4, "invalid-function-definition")])
+
 
 test_base.main(globals(), __name__ == "__main__")

@@ -246,6 +246,20 @@ class Signature(object):
       yield (self.kwargs_name, args.starstarargs,
              self.annotations.get(self.kwargs_name))
 
+  def check_defaults(self):
+    """Returns the first non-default param following a default."""
+    # TODO(mdemello): We should raise an error here, analogous to
+    # the python-compiler-error we would get if analyzing the signature from a
+    # source file, but this class does not have access to the vm, and the
+    # exception hierarchy in this module derives from FailedFunctionCall.
+    has_default = False
+    for name in self.param_names:
+      if name in self.defaults:
+        has_default = True
+      elif has_default:
+        return name
+    return None
+
   def _yield_arguments(self):
     """Yield all the function arguments."""
     names = list(self.param_names)
