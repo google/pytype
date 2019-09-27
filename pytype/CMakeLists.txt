@@ -19,6 +19,7 @@ filegroup(
     pytd/builtins/2/attr/filters.pytd
     pytd/builtins/2/attr/validators.pytd
     pytd/builtins/2/mypy_extensions.pytd
+    pytd/builtins/2/numpy/__init__.pytd
     pytd/builtins/2/protocols.pytd
     pytd/builtins/2/typing.pytd
     pytd/builtins/2/typing_extensions.pytd
@@ -34,6 +35,7 @@ filegroup(
     pytd/builtins/2and3/attr/filters.pytd
     pytd/builtins/2and3/attr/validators.pytd
     pytd/builtins/2and3/mypy_extensions.pytd
+    pytd/builtins/2and3/numpy/__init__.pytd
     pytd/builtins/2and3/protocols.pytd
     pytd/builtins/2and3/typing.pytd
     pytd/builtins/2and3/typing_extensions.pytd
@@ -51,6 +53,7 @@ filegroup(
     pytd/builtins/3/attr/validators.pytd
     pytd/builtins/3/builtins.pytd
     pytd/builtins/3/mypy_extensions.pytd
+    pytd/builtins/3/numpy/__init__.pytd
     pytd/builtins/3/protocols.pytd
     pytd/builtins/3/typing.pytd
     pytd/builtins/3/typing_extensions.pytd
