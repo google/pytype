@@ -1,6 +1,7 @@
 # Lint as: python2, python3
 """A library for accessing pytype's inferred local types."""
 
+import itertools
 import sys
 
 from pytype import analyze
@@ -154,9 +155,13 @@ class MatchAstVisitor(visitor.BaseVisitor):
   def match_BinOp(self, node):
     if not isinstance(node.op, self._ast.Mod):
       raise NotImplementedError("match_Binop:%s" % node.op.__class__.__name__)
-    return [(self._get_match_location(node), tr)
-            for tr in self._get_traces(
-                node.lineno, ["BINARY_MODULO"], "__mod__", 1)]
+    op = "BINARY_MODULO"
+    symbol = "__mod__"
+    # The node's lineno is the first line of the operation, but the opcode's
+    # lineno is the last line, so we look ahead to try to find the last line.
+    # We do a long lookahead in order to support formatting of long strings.
+    return [(self._get_match_location(node), tr) for tr in self._get_traces(
+        node.lineno, [op], symbol, maxmatch=1, num_lines=10)]
 
   def match_Bytes(self, node):
     return self._match_constant(node, node.s)
@@ -167,12 +172,9 @@ class MatchAstVisitor(visitor.BaseVisitor):
     name = self._get_node_name(node).rpartition(".")[-1]
     # The node's lineno is the first line of the call, but the opcode's lineno
     # is the last line, so we look ahead to try to find the last line.
-    for lineno in range(node.lineno, node.lineno + 5):
-      matches = [(self._get_match_location(node), tr)
-                 for tr in self._get_traces(lineno, _CALL_OPS, name, 1)]
-      if matches:
-        return matches
-    return []
+    return [(self._get_match_location(node), tr)
+            for tr in self._get_traces(
+                node.lineno, _CALL_OPS, name, maxmatch=1, num_lines=5)]
 
   def match_Ellipsis(self, node):
     return self._match_constant(node, Ellipsis)
@@ -214,17 +216,19 @@ class MatchAstVisitor(visitor.BaseVisitor):
     return [(self._get_match_location(node), tr) for tr in self._get_traces(
         node.lineno, _LOAD_SUBSCR_OPS, _LOAD_SUBSCR_METHODS, 1)]
 
-  def _get_traces(self, lineno, ops, symbol, maxmatch=-1):
+  def _get_traces(self, lineno, ops, symbol, maxmatch=-1, num_lines=1):
     """Yields matching traces.
 
     Args:
-      lineno: A line number.
+      lineno: A starting line number.
       ops: A list of opcode names to match on.
       symbol: A symbol or tuple of symbols to match on.
       maxmatch: The maximum number of traces to yield. -1 for no maximum.
+      num_lines: The number of consecutive lines to search.
     """
     symbols = symbol if isinstance(symbol, tuple) else (symbol,)
-    for tr in self.source.traces[lineno]:
+    for tr in itertools.chain.from_iterable(
+        self.source.traces[line] for line in range(lineno, lineno + num_lines)):
       if maxmatch == 0:
         break
       if id(tr) not in self._matched and tr.op in ops and tr.symbol in symbols:
