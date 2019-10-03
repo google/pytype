@@ -462,7 +462,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       if isinstance(base, abstract.ParameterizedClass):
         base = base.base_cls
       if isinstance(base, abstract.PyTDClass):
-        var = base.convert_as_instance_attribute(node, name, obj)
+        var = base.convert_as_instance_attribute(name, obj)
         if var is not None:
           if name in obj.members:
             obj.members[name].PasteVariable(var, node)
