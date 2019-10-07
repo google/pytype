@@ -426,5 +426,26 @@ class TypeVarTestPy3(test_base.TargetPython3FeatureTest):
           (2, "wrong-arg-types", r"Union\[float, int\].*str"),
           (3, "wrong-arg-types", r"Union\[bytes, str\].*int")])
 
+  def testSubprocess(self):
+    ty = self.Infer("""
+      import subprocess
+      from typing import List
+      def run(args: List[str]):
+        result = subprocess.run(
+          args,
+          stdout=subprocess.PIPE,
+          stderr=subprocess.PIPE,
+          universal_newlines=True)
+        if result.returncode:
+          raise subprocess.CalledProcessError(
+              result.returncode, args, result.stdout)
+        return result.stdout
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List
+      subprocess: module
+      def run(args: List[str]) -> str
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

@@ -381,6 +381,16 @@ class MatchBinOpTest(MatchAstTestCase):
     self.assertTracesEqual(
         matches, [((2, 6), "BINARY_MODULO", "__mod__", ("str",))])
 
+  def test_modulo_multiline_string(self):
+    matches = self._get_traces("""\
+      ('%s'
+       '%s' %
+       (__any_object__,
+        __any_object__))
+    """, ast.BinOp)
+    self.assertTracesEqual(
+        matches, [((1, 1), "BINARY_MODULO", "__mod__", ("str",))])
+
 
 if __name__ == "__main__":
   unittest.main()

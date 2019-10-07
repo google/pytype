@@ -2278,7 +2278,7 @@ class PyTDClass(SimpleAbstractValue, mixin.Class):
   def __contains__(self, name):
     return name in self._member_map
 
-  def convert_as_instance_attribute(self, node, name, instance):
+  def convert_as_instance_attribute(self, name, instance):
     """Convert `name` as an instance attribute."""
     try:
       c = self.pytd_cls.Lookup(name)
@@ -2293,8 +2293,9 @@ class PyTDClass(SimpleAbstractValue, mixin.Class):
         subst = datatypes.AliasingDict()
         for itm in self.pytd_cls.template:
           subst[itm.full_name] = self.vm.convert.constant_to_value(
-              itm.type_param, {}, node).instantiate(node, container=instance)
-        return self._convert_member(name, c, subst, node)
+              itm.type_param, {}).instantiate(
+                  self.vm.root_cfg_node, container=instance)
+        return self._convert_member(name, c, subst)
 
   def generate_ast(self):
     """Generate this class's AST, including updated members."""

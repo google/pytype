@@ -269,6 +269,16 @@ class DirectorTest(unittest.TestCase):
     """)
     self._should_report(False, 0, error_name="attribute-error")
 
+  def test_disable_without_space(self):
+    self._create("""
+    # line 2
+    x = 123  # pytype:disable=test-error
+    # line 4
+    """)
+    self._should_report(True, 2)
+    self._should_report(False, 3)
+    self._should_report(True, 4)
+
   def test_invalid_disable(self):
     def check_warning(message_regex, text):
       self._create(text)
@@ -303,6 +313,7 @@ class DirectorTest(unittest.TestCase):
     x = None  # type: int
     y = None  # allow extra comments # type: str
     z = None  # type: int  # and extra comments after, too
+    a = None  # type:int  # without a space
     # type: (int, float) -> str
     # comment with embedded # type: should-be-discarded
     """)
@@ -310,7 +321,8 @@ class DirectorTest(unittest.TestCase):
         2: ("x = None", "int"),
         3: ("y = None", "str"),
         4: ("z = None", "int"),
-        5: ("", "(int, float) -> str"),
+        5: ("a = None", "int"),
+        6: ("", "(int, float) -> str"),
     }, self._director.type_comments)
 
   def test_strings_that_look_like_directives(self):
