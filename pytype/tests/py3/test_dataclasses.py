@@ -169,5 +169,15 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
     self.assertErrorLogIs(err, [(4, "invalid-function-definition")])
 
+  def test_any(self):
+    self.Check("""
+      import dataclasses
+      from typing import Any
+
+      @dataclasses.dataclass
+      class Foo(object):
+        foo: Any = None
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
