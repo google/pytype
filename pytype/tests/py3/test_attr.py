@@ -170,6 +170,12 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
       import attr
       @attr.s(auto_attribs=True)
       class Foo(object):
+        @classmethod
+        def foo(cls):
+          pass
+        @staticmethod
+        def bar(x):
+          pass
         _x = 10
         y: str = 'hello'
         @property
@@ -190,6 +196,10 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
         y: str
         def __init__(self, x: int = ..., y: str = ...) -> None: ...
         def f(self) -> None: ...
+        @staticmethod
+        def bar(x) -> None: ...
+        @classmethod
+        def foo(cls) -> None: ...
     """)
 
   def test_bad_default_param_order(self):
