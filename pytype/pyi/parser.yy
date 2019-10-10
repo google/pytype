@@ -199,6 +199,7 @@ parent_list
 parent
   : type { $$ = $1; }
   | NAME '=' type { $$ = Py_BuildValue("(NN)", $1, $3); }
+  | NAMEDTUPLE { $$ = PyString_FromString("NamedTuple"); }
   ;
 
 maybe_class_funcs

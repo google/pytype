@@ -1098,6 +1098,7 @@ class _Parser(object):
     # Process parent_args, extracting parents and possibly a metaclass.
     parents = []
     metaclass = None
+    namedtuple_index = None
     for i, p in enumerate(parent_args):
       if self._is_parameterized_protocol(p):
         # From PEP 544: "`Protocol[T, S, ...]` is allowed as a shorthand for
@@ -1106,6 +1107,11 @@ class _Parser(object):
         parents.append(p.base_type)
         parents.append(p.Replace(base_type=pytd.NamedType("typing.Generic")))
       elif isinstance(p, pytd.Type):
+        parents.append(p)
+      elif p == "NamedTuple":
+        if namedtuple_index is not None:
+          raise ParseError("cannot inherit from bare NamedTuple more than once")
+        namedtuple_index = i
         parents.append(p)
       else:
         keyword, value = p
@@ -1116,6 +1122,12 @@ class _Parser(object):
         metaclass = value
 
     constants, methods, aliases, slots, classes = _split_definitions(defs)
+
+    if namedtuple_index is not None:
+      namedtuple_parent = self.new_named_tuple(
+          class_name, [(c.name, c.type) for c in constants])
+      parents[namedtuple_index] = namedtuple_parent
+      constants = []
 
     all_names = (list(set(f.name for f in methods)) +
                  [c.name for c in constants] +

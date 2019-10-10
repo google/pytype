@@ -65,7 +65,7 @@ class Dataclass(classgen.Decorator):
 
       # Check that default matches the declared type
       if orig and not classgen.is_late_annotation(value):
-        typ = value.data[0].cls
+        typ = value.data[0].get_class()
         bad = self.vm.matcher.bad_matches(orig, typ, node)
         if bad:
           binding = bad[0][orig]

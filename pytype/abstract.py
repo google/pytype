@@ -558,6 +558,9 @@ class TypeParameter(AtomicAbstractValue):
   def get_class(self):
     return self
 
+  def call(self, node, func, args, alias_map=None):
+    return node, self.instantiate(node)
+
 
 class TypeParameterInstance(AtomicAbstractValue):
   """An instance of a type parameter."""
