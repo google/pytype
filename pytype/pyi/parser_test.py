@@ -749,6 +749,98 @@ class NamedTupleTest(_ParserTestBase):
       X = namedtuple("X", ["y",])
     """, expected)
 
+  def test_typing_namedtuple_class(self):
+    self.check("""
+      from typing import NamedTuple
+      class X(NamedTuple):
+        y: int
+        z: str
+    """, """\
+      from typing import Any, Tuple, Type, TypeVar
+
+      _Tnamedtuple-X-0 = TypeVar('_Tnamedtuple-X-0', bound=`namedtuple-X-0`)
+
+      class `namedtuple-X-0`(Tuple[int, str]):
+          __slots__ = ["y", "z"]
+          y: int
+          z: str
+          _asdict: Any
+          __dict__: Any
+          _fields: Any
+          __getnewargs__: Any
+          __getstate__: Any
+          _make: Any
+          _replace: Any
+          def __new__(cls: Type[`_Tnamedtuple-X-0`], y: int, z: str) -> `_Tnamedtuple-X-0`: ...
+          def __init__(self, *args, **kwargs) -> None: ...
+
+      class X(`namedtuple-X-0`): ...
+    """)
+
+  def test_typing_namedtuple_class_with_method(self):
+    self.check("""
+      from typing import NamedTuple
+      class X(NamedTuple):
+        y: int
+        z: str
+        def foo(self) -> None: ...
+    """, """\
+      from typing import Any, Tuple, Type, TypeVar
+
+      _Tnamedtuple-X-0 = TypeVar('_Tnamedtuple-X-0', bound=`namedtuple-X-0`)
+
+      class `namedtuple-X-0`(Tuple[int, str]):
+          __slots__ = ["y", "z"]
+          y: int
+          z: str
+          _asdict: Any
+          __dict__: Any
+          _fields: Any
+          __getnewargs__: Any
+          __getstate__: Any
+          _make: Any
+          _replace: Any
+          def __new__(cls: Type[`_Tnamedtuple-X-0`], y: int, z: str) -> `_Tnamedtuple-X-0`: ...
+          def __init__(self, *args, **kwargs) -> None: ...
+
+      class X(`namedtuple-X-0`):
+          def foo(self) -> None: ...
+    """)
+
+  def test_typing_namedtuple_class_multi_inheritance(self):
+    self.check("""
+      from typing import NamedTuple
+      class X(dict, NamedTuple):
+        y: int
+        z: str
+    """, """\
+      from typing import Any, Tuple, Type, TypeVar
+
+      _Tnamedtuple-X-0 = TypeVar('_Tnamedtuple-X-0', bound=`namedtuple-X-0`)
+
+      class `namedtuple-X-0`(Tuple[int, str]):
+          __slots__ = ["y", "z"]
+          y: int
+          z: str
+          _asdict: Any
+          __dict__: Any
+          _fields: Any
+          __getnewargs__: Any
+          __getstate__: Any
+          _make: Any
+          _replace: Any
+          def __new__(cls: Type[`_Tnamedtuple-X-0`], y: int, z: str) -> `_Tnamedtuple-X-0`: ...
+          def __init__(self, *args, **kwargs) -> None: ...
+
+      class X(dict, `namedtuple-X-0`): ...
+    """)
+
+  def test_multi_namedtuple_parent(self):
+    self.check_error("""\
+      from typing import NamedTuple
+      class X(NamedTuple, NamedTuple): ...
+    """, 2, "cannot inherit from bare NamedTuple more than once")
+
 
 class FunctionTest(_ParserTestBase):
 
