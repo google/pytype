@@ -28,24 +28,17 @@ class ConfigTest(unittest.TestCase):
     self.assertEqual(opts.input, "test.py")
 
   def test_create(self):
-    logging.root.setLevel(level=logging.CRITICAL)
     opts = config.Options.create(input_filename="foo.py", python_version="3.6",
                                  use_pickled_files=True)
     self.assertEqual(opts.input, "foo.py")
     self.assertEqual(opts.use_pickled_files, True)
     self.assertEqual(opts.python_version, (3, 6))
     self.assertIn("3.6", opts.python_exe)
-    # Pytype changes the default logging level to ERROR.
-    self.assertEqual(logging.root.level, logging.ERROR)
 
-    logging.root.setLevel(level=logging.CRITICAL)
-    opts = config.Options.create(python_version=(2, 7), use_pickled_files=True,
-                                 verbosity=-2)
+    opts = config.Options.create(python_version=(2, 7), use_pickled_files=True)
     self.assertEqual(opts.use_pickled_files, True)
     self.assertEqual(opts.python_version, (2, 7))
     self.assertIn("2.7", opts.python_exe)
-    # Since a verbosity of -2 is used, Pytype does not change the logging level.
-    self.assertEqual(logging.root.level, logging.CRITICAL)
 
   def test_analyze_annotated_check(self):
     argv = ["--check", "test.py"]
@@ -62,6 +55,14 @@ class ConfigTest(unittest.TestCase):
     argv.append("--analyze-annotated")
     opts = config.Options(argv)
     self.assertTrue(opts.analyze_annotated)
+
+  def test_verbosity(self):
+    level = logging.getLogger().getEffectiveLevel()
+    # make sure we properly exercise verbosity_from by changing the log level
+    assert level != logging.ERROR
+    with config.verbosity_from(config.Options.create(verbosity=1)):
+      self.assertEqual(logging.getLogger().getEffectiveLevel(), logging.ERROR)
+    self.assertEqual(logging.getLogger().getEffectiveLevel(), level)
 
   def test_bad_verbosity(self):
     argv = ["--verbosity", "5", "test.py"]

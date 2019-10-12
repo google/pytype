@@ -9,6 +9,7 @@ import collections
 import attr
 from pytype import abstract
 from pytype import analyze
+from pytype import config
 from pytype import errors
 from pytype import io
 from pytype import load_pytd
@@ -1209,13 +1210,14 @@ def process_file(options, source_text=None, generate_callgraphs=False,
       store_all_calls=True,
       loader=loader)
   with io.wrap_pytype_exceptions(PytypeError, filename=options.input):
-    pytd_module, _ = analyze.infer_types(
-        src=src,
-        filename=options.input,
-        errorlog=errorlog,
-        options=options,
-        loader=loader,
-        tracer_vm=vm)
+    with config.verbosity_from(options):
+      pytd_module, _ = analyze.infer_types(
+          src=src,
+          filename=options.input,
+          errorlog=errorlog,
+          options=options,
+          loader=loader,
+          tracer_vm=vm)
 
   major, minor = options.python_version
   if major == 2:

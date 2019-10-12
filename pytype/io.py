@@ -46,6 +46,28 @@ def read_source_file(input_filename):
     raise utils.UsageError("Could not load input file %s" % input_filename)
 
 
+def _set_verbosity_from(posarg):
+  """Decorator to set the verbosity for a function that takes an options arg.
+
+  Assumes that the function has an argument named `options` that is a
+  config.Options object.
+
+  Arguments:
+    posarg: The index of `options` in the positional arguments.
+
+  Returns:
+    The decorator.
+  """
+  def decorator(f):
+    def wrapper(*args, **kwargs):
+      options = kwargs.get("options", args[posarg])
+      with config.verbosity_from(options):
+        return f(*args, **kwargs)
+    return wrapper
+  return decorator
+
+
+@_set_verbosity_from(posarg=2)
 def _call(analyze_types, input_filename, options, loader):
   """Helper function to call analyze.check/infer_types."""
   src = read_source_file(input_filename)
@@ -65,7 +87,8 @@ def _call(analyze_types, input_filename, options, loader):
 def check_py(input_filename, options=None, loader=None):
   """Check the types of one file."""
   options = options or config.Options.create(input_filename)
-  errorlog, _ = _call(analyze.check_types, input_filename, options, loader)
+  with config.verbosity_from(options):
+    errorlog, _ = _call(analyze.check_types, input_filename, options, loader)
   return errorlog
 
 
@@ -85,21 +108,22 @@ def generate_pyi(input_filename, options=None, loader=None):
     UsageError: If the input filepath is invalid.
   """
   options = options or config.Options.create(input_filename)
-  errorlog, (mod, builtins) = _call(
-      analyze.infer_types, input_filename, options, loader)
-  mod.Visit(visitors.VerifyVisitor())
-  mod = optimize.Optimize(mod,
-                          builtins,
-                          # TODO(kramm): Add FLAGs for these
-                          lossy=False,
-                          use_abcs=False,
-                          max_union=7,
-                          remove_mutable=False)
-  mod = pytd_utils.CanonicalOrdering(mod, sort_signatures=True)
-  result = pytd_utils.Print(mod)
-  log.info("=========== pyi optimized =============")
-  log.info("\n%s", result)
-  log.info("========================================")
+  with config.verbosity_from(options):
+    errorlog, (mod, builtins) = _call(
+        analyze.infer_types, input_filename, options, loader)
+    mod.Visit(visitors.VerifyVisitor())
+    mod = optimize.Optimize(mod,
+                            builtins,
+                            # TODO(kramm): Add FLAGs for these
+                            lossy=False,
+                            use_abcs=False,
+                            max_union=7,
+                            remove_mutable=False)
+    mod = pytd_utils.CanonicalOrdering(mod, sort_signatures=True)
+    result = pytd_utils.Print(mod)
+    log.info("=========== pyi optimized =============")
+    log.info("\n%s", result)
+    log.info("========================================")
 
   result += "\n"
   if options.quick:
@@ -107,6 +131,7 @@ def generate_pyi(input_filename, options=None, loader=None):
   return errorlog, result, mod
 
 
+@_set_verbosity_from(posarg=0)
 def check_or_generate_pyi(options, loader=None):
   """Returns generated errors and result pyi or None if it's only check.
 
@@ -165,6 +190,7 @@ def _write_pyi_output(options, contents, filename):
       fi.write(contents)
 
 
+@_set_verbosity_from(posarg=0)
 def process_one_file(options):
   """Check a .py file or generate a .pyi for it, according to options.
 
@@ -209,6 +235,7 @@ def process_one_file(options):
   return exit_status
 
 
+@_set_verbosity_from(posarg=1)
 def write_pickle(ast, options, loader=None):
   """Dump a pickle of the ast to a file."""
   loader = loader or load_pytd.create_loader(options)
@@ -242,6 +269,7 @@ def print_error_doc_url(errorlog):
     print(doclink + ".", file=sys.stderr)
 
 
+@_set_verbosity_from(posarg=1)
 def handle_errors(errorlog, options):
   """Handle the errorlog according to the given options."""
   if not options.report_errors:
@@ -257,6 +285,7 @@ def handle_errors(errorlog, options):
   return 1 if errorlog.has_error() else 0  # exit code
 
 
+@_set_verbosity_from(posarg=0)
 def parse_pyi(options):
   """Tries parsing a PYI file."""
   loader = load_pytd.create_loader(options)

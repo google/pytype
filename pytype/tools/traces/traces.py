@@ -76,17 +76,18 @@ def trace(src, options=None):
       options=options,
       generate_unknowns=options.protocols,
       loader=loader)
-  pytd_module, _ = analyze.infer_types(
-      src=src,
-      filename=options.input,
-      errorlog=errorlog,
-      options=options,
-      loader=loader,
-      tracer_vm=vm)
-  raw_traces = []
-  for op, symbol, data in vm.opcode_traces:
-    raw_traces.append(
-        (op, symbol, tuple(_to_pytd(d, loader, pytd_module) for d in data)))
+  with config.verbosity_from(options):
+    pytd_module, _ = analyze.infer_types(
+        src=src,
+        filename=options.input,
+        errorlog=errorlog,
+        options=options,
+        loader=loader,
+        tracer_vm=vm)
+    raw_traces = []
+    for op, symbol, data in vm.opcode_traces:
+      raw_traces.append(
+          (op, symbol, tuple(_to_pytd(d, loader, pytd_module) for d in data)))
   return source.Code(src, raw_traces, TypeTrace, options.input)
 
 
