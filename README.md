@@ -246,7 +246,7 @@ of its dependencies.
 * Windows support
 
 ## License
-Apache 2.0
+[Apache 2.0](LICENSE)
 
 ## Disclaimer
 This is not an official Google product.
