@@ -70,13 +70,13 @@ def trace(src, options=None):
   """
   errorlog = errors.ErrorLog()
   options = options or config.Options.create()
-  loader = load_pytd.create_loader(options)
-  vm = analyze.CallTracer(
-      errorlog=errorlog,
-      options=options,
-      generate_unknowns=options.protocols,
-      loader=loader)
   with config.verbosity_from(options):
+    loader = load_pytd.create_loader(options)
+    vm = analyze.CallTracer(
+        errorlog=errorlog,
+        options=options,
+        generate_unknowns=options.protocols,
+        loader=loader)
     pytd_module, _ = analyze.infer_types(
         src=src,
         filename=options.input,

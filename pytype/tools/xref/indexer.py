@@ -1200,17 +1200,17 @@ def process_file(options, source_text=None, generate_callgraphs=False,
   Raises:
     PytypeError if pytype fails.
   """
-  errorlog = errors.ErrorLog()
-  loader = load_pytd.create_loader(options)
-  src = source_text or io.read_source_file(options.input)
-  vm = analyze.CallTracer(
-      errorlog=errorlog,
-      options=options,
-      generate_unknowns=options.protocols,
-      store_all_calls=True,
-      loader=loader)
-  with io.wrap_pytype_exceptions(PytypeError, filename=options.input):
-    with config.verbosity_from(options):
+  with config.verbosity_from(options):
+    errorlog = errors.ErrorLog()
+    loader = load_pytd.create_loader(options)
+    src = source_text or io.read_source_file(options.input)
+    vm = analyze.CallTracer(
+        errorlog=errorlog,
+        options=options,
+        generate_unknowns=options.protocols,
+        store_all_calls=True,
+        loader=loader)
+    with io.wrap_pytype_exceptions(PytypeError, filename=options.input):
       pytd_module, _ = analyze.infer_types(
           src=src,
           filename=options.input,
