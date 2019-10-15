@@ -1,6 +1,6 @@
 add_package()
 
-py_binary(
+toplevel_py_binary(
   NAME
     run
   SRCS
