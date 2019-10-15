@@ -622,15 +622,19 @@ type
       $$ = ctx->Call(kNewType, "(N)", $1);
       CHECK($$, @$);
     }
+  | dotted_name '[' '(' ')' ']' {
+      $$ = ctx->Call(kNewType, "(NN)", $1, PyList_New(0));
+      CHECK($$, @$);
+    }
   | dotted_name '[' type_parameters maybe_comma ']' {
       $$ = ctx->Call(kNewType, "(NN)", $1, $3);
       CHECK($$, @$);
     }
-  | NAMEDTUPLE '(' STRING ',' named_tuple_fields ')' {
+  | NAMEDTUPLE '(' STRING ',' named_tuple_fields maybe_comma ')' {
       $$ = ctx->Call(kNewNamedTuple, "(NN)", $3, $5);
       CHECK($$, @$);
     }
-  | COLL_NAMEDTUPLE '(' STRING ',' coll_named_tuple_fields ')' {
+  | COLL_NAMEDTUPLE '(' STRING ',' coll_named_tuple_fields maybe_comma ')' {
       $$ = ctx->Call(kNewNamedTuple, "(NN)", $3, $5);
       CHECK($$, @$);
     }

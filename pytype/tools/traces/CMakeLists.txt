@@ -1,5 +1,17 @@
 add_package()
 
+toplevel_py_binary(
+  NAME
+    run
+  SRCS
+    run.py
+  MAIN
+    run.py
+  DEPS
+    .traces
+    pytype.config
+)
+
 py_library(
   NAME
     traces

@@ -5,6 +5,7 @@ options into an Options class.
 """
 
 import argparse
+import contextlib
 import logging
 import os
 import sys
@@ -279,14 +280,10 @@ def add_debug_options(o):
       dest="profile", default=None,
       help="Profile pytype and output the stats to the specified file.")
   o.add_argument(
-      # Not stored, just used to configure logging.
       "-v", "--verbosity", type=int, action="store",
       dest="verbosity", default=1,
       help=("Set logging verbosity: "
-            "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug\n"
-            "If a value less than -1 is provided, then no change to logging "
-            "verbosity is made. This is useful when using Pytype as a "
-            "library."))
+            "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug"))
   o.add_argument(
       "--verify-pickle", action="store_true", default=False,
       dest="verify_pickle",
@@ -435,23 +432,9 @@ class Postprocessor(object):
 
   def _store_verbosity(self, verbosity):
     """Configure logging."""
-    if verbosity >= 0:
-      if verbosity >= len(LOG_LEVELS):
-        self.error("invalid --verbosity: %s" % verbosity)
-      basic_logging_level = LOG_LEVELS[verbosity]
-    elif verbosity == -1:
-      # "verbosity=-1" can be used to disable all logging, so configure
-      # logging accordingly.
-      basic_logging_level = logging.CRITICAL + 1
-    else:
-      # If the desired verbosity is less than -1, then don't do anything. This
-      # is useful when calling pytype as a library.
-      return
-    if logging.root.handlers:
-      # When calling pytype as a library, override the caller's logging level.
-      logging.root.setLevel(basic_logging_level)
-    else:
-      logging.basicConfig(level=basic_logging_level)
+    if not -1 <= verbosity < len(LOG_LEVELS):
+      self.error("invalid --verbosity: %s" % verbosity)
+    self.output_options.verbosity = verbosity
 
   def _store_pythonpath(self, pythonpath):
     # Note that the below gives [""] for "", and ["x", ""] for "x:"
@@ -521,8 +504,9 @@ class Postprocessor(object):
       if self.output_options.pythonpath not in ([], [""]):
         self.error("Not allowed with --pythonpath", "imports_info")
 
-      self.output_options.imports_map = imports_map_loader.build_imports_map(
-          imports_map, self.output_options.output)
+      with verbosity_from(self.output_options):
+        self.output_options.imports_map = imports_map_loader.build_imports_map(
+            imports_map, self.output_options.output)
     else:
       self.output_options.imports_map = None
 
@@ -567,3 +551,41 @@ class Postprocessor(object):
     else:
       self.error("Argument %r is not a pair of non-empty file names "
                  "separated by %r" % (item, os.pathsep))
+
+
+def _set_verbosity(verbosity):
+  """Set the logging verbosity."""
+  if verbosity >= 0:
+    basic_logging_level = LOG_LEVELS[verbosity]
+  else:
+    # "verbosity=-1" can be used to disable all logging, so configure
+    # logging accordingly.
+    basic_logging_level = logging.CRITICAL + 1
+  if logging.getLogger().handlers:
+    # When calling pytype as a library, override the caller's logging level.
+    logging.getLogger().setLevel(basic_logging_level)
+  else:
+    logging.basicConfig(level=basic_logging_level)
+
+
+@contextlib.contextmanager
+def verbosity_from(options):
+  """Sets the logging level to options.verbosity and restores it afterwards.
+
+  If you directly call any of pytype's internal methods,
+  like analyze.infer_types, use this contextmanager to set the logging
+  verbosity. Consider using one of the top-level methods in pytype.io instead,
+  which take care of this detail for you.
+
+  Arguments:
+    options: A config.Options object.
+
+  Yields:
+    Nothing.
+  """
+  level = logging.getLogger().getEffectiveLevel()
+  _set_verbosity(options.verbosity)
+  try:
+    yield
+  finally:
+    logging.getLogger().setLevel(level)

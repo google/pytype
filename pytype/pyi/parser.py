@@ -1428,7 +1428,10 @@ def _split_definitions(defs):
   slots = None
   classes = []
   for d in defs:
-    if isinstance(d, pytd.Class):
+    if d is None:
+      # A nested class has definition `None` inside an inactive condition.
+      continue
+    elif isinstance(d, pytd.Class):
       classes.append(d)
     elif isinstance(d, pytd.Constant):
       if d.name == "__slots__":

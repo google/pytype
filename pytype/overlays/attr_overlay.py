@@ -95,6 +95,8 @@ class Attrs(classgen.Decorator):
         attr = Attribute(name=name, typ=value, init=True, default=orig)
         if self.maybe_add_late_annotation(node, cls, name, value, orig):
           late_annotation = True
+        else:
+          cls.members[name] = value
         own_attrs.append(attr)
 
     # See if we need to resolve any late annotations

@@ -56,6 +56,9 @@ class Dataclass(classgen.Decorator):
       name, value, orig = ordered_locals[local.name]
       if self.maybe_add_late_annotation(node, cls, name, value, orig):
         late_annotation = True
+      else:
+        cls.members[name] = value
+
       if is_field(orig):
         field = orig.data[0]
         orig = field.typ

@@ -1,15 +1,11 @@
 """Tests for utils.py."""
 
-import logging
 import textwrap
 
 from pytype import debug
 from pytype.typegraph import cfg
 
 import unittest
-
-
-log = logging.getLogger(__name__)
 
 
 class Node(object):
@@ -33,6 +29,7 @@ class Node(object):
 class DebugTest(unittest.TestCase):
 
   def setUp(self):
+    super(DebugTest, self).setUp()
     self.prog = cfg.Program()
     self.current_location = self.prog.NewCFGNode()
 
@@ -166,14 +163,6 @@ class DebugTest(unittest.TestCase):
     n = self.current_location.ConnectNew()
     v.AddBinding("y", [], n)
     self.assertEqual(debug.root_cause(b, n), (b, n))
-
-  def testSaveLoggingLevel(self):
-    logging.root.setLevel(logging.INFO)
-    self.assertEqual(logging.getLogger().getEffectiveLevel(), logging.INFO)
-    with debug.save_logging_level():
-      logging.root.setLevel(logging.ERROR)
-      self.assertEqual(logging.getLogger().getEffectiveLevel(), logging.ERROR)
-    self.assertEqual(logging.getLogger().getEffectiveLevel(), logging.INFO)
 
 
 if __name__ == "__main__":

@@ -1,8 +1,6 @@
 """Debugging helper functions."""
 
 import collections
-import contextlib
-import logging
 import re
 import traceback
 
@@ -251,9 +249,12 @@ def program_to_dot(program, ignored, only_cfg=False):
   for variable in program.variables:
     if variable.id in ignored:
       continue
-    if all(origin.where == program.entrypoint
-           for value in variable.bindings
-           for origin in value.origins):
+    constant = True
+    for value in variable.bindings:
+      if any(origin.where != program.entrypoint for origin in value.origins):
+        constant = False
+        break
+    if constant:
       # Ignore "boring" values (a.k.a. constants)
       continue
     sb.write('%s[label="%d",shape=polygon,sides=4,distortion=.1];\n'
@@ -322,10 +323,3 @@ def stack_trace(indent_level=0, limit=100):
   trace = traceback.format_list(stack[-limit:])
   trace = [indent + re.sub(r"/usr/.*/pytype/", "", x) for x in trace]
   return "\n  ".join(trace)
-
-
-@contextlib.contextmanager
-def save_logging_level():
-  level = logging.getLogger().getEffectiveLevel()
-  yield
-  logging.root.setLevel(level)
