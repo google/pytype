@@ -274,6 +274,13 @@ class ParserTest(_ParserTestBase):
           class B: ...
     """)
 
+  def test_conditional_nested_class(self):
+    self.check("""\
+      if sys.version_info >= (3, 6):
+        class A:
+          class B: ...
+    """, "")
+
   def test_import(self):
     self.check("import foo.bar.baz", "")
     self.check("import a as b")
