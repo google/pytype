@@ -5,6 +5,8 @@ toplevel_py_binary(
     run
   SRCS
     run.py
+  MAIN
+    run.py
   DEPS
     .traces
     pytype.config
