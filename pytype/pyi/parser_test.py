@@ -725,6 +725,71 @@ class NamedTupleTest(_ParserTestBase):
       class X(`namedtuple-X-0`): ...
     """)
 
+  def test_trailing_comma(self):
+    self.check("""\
+      from typing import NamedTuple
+      Foo = NamedTuple(
+          "Foo",
+          [
+              ("a", int),
+              ("b", str),
+          ],
+      )
+    """, """\
+      from typing import Any, Tuple, Type, TypeVar
+
+      Foo = `namedtuple-Foo-0`
+
+      _Tnamedtuple-Foo-0 = TypeVar('_Tnamedtuple-Foo-0', bound=`namedtuple-Foo-0`)
+
+      class `namedtuple-Foo-0`(Tuple[int, str]):
+          __slots__ = ["a", "b"]
+          a: int
+          b: str
+          _asdict: Any
+          __dict__: Any
+          _fields: Any
+          __getnewargs__: Any
+          __getstate__: Any
+          _make: Any
+          _replace: Any
+          def __new__(cls: Type[`_Tnamedtuple-Foo-0`], a: int, b: str) -> `_Tnamedtuple-Foo-0`: ...
+          def __init__(self, *args, **kwargs) -> None: ...
+    """)
+
+  def test_collections_trailing_comma(self):
+    self.check("""\
+      from collections import namedtuple
+      Foo = namedtuple(
+        "Foo",
+        [
+          "a",
+          "b",
+        ],
+      )
+    """, """\
+      from typing import Any, Tuple, Type, TypeVar
+
+      from collections import namedtuple
+      Foo = `namedtuple-Foo-0`
+
+      _Tnamedtuple-Foo-0 = TypeVar('_Tnamedtuple-Foo-0', bound=`namedtuple-Foo-0`)
+
+      class `namedtuple-Foo-0`(Tuple[Any, Any]):
+          __slots__ = ["a", "b"]
+          a: Any
+          b: Any
+          _asdict: Any
+          __dict__: Any
+          _fields: Any
+          __getnewargs__: Any
+          __getstate__: Any
+          _make: Any
+          _replace: Any
+          def __new__(cls: Type[`_Tnamedtuple-Foo-0`], a, b) -> `_Tnamedtuple-Foo-0`: ...
+          def __init__(self, *args, **kwargs) -> None: ...
+    """)
+
   def test_collections_namedtuple(self):
     expected = """\
       from typing import Any, Tuple, Type, TypeVar

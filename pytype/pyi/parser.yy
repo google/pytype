@@ -626,11 +626,11 @@ type
       $$ = ctx->Call(kNewType, "(NN)", $1, $3);
       CHECK($$, @$);
     }
-  | NAMEDTUPLE '(' STRING ',' named_tuple_fields ')' {
+  | NAMEDTUPLE '(' STRING ',' named_tuple_fields maybe_comma ')' {
       $$ = ctx->Call(kNewNamedTuple, "(NN)", $3, $5);
       CHECK($$, @$);
     }
-  | COLL_NAMEDTUPLE '(' STRING ',' coll_named_tuple_fields ')' {
+  | COLL_NAMEDTUPLE '(' STRING ',' coll_named_tuple_fields maybe_comma ')' {
       $$ = ctx->Call(kNewNamedTuple, "(NN)", $3, $5);
       CHECK($$, @$);
     }
