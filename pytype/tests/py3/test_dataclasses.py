@@ -151,7 +151,6 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         y: int = dataclasses.field(init=False)
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import List
       dataclasses: module
       class Foo(object):
         x: bool
@@ -187,6 +186,35 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         def foo(self):
           for field in dataclasses.fields(self):
             field.type()
+    """)
+
+  def test_subclass(self):
+    ty = self.Infer("""
+      import dataclasses
+      @dataclasses.dataclass()
+      class Foo(object):
+        w: float
+        x: bool = dataclasses.field(default=True)
+        y: int = dataclasses.field(init=False)
+      class Bar(Foo):
+        def get_w(self):
+          return self.w
+        def get_x(self):
+          return self.x
+        def get_y(self):
+          return self.y
+    """)
+    self.assertTypesMatchPytd(ty, """
+      dataclasses: module
+      class Foo(object):
+        w: float
+        x: bool
+        y: int
+        def __init__(self, w: float, x: bool = ...) -> None: ...
+      class Bar(Foo):
+        def get_w(self) -> float: ...
+        def get_x(self) -> bool : ...
+        def get_y(self) -> int: ...
     """)
 
 

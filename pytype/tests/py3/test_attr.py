@@ -212,5 +212,29 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     """)
     self.assertErrorLogIs(err, [(4, "invalid-function-definition")])
 
+  def test_subclass_auto_attribs(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s(auto_attribs=True)
+      class Foo(object):
+        x: bool
+        y: int = 42
+      class Bar(Foo):
+        def get_x(self):
+          return self.x
+        def get_y(self):
+          return self.y
+    """)
+    self.assertTypesMatchPytd(ty, """
+      attr: module
+      class Foo(object):
+        x: bool
+        y: int
+        def __init__(self, x: bool, y: int = ...) -> None: ...
+      class Bar(Foo):
+        def get_x(self) -> bool : ...
+        def get_y(self) -> int: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
