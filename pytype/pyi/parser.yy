@@ -622,6 +622,10 @@ type
       $$ = ctx->Call(kNewType, "(N)", $1);
       CHECK($$, @$);
     }
+  | dotted_name '[' '(' ')' ']' {
+      $$ = ctx->Call(kNewType, "(NN)", $1, PyList_New(0));
+      CHECK($$, @$);
+    }
   | dotted_name '[' type_parameters maybe_comma ']' {
       $$ = ctx->Call(kNewType, "(NN)", $1, $3);
       CHECK($$, @$);

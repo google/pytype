@@ -576,6 +576,17 @@ class HomogeneousTypeTest(_ParserTestBase):
 
       x: Tuple[int, str, Any]""")
 
+  def test_empty_tuple(self):
+    self.check("""\
+      from typing import Tuple
+
+      def f() -> Tuple[()]: ...
+    """, """\
+      from typing import Tuple
+
+      def f() -> Tuple[nothing, ...]: ...
+    """)
+
   def test_simple(self):
     self.check("x: Foo[int, str]")
 
