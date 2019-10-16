@@ -25,7 +25,7 @@ For more information, check out the [user guide][user-guide] or [FAQ][faq].
 
 1. Pytype uses **inference** instead of gradual typing. This means it will
 infer types on code even when the code has no type hints on it. So it can
-detect issues with code which other type checkers would miss like this:
+detect issues with code like this, which other type checkers would miss :
 
     ```python
     def f():
@@ -80,10 +80,10 @@ also easy to add pytype to your automated testing; see this
 
 Finally, pytype generates files of inferred type information, located by default
 in `.pytype/pyi`. You can use this information to type-annotate the
-corresponding source file, which replaces `module.py` with the file's import path:
+corresponding source file:
 
 ```
-merge-pyi -i module.py .pytype/pyi/module.pyi
+merge-pyi -i <filepath>.py .pytype/pyi/<filename>.pyi
 ```
 
 ## Requirements
