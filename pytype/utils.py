@@ -135,7 +135,7 @@ def get_python_exe(python_version):
   Arguments:
     python_version: the version tuple (e.g. (2, 7))
   Returns:
-    The inferred python_exe argument
+    A tuple of the inferred python_exe argument and any command-line flags
   """
   python_exe = "python%d.%d" % python_version
   # Use custom interpreters, if provided, in preference to the ones in $PATH
@@ -143,8 +143,10 @@ def get_python_exe(python_version):
   if custom_python_exe:
     python_exe = custom_python_exe
   if USE_ANNOTATIONS_BACKPORT and python_version == (2, 7):
-    python_exe += " -T"
-  return python_exe
+    flags = ["-T"]
+  else:
+    flags = []
+  return python_exe, flags
 
 
 def get_python_exe_version(python_exe):
@@ -157,7 +159,7 @@ def get_python_exe_version(python_exe):
   """
   try:
     python_exe_version = subprocess.check_output(
-        python_exe + " -V", shell=True, stderr=subprocess.STDOUT).decode()
+        [python_exe, "-V"], stderr=subprocess.STDOUT).decode()
   except subprocess.CalledProcessError:
     return None
 

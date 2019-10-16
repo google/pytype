@@ -28,9 +28,9 @@ class TestPyc(unittest.TestCase):
   python_version = (2, 7)
 
   def _compile(self, src, mode="exec"):
+    exe = ("python" + ".".join(map(str, self.python_version)), [])
     pyc_data = pyc.compile_src_string_to_pyc_string(
-        src, filename="test_input.py", python_version=self.python_version,
-        python_exe=None, mode=mode)
+        src, filename="test_input.py", python_exe=exe, mode=mode)
     return pyc.parse_pyc_string(pyc_data)
 
   def test_compile(self):
@@ -47,13 +47,11 @@ class TestPyc(unittest.TestCase):
     self.assertEqual(self.python_version, code.python_version)
 
   def test_erroneous_file(self):
-    try:
+    with self.assertRaises(pyc.CompileError) as ctx:
       self._compile("\nfoo ==== bar--")
-      self.fail("Did not raise CompileError")
-    except pyc.CompileError as e:
-      self.assertEqual("test_input.py", e.filename)
-      self.assertEqual(2, e.lineno)
-      self.assertEqual("invalid syntax", e.error)
+    self.assertEqual("test_input.py", ctx.exception.filename)
+    self.assertEqual(2, ctx.exception.lineno)
+    self.assertEqual("invalid syntax", ctx.exception.error)
 
   def test_lineno(self):
     code = self._compile("a = 1\n"      # line 1

@@ -1,6 +1,7 @@
 """Tests for utils.py."""
 
 from pytype import utils
+import six
 
 import unittest
 
@@ -47,7 +48,7 @@ class UtilsTest(unittest.TestCase):
   def testInvertDict(self):
     a = {"p": ["q", "r"], "x": ["q", "z"]}
     b = utils.invert_dict(a)
-    self.assertEqual(sorted(b["q"]), ["p", "x"])
+    six.assertCountEqual(self, b["q"], ["p", "x"])
     self.assertEqual(b["r"], ["p"])
     self.assertEqual(b["z"], ["x"])
 
@@ -84,6 +85,11 @@ class UtilsTest(unittest.TestCase):
     )
     for version_str, expected in test_cases:
       self.assertEqual(expected, utils.parse_exe_version_string(version_str))
+
+  def testGetPythonExeVersion(self):
+    version = utils.get_python_exe_version("python")
+    self.assertIsInstance(version, tuple)
+    self.assertEqual(len(version), 2)
 
 
 def _make_tuple(x):
