@@ -246,10 +246,12 @@ of its dependencies.
 * Windows support
 
 ## License
-Apache 2.0
+[Apache 2.0][license]
 
 ## Disclaimer
 This is not an official Google product.
+
+<!-- General references -->
 
 [error-classes]: docs/errors.md
 [faq]: docs/faq.md
@@ -261,3 +263,7 @@ This is not an official Google product.
 [pyi-stub-files]: docs/user_guide.md#pyi-stub-files
 [user-guide]: docs/user_guide.md
 [wsl]: https://docs.microsoft.com/en-us/windows/wsl/faq
+
+<!-- References with different interal and external versions -->
+
+[license]: https://github.com/google/pytype/blob/master/LICENSE
