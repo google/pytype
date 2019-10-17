@@ -34,8 +34,7 @@ class CompileError(Exception):
       self.lineno = 1
 
 
-def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
-                                     mode="exec"):
+def compile_src_string_to_pyc_string(src, filename, python_exe, mode="exec"):
   """Compile Python source code to pyc data.
 
   This may use py_compile if the src is for the same version as we're running,
@@ -45,10 +44,7 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
   Args:
     src: Python sourcecode
     filename: Name of the source file. For error messages.
-    python_version: Python version, (major, minor). E.g. (2, 7). Will be used
-      to determine the Python executable to call.
-    python_exe: Path to a Python interpreter, or None. If this is
-      None, the system "pythonX.X" interpreter will be used.
+    python_exe: Tuple of a path to a Python interpreter and command-line flags.
     mode: Same as __builtin__.compile: "exec" if source consists of a
       sequence of statements, "eval" if it consists of a single expression,
       or "single" if it consists of a single interactive statement.
@@ -74,14 +70,10 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
     fi.close()
     # In order to be able to compile pyc files for both Python 2 and Python 3,
     # we spawn an external process.
-    if python_exe:
-      # Allow python_exe to contain parameters (E.g. "-T")
-      exe = python_exe.split()
-    else:
-      exe = ["python" + ".".join(map(str, python_version))]
     # We pass -E to ignore the environment so that PYTHONPATH and sitecustomize
     # on some people's systems don't mess with the interpreter.
-    cmd = exe + ["-E", "-", fi.name, filename or fi.name, mode]
+    exe, flags = python_exe
+    cmd = [exe] + flags + ["-E", "-", fi.name, filename or fi.name, mode]
 
     compile_script_src = pytype_source_utils.load_pytype_file(COMPILE_SCRIPT)
 
@@ -153,7 +145,7 @@ def compile_src(src, python_version, python_exe, filename=None, mode="exec"):
   Args:
     src: Python source code.
     python_version: Python version, (major, minor).
-    python_exe: Path to Python interpreter, or None.
+    python_exe: Tuple of the path to Python interpreter and command-line flags.
     filename: The filename the sourcecode is from.
     mode: "exec", "eval" or "single".
 
@@ -163,8 +155,7 @@ def compile_src(src, python_version, python_exe, filename=None, mode="exec"):
   Raises:
     UsageError: If python_exe and python_version are mismatched.
   """
-  pyc_data = compile_src_string_to_pyc_string(
-      src, filename, python_version, python_exe, mode)
+  pyc_data = compile_src_string_to_pyc_string(src, filename, python_exe, mode)
   code = parse_pyc_string(pyc_data)
   if code.python_version != python_version:
     raise utils.UsageError(
@@ -173,20 +164,6 @@ def compile_src(src, python_version, python_exe, filename=None, mode="exec"):
          utils.format_version(python_version)))
   visit(code, AdjustFilename(filename))
   return code
-
-
-def compile_file(filename, python_version):
-  """Compile a file to pyc, return the parsed pyc.
-
-  Args:
-    filename: Python (.py) file to compile.
-    python_version: The Python version to use for compiling this file.
-
-  Returns:
-    An instance of loadmarshal.CodeType.
-  """
-  with open(filename, "r") as fi:
-    return compile_src(fi.read(), python_version, filename)
 
 
 def visit(c, visitor):

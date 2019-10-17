@@ -479,9 +479,14 @@ class Postprocessor(object):
   def _store_python_exe(self, python_exe):
     """Postprocess --python_exe."""
     if python_exe is None:
-      python_exe = utils.get_python_exe(self.output_options.python_version)
+      python_exe, flags = utils.get_python_exe(
+          self.output_options.python_version)
       user_provided_exe = False
     else:
+      if isinstance(python_exe, tuple):
+        python_exe, flags = python_exe
+      else:
+        flags = []
       user_provided_exe = True
     python_exe_version = utils.get_python_exe_version(python_exe)
     if python_exe_version != self.output_options.python_version:
@@ -495,7 +500,7 @@ class Postprocessor(object):
       else:
         err = "Bad flag --python_exe: could not run %s" % python_exe
       self.error(err)
-    self.output_options.python_exe = python_exe
+    self.output_options.python_exe = (python_exe, flags)
 
   @uses(["pythonpath", "output", "verbosity"])
   def _store_imports_map(self, imports_map):

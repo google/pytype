@@ -6,13 +6,12 @@ Contains common functionality used by dataclasses, attrs and namedtuples.
 import abc
 import logging
 
-import six
-
 from pytype import abstract
 from pytype import abstract_utils
 from pytype import mixin
 from pytype import overlay_utils
 from pytype import special_builtins
+import six
 
 
 log = logging.getLogger(__name__)
@@ -132,13 +131,19 @@ class Decorator(abstract.PyTDFunction):
       out.append(local)
     return out
 
-  def maybe_add_late_annotation(self, node, cls, name, value, orig):
-    if is_late_annotation(value) and orig is None:
+  def add_member(self, node, cls, name, value, orig):
+    """Adds a class member, returning whether it's a bare late annotation."""
+    if not is_late_annotation(value):
+      cls.members[name] = value
+      return False
+    elif orig is None:
       # We are generating a class member from a bare annotation.
       cls.members[name] = self.vm.convert.none.to_variable(node)
       cls.late_annotations[name] = value
       return True
-    return False
+    else:
+      cls.members[name] = orig
+      return False
 
   def get_base_class_attrs(self, cls, cls_attrs, metadata_key):
     # Traverse the MRO and collect base class attributes. We only add an
