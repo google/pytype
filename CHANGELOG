@@ -1,3 +1,9 @@
+Version 2019.10.17
+* Make Python 2 metaclass declarations an error in Python 3.
+* Add basic support for dataclasses.
+* Open-source a partial numpy type stub.
+* Fix some bugs in the pyi parser.
+
 Version 2019.09.17
 * Update typeshed pin to commit 668988f from September 5.
 
