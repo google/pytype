@@ -93,10 +93,8 @@ class Attrs(classgen.Decorator):
         # TODO(b/72678203): typing.ClassVar is the only way to filter a variable
         # out from auto_attribs, but we don't even support importing it.
         attr = Attribute(name=name, typ=value, init=True, default=orig)
-        if self.maybe_add_late_annotation(node, cls, name, value, orig):
+        if self.add_member(node, cls, name, value, orig):
           late_annotation = True
-        else:
-          cls.members[name] = value
         own_attrs.append(attr)
 
     # See if we need to resolve any late annotations

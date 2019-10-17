@@ -217,5 +217,19 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         def get_y(self) -> int: ...
     """)
 
+  def test_use_late_annotation(self):
+    self.Check("""
+      import dataclasses
+      from typing import Optional
+
+      @dataclasses.dataclass
+      class Foo:
+        foo: Optional['Foo'] = None
+
+      @dataclasses.dataclass
+      class Bar:
+        bar: Foo = dataclasses.field(default_factory=Foo)
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

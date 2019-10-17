@@ -54,10 +54,8 @@ class Dataclass(classgen.Decorator):
     late_annotation = False  # True if we find a bare late annotation
     for local in ordered_annotations:
       name, value, orig = ordered_locals[local.name]
-      if self.maybe_add_late_annotation(node, cls, name, value, orig):
+      if self.add_member(node, cls, name, value, orig):
         late_annotation = True
-      else:
-        cls.members[name] = value
 
       if is_field(orig):
         field = orig.data[0]
