@@ -174,15 +174,15 @@ class IndexerTest(test_base.TargetIndependentTest, IndexerTestMixin):
           return 42
     """)
     kythe_index = self.generate_kythe(code)
-    # File nodes should have signature and lang empty
+    # File nodes should have signature and language empty
     file_nodes = kythe_index[0:2]
     for node in file_nodes:
       self.assertEqual(node["source"]["signature"], "")
-      self.assertEqual(node["source"]["lang"], "")
+      self.assertEqual(node["source"]["language"], "")
 
-    # Other nodes should have lang="python"
+    # Other nodes should have language="python"
     node = kythe_index[3]
-    self.assertEqual(node["source"]["lang"], "python")
+    self.assertEqual(node["source"]["language"], "python")
 
   def test_multiline_attr(self):
     # Test that lookahead doesn't crash.

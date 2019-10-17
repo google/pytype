@@ -15,7 +15,7 @@ Args = collections.namedtuple("Args", ["root", "corpus"])
 # Kythe nodes
 
 VName = collections.namedtuple(
-    "VName", ["signature", "path", "lang", "root", "corpus"])
+    "VName", ["signature", "path", "language", "root", "corpus"])
 
 Entry = collections.namedtuple(
     "Entry", ["source", "kind", "target", "fact_label", "value"])
@@ -52,7 +52,7 @@ class Kythe(object):
   def _add_file(self, file_contents):
     # File vnames are special-cased to have an empty signature and lang.
     vname = VName(
-        signature="", lang="", path=self.path, root=self.root,
+        signature="", language="", path=self.path, root=self.root,
         corpus=self.corpus)
     self.add_fact(vname, "node/kind", "file")
     self.add_fact(vname, "text", file_contents)
@@ -76,7 +76,7 @@ class Kythe(object):
     return VName(
         signature=signature,
         path=filepath or self.path,
-        lang="python",
+        language="python",
         root=self.root,
         corpus=self.corpus)
 
@@ -84,9 +84,9 @@ class Kythe(object):
     return VName(
         signature=signature,
         path=filepath or self.path,
-        lang="python",
+        language="python",
         root=self.root,
-        corpus="builtins")
+        corpus="kythe/builtins")
 
   def anchor_vname(self, start, end):
     signature = "@%d:%d" % (start, end)
