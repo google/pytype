@@ -416,6 +416,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
           pass
     """)
 
+  @test_base.skip("b/143154119")
   def testPy2Metaclass(self):
     errors = self.CheckWithErrors("""\
       import abc
