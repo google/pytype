@@ -188,6 +188,53 @@ class TypingTest(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [(1, "pyi-error", r"ClassVar.*1.*2")])
 
 
+class CounterTest(test_base.TargetPython3BasicTest):
+  """Tests for typing.Counter."""
+
+  def test_counter_generic(self):
+    ty, errors = self.InferWithErrors("""
+      import collections
+      import typing
+      def freqs(s: str) -> typing.Counter[str]:
+        return collections.Counter(s)
+      x = freqs("")
+      y = freqs("")
+      z = collections.Counter()  # type: typing.Counter[int]
+      x - y
+      x + y
+      x | y
+      x & y
+      x - z  # line 13 error: unsupported-operands
+      x.most_common(1, 2, 3)  # line 14 error: wrong-arg-count
+      a = x.most_common()
+      b = x.most_common(1)
+      c = x.elements()
+      d = z.elements()
+      e = x.copy()
+      f = x | z
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Counter, Iterable, List, Tuple, Union
+      collections: module
+      typing: module
+
+      a: List[Tuple[str, int]]
+      b: List[Tuple[str, int]]
+      c: Iterable[str]
+      d: Iterable[int]
+      e: Counter[str]
+      f: Counter[Union[int, str]]
+
+      x: Counter[str]
+      y: Counter[str]
+      z: Counter[int]
+
+      def freqs(s: str) -> Counter[str]: ...
+    """)
+    self.assertErrorLogIs(
+        errors, [(13, "unsupported-operands"), (14, "wrong-arg-count")])
+
+
 class LiteralTest(test_base.TargetIndependentTest):
   """Tests for typing.Literal."""
 
