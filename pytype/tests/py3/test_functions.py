@@ -435,6 +435,14 @@ class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
               u:str, v, x:float=..., y=..., z=..., **mykwargs)
     """)
 
+  def test_namedtuple_defaults(self):
+    self.Check("""
+      from typing import NamedTuple
+      class Foo(NamedTuple):
+        field: int
+      Foo.__new__.__defaults__ = ((),) * len(Foo._fields)
+   """)
+
   def test_matching_functions(self):
     ty = self.Infer("""
       def f():

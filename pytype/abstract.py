@@ -1466,7 +1466,7 @@ class Function(SimpleAbstractValue):
       # The ambiguous case is handled by the subclass.
       return None
 
-  def set_function_defaults(self, defaults_var):
+  def set_function_defaults(self, node, defaults_var):
     raise NotImplementedError(self.__class__.__name__)
 
 
@@ -1781,7 +1781,7 @@ class PyTDFunction(Function):
     if not matched:
       raise error  # pylint: disable=raising-bad-type
 
-  def set_function_defaults(self, defaults_var):
+  def set_function_defaults(self, unused_node, defaults_var):
     """Attempts to set default arguments for a function's signatures.
 
     If defaults_var is not an unambiguous tuple (i.e. one that can be processed
@@ -1792,6 +1792,7 @@ class PyTDFunction(Function):
     updated so the change is stored.
 
     Args:
+      unused_node: the node that defaults are being set at. Not used here.
       defaults_var: a Variable with a single binding to a tuple of default
                     values.
     """
@@ -2710,7 +2711,7 @@ class SignedFunction(Function):
   def get_first_opcode(self):
     return None
 
-  def set_function_defaults(self, defaults_var):
+  def set_function_defaults(self, node, defaults_var):
     """Attempts to set default arguments of a function.
 
     If defaults_var is not an unambiguous tuple (i.e. one that can be processed
@@ -2718,12 +2719,15 @@ class SignedFunction(Function):
     optional and a warning is issued. This function emulates __defaults__.
 
     Args:
+      node: The node where default arguments are being set. Needed if we cannot
+            get a useful value from defaults_var.
       defaults_var: a Variable with a single binding to a tuple of default
                     values.
     """
     defaults = self._extract_defaults(defaults_var)
     if defaults is None:
-      defaults = [self.vm.convert.unsolvable]*len(self.signature.param_names)
+      defaults = [self.vm.new_unsolvable(node)
+                  for _ in self.signature.param_names]
     defaults = dict(zip(self.signature.param_names[-len(defaults):], defaults))
     self.signature.defaults = defaults
 

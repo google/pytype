@@ -986,7 +986,7 @@ class SimpleFunctionTest(AbstractTestBase):
         (self._vm.convert.build_int(self._vm.root_cfg_node),
          self._vm.convert.build_int(self._vm.root_cfg_node)),
         self._vm).to_variable(self._vm.root_cfg_node)
-    f.set_function_defaults(new_defaults)
+    f.set_function_defaults(self._vm.root_cfg_node, new_defaults)
     f.call(self._vm.root_cfg_node, f, args)
     args = function.Args(
         posargs=(self._vm.convert.build_int(self._vm.root_cfg_node),)
