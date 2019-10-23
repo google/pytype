@@ -80,13 +80,13 @@ class Kythe(object):
         root=self.root,
         corpus=self.corpus)
 
-  def builtin_vname(self, signature, filepath=None):
+  def stdlib_vname(self, signature, filepath=None):
     return VName(
         signature=signature,
         path=filepath or self.path,
         language="python",
         root=self.root,
-        corpus="kythe/builtins")
+        corpus="pystdlib")
 
   def anchor_vname(self, start, end):
     signature = "@%d:%d" % (start, end)
@@ -199,7 +199,7 @@ def _make_defn_vname(kythe, index, defn):
       else:
         sig = "module." + defn.name
       if path.startswith("pytd:"):
-        return kythe.builtin_vname(
+        return kythe.stdlib_vname(
             sig, "pytd:" + index.resolved_modules[remote].module_name)
       else:
         return kythe.vname(sig, path)
