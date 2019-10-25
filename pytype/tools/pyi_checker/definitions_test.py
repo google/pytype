@@ -49,7 +49,7 @@ class DefinitionFromNodeTest(unittest.TestCase):
     func_str = "async def test(): pass"
     expected = utils.make_func(
         name="test",
-        col_offset=6,  # "async" doesn't count as part of definition.
+        col_offset=0,
         is_async=True)
     actual = utils.func_from_source(func_str)
     self.assertEqual(expected, actual)
@@ -150,4 +150,3 @@ class DefinitionFromNodeTest(unittest.TestCase):
 
 if __name__ == "__main__":
   unittest.main()
-
