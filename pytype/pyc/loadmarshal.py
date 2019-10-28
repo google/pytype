@@ -294,8 +294,10 @@ class _LoadMarshal(object):
       s = compat.BytesType(s)
     elif not self._keep_bytes:
       # In Python 2, load_string is used to load both bytestrings and native
-      # strings, so we have to specify which we want.
-      s = compat.native_str(s)
+      # strings, so we have to specify which we want. We use the
+      # 'backslashreplace' error mode in order to handle non-utf8
+      # backslash-escaped string literals correctly.
+      s = compat.native_str(s, 'backslashreplace')
     return s
 
   def load_interned(self):
