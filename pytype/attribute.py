@@ -483,7 +483,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     if (isinstance(obj, (abstract.PyTDFunction, abstract.SignedFunction)) and
         name == "__defaults__"):
       log.info("Setting defaults for %s to %r", obj.name, var)
-      obj.set_function_defaults(var)
+      obj.set_function_defaults(node, var)
       return node
 
     if isinstance(obj, abstract.Instance) and name not in obj.members:

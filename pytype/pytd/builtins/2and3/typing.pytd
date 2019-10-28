@@ -437,23 +437,23 @@ def no_type_check_decorator(decorator) -> Callable
 def get_type_hints(obj, ...) -> Optional[Dict[str, Any]]
 
 
-# Strictly speaking, this should be Dict[?, ?]. (E.g. it's legal to do
+# Strictly speaking, this should be Dict[_K, _V]. (E.g. it's legal to do
 # typing.Counter()[x] = 'foobar'.) But the counts are typically integers.
-class Counter(Dict[?, int]):
+class Counter(Dict[_K, int]):
   __doc__ = ...  # type: str
   fromkeys = ...  # type: classmethod
-  def __add__(self, other: Counter) -> Counter
-  def __and__(self, other: Counter) -> Counter
+  def __add__(self, other: Counter[_K2]) -> Counter[_K or _K2]
+  def __and__(self, other: Counter[_K]) -> Counter[_K]
   def __delitem__(self, elem) -> None
   def __init__(self, ...) -> None
   def __missing__(self, key) -> int
-  def __or__(self, other: Counter) -> Counter
+  def __or__(self, other: Counter[_K2]) -> Counter[_K or _K2]
   def __reduce__(self) -> Tuple
   def __repr__(self) -> str
-  def __sub__(self, other: Counter) -> Counter
-  def copy(self) -> ?
-  def elements(self) -> ?
-  def most_common(self, ...) -> ?
+  def __sub__(self, other: Counter[_K]) -> Counter[_K]
+  def copy(self) -> Counter[_K]
+  def elements(self) -> Iterable[_K]
+  def most_common(self, n: Optional[int] = ...) -> List[Tuple[_K, int]]
   def subtract(self, other: Iterable) -> None
   def update(self, other: Iterable) -> None
 
