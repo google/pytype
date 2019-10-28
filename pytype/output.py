@@ -588,7 +588,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           methods[name] = self.value_to_pytd_def(node, value, name).Visit(
               visitors.DropMutableParameters())
         else:
-          cls = self.vm.convert.merge_classes(node, [value])
+          cls = self.vm.convert.merge_classes([value])
           node, attr = self.vm.attribute_handler.get_attribute(
               node, cls, "__get__")
           if attr:

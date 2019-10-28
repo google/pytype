@@ -343,11 +343,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return value
     return abstract.Union((value, none_type), self.vm)
 
-  def merge_classes(self, node, instances):
+  def merge_classes(self, instances):
     """Merge the classes of the given instances.
 
     Args:
-      node: The current node.
       instances: An iterable of instances.
     Returns:
       An abstract.AtomicAbstractValue created by merging the instances' classes.
@@ -685,7 +684,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           if isinstance(c, pytd.TypeParameter):
             if not subst or c.full_name not in subst:
               raise self.TypeParameterError(c.full_name)
-            return self.merge_classes(get_node(), subst[c.full_name].data)
+            return self.merge_classes(subst[c.full_name].data)
           else:
             return self.constant_to_value(c, subst, self.vm.root_cfg_node)
         elif isinstance(cls, pytd.TupleType):

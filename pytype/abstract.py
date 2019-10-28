@@ -924,7 +924,7 @@ class Tuple(Instance, mixin.PythonConstant):
   def __init__(self, content, vm):
     combined_content = vm.convert.build_content(content)
     class_params = {
-        name: vm.convert.merge_classes(vm.root_cfg_node, instance_param.data)
+        name: vm.convert.merge_classes(instance_param.data)
         for name, instance_param in
         tuple(enumerate(content)) + ((abstract_utils.T, combined_content),)}
     cls = TupleClass(vm.convert.tuple_type, class_params, vm)
@@ -2477,7 +2477,7 @@ class InterpreterClass(SimpleAbstractValue, mixin.Class):
 
   def metaclass(self, node):
     if self.cls and self.cls is not self._get_inherited_metaclass():
-      return self.vm.convert.merge_classes(node, [self])
+      return self.vm.convert.merge_classes([self])
     else:
       return None
 
