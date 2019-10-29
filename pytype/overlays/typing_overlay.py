@@ -158,7 +158,7 @@ class TypeVar(abstract.PyTDFunction):
     return default_value
 
   def _get_typeparam(self, node, args):
-    args = args.simplify(node)
+    args = args.simplify(node, self.vm)
     try:
       self.match_args(node, args)
     except function.InvalidParameters as e:
@@ -605,7 +605,7 @@ class NewType(abstract.PyTDFunction):
     return val
 
   def call(self, node, func, args):
-    args = args.simplify(node)
+    args = args.simplify(node, self.vm)
     self.match_args(node, args, match_all_views=True)
     # As long as the types match we do not really care about the actual
     # class name. But, if we have a string literal value as the name arg,

@@ -1630,7 +1630,7 @@ class PyTDFunction(Function):
   def call(self, node, func, args, alias_map=None):
     # TODO(sivachandra): Refactor this method to pass the signature to
     # simplify.
-    args = args.simplify(node)
+    args = args.simplify(node, self.vm)
     self._log_args(arg.bindings for arg in args.posargs)
     ret_map = {}
     retvar = self.vm.program.NewVariable()
@@ -2528,7 +2528,7 @@ class NativeFunction(Function):
     return self.func.func_code.co_argcount
 
   def call(self, node, _, args, alias_map=None):
-    args = args.simplify(node)
+    args = args.simplify(node, self.vm)
     posargs = [u.AssignToNewVariable(node) for u in args.posargs]
     namedargs = {k: u.AssignToNewVariable(node)
                  for k, u in args.namedargs.items()}
@@ -2970,7 +2970,7 @@ class InterpreterFunction(SignedFunction):
       log.info("Maximum depth reached. Not analyzing %r", self.name)
       self._set_callself_maybe_missing_members()
       return node, self.vm.new_unsolvable(node)
-    args = args.simplify(node, self.signature, self.vm)
+    args = args.simplify(node, self.vm, self.signature)
     sig, substs, callargs = self._find_matching_sig(node, args, alias_map)
     if sig is not self.signature:
       # We've matched an overload; remap the callargs using the implementation
@@ -3207,7 +3207,7 @@ class SimpleFunction(SignedFunction):
     # This allows match_args to typecheck varargs and kwargs.
     # We discard the results from _map_args, because SimpleFunction only cares
     # that the arguments are acceptable.
-    self._map_args(node, args.simplify(node))
+    self._map_args(node, args.simplify(node, self.vm))
     substs = self.match_args(node, args, alias_map)
     # Substitute type parameters in the signature's annotations.
     annotations = self.vm.annotations_util.sub_annotations(
