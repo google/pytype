@@ -70,5 +70,15 @@ class DictTest(test_base.TargetPython3BasicTest):
         return group_dict
     """)
 
+  def testDictValues(self):
+    self.Check("""
+      from typing import Any, Collection
+
+      def take_collection(c: Collection[Any]):
+        return
+
+      take_collection({}.values())
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
