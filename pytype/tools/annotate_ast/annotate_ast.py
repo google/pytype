@@ -60,7 +60,7 @@ class AnnotateAstVisitor(traces.MatchAstVisitor):
     except NotImplementedError:
       return
     # For lack of a better option, take the first one.
-    unused_loc, entry = next(iter(ops), None)
+    unused_loc, entry = next(iter(ops), (None, None))
     self._maybe_set_type(node, entry)
 
   def _maybe_set_type(self, node, trace):
