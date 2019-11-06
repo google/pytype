@@ -189,10 +189,10 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     self.vm.errorlog.not_writable(self.vm.frames, obj, name)
     return False
 
-  def _is_simple_module(self, node, var):
+  def _is_simple_module(self, var):
     # A simple module is an abstract.Instance(module). It returns Any for all
     # attribute accesses (unlike an abstract.Module, which does ast lookups).
-    cls = self.vm.convert.merge_classes(node, var.data)
+    cls = self.vm.convert.merge_classes(var.data)
     if cls != self.vm.convert.module_type:
       return False
     return not any(isinstance(v, abstract.Module) for v in var.data)
@@ -203,7 +203,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
 
     # Local variables in __init__.py take precedence over submodules.
     node, var = self._get_instance_attribute(node, module, name, valself)
-    if var is not None and not self._is_simple_module(node, var):
+    if var is not None and not self._is_simple_module(var):
       # If `var` is a simple module, then we want to try get_submodule, to see
       # if it can find a more precise value.
       return node, var

@@ -67,14 +67,14 @@ def bytestring(obj):
     return out
 
 
-def native_str(s):
+def native_str(s, errors="strict"):
   """Convert a bytes or unicode object to the native str type."""
   if isinstance(s, str):
     return s
   elif sys.version_info[0] < 3:
-    return s.encode("utf-8")
+    return s.encode("utf-8", errors)
   else:
-    return s.decode("utf-8")
+    return s.decode("utf-8", errors)
 
 
 # bytes and str are the same class in Python 2, and different classes in

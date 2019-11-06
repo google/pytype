@@ -580,6 +580,9 @@ class TestComparisons(test_base.TargetIndependentTest):
       assert "z" >= "a" and "z" >= "z"
       """)
 
+  def test_string(self):
+    self.Check("v = '\\xff'")
+
 
 class TestSlices(test_base.TargetIndependentTest):
 

@@ -66,12 +66,14 @@ class Dataclass(classgen.Decorator):
 
       # Check that default matches the declared type
       if orig and not classgen.is_late_annotation(value):
-        typ = value.data[0].get_class()
+        typ = self.vm.convert.merge_classes(value.data)
         bad = self.vm.matcher.bad_matches(orig, typ, node)
         if bad:
           binding = bad[0][orig]
-          self.vm.errorlog.annotation_type_mismatch(
-              self.vm.frames, typ, binding, name)
+          # TODO(b/143487719): re-enable checking on None.
+          if binding.data != self.vm.convert.none:
+            self.vm.errorlog.annotation_type_mismatch(
+                self.vm.frames, typ, binding, name)
 
       attr = classgen.Attribute(name=name, typ=value, init=init, default=orig)
       own_attrs.append(attr)

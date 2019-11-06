@@ -57,7 +57,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         vals = annot.instantiate(node).data
       else:
         vals = [annot]
-      return self.vm.convert.merge_classes(node, vals)
+      return self.vm.convert.merge_classes(vals)
     elif isinstance(annot, abstract.ParameterizedClass):
       type_parameters = {
           name: self.sub_one_annotation(

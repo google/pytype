@@ -324,13 +324,16 @@ class Args(collections.namedtuple(
         cls, posargs=posargs, namedargs=namedargs or {}, starargs=starargs,
         starstarargs=starstarargs)
 
-  def starargs_as_tuple(self):
+  def starargs_as_tuple(self, node, vm):
     try:
       args = self.starargs and abstract_utils.get_atomic_python_constant(
           self.starargs, tuple)
     except abstract_utils.ConversionError:
       args = None
-    return args
+    if not args:
+      return args
+    return tuple(var if var.bindings else vm.convert.empty.to_variable(node)
+                 for var in args)
 
   def starstarargs_as_dict(self):
     try:
@@ -340,7 +343,7 @@ class Args(collections.namedtuple(
       args = None
     return args
 
-  def simplify(self, node, match_signature=None, vm=None):
+  def simplify(self, node, vm, match_signature=None):
     """Try to insert part of *args, **kwargs into posargs / namedargs."""
     # TODO(rechen): When we have type information about *args/**kwargs,
     # we need to check it before doing this simplification.
@@ -348,9 +351,9 @@ class Args(collections.namedtuple(
     namedargs = self.namedargs
     starargs = self.starargs
     starstarargs = self.starstarargs
-    starargs_as_tuple = self.starargs_as_tuple()
+    starargs_as_tuple = self.starargs_as_tuple(node, vm)
     if starargs_as_tuple is not None:
-      if match_signature and vm:
+      if match_signature:
         # As we have the function signature we will attempt to adjust the
         # starargs into the missing posargs.
         missing_posarg_count = len(match_signature.param_names) - len(posargs)

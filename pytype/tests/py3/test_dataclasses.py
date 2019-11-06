@@ -231,5 +231,14 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         bar: Foo = dataclasses.field(default_factory=Foo)
     """)
 
+  def test_union(self):
+    self.Check("""
+      import dataclasses
+      from typing import Optional
+      @dataclasses.dataclass
+      class Foo:
+        foo: Optional[str] = ''
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

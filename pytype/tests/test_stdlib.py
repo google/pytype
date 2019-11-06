@@ -260,5 +260,15 @@ class StdlibTests(test_base.TargetIndependentTest):
           return p.communicate()
       """, pythonpath=[d.path])
 
+  def test_namedtuple_from_counter(self):
+    self.Check("""
+      import collections
+      import six
+      Foo = collections.namedtuple('Foo', ('x', 'y'))
+      def foo(self):
+        c = collections.Counter()
+        return [Foo(*x) for x in six.iteritems(c)]
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
