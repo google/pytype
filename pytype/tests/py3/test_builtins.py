@@ -494,6 +494,17 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       v = ...  # type: memoryview
     """)
 
+  def testArrayTobytes(self):
+    ty = self.Infer("""
+      import array
+      def t_testTobytes():
+        return array.array('B').tobytes()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      array = ...  # type: module
+      def t_testTobytes() -> bytes
+    """)
+
   def testIteratorBuiltins(self):
     ty = self.Infer("""
       v1 = map(int, ["0"])
