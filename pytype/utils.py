@@ -5,6 +5,7 @@ import contextlib
 import itertools
 import re
 import subprocess
+import sys
 import threading
 import types
 import weakref
@@ -44,6 +45,17 @@ def format_version(python_version):
 def split_version(version_string):
   """Parse a version string like 2.7 into a tuple."""
   return tuple(map(int, version_string.split(".")))
+
+
+def full_version_from_major(major_version):
+  if major_version == sys.version_info.major:
+    return sys.version_info[:2]
+  elif major_version == 2:
+    return (2, 7)
+  else:
+    raise UsageError(
+        "Cannot infer Python minor version for major version %d. "
+        "Specify the version as <major>.<minor>." % major_version)
 
 
 def validate_version(python_version):
