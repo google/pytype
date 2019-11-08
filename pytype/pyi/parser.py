@@ -14,7 +14,6 @@ from pytype.pytd import slots as cmp_slots
 from pytype.pytd import visitors
 from pytype.pytd.parse import parser_constants  # pylint: disable=g-importing-member
 
-_DEFAULT_VERSION = (2, 7, 6)
 _DEFAULT_PLATFORM = "linux"
 # Typing members that represent sets of types.
 _TYPING_SETS = ("typing.Intersection", "typing.Optional", "typing.Union")
@@ -378,7 +377,9 @@ class _Parser(object):
     assert version
     self._used = False
     self._error_location = None
-    self._version = _three_tuple(version or _DEFAULT_VERSION)
+    if isinstance(version, int):
+      version = utils.full_version_from_major(version)
+    self._version = _three_tuple(version)
     self._platform = platform or _DEFAULT_PLATFORM
     # Fields initialized in self.parse().
     self._filename = None  # type: str
@@ -1248,14 +1249,12 @@ class _Parser(object):
     return orig_name
 
 
-def parse_string(src, name=None, filename=None, python_version=None,
-                 platform=None):
+def parse_string(src, python_version, name=None, filename=None, platform=None):
   return _Parser(version=python_version, platform=platform).parse(
       src, name, filename)
 
 
-def parse_file(filename=None, name=None, python_version=None,
-               platform=None):
+def parse_file(filename, python_version, name=None, platform=None):
   with open(filename, "r") as fi:
     src = fi.read()
   return _Parser(version=python_version, platform=platform).parse(

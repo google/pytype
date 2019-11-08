@@ -65,6 +65,14 @@ class UtilsTest(unittest.TestCase):
   def testSplitVersion(self):
     self.assertEqual(utils.split_version("2.7"), (2, 7))
 
+  def testFullVersionFromMajor2(self):
+    self.assertEqual(utils.full_version_from_major(2), (2, 7))
+
+  @unittest.skipUnless(six.PY3, "py3 minor version depends on host version")
+  def testFullVersionFromMajor3(self):
+    major, _ = utils.full_version_from_major(3)
+    self.assertEqual(major, 3)
+
   def testValidateVersion(self):
     self._validate_version_helper((1, 1))
     self._validate_version_helper((2, 1))
