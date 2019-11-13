@@ -547,13 +547,10 @@ class VirtualMachine(object):
       if cls_var is None:
         cls_var = class_dict.members.get("__metaclass__")
         if cls_var and self.PY3:
-          # pylint: disable=using-constant-test
-          if False:  # TODO(b/143154119)
-            # This way of declaring metaclasses no longer works in Python 3.
-            self.errorlog.ignored_metaclass(
-                self.frames, name,
-                cls_var.data[0].full_name if cls_var.bindings else "Any")
-          # pylint: enable=using-constant-test
+          # This way of declaring metaclasses no longer works in Python 3.
+          self.errorlog.ignored_metaclass(
+              self.frames, name,
+              cls_var.data[0].full_name if cls_var.bindings else "Any")
       if cls_var and all(v.data.full_name == "__builtin__.type"
                          for v in cls_var.bindings):
         cls_var = None

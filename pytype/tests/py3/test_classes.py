@@ -149,9 +149,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
   def testGenericReinstantiated(self):
     """Makes sure the result of foo.f() isn't used by both a() and b()."""
     with file_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """\
-        def f() -> list: ...
-        """)
+      d.create_file("foo.pyi", "def f() -> list: ...")
       self.Check("""\
         import foo
         from typing import List
@@ -416,7 +414,6 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
           pass
     """)
 
-  @test_base.skip("b/143154119")
   def testPy2Metaclass(self):
     errors = self.CheckWithErrors("""\
       import abc

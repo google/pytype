@@ -38,10 +38,7 @@ import six
 from six.moves import cPickle
 
 
-# TODO(rechen): use cPickle.HIGHEST_PROTOCOL once pytype runs purely in py3.
-# Currently, proto1_to_pyi runs in py2 to have access to py2-only deps, so
-# pytype needs to use a py2-compatible pickle protocol.
-_PICKLE_PROTOCOL = 2
+_PICKLE_PROTOCOL = cPickle.HIGHEST_PROTOCOL
 _PICKLE_RECURSION_LIMIT_AST = 40000
 
 
