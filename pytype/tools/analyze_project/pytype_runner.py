@@ -5,6 +5,7 @@ from __future__ import print_function
 import logging
 import os
 import subprocess
+import sys
 
 from pytype import file_utils
 from pytype import module_utils
@@ -147,7 +148,7 @@ class PytypeRunner(object):
 
   def get_pytype_command_for_ninja(self, report_errors):
     """Get the command line for running pytype."""
-    exe = 'pytype-single'
+    exe = [sys.executable, '-m', 'pytype.single']
     flags_with_values = {
         '--imports_info': '$imports',
         '-V': self.python_version,
@@ -163,7 +164,7 @@ class PytypeRunner(object):
       self.set_custom_options(flags_with_values, binary_flags)
     # Order the flags so that ninja recognizes commands across runs.
     return (
-        [exe] +
+        exe +
         list(sum(sorted(flags_with_values.items()), ())) +
         sorted(binary_flags) +
         ['$in']
