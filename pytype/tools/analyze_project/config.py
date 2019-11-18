@@ -46,6 +46,9 @@ ITEMS = {
     'keep_going': Item(
         False, 'False', None,
         'Keep going past errors to analyze as many files as possible.'),
+    'jobs': Item(
+        1, '4', None,
+        'Run N jobs in parallel.'),
     'output': Item(
         '.pytype', '.pytype', None, 'All pytype output goes here.'),
     'pythonpath': Item(

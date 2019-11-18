@@ -93,6 +93,7 @@ def make_parser():
       (('-x', '--exclude'), {'nargs': '*', 'action': 'flatten'}),
       (('inputs',), {'metavar': 'input', 'nargs': '*', 'action': 'flatten'}),
       (('-k', '--keep-going'), {'action': 'store_true', 'type': None}),
+      (('-j', '--jobs'), {'action': 'store', 'type': int, 'metavar': 'N'}),
       (('-P', '--pythonpath'),),
       (('-V', '--python-version'),)
   ]:
