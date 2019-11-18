@@ -2962,7 +2962,7 @@ class InterpreterFunction(SignedFunction):
       for b in self.vm.callself_stack[-1].bindings:
         b.data.maybe_missing_members = True
 
-  def call(self, node, func, args, new_locals=None, alias_map=None):
+  def call(self, node, func, args, new_locals=False, alias_map=None):
     if self.is_overload:
       raise function.NotCallable(self)
     if (self.vm.is_at_maximum_depth() and
@@ -2991,7 +2991,7 @@ class InterpreterFunction(SignedFunction):
               node, annotations[name], extra_key=extra_key)
     try:
       frame = self.vm.make_frame(
-          node, self.code, callargs, self.f_globals, self.f_locals,
+          node, self.code, self.f_globals, self.f_locals, callargs,
           self.closure, new_locals=new_locals, func=func,
           first_posarg=first_posarg)
     except self.vm.VirtualMachineRecursionError:

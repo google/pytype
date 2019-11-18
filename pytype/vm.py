@@ -618,8 +618,8 @@ class VirtualMachine(object):
   def make_native_function(self, name, method):
     return abstract.NativeFunction(name, method, self)
 
-  def make_frame(self, node, code, callargs=None, f_globals=None, f_locals=None,
-                 closure=None, new_locals=None, func=None, first_posarg=None):
+  def make_frame(self, node, code, f_globals, f_locals, callargs=None,
+                 closure=None, new_locals=False, func=None, first_posarg=None):
     """Create a new frame object, using the given args, globals and locals."""
     if any(code is f.f_code for f in self.frames):
       log.info("Detected recursion in %s", code.co_name or code.co_filename)
@@ -629,29 +629,12 @@ class VirtualMachine(object):
              self.repper(callargs),
              type(f_globals).__name__, id(f_globals),
              type(f_locals).__name__, id(f_locals))
-    if f_globals is not None:
-      f_globals = f_globals
-      assert f_locals
-    else:
-      assert not self.frames
-      assert f_locals is None
-      # TODO(ampere): __name__, __doc__, __package__ below are not correct
-      f_globals = f_locals = self.convert_locals_or_globals({
-          "__builtins__": self.loader.builtins,
-          "__name__": "__main__",
-          "__file__": code.co_filename,
-          "__doc__": None,
-          "__package__": None,
-      })
-      # __name__ is retrieved by class bodies. So make sure that it's preloaded,
-      # otherwise we won't properly cache the first class initialization.
-      f_globals.load_lazy_attribute("__name__")
 
     # Implement NEWLOCALS flag. See Objects/frameobject.c in CPython.
     # (Also allow to override this with a parameter, Python 3 doesn't always set
     #  it to the right value, e.g. for class-level code.)
     if code.has_newlocals() or new_locals:
-      f_locals = self.convert_locals_or_globals({}, "locals")
+      f_locals = abstract.LazyConcreteDict("locals", {}, self)
 
     return frame_state.Frame(node, self, code, f_globals, f_locals,
                              self.frame, callargs or {}, closure, func,
@@ -695,6 +678,24 @@ class VirtualMachine(object):
                                self.director.docstrings)
 
   def run_bytecode(self, node, code, f_globals=None, f_locals=None):
+    """Run the given bytecode."""
+    if f_globals is not None:
+      f_globals = f_globals
+      assert f_locals
+    else:
+      assert not self.frames
+      assert f_locals is None
+      # __name__, __doc__, and __package__ are unused placeholder values.
+      f_globals = f_locals = abstract.LazyConcreteDict("globals", {
+          "__builtins__": self.loader.builtins,
+          "__name__": "__main__",
+          "__file__": code.co_filename,
+          "__doc__": None,
+          "__package__": None,
+      }, self)
+      # __name__ is retrieved by class bodies. So make sure that it's preloaded,
+      # otherwise we won't properly cache the first class initialization.
+      f_globals.load_lazy_attribute("__name__")
     frame = self.make_frame(node, code, f_globals=f_globals, f_locals=f_locals)
     node, return_var = self.run_frame(frame, node)
     return node, frame.f_globals, frame.f_locals, return_var
@@ -1357,9 +1358,6 @@ class VirtualMachine(object):
   def pop_kwargs(self, state):
     """Retrieve a kwargs dictionary from the stack. Used by call_function."""
     return state.pop()
-
-  def convert_locals_or_globals(self, d, name="globals"):
-    return abstract.LazyConcreteDict(name, d, self)
 
   def import_module(self, name, full_name, level):
     """Import a module and return the module object or None."""
