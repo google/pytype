@@ -238,11 +238,10 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           subst[other_type.full_name] = node.program.NewVariable([], [], node)
           return subst
         else:
-          # Keep the type parameter names in the expected types.
-          left_dummy = self.vm.annotations_util.instantiate_for_sub(
-              self.vm.root_cfg_node, left.param)
-          right_dummy = self.vm.annotations_util.instantiate_for_sub(
-              self.vm.root_cfg_node, other_type)
+          left_dummy = left.param.instantiate(
+              self.vm.root_cfg_node, abstract_utils.DUMMY_CONTAINER)
+          right_dummy = left.param.instantiate(
+              self.vm.root_cfg_node, abstract_utils.DUMMY_CONTAINER)
           self._set_error_subst(
               self._merge_substs(subst, [{
                   left.param.name: left_dummy,
@@ -274,8 +273,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
             value, other_type.bound, subst, node, view)
         if new_subst is None:
           new_subst = {other_type.full_name:
-                       self.vm.annotations_util.instantiate_for_sub(
-                           node, other_type.bound)}
+                       other_type.bound.instantiate(
+                           node, abstract_utils.DUMMY_CONTAINER)}
           self._set_error_subst(self._merge_substs(subst, [new_subst]))
           return None
       if other_type.full_name in subst:
@@ -867,8 +866,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           annotation_subst.uf = (
               other_type.base_cls.all_formal_type_parameters.uf)
         for (param, value) in other_type.get_formal_type_parameters().items():
-          annotation_subst[param] = (self.vm.annotations_util.
-                                     instantiate_for_sub(node, value))
+          annotation_subst[param] = value.instantiate(
+              node, abstract_utils.DUMMY_CONTAINER)
         annotated_callable = self.vm.annotations_util.sub_one_annotation(
             node, callable_signature, [annotation_subst])
         if isinstance(matching_left_method, pytd.Function):

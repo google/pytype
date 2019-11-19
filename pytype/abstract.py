@@ -267,10 +267,22 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
     return self.get_default_type_key()
 
   def instantiate(self, node, container=None):
-    del container
-    return self.to_instance().to_variable(node)
+    """Create an instance of self.
 
-  def to_instance(self):
+    Note that this method does not call __init__, so the instance may be
+    incomplete. If you need a complete instance, use self.vm.init_class instead.
+
+    Args:
+      node: The current node.
+      container: Optionally, the value that contains self. (See TypeParameter.)
+
+    Returns:
+      The instance.
+    """
+    del container
+    return self._to_instance().to_variable(node)
+
+  def _to_instance(self):
     return Instance(self, self.vm)
 
   def to_annotation_container(self):
@@ -2049,7 +2061,7 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):
     content = []
     for i in range(self.tuple_length):
       p = self.formal_type_parameters[i]
-      if container is self.vm.annotations_util.DUMMY_CONTAINER or (
+      if container is abstract_utils.DUMMY_CONTAINER or (
           isinstance(container, SimpleAbstractValue) and
           isinstance(p, TypeParameter) and
           p.full_name in container.all_template_names):

@@ -33,6 +33,12 @@ DYNAMIC_ATTRIBUTE_MARKERS = [
 ]
 
 
+# A dummy container object for use in instantiating type parameters.
+# A container is needed to preserve type parameter names for error messages
+# and for sub_(one_)annotation(s).
+DUMMY_CONTAINER = object()
+
+
 class ConversionError(ValueError):
   pass
 

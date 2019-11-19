@@ -1193,8 +1193,8 @@ class AbstractTest(AbstractTestBase):
         self._vm.convert.tuple_type,
         {0: type_param, abstract_utils.T: type_param}, self._vm)
     # Instantiate the tuple class.
-    subst_value = self._vm.annotations_util.instantiate_for_sub(
-        self._vm.root_cfg_node, cls)
+    subst_value = cls.instantiate(
+        self._vm.root_cfg_node, abstract_utils.DUMMY_CONTAINER)
     # Recover the class from the instance.
     subbed_cls = self._vm.annotations_util.sub_one_annotation(
         self._vm.root_cfg_node, type_param, [{abstract_utils.K: subst_value}])

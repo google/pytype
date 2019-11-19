@@ -354,7 +354,7 @@ class Class(object):
     key = self.vm.frame.current_opcode
     assert key
     if key not in self._instance_cache:
-      self._instance_cache[key] = self.to_instance()
+      self._instance_cache[key] = self._to_instance()
     return self._instance_cache[key]
 
   def call(self, node, value, args):
