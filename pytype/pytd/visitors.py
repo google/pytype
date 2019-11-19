@@ -1259,12 +1259,13 @@ class AdjustTypeParameters(Visitor):
   def VisitTypeDeclUnit(self, node):
     type_params_to_add = set()
     declared_type_params = {n.name for n in node.type_params}
-    # Sorting all_typeparams helps keep pickling deterministic.
+    # Sorting type params helps keep pickling deterministic.
     for t in sorted(self.all_typeparams):
       if t.name not in declared_type_params:
         logging.debug("Adding definition for type parameter %r", t.name)
         type_params_to_add.add(t.Replace(scope=None))
-    new_type_params = node.type_params + tuple(type_params_to_add)
+    new_type_params = tuple(
+        sorted(node.type_params + tuple(type_params_to_add)))
     return node.Replace(type_params=new_type_params)
 
   def _CheckDuplicateNames(self, params, class_name):
