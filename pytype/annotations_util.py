@@ -18,24 +18,6 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
   class LateAnnotationError(Exception):
     """Used to break out of annotation evaluation if we discover a string."""
 
-  # A dummy container object for use in instantiating type parameters.
-  DUMMY_CONTAINER = object()
-
-  def instantiate_for_sub(self, node, typ):
-    """Instantiate this type for use only in sub_(one_)annotation(s).
-
-    Instantiate a type using a dummy container so that it can be put in a
-    substitution dictionary for use in sub_annotations or sub_one_annotation.
-    The container is needed to preserve type parameters.
-
-    Args:
-      node: A cfg node.
-      typ: A type.
-    Returns:
-      A variable of an instance of the type.
-    """
-    return typ.instantiate(node, container=self.DUMMY_CONTAINER)
-
   def sub_annotations(self, node, annotations, substs, instantiate_unbound):
     """Apply type parameter substitutions to a dictionary of annotations."""
     if substs and all(substs):
@@ -212,7 +194,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       cls.set_annotation(name, instance)
 
   def init_annotation_var(self, node, name, var):
-    """Convert annotation type to instance value."""
+    """Instantiate a variable of an annotation, calling __init__."""
     try:
       typ = abstract_utils.get_atomic_value(var)
     except abstract_utils.ConversionError:
@@ -264,6 +246,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
 
   def init_annotation(self, annot, name, stack, node, f_globals=None,
                       f_locals=None):
+    """Instantiate the annotation, calling __init__."""
     processed = self._process_one_annotation(
         annot, name, stack, node, f_globals, f_locals)
     if processed is None:
@@ -282,7 +265,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     return new_var
 
   def init_from_annotations(self, node, name, annots_var):
-    """Instantiate `name` from the given __annotations__ dict."""
+    """Instantiate `name` from the given annotations dict, calling __init__."""
     try:
       annots = abstract_utils.get_atomic_python_constant(annots_var, dict)
     except abstract_utils.ConversionError:

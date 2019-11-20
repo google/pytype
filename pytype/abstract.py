@@ -267,10 +267,22 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
     return self.get_default_type_key()
 
   def instantiate(self, node, container=None):
-    del container
-    return self.to_instance().to_variable(node)
+    """Create an instance of self.
 
-  def to_instance(self):
+    Note that this method does not call __init__, so the instance may be
+    incomplete. If you need a complete instance, use self.vm.init_class instead.
+
+    Args:
+      node: The current node.
+      container: Optionally, the value that contains self. (See TypeParameter.)
+
+    Returns:
+      The instance.
+    """
+    del container
+    return self._to_instance().to_variable(node)
+
+  def _to_instance(self):
     return Instance(self, self.vm)
 
   def to_annotation_container(self):
@@ -2049,7 +2061,7 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):
     content = []
     for i in range(self.tuple_length):
       p = self.formal_type_parameters[i]
-      if container is self.vm.annotations_util.DUMMY_CONTAINER or (
+      if container is abstract_utils.DUMMY_CONTAINER or (
           isinstance(container, SimpleAbstractValue) and
           isinstance(p, TypeParameter) and
           p.full_name in container.all_template_names):
@@ -2962,7 +2974,7 @@ class InterpreterFunction(SignedFunction):
       for b in self.vm.callself_stack[-1].bindings:
         b.data.maybe_missing_members = True
 
-  def call(self, node, func, args, new_locals=None, alias_map=None):
+  def call(self, node, func, args, new_locals=False, alias_map=None):
     if self.is_overload:
       raise function.NotCallable(self)
     if (self.vm.is_at_maximum_depth() and
@@ -2991,7 +3003,7 @@ class InterpreterFunction(SignedFunction):
               node, annotations[name], extra_key=extra_key)
     try:
       frame = self.vm.make_frame(
-          node, self.code, callargs, self.f_globals, self.f_locals,
+          node, self.code, self.f_globals, self.f_locals, callargs,
           self.closure, new_locals=new_locals, func=func,
           first_posarg=first_posarg)
     except self.vm.VirtualMachineRecursionError:

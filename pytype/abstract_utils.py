@@ -33,6 +33,12 @@ DYNAMIC_ATTRIBUTE_MARKERS = [
 ]
 
 
+# A dummy container object for use in instantiating type parameters.
+# A container is needed to preserve type parameter names for error messages
+# and for sub_(one_)annotation(s).
+DUMMY_CONTAINER = object()
+
+
 class ConversionError(ValueError):
   pass
 
@@ -560,8 +566,6 @@ def eval_expr(vm, node, f_globals, f_locals, expr):
     # We only want the error, not the full message, which includes a
     # temporary filename and line number.
     raise EvaluationError(e.error)
-  if not f_locals:
-    f_locals = vm.convert_locals_or_globals({}, "locals")
   _, _, _, ret = vm.run_bytecode(node, code, f_globals, f_locals)
   if len(vm.errorlog) > prior_errors:
     # Annotations are constants, so tracebacks aren't needed.

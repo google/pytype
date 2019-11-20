@@ -223,7 +223,7 @@ class CallTracer(vm.VirtualMachine):
       nodes.append(node4)
     return self.join_cfg_nodes(nodes), instance
 
-  def instantiate(self, node, clsv):
+  def _instantiate_var(self, node, clsv):
     """Build an (dummy) instance from a class, for analyzing it."""
     n = self.program.NewVariable()
     for cls in clsv.Bindings(node, strict=False):
@@ -253,6 +253,9 @@ class CallTracer(vm.VirtualMachine):
   def init_class(self, node, cls, extra_key=None):
     """Instantiate a class, and also call __init__.
 
+    Calling __init__ can be expensive, so this method caches its created
+    instances. If you don't need __init__ called, use cls.instantiate instead.
+
     Args:
       node: The current node.
       cls: The class to instantiate.
@@ -268,7 +271,7 @@ class CallTracer(vm.VirtualMachine):
     if (key not in self._instance_cache or
         self._instance_cache[key] is _INITIALIZING):
       clsvar = cls.to_variable(node)
-      node, instance = self.instantiate(node, clsvar)
+      node, instance = self._instantiate_var(node, clsvar)
       if key in self._instance_cache:
         # We've encountered a recursive pattern such as
         # class A:
