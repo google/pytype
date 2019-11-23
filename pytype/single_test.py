@@ -11,7 +11,7 @@ import tempfile
 import textwrap
 
 from pytype import config
-from pytype import main as main_module
+from pytype import single
 from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import pytd_utils
@@ -465,7 +465,7 @@ class PytypeTest(unittest.TestCase):
     with open(infile, "w") as f:
       f.write("def f(x): pass")
     options = config.Options.create(infile, output=outfile)
-    main_module._run_pytype(options)
+    single._run_pytype(options)
     self.assertTrue(os.path.isfile(outfile))
 
   def testGenerateAndUseBuiltins(self):
