@@ -47,13 +47,11 @@ class Dataclass(classgen.Decorator):
     #   y: str = 'hello'
     #   x = 10
     # would have init(x:int = 10, y:str = 'hello')
-    ordered_locals = {x.name: x for x in self.get_class_locals(
-        cls, allow_methods=True)}
-    ordered_annotations = self.get_class_local_annotations(cls)
     own_attrs = []
     late_annotation = False  # True if we find a bare late annotation
-    for local in ordered_annotations:
-      name, value, orig = ordered_locals[local.name]
+    for name, (value, orig) in self.get_class_locals(
+        cls, allow_methods=True, ordering=classgen.Ordering.FIRST_ANNOTATE
+    ).items():
       if self.add_member(node, cls, name, value, orig):
         late_annotation = True
 

@@ -62,7 +62,7 @@ repper = repr_obj.repr
 Block = collections.namedtuple("Block", ["type", "op", "handler", "level"])
 
 
-class LocalOp(collections.namedtuple("_LocalOp", ["name", "op", "value"])):
+class LocalOp(collections.namedtuple("_LocalOp", ["name", "op"])):
   ASSIGN = 1
   ANNOTATE = 2
 
@@ -73,7 +73,7 @@ class LocalOp(collections.namedtuple("_LocalOp", ["name", "op", "value"])):
     return self.op == self.ANNOTATE
 
 
-Local = collections.namedtuple("Local", ["name", "value", "orig"])
+Local = collections.namedtuple("Local", ["value", "orig"])
 
 
 _opcode_counter = metrics.MapCounter("vm_opcode")
@@ -164,14 +164,11 @@ class VirtualMachine(object):
     # { code.co_name: (var_name, value-or-type, original value) }
     # (We store the original value because type-annotated classvars are replaced
     # by their stated type in the locals dict.)
-    # local_traces contains the log of assignments and annotations, and
-    # ordered_locals contains a record of local variables with the most recently
-    # updated last.
-    # TODO(mdemello): ordered_locals can be reconstructed from local_traces, we
-    # could do away with recording it in real time and construct as-needed, with
-    # possibly some duplicate work.
-    self.local_traces = collections.defaultdict(list)
-    self.ordered_locals = collections.defaultdict(list)
+    # local_ops contains the order of assignments and annotations, and
+    # annotated_locals contains a record of the annotated and original values of
+    # the locals.
+    self.local_ops = collections.defaultdict(list)
+    self.annotated_locals = collections.defaultdict(dict)
 
     # Map from builtin names to canonical objects.
     self.special_builtins = {
@@ -1146,36 +1143,34 @@ class VirtualMachine(object):
       return state, ret
     raise KeyError(name)
 
-  def _trace_local(self, name, operation, value):
-    self.local_traces[self.frame.f_code.co_name].append(
-        LocalOp(name, operation, value))
+  def _record_local(self, name, value, orig_val=None):
+    """Record a type annotation on a local variable.
 
-  def _record_local_assignment(self, name, value, orig_val):
-    """Record a type annotation on a local variable."""
-    locs = self.ordered_locals[self.frame.f_code.co_name]
-    # If 'name' is already recorded, delete it and move it to the end.
-    new_locs = [x for x in locs if x[0] != name]
-    new_locs.append(Local(name, value, orig_val))
-    self.ordered_locals[self.frame.f_code.co_name] = new_locs
+    This method records three types of local operations:
+      - An annotation, e.g., `x: int`. In this case, `value` is the value of the
+        variable after the annotation is applied - Instance(int) - and
+        `orig_val` is None.
+      - An assignment, e.g., `x = 0`. In this case, both `value` and `orig_val`
+        are the assigned value, Instance(int).
+      - An annotated assignment, e.g., `x: int = None`. In this case, `value` is
+        the post-annotation value, Instance(int), and `orig_val` is the
+        pre-annotation value, Instance(None).
 
-  def _update_local_assignment(self, name, value):
-    """Record a type annotation on a local variable."""
-    locs = self.ordered_locals[self.frame.f_code.co_name]
-    new_locs = []
-    added = False
-    for loc in locs:
-      _name, _, _orig = loc
-      if _name == name:
-        new_locs.append(Local(name, value, _orig))
-        added = True
-      else:
-        new_locs.append(loc)
-    if not added:
-      # We have an annotation with no corresponding value, e.g.
-      #   class A:
-      #     x: int
-      new_locs.append(Local(name, value, None))
-    self.ordered_locals[self.frame.f_code.co_name] = new_locs
+    Args:
+      name: The variable name.
+      value: The final value.
+      orig_val: The original value, if any.
+    """
+    frame_name = self.frame.f_code.co_name
+    if orig_val:
+      self.local_ops[frame_name].append(LocalOp(name, LocalOp.ASSIGN))
+    if value != orig_val:
+      self.local_ops[frame_name].append(LocalOp(name, LocalOp.ANNOTATE))
+    if not orig_val and name in self.annotated_locals:
+      self.annotated_locals[name] = self.annotated_locals[name]._replace(
+          value=value)
+    else:
+      self.annotated_locals[name] = Local(value, orig_val)
 
   def _store_value(self, state, name, value, local):
     if local:
@@ -1198,10 +1193,7 @@ class VirtualMachine(object):
     state, orig_val = state.pop()
     value = self.annotations_util.apply_type_comment(state, op, name, orig_val)
     if local:
-      self._trace_local(name, LocalOp.ASSIGN, orig_val)
-      if value != orig_val:
-        self._trace_local(name, LocalOp.ANNOTATE, value)
-      self._record_local_assignment(name, value, orig_val)
+      self._record_local(name, value, orig_val)
     state = state.forward_cfg_node()
     state = self._store_value(state, name, value, local)
     self.trace_opcode(op, name, value)
@@ -2806,8 +2798,7 @@ class VirtualMachine(object):
     # Store the annotation, for use in attrs and dataclasses.
     new_value = self.annotations_util.init_annotation_var(
         state.node, name, value)
-    self._trace_local(name, LocalOp.ANNOTATE, value)
-    self._update_local_assignment(name, new_value)
+    self._record_local(name, new_value)
     # Now see if the variable is defined. If it is, replace its value with the
     # new_value derived from the annotation.
     try:

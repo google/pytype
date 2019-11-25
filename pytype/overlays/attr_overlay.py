@@ -47,10 +47,15 @@ class Attrs(classgen.Decorator):
     """Processes the attrib members of a class."""
 
     # Collect classvars to convert them to attrs.
-    ordered_locals = self.get_class_locals(cls)
+    if self.args["auto_attribs"]:
+      ordering = classgen.Ordering.FIRST_ANNOTATE
+    else:
+      ordering = classgen.Ordering.LAST_ASSIGN
+    ordered_locals = self.get_class_locals(
+        cls, allow_methods=False, ordering=ordering)
     own_attrs = []
     late_annotation = False  # True if we find a bare late annotation
-    for name, value, orig in ordered_locals:
+    for name, (value, orig) in ordered_locals.items():
       if is_attrib(orig):
         if not is_attrib(value) and orig.data[0].has_type:
           # We cannot have both a type annotation and a type argument.

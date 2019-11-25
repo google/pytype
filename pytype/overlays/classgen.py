@@ -4,6 +4,7 @@ Contains common functionality used by dataclasses, attrs and namedtuples.
 """
 
 import abc
+import collections
 import logging
 
 from pytype import abstract
@@ -19,6 +20,27 @@ log = logging.getLogger(__name__)
 
 # type alias for convenience
 Param = overlay_utils.Param
+
+
+class Ordering(object):
+  """Possible orderings for Decorator.get_class_locals."""
+  # Order by each variable's first annotation. For example, for
+  #   class Foo:
+  #     x: int
+  #     y: str
+  #     x: float
+  # the locals will be [(x, Instance(float)), (y, Instance(str))]. Note that
+  # unannotated variables will be skipped, and the values of later annotations
+  # take precedence over earlier ones.
+  FIRST_ANNOTATE = object()
+  # Order by each variable's last definition. So for
+  #   class Foo:
+  #     x = 0
+  #     y = 'hello'
+  #     x = 4.2
+  # the locals will be [(y, Instance(str)), (x, Instance(float))]. Note that
+  # variables without assignments will be skipped.
+  LAST_ASSIGN = object()
 
 
 class Attribute(object):
@@ -103,32 +125,37 @@ class Decorator(abstract.PyTDFunction):
       err = value.data[0].cls
     self.vm.errorlog.invalid_annotation(self.vm.frames, err)
 
-  def get_class_locals(self, cls, allow_methods=False):
-    ordered_locals = self.vm.ordered_locals[cls.name]
-    out = []
-    for local in ordered_locals:
-      name, _, orig = local
-      if is_dunder(name):
-        continue
-      if is_method(orig) and not allow_methods:
-        continue
-      out.append(local)
-    return out
+  def get_class_locals(self, cls, allow_methods, ordering):
+    """Gets a dictionary of the class's local variables.
 
-  def get_class_local_annotations(self, cls):
-    # TODO(mdemello): This is based on what dataclasses need - we discard dups
-    # here since dataclasses take the first recorded annotation to determine the
-    # ordering. It should be configurable behaviour.
-    traces = self.vm.local_traces[cls.name]
-    out = []
-    seen = set()
-    for local in traces:
-      if is_dunder(local.name) or local.name in seen:
+    Args:
+      cls: An abstract.InterpreterClass.
+      allow_methods: A bool, whether to allow methods as variables.
+      ordering: A classgen.Ordering describing the order in which the variables
+        should appear.
+
+    Returns:
+      A collections.OrderedDict of the locals.
+    """
+    # TODO(rechen): Once we drop Python 2 support, either use a normal dict or
+    # replace key deletion with OrderedDict.move_to_end().
+    out = collections.OrderedDict()
+    for op in self.vm.local_ops[cls.name]:
+      if is_dunder(op.name):
         continue
-      if not local.is_annotate():
+      local = self.vm.annotated_locals[op.name]
+      if not allow_methods and is_method(local.orig):
         continue
-      seen.add(local.name)
-      out.append(local)
+      if ordering is Ordering.FIRST_ANNOTATE:
+        if not op.is_annotate() or op.name in out:
+          continue
+      else:
+        assert ordering is Ordering.LAST_ASSIGN
+        if not op.is_assign():
+          continue
+        elif op.name in out:
+          del out[op.name]
+      out[op.name] = local
     return out
 
   def add_member(self, node, cls, name, value, orig):
