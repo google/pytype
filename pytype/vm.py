@@ -1166,11 +1166,11 @@ class VirtualMachine(object):
       self.local_ops[frame_name].append(LocalOp(name, LocalOp.ASSIGN))
     if value != orig_val:
       self.local_ops[frame_name].append(LocalOp(name, LocalOp.ANNOTATE))
-    if not orig_val and name in self.annotated_locals:
-      self.annotated_locals[name] = self.annotated_locals[name]._replace(
-          value=value)
+    if not orig_val and name in self.annotated_locals[frame_name]:
+      self.annotated_locals[frame_name][name] = (
+          self.annotated_locals[frame_name][name]._replace(value=value))
     else:
-      self.annotated_locals[name] = Local(value, orig_val)
+      self.annotated_locals[frame_name][name] = Local(value, orig_val)
 
   def _store_value(self, state, name, value, local):
     if local:

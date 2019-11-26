@@ -143,7 +143,7 @@ class Decorator(abstract.PyTDFunction):
     for op in self.vm.local_ops[cls.name]:
       if is_dunder(op.name):
         continue
-      local = self.vm.annotated_locals[op.name]
+      local = self.vm.annotated_locals[cls.name][op.name]
       if not allow_methods and is_method(local.orig):
         continue
       if ordering is Ordering.FIRST_ANNOTATE:
