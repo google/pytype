@@ -35,6 +35,12 @@ class Stage(object):
 FIRST_PASS_SUFFIX = '-1'
 
 
+if sys.executable is not None:
+  PYTYPE_SINGLE = [sys.executable, '-m', 'pytype.single']
+else:
+  PYTYPE_SINGLE = ['pytype-single']
+
+
 def resolved_file_to_module(f):
   """Turn an importlab ResolvedFile into a pytype Module."""
   full_path = f.path
@@ -148,7 +154,7 @@ class PytypeRunner(object):
 
   def get_pytype_command_for_ninja(self, report_errors):
     """Get the command line for running pytype."""
-    exe = [sys.executable, '-m', 'pytype.single']
+    exe = PYTYPE_SINGLE
     flags_with_values = {
         '--imports_info': '$imports',
         '-V': self.python_version,

@@ -2,7 +2,6 @@
 
 import collections
 import os
-import sys
 
 from pytype import config as pytype_config
 from pytype import file_utils
@@ -214,8 +213,9 @@ class TestGetRunCmd(TestBase):
     self.runner = make_runner([], [], self.parser.config_from_defaults())
 
   def get_options(self, args):
-    self.assertEqual(args[:3], [sys.executable, '-m', 'pytype.single'])
-    args = args[3:]
+    nargs = len(pytype_runner.PYTYPE_SINGLE)
+    self.assertEqual(args[:nargs], pytype_runner.PYTYPE_SINGLE)
+    args = args[nargs:]
     start, end = args.index('--imports_info'), args.index('$imports')
     self.assertEqual(end-start, 1)
     args.pop(end)
@@ -377,8 +377,8 @@ class TestNinjaPreamble(TestBase):
       if not i % 3:
         self.assertRegexpMatches(line, r'rule \w*')
       elif i % 3 == 1:
-        expected = r'  command = {} -m pytype.single .* \$in'.format(
-            sys.executable)
+        expected = r'  command = {} .* \$in'.format(
+            ' '.join(pytype_runner.PYTYPE_SINGLE))
         self.assertRegexpMatches(line, expected)
       else:
         self.assertRegexpMatches(line, r'  description = \w* \$module')
