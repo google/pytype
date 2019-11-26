@@ -44,8 +44,8 @@ class Options(object):
     Raises:
       sys.exit(2): bad option or input filenames.
     """
+    argument_parser = make_parser()
     if isinstance(argv_or_options, list):
-      argument_parser = make_parser()
       options = argument_parser.parse_args(argv_or_options)
     else:
       options = argv_or_options
