@@ -898,8 +898,8 @@ class ErrorLog(ErrorLogBase):
                     filename=filename, lineno=lineno))
 
   @_error_name("not-supported-yet")
-  def not_supported_yet(self, stack, feature):
-    self.error(stack, "%s not supported yet" % feature)
+  def not_supported_yet(self, stack, feature, details=None):
+    self.error(stack, "%s not supported yet" % feature, details=details)
 
   @_error_name("key-error")
   def key_error(self, stack, key):

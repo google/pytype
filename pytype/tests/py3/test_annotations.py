@@ -993,6 +993,16 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         f(x=None, **g())
     """)
 
+  def testRecursiveTypeAlias(self):
+    errors = self.CheckWithErrors("""\
+      from typing import List, Union
+      Foo = Union[str, List['Foo']]
+      def f(x: Foo):
+        pass
+    """)
+    self.assertErrorLogIs(errors, [(3, "not-supported-yet",
+                                    r"Recursive.*Foo")])
+
 
 class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for PEP 484 style inline annotations."""
