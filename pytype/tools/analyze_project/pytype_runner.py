@@ -130,6 +130,7 @@ class PytypeRunner(object):
     self.custom_options = [
         (k, getattr(conf, k)) for k in set(conf.__slots__) - set(config.ITEMS)]
     self.keep_going = conf.keep_going
+    self.jobs = conf.jobs
 
   def set_custom_options(self, flags_with_values, binary_flags):
     """Merge self.custom_options into flags_with_values and binary_flags."""
@@ -328,10 +329,11 @@ class PytypeRunner(object):
     """Execute the build.ninja file."""
     # -k N     keep going until N jobs fail (0 means infinity)
     # -C DIR   change to DIR before doing anything else
+    # -j N     run N jobs in parallel (0 means infinity)
     # -v       show all command lines while building
     k = '0' if self.keep_going else '1'
     c = os.path.dirname(self.ninja_file)
-    command = ['ninja', '-k', k, '-C', c]
+    command = ['ninja', '-k', k, '-C', c, '-j', str(self.jobs)]
     if logging.getLogger().isEnabledFor(logging.INFO):
       command.append('-v')
     return subprocess.call(command)

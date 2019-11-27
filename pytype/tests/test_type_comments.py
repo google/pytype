@@ -609,5 +609,14 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       c = ...  # type: float
     """)
 
+  def testRecursiveTypeAlias(self):
+    errors = self.CheckWithErrors("""\
+      from typing import List, Union
+      Foo = Union[str, List['Foo']]
+      x = 'hello'  # type: Foo
+    """)
+    self.assertErrorLogIs(errors, [(3, "not-supported-yet",
+                                    r"Recursive.*Foo")])
+
 
 test_base.main(globals(), __name__ == "__main__")

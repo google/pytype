@@ -4,6 +4,7 @@ Contains common functionality used by dataclasses, attrs and namedtuples.
 """
 
 import abc
+import collections
 import logging
 
 from pytype import abstract
@@ -19,6 +20,27 @@ log = logging.getLogger(__name__)
 
 # type alias for convenience
 Param = overlay_utils.Param
+
+
+class Ordering(object):
+  """Possible orderings for Decorator.get_class_locals."""
+  # Order by each variable's first annotation. For example, for
+  #   class Foo:
+  #     x: int
+  #     y: str
+  #     x: float
+  # the locals will be [(x, Instance(float)), (y, Instance(str))]. Note that
+  # unannotated variables will be skipped, and the values of later annotations
+  # take precedence over earlier ones.
+  FIRST_ANNOTATE = object()
+  # Order by each variable's last definition. So for
+  #   class Foo:
+  #     x = 0
+  #     y = 'hello'
+  #     x = 4.2
+  # the locals will be [(y, Instance(str)), (x, Instance(float))]. Note that
+  # variables without assignments will be skipped.
+  LAST_ASSIGN = object()
 
 
 class Attribute(object):
@@ -46,25 +68,32 @@ class Attribute(object):
 class Decorator(abstract.PyTDFunction):
   """Base class for decorators that generate classes from data declarations."""
 
+  # Defaults for the args that we support (dataclasses only support 'init',
+  # but the others default to false so they should not affect anything).
+  _DEFAULT_ARGS = {
+      "init": True,
+      "kw_only": False,
+      "auto_attribs": False,
+  }
+
   def __init__(self, *args, **kwargs):
     super(Decorator, self).__init__(*args, **kwargs)
-    # Defaults for the args that we support (dataclasses only support 'init',
-    # but the others default to false so they should not affect anything).
-    self.args = {
-        "init": True,
-        "kw_only": False,
-        "auto_attribs": False,
-    }
+    # Decorator.call() is invoked first with args, then with the class to
+    # decorate, so we need to first store the args and then associate them to
+    # the right class.
+    self._current_args = None
+    self.args = {}  # map from each class we decorate to its args
 
   @abc.abstractmethod
   def decorate(self, node, cls):
     """Apply the decorator to cls."""
 
   def update_kwargs(self, args):
+    self._current_args = Decorator._DEFAULT_ARGS.copy()
     for k, v in args.namedargs.items():
-      if k in self.args:
+      if k in self._current_args:
         try:
-          self.args[k] = abstract_utils.get_atomic_python_constant(v)
+          self._current_args[k] = abstract_utils.get_atomic_python_constant(v)
         except abstract_utils.ConversionError:
           self.vm.errorlog.not_supported_yet(
               self.vm.frames, "Non-constant argument to decorator: %r" % k)
@@ -73,7 +102,7 @@ class Decorator(abstract.PyTDFunction):
     """Attribute name as an __init__ keyword, could differ from attr.name."""
     return attr.name
 
-  def make_init(self, node, attrs):
+  def make_init(self, node, cls, attrs):
     attr_params = []
     for attr in attrs:
       if attr.init:
@@ -86,7 +115,7 @@ class Decorator(abstract.PyTDFunction):
                   default=attr.default))
 
     # The kw_only arg is ignored in python2; using it is not an error.
-    if self.args["kw_only"] and self.vm.PY3:
+    if self.args[cls]["kw_only"] and self.vm.PY3:
       params = []
       kwonly_params = attr_params
     else:
@@ -103,32 +132,37 @@ class Decorator(abstract.PyTDFunction):
       err = value.data[0].cls
     self.vm.errorlog.invalid_annotation(self.vm.frames, err)
 
-  def get_class_locals(self, cls, allow_methods=False):
-    ordered_locals = self.vm.ordered_locals[cls.name]
-    out = []
-    for local in ordered_locals:
-      name, _, orig = local
-      if is_dunder(name):
-        continue
-      if is_method(orig) and not allow_methods:
-        continue
-      out.append(local)
-    return out
+  def get_class_locals(self, cls, allow_methods, ordering):
+    """Gets a dictionary of the class's local variables.
 
-  def get_class_local_annotations(self, cls):
-    # TODO(mdemello): This is based on what dataclasses need - we discard dups
-    # here since dataclasses take the first recorded annotation to determine the
-    # ordering. It should be configurable behaviour.
-    traces = self.vm.local_traces[cls.name]
-    out = []
-    seen = set()
-    for local in traces:
-      if is_dunder(local.name) or local.name in seen:
+    Args:
+      cls: An abstract.InterpreterClass.
+      allow_methods: A bool, whether to allow methods as variables.
+      ordering: A classgen.Ordering describing the order in which the variables
+        should appear.
+
+    Returns:
+      A collections.OrderedDict of the locals.
+    """
+    # TODO(rechen): Once we drop Python 2 support, either use a normal dict or
+    # replace key deletion with OrderedDict.move_to_end().
+    out = collections.OrderedDict()
+    for op in self.vm.local_ops[cls.name]:
+      if is_dunder(op.name):
         continue
-      if not local.is_annotate():
+      local = self.vm.annotated_locals[cls.name][op.name]
+      if not allow_methods and is_method(local.orig):
         continue
-      seen.add(local.name)
-      out.append(local)
+      if ordering is Ordering.FIRST_ANNOTATE:
+        if not op.is_annotate() or op.name in out:
+          continue
+      else:
+        assert ordering is Ordering.LAST_ASSIGN
+        if not op.is_assign():
+          continue
+        elif op.name in out:
+          del out[op.name]
+      out[op.name] = local
     return out
 
   def add_member(self, node, cls, name, value, orig):
@@ -164,12 +198,22 @@ class Decorator(abstract.PyTDFunction):
 
   def call(self, node, func, args):
     """Construct a decorator, and call it on the class."""
-    # call() is invoked twice, once with kwargs to create the decorator object
-    # and once with the decorated class as a posarg.
-
     self.match_args(node, args)
 
-    if args.namedargs:
+    # There are two ways to use a decorator:
+    #   @decorator(...)
+    #   class Foo: ...
+    # or
+    #   @decorator
+    #   class Foo: ...
+    # In the first case, call() is invoked twice: once with kwargs to create the
+    # decorator object and once with the decorated class as a posarg. So we call
+    # update_kwargs on the first invocation, setting _current_args, and skip it
+    # on the second.
+    # In the second case, we call update_kwargs on the first and only
+    # invocation. (Although namedargs is empty in this case, bool(namedargs) is
+    # True as long as namedargs is an abstract.Dict object.)
+    if args.namedargs and not self._current_args:
       self.update_kwargs(args)
 
     # NOTE: @dataclass is py3-only and has explicitly kwonly args in its
@@ -194,6 +238,10 @@ class Decorator(abstract.PyTDFunction):
       # There are other valid types like abstract.Unsolvable that we don't need
       # to do anything with.
       return node, cls_var
+
+    self.args[cls] = self._current_args
+    # Reset _current_args so we don't use old args for a new class.
+    self._current_args = None
 
     # decorate() modifies the cls object in place
     self.decorate(node, cls)

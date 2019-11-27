@@ -240,5 +240,19 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         foo: Optional[str] = ''
     """)
 
+  def test_reuse_attribute_name(self):
+    self.Check("""
+      import dataclasses
+      from typing import Optional
+
+      @dataclasses.dataclass
+      class Foo:
+        x: Optional[str] = None
+
+      @dataclasses.dataclass
+      class Bar:
+        x: str
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

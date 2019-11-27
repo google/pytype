@@ -302,8 +302,25 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         func.signature.set_annotation(name, resolved)
 
   def _process_one_annotation(self, annotation, name, stack,
-                              node=None, f_globals=None, f_locals=None):
+                              node=None, f_globals=None, f_locals=None,
+                              seen=None):
     """Change annotation / record errors where required."""
+
+    # Check for recursive type annotations so we can emit an error message
+    # rather than crashing.
+    if seen is None:
+      seen = set()
+
+    if isinstance(annotation, abstract.AbstractOrConcreteValue):
+      if annotation in seen:
+        self.vm.errorlog.not_supported_yet(
+            stack, "Recursive type annotations",
+            details="In annotation '%s' on %s" % (annotation.pyval, name))
+
+        return None
+
+      seen = seen | {annotation}
+
     if isinstance(annotation, abstract.AnnotationContainer):
       annotation = annotation.base_cls
 
@@ -334,7 +351,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
             return None
           if len(v.data) == 1:
             return self._process_one_annotation(
-                v.data[0], name, stack, node, f_globals, f_locals)
+                v.data[0], name, stack, node, f_globals, f_locals, seen)
       self.vm.errorlog.invalid_annotation(
           stack, annotation, "Must be constant", name)
       return None
@@ -344,7 +361,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     elif isinstance(annotation, abstract.ParameterizedClass):
       for param_name, param in annotation.formal_type_parameters.items():
         processed = self._process_one_annotation(
-            param, name, stack, node, f_globals, f_locals)
+            param, name, stack, node, f_globals, f_locals, seen)
         if processed is None:
           return None
         elif isinstance(processed, typing_overlay.NoReturn):
@@ -357,7 +374,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       options = []
       for option in annotation.options:
         processed = self._process_one_annotation(
-            option, name, stack, node, f_globals, f_locals)
+            option, name, stack, node, f_globals, f_locals, seen)
         if processed is None:
           return None
         elif isinstance(processed, typing_overlay.NoReturn):

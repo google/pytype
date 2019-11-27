@@ -145,7 +145,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
         y: Foo
         z: int
         a: str
-        def __init__(self, x: int, y: Foo, z: int = ..., a: str = ...) -> None: ...
+        def __init__(self, x: int, y: Foo, a: str = ...) -> None: ...
     """)
 
   def test_redefined_auto_attrs(self):
@@ -194,7 +194,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
         _x: int
         x: Any
         y: str
-        def __init__(self, x: int = ..., y: str = ...) -> None: ...
+        def __init__(self, y: str = ...) -> None: ...
         def f(self) -> None: ...
         @staticmethod
         def bar(x) -> None: ...
@@ -234,6 +234,32 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
       class Bar(Foo):
         def get_x(self) -> bool : ...
         def get_y(self) -> int: ...
+    """)
+
+  def test_partial_auto_attribs(self):
+    # Tests that we can have multiple attrs classes with different kwargs.
+    # If Bar accidentally uses auto_attribs=True, then its __init__ signature
+    # will be incorrect, since `baz` won't be recognized as an attr.
+    ty = self.Infer("""
+      import attr
+      @attr.s(auto_attribs=True)
+      class Foo:
+        foo: str
+      @attr.s
+      class Bar:
+        bar: str = attr.ib()
+        baz = attr.ib()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo:
+        foo: str
+        def __init__(self, foo: str) -> None: ...
+      class Bar:
+        bar: str
+        baz: Any
+        def __init__(self, bar: str, baz) -> None: ...
     """)
 
 
