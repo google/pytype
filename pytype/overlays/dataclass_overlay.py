@@ -85,8 +85,8 @@ class Dataclass(classgen.Decorator):
     cls.metadata[_DATACLASS_METADATA_KEY] = attrs
 
     # Add an __init__ method
-    if self.args["init"]:
-      init_method = self.make_init(node, attrs)
+    if self.args[cls]["init"]:
+      init_method = self.make_init(node, cls, attrs)
       cls.members["__init__"] = init_method
 
 

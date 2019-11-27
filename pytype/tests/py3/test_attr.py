@@ -236,5 +236,31 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
         def get_y(self) -> int: ...
     """)
 
+  def test_partial_auto_attribs(self):
+    # Tests that we can have multiple attrs classes with different kwargs.
+    # If Bar accidentally uses auto_attribs=True, then its __init__ signature
+    # will be incorrect, since `baz` won't be recognized as an attr.
+    ty = self.Infer("""
+      import attr
+      @attr.s(auto_attribs=True)
+      class Foo:
+        foo: str
+      @attr.s
+      class Bar:
+        bar: str = attr.ib()
+        baz = attr.ib()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo:
+        foo: str
+        def __init__(self, foo: str) -> None: ...
+      class Bar:
+        bar: str
+        baz: Any
+        def __init__(self, bar: str, baz) -> None: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

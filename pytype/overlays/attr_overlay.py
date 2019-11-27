@@ -45,9 +45,8 @@ class Attrs(classgen.Decorator):
 
   def decorate(self, node, cls):
     """Processes the attrib members of a class."""
-
     # Collect classvars to convert them to attrs.
-    if self.args["auto_attribs"]:
+    if self.args[cls]["auto_attribs"]:
       ordering = classgen.Ordering.FIRST_ANNOTATE
     else:
       ordering = classgen.Ordering.LAST_ASSIGN
@@ -94,7 +93,7 @@ class Attrs(classgen.Decorator):
                 init=orig.data[0].init,
                 default=orig.data[0].default)
         own_attrs.append(attr)
-      elif self.args["auto_attribs"]:
+      elif self.args[cls]["auto_attribs"]:
         # TODO(b/72678203): typing.ClassVar is the only way to filter a variable
         # out from auto_attribs, but we don't even support importing it.
         attr = Attribute(name=name, typ=value, init=True, default=orig)
@@ -112,8 +111,8 @@ class Attrs(classgen.Decorator):
     cls.metadata[_ATTRS_METADATA_KEY] = attrs
 
     # Add an __init__ method
-    if self.args["init"]:
-      init_method = self.make_init(node, attrs)
+    if self.args[cls]["init"]:
+      init_method = self.make_init(node, cls, attrs)
       cls.members["__init__"] = init_method
 
 

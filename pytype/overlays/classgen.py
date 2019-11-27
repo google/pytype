@@ -68,25 +68,32 @@ class Attribute(object):
 class Decorator(abstract.PyTDFunction):
   """Base class for decorators that generate classes from data declarations."""
 
+  # Defaults for the args that we support (dataclasses only support 'init',
+  # but the others default to false so they should not affect anything).
+  _DEFAULT_ARGS = {
+      "init": True,
+      "kw_only": False,
+      "auto_attribs": False,
+  }
+
   def __init__(self, *args, **kwargs):
     super(Decorator, self).__init__(*args, **kwargs)
-    # Defaults for the args that we support (dataclasses only support 'init',
-    # but the others default to false so they should not affect anything).
-    self.args = {
-        "init": True,
-        "kw_only": False,
-        "auto_attribs": False,
-    }
+    # Decorator.call() is invoked first with args, then with the class to
+    # decorate, so we need to first store the args and then associate them to
+    # the right class.
+    self._current_args = None
+    self.args = {}  # map from each class we decorate to its args
 
   @abc.abstractmethod
   def decorate(self, node, cls):
     """Apply the decorator to cls."""
 
   def update_kwargs(self, args):
+    self._current_args = Decorator._DEFAULT_ARGS.copy()
     for k, v in args.namedargs.items():
-      if k in self.args:
+      if k in self._current_args:
         try:
-          self.args[k] = abstract_utils.get_atomic_python_constant(v)
+          self._current_args[k] = abstract_utils.get_atomic_python_constant(v)
         except abstract_utils.ConversionError:
           self.vm.errorlog.not_supported_yet(
               self.vm.frames, "Non-constant argument to decorator: %r" % k)
@@ -95,7 +102,7 @@ class Decorator(abstract.PyTDFunction):
     """Attribute name as an __init__ keyword, could differ from attr.name."""
     return attr.name
 
-  def make_init(self, node, attrs):
+  def make_init(self, node, cls, attrs):
     attr_params = []
     for attr in attrs:
       if attr.init:
@@ -108,7 +115,7 @@ class Decorator(abstract.PyTDFunction):
                   default=attr.default))
 
     # The kw_only arg is ignored in python2; using it is not an error.
-    if self.args["kw_only"] and self.vm.PY3:
+    if self.args[cls]["kw_only"] and self.vm.PY3:
       params = []
       kwonly_params = attr_params
     else:
@@ -191,12 +198,22 @@ class Decorator(abstract.PyTDFunction):
 
   def call(self, node, func, args):
     """Construct a decorator, and call it on the class."""
-    # call() is invoked twice, once with kwargs to create the decorator object
-    # and once with the decorated class as a posarg.
-
     self.match_args(node, args)
 
-    if args.namedargs:
+    # There are two ways to use a decorator:
+    #   @decorator(...)
+    #   class Foo: ...
+    # or
+    #   @decorator
+    #   class Foo: ...
+    # In the first case, call() is invoked twice: once with kwargs to create the
+    # decorator object and once with the decorated class as a posarg. So we call
+    # update_kwargs on the first invocation, setting _current_args, and skip it
+    # on the second.
+    # In the second case, we call update_kwargs on the first and only
+    # invocation. (Although namedargs is empty in this case, bool(namedargs) is
+    # True as long as namedargs is an abstract.Dict object.)
+    if args.namedargs and not self._current_args:
       self.update_kwargs(args)
 
     # NOTE: @dataclass is py3-only and has explicitly kwonly args in its
@@ -221,6 +238,10 @@ class Decorator(abstract.PyTDFunction):
       # There are other valid types like abstract.Unsolvable that we don't need
       # to do anything with.
       return node, cls_var
+
+    self.args[cls] = self._current_args
+    # Reset _current_args so we don't use old args for a new class.
+    self._current_args = None
 
     # decorate() modifies the cls object in place
     self.decorate(node, cls)
