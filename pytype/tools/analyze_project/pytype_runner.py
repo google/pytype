@@ -5,6 +5,7 @@ from __future__ import print_function
 import logging
 import os
 import subprocess
+import sys
 
 from pytype import file_utils
 from pytype import module_utils
@@ -32,6 +33,12 @@ class Stage(object):
 
 
 FIRST_PASS_SUFFIX = '-1'
+
+
+if sys.executable is not None:
+  PYTYPE_SINGLE = [sys.executable, '-m', 'pytype.single']
+else:
+  PYTYPE_SINGLE = ['pytype-single']
 
 
 def resolved_file_to_module(f):
@@ -148,7 +155,7 @@ class PytypeRunner(object):
 
   def get_pytype_command_for_ninja(self, report_errors):
     """Get the command line for running pytype."""
-    exe = 'pytype-single'
+    exe = PYTYPE_SINGLE
     flags_with_values = {
         '--imports_info': '$imports',
         '-V': self.python_version,
@@ -164,7 +171,7 @@ class PytypeRunner(object):
       self.set_custom_options(flags_with_values, binary_flags)
     # Order the flags so that ninja recognizes commands across runs.
     return (
-        [exe] +
+        exe +
         list(sum(sorted(flags_with_values.items()), ())) +
         sorted(binary_flags) +
         ['$in']

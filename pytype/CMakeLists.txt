@@ -79,9 +79,9 @@ toplevel_py_binary(
   NAME
     pytype-single
   SRCS
-    main.py
+    single.py
   MAIN
-    main.py
+    single.py
   DEPS
     .config
     .io

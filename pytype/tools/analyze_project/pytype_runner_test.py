@@ -213,8 +213,9 @@ class TestGetRunCmd(TestBase):
     self.runner = make_runner([], [], self.parser.config_from_defaults())
 
   def get_options(self, args):
-    self.assertEqual(args[0], 'pytype-single')
-    args = args[1:]
+    nargs = len(pytype_runner.PYTYPE_SINGLE)
+    self.assertEqual(args[:nargs], pytype_runner.PYTYPE_SINGLE)
+    args = args[nargs:]
     start, end = args.index('--imports_info'), args.index('$imports')
     self.assertEqual(end-start, 1)
     args.pop(end)
@@ -376,7 +377,9 @@ class TestNinjaPreamble(TestBase):
       if not i % 3:
         self.assertRegexpMatches(line, r'rule \w*')
       elif i % 3 == 1:
-        self.assertRegexpMatches(line, r'  command = pytype-single .* \$in')
+        expected = r'  command = {} .* \$in'.format(
+            ' '.join(pytype_runner.PYTYPE_SINGLE))
+        self.assertRegexpMatches(line, expected)
       else:
         self.assertRegexpMatches(line, r'  description = \w* \$module')
 

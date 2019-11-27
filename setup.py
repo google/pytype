@@ -156,7 +156,7 @@ setup(
             'merge-pyi = pytype.tools.merge_pyi.main:main',
             'pytd = pytype.pytd.main:main',
             'pytype = pytype.tools.analyze_project.main:main',
-            'pytype-single = pytype.main:main',
+            'pytype-single = pytype.single:main',
             'pyxref = pytype.tools.xref.main:main',
         ]
     },
