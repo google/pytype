@@ -1,3 +1,10 @@
+Version 2019.11.27
+* Support using typing.Counter as a generic.
+* Handle non-utf8 string literals without crashing in host Python 3.
+* Allow running pytype as `python -m pytype`.
+* Add a `-j/--jobs` option to pytype.
+* Detect and raise errors for recursive type aliases, rather than crashing.
+
 Version 2019.10.17
 * Make Python 2 metaclass declarations an error in Python 3.
 * Add basic support for dataclasses.
