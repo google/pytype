@@ -145,7 +145,6 @@ setup(
         'pytype/tools/analyze_project',
         'pytype/tools/annotate_ast',
         'pytype/tools/merge_pyi',
-        'pytype/tools/pyi_checker',
         'pytype/tools/traces',
         'pytype/tools/xref',
         'pytype/typegraph',
