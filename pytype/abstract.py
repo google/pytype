@@ -295,13 +295,8 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
       node: The current CFG node.
     Returns:
       A cfg.Variable.
-    Raises:
-      ValueError: If origins is an empty sequence. This is to prevent you from
-        creating variables that have no origin and hence can never be used.
     """
-    v = self.vm.program.NewVariable()
-    v.AddBinding(self, source_set=[], where=node)
-    return v
+    return self.vm.program.NewVariable([self], source_set=[], where=node)
 
   def to_binding(self, node):
     binding, = self.to_variable(node).bindings
@@ -504,11 +499,11 @@ class TypeParameter(AtomicAbstractValue):
         return abstract_utils.get_atomic_value(cls, mixin.Class), None
       except abstract_utils.EvaluationError as e:
         message = "In %s of TypeVar(%s): %s" % (
-            var_name, self.name, utils.message(e))
+            var_name, self.name, e.details)
         return self.vm.convert.unsolvable, message
       except abstract_utils.ConversionError:
         message = (
-            "In TypeVar(%s): %s must be an unambiguous type (given: %s)" % (
+            "In TypeVar(%s): %s must be constant (given: %s)" % (
                 self.name, var_name, name_or_type))
         return self.vm.convert.unsolvable, message
     else:
@@ -1883,7 +1878,7 @@ class ParameterizedClass(AtomicAbstractValue, mixin.Class):
   def type_param_check(self):
     """Throw exception for invalid type parameters."""
     # It will cause infinite recursion if `formal_type_parameters` is
-    # `LazyTypeParameters`
+    # `LazyFormalTypeParameters`
     if not isinstance(self._formal_type_parameters,
                       abstract_utils.LazyFormalTypeParameters):
       tparams = datatypes.AliasingMonitorDict()
@@ -1906,10 +1901,13 @@ class ParameterizedClass(AtomicAbstractValue, mixin.Class):
     if self._hash is None:
       if isinstance(self._formal_type_parameters,
                     abstract_utils.LazyFormalTypeParameters):
-        items = self._raw_formal_type_parameters()
+        items = tuple(self._raw_formal_type_parameters())
       else:
-        items = self.formal_type_parameters.items()
-      self._hash = hash((self.base_cls, tuple(items)))
+        # Use the names of the parameter values to approximate a hash, to avoid
+        # infinite recursion on recursive type annotations.
+        items = tuple((name, val.full_name)
+                      for name, val in self.formal_type_parameters.items())
+      self._hash = hash((self.base_cls, items))
     return self._hash
 
   def __contains__(self, name):
@@ -1960,7 +1958,7 @@ class ParameterizedClass(AtomicAbstractValue, mixin.Class):
       self._formal_type_parameters = formal_type_parameters
     self._formal_type_parameters = (
         self.vm.annotations_util.convert_class_annotations(
-            self._formal_type_parameters))
+            self.vm.root_cfg_node, self._formal_type_parameters))
     self._formal_type_parameters_loaded = True
 
   def compute_mro(self):
@@ -3667,9 +3665,6 @@ class Unsolvable(AtomicAbstractValue):
 
   def argcount(self, _):
     return 0
-
-  def to_variable(self, node):
-    return self.vm.program.NewVariable([self], source_set=[], where=node)
 
   def get_class(self):
     # return ourself.

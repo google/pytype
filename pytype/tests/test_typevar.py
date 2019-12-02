@@ -54,7 +54,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
         (3, "invalid-typevar", r"wrong arguments"),
         (5, "invalid-typevar", r"Expected.*str.*Actual.*int"),
         (6, "invalid-typevar", r"constant str"),
-        (7, "invalid-typevar", r"unambiguous type"),
+        (7, "invalid-typevar", r"must be constant"),
         (8, "invalid-typevar", r"Expected.*_1:.*type.*Actual.*_1: int"),
         (9, "invalid-typevar", r"0 or more than 1"),
     ])
@@ -155,7 +155,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [
         (2, "invalid-typevar", r"mutually exclusive"),
         (3, "invalid-typevar", r"empty string"),
-        (5, "invalid-typevar", r"unambiguous")])
+        (5, "invalid-typevar", r"must be constant")])
 
   def testCovariant(self):
     _, errors = self.InferWithErrors("""\
@@ -393,7 +393,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [
         (2, "invalid-typevar", r"mutually exclusive"),
         (3, "invalid-typevar", r"empty string"),
-        (5, "invalid-typevar", r"unambiguous"),
+        (5, "invalid-typevar", r"must be constant"),
         (7, "invalid-typevar", r"Name.*Bar")])
 
   def testLateConstraints(self):
