@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 import collections
+import contextlib
 import csv
 import logging
 import re
@@ -160,9 +161,14 @@ def _function_name(name, capitalize=False):
 class CheckPoint(object):
   """Represents a position in an error log."""
 
-  def __init__(self, log, position):
-    self.log = log
-    self.position = position
+  def __init__(self, errors):
+    self._errorlog_errors = errors
+    self._position = len(errors)
+    self.errors = None
+
+  def revert(self):
+    self.errors = self._errorlog_errors[self._position:]
+    self._errorlog_errors[:] = self._errorlog_errors[:self._position]
 
 
 class Error(object):
@@ -315,6 +321,7 @@ class Error(object):
           lineno=self._lineno,
           methodname=self._methodname,
           details=self._details,
+          keyword=self._keyword,
           traceback=None)
 
 
@@ -370,13 +377,17 @@ class ErrorLogBase(object):
                                keyword=keyword, bad_call=bad_call,
                                keyword_context=keyword_context))
 
-  def save(self):
-    """Returns a checkpoint that represents the log messages up to now."""
-    return CheckPoint(self, len(self._errors))
-
-  def revert_to(self, checkpoint):
-    assert checkpoint.log is self
-    self._errors = self._errors[:checkpoint.position]
+  @contextlib.contextmanager
+  def checkpoint(self):
+    """Record errors without adding them to the errorlog."""
+    _log.info("Checkpointing errorlog at %d errors", len(self._errors))
+    checkpoint = CheckPoint(self._errors)
+    try:
+      yield checkpoint
+    finally:
+      checkpoint.revert()
+    _log.info("Restored errorlog to checkpoint: %d errors reverted",
+              len(checkpoint.errors))
 
   def print_to_csv_file(self, filename):
     """Print the errorlog to a csv file."""

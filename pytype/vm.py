@@ -649,9 +649,12 @@ class VirtualMachine(object):
     """
     if opcode is not None:
       return [frame_state.SimpleFrame(opcode)]
+    elif self.frame:
+      # Simple stacks are used for things like late annotations, which don't
+      # need tracebacks in their errors, so we convert just the current frame.
+      return [frame_state.SimpleFrame(self.frame.current_opcode)]
     else:
-      return [frame_state.SimpleFrame(frame.current_opcode)
-              for frame in self.frames]
+      return []
 
   def push_abstract_exception(self, state):
     tb = self.convert.build_list(state.node, [])
@@ -750,7 +753,7 @@ class VirtualMachine(object):
     while f_globals.late_annotations:
       name, annot = f_globals.late_annotations.popitem()
       attr = self.annotations_util.init_annotation(
-          annot.expr, annot.name, annot.stack, node, f_globals, f_locals)
+          node, annot.expr, annot.name, annot.stack, f_globals, f_locals)
       self.attribute_handler.set_attribute(node, f_globals, name, attr)
     assert not self.frames, "Frames left over!"
     log.info("Final node: <%d>%s", node.id, node.name)
@@ -2468,8 +2471,8 @@ class VirtualMachine(object):
     state, pos_defaults = state.popn(num_pos_defaults)
     free_vars = None  # Python < 3.6 does not handle closure vars here.
     kw_defaults = self._convert_kw_defaults(kw_defaults)
-    annot, late_annot = (
-        self.annotations_util.convert_function_annotations(raw_annotations))
+    annot, late_annot = self.annotations_util.convert_function_annotations(
+        state.node, raw_annotations)
     return state, pos_defaults, kw_defaults, annot, late_annot, free_vars
 
   def _get_extra_function_args_3_6(self, state, arg):
@@ -2495,7 +2498,7 @@ class VirtualMachine(object):
       pos_defaults = abstract_utils.get_atomic_python_constant(
           packed_pos_def, tuple)
     annot, late_annot = self.annotations_util.convert_annotations_list(
-        annot.items())
+        state.node, annot.items())
     return state, pos_defaults, kw_defaults, annot, late_annot, free_vars
 
   def _process_function_type_comment(self, op, annotations, late_annotations):

@@ -57,7 +57,7 @@ class Dataclass(classgen.Decorator):
 
       if is_field(orig):
         field = orig.data[0]
-        orig = field.typ
+        orig = field.typ if field.default else None
         init = field.init
       else:
         init = True

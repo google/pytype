@@ -158,6 +158,22 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         def __init__(self, x: bool = ...) -> None: ...
     """)
 
+  def test_field_init_no_default(self):
+    ty = self.Infer("""
+      import dataclasses
+      @dataclasses.dataclass()
+      class Foo(object):
+        x: bool = dataclasses.field()
+        y: int
+    """)
+    self.assertTypesMatchPytd(ty, """
+      dataclasses: module
+      class Foo(object):
+        x: bool
+        y: int
+        def __init__(self, x: bool, y: int) -> None: ...
+    """)
+
   def test_bad_default_param_order(self):
     err = self.CheckWithErrors("""
       import dataclasses

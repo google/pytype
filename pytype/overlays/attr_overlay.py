@@ -77,7 +77,7 @@ class Attrs(classgen.Decorator):
             attr = Attribute(
                 name=name,
                 typ=value.data[0].typ,
-                init=orig.data[0].init,
+                init=value.data[0].init,
                 default=value.data[0].default)
             if classgen.is_late_annotation(attr.typ):
               cls.members[name] = self.vm.new_unsolvable(node)
@@ -174,8 +174,8 @@ class Attrib(classgen.FieldConstructor):
   def _instantiate_type(self, node, args, type_var):
     cls = type_var.data[0]
     try:
-      return self.vm.annotations_util.init_annotation(cls, "attr.ib",
-                                                      self.vm.frames, node)
+      return self.vm.annotations_util.init_annotation(node, cls, "attr.ib",
+                                                      self.vm.frames)
     except self.vm.annotations_util.LateAnnotationError:
       return abstract.LateAnnotation(cls, "attr.ib", self.vm.simple_stack())
 

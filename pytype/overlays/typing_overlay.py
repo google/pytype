@@ -129,33 +129,36 @@ class TypeVar(abstract.PyTDFunction):
   _CLASS_TYPE = (abstract.AbstractOrConcreteValue, mixin.Class,
                  abstract.Unsolvable)
 
-  def _get_class_or_constant(self, var, name, arg_type, arg_type_desc=None):
-    if arg_type is self._CLASS_TYPE:
-      convert_func = abstract_utils.get_atomic_value
-      type_desc = arg_type_desc or "an unambiguous type"
-    else:
-      convert_func = abstract_utils.get_atomic_python_constant
-      type_desc = arg_type_desc or "a constant " + arg_type.__name__
+  def _get_constant(self, var, name, arg_type, arg_type_desc=None):
     try:
-      ret = convert_func(var, arg_type)
-      # If we have a class type as an AbstractOrConcreteValue, we want to return
-      # it as a string.
-      if isinstance(ret, abstract.AbstractOrConcreteValue):
-        ret = abstract_utils.get_atomic_python_constant(var, str)
-        if not ret:
-          raise TypeVarError("%s cannot be an empty string" % name)
-      return ret
+      ret = abstract_utils.get_atomic_python_constant(var, arg_type)
     except abstract_utils.ConversionError:
-      raise TypeVarError("%s must be %s" % (name, type_desc))
+      raise TypeVarError("%s must be %s" % (
+          name, arg_type_desc or "a constant " + arg_type.__name__))
+    return ret
 
-  def _get_namedarg(self, args, name, arg_type, default_value):
-    if name in args.namedargs:
-      value = self._get_class_or_constant(args.namedargs[name], name, arg_type)
-      if name != "bound":
-        self.vm.errorlog.not_supported_yet(
-            self.vm.frames, "argument \"%s\" to TypeVar" % name)
-      return value
-    return default_value
+  def _get_annotation(self, var, name):
+    try:
+      ret = abstract_utils.get_atomic_value(var, self._CLASS_TYPE)
+      if isinstance(ret, abstract.AbstractOrConcreteValue):
+        ret = abstract_utils.get_atomic_python_constant(var, six.string_types)
+    except abstract_utils.ConversionError:
+      raise TypeVarError("%s must be constant" % name)
+    if not ret:
+      raise TypeVarError("%s cannot be an empty string" % name)
+    return ret
+
+  def _get_namedarg(self, args, name, default_value):
+    if name not in args.namedargs:
+      return default_value
+    if name == "bound":
+      return self._get_annotation(args.namedargs[name], name)
+    else:
+      ret = self._get_constant(args.namedargs[name], name, bool)
+      # This error is logged only if _get_constant succeeds.
+      self.vm.errorlog.not_supported_yet(
+          self.vm.frames, "argument \"%s\" to TypeVar" % name)
+      return ret
 
   def _get_typeparam(self, node, args):
     args = args.simplify(node, self.vm)
@@ -167,16 +170,15 @@ class TypeVar(abstract.PyTDFunction):
       # It is currently impossible to get here, since the only
       # FailedFunctionCall that is not an InvalidParameters is NotCallable.
       raise TypeVarError("initialization failed")
-    name = self._get_class_or_constant(args.posargs[0], "name",
-                                       six.string_types,
-                                       arg_type_desc="a constant str")
-    constraints = tuple(self._get_class_or_constant(
-        c, "constraint", self._CLASS_TYPE) for c in args.posargs[1:])
+    name = self._get_constant(args.posargs[0], "name", six.string_types,
+                              arg_type_desc="a constant str")
+    constraints = tuple(
+        self._get_annotation(c, "constraint") for c in args.posargs[1:])
     if len(constraints) == 1:
       raise TypeVarError("the number of constraints must be 0 or more than 1")
-    bound = self._get_namedarg(args, "bound", self._CLASS_TYPE, None)
-    covariant = self._get_namedarg(args, "covariant", bool, False)
-    contravariant = self._get_namedarg(args, "contravariant", bool, False)
+    bound = self._get_namedarg(args, "bound", None)
+    covariant = self._get_namedarg(args, "covariant", False)
+    contravariant = self._get_namedarg(args, "contravariant", False)
     if constraints and bound:
       raise TypeVarError("constraints and a bound are mutually exclusive")
     extra_kwargs = set(args.namedargs) - {"bound", "covariant", "contravariant"}
@@ -210,7 +212,7 @@ class Cast(abstract.PyTDFunction):
     if args.posargs:
       try:
         annot = self.vm.annotations_util.process_annotation_var(
-            args.posargs[0], "typing.cast", self.vm.frames, node)
+            node, args.posargs[0], "typing.cast", self.vm.frames)
       except self.vm.annotations_util.LateAnnotationError:
         self.vm.errorlog.invalid_annotation(
             self.vm.frames, self.vm.merge_values(args.posargs[0].data),
@@ -483,7 +485,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
       return node, self.vm.new_unsolvable(node)
 
     annots, late_annots = self.vm.annotations_util.convert_annotations_list(
-        moves.zip(field_names, field_types))
+        node, moves.zip(field_names, field_types))
     field_types = [annots.get(field_name, self.vm.convert.unsolvable)
                    for field_name in field_names]
     node, cls_var = self._build_namedtuple(name, field_names, field_types,

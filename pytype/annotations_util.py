@@ -115,7 +115,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     else:
       return visible[0]
 
-  def convert_function_annotations(self, raw_annotations):
+  def convert_function_annotations(self, node, raw_annotations):
     """Convert raw annotations to dicts of annotations and late annotations."""
     if raw_annotations:
       # {"i": int, "return": str} is stored as (int, str, ("i", "return"))
@@ -126,11 +126,11 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         name = abstract_utils.get_atomic_python_constant(name)
         t = self.convert_function_type_annotation(name, t)
         annotations_list.append((name, t))
-      return self.convert_annotations_list(annotations_list)
+      return self.convert_annotations_list(node, annotations_list)
     else:
       return {}, {}
 
-  def convert_annotations_list(self, annotations_list):
+  def convert_annotations_list(self, node, annotations_list):
     """Convert a (name, raw_annot) list to annotations and late annotations."""
     annotations = {}
     late_annotations = {}
@@ -138,7 +138,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       if t is None:
         continue
       try:
-        annot = self._process_one_annotation(t, name, self.vm.frames)
+        annot = self._process_one_annotation(node, t, name, self.vm.frames)
       except self.LateAnnotationError:
         late_annotations[name] = abstract.LateAnnotation(
             t, name, self.vm.simple_stack())
@@ -147,14 +147,14 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
           annotations[name] = annot
     return annotations, late_annotations
 
-  def convert_class_annotations(self, raw_annotations):
+  def convert_class_annotations(self, node, raw_annotations):
     """Convert a name -> raw_annot dict to annotations."""
     annotations = {}
     for name, t in raw_annotations.items():
       try:
         # Don't use the parameter name, since it's often something unhelpful
         # like `0`.
-        annot = self._process_one_annotation(t, None, self.vm.frames)
+        annot = self._process_one_annotation(node, t, None, self.vm.frames)
       except self.LateAnnotationError:
         # Copy the late annotation back into the dict for
         # convert_function_annotations to deal with.
@@ -174,13 +174,13 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
                                           annot)
         except abstract_utils.EvaluationError as e:
           self.vm.errorlog.invalid_function_type_comment(
-              annot.stack, annot.expr, details=utils.message(e))
+              annot.stack, annot.expr, details=e.details)
         except abstract_utils.ConversionError:
           self.vm.errorlog.invalid_function_type_comment(
               annot.stack, annot.expr, details="Must be constant.")
       else:
         resolved = self._process_one_annotation(
-            annot.expr, annot.name, annot.stack, node, f_globals, f_locals)
+            node, annot.expr, annot.name, annot.stack, f_globals, f_locals)
         if resolved is not None:
           func.signature.set_annotation(name, resolved)
     func.signature.check_type_parameter_count(
@@ -190,7 +190,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     """Resolves an instance of LateAnnotation's expression."""
     for name, annot in six.iteritems(cls.late_annotations):
       instance = self.init_annotation(
-          annot.expr, annot.name, annot.stack, node, f_globals, f_locals)
+          node, annot.expr, annot.name, annot.stack, f_globals, f_locals)
       cls.set_annotation(name, instance)
 
   def init_annotation_var(self, node, name, var):
@@ -207,7 +207,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
             self.vm.frames, "using type parameter in variable annotation")
         return self.vm.new_unsolvable(node)
       try:
-        return self.init_annotation(typ, name, self.vm.frames, node)
+        return self.init_annotation(node, typ, name, self.vm.frames)
       except self.LateAnnotationError:
         return abstract.LateAnnotation(typ, name, self.vm.simple_stack())
 
@@ -219,13 +219,13 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     if not op.type_comment:
       return value
     comment = op.type_comment
+    frame = self.vm.frame
     try:
-      frame = self.vm.frame
       var = abstract_utils.eval_expr(
           self.vm, state.node, frame.f_globals, frame.f_locals, comment)
     except abstract_utils.EvaluationError as e:
       self.vm.errorlog.invalid_type_comment(
-          self.vm.frames, comment, details=utils.message(e))
+          self.vm.frames, comment, details=e.details)
       value = self.vm.new_unsolvable(state.node)
     else:
       try:
@@ -239,26 +239,26 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
           self.vm.errorlog.not_supported_yet(
               self.vm.frames, "using type parameter in type comment")
         try:
-          value = self.init_annotation(typ, name, self.vm.frames, state.node)
+          value = self.init_annotation(state.node, typ, name, self.vm.frames)
         except self.LateAnnotationError:
           value = abstract.LateAnnotation(typ, name, self.vm.simple_stack())
     return value
 
-  def init_annotation(self, annot, name, stack, node, f_globals=None,
+  def init_annotation(self, node, annot, name, stack, f_globals=None,
                       f_locals=None):
     """Instantiate the annotation, calling __init__."""
     processed = self._process_one_annotation(
-        annot, name, stack, node, f_globals, f_locals)
+        node, annot, name, stack, f_globals, f_locals)
     if processed is None:
       value = self.vm.new_unsolvable(node)
     else:
       _, value = self.vm.init_class(node, processed)
     return value
 
-  def process_annotation_var(self, var, name, stack, node):
+  def process_annotation_var(self, node, var, name, stack):
     new_var = self.vm.program.NewVariable()
     for b in var.bindings:
-      annot = self._process_one_annotation(b.data, name, stack)
+      annot = self._process_one_annotation(node, b.data, name, stack)
       if annot is None:
         return self.vm.new_unsolvable(node)
       new_var.AddBinding(annot, {b}, node)
@@ -297,28 +297,24 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
           details="Expected %d args, %d given" % (expected, len(args)))
       return
     for name, arg in zip(names, args):
-      resolved = self._process_one_annotation(arg, name, annot.stack)
+      resolved = self._process_one_annotation(node, arg, name, annot.stack)
       if resolved is not None:
         func.signature.set_annotation(name, resolved)
 
-  def _process_one_annotation(self, annotation, name, stack,
-                              node=None, f_globals=None, f_locals=None,
-                              seen=None):
+  def _process_one_annotation(self, node, annotation, name, stack,
+                              f_globals=None, f_locals=None, seen=None):
     """Change annotation / record errors where required."""
 
     # Check for recursive type annotations so we can emit an error message
     # rather than crashing.
     if seen is None:
       seen = set()
-
     if isinstance(annotation, abstract.AbstractOrConcreteValue):
       if annotation in seen:
         self.vm.errorlog.not_supported_yet(
             stack, "Recursive type annotations",
             details="In annotation '%s' on %s" % (annotation.pyval, name))
-
         return None
-
       seen = seen | {annotation}
 
     if isinstance(annotation, abstract.AnnotationContainer):
@@ -346,12 +342,11 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
             v = abstract_utils.eval_expr(
                 self.vm, node, f_globals, f_locals, annotation.pyval)
           except abstract_utils.EvaluationError as e:
-            self.vm.errorlog.invalid_annotation(
-                stack, annotation, utils.message(e))
+            self.vm.errorlog.invalid_annotation(stack, annotation, e.details)
             return None
           if len(v.data) == 1:
             return self._process_one_annotation(
-                v.data[0], name, stack, node, f_globals, f_locals, seen)
+                node, v.data[0], name, stack, f_globals, f_locals, seen)
       self.vm.errorlog.invalid_annotation(
           stack, annotation, "Must be constant", name)
       return None
@@ -361,7 +356,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     elif isinstance(annotation, abstract.ParameterizedClass):
       for param_name, param in annotation.formal_type_parameters.items():
         processed = self._process_one_annotation(
-            param, name, stack, node, f_globals, f_locals, seen)
+            node, param, name, stack, f_globals, f_locals, seen)
         if processed is None:
           return None
         elif isinstance(processed, typing_overlay.NoReturn):
@@ -374,7 +369,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       options = []
       for option in annotation.options:
         processed = self._process_one_annotation(
-            option, name, stack, node, f_globals, f_locals, seen)
+            node, option, name, stack, f_globals, f_locals, seen)
         if processed is None:
           return None
         elif isinstance(processed, typing_overlay.NoReturn):
