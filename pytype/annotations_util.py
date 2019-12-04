@@ -51,7 +51,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         typ = abstract.ParameterizedClass
       else:
         typ = type(annot)
-      return typ(annot.base_cls, type_parameters, self.vm)
+      return typ(annot.base_cls, type_parameters, self.vm, annot.template)
     elif isinstance(annot, abstract.Union):
       options = tuple(self.sub_one_annotation(node, o, substs,
                                               instantiate_unbound)
