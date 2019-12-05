@@ -151,10 +151,10 @@ class StopWatch(Metric):
   """A counter that measures the time spent in a "with" statement."""
 
   def __enter__(self):
-    self._start_time = time.clock()
+    self._start_time = time.process_time()
 
   def __exit__(self, exc_type, exc_value, traceback):
-    self._total = time.clock() - self._start_time
+    self._total = time.process_time() - self._start_time
     del self._start_time
 
   def _summary(self):
@@ -175,13 +175,13 @@ class ReentrantStopWatch(Metric):
 
   def __enter__(self):
     if not self._calls:
-      self._start_time = time.clock()
+      self._start_time = time.process_time()
     self._calls += 1
 
   def __exit__(self, exc_type, exc_value, traceback):
     self._calls -= 1
     if not self._calls:
-      self._time += time.clock() - self._start_time
+      self._time += time.process_time() - self._start_time
       del self._start_time
 
   def _merge(self, other):

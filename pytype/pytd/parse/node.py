@@ -237,13 +237,13 @@ def _Visit(node, visitor, *args, **kwargs):
   recursive = name in _visiting
   _visiting.add(name)
 
-  start = time.clock()
+  start = time.process_time()
   try:
     return _VisitNode(node, visitor, *args, **kwargs)
   finally:
     if not recursive:
       _visiting.remove(name)
-      elapsed = time.clock() - start
+      elapsed = time.process_time() - start
       metrics.get_metric("visit_" + name, metrics.Distribution).add(elapsed)
       if _visiting:
         metrics.get_metric(
