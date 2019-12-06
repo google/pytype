@@ -251,19 +251,14 @@ of its dependencies.
 ## Disclaimer
 This is not an official Google product.
 
-<!-- General references -->
-
 [error-classes]: docs/errors.md
 [faq]: docs/faq.md
 [faq-diff]: docs/faq.md#how-is-pytype-different-from-other-type-checkers
 [github]: https://github.com/google/pytype/
 [importlab-travis]: https://github.com/google/importlab/blob/master/.travis.yml
+[license]: https://github.com/google/pytype/blob/master/LICENSE
 [merge-pyi]: https://github.com/google/pytype/tree/master/pytype/tools/merge_pyi
 [pep-484]: https://www.python.org/dev/peps/pep-0484
 [pyi-stub-files]: docs/user_guide.md#pyi-stub-files
 [user-guide]: docs/user_guide.md
 [wsl]: https://docs.microsoft.com/en-us/windows/wsl/faq
-
-<!-- References with different interal and external versions -->
-
-[license]: https://github.com/google/pytype/blob/master/LICENSE

@@ -672,11 +672,6 @@ class Generic(TypingContainer):
           self.vm.frames, self,
           "Parameters to Generic[...] must all be unique")
 
-    # `self.base_cls.template` will change each time, it is used to initialize
-    # the template in ParameterizedClass.
-    tp = [param.with_module(self.base_cls.full_name) for param in inner]
-    self.base_cls._template = tp  # pylint: disable=protected-access
-
     return template, inner, abstract.ParameterizedClass
 
 

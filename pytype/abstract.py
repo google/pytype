@@ -1233,6 +1233,13 @@ class AnnotationContainer(AnnotationClass):
 
   def _build_value(self, node, raw_inner, ellipses):
     template, inner, abstract_class = self._get_value_info(raw_inner, ellipses)
+    if self.base_cls.full_name == "typing.Generic":
+      # Generic is unique in that parameterizing it defines a new template;
+      # usually, the parameterized class inherits the base class's template.
+      template_params = [
+          param.with_module(self.base_cls.full_name) for param in inner]
+    else:
+      template_params = None
     if len(inner) != len(template):
       if not template:
         self.vm.errorlog.not_indexable(self.vm.frames, self.base_cls.name,
@@ -1286,7 +1293,7 @@ class AnnotationContainer(AnnotationClass):
               return self.vm.convert.unsolvable
 
     try:
-      return abstract_class(self.base_cls, params, self.vm)
+      return abstract_class(self.base_cls, params, self.vm, template_params)
     except abstract_utils.GenericTypeError as e:
       self.vm.errorlog.invalid_annotation(self.vm.frames, e.annot, e.error)
       return self.vm.convert.unsolvable
@@ -1850,7 +1857,7 @@ class ParameterizedClass(AtomicAbstractValue, mixin.Class):
           self.base_cls, formal_type_parameters, self.vm)
     return self.self_annot
 
-  def __init__(self, base_cls, formal_type_parameters, vm):
+  def __init__(self, base_cls, formal_type_parameters, vm, template=None):
     # A ParameterizedClass is created by converting a pytd.GenericType, whose
     # base type is restricted to NamedType and ClassType.
     assert isinstance(base_cls, mixin.Class)
@@ -1863,8 +1870,12 @@ class ParameterizedClass(AtomicAbstractValue, mixin.Class):
     self._formal_type_parameters_loaded = False
     self._hash = None  # memoized due to expensive computation
     self.official_name = self.base_cls.official_name
-    # Load immediately due to template in base_cls could change
-    self._template = self.base_cls.template
+    if template is None:
+      self._template = self.base_cls.template
+    else:
+      # The ability to create a new template different from the base class's is
+      # needed for typing.Generic.
+      self._template = template
     self.slots = self.base_cls.slots
     self.self_annot = None
     mixin.Class.init_mixin(self, base_cls.cls)
@@ -2027,8 +2038,9 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):
   do for Tuple, since we can't evaluate type parameters during initialization.
   """
 
-  def __init__(self, base_cls, formal_type_parameters, vm):
-    super(TupleClass, self).__init__(base_cls, formal_type_parameters, vm)
+  def __init__(self, base_cls, formal_type_parameters, vm, template=None):
+    super(TupleClass, self).__init__(
+        base_cls, formal_type_parameters, vm, template)
     mixin.HasSlots.init_mixin(self)
     self.set_slot("__getitem__", self.getitem_slot)
     if isinstance(self._formal_type_parameters,
@@ -2121,8 +2133,9 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):
   When there are no args (CallableClass[[], ...]), ARGS contains abstract.Empty.
   """
 
-  def __init__(self, base_cls, formal_type_parameters, vm):
-    super(CallableClass, self).__init__(base_cls, formal_type_parameters, vm)
+  def __init__(self, base_cls, formal_type_parameters, vm, template=None):
+    super(CallableClass, self).__init__(
+        base_cls, formal_type_parameters, vm, template)
     mixin.HasSlots.init_mixin(self)
     self.set_slot("__call__", self.call_slot)
     # We subtract two to account for "ARGS" and "RET".
@@ -2179,9 +2192,10 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):
 class LiteralClass(ParameterizedClass):
   """The class of a typing.Literal."""
 
-  def __init__(self, base_cls, instance, vm):
+  def __init__(self, base_cls, instance, vm, template=None):
     formal_type_parameters = {abstract_utils.T: instance.get_class()}
-    super(LiteralClass, self).__init__(base_cls, formal_type_parameters, vm)
+    super(LiteralClass, self).__init__(
+        base_cls, formal_type_parameters, vm, template)
     self._instance = instance
 
   def __repr__(self):
