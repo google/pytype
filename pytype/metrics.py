@@ -21,6 +21,7 @@ def bar(n):
 import math
 import re
 import time
+import sys
 
 import yaml
 
@@ -55,6 +56,15 @@ def _prepare_for_test(enabled=True):
   _registered_metrics.clear()
   global _enabled
   _enabled = enabled
+
+
+def get_cpu_clock():
+    """ Returns CPU clock to keep compatibilty with various Python versions """
+    if sys.version_info >= (3, 3):
+        return time.process_time()
+
+    # time.clock() is deprecated since Python 3.3 and removed in Python 3.8.
+    return time.clock()
 
 
 def get_metric(name, constructor, *args, **kwargs):
