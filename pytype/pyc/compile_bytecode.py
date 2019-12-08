@@ -39,26 +39,40 @@ def write_pyc(f, codeobject, source_size=0, timestamp=0):
   f.write(marshal.dumps(codeobject))
 
 
-def compile_to_pyc(data_file, filename, output, mode="exec"):
+def compile_to_pyc(data_file, filename, output, mode):
   """Compile the source code to byte code."""
   if sys.version_info[0] >= 3:
     with open(data_file, "r", encoding="utf-8") as fi:  # pytype: disable=wrong-keyword-args
       src = fi.read()
   else:
     with open(data_file, "r") as fi:
-      # Python 2's compile function does not like the line specifying the
-      # encoding. So, we strip it off if it is present, replacing it with an
-      # empty comment to preserve the original line numbering.
-      # As per PEP-263, the line specifying the encoding can occur only
-      # in the first or the second line.
-      l1 = fi.readline()
-      l2 = fi.readline()
-      if re.match(ENCODING_PATTERN, l1.rstrip()):
-        l1 = "#\n"
-      elif is_comment_only(l1) and re.match(ENCODING_PATTERN, l2.rstrip()):
-        l1 = "#\n"
-        l2 = "#\n"
-      src = "".join([l1, l2, fi.read()]).decode("utf-8")
+      src = fi.read().decode("utf-8")
+  compile_src_to_pyc(src, filename, output, mode)
+
+
+def strip_encoding(src):
+  """Strip encoding from a src string assumed to be read from a file."""
+  # Python 2's compile function does not like the line specifying the encoding.
+  # So, we strip it off if it is present, replacing it with an empty comment to
+  # preserve the original line numbering. As per PEP-263, the line specifying
+  # the encoding can occur only in the first or the second line.
+  if "\n" not in src:
+    return src
+  l1, rest = src.split("\n", 1)
+  if re.match(ENCODING_PATTERN, l1.rstrip()):
+    return "#\n" + rest
+  elif "\n" not in rest:
+    return src
+  l2, rest = rest.split("\n", 1)
+  if is_comment_only(l1) and re.match(ENCODING_PATTERN, l2.rstrip()):
+    return "#\n#\n" + rest
+  return src
+
+
+def compile_src_to_pyc(src, filename, output, mode):
+  """Compile a string of source code."""
+  if sys.version_info.major == 2:
+    src = strip_encoding(src)
   try:
     codeobject = compile(src, filename, mode)
   except Exception as err:  # pylint: disable=broad-except
