@@ -12,6 +12,7 @@ class SixOverlay(overlay.Overlay):
         "add_metaclass": build_add_metaclass,
         "with_metaclass": build_with_metaclass,
         "string_types": build_string_types,
+        "integer_types": build_integer_types,
         "PY2": build_version_bool(2),
         "PY3": build_version_bool(3),
     }
@@ -41,3 +42,10 @@ def build_string_types(_, vm):
   if vm.PY2:
     classes.append(vm.convert.unicode_type.to_variable(node))
   return vm.convert.tuple_to_value(classes)
+
+
+def build_integer_types(_, vm):
+  # pytype treats `long` as an alias of `int`, so the value of integer_types can
+  # be represented as just `(int,)` in both Py2 and Py3.
+  return vm.convert.tuple_to_value(
+      (vm.convert.int_type.to_variable(vm.root_cfg_node),))

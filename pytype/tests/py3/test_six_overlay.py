@@ -40,5 +40,16 @@ class SixTests(test_base.TargetPython3FeatureTest):
       b: int = ...
     """)
 
+  def test_integer_types(self):
+    self.Check("""
+      import six
+      from typing import List, Union
+      def foo(x: Union[List[int], int]) -> List[int]:
+        if isinstance(x, six.integer_types):
+          return [x]
+        else:
+          return x
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
