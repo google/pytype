@@ -765,11 +765,16 @@ class _Parser(object):
       module, dot, tail = name.partition(".")
       full_name = self._module_path_map.get(module, module) + dot + tail
       base_type = pytd.NamedType(full_name)
-    else:
+    elif not isinstance(base_type, pytd.NamedType):
+      # If base_type is not a simple name, check if it is a generic type whose
+      # type parameters should be substituted by `parameters` (a "type macro").
       # We assume that all type parameters have been defined. Since pytype
       # orders type parameters to appear before classes and functions, this
-      # assumption is generally safe.
-      inserter = _InsertTypeParameters(self._type_params)
+      # assumption is generally safe. AnyStr is special-cased because imported
+      # type parameters aren't recognized.
+      # TODO(rechen): Respect type parameters' bounds and constraints.
+      type_params = self._type_params + [pytd.TypeParameter("typing.AnyStr")]
+      inserter = _InsertTypeParameters(type_params)
       # Records base_type's template without actually inserting type parameters.
       base_type.Visit(inserter)
       if inserter.inserted:

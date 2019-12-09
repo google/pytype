@@ -11,6 +11,9 @@ import six
 
 import unittest
 
+# We use backslashes to avoid unwanted newlines in test code.
+# pylint: disable=g-backslash-continuation
+
 IGNORE = object()
 
 
@@ -2185,6 +2188,19 @@ class TypeMacroTest(_ParserTestBase):
       T = TypeVar('T')
       def f(x: Alias[T, T]) -> T: ...
     """, 4, "List[List[T]] expected 1 parameters, got 2")
+
+  def test_anystr(self):
+    self.check("""\
+      from typing import AnyStr, List
+      Alias = List[AnyStr]
+      def f(x: Alias[str]) -> None: ...
+    """, """\
+      from typing import AnyStr, List
+
+      Alias = List[AnyStr]
+
+      def f(x: List[str]) -> None: ...
+    """)
 
 
 class ImportTypeIgnoreTest(_ParserTestBase):
