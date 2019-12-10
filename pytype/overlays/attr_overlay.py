@@ -5,6 +5,7 @@ import logging
 from pytype import abstract
 from pytype import abstract_utils
 from pytype import function
+from pytype import mixin
 from pytype import overlay
 from pytype import overlay_utils
 from pytype.overlays import classgen
@@ -98,17 +99,37 @@ class Attrs(classgen.Decorator):
       cls.members["__init__"] = init_method
 
 
-class AttribInstance(abstract.SimpleAbstractValue):
+class AttribInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
   """Return value of an attr.ib() call."""
 
   def __init__(self, vm, typ, has_type, init, default=None):
     super(AttribInstance, self).__init__("attrib", vm)
+    mixin.HasSlots.init_mixin(self)
     self.typ = typ
     self.has_type = has_type
     self.init = init
     self.default = default
     # TODO(rechen): attr.ib() returns an instance of attr._make._CountingAttr.
     self.cls = vm.convert.unsolvable
+    self.set_slot("default", self.default_slot)
+    self.set_slot("validator", self.validator_slot)
+
+  def default_slot(self, node, default):
+    self.default = default
+    # If we don't have a type, and the default function has an explicit return
+    # annotation, use it for the type.
+    # TODO(mdemello): If there is no annotation but we can infer a return type
+    # for the default, use that as the type too.
+    if not self.has_type:
+      func = default.data[0]
+      if (isinstance(func, abstract.SignedFunction) and
+          func.signature.has_return_annotation):
+        ret = func.signature.annotations["return"]
+        self.typ = ret.instantiate(node)
+    return node, default
+
+  def validator_slot(self, node, validator):
+    return node, validator
 
 
 class Attrib(classgen.FieldConstructor):
