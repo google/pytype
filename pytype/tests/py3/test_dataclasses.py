@@ -97,6 +97,25 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         z: str
     """)
 
+  def test_explicit_init(self):
+    ty = self.Infer("""
+      import dataclasses
+      @dataclasses.dataclass(init=True)
+      class Foo(object):
+        x: bool
+        y: int
+        def __init__(self, a: bool):
+          self.x = a
+          self.y = 0
+    """)
+    self.assertTypesMatchPytd(ty, """
+      dataclasses: module
+      class Foo(object):
+        x: bool
+        y: int
+        def __init__(self, a: bool) -> None: ...
+    """)
+
   def test_field(self):
     ty = self.Infer("""
       from typing import List
