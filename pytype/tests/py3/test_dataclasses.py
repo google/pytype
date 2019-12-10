@@ -270,5 +270,85 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         x: str
     """)
 
+  def test_initvar(self):
+    ty = self.Infer("""
+      import dataclasses
+
+      @dataclasses.dataclass
+      class A:
+        x: dataclasses.InitVar[str]
+        y: int = 10
+    """)
+    self.assertTypesMatchPytd(ty, """
+      dataclasses: module
+      class A:
+        y: int
+        def __init__(self, x: str, y: int = ...) -> None: ...
+    """)
+
+  def test_initvar_default(self):
+    ty = self.Infer("""
+      import dataclasses
+
+      @dataclasses.dataclass
+      class A:
+        x: dataclasses.InitVar[str] = 'hello'
+        y: int = 10
+    """)
+    self.assertTypesMatchPytd(ty, """
+      dataclasses: module
+      class A:
+        x: str
+        y: int
+        def __init__(self, x: str = ..., y: int = ...) -> None: ...
+    """)
+
+  def test_initvar_late(self):
+    ty = self.Infer("""
+      import dataclasses
+
+      @dataclasses.dataclass
+      class A:
+        w: dataclasses.InitVar['Foo']
+        x: dataclasses.InitVar['str'] = 'hello'
+        y: int = 10
+
+      class Foo:
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      dataclasses: module
+      class A:
+        x: str
+        y: int
+        def __init__(self, w: Foo, x: str = ..., y: int = ...) -> None: ...
+
+      class Foo: ...
+    """)
+
+  def test_initvar_inheritance(self):
+    ty = self.Infer("""
+      import dataclasses
+
+      @dataclasses.dataclass
+      class A:
+        x: dataclasses.InitVar[str]
+        y: int = 10
+
+      @dataclasses.dataclass
+      class B(A):
+        z: dataclasses.InitVar[int] = 42
+    """)
+    self.assertTypesMatchPytd(ty, """
+      dataclasses: module
+      class A:
+        y: int
+        def __init__(self, x: str, y: int = ...) -> None: ...
+
+      class B(A):
+        z: int
+        def __init__(self, x: str, y: int = ..., z: int = ...) -> None: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
