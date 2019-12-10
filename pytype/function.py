@@ -15,11 +15,6 @@ import six
 log = logging.getLogger(__name__)
 
 
-# Used as a key in Signature.late_annotations to indicate an annotation
-# for multiple arguments.  This is used for function type comments.
-MULTI_ARG_ANNOTATION = "$multi$"
-
-
 def argname(i):
   """Get a name for an unnamed positional argument, given its position."""
   return "_" + str(i)
@@ -42,7 +37,6 @@ class Signature(object):
     kwargs_name: Name of the kwargs parameter. (The "kwargs" in **kwargs)
     defaults: Dictionary, name to value, for all parameters with default values.
     annotations: A dictionary of type annotations. (string to type)
-    late_annotations: A dictionary of late type annotations.
     excluded_types: A set of type names that will be ignored when checking the
       count of type parameters.
     has_return_annotation: Whether the function has a return annotation.
@@ -50,7 +44,7 @@ class Signature(object):
   """
 
   def __init__(self, name, param_names, varargs_name, kwonly_params,
-               kwargs_name, defaults, annotations, late_annotations,
+               kwargs_name, defaults, annotations,
                postprocess_annotations=True):
     self.name = name
     self.param_names = param_names
@@ -59,7 +53,6 @@ class Signature(object):
     self.kwargs_name = kwargs_name
     self.defaults = defaults
     self.annotations = annotations
-    self.late_annotations = late_annotations
     self.excluded_types = set()
     if postprocess_annotations:
       for k, annot in six.iteritems(self.annotations):
@@ -148,7 +141,6 @@ class Signature(object):
         annotations={name: vm.convert.constant_to_value(
             typ, subst=datatypes.AliasingDict(), node=vm.root_cfg_node)
                      for name, typ in pytd_annotations},
-        late_annotations={},
         postprocess_annotations=False,
     )
 
@@ -164,7 +156,6 @@ class Signature(object):
         kwargs_name=None,
         defaults={},
         annotations=annotations,
-        late_annotations={}
     )
 
   @classmethod
@@ -178,7 +169,6 @@ class Signature(object):
         kwargs_name=None,
         defaults={},
         annotations={},
-        late_annotations={}
     )
 
   def has_param(self, name):
@@ -278,12 +268,7 @@ class Signature(object):
           " = " + default if default else "")
 
   def _print_annot(self, name):
-    if name in self.annotations:
-      return _print(self.annotations[name])
-    elif name in self.late_annotations:
-      return repr(self.late_annotations[name].expr)
-    else:
-      return None
+    return _print(self.annotations[name]) if name in self.annotations else None
 
   def _print_default(self, name):
     if name in self.defaults:

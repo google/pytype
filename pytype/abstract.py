@@ -62,7 +62,6 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
     self.mro = self.compute_mro()
     self.module = None
     self.official_name = None
-    self.late_annotations = {}
     self.slots = None  # writable attributes (or None if everything is writable)
     # The template for the current class. It is usually a constant, lazily
     # loaded to accommodate recursive types, but in the case of typing.Generic
@@ -385,6 +384,9 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   def isinstance_Unsolvable(self):
     return isinstance(self, Unsolvable)
 
+  def is_late_annotation(self):
+    return False
+
 
 class Empty(AtomicAbstractValue):
   """An empty value.
@@ -438,10 +440,6 @@ class Deleted(Empty):
     self.name = "deleted"
 
 
-class TypeParameterError(Exception):
-  """Raised when resolving late types in type parameters."""
-
-
 class TypeParameter(AtomicAbstractValue):
   """Parameter of a type."""
 
@@ -489,59 +487,7 @@ class TypeParameter(AtomicAbstractValue):
     return "TypeParameter(%r, constraints=%r, bound=%r, module=%r)" % (
         self.name, self.constraints, self.bound, self.module)
 
-  def _eval_type(self, node, f_globals, f_locals, var_name, name_or_type):
-    """Convert a string typename to the type."""
-    if isinstance(name_or_type, str):
-      assert name_or_type
-      try:
-        cls = abstract_utils.eval_expr(
-            self.vm, node, f_globals, f_locals, name_or_type)
-        return abstract_utils.get_atomic_value(cls, mixin.Class), None
-      except abstract_utils.EvaluationError as e:
-        message = "In %s of TypeVar(%s): %s" % (
-            var_name, self.name, e.details)
-        return self.vm.convert.unsolvable, message
-      except abstract_utils.ConversionError:
-        message = (
-            "In TypeVar(%s): %s must be constant (given: %s)" % (
-                self.name, var_name, name_or_type))
-        return self.vm.convert.unsolvable, message
-    else:
-      # If arg is not a string, just return it (makes this method idempotent).
-      return name_or_type, None
-
-  def has_late_types(self):
-    return (isinstance(self.bound, str) or
-            any(isinstance(c, str) for c in self.constraints))
-
-  def resolve_late_types(self, node, f_globals, f_locals):
-    """Resolve string typenames to their associated types."""
-    # We need to replace all string values with either a type or Unsolvable
-    # before failing, so just collect error messages and raise at the end.
-    errors = []
-
-    self.bound, error = self._eval_type(
-        node, f_globals, f_locals, "bound", self.bound)
-    if error:
-      errors.append(error)
-
-    constraints = []
-    for c in self.constraints:
-      constraint, error = self._eval_type(
-          node, f_globals, f_locals, "constraint", c)
-      constraints.append(constraint)
-      if error:
-        errors.append(error)
-    self.constraints = tuple(constraints)
-
-    if errors:
-      # Just report the first error we found.
-      raise TypeParameterError(errors[0])
-
   def instantiate(self, node, container=None):
-    if self.has_late_types():
-      frame = self.vm.frame
-      self.resolve_late_types(node, frame.f_globals, frame.f_locals)
     var = self.vm.program.NewVariable()
     if container and (not isinstance(container, SimpleAbstractValue) or
                       self.full_name in container.all_template_names):
@@ -1149,8 +1095,99 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
       self.could_contain_anything = True
 
 
-LateAnnotation = collections.namedtuple(
-    "LateAnnotation", ["expr", "name", "stack"])
+class LateAnnotation(object):
+  """A late annotation.
+
+  A late annotation stores a string expression and a snapshot of the VM stack at
+  the point where the annotation was introduced. Once the expression is
+  resolved, the annotation pretends to be the resolved type; before that, it
+  pretends to be an unsolvable. This effect is achieved by delegating attribute
+  lookup with __getattribute__.
+
+  Note that for late annotation x, `isinstance(x, ...)` and `x.__class__` will
+  use the type that x is pretending to be; `type(x)` will reveal x's true type.
+  Use `x.is_late_annotation()` to check whether x is a late annotation.
+  """
+
+  def __init__(self, expr, stack, vm):
+    self.expr = expr
+    self.stack = stack
+    self.vm = vm
+    self.resolved = False
+    self._type = vm.convert.unsolvable  # the resolved type of `expr`
+    self._unresolved_instances = set()
+    # _attribute_names needs to be defined last!
+    self._attribute_names = (
+        set(LateAnnotation.__dict__) |
+        set(super(LateAnnotation, self).__getattribute__("__dict__")))
+
+  def __repr__(self):
+    return "LateAnnotation(%r, resolved=%r)" % (
+        self.expr, self._type if self.resolved else None)
+
+  # __hash__ and __eq__ need to be explicitly defined for Python to use them in
+  # set/dict comparisons.
+
+  def __hash__(self):
+    return hash(self._type)
+
+  def __eq__(self, other):
+    return self._type == other
+
+  def __getattribute__(self, name):
+    if name == "_attribute_names" or name in self._attribute_names:
+      return super(LateAnnotation, self).__getattribute__(name)
+    return self._type.__getattribute__(name)
+
+  def resolve(self, node, f_globals, f_locals):
+    """Resolve the late annotation."""
+    if self.resolved:
+      return
+    self.resolved = True
+    try:
+      var = abstract_utils.eval_expr(
+          self.vm, node, f_globals, f_locals, self.expr)
+    except abstract_utils.EvaluationError as e:
+      log.info("Failed to resolve late annotation %r", self.expr)
+      self.vm.errorlog.invalid_annotation(self.stack, self, details=e.details)
+      return
+    var = self.vm.annotations_util.process_annotation_var(
+        node, var, None, self.stack)
+    try:
+      self._type = abstract_utils.get_atomic_value(var)
+    except abstract_utils.ConversionError:
+      self.vm.errorlog.invalid_annotation(
+          self.stack, self, details="Must be constant.")
+    else:
+      # We may have tried to call __init__ on instances of this annotation.
+      # Since the annotation was unresolved at the time, we need to call
+      # __init__ again to define any instance attributes.
+      for instance in self._unresolved_instances:
+        self.vm.reinitialize_if_initialized(node, instance)
+    log.info("Resolved late annotation %r to %r", self.expr, self._type)
+
+  def to_variable(self, node):
+    if self.resolved:
+      return self._type.to_variable(node)
+    else:
+      return AtomicAbstractValue.to_variable(self, node)
+
+  def instantiate(self, node, container=None):
+    if self.resolved:
+      return self._type.instantiate(node, container)
+    else:
+      instance = Instance(self, self.vm)
+      self._unresolved_instances.add(instance)
+      return instance.to_variable(node)
+
+  def get_special_attribute(self, node, name, valself):
+    if name == "__getitem__" and not self.resolved:
+      container = AtomicAbstractValue.to_annotation_container(self)
+      return container.get_special_attribute(node, name, valself)
+    return self._type.get_special_attribute(node, name, valself)
+
+  def is_late_annotation(self):
+    return True
 
 
 class AnnotationClass(SimpleAbstractValue, mixin.HasSlots):
@@ -1232,6 +1269,23 @@ class AnnotationContainer(AnnotationClass):
     return template, inner, ParameterizedClass
 
   def _build_value(self, node, raw_inner, ellipses):
+    if self.base_cls.is_late_annotation():
+      # A parameterized LateAnnotation should be converted to another
+      # LateAnnotation to delay evaluation until the first late annotation is
+      # resolved. We don't want to create a ParameterizedClass immediately
+      # because (1) ParameterizedClass expects its base_cls to be a mixin.Class,
+      # and (2) we have to postpone error-checking anyway so we might as well
+      # postpone the entire evaluation.
+      printed_params = []
+      for i, param in enumerate(raw_inner):
+        if i in ellipses:
+          printed_params.append("...")
+        else:
+          printed_params.append(pytd_utils.Print(param.get_instance_type(node)))
+      expr = "%s[%s]" % (self.base_cls.expr, ", ".join(printed_params))
+      annot = LateAnnotation(expr, self.base_cls.stack, self.vm)
+      self.vm.late_annotations[self.base_cls.expr].append(annot)
+      return annot
     template, inner, abstract_class = self._get_value_info(raw_inner, ellipses)
     if self.base_cls.full_name == "typing.Generic":
       # Generic is unique in that parameterizing it defines a new template;
@@ -1967,9 +2021,12 @@ class ParameterizedClass(AtomicAbstractValue, mixin.Class):
           formal_type_parameters[name] = self.vm.convert.constant_to_value(
               param, self._formal_type_parameters.subst, self.vm.root_cfg_node)
       self._formal_type_parameters = formal_type_parameters
+    # Hack: we'd like to evaluate annotations at the currently active node so
+    # that imports, etc., are visible. The last created node is usually the
+    # active one.
     self._formal_type_parameters = (
         self.vm.annotations_util.convert_class_annotations(
-            self.vm.root_cfg_node, self._formal_type_parameters))
+            self.vm.program.cfg_nodes[-1], self._formal_type_parameters))
     self._formal_type_parameters_loaded = True
 
   def compute_mro(self):
@@ -2361,6 +2418,31 @@ class InterpreterClass(SimpleAbstractValue, mixin.Class):
     log.info("Created class: %r", self)
     self.type_param_check()
 
+  def replace_classvars(self, node):
+    """Replace typing.ClassVars with their contained types."""
+
+    def replace_classvars_in_dict(d, make_instance):
+      """Replace classvars in a dictionary."""
+      replace = {}
+      for k, v in d.items():
+        if len(v.data) != 1:
+          continue
+        classvar = abstract_utils.match_type_container(v, "typing.ClassVar")
+        if classvar:
+          if make_instance:
+            replace[k] = classvar.instantiate(node)
+          else:
+            replace[k] = classvar.to_variable(node)
+      d.update(replace)
+
+    # type comments like `x = ... # type: ClassVar[T]` go into members
+    replace_classvars_in_dict(self.members, make_instance=True)
+
+    # x: ClassVar[T] = ... goes into annotations
+    annots = abstract_utils.get_annotations_dict(self.members)
+    if annots:
+      replace_classvars_in_dict(annots, make_instance=False)
+
   def type_param_check(self):
     """Throw exception for invalid type parameters."""
 
@@ -2519,10 +2601,6 @@ class InterpreterClass(SimpleAbstractValue, mixin.Class):
 
   def __contains__(self, name):
     return name in self.members
-
-  def set_annotation(self, name, val):
-    """Used when resolving forward references."""
-    self.members[name] = val
 
   def update_official_name(self, name):
     assert isinstance(name, str)
@@ -2771,7 +2849,7 @@ class InterpreterFunction(SignedFunction):
 
   @classmethod
   def make(cls, name, code, f_locals, f_globals, defaults, kw_defaults, closure,
-           annotations, late_annotations, vm):
+           annotations, vm):
     """Get an InterpreterFunction.
 
     Things like anonymous functions and generator expressions are created
@@ -2788,7 +2866,6 @@ class InterpreterFunction(SignedFunction):
       kw_defaults: Default arguments for kwonly parameters.
       closure: The free variables this closure binds to.
       annotations: Function annotations. Dict of name -> AtomicAbstractValue.
-      late_annotations: Late-evaled annotations. Dict of name -> str.
       vm: VirtualMachine instance.
 
     Returns:
@@ -2806,7 +2883,6 @@ class InterpreterFunction(SignedFunction):
         if not abstract_utils.matches_async_generator(ret_type):
           error = "Expected AsyncGenerator, AsyncIterable or AsyncIterator"
           vm.errorlog.invalid_annotation(vm.frames, ret_type, error)
-    late_annotations = late_annotations or {}
     overloads = vm.frame.overloads[name]
     key = (name, code,
            abstract_utils.hash_all_dicts(
@@ -2821,12 +2897,12 @@ class InterpreterFunction(SignedFunction):
                (dict(enumerate(closure or ())), None)))
     if key not in cls._function_cache:
       cls._function_cache[key] = cls(
-          name, code, f_locals, f_globals, defaults, kw_defaults,
-          closure, annotations, late_annotations, overloads, vm)
+          name, code, f_locals, f_globals, defaults, kw_defaults, closure,
+          annotations, overloads, vm)
     return cls._function_cache[key]
 
   def __init__(self, name, code, f_locals, f_globals, defaults, kw_defaults,
-               closure, annotations, late_annotations, overloads, vm):
+               closure, annotations, overloads, vm):
     log.debug("Creating InterpreterFunction %r for %r", name, code.co_name)
     self.bound_class = BoundInterpreterFunction
     self.doc = code.co_consts[0] if code.co_consts else None
@@ -2846,7 +2922,7 @@ class InterpreterFunction(SignedFunction):
     self.nonstararg_count = self.code.co_argcount
     if self.code.co_kwonlyargcount >= 0:  # This is usually -1 or 0 (fast call)
       self.nonstararg_count += self.code.co_kwonlyargcount
-    signature = self._build_signature(name, annotations, late_annotations)
+    signature = self._build_signature(name, annotations)
     super(InterpreterFunction, self).__init__(signature, vm)
     self.last_frame = None  # for BuildClass
     self._store_call_records = False
@@ -2863,7 +2939,7 @@ class InterpreterFunction(SignedFunction):
     yield
     self._store_call_records = old
 
-  def _build_signature(self, name, annotations, late_annotations):
+  def _build_signature(self, name, annotations):
     """Build a function.Signature object representing this function."""
     vararg_name = None
     kwarg_name = None
@@ -2886,8 +2962,7 @@ class InterpreterFunction(SignedFunction):
         tuple(kwonly),
         kwarg_name,
         defaults,
-        annotations,
-        late_annotations)
+        annotations)
 
   # TODO(kramm): support retrieving the following attributes:
   # 'func_{code, name, defaults, globals, locals, dict, closure},
@@ -3195,7 +3270,7 @@ class SimpleFunction(SignedFunction):
   """
 
   def __init__(self, name, param_names, varargs_name, kwonly_params,
-               kwargs_name, defaults, annotations, late_annotations, vm):
+               kwargs_name, defaults, annotations, vm):
     """Create a SimpleFunction.
 
     Args:
@@ -3207,22 +3282,19 @@ class SimpleFunction(SignedFunction):
       kwargs_name: The "kwargs" in "**kwargs". String or None.
       defaults: Dictionary of string names to values of default arguments.
       annotations: Dictionary of string names to annotations (strings or types).
-      late_annotations: Dictionary of string names to string types, used for
-        forward references or as-yet-unknown types.
       vm: The virtual machine for this function.
     """
     annotations = dict(annotations)
-    late_annotations = dict(late_annotations)
     # Every parameter must have an annotation. Defaults to unsolvable.
     for n in itertools.chain(param_names, [varargs_name, kwargs_name],
                              kwonly_params):
-      if n and n not in annotations and n not in late_annotations:
+      if n and n not in annotations:
         annotations[n] = vm.convert.unsolvable
     if not isinstance(defaults, dict):
       defaults = dict(zip(param_names[-len(defaults):], defaults))
     signature = function.Signature(name, param_names, varargs_name,
                                    kwonly_params, kwargs_name, defaults,
-                                   annotations, late_annotations)
+                                   annotations)
     super(SimpleFunction, self).__init__(signature, vm)
     self.bound_class = BoundFunction
 

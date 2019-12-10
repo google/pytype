@@ -125,13 +125,6 @@ class Decorator(abstract.PyTDFunction):
     return overlay_utils.make_method(self.vm, node, "__init__", params,
                                      kwonly_params)
 
-  def type_clash_error(self, value):
-    if is_late_annotation(value):
-      err = value.expr
-    else:
-      err = value.data[0].cls
-    self.vm.errorlog.invalid_annotation(self.vm.frames, err)
-
   def get_class_locals(self, cls, allow_methods, ordering):
     """Gets a dictionary of the class's local variables.
 
@@ -164,20 +157,6 @@ class Decorator(abstract.PyTDFunction):
           del out[op.name]
       out[op.name] = local
     return out
-
-  def add_member(self, node, cls, name, value, orig):
-    """Adds a class member, returning whether it's a bare late annotation."""
-    if not is_late_annotation(value):
-      cls.members[name] = value
-      return False
-    elif orig is None:
-      # We are generating a class member from a bare annotation.
-      cls.members[name] = self.vm.convert.none.to_variable(node)
-      cls.late_annotations[name] = value
-      return True
-    else:
-      cls.members[name] = orig
-      return False
 
   def get_base_class_attrs(self, cls, cls_attrs, metadata_key):
     # Traverse the MRO and collect base class attributes. We only add an
@@ -269,7 +248,7 @@ class FieldConstructor(abstract.PyTDFunction):
 
 
 def is_method(var):
-  if var is None or is_late_annotation(var):
+  if var is None:
     return False
   return isinstance(var.data[0], (
       abstract.INTERPRETER_FUNCTION_TYPES,
@@ -277,10 +256,6 @@ def is_method(var):
       special_builtins.PropertyInstance,
       special_builtins.StaticMethodInstance
   ))
-
-
-def is_late_annotation(val):
-  return isinstance(val, abstract.LateAnnotation)
 
 
 def is_dunder(name):

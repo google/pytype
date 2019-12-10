@@ -561,6 +561,42 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
     self.assertErrorLogIs(
         errors, [(5, "invalid-annotation", r"self.*__init__")])
 
+  def testParameterizedForwardReference(self):
+    ty = self.Infer("""
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+
+      v = None  # type: "Foo[int]"
+
+      class Foo(Generic[T]):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      v: Foo[int]
+      class Foo(Generic[T]): ...
+    """)
+
+  def testBadParameterizedForwardReference(self):
+    errors = self.CheckWithErrors("""\
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+
+      v = None  # type: "Foo[int, str]"
+
+      class Foo(Generic[T]):
+        pass
+    """)
+    self.assertErrorLogIs(errors, [(4, "invalid-annotation", r"1.*2")])
+
+  def testRecursiveClass(self):
+    self.Check("""\
+      from typing import List
+      class Foo(List["Foo"]):
+        pass
+    """)
+
 
 class GenericFeatureTest(test_base.TargetPython3FeatureTest):
   """Tests for User-defined Generic Type."""

@@ -262,5 +262,22 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
         def __init__(self, bar: str, baz) -> None: ...
     """)
 
+  def test_classvar_auto_attribs(self):
+    ty = self.Infer("""
+      from typing import ClassVar
+      import attr
+      @attr.s(auto_attribs=True)
+      class Foo(object):
+        x: ClassVar[int] = 10
+        y: str = 'hello'
+    """)
+    self.assertTypesMatchPytd(ty, """
+      attr: module
+      class Foo(object):
+        x: int
+        y: str
+        def __init__(self, y: str = ...) -> None: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

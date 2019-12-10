@@ -1,13 +1,13 @@
 """Support for dataclasses."""
 
 # TODO(mdemello):
-# - Handle dataclasses.InitVar
 # - Raise an error if we see a duplicate annotation, even though python allows
 #     it, since there is no good reason to do that.
 
 import logging
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import function
 from pytype import overlay
 from pytype.overlays import classgen
@@ -37,6 +37,29 @@ class Dataclass(classgen.Decorator):
   def make(cls, name, vm):
     return super(Dataclass, cls).make(name, vm, "dataclasses")
 
+  def _check_default(self, node, name, value, orig):
+    if not orig:
+      return
+    typ = self.vm.convert.merge_classes(value.data)
+    bad = self.vm.matcher.bad_matches(orig, typ, node)
+    if bad:
+      binding = bad[0][orig]
+      self.vm.errorlog.annotation_type_mismatch(
+          self.vm.frames, typ, binding, name)
+
+  def _handle_initvar(self, node, cls, name, value, orig):
+    """Unpack or delete an initvar in the class annotations."""
+    initvar = match_initvar(value)
+    if not initvar:
+      return None
+    annots = abstract_utils.get_annotations_dict(cls.members)
+    if orig is None:
+      # InitVars without a default do not get retained.
+      del annots[name]
+    else:
+      annots[name] = initvar.to_variable(node)
+    return initvar
+
   def decorate(self, node, cls):
     """Processes class members."""
 
@@ -48,35 +71,30 @@ class Dataclass(classgen.Decorator):
     #   x = 10
     # would have init(x:int = 10, y:str = 'hello')
     own_attrs = []
-    late_annotation = False  # True if we find a bare late annotation
-    for name, (value, orig) in self.get_class_locals(
-        cls, allow_methods=True, ordering=classgen.Ordering.FIRST_ANNOTATE
-    ).items():
-      if self.add_member(node, cls, name, value, orig):
-        late_annotation = True
-
-      if is_field(orig):
-        field = orig.data[0]
-        orig = field.typ if field.default else None
-        init = field.init
-      else:
+    cls_locals = self.get_class_locals(
+        cls, allow_methods=True, ordering=classgen.Ordering.FIRST_ANNOTATE)
+    for name, (value, orig) in cls_locals.items():
+      clsvar = match_classvar(value)
+      if clsvar:
+        continue
+      initvar = self._handle_initvar(node, cls, name, value, orig)
+      if initvar:
+        value = initvar.instantiate(node)
         init = True
+      else:
+        cls.members[name] = value
+        if is_field(orig):
+          field = orig.data[0]
+          orig = field.typ if field.default else None
+          init = field.init
+        else:
+          init = True
 
       # Check that default matches the declared type
-      if orig and not classgen.is_late_annotation(value):
-        typ = self.vm.convert.merge_classes(value.data)
-        bad = self.vm.matcher.bad_matches(orig, typ, node)
-        if bad:
-          binding = bad[0][orig]
-          self.vm.errorlog.annotation_type_mismatch(
-              self.vm.frames, typ, binding, name)
+      self._check_default(node, name, value, orig)
 
       attr = classgen.Attribute(name=name, typ=value, init=init, default=orig)
       own_attrs.append(attr)
-
-    # See if we need to resolve any late annotations
-    if late_annotation:
-      self.vm.classes_with_late_annotations.append(cls)
 
     base_attrs = self.get_base_class_attrs(
         cls, own_attrs, _DATACLASS_METADATA_KEY)
@@ -84,8 +102,9 @@ class Dataclass(classgen.Decorator):
     # Stash attributes in class metadata for subclasses.
     cls.metadata[_DATACLASS_METADATA_KEY] = attrs
 
-    # Add an __init__ method
-    if self.args[cls]["init"]:
+    # Add an __init__ method if one doesn't exist already (dataclasses do not
+    # overwrite an explicit __init__ method).
+    if "__init__" not in cls.members and self.args[cls]["init"]:
       init_method = self.make_init(node, cls, attrs)
       cls.members["__init__"] = init_method
 
@@ -139,6 +158,14 @@ class Field(classgen.FieldConstructor):
 
 
 def is_field(var):
-  if var is None or classgen.is_late_annotation(var):
-    return False
-  return isinstance(var.data[0], FieldInstance)
+  return var and isinstance(var.data[0], FieldInstance)
+
+
+def match_initvar(var):
+  """Unpack the type parameter from InitVar[T]."""
+  return abstract_utils.match_type_container(var, "dataclasses.InitVar")
+
+
+def match_classvar(var):
+  """Unpack the type parameter from ClassVar[T]."""
+  return abstract_utils.match_type_container(var, "typing.ClassVar")

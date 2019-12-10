@@ -426,14 +426,14 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
   def testConfusingForwardDecl(self):
     _, errorlog = self.InferWithErrors("""\
         class Foo(object):
-          def bar(self):
+          def foo(self):
             return 4
 
         def f() -> "Foo":
           return Foo()
 
         class Foo(object):
-          def foo(self):
+          def bar(self):
             return 2
 
         def g():
@@ -763,6 +763,15 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     self.assertErrorLogIs(errors, [(4, "wrong-arg-types", r"int.*A"),
                                    (8, "attribute-error", r"bar")])
 
+  def testModuleLevelForwardReferenceError(self):
+    errors = self.CheckWithErrors("""\
+      class A(object):
+        def f(self, x: "A"):
+          pass
+      A().f(42)
+    """)
+    self.assertErrorLogIs(errors, [(4, "wrong-arg-types", r"A.*int")])
+
   def testReturnAnnotation1(self):
     ty = self.Infer("""
       class A(object):
@@ -907,9 +916,9 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Type
-      t = ...  # type: Type[float]
+      t: Type[float]
       def f(x: int) -> int: ...
-      def g(x: float) -> int: ...
+      def g(x: int) -> int: ...
     """)
 
   def testEllipsis(self):
@@ -1002,6 +1011,26 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorLogIs(errors, [(3, "not-supported-yet",
                                     r"Recursive.*Foo")])
+
+  def testFullyQuotedAnnotation(self):
+    self.Check("""
+      from typing import Optional
+      class A(object):
+        OBJ = ()
+        def __init__(self, parent: "Optional[A]"):
+          self.parent = (self.OBJ, parent)
+    """)
+
+  def testQuotedGenericParameter(self):
+    ty = self.Infer("""
+      from typing import Callable, List
+      def f(x: List["Callable[[int], str]"]):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable, List
+      def f(x: List[Callable[[int], str]]) -> None: ...
+    """)
 
 
 class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):

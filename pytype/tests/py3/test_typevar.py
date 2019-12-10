@@ -411,12 +411,14 @@ class TypeVarTestPy3(test_base.TargetPython3FeatureTest):
 
   def testUseConstraintsFromPyi(self):
     with file_utils.Tempdir() as d:
+      # pylint: disable=g-backslash-continuation
       d.create_file("foo.pyi", """\
         from typing import AnyStr, TypeVar
         T = TypeVar("T", int, float)
         def f(x: T) -> T: ...
         def g(x: AnyStr) -> AnyStr: ...
       """)
+      # pylint: enable=g-backslash-continuation
       _, errors = self.InferWithErrors("""\
         import foo
         foo.f("")
@@ -445,6 +447,20 @@ class TypeVarTestPy3(test_base.TargetPython3FeatureTest):
       from typing import List
       subprocess: module
       def run(args: List[str]) -> str
+    """)
+
+  def testAbstractClassmethod(self):
+    self.Check("""
+      from abc import ABC, abstractmethod
+      from typing import Type, TypeVar
+
+      T = TypeVar('T', bound='Foo')
+
+      class Foo(ABC):
+        @classmethod
+        @abstractmethod
+        def f(cls: Type[T]) -> T:
+          return cls()
     """)
 
 

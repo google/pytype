@@ -97,6 +97,25 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         z: str
     """)
 
+  def test_explicit_init(self):
+    ty = self.Infer("""
+      import dataclasses
+      @dataclasses.dataclass(init=True)
+      class Foo(object):
+        x: bool
+        y: int
+        def __init__(self, a: bool):
+          self.x = a
+          self.y = 0
+    """)
+    self.assertTypesMatchPytd(ty, """
+      dataclasses: module
+      class Foo(object):
+        x: bool
+        y: int
+        def __init__(self, a: bool) -> None: ...
+    """)
+
   def test_field(self):
     ty = self.Infer("""
       from typing import List
@@ -268,6 +287,104 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       @dataclasses.dataclass
       class Bar:
         x: str
+    """)
+
+  def test_initvar(self):
+    ty = self.Infer("""
+      import dataclasses
+
+      @dataclasses.dataclass
+      class A:
+        x: dataclasses.InitVar[str]
+        y: int = 10
+    """)
+    self.assertTypesMatchPytd(ty, """
+      dataclasses: module
+      class A:
+        y: int
+        def __init__(self, x: str, y: int = ...) -> None: ...
+    """)
+
+  def test_initvar_default(self):
+    ty = self.Infer("""
+      import dataclasses
+
+      @dataclasses.dataclass
+      class A:
+        x: dataclasses.InitVar[str] = 'hello'
+        y: int = 10
+    """)
+    self.assertTypesMatchPytd(ty, """
+      dataclasses: module
+      class A:
+        x: str
+        y: int
+        def __init__(self, x: str = ..., y: int = ...) -> None: ...
+    """)
+
+  def test_initvar_late(self):
+    ty = self.Infer("""
+      import dataclasses
+
+      @dataclasses.dataclass
+      class A:
+        w: dataclasses.InitVar['Foo']
+        x: dataclasses.InitVar['str'] = 'hello'
+        y: int = 10
+
+      class Foo:
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      dataclasses: module
+      class A:
+        x: str
+        y: int
+        def __init__(self, w: Foo, x: str = ..., y: int = ...) -> None: ...
+
+      class Foo: ...
+    """)
+
+  def test_initvar_inheritance(self):
+    ty = self.Infer("""
+      import dataclasses
+
+      @dataclasses.dataclass
+      class A:
+        x: dataclasses.InitVar[str]
+        y: int = 10
+
+      @dataclasses.dataclass
+      class B(A):
+        z: dataclasses.InitVar[int] = 42
+    """)
+    self.assertTypesMatchPytd(ty, """
+      dataclasses: module
+      class A:
+        y: int
+        def __init__(self, x: str, y: int = ...) -> None: ...
+
+      class B(A):
+        z: int
+        def __init__(self, x: str, y: int = ..., z: int = ...) -> None: ...
+    """)
+
+  def test_classvar(self):
+    ty = self.Infer("""
+      from typing import ClassVar
+      import dataclasses
+
+      @dataclasses.dataclass
+      class Foo(object):
+        x: ClassVar[int] = 10
+        y: str = 'hello'
+    """)
+    self.assertTypesMatchPytd(ty, """
+      dataclasses: module
+      class Foo(object):
+        x: int
+        y: str
+        def __init__(self, y: str = ...) -> None: ...
     """)
 
 

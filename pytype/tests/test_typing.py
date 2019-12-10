@@ -47,14 +47,13 @@ class TypingTest(test_base.TargetIndependentTest):
         pass
     """)
     self.assertTypesMatchPytd(ty, """
-      typing = ...  # type: module
-      v1 = ...  # type: None
-      v2 = ...  # type: typing.Any
-      v3 = ...  # type: typing.Any
+      typing: module
+      v1: None
+      v2: typing.Any
+      v3: A
       class A(object): ...
     """)
-    self.assertErrorLogIs(errors, [(3, "invalid-annotation"),
-                                   (4, "invalid-annotation")])
+    self.assertErrorLogIs(errors, [(3, "invalid-annotation")])
 
   def test_no_typevars_for_cast(self):
     _, errors = self.InferWithErrors("""\
@@ -159,9 +158,15 @@ class TypingTest(test_base.TargetIndependentTest):
           r".*Expected:.*type.*\nActually passed:.*Union.*"),])
 
   def test_classvar(self):
-    errors = self.CheckWithErrors("from typing import ClassVar")
-    self.assertErrorLogIs(
-        errors, [(1, "not-supported-yet", r"typing.ClassVar")])
+    ty = self.Infer("""\
+      from typing import ClassVar
+      class A(object):
+        x = 5  # type: ClassVar[int]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class A(object):
+        x: int = ...
+    """)
 
   def test_pyi_classvar(self):
     with file_utils.Tempdir() as d:

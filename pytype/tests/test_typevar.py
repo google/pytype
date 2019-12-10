@@ -384,7 +384,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
       T = TypeVar("T", int, float, bound="str")
       S = TypeVar("S", bound="")
       U = TypeVar("U", bound="str")  # ok
-      V = TypeVar("V", bound="Union[int, float]")
+      V = TypeVar("V", bound="int if __random__ else float")
       W = TypeVar("W", bound="Foo") # ok, forward reference
       X = TypeVar("X", bound="Bar")
       class Foo:
@@ -393,8 +393,10 @@ class TypeVarTest(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [
         (2, "invalid-typevar", r"mutually exclusive"),
         (3, "invalid-typevar", r"empty string"),
-        (5, "invalid-typevar", r"must be constant"),
-        (7, "invalid-typevar", r"Name.*Bar")])
+        (5, "invalid-typevar", r"Must be constant"),
+        # This one is an [invalid-annotation] because the error is not caught
+        # until the VM evaluates its unresolved late annotations.
+        (7, "invalid-annotation", r"Name.*Bar")])
 
   def testLateConstraints(self):
     ty = self.Infer("""

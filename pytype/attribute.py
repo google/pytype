@@ -35,12 +35,6 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       A tuple (CFGNode, cfg.Variable). If this attribute doesn't exist,
       the Variable will be None.
     """
-    if name in obj.late_annotations:
-      # We're using a late annotation before it's been evaluated. We could call
-      # _process_one_annotation with the current (incomplete) globals, but
-      # whether the call succeeds would depend on the order in which the globals
-      # are analyzed. It's simpler (although less precise) to just return Any.
-      return node, self.vm.new_unsolvable(node)
     # Some objects have special attributes, like "__get__" or "__iter__"
     special_attribute = obj.get_special_attribute(node, name, valself)
     if special_attribute is not None:
@@ -130,9 +124,6 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     if not self._check_writable(obj, name):
       # We ignore the write of an attribute that's not in __slots__, since it
       # wouldn't happen in the Python interpreter, either.
-      return node
-    if isinstance(value, abstract.LateAnnotation):
-      obj.late_annotations[name] = value
       return node
     assert isinstance(value, cfg.Variable)
     if self.vm.frame is not None and obj is self.vm.frame.f_globals:

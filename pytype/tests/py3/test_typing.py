@@ -656,5 +656,16 @@ class TypingTestPython3Feature(test_base.TargetPython3FeatureTest):
         return fn.__qualname__
     """)
 
+  def test_classvar(self):
+    ty = self.Infer("""\
+      from typing import ClassVar
+      class A(object):
+        x: ClassVar[int] = 5
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class A(object):
+        x: int = ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

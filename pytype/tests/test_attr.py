@@ -520,6 +520,47 @@ class TestAttrib(test_base.TargetIndependentTest):
         def __init__(self, a: int) -> None: ...
     """)
 
+  def test_method_decorators(self):
+    # Test for:
+    # - validator decorator does not throw an error
+    # - default decorator sets type if it isn't set
+    # - default decorator does not override type
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class Foo(object):
+        a = attr.ib()
+        b = attr.ib()
+        c = attr.ib(type=str)
+        @a.validator
+        def validate(self):
+          pass
+        @a.default
+        def default_a(self, attribute, value):
+          # type: (...) -> int
+          return 10
+        @b.default
+        def default_b(self, attribute, value):
+          return 10
+        @c.default
+        def default_c(self, attribute, value):
+          # type: (...) -> int
+          return 10
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo(object):
+        a: int
+        b: Any
+        c: str
+        def __init__(self, a: int = ..., b = ..., c: str = ...) -> None: ...
+        def default_a(self, attribute, value) -> int: ...
+        def default_b(self, attribute, value) -> int: ...
+        def default_c(self, attribute, value) -> int: ...
+        def validate(self) -> None: ...
+    """)
+
 
 class TestAttrs(test_base.TargetIndependentTest):
   """Tests for attr.s."""

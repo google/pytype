@@ -299,6 +299,17 @@ class CallTracer(vm.VirtualMachine):
       node = self.analyze_method_var(node, method_name, bound_method)
     return node
 
+  def _call_init_on_binding(self, node, b):
+    if isinstance(b.data, abstract.SimpleAbstractValue):
+      for param in b.data.instance_type_parameters.values():
+        node = self.call_init(node, param)
+    node = self._call_method(node, b, "__init__")
+    # Test classes initialize attributes in setUp() as well.
+    cls = b.data.get_class()
+    if isinstance(cls, abstract.InterpreterClass) and cls.is_test_class:
+      node = self._call_method(node, b, "setUp")
+    return node
+
   def call_init(self, node, instance):
     # Call __init__ on each binding.
     # TODO(kramm): This should do join_cfg_nodes, instead of concatenating them.
@@ -306,15 +317,12 @@ class CallTracer(vm.VirtualMachine):
       if b.data in self._initialized_instances:
         continue
       self._initialized_instances.add(b.data)
-      if isinstance(b.data, abstract.SimpleAbstractValue):
-        for param in b.data.instance_type_parameters.values():
-          node = self.call_init(node, param)
-      node = self._call_method(node, b, "__init__")
-      # Test classes initialize attributes in setUp() as well.
-      cls = b.data.get_class()
-      if isinstance(cls, abstract.InterpreterClass) and cls.is_test_class:
-        node = self._call_method(node, b, "setUp")
+      node = self._call_init_on_binding(node, b)
     return node
+
+  def reinitialize_if_initialized(self, node, instance):
+    if instance in self._initialized_instances:
+      self._call_init_on_binding(node, instance.to_binding(node))
 
   def analyze_class(self, node, val):
     self._analyzed_classes.add(val.data)
@@ -443,7 +451,7 @@ class CallTracer(vm.VirtualMachine):
   def pytd_for_types(self, defs):
     data = []
     pytd_convert = self.convert.pytd_convert
-    annots = pytd_convert.get_annotations_dict(defs)
+    annots = abstract_utils.get_annotations_dict(defs) or {}
     for name, t in pytd_convert.uninitialized_annotations_to_instance_types(
         self.exitpoint, annots, defs):
       data.append(pytd.Constant(name, t))

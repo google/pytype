@@ -485,8 +485,10 @@ class ErrorLog(ErrorLogBase):
 
   def _print_as_expected_type(self, t, instance=None):
     """Print abstract value t as a pytd type."""
-    if isinstance(t, (abstract.Unknown, abstract.Unsolvable, mixin.Class,
-                      abstract.Union)):
+    if t.is_late_annotation():
+      return t.expr
+    elif isinstance(t, (abstract.Unknown, abstract.Unsolvable, mixin.Class,
+                        abstract.Union)):
       with t.vm.convert.pytd_convert.produce_detailed_output():
         return self._pytd_print(t.get_instance_type(instance=instance))
     elif (isinstance(t, mixin.PythonConstant) and

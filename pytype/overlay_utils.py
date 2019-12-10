@@ -5,7 +5,7 @@ from pytype import mixin
 from pytype.typegraph import cfg
 
 
-# Various types accepted by the annotations and late_annotations dictionaries.
+# Various types accepted by the annotations dictionary.
 # Runtime type checking of annotations, since if we do have an unexpected type
 # being stored in annotations, we should catch that as soon as possible, and add
 # it to the list if valid.
@@ -14,7 +14,6 @@ PARAM_TYPES = (
     mixin.Class,
     abstract.TypeParameter,
     abstract.Union,
-    abstract.LateAnnotation,
     abstract.Unsolvable,
 )
 
@@ -59,7 +58,7 @@ def make_method(vm, node, name, params=None, kwonly_params=None,
   """
 
   def _process_annotation(param):
-    """Process a single param into either annotations or late_annotations."""
+    """Process a single param into annotations."""
     if not param.typ:
       return
     elif isinstance(param.typ, cfg.Variable):
@@ -70,8 +69,6 @@ def make_method(vm, node, name, params=None, kwonly_params=None,
         else:
           t = abstract.Union([t.cls for t in types], vm)
           annotations[param.name] = t
-    elif isinstance(param.typ, abstract.LateAnnotation):
-      late_annotations[param.name] = param.typ
     else:
       annotations[param.name] = param.typ
 
@@ -80,7 +77,6 @@ def make_method(vm, node, name, params=None, kwonly_params=None,
   kwonly_params = kwonly_params or []
   self_param = self_param or Param("self", None, None)
   annotations = {}
-  late_annotations = {}
 
   params = [self_param] + params
 
@@ -107,10 +103,7 @@ def make_method(vm, node, name, params=None, kwonly_params=None,
       kwargs_name=kwargs_name,
       defaults=defaults,
       annotations=annotations,
-      late_annotations=late_annotations,
       vm=vm)
-  if late_annotations:
-    vm.functions_with_late_annotations.append(ret)
 
   # Check that the constructed function has a valid signature
   bad_param = ret.signature.check_defaults()

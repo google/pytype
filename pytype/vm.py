@@ -12,6 +12,7 @@ program execution.
 
 import collections
 import contextlib
+import itertools
 import logging
 import os
 import re
@@ -136,10 +137,11 @@ class VirtualMachine(object):
     self.store_all_calls = store_all_calls
     self.loader = loader
     self.frames = []  # The call stack of frames.
-    self.functions_with_late_annotations = []
-    self.classes_with_late_annotations = []
+    # A map: {string_of_undefined_name: List[LateAnnotation]}.
+    # Every LateAnnotation depends on a single undefined name, so once that name
+    # is defined, we immediately resolve the annotation.
+    self.late_annotations = collections.defaultdict(list)
     self.functions_type_params_check = []
-    self.params_with_late_types = []
     self.concrete_classes = []
     self.frame = None  # The current frame.
     self.program = cfg.Program()
@@ -159,6 +161,9 @@ class VirtualMachine(object):
     self.opcode_traces = []
     self._importing = False  # Are we importing another file?
     self._trace_opcodes = True  # whether to trace opcodes
+    # If set, we will generate LateAnnotations with this stack rather than
+    # logging name errors.
+    self._late_annotations_stack = None
 
     # Track the order of creation of local vars, for attrs and dataclasses.
     # { code.co_name: (var_name, value-or-type, original value) }
@@ -209,6 +214,15 @@ class VirtualMachine(object):
     finally:
       self._trace_opcodes = old_trace_opcodes
 
+  @contextlib.contextmanager
+  def generate_late_annotations(self, stack):
+    old_late_annotations_stack = self._late_annotations_stack
+    self._late_annotations_stack = stack
+    try:
+      yield
+    finally:
+      self._late_annotations_stack = old_late_annotations_stack
+
   def trace_opcode(self, op, symbol, val):
     """Record trace data for other tools to use."""
     if not self._trace_opcodes:
@@ -225,8 +239,8 @@ class VirtualMachine(object):
       # Sometimes v is a binding.
       return [data] if data and not isinstance(data, list) else data
 
-    # isinstance(val, tuple) generates false positives for internal classes like
-    # LateAnnotations that are namedtuples.
+    # isinstance(val, tuple) generates false positives for internal classes that
+    # are namedtuples.
     if val.__class__ == tuple:
       data = tuple(get_data(v) for v in val)
     else:
@@ -456,15 +470,24 @@ class VirtualMachine(object):
     """Process a base class for InterpreterClass creation."""
     new_base = self.program.NewVariable()
     for b in base.bindings:
+      base_val = b.data
       if isinstance(b.data, abstract.AnnotationContainer):
-        new_base.AddBinding(b.data.base_cls, {b}, node)
-      elif isinstance(b.data, abstract.Union):
+        base_val = base_val.base_cls
+      # A class like `class Foo(List["Foo"])` would lead to infinite recursion
+      # when instantiated because we attempt to recursively instantiate its
+      # parameters, so we replace any late annotations with Any.
+      # TODO(rechen): only replace the current class's name. We should keep
+      # other late annotations in order to support things like:
+      #   class Foo(List["Bar"]): ...
+      #   class Bar: ...
+      base_val = self.annotations_util.remove_late_annotations(base_val)
+      if isinstance(base_val, abstract.Union):
         # Union[A,B,...] is a valid base class, but we need to flatten it into a
         # single base variable.
-        for o in b.data.options:
+        for o in base_val.options:
           new_base.AddBinding(o, {b}, node)
       else:
-        new_base.AddBinding(b.data, {b}, node)
+        new_base.AddBinding(base_val, {b}, node)
     base = new_base
     if not any(isinstance(t, (mixin.Class, abstract.AMBIGUOUS_OR_EMPTY))
                for t in base.data):
@@ -561,9 +584,6 @@ class VirtualMachine(object):
             class_dict.pyval,
             cls,
             self)
-        if class_dict.late_annotations:
-          val.late_annotations = class_dict.late_annotations
-          self.classes_with_late_annotations.append(val)
       except mro.MROError as e:
         self.errorlog.mro_error(self.frames, name, e.mro_seqs)
         var = self.new_unsolvable(node)
@@ -571,6 +591,9 @@ class VirtualMachine(object):
         self.errorlog.invalid_annotation(self.frames, e.annot, e.error)
         var = self.new_unsolvable(node)
       else:
+        # We have recorded ClassVar annotations in vm.annotated_locals, so when
+        # we construct the class we can replace them with their contained types.
+        val.replace_classvars(node)
         if new_class_var:
           var = new_class_var
         else:
@@ -586,7 +609,7 @@ class VirtualMachine(object):
     return node, var
 
   def _make_function(self, name, node, code, globs, defaults, kw_defaults,
-                     closure=None, annotations=None, late_annotations=None):
+                     closure=None, annotations=None):
     """Create a function or closure given the arguments."""
     if closure:
       closure = tuple(
@@ -600,15 +623,12 @@ class VirtualMachine(object):
         name, code=abstract_utils.get_atomic_python_constant(code),
         f_locals=self.frame.f_locals, f_globals=globs,
         defaults=defaults, kw_defaults=kw_defaults,
-        closure=closure, annotations=annotations,
-        late_annotations=late_annotations, vm=self)
+        closure=closure, annotations=annotations, vm=self)
     # TODO(ampere): What else needs to be an origin in this case? Probably stuff
     # in closure.
     var = self.program.NewVariable()
     var.AddBinding(val, code.bindings, node)
-    if late_annotations:
-      self.functions_with_late_annotations.append(val)
-    elif val.signature.annotations:
+    if val.signature.annotations:
       self.functions_type_params_check.append((val, self.frame.current_opcode))
     return var
 
@@ -648,13 +668,13 @@ class VirtualMachine(object):
       Otherwise, the VM's current stack converted to simple frames.
     """
     if opcode is not None:
-      return [frame_state.SimpleFrame(opcode)]
+      return (frame_state.SimpleFrame(opcode),)
     elif self.frame:
       # Simple stacks are used for things like late annotations, which don't
       # need tracebacks in their errors, so we convert just the current frame.
-      return [frame_state.SimpleFrame(self.frame.current_opcode)]
+      return (frame_state.SimpleFrame(self.frame.current_opcode),)
     else:
-      return []
+      return ()
 
   def push_abstract_exception(self, state):
     tb = self.convert.build_list(state.node, [])
@@ -737,24 +757,13 @@ class VirtualMachine(object):
         for member in sum((var.data for var in val.members.values()), []):
           if isinstance(member, abstract.Function) and member.is_abstract:
             self.errorlog.ignored_abstractmethod(frames, val.name, member.name)
-    for param, frames in self.params_with_late_types:
-      try:
-        param.resolve_late_types(node, f_globals, f_locals)
-      except abstract.TypeParameterError as e:
-        self.errorlog.invalid_typevar(frames, utils.message(e))
-    for func in self.functions_with_late_annotations:
-      self.annotations_util.eval_function_late_annotations(
-          node, func, f_globals, f_locals)
-    for cls in self.classes_with_late_annotations:
-      self.annotations_util.eval_class_late_annotations(
-          node, cls, f_globals, f_locals)
+    for annot in itertools.chain.from_iterable(self.late_annotations.values()):
+      # If `annot` has already been resolved, this is a no-op. Otherwise, it
+      # contains a real name error that will be logged when we resolve it now.
+      annot.resolve(node, f_globals, f_locals)
+    self.late_annotations = None  # prevent adding unresolvable annotations
     for func, opcode in self.functions_type_params_check:
       func.signature.check_type_parameter_count(self.simple_stack(opcode))
-    while f_globals.late_annotations:
-      name, annot = f_globals.late_annotations.popitem()
-      attr = self.annotations_util.init_annotation(
-          node, annot.expr, annot.name, annot.stack, f_globals, f_locals)
-      self.attribute_handler.set_attribute(node, f_globals, name, attr)
     assert not self.frames, "Frames left over!"
     log.info("Final node: <%d>%s", node.id, node.name)
     return node, f_globals.members
@@ -1076,9 +1085,6 @@ class VirtualMachine(object):
     """Load an item out of locals, globals, or builtins."""
     assert isinstance(store, abstract.SimpleAbstractValue)
     assert store.is_lazy
-    if name in store.late_annotations:
-      # Unresolved late annotation. See attribute.py:get_attribute
-      return state, self.new_unsolvable(state.node)
     store.load_lazy_attribute(name)
     bindings = store.members[name].Bindings(state.node)
     if not bindings:
@@ -1181,6 +1187,9 @@ class VirtualMachine(object):
     else:
       target = self.frame.f_globals
     node = self.attribute_handler.set_attribute(state.node, target, name, value)
+    if target is self.frame.f_globals and self.late_annotations:
+      for annot in self.late_annotations[name]:
+        annot.resolve(node, self.frame.f_globals, self.frame.f_locals)
     return state.change_cfg_node(node)
 
   def store_local(self, state, name, value):
@@ -1656,6 +1665,16 @@ class VirtualMachine(object):
   def _is_private(self, name):
     return name.startswith("_") and not name.startswith("__")
 
+  def _name_error_or_late_annotation(self, name):
+    if self._late_annotations_stack and self.late_annotations is not None:
+      annot = abstract.LateAnnotation(name, self._late_annotations_stack, self)
+      log.info("Created %r", annot)
+      self.late_annotations[name].append(annot)
+      return annot
+    else:
+      self.errorlog.name_error(self.frames, name)
+      return self.convert.unsolvable
+
   def byte_LOAD_NAME(self, state, op):
     """Load a name. Can be a local, global, or builtin."""
     name = self.frame.f_code.co_names[op.arg]
@@ -1673,9 +1692,11 @@ class VirtualMachine(object):
           state, val = self.load_builtin(state, name)
         except KeyError:
           if self._is_private(name) or not self.has_unknown_wildcard_imports:
-            self.errorlog.name_error(self.frames, name)
+            one_val = self._name_error_or_late_annotation(name)
+          else:
+            one_val = self.convert.unsolvable
           self.trace_opcode(op, name, None)
-          return state.push(self.new_unsolvable(state.node))
+          return state.push(one_val.to_variable(state.node))
     self.check_for_deleted(state, name, val)
     self.trace_opcode(op, name, val)
     return state.push(val)
@@ -1694,8 +1715,7 @@ class VirtualMachine(object):
     try:
       state, val = self.load_local(state, name)
     except KeyError:
-      self.errorlog.name_error(self.frames, name)
-      val = self.new_unsolvable(state.node)
+      val = self._name_error_or_late_annotation(name).to_variable(state.node)
     self.check_for_deleted(state, name, val)
     self.trace_opcode(op, name, val)
     return state.push(val)
@@ -1722,9 +1742,9 @@ class VirtualMachine(object):
       try:
         state, val = self.load_builtin(state, name)
       except KeyError:
-        self.errorlog.name_error(self.frames, name)
         self.trace_opcode(op, name, None)
-        return state.push(self.new_unsolvable(state.node))
+        return state.push(
+            self._name_error_or_late_annotation(name).to_variable(state.node))
     self.check_for_deleted(state, name, val)
     self.trace_opcode(op, name, val)
     return state.push(val)
@@ -2046,6 +2066,8 @@ class VirtualMachine(object):
       except abstract_utils.ConversionError:
         pass
       else:
+        val = self.annotations_util.process_annotation_var(
+            state.node, val, name, self.simple_stack())
         state = self._store_annotation(state, name, val)
     state = self.store_subscr(state, obj, subscr, val)
     return state
@@ -2471,9 +2493,9 @@ class VirtualMachine(object):
     state, pos_defaults = state.popn(num_pos_defaults)
     free_vars = None  # Python < 3.6 does not handle closure vars here.
     kw_defaults = self._convert_kw_defaults(kw_defaults)
-    annot, late_annot = self.annotations_util.convert_function_annotations(
+    annot = self.annotations_util.convert_function_annotations(
         state.node, raw_annotations)
-    return state, pos_defaults, kw_defaults, annot, late_annot, free_vars
+    return state, pos_defaults, kw_defaults, annot, free_vars
 
   def _get_extra_function_args_3_6(self, state, arg):
     """Get function annotations and defaults from the stack (Python3.6+)."""
@@ -2497,21 +2519,21 @@ class VirtualMachine(object):
       state, packed_pos_def = state.pop()
       pos_defaults = abstract_utils.get_atomic_python_constant(
           packed_pos_def, tuple)
-    annot, late_annot = self.annotations_util.convert_annotations_list(
+    annot = self.annotations_util.convert_annotations_list(
         state.node, annot.items())
-    return state, pos_defaults, kw_defaults, annot, late_annot, free_vars
+    return state, pos_defaults, kw_defaults, annot, free_vars
 
-  def _process_function_type_comment(self, op, annotations, late_annotations):
-    """Modifies annotations/late_annotations from a function type comment.
+  def _process_function_type_comment(self, node, op, func):
+    """Modifies annotations from a function type comment.
 
     Checks if a type comment is present for the function.  If so, the type
-    comment is used to populate late_annotations.  It is an error to have
-    a type comment when annotations or late_annotations is not empty.
+    comment is used to populate annotations.  It is an error to have
+    a type comment when annotations is not empty.
 
     Args:
+      node: The current node.
       op: An opcode (used to determine filename and line number).
-      annotations: A dict of annotations.
-      late_annotations: A dict of late annotations.
+      func: An abstract.InterpreterFunction.
     """
     if not op.type_comment:
       return
@@ -2519,7 +2541,7 @@ class VirtualMachine(object):
     comment, lineno = op.type_comment
 
     # It is an error to use a type comment on an annotated function.
-    if annotations or late_annotations:
+    if func.signature.annotations:
       self.errorlog.redundant_function_type_comment(op.code.co_filename, lineno)
       return
 
@@ -2533,15 +2555,22 @@ class VirtualMachine(object):
       return
     args, return_type = m.groups()
 
-    # Add type info to late_annotations.
     if args != "...":
-      annot = abstract.LateAnnotation(
-          args.strip(), function.MULTI_ARG_ANNOTATION, fake_stack)
-      late_annotations[function.MULTI_ARG_ANNOTATION] = annot
+      annot = args.strip()
+      try:
+        self.annotations_util.eval_multi_arg_annotation(
+            node, func, annot, fake_stack)
+      except abstract_utils.EvaluationError as e:
+        self.errorlog.invalid_function_type_comment(
+            fake_stack, annot, details=e.details)
+      except abstract_utils.ConversionError:
+        self.errorlog.invalid_function_type_comment(
+            fake_stack, annot, details="Must be constant.")
 
-    ret = self.convert.build_string(None, return_type).data[0]
-    late_annotations["return"] = abstract.LateAnnotation(
-        ret, "return", fake_stack)
+    ret = self.convert.build_string(None, return_type)
+    func.signature.set_annotation(
+        "return", self.annotations_util.process_annotation_var(
+            node, ret, "return", fake_stack).data[0])
 
   def byte_MAKE_FUNCTION(self, state, op):
     """Create a function and push it onto the stack."""
@@ -2556,16 +2585,13 @@ class VirtualMachine(object):
       get_args = self._get_extra_function_args_3_6
     else:
       get_args = self._get_extra_function_args
-    state, defaults, kw_defaults, annot, late_annot, free_vars = (
-        get_args(state, op.arg))
-    self._process_function_type_comment(op, annot, late_annot)
+    state, defaults, kw_defaults, annot, free_vars = get_args(state, op.arg)
     # TODO(dbaum): Add support for per-arg type comments.
     # TODO(dbaum): Add support for variable type comments.
     globs = self.get_globals_dict()
     fn = self._make_function(name, state.node, code, globs, defaults,
-                             kw_defaults, annotations=annot,
-                             late_annotations=late_annot,
-                             closure=free_vars)
+                             kw_defaults, annotations=annot, closure=free_vars)
+    self._process_function_type_comment(state.node, op, fn.data[0])
     self.trace_opcode(op, name, fn)
     self.trace_functiondef(fn)
     return state.push(fn)
@@ -2580,12 +2606,11 @@ class VirtualMachine(object):
       state, name_var = state.pop()
       name = abstract_utils.get_atomic_python_constant(name_var)
     state, (closure, code) = state.popn(2)
-    state, defaults, kw_defaults, annot, late_annot, _ = (
+    state, defaults, kw_defaults, annot, _ = (
         self._get_extra_function_args(state, op.arg))
     globs = self.get_globals_dict()
     fn = self._make_function(name, state.node, code, globs, defaults,
-                             kw_defaults, annotations=annot,
-                             late_annotations=late_annot, closure=closure)
+                             kw_defaults, annotations=annot, closure=closure)
     self.trace_functiondef(fn)
     return state.push(fn)
 
@@ -2815,6 +2840,8 @@ class VirtualMachine(object):
     state, annotations_var = self.load_local(state, "__annotations__")
     name = self.frame.f_code.co_names[op.arg]
     state, value = state.pop()
+    value = self.annotations_util.process_annotation_var(
+        state.node, value, name, self.simple_stack())
     state = self._store_annotation(state, name, value)
     name_var = self.convert.build_string(state.node, name)
     state = self.store_subscr(state, annotations_var, name_var, value)
