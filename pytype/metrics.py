@@ -20,6 +20,7 @@ def bar(n):
 
 import math
 import re
+import sys
 import time
 
 import yaml
@@ -55,6 +56,17 @@ def _prepare_for_test(enabled=True):
   _registered_metrics.clear()
   global _enabled
   _enabled = enabled
+
+
+def get_cpu_clock():
+  """Returns CPU clock to keep compatibilty with various Python versions."""
+  # https://github.com/google/pytype/issues/473: pytype doesn't recognize
+  # version_info tuple comparisons.
+  if sys.version_info >= (3, 3):
+    return time.process_time()  # pytype: disable=module-attr
+
+  # time.clock() is deprecated since Python 3.3 and removed in Python 3.8.
+  return time.clock()
 
 
 def get_metric(name, constructor, *args, **kwargs):
@@ -151,10 +163,10 @@ class StopWatch(Metric):
   """A counter that measures the time spent in a "with" statement."""
 
   def __enter__(self):
-    self._start_time = time.clock()
+    self._start_time = get_cpu_clock()
 
   def __exit__(self, exc_type, exc_value, traceback):
-    self._total = time.clock() - self._start_time
+    self._total = get_cpu_clock() - self._start_time
     del self._start_time
 
   def _summary(self):
@@ -175,13 +187,13 @@ class ReentrantStopWatch(Metric):
 
   def __enter__(self):
     if not self._calls:
-      self._start_time = time.clock()
+      self._start_time = get_cpu_clock()
     self._calls += 1
 
   def __exit__(self, exc_type, exc_value, traceback):
     self._calls -= 1
     if not self._calls:
-      self._time += time.clock() - self._start_time
+      self._time += get_cpu_clock() - self._start_time
       del self._start_time
 
   def _merge(self, other):
