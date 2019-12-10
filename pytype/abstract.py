@@ -2418,6 +2418,36 @@ class InterpreterClass(SimpleAbstractValue, mixin.Class):
     log.info("Created class: %r", self)
     self.type_param_check()
 
+  def replace_classvars(self, node):
+    """Replace typing.ClassVars with their contained types."""
+
+    def replace_classvars_in_dict(d, make_instance):
+      """Replace classvars in a dictionary."""
+      replace = {}
+      for k, v in d.items():
+        if len(v.data) != 1:
+          continue
+        classvar = abstract_utils.match_type_container(v, "typing.ClassVar")
+        if classvar:
+          if make_instance:
+            replace[k] = classvar.instantiate(node)
+          else:
+            replace[k] = classvar.to_variable(node)
+      d.update(replace)
+
+    # type comments like `x = ... # type: ClassVar[T]` go into members
+    replace_classvars_in_dict(self.members, make_instance=True)
+
+    # x: ClassVar[T] = ... goes into annotations
+    if "__annotations__" not in self.members:
+      return
+    annots_var = self.members["__annotations__"]
+    try:
+      annots = abstract_utils.get_atomic_python_constant(annots_var, dict)
+    except abstract_utils.ConversionError:
+      return
+    replace_classvars_in_dict(annots, make_instance=False)
+
   def type_param_check(self):
     """Throw exception for invalid type parameters."""
 

@@ -3,6 +3,7 @@
 import logging
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import function
 from pytype import overlay
 from pytype import overlay_utils
@@ -81,11 +82,10 @@ class Attrs(classgen.Decorator):
                 default=orig.data[0].default)
         own_attrs.append(attr)
       elif self.args[cls]["auto_attribs"]:
-        # TODO(b/72678203): typing.ClassVar is the only way to filter a variable
-        # out from auto_attribs, but we don't even support importing it.
-        attr = Attribute(name=name, typ=value, init=True, default=orig)
-        cls.members[name] = value
-        own_attrs.append(attr)
+        if not match_classvar(value):
+          attr = Attribute(name=name, typ=value, init=True, default=orig)
+          cls.members[name] = value
+          own_attrs.append(attr)
 
     base_attrs = self.get_base_class_attrs(cls, own_attrs, _ATTRS_METADATA_KEY)
     attrs = base_attrs + own_attrs
@@ -162,6 +162,11 @@ class Attrib(classgen.FieldConstructor):
 
 def is_attrib(var):
   return var and isinstance(var.data[0], AttribInstance)
+
+
+def match_classvar(var):
+  """Unpack the type parameter from ClassVar[T]."""
+  return abstract_utils.match_type_container(var, "typing.ClassVar")
 
 
 class Factory(abstract.PyTDFunction):

@@ -158,9 +158,15 @@ class TypingTest(test_base.TargetIndependentTest):
           r".*Expected:.*type.*\nActually passed:.*Union.*"),])
 
   def test_classvar(self):
-    errors = self.CheckWithErrors("from typing import ClassVar")
-    self.assertErrorLogIs(
-        errors, [(1, "not-supported-yet", r"typing.ClassVar")])
+    ty = self.Infer("""\
+      from typing import ClassVar
+      class A(object):
+        x = 5  # type: ClassVar[int]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class A(object):
+        x: int = ...
+    """)
 
   def test_pyi_classvar(self):
     with file_utils.Tempdir() as d:

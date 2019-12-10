@@ -350,5 +350,23 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         def __init__(self, x: str, y: int = ..., z: int = ...) -> None: ...
     """)
 
+  def test_classvar(self):
+    ty = self.Infer("""
+      from typing import ClassVar
+      import dataclasses
+
+      @dataclasses.dataclass
+      class Foo(object):
+        x: ClassVar[int] = 10
+        y: str = 'hello'
+    """)
+    self.assertTypesMatchPytd(ty, """
+      dataclasses: module
+      class Foo(object):
+        x: int
+        y: str
+        def __init__(self, y: str = ...) -> None: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

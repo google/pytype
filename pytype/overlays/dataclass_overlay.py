@@ -75,6 +75,9 @@ class Dataclass(classgen.Decorator):
     cls_locals = self.get_class_locals(
         cls, allow_methods=True, ordering=classgen.Ordering.FIRST_ANNOTATE)
     for name, (value, orig) in cls_locals.items():
+      clsvar = match_classvar(value)
+      if clsvar:
+        continue
       initvar = self._handle_initvar(node, cls, name, value, orig)
       if initvar:
         value = initvar.instantiate(node)
@@ -160,14 +163,9 @@ def is_field(var):
 
 def match_initvar(var):
   """Unpack the type parameter from InitVar[T]."""
-  if var is None:
-    return None
-  data = var.data[0]
-  if not isinstance(data, abstract.Instance):
-    return None
-  cls = data.cls
-  if not (isinstance(cls, abstract.ParameterizedClass) and
-          cls.full_name == "dataclasses.InitVar"):
-    return None
-  param = cls.get_formal_type_parameter(abstract_utils.T)
-  return param
+  return abstract_utils.match_type_container(var, "dataclasses.InitVar")
+
+
+def match_classvar(var):
+  """Unpack the type parameter from ClassVar[T]."""
+  return abstract_utils.match_type_container(var, "typing.ClassVar")

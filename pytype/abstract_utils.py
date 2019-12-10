@@ -590,3 +590,21 @@ def check_classes(var, check):
   """
   return var and all(
       v.cls.isinstance_Class() and check(v.cls) for v in var.data if v.cls)
+
+
+def match_type_container(var, container_type_name):
+  """Unpack the type parameter from ContainerType[T]."""
+  if var is None:
+    return None
+  data = var.data[0]
+  if data.isinstance_Instance():
+    cls = data.cls
+  elif data.isinstance_Class():
+    cls = data
+  else:
+    return None
+  if not (cls.isinstance_ParameterizedClass() and
+          cls.full_name == container_type_name):
+    return None
+  param = cls.get_formal_type_parameter(T)
+  return param

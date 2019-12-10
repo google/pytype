@@ -389,7 +389,6 @@ class Match(Generic[AnyStr]):
 
 
 # Used to mark attributes as class-level, as opposed to instance-level.
-# TODO(kramm): Add support for this to pytype.
 class ClassVar(Generic[_T]): ...
 
 

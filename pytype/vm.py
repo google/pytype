@@ -591,6 +591,9 @@ class VirtualMachine(object):
         self.errorlog.invalid_annotation(self.frames, e.annot, e.error)
         var = self.new_unsolvable(node)
       else:
+        # We have recorded ClassVar annotations in vm.annotated_locals, so when
+        # we construct the class we can replace them with their contained types.
+        val.replace_classvars(node)
         if new_class_var:
           var = new_class_var
         else:
