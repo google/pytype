@@ -61,7 +61,6 @@ functionalities to be made part of collections.namedtuple.
 """
 
 import collections
-import time
 
 from pytype import metrics
 from pytype.pytd.parse import preconditions
@@ -237,13 +236,13 @@ def _Visit(node, visitor, *args, **kwargs):
   recursive = name in _visiting
   _visiting.add(name)
 
-  start = time.clock()
+  start = metrics.get_cpu_clock()
   try:
     return _VisitNode(node, visitor, *args, **kwargs)
   finally:
     if not recursive:
       _visiting.remove(name)
-      elapsed = time.clock() - start
+      elapsed = metrics.get_cpu_clock() - start
       metrics.get_metric("visit_" + name, metrics.Distribution).add(elapsed)
       if _visiting:
         metrics.get_metric(
