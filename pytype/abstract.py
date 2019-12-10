@@ -2439,14 +2439,9 @@ class InterpreterClass(SimpleAbstractValue, mixin.Class):
     replace_classvars_in_dict(self.members, make_instance=True)
 
     # x: ClassVar[T] = ... goes into annotations
-    if "__annotations__" not in self.members:
-      return
-    annots_var = self.members["__annotations__"]
-    try:
-      annots = abstract_utils.get_atomic_python_constant(annots_var, dict)
-    except abstract_utils.ConversionError:
-      return
-    replace_classvars_in_dict(annots, make_instance=False)
+    annots = abstract_utils.get_annotations_dict(self.members)
+    if annots:
+      replace_classvars_in_dict(annots, make_instance=False)
 
   def type_param_check(self):
     """Throw exception for invalid type parameters."""

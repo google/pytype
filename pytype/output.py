@@ -352,17 +352,6 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     else:
       raise NotImplementedError(v.__class__.__name__)
 
-  def get_annotations_dict(self, members):
-    """Get __annotations__ from a members map."""
-    if "__annotations__" not in members:
-      return {}
-    annots_var = members["__annotations__"]
-    try:
-      annots = abstract_utils.get_atomic_python_constant(annots_var, dict)
-    except abstract_utils.ConversionError:
-      return {}
-    return annots
-
   def uninitialized_annotations_to_instance_types(self, node, annots, members):
     """Get instance types for annotations not present in the members map."""
     for name in annots:
@@ -544,7 +533,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     methods = {}
     constants = collections.defaultdict(pytd_utils.TypeBuilder)
 
-    annots = self.get_annotations_dict(v.members)
+    annots = abstract_utils.get_annotations_dict(v.members) or {}
 
     for name, t in self.uninitialized_annotations_to_instance_types(
         node, annots, v.members):

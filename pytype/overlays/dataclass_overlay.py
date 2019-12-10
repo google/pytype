@@ -52,8 +52,7 @@ class Dataclass(classgen.Decorator):
     initvar = match_initvar(value)
     if not initvar:
       return None
-    annots_var = cls.members["__annotations__"]
-    annots = abstract_utils.get_atomic_python_constant(annots_var, dict)
+    annots = abstract_utils.get_annotations_dict(cls.members)
     if orig is None:
       # InitVars without a default do not get retained.
       del annots[name]

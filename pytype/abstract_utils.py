@@ -608,3 +608,25 @@ def match_type_container(var, container_type_name):
     return None
   param = cls.get_formal_type_parameter(T)
   return param
+
+
+def get_annotations_dict(members):
+  """Get __annotations__ from a members map.
+
+  Returns None rather than {} if the dict does not exist so that callers always
+  have a reference to the actual dictionary, and can mutate it if needed.
+
+  Args:
+    members: A dict of member name to variable
+
+  Returns:
+    members['__annotations__'] unpacked as a python dict, or None
+  """
+  if "__annotations__" not in members:
+    return None
+  annots_var = members["__annotations__"]
+  try:
+    annots = get_atomic_python_constant(annots_var, dict)
+  except ConversionError:
+    return None
+  return annots

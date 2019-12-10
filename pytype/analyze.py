@@ -451,7 +451,7 @@ class CallTracer(vm.VirtualMachine):
   def pytd_for_types(self, defs):
     data = []
     pytd_convert = self.convert.pytd_convert
-    annots = pytd_convert.get_annotations_dict(defs)
+    annots = abstract_utils.get_annotations_dict(defs) or {}
     for name, t in pytd_convert.uninitialized_annotations_to_instance_types(
         self.exitpoint, annots, defs):
       data.append(pytd.Constant(name, t))
