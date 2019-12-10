@@ -1666,7 +1666,7 @@ class VirtualMachine(object):
     return name.startswith("_") and not name.startswith("__")
 
   def _name_error_or_late_annotation(self, name):
-    if self._late_annotations_stack:
+    if self._late_annotations_stack and self.late_annotations is not None:
       annot = abstract.LateAnnotation(name, self._late_annotations_stack, self)
       log.info("Created %r", annot)
       self.late_annotations[name].append(annot)

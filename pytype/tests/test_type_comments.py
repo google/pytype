@@ -108,7 +108,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
           pass
 
         def g(self, x):
-          # type: ("Foo", int) -> None
+          # type: (Foo, int) -> None
           pass
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
@@ -127,7 +127,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
 
         @classmethod
         def g(cls, x):
-          # type: ("Foo", int) -> None
+          # type: (Foo, int) -> None
           pass
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
@@ -654,6 +654,14 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       def F(): pass
     """)
     self.assertErrorLogIs(errors, [(1, "invalid-annotation")])
+
+  def testBadTypeCommentInConstructor(self):
+    errors = self.CheckWithErrors("""\
+      class Foo(object):
+        def __init__(self):
+          self.x = None  # type: "Bar"
+    """)
+    self.assertErrorLogIs(errors, [(3, "invalid-annotation")])
 
 
 test_base.main(globals(), __name__ == "__main__")

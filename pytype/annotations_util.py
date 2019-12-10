@@ -237,7 +237,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
 
   def eval_multi_arg_annotation(self, node, func, annot, stack):
     """Evaluate annotation for multiple arguments (from a type comment)."""
-    args = self._eval_expr_as_tuple(node, annot)
+    args = self._eval_expr_as_tuple(node, annot, stack)
     code = func.code
     expected = code.get_arg_count()
     names = code.co_varnames
@@ -364,14 +364,15 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       self.vm.errorlog.invalid_annotation(stack, annotation, "Not a type", name)
       return None
 
-  def _eval_expr_as_tuple(self, node, expr):
+  def _eval_expr_as_tuple(self, node, expr, stack):
     """Evaluate an expression as a tuple."""
     if not expr:
       return ()
 
     f_globals, f_locals = self.vm.frame.f_globals, self.vm.frame.f_locals
-    result = abstract_utils.get_atomic_value(
-        abstract_utils.eval_expr(self.vm, node, f_globals, f_locals, expr))
+    with self.vm.generate_late_annotations(stack):
+      result = abstract_utils.get_atomic_value(
+          abstract_utils.eval_expr(self.vm, node, f_globals, f_locals, expr))
     # If the result is a tuple, expand it.
     if (isinstance(result, mixin.PythonConstant) and
         isinstance(result.pyval, tuple)):
