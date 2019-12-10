@@ -7,7 +7,6 @@ from pytype import abstract
 from pytype import abstract_utils
 from pytype import compat
 from pytype import function
-from pytype import mixin
 from pytype import overlay
 from pytype import overlay_utils
 from pytype import utils
@@ -125,10 +124,6 @@ class TypeVarError(Exception):
 class TypeVar(abstract.PyTDFunction):
   """Representation of typing.TypeVar, as a function."""
 
-  # See b/74212131: we allow Any for bounds and constraints.
-  _CLASS_TYPE = (abstract.AbstractOrConcreteValue, mixin.Class,
-                 abstract.Unsolvable)
-
   def _get_constant(self, var, name, arg_type, arg_type_desc=None):
     try:
       ret = abstract_utils.get_atomic_python_constant(var, arg_type)
@@ -137,22 +132,22 @@ class TypeVar(abstract.PyTDFunction):
           name, arg_type_desc or "a constant " + arg_type.__name__))
     return ret
 
-  def _get_annotation(self, var, name):
+  def _get_annotation(self, node, var, name):
+    with self.vm.errorlog.checkpoint() as record:
+      retvar = self.vm.annotations_util.process_annotation_var(
+          node, var, name, self.vm.simple_stack())
+    if record.errors:
+      raise TypeVarError("\n".join(error.message for error in record.errors))
     try:
-      ret = abstract_utils.get_atomic_value(var, self._CLASS_TYPE)
-      if isinstance(ret, abstract.AbstractOrConcreteValue):
-        ret = abstract_utils.get_atomic_python_constant(var, six.string_types)
+      return abstract_utils.get_atomic_value(retvar)
     except abstract_utils.ConversionError:
       raise TypeVarError("%s must be constant" % name)
-    if not ret:
-      raise TypeVarError("%s cannot be an empty string" % name)
-    return ret
 
-  def _get_namedarg(self, args, name, default_value):
+  def _get_namedarg(self, node, args, name, default_value):
     if name not in args.namedargs:
       return default_value
     if name == "bound":
-      return self._get_annotation(args.namedargs[name], name)
+      return self._get_annotation(node, args.namedargs[name], name)
     else:
       ret = self._get_constant(args.namedargs[name], name, bool)
       # This error is logged only if _get_constant succeeds.
@@ -173,12 +168,12 @@ class TypeVar(abstract.PyTDFunction):
     name = self._get_constant(args.posargs[0], "name", six.string_types,
                               arg_type_desc="a constant str")
     constraints = tuple(
-        self._get_annotation(c, "constraint") for c in args.posargs[1:])
+        self._get_annotation(node, c, "constraint") for c in args.posargs[1:])
     if len(constraints) == 1:
       raise TypeVarError("the number of constraints must be 0 or more than 1")
-    bound = self._get_namedarg(args, "bound", None)
-    covariant = self._get_namedarg(args, "covariant", False)
-    contravariant = self._get_namedarg(args, "contravariant", False)
+    bound = self._get_namedarg(node, args, "bound", None)
+    covariant = self._get_namedarg(node, args, "covariant", False)
+    contravariant = self._get_namedarg(node, args, "contravariant", False)
     if constraints and bound:
       raise TypeVarError("constraints and a bound are mutually exclusive")
     extra_kwargs = set(args.namedargs) - {"bound", "covariant", "contravariant"}
@@ -200,8 +195,6 @@ class TypeVar(abstract.PyTDFunction):
       self.vm.errorlog.invalid_typevar(
           self.vm.frames, utils.message(e), e.bad_call)
       return node, self.vm.new_unsolvable(node)
-    if param.has_late_types():
-      self.vm.params_with_late_types.append((param, self.vm.simple_stack()))
     return node, param.to_variable(node)
 
 
@@ -210,16 +203,14 @@ class Cast(abstract.PyTDFunction):
 
   def call(self, node, func, args):
     if args.posargs:
-      try:
-        annot = self.vm.annotations_util.process_annotation_var(
-            node, args.posargs[0], "typing.cast", self.vm.frames)
-      except self.vm.annotations_util.LateAnnotationError:
-        self.vm.errorlog.invalid_annotation(
-            self.vm.frames, self.vm.merge_values(args.posargs[0].data),
-            "Forward references not allowed in typing.cast.\n"
-            "Consider switching to a type comment.")
-        annot = self.vm.new_unsolvable(node)
-      args = args.replace(posargs=(annot,) + args.posargs[1:])
+      annot = self.vm.annotations_util.process_annotation_var(
+          node, args.posargs[0], "typing.cast", self.vm.simple_stack())
+      if any(t.formal for t in annot.data):
+        self.vm.errorlog.invalid_typevar(
+            self.vm.frames, "cannot pass a TypeVar to a function")
+        return node, self.vm.new_unsolvable(node)
+      return node, self.vm.annotations_util.init_annotation_var(
+          node, "typing.cast", annot)
     return super(Cast, self).call(node, func, args)
 
 
@@ -305,8 +296,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
       types.append(abstract_utils.get_atomic_value(typ))
     return name_var, names, types
 
-  def _build_namedtuple(self, name, field_names, field_types, late_annots,
-                        node):
+  def _build_namedtuple(self, name, field_names, field_types, node):
     # Build an InterpreterClass representing the namedtuple.
     if field_types:
       # TODO(mdemello): Fix this to support late types.
@@ -361,9 +351,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
         self.vm, bound=None)
     cls_type = abstract.ParameterizedClass(
         self.vm.convert.type_type, {abstract_utils.T: cls_type_param}, self.vm)
-    # Use late annotations as field types if they exist.
-    params = [Param(n, late_annots.get(n, t))
-              for n, t in moves.zip(field_names, field_types)]
+    params = [Param(n, t) for n, t in moves.zip(field_names, field_types)]
     members["__new__"] = overlay_utils.make_method(
         self.vm, node,
         name="__new__",
@@ -460,11 +448,6 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     # by __new__, _make and _replace.
     cls_type_param.bound = cls
 
-    # Add late annotations to the new class
-    if late_annots:
-      cls.late_annotations = late_annots
-      self.vm.classes_with_late_annotations.append(cls)
-
     return node, cls_var
 
   def call(self, node, _, args):
@@ -484,12 +467,11 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
       self.vm.errorlog.invalid_namedtuple_arg(self.vm.frames, utils.message(e))
       return node, self.vm.new_unsolvable(node)
 
-    annots, late_annots = self.vm.annotations_util.convert_annotations_list(
+    annots = self.vm.annotations_util.convert_annotations_list(
         node, moves.zip(field_names, field_types))
     field_types = [annots.get(field_name, self.vm.convert.unsolvable)
                    for field_name in field_names]
-    node, cls_var = self._build_namedtuple(name, field_names, field_types,
-                                           late_annots, node)
+    node, cls_var = self._build_namedtuple(name, field_names, field_types, node)
 
     self.vm.trace_classdef(cls_var)
     return node, cls_var

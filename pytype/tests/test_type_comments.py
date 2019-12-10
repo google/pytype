@@ -108,7 +108,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
           pass
 
         def g(self, x):
-          # type: (Foo, int) -> None
+          # type: ("Foo", int) -> None
           pass
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
@@ -127,7 +127,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
 
         @classmethod
         def g(cls, x):
-          # type: (Foo, int) -> None
+          # type: ("Foo", int) -> None
           pass
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
@@ -440,7 +440,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       class A(object):
         def __init__(self):
           self.x = 42
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """\
       from typing import Any
       class A(object):
@@ -462,16 +462,16 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       y = g()
     """)
     self.assertTypesMatchPytd(ty, """\
-      from typing import Any
+      from typing import Any, TypeVar
+      _TA = TypeVar('_TA', bound=A)
       class A(object):
         a: A
-        def f(self) -> Any: ...
-      x: Any
-      y: Any
-      def g() -> Any: ...
+        def f(self: _TA) -> _TA: ...
+      x: A
+      y: A
+      def g() -> A: ...
     """)
 
-  @test_base.skip("b/134706992")
   def testClassVariableForwardReferenceError(self):
     _, err = self.InferWithErrors("""\
       class A(object):
@@ -617,6 +617,43 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorLogIs(errors, [(3, "not-supported-yet",
                                     r"Recursive.*Foo")])
+
+  def testInstantiateFullyQuotedType(self):
+    ty, errors = self.InferWithErrors("""\
+      from typing import Optional
+      x = None  # type: "Optional[A]"
+      class A(object):
+        a = 0
+      y = x.a
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Optional
+      x: Optional[A]
+      class A(object):
+        a: int
+      y: int
+    """)
+    self.assertErrorLogIs(errors, [(5, "attribute-error", r"a.*None")])
+
+  def testDoNotResolveLateTypeToFunction(self):
+    ty = self.Infer("""
+      v = None  # type: "A"
+      class A(object):
+        def A(self):
+          pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      v: A
+      class A(object):
+        def A(self) -> None: ...
+    """)
+
+  def testIllegalFunctionLateType(self):
+    errors = self.CheckWithErrors("""\
+      v = None  # type: "F"
+      def F(): pass
+    """)
+    self.assertErrorLogIs(errors, [(1, "invalid-annotation")])
 
 
 test_base.main(globals(), __name__ == "__main__")

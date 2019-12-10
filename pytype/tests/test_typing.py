@@ -47,14 +47,13 @@ class TypingTest(test_base.TargetIndependentTest):
         pass
     """)
     self.assertTypesMatchPytd(ty, """
-      typing = ...  # type: module
-      v1 = ...  # type: None
-      v2 = ...  # type: typing.Any
-      v3 = ...  # type: typing.Any
+      typing: module
+      v1: None
+      v2: typing.Any
+      v3: A
       class A(object): ...
     """)
-    self.assertErrorLogIs(errors, [(3, "invalid-annotation"),
-                                   (4, "invalid-annotation")])
+    self.assertErrorLogIs(errors, [(3, "invalid-annotation")])
 
   def test_no_typevars_for_cast(self):
     _, errors = self.InferWithErrors("""\

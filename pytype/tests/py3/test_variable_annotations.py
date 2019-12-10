@@ -71,7 +71,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
       c: NoReturn = "3"
       d: List[int] = []
       e: List[T] = []
-      f: 1 if __random__ else 2 = 123
+      f: int if __random__ else str = 123
       h: NoReturn = None
     """)
     self.assertErrorLogIs(errors, [
@@ -166,5 +166,21 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
         fn: Callable[[A], bool]
         def __init__(self, fn: Callable[[A], bool]) -> None: ...
     """)
+
+  def testMultipleForwardReference(self):
+    ty = self.Infer("""
+      from typing import Dict
+      class A:
+        x: Dict['A', 'B']
+      class B:
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict
+      class A:
+        x: Dict[A, B]
+      class B: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

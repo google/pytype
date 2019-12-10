@@ -357,7 +357,6 @@ class FunctionTest(AbstractTestBase):
     self.assertFalse(sig.kwonly_params)
     self.assertIs(sig.kwargs_name, None)
     self.assertSetEqual(set(sig.annotations), {"self", "args", "return"})
-    self.assertFalse(sig.late_annotations)
     self.assertTrue(sig.has_return_annotation)
     self.assertTrue(sig.has_param_annotations)
 
@@ -377,7 +376,6 @@ class FunctionTest(AbstractTestBase):
     self.assertFalse(sig.kwonly_params)
     self.assertIs(sig.kwargs_name, None)
     six.assertCountEqual(self, sig.annotations.keys(), sig.param_names)
-    self.assertFalse(sig.late_annotations)
     self.assertFalse(sig.has_return_annotation)
     self.assertTrue(sig.has_param_annotations)
 
@@ -412,12 +410,7 @@ class FunctionTest(AbstractTestBase):
         kwargs_name=None,
         defaults={},
         annotations={},
-        late_annotations={
-            "v": abstract.LateAnnotation("X", "v", None),
-            "return": abstract.LateAnnotation("Y", "return", None)
-        }
     )
-    self.assertEqual(repr(sig), "def f(v: 'X') -> 'Y'")
     self.assertFalse(sig.has_param_annotations)
     self.assertFalse(sig.has_return_annotation)
     sig.set_annotation("v", self._vm.convert.unsolvable)
@@ -437,7 +430,6 @@ class FunctionTest(AbstractTestBase):
         kwargs_name=None,
         defaults={},
         annotations={},
-        late_annotations={},
     )
     self.assertEqual(repr(sig), "def f(x) -> Any")
     self.assertEqual(sig.mandatory_param_count(), 1)
@@ -453,7 +445,6 @@ class FunctionTest(AbstractTestBase):
         kwargs_name=None,
         defaults={"y": self._vm.convert.none_type.to_variable(self._node)},
         annotations={},
-        late_annotations={},
     )
     self.assertEqual(repr(sig), "def f(x, y = None) -> Any")
     self.assertEqual(sig.mandatory_param_count(), 1)
@@ -469,7 +460,6 @@ class FunctionTest(AbstractTestBase):
         kwargs_name=None,
         defaults={},
         annotations={},
-        late_annotations={},
     )
     self.assertEqual(repr(sig), "def f(*args) -> Any")
     self.assertEqual(sig.mandatory_param_count(), 0)
@@ -485,7 +475,6 @@ class FunctionTest(AbstractTestBase):
         kwargs_name="kwargs",
         defaults={},
         annotations={},
-        late_annotations={},
     )
     self.assertEqual(repr(sig), "def f(**kwargs) -> Any")
     self.assertEqual(sig.mandatory_param_count(), 0)
@@ -501,7 +490,6 @@ class FunctionTest(AbstractTestBase):
         kwargs_name=None,
         defaults={"y": self._vm.convert.none_type.to_variable(self._node)},
         annotations={},
-        late_annotations={},
     )
     self.assertEqual(repr(sig), "def f(*, y = None) -> Any")
     self.assertEqual(sig.mandatory_param_count(), 0)
@@ -517,7 +505,6 @@ class FunctionTest(AbstractTestBase):
         kwargs_name="kwargs",
         defaults={},
         annotations={},
-        late_annotations={},
     )
     self.assertEqual(repr(sig), "def f(x, *args, y, **kwargs) -> Any")
     for param in ("x", "args", "y", "kwargs"):
@@ -534,7 +521,6 @@ class FunctionTest(AbstractTestBase):
         kwargs_name="kwargs",
         defaults={},
         annotations={},
-        late_annotations={},
     )
     # f(1, 2, y=3, z=4)
     int_inst = self._vm.convert.primitive_class_instances[int]
@@ -548,7 +534,6 @@ class FunctionTest(AbstractTestBase):
     self.assertSetEqual(sig.kwonly_params, {"y"})
     self.assertEqual(sig.kwargs_name, "kwargs")
     self.assertFalse(sig.annotations)
-    self.assertFalse(sig.late_annotations)
 
   def test_signature_del_param_annotation(self):
     # def f(x) -> int: ...
@@ -561,7 +546,6 @@ class FunctionTest(AbstractTestBase):
         defaults={},
         annotations={"x": self._vm.convert.unsolvable,
                      "return": self._vm.convert.unsolvable},
-        late_annotations={}
     )
     sig.del_annotation("x")
     six.assertCountEqual(self, sig.annotations.keys(), {"return"})
@@ -579,7 +563,6 @@ class FunctionTest(AbstractTestBase):
         defaults={},
         annotations={"x": self._vm.convert.unsolvable,
                      "return": self._vm.convert.unsolvable},
-        late_annotations={}
     )
     sig.del_annotation("return")
     six.assertCountEqual(self, sig.annotations.keys(), {"x"})
@@ -596,7 +579,6 @@ class FunctionTest(AbstractTestBase):
         kwargs_name=None,
         defaults={},
         annotations={},
-        late_annotations={}
     )
     self.assertRaises(KeyError, sig.del_annotation, "rumpelstiltskin")
 
@@ -719,11 +701,10 @@ class SimpleFunctionTest(AbstractTestBase):
 
   def _make_func(self, name="_", param_names=None, varargs_name=None,
                  kwonly_params=(), kwargs_name=None, defaults=(),
-                 annotations=None, late_annotations=None):
+                 annotations=None):
     return abstract.SimpleFunction(name, param_names or (), varargs_name,
                                    kwonly_params, kwargs_name, defaults,
-                                   annotations or {}, late_annotations or {},
-                                   self._vm)
+                                   annotations or {}, self._vm)
 
   def _simple_sig(self, param_types, ret_type=None):
     annots = {("_%d" % i): t for i, t in enumerate(param_types)}

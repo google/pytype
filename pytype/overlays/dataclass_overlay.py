@@ -48,12 +48,10 @@ class Dataclass(classgen.Decorator):
     #   x = 10
     # would have init(x:int = 10, y:str = 'hello')
     own_attrs = []
-    late_annotation = False  # True if we find a bare late annotation
     for name, (value, orig) in self.get_class_locals(
         cls, allow_methods=True, ordering=classgen.Ordering.FIRST_ANNOTATE
     ).items():
-      if self.add_member(node, cls, name, value, orig):
-        late_annotation = True
+      cls.members[name] = value
 
       if is_field(orig):
         field = orig.data[0]
@@ -63,7 +61,7 @@ class Dataclass(classgen.Decorator):
         init = True
 
       # Check that default matches the declared type
-      if orig and not classgen.is_late_annotation(value):
+      if orig:
         typ = self.vm.convert.merge_classes(value.data)
         bad = self.vm.matcher.bad_matches(orig, typ, node)
         if bad:
@@ -73,10 +71,6 @@ class Dataclass(classgen.Decorator):
 
       attr = classgen.Attribute(name=name, typ=value, init=init, default=orig)
       own_attrs.append(attr)
-
-    # See if we need to resolve any late annotations
-    if late_annotation:
-      self.vm.classes_with_late_annotations.append(cls)
 
     base_attrs = self.get_base_class_attrs(
         cls, own_attrs, _DATACLASS_METADATA_KEY)
@@ -139,6 +133,4 @@ class Field(classgen.FieldConstructor):
 
 
 def is_field(var):
-  if var is None or classgen.is_late_annotation(var):
-    return False
-  return isinstance(var.data[0], FieldInstance)
+  return var and isinstance(var.data[0], FieldInstance)
