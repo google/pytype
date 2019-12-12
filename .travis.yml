@@ -37,8 +37,7 @@ addons:
 
 install:
   - pip install importlab
-  - pip install 'astroid<=2.2.5'
-  - pip install 'pylint<=2.3.1'
+  - pip install pylint
   - pip install pyyaml
   - pip install six
   - if [[ $TRAVIS_PYTHON_VERSION != 2.7 ]]; then pip install typed_ast; fi
