@@ -507,11 +507,8 @@ class SuperClassHierarchy(object):
       collect: A set() of strings, modified to contain all superclasses.
     """
     collect.add(type_name)
-    superclasses = [name
-                    for name in self._superclasses.get(type_name, [])]
-
     # The superclasses might have superclasses of their own, so recurse.
-    for superclass in superclasses:
+    for superclass in self._superclasses.get(type_name, []):
       self._CollectSuperclasses(superclass, collect)
 
   def ExpandSuperClasses(self, t):
