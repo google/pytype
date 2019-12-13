@@ -6,6 +6,7 @@
 import glob
 import io
 import os
+import re
 import shutil
 import sys
 
@@ -97,7 +98,11 @@ def get_data_files():
 def get_long_description():
   # Read the long-description from a file.
   with io.open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
-    return '\n' + f.read()
+    desc = '\n' + f.read()
+  # Fix relative links to the pytype docs.
+  return re.sub(
+      r'\[(.+)\]: docs/',
+      r'[\g<1>]: https://github.com/google/pytype/blob/master/docs/', desc)
 
 
 def get_version():
