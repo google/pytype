@@ -1,3 +1,8 @@
+Version 2019.12.17
+* Improve support for forward references and function type comments.
+* Support typing.ClassVar and dataclasses.InitVar.
+* Fix some attrs and dataclasses bugs.
+
 Version 2019.12.06
 * Update typeshed pin to commit f7f6860 from December 1.
 * Allow running pytype-single as `python -m pytype-single`.
