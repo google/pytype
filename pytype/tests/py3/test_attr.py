@@ -128,6 +128,21 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
         def __init__(self, *, x, y: int, z: str) -> None: ...
     """)
 
+  def test_kw_only_with_defaults(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s(kw_only=True)
+      class Foo(object):
+        x = attr.ib(default=1)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo(object):
+        x: int
+        def __init__(self, *, x : int = ...) -> None: ...
+    """)
+
   def test_auto_attrs(self):
     ty = self.Infer("""
       import attr
