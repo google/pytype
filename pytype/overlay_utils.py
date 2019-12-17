@@ -91,7 +91,7 @@ def make_method(vm, node, name, params=None, kwonly_params=None,
   names = lambda xs: tuple(x.name for x in xs)
   param_names = names(params)
   kwonly_names = names(kwonly_params)
-  defaults = {x.name: x.default for x in params if x.default}
+  defaults = {x.name: x.default for x in params + kwonly_params if x.default}
   varargs_name = varargs.name if varargs else None
   kwargs_name = kwargs.name if kwargs else None
 
