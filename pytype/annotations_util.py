@@ -319,7 +319,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
             v = abstract_utils.eval_expr(
                 self.vm, node, frame.f_globals, frame.f_locals, expr)
         except abstract_utils.EvaluationError as e:
-          self.vm.errorlog.invalid_annotation(stack, annotation, e.details)
+          self.vm.errorlog.copy_from(e.errors, stack)
           return None
         if len(v.data) == 1:
           return self._process_one_annotation(

@@ -1149,7 +1149,7 @@ class LateAnnotation(object):
           self.vm, node, f_globals, f_locals, self.expr)
     except abstract_utils.EvaluationError as e:
       log.info("Failed to resolve late annotation %r", self.expr)
-      self.vm.errorlog.invalid_annotation(self.stack, self, details=e.details)
+      self.vm.errorlog.copy_from(e.errors, self.stack)
       return
     var = self.vm.annotations_util.process_annotation_var(
         node, var, None, self.stack)

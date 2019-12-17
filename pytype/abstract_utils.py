@@ -48,8 +48,12 @@ class EvaluationError(Exception):
   """Used to signal an errorlog error during type name evaluation."""
 
   @property
+  def errors(self):
+    return utils.message(self)
+
+  @property
   def details(self):
-    return "\n".join(error.message for error in utils.message(self))
+    return "\n".join(error.message for error in self.errors)
 
 
 class GenericTypeError(Exception):

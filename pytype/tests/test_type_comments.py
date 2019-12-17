@@ -418,7 +418,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       a = ...  # type: A
       b = ...  # type: Any
     """)
-    self.assertErrorLogIs(errors, [(2, "invalid-annotation", r"Nonexistent")])
+    self.assertErrorLogIs(errors, [(2, "name-error", r"Nonexistent")])
 
   def testClassVariableForwardReference(self):
     ty = self.Infer("""\
@@ -661,7 +661,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
         def __init__(self):
           self.x = None  # type: "Bar"
     """)
-    self.assertErrorLogIs(errors, [(3, "invalid-annotation")])
+    self.assertErrorLogIs(errors, [(3, "name-error")])
 
 
 test_base.main(globals(), __name__ == "__main__")

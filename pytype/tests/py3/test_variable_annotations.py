@@ -75,7 +75,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
       h: NoReturn = None
     """)
     self.assertErrorLogIs(errors, [
-        (5, "invalid-annotation", "Name \'abc\' is not defined"),
+        (5, "name-error", "Name \'abc\' is not defined"),
         (6, "invalid-annotation", "Not a type"),
         (7, "invalid-annotation", "NoReturn is not allowed"),
         (9, "not-supported-yet", r"type parameter.*variable annotation"),
