@@ -408,8 +408,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       class B(object):
         pass
     """)
-    self.assertErrorLogIs(
-        errorlog, [(1, "invalid-annotation", r"Foo")])
+    self.assertErrorLogIs(errorlog, [(1, "name-error", r"Foo")])
 
   def testForwardDeclBadReturn(self):
     _, errorlog = self.InferWithErrors("""\
@@ -1031,6 +1030,27 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       from typing import Callable, List
       def f(x: List[Callable[[int], str]]) -> None: ...
     """)
+
+  def testLateAnnotationNonNameError(self):
+    errors = self.CheckWithErrors("""\
+      class Foo(object):
+        pass
+      def f(x: "Foo.Bar"):
+        pass
+    """)
+    self.assertErrorLogIs(errors, [(3, "attribute-error")])
+
+  def testKeepContainerWithError(self):
+    ty, errors = self.InferWithErrors("""\
+      from typing import Dict
+      def f(x: "Dict[str, int.error]"):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Dict
+      def f(x: Dict[str, Any]) -> None: ...
+    """)
+    self.assertErrorLogIs(errors, [(2, "attribute-error")])
 
 
 class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):

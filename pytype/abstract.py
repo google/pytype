@@ -1144,13 +1144,10 @@ class LateAnnotation(object):
     if self.resolved:
       return
     self.resolved = True
-    try:
-      var = abstract_utils.eval_expr(
-          self.vm, node, f_globals, f_locals, self.expr)
-    except abstract_utils.EvaluationError as e:
-      log.info("Failed to resolve late annotation %r", self.expr)
-      self.vm.errorlog.invalid_annotation(self.stack, self, details=e.details)
-      return
+    var, errorlog = abstract_utils.eval_expr(
+        self.vm, node, f_globals, f_locals, self.expr)
+    if errorlog:
+      self.vm.errorlog.copy_from(errorlog.errors, self.stack)
     var = self.vm.annotations_util.process_annotation_var(
         node, var, None, self.stack)
     try:

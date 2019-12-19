@@ -394,9 +394,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
         (2, "invalid-typevar", r"mutually exclusive"),
         (3, "invalid-typevar", r"empty string"),
         (5, "invalid-typevar", r"Must be constant"),
-        # This one is an [invalid-annotation] because the error is not caught
-        # until the VM evaluates its unresolved late annotations.
-        (7, "invalid-annotation", r"Name.*Bar")])
+        (7, "name-error", r"Name.*Bar")])
 
   def testLateConstraints(self):
     ty = self.Infer("""

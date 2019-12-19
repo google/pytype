@@ -342,6 +342,12 @@ class ErrorLogBase(object):
   def __getitem__(self, index):
     return self._errors[index]
 
+  def copy_from(self, errors, stack):
+    for e in errors:
+      with _CURRENT_ERROR_NAME.bind(e.name):
+        self.error(stack, e.message, e.details, e.keyword, e.bad_call,
+                   e.keyword_context)
+
   def is_valid_error_name(self, name):
     """Return True iff name was defined in an @error_name() decorator."""
     return name in _ERROR_NAMES

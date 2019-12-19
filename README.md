@@ -241,9 +241,12 @@ single Python file assuming that .pyi files have already been generated for all
 of its dependencies.
 * `pyxref`, a cross references generator.
 
-## Roadmap
+## 2020 Roadmap
 
-* Windows support
+* Python 3.7 and 3.8 support
+* Stricter type annotation enforcement
+* Better performance on large files
+* Developer documentation
 
 ## License
 [Apache 2.0][license]

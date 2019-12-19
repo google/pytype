@@ -58,7 +58,7 @@ class NamedTupleTest(test_base.TargetIndependentTest):
       X = typing.NamedTuple("X", [('a', 'Foo')]) # should be fine
       Y = typing.NamedTuple("Y", [('a', 'Bar')]) # should fail
       """)
-    self.assertErrorLogIs(errors, [(5, "invalid-annotation", "Bar")])
+    self.assertErrorLogIs(errors, [(5, "name-error", "Bar")])
 
   def test_nested_containers(self):
     errors = self.CheckWithErrors("""\
