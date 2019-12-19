@@ -2560,9 +2560,6 @@ class VirtualMachine(object):
       try:
         self.annotations_util.eval_multi_arg_annotation(
             node, func, annot, fake_stack)
-      except abstract_utils.EvaluationError as e:
-        self.errorlog.invalid_function_type_comment(
-            fake_stack, annot, details=e.details)
       except abstract_utils.ConversionError:
         self.errorlog.invalid_function_type_comment(
             fake_stack, annot, details="Must be constant.")

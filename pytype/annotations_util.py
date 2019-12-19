@@ -190,30 +190,27 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       return value
     comment = op.type_comment
     frame = self.vm.frame
-    try:
-      var = abstract_utils.eval_expr(
-          self.vm, state.node, frame.f_globals, frame.f_locals, comment)
-    except abstract_utils.EvaluationError as e:
+    var, errorlog = abstract_utils.eval_expr(
+        self.vm, state.node, frame.f_globals, frame.f_locals, comment)
+    if errorlog:
       self.vm.errorlog.invalid_type_comment(
-          self.vm.frames, comment, details=e.details)
+          self.vm.frames, comment, details=errorlog.details)
+    try:
+      typ = abstract_utils.get_atomic_value(var)
+    except abstract_utils.ConversionError:
+      self.vm.errorlog.invalid_type_comment(
+          self.vm.frames, comment, details="Must be constant.")
       value = self.vm.new_unsolvable(state.node)
     else:
-      try:
-        typ = abstract_utils.get_atomic_value(var)
-      except abstract_utils.ConversionError:
-        self.vm.errorlog.invalid_type_comment(
-            self.vm.frames, comment, details="Must be constant.")
-        value = self.vm.new_unsolvable(state.node)
+      typ = self._process_one_annotation(
+          state.node, typ, name, self.vm.simple_stack())
+      if typ:
+        if self.get_type_parameters(typ):
+          self.vm.errorlog.not_supported_yet(
+              self.vm.frames, "using type parameter in type comment")
+        _, value = self.vm.init_class(state.node, typ)
       else:
-        typ = self._process_one_annotation(
-            state.node, typ, name, self.vm.simple_stack())
-        if typ:
-          if self.get_type_parameters(typ):
-            self.vm.errorlog.not_supported_yet(
-                self.vm.frames, "using type parameter in type comment")
-          _, value = self.vm.init_class(state.node, typ)
-        else:
-          value = self.vm.new_unsolvable(state.node)
+        value = self.vm.new_unsolvable(state.node)
     return value
 
   def process_annotation_var(self, node, var, name, stack):
@@ -237,7 +234,10 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
 
   def eval_multi_arg_annotation(self, node, func, annot, stack):
     """Evaluate annotation for multiple arguments (from a type comment)."""
-    args = self._eval_expr_as_tuple(node, annot, stack)
+    args, errorlog = self._eval_expr_as_tuple(node, annot, stack)
+    if errorlog:
+      self.vm.errorlog.invalid_function_type_comment(
+          stack, annot, details=errorlog.details)
     code = func.code
     expected = code.get_arg_count()
     names = code.co_varnames
@@ -305,22 +305,20 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
               stack, annotation, "Cannot be an empty string", name)
           return None
         frame = self.vm.frame
-        try:
-          # Immediately try to evaluate the reference, generating
-          # LateAnnotation objects as needed. We don't store the entire string
-          # as a LateAnnotation because:
-          # - Starting in 3.8, or in 3.7 with __future__.annotations, all
-          #   annotations look like forward references - most of them don't need
-          #   to be late evaluated.
-          # - Given an expression like "Union[str, NotYetDefined]", we want to
-          #   evaluate the union immediately so we don't end up with a complex
-          #   LateAnnotation, which can lead to bugs when instantiated.
-          with self.vm.generate_late_annotations(stack):
-            v = abstract_utils.eval_expr(
-                self.vm, node, frame.f_globals, frame.f_locals, expr)
-        except abstract_utils.EvaluationError as e:
-          self.vm.errorlog.copy_from(e.errors, stack)
-          return None
+        # Immediately try to evaluate the reference, generating LateAnnotation
+        # objects as needed. We don't store the entire string as a
+        # LateAnnotation because:
+        # - Starting in 3.8, or in 3.7 with __future__.annotations, all
+        #   annotations look like forward references - most of them don't need
+        #   to be late evaluated.
+        # - Given an expression like "Union[str, NotYetDefined]", we want to
+        #   evaluate the union immediately so we don't end up with a complex
+        #   LateAnnotation, which can lead to bugs when instantiated.
+        with self.vm.generate_late_annotations(stack):
+          v, errorlog = abstract_utils.eval_expr(
+              self.vm, node, frame.f_globals, frame.f_locals, expr)
+        if errorlog:
+          self.vm.errorlog.copy_from(errorlog.errors, stack)
         if len(v.data) == 1:
           return self._process_one_annotation(
               node, v.data[0], name, stack, seen)
@@ -367,15 +365,17 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
   def _eval_expr_as_tuple(self, node, expr, stack):
     """Evaluate an expression as a tuple."""
     if not expr:
-      return ()
+      return (), None
 
     f_globals, f_locals = self.vm.frame.f_globals, self.vm.frame.f_locals
     with self.vm.generate_late_annotations(stack):
-      result = abstract_utils.get_atomic_value(
-          abstract_utils.eval_expr(self.vm, node, f_globals, f_locals, expr))
+      result_var, errorlog = abstract_utils.eval_expr(
+          self.vm, node, f_globals, f_locals, expr)
+    result = abstract_utils.get_atomic_value(result_var)
     # If the result is a tuple, expand it.
     if (isinstance(result, mixin.PythonConstant) and
         isinstance(result.pyval, tuple)):
-      return tuple(abstract_utils.get_atomic_value(x) for x in result.pyval)
+      return (tuple(abstract_utils.get_atomic_value(x) for x in result.pyval),
+              errorlog)
     else:
-      return (result,)
+      return (result,), errorlog

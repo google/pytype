@@ -573,13 +573,16 @@ def eval_expr(vm, node, f_globals, f_locals, expr):
       # We keep only the error message, since the filename and line number are
       # for a temporary file.
       vm.errorlog.python_compiler_error(None, 0, e.error)
+      ret = vm.new_unsolvable(node)
     else:
       _, _, _, ret = vm.run_bytecode(node, code, f_globals, f_locals)
   log.info("Finished evaluating expr: %r", expr)
   if record.errors:
     # Annotations are constants, so tracebacks aren't needed.
-    raise EvaluationError([error.drop_traceback() for error in record.errors])
-  return ret
+    e = EvaluationError([error.drop_traceback() for error in record.errors])
+  else:
+    e = None
+  return ret, e
 
 
 def check_classes(var, check):
