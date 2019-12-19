@@ -239,9 +239,12 @@ single Python file assuming that .pyi files have already been generated for all
 of its dependencies.
 * `pyxref`, a cross references generator.
 
-## Roadmap
+## 2020 Roadmap
 
-* Windows support
+* Python 3.7 and 3.8 support
+* Stricter type annotation enforcement
+* Better performance on large files
+* Developer documentation
 
 ## License
 [Apache 2.0][license]
@@ -249,19 +252,14 @@ of its dependencies.
 ## Disclaimer
 This is not an official Google product.
 
-<!-- General references -->
-
 [error-classes]: errors.md
 [faq]: faq.md
 [faq-diff]: faq.md#how-is-pytype-different-from-other-type-checkers
 [github]: https://github.com/google/pytype/
 [importlab-travis]: https://github.com/google/importlab/blob/master/.travis.yml
+[license]: https://github.com/google/pytype/blob/master/LICENSE
 [merge-pyi]: https://github.com/google/pytype/tree/master/pytype/tools/merge_pyi
 [pep-484]: https://www.python.org/dev/peps/pep-0484
 [pyi-stub-files]: user_guide.md#pyi-stub-files
 [user-guide]: user_guide.md
 [wsl]: https://docs.microsoft.com/en-us/windows/wsl/faq
-
-<!-- References with different interal and external versions -->
-
-[license]: https://github.com/google/pytype/blob/master/LICENSE
