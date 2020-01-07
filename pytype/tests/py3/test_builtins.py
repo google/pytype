@@ -182,6 +182,14 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       h = ...  # type: str
     """)
 
+  def testStrIsHashable(self):
+    self.Check("""
+      from typing import Any, Dict, Hashable
+      def f(x: Dict[Hashable, Any]):
+        return x["foo"]
+      f({'foo': 1})
+    """)
+
   def testBytearrayJoin(self):
     ty = self.Infer("""
       b = bytearray()
