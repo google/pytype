@@ -182,5 +182,15 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
       class B: ...
     """)
 
+  def testNonAnnotationsDict(self):
+    # Regression test to make sure `x` isn't confused with `__annotations__`.
+    self.Check("""
+      class K(dict):
+        pass
+      x = K()
+      y: int = 9
+      x['z'] = 5
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

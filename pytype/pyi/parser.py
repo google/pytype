@@ -1082,10 +1082,11 @@ class _Parser(object):
       return
     self._type_map[class_name] = pytd.NamedType(class_name)
 
-  def new_class(self, class_name, parent_args, defs):
+  def new_class(self, decorators, class_name, parent_args, defs):
     """Create a new class.
 
     Args:
+      decorators: List of decorator names.
       class_name: The name of the class (a string).
       parent_args: A list of parent types and (keyword, value) tuples.
           Parent types must be instances of pytd.Type.  Keyword tuples must
@@ -1101,6 +1102,10 @@ class _Parser(object):
       ParseError: if defs contains duplicate names (excluding multiple
           definitions of a function, which is allowed).
     """
+    unsupported_decorators = [d for d in decorators if d != "type_check_only"]
+    if unsupported_decorators:
+      raise ParseError("Unsupported class decorators: %s" % ", ".join(
+          unsupported_decorators))
     # Process parent_args, extracting parents and possibly a metaclass.
     parents = []
     metaclass = None
@@ -1281,7 +1286,7 @@ def _is_property_decorator(decorator):
 
 def _keep_decorator(decorator):
   """Return True iff the decorator requires processing."""
-  if decorator in ["overload"]:
+  if decorator in ["overload", "type_check_only"]:
     # These are legal but ignored.
     return False
   elif (decorator in ["staticmethod", "classmethod", "abstractmethod",

@@ -4,10 +4,11 @@
 
 from typing import (
     AbstractSet, AnyStr, AsyncGenerator, Awaitable, BinaryIO, ByteString,
-    Callable, Coroutine, Dict, FrozenSet, Generator, Generic, IO, ItemsView,
-    Iterable, Iterator, KeysView, List, Mapping, MutableSequence, Optional,
-    Reversible, Sequence, Set, Sized, SupportsAbs, SupportsBytes, SupportsComplex,
-    SupportsFloat, SupportsInt, Tuple, Type, Union, ValuesView)
+    Callable, Coroutine, Dict, FrozenSet, Generator, Generic, Hashable, IO,
+    ItemsView, Iterable, Iterator, KeysView, List, Mapping, MutableSequence,
+    Optional, Reversible, Sequence, Set, Sized, SupportsAbs, SupportsBytes,
+    SupportsComplex, SupportsFloat, SupportsInt, Tuple, Type, Union,
+    ValuesView)
 
 # "_T", "_K", and "_V" are hardcoded in abstract.py
 _T = TypeVar('_T')
@@ -204,7 +205,7 @@ class classmethod(typing.Callable):
     def __get__(self, ...) -> ?
 
 _T_str = TypeVar('_T_str', bound=str)
-class str(Sequence[str]):
+class str(Sequence[str], Hashable):
     __slots__ = []
     def __new__(cls: Type[_T_str], object = ..., encoding: str = ..., errors: str = ...) -> _T_str
     def __init__(self, object) -> NoneType
@@ -220,6 +221,7 @@ class str(Sequence[str]):
     def __mod__(self, y) -> str
     def __mul__(self, n: int) -> str
     def __rmul__(self, n: int) -> str
+    def __hash__(self) -> int
     def capitalize(self) -> str
     def casefold(self) -> str  # see section 3.13 of the Unicode standard
     def center(self, width: int, fillchar: str = ...) -> str

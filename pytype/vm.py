@@ -2053,7 +2053,7 @@ class VirtualMachine(object):
       return False
     annotations_var = self.frame.f_locals.members["__annotations__"]
     return (len(obj.data) == len(annotations_var.data) and
-            v1 is v2 for v1, v2 in zip(obj.data, annotations_var.data))
+            all(v1 is v2 for v1, v2 in zip(obj.data, annotations_var.data)))
 
   def byte_STORE_SUBSCR(self, state, op):
     """Implement obj[subscr] = val."""

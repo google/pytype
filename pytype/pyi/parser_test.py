@@ -1119,6 +1119,26 @@ class FunctionTest(_ParserTestBase):
                      3,
                      "Too many decorators for foo")
 
+  def test_type_check_only(self):
+    self.check("""\
+      from typing import type_check_only
+      @type_check_only
+      def f() -> None: ...
+    """, "def f() -> None: ...")
+
+  def test_type_check_only_class(self):
+    self.check("""\
+      from typing import type_check_only
+      @type_check_only
+      class Foo: ...
+    """, "class Foo: ...")
+
+  def test_bad_decorated_class(self):
+    self.check_error("""\
+      @classmethod
+      class Foo: ...
+    """, 2, "Unsupported class decorators: classmethod")
+
   def test_empty_body(self):
     self.check("def foo() -> int: ...")
     self.check("def foo() -> int",

@@ -168,8 +168,11 @@ maybe_type_ignore
  * functions; rename it to something less confusing.
  */
 classdef
-  : CLASS class_name parents ':' maybe_type_ignore maybe_class_funcs {
-      $$ = ctx->Call(kNewClass, "(NNN)", $2, $3, $6);
+  : decorators CLASS class_name parents ':' maybe_type_ignore maybe_class_funcs
+    {
+      $$ = ctx->Call(kNewClass, "(NNNN)", $1, $3, $4, $7);
+      // Fix location tracking. See funcdef.
+      @$.begin = @3.begin;
       CHECK($$, @$);
     }
   ;
