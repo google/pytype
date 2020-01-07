@@ -1,3 +1,7 @@
+Version 2020.01.07
+* Add a 2020 Q1 roadmap.
+* Improve handling of forward references with type errors.
+
 Version 2019.12.17
 * Improve support for forward references and function type comments.
 * Support typing.ClassVar and dataclasses.InitVar.
