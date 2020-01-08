@@ -1,3 +1,6 @@
+Version 2020.01.08
+* Support @typing.type_check_only on classes and functions in pyi files.
+
 Version 2020.01.07
 * Add a 2020 Q1 roadmap.
 * Improve handling of forward references with type errors.
