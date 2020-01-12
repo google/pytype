@@ -3,6 +3,9 @@
 from pytype import file_utils
 from pytype.tests import test_base
 
+# We use backslashes to correct the line numbers in test code:
+# pylint: disable=g-backslash-continuation
+
 
 class TestClosures(test_base.TargetIndependentTest):
   """Tests for closures."""
@@ -964,6 +967,18 @@ class TestFunctions(test_base.TargetIndependentTest):
     self.assertErrorLogIs(errors, [
         (2, "missing-parameter"),
         (3, "wrong-arg-types", r"Callable.*int")])
+
+  def test_bad_comprehensions(self):
+    # Test that we report errors in comprehensions and generators only once
+    # while still reporting errors in lambdas.
+    errors = self.CheckWithErrors("""\
+      [name_error1 for x in ()]
+      {name_error2 for x in ()}
+      (name_error3 for x in ())
+      lambda x: name_error4
+    """)
+    self.assertErrorLogIs(errors, [(1, "name-error"), (2, "name-error"),
+                                   (3, "name-error"), (4, "name-error")])
 
 
 test_base.main(globals(), __name__ == "__main__")

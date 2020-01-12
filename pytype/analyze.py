@@ -2,6 +2,7 @@
 
 import collections
 import logging
+import re
 import subprocess
 
 from pytype import abstract
@@ -21,6 +22,11 @@ from pytype.pytd import visitors
 from pytype.pytd.parse import builtins
 
 log = logging.getLogger(__name__)
+
+# Most interpreter functions (including lambdas) need to be analyzed as
+# stand-alone functions. The exceptions are comprehensions and generators, which
+# have names like "<listcomp>" and "<genexpr>".
+_SKIP_FUNCTION_RE = re.compile("<(?!lambda).+>$")
 
 
 CallRecord = collections.namedtuple(
@@ -352,6 +358,17 @@ class CallTracer(vm.VirtualMachine):
       node2.ConnectTo(node0)
     return node0
 
+  def _should_analyze_as_interpreter_function(self, data):
+    # We record analyzed functions by opcode rather than function object. The
+    # two ways of recording are equivalent except for closures, which are
+    # re-generated when the variables they close over change, but we don't want
+    # to re-analyze them.
+    return (isinstance(data, abstract.InterpreterFunction) and
+            not data.is_overload and
+            not data.is_class_builder and
+            data.get_first_opcode() not in self._analyzed_functions and
+            not _SKIP_FUNCTION_RE.match(data.name))
+
   def analyze_toplevel(self, node, defs):
     for name, var in sorted(defs.items()):  # sort, for determinicity
       if name not in self._builtin_map:
@@ -376,16 +393,7 @@ class CallTracer(vm.VirtualMachine):
           node = self.analyze_class(node, value)
     for f in self._interpreter_functions:
       for value in f.bindings:
-        if (isinstance(value.data, abstract.InterpreterFunction) and
-            value.data.is_overload):
-          continue
-        # We record analyzed functions by opcode rather than function object.
-        # The two ways of recording are equivalent except for closures, which
-        # are re-generated when the variables they close over change, but we
-        # don't want to re-analyze them.
-        if (isinstance(value.data, abstract.InterpreterFunction) and
-            not value.data.is_class_builder and
-            value.data.get_first_opcode() not in self._analyzed_functions):
+        if self._should_analyze_as_interpreter_function(value.data):
           node = self.analyze_function(node, value)
     return node
 
