@@ -600,12 +600,15 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
 
   def instantiate_return(self, node, subst, sources):
     return_type = self.pytd_sig.return_type
-    for param in pytd_utils.GetTypeParameters(return_type):
-      if param.full_name in subst:
-        # This value, which was instantiated by the matcher, will end up in the
-        # return value. Since the matcher does not call __init__, we need to do
-        # that now.
-        node = self.vm.call_init(node, subst[param.full_name])
+    # Type parameter values, which are instantiated by the matcher, will end up
+    # in the return value. Since the matcher does not call __init__, we need to
+    # do that now. The one exception is that Type[X] does not instantiate X, so
+    # we do not call X.__init__.
+    if (not isinstance(return_type, pytd.GenericType) or
+        return_type.base_type.name != "__builtin__.type"):
+      for param in pytd_utils.GetTypeParameters(return_type):
+        if param.full_name in subst:
+          node = self.vm.call_init(node, subst[param.full_name])
     try:
       ret = self.vm.convert.constant_to_var(
           abstract_utils.AsReturnValue(return_type), subst, node,

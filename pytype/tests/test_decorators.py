@@ -340,5 +340,20 @@ class DecoratorsTest(test_base.TargetIndependentTest):
       (Foo if __random__ else Bar).create()
     """)
 
+  def testClassDecorator(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Type, TypeVar
+        _T = TypeVar("_T")
+        def f(x: Type[_T]) -> Type[_T]: ...
+      """)
+      self.Check("""
+        import foo
+        @foo.f
+        class A:
+          def __init__(self):
+            print(A)
+      """, pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")
