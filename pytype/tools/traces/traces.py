@@ -2,6 +2,7 @@
 """A library for accessing pytype's inferred local types."""
 
 import itertools
+import re
 import sys
 
 from pytype import analyze
@@ -99,6 +100,43 @@ def _to_pytd(datum, loader, ast):
   return loader.resolve_type(t, ast)
 
 
+class _SymbolMatcher(object):
+  """Symbol matcher for MatchAstVisitor._get_traces.
+
+  Allows matching against:
+    - a regular expression (wil use re.match)
+    - an arbitrary object (will use object equality)
+    - a tuple of the above (will match if any member does)
+  """
+
+  # TODO(rechen): In Python 3.7+, this type is exposed as `re.Pattern`.
+  _PATTERN_TYPE = type(re.compile(""))
+
+  @classmethod
+  def from_one_match(cls, match):
+    return cls((match,))
+
+  @classmethod
+  def from_tuple(cls, matches):
+    return cls(matches)
+
+  @classmethod
+  def from_regex(cls, regex):
+    return cls((re.compile(regex),))
+
+  def __init__(self, matches):
+    self._matches = matches
+
+  def match(self, symbol):
+    for match in self._matches:
+      if isinstance(match, self._PATTERN_TYPE):
+        if match.match(symbol):
+          return True
+      elif match == symbol:
+        return True
+    return False
+
+
 class MatchAstVisitor(visitor.BaseVisitor):
   """An AST visitor to match traces to nodes.
 
@@ -186,6 +224,14 @@ class MatchAstVisitor(visitor.BaseVisitor):
   def match_ImportFrom(self, node):
     return list(self._match_import(node, is_from=True))
 
+  def match_Lambda(self, node):
+    if sys.version_info.major == 2:
+      sym = None
+    else:
+      sym = _SymbolMatcher.from_regex(r".*<lambda>$")
+    return [(self._get_match_location(node), tr)
+            for tr in self._get_traces(node.lineno, ["MAKE_FUNCTION"], sym, 1)]
+
   def match_Name(self, node):
     if isinstance(node.ctx, self._ast.Load):
       if self._assign_subscr and sys.version_info < (3, 7):
@@ -215,7 +261,8 @@ class MatchAstVisitor(visitor.BaseVisitor):
 
   def match_Subscript(self, node):
     return [(self._get_match_location(node), tr) for tr in self._get_traces(
-        node.lineno, _LOAD_SUBSCR_OPS, _LOAD_SUBSCR_METHODS, 1)]
+        node.lineno, _LOAD_SUBSCR_OPS,
+        _SymbolMatcher.from_tuple(_LOAD_SUBSCR_METHODS), 1)]
 
   def _get_traces(self, lineno, ops, symbol, maxmatch=-1, num_lines=1):
     """Yields matching traces.
@@ -223,16 +270,18 @@ class MatchAstVisitor(visitor.BaseVisitor):
     Args:
       lineno: A starting line number.
       ops: A list of opcode names to match on.
-      symbol: A symbol or tuple of symbols to match on.
+      symbol: A symbol or _SymbolMatcher instance to match on.
       maxmatch: The maximum number of traces to yield. -1 for no maximum.
       num_lines: The number of consecutive lines to search.
     """
-    symbols = symbol if isinstance(symbol, tuple) else (symbol,)
+    if not isinstance(symbol, _SymbolMatcher):
+      symbol = _SymbolMatcher.from_one_match(symbol)
     for tr in itertools.chain.from_iterable(
         self.source.traces[line] for line in range(lineno, lineno + num_lines)):
       if maxmatch == 0:
         break
-      if id(tr) not in self._matched and tr.op in ops and tr.symbol in symbols:
+      if (id(tr) not in self._matched and tr.op in ops and
+          symbol.match(tr.symbol)):
         maxmatch -= 1
         self._matched.add(id(tr))
         yield tr
