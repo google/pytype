@@ -240,12 +240,11 @@ def write_pickle(ast, options, loader=None):
   """Dump a pickle of the ast to a file."""
   loader = loader or load_pytd.create_loader(options)
   try:
-    ast = serialize_ast.PrepareForExport(
-        options.module_name, options.python_version, ast, loader)
+    ast = serialize_ast.PrepareForExport(options.module_name, ast, loader)
   except parser.ParseError as e:
     if options.nofail:
       ast = serialize_ast.PrepareForExport(
-          options.module_name, options.python_version,
+          options.module_name,
           pytd_builtins.GetDefaultAst(options.python_version), loader)
       log.warn("***Caught exception: %s", str(e), exc_info=True)
     else:

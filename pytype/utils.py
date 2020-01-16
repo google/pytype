@@ -58,6 +58,14 @@ def full_version_from_major(major_version):
         "Specify the version as <major>.<minor>." % major_version)
 
 
+def normalize_version(version):
+  """Gets a version tuple from either a major version int or a version tuple."""
+  if isinstance(version, int):
+    return full_version_from_major(version)
+  else:
+    return version
+
+
 def validate_version(python_version):
   """Raise an exception if the python version is unsupported."""
   if len(python_version) != 2:
