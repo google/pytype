@@ -321,7 +321,9 @@ class _LoadMarshal(object):
     # a utf-8 encoded bytestring.
     if (self.python_version[0] < 3 or
         sys.version_info[0] == 3):
-      s = s.decode('utf8')
+      # We use the 'backslashreplace' error mode in order to handle non-utf8
+      # backslash-escaped string literals correctly.
+      s = s.decode('utf8', 'backslashreplace')
     if self.python_version[0] < 3:
       # In Python 2, unicode and str are different classes.
       s = compat.UnicodeType(s)
