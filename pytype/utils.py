@@ -48,14 +48,18 @@ def split_version(version_string):
 
 
 def full_version_from_major(major_version):
+  """Get a (major, minor) Python version tuple from a major version int."""
   if major_version == sys.version_info.major:
     return sys.version_info[:2]
   elif major_version == 2:
     return (2, 7)
   else:
-    raise UsageError(
-        "Cannot infer Python minor version for major version %d. "
-        "Specify the version as <major>.<minor>." % major_version)
+    # TODO(b/147910935): raise a UsageError when attempting to analyze Python 3
+    # code while running under Python 2.
+    # raise UsageError(
+    #     "Cannot infer Python minor version for major version %d. "
+    #     "Specify the version as <major>.<minor>." % major_version)
+    return (3, 6)
 
 
 def normalize_version(version):
