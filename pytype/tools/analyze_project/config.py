@@ -84,6 +84,10 @@ def string_to_bool(s):
   return s == 'True' if s in ('True', 'False') else s
 
 
+def concate_disabled_rules(s):
+  return ','.join(t for t in s.split('\n') if t)
+
+
 def get_python_version(v):
   return v if v else utils.format_version(sys.version_info[:2])
 
@@ -97,6 +101,7 @@ def make_converters(cwd=None):
       'output': lambda v: file_utils.expand_path(v, cwd),
       'python_version': get_python_version,
       'pythonpath': lambda v: file_utils.expand_pythonpath(v, cwd),
+      'disable': concate_disabled_rules,
   }
 
 
