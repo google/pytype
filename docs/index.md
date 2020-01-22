@@ -211,7 +211,7 @@ pythonpath =
     .:
     ~/repo2
 
-# Comma separated list of error names to ignore.
+# Comma or space separated list of error names to ignore.
 disable =
     attribute-error
 ```
