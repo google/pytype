@@ -86,8 +86,8 @@ def string_to_bool(s):
   return s == 'True' if s in ('True', 'False') else s
 
 
-def concate_disabled_rules(s):
-  return ','.join(t for t in s.split('\n') if t)
+def concat_disabled_rules(s):
+  return ','.join(t for t in s.split() if t)
 
 
 def get_python_version(v):
@@ -103,7 +103,7 @@ def make_converters(cwd=None):
       'output': lambda v: file_utils.expand_path(v, cwd),
       'python_version': get_python_version,
       'pythonpath': lambda v: file_utils.expand_pythonpath(v, cwd),
-      'disable': concate_disabled_rules,
+      'disable': concat_disabled_rules,
   }
 
 
@@ -193,8 +193,11 @@ def generate_sample_config_or_die(filename, pytype_single_args):
   items = dict(ITEMS)
   assert set(_PYTYPE_SINGLE_ITEMS) == set(pytype_single_args)
   for key, item in _PYTYPE_SINGLE_ITEMS.items():
-    items[key] = item._replace(default=pytype_single_args[key].default,
-                               comment=pytype_single_args[key].help)
+    if items[key].comment is None:
+      items[key] = item._replace(default=pytype_single_args[key].default,
+                                 comment=pytype_single_args[key].help)
+    else:
+      items[key] = item._replace(default=pytype_single_args[key].default)
 
   # Not using configparser's write method because it doesn't support comments.
 
