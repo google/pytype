@@ -498,6 +498,12 @@ class TestBasic(test_base.TargetIndependentTest):
       """)
     self.assertErrorLogIs(errors, [(6, "name-error")])
 
+  def test_string(self):
+    self.Check("v = '\\xff'")
+
+  def test_string2(self):
+    self.Check("v = '\\uD800'")
+
 
 class TestLoops(test_base.TargetIndependentTest):
   """Loop tests."""
@@ -579,9 +585,6 @@ class TestComparisons(test_base.TargetIndependentTest):
       assert "z" > "a"
       assert "z" >= "a" and "z" >= "z"
       """)
-
-  def test_string(self):
-    self.Check("v = '\\xff'")
 
 
 class TestSlices(test_base.TargetIndependentTest):

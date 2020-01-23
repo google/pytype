@@ -681,7 +681,7 @@ class ErrorLog(ErrorLogBase):
     actual = self._print_args(
         self._iter_actual(sig, passed_args, bad_param), bad_param)
     details = [
-        "Expected: (", expected, ")\n",
+        "       Expected: (", expected, ")\n",
         "Actually passed: (", actual,
         ")"]
     details += self._explain_protocol_mismatch(bad_param, passed_args)
@@ -833,7 +833,7 @@ class ErrorLog(ErrorLogBase):
   @_error_name("bad-return-type")
   def bad_return_type(self, stack, actual_pytd, expected_pytd):
     details = "".join([
-        "Expected: ", self._print_as_return_type(expected_pytd), "\n",
+        "         Expected: ", self._print_as_return_type(expected_pytd), "\n",
         "Actually returned: ", self._print_as_return_type(actual_pytd),
     ])
     self.error(stack, "bad option in return type", details)
@@ -841,7 +841,7 @@ class ErrorLog(ErrorLogBase):
   @_error_name("bad-concrete-type")
   def bad_concrete_type(self, stack, actual_pytd, expected_pytd):
     details = "".join([
-        "Expected: ", self._print_as_return_type(expected_pytd), "\n",
+        "       Expected: ", self._print_as_return_type(expected_pytd), "\n",
         "Actually passed: ", self._print_as_return_type(actual_pytd),
     ])
     self.error(stack, "Invalid instantiation of generic class", details)

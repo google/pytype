@@ -392,5 +392,36 @@ class MatchBinOpTest(MatchAstTestCase):
         matches, [((1, 1), "BINARY_MODULO", "__mod__", ("str",))])
 
 
+class MatchLambdaTest(MatchAstTestCase):
+
+  def test_basic(self):
+    matches = self._get_traces("lambda x: x.upper()", ast.Lambda)
+    sym = None if sys.version_info.major == 2 else "<lambda>"
+    self.assertTracesEqual(
+        matches, [((1, 0), "MAKE_FUNCTION", sym, ("Callable[[Any], Any]",))])
+
+  def test_function_locals(self):
+    matches = self._get_traces("""\
+      def f():
+        return lambda x: x.upper()
+    """, ast.Lambda)
+    sym = None if sys.version_info.major == 2 else "f.<locals>.<lambda>"
+    self.assertTracesEqual(
+        matches, [((2, 9), "MAKE_FUNCTION", sym, ("Callable[[Any], Any]",))])
+
+  # py2 doesn't have symbol names to distinguish between <genexpr> and <lambda>.
+  @py3
+  def test_multiple_functions(self):
+    matches = self._get_traces("""\
+      def f():
+        return (w for w in range(3)), lambda x: x.upper(), lambda y, z: (y, z)
+    """, ast.Lambda)
+    sym = "f.<locals>.<lambda>"
+    self.assertTracesEqual(
+        matches, [
+            ((2, 32), "MAKE_FUNCTION", sym, ("Callable[[Any], Any]",)),
+            ((2, 53), "MAKE_FUNCTION", sym, ("Callable[[Any, Any], Any]",))])
+
+
 if __name__ == "__main__":
   unittest.main()

@@ -377,9 +377,7 @@ class _Parser(object):
     assert version
     self._used = False
     self._error_location = None
-    if isinstance(version, int):
-      version = utils.full_version_from_major(version)
-    self._version = _three_tuple(version)
+    self._version = _three_tuple(utils.normalize_version(version))
     self._platform = platform or _DEFAULT_PLATFORM
     # Fields initialized in self.parse().
     self._filename = None  # type: str

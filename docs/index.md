@@ -146,9 +146,9 @@ Common options:
   Defaults to `3.6`.
 * `-o, --output`: The directory into which all pytype output goes, including
   generated .pyi files. Defaults to `.pytype`.
-* `-d, --disable`. Comma separated list of error names to ignore. Detailed
-  explanations of pytype's error names are in [this doc][error-classes].
-  Defaults to empty.
+* `-d, --disable`. Comma or space separated list of error names to ignore.
+  Detailed explanations of pytype's error names are in
+  [this doc][error-classes]. Defaults to empty.
 
 For a full list of options, run `pytype --help`.
 
@@ -211,7 +211,7 @@ pythonpath =
     .:
     ~/repo2
 
-# Comma separated list of error names to ignore.
+# Comma or space separated list of error names to ignore.
 disable =
     attribute-error
 ```

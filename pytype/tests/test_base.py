@@ -390,8 +390,7 @@ class BaseTest(unittest.TestCase):
 
   def _Pickle(self, ast, module_name):
     assert module_name
-    ast = serialize_ast.PrepareForExport(
-        module_name, self.python_version, ast, self.loader)
+    ast = serialize_ast.PrepareForExport(module_name, ast, self.loader)
     return serialize_ast.StoreAst(ast)
 
   def Infer(self, srccode, pythonpath=(), deep=True,

@@ -132,6 +132,16 @@ class DirectorTest(unittest.TestCase):
     self._should_report(False, 3)
     self._should_report(True, 4)
 
+  def test_ignore_one_line_mypy_style(self):
+    self._create("""
+    # line 2
+    x = 123  # type: ignore[arg-type]
+    # line 4
+    """)
+    self._should_report(True, 2)
+    self._should_report(False, 3)
+    self._should_report(True, 4)
+
   def test_utf8(self):
     self._create("""
     x = u"abc□def\n"
