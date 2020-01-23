@@ -193,7 +193,7 @@ def generate_sample_config_or_die(filename, pytype_single_args):
   items = dict(ITEMS)
   assert set(_PYTYPE_SINGLE_ITEMS) == set(pytype_single_args)
   for key, item in _PYTYPE_SINGLE_ITEMS.items():
-    if items[key].comment is None:
+    if item.comment is None:
       items[key] = item._replace(default=pytype_single_args[key].default,
                                  comment=pytype_single_args[key].help)
     else:
