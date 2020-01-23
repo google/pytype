@@ -18,6 +18,9 @@ PYTYPE_CFG = """
     /foo/bar:
     baz/quux
   python_version = 2.7
+  disable =
+    import-error
+    module-attr
 """
 
 RANDOM_CFG = """
@@ -42,6 +45,7 @@ class TestBase(unittest.TestCase):
         os.path.join(path, u'baz/quux')
     ])
     self.assertEqual(conf.python_version, u'2.7')
+    self.assertEqual(conf.disable, u'import-error,module-attr')
 
   def _validate_empty_contents(self, conf):
     for k in config.ITEMS:
