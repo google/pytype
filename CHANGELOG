@@ -1,3 +1,7 @@
+Version 2020.01.24
+* Don't fail on mypy-style '# type: ignore[code, ...]' comments.
+* Support separating disabled error classes by whitespace in addition to commas.
+
 Version 2020.01.08
 * Support @typing.type_check_only on classes and functions in pyi files.
 
