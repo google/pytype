@@ -161,6 +161,9 @@ class object():
     # Used by special_builtins.Object to handler super.__new__.
     @staticmethod
     def __new__extra_args(cls: Type[_T], *args, **kwargs) -> _T
+    if sys.version_info >= (3, 6):
+        @classmethod
+        def __init_subclass__(cls) -> None: ...
 
 # old style class. classobj is in fact a subclass of object in Python.
 class classobj(object):
