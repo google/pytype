@@ -9,12 +9,13 @@
       * [Why didn't pytype catch that my program (might) pass an invalid argument to a function?](#why-didnt-pytype-catch-that-my-program-might-pass-an-invalid-argument-to-a-function)
       * [Why didn't pytype catch that I changed the type of an annotated variable?](#why-didnt-pytype-catch-that-i-changed-the-type-of-an-annotated-variable)
       * [How do I declare that something can be either byte string or unicode?](#how-do-i-declare-that-something-can-be-either-byte-string-or-unicode)
+      * [I'm trying to use a mixin, but pytype raises errors about it. What should I do?](#im-trying-to-use-a-mixin-but-pytype-raises-errors-about-it-what-should-i-do)
       * [Why is pytype taking so long?](#why-is-pytype-taking-so-long)
       * [How do I disable all pytype checks for a particular file?](#how-do-i-disable-all-pytype-checks-for-a-particular-file)
       * [How do I disable all pytype checks for a particular import?](#how-do-i-disable-all-pytype-checks-for-a-particular-import)
       * [How do I write code that is seen by pytype but ignored at runtime?](#how-do-i-write-code-that-is-seen-by-pytype-but-ignored-at-runtime)
 
-<!-- Added by: mdemello, at: 2019-09-19T16:24-07:00 -->
+<!-- Added by: rechen, at: 2020-01-24T10:06-08:00 -->
 
 <!--te-->
 
@@ -93,6 +94,47 @@ We will disallow both of these patterns at some point in the future.
 Using `typing.Text` if it is conceptually a text object,
 `typing.Union[bytes, typing.Text]` otherwise. See the
 [style guide][style-guide-string-types] for more information.
+
+## I'm trying to use a mixin, but pytype raises errors about it. What should I do?
+
+This happens when a mixin expects the classes it is mixed into to define
+particular functions. Let's say we have a `LoggerMixin` class that expects a
+`name` method to be used in the log message:
+
+```python
+class LoggerMixin:
+  ...  # Other initialization.
+  def log(self, msg: str):
+    self._log.print(f"{self.name()}: {msg}")
+```
+
+When pytype checks `LoggerMixin`, it will raise an error that `LoggerMixin` has
+no method `name`. The solution is to make the mixin class have all the methods
+it needs.
+
+One way to do this is to create an abstract base class that defines the expected
+API for the mixin:
+
+```python
+import abc
+class LoggerMixinInterface(metaclass=abc.ABCMeta):
+  @abc.abstractmethod
+  def name(self) -> str:
+    raise NotImplementedError
+
+class LoggerMixin(LoggerMixinInterface):
+  ...  # Other initialization
+  def log(self, msg: str):
+    self._log.print(f"{self.name()}: {msg}")
+
+class Person(Logger):
+  ...  # Other initialization
+  def name(self):
+    return self._name
+```
+
+With this setup, pytype won't complain about `LoggerMixin.name`, and it's clear
+that `LoggerMixin` should only be mixed into classes that implement `name`.
 
 ## Why is pytype taking so long?
 
