@@ -11,7 +11,7 @@ from six import moves
 
 _DIRECTIVE_RE = re.compile(r"#\s*(pytype|type)\s*:\s?([^#]*)")
 _IGNORE_RE = re.compile(r"^ignore(\[.+\])?$")
-_CLOSING_BRACKETS_RE = re.compile(r"^(\s*[]})]\s*)+(#.*)?$")
+_CLOSING_BRACKETS_RE = re.compile(r"^(\s*[]})]\s*)+,?(#.*)?$")
 _WHITESPACE_RE = re.compile(r"^\s*(#.*)?$")
 _CLASS_OR_FUNC_RE = re.compile(r"^(def|class)\s")
 _DOCSTRING_RE = re.compile(r"^\s*(\"\"\"|''')")
