@@ -679,7 +679,7 @@ class ImportTest(test_base.TargetIndependentTest):
         from typing import Union
         from typing import SupportsFloat
         foo = ...  # type: module
-        def d(x: SupportsFloat, y: SupportsFloat) -> float
+        def d(__x: SupportsFloat, __y: SupportsFloat) -> float
       """)
 
   def testImportConstant(self):
