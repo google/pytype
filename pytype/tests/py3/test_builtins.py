@@ -623,5 +623,21 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       y2 = ...  # type: Any
     """)
 
+  def testStrIsNotInt(self):
+    errors = self.CheckWithErrors("""\
+      from typing import SupportsInt
+      def f(x: SupportsInt): pass
+      f("")
+    """)
+    self.assertErrorLogIs(errors, [(3, "wrong-arg-types")])
+
+  def testStrIsNotFloat(self):
+    errors = self.CheckWithErrors("""\
+      from typing import SupportsFloat
+      def f(x: SupportsFloat): pass
+      f("")
+    """)
+    self.assertErrorLogIs(errors, [(3, "wrong-arg-types")])
+
 
 test_base.main(globals(), __name__ == "__main__")

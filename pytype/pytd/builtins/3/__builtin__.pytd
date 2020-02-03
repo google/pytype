@@ -216,10 +216,8 @@ class str(Sequence[str], Hashable):
     def __init__(self) -> NoneType
     def __add__(self, y: str) -> str
     def __contains__(self, y) -> bool
-    def __float__(self) -> float
     def __getitem__(self, index: int or slice) -> str
     def __getslice__(self, i: Optional[int], j: Optional[int]) -> str
-    def __int__(self) -> int
     def __len__(self) -> int
     def __mod__(self, y) -> str
     def __mul__(self, n: int) -> str
