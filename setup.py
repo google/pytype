@@ -117,63 +117,15 @@ copy_typeshed()
 if build_utils:
   e = build_utils.generate_files()
   assert not e, e
+
+# Only options configured at build time are declared here, everything else is
+# declared in setup.cfg
 setup(
-    name='pytype',
     version=get_version(),
-    description='Python type inferencer',
     long_description=get_long_description(),
-    long_description_content_type='text/markdown',
-    maintainer='Google',
-    maintainer_email='pytype@googlegroups.com',
-    url='https://google.github.io/pytype',
-    packages=[
-        'pytype',
-        'pytype/overlays',
-        'pytype/pyc',
-        'pytype/pyi',
-        'pytype/pytd',
-        'pytype/pytd/parse',
-        'pytype/tools',
-        'pytype/tools/analyze_project',
-        'pytype/tools/annotate_ast',
-        'pytype/tools/merge_pyi',
-        'pytype/tools/traces',
-        'pytype/tools/xref',
-        'pytype/typegraph',
-    ],
-    entry_points={
-        'console_scripts': [
-            'annotate-ast = pytype.tools.annotate_ast.main:main',
-            'merge-pyi = pytype.tools.merge_pyi.main:main',
-            'pytd = pytype.pytd.main:main',
-            'pytype = pytype.tools.analyze_project.main:main',
-            'pytype-single = pytype.single:main',
-            'pyxref = pytype.tools.xref.main:main',
-        ]
-    },
     package_data={'pytype': get_data_files()},
-    python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <3.8',
-    install_requires=[
-        'attrs',
-        'importlab>=0.5.1',
-        'ninja',
-        'pyyaml>=3.11',
-        'six',
-        'typed_ast; python_version >= "3.3"',
-    ],
-    classifiers=[
-        'Development Status :: 5 - Production/Stable',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: Apache Software License',
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: Implementation :: CPython',
-        'Topic :: Software Development',
-    ],
     ext_modules=[get_parser_ext()],
 )
+
 if build_utils:
   build_utils.clean_generated_files()
