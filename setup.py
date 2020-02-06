@@ -12,16 +12,19 @@ import sys
 
 from setuptools import setup, Extension  # pylint: disable=g-multiple-import
 
+# Path to directory containing setup.py
+here = os.path.abspath(os.path.dirname(__file__))
+
 try:
+  # The repository root is not on the pythonpath with PEP 517 builds
+  if 'build_scripts' in os.listdir(here):
+      sys.path.append(here)
+
   from build_scripts import build_utils  # pylint: disable=g-import-not-at-top
 except ImportError:
   # When build_utils is present, we'll generate parser files for installing
   # from source or packaging into a PyPI release.
   build_utils = None
-
-
-# Path to directory containing setup.py
-here = os.path.abspath(os.path.dirname(__file__))
 
 
 def get_parser_ext():
