@@ -361,6 +361,24 @@ class DirectorTest(unittest.TestCase):
         3: ("]", "dict"),
     }, self._director.type_comments)
 
+  def test_type_comment_with_trailing_comma(self):
+    self._create("""\
+    v = [
+      ("hello",
+       "world"
+      ),
+    ]  # type: dict
+    w = [
+      ["hello",
+       "world"
+      ],  # some comment
+    ]  # type: dict
+    """)
+    self.assertEqual({
+        3: ("]", "dict"),
+        9: ("]", "dict"),
+    }, self._director.type_comments)
+
 
 if __name__ == "__main__":
   unittest.main()

@@ -1,3 +1,6 @@
+Version 2020.02.06
+* Update typeshed pin to commit d5851ec from January 24.
+
 Version 2020.01.24
 * Don't fail on mypy-style '# type: ignore[code, ...]' comments.
 * Support separating disabled error classes by whitespace in addition to commas.
