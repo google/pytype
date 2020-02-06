@@ -108,14 +108,6 @@ def get_long_description():
       r'[\g<1>]: https://github.com/google/pytype/blob/master/docs/', desc)
 
 
-def get_version():
-  # Load the package's __version__.py module as a dictionary.
-  about = {}
-  with open(os.path.join(here, 'pytype', '__version__.py')) as f:
-    exec(f.read(), about)  # pylint: disable=exec-used
-  return about['__version__']
-
-
 copy_typeshed()
 if build_utils:
   e = build_utils.generate_files()
@@ -124,7 +116,6 @@ if build_utils:
 # Only options configured at build time are declared here, everything else is
 # declared in setup.cfg
 setup(
-    version=get_version(),
     long_description=get_long_description(),
     package_data={'pytype': get_data_files()},
     ext_modules=[get_parser_ext()],
