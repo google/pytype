@@ -113,19 +113,6 @@ def get_version():
   return about['__version__']
 
 
-def get_install_requires():
-  requires = [
-      'attrs',
-      'importlab (>=0.5.1)',
-      'ninja',
-      'pyyaml (>=3.11)',
-      'six',
-  ]
-  if sys.version_info >= (3, 3):
-    requires.append('typed_ast')
-  return requires
-
-
 copy_typeshed()
 if build_utils:
   e = build_utils.generate_files()
@@ -165,7 +152,14 @@ setup(
         ]
     },
     package_data={'pytype': get_data_files()},
-    install_requires=get_install_requires(),
+    install_requires=[
+        'attrs',
+        'importlab>=0.5.1',
+        'ninja',
+        'pyyaml>=3.11',
+        'six',
+        'typed_ast; python_version >= "3.3"',
+    ],
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
