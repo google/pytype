@@ -75,9 +75,6 @@ class Signature(object):
     self.annotations = annotations
 
   def _postprocess_annotation(self, name, annotation):
-    if (name in self.defaults and
-        self.defaults[name].data == [annotation.vm.convert.none]):
-      annotation = annotation.vm.convert.optionalize(annotation)
     if name == self.varargs_name:
       return annotation.vm.convert.create_new_varargs_value(annotation)
     elif name == self.kwargs_name:

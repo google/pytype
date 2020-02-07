@@ -957,8 +957,8 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       self.assertErrorLogIs(errors, [(5, "wrong-arg-types",
                                       r"Foo\[int\].*Foo\[str\]")])
 
-  def testImplicitOptional(self):
-    ty = self.Infer("""\
+  def testNoImplicitOptional(self):
+    ty, errors = self.InferWithErrors("""\
       from typing import Optional, Union
       def f1(x: str = None):
         pass
@@ -972,14 +972,16 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       f2(None)
       f3(None)
       f4(None)
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Optional, Union
-      def f1(x: Optional[str] = ...) -> None: ...
+      def f1(x: str = ...) -> None: ...
       def f2(x: Optional[str] = ...) -> None: ...
       def f3(x: Optional[str] = ...) -> None: ...
-      def f4(x: Optional[Union[str, int]] = ...) -> None: ...
+      def f4(x: Union[str, int] = ...) -> None: ...
     """)
+    self.assertErrorLogIs(errors, [(10, "wrong-arg-types"),
+                                   (13, "wrong-arg-types")])
 
   def testInferReturn(self):
     ty = self.Infer("""

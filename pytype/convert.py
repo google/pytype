@@ -335,14 +335,6 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       assert container.full_name == "__builtin__.dict", container.full_name
       return self._copy_type_parameters(container, "typing.Mapping")
 
-  def optionalize(self, value):
-    """Optionalize the value, if necessary."""
-    assert isinstance(value, abstract.AtomicAbstractValue)
-    none_type = self.vm.convert.none_type
-    if isinstance(value, abstract.Union) and none_type in value.options:
-      return value
-    return abstract.Union((value, none_type), self.vm)
-
   def merge_classes(self, instances):
     """Merge the classes of the given instances.
 
