@@ -1,3 +1,4 @@
 include LICENSE
+include pyproject.toml
 include pytype/pyi/*
 include pytype/test_data/*
