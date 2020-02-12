@@ -946,12 +946,10 @@ class FunctionTest(_ParserTestBase):
                "def foo(x = ...) -> int: ...")
     self.check("def foo(x = ...) -> int: ...",
                "def foo(x = ...) -> int: ...")
-    # Default of None will turn declared type into a union.
-    self.check("def foo(x: str = None) -> int: ...",
-               "def foo(x: Optional[str] = ...) -> int: ...",
-               prologue="from typing import Optional")
-    # Other defaults are ignored if a declared type is present.
+    # Defaults are ignored if a declared type is present.
     self.check("def foo(x: str = 123) -> int: ...",
+               "def foo(x: str = ...) -> int: ...")
+    self.check("def foo(x: str = None) -> int: ...",
                "def foo(x: str = ...) -> int: ...")
     # Allow but do not preserve a trailing comma in the param list.
     self.check("def foo(x: int, y: str = ..., z: bool,) -> int: ...",

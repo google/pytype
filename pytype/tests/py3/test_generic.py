@@ -220,7 +220,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
 
   def testPyiOutput(self):
     ty = self.Infer("""
-      from typing import TypeVar, Generic
+      from typing import Optional, TypeVar, Generic
 
       S = TypeVar('S')
       T = TypeVar('T')
@@ -228,7 +228,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       V = TypeVar('V')
 
       class MyClass(Generic[T, S]):
-        def __init__(self, x: T = None, y: S = None):
+        def __init__(self, x: Optional[T] = None, y: Optional[S] = None):
             pass
 
         def fun(self, x: T, y: S):
