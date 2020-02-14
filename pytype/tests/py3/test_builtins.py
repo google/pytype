@@ -440,6 +440,8 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
     ty, errors = self.InferWithErrors("""\
       xrange(3)
       v = range(3)
+      v[0]
+      v[:]
     """)
     self.assertTypesMatchPytd(ty, """
       v = ...  # type: range
