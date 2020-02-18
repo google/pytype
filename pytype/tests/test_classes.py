@@ -1365,5 +1365,13 @@ class ClassesTest(test_base.TargetIndependentTest):
         def f(self) -> int: ...
     """)
 
+  def testIterateAmbiguousBaseClass(self):
+    self.Check("""
+      from typing import Any
+      class Foo(Any):
+        pass
+      list(Foo())
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

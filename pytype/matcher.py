@@ -569,8 +569,12 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       if isinstance(left, abstract.ParameterizedClass):
         assert left.base_cls is other_type.base_cls
       elif isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
-        # TODO(kramm): Allow to match Any against parameterized classes.
-        return None
+        for type_param in other_type.template:
+          value = other_type.get_formal_type_parameter(type_param.name)
+          if isinstance(value, abstract.TypeParameter):
+            subst[value.full_name] = self.vm.new_unsolvable(
+                self.vm.root_cfg_node)
+        return subst
       else:
         # Parameterized classes can rename type parameters, which is why we need
         # the instance type for lookup. But if the instance type is not
