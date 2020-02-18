@@ -918,7 +918,10 @@ class super(nothing):
 class range(Sequence[int]):
     __slots__ = []
     def __init__(self, stop: int, ...) -> NoneType
+    @overload
     def __getitem__(self, index: int) -> int
+    @overload
+    def __getitem__(self, index: slice) -> range
     def __iter__(self) -> Iterator[int]
     def __len__(self) -> int
     def __reversed__(self, ...) -> Iterator[int]
