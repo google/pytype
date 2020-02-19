@@ -442,9 +442,13 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       v = range(3)
       v[0]
       v[:]
+      x, y, z = v.start, v.stop, v.step
     """)
     self.assertTypesMatchPytd(ty, """
-      v = ...  # type: range
+      v: range
+      x: int
+      y: int
+      z: int
     """)
     self.assertErrorLogIs(errors, [(1, "name-error")])
 

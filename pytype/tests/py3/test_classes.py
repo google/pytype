@@ -257,9 +257,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
         from typing import Any
         class Foo(Any): ...
       """)
-      # This method will check cleanly once we fix the matcher.py TODO to
-      # support matching Any against a parameterized class.
-      self.assertNoCrash(self.Check, """
+      self.Check("""
         from typing import Tuple
         import foo
         def f() -> Tuple[int]:
