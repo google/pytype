@@ -1,3 +1,6 @@
+Version 2020.02.20
+* Stop rewriting (x: X = None) to (x: Optional[X] = None).
+
 Version 2020.02.06
 * Update typeshed pin to commit d5851ec from January 24.
 
