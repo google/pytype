@@ -865,15 +865,18 @@ class VirtualMachine(object):
       state = state.change_cfg_node(self.join_cfg_nodes(nodes))
     result = self.join_variables(state.node, results)
     log.debug("Result: %r %r", result, result.data)
-    if not result.bindings and report_errors and self.options.report_errors:
+    if not result.bindings and report_errors:
       if error is None:
-        self.errorlog.unsupported_operands(self.frames, name, x, y)
+        if self.options.report_errors:
+          self.errorlog.unsupported_operands(self.frames, name, x, y)
         result = self.new_unsolvable(state.node)
       elif isinstance(error, function.DictKeyMissing):
-        self.errorlog.key_error(self.frames, error.name)
+        if self.options.report_errors:
+          self.errorlog.key_error(self.frames, error.name)
         state, result = error.get_return(state)
       else:
-        self.errorlog.invalid_function_call(self.frames, error)
+        if self.options.report_errors:
+          self.errorlog.invalid_function_call(self.frames, error)
         state, result = error.get_return(state)
     return state, result
 
