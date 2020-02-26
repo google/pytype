@@ -30,6 +30,7 @@ def __import__(name: str or bytes or bytearray, ...) -> module
 def abs(x) -> ?
 def all(iterable) -> bool
 def any(iterable) -> bool
+def ascii(__obj: object) -> str: ...
 def apply(object: Callable, ...) -> NoneType
 def bin(number: int or float) -> str
 def callable(obj) -> bool
@@ -55,6 +56,8 @@ def divmod(x: int or float or complex, y: int or float or complex) -> tuple[comp
 def eval(src, ...) -> ?  # Can't say *anything* about the result -- different from "-> object"
 def exec(src, ...) -> NoneType
 def execfile(filename: str, ...) -> NoneType
+def exit(code: ? = ...) -> NoneType:
+    raise SystemExit()
 def filter(function: Optional[Callable[[_T], ?]], iterable: Iterable[_T]) -> Iterator[_T]
 def format(value, ...) -> str
 def getattr(value, attr: str, ...) -> ?
@@ -63,6 +66,7 @@ def hasattr(object, name: str) -> bool
 def hash(obj) -> int
 def hex(number: int) -> str
 def id(obj) -> int
+def input(prompt: str = ...) -> str
 def intern(string: str or bytearray) -> str
 def isinstance(object, class_or_type_or_tuple: TypeTuple) -> bool
 def issubclass(cls: type, class_or_type_or_tuple: TypeTuple) -> bool
@@ -96,6 +100,9 @@ def pow(x: int or float or complex, y: complex, ...) -> complex
 def pow(x: int or float, y: float, ...) -> float
 def pow(x: float, y: int, ...) -> float
 def pow(x: complex, y: int or float, ...) -> complex
+def print(...) -> NoneType
+def quit() -> NoneType:
+    raise SystemExit()
 def reduce(function: Callable[..., _T], iterable: Iterable[_T2]) -> _T or _T2
 def reduce(function: Callable, iterable: Iterable[nothing], initial: _T) -> _T
 def reduce(function: Callable[..., _T], iterable: Iterable, initial) -> _T
@@ -116,12 +123,6 @@ def zip(seq1: Iterable[nothing], seq2: Iterable) -> Iterator[nothing]
 def zip(seq1: Iterable, seq2: Iterable[nothing]) -> Iterator[nothing]
 def zip(seq1: Iterable[_T], seq2: Iterable[_T2]) -> Iterator[Tuple[_T, _T2]]
 def zip(seq1, seq2, seq3, *seqs: Iterable) -> Iterator[tuple]
-def exit(code: ? = ...) -> NoneType:
-    raise SystemExit()
-def quit() -> NoneType:
-    raise SystemExit()
-def input(prompt: str = ...) -> str
-def print(...) -> NoneType
 
 False = ...  # type: bool
 True = ...  # type: bool

@@ -376,4 +376,17 @@ class InplaceTest(test_base.TargetIndependentTest,
     self.assertErrorLogIs(errors, [(3, "unsupported-operands", r"A.*Iterable")])
 
 
+class BindingsTest(test_base.TargetIndependentTest):
+  """Tests that we correctly handle results without bindings."""
+
+  def test_subscr(self):
+    # Regression test (b/150240064)
+    # Make sure we don't crash due to __path__[0] having no bindings. Previously
+    # we were not setting __path__[0] to [unsolvable] if report_errors was False
+    self.options.tweak(report_errors=False)
+    self.InferWithErrors("""
+      { 'path': __path__[0] }
+    """)
+
+
 test_base.main(globals(), __name__ == "__main__")
