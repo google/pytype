@@ -44,6 +44,8 @@ py_library(
     source
   SRCS
     source.py
+  DEPS
+    pytype.utils
 )
 
 py_test(
