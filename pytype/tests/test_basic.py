@@ -8,9 +8,6 @@ class TestBasic(test_base.TargetIndependentTest):
 
   def test_constant(self):
     self.Check("17")
-    self.Check("0b01")
-    self.Check("0o17")
-    self.Check("0xFF")
 
   def test_for_loop(self):
     self.Check("""\

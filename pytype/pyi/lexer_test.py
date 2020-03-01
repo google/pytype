@@ -130,6 +130,23 @@ class LexerTest(unittest.TestCase):
     self.check([0.5], "+.5")
     self.check([-0.5], "-.5")
 
+  def test_number_base(self):
+    self.check([0], "0b0")
+    self.check([1], "0b1")
+    self.check([42], "0b101010")
+    self.check([-8], "-0b1000")
+
+    self.check([1], "0o1")
+    self.check([8], "0o10")
+    self.check([42], "0o52")
+    self.check([-7], "-0o7")
+
+    self.check([1], "0x1")
+    self.check([240], "0xF0")
+    self.check([-240], "-0xF0")
+    self.check([15], "0x0f")
+    self.check([-15], "0x0F")
+
   def test_line_numbers(self):
     self.check([("NAME", "a", 1), ("NAME", "b", 2)], "a\nb")
 
