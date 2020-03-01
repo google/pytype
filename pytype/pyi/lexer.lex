@@ -120,11 +120,11 @@ typedef pytype::parser::token t;
   return t::NUMBER;
 }
 [-+]?0b[01]+  {
-  yylval->obj=PyInt_FromString(yytest, NULL, 2);
+  yylval->obj=PyInt_FromString(yytext, NULL, 2);
   return t::NUMBER;
 }
 [-+]?0o[0-7]+  {
-  yylval->obj=PyInt_FromString(yytest, NULL, 8);
+  yylval->obj=PyInt_FromString(yytext, NULL, 8);
   return t::NUMBER;
 }
 [-+]?0x[0-9a-fA-F]+  {
