@@ -119,6 +119,18 @@ typedef pytype::parser::token t;
   yylval->obj=PyInt_FromString(yytext, NULL, 10);
   return t::NUMBER;
 }
+[-+]?0b[01]+  {
+  yylval->obj=PyInt_FromString(yytest, NULL, 2);
+  return t::NUMBER;
+}
+[-+]?0o[0-7]+  {
+  yylval->obj=PyInt_FromString(yytest, NULL, 8);
+  return t::NUMBER;
+}
+[-+]?0x[0-9a-fA-F]+  {
+  yylval->obj=PyInt_FromString(yytext, NULL, 16);
+  return t::NUMBER;
+}
 [-+]?[0-9]*\.[0-9]+  {
   yylval->obj=PyFloat_FromDouble(atof(yytext));
   return t::NUMBER;
