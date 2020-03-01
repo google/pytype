@@ -145,7 +145,7 @@ class LexerTest(unittest.TestCase):
     self.check([240], "0xF0")
     self.check([-240], "-0xF0")
     self.check([15], "0x0f")
-    self.check([-15], "0x0F")
+    self.check([-15], "-0x0f")
 
   def test_line_numbers(self):
     self.check([("NAME", "a", 1), ("NAME", "b", 2)], "a\nb")
