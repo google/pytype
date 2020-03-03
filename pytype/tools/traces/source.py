@@ -4,6 +4,9 @@
 from __future__ import print_function
 import collections
 
+from pytype import compat
+
+
 Location = collections.namedtuple("Location", ("line", "column"))
 
 
@@ -50,7 +53,9 @@ class Code(object):
     offset = 0
     for line in self._lines:
       self._offsets.append(offset)
-      offset += len(line) + 1  # account for the \n
+      # convert line to bytes
+      bytes_ = compat.bytestring(line)
+      offset += len(bytes_) + 1  # account for the \n
 
   def get_offset(self, location):
     """Gets the utf-8 byte offset of a source.Location from start of source."""

@@ -1,3 +1,4 @@
+# coding=utf-8
 # Lint as: python2, python3
 """Tests for traces.source."""
 
@@ -51,6 +52,23 @@ class CodeTest(unittest.TestCase):
   def test_get_offset(self):
     src = source.Code("line1\nline2", [], _FakeTrace, "")
     self.assertEqual(src.get_offset(source.Location(2, 3)), 9)
+
+  def test_get_offset_multibyte(self):
+    # With single-byte characters
+    src = source.Code("""\
+      # coding=utf-8
+      line1 # a
+      line2
+    """, [], _FakeTrace, "")
+    self.assertEqual(src.get_offset(source.Location(3, 3)), 40)
+
+    # With a multibyte character the byte offset should change
+    src = source.Code("""\
+      # coding=utf-8
+      line1 # ツ
+      line2
+    """, [], _FakeTrace, "")
+    self.assertEqual(src.get_offset(source.Location(3, 3)), 42)
 
   def test_line(self):
     src = source.Code("line1\nline2", [], _FakeTrace, "")
