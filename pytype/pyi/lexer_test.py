@@ -6,6 +6,9 @@ from pytype.pytd.parse import parser_constants
 
 import unittest
 
+# We use '\' to make test code more readable:
+# pylint: disable=g-backslash-continuation
+
 # Map from token code to name.
 TOKEN_NAMES = {code: name for name, code in parser_ext.TOKENS.items()}
 
