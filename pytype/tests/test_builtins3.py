@@ -157,7 +157,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
   def testIOWrite(self):
     self.Check("""
         import sys
-        sys.stdout.write(bytearray([1,2,3]))
+        sys.stdout.write("hello world")
     """)
 
   def testHasAttrNone(self):
