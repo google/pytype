@@ -60,7 +60,7 @@ Also see the corresponding [FAQ entry][faq-diff].
 To quickly get started with type-checking a file or directory, run the
 following, replacing `file_or_directory` with your input:
 
-```
+```shell
 pip install pytype
 pytype file_or_directory
 ```
@@ -82,7 +82,7 @@ Finally, pytype generates files of inferred type information, located by default
 in `.pytype/pyi`. You can use this information to type-annotate the
 corresponding source file:
 
-```
+```shell
 merge-pyi -i <filepath>.py .pytype/pyi/<filename>.pyi
 ```
 
@@ -104,26 +104,31 @@ Pytype can be installed via pip. Note that the installation requires `wheel`
 and `setuptools`. (If you're working in a virtualenv, these two packages should
 already be present.)
 
-```
+```shell
 pip install pytype
 ```
 
 Or from the source code [on GitHub][github].
 
-```
+```shell
 git clone --recurse-submodules https://github.com/google/pytype.git
 cd pytype
-pip install -U .
+pip install .
 ```
 
 Instead of using `--recurse-submodules`, you could also have run
 
-```
+```shell
 git submodule init
 git submodule update
 ```
 
-in the `pytype` directory.
+in the `pytype` directory. To edit the code and have your edits tracked live,
+replace the pip install command with:
+
+```shell
+pip install -e .
+```
 
 ### Installing on WSL
 
@@ -166,7 +171,7 @@ is not supplied, pytype will look for a `[pytype]` section in the first
 
 Start off by generating a sample config file:
 
-```
+```shell
 $ pytype --generate-config pytype.cfg
 ```
 
