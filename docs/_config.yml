@@ -1,1 +1,7 @@
 theme: jekyll-theme-minimal
+
+defaults:
+  - scope:
+      path: developers
+    values:
+      layout: dev_guide
