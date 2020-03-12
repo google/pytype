@@ -20,7 +20,7 @@
          * [Bytecode handling](#bytecode-handling)
          * [CFG](#cfg)
 
-<!-- Added by: rechen, at: 2020-03-10T14:26-07:00 -->
+<!-- Added by: rechen, at: 2020-03-11T17:04-07:00 -->
 
 <!--te-->
 
@@ -105,7 +105,12 @@ rank of functions in the profile is stable between runs.
 
 ## Introduction
 
-How to trace pytype, intro to bytecode interpreter
+Pytype is built around a "shadow bytecode interpreter", which traces through a
+program's bytecode, mimicking the effects of the cpython interpreter but
+tracking types rather than values.
+
+A good starting point is to trace through the details of [pytype's main
+loop][main-loop] and get a feel for how the bytecode interpreter works.
 
 ## Basic concepts
 
@@ -149,3 +154,4 @@ typeshed, `pytd/builtins/`, `pytd/stdlib/`,
 [pstats]: https://docs.python.org/3/library/profile.html#module-pstats
 [source-install-instructions]: https://github.com/google/pytype#installing
 [tests-readme-oss]: https://github.com/google/pytype/blob/master/pytype/tests/README.md
+[main-loop]: developers/main_loop.md
