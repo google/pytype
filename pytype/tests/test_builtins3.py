@@ -134,6 +134,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
 
   def testNewlines(self):
     with file_utils.Tempdir() as d:
+      # pylint: disable=g-backslash-continuation
       d.create_file("newlines.txt", """\
           1
           2
@@ -158,6 +159,12 @@ class BuiltinTests3(test_base.TargetIndependentTest):
     self.Check("""
         import sys
         sys.stdout.write("hello world")
+    """)
+
+  def testBinaryIOWrite(self):
+    self.Check("""
+      with open('foo', 'wb') as f:
+        f.write(bytearray([1, 2, 3]))
     """)
 
   def testHasAttrNone(self):
