@@ -402,5 +402,11 @@ class BuiltinTests(test_base.TargetPython27FeatureTest):
       v2: float
     """)
 
+  def testUnicodeWrite(self):
+    self.Check("""
+      import sys
+      sys.stdout.write(u'testing')
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
