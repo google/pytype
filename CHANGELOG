@@ -1,3 +1,7 @@
+Version 2020.03.19
+* Fix a couple of pytype crashes.
+* Do not allow mixing string types in IO.write() in Python 3.
+
 Version 2020.02.20
 * Stop rewriting (x: X = None) to (x: Optional[X] = None).
 
