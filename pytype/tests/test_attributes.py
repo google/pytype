@@ -754,6 +754,7 @@ class TestAttributes(test_base.TargetIndependentTest):
 
   def testSubclassShadowing(self):
     with file_utils.Tempdir() as d:
+      # pylint: disable=g-backslash-continuation
       d.create_file("foo.pyi", """\
         class X:
           b = ...  # type: int
@@ -767,6 +768,27 @@ class TestAttributes(test_base.TargetIndependentTest):
         else:
           a.b  # The original attribute isn't overwritten by the assignment
         """, pythonpath=[d.path])
+
+  def testGenericProperty(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Generic, Optional, TypeVar
+        T = TypeVar("T")
+        class Foo(Generic[T]):
+          @property
+          def x(self) -> Optional[T]: ...
+        def f() -> Foo[str]: ...
+      """)
+      ty = self.Infer("""
+        import foo
+        def f():
+          return foo.f().x
+      """, pythonpath=[d.path])
+    self.assertTypesMatchPytd(ty, """
+      from typing import Optional
+      foo: module
+      def f() -> Optional[str]: ...
+    """)
 
 
 test_base.main(globals(), __name__ == "__main__")

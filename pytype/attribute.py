@@ -360,8 +360,13 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
                 abstract_utils.equivalent_to(valself, cls))
           if isinstance(value, abstract.Property):
             node, value = value.call(node, None, None)
-            value, = value.data
-        ret.AddBinding(value, [varval] + add_origins, node)
+            final_values = value.data
+          else:
+            final_values = [value]
+        else:
+          final_values = [value]
+        for final_value in final_values:
+          ret.AddBinding(final_value, [varval] + add_origins, node)
       break  # we found a class which has this attribute
     return ret
 
