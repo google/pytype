@@ -1,8 +1,6 @@
 """Common methods for tests of analyze.py."""
 
-import collections
 import logging
-import re
 import sys
 import textwrap
 
@@ -51,31 +49,10 @@ def _AddAnnotationsImportPy2(func):
   return _Wrapper
 
 
-def _ParseExpectedError(pattern):
-  assert 2 <= len(pattern) <= 3, (
-      "Bad expected error format. Use: (<line>, <name>[, <regexp>])")
-  line = pattern[0]
-  name = pattern[1]
-  regexp = pattern[2] if len(pattern) > 2 else ""
-  return line, name, regexp
-
-
 def _IncrementLineNumbersPy2(func):
   def _Wrapper(self, errorlog, expected_errors):
     if self.options.python_version == (2, 7):
-      incremented_expected_errors = []
-      for pattern in expected_errors:
-        line, name, regexp = _ParseExpectedError(pattern)
-        # Increments the expected line number of the error.
-        line += 1
-        # Increments line numbers in the text of the expected error message.
-        regexp = re.sub(
-            r"line (\d+)", lambda m: "line %d" % (int(m.group(1)) + 1), regexp)
-        incremented_expected_error = (line, name)
-        if regexp:
-          incremented_expected_error += (regexp,)
-        incremented_expected_errors.append(incremented_expected_error)
-      expected_errors = incremented_expected_errors
+      expected_errors = errorlog.increment_line_numbers(expected_errors)
     return func(self, errorlog, expected_errors)
   return _Wrapper
 
@@ -353,48 +330,11 @@ class BaseTest(unittest.TestCase):
                        "Not identity: %r" % pytd_utils.Print(func))
 
   def assertErrorsMatch(self, errorlog, expected_errors):
-    expected = []
-
-    for line, error in errorlog.expected.items():
-      expected.append((line, error))
-
-    for pattern in expected_errors:
-      line, name, regexp = _ParseExpectedError(pattern)
-      line = errorlog.marks.get(line, line)
-      expected.append((line, name, regexp))
-
+    expected = errorlog.make_expected_errors(expected_errors)
     self.assertErrorLogIs(errorlog, expected)
 
   def assertErrorLogIs(self, errorlog, expected_errors):
-    expected_errors = collections.Counter(expected_errors)
-    # This is O(|errorlog| * |expected_errors|), which is okay because error
-    # lists in tests are short.
-    for error in errorlog.unique_sorted_errors():
-      almost_matches = set()
-      for (pattern, count) in expected_errors.items():
-        line, name, regexp = _ParseExpectedError(pattern)
-        if line == error.lineno and name == error.name:
-          if not regexp or re.search(regexp, error.message, flags=re.DOTALL):
-            if count == 1:
-              del expected_errors[pattern]
-            else:
-              expected_errors[pattern] -= 1
-            break
-          else:
-            almost_matches.add(regexp)
-      else:
-        errorlog.print_to_stderr()
-        if almost_matches:
-          raise AssertionError("Bad error message: expected %r, got %r" % (
-              almost_matches.pop(), error.message))
-        else:
-          raise AssertionError("Unexpected error:\n%s" % error)
-    if expected_errors:
-      errorlog.print_to_stderr()
-      leftover_errors = [
-          _ParseExpectedError(pattern) for pattern in expected_errors]
-      raise AssertionError("Errors not found:\n" + "\n".join(
-          "Line %d: %r [%s]" % (e[0], e[2], e[1]) for e in leftover_errors))
+    errorlog.assert_expected_errors(expected_errors)
 
   def _Pickle(self, ast, module_name):
     assert module_name
