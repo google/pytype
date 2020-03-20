@@ -161,11 +161,12 @@ def get_python_exe(python_version):
   Returns:
     A tuple of the inferred python_exe argument and any command-line flags
   """
-  python_exe = "python%d.%d" % python_version
   # Use custom interpreters, if provided, in preference to the ones in $PATH
-  custom_python_exe = pytype_source_utils.get_custom_python_exe(python_exe)
+  custom_python_exe = pytype_source_utils.get_custom_python_exe(python_version)
   if custom_python_exe:
     python_exe = custom_python_exe
+  else:
+    python_exe = "python%d.%d" % python_version
   if USE_ANNOTATIONS_BACKPORT and python_version == (2, 7):
     flags = ["-T"]
   else:

@@ -6,10 +6,11 @@
 
 import atexit
 import os
+import sys
 import tempfile
 
 
-class NoSuchDirectory(Exception):
+class NoSuchDirectory(Exception):  # pylint: disable=g-bad-exception-name
   pass
 
 
@@ -108,28 +109,36 @@ def list_pytype_files(suffix):
         yield filename[i + len(directory):]
 
 
-# Directory containing custom Python interpreters for use with pytype.
-# The path is relative to pytype's root directory.
-CUSTOM_PYTHON_EXE_DIR = None
+# Map from Python version to custom Python interpreters for use with pytype. The
+# interpreter paths are relative to pytype's root directory.
+CUSTOM_PYTHON_EXE_MAP = {(2, 7): None}
+if sys.version_info.major == 3:
+  # Custom Python 3 interpreters must match the host Python version.
+  py3_version = sys.version_info[:2]
+else:
+  # TODO(rechen): Remove this branch once the pytype tests no longer use
+  # host Python 2 x target Python 3.
+  py3_version = (3, 6)
+CUSTOM_PYTHON_EXE_MAP[py3_version] = None
 
 
-def get_custom_python_exe(python_exe):
+def get_custom_python_exe(python_version):
   """Get the path to a custom python interpreter.
 
-  If CUSTOM_PYTHON_EXE_DIR is set, either returns
-  {CUSTOM_PYTHON_EXE_DIR}/python_exe if it exists, or extracts it from a par
+  If the given version is in CUSTOM_PYTHON_EXE_MAP, either returns
+  CUSTOM_PYTHON_EXE_MAP[python_version] if it exists, or extracts it from a par
   file into /tmp/pytype and returns that.
 
   Arguments:
-    python_exe: the exe filename, e.g. python2.7
+    python_version: the requested version, e.g. (2, 7)
   Returns:
-    None if CUSTOM_PYTHON_EXE_DIR is unset or invalid. Else:
-    The path to the extracted file if it is found
-    The input exe filename if not (so it can be tried in $PATH)
+    None if the version is not in CUSTOM_PYTHON_EXE_MAP or an error occurs
+    while loading the file. Else:
+    The path to the extracted file
   """
-  if not CUSTOM_PYTHON_EXE_DIR:
+  if not CUSTOM_PYTHON_EXE_MAP.get(python_version):
     return None
-  path = get_full_path(os.path.join(CUSTOM_PYTHON_EXE_DIR, python_exe))
+  path = os.path.normpath(get_full_path(CUSTOM_PYTHON_EXE_MAP[python_version]))
   if os.path.exists(path):
     return path
   try:
