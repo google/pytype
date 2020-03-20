@@ -13,6 +13,15 @@ py_library(
 
 py_test(
   NAME
+    test_base_test
+  SRCS
+    test_base_test.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
     test_basic
   SRCS
     test_basic.py

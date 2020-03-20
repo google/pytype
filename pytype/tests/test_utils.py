@@ -1,13 +1,23 @@
 """Utility class and function for tests."""
 
 import collections
+import re
 import subprocess
+import tokenize
 
 from pytype import compat
+from pytype import errors
 from pytype import state as frame_state
 from pytype.pyc import loadmarshal
 
+import six
+
 import unittest
+
+
+# Pytype offers a Python 2.7 interpreter with type annotations backported as a
+# __future__ import (see pytype/patches/python_2_7_type_annotations.diff).
+ANNOTATIONS_IMPORT = "from __future__ import google_type_annotations"
 
 
 FakeCode = collections.namedtuple("FakeCode", "co_filename co_name")
@@ -168,6 +178,46 @@ class MakeCodeMixin(object):
         name=name, firstlineno=1, lnotab=[], freevars=[], cellvars=[],
         code=compat.int_array_to_bytes(int_array),
         python_version=self.python_version)
+
+
+class TestErrorLog(errors.ErrorLog):
+  """A subclass of ErrorLog that holds extra information for tests.
+
+  Takes the source code as an init argument, and constructs two dictionaries
+  holding parsed comment directives.
+
+  Attributes:
+    marks: { mark_name : line number }
+    expected:  { line number : expected error code }
+
+  See tests/test_base_test.py for usage examples.
+  """
+
+  MARK_RE = re.compile(r"^[.]\w+$")
+  ERROR_RE = re.compile(r"^\w[\w-]+\w$")
+
+  def __init__(self, src):
+    super(TestErrorLog, self).__init__()
+    self.marks, self.expected = self._parse_comments(src)
+
+  def _parse_comments(self, src):
+    # Strip out the "google type annotations" line if we have added it - we
+    # already have an assertion in test_base that this is not added manually.
+    offset = -1 if ANNOTATIONS_IMPORT in src else 0
+
+    src = six.moves.StringIO(src)
+    marks = {}
+    expected = {}
+    for tok, s, (line, _), _, _ in tokenize.generate_tokens(src.readline):
+      line = line + offset
+      if tok == tokenize.COMMENT:
+        comment = s.lstrip("# ").rstrip()
+        if self.MARK_RE.match(comment):
+          assert comment not in marks, "Mark %s already used" % comment
+          marks[comment] = line
+        elif self.ERROR_RE.match(comment):
+          expected[line] = comment
+    return marks, expected
 
 
 class Py2Opcodes(object):
