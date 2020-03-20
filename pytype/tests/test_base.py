@@ -36,20 +36,15 @@ skip = unittest.skip
 skip_if = unittest.skipIf
 
 
-# Pytype offers a Python 2.7 interpreter with type annotations backported as a
-# __future__ import (see pytype/patches/python_2_7_type_annotations.diff).
-_ANNOTATIONS_IMPORT = "from __future__ import google_type_annotations"
-
-
 def WithAnnotationsImport(code):
   code_without_newline = code.lstrip("\n")
   indent = len(code_without_newline) - len(code_without_newline.lstrip(" "))
-  return (indent * " ") + _ANNOTATIONS_IMPORT + "\n" + code
+  return (indent * " ") + test_utils.ANNOTATIONS_IMPORT + "\n" + code
 
 
 def _AddAnnotationsImportPy2(func):
   def _Wrapper(self, code, *args, **kwargs):
-    assert _ANNOTATIONS_IMPORT not in code
+    assert test_utils.ANNOTATIONS_IMPORT not in code
     if self.options.python_version == (2, 7):
       code = WithAnnotationsImport(code)
     return func(self, code, *args, **kwargs)
@@ -225,7 +220,7 @@ class BaseTest(unittest.TestCase):
 
   def _SetUpErrorHandling(self, code, pythonpath, analyze_annotated, quick):
     code = textwrap.dedent(code)
-    errorlog = errors.ErrorLog()
+    errorlog = test_utils.TestErrorLog(code)
     self.ConfigureOptions(
         pythonpath=pythonpath, analyze_annotated=analyze_annotated, quick=quick)
     return {"src": code, "errorlog": errorlog, "options": self.options,
@@ -356,6 +351,19 @@ class BaseTest(unittest.TestCase):
       param1, = sig.params
       self.assertEqual(param1.type, sig.return_type,
                        "Not identity: %r" % pytd_utils.Print(func))
+
+  def assertErrorsMatch(self, errorlog, expected_errors):
+    expected = []
+
+    for line, error in errorlog.expected.items():
+      expected.append((line, error))
+
+    for pattern in expected_errors:
+      line, name, regexp = _ParseExpectedError(pattern)
+      line = errorlog.marks.get(line, line)
+      expected.append((line, name, regexp))
+
+    self.assertErrorLogIs(errorlog, expected)
 
   def assertErrorLogIs(self, errorlog, expected_errors):
     expected_errors = collections.Counter(expected_errors)
