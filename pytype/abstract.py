@@ -1457,9 +1457,26 @@ class Function(SimpleAbstractValue):
     # this function. See test_duplicate_getproperty() in tests/test_flow.py.
     return self.bound_class(callself, self)
 
+  def _get_cell_variable_name(self, var):
+    """Get the python variable name of a pytype Variable."""
+    f = self.vm.frame
+    if not f:
+      # Should not happen but does in some contrived test cases.
+      return None
+    for name, v in zip(f.f_code.co_freevars, f.cells):
+      if v == var:
+        return name
+    return None
+
   def match_args(self, node, args, alias_map=None, match_all_views=False):
     """Check whether the given arguments can match the function signature."""
-    assert all(a.bindings for a in args.posargs)
+    for a in args.posargs:
+      if not a.bindings:
+        # The only way to get an unbound variable here is to reference a closure
+        # cellvar before it is assigned to in the outer scope.
+        name = self._get_cell_variable_name(a)
+        assert name is not None, "Closure variable lookup failed."
+        raise function.UndefinedParameterError(name)
     error = None
     matched = []
     arg_variables = args.get_variables()
