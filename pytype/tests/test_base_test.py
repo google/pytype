@@ -1,6 +1,7 @@
 """Tests for our test framework."""
 
 from pytype.tests import test_base
+import six
 
 
 class ErrorLogTest(test_base.TargetIndependentTest):
@@ -12,10 +13,10 @@ class ErrorLogTest(test_base.TargetIndependentTest):
       c = a + b  # some-error
       d = a + b  # .another_mark
     """)
-    self.assertCountEqual(err.marks.keys(), [".mark", ".another_mark"])
+    six.assertCountEqual(self, err.marks.keys(), [".mark", ".another_mark"])
     self.assertEqual(err.marks[".mark"], 2)
-    self.assertCountEqual(err.expected.keys(), [3])
-    self.assertCountEqual(err.expected[3], "some-error")
+    six.assertCountEqual(self, err.expected.keys(), [3])
+    six.assertCountEqual(self, err.expected[3], "some-error")
 
   def test_error_matching(self):
     err = self.CheckWithErrors("""\
