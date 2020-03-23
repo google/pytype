@@ -2,13 +2,12 @@
 
 **Under Construction**
 
+This documentation is for developers of and contributors to pytype. See the page
+on the [development process][development-process] for tips on suggested
+workflow. The rest of this guide covers pytype's core concepts and code layout.
+
 <!--ts-->
    * [Developer guide](#developer-guide)
-      * [Development process](#development-process)
-         * [GitHub](#github)
-         * [Running pytype locally](#running-pytype-locally)
-         * [Debugging](#debugging)
-         * [Profiling](#profiling)
       * [Introduction](#introduction)
       * [Basic concepts](#basic-concepts)
       * [Adding a new feature](#adding-a-new-feature)
@@ -20,88 +19,9 @@
          * [Bytecode handling](#bytecode-handling)
          * [CFG](#cfg)
 
-<!-- Added by: rechen, at: 2020-03-11T17:04-07:00 -->
+<!-- Added by: rechen, at: 2020-03-20T10:14-07:00 -->
 
 <!--te-->
-
-## Development process
-
-### GitHub
-
-1. Fork https://github.com/google/pytype.
-
-1. Follow the [instructions][source-install-instructions] for installing from
-   source, using your fork instead of the original repository. Now the `pytype`
-   and `pytype-single` command-line tools are running from your local copy of
-   the pytype source code. Make sure to use `pip install -e .` so that the tools
-   will automatically pick up code edits.
-
-1. Make your change, adding [tests][tests-readme-oss] as appropriate.
-
-1. Make sure the code still passes all [tests][tests-readme-oss] and is free of
-   [lint][pylint] and [type][pytype-quickstart] errors.
-
-1. Push your change to your fork and open a PR against the original repo. If
-   it's your first time contributing to a Google open source project, please
-   sign the Contributor License Agreement when prompted. Depending on what files
-   your PR touches, it will be either merged directly or closed after being
-   copied into the Google-internal codebase and re-exported to GitHub. You will
-   be credited as the author either way.
-
-### Running pytype locally
-
-Run the single-file analysis tool as
-
-```shell
-pytype-single some_file.py
-```
-
-to check `some_file.py` for type errors, or
-
-```shell
-pytype-single some_file.py -o -
-```
-
-to infer a pyi (dumped to stdout via `-`). The default target Python
-version is the version that pytype is running under; pass in `-V<major>.<minor>`
-to select a different version.
-
-Note that the single-file tool does not handle dependency resolution, so
-you'll have to supply .pyi files for all non-stdlib imports.
-
-If you're using the GitHub-installed tools, you can run the whole-project
-analysis tool, `pytype`, over the file to generate a `.pytype` directory that
-includes the necessary .pyi files. Then add
-
-```shell
---module-name <module> --imports_info .pytype/imports/<module>.imports
-```
-
-to your `pytype-single` invocation, replacing `<module>` with the fully
-qualified module name.
-
-### Debugging
-
-Use the `--verbosity` (or `-v`) option to print debugging output. The possible
-values range from -1 ("quiet", log nothing) to 4 ("debug", log everything).
-
-pytype can be run under [pdb][pdb], the Python debugger. Add:
-
-```python
-import pdb; pdb.set_trace()
-```
-
-at the point in the code at which you want to enter debugging.
-
-### Profiling
-
-For profiling a single file, pass in `--profile <path>` to turn on profiling and
-write the generated profile to `<path>`. The profile can then be analyzed using
-the [`pstats`][pstats] module.
-
-Note that numbers are not directly comparable between runs; differences of 100%
-for different machines on otherwise identical code have happened. The relative
-rank of functions in the profile is stable between runs.
 
 ## Introduction
 
@@ -114,7 +34,62 @@ loop][main-loop] and get a feel for how the bytecode interpreter works.
 
 ## Basic concepts
 
-What's a variable, etc.
+As pytype analyzes a program, it builds a [control flow graph][wiki-cfg] (CFG)
+that represents how the parts of the program work together. Each **Node** in the
+CFG roughly correlates with a single statement in the program.
+
+For example:
+
+```python
+if some_val:  # 1
+  x = 5  # 2
+  y = 6  # 3
+else:
+  x = "a"  # 4
+z = x.upper() + str(y)  # 5
+```
+
+This program has a CFG that looks like:
+
+```
+     (1)
+     | |
+(2)<-+ +->(4)
+ |         |
+ v         |
+(3)---+----+
+      |
+      v
+     (5)
+```
+
+Note how the two branches of the if-else statement are represented by two paths
+starting at Node 1 and coming together at Node 5.
+
+A **Variable** tracks the type information for a variable in the program being
+analyzed. This includes simple variables (e.g. `x` in `x = 5`), function
+arguments (`a` and `b` in `def f(a, b)`), and functions, classes and modules.
+
+A **Binding** associates a Variable with a value at a particular Node. In the
+example above, the Variable for `x` is bound to the value `5` at Node 2
+(`Binding(5, Node 2)`) and to `"a"` at Node 4. (`Binding("a", Node 4)`).
+Meanwhile, `y` has only a single `Binding(6, Node 3)`.
+
+Building up the CFG in this way allows pytype to perform type checking. When
+pytype reaches Node 5 (`z = x.upper()`), it queries the CFG to find what `x` may
+be. Depending on the value of `some_val`, `x` could an `int` or a `str`. Since
+`int` doesn't have a method called `upper`, pytype reports an `attribute-error`,
+even though `str` _does_ have an `upper` method.
+
+However, pytype is limited by what it knows. Looking at the example again, we
+know that `y` won't be defined if `some_val` is `False`, which would make
+`str(y)` fail. But pytype can't know for sure if `some_val` will evaluate to
+`True` or `False`. Since there's a path through the CFG where `y` is defined
+(`y = 6` if `some_val == True`), pytype won't report an error for `str(y)`. If
+we change the condition to `if False`, so that pytype knows unambiguously that
+only the code under `else:` will be executed, then pytype will report a
+`name-error` on `str(y)` because there is no path through the CFG where `y` is
+defined.
 
 ## Adding a new feature
 
@@ -148,10 +123,6 @@ typeshed, `pytd/builtins/`, `pytd/stdlib/`,
 `typegraph/`
 
 <!-- General references -->
-[pdb]: https://docs.python.org/3/library/pdb.html
-[pylint]: http://pylint.pycqa.org/en/latest/
-[pytype-quickstart]: https://github.com/google/pytype#quickstart
-[pstats]: https://docs.python.org/3/library/profile.html#module-pstats
-[source-install-instructions]: https://github.com/google/pytype#installing
-[tests-readme-oss]: https://github.com/google/pytype/blob/master/pytype/tests/README.md
-[main-loop]: developers/main_loop.md
+[development-process]: process.md
+[main-loop]: main_loop.md
+[wiki-cfg]: https://en.wikipedia.org/wiki/Control-flow_graph

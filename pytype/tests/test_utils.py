@@ -1,13 +1,23 @@
 """Utility class and function for tests."""
 
 import collections
+import re
 import subprocess
+import tokenize
 
 from pytype import compat
+from pytype import errors
 from pytype import state as frame_state
 from pytype.pyc import loadmarshal
 
+import six
+
 import unittest
+
+
+# Pytype offers a Python 2.7 interpreter with type annotations backported as a
+# __future__ import (see pytype/patches/python_2_7_type_annotations.diff).
+ANNOTATIONS_IMPORT = "from __future__ import google_type_annotations"
 
 
 FakeCode = collections.namedtuple("FakeCode", "co_filename co_name")
@@ -168,6 +178,122 @@ class MakeCodeMixin(object):
         name=name, firstlineno=1, lnotab=[], freevars=[], cellvars=[],
         code=compat.int_array_to_bytes(int_array),
         python_version=self.python_version)
+
+
+class TestErrorLog(errors.ErrorLog):
+  """A subclass of ErrorLog that holds extra information for tests.
+
+  Takes the source code as an init argument, and constructs two dictionaries
+  holding parsed comment directives.
+
+  Attributes:
+    marks: { mark_name : line number }
+    expected:  { line number : expected error code }
+
+  Also adds an assertion matcher to match self.errors against a list of expected
+  errors of the form [(line number, error code, message regex)].
+
+  See tests/test_base_test.py for usage examples.
+  """
+
+  MARK_RE = re.compile(r"^[.]\w+$")
+  ERROR_RE = re.compile(r"^\w[\w-]+\w$")
+
+  def __init__(self, src):
+    super(TestErrorLog, self).__init__()
+    self.marks, self.expected = self._parse_comments(src)
+
+  def assert_expected_errors(self, expected_errors):
+    expected_errors = collections.Counter(expected_errors)
+    # This is O(|errorlog| * |expected_errors|), which is okay because error
+    # lists in tests are short.
+    for error in self.unique_sorted_errors():
+      almost_matches = set()
+      for (pattern, count) in expected_errors.items():
+        line, name, regexp = self._parse_expected_error(pattern)
+        # We should only call this function after resolving marks
+        assert isinstance(line, int), "Unresolved mark %s" % line
+        if line == error.lineno and name == error.name:
+          if not regexp or re.search(regexp, error.message, flags=re.DOTALL):
+            if count == 1:
+              del expected_errors[pattern]
+            else:
+              expected_errors[pattern] -= 1
+            break
+          else:
+            almost_matches.add(regexp)
+      else:
+        self.print_to_stderr()
+        if almost_matches:
+          raise AssertionError("Bad error message: expected %r, got %r" % (
+              almost_matches.pop(), error.message))
+        else:
+          raise AssertionError("Unexpected error:\n%s" % error)
+    if expected_errors:
+      self.print_to_stderr()
+      leftover_errors = [
+          self._parse_expected_error(pattern) for pattern in expected_errors]
+      raise AssertionError("Errors not found:\n" + "\n".join(
+          "Line %d: %r [%s]" % (e[0], e[2], e[1]) for e in leftover_errors))
+
+  def make_expected_errors(self, expected_errors):
+    """Rewrite expected_errors, resolving marks and adding comments."""
+    expected = []
+
+    for line, error in self.expected.items():
+      expected.append((line, error))
+
+    for pattern in expected_errors:
+      line, name, regexp = self._parse_expected_error(pattern)
+      line = self.marks.get(line, line)
+      expected.append((line, name, regexp))
+
+    return expected
+
+  def increment_line_numbers(self, expected_errors):
+    """Adjust line numbers to account for an ANNOTATIONS_IMPORT line."""
+    incremented_expected_errors = []
+    for pattern in expected_errors:
+      line, name, regexp = self._parse_expected_error(pattern)
+      # We should only call this function after resolving marks
+      assert isinstance(line, int), "Unresolved mark %s" % line
+      # Increments the expected line number of the error.
+      line += 1
+      # Increments line numbers in the text of the expected error message.
+      regexp = re.sub(
+          r"line (\d+)", lambda m: "line %d" % (int(m.group(1)) + 1), regexp)
+      incremented_expected_error = (line, name)
+      if regexp:
+        incremented_expected_error += (regexp,)
+      incremented_expected_errors.append(incremented_expected_error)
+    return incremented_expected_errors
+
+  def _parse_expected_error(self, pattern):
+    assert 2 <= len(pattern) <= 3, (
+        "Bad expected error format. Use: (<line>, <name>[, <regexp>])")
+    line = pattern[0]
+    name = pattern[1]
+    regexp = pattern[2] if len(pattern) > 2 else ""
+    return line, name, regexp
+
+  def _parse_comments(self, src):
+    # Strip out the "google type annotations" line if we have added it - we
+    # already have an assertion in test_base that this is not added manually.
+    offset = -1 if ANNOTATIONS_IMPORT in src else 0
+
+    src = six.moves.StringIO(src)
+    marks = {}
+    expected = {}
+    for tok, s, (line, _), _, _ in tokenize.generate_tokens(src.readline):
+      line = line + offset
+      if tok == tokenize.COMMENT:
+        comment = s.lstrip("# ").rstrip()
+        if self.MARK_RE.match(comment):
+          assert comment not in marks, "Mark %s already used" % comment
+          marks[comment] = line
+        elif self.ERROR_RE.match(comment):
+          expected[line] = comment
+    return marks, expected
 
 
 class Py2Opcodes(object):

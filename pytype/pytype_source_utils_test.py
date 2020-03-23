@@ -1,6 +1,7 @@
 """Tests for pytype_source_utils.py."""
 
 import os
+import sys
 
 from pytype import pytype_source_utils
 
@@ -29,6 +30,15 @@ class PytypeSourceUtilsTest(unittest.TestCase):
     l = list(pytype_source_utils.list_pytype_files("pytd/stdlib/2"))
     self.assertIn("_ctypes.pytd", l)
     self.assertIn("collections.pytd", l)
+
+  def testGetCustomPythonExe27(self):
+    exe = pytype_source_utils.get_custom_python_exe((2, 7))
+    self.assertIn("2.7", exe)
+
+  @unittest.skipUnless(sys.version_info.major == 3, "requires Python 3")
+  def testGetCustomPythonExe3(self):
+    exe = pytype_source_utils.get_custom_python_exe(sys.version_info[:2])
+    self.assertIn("python3", exe)
 
 
 if __name__ == "__main__":

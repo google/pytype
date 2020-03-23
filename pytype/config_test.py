@@ -34,7 +34,7 @@ class ConfigTest(unittest.TestCase):
     self.assertEqual(opts.use_pickled_files, True)
     self.assertEqual(opts.python_version, (3, 6))
     exe, _ = opts.python_exe
-    self.assertIn("3.6", exe)
+    self.assertIn("python3", exe)
 
     opts = config.Options.create(python_version=(2, 7), use_pickled_files=True)
     self.assertEqual(opts.use_pickled_files, True)
