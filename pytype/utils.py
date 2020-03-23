@@ -54,12 +54,9 @@ def full_version_from_major(major_version):
   elif major_version == 2:
     return (2, 7)
   else:
-    # TODO(b/147910935): raise a UsageError when attempting to analyze Python 3
-    # code while running under Python 2.
-    # raise UsageError(
-    #     "Cannot infer Python minor version for major version %d. "
-    #     "Specify the version as <major>.<minor>." % major_version)
-    return (3, 6)
+    raise UsageError(
+        "Cannot infer Python minor version for major version %d. "
+        "Specify the version as <major>.<minor>." % major_version)
 
 
 def normalize_version(version):
