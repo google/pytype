@@ -4,7 +4,6 @@ import copy
 import os
 import re
 import subprocess
-import sys
 import tempfile
 
 from pytype import compat
@@ -60,11 +59,7 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
     IOError: If our compile script failed.
   """
 
-  if python_version == sys.version_info[:2] and (
-      sys.version_info.major != 2 or not utils.USE_ANNOTATIONS_BACKPORT):
-    # Optimization: calling compile_bytecode directly is faster than spawning a
-    # subprocess. We can do this only when the host and target versions match
-    # and we don't need the patched 2.7 interpreter.
+  if utils.can_compile_bytecode_natively(python_version):
     output = six.BytesIO()
     compile_bytecode.compile_src_to_pyc(src, filename or "<>", output, mode)
     bytecode = output.getvalue()

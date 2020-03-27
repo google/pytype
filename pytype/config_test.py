@@ -5,6 +5,7 @@ import sys
 
 from pytype import config
 from pytype import datatypes
+from pytype import utils
 from pytype.tests import test_utils
 
 import unittest
@@ -34,13 +35,19 @@ class ConfigTest(unittest.TestCase):
     self.assertEqual(opts.use_pickled_files, True)
     self.assertEqual(opts.python_version, (3, 6))
     exe, _ = opts.python_exe
-    self.assertIn("python3", exe)
+    if sys.version_info[:2] != (3, 6):
+      self.assertIn("python3", exe)
+    else:
+      self.assertIsNone(exe)
 
     opts = config.Options.create(python_version=(2, 7), use_pickled_files=True)
     self.assertEqual(opts.use_pickled_files, True)
     self.assertEqual(opts.python_version, (2, 7))
     exe, _ = opts.python_exe
-    self.assertIn("2.7", exe)
+    if sys.version_info[:2] != (2, 7) or utils.USE_ANNOTATIONS_BACKPORT:
+      self.assertIn("2.7", exe)
+    else:
+      self.assertIsNone(exe)
 
   def test_analyze_annotated_check(self):
     argv = ["--check", "test.py"]

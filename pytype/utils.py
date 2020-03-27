@@ -205,6 +205,15 @@ def parse_exe_version_string(version_str):
     return None
 
 
+def can_compile_bytecode_natively(python_version):
+  # Optimization: calling compile_bytecode directly is faster than spawning a
+  # subprocess and lets us avoid extracting a large Python executable into /tmp.
+  # We can do this only when the host and target versions match and we don't
+  # need the patched 2.7 interpreter.
+  return python_version == sys.version_info[:2] and (
+      sys.version_info.major != 2 or not USE_ANNOTATIONS_BACKPORT)
+
+
 def list_startswith(l, prefix):
   """Like str.startswith, but for lists."""
   return l[:len(prefix)] == prefix

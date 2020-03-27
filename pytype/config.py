@@ -478,6 +478,14 @@ class Postprocessor(object):
   @uses(["python_version"])
   def _store_python_exe(self, python_exe):
     """Postprocess --python_exe."""
+    if python_exe is None and utils.can_compile_bytecode_natively(
+        self.output_options.python_version):
+      # The user has not requested a custom exe and pytype does not need an exe
+      # for bytecode compilation. Abort early to avoid extracting a large unused
+      # exe into /tmp.
+      self.output_options.python_exe = (None, None)
+      return
+
     if python_exe is None:
       python_exe, flags = utils.get_python_exe(
           self.output_options.python_version)
