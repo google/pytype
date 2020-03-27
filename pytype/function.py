@@ -403,6 +403,14 @@ class NotCallable(FailedFunctionCall):
     self.obj = obj
 
 
+class UndefinedParameterError(FailedFunctionCall):
+  """Function called with an undefined variable."""
+
+  def __init__(self, name):
+    super(UndefinedParameterError, self).__init__()
+    self.name = name
+
+
 class DictKeyMissing(Exception, ReturnValueMixin):
   """When retrieving a key that does not exist in a dict."""
 

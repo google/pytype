@@ -107,6 +107,16 @@ class TestClosures(test_base.TargetIndependentTest):
           f({x: y})
     """)
 
+  def test_unbound_closure_variable(self):
+    err = self.CheckWithErrors("""\
+      def foo():
+        def bar():
+          return tuple(xs)  # name-error
+        xs = bar()
+      foo()
+    """)
+    self.assertErrorsMatch(err, [])
+
 
 class TestGenerators(test_base.TargetIndependentTest):
   """Tests for generators."""

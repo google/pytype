@@ -54,12 +54,9 @@ def full_version_from_major(major_version):
   elif major_version == 2:
     return (2, 7)
   else:
-    # TODO(b/147910935): raise a UsageError when attempting to analyze Python 3
-    # code while running under Python 2.
-    # raise UsageError(
-    #     "Cannot infer Python minor version for major version %d. "
-    #     "Specify the version as <major>.<minor>." % major_version)
-    return (3, 6)
+    raise UsageError(
+        "Cannot infer Python minor version for major version %d. "
+        "Specify the version as <major>.<minor>." % major_version)
 
 
 def normalize_version(version):
@@ -206,6 +203,15 @@ def parse_exe_version_string(version_str):
     return split_version(matcher.group(1))
   else:
     return None
+
+
+def can_compile_bytecode_natively(python_version):
+  # Optimization: calling compile_bytecode directly is faster than spawning a
+  # subprocess and lets us avoid extracting a large Python executable into /tmp.
+  # We can do this only when the host and target versions match and we don't
+  # need the patched 2.7 interpreter.
+  return python_version == sys.version_info[:2] and (
+      sys.version_info.major != 2 or not USE_ANNOTATIONS_BACKPORT)
 
 
 def list_startswith(l, prefix):

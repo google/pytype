@@ -821,6 +821,8 @@ class ErrorLog(ErrorLogBase):
     elif isinstance(error, function.DuplicateKeyword):
       self.duplicate_keyword(
           stack, error.name, error.bad_call, error.duplicate)
+    elif isinstance(error, function.UndefinedParameterError):
+      self.name_error(stack, error.name)
     else:
       raise AssertionError(error)
 
