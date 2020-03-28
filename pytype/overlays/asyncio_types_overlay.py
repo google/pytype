@@ -9,7 +9,7 @@ class TypesOverlay(overlay.Overlay):
 
   def __init__(self, vm):
     member_map = {
-        "coroutine": CoroutineDecorator.make_for_types
+        "Coroutine": CoroutineDecorator.make_for_types
     }
     ast = vm.loader.import_name("types")
     super(TypesOverlay, self).__init__(vm, "types", member_map, ast)
@@ -20,7 +20,7 @@ class AsyncioOverlay(overlay.Overlay):
 
   def __init__(self, vm):
     member_map = {
-        "coroutine": CoroutineDecorator.make_for_asyncio
+        "Coroutine": CoroutineDecorator.make_for_asyncio
     }
     ast = vm.loader.import_name("asyncio")
     super(AsyncioOverlay, self).__init__(vm, "asyncio", member_map, ast)
