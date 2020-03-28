@@ -91,10 +91,15 @@ interpreter in `$PATH` for the Python version of the code you're analyzing.
 
 Platform support:
 
-* Pytype is currently developed and tested on Linux, which is the main supported
+* Pytype is currently developed and tested on Linux\*, which is the main supported
   platform.
 * Installation on MacOSX requires OSX 10.7 or higher and Xcode v8 or higher.
 * Windows is currently not supported unless you use [WSL][wsl].
+
+<sub>\*
+    Note: Pytype is tested on Ubuntu Linux.
+    On Alpine Linux, installing may fail due to issues with upstream dependencies.
+</sub>
 
 ## Installing
 
