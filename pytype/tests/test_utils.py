@@ -210,18 +210,18 @@ class TestErrorLog(errors.ErrorLog):
     for error in self.unique_sorted_errors():
       almost_matches = set()
       for (pattern, count) in expected_errors.items():
-        line, name, regexp = self._parse_expected_error(pattern)
+        line, name, regex = self._parse_expected_error(pattern)
         # We should only call this function after resolving marks
         assert isinstance(line, int), "Unresolved mark %s" % line
         if line == error.lineno and name == error.name:
-          if not regexp or re.search(regexp, error.message, flags=re.DOTALL):
+          if not regex or re.search(regex, error.message, flags=re.DOTALL):
             if count == 1:
               del expected_errors[pattern]
             else:
               expected_errors[pattern] -= 1
             break
           else:
-            almost_matches.add(regexp)
+            almost_matches.add(regex)
       else:
         self.print_to_stderr()
         if almost_matches:
@@ -244,9 +244,9 @@ class TestErrorLog(errors.ErrorLog):
       expected.append((line, error))
 
     for pattern in expected_errors:
-      line, name, regexp = self._parse_expected_error(pattern)
+      line, name, regex = self._parse_expected_error(pattern)
       line = self.marks.get(line, line)
-      expected.append((line, name, regexp))
+      expected.append((line, name, regex))
 
     return expected
 
@@ -254,27 +254,27 @@ class TestErrorLog(errors.ErrorLog):
     """Adjust line numbers to account for an ANNOTATIONS_IMPORT line."""
     incremented_expected_errors = []
     for pattern in expected_errors:
-      line, name, regexp = self._parse_expected_error(pattern)
+      line, name, regex = self._parse_expected_error(pattern)
       # We should only call this function after resolving marks
       assert isinstance(line, int), "Unresolved mark %s" % line
       # Increments the expected line number of the error.
       line += 1
       # Increments line numbers in the text of the expected error message.
-      regexp = re.sub(
-          r"line (\d+)", lambda m: "line %d" % (int(m.group(1)) + 1), regexp)
+      regex = re.sub(
+          r"line (\d+)", lambda m: "line %d" % (int(m.group(1)) + 1), regex)
       incremented_expected_error = (line, name)
-      if regexp:
-        incremented_expected_error += (regexp,)
+      if regex:
+        incremented_expected_error += (regex,)
       incremented_expected_errors.append(incremented_expected_error)
     return incremented_expected_errors
 
   def _parse_expected_error(self, pattern):
     assert 2 <= len(pattern) <= 3, (
-        "Bad expected error format. Use: (<line>, <name>[, <regexp>])")
+        "Bad expected error format. Use: (<line>, <name>[, <regex>])")
     line = pattern[0]
     name = pattern[1]
-    regexp = pattern[2] if len(pattern) > 2 else ""
-    return line, name, regexp
+    regex = pattern[2] if len(pattern) > 2 else ""
+    return line, name, regex
 
   def _parse_comments(self, src):
     # Strip out the "google type annotations" line if we have added it - we

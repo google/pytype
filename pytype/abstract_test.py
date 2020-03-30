@@ -119,7 +119,7 @@ class IsInstanceTest(AbstractTestBase):
     self.assertEqual(self._node, node)
     self.assertIsInstance(abstract_utils.get_atomic_value(result),
                           abstract.Unsolvable)
-    self.assertRegexpMatches(str(self._vm.errorlog), "missing-parameter")
+    six.assertRegex(self, str(self._vm.errorlog), "missing-parameter")
 
   def test_call_wrong_keywords(self):
     self._vm.push_frame(frame_state.SimpleFrame())
@@ -130,9 +130,8 @@ class IsInstanceTest(AbstractTestBase):
     self.assertEqual(self._node, node)
     self.assertIsInstance(abstract_utils.get_atomic_value(result),
                           abstract.Unsolvable)
-    self.assertRegexpMatches(
-        str(self._vm.errorlog),
-        r"foo.*isinstance.*\[wrong-keyword-args\]")
+    six.assertRegex(self, str(self._vm.errorlog),
+                    r"foo.*isinstance.*\[wrong-keyword-args\]")
 
   def test_is_instance(self):
     def check(expected, left, right):

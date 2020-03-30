@@ -457,10 +457,10 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertEqual(normalize(pytd_utils.ASTdiff(tree1, tree1)), src1)
     self.assertEqual(normalize(pytd_utils.ASTdiff(tree2, tree2)), src2)
     diff_pattern = r"(?s)- b.*\+ b"
-    self.assertRegexpMatches(normalize(pytd_utils.ASTdiff(tree1, tree2)),
-                             diff_pattern)
-    self.assertRegexpMatches(normalize(pytd_utils.ASTdiff(tree2, tree1)),
-                             diff_pattern)
+    six.assertRegex(self, normalize(pytd_utils.ASTdiff(tree1, tree2)),
+                    diff_pattern)
+    six.assertRegex(self, normalize(pytd_utils.ASTdiff(tree2, tree1)),
+                    diff_pattern)
 
 
 class TestDataFiles(parser_test_base.ParserTest):
@@ -477,7 +477,7 @@ class TestDataFiles(parser_test_base.ParserTest):
 
   def testGetPredefinedFileThrows(self):
     # smoke test, only checks that it does throw
-    with self.assertRaisesRegexp(
+    with self.assertRaisesRegex(
         IOError,
         r"File not found|Resource not found|No such file or directory"):
       pytd_utils.GetPredefinedFile(self.BUILTINS, "-this-file-does-not-exist")

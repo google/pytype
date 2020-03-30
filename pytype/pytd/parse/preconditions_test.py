@@ -29,7 +29,7 @@ class SubClass(BaseClass):
 class PreconditionsTest(unittest.TestCase):
 
   def assertError(self, regex, condition, value):
-    self.assertRaisesRegexp(
+    self.assertRaisesRegex(
         preconditions.PreconditionError, regex, condition.check, value)
 
   def testClassNamePrecondition(self):
@@ -69,6 +69,7 @@ class PreconditionsTest(unittest.TestCase):
 class CallCheckerTest(unittest.TestCase):
 
   def setUp(self):
+    super(CallCheckerTest, self).setUp()
     self.checker = preconditions.CallChecker([
         ("x", preconditions._ClassNamePrecondition("int")),
         ("s", preconditions._ClassNamePrecondition("str"))])
@@ -77,7 +78,7 @@ class CallCheckerTest(unittest.TestCase):
     self.assertEqual({"int", "str"}, self.checker.allowed_types())
 
   def assertError(self, regex, *args, **kwargs):
-    self.assertRaisesRegexp(
+    self.assertRaisesRegex(
         preconditions.PreconditionError, regex, self.checker.check, *args,
         **kwargs)
 
