@@ -127,7 +127,7 @@ class LoggerMixin(LoggerMixinInterface):
   def log(self, msg: str):
     self._log.print(f"{self.name()}: {msg}")
 
-class Person(Logger):
+class Person(LoggerMixinInterface):
   ...  # Other initialization
   def name(self):
     return self._name
