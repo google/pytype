@@ -97,8 +97,10 @@ Platform support:
 * Windows is currently not supported unless you use [WSL][wsl].
 
 <sub>\*
-    Note: Pytype is tested on Ubuntu Linux.
-    On Alpine Linux, installing may fail due to issues with upstream dependencies.
+Note: On Alpine Linux, installing may fail due to issues with upstream
+dependencies.  See the details of
+<a href="https://github.com/scikit-build/ninja-python-distributions/issues/27">
+this issue</a> for a possible fix.
 </sub>
 
 ## Installing
