@@ -7,7 +7,7 @@ class TracebackTest(test_base.TargetPython3BasicTest):
   """Tests for tracebacks in error messages."""
 
   def test_build_class(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       class Foo(object):
         def f(self, x: Bar):  # name-error[e]
           pass

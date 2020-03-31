@@ -265,7 +265,7 @@ class SolverTests(test_base.TargetIndependentTest):
         class myclass:
           def bad_method() -> bool
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import bad_mod
         def f(date):
           return date.bad_method()
@@ -277,7 +277,7 @@ class SolverTests(test_base.TargetIndependentTest):
       """)
 
   def testExternalName(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       import collections
       def bar(l):
           l.append(collections.defaultdict(int, [(0, 0)]))
@@ -290,7 +290,7 @@ class SolverTests(test_base.TargetIndependentTest):
     """)
 
   def testNameConflictWithBuiltin(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       class LookupError(KeyError):
         pass
       def f(x):
@@ -327,7 +327,7 @@ class SolverTests(test_base.TargetIndependentTest):
         T = TypeVar("T")
         def f(x, *args, y: T) -> T
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import foo
         x = foo.f(1, y=2j)
       """, deep=False, pythonpath=[d.path])
@@ -337,7 +337,7 @@ class SolverTests(test_base.TargetIndependentTest):
       """)
 
   def test_store_name_cfg(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       a = 1
       a = a + 1
       """)
@@ -346,14 +346,14 @@ class SolverTests(test_base.TargetIndependentTest):
   def test_store_global_cfg(self):
     # STORE_GLOBAL didn't advance the cfg, so it required additional statements
     # in between in order to show the bug.
-    ty = self.Infer("""\
+    ty = self.Infer("""
       global a
       b = 1
       a = 1
       b = 1 + b
       a = 1 + a
       """)
-    self.assertTypesMatchPytd(ty, """\
+    self.assertTypesMatchPytd(ty, """
       a = ...  # type: int
       b = ...  # type: int
     """)

@@ -23,7 +23,7 @@ class NamedtupleTests(test_base.TargetPython27FeatureTest):
       """)
 
   def test_bad_call(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
         import collections
         collections.namedtuple()  # missing-parameter
         collections.namedtuple("_")  # missing-parameter

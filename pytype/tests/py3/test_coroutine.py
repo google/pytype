@@ -69,7 +69,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testNativeCoroutineError(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       async def f1() -> str:
         return 1  # bad-return-type[e1]
 
@@ -130,7 +130,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testGeneratorBasedCoroutineError(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import Generator
       import types
 
@@ -212,7 +212,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testInvalidAwaitable(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       class A(object):
         pass
 
@@ -258,7 +258,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testAsyncForError(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       class Iter1(object):
         pass
 
@@ -350,7 +350,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
 
   def testAsyncWithError(self):
     # pylint: disable=anomalous-backslash-in-string
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       class AsyncCtx1(object):
         pass
 

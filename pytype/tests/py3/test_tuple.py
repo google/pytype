@@ -8,7 +8,7 @@ class TupleTest(test_base.TargetPython3BasicTest):
   """Tests for __builtin__.tuple."""
 
   def testUnpackInlineTuple(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       from typing import Tuple
       def f(x: Tuple[str, int]):
         return x
@@ -53,7 +53,7 @@ class TupleTest(test_base.TargetPython3BasicTest):
     """)
 
   def testTuplePrinting(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Tuple
       def f(x: Tuple[str, ...]):
         pass
@@ -102,7 +102,7 @@ class TupleTest(test_base.TargetPython3BasicTest):
         from typing import Tuple
         class A(Tuple[str, int]): ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         from typing import Tuple, Type
         import foo
         def f(x: Type[Tuple[int, str]]):
@@ -145,7 +145,7 @@ class TupleTest(test_base.TargetPython3BasicTest):
       d.create_file("bar.pyi", """
         class Bar(tuple): ...
       """)
-      errors = self.CheckWithErrors("""\
+      errors = self.CheckWithErrors("""
         from typing import Tuple
         import bar
         def foo() -> Tuple[bar.Bar, bar.Bar]:
@@ -158,7 +158,7 @@ class TupleTestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for __builtin__.tuple."""
 
   def testIteration(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       class Foo(object):
         mytuple = (1, "foo", 3j)
         def __getitem__(self, pos):
@@ -174,7 +174,7 @@ class TupleTestPython3Feature(test_base.TargetPython3FeatureTest):
     """)
 
   def testBadUnpackingWithSlurp(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       a, *b, c = (1,)  # bad-unpacking[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"1 value.*3 variables"})

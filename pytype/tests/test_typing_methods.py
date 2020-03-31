@@ -16,7 +16,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
         def f() -> %(type)s
       """ % {"type": t})
       indented_expr = textwrap.dedent(expr).replace("\n", "\n" + " "*8)
-      self.Check("""\
+      self.Check("""
         import foo
         x = foo.f()
         %(expr)s
@@ -64,7 +64,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
         from typing import IO
         def f() -> IO[str]
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import foo
         x = foo.f()
         with x as fi:
@@ -120,7 +120,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
         def seq() -> Sequence[str]
         def tpl() -> Tuple[str]
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import foo
         for seq in [foo.seq(), foo.tpl()]:
           a = seq[0]
@@ -150,7 +150,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
         def seq() -> MutableSequence[str]
         def lst() -> List[str]
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import foo
         for seq in [foo.seq(), foo.lst()]:
           seq[0] = 3
@@ -184,7 +184,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
         from typing import Deque
         def deq() -> Deque[int]
         """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import foo
         q = foo.deq()
         q[0] = 3
@@ -197,7 +197,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
         cl = q.popleft()
         d = q.rotate(3)
       """, deep=False, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """\
+      self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         from typing import Deque
         q = ...  # type: Deque[int]
@@ -219,7 +219,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
         class MyDict(MutableMapping[K, V]): ...
         def f() -> MyDict[str, int]
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import foo
         m = foo.f()
         m.clear()
@@ -252,7 +252,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
         from typing import AbstractSet
         def f() -> AbstractSet[str]
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import foo
         x = foo.f()
         a = "bar" in x
@@ -284,7 +284,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
         from typing import MutableSet
         def f() -> MutableSet[str]
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import foo
         x = foo.f()
         x.add(1)
@@ -330,7 +330,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
         from typing import Pattern
         def f() -> Pattern[str]
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import foo
         pattern = foo.f()
         m1 = pattern.search("foo")

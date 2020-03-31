@@ -39,7 +39,7 @@ class StdlibTests(test_base.TargetPython27FeatureTest):
     """)
 
   def testDefaultDict(self):
-    self.Check("""\
+    self.Check("""
       import collections
       import itertools
       ids = collections.defaultdict(itertools.count(17).next)

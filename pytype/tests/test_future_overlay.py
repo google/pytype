@@ -33,7 +33,7 @@ class FutureUtilsTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
 
   def test_missing_import(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       from future.utils import iteritems  # import-error
       from future.utils import with_metaclass  # import-error
     """)

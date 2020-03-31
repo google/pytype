@@ -30,7 +30,7 @@ class GeneratorBasicTest(test_base.TargetPython3BasicTest):
     """)
 
   def testNoReturn(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Generator
       def f() -> Generator[str, None, None]:
         yield 42  # bad-return-type[e]
@@ -90,7 +90,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testParameterCount(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Generator
 
       def func1() -> Generator[int, int, int]:

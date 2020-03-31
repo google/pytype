@@ -15,14 +15,14 @@ class AbstractMethodTests(test_base.TargetIndependentTest):
           @abc.abstractmethod
           def foo(self) -> None: ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import foo
         foo.Example()  # not-instantiable[e]
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"foo\.Example.*foo"})
 
   def test_stray_abstractmethod(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       import abc
       class Example(object):  # ignored-abstractmethod[e]
         @abc.abstractmethod
@@ -58,7 +58,7 @@ class AbstractMethodTests(test_base.TargetIndependentTest):
           def foo(self): ...
         class Foo(X, Interface): ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import foo
         foo.Foo().foo()  # not-instantiable[e]
       """, pythonpath=[d.path])
@@ -101,7 +101,7 @@ class AbstractMethodTests(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
 
   def test_misplaced_abstractproperty(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       import abc
       @abc.abstractproperty
       class Example(object):

@@ -25,7 +25,7 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
     """)
 
   def testInitTestClassInSetup(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       import unittest
       class A(unittest.TestCase):
         def setUp(self):
@@ -42,7 +42,7 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
     """)
 
   def testInitInheritedTestClassInSetup(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       import unittest
       class A(unittest.TestCase):
         def setUp(self):

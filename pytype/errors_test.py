@@ -73,21 +73,21 @@ class ErrorTest(unittest.TestCase):
   def test_traceback(self):
     stack = test_utils.fake_stack(errors.MAX_TRACEBACK_LENGTH + 1)
     error = errors.Error.with_stack(stack, errors.SEVERITY_ERROR, "")
-    self.assertMultiLineEqual(error._traceback, textwrap.dedent("""\
+    self.assertMultiLineEqual(error._traceback, textwrap.dedent("""
       Called from (traceback):
         line 0, in function0
         line 1, in function1
-        line 2, in function2"""))
+        line 2, in function2""").lstrip())
 
   @errors._error_name(_TEST_ERROR)
   def test_truncated_traceback(self):
     stack = test_utils.fake_stack(errors.MAX_TRACEBACK_LENGTH + 2)
     error = errors.Error.with_stack(stack, errors.SEVERITY_ERROR, "")
-    self.assertMultiLineEqual(error._traceback, textwrap.dedent("""\
+    self.assertMultiLineEqual(error._traceback, textwrap.dedent("""
       Called from (traceback):
         line 0, in function0
         ...
-        line 3, in function3"""))
+        line 3, in function3""").lstrip())
 
   def test__error_name(self):
     # This should be true as long as at least one method is annotated with
@@ -119,7 +119,7 @@ class ErrorTest(unittest.TestCase):
       errorlog.print_to_csv_file(filename)
       with open(filename, "r") as fi:
         rows = list(csv.reader(fi, delimiter=","))
-        self.assertEqual(2, len(rows))
+        self.assertEqual(len(rows), 2)
         for i, row in enumerate(rows):
           filename, lineno, name, actual_message, actual_details = row
           self.assertEqual(filename, "foo.py")
@@ -138,12 +138,12 @@ class ErrorTest(unittest.TestCase):
       errorlog.print_to_csv_file(filename)
       with open(filename, "r") as fi:
         (_, _, _, _, actual_details), = list(csv.reader(fi, delimiter=","))
-        self.assertMultiLineEqual(actual_details, textwrap.dedent("""\
+        self.assertMultiLineEqual(actual_details, textwrap.dedent("""
           some
           details
 
           Called from (traceback):
-            line 0, in function0"""))
+            line 0, in function0""").lstrip())
 
 
 class ErrorLogBaseTest(unittest.TestCase):
@@ -153,7 +153,7 @@ class ErrorLogBaseTest(unittest.TestCase):
     errorlog = errors.ErrorLog()
     op = test_utils.FakeOpcode("foo.py", 123, "foo")
     errorlog.error(op.to_stack(), "unknown attribute %s" % "xyz")
-    self.assertEqual(1, len(errorlog))
+    self.assertEqual(len(errorlog), 1)
     e = list(errorlog)[0]  # iterate the log and save the first error.
     self.assertEqual(errors.SEVERITY_ERROR, e._severity)
     self.assertEqual("unknown attribute xyz", e._message)
@@ -164,18 +164,18 @@ class ErrorLogBaseTest(unittest.TestCase):
   def test_error_with_details(self):
     errorlog = errors.ErrorLog()
     errorlog.error(None, "My message", "one\ntwo")
-    self.assertEqual(textwrap.dedent("""\
+    self.assertEqual(textwrap.dedent("""
         My message [test-error]
           one
           two
-        """), str(errorlog))
+        """).lstrip(), str(errorlog))
 
   @errors._error_name(_TEST_ERROR)
   def test_warn(self):
     errorlog = errors.ErrorLog()
     op = test_utils.FakeOpcode("foo.py", 123, "foo")
     errorlog.warn(op.to_stack(), "unknown attribute %s", "xyz")
-    self.assertEqual(1, len(errorlog))
+    self.assertEqual(len(errorlog), 1)
     e = list(errorlog)[0]  # iterate the log and save the first error.
     self.assertEqual(errors.SEVERITY_WARNING, e._severity)
     self.assertEqual("unknown attribute xyz", e._message)
@@ -188,11 +188,11 @@ class ErrorLogBaseTest(unittest.TestCase):
     self.assertFalse(errorlog.has_error())
     # A warning is part of the error log, but isn't severe.
     errorlog.warn(None, "A warning")
-    self.assertEqual(1, len(errorlog))
+    self.assertEqual(len(errorlog), 1)
     self.assertFalse(errorlog.has_error())
     # An error is severe.
     errorlog.error(None, "An error")
-    self.assertEqual(2, len(errorlog))
+    self.assertEqual(len(errorlog), 2)
     self.assertTrue(errorlog.has_error())
 
   @errors._error_name(_TEST_ERROR)
@@ -203,7 +203,7 @@ class ErrorLogBaseTest(unittest.TestCase):
     errorlog.error(stack[-1:], "error")  # no traceback
     # Keep the error with no traceback.
     unique_errors = errorlog.unique_sorted_errors()
-    self.assertEqual(1, len(unique_errors))
+    self.assertEqual(len(unique_errors), 1)
     self.assertIsNone(unique_errors[0]._traceback)
 
   @errors._error_name(_TEST_ERROR)
@@ -230,10 +230,10 @@ class ErrorLogBaseTest(unittest.TestCase):
     errorlog.error(stack[-2:], "error")  # shorter traceback
     # Keep the error with a shorter traceback.
     unique_errors = errorlog.unique_sorted_errors()
-    self.assertEqual(1, len(unique_errors))
-    self.assertMultiLineEqual(unique_errors[0]._traceback, textwrap.dedent("""\
+    self.assertEqual(len(unique_errors), 1)
+    self.assertMultiLineEqual(unique_errors[0]._traceback, textwrap.dedent("""
       Called from (traceback):
-        line 1, in function1"""))
+        line 1, in function1""").lstrip())
 
   @errors._error_name(_TEST_ERROR)
   def test_unique_errors(self):
@@ -248,7 +248,7 @@ class ErrorLogBaseTest(unittest.TestCase):
     errorlog.error([backframe2, current_frame], "error")
     # Keep both errors, since the tracebacks are different.
     unique_errors = errorlog.unique_sorted_errors()
-    self.assertEqual(2, len(unique_errors))
+    self.assertEqual(len(unique_errors), 2)
     self.assertSetEqual(set(errorlog), set(unique_errors))
 
 

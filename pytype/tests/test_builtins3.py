@@ -66,7 +66,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
     """)
 
   def testImplicitTypeVarImport(self):
-    ty, _ = self.InferWithErrors("""\
+    ty, _ = self.InferWithErrors("""
       v = %s  # name-error
     """ % abstract_utils.T)
     self.assertTypesMatchPytd(ty, """
@@ -91,7 +91,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
 
   @test_base.skip("broken")
   def testClear(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       x = {1, 2}
       x.clear()
       y = {"foo": 1}
@@ -122,7 +122,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
     """)
 
   def testIntInit(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       int()
       int(0)
       int("0")
@@ -135,13 +135,12 @@ class BuiltinTests3(test_base.TargetIndependentTest):
 
   def testNewlines(self):
     with file_utils.Tempdir() as d:
-      # pylint: disable=g-backslash-continuation
-      d.create_file("newlines.txt", """\
+      d.create_file("newlines.txt", """
           1
           2
           3
           """)
-      self.Check("""\
+      self.Check("""
           l = []
           with open("newlines.txt", "rU") as f:
             for line in f:
@@ -172,7 +171,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
     self.assertNoCrash(self.Check, "hasattr(int, None)")
 
   def testNumberAttrs(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       a = (42).denominator
       b = (42).numerator
       c = (42).real
@@ -207,7 +206,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
     """)
 
   def testSpecialBuiltinTypes(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       isinstance(1, int)
       isinstance(1, "no")  # wrong-arg-types
       issubclass(int, object)
@@ -344,7 +343,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
     """)
 
   def testSetDefaultError(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       x = {}
       y = x.setdefault()  # wrong-arg-count[e1]
       z = x.setdefault(1, 2, 3, *[])  # wrong-arg-count[e2]

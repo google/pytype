@@ -7,7 +7,7 @@ class DisableTest(test_base.TargetIndependentTest):
   """Test error disabling."""
 
   def testInvalidDirective(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       x = 1  # pytype: this is not a valid pytype directive.  # invalid-directive
     """)
     # Invalid directives are just a warning, so has_error() should still
@@ -15,7 +15,7 @@ class DisableTest(test_base.TargetIndependentTest):
     self.assertFalse(errors.has_error())
 
   def testInvalidDisableErrorName(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       x = 1  # pytype: disable=not-an-error.  # invalid-directive[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"Invalid error name.*not-an-error"})
@@ -24,7 +24,7 @@ class DisableTest(test_base.TargetIndependentTest):
     self.assertFalse(errors.has_error())
 
   def testDisableError(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       x = a  # name-error
       x = b  # pytype: disable=name-error
       x = c  # name-error
@@ -32,7 +32,7 @@ class DisableTest(test_base.TargetIndependentTest):
 
   def testOpenEndedDirective(self):
     """Test that disables in the middle of the file can't be left open-ended."""
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       '''This is a docstring.
       def f(x):
         pass
@@ -58,7 +58,7 @@ class DisableTest(test_base.TargetIndependentTest):
     self.assertFalse(errors.has_error())
 
   def testSkipFile(self):
-    self.Check("""\
+    self.Check("""
       # pytype: skip-file
       name_error
     """)

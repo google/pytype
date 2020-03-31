@@ -8,7 +8,7 @@ class ImportTest(test_base.TargetPython3FeatureTest):
   """Tests for import."""
 
   def testModuleAttributes(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       import os
       f = os.__file__
       n = os.__name__
@@ -48,7 +48,7 @@ class ImportTest(test_base.TargetPython3FeatureTest):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", "x = ...  # type: int")
       d.create_file("b/a.pyi", "x = ...  # type: complex")
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import a
         x = a.x
       """, deep=False, pythonpath=[d.path], module_name="b.main")

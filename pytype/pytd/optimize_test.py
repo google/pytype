@@ -769,10 +769,10 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = visitors.LookupClasses(ast, self.builtins)
     ast = ast.Visit(optimize.AddInheritedMethods())
     self.assertMultiLineEqual(pytd_utils.Print(ast.Lookup("B")),
-                              textwrap.dedent("""\
+                              textwrap.dedent("""
         class B(A):
             def f(self) -> float: ...
-    """))
+    """).lstrip())
 
   def testRemoveInheritedMethodsWithLateType(self):
     src = textwrap.dedent("""

@@ -135,7 +135,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
 
   def test_type_mismatch(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       import dataclasses
       @dataclasses.dataclass()
       class Foo(object):  # annotation-type-mismatch
@@ -143,7 +143,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
 
   def test_field_type_mismatch(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       import dataclasses
       @dataclasses.dataclass()
       class Foo(object):  # annotation-type-mismatch
@@ -151,7 +151,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
 
   def test_factory_type_mismatch(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       import dataclasses
       @dataclasses.dataclass()
       class Foo(object):  # annotation-type-mismatch
@@ -191,7 +191,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
 
   def test_bad_default_param_order(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       import dataclasses
       @dataclasses.dataclass()
       class Foo(object):  # invalid-function-definition

@@ -15,14 +15,14 @@ class CompileToPycTest(test_base.TargetIndependentTest):
     self.Check("#! my/python\n# encoding: utf-8\nprint('←↑→↓')")
 
   def testErrorLineNumbersWithEncoding1(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       # coding: utf-8
       def foo():
         return "1".hello  # attribute-error
     """)
 
   def testErrorLineNumbersWithEncoding2(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       #! /bin/python
       # coding: utf-8
       def foo():

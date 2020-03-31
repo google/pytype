@@ -82,7 +82,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
     """)
 
   def testBadKeyword(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(object):
         def __init__(self):
           self._bar = 1
@@ -296,7 +296,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
     """)
 
   def testInstanceAsDecoratorError(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       class Decorate(object):
         def __call__(self, func):
           return func
@@ -310,7 +310,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"Decorate.*1.*2"})
 
   def testUncallableInstanceAsDecorator(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       class Decorate(object):
         pass  # forgot to define __call__
       class Foo(object):
@@ -324,7 +324,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
         errors, {"e1": r"Decorate.*1.*2", "e2": r"Decorate"})
 
   def testAmbiguousClassMethod(self):
-    self.Check("""\
+    self.Check("""
       class Foo():
         def __init__(self):
           pass

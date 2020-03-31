@@ -7,7 +7,7 @@ class NamedTupleTest(test_base.TargetPython27FeatureTest):
   """Tests for the typing.NamedTuple overlay."""
 
   def test_basic_namedtuple(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       import typing
       X = typing.NamedTuple("X", [("a", int), ("b", str)])
       x = X(1, "hello")
@@ -15,7 +15,7 @@ class NamedTupleTest(test_base.TargetPython27FeatureTest):
       b = x.b
       """)
     self.assertTypesMatchPytd(
-        ty, """\
+        ty, """
         import collections
         from typing import Callable, Iterable, Sized, Tuple, Type, TypeVar, Union
         typing: module
@@ -47,14 +47,14 @@ class NamedTupleTest(test_base.TargetPython27FeatureTest):
           """)
 
   def test_namedtuple_unicode(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       import typing
       X = typing.NamedTuple(u"X", [(u"a", int)])
       x = X(1)
       a = x.a
       """)
     self.assertTypesMatchPytd(
-        ty, """\
+        ty, """
         import collections
         from typing import Callable, Iterable, Sized, Tuple, Type, TypeVar, Union
         typing: module

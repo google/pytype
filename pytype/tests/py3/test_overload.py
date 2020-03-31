@@ -19,7 +19,7 @@ class OverloadTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_bad_implementation(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import overload
       @overload
       def f(x: int) -> str:
@@ -30,7 +30,7 @@ class OverloadTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e": r"str.*int"})
 
   def test_bad_call(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import overload
       @overload
       def f(x: int) -> int:
@@ -72,7 +72,7 @@ class OverloadTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_multiple_overload_bad_implementation(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import overload
       @overload
       def f(x: int) -> int:
@@ -86,7 +86,7 @@ class OverloadTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e": r"int.*str"})
 
   def test_multiple_overload_bad_call(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import overload
       @overload
       def f(x: int) -> int:
@@ -128,7 +128,7 @@ class OverloadTest(test_base.TargetPython3BasicTest):
     """)
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
-      errors = self.CheckWithErrors("""\
+      errors = self.CheckWithErrors("""
         import foo
         foo.f(0)  # ok
         foo.f("")  # ok
@@ -137,7 +137,7 @@ class OverloadTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e": r"int.*float"})
 
   def test_method_bad_implementation(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import overload
       class Foo(object):
         @overload
@@ -176,7 +176,7 @@ class OverloadTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_call_overload(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import overload
       @overload
       def f(x: int) -> int:

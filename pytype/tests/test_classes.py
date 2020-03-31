@@ -209,7 +209,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """)
 
   def testSuperError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Base(object):
         def __init__(self, x, y, z):
           pass
@@ -779,7 +779,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """)
 
   def testUnionBaseClass(self):
-    self.Check("""\
+    self.Check("""
       import typing
       class A(tuple): pass
       class B(tuple): pass
@@ -897,20 +897,20 @@ class ClassesTest(test_base.TargetIndependentTest):
         class C(A[T], B[T]): ...
         def f() -> C[int]: ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import foo
         foo.f()  # mro-error[e]
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"C"})
 
   def testCallParameterizedClass(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       from typing import List
       List[str]()  # not-callable
     """)
 
   def testErrorfulConstructors(self):
-    ty, _ = self.InferWithErrors("""\
+    ty, _ = self.InferWithErrors("""
       class Foo(object):
         attr = 42
         def __new__(cls):
@@ -931,7 +931,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """)
 
   def testNewFalse(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       class Foo(object):
         def __new__(cls):
           return False
@@ -948,7 +948,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """)
 
   def testNewAmbiguous(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       class Foo(object):
         def __new__(cls):
           if __random__:
@@ -1027,7 +1027,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
 
   def testSuperNewWrongArgCount(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(object):
         def __new__(cls, x):
           return super(Foo, cls).__new__(cls, x)  # wrong-arg-count[e]
@@ -1035,7 +1035,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"1.*2"})
 
   def testSuperInitWrongArgCount(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(object):
         def __init__(self, x):
           super(Foo, self).__init__(x)  # wrong-arg-count[e]
@@ -1043,7 +1043,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"1.*2"})
 
   def testSuperNewMissingParameter(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(object):
         def __new__(cls, x):
           # Even when __init__ is defined, too few args is an error.
@@ -1054,7 +1054,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"cls.*__new__"})
 
   def testNewKwarg(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(object):
         def __new__(cls):
           # ok because __init__ is defined.
@@ -1068,7 +1068,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"x.*__new__"})
 
   def testInitKwarg(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(object):
         def __init__(self):
           # ok because __new__ is defined.
@@ -1113,7 +1113,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
 
   def testInitWithNoParams(self):
-    self.Check("""\
+    self.Check("""
       class Foo(object):
         def __init__():
           pass
@@ -1128,7 +1128,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """)
 
   def testNotInstantiable(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       class Foo(object):
         def __new__(cls):
           assert cls is not Foo, "not instantiable"
@@ -1150,7 +1150,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """)
 
   def testSubclassContainsBase(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       def get_c():
         class C(object):
           def __init__(self, z):
@@ -1165,7 +1165,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         def bar(self, x): pass
       x = DC(1)
     """)
-    self.assertTypesMatchPytd(ty, """\
+    self.assertTypesMatchPytd(ty, """
       from typing import Any
       class DC(object):
           a = ...  # type: int
@@ -1179,7 +1179,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """)
 
   def testSubclassMultipleBaseOptions(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       class A(object): pass
       def get_base():
         class B(object): pass
@@ -1187,7 +1187,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       Base = A if __random__ else get_base()
       class C(Base): pass
     """)
-    self.assertTypesMatchPytd(ty, """\
+    self.assertTypesMatchPytd(ty, """
       from typing import Any, Union
       def get_base() -> type: ...
       class A(object): pass
@@ -1196,7 +1196,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """)
 
   def testSubclassContainsGenericBase(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       import typing
       def get_base():
         class C(typing.List[str]):
@@ -1204,7 +1204,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         return C
       class DL(get_base()): pass
     """)
-    self.assertTypesMatchPytd(ty, """\
+    self.assertTypesMatchPytd(ty, """
       from typing import List
       typing = ...  # type: module
       class DL(List[str]):
@@ -1213,7 +1213,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """)
 
   def testSubclassOverridesBaseAttributes(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       def get_base():
         class B(object):
           def __init__(self):
@@ -1229,7 +1229,7 @@ class ClassesTest(test_base.TargetIndependentTest):
           self.c = "world"
         def bar(self, x): pass
     """)
-    self.assertTypesMatchPytd(ty, """\
+    self.assertTypesMatchPytd(ty, """
       def get_base() -> type: ...
       class C(object):
         a = ...  # type: int
@@ -1248,14 +1248,14 @@ class ClassesTest(test_base.TargetIndependentTest):
         return C
       class BX(make_base(list)): pass
     """)
-    self.assertTypesMatchPytd(ty, """\
+    self.assertTypesMatchPytd(ty, """
       def make_base(x) -> type: ...
       class BX(list):
         x = ...  # type: int
     """)
 
   def testSubclassBasesOverlap(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       def make_a():
         class A(object):
           def __init__(self):

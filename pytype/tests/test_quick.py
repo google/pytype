@@ -75,7 +75,7 @@ class QuickTest(test_base.TargetIndependentTest):
 
   def testAnalyzeAnnotatedMaxDepth(self):
     # --output with --analyze-annotated has the same max depth as --check.
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def make_greeting(user_id):
         return 'hello, user' + user_id  # unsupported-operands[e]
       def print_greeting():

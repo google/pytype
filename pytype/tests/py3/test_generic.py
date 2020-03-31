@@ -8,7 +8,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
   """Tests for User-defined Generic Type."""
 
   def testGenericTypeParamsError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Generic
 
       class A(Generic[int]):  # invalid-annotation[e]
@@ -18,7 +18,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
         errors, {"e": r"Parameters.*Generic.*must.*type variables"})
 
   def testMroError(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       from typing import Generic, Iterator, Generator, TypeVar
 
       T = TypeVar('T')
@@ -28,7 +28,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
     """)
 
   def testTemplateOrderError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Generic, TypeVar
 
       T1 = TypeVar('T1')
@@ -67,7 +67,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e1": r"str.*int", "e2": r"int.*str"})
 
   def testTypeErasureError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import TypeVar, Generic
 
       T = TypeVar('T', int, float)
@@ -90,7 +90,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
                                      "e3": r"y: int.*y: str"})
 
   def testInhericPlainGenericError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
      from typing import Generic
 
      class A(Generic):  # invalid-annotation[e]
@@ -106,7 +106,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
         T = TypeVar('T')
         class A(Generic[T, T]): ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import a  # pyi-error[e]
       """, deep=True, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"Duplicate.*T.*a.A"})
@@ -120,7 +120,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
         V = TypeVar('V')
         class A(Generic[T], Generic[V]): ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import a  # pyi-error[e]
       """, deep=True, pythonpath=[d.path])
       self.assertErrorRegexes(
@@ -135,14 +135,14 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
         V = TypeVar('V')
         class A(Dict[K, V], Generic[K]): ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import a  # pyi-error[e]
       """, deep=True, pythonpath=[d.path])
       self.assertErrorRegexes(
           errors, {"e": r"V.*are not listed in Generic.*a.A"})
 
   def testClassInFuncError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import TypeVar, Generic, Union
 
       T = TypeVar('T')
@@ -159,7 +159,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
                                      "e2": r"func.*InnerCls1.*T"})
 
   def testClassInClassError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
      from typing import TypeVar, Generic, Iterator
 
      T = TypeVar('T', int, float, str)
@@ -184,7 +184,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
                                      "e2": r"A.*C.*T"})
 
   def testSignatureTypeParam(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import TypeVar, Generic
 
       T = TypeVar('T', int, float, str)
@@ -276,7 +276,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
     """)
 
   def testSignatureTypeError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Generic, TypeVar
 
       T = TypeVar('T')
@@ -329,7 +329,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       """)
 
   def testFuncMatchForInterpreterClassError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import TypeVar, Generic
 
       T1 = TypeVar('T1')
@@ -380,7 +380,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
         class C(A[T, S], B[T, S], Generic[T, S]):
           def fun3(self, x: T, y: S): ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import a
 
         o = a.C[int, int]()
@@ -393,7 +393,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
           errors, {"e1": r"int.*str", "e2": r"int.*str", "e3": r"int.*str"})
 
   def testTypeRenamingError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Generic, TypeVar
 
       T = TypeVar('T', int, float)
@@ -417,7 +417,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
                                      "e3": r"Renaming TypeVar `U`.*"})
 
   def testTypeParameterConflictError(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       from typing import Generic, TypeVar
 
       T = TypeVar('T')
@@ -461,7 +461,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
                                      "e2": r"Conflicting value for TypeVar"})
 
   def testUnboundTypeParameterError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Generic, TypeVar
 
       T = TypeVar('T')
@@ -503,7 +503,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       """, pythonpath=[d.path])
 
   def testAnyMatchAllTypes(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       import collections, typing
 
       class DictA(collections.OrderedDict, typing.MutableMapping[int, int]):
@@ -534,7 +534,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
     """)
 
   def testIllegalSelfAnnot(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import Any, Generic, List, TypeVar
       T = TypeVar('T')
       class Foo(Generic[T]):
@@ -561,7 +561,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
     """)
 
   def testBadParameterizedForwardReference(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import Generic, TypeVar
       T = TypeVar('T')
 
@@ -573,7 +573,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e": r"1.*2"})
 
   def testRecursiveClass(self):
-    self.Check("""\
+    self.Check("""
       from typing import List
       class Foo(List["Foo"]):
         pass

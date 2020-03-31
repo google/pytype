@@ -79,7 +79,7 @@ class NamedtupleTests(test_base.TargetIndependentTest):
         """)
 
   def test_bad_fieldnames(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
         import collections
         collections.namedtuple("_", ["abc", "def", "ghi"])  # invalid-namedtuple-arg
         collections.namedtuple("_", "_")  # invalid-namedtuple-arg
@@ -99,7 +99,7 @@ class NamedtupleTests(test_base.TargetIndependentTest):
         ty, self._namedtuple_def(S=("S", ["abc", "_1", "ghi", "_3"])))
 
   def test_bad_initialize(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
         from collections import namedtuple
 
         X = namedtuple("X", "y z")
@@ -111,7 +111,7 @@ class NamedtupleTests(test_base.TargetIndependentTest):
 
   def test_class_name(self):
     ty = self.Infer(
-        """\
+        """
         import collections
         F = collections.namedtuple("S", ['a', 'b', 'c'])
         """)
@@ -142,7 +142,7 @@ class NamedtupleTests(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         class X(NamedTuple('X', [('y', str), ('z', int)])): ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import foo
         foo.X()  # missing-parameter[e1]
         foo.X(0, "")  # wrong-arg-types[e2]
@@ -158,7 +158,7 @@ class NamedtupleTests(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         class X(NamedTuple("X", [])): ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import foo
         foo.X()._replace()
         foo.X().nonsense  # attribute-error[e]

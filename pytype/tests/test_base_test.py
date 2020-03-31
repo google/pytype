@@ -14,7 +14,7 @@ class ErrorLogTest(test_base.TargetIndependentTest):
     return line
 
   def test_error_comments(self):
-    err = self.CheckWithErrors("""\
+    err = self.CheckWithErrors("""
       a = 10  # a random comment
       b = "hello" + 3  # unsupported-operands[.mark]
       c = (10).foo  # attribute-error
@@ -30,7 +30,7 @@ class ErrorLogTest(test_base.TargetIndependentTest):
         self._lineno(4): [("wrong-arg-types", ".another_mark")]})
 
   def test_multiple_errors_one_line(self):
-    err = self.CheckWithErrors("""\
+    err = self.CheckWithErrors("""
       x = (10).foo, "hello".foo  # attribute-error[e1]  # attribute-error[e2]
     """)
     line = self._lineno(1)
@@ -53,7 +53,7 @@ class ErrorLogTest(test_base.TargetIndependentTest):
     self.assertEqual(str(ctx.exception), "Mark e already used")
 
   def test_error_matching(self):
-    err = self.CheckWithErrors("""\
+    err = self.CheckWithErrors("""
       a = 10
       b = "hello"
       c = a + b  # unsupported-operands
@@ -68,7 +68,7 @@ class ErrorLogTest(test_base.TargetIndependentTest):
 
   def test_unexpected_error(self):
     with self.assertRaises(AssertionError) as ctx:
-      self.CheckWithErrors("""\
+      self.CheckWithErrors("""
         (10).foo  # attribute-error
         "hello".foo
       """)

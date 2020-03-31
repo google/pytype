@@ -7,7 +7,7 @@ class TracebackTest(test_base.TargetIndependentTest):
   """Tests for tracebacks in error messages."""
 
   def test_no_traceback(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def f(x):
         "hello" + 42  # unsupported-operands[e]
       f("world")
@@ -15,7 +15,7 @@ class TracebackTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"expects str$"})
 
   def test_same_traceback(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def f(x, _):
         x + 42  # unsupported-operands[e]
       def g(x):
@@ -25,7 +25,7 @@ class TracebackTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"Called from.*:\n  line 4, in g"})
 
   def test_different_tracebacks(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def f(x):
         x + 42  # unsupported-operands[e1]  # unsupported-operands[e2]
       f("hello")
@@ -36,7 +36,7 @@ class TracebackTest(test_base.TargetIndependentTest):
         "e2": r"Called from.*:\n  line 4, in current file"})
 
   def test_comprehension(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def f():
         return {x.upper() for x in range(10)}  # attribute-error[e]
     """)
@@ -45,7 +45,7 @@ class TracebackTest(test_base.TargetIndependentTest):
     self.assertEqual(error.methodname, "f")
 
   def test_comprehension_in_traceback(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def f(x):
         return x.upper()  # attribute-error[e]
       def g():
@@ -54,7 +54,7 @@ class TracebackTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"Called from.*:\n  line 4, in g$"})
 
   def test_no_argument_function(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f():
         return None.attr  # attribute-error[e]
       f()
@@ -62,7 +62,7 @@ class TracebackTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"attr.*None$"})
 
   def test_max_callsites(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(s):
         return "hello, " + s  # unsupported-operands[e1]  # unsupported-operands[e2]  # unsupported-operands[e3]
       f(0)

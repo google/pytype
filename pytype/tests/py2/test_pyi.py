@@ -27,7 +27,7 @@ class PYITest(test_base.TargetPython27FeatureTest):
         T = TypeVar("T")
         def get_varargs(x: int, *args: T, z: int, **kws: int) -> T: ...
       """)
-      ty, errors = self.InferWithErrors("""\
+      ty, errors = self.InferWithErrors("""
         from typing import Union
         import a
         l1 = None  # type: list[str]
@@ -65,7 +65,7 @@ class PYITest(test_base.TargetPython27FeatureTest):
         T = TypeVar("T")
         def get_kwargs(x: int, *args: int, z: int, **kws: T) -> T: ...
       """)
-      ty, errors = self.InferWithErrors("""\
+      ty, errors = self.InferWithErrors("""
         from typing import Mapping, Union
         import a
         d1 = None  # type: dict[int, int]

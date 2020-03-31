@@ -74,6 +74,19 @@ def _MatchLoaderConfig(options, loader):
   return True
 
 
+def _Format(code):
+  # Removes the leading newline introduced by writing, e.g.,
+  # self.Check("""
+  #   code
+  # """)
+  if test_utils.ANNOTATIONS_IMPORT + "\n\n" in code:
+    code = code.replace(test_utils.ANNOTATIONS_IMPORT + "\n\n",
+                        test_utils.ANNOTATIONS_IMPORT + "\n")
+  elif code.startswith("\n"):
+    code = code[1:]
+  return textwrap.dedent(code)
+
+
 class BaseTest(unittest.TestCase):
   """Base class for implementing tests that check PyTD output."""
 
@@ -179,11 +192,10 @@ class BaseTest(unittest.TestCase):
     self.ConfigureOptions(skip_repeat_calls=skip_repeat_calls,
                           pythonpath=pythonpath, quick=quick)
     try:
-      src = ""
       if six.PY3:
-        src = textwrap.dedent(code)
+        src = _Format(code)
       else:
-        src = textwrap.dedent(code.decode("utf-8"))
+        src = _Format(code.decode("utf-8"))
       errorlog = test_utils.TestErrorLog(code)
       if errorlog.expected:
         self.fail("Cannot assert errors with Check(); use CheckWithErrors()")
@@ -200,7 +212,7 @@ class BaseTest(unittest.TestCase):
     method(code, report_errors=False, **kwargs)
 
   def _SetUpErrorHandling(self, code, pythonpath, analyze_annotated, quick):
-    code = textwrap.dedent(code)
+    code = _Format(code)
     errorlog = test_utils.TestErrorLog(code)
     self.ConfigureOptions(
         pythonpath=pythonpath, analyze_annotated=analyze_annotated, quick=quick)
@@ -352,7 +364,7 @@ class BaseTest(unittest.TestCase):
             report_errors=True, analyze_annotated=True, pickle=False,
             module_name=None, **kwargs):
     types, builtins_pytd = self._InferAndVerify(
-        textwrap.dedent(srccode), pythonpath=pythonpath, deep=deep,
+        _Format(srccode), pythonpath=pythonpath, deep=deep,
         analyze_annotated=analyze_annotated, module_name=module_name,
         report_errors=report_errors, **kwargs)
     types = optimize.Optimize(types, builtins_pytd, lossy=False, use_abcs=False,

@@ -115,19 +115,19 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testUnicode(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       unicode("foo")  # name-error
     """)
 
   def testBytesIteration(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       def f():
         for x in bytes():
           return bytes() + x  # unsupported-operands
     """)
 
   def test_inplace_division(self):
-    self.Check("""\
+    self.Check("""
       x, y = 24, 3
       x /= y
       assert x == 8.0 and y == 3
@@ -138,7 +138,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def test_removed_dict_methods(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       {}.iteritems  # attribute-error
       {}.iterkeys  # attribute-error
       {}.itervalues  # attribute-error
@@ -417,19 +417,19 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testIntInit(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       int(0, 1)  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"Union\[bytes, str\].*int"})
 
   def testRemovedBuiltins(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       long  # name-error
       {}.has_key  # attribute-error
     """)
 
   def testRange(self):
-    ty, _ = self.InferWithErrors("""\
+    ty, _ = self.InferWithErrors("""
       xrange(3)  # name-error
       v = range(3)
       v[0]
@@ -620,14 +620,14 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testStrIsNotInt(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       from typing import SupportsInt
       def f(x: SupportsInt): pass
       f("")  # wrong-arg-types
     """)
 
   def testStrIsNotFloat(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       from typing import SupportsFloat
       def f(x: SupportsFloat): pass
       f("")  # wrong-arg-types

@@ -75,7 +75,7 @@ class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
       """)
 
   def testUseAnyStrConstraints(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       from typing import AnyStr, TypeVar
       def f(x: AnyStr, y: AnyStr) -> AnyStr:
         return __any_object__
@@ -92,7 +92,7 @@ class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
     self.assertErrorRegexes(errors, {"e": r"Union\[bytes, str\].*int"})
 
   def testConstraintMismatch(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import AnyStr
       def f(x: AnyStr, y: AnyStr): ...
       f("", "")  # ok

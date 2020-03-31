@@ -66,7 +66,7 @@ class TestSuperPython3Featue(test_base.TargetPython3FeatureTest):
     """)
 
   def test_super_without_args_error(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class A(object):
         def m(self):
           pass

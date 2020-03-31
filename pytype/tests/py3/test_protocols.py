@@ -30,7 +30,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_check_protocol_error(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       import protocols
 
       def f(x: protocols.SupportsAbs):
@@ -41,7 +41,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
         errors, {"e": r"\(x: SupportsAbs\).*\(x: List\[str\]\)"})
 
   def test_check_iterator_error(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Iterator
       def f(x: Iterator[int]):
         return None
@@ -55,7 +55,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e": r"Iterator\[int\].*Foo"})
 
   def test_check_protocol_match_unknown(self):
-    self.Check("""\
+    self.Check("""
       from typing import Sized
       def f(x: Sized):
         pass
@@ -68,7 +68,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_check_parameterized_protocol(self):
-    self.Check("""\
+    self.Check("""
       from typing import Iterator, Iterable
 
       class Foo(object):
@@ -84,7 +84,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_check_parameterized_protocol_error(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Iterator, Iterable
 
       class Foo(object):
@@ -101,7 +101,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
         errors, {"e": r"\(x: Iterable\[int\]\).*\(x: Foo\)"})
 
   def test_check_parameterized_protocol_multi_signature(self):
-    self.Check("""\
+    self.Check("""
       from typing import Sequence, Union
 
       class Foo(object):
@@ -118,7 +118,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_check_parameterized_protocol_error_multi_signature(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Sequence, Union
 
       class Foo(object):
@@ -256,7 +256,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
       """, pythonpath=[d.path])
 
   def test_inherited_abstract_method_error(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Iterator
       class Foo(object):
         def __iter__(self) -> Iterator[str]:
@@ -314,7 +314,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_list_hash(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import Hashable
       def f(x: Hashable):
         pass
@@ -323,7 +323,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e": r"Hashable.*List.*__hash__"})
 
   def test_hash_constant(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import Hashable
       class Foo(object):
         __hash__ = None
@@ -388,7 +388,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_custom_protocol_error(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing_extensions import Protocol
       class Appendable(Protocol):
         def append(self):
@@ -433,7 +433,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     """)
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
-      errors = self.CheckWithErrors("""\
+      errors = self.CheckWithErrors("""
         import foo
         class NotAppendable(object):
           pass
@@ -458,7 +458,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     """)
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
-      errors = self.CheckWithErrors("""\
+      errors = self.CheckWithErrors("""
         from foo import Mutable
         class NotMutable(object):
           def remove(self):
@@ -504,7 +504,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_check_method_body(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing_extensions import Protocol
       class Countable(Protocol):
         def count(self) -> int:

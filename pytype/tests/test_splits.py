@@ -309,7 +309,7 @@ class SplitTest(test_base.TargetIndependentTest):
     """)
 
   def testIsSubclass(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       # Always return a bool
       def sig(x): return issubclass(x, object)
       # Classes for testing
@@ -326,7 +326,7 @@ class SplitTest(test_base.TargetIndependentTest):
       # Ambiguous results
       def a1(x): return "y" if issubclass(x, A) else 0
     """)
-    self.assertTypesMatchPytd(ty, """\
+    self.assertTypesMatchPytd(ty, """
       from typing import Union
       def sig(x) -> bool: ...
       def d1() -> str: ...
@@ -519,7 +519,7 @@ class SplitTest(test_base.TargetIndependentTest):
 
   def testDictMaybeContains(self):
     """Test that we can handle more complex cases involving dict membership."""
-    ty = self.Infer("""\
+    ty = self.Infer("""
       if __random__:
         x = {"a": 1, "b": 2}
       else:
@@ -537,7 +537,7 @@ class SplitTest(test_base.TargetIndependentTest):
     """)
 
   def testContainsCoerceToBool(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       class A(object):
         def __contains__(self, x):
           return 1
@@ -655,7 +655,7 @@ class SplitTest(test_base.TargetIndependentTest):
 
   def testBuiltinFullNameCheck(self):
     # Don't get confused by a class named int
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       class int():
         pass
       x = "foo" if __random__ else int()
@@ -677,7 +677,7 @@ class SplitTest(test_base.TargetIndependentTest):
 
   def testNoneOrTuple(self):
     # This tests the attribute retrieval code in vm.py:_get_iter
-    self.Check("""\
+    self.Check("""
       foo = (0, 0)
       if __random__:
         foo = None
@@ -760,7 +760,7 @@ class SplitTest(test_base.TargetIndependentTest):
         value1 = ...  # type: int
         value2 = ...  # type: Value
       """)
-      self.CheckWithErrors("""\
+      self.CheckWithErrors("""
         import foo
         if foo.value1 == foo.value2:
           name_error  # name-error

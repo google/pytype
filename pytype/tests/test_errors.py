@@ -8,7 +8,7 @@ class ErrorTest(test_base.TargetIndependentTest):
   """Tests for errors."""
 
   def testDeduplicate(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def f(x):
         y = 42
         y.foobar  # attribute-error[e]
@@ -18,14 +18,14 @@ class ErrorTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"'foobar' on int$"})
 
   def testUnknownGlobal(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def f():
         return foobar()  # name-error[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"foobar"})
 
   def testInvalidAttribute(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       class A(object):
         pass
       def f():
@@ -41,35 +41,35 @@ class ErrorTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"parrot.*int"})
 
   def testImportError(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       import rumplestiltskin  # import-error
     """)
 
   def testImportFromError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from sys import foobar  # import-error[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"sys\.foobar"})
 
   def testNameError(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       foobar  # name-error
     """)
 
   def testWrongArgCount(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       hex(1, 2, 3, 4)  # wrong-arg-count[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"expects 1.*got 4"})
 
   def testWrongArgTypes(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       hex(3j)  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"int.*complex"})
 
   def testInterpreterFunctionNameInMsg(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class A(list): pass
       A.append(3)  # missing-parameter[e]
     """)
@@ -78,14 +78,14 @@ class ErrorTest(test_base.TargetIndependentTest):
   def testPyTDFunctionNameInMsg(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", "class A(list): pass")
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import foo
         foo.A.append(3)  # missing-parameter[e]
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"function list\.append"})
 
   def testBuiltinFunctionNameInMsg(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       x = list
       x += (1,2)  # missing-parameter[e]
       """)
@@ -97,13 +97,13 @@ class ErrorTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"Built-in function len"})
 
   def testBoundMethodNameInMsg(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       "".join(1)  # wrong-arg-types[e]
       """)
     self.assertErrorRegexes(errors, {"e": r"Function str\.join"})
 
   def testNestedClassMethodNameIsMsg(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       class A(object):
         class B(object):
           def f(self):
@@ -117,7 +117,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         def f(a: int, b: int, c: int, d: int, e: int): ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import foo
         foo.f(1, 2, 3, "four", 5)  # wrong-arg-types[e]
       """, pythonpath=[d.path])
@@ -125,7 +125,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         "e": r"a, b, c, d: int, [.][.][.].*a, b, c, d: str, [.][.][.]"})
 
   def testInvalidBaseClass(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       class Foo(3):  # base-class-error
         pass
     """)
@@ -136,7 +136,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         class Codec(object):
             def __init__(self) -> None: ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import mod
         def f():
           for row in mod.Codec():  # attribute-error[e]
@@ -146,7 +146,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       self.assertErrorRegexes(errors, {"e": error})
 
   def testInvalidIteratorFromClass(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class A(object):
         pass
       def f():
@@ -156,7 +156,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"__iter__.*A"})
 
   def testIterOnModule(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       import sys
       for _ in sys:  # module-attr[e]
         pass
@@ -171,7 +171,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         class Foo(Generic[T]): ...
         class Bar(Foo[int]): ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import mod
         chr(mod.Bar())  # wrong-arg-types[e]
       """, pythonpath=[d.path])
@@ -183,7 +183,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       d.create_file("mycgi.pyi", """
         def escape(x: str or int) -> str or int
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import mycgi
         def foo(s):
           return mycgi.escape(s, quote=1)  # wrong-keyword-args[e]
@@ -195,14 +195,14 @@ class ErrorTest(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         def bar(xray, yankee, zulu) -> str
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import foo
         foo.bar(1, 2)  # missing-parameter[e]
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"zulu.*foo\.bar"})
 
   def testBadInheritance(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       class X:
           pass
       class Bar(X):
@@ -216,20 +216,20 @@ class ErrorTest(test_base.TargetIndependentTest):
       d.create_file("other.pyi", """
         def foo(x: int, y: str) -> str: ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import other
         other.foo(1.2, [])  # wrong-arg-types[e]
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"\(x: int"})
 
   def testCallUncallable(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       0()  # not-callable[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"int"})
 
   def testSuperError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class A(object):
         def __init__(self):
           super(A, self, "foo").__init__()  # wrong-arg-count[e]
@@ -239,7 +239,7 @@ class ErrorTest(test_base.TargetIndependentTest):
   def testAttributeError(self):
     with file_utils.Tempdir() as d:
       d.create_file("modfoo.pyi", "")
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         class Foo(object):
           def __getattr__(self, name):
             return "attr"
@@ -263,7 +263,7 @@ class ErrorTest(test_base.TargetIndependentTest):
           "e4": r"No attribute 'baz' on module 'modfoo'"})
 
   def testAttributeErrorGetAttribute(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(object):
         def __getattribute__(self, name):
           return "attr"
@@ -275,7 +275,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"x"})
 
   def testNoneAttribute(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       None.foo  # attribute-error[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"foo"})
@@ -285,14 +285,14 @@ class ErrorTest(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         def f(x: list[int]) -> int: ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import foo
         foo.f([""])  # wrong-arg-types[e]
       """, deep=True, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"List\[int\].*List\[str\]"})
 
   def testTooManyArgs(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def f():
         pass
       f(3)  # wrong-arg-count[e]
@@ -300,7 +300,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"0.*1"})
 
   def testTooFewArgs(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def f(x):
         pass
       f()  # missing-parameter[e]
@@ -308,7 +308,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"x.*f"})
 
   def testDuplicateKeyword(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def f(x, y):
         pass
       f(3, x=3)  # duplicate-keyword-argument[e]
@@ -321,7 +321,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         def f() -> int: ...
         class f: ...
       """)
-      self.InferWithErrors("""\
+      self.InferWithErrors("""
         import a  # pyi-error
       """, pythonpath=[d.path])
 
@@ -331,7 +331,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         from b import X
         class Y(X): ...
       """)
-      self.InferWithErrors("""\
+      self.InferWithErrors("""
         import a  # pyi-error
       """, pythonpath=[d.path])
 
@@ -342,7 +342,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         class f: ...
       """)
       d.create_file("foo/__init__.pyi", "")
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         from foo import a  # pyi-error[e]
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"foo\.a"})
@@ -354,7 +354,7 @@ class ErrorTest(test_base.TargetIndependentTest):
           class Y(X): ...
       """)
       d.create_file("foo/__init__.pyi", "")
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         from foo import a  # pyi-error[e]
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"foo\.a"})
@@ -365,7 +365,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         from typing import SupportsInt
         class A(SupportsInt[int]): pass
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import a  # pyi-error[e]
       """, deep=True, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"SupportsInt is not a container"})
@@ -380,7 +380,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         class B(Generic[K, V]): pass
         class C(A[K, V], B[V, K]): pass
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import a  # pyi-error[e]
       """, deep=True, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"Illegal.*order.*a\.C"})
@@ -392,7 +392,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         T = TypeVar("T")
         class A(Generic[T, T]): pass
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import a  # pyi-error[e]
       """, deep=True, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"T"})
@@ -405,7 +405,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         V = TypeVar("V")
         class A(Generic[T], Generic[V]): pass
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import a  # pyi-error[e]
       """, deep=True, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"inherit.*Generic"})
@@ -417,7 +417,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         T = TypeVar("T")
         x = ...  # type: T
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import a  # pyi-error[e]
       """, deep=True, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"a.*T.*a\.x"})
@@ -430,7 +430,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         class A(Generic[T]):
           x = ...  # type: T
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import a
         def f():
           return a.A.x  # unbound-type-param[e]
@@ -445,7 +445,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         class A(object):
           x = ...  # type: T
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import a  # pyi-error[e]
       """, deep=True, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"a.*T.*a\.A\.x"})
@@ -455,7 +455,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       d.create_file("a.pyi", """
         def f(x: int or str) -> None
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import a
         x = a.f(4.2)  # wrong-arg-types[e]
       """, deep=True, pythonpath=[d.path])
@@ -463,20 +463,20 @@ class ErrorTest(test_base.TargetIndependentTest):
       self.assertErrorRegexes(errors, {"e": pattern})
 
   def testPrintTypeArg(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       hex(int)  # wrong-arg-types[e]
     """, deep=True)
     self.assertErrorRegexes(errors, {"e": r"Actually passed.*Type\[int\]"})
 
   def testDeleteFromSet(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       s = {1}
       del s[1]  # unsupported-operands[e]
     """, deep=True)
     self.assertErrorRegexes(errors, {"e": r"item deletion"})
 
   def testBadReference(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       def main():
         x = foo  # name-error[e]
         for foo in []:
@@ -491,7 +491,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     """)
 
   def testSetIntAttribute(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       x = 42
       x.y = 42  # not-writable[e]
     """, deep=True)
@@ -503,7 +503,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         class A(object):
           def __init__(self, x: int) -> None
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import a
         x = a.A("")  # wrong-arg-types[e1]
         x = a.A("", 42)  # wrong-arg-count[e2]
@@ -520,7 +520,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         def f(x, *args, y) -> None
       """)
-      self.InferWithErrors("""\
+      self.InferWithErrors("""
         import foo
         foo.f(1, y=2)
         foo.f(1, 2, y=3)
@@ -529,7 +529,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       """, deep=True, pythonpath=[d.path])
 
   def testInvalidParametersDetails(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       float(list())  # wrong-arg-types[e1]
       float(1, list(), foobar=str)  # wrong-arg-count[e2]
       float(1, foobar=list())  # wrong-keyword-args[e3]
@@ -543,7 +543,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     })
 
   def testBadSuperClass(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class A(object):
         def f(self):
           return "foo"
@@ -556,7 +556,7 @@ class ErrorTest(test_base.TargetIndependentTest):
 
   @test_base.skip("Need to type-check second argument to super")
   def testBadSuperInstance(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class A(object):
         pass
       class B(A):
@@ -572,7 +572,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         import typing
         x = ...  # type: typing.Rumpelstiltskin
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import a  # pyi-error[e]
         x = a.x
       """, pythonpath=[d.path], deep=True)
@@ -584,7 +584,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         from typing import Rumpelstiltskin
         x = ...  # type: Rumpelstiltskin
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import a  # pyi-error[e]
         x = a.x
       """, pythonpath=[d.path], deep=True)
@@ -599,7 +599,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         class C(object): ...
         def f(x: Type[A]) -> bool
       """)
-      ty, errors = self.InferWithErrors("""\
+      ty, errors = self.InferWithErrors("""
         import a
         x = a.f(a.A)
         y = a.f(a.B)
@@ -624,7 +624,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         class B(A[str]): ...
         def f(x: Type[A[int]]): ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import a
         x = a.f(a.B)  # wrong-arg-types[e]
       """, pythonpath=[d.path], deep=True)
@@ -640,7 +640,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         class D(B, A): ...
         class E(C, D): ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import a
         x = a.E()  # mro-error[e]
       """, pythonpath=[d.path])
@@ -651,7 +651,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       d.create_file("a.pyi", """
         class A(BaseException, ValueError): ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import a
         class B(a.A): pass  # mro-error[e]
         raise a.A()
@@ -668,7 +668,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         from a import A
         class B(metaclass=A): ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import b
         class C(b.B):
           def __init__(self):
@@ -679,7 +679,7 @@ class ErrorTest(test_base.TargetIndependentTest):
   def testDontTimeoutOnComplex(self):
     # Tests that we can solve a complex file without timing out.
     # Useful for catching large performance regressions.
-    ty = self.Infer("""\
+    ty = self.Infer("""
       if __random__:
         x = [1]
       else:
@@ -703,7 +703,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         def f(x: str, y: int) -> bool
         def f(x: str) -> bool
       """)
-      self.InferWithErrors("""\
+      self.InferWithErrors("""
         import a
         x = a.f(0, "")  # wrong-arg-types
       """, pythonpath=[d.path])
@@ -714,7 +714,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         T = TypeVar("T")
         def copy(x: T) -> T
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import a
         class A(object):
           def __getattribute__(self, name):
@@ -724,26 +724,26 @@ class ErrorTest(test_base.TargetIndependentTest):
       self.assertErrorRegexes(errors, {"e": r"A"})
 
   def testBadTypeName(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       X = type(3, (int, object), {"a": 1})  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"Actual.*int"})
 
   def testBadTypeBases(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       X = type("X", (42,), {"a": 1})  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"Actual.*Tuple\[int\]"})
 
   def testHalfBadTypeBases(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       X = type("X", (42, object), {"a": 1})  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(
         errors, {"e": r"Actual.*Tuple\[int, Type\[object\]\]"})
 
   def testBadTypeMembers(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       X = type("X", (int, object), {0: 1})  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"Actual.*Dict\[int, int\]"})
@@ -754,7 +754,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         class A(B): ...
         class B(A): ...
       """)
-      ty, errors = self.InferWithErrors("""\
+      ty, errors = self.InferWithErrors("""
         import a
         v = a.A()  # recursion-error[e]
         x = v.x  # No error because there is an Unsolvable in the MRO of a.A
@@ -775,7 +775,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       d.create_file("f2.pyi", """
         def f(x: Optional): ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import f1  # pyi-error[e1]
         import f2  # pyi-error[e2]
       """, pythonpath=[d.path])
@@ -783,7 +783,7 @@ class ErrorTest(test_base.TargetIndependentTest):
           errors, {"e1": r"f1.*Union", "e2": r"f2.*Optional"})
 
   def testBadDictAttribute(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       x = {"a": 1}
       y = x.a  # attribute-error[e]
     """)
@@ -795,23 +795,23 @@ class ErrorTest(test_base.TargetIndependentTest):
         from typing import Dict
         x = ...  # type: Dict[str, int, float]
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import a  # pyi-error[e]
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"2.*3"})
 
   def testCallNone(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       None()  # not-callable
     """)
 
   def testInNone(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       3 in None  # unsupported-operands
     """)
 
   def testNoAttrError(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       if __random__:
         y = 42
       else:
@@ -820,7 +820,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     """)
 
   def testAttrError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       if __random__:
         y = 42
       else:
@@ -830,7 +830,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"upper.*int"})
 
   def testPrintCallableInstance(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Callable
       v = None  # type: Callable[[int], str]
       hex(v)  # wrong-arg-types[e]
@@ -838,7 +838,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"Actual.*Callable\[\[int\], str\]"})
 
   def testSameNameAndLine(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def f(x):
         return x + 42  # unsupported-operands[e1]  # unsupported-operands[e2]
       f("hello")
@@ -852,7 +852,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         def f(*args, y, x, z: int): ...
         def g(x): ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import foo
         foo.f(x=1, y=2, z="3")  # wrong-arg-types[e1]
         foo.g(42, v4="the", v3="quick", v2="brown", v1="fox")  # wrong-keyword-args[e2]
@@ -861,7 +861,7 @@ class ErrorTest(test_base.TargetIndependentTest):
           errors, {"e1": r"x, y, z.*x, y, z", "e2": r"v1, v2, v3, v4"})
 
   def testBadBaseClass(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(None): pass  # base-class-error[e1]
       class Bar(None if __random__ else 42): pass  # base-class-error[e2]
     """)
@@ -869,7 +869,7 @@ class ErrorTest(test_base.TargetIndependentTest):
                                      "e2": r"Optional\[<instance of int>\]"})
 
   def testCallableInUnsupportedOperands(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def f(x, y=None): pass
       f in f  # unsupported-operands[e]
     """)
@@ -884,14 +884,14 @@ class ErrorTest(test_base.TargetIndependentTest):
         X = NamedTuple("X", [])
         def f(x: int): ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import foo
         foo.f(foo.X())  # wrong-arg-types[e]
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"`X`"})
 
   def testBadAnnotation(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       tuple[0]  # not-indexable[e1]
       dict[1, 2]  # invalid-annotation[e2]  # invalid-annotation[e3]
       class A(object): pass
@@ -902,7 +902,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         "e4": r"class A"})
 
   def testRevealType(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       reveal_type(42 or "foo")  # reveal-type[e1]
       class Foo(object):
         pass
@@ -915,7 +915,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         "e4": r"^List\[int\]$"})
 
   def testNotProtocol(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       a = []
       a.append(1)
       a = "".join(a)  # wrong-arg-types[e]
@@ -924,7 +924,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         errors, {"e": r"\(.*List\[int\]\)$"})  # no protocol details
 
   def testHiddenError(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       use_option = False
       def f():
         if use_option:
@@ -932,7 +932,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     """)
 
   def testUnknownInError(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(x):
         y = x if __random__ else None
         return y.groups()  # attribute-error[e]
@@ -944,41 +944,41 @@ class OperationsTest(test_base.TargetIndependentTest):
   """Test operations."""
 
   def testXor(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(): return 'foo' ^ 3  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
         "e": r"\^.*str.*int.*'__xor__' on str.*'__rxor__' on int"})
 
   def testAdd(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(): return 'foo' + 3  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
         "e": r"\+.*str.*int.*__add__ on str.*str"})
 
   def testInvert(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(): return ~None  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"\~.*None.*'__invert__' on None"})
 
   def testSub(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(): return 'foo' - 3  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
         "e": r"\-.*str.*int.*'__sub__' on str.*'__rsub__' on int"})
 
   def testMul(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(): return 'foo' * None  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
         "e": r"\*.*str.*None.*__mul__ on str.*int"})
 
   def testDiv(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(): return 'foo' / 3  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
@@ -986,61 +986,61 @@ class OperationsTest(test_base.TargetIndependentTest):
     })
 
   def testMod(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(): return None % 3  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"\%.*None.*int.*'__mod__' on None"})
 
   def testLShift(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(): return 3 << None  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
         "e": r"\<\<.*int.*None.*__lshift__ on int.*int"})
 
   def testRShift(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(): return 3 >> None  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
         "e": r"\>\>.*int.*None.*__rshift__ on int.*int"})
 
   def testAnd(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(): return 'foo' & 3  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
         "e": r"\&.*str.*int.*'__and__' on str.*'__rand__' on int"})
 
   def testOr(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(): return 'foo' | 3  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
         "e": r"\|.*str.*int.*'__or__' on str.*'__ror__' on int"})
 
   def testFloorDiv(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(): return 3 // 'foo'  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
         "e": r"\/\/.*int.*str.*__floordiv__ on int.*int"})
 
   def testPow(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(): return 3 ** 'foo'  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
         "e": r"\*\*.*int.*str.*__pow__ on int.*int"})
 
   def testNeg(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(): return -None  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"\-.*None.*'__neg__' on None"})
 
   def testPos(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(): return +None  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"\+.*None.*'__pos__' on None"})
@@ -1050,7 +1050,7 @@ class InPlaceOperationsTest(test_base.TargetIndependentTest):
   """Test in-place operations."""
 
   def testIAdd(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(): v = []; v += 3  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
@@ -1061,14 +1061,14 @@ class NoSymbolOperationsTest(test_base.TargetIndependentTest):
   """Test operations with no native symbol."""
 
   def testGetItem(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(): v = []; return v['foo']  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
         "e": r"item retrieval.*List.*str.*__getitem__ on List.*int"})
 
   def testDelItem(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(): v = {'foo': 3}; del v[3]  # unsupported-operands[e]
     """)
     d = r"Dict\[str, int\]"
@@ -1076,21 +1076,21 @@ class NoSymbolOperationsTest(test_base.TargetIndependentTest):
         "e": r"item deletion.*{d}.*int.*__delitem__ on {d}.*str".format(d=d)})
 
   def testSetItem(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(): v = []; v['foo'] = 3  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
         "e": r"item assignment.*List.*str.*__setitem__ on List.*int"})
 
   def testContains(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(): return 'foo' in 3  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
         "e": r"'in'.*int.*str.*'__contains__' on int"})
 
   def testRecursion(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       def f():
         if __random__:
           f()

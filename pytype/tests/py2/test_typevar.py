@@ -15,7 +15,7 @@ class Test(test_base.TargetPython27FeatureTest):
         def f(x: T) -> T: ...
         def g(x: AnyStr) -> AnyStr: ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import foo
         foo.f("")  # wrong-arg-types[e1]
         foo.g(0)  # wrong-arg-types[e2]
@@ -26,7 +26,7 @@ class Test(test_base.TargetPython27FeatureTest):
 
   def testExtraArguments(self):
     # TODO(b/78905523): Make this a target-independent test.
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import TypeVar
       T = TypeVar("T", extra_arg=42)  # invalid-typevar[e1]
       S = TypeVar("S", *__any_object__)  # invalid-typevar[e2]

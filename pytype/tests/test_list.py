@@ -70,7 +70,7 @@ class ListTest(test_base.TargetIndependentTest):
     """)
 
   def test_getitem_slot(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       a = [1, '2', 3, 4]
       b = a[1]
       c = 1 if __random__ else 2
@@ -79,7 +79,7 @@ class ListTest(test_base.TargetIndependentTest):
       f = a[-1]
       g = a[slice(1,2)]  # should be List[str]
       """)
-    self.assertTypesMatchPytd(ty, """\
+    self.assertTypesMatchPytd(ty, """
       from typing import Any, List, Union
       a = ...  # type: List[Union[int, str]]
       b = ...  # type: str

@@ -202,10 +202,10 @@ class TraceTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     self.assertEqual(self.trace_vm.opcode_traces, [(op, "x", (None,))])
 
   def test_const(self):
-    src = textwrap.dedent("""\
+    src = textwrap.dedent("""
       x = 1  # line 1
       y = x  # line 2
-    """)
+    """).lstrip()
     # Compiles to:
     #     0 LOAD_CONST     0 (1)
     #     3 STORE_NAME     0 (x)

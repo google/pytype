@@ -7,7 +7,7 @@ class AbstractMethodTests(test_base.TargetPython27FeatureTest):
   """Tests for @abc.abstractmethod."""
 
   def test_name_error(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       import abc
       class Example(object):
         __metaclass__ = abc.ABCMeta
@@ -17,7 +17,7 @@ class AbstractMethodTests(test_base.TargetPython27FeatureTest):
     """)
 
   def test_instantiate_abstract_class(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       import abc
       class Example(object):
         __metaclass__ = abc.ABCMeta
@@ -47,7 +47,7 @@ class AbstractMethodTests(test_base.TargetPython27FeatureTest):
     """)
 
   def test_multiple_inheritance_error(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       import abc
       class X(object):
         pass

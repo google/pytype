@@ -43,7 +43,7 @@ class DebugTest(unittest.TestCase):
     n7 = Node("n7", n5)
     del n4, n6  # make pylint happy
     s = debug.ascii_tree(n1, lambda n: n.outgoing)
-    self.assertMultiLineEqual(textwrap.dedent("""\
+    self.assertMultiLineEqual(textwrap.dedent("""
       Node(n1)
       |
       +-Node(n2)
@@ -57,15 +57,15 @@ class DebugTest(unittest.TestCase):
         +-Node(n6)
         |
         +-Node(n7)
-    """), s)
+    """).lstrip(), s)
     s = debug.ascii_tree(n7, lambda n: n.incoming)
-    self.assertMultiLineEqual(textwrap.dedent("""\
+    self.assertMultiLineEqual(textwrap.dedent("""
       Node(n7)
       |
       +-Node(n5)
         |
         +-Node(n1)
-    """), s)
+    """).lstrip(), s)
 
   def testAsciiGraph(self):
     n1 = Node("n1")
@@ -73,7 +73,7 @@ class DebugTest(unittest.TestCase):
     n3 = Node("n3", n2)
     n3.connect_to(n1)
     s = debug.ascii_tree(n1, lambda n: n.outgoing)
-    self.assertMultiLineEqual(textwrap.dedent("""\
+    self.assertMultiLineEqual(textwrap.dedent("""
       Node(n1)
       |
       +-Node(n2)
@@ -81,7 +81,7 @@ class DebugTest(unittest.TestCase):
         +-Node(n3)
           |
           +-[Node(n1)]
-    """), s)
+    """).lstrip(), s)
 
   def testAsciiGraphWithCustomText(self):
     n1 = Node("n1")
@@ -89,7 +89,7 @@ class DebugTest(unittest.TestCase):
     n3 = Node("n3", n2)
     n3.connect_to(n1)
     s = debug.ascii_tree(n1, lambda n: n.outgoing, lambda n: n.name.upper())
-    self.assertMultiLineEqual(textwrap.dedent("""\
+    self.assertMultiLineEqual(textwrap.dedent("""
       N1
       |
       +-N2
@@ -97,7 +97,7 @@ class DebugTest(unittest.TestCase):
         +-N3
           |
           +-[N1]
-    """), s)
+    """).lstrip(), s)
 
   def testRootCause(self):
     n1 = self.prog.NewCFGNode()

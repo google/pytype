@@ -58,10 +58,10 @@ class IndexerTest(test_base.TargetIndependentTest, IndexerTestMixin):
   """Tests for the indexer."""
 
   def test_param_reuse(self):
-    ix = self.index_code("""\
+    ix = self.index_code("""
         def f(x):
           x = 1 # reuse param variable
-    """)
+    """.lstrip("\n"))
     self.assertDef(ix, "module.f", "f", "FunctionDef")
     self.assertDef(ix, "module.f.x", "x", "Param")
     self.assertDefLocs(ix, "module.f", [(1, 0)])
@@ -71,7 +71,7 @@ class IndexerTest(test_base.TargetIndependentTest, IndexerTestMixin):
                      "a/b.py, f.py, p/q.py, x/y.py not found")
   def test_resolved_imports(self):
     # We need all imports to be valid for pytype
-    code = """\
+    code = """
         import f
         import x.y
         import a.b as c
@@ -202,7 +202,7 @@ class IndexerTest(test_base.TargetIndependentTest, IndexerTestMixin):
 
   def test_def_types(self):
     # Basic sanity test of definition data
-    ix = self.index_code("""\
+    ix = self.index_code("""
         def f():
           x = 42
           return x
@@ -219,7 +219,7 @@ class IndexerTest(test_base.TargetIndependentTest, IndexerTestMixin):
     assert_data_type("module.f.x", abstract.Instance)
 
   def test_make_serializable(self):
-    ix = self.index_code("""\
+    ix = self.index_code("""
         def f():
           x = 42
           y = x
@@ -251,10 +251,10 @@ class IndexerTestPy3(test_base.TargetPython3BasicTest, IndexerTestMixin):
     return super(IndexerTestPy3, self).assertDefLocs(index, fqname, locs)
 
   def test_type_annotations(self):
-    ix = self.index_code("""\
+    ix = self.index_code("""
        def f(x: int) -> int:
          return x
-    """)
+    """.lstrip("\n"))
     self.assertDef(ix, "module.f", "f", "FunctionDef")
     self.assertDef(ix, "module.f.x", "x", "Param")
     self.assertDefLocs(ix, "module.f", [(1, 0)])

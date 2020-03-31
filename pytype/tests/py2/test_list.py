@@ -8,7 +8,7 @@ class ListTest(test_base.TargetPython27FeatureTest):
 
   # __getslice__ is py2 only
   def test_getslice_slot(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       a = [1, '2', 3, 4]
       b = a[:]
       c = 1 if __random__ else 2
@@ -24,7 +24,7 @@ class ListTest(test_base.TargetPython27FeatureTest):
       m = a[0:0]
       n = a[1:1]
       """)
-    self.assertTypesMatchPytd(ty, """\
+    self.assertTypesMatchPytd(ty, """
       from typing import Any, List, Union
       a = ...  # type: List[Union[int, str]]
       b = ...  # type: List[Union[int, str]]

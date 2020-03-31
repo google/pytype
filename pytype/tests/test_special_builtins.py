@@ -191,7 +191,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
     """)
 
   def testDifferentPropertyInstances(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       class Foo(object):
         def __init__(self):
           self._foo = 42 if __random__ else "hello world"

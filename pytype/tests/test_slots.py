@@ -64,7 +64,7 @@ class SlotsTest(test_base.TargetIndependentTest):
     """)
 
   def testSlotWithNonStrings(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(object):  # bad-slots[e]
         __slots__ = (1, 2, 3)
     """)
@@ -113,7 +113,7 @@ class SlotsTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"z"})
 
   def testObject(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       object().foo = 42  # not-writable[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"object"})
@@ -126,7 +126,7 @@ class SlotsTest(test_base.TargetIndependentTest):
     """)
 
   def testParameterizedBaseClass(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import List
       class Foo(List[int]):
         __slots__ = ()
@@ -135,7 +135,7 @@ class SlotsTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"foo"})
 
   def testEmptySlots(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(object):
         __slots__ = ()
       Foo().foo = 42  # not-writable[e]
@@ -143,7 +143,7 @@ class SlotsTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"foo"})
 
   def testNamedTuple(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       import collections
       Foo = collections.namedtuple("_", ["a", "b", "c"])
       foo = Foo(None, None, None)
@@ -155,7 +155,7 @@ class SlotsTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"d"})
 
   def testBuiltinAttr(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       "foo".bar = 1  # not-writable
       u"foo".bar = 2  # not-writable
       ().bar = 3  # not-writable
@@ -177,14 +177,14 @@ class SlotsTest(test_base.TargetIndependentTest):
     """)
 
   def testGeneratorAttr(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def f(): yield 42
       f().foo = 42  # not-writable[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"foo"})
 
   def testSetAttr(self):
-    self.Check("""\
+    self.Check("""
       class Foo(object):
         __slots__ = ()
         def __setattr__(self, name, value):
@@ -196,7 +196,7 @@ class SlotsTest(test_base.TargetIndependentTest):
     """)
 
   def testDescriptors(self):
-    self.Check("""\
+    self.Check("""
       class Descriptor(object):
         def __set__(self, obj, cls):
           pass
@@ -210,7 +210,7 @@ class SlotsTest(test_base.TargetIndependentTest):
     """)
 
   def testNameMangling(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Bar(object):
         __slots__ = ["__baz"]
         def __init__(self):

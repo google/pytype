@@ -177,7 +177,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         x = ...  # type: module
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import foo
         foo.x.bar()
         x = foo.__name__
@@ -196,7 +196,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
         class A(object):
           x = ...  # type: classmethod
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         from foo import A
         y = A.x()
         z = A().x()
@@ -214,7 +214,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
         class A(object):
           x = ...  # type: staticmethod
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         from foo import A
         y = A.x()
         z = A().x()
@@ -344,7 +344,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
     """)
 
   def testReversed(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       x1 = reversed(range(42))
       x2 = reversed([42])
       x3 = reversed((4, 2))
@@ -394,7 +394,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
     """)
 
   def testReduce(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       reduce(lambda x, y: x+y, [1,2,3]).real
       reduce(lambda x, y: x+y, ["foo"]).upper()
       reduce(lambda x, y: 4, "foo").real  # attribute-error[e]
@@ -508,7 +508,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
     """)
 
   def testEmptyTuple(self):
-    self.Check("""\
+    self.Check("""
       isinstance(42, ())
       issubclass(int, ())
       type("X", (), {"foo": 42})
@@ -516,7 +516,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
     """)
 
   def testListExtend(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       x1 = [42]
       x1.extend([""])
       x2 = [42]
@@ -624,7 +624,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
     """)
 
   def testSetDefaultVarargs(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       x1 = {}
       y1 = x1.setdefault(*("foo", 42))
 
@@ -682,7 +682,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         x = exec
       """)
-      self.Check("""\
+      self.Check("""
         import foo
         foo.x("a = 2")
       """, pythonpath=[d.path])

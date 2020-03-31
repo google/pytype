@@ -72,7 +72,7 @@ class SuperTest(test_base.TargetIndependentTest):
     """)
 
   def testSet(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(object):
         def foo(self, name, value):
           super(Foo, self).__set__(name, value)  # attribute-error[e]
@@ -143,7 +143,7 @@ class SuperTest(test_base.TargetIndependentTest):
     """)
 
   def testCallSuper(self):
-    _, errorlog = self.InferWithErrors("""\
+    _, errorlog = self.InferWithErrors("""
       class Y(object):
         pass
 
@@ -194,14 +194,14 @@ class SuperTest(test_base.TargetIndependentTest):
     """)
 
   def testSingleArgumentSuper(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       super(object)
       super(object())  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"cls: type.*cls: object"})
 
   def testMethodOnSingleArgumentSuper(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       sup = super(object)
       sup.foo  # attribute-error[e1]
       sup.__new__(object)  # wrong-arg-types[e2]
@@ -215,7 +215,7 @@ class SuperTest(test_base.TargetIndependentTest):
                                      "e2": r"Type\[super\].*Type\[object\]"})
 
   def testSuperUnderDecorator(self):
-    self.Check("""\
+    self.Check("""
       def decorate(cls):
         return __any_object__
       class Parent(object):
@@ -228,7 +228,7 @@ class SuperTest(test_base.TargetIndependentTest):
     """)
 
   def testSuperSetAttr(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(object):
         def __init__(self):
           super(Foo, self).foo = 42  # not-writable[e]
@@ -236,7 +236,7 @@ class SuperTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"super"})
 
   def testSuperSubclassSetAttr(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(object): pass
       class Bar(Foo):
         def __init__(self):
@@ -249,7 +249,7 @@ class SuperTest(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         class Foo(nothing): ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import foo
         class Bar(foo.Foo):
           def __init__(self):
@@ -258,7 +258,7 @@ class SuperTest(test_base.TargetIndependentTest):
       self.assertErrorRegexes(errors, {"e": r"super"})
 
   def testSuperAnySetAttr(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(__any_object__):
         def __init__(self):
           super(Foo, self).foo = 42  # not-writable[e]

@@ -99,7 +99,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
     """)
 
   def testMethodWithUnknownDecorator(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       from nowhere import decorator  # import-error
       class Foo(object):
         @decorator
@@ -108,7 +108,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
     """, deep=True)
 
   def testAssertInConstructor(self):
-    self.Check("""\
+    self.Check("""
       class Foo(object):
         def __init__(self):
           self._bar = "foo"
@@ -119,7 +119,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
 
   @test_base.skip("Line 7, in __str__: No attribute '_bar' on Foo'")
   def testConstructorInfiniteLoop(self):
-    self.Check("""\
+    self.Check("""
       class Foo(object):
         def __init__(self):
           self._bar = "foo"
@@ -129,7 +129,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
     """)
 
   def testAttributeAccessInImpossiblePath(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       x = 3.14 if __random__ else 42
       if isinstance(x, int):
         if isinstance(x, float):
@@ -138,7 +138,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
     """)
 
   def testBinaryOperatorOnImpossiblePath(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       x = "" if __random__ else []
       if isinstance(x, list):
         if isinstance(x, str):

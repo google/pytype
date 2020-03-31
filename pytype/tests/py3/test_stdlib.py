@@ -11,7 +11,7 @@ class StdLibTestsBasic(test_base.TargetPython3BasicTest,
   def testCollectionsDeque(self):
     # This method is different from the preceding ones because we model
     # collections.deque as a subclass, rather than an alias, of typing.Deque.
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import Deque
       import collections
       def f1(x: Deque): ...
@@ -22,7 +22,7 @@ class StdLibTestsBasic(test_base.TargetPython3BasicTest,
     self.assertErrorRegexes(errors, {"e": r"int.*deque"})
 
   def testCollectionsDequeInit(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       import collections
       x = collections.deque([1, 2, 3], maxlen=10)
     """)
@@ -32,7 +32,7 @@ class StdLibTestsBasic(test_base.TargetPython3BasicTest,
     """)
 
   def testPartial(self):
-    self.Check("""\
+    self.Check("""
       import functools
       from typing import TypeVar
       T = TypeVar('T', float, str)
@@ -150,7 +150,7 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
     """)
 
   def testDefaultDict(self):
-    self.Check("""\
+    self.Check("""
       import collections
       import itertools
       ids = collections.defaultdict(itertools.count(17).__next__)

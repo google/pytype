@@ -12,7 +12,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
       d.create_file("foo.pyi", """
         def bar() -> bool
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         from typing import Callable
         import foo
 
@@ -32,7 +32,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
         def f2(x: int) -> bool: ...
         def f3(x: int) -> str: ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         from typing import Callable, TypeVar
         import foo
 
@@ -58,7 +58,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
                  r"Actual.*Callable\[\[int\], str\]")})
 
   def testInterpreterFunctionAgainstCallable(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Callable
       def f(x: Callable[[bool], int]): ...
       def g1(x: int) -> bool:
@@ -73,7 +73,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
               r"Actual.*Callable\[\[str\], int\]")})
 
   def testBoundInterpreterFunctionAgainstCallable(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Callable
 
       class A(object):
@@ -108,7 +108,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
         def f1(x: Callable[..., T]) -> List[T]: ...
         def f2(x: Callable[[T], Any]) -> List[T]: ...
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         from typing import Any, Callable
         import foo
 
@@ -137,7 +137,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
       """)
 
   def testVariableLengthFunctionAgainstCallable(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Any, Callable
       def f(x: Callable[[int], Any]): pass
       def g1(x: int=0): pass
@@ -150,7 +150,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
               r"Actual.*Callable\[\[str\], Any\]")})
 
   def testCallableInstanceAgainstCallableWithTypeParameters(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Callable, TypeVar
       T = TypeVar("T")
       def f(x: Callable[[T], T]): ...
@@ -162,7 +162,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
               r"Actual.*Callable\[\[int\], str\]")})
 
   def testFunctionWithTypeParameterReturnAgainstCallable(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       from typing import Callable, AnyStr, TypeVar
       T = TypeVar("T")
       def f(x: Callable[..., AnyStr]): ...
@@ -201,7 +201,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
     """)
 
   def testFormalType(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       from typing import AnyStr, List, NamedTuple
       def f(x: str):
         pass
@@ -213,7 +213,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
     """)
 
   def testTypeVarWithBound(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Callable, TypeVar
       T1 = TypeVar("T1", bound=int)
       T2 = TypeVar("T2")
@@ -260,7 +260,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
   def testAnyStrAgainstBoundedCallable(self):
     # Constraints and bounds should still be enforced when a type parameter
     # appears only once in a callable.
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import Any, AnyStr, Callable, TypeVar
       IntVar = TypeVar('IntVar', bound=int)
       def f(x: AnyStr) -> AnyStr:
@@ -274,7 +274,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
 
   def testAnyStrAgainstMultipleParamCallable(self):
     # Callable[[T], T] needs to accept any argument, so AnyStr cannot match it.
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import Any, AnyStr, Callable, TypeVar
       T = TypeVar('T')
       def f(x: AnyStr) -> AnyStr:

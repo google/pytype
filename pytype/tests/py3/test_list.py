@@ -10,7 +10,7 @@ class ListTestBasic(test_base.TargetPython3BasicTest):
   def test_repeated_add(self):
     # At the time of this writing, this test completes in <5s. If it takes
     # significantly longer, there's been a performance regression.
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       from typing import List, Text, Tuple
       def f() -> Tuple[List[Text]]:
         x = (
@@ -63,7 +63,7 @@ class ListTest(test_base.TargetPython3FeatureTest):
     """)
 
   def test_getitem_slot(self):
-    ty, _ = self.InferWithErrors("""\
+    ty, _ = self.InferWithErrors("""
       a = [1, '2', 3, 4]
       p = a[1]
       q = 1 if __random__ else 2
@@ -71,7 +71,7 @@ class ListTest(test_base.TargetPython3FeatureTest):
       s = a["s"]  # unsupported-operands
       t = a[-1]
       """)
-    self.assertTypesMatchPytd(ty, """\
+    self.assertTypesMatchPytd(ty, """
       from typing import Any, List, Union
       a = ...  # type: List[Union[int, str]]
       p = ...  # type: str
@@ -86,7 +86,7 @@ class ListTest(test_base.TargetPython3FeatureTest):
     # Python 3 uses __getitem__ with slice objects instead of __getslice__.
     # Pytype doesn't support slice objects well, so a lot of results here are
     # imprecise. It also means wrong-arg-types won't be detected.
-    ty, _ = self.InferWithErrors("""\
+    ty, _ = self.InferWithErrors("""
       a = [1, '2', 3, 4]
       b = a[:]
       c = 1 if __random__ else 2
@@ -103,7 +103,7 @@ class ListTest(test_base.TargetPython3FeatureTest):
       o = a[1:1]
       p = a[1:2]
       """)
-    self.assertTypesMatchPytd(ty, """\
+    self.assertTypesMatchPytd(ty, """
       from typing import Any, List, Union
       a = ...  # type: List[Union[int, str]]
       b = ...  # type: List[Union[int, str]]

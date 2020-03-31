@@ -22,7 +22,7 @@ class ReingestTest(test_base.TargetPython27FeatureTest):
     """)
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import foo
         foo.Foo()  # not-instantiable[e]
         foo.Bar()

@@ -14,7 +14,7 @@ class TestAttributesPython27FeatureTest(test_base.TargetPython27FeatureTest):
     """)
 
   def testTypeParameterInstanceMultipleBindings(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class A(object):
         values = 42
       args = {A() if __random__ else True: ""}
@@ -60,7 +60,7 @@ class TestAttributesPython27FeatureTest(test_base.TargetPython27FeatureTest):
 
   # TODO(sivachandra): Add an Python 3 equivalent after b/78645527 is fixed.
   def testIter(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f():
         x = None
         return [y for y in x]  # attribute-error[e]

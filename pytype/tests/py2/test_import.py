@@ -8,7 +8,7 @@ class ImportTest(test_base.TargetPython27FeatureTest):
   """Tests for import."""
 
   def testModuleAttributes(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       import os
       f = os.__file__
       n = os.__name__

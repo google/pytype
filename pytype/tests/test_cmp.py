@@ -8,7 +8,7 @@ class InTest(test_base.TargetIndependentTest):
   """Test for "x in y". Also test overloading of this operator."""
 
   def test_concrete(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       def f(x, y):
         return x in y  # unsupported-operands[e]
       f(1, [1])
@@ -47,7 +47,7 @@ class InTest(test_base.TargetIndependentTest):
     """)
 
   def test_none(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       x = None
       if "" in x:  # unsupported-operands[e1]
         del x[""]  # unsupported-operands[e2]
@@ -60,7 +60,7 @@ class NotInTest(test_base.TargetIndependentTest):
   """Test for "x not in y". Also test overloading of this operator."""
 
   def test_concrete(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       def f(x, y):
         return x not in y  # unsupported-operands[e]
       f(1, [1])
@@ -93,7 +93,7 @@ class NotInTest(test_base.TargetIndependentTest):
     """)
 
   def test_none(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       x = None
       if "" not in x:  # unsupported-operands[e1]
         x[""] = 42  # unsupported-operands[e2]

@@ -7,7 +7,7 @@ class NamedtupleTests(test_base.TargetPython3BasicTest):
   """Tests for collections.namedtuple."""
 
   def test_namedtuple_match(self):
-    self.Check("""\
+    self.Check("""
         import collections
         from typing import Any, Dict
 
@@ -23,7 +23,7 @@ class NamedtupleTestsPy3(test_base.TargetPython3FeatureTest):
 
   def test_bad_call(self):
     """The last two arguments are kwonly in 3.6."""
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
         import collections
         collections.namedtuple()  # missing-parameter
         collections.namedtuple("_")  # missing-parameter

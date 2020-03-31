@@ -7,14 +7,14 @@ class ErrorTest(test_base.TargetPython27FeatureTest):
   """Tests for errors."""
 
   def testProtocolMismatch(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(object): pass
       next(Foo())  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"__iter__, next"})
 
   def testProtocolMismatchPartial(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(object):
         def __iter__(self):
           return self
@@ -24,7 +24,7 @@ class ErrorTest(test_base.TargetPython27FeatureTest):
         errors, {"e": r"\n\s*next\s*$"})  # `next` on its own line
 
   def testGetSlice(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(): v = []; return v[:'foo']  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(

@@ -22,7 +22,7 @@ class DictTest(test_base.TargetIndependentTest):
     """)
 
   def testBadPop(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       d = {"a": 42}
       v = d.pop("b")  # key-error[e]
     """)

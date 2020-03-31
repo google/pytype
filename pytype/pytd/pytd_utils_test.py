@@ -445,12 +445,12 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertTrue(pytd_utils.ASTeq(tree2, tree2))
 
   def testASTdiff(self):
-    src1 = textwrap.dedent("""\
+    src1 = textwrap.dedent("""
         a: int
-        b: str""")
-    src2 = textwrap.dedent("""\
+        b: str""").lstrip()
+    src2 = textwrap.dedent("""
         a: int
-        b: float""")
+        b: float""").lstrip()
     tree1 = parser.parse_string(src1, python_version=self.PYTHON_VERSION)
     tree2 = parser.parse_string(src2, python_version=self.PYTHON_VERSION)
     normalize = lambda diff: textwrap.dedent("\n".join(diff))

@@ -11,9 +11,6 @@ import six
 
 import unittest
 
-# We use backslashes to avoid unwanted newlines in test code.
-# pylint: disable=g-backslash-continuation
-
 IGNORE = object()
 
 
@@ -51,12 +48,15 @@ class _ParserTestBase(unittest.TestCase):
       The parsed pytd.TypeDeclUnit.
     """
     version = version or self.PYTHON_VERSION
-    src = textwrap.dedent(src)
+    src = textwrap.dedent(src).lstrip()
     ast = parser.parse_string(src, name=name, python_version=version,
                               platform=platform)
     actual = pytd_utils.Print(ast)
     if expected != IGNORE:
-      expected = src if expected is None else textwrap.dedent(expected)
+      if expected is None:
+        expected = src
+      else:
+        expected = textwrap.dedent(expected).lstrip()
       if prologue:
         expected = "%s\n\n%s" % (textwrap.dedent(prologue), expected)
       # Allow blank lines at the end of `expected` for prettier tests.
@@ -66,7 +66,7 @@ class _ParserTestBase(unittest.TestCase):
   def check_error(self, src, expected_line, message):
     """Check that parsing the src raises the expected error."""
     with self.assertRaises(parser.ParseError) as e:
-      parser.parse_string(textwrap.dedent(src),
+      parser.parse_string(textwrap.dedent(src).lstrip(),
                           python_version=self.PYTHON_VERSION)
     six.assertRegex(self, utils.message(e.exception), re.escape(message))
     self.assertEqual(expected_line, e.exception.line)
@@ -76,14 +76,14 @@ class ParseErrorTest(unittest.TestCase):
 
   def check(self, expected, *args, **kwargs):
     e = parser.ParseError(*args, **kwargs)
-    self.assertMultiLineEqual(textwrap.dedent(expected), str(e))
+    self.assertMultiLineEqual(textwrap.dedent(expected).lstrip("\n"), str(e))
 
   def test_plain_error(self):
-    self.check("""\
+    self.check("""
         ParseError: my message""", "my message")
 
   def test_full_error(self):
-    self.check("""\
+    self.check("""
           File: "foo.py", line 123
             this is a test
                  ^
@@ -91,7 +91,7 @@ class ParseErrorTest(unittest.TestCase):
                text="this is a test", column=6)
 
   def test_indented_text(self):
-    self.check("""\
+    self.check("""
           File: "foo.py", line 123
             this is a test
                  ^
@@ -99,22 +99,21 @@ class ParseErrorTest(unittest.TestCase):
                text="          this is a test", column=16)
 
   def test_line_without_filename(self):
-    self.check("""\
+    self.check("""
           File: "None", line 1
         ParseError: my message""", "my message", line=1)
 
   def test_filename_without_line(self):
-    self.check("""\
+    self.check("""
           File: "foo.py", line None
         ParseError: my message""", "my message", filename="foo.py")
 
   def test_text_without_column(self):
-    self.check("""\
+    self.check("""
         ParseError: my message""", "my message", text="this is  a test")
 
   def test_column_without_text(self):
-    self.check("""\
-        ParseError: my message""", "my message", column=5)
+    self.check("        ParseError: my message", "my message", column=5)
 
 
 class ParserTest(_ParserTestBase):
@@ -126,7 +125,7 @@ class ParserTest(_ParserTestBase):
     self.check_error("^", 1, "Illegal character '^'")
 
   def test_invalid_indentation(self):
-    self.check_error("""\
+    self.check_error("""
       class Foo:
         x = ... # type: int
        y""", 3, "Invalid indentation")
@@ -134,10 +133,10 @@ class ParserTest(_ParserTestBase):
   def test_type_on_next_line(self):
     # TODO(dbaum): This probably should be an error.  Current behavior matches
     # legacy parser. Consider changing to an error.
-    self.check("""\
+    self.check("""
       a = ...
       # type: int""",
-               """\
+               """
       a: int""")
 
   def test_constant(self):
@@ -145,10 +144,10 @@ class ParserTest(_ParserTestBase):
     self.check("x: str")
     self.check("x = 0", "x: int")
     self.check("x = 0.0", "x: float")
-    self.check_error("\nx = 123", 2,
+    self.check_error("x = 123", 1,
                      "Only '0' allowed as int literal")
     self.check("x = 0.0", "x: float")
-    self.check_error("\nx = 12.3", 2,
+    self.check_error("x = 12.3", 1,
                      "Only '0.0' allowed as float literal")
 
   def test_string_constant(self):
@@ -173,17 +172,17 @@ class ParserTest(_ParserTestBase):
     self.check("x = True", "x: bool")
     self.check("x = False", "x: bool")
     self.check("x = Foo")
-    self.check("""\
+    self.check("""
       class A:
-          x = True""", """\
+          x = True""", """
       class A:
           x: bool
     """)
-    self.check("""\
+    self.check("""
       class A:
           x = ...  # type: int
           y = x
-          z = y""", """\
+          z = y""", """
       class A:
           x: int
           y: int
@@ -191,7 +190,7 @@ class ParserTest(_ParserTestBase):
     """)
 
   def test_method_aliases(self):
-    self.check("""\
+    self.check("""
       class A:
           def x(self) -> int
           y = x
@@ -199,7 +198,7 @@ class ParserTest(_ParserTestBase):
           @classmethod
           def a(cls) -> str
           b = a
-          c = b""", """\
+          c = b""", """
       class A:
           def x(self) -> int: ...
           @classmethod
@@ -213,49 +212,49 @@ class ParserTest(_ParserTestBase):
     """)
 
   def test_slots(self):
-    self.check("""\
+    self.check("""
       class A:
           __slots__ = ...  # type: tuple
-    """, """\
+    """, """
       class A: ...
     """)
-    self.check("""\
+    self.check("""
       class A:
           __slots__ = ["foo", "bar", "baz"]
     """)
-    self.check("""\
+    self.check("""
       class A:
           __slots__ = []
     """)
-    self.check_error("""\
+    self.check_error("""
       __slots__ = ["foo", "bar"]
     """, 1, "__slots__ only allowed on the class level")
-    self.check_error("""\
+    self.check_error("""
       class A:
           __slots__ = ["foo", "bar"]
           __slots__ = ["foo", "bar", "baz"]
     """, 1, "Duplicate __slots__ declaration")
-    self.check_error("""\
+    self.check_error("""
       class A:
           __slots__ = ["foo", ?]
     """, 2, "syntax error")
-    self.check_error("""\
+    self.check_error("""
       class A:
           __slots__ = int
     """, 2, "__slots__ must be a list of strings")
 
   def test_nested_class(self):
-    self.check("""\
+    self.check("""
       class A:
           class B: ...
     """)
 
   def test_nested_class_alias(self):
-    self.check("""\
+    self.check("""
       class A:
           class B: ...
           C = A.B
-    """, """\
+    """, """
       from typing import Type
 
       class A:
@@ -264,11 +263,11 @@ class ParserTest(_ParserTestBase):
     """)
 
   def test_nested_class_module_alias(self):
-    self.check("""\
+    self.check("""
       class A:
           class B: ...
       C = A.B
-    """, """\
+    """, """
       from typing import Type
 
       C: Type[A.B]
@@ -278,7 +277,7 @@ class ParserTest(_ParserTestBase):
     """)
 
   def test_conditional_nested_class(self):
-    self.check("""\
+    self.check("""
       if sys.version_info >= (3, 6):
         class A:
           class B: ...
@@ -305,37 +304,37 @@ class ParserTest(_ParserTestBase):
     self.assertEqual(parent, pytd.NamedType("foo.c.X"))
 
   def test_duplicate_names(self):
-    self.check_error("""\
+    self.check_error("""
       def foo() -> int: ...
       foo = ... # type: int""",
                      None,
                      "Duplicate top-level identifier(s): foo")
-    self.check_error("""\
+    self.check_error("""
       from x import foo
       def foo() -> int: ...""",
                      None,
                      "Duplicate top-level identifier(s): foo")
-    self.check_error("""\
+    self.check_error("""
       X = ... # type: int
       class X: ...""",
                      None,
                      "Duplicate top-level identifier(s): X")
-    self.check_error("""\
+    self.check_error("""
       X = ... # type: int
       X = TypeVar('X')""",
                      None,
                      "Duplicate top-level identifier(s): X")
     # A function is allowed to appear multiple times.
-    self.check("""\
+    self.check("""
       def foo(x: int) -> int: ...
       def foo(x: str) -> str: ...""",
-               """\
+               """
       @overload
       def foo(x: int) -> int: ...
       @overload
       def foo(x: str) -> str: ...""")
     # @overload decorators should be properly round-tripped.
-    self.check("""\
+    self.check("""
       @overload
       def foo(x: int) -> int: ...
       @overload
@@ -348,11 +347,11 @@ class ParserTest(_ParserTestBase):
     self.check("x = ...  # type: ?", "x: Any",
                prologue="from typing import Any")
     self.check("x: nothing")
-    self.check("x = ...  # type: int or str or float", """\
+    self.check("x = ...  # type: int or str or float", """
                 from typing import Union
 
                 x: Union[int, str, float]""")
-    self.check("x = ...  # type: int and str and float", """\
+    self.check("x = ...  # type: int and str and float", """
                 x: int and str and float""")
 
   def test_empty_union_or_intersection_or_optional(self):
@@ -368,10 +367,10 @@ class ParserTest(_ParserTestBase):
                      "Too many options to typing.Optional")
 
   def test_alias_lookup(self):
-    self.check("""\
+    self.check("""
       from somewhere import Foo
       x = ...  # type: Foo
-      """, """\
+      """, """
       import somewhere
 
       from somewhere import Foo
@@ -379,7 +378,7 @@ class ParserTest(_ParserTestBase):
       x: somewhere.Foo""")
 
   def test_type_params(self):
-    ast = self.check("""\
+    ast = self.check("""
       from typing import TypeVar
 
       T = TypeVar('T')
@@ -403,44 +402,44 @@ class ParserTest(_ParserTestBase):
                      "Unrecognized keyword")
 
   def test_type_param_arguments(self):
-    self.check("""\
+    self.check("""
       from typing import List, TypeVar
 
       T = TypeVar('T', List[int], List[str])""")
-    self.check("""\
+    self.check("""
       from typing import List, TypeVar
 
       T = TypeVar('T', bound=List[str])""")
     # 'covariant' and 'contravariant' are ignored for now.
-    self.check("""\
+    self.check("""
       from typing import TypeVar
 
-      T = TypeVar('T', str, unicode, covariant=True)""", """\
+      T = TypeVar('T', str, unicode, covariant=True)""", """
       from typing import TypeVar
 
       T = TypeVar('T', str, unicode)""")
-    self.check("""\
+    self.check("""
       import other_mod
       from typing import TypeVar
 
       T = TypeVar('T', other_mod.A, other_mod.B)""")
 
   def test_error_formatting(self):
-    src = """\
+    src = """
       class Foo:
         this is not valid"""
     with self.assertRaises(parser.ParseError) as e:
-      parser.parse_string(textwrap.dedent(src), filename="foo.py",
+      parser.parse_string(textwrap.dedent(src).lstrip(), filename="foo.py",
                           python_version=self.PYTHON_VERSION)
-    self.assertMultiLineEqual(textwrap.dedent("""\
+    self.assertMultiLineEqual(textwrap.dedent("""
         File: "foo.py", line 2
           this is not valid
                ^
-      ParseError: syntax error, unexpected NAME, expecting ':' or '='"""
-                                             ), str(e.exception))
+      ParseError: syntax error, unexpected NAME, expecting ':' or '='
+    """).strip("\n"), str(e.exception))
 
   def test_pep484_translations(self):
-    ast = self.check("""\
+    ast = self.check("""
       x: None""")
     self.assertEqual(pytd.NamedType("NoneType"), ast.constants[0].type)
 
@@ -466,7 +465,7 @@ class ParserTest(_ParserTestBase):
                name="typing")
 
   def test_module_class_clash(self):
-    ast = parser.parse_string(textwrap.dedent("""\
+    ast = parser.parse_string(textwrap.dedent("""
       from bar import X
       class bar:
         X = ... # type: ?
@@ -477,7 +476,7 @@ class ParserTest(_ParserTestBase):
     self.assertEqual("bar.X.Baz", ast.Lookup("foo.z").type.name)
 
   def test_trailing_list_comma(self):
-    self.check("""\
+    self.check("""
       from typing import Any, Callable
 
       x: Callable[
@@ -487,7 +486,7 @@ class ParserTest(_ParserTestBase):
         ],
         Any,
       ]
-    """, """\
+    """, """
       from typing import Any, Callable
 
       x: Callable[[int, int], Any]
@@ -497,47 +496,47 @@ class ParserTest(_ParserTestBase):
 class HomogeneousTypeTest(_ParserTestBase):
 
   def test_callable_parameters(self):
-    self.check("""\
+    self.check("""
       from typing import Callable
 
       x: Callable[[int, str], bool]""")
-    self.check("""\
+    self.check("""
       from typing import Callable
 
-      x = ...  # type: Callable[..., bool]""", """\
+      x = ...  # type: Callable[..., bool]""", """
       from typing import Any, Callable
 
       x: Callable[Any, bool]""")
-    self.check("""\
+    self.check("""
       from typing import Any, Callable
 
       x: Callable[Any, bool]""")
-    self.check("""\
+    self.check("""
       from typing import Any, Callable
 
       x: Callable[[Any], bool]""")
-    self.check("""\
+    self.check("""
       from typing import Callable
 
       x: Callable[[], bool]""")
-    self.check("""\
+    self.check("""
       from typing import Callable
 
-      x = ...  # type: Callable[[nothing], bool]""", """\
+      x = ...  # type: Callable[[nothing], bool]""", """
       from typing import Callable
 
       x: Callable[[], bool]""")
-    self.check("""\
+    self.check("""
       from typing import Callable
 
-      x = ...  # type: Callable[[int]]""", """\
+      x = ...  # type: Callable[[int]]""", """
       from typing import Any, Callable
 
       x: Callable[[int], Any]""")
-    self.check("""\
+    self.check("""
       from typing import Callable
 
-      x = ...  # type: Callable[[], ...]""", """\
+      x = ...  # type: Callable[[], ...]""", """
       from typing import Any, Callable
 
       x: Callable[[], Any]""")
@@ -562,29 +561,29 @@ class HomogeneousTypeTest(_ParserTestBase):
                "from typing import Tuple\n\nx: Tuple[int, ...]")
 
   def test_tuple(self):
-    self.check("""\
+    self.check("""
       from typing import Tuple
 
       x = ...  # type: Tuple[int, str]""",
-               """\
+               """
       from typing import Tuple
 
       x: Tuple[int, str]""")
-    self.check("""\
+    self.check("""
       from typing import Tuple
 
       x = ...  # type: Tuple[int, str, ...]""",
-               """\
+               """
       from typing import Any, Tuple
 
       x: Tuple[int, str, Any]""")
 
   def test_empty_tuple(self):
-    self.check("""\
+    self.check("""
       from typing import Tuple
 
       def f() -> Tuple[()]: ...
-    """, """\
+    """, """
       from typing import Tuple
 
       def f() -> Tuple[nothing, ...]: ...
@@ -607,7 +606,7 @@ class HomogeneousTypeTest(_ParserTestBase):
 class NamedTupleTest(_ParserTestBase):
 
   def test_no_fields(self):
-    self.check("x = ...  # type: NamedTuple('foo', [])", """\
+    self.check("x = ...  # type: NamedTuple('foo', [])", """
       from typing import Any, Tuple, Type, TypeVar
 
       x: `namedtuple-foo-0`
@@ -628,7 +627,7 @@ class NamedTupleTest(_ParserTestBase):
       """)
 
   def test_multiple_fields(self):
-    expected = """\
+    expected = """
       from typing import Any, Tuple, Type, TypeVar
 
       x: `namedtuple-foo-0`
@@ -658,10 +657,10 @@ class NamedTupleTest(_ParserTestBase):
 
   def test_dedup_basename(self):
     # pylint: disable=line-too-long
-    self.check("""\
+    self.check("""
       x = ...  # type: NamedTuple('foo', [('a', int,)])
       y = ...  # type: NamedTuple('foo', [('b', str,)])""",
-               """\
+               """
       from typing import Any, Tuple, Type, TypeVar
 
       x: `namedtuple-foo-0`
@@ -698,7 +697,7 @@ class NamedTupleTest(_ParserTestBase):
         """)
 
   def test_assign_namedtuple(self):
-    self.check("X = NamedTuple('X', [])", """\
+    self.check("X = NamedTuple('X', [])", """
       from typing import Any, Tuple, Type, TypeVar
 
       X = `namedtuple-X-0`
@@ -719,7 +718,7 @@ class NamedTupleTest(_ParserTestBase):
     """)
 
   def test_subclass_namedtuple(self):
-    self.check("class X(NamedTuple('X', [])): ...", """\
+    self.check("class X(NamedTuple('X', [])): ...", """
       from typing import Any, Tuple, Type, TypeVar
 
       _Tnamedtuple-X-0 = TypeVar('_Tnamedtuple-X-0', bound=`namedtuple-X-0`)
@@ -740,7 +739,7 @@ class NamedTupleTest(_ParserTestBase):
     """)
 
   def test_trailing_comma(self):
-    self.check("""\
+    self.check("""
       from typing import NamedTuple
       Foo = NamedTuple(
           "Foo",
@@ -749,7 +748,7 @@ class NamedTupleTest(_ParserTestBase):
               ("b", str),
           ],
       )
-    """, """\
+    """, """
       from typing import Any, Tuple, Type, TypeVar
 
       Foo = `namedtuple-Foo-0`
@@ -772,7 +771,7 @@ class NamedTupleTest(_ParserTestBase):
     """)
 
   def test_collections_trailing_comma(self):
-    self.check("""\
+    self.check("""
       from collections import namedtuple
       Foo = namedtuple(
         "Foo",
@@ -781,7 +780,7 @@ class NamedTupleTest(_ParserTestBase):
           "b",
         ],
       )
-    """, """\
+    """, """
       from typing import Any, Tuple, Type, TypeVar
 
       from collections import namedtuple
@@ -805,7 +804,7 @@ class NamedTupleTest(_ParserTestBase):
     """)
 
   def test_collections_namedtuple(self):
-    expected = """\
+    expected = """
       from typing import Any, Tuple, Type, TypeVar
 
       from collections import namedtuple
@@ -841,7 +840,7 @@ class NamedTupleTest(_ParserTestBase):
       class X(NamedTuple):
         y: int
         z: str
-    """, """\
+    """, """
       from typing import Any, Tuple, Type, TypeVar
 
       _Tnamedtuple-X-0 = TypeVar('_Tnamedtuple-X-0', bound=`namedtuple-X-0`)
@@ -870,7 +869,7 @@ class NamedTupleTest(_ParserTestBase):
         y: int
         z: str
         def foo(self) -> None: ...
-    """, """\
+    """, """
       from typing import Any, Tuple, Type, TypeVar
 
       _Tnamedtuple-X-0 = TypeVar('_Tnamedtuple-X-0', bound=`namedtuple-X-0`)
@@ -899,7 +898,7 @@ class NamedTupleTest(_ParserTestBase):
       class X(dict, NamedTuple):
         y: int
         z: str
-    """, """\
+    """, """
       from typing import Any, Tuple, Type, TypeVar
 
       _Tnamedtuple-X-0 = TypeVar('_Tnamedtuple-X-0', bound=`namedtuple-X-0`)
@@ -922,7 +921,7 @@ class NamedTupleTest(_ParserTestBase):
     """)
 
   def test_multi_namedtuple_parent(self):
-    self.check_error("""\
+    self.check_error("""
       from typing import NamedTuple
       class X(NamedTuple, NamedTuple): ...
     """, 2, "cannot inherit from bare NamedTuple more than once")
@@ -990,28 +989,28 @@ class FunctionTest(_ParserTestBase):
                "def foo() -> int: ...")
     self.check("def foo(x) -> int: # type: ignore\n  x=List[int]",
                "def foo(x) -> int:\n    x = List[int]")
-    self.check("""\
+    self.check("""
                def foo(x: int,  # type: ignore
                        y: str) -> bool: ...""",
                "def foo(x: int, y: str) -> bool: ...")
-    self.check("""\
+    self.check("""
       class Foo:
           bar: str  # type: ignore
-    """, """\
+    """, """
       class Foo:
           bar: str
     """)
-    self.check("""\
+    self.check("""
       class Foo:
           bar = ...  # type: str  # type: ignore
-    """, """\
+    """, """
       class Foo:
           bar: str
     """)
-    self.check("""\
+    self.check("""
       class Foo:
           bar: str = ...  # type: ignore
-    """, """\
+    """, """
       class Foo:
           bar: str
     """)
@@ -1021,65 +1020,65 @@ class FunctionTest(_ParserTestBase):
     # make sense for methods of classes.  But this at least gives us some
     # coverage of the decorator logic.  More sensible tests can be created once
     # classes are implemented.
-    self.check("""\
+    self.check("""
       @overload
       def foo() -> int: ...""",
-               """\
+               """
       def foo() -> int: ...""")
 
     # Accept and disregard type: ignore comments on a decorator
-    self.check("""\
+    self.check("""
       @overload
       def foo() -> int: ...
       @overload  # type: ignore  # unsupported signature
       def foo(bool) -> int: ...""",
-               """\
+               """
       @overload
       def foo() -> int: ...
       @overload
       def foo(bool) -> int: ...""")
 
-    self.check("""\
+    self.check("""
       @abstractmethod
       def foo() -> int: ...""",
-               """\
+               """
       @abstractmethod
       def foo() -> int: ...""")
 
-    self.check("""\
+    self.check("""
       @abc.abstractmethod
       def foo() -> int: ...""",
-               """\
+               """
       @abstractmethod
       def foo() -> int: ...""")
 
-    self.check("""\
+    self.check("""
       @staticmethod
       def foo() -> int: ...""")
 
-    self.check("""\
+    self.check("""
       @classmethod
       def foo() -> int: ...""")
 
-    self.check("""\
+    self.check("""
       @coroutine
       def foo() -> int: ...""")
 
-    self.check("""\
+    self.check("""
       @asyncio.coroutine
       def foo() -> int: ...""",
-               """\
+               """
       @coroutine
       def foo() -> int: ...""")
 
-    self.check("""\
+    self.check("""
       @asyncio.coroutine
       def foo() -> int: ...
       @coroutines.coroutine
       def foo() -> int: ...
       @coroutine
       def foo() -> str: ...""",
-               """\
+               """
       @coroutine
       @overload
       def foo() -> int: ...
@@ -1090,7 +1089,7 @@ class FunctionTest(_ParserTestBase):
       @overload
       def foo() -> str: ...""")
 
-    self.check_error("""\
+    self.check_error("""
       def foo() -> str: ...
       @coroutine
       def foo() -> int: ...""",
@@ -1098,19 +1097,19 @@ class FunctionTest(_ParserTestBase):
                      "Overloaded signatures for foo disagree on "
                      "coroutine decorators")
 
-    self.check_error("""\
+    self.check_error("""
       @property
       def foo(self) -> int""",
                      None,
                      "Module-level functions with property decorators: foo")
 
-    self.check_error("""\
+    self.check_error("""
       @foo.setter
       def foo(self, x) -> int: ...""",
                      None,
                      "Module-level functions with property decorators: foo")
 
-    self.check_error("""\
+    self.check_error("""
       @classmethod
       @staticmethod
       def foo() -> int: ...""",
@@ -1118,21 +1117,21 @@ class FunctionTest(_ParserTestBase):
                      "Too many decorators for foo")
 
   def test_type_check_only(self):
-    self.check("""\
+    self.check("""
       from typing import type_check_only
       @type_check_only
       def f() -> None: ...
     """, "def f() -> None: ...")
 
   def test_type_check_only_class(self):
-    self.check("""\
+    self.check("""
       from typing import type_check_only
       @type_check_only
       class Foo: ...
     """, "class Foo: ...")
 
   def test_bad_decorated_class(self):
-    self.check_error("""\
+    self.check_error("""
       @classmethod
       class Foo: ...
     """, 2, "Unsupported class decorators: classmethod")
@@ -1143,46 +1142,46 @@ class FunctionTest(_ParserTestBase):
                "def foo() -> int: ...")
     self.check("def foo() -> int: pass",
                "def foo() -> int: ...")
-    self.check("""\
+    self.check("""
       def foo() -> int:
         ...""",
-               """\
+               """
       def foo() -> int: ...""")
-    self.check("""\
+    self.check("""
       def foo() -> int:
         pass""",
-               """\
+               """
       def foo() -> int: ...""")
-    self.check("""\
+    self.check("""
       def foo() -> int:
         '''doc string'''""",
-               """\
+               """
       def foo() -> int: ...""")
 
   def test_mutators(self):
     # Mutators.
-    self.check("""\
+    self.check("""
       def foo(x) -> int:
           x = int""")
-    self.check_error("""\
+    self.check_error("""
       def foo(x) -> int:
           y = int""", 1, "No parameter named y")
 
   def test_exceptions(self):
-    self.check("""\
+    self.check("""
       def foo(x) -> int:
           raise Error""",
-               """\
+               """
       def foo(x) -> int:
           raise Error()""")
-    self.check("""\
+    self.check("""
       def foo(x) -> int:
           raise Error()""")
-    self.check("""\
+    self.check("""
       def foo() -> int:
           raise RuntimeError()
           raise TypeError()""")
-    self.check("""\
+    self.check("""
       def foo() -> int:
           raise Bar.Error()""", prologue="import Bar")
 
@@ -1201,83 +1200,83 @@ class FunctionTest(_ParserTestBase):
 class ClassTest(_ParserTestBase):
 
   def test_no_parents(self):
-    canonical = """\
+    canonical = """
       class Foo: ...
       """
 
     self.check(canonical, canonical)
-    self.check("""\
+    self.check("""
       class Foo():
           pass
       """, canonical)
 
   def test_parents(self):
-    self.check("""\
+    self.check("""
       class Foo(Bar): ...
     """)
-    self.check("""\
+    self.check("""
       class Foo(Bar, Baz): ...
       """)
 
   def test_parent_remove_nothingtype(self):
-    self.check("""\
+    self.check("""
       class Foo(nothing): ...
-      """, """\
+      """, """
       class Foo: ...
       """)
-    self.check("""\
+    self.check("""
       class Foo(Bar, nothing): ...
-      """, """\
+      """, """
       class Foo(Bar): ...
       """)
 
   def test_class_type_ignore(self):
-    canonical = """\
+    canonical = """
       class Foo:  # type: ignore
           pass
       class Bar(Foo):  # type: ignore
           pass
       """
-    self.check(canonical, """\
+    self.check(canonical, """
       class Foo: ...
 
       class Bar(Foo): ...
     """)
 
   def test_metaclass(self):
-    self.check("""\
+    self.check("""
       class Foo(metaclass=Meta): ...
       """)
-    self.check("""\
+    self.check("""
       class Foo(Bar, metaclass=Meta): ...
       """)
-    self.check_error("""\
+    self.check_error("""
       class Foo(badkeyword=Meta): ...
       """, 1, "Only 'metaclass' allowed as classdef kwarg")
-    self.check_error("""\
+    self.check_error("""
       class Foo(metaclass=Meta, Bar): ...
       """, 1, "metaclass must be last argument")
 
   def test_shadow_pep484(self):
-    self.check("""\
+    self.check("""
       class List:
           def bar(self) -> List: ...
       """)
 
   def test_no_body(self):
-    canonical = """\
+    canonical = """
       class Foo: ...
       """
     # There are numerous ways to indicate an empty body.
     self.check(canonical, canonical)
-    self.check("""\
+    self.check("""
       class Foo(): pass
       """, canonical)
-    self.check("""\
+    self.check("""
       class Foo():
           pass
       """, canonical)
-    self.check("""\
+    self.check("""
       class Foo():
           ...
       """, canonical)
@@ -1292,49 +1291,49 @@ class ClassTest(_ParserTestBase):
           """docstring"""
       ''', canonical)
     # Accept type: ignore with empty body
-    self.check("""\
+    self.check("""
       class Foo: ...  # type: ignore
       """, canonical)
-    self.check("""\
+    self.check("""
       class Foo: # type: ignore
           pass
       """, canonical)
 
   def test_attribute(self):
-    self.check("""\
+    self.check("""
       class Foo:
           a: int
       """)
 
   def test_method(self):
-    self.check("""\
+    self.check("""
       class Foo:
           def a(self, x: int) -> str: ...
       """)
 
   def test_property(self):
-    self.check("""\
+    self.check("""
       class Foo:
           @property
           def a(self) -> int
-      """, """\
+      """, """
       class Foo:
           a: int
       """)
 
   def test_duplicate_name(self):
-    self.check_error("""\
+    self.check_error("""
       class Foo:
           bar = ...  # type: int
           bar = ...  # type: str
       """, 1, "Duplicate identifier(s): bar")
-    self.check_error("""\
+    self.check_error("""
       class Foo:
           def bar(self) -> int: ...
           bar = ...  # type: str
       """, 1, "Duplicate identifier(s): bar")
     # Multiple method defs are ok (needed for variant signatures).
-    self.check("""\
+    self.check("""
       class Foo:
           @overload
           def x(self) -> int: ...
@@ -1343,20 +1342,20 @@ class ClassTest(_ParserTestBase):
       """)
 
   def test_protocol_parent(self):
-    self.check("""\
+    self.check("""
       from typing import Protocol
 
       class Foo(Protocol): ...
     """)
 
   def test_parameterized_protocol_parent(self):
-    self.check("""\
+    self.check("""
       from typing import Protocol, TypeVar
 
       T = TypeVar('T')
 
       class Foo(Protocol[T]): ...
-    """, """\
+    """, """
       from typing import Generic, Protocol, TypeVar
 
       T = TypeVar('T')
@@ -1365,7 +1364,7 @@ class ClassTest(_ParserTestBase):
     """)
 
   def test_bad_typevar_in_mutation(self):
-    self.check_error("""\
+    self.check_error("""
       from typing import Generic, TypeVar
 
       S = TypeVar('S')
@@ -1382,71 +1381,71 @@ class ClassTest(_ParserTestBase):
 class IfTest(_ParserTestBase):
 
   def test_if_true(self):
-    self.check("""\
+    self.check("""
       if sys.version_info == (2, 7, 6):
         x = ...  # type: int
-      """, """\
+      """, """
       x: int""")
 
   def test_if_false(self):
-    self.check("""\
+    self.check("""
       if sys.version_info == (1, 2, 3):
         x = ...  # type: int
       """, "")
 
   def test_else_used(self):
-    self.check("""\
+    self.check("""
       if sys.version_info == (1, 2, 3):
         x = ...  # type: int
       else:
         y = ...  # type: str
-      """, """\
+      """, """
       y: str""")
 
   def test_else_ignored(self):
-    self.check("""\
+    self.check("""
       if sys.version_info == (2, 7, 6):
         x = ...  # type: int
       else:
         y = ...  # type: str
-      """, """\
+      """, """
       x: int""")
 
   def test_elif_used(self):
-    self.check("""\
+    self.check("""
       if sys.version_info == (1, 2, 3):
         x = ...  # type: int
       elif sys.version_info == (2, 7, 6):
         y = ...  # type: float
       else:
         z = ...  # type: str
-      """, """\
+      """, """
       y: float""")
 
   def test_elif_preempted(self):
-    self.check("""\
+    self.check("""
       if sys.version_info > (1, 2, 3):
         x = ...  # type: int
       elif sys.version_info == (2, 7, 6):
         y = ...  # type: float
       else:
         z = ...  # type: str
-      """, """\
+      """, """
       x: int""")
 
   def test_elif_ignored(self):
-    self.check("""\
+    self.check("""
       if sys.version_info == (1, 2, 3):
         x = ...  # type: int
       elif sys.version_info == (4, 5, 6):
         y = ...  # type: float
       else:
         z = ...  # type: str
-      """, """\
+      """, """
       z: str""")
 
   def test_nested_if(self):
-    self.check("""\
+    self.check("""
       if sys.version_info >= (2, 0):
         if sys.platform == "linux":
           a = ...  # type: int
@@ -1460,7 +1459,7 @@ class IfTest(_ParserTestBase):
       """, "a: int")
 
   def test_if_or(self):
-    self.check("""\
+    self.check("""
       if sys.version_info >= (2, 0) or sys.version_info < (0, 0, 0):
         a = ...  # type: int
       if sys.version_info < (0, 0, 0) or sys.version_info >= (2, 0):
@@ -1472,26 +1471,26 @@ class IfTest(_ParserTestBase):
       if (sys.platform == "windows" or sys.version_info < (0,) or
           sys.version_info >= (2, 7)):
         e = ...  # type: int
-    """, """\
+    """, """
       a: int
       b: int
       d: int
       e: int""")
 
   def test_if_and(self):
-    self.check("""\
+    self.check("""
       if sys.version_info >= (2, 0) and sys.version_info < (3, 0):
         a = ...  # type: int
       if sys.version_info >= (2, 0) and sys.version_info >= (3, 0):
         b = ...  # type: int
-    """, """\
+    """, """
       a: int""")
 
   # The remaining tests verify that actions with side effects only take effect
   # within a true block.
 
   def test_conditional_import(self):
-    self.check("""\
+    self.check("""
       if sys.version_info == (2, 7, 6):
         from foo import Processed
       else:
@@ -1499,7 +1498,7 @@ class IfTest(_ParserTestBase):
       """, "from foo import Processed")
 
   def test_conditional_alias_or_constant(self):
-    self.check("""\
+    self.check("""
       if sys.version_info == (2, 7, 6):
         x = Processed
       else:
@@ -1507,12 +1506,12 @@ class IfTest(_ParserTestBase):
       """, "x = Processed")
 
   def test_conditional_class(self):
-    self.check("""\
+    self.check("""
       if sys.version_info == (2, 7, 6):
         class Processed: ...
       else:
         class Ignored: ...
-      """, """\
+      """, """
       class Processed: ...
       """)
 
@@ -1525,7 +1524,7 @@ class IfTest(_ParserTestBase):
     # Dict should be registered, List should not be registered.  Thus after
     # the "if" statement Dict refers to the local Dict class and List refers
     # to the PEP 484 list class.
-    self.check("""\
+    self.check("""
       from typing import List
       if sys.version_info == (2, 7, 6):
         class Dict: ...
@@ -1534,7 +1533,7 @@ class IfTest(_ParserTestBase):
 
       x = ...  # type: Dict
       y = ...  # type: List
-      """, """\
+      """, """
       x: Dict
       y: list
 
@@ -1544,12 +1543,12 @@ class IfTest(_ParserTestBase):
   def test_conditional_typevar(self):
     # The legacy parser did not handle this correctly - typevars are added
     # regardless of any conditions.
-    self.check("""\
+    self.check("""
       if sys.version_info == (2, 7, 6):
         T = TypeVar('T')
       else:
         F = TypeVar('F')
-      """, """\
+      """, """
         from typing import TypeVar
 
         T = TypeVar('T')""")
@@ -1564,7 +1563,7 @@ class ClassIfTest(_ParserTestBase):
   # etc).
 
   def test_conditional_constant(self):
-    self.check("""\
+    self.check("""
       class Foo:
         if sys.version_info == (2, 7, 0):
           x = ...  # type: int
@@ -1572,13 +1571,13 @@ class ClassIfTest(_ParserTestBase):
           y = ...  # type: str
         else:
           z = ...  # type: float
-      """, """\
+      """, """
       class Foo:
           y: str
       """)
 
   def test_conditional_method(self):
-    self.check("""\
+    self.check("""
       class Foo:
         if sys.version_info == (2, 7, 0):
           def a(self, x: int) -> str: ...
@@ -1586,47 +1585,47 @@ class ClassIfTest(_ParserTestBase):
           def b(self, x: int) -> str: ...
         else:
           def c(self, x: int) -> str: ...
-      """, """\
+      """, """
       class Foo:
           def b(self, x: int) -> str: ...
       """)
 
   def test_nested(self):
-    self.check("""\
+    self.check("""
       class Foo:
         if sys.version_info > (2, 7, 0):
           if sys.version_info == (2, 7, 6):
             def b(self, x: int) -> str: ...
-      """, """\
+      """, """
       class Foo:
           def b(self, x: int) -> str: ...
       """)
 
   def test_no_import(self):
-    self.check_error("""\
+    self.check_error("""
       class Foo:
         if sys.version_info > (2, 7, 0):
           import foo
     """, 3, "syntax error")
 
   def test_bad_alias(self):
-    self.check_error("""\
+    self.check_error("""
       class Foo:
         if sys.version_info > (2, 7, 0):
           a = b
     """, 1, "Illegal value for alias 'a'")
 
   def test_no_class(self):
-    self.check("""\
+    self.check("""
       class Foo:
         if sys.version_info <= (2, 7, 0):
           class Bar: ...
-    """, """\
+    """, """
       class Foo: ...
     """)
 
   def test_no_typevar(self):
-    self.check_error("""\
+    self.check_error("""
       class Foo:
         if sys.version_info > (2, 7, 0):
           T = TypeVar('T')
@@ -1637,13 +1636,13 @@ class ConditionTest(_ParserTestBase):
 
   def check_cond(self, condition, expected, **kwargs):
     out = "x: int" if expected else ""
-    self.check("""\
+    self.check("""
       if %s:
         x = ...  # type: int
       """ % condition, out, **kwargs)
 
   def check_cond_error(self, condition, message):
-    self.check_error("""\
+    self.check_error("""
       if %s:
         x = ...  # type: int
       """ % condition, 1, message)
@@ -1772,7 +1771,7 @@ class PropertyDecoratorTest(_ParserTestBase):
   """Tests that cover _parse_signature_as_property()."""
 
   def test_property_with_type(self):
-    expected = """\
+    expected = """
       class A(object):
           name: str
     """
@@ -1788,7 +1787,7 @@ class PropertyDecoratorTest(_ParserTestBase):
       class A(object):
           @name.setter
           def name(self, value: str) -> None: ...
-      """, """\
+      """, """
       from typing import Any
 
       class A(object):
@@ -1823,7 +1822,7 @@ class PropertyDecoratorTest(_ParserTestBase):
       """, expected)
 
   def test_property_decorator_any_type(self):
-    expected = """\
+    expected = """
           from typing import Any
 
           class A(object):
@@ -1862,32 +1861,32 @@ class PropertyDecoratorTest(_ParserTestBase):
       class A(object):
           @property
           def name(self, bad_arg): ...
-    """, 2, "Unhandled decorator: property")
+    """, 1, "Unhandled decorator: property")
 
     self.check_error("""
       class A(object):
           @name.setter
           def name(self): ...
-      """, 2, "Unhandled decorator: name.setter")
+      """, 1, "Unhandled decorator: name.setter")
 
     self.check_error("""
       class A(object):
           @name.foo
           def name(self): ...
-      """, 2, "Unhandled decorator: name.foo")
+      """, 1, "Unhandled decorator: name.foo")
 
     self.check_error("""
       class A(object):
           @notname.deleter
           def name(self): ...
-      """, 2, "Unhandled decorator: notname.deleter")
+      """, 1, "Unhandled decorator: notname.deleter")
 
     self.check_error("""
       class A(object):
           @property
           @staticmethod
           def name(self): ...
-      """, 5, "Too many decorators for name")
+      """, 4, "Too many decorators for name")
 
     self.check_error("""
       @property
@@ -1902,7 +1901,7 @@ class PropertyDecoratorTest(_ParserTestBase):
 
         @name.getter
         def name(self) -> int: ...
-    """, """\
+    """, """
     from typing import Union
 
     class A(object):
@@ -1917,7 +1916,7 @@ class MergeSignaturesTest(_ParserTestBase):
       class A(object):
           @property
           def name(self) -> str: ...
-      """, """\
+      """, """
       class A(object):
           name: str
       """)
@@ -1930,7 +1929,7 @@ class MergeSignaturesTest(_ParserTestBase):
 
           @property
           def name(self) -> int: ...
-      """, """\
+      """, """
       from typing import Union
 
       class A(object):
@@ -1944,7 +1943,7 @@ class MergeSignaturesTest(_ParserTestBase):
 
           @property
           def name(self): ...
-    """, """\
+    """, """
       from typing import Any
 
       class A(object):
@@ -1952,16 +1951,16 @@ class MergeSignaturesTest(_ParserTestBase):
     """)
 
   def test_method(self):
-    self.check("""\
+    self.check("""
       class A(object):
           def name(self) -> str: ...
       """)
 
   def test_merged_method(self):
-    ast = self.check("""\
+    ast = self.check("""
       def foo(x: int) -> str: ...
       def foo(x: str) -> str: ...""",
-                     """\
+                     """
       @overload
       def foo(x: int) -> str: ...
       @overload
@@ -1977,7 +1976,7 @@ class MergeSignaturesTest(_ParserTestBase):
           def name(self): ...
 
           def name(self): ...
-      """, 2, "Overloaded signatures for name disagree on decorators")
+      """, 1, "Overloaded signatures for name disagree on decorators")
 
   def test_overloaded_signatures_disagree(self):
     self.check_error("""
@@ -1986,10 +1985,10 @@ class MergeSignaturesTest(_ParserTestBase):
           def foo(x: int): ...
           @classmethod
           def foo(x: str): ...
-      """, 2, "Overloaded signatures for foo disagree on decorators")
+      """, 1, "Overloaded signatures for foo disagree on decorators")
 
   def test_classmethod(self):
-    ast = self.check("""\
+    ast = self.check("""
       class A(object):
           @classmethod
           def foo(x: int) -> str: ...
@@ -1997,7 +1996,7 @@ class MergeSignaturesTest(_ParserTestBase):
     self.assertEqual("classmethod", ast.classes[0].methods[0].kind)
 
   def test_staticmethod(self):
-    ast = self.check("""\
+    ast = self.check("""
       class A(object):
           @staticmethod
           def foo(x: int) -> str: ...
@@ -2005,14 +2004,14 @@ class MergeSignaturesTest(_ParserTestBase):
     self.assertEqual("staticmethod", ast.classes[0].methods[0].kind)
 
   def test_new(self):
-    ast = self.check("""\
+    ast = self.check("""
       class A(object):
           def __new__(self) -> A: ...
       """)
     self.assertEqual("staticmethod", ast.classes[0].methods[0].kind)
 
   def test_abstractmethod(self):
-    ast = self.check("""\
+    ast = self.check("""
       class A(object):
           @abstractmethod
           def foo(x: int) -> str: ...
@@ -2021,7 +2020,7 @@ class MergeSignaturesTest(_ParserTestBase):
     self.assertEqual(True, ast.Lookup("A").Lookup("foo").is_abstract)
 
   def test_abstractmethod_manysignatures(self):
-    ast = self.check("""\
+    ast = self.check("""
       class A(object):
           @abstractmethod
           def foo(x: int) -> str: ...
@@ -2029,7 +2028,7 @@ class MergeSignaturesTest(_ParserTestBase):
           def foo(x: int, y: int) -> str: ...
           @abstractmethod
           def foo(x: int, y: int, z: int) -> str: ...
-      """, """\
+      """, """
       class A(object):
           @abstractmethod
           @overload
@@ -2045,7 +2044,7 @@ class MergeSignaturesTest(_ParserTestBase):
     self.assertEqual(True, ast.Lookup("A").Lookup("foo").is_abstract)
 
   def test_abstractmethod_conflict(self):
-    self.check_error("""\
+    self.check_error("""
       class A(object):
           @abstractmethod
           def foo(x: int) -> str: ...
@@ -2063,21 +2062,21 @@ class EntireFileTest(_ParserTestBase):
 class AnyTest(_ParserTestBase):
 
   def test_generic_any(self):
-    self.check("""\
+    self.check("""
       from typing import Any
       x = ...  # type: Any[int]""",
-               """\
+               """
       from typing import Any
 
       x: Any""")
 
   def test_generic_any_alias(self):
-    self.check("""\
+    self.check("""
       from typing import Any
       Foo = Any
       Bar = Foo[int]
       x = ...  # type: Bar[int, str]""",
-               """\
+               """
       from typing import Any
 
       Foo = Any
@@ -2094,13 +2093,14 @@ class CanonicalPyiTest(_ParserTestBase):
         def foo(x: int = 0) -> Any: ...
         def foo(x: str) -> Any: ...
     """)
-    expected = textwrap.dedent("""\
+    expected = textwrap.dedent("""
         from typing import Any
 
         @overload
         def foo(x: int = ...) -> Any: ...
         @overload
-        def foo(x: str) -> Any: ...""")
+        def foo(x: str) -> Any: ...
+    """).strip()
     self.assertMultiLineEqual(
         parser.canonical_pyi(src, self.PYTHON_VERSION), expected)
 
@@ -2108,13 +2108,13 @@ class CanonicalPyiTest(_ParserTestBase):
 class TypeMacroTest(_ParserTestBase):
 
   def test_simple(self):
-    self.check("""\
+    self.check("""
       from typing import List, TypeVar
       Alias = List[List[T]]
       T = TypeVar('T')
       S = TypeVar('S')
       def f(x: Alias[S]) -> S: ...
-      def g(x: Alias[str]) -> str: ...""", """\
+      def g(x: Alias[str]) -> str: ...""", """
       from typing import List, TypeVar
 
       Alias = List[List[T]]
@@ -2126,11 +2126,11 @@ class TypeMacroTest(_ParserTestBase):
       def g(x: List[List[str]]) -> str: ...""")
 
   def test_partial_replacement(self):
-    self.check("""\
+    self.check("""
       from typing import Dict, TypeVar
       DictAlias = Dict[int, V]
       V = TypeVar('V')
-      def f(x: DictAlias[str]) -> None: ...""", """\
+      def f(x: DictAlias[str]) -> None: ...""", """
       from typing import Dict, TypeVar
 
       DictAlias = Dict[int, V]
@@ -2140,12 +2140,12 @@ class TypeMacroTest(_ParserTestBase):
       def f(x: Dict[int, str]) -> None: ...""")
 
   def test_multiple_parameters(self):
-    self.check("""\
+    self.check("""
       from typing import Dict, List, TypeVar
       Alias = List[Dict[K, V]]
       K = TypeVar('K')
       V = TypeVar('V')
-      def f(x: Alias[K, V]) -> Dict[K, V]: ...""", """\
+      def f(x: Alias[K, V]) -> Dict[K, V]: ...""", """
       from typing import Dict, List, TypeVar
 
       Alias = List[Dict[K, V]]
@@ -2156,11 +2156,11 @@ class TypeMacroTest(_ParserTestBase):
       def f(x: List[Dict[K, V]]) -> Dict[K, V]: ...""")
 
   def test_no_parameters(self):
-    self.check("""\
+    self.check("""
       from typing import List, TypeVar
       Alias = List[List[T]]
       T = TypeVar('T')
-      def f(x: Alias) -> None: ...""", """\
+      def f(x: Alias) -> None: ...""", """
       from typing import Any, List, TypeVar
 
       Alias = List[List[T]]
@@ -2170,12 +2170,12 @@ class TypeMacroTest(_ParserTestBase):
       def f(x: List[List[Any]]) -> None: ...""")
 
   def test_union(self):
-    self.check("""\
+    self.check("""
       from typing import List, TypeVar, Union
       Alias = Union[List[T], List[S]]
       T = TypeVar('T')
       S = TypeVar('S')
-      def f(x: Alias[S, T]) -> Union[S, T]: ...""", """\
+      def f(x: Alias[S, T]) -> Union[S, T]: ...""", """
       from typing import List, TypeVar, Union
 
       Alias = Union[List[T], List[S]]
@@ -2186,11 +2186,11 @@ class TypeMacroTest(_ParserTestBase):
       def f(x: Union[List[S], List[T]]) -> Union[S, T]: ...""")
 
   def test_repeated_type_parameter(self):
-    self.check("""\
+    self.check("""
       from typing import Dict, TypeVar
       Alias = Dict[T, T]
       T = TypeVar('T')
-      def f(x: Alias[str]) -> None: ...""", """\
+      def f(x: Alias[str]) -> None: ...""", """
       from typing import Dict, TypeVar
 
       Alias = Dict[T, T]
@@ -2200,7 +2200,7 @@ class TypeMacroTest(_ParserTestBase):
       def f(x: Dict[str, str]) -> None: ...""")
 
   def test_wrong_parameter_count(self):
-    self.check_error("""\
+    self.check_error("""
       from typing import List, TypeVar
       Alias = List[List[T]]
       T = TypeVar('T')
@@ -2208,11 +2208,11 @@ class TypeMacroTest(_ParserTestBase):
     """, 4, "List[List[T]] expected 1 parameters, got 2")
 
   def test_anystr(self):
-    self.check("""\
+    self.check("""
       from typing import AnyStr, List
       Alias = List[AnyStr]
       def f(x: Alias[str]) -> None: ...
-    """, """\
+    """, """
       from typing import AnyStr, List
 
       Alias = List[AnyStr]
@@ -2227,7 +2227,7 @@ class ImportTypeIgnoreTest(_ParserTestBase):
     self.check("""
       import mod  # type: ignore
       def f(x: mod.attr) -> None: ...
-    """, """\
+    """, """
       import mod
 
       def f(x: mod.attr) -> None: ...""")
@@ -2263,7 +2263,7 @@ class ImportTypeIgnoreTest(_ParserTestBase):
 class LiteralTest(_ParserTestBase):
 
   def test_bool(self):
-    self.check("""\
+    self.check("""
       from typing import Literal
 
       x: Literal[False]
@@ -2271,14 +2271,14 @@ class LiteralTest(_ParserTestBase):
     """)
 
   def test_int(self):
-    self.check("""\
+    self.check("""
       from typing import Literal
 
       x: Literal[42]
     """)
 
   def test_string(self):
-    self.check("""\
+    self.check("""
       from typing import Literal
 
       x: Literal["x"]
@@ -2286,7 +2286,7 @@ class LiteralTest(_ParserTestBase):
     """)
 
   def test_bytestring(self):
-    self.check("""\
+    self.check("""
       from typing import Literal
 
       x: Literal[b""]
@@ -2295,7 +2295,7 @@ class LiteralTest(_ParserTestBase):
     """)
 
   def test_unicodestring(self):
-    self.check("""\
+    self.check("""
       from typing import Literal
 
       x: Literal[u""]
@@ -2304,7 +2304,7 @@ class LiteralTest(_ParserTestBase):
     """)
 
   def test_none(self):
-    self.check("""\
+    self.check("""
       from typing import Literal
 
       x: Literal[None]
@@ -2312,7 +2312,7 @@ class LiteralTest(_ParserTestBase):
 
   def test_enum(self):
     # TODO(b/123775699): support enums.
-    self.check("""\
+    self.check("""
       import enum
       from typing import Literal
 
@@ -2320,7 +2320,7 @@ class LiteralTest(_ParserTestBase):
 
       class Color(enum.Enum):
           RED: str
-    """, """\
+    """, """
       import enum
       from typing import Any
 
@@ -2331,46 +2331,46 @@ class LiteralTest(_ParserTestBase):
     """)
 
   def test_multiple_parameters(self):
-    self.check("""\
+    self.check("""
       from typing import Literal
 
       x: Literal[True, 0, b"", u"", None]
-    """, """\
+    """, """
       from typing import Literal, Optional, Union
 
       x: Optional[Union[Literal[True], Literal[0], Literal[b""], Literal[u""]]]
     """)
 
   def test_stray_number(self):
-    self.check_error("""\
+    self.check_error("""
       from typing import Tuple
 
       x: Tuple[int, int, 0, int]
     """, 3, "Tuple[_, _, 0, _] not supported")
 
   def test_stray_string(self):
-    self.check_error("""\
+    self.check_error("""
       from typing import Tuple
 
       x: Tuple[str, str, '', str]
     """, 3, "Tuple[_, _, '', _] not supported")
 
   def test_stray_bytestring(self):
-    self.check_error("""\
+    self.check_error("""
       from typing import Tuple
 
       x: Tuple[str, b'', str, str]
     """, 3, "Tuple[_, b'', _, _] not supported")
 
   def test_stray_unicodestring(self):
-    self.check_error("""\
+    self.check_error("""
       from typing import Tuple
 
       x: Tuple[str, u'', str, str]
     """, 3, "Tuple[_, u'', _, _] not supported")
 
   def test_typing_extensions(self):
-    self.check("""\
+    self.check("""
       from typing_extensions import Literal
 
       x: Literal[42]

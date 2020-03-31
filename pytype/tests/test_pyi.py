@@ -26,7 +26,7 @@ class PYITest(test_base.TargetIndependentTest):
       d.create_file("mod.pyi", """
         def f(x: int = ...) -> None
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import mod
         def f():
           return mod.f()
@@ -44,7 +44,7 @@ class PYITest(test_base.TargetIndependentTest):
       d.create_file("mod.pyi", """
         def f(node: int, *args, **kwargs) -> str
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import mod
         def g(x):
           return mod.f(x)
@@ -60,7 +60,7 @@ class PYITest(test_base.TargetIndependentTest):
         from typing import Any, IO, List, Optional
         def split(s: Optional[int]) -> List[str, ...]: ...
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import mod
         def g(x):
           return mod.split(x)
@@ -79,7 +79,7 @@ class PYITest(test_base.TargetIndependentTest):
         class B(A):
           pass
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import classes
         x = classes.B().foo()
       """, deep=False, pythonpath=[d.path])
@@ -94,7 +94,7 @@ class PYITest(test_base.TargetIndependentTest):
         from typing import Any
         def __getattr__(name) -> Any
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import vague
         x = vague.foo + vague.bar
       """, deep=False, pythonpath=[d.path])
@@ -114,7 +114,7 @@ class PYITest(test_base.TargetIndependentTest):
           def v(cls, a, b) -> int: ...
           def w(self, a, b) -> int: ...
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import decorated
         u = decorated.A.u(1, 2)
         v = decorated.A.v(1, 2)
@@ -141,7 +141,7 @@ class PYITest(test_base.TargetIndependentTest):
           def v(cls) -> float: ...
           def w(self, x: classmethod) -> int: ...
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import a
         u = a.A().w(a.A.v)
       """, deep=False, pythonpath=[d.path])
@@ -155,7 +155,7 @@ class PYITest(test_base.TargetIndependentTest):
       d.create_file("a.pyi", """
         def parse(source, filename = ..., mode = ..., *args, **kwargs) -> int: ...
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import a
         u = a.parse("True")
       """, deep=False, pythonpath=[d.path])
@@ -169,7 +169,7 @@ class PYITest(test_base.TargetIndependentTest):
       d.create_file("a.pyi", """
         class Bar(dict[?, int]): ...
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
       import a
       def f(foo, bar):
         return __any_object__[1]
@@ -190,7 +190,7 @@ class PYITest(test_base.TargetIndependentTest):
         from typing import Iterable
         def f(l: Iterable[int]) -> int: ...
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import a
         u = a.f([1, 2, 3])
       """, deep=False, pythonpath=[d.path])
@@ -204,7 +204,7 @@ class PYITest(test_base.TargetIndependentTest):
       d.create_file("a.pyi", """
         def make_object() -> object
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import a
         def f(x=None):
           x = a.make_object()
@@ -224,7 +224,7 @@ class PYITest(test_base.TargetIndependentTest):
         from typing import Callable
         def process_function(func: Callable[..., Any]) -> None: ...
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import foo
         def bar():
           pass
@@ -238,7 +238,7 @@ class PYITest(test_base.TargetIndependentTest):
       """)
 
   def testHex(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       x = hex(4)
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
@@ -258,7 +258,7 @@ class PYITest(test_base.TargetIndependentTest):
         class D(object):
           def baz(self) -> int
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import foo
         def f(x):
           return x.bar("foo")
@@ -300,7 +300,7 @@ class PYITest(test_base.TargetIndependentTest):
         T = TypeVar("T")
         def f(x: T) -> T
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import foo
         x = foo.f(3)
       """, pythonpath=[d.path])
@@ -336,7 +336,7 @@ class PYITest(test_base.TargetIndependentTest):
         from typing import Any
         def __getattr__(name) -> Any
       """)
-      ty, errors = self.InferWithErrors("""\
+      ty, errors = self.InferWithErrors("""
         from foo import *
         from bar import *  # Nonsense import generates a top-level __getattr__  # import-error[e]
       """, pythonpath=[d.path])
@@ -368,7 +368,7 @@ class PYITest(test_base.TargetIndependentTest):
         def DubiousType() -> None
         x = ...  # type: DubiousType
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import a
         x = a.x
       """, pythonpath=[d.path])
@@ -383,7 +383,7 @@ class PYITest(test_base.TargetIndependentTest):
         from typing import Any
         def foo(x: str, *y: Any, z: complex = ...) -> int: ...
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import a
         x = a.foo("foo %d %d", 3, 3)
       """, pythonpath=[d.path])
@@ -432,7 +432,7 @@ class PYITest(test_base.TargetIndependentTest):
         V = TypeVar("V")
         def foo(a: K, *b, c: V, **d) -> Dict[K, V]: ...
       """)
-      ty, errors = self.InferWithErrors("""\
+      ty, errors = self.InferWithErrors("""
         import foo
         a = foo.foo(*tuple(), **dict())
         b = foo.foo(*(1,), **{"c": 3j})
@@ -518,7 +518,7 @@ class PYITest(test_base.TargetIndependentTest):
         from typing import List, Sequence
         class A(List[int], Sequence[str]): ...
       """)
-      ty, _ = self.InferWithErrors("""\
+      ty, _ = self.InferWithErrors("""
         import foo  # pyi-error
         x = [] + foo.A()
       """, pythonpath=[d.path])
@@ -557,7 +557,7 @@ class PYITest(test_base.TargetIndependentTest):
           def bar(self, x:T2):
             self = Bar[T2]
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import foo
         x = foo.Bar()
         x.bar(10)
@@ -580,7 +580,7 @@ class PYITest(test_base.TargetIndependentTest):
             self = Bar[T2]
       """)
       # We should get an error at import time rather than at use time here.
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import foo  # pyi-error[e]
         x = foo.Bar()
         x.bar()
@@ -726,7 +726,7 @@ class PYITest(test_base.TargetIndependentTest):
           @staticmethod
           def t(a: str) -> None: ...
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import foo
         ta = foo.A.t
       """, pythonpath=[d.path])

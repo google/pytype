@@ -351,7 +351,7 @@ class DirectorTest(unittest.TestCase):
     }, self._director.type_comments)
 
   def test_type_comment_on_multiline_value(self):
-    self._create("""\
+    self._create("""
     v = [
       ("hello",
        "world",  # type: should_be_ignored
@@ -360,11 +360,11 @@ class DirectorTest(unittest.TestCase):
     ]  # type: dict
     """)
     self.assertEqual({
-        3: ("]", "dict"),
+        4: ("]", "dict"),
     }, self._director.type_comments)
 
   def test_type_comment_with_trailing_comma(self):
-    self._create("""\
+    self._create("""
     v = [
       ("hello",
        "world"
@@ -377,8 +377,8 @@ class DirectorTest(unittest.TestCase):
     ]  # type: dict
     """)
     self.assertEqual({
-        3: ("]", "dict"),
-        9: ("]", "dict"),
+        4: ("]", "dict"),
+        10: ("]", "dict"),
     }, self._director.type_comments)
 
 

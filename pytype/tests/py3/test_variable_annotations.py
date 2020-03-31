@@ -17,7 +17,7 @@ class VariableAnnotationsBasicTest(test_base.TargetPython3BasicTest):
           a: int
           b: str
       """)
-      errors = self.CheckWithErrors("""\
+      errors = self.CheckWithErrors("""
         import foo
         def f(x: int) -> None:
           pass
@@ -34,7 +34,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
   """Tests for PEP526 variable annotations."""
 
   def testInferTypes(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       from typing import List
 
       lst: List[int] = []
@@ -46,7 +46,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
         a: int = 1
         b = 2
     """)
-    self.assertTypesMatchPytd(ty, """\
+    self.assertTypesMatchPytd(ty, """
       from typing import List
 
       lst: List[int]
@@ -59,7 +59,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testIllegalAnnotations(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import List, TypeVar, NoReturn
 
       T = TypeVar('T')
@@ -102,7 +102,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testOverwriteAnnotationsDict(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       __annotations__ = None
       foo: int  # unsupported-operands[e]
     """)
@@ -135,12 +135,12 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testClassVariableForwardReference(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       class A(object):
         a: 'A' = ...
         x = 42
     """)
-    self.assertTypesMatchPytd(ty, """\
+    self.assertTypesMatchPytd(ty, """
       class A(object):
         a: A
         x: int
@@ -149,13 +149,13 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
   def testCallableForwardReference(self):
     # Callable[['A']...] creates an instance of A during output generation,
     # which previously caused a crash when iterating over existing instances.
-    ty = self.Infer("""\
+    ty = self.Infer("""
       from typing import Callable
       class A(object):
         def __init__(self, fn: Callable[['A'], bool]):
           self.fn = fn
     """)
-    self.assertTypesMatchPytd(ty, """\
+    self.assertTypesMatchPytd(ty, """
       from typing import Callable
       class A(object):
         fn: Callable[[A], bool]

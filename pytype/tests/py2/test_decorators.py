@@ -8,7 +8,7 @@ class DecoratorsTest(test_base.TargetPython27FeatureTest):
 
   def testAttributeErrorUnderClassDecorator(self):
     # This does not detect the error under target python3 (b/78591647)
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def decorate(cls):
         return __any_object__
       @decorate

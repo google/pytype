@@ -7,7 +7,7 @@ class TestExec(test_base.TargetPython27FeatureTest):
   """The exec statement tests."""
 
   def test_exec_statement(self):
-    self.assertNoCrash(self.Check, """\
+    self.assertNoCrash(self.Check, """
       g = {}
       exec "a = 11" in g, g
       assert g['a'] == 11
@@ -26,7 +26,7 @@ class TestPrinting(test_base.TargetPython27FeatureTest):
       """)
 
   def test_printing_in_a_function(self):
-    self.Check("""\
+    self.Check("""
       def fn():
         print "hello"
       fn()
@@ -34,7 +34,7 @@ class TestPrinting(test_base.TargetPython27FeatureTest):
       """)
 
   def test_printing_to_a_file(self):
-    self.Check("""\
+    self.Check("""
       import sys
       print >>sys.stdout, 'hello', 'there'
       """)

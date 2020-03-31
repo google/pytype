@@ -140,7 +140,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
 
   def test_type_clash(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       import attr
       @attr.s
       class Foo(object):  # invalid-annotation
@@ -150,7 +150,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
 
   def test_bad_type(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       import attr
       @attr.s
       class Foo(object):
@@ -270,7 +270,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
 
   def test_bad_factory(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       import attr
       @attr.s
       class Foo(object):
@@ -281,7 +281,7 @@ class TestAttrib(test_base.TargetIndependentTest):
                                      "e2": r"Callable.*int"})
 
   def test_default_factory_clash(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       import attr
       @attr.s
       class Foo(object):
@@ -381,7 +381,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
 
   def test_init_bad_constant(self):
-    err = self.CheckWithErrors("""\
+    err = self.CheckWithErrors("""
       import attr
       @attr.s
       class Foo(object):
@@ -390,7 +390,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     self.assertErrorRegexes(err, {"e": r"bool.*int"})
 
   def test_init_bad_kwarg(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       import attr
       @attr.s
       class Foo:
@@ -599,7 +599,7 @@ class TestAttrs(test_base.TargetIndependentTest):
     """)
 
   def test_init_bad_constant(self):
-    err = self.CheckWithErrors("""\
+    err = self.CheckWithErrors("""
       import attr
       @attr.s(init=0)  # wrong-arg-types[e]
       class Foo:
@@ -608,7 +608,7 @@ class TestAttrs(test_base.TargetIndependentTest):
     self.assertErrorRegexes(err, {"e": r"bool.*int"})
 
   def test_bad_kwarg(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       import attr
       @attr.s(init=__random__)  # not-supported-yet
       class Foo:

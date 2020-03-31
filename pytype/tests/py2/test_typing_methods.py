@@ -16,7 +16,7 @@ class TypingMethodsTest(test_base.TargetPython27FeatureTest):
         class MyDict(Mapping[K, V]): ...
         def f() -> MyDict[str, int]
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import foo
         m = foo.f()
         a = m.copy()

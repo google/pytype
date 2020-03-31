@@ -7,7 +7,7 @@ class TestStrictNone(test_base.TargetPython3BasicTest):
   """Tests for strict attribute checking on None."""
 
   def testExplicitNone(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import Optional
       def f(x: Optional[str]):
         return x.upper()  # attribute-error[e]
@@ -26,7 +26,7 @@ class TestStrictNone(test_base.TargetPython3BasicTest):
     """)
 
   def testOverwriteGlobal(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import Optional
       d = ...  # type: Optional[dict]
       if d:
@@ -43,7 +43,7 @@ class TestAttributes(test_base.TargetPython3BasicTest):
   """Tests for attributes."""
 
   def testAttrOnOptional(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import Optional
       def f(x: Optional[str]):
         return x.upper()  # attribute-error[e]
@@ -51,7 +51,7 @@ class TestAttributes(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
   def testErrorInAny(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import Any
       def f(x: Any):
         if __random__:
@@ -72,7 +72,7 @@ class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testTypeParameterInstanceMultipleBindings(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class A(object):
         values = 42
       args = {A() if __random__ else True: ""}

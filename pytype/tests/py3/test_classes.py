@@ -61,7 +61,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
     """)
 
   def testRecursiveConstructorBadAttribute(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import List
       MyType = List['Foo']
       class Foo(object):
@@ -118,7 +118,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
     """)
 
   def testMakeGenericClass(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       from typing import List, TypeVar, Union
       T1 = TypeVar("T1")
       T2 = TypeVar("T2")
@@ -132,7 +132,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
     """)
 
   def testMakeGenericClassWithConcreteValue(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       from typing import Dict, TypeVar
       V = TypeVar("V")
       class Foo(Dict[str, V]): ...
@@ -150,7 +150,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
     """Makes sure the result of foo.f() isn't used by both a() and b()."""
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", "def f() -> list: ...")
-      self.Check("""\
+      self.Check("""
         import foo
         from typing import List
         def a() -> List[str]:
@@ -162,7 +162,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
         """, pythonpath=[d.path])
 
   def testParentInit(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import Sequence
       class X(object):
         def __init__(self, obj: Sequence):
@@ -174,7 +174,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e": r"Sequence.*int"})
 
   def testParameterizedClassBinaryOperator(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       from typing import Sequence
       def f(x: Sequence[str], y: Sequence[str]) -> None:
         a = x + y  # unsupported-operands
@@ -228,7 +228,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
 
   def testBuildClassQuick(self):
     # A() hits maximum stack depth in python3.6
-    ty = self.Infer("""\
+    ty = self.Infer("""
       def f():
         class A(object): pass
         return {A: A()}
@@ -275,7 +275,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
     """)
 
   def testInitTestClassInSetup(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       import unittest
       class A(unittest.TestCase):
         def setUp(self):
@@ -292,7 +292,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
     """)
 
   def testInitInheritedTestClassInSetup(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       import unittest
       class A(unittest.TestCase):
         def setUp(self):
@@ -312,7 +312,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
     """)
 
   def testInitTestClassInInitAndSetup(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       import unittest
       class A(unittest.TestCase):
         def __init__(self, foo: str):
@@ -412,7 +412,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
     """)
 
   def testPy2Metaclass(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       import abc
       class Foo(object):  # ignored-metaclass[e]
         __metaclass__ = abc.ABCMeta

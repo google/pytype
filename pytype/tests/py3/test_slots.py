@@ -14,7 +14,7 @@ class SlotsTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testSlotWithBytes(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       class Foo(object):  # bad-slots
         __slots__ = (b"x",)
     """)

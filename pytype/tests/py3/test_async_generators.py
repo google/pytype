@@ -74,7 +74,7 @@ class AsyncGeneratorFeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testAnnotationError(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import AsyncGenerator, AsyncIterator, AsyncIterable, Any, Union
 
       async def gen1() -> AsyncGenerator[bool, int]:
@@ -99,7 +99,7 @@ class AsyncGeneratorFeatureTest(test_base.TargetPython3FeatureTest):
         "e5": r"int.*str"})
 
   def testMatchBaseClassError(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import AsyncGenerator, AsyncIterator, AsyncIterable, Union, Any
 
       async def func():

@@ -3,15 +3,12 @@
 from pytype import file_utils
 from pytype.tests import test_base
 
-# We use backslashes to correct the line numbers in test code:
-# pylint: disable=g-backslash-continuation
-
 
 class TestClosures(test_base.TargetIndependentTest):
   """Tests for closures."""
 
   def test_closures(self):
-    self.Check("""\
+    self.Check("""
       def make_adder(x):
         def add(y):
           return x+y
@@ -22,7 +19,7 @@ class TestClosures(test_base.TargetIndependentTest):
       """)
 
   def test_closures_store_deref(self):
-    self.Check("""\
+    self.Check("""
       def make_adder(x):
         z = x+1
         def add(y):
@@ -34,7 +31,7 @@ class TestClosures(test_base.TargetIndependentTest):
       """)
 
   def test_empty_vs_deleted(self):
-    self.Check("""\
+    self.Check("""
       import collections
       Foo = collections.namedtuple('Foo', 'x')
       def f():
@@ -44,7 +41,7 @@ class TestClosures(test_base.TargetIndependentTest):
     """)
 
   def test_closures_in_loop(self):
-    self.Check("""\
+    self.Check("""
       def make_fns(x):
         fns = []
         for i in range(x):
@@ -57,7 +54,7 @@ class TestClosures(test_base.TargetIndependentTest):
       """)
 
   def test_closures_with_defaults(self):
-    self.Check("""\
+    self.Check("""
       def make_adder(x, y=13, z=43):
         def add(q, r=11):
           return x+y+z+q+r
@@ -68,7 +65,7 @@ class TestClosures(test_base.TargetIndependentTest):
       """)
 
   def test_deep_closures(self):
-    self.Check("""\
+    self.Check("""
       def f1(a):
         b = 2*a
         def f2(c):
@@ -108,7 +105,7 @@ class TestClosures(test_base.TargetIndependentTest):
     """)
 
   def test_unbound_closure_variable(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       def foo():
         def bar():
           return tuple(xs)  # name-error
@@ -121,7 +118,7 @@ class TestGenerators(test_base.TargetIndependentTest):
   """Tests for generators."""
 
   def test_first(self):
-    self.Check("""\
+    self.Check("""
       def two():
         yield 1
         yield 2
@@ -130,7 +127,7 @@ class TestGenerators(test_base.TargetIndependentTest):
       """)
 
   def test_partial_generator(self):
-    self.Check("""\
+    self.Check("""
       from functools import partial
 
       def f(a,b):
@@ -145,13 +142,13 @@ class TestGenerators(test_base.TargetIndependentTest):
       """)
 
   def test_unsolvable(self):
-    self.assertNoCrash(self.Check, """\
+    self.assertNoCrash(self.Check, """
       assert list(three) == [3,2,1]
       """)
 
   def test_yield_multiple_values(self):
     # TODO(kramm): The generator doesn't have __iter__?
-    self.assertNoCrash(self.Check, """\
+    self.assertNoCrash(self.Check, """
       def triples():
         yield 1, 2, 3
         yield 4, 5, 6
@@ -161,14 +158,14 @@ class TestGenerators(test_base.TargetIndependentTest):
       """)
 
   def test_generator_reuse(self):
-    self.Check("""\
+    self.Check("""
       g = (x*x for x in range(5))
       print(list(g))
       print(list(g))
       """)
 
   def test_generator_from_generator2(self):
-    self.Check("""\
+    self.Check("""
       g = (x*x for x in range(3))
       print(list(g))
 
@@ -179,7 +176,7 @@ class TestGenerators(test_base.TargetIndependentTest):
 
   def test_generator_from_generator(self):
     # TODO(kramm): The generator doesn't have __iter__?
-    self.assertNoCrash(self.Check, """\
+    self.assertNoCrash(self.Check, """
       class Thing(object):
         RESOURCES = ('abc', 'def')
         def get_abc(self):
@@ -208,7 +205,7 @@ class PreciseReturnTest(test_base.TargetIndependentTest):
     self.options.tweak(precise_return=True)
 
   def test_pytd_return(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       x = 'hello'.startswith(0)  # wrong-arg-types[e]
     """)
     self.assertTypesMatchPytd(ty, "x: bool")
@@ -221,7 +218,7 @@ class PreciseReturnTest(test_base.TargetIndependentTest):
         T = TypeVar("T")
         def f(x: T) -> T: ...
       """)
-      ty, _ = self.InferWithErrors("""\
+      ty, _ = self.InferWithErrors("""
         import foo
         x = foo.f()  # missing-parameter
       """, pythonpath=[d.path])
@@ -236,7 +233,7 @@ class PreciseReturnTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, "x: str")
 
   def test_inplace_op(self):
-    ty, _ = self.InferWithErrors("""\
+    ty, _ = self.InferWithErrors("""
       x = []
       x += 0  # unsupported-operands
     """)
@@ -250,7 +247,7 @@ class TestFunctions(test_base.TargetIndependentTest):
   """Tests for functions."""
 
   def test_functions(self):
-    self.Check("""\
+    self.Check("""
       def fn(a, b=17, c="Hello", d=[]):
         d.append(99)
         print(a, b, c, d)
@@ -262,7 +259,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       """)
 
   def test_function_locals(self):
-    self.Check("""\
+    self.Check("""
       def f():
         x = "Spite"
         print(x)
@@ -277,7 +274,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       """)
 
   def test_recursion(self):
-    self.Check("""\
+    self.Check("""
       def fact(n):
         if n <= 1:
           return 1
@@ -289,7 +286,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       """)
 
   def test_calling_functions_with_args_kwargs(self):
-    self.Check("""\
+    self.Check("""
       def fn(a, b=17, c="Hello", d=[]):
         d.append(99)
         print(a, b, c, d)
@@ -299,7 +296,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       """)
 
   def test_calling_functions_with_generator_args(self):
-    self.Check("""\
+    self.Check("""
       class A(object):
         def next(self):
           raise StopIteration()
@@ -311,23 +308,23 @@ class TestFunctions(test_base.TargetIndependentTest):
     """)
 
   def test_defining_functions_with_args_kwargs(self):
-    self.Check("""\
+    self.Check("""
       def fn(*args):
         print("args is %r" % (args,))
       fn(1, 2)
       """)
-    self.Check("""\
+    self.Check("""
       def fn(**kwargs):
         print("kwargs is %r" % (kwargs,))
       fn(red=True, blue=False)
       """)
-    self.Check("""\
+    self.Check("""
       def fn(*args, **kwargs):
         print("args is %r" % (args,))
         print("kwargs is %r" % (kwargs,))
       fn(1, 2, red=True, blue=False)
       """)
-    self.Check("""\
+    self.Check("""
       def fn(x, y, *args, **kwargs):
         print("x is %r, y is %r" % (x, y))
         print("args is %r" % (args,))
@@ -336,24 +333,24 @@ class TestFunctions(test_base.TargetIndependentTest):
       """)
 
   def test_defining_functions_with_empty_args_kwargs(self):
-    self.Check("""\
+    self.Check("""
       def fn(*args):
         print("args is %r" % (args,))
       fn()
       """)
-    self.Check("""\
+    self.Check("""
       def fn(**kwargs):
         print("kwargs is %r" % (kwargs,))
       fn()
       """)
-    self.Check("""\
+    self.Check("""
       def fn(*args, **kwargs):
         print("args is %r, kwargs is %r" % (args, kwargs))
       fn()
       """)
 
   def test_partial(self):
-    self.Check("""\
+    self.Check("""
       from functools import partial
 
       def f(a,b):
@@ -365,7 +362,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       """)
 
   def test_partial_with_kwargs(self):
-    self.Check("""\
+    self.Check("""
       from functools import partial
 
       def f(a,b,c=0,d=0):
@@ -384,7 +381,7 @@ class TestFunctions(test_base.TargetIndependentTest):
         _AnyCallable = Callable[..., Any]
         def wraps(wrapped: _AnyCallable, assigned: Sequence[str] = ..., updated: Sequence[str] = ...) -> Callable[[_AnyCallable], _AnyCallable]: ...
       """)
-      self.Check("""\
+      self.Check("""
         from myfunctools import wraps
         def my_decorator(f):
           dec = wraps(f)
@@ -434,7 +431,7 @@ class TestFunctions(test_base.TargetIndependentTest):
   def test_named_arg_unsolvable_max_depth(self):
     # Main test here is for this not to throw a KeyError exception upon hitting
     # maximum depth.
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def f(x):
         return max(foo=repr(__any_object__))  # wrong-keyword-args[e]
     """, deep=True, maximum_depth=1)
@@ -558,7 +555,7 @@ class TestFunctions(test_base.TargetIndependentTest):
           pass
         def compile() -> MyPattern[T]: ...
       """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import foo
         x = foo.compile().match("")
       """, pythonpath=[d.path])
@@ -652,7 +649,7 @@ class TestFunctions(test_base.TargetIndependentTest):
     """)
 
   def test_wrong_keyword(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def f(x):
         pass
       f("", y=42)  # wrong-keyword-args[e]
@@ -660,7 +657,7 @@ class TestFunctions(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"y"})
 
   def test_staticmethod_class(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       v1, = (object.__new__,)
       v2 = type(object.__new__)
     """, deep=False)
@@ -724,7 +721,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
 
   def test_interpreter_function_in_class(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class A(object):
         bar = lambda x: x
         def f(self):
@@ -734,13 +731,13 @@ class TestFunctions(test_base.TargetIndependentTest):
 
   def test_nested_lambda(self):
     # Inspired by b/37869955
-    self.Check("""\
+    self.Check("""
       def f(c):
         return lambda c: f(c)
     """)
 
   def test_nested_lambda2(self):
-    self.Check("""\
+    self.Check("""
       def f(d):
         return lambda c: f(c)
     """)
@@ -752,7 +749,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       """)
 
   def test_set_defaults(self):
-    self.Check("""\
+    self.Check("""
       import collections
       X = collections.namedtuple("X", "a b c d")
       X.__new__.__defaults__ = (3, 4)
@@ -763,22 +760,22 @@ class TestFunctions(test_base.TargetIndependentTest):
 
   def test_set_defaults_non_new(self):
     with file_utils.Tempdir() as d:
-      d.create_file("a.pyi", """\
+      d.create_file("a.pyi", """
         def b(x: int, y: int, z: int): ...
         """)
-      ty = self.Infer("""\
+      ty = self.Infer("""
         import a
         a.b.__defaults__ = ('3',)
         a.b(1, 2)
         c = a.b
         """, deep=False, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """\
+      self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
         def c(x: int, y: int, z: int = ...): ...
         """)
 
   def test_bad_defaults(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       import collections
       X = collections.namedtuple("X", "a b c")
       X.__new__.__defaults__ = (1)  # bad-function-defaults
@@ -804,7 +801,7 @@ class TestFunctions(test_base.TargetIndependentTest):
   def test_set_defaults_non_tuple_instance(self):
     # Test that get_atomic_python_constant fails and get_atomic_value pulls out
     # a non-tuple Instance.
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       import collections
       X = collections.namedtuple("X", "a b c")
       X.__new__.__defaults__ = (lambda x: x)(0)  # bad-function-defaults
@@ -831,7 +828,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       z = test(1, 2)
       z = test(1, 2, 3)
       """)
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       def test(a, b, c):
         return a + b + c
       x = test(1, 2)  # missing-parameter
@@ -841,7 +838,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       """)
 
   def test_interpreter_function_defaults_on_class(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       class Foo(object):
         def __init__(self, a, b, c):
           self.a = a
@@ -873,7 +870,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         def f(x: str, ...) -> None: ...
       """)
-      self.CheckWithErrors("""\
+      self.CheckWithErrors("""
         import foo
         foo.f(True, False)  # wrong-arg-types
       """, pythonpath=[d.path])
@@ -958,7 +955,7 @@ class TestFunctions(test_base.TargetIndependentTest):
     """)
 
   def test_functools_partial_bad_call(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       import functools
       functools.partial()  # missing-parameter
       functools.partial(42)  # wrong-arg-types[e]
@@ -968,7 +965,7 @@ class TestFunctions(test_base.TargetIndependentTest):
   def test_bad_comprehensions(self):
     # Test that we report errors in comprehensions and generators only once
     # while still reporting errors in lambdas.
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       [name_error1 for x in ()]  # name-error
       {name_error2 for x in ()}  # name-error
       (name_error3 for x in ())  # name-error

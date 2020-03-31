@@ -7,7 +7,7 @@ class TupleTest(test_base.TargetIndependentTest):
   """Tests for __builtin__.tuple."""
 
   def testGetItemInt(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       t = ("", 42)
       v1 = t[0]
       v2 = t[1]
@@ -25,7 +25,7 @@ class TupleTest(test_base.TargetIndependentTest):
 
   @test_base.skip("Needs better slice support in abstract.Tuple, convert.py.")
   def testGetItemSlice(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       t = ("", 42)
       v1 = t[:]
       v2 = t[:1]
@@ -46,7 +46,7 @@ class TupleTest(test_base.TargetIndependentTest):
     """)
 
   def testUnpackTuple(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       v1, v2 = ("", 42)
       _, w = ("", 42)
       x, (y, z) = ("", (3.14, True))
@@ -62,7 +62,7 @@ class TupleTest(test_base.TargetIndependentTest):
     """)
 
   def testBadUnpacking(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       tup = (1, "")
       a, = tup  # bad-unpacking[e1]
       b, c, d = tup  # bad-unpacking[e2]
@@ -92,7 +92,7 @@ class TupleTest(test_base.TargetIndependentTest):
     """)
 
   def testBadTupleClassGetItem(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       v = type((3, ""))
       w = v[0]  # not-indexable[e]
     """)

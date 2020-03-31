@@ -7,7 +7,7 @@ class NamedTupleTest(test_base.TargetIndependentTest):
   """Tests for the typing.NamedTuple overlay."""
 
   def test_basic_calls(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       import typing
       Basic = typing.NamedTuple("Basic", [('a', str)])
       ex = Basic("hello world")
@@ -17,7 +17,7 @@ class NamedTupleTest(test_base.TargetIndependentTest):
       """)
 
   def test_optional_field_type(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       import typing
       X = typing.NamedTuple("X", [('a', str), ('b', typing.Optional[int])])
       xa = X('hello', None)
@@ -28,7 +28,7 @@ class NamedTupleTest(test_base.TargetIndependentTest):
       """)
 
   def test_class_field_type(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       import typing
       class Foo(object):
         pass
@@ -40,7 +40,7 @@ class NamedTupleTest(test_base.TargetIndependentTest):
       """)
 
   def test_late_annotation(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       import typing
       class Foo(object):
         pass
@@ -50,7 +50,7 @@ class NamedTupleTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"Bar"})
 
   def test_nested_containers(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       import typing
       Z = typing.NamedTuple("Z", [('a', typing.List[typing.Optional[int]])])
       za = Z([1])
@@ -65,7 +65,7 @@ class NamedTupleTest(test_base.TargetIndependentTest):
       """)
 
   def test_pytd_field(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       import typing
       import datetime
       B = typing.NamedTuple("B", [('a', datetime.date)])
@@ -75,7 +75,7 @@ class NamedTupleTest(test_base.TargetIndependentTest):
       """)
 
   def test_bad_calls(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
         import typing
         typing.NamedTuple("_", ["abc", "def", "ghi"])  # wrong-arg-types
         # "def" is a keyword, so the call on the next line fails.
@@ -92,7 +92,7 @@ class NamedTupleTest(test_base.TargetIndependentTest):
         """)
 
   def test_tuple_fields(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import NamedTuple
       X = NamedTuple("X", (("a", str),))
       X(a="")
@@ -101,7 +101,7 @@ class NamedTupleTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"str.*int"})
 
   def test_list_field(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import NamedTuple
       X = NamedTuple("X", [["a", str]])
       X(a="")
@@ -110,7 +110,7 @@ class NamedTupleTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"str.*int"})
 
   def test_str_fields_error(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import NamedTuple
       X = NamedTuple("X", "a b")  # wrong-arg-types[e1]
       Y = NamedTuple("Y", ["ab"])  # wrong-arg-types[e2]

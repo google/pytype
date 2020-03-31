@@ -120,7 +120,7 @@ class ReingestTest(test_base.TargetIndependentTest):
     """)
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import foo
         foo.X("hello", "world")
         foo.X(42)  # missing-parameter[e]

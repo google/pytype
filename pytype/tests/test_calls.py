@@ -12,7 +12,7 @@ class CallsTest(test_base.TargetIndependentTest):
       d.create_file("mod.pyi", """
         def foo(x: int, y: int = ..., z: int = ...) -> int
       """)
-      self.Check("""\
+      self.Check("""
         import mod
         mod.foo(1)
         mod.foo(1, 2)
@@ -24,7 +24,7 @@ class CallsTest(test_base.TargetIndependentTest):
       d.create_file("mod.pyi", """
         def foo(x, y) -> int
       """)
-      self.InferWithErrors("""\
+      self.InferWithErrors("""
         import mod
         mod.foo(1)  # missing-parameter
       """, pythonpath=[d.path])
@@ -34,7 +34,7 @@ class CallsTest(test_base.TargetIndependentTest):
       d.create_file("mod.pyi", """
         def foo(x, y) -> int
       """)
-      self.InferWithErrors("""\
+      self.InferWithErrors("""
         import mod
         mod.foo(1, 2, 3)  # wrong-arg-count
       """, pythonpath=[d.path])
@@ -44,7 +44,7 @@ class CallsTest(test_base.TargetIndependentTest):
       d.create_file("mod.pyi", """
         def foo(x, y, *, z) -> int
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import mod
         mod.foo(1, 2)  # missing-parameter[e]
       """, pythonpath=[d.path])
@@ -55,7 +55,7 @@ class CallsTest(test_base.TargetIndependentTest):
       d.create_file("mod.pyi", """
         def foo(x, y) -> int
       """)
-      self.InferWithErrors("""\
+      self.InferWithErrors("""
         import mod
         mod.foo(1, 2, z=3)  # wrong-keyword-args
       """, pythonpath=[d.path])
@@ -66,7 +66,7 @@ class CallsTest(test_base.TargetIndependentTest):
         def foo(*args: int, z: int) -> int
       """)
       self.Check(
-          """\
+          """
         import mod
         mod.foo(1, 2, z=3)
       """, pythonpath=[d.path])
@@ -76,7 +76,7 @@ class CallsTest(test_base.TargetIndependentTest):
       d.create_file("mod.pyi", """
         def foo(*args: int, z: int) -> int
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import mod
         mod.foo(1, 2, 3)  # missing-parameter[e]
       """, pythonpath=[d.path])

@@ -53,7 +53,7 @@ class AbstractMethodTests(test_base.TargetPython3FeatureTest):
     """)
 
   def test_abstractproperty(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       import abc
       class Foo(metaclass=abc.ABCMeta):
         @abc.abstractproperty

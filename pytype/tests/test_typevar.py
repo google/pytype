@@ -20,7 +20,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
   def testImportTypeVar(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """T = TypeVar("T")""")
-      ty = self.Infer("""\
+      ty = self.Infer("""
         from a import T
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
@@ -29,7 +29,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
       """)
 
   def testInvalidTypeVar(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       from typing import TypeVar
       typevar = TypeVar
       T = typevar()  # invalid-typevar[e1]
@@ -111,7 +111,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
     """)
 
   def testTypeVarInTypeComment(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       from typing import List, TypeVar
       T = TypeVar("T")
       x = None  # type: T  # not-supported-yet
@@ -119,7 +119,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
     """)
 
   def testBaseClassWithTypeVar(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       from typing import List, TypeVar
       T = TypeVar("T")
       class A(List[T]): pass
@@ -140,7 +140,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
     """)
 
   def testBound(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       from typing import TypeVar
       T = TypeVar("T", int, float, bound=str)  # invalid-typevar
       S = TypeVar("S", bound="")  # invalid-typevar
@@ -149,7 +149,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
     """)
 
   def testCovariant(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import TypeVar
       T = TypeVar("T", covariant=True)  # not-supported-yet
       S = TypeVar("S", covariant=42)  # invalid-typevar[e1]
@@ -159,7 +159,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
         errors, {"e1": r"Expected.*bool.*Actual.*int", "e2": r"constant"})
 
   def testContravariant(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import TypeVar
       T = TypeVar("T", contravariant=True)  # not-supported-yet
       S = TypeVar("S", contravariant=42)  # invalid-typevar[e1]
@@ -366,7 +366,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
     """)
 
   def testLateBound(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import TypeVar, Union
       T = TypeVar("T", int, float, bound="str")  # invalid-typevar[e1]
       S = TypeVar("S", bound="")  # invalid-typevar[e2]

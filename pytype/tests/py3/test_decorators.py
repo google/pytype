@@ -7,7 +7,7 @@ class DecoratorsTest(test_base.TargetPython3BasicTest):
   """Test decorators."""
 
   def testAnnotatedSuperCallUnderBadDecorator(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       class Foo(object):
         def Run(self) -> None: ...
       class Bar(Foo):
@@ -19,7 +19,7 @@ class DecoratorsTest(test_base.TargetPython3BasicTest):
   def testReplaceSelfToStarArg(self):
     # Without decorator, `self` will be in `signature.param_names`.
     # But after replacing, `*args` won't be in `signature.param_names`.
-    self.Check("""\
+    self.Check("""
       from typing import TypeVar
 
       T = TypeVar('T')

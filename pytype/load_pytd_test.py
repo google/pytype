@@ -415,10 +415,10 @@ class PickledPyiLoaderTest(unittest.TestCase):
       loaded_ast = self._LoadPickledModule(d, bar)
       loaded_ast.Visit(visitors.VerifyLookup())
       self.assertMultiLineEqual(pytd_utils.Print(loaded_ast),
-                                textwrap.dedent("""\
+                                textwrap.dedent("""
         import foo
 
-        bar.A = foo.A"""))
+        bar.A = foo.A""").lstrip())
 
   def testFunctionAlias(self):
     with file_utils.Tempdir() as d:
@@ -482,7 +482,7 @@ class Python3Test(unittest.TestCase):
     # Test that we read python3 builtins from builtin.pytd if we pass a (3, 6)
     # version to the loader.
     with file_utils.Tempdir() as d:
-      d.create_file("a.pyi", """\
+      d.create_file("a.pyi", """
           from typing import AsyncGenerator
           class A(AsyncGenerator[str]): ...""")
       loader = load_pytd.Loader("base",

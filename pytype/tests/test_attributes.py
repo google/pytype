@@ -23,7 +23,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
     """)
 
   def testClassConstantError(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       x = None
       class Foo(object):
         x = x.upper()  # attribute-error[e]
@@ -31,7 +31,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
   def testMultiplePaths(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       x = None
       def f():
         z = None if __random__ else x
@@ -82,7 +82,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
 
   def testReturnValue(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f():
         pass
       def g():
@@ -91,7 +91,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
   def testMethodReturnValue(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       class Foo(object):
         def f(self):
           pass
@@ -103,7 +103,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
   def testPyiReturnValue(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", "def f() -> None: ...")
-      errors = self.CheckWithErrors("""\
+      errors = self.CheckWithErrors("""
         import foo
         def g():
           return foo.f().upper()  # attribute-error[e]
@@ -111,7 +111,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
       self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
   def testPassThroughNone(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(x):
         return x
       def g():
@@ -144,7 +144,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
     """)
 
   def testReturnConstant(self):
-    self.Check("""\
+    self.Check("""
       x = None
       def f():
         return x
@@ -153,14 +153,14 @@ class TestStrictNone(test_base.TargetIndependentTest):
     """)
 
   def testUnpackedNone(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       _, a = 42, None
       b = a.upper()  # attribute-error[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
   def testFunctionDefault(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       class Foo(object):
         def __init__(self, v=None):
           v.upper()  # attribute-error[e]
@@ -248,7 +248,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
     """)
 
   def testGetItem(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f():
         x = None
         return x[0]  # unsupported-operands[e]
@@ -270,7 +270,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
     """)
 
   def testContains(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f():
         x = None
         return 42 in x  # unsupported-operands[e]
@@ -497,7 +497,7 @@ class TestAttributes(test_base.TargetIndependentTest):
 
   @test_base.skip("TODO(b/63407497): implement strict checking for __setitem__")
   def testUnionSetAttribute(self):
-    ty, _ = self.InferWithErrors("""\
+    ty, _ = self.InferWithErrors("""
       class A(object):
         x = "Hello world"
       def f(i):
@@ -560,7 +560,7 @@ class TestAttributes(test_base.TargetIndependentTest):
     """)
 
   def testHasDynamicAttributes(self):
-    self.Check("""\
+    self.Check("""
       class Foo1(object):
         has_dynamic_attributes = True
       class Foo2(object):
@@ -573,7 +573,7 @@ class TestAttributes(test_base.TargetIndependentTest):
     """)
 
   def testHasDynamicAttributesSubClass(self):
-    self.Check("""\
+    self.Check("""
       class Foo(object):
         _HAS_DYNAMIC_ATTRIBUTES = True
       class Bar(Foo):
@@ -584,7 +584,7 @@ class TestAttributes(test_base.TargetIndependentTest):
 
   def testHasDynamicAttributesClassAttr(self):
     # Only instance attributes are dynamic.
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       class Foo(object):
         _HAS_DYNAMIC_ATTRIBUTES = True
       Foo.CONST  # attribute-error[e]
@@ -615,7 +615,7 @@ class TestAttributes(test_base.TargetIndependentTest):
         class Foo(object):
           has_dynamic_attributes = True
       """)
-      self.Check("""\
+      self.Check("""
         import mod
         mod.Foo().baz
       """, pythonpath=[d.path])
@@ -638,7 +638,7 @@ class TestAttributes(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
 
   def testAttrOnStaticMethod(self):
-    self.Check("""\
+    self.Check("""
       import collections
 
       X = collections.namedtuple("X", "a b")
@@ -653,7 +653,7 @@ class TestAttributes(test_base.TargetIndependentTest):
     """)
 
   def testAttrOnNone(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       def f(arg):
         x = "foo" if arg else None
         if not x:
@@ -661,7 +661,7 @@ class TestAttributes(test_base.TargetIndependentTest):
     """)
 
   def testIteratorOnNone(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
       def f():
         pass
       a, b = f()  # attribute-error
@@ -714,7 +714,7 @@ class TestAttributes(test_base.TargetIndependentTest):
 
   @test_base.skip("Needs vm._get_iter() to iterate over individual bindings.")
   def testBadIter(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       v = [] if __random__ else 42
       for _ in v:  # attribute-error[e]
         pass
@@ -722,7 +722,7 @@ class TestAttributes(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"__iter__.*int"})
 
   def testBadGetItem(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       class Foo(object):
         def __getitem__(self, x):
           return 0
@@ -733,7 +733,7 @@ class TestAttributes(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"__iter__.*int.*Union\[Foo, int\]"})
 
   def testBadContains(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       class Foo(object):
         def __iter__(self):
           return iter([])
@@ -746,12 +746,11 @@ class TestAttributes(test_base.TargetIndependentTest):
 
   def testSubclassShadowing(self):
     with file_utils.Tempdir() as d:
-      # pylint: disable=g-backslash-continuation
-      d.create_file("foo.pyi", """\
+      d.create_file("foo.pyi", """
         class X:
           b = ...  # type: int
         """)
-      self.Check("""\
+      self.Check("""
         import foo
         a = foo.X()
         a.b  # The attribute exists

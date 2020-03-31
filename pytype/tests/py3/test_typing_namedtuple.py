@@ -8,7 +8,7 @@ class NamedTupleTest(test_base.TargetPython3BasicTest):
   """Tests for the typing.NamedTuple overlay."""
 
   def test_make(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
         import typing
         A = typing.NamedTuple("A", [("b", str), ("c", str)])
         a = A._make(["hello", "world"])
@@ -20,7 +20,7 @@ class NamedTupleTest(test_base.TargetPython3BasicTest):
         """)
 
   def test_subclass(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
         import typing
         A = typing.NamedTuple("A", [("b", str), ("c", int)])
         class B(A):
@@ -51,7 +51,7 @@ class NamedTupleTest(test_base.TargetPython3BasicTest):
                               "def foo(x: X) -> Callable: ...")
 
   def test_bare_union_attribute(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       from typing import NamedTuple, Union
       X = NamedTuple("X", [("x", Union)])  # invalid-annotation[e]
       def foo(x: X):
@@ -66,7 +66,7 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for the typing.NamedTuple overlay in Python 3.6."""
 
   def test_basic_namedtuple(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       import typing
       X = typing.NamedTuple("X", [("a", int), ("b", str)])
       x = X(1, "hello")
@@ -75,7 +75,7 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
       """)
     self.assertTypesMatchPytd(
         ty,
-        """\
+        """
         import collections
         from typing import Callable, Iterable, Sized, Tuple, Type, TypeVar, Union
         typing = ...  # type: module
@@ -115,7 +115,7 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
                               "def foo(x: X) -> Union[bytes, str]: ...")
 
   def test_bad_call(self):
-    _, errorlog = self.InferWithErrors("""\
+    _, errorlog = self.InferWithErrors("""
         from typing import NamedTuple
         E2 = NamedTuple('Employee2', [('name', str), ('id', int)],
                         birth=str, gender=bool)  # invalid-namedtuple-arg[e1]  # wrong-keyword-args[e2]
@@ -125,7 +125,7 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
         "e2": r".*(birth, gender).*NamedTuple"})
 
   def test_bad_attribute(self):
-    _, errorlog = self.InferWithErrors("""\
+    _, errorlog = self.InferWithErrors("""
         from typing import NamedTuple
 
         class SubCls(NamedTuple):  # not-writable[e]
@@ -135,7 +135,7 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
     self.assertErrorRegexes(errorlog, {"e": r".*'__init__'.*[SubCls]"})
 
   def test_bad_arg_count(self):
-    _, errorlog = self.InferWithErrors("""\
+    _, errorlog = self.InferWithErrors("""
         from typing import NamedTuple
 
         class SubCls(NamedTuple):
@@ -147,7 +147,7 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
     self.assertErrorRegexes(errorlog, {"e": r"Missing.*'b'.*__new__"})
 
   def test_bad_arg_name(self):
-    self.InferWithErrors("""\
+    self.InferWithErrors("""
         from typing import NamedTuple
 
         class SubCls(NamedTuple):  # invalid-namedtuple-arg
@@ -158,7 +158,7 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
     """)
 
   def test_namedtuple_class(self):
-    self.Check("""\
+    self.Check("""
       from typing import NamedTuple
 
       class SubNamedTuple(NamedTuple):
@@ -181,7 +181,7 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
       """)
 
   def test_baseclass(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       from typing import NamedTuple
 
       class baseClass(object):
@@ -193,7 +193,7 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
       """)
     self.assertTypesMatchPytd(
         ty,
-        """\
+        """
         import collections
         from typing import Callable, Iterable, Sized, Tuple, Type, TypeVar
 
@@ -225,7 +225,7 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
         """)
 
   def test_namedtuple_class_pyi(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       from typing import NamedTuple
 
       class SubNamedTuple(NamedTuple):
@@ -247,7 +247,7 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
       """)
     self.assertTypesMatchPytd(
         ty,
-        """\
+        """
         import collections
         from typing import Callable, Iterable, Sized, Tuple, Type, TypeVar, Union
 

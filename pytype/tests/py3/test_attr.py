@@ -81,7 +81,7 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
     """)
 
   def test_type_clash(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       import attr
       @attr.s
       class Foo(object):  # invalid-annotation
@@ -217,7 +217,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     """)
 
   def test_bad_default_param_order(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       import attr
       @attr.s(auto_attribs=True)
       class Foo(object):  # invalid-function-definition

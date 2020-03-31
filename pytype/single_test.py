@@ -351,13 +351,13 @@ class PytypeTest(unittest.TestCase):
     self._CheckTypesAndErrors("simple.py", [])
 
   def testReturnType(self):
-    self._CheckTypesAndErrors(self._MakePyFile("""\
+    self._CheckTypesAndErrors(self._MakePyFile("""
       def f() -> int:
         return "foo"
     """), ["bad-return-type"])
 
   def testUsageError(self):
-    self._SetUpChecking(self._MakePyFile("""\
+    self._SetUpChecking(self._MakePyFile("""
       def f():
         pass
     """))
@@ -368,7 +368,7 @@ class PytypeTest(unittest.TestCase):
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
   def testSkipFile(self):
-    filename = self._MakePyFile("""\
+    filename = self._MakePyFile("""
         # pytype: skip-file
     """)
     self.pytype_args[self._DataPath(filename)] = self.INCLUDE
@@ -395,7 +395,7 @@ class PytypeTest(unittest.TestCase):
     self.assertInferredPyiEquals(filename="complex.pyi")
 
   def testCheckMain(self):
-    self._SetUpChecking(self._MakePyFile("""\
+    self._SetUpChecking(self._MakePyFile("""
       def f():
         name_error
       def g():
@@ -441,14 +441,14 @@ class PytypeTest(unittest.TestCase):
         [c.name for c in ast.classes])
 
   def testNoAnalyzeAnnotated(self):
-    filename = self._MakePyFile("""\
+    filename = self._MakePyFile("""
       def f() -> str:
         return 42
     """)
     self._InferTypesAndCheckErrors(self._DataPath(filename), [])
 
   def testAnalyzeAnnotated(self):
-    filename = self._MakePyFile("""\
+    filename = self._MakePyFile("""
       def f() -> str:
         return 42
     """)
@@ -476,7 +476,7 @@ class PytypeTest(unittest.TestCase):
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
     self.assertTrue(os.path.isfile(filename))
-    src = self._MakePyFile("""\
+    src = self._MakePyFile("""
       import __future__
       import sys
       import collections
@@ -499,7 +499,7 @@ class PytypeTest(unittest.TestCase):
     self.assertTrue(os.path.isfile(filename))
     # input files
     canary = "import pytypecanary" if typeshed.Typeshed.MISSING_FILE else ""
-    src = self._MakePyFile("""\
+    src = self._MakePyFile("""
       import __future__
       import sys
       import collections
@@ -514,7 +514,7 @@ class PytypeTest(unittest.TestCase):
       y = csv.writer
       z = md5.new
     """ % canary)
-    pyi = self._MakeFile("""\
+    pyi = self._MakeFile("""
       import datetime
       x = ...  # type: datetime.tzinfo
     """, extension=".pyi")
@@ -522,7 +522,7 @@ class PytypeTest(unittest.TestCase):
     self._ResetPytypeArgs()
     self._SetUpChecking(src)
     self.pytype_args["--precompiled-builtins"] = filename
-    self.pytype_args["--imports_info"] = self._MakeFile("""\
+    self.pytype_args["--imports_info"] = self._MakeFile("""
       typing /dev/null
       foo %s
     """ % pyi, extension="")

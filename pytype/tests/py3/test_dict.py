@@ -21,7 +21,7 @@ class DictTest(test_base.TargetPython3BasicTest):
     """)
 
   def testObjectInDict(self):
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       from typing import Any, Dict
       def objectIsStr() -> Dict[str, Any]:
         return {object(): ""}  # bad-return-type
@@ -29,7 +29,7 @@ class DictTest(test_base.TargetPython3BasicTest):
 
   def testBigConcreteDict(self):
     # Test that we don't timeout.
-    self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       from typing import Dict, Tuple, Union
       # A concrete dictionary with lots of concrete keys and a complicated
       # value type.

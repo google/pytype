@@ -6,9 +6,6 @@ from pytype.pytd.parse import parser_constants
 
 import unittest
 
-# We use '\' to make test code more readable:
-# pylint: disable=g-backslash-continuation
-
 # Map from token code to name.
 TOKEN_NAMES = {code: name for name, code in parser_ext.TOKENS.items()}
 
@@ -160,44 +157,44 @@ class LexerTest(unittest.TestCase):
         ("TRIPLEQUOTED", None, 1, 3, 3, 5),
         ("NUMBER", 2, 4),
         ("TRIPLEQUOTED", None, 4, 3, 4, 58),
-        ("NUMBER", 3, 5)], """\
+        ("NUMBER", 3, 5)], """
       1 ''' one quote is allowed '
             newlines and two quotes are allowed '', end on next line
         '''
       2 '''this shoulnd't be swallowed by the previous string'''
-      3""")
+      3""".lstrip("\n"))
     # Double quotes.
-    # pylint: disable=g-inconsistent-quotes,g-backslash-continuation
+    # pylint: disable=g-inconsistent-quotes
     self.check([
         ("NUMBER", 1, 1),
         ("TRIPLEQUOTED", None, 1, 3, 3, 5),
         ("NUMBER", 2, 4),
         ("TRIPLEQUOTED", None, 4, 3, 4, 58),
-        ("NUMBER", 3, 5)], '''\
+        ("NUMBER", 3, 5)], '''
       1 """ one quote is allowed "
             newlines and two quotes are allowed "", end on next line
         """
       2 """this shoulnd't be swallowed by the previous string"""
-      3''')
+      3'''.lstrip("\n"))
 
   def test_typecomment(self):
-    self.check([1, "TYPECOMMENT", 2, "TYPECOMMENT", 3, "TYPECOMMENT", 4], """\
+    self.check([1, "TYPECOMMENT", 2, "TYPECOMMENT", 3, "TYPECOMMENT", 4], """
       1 # type: 2
       #type: 3
       #    type: 4""")
 
   def test_comments_are_ignored(self):
-    self.check([("NUMBER", 1, 1), ("NUMBER", 2, 5)], """\
+    self.check([("NUMBER", 1, 1), ("NUMBER", 2, 5)], """
       1 # comment until end of line
       # type not quite a type comment, no colon!
       #
       # The preceding line had a # followed immediately by newline.
-      2""")
+      2""".lstrip("\n"))
 
   def test_indent(self):
     self.check(
         [1, "INDENT", 2, "INDENT", 3, "INDENT", 4, "DEDENT", "DEDENT", 5,
-         "DEDENT", 6], """\
+         "DEDENT", 6], """
       1
         2
           3
@@ -207,7 +204,7 @@ class LexerTest(unittest.TestCase):
 
   def test_indent_ignore_blank_line2(self):
     self.check(
-        [1, "INDENT", 2, 3, "DEDENT"], """\
+        [1, "INDENT", 2, 3, "DEDENT"], """
       1
         2
 
@@ -216,14 +213,14 @@ class LexerTest(unittest.TestCase):
 
   def test_indent_dedents_at_eof(self):
     self.check(
-        [1, "INDENT", 2, "INDENT", 3, "DEDENT", "DEDENT"], """\
+        [1, "INDENT", 2, "INDENT", 3, "DEDENT", "DEDENT"], """
       1
         2
           3""")
 
   def test_indent_not_inside_brackets(self):
     self.check(
-        [1, "[", 2, "[", "]", 3, "]", 4, "INDENT", 5, "DEDENT"], """\
+        [1, "[", 2, "[", "]", 3, "]", 4, "INDENT", 5, "DEDENT"], """
       1 [2 [ ]
          3]
       4
@@ -231,7 +228,7 @@ class LexerTest(unittest.TestCase):
 
   def test_indent_not_inside_parens(self):
     self.check(
-        [1, "(", 2, "(", ")", 3, ")", 4, "INDENT", 5, "DEDENT"], """\
+        [1, "(", 2, "(", ")", 3, ")", 4, "INDENT", 5, "DEDENT"], """
       1 (2 ( )
          3)
       4
@@ -240,7 +237,7 @@ class LexerTest(unittest.TestCase):
   def test_indent_legacy_bug(self):
     # The legacy lexer was not properly handling 3 dedents in a row.
     self.check([1, "INDENT", 2, "INDENT", 3, "INDENT", 4, "DEDENT", "DEDENT",
-                "DEDENT", 99], """\
+                "DEDENT", 99], """
       1
         2
           3
@@ -250,7 +247,7 @@ class LexerTest(unittest.TestCase):
 
   def test_indent_mismatch(self):
     self.check([1, "INDENT", 2, ("LEXERROR", "Invalid indentation"), 3,
-                "DEDENT"], """\
+                "DEDENT"], """
       1
         2
        3""")
@@ -268,15 +265,15 @@ class LexerTest(unittest.TestCase):
         "INDENT",
         ("NAME", "hello", 2, 3, 2, 7),
         ("NAME", "goodbye", 4, 3, 4, 9),
-        "DEDENT"], """\
+        "DEDENT"], """
       foo bar
         hello
 
         goodbye
-      """)
+      """.lstrip("\n"))
 
   def test_ignore_comment_indentation(self):
-    self.check([1, "TYPECOMMENT", 2, 3], """\
+    self.check([1, "TYPECOMMENT", 2, 3], """
       1
         # comment 0
         # type: 2
