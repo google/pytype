@@ -2491,7 +2491,7 @@ class InterpreterClass(SimpleAbstractValue, mixin.Class):
         if nitem in self.template:
           raise abstract_utils.GenericTypeError(
               self, ("Generic class [%s] and its nested generic class [%s] "
-                     "cannot use same type variable %s.")
+                     "cannot use the same type variable %s.")
               % (self.full_name, cls.full_name, item.name))
 
     self._load_all_formal_type_parameters()  # Throw exception if there is error
@@ -3010,7 +3010,8 @@ class InterpreterFunction(SignedFunction):
           inner_cls_types = value.collect_inner_cls_types()
           inner_cls_types.update([(value, item.with_module(None))
                                   for item in value.template])
-          for cls, item in inner_cls_types:
+          # Report errors in a deterministic order.
+          for cls, item in sorted(inner_cls_types, key=lambda typ: typ[1].name):
             if item in all_type_parameters:
               self.vm.errorlog.invalid_annotation(
                   self.vm.simple_stack(self.get_first_opcode()), item,

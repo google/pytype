@@ -1,13 +1,13 @@
 """Common methods for tests of analyze.py."""
 
 import logging
+import re
 import sys
 import textwrap
 
 from pytype import analyze
 from pytype import config
 from pytype import directors
-from pytype import errors
 from pytype import load_pytd
 from pytype import utils
 from pytype.pyi import parser
@@ -52,7 +52,10 @@ def _AddAnnotationsImportPy2(func):
 def _IncrementLineNumbersPy2(func):
   def _Wrapper(self, errorlog, expected_errors):
     if self.options.python_version == (2, 7):
-      expected_errors = errorlog.increment_line_numbers(expected_errors)
+      for mark in expected_errors:
+        expected_errors[mark] = re.sub(
+            r"line (\d+)",
+            lambda m: "line %d" % (int(m.group(1)) + 1), expected_errors[mark])
     return func(self, errorlog, expected_errors)
   return _Wrapper
 
@@ -169,20 +172,21 @@ class BaseTest(unittest.TestCase):
         python_exe=utils.get_python_exe(self.options.python_version))
 
   # For historical reasons (byterun), this method name is snakecase:
-  # TODO(kramm): Rename this function.
   # pylint: disable=invalid-name
   def Check(self, code, pythonpath=(), skip_repeat_calls=True,
             report_errors=True, filename=None, quick=False, **kwargs):
     """Run an inference smoke test for the given code."""
     self.ConfigureOptions(skip_repeat_calls=skip_repeat_calls,
                           pythonpath=pythonpath, quick=quick)
-    errorlog = errors.ErrorLog()
     try:
       src = ""
       if six.PY3:
         src = textwrap.dedent(code)
       else:
         src = textwrap.dedent(code.decode("utf-8"))
+      errorlog = test_utils.TestErrorLog(code)
+      if errorlog.expected:
+        self.fail("Cannot assert errors with Check(); use CheckWithErrors()")
       analyze.check_types(
           src, filename, loader=self.loader,
           errorlog=errorlog, options=self.options, **kwargs)
@@ -211,19 +215,26 @@ class BaseTest(unittest.TestCase):
     unit.Visit(visitors.VerifyVisitor())
     unit = optimize.Optimize(unit, builtins_pytd, lossy=False, use_abcs=False,
                              max_union=7, remove_mutable=False)
-    return pytd_utils.CanonicalOrdering(unit), kwargs["errorlog"]
+    errorlog = kwargs["errorlog"]
+    errorlog.assert_errors_match_expected()
+    return pytd_utils.CanonicalOrdering(unit), errorlog
 
   def CheckWithErrors(self, code, deep=True, pythonpath=(),
                       analyze_annotated=True, quick=False, **kwargs):
     kwargs.update(
         self._SetUpErrorHandling(code, pythonpath, analyze_annotated, quick))
     analyze.check_types(filename="<inline>", deep=deep, **kwargs)
-    return kwargs["errorlog"]
+    errorlog = kwargs["errorlog"]
+    errorlog.assert_errors_match_expected()
+    return errorlog
 
   def InferFromFile(self, filename, pythonpath):
     with open(filename, "r") as fi:
       code = fi.read()
-      errorlog = errors.ErrorLog()
+      errorlog = test_utils.TestErrorLog(code)
+      if errorlog.expected:
+        self.fail(
+            "Cannot assert errors with InferFromFile(); use InferWithErrors()")
       self.ConfigureOptions(
           module_name=load_pytd.get_module_name(filename, pythonpath),
           pythonpath=pythonpath)
@@ -329,12 +340,8 @@ class BaseTest(unittest.TestCase):
       self.assertEqual(param1.type, sig.return_type,
                        "Not identity: %r" % pytd_utils.Print(func))
 
-  def assertErrorsMatch(self, errorlog, expected_errors):
-    expected = errorlog.make_expected_errors(expected_errors)
-    self.assertErrorLogIs(errorlog, expected)
-
-  def assertErrorLogIs(self, errorlog, expected_errors):
-    errorlog.assert_expected_errors(expected_errors)
+  def assertErrorRegexes(self, errorlog, expected_errors):
+    errorlog.assert_error_regexes(expected_errors)
 
   def _Pickle(self, ast, module_name):
     assert module_name
@@ -383,7 +390,9 @@ class BaseTest(unittest.TestCase):
         module_name=module_name, quick=quick, use_pickled_files=True,
         pythonpath=[""] if (not pythonpath and imports_map) else pythonpath,
         imports_map=imports_map, analyze_annotated=analyze_annotated)
-    errorlog = errors.ErrorLog()
+    errorlog = test_utils.TestErrorLog(src)
+    if errorlog.expected:
+      self.fail("Cannot assert errors with Infer(); use InferWithErrors()")
     unit, builtins_pytd = analyze.infer_types(
         src, errorlog, self.options, loader=self.loader, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
@@ -427,7 +436,7 @@ class BaseTest(unittest.TestCase):
     CheckWithErrors = _AddAnnotationsImportPy2(CheckWithErrors)
     Infer = _AddAnnotationsImportPy2(Infer)
     InferWithErrors = _AddAnnotationsImportPy2(InferWithErrors)
-    assertErrorLogIs = _IncrementLineNumbersPy2(assertErrorLogIs)
+    assertErrorRegexes = _IncrementLineNumbersPy2(assertErrorRegexes)
 
 
 class TargetIndependentTest(BaseTest):

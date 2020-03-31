@@ -1,5 +1,7 @@
 """Utilities for inline type annotations."""
 
+import sys
+
 from pytype import abstract
 from pytype import abstract_utils
 from pytype import mixin
@@ -157,7 +159,11 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
   def convert_class_annotations(self, node, raw_annotations):
     """Convert a name -> raw_annot dict to annotations."""
     annotations = {}
-    for name, t in raw_annotations.items():
+    raw_items = raw_annotations.items()
+    if sys.version_info.major == 2:
+      # Make sure annotation errors are reported in a deterministic order.
+      raw_items = sorted(raw_items)
+    for name, t in raw_items:
       # Don't use the parameter name, since it's often something unhelpful
       # like `0`.
       annot = self._process_one_annotation(
