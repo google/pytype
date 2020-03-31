@@ -247,7 +247,6 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       v: str
     """)
 
-  @test_utils.skipIn37("https://github.com/google/pytype/issues/203")
   def test_async(self):
     """Test various asyncio features."""
     ty = self.Infer("""
@@ -288,12 +287,11 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       def test_with(x) -> Coroutine[Any, Any, None]: ...
     """)
 
-  @test_utils.skipIn37("https://github.com/google/pytype/issues/203")
   def test_async_iter(self):
     ty = self.Infer("""
       import asyncio
       class AsyncIterable:
-        async def __aiter__(self):
+        def __aiter__(self):
           return self
         async def __anext__(self):
           data = await self.fetch_data()
@@ -311,10 +309,11 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       iterate(AsyncIterable())
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, Coroutine
+      from typing import Any, Coroutine, TypeVar
       asyncio: module
+      _TAsyncIterable = TypeVar('_TAsyncIterable', bound=AsyncIterable)
       class AsyncIterable:
-          def __aiter__(self) -> Coroutine[Any, Any, AsyncIterable]: ...
+          def __aiter__(self: _TAsyncIterable) -> _TAsyncIterable: ...
           def __anext__(self) -> Coroutine[Any, Any, int]: ...
           def fetch_data(self) -> Coroutine[Any, Any, int]: ...
       def iterate(x) -> Coroutine[Any, Any, None]: ...
