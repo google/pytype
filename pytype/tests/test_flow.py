@@ -339,9 +339,9 @@ class FlowTest(test_base.TargetIndependentTest):
         try:
           func = None
         except:
-          func()
+          func()  # name-error[e]
     """, deep=True)
-    self.assertErrorLogIs(errors, [(5, "name-error", r"func")])
+    self.assertErrorRegexes(errors, {"e": r"func"})
 
   def test_nested_break(self):
     self.assertNoCrash(self.Infer, """

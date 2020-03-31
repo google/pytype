@@ -336,15 +336,15 @@ class PYITest(test_base.TargetIndependentTest):
         from typing import Any
         def __getattr__(name) -> Any
       """)
-      ty, errors = self.InferWithErrors("""
+      ty, errors = self.InferWithErrors("""\
         from foo import *
-        from bar import *  # Nonsense import generates a top-level __getattr__
+        from bar import *  # Nonsense import generates a top-level __getattr__  # import-error[e]
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         def __getattr__(name) -> Any
       """)
-      self.assertErrorLogIs(errors, [(3, "import-error", r"bar")])
+      self.assertErrorRegexes(errors, {"e": r"bar"})
 
   def testPyiListItem(self):
     with file_utils.Tempdir() as d:
@@ -436,8 +436,8 @@ class PYITest(test_base.TargetIndependentTest):
         import foo
         a = foo.foo(*tuple(), **dict())
         b = foo.foo(*(1,), **{"c": 3j})
-        c = foo.foo(*(1,))
-        d = foo.foo(*(), **{"d": 3j})
+        c = foo.foo(*(1,))  # missing-parameter[e1]
+        d = foo.foo(*(), **{"d": 3j})  # missing-parameter[e2]
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any, Dict
@@ -447,10 +447,7 @@ class PYITest(test_base.TargetIndependentTest):
         c = ...  # type: Any
         d = ...  # type: Any
       """)
-      self.assertErrorLogIs(errors, [
-          (4, "missing-parameter", r"\bc\b"),
-          (5, "missing-parameter", r"\ba\b"),
-      ])
+      self.assertErrorRegexes(errors, {"e1": r"\bc\b", "e2": r"\ba\b"})
 
   def testUnionWithSuperclass(self):
     with file_utils.Tempdir() as d:
@@ -521,8 +518,8 @@ class PYITest(test_base.TargetIndependentTest):
         from typing import List, Sequence
         class A(List[int], Sequence[str]): ...
       """)
-      ty, errors = self.InferWithErrors("""\
-        import foo
+      ty, _ = self.InferWithErrors("""\
+        import foo  # pyi-error
         x = [] + foo.A()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
@@ -530,7 +527,6 @@ class PYITest(test_base.TargetIndependentTest):
         foo = ...  # type: Any
         x = ...  # type: list
       """)
-      self.assertErrorLogIs(errors, [(1, "pyi-error")])
 
   def testSameTypeVarName(self):
     with file_utils.Tempdir() as d:
@@ -585,11 +581,11 @@ class PYITest(test_base.TargetIndependentTest):
       """)
       # We should get an error at import time rather than at use time here.
       _, errors = self.InferWithErrors("""\
-        import foo
+        import foo  # pyi-error[e]
         x = foo.Bar()
         x.bar()
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(1, "pyi-error", "T2")])
+      self.assertErrorRegexes(errors, {"e": r"T2"})
 
   def testStarImport(self):
     with file_utils.Tempdir() as d:
@@ -725,7 +721,7 @@ class PYITest(test_base.TargetIndependentTest):
 
   def testAliasStaticMethod(self):
     with file_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """\
+      d.create_file("foo.pyi", """
         class A:
           @staticmethod
           def t(a: str) -> None: ...

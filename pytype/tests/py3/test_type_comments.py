@@ -7,12 +7,11 @@ class FunctionCommentWithAnnotationsTest(test_base.TargetPython3BasicTest):
   """Tests for type comments that require annotations."""
 
   def testFunctionTypeCommentPlusAnnotations(self):
-    _, errors = self.InferWithErrors("""\
+    self.InferWithErrors("""\
       def foo(x: int) -> float:
-        # type: (int) -> float
+        # type: (int) -> float  # redundant-function-type-comment
         return x
     """)
-    self.assertErrorLogIs(errors, [(2, "redundant-function-type-comment")])
 
   def testListComprehensionComments(self):
     ty = self.Infer("""\

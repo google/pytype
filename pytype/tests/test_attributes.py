@@ -26,9 +26,9 @@ class TestStrictNone(test_base.TargetIndependentTest):
     errors = self.CheckWithErrors("""\
       x = None
       class Foo(object):
-        x = x.upper()
+        x = x.upper()  # attribute-error[e]
     """)
-    self.assertErrorLogIs(errors, [(3, "attribute-error", r"upper.*None")])
+    self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
   def testMultiplePaths(self):
     errors = self.CheckWithErrors("""\
@@ -36,9 +36,9 @@ class TestStrictNone(test_base.TargetIndependentTest):
       def f():
         z = None if __random__ else x
         y = z
-        return y.upper()
+        return y.upper()  # attribute-error[e]
     """)
-    self.assertErrorLogIs(errors, [(5, "attribute-error", r"upper.*None")])
+    self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
   def testLateInitialization(self):
     ty = self.Infer("""
@@ -86,9 +86,9 @@ class TestStrictNone(test_base.TargetIndependentTest):
       def f():
         pass
       def g():
-        return f().upper()
+        return f().upper()  # attribute-error[e]
     """)
-    self.assertErrorLogIs(errors, [(4, "attribute-error", r"upper.*None")])
+    self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
   def testMethodReturnValue(self):
     errors = self.CheckWithErrors("""\
@@ -96,9 +96,9 @@ class TestStrictNone(test_base.TargetIndependentTest):
         def f(self):
           pass
       def g():
-        return Foo().f().upper()
+        return Foo().f().upper()  # attribute-error[e]
     """)
-    self.assertErrorLogIs(errors, [(5, "attribute-error", r"upper.*None")])
+    self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
   def testPyiReturnValue(self):
     with file_utils.Tempdir() as d:
@@ -106,18 +106,18 @@ class TestStrictNone(test_base.TargetIndependentTest):
       errors = self.CheckWithErrors("""\
         import foo
         def g():
-          return foo.f().upper()
+          return foo.f().upper()  # attribute-error[e]
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(3, "attribute-error", r"upper.*None")])
+      self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
   def testPassThroughNone(self):
     errors = self.CheckWithErrors("""\
       def f(x):
         return x
       def g():
-        return f(None).upper()
+        return f(None).upper()  # attribute-error[e]
     """)
-    self.assertErrorLogIs(errors, [(4, "attribute-error", r"upper.*None")])
+    self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
   def testShadowedLocalOrigin(self):
     self.Check("""
@@ -155,20 +155,19 @@ class TestStrictNone(test_base.TargetIndependentTest):
   def testUnpackedNone(self):
     errors = self.CheckWithErrors("""\
       _, a = 42, None
-      b = a.upper()
+      b = a.upper()  # attribute-error[e]
     """)
-    self.assertErrorLogIs(errors, [(2, "attribute-error", r"upper.*None")])
+    self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
   def testFunctionDefault(self):
     errors = self.CheckWithErrors("""\
       class Foo(object):
         def __init__(self, v=None):
-          v.upper()
+          v.upper()  # attribute-error[e]
       def f():
         Foo()
     """)
-    self.assertErrorLogIs(
-        errors, [(3, "attribute-error", r"upper.*None.*traceback.*line 5")])
+    self.assertErrorRegexes(errors, {"e": r"upper.*None.*traceback.*line 5"})
 
   def testKeepNoneReturn(self):
     ty = self.Infer("""
@@ -252,10 +251,9 @@ class TestStrictNone(test_base.TargetIndependentTest):
     errors = self.CheckWithErrors("""\
       def f():
         x = None
-        return x[0]
+        return x[0]  # unsupported-operands[e]
     """)
-    self.assertErrorLogIs(
-        errors, [(3, "unsupported-operands", r"item retrieval.*None.*int")])
+    self.assertErrorRegexes(errors, {"e": r"item retrieval.*None.*int"})
 
   def testIgnoreGetItem(self):
     self.Check("""
@@ -275,10 +273,9 @@ class TestStrictNone(test_base.TargetIndependentTest):
     errors = self.CheckWithErrors("""\
       def f():
         x = None
-        return 42 in x
+        return 42 in x  # unsupported-operands[e]
     """)
-    self.assertErrorLogIs(
-        errors, [(3, "unsupported-operands", r"'in'.*None.*int")])
+    self.assertErrorRegexes(errors, {"e": r"'in'.*None.*int"})
 
   def testIgnoreContains(self):
     self.Check("""
@@ -500,13 +497,13 @@ class TestAttributes(test_base.TargetIndependentTest):
 
   @test_base.skip("TODO(b/63407497): implement strict checking for __setitem__")
   def testUnionSetAttribute(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, _ = self.InferWithErrors("""\
       class A(object):
         x = "Hello world"
       def f(i):
         t = A()
         l = [t]
-        l[i].x = 1  # line 6
+        l[i].x = 1  # not-writable
         return l[i].x
     """)
     self.assertTypesMatchPytd(ty, """
@@ -515,7 +512,6 @@ class TestAttributes(test_base.TargetIndependentTest):
         x = ...  # type: str
       def f(i) -> Any
     """)
-    self.assertErrorLogIs(errors, [(6, "not-writable")])
 
   def testSetClass(self):
     ty = self.Infer("""
@@ -591,9 +587,9 @@ class TestAttributes(test_base.TargetIndependentTest):
     errors = self.CheckWithErrors("""\
       class Foo(object):
         _HAS_DYNAMIC_ATTRIBUTES = True
-      Foo.CONST
+      Foo.CONST  # attribute-error[e]
     """)
-    self.assertErrorLogIs(errors, [(3, "attribute-error", "CONST.*Foo")])
+    self.assertErrorRegexes(errors, {"e": r"CONST.*Foo"})
 
   def testHasDynamicAttributesMetaclass(self):
     # Since class attributes of Foo are instance attributes for the metaclass,
@@ -657,21 +653,19 @@ class TestAttributes(test_base.TargetIndependentTest):
     """)
 
   def testAttrOnNone(self):
-    _, errors = self.InferWithErrors("""\
+    self.InferWithErrors("""\
       def f(arg):
         x = "foo" if arg else None
         if not x:
-          x.upper()
+          x.upper()  # attribute-error
     """)
-    self.assertErrorLogIs(errors, [(4, "attribute-error")])
 
   def testIteratorOnNone(self):
-    _, errors = self.InferWithErrors("""\
+    self.InferWithErrors("""\
       def f():
         pass
-      a, b = f()
+      a, b = f()  # attribute-error
     """)
-    self.assertErrorLogIs(errors, [(3, "attribute-error")])
 
   def testOverloadedBuiltin(self):
     self.Check("""
@@ -722,10 +716,10 @@ class TestAttributes(test_base.TargetIndependentTest):
   def testBadIter(self):
     errors = self.CheckWithErrors("""\
       v = [] if __random__ else 42
-      for _ in v:
+      for _ in v:  # attribute-error[e]
         pass
     """)
-    self.assertErrorLogIs(errors, [(2, "attribute-error", r"__iter__.*int")])
+    self.assertErrorRegexes(errors, {"e": r"__iter__.*int"})
 
   def testBadGetItem(self):
     errors = self.CheckWithErrors("""\
@@ -733,11 +727,10 @@ class TestAttributes(test_base.TargetIndependentTest):
         def __getitem__(self, x):
           return 0
       v = Foo() if __random__ else 42
-      for _ in v:  # line 5
+      for _ in v:  # attribute-error[e]
         pass
     """)
-    self.assertErrorLogIs(errors, [(5, "attribute-error",
-                                    r"__iter__.*int.*Union\[Foo, int\]")])
+    self.assertErrorRegexes(errors, {"e": r"__iter__.*int.*Union\[Foo, int\]"})
 
   def testBadContains(self):
     errors = self.CheckWithErrors("""\
@@ -745,12 +738,11 @@ class TestAttributes(test_base.TargetIndependentTest):
         def __iter__(self):
           return iter([])
       v = Foo() if __random__ else 42
-      if 42 in v:  # line 5
+      if 42 in v:  # unsupported-operands[e]
         pass
     """)
-    self.assertErrorLogIs(
-        errors, [(5, "unsupported-operands",
-                  r"'in'.*'Union\[Foo, int\]' and 'int'")])
+    self.assertErrorRegexes(
+        errors, {"e": r"'in'.*'Union\[Foo, int\]' and 'int'"})
 
   def testSubclassShadowing(self):
     with file_utils.Tempdir() as d:

@@ -14,9 +14,9 @@ class DecoratorsTest(test_base.TargetPython27FeatureTest):
       @decorate
       class Foo(object):
         def Hello(self):
-          return self.Goodbye()  # line 6
+          return self.Goodbye()  # attribute-error[e]
     """)
-    self.assertErrorLogIs(errors, [(6, "attribute-error", r"Goodbye")])
+    self.assertErrorRegexes(errors, {"e": r"Goodbye"})
 
 
 test_base.main(globals(), __name__ == "__main__")

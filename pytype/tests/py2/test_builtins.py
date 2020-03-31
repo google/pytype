@@ -349,10 +349,9 @@ class BuiltinTests(test_base.TargetPython27FeatureTest):
 
   def testIntInit(self):
     _, errors = self.InferWithErrors("""\
-      int(0, 1)  # line 8: expected str or unicode, got int for first arg
+      int(0, 1)  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(errors, [(1, "wrong-arg-types",
-                                    r"Union\[str, unicode\].*int")])
+    self.assertErrorRegexes(errors, {"e": r"Union\[str, unicode\].*int"})
 
   def testAddStrAndBytearray(self):
     ty = self.Infer("""

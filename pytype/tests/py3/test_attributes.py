@@ -10,9 +10,9 @@ class TestStrictNone(test_base.TargetPython3BasicTest):
     errors = self.CheckWithErrors("""\
       from typing import Optional
       def f(x: Optional[str]):
-        return x.upper()
+        return x.upper()  # attribute-error[e]
     """)
-    self.assertErrorLogIs(errors, [(3, "attribute-error", r"upper.*None")])
+    self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
   def testClosure(self):
     self.Check("""
@@ -30,14 +30,13 @@ class TestStrictNone(test_base.TargetPython3BasicTest):
       from typing import Optional
       d = ...  # type: Optional[dict]
       if d:
-        formatter = lambda x: d.get(x, '')  # line 4
+        formatter = lambda x: d.get(x, '')  # attribute-error[e]
       else:
         formatter = lambda x: ''
       d = None
       formatter('key')  # line 8
     """)
-    self.assertErrorLogIs(
-        errors, [(4, "attribute-error", r"get.*None.*traceback.*line 8")])
+    self.assertErrorRegexes(errors, {"e": r"get.*None.*traceback.*line 8"})
 
 
 class TestAttributes(test_base.TargetPython3BasicTest):
@@ -47,9 +46,9 @@ class TestAttributes(test_base.TargetPython3BasicTest):
     errors = self.CheckWithErrors("""\
       from typing import Optional
       def f(x: Optional[str]):
-        return x.upper()
+        return x.upper()  # attribute-error[e]
     """)
-    self.assertErrorLogIs(errors, [(3, "attribute-error", r"upper.*None")])
+    self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
   def testErrorInAny(self):
     errors = self.CheckWithErrors("""\
@@ -57,10 +56,9 @@ class TestAttributes(test_base.TargetPython3BasicTest):
       def f(x: Any):
         if __random__:
           x = 42
-        x.upper()  # line 5
+        x.upper()  # attribute-error[e]
     """)
-    self.assertErrorLogIs(
-        errors, [(5, "attribute-error", r"upper.*int.*Union\[Any, int\]")])
+    self.assertErrorRegexes(errors, {"e": r"upper.*int.*Union\[Any, int\]"})
 
 
 class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):
@@ -79,9 +77,9 @@ class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):
         values = 42
       args = {A() if __random__ else True: ""}
       for x, y in sorted(args.items()):
-        x.values  # line 5
+        x.values  # attribute-error[e]
     """)
-    self.assertErrorLogIs(errors, [(5, "attribute-error", r"'values' on bool")])
+    self.assertErrorRegexes(errors, {"e": r"'values' on bool"})
 
   def testTypeParameterInstanceSetAttr(self):
     ty = self.Infer("""

@@ -108,9 +108,9 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
 
   def testBadStarImport(self):
-    ty, errors = self.InferWithErrors("""
-      from nonsense import *
-      from other_nonsense import *
+    ty, _ = self.InferWithErrors("""\
+      from nonsense import *  # import-error
+      from other_nonsense import *  # import-error
       x = foo.bar()
     """)
     self.assertTypesMatchPytd(ty, """
@@ -118,8 +118,6 @@ class ImportTest(test_base.TargetIndependentTest):
       def __getattr__(name) -> Any
       x = ...  # type: Any
     """)
-    self.assertErrorLogIs(errors, [(2, "import-error", r"nonsense"),
-                                   (3, "import-error", r"other_nonsense")])
 
   def testPathImport(self):
     with file_utils.Tempdir() as d:
@@ -426,7 +424,7 @@ class ImportTest(test_base.TargetIndependentTest):
         from ..bar import X
       """)
       d.create_file("up2/bar.pyi", "class X: ...")
-      d.create_file("top.py", """\
+      d.create_file("top.py", """
                     from up2.baz.foo import X
                     x = X()
                     """)
@@ -442,7 +440,7 @@ class ImportTest(test_base.TargetIndependentTest):
     # Similar to testDotDot except in a pyi file.
     with file_utils.Tempdir() as d:
       d.create_file("foo/baz.pyi", "x: int")
-      d.create_file("foo/deep/bar.py", """\
+      d.create_file("foo/deep/bar.py", """
         from .. import baz
         a = baz.x
       """)
@@ -459,18 +457,18 @@ class ImportTest(test_base.TargetIndependentTest):
       d.create_file("up/foo.pyi", "from ..bar import X")
       d.create_file("up/bar.pyi", "class X: ...")
       _, err = self.InferWithErrors(
-          "from up.foo import X", pythonpath=[d.path])
-      self.assertErrorLogIs(
-          err, [(1, "pyi-error", "Cannot resolve relative import ..bar")])
+          "from up.foo import X  # pyi-error[e]", pythonpath=[d.path])
+      self.assertErrorRegexes(
+          err, {"e": r"Cannot resolve relative import \.\.bar"})
 
   def testFromDotInPyi(self):
     # from . import module
     with file_utils.Tempdir() as d:
       d.create_file("foo/a.pyi", "class X: ...")
-      d.create_file("foo/b.pyi", """\
+      d.create_file("foo/b.pyi", """
         from . import a
         Y = a.X""")
-      d.create_file("top.py", """\
+      d.create_file("top.py", """
         import foo.b
         x = foo.b.Y() """)
       ty = self.InferFromFile(filename=d["top.py"], pythonpath=[d.path])
@@ -749,10 +747,10 @@ class ImportTest(test_base.TargetIndependentTest):
           pass
       """)
       _, errors = self.InferWithErrors("""\
-        import b
+        import b  # pyi-error[e]
         x = b.B()
       """, pythonpath=[d.path])
-    self.assertErrorLogIs(errors, [(1, "pyi-error", r"a\.pyi")])
+    self.assertErrorRegexes(errors, {"e": r"a\.pyi"})
 
   def testSubdirAndModuleWithSameNameAsPackage(self):
     with file_utils.Tempdir() as d:
@@ -798,20 +796,17 @@ class ImportTest(test_base.TargetIndependentTest):
           def foo(self) -> None: ...
         def f(x: object) -> object
       """)
-      ty, errors = self.InferWithErrors("""\
+      ty, _ = self.InferWithErrors("""\
         import foo
         x = foo.f(foo.object())
         y = foo.f(foo.object())
-        foo.f(object())  # error
+        foo.f(object())  # wrong-arg-types
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         x = ...  # type: foo.object
         y = ...  # type: foo.object
       """)
-      self.assertErrorLogIs(errors, [
-          (4, "wrong-arg-types"),
-      ])
 
   def testNoFailOnBadSymbolLookup(self):
     with file_utils.Tempdir() as d:
@@ -873,14 +868,11 @@ class ImportTest(test_base.TargetIndependentTest):
         foo = ...  # type: int
       """)
       _, errors = self.InferWithErrors("""\
-        from a import foo, bar
+        from a import foo, bar  # import-error[e1]
         import a
-        a.baz
+        a.baz  # module-attr[e2]
       """, pythonpath=[d.path])
-    self.assertErrorLogIs(errors, [
-        (1, "import-error", r"bar"),
-        (3, "module-attr", r"baz"),
-    ])
+    self.assertErrorRegexes(errors, {"e1": r"bar", "e2": r"baz"})
 
   def testFromImport(self):
     with file_utils.Tempdir() as d:
@@ -906,7 +898,7 @@ class ImportTest(test_base.TargetIndependentTest):
         Qux = bar.Quack
         """.format(imp_path)
       init_fn = d.create_file("foo/__init__.py", init_body)
-      initpyi_fn = d.create_file("foo/__init__.pyi~", """\
+      initpyi_fn = d.create_file("foo/__init__.pyi~", """
         from typing import Any
         bar = ...  # type: Any
         baz = ...  # type: Any
@@ -914,7 +906,7 @@ class ImportTest(test_base.TargetIndependentTest):
         """)
       bar_fn = d.create_file("foo/bar.py", "class Quack(object): pass")
       barpyi_fn = d.create_file("foo/bar.pyi", "class Quack(object): pass")
-      imports_fn = d.create_file("imports_info", """\
+      imports_fn = d.create_file("imports_info", """
         {0} {1}
         {2} {3}
         """.format(init_fn[1:-3], initpyi_fn, bar_fn[1:-3], barpyi_fn))
@@ -1133,19 +1125,18 @@ class ImportTest(test_base.TargetIndependentTest):
       _, errors = self.InferWithErrors("""\
         import sub.bar.baz
         x = sub.bar.baz.A()
-        y = sub.bar.quux.B()
+        y = sub.bar.quux.B()  # module-attr[e]
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(3, "module-attr", r"quux.*sub\.bar")])
+      self.assertErrorRegexes(errors, {"e": r"quux.*sub\.bar"})
 
   def testSubmoduleAttributeError(self):
     with file_utils.Tempdir() as d:
       d.create_file("package/__init__.pyi", "submodule: module")
       d.create_file("package/submodule.pyi", "")
-      errors = self.CheckWithErrors("""\
+      self.CheckWithErrors("""\
         from package import submodule
-        submodule.asd
+        submodule.asd  # module-attr
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(2, "module-attr")])
 
   def testInitOnlySubmodule(self):
     """Test a submodule without its own stub file."""

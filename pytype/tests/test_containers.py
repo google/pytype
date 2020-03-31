@@ -544,11 +544,11 @@ class ContainerTest(test_base.TargetIndependentTest):
     """, deep=False)
 
   def testDict(self):
-    ty, errors = self.InferWithErrors("""
+    ty, errors = self.InferWithErrors("""\
       mymap = {'a': 3.14, 'b':1}
       a = mymap['a']
       b1 = mymap['b']
-      c = mymap['foobar']
+      c = mymap['foobar']  # key-error[e]
       mymap[str()] = 3j
       b2 = mymap['b']
     """, deep=True)
@@ -560,9 +560,7 @@ class ContainerTest(test_base.TargetIndependentTest):
       c = ...  # type: Any
       b2 = ...  # type: Union[int, float, complex]
     """)
-    self.assertErrorLogIs(errors, [
-        (5, "key-error", "foobar")
-    ])
+    self.assertErrorRegexes(errors, {"e": r"foobar"})
 
   def testDictOrAny(self):
     self.Check("""
@@ -577,9 +575,9 @@ class ContainerTest(test_base.TargetIndependentTest):
   def testDictGetItem(self):
     _, errors = self.InferWithErrors("""\
       v = {}
-      v.__getitem__("a")
+      v.__getitem__("a")  # key-error[e]
     """)
-    self.assertErrorLogIs(errors, [(2, "key-error", r"'a'")])
+    self.assertErrorRegexes(errors, {"e": r"'a'"})
 
   def testEmptyList(self):
     ty = self.Infer("""

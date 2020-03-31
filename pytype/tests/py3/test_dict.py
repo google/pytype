@@ -21,16 +21,15 @@ class DictTest(test_base.TargetPython3BasicTest):
     """)
 
   def testObjectInDict(self):
-    errors = self.CheckWithErrors("""\
+    self.CheckWithErrors("""\
       from typing import Any, Dict
       def objectIsStr() -> Dict[str, Any]:
-        return {object(): ""}
+        return {object(): ""}  # bad-return-type
     """)
-    self.assertErrorLogIs(errors, [(3, "bad-return-type")])
 
   def testBigConcreteDict(self):
     # Test that we don't timeout.
-    errorlog = self.CheckWithErrors("""\
+    self.CheckWithErrors("""\
       from typing import Dict, Tuple, Union
       # A concrete dictionary with lots of concrete keys and a complicated
       # value type.
@@ -50,9 +49,8 @@ class DictTest(test_base.TargetPython3BasicTest):
       def f() -> Dict[Union[str, Tuple[str, None]], ValueType]:
         return d
       def g() -> Dict[int, int]:
-        return d  # line 20
+        return d  # bad-return-type
     """)
-    self.assertErrorLogIs(errorlog, [(20, "bad-return-type")])
 
   def testDictOfTuple(self):
     # utils.deep_variable_product(group_dict) generates a lot of combinations.

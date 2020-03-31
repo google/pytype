@@ -24,22 +24,20 @@ class CallsTest(test_base.TargetIndependentTest):
       d.create_file("mod.pyi", """
         def foo(x, y) -> int
       """)
-      _, errors = self.InferWithErrors("""\
+      self.InferWithErrors("""\
         import mod
-        mod.foo(1)
+        mod.foo(1)  # missing-parameter
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(2, "missing-parameter")])
 
   def testExtraneous(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def foo(x, y) -> int
       """)
-      _, errors = self.InferWithErrors("""\
+      self.InferWithErrors("""\
         import mod
-        mod.foo(1, 2, 3)
+        mod.foo(1, 2, 3)  # wrong-arg-count
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(2, "wrong-arg-count")])
 
   def testMissingKwOnly(self):
     with file_utils.Tempdir() as d:
@@ -48,20 +46,19 @@ class CallsTest(test_base.TargetIndependentTest):
       """)
       _, errors = self.InferWithErrors("""\
         import mod
-        mod.foo(1, 2)
+        mod.foo(1, 2)  # missing-parameter[e]
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(2, "missing-parameter", r"\bz\b")])
+      self.assertErrorRegexes(errors, {"e": r"\bz\b"})
 
   def testExtraKeyword(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def foo(x, y) -> int
       """)
-      _, errors = self.InferWithErrors("""\
+      self.InferWithErrors("""\
         import mod
-        mod.foo(1, 2, z=3)
+        mod.foo(1, 2, z=3)  # wrong-keyword-args
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(2, "wrong-keyword-args")])
 
   def testVarArgsWithKwOnly(self):
     with file_utils.Tempdir() as d:
@@ -79,12 +76,11 @@ class CallsTest(test_base.TargetIndependentTest):
       d.create_file("mod.pyi", """
         def foo(*args: int, z: int) -> int
       """)
-      _, errors = self.InferWithErrors(
-          """\
+      _, errors = self.InferWithErrors("""\
         import mod
-        mod.foo(1, 2, 3)
+        mod.foo(1, 2, 3)  # missing-parameter[e]
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(2, "missing-parameter", r"\bz\b")])
+      self.assertErrorRegexes(errors, {"e": r"\bz\b"})
 
 
 test_base.main(globals(), __name__ == "__main__")

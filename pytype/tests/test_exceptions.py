@@ -77,8 +77,7 @@ class TestExceptions(test_base.TargetIndependentTest):
       """)
 
   def test_global_name_error(self):
-    errors = self.CheckWithErrors("fooey")
-    self.assertErrorLogIs(errors, [(1, "name-error", r"fooey")])
+    self.CheckWithErrors("fooey  # name-error")
     # TODO(kramm): Don't warn about NameErrors that are being caught.
     self.assertNoCrash(self.Check, """\
       try:
@@ -89,12 +88,11 @@ class TestExceptions(test_base.TargetIndependentTest):
     """)
 
   def test_local_name_error(self):
-    errors = self.CheckWithErrors("""\
+    self.CheckWithErrors("""\
       def fn():
-        fooey
+        fooey  # name-error
       fn()
     """)
-    self.assertErrorLogIs(errors, [(2, "name-error", r"fooey")])
 
   def test_catch_local_name_error(self):
     self.assertNoCrash(self.Check, """\
@@ -108,17 +106,16 @@ class TestExceptions(test_base.TargetIndependentTest):
       """)
 
   def test_reraise(self):
-    errors = self.CheckWithErrors("""\
+    self.CheckWithErrors("""\
       def fn():
         try:
-          fooey
+          fooey  # name-error
           print("Yes fooey?")
         except NameError:
           print("No fooey")
           raise
       fn()
     """)
-    self.assertErrorLogIs(errors, [(3, "name-error", r"fooey")])
 
   def test_reraise_explicit_exception(self):
     self.Check("""\
@@ -312,7 +309,7 @@ class TestExceptions(test_base.TargetIndependentTest):
     """)
 
   def test_return_or_raise_set_attribute(self):
-    errors = self.CheckWithErrors("""\
+    self.CheckWithErrors("""\
       def f():
         raise ValueError()
       def g():
@@ -320,17 +317,16 @@ class TestExceptions(test_base.TargetIndependentTest):
       def h():
         func = f if __random__ else g
         v = func()
-        v.attr = None
+        v.attr = None  # not-writable
     """)
-    self.assertErrorLogIs(errors, [(8, "not-writable")])
 
   def test_bad_type_self(self):
     errors = self.CheckWithErrors("""\
       class Foo(object):
         def __init__(self):
-          type(42, self)
+          type(42, self)  # wrong-arg-count[e]
     """)
-    self.assertErrorLogIs(errors, [(3, "wrong-arg-count", r"2.*3")])
+    self.assertErrorRegexes(errors, {"e": r"2.*3"})
 
   def test_value(self):
     ty = self.Infer("""
@@ -375,16 +371,15 @@ class TestExceptions(test_base.TargetIndependentTest):
     errors = self.CheckWithErrors("""\
       try:
         pass
-      except None:
+      except None:  # mro-error[e1]
         pass
       try:
         pass
-      except type(None):
+      except type(None):  # mro-error[e2]
         pass
     """)
-    self.assertErrorLogIs(
-        errors, [(3, "mro-error", r"Not a class"),
-                 (7, "mro-error", r"None.*BaseException")])
+    self.assertErrorRegexes(
+        errors, {"e1": r"Not a class", "e2": r"None.*BaseException"})
 
   def test_unknown_type(self):
     self.Check("""

@@ -328,9 +328,9 @@ class ReverseTest(test_base.TargetIndependentTest,
       class Foo(object):
         def __sub__(self, other):
           return ""
-      (Foo() - __any_object__).real
+      (Foo() - __any_object__).real  # attribute-error[e]
     """)
-    self.assertErrorLogIs(errors, [(4, "attribute-error", r"real.*str")])
+    self.assertErrorRegexes(errors, {"e": r"real.*str"})
 
 
 class InplaceTest(test_base.TargetIndependentTest,
@@ -371,9 +371,9 @@ class InplaceTest(test_base.TargetIndependentTest,
     _, errors = self.InferWithErrors("""\
       class A(object): pass
       v = []
-      v += A()
+      v += A()  # unsupported-operands[e]
     """)
-    self.assertErrorLogIs(errors, [(3, "unsupported-operands", r"A.*Iterable")])
+    self.assertErrorRegexes(errors, {"e": r"A.*Iterable"})
 
 
 class BindingsTest(test_base.TargetIndependentTest):

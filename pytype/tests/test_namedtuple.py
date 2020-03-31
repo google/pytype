@@ -79,22 +79,15 @@ class NamedtupleTests(test_base.TargetIndependentTest):
         """)
 
   def test_bad_fieldnames(self):
-    _, errorlog = self.InferWithErrors("""\
+    self.InferWithErrors("""\
         import collections
-        collections.namedtuple("_", ["abc", "def", "ghi"])
-        collections.namedtuple("_", "_")
-        collections.namedtuple("_", "a, 1")
-        collections.namedtuple("_", "a, !")
-        collections.namedtuple("_", "a, b, c, a")
-        collections.namedtuple("1", "")
+        collections.namedtuple("_", ["abc", "def", "ghi"])  # invalid-namedtuple-arg
+        collections.namedtuple("_", "_")  # invalid-namedtuple-arg
+        collections.namedtuple("_", "a, 1")  # invalid-namedtuple-arg
+        collections.namedtuple("_", "a, !")  # invalid-namedtuple-arg
+        collections.namedtuple("_", "a, b, c, a")  # invalid-namedtuple-arg
+        collections.namedtuple("1", "")  # invalid-namedtuple-arg
         """)
-    self.assertErrorLogIs(errorlog,
-                          [(2, "invalid-namedtuple-arg"),
-                           (3, "invalid-namedtuple-arg"),
-                           (4, "invalid-namedtuple-arg"),
-                           (5, "invalid-namedtuple-arg"),
-                           (6, "invalid-namedtuple-arg"),
-                           (7, "invalid-namedtuple-arg")])
 
   def test_rename(self):
     ty = self.Infer("""
@@ -106,19 +99,15 @@ class NamedtupleTests(test_base.TargetIndependentTest):
         ty, self._namedtuple_def(S=("S", ["abc", "_1", "ghi", "_3"])))
 
   def test_bad_initialize(self):
-    _, errlog = self.InferWithErrors("""\
+    self.InferWithErrors("""\
         from collections import namedtuple
 
         X = namedtuple("X", "y z")
-        a = X(1)
-        b = X(y = 2)
-        c = X(w = 3)
+        a = X(1)  # missing-parameter
+        b = X(y = 2)  # missing-parameter
+        c = X(w = 3)  # wrong-keyword-args
         d = X(y = "hello", z = 4j)  # works
         """)
-    self.assertErrorLogIs(errlog, [
-        (4, "missing-parameter"),
-        (5, "missing-parameter"),
-        (6, "wrong-keyword-args")])
 
   def test_class_name(self):
     ty = self.Infer(
@@ -155,15 +144,14 @@ class NamedtupleTests(test_base.TargetIndependentTest):
       """)
       _, errors = self.InferWithErrors("""\
         import foo
-        foo.X()  # wrong arg count
-        foo.X(0, "")  # wrong types
-        foo.X(z="", y=0)  # wrong types
+        foo.X()  # missing-parameter[e1]
+        foo.X(0, "")  # wrong-arg-types[e2]
+        foo.X(z="", y=0)  # wrong-arg-types[e3]
         foo.X("", 0)
         foo.X(y="", z=0)
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(2, "missing-parameter", r"y"),
-                                     (3, "wrong-arg-types", r"str.*int"),
-                                     (4, "wrong-arg-types", r"str.*int")])
+      self.assertErrorRegexes(
+          errors, {"e1": r"y", "e2": r"str.*int", "e3": r"str.*int"})
 
   def test_use_pyi_namedtuple(self):
     with file_utils.Tempdir() as d:
@@ -173,9 +161,9 @@ class NamedtupleTests(test_base.TargetIndependentTest):
       _, errors = self.InferWithErrors("""\
         import foo
         foo.X()._replace()
-        foo.X().nonsense
+        foo.X().nonsense  # attribute-error[e]
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(3, "attribute-error", r"nonsense.*X")])
+      self.assertErrorRegexes(errors, {"e": r"nonsense.*X"})
 
   def test_subclass_pyi_namedtuple(self):
     with file_utils.Tempdir() as d:

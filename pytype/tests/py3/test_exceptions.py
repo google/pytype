@@ -18,8 +18,7 @@ class TestExceptionsPy3(test_base.TargetPython3FeatureTest):
 
   def test_exception_message(self):
     # This attribute was removed in Python 3.
-    errors = self.CheckWithErrors("ValueError().message")
-    self.assertErrorLogIs(errors, [(1, "attribute-error")])
+    self.CheckWithErrors("ValueError().message  # attribute-error")
 
   def test_suppress_context(self):
     self.Check("ValueError().__suppress_context__")

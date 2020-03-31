@@ -245,24 +245,22 @@ class TestBasic(test_base.TargetIndependentTest):
       """)
 
   def test_deleting_names(self):
-    _, errors = self.InferWithErrors("""\
+    self.InferWithErrors("""\
       g = 17
       assert g == 17
       del g
-      g
+      g  # name-error
     """)
-    self.assertErrorLogIs(errors, [(4, "name-error")])
 
   def test_deleting_local_names(self):
-    _, errors = self.InferWithErrors("""\
+    self.InferWithErrors("""\
       def f():
         l = 23
         assert l == 23
         del l
-        l
+        l  # name-error
       f()
     """)
-    self.assertErrorLogIs(errors, [(5, "name-error")])
 
   def test_import(self):
     self.Check("""\
@@ -317,9 +315,9 @@ class TestBasic(test_base.TargetIndependentTest):
         def meth(self, y):
           return self.x * y
       thing1 = Thing(2)
-      print(Thing.meth(14))
+      print(Thing.meth(14))  # missing-parameter[e]
     """)
-    self.assertErrorLogIs(errors, [(7, "missing-parameter", r"self")])
+    self.assertErrorRegexes(errors, {"e": r"self"})
 
   def test_calling_subclass_methods(self):
     self.Check("""\
@@ -345,9 +343,9 @@ class TestBasic(test_base.TargetIndependentTest):
           return 9
 
       st = SubThing()
-      print(st.foo())
+      print(st.foo())  # attribute-error[e]
     """)
-    self.assertErrorLogIs(errors, [(10, "attribute-error", r"foo.*SubThing")])
+    self.assertErrorRegexes(errors, {"e": r"foo.*SubThing"})
 
   def test_attribute_access(self):
     self.Check("""\
@@ -368,9 +366,9 @@ class TestBasic(test_base.TargetIndependentTest):
         def __init__(self):
           self.x = 23
       t = Thing()
-      print(t.xyzzy)
+      print(t.xyzzy)  # attribute-error[e]
       """)
-    self.assertErrorLogIs(errors, [(6, "attribute-error", r"xyzzy.*Thing")])
+    self.assertErrorRegexes(errors, {"e": r"xyzzy.*Thing"})
 
   def test_staticmethods(self):
     self.Check("""\
@@ -488,15 +486,14 @@ class TestBasic(test_base.TargetIndependentTest):
       """)
 
   def test_delete_global(self):
-    _, errors = self.InferWithErrors("""\
+    self.InferWithErrors("""\
       a = 3
       def f():
         global a
         del a
       f()
-      x = a
+      x = a  # name-error
       """)
-    self.assertErrorLogIs(errors, [(6, "name-error")])
 
   def test_string(self):
     self.Check("v = '\\xff'")

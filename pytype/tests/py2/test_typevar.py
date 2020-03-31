@@ -9,7 +9,7 @@ class Test(test_base.TargetPython27FeatureTest):
 
   def testUseConstraintsFromPyi(self):
     with file_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """\
+      d.create_file("foo.pyi", """
         from typing import AnyStr, TypeVar
         T = TypeVar("T", int, float)
         def f(x: T) -> T: ...
@@ -17,25 +17,23 @@ class Test(test_base.TargetPython27FeatureTest):
       """)
       _, errors = self.InferWithErrors("""\
         import foo
-        foo.f("")
-        foo.g(0)
+        foo.f("")  # wrong-arg-types[e1]
+        foo.g(0)  # wrong-arg-types[e2]
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [
-          (2, "wrong-arg-types", r"Union\[float, int\].*str"),
-          (3, "wrong-arg-types", r"Union\[str, unicode\].*int")])
+      self.assertErrorRegexes(errors, {
+          "e1": r"Union\[float, int\].*str",
+          "e2": r"Union\[str, unicode\].*int"})
 
   def testExtraArguments(self):
     # TODO(b/78905523): Make this a target-independent test.
     _, errors = self.InferWithErrors("""\
       from typing import TypeVar
-      T = TypeVar("T", extra_arg=42)
-      S = TypeVar("S", *__any_object__)
-      U = TypeVar("U", **__any_object__)
+      T = TypeVar("T", extra_arg=42)  # invalid-typevar[e1]
+      S = TypeVar("S", *__any_object__)  # invalid-typevar[e2]
+      U = TypeVar("U", **__any_object__)  # invalid-typevar[e3]
     """)
-    self.assertErrorLogIs(errors, [
-        (2, "invalid-typevar", r"extra_arg"),
-        (3, "invalid-typevar", r"\*args"),
-        (4, "invalid-typevar", r"\*\*kwargs")])
+    self.assertErrorRegexes(errors, {
+        "e1": r"extra_arg", "e2": r"\*args", "e3": r"\*\*kwargs"})
 
   def testSimplifyArgsAndKwargs(self):
     # TODO(b/78905523): Make this a target-independent test.

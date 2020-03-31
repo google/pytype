@@ -19,9 +19,9 @@ class TestAttributesPython27FeatureTest(test_base.TargetPython27FeatureTest):
         values = 42
       args = {A() if __random__ else True: ""}
       for x, y in sorted(args.iteritems()):
-        x.values  # line 5
+        x.values  # attribute-error[e]
     """)
-    self.assertErrorLogIs(errors, [(5, "attribute-error", r"'values' on bool")])
+    self.assertErrorRegexes(errors, {"e": r"'values' on bool"})
 
   def testTypeParameterInstanceSetAttr(self):
     ty = self.Infer("""
@@ -63,9 +63,9 @@ class TestAttributesPython27FeatureTest(test_base.TargetPython27FeatureTest):
     errors = self.CheckWithErrors("""\
       def f():
         x = None
-        return [y for y in x]
+        return [y for y in x]  # attribute-error[e]
     """)
-    self.assertErrorLogIs(errors, [(3, "attribute-error", r"__iter__.*None")])
+    self.assertErrorRegexes(errors, {"e": r"__iter__.*None"})
 
   @test_base.skip("Needs vm._get_iter() to iterate over individual bindings.")
   def testMetaclassIter(self):

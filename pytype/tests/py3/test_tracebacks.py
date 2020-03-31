@@ -9,10 +9,10 @@ class TracebackTest(test_base.TargetPython3BasicTest):
   def test_build_class(self):
     errors = self.CheckWithErrors("""\
       class Foo(object):
-        def f(self, x: Bar):
+        def f(self, x: Bar):  # name-error[e]
           pass
     """)
-    self.assertErrorLogIs(errors, [(2, "name-error", r"Bar.*not defined$")])
+    self.assertErrorRegexes(errors, {"e": r"Bar.*not defined$"})
 
 
 test_base.main(globals(), __name__ == "__main__")

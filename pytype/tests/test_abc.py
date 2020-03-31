@@ -17,21 +17,19 @@ class AbstractMethodTests(test_base.TargetIndependentTest):
       """)
       _, errors = self.InferWithErrors("""\
         import foo
-        foo.Example()
+        foo.Example()  # not-instantiable[e]
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(2, "not-instantiable",
-                                      r"foo\.Example.*foo")])
+      self.assertErrorRegexes(errors, {"e": r"foo\.Example.*foo"})
 
   def test_stray_abstractmethod(self):
     _, errors = self.InferWithErrors("""\
       import abc
-      class Example(object):
+      class Example(object):  # ignored-abstractmethod[e]
         @abc.abstractmethod
         def foo(self):
           pass
     """)
-    self.assertErrorLogIs(errors, [(2, "ignored-abstractmethod",
-                                    r"foo.*Example")])
+    self.assertErrorRegexes(errors, {"e": r"foo.*Example"})
 
   def test_multiple_inheritance_implementation_pyi(self):
     with file_utils.Tempdir() as d:
@@ -62,9 +60,9 @@ class AbstractMethodTests(test_base.TargetIndependentTest):
       """)
       _, errors = self.InferWithErrors("""\
         import foo
-        foo.Foo().foo()
+        foo.Foo().foo()  # not-instantiable[e]
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(2, "not-instantiable", r"foo\.Foo.*foo")])
+      self.assertErrorRegexes(errors, {"e": r"foo\.Foo.*foo"})
 
   def test_abc_metaclass_from_decorator(self):
     with file_utils.Tempdir() as d:
@@ -108,10 +106,9 @@ class AbstractMethodTests(test_base.TargetIndependentTest):
       @abc.abstractproperty
       class Example(object):
         pass
-      Example()
+      Example()  # not-callable[e]
     """)
-    self.assertErrorLogIs(errors,
-                          [(5, "not-callable", r"'abstractproperty' object")])
+    self.assertErrorRegexes(errors, {"e": r"'abstractproperty' object"})
 
 
 test_base.main(globals(), __name__ == "__main__")

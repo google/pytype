@@ -140,24 +140,22 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
 
   def test_type_clash(self):
-    errors = self.CheckWithErrors("""
+    self.CheckWithErrors("""\
       import attr
       @attr.s
-      class Foo(object):
+      class Foo(object):  # invalid-annotation
         x = attr.ib(type=str) # type: int
         y = attr.ib(type=str, default="")  # type: int
       Foo(x="")  # should not report an error
     """)
-    self.assertErrorLogIs(errors, [(4, "invalid-annotation")])
 
   def test_bad_type(self):
-    errors = self.CheckWithErrors("""
+    self.CheckWithErrors("""\
       import attr
       @attr.s
       class Foo(object):
-        x = attr.ib(type=10)
+        x = attr.ib(type=10)  # invalid-annotation
     """)
-    self.assertErrorLogIs(errors, [(5, "invalid-annotation")])
 
   def test_name_mangling(self):
     # NOTE: Python itself mangles names starting with two underscores.
@@ -276,21 +274,20 @@ class TestAttrib(test_base.TargetIndependentTest):
       import attr
       @attr.s
       class Foo(object):
-        x = attr.ib(default=attr.Factory(42))
-        y = attr.ib(factory=42)
+        x = attr.ib(default=attr.Factory(42))  # wrong-arg-types[e1]
+        y = attr.ib(factory=42)  # wrong-arg-types[e2]
     """)
-    self.assertErrorLogIs(errors, [(4, "wrong-arg-types", r"Callable.*int"),
-                                   (5, "wrong-arg-types", r"Callable.*int")])
+    self.assertErrorRegexes(errors, {"e1": r"Callable.*int",
+                                     "e2": r"Callable.*int"})
 
   def test_default_factory_clash(self):
     errors = self.CheckWithErrors("""\
       import attr
       @attr.s
       class Foo(object):
-        x = attr.ib(default=None, factory=list)
+        x = attr.ib(default=None, factory=list)  # duplicate-keyword-argument[e]
     """)
-    self.assertErrorLogIs(
-        errors, [(4, "duplicate-keyword-argument", r"default")])
+    self.assertErrorRegexes(errors, {"e": r"default"})
 
   def test_takes_self(self):
     ty = self.Infer("""
@@ -388,18 +385,17 @@ class TestAttrib(test_base.TargetIndependentTest):
       import attr
       @attr.s
       class Foo(object):
-        x = attr.ib(init=0)
+        x = attr.ib(init=0)  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(err, [(4, "wrong-arg-types", r"bool.*int")])
+    self.assertErrorRegexes(err, {"e": r"bool.*int"})
 
   def test_init_bad_kwarg(self):
-    err = self.CheckWithErrors("""
+    self.CheckWithErrors("""\
       import attr
       @attr.s
       class Foo:
-        x = attr.ib(init=__random__)  # type: str
+        x = attr.ib(init=__random__)  # type: str  # not-supported-yet
     """)
-    self.assertErrorLogIs(err, [(5, "not-supported-yet")])
 
   def test_class(self):
     self.assertNoCrash(self.Check, """
@@ -605,20 +601,19 @@ class TestAttrs(test_base.TargetIndependentTest):
   def test_init_bad_constant(self):
     err = self.CheckWithErrors("""\
       import attr
-      @attr.s(init=0)
+      @attr.s(init=0)  # wrong-arg-types[e]
       class Foo:
         pass
     """)
-    self.assertErrorLogIs(err, [(2, "wrong-arg-types", r"bool.*int")])
+    self.assertErrorRegexes(err, {"e": r"bool.*int"})
 
   def test_bad_kwarg(self):
-    err = self.CheckWithErrors("""
+    self.CheckWithErrors("""\
       import attr
-      @attr.s(init=__random__)
+      @attr.s(init=__random__)  # not-supported-yet
       class Foo:
         pass
     """)
-    self.assertErrorLogIs(err, [(3, "not-supported-yet")])
 
   def test_depth(self):
     self.Check("""

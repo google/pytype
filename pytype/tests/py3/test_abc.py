@@ -63,7 +63,7 @@ class AbstractMethodTests(test_base.TargetPython3FeatureTest):
         @property
         def foo(self):
           return super(Bar, self).foo
-      v1 = Foo().foo
+      v1 = Foo().foo  # not-instantiable[e]
       v2 = Bar().foo
     """)
     self.assertTypesMatchPytd(ty, """
@@ -77,7 +77,7 @@ class AbstractMethodTests(test_base.TargetPython3FeatureTest):
       class Foo(metaclass=abc.ABCMeta):
         foo = ...  # type: Any
     """)
-    self.assertErrorLogIs(errors, [(10, "not-instantiable", r"Foo.*foo")])
+    self.assertErrorRegexes(errors, {"e": r"Foo.*foo"})
 
 
 test_base.main(globals(), __name__ == "__main__")

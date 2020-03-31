@@ -349,9 +349,9 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       x2 = reversed([42])
       x3 = reversed((4, 2))
       x4 = reversed("hello")
-      x5 = reversed({42})
-      x6 = reversed(frozenset([42]))
-      x7 = reversed({True: 42})
+      x5 = reversed({42})  # wrong-arg-types[e1]
+      x6 = reversed(frozenset([42]))  # wrong-arg-types[e2]
+      x7 = reversed({True: 42})  # wrong-arg-types[e3]
       x8 = next(reversed([42]))
       x9 = list(reversed([42]))
     """)
@@ -367,10 +367,9 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       x8 = ...  # type: int
       x9 = ...  # type: List[int]
     """)
-    self.assertErrorLogIs(errors, [(5, "wrong-arg-types", r"Set\[int\]"),
-                                   (6, "wrong-arg-types", r"FrozenSet\[int\]"),
-                                   (7, "wrong-arg-types",
-                                    r"Dict\[bool, int\]")])
+    self.assertErrorRegexes(errors, {"e1": r"Set\[int\]",
+                                     "e2": r"FrozenSet\[int\]",
+                                     "e3": r"Dict\[bool, int\]"})
 
   def testStrJoin(self):
     ty = self.Infer("""
@@ -398,13 +397,11 @@ class BuiltinTests2(test_base.TargetIndependentTest):
     _, errors = self.InferWithErrors("""\
       reduce(lambda x, y: x+y, [1,2,3]).real
       reduce(lambda x, y: x+y, ["foo"]).upper()
-      reduce(lambda x, y: 4, "foo").real
+      reduce(lambda x, y: 4, "foo").real  # attribute-error[e]
       reduce(lambda x, y: 4, [], "foo").upper()
       reduce(lambda x, y: "s", [1,2,3], 0).upper()
     """)
-    self.assertErrorLogIs(errors, [
-        (3, "attribute-error", "real.*str")
-    ])
+    self.assertErrorRegexes(errors, {"e": r"real.*str"})
 
   def testDictPopItem(self):
     ty = self.Infer("""

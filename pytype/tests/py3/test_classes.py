@@ -70,9 +70,9 @@ class ClassesTest(test_base.TargetPython3BasicTest):
         def Create(self, x: MyType):
           self.x = x
         def Convert(self):
-          self.y
+          self.y  # attribute-error[e]
     """)
-    self.assertErrorLogIs(errors, [(9, "attribute-error", r"y.*Foo")])
+    self.assertErrorRegexes(errors, {"e": r"y.*Foo"})
 
   def testRecursiveConstructorSubclass(self):
     self.Check("""
@@ -169,17 +169,16 @@ class ClassesTest(test_base.TargetPython3BasicTest):
           pass
       class Y(X):
         def __init__(self, obj: int):
-          X.__init__(self, obj)  # line 7
+          X.__init__(self, obj)  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(errors, [(7, "wrong-arg-types", r"Sequence.*int")])
+    self.assertErrorRegexes(errors, {"e": r"Sequence.*int"})
 
   def testParameterizedClassBinaryOperator(self):
-    _, errors = self.InferWithErrors("""\
+    self.InferWithErrors("""\
       from typing import Sequence
       def f(x: Sequence[str], y: Sequence[str]) -> None:
-        a = x + y
+        a = x + y  # unsupported-operands
       """)
-    self.assertErrorLogIs(errors, [(3, "unsupported-operands")])
 
   def testInstanceAttribute(self):
     ty = self.Infer("""
@@ -415,13 +414,12 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
   def testPy2Metaclass(self):
     errors = self.CheckWithErrors("""\
       import abc
-      class Foo(object):
+      class Foo(object):  # ignored-metaclass[e]
         __metaclass__ = abc.ABCMeta
         @abc.abstractmethod
         def f(self) -> int: ...
     """)
-    self.assertErrorLogIs(
-        errors, [(2, "ignored-metaclass", r"abc\.ABCMeta.*Foo")])
+    self.assertErrorRegexes(errors, {"e": r"abc\.ABCMeta.*Foo"})
 
 
 test_base.main(globals(), __name__ == "__main__")

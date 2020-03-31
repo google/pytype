@@ -29,17 +29,14 @@ class UnionTest(test_base.TargetIndependentTest):
         x = 42
         if __random__:
           # Should not appear in output
-          x.__class__ = float
-          x.__class__ = str
+          x.__class__ = float  # not-writable[e1]
+          x.__class__ = str  # not-writable[e2]
         return type(x)()
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
       def f() -> int
     """)
-    self.assertErrorLogIs(errors, [
-        (5, "not-writable", "int"),
-        (6, "not-writable", "int"),
-    ])
+    self.assertErrorRegexes(errors, {"e1": r"int", "e2": r"int"})
 
 
 test_base.main(globals(), __name__ == "__main__")

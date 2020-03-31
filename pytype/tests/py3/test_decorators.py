@@ -7,15 +7,14 @@ class DecoratorsTest(test_base.TargetPython3BasicTest):
   """Test decorators."""
 
   def testAnnotatedSuperCallUnderBadDecorator(self):
-    _, errors = self.InferWithErrors("""\
+    self.InferWithErrors("""\
       class Foo(object):
         def Run(self) -> None: ...
       class Bar(Foo):
-        @bad_decorator  # line 4
+        @bad_decorator  # name-error
         def Run(self):
           return super(Bar, self).Run()
     """)
-    self.assertErrorLogIs(errors, [(4, "name-error", r"bad_decorator")])
 
   def testReplaceSelfToStarArg(self):
     # Without decorator, `self` will be in `signature.param_names`.

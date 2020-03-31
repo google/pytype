@@ -163,9 +163,9 @@ class TestCollectionsMixin(object):
       import collections
       def f(x: collections.{obj}): ...
       f({good_arg})
-      f({bad_arg})  # line 5
+      f({bad_arg})  # wrong-arg-types[e]
     """.format(obj=obj, good_arg=good_arg, bad_arg=bad_arg))
-    self.assertErrorLogIs(result, [(4, "wrong-arg-types", error)])
+    self.assertErrorRegexes(result, {"e": error})
 
 
 class MakeCodeMixin(object):

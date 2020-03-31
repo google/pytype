@@ -655,14 +655,13 @@ class SplitTest(test_base.TargetIndependentTest):
 
   def testBuiltinFullNameCheck(self):
     # Don't get confused by a class named int
-    _, errorlog = self.InferWithErrors("""
+    self.InferWithErrors("""\
       class int():
         pass
       x = "foo" if __random__ else int()
       if x == "foo":
-        x.upper()
+        x.upper()  # attribute-error
     """)
-    self.assertNotEqual(len(errorlog), 0)
 
   def testTypeParameterInBranch(self):
     ty = self.Infer("""
@@ -761,12 +760,11 @@ class SplitTest(test_base.TargetIndependentTest):
         value1 = ...  # type: int
         value2 = ...  # type: Value
       """)
-      errors = self.CheckWithErrors("""\
+      self.CheckWithErrors("""\
         import foo
         if foo.value1 == foo.value2:
-          name_error
+          name_error  # name-error
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(3, "name-error")])
 
   def testListElement(self):
     ty = self.Infer("""

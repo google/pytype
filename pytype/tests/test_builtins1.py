@@ -114,8 +114,8 @@ class BuiltinTests(test_base.TargetIndependentTest):
       """)
 
   def testZipError(self):
-    errors = self.CheckWithErrors("zip([], [], [], 42)")
-    self.assertErrorLogIs(errors, [(1, "wrong-arg-types", "Iterable.*int")])
+    errors = self.CheckWithErrors("zip([], [], [], 42)  # wrong-arg-types[e]")
+    self.assertErrorRegexes(errors, {"e": r"Iterable.*int"})
 
   def testDictDefaults(self):
     ty = self.Infer("""
@@ -316,9 +316,8 @@ class BuiltinTests(test_base.TargetIndependentTest):
     """)
 
   def testOpenError(self):
-    src = "open(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)"
-    errors = self.CheckWithErrors(src)
-    self.assertErrorLogIs(errors, [(1, "wrong-arg-count")])
+    src = "open(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)  # wrong-arg-count"
+    self.CheckWithErrors(src)
 
   def testSignal(self):
     ty = self.Infer("""

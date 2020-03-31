@@ -75,7 +75,7 @@ class ListTest(test_base.TargetIndependentTest):
       b = a[1]
       c = 1 if __random__ else 2
       d = a[c]
-      e = a["s"]
+      e = a["s"]  # unsupported-operands[e]
       f = a[-1]
       g = a[slice(1,2)]  # should be List[str]
       """)
@@ -89,8 +89,7 @@ class ListTest(test_base.TargetIndependentTest):
       f = ...  # type: int
       g = ...  # type: List[Union[int, str]]
       """)
-    self.assertErrorLogIs(errors, [(5, "unsupported-operands",
-                                    r"__getitem__ on List")])
+    self.assertErrorRegexes(errors, {"e": r"__getitem__ on List"})
 
   def test_index_out_of_range(self):
     ty = self.Infer("""

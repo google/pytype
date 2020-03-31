@@ -10,7 +10,7 @@ class InTest(test_base.TargetIndependentTest):
   def test_concrete(self):
     ty, errors = self.InferWithErrors("""\
       def f(x, y):
-        return x in y
+        return x in y  # unsupported-operands[e]
       f(1, [1])
       f(1, [2])
       f("x", "x")
@@ -19,8 +19,7 @@ class InTest(test_base.TargetIndependentTest):
       f("y", object())
     """, deep=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
-    self.assertErrorLogIs(errors, [(2, "unsupported-operands",
-                                    r"'in'.*object")])
+    self.assertErrorRegexes(errors, {"e": r"'in'.*object"})
 
   def test_deep(self):
     ty = self.Infer("""
@@ -50,12 +49,11 @@ class InTest(test_base.TargetIndependentTest):
   def test_none(self):
     _, errors = self.InferWithErrors("""\
       x = None
-      if "" in x:
-        del x[""]
+      if "" in x:  # unsupported-operands[e1]
+        del x[""]  # unsupported-operands[e2]
     """)
-    self.assertErrorLogIs(errors, [
-        (2, "unsupported-operands", r"'in'.*None"),
-        (3, "unsupported-operands", r"item deletion.*None")])
+    self.assertErrorRegexes(
+        errors, {"e1": r"'in'.*None", "e2": r"item deletion.*None"})
 
 
 class NotInTest(test_base.TargetIndependentTest):
@@ -64,7 +62,7 @@ class NotInTest(test_base.TargetIndependentTest):
   def test_concrete(self):
     ty, errors = self.InferWithErrors("""\
       def f(x, y):
-        return x not in y
+        return x not in y  # unsupported-operands[e]
       f(1, [1])
       f(1, [2])
       f("x", "x")
@@ -73,8 +71,7 @@ class NotInTest(test_base.TargetIndependentTest):
       f("y", object())
     """, deep=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
-    self.assertErrorLogIs(errors, [(2, "unsupported-operands",
-                                    r"'in'.*object")])
+    self.assertErrorRegexes(errors, {"e": r"'in'.*object"})
 
   # "not in" maps to the inverse of __contains__
   def test_overloaded(self):
@@ -98,12 +95,11 @@ class NotInTest(test_base.TargetIndependentTest):
   def test_none(self):
     _, errors = self.InferWithErrors("""\
       x = None
-      if "" not in x:
-        x[""] = 42
+      if "" not in x:  # unsupported-operands[e1]
+        x[""] = 42  # unsupported-operands[e2]
     """)
-    self.assertErrorLogIs(errors, [
-        (2, "unsupported-operands", r"'in'.*None"),
-        (3, "unsupported-operands", r"item assignment.*None")])
+    self.assertErrorRegexes(
+        errors, {"e1": r"'in'.*None", "e2": r"item assignment.*None"})
 
 
 class IsTest(test_base.TargetIndependentTest):

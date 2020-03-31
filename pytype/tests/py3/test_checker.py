@@ -22,19 +22,18 @@ class CheckerTest(test_base.TargetPython3BasicTest):
         def __init__(self, val: "X"):
           pass
       def f():
-        X(42)
+        X(42)  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(errorlog, [(5, "wrong-arg-types", r"X.*int")])
+    self.assertErrorRegexes(errorlog, {"e": r"X.*int"})
 
   def testBadReturnTypeInline(self):
     errorlog = self.CheckWithErrors("""\
       from typing import List
       def f() -> List[int]:
-        return [object()]
+        return [object()]  # bad-return-type[e]
       f()[0] += 1
     """)
-    self.assertErrorLogIs(errorlog, [(3, "bad-return-type",
-                                      r"List\[int\].*List\[object\]")])
+    self.assertErrorRegexes(errorlog, {"e": r"List\[int\].*List\[object\]"})
 
   def testUseVarargsAndKwargs(self):
     self.Check("""\
@@ -89,50 +88,46 @@ class CheckerTest(test_base.TargetPython3BasicTest):
     errorlog = self.CheckWithErrors("""\
       from typing import Dict
       def f() -> Dict[str, int]:
-        return {"x": 42.0}
+        return {"x": 42.0}  # bad-return-type[e]
     """)
-    self.assertErrorLogIs(errorlog, [(3, "bad-return-type", r"int.*float")])
+    self.assertErrorRegexes(errorlog, {"e": r"int.*float"})
 
   def testInstanceAsAnnotation(self):
     errorlog = self.CheckWithErrors("""\
       def f():
         pass
-      def g(x: f):
+      def g(x: f):  # invalid-annotation[e1]
         pass
-      def h(x: 3):
+      def h(x: 3):  # invalid-annotation[e2]
         pass
     """)
-    self.assertErrorLogIs(errorlog, [(3, "invalid-annotation",
-                                      r"instance of Callable.*x"),
-                                     (5, "invalid-annotation",
-                                      r"3.*x")])
+    self.assertErrorRegexes(
+        errorlog, {"e1": r"instance of Callable.*x", "e2": r"3.*x"})
 
   def testBadGenerator(self):
     errorlog = self.CheckWithErrors("""\
       from typing import Generator
       def f() -> Generator[str, None, None]:
         for i in range(3):
-          yield i
+          yield i  # bad-return-type[e]
     """)
-    self.assertErrorLogIs(errorlog, [(4, "bad-return-type", r"str.*int")])
+    self.assertErrorRegexes(errorlog, {"e": r"str.*int"})
 
   def testMultipleParameterBindings(self):
     errorlog = self.CheckWithErrors("""\
       from typing import List
       def f(x) -> List[int]:
-        return ["", x]
+        return ["", x]  # bad-return-type[e]
     """)
-    self.assertErrorLogIs(errorlog, [(3, "bad-return-type",
-                                      r"List\[int\].*List\[str\]")])
+    self.assertErrorRegexes(errorlog, {"e": r"List\[int\].*List\[str\]"})
 
   def testNoParamBinding(self):
     errorlog = self.CheckWithErrors("""\
       def f() -> None:
         x = []
-        return x
+        return x  # bad-return-type[e]
     """)
-    self.assertErrorLogIs(errorlog, [(3, "bad-return-type",
-                                      r"None.*List\[nothing\]")])
+    self.assertErrorRegexes(errorlog, {"e": r"None.*List\[nothing\]"})
 
   def testAttributeInIncompleteInstance(self):
     errorlog = self.CheckWithErrors("""\
@@ -140,30 +135,31 @@ class CheckerTest(test_base.TargetPython3BasicTest):
       class Foo(object):
         def __init__(self, other: "List[Foo]"):
           self.x = other[0].x  # okay
-          self.y = other.y  # No "y" on List[Foo]
-          self.z = Foo.z  # No "z" on Type[Foo]
+          # No "y" on List[Foo]
+          self.y = other.y  # attribute-error[e1]
+          # No "z" on Type[Foo]
+          self.z = Foo.z  # attribute-error[e2]
     """)
-    self.assertErrorLogIs(errorlog, [(5, "attribute-error", r"y.*List\[Foo\]"),
-                                     (6, "attribute-error", r"z.*Type\[Foo\]")])
+    self.assertErrorRegexes(errorlog, {"e1": r"y.*List\[Foo\]",
+                                       "e2": r"z.*Type\[Foo\]"})
 
   def testBadGetItem(self):
     errorlog = self.CheckWithErrors("""\
       def f(x: int):
-        return x[0]
+        return x[0]  # unsupported-operands[e]
     """)
-    self.assertErrorLogIs(errorlog, [(2, "unsupported-operands", r"int.*int")])
+    self.assertErrorRegexes(errorlog, {"e": r"int.*int"})
 
   def testBadAnnotationContainer(self):
     errorlog = self.CheckWithErrors("""\
       class A(object):
         pass
-      def f(x: int[str]):
+      def f(x: int[str]):  # not-indexable[e1]
         pass
-      def g(x: A[str]):
+      def g(x: A[str]):  # not-indexable[e2]
         pass
     """)
-    self.assertErrorLogIs(errorlog, [(3, "not-indexable", r"Generic"),
-                                     (5, "not-indexable", r"Generic")])
+    self.assertErrorRegexes(errorlog, {"e1": r"Generic", "e2": r"Generic"})
 
 
 test_base.main(globals(), __name__ == "__main__")

@@ -66,24 +66,20 @@ class TestSuperPython3Featue(test_base.TargetPython3FeatureTest):
     """)
 
   def test_super_without_args_error(self):
-    _, errors = self.InferWithErrors("""
+    _, errors = self.InferWithErrors("""\
       class A(object):
         def m(self):
           pass
       class B(A):
         def m(self):
           def f():
-            super().m()
+            super().m()  # invalid-super-call[e1]
           f()
       def func(x: int):
-        super().m()
+        super().m()  # invalid-super-call[e2]
       """)
-    self.assertErrorLogIs(
-        errors,
-        [(8, "invalid-super-call",
-          r".*Missing 'self' argument.*"),
-         (11, "invalid-super-call",
-          r".*Missing __class__ closure.*")])
+    self.assertErrorRegexes(errors, {"e1": r".*Missing 'self' argument.*",
+                                     "e2": r".*Missing __class__ closure.*"})
 
 
 test_base.main(globals(), __name__ == "__main__")

@@ -17,9 +17,9 @@ class StdLibTestsBasic(test_base.TargetPython3BasicTest,
       def f1(x: Deque): ...
       def f2(x: int): ...
       f1(collections.deque())
-      f2(collections.deque())  # line 6
+      f2(collections.deque())  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(errors, [(6, "wrong-arg-types", r"int.*deque")])
+    self.assertErrorRegexes(errors, {"e": r"int.*deque"})
 
   def testCollectionsDequeInit(self):
     ty = self.Infer("""\

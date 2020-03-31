@@ -77,11 +77,11 @@ class QuickTest(test_base.TargetIndependentTest):
     # --output with --analyze-annotated has the same max depth as --check.
     _, errors = self.InferWithErrors("""\
       def make_greeting(user_id):
-        return 'hello, user' + user_id
+        return 'hello, user' + user_id  # unsupported-operands[e]
       def print_greeting():
         print(make_greeting(0))
     """, quick=True)
-    self.assertErrorLogIs(errors, [(2, "unsupported-operands", r"str.*int")])
+    self.assertErrorRegexes(errors, {"e": r"str.*int"})
 
 
 test_base.main(globals(), __name__ == "__main__")

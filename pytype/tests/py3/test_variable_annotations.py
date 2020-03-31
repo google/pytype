@@ -23,13 +23,11 @@ class VariableAnnotationsBasicTest(test_base.TargetPython3BasicTest):
           pass
         obj = foo.A()
         f(foo.x)
-        f(foo.y)
+        f(foo.y)  # wrong-arg-types[e1]
         f(obj.a)
-        f(obj.b)
+        f(obj.b)  # wrong-arg-types[e2]
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [
-          (6, "wrong-arg-types", r"int.*List"),
-          (8, "wrong-arg-types", r"int.*str")])
+      self.assertErrorRegexes(errors, {"e1": r"int.*List", "e2": r"int.*str"})
 
 
 class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
@@ -66,21 +64,19 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
 
       T = TypeVar('T')
 
-      a: "abc" = "1"
-      b: 123 = "2"
-      c: NoReturn = "3"
+      a: "abc" = "1"  # name-error[e1]
+      b: 123 = "2"  # invalid-annotation[e2]
+      c: NoReturn = "3"  # invalid-annotation[e3]
       d: List[int] = []
-      e: List[T] = []
-      f: int if __random__ else str = 123
-      h: NoReturn = None
+      e: List[T] = []  # not-supported-yet[e4]
+      f: int if __random__ else str = 123  # invalid-annotation[e5]
+      h: NoReturn = None  # invalid-annotation[e6]
     """)
-    self.assertErrorLogIs(errors, [
-        (5, "name-error", "Name \'abc\' is not defined"),
-        (6, "invalid-annotation", "Not a type"),
-        (7, "invalid-annotation", "NoReturn is not allowed"),
-        (9, "not-supported-yet", r"type parameter.*variable annotation"),
-        (10, "invalid-annotation", r"Type must be constant"),
-        (11, "invalid-annotation", r"NoReturn is not allowed")])
+    self.assertErrorRegexes(errors, {
+        "e1": r"Name \'abc\' is not defined", "e2": r"Not a type",
+        "e3": r"NoReturn is not allowed",
+        "e4": r"type parameter.*variable annotation",
+        "e5": r"Type must be constant", "e6": r"NoReturn is not allowed"})
 
   def testUninitializedClassAnnotation(self):
     ty = self.Infer("""
@@ -108,10 +104,9 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
   def testOverwriteAnnotationsDict(self):
     errors = self.CheckWithErrors("""\
       __annotations__ = None
-      foo: int
+      foo: int  # unsupported-operands[e]
     """)
-    self.assertErrorLogIs(
-        errors, [(2, "unsupported-operands", r"None.*__setitem__")])
+    self.assertErrorRegexes(errors, {"e": r"None.*__setitem__"})
 
   def testShadowNone(self):
     ty = self.Infer("""

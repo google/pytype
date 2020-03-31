@@ -64,14 +64,11 @@ class SlotsTest(test_base.TargetIndependentTest):
     """)
 
   def testSlotWithNonStrings(self):
-    _, errors = self.InferWithErrors("""
-      class Foo(object):
+    _, errors = self.InferWithErrors("""\
+      class Foo(object):  # bad-slots[e]
         __slots__ = (1, 2, 3)
     """)
-    self.assertErrorLogIs(
-        errors,
-        [(2, "bad-slots", r"Invalid __slot__ entry: '1'")]
-    )
+    self.assertErrorRegexes(errors, {"e": r"Invalid __slot__ entry: '1'"})
 
   def testSetSlot(self):
     self.Check("""
@@ -111,20 +108,15 @@ class SlotsTest(test_base.TargetIndependentTest):
       foo = Foo()
       foo.x = 1  # ok
       foo.y = 2  # ok
-      foo.z = 3  # error
+      foo.z = 3  # not-writable[e]
     """)
-    self.assertErrorLogIs(
-        errors,
-        [(7, "not-writable", r"z")]
-    )
+    self.assertErrorRegexes(errors, {"e": r"z"})
 
   def testObject(self):
     _, errors = self.InferWithErrors("""\
-      object().foo = 42
+      object().foo = 42  # not-writable[e]
     """)
-    self.assertErrorLogIs(errors, [
-        (1, "not-writable", r"object")
-    ])
+    self.assertErrorRegexes(errors, {"e": r"object"})
 
   def testAnyBaseClass(self):
     self.Check("""
@@ -138,22 +130,17 @@ class SlotsTest(test_base.TargetIndependentTest):
       from typing import List
       class Foo(List[int]):
         __slots__ = ()
-      Foo().foo = 42
+      Foo().foo = 42  # not-writable[e]
     """)
-    self.assertErrorLogIs(errors, [
-        (4, "not-writable", r"foo")
-    ])
+    self.assertErrorRegexes(errors, {"e": r"foo"})
 
   def testEmptySlots(self):
     _, errors = self.InferWithErrors("""\
       class Foo(object):
         __slots__ = ()
-      Foo().foo = 42
+      Foo().foo = 42  # not-writable[e]
     """)
-    self.assertErrorLogIs(
-        errors,
-        [(3, "not-writable", r"foo")]
-    )
+    self.assertErrorRegexes(errors, {"e": r"foo"})
 
   def testNamedTuple(self):
     _, errors = self.InferWithErrors("""\
@@ -163,47 +150,38 @@ class SlotsTest(test_base.TargetIndependentTest):
       foo.a = 1
       foo.b = 2
       foo.c = 3
-      foo.d = 4  # error
+      foo.d = 4  # not-writable[e]
     """)
-    self.assertErrorLogIs(errors, [
-        (7, "not-writable", r"d")
-    ])
+    self.assertErrorRegexes(errors, {"e": r"d"})
 
   def testBuiltinAttr(self):
-    _, errors = self.InferWithErrors("""\
-      "foo".bar = 1
-      u"foo".bar = 2
-      ().bar = 3
-      [].bar = 4
-      {}.bar = 5
-      set().bar = 6
-      frozenset().bar = 7
-      frozenset().bar = 8
-      Ellipsis.bar = 9
-      bytearray().bar = 10
-      enumerate([]).bar = 11
-      True.bar = 12
-      (42).bar = 13
-      (3.14).bar = 14
-      (3j).bar = 15
-      slice(1,10).bar = 17
-      memoryview(b"foo").bar = 18
-      range(10).bar = 19
+    self.InferWithErrors("""\
+      "foo".bar = 1  # not-writable
+      u"foo".bar = 2  # not-writable
+      ().bar = 3  # not-writable
+      [].bar = 4  # not-writable
+      {}.bar = 5  # not-writable
+      set().bar = 6  # not-writable
+      frozenset().bar = 7  # not-writable
+      frozenset().bar = 8  # not-writable
+      Ellipsis.bar = 9  # not-writable
+      bytearray().bar = 10  # not-writable
+      enumerate([]).bar = 11  # not-writable
+      True.bar = 12  # not-writable
+      (42).bar = 13  # not-writable
+      (3.14).bar = 14  # not-writable
+      (3j).bar = 15  # not-writable
+      slice(1,10).bar = 16  # not-writable
+      memoryview(b"foo").bar = 17  # not-writable
+      range(10).bar = 18  # not-writable
     """)
-    self.assertErrorLogIs(
-        errors,
-        [(line, "not-writable") for line in range(1, 19)]
-    )
 
   def testGeneratorAttr(self):
     _, errors = self.InferWithErrors("""\
       def f(): yield 42
-      f().foo = 42
+      f().foo = 42  # not-writable[e]
     """)
-    self.assertErrorLogIs(
-        errors,
-        [(2, "not-writable", r"foo")]
-    )
+    self.assertErrorRegexes(errors, {"e": r"foo"})
 
   def testSetAttr(self):
     self.Check("""\
@@ -241,12 +219,9 @@ class SlotsTest(test_base.TargetIndependentTest):
         __slots__ = ["__foo"]
         def __init__(self):
           self.__foo = 42
-          self.__baz = 42  # __baz is class-private
+          self.__baz = 42  # __baz is class-private  # not-writable[e]
     """)
-    self.assertErrorLogIs(
-        errors,
-        [(9, "not-writable", "__baz")]
-    )
+    self.assertErrorRegexes(errors, {"e": r"__baz"})
 
 
 test_base.main(globals(), __name__ == "__main__")

@@ -24,10 +24,10 @@ class ReingestTest(test_base.TargetPython27FeatureTest):
       d.create_file("foo.pyi", pytd_utils.Print(foo))
       _, errors = self.InferWithErrors("""\
         import foo
-        foo.Foo()
+        foo.Foo()  # not-instantiable[e]
         foo.Bar()
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(2, "not-instantiable", r"foo\.Foo.*foo")])
+      self.assertErrorRegexes(errors, {"e": r"foo\.Foo.*foo"})
 
 
 test_base.main(globals(), __name__ == "__main__")
