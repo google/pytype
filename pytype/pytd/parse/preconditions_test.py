@@ -14,6 +14,7 @@
 
 
 from pytype.pytd.parse import preconditions
+import six
 
 import unittest
 
@@ -29,8 +30,8 @@ class SubClass(BaseClass):
 class PreconditionsTest(unittest.TestCase):
 
   def assertError(self, regex, condition, value):
-    self.assertRaisesRegex(
-        preconditions.PreconditionError, regex, condition.check, value)
+    six.assertRaisesRegex(
+        self, preconditions.PreconditionError, regex, condition.check, value)
 
   def testClassNamePrecondition(self):
     c = preconditions._ClassNamePrecondition("str")
@@ -78,8 +79,8 @@ class CallCheckerTest(unittest.TestCase):
     self.assertEqual({"int", "str"}, self.checker.allowed_types())
 
   def assertError(self, regex, *args, **kwargs):
-    self.assertRaisesRegex(
-        preconditions.PreconditionError, regex, self.checker.check, *args,
+    six.assertRaisesRegex(
+        self, preconditions.PreconditionError, regex, self.checker.check, *args,
         **kwargs)
 
   def testPositionalArgs(self):

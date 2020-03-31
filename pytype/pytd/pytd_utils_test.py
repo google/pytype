@@ -477,8 +477,8 @@ class TestDataFiles(parser_test_base.ParserTest):
 
   def testGetPredefinedFileThrows(self):
     # smoke test, only checks that it does throw
-    with self.assertRaisesRegex(
-        IOError,
+    with six.assertRaisesRegex(
+        self, IOError,
         r"File not found|Resource not found|No such file or directory"):
       pytd_utils.GetPredefinedFile(self.BUILTINS, "-this-file-does-not-exist")
 
