@@ -160,7 +160,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     """Convert a name -> raw_annot dict to annotations."""
     annotations = {}
     raw_items = raw_annotations.items()
-    if sys.version_info.major == 2:
+    if sys.version_info[:2] < (3, 6):
       # Make sure annotation errors are reported in a deterministic order.
       raw_items = sorted(raw_items)
     for name, t in raw_items:

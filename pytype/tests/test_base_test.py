@@ -4,6 +4,7 @@ from pytype import file_utils
 from pytype import utils
 from pytype.tests import test_base
 from pytype.tests import test_utils
+import six
 
 
 class ErrorLogTest(test_base.TargetIndependentTest):
@@ -36,7 +37,7 @@ class ErrorLogTest(test_base.TargetIndependentTest):
     line = self._lineno(1)
     self.assertEqual(err.expected, {line: [("attribute-error", "e1"),
                                            ("attribute-error", "e2")]})
-    self.assertCountEqual(err.marks, ["e1", "e2"])
+    six.assertCountEqual(self, err.marks, ["e1", "e2"])
     self.assertIn("on int", err.marks["e1"].message)
     self.assertIn("on str", err.marks["e2"].message)
 
