@@ -38,6 +38,7 @@ disable=
   no-member,
   no-name-in-module,
   no-self-use,
+  not-an-iterable,
   protected-access,
   relative-import,
   self-assigning-variable,
