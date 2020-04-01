@@ -1,3 +1,6 @@
+Version 2020.04.01
+* Do some test restructuring and cleanup.
+
 Version 2020.03.19
 * Fix a couple of pytype crashes.
 * Do not allow mixing string types in IO.write() in Python 3.
