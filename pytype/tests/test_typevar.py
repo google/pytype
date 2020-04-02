@@ -401,4 +401,14 @@ class TypeVarTest(test_base.TargetIndependentTest):
         pass
     """)
 
+  def test_typevar_in_alias(self):
+    err = self.CheckWithErrors("""
+      from typing import TypeVar, Union
+      T = TypeVar("T", int, float)
+      Num = Union[T, complex]  # not-supported-yet[e]
+    """)
+    self.assertErrorRegexes(
+        err, {"e": "aliases of Unions with type parameters"})
+
+
 test_base.main(globals(), __name__ == "__main__")

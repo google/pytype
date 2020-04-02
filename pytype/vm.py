@@ -1203,10 +1203,19 @@ class VirtualMachine(object):
     """Same as store_local except for globals."""
     return self._store_value(state, name, value, local=False)
 
+  def _check_aliased_type_params(self, value):
+    for v in value.data:
+      if isinstance(v, abstract.Union):
+        params = self.annotations_util.get_type_parameters(v)
+        if params:
+          self.errorlog.not_supported_yet(
+              self.frames, "aliases of Unions with type parameters")
+
   def _pop_and_store(self, state, op, name, local):
     """Pop a value off the stack and store it in a variable."""
     state, orig_val = state.pop()
     value = self.annotations_util.apply_type_comment(state, op, name, orig_val)
+    self._check_aliased_type_params(value)
     if local:
       self._record_local(name, value, orig_val)
     state = state.forward_cfg_node()
