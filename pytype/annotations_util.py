@@ -162,7 +162,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     raw_items = raw_annotations.items()
     if sys.version_info[:2] < (3, 6):
       # Make sure annotation errors are reported in a deterministic order.
-      raw_items = sorted(raw_items)
+      raw_items = sorted(raw_items, key=str)
     for name, t in raw_items:
       # Don't use the parameter name, since it's often something unhelpful
       # like `0`.
