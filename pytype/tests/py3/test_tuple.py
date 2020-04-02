@@ -8,7 +8,7 @@ class TupleTest(test_base.TargetPython3BasicTest):
   """Tests for __builtin__.tuple."""
 
   def testUnpackInlineTuple(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       from typing import Tuple
       def f(x: Tuple[str, int]):
         return x
@@ -53,17 +53,17 @@ class TupleTest(test_base.TargetPython3BasicTest):
     """)
 
   def testTuplePrinting(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Tuple
       def f(x: Tuple[str, ...]):
         pass
       def g(y: Tuple[str]):
         pass
-      f((42,))
-      f(tuple([42]))
+      f((42,))  # wrong-arg-types[e1]
+      f(tuple([42]))  # wrong-arg-types[e2]
       f(("", ""))  # okay
-      g((42,))
-      g(("", ""))
+      g((42,))  # wrong-arg-types[e3]
+      g(("", ""))  # wrong-arg-types[e4]
       g(("",))  # okay
       g(tuple([""]))  # okay
     """)
@@ -72,15 +72,11 @@ class TupleTest(test_base.TargetPython3BasicTest):
     tuple_int = r"Tuple\[int\]"
     tuple_ints = r"Tuple\[int, \.\.\.\]"
     tuple_str_str = r"Tuple\[str, str\]"
-    self.assertErrorLogIs(errors, [(6, "wrong-arg-types",
-                                    r"%s.*%s" % (x, tuple_int)),
-                                   (7, "wrong-arg-types",
-                                    r"%s.*%s" % (x, tuple_ints)),
-                                   (9, "wrong-arg-types",
-                                    r"%s.*%s" % (y, tuple_int)),
-                                   (10, "wrong-arg-types",
-                                    r"%s.*%s" % (y, tuple_str_str))
-                                  ])
+    self.assertErrorRegexes(errors, {
+        "e1": r"%s.*%s" % (x, tuple_int),
+        "e2": r"%s.*%s" % (x, tuple_ints),
+        "e3": r"%s.*%s" % (y, tuple_int),
+        "e4": r"%s.*%s" % (y, tuple_str_str)})
 
   def testInlineTuple(self):
     with file_utils.Tempdir() as d:
@@ -106,24 +102,23 @@ class TupleTest(test_base.TargetPython3BasicTest):
         from typing import Tuple
         class A(Tuple[str, int]): ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         from typing import Tuple, Type
         import foo
         def f(x: Type[Tuple[int, str]]):
           pass
         def g(x: Tuple[int, str]):
           pass
-        f(type(("", 1)))
-        g(("", 1))
-        g(foo.A())
+        f(type(("", 1)))  # wrong-arg-types[e1]
+        g(("", 1))  # wrong-arg-types[e2]
+        g(foo.A())  # wrong-arg-types[e3]
       """, pythonpath=[d.path])
       expected = r"Tuple\[int, str\]"
       actual = r"Tuple\[str, int\]"
-      self.assertErrorLogIs(errors, [
-          (7, "wrong-arg-types",
-           r"Type\[%s\].*Type\[%s\]" % (expected, actual)),
-          (8, "wrong-arg-types", r"%s.*%s" % (expected, actual)),
-          (9, "wrong-arg-types", r"%s.*foo\.A" % expected)])
+      self.assertErrorRegexes(errors, {
+          "e1": r"Type\[%s\].*Type\[%s\]" % (expected, actual),
+          "e2": r"%s.*%s" % (expected, actual),
+          "e3": r"%s.*foo\.A" % expected})
 
   def testTupleCombinationExplosion(self):
     self.Check("""
@@ -150,20 +145,20 @@ class TupleTest(test_base.TargetPython3BasicTest):
       d.create_file("bar.pyi", """
         class Bar(tuple): ...
       """)
-      errors = self.CheckWithErrors("""\
+      errors = self.CheckWithErrors("""
         from typing import Tuple
         import bar
         def foo() -> Tuple[bar.Bar, bar.Bar]:
-          return bar.Bar(None, None)  # line 4
+          return bar.Bar(None, None)  # wrong-arg-count[e]
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(4, "wrong-arg-count", "1.*3")])
+      self.assertErrorRegexes(errors, {"e": r"1.*3"})
 
 
 class TupleTestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for __builtin__.tuple."""
 
   def testIteration(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       class Foo(object):
         mytuple = (1, "foo", 3j)
         def __getitem__(self, pos):
@@ -179,11 +174,10 @@ class TupleTestPython3Feature(test_base.TargetPython3FeatureTest):
     """)
 
   def testBadUnpackingWithSlurp(self):
-    _, errors = self.InferWithErrors("""\
-      a, *b, c = (1,)
+    _, errors = self.InferWithErrors("""
+      a, *b, c = (1,)  # bad-unpacking[e]
     """)
-    self.assertErrorLogIs(
-        errors, [(1, "bad-unpacking", "1 value.*3 variables")])
+    self.assertErrorRegexes(errors, {"e": r"1 value.*3 variables"})
 
 
 test_base.main(globals(), __name__ == "__main__")

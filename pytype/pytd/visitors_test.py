@@ -299,10 +299,11 @@ class TestVisitors(parser_test_base.ParserTest):
     ast2 = ast2.Visit(visitors.LookupExternalTypes(
         {"foo": ast1}, self_name=None))
     self.assertEqual(name, ast2.name)
-    self.assertMultiLineEqual(pytd_utils.Print(ast2), textwrap.dedent("""\
+    self.assertMultiLineEqual(pytd_utils.Print(ast2), textwrap.dedent("""
       import foo
 
-      A = foo.A"""))
+      A = foo.A
+    """).strip())
 
   def testLookupTwoStarAliases(self):
     src1 = "class A(object): ..."
@@ -359,10 +360,11 @@ class TestVisitors(parser_test_base.ParserTest):
     ast3 = self.Parse(src3).Replace(name="baz").Visit(visitors.AddNamePrefix())
     ast3 = ast3.Visit(visitors.LookupExternalTypes(
         {"foo": ast1, "bar": ast2, "baz": ast3}, self_name="baz"))
-    self.assertMultiLineEqual(pytd_utils.Print(ast3), textwrap.dedent("""\
+    self.assertMultiLineEqual(pytd_utils.Print(ast3), textwrap.dedent("""
       from typing import Any
 
-      def baz.__getattr__(name) -> Any: ..."""))
+      def baz.__getattr__(name) -> Any: ...
+    """).strip())
 
   def testLookupStarAliasWithDuplicateGetAttr(self):
     src1 = "def __getattr__(name) -> ?"
@@ -374,10 +376,11 @@ class TestVisitors(parser_test_base.ParserTest):
     ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
     ast2 = ast2.Visit(visitors.LookupExternalTypes(
         {"foo": ast1, "bar": ast2}, self_name="bar"))
-    self.assertMultiLineEqual(pytd_utils.Print(ast2), textwrap.dedent("""\
+    self.assertMultiLineEqual(pytd_utils.Print(ast2), textwrap.dedent("""
       from typing import Any
 
-      def bar.__getattr__(name) -> Any: ..."""))
+      def bar.__getattr__(name) -> Any: ...
+    """).strip())
 
   def testLookupTwoStarAliasesWithDifferentGetAttrs(self):
     src1 = "def __getattr__(name) -> int"
@@ -402,8 +405,9 @@ class TestVisitors(parser_test_base.ParserTest):
     ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
     ast2 = ast2.Visit(visitors.LookupExternalTypes(
         {"foo": ast1, "bar": ast2}, self_name="bar"))
-    self.assertMultiLineEqual(pytd_utils.Print(ast2), textwrap.dedent("""\
-      def bar.__getattr__(name) -> str: ..."""))
+    self.assertMultiLineEqual(pytd_utils.Print(ast2), textwrap.dedent("""
+      def bar.__getattr__(name) -> str: ...
+    """).strip())
 
   def testCollectDependencies(self):
     src = textwrap.dedent("""
@@ -446,12 +450,13 @@ class TestVisitors(parser_test_base.ParserTest):
       def f(x: Union[int, slice]) -> List[?]: ...
       def g(x: foo.C.C2) -> None: ...
     """)
-    expected = textwrap.dedent("""\
+    expected = textwrap.dedent("""
       import foo.C
       from typing import Any, List, Union
 
       def f(x: Union[int, slice]) -> List[Any]: ...
-      def g(x: foo.C.C2) -> None: ...""")
+      def g(x: foo.C.C2) -> None: ...
+    """).strip()
     tree = self.Parse(src)
     res = pytd_utils.Print(tree)
     self.AssertSourceEquals(res, src)
@@ -712,7 +717,7 @@ class TestVisitors(parser_test_base.ParserTest):
         b: A.B
         def f(self, x: A.B) -> A.B: ...
     """)
-    expected = textwrap.dedent("""\
+    expected = textwrap.dedent("""
       from typing import Type
 
       foo.b: foo.A.B
@@ -725,7 +730,8 @@ class TestVisitors(parser_test_base.ParserTest):
           b: foo.A.B
           def f(self, x: foo.A.B) -> foo.A.B: ...
 
-      def foo.f(x: foo.A.B) -> foo.A.B: ...""")
+      def foo.f(x: foo.A.B) -> foo.A.B: ...
+    """).strip()
     self.assertMultiLineEqual(expected, pytd_utils.Print(
         self.Parse(src).Replace(name="foo").Visit(visitors.AddNamePrefix())))
 
@@ -735,10 +741,11 @@ class TestVisitors(parser_test_base.ParserTest):
         class B:
           def copy(self) -> A.B: ...
     """)
-    expected = textwrap.dedent("""\
+    expected = textwrap.dedent("""
       class foo.A:
           class foo.A.B:
-              def copy(self) -> foo.A.B: ...""")
+              def copy(self) -> foo.A.B: ...
+    """).strip()
     self.assertMultiLineEqual(expected, pytd_utils.Print(
         self.Parse(src).Replace(name="foo").Visit(visitors.AddNamePrefix())))
 
@@ -988,10 +995,10 @@ class TestVisitors(parser_test_base.ParserTest):
       T = TypeVar("T", bound=str)
     """)
     self.assertMultiLineEqual(pytd_utils.Print(self.Parse(src)),
-                              textwrap.dedent("""\
+                              textwrap.dedent("""
       from typing import TypeVar
 
-      T = TypeVar('T', bound=str)"""))
+      T = TypeVar('T', bound=str)""").lstrip())
 
   def testPrintCls(self):
     src = textwrap.dedent("""
@@ -1009,10 +1016,10 @@ class TestVisitors(parser_test_base.ParserTest):
       def f() -> nothing
     """)
     self.assertMultiLineEqual(pytd_utils.Print(self.Parse(src)),
-                              textwrap.dedent("""\
+                              textwrap.dedent("""
       from typing import NoReturn
 
-      def f() -> NoReturn: ..."""))
+      def f() -> NoReturn: ...""").lstrip())
 
   def testPrintMultilineSignature(self):
     src = textwrap.dedent("""
@@ -1021,14 +1028,15 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     self.assertMultiLineEqual(
         pytd_utils.Print(self.Parse(src), multiline_args=True),
-        textwrap.dedent("""\
+        textwrap.dedent("""
            from typing import List
 
            def f(
                x: int,
                y: str,
                z: bool
-           ) -> List[str]: ..."""))
+           ) -> List[str]: ...
+        """).strip())
 
   def testRenameBuiltinsPrefix(self):
     """builtins.foo should get rewritten to __builtin__.foo and then to foo."""

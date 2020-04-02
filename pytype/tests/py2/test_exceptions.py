@@ -12,7 +12,7 @@ class TestExceptions(test_base.TargetPython27FeatureTest):
     self.Check("raise ValueError, 'bad'")
 
   def test_raise_exception_3args(self):
-    self.Check("""\
+    self.Check("""
       from sys import exc_info
       try:
         raise Exception

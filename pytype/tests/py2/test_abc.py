@@ -7,27 +7,26 @@ class AbstractMethodTests(test_base.TargetPython27FeatureTest):
   """Tests for @abc.abstractmethod."""
 
   def test_name_error(self):
-    _, errors = self.InferWithErrors("""\
+    self.InferWithErrors("""
       import abc
       class Example(object):
         __metaclass__ = abc.ABCMeta
         @abc.abstractmethod
         def foo(self):
-          name_error
+          name_error  # name-error
     """)
-    self.assertErrorLogIs(errors, [(6, "name-error", r"name_error")])
 
   def test_instantiate_abstract_class(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       import abc
       class Example(object):
         __metaclass__ = abc.ABCMeta
         @abc.abstractmethod
         def foo(self):
           pass
-      Example()  # line 7
+      Example()  # not-instantiable[e]
     """)
-    self.assertErrorLogIs(errors, [(7, "not-instantiable", r"Example.*foo")])
+    self.assertErrorRegexes(errors, {"e": r"Example.*foo"})
 
   def test_multiple_inheritance_implementation(self):
     self.Check("""
@@ -48,7 +47,7 @@ class AbstractMethodTests(test_base.TargetPython27FeatureTest):
     """)
 
   def test_multiple_inheritance_error(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       import abc
       class X(object):
         pass
@@ -59,9 +58,9 @@ class AbstractMethodTests(test_base.TargetPython27FeatureTest):
           pass
       class Foo(X, Interface):
         pass
-      Foo().foo()  # line 11
+      Foo().foo()  # not-instantiable[e]
     """)
-    self.assertErrorLogIs(errors, [(11, "not-instantiable", r"Foo.*foo")])
+    self.assertErrorRegexes(errors, {"e": r"Foo.*foo"})
 
   def test_multiple_inheritance_builtins(self):
     self.Check("""

@@ -66,12 +66,13 @@ class BuiltinTests3(test_base.TargetIndependentTest):
     """)
 
   def testImplicitTypeVarImport(self):
-    ty, errors = self.InferWithErrors("v = " + abstract_utils.T)
+    ty, _ = self.InferWithErrors("""
+      v = %s  # name-error
+    """ % abstract_utils.T)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       v = ...  # type: Any
     """)
-    self.assertErrorLogIs(errors, [(1, "name-error")])
 
   def testExplicitTypeVarImport(self):
     self.Check("""
@@ -90,7 +91,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
 
   @test_base.skip("broken")
   def testClear(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       x = {1, 2}
       x.clear()
       y = {"foo": 1}
@@ -121,26 +122,25 @@ class BuiltinTests3(test_base.TargetIndependentTest):
     """)
 
   def testIntInit(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       int()
       int(0)
       int("0")
       int("0", 10)
       int(u"0")
       int(u"0", 10)
-      int(0, 1, 2)  # line 7: wrong argcount
+      int(0, 1, 2)  # wrong-arg-count[e]
     """)
-    self.assertErrorLogIs(errors, [(7, "wrong-arg-count", r"1.*4")])
+    self.assertErrorRegexes(errors, {"e": r"1.*4"})
 
   def testNewlines(self):
     with file_utils.Tempdir() as d:
-      # pylint: disable=g-backslash-continuation
-      d.create_file("newlines.txt", """\
+      d.create_file("newlines.txt", """
           1
           2
           3
           """)
-      self.Check("""\
+      self.Check("""
           l = []
           with open("newlines.txt", "rU") as f:
             for line in f:
@@ -171,7 +171,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
     self.assertNoCrash(self.Check, "hasattr(int, None)")
 
   def testNumberAttrs(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       a = (42).denominator
       b = (42).numerator
       c = (42).real
@@ -206,21 +206,15 @@ class BuiltinTests3(test_base.TargetIndependentTest):
     """)
 
   def testSpecialBuiltinTypes(self):
-    _, errors = self.InferWithErrors("""\
+    self.InferWithErrors("""
       isinstance(1, int)
-      isinstance(1, "no")
+      isinstance(1, "no")  # wrong-arg-types
       issubclass(int, object)
-      issubclass(0, 0)
-      issubclass(int, 0)
+      issubclass(0, 0)  # wrong-arg-types
+      issubclass(int, 0)  # wrong-arg-types
       hasattr(str, "upper")
-      hasattr(int, int)
+      hasattr(int, int)  # wrong-arg-types
       """)
-    self.assertErrorLogIs(errors, [
-        (2, "wrong-arg-types"),
-        (4, "wrong-arg-types"),
-        (5, "wrong-arg-types"),
-        (7, "wrong-arg-types"),
-    ])
 
   def testUnpackList(self):
     ty = self.Infer("""
@@ -278,8 +272,8 @@ class BuiltinTests3(test_base.TargetIndependentTest):
     """)
 
   def testNoneLength(self):
-    errors = self.CheckWithErrors("len(None)")
-    self.assertErrorLogIs(errors, [(1, "wrong-arg-types", r"Sized.*None")])
+    errors = self.CheckWithErrors("len(None)  # wrong-arg-types[e]")
+    self.assertErrorRegexes(errors, {"e": r"Sized.*None"})
 
   def testSequenceLength(self):
     self.Check("""
@@ -349,10 +343,10 @@ class BuiltinTests3(test_base.TargetIndependentTest):
     """)
 
   def testSetDefaultError(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       x = {}
-      y = x.setdefault()
-      z = x.setdefault(1, 2, 3, *[])
+      y = x.setdefault()  # wrong-arg-count[e1]
+      z = x.setdefault(1, 2, 3, *[])  # wrong-arg-count[e2]
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict
@@ -360,8 +354,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       y = ...  # type: Any
       z = ...  # type: Any
     """)
-    self.assertErrorLogIs(errors, [(2, "wrong-arg-count", "2.*0"),
-                                   (3, "wrong-arg-count", "2.*3")])
+    self.assertErrorRegexes(errors, {"e1": r"2.*0", "e2": r"2.*3"})
 
   def testTuple(self):
     ty = self.Infer("""

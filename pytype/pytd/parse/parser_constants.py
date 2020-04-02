@@ -49,7 +49,7 @@ RESERVED_PYTHON = [
     'yield',
     ]
 
-# parser.t_NAME's regexp allows a few extra characters in the name.
+# parser.t_NAME's regex allows a few extra characters in the name.
 # A less-pedantic RE is r'[-~]'.
 # See visitors._EscapedName and parser.PyLexer.t_NAME
 BACKTICK_NAME = re.compile(r'[-]|^~')

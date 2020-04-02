@@ -70,16 +70,16 @@ class ListTest(test_base.TargetIndependentTest):
     """)
 
   def test_getitem_slot(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       a = [1, '2', 3, 4]
       b = a[1]
       c = 1 if __random__ else 2
       d = a[c]
-      e = a["s"]
+      e = a["s"]  # unsupported-operands[e]
       f = a[-1]
       g = a[slice(1,2)]  # should be List[str]
       """)
-    self.assertTypesMatchPytd(ty, """\
+    self.assertTypesMatchPytd(ty, """
       from typing import Any, List, Union
       a = ...  # type: List[Union[int, str]]
       b = ...  # type: str
@@ -89,8 +89,7 @@ class ListTest(test_base.TargetIndependentTest):
       f = ...  # type: int
       g = ...  # type: List[Union[int, str]]
       """)
-    self.assertErrorLogIs(errors, [(5, "unsupported-operands",
-                                    r"__getitem__ on List")])
+    self.assertErrorRegexes(errors, {"e": r"__getitem__ on List"})
 
   def test_index_out_of_range(self):
     ty = self.Infer("""

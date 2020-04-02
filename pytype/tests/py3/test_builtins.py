@@ -115,21 +115,19 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testUnicode(self):
-    errors = self.CheckWithErrors("""\
-      unicode("foo")
+    self.CheckWithErrors("""
+      unicode("foo")  # name-error
     """)
-    self.assertErrorLogIs(errors, [(1, "name-error")])
 
   def testBytesIteration(self):
-    errors = self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       def f():
         for x in bytes():
-          return bytes() + x
+          return bytes() + x  # unsupported-operands
     """)
-    self.assertErrorLogIs(errors, [(3, "unsupported-operands")])
 
   def test_inplace_division(self):
-    self.Check("""\
+    self.Check("""
       x, y = 24, 3
       x /= y
       assert x == 8.0 and y == 3
@@ -140,18 +138,14 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def test_removed_dict_methods(self):
-    errors = self.CheckWithErrors("""\
-      {}.iteritems
-      {}.iterkeys
-      {}.itervalues
-      {}.viewitems
-      {}.viewkeys
-      {}.viewvalues
+    self.CheckWithErrors("""
+      {}.iteritems  # attribute-error
+      {}.iterkeys  # attribute-error
+      {}.itervalues  # attribute-error
+      {}.viewitems  # attribute-error
+      {}.viewkeys  # attribute-error
+      {}.viewvalues  # attribute-error
     """)
-    self.assertErrorLogIs(
-        errors, [(1, "attribute-error"), (2, "attribute-error"),
-                 (3, "attribute-error"), (4, "attribute-error"),
-                 (5, "attribute-error"), (6, "attribute-error")])
 
   def test_dict_views(self):
     self.Check("""
@@ -423,22 +417,20 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testIntInit(self):
-    _, errors = self.InferWithErrors("""\
-      int(0, 1)  # line 8: expected str or unicode, got int for first arg
+    _, errors = self.InferWithErrors("""
+      int(0, 1)  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(errors, [(1, "wrong-arg-types",
-                                    r"Union\[bytes, str\].*int")])
+    self.assertErrorRegexes(errors, {"e": r"Union\[bytes, str\].*int"})
 
   def testRemovedBuiltins(self):
-    errors = self.CheckWithErrors("""\
-      long
-      {}.has_key
+    self.CheckWithErrors("""
+      long  # name-error
+      {}.has_key  # attribute-error
     """)
-    self.assertErrorLogIs(errors, [(1, "name-error"), (2, "attribute-error")])
 
   def testRange(self):
-    ty, errors = self.InferWithErrors("""\
-      xrange(3)
+    ty, _ = self.InferWithErrors("""
+      xrange(3)  # name-error
       v = range(3)
       v[0]
       v[:]
@@ -450,7 +442,6 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       y: int
       z: int
     """)
-    self.assertErrorLogIs(errors, [(1, "name-error")])
 
   def testCreateStr(self):
     self.Check("""
@@ -569,8 +560,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
 
   def testRawInput(self):
     # Removed in Python 3:
-    errors = self.CheckWithErrors("raw_input")
-    self.assertErrorLogIs(errors, [(1, "name-error")])
+    self.CheckWithErrors("raw_input  # name-error")
 
   def testClear(self):
     # new in Python 3
@@ -630,20 +620,18 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testStrIsNotInt(self):
-    errors = self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       from typing import SupportsInt
       def f(x: SupportsInt): pass
-      f("")
+      f("")  # wrong-arg-types
     """)
-    self.assertErrorLogIs(errors, [(3, "wrong-arg-types")])
 
   def testStrIsNotFloat(self):
-    errors = self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       from typing import SupportsFloat
       def f(x: SupportsFloat): pass
-      f("")
+      f("")  # wrong-arg-types
     """)
-    self.assertErrorLogIs(errors, [(3, "wrong-arg-types")])
 
 
 test_base.main(globals(), __name__ == "__main__")

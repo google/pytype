@@ -22,16 +22,16 @@ class DictTest(test_base.TargetIndependentTest):
     """)
 
   def testBadPop(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       d = {"a": 42}
-      v = d.pop("b")
+      v = d.pop("b")  # key-error[e]
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict
       d = ...  # type: Dict[str, int]
       v = ...  # type: Any
     """)
-    self.assertErrorLogIs(errors, [(2, "key-error", r"b")])
+    self.assertErrorRegexes(errors, {"e": r"b"})
 
   def testAmbiguousPop(self):
     ty = self.Infer("""

@@ -8,7 +8,7 @@ class ListTest(test_base.TargetPython27FeatureTest):
 
   # __getslice__ is py2 only
   def test_getslice_slot(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       a = [1, '2', 3, 4]
       b = a[:]
       c = 1 if __random__ else 2
@@ -18,13 +18,13 @@ class ListTest(test_base.TargetPython27FeatureTest):
       g = a[2:None]
       h = a[None:2]
       i = a[None:None]
-      j = a[int:str]
-      k = a["s":]
+      j = a[int:str]  # unsupported-operands[e1]
+      k = a["s":]  # unsupported-operands[e2]
       l = a[1:-1]
       m = a[0:0]
       n = a[1:1]
       """)
-    self.assertTypesMatchPytd(ty, """\
+    self.assertTypesMatchPytd(ty, """
       from typing import Any, List, Union
       a = ...  # type: List[Union[int, str]]
       b = ...  # type: List[Union[int, str]]
@@ -41,9 +41,8 @@ class ListTest(test_base.TargetPython27FeatureTest):
       m = ...  # type: List[nothing]
       n = ...  # type: List[nothing]
       """)
-    self.assertErrorLogIs(errors, [
-        (10, "unsupported-operands", r"__getslice__ on List"),
-        (11, "unsupported-operands", r"__getslice__ on List")])
+    self.assertErrorRegexes(errors, {
+        "e1": r"__getslice__ on List", "e2": r"__getslice__ on List"})
 
 
 test_base.main(globals(), __name__ == "__main__")

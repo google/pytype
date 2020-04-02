@@ -18,6 +18,7 @@ py_test(
     test_base_test.py
   DEPS
     .test_base
+    pytype.utils
 )
 
 py_test(

@@ -55,20 +55,20 @@ class CodeTest(unittest.TestCase):
 
   def test_get_offset_multibyte(self):
     # With single-byte characters
-    src = source.Code("""\
+    src = source.Code("""
       # coding=utf-8
       line1 # a
       line2
     """, [], _FakeTrace, "")
-    self.assertEqual(src.get_offset(source.Location(3, 3)), 40)
+    self.assertEqual(src.get_offset(source.Location(4, 3)), 41)
 
     # With a multibyte character the byte offset should change
-    src = source.Code("""\
+    src = source.Code("""
       # coding=utf-8
       line1 # ツ
       line2
     """, [], _FakeTrace, "")
-    self.assertEqual(src.get_offset(source.Location(3, 3)), 42)
+    self.assertEqual(src.get_offset(source.Location(4, 3)), 43)
 
   def test_line(self):
     src = source.Code("line1\nline2", [], _FakeTrace, "")

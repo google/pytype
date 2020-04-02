@@ -65,19 +65,19 @@ class MemoryLeakTest(unittest.TestCase):
     self.check(get_builtins_source(self.PYTHON_VERSION))
 
   def test_error_in_class(self):
-    self.check("""\
+    self.check("""
       class Foo:
         def m(): pass
         an error""")
 
   def test_error_in_function(self):
-    self.check("""\
+    self.check("""
       def m(): pass
       def n(x: int, y: str) -> ->
       """)
 
   def test_error_within_if(self):
-    self.check("""\
+    self.check("""
       if sys.version_info == (1, 2, 3):
         x = ...  # type: int
         this is an error

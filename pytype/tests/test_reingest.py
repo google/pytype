@@ -120,12 +120,12 @@ class ReingestTest(test_base.TargetIndependentTest):
     """)
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import foo
         foo.X("hello", "world")
-        foo.X(42)  # missing parameters
+        foo.X(42)  # missing-parameter[e]
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(3, "missing-parameter", "b.*__new__")])
+      self.assertErrorRegexes(errors, {"e": r"b.*__new__"})
 
   def testAlias(self):
     foo = self.Infer("""
@@ -151,7 +151,7 @@ class ReingestTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo1.pyi", pytd_utils.Print(foo1))
       d.create_file("foo2.pyi", pytd_utils.Print(foo2))
-      d.create_file("bar.pyi", """\
+      d.create_file("bar.pyi", """
         from foo1 import xyz
         from foo2 import zyx
       """)

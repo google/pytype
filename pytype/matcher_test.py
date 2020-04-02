@@ -302,7 +302,7 @@ class MatcherTest(unittest.TestCase):
     self.assertNoMatch(f, callable_bad_arg2)
 
   def testBoundPyTDFunctionAgainstCallable(self):
-    instance = self._convert("""\
+    instance = self._convert("""
       class A(object):
         def f(self, x: int) -> bool: ...
     """, "A", as_instance=True)
@@ -389,7 +389,7 @@ class MatcherTest(unittest.TestCase):
 
   def testProtocol(self):
     left1 = self._convert_type("str", as_instance=True)
-    left2 = self._convert("""\
+    left2 = self._convert("""
       class A(object):
         def lower(self) : ...
     """, "A", as_instance=True)
@@ -401,7 +401,7 @@ class MatcherTest(unittest.TestCase):
 
   def testProtocolIterator(self):
     left1 = self._convert_type("Iterator", as_instance=True)
-    left2 = self._convert("""\
+    left2 = self._convert("""
       class A(object):
         def next(self): ...
         def __iter__(self): ...
@@ -414,7 +414,7 @@ class MatcherTest(unittest.TestCase):
 
   def testProtocolSequence(self):
     left1 = self._convert_type("list", as_instance=True)
-    left2 = self._convert("""\
+    left2 = self._convert("""
       class A(object):
         def __getitem__(self, i) : ...
         def __len__(self): ...
@@ -427,7 +427,7 @@ class MatcherTest(unittest.TestCase):
 
   @unittest.skip("Needs to be fixed, tries to match protocol against A")
   def testParameterizedProtocol(self):
-    left1 = self._convert("""\
+    left1 = self._convert("""
       from typing import Iterator
       class A(object):
         def __iter__(self) -> Iterator[int] : ...

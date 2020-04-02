@@ -135,31 +135,28 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
 
   def test_type_mismatch(self):
-    err = self.CheckWithErrors("""
+    self.CheckWithErrors("""
       import dataclasses
       @dataclasses.dataclass()
-      class Foo(object):
+      class Foo(object):  # annotation-type-mismatch
         x: bool = 10
     """)
-    self.assertErrorLogIs(err, [(4, "annotation-type-mismatch")])
 
   def test_field_type_mismatch(self):
-    err = self.CheckWithErrors("""
+    self.CheckWithErrors("""
       import dataclasses
       @dataclasses.dataclass()
-      class Foo(object):
+      class Foo(object):  # annotation-type-mismatch
         x: bool = dataclasses.field(default=10)
     """)
-    self.assertErrorLogIs(err, [(4, "annotation-type-mismatch")])
 
   def test_factory_type_mismatch(self):
-    err = self.CheckWithErrors("""
+    self.CheckWithErrors("""
       import dataclasses
       @dataclasses.dataclass()
-      class Foo(object):
+      class Foo(object):  # annotation-type-mismatch
         x: bool = dataclasses.field(default_factory=set)
     """)
-    self.assertErrorLogIs(err, [(4, "annotation-type-mismatch")])
 
   def test_field_no_init(self):
     ty = self.Infer("""
@@ -194,14 +191,13 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
 
   def test_bad_default_param_order(self):
-    err = self.CheckWithErrors("""
+    self.CheckWithErrors("""
       import dataclasses
       @dataclasses.dataclass()
-      class Foo(object):
+      class Foo(object):  # invalid-function-definition
         x: int = 10
         y: str
     """)
-    self.assertErrorLogIs(err, [(4, "invalid-function-definition")])
 
   def test_any(self):
     self.Check("""

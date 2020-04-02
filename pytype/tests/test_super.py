@@ -72,12 +72,12 @@ class SuperTest(test_base.TargetIndependentTest):
     """)
 
   def testSet(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(object):
         def foo(self, name, value):
-          super(Foo, self).__set__(name, value)
+          super(Foo, self).__set__(name, value)  # attribute-error[e]
     """)
-    self.assertErrorLogIs(errors, [(3, "attribute-error", r"__set__.*super")])
+    self.assertErrorRegexes(errors, {"e": r"__set__.*super"})
 
   def testInheritedSet(self):
     self.Check("""
@@ -143,15 +143,15 @@ class SuperTest(test_base.TargetIndependentTest):
     """)
 
   def testCallSuper(self):
-    _, errorlog = self.InferWithErrors("""\
+    _, errorlog = self.InferWithErrors("""
       class Y(object):
         pass
 
       class Foo(Y):
         def hello(self):
-          return super(Foo, self)()
+          return super(Foo, self)()  # not-callable[e]
     """)
-    self.assertErrorLogIs(errorlog, [(6, "not-callable", r"super")])
+    self.assertErrorRegexes(errorlog, {"e": r"super"})
 
   def testSuperType(self):
     ty = self.Infer("""
@@ -194,30 +194,28 @@ class SuperTest(test_base.TargetIndependentTest):
     """)
 
   def testSingleArgumentSuper(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       super(object)
-      super(object())
+      super(object())  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(
-        errors, [(2, "wrong-arg-types", r"cls: type.*cls: object")])
+    self.assertErrorRegexes(errors, {"e": r"cls: type.*cls: object"})
 
   def testMethodOnSingleArgumentSuper(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       sup = super(object)
-      sup.foo
-      sup.__new__(object)
+      sup.foo  # attribute-error[e1]
+      sup.__new__(object)  # wrong-arg-types[e2]
       v = sup.__new__(super)
     """)
     self.assertTypesMatchPytd(ty, """
       sup = ...  # type: super
       v = ...  # type: super
     """)
-    self.assertErrorLogIs(errors, [
-        (2, "attribute-error", r"'foo' on super"),
-        (3, "wrong-arg-types", r"Type\[super\].*Type\[object\]")])
+    self.assertErrorRegexes(errors, {"e1": r"'foo' on super",
+                                     "e2": r"Type\[super\].*Type\[object\]"})
 
   def testSuperUnderDecorator(self):
-    self.Check("""\
+    self.Check("""
       def decorate(cls):
         return __any_object__
       class Parent(object):
@@ -230,42 +228,42 @@ class SuperTest(test_base.TargetIndependentTest):
     """)
 
   def testSuperSetAttr(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(object):
         def __init__(self):
-          super(Foo, self).foo = 42
+          super(Foo, self).foo = 42  # not-writable[e]
     """)
-    self.assertErrorLogIs(errors, [(3, "not-writable", r"super")])
+    self.assertErrorRegexes(errors, {"e": r"super"})
 
   def testSuperSubclassSetAttr(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(object): pass
       class Bar(Foo):
         def __init__(self):
-          super(Bar, self).foo = 42
+          super(Bar, self).foo = 42  # not-writable[e]
     """)
-    self.assertErrorLogIs(errors, [(4, "not-writable", r"super")])
+    self.assertErrorRegexes(errors, {"e": r"super"})
 
   def testSuperNothingSetAttr(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo(nothing): ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import foo
         class Bar(foo.Foo):
           def __init__(self):
-            super(foo.Foo, self).foo = 42
+            super(foo.Foo, self).foo = 42  # not-writable[e]
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(4, "not-writable", r"super")])
+      self.assertErrorRegexes(errors, {"e": r"super"})
 
   def testSuperAnySetAttr(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(__any_object__):
         def __init__(self):
-          super(Foo, self).foo = 42
+          super(Foo, self).foo = 42  # not-writable[e]
     """)
-    self.assertErrorLogIs(errors, [(3, "not-writable", r"super")])
+    self.assertErrorRegexes(errors, {"e": r"super"})
 
 
 test_base.main(globals(), __name__ == "__main__")

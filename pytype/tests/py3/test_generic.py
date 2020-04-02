@@ -8,28 +8,27 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
   """Tests for User-defined Generic Type."""
 
   def testGenericTypeParamsError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Generic
 
-      class A(Generic[int]):
+      class A(Generic[int]):  # invalid-annotation[e]
         pass
     """)
-    self.assertErrorLogIs(errors, [
-        (3, "invalid-annotation", "Parameters.*Generic.*must.*type variables")])
+    self.assertErrorRegexes(
+        errors, {"e": r"Parameters.*Generic.*must.*type variables"})
 
   def testMroError(self):
-    _, errors = self.InferWithErrors("""\
+    self.InferWithErrors("""
       from typing import Generic, Iterator, Generator, TypeVar
 
       T = TypeVar('T')
 
-      class A(Generic[T],  Iterator[T], Generator):
+      class A(Generic[T],  Iterator[T], Generator):  # mro-error
         pass
     """)
-    self.assertErrorLogIs(errors, [(5, "mro-error")])
 
   def testTemplateOrderError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Generic, TypeVar
 
       T1 = TypeVar('T1')
@@ -60,16 +59,15 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
 
       A = ClassA[int, str, int, int]()
       B = ClassB[int, str, int, int]()
-      A.func(5, "5") # Error
+      A.func(5, "5") # wrong-arg-types[e1]
       A.func("5", 5) # OK
       B.func(5, "5") # OK
-      B.func("5", 5) # Error
+      B.func("5", 5) # wrong-arg-types[e2]
     """)
-    self.assertErrorLogIs(errors, [(31, "wrong-arg-types", r"str.*int"),
-                                   (34, "wrong-arg-types", r"int.*str")])
+    self.assertErrorRegexes(errors, {"e1": r"str.*int", "e2": r"int.*str"})
 
   def testTypeErasureError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import TypeVar, Generic
 
       T = TypeVar('T', int, float)
@@ -82,25 +80,23 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
         def fun(self, x: T, y: S):
             pass
 
-      o1 = MyClass[str, str]()
+      o1 = MyClass[str, str]()  # bad-concrete-type[e1]
       o2 = MyClass[int, int]()
-      o2.fun("5", 5)
-      o2.fun(5, "5")
+      o2.fun("5", 5)  # wrong-arg-types[e2]
+      o2.fun(5, "5")  # wrong-arg-types[e3]
     """)
-    self.assertErrorLogIs(errors, [
-        (13, "bad-concrete-type", r"Union\[float, int\].*str"),
-        (15, "wrong-arg-types", r"x: int.*x: str"),
-        (16, "wrong-arg-types", r"y: int.*y: str")])
+    self.assertErrorRegexes(errors, {"e1": r"Union\[float, int\].*str",
+                                     "e2": r"x: int.*x: str",
+                                     "e3": r"y: int.*y: str"})
 
   def testInhericPlainGenericError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
      from typing import Generic
 
-     class A(Generic):
+     class A(Generic):  # invalid-annotation[e]
        pass
     """)
-    self.assertErrorLogIs(
-        errors, [(3, "invalid-annotation", r"Cannot inherit.*plain Generic")])
+    self.assertErrorRegexes(errors, {"e": r"Cannot inherit.*plain Generic"})
 
   def testGenericWithDupTypeError(self):
     with file_utils.Tempdir() as d:
@@ -110,11 +106,10 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
         T = TypeVar('T')
         class A(Generic[T, T]): ...
       """)
-      _, errors = self.InferWithErrors("""\
-        import a
+      _, errors = self.InferWithErrors("""
+        import a  # pyi-error[e]
       """, deep=True, pythonpath=[d.path])
-      self.assertErrorLogIs(
-          errors, [(1, "pyi-error", "Duplicate.*T.*a.A")])
+      self.assertErrorRegexes(errors, {"e": r"Duplicate.*T.*a.A"})
 
   def testMultiGenericError(self):
     with file_utils.Tempdir() as d:
@@ -125,12 +120,11 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
         V = TypeVar('V')
         class A(Generic[T], Generic[V]): ...
       """)
-      _, errors = self.InferWithErrors("""\
-        import a
+      _, errors = self.InferWithErrors("""
+        import a  # pyi-error[e]
       """, deep=True, pythonpath=[d.path])
-      self.assertErrorLogIs(
-          errors, [(1, "pyi-error",
-                    r"Cannot inherit.*Generic.*multiple times")])
+      self.assertErrorRegexes(
+          errors, {"e": r"Cannot inherit.*Generic.*multiple times"})
 
   def testGenericWithTypeMissError(self):
     with file_utils.Tempdir() as d:
@@ -141,38 +135,37 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
         V = TypeVar('V')
         class A(Dict[K, V], Generic[K]): ...
       """)
-      _, errors = self.InferWithErrors("""\
-        import a
+      _, errors = self.InferWithErrors("""
+        import a  # pyi-error[e]
       """, deep=True, pythonpath=[d.path])
-      self.assertErrorLogIs(
-          errors, [(1, "pyi-error", r"V.*are not listed in Generic.*a.A")])
+      self.assertErrorRegexes(
+          errors, {"e": r"V.*are not listed in Generic.*a.A"})
 
   def testClassInFuncError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import TypeVar, Generic, Union
 
       T = TypeVar('T')
       S = TypeVar('S')
 
       def func(x: T, y: S) -> Union[T, S]:
-        class InnerCls1(Generic[T]):
+        class InnerCls1(Generic[T]):  # invalid-annotation[e1]  # invalid-annotation[e2]
           class InnerCls2(Generic[S]):
             pass
 
         return x + y
     """)
-    self.assertErrorLogIs(
-        errors, [(7, "invalid-annotation", r"func.*InnerCls1.*T"),
-                 (7, "invalid-annotation", r"func.*InnerCls2.*S")])
+    self.assertErrorRegexes(errors, {"e1": r"func.*InnerCls2.*S",
+                                     "e2": r"func.*InnerCls1.*T"})
 
   def testClassInClassError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
      from typing import TypeVar, Generic, Iterator
 
      T = TypeVar('T', int, float, str)
      S = TypeVar('S')
 
-     class MyClass(Generic[T, S]):
+     class MyClass(Generic[T, S]):  # invalid-annotation[e1]
        def __init__(self, x: T = None, y: S = None):
          pass
 
@@ -182,17 +175,16 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
        class InnerClass1(Iterator[T]):
          pass
 
-     class A(Generic[T]):
+     class A(Generic[T]):  # invalid-annotation[e2]
        class B(Generic[S]):
          class C(Generic[T]):
            pass
     """)
-    self.assertErrorLogIs(errors, [
-        (6, "invalid-annotation", r"MyClass.*InnerClass1.*T"),
-        (16, "invalid-annotation", r"A.*C.*T")])
+    self.assertErrorRegexes(errors, {"e1": r"MyClass.*InnerClass1.*T",
+                                     "e2": r"A.*C.*T"})
 
   def testSignatureTypeParam(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import TypeVar, Generic
 
       T = TypeVar('T', int, float, str)
@@ -205,18 +197,17 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
 
         def func1(self, x: T, y: S): pass
 
-        def func2(self, x: V): pass
+        def func2(self, x: V): pass  # invalid-annotation[e1]
 
-      def func1(x: S): pass
+      def func1(x: S): pass  # invalid-annotation[e2]
 
       def func2(x: S) -> S:
         return x
 
       def func3(x: T): pass
     """)
-    self.assertErrorLogIs(
-        errors, [(13, "invalid-annotation", r"Invalid type annotation 'V'"),
-                 (15, "invalid-annotation", r"Invalid type annotation 'S'")])
+    self.assertErrorRegexes(errors, {"e1": r"Invalid type annotation 'V'",
+                                     "e2": r"Invalid type annotation 'S'"})
 
   def testPyiOutput(self):
     ty = self.Infer("""
@@ -285,18 +276,18 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
     """)
 
   def testSignatureTypeError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Generic, TypeVar
 
       T = TypeVar('T')
       V = TypeVar('V')
 
       class MyClass(Generic[T]):
-        def __init__(self, x: T, y: V):
+        def __init__(self, x: T, y: V):  # invalid-annotation[e]
           pass
     """)
-    self.assertErrorLogIs(errors, [
-        (7, "invalid-annotation", r"V.*Appears only once in the signature")])
+    self.assertErrorRegexes(
+        errors, {"e": r"V.*Appears only once in the signature"})
 
   def testTypeParameterWithoutSubstitution(self):
     with file_utils.Tempdir() as d:
@@ -338,7 +329,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       """)
 
   def testFuncMatchForInterpreterClassError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import TypeVar, Generic
 
       T1 = TypeVar('T1')
@@ -361,14 +352,12 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
             pass
 
       o = C[int, int]()
-      o.fun1("5", "5")
-      o.fun2("5", "5")
-      o.fun3("5", "5")
+      o.fun1("5", "5")  # wrong-arg-types[e1]
+      o.fun2("5", "5")  # wrong-arg-types[e2]
+      o.fun3("5", "5")  # wrong-arg-types[e3]
     """)
-    self.assertErrorLogIs(errors, [
-        (23, "wrong-arg-types", r"int.*str"),
-        (24, "wrong-arg-types", r"int.*str"),
-        (25, "wrong-arg-types", r"int.*str")])
+    self.assertErrorRegexes(
+        errors, {"e1": r"int.*str", "e2": r"int.*str", "e3": r"int.*str"})
 
   def testFuncMatchForPytdClassError(self):
     with file_utils.Tempdir() as d:
@@ -391,22 +380,20 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
         class C(A[T, S], B[T, S], Generic[T, S]):
           def fun3(self, x: T, y: S): ...
       """)
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import a
 
         o = a.C[int, int]()
 
-        o.fun1("5", "5")
-        o.fun2("5", "5")
-        o.fun3("5", "5")
+        o.fun1("5", "5")  # wrong-arg-types[e1]
+        o.fun2("5", "5")  # wrong-arg-types[e2]
+        o.fun3("5", "5")  # wrong-arg-types[e3]
       """, deep=True, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [
-          (5, "wrong-arg-types", r"int.*str"),
-          (6, "wrong-arg-types", r"int.*str"),
-          (7, "wrong-arg-types", r"int.*str")])
+      self.assertErrorRegexes(
+          errors, {"e1": r"int.*str", "e2": r"int.*str", "e3": r"int.*str"})
 
   def testTypeRenamingError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Generic, TypeVar
 
       T = TypeVar('T', int, float)
@@ -416,22 +403,21 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       W = TypeVar('W')
 
       class A(Generic[T]): pass
-      class B(A[V]): pass
+      class B(A[V]): pass  # not-supported-yet[e1]
 
       class C(Generic[V]): pass
       class D(C[T]): pass
-      class E(D[S]): pass
+      class E(D[S]): pass  # not-supported-yet[e2]
 
       class F(Generic[U]): pass
-      class G(F[W]): pass
+      class G(F[W]): pass  # not-supported-yet[e3]
     """)
-    self.assertErrorLogIs(errors, [
-        (10, "not-supported-yet", r"Renaming TypeVar `T`.*"),
-        (14, "not-supported-yet", r"Renaming TypeVar `T`.*"),
-        (17, "not-supported-yet", r"Renaming TypeVar `U`.*")])
+    self.assertErrorRegexes(errors, {"e1": r"Renaming TypeVar `T`.*",
+                                     "e2": r"Renaming TypeVar `T`.*",
+                                     "e3": r"Renaming TypeVar `U`.*"})
 
   def testTypeParameterConflictError(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       from typing import Generic, TypeVar
 
       T = TypeVar('T')
@@ -443,9 +429,9 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       class B(A[V]): pass
 
       class D(B[S], A[U]): pass
-      class E(D[int, str]): pass
+      class E(D[int, str]): pass  # invalid-annotation[e1]
 
-      d = D[int, str]()
+      d = D[int, str]()  # invalid-annotation[e2]
       e = E()
     """)
     self.assertTypesMatchPytd(ty, """
@@ -471,12 +457,11 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       class E(Any):
           pass
      """)
-    self.assertErrorLogIs(errors, [
-        (12, "invalid-annotation", r"Conflicting value for TypeVar"),
-        (14, "invalid-annotation", r"Conflicting value for TypeVar")])
+    self.assertErrorRegexes(errors, {"e1": r"Conflicting value for TypeVar",
+                                     "e2": r"Conflicting value for TypeVar"})
 
   def testUnboundTypeParameterError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Generic, TypeVar
 
       T = TypeVar('T')
@@ -484,10 +469,9 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
 
       class A(Generic[T]): pass
       class B(A): pass
-      class D(B, A[U]): pass
+      class D(B, A[U]): pass  # invalid-annotation[e]
     """)
-    self.assertErrorLogIs(errors, [
-        (8, "invalid-annotation", r"Conflicting value for TypeVar D.U")])
+    self.assertErrorRegexes(errors, {"e": r"Conflicting value for TypeVar D.U"})
 
   def testSelfTypeParameter(self):
     # The purpose is to verify there is no infinite recursion
@@ -519,7 +503,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       """, pythonpath=[d.path])
 
   def testAnyMatchAllTypes(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       import collections, typing
 
       class DictA(collections.OrderedDict, typing.MutableMapping[int, int]):
@@ -535,11 +519,10 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       d2 = DictA()
       d3 = DictC()
       x = d1["123"]
-      y = d2["123"]
-      z = d3["123"]
+      y = d2["123"]  # unsupported-operands[e1]
+      z = d3["123"]  # unsupported-operands[e2]
     """)
-    self.assertErrorLogIs(errors, [(16, "unsupported-operands", r"str.*int"),
-                                   (17, "unsupported-operands", r"str.*int")])
+    self.assertErrorRegexes(errors, {"e1": r"str.*int", "e2": r"str.*int"})
 
   def testNoSelfAnnot(self):
     self.Check("""
@@ -551,15 +534,14 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
     """)
 
   def testIllegalSelfAnnot(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import Any, Generic, List, TypeVar
       T = TypeVar('T')
       class Foo(Generic[T]):
         def __init__(self: 'Foo', children: List['Foo[Any]']):
-          pass
+          pass  # invalid-annotation[e]
     """)
-    self.assertErrorLogIs(
-        errors, [(5, "invalid-annotation", r"self.*__init__")])
+    self.assertErrorRegexes(errors, {"e": r"self.*__init__"})
 
   def testParameterizedForwardReference(self):
     ty = self.Infer("""
@@ -579,19 +561,19 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
     """)
 
   def testBadParameterizedForwardReference(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import Generic, TypeVar
       T = TypeVar('T')
 
-      v = None  # type: "Foo[int, str]"
+      v = None  # type: "Foo[int, str]"  # invalid-annotation[e]
 
       class Foo(Generic[T]):
         pass
     """)
-    self.assertErrorLogIs(errors, [(4, "invalid-annotation", r"1.*2")])
+    self.assertErrorRegexes(errors, {"e": r"1.*2"})
 
   def testRecursiveClass(self):
-    self.Check("""\
+    self.Check("""
       from typing import List
       class Foo(List["Foo"]):
         pass

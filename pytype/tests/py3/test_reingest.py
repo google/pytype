@@ -16,11 +16,11 @@ class ReingestTest(test_base.TargetPython3BasicTest):
     """, deep=False)
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import foo
-        foo.f("")
+        foo.f("")  # wrong-arg-types[e]
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(2, "wrong-arg-types", r"float.*str")])
+      self.assertErrorRegexes(errors, {"e": r"float.*str"})
 
   def testDefaultArgumentType(self):
     foo = self.Infer("""
@@ -54,12 +54,12 @@ class ReingestTestPy3(test_base.TargetPython3FeatureTest):
     """)
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
-      _, errors = self.InferWithErrors("""\
+      _, errors = self.InferWithErrors("""
         import foo
-        foo.Foo()
+        foo.Foo()  # not-instantiable[e]
         foo.Bar()
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(2, "not-instantiable", r"foo\.Foo.*foo")])
+      self.assertErrorRegexes(errors, {"e": r"foo\.Foo.*foo"})
 
 
 test_base.main(globals(), __name__ == "__main__")

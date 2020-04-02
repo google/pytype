@@ -8,19 +8,19 @@ class TestClosures(test_base.TargetPython3BasicTest):
   """Tests for closures."""
 
   def test_error(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f(x: int):
         def g():
-          return x.upper()
+          return x.upper()  # attribute-error[e]
     """)
-    self.assertErrorLogIs(errors, [(3, "attribute-error", "upper.*int")])
+    self.assertErrorRegexes(errors, {"e": r"upper.*int"})
 
 
 class TestClosuresPy3(test_base.TargetPython3FeatureTest):
   """Tests for closures in Python 3."""
 
   def test_if_split_delete_deref(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       def f(a: int):
         x = "hello"
         def g():
@@ -37,19 +37,18 @@ class TestClosuresPy3(test_base.TargetPython3FeatureTest):
     """)
 
   def test_closures_delete_deref(self):
-    _, errors = self.InferWithErrors("""\
+    self.InferWithErrors("""
       def f():
         x = "hello"
         def g():
           nonlocal x  # force x to be stored in a closure cell
           x = 10
         del x
-        return x
+        return x  # name-error
     """)
-    self.assertErrorLogIs(errors, [(7, "name-error")])
 
   def test_nonlocal(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       def f():
         x = "hello"
         def g():
@@ -63,19 +62,18 @@ class TestClosuresPy3(test_base.TargetPython3FeatureTest):
     """)
 
   def test_nonlocal_delete_deref(self):
-    _, errors = self.InferWithErrors("""\
+    self.InferWithErrors("""
       def f():
         x = True
         def g():
           nonlocal x
           del x
         g()
-        return x
+        return x  # name-error
     """)
-    self.assertErrorLogIs(errors, [(7, "name-error")])
 
   def test_reuse_after_delete_deref(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       def f():
         x = True
         def g():
@@ -90,18 +88,18 @@ class TestClosuresPy3(test_base.TargetPython3FeatureTest):
     """)
 
   def test_closure_annotations(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def f():
         a = 1
         def g(x: int) -> int:
           a  # makes sure g is a closure
-          return "hello"
+          return "hello"  # bad-return-type[e]
     """)
-    self.assertErrorLogIs(errors, [(5, "bad-return-type", "int.*str")])
+    self.assertErrorRegexes(errors, {"e": r"int.*str"})
 
   def test_filter_before_delete(self):
     # TODO(b/117463644): Remove the disable on line 7.
-    errors = self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       from typing import Optional
       def f(x: Optional[str]):
         if x is None:
@@ -111,9 +109,8 @@ class TestClosuresPy3(test_base.TargetPython3FeatureTest):
           print(x.upper())  # pytype: disable=name-error
           del x
         nested()
-        return x  # line 10
+        return x  # name-error
     """)
-    self.assertErrorLogIs(errors, [(10, "name-error")])
 
 
 class PreciseReturnTest(test_base.TargetPython3BasicTest):
@@ -124,38 +121,38 @@ class PreciseReturnTest(test_base.TargetPython3BasicTest):
     self.options.tweak(precise_return=True)
 
   def test_interpreter_return(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       def f(x: str) -> str:
         return x
-      x = f(0)
+      x = f(0)  # wrong-arg-types[e]
     """)
     self.assertTypesMatchPytd(ty, """
       def f(x: str) -> str: ...
       x: str
     """)
-    self.assertErrorLogIs(errors, [(3, "wrong-arg-types", r"str.*int")])
+    self.assertErrorRegexes(errors, {"e": r"str.*int"})
 
   def test_interpreter_unknown_return(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       def f(x: str):
         return x
-      x = f(0)
+      x = f(0)  # wrong-arg-types[e]
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       def f(x: str) -> str: ...
       x: Any
     """)
-    self.assertErrorLogIs(errors, [(3, "wrong-arg-types", r"str.*int")])
+    self.assertErrorRegexes(errors, {"e": r"str.*int"})
 
   def test_interpreter_overload(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       from typing import overload
       @overload
       def f(x: str) -> str: ...
       def f(x):
         return x
-      x = f(0)
+      x = f(0)  # wrong-arg-types[e]
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import overload
@@ -163,14 +160,14 @@ class PreciseReturnTest(test_base.TargetPython3BasicTest):
       def f(x: str) -> str: ...
       x: str
     """)
-    self.assertErrorLogIs(errors, [(6, "wrong-arg-types", r"str.*int")])
+    self.assertErrorRegexes(errors, {"e": r"str.*int"})
 
 
 class TestFunctions(test_base.TargetPython3BasicTest):
   """Tests for functions."""
 
   def test_function_to_callable(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       def f():
         def g1(x: int, y: bool) -> str:
           return "hello world"
@@ -184,7 +181,7 @@ class TestFunctions(test_base.TargetPython3BasicTest):
     """)
 
   def test_function_to_callable_return_only(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       def f():
         def g1(x=None) -> int:
           return 42
@@ -198,7 +195,7 @@ class TestFunctions(test_base.TargetPython3BasicTest):
     """)
 
   def test_fake_arguments(self):
-    self.Check("""\
+    self.Check("""
 
       class Foo(object):
         def __init__(self, x: int):
@@ -238,24 +235,20 @@ class TestFunctions(test_base.TargetPython3BasicTest):
     """)
 
   def test_typecheck_varargs(self):
-    errors = self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       def f(*args: int) -> int:
         return args[0]
-      f(*['value'])
-      f(1, 'hello', 'world')
+      f(*['value'])  # wrong-arg-types
+      f(1, 'hello', 'world')  # wrong-arg-types
       """)
-    self.assertErrorLogIs(errors, [(3, "wrong-arg-types"),
-                                   (4, "wrong-arg-types")])
 
   def test_typecheck_kwargs(self):
-    errors = self.CheckWithErrors("""\
+    self.CheckWithErrors("""
       def f(**kwargs: int) -> int:
         return len(kwargs.values())
-      f(**{'arg': 'value'})
-      f(arg='value', arg2=3)
-      """)
-    self.assertErrorLogIs(errors, [(3, "wrong-arg-types"),
-                                   (4, "wrong-arg-types")])
+      f(**{'arg': 'value'})  # wrong-arg-types
+      f(arg='value', arg2=3)  # wrong-arg-types
+    """)
 
   def test_pass_func_to_complex_func(self):
     # This test gets an unsolvable binding added to the variable containing the
@@ -301,17 +294,14 @@ class TestFunctions(test_base.TargetPython3BasicTest):
     """)
 
   def text_varargs_errors(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def foo(x: str, *y: int):
         pass
-      foo(*[1, 2, 3])
+      foo(*[1, 2, 3])  # wrong-arg-types[e1]
       def bar(*z: int):
-        foo(*z)
+        foo(*z)  # wrong-arg-types[e2]
     """)
-    self.assertErrorLogIs(
-        errors,
-        [(3, "wrong-arg-types", "str.*int"),
-         (5, "wrong-arg-types", "str.*int")])
+    self.assertErrorRegexes(errors, {"e1": r"str.*int", "e2": r"str.*int"})
 
   def test_varargs_in_pyi(self):
     with file_utils.Tempdir() as d:
@@ -329,12 +319,12 @@ class TestFunctions(test_base.TargetPython3BasicTest):
       d.create_file("foo.pyi", """
         def f(x: int, *args): ...
       """)
-      errors = self.CheckWithErrors("""\
+      errors = self.CheckWithErrors("""
         import foo
         def g(*args):
-          foo.f("", *args)
+          foo.f("", *args)  # wrong-arg-types[e]
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [(3, "wrong-arg-types", "int.*str")])
+      self.assertErrorRegexes(errors, {"e": r"int.*str"})
 
 
 class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
@@ -593,13 +583,13 @@ class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
     """)
 
   def test_varargs_with_missing_kwonly(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def foo(x: int, *args: int, z: int) -> None:
         pass
 
-      foo(1, 2, 5)
+      foo(1, 2, 5)  # missing-parameter[e]
     """)
-    self.assertErrorLogIs(errors, [(4, "missing-parameter", r"\bz\b")])
+    self.assertErrorRegexes(errors, {"e": r"\bz\b"})
 
   def test_multiple_varargs_packs(self):
     self.Check("""
@@ -616,17 +606,14 @@ class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
     """)
 
   def text_multiple_varargs_packs_errors(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       def foo(x: str, *y: int):
         pass
-      foo(*[1, 2, 3], *[4, 5, 6])
+      foo(*[1, 2, 3], *[4, 5, 6])  # wrong-arg-types[e1]
       def bar(*z: int):
-        foo(*z, *z)
+        foo(*z, *z)  # wrong-arg-types[e2]
     """)
-    self.assertErrorLogIs(
-        errors,
-        [(3, "wrong-arg-types", "str.*int"),
-         (5, "wrong-arg-types", "str.*int")])
+    self.assertErrorRegexes(errors, {"e1": r"str.*int", "e2": r"str.*int"})
 
 
 test_base.main(globals(), __name__ == "__main__")

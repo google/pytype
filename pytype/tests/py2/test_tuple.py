@@ -7,7 +7,7 @@ class TupleTest(test_base.TargetPython27FeatureTest):
   """Tests for __builtin__.tuple."""
 
   def testIteration(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       class Foo(object):
         mytuple = (1, "foo", 3j)
         def __getitem__(self, pos):

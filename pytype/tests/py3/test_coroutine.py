@@ -69,9 +69,9 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testNativeCoroutineError(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       async def f1() -> str:
-        return 1
+        return 1  # bad-return-type[e1]
 
       async def f2() -> int:
         return 1
@@ -84,13 +84,11 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
 
       async def caller():
         f4(await f1())
-        f4(await f2())
-        f4(await f3())
+        f4(await f2())  # wrong-arg-types[e2]
+        f4(await f3())  # wrong-arg-types[e3]
     """)
-    self.assertErrorLogIs(errors, [
-        (2, "bad-return-type", r"str.*int"),
-        (15, "wrong-arg-types", r"str.*int"),
-        (16, "wrong-arg-types", r"str.*int")])
+    self.assertErrorRegexes(
+        errors, {"e1": r"str.*int", "e2": r"str.*int", "e3": r"str.*int"})
 
   def testGeneratorBasedCoroutinePyi(self):
     ty = self.Infer("""
@@ -132,7 +130,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testGeneratorBasedCoroutineError(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import Generator
       import types
 
@@ -149,13 +147,12 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
         pass
 
       async def caller():
-        x = await f1()
+        x = await f1()  # bad-return-type[e1]
         y = await f2()
-        f3(x, y)
+        f3(x, y)  # wrong-arg-types[e2]
     """)
-    self.assertErrorLogIs(errors, [
-        (17, "bad-return-type", r"Awaitable.*int"),
-        (19, "wrong-arg-types", r"y: str.*y: int")])
+    self.assertErrorRegexes(
+        errors, {"e1": r"Awaitable.*int", "e2": r"y: str.*y: int"})
 
   def testAwaitablePyi(self):
     ty = self.Infer("""
@@ -215,15 +212,14 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testInvalidAwaitable(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       class A(object):
         pass
 
       async def fun():
-        await A()
+        await A()  # bad-return-type[e]
     """)
-    self.assertErrorLogIs(errors, [
-        (5, "bad-return-type", r"Awaitable.*A")])
+    self.assertErrorRegexes(errors, {"e": r"Awaitable.*A"})
 
   def testAsyncForPyi(self):
     ty = self.Infer("""
@@ -262,7 +258,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testAsyncForError(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       class Iter1(object):
         pass
 
@@ -298,21 +294,19 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
 
       async def caller():
         res = []
-        async for i in Iter1():
+        async for i in Iter1():  # attribute-error[e1]
           res.append(i)
-        async for i in Iter2():
+        async for i in Iter2():  # attribute-error[e2]
           res.append(i)
-        async for i in Iter3():
+        async for i in Iter3():  # bad-return-type[e3]
           res.append(i)
         async for i in Iter4():
           res.append(i)
         return res
     """)
-    self.assertErrorLogIs(errors, [
-        (36, "attribute-error", r"No attribute.*__aiter__"),
-        (38, "attribute-error", r"No attribute.*__anext__"),
-        (40, "bad-return-type", r"Awaitable.*Union\[int, str]"),
-    ])
+    self.assertErrorRegexes(errors, {"e1": r"No attribute.*__aiter__",
+                                     "e2": r"No attribute.*__anext__",
+                                     "e3": r"Awaitable.*Union\[int, str\]"})
 
   def testAsyncWithPyi(self):
     ty = self.Infer("""
@@ -355,7 +349,8 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testAsyncWithError(self):
-    errors = self.CheckWithErrors("""\
+    # pylint: disable=anomalous-backslash-in-string
+    errors = self.CheckWithErrors("""
       class AsyncCtx1(object):
         pass
 
@@ -367,15 +362,15 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
           return "str"
 
       async def caller():
-        async with AsyncCtx1() as var1, AsyncCtx2() as var2:
-          pass
+        ctx1 = AsyncCtx1()
+        ctx2 = AsyncCtx2()
+        async with ctx1 as var1:  # attribute-error[e1]  # attribute-error[e2]
+          async with ctx2 as var2:  # bad-return-type[e3]
+            pass  # bad-return-type[e4]
     """)
-    self.assertErrorLogIs(errors, [
-        (12, "attribute-error", r"No attribute.*__aexit__"),
-        (12, "attribute-error", r"No attribute.*__aenter__"),
-        (12, "bad-return-type", r"Awaitable.*AsyncCtx2"),
-        (13, "bad-return-type", r"Awaitable.*str"),
-    ])
+    self.assertErrorRegexes(errors, {
+        "e1": r"No attribute.*__aexit__", "e2": r"No attribute.*__aenter__",
+        "e3": r"Awaitable.*AsyncCtx2", "e4": r"Awaitable.*str"})
 
   def testLoadPyi(self):
     with file_utils.Tempdir() as d:

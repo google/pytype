@@ -43,7 +43,7 @@ class CallgraphTest(test_base.TargetIndependentTest):
     self.assertCountEqual(actual, expected)
 
   def test_basic(self):
-    ix = self.index_code("""\
+    ix = self.index_code("""
         def f(x: str):
           y = x.strip()
           return y
@@ -77,7 +77,7 @@ class CallgraphTest(test_base.TargetIndependentTest):
     self.assertParamsEqual(g.params, [("y", "typing.Any")])
 
   def test_remote(self):
-    code = """\
+    code = """
         import foo
 
         def f(a, b):
@@ -111,7 +111,7 @@ class CallgraphTest(test_base.TargetIndependentTest):
 
   def test_no_outgoing_calls(self):
     """Capture a function with no outgoing calls."""
-    ix = self.index_code("""\
+    ix = self.index_code("""
         def f(x: int):
           return "hello"
     """)
@@ -125,7 +125,7 @@ class CallgraphTest(test_base.TargetIndependentTest):
 
   def test_call_records(self):
     """Use a function's call records to infer param types."""
-    ix = self.index_code("""\
+    ix = self.index_code("""
         class A:
           def foo(self, x):
             return x + "1"

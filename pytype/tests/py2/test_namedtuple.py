@@ -23,18 +23,14 @@ class NamedtupleTests(test_base.TargetPython27FeatureTest):
       """)
 
   def test_bad_call(self):
-    _, errorlog = self.InferWithErrors("""\
+    self.InferWithErrors("""
         import collections
-        collections.namedtuple()
-        collections.namedtuple("_")
-        collections.namedtuple("_", "", True, True, True)
-        collections.namedtuple("_", "", True, verbose=True)
+        collections.namedtuple()  # missing-parameter
+        collections.namedtuple("_")  # missing-parameter
+        collections.namedtuple("_", "", True, True, True)  # wrong-arg-count
+        collections.namedtuple(
+            "_", "", True, verbose=True)  # duplicate-keyword-argument
         """)
-    self.assertErrorLogIs(errorlog,
-                          [(2, "missing-parameter"),
-                           (3, "missing-parameter"),
-                           (4, "wrong-arg-count"),
-                           (5, "duplicate-keyword-argument")])
 
 
 test_base.main(globals(), __name__ == "__main__")

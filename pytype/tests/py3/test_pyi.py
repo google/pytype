@@ -8,12 +8,12 @@ class PYITest(test_base.TargetPython3BasicTest):
   """Tests for PYI."""
 
   def testUnneccessaryAnyImport(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
         import typing
         def foo(**kwargs: typing.Any) -> int: return 1
         def bar(*args: typing.Any) -> int: return 2
         """)
-    self.assertTypesMatchPytd(ty, """\
+    self.assertTypesMatchPytd(ty, """
         typing = ...  # type: module
         def foo(**kwargs) -> int: ...
         def bar(*args) -> int: ...

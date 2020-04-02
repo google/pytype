@@ -7,7 +7,7 @@ class TupleTest(test_base.TargetIndependentTest):
   """Tests for __builtin__.tuple."""
 
   def testGetItemInt(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       t = ("", 42)
       v1 = t[0]
       v2 = t[1]
@@ -25,7 +25,7 @@ class TupleTest(test_base.TargetIndependentTest):
 
   @test_base.skip("Needs better slice support in abstract.Tuple, convert.py.")
   def testGetItemSlice(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       t = ("", 42)
       v1 = t[:]
       v2 = t[:1]
@@ -46,7 +46,7 @@ class TupleTest(test_base.TargetIndependentTest):
     """)
 
   def testUnpackTuple(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       v1, v2 = ("", 42)
       _, w = ("", 42)
       x, (y, z) = ("", (3.14, True))
@@ -62,10 +62,10 @@ class TupleTest(test_base.TargetIndependentTest):
     """)
 
   def testBadUnpacking(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       tup = (1, "")
-      a, = tup
-      b, c, d = tup
+      a, = tup  # bad-unpacking[e1]
+      b, c, d = tup  # bad-unpacking[e2]
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
@@ -75,9 +75,8 @@ class TupleTest(test_base.TargetIndependentTest):
       c = ...  # type: int or str
       d = ...  # type: int or str
     """)
-    self.assertErrorLogIs(errors, [
-        (2, "bad-unpacking", "2 values.*1 variable"),
-        (3, "bad-unpacking", "2 values.*3 variables")])
+    self.assertErrorRegexes(
+        errors, {"e1": r"2 values.*1 variable", "e2": r"2 values.*3 variables"})
 
   def testMutableItem(self):
     ty = self.Infer("""
@@ -93,11 +92,11 @@ class TupleTest(test_base.TargetIndependentTest):
     """)
 
   def testBadTupleClassGetItem(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       v = type((3, ""))
-      w = v[0]
+      w = v[0]  # not-indexable[e]
     """)
-    self.assertErrorLogIs(errors, [(2, "not-indexable", r"tuple")])
+    self.assertErrorRegexes(errors, {"e": r"tuple"})
 
   def testTupleIsInstance(self):
     ty = self.Infer("""

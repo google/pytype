@@ -9,17 +9,16 @@ class SuperTest(test_base.TargetPython27FeatureTest):
   def testSuperMissingArg(self):
     # Python 2 super call does not implicitly infer the class and self
     # arguments. At least the class argument should be specified.
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(object):
         def __new__(cls):
-          return super(cls).__new__(cls)
+          return super(cls).__new__(cls)  # wrong-arg-types[e1]
       class Bar(object):
         def __new__(cls):
-          return super().__new__(cls)
+          return super().__new__(cls)  # wrong-arg-count[e2]
     """)
-    self.assertErrorLogIs(errors, [
-        (3, "wrong-arg-types", r"Type\[super\].*Type\[Foo\]"),
-        (6, "wrong-arg-count", r"2.*0")])
+    self.assertErrorRegexes(
+        errors, {"e1": r"Type\[super\].*Type\[Foo\]", "e2": r"2.*0"})
 
 
 test_base.main(globals(), __name__ == "__main__")

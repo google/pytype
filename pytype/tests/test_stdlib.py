@@ -95,7 +95,7 @@ class StdlibTests(test_base.TargetIndependentTest):
     """)
 
   def testNamedtuple(self):
-    self.Check("""\
+    self.Check("""
       import collections
       collections.namedtuple(u"_", "")
       collections.namedtuple("_", u"")
@@ -103,7 +103,7 @@ class StdlibTests(test_base.TargetIndependentTest):
     """)
 
   def testDefaultdict(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       import collections
       a = collections.defaultdict(int, one = 1, two = 2)
       b = collections.defaultdict(int, {'one': 1, 'two': 2})
@@ -112,7 +112,7 @@ class StdlibTests(test_base.TargetIndependentTest):
       e = collections.defaultdict(int)
       f = collections.defaultdict(default_factory = int)
       """)
-    self.assertTypesMatchPytd(ty, """\
+    self.assertTypesMatchPytd(ty, """
       collections = ...  # type: module
       a = ...  # type: collections.defaultdict[str, int]
       b = ...  # type: collections.defaultdict[str, int]
@@ -123,7 +123,7 @@ class StdlibTests(test_base.TargetIndependentTest):
       """)
 
   def testDefaultdictNoFactory(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       import collections
       a = collections.defaultdict()
       b = collections.defaultdict(None)
@@ -134,7 +134,7 @@ class StdlibTests(test_base.TargetIndependentTest):
       g = collections.defaultdict(one = 1, two = 2)
       h = collections.defaultdict(default_factory = None)
       """)
-    self.assertTypesMatchPytd(ty, """\
+    self.assertTypesMatchPytd(ty, """
       from typing import Any
       collections = ...  # type: module
       a = ...  # type: collections.defaultdict[nothing, nothing]
@@ -148,14 +148,14 @@ class StdlibTests(test_base.TargetIndependentTest):
       """)
 
   def testDefaultdictDiffDefaults(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       import collections
       a = collections.defaultdict(int, one = '1')
       b = collections.defaultdict(str, one = 1)
       c = collections.defaultdict(None, one = 1)
       d = collections.defaultdict(int, {1: 'one'})
       """)
-    self.assertTypesMatchPytd(ty, """\
+    self.assertTypesMatchPytd(ty, """
       from typing import Union
       collections = ...  # type: module
       a = ...  # type: collections.defaultdict[str, Union[int, str]]
@@ -195,7 +195,7 @@ class StdlibTests(test_base.TargetIndependentTest):
     """)
 
   def testFuture(self):
-    self.Check("""\
+    self.Check("""
       import __future__
     """)
 

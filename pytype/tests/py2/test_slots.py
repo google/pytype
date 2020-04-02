@@ -7,24 +7,23 @@ class SlotsTest(test_base.TargetPython27FeatureTest):
   """Tests for __slots__."""
 
   def testBuiltinAttr(self):
-    _, errors = self.InferWithErrors("""\
-      buffer("foo").bar = 16
+    self.InferWithErrors("""
+      buffer("foo").bar = 16  # not-writable
     """)
-    self.assertErrorLogIs(errors, [(1, "not-writable")])
 
   def testSlotWithBytes(self):
-    _ = self.Check("""\
+    self.Check("""
       class Foo(object):
         __slots__ = (b"x",)
     """)
 
   def testSlotWithUnicode(self):
-    errors = self.CheckWithErrors("""\
-      class Foo(object):
+    errors = self.CheckWithErrors("""
+      class Foo(object):  # bad-slots[e]
         __slots__ = (u"fo\\xf6", u"b\\xe4r", "baz")
       Foo().baz = 3
     """)
-    self.assertErrorLogIs(errors, [(1, "bad-slots", r"fo\\xc3\\xb6")])
+    self.assertErrorRegexes(errors, {"e": r"fo\\xc3\\xb6"})
 
 
 test_base.main(globals(), __name__ == "__main__")

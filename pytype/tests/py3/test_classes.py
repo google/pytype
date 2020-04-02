@@ -61,7 +61,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
     """)
 
   def testRecursiveConstructorBadAttribute(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import List
       MyType = List['Foo']
       class Foo(object):
@@ -70,9 +70,9 @@ class ClassesTest(test_base.TargetPython3BasicTest):
         def Create(self, x: MyType):
           self.x = x
         def Convert(self):
-          self.y
+          self.y  # attribute-error[e]
     """)
-    self.assertErrorLogIs(errors, [(9, "attribute-error", r"y.*Foo")])
+    self.assertErrorRegexes(errors, {"e": r"y.*Foo"})
 
   def testRecursiveConstructorSubclass(self):
     self.Check("""
@@ -118,7 +118,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
     """)
 
   def testMakeGenericClass(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       from typing import List, TypeVar, Union
       T1 = TypeVar("T1")
       T2 = TypeVar("T2")
@@ -132,7 +132,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
     """)
 
   def testMakeGenericClassWithConcreteValue(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       from typing import Dict, TypeVar
       V = TypeVar("V")
       class Foo(Dict[str, V]): ...
@@ -150,7 +150,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
     """Makes sure the result of foo.f() isn't used by both a() and b()."""
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", "def f() -> list: ...")
-      self.Check("""\
+      self.Check("""
         import foo
         from typing import List
         def a() -> List[str]:
@@ -162,24 +162,23 @@ class ClassesTest(test_base.TargetPython3BasicTest):
         """, pythonpath=[d.path])
 
   def testParentInit(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import Sequence
       class X(object):
         def __init__(self, obj: Sequence):
           pass
       class Y(X):
         def __init__(self, obj: int):
-          X.__init__(self, obj)  # line 7
+          X.__init__(self, obj)  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(errors, [(7, "wrong-arg-types", r"Sequence.*int")])
+    self.assertErrorRegexes(errors, {"e": r"Sequence.*int"})
 
   def testParameterizedClassBinaryOperator(self):
-    _, errors = self.InferWithErrors("""\
+    self.InferWithErrors("""
       from typing import Sequence
       def f(x: Sequence[str], y: Sequence[str]) -> None:
-        a = x + y
+        a = x + y  # unsupported-operands
       """)
-    self.assertErrorLogIs(errors, [(3, "unsupported-operands")])
 
   def testInstanceAttribute(self):
     ty = self.Infer("""
@@ -229,7 +228,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
 
   def testBuildClassQuick(self):
     # A() hits maximum stack depth in python3.6
-    ty = self.Infer("""\
+    ty = self.Infer("""
       def f():
         class A(object): pass
         return {A: A()}
@@ -276,7 +275,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
     """)
 
   def testInitTestClassInSetup(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       import unittest
       class A(unittest.TestCase):
         def setUp(self):
@@ -293,7 +292,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
     """)
 
   def testInitInheritedTestClassInSetup(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       import unittest
       class A(unittest.TestCase):
         def setUp(self):
@@ -313,7 +312,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
     """)
 
   def testInitTestClassInInitAndSetup(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       import unittest
       class A(unittest.TestCase):
         def __init__(self, foo: str):
@@ -413,15 +412,14 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
     """)
 
   def testPy2Metaclass(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       import abc
-      class Foo(object):
+      class Foo(object):  # ignored-metaclass[e]
         __metaclass__ = abc.ABCMeta
         @abc.abstractmethod
         def f(self) -> int: ...
     """)
-    self.assertErrorLogIs(
-        errors, [(2, "ignored-metaclass", r"abc\.ABCMeta.*Foo")])
+    self.assertErrorRegexes(errors, {"e": r"abc\.ABCMeta.*Foo"})
 
 
 test_base.main(globals(), __name__ == "__main__")

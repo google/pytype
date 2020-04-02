@@ -30,18 +30,18 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_check_protocol_error(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       import protocols
 
       def f(x: protocols.SupportsAbs):
         return x.__abs__()
-      f(["foo"])
+      f(["foo"])  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(errors, [(5, "wrong-arg-types",
-                                    r"\(x: SupportsAbs\).*\(x: List\[str\]\)")])
+    self.assertErrorRegexes(
+        errors, {"e": r"\(x: SupportsAbs\).*\(x: List\[str\]\)"})
 
   def test_check_iterator_error(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Iterator
       def f(x: Iterator[int]):
         return None
@@ -50,13 +50,12 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
           return ''
         def __iter__(self):
           return self
-      f(Foo())  # line 9
+      f(Foo())  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(
-        errors, [(9, "wrong-arg-types", r"Iterator\[int\].*Foo")])
+    self.assertErrorRegexes(errors, {"e": r"Iterator\[int\].*Foo"})
 
   def test_check_protocol_match_unknown(self):
-    self.Check("""\
+    self.Check("""
       from typing import Sized
       def f(x: Sized):
         pass
@@ -69,7 +68,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_check_parameterized_protocol(self):
-    self.Check("""\
+    self.Check("""
       from typing import Iterator, Iterable
 
       class Foo(object):
@@ -85,7 +84,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_check_parameterized_protocol_error(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Iterator, Iterable
 
       class Foo(object):
@@ -96,13 +95,13 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
         pass
 
       foo = Foo()
-      f(foo)
+      f(foo)  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(errors, [(11, "wrong-arg-types",
-                                    r"\(x: Iterable\[int\]\).*\(x: Foo\)")])
+    self.assertErrorRegexes(
+        errors, {"e": r"\(x: Iterable\[int\]\).*\(x: Foo\)"})
 
   def test_check_parameterized_protocol_multi_signature(self):
-    self.Check("""\
+    self.Check("""
       from typing import Sequence, Union
 
       class Foo(object):
@@ -119,7 +118,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_check_parameterized_protocol_error_multi_signature(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Sequence, Union
 
       class Foo(object):
@@ -132,10 +131,10 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
         pass
 
       foo = Foo()
-      f(foo)
+      f(foo)  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(errors, [(13, "wrong-arg-types",
-                                    r"\(x: Sequence\[int\]\).*\(x: Foo\)")])
+    self.assertErrorRegexes(
+        errors, {"e": r"\(x: Sequence\[int\]\).*\(x: Foo\)"})
 
   def test_construct_dict_with_protocol(self):
     self.Check("""
@@ -257,7 +256,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
       """, pythonpath=[d.path])
 
   def test_inherited_abstract_method_error(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Iterator
       class Foo(object):
         def __iter__(self) -> Iterator[str]:
@@ -266,10 +265,9 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
           return __any_object__
       def f(x: Iterator[int]):
         pass
-      f(Foo())  # line 9
+      f(Foo())  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(
-        errors, [(9, "wrong-arg-types", r"Iterator\[int\].*Foo")])
+    self.assertErrorRegexes(errors, {"e": r"Iterator\[int\].*Foo"})
 
   def test_reversible(self):
     self.Check("""
@@ -316,26 +314,24 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_list_hash(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import Hashable
       def f(x: Hashable):
         pass
-      f([])  # line 4
+      f([])  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(
-        errors, [(4, "wrong-arg-types", r"Hashable.*List.*__hash__")])
+    self.assertErrorRegexes(errors, {"e": r"Hashable.*List.*__hash__"})
 
   def test_hash_constant(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import Hashable
       class Foo(object):
         __hash__ = None
       def f(x: Hashable):
         pass
-      f(Foo())  # line 6
+      f(Foo())  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(
-        errors, [(6, "wrong-arg-types", r"Hashable.*Foo.*__hash__")])
+    self.assertErrorRegexes(errors, {"e": r"Hashable.*Foo.*__hash__"})
 
   def test_generic_callable(self):
     with file_utils.Tempdir() as d:
@@ -392,7 +388,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_custom_protocol_error(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing_extensions import Protocol
       class Appendable(Protocol):
         def append(self):
@@ -401,12 +397,12 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
         pass
       def f(x: Appendable):
         pass
-      f(42)  # error
-      f(NotAppendable())  # error
+      f(42)  # wrong-arg-types[e1]
+      f(NotAppendable())  # wrong-arg-types[e2]
     """)
-    self.assertErrorLogIs(errors, [
-        (9, "wrong-arg-types", r"Appendable.*int.*append"),
-        (10, "wrong-arg-types", r"Appendable.*NotAppendable.*append")])
+    self.assertErrorRegexes(errors, {
+        "e1": r"Appendable.*int.*append",
+        "e2": r"Appendable.*NotAppendable.*append"})
 
   def test_reingest_custom_protocol(self):
     ty = self.Infer("""
@@ -437,18 +433,18 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     """)
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
-      errors = self.CheckWithErrors("""\
+      errors = self.CheckWithErrors("""
         import foo
         class NotAppendable(object):
           pass
         def f(x: foo.Appendable):
           pass
-        f(42)  # error
-        f(NotAppendable())  # error
+        f(42)  # wrong-arg-types[e1]
+        f(NotAppendable())  # wrong-arg-types[e2]
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [
-          (6, "wrong-arg-types", r"Appendable.*int.*append"),
-          (7, "wrong-arg-types", r"Appendable.*NotAppendable.*append")])
+      self.assertErrorRegexes(errors, {
+          "e1": r"Appendable.*int.*append",
+          "e2": r"Appendable.*NotAppendable.*append"})
 
   def test_reingest_custom_protocol_inherit_method(self):
     ty = self.Infer("""
@@ -462,7 +458,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     """)
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
-      errors = self.CheckWithErrors("""\
+      errors = self.CheckWithErrors("""
         from foo import Mutable
         class NotMutable(object):
           def remove(self):
@@ -470,10 +466,9 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
         def f(x: Mutable):
           pass
         f([])  # ok
-        f(NotMutable())  # error
+        f(NotMutable())  # wrong-arg-types[e]
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(errors, [
-          (8, "wrong-arg-types", r"Mutable.*NotMutable.*append")])
+      self.assertErrorRegexes(errors, {"e": r"Mutable.*NotMutable.*append"})
 
   def test_reingest_custom_protocol_implement_method(self):
     ty = self.Infer("""
@@ -509,17 +504,16 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_check_method_body(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing_extensions import Protocol
       class Countable(Protocol):
         def count(self) -> int:
-          ...
+          ...  # bad-return-type[e]
       class MyCountable(Countable):
         def count(self):
           return super(MyCountable, self).count()
     """)
-    self.assertErrorLogIs(
-        errors, [(4, "bad-return-type", r"int.*None.*line 7")])
+    self.assertErrorRegexes(errors, {"e": r"int.*None.*line 7"})
 
 
 class ProtocolsTestPython3Feature(test_base.TargetPython3FeatureTest):

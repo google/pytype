@@ -10,7 +10,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
   """Tests for errors."""
 
   def testUnion(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def f(x: int):
         pass
       if __random__:
@@ -18,176 +18,160 @@ class ErrorTest(test_base.TargetPython3BasicTest):
       else:
         i = 1
       x = (3.14, "")
-      f(x[i])
+      f(x[i])  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(errors, [(8, "wrong-arg-types",
-                                    r"Actually passed:.*Union\[float, str\]")])
+    self.assertErrorRegexes(
+        errors, {"e": r"Actually passed:.*Union\[float, str\]"})
 
   def testInvalidAnnotations(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Dict, List, Union
       def f1(x: Dict):  # okay
         pass
-      def f2(x: Dict[str]):
+      def f2(x: Dict[str]):  # invalid-annotation[e1]
         pass
-      def f3(x: List[int, str]):
+      def f3(x: List[int, str]):  # invalid-annotation[e2]
         pass
-      def f4(x: Union):
+      def f4(x: Union):  # invalid-annotation[e3]
         pass
     """)
-    self.assertErrorLogIs(errors, [
-        (4, "invalid-annotation", r"typing.Dict\[_K, _V].*2.*1"),
-        (6, "invalid-annotation", r"typing.List\[_T].*1.*2"),
-        (8, "invalid-annotation", r"Union.*x")])
+    self.assertErrorRegexes(errors, {"e1": r"typing.Dict\[_K, _V].*2.*1",
+                                     "e2": r"typing.List\[_T].*1.*2",
+                                     "e3": r"Union.*x"})
 
   def testPrintUnsolvable(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import List
-      def f(x: List[nonsense], y: str, z: float):
+      def f(x: List[nonsense], y: str, z: float):  # name-error
         pass
-      f({nonsense}, "", "")
+      f({nonsense}, "", "")  # name-error  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(errors, [
-        (2, "name-error", r"nonsense"),
-        (4, "name-error", r"nonsense"),
-        (4, "wrong-arg-types", r"Expected:.*x: list.*Actual.*x: set")])
+    self.assertErrorRegexes(
+        errors, {"e": r"Expected:.*x: list.*Actual.*x: set"})
 
   def testPrintUnionOfContainers(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def f(x: str):
         pass
       if __random__:
         x = dict
       else:
         x = [float]
-      f(x)
+      f(x)  # wrong-arg-types[e]
     """)
     error = r"Actual.*Union\[List\[Type\[float\]\], Type\[dict\]\]"
-    self.assertErrorLogIs(errors, [(7, "wrong-arg-types", error)])
+    self.assertErrorRegexes(errors, {"e": error})
 
   def testWrongBrackets(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import List
-      def f(x: List(str)):
+      def f(x: List(str)):  # not-callable[e]
         pass
     """)
-    self.assertErrorLogIs(errors, [(2, "not-callable", r"List")])
+    self.assertErrorRegexes(errors, {"e": r"List"})
 
   def testInterpreterClassPrinting(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(object): pass
       def f(x: str): pass
-      f(Foo())
+      f(Foo())  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(errors, [(3, "wrong-arg-types", r"str.*Foo")])
+    self.assertErrorRegexes(errors, {"e": r"str.*Foo"})
 
   def testPrintDictAndTuple(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Tuple
       tup = None  # type: Tuple[int, ...]
       dct = None  # type: dict[str, int]
-      def f1(x: (int, str)):  # line 4
+      def f1(x: (int, str)):  # invalid-annotation[e1]
         pass
-      def f2(x: tup):  # line 6
+      def f2(x: tup):  # invalid-annotation[e2]
         pass
-      def g1(x: {"a": 1}):  # line 8
+      def g1(x: {"a": 1}):  # invalid-annotation[e3]
         pass
-      def g2(x: dct):  # line 10
+      def g2(x: dct):  # invalid-annotation[e4]
         pass
     """)
-    self.assertErrorLogIs(errors, [
-        (4, "invalid-annotation", r"(int, str).*Not a type"),
-        (6, "invalid-annotation",
-         r"instance of Tuple\[int, \.\.\.\].*Not a type"),
-        (8, "invalid-annotation", r"{'a': '1'}.*Not a type"),
-        (10, "invalid-annotation", r"instance of Dict\[str, int\].*Not a type")
-    ])
+    self.assertErrorRegexes(errors, {
+        "e1": r"(int, str).*Not a type",
+        "e2": r"instance of Tuple\[int, \.\.\.\].*Not a type",
+        "e3": r"{'a': '1'}.*Not a type",
+        "e4": r"instance of Dict\[str, int\].*Not a type"})
 
   def testMoveUnionInward(self):
-    _, errors = self.InferWithErrors("""\
-      def f() -> str:
+    _, errors = self.InferWithErrors("""
+      def f() -> str:  # invalid-annotation[e]
         y = "hello" if __random__ else 42
         yield y
     """)
-    self.assertErrorLogIs(errors, [(
-        1, "invalid-annotation", r"Generator, Iterable or Iterator")])
+    self.assertErrorRegexes(errors, {"e": r"Generator, Iterable or Iterator"})
 
   def testInnerClassError(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def f(x: str): pass
       def g():
         class Foo(object): pass
-        f(Foo())
+        f(Foo())  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(errors, [(4, "wrong-arg-types", r"x: str.*x: Foo")])
+    self.assertErrorRegexes(errors, {"e": r"x: str.*x: Foo"})
 
   def testInnerClassError2(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def f():
         class Foo(object): pass
         def g(x: Foo): pass
-        g("")
+        g("")  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(errors, [(4, "wrong-arg-types", r"x: Foo.*x: str")])
+    self.assertErrorRegexes(errors, {"e": r"x: Foo.*x: str"})
 
   def testCleanNamedtupleNames(self):
     # Make sure the namedtuple renaming in _pytd_print correctly extracts type
     # names and doesn't erase other types accidentally.
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       import collections
       X = collections.namedtuple("X", "a b c d")
       Y = collections.namedtuple("Z", "")
       W = collections.namedtuple("W", "abc def ghi abc", rename=True)
       def bar(x: str):
         return x
-      bar(X(1,2,3,4))  # 7
-      bar(Y())         # 8
-      bar(W(1,2,3,4))  # 9
-      bar({1: 2}.__iter__())  # 10
+      bar(X(1,2,3,4))  # wrong-arg-types[e1]
+      bar(Y())         # wrong-arg-types[e2]
+      bar(W(1,2,3,4))  # wrong-arg-types[e3]
+      bar({1: 2}.__iter__())  # wrong-arg-types[e4]
       if __random__:
         a = X(1,2,3,4)
       else:
         a = 1
-      bar(a)  # 15
+      bar(a)  # wrong-arg-types[e5]
       """)
-    self.assertErrorLogIs(errors,
-                          [(7, "wrong-arg-types", r"`X`"),
-                           (8, "wrong-arg-types", r"`Z`"),
-                           (9, "wrong-arg-types", r"`W`"),
-                           (10, "wrong-arg-types", r"`dictionary-keyiterator`"),
-                           (15, "wrong-arg-types", r"Union\[int, `X`\]")
-                          ])
+    self.assertErrorRegexes(errors, {
+        "e1": r"`X`", "e2": r"`Z`", "e3": r"`W`",
+        "e4": r"`dictionary-keyiterator`", "e5": r"Union\[int, `X`\]"})
 
   def testArgumentOrder(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def g(f: str, a, b, c, d, e,):
         pass
-      g(a=1, b=2, c=3, d=4, e=5, f=6)
+      g(a=1, b=2, c=3, d=4, e=5, f=6)  # wrong-arg-types[e]
       """)
-    self.assertErrorLogIs(
-        errors,
-        [(3, "wrong-arg-types",
-          r"Expected.*f: str, \.\.\..*Actual.*f: int, \.\.\.")]
-    )
+    self.assertErrorRegexes(errors, {
+        "e": r"Expected.*f: str, \.\.\..*Actual.*f: int, \.\.\."})
 
   def testConversionOfGeneric(self):
-    _, errors = self.InferWithErrors("""
+    self.InferWithErrors("""
       import os
       def f() -> None:
-        return os.walk("/tmp")
+        return os.walk("/tmp")  # bad-return-type
     """)
-    self.assertErrorLogIs(errors, [
-        (4, "bad-return-type")
-    ])
 
   def testInnerClass(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def f() -> int:
         class Foo(object):
           pass
-        return Foo()  # line 4
+        return Foo()  # bad-return-type[e]
     """)
-    self.assertErrorLogIs(errors, [(4, "bad-return-type", r"int.*Foo")])
+    self.assertErrorRegexes(errors, {"e": r"int.*Foo"})
 
   def testNestedProtoClass(self):
     with file_utils.Tempdir() as d:
@@ -197,35 +181,32 @@ class ErrorTest(test_base.TargetPython3BasicTest):
         class Foo:
           Bar = ...  # type: Type[_Foo_DOT_Bar]
       """)
-      errors = self.CheckWithErrors("""\
+      errors = self.CheckWithErrors("""
         import foo_bar
         def f(x: foo_bar.Foo.Bar): ...
-        f(42)
+        f(42)  # wrong-arg-types[e]
       """, pythonpath=[d.path])
-      self.assertErrorLogIs(
-          errors, [(3, "wrong-arg-types", r"foo_bar\.Foo\.Bar")])
+      self.assertErrorRegexes(errors, {"e": r"foo_bar\.Foo\.Bar"})
 
   def testStaticmethodInError(self):
     with file_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """\
+      d.create_file("foo.pyi", """
         class A(object):
           @staticmethod
           def t(a: str) -> None: ...
         """)
-      errors = self.CheckWithErrors("""\
+      errors = self.CheckWithErrors("""
         from typing import Callable
         import foo
         def f(x: Callable[[int], None], y: int) -> None:
           return x(y)
-        f(foo.A.t, 1)
+        f(foo.A.t, 1)  # wrong-arg-types[e]
         """, pythonpath=[d.path])
-      self.assertErrorLogIs(
-          errors,
-          [(5, "wrong-arg-types",
-            r"Actually passed: \(x: Callable\[\[str\], None\]")])
+      self.assertErrorRegexes(
+          errors, {"e": r"Actually passed: \(x: Callable\[\[str\], None\]"})
 
   def testGeneratorSend(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import Generator, Any
       def f(x) -> Generator[Any, int, Any]:
         if x == 1:
@@ -234,43 +215,41 @@ class ErrorTest(test_base.TargetPython3BasicTest):
           yield "1"
 
       x = f(2)
-      x.send("123")
+      x.send("123")  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(errors, [(9, "wrong-arg-types",
-                                    r"\(self, value: int\)")])
+    self.assertErrorRegexes(errors, {"e": r"\(self, value: int\)"})
 
   def testGeneratorIteratorRetType(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import Iterator
       def f() -> Iterator[str]:
-        yield 1
+        yield 1  # bad-return-type[e]
     """)
-    self.assertErrorLogIs(errors, [(3, "bad-return-type", r"str.*int")])
+    self.assertErrorRegexes(errors, {"e": r"str.*int"})
 
   def testGeneratorIterableRetType(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import Iterable
       def f() -> Iterable[str]:
-        yield 1
+        yield 1  # bad-return-type[e]
     """)
-    self.assertErrorLogIs(errors, [(3, "bad-return-type", r"str.*int")])
+    self.assertErrorRegexes(errors, {"e": r"str.*int"})
 
 
 class InPlaceOperationsTest(test_base.TargetPython3BasicTest):
   """Test in-place operations."""
 
   def _testOp(self, op, symbol):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       class A(object):
         def __%s__(self, x: "A"):
           return None
       def f():
         v = A()
-        v %s 3  # line 6
+        v %s 3  # unsupported-operands[e]
     """ % (op, symbol))
-    self.assertErrorLogIs(errors, [
-        (6, "unsupported-operands",
-         r"%s.*A.*int.*__%s__ on A.*A" % (re.escape(symbol), op))])
+    self.assertErrorRegexes(errors, {
+        "e": r"%s.*A.*int.*__%s__ on A.*A" % (re.escape(symbol), op)})
 
   def testISub(self):
     self._testOp("isub", "-=")
@@ -279,7 +258,7 @@ class InPlaceOperationsTest(test_base.TargetPython3BasicTest):
     self._testOp("imul", "*=")
 
   def testIDiv(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       class A(object):
         def __idiv__(self, x: "A"):
           return None
@@ -287,10 +266,10 @@ class InPlaceOperationsTest(test_base.TargetPython3BasicTest):
           return None
       def f():
         v = A()
-        v /= 3  # line 8
+        v /= 3  # unsupported-operands[e]
     """)
-    self.assertErrorLogIs(errors, [
-        (8, "unsupported-operands", r"\/\=.*A.*int.*__i(true)?div__ on A.*A")])
+    self.assertErrorRegexes(
+        errors, {"e": r"\/\=.*A.*int.*__i(true)?div__ on A.*A"})
 
   def testIMod(self):
     self._testOp("imod", "%=")
@@ -321,54 +300,53 @@ class ErrorTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for errors."""
 
   def testProtocolMismatch(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(object): pass
-      next(Foo())
+      next(Foo())  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(errors, [
-        (2, "wrong-arg-types", "__iter__, __next__")
-    ])
+    self.assertErrorRegexes(errors, {"e": r"__iter__, __next__"})
 
   def testProtocolMismatchPartial(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       class Foo(object):
         def __iter__(self):
           return self
-      next(Foo())
+      next(Foo())  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(errors, [(
-        4, "wrong-arg-types", r"\n\s*__next__\s*$")])  # `next` on its own line
+    self.assertErrorRegexes(
+        errors, {"e": r"\n\s*__next__\s*$"})  # `next` on its own line
 
   def testGeneratorSendRetType(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Generator
       def f() -> Generator[int, str, int]:
         x = yield 1
-        return x
+        return x  # bad-return-type[e]
     """)
-    self.assertErrorLogIs(errors, [(4, "bad-return-type", r"int.*str")])
+    self.assertErrorRegexes(errors, {"e": r"int.*str"})
 
 
 class MatrixOperationsTest(test_base.TargetPython3FeatureTest):
   """Test matrix operations."""
 
   def testMatMul(self):
-    errors = self.CheckWithErrors("def f(): return 'foo' @ 3")
-    self.assertErrorLogIs(errors, [
-        (1, "unsupported-operands",
-         r"\@.*str.*int.*'__matmul__' on str.*'__rmatmul__' on int")])
+    errors = self.CheckWithErrors("""
+      def f():
+        return 'foo' @ 3  # unsupported-operands[e]
+    """)
+    self.assertErrorRegexes(errors, {
+        "e": r"\@.*str.*int.*'__matmul__' on str.*'__rmatmul__' on int"})
 
   def testIMatMul(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       class A(object):
         def __imatmul__(self, x: "A"):
           pass
       def f():
         v = A()
-        v @= 3  # line 6
+        v @= 3  # unsupported-operands[e]
     """)
-    self.assertErrorLogIs(errors, [
-        (6, "unsupported-operands", r"\@.*A.*int.*__imatmul__ on A.*A")])
+    self.assertErrorRegexes(errors, {"e": r"\@.*A.*int.*__imatmul__ on A.*A"})
 
 
 test_base.main(globals(), __name__ == "__main__")

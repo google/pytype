@@ -20,7 +20,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
   def testImportTypeVar(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """T = TypeVar("T")""")
-      ty = self.Infer("""\
+      ty = self.Infer("""
         from a import T
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
@@ -29,16 +29,16 @@ class TypeVarTest(test_base.TargetIndependentTest):
       """)
 
   def testInvalidTypeVar(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       from typing import TypeVar
       typevar = TypeVar
-      T = typevar()
+      T = typevar()  # invalid-typevar[e1]
       T = typevar("T")  # ok
-      T = typevar(42)
-      T = typevar(str())
-      T = typevar("T", str, int if __random__ else float)
-      T = typevar("T", 0, float)
-      T = typevar("T", str)
+      T = typevar(42)  # invalid-typevar[e2]
+      T = typevar(str())  # invalid-typevar[e3]
+      T = typevar("T", str, int if __random__ else float)  # invalid-typevar[e4]
+      T = typevar("T", 0, float)  # invalid-typevar[e5]
+      T = typevar("T", str)  # invalid-typevar[e6]
       # pytype: disable=not-supported-yet
       S = typevar("S", covariant=False)  # ok
       T = typevar("T", covariant=False)  # duplicate ok
@@ -50,14 +50,11 @@ class TypeVarTest(test_base.TargetIndependentTest):
       S = TypeVar("S")
       T = TypeVar("T")
     """)
-    self.assertErrorLogIs(errors, [
-        (3, "invalid-typevar", r"wrong arguments"),
-        (5, "invalid-typevar", r"Expected.*str.*Actual.*int"),
-        (6, "invalid-typevar", r"constant str"),
-        (7, "invalid-typevar", r"must be constant"),
-        (8, "invalid-typevar", r"Expected.*_1:.*type.*Actual.*_1: int"),
-        (9, "invalid-typevar", r"0 or more than 1"),
-    ])
+    self.assertErrorRegexes(errors, {
+        "e1": r"wrong arguments", "e2": r"Expected.*str.*Actual.*int",
+        "e3": r"constant str", "e4": r"must be constant",
+        "e5": r"Expected.*_1:.*type.*Actual.*_1: int", "e6": r"0 or more than 1"
+    })
 
   def testPrintConstraints(self):
     ty = self.Infer("""
@@ -114,17 +111,15 @@ class TypeVarTest(test_base.TargetIndependentTest):
     """)
 
   def testTypeVarInTypeComment(self):
-    _, errors = self.InferWithErrors("""\
+    self.InferWithErrors("""
       from typing import List, TypeVar
       T = TypeVar("T")
-      x = None  # type: T
-      y = None  # type: List[T]
+      x = None  # type: T  # not-supported-yet
+      y = None  # type: List[T]  # not-supported-yet
     """)
-    self.assertErrorLogIs(errors, [(3, "not-supported-yet"),
-                                   (4, "not-supported-yet")])
 
   def testBaseClassWithTypeVar(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       from typing import List, TypeVar
       T = TypeVar("T")
       class A(List[T]): pass
@@ -145,41 +140,33 @@ class TypeVarTest(test_base.TargetIndependentTest):
     """)
 
   def testBound(self):
-    _, errors = self.InferWithErrors("""\
+    self.InferWithErrors("""
       from typing import TypeVar
-      T = TypeVar("T", int, float, bound=str)
-      S = TypeVar("S", bound="")
+      T = TypeVar("T", int, float, bound=str)  # invalid-typevar
+      S = TypeVar("S", bound="")  # invalid-typevar
       U = TypeVar("U", bound=str)  # ok
-      V = TypeVar("V", bound=int if __random__ else float)
+      V = TypeVar("V", bound=int if __random__ else float)  # invalid-typevar
     """)
-    self.assertErrorLogIs(errors, [
-        (2, "invalid-typevar", r"mutually exclusive"),
-        (3, "invalid-typevar", r"empty string"),
-        (5, "invalid-typevar", r"must be constant")])
 
   def testCovariant(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import TypeVar
-      T = TypeVar("T", covariant=True)
-      S = TypeVar("S", covariant=42)
-      U = TypeVar("U", covariant=True if __random__ else False)
+      T = TypeVar("T", covariant=True)  # not-supported-yet
+      S = TypeVar("S", covariant=42)  # invalid-typevar[e1]
+      U = TypeVar("U", covariant=True if __random__ else False)  # invalid-typevar[e2]
     """)
-    self.assertErrorLogIs(errors, [
-        (2, "not-supported-yet"),
-        (3, "invalid-typevar", r"Expected.*bool.*Actual.*int"),
-        (4, "invalid-typevar", r"constant")])
+    self.assertErrorRegexes(
+        errors, {"e1": r"Expected.*bool.*Actual.*int", "e2": r"constant"})
 
   def testContravariant(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import TypeVar
-      T = TypeVar("T", contravariant=True)
-      S = TypeVar("S", contravariant=42)
-      U = TypeVar("U", contravariant=True if __random__ else False)
+      T = TypeVar("T", contravariant=True)  # not-supported-yet
+      S = TypeVar("S", contravariant=42)  # invalid-typevar[e1]
+      U = TypeVar("U", contravariant=True if __random__ else False)  # invalid-typevar[e2]
     """)
-    self.assertErrorLogIs(errors, [
-        (2, "not-supported-yet"),
-        (3, "invalid-typevar", r"Expected.*bool.*Actual.*int"),
-        (4, "invalid-typevar", r"constant")])
+    self.assertErrorRegexes(
+        errors, {"e1": r"Expected.*bool.*Actual.*int", "e2": r"constant"})
 
   def testDontPropagatePyval(self):
     # in functions like f(x: T) -> T, if T has constraints we should not copy
@@ -379,22 +366,20 @@ class TypeVarTest(test_base.TargetIndependentTest):
     """)
 
   def testLateBound(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import TypeVar, Union
-      T = TypeVar("T", int, float, bound="str")
-      S = TypeVar("S", bound="")
+      T = TypeVar("T", int, float, bound="str")  # invalid-typevar[e1]
+      S = TypeVar("S", bound="")  # invalid-typevar[e2]
       U = TypeVar("U", bound="str")  # ok
-      V = TypeVar("V", bound="int if __random__ else float")
+      V = TypeVar("V", bound="int if __random__ else float")  # invalid-typevar[e3]
       W = TypeVar("W", bound="Foo") # ok, forward reference
-      X = TypeVar("X", bound="Bar")
+      X = TypeVar("X", bound="Bar")  # name-error[e4]
       class Foo:
         pass
     """)
-    self.assertErrorLogIs(errors, [
-        (2, "invalid-typevar", r"mutually exclusive"),
-        (3, "invalid-typevar", r"empty string"),
-        (5, "invalid-typevar", r"Must be constant"),
-        (7, "name-error", r"Name.*Bar")])
+    self.assertErrorRegexes(errors, {
+        "e1": r"mutually exclusive", "e2": r"empty string",
+        "e3": r"Must be constant", "e4": r"Name.*Bar"})
 
   def testLateConstraints(self):
     ty = self.Infer("""

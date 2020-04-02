@@ -8,15 +8,15 @@ class DecoratorsTest(test_base.TargetPython27FeatureTest):
 
   def testAttributeErrorUnderClassDecorator(self):
     # This does not detect the error under target python3 (b/78591647)
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       def decorate(cls):
         return __any_object__
       @decorate
       class Foo(object):
         def Hello(self):
-          return self.Goodbye()  # line 6
+          return self.Goodbye()  # attribute-error[e]
     """)
-    self.assertErrorLogIs(errors, [(6, "attribute-error", r"Goodbye")])
+    self.assertErrorRegexes(errors, {"e": r"Goodbye"})
 
 
 test_base.main(globals(), __name__ == "__main__")

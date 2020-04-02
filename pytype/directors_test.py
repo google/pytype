@@ -3,6 +3,7 @@
 
 from pytype import directors
 from pytype import errors
+import six
 import unittest
 
 _TEST_FILENAME = "my_file.py"
@@ -99,6 +100,7 @@ class DirectorTest(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
+    super(DirectorTest, cls).setUpClass()
     # Invoking the _error_name decorator will register the name as a valid
     # error name.
     for name in ["test-error", "test-other-error"]:
@@ -296,7 +298,7 @@ class DirectorTest(unittest.TestCase):
       error = list(self._errorlog)[0]
       self.assertEqual(_TEST_FILENAME, error._filename)
       self.assertEqual(1, error.lineno)
-      self.assertRegexpMatches(str(error), message_regex)
+      six.assertRegex(self, str(error), message_regex)
 
     check_warning("Unknown pytype directive.*disalbe.*",
                   "# pytype: disalbe=test-error")
@@ -349,7 +351,7 @@ class DirectorTest(unittest.TestCase):
     }, self._director.type_comments)
 
   def test_type_comment_on_multiline_value(self):
-    self._create("""\
+    self._create("""
     v = [
       ("hello",
        "world",  # type: should_be_ignored
@@ -358,11 +360,11 @@ class DirectorTest(unittest.TestCase):
     ]  # type: dict
     """)
     self.assertEqual({
-        3: ("]", "dict"),
+        4: ("]", "dict"),
     }, self._director.type_comments)
 
   def test_type_comment_with_trailing_comma(self):
-    self._create("""\
+    self._create("""
     v = [
       ("hello",
        "world"
@@ -375,8 +377,8 @@ class DirectorTest(unittest.TestCase):
     ]  # type: dict
     """)
     self.assertEqual({
-        3: ("]", "dict"),
-        9: ("]", "dict"),
+        4: ("]", "dict"),
+        10: ("]", "dict"),
     }, self._director.type_comments)
 
 

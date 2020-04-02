@@ -14,11 +14,10 @@ class SlotsTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testSlotWithBytes(self):
-    errors = self.CheckWithErrors("""\
-      class Foo(object):
+    self.CheckWithErrors("""
+      class Foo(object):  # bad-slots
         __slots__ = (b"x",)
     """)
-    self.assertErrorLogIs(errors, [(1, "bad-slots")])
 
 
 test_base.main(globals(), __name__ == "__main__")

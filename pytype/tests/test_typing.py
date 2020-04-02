@@ -38,10 +38,10 @@ class TypingTest(test_base.TargetIndependentTest):
     """)
 
   def test_process_annotation_for_cast(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, _ = self.InferWithErrors("""
       import typing
       v1 = typing.cast(None, __any_object__)
-      v2 = typing.cast(typing.Union, __any_object__)
+      v2 = typing.cast(typing.Union, __any_object__)  # invalid-annotation
       v3 = typing.cast("A", __any_object__)
       class A(object):
         pass
@@ -53,24 +53,20 @@ class TypingTest(test_base.TargetIndependentTest):
       v3: A
       class A(object): ...
     """)
-    self.assertErrorLogIs(errors, [(3, "invalid-annotation")])
 
   def test_no_typevars_for_cast(self):
-    _, errors = self.InferWithErrors("""\
+    self.InferWithErrors("""
         from typing import cast, AnyStr, Type, TypeVar, _T
         def f(x):
-          return cast(AnyStr, x)
+          return cast(AnyStr, x)  # invalid-typevar
         f("hello")
         def g(x):
-          return cast(AnyStr if __random__ else int, x)
+          return cast(AnyStr if __random__ else int, x)  # invalid-typevar
         g("quack")
         """)
-    self.assertErrorLogIs(errors,
-                          [(3, "invalid-typevar"),
-                           (6, "invalid-typevar")])
 
   def test_cast_args(self):
-    self.assertNoCrash(self.Check, """\
+    self.assertNoCrash(self.Check, """
       import typing
       typing.cast(typing.AnyStr)
       typing.cast("str")
@@ -93,7 +89,7 @@ class TypingTest(test_base.TargetIndependentTest):
     """)
 
   def test_protocol(self):
-    self.Check("""\
+    self.Check("""
       from typing_extensions import Protocol
       class Foo(Protocol): pass
     """)
@@ -104,13 +100,13 @@ class TypingTest(test_base.TargetIndependentTest):
         from typing import Tuple
         class Foo(Tuple[Foo]): ...
       """)
-      self.Check("""\
+      self.Check("""
         import foo
         foo.Foo()
       """, pythonpath=[d.path])
 
   def test_base_class(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       from typing import Iterable
       class Foo(Iterable):
         pass
@@ -121,7 +117,7 @@ class TypingTest(test_base.TargetIndependentTest):
     """)
 
   def test_type_checking(self):
-    self.Check("""\
+    self.Check("""
       import typing
       if typing.TYPE_CHECKING:
           pass
@@ -130,7 +126,7 @@ class TypingTest(test_base.TargetIndependentTest):
     """)
 
   def test_not_type_checking(self):
-    self.Check("""\
+    self.Check("""
       import typing
       if not typing.TYPE_CHECKING:
           name_error
@@ -141,24 +137,19 @@ class TypingTest(test_base.TargetIndependentTest):
   def test_new_type_arg_error(self):
     _, errors = self.InferWithErrors("""
       from typing import NewType
-      MyInt = NewType(int, 'MyInt')
-      MyStr = NewType(tp='str', name='MyStr')
-      MyFunnyNameType = NewType(name=123 if __random__ else 'Abc', tp=int)
-      MyFunnyType = NewType(name='Abc', tp=int if __random__ else 'int')
+      MyInt = NewType(int, 'MyInt')  # wrong-arg-types[e1]
+      MyStr = NewType(tp='str', name='MyStr')  # wrong-arg-types[e2]
+      MyFunnyNameType = NewType(name=123 if __random__ else 'Abc', tp=int)  # wrong-arg-types[e3]
+      MyFunnyType = NewType(name='Abc', tp=int if __random__ else 'int')  # wrong-arg-types[e4]
     """)
-    self.assertErrorLogIs(
-        errors,
-        [(3, "wrong-arg-types",
-          r".*Expected:.*str.*\nActually passed:.*Type\[int\].*"),
-         (4, "wrong-arg-types",
-          r".*Expected:.*type.*\nActually passed:.*str.*"),
-         (5, "wrong-arg-types",
-          r".*Expected:.*str.*\nActually passed:.*Union.*"),
-         (6, "wrong-arg-types",
-          r".*Expected:.*type.*\nActually passed:.*Union.*"),])
+    self.assertErrorRegexes(errors, {
+        "e1": r".*Expected:.*str.*\nActually passed:.*Type\[int\].*",
+        "e2": r".*Expected:.*type.*\nActually passed:.*str.*",
+        "e3": r".*Expected:.*str.*\nActually passed:.*Union.*",
+        "e4": r".*Expected:.*type.*\nActually passed:.*Union.*"})
 
   def test_classvar(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       from typing import ClassVar
       class A(object):
         x = 5  # type: ClassVar[int]
@@ -187,18 +178,19 @@ class TypingTest(test_base.TargetIndependentTest):
         class X:
           v: ClassVar[int, int]
       """)
-      errors = self.CheckWithErrors("""\
-        import foo
+      errors = self.CheckWithErrors("""
+        import foo  # pyi-error[e]
       """, pythonpath=[d.path])
-    self.assertErrorLogIs(errors, [(1, "pyi-error", r"ClassVar.*1.*2")])
+    self.assertErrorRegexes(errors, {"e": r"ClassVar.*1.*2"})
 
 
 class LiteralTest(test_base.TargetIndependentTest):
   """Tests for typing.Literal."""
 
   def test_py(self):
-    errors = self.CheckWithErrors("from typing import Literal")
-    self.assertErrorLogIs(errors, [(1, "not-supported-yet")])
+    self.CheckWithErrors("""
+      from typing import Literal  # not-supported-yet
+    """)
 
   def test_pyi_parameter(self):
     with file_utils.Tempdir() as d:

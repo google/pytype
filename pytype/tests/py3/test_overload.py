@@ -19,27 +19,27 @@ class OverloadTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_bad_implementation(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import overload
       @overload
       def f(x: int) -> str:
         pass
       def f(x):
-        return x
+        return x  # bad-return-type[e]
     """)
-    self.assertErrorLogIs(errors, [(6, "bad-return-type", r"str.*int")])
+    self.assertErrorRegexes(errors, {"e": r"str.*int"})
 
   def test_bad_call(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import overload
       @overload
       def f(x: int) -> int:
         pass
       def f(x):
         return x
-      f("")
+      f("")  # wrong-arg-types[e]
     """)
-    self.assertErrorLogIs(errors, [(7, "wrong-arg-types", r"int.*str")])
+    self.assertErrorRegexes(errors, {"e": r"int.*str"})
 
   def test_sub_return(self):
     ty = self.Infer("""
@@ -72,7 +72,7 @@ class OverloadTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_multiple_overload_bad_implementation(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import overload
       @overload
       def f(x: int) -> int:
@@ -81,12 +81,12 @@ class OverloadTest(test_base.TargetPython3BasicTest):
       def f(x: str) -> int:
         pass
       def f(x):
-        return x
+        return x  # bad-return-type[e]
     """)
-    self.assertErrorLogIs(errors, [(9, "bad-return-type", "int.*str")])
+    self.assertErrorRegexes(errors, {"e": r"int.*str"})
 
   def test_multiple_overload_bad_call(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import overload
       @overload
       def f(x: int) -> int:
@@ -96,11 +96,10 @@ class OverloadTest(test_base.TargetPython3BasicTest):
         pass
       def f(x, y=None):
         return x if y is None else y
-      f("")
-      f(0, 0)
+      f("")  # wrong-arg-types[e1]
+      f(0, 0)  # wrong-arg-types[e2]
     """)
-    self.assertErrorLogIs(errors, [(10, "wrong-arg-types", r"int.*str"),
-                                   (11, "wrong-arg-types", r"str.*int")])
+    self.assertErrorRegexes(errors, {"e1": r"int.*str", "e2": r"str.*int"})
 
   def test_pyi(self):
     src = """
@@ -129,16 +128,16 @@ class OverloadTest(test_base.TargetPython3BasicTest):
     """)
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
-      errors = self.CheckWithErrors("""\
+      errors = self.CheckWithErrors("""
         import foo
         foo.f(0)  # ok
         foo.f("")  # ok
-        foo.f(0.0)  # error
+        foo.f(0.0)  # wrong-arg-types[e]
       """, pythonpath=[d.path])
-    self.assertErrorLogIs(errors, [(4, "wrong-arg-types", r"int.*float")])
+    self.assertErrorRegexes(errors, {"e": r"int.*float"})
 
   def test_method_bad_implementation(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import overload
       class Foo(object):
         @overload
@@ -148,9 +147,9 @@ class OverloadTest(test_base.TargetPython3BasicTest):
         def f(self, x: str) -> int:
           pass
         def f(self, x):
-          return x
+          return x  # bad-return-type[e]
     """)
-    self.assertErrorLogIs(errors, [(10, "bad-return-type", r"int.*str")])
+    self.assertErrorRegexes(errors, {"e": r"int.*str"})
 
   def test_method_pyi(self):
     src = """
@@ -177,14 +176,14 @@ class OverloadTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_call_overload(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import overload
       @overload
       def f(x: int) -> int:
         pass
-      f(0)
+      f(0)  # not-callable[e]
     """)
-    self.assertErrorLogIs(errors, [(5, "not-callable", r"overload")])
+    self.assertErrorRegexes(errors, {"e": r"overload"})
 
 
 test_base.main(globals(), __name__ == "__main__")

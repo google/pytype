@@ -7,15 +7,14 @@ class FunctionCommentWithAnnotationsTest(test_base.TargetPython3BasicTest):
   """Tests for type comments that require annotations."""
 
   def testFunctionTypeCommentPlusAnnotations(self):
-    _, errors = self.InferWithErrors("""\
+    self.InferWithErrors("""
       def foo(x: int) -> float:
-        # type: (int) -> float
+        # type: (int) -> float  # redundant-function-type-comment
         return x
     """)
-    self.assertErrorLogIs(errors, [(2, "redundant-function-type-comment")])
 
   def testListComprehensionComments(self):
-    ty = self.Infer("""\
+    ty = self.Infer("""
       from typing import List
       def f(x: str):
         pass
@@ -23,7 +22,7 @@ class FunctionCommentWithAnnotationsTest(test_base.TargetPython3BasicTest):
         ys = [f(x) for x in xs]  # type: List[str]
         return ys
     """)
-    self.assertTypesMatchPytd(ty, """\
+    self.assertTypesMatchPytd(ty, """
       from typing import List
       def f(x: str) -> None: ...
       def g(xs: List[str]) -> List[str]: ...

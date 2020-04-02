@@ -76,10 +76,10 @@ class TraceTest(unittest.TestCase):
     self.assertEqual(pyval.cls.name, "foo.Foo")
 
   def test_py3_class(self):
-    src = traces.trace(textwrap.dedent("""\
+    src = traces.trace(textwrap.dedent("""
       class Foo(object):
         pass
-    """), config.Options.create(python_version=(3, 6)))
+    """).lstrip(), config.Options.create(python_version=(3, 6)))
     trace, = (x for x in src.traces[1] if x.op == "LOAD_BUILD_CLASS")
     pyval, = trace.types
     self.assertEqual(pyval.name, "typing.Callable")
@@ -97,7 +97,7 @@ class MatchAstTestCase(unittest.TestCase):
   """Base class for testing traces.MatchAstVisitor."""
 
   def _parse(self, text, options=None):
-    text = textwrap.dedent(text)
+    text = textwrap.dedent(text).lstrip()
     return ast.parse(text), traces.trace(text, options)
 
   def _get_traces(self, text, node_type, options=None):
@@ -147,7 +147,7 @@ class MatchAttributeTest(MatchAstTestCase):
   """Tests for traces.MatchAstVisit.match_Attribute."""
 
   def test_basic(self):
-    matches = self._get_traces("""\
+    matches = self._get_traces("""
       x = 0
       print(x.real)
     """, ast.Attribute)
@@ -155,7 +155,7 @@ class MatchAttributeTest(MatchAstTestCase):
         ((2, 8), "LOAD_ATTR", "real", ("int", "int"))])
 
   def test_multi(self):
-    matches = self._get_traces("""\
+    matches = self._get_traces("""
       class Foo(object):
         real = True
       x = 0
@@ -169,7 +169,7 @@ class MatchAttributeTest(MatchAstTestCase):
         ((4, 5), "LOAD_ATTR", "real", ("int", "int"))])
 
   def test_property(self):
-    matches = self._get_traces("""\
+    matches = self._get_traces("""
       class Foo(object):
         @property
         def x(self):
@@ -188,14 +188,14 @@ class MatchNameTest(MatchAstTestCase):
     self.assertTracesEqual(matches, [((1, 0), "STORE_NAME", "x", ("int",))])
 
   def test_multiline(self):
-    matches = self._get_traces("""\
+    matches = self._get_traces("""
       x = (1 +
            2)
     """, ast.Name)
     self.assertTracesEqual(matches, [((1, 0), "STORE_NAME", "x", ("int",))])
 
   def test_multiline_subscr(self):
-    matches = self._get_traces("""\
+    matches = self._get_traces("""
       x = [0]
       x[0] = (1,
               2)
@@ -209,7 +209,7 @@ class MatchCallTest(MatchAstTestCase):
   """Tests for traces.MatchAstVisitor.match_Call."""
 
   def test_basic(self):
-    matches = self._get_traces("""\
+    matches = self._get_traces("""
       def f(x):
         return x + 1.0
       f(42)
@@ -218,7 +218,7 @@ class MatchCallTest(MatchAstTestCase):
         ((3, 0), "CALL_FUNCTION", "f", ("Callable[[Any], Any]", "float"))])
 
   def _test_chain(self, call_method_op):
-    matches = self._get_traces("""\
+    matches = self._get_traces("""
       class Foo(object):
         def f(self, x):
           return x
@@ -237,7 +237,7 @@ class MatchCallTest(MatchAstTestCase):
     self._test_chain("CALL_METHOD")
 
   def test_multiple_bindings(self):
-    matches = self._get_traces("""\
+    matches = self._get_traces("""
       class Foo(object):
         @staticmethod
         def f(x):
@@ -254,7 +254,7 @@ class MatchCallTest(MatchAstTestCase):
          ("Callable[[Any], Any]", "Union[int, float]"))])
 
   def test_bad_call(self):
-    matches = self._get_traces("""\
+    matches = self._get_traces("""
       def f(): pass
       f(42)
     """, ast.Call)
@@ -275,7 +275,7 @@ class MatchCallTest(MatchAstTestCase):
     self._test_literal("CALL_METHOD")
 
   def test_lookahead(self):
-    matches = self._get_traces("""\
+    matches = self._get_traces("""
       def f(x, y, z):
         return x + y + z
       f(
@@ -340,7 +340,7 @@ class MatchConstantTest(MatchAstTestCase):
 class MatchSubscriptTest(MatchAstTestCase):
 
   def test_index(self):
-    matches = self._get_traces("""\
+    matches = self._get_traces("""
       v = "hello"
       print(v[0])
     """, ast.Subscript)
@@ -348,7 +348,7 @@ class MatchSubscriptTest(MatchAstTestCase):
         matches, [((2, 6), "BINARY_SUBSCR", "__getitem__", ("str",))])
 
   def _test_simple_slice(self, slice_op, method):
-    matches = self._get_traces("""\
+    matches = self._get_traces("""
       v = "hello"
       print(v[:-1])
     """, ast.Subscript)
@@ -363,7 +363,7 @@ class MatchSubscriptTest(MatchAstTestCase):
     self._test_simple_slice("BINARY_SUBSCR", "__getitem__")
 
   def test_complex_slice(self):
-    matches = self._get_traces("""\
+    matches = self._get_traces("""
       v = "hello"
       print(v[0:4:2])
     """, ast.Subscript)
@@ -374,7 +374,7 @@ class MatchSubscriptTest(MatchAstTestCase):
 class MatchBinOpTest(MatchAstTestCase):
 
   def test_modulo(self):
-    matches = self._get_traces("""\
+    matches = self._get_traces("""
       v = "hello %s"
       print(v % "world")
     """, ast.BinOp)
@@ -382,7 +382,7 @@ class MatchBinOpTest(MatchAstTestCase):
         matches, [((2, 6), "BINARY_MODULO", "__mod__", ("str",))])
 
   def test_modulo_multiline_string(self):
-    matches = self._get_traces("""\
+    matches = self._get_traces("""
       ('%s'
        '%s' %
        (__any_object__,
@@ -401,7 +401,7 @@ class MatchLambdaTest(MatchAstTestCase):
         matches, [((1, 0), "MAKE_FUNCTION", sym, ("Callable[[Any], Any]",))])
 
   def test_function_locals(self):
-    matches = self._get_traces("""\
+    matches = self._get_traces("""
       def f():
         return lambda x: x.upper()
     """, ast.Lambda)
@@ -412,7 +412,7 @@ class MatchLambdaTest(MatchAstTestCase):
   # py2 doesn't have symbol names to distinguish between <genexpr> and <lambda>.
   @py3
   def test_multiple_functions(self):
-    matches = self._get_traces("""\
+    matches = self._get_traces("""
       def f():
         return (w for w in range(3)), lambda x: x.upper(), lambda y, z: (y, z)
     """, ast.Lambda)

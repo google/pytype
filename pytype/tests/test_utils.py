@@ -1,6 +1,7 @@
 """Utility class and function for tests."""
 
 import collections
+import itertools
 import re
 import subprocess
 import tokenize
@@ -158,13 +159,13 @@ class TestCollectionsMixin(object):
   """Mixin providing utils for tests on the collections module."""
 
   def _testCollectionsObject(self, obj, good_arg, bad_arg, error):  # pylint: disable=invalid-name
-    result = self.CheckWithErrors("""\
+    result = self.CheckWithErrors("""
       import collections
       def f(x: collections.{obj}): ...
       f({good_arg})
-      f({bad_arg})  # line 5
+      f({bad_arg})  # wrong-arg-types[e]
     """.format(obj=obj, good_arg=good_arg, bad_arg=bad_arg))
-    self.assertErrorLogIs(result, [(4, "wrong-arg-types", error)])
+    self.assertErrorRegexes(result, {"e": error})
 
 
 class MakeCodeMixin(object):
@@ -187,8 +188,8 @@ class TestErrorLog(errors.ErrorLog):
   holding parsed comment directives.
 
   Attributes:
-    marks: { mark_name : line number }
-    expected:  { line number : expected error code }
+    marks: { mark_name : errors.Error object }
+    expected: { line number : sequence of expected error codes and mark names }
 
   Also adds an assertion matcher to match self.errors against a list of expected
   errors of the form [(line number, error code, message regex)].
@@ -196,104 +197,79 @@ class TestErrorLog(errors.ErrorLog):
   See tests/test_base_test.py for usage examples.
   """
 
-  MARK_RE = re.compile(r"^[.]\w+$")
-  ERROR_RE = re.compile(r"^\w[\w-]+\w$")
+  ERROR_RE = re.compile(r"^(?P<code>(\w+-)+\w+)(\[(?P<mark>.+)\])?$")
 
   def __init__(self, src):
     super(TestErrorLog, self).__init__()
-    self.marks, self.expected = self._parse_comments(src)
+    self.marks = None  # set by assert_errors_match_expected()
+    self.expected = self._parse_comments(src)
 
-  def assert_expected_errors(self, expected_errors):
-    expected_errors = collections.Counter(expected_errors)
-    # This is O(|errorlog| * |expected_errors|), which is okay because error
-    # lists in tests are short.
-    for error in self.unique_sorted_errors():
-      almost_matches = set()
-      for (pattern, count) in expected_errors.items():
-        line, name, regexp = self._parse_expected_error(pattern)
-        # We should only call this function after resolving marks
-        assert isinstance(line, int), "Unresolved mark %s" % line
-        if line == error.lineno and name == error.name:
-          if not regexp or re.search(regexp, error.message, flags=re.DOTALL):
-            if count == 1:
-              del expected_errors[pattern]
-            else:
-              expected_errors[pattern] -= 1
-            break
-          else:
-            almost_matches.add(regexp)
-      else:
-        self.print_to_stderr()
-        if almost_matches:
-          raise AssertionError("Bad error message: expected %r, got %r" % (
-              almost_matches.pop(), error.message))
-        else:
-          raise AssertionError("Unexpected error:\n%s" % error)
-    if expected_errors:
+  def _fail(self, msg):
+    if self.marks:
       self.print_to_stderr()
-      leftover_errors = [
-          self._parse_expected_error(pattern) for pattern in expected_errors]
-      raise AssertionError("Errors not found:\n" + "\n".join(
-          "Line %d: %r [%s]" % (e[0], e[2], e[1]) for e in leftover_errors))
+    raise AssertionError(msg)
 
-  def make_expected_errors(self, expected_errors):
-    """Rewrite expected_errors, resolving marks and adding comments."""
-    expected = []
+  def assert_errors_match_expected(self):
+    # TODO(rechen): The sorted() call can be removed once we stop supporting
+    # host Python 2, since dictionaries preserve insertion order in Python 3.6+.
+    expected_errors = itertools.chain.from_iterable(
+        [(line, code, mark) for (code, mark) in errors]
+        for line, errors in sorted(self.expected.items()))
+    self.marks = {}
 
-    for line, error in self.expected.items():
-      expected.append((line, error))
+    def _format_error(line, code, mark=None):
+      formatted = "Line %d: %s" % (line, code)
+      if mark:
+        formatted += "[%s]" % mark
+      return formatted
 
-    for pattern in expected_errors:
-      line, name, regexp = self._parse_expected_error(pattern)
-      line = self.marks.get(line, line)
-      expected.append((line, name, regexp))
+    for error in self.unique_sorted_errors():
+      try:
+        line, code, mark = next(expected_errors)
+      except StopIteration:
+        self._fail("Unexpected error:\n%s" % error)
+      if line != error.lineno or code != error.name:
+        self._fail("Error does not match:\nExpected: %s\nActual: %s" %
+                   (_format_error(line, code, mark),
+                    _format_error(error.lineno, error.name)))
+      elif mark:
+        self.marks[mark] = error
+    leftover_errors = [_format_error(*error) for error in expected_errors]
+    if leftover_errors:
+      self._fail("Errors not found:\n" + "\n".join(leftover_errors))
 
-    return expected
-
-  def increment_line_numbers(self, expected_errors):
-    """Adjust line numbers to account for an ANNOTATIONS_IMPORT line."""
-    incremented_expected_errors = []
-    for pattern in expected_errors:
-      line, name, regexp = self._parse_expected_error(pattern)
-      # We should only call this function after resolving marks
-      assert isinstance(line, int), "Unresolved mark %s" % line
-      # Increments the expected line number of the error.
-      line += 1
-      # Increments line numbers in the text of the expected error message.
-      regexp = re.sub(
-          r"line (\d+)", lambda m: "line %d" % (int(m.group(1)) + 1), regexp)
-      incremented_expected_error = (line, name)
-      if regexp:
-        incremented_expected_error += (regexp,)
-      incremented_expected_errors.append(incremented_expected_error)
-    return incremented_expected_errors
-
-  def _parse_expected_error(self, pattern):
-    assert 2 <= len(pattern) <= 3, (
-        "Bad expected error format. Use: (<line>, <name>[, <regexp>])")
-    line = pattern[0]
-    name = pattern[1]
-    regexp = pattern[2] if len(pattern) > 2 else ""
-    return line, name, regexp
+  def assert_error_regexes(self, expected_regexes):
+    if self.marks is None:
+      self.assert_errors_match_expected()  # populates self.marks
+    for mark, error in self.marks.items():
+      try:
+        regex = expected_regexes.pop(mark)
+      except KeyError:
+        self._fail("No regex for mark %s" % mark)
+      if not re.search(regex, error.message, flags=re.DOTALL):
+        self._fail("Bad error message for mark %s: expected %r, got %r" %
+                   (mark, regex, error.message))
+    if expected_regexes:
+      self._fail("Marks not found in code: %s" % ", ".join(expected_regexes))
 
   def _parse_comments(self, src):
-    # Strip out the "google type annotations" line if we have added it - we
-    # already have an assertion in test_base that this is not added manually.
-    offset = -1 if ANNOTATIONS_IMPORT in src else 0
-
     src = six.moves.StringIO(src)
-    marks = {}
-    expected = {}
+    expected = collections.defaultdict(list)
+    used_marks = set()
     for tok, s, (line, _), _, _ in tokenize.generate_tokens(src.readline):
-      line = line + offset
       if tok == tokenize.COMMENT:
-        comment = s.lstrip("# ").rstrip()
-        if self.MARK_RE.match(comment):
-          assert comment not in marks, "Mark %s already used" % comment
-          marks[comment] = line
-        elif self.ERROR_RE.match(comment):
-          expected[line] = comment
-    return marks, expected
+        for comment in s.split("#"):
+          comment = comment.strip()
+          match = self.ERROR_RE.match(comment)
+          if not match:
+            continue
+          mark = match.group("mark")
+          if mark:
+            if mark in used_marks:
+              self._fail("Mark %s already used" % mark)
+            used_marks.add(mark)
+          expected[line].append((match.group("code"), mark))
+    return expected
 
 
 class Py2Opcodes(object):

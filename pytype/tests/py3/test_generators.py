@@ -30,12 +30,12 @@ class GeneratorBasicTest(test_base.TargetPython3BasicTest):
     """)
 
   def testNoReturn(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Generator
       def f() -> Generator[str, None, None]:
-        yield 42
+        yield 42  # bad-return-type[e]
     """)
-    self.assertErrorLogIs(errors, [(3, "bad-return-type", r"str.*int")])
+    self.assertErrorRegexes(errors, {"e": r"str.*int"})
 
 
 class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
@@ -90,24 +90,22 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testParameterCount(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import Generator
 
       def func1() -> Generator[int, int, int]:
         x = yield 5
         return x
 
-      def func2() -> Generator[int, int]:
+      def func2() -> Generator[int, int]:  # invalid-annotation[e1]
         x = yield 5
 
-      def func3() -> Generator[int]:
+      def func3() -> Generator[int]:  # invalid-annotation[e2]
         yield 5
     """)
-    self.assertErrorLogIs(errors, [
-        (7, "invalid-annotation",
-         r"typing.Generator\[_T, _T2, _V].*3.*2"),
-        (10, "invalid-annotation",
-         r"typing.Generator\[_T, _T2, _V].*3.*1")])
+    self.assertErrorRegexes(errors, {
+        "e1": r"typing.Generator\[_T, _T2, _V].*3.*2",
+        "e2": r"typing.Generator\[_T, _T2, _V].*3.*1"})
 
 
 test_base.main(globals(), __name__ == "__main__")

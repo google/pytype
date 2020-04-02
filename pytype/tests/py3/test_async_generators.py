@@ -74,35 +74,32 @@ class AsyncGeneratorFeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def testAnnotationError(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import AsyncGenerator, AsyncIterator, AsyncIterable, Any, Union
 
       async def gen1() -> AsyncGenerator[bool, int]:
-        yield 1
+        yield 1  # bad-return-type[e1]
 
       async def gen2() -> AsyncIterator[bool]:
-        yield 1
+        yield 1  # bad-return-type[e2]
 
       async def gen3() -> AsyncIterable[bool]:
-        yield 1
+        yield 1  # bad-return-type[e3]
 
-      async def gen4() -> int:
+      async def gen4() -> int:  # invalid-annotation[e4]
         yield 1
 
       async def fun():
         g = gen1()
-        await g.asend("str")
+        await g.asend("str")  # wrong-arg-types[e5]
     """)
-    self.assertErrorLogIs(errors, [
-        (4, "bad-return-type", r"bool.*int"),
-        (7, "bad-return-type", r"bool.*int"),
-        (10, "bad-return-type", r"bool.*int"),
-        (12, "invalid-annotation",
-         r"AsyncGenerator.*AsyncIterable.*AsyncIterator"),
-        (17, "wrong-arg-types", r"int.*str"),])
+    self.assertErrorRegexes(errors, {
+        "e1": r"bool.*int", "e2": r"bool.*int", "e3": r"bool.*int",
+        "e4": r"AsyncGenerator.*AsyncIterable.*AsyncIterator",
+        "e5": r"int.*str"})
 
   def testMatchBaseClassError(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       from typing import AsyncGenerator, AsyncIterator, AsyncIterable, Union, Any
 
       async def func():
@@ -134,16 +131,15 @@ class AsyncGeneratorFeatureTest(test_base.TargetPython3FeatureTest):
         pass
 
       f1(gen())
-      f2(gen())
+      f2(gen())  # wrong-arg-types[e1]
       f3(gen())
-      f4(gen())
+      f4(gen())  # wrong-arg-types[e2]
       f5(gen())
-      f6(gen())
+      f6(gen())  # wrong-arg-types[e3]
     """)
-    self.assertErrorLogIs(errors, [
-        (32, "wrong-arg-types", r"bool.*Union\[int, str\]"),
-        (34, "wrong-arg-types", r"bool.*Union\[int, str\]"),
-        (36, "wrong-arg-types", r"bool.*Union\[int, str\]"),])
+    self.assertErrorRegexes(errors, {
+        "e1": r"bool.*Union\[int, str\]", "e2": r"bool.*Union\[int, str\]",
+        "e3": r"bool.*Union\[int, str\]"})
 
   def testProtocol(self):
     ty = self.Infer("""

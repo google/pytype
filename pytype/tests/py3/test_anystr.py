@@ -75,12 +75,12 @@ class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
       """)
 
   def testUseAnyStrConstraints(self):
-    ty, errors = self.InferWithErrors("""\
+    ty, errors = self.InferWithErrors("""
       from typing import AnyStr, TypeVar
       def f(x: AnyStr, y: AnyStr) -> AnyStr:
         return __any_object__
       v1 = f(__any_object__, u"")  # ok
-      v2 = f(__any_object__, 42)
+      v2 = f(__any_object__, 42)  # wrong-arg-types[e]
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, TypeVar
@@ -89,19 +89,18 @@ class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
       v1 = ...  # type: str
       v2 = ...  # type: Any
     """)
-    self.assertErrorLogIs(errors, [(5, "wrong-arg-types",
-                                    r"Union\[bytes, str\].*int")])
+    self.assertErrorRegexes(errors, {"e": r"Union\[bytes, str\].*int"})
 
   def testConstraintMismatch(self):
-    _, errors = self.InferWithErrors("""\
+    _, errors = self.InferWithErrors("""
       from typing import AnyStr
       def f(x: AnyStr, y: AnyStr): ...
       f("", "")  # ok
-      f("", b"")
+      f("", b"")  # wrong-arg-types[e]
       f(b"", b"")  # ok
     """)
-    self.assertErrorLogIs(errors, [(4, "wrong-arg-types",
-                                    r"Expected.*y: str.*Actual.*y: bytes")])
+    self.assertErrorRegexes(
+        errors, {"e": r"Expected.*y: str.*Actual.*y: bytes"})
 
 
 test_base.main(globals(), __name__ == "__main__")

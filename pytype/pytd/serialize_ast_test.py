@@ -89,8 +89,8 @@ class SerializeAstTest(unittest.TestCase):
           serialized_ast.class_type_nodes)[1:])
       loaded_ast = serialize_ast.ProcessAst(serialized_ast, module_map)
 
-      with self.assertRaisesRegexp(
-          ValueError, "Unresolved class: '__builtin__.NoneType'"):
+      with six.assertRaisesRegex(
+          self, ValueError, "Unresolved class: '__builtin__.NoneType'"):
         loaded_ast.Visit(visitors.VerifyLookup())
 
   def testPickle(self):

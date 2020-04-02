@@ -7,7 +7,7 @@ class TestExec(test_base.TargetPython3FeatureTest):
   """Basic tests."""
 
   def test_exec_function(self):
-    self.assertNoCrash(self.Check, """\
+    self.assertNoCrash(self.Check, """
       g = {}
       exec("a = 11", g, g)
       assert g['a'] == 11

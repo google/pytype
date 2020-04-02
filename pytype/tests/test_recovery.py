@@ -99,20 +99,16 @@ class RecoveryTests(test_base.TargetIndependentTest):
     """)
 
   def testMethodWithUnknownDecorator(self):
-    _, errors = self.InferWithErrors("""\
-      from nowhere import decorator
+    self.InferWithErrors("""
+      from nowhere import decorator  # import-error
       class Foo(object):
         @decorator
         def f():
-          name_error
+          name_error  # name-error
     """, deep=True)
-    self.assertErrorLogIs(errors, [
-        (1, "import-error"),
-        (5, "name-error"),
-    ])
 
   def testAssertInConstructor(self):
-    self.Check("""\
+    self.Check("""
       class Foo(object):
         def __init__(self):
           self._bar = "foo"
@@ -123,7 +119,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
 
   @test_base.skip("Line 7, in __str__: No attribute '_bar' on Foo'")
   def testConstructorInfiniteLoop(self):
-    self.Check("""\
+    self.Check("""
       class Foo(object):
         def __init__(self):
           self._bar = "foo"
@@ -133,27 +129,21 @@ class RecoveryTests(test_base.TargetIndependentTest):
     """)
 
   def testAttributeAccessInImpossiblePath(self):
-    _, errors = self.InferWithErrors("""\
+    self.InferWithErrors("""
       x = 3.14 if __random__ else 42
       if isinstance(x, int):
         if isinstance(x, float):
           x.upper  # not reported
-          3 in x
+          3 in x  # unsupported-operands
     """)
-    self.assertErrorLogIs(errors, [
-        (5, "unsupported-operands"),
-    ])
 
   def testBinaryOperatorOnImpossiblePath(self):
-    _, errors = self.InferWithErrors("""\
+    self.InferWithErrors("""
       x = "" if __random__ else []
       if isinstance(x, list):
         if isinstance(x, str):
-          x / x
+          x / x  # unsupported-operands
     """)
-    self.assertErrorLogIs(errors, [
-        (4, "unsupported-operands"),
-    ])
 
 
 test_base.main(globals(), __name__ == "__main__")

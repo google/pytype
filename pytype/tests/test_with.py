@@ -7,7 +7,7 @@ class TestWithStatement(test_base.TargetIndependentTest):
   """Tests for the with statement."""
 
   def test_simple_context_manager(self):
-    self.Check("""\
+    self.Check("""
       class NullContext(object):
         def __enter__(self):
           l.append('i')
@@ -31,7 +31,7 @@ class TestWithStatement(test_base.TargetIndependentTest):
       """)
 
   def test_raise_in_context_manager(self):
-    self.Check("""\
+    self.Check("""
       class NullContext(object):
         def __enter__(self):
           l.append('i')
@@ -58,7 +58,7 @@ class TestWithStatement(test_base.TargetIndependentTest):
       """)
 
   def test_suppressed_raise_in_context_manager(self):
-    self.Check("""\
+    self.Check("""
       class SuppressingContext(object):
         def __enter__(self):
           l.append('i')
@@ -85,7 +85,7 @@ class TestWithStatement(test_base.TargetIndependentTest):
       """)
 
   def test_return_in_with(self):
-    self.Check("""\
+    self.Check("""
       class NullContext(object):
         def __enter__(self):
           l.append('i')
@@ -110,7 +110,7 @@ class TestWithStatement(test_base.TargetIndependentTest):
       """)
 
   def test_continue_in_with(self):
-    self.Check("""\
+    self.Check("""
       class NullContext(object):
         def __enter__(self):
           l.append('i')
@@ -136,7 +136,7 @@ class TestWithStatement(test_base.TargetIndependentTest):
       """)
 
   def test_break_in_with(self):
-    self.Check("""\
+    self.Check("""
       class NullContext(object):
         def __enter__(self):
           l.append('i')
@@ -162,7 +162,7 @@ class TestWithStatement(test_base.TargetIndependentTest):
       """)
 
   def test_raise_in_with(self):
-    self.Check("""\
+    self.Check("""
       class NullContext(object):
         def __enter__(self):
           l.append('i')
@@ -189,7 +189,7 @@ class TestWithStatement(test_base.TargetIndependentTest):
       """)
 
   def test_at_context_manager_simplified(self):
-    self.Check("""\
+    self.Check("""
       import sys
       class GeneratorContextManager(object):
         def __init__(self, gen):
@@ -239,7 +239,7 @@ class TestWithStatement(test_base.TargetIndependentTest):
   def test_at_context_manager_complete(self):
     # The complete code for an @contextmanager example, lifted from
     # the stdlib.
-    self.Check("""\
+    self.Check("""
       from functools import partial
       import sys
 
@@ -311,7 +311,7 @@ class TestWithStatement(test_base.TargetIndependentTest):
       """)
 
   def test_tempfile(self):
-    self.Infer("""\
+    self.Infer("""
       import tempfile
       def f():
         with tempfile.NamedTemporaryFile(dir="bla", delete=False) as fi:

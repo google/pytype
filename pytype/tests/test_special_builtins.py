@@ -191,7 +191,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
     """)
 
   def testDifferentPropertyInstances(self):
-    errors = self.CheckWithErrors("""\
+    errors = self.CheckWithErrors("""
       class Foo(object):
         def __init__(self):
           self._foo = 42 if __random__ else "hello world"
@@ -201,9 +201,9 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
       foo1 = Foo()
       foo2 = Foo()
       if isinstance(foo1.foo, str):
-        x = foo2.foo.upper()  # line 10
+        x = foo2.foo.upper()  # attribute-error[e]
     """)
-    self.assertErrorLogIs(errors, [(10, "attribute-error", r"upper.*int")])
+    self.assertErrorRegexes(errors, {"e": r"upper.*int"})
 
 
 test_base.main(globals(), __name__ == "__main__")
