@@ -10,7 +10,7 @@ import six
 class ErrorLogTest(test_base.TargetIndependentTest):
 
   def _lineno(self, line):
-    if self.options.python_version == (2, 7) and utils.USE_ANNOTATIONS_BACKPORT:
+    if self.python_version == (2, 7) and utils.USE_ANNOTATIONS_BACKPORT:
       return line + 1
     return line
 

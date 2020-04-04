@@ -73,7 +73,7 @@ def convert_token(t):
 
 class LexerTest(unittest.TestCase):
 
-  PYTHON_VERSION = (2, 7, 6)
+  python_version = (2, 7, 6)
 
   def check(self, expected, text):
     text = textwrap.dedent(text)
@@ -280,7 +280,7 @@ class LexerTest(unittest.TestCase):
       3""")
 
   def test_builtins(self):
-    filename = "builtins/%d/__builtin__.pytd" % self.PYTHON_VERSION[0]
+    filename = "builtins/%d/__builtin__.pytd" % self.python_version[0]
     pytd_dir = os.path.dirname(os.path.dirname(parser_constants.__file__))
     with open(os.path.join(pytd_dir, filename)) as f:
       text = f.read()

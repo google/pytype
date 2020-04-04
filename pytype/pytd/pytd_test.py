@@ -11,8 +11,6 @@ import unittest
 class TestPytd(unittest.TestCase):
   """Test the simple functionality in pytd.py."""
 
-  PYTHON_VERSION = (2, 7)
-
   def setUp(self):
     super(TestPytd, self).setUp()
     self.int = pytd.ClassType("int")

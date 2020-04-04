@@ -286,7 +286,7 @@ class TestUtils(parser_test_base.ParserTest):
 
   def testBuiltinAlias(self):
     src = "Number = int"
-    ast = parser.parse_string(src, python_version=self.PYTHON_VERSION)
+    ast = parser.parse_string(src, python_version=self.python_version)
     self.assertMultiLineEqual(pytd_utils.Print(ast), src)
 
   def testTypingNameConflict1(self):
@@ -297,7 +297,7 @@ class TestUtils(parser_test_base.ParserTest):
 
       def List() -> None: ...
     """)
-    ast = parser.parse_string(src, python_version=self.PYTHON_VERSION)
+    ast = parser.parse_string(src, python_version=self.python_version)
     self.assertMultiLineEqual(pytd_utils.Print(ast).strip("\n"),
                               src.strip("\n"))
 
@@ -311,7 +311,7 @@ class TestUtils(parser_test_base.ParserTest):
       class MyClass(object):
           List = ...  # type: Any
           x = ...  # type: typing.List[str]
-    """), python_version=self.PYTHON_VERSION)
+    """), python_version=self.python_version)
     expected = textwrap.dedent("""
       import typing
       from typing import Any, List
@@ -413,8 +413,8 @@ class TestUtils(parser_test_base.ParserTest):
             def bar(x: T) -> NoneType
         def foo(a: str or int) -> C
         """)
-    tree1 = parser.parse_string(src1, python_version=self.PYTHON_VERSION)
-    tree2 = parser.parse_string(src2, python_version=self.PYTHON_VERSION)
+    tree1 = parser.parse_string(src1, python_version=self.python_version)
+    tree2 = parser.parse_string(src2, python_version=self.python_version)
     tree1.Visit(visitors.VerifyVisitor())
     tree2.Visit(visitors.VerifyVisitor())
     self.assertTrue(tree1.constants)
@@ -451,8 +451,8 @@ class TestUtils(parser_test_base.ParserTest):
     src2 = textwrap.dedent("""
         a: int
         b: float""").lstrip()
-    tree1 = parser.parse_string(src1, python_version=self.PYTHON_VERSION)
-    tree2 = parser.parse_string(src2, python_version=self.PYTHON_VERSION)
+    tree1 = parser.parse_string(src1, python_version=self.python_version)
+    tree2 = parser.parse_string(src2, python_version=self.python_version)
     normalize = lambda diff: textwrap.dedent("\n".join(diff))
     self.assertEqual(normalize(pytd_utils.ASTdiff(tree1, tree1)), src1)
     self.assertEqual(normalize(pytd_utils.ASTdiff(tree2, tree2)), src2)

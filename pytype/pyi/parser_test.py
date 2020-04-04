@@ -23,7 +23,7 @@ def get_builtins_source(python_version):
 
 class _ParserTestBase(unittest.TestCase):
 
-  PYTHON_VERSION = (2, 7, 6)
+  python_version = (2, 7, 6)
 
   def check(self, src, expected=None, prologue=None, name=None,
             version=None, platform=None):
@@ -47,7 +47,7 @@ class _ParserTestBase(unittest.TestCase):
     Returns:
       The parsed pytd.TypeDeclUnit.
     """
-    version = version or self.PYTHON_VERSION
+    version = version or self.python_version
     src = textwrap.dedent(src).lstrip()
     ast = parser.parse_string(src, name=name, python_version=version,
                               platform=platform)
@@ -67,7 +67,7 @@ class _ParserTestBase(unittest.TestCase):
     """Check that parsing the src raises the expected error."""
     with self.assertRaises(parser.ParseError) as e:
       parser.parse_string(textwrap.dedent(src).lstrip(),
-                          python_version=self.PYTHON_VERSION)
+                          python_version=self.python_version)
     six.assertRegex(self, utils.message(e.exception), re.escape(message))
     self.assertEqual(expected_line, e.exception.line)
 
@@ -430,7 +430,7 @@ class ParserTest(_ParserTestBase):
         this is not valid"""
     with self.assertRaises(parser.ParseError) as e:
       parser.parse_string(textwrap.dedent(src).lstrip(), filename="foo.py",
-                          python_version=self.PYTHON_VERSION)
+                          python_version=self.python_version)
     self.assertMultiLineEqual(textwrap.dedent("""
         File: "foo.py", line 2
           this is not valid
@@ -471,7 +471,7 @@ class ParserTest(_ParserTestBase):
         X = ... # type: ?
       y = bar.X.Baz
       z = X.Baz
-    """), name="foo", python_version=self.PYTHON_VERSION)
+    """), name="foo", python_version=self.python_version)
     self.assertEqual("foo.bar.X.Baz", ast.Lookup("foo.y").type.name)
     self.assertEqual("bar.X.Baz", ast.Lookup("foo.z").type.name)
 
@@ -2056,7 +2056,7 @@ class MergeSignaturesTest(_ParserTestBase):
 class EntireFileTest(_ParserTestBase):
 
   def test_builtins(self):
-    self.check(get_builtins_source(self.PYTHON_VERSION), expected=IGNORE)
+    self.check(get_builtins_source(self.python_version), expected=IGNORE)
 
 
 class AnyTest(_ParserTestBase):
@@ -2102,7 +2102,7 @@ class CanonicalPyiTest(_ParserTestBase):
         def foo(x: str) -> Any: ...
     """).strip()
     self.assertMultiLineEqual(
-        parser.canonical_pyi(src, self.PYTHON_VERSION), expected)
+        parser.canonical_pyi(src, self.python_version), expected)
 
 
 class TypeMacroTest(_ParserTestBase):
@@ -2237,7 +2237,7 @@ class ImportTypeIgnoreTest(_ParserTestBase):
       from mod import attr  # type: ignore
       def f(x: attr) -> None: ...
     """)
-    ast = parser.parse_string(src, python_version=self.PYTHON_VERSION)
+    ast = parser.parse_string(src, python_version=self.python_version)
     self.assertTrue(ast.Lookup("attr"))
     self.assertTrue(ast.Lookup("f"))
 
@@ -2246,7 +2246,7 @@ class ImportTypeIgnoreTest(_ParserTestBase):
       from . import attr  # type: ignore
       def f(x: attr) -> None: ...
     """)
-    ast = parser.parse_string(src, python_version=self.PYTHON_VERSION)
+    ast = parser.parse_string(src, python_version=self.python_version)
     self.assertTrue(ast.Lookup("attr"))
     self.assertTrue(ast.Lookup("f"))
 
@@ -2255,7 +2255,7 @@ class ImportTypeIgnoreTest(_ParserTestBase):
       from .. import attr  # type: ignore
       def f(x: attr) -> None: ...
     """)
-    ast = parser.parse_string(src, python_version=self.PYTHON_VERSION)
+    ast = parser.parse_string(src, python_version=self.python_version)
     self.assertTrue(ast.Lookup("attr"))
     self.assertTrue(ast.Lookup("f"))
 

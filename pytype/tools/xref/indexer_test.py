@@ -241,12 +241,12 @@ class IndexerTest(test_base.TargetIndependentTest, IndexerTestMixin):
 class IndexerTestPy3(test_base.TargetPython3BasicTest, IndexerTestMixin):
 
   def index_code(self, code, *args, **kwargs):
-    if utils.USE_ANNOTATIONS_BACKPORT and self.options.python_version == (2, 7):
+    if utils.USE_ANNOTATIONS_BACKPORT and self.python_version == (2, 7):
       code = test_base.WithAnnotationsImport(code)
     return super(IndexerTestPy3, self).index_code(code, *args, **kwargs)
 
   def assertDefLocs(self, index, fqname, locs):
-    if utils.USE_ANNOTATIONS_BACKPORT and self.options.python_version == (2, 7):
+    if utils.USE_ANNOTATIONS_BACKPORT and self.python_version == (2, 7):
       locs = [(line + 1, col) for line, col in locs]
     return super(IndexerTestPy3, self).assertDefLocs(index, fqname, locs)
 

@@ -18,7 +18,7 @@ import unittest
 class ImportPathsTest(unittest.TestCase):
   """Tests for load_pytd.py."""
 
-  PYTHON_VERSION = (2, 7)
+  python_version = (2, 7)
 
   def testFilepathToModule(self):
     # (filename, pythonpath, expected)
@@ -44,7 +44,7 @@ class ImportPathsTest(unittest.TestCase):
       self.assertEqual(module, expected)
 
   def testBuiltinSys(self):
-    loader = load_pytd.Loader("base", self.PYTHON_VERSION)
+    loader = load_pytd.Loader("base", self.python_version)
     ast = loader.import_name("sys")
     self.assertTrue(ast.Lookup("sys.exit"))
 
@@ -52,7 +52,7 @@ class ImportPathsTest(unittest.TestCase):
     with file_utils.Tempdir() as d:
       d.create_file("path/to/some/module.pyi", "def foo(x:int) -> str")
       loader = load_pytd.Loader(
-          "base", self.PYTHON_VERSION, pythonpath=[d.path])
+          "base", self.python_version, pythonpath=[d.path])
       ast = loader.import_name("path.to.some.module")
       self.assertTrue(ast.Lookup("path.to.some.module.foo"))
 
@@ -62,7 +62,7 @@ class ImportPathsTest(unittest.TestCase):
         d1.create_file("dir1/module1.pyi", "def foo1() -> str")
         d2.create_file("dir2/module2.pyi", "def foo2() -> str")
         loader = load_pytd.Loader(
-            "base", self.PYTHON_VERSION, pythonpath=[d1.path, d2.path])
+            "base", self.python_version, pythonpath=[d1.path, d2.path])
         module1 = loader.import_name("dir1.module1")
         module2 = loader.import_name("dir2.module2")
         self.assertTrue(module1.Lookup("dir1.module1.foo1"))
@@ -72,14 +72,14 @@ class ImportPathsTest(unittest.TestCase):
     with file_utils.Tempdir() as d1:
       d1.create_file("baz/__init__.pyi", "x = ... # type: int")
       loader = load_pytd.Loader(
-          "base", self.PYTHON_VERSION, pythonpath=[d1.path])
+          "base", self.python_version, pythonpath=[d1.path])
       self.assertTrue(loader.import_name("baz").Lookup("baz.x"))
 
   def testBuiltins(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", "x = ... # type: int")
       loader = load_pytd.Loader(
-          "base", self.PYTHON_VERSION, pythonpath=[d.path])
+          "base", self.python_version, pythonpath=[d.path])
       mod = loader.import_name("foo")
       self.assertEqual("__builtin__.int", mod.Lookup("foo.x").type.cls.name)
       self.assertEqual("__builtin__.int", mod.Lookup("foo.x").type.name)
@@ -88,7 +88,7 @@ class ImportPathsTest(unittest.TestCase):
     with file_utils.Tempdir() as d:
       d.create_directory("baz")
       loader = load_pytd.Loader(
-          "base", self.PYTHON_VERSION, pythonpath=[d.path])
+          "base", self.python_version, pythonpath=[d.path])
       self.assertTrue(loader.import_name("baz"))
 
   def testNoInitImportsMap(self):
@@ -96,11 +96,11 @@ class ImportPathsTest(unittest.TestCase):
       d.create_directory("baz")
       os.chdir(d.path)
       loader = load_pytd.Loader(
-          "base", self.PYTHON_VERSION, imports_map={}, pythonpath=[""])
+          "base", self.python_version, imports_map={}, pythonpath=[""])
       self.assertFalse(loader.import_name("baz"))
 
   def testStdlib(self):
-    loader = load_pytd.Loader("base", self.PYTHON_VERSION)
+    loader = load_pytd.Loader("base", self.python_version)
     ast = loader.import_name("StringIO")
     self.assertTrue(ast.Lookup("StringIO.StringIO"))
 
@@ -109,7 +109,7 @@ class ImportPathsTest(unittest.TestCase):
       d.create_file("module1.pyi", "def get_bar() -> module2.Bar")
       d.create_file("module2.pyi", "class Bar:\n  pass")
       loader = load_pytd.Loader(
-          "base", self.PYTHON_VERSION, pythonpath=[d.path])
+          "base", self.python_version, pythonpath=[d.path])
       module1 = loader.import_name("module1")
       f, = module1.Lookup("module1.get_bar").signatures
       self.assertEqual("module2.Bar", f.return_type.cls.name)
@@ -127,7 +127,7 @@ class ImportPathsTest(unittest.TestCase):
           pass
       """)
       loader = load_pytd.Loader(
-          "base", self.PYTHON_VERSION, pythonpath=[d.path])
+          "base", self.python_version, pythonpath=[d.path])
       foo = loader.import_name("foo")
       bar = loader.import_name("bar")
       f1, = foo.Lookup("foo.get_bar").signatures
@@ -143,7 +143,7 @@ class ImportPathsTest(unittest.TestCase):
       d.create_file("path/to/some/__init__.pyi", "some = ...  # type: ?")
       d.create_file("path/to/some/module.pyi", "")
       loader = load_pytd.Loader("path.to.some.module",
-                                self.PYTHON_VERSION,
+                                self.python_version,
                                 pythonpath=[d.path])
       some = loader.import_relative(1)
       to = loader.import_relative(2)
@@ -154,7 +154,7 @@ class ImportPathsTest(unittest.TestCase):
       self.assertTrue(path.Lookup("path.path"))
 
   def testTypeShed(self):
-    loader = load_pytd.Loader("base", self.PYTHON_VERSION)
+    loader = load_pytd.Loader("base", self.python_version)
     self.assertTrue(loader.import_name("UserDict"))
 
   def testResolveAlias(self):
@@ -167,7 +167,7 @@ class ImportPathsTest(unittest.TestCase):
           def f() -> module1.x
       """)
       loader = load_pytd.Loader(
-          "base", self.PYTHON_VERSION, pythonpath=[d.path])
+          "base", self.python_version, pythonpath=[d.path])
       module2 = loader.import_name("module2")
       f, = module2.Lookup("module2.f").signatures
       self.assertEqual("List[int]", pytd_utils.Print(f.return_type))
@@ -187,7 +187,7 @@ class ImportPathsTest(unittest.TestCase):
       # We cannot use tweak(imports_info=...) because that doesn't trigger
       # post-processing and we need an imports_map for the loader.
       loader = load_pytd.Loader(
-          "base", self.PYTHON_VERSION, imports_map=imports_map, pythonpath=[""])
+          "base", self.python_version, imports_map=imports_map, pythonpath=[""])
       normal = loader.import_name("foo")
       self.assertEqual("foo", normal.name)
       loader.import_name("bar")  # check that we can resolve against another.foo
@@ -214,7 +214,7 @@ class ImportPathsTest(unittest.TestCase):
           from .foo import X
           y = ...  # type: X""")
       loader = load_pytd.Loader(
-          "pkg.bar", self.PYTHON_VERSION, pythonpath=[d.path])
+          "pkg.bar", self.python_version, pythonpath=[d.path])
       bar = loader.import_name("pkg.bar")
       f = bar.Lookup("pkg.bar.y")
       self.assertEqual("pkg.foo.X", f.type.name)
@@ -229,7 +229,7 @@ class ImportPathsTest(unittest.TestCase):
       d.create_file("pkg/sub/bar.pyi", """
           from .foo import X
           y = ...  # type: X""")
-      loader = load_pytd.Loader("pkg", self.PYTHON_VERSION, pythonpath=[d.path])
+      loader = load_pytd.Loader("pkg", self.python_version, pythonpath=[d.path])
       ast = loader.import_name("pkg.sub")
       self.assertTrue(ast.Lookup("pkg.sub.X"))
 
@@ -245,14 +245,14 @@ class ImportPathsTest(unittest.TestCase):
           from .baz import X""")
       d.create_file("pkg/sub/baz.pyi", """
           class X: ...""")
-      loader = load_pytd.Loader("pkg", self.PYTHON_VERSION, pythonpath=[d.path])
+      loader = load_pytd.Loader("pkg", self.python_version, pythonpath=[d.path])
       ast = loader.import_name("pkg.sub")
       self.assertTrue(ast.Lookup("pkg.sub.X"))
 
   def testGetResolvedModules(self):
     with file_utils.Tempdir() as d:
       filename = d.create_file("dir/module.pyi", "def foo() -> str")
-      loader = load_pytd.Loader(None, self.PYTHON_VERSION, pythonpath=[d.path])
+      loader = load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
       ast = loader.import_name("dir.module")
       modules = loader.get_resolved_modules()
       self.assertEqual(set(modules), {"__builtin__", "typing", "dir.module"})
@@ -274,7 +274,7 @@ class ImportPathsTest(unittest.TestCase):
         _PathType = bytes
         def samestat(stat1: os2.stat_result) -> bool: ...
       """)
-      loader = load_pytd.Loader(None, self.PYTHON_VERSION, pythonpath=[d.path])
+      loader = load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
       ast = loader.import_name("os2.path")
       self.assertEqual(ast.Lookup("os2.path._PathType").type.name,
                        "__builtin__.str")
@@ -293,7 +293,7 @@ class ImportPathsTest(unittest.TestCase):
         def samestate(stat1: os2.stat_result) -> bool: ...
       """)
       d.create_file("posix2.pyi", "class stat_result: ...")
-      loader = load_pytd.Loader(None, self.PYTHON_VERSION, pythonpath=[d.path])
+      loader = load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
       # Make sure all three modules were resolved properly.
       loader.import_name("os2")
       loader.import_name("os2.path")
@@ -305,7 +305,7 @@ class ImportPathsTest(unittest.TestCase):
         from typing import Union as _UnionT
         x: _UnionT[int, str]
       """)
-      loader = load_pytd.Loader(None, self.PYTHON_VERSION, pythonpath=[d.path])
+      loader = load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
       ast = loader.import_name("test")
       x = ast.Lookup("test.x")
       self.assertIsInstance(x.type, pytd.UnionType)
@@ -316,7 +316,7 @@ class ImportPathsTest(unittest.TestCase):
         from typing import Optional as _OptionalT
         x: _OptionalT[int]
       """)
-      loader = load_pytd.Loader(None, self.PYTHON_VERSION, pythonpath=[d.path])
+      loader = load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
       ast = loader.import_name("test")
       x = ast.Lookup("test.x")
       self.assertIsInstance(x.type, pytd.UnionType)
@@ -327,7 +327,7 @@ class ImportPathsTest(unittest.TestCase):
         from typing import Intersection as _IntersectionT
         x: _IntersectionT[int, str]
       """)
-      loader = load_pytd.Loader(None, self.PYTHON_VERSION, pythonpath=[d.path])
+      loader = load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
       ast = loader.import_name("test")
       x = ast.Lookup("test.x")
       self.assertIsInstance(x.type, pytd.IntersectionType)
@@ -338,7 +338,7 @@ _Module = collections.namedtuple("_", ["module_name", "file_name"])
 
 class PickledPyiLoaderTest(unittest.TestCase):
 
-  PYTHON_VERSION = (2, 7)
+  python_version = (2, 7)
 
   def _CreateFiles(self, tempdir):
     src = """
@@ -369,7 +369,7 @@ class PickledPyiLoaderTest(unittest.TestCase):
 
   def _LoadAst(self, tempdir, module):
     loader = load_pytd.Loader(
-        base_module=module.module_name, python_version=self.PYTHON_VERSION,
+        base_module=module.module_name, python_version=self.python_version,
         pythonpath=[tempdir.path])
     return loader, loader.load_file(
         module.module_name, self._GetPath(tempdir, module.file_name))
@@ -382,7 +382,7 @@ class PickledPyiLoaderTest(unittest.TestCase):
 
   def _LoadPickledModule(self, tempdir, module):
     pickle_loader = load_pytd.PickledPyiLoader(
-        base_module=None, python_version=self.PYTHON_VERSION,
+        base_module=None, python_version=self.python_version,
         pythonpath=[tempdir.path])
     return pickle_loader.load_file(
         module.module_name, self._GetPath(tempdir, module.file_name))
@@ -454,11 +454,11 @@ class PickledPyiLoaderTest(unittest.TestCase):
         tz = ...  # type: datetime.tzinfo
       """)
       # save builtins
-      load_pytd.Loader("base", self.PYTHON_VERSION).save_to_pickle(filename)
+      load_pytd.Loader("base", self.python_version).save_to_pickle(filename)
       # load builtins
       loader = load_pytd.PickledPyiLoader.load_from_pickle(
           filename, "base",
-          python_version=self.PYTHON_VERSION,
+          python_version=self.python_version,
           imports_map={"foo": foo_path},
           pythonpath=[""])
       # test import
@@ -472,11 +472,11 @@ class PickledPyiLoaderTest(unittest.TestCase):
 class Python3Test(unittest.TestCase):
   """Tests for load_pytd.py on (target) Python 3."""
 
-  PYTHON_VERSION = (3, 6)
+  python_version = (3, 6)
 
   def setUp(self):
     super(Python3Test, self).setUp()
-    self.options = config.Options.create(python_version=self.PYTHON_VERSION)
+    self.options = config.Options.create(python_version=self.python_version)
 
   def testPython3Builtins(self):
     # Test that we read python3 builtins from builtin.pytd if we pass a (3, 6)
@@ -486,7 +486,7 @@ class Python3Test(unittest.TestCase):
           from typing import AsyncGenerator
           class A(AsyncGenerator[str]): ...""")
       loader = load_pytd.Loader("base",
-                                python_version=self.PYTHON_VERSION,
+                                python_version=self.python_version,
                                 pythonpath=[d.path])
       a = loader.import_name("a")
       cls = a.Lookup("a.A")

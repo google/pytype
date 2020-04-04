@@ -8,7 +8,7 @@ class _TestBase(unittest.TestCase):
 
   def dis(self, code):
     """Return the opcodes from disassbling a code sequence."""
-    return opcodes.dis(compat.int_array_to_bytes(code), self.PYTHON_VERSION)
+    return opcodes.dis(compat.int_array_to_bytes(code), self.python_version)
 
   def assertSimple(self, opcode, name):
     """Assert that a single opcode byte diassembles to the given name."""
@@ -22,7 +22,7 @@ class _TestBase(unittest.TestCase):
 class CommonTest(_TestBase):
   """Test bytecodes that are common to Python 2 and 3 using python 2."""
 
-  PYTHON_VERSION = (2, 7, 6)
+  python_version = (2, 7, 6)
 
   def test_pop_top(self):
     self.assertSimple(1, 'POP_TOP')
@@ -564,13 +564,13 @@ class CommonTest(_TestBase):
 class CommonUnder3Test(CommonTest):
   """Test the common bytecodes using Python 3.4."""
 
-  PYTHON_VERSION = (3, 4, 0)
+  python_version = (3, 4, 0)
 
 
 class Python2Test(_TestBase):
   """Test bytecodes specific to Python 2."""
 
-  PYTHON_VERSION = (2, 7, 6)
+  python_version = (2, 7, 6)
 
   def test_stop_code(self):
     self.assertSimple(0, 'STOP_CODE')
@@ -761,7 +761,7 @@ class Python2Test(_TestBase):
 class Python34Test(_TestBase):
   """Test bytecodes specific to Python 3.4."""
 
-  PYTHON_VERSION = (3, 4, 0)
+  python_version = (3, 4, 0)
 
   def test_dup_top_two(self):
     self.assertSimple(5, 'DUP_TOP_TWO')
@@ -939,7 +939,7 @@ class Python34Test(_TestBase):
 class Python35Test(_TestBase):
   """Test bytecodes specific to Python 3.5."""
 
-  PYTHON_VERSION = (3, 5, 2)
+  python_version = (3, 5, 2)
 
   def test_binary_matrix_multiply(self):
     self.assertSimple(16, 'BINARY_MATRIX_MULTIPLY')
@@ -975,7 +975,7 @@ class Python35Test(_TestBase):
 class Python36Test(_TestBase):
   """Test bytecodes specific to Python 3.6."""
 
-  PYTHON_VERSION = (3, 6, 0)
+  python_version = (3, 6, 0)
 
   def test_setup_annotations(self):
     self.assertSimple(85, 'SETUP_ANNOTATIONS')
@@ -1016,7 +1016,7 @@ class Python36Test(_TestBase):
 class Python37Test(_TestBase):
   """Test bytecodes specific to Python 3.7."""
 
-  PYTHON_VERSION = (3, 7, 0)
+  python_version = (3, 7, 0)
 
   def test_load_method(self):
     self.assertName([160, 1], 'LOAD_METHOD')

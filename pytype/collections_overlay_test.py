@@ -10,10 +10,10 @@ import unittest
 class NamedTupleAstTest(unittest.TestCase):
   """Test collection_overlay's namedtuple AST generation."""
 
-  PYTHON_VERSION = (2, 7)
+  python_version = (2, 7)
 
   def _namedtuple_ast(self, name, fields):
-    return collections_overlay.namedtuple_ast(name, fields, self.PYTHON_VERSION)
+    return collections_overlay.namedtuple_ast(name, fields, self.python_version)
 
   def test_basic(self):
     ast = self._namedtuple_ast("X", [])

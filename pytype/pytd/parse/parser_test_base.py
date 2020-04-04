@@ -31,15 +31,15 @@ import unittest
 class ParserTest(unittest.TestCase):
   """Test utility class. Knows how to parse PYTD and compare source code."""
 
-  PYTHON_VERSION = (2, 7)
+  python_version = (2, 7)
 
   @classmethod
   def setUpClass(cls):
     super(ParserTest, cls).setUpClass()
-    cls.loader = load_pytd.Loader(None, cls.PYTHON_VERSION)
+    cls.loader = load_pytd.Loader(None, cls.python_version)
 
   def Parse(self, src, name=None, version=None, platform=None):
-    version = version or self.PYTHON_VERSION
+    version = version or self.python_version
     tree = parser.parse_string(
         textwrap.dedent(src), name=name, python_version=version,
         platform=platform)
@@ -52,7 +52,7 @@ class ParserTest(unittest.TestCase):
 
   def ParseWithBuiltins(self, src):
     ast = parser.parse_string(textwrap.dedent(src),
-                              python_version=self.PYTHON_VERSION)
+                              python_version=self.python_version)
     ast = ast.Visit(visitors.LookupExternalTypes(
         {"__builtin__": self.loader.builtins, "typing": self.loader.typing}))
     ast = ast.Visit(visitors.NamedTypeToClassType())

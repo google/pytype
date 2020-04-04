@@ -16,13 +16,13 @@ import unittest
 class MatcherTest(unittest.TestCase):
   """Test matcher.AbstractMatcher."""
 
-  PYTHON_VERSION = (2, 7)
+  python_version = (2, 7)
 
   def setUp(self):
     super(MatcherTest, self).setUp()
-    options = config.Options.create(python_version=self.PYTHON_VERSION)
+    options = config.Options.create(python_version=self.python_version)
     self.vm = vm.VirtualMachine(
-        errors.ErrorLog(), options, load_pytd.Loader(None, self.PYTHON_VERSION))
+        errors.ErrorLog(), options, load_pytd.Loader(None, self.python_version))
     self.type_type = self.vm.convert.type_type
 
   def _make_class(self, name):

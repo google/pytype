@@ -18,12 +18,12 @@ def get_builtins_source(python_version):
 
 class MemoryLeakTest(unittest.TestCase):
 
-  PYTHON_VERSION = (2, 7)
+  python_version = (2, 7)
 
   def check(self, src):
     def parse():
       try:
-        parser.parse_string(src, python_version=self.PYTHON_VERSION)
+        parser.parse_string(src, python_version=self.python_version)
       except parser.ParseError:
         if six.PY2:
           # It is essential to clear the error, otherwise the system exc_info
@@ -62,7 +62,7 @@ class MemoryLeakTest(unittest.TestCase):
 
   def test_builtins(self):
     # This has a little of everything.
-    self.check(get_builtins_source(self.PYTHON_VERSION))
+    self.check(get_builtins_source(self.python_version))
 
   def test_error_in_class(self):
     self.check("""

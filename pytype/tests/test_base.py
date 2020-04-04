@@ -43,7 +43,7 @@ def WithAnnotationsImport(code):
 def _AddAnnotationsImportPy2(func):
   def _Wrapper(self, code, *args, **kwargs):
     assert test_utils.ANNOTATIONS_IMPORT not in code
-    if self.options.python_version == (2, 7):
+    if self.python_version == (2, 7):
       code = WithAnnotationsImport(code)
     return func(self, code, *args, **kwargs)
   return _Wrapper
@@ -51,7 +51,7 @@ def _AddAnnotationsImportPy2(func):
 
 def _IncrementLineNumbersPy2(func):
   def _Wrapper(self, errorlog, expected_errors):
-    if self.options.python_version == (2, 7):
+    if self.python_version == (2, 7):
       for mark in expected_errors:
         expected_errors[mark] = re.sub(
             r"line (\d+)",
