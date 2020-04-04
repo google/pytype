@@ -15,7 +15,7 @@ class PytdFileSystem(fs.ExtensionRemappingFileSystem):
 
 def create_importlab_environment(conf, typeshed):
   """Create an importlab environment from the python version and path."""
-  python_version = utils.split_version(conf.python_version)
+  python_version = utils.version_from_string(conf.python_version)
   path = fs.Path()
   for p in conf.pythonpath:
     path.add_path(p, 'os')

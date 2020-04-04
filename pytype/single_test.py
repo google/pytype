@@ -283,12 +283,14 @@ class PytypeTest(unittest.TestCase):
 
   def testGenerateBuiltinsPy2(self):
     self.pytype_args["--generate-builtins"] = self._TmpPath("builtins.py")
+    self.pytype_args["--python_version"] = "2.7"
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
 
   def testGenerateBuiltinsPy3(self):
     self.pytype_args["--generate-builtins"] = self._TmpPath("builtins.py")
-    self.pytype_args["--python_version"] = "3.6"
+    self.pytype_args["--python_version"] = utils.format_version(
+        utils.full_version_from_major(3))
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
 
@@ -534,7 +536,8 @@ class PytypeTest(unittest.TestCase):
     self.assertBuiltinsPickleEqual(f1, f2)
 
   def testBuiltinsDeterminism3(self):
-    f1, f2 = self._GenerateBuiltinsTwice("3.6")
+    f1, f2 = self._GenerateBuiltinsTwice(
+        utils.format_version(utils.full_version_from_major(3)))
     self.assertBuiltinsPickleEqual(f1, f2)
 
   def testTimeout(self):

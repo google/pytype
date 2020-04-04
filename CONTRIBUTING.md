@@ -36,11 +36,12 @@ dependencies.
 4. __[Flex](https://www.gnu.org/software/flex/) version 2.5.35 or higher__
 5. __[ninja build](https://ninja-build.org/)__: Pytype's test utility scripts
    make use of ninja as the CMake generated build system.
-6. __Python2.7 and Python3.6 Interpreters__: A large subset of Pytype's
+6. __Python2.7 and Python3.x Interpreters__: A large subset of Pytype's
    functional tests analyse the target (the Python source code that is being
    analyzed by Pytype) twice: once as if it were Python2.7 code, and another
-   time as if it were Python3.6 code. Hence, to run these tests, you will need
-   Python2.7 and Python3.6 interpreters installed on your system.
+   time as if it were in the Python 3.x version that pytype is running under.
+   Hence, to run these tests, you will need Python 2.7 and Python 3.x
+   (preferably 3.6+) interpreters installed on your system.
 
 The Pytype Git repository also contains few Git submodules. Before building
 the `pytype` executable or running tests, one has to ensure that the submodules

@@ -19,7 +19,7 @@ class NamedtupleTests(test_base.TargetPython3BasicTest):
 
 
 class NamedtupleTestsPy3(test_base.TargetPython3FeatureTest):
-  """Tests for collections.namedtuple in Python 3.6."""
+  """Tests for collections.namedtuple in Python 3."""
 
   def test_bad_call(self):
     """The last two arguments are kwonly in 3.6."""

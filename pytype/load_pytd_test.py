@@ -7,6 +7,7 @@ import textwrap
 from pytype import config
 from pytype import file_utils
 from pytype import load_pytd
+from pytype import utils
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
@@ -472,14 +473,14 @@ class PickledPyiLoaderTest(unittest.TestCase):
 class Python3Test(unittest.TestCase):
   """Tests for load_pytd.py on (target) Python 3."""
 
-  python_version = (3, 6)
+  python_version = utils.full_version_from_major(3)
 
   def setUp(self):
     super(Python3Test, self).setUp()
     self.options = config.Options.create(python_version=self.python_version)
 
   def testPython3Builtins(self):
-    # Test that we read python3 builtins from builtin.pytd if we pass a (3, 6)
+    # Test that we read python3 builtins from builtin.pytd if we pass a python3
     # version to the loader.
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """

@@ -66,7 +66,7 @@ def make_parser():
 def main():
   argument_parser = make_parser()
   opts = argument_parser.parse_args()
-  python_version = utils.split_version(opts.python_version)
+  python_version = utils.version_from_string(opts.python_version)
   try:
     utils.validate_version(python_version)
   except utils.UsageError as e:

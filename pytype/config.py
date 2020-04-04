@@ -450,7 +450,11 @@ class Postprocessor(object):
     """Configure the python version."""
     if python_version:
       if isinstance(python_version, str):
-        self.output_options.python_version = utils.split_version(python_version)
+        self.output_options.python_version = utils.version_from_string(
+            python_version)
+      elif isinstance(python_version, int):
+        self.output_options.python_version = utils.full_version_from_major(
+            python_version)
       else:
         self.output_options.python_version = python_version
     else:

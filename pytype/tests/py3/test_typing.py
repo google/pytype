@@ -599,7 +599,7 @@ class CounterTest(test_base.TargetPython3BasicTest):
 
 
 class TypingTestPython3Feature(test_base.TargetPython3FeatureTest):
-  """Typing tests (Python 3.6)."""
+  """Typing tests (Python 3)."""
 
   def test_namedtuple_item(self):
     with file_utils.Tempdir() as d:
