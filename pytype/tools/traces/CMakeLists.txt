@@ -37,6 +37,7 @@ py_test(
     pytype.config
     pytype.pytd_defs
     pytype.utils
+    pytype.tests.test_base
 )
 
 py_library(

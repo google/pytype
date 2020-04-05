@@ -9,6 +9,7 @@ from pytype import config
 from pytype import file_utils
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+from pytype.tests import test_utils
 from pytype.tools.traces import traces
 import unittest
 
@@ -31,20 +32,6 @@ class _TestVisitor(traces.MatchAstVisitor):
     except NotImplementedError:
       return
     self.traces_by_node_type[node.__class__].extend(matches)
-
-
-py2 = unittest.skipUnless(sys.version_info.major == 2, "not py2")
-py3 = unittest.skipUnless(sys.version_info.major == 3, "not py3")
-
-
-def before_py(major, minor):
-  v = (major, minor)
-  return unittest.skipUnless(sys.version_info < v, ">=py%d.%d" % v)
-
-
-def from_py(major, minor):
-  v = (major, minor)
-  return unittest.skipUnless(sys.version_info >= v, "<py%d.%d" % v)
 
 
 class TraceTest(unittest.TestCase):
@@ -79,7 +66,7 @@ class TraceTest(unittest.TestCase):
     src = traces.trace(textwrap.dedent("""
       class Foo(object):
         pass
-    """).lstrip(), config.Options.create(python_version=(3, 6)))
+    """).lstrip())
     trace, = (x for x in src.traces[1] if x.op == "LOAD_BUILD_CLASS")
     pyval, = trace.types
     self.assertEqual(pyval.name, "typing.Callable")
@@ -228,11 +215,13 @@ class MatchCallTest(MatchAstTestCase):
         ((4, 0), "CALL_FUNCTION", "Foo", ("Type[Foo]", "Foo")),
         ((4, 0), call_method_op, "f", ("Callable[[Any], Any]", "int"))])
 
-  @before_py(3, 7)
+  @test_utils.skipUnlessPy(
+      (3, 5), (3, 6), reason="instance methods match CALL_FUNCTION pre-3.7")
   def test_chain_pre37(self):
     self._test_chain("CALL_FUNCTION")
 
-  @from_py(3, 7)
+  @test_utils.skipIfPy((3, 5), (3, 6),
+                       reason="instance methods match CALL_METHOD in 3.7+")
   def test_chain_37(self):
     self._test_chain("CALL_METHOD")
 
@@ -266,11 +255,13 @@ class MatchCallTest(MatchAstTestCase):
     self.assertTracesEqual(matches, [
         ((1, 0), call_method_op, "upper", ("Callable[[], str]", "str"))])
 
-  @before_py(3, 7)
+  @test_utils.skipUnlessPy(
+      (3, 5), (3, 6), reason="instance methods match CALL_FUNCTION pre-3.7")
   def test_literal_pre37(self):
     self._test_literal("CALL_FUNCTION")
 
-  @from_py(3, 7)
+  @test_utils.skipIfPy((3, 5), (3, 6),
+                       reason="instance methods match CALL_METHOD in 3.7+")
   def test_literal_37(self):
     self._test_literal("CALL_METHOD")
 
@@ -300,37 +291,18 @@ class MatchConstantTest(MatchAstTestCase):
     self.assertTracesEqual(matches, [((1, 4), "LOAD_CONST", "hello", ("str",))])
 
   def test_unicode(self):
-    matches = self._get_traces(
-        "v = u'hello'", ast.Str, config.Options.create(python_version=(3, 6)))
+    matches = self._get_traces("v = u'hello'", ast.Str)
     self.assertTracesEqual(matches, [((1, 4), "LOAD_CONST", "hello", ("str",))])
 
-  def _test_bytes(self, bytes_node):
-    matches = self._get_traces("v = b'hello'", bytes_node,
-                               config.Options.create(python_version=(3, 6)))
+  def test_bytes(self):
+    matches = self._get_traces("v = b'hello'", ast.Bytes)
     self.assertTracesEqual(
         matches, [((1, 4), "LOAD_CONST", b"hello", ("bytes",))])
 
-  @py2
-  def test_bytes_2(self):
-    self._test_bytes(ast.Str)
-
-  @py3
-  def test_bytes_3(self):
-    self._test_bytes(ast.Bytes)
-
-  @py2
-  def test_bool_2(self):
-    matches = self._get_traces("v = True", ast.Name)
-    self.assertTracesEqual(matches, [
-        ((1, 0), "STORE_NAME", "v", ("bool",)),
-        ((1, 4), "LOAD_NAME", "True", ("bool",))])
-
-  @py3
-  def test_bool_3(self):
+  def test_bool(self):
     matches = self._get_traces("v = True", ast.NameConstant)
     self.assertTracesEqual(matches, [((1, 4), "LOAD_CONST", True, ("bool",))])
 
-  @py3
   def test_ellipsis(self):
     matches = self._get_traces("v = ...", ast.Ellipsis)
     self.assertTracesEqual(
@@ -347,20 +319,13 @@ class MatchSubscriptTest(MatchAstTestCase):
     self.assertTracesEqual(
         matches, [((2, 6), "BINARY_SUBSCR", "__getitem__", ("str",))])
 
-  def _test_simple_slice(self, slice_op, method):
+  def test_simple_slice(self):
     matches = self._get_traces("""
       v = "hello"
       print(v[:-1])
     """, ast.Subscript)
-    self.assertTracesEqual(matches, [((2, 6), slice_op, method, ("str",))])
-
-  @py2
-  def test_simple_slice_2(self):
-    self._test_simple_slice("SLICE_2", "__getslice__")
-
-  @py3
-  def test_simple_slice_3(self):
-    self._test_simple_slice("BINARY_SUBSCR", "__getitem__")
+    self.assertTracesEqual(
+        matches, [((2, 6), "BINARY_SUBSCR", "__getitem__", ("str",))])
 
   def test_complex_slice(self):
     matches = self._get_traces("""
@@ -409,8 +374,6 @@ class MatchLambdaTest(MatchAstTestCase):
     self.assertTracesEqual(
         matches, [((2, 9), "MAKE_FUNCTION", sym, ("Callable[[Any], Any]",))])
 
-  # py2 doesn't have symbol names to distinguish between <genexpr> and <lambda>.
-  @py3
   def test_multiple_functions(self):
     matches = self._get_traces("""
       def f():

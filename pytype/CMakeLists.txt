@@ -414,7 +414,6 @@ py_test(
   DEPS
     .config
     .utils
-    pytype.tests.test_base
 )
 
 py_test(

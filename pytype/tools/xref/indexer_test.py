@@ -1,7 +1,6 @@
 from __future__ import print_function
 
 import json
-import sys
 import textwrap
 
 from pytype import abstract
@@ -10,6 +9,7 @@ from pytype import file_utils
 from pytype import utils
 
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 from pytype.tools.xref import indexer
 from pytype.tools.xref import kythe
@@ -67,8 +67,8 @@ class IndexerTest(test_base.TargetIndependentTest, IndexerTestMixin):
     self.assertDefLocs(ix, "module.f", [(1, 0)])
     self.assertDefLocs(ix, "module.f.x", [(1, 6), (2, 2)])
 
-  @test_base.skip_if(sys.version_info >= (3, 7),
-                     "a/b.py, f.py, p/q.py, x/y.py not found")
+  @test_utils.skipIfPy((3, 7),
+                       reason="a/b.py, f.py, p/q.py, x/y.py not found")
   def test_resolved_imports(self):
     # We need all imports to be valid for pytype
     code = """

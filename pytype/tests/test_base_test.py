@@ -121,4 +121,25 @@ class ErrorLogTest(test_base.TargetIndependentTest):
     self.assertIn("Cannot assert errors", str(ctx.exception))
 
 
+class SkipTest(test_base.TargetPython3FeatureTest):
+
+  @test_utils.skipUnlessPy((3, 7), reason="testing skipUnlessPy")
+  def test_skip_unless_py(self):
+    # This test will fail if run in a version other than 3.7.
+    self.Check("""
+      import sys
+      if sys.version_info.minor != 7:
+        name_error
+    """)
+
+  @test_utils.skipIfPy((3, 7), reason="testing skipIfPy")
+  def test_skip_if_py(self):
+    # This test will fail if run in 3.7.
+    self.Check("""
+      import sys
+      if sys.version_info.minor == 7:
+        name_error
+    """)
+
+
 test_base.main(globals(), __name__ == "__main__")

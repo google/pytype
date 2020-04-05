@@ -1,9 +1,10 @@
+# Lint as: python3
 """Utility class and function for tests."""
 
 import collections
 import itertools
 import re
-import subprocess
+import sys
 import tokenize
 
 from pytype import compat
@@ -525,33 +526,12 @@ class Py3Opcodes(object):
   BUILD_TUPLE_UNPACK_WITH_CALL = 158
 
 
-# We compute the availability of python3.7 with subprocess, which is slow, so
-# the result is cached.
-_IS_37_AVAILABLE = None
-
-
 # pylint: disable=invalid-name
 # Use camel-case to match the unittest.skip* methods.
-# TODO(rechen): Remove skipUnless37Available once python3.7 is available in all
-# of pytype's testing environments.
-def skipUnless37Available(f):
-  """Skip the test unless Python 3.7 is available."""
-  global _IS_37_AVAILABLE
-  if _IS_37_AVAILABLE is None:
-    try:
-      subprocess.call(["python3.7", "-V"])
-    except OSError:
-      _IS_37_AVAILABLE = False
-    else:
-      _IS_37_AVAILABLE = True
-  return unittest.skipUnless(_IS_37_AVAILABLE, "no python3.7")(f)
+def skipIfPy(*versions, reason):
+  return unittest.skipIf(sys.version_info[:2] in versions, reason)
 
 
-def skipIn37(reason):
-  """Skip the test in Python 3.7."""
-  def decorate(f):
-    # See test_base.main for how this attribute is used to skip the test.
-    f.__pytype_skip__ = reason
-    return f
-  return decorate
+def skipUnlessPy(*versions, reason):
+  return unittest.skipUnless(sys.version_info[:2] in versions, reason)
 # pylint: enable=invalid-name

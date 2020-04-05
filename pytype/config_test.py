@@ -6,7 +6,6 @@ import sys
 from pytype import config
 from pytype import datatypes
 from pytype import utils
-from pytype.tests import test_utils
 
 import unittest
 
@@ -88,11 +87,6 @@ class ConfigTest(unittest.TestCase):
         ("--pythonpath=foo", "--imports_info=bar")
     ]:
       self._test_arg_conflict(arg1, arg2)
-
-  @test_utils.skipUnless37Available
-  def test_v37(self):
-    opts = config.Options(["-V3.7", "test.py"])
-    self.assertEqual(opts.python_version, (3, 7))
 
 
 class PostprocessorTest(unittest.TestCase):
