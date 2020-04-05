@@ -6,7 +6,6 @@ from pytype.pytd import typeshed
 from pytype.pytd.parse import builtins
 from pytype.pytd.parse import parser_test_base
 from pytype.tests import test_base
-import unittest
 
 
 class TestTypeshedLoading(parser_test_base.ParserTest):
@@ -142,5 +141,4 @@ class TestTypeshedParsing(test_base.TargetPython27FeatureTest):
     self.assertTrue(self.loader.import_name("imp"))
 
 
-if __name__ == "__main__":
-  unittest.main()
+test_base.main(globals(), __name__ == "__main__")

@@ -37,10 +37,8 @@ class TraceVM(vm.VirtualMachine):
 class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
   """Tests for process_code in blocks.py and VM integration."""
 
-  def __init__(self, *args, **kwargs):
-    super(BytecodeTest, self).__init__(*args, **kwargs)
-    # We only test Python 2 bytecode.
-    self.python_version = (2, 7)
+  # We only test Python 2 bytecode.
+  PY_MAJOR_VERSIONS = [2]
 
   def setUp(self):
     super(BytecodeTest, self).setUp()
@@ -185,10 +183,6 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
 
 class TraceTest(test_base.BaseTest, test_utils.MakeCodeMixin):
   """Tests for opcode tracing in the VM."""
-
-  def __init__(self, *args, **kwargs):
-    super(TraceTest, self).__init__(*args, **kwargs)
-    self.python_version = (3, 6)
 
   def setUp(self):
     super(TraceTest, self).setUp()
