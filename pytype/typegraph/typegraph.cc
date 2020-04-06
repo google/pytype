@@ -288,7 +288,7 @@ void Variable::PasteBinding(Binding* binding, CFGNode* where,
 
 const CFGNodeSet Variable::nodes() const {
   CFGNodeSet nodes;
-  for (auto kvpair : cfg_node_to_bindings_) {
+  for (const auto& kvpair : cfg_node_to_bindings_) {
     nodes.insert(kvpair.first);
   }
   return nodes;
