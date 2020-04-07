@@ -12,8 +12,6 @@ import unittest
 
 class PytdVisitorsTest(parser_test_base.ParserTest):
 
-  PYTHON_VERSION = (2, 7)
-
   def testRenameModule(self):
     module_name = "foo.bar"
     src = """

@@ -13,7 +13,7 @@ import unittest
 
 class SerializeAstTest(unittest.TestCase):
 
-  PYTHON_VERSION = (2, 7)
+  python_version = (2, 7)
 
   def _StoreAst(
       self, temp_dir, module_name, pickled_ast_filename, ast=None, loader=None):
@@ -53,7 +53,7 @@ class SerializeAstTest(unittest.TestCase):
     """)
 
     loader = load_pytd.Loader(base_module=None,
-                              python_version=self.PYTHON_VERSION,
+                              python_version=self.python_version,
                               pythonpath=[temp_dir.path])
     ast = loader.load_file(module_name, pyi_filename)
     # serialize_ast.StoreAst sorts the ast for determinism, so we should do the

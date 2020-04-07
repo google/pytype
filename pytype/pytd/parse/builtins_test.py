@@ -8,11 +8,12 @@ import unittest
 
 class UtilsTest(unittest.TestCase):
 
-  PYTHON_VERSION = (2, 7)
+  python_version = (2, 7)
 
   @classmethod
   def setUpClass(cls):
-    cls.builtins = builtins.GetBuiltinsPyTD(cls.PYTHON_VERSION)
+    super(UtilsTest, cls).setUpClass()
+    cls.builtins = builtins.GetBuiltinsPyTD(cls.python_version)
 
   def testGetBuiltinsPyTD(self):
     self.assertIsNotNone(self.builtins)

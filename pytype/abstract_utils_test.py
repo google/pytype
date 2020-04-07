@@ -13,14 +13,14 @@ import unittest
 
 class GetViewsTest(unittest.TestCase):
 
-  PYTHON_VERSION = (2, 7)
+  python_version = (2, 7)
 
   def setUp(self):
     super(GetViewsTest, self).setUp()
     self._vm = vm.VirtualMachine(
         errors.ErrorLog(), config.Options.create(
-            python_version=self.PYTHON_VERSION),
-        load_pytd.Loader(None, self.PYTHON_VERSION))
+            python_version=self.python_version),
+        load_pytd.Loader(None, self.python_version))
 
   def test_basic(self):
     v1 = self._vm.program.NewVariable(

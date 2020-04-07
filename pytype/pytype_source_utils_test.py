@@ -4,6 +4,7 @@ import os
 import sys
 
 from pytype import pytype_source_utils
+from pytype import utils
 
 import unittest
 
@@ -33,12 +34,14 @@ class PytypeSourceUtilsTest(unittest.TestCase):
 
   def testGetCustomPythonExe27(self):
     exe = pytype_source_utils.get_custom_python_exe((2, 7))
-    self.assertIn("2.7", exe)
+    if utils.USE_ANNOTATIONS_BACKPORT:
+      self.assertIn("2.7", exe)
+    else:
+      self.assertIsNone(exe)
 
-  @unittest.skipUnless(sys.version_info.major == 3, "requires Python 3")
   def testGetCustomPythonExe3(self):
     exe = pytype_source_utils.get_custom_python_exe(sys.version_info[:2])
-    self.assertIn("python3", exe)
+    self.assertIsNone(exe)
 
 
 if __name__ == "__main__":

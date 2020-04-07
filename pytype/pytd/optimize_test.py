@@ -32,7 +32,7 @@ class TestOptimize(parser_test_base.ParserTest):
   @classmethod
   def setUpClass(cls):
     super(TestOptimize, cls).setUpClass()
-    cls.loader = load_pytd.Loader(None, cls.PYTHON_VERSION)
+    cls.loader = load_pytd.Loader(None, cls.python_version)
     cls.builtins = cls.loader.builtins
     cls.typing = cls.loader.typing
 

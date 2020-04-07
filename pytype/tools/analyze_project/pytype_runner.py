@@ -35,10 +35,17 @@ class Stage(object):
 FIRST_PASS_SUFFIX = '-1'
 
 
-if sys.executable is not None:
-  PYTYPE_SINGLE = [sys.executable, '-m', 'pytype.single']
-else:
-  PYTYPE_SINGLE = ['pytype-single']
+def _get_pytype_single_executable():
+  custom_bin = os.path.join('out', 'bin', 'pytype')
+  if sys.argv[0] == custom_bin:
+    # The Travis type-check step uses custom pytype binaries in pytype/out/bin/.
+    return [os.path.join(os.path.abspath(os.path.dirname(custom_bin)),
+                         'pytype-single')]
+  elif sys.executable is not None:
+    return [sys.executable, '-m', 'pytype.single']
+  else:
+    return ['pytype-single']
+PYTYPE_SINGLE = _get_pytype_single_executable()
 
 
 def resolved_file_to_module(f):

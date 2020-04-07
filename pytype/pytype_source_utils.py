@@ -6,7 +6,6 @@
 
 import atexit
 import os
-import sys
 import tempfile
 
 
@@ -109,36 +108,26 @@ def list_pytype_files(suffix):
         yield filename[i + len(directory):]
 
 
-# Map from Python version to custom Python interpreters for use with pytype. The
-# interpreter paths are relative to pytype's root directory.
-CUSTOM_PYTHON_EXE_MAP = {(2, 7): None}
-if sys.version_info.major == 3:
-  # Custom Python 3 interpreters must match the host Python version.
-  py3_version = sys.version_info[:2]
-else:
-  # TODO(rechen): Remove this branch once the pytype tests no longer use
-  # host Python 2 x target Python 3.
-  py3_version = (3, 6)
-CUSTOM_PYTHON_EXE_MAP[py3_version] = None
+# We allow analyzing Python 2 code with a custom interpreter to facilitate use
+# of the type annotations backport.
+CUSTOM_PY2_EXE = None
 
 
 def get_custom_python_exe(python_version):
   """Get the path to a custom python interpreter.
 
-  If the given version is in CUSTOM_PYTHON_EXE_MAP, either returns
-  CUSTOM_PYTHON_EXE_MAP[python_version] if it exists, or extracts it from a par
-  file into /tmp/pytype and returns that.
+  If the given version is (2, 7), either returns CUSTOM_PY2_EXE if it exists, or
+  extracts it from a par file into /tmp/pytype and returns that.
 
   Arguments:
     python_version: the requested version, e.g. (2, 7)
   Returns:
-    None if the version is not in CUSTOM_PYTHON_EXE_MAP or an error occurs
-    while loading the file. Else:
-    The path to the extracted file
+    None if the version is not (2, 7) or an error occurs while loading the file.
+    Else: the path to the extracted file.
   """
-  if not CUSTOM_PYTHON_EXE_MAP.get(python_version):
+  if not CUSTOM_PY2_EXE or python_version != (2, 7):
     return None
-  path = os.path.normpath(get_full_path(CUSTOM_PYTHON_EXE_MAP[python_version]))
+  path = os.path.normpath(get_full_path(CUSTOM_PY2_EXE))
   if os.path.exists(path):
     return path
   try:

@@ -62,8 +62,11 @@ class UtilsTest(unittest.TestCase):
       self.assertEqual(123, var.get())
     self.assertIsNone(var.get())
 
-  def testSplitVersion(self):
-    self.assertEqual(utils.split_version("2.7"), (2, 7))
+  def testVersionFromStringInt(self):
+    self.assertEqual(utils.version_from_string("2"), (2, 7))
+
+  def testVersionFromStringTuple(self):
+    self.assertEqual(utils.version_from_string("2.7"), (2, 7))
 
   def testFullVersionFromMajor2(self):
     self.assertEqual(utils.full_version_from_major(2), (2, 7))

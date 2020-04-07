@@ -1,4 +1,4 @@
-"""Basic tests over Python 3.6 targets."""
+"""Basic tests over Python 3 targets."""
 
 from pytype.tests import test_base
 

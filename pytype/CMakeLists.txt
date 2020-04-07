@@ -105,6 +105,8 @@ py_library(
     module_utils.py
     pytype_source_utils.py
     utils.py
+  DEPS
+    .builtins_pytd
 )
 
 py_library(
@@ -412,7 +414,6 @@ py_test(
   DEPS
     .config
     .utils
-    pytype.tests.test_base
 )
 
 py_test(
@@ -459,6 +460,15 @@ py_test(
     module_utils_test.py
   DEPS
     pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    pytype_source_utils_test
+  SRCS
+    pytype_source_utils_test.py
+  DEPS
+    .utils
 )
 
 py_test(

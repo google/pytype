@@ -16,13 +16,13 @@ import unittest
 
 class ConvertTest(unittest.TestCase):
 
-  PYTHON_VERSION = (2, 7)
+  python_version = (2, 7)
 
   def setUp(self):
     super(ConvertTest, self).setUp()
-    options = config.Options.create(python_version=self.PYTHON_VERSION)
+    options = config.Options.create(python_version=self.python_version)
     self._vm = vm.VirtualMachine(
-        errors.ErrorLog(), options, load_pytd.Loader(None, self.PYTHON_VERSION))
+        errors.ErrorLog(), options, load_pytd.Loader(None, self.python_version))
 
   def _load_ast(self, name, src):
     with file_utils.Tempdir() as d:

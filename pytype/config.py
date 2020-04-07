@@ -285,6 +285,10 @@ def add_debug_options(o):
       help=("Set logging verbosity: "
             "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug"))
   o.add_argument(
+      "-S", "--timestamp-logs", action="store_true",
+      dest="timestamp_logs", default=None,
+      help=("Add timestamps to the logs"))
+  o.add_argument(
       "--verify-pickle", action="store_true", default=False,
       dest="verify_pickle",
       help=("Loads the generated PYI file and compares it with the abstract "
@@ -430,6 +434,7 @@ class Postprocessor(object):
     else:
       self.output_options.typeshed = True
 
+  @uses(["timestamp_logs"])
   def _store_verbosity(self, verbosity):
     """Configure logging."""
     if not -1 <= verbosity < len(LOG_LEVELS):
@@ -445,7 +450,11 @@ class Postprocessor(object):
     """Configure the python version."""
     if python_version:
       if isinstance(python_version, str):
-        self.output_options.python_version = utils.split_version(python_version)
+        self.output_options.python_version = utils.version_from_string(
+            python_version)
+      elif isinstance(python_version, int):
+        self.output_options.python_version = utils.full_version_from_major(
+            python_version)
       else:
         self.output_options.python_version = python_version
     else:
@@ -566,7 +575,7 @@ class Postprocessor(object):
                  "separated by %r" % (item, os.pathsep))
 
 
-def _set_verbosity(verbosity):
+def _set_verbosity(verbosity, timestamp_logs):
   """Set the logging verbosity."""
   if verbosity >= 0:
     basic_logging_level = LOG_LEVELS[verbosity]
@@ -578,7 +587,10 @@ def _set_verbosity(verbosity):
     # When calling pytype as a library, override the caller's logging level.
     logging.getLogger().setLevel(basic_logging_level)
   else:
-    logging.basicConfig(level=basic_logging_level)
+    fmt = "%(levelname)s:%(name)s %(message)s"
+    if timestamp_logs:
+      fmt = "%(relativeCreated)f " + fmt
+    logging.basicConfig(level=basic_logging_level, format=fmt)
 
 
 @contextlib.contextmanager
@@ -597,7 +609,7 @@ def verbosity_from(options):
     Nothing.
   """
   level = logging.getLogger().getEffectiveLevel()
-  _set_verbosity(options.verbosity)
+  _set_verbosity(options.verbosity, options.timestamp_logs)
   try:
     yield
   finally:

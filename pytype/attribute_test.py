@@ -12,13 +12,13 @@ import unittest
 
 class AttributeTest(unittest.TestCase):
 
-  PYTHON_VERSION = (2, 7)
+  python_version = (2, 7)
 
   def setUp(self):
     super(AttributeTest, self).setUp()
-    options = config.Options.create(python_version=self.PYTHON_VERSION)
+    options = config.Options.create(python_version=self.python_version)
     self._vm = vm.VirtualMachine(
-        errors.ErrorLog(), options, load_pytd.Loader(None, self.PYTHON_VERSION))
+        errors.ErrorLog(), options, load_pytd.Loader(None, self.python_version))
 
   def test_type_parameter_instance(self):
     t = abstract.TypeParameter(abstract_utils.T, self._vm)

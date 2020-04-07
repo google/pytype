@@ -63,7 +63,7 @@ class NamedTupleTest(test_base.TargetPython3BasicTest):
 
 
 class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
-  """Tests for the typing.NamedTuple overlay in Python 3.6."""
+  """Tests for the typing.NamedTuple overlay in Python 3."""
 
   def test_basic_namedtuple(self):
     ty = self.Infer("""

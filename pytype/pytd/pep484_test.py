@@ -8,8 +8,6 @@ import unittest
 class TestPEP484(parser_test_base.ParserTest):
   """Test the visitors in optimize.py."""
 
-  DEFAULT_PYTHON_VERSION = (2, 7)
-
   def convert(self, t, python_version=None):
     """Run ConvertTypingToNative and return the result as a string."""
     return pytd_utils.Print(t.Visit(pep484.ConvertTypingToNative(None)))

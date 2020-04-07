@@ -27,8 +27,6 @@ import unittest
 class MroTest(parser_test_base.ParserTest):
   """Test pytype.pytd.mro."""
 
-  PYTHON_VERSION = (2, 7)
-
   def testDedup(self):
     self.assertEqual([], mro.Dedup([]))
     self.assertEqual([1], mro.Dedup([1]))
@@ -56,9 +54,9 @@ class MroTest(parser_test_base.ParserTest):
       T = TypeVar("T")
       class Foo(Generic[T]): pass
       class Bar(Foo[int]): pass
-    """), python_version=self.PYTHON_VERSION)
+    """), python_version=self.python_version)
     ast = ast.Visit(visitors.AdjustTypeParameters())
-    loader = load_pytd.Loader(None, self.PYTHON_VERSION)
+    loader = load_pytd.Loader(None, self.python_version)
     ast = loader.resolve_ast(ast)
     bases = mro.GetBasesInMRO(ast.Lookup("Bar"), lookup_ast=ast)
     self.assertListEqual(["Foo", "typing.Generic", "__builtin__.object"],

@@ -10,7 +10,7 @@ import six
 class ErrorLogTest(test_base.TargetIndependentTest):
 
   def _lineno(self, line):
-    if self.options.python_version == (2, 7) and utils.USE_ANNOTATIONS_BACKPORT:
+    if self.python_version == (2, 7) and utils.USE_ANNOTATIONS_BACKPORT:
       return line + 1
     return line
 
@@ -119,6 +119,27 @@ class ErrorLogTest(test_base.TargetIndependentTest):
       with self.assertRaises(AssertionError) as ctx:
         self.InferFromFile(filename=d["some_file.py"], pythonpath=[])
     self.assertIn("Cannot assert errors", str(ctx.exception))
+
+
+class SkipTest(test_base.TargetPython3FeatureTest):
+
+  @test_utils.skipUnlessPy((3, 7), reason="testing skipUnlessPy")
+  def test_skip_unless_py(self):
+    # This test will fail if run in a version other than 3.7.
+    self.Check("""
+      import sys
+      if sys.version_info.minor != 7:
+        name_error
+    """)
+
+  @test_utils.skipIfPy((3, 7), reason="testing skipIfPy")
+  def test_skip_if_py(self):
+    # This test will fail if run in 3.7.
+    self.Check("""
+      import sys
+      if sys.version_info.minor == 7:
+        name_error
+    """)
 
 
 test_base.main(globals(), __name__ == "__main__")

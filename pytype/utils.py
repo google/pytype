@@ -42,9 +42,13 @@ def format_version(python_version):
   return ".".join([str(x) for x in python_version])
 
 
-def split_version(version_string):
-  """Parse a version string like 2.7 into a tuple."""
-  return tuple(map(int, version_string.split(".")))
+def version_from_string(version_string):
+  """Parse a version string like "2" or "2.7" into a tuple."""
+  try:
+    version_int = int(version_string)
+  except ValueError:
+    return tuple(map(int, version_string.split(".")))
+  return full_version_from_major(version_int)
 
 
 def full_version_from_major(major_version):
@@ -200,7 +204,7 @@ def parse_exe_version_string(version_str):
   matcher = re.search(r"Python (\d+\.\d+)\.\d+", version_str)
 
   if matcher:
-    return split_version(matcher.group(1))
+    return version_from_string(matcher.group(1))
   else:
     return None
 

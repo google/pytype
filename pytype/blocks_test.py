@@ -12,8 +12,7 @@ import unittest
 class BaseBlocksTest(unittest.TestCase, test_utils.MakeCodeMixin):
   """A base class for implementing tests testing blocks.py."""
 
-  def setUp(self):
-    self.python_version = (2, 7)
+  python_version = (2, 7)
 
 
 class OrderingTest(BaseBlocksTest):
@@ -34,7 +33,7 @@ class OrderingTest(BaseBlocksTest):
     ], name="trivial")
     ordered_code = self._order_code(co)
     b0, = ordered_code.order
-    self.assertEqual(2, len(b0.code))
+    self.assertEqual(len(b0.code), 2)
     six.assertCountEqual(self, [], b0.incoming)
     six.assertCountEqual(self, [], b0.outgoing)
 
@@ -167,7 +166,7 @@ class OrderingTest(BaseBlocksTest):
     ordered_code = self._order_code(co)
     self.assertEqual(ordered_code.co_name, "raise")
     b0, = ordered_code.order
-    self.assertEqual(2, len(b0.code))
+    self.assertEqual(len(b0.code), 2)
     six.assertCountEqual(self, b0.incoming, [])
     six.assertCountEqual(self, b0.outgoing, [])
 
@@ -186,8 +185,8 @@ class OrderingTest(BaseBlocksTest):
     ], name="call")
     ordered_code = self._order_code(co)
     b0, b1 = ordered_code.order
-    self.assertEqual(2, len(b0.code))
-    self.assertEqual(3, len(b1.code))
+    self.assertEqual(len(b0.code), 2)
+    self.assertEqual(len(b1.code), 3)
     six.assertCountEqual(self, b0.outgoing, [b1])
 
   def test_finally(self):
@@ -211,10 +210,10 @@ class OrderingTest(BaseBlocksTest):
     ], name="finally")
     ordered_code = self._order_code(co)
     b0, b1, b2, b3 = ordered_code.order
-    self.assertEqual(2, len(b0.code))
-    self.assertEqual(1, len(b1.code))
-    self.assertEqual(1, len(b2.code))
-    self.assertEqual(2, len(b3.code))
+    self.assertEqual(len(b0.code), 2)
+    self.assertEqual(len(b1.code), 1)
+    self.assertEqual(len(b2.code), 1)
+    self.assertEqual(len(b3.code), 2)
     six.assertCountEqual(self, b0.outgoing, [b1, b2])
 
   def test_except(self):
@@ -243,10 +242,10 @@ class OrderingTest(BaseBlocksTest):
     ], name="except")
     ordered_code = self._order_code(co)
     b0, b1, b2, b3 = ordered_code.order
-    self.assertEqual(2, len(b0.code))
-    self.assertEqual(1, len(b1.code))
-    self.assertEqual(4, len(b2.code))
-    self.assertEqual(2, len(b3.code))
+    self.assertEqual(len(b0.code), 2)
+    self.assertEqual(len(b1.code), 1)
+    self.assertEqual(len(b2.code), 4)
+    self.assertEqual(len(b3.code), 2)
     six.assertCountEqual(self, [b1, b2], b0.outgoing)
     six.assertCountEqual(self, [b3], b1.outgoing)
     six.assertCountEqual(self, [b3], b2.outgoing)
@@ -264,7 +263,7 @@ class OrderingTest(BaseBlocksTest):
     ], name="return")
     ordered_code = self._order_code(co)
     b0, = ordered_code.order
-    self.assertEqual(2, len(b0.code))
+    self.assertEqual(len(b0.code), 2)
 
   def test_with(self):
     # Disassembled from:
@@ -289,11 +288,11 @@ class OrderingTest(BaseBlocksTest):
     ], name="with")
     ordered_code = self._order_code(co)
     b0, b1, b2, b3, b4 = ordered_code.order
-    self.assertEqual(4, len(b0.code))
-    self.assertEqual(1, len(b1.code))
-    self.assertEqual(1, len(b2.code))
-    self.assertEqual(1, len(b3.code))
-    self.assertEqual(2, len(b4.code))
+    self.assertEqual(len(b0.code), 4)
+    self.assertEqual(len(b1.code), 1)
+    self.assertEqual(len(b2.code), 1)
+    self.assertEqual(len(b3.code), 1)
+    self.assertEqual(len(b4.code), 2)
 
 
 class BlockStackTest(BaseBlocksTest):

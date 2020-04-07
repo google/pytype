@@ -43,7 +43,7 @@ def WithAnnotationsImport(code):
 def _AddAnnotationsImportPy2(func):
   def _Wrapper(self, code, *args, **kwargs):
     assert test_utils.ANNOTATIONS_IMPORT not in code
-    if self.options.python_version == (2, 7):
+    if self.python_version == (2, 7):
       code = WithAnnotationsImport(code)
     return func(self, code, *args, **kwargs)
   return _Wrapper
@@ -51,7 +51,7 @@ def _AddAnnotationsImportPy2(func):
 
 def _IncrementLineNumbersPy2(func):
   def _Wrapper(self, errorlog, expected_errors):
-    if self.options.python_version == (2, 7):
+    if self.python_version == (2, 7):
       for mark in expected_errors:
         expected_errors[mark] = re.sub(
             r"line (\d+)",
@@ -150,22 +150,7 @@ class BaseTest(unittest.TestCase):
 
   def setUp(self):
     super(BaseTest, self).setUp()
-    # The test class (type of |self|) constructor is required to initialize the
-    # 'python_version' attribute.
-    assert hasattr(self, "python_version")
-    if self.python_version:
-      self.options = config.Options.create(
-          python_version=self.python_version,
-          python_exe=utils.get_python_exe(self.python_version))
-    else:
-      # If the target Python version is None, it means that the test runner
-      # will set it before running the test. Hence, we create an empty Options
-      # object which can be configured by the test runner.
-      self.options = config.Options.create()
-
-  def __init__(self, *args, **kwargs):
-    super(BaseTest, self).__init__(*args, **kwargs)
-    self.python_version = None
+    self.options = config.Options.create(python_version=self.python_version)
 
   @property
   def loader(self):
@@ -179,10 +164,6 @@ class BaseTest(unittest.TestCase):
     assert "python_version" not in kwargs, (
         "Individual tests cannot set the python_version of the config options.")
     self.options.tweak(**kwargs)
-    if self.options.python_version is None:
-      self.options.python_version = self.python_version
-    self.options.tweak(
-        python_exe=utils.get_python_exe(self.options.python_version))
 
   # For historical reasons (byterun), this method name is snakecase:
   # pylint: disable=invalid-name
@@ -458,6 +439,8 @@ class TargetIndependentTest(BaseTest):
   feature specific to a Python version, including type annotations.
   """
 
+  PY_MAJOR_VERSIONS = [2, 3]
+
 
 class TargetPython27FeatureTest(BaseTest):
   """Class for tests which depend on a Python 2.7 feature.
@@ -465,9 +448,7 @@ class TargetPython27FeatureTest(BaseTest):
   Test methods in subclasses will test Pytype on a Python 2.7 feature.
   """
 
-  def __init__(self, *args, **kwargs):
-    super(TargetPython27FeatureTest, self).__init__(*args, **kwargs)
-    self.python_version = (2, 7)
+  PY_MAJOR_VERSIONS = [2]
 
 
 class TargetPython3BasicTest(BaseTest):
@@ -479,16 +460,16 @@ class TargetPython3BasicTest(BaseTest):
   target Python version set to 2.7.
   """
 
-  def __init__(self, *args, **kwargs):
-    super(TargetPython3BasicTest, self).__init__(*args, **kwargs)
-    self.python_version = (3, 6)
+  PY_MAJOR_VERSIONS = [2, 3] if utils.USE_ANNOTATIONS_BACKPORT else [3]
 
 
-class TargetPython3FeatureTest(TargetPython3BasicTest):
+class TargetPython3FeatureTest(BaseTest):
   """Class for tests which depend on a Python 3 feature beyond type annotations.
 
-  Test methods in subclasses will test Pytype on a Python 3.6 feature.
+  Test methods in subclasses will test Pytype on a Python 3 feature.
   """
+
+  PY_MAJOR_VERSIONS = [3]
 
 
 def _PrintErrorDebug(descr, value):
@@ -500,64 +481,6 @@ def _PrintErrorDebug(descr, value):
 def _LogLines(log_cmd, lines):
   for l in lines.split("\n"):
     log_cmd("%s", l)
-
-
-def _ReplacementMethod(python_version, actual_method):
-  def Replacement(self, *args, **kwargs):
-    self.python_version = python_version
-    # The "options" attribute should have been set by the setUp method of
-    # the test class.
-    assert hasattr(self, "options")
-    self.options.tweak(
-        python_version=self.python_version,
-        python_exe=utils.get_python_exe(self.python_version))
-    return actual_method(self, *args, **kwargs)
-  return Replacement
-
-
-def _GetTargetVersions(toplevel):
-  """Maybe return a list of target versions.
-
-  Arguments:
-    toplevel: the top-level module object.
-
-  Returns:
-    None if toplevel is not a test class or doesn't need to test under at least
-    two versions. Otherwise a list of (major, minor) versions.
-  """
-  if not isinstance(toplevel, type):
-    return None
-  if issubclass(toplevel, TargetIndependentTest):
-    return [(2, 7), (3, 6), (3, 7)]
-  elif issubclass(toplevel, TargetPython3FeatureTest):
-    return [(3, 6), (3, 7)]
-  elif issubclass(toplevel, TargetPython3BasicTest):
-    if utils.USE_ANNOTATIONS_BACKPORT:
-      # Run the Python 3 basic tests with target Python version set to 2.7 if we
-      # can use type annotations in 2.7.
-      return [(2, 7), (3, 6), (3, 7)]
-    else:
-      return [(3, 6), (3, 7)]
-  else:
-    return None
-
-
-def _ReplaceAttribute(test_case, versions, attr_name):
-  attr = getattr(test_case, attr_name)
-  if not attr_name.startswith("test") or not callable(attr):
-    return
-  for v in versions:
-    method = _ReplacementMethod(v, attr)
-    pytype_skip = getattr(attr, "__pytype_skip__", None)
-    if v == (3, 7):
-      if pytype_skip:
-        # test_utils.skipIn37 sets __pytype_skip__ to the reason for skipping.
-        method = skip(pytype_skip)(method)
-      else:
-        # Hack to work around 3.7 unavailability in some testing environments.
-        method = test_utils.skipUnless37Available(method)
-    setattr(test_case, "%s_py%d%d" % ((attr_name,) + v), method)
-  delattr(test_case, attr_name)
 
 
 def main(toplevels, is_main_module=True):
@@ -576,13 +499,40 @@ def main(toplevels, is_main_module=True):
     is_main_module: True if the main test module is the main module in the
                     interpreter.
   """
-  # We want to run tests in a few buckets under multiple target Python versions.
-  # So, for tests falling in such buckets, we replace the single test method
-  # with multiple methods, one for each target version.
-  for _, tp in toplevels.items():
-    versions = _GetTargetVersions(tp)
-    if versions:
-      for attr_name in dir(tp):
-        _ReplaceAttribute(tp, versions, attr_name)
+  # In Python 3.5, some tests shouldn't run.
+  tests_to_delete_35 = []
+  # We set a python_version attribute on every test class.
+  python_versions = {}
+  # For tests that we want to run under multiple target Python versions, we
+  # create a subclass for each additional version.
+  new_tests = {}
+  for name, tp in toplevels.items():
+    if not isinstance(tp, type) or not issubclass(tp, BaseTest):
+      continue
+    if sys.version_info.minor < 6 and issubclass(tp, TargetPython3FeatureTest):
+      # Many of our Python 3 feature tests are Python 3.6+, since they use
+      # PEP 526-style variable annotations.
+      tests_to_delete_35.append(name)
+      continue
+    if hasattr(tp, "PY_MAJOR_VERSIONS"):
+      versions = sorted(tp.PY_MAJOR_VERSIONS, reverse=True)
+    else:
+      versions = [3]
+    assert versions, "Must specify at least one Python major version"
+    assert not hasattr(tp, "python_version"), (
+        "Do not set python_version directly; use PY_MAJOR_VERSIONS")
+    # We can't set python_version yet, since that would cause the assertion that
+    # python_version is not defined to fail on subclasses of tp.
+    python_versions[tp] = utils.full_version_from_major(versions[0])
+    for version in versions[1:]:
+      name = "%sPy%d" % (name, version)
+      subtest = type(name, (tp,),
+                     {"python_version": utils.full_version_from_major(version)})
+      new_tests[name] = subtest
+  for name in tests_to_delete_35:
+    del toplevels[name]
+  for tp, version in python_versions.items():
+    setattr(tp, "python_version", version)
+  toplevels.update(new_tests)
   if is_main_module:
     unittest.main()

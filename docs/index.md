@@ -98,9 +98,8 @@ Platform support:
 
 <sub>\*
 Note: On Alpine Linux, installing may fail due to issues with upstream
-dependencies.  See the details of
-<a href="https://github.com/scikit-build/ninja-python-distributions/issues/27">
-this issue</a> for a possible fix.
+dependencies.  See the details of [this issue][scikit-build-issue] for a
+possible fix.
 </sub>
 
 ## Installing
@@ -273,5 +272,6 @@ This is not an official Google product.
 [merge-pyi]: https://github.com/google/pytype/tree/master/pytype/tools/merge_pyi
 [pep-484]: https://www.python.org/dev/peps/pep-0484
 [pyi-stub-files]: user_guide.md#pyi-stub-files
+[scikit-build-issue]: https://github.com/scikit-build/ninja-python-distributions/issues/27
 [user-guide]: user_guide.md
 [wsl]: https://docs.microsoft.com/en-us/windows/wsl/faq

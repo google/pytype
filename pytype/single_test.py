@@ -24,7 +24,7 @@ import unittest
 class PytypeTest(unittest.TestCase):
   """Integration test for pytype."""
 
-  PYTHON_VERSION = (2, 7)
+  python_version = (2, 7)
 
   DEFAULT_PYI = builtins.DEFAULT_SRC
   INCLUDE = object()
@@ -46,7 +46,7 @@ class PytypeTest(unittest.TestCase):
 
   def _ResetPytypeArgs(self):
     self.pytype_args = {
-        "--python_version": utils.format_version(self.PYTHON_VERSION),
+        "--python_version": utils.format_version(self.python_version),
         "--verbosity": 1
     }
 
@@ -99,7 +99,7 @@ class PytypeTest(unittest.TestCase):
 
   def _ParseString(self, string):
     """A wrapper for parser.parse_string that inserts the python version."""
-    return parser.parse_string(string, python_version=self.PYTHON_VERSION)
+    return parser.parse_string(string, python_version=self.python_version)
 
   def _GenerateBuiltinsTwice(self, python_version):
     os.environ["PYTHONHASHSEED"] = "0"
@@ -283,12 +283,14 @@ class PytypeTest(unittest.TestCase):
 
   def testGenerateBuiltinsPy2(self):
     self.pytype_args["--generate-builtins"] = self._TmpPath("builtins.py")
+    self.pytype_args["--python_version"] = "2.7"
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
 
   def testGenerateBuiltinsPy3(self):
     self.pytype_args["--generate-builtins"] = self._TmpPath("builtins.py")
-    self.pytype_args["--python_version"] = "3.6"
+    self.pytype_args["--python_version"] = utils.format_version(
+        utils.full_version_from_major(3))
     self._RunPytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
 
@@ -534,7 +536,8 @@ class PytypeTest(unittest.TestCase):
     self.assertBuiltinsPickleEqual(f1, f2)
 
   def testBuiltinsDeterminism3(self):
-    f1, f2 = self._GenerateBuiltinsTwice("3.6")
+    f1, f2 = self._GenerateBuiltinsTwice(
+        utils.format_version(utils.full_version_from_major(3)))
     self.assertBuiltinsPickleEqual(f1, f2)
 
   def testTimeout(self):

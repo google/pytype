@@ -38,11 +38,12 @@ class TestTypeMatch(parser_test_base.ParserTest):
   """Test algorithms and datastructures of booleq.py."""
 
   def setUp(self):
+    super(TestTypeMatch, self).setUp()
     builtins = parser.parse_string(textwrap.dedent(_BUILTINS),
                                    name="__builtin__",
-                                   python_version=self.PYTHON_VERSION)
+                                   python_version=self.python_version)
     typing = parser.parse_string("class Generic: ...", name="typing",
-                                 python_version=self.PYTHON_VERSION)
+                                 python_version=self.python_version)
     self.mini_builtins = pytd_utils.Concat(builtins, typing)
 
   def LinkAgainstSimpleBuiltins(self, ast):
@@ -133,7 +134,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
     ast = parser.parse_string(textwrap.dedent("""
       def left(a: int) -> int
       def right(a: int) -> int
-    """), python_version=self.PYTHON_VERSION)
+    """), python_version=self.python_version)
     m = type_match.TypeMatch()
     self.assertEqual(m.match(ast.Lookup("left"), ast.Lookup("right"), {}),
                      booleq.TRUE)
@@ -142,7 +143,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
     ast = parser.parse_string(textwrap.dedent("""
       def left(a: int) -> float
       def right(a: int) -> int
-    """), python_version=self.PYTHON_VERSION)
+    """), python_version=self.python_version)
     m = type_match.TypeMatch()
     self.assertNotEqual(m.match(ast.Lookup("left"), ast.Lookup("right"), {}),
                         booleq.TRUE)
@@ -151,7 +152,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
     ast = parser.parse_string(textwrap.dedent("""
       def left(a: int) -> int
       def right(a: int, ...) -> int
-    """), python_version=self.PYTHON_VERSION)
+    """), python_version=self.python_version)
     m = type_match.TypeMatch()
     self.assertEqual(m.match(ast.Lookup("left"), ast.Lookup("right"), {}),
                      booleq.TRUE)
@@ -163,7 +164,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
         pass
       left = ...  # type: A[?]
       right = ...  # type: A[?]
-    """), python_version=self.PYTHON_VERSION)
+    """), python_version=self.python_version)
     ast = self.LinkAgainstSimpleBuiltins(ast)
     m = type_match.TypeMatch()
     self.assertEqual(m.match_type_against_type(
@@ -177,7 +178,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
       class Right():
         def method(self) -> ?
         def method2(self) -> ?
-    """), python_version=self.PYTHON_VERSION)
+    """), python_version=self.python_version)
     ast = visitors.LookupClasses(ast, self.mini_builtins)
     m = type_match.TypeMatch()
     left, right = ast.Lookup("Left"), ast.Lookup("Right")
@@ -193,7 +194,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
       a = ...  # type: A
       def left(a: B) -> B
       def right(a: A) -> A
-    """), python_version=self.PYTHON_VERSION)
+    """), python_version=self.python_version)
     ast = visitors.LookupClasses(ast, self.mini_builtins)
     m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
     left, right = ast.Lookup("left"), ast.Lookup("right")
@@ -212,7 +213,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
         pass
       def left(x: `~unknown0`) -> ?
       def right(x: A[B]) -> ?
-    """), python_version=self.PYTHON_VERSION)
+    """), python_version=self.python_version)
     ast = self.LinkAgainstSimpleBuiltins(ast)
     m = type_match.TypeMatch()
     left, right = ast.Lookup("left"), ast.Lookup("right")
@@ -243,7 +244,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
       a = ...  # type: A
       def left() -> `~unknown0`
       def right() -> list[A]
-    """), python_version=self.PYTHON_VERSION)
+    """), python_version=self.python_version)
     ast = self.LinkAgainstSimpleBuiltins(ast)
     m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
     left, right = ast.Lookup("left"), ast.Lookup("right")
@@ -260,7 +261,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
 
       class Match():
         def f(self, x:Base) -> Base
-    """), python_version=self.PYTHON_VERSION)
+    """), python_version=self.python_version)
     ast = self.LinkAgainstSimpleBuiltins(ast)
     m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
     eq = m.match_Class_against_Class(ast.Lookup("Match"), ast.Lookup("Foo"), {})

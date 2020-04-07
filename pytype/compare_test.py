@@ -16,13 +16,13 @@ import unittest
 
 class CompareTestBase(unittest.TestCase):
 
-  PYTHON_VERSION = (2, 7)
+  python_version = (2, 7)
 
   def setUp(self):
     super(CompareTestBase, self).setUp()
-    options = config.Options.create(python_version=self.PYTHON_VERSION)
+    options = config.Options.create(python_version=self.python_version)
     self._vm = vm.VirtualMachine(
-        errors.ErrorLog(), options, load_pytd.Loader(None, self.PYTHON_VERSION))
+        errors.ErrorLog(), options, load_pytd.Loader(None, self.python_version))
     self._program = self._vm.program
     self._node = self._vm.root_cfg_node.ConnectNew("test_node")
 
