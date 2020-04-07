@@ -484,14 +484,15 @@ class Python3Test(unittest.TestCase):
     # version to the loader.
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
-          from typing import AsyncGenerator
-          class A(AsyncGenerator[str]): ...""")
+          from typing import AsyncContextManager
+          class A(AsyncContextManager[str]): ...""")
       loader = load_pytd.Loader("base",
                                 python_version=self.python_version,
                                 pythonpath=[d.path])
       a = loader.import_name("a")
       cls = a.Lookup("a.A")
-      self.assertEqual("AsyncGenerator[str]", pytd_utils.Print(cls.parents[0]))
+      self.assertEqual("AsyncContextManager[str]",
+                       pytd_utils.Print(cls.parents[0]))
 
 
 if __name__ == "__main__":

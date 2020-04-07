@@ -499,6 +499,8 @@ def main(toplevels, is_main_module=True):
     is_main_module: True if the main test module is the main module in the
                     interpreter.
   """
+  # In Python 3.5, some tests shouldn't run.
+  tests_to_delete_35 = []
   # We set a python_version attribute on every test class.
   python_versions = {}
   # For tests that we want to run under multiple target Python versions, we
@@ -506,6 +508,11 @@ def main(toplevels, is_main_module=True):
   new_tests = {}
   for name, tp in toplevels.items():
     if not isinstance(tp, type) or not issubclass(tp, BaseTest):
+      continue
+    if sys.version_info.minor < 6 and issubclass(tp, TargetPython3FeatureTest):
+      # Many of our Python 3 feature tests are Python 3.6+, since they use
+      # PEP 526-style variable annotations.
+      tests_to_delete_35.append(name)
       continue
     if hasattr(tp, "PY_MAJOR_VERSIONS"):
       versions = sorted(tp.PY_MAJOR_VERSIONS, reverse=True)
@@ -522,6 +529,8 @@ def main(toplevels, is_main_module=True):
       subtest = type(name, (tp,),
                      {"python_version": utils.full_version_from_major(version)})
       new_tests[name] = subtest
+  for name in tests_to_delete_35:
+    del toplevels[name]
   for tp, version in python_versions.items():
     setattr(tp, "python_version", version)
   toplevels.update(new_tests)
