@@ -1,6 +1,11 @@
 # We maintain our own collections.pytd, rather than using collections.pyi from
 # typeshed, because this file makes use of mutable type parameters.
+import sys
 from typing import Any, Callable, DefaultDict, Dict, List, Mapping, Optional, Text, Tuple
+if sys.version_info >= (3, 7):
+  from typing import OrderedDict as _OrderedDict
+else:
+  _OrderedDict = Dict
 
 K = TypeVar("K")
 V = TypeVar("V")
@@ -71,7 +76,7 @@ else:
     field_names: Text or Iterable[Text] or Iterable[nothing],
     verbose: bool = ..., rename: bool = ...) -> type
 
-class OrderedDict(Dict[K, V]):
+class OrderedDict(_OrderedDict[K, V]):
   def popitem(self, last: bool = ...) -> Tuple[K, V]
 
 class defaultdict(DefaultDict[K, V]):
