@@ -36,7 +36,7 @@ import sys
 
 {import_stmt}
 
-{modname}.main()
+sys.exit({modname}.main())
 """
 
 
