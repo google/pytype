@@ -626,6 +626,11 @@ class FixMergePyi(BaseFix):
       return []
 
   def can_annotate(self, src_sig):
+    if src_sig.short_name.startswith('__') and \
+            src_sig.short_name.endswith('__'):
+      self.logger.warning('builtin function, skipping %s', src_sig)
+      return False
+
     if src_sig.has_pep484_annotations or src_sig.has_comment_annotations:
       self.logger.warning('already annotated, skipping %s', src_sig)
       return False
