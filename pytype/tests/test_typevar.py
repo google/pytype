@@ -410,5 +410,13 @@ class TypeVarTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(
         err, {"e": "aliases of Unions with type parameters"})
 
+  def test_recursive_alias(self):
+    self.Check("""
+      from typing import Any, Iterable, TypeVar, Union
+      T = TypeVar("T")
+      X = Union[Any, Iterable["X"]]
+      Y = Union[Any, X]
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
