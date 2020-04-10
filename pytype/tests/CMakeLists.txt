@@ -82,6 +82,7 @@ py_test(
     test_functions.py
   DEPS
     .test_base
+    pytype.pytd_utils
 )
 
 py_test(

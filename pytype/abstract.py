@@ -1,3 +1,4 @@
+# Lint as: python3
 """The abstract values used by vm.py.
 
 This file contains AtomicAbstractValue and its subclasses. Mixins such as Class
@@ -1441,7 +1442,7 @@ class Function(SimpleAbstractValue):
 
   def __init__(self, name, vm):
     super(Function, self).__init__(name, vm)
-    self.cls = self.vm.convert.function_type
+    self.cls = FunctionPyTDClass(self, vm)
     self.is_attribute_of_class = False
     self.is_abstract = False
     self.members["func_name"] = self.vm.convert.build_string(
@@ -2409,6 +2410,24 @@ class PyTDClass(SimpleAbstractValue, mixin.Class):
         template=self.pytd_cls.template)
 
 
+class FunctionPyTDClass(PyTDClass):
+  """PyTDClass(Callable) subclass to support annotating higher-order functions.
+
+  In InterpreterFunction calls, type parameter annotations are handled by
+  getting the types of the parameters from the arguments and instantiating them
+  in the return value. To handle a signature like (func: T) -> T, we need to
+  save the value of `func`, not just its type of Callable.
+  """
+
+  def __init__(self, func, vm):
+    super().__init__("typing.Callable", vm.convert.function_type.pytd_cls, vm)
+    self.func = func
+
+  def instantiate(self, node, container=None):
+    del container  # unused
+    return self.func.to_variable(node)
+
+
 class InterpreterClass(SimpleAbstractValue, mixin.Class):
   """An abstract wrapper for user-defined class objects.
 
@@ -2649,7 +2668,7 @@ class NativeFunction(Function):
     namedargs = {k: u.AssignToNewVariable(node)
                  for k, u in args.namedargs.items()}
     try:
-      inspect.getcallargs(self.func, node, *posargs, **namedargs)
+      inspect.signature(self.func).bind(node, *posargs, **namedargs)
     except ValueError:
       # Happens for, e.g.,
       #   def f((x, y)): pass
@@ -2669,7 +2688,7 @@ class NativeFunction(Function):
       # The function was passed the wrong number of arguments. The signature is
       # ([self, ]node, ...). The length of "..." tells us how many variables
       # are expected.
-      expected_argcount = len(inspect.getargspec(self.func).args) - 1
+      expected_argcount = len(inspect.getfullargspec(self.func).args) - 1
       if inspect.ismethod(self.func) and self.func.__self__ is not None:
         expected_argcount -= 1
       actual_argcount = len(posargs) + len(namedargs)
