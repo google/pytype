@@ -3,6 +3,7 @@
 
 from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class AnnotationTest(test_base.TargetPython3BasicTest):
@@ -1022,10 +1023,28 @@ class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
 
   def testVariableAnnotations(self):
     ty = self.Infer("""
-      a : int = 42
+      a: int = 42
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       a: int
+    """)
+
+  @test_utils.skipUnlessPy((3, 7), reason="__future__.annotations is 3.7+ and "
+                           "is the default behavior in 3.8+")
+  def testPostponedEvaluation(self):
+    self.Check("""
+      from __future__ import annotations
+      def f() -> int:
+        return 0
+    """)
+
+  @test_utils.skipUnlessPy((3, 7), reason="__future__.annotations is 3.7+ and "
+                           "is the default behavior in 3.8+")
+  def testPostponedEvaluationError(self):
+    self.CheckWithErrors("""
+      from __future__ import annotations
+      def f() -> str:
+        return 0  # bad-return-type
     """)
 
 

@@ -308,6 +308,10 @@ class Dict(MutableMapping[_K, _V]):
 class DefaultDict(Dict[_K, _V]): ...
 
 
+if sys.version_info >= (3, 7):
+  class OrderedDict(Dict[_K, _V]): ...
+
+
 class AbstractSet(Sized, Iterable[_T], Container[_T]):
   __slots__ = []
   def __contains__(self, x) -> bool: ...

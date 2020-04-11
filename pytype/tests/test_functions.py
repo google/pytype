@@ -1,6 +1,7 @@
 """Test functions."""
 
 from pytype import file_utils
+from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
@@ -681,13 +682,13 @@ class TestFunctions(test_base.TargetIndependentTest):
         w2 = type(f)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Any, Callable, Tuple, Type
+        from typing import Any, Callable, Tuple
         foo = ...  # type: module
         def f() -> None: ...
         v1 = ...  # type: Tuple[Callable[[], None]]
-        v2 = ...  # type: Type[Callable]
+        v2 = Callable
         w1 = ...  # type: Tuple[Callable[[], Any]]
-        w2 = ...  # type: Type[Callable]
+        w2 = Callable
       """)
 
   def test_type_parameter_visibility(self):
@@ -970,6 +971,35 @@ class TestFunctions(test_base.TargetIndependentTest):
       {name_error2 for x in ()}  # name-error
       (name_error3 for x in ())  # name-error
       lambda x: name_error4  # name-error
+    """)
+
+  def test_identity_decorator(self):
+    ty = self.Infer("""
+      from typing import TypeVar
+      T = TypeVar("T")
+      def decorate(func: T) -> T:
+        return func
+      @decorate
+      def f():
+        return 0
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypeVar
+      T = TypeVar("T")
+      def decorate(func: T) -> T: ...
+      def f() -> int: ...
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(ty))
+      ty2 = self.Infer("""
+        import foo
+        @foo.decorate
+        def g():
+          return ""
+      """, pythonpath=[d.path])
+    self.assertTypesMatchPytd(ty2, """
+      foo: module
+      def g() -> str: ...
     """)
 
 

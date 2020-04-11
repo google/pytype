@@ -141,5 +141,23 @@ class SkipTest(test_base.TargetPython3FeatureTest):
         name_error
     """)
 
+  @test_utils.skipBeforePy((3, 7), reason="testing skipBeforePy")
+  def test_skip_before_py(self):
+    # This will fail before 3.7.
+    self.Check("""
+      import sys
+      if sys.version_info.minor < 7:
+        name_error
+    """)
+
+  @test_utils.skipFromPy((3, 7), reason="testing skipFromPy")
+  def test_skip_from_py(self):
+    # This will fail in 3.7+.
+    self.Check("""
+      import sys
+      if sys.version_info.minor >= 7:
+        name_error
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

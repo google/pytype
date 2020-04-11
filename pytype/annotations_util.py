@@ -107,18 +107,25 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       return annot
     return annot
 
-  def get_type_parameters(self, annot):
+  def get_type_parameters(self, annot, seen=None):
     """Get all the TypeParameter instances that appear in the annotation."""
+    seen = seen or set()
+    if annot in seen:
+      return []
+    if isinstance(annot, abstract.ParameterizedClass):
+      # We track parameterized classes to avoid recursion errors when a class
+      # contains itself.
+      seen |= {annot}
     if isinstance(annot, abstract.TypeParameter):
       return [annot]
     elif isinstance(annot, abstract.TupleClass):
       return self.get_type_parameters(
-          annot.formal_type_parameters[abstract_utils.T])
+          annot.formal_type_parameters[abstract_utils.T], seen)
     elif isinstance(annot, abstract.ParameterizedClass):
-      return sum((self.get_type_parameters(p)
+      return sum((self.get_type_parameters(p, seen)
                   for p in annot.formal_type_parameters.values()), [])
     elif isinstance(annot, abstract.Union):
-      return sum((self.get_type_parameters(o) for o in annot.options), [])
+      return sum((self.get_type_parameters(o, seen) for o in annot.options), [])
     return []
 
   def convert_function_type_annotation(self, name, typ):

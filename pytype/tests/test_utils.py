@@ -534,4 +534,12 @@ def skipIfPy(*versions, reason):
 
 def skipUnlessPy(*versions, reason):
   return unittest.skipUnless(sys.version_info[:2] in versions, reason)
+
+
+def skipBeforePy(version, reason):
+  return unittest.skipIf(sys.version_info[:2] < version, reason)
+
+
+def skipFromPy(version, reason):
+  return unittest.skipUnless(sys.version_info[:2] < version, reason)
 # pylint: enable=invalid-name

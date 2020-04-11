@@ -215,13 +215,13 @@ class MatchCallTest(MatchAstTestCase):
         ((4, 0), "CALL_FUNCTION", "Foo", ("Type[Foo]", "Foo")),
         ((4, 0), call_method_op, "f", ("Callable[[Any], Any]", "int"))])
 
-  @test_utils.skipUnlessPy(
-      (3, 5), (3, 6), reason="instance methods match CALL_FUNCTION pre-3.7")
+  @test_utils.skipFromPy((3, 7),
+                         reason="instance methods match CALL_FUNCTION pre-3.7")
   def test_chain_pre37(self):
     self._test_chain("CALL_FUNCTION")
 
-  @test_utils.skipIfPy((3, 5), (3, 6),
-                       reason="instance methods match CALL_METHOD in 3.7+")
+  @test_utils.skipBeforePy((3, 7),
+                           reason="instance methods match CALL_METHOD in 3.7+")
   def test_chain_37(self):
     self._test_chain("CALL_METHOD")
 
@@ -255,13 +255,13 @@ class MatchCallTest(MatchAstTestCase):
     self.assertTracesEqual(matches, [
         ((1, 0), call_method_op, "upper", ("Callable[[], str]", "str"))])
 
-  @test_utils.skipUnlessPy(
-      (3, 5), (3, 6), reason="instance methods match CALL_FUNCTION pre-3.7")
+  @test_utils.skipFromPy((3, 7),
+                         reason="instance methods match CALL_FUNCTION pre-3.7")
   def test_literal_pre37(self):
     self._test_literal("CALL_FUNCTION")
 
-  @test_utils.skipIfPy((3, 5), (3, 6),
-                       reason="instance methods match CALL_METHOD in 3.7+")
+  @test_utils.skipBeforePy((3, 7),
+                           reason="instance methods match CALL_METHOD in 3.7+")
   def test_literal_37(self):
     self._test_literal("CALL_METHOD")
 
