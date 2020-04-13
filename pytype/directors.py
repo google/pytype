@@ -142,6 +142,10 @@ class Director(object):
   def ignore(self):
     return self._ignore
 
+  @property
+  def decorators(self):
+    return self._decorators
+
   def _adjust_type_comments(self, closing_bracket_lines, whitespace_lines):
     """Adjust any type comments affected by closing bracket lines.
 
@@ -172,12 +176,27 @@ class Director(object):
       self._type_comments[target] = self._type_comments[end]
       del self._type_comments[end]
 
+  def _adjust_decorators(self, closing_bracket_lines, whitespace_lines):
+    """Adjust any decorators affected by closing bracket lines."""
+
+    # See self._adjust_type_comments() for the reasoning behind this.
+
+    all_ignored = closing_bracket_lines | whitespace_lines
+    line = max(all_ignored)
+    if line in self._decorators:
+      last = line
+      while last in all_ignored:
+        last -= 1
+      self._decorators[last] = self._decorators[line]
+      del self._decorators[line]
+
   def _parse_source(self, src):
     """Parse a source file, extracting directives from comments."""
     f = moves.StringIO(src)
     defs_start = None
     closing_bracket_lines = set()
     whitespace_lines = set()
+    open_decorator = None
     for token in tokenize.generate_tokens(f.readline):
       tok = token.exact_type
       line = token.line
@@ -190,18 +209,24 @@ class Director(object):
         whitespace_lines.add(lineno)
       elif _DOCSTRING_RE.match(line):
         self._docstrings.add(lineno)
-      else:
-        if closing_bracket_lines:
-          self._adjust_type_comments(closing_bracket_lines, whitespace_lines)
-        closing_bracket_lines.clear()
-        whitespace_lines.clear()
-      if tok == tokenize.COMMENT:
-        self._process_comment(line, lineno, col)
       elif tok == tokenize.AT:
         if lineno not in self._decorators:
           m = _DECORATOR_RE.match(line)
           if m:
-            self._decorators[lineno] = m.group(1)
+            open_decorator = m.group(1)
+      elif tok == tokenize.NAME:
+        if open_decorator and token.string in ("class", "def"):
+          self.decorators[lineno - 1] = open_decorator
+          open_decorator = None
+      else:
+        if closing_bracket_lines:
+          self._adjust_type_comments(closing_bracket_lines, whitespace_lines)
+          self._adjust_decorators(closing_bracket_lines, whitespace_lines)
+        closing_bracket_lines.clear()
+        whitespace_lines.clear()
+
+      if tok == tokenize.COMMENT:
+        self._process_comment(line, lineno, col)
 
     if closing_bracket_lines:
       self._adjust_type_comments(closing_bracket_lines, whitespace_lines)

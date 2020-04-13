@@ -394,12 +394,13 @@ class DirectorTest(unittest.TestCase):
         @decorator(
             x, y
         )
+
         def bar():
           pass
     """)
     self.assertEqual({
         6: "real_decorator",
-        10: "decorator"
+        11: "decorator"
     }, self._director._decorators)
 
 
