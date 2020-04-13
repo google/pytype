@@ -381,6 +381,27 @@ class DirectorTest(unittest.TestCase):
         10: ("]", "dict"),
     }, self._director.type_comments)
 
+  def test_decorators(self):
+    self._create("""
+      class A:
+        '''
+        @decorator in a docstring
+        '''
+        @real_decorator
+        def f(x):
+          x = foo @ bar @ baz
+
+        @decorator(
+            x, y
+        )
+        def bar():
+          pass
+    """)
+    self.assertEqual({
+        6: "real_decorator",
+        10: "decorator"
+    }, self._director._decorators)
+
 
 if __name__ == "__main__":
   unittest.main()

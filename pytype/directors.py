@@ -15,6 +15,7 @@ _CLOSING_BRACKETS_RE = re.compile(r"^(\s*[]})]\s*)+,?(#.*)?$")
 _WHITESPACE_RE = re.compile(r"^\s*(#.*)?$")
 _CLASS_OR_FUNC_RE = re.compile(r"^(def|class)\s")
 _DOCSTRING_RE = re.compile(r"^\s*(\"\"\"|''')")
+_DECORATOR_RE = re.compile(r"^\s*@(\w+)([(]|\s*$)")
 _ALL_ERRORS = "*"  # Wildcard for disabling all errors.
 
 
@@ -121,6 +122,8 @@ class Director(object):
     # Map from error name to lines for which that error is disabled.  Note
     # that _ALL_ERRORS is essentially a wildcard name (it matches all names).
     self._disables = collections.defaultdict(_LineSet)
+    # {line number: decorator name}
+    self._decorators = {}
     # Apply global disable, from the command line arguments:
     for error_name in disable:
       self._disables[error_name].start_range(0, True)
@@ -175,8 +178,10 @@ class Director(object):
     defs_start = None
     closing_bracket_lines = set()
     whitespace_lines = set()
-    for tok, _, start, _, line in tokenize.generate_tokens(f.readline):
-      lineno, col = start
+    for token in tokenize.generate_tokens(f.readline):
+      tok = token.exact_type
+      line = token.line
+      lineno, col = token.start
       if defs_start is None and _CLASS_OR_FUNC_RE.match(line):
         defs_start = lineno
       if _CLOSING_BRACKETS_RE.match(line):
@@ -191,23 +196,13 @@ class Director(object):
         closing_bracket_lines.clear()
         whitespace_lines.clear()
       if tok == tokenize.COMMENT:
-        matches = list(_DIRECTIVE_RE.finditer(line[col:]))
-        is_nested = bool(matches) and matches[0].start(0) > 0
-        for m in matches:
-          code = line[:col].strip()
-          tool, data = m.groups()
-          open_ended = not code
-          data = data.strip()
-          if tool == "type":
-            self._process_type(lineno, code, data, is_nested)
-          elif tool == "pytype":
-            try:
-              self._process_pytype(lineno, data, open_ended)
-            except _DirectiveError as e:
-              self._errorlog.invalid_directive(
-                  self._filename, lineno, utils.message(e))
-          else:
-            pass  # ignore comments for other tools
+        self._process_comment(line, lineno, col)
+      elif tok == tokenize.AT:
+        if lineno not in self._decorators:
+          m = _DECORATOR_RE.match(line)
+          if m:
+            self._decorators[lineno] = m.group(1)
+
     if closing_bracket_lines:
       self._adjust_type_comments(closing_bracket_lines, whitespace_lines)
     if defs_start is not None:
@@ -218,6 +213,26 @@ class Director(object):
         lineno = lineset.get_disable_after(defs_start)
         if lineno is not None:
           self._errorlog.late_directive(self._filename, lineno, name)
+
+  def _process_comment(self, line, lineno, col):
+    """Process a single comment."""
+    matches = list(_DIRECTIVE_RE.finditer(line[col:]))
+    is_nested = bool(matches) and matches[0].start(0) > 0
+    for m in matches:
+      code = line[:col].strip()
+      tool, data = m.groups()
+      open_ended = not code
+      data = data.strip()
+      if tool == "type":
+        self._process_type(lineno, code, data, is_nested)
+      elif tool == "pytype":
+        try:
+          self._process_pytype(lineno, data, open_ended)
+        except _DirectiveError as e:
+          self._errorlog.invalid_directive(
+              self._filename, lineno, utils.message(e))
+      else:
+        pass  # ignore comments for other tools
 
   def _process_type(self, lineno, code, data, is_nested):
     """Process a type: comment."""
