@@ -88,6 +88,7 @@ class _FindIgnoredTypeComments(object):
   """A visitor that finds type comments that will be ignored."""
 
   def __init__(self, type_comments):
+    self._type_comments = type_comments
     # Lines will be removed from this set during visiting. Any lines that remain
     # at the end are type comments that will be ignored.
     self._ignored_type_lines = set(type_comments)
@@ -97,11 +98,13 @@ class _FindIgnoredTypeComments(object):
     for op in code.co_code:
       # Make sure we have attached the type comment to an opcode.
       if isinstance(op, blocks.STORE_OPCODES):
-        if op.type_comment:
-          self._ignored_type_lines.discard(op.line)
+        if op.annotation:
+          annot = op.annotation
+          if self._type_comments.get(op.line) == annot:
+            self._ignored_type_lines.discard(op.line)
       elif isinstance(op, opcodes.MAKE_FUNCTION):
-        if op.type_comment:
-          _, line = op.type_comment
+        if op.annotation:
+          _, line = op.annotation
           self._ignored_type_lines.discard(line)
     return code
 
@@ -694,7 +697,7 @@ class VirtualMachine(object):
         src, python_version=self.python_version,
         python_exe=self.options.python_exe,
         filename=filename, mode=mode)
-    return blocks.process_code(code, self.director.type_comments,
+    return blocks.process_code(code, self.director.annotations,
                                self.director.docstrings)
 
   def run_bytecode(self, node, code, f_globals=None, f_locals=None):
@@ -1232,7 +1235,7 @@ class VirtualMachine(object):
   def _pop_and_store(self, state, op, name, local):
     """Pop a value off the stack and store it in a variable."""
     state, orig_val = state.pop()
-    value = self.annotations_util.apply_type_comment(state, op, name, orig_val)
+    value = self.annotations_util.apply_annotation(state, op, name, orig_val)
     self._check_aliased_type_params(value)
     if local:
       self._record_local(name, value, orig_val)
@@ -1851,7 +1854,7 @@ class VirtualMachine(object):
     state, value = state.pop()
     assert isinstance(value, cfg.Variable)
     name = self.get_closure_var_name(op.arg)
-    value = self.annotations_util.apply_type_comment(state, op, name, value)
+    value = self.annotations_util.apply_annotation(state, op, name, value)
     state = state.forward_cfg_node()
     self.frame.cells[op.arg].PasteVariable(value, state.node)
     state = state.forward_cfg_node()
@@ -2060,7 +2063,7 @@ class VirtualMachine(object):
   def byte_STORE_ATTR(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
     state, (val, obj) = state.popn(2)
-    val = self.annotations_util.apply_type_comment(state, op, name, val)
+    val = self.annotations_util.apply_annotation(state, op, name, val)
     state = state.forward_cfg_node()
     state = self.store_attr(state, obj, name, val)
     state = state.forward_cfg_node()
@@ -2565,10 +2568,10 @@ class VirtualMachine(object):
       op: An opcode (used to determine filename and line number).
       func: An abstract.InterpreterFunction.
     """
-    if not op.type_comment:
+    if not op.annotation:
       return
 
-    comment, lineno = op.type_comment
+    comment, lineno = op.annotation
 
     # It is an error to use a type comment on an annotated function.
     if func.signature.annotations:

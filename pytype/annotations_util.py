@@ -194,25 +194,25 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       _, instance = self.vm.init_class(node, typ)
       return instance
 
-  def apply_type_comment(self, state, op, name, value):
+  def apply_annotation(self, state, op, name, value):
     """If there is a type comment for the op, return its value."""
     assert op is self.vm.frame.current_opcode
     if op.code.co_filename != self.vm.filename:
       return value
-    if not op.type_comment:
+    if not op.annotation:
       return value
-    comment = op.type_comment
+    annot = op.annotation
     frame = self.vm.frame
     var, errorlog = abstract_utils.eval_expr(
-        self.vm, state.node, frame.f_globals, frame.f_locals, comment)
+        self.vm, state.node, frame.f_globals, frame.f_locals, annot)
     if errorlog:
-      self.vm.errorlog.invalid_type_comment(
-          self.vm.frames, comment, details=errorlog.details)
+      self.vm.errorlog.invalid_annotation(
+          self.vm.frames, annot, details=errorlog.details)
     try:
       typ = abstract_utils.get_atomic_value(var)
     except abstract_utils.ConversionError:
-      self.vm.errorlog.invalid_type_comment(
-          self.vm.frames, comment, details="Must be constant.")
+      self.vm.errorlog.invalid_annotation(
+          self.vm.frames, annot, details="Must be constant.")
       value = self.vm.new_unsolvable(state.node)
     else:
       typ = self._process_one_annotation(
@@ -220,7 +220,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       if typ:
         if self.get_type_parameters(typ):
           self.vm.errorlog.not_supported_yet(
-              self.vm.frames, "using type parameter in type comment")
+              self.vm.frames, "using type parameter in variable annotation")
         _, value = self.vm.init_class(state.node, typ)
       else:
         value = self.vm.new_unsolvable(state.node)

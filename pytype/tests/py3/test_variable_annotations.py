@@ -187,5 +187,13 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
       x['z'] = 5
     """)
 
+  def testFunctionLocalAnnotation(self):
+    ty = self.Infer("""
+      def f():
+        x: int = None
+        return x
+    """)
+    self.assertTypesMatchPytd(ty, "def f() -> int: ...")
+
 
 test_base.main(globals(), __name__ == "__main__")

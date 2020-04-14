@@ -27,9 +27,8 @@ POPS_BLOCK = 4096  # ends a block
 class Opcode(object):
   """An opcode without arguments."""
 
-  __slots__ = ("line", "index", "prev", "next",
-               "target", "block_target", "code",
-               "type_comment")
+  __slots__ = ("line", "index", "prev", "next", "target", "block_target",
+               "code", "annotation")
   FLAGS = 0
 
   def __init__(self, index, line):
@@ -37,7 +36,7 @@ class Opcode(object):
     self.line = line
     self.target = None
     self.code = None  # If we have a CodeType or OrderedCode parent
-    self.type_comment = None
+    self.annotation = None
 
   def at_line(self, line):
     """Return a new opcode simliar to this one but with a different line."""
@@ -52,8 +51,8 @@ class Opcode(object):
     return "%d: %d: %s" % (self.line, self.index, self.__class__.__name__)
 
   def __str__(self):
-    if self.type_comment:
-      return "%s  # type: %s" % (self.basic_str(), self.type_comment)
+    if self.annotation:
+      return "%s  # type: %s" % (self.basic_str(), self.annotation)
     else:
       return self.basic_str()
 
@@ -145,8 +144,8 @@ class OpcodeWithArg(Opcode):
 
   def __str__(self):
     out = "%s %s" % (self.basic_str(), self.pretty_arg)
-    if self.type_comment:
-      return "%s  # type: %s" % (out, self.type_comment)
+    if self.annotation:
+      return "%s  # type: %s" % (out, self.annotation)
     else:
       return out
 

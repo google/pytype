@@ -381,6 +381,30 @@ class DirectorTest(unittest.TestCase):
         10: "dict",
     }, self._director.type_comments)
 
+  def test_annotations(self):
+    self._create("""
+      v1: int = 0
+      def f():
+        v2: str = ''
+    """)
+    self.assertEqual({2: "int", 4: "str"}, self._director.annotations)
+
+  def test_annotations_precedence(self):
+    self._create("v: int = 0  # type: str")
+    # Variable annotations take precedence. vm.py's _FindIgnoredTypeComments
+    # warns about the ignored comment.
+    self.assertEqual({1: "int"}, self._director.annotations)
+
+  def test_parameter_annotation(self):
+    # director.annotations contains only variable annotations and function type
+    # comments, so a parameter annotation should be ignored.
+    self._create("""
+      def f(
+          x: int = 0):
+        pass
+    """)
+    self.assertFalse(self._director.annotations)
+
   def test_decorators(self):
     self._create("""
       class A:

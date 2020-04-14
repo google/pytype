@@ -40,7 +40,6 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [invalid-function-type-comment](#invalid-function-type-comment)
       * [invalid-namedtuple-arg](#invalid-namedtuple-arg)
       * [invalid-super-call](#invalid-super-call)
-      * [invalid-type-comment](#invalid-type-comment)
       * [invalid-typevar](#invalid-typevar)
       * [key-error](#key-error)
       * [late-directive](#late-directive)
@@ -395,16 +394,6 @@ A call to super without any arguments (Python 3) is being made from an invalid
 context. A super call without any arguments should be made from a method or a
 function defined within a class. Also, the caller should have at least one
 positional argument.
-
-## invalid-type-comment
-
-Something was wrong with this type comment. Examples:
-
-<!-- bad -->
-```python
-  x = None  # type: NonexistentType  # bad: undefined type
-  y = None  # type: int if x else str  # bad: ambiguous type
-```
 
 ## invalid-typevar
 

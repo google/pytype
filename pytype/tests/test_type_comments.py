@@ -322,7 +322,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
 
   def testBadComment(self):
     ty, errors = self.InferWithErrors("""
-      X = None  # type: abc def  # invalid-type-comment[e]
+      X = None  # type: abc def  # invalid-annotation[e]
     """, deep=True)
     self.assertErrorRegexes(errors, {"e": r"abc def.*unexpected EOF"})
     self.assertTypesMatchPytd(ty, """
@@ -332,7 +332,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
 
   def testConversionError(self):
     ty, errors = self.InferWithErrors("""
-      X = None  # type: 1 if __random__ else 2  # invalid-type-comment[e]
+      X = None  # type: 1 if __random__ else 2  # invalid-annotation[e]
     """, deep=True)
     self.assertErrorRegexes(errors, {"e": r"1 if __random__ else 2.*constant"})
     self.assertTypesMatchPytd(ty, """
@@ -342,7 +342,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
 
   def testNameErrorInsideComment(self):
     _, errors = self.InferWithErrors("""
-      X = None  # type: Foo  # invalid-type-comment[e]
+      X = None  # type: Foo  # invalid-annotation[e]
     """, deep=True)
     self.assertErrorRegexes(errors, {"e": r"Foo"})
 
@@ -494,14 +494,14 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
   def testTypeCommentNameError(self):
     _, errors = self.InferWithErrors("""
       def f():
-        x = None  # type: Any  # invalid-type-comment[e]
+        x = None  # type: Any  # invalid-annotation[e]
     """, deep=True)
     self.assertErrorRegexes(errors, {"e": r"not defined$"})
 
   def testTypeCommentInvalidSyntax(self):
     _, errors = self.InferWithErrors("""
       def f():
-        x = None  # type: y = 1  # invalid-type-comment[e]
+        x = None  # type: y = 1  # invalid-annotation[e]
     """, deep=True)
     self.assertErrorRegexes(errors, {"e": r"invalid syntax$"})
 
@@ -527,8 +527,8 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
   def testMultipleDirectives(self):
     """We should support multiple directives on one line."""
     self.Check("""
-      a = list() # type: list[int, str]  # pytype: disable=invalid-type-comment
-      b = list() # pytype: disable=invalid-type-comment  # type: list[int, str]
+      a = list() # type: list[int, str]  # pytype: disable=invalid-annotation
+      b = list() # pytype: disable=invalid-annotation  # type: list[int, str]
       def foo(x): pass
       c = foo(a, b.i) # pytype: disable=attribute-error  # pytype: disable=wrong-arg-count
     """)

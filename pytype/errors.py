@@ -7,6 +7,7 @@ import csv
 import logging
 import re
 import sys
+from typing import Optional, Union
 
 from pytype import abstract
 from pytype import debug
@@ -865,8 +866,10 @@ class ErrorLog(ErrorLogBase):
             " and ".join(repr(operand) for operand in operands)),
         details=details.get("details"))
 
-  def invalid_annotation(self, stack, annot, details=None, name=None):
-    if annot is not None:
+  def invalid_annotation(
+      self, stack, annot: Optional[Union[str, abstract.AtomicAbstractValue]],
+      details=None, name=None):
+    if isinstance(annot, abstract.AtomicAbstractValue):
       annot = self._print_as_expected_type(annot)
     self._invalid_annotation(stack, annot, details, name)
 
@@ -943,11 +946,6 @@ class ErrorLog(ErrorLogBase):
   @_error_name("invalid-function-type-comment")
   def invalid_function_type_comment(self, stack, comment, details=None):
     self.error(stack, "Invalid function type comment: %s" % comment,
-               details=details)
-
-  @_error_name("invalid-type-comment")
-  def invalid_type_comment(self, stack, comment, details=None):
-    self.error(stack, "Invalid type comment: %s" % comment,
                details=details)
 
   @_error_name("ignored-type-comment")

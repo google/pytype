@@ -461,8 +461,8 @@ class BlockStackTest(BaseBlocksTest):
     ])
     ordered_code = blocks.process_code(co, {1: "float"}, [])
     bytecode = ordered_code.order[0].code
-    self.assertEqual(bytecode[1].type_comment, None)
-    self.assertEqual(bytecode[3].type_comment, "float")
+    self.assertEqual(bytecode[1].annotation, None)
+    self.assertEqual(bytecode[3].annotation, "float")
 
 
 if __name__ == "__main__":

@@ -300,8 +300,8 @@ class OrderCodeVisitor(object):
     return order_code(code)
 
 
-class CollectTypeCommentTargetsVisitor(object):
-  """Collect opcodes that might have type comments attached.
+class CollectAnnotationTargetsVisitor(object):
+  """Collect opcodes that might have annotations attached.
 
   Depends on DisCodeVisitor having been run first.
   """
@@ -372,25 +372,25 @@ class CollectFunctionTypeCommentTargetsVisitor(object):
     return code
 
 
-def merge_type_comments(code, type_comments, docstrings):
+def merge_annotations(code, annotations, docstrings):
   """Merges type comments into their associated opcodes.
 
   Modifies code in place.
 
   Args:
     code: CodeType object that has been disassembled (see DisCodeVisitor).
-    type_comments: A map of lines to type comments.
+    annotations: A map of lines to annotations.
     docstrings: A sorted list of lines starting docstrings.
 
   Returns:
-    The code with type comments added to the relevant opcodes.
+    The code with annotations added to the relevant opcodes.
   """
   # Apply type comments to the STORE_* opcodes
-  visitor = CollectTypeCommentTargetsVisitor()
+  visitor = CollectAnnotationTargetsVisitor()
   code = pyc.visit(code, visitor)
   for line, op in visitor.store_op_map.items():
-    if line in type_comments:
-      op.type_comment = type_comments[line]
+    if line in annotations:
+      op.annotation = annotations[line]
 
   # Apply type comments to the MAKE_FUNCTION opcodes
   visitor = CollectFunctionTypeCommentTargetsVisitor()
@@ -405,14 +405,14 @@ def merge_type_comments(code, type_comments, docstrings):
 
     for i in range(start, end):
       # Take the first comment we find as the function typecomment.
-      if i in type_comments:
+      if i in annotations:
         # Record the line number of the comment for error messages.
-        op.type_comment = (type_comments[i], i)
+        op.annotation = (annotations[i], i)
         break
   return code
 
 
-def process_code(code, type_comments, docstrings):
+def process_code(code, annotations, docstrings):
   code = pyc.visit(code, DisCodeVisitor())
-  code = merge_type_comments(code, type_comments, docstrings)
+  code = merge_annotations(code, annotations, docstrings)
   return pyc.visit(code, OrderCodeVisitor())

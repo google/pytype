@@ -1,3 +1,4 @@
+# Lint as: python3
 """Code and data structures for managing source directives."""
 
 import bisect
@@ -16,6 +17,7 @@ _WHITESPACE_RE = re.compile(r"^\s*(#.*)?$")
 _CLASS_OR_FUNC_RE = re.compile(r"^(def|class)\s")
 _DOCSTRING_RE = re.compile(r"^\s*(\"\"\"|''')")
 _DECORATOR_RE = re.compile(r"^\s*@(\w+)([(]|\s*$)")
+_VAR_ANNOTATION_RE = re.compile(r"^\s*\w+\s*:\s*(?P<annot>\w+)\s*=")
 _ALL_ERRORS = "*"  # Wildcard for disabling all errors.
 
 
@@ -99,6 +101,35 @@ class _LineSet(object):
     return None
 
 
+class _FunctionDefinition:
+  """Tracks the line numbers of function definitions."""
+
+  @classmethod
+  def start(cls, lineno):
+    return cls(lineno)
+
+  def __init__(self, start_lineno):
+    self._paren_count = 0
+    self._start_line = start_lineno
+    self._end_line = None
+
+  def add_lpar(self, lineno):
+    assert lineno >= self._start_line
+    self._paren_count += 1
+
+  def add_rpar(self, lineno):
+    if self._end_line is not None:
+      return
+    self._paren_count -= 1
+    if self._paren_count == 0:
+      self._end_line = lineno
+
+  def contains(self, lineno):
+    if lineno < self._start_line:
+      return False
+    return self._end_line is None or lineno <= self._end_line
+
+
 class Director(object):
   """Holds all of the directive information for a source file."""
 
@@ -115,6 +146,7 @@ class Director(object):
     self._filename = filename
     self._errorlog = errorlog
     self._type_comments = {}  # Map from line number to comment.
+    self._variable_annotations = {}  # Map from line number to annotation.
     self._docstrings = set()  # Start lines of docstrings.
     # Lines that have "type: ignore".  These will disable all errors, and in
     # the future may have other impact (such as not attempting an import).
@@ -136,6 +168,12 @@ class Director(object):
   @property
   def type_comments(self):
     return self._type_comments
+
+  @property
+  def annotations(self):
+    # It's okay to overwrite type comments with variable annotations here
+    # because _FindIgnoredTypeComments in vm.py will flag ignored comments.
+    return {**self._type_comments, **self._variable_annotations}
 
   @property
   def docstrings(self):
@@ -200,6 +238,7 @@ class Director(object):
     closing_bracket_lines = set()
     whitespace_lines = set()
     open_decorator = False
+    last_function_definition = None
     for token in tokenize.generate_tokens(f.readline):
       tok = token.exact_type
       line = token.line
@@ -219,8 +258,16 @@ class Director(object):
         if open_decorator and token.string in ("class", "def"):
           self.decorators.add(lineno - 1)
           open_decorator = False
+        if token.string == "def":
+          last_function_definition = _FunctionDefinition.start(lineno)
       elif tok == tokenize.COMMENT:
         self._process_comment(line, lineno, col)
+      elif tok == tokenize.LPAR:
+        if last_function_definition:
+          last_function_definition.add_lpar(lineno)
+      elif tok == tokenize.RPAR:
+        if last_function_definition:
+          last_function_definition.add_rpar(lineno)
 
       # Track closing brackets and whitespace.
       if _CLOSING_BRACKETS_RE.match(line):
@@ -238,6 +285,12 @@ class Director(object):
       # Record docstrings.
       if _DOCSTRING_RE.match(line):
         self._docstrings.add(lineno)
+
+      # Record variable annotations.
+      var_annot_match = _VAR_ANNOTATION_RE.match(line)
+      if var_annot_match and (last_function_definition is None or
+                              not last_function_definition.contains(lineno)):
+        self._variable_annotations[lineno] = var_annot_match.group("annot")
 
     if closing_bracket_lines:
       self._adjust_type_comments(closing_bracket_lines, whitespace_lines)
