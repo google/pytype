@@ -523,7 +523,7 @@ class VirtualMachine(object):
     return meta, non_meta
 
   def make_class(self, node, name_var, bases, class_dict_var, cls_var,
-                 new_class_var=None):
+                 new_class_var=None, is_decorated=False):
     """Create a class with the name, bases and methods given.
 
     Args:
@@ -536,6 +536,8 @@ class VirtualMachine(object):
       new_class_var: If not None, make_class() will return new_class_var with
           the newly constructed class added as a binding. Otherwise, a new
           variable if returned.
+      is_decorated: True if the class definition has a decorator.
+
 
     Returns:
       A node and an instance of Class.
@@ -584,6 +586,7 @@ class VirtualMachine(object):
             class_dict.pyval,
             cls,
             self)
+        val.is_decorated = is_decorated
       except mro.MROError as e:
         self.errorlog.mro_error(self.frames, name, e.mro_seqs)
         var = self.new_unsolvable(node)
@@ -733,6 +736,7 @@ class VirtualMachine(object):
     """
     director = directors.Director(
         src, self.errorlog, filename, self.options.disable)
+
     # This modifies the errorlog passed to the constructor.  Kind of ugly,
     # but there isn't a better way to wire both pieces together.
     self.errorlog.set_error_filter(director.should_report_error)
@@ -1048,6 +1052,22 @@ class VirtualMachine(object):
       error.set_return(node, result)
       raise error  # pylint: disable=raising-bad-type
 
+  def _process_decorator(self, func, posargs):
+    """Specific processing for decorated functions."""
+    if len(posargs) != 1 or not posargs[0].bindings:
+      return
+    # Assume the decorator and decorated function have one binding each.
+    # (This is valid due to how decorated functions/classes are created.)
+    decorator = func.data[0]
+    fn = posargs[0].data[0]
+    # TODO(b/153760963) We also need to check if the CALL_FUNCTION opcode has
+    # the same line number as the function declaration (it should suffice to
+    # check that the opcode lineno is in the set of decorators; we just need a
+    # way to access the line number here). Otherwise any function call taking a
+    # single function as an arg could trigger this code.
+    if fn.is_decorated:
+      log.info("Decorating %s with %s", fn.full_name, decorator.full_name)
+
   def call_function_from_stack(self, state, num, starargs, starstarargs):
     """Pop arguments for a function and call it."""
 
@@ -1076,6 +1096,7 @@ class VirtualMachine(object):
       else:
         posargs = args
     state, func = state.pop()
+    self._process_decorator(func, posargs)
     state, ret = self.call_function_with_state(
         state, func, posargs, namedargs, starargs, starstarargs)
     return state.push(ret)
@@ -2600,6 +2621,8 @@ class VirtualMachine(object):
     globs = self.get_globals_dict()
     fn = self._make_function(name, state.node, code, globs, defaults,
                              kw_defaults, annotations=annot, closure=free_vars)
+    if op.line in self.director.decorators:
+      fn.data[0].is_decorated = True
     self._process_function_type_comment(state.node, op, fn.data[0])
     self.trace_opcode(op, name, fn)
     self.trace_functiondef(fn)
@@ -2723,13 +2746,18 @@ class VirtualMachine(object):
   def byte_BUILD_CLASS(self, state, op):
     state, (name, _bases, members) = state.popn(3)
     bases = list(abstract_utils.get_atomic_python_constant(_bases))
-    node, cls = self.make_class(state.node, name, bases, members, None)
+    is_decorated = op.line in self.director.decorators
+    node, cls = self.make_class(state.node, name, bases, members, None,
+                                is_decorated=is_decorated)
     self.trace_classdef(cls)
     return state.change_cfg_node(node).push(cls)
 
   def byte_LOAD_BUILD_CLASS(self, state, op):
     # New in py3
     cls = abstract.BuildClass(self).to_variable(state.node)
+    if op.line in self.director.decorators:
+      # Will be copied into the abstract.InterpreterClass
+      cls.data[0].is_decorated = True
     self.trace_opcode(op, "", cls)
     return state.push(cls)
 

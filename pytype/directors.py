@@ -122,8 +122,11 @@ class Director(object):
     # Map from error name to lines for which that error is disabled.  Note
     # that _ALL_ERRORS is essentially a wildcard name (it matches all names).
     self._disables = collections.defaultdict(_LineSet)
-    # {line number: decorator name}
-    self._decorators = {}
+    # Line numbers of decorators. Since this is used to mark a class or function
+    # as decorated, stacked decorators will record the one closest to the
+    # definition (i.e. the last one). The python bytecode uses this line number
+    # for all the stacked decorator invocations.
+    self._decorators = set()
     # Apply global disable, from the command line arguments:
     for error_name in disable:
       self._disables[error_name].start_range(0, True)
@@ -187,8 +190,8 @@ class Director(object):
       last = line
       while last in all_ignored:
         last -= 1
-      self._decorators[last] = self._decorators[line]
-      del self._decorators[line]
+      self._decorators.add(last)
+      self._decorators.remove(line)
 
   def _parse_source(self, src):
     """Parse a source file, extracting directives from comments."""
@@ -196,7 +199,7 @@ class Director(object):
     defs_start = None
     closing_bracket_lines = set()
     whitespace_lines = set()
-    open_decorator = None
+    open_decorator = False
     for token in tokenize.generate_tokens(f.readline):
       tok = token.exact_type
       line = token.line
@@ -216,11 +219,12 @@ class Director(object):
             open_decorator = m.group(1)
       elif tok == tokenize.NAME:
         if open_decorator and token.string in ("class", "def"):
-          self.decorators[lineno - 1] = open_decorator
-          open_decorator = None
+          self.decorators.add(lineno - 1)
+          open_decorator = False
       else:
         if closing_bracket_lines:
           self._adjust_type_comments(closing_bracket_lines, whitespace_lines)
+        if closing_bracket_lines or whitespace_lines:
           self._adjust_decorators(closing_bracket_lines, whitespace_lines)
         closing_bracket_lines.clear()
         whitespace_lines.clear()
