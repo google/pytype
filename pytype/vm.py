@@ -88,12 +88,9 @@ class _FindIgnoredTypeComments(object):
   """A visitor that finds type comments that will be ignored."""
 
   def __init__(self, type_comments):
-    # Build sets of all lines with the associated style of type comment.
-    # Lines will be removed from these sets during visiting.  Any lines
-    # that remain at the end are type comments that will be ignored.
-    self._ignored_type_lines = set()
-    for line, _ in type_comments.items():
-      self._ignored_type_lines.add(line)
+    # Lines will be removed from this set during visiting. Any lines that remain
+    # at the end are type comments that will be ignored.
+    self._ignored_type_lines = set(type_comments)
 
   def visit_code(self, code):
     """Interface for pyc.visit."""
@@ -750,7 +747,7 @@ class VirtualMachine(object):
     pyc.visit(code, visitor)
     for line in visitor.ignored_lines():
       self.errorlog.ignored_type_comment(
-          self.filename, line, self.director.type_comments[line][1])
+          self.filename, line, self.director.type_comments[line])
 
     node = self.root_cfg_node.ConnectNew("init")
     node, f_globals, f_locals, _ = self.run_bytecode(node, code)

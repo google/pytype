@@ -330,11 +330,11 @@ class DirectorTest(unittest.TestCase):
     # comment with embedded # type: should-be-discarded
     """)
     self.assertEqual({
-        2: ("x = None", "int"),
-        3: ("y = None", "str"),
-        4: ("z = None", "int"),
-        5: ("a = None", "int"),
-        6: ("", "(int, float) -> str"),
+        2: "int",
+        3: "str",
+        4: "int",
+        5: "int",
+        6: "(int, float) -> str",
     }, self._director.type_comments)
 
   def test_strings_that_look_like_directives(self):
@@ -346,8 +346,8 @@ class DirectorTest(unittest.TestCase):
     y = "# type: int"  # type: str
     """)
     self.assertEqual({
-        3: ("x = None", "float"),
-        4: ('y = "# type: int"', "str"),
+        3: "float",
+        4: "str",
     }, self._director.type_comments)
 
   def test_type_comment_on_multiline_value(self):
@@ -360,7 +360,7 @@ class DirectorTest(unittest.TestCase):
     ]  # type: dict
     """)
     self.assertEqual({
-        4: ("]", "dict"),
+        4: "dict",
     }, self._director.type_comments)
 
   def test_type_comment_with_trailing_comma(self):
@@ -377,8 +377,8 @@ class DirectorTest(unittest.TestCase):
     ]  # type: dict
     """)
     self.assertEqual({
-        4: ("]", "dict"),
-        10: ("]", "dict"),
+        4: "dict",
+        10: "dict",
     }, self._director.type_comments)
 
   def test_decorators(self):

@@ -183,7 +183,7 @@ class BaseTest(unittest.TestCase):
       analyze.check_types(
           src, filename, loader=self.loader,
           errorlog=errorlog, options=self.options, **kwargs)
-    except directors.SkipFile:
+    except directors.SkipFileError:
       pass
     if report_errors and errorlog:
       errorlog.print_to_stderr()

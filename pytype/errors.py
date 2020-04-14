@@ -1,6 +1,5 @@
+# Lint as: python3
 """Code and data structures for storing and displaying errors."""
-
-from __future__ import print_function
 
 import collections
 import contextlib
@@ -549,8 +548,6 @@ class ErrorLog(ErrorLogBase):
       if bad_param and name == bad_param.name:
         type_str = self._print_as_expected_type(bad_param.expected)
         suffix = ": " + type_str + suffix
-      else:
-        suffix = suffix
       yield prefix, name, suffix
 
   def _iter_actual(self, sig, passed_args, bad_param):

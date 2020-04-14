@@ -390,8 +390,7 @@ def merge_type_comments(code, type_comments, docstrings):
   code = pyc.visit(code, visitor)
   for line, op in visitor.store_op_map.items():
     if line in type_comments:
-      _, comment = type_comments[line]
-      op.type_comment = comment
+      op.type_comment = type_comments[line]
 
   # Apply type comments to the MAKE_FUNCTION opcodes
   visitor = CollectFunctionTypeCommentTargetsVisitor()
@@ -407,9 +406,8 @@ def merge_type_comments(code, type_comments, docstrings):
     for i in range(start, end):
       # Take the first comment we find as the function typecomment.
       if i in type_comments:
-        _, comment = type_comments[i]
         # Record the line number of the comment for error messages.
-        op.type_comment = (comment, i)
+        op.type_comment = (type_comments[i], i)
         break
   return code
 

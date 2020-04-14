@@ -23,7 +23,7 @@ class _DirectiveError(Exception):
   pass
 
 
-class SkipFile(Exception):
+class SkipFileError(Exception):
   """Exception thrown if we encounter "pytype: skip-file" in the source code."""
 
 
@@ -114,7 +114,7 @@ class Director(object):
     """
     self._filename = filename
     self._errorlog = errorlog
-    self._type_comments = {}  # Map from line number to (code, comment).
+    self._type_comments = {}  # Map from line number to comment.
     self._docstrings = set()  # Start lines of docstrings.
     # Lines that have "type: ignore".  These will disable all errors, and in
     # the future may have other impact (such as not attempting an import).
@@ -172,7 +172,7 @@ class Director(object):
     target = min(closing_bracket_lines | whitespace_lines) - 1
     if target in self._type_comments:
       self._errorlog.ignored_type_comment(
-          self._filename, target, self._type_comments[target][1])
+          self._filename, target, self._type_comments[target])
       del self._type_comments[target]
     end = max(closing_bracket_lines)
     if end in self._type_comments:
@@ -204,15 +204,13 @@ class Director(object):
       tok = token.exact_type
       line = token.line
       lineno, col = token.start
+
+      # Check for the first line with a top-level class or function definition.
       if defs_start is None and _CLASS_OR_FUNC_RE.match(line):
         defs_start = lineno
-      if _CLOSING_BRACKETS_RE.match(line):
-        closing_bracket_lines.add(lineno)
-      elif _WHITESPACE_RE.match(line):
-        whitespace_lines.add(lineno)
-      elif _DOCSTRING_RE.match(line):
-        self._docstrings.add(lineno)
-      elif tok == tokenize.AT:
+
+      # Process the token.
+      if tok == tokenize.AT:
         if lineno not in self._decorators:
           m = _DECORATOR_RE.match(line)
           if m:
@@ -221,6 +219,14 @@ class Director(object):
         if open_decorator and token.string in ("class", "def"):
           self.decorators.add(lineno - 1)
           open_decorator = False
+      elif tok == tokenize.COMMENT:
+        self._process_comment(line, lineno, col)
+
+      # Track closing brackets and whitespace.
+      if _CLOSING_BRACKETS_RE.match(line):
+        closing_bracket_lines.add(lineno)
+      elif _WHITESPACE_RE.match(line):
+        whitespace_lines.add(lineno)
       else:
         if closing_bracket_lines:
           self._adjust_type_comments(closing_bracket_lines, whitespace_lines)
@@ -229,8 +235,9 @@ class Director(object):
         closing_bracket_lines.clear()
         whitespace_lines.clear()
 
-      if tok == tokenize.COMMENT:
-        self._process_comment(line, lineno, col)
+      # Record docstrings.
+      if _DOCSTRING_RE.match(line):
+        self._docstrings.add(lineno)
 
     if closing_bracket_lines:
       self._adjust_type_comments(closing_bracket_lines, whitespace_lines)
@@ -282,7 +289,7 @@ class Director(object):
       else:
         self._ignore.set_line(lineno, True)
     else:
-      self._type_comments[lineno] = (code, data)
+      self._type_comments[lineno] = data
 
   def _process_pytype(self, lineno, data, open_ended):
     """Process a pytype: comment."""
@@ -291,7 +298,7 @@ class Director(object):
     for option in data.split():
       # Parse the command.
       if option == "skip-file":
-        raise SkipFile()
+        raise SkipFileError()
       try:
         command, values = option.split("=", 1)
         values = values.split(",")
