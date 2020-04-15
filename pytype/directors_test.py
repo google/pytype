@@ -409,6 +409,14 @@ class DirectorTest(unittest.TestCase):
     self._create("if __random__: v: int = 0")
     self.assertEqual({1: "int"}, self._director.annotations)
 
+  def test_else_is_not_a_variable(self):
+    self._create("""
+      if __random__:
+        pass
+      else: v = 0
+    """)
+    self.assertFalse(self._director.annotations)
+
   def test_decorators(self):
     self._create("""
       class A:

@@ -207,5 +207,12 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
     self.assertErrorRegexes(
         errors, {"e": r"'str' for v.*Annotating an already defined variable"})
 
+  def testMultiLineAssignment(self):
+    ty = self.Infer("""
+      v: int = (
+          None)
+    """)
+    self.assertTypesMatchPytd(ty, "v: int")
+
 
 test_base.main(globals(), __name__ == "__main__")

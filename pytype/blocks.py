@@ -322,8 +322,6 @@ class CollectAnnotationTargetsVisitor(object):
 
 def _is_function_def(fn_code):
   """Helper function for CollectFunctionTypeCommentTargetsVisitor."""
-  assert isinstance(fn_code, pyc.loadmarshal.CodeType)
-
   # Reject anything that is not a named function (e.g. <lambda>).
   first = fn_code.co_name[0]
   if not (first == "_" or first.isalpha()):
@@ -378,7 +376,7 @@ def merge_annotations(code, annotations, docstrings):
   Modifies code in place.
 
   Args:
-    code: CodeType object that has been disassembled (see DisCodeVisitor).
+    code: An OrderedCode object.
     annotations: A map of lines to annotations.
     docstrings: A sorted list of lines starting docstrings.
 
@@ -412,7 +410,5 @@ def merge_annotations(code, annotations, docstrings):
   return code
 
 
-def process_code(code, annotations, docstrings):
-  code = pyc.visit(code, DisCodeVisitor())
-  code = merge_annotations(code, annotations, docstrings)
-  return pyc.visit(code, OrderCodeVisitor())
+def process_code(code):
+  return pyc.visit(pyc.visit(code, DisCodeVisitor()), OrderCodeVisitor())

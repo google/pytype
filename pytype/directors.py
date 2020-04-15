@@ -3,12 +3,18 @@
 
 import bisect
 import collections
+import itertools
+import keyword
+import logging
 import re
 import sys
 import tokenize
 
+from pytype import blocks
 from pytype import utils
 from six import moves
+
+log = logging.getLogger(__name__)
 
 _DIRECTIVE_RE = re.compile(r"#\s*(pytype|type)\s*:\s?([^#]*)")
 _IGNORE_RE = re.compile(r"^ignore(\[.+\])?$")
@@ -20,7 +26,7 @@ _DECORATOR_RE = re.compile(r"^\s*@(\w+)([(]|\s*$)")
 # Matches an annotated assignment, optionally preceded by a conditional
 # expression, e.g. `if __random__: v: Tuple[mod.X, 'ForwardRef'] = None`.
 _VAR_ANNOTATION_RE = re.compile(
-    r"^(.*:)?\s*\w+\s*:\s*(?P<annot>[\w\[\]'\",\. ]+?)\s*=")
+    r"^(.*:)?\s*(?P<target>\w+)\s*:\s*(?P<annot>[\w\[\]'\",\. ]+?)\s*=")
 _ALL_ERRORS = "*"  # Wildcard for disabling all errors.
 
 
@@ -131,6 +137,18 @@ class _FunctionDefinition:
     if lineno < self._start_line:
       return False
     return self._end_line is None or lineno <= self._end_line
+
+
+def _collect_bytecode(ordered_code):
+  bytecode_blocks = []
+  stack = [ordered_code]
+  while stack:
+    code = stack.pop()
+    bytecode_blocks.append(code.co_code)
+    for const in code.co_consts:
+      if isinstance(const, blocks.OrderedCode):
+        stack.append(const)
+  return bytecode_blocks
 
 
 class Director(object):
@@ -293,7 +311,11 @@ class Director(object):
       var_annot_match = _VAR_ANNOTATION_RE.match(line)
       if var_annot_match and (last_function_definition is None or
                               not last_function_definition.contains(lineno)):
-        self._variable_annotations[lineno] = var_annot_match.group("annot")
+        target = var_annot_match.group("target")
+        annot = var_annot_match.group("annot")
+        # Filter out false positives like `else: x = 0`.
+        if not keyword.iskeyword(target) and not keyword.iskeyword(annot):
+          self._variable_annotations[lineno] = annot
 
     if closing_bracket_lines:
       self._adjust_type_comments(closing_bracket_lines, whitespace_lines)
@@ -404,3 +426,22 @@ class Director(object):
     return (lineno not in self._ignore and
             lineno not in self._disables[_ALL_ERRORS] and
             lineno not in self._disables[error.name])
+
+  def adjust_line_numbers(self, code):
+    """Uses the bytecode to adjust line numbers for variable annotations."""
+    store_lines = set()
+    for opcode in itertools.chain.from_iterable(_collect_bytecode(code)):
+      if opcode.name.startswith("STORE_"):
+        store_lines.add(opcode.line)
+    max_line = max(store_lines, default=0)
+    for line, annot in sorted(self._variable_annotations.items()):
+      adjusted_line = line
+      while adjusted_line not in store_lines and adjusted_line <= max_line:
+        adjusted_line += 1
+      if adjusted_line > max_line:
+        log.error(
+            "No STORE_* opcode found for annotation %r on line %d", annot, line)
+        del self._variable_annotations[line]
+      elif adjusted_line != line:
+        self._variable_annotations[adjusted_line] = annot
+        del self._variable_annotations[line]
