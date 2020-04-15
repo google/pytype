@@ -183,7 +183,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     try:
       typ = abstract_utils.get_atomic_value(var)
     except abstract_utils.ConversionError:
-      error = "Type must be constant for variable annotation"
+      error = "Must be constant"
       self.vm.errorlog.invalid_annotation(self.vm.frames, None, error, name)
       return self.vm.new_unsolvable(node)
     else:
@@ -221,7 +221,9 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         if self.get_type_parameters(typ):
           self.vm.errorlog.not_supported_yet(
               self.vm.frames, "using type parameter in variable annotation")
-        _, value = self.vm.init_class(state.node, typ)
+          value = self.vm.new_unsolvable(state.node)
+        else:
+          _, value = self.vm.init_class(state.node, typ)
       else:
         value = self.vm.new_unsolvable(state.node)
     return value

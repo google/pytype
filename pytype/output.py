@@ -359,34 +359,6 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         yield name, pytd_utils.JoinTypes(
             value.get_instance_type(node) for value in annots[name].data)
 
-  def get_annotated_values(self, node, name, var, annots):
-    """Get visible values from var, combined with its annotation if present.
-
-    Args:
-      node: The current node.
-      name: The variable name.
-      var: A cfg.Variable.
-      annots: A dictionary of annotations.
-
-    Yields:
-      A tuple of an abstract value or pytd annotation and whether the value is
-      an annotation.
-    """
-    if name not in annots:
-      for value in var.FilteredData(self.vm.exitpoint, strict=False):
-        yield value, False
-      return
-    # Merges the annotations and values so they can be filtered as one variable.
-    combined_var = self.vm.program.NewVariable()
-    combined_var.PasteVariable(annots[name])
-    combined_var.PasteVariable(var)
-    values = set(var.data)
-    for value in combined_var.FilteredData(self.vm.exitpoint):
-      if value in values:
-        yield value, False
-      else:
-        yield value.get_instance_type(node), True
-
   def _function_call_to_return_type(
       self, sig, node, v, seen_return, num_returns):
     """Get a function call's pytd return type."""
@@ -543,11 +515,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     for name, member in v.members.items():
       if name in CLASS_LEVEL_IGNORE:
         continue
-      for value, is_annotation in self.get_annotated_values(
-          node, name, member, annots):
-        if is_annotation:
-          constants[name].add_type(value)
-          continue
+      for value in member.FilteredData(node):
         if isinstance(value, special_builtins.PropertyInstance):
           # For simplicity, output properties as constants, since our parser
           # turns them into constants anyway.

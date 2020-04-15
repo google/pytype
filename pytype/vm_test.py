@@ -3,6 +3,7 @@
 import dis
 import textwrap
 
+from pytype import analyze
 from pytype import blocks
 from pytype import compat
 from pytype import errors
@@ -220,6 +221,21 @@ class TraceTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     actual = [(op.name, op.line, symbol)
               for op, symbol, _ in self.trace_vm.opcode_traces]
     self.assertEqual(actual, expected)
+
+
+class AnnotationsTest(test_base.BaseTest, test_utils.MakeCodeMixin):
+  """Tests for recording annotations."""
+
+  def setUp(self):
+    super(AnnotationsTest, self).setUp()
+    self.errorlog = errors.ErrorLog()
+    self.vm = analyze.CallTracer(self.errorlog, self.options, self.loader)
+
+  def test_record_local_ops(self):
+    self.vm.run_program("v: int = None", "", maximum_depth=10)
+    self.assertEqual(self.vm.local_ops, {
+        "<module>": [vm.LocalOp(name="v", op=vm.LocalOp.ASSIGN),
+                     vm.LocalOp(name="v", op=vm.LocalOp.ANNOTATE)]})
 
 
 test_base.main(globals(), __name__ == "__main__")

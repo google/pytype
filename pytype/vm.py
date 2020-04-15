@@ -2101,7 +2101,7 @@ class VirtualMachine(object):
       else:
         val = self.annotations_util.process_annotation_var(
             state.node, val, name, self.simple_stack())
-        state = self._store_annotation(state, name, val)
+        state = self._record_annotation(state, name, val)
     state = self.store_subscr(state, obj, subscr, val)
     return state
 
@@ -2858,19 +2858,29 @@ class VirtualMachine(object):
     annotations = self.convert.build_map(state.node)
     return self.store_local(state, "__annotations__", annotations)
 
-  def _store_annotation(self, state, name, value):
-    """Store an annotation in the current locals dict."""
-    # Store the annotation, for use in attrs and dataclasses.
-    new_value = self.annotations_util.init_annotation_var(
-        state.node, name, value)
-    self._record_local(name, new_value)
-    # Now see if the variable is defined. If it is, replace its value with the
-    # new_value derived from the annotation.
+  def _record_annotation(self, state, name, value):
+    """Record a variable annotation."""
     try:
       self.load_local(state, name)
     except KeyError:
+      # An annotation on a not-yet-defined variable is recorded for use in attrs
+      # and dataclasses.
+      new_value = self.annotations_util.init_annotation_var(
+          state.node, name, value)
+      self._record_local(name, new_value)
       return state
-    return self.store_local(state, name, new_value)
+    # If the variable is defined, then either:
+    # (1) We have an annotated assignment (e.g., `v: int = 0`), which has
+    #     already been handled by annotations_util.apply_annotation, or
+    # (2) We are annotating an already defined variable (e.g.,
+    #       v = 0
+    #       v: str
+    #     ), which is forbidden.
+    if self.frame.current_opcode.line not in self.director.annotations:  # (2)
+      self.errorlog.invalid_annotation(
+          self.frames, self.merge_values(value.data),
+          details="Annotating an already defined variable", name=name)
+    return state
 
   def byte_STORE_ANNOTATION(self, state, op):
     """Implementation of the STORE_ANNOTATION opcode."""
@@ -2879,7 +2889,7 @@ class VirtualMachine(object):
     state, value = state.pop()
     value = self.annotations_util.process_annotation_var(
         state.node, value, name, self.simple_stack())
-    state = self._store_annotation(state, name, value)
+    state = self._record_annotation(state, name, value)
     name_var = self.convert.build_string(state.node, name)
     state = self.store_subscr(state, annotations_var, name_var, value)
     return self.store_local(state, "__annotations__", annotations_var)

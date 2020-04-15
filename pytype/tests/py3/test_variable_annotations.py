@@ -76,7 +76,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
         "e1": r"Name \'abc\' is not defined", "e2": r"Not a type",
         "e3": r"NoReturn is not allowed",
         "e4": r"type parameter.*variable annotation",
-        "e5": r"Type must be constant", "e6": r"NoReturn is not allowed"})
+        "e5": r"Must be constant", "e6": r"NoReturn is not allowed"})
 
   def testUninitializedClassAnnotation(self):
     ty = self.Infer("""
@@ -194,6 +194,18 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
         return x
     """)
     self.assertTypesMatchPytd(ty, "def f() -> int: ...")
+
+  def testMultiStatementLine(self):
+    ty = self.Infer("if __random__: v: int = None")
+    self.assertTypesMatchPytd(ty, "v: int")
+
+  def testRetypeDefinedVariable(self):
+    errors = self.CheckWithErrors("""
+      v = 0
+      v: str  # invalid-annotation[e]
+    """)
+    self.assertErrorRegexes(
+        errors, {"e": r"'str' for v.*Annotating an already defined variable"})
 
 
 test_base.main(globals(), __name__ == "__main__")

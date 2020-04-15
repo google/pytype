@@ -17,7 +17,10 @@ _WHITESPACE_RE = re.compile(r"^\s*(#.*)?$")
 _CLASS_OR_FUNC_RE = re.compile(r"^(def|class)\s")
 _DOCSTRING_RE = re.compile(r"^\s*(\"\"\"|''')")
 _DECORATOR_RE = re.compile(r"^\s*@(\w+)([(]|\s*$)")
-_VAR_ANNOTATION_RE = re.compile(r"^\s*\w+\s*:\s*(?P<annot>\w+)\s*=")
+# Matches an annotated assignment, optionally preceded by a conditional
+# expression, e.g. `if __random__: v: Tuple[mod.X, 'ForwardRef'] = None`.
+_VAR_ANNOTATION_RE = re.compile(
+    r"^(.*:)?\s*\w+\s*:\s*(?P<annot>[\w\[\]'\",\. ]+?)\s*=")
 _ALL_ERRORS = "*"  # Wildcard for disabling all errors.
 
 
