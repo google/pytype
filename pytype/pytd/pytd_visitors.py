@@ -700,7 +700,7 @@ class PrintVisitor(Visitor):
     """Convert a generic type to a string."""
     parameters = node.parameters
     if self._IsEmptyTuple(node):
-      return self.MaybeCapitalize(node.base_type) + "[()]"
+      parameters = ("()",)
     elif self._NeedsTupleEllipsis(node):
       parameters += ("...",)
     elif self._NeedsCallableEllipsis(self.old_node):
