@@ -125,8 +125,8 @@ class ContainerTest(test_base.TargetIndependentTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Tuple
-      layers = ...  # type: List[Tuple[Tuple[nothing, ...]]]
-      x = ...  # type: Tuple[nothing, ...]
+      layers = ...  # type: List[Tuple[Tuple[()]]]
+      x = ...  # type: Tuple[()]
     """)
 
   def testListConcat(self):

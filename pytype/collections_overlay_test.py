@@ -29,10 +29,10 @@ class NamedTupleAstTest(unittest.TestCase):
 
   def test_no_fields(self):
     nt = self._namedtuple_ast("X", []).Lookup("X")
-    self.assertEqual("Tuple[nothing, ...]",
+    self.assertEqual("Tuple[()]",
                      pytd_utils.Print(nt.Lookup("_fields").type))
     getnewargs_sig, = nt.Lookup("__getnewargs__").signatures
-    self.assertEqual("Tuple[nothing, ...]",
+    self.assertEqual("Tuple[()]",
                      pytd_utils.Print(getnewargs_sig.return_type))
     self.assertEqual("def __new__(cls: Type[_TX]) -> _TX: ...",
                      pytd_utils.Print(nt.Lookup("__new__")))
