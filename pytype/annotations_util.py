@@ -115,7 +115,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     if isinstance(annot, abstract.ParameterizedClass):
       # We track parameterized classes to avoid recursion errors when a class
       # contains itself.
-      seen |= {annot}
+      seen = seen | {annot}
     if isinstance(annot, abstract.TypeParameter):
       return [annot]
     elif isinstance(annot, abstract.TupleClass):

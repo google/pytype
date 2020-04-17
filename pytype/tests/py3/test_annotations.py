@@ -1017,6 +1017,14 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       def f(x: Dict[str, Any]) -> None: ...
     """)
 
+  def testCountTypeParameters(self):
+    self.Check("""
+      from typing import Callable, TypeVar
+      T = TypeVar('T')
+      def f() -> Callable[[Callable[..., T]], Callable[..., T]]:
+        return __any_object__
+    """)
+
 
 class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for PEP 484 style inline annotations."""
