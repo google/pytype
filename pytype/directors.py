@@ -23,10 +23,6 @@ _WHITESPACE_RE = re.compile(r"^\s*(#.*)?$")
 _CLASS_OR_FUNC_RE = re.compile(r"^(def|class)\s")
 _DOCSTRING_RE = re.compile(r"^\s*(\"\"\"|''')")
 _DECORATOR_RE = re.compile(r"^\s*@(\w+)([(]|\s*$)")
-# Matches an annotated assignment, optionally preceded by a conditional
-# expression, e.g. `if __random__: v: Tuple[mod.X, 'ForwardRef'] = None`.
-_VAR_ANNOTATION_RE = re.compile(
-    r"^(.*:)?\s*(?P<target>\w+)\s*:\s*(?P<annot>[\w\[\]'\",\. ]+?)\s*=")
 _ALL_ERRORS = "*"  # Wildcard for disabling all errors.
 
 
@@ -137,6 +133,53 @@ class _FunctionDefinition:
     if lineno < self._start_line:
       return False
     return self._end_line is None or lineno <= self._end_line
+
+
+class _VariableAnnotation:
+  """Processes a single logical line, looking for a variable annotation."""
+
+  @classmethod
+  def start(cls, token):
+    self = cls()
+    self.add_token(token)
+    return self
+
+  def __init__(self):
+    self._tokens = []
+    self.annotation = ""
+    # Set to True when the full annotation has been found, or if we determine
+    # that the line does not contain an annotation.
+    self.closed = False
+
+  def _accept(self, token):
+    if self.closed:
+      return False
+    # Allow comments and whitespace before the NAME token signifying the start
+    # of the annotation.
+    return token.exact_type != tokenize.COMMENT and token.string.strip()
+
+  def add_token(self, token):
+    """Process a token."""
+    if not self._accept(token):
+      return
+    # Match NAME COLON [annotation] EQUAL. We assume the annotation starts at
+    # the beginning of the line, which greatly simplifies matching at the cost
+    # of failing to find annotations in lines like `if __random__: v: int = 0`.
+    if not self._tokens:
+      # Filter out false positives like `else: x = 0`.
+      if token.exact_type != tokenize.NAME or keyword.iskeyword(token.string):
+        self.closed = True
+    elif len(self._tokens) == 1:
+      if token.exact_type != tokenize.COLON:
+        self.closed = True
+    elif token.exact_type == tokenize.EQUAL:
+      self.closed = True
+    else:
+      if self.annotation and self._tokens[-1].end[0] == token.start[0]:
+        # Preserve whitespace.
+        self.annotation += token.line[self._tokens[-1].end[1]:token.start[1]]
+      self.annotation += token.string
+    self._tokens.append(token)
 
 
 def _collect_bytecode(ordered_code):
@@ -260,6 +303,7 @@ class Director(object):
     whitespace_lines = set()
     open_decorator = False
     last_function_definition = None
+    open_variable_annotation = None
     for token in tokenize.generate_tokens(f.readline):
       tok = token.exact_type
       line = token.line
@@ -269,7 +313,7 @@ class Director(object):
       if defs_start is None and _CLASS_OR_FUNC_RE.match(line):
         defs_start = lineno
 
-      # Process the token.
+      # Process the token for decorators, function definitions, and comments.
       if tok == tokenize.AT:
         if lineno not in self._decorators:
           m = _DECORATOR_RE.match(line)
@@ -290,6 +334,21 @@ class Director(object):
         if last_function_definition:
           last_function_definition.add_rpar(lineno)
 
+      # Process the token for variable annotations.
+      if last_function_definition and last_function_definition.contains(lineno):
+        pass  # ignore function annotations
+      elif not open_variable_annotation:
+        open_variable_annotation = _VariableAnnotation.start(token)
+      elif tok in (tokenize.NEWLINE, tokenize.SEMI):
+        # NEWLINE indicates the end of a *logical* line of Python code, allowing
+        # us to handle annotations split over multiple lines.
+        annotation = open_variable_annotation.annotation
+        if annotation and open_variable_annotation.closed:
+          self._variable_annotations[lineno] = annotation
+        open_variable_annotation = None
+      else:
+        open_variable_annotation.add_token(token)
+
       # Track closing brackets and whitespace.
       if _CLOSING_BRACKETS_RE.match(line):
         closing_bracket_lines.add(lineno)
@@ -306,16 +365,6 @@ class Director(object):
       # Record docstrings.
       if _DOCSTRING_RE.match(line):
         self._docstrings.add(lineno)
-
-      # Record variable annotations.
-      var_annot_match = _VAR_ANNOTATION_RE.match(line)
-      if var_annot_match and (last_function_definition is None or
-                              not last_function_definition.contains(lineno)):
-        target = var_annot_match.group("target")
-        annot = var_annot_match.group("annot")
-        # Filter out false positives like `else: x = 0`.
-        if not keyword.iskeyword(target) and not keyword.iskeyword(annot):
-          self._variable_annotations[lineno] = annot
 
     if closing_bracket_lines:
       self._adjust_type_comments(closing_bracket_lines, whitespace_lines)
@@ -433,12 +482,11 @@ class Director(object):
     for opcode in itertools.chain.from_iterable(_collect_bytecode(code)):
       if opcode.name.startswith("STORE_"):
         store_lines.add(opcode.line)
-    max_line = max(store_lines, default=0)
     for line, annot in sorted(self._variable_annotations.items()):
       adjusted_line = line
-      while adjusted_line not in store_lines and adjusted_line <= max_line:
-        adjusted_line += 1
-      if adjusted_line > max_line:
+      while adjusted_line not in store_lines and adjusted_line >= 1:
+        adjusted_line -= 1
+      if adjusted_line < 1:
         log.error(
             "No STORE_* opcode found for annotation %r on line %d", annot, line)
         del self._variable_annotations[line]

@@ -195,6 +195,8 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, "def f() -> int: ...")
 
+  @test_base.skip("directors._VariableAnnotation assumes a variable annotation "
+                  "starts at the beginning of the line.")
   def testMultiStatementLine(self):
     ty = self.Infer("if __random__: v: int = None")
     self.assertTypesMatchPytd(ty, "v: int")
@@ -213,6 +215,25 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
           None)
     """)
     self.assertTypesMatchPytd(ty, "v: int")
+
+  def testComplexAssignment(self):
+    # Tests that when an assignment contains multiple STORE_* opcodes on
+    # different lines, we associate the annotation with the right one.
+    ty = self.Infer("""
+      from typing import Dict
+      def f():
+        column_map: Dict[str, Dict[str, bool]] = {
+            column: {
+                'visible': True
+            } for column in __any_object__.intersection(
+                __any_object__)
+        }
+        return column_map
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict
+      def f() -> Dict[str, Dict[str, bool]]: ...
+    """)
 
 
 test_base.main(globals(), __name__ == "__main__")

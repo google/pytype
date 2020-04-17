@@ -96,11 +96,11 @@ class LineSetTest(unittest.TestCase):
     self.assertRaises(ValueError, lines.start_range, 1, True)
 
 
-class DirectorTest(unittest.TestCase):
+class DirectorTestCase(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    super(DirectorTest, cls).setUpClass()
+    super(DirectorTestCase, cls).setUpClass()
     # Invoking the _error_name decorator will register the name as a valid
     # error name.
     for name in ["test-error", "test-other-error"]:
@@ -119,6 +119,9 @@ class DirectorTest(unittest.TestCase):
     self.assertEqual(
         expected,
         self._director.should_report_error(error))
+
+
+class DirectorTest(DirectorTestCase):
 
   def test_ignore_globally(self):
     self._create("", ["my-error"])
@@ -381,42 +384,6 @@ class DirectorTest(unittest.TestCase):
         10: "dict",
     }, self._director.type_comments)
 
-  def test_annotations(self):
-    self._create("""
-      v1: int = 0
-      def f():
-        v2: str = ''
-    """)
-    self.assertEqual({2: "int", 4: "str"}, self._director.annotations)
-
-  def test_annotations_precedence(self):
-    self._create("v: int = 0  # type: str")
-    # Variable annotations take precedence. vm.py's _FindIgnoredTypeComments
-    # warns about the ignored comment.
-    self.assertEqual({1: "int"}, self._director.annotations)
-
-  def test_parameter_annotation(self):
-    # director.annotations contains only variable annotations and function type
-    # comments, so a parameter annotation should be ignored.
-    self._create("""
-      def f(
-          x: int = 0):
-        pass
-    """)
-    self.assertFalse(self._director.annotations)
-
-  def test_annotation_in_multistatement_line(self):
-    self._create("if __random__: v: int = 0")
-    self.assertEqual({1: "int"}, self._director.annotations)
-
-  def test_else_is_not_a_variable(self):
-    self._create("""
-      if __random__:
-        pass
-      else: v = 0
-    """)
-    self.assertFalse(self._director.annotations)
-
   def test_decorators(self):
     self._create("""
       class A:
@@ -453,6 +420,96 @@ class DirectorTest(unittest.TestCase):
     self.assertEqual({
         6  # foo
     }, self._director._decorators)
+
+
+class VariableAnnotationsTest(DirectorTestCase):
+
+  def test_annotations(self):
+    self._create("""
+      v1: int = 0
+      def f():
+        v2: str = ''
+    """)
+    self.assertEqual({2: "int", 4: "str"}, self._director.annotations)
+
+  def test_precedence(self):
+    self._create("v: int = 0  # type: str")
+    # Variable annotations take precedence. vm.py's _FindIgnoredTypeComments
+    # warns about the ignored comment.
+    self.assertEqual({1: "int"}, self._director.annotations)
+
+  def test_parameter_annotation(self):
+    # director.annotations contains only variable annotations and function type
+    # comments, so a parameter annotation should be ignored.
+    self._create("""
+      def f(
+          x: int = 0):
+        pass
+    """)
+    self.assertFalse(self._director.annotations)
+
+  @unittest.skip("directors._VariableAnnotation assumes a variable "
+                   "annotation starts at the beginning of the line.")
+  def test_multistatement_line(self):
+    self._create("""
+      if __random__: v1: int = 0
+      else: v2: str = ''
+    """)
+    self.assertEqual({2: "int", 3: "str"}, self._director.annotations)
+
+  def test_multistatement_line_no_annotation(self):
+    self._create("""
+      if __random__: v = 0
+      else: v = 1
+    """)
+    self.assertFalse(self._director.annotations)
+
+  def test_comment_is_not_an_annotation(self):
+    self._create("# TODO(b/xxx): pylint: disable=invalid-name")
+    self.assertFalse(self._director.annotations)
+
+  def test_string_is_not_an_annotation(self):
+    self._create("""
+      logging.info('%s: completed: response=%s',  s1, s2)
+      f(':memory:', bar=baz)
+    """)
+    self.assertFalse(self._director.annotations)
+
+  def test_multiline_annotation(self):
+    self._create("""
+      v: Callable[
+          [], int] = None
+    """)
+    self.assertEqual({3: "Callable[[], int]"}, self._director.annotations)
+
+  def test_multiline_assignment(self):
+    self._create("""
+      v: List[int] = [
+          0,
+          1,
+      ]
+    """)
+    self.assertEqual({5: "List[int]"}, self._director.annotations)
+
+  def test_complicated_annotation(self):
+    self._create("v: int if __random__ else str = None")
+    self.assertEqual(
+        {1: "int if __random__ else str"}, self._director.annotations)
+
+  def test_colon_in_value(self):
+    self._create("v: Dict[str, int] = {x: y}")
+    self.assertEqual({1: "Dict[str, int]"}, self._director.annotations)
+
+  def test_equals_sign_in_value(self):
+    self._create("v = {x: f(y=0)}")
+    self.assertFalse(self._director.annotations)
+
+  def test_annotation_after_comment(self):
+    self._create("""
+      # comment
+      v: int = 0
+    """)
+    self.assertEqual({3: "int"}, self._director.annotations)
 
 
 if __name__ == "__main__":
