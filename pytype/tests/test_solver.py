@@ -19,7 +19,7 @@ class SolverTests(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
     from typing import List, Tuple
     class Node(object):
-      children = ...  # type: List[nothing, ...] or Tuple[nothing, ...]
+      children = ...  # type: List[nothing, ...] or Tuple[()]
     """)
 
   def testCall(self):

@@ -106,7 +106,7 @@ class TupleTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
-      x = ...  # type: Tuple[nothing, ...]
+      x = ...  # type: Tuple[()]
       y = ...  # type: int
     """)
 

@@ -325,6 +325,11 @@ class PrintVisitor(Visitor):
     split_result = (self._EscapedName(piece) for piece in split_name)
     return ".".join(split_result)
 
+  def _IsEmptyTuple(self, t):
+    """Check if it is an empty tuple."""
+    assert isinstance(t, pytd.GenericType)
+    return t.base_type == "tuple" and t.parameters == ("nothing",)
+
   def _NeedsTupleEllipsis(self, t):
     """Do we need to use Tuple[x, ...] instead of Tuple[x]?"""
     assert isinstance(t, pytd.GenericType)
@@ -694,7 +699,9 @@ class PrintVisitor(Visitor):
   def VisitGenericType(self, node):
     """Convert a generic type to a string."""
     parameters = node.parameters
-    if self._NeedsTupleEllipsis(node):
+    if self._IsEmptyTuple(node):
+      parameters = ("()",)
+    elif self._NeedsTupleEllipsis(node):
       parameters += ("...",)
     elif self._NeedsCallableEllipsis(self.old_node):
       parameters = ("...",) + parameters[1:]

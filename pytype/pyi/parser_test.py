@@ -586,7 +586,7 @@ class HomogeneousTypeTest(_ParserTestBase):
     """, """
       from typing import Tuple
 
-      def f() -> Tuple[nothing, ...]: ...
+      def f() -> Tuple[()]: ...
     """)
 
   def test_simple(self):
@@ -613,7 +613,7 @@ class NamedTupleTest(_ParserTestBase):
 
       _Tnamedtuple-foo-0 = TypeVar('_Tnamedtuple-foo-0', bound=`namedtuple-foo-0`)
 
-      class `namedtuple-foo-0`(Tuple[nothing, ...]):
+      class `namedtuple-foo-0`(Tuple[()]):
           __slots__ = []
           _asdict: Any
           __dict__: Any
@@ -704,7 +704,7 @@ class NamedTupleTest(_ParserTestBase):
 
       _Tnamedtuple-X-0 = TypeVar('_Tnamedtuple-X-0', bound=`namedtuple-X-0`)
 
-      class `namedtuple-X-0`(Tuple[nothing, ...]):
+      class `namedtuple-X-0`(Tuple[()]):
           __slots__ = []
           _asdict: Any
           __dict__: Any
@@ -723,7 +723,7 @@ class NamedTupleTest(_ParserTestBase):
 
       _Tnamedtuple-X-0 = TypeVar('_Tnamedtuple-X-0', bound=`namedtuple-X-0`)
 
-      class `namedtuple-X-0`(Tuple[nothing, ...]):
+      class `namedtuple-X-0`(Tuple[()]):
           __slots__ = []
           _asdict: Any
           __dict__: Any
