@@ -393,13 +393,19 @@ def merge_annotations(code, annotations, docstrings):
   # Apply type comments to the MAKE_FUNCTION opcodes
   visitor = CollectFunctionTypeCommentTargetsVisitor()
   code = pyc.visit(code, visitor)
-  for start, end, op in visitor.make_function_ops:
+  # To avoid associating a docstring with multiple functions when a one-line
+  # function is followed by a body-less function with a docstring, we do not
+  # search for a function's docstring past the start of the next function.
+  max_line = None
+  for start, end, op in sorted(visitor.make_function_ops, reverse=True):
     if start > end:
-      # This is a function with no body code, just a docstring. Find the
-      # associated docstring and use it as the new 'end'
+      # This is either a one-line function like `def f(): pass` or a function
+      # with no body code, just a docstring. If we find an associated docstring,
+      # use it as the new 'end'.
       i = bisect.bisect_left(docstrings, start)
       if i != len(docstrings):
-        end = docstrings[i]
+        end = min(max_line, docstrings[i]) if max_line else docstrings[i]
+    max_line = start
 
     for i in range(start, end):
       # Take the first comment we find as the function typecomment.

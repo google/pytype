@@ -251,6 +251,18 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"int.*str.*constant"})
 
+  def testOneLineFunction(self):
+    ty = self.Infer("""
+      def f(): return 0
+      def g():
+        # type: () -> None
+        '''Docstring.'''
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> int: ...
+      def g() -> None: ...
+    """)
+
 
 class AssignmentCommentTest(test_base.TargetIndependentTest):
   """Tests for type comments applied to assignments."""
