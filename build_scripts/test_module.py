@@ -156,7 +156,9 @@ def _get_members_list(parent_object):
 
 
 def run_tests_in_class(class_object, options, reporter):
-  """Run test methods in a class and return the number of failing methods.."""
+  """Run test methods in a class and return the number of failing methods."""
+  if getattr(class_object, "__unittest_skip__", False):
+    return 0
   result = 0
   class_object.setUpClass()
   reporter.report_class(class_object.__name__)
