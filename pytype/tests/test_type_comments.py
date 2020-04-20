@@ -79,6 +79,13 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
         return True  # bad-return-type
     """)
 
+  def testFunctionCommentOnDefLine(self):
+    ty = self.Infer("""
+      def f(x):  # type: (int) -> int
+        return x
+    """)
+    self.assertTypesMatchPytd(ty, "def f(x: int) -> int: ...")
+
   def testMultipleFunctionComments(self):
     _, errors = self.InferWithErrors("""
       def f(x):
@@ -649,6 +656,24 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       class Foo(object):
         def __init__(self):
           self.x = None  # type: "Bar"  # name-error
+    """)
+
+  def testDictTypeComment(self):
+    self.Check("""
+      from typing import Any, Callable, Dict, Tuple
+      d = {
+          'a': 'long'
+               'string'
+               'value'
+      }  # type: Dict[str, str]
+    """)
+
+  def testBreakOnPeriod(self):
+    self.Check("""
+      really_really_really_long_module_name = None  # type: module
+      d = {}
+      v = d.get('key', (really_really_really_long_module_name.
+                        also_long_attribute_name))  # type: int
     """)
 
 

@@ -238,4 +238,75 @@ class AnnotationsTest(test_base.BaseTest, test_utils.MakeCodeMixin):
                      vm.LocalOp(name="v", op=vm.LocalOp.ANNOTATE)]})
 
 
+class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
+
+  def setUp(self):
+    super(DirectorLineNumbersTest, self).setUp()
+    self.errorlog = errors.ErrorLog()
+    self.vm = analyze.CallTracer(self.errorlog, self.options, self.loader)
+
+  def test_type_comment_on_multiline_value(self):
+    self.vm.run_program(textwrap.dedent("""
+      v = [
+        ("hello",
+         "world",  # type: should_be_ignored
+
+        )
+      ]  # type: dict
+    """), "", maximum_depth=10)
+    self.assertEqual({
+        4: "dict",
+    }, self.vm.director.type_comments)
+
+  def test_type_comment_with_trailing_comma(self):
+    self.vm.run_program(textwrap.dedent("""
+      v = [
+        ("hello",
+         "world"
+        ),
+      ]  # type: dict
+      w = [
+        ["hello",
+         "world"
+        ],  # some comment
+      ]  # type: dict
+    """), "", maximum_depth=10)
+    self.assertEqual({
+        4: "dict",
+        9: "dict",
+    }, self.vm.director.type_comments)
+
+  def test_decorators(self):
+    self.vm.run_program(textwrap.dedent("""
+      class A:
+        '''
+        @decorator in a docstring
+        '''
+        @real_decorator
+        def f(x):
+          x = foo @ bar @ baz
+
+        @decorator(
+            x, y
+        )
+
+        def bar():
+          pass
+    """), "", maximum_depth=10)
+    self.assertEqual(self.vm.director.decorators, {6, 11})
+
+  def test_stacked_decorators(self):
+    self.vm.run_program(textwrap.dedent("""
+      @decorator(
+          x, y
+      )
+
+      @foo
+
+      class A:
+          pass
+    """), "", maximum_depth=10)
+    self.assertEqual(self.vm.director.decorators, {6})
+
+
 test_base.main(globals(), __name__ == "__main__")

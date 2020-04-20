@@ -354,6 +354,7 @@ class DirectorTest(DirectorTestCase):
     }, self._director.type_comments)
 
   def test_type_comment_on_multiline_value(self):
+    # should_be_ignored will be filtered out later by adjust_line_numbers.
     self._create("""
     v = [
       ("hello",
@@ -363,7 +364,8 @@ class DirectorTest(DirectorTestCase):
     ]  # type: dict
     """)
     self.assertEqual({
-        4: "dict",
+        4: "should_be_ignored",
+        7: "dict",
     }, self._director.type_comments)
 
   def test_type_comment_with_trailing_comma(self):
@@ -380,8 +382,8 @@ class DirectorTest(DirectorTestCase):
     ]  # type: dict
     """)
     self.assertEqual({
-        4: "dict",
-        10: "dict",
+        6: "dict",
+        11: "dict",
     }, self._director.type_comments)
 
   def test_decorators(self):
@@ -403,7 +405,7 @@ class DirectorTest(DirectorTestCase):
     """)
     self.assertEqual({
         6,  # real_decorator
-        11  # decorator
+        13  # decorator
     }, self._director._decorators)
 
   def test_stacked_decorators(self):
@@ -418,7 +420,7 @@ class DirectorTest(DirectorTestCase):
           pass
     """)
     self.assertEqual({
-        6  # foo
+        7  # foo
     }, self._director._decorators)
 
 

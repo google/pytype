@@ -1,7 +1,6 @@
 """Functions for computing the execution order of bytecode."""
 
 import bisect
-import collections
 import itertools
 
 from pytype.pyc import loadmarshal
@@ -309,14 +308,35 @@ class CollectAnnotationTargetsVisitor(object):
   def __init__(self):
     # A mutable map of line: opcode for STORE_* opcodes. This is modified as the
     # visitor runs, and contains the last opcode for each line.
-    self.store_op_map = collections.defaultdict(None)
+    self.store_ops = {}
+    # A mutable map of start: (end, opcode) for MAKE_FUNCTION opcodes. This is
+    # modified as the visitor runs, and contains the range of lines that could
+    # contain function type comments.
+    self.make_function_ops = {}
 
   def visit_code(self, code):
-    # For type comments attached to multi-opcode lines, we want to mark the
-    # latest 'store' opcode and attach the type comment to it.
-    for op in code.co_code:
-      if isinstance(op, STORE_OPCODES):
-        self.store_op_map[op.line] = op
+    """Find STORE_* and MAKE_FUNCTION opcodes for attaching annotations."""
+    # Offset between function code and MAKE_FUNCTION
+    if code.python_version < (3, 4):
+      # [LOAD_CONST <code>, MAKE_FUNCTION]
+      offset = 1
+    else:
+      # [LOAD_CONST <code>, LOAD_CONST name, MAKE_FUNCTION]
+      offset = 2
+    for i, op in enumerate(code.co_code):
+      if isinstance(op, opcodes.MAKE_FUNCTION):
+        code_op = code.co_code[i - offset]
+        assert isinstance(code_op, CODE_LOADING_OPCODES)
+        fn_code = code.co_consts[code_op.arg]
+        if not _is_function_def(fn_code):
+          continue
+        end_line = fn_code.co_code[0].line  # First line of code in body.
+        self.make_function_ops[op.line] = (end_line, op)
+      elif (isinstance(op, STORE_OPCODES) and
+            op.line not in self.make_function_ops):
+        # For type comments attached to multi-opcode lines, we want to mark the
+        # latest 'store' opcode and attach the type comment to it.
+        self.store_ops[op.line] = op
     return code
 
 
@@ -337,39 +357,6 @@ def _is_function_def(fn_code):
   return True
 
 
-class CollectFunctionTypeCommentTargetsVisitor(object):
-  """Collect opcodes that might have function type comments attached.
-
-  Depends on DisCodeVisitor having been run first.
-  """
-
-  def __init__(self):
-    # A mutable list of (start, end, opcode) for MAKE_FUNCTION opcodes. This is
-    # modified as the visitor runs, and contains the range of lines that could
-    # contain function type comments.
-    self.make_function_ops = []
-
-  def visit_code(self, code):
-    """Find MAKE_FUNCTION opcodes and record the comment line range."""
-    # Offset between function code and MAKE_FUNCTION
-    if code.python_version < (3, 4):
-      # [LOAD_CONST <code>, MAKE_FUNCTION]
-      offset = 1
-    else:
-      # [LOAD_CONST <code>, LOAD_CONST name, MAKE_FUNCTION]
-      offset = 2
-    for i, op in enumerate(code.co_code):
-      if isinstance(op, opcodes.MAKE_FUNCTION):
-        code_op = code.co_code[i - offset]
-        assert isinstance(code_op, CODE_LOADING_OPCODES)
-        fn_code = code.co_consts[code_op.arg]
-        if not _is_function_def(fn_code):
-          continue
-        end_line = fn_code.co_code[0].line  # First line of code in body.
-        self.make_function_ops.append((op.line + 1, end_line, op))
-    return code
-
-
 def merge_annotations(code, annotations, docstrings):
   """Merges type comments into their associated opcodes.
 
@@ -383,22 +370,22 @@ def merge_annotations(code, annotations, docstrings):
   Returns:
     The code with annotations added to the relevant opcodes.
   """
-  # Apply type comments to the STORE_* opcodes
   visitor = CollectAnnotationTargetsVisitor()
   code = pyc.visit(code, visitor)
-  for line, op in visitor.store_op_map.items():
+
+  # Apply type comments to the STORE_* opcodes
+  for line, op in visitor.store_ops.items():
     if line in annotations:
       op.annotation = annotations[line]
 
   # Apply type comments to the MAKE_FUNCTION opcodes
-  visitor = CollectFunctionTypeCommentTargetsVisitor()
-  code = pyc.visit(code, visitor)
   # To avoid associating a docstring with multiple functions when a one-line
   # function is followed by a body-less function with a docstring, we do not
   # search for a function's docstring past the start of the next function.
   max_line = None
-  for start, end, op in sorted(visitor.make_function_ops, reverse=True):
-    if start > end:
+  for start, (end, op) in sorted(
+      visitor.make_function_ops.items(), reverse=True):
+    if start == end:
       # This is either a one-line function like `def f(): pass` or a function
       # with no body code, just a docstring. If we find an associated docstring,
       # use it as the new 'end'.

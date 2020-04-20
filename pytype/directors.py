@@ -18,8 +18,6 @@ log = logging.getLogger(__name__)
 
 _DIRECTIVE_RE = re.compile(r"#\s*(pytype|type)\s*:\s?([^#]*)")
 _IGNORE_RE = re.compile(r"^ignore(\[.+\])?$")
-_CLOSING_BRACKETS_RE = re.compile(r"^(\s*[]})]\s*)+,?(#.*)?$")
-_WHITESPACE_RE = re.compile(r"^\s*(#.*)?$")
 _CLASS_OR_FUNC_RE = re.compile(r"^(def|class)\s")
 _DOCSTRING_RE = re.compile(r"^\s*(\"\"\"|''')")
 _DECORATOR_RE = re.compile(r"^\s*@(\w+)([(]|\s*$)")
@@ -104,6 +102,19 @@ class _LineSet(object):
     if len(self._transitions) % 2 == 1 and self._transitions[-1] >= lineno:
       return self._transitions[-1]
     return None
+
+
+class _TypeCommentSet:
+  """A set of type comments in a single logical line."""
+
+  @classmethod
+  def start(cls, lineno):
+    return cls(lineno)
+
+  def __init__(self, start_lineno):
+    self.start_line = start_lineno
+    self.end_line = None
+    self.type_comments = {}
 
 
 class _FunctionDefinition:
@@ -209,7 +220,7 @@ class Director(object):
     """
     self._filename = filename
     self._errorlog = errorlog
-    self._type_comments = {}  # Map from line number to comment.
+    self._type_comments = []  # _TypeCommentSet objects.
     self._variable_annotations = {}  # Map from line number to annotation.
     self._docstrings = set()  # Start lines of docstrings.
     # Lines that have "type: ignore".  These will disable all errors, and in
@@ -231,13 +242,13 @@ class Director(object):
 
   @property
   def type_comments(self):
-    return self._type_comments
+    return collections.ChainMap(*(s.type_comments for s in self._type_comments))
 
   @property
   def annotations(self):
     # It's okay to overwrite type comments with variable annotations here
     # because _FindIgnoredTypeComments in vm.py will flag ignored comments.
-    return {**self._type_comments, **self._variable_annotations}
+    return {**self.type_comments, **self._variable_annotations}
 
   @property
   def docstrings(self):
@@ -251,56 +262,11 @@ class Director(object):
   def decorators(self):
     return self._decorators
 
-  def _adjust_type_comments(self, closing_bracket_lines, whitespace_lines):
-    """Adjust any type comments affected by closing bracket lines.
-
-    Lines that contain nothing but closing brackets don't appear in the
-    bytecode, so for, e.g.,
-      v = [
-        "hello",
-        "world",
-      ]  # line 4
-    line 4 is where any type comment for 'v' should be put, but the
-    STORE_NAME opcode for 'v' is at line 3. If we find a type comment put
-    (wrongly) on line 3, we'll report an error, and if we find a type comment
-    on line 4, we'll move it to line 3.
-
-    Args:
-      closing_bracket_lines: A set of lines containing only closing brackets,
-        to be used for adjusting affected type comments.
-      whitespace_lines: A set of lines containing only whitespace. Its union
-        with closing_bracket_lines is a set of consecutive lines.
-    """
-    target = min(closing_bracket_lines | whitespace_lines) - 1
-    if target in self._type_comments:
-      self._errorlog.ignored_type_comment(
-          self._filename, target, self._type_comments[target])
-      del self._type_comments[target]
-    end = max(closing_bracket_lines)
-    if end in self._type_comments:
-      self._type_comments[target] = self._type_comments[end]
-      del self._type_comments[end]
-
-  def _adjust_decorators(self, closing_bracket_lines, whitespace_lines):
-    """Adjust any decorators affected by closing bracket lines."""
-
-    # See self._adjust_type_comments() for the reasoning behind this.
-
-    all_ignored = closing_bracket_lines | whitespace_lines
-    line = max(all_ignored)
-    if line in self._decorators:
-      last = line
-      while last in all_ignored:
-        last -= 1
-      self._decorators.add(last)
-      self._decorators.remove(line)
-
   def _parse_source(self, src):
     """Parse a source file, extracting directives from comments."""
     f = moves.StringIO(src)
     defs_start = None
-    closing_bracket_lines = set()
-    whitespace_lines = set()
+    open_type_comment_set = _TypeCommentSet.start(1)
     open_decorator = False
     last_function_definition = None
     open_variable_annotation = None
@@ -315,10 +281,8 @@ class Director(object):
 
       # Process the token for decorators, function definitions, and comments.
       if tok == tokenize.AT:
-        if lineno not in self._decorators:
-          m = _DECORATOR_RE.match(line)
-          if m:
-            open_decorator = m.group(1)
+        if _DECORATOR_RE.match(line):
+          open_decorator = True
       elif tok == tokenize.NAME:
         if open_decorator and token.string in ("class", "def"):
           self.decorators.add(lineno - 1)
@@ -326,13 +290,18 @@ class Director(object):
         if token.string == "def":
           last_function_definition = _FunctionDefinition.start(lineno)
       elif tok == tokenize.COMMENT:
-        self._process_comment(line, lineno, col)
+        self._process_comment(line, lineno, col, open_type_comment_set)
       elif tok == tokenize.LPAR:
         if last_function_definition:
           last_function_definition.add_lpar(lineno)
       elif tok == tokenize.RPAR:
         if last_function_definition:
           last_function_definition.add_rpar(lineno)
+      elif tok in (tokenize.NEWLINE, tokenize.ENDMARKER):
+        if open_type_comment_set.type_comments:
+          open_type_comment_set.end_line = lineno
+          self._type_comments.append(open_type_comment_set)
+        open_type_comment_set = _TypeCommentSet.start(lineno + 1)
 
       # Process the token for variable annotations.
       if last_function_definition and last_function_definition.contains(lineno):
@@ -349,25 +318,10 @@ class Director(object):
       else:
         open_variable_annotation.add_token(token)
 
-      # Track closing brackets and whitespace.
-      if _CLOSING_BRACKETS_RE.match(line):
-        closing_bracket_lines.add(lineno)
-      elif _WHITESPACE_RE.match(line):
-        whitespace_lines.add(lineno)
-      else:
-        if closing_bracket_lines:
-          self._adjust_type_comments(closing_bracket_lines, whitespace_lines)
-        if closing_bracket_lines or whitespace_lines:
-          self._adjust_decorators(closing_bracket_lines, whitespace_lines)
-        closing_bracket_lines.clear()
-        whitespace_lines.clear()
-
       # Record docstrings.
       if _DOCSTRING_RE.match(line):
         self._docstrings.add(lineno)
 
-    if closing_bracket_lines:
-      self._adjust_type_comments(closing_bracket_lines, whitespace_lines)
     if defs_start is not None:
       disables = list(self._disables.items())
       # Add "# type: ignore" to the list of disables that we check.
@@ -377,7 +331,7 @@ class Director(object):
         if lineno is not None:
           self._errorlog.late_directive(self._filename, lineno, name)
 
-  def _process_comment(self, line, lineno, col):
+  def _process_comment(self, line, lineno, col, type_comment_set):
     """Process a single comment."""
     matches = list(_DIRECTIVE_RE.finditer(line[col:]))
     is_nested = bool(matches) and matches[0].start(0) > 0
@@ -387,7 +341,7 @@ class Director(object):
       open_ended = not code
       data = data.strip()
       if tool == "type":
-        self._process_type(lineno, code, data, is_nested)
+        self._process_type(lineno, code, data, is_nested, type_comment_set)
       elif tool == "pytype":
         try:
           self._process_pytype(lineno, data, open_ended)
@@ -397,12 +351,12 @@ class Director(object):
       else:
         pass  # ignore comments for other tools
 
-  def _process_type(self, lineno, code, data, is_nested):
+  def _process_type(self, lineno, code, data, is_nested, type_comment_set):
     """Process a type: comment."""
     # Discard type comments embedded in larger whole-line comments.
     if not code and is_nested:
       return
-    if lineno in self._type_comments:
+    if lineno in type_comment_set.type_comments:
       # If we have multiple type comments on the same line, take the last one,
       # but add an error to the log.
       self._errorlog.invalid_directive(
@@ -416,7 +370,7 @@ class Director(object):
       else:
         self._ignore.set_line(lineno, True)
     else:
-      self._type_comments[lineno] = data
+      type_comment_set.type_comments[lineno] = data
 
   def _process_pytype(self, lineno, data, open_ended):
     """Process a pytype: comment."""
@@ -477,16 +431,49 @@ class Director(object):
             lineno not in self._disables[error.name])
 
   def adjust_line_numbers(self, code):
-    """Uses the bytecode to adjust line numbers for variable annotations."""
+    """Uses the bytecode to adjust line numbers."""
     store_lines = set()
+    make_function_lines = set()
     for opcode in itertools.chain.from_iterable(_collect_bytecode(code)):
       if opcode.name.startswith("STORE_"):
         store_lines.add(opcode.line)
-    for line, annot in sorted(self._variable_annotations.items()):
+      elif opcode.name == "MAKE_FUNCTION":
+        make_function_lines.add(opcode.line)
+
+    def adjust(line, allowed_lines, min_line=1):
       adjusted_line = line
-      while adjusted_line not in store_lines and adjusted_line >= 1:
+      while adjusted_line not in allowed_lines and adjusted_line >= min_line:
         adjusted_line -= 1
-      if adjusted_line < 1:
+      return adjusted_line if adjusted_line >= min_line else None
+
+    # Process type comments.
+    for type_comment_set in self._type_comments:
+      for line, comment in sorted(type_comment_set.type_comments.items()):
+        adjusted_line = adjust(line, store_lines, type_comment_set.start_line)
+        if not adjusted_line:
+          # vm._FindIgnoredTypeComments will take care of error reporting.
+          continue
+        if line != type_comment_set.end_line:
+          self._errorlog.ignored_type_comment(self._filename, line, comment)
+          del type_comment_set.type_comments[line]
+        elif adjusted_line != line:
+          type_comment_set.type_comments[adjusted_line] = comment
+          del type_comment_set.type_comments[line]
+
+    # Process decorators.
+    for line in sorted(self._decorators):
+      adjusted_line = adjust(line, make_function_lines)
+      if not adjusted_line:
+        log.error(
+            "No MAKE_FUNCTION opcode found for decorator on line %d", line)
+      elif adjusted_line != line:
+        self._decorators.add(adjusted_line)
+        self._decorators.remove(line)
+
+    # Process variable annotations.
+    for line, annot in sorted(self._variable_annotations.items()):
+      adjusted_line = adjust(line, store_lines)
+      if not adjusted_line:
         log.error(
             "No STORE_* opcode found for annotation %r on line %d", annot, line)
         del self._variable_annotations[line]
