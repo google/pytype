@@ -1002,5 +1002,25 @@ class TestFunctions(test_base.TargetIndependentTest):
       def g() -> str: ...
     """)
 
+  def test_function_type(self):
+    self.Check("""
+      import types
+      def f(x: types.FunctionType):
+        pass
+      f(lambda: None)
+    """)
+
+  def test_new_function(self):
+    ty = self.Infer("""
+      import types
+      def new_function(code, globals):
+        return types.FunctionType(code, globals)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable
+      types: module
+      def new_function(code, globals) -> Callable: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

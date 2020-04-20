@@ -271,7 +271,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
         pass
       def f(x: Foo):
         pass
-      f(Bar())
+      f(Bar(__any_object__, __any_object__))
     """)
 
   def testInitTestClassInSetup(self):

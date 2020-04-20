@@ -41,6 +41,9 @@ class Callable(Generic[_ARGS, _RET], Protocol):
     func_name = ...  # type: str
   else:
     __qualname__ = ...  # type: str
+  # Copied from types.FunctionType.__init__ with some types changed to Any.
+  def __init__(self, code: Any, globals: Dict[str, Any], name: Optional[str] = ..., argdefs: Optional[Tuple[object, ...]] = ..., closure: Optional[Tuple[Any, ...]] = ...) -> None:
+    self = Callable[..., Any]
   @abstractmethod
   def __call__(self, ...) -> _RET
 
