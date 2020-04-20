@@ -61,5 +61,20 @@ class ReingestTestPy3(test_base.TargetPython3FeatureTest):
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"foo\.Foo.*foo"})
 
+  def testUseClassAttributeFromAnnotatedNew(self):
+    foo = self.Infer("""
+      class Foo:
+        def __new__(cls) -> "Foo":
+          return cls()
+      class Bar:
+        FOO = Foo()
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo))
+      self.Check("""
+        import foo
+        print(foo.Bar.FOO)
+      """, pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")

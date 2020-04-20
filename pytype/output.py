@@ -515,7 +515,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     for name, member in v.members.items():
       if name in CLASS_LEVEL_IGNORE:
         continue
-      for value in member.FilteredData(node):
+      for value in member.FilteredData(self.vm.exitpoint, strict=False):
         if isinstance(value, special_builtins.PropertyInstance):
           # For simplicity, output properties as constants, since our parser
           # turns them into constants anyway.
