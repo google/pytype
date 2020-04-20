@@ -255,8 +255,9 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
         )
       ]  # type: dict
     """), "", maximum_depth=10)
+    # In Python 3.7, STORE_NAME v is on the `("hello",` line.
     self.assertEqual({
-        4: "dict",
+        3 if self.python_version >= (3, 7) else 4: "dict",
     }, self.vm.director.type_comments)
 
   def test_type_comment_with_trailing_comma(self):
@@ -272,8 +273,9 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
         ],  # some comment
       ]  # type: dict
     """), "", maximum_depth=10)
+    # In Python 3.7, STORE_NAME v is on the `("hello",` line.
     self.assertEqual({
-        4: "dict",
+        3 if self.python_version >= (3, 7) else 4: "dict",
         9: "dict",
     }, self.vm.director.type_comments)
 
