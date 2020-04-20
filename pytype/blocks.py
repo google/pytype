@@ -1,7 +1,6 @@
 """Functions for computing the execution order of bytecode."""
 
 import bisect
-import collections
 import itertools
 
 from pytype.pyc import loadmarshal
@@ -300,8 +299,8 @@ class OrderCodeVisitor(object):
     return order_code(code)
 
 
-class CollectTypeCommentTargetsVisitor(object):
-  """Collect opcodes that might have type comments attached.
+class CollectAnnotationTargetsVisitor(object):
+  """Collect opcodes that might have annotations attached.
 
   Depends on DisCodeVisitor having been run first.
   """
@@ -309,50 +308,14 @@ class CollectTypeCommentTargetsVisitor(object):
   def __init__(self):
     # A mutable map of line: opcode for STORE_* opcodes. This is modified as the
     # visitor runs, and contains the last opcode for each line.
-    self.store_op_map = collections.defaultdict(None)
-
-  def visit_code(self, code):
-    # For type comments attached to multi-opcode lines, we want to mark the
-    # latest 'store' opcode and attach the type comment to it.
-    for op in code.co_code:
-      if isinstance(op, STORE_OPCODES):
-        self.store_op_map[op.line] = op
-    return code
-
-
-def _is_function_def(fn_code):
-  """Helper function for CollectFunctionTypeCommentTargetsVisitor."""
-  assert isinstance(fn_code, pyc.loadmarshal.CodeType)
-
-  # Reject anything that is not a named function (e.g. <lambda>).
-  first = fn_code.co_name[0]
-  if not (first == "_" or first.isalpha()):
-    return False
-
-  # Class definitions generate a constructor function. We can distinguish them
-  # by checking for code blocks that start with LOAD_NAME __name__
-  op = fn_code.co_code[0]
-  if (isinstance(op, opcodes.LOAD_NAME) and
-      op.pretty_arg == "__name__"):
-    return False
-
-  return True
-
-
-class CollectFunctionTypeCommentTargetsVisitor(object):
-  """Collect opcodes that might have function type comments attached.
-
-  Depends on DisCodeVisitor having been run first.
-  """
-
-  def __init__(self):
-    # A mutable list of (start, end, opcode) for MAKE_FUNCTION opcodes. This is
+    self.store_ops = {}
+    # A mutable map of start: (end, opcode) for MAKE_FUNCTION opcodes. This is
     # modified as the visitor runs, and contains the range of lines that could
     # contain function type comments.
-    self.make_function_ops = []
+    self.make_function_ops = {}
 
   def visit_code(self, code):
-    """Find MAKE_FUNCTION opcodes and record the comment line range."""
+    """Find STORE_* and MAKE_FUNCTION opcodes for attaching annotations."""
     # Offset between function code and MAKE_FUNCTION
     if code.python_version < (3, 4):
       # [LOAD_CONST <code>, MAKE_FUNCTION]
@@ -368,53 +331,77 @@ class CollectFunctionTypeCommentTargetsVisitor(object):
         if not _is_function_def(fn_code):
           continue
         end_line = fn_code.co_code[0].line  # First line of code in body.
-        self.make_function_ops.append((op.line + 1, end_line, op))
+        self.make_function_ops[op.line] = (end_line, op)
+      elif (isinstance(op, STORE_OPCODES) and
+            op.line not in self.make_function_ops):
+        # For type comments attached to multi-opcode lines, we want to mark the
+        # latest 'store' opcode and attach the type comment to it.
+        self.store_ops[op.line] = op
     return code
 
 
-def merge_type_comments(code, type_comments, docstrings):
+def _is_function_def(fn_code):
+  """Helper function for CollectFunctionTypeCommentTargetsVisitor."""
+  # Reject anything that is not a named function (e.g. <lambda>).
+  first = fn_code.co_name[0]
+  if not (first == "_" or first.isalpha()):
+    return False
+
+  # Class definitions generate a constructor function. We can distinguish them
+  # by checking for code blocks that start with LOAD_NAME __name__
+  op = fn_code.co_code[0]
+  if (isinstance(op, opcodes.LOAD_NAME) and
+      op.pretty_arg == "__name__"):
+    return False
+
+  return True
+
+
+def merge_annotations(code, annotations, docstrings):
   """Merges type comments into their associated opcodes.
 
   Modifies code in place.
 
   Args:
-    code: CodeType object that has been disassembled (see DisCodeVisitor).
-    type_comments: A map of lines to type comments.
+    code: An OrderedCode object.
+    annotations: A map of lines to annotations.
     docstrings: A sorted list of lines starting docstrings.
 
   Returns:
-    The code with type comments added to the relevant opcodes.
+    The code with annotations added to the relevant opcodes.
   """
-  # Apply type comments to the STORE_* opcodes
-  visitor = CollectTypeCommentTargetsVisitor()
+  visitor = CollectAnnotationTargetsVisitor()
   code = pyc.visit(code, visitor)
-  for line, op in visitor.store_op_map.items():
-    if line in type_comments:
-      _, comment = type_comments[line]
-      op.type_comment = comment
+
+  # Apply type comments to the STORE_* opcodes
+  for line, op in visitor.store_ops.items():
+    if line in annotations:
+      op.annotation = annotations[line]
 
   # Apply type comments to the MAKE_FUNCTION opcodes
-  visitor = CollectFunctionTypeCommentTargetsVisitor()
-  code = pyc.visit(code, visitor)
-  for start, end, op in visitor.make_function_ops:
-    if start > end:
-      # This is a function with no body code, just a docstring. Find the
-      # associated docstring and use it as the new 'end'
+  # To avoid associating a docstring with multiple functions when a one-line
+  # function is followed by a body-less function with a docstring, we do not
+  # search for a function's docstring past the start of the next function.
+  max_line = None
+  for start, (end, op) in sorted(
+      visitor.make_function_ops.items(), reverse=True):
+    if start == end:
+      # This is either a one-line function like `def f(): pass` or a function
+      # with no body code, just a docstring. If we find an associated docstring,
+      # use it as the new 'end'.
       i = bisect.bisect_left(docstrings, start)
       if i != len(docstrings):
-        end = docstrings[i]
+        end = min(max_line, docstrings[i]) if max_line else docstrings[i]
+    max_line = start
 
     for i in range(start, end):
       # Take the first comment we find as the function typecomment.
-      if i in type_comments:
-        _, comment = type_comments[i]
+      if i in annotations:
         # Record the line number of the comment for error messages.
-        op.type_comment = (comment, i)
+        op.annotation = (annotations[i], i)
         break
   return code
 
 
-def process_code(code, type_comments, docstrings):
-  code = pyc.visit(code, DisCodeVisitor())
-  code = merge_type_comments(code, type_comments, docstrings)
-  return pyc.visit(code, OrderCodeVisitor())
+def process_code(code):
+  return pyc.visit(pyc.visit(code, DisCodeVisitor()), OrderCodeVisitor())

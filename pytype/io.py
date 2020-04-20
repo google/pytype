@@ -163,7 +163,7 @@ def check_or_generate_pyi(options, loader=None):
   except tokenize.TokenError as e:
     msg, (lineno, unused_column) = e.args  # pylint: disable=unbalanced-tuple-unpacking
     errorlog.python_compiler_error(options.input, lineno, msg)
-  except directors.SkipFile:
+  except directors.SkipFileError:
     result += "# skip-file found, file not analyzed"
   except Exception as e:  # pylint: disable=broad-except
     if options.nofail:
@@ -327,7 +327,7 @@ def wrap_pytype_exceptions(exception_type, filename=""):
     msg, (lineno, unused_column) = e.args  # pylint: disable=unbalanced-tuple-unpacking
     raise exception_type("Error reading file %s at line %s: %s" %
                          (filename, lineno, msg))
-  except directors.SkipFile:
+  except directors.SkipFileError:
     raise exception_type("Pytype could not analyze file %s: "
                          "'# skip-file' directive found" % filename)
   except Exception as e:  # pylint: disable=broad-except

@@ -3,6 +3,7 @@
 import dis
 import textwrap
 
+from pytype import analyze
 from pytype import blocks
 from pytype import compat
 from pytype import errors
@@ -52,7 +53,7 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
         0x64, 1, 0,  # 0 LOAD_CONST, arg=1 (1)
         0x53,  # 3 RETURN_VALUE
     ], name="simple")
-    code = blocks.process_code(code, {}, [])
+    code = blocks.process_code(code)
     v = vm.VirtualMachine(self.errorlog, self.options, loader=self.loader)
     v.run_bytecode(v.program.NewCFGNode(), code)
 
@@ -85,7 +86,7 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
         o.LOAD_FAST, 1, 0,
         o.RETURN_VALUE,
     ])
-    code = blocks.process_code(code, {}, [])
+    code = blocks.process_code(code)
     v = vm.VirtualMachine(self.errorlog, self.options, loader=self.loader)
     v.run_bytecode(v.program.NewCFGNode(), code)
 
@@ -220,6 +221,95 @@ class TraceTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     actual = [(op.name, op.line, symbol)
               for op, symbol, _ in self.trace_vm.opcode_traces]
     self.assertEqual(actual, expected)
+
+
+@test_utils.skipBeforePy((3, 6), reason="Variable annotations are 3.6+.")
+class AnnotationsTest(test_base.BaseTest, test_utils.MakeCodeMixin):
+  """Tests for recording annotations."""
+
+  def setUp(self):
+    super(AnnotationsTest, self).setUp()
+    self.errorlog = errors.ErrorLog()
+    self.vm = analyze.CallTracer(self.errorlog, self.options, self.loader)
+
+  def test_record_local_ops(self):
+    self.vm.run_program("v: int = None", "", maximum_depth=10)
+    self.assertEqual(self.vm.local_ops, {
+        "<module>": [vm.LocalOp(name="v", op=vm.LocalOp.ASSIGN),
+                     vm.LocalOp(name="v", op=vm.LocalOp.ANNOTATE)]})
+
+
+class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
+
+  def setUp(self):
+    super(DirectorLineNumbersTest, self).setUp()
+    self.errorlog = errors.ErrorLog()
+    self.vm = analyze.CallTracer(self.errorlog, self.options, self.loader)
+
+  def test_type_comment_on_multiline_value(self):
+    self.vm.run_program(textwrap.dedent("""
+      v = [
+        ("hello",
+         "world",  # type: should_be_ignored
+
+        )
+      ]  # type: dict
+    """), "", maximum_depth=10)
+    # In Python 3.7, STORE_NAME v is on the `("hello",` line.
+    self.assertEqual({
+        3 if self.python_version >= (3, 7) else 4: "dict",
+    }, self.vm.director.type_comments)
+
+  def test_type_comment_with_trailing_comma(self):
+    self.vm.run_program(textwrap.dedent("""
+      v = [
+        ("hello",
+         "world"
+        ),
+      ]  # type: dict
+      w = [
+        ["hello",
+         "world"
+        ],  # some comment
+      ]  # type: dict
+    """), "", maximum_depth=10)
+    # In Python 3.7, STORE_NAME v is on the `("hello",` line.
+    self.assertEqual({
+        3 if self.python_version >= (3, 7) else 4: "dict",
+        9: "dict",
+    }, self.vm.director.type_comments)
+
+  def test_decorators(self):
+    self.vm.run_program(textwrap.dedent("""
+      class A:
+        '''
+        @decorator in a docstring
+        '''
+        @real_decorator
+        def f(x):
+          x = foo @ bar @ baz
+
+        @decorator(
+            x, y
+        )
+
+        def bar():
+          pass
+    """), "", maximum_depth=10)
+    self.assertEqual(self.vm.director.decorators, {6, 11})
+
+  def test_stacked_decorators(self):
+    self.vm.run_program(textwrap.dedent("""
+      @decorator(
+          x, y
+      )
+
+      @foo
+
+      class A:
+          pass
+    """), "", maximum_depth=10)
+    self.assertEqual(self.vm.director.decorators, {6})
 
 
 test_base.main(globals(), __name__ == "__main__")

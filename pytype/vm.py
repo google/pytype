@@ -88,23 +88,23 @@ class _FindIgnoredTypeComments(object):
   """A visitor that finds type comments that will be ignored."""
 
   def __init__(self, type_comments):
-    # Build sets of all lines with the associated style of type comment.
-    # Lines will be removed from these sets during visiting.  Any lines
-    # that remain at the end are type comments that will be ignored.
-    self._ignored_type_lines = set()
-    for line, _ in type_comments.items():
-      self._ignored_type_lines.add(line)
+    self._type_comments = type_comments
+    # Lines will be removed from this set during visiting. Any lines that remain
+    # at the end are type comments that will be ignored.
+    self._ignored_type_lines = set(type_comments)
 
   def visit_code(self, code):
     """Interface for pyc.visit."""
     for op in code.co_code:
       # Make sure we have attached the type comment to an opcode.
       if isinstance(op, blocks.STORE_OPCODES):
-        if op.type_comment:
-          self._ignored_type_lines.discard(op.line)
+        if op.annotation:
+          annot = op.annotation
+          if self._type_comments.get(op.line) == annot:
+            self._ignored_type_lines.discard(op.line)
       elif isinstance(op, opcodes.MAKE_FUNCTION):
-        if op.type_comment:
-          _, line = op.type_comment
+        if op.annotation:
+          _, line = op.annotation
           self._ignored_type_lines.discard(line)
     return code
 
@@ -523,7 +523,7 @@ class VirtualMachine(object):
     return meta, non_meta
 
   def make_class(self, node, name_var, bases, class_dict_var, cls_var,
-                 new_class_var=None):
+                 new_class_var=None, is_decorated=False):
     """Create a class with the name, bases and methods given.
 
     Args:
@@ -536,6 +536,8 @@ class VirtualMachine(object):
       new_class_var: If not None, make_class() will return new_class_var with
           the newly constructed class added as a binding. Otherwise, a new
           variable if returned.
+      is_decorated: True if the class definition has a decorator.
+
 
     Returns:
       A node and an instance of Class.
@@ -584,6 +586,7 @@ class VirtualMachine(object):
             class_dict.pyval,
             cls,
             self)
+        val.is_decorated = is_decorated
       except mro.MROError as e:
         self.errorlog.mro_error(self.frames, name, e.mro_seqs)
         var = self.new_unsolvable(node)
@@ -694,8 +697,11 @@ class VirtualMachine(object):
         src, python_version=self.python_version,
         python_exe=self.options.python_exe,
         filename=filename, mode=mode)
-    return blocks.process_code(code, self.director.type_comments,
-                               self.director.docstrings)
+    code = blocks.process_code(code)
+    if mode == "exec":
+      self.director.adjust_line_numbers(code)
+    return blocks.merge_annotations(
+        code, self.director.annotations, self.director.docstrings)
 
   def run_bytecode(self, node, code, f_globals=None, f_locals=None):
     """Run the given bytecode."""
@@ -733,6 +739,7 @@ class VirtualMachine(object):
     """
     director = directors.Director(
         src, self.errorlog, filename, self.options.disable)
+
     # This modifies the errorlog passed to the constructor.  Kind of ugly,
     # but there isn't a better way to wire both pieces together.
     self.errorlog.set_error_filter(director.should_report_error)
@@ -746,7 +753,7 @@ class VirtualMachine(object):
     pyc.visit(code, visitor)
     for line in visitor.ignored_lines():
       self.errorlog.ignored_type_comment(
-          self.filename, line, self.director.type_comments[line][1])
+          self.filename, line, self.director.type_comments[line])
 
     node = self.root_cfg_node.ConnectNew("init")
     node, f_globals, f_locals, _ = self.run_bytecode(node, code)
@@ -1048,6 +1055,22 @@ class VirtualMachine(object):
       error.set_return(node, result)
       raise error  # pylint: disable=raising-bad-type
 
+  def _process_decorator(self, func, posargs):
+    """Specific processing for decorated functions."""
+    if len(posargs) != 1 or not posargs[0].bindings:
+      return
+    # Assume the decorator and decorated function have one binding each.
+    # (This is valid due to how decorated functions/classes are created.)
+    decorator = func.data[0]
+    fn = posargs[0].data[0]
+    # TODO(b/153760963) We also need to check if the CALL_FUNCTION opcode has
+    # the same line number as the function declaration (it should suffice to
+    # check that the opcode lineno is in the set of decorators; we just need a
+    # way to access the line number here). Otherwise any function call taking a
+    # single function as an arg could trigger this code.
+    if fn.is_decorated:
+      log.info("Decorating %s with %s", fn.full_name, decorator.full_name)
+
   def call_function_from_stack(self, state, num, starargs, starstarargs):
     """Pop arguments for a function and call it."""
 
@@ -1076,6 +1099,7 @@ class VirtualMachine(object):
       else:
         posargs = args
     state, func = state.pop()
+    self._process_decorator(func, posargs)
     state, ret = self.call_function_with_state(
         state, func, posargs, namedargs, starargs, starstarargs)
     return state.push(ret)
@@ -1214,7 +1238,7 @@ class VirtualMachine(object):
   def _pop_and_store(self, state, op, name, local):
     """Pop a value off the stack and store it in a variable."""
     state, orig_val = state.pop()
-    value = self.annotations_util.apply_type_comment(state, op, name, orig_val)
+    value = self.annotations_util.apply_annotation(state, op, name, orig_val)
     self._check_aliased_type_params(value)
     if local:
       self._record_local(name, value, orig_val)
@@ -1833,7 +1857,7 @@ class VirtualMachine(object):
     state, value = state.pop()
     assert isinstance(value, cfg.Variable)
     name = self.get_closure_var_name(op.arg)
-    value = self.annotations_util.apply_type_comment(state, op, name, value)
+    value = self.annotations_util.apply_annotation(state, op, name, value)
     state = state.forward_cfg_node()
     self.frame.cells[op.arg].PasteVariable(value, state.node)
     state = state.forward_cfg_node()
@@ -2042,7 +2066,7 @@ class VirtualMachine(object):
   def byte_STORE_ATTR(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
     state, (val, obj) = state.popn(2)
-    val = self.annotations_util.apply_type_comment(state, op, name, val)
+    val = self.annotations_util.apply_annotation(state, op, name, val)
     state = state.forward_cfg_node()
     state = self.store_attr(state, obj, name, val)
     state = state.forward_cfg_node()
@@ -2080,7 +2104,7 @@ class VirtualMachine(object):
       else:
         val = self.annotations_util.process_annotation_var(
             state.node, val, name, self.simple_stack())
-        state = self._store_annotation(state, name, val)
+        state = self._record_annotation(state, name, val)
     state = self.store_subscr(state, obj, subscr, val)
     return state
 
@@ -2547,10 +2571,10 @@ class VirtualMachine(object):
       op: An opcode (used to determine filename and line number).
       func: An abstract.InterpreterFunction.
     """
-    if not op.type_comment:
+    if not op.annotation:
       return
 
-    comment, lineno = op.type_comment
+    comment, lineno = op.annotation
 
     # It is an error to use a type comment on an annotated function.
     if func.signature.annotations:
@@ -2600,6 +2624,8 @@ class VirtualMachine(object):
     globs = self.get_globals_dict()
     fn = self._make_function(name, state.node, code, globs, defaults,
                              kw_defaults, annotations=annot, closure=free_vars)
+    if op.line in self.director.decorators:
+      fn.data[0].is_decorated = True
     self._process_function_type_comment(state.node, op, fn.data[0])
     self.trace_opcode(op, name, fn)
     self.trace_functiondef(fn)
@@ -2723,13 +2749,18 @@ class VirtualMachine(object):
   def byte_BUILD_CLASS(self, state, op):
     state, (name, _bases, members) = state.popn(3)
     bases = list(abstract_utils.get_atomic_python_constant(_bases))
-    node, cls = self.make_class(state.node, name, bases, members, None)
+    is_decorated = op.line in self.director.decorators
+    node, cls = self.make_class(state.node, name, bases, members, None,
+                                is_decorated=is_decorated)
     self.trace_classdef(cls)
     return state.change_cfg_node(node).push(cls)
 
   def byte_LOAD_BUILD_CLASS(self, state, op):
     # New in py3
     cls = abstract.BuildClass(self).to_variable(state.node)
+    if op.line in self.director.decorators:
+      # Will be copied into the abstract.InterpreterClass
+      cls.data[0].is_decorated = True
     self.trace_opcode(op, "", cls)
     return state.push(cls)
 
@@ -2830,19 +2861,29 @@ class VirtualMachine(object):
     annotations = self.convert.build_map(state.node)
     return self.store_local(state, "__annotations__", annotations)
 
-  def _store_annotation(self, state, name, value):
-    """Store an annotation in the current locals dict."""
-    # Store the annotation, for use in attrs and dataclasses.
-    new_value = self.annotations_util.init_annotation_var(
-        state.node, name, value)
-    self._record_local(name, new_value)
-    # Now see if the variable is defined. If it is, replace its value with the
-    # new_value derived from the annotation.
+  def _record_annotation(self, state, name, value):
+    """Record a variable annotation."""
     try:
       self.load_local(state, name)
     except KeyError:
+      # An annotation on a not-yet-defined variable is recorded for use in attrs
+      # and dataclasses.
+      new_value = self.annotations_util.init_annotation_var(
+          state.node, name, value)
+      self._record_local(name, new_value)
       return state
-    return self.store_local(state, name, new_value)
+    # If the variable is defined, then either:
+    # (1) We have an annotated assignment (e.g., `v: int = 0`), which has
+    #     already been handled by annotations_util.apply_annotation, or
+    # (2) We are annotating an already defined variable (e.g.,
+    #       v = 0
+    #       v: str
+    #     ), which is forbidden.
+    if self.frame.current_opcode.line not in self.director.annotations:  # (2)
+      self.errorlog.invalid_annotation(
+          self.frames, self.merge_values(value.data),
+          details="Annotating an already defined variable", name=name)
+    return state
 
   def byte_STORE_ANNOTATION(self, state, op):
     """Implementation of the STORE_ANNOTATION opcode."""
@@ -2851,7 +2892,7 @@ class VirtualMachine(object):
     state, value = state.pop()
     value = self.annotations_util.process_annotation_var(
         state.node, value, name, self.simple_stack())
-    state = self._store_annotation(state, name, value)
+    state = self._record_annotation(state, name, value)
     name_var = self.convert.build_string(state.node, name)
     state = self.store_subscr(state, annotations_var, name_var, value)
     return self.store_local(state, "__annotations__", annotations_var)

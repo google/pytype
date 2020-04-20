@@ -552,7 +552,7 @@ class reversed(Iterator[_T]):
 class tuple(Tuple[_T]):
     __slots__ = []
     def __init__(self) -> NoneType:
-      self = tuple[nothing, ...]
+      self = Tuple[()]
     def __init__(self, p0: Iterable[_T2]) -> NoneType:
       self = tuple[_T2, ...]
     def __add__(self, y: tuple[_T2, ...]) -> tuple[_T or _T2, ...]

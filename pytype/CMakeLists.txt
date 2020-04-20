@@ -576,6 +576,7 @@ py_test(
   DEPS
     .errors
     .libvm
+    pytype.tests.test_base
 )
 
 py_test(

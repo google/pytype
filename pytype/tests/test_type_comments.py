@@ -79,6 +79,13 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
         return True  # bad-return-type
     """)
 
+  def testFunctionCommentOnDefLine(self):
+    ty = self.Infer("""
+      def f(x):  # type: (int) -> int
+        return x
+    """)
+    self.assertTypesMatchPytd(ty, "def f(x: int) -> int: ...")
+
   def testMultipleFunctionComments(self):
     _, errors = self.InferWithErrors("""
       def f(x):
@@ -251,6 +258,18 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"int.*str.*constant"})
 
+  def testOneLineFunction(self):
+    ty = self.Infer("""
+      def f(): return 0
+      def g():
+        # type: () -> None
+        '''Docstring.'''
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> int: ...
+      def g() -> None: ...
+    """)
+
 
 class AssignmentCommentTest(test_base.TargetIndependentTest):
   """Tests for type comments applied to assignments."""
@@ -322,7 +341,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
 
   def testBadComment(self):
     ty, errors = self.InferWithErrors("""
-      X = None  # type: abc def  # invalid-type-comment[e]
+      X = None  # type: abc def  # invalid-annotation[e]
     """, deep=True)
     self.assertErrorRegexes(errors, {"e": r"abc def.*unexpected EOF"})
     self.assertTypesMatchPytd(ty, """
@@ -332,7 +351,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
 
   def testConversionError(self):
     ty, errors = self.InferWithErrors("""
-      X = None  # type: 1 if __random__ else 2  # invalid-type-comment[e]
+      X = None  # type: 1 if __random__ else 2  # invalid-annotation[e]
     """, deep=True)
     self.assertErrorRegexes(errors, {"e": r"1 if __random__ else 2.*constant"})
     self.assertTypesMatchPytd(ty, """
@@ -342,7 +361,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
 
   def testNameErrorInsideComment(self):
     _, errors = self.InferWithErrors("""
-      X = None  # type: Foo  # invalid-type-comment[e]
+      X = None  # type: Foo  # invalid-annotation[e]
     """, deep=True)
     self.assertErrorRegexes(errors, {"e": r"Foo"})
 
@@ -494,14 +513,14 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
   def testTypeCommentNameError(self):
     _, errors = self.InferWithErrors("""
       def f():
-        x = None  # type: Any  # invalid-type-comment[e]
+        x = None  # type: Any  # invalid-annotation[e]
     """, deep=True)
     self.assertErrorRegexes(errors, {"e": r"not defined$"})
 
   def testTypeCommentInvalidSyntax(self):
     _, errors = self.InferWithErrors("""
       def f():
-        x = None  # type: y = 1  # invalid-type-comment[e]
+        x = None  # type: y = 1  # invalid-annotation[e]
     """, deep=True)
     self.assertErrorRegexes(errors, {"e": r"invalid syntax$"})
 
@@ -527,8 +546,8 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
   def testMultipleDirectives(self):
     """We should support multiple directives on one line."""
     self.Check("""
-      a = list() # type: list[int, str]  # pytype: disable=invalid-type-comment
-      b = list() # pytype: disable=invalid-type-comment  # type: list[int, str]
+      a = list() # type: list[int, str]  # pytype: disable=invalid-annotation
+      b = list() # pytype: disable=invalid-annotation  # type: list[int, str]
       def foo(x): pass
       c = foo(a, b.i) # pytype: disable=attribute-error  # pytype: disable=wrong-arg-count
     """)
@@ -637,6 +656,24 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       class Foo(object):
         def __init__(self):
           self.x = None  # type: "Bar"  # name-error
+    """)
+
+  def testDictTypeComment(self):
+    self.Check("""
+      from typing import Any, Callable, Dict, Tuple
+      d = {
+          'a': 'long'
+               'string'
+               'value'
+      }  # type: Dict[str, str]
+    """)
+
+  def testBreakOnPeriod(self):
+    self.Check("""
+      really_really_really_long_module_name = None  # type: module
+      d = {}
+      v = d.get('key', (really_really_really_long_module_name.
+                        also_long_attribute_name))  # type: int
     """)
 
 

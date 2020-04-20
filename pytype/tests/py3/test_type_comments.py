@@ -29,4 +29,13 @@ class FunctionCommentWithAnnotationsTest(test_base.TargetPython3BasicTest):
     """)
 
 
+class Py3TypeCommentTest(test_base.TargetPython3FeatureTest):
+
+  def testIgnoredComment(self):
+    self.CheckWithErrors("""
+      def f():
+        v: int = None  # type: str  # ignored-type-comment
+    """)
+
+
 test_base.main(globals(), __name__ == "__main__")

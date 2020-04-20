@@ -466,13 +466,7 @@ class CallTracer(vm.VirtualMachine):
     for name, var in defs.items():
       if name in output.TOP_LEVEL_IGNORE or self._is_builtin(name, var.data):
         continue
-      options = []
-      for value, is_annotation in pytd_convert.get_annotated_values(
-          self.exitpoint, name, var, annots):
-        if is_annotation:
-          data.append(pytd.Constant(name, value))
-        else:
-          options.append(value)
+      options = var.FilteredData(self.exitpoint)
       if (len(options) > 1 and
           not all(isinstance(o, abstract.FUNCTION_TYPES) for o in options)):
         # It's ambiguous whether this is a type, a function or something

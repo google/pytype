@@ -64,6 +64,8 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
     self.module = None
     self.official_name = None
     self.slots = None  # writable attributes (or None if everything is writable)
+    # true for functions and classes that have decorators applied to them.
+    self.is_decorated = False
     # The template for the current class. It is usually a constant, lazily
     # loaded to accommodate recursive types, but in the case of typing.Generic
     # (only), it'll change every time when a new generic class is instantiated.
@@ -3743,7 +3745,7 @@ class BuildClass(AtomicAbstractValue):
         return base.make_class(node, func.f_locals.to_variable(node))
     return self.vm.make_class(
         node, name, list(bases), func.f_locals.to_variable(node), metaclass,
-        new_class_var=class_closure_var)
+        new_class_var=class_closure_var, is_decorated=self.is_decorated)
 
 
 # TODO(rechen): Don't allow this class to be instantiated multiple times. It's

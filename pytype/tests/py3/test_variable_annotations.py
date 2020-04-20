@@ -76,7 +76,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
         "e1": r"Name \'abc\' is not defined", "e2": r"Not a type",
         "e3": r"NoReturn is not allowed",
         "e4": r"type parameter.*variable annotation",
-        "e5": r"Type must be constant", "e6": r"NoReturn is not allowed"})
+        "e5": r"Must be constant", "e6": r"NoReturn is not allowed"})
 
   def testUninitializedClassAnnotation(self):
     ty = self.Infer("""
@@ -185,6 +185,54 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
       x = K()
       y: int = 9
       x['z'] = 5
+    """)
+
+  def testFunctionLocalAnnotation(self):
+    ty = self.Infer("""
+      def f():
+        x: int = None
+        return x
+    """)
+    self.assertTypesMatchPytd(ty, "def f() -> int: ...")
+
+  @test_base.skip("directors._VariableAnnotation assumes a variable annotation "
+                  "starts at the beginning of the line.")
+  def testMultiStatementLine(self):
+    ty = self.Infer("if __random__: v: int = None")
+    self.assertTypesMatchPytd(ty, "v: int")
+
+  def testRetypeDefinedVariable(self):
+    errors = self.CheckWithErrors("""
+      v = 0
+      v: str  # invalid-annotation[e]
+    """)
+    self.assertErrorRegexes(
+        errors, {"e": r"'str' for v.*Annotating an already defined variable"})
+
+  def testMultiLineAssignment(self):
+    ty = self.Infer("""
+      v: int = (
+          None)
+    """)
+    self.assertTypesMatchPytd(ty, "v: int")
+
+  def testComplexAssignment(self):
+    # Tests that when an assignment contains multiple STORE_* opcodes on
+    # different lines, we associate the annotation with the right one.
+    ty = self.Infer("""
+      from typing import Dict
+      def f():
+        column_map: Dict[str, Dict[str, bool]] = {
+            column: {
+                'visible': True
+            } for column in __any_object__.intersection(
+                __any_object__)
+        }
+        return column_map
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict
+      def f() -> Dict[str, Dict[str, bool]]: ...
     """)
 
 

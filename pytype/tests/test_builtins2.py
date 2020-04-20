@@ -493,7 +493,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
-      t1 = ...  # type: Tuple[nothing, ...]
+      t1 = ...  # type: Tuple[()]
       t2 = ...  # type: Tuple[int, ...]
       t5 = ...  # type: Tuple[int, ...]
       t6 = ...  # type: Tuple[int, ...]

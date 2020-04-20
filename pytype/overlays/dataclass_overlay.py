@@ -53,12 +53,13 @@ class Dataclass(classgen.Decorator):
     if not initvar:
       return None
     annots = abstract_utils.get_annotations_dict(cls.members)
-    if orig is None:
-      # InitVars without a default do not get retained.
-      del annots[name]
-    else:
-      annots[name] = initvar.to_variable(node)
-    return initvar
+    # The InitVar annotation is not retained as a class member, but any default
+    # value is retained.
+    del annots[name]
+    value = initvar.instantiate(node)
+    if orig is not None:
+      cls.members[name] = value
+    return value
 
   def decorate(self, node, cls):
     """Processes class members."""
@@ -77,9 +78,9 @@ class Dataclass(classgen.Decorator):
       clsvar = match_classvar(value)
       if clsvar:
         continue
-      initvar = self._handle_initvar(node, cls, name, value, orig)
-      if initvar:
-        value = initvar.instantiate(node)
+      initvar_value = self._handle_initvar(node, cls, name, value, orig)
+      if initvar_value:
+        value = initvar_value
         init = True
       else:
         cls.members[name] = value
