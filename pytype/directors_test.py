@@ -3,6 +3,7 @@
 
 from pytype import directors
 from pytype import errors
+from pytype.tests import test_utils
 import six
 import unittest
 
@@ -424,6 +425,7 @@ class DirectorTest(DirectorTestCase):
     }, self._director._decorators)
 
 
+@test_utils.skipBeforePy((3, 6), reason="Variable annotations are 3.6+.")
 class VariableAnnotationsTest(DirectorTestCase):
 
   def test_annotations(self):
@@ -450,8 +452,9 @@ class VariableAnnotationsTest(DirectorTestCase):
     """)
     self.assertFalse(self._director.annotations)
 
-  @unittest.skip("directors._VariableAnnotation assumes a variable "
-                   "annotation starts at the beginning of the line.")
+  @unittest.skip(
+      "directors._VariableAnnotation assumes a variable annotation starts at "
+      "the beginning of the line.")
   def test_multistatement_line(self):
     self._create("""
       if __random__: v1: int = 0

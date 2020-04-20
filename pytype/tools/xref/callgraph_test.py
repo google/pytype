@@ -1,14 +1,15 @@
 from __future__ import print_function
 
-import sys
-
 from pytype import config
 from pytype import file_utils
 
 from pytype.tests import test_base
+from pytype.tests import test_utils
 from pytype.tools.xref import indexer
 
 
+@test_utils.skipUnlessPy(
+    (3, 5), (3, 6), reason="The callgraph code only works in Python 3.5-6.")
 class CallgraphTest(test_base.TargetIndependentTest):
   """Tests for the callgraph."""
 
@@ -158,11 +159,6 @@ class CallgraphTest(test_base.TargetIndependentTest):
     for fn, params in expected:
       f = fns["module.%s" % fn]
       self.assertParamsEqual(f.params, params)
-
-
-# The callgraph code only works in Python 3.5-6.
-if not (3, 5) <= sys.version_info[:2] <= (3, 6):
-  del CallgraphTest
 
 
 test_base.main(globals(), __name__ == "__main__")

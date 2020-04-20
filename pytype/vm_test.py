@@ -223,6 +223,7 @@ class TraceTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     self.assertEqual(actual, expected)
 
 
+@test_utils.skipBeforePy((3, 6), reason="Variable annotations are 3.6+.")
 class AnnotationsTest(test_base.BaseTest, test_utils.MakeCodeMixin):
   """Tests for recording annotations."""
 
