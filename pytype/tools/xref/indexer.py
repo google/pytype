@@ -698,7 +698,11 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
           # Classes defined within a function generate a STORE_FAST op.
           ("STORE_FAST", class_name),
       ])
-      if len(ops) == 2:
+      # pytype sometimes analyses this twice, leading to duplicate opcode
+      # traces. We only want the first two in the list.
+      if (len(ops) >= 2 and
+          ops[0][0] == "LOAD_BUILD_CLASS" and
+          ops[1][0] in ("STORE_NAME", "STORE_FAST")):
         _, _, data = ops[1]
         d = _unwrap(data)
     assert d, "Did not get pytype data for class %s" % class_name
