@@ -1022,5 +1022,17 @@ class TestFunctions(test_base.TargetIndependentTest):
       def new_function(code, globals) -> Callable: ...
     """)
 
+  def test_function_globals(self):
+    ty = self.Infer("""
+      def f():
+        def g():
+          pass
+        return g.__globals__
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Dict
+      def f() -> Dict[str, Any]: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
