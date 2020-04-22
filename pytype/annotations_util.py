@@ -394,3 +394,13 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
               errorlog)
     else:
       return (result,), errorlog
+
+  def deformalize(self, value):
+    # type() gets the type of an object for runtime use, which requires a way to
+    # turn a formal value into a non-formal one.
+    while value.formal:
+      if isinstance(value, abstract.ParameterizedClass):
+        value = value.base_cls
+      else:
+        value = self.vm.convert.unsolvable
+    return value

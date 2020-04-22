@@ -173,6 +173,19 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       v = ...  # type: int
     """)
 
+  def testTypeParameterTypeError(self):
+    errors = self.CheckWithErrors("""
+      from typing import Sequence, Type, TypeVar
+      T = TypeVar('T')
+      def f(x: int):
+        pass
+      def g(x: Type[Sequence[T]]) -> T:
+        print(f(x))  # wrong-arg-types[e]
+        return x()[0]
+    """)
+    self.assertErrorRegexes(
+        errors, {"e": r"Expected.*int.*Actual.*Type\[Sequence\]"})
+
   def testPrintNestedTypeParameter(self):
     _, errors = self.InferWithErrors("""
       from typing import List, TypeVar

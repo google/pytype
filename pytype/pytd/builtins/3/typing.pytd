@@ -38,9 +38,18 @@ def _typevar_new(name: Text, *constraints: Union[type, Text], bound: Union[type,
 
 class Callable(Generic[_ARGS, _RET], Protocol):
   if sys.version_info < (3, 0):
-    func_name = ...  # type: str
+    func_name: str
   else:
-    __qualname__ = ...  # type: str
+    __annotations__: Dict[str, Any]
+    __kwdefaults__: Dict[str, Any]
+    __qualname__: str
+  __closure__: Optional[Tuple[Any, ...]]
+  __code__: Any
+  __defaults__: Optional[Tuple[Any, ...]]
+  __globals__: Dict[str, Any]
+  # Copied from types.FunctionType.__init__ with some types changed to Any.
+  def __init__(self, code: Any, globals: Dict[str, Any], name: Optional[str] = ..., argdefs: Optional[Tuple[object, ...]] = ..., closure: Optional[Tuple[Any, ...]] = ...) -> None:
+    self = Callable[..., Any]
   @abstractmethod
   def __call__(self, ...) -> _RET
 

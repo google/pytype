@@ -2051,11 +2051,10 @@ class ParameterizedClass(AtomicAbstractValue, mixin.Class):
 
   def instantiate(self, node, container=None):
     if self.full_name == "__builtin__.type":
-      instance = self.formal_type_parameters[abstract_utils.T]
-      if instance.formal:
-        # This can happen for, say, Type[T], where T is a type parameter. See
-        # test_typevar's testTypeParameterType for an example.
-        instance = self.vm.convert.unsolvable
+      # deformalize removes TypeVars.
+      # See py3.test_typevar.TypeVarTest.testTypeParameterType(Error).
+      instance = self.vm.annotations_util.deformalize(
+          self.formal_type_parameters[abstract_utils.T])
       return instance.to_variable(node)
     elif self.vm.frame and self.vm.frame.current_opcode:
       return self._new_instance().to_variable(node)

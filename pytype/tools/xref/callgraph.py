@@ -91,9 +91,16 @@ class FunctionMap(object):
     self.fmap = self.init_from_index(index)
 
   def pytd_of_fn(self, f):
+    """Get the pytype pytd function definition."""
     if f.data and f.data[0]:
       d = f.data[0][0]
-      return self.index.get_pytd_def(d, f.name)
+      try:
+        return self.index.get_pytd_def(d, f.name)
+      except:  # pylint: disable=bare-except
+        # We sometimes get Instance(PyTDClass(str)) here, which throws an
+        # exception in get_pytd_def, possibly due to other earlier problems.
+        # Don't crash the indexer if this happens.
+        return None
     else:
       # TODO(mdemello): log this
       return None

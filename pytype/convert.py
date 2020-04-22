@@ -583,6 +583,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         # Python 3's typeshed uses a stub file indirection to define ModuleType
         # even though it is exported via types.pyi.
         return self.module_type
+      elif pyval.name == "types.FunctionType":
+        return self.function_type
       else:
         module, dot, base_name = pyval.name.rpartition(".")
         # typing.TypingContainer intentionally loads the underlying pytd types.

@@ -466,7 +466,7 @@ class CallTracer(vm.VirtualMachine):
     for name, var in defs.items():
       if name in output.TOP_LEVEL_IGNORE or self._is_builtin(name, var.data):
         continue
-      options = var.FilteredData(self.exitpoint)
+      options = var.FilteredData(self.exitpoint, strict=False)
       if (len(options) > 1 and
           not all(isinstance(o, abstract.FUNCTION_TYPES) for o in options)):
         # It's ambiguous whether this is a type, a function or something
