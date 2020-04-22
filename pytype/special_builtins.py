@@ -38,7 +38,14 @@ class TypeNew(abstract.PyTDFunction):
       # bound to a class or function, so we'll go with Any.
       self.match_args(node, args)  # May raise FailedFunctionCall.
       return node, self.vm.new_unsolvable(node)
-    return super(TypeNew, self).call(node, func, args)
+    node, raw_ret = super(TypeNew, self).call(node, func, args)
+    # Removes TypeVars from the return value.
+    # See test_typevar.TypeVarTest.test_type_of_typevar(_error).
+    ret = self.vm.program.NewVariable()
+    for b in raw_ret.bindings:
+      value = self.vm.annotations_util.deformalize(b.data)
+      ret.AddBinding(value, {b}, node)
+    return node, ret
 
 
 class BuiltinFunction(abstract.PyTDFunction):

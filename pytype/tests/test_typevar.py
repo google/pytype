@@ -418,5 +418,25 @@ class TypeVarTest(test_base.TargetIndependentTest):
       Y = Union[Any, X]
     """)
 
+  def test_type_of_typevar(self):
+    self.Check("""
+      from typing import Sequence, TypeVar
+      T = TypeVar('T')
+      def f(x):  # type: (Sequence[T]) -> Sequence[T]
+        print(type(x))
+        return x
+    """)
+
+  def test_type_of_typevar_error(self):
+    errors = self.CheckWithErrors("""
+      from typing import Sequence, Type, TypeVar
+      T = TypeVar('T')
+      def f(x):  # type: (int) -> int
+        return x
+      def g(x):  # type: (Sequence[T]) -> Type[Sequence[T]]
+        return f(type(x))  # wrong-arg-types[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": "Expected.*int.*Actual.*Sequence"})
+
 
 test_base.main(globals(), __name__ == "__main__")
