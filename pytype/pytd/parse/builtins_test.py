@@ -15,22 +15,22 @@ class UtilsTest(unittest.TestCase):
     super(UtilsTest, cls).setUpClass()
     cls.builtins = builtins.GetBuiltinsPyTD(cls.python_version)
 
-  def testGetBuiltinsPyTD(self):
+  def test_get_builtins_pytd(self):
     self.assertIsNotNone(self.builtins)
     # Will throw an error for unresolved identifiers:
     self.builtins.Visit(visitors.VerifyLookup())
 
-  def testHasMutableParameters(self):
+  def test_has_mutable_parameters(self):
     append = self.builtins.Lookup("__builtin__.list").Lookup("append")
     self.assertIsNotNone(append.signatures[0].params[0].mutated_type)
 
-  def testHasCorrectSelf(self):
+  def test_has_correct_self(self):
     update = self.builtins.Lookup("__builtin__.dict").Lookup("update")
     t = update.signatures[0].params[0].type
     self.assertIsInstance(t, pytd.GenericType)
     self.assertEqual(t.base_type, pytd.ClassType("__builtin__.dict"))
 
-  def testHasObjectSuperClass(self):
+  def test_has_object_superclass(self):
     cls = self.builtins.Lookup("__builtin__.memoryview")
     self.assertEqual(cls.parents, (pytd.ClassType("__builtin__.object"),))
     cls = self.builtins.Lookup("__builtin__.object")

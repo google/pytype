@@ -7,7 +7,7 @@ import unittest
 class TestPytd(unittest.TestCase):
   """Test the operator mappings in slots.py."""
 
-  def testReverseNameMapping(self):
+  def test_reverse_name_mapping(self):
     for operator in ("add", "and", "div", "divmod", "floordiv",
                      "lshift", "matmul", "mod", "mul", "or",
                      "pow", "rshift", "sub", "truediv", "xor"):
@@ -15,7 +15,7 @@ class TestPytd(unittest.TestCase):
       reverse = "__r%s__" % operator
       self.assertEqual(slots.REVERSE_NAME_MAPPING[normal], reverse)
 
-  def testSymbolMapping(self):
+  def test_symbol_mapping(self):
     for operator, symbol in [("__add__", "+"),
                              ("__invert__", "~")]:
       self.assertEqual(slots.SYMBOL_MAPPING[operator], symbol)

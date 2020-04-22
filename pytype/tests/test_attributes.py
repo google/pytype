@@ -7,14 +7,14 @@ from pytype.tests import test_base
 class TestStrictNone(test_base.TargetIndependentTest):
   """Tests for strict attribute checking on None."""
 
-  def testModuleConstant(self):
+  def test_module_constant(self):
     self.Check("""
       x = None
       def f():
         return x.upper()
     """)
 
-  def testClassConstant(self):
+  def test_class_constant(self):
     self.Check("""
       class Foo(object):
         x = None
@@ -22,7 +22,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
           return self.x.upper()
     """)
 
-  def testClassConstantError(self):
+  def test_class_constant_error(self):
     errors = self.CheckWithErrors("""
       x = None
       class Foo(object):
@@ -30,7 +30,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
-  def testMultiplePaths(self):
+  def test_multiple_paths(self):
     errors = self.CheckWithErrors("""
       x = None
       def f():
@@ -40,7 +40,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
-  def testLateInitialization(self):
+  def test_late_initialization(self):
     ty = self.Infer("""
       class Foo(object):
         def __init__(self):
@@ -58,7 +58,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
         def set_x(self) -> None: ...
     """)
 
-  def testPyiConstant(self):
+  def test_pyi_constant(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         x = ...  # type: None
@@ -69,7 +69,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
           return foo.x.upper()
       """, pythonpath=[d.path])
 
-  def testPyiAttribute(self):
+  def test_pyi_attribute(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo(object):
@@ -81,7 +81,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
           return foo.Foo.x.upper()
       """, pythonpath=[d.path])
 
-  def testReturnValue(self):
+  def test_return_value(self):
     errors = self.CheckWithErrors("""
       def f():
         pass
@@ -90,7 +90,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
-  def testMethodReturnValue(self):
+  def test_method_return_value(self):
     errors = self.CheckWithErrors("""
       class Foo(object):
         def f(self):
@@ -100,7 +100,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
-  def testPyiReturnValue(self):
+  def test_pyi_return_value(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", "def f() -> None: ...")
       errors = self.CheckWithErrors("""
@@ -110,7 +110,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
-  def testPassThroughNone(self):
+  def test_pass_through_none(self):
     errors = self.CheckWithErrors("""
       def f(x):
         return x
@@ -119,7 +119,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
-  def testShadowedLocalOrigin(self):
+  def test_shadowed_local_origin(self):
     self.Check("""
       x = None
       def f():
@@ -131,7 +131,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
     """)
 
   @test_base.skip("has_strict_none_origins can't tell if an origin is blocked.")
-  def testBlockedLocalOrigin(self):
+  def test_blocked_local_origin(self):
     self.Check("""
       x = None
       def f():
@@ -143,7 +143,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
         return f().upper()
     """)
 
-  def testReturnConstant(self):
+  def test_return_constant(self):
     self.Check("""
       x = None
       def f():
@@ -152,14 +152,14 @@ class TestStrictNone(test_base.TargetIndependentTest):
         return f().upper()
     """)
 
-  def testUnpackedNone(self):
+  def test_unpacked_none(self):
     errors = self.CheckWithErrors("""
       _, a = 42, None
       b = a.upper()  # attribute-error[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
-  def testFunctionDefault(self):
+  def test_function_default(self):
     errors = self.CheckWithErrors("""
       class Foo(object):
         def __init__(self, v=None):
@@ -169,7 +169,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"upper.*None.*traceback.*line 5"})
 
-  def testKeepNoneReturn(self):
+  def test_keep_none_return(self):
     ty = self.Infer("""
       def f():
         pass
@@ -178,7 +178,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
       def f() -> None: ...
     """)
 
-  def testKeepNoneYield(self):
+  def test_keep_none_yield(self):
     ty = self.Infer("""
       def f():
         yield None
@@ -188,7 +188,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
       def f() -> Generator[None, Any, None]
     """)
 
-  def testKeepContainedNoneReturn(self):
+  def test_keep_contained_none_return(self):
     ty = self.Infer("""
       def f():
         return [None]
@@ -198,7 +198,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
       def f() -> List[None]
     """)
 
-  def testDiscardNoneReturn(self):
+  def test_discard_none_return(self):
     ty = self.Infer("""
       x = None
       def f():
@@ -210,7 +210,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
       def f() -> Any
     """)
 
-  def testDiscardNoneYield(self):
+  def test_discard_none_yield(self):
     ty = self.Infer("""
       x = None
       def f():
@@ -222,7 +222,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
       def f() -> Generator[Any, Any, None]
     """)
 
-  def testDiscardContainedNoneReturn(self):
+  def test_discard_contained_none_return(self):
     ty = self.Infer("""
       x = None
       def f():
@@ -233,7 +233,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
       def f() -> list
     """)
 
-  def testDiscardAttributeNoneReturn(self):
+  def test_discard_attribute_none_return(self):
     ty = self.Infer("""
       class Foo:
         x = None
@@ -247,7 +247,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
       def f() -> Any
     """)
 
-  def testGetItem(self):
+  def test_getitem(self):
     errors = self.CheckWithErrors("""
       def f():
         x = None
@@ -255,21 +255,21 @@ class TestStrictNone(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"item retrieval.*None.*int"})
 
-  def testIgnoreGetItem(self):
+  def test_ignore_getitem(self):
     self.Check("""
       x = None
       def f():
         return x[0]
     """)
 
-  def testIgnoreIter(self):
+  def test_ignore_iter(self):
     self.Check("""
       x = None
       def f():
         return [y for y in x]
     """)
 
-  def testContains(self):
+  def test_contains(self):
     errors = self.CheckWithErrors("""
       def f():
         x = None
@@ -277,14 +277,14 @@ class TestStrictNone(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"'in'.*None.*int"})
 
-  def testIgnoreContains(self):
+  def test_ignore_contains(self):
     self.Check("""
       x = None
       def f():
         return 42 in x
     """)
 
-  def testProperty(self):
+  def test_property(self):
     self.Check("""
       class Foo(object):
         def __init__(self):
@@ -297,7 +297,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
         foo.foo.upper()
     """)
 
-  def testIsInstance(self):
+  def test_isinstance(self):
     self.Check("""
       class Foo(object):
         def f(self):
@@ -309,7 +309,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
             instance.upper()  # line 10
     """)
 
-  def testImpossibleReturnType(self):
+  def test_impossible_return_type(self):
     self.Check("""
       from typing import Dict
       def f():
@@ -320,7 +320,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
         return f().upper()
     """)
 
-  def testNoReturn(self):
+  def test_no_return(self):
     self.Check("""
       def f():
         text_value = "hello" if __random__ else None
@@ -335,7 +335,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
 class TestAttributes(test_base.TargetIndependentTest):
   """Tests for attributes."""
 
-  def testSimpleAttribute(self):
+  def test_simple_attribute(self):
     ty = self.Infer("""
       class A(object):
         def method1(self):
@@ -350,7 +350,7 @@ class TestAttributes(test_base.TargetIndependentTest):
         def method2(self) -> NoneType
     """)
 
-  def testOutsideAttributeAccess(self):
+  def test_outside_attribute_access(self):
     ty = self.Infer("""
       class A(object):
         pass
@@ -366,7 +366,7 @@ class TestAttributes(test_base.TargetIndependentTest):
       def f2() -> NoneType
     """)
 
-  def testPrivate(self):
+  def test_private(self):
     ty = self.Infer("""
       class C(object):
         def __init__(self):
@@ -380,7 +380,7 @@ class TestAttributes(test_base.TargetIndependentTest):
         def foo(self) -> int
     """)
 
-  def testPublic(self):
+  def test_public(self):
     ty = self.Infer("""
       class C(object):
         def __init__(self):
@@ -394,7 +394,7 @@ class TestAttributes(test_base.TargetIndependentTest):
         def foo(self) -> int
     """)
 
-  def testCrosswise(self):
+  def test_crosswise(self):
     ty = self.Infer("""
       class A(object):
         def __init__(self):
@@ -420,7 +420,7 @@ class TestAttributes(test_base.TargetIndependentTest):
         def set_on_a(self) -> NoneType
     """)
 
-  def testAttrWithBadGetAttr(self):
+  def test_attr_with_bad_getattr(self):
     self.Check("""
       class AttrA(object):
         def __getattr__(self, name2):
@@ -441,7 +441,7 @@ class TestAttributes(test_base.TargetIndependentTest):
           self.C
     """)
 
-  def testInheritGetAttribute(self):
+  def test_inherit_getattribute(self):
     ty = self.Infer("""
       class MyClass1(object):
         def __getattribute__(self, name):
@@ -456,7 +456,7 @@ class TestAttributes(test_base.TargetIndependentTest):
       class MyClass2(object): pass
     """)
 
-  def testGetAttribute(self):
+  def test_getattribute(self):
     ty = self.Infer("""
       class A(object):
         def __getattribute__(self, name):
@@ -473,7 +473,7 @@ class TestAttributes(test_base.TargetIndependentTest):
       x = ...  # type: int
     """)
 
-  def testGetAttributeBranch(self):
+  def test_getattribute_branch(self):
     ty = self.Infer("""
       class A(object):
         x = "hello world"
@@ -496,7 +496,7 @@ class TestAttributes(test_base.TargetIndependentTest):
     """)
 
   @test_base.skip("TODO(b/63407497): implement strict checking for __setitem__")
-  def testUnionSetAttribute(self):
+  def test_union_set_attribute(self):
     ty, _ = self.InferWithErrors("""
       class A(object):
         x = "Hello world"
@@ -513,7 +513,7 @@ class TestAttributes(test_base.TargetIndependentTest):
       def f(i) -> Any
     """)
 
-  def testSetClass(self):
+  def test_set_class(self):
     ty = self.Infer("""
       def f(x):
         y = None
@@ -524,7 +524,7 @@ class TestAttributes(test_base.TargetIndependentTest):
       def f(x) -> set
     """)
 
-  def testGetMro(self):
+  def test_get_mro(self):
     ty = self.Infer("""
       x = int.mro()
     """)
@@ -532,7 +532,7 @@ class TestAttributes(test_base.TargetIndependentTest):
       x = ...  # type: list
     """)
 
-  def testCall(self):
+  def test_call(self):
     ty = self.Infer("""
       class A(object):
         def __call__(self):
@@ -546,7 +546,7 @@ class TestAttributes(test_base.TargetIndependentTest):
     """)
 
   @test_base.skip("Magic methods aren't computed")
-  def testCallComputed(self):
+  def test_call_computed(self):
     ty = self.Infer("""
       class A(object):
         def __getattribute__(self, name):
@@ -559,7 +559,7 @@ class TestAttributes(test_base.TargetIndependentTest):
       x = ...  # type: int
     """)
 
-  def testHasDynamicAttributes(self):
+  def test_has_dynamic_attributes(self):
     self.Check("""
       class Foo1(object):
         has_dynamic_attributes = True
@@ -572,7 +572,7 @@ class TestAttributes(test_base.TargetIndependentTest):
       Foo3().baz
     """)
 
-  def testHasDynamicAttributesSubClass(self):
+  def test_has_dynamic_attributes_subclass(self):
     self.Check("""
       class Foo(object):
         _HAS_DYNAMIC_ATTRIBUTES = True
@@ -582,7 +582,7 @@ class TestAttributes(test_base.TargetIndependentTest):
       Bar().baz
     """)
 
-  def testHasDynamicAttributesClassAttr(self):
+  def test_has_dynamic_attributes_class_attr(self):
     # Only instance attributes are dynamic.
     errors = self.CheckWithErrors("""
       class Foo(object):
@@ -591,7 +591,7 @@ class TestAttributes(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"CONST.*Foo"})
 
-  def testHasDynamicAttributesMetaclass(self):
+  def test_has_dynamic_attributes_metaclass(self):
     # Since class attributes of Foo are instance attributes for the metaclass,
     # both class and instance attributes of Foo are now dynamic.
     self.Check("""
@@ -609,7 +609,7 @@ class TestAttributes(test_base.TargetIndependentTest):
       Bar().baz
     """)
 
-  def testHasDynamicAttributesPYI(self):
+  def test_has_dynamic_attributes_pyi(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         class Foo(object):
@@ -620,7 +620,7 @@ class TestAttributes(test_base.TargetIndependentTest):
         mod.Foo().baz
       """, pythonpath=[d.path])
 
-  def testHasDynamicAttributesMetaclassPYI(self):
+  def test_has_dynamic_attributes_metaclass_pyi(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         class Metaclass(type):
@@ -637,7 +637,7 @@ class TestAttributes(test_base.TargetIndependentTest):
         Bar().baz
       """, pythonpath=[d.path])
 
-  def testAttrOnStaticMethod(self):
+  def test_attr_on_static_method(self):
     self.Check("""
       import collections
 
@@ -645,14 +645,14 @@ class TestAttributes(test_base.TargetIndependentTest):
       X.__new__.__defaults__ = (1, 2)
       """)
 
-  def testModuleTypeAttribute(self):
+  def test_module_type_attribute(self):
     self.Check("""
       import types
       v = None  # type: types.ModuleType
       v.some_attribute
     """)
 
-  def testAttrOnNone(self):
+  def test_attr_on_none(self):
     self.InferWithErrors("""
       def f(arg):
         x = "foo" if arg else None
@@ -660,14 +660,14 @@ class TestAttributes(test_base.TargetIndependentTest):
           x.upper()  # attribute-error
     """)
 
-  def testIteratorOnNone(self):
+  def test_iterator_on_none(self):
     self.InferWithErrors("""
       def f():
         pass
       a, b = f()  # attribute-error
     """)
 
-  def testOverloadedBuiltin(self):
+  def test_overloaded_builtin(self):
     self.Check("""
       if __random__:
         getattr = None
@@ -675,7 +675,7 @@ class TestAttributes(test_base.TargetIndependentTest):
         getattr(__any_object__, __any_object__)
     """)
 
-  def testCallableReturn(self):
+  def test_callable_return(self):
     self.Check("""
       from typing import Callable
       class Foo(object):
@@ -685,7 +685,7 @@ class TestAttributes(test_base.TargetIndependentTest):
       w = v().x
     """)
 
-  def testPropertyOnUnion(self):
+  def test_property_on_union(self):
     ty = self.Infer("""
       class A():
         def __init__(self):
@@ -713,7 +713,7 @@ class TestAttributes(test_base.TargetIndependentTest):
     """)
 
   @test_base.skip("Needs vm._get_iter() to iterate over individual bindings.")
-  def testBadIter(self):
+  def test_bad_iter(self):
     errors = self.CheckWithErrors("""
       v = [] if __random__ else 42
       for _ in v:  # attribute-error[e]
@@ -721,7 +721,7 @@ class TestAttributes(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"__iter__.*int"})
 
-  def testBadGetItem(self):
+  def test_bad_getitem(self):
     errors = self.CheckWithErrors("""
       class Foo(object):
         def __getitem__(self, x):
@@ -732,7 +732,7 @@ class TestAttributes(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"__iter__.*int.*Union\[Foo, int\]"})
 
-  def testBadContains(self):
+  def test_bad_contains(self):
     errors = self.CheckWithErrors("""
       class Foo(object):
         def __iter__(self):
@@ -744,7 +744,7 @@ class TestAttributes(test_base.TargetIndependentTest):
     self.assertErrorRegexes(
         errors, {"e": r"'in'.*'Union\[Foo, int\]' and 'int'"})
 
-  def testSubclassShadowing(self):
+  def test_subclass_shadowing(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class X:
@@ -760,7 +760,7 @@ class TestAttributes(test_base.TargetIndependentTest):
           a.b  # The original attribute isn't overwritten by the assignment
         """, pythonpath=[d.path])
 
-  def testGenericProperty(self):
+  def test_generic_property(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, Optional, TypeVar

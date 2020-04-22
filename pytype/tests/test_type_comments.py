@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class FunctionCommentTest(test_base.TargetIndependentTest):
   """Tests for type comments."""
 
-  def testFunctionUnspecifiedArgs(self):
+  def test_function_unspecified_args(self):
     ty = self.Infer("""
       def foo(x):
         # type: (...) -> int
@@ -16,7 +16,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
       def foo(x) -> int
     """)
 
-  def testFunctionReturnSpace(self):
+  def test_function_return_space(self):
     ty = self.Infer("""
       from typing import Dict
       def foo(x):
@@ -28,7 +28,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
       def foo(x) -> Dict[int, int]
     """)
 
-  def testFunctionZeroArgs(self):
+  def test_function_zero_args(self):
     # Include some stray whitespace.
     ty = self.Infer("""
       def foo():
@@ -39,7 +39,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
       def foo() -> int
     """)
 
-  def testFunctionOneArg(self):
+  def test_function_one_arg(self):
     # Include some stray whitespace.
     ty = self.Infer("""
       def foo(x):
@@ -50,7 +50,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
       def foo(x: int) -> int
     """)
 
-  def testFunctionSeveralArgs(self):
+  def test_function_several_args(self):
     ty = self.Infer("""
       def foo(x, y, z):
         # type: (int, str, float) -> None
@@ -60,7 +60,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
       def foo(x: int, y: str, z: float) -> None
     """)
 
-  def testFunctionSeveralLines(self):
+  def test_function_several_lines(self):
     ty = self.Infer("""
       def foo(x,
               y,
@@ -72,21 +72,21 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
       def foo(x: int, y: str, z: float) -> None
     """)
 
-  def testFunctionCommentOnColon(self):
+  def test_function_comment_on_colon(self):
     self.InferWithErrors("""
       def f(x) \\
         : # type: (None) -> None
         return True  # bad-return-type
     """)
 
-  def testFunctionCommentOnDefLine(self):
+  def test_function_comment_on_def_line(self):
     ty = self.Infer("""
       def f(x):  # type: (int) -> int
         return x
     """)
     self.assertTypesMatchPytd(ty, "def f(x: int) -> int: ...")
 
-  def testMultipleFunctionComments(self):
+  def test_multiple_function_comments(self):
     _, errors = self.InferWithErrors("""
       def f(x):
         # type: (None) -> bool
@@ -95,7 +95,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"Stray type comment:.*str"})
 
-  def testFunctionNoneInArgs(self):
+  def test_function_none_in_args(self):
     ty = self.Infer("""
       def foo(x, y, z):
         # type: (int, str, None) -> None
@@ -105,7 +105,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
       def foo(x: int, y: str, z: None) -> None
     """)
 
-  def testSelfIsOptional(self):
+  def test_self_is_optional(self):
     ty = self.Infer("""
       class Foo(object):
         def f(self, x):
@@ -122,7 +122,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
         def g(self, x: int) -> None: ...
     """)
 
-  def testClsIsOptional(self):
+  def test_cls_is_optional(self):
     ty = self.Infer("""
       class Foo(object):
         @classmethod
@@ -143,7 +143,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
         def g(cls: Foo, x: int) -> None: ...
     """)
 
-  def testFunctionStarArg(self):
+  def test_function_stararg(self):
     ty = self.Infer("""
       class Foo(object):
         def __init__(self, *args):
@@ -156,7 +156,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
         def __init__(self, *args: int) -> None: ...
     """)
 
-  def testFunctionStarStarArg(self):
+  def test_function_starstararg(self):
     ty = self.Infer("""
       class Foo(object):
         def __init__(self, **kwargs):
@@ -169,7 +169,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
         def __init__(self, **kwargs: int) -> None: ...
     """)
 
-  def testFunctionWithoutBody(self):
+  def test_function_without_body(self):
     ty = self.Infer("""
       def foo(x, y):
         # type: (int, str) -> None
@@ -179,14 +179,14 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
       def foo(x: int, y: str) -> None
     """)
 
-  def testFilterOutClassConstructor(self):
+  def test_filter_out_class_constructor(self):
     # We should not associate the typecomment with the function A()
     self.Check("""
       class A:
         x = 0 # type: int
     """)
 
-  def testTypeCommentAfterDocstring(self):
+  def test_type_comment_after_docstring(self):
     """Type comments after the docstring should not be picked up."""
     self.InferWithErrors("""
       def foo(x, y):
@@ -194,14 +194,14 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
         # type: (int, str) -> None  # ignored-type-comment
     """)
 
-  def testFunctionNoReturn(self):
+  def test_function_no_return(self):
     self.InferWithErrors("""
       def foo():
         # type: () ->  # invalid-function-type-comment
         pass
     """)
 
-  def testFunctionTooManyArgs(self):
+  def test_function_too_many_args(self):
     _, errors = self.InferWithErrors("""
       def foo(x):
         # type: (int, str) -> None  # invalid-function-type-comment[e]
@@ -210,7 +210,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"Expected 1 args, 2 given"})
 
-  def testFunctionTooFewArgs(self):
+  def test_function_too_few_args(self):
     _, errors = self.InferWithErrors("""
       def foo(x, y, z):
         # type: (int, str) -> None  # invalid-function-type-comment[e]
@@ -219,7 +219,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"Expected 3 args, 2 given"})
 
-  def testFunctionTooFewArgsDoNotCountSelf(self):
+  def test_function_too_few_args_do_not_count_self(self):
     _, errors = self.InferWithErrors("""
       def foo(self, x, y, z):
         # type: (int, str) -> None  # invalid-function-type-comment[e]
@@ -228,21 +228,21 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"Expected 3 args, 2 given"})
 
-  def testFunctionMissingArgs(self):
+  def test_function_missing_args(self):
     self.InferWithErrors("""
       def foo(x):
         # type: () -> int  # invalid-function-type-comment
         return x
     """)
 
-  def testInvalidFunctionTypeComment(self):
+  def test_invalid_function_type_comment(self):
     self.InferWithErrors("""
       def foo(x):
         # type: blah blah blah  # invalid-function-type-comment
         return x
     """)
 
-  def testInvalidFunctionArgs(self):
+  def test_invalid_function_args(self):
     _, errors = self.InferWithErrors("""
       def foo(x):
         # type: (abc def) -> int  # invalid-function-type-comment[e]
@@ -250,7 +250,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"abc def.*unexpected EOF"})
 
-  def testAmbiguousAnnotation(self):
+  def test_ambiguous_annotation(self):
     _, errors = self.InferWithErrors("""
       def foo(x):
         # type: (int if __random__ else str) -> None  # invalid-function-type-comment[e]
@@ -258,7 +258,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"int.*str.*constant"})
 
-  def testOneLineFunction(self):
+  def test_one_line_function(self):
     ty = self.Infer("""
       def f(): return 0
       def g():
@@ -274,7 +274,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
 class AssignmentCommentTest(test_base.TargetIndependentTest):
   """Tests for type comments applied to assignments."""
 
-  def testClassAttributeComment(self):
+  def test_class_attribute_comment(self):
     ty = self.Infer("""
       class Foo(object):
         s = None  # type: str
@@ -284,7 +284,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
         s = ...  # type: str
     """)
 
-  def testInstanceAttributeComment(self):
+  def test_instance_attribute_comment(self):
     ty = self.Infer("""
       class Foo(object):
         def __init__(self):
@@ -295,7 +295,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
         s = ...  # type: str
     """)
 
-  def testGlobalComment(self):
+  def test_global_comment(self):
     ty = self.Infer("""
       X = None  # type: str
     """)
@@ -303,7 +303,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       X = ...  # type: str
     """)
 
-  def testGlobalComment2(self):
+  def test_global_comment2(self):
     ty = self.Infer("""
       X = None  # type: str
       def f(): global X
@@ -313,7 +313,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       def f() -> None
     """)
 
-  def testLocalComment(self):
+  def test_local_comment(self):
     ty = self.Infer("""
       X = None
 
@@ -326,7 +326,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       def foo() -> str: ...
     """)
 
-  def testCellvarComment(self):
+  def test_cellvar_comment(self):
     """Type comment on an assignment generating the STORE_DEREF opcode."""
     ty = self.Infer("""
       from typing import Mapping
@@ -339,7 +339,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       def f() -> Tuple[Mapping, dict]: ...
     """)
 
-  def testBadComment(self):
+  def test_bad_comment(self):
     ty, errors = self.InferWithErrors("""
       X = None  # type: abc def  # invalid-annotation[e]
     """, deep=True)
@@ -349,7 +349,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       X = ...  # type: Any
     """)
 
-  def testConversionError(self):
+  def test_conversion_error(self):
     ty, errors = self.InferWithErrors("""
       X = None  # type: 1 if __random__ else 2  # invalid-annotation[e]
     """, deep=True)
@@ -359,13 +359,13 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       X = ...  # type: Any
     """)
 
-  def testNameErrorInsideComment(self):
+  def test_name_error_inside_comment(self):
     _, errors = self.InferWithErrors("""
       X = None  # type: Foo  # invalid-annotation[e]
     """, deep=True)
     self.assertErrorRegexes(errors, {"e": r"Foo"})
 
-  def testWarnOnIgnoredTypeComment(self):
+  def test_warn_on_ignored_type_comment(self):
     _, errors = self.InferWithErrors("""
       X = []
       X[0] = None  # type: str  # ignored-type-comment[e1]
@@ -373,7 +373,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
     """, deep=True)
     self.assertErrorRegexes(errors, {"e1": r"str", "e2": r"int"})
 
-  def testAttributeInitialization(self):
+  def test_attribute_initialization(self):
     ty = self.Infer("""
       class A(object):
         def __init__(self):
@@ -388,7 +388,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       x = ...  # type: int
     """)
 
-  def testNoneToNoneType(self):
+  def test_none_to_none_type(self):
     ty = self.Infer("""
       x = 0  # type: None
     """, deep=False)
@@ -396,14 +396,14 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       x = ...  # type: None
     """)
 
-  def testModuleInstanceAsBadTypeComment(self):
+  def test_module_instance_as_bad_type_comment(self):
     _, errors = self.InferWithErrors("""
       import sys
       x = None  # type: sys  # invalid-annotation[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"instance of module.*x"})
 
-  def testForwardReference(self):
+  def test_forward_reference(self):
     ty, errors = self.InferWithErrors("""
       a = None  # type: "A"
       b = None  # type: "Nonexistent"  # name-error[e]
@@ -423,7 +423,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"Nonexistent"})
 
-  def testClassVariableForwardReference(self):
+  def test_class_variable_forward_reference(self):
     ty = self.Infer("""
       class A(object):
         a = None  # type: 'A'
@@ -436,7 +436,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
         x: int
     """)
 
-  def testUseForwardReference(self):
+  def test_use_forward_reference(self):
     ty = self.Infer("""
       a = None  # type: "A"
       x = a.x
@@ -452,7 +452,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       x = ...  # type: Any
     """)
 
-  def testUseClassVariableForwardReference(self):
+  def test_use_class_variable_forward_reference(self):
     # Attribute accesses for A().a all get resolved to Any (b/134706992)
     ty = self.Infer("""
       class A(object):
@@ -475,14 +475,14 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       def g() -> A: ...
     """)
 
-  def testClassVariableForwardReferenceError(self):
+  def test_class_variable_forward_reference_error(self):
     self.InferWithErrors("""
       class A(object):
         a = None  # type: 'A'
       g = A().a.foo()  # attribute-error
     """)
 
-  def testMultilineValue(self):
+  def test_multiline_value(self):
     ty, errors = self.InferWithErrors("""
       v = [
         {
@@ -498,7 +498,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
         "e1": r"Stray type comment: complex",
         "e2": r"Stray type comment: dict\[str, int\]"})
 
-  def testMultilineValueWithBlankLines(self):
+  def test_multiline_value_with_blank_lines(self):
     ty = self.Infer("""
       a = [[
 
@@ -510,21 +510,21 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       a = ...  # type: list[list[int]]
     """)
 
-  def testTypeCommentNameError(self):
+  def test_type_comment_name_error(self):
     _, errors = self.InferWithErrors("""
       def f():
         x = None  # type: Any  # invalid-annotation[e]
     """, deep=True)
     self.assertErrorRegexes(errors, {"e": r"not defined$"})
 
-  def testTypeCommentInvalidSyntax(self):
+  def test_type_comment_invalid_syntax(self):
     _, errors = self.InferWithErrors("""
       def f():
         x = None  # type: y = 1  # invalid-annotation[e]
     """, deep=True)
     self.assertErrorRegexes(errors, {"e": r"invalid syntax$"})
 
-  def testDiscardedTypeComment(self):
+  def test_discarded_type_comment(self):
     """Discard the first whole-line comment, keep the second."""
     ty = self.Infer("""
         # We want either # type: ignore or # type: int
@@ -536,14 +536,14 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       def hello_world() -> str: ...
     """)
 
-  def testMultipleTypeComments(self):
+  def test_multiple_type_comments(self):
     """We should not allow multiple type comments on one line."""
     _, errors = self.InferWithErrors("""
       a = 42  # type: int  # type: float  # invalid-directive[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"Multiple"})
 
-  def testMultipleDirectives(self):
+  def test_multiple_directives(self):
     """We should support multiple directives on one line."""
     self.Check("""
       a = list() # type: list[int, str]  # pytype: disable=invalid-annotation
@@ -552,7 +552,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       c = foo(a, b.i) # pytype: disable=attribute-error  # pytype: disable=wrong-arg-count
     """)
 
-  def testNestedCommentAlias(self):
+  def test_nested_comment_alias(self):
     ty = self.Infer("""
       class A(object): pass
       class B(object):
@@ -567,7 +567,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
         x = ...  # type: A
       """)
 
-  def testNestedClassesComments(self):
+  def test_nested_classes_comments(self):
     ty = self.Infer("""
       class A(object):
         class B(object): pass
@@ -580,7 +580,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
         x = ...  # type: Any
       """)
 
-  def testListComprehensionComments(self):
+  def test_list_comprehension_comments(self):
     ty = self.Infer("""
       from typing import List
       def f(x):
@@ -597,7 +597,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       def g(xs: List[str]) -> List[str]: ...
     """)
 
-  def testMultipleAssignments(self):
+  def test_multiple_assignments(self):
     ty = self.Infer("""
       a = 1; b = 2; c = 4  # type: float
     """)
@@ -607,7 +607,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       c = ...  # type: float
     """)
 
-  def testRecursiveTypeAlias(self):
+  def test_recursive_type_alias(self):
     errors = self.CheckWithErrors("""
       from typing import List, Union
       Foo = Union[str, List['Foo']]
@@ -615,7 +615,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"Recursive.*Foo"})
 
-  def testInstantiateFullyQuotedType(self):
+  def test_instantiate_fully_quoted_type(self):
     ty, errors = self.InferWithErrors("""
       from typing import Optional
       x = None  # type: "Optional[A]"
@@ -632,7 +632,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"a.*None"})
 
-  def testDoNotResolveLateTypeToFunction(self):
+  def test_do_not_resolve_late_type_to_function(self):
     ty = self.Infer("""
       v = None  # type: "A"
       class A(object):
@@ -645,20 +645,20 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
         def A(self) -> None: ...
     """)
 
-  def testIllegalFunctionLateType(self):
+  def test_illegal_function_late_type(self):
     self.CheckWithErrors("""
       v = None  # type: "F"  # invalid-annotation
       def F(): pass
     """)
 
-  def testBadTypeCommentInConstructor(self):
+  def test_bad_type_comment_in_constructor(self):
     self.CheckWithErrors("""
       class Foo(object):
         def __init__(self):
           self.x = None  # type: "Bar"  # name-error
     """)
 
-  def testDictTypeComment(self):
+  def test_dict_type_comment(self):
     self.Check("""
       from typing import Any, Callable, Dict, Tuple
       d = {
@@ -668,7 +668,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       }  # type: Dict[str, str]
     """)
 
-  def testBreakOnPeriod(self):
+  def test_break_on_period(self):
     self.Check("""
       really_really_really_long_module_name = None  # type: module
       d = {}

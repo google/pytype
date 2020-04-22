@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class TestMethods(test_base.TargetPython3BasicTest):
   """Tests for class methods."""
 
-  def testFunctionInit(self):
+  def test_function_init(self):
     ty = self.Infer("""
       def __init__(self: int):
         return self
@@ -15,7 +15,7 @@ class TestMethods(test_base.TargetPython3BasicTest):
       def __init__(self: int) -> int
     """)
 
-  def testAnnotatedSelf(self):
+  def test_annotated_self(self):
     errors = self.CheckWithErrors("""
       class Foo(object):
         def __init__(x: int):
@@ -23,7 +23,7 @@ class TestMethods(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"int.*x"})
 
-  def testLateAnnotatedSelf(self):
+  def test_late_annotated_self(self):
     errors = self.CheckWithErrors("""
       class Foo(object):
         def __init__(x: "X"):
@@ -33,7 +33,7 @@ class TestMethods(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"X.*x"})
 
-  def testAttributeWithAnnotatedSelf(self):
+  def test_attribute_with_annotated_self(self):
     errors = self.CheckWithErrors("""
       class Foo(object):
         def __init__(self: int):
@@ -43,7 +43,7 @@ class TestMethods(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"int.*self"})
 
-  def testAttributeWithAnnotatedSelfAndFunctionInit(self):
+  def test_attribute_with_annotated_self_and_function_init(self):
     errors = self.CheckWithErrors("""
       class Foo(object):
         def __init__(self: int):

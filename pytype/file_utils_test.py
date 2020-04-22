@@ -11,7 +11,7 @@ import unittest
 class FileUtilsTest(unittest.TestCase):
   """Test file and path utilities."""
 
-  def testReplaceExtension(self):
+  def test_replace_extension(self):
     self.assertEqual("foo.bar", file_utils.replace_extension("foo.txt", "bar"))
     self.assertEqual("foo.bar", file_utils.replace_extension("foo.txt", ".bar"))
     self.assertEqual("a.b.c.bar",
@@ -20,7 +20,7 @@ class FileUtilsTest(unittest.TestCase):
                      file_utils.replace_extension("a.b/c.d", ".bar"))
     self.assertEqual("xyz.bar", file_utils.replace_extension("xyz", "bar"))
 
-  def testTempdir(self):
+  def test_tempdir(self):
     with file_utils.Tempdir() as d:
       filename1 = d.create_file("foo.txt")
       filename2 = d.create_file("bar.txt", "\tdata2")
@@ -55,7 +55,7 @@ class FileUtilsTest(unittest.TestCase):
     self.assertFalse(os.path.isdir(os.path.join(d.path, "d1", "d2")))
     self.assertFalse(os.path.isdir(filename5))
 
-  def testCd(self):
+  def test_cd(self):
     with file_utils.Tempdir() as d:
       d.create_directory("foo")
       d1 = os.getcwd()
@@ -64,7 +64,7 @@ class FileUtilsTest(unittest.TestCase):
       d2 = os.getcwd()
       self.assertEqual(d1, d2)
 
-  def testCdNoop(self):
+  def test_cd_noop(self):
     d = os.getcwd()
     with file_utils.cd(None):
       self.assertEqual(os.getcwd(), d)

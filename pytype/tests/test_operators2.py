@@ -4,9 +4,10 @@ from pytype.tests import test_base
 
 
 class OperatorsWithAnyTests(test_base.TargetIndependentTest):
+  """Operator tests."""
 
   @test_base.skip("Needs __radd__ on all builtins")
-  def testAdd1(self):
+  def test_add1(self):
     """Test that __add__, __radd__ are working."""
     ty = self.Infer("""
       def t_testAdd1(x):
@@ -17,7 +18,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
     """)
 
   @test_base.skip("Needs __radd__ on all builtins")
-  def testAdd2(self):
+  def test_add2(self):
     """Test that __add__, __radd__ are working."""
     ty = self.Infer("""
       def t_testAdd2(x):
@@ -27,7 +28,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
       def t_testAdd2(x: int or float or complex or bool) -> float or complex
     """)
 
-  def testAdd3(self):
+  def test_add3(self):
     """Test that __add__, __radd__ are working."""
     ty = self.Infer("""
       def t_testAdd3(x):
@@ -39,7 +40,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
     """)
 
   @test_base.skip("Needs handling of immutable types for += on an unknown")
-  def testAdd4(self):
+  def test_add4(self):
     # TODO(rechen): Fix test_stringio when this is working.
     ty = self.Infer("""
       def t_testAdd5(x):
@@ -51,7 +52,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
       def t_testAdd5(x: str or unicode or bytearray or list[?]) -> str or unicode or bytearray or list[?]
     """)
 
-  def testStrMul(self):
+  def test_str_mul(self):
     """Test that __mul__, __rmul__ are working."""
     ty = self.Infer("""
       def t_testAdd4(x):
@@ -61,7 +62,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
       def t_testAdd4(x) -> str
     """)
 
-  def testPow1(self):
+  def test_pow1(self):
     ty = self.Infer("""
       def t_testPow1(x, y):
         return x ** y
@@ -71,7 +72,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
       def t_testPow1(x, y) -> Any
     """)
 
-  def testIsinstance1(self):
+  def test_isinstance1(self):
     ty = self.Infer("""
       def t_testIsinstance1(x):
         # TODO: if isinstance(x, int): return "abc" else: return None
@@ -81,7 +82,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
       def t_testIsinstance1(x) -> bool
     """)
 
-  def testCallAny(self):
+  def test_call_any(self):
     ty = self.Infer("""
       t_testCallAny = __any_object__
       t_testCallAny()  # error because there's no "def f()..."
@@ -91,7 +92,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
     """)
 
   @test_base.skip("Needs NameError support")
-  def testUndefinedModule(self):
+  def test_undefined_module(self):
     ty = self.Infer("""
       def t_testSys():
         return sys
@@ -100,7 +101,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
     self.assertEqual(ty.Lookup("t_testSys").signatures[0].exceptions,
                      self.nameerror)
 
-  def testSubscr(self):
+  def test_subscr(self):
     self.Check("""
       x = "foo" if __random__ else None
       d = {"foo": 42}

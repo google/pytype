@@ -9,7 +9,7 @@ from pytype.tests import test_base
 class ErrorTest(test_base.TargetPython3BasicTest):
   """Tests for errors."""
 
-  def testUnion(self):
+  def test_union(self):
     _, errors = self.InferWithErrors("""
       def f(x: int):
         pass
@@ -23,7 +23,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(
         errors, {"e": r"Actually passed:.*Union\[float, str\]"})
 
-  def testInvalidAnnotations(self):
+  def test_invalid_annotations(self):
     _, errors = self.InferWithErrors("""
       from typing import Dict, List, Union
       def f1(x: Dict):  # okay
@@ -39,7 +39,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
                                      "e2": r"typing.List\[_T].*1.*2",
                                      "e3": r"Union.*x"})
 
-  def testPrintUnsolvable(self):
+  def test_print_unsolvable(self):
     _, errors = self.InferWithErrors("""
       from typing import List
       def f(x: List[nonsense], y: str, z: float):  # name-error
@@ -49,7 +49,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(
         errors, {"e": r"Expected:.*x: list.*Actual.*x: set"})
 
-  def testPrintUnionOfContainers(self):
+  def test_print_union_of_containers(self):
     _, errors = self.InferWithErrors("""
       def f(x: str):
         pass
@@ -62,7 +62,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
     error = r"Actual.*Union\[List\[Type\[float\]\], Type\[dict\]\]"
     self.assertErrorRegexes(errors, {"e": error})
 
-  def testWrongBrackets(self):
+  def test_wrong_brackets(self):
     _, errors = self.InferWithErrors("""
       from typing import List
       def f(x: List(str)):  # not-callable[e]
@@ -70,7 +70,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"List"})
 
-  def testInterpreterClassPrinting(self):
+  def test_interpreter_class_printing(self):
     _, errors = self.InferWithErrors("""
       class Foo(object): pass
       def f(x: str): pass
@@ -78,7 +78,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"str.*Foo"})
 
-  def testPrintDictAndTuple(self):
+  def test_print_dict_and_tuple(self):
     _, errors = self.InferWithErrors("""
       from typing import Tuple
       tup = None  # type: Tuple[int, ...]
@@ -98,7 +98,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
         "e3": r"{'a': '1'}.*Not a type",
         "e4": r"instance of Dict\[str, int\].*Not a type"})
 
-  def testMoveUnionInward(self):
+  def test_move_union_inward(self):
     _, errors = self.InferWithErrors("""
       def f() -> str:  # invalid-annotation[e]
         y = "hello" if __random__ else 42
@@ -106,7 +106,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"Generator, Iterable or Iterator"})
 
-  def testInnerClassError(self):
+  def test_inner_class_error(self):
     _, errors = self.InferWithErrors("""
       def f(x: str): pass
       def g():
@@ -115,7 +115,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"x: str.*x: Foo"})
 
-  def testInnerClassError2(self):
+  def test_inner_class_error2(self):
     _, errors = self.InferWithErrors("""
       def f():
         class Foo(object): pass
@@ -124,7 +124,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"x: Foo.*x: str"})
 
-  def testCleanNamedtupleNames(self):
+  def test_clean_namedtuple_names(self):
     # Make sure the namedtuple renaming in _pytd_print correctly extracts type
     # names and doesn't erase other types accidentally.
     _, errors = self.InferWithErrors("""
@@ -148,7 +148,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
         "e1": r"`X`", "e2": r"`Z`", "e3": r"`W`",
         "e4": r"`dictionary-keyiterator`", "e5": r"Union\[int, `X`\]"})
 
-  def testArgumentOrder(self):
+  def test_argument_order(self):
     _, errors = self.InferWithErrors("""
       def g(f: str, a, b, c, d, e,):
         pass
@@ -157,14 +157,14 @@ class ErrorTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {
         "e": r"Expected.*f: str, \.\.\..*Actual.*f: int, \.\.\."})
 
-  def testConversionOfGeneric(self):
+  def test_conversion_of_generic(self):
     self.InferWithErrors("""
       import os
       def f() -> None:
         return os.walk("/tmp")  # bad-return-type
     """)
 
-  def testInnerClass(self):
+  def test_inner_class(self):
     _, errors = self.InferWithErrors("""
       def f() -> int:
         class Foo(object):
@@ -173,7 +173,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"int.*Foo"})
 
-  def testNestedProtoClass(self):
+  def test_nested_proto_class(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo_bar.pyi", """
         from typing import Type
@@ -188,7 +188,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"foo_bar\.Foo\.Bar"})
 
-  def testStaticmethodInError(self):
+  def test_staticmethod_in_error(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class A(object):
@@ -205,7 +205,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
       self.assertErrorRegexes(
           errors, {"e": r"Actually passed: \(x: Callable\[\[str\], None\]"})
 
-  def testGeneratorSend(self):
+  def test_generator_send(self):
     errors = self.CheckWithErrors("""
       from typing import Generator, Any
       def f(x) -> Generator[Any, int, Any]:
@@ -219,7 +219,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"\(self, value: int\)"})
 
-  def testGeneratorIteratorRetType(self):
+  def test_generator_iterator_ret_type(self):
     errors = self.CheckWithErrors("""
       from typing import Iterator
       def f() -> Iterator[str]:
@@ -227,7 +227,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"str.*int"})
 
-  def testGeneratorIterableRetType(self):
+  def test_generator_iterable_ret_type(self):
     errors = self.CheckWithErrors("""
       from typing import Iterable
       def f() -> Iterable[str]:
@@ -251,13 +251,13 @@ class InPlaceOperationsTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {
         "e": r"%s.*A.*int.*__%s__ on A.*A" % (re.escape(symbol), op)})
 
-  def testISub(self):
+  def test_isub(self):
     self._testOp("isub", "-=")
 
-  def testIMul(self):
+  def test_imul(self):
     self._testOp("imul", "*=")
 
-  def testIDiv(self):
+  def test_idiv(self):
     errors = self.CheckWithErrors("""
       class A(object):
         def __idiv__(self, x: "A"):
@@ -271,42 +271,42 @@ class InPlaceOperationsTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(
         errors, {"e": r"\/\=.*A.*int.*__i(true)?div__ on A.*A"})
 
-  def testIMod(self):
+  def test_imod(self):
     self._testOp("imod", "%=")
 
-  def testIPow(self):
+  def test_ipow(self):
     self._testOp("ipow", "**=")
 
-  def testILShift(self):
+  def test_ilshift(self):
     self._testOp("ilshift", "<<=")
 
-  def testIRShift(self):
+  def test_irshift(self):
     self._testOp("irshift", ">>=")
 
-  def testIAnd(self):
+  def test_iand(self):
     self._testOp("iand", "&=")
 
-  def testIXor(self):
+  def test_ixor(self):
     self._testOp("ixor", "^=")
 
-  def testIOr(self):
+  def test_ior(self):
     self._testOp("ior", "|=")
 
-  def testIFloorDiv(self):
+  def test_ifloordiv(self):
     self._testOp("ifloordiv", "//=")
 
 
 class ErrorTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for errors."""
 
-  def testProtocolMismatch(self):
+  def test_protocol_mismatch(self):
     _, errors = self.InferWithErrors("""
       class Foo(object): pass
       next(Foo())  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"__iter__, __next__"})
 
-  def testProtocolMismatchPartial(self):
+  def test_protocol_mismatch_partial(self):
     _, errors = self.InferWithErrors("""
       class Foo(object):
         def __iter__(self):
@@ -316,7 +316,7 @@ class ErrorTestPy3(test_base.TargetPython3FeatureTest):
     self.assertErrorRegexes(
         errors, {"e": r"\n\s*__next__\s*$"})  # `next` on its own line
 
-  def testGeneratorSendRetType(self):
+  def test_generator_send_ret_type(self):
     _, errors = self.InferWithErrors("""
       from typing import Generator
       def f() -> Generator[int, str, int]:
@@ -329,7 +329,7 @@ class ErrorTestPy3(test_base.TargetPython3FeatureTest):
 class MatrixOperationsTest(test_base.TargetPython3FeatureTest):
   """Test matrix operations."""
 
-  def testMatMul(self):
+  def test_matmul(self):
     errors = self.CheckWithErrors("""
       def f():
         return 'foo' @ 3  # unsupported-operands[e]
@@ -337,7 +337,7 @@ class MatrixOperationsTest(test_base.TargetPython3FeatureTest):
     self.assertErrorRegexes(errors, {
         "e": r"\@.*str.*int.*'__matmul__' on str.*'__rmatmul__' on int"})
 
-  def testIMatMul(self):
+  def test_imatmul(self):
     errors = self.CheckWithErrors("""
       class A(object):
         def __imatmul__(self, x: "A"):

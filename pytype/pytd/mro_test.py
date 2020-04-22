@@ -27,7 +27,7 @@ import unittest
 class MroTest(parser_test_base.ParserTest):
   """Test pytype.pytd.mro."""
 
-  def testDedup(self):
+  def test_dedup(self):
     self.assertEqual([], mro.Dedup([]))
     self.assertEqual([1], mro.Dedup([1]))
     self.assertEqual([1, 2], mro.Dedup([1, 2]))
@@ -35,7 +35,7 @@ class MroTest(parser_test_base.ParserTest):
     self.assertEqual([1, 2], mro.Dedup([1, 1, 2, 2]))
     self.assertEqual([3, 2, 1], mro.Dedup([3, 2, 1, 3]))
 
-  def testMROMerge(self):
+  def test_mro_merge(self):
     self.assertEqual([], mro.MROMerge([[], []]))
     self.assertEqual([1], mro.MROMerge([[], [1]]))
     self.assertEqual([1], mro.MROMerge([[1], []]))
@@ -48,7 +48,7 @@ class MroTest(parser_test_base.ParserTest):
                      mro.MROMerge([[1, 3, 5], [2, 3, 4], [4, 5, 6]]))
     self.assertEqual([1, 2, 3], mro.MROMerge([[1, 2, 1], [2, 3, 2]]))
 
-  def testGetBasesInMRO(self):
+  def test_get_bases_in_mro(self):
     ast = parser.parse_string(textwrap.dedent("""
       from typing import Generic, TypeVar
       T = TypeVar("T")

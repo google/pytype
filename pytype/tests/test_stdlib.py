@@ -7,7 +7,7 @@ from pytype.tests import test_base
 class StdlibTests(test_base.TargetIndependentTest):
   """Tests for files in typeshed/stdlib."""
 
-  def testAST(self):
+  def test_ast(self):
     ty = self.Infer("""
       import ast
       def f():
@@ -18,7 +18,7 @@ class StdlibTests(test_base.TargetIndependentTest):
       def f() -> _ast.Module
     """)
 
-  def testUrllib(self):
+  def test_urllib(self):
     ty = self.Infer("""
       import urllib
     """)
@@ -26,7 +26,7 @@ class StdlibTests(test_base.TargetIndependentTest):
       urllib = ...  # type: module
     """)
 
-  def testTraceBack(self):
+  def test_traceback(self):
     ty = self.Infer("""
       import traceback
       def f(exc):
@@ -38,7 +38,7 @@ class StdlibTests(test_base.TargetIndependentTest):
       def f(exc) -> List[str]
     """)
 
-  def testOsWalk(self):
+  def test_os_walk(self):
     ty = self.Infer("""
       import os
       x = list(os.walk("/tmp"))
@@ -49,7 +49,7 @@ class StdlibTests(test_base.TargetIndependentTest):
       x = ...  # type: List[Tuple[str, List[str], List[str]]]
     """)
 
-  def testStruct(self):
+  def test_struct(self):
     ty = self.Infer("""
       import struct
       x = struct.Struct("b")
@@ -59,7 +59,7 @@ class StdlibTests(test_base.TargetIndependentTest):
       x = ...  # type: struct.Struct
     """)
 
-  def testWarning(self):
+  def test_warning(self):
     ty = self.Infer("""
       import warnings
     """, deep=False)
@@ -67,7 +67,7 @@ class StdlibTests(test_base.TargetIndependentTest):
       warnings = ...  # type: module
     """)
 
-  def testPathConf(self):
+  def test_path_conf(self):
     self.Check("""
       import os
       max_len = os.pathconf('directory', 'name')
@@ -75,7 +75,7 @@ class StdlibTests(test_base.TargetIndependentTest):
       r = len(filename) >= max_len - 1
     """)
 
-  def testEnviron(self):
+  def test_environ(self):
     self.Check("""
       import os
       os.getenv('foobar', 3j)
@@ -86,7 +86,7 @@ class StdlibTests(test_base.TargetIndependentTest):
       del os.environ['hello']
     """)
 
-  def testStdlib(self):
+  def test_stdlib(self):
     self.Check("""
       import re
       s = "the quick brown fox jumps over the lazy dog"
@@ -94,7 +94,7 @@ class StdlibTests(test_base.TargetIndependentTest):
       word.sub(lambda x: '<'+x.group(0)+'>', s)
     """)
 
-  def testNamedtuple(self):
+  def test_namedtuple(self):
     self.Check("""
       import collections
       collections.namedtuple(u"_", "")
@@ -102,7 +102,7 @@ class StdlibTests(test_base.TargetIndependentTest):
       collections.namedtuple("_", [u"a", "b"])
     """)
 
-  def testDefaultdict(self):
+  def test_defaultdict(self):
     ty = self.Infer("""
       import collections
       a = collections.defaultdict(int, one = 1, two = 2)
@@ -122,7 +122,7 @@ class StdlibTests(test_base.TargetIndependentTest):
       f = ...  # type: collections.defaultdict[nothing, int]
       """)
 
-  def testDefaultdictNoFactory(self):
+  def test_defaultdict_no_factory(self):
     ty = self.Infer("""
       import collections
       a = collections.defaultdict()
@@ -147,7 +147,7 @@ class StdlibTests(test_base.TargetIndependentTest):
       h = ...  # type: collections.defaultdict[nothing, nothing]
       """)
 
-  def testDefaultdictDiffDefaults(self):
+  def test_defaultdict_diff_defaults(self):
     ty = self.Infer("""
       import collections
       a = collections.defaultdict(int, one = '1')
@@ -164,7 +164,7 @@ class StdlibTests(test_base.TargetIndependentTest):
       d = ...  # type: collections.defaultdict[int, Union[int, str]]
       """)
 
-  def testCounter(self):
+  def test_counter(self):
     self.Check("""
       import collections
       x = collections.Counter()
@@ -175,31 +175,31 @@ class StdlibTests(test_base.TargetIndependentTest):
       (x | y).elements
     """)
 
-  def testRange(self):
+  def test_range(self):
     self.Check("""
       import random
       random.sample(range(10), 5)
     """)
 
-  def testXml(self):
+  def test_xml(self):
     self.Check("""
       import xml.etree.cElementTree
       xml.etree.cElementTree.SubElement
       xml.etree.cElementTree.iterparse
     """)
 
-  def testCsv(self):
+  def test_csv(self):
     self.Check("""
       import _csv
       import csv
     """)
 
-  def testFuture(self):
+  def test_future(self):
     self.Check("""
       import __future__
     """)
 
-  def testLoad2and3(self):
+  def test_load2and3(self):
     """Test that files in stdlib/2and3/ load in both versions."""
     self.Check("""
       import collections
@@ -209,7 +209,7 @@ class StdlibTests(test_base.TargetIndependentTest):
       import __future__
     """)
 
-  def testSysVersionInfo(self):
+  def test_sys_version_info(self):
     ty = self.Infer("""
       import sys
       major, minor, micro, releaselevel, serial = sys.version_info
@@ -223,7 +223,7 @@ class StdlibTests(test_base.TargetIndependentTest):
       serial: int
     """)
 
-  def testSubprocess(self):
+  def test_subprocess(self):
     # Sanity check to make sure basic type-checking works in both py2 and py3.
     # The subprocess module changed significantly between versions.
     self.Check("""
@@ -233,7 +233,7 @@ class StdlibTests(test_base.TargetIndependentTest):
         return proc.communicate()
     """)
 
-  def testSubprocessSubclass(self):
+  def test_subprocess_subclass(self):
     self.Check("""
       import subprocess
       class Popen(subprocess.Popen):
@@ -241,7 +241,7 @@ class StdlibTests(test_base.TargetIndependentTest):
           return super(Popen, self).wait(*args, **kwargs)
     """)
 
-  def testSubprocessSrcAndPyi(self):
+  def test_subprocess_src_and_pyi(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         import subprocess

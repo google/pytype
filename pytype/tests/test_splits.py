@@ -7,7 +7,7 @@ from pytype.tests import test_base
 class SplitTest(test_base.TargetIndependentTest):
   """Tests for if-splitting."""
 
-  def testRestrictNone(self):
+  def test_restrict_none(self):
     ty = self.Infer("""
       def foo(x):
         y = str(x) if x else None
@@ -23,7 +23,7 @@ class SplitTest(test_base.TargetIndependentTest):
       def foo(x) -> Union[int, str]: ...
     """)
 
-  def testRestrictTrue(self):
+  def test_restrict_true(self):
     ty = self.Infer("""
       def foo(x):
         y = str(x) if x else True
@@ -38,7 +38,7 @@ class SplitTest(test_base.TargetIndependentTest):
       def foo(x) -> Union[int, str]: ...
     """)
 
-  def testRelatedVariable(self):
+  def test_related_variable(self):
     ty = self.Infer("""
       def foo(x):
         # y is str or None
@@ -61,7 +61,7 @@ class SplitTest(test_base.TargetIndependentTest):
       def foo(x) -> Union[float, int]: ...
     """)
 
-  def testNestedConditions(self):
+  def test_nested_conditions(self):
     ty = self.Infer("""
       def foo(x1, x2):
         y1 = str(x1) if x1 else 0
@@ -76,7 +76,7 @@ class SplitTest(test_base.TargetIndependentTest):
       def foo(x1, x2) -> str: ...
     """)
 
-  def testRemoveConditionAfterMerge(self):
+  def test_remove_condition_after_merge(self):
     ty = self.Infer("""
       def foo(x):
         y = str(x) if x else None
@@ -92,7 +92,7 @@ class SplitTest(test_base.TargetIndependentTest):
       def foo(x) -> Union[None, str]: ...
     """)
 
-  def testUnsatisfiableCondition(self):
+  def test_unsatisfiable_condition(self):
     # Check both sides of an "if".  If unsatisfiable code is executed then
     # it will result in an error due to unknown_method() and widen the return
     # signature to a Union.
@@ -140,7 +140,7 @@ class SplitTest(test_base.TargetIndependentTest):
       def f4(x) -> int: ...
     """)
 
-  def testSourcesPropagatedThroughCall(self):
+  def test_sources_propagated_through_call(self):
     ty = self.Infer("""
       class Foo(object):
         def method(self):
@@ -174,7 +174,7 @@ class SplitTest(test_base.TargetIndependentTest):
       def foo(x) -> Union[None, int]: ...
     """)
 
-  def testShortCircuit(self):
+  def test_short_circuit(self):
     # Unlike normal if statement, the and/or short circuit logic does
     # not appear to be optimized away by the compiler.  Therefore these
     # simple tests do in fact execute if-splitting logic.
@@ -208,7 +208,7 @@ class SplitTest(test_base.TargetIndependentTest):
       def frozenset_f(x) -> frozenset[nothing]: ...
     """)
 
-  def testDict(self):
+  def test_dict(self):
     # Dicts start out as empty, which is compatible with False and not
     # compatible with True.  Any operation that possibly adds an item will
     # make the dict ambiguous - compatible with both True and False.
@@ -228,7 +228,7 @@ class SplitTest(test_base.TargetIndependentTest):
       def f2(x) -> Union[int, str]: ...
     """)
 
-  def testDictUpdate(self):
+  def test_dict_update(self):
     ty = self.Infer("""
       def f1():
         d = {}
@@ -247,7 +247,7 @@ class SplitTest(test_base.TargetIndependentTest):
       def f2() -> int: ...
     """)
 
-  def testDictUpdateFromKwargs(self):
+  def test_dict_update_from_kwargs(self):
     ty = self.Infer("""
       def f1():
         d = {}
@@ -264,7 +264,7 @@ class SplitTest(test_base.TargetIndependentTest):
       def f2() -> int: ...
     """)
 
-  def testBadDictUpdate(self):
+  def test_bad_dict_update(self):
     ty = self.Infer("""
       def f1():
         d = {}
@@ -281,7 +281,7 @@ class SplitTest(test_base.TargetIndependentTest):
       def f2() -> str or int
     """)
 
-  def testIsInstance(self):
+  def test_isinstance(self):
     ty = self.Infer("""
       # Always returns a bool.
       def sig(x): return isinstance(x, str)
@@ -308,7 +308,7 @@ class SplitTest(test_base.TargetIndependentTest):
       def a2(x) -> Union[int, str]: ...
     """)
 
-  def testIsSubclass(self):
+  def test_is_subclass(self):
     ty = self.Infer("""
       # Always return a bool
       def sig(x): return issubclass(x, object)
@@ -347,7 +347,7 @@ class SplitTest(test_base.TargetIndependentTest):
         pass
       """)
 
-  def testHasAttrBuiltin(self):
+  def test_hasattr_builtin(self):
     ty = self.Infer("""
       # Always returns a bool.
       def sig(x): return hasattr(x, "upper")
@@ -369,7 +369,7 @@ class SplitTest(test_base.TargetIndependentTest):
       def a1(x) -> Union[int, str]: ...
     """)
 
-  def testSplit(self):
+  def test_split(self):
     ty = self.Infer("""
       def f2(x):
         if x:
@@ -391,7 +391,7 @@ class SplitTest(test_base.TargetIndependentTest):
       def f1(x) -> Optional[int]
     """)
 
-  def testDeadIf(self):
+  def test_dead_if(self):
     ty = self.Infer("""
       def foo(x):
         x = None
@@ -403,7 +403,7 @@ class SplitTest(test_base.TargetIndependentTest):
       def foo(x) -> None: ...
     """)
 
-  def testUnaryNot(self):
+  def test_unary_not(self):
     ty = self.Infer("""
       def not_t(x):
         x = None
@@ -435,7 +435,7 @@ class SplitTest(test_base.TargetIndependentTest):
       def not_ambiguous(x) -> Union[int, str]: ...
     """)
 
-  def testIsInstanceObjectWithoutClass(self):
+  def test_isinstance_object_without_class(self):
     ty = self.Infer("""
       def foo(x):
         return 1 if isinstance(dict, type) else "x"
@@ -444,7 +444,7 @@ class SplitTest(test_base.TargetIndependentTest):
       def foo(x) -> int: ...
     """)
 
-  def testDoubleAssign(self):
+  def test_double_assign(self):
     self.Check("""
       x = 1
       x = None
@@ -452,7 +452,7 @@ class SplitTest(test_base.TargetIndependentTest):
         x.foo()
     """)
 
-  def testInfiniteLoop(self):
+  def test_infinite_loop(self):
     self.Check("""
       class A(object):
         def __init__(self):
@@ -475,7 +475,7 @@ class SplitTest(test_base.TargetIndependentTest):
       b.add2()
     """)
 
-  def testDictContains(self):
+  def test_dict_contains(self):
     """Assert that we can determine whether a dict contains a key."""
     self.Check("""
       d1 = {"x": 42}
@@ -495,7 +495,7 @@ class SplitTest(test_base.TargetIndependentTest):
         d3["y"]
     """)
 
-  def testDictDoesNotContain(self):
+  def test_dict_does_not_contain(self):
     """Assert that we can determine whether a dict does not contain a key."""
     self.Check("""
       d1 = {"x": 42}
@@ -517,7 +517,7 @@ class SplitTest(test_base.TargetIndependentTest):
         d3["x"]
     """)
 
-  def testDictMaybeContains(self):
+  def test_dict_maybe_contains(self):
     """Test that we can handle more complex cases involving dict membership."""
     ty = self.Infer("""
       if __random__:
@@ -536,7 +536,7 @@ class SplitTest(test_base.TargetIndependentTest):
       v2 = ...  # type: complex
     """)
 
-  def testContainsCoerceToBool(self):
+  def test_contains_coerce_to_bool(self):
     ty = self.Infer("""
       class A(object):
         def __contains__(self, x):
@@ -560,7 +560,7 @@ class SplitTest(test_base.TargetIndependentTest):
       y2 = ...  # type: bool
     """)
 
-  def testSkipOverMidwayIf(self):
+  def test_skip_over_midway_if(self):
     ty = self.Infer("""
       def f(r):
         y = "foo"
@@ -578,7 +578,7 @@ class SplitTest(test_base.TargetIndependentTest):
       def f(r) -> Optional[str]
     """)
 
-  def testDictEq(self):
+  def test_dict_eq(self):
     ty = self.Infer("""
       if __random__:
         x = {"a": 1}
@@ -601,7 +601,7 @@ class SplitTest(test_base.TargetIndependentTest):
       v2 = ...  # type: int or complex
     """)
 
-  def testTupleEq(self):
+  def test_tuple_eq(self):
     ty = self.Infer("""
       if __random__:
         x = (1,)
@@ -624,7 +624,7 @@ class SplitTest(test_base.TargetIndependentTest):
       v2 = ...  # type: str or float
     """)
 
-  def testPrimitiveEq(self):
+  def test_primitive_eq(self):
     ty = self.Infer("""
       if __random__:
         x = "a"
@@ -646,14 +646,14 @@ class SplitTest(test_base.TargetIndependentTest):
       v2 = ...  # type: float
     """)
 
-  def testPrimitiveNotEq(self):
+  def test_primitive_not_eq(self):
     self.Check("""
       x = "foo" if __random__ else 42
       if x == "foo":
         x.upper()
     """)
 
-  def testBuiltinFullNameCheck(self):
+  def test_builtin_full_name_check(self):
     # Don't get confused by a class named int
     self.InferWithErrors("""
       class int():
@@ -663,7 +663,7 @@ class SplitTest(test_base.TargetIndependentTest):
         x.upper()  # attribute-error
     """)
 
-  def testTypeParameterInBranch(self):
+  def test_type_parameter_in_branch(self):
     ty = self.Infer("""
       if __random__:
         x = {"a": 1, "b": 42}
@@ -675,7 +675,7 @@ class SplitTest(test_base.TargetIndependentTest):
       x = ...  # type: Dict[str, int or complex]
     """)
 
-  def testNoneOrTuple(self):
+  def test_none_or_tuple(self):
     # This tests the attribute retrieval code in vm.py:_get_iter
     self.Check("""
       foo = (0, 0)
@@ -685,7 +685,7 @@ class SplitTest(test_base.TargetIndependentTest):
         a, b = foo
     """)
 
-  def testCmpIsPyTDClass(self):
+  def test_cmp_is_pytd_class(self):
     self.Check("""
       x = bool
       if x is str:
@@ -694,7 +694,7 @@ class SplitTest(test_base.TargetIndependentTest):
         name_error
     """)
 
-  def testCmpIsTupleType(self):
+  def test_cmp_is_tuple_type(self):
     self.Check("""
       x = (1,)
       y = (1, 2)
@@ -705,7 +705,7 @@ class SplitTest(test_base.TargetIndependentTest):
         name_error
     """)
 
-  def testCmpIsFunctionType(self):
+  def test_cmp_is_function_type(self):
     self.Check("""
       def f(): pass
       def g(x): return x
@@ -713,7 +713,7 @@ class SplitTest(test_base.TargetIndependentTest):
         name_error
     """)
 
-  def testCmpIsInterpreterClass(self):
+  def test_cmp_is_interpreter_class(self):
     self.Check("""
       class X(object): pass
       class Y(object): pass
@@ -723,7 +723,7 @@ class SplitTest(test_base.TargetIndependentTest):
         name_error
     """)
 
-  def testCmpIsClassNameCollision(self):
+  def test_cmp_is_class_name_collision(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class X(object): ...
@@ -735,7 +735,7 @@ class SplitTest(test_base.TargetIndependentTest):
           name_error
       """, pythonpath=[d.path])
 
-  def testGetIter(self):
+  def test_get_iter(self):
     self.Check("""
       def f():
         z = (1,2) if __random__ else None
@@ -744,7 +744,7 @@ class SplitTest(test_base.TargetIndependentTest):
           x, y = z
     """)
 
-  def testListComprehension(self):
+  def test_list_comprehension(self):
     self.Check("""
       widgets = [None, 'hello']
       wotsits = [x for x in widgets if x]
@@ -752,7 +752,7 @@ class SplitTest(test_base.TargetIndependentTest):
         x.upper()
     """)
 
-  def testPrimitive(self):
+  def test_primitive(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Value(int):
@@ -766,7 +766,7 @@ class SplitTest(test_base.TargetIndependentTest):
           name_error  # name-error
       """, pythonpath=[d.path])
 
-  def testListElement(self):
+  def test_list_element(self):
     ty = self.Infer("""
       def f():
         x = None if __random__ else 42
@@ -777,14 +777,14 @@ class SplitTest(test_base.TargetIndependentTest):
       def f() -> List[int]
     """)
 
-  def testKeepConstant(self):
+  def test_keep_constant(self):
     self.Check("""
       use_option = False
       if use_option:
         name_error
     """)
 
-  def testFunctionAndClassTruthiness(self):
+  def test_function_and_class_truthiness(self):
     self.Check("""
       def f(x):
         return {} if x else []

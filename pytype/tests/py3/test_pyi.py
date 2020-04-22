@@ -7,7 +7,7 @@ from pytype.tests import test_base
 class PYITest(test_base.TargetPython3BasicTest):
   """Tests for PYI."""
 
-  def testUnneccessaryAnyImport(self):
+  def test_unneccessary_any_import(self):
     ty = self.Infer("""
         import typing
         def foo(**kwargs: typing.Any) -> int: return 1
@@ -19,7 +19,7 @@ class PYITest(test_base.TargetPython3BasicTest):
         def bar(*args) -> int: ...
         """)
 
-  def testStaticMethodFromPyiAsCallable(self):
+  def test_static_method_from_pyi_as_callable(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class A:
@@ -34,7 +34,7 @@ class PYITest(test_base.TargetPython3BasicTest):
         func(foo.A.callback, 'hello, world')
       """, pythonpath=[d.path])
 
-  def testClassMethodFromPyiAsCallable(self):
+  def test_class_method_from_pyi_as_callable(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class A:
@@ -53,7 +53,7 @@ class PYITest(test_base.TargetPython3BasicTest):
 class PYITestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for PYI."""
 
-  def testBytes(self):
+  def test_bytes(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f() -> bytes

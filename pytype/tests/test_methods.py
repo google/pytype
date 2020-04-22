@@ -8,7 +8,7 @@ from pytype.tests import test_base
 class MethodsTest(test_base.TargetIndependentTest):
   """Tests for methods."""
 
-  def testFlowAndReplacementSanity(self):
+  def test_flow_and_replacement_sanity(self):
     ty = self.Infer("""
       def f(x):
         if x:
@@ -21,7 +21,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     self.assertHasOnlySignatures(ty.Lookup("f"),
                                  ((self.int,), self.int))
 
-  def testMultipleReturns(self):
+  def test_multiple_returns(self):
     ty = self.Infer("""
       def f(x):
         if x:
@@ -34,7 +34,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     self.assertHasOnlySignatures(ty.Lookup("f"),
                                  ((self.int,), self.intorfloat))
 
-  def testLoopsSanity(self):
+  def test_loops_sanity(self):
     ty = self.Infer("""
       def f():
         x = 4
@@ -47,7 +47,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(ty.Lookup("f"), ((), self.int))
 
-  def testAddInt(self):
+  def test_add_int(self):
     ty = self.Infer("""
       def f(x):
         return x + 1
@@ -57,7 +57,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
     self.assertHasSignature(ty.Lookup("f"), (self.float,), self.float)
 
-  def testAddFloat(self):
+  def test_add_float(self):
     ty = self.Infer("""
       def f(x):
         return x + 1.2
@@ -66,7 +66,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.intorfloat,), self.float)
 
-  def testConjugate(self):
+  def test_conjugate(self):
     ty = self.Infer("""
       def f(x, y):
         return x.conjugate()
@@ -74,7 +74,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int, self.int), self.int)
 
-  def testClassSanity(self):
+  def test_class_sanity(self):
     ty = self.Infer("""
       class A(object):
         def __init__(self):
@@ -103,7 +103,7 @@ class MethodsTest(test_base.TargetIndependentTest):
         def set_x(self, x: float) -> None
     """)
 
-  def testBooleanOp(self):
+  def test_boolean_op(self):
     ty = self.Infer("""
       def f(x, y):
         return 1 < x < 10
@@ -112,7 +112,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int, self.int), self.bool)
 
-  def testIs(self):
+  def test_is(self):
     ty = self.Infer("""
       def f(a, b):
         return a is b
@@ -120,7 +120,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int, self.int), self.bool)
 
-  def testIsNot(self):
+  def test_is_not(self):
     ty = self.Infer("""
       def f(a, b):
         return a is not b
@@ -128,7 +128,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int, self.int), self.bool)
 
-  def testSlice(self):
+  def test_slice(self):
     ty = self.Infer("""
       def f(x):
         a, b = x
@@ -138,7 +138,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     t = pytd.TupleType(self.tuple, (self.int, self.int))
     self.assertHasSignature(ty.Lookup("f"), (t,), t)
 
-  def testConvert(self):
+  def test_convert(self):
     ty = self.Infer("""
       def f(x):
         return repr(x)
@@ -146,7 +146,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.str)
 
-  def testNot(self):
+  def test_not(self):
     ty = self.Infer("""
       def f(x):
         return not x
@@ -154,7 +154,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.bool)
 
-  def testPositive(self):
+  def test_positive(self):
     ty = self.Infer("""
       def f(x):
         return +x
@@ -162,7 +162,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
-  def testNegative(self):
+  def test_negative(self):
     ty = self.Infer("""
       def f(x):
         return -x
@@ -170,7 +170,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
-  def testInvert(self):
+  def test_invert(self):
     ty = self.Infer("""
       def f(x):
         return ~x
@@ -178,7 +178,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
-  def testInheritance(self):
+  def test_inheritance(self):
     ty = self.Infer("""
       class Base(object):
         def get_suffix(self):
@@ -197,7 +197,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("test"), (), self.unicode)
 
-  def testProperty(self):
+  def test_property(self):
     ty = self.Infer(
         """
       class A(object):
@@ -215,7 +215,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("test"), (), self.int)
 
-  def testExplicitProperty(self):
+  def test_explicit_property(self):
     ty = self.Infer("""
       class B(object):
         def _my_getter(self):
@@ -231,7 +231,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("test"), (), self.int)
 
-  def testInheritedProperty(self):
+  def test_inherited_property(self):
     self.Check("""
       class A(object):
         @property
@@ -242,7 +242,7 @@ class MethodsTest(test_base.TargetIndependentTest):
           return super(B, self).bar + 42
     """)
 
-  def testGenerators(self):
+  def test_generators(self):
     ty = self.Infer("""
       def f():
         yield 3
@@ -253,7 +253,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.generator)
 
-  def testListGenerator(self):
+  def test_list_generator(self):
     ty = self.Infer("""
       def f():
         yield 3
@@ -264,7 +264,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.generator)
 
-  def testRecursion(self):
+  def test_recursion(self):
     ty = self.Infer("""
       def f():
         if __random__:
@@ -275,7 +275,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
-  def testInNotIn(self):
+  def test_in_not_in(self):
     ty = self.Infer("""
       def f(x):
         if __random__:
@@ -287,7 +287,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.bool)
 
-  def testComplexCFG(self):
+  def test_complex_cfg(self):
     ty = self.Infer("""
       def g(h):
         return 2
@@ -306,7 +306,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
-  def testBranchAndLoopCFG(self):
+  def test_branch_and_loop_cfg(self):
     ty = self.Infer("""
       def g():
           pass
@@ -320,7 +320,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.bool)
 
-  def testClosure(self):
+  def test_closure(self):
     ty = self.Infer("""
        def f(x, y):
          closure = lambda: x + y
@@ -329,7 +329,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int, self.int), self.int)
 
-  def testDeepClosure(self):
+  def test_deep_closure(self):
     ty = self.Infer("""
        def f():
          x = 3
@@ -342,7 +342,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
-  def testTwoClosures(self):
+  def test_two_closures(self):
     ty = self.Infer("""
        def f():
          def g():
@@ -354,7 +354,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
-  def testClosureBindingArguments(self):
+  def test_closure_binding_arguments(self):
     ty = self.Infer("""
        def f(x):
          y = 1
@@ -365,7 +365,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
-  def testClosureOnMultiType(self):
+  def test_closure_on_multi_type(self):
     ty = self.Infer("""
       def f():
         if __random__:
@@ -377,7 +377,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.intorfloat)
 
-  def testCallKwArgs(self):
+  def test_call_kwargs(self):
     ty = self.Infer("""
       def f(x, y=3):
         return x + y
@@ -385,7 +385,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.int)
 
-  def testCallArgs(self):
+  def test_call_args(self):
     ty = self.Infer("""
       def f(x):
         return x
@@ -394,7 +394,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
-  def testCallArgsKwArgs(self):
+  def test_call_args_kwargs(self):
     ty = self.Infer("""
       def f(x):
         return x
@@ -404,7 +404,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
-  def testCallPositionalAsKeyword(self):
+  def test_call_positional_as_keyword(self):
     ty = self.Infer("""
       def f(named):
         return named
@@ -412,7 +412,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
-  def testTwoKeywords(self):
+  def test_two_keywords(self):
     ty = self.Infer("""
       def f(x, y):
         return x if x else y
@@ -420,7 +420,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int, self.int), self.int)
 
-  def testTwoDistinctKeywordParams(self):
+  def test_two_distinct_keyword_params(self):
     f = """
       def f(x, y):
         return x if x else y
@@ -436,7 +436,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int, self.str), self.int)
 
-  def testStarStar(self):
+  def test_starstar(self):
     ty = self.Infer("""
       def f(x):
         return x
@@ -444,7 +444,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
-  def testStarStar2(self):
+  def test_starstar2(self):
     ty = self.Infer("""
       def f(x):
         return x
@@ -455,7 +455,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
   @test_base.skip("Needs better pytd for 'dict'")
-  def testStarStar3(self):
+  def test_starstar3(self):
     ty = self.Infer("""
       def f(x):
         return x
@@ -464,7 +464,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
-  def testAmbiguousStarStar(self):
+  def test_ambiguous_starstar(self):
     ty = self.Infer("""
       def f(x):
         return 0
@@ -477,7 +477,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.intorfloat,), self.int)
 
-  def testStarArgsType(self):
+  def test_starargs_type(self):
     ty = self.Infer("""
       def f(*args, **kwds):
         return args
@@ -486,7 +486,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     self.assertHasReturnType(ty.Lookup("f"),
                              pytd.TupleType(self.tuple, (self.int,)))
 
-  def testStarArgsType2(self):
+  def test_starargs_type2(self):
     ty = self.Infer("""
       def f(nr, *args):
         return args
@@ -495,7 +495,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     self.assertHasReturnType(ty.Lookup("f"),
                              pytd.TupleType(self.tuple, (self.int,)))
 
-  def testStarArgsDeep(self):
+  def test_starargs_deep(self):
     ty = self.Infer("""
       def f(*args):
         return args
@@ -510,7 +510,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     def h(x, y, *args) -> tuple
     """)
 
-  def testStarArgsPassThrough(self):
+  def test_starargs_pass_through(self):
     ty = self.Infer("""
       class Foo(object):
         def __init__(self, *args, **kwargs):
@@ -521,7 +521,7 @@ class MethodsTest(test_base.TargetIndependentTest):
       def __init__(self, *args, **kwargs) -> NoneType
     """)
 
-  def testEmptyStarArgsType(self):
+  def test_empty_starargs_type(self):
     ty = self.Infer("""
       def f(nr, *args):
         return args
@@ -529,7 +529,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.nothing_tuple)
 
-  def testStarStarKwargsType(self):
+  def test_starstar_kwargs_type(self):
     ty = self.Infer("""
       def f(*args, **kwargs):
         return kwargs
@@ -537,7 +537,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.str_int_dict)
 
-  def testStarStarKwargsType2(self):
+  def test_starstar_kwargs_type2(self):
     ty = self.Infer("""
       def f(x, y, **kwargs):
         return kwargs
@@ -545,7 +545,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.str_int_dict)
 
-  def testEmptyStarStarKwargsType(self):
+  def test_empty_starstar_kwargs_type(self):
     ty = self.Infer("""
       def f(nr, **kwargs):
         return kwargs
@@ -553,7 +553,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.nothing_nothing_dict)
 
-  def testStarStarDeep(self):
+  def test_starstar_deep(self):
     ty = self.Infer("""
       class Foo(object):
         def __init__(self, **kwargs):
@@ -565,7 +565,7 @@ class MethodsTest(test_base.TargetIndependentTest):
       kwargs = ...  # type: dict[str, ?]
     """)
 
-  def testStarStarDeep2(self):
+  def test_starstar_deep2(self):
     ty = self.Infer("""
       def f(**kwargs):
         return kwargs
@@ -580,7 +580,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     def h(x, y, **kwargs) -> dict[str, ?]
     """)
 
-  def testBuiltinStarArgs(self):
+  def test_builtin_starargs(self):
     with file_utils.Tempdir() as d:
       d.create_file("myjson.pyi", """
         from typing import Any
@@ -596,7 +596,7 @@ class MethodsTest(test_base.TargetIndependentTest):
       def f(*args) -> ?
       """)
 
-  def testBuiltinStarStarArgs(self):
+  def test_builtin_starstarargs(self):
     with file_utils.Tempdir() as d:
       d.create_file("myjson.pyi", """
         from typing import Any
@@ -612,7 +612,7 @@ class MethodsTest(test_base.TargetIndependentTest):
       def f(**args) -> ?
       """)
 
-  def testBuiltinKeyword(self):
+  def test_builtin_keyword(self):
     with file_utils.Tempdir() as d:
       d.create_file("myjson.pyi", """
         from typing import Any
@@ -629,7 +629,7 @@ class MethodsTest(test_base.TargetIndependentTest):
       def f() -> ?
       """)
 
-  def testNoneOrFunction(self):
+  def test_none_or_function(self):
     ty = self.Infer("""
       def g():
         return 3
@@ -646,7 +646,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
-  def testDefineClassMethod(self):
+  def test_define_classmethod(self):
     ty = self.Infer("""
       class A(object):
         @classmethod
@@ -659,7 +659,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.function)
 
-  def testClassMethodSmoke(self):
+  def test_classmethod_smoke(self):
     ty = self.Infer("""
       class A(object):
         @classmethod
@@ -668,7 +668,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     ty.Lookup("A")
 
-  def testStaticMethodSmoke(self):
+  def test_staticmethod_smoke(self):
     ty = self.Infer("""
       class A(object):
         @staticmethod
@@ -677,7 +677,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     ty.Lookup("A")
 
-  def testClassMethod(self):
+  def test_classmethod(self):
     ty = self.Infer("""
       class A(object):
         @classmethod
@@ -695,7 +695,7 @@ class MethodsTest(test_base.TargetIndependentTest):
       def f() -> int: ...
     """)
 
-  def testInheritedClassMethod(self):
+  def test_inherited_classmethod(self):
     self.Check("""
       class A(object):
         @classmethod
@@ -707,7 +707,7 @@ class MethodsTest(test_base.TargetIndependentTest):
           return super(B, cls).myclassmethod()
     """)
 
-  def testStaticMethod(self):
+  def test_staticmethod(self):
     ty = self.Infer("""
       class A(object):
         @staticmethod
@@ -719,7 +719,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
-  def testSimpleStaticMethod(self):
+  def test_simple_staticmethod(self):
     ty = self.Infer("""
       class MyClass(object):
         @staticmethod
@@ -730,7 +730,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     # Only check that the class is there. pytd doesn't yet support staticmethod.
     ty.Lookup("MyClass")
 
-  def testDefaultReturnType(self):
+  def test_default_return_type(self):
     ty = self.Infer("""
       def f(x=""):
           x = list(x)
@@ -738,7 +738,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.none_type)
 
-  def testLookup(self):
+  def test_lookup(self):
     ty = self.Infer("""
       class Cloneable(object):
           def __init__(self):
@@ -754,7 +754,7 @@ class MethodsTest(test_base.TargetIndependentTest):
                      "def clone(self: _TCloneable) -> _TCloneable: ...")
 
   @test_base.skip("pytype thinks 'clone' returns a TypeVar(bound=Cloneable)")
-  def testSimpleClone(self):
+  def test_simple_clone(self):
     ty = self.Infer("""
       class Cloneable(object):
         def clone(self):
@@ -765,7 +765,7 @@ class MethodsTest(test_base.TargetIndependentTest):
         def clone(self) -> Cloneable
     """)
 
-  def testDecorator(self):
+  def test_decorator(self):
     ty = self.Infer("""
       class MyStaticMethodDecorator(object):
         def __init__(self, func):
@@ -786,7 +786,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     f = ty.Lookup("f")
     self.assertOnlyHasReturnType(f, self.int)
 
-  def testUnknownDecorator(self):
+  def test_unknown_decorator(self):
     ty = self.Infer("""
       @__any_object__
       def f():
@@ -795,7 +795,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False)
     self.assertEqual(ty.Lookup("f").type, pytd.AnythingType())
 
-  def testFuncName(self):
+  def test_func_name(self):
     ty = self.Infer("""
       def f():
         pass
@@ -806,7 +806,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("g"), (), self.float)
 
-  def testRegister(self):
+  def test_register(self):
     ty = self.Infer("""
       class Foo(object):
         pass
@@ -817,7 +817,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.float)
 
-  def testCopyMethod(self):
+  def test_copy_method(self):
     ty = self.Infer("""
       class Foo(object):
         def mymethod(self, x, y):
@@ -830,7 +830,7 @@ class MethodsTest(test_base.TargetIndependentTest):
       def myfunction(self: Foo, x, y) -> int
     """)
 
-  def testAssignMethod(self):
+  def test_assign_method(self):
     ty = self.Infer("""
       class Foo(object):
         pass
@@ -844,7 +844,7 @@ class MethodsTest(test_base.TargetIndependentTest):
       def myfunction(self: Foo, x, y) -> int
     """)
 
-  def testFunctionAttr(self):
+  def test_function_attr(self):
     ty = self.Infer("""
       import os
       def f():
@@ -874,7 +874,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     d = ...  # type: float
     """)
 
-  def testJson(self):
+  def test_json(self):
     ty = self.Infer("""
       import json
     """, deep=False)
@@ -882,7 +882,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     json = ...  # type: module
     """)
 
-  def testNew(self):
+  def test_new(self):
     ty = self.Infer("""
       x = str.__new__(str)
     """, deep=False)
@@ -890,7 +890,7 @@ class MethodsTest(test_base.TargetIndependentTest):
       x = ...  # type: str
     """)
 
-  def testOverrideNew(self):
+  def test_override_new(self):
     ty = self.Infer("""
       class Foo(str):
         def __new__(cls, string):
@@ -903,7 +903,7 @@ class MethodsTest(test_base.TargetIndependentTest):
         def __new__(cls: Type[_TFoo], string) -> _TFoo
     """)
 
-  def testInheritNew(self):
+  def test_inherit_new(self):
     ty = self.Infer("""
       class Foo(str): pass
       foo = Foo()
@@ -913,7 +913,7 @@ class MethodsTest(test_base.TargetIndependentTest):
       foo = ...  # type: Foo
     """)
 
-  def testAttributeInNew(self):
+  def test_attribute_in_new(self):
     ty = self.Infer("""
       class Foo(object):
         def __new__(cls, name):
@@ -929,7 +929,7 @@ class MethodsTest(test_base.TargetIndependentTest):
         def __new__(cls: Type[_TFoo], name) -> _TFoo
     """)
 
-  def testAttributesInNewAndInit(self):
+  def test_attributes_in_new_and_init(self):
     ty = self.Infer("""
       class Foo(object):
         def __new__(cls):
@@ -948,7 +948,7 @@ class MethodsTest(test_base.TargetIndependentTest):
         def __new__(cls: Type[_TFoo]) -> _TFoo
     """)
 
-  def testVariableProductComplexityLimit(self):
+  def test_variable_product_complexity_limit(self):
     ty = self.Infer("""
       class A(object):
         def __new__(cls, w, x, y, z):
@@ -986,7 +986,7 @@ class MethodsTest(test_base.TargetIndependentTest):
       z = ...  # type: int
     """)
 
-  def testReturnSelf(self):
+  def test_return_self(self):
     ty = self.Infer("""
       class Foo(object):
         def __enter__(self):
@@ -999,7 +999,7 @@ class MethodsTest(test_base.TargetIndependentTest):
         def __enter__(self: _TFoo) -> _TFoo: ...
     """)
 
-  def testAttributeInInheritedNew(self):
+  def test_attribute_in_inherited_new(self):
     ty = self.Infer("""
       class Foo(object):
         def __new__(cls, name):

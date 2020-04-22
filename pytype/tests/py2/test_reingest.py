@@ -8,7 +8,7 @@ from pytype.tests import test_base
 class ReingestTest(test_base.TargetPython27FeatureTest):
   """Tests for reloading the pyi we generate."""
 
-  def testInstantiatePyiClass(self):
+  def test_instantiate_pyi_class(self):
     foo = self.Infer("""
       import abc
       class Foo(object):

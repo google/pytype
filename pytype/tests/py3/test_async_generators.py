@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class AsyncGeneratorFeatureTest(test_base.TargetPython3FeatureTest):
   """Tests for async iterable, iterator, context manager, generator."""
 
-  def testEmptyAnnotation(self):
+  def test_empty_annotation(self):
     self.Check("""
       from typing import AsyncIterator, AsyncIterable, AsyncGenerator
       async def f() -> AsyncIterator:
@@ -19,7 +19,7 @@ class AsyncGeneratorFeatureTest(test_base.TargetPython3FeatureTest):
         yield 5
     """)
 
-  def testUnionAnnotation(self):
+  def test_union_annotation(self):
     self.Check("""
       from typing import AsyncGenerator, AsyncIterator, AsyncIterable, Union
 
@@ -27,7 +27,7 @@ class AsyncGeneratorFeatureTest(test_base.TargetPython3FeatureTest):
         yield 5
     """)
 
-  def testAnnotationWithType(self):
+  def test_annotation_with_type(self):
     self.Check("""
       from typing import AsyncGenerator, AsyncIterator, AsyncIterable
 
@@ -41,7 +41,7 @@ class AsyncGeneratorFeatureTest(test_base.TargetPython3FeatureTest):
         yield 1
     """)
 
-  def testYieldTypeInfer(self):
+  def test_yield_type_infer(self):
     ty = self.Infer("""
       async def f(x):
         if x == 1:
@@ -73,7 +73,7 @@ class AsyncGeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       def gen() -> AsyncGenerator[Union[int, str], Any]: ...
     """)
 
-  def testAnnotationError(self):
+  def test_annotation_error(self):
     errors = self.CheckWithErrors("""
       from typing import AsyncGenerator, AsyncIterator, AsyncIterable, Any, Union
 
@@ -98,7 +98,7 @@ class AsyncGeneratorFeatureTest(test_base.TargetPython3FeatureTest):
         "e4": r"AsyncGenerator.*AsyncIterable.*AsyncIterator",
         "e5": r"int.*str"})
 
-  def testMatchBaseClassError(self):
+  def test_match_base_class_error(self):
     errors = self.CheckWithErrors("""
       from typing import AsyncGenerator, AsyncIterator, AsyncIterable, Union, Any
 
@@ -141,7 +141,7 @@ class AsyncGeneratorFeatureTest(test_base.TargetPython3FeatureTest):
         "e1": r"bool.*Union\[int, str\]", "e2": r"bool.*Union\[int, str\]",
         "e3": r"bool.*Union\[int, str\]"})
 
-  def testProtocol(self):
+  def test_protocol(self):
     ty = self.Infer("""
       from typing import AsyncIterator, AsyncIterable, AsyncGenerator, AsyncContextManager, Any
 

@@ -8,7 +8,7 @@ from pytype.tests import test_base
 class ContainerTest(test_base.TargetIndependentTest):
   """Tests for containers."""
 
-  def testTuplePassThrough(self):
+  def test_tuple_pass_through(self):
     ty = self.Infer("""
       def f(x):
         return x
@@ -19,7 +19,7 @@ class ContainerTest(test_base.TargetIndependentTest):
         ((pytd.TupleType(self.tuple, (self.int, self.str)),),
          pytd.TupleType(self.tuple, (self.int, self.str))))
 
-  def testTuple(self):
+  def test_tuple(self):
     ty = self.Infer("""
       def f(x):
         return x[0]
@@ -30,7 +30,7 @@ class ContainerTest(test_base.TargetIndependentTest):
         ((pytd.TupleType(self.tuple, (self.int, self.str)),),
          self.int))
 
-  def testTupleSwap(self):
+  def test_tuple_swap(self):
     ty = self.Infer("""
       def f(x):
         return (x[1], x[0])
@@ -41,7 +41,7 @@ class ContainerTest(test_base.TargetIndependentTest):
         ((pytd.TupleType(self.tuple, (self.int, self.str)),),
          pytd.TupleType(self.tuple, (self.str, self.int))))
 
-  def testEmptyTuple(self):
+  def test_empty_tuple(self):
     ty = self.Infer("""
       def f():
         return ()
@@ -51,7 +51,7 @@ class ContainerTest(test_base.TargetIndependentTest):
         ty.Lookup("f"),
         ((), pytd.GenericType(self.tuple, (pytd.NothingType(),))))
 
-  def testSetsSanity(self):
+  def test_sets_sanity(self):
     ty = self.Infer("""
       def f():
         x = set([1])
@@ -63,7 +63,7 @@ class ContainerTest(test_base.TargetIndependentTest):
         ty.Lookup("f"),
         ((), pytd.GenericType(self.set, (self.int,))))
 
-  def testSetsAdd(self):
+  def test_sets_add(self):
     ty = self.Infer("""
       def f():
         x = set([])
@@ -76,7 +76,7 @@ class ContainerTest(test_base.TargetIndependentTest):
         ty.Lookup("f"),
         ((), pytd.GenericType(self.set, (self.int,))))
 
-  def testSets(self):
+  def test_sets(self):
     ty = self.Infer("""
       def f():
         x = set([1,2,3])
@@ -93,7 +93,7 @@ class ContainerTest(test_base.TargetIndependentTest):
         ty.Lookup("f"),
         ((), pytd.GenericType(self.set, (self.int,))))
 
-  def testListLiteral(self):
+  def test_list_literal(self):
     ty = self.Infer("""
       def f():
         return [1, 2, 3]
@@ -103,7 +103,7 @@ class ContainerTest(test_base.TargetIndependentTest):
         ty.Lookup("f"),
         ((), pytd.GenericType(self.list, (self.int,))))
 
-  def testListAppend(self):
+  def test_list_append(self):
     ty = self.Infer("""
       def f():
         x = []
@@ -117,7 +117,7 @@ class ContainerTest(test_base.TargetIndependentTest):
         ty.Lookup("f"),
         ((), pytd.GenericType(self.list, (self.int,))))
 
-  def testListSetItem(self):
+  def test_list_setitem(self):
     ty = self.Infer("""
       layers = [((),)]
       for x, in layers:
@@ -129,7 +129,7 @@ class ContainerTest(test_base.TargetIndependentTest):
       x = ...  # type: Tuple[()]
     """)
 
-  def testListConcat(self):
+  def test_list_concat(self):
     ty = self.Infer("""
       def f():
         x = []
@@ -143,7 +143,7 @@ class ContainerTest(test_base.TargetIndependentTest):
         ty.Lookup("f"),
         ((), pytd.GenericType(self.list, (self.int,))))
 
-  def testListConcatMultiType(self):
+  def test_list_concat_multi_type(self):
     ty = self.Infer("""
       def f():
         x = []
@@ -159,7 +159,7 @@ class ContainerTest(test_base.TargetIndependentTest):
              self.list,
              (pytd.UnionType((self.int, self.float, self.str)),))))
 
-  def testUnionIntoTypeParam(self):
+  def test_union_into_type_param(self):
     ty = self.Infer("""
       y = __any_object__
       if y:
@@ -176,7 +176,7 @@ class ContainerTest(test_base.TargetIndependentTest):
       l = ...  # type: List[int or float, ...]
     """)
 
-  def testListConcatUnlike(self):
+  def test_list_concat_unlike(self):
     ty = self.Infer("""
       def f():
         x = []
@@ -190,7 +190,7 @@ class ContainerTest(test_base.TargetIndependentTest):
         ty.Lookup("f"),
         ((), pytd.GenericType(self.list, (self.intorstr,))))
 
-  def testAnyObject(self):
+  def test_any_object(self):
     ty = self.Infer("""
       def f():
         return __any_object__
@@ -204,7 +204,7 @@ class ContainerTest(test_base.TargetIndependentTest):
     self.assertHasOnlySignatures(ty.Lookup("g"), ((), self.anything))
     self.assertHasOnlySignatures(ty.Lookup("h"), ((), self.anything))
 
-  def testDictLiteral(self):
+  def test_dict_literal(self):
     ty = self.Infer("""
       def f():
         return {"test": 1, "arg": 42}
@@ -214,7 +214,7 @@ class ContainerTest(test_base.TargetIndependentTest):
         ty.Lookup("f"),
         ((), self.str_int_dict))
 
-  def testDictEmptyConstructor(self):
+  def test_dict_empty_constructor(self):
     ty = self.Infer("""
       def f():
         return dict()
@@ -224,7 +224,7 @@ class ContainerTest(test_base.TargetIndependentTest):
         ty.Lookup("f"),
         ((), self.nothing_nothing_dict))
 
-  def testDictConstructor(self):
+  def test_dict_constructor(self):
     ty = self.Infer("""
       def f():
         return dict([(1, 2), (3, 4)])
@@ -234,7 +234,7 @@ class ContainerTest(test_base.TargetIndependentTest):
         ty.Lookup("f"),
         ((), self.int_int_dict))
 
-  def testDictConstructor2(self):
+  def test_dict_constructor2(self):
     ty = self.Infer("""
       def f():
         return dict([(1, "bar"), (2, "foo")])
@@ -244,7 +244,7 @@ class ContainerTest(test_base.TargetIndependentTest):
         ty.Lookup("f"),
         ((), self.int_str_dict))
 
-  def testDictSetItem(self):
+  def test_dict_setitem(self):
     ty = self.Infer("""
       def f():
         d = {}
@@ -257,7 +257,7 @@ class ContainerTest(test_base.TargetIndependentTest):
         ty.Lookup("f"),
         ((), self.str_int_dict))
 
-  def testDictUpdate(self):
+  def test_dict_update(self):
     ty = self.Infer("""
       d = {}
       d.update({"a": 1}, b=2j)
@@ -267,7 +267,7 @@ class ContainerTest(test_base.TargetIndependentTest):
       d = ...  # type: Dict[str, int or complex]
     """)
 
-  def testAmbiguousDictUpdate(self):
+  def test_ambiguous_dict_update(self):
     ty = self.Infer("""
       d = {}
       d.update({"a": 1} if __random__ else {"b": 2j}, c=3.0)
@@ -277,7 +277,7 @@ class ContainerTest(test_base.TargetIndependentTest):
       d = ...  # type: Dict[str, int or float or complex]
     """)
 
-  def testForIter(self):
+  def test_for_iter(self):
     ty = self.Infer("""
       class A(object):
         def __init__(self):
@@ -299,7 +299,7 @@ class ContainerTest(test_base.TargetIndependentTest):
                                  ((),
                                   self.intorstr))
 
-  def testOverloading(self):
+  def test_overloading(self):
     ty = self.Infer("""
       class Base(object):
         parent = None
@@ -331,7 +331,7 @@ class ContainerTest(test_base.TargetIndependentTest):
                                  ((),
                                   self.int))
 
-  def testClassAttr(self):
+  def test_class_attr(self):
     ty = self.Infer("""
       class Node(object):
         children = ()
@@ -349,7 +349,7 @@ class ContainerTest(test_base.TargetIndependentTest):
                                  ((),
                                   self.int))
 
-  def testHeterogeneous(self):
+  def test_heterogeneous(self):
     ty = self.Infer("""
       def f():
         x = list()
@@ -362,7 +362,7 @@ class ContainerTest(test_base.TargetIndependentTest):
                                  ((),
                                   self.intorstr))
 
-  def testListComprehension(self):
+  def test_list_comprehension(self):
     # uses byte_LIST_APPEND
     ty = self.Infer("""
       def f():
@@ -373,7 +373,7 @@ class ContainerTest(test_base.TargetIndependentTest):
                                  ((),
                                   self.int_list))
 
-  def testSetComprehension(self):
+  def test_set_comprehension(self):
     # uses byte_SET_ADD
     ty = self.Infer("""
       def f():
@@ -384,7 +384,7 @@ class ContainerTest(test_base.TargetIndependentTest):
                                  ((),
                                   self.int_set))
 
-  def testEmptyOrString(self):
+  def test_empty_or_string(self):
     ty = self.Infer("""
       d = dict()
       d["a"] = "queen"
@@ -397,7 +397,7 @@ class ContainerTest(test_base.TargetIndependentTest):
       entry = ...  # type: str
     """)
 
-  def testDictInit(self):
+  def test_dict_init(self):
     ty = self.Infer("""
       def f():
         return dict([])
@@ -407,7 +407,7 @@ class ContainerTest(test_base.TargetIndependentTest):
       def f() -> Dict[nothing, nothing]
     """)
 
-  def testDictTupleInit(self):
+  def test_dict_tuple_init(self):
     ty = self.Infer("""
       def f():
         return dict([("foo", "foo")])
@@ -417,7 +417,7 @@ class ContainerTest(test_base.TargetIndependentTest):
       def f() -> Dict[str, str]
     """)
 
-  def testEmptyTupleAsArg(self):
+  def test_empty_tuple_as_arg(self):
     ty = self.Infer("""
       def f(x):
         if x:
@@ -429,7 +429,7 @@ class ContainerTest(test_base.TargetIndependentTest):
       def f(x) -> bool or complex
     """)
 
-  def testEmptyTypeParamAsArg(self):
+  def test_empty_type_param_as_arg(self):
     ty = self.Infer("""
       def f():
         return sum(map(int, ()))
@@ -439,7 +439,7 @@ class ContainerTest(test_base.TargetIndependentTest):
       def f() -> Any
     """)
 
-  def testAccessEmptyDictInIf(self):
+  def test_access_empty_dict_in_if(self):
     ty = self.Infer("""
       class Foo(object):
         pass
@@ -460,7 +460,7 @@ class ContainerTest(test_base.TargetIndependentTest):
       def f(key) -> Foo
     """)
 
-  def testCascade(self):
+  def test_cascade(self):
     ty = self.Infer("""
       if __random__:
         x = 3
@@ -474,7 +474,7 @@ class ContainerTest(test_base.TargetIndependentTest):
       y = ...  # type: Tuple[float or int, float or int]
     """)
 
-  def testMaybeAny(self):
+  def test_maybe_any(self):
     ty = self.Infer("""
       x = __any_object__
       x.as_integer_ratio()
@@ -488,7 +488,7 @@ class ContainerTest(test_base.TargetIndependentTest):
       y = ...  # type: Tuple[Any, Any]
     """)
 
-  def testIndex(self):
+  def test_index(self):
     ty = self.Infer("""
       def f():
         l = [__any_object__]
@@ -505,7 +505,7 @@ class ContainerTest(test_base.TargetIndependentTest):
       def f() -> list
     """)
 
-  def testCircularReferenceList(self):
+  def test_circular_reference_list(self):
     ty = self.Infer("""
       def f():
         lst = []
@@ -517,7 +517,7 @@ class ContainerTest(test_base.TargetIndependentTest):
       def f() -> List[list]: ...
     """)
 
-  def testCircularReferenceDictionary(self):
+  def test_circular_reference_dictionary(self):
     ty = self.Infer("""
       def f():
         g = __any_object__
@@ -537,13 +537,13 @@ class ContainerTest(test_base.TargetIndependentTest):
       def f() -> Dict[str, Union[None, dict]]: ...
     """)
 
-  def testEqOperatorOnItemFromEmptyDict(self):
+  def test_eq_operator_on_item_from_empty_dict(self):
     self.Infer("""
       d = {}
       d[1] == d[1]
     """, deep=False)
 
-  def testDict(self):
+  def test_dict(self):
     ty, errors = self.InferWithErrors("""
       mymap = {'a': 3.14, 'b':1}
       a = mymap['a']
@@ -562,7 +562,7 @@ class ContainerTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"foobar"})
 
-  def testDictOrAny(self):
+  def test_dict_or_any(self):
     self.Check("""
       if __random__:
         results = __any_object__
@@ -572,14 +572,14 @@ class ContainerTest(test_base.TargetIndependentTest):
         results["foo"]
     """)
 
-  def testDictGetItem(self):
+  def test_dict_getitem(self):
     _, errors = self.InferWithErrors("""
       v = {}
       v.__getitem__("a")  # key-error[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"'a'"})
 
-  def testEmptyList(self):
+  def test_empty_list(self):
     ty = self.Infer("""
       cache = {
         "data": {},
@@ -598,7 +598,7 @@ class ContainerTest(test_base.TargetIndependentTest):
       def read(path) -> Any
     """)
 
-  def testRecursiveDefinitionAndConflict(self):
+  def test_recursive_definition_and_conflict(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar
@@ -612,7 +612,7 @@ class ContainerTest(test_base.TargetIndependentTest):
         foo.Baz()
       """, pythonpath=[d.path])
 
-  def testFoo(self):
+  def test_foo(self):
     _ = self.Infer("""
       import collections
       class A(collections.namedtuple("_", ["a"])):

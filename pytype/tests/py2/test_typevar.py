@@ -7,7 +7,7 @@ from pytype.tests import test_base
 class Test(test_base.TargetPython27FeatureTest):
   """Tests for TypeVar."""
 
-  def testUseConstraintsFromPyi(self):
+  def test_use_constraints_from_pyi(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import AnyStr, TypeVar
@@ -24,7 +24,7 @@ class Test(test_base.TargetPython27FeatureTest):
           "e1": r"Union\[float, int\].*str",
           "e2": r"Union\[str, unicode\].*int"})
 
-  def testExtraArguments(self):
+  def test_extra_arguments(self):
     # TODO(b/78905523): Make this a target-independent test.
     _, errors = self.InferWithErrors("""
       from typing import TypeVar
@@ -35,7 +35,7 @@ class Test(test_base.TargetPython27FeatureTest):
     self.assertErrorRegexes(errors, {
         "e1": r"extra_arg", "e2": r"\*args", "e3": r"\*\*kwargs"})
 
-  def testSimplifyArgsAndKwargs(self):
+  def test_simplify_args_and_kwargs(self):
     # TODO(b/78905523): Make this a target-independent test.
     ty = self.Infer("""
       from typing import TypeVar
@@ -50,7 +50,7 @@ class Test(test_base.TargetPython27FeatureTest):
       kwargs = ...  # type: Dict[str, bool]
     """)
 
-  def testCallTypeParameterInstance(self):
+  def test_call_type_parameter_instance(self):
     # Python 2-specific due to the iteritems call (which is required to trigger
     # use of TypeParameterInstance).
     ty = self.Infer("""

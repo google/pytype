@@ -17,7 +17,7 @@ import unittest
 class IOTest(unittest.TestCase):
   """Test IO functions."""
 
-  def testReadSourceFileUtf8(self):
+  def test_read_source_file_utf8(self):
     with self._tmpfile(u"abc□def\n") as f:
       self.assertEqual(io.read_source_file(f.name), u"abc□def\n")
 
@@ -33,12 +33,12 @@ class IOTest(unittest.TestCase):
     f.flush()
     return f
 
-  def testWrapPytypeExceptions(self):
+  def test_wrap_pytype_exceptions(self):
     with self.assertRaises(ValueError):
       with io.wrap_pytype_exceptions(ValueError, "foo.py"):
         io.read_source_file("missing_file")
 
-  def testWrapPytypeExceptionTraceback(self):
+  def test_wrap_pytype_exception_traceback(self):
     class CustomError(Exception):
       pass
 
@@ -61,26 +61,26 @@ class IOTest(unittest.TestCase):
     self.assertIn("OSError: error!", err.args[0])
     self.assertTrue(any("in calling_function" in x for x in trace))
 
-  def testCheckPy(self):
+  def test_check_py(self):
     with self._tmpfile("undefined_var") as f:
       errorlog = io.check_py(f.name)
     error, = errorlog.unique_sorted_errors()
     self.assertEqual(error.name, "name-error")
 
-  def testCheckPyWithOptions(self):
+  def test_check_py_with_options(self):
     with self._tmpfile("undefined_var") as f:
       options = config.Options.create(f.name, disable="name-error")
       errorlog = io.check_py(f.name, options)
     self.assertFalse(errorlog.unique_sorted_errors())
 
-  def testGeneratePyi(self):
+  def test_generate_pyi(self):
     with self._tmpfile("x = 42") as f:
       errorlog, pyi_string, pytd_ast = io.generate_pyi(f.name)
     self.assertFalse(errorlog.unique_sorted_errors())
     self.assertEqual(pyi_string, "x: int\n")
     self.assertIsInstance(pytd_ast, pytd.TypeDeclUnit)
 
-  def testGeneratePyiWithOptions(self):
+  def test_generate_pyi_with_options(self):
     with self._tmpfile("x: int") as pyi:
       pyi_name, _ = os.path.splitext(os.path.basename(pyi.name))
       with self._tmpfile(
@@ -91,21 +91,21 @@ class IOTest(unittest.TestCase):
           _, pyi_string, _ = io.generate_pyi(py.name, options)
     self.assertEqual(pyi_string, "{mod}: module\ny: int\n".format(mod=pyi_name))
 
-  def testCheckOrGeneratePyi__Check(self):
+  def test_check_or_generate_pyi__check(self):
     with self._tmpfile("") as f:
       options = config.Options.create(f.name, check=True)
       _, pyi_string, pytd_ast = io.check_or_generate_pyi(options)
     self.assertIsNone(pyi_string)
     self.assertIsNone(pytd_ast)
 
-  def testCheckOrGeneratePyi__Generate(self):
+  def test_check_or_generate_pyi__generate(self):
     with self._tmpfile("") as f:
       options = config.Options.create(f.name, check=False)
       _, pyi_string, pytd_ast = io.check_or_generate_pyi(options)
     self.assertIsNotNone(pyi_string)
     self.assertIsNotNone(pytd_ast)
 
-  def testWritePickle(self):
+  def test_write_pickle(self):
     ast = pytd.TypeDeclUnit(None, (), (), (), (), ())
     options = config.Options.create(output="/dev/null")
     io.write_pickle(ast, options)  # just make sure we don't crash

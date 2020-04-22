@@ -1,3 +1,4 @@
+# Lint as: python3
 """Tests for the additional CFG utilities."""
 
 import itertools
@@ -12,12 +13,12 @@ import unittest
 class CFGUtilTest(unittest.TestCase):
   """Test CFG utilities."""
 
-  def testMergeZeroVariables(self):
+  def test_merge_zero_variables(self):
     p = cfg.Program()
     n0 = p.NewCFGNode("n0")
     self.assertIsInstance(cfg_utils.merge_variables(p, n0, []), cfg.Variable)
 
-  def testMergeOneVariable(self):
+  def test_merge_one_variable(self):
     p = cfg.Program()
     n0 = p.NewCFGNode("n0")
     u = p.NewVariable([0], [], n0)
@@ -25,7 +26,7 @@ class CFGUtilTest(unittest.TestCase):
     self.assertIs(cfg_utils.merge_variables(p, n0, [u, u]), u)
     self.assertIs(cfg_utils.merge_variables(p, n0, [u, u, u]), u)
 
-  def testMergeVariables(self):
+  def test_merge_variables(self):
     p = cfg.Program()
     n0, n1, n2 = p.NewCFGNode("n0"), p.NewCFGNode("n1"), p.NewCFGNode("n2")
     u = p.NewVariable()
@@ -41,7 +42,7 @@ class CFGUtilTest(unittest.TestCase):
     val1, = [v for v in vw.bindings if v.data == 1]
     self.assertTrue(val1.HasSource(u1))
 
-  def testMergeBindings(self):
+  def test_merge_bindings(self):
     p = cfg.Program()
     n0 = p.NewCFGNode("n0")
     u = p.NewVariable()
@@ -51,52 +52,6 @@ class CFGUtilTest(unittest.TestCase):
     w2 = cfg_utils.merge_bindings(p, n0, [u1, v2])
     six.assertCountEqual(self, w1.data, ["1", "2"])
     six.assertCountEqual(self, w2.data, ["1", "2"])
-
-  def _create_nodes(self, node_id, node, num_nodes):
-    """Create a chain of nodes. Used by _create_program_nodes.
-
-    Args:
-      node_id: The starting node id.
-      node: The starting node.
-      num_nodes: The number of nodes to create.
-
-    Returns:
-      A tuple of the next available node id, the last node created, and a list
-      of all the nodes created.
-    """
-    nodes = []
-    for _ in range(num_nodes):
-      node = node.ConnectNew("n%d" % node_id)
-      node_id += 1
-      nodes.append(node)
-    return node_id, node, nodes
-
-  # Unpacking all_nodes confuses pylint because the list looks empty.
-  # pylint: disable=unbalanced-tuple-unpacking
-  def _create_program_nodes(self, p, num_module_nodes, *num_function_nodes):
-    """Create nodes for a dummy program.
-
-    Args:
-      p: A cfg.Program.
-      num_module_nodes: The number of nodes to create between the root node and
-        the analyze node.
-      *num_function_nodes: For every function in the program, the number of
-        nodes in that function.
-
-    Returns:
-      A list of all the created nodes, except root and analyze.
-    """
-    node = p.NewCFGNode("root")
-    all_nodes = []
-    node_id = 1
-    node_id, node, nodes = self._create_nodes(node_id, node, num_module_nodes)
-    all_nodes.extend(nodes)
-    analyze = node.ConnectNew("analyze")
-    for num_nodes in num_function_nodes:
-      node_id, node, nodes = self._create_nodes(node_id, analyze, num_nodes)
-      all_nodes.extend(nodes)
-      node.ConnectTo(analyze)
-    return all_nodes
 
 
 class DummyValue(object):
@@ -120,17 +75,18 @@ class VariableProductTest(unittest.TestCase):
   """Test variable-product utilities."""
 
   def setUp(self):
+    super().setUp()
     self.prog = cfg.Program()
     self.current_location = self.prog.NewCFGNode()
 
-  def testComplexityLimit(self):
+  def test_complexity_limit(self):
     limit = cfg_utils.ComplexityLimit(5)
     limit.inc()
     limit.inc(2)
     limit.inc()
     self.assertRaises(cfg_utils.TooComplexError, limit.inc)
 
-  def testVariableProduct(self):
+  def test_variable_product(self):
     u1 = self.prog.NewVariable([1, 2], [], self.current_location)
     u2 = self.prog.NewVariable([3, 4], [], self.current_location)
     product = cfg_utils.variable_product([u1, u2])
@@ -143,7 +99,7 @@ class VariableProductTest(unittest.TestCase):
         [2, 4],
     ])
 
-  def testDeepVariableProductRaises(self):
+  def test_deep_variable_product_raises(self):
     x1, x2 = [DummyValue(i + 1) for i in range(2)]
     v1 = self.prog.NewVariable([x1, x2], [], self.current_location)
     v2 = self.prog.NewVariable([x1, x2], [], self.current_location)
@@ -158,7 +114,7 @@ class VariableProductTest(unittest.TestCase):
                       [v1, v2, v3, v4, v5, v6, v7, v8],
                       256)
 
-  def testDeepVariableProductRaises2(self):
+  def test_deep_variable_product_raises2(self):
     x1, x2, x3, x4 = [DummyValue(i + 1) for i in range(4)]
     v1 = self.prog.NewVariable([x1, x2], [], self.current_location)
     v2 = self.prog.NewVariable([x1, x2], [], self.current_location)
@@ -169,7 +125,7 @@ class VariableProductTest(unittest.TestCase):
     self.assertRaises(cfg_utils.TooComplexError,
                       cfg_utils.deep_variable_product, [v1, v2], 4)
 
-  def testVariableProductDictRaises(self):
+  def test_variable_product_dict_raises(self):
     values = [DummyValue(i + 1) for i in range(4)]
     v1 = self.prog.NewVariable(values, [], self.current_location)
     v2 = self.prog.NewVariable(values, [], self.current_location)
@@ -179,7 +135,7 @@ class VariableProductTest(unittest.TestCase):
     self.assertRaises(cfg_utils.TooComplexError,
                       cfg_utils.variable_product_dict, variabledict, 4)
 
-  def testDeepVariableProduct(self):
+  def test_deep_variable_product(self):
     x1, x2, x3, x4, x5, x6 = [DummyValue(i + 1) for i in range(6)]
     v1 = self.prog.NewVariable([x1, x2], [], self.current_location)
     v2 = self.prog.NewVariable([x3], [], self.current_location)
@@ -195,7 +151,7 @@ class VariableProductTest(unittest.TestCase):
         {x2, x6},
     ])
 
-  def testDeepVariableProductWithEmptyVariables(self):
+  def test_deep_variable_product_with_empty_variables(self):
     x1 = DummyValue(1)
     v1 = self.prog.NewVariable([x1], [], self.current_location)
     v2 = self.prog.NewVariable([], [], self.current_location)
@@ -205,7 +161,7 @@ class VariableProductTest(unittest.TestCase):
             for row in product]
     six.assertCountEqual(self, rows, [{x1}])
 
-  def testDeepVariableProductWithEmptyTopLayer(self):
+  def test_deep_variable_product_with_empty_top_layer(self):
     x1 = DummyValue(1)
     v1 = self.prog.NewVariable([x1], [], self.current_location)
     v2 = self.prog.NewVariable([], [], self.current_location)
@@ -214,7 +170,7 @@ class VariableProductTest(unittest.TestCase):
             for row in product]
     six.assertCountEqual(self, rows, [{x1}])
 
-  def testDeepVariableProductWithCycle(self):
+  def test_deep_variable_product_with_cycle(self):
     x1, x2, x3, x4, x5, x6 = [DummyValue(i + 1) for i in range(6)]
     v1 = self.prog.NewVariable([x1, x2], [], self.current_location)
     v2 = self.prog.NewVariable([x3], [], self.current_location)
@@ -232,7 +188,7 @@ class VariableProductTest(unittest.TestCase):
         {x2, x6},
     ])
 
-  def testVariableProductDict(self):
+  def test_variable_product_dict(self):
     u1 = self.prog.NewVariable([1, 2], [], self.current_location)
     u2 = self.prog.NewVariable([3, 4], [], self.current_location)
     product = cfg_utils.variable_product_dict({"a": u1, "b": u2})
@@ -267,9 +223,10 @@ class GraphUtilTest(unittest.TestCase):
   """Test abstract graph utilities."""
 
   def setUp(self):
+    super().setUp()
     self.prog = cfg.Program()
 
-  def testComputePredecessors(self):
+  def test_compute_predecessors(self):
     # n7      n6
     #  ^      ^
     #  |      |
@@ -303,25 +260,25 @@ class GraphUtilTest(unittest.TestCase):
     six.assertCountEqual(self, r[n6], {n1, n20, n3, n4, n5, n6})
     six.assertCountEqual(self, r[n7], {n1, n7})
 
-  def testOrderNodes0(self):
+  def test_order_nodes0(self):
     order = cfg_utils.order_nodes([])
     six.assertCountEqual(self, order, [])
 
-  def testOrderNodes1(self):
+  def test_order_nodes1(self):
     # n1 --> n2
     n1 = self.prog.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
     order = cfg_utils.order_nodes([n1, n2])
     six.assertCountEqual(self, [n1, n2], order)
 
-  def testOrderNodes2(self):
+  def test_order_nodes2(self):
     # n1   n2(dead)
     n1 = self.prog.NewCFGNode("n1")
     n2 = self.prog.NewCFGNode("n2")
     order = cfg_utils.order_nodes([n1, n2])
     six.assertCountEqual(self, [n1], order)
 
-  def testOrderNodes3(self):
+  def test_order_nodes3(self):
     # n1 --> n2 --> n3
     # ^             |
     # +-------------+
@@ -332,7 +289,7 @@ class GraphUtilTest(unittest.TestCase):
     order = cfg_utils.order_nodes([n1, n2, n3])
     six.assertCountEqual(self, [n1, n2, n3], order)
 
-  def testOrderNodes4(self):
+  def test_order_nodes4(self):
     # n1 --> n3 --> n2
     # ^      |
     # +------+
@@ -343,7 +300,7 @@ class GraphUtilTest(unittest.TestCase):
     order = cfg_utils.order_nodes([n1, n2, n3])
     six.assertCountEqual(self, [n1, n3, n2], order)
 
-  def testOrderNodes5(self):
+  def test_order_nodes5(self):
     # n1 --> n3 --> n2
     # ^      |
     # +------+      n4(dead)
@@ -355,7 +312,7 @@ class GraphUtilTest(unittest.TestCase):
     order = cfg_utils.order_nodes([n1, n2, n3, n4])
     six.assertCountEqual(self, [n1, n3, n2], order)
 
-  def testOrderNodes6(self):
+  def test_order_nodes6(self):
     #  +-------------------+
     #  |                   v
     # n1 --> n2 --> n3 --> n5
@@ -371,7 +328,7 @@ class GraphUtilTest(unittest.TestCase):
     order = cfg_utils.order_nodes([n1, n5, n4, n3, n2])
     six.assertCountEqual(self, [n1, n2, n3, n4, n5], order)
 
-  def testOrderNodes7(self):
+  def test_order_nodes7(self):
     #  +---------------------------------+
     #  |                                 v
     # n1 --> n2 --> n3 --> n4 --> n5 --> n6
@@ -392,7 +349,7 @@ class GraphUtilTest(unittest.TestCase):
     order = cfg_utils.order_nodes([n1, n2, n3, n4, n5, n6, n7, n8])
     six.assertCountEqual(self, [n1, n2, n3, n7, n4, n5, n8, n6], order)
 
-  def testTopologicalSort(self):
+  def test_topological_sort(self):
     n1 = Node("1")
     n2 = Node("2", n1)
     n3 = Node("3", n2)
@@ -401,12 +358,12 @@ class GraphUtilTest(unittest.TestCase):
       self.assertEqual(list(cfg_utils.topological_sort(permutation)),
                        [n1, n2, n3, n4])
 
-  def testTopologicalSort2(self):
+  def test_topological_sort2(self):
     n1 = Node("1")
     n2 = Node("2", n1)
     self.assertEqual(list(cfg_utils.topological_sort([n1, n2, 3, 4]))[-1], n2)
 
-  def testTopologicalSortCycle(self):
+  def test_topological_sort_cycle(self):
     n1 = Node("1")
     n2 = Node("2")
     n1.incoming = [n2]
@@ -414,7 +371,7 @@ class GraphUtilTest(unittest.TestCase):
     generator = cfg_utils.topological_sort([n1, n2])
     self.assertRaises(ValueError, list, generator)
 
-  def testTopologicalSortSubCycle(self):
+  def test_topological_sort_sub_cycle(self):
     n1 = Node("1")
     n2 = Node("2")
     n3 = Node("3")
@@ -424,7 +381,7 @@ class GraphUtilTest(unittest.TestCase):
     generator = cfg_utils.topological_sort([n1, n2, n3])
     self.assertRaises(ValueError, list, generator)
 
-  def testTopologicalSortGetattr(self):
+  def test_topological_sort_getattr(self):
     self.assertEqual(list(cfg_utils.topological_sort([1])), [1])
 
 

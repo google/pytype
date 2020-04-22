@@ -7,7 +7,7 @@ from pytype.tests import test_base
 class ClassesTest(test_base.TargetPython3BasicTest):
   """Tests for classes."""
 
-  def testClassGetItem(self):
+  def test_class_getitem(self):
     ty = self.Infer("""
       class A(type):
         def __getitem__(self, i):
@@ -22,7 +22,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
       v = ...  # type: int
     """)
 
-  def testNewAnnotatedCls(self):
+  def test_new_annotated_cls(self):
     ty = self.Infer("""
       from typing import Type
       class Foo(object):
@@ -35,7 +35,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
         def __new__(cls: Type[str]) -> str: ...
     """)
 
-  def testRecursiveConstructor(self):
+  def test_recursive_constructor(self):
     self.Check("""
       from typing import List
       MyType = List['Foo']
@@ -48,7 +48,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
           self.x
     """)
 
-  def testRecursiveConstructorAttribute(self):
+  def test_recursive_constructor_attribute(self):
     self.Check("""
       from typing import List
       MyType = List['Foo']
@@ -60,7 +60,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
           self.x[0].x
     """)
 
-  def testRecursiveConstructorBadAttribute(self):
+  def test_recursive_constructor_bad_attribute(self):
     _, errors = self.InferWithErrors("""
       from typing import List
       MyType = List['Foo']
@@ -74,7 +74,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"y.*Foo"})
 
-  def testRecursiveConstructorSubclass(self):
+  def test_recursive_constructor_subclass(self):
     self.Check("""
       from typing import List
       MyType = List['Foo']
@@ -90,7 +90,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
           self.x
     """)
 
-  def testNameExists(self):
+  def test_name_exists(self):
     self.Check("""
       class Foo(object): pass
       class Bar(object):
@@ -105,7 +105,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
         def __init__(self, x: Foo): pass
     """)
 
-  def testInheritFromGenericClass(self):
+  def test_inherit_from_generic_class(self):
     ty = self.Infer("""
       from typing import List
       class Foo(List[str]): ...
@@ -117,7 +117,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
       v = ...  # type: str
     """)
 
-  def testMakeGenericClass(self):
+  def test_make_generic_class(self):
     ty = self.Infer("""
       from typing import List, TypeVar, Union
       T1 = TypeVar("T1")
@@ -131,7 +131,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
       class Foo(List[Union[T1, T2]]): ...
     """)
 
-  def testMakeGenericClassWithConcreteValue(self):
+  def test_make_generic_class_with_concrete_value(self):
     ty = self.Infer("""
       from typing import Dict, TypeVar
       V = TypeVar("V")
@@ -146,7 +146,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
       v = ...  # type: str
     """)
 
-  def testGenericReinstantiated(self):
+  def test_generic_reinstantiated(self):
     """Makes sure the result of foo.f() isn't used by both a() and b()."""
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", "def f() -> list: ...")
@@ -161,7 +161,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
           return [x for x in foo.f()]
         """, pythonpath=[d.path])
 
-  def testParentInit(self):
+  def test_parent_init(self):
     errors = self.CheckWithErrors("""
       from typing import Sequence
       class X(object):
@@ -173,14 +173,14 @@ class ClassesTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"Sequence.*int"})
 
-  def testParameterizedClassBinaryOperator(self):
+  def test_parameterized_class_binary_operator(self):
     self.InferWithErrors("""
       from typing import Sequence
       def f(x: Sequence[str], y: Sequence[str]) -> None:
         a = x + y  # unsupported-operands
       """)
 
-  def testInstanceAttribute(self):
+  def test_instance_attribute(self):
     ty = self.Infer("""
       class Foo(object):
         def __init__(self) -> None:
@@ -191,7 +191,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
         bar: int
     """)
 
-  def testGenericSuper(self):
+  def test_generic_super(self):
     self.Check("""
       from typing import Callable, Generic, TypeVar
       T = TypeVar('T')
@@ -208,7 +208,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for classes."""
 
-  def testClassKwargs(self):
+  def test_class_kwargs(self):
     ty = self.Infer("""
       # x, y are passed to type() or the metaclass. We currently ignore them.
       class Thing(x=True, y="foo"): pass
@@ -217,7 +217,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
     class Thing: ...
     """)
 
-  def testMetaclassKwarg(self):
+  def test_metaclass_kwarg(self):
     self.Check("""
       import abc
       class Example(metaclass=abc.ABCMeta):
@@ -226,7 +226,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
           return None
     """)
 
-  def testBuildClassQuick(self):
+  def test_build_class_quick(self):
     # A() hits maximum stack depth in python3.6
     ty = self.Infer("""
       def f():
@@ -237,7 +237,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
       def f() -> dict: ...
     """)
 
-  def testTypeChange(self):
+  def test_type_change(self):
     ty = self.Infer("""
       class A(object):
         def __init__(self):
@@ -250,7 +250,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
       x = ...  # type: str
     """)
 
-  def testAmbiguousBaseClass(self):
+  def test_ambiguous_base_class(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any
@@ -263,7 +263,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
           return foo.Foo()
       """, pythonpath=[d.path])
 
-  def testCallableInheritance(self):
+  def test_callable_inheritance(self):
     self.Check("""
       from typing import Callable
       Foo = Callable[[], None]
@@ -274,7 +274,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
       f(Bar(__any_object__, __any_object__))
     """)
 
-  def testInitTestClassInSetup(self):
+  def test_init_test_class_in_setup(self):
     ty = self.Infer("""
       import unittest
       class A(unittest.TestCase):
@@ -291,7 +291,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
           def fooTest(self) -> int: ...
     """)
 
-  def testInitInheritedTestClassInSetup(self):
+  def test_init_inherited_test_class_in_setup(self):
     ty = self.Infer("""
       import unittest
       class A(unittest.TestCase):
@@ -311,7 +311,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
           def fooTest(self) -> int: ...
     """)
 
-  def testInitTestClassInInitAndSetup(self):
+  def test_init_test_class_in_init_and_setup(self):
     ty = self.Infer("""
       import unittest
       class A(unittest.TestCase):
@@ -332,7 +332,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
           def fooTest(self) -> int: ...
     """)
 
-  def testSetMetaclass(self):
+  def test_set_metaclass(self):
     ty = self.Infer("""
       class A(type):
         def f(self):
@@ -350,7 +350,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
       v = ...  # type: float
     """)
 
-  def testNoMetaclass(self):
+  def test_no_metaclass(self):
     # In this case, the metaclass should not actually be set.
     ty = self.Infer("""
       class X(metaclass=type):
@@ -361,7 +361,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
         pass
     """)
 
-  def testMetaclass(self):
+  def test_metaclass(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         T = TypeVar("T")
@@ -387,7 +387,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
       """)
 
   @test_base.skip("Setting metaclass to a function doesn't work yet.")
-  def testFunctionAsMetaclass(self):
+  def test_function_as_metaclass(self):
     ty = self.Infer("""
       def MyMeta(name, bases, members):
         return type(name, bases, members)
@@ -401,7 +401,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
         pass
     """)
 
-  def testUnknownMetaclass(self):
+  def test_unknown_metaclass(self):
     self.Check("""
       class Foo(metaclass=__any_object__):
         def foo(self):
@@ -411,7 +411,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
           pass
     """)
 
-  def testPy2Metaclass(self):
+  def test_py2_metaclass(self):
     errors = self.CheckWithErrors("""
       import abc
       class Foo(object):  # ignored-metaclass[e]

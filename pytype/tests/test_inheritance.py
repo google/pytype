@@ -8,7 +8,7 @@ class InheritanceTest(test_base.TargetIndependentTest):
   """Tests for class inheritance."""
 
   @test_base.skip("needs (re-)analyzing methods on subclasses")
-  def testSubclassAttributes(self):
+  def test_subclass_attributes(self):
     ty = self.Infer("""
       class Base(object):
         def get_lineno(self):
@@ -24,7 +24,7 @@ class InheritanceTest(test_base.TargetIndependentTest):
         def get_lineno(self) -> int
     """)
 
-  def testClassAttributes(self):
+  def test_class_attributes(self):
     ty = self.Infer("""
       class A(object):
         pass
@@ -47,7 +47,7 @@ class InheritanceTest(test_base.TargetIndependentTest):
     self.assertOnlyHasReturnType(ty.Lookup("ay"), self.int)
     self.assertOnlyHasReturnType(ty.Lookup("by"), self.int)
 
-  def testMultipleInheritance(self):
+  def test_multiple_inheritance(self):
     ty = self.Infer("""
       class A(object):
         x = 1
@@ -69,7 +69,7 @@ class InheritanceTest(test_base.TargetIndependentTest):
     self.assertOnlyHasReturnType(ty.Lookup("y"), self.int)
     self.assertOnlyHasReturnType(ty.Lookup("z"), self.complex)
 
-  def testInheritFromBuiltins(self):
+  def test_inherit_from_builtins(self):
     ty = self.Infer("""
       class MyDict(dict):
         def __init__(self):
@@ -83,7 +83,7 @@ class InheritanceTest(test_base.TargetIndependentTest):
     self.assertOnlyHasReturnType(ty.Lookup("f"),
                                  pytd.ClassType("MyDict", mydict))
 
-  def testInheritMethodsFromObject(self):
+  def test_inherit_methods_from_object(self):
     # Test that even in the presence of multi-level inheritance,
     # we can still see attributes from "object".
     ty = self.Infer("""
@@ -103,7 +103,7 @@ class InheritanceTest(test_base.TargetIndependentTest):
     self.assertOnlyHasReturnType(ty.Lookup("g"), self.int)
     self.assertOnlyHasReturnType(ty.Lookup("h"), self.int)
 
-  def testMRO(self):
+  def test_mro(self):
     ty = self.Infer("""
       class A(object):
         def a(self):
@@ -131,7 +131,7 @@ class InheritanceTest(test_base.TargetIndependentTest):
     self.assertOnlyHasReturnType(ty.Lookup("h"), self.str)
     self.assertOnlyHasReturnType(ty.Lookup("i"), self.float)
 
-  def testAmbiguousBaseClass(self):
+  def test_ambiguous_base_class(self):
     self.Check("""
       class A(object):
         pass

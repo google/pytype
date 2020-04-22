@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class TupleTest(test_base.TargetIndependentTest):
   """Tests for __builtin__.tuple."""
 
-  def testGetItemInt(self):
+  def test_getitem_int(self):
     ty = self.Infer("""
       t = ("", 42)
       v1 = t[0]
@@ -24,7 +24,7 @@ class TupleTest(test_base.TargetIndependentTest):
     """)
 
   @test_base.skip("Needs better slice support in abstract.Tuple, convert.py.")
-  def testGetItemSlice(self):
+  def test_getitem_slice(self):
     ty = self.Infer("""
       t = ("", 42)
       v1 = t[:]
@@ -45,7 +45,7 @@ class TupleTest(test_base.TargetIndependentTest):
       v6 = ...  # type: str
     """)
 
-  def testUnpackTuple(self):
+  def test_unpack_tuple(self):
     ty = self.Infer("""
       v1, v2 = ("", 42)
       _, w = ("", 42)
@@ -61,7 +61,7 @@ class TupleTest(test_base.TargetIndependentTest):
       z = ...  # type: bool
     """)
 
-  def testBadUnpacking(self):
+  def test_bad_unpacking(self):
     ty, errors = self.InferWithErrors("""
       tup = (1, "")
       a, = tup  # bad-unpacking[e1]
@@ -78,7 +78,7 @@ class TupleTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(
         errors, {"e1": r"2 values.*1 variable", "e2": r"2 values.*3 variables"})
 
-  def testMutableItem(self):
+  def test_mutable_item(self):
     ty = self.Infer("""
       v = {}
       w = v.setdefault("", ([], []))
@@ -91,14 +91,14 @@ class TupleTest(test_base.TargetIndependentTest):
       u = ...  # type: list[int]
     """)
 
-  def testBadTupleClassGetItem(self):
+  def test_bad_tuple_class_getitem(self):
     _, errors = self.InferWithErrors("""
       v = type((3, ""))
       w = v[0]  # not-indexable[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"tuple"})
 
-  def testTupleIsInstance(self):
+  def test_tuple_isinstance(self):
     ty = self.Infer("""
       x = ()
       if isinstance(x, tuple):
@@ -110,10 +110,10 @@ class TupleTest(test_base.TargetIndependentTest):
       y = ...  # type: int
     """)
 
-  def testAddTwice(self):
+  def test_add_twice(self):
     self.Check("() + () + ()")
 
-  def testInplaceAdd(self):
+  def test_inplace_add(self):
     ty = self.Infer("""
       a = ()
       a += (42,)
@@ -127,7 +127,7 @@ class TupleTest(test_base.TargetIndependentTest):
       b = ...  # type: Tuple[Union[int, str], ...]
     """)
 
-  def testTupleOfTuple(self):
+  def test_tuple_of_tuple(self):
     self.assertNoCrash(self.Infer, """
       def f(x=()):
         x = (x,)

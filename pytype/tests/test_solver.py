@@ -7,7 +7,7 @@ from pytype.tests import test_base
 class SolverTests(test_base.TargetIndependentTest):
   """Tests for type inference that also runs convert_structural.py."""
 
-  def testAmbiguousAttr(self):
+  def test_ambiguous_attr(self):
     ty = self.Infer("""
       class Node(object):
           children = ()
@@ -22,7 +22,7 @@ class SolverTests(test_base.TargetIndependentTest):
       children = ...  # type: List[nothing, ...] or Tuple[()]
     """)
 
-  def testCall(self):
+  def test_call(self):
     ty = self.Infer("""
       def f():
         x = __any_object__
@@ -35,7 +35,7 @@ class SolverTests(test_base.TargetIndependentTest):
       def f() -> ?
     """)
 
-  def testTypeParameters(self):
+  def test_type_parameters(self):
     ty = self.Infer("""
       def f(A):
         A.has_key("foo")
@@ -46,7 +46,7 @@ class SolverTests(test_base.TargetIndependentTest):
         def f(A) -> list
     """)
 
-  def testAnythingTypeParameters(self):
+  def test_anything_type_parameters(self):
     ty = self.Infer("""
       def f(x):
         return x.keys()
@@ -56,7 +56,7 @@ class SolverTests(test_base.TargetIndependentTest):
       def f(x) -> Any
     """)
 
-  def testTopLevelClass(self):
+  def test_top_level_class(self):
     ty = self.Infer("""
       import Foo  # bad import
 
@@ -70,7 +70,7 @@ class SolverTests(test_base.TargetIndependentTest):
         pass
     """)
 
-  def testDictWithNothing(self):
+  def test_dict_with_nothing(self):
     ty = self.Infer("""
       def f():
         d = {}
@@ -82,7 +82,7 @@ class SolverTests(test_base.TargetIndependentTest):
       def f() -> NoneType
     """)
 
-  def testOptionalParamsIsSubclass(self):
+  def test_optional_params_is_subclass(self):
     ty = self.Infer("""
       class Foo(object):
         def __init__(self, *types):
@@ -97,7 +97,7 @@ class SolverTests(test_base.TargetIndependentTest):
       def bar(self, val) -> bool
     """)
 
-  def testOptionalParamsIsInstance(self):
+  def test_optional_params_isinstance(self):
     ty = self.Infer("""
       class Foo(object):
         def __init__(self, *types):
@@ -112,7 +112,7 @@ class SolverTests(test_base.TargetIndependentTest):
       def bar(self, val) -> bool
     """)
 
-  def testNestedClass(self):
+  def test_nested_class(self):
     ty = self.Infer("""
       class Foo(object):
         def f(self):
@@ -125,7 +125,7 @@ class SolverTests(test_base.TargetIndependentTest):
       def f(self) -> ?
     """)
 
-  def testEmptyTupleAsArg(self):
+  def test_empty_tuple_as_arg(self):
     ty = self.Infer("""
       def f():
         return isinstance(1, ())
@@ -134,7 +134,7 @@ class SolverTests(test_base.TargetIndependentTest):
       def f() -> bool
     """)
 
-  def testIdentityFunction(self):
+  def test_identity_function(self):
     ty = self.Infer("""
       def f(x):
         return x
@@ -153,7 +153,7 @@ class SolverTests(test_base.TargetIndependentTest):
       l = ...  # type: List[str, ...]
     """)
 
-  def testCallConstructor(self):
+  def test_call_constructor(self):
     ty = self.Infer("""
       def f(x):
         return int(x, 16)
@@ -162,7 +162,7 @@ class SolverTests(test_base.TargetIndependentTest):
       def f(x) -> int
     """)
 
-  def testCallMethod(self):
+  def test_call_method(self):
     ty = self.Infer("""
       def f(x):
         return "abc".find(x)
@@ -171,7 +171,7 @@ class SolverTests(test_base.TargetIndependentTest):
       def f(x) -> int
     """)
 
-  def testImport(self):
+  def test_import(self):
     ty = self.Infer("""
       import itertools
       def every(f, array):
@@ -183,7 +183,7 @@ class SolverTests(test_base.TargetIndependentTest):
       def every(f, array) -> bool
     """)
 
-  def testNestedList(self):
+  def test_nested_list(self):
     ty = self.Infer("""
       foo = [[]]
       bar = []
@@ -206,7 +206,7 @@ class SolverTests(test_base.TargetIndependentTest):
       def g() -> NoneType
     """)
 
-  def testTwiceNestedList(self):
+  def test_twice_nested_list(self):
     ty = self.Infer("""
       foo = [[[]]]
       bar = []
@@ -229,7 +229,7 @@ class SolverTests(test_base.TargetIndependentTest):
       def g() -> NoneType
     """)
 
-  def testNestedListInClass(self):
+  def test_nested_list_in_class(self):
     ty = self.Infer("""
       class Container(object):
         def __init__(self):
@@ -259,7 +259,7 @@ class SolverTests(test_base.TargetIndependentTest):
       def g() -> NoneType
     """)
 
-  def testMatchAgainstFunctionWithoutSelf(self):
+  def test_match_against_function_without_self(self):
     with file_utils.Tempdir() as d:
       d.create_file("bad_mod.pyi", """
         class myclass:
@@ -276,7 +276,7 @@ class SolverTests(test_base.TargetIndependentTest):
         def f(date) -> Any
       """)
 
-  def testExternalName(self):
+  def test_external_name(self):
     ty = self.Infer("""
       import collections
       def bar(l):
@@ -289,7 +289,7 @@ class SolverTests(test_base.TargetIndependentTest):
       def bar(l) -> NoneType
     """)
 
-  def testNameConflictWithBuiltin(self):
+  def test_name_conflict_with_builtin(self):
     ty = self.Infer("""
       class LookupError(KeyError):
         pass
@@ -301,7 +301,7 @@ class SolverTests(test_base.TargetIndependentTest):
       def f(x) -> NoneType
     """)
 
-  def testMutatingTypeParameters(self):
+  def test_mutating_type_parameters(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List
@@ -320,7 +320,7 @@ class SolverTests(test_base.TargetIndependentTest):
         def f() -> List[int or str]
       """)
 
-  def testDuplicateKeyword(self):
+  def test_duplicate_keyword(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import TypeVar

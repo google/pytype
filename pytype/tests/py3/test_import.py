@@ -7,7 +7,7 @@ from pytype.tests import test_base
 class ImportTest(test_base.TargetPython3FeatureTest):
   """Tests for import."""
 
-  def testModuleAttributes(self):
+  def test_module_attributes(self):
     ty = self.Infer("""
       import os
       f = os.__file__
@@ -24,7 +24,7 @@ class ImportTest(test_base.TargetPython3FeatureTest):
        p = ...  # type: Optional[str]
     """)
 
-  def testImportSys2(self):
+  def test_import_sys2(self):
     ty = self.Infer("""
       import sys
       import bad_import  # doesn't exist
@@ -44,7 +44,7 @@ class ImportTest(test_base.TargetPython3FeatureTest):
       def h() -> int
     """)
 
-  def testRelativePriority(self):
+  def test_relative_priority(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", "x = ...  # type: int")
       d.create_file("b/a.pyi", "x = ...  # type: complex")

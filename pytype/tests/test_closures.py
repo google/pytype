@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class ClosuresTest(test_base.TargetIndependentTest):
   """Tests for closures."""
 
-  def testBasicClosure(self):
+  def test_basic_closure(self):
     ty = self.Infer("""
       def f():
         x = 3
@@ -23,7 +23,7 @@ class ClosuresTest(test_base.TargetIndependentTest):
       def caller() -> int
     """)
 
-  def testClosureOnArg(self):
+  def test_closure_on_arg(self):
     ty = self.Infer("""
       def f(x):
         def g():
@@ -39,7 +39,7 @@ class ClosuresTest(test_base.TargetIndependentTest):
       def caller() -> int
     """)
 
-  def testClosureWithArg(self):
+  def test_closure_with_arg(self):
     ty = self.Infer("""
       def f(x):
         def g(y):
@@ -55,7 +55,7 @@ class ClosuresTest(test_base.TargetIndependentTest):
       def caller() -> float
     """)
 
-  def testClosureSameName(self):
+  def test_closure_same_name(self):
     ty = self.Infer("""
       def f():
         x = 1
@@ -77,7 +77,7 @@ class ClosuresTest(test_base.TargetIndependentTest):
       def caller() -> str
     """)
 
-  def testClosuresAdd(self):
+  def test_closures_add(self):
     ty = self.Infer("""
       def f(x):
         z = x+1
@@ -94,7 +94,7 @@ class ClosuresTest(test_base.TargetIndependentTest):
       def f(x: int) -> Callable[[Any], Any]
     """)
 
-  def testClosuresWithDefaults(self):
+  def test_closures_with_defaults(self):
     ty = self.Infer("""
       def f(x, y=13, z=43):
         def g(q, r=11):
@@ -118,7 +118,7 @@ class ClosuresTest(test_base.TargetIndependentTest):
       def t3() -> int
     """)
 
-  def testClosureScope(self):
+  def test_closure_scope(self):
     ty = self.Infer("""
       def f():
         x = ["foo"]
@@ -143,7 +143,7 @@ class ClosuresTest(test_base.TargetIndependentTest):
       def g(funcptr: Callable[[], Any]) -> List[str, ...]
     """)
 
-  def testDeepClosures(self):
+  def test_deep_closures(self):
     ty = self.Infer("""
       def f1(a):
         b = a
@@ -167,7 +167,7 @@ class ClosuresTest(test_base.TargetIndependentTest):
       def caller() -> int
     """)
 
-  def testNoVisibleBindings(self):
+  def test_no_visible_bindings(self):
     # Regression test for a crash; see vm.VirtualMachine.load_closure_cell.
     self.Check("""
       def foo():

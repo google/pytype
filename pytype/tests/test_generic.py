@@ -8,7 +8,7 @@ from pytype.tests import test_base
 class GenericTest(test_base.TargetIndependentTest):
   """Tests for GenericType."""
 
-  def testBasic(self):
+  def test_basic(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, TypeVar
@@ -26,7 +26,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def f() -> a.A[int]
       """)
 
-  def testBinop(self):
+  def test_binop(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, TypeVar
@@ -44,7 +44,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def f() -> List[int]
       """)
 
-  def testSpecialized(self):
+  def test_specialized(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Dict, TypeVar
@@ -67,7 +67,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def bar() -> dict[str, int]
       """)
 
-  def testSpecializedMutation(self):
+  def test_specialized_mutation(self):
     with file_utils.Tempdir() as d1:
       with file_utils.Tempdir() as d2:
         d1.create_file("a.pyi", """
@@ -94,7 +94,7 @@ class GenericTest(test_base.TargetIndependentTest):
           def bar() -> int or str
         """)
 
-  def testSpecializedPartial(self):
+  def test_specialized_partial(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Dict, TypeVar
@@ -122,7 +122,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def qux() -> List[Tuple[str, int]]
       """)
 
-  def testTypeParameter(self):
+  def test_type_parameter(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar
@@ -141,7 +141,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def f() -> int
       """)
 
-  def testTypeParameterRenaming(self):
+  def test_type_parameter_renaming(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, TypeVar
@@ -167,7 +167,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def baz() -> int or str
       """)
 
-  def testTypeParameterRenamingChain(self):
+  def test_type_parameter_renaming_chain(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, Set, TypeVar
@@ -193,7 +193,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def f() -> int or float or complex or str
       """)
 
-  def testTypeParameterRenamingConflict1(self):
+  def test_type_parameter_renaming_conflict1(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, Tuple, TypeVar
@@ -223,7 +223,7 @@ class GenericTest(test_base.TargetIndependentTest):
         v3 = ...  # type: Tuple[int, str]
       """)
 
-  def testTypeParameterRenamingConflict2(self):
+  def test_type_parameter_renaming_conflict2(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
@@ -249,7 +249,7 @@ class GenericTest(test_base.TargetIndependentTest):
         w = ...  # type: str
       """)
 
-  def testChangeMultiplyRenamedTypeParameter(self):
+  def test_change_multiply_renamed_type_parameter(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
@@ -278,7 +278,7 @@ class GenericTest(test_base.TargetIndependentTest):
         v = ...  # type: a.C[int, Union[float, int]]
       """)
 
-  def testTypeParameterDeep(self):
+  def test_type_parameter_deep(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar
@@ -299,7 +299,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def f() -> int
       """)
 
-  def testTypeParameterImport(self):
+  def test_type_parameter_import(self):
     with file_utils.Tempdir() as d1:
       d1.create_file("a.pyi", """
         T = TypeVar("T")
@@ -326,7 +326,7 @@ class GenericTest(test_base.TargetIndependentTest):
           def g() -> int or float
         """)
 
-  def testTypeParameterConflict(self):
+  def test_type_parameter_conflict(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
@@ -347,7 +347,7 @@ class GenericTest(test_base.TargetIndependentTest):
         x = ...  # type: a.Custom[nothing, nothing]
       """)
 
-  def testTypeParameterAmbiguous(self):
+  def test_type_parameter_ambiguous(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, List
@@ -367,7 +367,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def f() -> a.C[nothing]
       """)
 
-  def testTypeParameterDuplicated(self):
+  def test_type_parameter_duplicated(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, Dict
@@ -388,7 +388,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def f() -> a.A[int]: ...
       """)
 
-  def testUnion(self):
+  def test_union(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List
@@ -407,7 +407,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def g() -> int or str
       """)
 
-  def testMultipleTemplates(self):
+  def test_multiple_templates(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, List, TypeVar
@@ -428,7 +428,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def f() -> a.A[nothing, int]
       """)
 
-  def testMultipleTemplatesFlipped(self):
+  def test_multiple_templates_flipped(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Dict, Generic, TypeVar
@@ -457,7 +457,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def h() -> int
       """)
 
-  def testTypeParameterEmpty(self):
+  def test_type_parameter_empty(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, List, TypeVar
@@ -477,7 +477,7 @@ class GenericTest(test_base.TargetIndependentTest):
       """)
 
   @test_base.skip("Needs better GenericType support")
-  def testTypeParameterLimits(self):
+  def test_type_parameter_limits(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import AnyStr, Generic
@@ -494,7 +494,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def f() -> str or unicode
       """)
 
-  def testPreventInfiniteLoopOnTypeParamCollision(self):
+  def test_prevent_infinite_loop_on_type_param_collision(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, TypeVar
@@ -510,7 +510,7 @@ class GenericTest(test_base.TargetIndependentTest):
         g = lambda y: y+1
       """, pythonpath=[d.path])
 
-  def testTemplateConstruction(self):
+  def test_template_construction(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Dict, Generic, List, TypeVar
@@ -542,7 +542,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def h() -> str
       """)
 
-  def testAliasingDictConflictError(self):
+  def test_aliasing_dict_conflict_error(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Dict, Generic, List, TypeVar
@@ -560,7 +560,7 @@ class GenericTest(test_base.TargetIndependentTest):
         v = ...  # type: a.A[nothing, nothing]
       """)
 
-  def testRecursiveContainer(self):
+  def test_recursive_container(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List
@@ -579,7 +579,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def g() -> a.A
       """)
 
-  def testPyTDSubclass(self):
+  def test_pytd_subclass(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, TypeVar
@@ -603,7 +603,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def bar() -> str
       """)
 
-  def testInterpreterSubclass(self):
+  def test_interpreter_subclass(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, TypeVar
@@ -628,7 +628,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def bar() -> str
       """)
 
-  def testInstanceAttribute(self):
+  def test_instance_attribute(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, TypeVar
@@ -650,7 +650,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def g() -> int
       """)
 
-  def testInstanceAttributeVisible(self):
+  def test_instance_attribute_visible(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
@@ -676,7 +676,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def g() -> str
       """)
 
-  def testInstanceAttributeChange(self):
+  def test_instance_attribute_change(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
@@ -715,7 +715,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def h() -> int
       """)
 
-  def testInstanceAttributeInherited(self):
+  def test_instance_attribute_inherited(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, TypeVar
@@ -743,7 +743,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def g() -> int
       """)
 
-  def testInstanceAttributeSet(self):
+  def test_instance_attribute_set(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
@@ -764,7 +764,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def f() -> Any
       """)
 
-  def testInstanceAttributeConditional(self):
+  def test_instance_attribute_conditional(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, TypeVar
@@ -792,7 +792,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def g(x) -> None or int
       """)
 
-  def testInstanceAttributeMethod(self):
+  def test_instance_attribute_method(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, TypeVar
@@ -810,7 +810,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def f() -> int
       """)
 
-  def testInheritedTypeParameter(self):
+  def test_inherited_type_parameter(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
@@ -830,7 +830,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def f(x) -> Any
       """)
 
-  def testAttributeOnAnythingTypeParameter(self):
+  def test_attribute_on_anything_type_parameter(self):
     """Test that we can access an attribute on "Any"."""
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
@@ -848,7 +848,7 @@ class GenericTest(test_base.TargetIndependentTest):
         def f() -> Any
       """)
 
-  def testMatchAnythingTypeParameter(self):
+  def test_match_anything_type_parameter(self):
     """Test that we can match "Any" against a formal function argument."""
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
@@ -864,7 +864,7 @@ class GenericTest(test_base.TargetIndependentTest):
         n = ...  # type: int
       """)
 
-  def testRenamedTypeParameterMatch(self):
+  def test_renamed_type_parameter_match(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Iterable, TypeVar
@@ -880,7 +880,7 @@ class GenericTest(test_base.TargetIndependentTest):
         x = ...  # type: bool
       """)
 
-  def testTypeParameterUnion(self):
+  def test_type_parameter_union(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List, TypeVar
@@ -899,7 +899,7 @@ class GenericTest(test_base.TargetIndependentTest):
         v = ...  # type: list[int or str]
       """)
 
-  def testTypeParameterSubclass(self):
+  def test_type_parameter_subclass(self):
     """Test subclassing A[T] with T undefined and a type that depends on T."""
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
@@ -921,7 +921,7 @@ class GenericTest(test_base.TargetIndependentTest):
           def foo(self) -> list
       """)
 
-  def testConstrainedTypeParameterSubclass(self):
+  def test_constrained_type_parameter_subclass(self):
     """Test subclassing A[T] with T undefined and a type that depends on T."""
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
@@ -944,7 +944,7 @@ class GenericTest(test_base.TargetIndependentTest):
           def foo(self) -> List[Union[int, str]]
       """)
 
-  def testBoundedTypeParameterSubclass(self):
+  def test_bounded_type_parameter_subclass(self):
     """Test subclassing A[T] with T undefined and a type that depends on T."""
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
@@ -967,7 +967,7 @@ class GenericTest(test_base.TargetIndependentTest):
           def foo(self) -> List[complex]
       """)
 
-  def testConstrainedTypeParameter(self):
+  def test_constrained_type_parameter(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar
@@ -985,7 +985,7 @@ class GenericTest(test_base.TargetIndependentTest):
         v = ...  # type: int or float
       """)
 
-  def testBoundedTypeParameter(self):
+  def test_bounded_type_parameter(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar
@@ -1003,7 +1003,7 @@ class GenericTest(test_base.TargetIndependentTest):
         v = ...  # type: float
       """)
 
-  def testMutateCall(self):
+  def test_mutate_call(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar

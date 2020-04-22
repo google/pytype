@@ -10,7 +10,7 @@ import unittest
 class CFGTest(unittest.TestCase):
   """Test control flow graph creation."""
 
-  def testSimpleGraph(self):
+  def test_simple_graph(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("foo")
     n2 = n1.ConnectNew("n2")
@@ -30,7 +30,7 @@ class CFGTest(unittest.TestCase):
     self.assertIn(n1, n3.incoming)
     self.assertIn(n3, n4.incoming)
 
-  def testBindingBinding(self):
+  def test_binding_binding(self):
     p = cfg.Program()
     node = p.NewCFGNode()
     u = p.NewVariable()
@@ -43,7 +43,7 @@ class CFGTest(unittest.TestCase):
     self.assertEqual("<binding of variable 0 to data %d>" % id(v3.data),
                      str(v3))
 
-  def testCFGNodeStr(self):
+  def test_cfg_node_str(self):
     p = cfg.Program()
     n1 = p.NewCFGNode()
     n2 = p.NewCFGNode("n2")
@@ -54,7 +54,7 @@ class CFGTest(unittest.TestCase):
     self.assertEqual("<cfgnode 1 n2>", str(n2))
     self.assertEqual("<cfgnode 2 n3 condition:0>", str(n3))
 
-  def testGetAttro(self):
+  def test_get_attro(self):
     p = cfg.Program()
     node = p.NewCFGNode()
     u = p.NewVariable()
@@ -68,7 +68,7 @@ class CFGTest(unittest.TestCase):
     self.assertEqual(list(source_set), [])
     self.assertEqual(a.data, data)
 
-  def testGetOrigins(self):
+  def test_get_origins(self):
     p = cfg.Program()
     node = p.NewCFGNode()
     u = p.NewVariable()
@@ -82,7 +82,7 @@ class CFGTest(unittest.TestCase):
       source_set, = origin.source_sets
       six.assertCountEqual(self, list(source_set), expected_source_set)
 
-  def testVariableSet(self):
+  def test_variable_set(self):
     p = cfg.Program()
     node1 = p.NewCFGNode("n1")
     node2 = node1.ConnectNew("n2")
@@ -91,7 +91,7 @@ class CFGTest(unittest.TestCase):
     d.AddBinding("v2", source_set=[], where=node2)
     self.assertEqual(len(d.bindings), 2)
 
-  def testHasSource(self):
+  def test_has_source(self):
     p = cfg.Program()
     n0, n1, n2 = p.NewCFGNode("n0"), p.NewCFGNode("n1"), p.NewCFGNode("n2")
     u = p.NewVariable()
@@ -110,7 +110,7 @@ class CFGTest(unittest.TestCase):
     self.assertTrue(v2.HasSource(u1))
     self.assertTrue(v3.HasSource(u1))
 
-  def testFilter1(self):
+  def test_filter1(self):
     #                    x.ab = A()
     #               ,---+------------.
     #               |   n3           |
@@ -146,7 +146,7 @@ class CFGTest(unittest.TestCase):
     six.assertCountEqual(self, ["A", "B"], ab.FilteredData(n5))
     six.assertCountEqual(self, ["A", "B"], ab.FilteredData(n6))
 
-  def testCanHaveCombination(self):
+  def test_can_have_combination(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
@@ -169,7 +169,7 @@ class CFGTest(unittest.TestCase):
     self.assertFalse(n2.CanHaveCombination([x1, y2]))
     self.assertFalse(n3.CanHaveCombination([x1, y2]))
 
-  def testConflictingBindingsFromCondition(self):
+  def test_conflicting_bindings_from_condition(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
@@ -181,7 +181,7 @@ class CFGTest(unittest.TestCase):
     n2.condition = x_a
     self.assertFalse(n3.HasCombination([x_b]))
 
-  def testConditionOrder(self):
+  def test_condition_order(self):
     p = cfg.Program()
     x, y = p.NewVariable(), p.NewVariable()
     n1 = p.NewCFGNode("n1")
@@ -196,7 +196,7 @@ class CFGTest(unittest.TestCase):
     n5.condition = x.AddBinding("c", source_set=[], where=n4)
     self.assertTrue(n6.HasCombination([y_a]))
 
-  def testContainedIfConflict(self):
+  def test_contained_if_conflict(self):
     p = cfg.Program()
     x = p.NewVariable()
     n1 = p.NewCFGNode("n1")
@@ -212,7 +212,7 @@ class CFGTest(unittest.TestCase):
     # This is impossible since we have a condition on the way, enforcing x=b.
     self.assertFalse(n5.HasCombination([x_a]))
 
-  def testConflictingConditionsOnPath(self):
+  def test_conflicting_conditions_on_path(self):
     # This test case is rather academic - there's no obvious way to construct
     # a Python program that actually creates the CFG below.
     p = cfg.Program()
@@ -232,7 +232,7 @@ class CFGTest(unittest.TestCase):
     # Impossible since we can only pass either n2 or n3.
     self.assertFalse(n6.HasCombination([z_a]))
 
-  def testConditionsBlock(self):
+  def test_conditions_block(self):
     p = cfg.Program()
     unreachable_node = p.NewCFGNode("unreachable_node")
     y = p.NewVariable()
@@ -248,7 +248,7 @@ class CFGTest(unittest.TestCase):
     self.assertTrue(n3.HasCombination([b1]))
     self.assertFalse(n2.HasCombination([b1]))
 
-  def testConditionsMultiplePaths(self):
+  def test_conditions_multiple_paths(self):
     p = cfg.Program()
     unreachable_node = p.NewCFGNode("unreachable_node")
     y = p.NewVariable()
@@ -264,7 +264,7 @@ class CFGTest(unittest.TestCase):
     self.assertFalse(n3.HasCombination([b1]))
     self.assertFalse(n2.HasCombination([b1]))
 
-  def testConditionsNotUsedIfAlternativeExist(self):
+  def test_conditions_not_used_if_alternative_exist(self):
     p = cfg.Program()
     unreachable_node = p.NewCFGNode("unreachable_node")
     y = p.NewVariable()
@@ -277,7 +277,7 @@ class CFGTest(unittest.TestCase):
     b1 = x.AddBinding("1", source_set=[], where=n1)
     self.assertFalse(n3.HasCombination([b1]))
 
-  def testSatisfiableCondition(self):
+  def test_satisfiable_condition(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     x = p.NewVariable()
@@ -289,7 +289,7 @@ class CFGTest(unittest.TestCase):
     n4 = n3.ConnectNew("n4")
     self.assertTrue(n4.HasCombination([x1]))
 
-  def testUnsatisfiableCondition(self):
+  def test_unsatisfiable_condition(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     x = p.NewVariable()
@@ -300,7 +300,7 @@ class CFGTest(unittest.TestCase):
     n4 = n3.ConnectNew("n4")
     self.assertFalse(n4.HasCombination([x1]))
 
-  def testNoNodeOnAllPaths(self):
+  def test_no_node_on_all_paths(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
@@ -316,7 +316,7 @@ class CFGTest(unittest.TestCase):
     n4.condition = x1
     self.assertTrue(n5.HasCombination([y1]))
 
-  def testConditionOnStartNode(self):
+  def test_condition_on_start_node(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
@@ -327,7 +327,7 @@ class CFGTest(unittest.TestCase):
     self.assertFalse(n2.HasCombination([b]))
     self.assertTrue(n1.HasCombination([b]))
 
-  def testConditionLoop(self):
+  def test_condition_loop(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
@@ -340,7 +340,7 @@ class CFGTest(unittest.TestCase):
     n2.condition = a
     self.assertFalse(n2.HasCombination([c]))
 
-  def testCombinations(self):
+  def test_combinations(self):
     # n1------->n2
     #  |        |
     #  v        v
@@ -365,7 +365,7 @@ class CFGTest(unittest.TestCase):
     self.assertFalse(n4.HasCombination([xa, yb]))
     self.assertFalse(n4.HasCombination([xb, ya]))
 
-  def testConflicting(self):
+  def test_conflicting(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     x = p.NewVariable()
@@ -377,7 +377,7 @@ class CFGTest(unittest.TestCase):
     self.assertTrue(n1.HasCombination([b]))
     self.assertFalse(n1.HasCombination([a, b]))
 
-  def testLoop(self):
+  def test_loop(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
@@ -389,7 +389,7 @@ class CFGTest(unittest.TestCase):
     b.AddOrigin(n2, [a])
     self.assertFalse(n2.HasCombination([b]))
 
-  def testOneStepSimultaneous(self):
+  def test_one_step_simultaneous(self):
     # Like testSimultaneous, but woven through an additional node
     # n1->n2->n3
     # [n1] x = a or b
@@ -413,7 +413,7 @@ class CFGTest(unittest.TestCase):
     self.assertFalse(n2.HasCombination([ya, zb]))
     self.assertFalse(n2.HasCombination([yb, za]))
 
-  def testConflictingBindings(self):
+  def test_conflicting_bindings(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
@@ -426,7 +426,7 @@ class CFGTest(unittest.TestCase):
     self.assertFalse(n1.HasCombination([x_a, x_b]))
     self.assertFalse(n2.HasCombination([x_a, x_b]))
 
-  def testMidPoint(self):
+  def test_mid_point(self):
     p = cfg.Program()
     x = p.NewVariable()
     y = p.NewVariable()
@@ -439,7 +439,7 @@ class CFGTest(unittest.TestCase):
     self.assertTrue(n3.HasCombination([y1, x2]))
     self.assertTrue(n3.HasCombination([x2, y1]))
 
-  def testConditionsAreOrdered(self):
+  def test_conditions_are_ordered(self):
     # The error case in this test is non-deterministic. The test tries to verify
     # that the list returned by _PathFinder.FindNodeBackwards is ordered from
     # child to parent.
@@ -459,7 +459,7 @@ class CFGTest(unittest.TestCase):
     # added to increase the chance of a failure if the order is random.
     self.assertTrue(n4.HasCombination([x1]))
 
-  def testSameNodeOrigin(self):
+  def test_same_node_origin(self):
     # [n1] x = a or b; y = x
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
@@ -480,7 +480,7 @@ class CFGTest(unittest.TestCase):
     # n1.HasCombination([xa, yb]) == True (because x = b; y = x; x = a)
     # n1.HasCombination([xb, ya]) == True (because x = a; y = x; x = b)
 
-  def testNewVariable(self):
+  def test_new_variable(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = p.NewCFGNode("n2")
@@ -499,7 +499,7 @@ class CFGTest(unittest.TestCase):
     v4 = p.NewVariable({x: y}, [], n1)
     six.assertCountEqual(self, [x], [v.data for v in v4.bindings])
 
-  def testNodeBindings(self):
+  def test_node_bindings(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("node1")
     n2 = n1.ConnectNew("node2")
@@ -512,7 +512,7 @@ class CFGTest(unittest.TestCase):
     a4 = u.AddBinding(4, source_set=[], where=n1)
     six.assertCountEqual(self, [a1, a2, a3, a4], n1.bindings)
 
-  def testProgram(self):
+  def test_program(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
@@ -528,7 +528,7 @@ class CFGTest(unittest.TestCase):
     six.assertCountEqual(self, [a12, a22], n2.bindings)
     self.assertEqual(p.next_variable_id, 2)
 
-  def testEntryPoint(self):
+  def test_entry_point(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
@@ -538,7 +538,7 @@ class CFGTest(unittest.TestCase):
     p.entrypoint = n1
     self.assertTrue(n2.HasCombination([a]))
 
-  def testNonFrozenSolving(self):
+  def test_non_frozen_solving(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
@@ -548,7 +548,7 @@ class CFGTest(unittest.TestCase):
     p.entrypoint = n1
     self.assertTrue(n2.HasCombination([a]))
 
-  def testFilter2(self):
+  def test_filter2(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = p.NewCFGNode("n2")
@@ -559,7 +559,7 @@ class CFGTest(unittest.TestCase):
     self.assertEqual(x.Filter(n1), [])
     self.assertEqual(x.Filter(n2), [a])
 
-  def testHiddenConflict1(self):
+  def test_hidden_conflict1(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
@@ -583,7 +583,7 @@ class CFGTest(unittest.TestCase):
     self.assertFalse(n3.HasCombination([z_ab3]))
     self.assertFalse(n3.HasCombination([z_ab4]))
 
-  def testHiddenConflict2(self):
+  def test_hidden_conflict2(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
@@ -595,7 +595,7 @@ class CFGTest(unittest.TestCase):
     p.entrypoint = n1
     self.assertFalse(n2.HasCombination([y_b, x_a]))
 
-  def testEmptyBinding(self):
+  def test_empty_binding(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
@@ -613,7 +613,7 @@ class CFGTest(unittest.TestCase):
     self.assertEqual(x.Filter(n1), [a])
     self.assertEqual(x.Filter(n2), [a])
 
-  def testAssignToNew(self):
+  def test_assign_to_new(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
@@ -633,7 +633,7 @@ class CFGTest(unittest.TestCase):
     self.assertFalse(n1.HasCombination([ax, ay]))
     self.assertFalse(n2.HasCombination([ax, ay, az]))
 
-  def testAssignToNewNoNode(self):
+  def test_assign_to_new_no_node(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     x = p.NewVariable()
@@ -645,7 +645,7 @@ class CFGTest(unittest.TestCase):
     oz, = z.bindings[0].origins
     self.assertEqual(ox, oy, oz)
 
-  def testPasteVariable(self):
+  def test_paste_variable(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
@@ -665,7 +665,7 @@ class CFGTest(unittest.TestCase):
     self.assertTrue(n2.HasCombination([ay]))
     self.assertTrue(n2.HasCombination([by]))
 
-  def testPasteAtSameNode(self):
+  def test_paste_at_same_node(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     x = p.NewVariable()
@@ -681,7 +681,7 @@ class CFGTest(unittest.TestCase):
     o, = ay.origins
     six.assertCountEqual(self, [set()], o.source_sets)
 
-  def testPasteWithAdditionalSources(self):
+  def test_paste_with_additional_sources(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
@@ -696,7 +696,7 @@ class CFGTest(unittest.TestCase):
     source_set, = origin.source_sets
     self.assertSetEqual(source_set, {ax, by})
 
-  def testPasteAtSameNodeWithAdditionalSources(self):
+  def test_paste_at_same_node_with_additional_sources(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     x = p.NewVariable()
@@ -710,7 +710,7 @@ class CFGTest(unittest.TestCase):
     source_set, = origin.source_sets
     self.assertSetEqual(source_set, {by})
 
-  def testPasteBinding(self):
+  def test_paste_binding(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     x = p.NewVariable()
@@ -719,7 +719,7 @@ class CFGTest(unittest.TestCase):
     y.PasteBinding(ax)
     self.assertEqual(x.data, y.data)
 
-  def testId(self):
+  def test_id(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = p.NewCFGNode("n2")
@@ -732,7 +732,7 @@ class CFGTest(unittest.TestCase):
     self.assertIsInstance(n2.id, int)
     self.assertLess(n1.id, n2.id)
 
-  def testPrune(self):
+  def test_prune(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
@@ -752,7 +752,7 @@ class CFGTest(unittest.TestCase):
     six.assertCountEqual(self, [3], x.Data(n3))
     six.assertCountEqual(self, [1, 3], x.Data(n4))
 
-  def testPruneTwoOrigins(self):
+  def test_prune_two_origins(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = p.NewCFGNode("n2")
@@ -765,7 +765,7 @@ class CFGTest(unittest.TestCase):
     b.AddOrigin(source_set=[], where=n2)
     self.assertEqual(len([v.data for v in x.Bindings(n3)]), 1)
 
-  def testHiddenConflict3(self):
+  def test_hidden_conflict3(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
@@ -783,7 +783,7 @@ class CFGTest(unittest.TestCase):
     x_b = x.AddBinding("a", source_set=[z_b], where=n1)
     self.assertTrue(n2.HasCombination(goals + [x_b]))
 
-  def testConflictWithCondition(self):
+  def test_conflict_with_condition(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2")
@@ -800,7 +800,7 @@ class CFGTest(unittest.TestCase):
       goals.append(v)
     self.assertTrue(n2.HasCombination(goals))
 
-  def testVariableProperties(self):
+  def test_variable_properties(self):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     n2 = p.NewCFGNode("n2")
@@ -813,7 +813,7 @@ class CFGTest(unittest.TestCase):
     six.assertCountEqual(self, v.bindings, v.Bindings(None))
     self.assertEqual(p, v.program)
 
-  def testAddBindingIterables(self):
+  def test_add_binding_iterables(self):
     # source_set in Pytype is at times a tuple, list or set. They're all
     # converted to SourceSets (essentially frozensets) when added to an Origin.
     # This is more of a behavioral test than a specification test.
@@ -824,7 +824,7 @@ class CFGTest(unittest.TestCase):
     x.AddBinding("b", source_set=[], where=n1)
     x.AddBinding("c", source_set=set(), where=n1)
 
-  def testCallsWithNone(self):
+  def test_calls_with_none(self):
     # Several parts of the Python API have None as a default value for
     # parameters. Make sure the C++ API can # also take None for those
     # functions. These are mostly smoke tests.
@@ -853,14 +853,14 @@ class CFGTest(unittest.TestCase):
     v2.PasteBinding(bv, None)
     v2.PasteBinding(bv, None, None)
 
-  def testProgramDefaultData(self):
+  def test_program_default_data(self):
     # Basic sanity check to make sure Program.default_data works.
     p = cfg.Program()
     self.assertEqual(p.default_data, None)
     p.default_data = 1
     self.assertEqual(p.default_data, 1)
 
-  def testConditionConflict(self):
+  def test_condition_conflict(self):
     # v1 = x or y or z  # node_in
     # condition = v1 is x  # node_in
     # if condition:  # node_if
@@ -887,7 +887,7 @@ class CFGTest(unittest.TestCase):
     self.assertFalse(b_if.IsVisible(node_else))
     self.assertTrue(b_else.IsVisible(node_else))
 
-  def testBlockCondition(self):
+  def test_block_condition(self):
     # v1 = x or y or z  # node_in
     # if v1 is x:  # node_if
     #   v1 = w  # node_block
@@ -911,7 +911,7 @@ class CFGTest(unittest.TestCase):
     b_out = p.NewVariable().AddBinding("x", [bx], node_out)
     self.assertFalse(b_out.IsVisible(node_out))
 
-  def testStrict(self):
+  def test_strict(self):
     # Tests the existence of the strict keyword (but not its behavior).
     p = cfg.Program()
     node = p.NewCFGNode("root")

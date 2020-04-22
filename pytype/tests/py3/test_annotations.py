@@ -9,7 +9,7 @@ from pytype.tests import test_utils
 class AnnotationTest(test_base.TargetPython3BasicTest):
   """Tests for PEP 484 style inline annotations."""
 
-  def testNoneUnpackingIs(self):
+  def test_none_unpacking_is(self):
     """Tests that is works with None."""
     self.Check("""
       from typing import Optional
@@ -19,7 +19,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         return x
       """)
 
-  def testNoneUnpackingIsNot(self):
+  def test_none_unpacking_is_not(self):
     """Tests that is not works with None."""
     self.Check("""
       from typing import Optional
@@ -29,7 +29,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         return ""
       """)
 
-  def testOnlyAnnotations(self):
+  def test_only_annotations(self):
     ty = self.Infer("""
       def bar(p1: str, p2: complex) -> int:
          pass
@@ -38,7 +38,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       def bar(p1: str, p2: complex) -> int
     """)
 
-  def testDeep(self):
+  def test_deep(self):
     ty = self.Infer("""
       def bar(p1: str, p2: complex) -> None:
          pass
@@ -47,7 +47,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       def bar(p1: str, p2: complex) -> None
     """)
 
-  def testUnion(self):
+  def test_union(self):
     ty = self.Infer("""
       import typing
       def foo(x: typing.Union[int, float], y: int):
@@ -59,7 +59,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       def foo(x: Union[int, float], y:int) -> Union[int, float]: ...
     """)
 
-  def testCallError(self):
+  def test_call_error(self):
     _, errors = self.InferWithErrors("""
       s = {1}
       def foo(x: int):
@@ -68,7 +68,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"x: int.*x: float"})
 
-  def testAmbiguousArg(self):
+  def test_ambiguous_arg(self):
     self.Check("""
       def f(x: int):
         return x
@@ -82,14 +82,14 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         f(x)
     """)
 
-  def testInnerError(self):
+  def test_inner_error(self):
     _, errors = self.InferWithErrors("""
       def foo(x: int):
         return x.upper()  # attribute-error[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"upper.*int"})
 
-  def testList(self):
+  def test_list(self):
     ty = self.Infer("""
       from typing import List
 
@@ -107,7 +107,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         def foo(l1: List[int], l2: List[str], b) -> None: ...
     """)
 
-  def testAnalyzeInit(self):
+  def test_analyze_init(self):
     ty = self.Infer("""
       from typing import List
       class Foo:
@@ -120,7 +120,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         def f(self, x: List[int]) -> None: ...
     """)
 
-  def testStringAnnotation(self):
+  def test_string_annotation(self):
     ty = self.Infer("""
       def f(c: "int") -> "None":
         c += 1
@@ -130,7 +130,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       def f(c: int) -> None: ...
     """)
 
-  def testUnicodeAnnotation(self):
+  def test_unicode_annotation(self):
     ty = self.Infer("""
       def f(c: u"int") -> u"None":
         c += 1
@@ -140,7 +140,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       def f(c: int) -> None: ...
     """)
 
-  def testFutureUnicodeLiteralAnnotation(self):
+  def test_future_unicode_literal_annotation(self):
     ty = self.Infer("""
       from __future__ import unicode_literals
       def f(c: "int") -> "None":
@@ -155,7 +155,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       def f(c: int) -> None: ...
     """)
 
-  def testTypingOnlyImport(self):
+  def test_typing_only_import(self):
     ty = self.Infer("""
       import typing
       if typing.TYPE_CHECKING:
@@ -169,7 +169,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       def f(c: calendar.Calendar) -> int: ...
     """)
 
-  def testAmbiguousAnnotation(self):
+  def test_ambiguous_annotation(self):
     _, errors = self.InferWithErrors("""
       def foo(x: int if __random__ else float):  # invalid-annotation[e1]
         return x
@@ -182,20 +182,20 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         # types below are not in alphabetical order.
         "e2": r"int.*float.*x.*constant"})
 
-  def testBadStringAnnotation(self):
+  def test_bad_string_annotation(self):
     _, errors = self.InferWithErrors("""
       def foo(x: str()):  # invalid-annotation[e]
         return x
     """)
     self.assertErrorRegexes(errors, {"e": r"x.*constant"})
 
-  def testBadReturn(self):
+  def test_bad_return(self):
     self.InferWithErrors("""
       def foo(x: str, y: str) -> int:
         return "foo"  # bad-return-type
     """)
 
-  def testMultipleReturns(self):
+  def test_multiple_returns(self):
     _, errors = self.InferWithErrors("""
       def foo(x: str, y: str) -> int:
         if x:
@@ -206,7 +206,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e1": r"Expected.*int.*Actual.*str",
                                      "e2": r"Expected.*int.*Actual.*complex"})
 
-  def testAmbiguousReturn(self):
+  def test_ambiguous_return(self):
     _, errors = self.InferWithErrors("""
       def foo(x: str) -> int:
         if x:
@@ -218,7 +218,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(
         errors, {"e": r"Expected.*int.*Actual.*Union(?=.*complex).*str"})
 
-  def testDefaultReturn(self):
+  def test_default_return(self):
     ty = self.Infer("""
       class Foo(object):
         def bar(self, x: float, default="") -> str:
@@ -230,21 +230,21 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         def bar(self, x: float, default=...) -> str: ...
     """)
 
-  def testCompatBool(self):
+  def test_compat_bool(self):
     self.Check("""
       def bar(x: bool) -> bool:
         return None
       bar(None)
     """)
 
-  def testCompatFloat(self):
+  def test_compat_float(self):
     self.Check("""
       def bar(x: float) -> float:
         return 1
       bar(42)
     """)
 
-  def testCompatUnicodeStr(self):
+  def test_compat_unicode_str(self):
     # Use str to be identical in py2 and py3
     self.Check("""
       from typing import Text
@@ -253,14 +253,14 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       bar(str("bar"))
     """)
 
-  def testUnsolvable(self):
+  def test_unsolvable(self):
     self.assertNoCrash(self.Check, """
       import unknown_module
       def f(x: unknown_module.Iterable):
         pass
     """)
 
-  def testAny(self):
+  def test_any(self):
     ty = self.Infer("""
       from typing import Any
       def f(x: Any):
@@ -272,7 +272,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       x = ...  # type: None
     """)
 
-  def testDict(self):
+  def test_dict(self):
     self.InferWithErrors("""
       from typing import Dict, List
       def keys(d: Dict[str, int]):
@@ -282,7 +282,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       keys({3: 3})  # wrong-arg-types
     """, deep=True)
 
-  def testSequence(self):
+  def test_sequence(self):
     self.InferWithErrors("""
       from typing import Sequence
       def f(s: Sequence):
@@ -293,7 +293,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       f(1)  # wrong-arg-types
     """, deep=True)
 
-  def testOptional(self):
+  def test_optional(self):
     self.InferWithErrors("""
       from typing import Optional
       def f(s: Optional[int]):
@@ -303,7 +303,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       f("foo")  # wrong-arg-types
     """, deep=True)
 
-  def testSet(self):
+  def test_set(self):
     self.InferWithErrors("""
       from typing import Set
       def f(d: Set[str]):
@@ -314,7 +314,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       f({3})  # wrong-arg-types
     """, deep=True)
 
-  def testFrozenSet(self):
+  def test_frozenset(self):
     self.InferWithErrors("""
       from typing import FrozenSet
       def f(d: FrozenSet[str]):
@@ -324,7 +324,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       f(frozenset([3]))  # wrong-arg-types
     """, deep=True)
 
-  def testGenericAndTypeVar(self):
+  def test_generic_and_typevar(self):
     self.assertNoCrash(self.Check, """
       import typing
       _T = typing.TypeVar("_T")
@@ -332,7 +332,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         ...
     """)
 
-  def testJumpIntoClassThroughAnnotation(self):
+  def test_jump_into_class_through_annotation(self):
     self.Check("""
       class Foo(object):
         def __init__(self) -> None:
@@ -344,7 +344,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         foo.qux()
     """)
 
-  def testForwardDeclarations(self):
+  def test_forward_declarations(self):
     self.Check("""
       def f(a: "B"):
         return a
@@ -360,7 +360,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         pass
     """)
 
-  def testWithoutForwardDecl(self):
+  def test_without_forward_decl(self):
     _, errorlog = self.InferWithErrors("""
       def f(a) -> Bar:  # name-error[e]
         return Bar()
@@ -370,7 +370,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errorlog, {"e": r"Bar"})
 
-  def testInvalidForwardDecl(self):
+  def test_invalid_forward_decl(self):
     self.Check("""
       def f(a) -> "Foo":
         return Foo()
@@ -387,7 +387,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errorlog, {"e": r"Foo"})
 
-  def testForwardDeclBadReturn(self):
+  def test_forward_decl_bad_return(self):
     _, errorlog = self.InferWithErrors("""
         def f() -> "Foo":
           return 1  # bad-return-type[e]
@@ -398,7 +398,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     # Error message along the lines: No attribute 'bar' on Foo
     self.assertErrorRegexes(errorlog, {"e": r"return type.*int"})
 
-  def testConfusingForwardDecl(self):
+  def test_confusing_forward_decl(self):
     _, errorlog = self.InferWithErrors("""
         class Foo(object):
           def foo(self):
@@ -417,7 +417,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     # Error message along the lines: No attribute 'bar' on Foo
     self.assertErrorRegexes(errorlog, {"e": r"\'bar\'.*Foo"})
 
-  def testReturnTypeError(self):
+  def test_return_type_error(self):
     _, errors = self.InferWithErrors("""
       class FooBar(object): pass
       def f() -> FooBar:
@@ -425,7 +425,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     """, deep=True)
     self.assertErrorRegexes(errors, {"e": r"Expected: FooBar"})
 
-  def testUnknownArgument(self):
+  def test_unknown_argument(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         def factory() -> type
@@ -443,7 +443,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         def f(x) -> Any
       """)
 
-  def testBadCallNoKwarg(self):
+  def test_bad_call_no_kwarg(self):
     ty, errors = self.InferWithErrors("""
       def foo():
         labels = {
@@ -464,7 +464,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     error = r"Actually passed:.*path: None"
     self.assertErrorRegexes(errors, {"e": error})
 
-  def testBadCallWithKwarg(self):
+  def test_bad_call_with_kwarg(self):
     ty, errors = self.InferWithErrors("""
       def foo():
         labels = {
@@ -485,7 +485,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     error = r"Actually passed:.*path: None"
     self.assertErrorRegexes(errors, {"e": error})
 
-  def testSkipFunctionsWithAnnotations(self):
+  def test_skip_functions_with_annotations(self):
     ty = self.Infer("""
       _analyzed_baz = None
       class Foo(object):
@@ -507,7 +507,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       def baz(x: int) -> None: ...
     """)
 
-  def testAnnotatedInit(self):
+  def test_annotated_init(self):
     ty = self.Infer("""
       class A(object):
         def __init__(self, x: str):
@@ -519,7 +519,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         def __init__(self, x: str) -> None: ...
     """)
 
-  def testUnionInstantiation(self):
+  def test_union_instantiation(self):
     # If unions are not instantiated properly, the call to x.value will
     # cause an error and Infer will fail.
     self.Infer("""
@@ -540,7 +540,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
           return x.value2
     """)
 
-  def testImpreciseAnnotation(self):
+  def test_imprecise_annotation(self):
     ty, errors = self.InferWithErrors("""
       from typing import Union
       class A: pass
@@ -559,7 +559,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"x.*A"})
 
-  def testTuple(self):
+  def test_tuple(self):
     ty = self.Infer("""
       def f():
         return (0, "")
@@ -574,14 +574,14 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       x = ...  # type: str
     """)
 
-  def testOptionalArg(self):
+  def test_optional_arg(self):
     self.Check("""
       def f(x: str, y: bool=False):
         pass
       f("", y=True)
     """)
 
-  def testEmpty(self):
+  def test_empty(self):
     self.Check("""
       from typing import Any, List
       def f(x: List[Any]):
@@ -589,7 +589,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       f([])
     """)
 
-  def testInnerString(self):
+  def test_inner_string(self):
     self.Check("""
       from typing import List, Union
       def f(x: List["int"]):
@@ -598,7 +598,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         pass
     """)
 
-  def testAmbiguousInnerAnnotation(self):
+  def test_ambiguous_inner_annotation(self):
     _, errors = self.InferWithErrors("""
       from typing import List, Union
       def f(x: List[int if __random__ else str]):  # invalid-annotation[e1]
@@ -612,7 +612,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         "e1": r"List\[int\] or List\[str\].*constant",
         "e2": r"int or str.*constant"})
 
-  def testKwargs(self):
+  def test_kwargs(self):
     ty, errors = self.InferWithErrors("""
       from typing import Dict
       def f(x, **kwargs: int):
@@ -640,7 +640,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e1": error1, "e2": error2})
 
   @test_base.skip("Types not checked due to function.Args.simplify")
-  def testSimplifiedVarargsAndKwargs(self):
+  def test_simplified_varargs_and_kwargs(self):
     _, errors = self.InferWithErrors("""
       def f(x, *args: int):
         pass
@@ -653,7 +653,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     error = r"Expected.*int.*Actually passed.*float"
     self.assertErrorRegexes(errors, {"e1": error, "e2": error, "e3": error})
 
-  def testUseVarargsAndKwargs(self):
+  def test_use_varargs_and_kwargs(self):
     ty = self.Infer("""
       class A(object):
         pass
@@ -672,7 +672,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       v2 = ...  # type: A
     """)
 
-  def testUseVarargsAndKwargsInForwardReferences(self):
+  def test_use_varargs_and_kwargs_in_forward_references(self):
     self.Check("""
       class Foo(object):
         def f(self, *args: "Foo", **kwargs: "Foo"):
@@ -684,7 +684,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         Foo().f()
     """)
 
-  def testNestedNoneType(self):
+  def test_nested_none_type(self):
     ty, errors = self.InferWithErrors("""
       from typing import List, Union
       class A:
@@ -707,7 +707,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"x.*None"})
 
-  def testMatchLateAnnotation(self):
+  def test_match_late_annotation(self):
     _, errors = self.InferWithErrors("""
       class A(object):
         def f(self, x: "A"):
@@ -717,7 +717,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"A.*int"})
 
-  def testRecursiveForwardReference(self):
+  def test_recursive_forward_reference(self):
     _, errors = self.InferWithErrors("""
       class A(object):
         def __init__(self, x: "A"):
@@ -732,7 +732,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e1": r"int.*A", "e2": r"bar"})
 
-  def testModuleLevelForwardReferenceError(self):
+  def test_module_level_forward_reference_error(self):
     errors = self.CheckWithErrors("""
       class A(object):
         def f(self, x: "A"):
@@ -741,7 +741,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"A.*int"})
 
-  def testReturnAnnotation1(self):
+  def test_return_annotation1(self):
     ty = self.Infer("""
       class A(object):
         def __init__(self):
@@ -759,7 +759,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       x = ...  # type: int
     """)
 
-  def testReturnAnnotation2(self):
+  def test_return_annotation2(self):
     ty = self.Infer("""
       class A(object):
         def __init__(self):
@@ -778,7 +778,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       def f() -> int: ...
     """)
 
-  def testDeeplyNestedAnnotation(self):
+  def test_deeply_nested_annotation(self):
     self.Check("""
       from typing import Any, Dict, List, Optional
       def G(x: Optional[List[Dict[str, Any]]]):
@@ -788,7 +788,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         G(x)
     """)
 
-  def testNestedLateAnnotation(self):
+  def test_nested_late_annotation(self):
     self.Check("""
       from typing import List
       Type = "int"
@@ -796,7 +796,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         pass
     """)
 
-  def testLateAnnotation(self):
+  def test_late_annotation(self):
     ty = self.Infer("""
       def new_x() -> 'X':
         return X()
@@ -814,7 +814,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         foo = ...  # type: int
     """)
 
-  def testChangeAnnotatedArg(self):
+  def test_change_annotated_arg(self):
     ty = self.Infer("""
       from typing import Dict
       def f(x: Dict[str, str]):
@@ -828,7 +828,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       v = ...  # type: Dict[str or bool, str or int]
     """)
 
-  def testInnerStringAnnotation(self):
+  def test_inner_string_annotation(self):
     ty = self.Infer("""
       from typing import List
       def f(x: List["A"]) -> int:
@@ -845,7 +845,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       class A(object): ...
     """)
 
-  def testTypeAliasAnnotation(self):
+  def test_type_alias_annotation(self):
     ty = self.Infer("""
       from typing import List
       TypeA = "A"
@@ -865,7 +865,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
           pass
     """)
 
-  def testDoubleString(self):
+  def test_double_string(self):
     ty = self.Infer("""
       from typing import List
       def f(x: "List[\\"int\\"]") -> int:
@@ -876,7 +876,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       def f(x: List[int]) -> int: ...
     """)
 
-  def testDuplicateIdentifier(self):
+  def test_duplicate_identifier(self):
     ty = self.Infer("""
       t = int
       def f(x: t) -> int: pass
@@ -890,7 +890,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       def g(x: int) -> int: ...
     """)
 
-  def testEllipsis(self):
+  def test_ellipsis(self):
     ty, errors = self.InferWithErrors("""
       from typing import Dict, Tuple
       def f(x: ...): pass  # invalid-annotation[e1]
@@ -906,7 +906,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(
         errors, {"e1": r"Ellipsis.*x", "e2": r"Ellipsis.*Dict"})
 
-  def testCustomContainer(self):
+  def test_custom_container(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic
@@ -925,7 +925,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"Foo\[int\].*Foo\[str\]"})
 
-  def testNoImplicitOptional(self):
+  def test_no_implicit_optional(self):
     ty, _ = self.InferWithErrors("""
       from typing import Optional, Union
       def f1(x: str = None):
@@ -949,7 +949,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       def f4(x: Union[str, int] = ...) -> None: ...
     """)
 
-  def testInferReturn(self):
+  def test_infer_return(self):
     ty = self.Infer("""
       def f(x: int):
         return x
@@ -958,7 +958,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       def f(x: int) -> int: ...
     """)
 
-  def testReturnAbstractDict(self):
+  def test_return_abstract_dict(self):
     self.Check("""
       from typing import Dict
       def f(x, y):
@@ -969,7 +969,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         f(x=None, **g())
     """)
 
-  def testRecursiveTypeAlias(self):
+  def test_recursive_type_alias(self):
     errors = self.CheckWithErrors("""
       from typing import List, Union
       Foo = Union[str, List['Foo']]
@@ -978,7 +978,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"Recursive.*Foo"})
 
-  def testFullyQuotedAnnotation(self):
+  def test_fully_quoted_annotation(self):
     self.Check("""
       from typing import Optional
       class A(object):
@@ -987,7 +987,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
           self.parent = (self.OBJ, parent)
     """)
 
-  def testQuotedGenericParameter(self):
+  def test_quoted_generic_parameter(self):
     ty = self.Infer("""
       from typing import Callable, List
       def f(x: List["Callable[[int], str]"]):
@@ -998,7 +998,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       def f(x: List[Callable[[int], str]]) -> None: ...
     """)
 
-  def testLateAnnotationNonNameError(self):
+  def test_late_annotation_non_name_error(self):
     self.CheckWithErrors("""
       class Foo(object):
         pass
@@ -1006,7 +1006,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         pass
     """)
 
-  def testKeepContainerWithError(self):
+  def test_keep_container_with_error(self):
     ty, _ = self.InferWithErrors("""
       from typing import Dict
       def f(x: "Dict[str, int.error]"):  # attribute-error
@@ -1017,7 +1017,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       def f(x: Dict[str, Any]) -> None: ...
     """)
 
-  def testCountTypeParameters(self):
+  def test_count_type_parameters(self):
     self.Check("""
       from typing import Callable, TypeVar
       T = TypeVar('T')
@@ -1029,7 +1029,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for PEP 484 style inline annotations."""
 
-  def testVariableAnnotations(self):
+  def test_variable_annotations(self):
     ty = self.Infer("""
       a: int = 42
     """, deep=False)
@@ -1039,7 +1039,7 @@ class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
 
   @test_utils.skipUnlessPy((3, 7), reason="__future__.annotations is 3.7+ and "
                            "is the default behavior in 3.8+")
-  def testPostponedEvaluation(self):
+  def test_postponed_evaluation(self):
     self.Check("""
       from __future__ import annotations
       def f() -> int:
@@ -1048,7 +1048,7 @@ class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
 
   @test_utils.skipUnlessPy((3, 7), reason="__future__.annotations is 3.7+ and "
                            "is the default behavior in 3.8+")
-  def testPostponedEvaluationError(self):
+  def test_postponed_evaluation_error(self):
     self.CheckWithErrors("""
       from __future__ import annotations
       def f() -> str:

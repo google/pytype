@@ -95,19 +95,19 @@ class MultiNodeVisitor(visitors.Visitor):
 class TestNode(unittest.TestCase):
   """Test the node.Node class generator."""
 
-  def testEq1(self):
+  def test_eq1(self):
     """Test the __eq__ and __ne__ functions of node.Node."""
     n1 = Node1(a=1, b=2)
     n2 = Node1(a=1, b=2)
     self.assertTrue(n1 == n2)
     self.assertFalse(n1 != n2)
 
-  def testHash1(self):
+  def test_hash1(self):
     n1 = Node1(a=1, b=2)
     n2 = Node1(a=1, b=2)
     self.assertEqual(hash(n1), hash(n2))
 
-  def testEq2(self):
+  def test_eq2(self):
     """Test the __eq__ and __ne__ functions of identical nested nodes."""
     n1 = Node1(a=1, b=2)
     n2 = Node1(a=1, b=2)
@@ -119,7 +119,7 @@ class TestNode(unittest.TestCase):
     # Since node overloads __ne___, too, test it explicitly:
     self.assertFalse(d1 != d2 or d2 != d3 or d3 != d4 or d4 != d1)
 
-  def testHash2(self):
+  def test_hash2(self):
     n1 = Node1(a=1, b=2)
     n2 = Node1(a=1, b=2)
     d1 = Node2(x="foo", y=n1)
@@ -131,7 +131,7 @@ class TestNode(unittest.TestCase):
     self.assertEqual(hash(d3), hash(d4))
     self.assertEqual(hash(d4), hash(d1))
 
-  def testDeepEq2(self):
+  def test_deep_eq2(self):
     """Test the __eq__ and __ne__ functions of differing nested nodes."""
     n1 = Node1(a=1, b=2)
     n2 = Node1(a=1, b=3)
@@ -152,7 +152,7 @@ class TestNode(unittest.TestCase):
     self.assertFalse(d2 == d4)
     self.assertFalse(d3 == d4)
 
-  def testDeepHash2(self):
+  def test_deep_hash2(self):
     n1 = Node1(a=1, b=2)
     n2 = Node1(a=1, b=3)
     d1 = Node2(x="foo", y=n1)
@@ -166,7 +166,7 @@ class TestNode(unittest.TestCase):
     self.assertNotEqual(hash(d2), hash(d4))
     self.assertNotEqual(hash(d3), hash(d4))
 
-  def testImmutable(self):
+  def test_immutable(self):
     """Test that node.Node has/preserves immutatibility."""
     n1 = Node1(a=1, b=2)
     n2 = Node2(x="foo", y=n1)
@@ -177,7 +177,7 @@ class TestNode(unittest.TestCase):
     with self.assertRaises(AttributeError):
       n2.x.b = 3
 
-  def testVisitor1(self):
+  def test_visitor1(self):
     """Test node.Node.Visit() for a visitor that modifies leaf nodes."""
     x = X(1, (1, 2))
     y = Y((V(1),), Data(42, 43, 44))
@@ -190,7 +190,7 @@ class TestNode(unittest.TestCase):
                      "XY(X(1, (1, 2)), Y((V(1),), Data(42, 43, -1)))")
     self.assertEqual(repr(xy), xy_expected)  # check that xy is unchanged
 
-  def testVisitor2(self):
+  def test_visitor2(self):
     """Test node.Node.Visit() for visitors that modify inner nodes."""
     xy = XY(V(1), Data(1, 2, 3))
     xy_expected = "XY(V(1), Data(1, 2, 3))"
@@ -200,7 +200,7 @@ class TestNode(unittest.TestCase):
     self.assertEqual(repr(new_xy), "XY(X(V(42), V(42)), XY(42, 42))")
     self.assertEqual(repr(xy), xy_expected)  # check that xy is unchanged
 
-  def testRecursion(self):
+  def test_recursion(self):
     """Test node.Node.Visit() for visitors that preserve attributes."""
     y = Y(Y(1, 2), Y(3, Y(4, 5)))
     y_expected = "Y(Y(1, 2), Y(3, Y(4, 5)))"
@@ -210,7 +210,7 @@ class TestNode(unittest.TestCase):
     self.assertEqual(repr(new_y), y_expected.replace("Y", "X"))
     self.assertEqual(repr(y), y_expected)  # check that original is unchanged
 
-  def testTuple(self):
+  def test_tuple(self):
     """Test node.Node.Visit() for nodes that contain tuples."""
     v = V((Data(1, 2, 3), Data(4, 5, 6)))
     v_expected = "V((Data(1, 2, 3), Data(4, 5, 6)))"
@@ -220,7 +220,7 @@ class TestNode(unittest.TestCase):
     new_v_expected = "V((Data(1, 2, -1), Data(4, 5, -1)))"
     self.assertEqual(repr(new_v), new_v_expected)
 
-  def testOrdering(self):
+  def test_ordering(self):
     nodes = [Node1(1, 1), Node1(1, 2),
              Node2(1, 1), Node2(2, 1),
              Node3(1, 1), Node3(2, 2),
@@ -233,7 +233,7 @@ class TestNode(unittest.TestCase):
     for p in itertools.permutations(nodes):
       self.assertEqual(list(sorted(p)), nodes)
 
-  def testPrecondition(self):
+  def test_precondition(self):
     class MyNode(node.Node("s: str")):
       pass
     MyNode("a")  # OK.

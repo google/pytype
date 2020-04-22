@@ -7,7 +7,7 @@ from pytype.tests import test_base
 class TypeVarTest(test_base.TargetIndependentTest):
   """Tests for TypeVar."""
 
-  def testUnusedTypeVar(self):
+  def test_unused_typevar(self):
     ty = self.Infer("""
       from typing import TypeVar
       T = TypeVar("T")
@@ -17,7 +17,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
       T = TypeVar("T")
     """)
 
-  def testImportTypeVar(self):
+  def test_import_typevar(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """T = TypeVar("T")""")
       ty = self.Infer("""
@@ -28,7 +28,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
         T = TypeVar("T")
       """)
 
-  def testInvalidTypeVar(self):
+  def test_invalid_typevar(self):
     ty, errors = self.InferWithErrors("""
       from typing import TypeVar
       typevar = TypeVar
@@ -56,7 +56,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
         "e5": r"Expected.*_1:.*type.*Actual.*_1: int", "e6": r"0 or more than 1"
     })
 
-  def testPrintConstraints(self):
+  def test_print_constraints(self):
     ty = self.Infer("""
       from typing import List, TypeVar
       S = TypeVar("S", int, float, covariant=True)  # pytype: disable=not-supported-yet
@@ -71,7 +71,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
       U = TypeVar("U", List[int], List[float])
     """)
 
-  def testInferTypeVars(self):
+  def test_infer_typevars(self):
     ty = self.Infer("""
       def id(x):
         return x
@@ -95,7 +95,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
       def return_second(x, y: _T1) -> _T1
     """)
 
-  def testInferUnion(self):
+  def test_infer_union(self):
     ty = self.Infer("""
       def return_either(x, y):
         return x or y
@@ -110,7 +110,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
       def return_arg_or_42(x: _T0) -> Union[_T0, int]
     """)
 
-  def testTypeVarInTypeComment(self):
+  def test_typevar_in_type_comment(self):
     self.InferWithErrors("""
       from typing import List, TypeVar
       T = TypeVar("T")
@@ -118,7 +118,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
       y = None  # type: List[T]  # not-supported-yet
     """)
 
-  def testBaseClassWithTypeVar(self):
+  def test_base_class_with_typevar(self):
     ty = self.Infer("""
       from typing import List, TypeVar
       T = TypeVar("T")
@@ -130,7 +130,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
       class A(List[T]): ...
     """)
 
-  def testOverwriteBaseClassWithTypeVar(self):
+  def test_overwrite_base_class_with_typevar(self):
     self.Check("""
       from typing import List, TypeVar
       T = TypeVar("T")
@@ -139,7 +139,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
       class X(l): pass
     """)
 
-  def testBound(self):
+  def test_bound(self):
     self.InferWithErrors("""
       from typing import TypeVar
       T = TypeVar("T", int, float, bound=str)  # invalid-typevar
@@ -148,7 +148,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
       V = TypeVar("V", bound=int if __random__ else float)  # invalid-typevar
     """)
 
-  def testCovariant(self):
+  def test_covariant(self):
     _, errors = self.InferWithErrors("""
       from typing import TypeVar
       T = TypeVar("T", covariant=True)  # not-supported-yet
@@ -158,7 +158,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(
         errors, {"e1": r"Expected.*bool.*Actual.*int", "e2": r"constant"})
 
-  def testContravariant(self):
+  def test_contravariant(self):
     _, errors = self.InferWithErrors("""
       from typing import TypeVar
       T = TypeVar("T", contravariant=True)  # not-supported-yet
@@ -168,7 +168,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(
         errors, {"e1": r"Expected.*bool.*Actual.*int", "e2": r"constant"})
 
-  def testDontPropagatePyval(self):
+  def test_dont_propagate_pyval(self):
     # in functions like f(x: T) -> T, if T has constraints we should not copy
     # the value of constant types between instances of the typevar.
     with file_utils.Tempdir() as d:
@@ -190,7 +190,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
         y = ...  # type: int
       """)
 
-  def testPropertyTypeParam(self):
+  def test_property_type_param(self):
     # We should allow property signatures of the form f(self: T) -> X[T]
     # without complaining about the class not being parametrised over T
     with file_utils.Tempdir() as d:
@@ -215,7 +215,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
         y = ...  # type: List[a.B]
       """)
 
-  def testPropertyTypeParam2(self):
+  def test_property_type_param2(self):
     # Test for classes inheriting from Generic[X]
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
@@ -244,7 +244,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
 
   # Skipping due to b/66005735
   @test_base.skip("Type parameter bug")
-  def testPropertyTypeParam3(self):
+  def test_property_type_param3(self):
     # Don't mix up the class parameter and the property parameter
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
@@ -265,7 +265,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
         x = ...  # type: List[int]
       """)
 
-  def testPropertyTypeParamWithConstraints(self):
+  def test_property_type_param_with_constraints(self):
     # Test setting self to a constrained type
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
@@ -288,7 +288,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
         x = ...  # type: List[int]
       """)
 
-  def testClassMethodTypeParam(self):
+  def test_classmethod_type_param(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
       from typing import TypeVar, List, Type
@@ -315,7 +315,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
         y = ...  # type: List[a.B]
       """)
 
-  def testMetaclassPropertyTypeParam(self):
+  def test_metaclass_property_type_param(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
       from typing import TypeVar, Type, List
@@ -338,7 +338,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
         x = ...  # type: List[a.A]
       """)
 
-  def testTopLevelUnion(self):
+  def test_top_level_union(self):
     ty = self.Infer("""
       from typing import TypeVar
       if __random__:
@@ -351,7 +351,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
       T = ...  # type: Any
     """)
 
-  def testStoreTypeVarInDict(self):
+  def test_store_typevar_in_dict(self):
     """Convert a typevar to Any when stored as a dict value."""
     # See abstract.Dict.setitem_slot for why this is needed.
     ty = self.Infer("""
@@ -365,7 +365,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
       T = TypeVar('T')
     """)
 
-  def testLateBound(self):
+  def test_late_bound(self):
     _, errors = self.InferWithErrors("""
       from typing import TypeVar, Union
       T = TypeVar("T", int, float, bound="str")  # invalid-typevar[e1]
@@ -381,7 +381,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
         "e1": r"mutually exclusive", "e2": r"empty string",
         "e3": r"Must be constant", "e4": r"Name.*Bar"})
 
-  def testLateConstraints(self):
+  def test_late_constraints(self):
     ty = self.Infer("""
       from typing import List, TypeVar
       S = TypeVar("S", int, float)

@@ -7,7 +7,7 @@ from pytype.tests import test_base
 class ImportTest(test_base.TargetPython27FeatureTest):
   """Tests for import."""
 
-  def testModuleAttributes(self):
+  def test_module_attributes(self):
     ty = self.Infer("""
       import os
       f = os.__file__
@@ -24,7 +24,7 @@ class ImportTest(test_base.TargetPython27FeatureTest):
        p = ...  # type: Optional[str]
     """)
 
-  def testImportSys2(self):
+  def test_import_sys2(self):
     ty = self.Infer("""
       import sys
       import bad_import  # doesn't exist
@@ -44,7 +44,7 @@ class ImportTest(test_base.TargetPython27FeatureTest):
       def h() -> int
     """)
 
-  def testModuleName(self):
+  def test_module_name(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo/baz.pyi", """x = ...  # type: int""")
       bar = """
@@ -58,7 +58,7 @@ class ImportTest(test_base.TargetPython27FeatureTest):
         x = ...  # type: int
     """)
 
-  def testRelativeName(self):
+  def test_relative_name(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo/baz.pyi", """x = ...  # type: int""")
       d.create_file("foo/bar.py", """
@@ -72,7 +72,7 @@ class ImportTest(test_base.TargetPython27FeatureTest):
         x = ...  # type: int
     """)
 
-  def testStdlib(self):
+  def test_stdlib(self):
     ty = self.Infer("""
       import StringIO
       def f():

@@ -59,78 +59,78 @@ class TestTypeMatch(parser_test_base.ParserTest):
     eq = m.match_type_against_type(t1, t2, {})
     self.assertEqual(eq, booleq.FALSE)
 
-  def testAnything(self):
+  def test_anything(self):
     m = type_match.TypeMatch({})
     self.assertMatch(m, pytd.AnythingType(), pytd.AnythingType())
     self.assertMatch(m, pytd.AnythingType(), pytd.NamedType("x"))
     self.assertMatch(m, pytd.NamedType("x"), pytd.AnythingType())
 
-  def testAnythingAsTop(self):
+  def test_anything_as_top(self):
     m = type_match.TypeMatch({}, any_also_is_bottom=False)
     self.assertMatch(m, pytd.AnythingType(), pytd.AnythingType())
     self.assertNoMatch(m, pytd.AnythingType(), pytd.NamedType("x"))
     self.assertMatch(m, pytd.NamedType("x"), pytd.AnythingType())
 
-  def testNothingLeft(self):
+  def test_nothing_left(self):
     m = type_match.TypeMatch({})
     eq = m.match_type_against_type(pytd.NothingType(),
                                    pytd.NamedType("A"), {})
     self.assertEqual(eq, booleq.TRUE)
 
-  def testNothingRight(self):
+  def test_nothing_right(self):
     m = type_match.TypeMatch({})
     eq = m.match_type_against_type(pytd.NamedType("A"), pytd.NothingType(), {})
     self.assertEqual(eq, booleq.FALSE)
 
-  def testNothingNothing(self):
+  def test_nothing_nothing(self):
     m = type_match.TypeMatch({})
     eq = m.match_type_against_type(pytd.NothingType(), pytd.NothingType(), {})
     self.assertEqual(eq, booleq.TRUE)
 
-  def testNothingAnything(self):
+  def test_nothing_anything(self):
     m = type_match.TypeMatch({})
     eq = m.match_type_against_type(pytd.NothingType(), pytd.AnythingType(), {})
     self.assertEqual(eq, booleq.TRUE)
 
-  def testAnythingNothing(self):
+  def test_anything_nothing(self):
     m = type_match.TypeMatch({})
     eq = m.match_type_against_type(pytd.AnythingType(), pytd.NothingType(), {})
     self.assertEqual(eq, booleq.TRUE)
 
-  def testAnythingLate(self):
+  def test_anything_late(self):
     m = type_match.TypeMatch({})
     eq = m.match_type_against_type(pytd.AnythingType(), pytd.LateType("X"), {})
     self.assertEqual(eq, booleq.TRUE)
 
-  def testLateAnything(self):
+  def test_late_anything(self):
     m = type_match.TypeMatch({})
     eq = m.match_type_against_type(pytd.LateType("X"), pytd.AnythingType(), {})
     self.assertEqual(eq, booleq.TRUE)
 
-  def testLateNamed(self):
+  def test_late_named(self):
     m = type_match.TypeMatch({})
     eq = m.match_type_against_type(pytd.NamedType("X"), pytd.LateType("X"), {})
     self.assertEqual(eq, booleq.FALSE)
 
-  def testNamedLate(self):
+  def test_named_late(self):
     m = type_match.TypeMatch({})
     eq = m.match_type_against_type(pytd.LateType("X"), pytd.NamedType("X"), {})
     self.assertEqual(eq, booleq.FALSE)
 
-  def testNamed(self):
+  def test_named(self):
     m = type_match.TypeMatch({})
     eq = m.match_type_against_type(pytd.NamedType("A"), pytd.NamedType("A"), {})
     self.assertEqual(eq, booleq.TRUE)
     eq = m.match_type_against_type(pytd.NamedType("A"), pytd.NamedType("B"), {})
     self.assertNotEqual(eq, booleq.TRUE)
 
-  def testNamedAgainstGeneric(self):
+  def test_named_against_generic(self):
     m = type_match.TypeMatch({})
     eq = m.match_type_against_type(pytd.GenericType(pytd.NamedType("A"), ()),
                                    pytd.NamedType("A"), {})
     self.assertEqual(eq, booleq.TRUE)
 
-  def testFunction(self):
+  def test_function(self):
     ast = parser.parse_string(textwrap.dedent("""
       def left(a: int) -> int
       def right(a: int) -> int
@@ -139,7 +139,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
     self.assertEqual(m.match(ast.Lookup("left"), ast.Lookup("right"), {}),
                      booleq.TRUE)
 
-  def testReturn(self):
+  def test_return(self):
     ast = parser.parse_string(textwrap.dedent("""
       def left(a: int) -> float
       def right(a: int) -> int
@@ -148,7 +148,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
     self.assertNotEqual(m.match(ast.Lookup("left"), ast.Lookup("right"), {}),
                         booleq.TRUE)
 
-  def testOptional(self):
+  def test_optional(self):
     ast = parser.parse_string(textwrap.dedent("""
       def left(a: int) -> int
       def right(a: int, ...) -> int
@@ -157,7 +157,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
     self.assertEqual(m.match(ast.Lookup("left"), ast.Lookup("right"), {}),
                      booleq.TRUE)
 
-  def testGeneric(self):
+  def test_generic(self):
     ast = parser.parse_string(textwrap.dedent("""
       T = TypeVar('T')
       class A(typing.Generic[T], object):
@@ -171,7 +171,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
         ast.Lookup("left").type,
         ast.Lookup("right").type, {}), booleq.TRUE)
 
-  def testClassMatch(self):
+  def test_class_match(self):
     ast = parser.parse_string(textwrap.dedent("""
       class Left():
         def method(self) -> ?
@@ -185,7 +185,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
     self.assertEqual(m.match(left, right, {}), booleq.TRUE)
     self.assertNotEqual(m.match(right, left, {}), booleq.TRUE)
 
-  def testSubclasses(self):
+  def test_subclasses(self):
     ast = parser.parse_string(textwrap.dedent("""
       class A():
         pass
@@ -222,13 +222,13 @@ class TestTypeMatch(parser_test_base.ParserTest):
                                         booleq.Eq("~unknown0.A.T", "B"))))
     self.assertIn("~unknown0.A.T", m.solver.variables)
 
-  def testUnknownAgainstGeneric(self):
+  def test_unknown_against_generic(self):
     self._TestTypeParameters()
 
-  def testGenericAgainstUnknown(self):
+  def test_generic_against_unknown(self):
     self._TestTypeParameters(reverse=True)
 
-  def testStrict(self):
+  def test_strict(self):
     ast = parser.parse_string(textwrap.dedent("""
       import typing
 
@@ -252,7 +252,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
                      booleq.And((booleq.Eq("~unknown0", "list"),
                                  booleq.Eq("~unknown0.list.T", "A"))))
 
-  def testBaseClass(self):
+  def test_base_class(self):
     ast = parser.parse_string(textwrap.dedent("""
       class Base():
         def f(self, x:Base) -> Base
@@ -267,7 +267,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
     eq = m.match_Class_against_Class(ast.Lookup("Match"), ast.Lookup("Foo"), {})
     self.assertEqual(eq, booleq.TRUE)
 
-  def testHomogeneousTuple(self):
+  def test_homogeneous_tuple(self):
     ast = self.ParseWithBuiltins("""
       from typing import Tuple
       x1 = ...  # type: Tuple[bool, ...]
@@ -281,7 +281,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
     self.assertEqual(m.match_Generic_against_Generic(x2, x1, {}), booleq.FALSE)
     self.assertEqual(m.match_Generic_against_Generic(x2, x2, {}), booleq.TRUE)
 
-  def testHeterogeneousTuple(self):
+  def test_heterogeneous_tuple(self):
     ast = self.ParseWithBuiltins("""
       from typing import Tuple
       x1 = ...  # type: Tuple[int]
@@ -302,7 +302,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
     self.assertEqual(m.match_Generic_against_Generic(x3, x2, {}), booleq.FALSE)
     self.assertEqual(m.match_Generic_against_Generic(x3, x3, {}), booleq.TRUE)
 
-  def testTuple(self):
+  def test_tuple(self):
     ast = self.ParseWithBuiltins("""
       from typing import Tuple
       x1 = ...  # type: Tuple[bool, ...]
@@ -320,7 +320,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
     self.assertEqual(m.match_Generic_against_Generic(y1, x1, {}), booleq.FALSE)
     self.assertEqual(m.match_Generic_against_Generic(y1, x2, {}), booleq.TRUE)
 
-  def testUnknownAgainstTuple(self):
+  def test_unknown_against_tuple(self):
     ast = self.ParseWithBuiltins("""
       from typing import Tuple
       class `~unknown0`():
@@ -336,7 +336,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
                           ("~unknown0.__builtin__.tuple._T", "int"),
                           ("~unknown0.__builtin__.tuple._T", "str")])
 
-  def testFunctionAgainstTupleSubclass(self):
+  def test_function_against_tuple_subclass(self):
     ast = self.ParseWithBuiltins("""
       from typing import Tuple
       class A(Tuple[int, str]): ...
@@ -349,7 +349,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
     self.assertEqual(m.match_Function_against_Class(f, a, {}, {}),
                      booleq.FALSE)
 
-  def testCallableNoArguments(self):
+  def test_callable_no_arguments(self):
     ast = self.ParseWithBuiltins("""
       from typing import Callable
       v1 = ...  # type: Callable[..., int]
@@ -362,7 +362,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
     self.assertEqual(m.match_Generic_against_Generic(v1, v2, {}), booleq.FALSE)
     self.assertEqual(m.match_Generic_against_Generic(v2, v1, {}), booleq.TRUE)
 
-  def testCallableWithArguments(self):
+  def test_callable_with_arguments(self):
     ast = self.ParseWithBuiltins("""
       from typing import Callable
       v1 = ...  # type: Callable[[int], int]
@@ -393,7 +393,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
     self.assertEqual(m.match_Generic_against_Generic(v1, v3, {}), booleq.FALSE)
     self.assertEqual(m.match_Generic_against_Generic(v3, v1, {}), booleq.TRUE)
 
-  def testCallable(self):
+  def test_callable(self):
     ast = self.ParseWithBuiltins("""
       from typing import Callable
       v1 = ...  # type: Callable[..., int]
@@ -419,7 +419,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
     self.assertEqual(m.match_Generic_against_Generic(v1, v6, {}), booleq.FALSE)
     self.assertEqual(m.match_Generic_against_Generic(v6, v1, {}), booleq.TRUE)
 
-  def testCallableAndType(self):
+  def test_callable_and_type(self):
     ast = self.ParseWithBuiltins("""
       from typing import Callable, Type
       v1 = ...  # type: Callable[..., int]

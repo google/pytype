@@ -141,7 +141,7 @@ class FlowTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
-  def test_null_fLow(self):
+  def test_null_flow(self):
     ty = self.Infer("""
       def f(x):
         if x is None:

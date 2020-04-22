@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class RecoveryTests(test_base.TargetPython27FeatureTest):
   """Tests for recovering after errors."""
 
-  def testBadCall(self):
+  def test_bad_call(self):
     ty = self.Infer("""
         def f():
           return "%s" % chr("foo")
@@ -16,7 +16,7 @@ class RecoveryTests(test_base.TargetPython27FeatureTest):
         def f() -> Any
     """)
 
-  def testBadFunction(self):
+  def test_bad_function(self):
     ty = self.Infer("""
       import time
       def f():

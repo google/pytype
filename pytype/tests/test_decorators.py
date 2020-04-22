@@ -7,7 +7,7 @@ from pytype.tests import test_base
 class DecoratorsTest(test_base.TargetIndependentTest):
   """Test for function and class decorators."""
 
-  def testStaticMethodSmoke(self):
+  def test_staticmethod_smoke(self):
     self.Infer("""
       # from python-dateutil
       class tzwinbase(object):
@@ -17,7 +17,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
           list = staticmethod(list)
     """, show_library_calls=True)
 
-  def testStaticMethod(self):
+  def test_staticmethod(self):
     ty = self.Infer("""
       # from python-dateutil
       class tzwinbase(object):
@@ -31,7 +31,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
         def list() -> None: ...
     """)
 
-  def testStaticMethodReturnType(self):
+  def test_staticmethod_return_type(self):
     ty = self.Infer("""
       class Foo(object):
         @staticmethod
@@ -44,7 +44,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
         def bar() -> str: ...
     """)
 
-  def testBadStaticMethod(self):
+  def test_bad_staticmethod(self):
     ty = self.Infer("""
       class Foo(object):
         bar = 42
@@ -56,7 +56,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
         bar = ...  # type: Any
     """)
 
-  def testClassMethod(self):
+  def test_classmethod(self):
     ty = self.Infer("""
       class Foo(object):
         @classmethod
@@ -69,7 +69,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
         def f(cls) -> str: ...
     """)
 
-  def testBadClassMethod(self):
+  def test_bad_classmethod(self):
     ty = self.Infer("""
       class Foo(object):
         bar = 42
@@ -81,7 +81,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
         bar = ...  # type: Any
     """)
 
-  def testBadKeyword(self):
+  def test_bad_keyword(self):
     _, errors = self.InferWithErrors("""
       class Foo(object):
         def __init__(self):
@@ -92,7 +92,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"should_fail"})
 
-  def testFgetIsOptional(self):
+  def test_fget_is_optional(self):
     self.Check("""
       class Foo(object):
         def __init__(self):
@@ -102,7 +102,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
         bar = property(fset=_SetBar)
         """)
 
-  def testProperty(self):
+  def test_property(self):
     ty = self.Infer("""
       class Foo(object):
         def __init__(self, x):
@@ -132,7 +132,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
       x = ...  # type: int
     """)
 
-  def testPropertyConstructor(self):
+  def test_property_constructor(self):
     ty = self.Infer("""
       class Foo(object):
         def __init__(self, x):
@@ -161,7 +161,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
       x = ...  # type: int
     """)
 
-  def testPropertyConstructorPosargs(self):
+  def test_property_constructor_posargs(self):
     # Same as the above test but with posargs for fget, fset, fdel
     ty = self.Infer("""
       class Foo(object):
@@ -191,7 +191,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
       x = ...  # type: int
     """)
 
-  def testPropertyType(self):
+  def test_property_type(self):
     ty = self.Infer("""
       class Foo(object):
         if __random__:
@@ -209,7 +209,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
         name = ...  # type: int or List[int]
     """)
 
-  def testOverwritePropertyType(self):
+  def test_overwrite_property_type(self):
     ty = self.Infer("""
       class Foo(object):
         @property
@@ -224,7 +224,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
         name = ...  # type: str
     """)
 
-  def testUnknownPropertyType(self):
+  def test_unknown_property_type(self):
     ty = self.Infer("""
       class Foo(object):
         def name(self, x):
@@ -237,7 +237,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
         name = ...  # type: Any
     """)
 
-  def testBadFget(self):
+  def test_bad_fget(self):
     ty = self.Infer("""
       class Foo(object):
         v = "hello"
@@ -250,7 +250,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
         name = ...  # type: Any
     """)
 
-  def testInferCalledDecoratedMethod(self):
+  def test_infer_called_decorated_method(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any, Callable, List, TypeVar
@@ -272,7 +272,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
           f = ...  # type: Callable
       """)
 
-  def testUnknownDecorator(self):
+  def test_unknown_decorator(self):
     self.Check("""
       class Foo(object):
         @classmethod
@@ -282,7 +282,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
       Foo.bar()
     """)
 
-  def testInstanceAsDecorator(self):
+  def test_instance_as_decorator(self):
     self.Check("""
       class Decorate(object):
         def __call__(self, func):
@@ -295,7 +295,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
       Foo.bar()
     """)
 
-  def testInstanceAsDecoratorError(self):
+  def test_instance_as_decorator_error(self):
     errors = self.CheckWithErrors("""
       class Decorate(object):
         def __call__(self, func):
@@ -309,7 +309,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"Decorate.*1.*2"})
 
-  def testUncallableInstanceAsDecorator(self):
+  def test_uncallable_instance_as_decorator(self):
     errors = self.CheckWithErrors("""
       class Decorate(object):
         pass  # forgot to define __call__
@@ -323,7 +323,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(
         errors, {"e1": r"Decorate.*1.*2", "e2": r"Decorate"})
 
-  def testAmbiguousClassMethod(self):
+  def test_ambiguous_classmethod(self):
     self.Check("""
       class Foo():
         def __init__(self):
@@ -340,7 +340,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
       (Foo if __random__ else Bar).create()
     """)
 
-  def testClassDecorator(self):
+  def test_class_decorator(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Type, TypeVar

@@ -10,7 +10,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
   These tests check that we don't faceplant when we encounter difficult code.
   """
 
-  def testBadSubtract(self):
+  def test_bad_subtract(self):
     ty = self.Infer("""
       def f():
         t = 0.0
@@ -21,7 +21,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
       def f() -> Any
     """)
 
-  def testInheritFromInstance(self):
+  def test_inherit_from_instance(self):
     ty = self.Infer("""
       class Foo(3):
         pass
@@ -31,7 +31,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
         pass
     """)
 
-  def testNameError(self):
+  def test_name_error(self):
     ty = self.Infer("""
       x = foobar
       class A(x):
@@ -44,12 +44,12 @@ class RecoveryTests(test_base.TargetIndependentTest):
         pass
     """)
 
-  def testObjectAttr(self):
+  def test_object_attr(self):
     self.assertNoCrash(self.Check, """
       object.bla(int)
     """)
 
-  def testAttrError(self):
+  def test_attr_error(self):
     ty = self.Infer("""
       class A:
         pass
@@ -72,7 +72,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
         pass
     """)
 
-  def testWrongCall(self):
+  def test_wrong_call(self):
     ty = self.Infer("""
       def f():
         pass
@@ -84,7 +84,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
       x = ...  # type: int
     """)
 
-  def testDuplicateIdentifier(self):
+  def test_duplicate_identifier(self):
     ty = self.Infer("""
       class A(object):
         def __init__(self):
@@ -98,7 +98,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
         foo = ...  # type: Any
     """)
 
-  def testMethodWithUnknownDecorator(self):
+  def test_method_with_unknown_decorator(self):
     self.InferWithErrors("""
       from nowhere import decorator  # import-error
       class Foo(object):
@@ -107,7 +107,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
           name_error  # name-error
     """, deep=True)
 
-  def testAssertInConstructor(self):
+  def test_assert_in_constructor(self):
     self.Check("""
       class Foo(object):
         def __init__(self):
@@ -118,7 +118,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
     """)
 
   @test_base.skip("Line 7, in __str__: No attribute '_bar' on Foo'")
-  def testConstructorInfiniteLoop(self):
+  def test_constructor_infinite_loop(self):
     self.Check("""
       class Foo(object):
         def __init__(self):
@@ -128,7 +128,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
           return self._bar
     """)
 
-  def testAttributeAccessInImpossiblePath(self):
+  def test_attribute_access_in_impossible_path(self):
     self.InferWithErrors("""
       x = 3.14 if __random__ else 42
       if isinstance(x, int):
@@ -137,7 +137,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
           3 in x  # unsupported-operands
     """)
 
-  def testBinaryOperatorOnImpossiblePath(self):
+  def test_binary_operator_on_impossible_path(self):
     self.InferWithErrors("""
       x = "" if __random__ else []
       if isinstance(x, list):

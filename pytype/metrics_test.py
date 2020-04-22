@@ -1,3 +1,4 @@
+# Lint as: python3
 """Test errors.py."""
 
 import math
@@ -14,6 +15,7 @@ class MetricsTest(unittest.TestCase):
   """Tests for metrics infrastructure and the Counter class."""
 
   def setUp(self):
+    super().setUp()
     metrics._prepare_for_test()
 
   def test_name_collision(self):
@@ -64,7 +66,7 @@ class MetricsTest(unittest.TestCase):
     dump = metrics.dump([c1], encoding=None)
     # Reset metrics, merge from dump, which will create a new metric.
     metrics._prepare_for_test()
-    self.assertEqual(0, len(metrics._registered_metrics))
+    self.assertFalse(metrics._registered_metrics)
     metrics.merge_from_file(moves.cStringIO(dump))
     m = metrics._registered_metrics["foo"]
     self.assertEqual(1, m._total)
@@ -86,14 +88,14 @@ class MetricsTest(unittest.TestCase):
 
 class ReentrantStopWatchTest(unittest.TestCase):
 
-  def test_ReentrantStopWatch(self):
+  def test_reentrant_stop_watch(self):
     c = metrics.ReentrantStopWatch("watch1")
     with c:
       with c:
         time.sleep(0.01)
     self.assertGreater(c._time, 0)
 
-  def test_ReentrantStopWatchMerge(self):
+  def test_reentrant_stop_watch_merge(self):
     c = metrics.ReentrantStopWatch("watch2")
     d = metrics.ReentrantStopWatch("watch3")
     with c:
@@ -114,6 +116,7 @@ class StopWatchTest(unittest.TestCase):
   """Tests for StopWatch."""
 
   def setUp(self):
+    super().setUp()
     metrics._prepare_for_test()
 
   def test_stopwatch(self):
@@ -148,6 +151,7 @@ class MapCounterTest(unittest.TestCase):
   """Tests for MapCounter."""
 
   def setUp(self):
+    super().setUp()
     metrics._prepare_for_test()
 
   def test_enabled(self):
@@ -186,6 +190,7 @@ class DistributionTest(unittest.TestCase):
   """Tests for Distribution."""
 
   def setUp(self):
+    super().setUp()
     metrics._prepare_for_test()
 
   def test_accumulation(self):
@@ -284,6 +289,7 @@ class MetricsContextTest(unittest.TestCase):
   """Tests for MetricsContext."""
 
   def setUp(self):
+    super().setUp()
     metrics._prepare_for_test(False)
     self._counter = metrics.Counter("foo")
 
@@ -295,7 +301,7 @@ class MetricsContextTest(unittest.TestCase):
       self.assertEqual(1, self._counter._total)
       with open(out.name) as f:
         dumped = metrics.load(f)
-        self.assertEqual(1, len(dumped))
+        self.assertEqual(len(dumped), 1)
         self.assertEqual("foo", dumped[0].name)
         self.assertEqual("foo: 1", str(dumped[0]))
 

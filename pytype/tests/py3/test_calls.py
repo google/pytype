@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class TestCalls(test_base.TargetPython3FeatureTest):
   """Tests for checking function calls."""
 
-  def testStarStarArgsWithKwOnly(self):
+  def test_starstarargs_with_kwonly(self):
     """Args defined as kwonly should be removed from **kwargs."""
     self.Check("""
       def f(a):

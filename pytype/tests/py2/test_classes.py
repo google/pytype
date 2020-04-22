@@ -7,7 +7,7 @@ from pytype.tests import test_base
 class ClassesTest(test_base.TargetPython27FeatureTest):
   """Tests for classes."""
 
-  def testTypeChange(self):
+  def test_type_change(self):
     ty = self.Infer("""
       class A(object):
         def __init__(self):
@@ -24,7 +24,7 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
       x = ...  # type: Any
     """)
 
-  def testInitTestClassInSetup(self):
+  def test_init_test_class_in_setup(self):
     ty = self.Infer("""
       import unittest
       class A(unittest.TestCase):
@@ -41,7 +41,7 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
           def fooTest(self) -> int: ...
     """)
 
-  def testInitInheritedTestClassInSetup(self):
+  def test_init_inherited_test_class_in_setup(self):
     ty = self.Infer("""
       import unittest
       class A(unittest.TestCase):
@@ -61,7 +61,7 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
           def fooTest(self) -> int: ...
     """)
 
-  def testSetMetaclass(self):
+  def test_set_metaclass(self):
     ty = self.Infer("""
       class A(type):
         def f(self):
@@ -79,7 +79,7 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
       v = ...  # type: float
     """)
 
-  def testNoMetaclass(self):
+  def test_no_metaclass(self):
     # In both of these cases, the metaclass should not actually be set.
     ty = self.Infer("""
       class A(type): pass
@@ -96,7 +96,7 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
         __metaclass__ = ...  # type: Type[type]
     """)
 
-  def testMetaclass(self):
+  def test_metaclass(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         T = TypeVar("T")
@@ -124,7 +124,7 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
       """)
 
   @test_base.skip("Setting __metaclass__ to a function doesn't work yet.")
-  def testFunctionAsMetaclass(self):
+  def test_function_as_metaclass(self):
     ty = self.Infer("""
       def MyMeta(name, bases, members):
         return type(name, bases, members)
@@ -138,7 +138,7 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
         def __metaclass__(names, bases, members) -> Any
     """)
 
-  def testUnknownMetaclass(self):
+  def test_unknown_metaclass(self):
     self.Check("""
       class Foo(object):
         __metaclass__ = __any_object__

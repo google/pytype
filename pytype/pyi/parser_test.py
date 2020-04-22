@@ -2087,7 +2087,7 @@ class AnyTest(_ParserTestBase):
 
 class CanonicalPyiTest(_ParserTestBase):
 
-  def testCanonicalVersion(self):
+  def test_canonical_version(self):
     src = textwrap.dedent("""
         from typing import Any
         def foo(x: int = 0) -> Any: ...

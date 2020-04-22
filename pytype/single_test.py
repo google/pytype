@@ -36,7 +36,7 @@ class PytypeTest(unittest.TestCase):
 
   def setUp(self):
     super(PytypeTest, self).setUp()
-    self._ResetPytypeArgs()
+    self._reset_pytype_args()
     self.tmp_dir = tempfile.mkdtemp()
     self.errors_csv = os.path.join(self.tmp_dir, "errors.csv")
 
@@ -44,34 +44,34 @@ class PytypeTest(unittest.TestCase):
     super(PytypeTest, self).tearDown()
     shutil.rmtree(self.tmp_dir)
 
-  def _ResetPytypeArgs(self):
+  def _reset_pytype_args(self):
     self.pytype_args = {
         "--python_version": utils.format_version(self.python_version),
         "--verbosity": 1
     }
 
-  def _DataPath(self, filename):
+  def _data_path(self, filename):
     if os.path.dirname(filename) == self.tmp_dir:
       return filename
     return os.path.join(self.pytype_dir, "test_data/", filename)
 
-  def _TmpPath(self, filename):
+  def _tmp_path(self, filename):
     return os.path.join(self.tmp_dir, filename)
 
-  def _MakePyFile(self, contents):
+  def _make_py_file(self, contents):
     if utils.USE_ANNOTATIONS_BACKPORT:
       contents = test_base.WithAnnotationsImport(contents)
-    return self._MakeFile(contents, extension=".py")
+    return self._make_file(contents, extension=".py")
 
-  def _MakeFile(self, contents, extension):
+  def _make_file(self, contents, extension):
     contents = textwrap.dedent(contents)
-    path = self._TmpPath(
+    path = self._tmp_path(
         hashlib.md5(contents.encode("utf-8")).hexdigest() + extension)
     with open(path, "w") as f:
       print(contents, file=f)
     return path
 
-  def _RunPytype(self, pytype_args_dict):
+  def _run_pytype(self, pytype_args_dict):
     """A single command-line call to the pytype binary.
 
     Typically you'll want to use _CheckTypesAndErrors or
@@ -97,18 +97,18 @@ class PytypeTest(unittest.TestCase):
     self.stdout, self.stderr = (s.decode("utf-8") for s in p.communicate())
     self.returncode = p.returncode
 
-  def _ParseString(self, string):
+  def _parse_string(self, string):
     """A wrapper for parser.parse_string that inserts the python version."""
     return parser.parse_string(string, python_version=self.python_version)
 
-  def _GenerateBuiltinsTwice(self, python_version):
+  def _generate_builtins_twice(self, python_version):
     os.environ["PYTHONHASHSEED"] = "0"
-    f1 = self._TmpPath("builtins1.pickle")
-    f2 = self._TmpPath("builtins2.pickle")
+    f1 = self._tmp_path("builtins1.pickle")
+    f2 = self._tmp_path("builtins2.pickle")
     for f in (f1, f2):
       self.pytype_args["--generate-builtins"] = f
       self.pytype_args["--python_version"] = python_version
-      self._RunPytype(self.pytype_args)
+      self._run_pytype(self.pytype_args)
     return f1, f2
 
   def assertBuiltinsPickleEqual(self, f1, f2):
@@ -156,36 +156,36 @@ class PytypeTest(unittest.TestCase):
       print("\n".join(" | ".join(error) for error in errors), file=sys.stderr)
       raise
 
-  def _SetUpChecking(self, filename):
-    self.pytype_args[self._DataPath(filename)] = self.INCLUDE
+  def _setup_checking(self, filename):
+    self.pytype_args[self._data_path(filename)] = self.INCLUDE
     self.pytype_args["--check"] = self.INCLUDE
 
-  def _CheckTypesAndErrors(self, filename, expected_errors):
-    self._SetUpChecking(filename)
+  def _check_types_and_errors(self, filename, expected_errors):
+    self._setup_checking(filename)
     self.pytype_args["--output-errors-csv"] = self.errors_csv
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
     self.assertHasErrors(*expected_errors)
 
-  def _InferTypesAndCheckErrors(self, filename, expected_errors):
-    self.pytype_args[self._DataPath(filename)] = self.INCLUDE
+  def _infer_types_and_check_errors(self, filename, expected_errors):
+    self.pytype_args[self._data_path(filename)] = self.INCLUDE
     self.pytype_args["--output"] = "-"
     self.pytype_args["--output-errors-csv"] = self.errors_csv
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=True, stderr=False, returncode=False)
     self.assertHasErrors(*expected_errors)
 
   def assertInferredPyiEquals(self, expected_pyi=None, filename=None):
     assert bool(expected_pyi) != bool(filename)
     if filename:
-      with open(self._DataPath(filename), "r") as f:
+      with open(self._data_path(filename), "r") as f:
         expected_pyi = f.read()
     message = ("\n==Expected pyi==\n" + expected_pyi +
                "\n==Actual pyi==\n" + self.stdout)
-    self.assertTrue(pytd_utils.ASTeq(self._ParseString(self.stdout),
-                                     self._ParseString(expected_pyi)), message)
+    self.assertTrue(pytd_utils.ASTeq(self._parse_string(self.stdout),
+                                     self._parse_string(expected_pyi)), message)
 
-  def GeneratePickledSimpleFile(self, pickle_name, verify_pickle=True):
+  def generate_pickled_simple_file(self, pickle_name, verify_pickle=True):
     pickled_location = os.path.join(self.tmp_dir, pickle_name)
     self.pytype_args["--pythonpath"] = self.tmp_dir
     self.pytype_args["--pickle-output"] = self.INCLUDE
@@ -193,211 +193,211 @@ class PytypeTest(unittest.TestCase):
     if verify_pickle:
       self.pytype_args["--verify-pickle"] = self.INCLUDE
     self.pytype_args["--output"] = pickled_location
-    self.pytype_args[self._DataPath("simple.py")] = self.INCLUDE
-    self._RunPytype(self.pytype_args)
+    self.pytype_args[self._data_path("simple.py")] = self.INCLUDE
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=0)
     self.assertTrue(os.path.exists(pickled_location))
     return pickled_location
 
-  def testPickledFileStableness(self):
+  def test_pickled_file_stableness(self):
     # Tests that the pickled format is stable under a constant PYTHONHASHSEED.
-    l_1 = self.GeneratePickledSimpleFile("simple1.pickled")
-    l_2 = self.GeneratePickledSimpleFile("simple2.pickled")
+    l_1 = self.generate_pickled_simple_file("simple1.pickled")
+    l_2 = self.generate_pickled_simple_file("simple2.pickled")
     with open(l_1, "rb") as f_1:
       with open(l_2, "rb") as f_2:
         self.assertEqual(f_1.read(), f_2.read())
 
-  def testGeneratePickledAst(self):
-    self.GeneratePickledSimpleFile("simple.pickled", verify_pickle=True)
+  def test_generate_pickled_ast(self):
+    self.generate_pickled_simple_file("simple.pickled", verify_pickle=True)
 
-  def testGenerateUnverifiedPickledAst(self):
-    self.GeneratePickledSimpleFile("simple.pickled", verify_pickle=False)
+  def test_generate_unverified_pickled_ast(self):
+    self.generate_pickled_simple_file("simple.pickled", verify_pickle=False)
 
-  def testPickleNoOutput(self):
+  def test_pickle_no_output(self):
     self.pytype_args["--pickle-output"] = self.INCLUDE
-    self.pytype_args[self._DataPath("simple.py")] = self.INCLUDE
-    self._RunPytype(self.pytype_args)
+    self.pytype_args[self._data_path("simple.py")] = self.INCLUDE
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
-  def testPickleBadOutput(self):
+  def test_pickle_bad_output(self):
     self.pytype_args["--pickle-output"] = self.INCLUDE
     self.pytype_args["--output"] = os.path.join(self.tmp_dir, "simple.pyi")
-    self.pytype_args[self._DataPath("simple.py")] = self.INCLUDE
-    self._RunPytype(self.pytype_args)
+    self.pytype_args[self._data_path("simple.py")] = self.INCLUDE
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
-  def testBadVerifyPickle(self):
+  def test_bad_verify_pickle(self):
     self.pytype_args["--verify-pickle"] = self.INCLUDE
-    self.pytype_args[self._DataPath("simple.py")] = self.INCLUDE
-    self._RunPytype(self.pytype_args)
+    self.pytype_args[self._data_path("simple.py")] = self.INCLUDE
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
-  def testNonexistentOption(self):
+  def test_nonexistent_option(self):
     self.pytype_args["--rumpelstiltskin"] = self.INCLUDE
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
-  def testCfgTypegraphConflict(self):
-    self._SetUpChecking("simple.py")
-    output_path = self._TmpPath("simple.svg")
+  def test_cfg_typegraph_conflict(self):
+    self._setup_checking("simple.py")
+    output_path = self._tmp_path("simple.svg")
     self.pytype_args["--output-cfg"] = output_path
     self.pytype_args["--output-typegraph"] = output_path
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
-  def testCheckInferConflict(self):
+  def test_check_infer_conflict(self):
     self.pytype_args["--check"] = self.INCLUDE
     self.pytype_args["--output"] = "-"
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
-  def testCheckInferConflict2(self):
+  def test_check_infer_conflict2(self):
     self.pytype_args["--check"] = self.INCLUDE
     self.pytype_args["input.py:output.pyi"] = self.INCLUDE
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
-  def testInputOutputPair(self):
-    self.pytype_args[self._DataPath("simple.py") +":-"] = self.INCLUDE
-    self._RunPytype(self.pytype_args)
+  def test_input_output_pair(self):
+    self.pytype_args[self._data_path("simple.py") +":-"] = self.INCLUDE
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=True, stderr=False, returncode=False)
     self.assertInferredPyiEquals(filename="simple.pyi")
 
-  def testMultipleOutput(self):
+  def test_multiple_output(self):
     self.pytype_args["input.py:output1.pyi"] = self.INCLUDE
     self.pytype_args["--output"] = "output2.pyi"
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
-  def testGenerateBuiltinsInputConflict(self):
+  def test_generate_builtins_input_conflict(self):
     self.pytype_args["--generate-builtins"] = "builtins.py"
     self.pytype_args["input.py"] = self.INCLUDE
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
-  def testGenerateBuiltinsPythonpathConflict(self):
+  def test_generate_builtins_pythonpath_conflict(self):
     self.pytype_args["--generate-builtins"] = "builtins.py"
     self.pytype_args["--pythonpath"] = "foo:bar"
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
-  def testGenerateBuiltinsPy2(self):
-    self.pytype_args["--generate-builtins"] = self._TmpPath("builtins.py")
+  def test_generate_builtins_py2(self):
+    self.pytype_args["--generate-builtins"] = self._tmp_path("builtins.py")
     self.pytype_args["--python_version"] = "2.7"
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
 
-  def testGenerateBuiltinsPy3(self):
-    self.pytype_args["--generate-builtins"] = self._TmpPath("builtins.py")
+  def test_generate_builtins_py3(self):
+    self.pytype_args["--generate-builtins"] = self._tmp_path("builtins.py")
     self.pytype_args["--python_version"] = utils.format_version(
         utils.full_version_from_major(3))
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
 
-  def testMissingInput(self):
-    self._RunPytype(self.pytype_args)
+  def test_missing_input(self):
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
-  def testMultipleInput(self):
+  def test_multiple_input(self):
     self.pytype_args["input1.py"] = self.INCLUDE
     self.pytype_args["input2.py"] = self.INCLUDE
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
-  def testBadInputFormat(self):
+  def test_bad_input_format(self):
     self.pytype_args["input.py:output.pyi:rumpelstiltskin"] = self.INCLUDE
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
-  def testPytypeErrors(self):
-    self._SetUpChecking("bad.py")
-    self._RunPytype(self.pytype_args)
+  def test_pytype_errors(self):
+    self._setup_checking("bad.py")
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
     self.assertIn("[unsupported-operands]", self.stderr)
     self.assertIn("[name-error]", self.stderr)
 
-  def testPytypeErrorsCsv(self):
-    self._SetUpChecking("bad.py")
+  def test_pytype_errors_csv(self):
+    self._setup_checking("bad.py")
     self.pytype_args["--output-errors-csv"] = self.errors_csv
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
     self.assertHasErrors("unsupported-operands", "name-error")
 
-  def testPytypeErrorsNoReport(self):
-    self._SetUpChecking("bad.py")
+  def test_pytype_errors_no_report(self):
+    self._setup_checking("bad.py")
     self.pytype_args["--no-report-errors"] = self.INCLUDE
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
 
-  def testPytypeReturnSuccess(self):
-    self._SetUpChecking("bad.py")
+  def test_pytype_return_success(self):
+    self._setup_checking("bad.py")
     self.pytype_args["--return-success"] = self.INCLUDE
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=False)
     self.assertIn("[unsupported-operands]", self.stderr)
     self.assertIn("[name-error]", self.stderr)
 
-  def testCompilerError(self):
-    self._CheckTypesAndErrors("syntax.py", ["python-compiler-error"])
+  def test_compiler_error(self):
+    self._check_types_and_errors("syntax.py", ["python-compiler-error"])
 
-  def testMultiLineStringTokenError(self):
-    self._CheckTypesAndErrors("tokenerror1.py", ["python-compiler-error"])
+  def test_multi_line_string_token_error(self):
+    self._check_types_and_errors("tokenerror1.py", ["python-compiler-error"])
 
-  def testMultiLineStatementTokenError(self):
-    self._CheckTypesAndErrors("tokenerror2.py", ["python-compiler-error"])
+  def test_multi_line_statement_token_error(self):
+    self._check_types_and_errors("tokenerror2.py", ["python-compiler-error"])
 
-  def testComplex(self):
-    self._CheckTypesAndErrors("complex.py", [])
+  def test_complex(self):
+    self._check_types_and_errors("complex.py", [])
 
-  def testCheck(self):
-    self._CheckTypesAndErrors("simple.py", [])
+  def test_check(self):
+    self._check_types_and_errors("simple.py", [])
 
-  def testReturnType(self):
-    self._CheckTypesAndErrors(self._MakePyFile("""
+  def test_return_type(self):
+    self._check_types_and_errors(self._make_py_file("""
       def f() -> int:
         return "foo"
     """), ["bad-return-type"])
 
-  def testUsageError(self):
-    self._SetUpChecking(self._MakePyFile("""
+  def test_usage_error(self):
+    self._setup_checking(self._make_py_file("""
       def f():
         pass
     """))
     # Set up a python version mismatch
     self.pytype_args["--python_version"] = "3.4"
     self.pytype_args["--output-errors-csv"] = self.errors_csv
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
-  def testSkipFile(self):
-    filename = self._MakePyFile("""
+  def test_skip_file(self):
+    filename = self._make_py_file("""
         # pytype: skip-file
     """)
-    self.pytype_args[self._DataPath(filename)] = self.INCLUDE
+    self.pytype_args[self._data_path(filename)] = self.INCLUDE
     self.pytype_args["--output"] = "-"
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=True, stderr=False, returncode=False)
     self.assertInferredPyiEquals(expected_pyi=self.DEFAULT_PYI)
 
-  def testInfer(self):
-    self._InferTypesAndCheckErrors("simple.py", [])
+  def test_infer(self):
+    self._infer_types_and_check_errors("simple.py", [])
     self.assertInferredPyiEquals(filename="simple.pyi")
 
-  def testInferPytypeErrors(self):
-    self._InferTypesAndCheckErrors(
+  def test_infer_pytype_errors(self):
+    self._infer_types_and_check_errors(
         "bad.py", ["unsupported-operands", "name-error"])
     self.assertInferredPyiEquals(filename="bad.pyi")
 
-  def testInferCompilerError(self):
-    self._InferTypesAndCheckErrors("syntax.py", ["python-compiler-error"])
+  def test_infer_compiler_error(self):
+    self._infer_types_and_check_errors("syntax.py", ["python-compiler-error"])
     self.assertInferredPyiEquals(expected_pyi=self.DEFAULT_PYI)
 
-  def testInferComplex(self):
-    self._InferTypesAndCheckErrors("complex.py", [])
+  def test_infer_complex(self):
+    self._infer_types_and_check_errors("complex.py", [])
     self.assertInferredPyiEquals(filename="complex.pyi")
 
-  def testCheckMain(self):
-    self._SetUpChecking(self._MakePyFile("""
+  def test_check_main(self):
+    self._setup_checking(self._make_py_file("""
       def f():
         name_error
       def g():
@@ -406,35 +406,35 @@ class PytypeTest(unittest.TestCase):
     """))
     self.pytype_args["--main"] = self.INCLUDE
     self.pytype_args["--output-errors-csv"] = self.errors_csv
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertHasErrors("attribute-error")
 
-  def testInferToFile(self):
-    self.pytype_args[self._DataPath("simple.py")] = self.INCLUDE
-    pyi_file = self._TmpPath("simple.pyi")
+  def test_infer_to_file(self):
+    self.pytype_args[self._data_path("simple.py")] = self.INCLUDE
+    pyi_file = self._tmp_path("simple.pyi")
     self.pytype_args["--output"] = pyi_file
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
     with open(pyi_file, "r") as f:
       pyi = f.read()
-    with open(self._DataPath("simple.pyi"), "r") as f:
+    with open(self._data_path("simple.pyi"), "r") as f:
       expected_pyi = f.read()
-    self.assertTrue(pytd_utils.ASTeq(self._ParseString(pyi),
-                                     self._ParseString(expected_pyi)))
+    self.assertTrue(pytd_utils.ASTeq(self._parse_string(pyi),
+                                     self._parse_string(expected_pyi)))
 
-  def testParsePyi(self):
-    self.pytype_args[self._DataPath("complex.pyi")] = self.INCLUDE
+  def test_parse_pyi(self):
+    self.pytype_args[self._data_path("complex.pyi")] = self.INCLUDE
     self.pytype_args["--parse-pyi"] = self.INCLUDE
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
 
-  def testPytree(self):
+  def test_pytree(self):
     """Test pytype on a real-world program."""
     self.pytype_args["--quick"] = self.INCLUDE
-    self._InferTypesAndCheckErrors("pytree.py", [
+    self._infer_types_and_check_errors("pytree.py", [
         "import-error", "import-error", "attribute-error", "attribute-error",
         "attribute-error", "name-error"])
-    ast = self._ParseString(self.stdout)
+    ast = self._parse_string(self.stdout)
     self.assertListEqual(["convert", "generate_matches", "type_repr"],
                          [f.name for f in ast.functions])
     self.assertListEqual(
@@ -442,66 +442,66 @@ class PytypeTest(unittest.TestCase):
          "NodePattern", "WildcardPattern"],
         [c.name for c in ast.classes])
 
-  def testNoAnalyzeAnnotated(self):
-    filename = self._MakePyFile("""
+  def test_no_analyze_annotated(self):
+    filename = self._make_py_file("""
       def f() -> str:
         return 42
     """)
-    self._InferTypesAndCheckErrors(self._DataPath(filename), [])
+    self._infer_types_and_check_errors(self._data_path(filename), [])
 
-  def testAnalyzeAnnotated(self):
-    filename = self._MakePyFile("""
+  def test_analyze_annotated(self):
+    filename = self._make_py_file("""
       def f() -> str:
         return 42
     """)
     self.pytype_args["--analyze-annotated"] = self.INCLUDE
-    self._InferTypesAndCheckErrors(self._DataPath(filename),
-                                   ["bad-return-type"])
+    self._infer_types_and_check_errors(self._data_path(filename),
+                                       ["bad-return-type"])
 
-  def testRunPytype(self):
+  def test_run_pytype(self):
     """Basic unit test (smoke test) for _run_pytype."""
     # TODO(kramm): This is a unit test, whereas all other tests in this file
     # are integration tests. Move this somewhere else?
-    infile = self._TmpPath("input")
-    outfile = self._TmpPath("output")
+    infile = self._tmp_path("input")
+    outfile = self._tmp_path("output")
     with open(infile, "w") as f:
       f.write("def f(x): pass")
     options = config.Options.create(infile, output=outfile)
     single._run_pytype(options)
     self.assertTrue(os.path.isfile(outfile))
 
-  def testGenerateAndUseBuiltins(self):
+  def test_generate_and_use_builtins(self):
     """Test for --generate-builtins."""
-    filename = self._TmpPath("builtins.pickle")
+    filename = self._tmp_path("builtins.pickle")
     # Generate builtins pickle
     self.pytype_args["--generate-builtins"] = filename
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
     self.assertTrue(os.path.isfile(filename))
-    src = self._MakePyFile("""
+    src = self._make_py_file("""
       import __future__
       import sys
       import collections
       import typing
     """)
     # Use builtins pickle
-    self._ResetPytypeArgs()
-    self._SetUpChecking(src)
+    self._reset_pytype_args()
+    self._setup_checking(src)
     self.pytype_args["--precompiled-builtins"] = filename
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
 
-  def testUseBuiltinsAndImportMap(self):
+  def test_use_builtins_and_import_map(self):
     """Test for --generate-builtins."""
-    filename = self._TmpPath("builtins.pickle")
+    filename = self._tmp_path("builtins.pickle")
     # Generate builtins pickle
     self.pytype_args["--generate-builtins"] = filename
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
     self.assertTrue(os.path.isfile(filename))
     # input files
     canary = "import pytypecanary" if typeshed.Typeshed.MISSING_FILE else ""
-    src = self._MakePyFile("""
+    src = self._make_py_file("""
       import __future__
       import sys
       import collections
@@ -516,36 +516,36 @@ class PytypeTest(unittest.TestCase):
       y = csv.writer
       z = md5.new
     """ % canary)
-    pyi = self._MakeFile("""
+    pyi = self._make_file("""
       import datetime
       x = ...  # type: datetime.tzinfo
     """, extension=".pyi")
     # Use builtins pickle with an imports map
-    self._ResetPytypeArgs()
-    self._SetUpChecking(src)
+    self._reset_pytype_args()
+    self._setup_checking(src)
     self.pytype_args["--precompiled-builtins"] = filename
-    self.pytype_args["--imports_info"] = self._MakeFile("""
+    self.pytype_args["--imports_info"] = self._make_file("""
       typing /dev/null
       foo %s
     """ % pyi, extension="")
-    self._RunPytype(self.pytype_args)
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
 
-  def testBuiltinsDeterminism2(self):
-    f1, f2 = self._GenerateBuiltinsTwice("2.7")
+  def test_builtins_determinism2(self):
+    f1, f2 = self._generate_builtins_twice("2.7")
     self.assertBuiltinsPickleEqual(f1, f2)
 
-  def testBuiltinsDeterminism3(self):
-    f1, f2 = self._GenerateBuiltinsTwice(
+  def test_builtins_determinism3(self):
+    f1, f2 = self._generate_builtins_twice(
         utils.format_version(utils.full_version_from_major(3)))
     self.assertBuiltinsPickleEqual(f1, f2)
 
-  def testTimeout(self):
+  def test_timeout(self):
     # Note: At the time of this writing, pickling builtins takes well over one
     # second (~10s). If it ever was to get faster, this test would become flaky.
     self.pytype_args["--timeout"] = 1
-    self.pytype_args["--generate-builtins"] = self._TmpPath("builtins.pickle")
-    self._RunPytype(self.pytype_args)
+    self.pytype_args["--generate-builtins"] = self._tmp_path("builtins.pickle")
+    self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=True)
 
 

@@ -7,7 +7,7 @@ from pytype.tests import test_base
 class MatchTest(test_base.TargetPython3BasicTest):
   """Tests for matching types."""
 
-  def testNoArgumentPyTDFunctionAgainstCallable(self):
+  def test_no_argument_pytd_function_against_callable(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def bar() -> bool
@@ -25,7 +25,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
       self.assertErrorRegexes(errors, {
           "e": r"\(x: Callable\[\[\], str\]\).*\(x: Callable\[\[\], bool\]\)"})
 
-  def testPyTDFunctionAgainstCallableWithTypeParameters(self):
+  def test_pytd_function_against_callable_with_type_parameters(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f1(x: int) -> int: ...
@@ -57,7 +57,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
           "e3": (r"Expected.*" + expected + ".*"
                  r"Actual.*Callable\[\[int\], str\]")})
 
-  def testInterpreterFunctionAgainstCallable(self):
+  def test_interpreter_function_against_callable(self):
     _, errors = self.InferWithErrors("""
       from typing import Callable
       def f(x: Callable[[bool], int]): ...
@@ -72,7 +72,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
         "e": (r"Expected.*Callable\[\[bool\], int\].*"
               r"Actual.*Callable\[\[str\], int\]")})
 
-  def testBoundInterpreterFunctionAgainstCallable(self):
+  def test_bound_interpreter_function_against_callable(self):
     _, errors = self.InferWithErrors("""
       from typing import Callable
 
@@ -100,7 +100,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
         "e3": (r"Expected.*Callable\[\[bool\], int\].*"
                r"Actual.*Callable\[\[Any, int\], bool\]")})
 
-  def testCallableParameters(self):
+  def test_callable_parameters(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any, Callable, List, TypeVar
@@ -136,7 +136,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
         w2 = ...  # type: List[int]
       """)
 
-  def testVariableLengthFunctionAgainstCallable(self):
+  def test_variable_length_function_against_callable(self):
     _, errors = self.InferWithErrors("""
       from typing import Any, Callable
       def f(x: Callable[[int], Any]): pass
@@ -149,7 +149,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
         "e": (r"Expected.*Callable\[\[int\], Any\].*"
               r"Actual.*Callable\[\[str\], Any\]")})
 
-  def testCallableInstanceAgainstCallableWithTypeParameters(self):
+  def test_callable_instance_against_callable_with_type_parameters(self):
     _, errors = self.InferWithErrors("""
       from typing import Callable, TypeVar
       T = TypeVar("T")
@@ -161,7 +161,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
         "e": (r"Expected.*Callable\[\[str\], str\].*"
               r"Actual.*Callable\[\[int\], str\]")})
 
-  def testFunctionWithTypeParameterReturnAgainstCallable(self):
+  def test_function_with_type_parameter_return_against_callable(self):
     self.InferWithErrors("""
       from typing import Callable, AnyStr, TypeVar
       T = TypeVar("T")
@@ -173,7 +173,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
       f(g2)  # wrong-arg-types
     """)
 
-  def testUnionInTypeParameter(self):
+  def test_union_in_type_parameter(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Callable, Iterator, List, TypeVar
@@ -193,14 +193,14 @@ class MatchTest(test_base.TargetPython3BasicTest):
         f = ...  # type: List[Optional[str]]
       """)
 
-  def testAnyStr(self):
+  def test_anystr(self):
     self.Check("""
       from typing import AnyStr, Dict, Tuple
       class Foo(object):
         def bar(self, x: Dict[Tuple[AnyStr], AnyStr]): ...
     """)
 
-  def testFormalType(self):
+  def test_formal_type(self):
     self.InferWithErrors("""
       from typing import AnyStr, List, NamedTuple
       def f(x: str):
@@ -212,7 +212,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
       H = NamedTuple("H", [('a', AnyStr)])  # invalid-typevar
     """)
 
-  def testTypeVarWithBound(self):
+  def test_typevar_with_bound(self):
     _, errors = self.InferWithErrors("""
       from typing import Callable, TypeVar
       T1 = TypeVar("T1", bound=int)
@@ -225,7 +225,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"Expected.*T2.*Actual.*T1"})
 
-  def testCallableBaseClass(self):
+  def test_callable_base_class(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Callable, Union, Type
@@ -244,7 +244,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
         f(Foo(), Bar())
       """, pythonpath=[d.path])
 
-  def testAnyStrAgainstCallable(self):
+  def test_anystr_against_callable(self):
     # Because `T` appears only once in the callable, it does not do any
     # intra-callable type enforcement, so AnyStr is allowed to match it.
     self.Check("""
@@ -257,7 +257,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
       g(f, 'hello')
     """)
 
-  def testAnyStrAgainstBoundedCallable(self):
+  def test_anystr_against_bounded_callable(self):
     # Constraints and bounds should still be enforced when a type parameter
     # appears only once in a callable.
     errors = self.CheckWithErrors("""
@@ -272,7 +272,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {
         "e": r"Callable\[\[IntVar\], Any\].*Callable\[\[AnyStr\], AnyStr\]"})
 
-  def testAnyStrAgainstMultipleParamCallable(self):
+  def test_anystr_against_multiple_param_callable(self):
     # Callable[[T], T] needs to accept any argument, so AnyStr cannot match it.
     errors = self.CheckWithErrors("""
       from typing import Any, AnyStr, Callable, TypeVar
@@ -292,7 +292,7 @@ class MatchTestPy3(test_base.TargetPython3FeatureTest):
 
   # Forked into py2 and py3 versions
 
-  def testCallable(self):
+  def test_callable(self):
     ty = self.Infer("""
       import tokenize
       def f():
@@ -306,7 +306,7 @@ class MatchTestPy3(test_base.TargetPython3FeatureTest):
       x = ...  # type: Generator[tokenize.TokenInfo, None, None]
     """)
 
-  def testCallableAgainstGeneric(self):
+  def test_callable_against_generic(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import TypeVar, Callable, Generic, Iterable, Iterator
@@ -322,7 +322,7 @@ class MatchTestPy3(test_base.TargetPython3FeatureTest):
         foo.Foo(foo.x.__next__)
       """, pythonpath=[d.path])
 
-  def testEmpty(self):
+  def test_empty(self):
     ty = self.Infer("""
       a = []
       b = ["%d" % i for i in a]
@@ -333,7 +333,7 @@ class MatchTestPy3(test_base.TargetPython3FeatureTest):
       b = ...  # type: List[str]
     """)
 
-  def testBoundAgainstCallable(self):
+  def test_bound_against_callable(self):
     ty = self.Infer("""
       import io
       import tokenize

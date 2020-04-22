@@ -8,7 +8,7 @@ from pytype.tests import test_base
 class ClassesTest(test_base.TargetIndependentTest):
   """Tests for classes."""
 
-  def testMakeClass(self):
+  def test_make_class(self):
     ty = self.Infer("""
       class Thing(tuple):
         def __init__(self, x):
@@ -27,7 +27,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     def f() -> Thing: ...
     """)
 
-  def testLoadClassderef(self):
+  def test_load_classderef(self):
     """Exercises the Python 3 LOAD_CLASSDEREF opcode.
 
     Serves as a simple test for Python 2.
@@ -40,7 +40,7 @@ class ClassesTest(test_base.TargetIndependentTest):
             y = str(x)
     """)
 
-  def testClassDecorator(self):
+  def test_class_decorator(self):
     ty = self.Infer("""
       @__any_object__
       class MyClass(object):
@@ -55,7 +55,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       def f() -> ?
     """)
 
-  def testClassName(self):
+  def test_class_name(self):
     ty = self.Infer("""
       class MyClass(object):
         def __init__(self, name):
@@ -72,7 +72,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     def f() -> MyClass
     """)
 
-  def testInheritFromUnknown(self):
+  def test_inherit_from_unknown(self):
     ty = self.Infer("""
       class A(__any_object__):
         pass
@@ -82,7 +82,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       pass
     """)
 
-  def testInheritFromUnknownAndCall(self):
+  def test_inherit_from_unknown_and_call(self):
     ty = self.Infer("""
       x = __any_object__
       class A(x):
@@ -95,7 +95,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       def __init__(self) -> NoneType
     """)
 
-  def testInheritFromUnknownAndSetAttr(self):
+  def test_inherit_from_unknown_and_set_attr(self):
     ty = self.Infer("""
       class Foo(__any_object__):
         def __init__(self):
@@ -106,7 +106,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       def __init__(self) -> NoneType
     """)
 
-  def testInheritFromUnknownAndInitialize(self):
+  def test_inherit_from_unknown_and_initialize(self):
     ty = self.Infer("""
       class Foo(object):
         pass
@@ -123,7 +123,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       x = ...  # type: Bar
     """)
 
-  def testInheritFromUnsolvable(self):
+  def test_inherit_from_unsolvable(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Any
@@ -147,7 +147,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         x = ...  # type: Bar
       """)
 
-  def testClassMethod(self):
+  def test_classmethod(self):
     ty = self.Infer("""
       module = __any_object__
       class Foo(object):
@@ -165,7 +165,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       def bar(cls) -> None: ...
     """)
 
-  def testInheritFromUnknownAttributes(self):
+  def test_inherit_from_unknown_attributes(self):
     ty = self.Infer("""
       class Foo(__any_object__):
         def f(self):
@@ -180,7 +180,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       def f(self) -> NoneType
     """)
 
-  def testInnerClass(self):
+  def test_inner_class(self):
     ty = self.Infer("""
       def f():
         class Foo(object):
@@ -192,7 +192,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       def f() -> int
     """)
 
-  def testSuper(self):
+  def test_super(self):
     ty = self.Infer("""
       class Base(object):
         def __init__(self, x, y):
@@ -208,7 +208,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       def __init__(self, x) -> NoneType
     """)
 
-  def testSuperError(self):
+  def test_super_error(self):
     _, errors = self.InferWithErrors("""
       class Base(object):
         def __init__(self, x, y, z):
@@ -219,7 +219,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"x"})
 
-  def testSuperInInit(self):
+  def test_super_in_init(self):
     ty = self.Infer("""
       class A(object):
         def __init__(self):
@@ -242,7 +242,7 @@ class ClassesTest(test_base.TargetIndependentTest):
           def get_x(self) -> int
     """)
 
-  def testSuperDiamond(self):
+  def test_super_diamond(self):
     ty = self.Infer("""
       class A(object):
         x = 1
@@ -273,7 +273,7 @@ class ClassesTest(test_base.TargetIndependentTest):
           def get_z(self) -> complex
     """)
 
-  def testInheritFromList(self):
+  def test_inherit_from_list(self):
     ty = self.Infer("""
       class MyList(list):
         def foo(self):
@@ -284,7 +284,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         def foo(self) -> ?
     """)
 
-  def testClassAttr(self):
+  def test_class_attr(self):
     ty = self.Infer("""
       class Foo(object):
         pass
@@ -298,7 +298,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       OtherFoo = Foo
     """)
 
-  def testCallClassAttr(self):
+  def test_call_class_attr(self):
     ty = self.Infer("""
       class Flag(object):
         convert_method = int
@@ -312,7 +312,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         def convert(self, value) -> int
     """)
 
-  def testBoundMethod(self):
+  def test_bound_method(self):
     ty = self.Infer("""
       class Random(object):
           def seed(self):
@@ -330,7 +330,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       def seed() -> None: ...
     """)
 
-  def testMROWithUnsolvables(self):
+  def test_mro_with_unsolvables(self):
     ty = self.Infer("""
       from nowhere import X, Y  # pytype: disable=import-error
       class Foo(Y):
@@ -347,7 +347,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         ...
     """)
 
-  def testProperty(self):
+  def test_property(self):
     ty = self.Infer("""
       class Foo(object):
         def __init__(self):
@@ -364,7 +364,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         def test(self) -> str: ...
     """)
 
-  def testDescriptorSelf(self):
+  def test_descriptor_self(self):
     ty = self.Infer("""
       class Foo(object):
         def __init__(self):
@@ -385,7 +385,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         def test(self) -> str: ...
     """)
 
-  def testDescriptorInstance(self):
+  def test_descriptor_instance(self):
     ty = self.Infer("""
       class Foo(object):
         def __get__(self, obj, objtype):
@@ -407,7 +407,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         def test(self) -> str: ...
     """)
 
-  def testDescriptorClass(self):
+  def test_descriptor_class(self):
     ty = self.Infer("""
       class Foo(object):
         def __get__(self, obj, objtype):
@@ -428,7 +428,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         def test(self) -> str: ...
     """)
 
-  def testBadDescriptor(self):
+  def test_bad_descriptor(self):
     ty = self.Infer("""
       class Foo(object):
         __get__ = None
@@ -443,7 +443,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         foo = ...  # type: Any
     """)
 
-  def testNotDescriptor(self):
+  def test_not_descriptor(self):
     ty = self.Infer("""
       class Foo(object):
         pass
@@ -460,7 +460,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         foo = ...  # type: Foo
     """)
 
-  def testGetAttr(self):
+  def test_getattr(self):
     ty = self.Infer("""
       class Foo(object):
         def __getattr__(self, name):
@@ -474,7 +474,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       def f() -> str: ...
     """)
 
-  def testGetAttrPyi(self):
+  def test_getattr_pyi(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo(object):
@@ -490,7 +490,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         def f() -> str
       """)
 
-  def testGetAttribute(self):
+  def test_getattribute(self):
     ty = self.Infer("""
       class A(object):
         def __getattribute__(self, name):
@@ -503,7 +503,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       x = ...  # type: int
     """)
 
-  def testGetAttributePyi(self):
+  def test_getattribute_pyi(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A(object):
@@ -518,7 +518,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         x = ...  # type: int
       """)
 
-  def testInheritFromClassobj(self):
+  def test_inherit_from_classobj(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A():
@@ -537,7 +537,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         name = ... # type: str
       """)
 
-  def testMetaclassGetAttribute(self):
+  def test_metaclass_getattribute(self):
     with file_utils.Tempdir() as d:
       d.create_file("enum.pyi", """
         from typing import Any
@@ -570,7 +570,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         name2 = ...  # type: Any
       """)
 
-  def testReturnClassType(self):
+  def test_return_class_type(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Type
@@ -595,7 +595,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         x3 = ...  # type: str
       """)
 
-  def testCallClassType(self):
+  def test_call_class_type(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Type
@@ -612,7 +612,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         x = ...  # type: a.A
       """)
 
-  def testCallAlias(self):
+  def test_call_alias(self):
     ty = self.Infer("""
       class A: pass
       B = A
@@ -626,7 +626,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       x = ...  # type: A
     """)
 
-  def testNew(self):
+  def test_new(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A(object):
@@ -651,7 +651,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         x3 = ...  # type: bool
       """)
 
-  def testNewAndInit(self):
+  def test_new_and_init(self):
     ty = self.Infer("""
       class A(object):
         def __new__(cls, a, b):
@@ -690,7 +690,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       x5 = ...  # type: bool
     """)
 
-  def testNewAndInitPyi(self):
+  def test_new_and_init_pyi(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
@@ -716,7 +716,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         x2 = ...  # type: a.A[str]
       """)
 
-  def testGetType(self):
+  def test_get_type(self):
     ty = self.Infer("""
       class A:
         x = 3
@@ -736,7 +736,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       D = ...  # type: Type[type]
     """)
 
-  def testTypeAttribute(self):
+  def test_type_attribute(self):
     ty = self.Infer("""
       class A:
         x = 3
@@ -752,7 +752,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       mro = ...  # type: list
     """)
 
-  def testTypeSubclass(self):
+  def test_type_subclass(self):
     ty = self.Infer("""
       class A(type):
         def __init__(self, name, bases, dict):
@@ -778,7 +778,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       v = ...  # type: float
     """)
 
-  def testUnionBaseClass(self):
+  def test_union_base_class(self):
     self.Check("""
       import typing
       class A(tuple): pass
@@ -786,7 +786,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       class Foo(typing.Union[A,B]): pass
       """)
 
-  def testMetaclassPyi(self):
+  def test_metaclass_pyi(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A(type):
@@ -802,7 +802,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         v = ...  # type: float
       """)
 
-  def testUnsolvableMetaclass(self):
+  def test_unsolvable_metaclass(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Any
@@ -822,7 +822,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         x = ...  # type: Any
       """)
 
-  def testMakeType(self):
+  def test_make_type(self):
     ty = self.Infer("""
       X = type("X", (int, object), {"a": 1})
       x = X()
@@ -835,7 +835,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       a = ...  # type: int
     """)
 
-  def testMakeSimpleType(self):
+  def test_make_simple_type(self):
     ty = self.Infer("""
       X = type("X", (), {})
       x = X()
@@ -845,7 +845,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       x = ...  # type: X
     """)
 
-  def testMakeAmbiguousType(self):
+  def test_make_ambiguous_type(self):
     ty = self.Infer("""
       if __random__:
         name = "A"
@@ -861,7 +861,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       x = ...  # type: Any
     """)
 
-  def testTypeInit(self):
+  def test_type_init(self):
     ty = self.Infer("""
       import six
       class A(type):
@@ -887,7 +887,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       x2: int
     """)
 
-  def testBadMroParameterizedClass(self):
+  def test_bad_mro_parameterized_class(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar
@@ -903,13 +903,13 @@ class ClassesTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"C"})
 
-  def testCallParameterizedClass(self):
+  def test_call_parameterized_class(self):
     self.InferWithErrors("""
       from typing import List
       List[str]()  # not-callable
     """)
 
-  def testErrorfulConstructors(self):
+  def test_errorful_constructors(self):
     ty, _ = self.InferWithErrors("""
       class Foo(object):
         attr = 42
@@ -930,7 +930,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         def f(self) -> int: ...
     """)
 
-  def testNewFalse(self):
+  def test_new_false(self):
     ty = self.Infer("""
       class Foo(object):
         def __new__(cls):
@@ -947,7 +947,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         def f(self) -> str: ...
     """)
 
-  def testNewAmbiguous(self):
+  def test_new_ambiguous(self):
     ty = self.Infer("""
       class Foo(object):
         def __new__(cls):
@@ -967,7 +967,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         def f(self) -> str
     """)
 
-  def testNewExtraArg(self):
+  def test_new_extra_arg(self):
     self.Check("""
       class Foo(object):
         def __new__(cls, _):
@@ -975,7 +975,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       Foo("Foo")
     """)
 
-  def testNewExtraNoneReturn(self):
+  def test_new_extra_none_return(self):
     ty = self.Infer("""
       class Foo(object):
         def __new__(cls):
@@ -992,7 +992,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         def foo(self: _TFoo) -> _TFoo
     """)
 
-  def testSuperNewExtraArg(self):
+  def test_super_new_extra_arg(self):
     self.Check("""
       class Foo(object):
         def __init__(self, x):
@@ -1002,7 +1002,7 @@ class ClassesTest(test_base.TargetIndependentTest):
           return super(Foo, cls).__new__(cls, x)
     """)
 
-  def testSuperInitExtraArg(self):
+  def test_super_init_extra_arg(self):
     self.Check("""
       class Foo(object):
         def __init__(self, x):
@@ -1012,7 +1012,7 @@ class ClassesTest(test_base.TargetIndependentTest):
           return super(Foo, cls).__new__(cls)
     """)
 
-  def testSuperInitExtraArg2(self):
+  def test_super_init_extra_arg2(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo(object):
@@ -1026,7 +1026,7 @@ class ClassesTest(test_base.TargetIndependentTest):
             super(Bar, self).__init__(a, b)
       """, pythonpath=[d.path])
 
-  def testSuperNewWrongArgCount(self):
+  def test_super_new_wrong_arg_count(self):
     _, errors = self.InferWithErrors("""
       class Foo(object):
         def __new__(cls, x):
@@ -1034,7 +1034,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """, deep=True)
     self.assertErrorRegexes(errors, {"e": r"1.*2"})
 
-  def testSuperInitWrongArgCount(self):
+  def test_super_init_wrong_arg_count(self):
     _, errors = self.InferWithErrors("""
       class Foo(object):
         def __init__(self, x):
@@ -1042,7 +1042,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """, deep=True)
     self.assertErrorRegexes(errors, {"e": r"1.*2"})
 
-  def testSuperNewMissingParameter(self):
+  def test_super_new_missing_parameter(self):
     _, errors = self.InferWithErrors("""
       class Foo(object):
         def __new__(cls, x):
@@ -1053,7 +1053,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """, deep=True)
     self.assertErrorRegexes(errors, {"e": r"cls.*__new__"})
 
-  def testNewKwarg(self):
+  def test_new_kwarg(self):
     _, errors = self.InferWithErrors("""
       class Foo(object):
         def __new__(cls):
@@ -1067,7 +1067,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """, deep=True)
     self.assertErrorRegexes(errors, {"e": r"x.*__new__"})
 
-  def testInitKwarg(self):
+  def test_init_kwarg(self):
     _, errors = self.InferWithErrors("""
       class Foo(object):
         def __init__(self):
@@ -1081,7 +1081,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     """, deep=True)
     self.assertErrorRegexes(errors, {"e": r"x.*__init__"})
 
-  def testAliasInnerClass(self):
+  def test_alias_inner_class(self):
     ty = self.Infer("""
       def f():
         class Bar(object):
@@ -1098,7 +1098,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         def __new__(cls: Type[_TBaz], _) -> _TBaz
     """)
 
-  def testModuleInClassDefinitionScope(self):
+  def test_module_in_class_definition_scope(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Bar: ...
@@ -1112,14 +1112,14 @@ class ClassesTest(test_base.TargetIndependentTest):
             return obj
       """, pythonpath=[d.path])
 
-  def testInitWithNoParams(self):
+  def test_init_with_no_params(self):
     self.Check("""
       class Foo(object):
         def __init__():
           pass
       """)
 
-  def testInstantiateWithAbstractDict(self):
+  def test_instantiate_with_abstract_dict(self):
     ty = self.Infer("""
       X = type("", (), dict())
     """, deep=False)
@@ -1127,7 +1127,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       X = ...  # type: ?
     """)
 
-  def testNotInstantiable(self):
+  def test_not_instantiable(self):
     self.CheckWithErrors("""
       class Foo(object):
         def __new__(cls):
@@ -1136,7 +1136,7 @@ class ClassesTest(test_base.TargetIndependentTest):
           name_error  # name-error
     """)
 
-  def testMetaclassOnUnknownClass(self):
+  def test_metaclass_on_unknown_class(self):
     self.Check("""
       import six
       class Foo(type):
@@ -1149,7 +1149,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         pass
     """)
 
-  def testSubclassContainsBase(self):
+  def test_subclass_contains_base(self):
     ty = self.Infer("""
       def get_c():
         class C(object):
@@ -1178,7 +1178,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       x = ...  # type: DC
     """)
 
-  def testSubclassMultipleBaseOptions(self):
+  def test_subclass_multiple_base_options(self):
     ty = self.Infer("""
       class A(object): pass
       def get_base():
@@ -1195,7 +1195,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       class C(Any): pass
     """)
 
-  def testSubclassContainsGenericBase(self):
+  def test_subclass_contains_generic_base(self):
     ty = self.Infer("""
       import typing
       def get_base():
@@ -1212,7 +1212,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       def get_base() -> type: ...
     """)
 
-  def testSubclassOverridesBaseAttributes(self):
+  def test_subclass_overrides_base_attributes(self):
     ty = self.Infer("""
       def get_base():
         class B(object):
@@ -1239,7 +1239,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         def baz(self) -> None: ...
     """)
 
-  def testSubclassMakeBase(self):
+  def test_subclass_make_base(self):
     ty = self.Infer("""
       def make_base(x):
         class C(x):
@@ -1254,7 +1254,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         x = ...  # type: int
     """)
 
-  def testSubclassBasesOverlap(self):
+  def test_subclass_bases_overlap(self):
     ty = self.Infer("""
       def make_a():
         class A(object):
@@ -1276,7 +1276,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         x = ...  # type: int
     """)
 
-  def testPyiNestedClass(self):
+  def test_pyi_nested_class(self):
     # Test that pytype can look up a pyi nested class in a py file and reconsume
     # the inferred pyi.
     with file_utils.Tempdir() as d:
@@ -1306,7 +1306,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         Y: Type[foo.X.Y]
       """)
 
-  def testPyiNestedClassAlias(self):
+  def test_pyi_nested_class_alias(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class X:
@@ -1324,7 +1324,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         Z: Type[foo.X.Y]
       """)
 
-  def testPyiDeeplyNestedClass(self):
+  def test_pyi_deeply_nested_class(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class X:
@@ -1342,7 +1342,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         Z: Type[foo.X.Y.Z]
       """)
 
-  def testLateAnnotation(self):
+  def test_late_annotation(self):
     ty = self.Infer("""
       class Foo(object):
         bar = None  # type: 'Bar'
@@ -1362,7 +1362,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         def f(self) -> int: ...
     """)
 
-  def testIterateAmbiguousBaseClass(self):
+  def test_iterate_ambiguous_base_class(self):
     self.Check("""
       from typing import Any
       class Foo(Any):

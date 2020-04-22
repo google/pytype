@@ -7,7 +7,7 @@ from pytype.tests import test_base
 class BuiltinTests(test_base.TargetPython3BasicTest):
   """Tests for builtin methods and classes."""
 
-  def testBoolReturnValue(self):
+  def test_bool_return_value(self):
     ty = self.Infer("""
       def f():
         return True
@@ -19,28 +19,28 @@ class BuiltinTests(test_base.TargetPython3BasicTest):
       def g() -> bool: ...
     """)
 
-  def testSumReturn(self):
+  def test_sum_return(self):
     self.Check("""
       from typing import List
       def f(x: List[float]) -> float:
         return sum(x)
     """)
 
-  def testPrintFunction(self):
+  def test_print_function(self):
     self.Check("""
       from __future__ import print_function
       import sys
       print(file=sys.stderr)
     """)
 
-  def testFilename(self):
+  def test_filename(self):
     self.Check("""
       def foo(s: str) -> str:
         return s
       foo(__file__)
       """, filename="foobar.py")
 
-  def testSuper(self):
+  def test_super(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Type
@@ -75,7 +75,7 @@ class BuiltinTests(test_base.TargetPython3BasicTest):
         v = ...  # type: Type[super]
       """)
 
-  def testBytearraySlice(self):
+  def test_bytearray_slice(self):
     self.Check("""
       def f(x: bytearray) -> bytearray:
         return x[1:]
@@ -83,7 +83,7 @@ class BuiltinTests(test_base.TargetPython3BasicTest):
         return x[1:5:2]
     """)
 
-  def testSetLength(self):
+  def test_set_length(self):
     self.Check("""
       from typing import Set
       x = ...  # type: Set[int]
@@ -91,14 +91,14 @@ class BuiltinTests(test_base.TargetPython3BasicTest):
       len(set())
     """)
 
-  def testSequenceLength(self):
+  def test_sequence_length(self):
     self.Check("""
       from typing import Sequence
       x = ...  # type: Sequence
       len(x)
     """)
 
-  def testMappingLength(self):
+  def test_mapping_length(self):
     self.Check("""
       from typing import Mapping
       x = ...  # type: Mapping
@@ -109,17 +109,17 @@ class BuiltinTests(test_base.TargetPython3BasicTest):
 class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
   """Tests for builtin methods and classes."""
 
-  def testBuiltins(self):
+  def test_builtins(self):
     self.Check("""
       import builtins
     """)
 
-  def testUnicode(self):
+  def test_unicode(self):
     self.CheckWithErrors("""
       unicode("foo")  # name-error
     """)
 
-  def testBytesIteration(self):
+  def test_bytes_iteration(self):
     self.CheckWithErrors("""
       def f():
         for x in bytes():
@@ -158,7 +158,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       h({}.values())
     """)
 
-  def testStrJoin(self):
+  def test_str_join(self):
     ty = self.Infer("""
       b = u",".join([])
       d = u",".join(["foo"])
@@ -176,7 +176,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       h = ...  # type: str
     """)
 
-  def testStrIsHashable(self):
+  def test_str_is_hashable(self):
     self.Check("""
       from typing import Any, Dict, Hashable
       def f(x: Dict[Hashable, Any]):
@@ -184,7 +184,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       f({'foo': 1})
     """)
 
-  def testBytearrayJoin(self):
+  def test_bytearray_join(self):
     ty = self.Infer("""
       b = bytearray()
       x2 = b.join([b"x"])
@@ -194,7 +194,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       x2 = ...  # type: bytearray
     """)
 
-  def testIter(self):
+  def test_iter(self):
     ty = self.Infer("""
       x = iter(u"hello")
     """, deep=False)
@@ -203,7 +203,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       x = ...  # type: Iterator[str]
     """)
 
-  def testIter1(self):
+  def test_iter1(self):
     ty = self.Infer("""
       a = next(iter([1, 2, 3]))
       b = next(iter([1, 2, 3]), default = 4)
@@ -216,7 +216,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       c = ...  # type: Union[int, str]
     """)
 
-  def testFromKeys(self):
+  def test_from_keys(self):
     ty = self.Infer("""
       d = dict.fromkeys(u"x")
     """, deep=False)
@@ -225,7 +225,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       d = ...  # type: Dict[str, None]
     """)
 
-  def testDictKeys(self):
+  def test_dict_keys(self):
     ty = self.Infer("""
       m = {"x": None}
       a = m.keys() & {1, 2, 3}
@@ -242,7 +242,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       d = ...  # type: Set[int or str]
     """)
 
-  def testOpen(self):
+  def test_open(self):
     ty = self.Infer("""
       f1 = open("foo.py", "r")
       f2 = open("foo.pickled", "rb")
@@ -261,7 +261,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       def open_file(mode) -> Tuple[IO[Union[bytes, str]], Union[bytes, str]]
     """)
 
-  def testFilter(self):
+  def test_filter(self):
     ty = self.Infer("""
       import re
       def f(x: int):
@@ -287,7 +287,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       x7 = ...  # type: Iterator[str]
       """)
 
-  def testSorted(self):
+  def test_sorted(self):
     ty = self.Infer("""
       x = sorted(u"hello")
     """, deep=False)
@@ -296,7 +296,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       x = ...  # type: List[str]
     """)
 
-  def testZip(self):
+  def test_zip(self):
     ty = self.Infer("""
       a = zip("foo", u"bar")
       b = zip(())
@@ -316,7 +316,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       f = ...  # type: Iterator[Tuple[complex, int]]
       """)
 
-  def testMapBasic(self):
+  def test_map_basic(self):
     ty = self.Infer("""
       v = map(int, ("0",))
     """)
@@ -325,7 +325,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       v = ...  # type: Iterator[int]
     """)
 
-  def testMap(self):
+  def test_map(self):
     ty = self.Infer("""
       class Foo(object):
         pass
@@ -341,14 +341,14 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       def f() -> Iterator
     """)
 
-  def testMap1(self):
+  def test_map1(self):
     ty = self.Infer("""
       def f(input_string, sub):
         return ''.join(map(lambda ch: ch, input_string))
     """)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.str)
 
-  def testMap2(self):
+  def test_map2(self):
     ty = self.Infer("""
       lst1 = []
       lst2 = [x for x in lst1]
@@ -361,7 +361,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       lst3 = ...  # type: Iterator[nothing]
     """)
 
-  def testDict(self):
+  def test_dict(self):
     ty = self.Infer("""
       def t_testDict():
         d = {}
@@ -385,7 +385,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       def _i2_(x: dict[complex or str, float or int]) -> Dict[complex or str, float or int]
     """)
 
-  def testListInit(self):
+  def test_list_init(self):
     ty = self.Infer("""
       l3 = list({"a": 1}.keys())
       l4 = list({"a": 1}.values())
@@ -396,7 +396,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       l4 = ...  # type: List[int]
     """)
 
-  def testTupleInit(self):
+  def test_tuple_init(self):
     ty = self.Infer("""
       t3 = tuple({"a": 1}.keys())
       t4 = tuple({"a": 1}.values())
@@ -407,7 +407,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       t4 = ...  # type: Tuple[int, ...]
     """)
 
-  def testItems(self):
+  def test_items(self):
     ty = self.Infer("""
       lst = list({"a": 1}.items())
     """, deep=False)
@@ -416,19 +416,19 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       lst = ...  # type: List[Tuple[str, int]]
     """)
 
-  def testIntInit(self):
+  def test_int_init(self):
     _, errors = self.InferWithErrors("""
       int(0, 1)  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"Union\[bytes, str\].*int"})
 
-  def testRemovedBuiltins(self):
+  def test_removed_builtins(self):
     self.CheckWithErrors("""
       long  # name-error
       {}.has_key  # attribute-error
     """)
 
-  def testRange(self):
+  def test_range(self):
     ty, _ = self.InferWithErrors("""
       xrange(3)  # name-error
       v = range(3)
@@ -443,20 +443,20 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       z: int
     """)
 
-  def testCreateStr(self):
+  def test_create_str(self):
     self.Check("""
       str(b"foo", "utf-8")
     """)
 
-  def testBytesConstant(self):
+  def test_bytes_constant(self):
     ty = self.Infer("v = b'foo'")
     self.assertTypesMatchPytd(ty, "v = ...  # type: bytes")
 
-  def testUnicodeConstant(self):
+  def test_unicode_constant(self):
     ty = self.Infer("v = 'foo\\u00e4'")
     self.assertTypesMatchPytd(ty, "v = ...  # type: str")
 
-  def testMemoryview(self):
+  def test_memoryview(self):
     self.Check("""
       v = memoryview(b'abc')
       v.format
@@ -475,7 +475,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       v[1:] = b'bc'
     """)
 
-  def testMemoryviewMethods(self):
+  def test_memoryview_methods(self):
     ty = self.Infer("""
       v1 = memoryview(b'abc')
       v2 = v1.tobytes()
@@ -490,7 +490,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       v4 = ...  # type: str
     """)
 
-  def testMemoryviewContextmanager(self):
+  def test_memoryview_contextmanager(self):
     ty = self.Infer("""
       with memoryview(b'abc') as v:
         pass
@@ -499,7 +499,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       v = ...  # type: memoryview
     """)
 
-  def testArrayTobytes(self):
+  def test_array_tobytes(self):
     ty = self.Infer("""
       import array
       def t_testTobytes():
@@ -510,7 +510,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       def t_testTobytes() -> bytes
     """)
 
-  def testIteratorBuiltins(self):
+  def test_iterator_builtins(self):
     ty = self.Infer("""
       v1 = map(int, ["0"])
       v2 = zip([0], [1])
@@ -521,7 +521,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       v2 = ...  # type: Iterator[Tuple[int, int]]
     """)
 
-  def testNext(self):
+  def test_next(self):
     ty = self.Infer("""
       itr = iter((1, 2))
       v1 = itr.__next__()
@@ -533,7 +533,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       v2 = ...  # type: int
     """)
 
-  def testAliasedError(self):
+  def test_aliased_error(self):
     # In Python 3, EnvironmentError and IOError became aliases for OSError.
     self.Check("""
       def f(e: OSError): ...
@@ -542,7 +542,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       g(EnvironmentError())
     """)
 
-  def testOSErrorSubclasses(self):
+  def test_os_error_subclasses(self):
     # New in Python 3:
     self.Check("""
       BlockingIOError
@@ -558,25 +558,25 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       TimeoutError
     """)
 
-  def testRawInput(self):
+  def test_raw_input(self):
     # Removed in Python 3:
     self.CheckWithErrors("raw_input  # name-error")
 
-  def testClear(self):
+  def test_clear(self):
     # new in Python 3
     self.Check("""
       bytearray().clear()
       [].clear()
     """)
 
-  def testCopy(self):
+  def test_copy(self):
     # new in python 3
     self.Check("""
       bytearray().copy()
       [].copy()
     """)
 
-  def testRound(self):
+  def test_round(self):
     ty = self.Infer("""
       v1 = round(4.2)
       v2 = round(4.2, 1)
@@ -586,7 +586,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       v2: float
     """)
 
-  def testIntBytesConversion(self):
+  def test_int_bytes_conversion(self):
     ty = self.Infer("""
       bytes_obj = (42).to_bytes(1, "little")
       int_obj = int.from_bytes(b"*", "little")
@@ -596,13 +596,13 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       int_obj: int
     """)
 
-  def testUnicodeError(self):
+  def test_unicode_error(self):
     self.Check("""
       UnicodeDecodeError("", b"", 0, 0, "")
       UnicodeEncodeError("", u"", 0, 0, "")
     """)
 
-  def testMinMax(self):
+  def test_min_max(self):
     ty = self.Infer("""
       x1 = min([1, 2, 3], default=3)
       x2 = min((), default='')
@@ -619,14 +619,14 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       y2 = ...  # type: Any
     """)
 
-  def testStrIsNotInt(self):
+  def test_str_is_not_int(self):
     self.CheckWithErrors("""
       from typing import SupportsInt
       def f(x: SupportsInt): pass
       f("")  # wrong-arg-types
     """)
 
-  def testStrIsNotFloat(self):
+  def test_str_is_not_float(self):
     self.CheckWithErrors("""
       from typing import SupportsFloat
       def f(x: SupportsFloat): pass

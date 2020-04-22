@@ -7,7 +7,7 @@ from pytype.tests import test_base
 class PickleTest(test_base.TargetPython3BasicTest):
   """Tests for loading and saving pickled files."""
 
-  def testContainer(self):
+  def test_container(self):
     pickled = self.Infer("""
       import collections, json
       def f() -> collections.OrderedDict[int, int]:

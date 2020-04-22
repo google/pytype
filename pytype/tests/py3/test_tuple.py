@@ -7,7 +7,7 @@ from pytype.tests import test_base
 class TupleTest(test_base.TargetPython3BasicTest):
   """Tests for __builtin__.tuple."""
 
-  def testUnpackInlineTuple(self):
+  def test_unpack_inline_tuple(self):
     ty = self.Infer("""
       from typing import Tuple
       def f(x: Tuple[str, int]):
@@ -21,7 +21,7 @@ class TupleTest(test_base.TargetPython3BasicTest):
       v2 = ...  # type: int
     """)
 
-  def testUnpackTupleOrTuple(self):
+  def test_unpack_tuple_or_tuple(self):
     self.Check("""
       def f():
         if __random__:
@@ -33,7 +33,7 @@ class TupleTest(test_base.TargetPython3BasicTest):
         return b
     """)
 
-  def testUnpackTupleOrList(self):
+  def test_unpack_tuple_or_list(self):
     self.Check("""
       def f():
         if __random__:
@@ -45,14 +45,14 @@ class TupleTest(test_base.TargetPython3BasicTest):
         return b
     """)
 
-  def testUnpackAmbiguousTuple(self):
+  def test_unpack_ambiguous_tuple(self):
     self.Check("""
       def f() -> tuple:
         return __any_object__
       a, b = f()
     """)
 
-  def testTuplePrinting(self):
+  def test_tuple_printing(self):
     _, errors = self.InferWithErrors("""
       from typing import Tuple
       def f(x: Tuple[str, ...]):
@@ -78,7 +78,7 @@ class TupleTest(test_base.TargetPython3BasicTest):
         "e3": r"%s.*%s" % (y, tuple_int),
         "e4": r"%s.*%s" % (y, tuple_str_str)})
 
-  def testInlineTuple(self):
+  def test_inline_tuple(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Tuple
@@ -96,7 +96,7 @@ class TupleTest(test_base.TargetPython3BasicTest):
         g(foo.A())
       """, pythonpath=[d.path])
 
-  def testInlineTupleError(self):
+  def test_inline_tuple_error(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Tuple
@@ -120,7 +120,7 @@ class TupleTest(test_base.TargetPython3BasicTest):
           "e2": r"%s.*%s" % (expected, actual),
           "e3": r"%s.*foo\.A" % expected})
 
-  def testTupleCombinationExplosion(self):
+  def test_tuple_combination_explosion(self):
     self.Check("""
       from typing import Any, Dict, List, Tuple, Union
       AlphaNum = Union[str, int]
@@ -128,7 +128,7 @@ class TupleTest(test_base.TargetPython3BasicTest):
         return list(sorted((k, v) for k, v in x.items() if k in {}))
     """)
 
-  def testTupleInContainer(self):
+  def test_tuple_in_container(self):
     ty = self.Infer("""
       from typing import List, Tuple
       def f(l: List[Tuple[int, List[int]]]):
@@ -140,7 +140,7 @@ class TupleTest(test_base.TargetPython3BasicTest):
       def f(l: List[Tuple[int, List[int]]]) -> List[int]: ...
     """)
 
-  def testMismatchedPyiTuple(self):
+  def test_mismatched_pyi_tuple(self):
     with file_utils.Tempdir() as d:
       d.create_file("bar.pyi", """
         class Bar(tuple): ...
@@ -157,7 +157,7 @@ class TupleTest(test_base.TargetPython3BasicTest):
 class TupleTestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for __builtin__.tuple."""
 
-  def testIteration(self):
+  def test_iteration(self):
     ty = self.Infer("""
       class Foo(object):
         mytuple = (1, "foo", 3j)
@@ -173,7 +173,7 @@ class TupleTestPython3Feature(test_base.TargetPython3FeatureTest):
       r = ...  # type: List[int or str or complex]
     """)
 
-  def testBadUnpackingWithSlurp(self):
+  def test_bad_unpacking_with_slurp(self):
     _, errors = self.InferWithErrors("""
       a, *b, c = (1,)  # bad-unpacking[e]
     """)

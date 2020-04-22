@@ -10,7 +10,7 @@ import unittest
 class TestTransforms(parser_test_base.ParserTest):
   """Tests the code in transforms.py."""
 
-  def testRemoveMutableList(self):
+  def test_remove_mutable_list(self):
     # Simple test for RemoveMutableParameters, with simplified list class
     src = textwrap.dedent("""
       T = TypeVar('T')
@@ -42,7 +42,7 @@ class TestTransforms(parser_test_base.ParserTest):
     ast = transforms.RemoveMutableParameters(ast)
     self.AssertSourceEquals(ast, expected)
 
-  def testRemoveMutableDict(self):
+  def test_remove_mutable_dict(self):
     # Test for RemoveMutableParameters, with simplified dict class.
     src = textwrap.dedent("""
       K = TypeVar('K')

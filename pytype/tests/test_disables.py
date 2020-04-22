@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class DisableTest(test_base.TargetIndependentTest):
   """Test error disabling."""
 
-  def testInvalidDirective(self):
+  def test_invalid_directive(self):
     _, errors = self.InferWithErrors("""
       x = 1  # pytype: this is not a valid pytype directive.  # invalid-directive
     """)
@@ -14,7 +14,7 @@ class DisableTest(test_base.TargetIndependentTest):
     # return False.
     self.assertFalse(errors.has_error())
 
-  def testInvalidDisableErrorName(self):
+  def test_invalid_disable_error_name(self):
     _, errors = self.InferWithErrors("""
       x = 1  # pytype: disable=not-an-error.  # invalid-directive[e]
     """)
@@ -23,14 +23,14 @@ class DisableTest(test_base.TargetIndependentTest):
     # return False.
     self.assertFalse(errors.has_error())
 
-  def testDisableError(self):
+  def test_disable_error(self):
     self.InferWithErrors("""
       x = a  # name-error
       x = b  # pytype: disable=name-error
       x = c  # name-error
     """)
 
-  def testOpenEndedDirective(self):
+  def test_open_ended_directive(self):
     """Test that disables in the middle of the file can't be left open-ended."""
     _, errors = self.InferWithErrors("""
       '''This is a docstring.
@@ -57,7 +57,7 @@ class DisableTest(test_base.TargetIndependentTest):
     # late-directive is a warning
     self.assertFalse(errors.has_error())
 
-  def testSkipFile(self):
+  def test_skip_file(self):
     self.Check("""
       # pytype: skip-file
       name_error

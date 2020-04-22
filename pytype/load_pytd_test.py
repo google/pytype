@@ -21,7 +21,7 @@ class ImportPathsTest(unittest.TestCase):
 
   python_version = (2, 7)
 
-  def testFilepathToModule(self):
+  def test_filepath_to_module(self):
     # (filename, pythonpath, expected)
     test_cases = [
         ("foo/bar/baz.py", [""], "foo.bar.baz"),
@@ -44,12 +44,12 @@ class ImportPathsTest(unittest.TestCase):
       module = load_pytd.get_module_name(filename, pythonpath)
       self.assertEqual(module, expected)
 
-  def testBuiltinSys(self):
+  def test_builtin_sys(self):
     loader = load_pytd.Loader("base", self.python_version)
     ast = loader.import_name("sys")
     self.assertTrue(ast.Lookup("sys.exit"))
 
-  def testBasic(self):
+  def test_basic(self):
     with file_utils.Tempdir() as d:
       d.create_file("path/to/some/module.pyi", "def foo(x:int) -> str")
       loader = load_pytd.Loader(
@@ -57,7 +57,7 @@ class ImportPathsTest(unittest.TestCase):
       ast = loader.import_name("path.to.some.module")
       self.assertTrue(ast.Lookup("path.to.some.module.foo"))
 
-  def testPath(self):
+  def test_path(self):
     with file_utils.Tempdir() as d1:
       with file_utils.Tempdir() as d2:
         d1.create_file("dir1/module1.pyi", "def foo1() -> str")
@@ -69,14 +69,14 @@ class ImportPathsTest(unittest.TestCase):
         self.assertTrue(module1.Lookup("dir1.module1.foo1"))
         self.assertTrue(module2.Lookup("dir2.module2.foo2"))
 
-  def testInit(self):
+  def test_init(self):
     with file_utils.Tempdir() as d1:
       d1.create_file("baz/__init__.pyi", "x = ... # type: int")
       loader = load_pytd.Loader(
           "base", self.python_version, pythonpath=[d1.path])
       self.assertTrue(loader.import_name("baz").Lookup("baz.x"))
 
-  def testBuiltins(self):
+  def test_builtins(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", "x = ... # type: int")
       loader = load_pytd.Loader(
@@ -85,14 +85,14 @@ class ImportPathsTest(unittest.TestCase):
       self.assertEqual("__builtin__.int", mod.Lookup("foo.x").type.cls.name)
       self.assertEqual("__builtin__.int", mod.Lookup("foo.x").type.name)
 
-  def testNoInit(self):
+  def test_no_init(self):
     with file_utils.Tempdir() as d:
       d.create_directory("baz")
       loader = load_pytd.Loader(
           "base", self.python_version, pythonpath=[d.path])
       self.assertTrue(loader.import_name("baz"))
 
-  def testNoInitImportsMap(self):
+  def test_no_init_imports_map(self):
     with file_utils.Tempdir() as d:
       d.create_directory("baz")
       os.chdir(d.path)
@@ -100,12 +100,12 @@ class ImportPathsTest(unittest.TestCase):
           "base", self.python_version, imports_map={}, pythonpath=[""])
       self.assertFalse(loader.import_name("baz"))
 
-  def testStdlib(self):
+  def test_stdlib(self):
     loader = load_pytd.Loader("base", self.python_version)
     ast = loader.import_name("StringIO")
     self.assertTrue(ast.Lookup("StringIO.StringIO"))
 
-  def testDeepDependency(self):
+  def test_deep_dependency(self):
     with file_utils.Tempdir() as d:
       d.create_file("module1.pyi", "def get_bar() -> module2.Bar")
       d.create_file("module2.pyi", "class Bar:\n  pass")
@@ -115,7 +115,7 @@ class ImportPathsTest(unittest.TestCase):
       f, = module1.Lookup("module1.get_bar").signatures
       self.assertEqual("module2.Bar", f.return_type.cls.name)
 
-  def testCircularDependency(self):
+  def test_circular_dependency(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def get_bar() -> bar.Bar
@@ -136,7 +136,7 @@ class ImportPathsTest(unittest.TestCase):
       self.assertEqual("bar.Bar", f1.return_type.cls.name)
       self.assertEqual("foo.Foo", f2.return_type.cls.name)
 
-  def testRelative(self):
+  def test_relative(self):
     with file_utils.Tempdir() as d:
       d.create_file("__init__.pyi", "base = ...  # type: ?")
       d.create_file("path/__init__.pyi", "path = ...  # type: ?")
@@ -154,11 +154,11 @@ class ImportPathsTest(unittest.TestCase):
       self.assertTrue(to.Lookup("path.to.to"))
       self.assertTrue(path.Lookup("path.path"))
 
-  def testTypeShed(self):
+  def test_typeshed(self):
     loader = load_pytd.Loader("base", self.python_version)
     self.assertTrue(loader.import_name("UserDict"))
 
-  def testResolveAlias(self):
+  def test_resolve_alias(self):
     with file_utils.Tempdir() as d:
       d.create_file("module1.pyi", """
           from typing import List
@@ -173,7 +173,7 @@ class ImportPathsTest(unittest.TestCase):
       f, = module2.Lookup("module2.f").signatures
       self.assertEqual("List[int]", pytd_utils.Print(f.return_type))
 
-  def testImportMapCongruence(self):
+  def test_import_map_congruence(self):
     with file_utils.Tempdir() as d:
       foo_path = d.create_file("foo.pyi", "class X: ...")
       bar_path = d.create_file("bar.pyi", "X = ...  # type: another.foo.X")
@@ -208,7 +208,7 @@ class ImportPathsTest(unittest.TestCase):
       self.assertEqual("empty1", empty1.name)
       self.assertEqual("empty2", empty2.name)
 
-  def testPackageRelativeImport(self):
+  def test_package_relative_import(self):
     with file_utils.Tempdir() as d:
       d.create_file("pkg/foo.pyi", "class X: ...")
       d.create_file("pkg/bar.pyi", """
@@ -220,7 +220,7 @@ class ImportPathsTest(unittest.TestCase):
       f = bar.Lookup("pkg.bar.y")
       self.assertEqual("pkg.foo.X", f.type.name)
 
-  def testDirectoryImport(self):
+  def test_directory_import(self):
     with file_utils.Tempdir() as d:
       d.create_file("pkg/sub/__init__.pyi", """
           from .foo import *
@@ -234,7 +234,7 @@ class ImportPathsTest(unittest.TestCase):
       ast = loader.import_name("pkg.sub")
       self.assertTrue(ast.Lookup("pkg.sub.X"))
 
-  def testDiamondImport(self):
+  def test_diamond_import(self):
     """Should not fail on importing a module via two paths."""
     with file_utils.Tempdir() as d:
       d.create_file("pkg/sub/__init__.pyi", """
@@ -250,7 +250,7 @@ class ImportPathsTest(unittest.TestCase):
       ast = loader.import_name("pkg.sub")
       self.assertTrue(ast.Lookup("pkg.sub.X"))
 
-  def testGetResolvedModules(self):
+  def test_get_resolved_modules(self):
     with file_utils.Tempdir() as d:
       filename = d.create_file("dir/module.pyi", "def foo() -> str")
       loader = load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
@@ -262,7 +262,7 @@ class ImportPathsTest(unittest.TestCase):
       self.assertEqual(module.filename, filename)
       self.assertEqual(module.ast, ast)
 
-  def testCircularImport(self):
+  def test_circular_import(self):
     with file_utils.Tempdir() as d:
       d.create_file("os2/__init__.pyi", """
         from . import path as path
@@ -280,7 +280,7 @@ class ImportPathsTest(unittest.TestCase):
       self.assertEqual(ast.Lookup("os2.path._PathType").type.name,
                        "__builtin__.str")
 
-  def testCircularImportWithExternalType(self):
+  def test_circular_import_with_external_type(self):
     with file_utils.Tempdir() as d:
       d.create_file("os2/__init__.pyi", """
         from posix2 import stat_result as stat_result
@@ -300,7 +300,7 @@ class ImportPathsTest(unittest.TestCase):
       loader.import_name("os2.path")
       loader.import_name("posix2")
 
-  def testUnionAlias(self):
+  def test_union_alias(self):
     with file_utils.Tempdir() as d:
       d.create_file("test.pyi", """
         from typing import Union as _UnionT
@@ -311,7 +311,7 @@ class ImportPathsTest(unittest.TestCase):
       x = ast.Lookup("test.x")
       self.assertIsInstance(x.type, pytd.UnionType)
 
-  def testOptionalAlias(self):
+  def test_optional_alias(self):
     with file_utils.Tempdir() as d:
       d.create_file("test.pyi", """
         from typing import Optional as _OptionalT
@@ -322,7 +322,7 @@ class ImportPathsTest(unittest.TestCase):
       x = ast.Lookup("test.x")
       self.assertIsInstance(x.type, pytd.UnionType)
 
-  def testIntersectionAlias(self):
+  def test_intersection_alias(self):
     with file_utils.Tempdir() as d:
       d.create_file("test.pyi", """
         from typing import Intersection as _IntersectionT
@@ -341,7 +341,7 @@ class PickledPyiLoaderTest(unittest.TestCase):
 
   python_version = (2, 7)
 
-  def _CreateFiles(self, tempdir):
+  def _create_files(self, tempdir):
     src = """
         import module2
         from typing import List
@@ -365,55 +365,55 @@ class PickledPyiLoaderTest(unittest.TestCase):
             pass
     """)
 
-  def _GetPath(self, tempdir, filename):
+  def _get_path(self, tempdir, filename):
     return os.path.join(tempdir.path, filename)
 
-  def _LoadAst(self, tempdir, module):
+  def _load_ast(self, tempdir, module):
     loader = load_pytd.Loader(
         base_module=module.module_name, python_version=self.python_version,
         pythonpath=[tempdir.path])
     return loader, loader.load_file(
-        module.module_name, self._GetPath(tempdir, module.file_name))
+        module.module_name, self._get_path(tempdir, module.file_name))
 
-  def _PickleModules(self, loader, tempdir, *modules):
+  def _pickle_modules(self, loader, tempdir, *modules):
     for module in modules:
       serialize_ast.StoreAst(
           loader._modules[module.module_name].ast,
-          self._GetPath(tempdir, module.file_name + ".pickled"))
+          self._get_path(tempdir, module.file_name + ".pickled"))
 
-  def _LoadPickledModule(self, tempdir, module):
+  def _load_pickled_module(self, tempdir, module):
     pickle_loader = load_pytd.PickledPyiLoader(
         base_module=None, python_version=self.python_version,
         pythonpath=[tempdir.path])
     return pickle_loader.load_file(
-        module.module_name, self._GetPath(tempdir, module.file_name))
+        module.module_name, self._get_path(tempdir, module.file_name))
 
-  def testLoadWithSameModuleName(self):
+  def test_load_with_same_module_name(self):
     with file_utils.Tempdir() as d:
-      self._CreateFiles(tempdir=d)
+      self._create_files(tempdir=d)
       module1 = _Module(module_name="foo.bar.module1", file_name="module1.pyi")
       module2 = _Module(module_name="module2", file_name="module2.pyi")
-      loader, ast = self._LoadAst(tempdir=d, module=module1)
-      self._PickleModules(loader, d, module1, module2)
-      pickled_ast_filename = self._GetPath(d, module1.file_name + ".pickled")
+      loader, ast = self._load_ast(tempdir=d, module=module1)
+      self._pickle_modules(loader, d, module1, module2)
+      pickled_ast_filename = self._get_path(d, module1.file_name + ".pickled")
       result = serialize_ast.StoreAst(ast, pickled_ast_filename)
       self.assertIsNone(result)
 
-      loaded_ast = self._LoadPickledModule(d, module1)
+      loaded_ast = self._load_pickled_module(d, module1)
       self.assertTrue(loaded_ast)
       self.assertIsNot(loaded_ast, ast)
       self.assertTrue(pytd_utils.ASTeq(ast, loaded_ast))
       loaded_ast.Visit(visitors.VerifyLookup())
 
-  def testStarImport(self):
+  def test_star_import(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", "class A(object): ...")
       d.create_file("bar.pyi", "from foo import *")
       foo = _Module(module_name="foo", file_name="foo.pyi")
       bar = _Module(module_name="bar", file_name="bar.pyi")
-      loader, _ = self._LoadAst(d, module=bar)
-      self._PickleModules(loader, d, foo, bar)
-      loaded_ast = self._LoadPickledModule(d, bar)
+      loader, _ = self._load_ast(d, module=bar)
+      self._pickle_modules(loader, d, foo, bar)
+      loaded_ast = self._load_pickled_module(d, bar)
       loaded_ast.Visit(visitors.VerifyLookup())
       self.assertMultiLineEqual(pytd_utils.Print(loaded_ast),
                                 textwrap.dedent("""
@@ -421,20 +421,20 @@ class PickledPyiLoaderTest(unittest.TestCase):
 
         bar.A = foo.A""").lstrip())
 
-  def testFunctionAlias(self):
+  def test_function_alias(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(): ...
         g = f
       """)
       foo = _Module(module_name="foo", file_name="foo.pyi")
-      loader, _ = self._LoadAst(d, module=foo)
-      self._PickleModules(loader, d, foo)
-      loaded_ast = self._LoadPickledModule(d, foo)
+      loader, _ = self._load_ast(d, module=foo)
+      self._pickle_modules(loader, d, foo)
+      loaded_ast = self._load_pickled_module(d, foo)
       g = loaded_ast.Lookup("foo.g")
       self.assertEqual(g.type.function, loaded_ast.Lookup("foo.f"))
 
-  def testPackageRelativeImport(self):
+  def test_package_relative_import(self):
     with file_utils.Tempdir() as d:
       d.create_file("pkg/foo.pyi", "class X: ...")
       d.create_file("pkg/bar.pyi", """
@@ -442,12 +442,12 @@ class PickledPyiLoaderTest(unittest.TestCase):
           y = ...  # type: X""")
       foo = _Module(module_name="pkg.foo", file_name="pkg/foo.pyi")
       bar = _Module(module_name="pkg.bar", file_name="pkg/bar.pyi")
-      loader, _ = self._LoadAst(d, module=bar)
-      self._PickleModules(loader, d, foo, bar)
-      loaded_ast = self._LoadPickledModule(d, bar)
+      loader, _ = self._load_ast(d, module=bar)
+      self._pickle_modules(loader, d, foo, bar)
+      loaded_ast = self._load_pickled_module(d, bar)
       loaded_ast.Visit(visitors.VerifyLookup())
 
-  def testPickledBuiltins(self):
+  def test_pickled_builtins(self):
     with file_utils.Tempdir() as d:
       filename = d.create_file("builtins.pickle")
       foo_path = d.create_file("foo.pickle", """
@@ -479,7 +479,7 @@ class Python3Test(unittest.TestCase):
     super(Python3Test, self).setUp()
     self.options = config.Options.create(python_version=self.python_version)
 
-  def testPython3Builtins(self):
+  def test_python3_builtins(self):
     # Test that we read python3 builtins from builtin.pytd if we pass a python3
     # version to the loader.
     with file_utils.Tempdir() as d:

@@ -11,7 +11,7 @@ class LogicTest(test_base.TargetIndependentTest):
   to decide whether we need to throw an exception in another.
   """
 
-  def testGetItemInLoop(self):
+  def test_getitem_in_loop(self):
     # Extracted from unicode_urlparse.py:
     ty = self.Infer("""
       def f(args_list):
