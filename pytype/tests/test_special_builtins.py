@@ -7,12 +7,12 @@ from pytype.tests import test_base
 class SpecialBuiltinsTest(test_base.TargetIndependentTest):
   """Tests for special_builtins.py."""
 
-  def testNext(self):
+  def test_next(self):
     self.assertNoCrash(self.Check, """
       next(None)
     """)
 
-  def testNext2(self):
+  def test_next2(self):
     self.assertNoCrash(self.Check, """
       class Foo(object):
         def a(self):
@@ -23,12 +23,12 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
           next(self._foo)
     """)
 
-  def testAbs(self):
+  def test_abs(self):
     self.assertNoCrash(self.Check, """
       abs(None)
     """)
 
-  def testPropertyMatching(self):
+  def test_property_matching(self):
     self.Check("""
       class A():
         def setter(self, other):
@@ -39,7 +39,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
           setattr(cls, property_name, property(self.getter, self.setter))
     """)
 
-  def testPropertyFromPyi(self):
+  def test_property_from_pyi(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo(object):
@@ -56,7 +56,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
           foo = ...  # type: int
       """)
 
-  def testPropertyFromNativeFunction(self):
+  def test_property_from_native_function(self):
     ty = self.Infer("""
       class Foo(dict):
         foo = property(fget=dict.__getitem__)
@@ -67,7 +67,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
         foo = ...  # type: Any
     """)
 
-  def testPropertyFromPyiWithTypeParameter(self):
+  def test_property_from_pyi_with_type_parameter(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Union
@@ -85,7 +85,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
           foo = ...  # type: str or int
       """)
 
-  def testCallableIfSplitting(self):
+  def test_callable_if_splitting(self):
     ty = self.Infer("""
       def foo(x):
         if callable(x):
@@ -104,7 +104,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
       def foo(x) -> Any: ...
     """)
 
-  def testCallable(self):
+  def test_callable(self):
     ty = self.Infer("""
       class A():
         def __call__(self):
@@ -167,7 +167,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
           pass
     """)
 
-  def testPropertyChange(self):
+  def test_property_change(self):
     ty = self.Infer("""
       class Foo(object):
         def __init__(self):
@@ -190,7 +190,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
       def f() -> Tuple[int, str]
     """)
 
-  def testDifferentPropertyInstances(self):
+  def test_different_property_instances(self):
     errors = self.CheckWithErrors("""
       class Foo(object):
         def __init__(self):

@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class StdlibTests(test_base.TargetPython27FeatureTest):
   """Tests for files in typeshed/stdlib."""
 
-  def testPosix(self):
+  def test_posix(self):
     ty = self.Infer("""
       import posix
       x = posix.urandom(10)
@@ -16,13 +16,13 @@ class StdlibTests(test_base.TargetPython27FeatureTest):
       x = ...  # type: str
     """)
 
-  def testXRange(self):
+  def test_xrange(self):
     self.Check("""
       import random
       random.sample(xrange(10), 5)
     """)
 
-  def testStringTypes(self):
+  def test_string_types(self):
     ty = self.Infer("""
       import types
       if isinstance("", types.StringTypes):
@@ -38,14 +38,14 @@ class StdlibTests(test_base.TargetPython27FeatureTest):
       z = ...  # type: int
     """)
 
-  def testDefaultDict(self):
+  def test_defaultdict(self):
     self.Check("""
       import collections
       import itertools
       ids = collections.defaultdict(itertools.count(17).next)
     """)
 
-  def testSysVersionInfoLt(self):
+  def test_sys_version_info_lt(self):
     ty = self.Infer("""
       import sys
       if sys.version_info[0] < 3:
@@ -58,7 +58,7 @@ class StdlibTests(test_base.TargetPython27FeatureTest):
       v = ...  # type: int
     """)
 
-  def testSysVersionInfoLe(self):
+  def test_sys_version_info_le(self):
     ty = self.Infer("""
       import sys
       if sys.version_info[0] <= 2:
@@ -71,7 +71,7 @@ class StdlibTests(test_base.TargetPython27FeatureTest):
       v = ...  # type: int
     """)
 
-  def testSysVersionInfoEq(self):
+  def test_sys_version_info_eq(self):
     ty = self.Infer("""
       import sys
       if sys.version_info[0] == 2:
@@ -86,7 +86,7 @@ class StdlibTests(test_base.TargetPython27FeatureTest):
       v = ...  # type: int
     """)
 
-  def testSysVersionInfoGe(self):
+  def test_sys_version_info_ge(self):
     ty = self.Infer("""
       import sys
       if sys.version_info[0] >= 3:
@@ -99,7 +99,7 @@ class StdlibTests(test_base.TargetPython27FeatureTest):
       v = ...  # type: str
     """)
 
-  def testSysVersionInfoGt(self):
+  def test_sys_version_info_gt(self):
     ty = self.Infer("""
       import sys
       if sys.version_info[0] > 2:
@@ -112,7 +112,7 @@ class StdlibTests(test_base.TargetPython27FeatureTest):
       v = ...  # type: str
     """)
 
-  def testSysVersionInfoNamedAttribute(self):
+  def test_sys_version_info_named_attribute(self):
     ty = self.Infer("""
       import sys
       if sys.version_info.major == 2:

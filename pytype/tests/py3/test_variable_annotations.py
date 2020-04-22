@@ -7,7 +7,7 @@ from pytype.tests import test_base
 class VariableAnnotationsBasicTest(test_base.TargetPython3BasicTest):
   """Tests for PEP526 variable annotations."""
 
-  def testPyiAnnotations(self):
+  def test_pyi_annotations(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List
@@ -33,7 +33,7 @@ class VariableAnnotationsBasicTest(test_base.TargetPython3BasicTest):
 class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
   """Tests for PEP526 variable annotations."""
 
-  def testInferTypes(self):
+  def test_infer_types(self):
     ty = self.Infer("""
       from typing import List
 
@@ -58,7 +58,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
           b: int
     """)
 
-  def testIllegalAnnotations(self):
+  def test_illegal_annotations(self):
     _, errors = self.InferWithErrors("""
       from typing import List, TypeVar, NoReturn
 
@@ -78,7 +78,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
         "e4": r"type parameter.*variable annotation",
         "e5": r"Must be constant", "e6": r"NoReturn is not allowed"})
 
-  def testUninitializedClassAnnotation(self):
+  def test_uninitialized_class_annotation(self):
     ty = self.Infer("""
       class Foo:
         bar: int
@@ -91,7 +91,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
         def baz(self) -> int
     """)
 
-  def testUninitializedModuleAnnotation(self):
+  def test_uninitialized_module_annotation(self):
     ty = self.Infer("""
       foo: int
       bar = foo
@@ -101,14 +101,14 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
       bar: int
     """)
 
-  def testOverwriteAnnotationsDict(self):
+  def test_overwrite_annotations_dict(self):
     errors = self.CheckWithErrors("""
       __annotations__ = None
       foo: int  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"None.*__setitem__"})
 
-  def testShadowNone(self):
+  def test_shadow_none(self):
     ty = self.Infer("""
       v: int = None
     """)
@@ -116,14 +116,14 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
       v: int
     """)
 
-  def testOverwriteAnnotation(self):
+  def test_overwrite_annotation(self):
     ty = self.Infer("""
       x: int
       x = ""
     """)
     self.assertTypesMatchPytd(ty, "x: str")
 
-  def testOverwriteAnnotationInClass(self):
+  def test_overwrite_annotation_in_class(self):
     ty = self.Infer("""
       class Foo:
         x: int
@@ -134,7 +134,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
         x: str
     """)
 
-  def testClassVariableForwardReference(self):
+  def test_class_variable_forward_reference(self):
     ty = self.Infer("""
       class A(object):
         a: 'A' = ...
@@ -146,7 +146,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
         x: int
     """)
 
-  def testCallableForwardReference(self):
+  def test_callable_forward_reference(self):
     # Callable[['A']...] creates an instance of A during output generation,
     # which previously caused a crash when iterating over existing instances.
     ty = self.Infer("""
@@ -162,7 +162,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
         def __init__(self, fn: Callable[[A], bool]) -> None: ...
     """)
 
-  def testMultipleForwardReference(self):
+  def test_multiple_forward_reference(self):
     ty = self.Infer("""
       from typing import Dict
       class A:
@@ -177,7 +177,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
       class B: ...
     """)
 
-  def testNonAnnotationsDict(self):
+  def test_non_annotations_dict(self):
     # Regression test to make sure `x` isn't confused with `__annotations__`.
     self.Check("""
       class K(dict):
@@ -187,7 +187,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
       x['z'] = 5
     """)
 
-  def testFunctionLocalAnnotation(self):
+  def test_function_local_annotation(self):
     ty = self.Infer("""
       def f():
         x: int = None
@@ -197,11 +197,11 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
 
   @test_base.skip("directors._VariableAnnotation assumes a variable annotation "
                   "starts at the beginning of the line.")
-  def testMultiStatementLine(self):
+  def test_multi_statement_line(self):
     ty = self.Infer("if __random__: v: int = None")
     self.assertTypesMatchPytd(ty, "v: int")
 
-  def testRetypeDefinedVariable(self):
+  def test_retype_defined_variable(self):
     errors = self.CheckWithErrors("""
       v = 0
       v: str  # invalid-annotation[e]
@@ -209,14 +209,14 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
     self.assertErrorRegexes(
         errors, {"e": r"'str' for v.*Annotating an already defined variable"})
 
-  def testMultiLineAssignment(self):
+  def test_multi_line_assignment(self):
     ty = self.Infer("""
       v: int = (
           None)
     """)
     self.assertTypesMatchPytd(ty, "v: int")
 
-  def testComplexAssignment(self):
+  def test_complex_assignment(self):
     # Tests that when an assignment contains multiple STORE_* opcodes on
     # different lines, we associate the annotation with the right one.
     ty = self.Infer("""

@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class SliceTest(test_base.TargetPython27FeatureTest):
   """Tests for the SLICE_<n> opcodes, as well as for __getitem__(slice)."""
 
-  def testCustomGetSlice(self):
+  def test_custom_getslice(self):
     ty = self.Infer("""
       class Foo(object):
         def __getslice__(self, i, j):

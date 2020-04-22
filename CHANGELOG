@@ -1,3 +1,11 @@
+Version 2020.04.22
+* Drop support for running pytype under Python 2.
+* Report [not-supported-yet] when aliasing Union[T, ...].
+* Add typing.OrderedDict.
+* Improve how annotations are tracked and applied.
+* Allow functions to match types.FunctionType.
+* Don't report [invalid-typevar] when type() is called on a TypeVar.
+
 Version 2020.04.01
 * Do some test restructuring and cleanup.
 

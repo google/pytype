@@ -81,10 +81,10 @@ class MatcherTest(unittest.TestCase):
     for match in self._match_var(left, right):
       self.assertIsNone(match)
 
-  def testBasic(self):
+  def test_basic(self):
     self.assertMatch(abstract.Empty(self.vm), abstract.Empty(self.vm))
 
-  def testType(self):
+  def test_type(self):
     left = self._make_class("dummy")
     type_parameters = {
         abstract_utils.T: abstract.TypeParameter(abstract_utils.T, self.vm)}
@@ -94,13 +94,13 @@ class MatcherTest(unittest.TestCase):
       instance_binding, = result[abstract_utils.T].bindings
       self.assertEqual(instance_binding.data.cls, left)
 
-  def testUnion(self):
+  def test_union(self):
     left_option1 = self._make_class("o1")
     left_option2 = self._make_class("o2")
     left = abstract.Union([left_option1, left_option2], self.vm)
     self.assertMatch(left, self.type_type)
 
-  def testMetaclass(self):
+  def test_metaclass(self):
     left = self._make_class("left")
     meta1 = self._make_class("m1")
     meta2 = self._make_class("m2")
@@ -110,21 +110,21 @@ class MatcherTest(unittest.TestCase):
     self.assertMatch(left, meta1)
     self.assertMatch(left, meta2)
 
-  def testEmptyAgainstClass(self):
+  def test_empty_against_class(self):
     var = self.vm.program.NewVariable()
     right = self._make_class("bar")
     result = self.vm.matcher.match_var_against_type(
         var, right, {}, self.vm.root_cfg_node, {})
     self.assertEqual(result, {})
 
-  def testEmptyVarAgainstEmpty(self):
+  def test_empty_var_against_empty(self):
     var = self.vm.program.NewVariable()
     right = abstract.Empty(self.vm)
     result = self.vm.matcher.match_var_against_type(
         var, right, {}, self.vm.root_cfg_node, {})
     self.assertEqual(result, {})
 
-  def testEmptyAgainstTypeParameter(self):
+  def test_empty_against_type_parameter(self):
     var = self.vm.program.NewVariable()
     right = abstract.TypeParameter("T", self.vm)
     result = self.vm.matcher.match_var_against_type(
@@ -132,34 +132,34 @@ class MatcherTest(unittest.TestCase):
     six.assertCountEqual(self, result.keys(), ["T"])
     self.assertFalse(result["T"].bindings)
 
-  def testEmptyAgainstUnsolvable(self):
+  def test_empty_against_unsolvable(self):
     var = self.vm.program.NewVariable()
     right = abstract.Empty(self.vm)
     result = self.vm.matcher.match_var_against_type(
         var, right, {}, self.vm.root_cfg_node, {})
     self.assertEqual(result, {})
 
-  def testClassAgainstTypeUnion(self):
+  def test_class_against_type_union(self):
     left = self._make_class("foo")
     union = abstract.Union((left,), self.vm)
     right = abstract.ParameterizedClass(
         self.type_type, {abstract_utils.T: union}, self.vm)
     self.assertMatch(left, right)
 
-  def testNoneAgainstBool(self):
+  def test_none_against_bool(self):
     # See pep484.COMPAT_ITEMS.
     left = self._convert_type("None", as_instance=True)
     right = self._convert_type("bool")
     self.assertMatch(left, right)
 
-  def testHomogeneousTuple(self):
+  def test_homogeneous_tuple(self):
     left = self._convert_type("Tuple[int, ...]", as_instance=True)
     right1 = self._convert_type("Tuple[int, ...]")
     right2 = self._convert_type("Tuple[str, ...]")
     self.assertMatch(left, right1)
     self.assertNoMatch(left, right2)
 
-  def testHeterogeneousTuple(self):
+  def test_heterogeneous_tuple(self):
     left1 = self._convert_type("Tuple[int or str]", as_instance=True)
     left2 = self._convert_type("Tuple[int, str]", as_instance=True)
     left3 = self._convert_type("Tuple[str, int]", as_instance=True)
@@ -168,7 +168,7 @@ class MatcherTest(unittest.TestCase):
     self.assertMatch(left2, right)
     self.assertNoMatch(left3, right)
 
-  def testHeterogeneousTupleAgainstHomogeneousTuple(self):
+  def test_heterogeneous_tuple_against_homogeneous_tuple(self):
     left = self._convert_type("Tuple[bool, int]", as_instance=True)
     right1 = self._convert_type("Tuple[bool, ...]")
     right2 = self._convert_type("Tuple[int, ...]")
@@ -177,7 +177,7 @@ class MatcherTest(unittest.TestCase):
     self.assertMatch(left, right2)
     self.assertMatch(left, right3)
 
-  def testHomogeneousTupleAgainstHeterogeneousTuple(self):
+  def test_homogeneous_tuple_against_heterogeneous_tuple(self):
     left1 = self._convert_type("Tuple[bool, ...]", as_instance=True)
     left2 = self._convert_type("Tuple[int, ...]", as_instance=True)
     left3 = self._convert_type("tuple", as_instance=True)
@@ -186,7 +186,7 @@ class MatcherTest(unittest.TestCase):
     self.assertNoMatch(left2, right)
     self.assertMatch(left3, right)
 
-  def testTupleType(self):
+  def test_tuple_type(self):
     # homogeneous against homogeneous
     left = self._convert_type("Type[Tuple[float, ...]]", as_instance=True)
     right1 = self._convert_type("Type[Tuple[float, ...]]")
@@ -221,7 +221,7 @@ class MatcherTest(unittest.TestCase):
     self.assertNoMatch(left2, right)
     self.assertMatch(left3, right)
 
-  def testTupleSubclass(self):
+  def test_tuple_subclass(self):
     left = self._convert("""
       from typing import Tuple
       class A(Tuple[bool, int]): ...""", "A", as_instance=True)
@@ -240,12 +240,12 @@ class MatcherTest(unittest.TestCase):
     self.assertNoMatch(left, right6)
     self.assertMatch(left, right7)
 
-  def testAnnotationClass(self):
+  def test_annotation_class(self):
     left = abstract.AnnotationClass("Dict", self.vm)
     right = self.vm.convert.object_type
     self.assertMatch(left, right)
 
-  def testEmptyTupleClass(self):
+  def test_empty_tuple_class(self):
     var = self.vm.program.NewVariable()
     params = {0: abstract.TypeParameter(abstract_utils.K, self.vm),
               1: abstract.TypeParameter(abstract_utils.V, self.vm)}
@@ -255,7 +255,7 @@ class MatcherTest(unittest.TestCase):
         var, right, {}, self.vm.root_cfg_node, {})
     self.assertSetEqual(set(match), {abstract_utils.K, abstract_utils.V})
 
-  def testUnsolvableAgainstTupleClass(self):
+  def test_unsolvable_against_tuple_class(self):
     left = self.vm.convert.unsolvable
     params = {0: abstract.TypeParameter(abstract_utils.K, self.vm),
               1: abstract.TypeParameter(abstract_utils.V, self.vm)}
@@ -268,12 +268,12 @@ class MatcherTest(unittest.TestCase):
       self.assertEqual(match[abstract_utils.V].data,
                        [self.vm.convert.unsolvable])
 
-  def testBoolAgainstFloat(self):
+  def test_bool_against_float(self):
     left = self.vm.convert.true
     right = self.vm.convert.primitive_classes[float]
     self.assertMatch(left, right)
 
-  def testPyTDFunctionAgainstCallable(self):
+  def test_pytd_function_against_callable(self):
     f = self._convert("def f(x: int) -> bool: ...", "f")
     plain_callable = self._convert_type("Callable")
     good_callable1 = self._convert_type("Callable[[bool], int]")
@@ -282,26 +282,26 @@ class MatcherTest(unittest.TestCase):
     self.assertMatch(f, good_callable1)
     self.assertMatch(f, good_callable2)
 
-  def testPyTDFunctionAgainstCallableBadReturn(self):
+  def test_pytd_function_against_callable_bad_return(self):
     f = self._convert("def f(x: int) -> bool: ...", "f")
     callable_bad_ret = self._convert_type("Callable[[int], str]")
     self.assertNoMatch(f, callable_bad_ret)
 
-  def testPyTDFunctionAgainstCallableBadArgCount(self):
+  def test_pytd_function_against_callable_bad_arg_count(self):
     f = self._convert("def f(x: int) -> bool: ...", "f")
     callable_bad_count1 = self._convert_type("Callable[[], bool]")
     callable_bad_count2 = self._convert_type("Callable[[int, str], bool]")
     self.assertNoMatch(f, callable_bad_count1)
     self.assertNoMatch(f, callable_bad_count2)
 
-  def testPyTDFunctionAgainstCallableBadArgType(self):
+  def test_pytd_function_against_callable_bad_arg_type(self):
     f = self._convert("def f(x: bool) -> bool: ...", "f")
     callable_bad_arg1 = self._convert_type("Callable[[int], bool]")
     callable_bad_arg2 = self._convert_type("Callable[[str], bool]")
     self.assertNoMatch(f, callable_bad_arg1)
     self.assertNoMatch(f, callable_bad_arg2)
 
-  def testBoundPyTDFunctionAgainstCallable(self):
+  def test_bound_pytd_function_against_callable(self):
     instance = self._convert("""
       class A(object):
         def f(self, x: int) -> bool: ...
@@ -320,14 +320,14 @@ class MatcherTest(unittest.TestCase):
     self.assertNoMatch(bound, callable_self)
     self.assertMatch(unbound, callable_self)
 
-  def testNativeFunctionAgainstCallable(self):
+  def test_native_function_against_callable(self):
     # Matching a native function against a callable always succeeds, regardless
     # of argument and return types.
     f = abstract.NativeFunction("f", lambda x: x, self.vm)
     callable_type = self._convert_type("Callable[[int], int]")
     self.assertMatch(f, callable_type)
 
-  def testCallableInstance(self):
+  def test_callable_instance(self):
     left1 = self._convert_type("Callable[[int], bool]", as_instance=True)
     left2 = self._convert_type("Callable", as_instance=True)
     left3 = self._convert_type("Callable[..., int]", as_instance=True)
@@ -344,7 +344,7 @@ class MatcherTest(unittest.TestCase):
     self.assertMatch(left2, right3)
     self.assertMatch(left3, right3)
 
-  def testCallableInstanceBadReturn(self):
+  def test_callable_instance_bad_return(self):
     left1 = self._convert_type("Callable[[int], float]", as_instance=True)
     left2 = self._convert_type("Callable[..., float]", as_instance=True)
     right1 = self._convert_type("Callable[[bool], int]")
@@ -354,21 +354,21 @@ class MatcherTest(unittest.TestCase):
     self.assertNoMatch(left1, right2)
     self.assertNoMatch(left2, right2)
 
-  def testCallableInstanceBadArgCount(self):
+  def test_callable_instance_bad_arg_count(self):
     left1 = self._convert_type("Callable[[], int]", as_instance=True)
     left2 = self._convert_type("Callable[[str, str], int]", as_instance=True)
     right = self._convert_type("Callable[[str], int]")
     self.assertNoMatch(left1, right)
     self.assertNoMatch(left2, right)
 
-  def testCallableInstanceBadArgType(self):
+  def test_callable_instance_bad_arg_type(self):
     left1 = self._convert_type("Callable[[bool], Any]", as_instance=True)
     left2 = self._convert_type("Callable[[str], Any]", as_instance=True)
     right = self._convert_type("Callable[[int], Any]")
     self.assertNoMatch(left1, right)
     self.assertNoMatch(left2, right)
 
-  def testTypeAgainstCallable(self):
+  def test_type_against_callable(self):
     left1 = self._convert_type("Type[int]", as_instance=True)
     left2 = self._convert_type("Type[str]", as_instance=True)
     right1 = self._convert_type("Callable[..., float]")
@@ -378,7 +378,7 @@ class MatcherTest(unittest.TestCase):
     self.assertNoMatch(left2, right1)
     self.assertNoMatch(left2, right2)
 
-  def testAnyStrInstanceAgainstAnyStr(self):
+  def test_anystr_instance_against_anystr(self):
     right = self.vm.convert.name_to_value("typing.AnyStr")
     dummy_instance = abstract.Instance(self.vm.convert.tuple_type, self.vm)
     left = abstract.TypeParameterInstance(right, dummy_instance, self.vm)
@@ -387,7 +387,7 @@ class MatcherTest(unittest.TestCase):
                            [(name, var.data) for name, var in result.items()],
                            [("typing.AnyStr", [left])])
 
-  def testProtocol(self):
+  def test_protocol(self):
     left1 = self._convert_type("str", as_instance=True)
     left2 = self._convert("""
       class A(object):
@@ -399,7 +399,7 @@ class MatcherTest(unittest.TestCase):
     self.assertMatch(left2, right)
     self.assertNoMatch(left3, right)
 
-  def testProtocolIterator(self):
+  def test_protocol_iterator(self):
     left1 = self._convert_type("Iterator", as_instance=True)
     left2 = self._convert("""
       class A(object):
@@ -412,7 +412,7 @@ class MatcherTest(unittest.TestCase):
     self.assertMatch(left2, right)
     self.assertNoMatch(left3, right)
 
-  def testProtocolSequence(self):
+  def test_protocol_sequence(self):
     left1 = self._convert_type("list", as_instance=True)
     left2 = self._convert("""
       class A(object):
@@ -426,7 +426,7 @@ class MatcherTest(unittest.TestCase):
     self.assertNoMatch(left3, right)
 
   @unittest.skip("Needs to be fixed, tries to match protocol against A")
-  def testParameterizedProtocol(self):
+  def test_parameterized_protocol(self):
     left1 = self._convert("""
       from typing import Iterator
       class A(object):
@@ -437,17 +437,17 @@ class MatcherTest(unittest.TestCase):
     self.assertMatch(left1, right)
     self.assertNoMatch(left2, right)
 
-  def testNoReturn(self):
+  def test_no_return(self):
     self.assertMatch(self.vm.convert.no_return, self.vm.convert.no_return)
 
-  def testEmptyAgainstNoReturn(self):
+  def test_empty_against_no_return(self):
     self.assertNoMatch(self.vm.convert.empty, self.vm.convert.no_return)
 
-  def testNoReturnAgainstClass(self):
+  def test_no_return_against_class(self):
     right = self._convert_type("int")
     self.assertNoMatch(self.vm.convert.no_return, right)
 
-  def testEmptyAgainstParameterizedIterable(self):
+  def test_empty_against_parameterized_iterable(self):
     left = self.vm.convert.empty
     right = abstract.ParameterizedClass(
         self.vm.convert.list_type,
@@ -458,12 +458,12 @@ class MatcherTest(unittest.TestCase):
       self.assertListEqual(subst[abstract_utils.T].data,
                            [self.vm.convert.empty])
 
-  def testListAgainstMapping(self):
+  def test_list_against_mapping(self):
     left = self._convert_type("list", as_instance=True)
     right = self.vm.convert.name_to_value("typing.Mapping")
     self.assertNoMatch(left, right)
 
-  def testListAgainstParameterizedMapping(self):
+  def test_list_against_parameterized_mapping(self):
     left = self._convert_type("list", as_instance=True)
     right = abstract.ParameterizedClass(
         self.vm.convert.name_to_value("typing.Mapping"),

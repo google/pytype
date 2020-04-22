@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class SlotsTest(test_base.TargetIndependentTest):
   """Tests for __slots__."""
 
-  def testSlots(self):
+  def test_slots(self):
     ty = self.Infer("""
       class Foo(object):
         __slots__ = ("foo", "bar", "baz")
@@ -23,7 +23,7 @@ class SlotsTest(test_base.TargetIndependentTest):
         baz = ...  # type: int
     """)
 
-  def testAmbiguousSlot(self):
+  def test_ambiguous_slot(self):
     ty = self.Infer("""
       class Foo(object):
         __slots__ = () if __random__ else ("foo")
@@ -35,25 +35,25 @@ class SlotsTest(test_base.TargetIndependentTest):
         foo = ...  # type: int
     """)
 
-  def testAmbiguousSlotEntry(self):
+  def test_ambiguous_slot_entry(self):
     self.Check("""
       class Foo(object):
         __slots__ = ("foo" if __random__ else "bar",)
     """)
 
-  def testTupleSlot(self):
+  def test_tuple_slot(self):
     self.Check("""
       class Foo(object):
         __slots__ = ("foo", "bar")
     """)
 
-  def testTupleSlot_unicode(self):
+  def test_tuple_slot_unicode(self):
     self.Check("""
       class Foo(object):
         __slots__ = (u"foo", u"bar")
     """)
 
-  def testListSlot(self):
+  def test_list_slot(self):
     ty = self.Infer("""
       class Foo(object):
         __slots__ = ["foo", "bar"]
@@ -63,21 +63,21 @@ class SlotsTest(test_base.TargetIndependentTest):
         __slots__ = ["foo", "bar"]
     """)
 
-  def testSlotWithNonStrings(self):
+  def test_slot_with_non_strings(self):
     _, errors = self.InferWithErrors("""
       class Foo(object):  # bad-slots[e]
         __slots__ = (1, 2, 3)
     """)
     self.assertErrorRegexes(errors, {"e": r"Invalid __slot__ entry: '1'"})
 
-  def testSetSlot(self):
+  def test_set_slot(self):
     self.Check("""
       class Foo(object):
         __slots__ = {"foo", "bar"}  # Note: Python actually allows this.
       Foo().bar = 3
     """)
 
-  def testSlotAsAttribute(self):
+  def test_slot_as_attribute(self):
     ty = self.Infer("""
       class Foo(object):
         def __init__(self):
@@ -88,7 +88,7 @@ class SlotsTest(test_base.TargetIndependentTest):
         pass
     """)
 
-  def testSlotAsLateClassAttribute(self):
+  def test_slot_as_late_class_attribute(self):
     ty = self.Infer("""
       class Foo(object): pass
       # It's rare to see this pattern in the wild. The only occurrence, outside
@@ -101,7 +101,7 @@ class SlotsTest(test_base.TargetIndependentTest):
         pass
     """)
 
-  def testAssignAttribute(self):
+  def test_assign_attribute(self):
     _, errors = self.InferWithErrors("""
       class Foo(object):
         __slots__ = ("x", "y")
@@ -112,20 +112,20 @@ class SlotsTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"z"})
 
-  def testObject(self):
+  def test_object(self):
     _, errors = self.InferWithErrors("""
       object().foo = 42  # not-writable[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"object"})
 
-  def testAnyBaseClass(self):
+  def test_any_base_class(self):
     self.Check("""
       class Foo(__any_object__):
         __slots__ = ()
       Foo().foo = 42
     """)
 
-  def testParameterizedBaseClass(self):
+  def test_parameterized_base_class(self):
     _, errors = self.InferWithErrors("""
       from typing import List
       class Foo(List[int]):
@@ -134,7 +134,7 @@ class SlotsTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"foo"})
 
-  def testEmptySlots(self):
+  def test_empty_slots(self):
     _, errors = self.InferWithErrors("""
       class Foo(object):
         __slots__ = ()
@@ -142,7 +142,7 @@ class SlotsTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"foo"})
 
-  def testNamedTuple(self):
+  def test_namedtuple(self):
     _, errors = self.InferWithErrors("""
       import collections
       Foo = collections.namedtuple("_", ["a", "b", "c"])
@@ -154,7 +154,7 @@ class SlotsTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"d"})
 
-  def testBuiltinAttr(self):
+  def test_builtin_attr(self):
     self.InferWithErrors("""
       "foo".bar = 1  # not-writable
       u"foo".bar = 2  # not-writable
@@ -176,14 +176,14 @@ class SlotsTest(test_base.TargetIndependentTest):
       range(10).bar = 18  # not-writable
     """)
 
-  def testGeneratorAttr(self):
+  def test_generator_attr(self):
     _, errors = self.InferWithErrors("""
       def f(): yield 42
       f().foo = 42  # not-writable[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"foo"})
 
-  def testSetAttr(self):
+  def test_set_attr(self):
     self.Check("""
       class Foo(object):
         __slots__ = ()
@@ -195,7 +195,7 @@ class SlotsTest(test_base.TargetIndependentTest):
       Bar().baz = 2
     """)
 
-  def testDescriptors(self):
+  def test_descriptors(self):
     self.Check("""
       class Descriptor(object):
         def __set__(self, obj, cls):
@@ -209,7 +209,7 @@ class SlotsTest(test_base.TargetIndependentTest):
       Bar().baz = 2
     """)
 
-  def testNameMangling(self):
+  def test_name_mangling(self):
     _, errors = self.InferWithErrors("""
       class Bar(object):
         __slots__ = ["__baz"]

@@ -8,7 +8,7 @@ from pytype.tests import test_base
 class ReingestTest(test_base.TargetPython3BasicTest):
   """Tests for reloading the pyi we generate."""
 
-  def testTypeParameterBound(self):
+  def test_type_parameter_bound(self):
     foo = self.Infer("""
       from typing import TypeVar
       T = TypeVar("T", bound=float)
@@ -22,7 +22,7 @@ class ReingestTest(test_base.TargetPython3BasicTest):
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"float.*str"})
 
-  def testDefaultArgumentType(self):
+  def test_default_argument_type(self):
     foo = self.Infer("""
       from typing import Any, Callable, TypeVar
       T = TypeVar("T")
@@ -41,7 +41,7 @@ class ReingestTest(test_base.TargetPython3BasicTest):
 class ReingestTestPy3(test_base.TargetPython3FeatureTest):
   """Python 3 tests for reloading the pyi we generate."""
 
-  def testInstantiatePyiClass(self):
+  def test_instantiate_pyi_class(self):
     foo = self.Infer("""
       import abc
       class Foo(metaclass=abc.ABCMeta):
@@ -61,7 +61,7 @@ class ReingestTestPy3(test_base.TargetPython3FeatureTest):
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"foo\.Foo.*foo"})
 
-  def testUseClassAttributeFromAnnotatedNew(self):
+  def test_use_class_attribute_from_annotated_new(self):
     foo = self.Infer("""
       class Foo:
         def __new__(cls) -> "Foo":

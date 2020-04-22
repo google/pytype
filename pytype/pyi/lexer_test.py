@@ -286,11 +286,11 @@ class LexerTest(unittest.TestCase):
       text = f.read()
     self.check(None, text)
 
-  def test_TypeVar(self):
+  def test_typevar(self):
     self.check(["TYPEVAR"], "TypeVar")
     self.check(["TYPEVAR"], "typing.TypeVar")
 
-  def test_NamedTuple(self):
+  def test_namedtuple(self):
     self.check(["NAMEDTUPLE"], "NamedTuple")
     self.check(["NAMEDTUPLE"], "typing.NamedTuple")
 

@@ -9,7 +9,7 @@ class MatchTest(test_base.TargetPython27FeatureTest):
 
   # Forked into py2 and py3 versions
 
-  def testCallable(self):
+  def test_callable(self):
     ty = self.Infer("""
       import tokenize
       def f():
@@ -23,7 +23,7 @@ class MatchTest(test_base.TargetPython27FeatureTest):
       x = ...  # type: Generator[Tuple[int, str, Tuple[int, int], Tuple[int, int], str], None, None]
     """)
 
-  def testCallableAgainstGeneric(self):
+  def test_callable_against_generic(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import TypeVar, Callable, Generic, Iterable, Iterator
@@ -39,7 +39,7 @@ class MatchTest(test_base.TargetPython27FeatureTest):
         foo.Foo(foo.x.next)
       """, pythonpath=[d.path])
 
-  def testEmpty(self):
+  def test_empty(self):
     ty = self.Infer("""
       a = []
       b = ["%d" % i for i in a]
@@ -51,7 +51,7 @@ class MatchTest(test_base.TargetPython27FeatureTest):
       i = ...  # type: Any
     """)
 
-  def testBoundAgainstCallable(self):
+  def test_bound_against_callable(self):
     ty = self.Infer("""
       import tokenize
       import StringIO

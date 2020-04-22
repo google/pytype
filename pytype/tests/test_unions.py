@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class UnionTest(test_base.TargetIndependentTest):
   """Tests for union types."""
 
-  def testIfElse(self):
+  def test_if_else(self):
     ty = self.Infer("""
       def id(x):
         return x
@@ -23,7 +23,7 @@ class UnionTest(test_base.TargetIndependentTest):
       def f(b, x, y) -> int or float
     """)
 
-  def testCall(self):
+  def test_call(self):
     ty, errors = self.InferWithErrors("""
       def f():
         x = 42

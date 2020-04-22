@@ -7,7 +7,7 @@ from pytype.tests import test_base
 class PYITest(test_base.TargetIndependentTest):
   """Tests for PYI."""
 
-  def testModuleParameter(self):
+  def test_module_parameter(self):
     """This test that types.ModuleType works."""
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
@@ -21,7 +21,7 @@ class PYITest(test_base.TargetIndependentTest):
         mod.f(os)
         """, pythonpath=[d.path])
 
-  def testOptional(self):
+  def test_optional(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def f(x: int = ...) -> None
@@ -39,7 +39,7 @@ class PYITest(test_base.TargetIndependentTest):
         def g() -> NoneType
       """)
 
-  def testSolve(self):
+  def test_solve(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def f(node: int, *args, **kwargs) -> str
@@ -54,7 +54,7 @@ class PYITest(test_base.TargetIndependentTest):
         def g(x) -> str
       """)
 
-  def testTyping(self):
+  def test_typing(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         from typing import Any, IO, List, Optional
@@ -71,7 +71,7 @@ class PYITest(test_base.TargetIndependentTest):
         def g(x) -> List[str, ...]
       """)
 
-  def testClasses(self):
+  def test_classes(self):
     with file_utils.Tempdir() as d:
       d.create_file("classes.pyi", """
         class A(object):
@@ -88,7 +88,7 @@ class PYITest(test_base.TargetIndependentTest):
         x = ...  # type: classes.A
       """)
 
-  def testEmptyModule(self):
+  def test_empty_module(self):
     with file_utils.Tempdir() as d:
       d.create_file("vague.pyi", """
         from typing import Any
@@ -104,7 +104,7 @@ class PYITest(test_base.TargetIndependentTest):
         x = ...  # type: Any
       """)
 
-  def testDecorators(self):
+  def test_decorators(self):
     with file_utils.Tempdir() as d:
       d.create_file("decorated.pyi", """
         class A(object):
@@ -133,7 +133,7 @@ class PYITest(test_base.TargetIndependentTest):
         z = ...  # type: int
       """)
 
-  def testPassPyiClassmethod(self):
+  def test_pass_pyi_classmethod(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A(object):
@@ -150,7 +150,7 @@ class PYITest(test_base.TargetIndependentTest):
         u = ...  # type: int
       """)
 
-  def testOptionalParameters(self):
+  def test_optional_parameters(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         def parse(source, filename = ..., mode = ..., *args, **kwargs) -> int: ...
@@ -164,7 +164,7 @@ class PYITest(test_base.TargetIndependentTest):
         u = ...  # type: int
       """)
 
-  def testOptimize(self):
+  def test_optimize(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class Bar(dict[?, int]): ...
@@ -184,7 +184,7 @@ class PYITest(test_base.TargetIndependentTest):
         def g() -> NoneType: ...
       """)
 
-  def testIterable(self):
+  def test_iterable(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Iterable
@@ -199,7 +199,7 @@ class PYITest(test_base.TargetIndependentTest):
         u = ...  # type: int
       """)
 
-  def testObject(self):
+  def test_object(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         def make_object() -> object
@@ -217,7 +217,7 @@ class PYITest(test_base.TargetIndependentTest):
         def f(x=...) -> bool: ...
       """)
 
-  def testCallable(self):
+  def test_callable(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any
@@ -237,7 +237,7 @@ class PYITest(test_base.TargetIndependentTest):
         x = ...  # type: NoneType
       """)
 
-  def testHex(self):
+  def test_hex(self):
     ty = self.Infer("""
       x = hex(4)
     """, deep=False)
@@ -245,7 +245,7 @@ class PYITest(test_base.TargetIndependentTest):
       x = ...  # type: str
     """)
 
-  def testBaseClass(self):
+  def test_base_class(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar
@@ -275,7 +275,7 @@ class PYITest(test_base.TargetIndependentTest):
         def h(x) -> Any
       """)
 
-  def testOldStyleClassObjectMatch(self):
+  def test_old_style_class_object_match(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any
@@ -293,7 +293,7 @@ class PYITest(test_base.TargetIndependentTest):
         def g() -> Any
       """)
 
-  def testIdentity(self):
+  def test_identity(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import TypeVar
@@ -309,7 +309,7 @@ class PYITest(test_base.TargetIndependentTest):
         x = ...  # type: int
       """)
 
-  def testImportFunctionTemplate(self):
+  def test_import_function_template(self):
     with file_utils.Tempdir() as d1:
       d1.create_file("foo.pyi", """
         from typing import TypeVar
@@ -330,7 +330,7 @@ class PYITest(test_base.TargetIndependentTest):
           x = ...  # type: str
         """)
 
-  def testMultipleGetAttr(self):
+  def test_multiple_getattr(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any
@@ -346,7 +346,7 @@ class PYITest(test_base.TargetIndependentTest):
       """)
       self.assertErrorRegexes(errors, {"e": r"bar"})
 
-  def testPyiListItem(self):
+  def test_pyi_list_item(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         lst = ...  # type: list
@@ -361,7 +361,7 @@ class PYITest(test_base.TargetIndependentTest):
         x = ...  # type: str
       """)
 
-  def testDubiousFunctionReference(self):
+  def test_dubious_function_reference(self):
     with file_utils.Tempdir() as d:
       # TODO(kramm): pytd.ToType() currently allows this. Should it?
       d.create_file("a.pyi", """
@@ -377,7 +377,7 @@ class PYITest(test_base.TargetIndependentTest):
         def x() -> None: ...
       """)
 
-  def testKeywordOnlyArgs(self):
+  def test_keyword_only_args(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Any
@@ -392,7 +392,7 @@ class PYITest(test_base.TargetIndependentTest):
         x = ...  # type: int
       """)
 
-  def testPosArg(self):
+  def test_posarg(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import TypeVar
@@ -408,7 +408,7 @@ class PYITest(test_base.TargetIndependentTest):
         v = ...  # type: str
       """)
 
-  def testKwonlyArg(self):
+  def test_kwonly_arg(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import TypeVar
@@ -424,7 +424,7 @@ class PYITest(test_base.TargetIndependentTest):
         v = ...  # type: complex
       """)
 
-  def testStarArgs(self):
+  def test_starargs(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Dict, TypeVar
@@ -449,7 +449,7 @@ class PYITest(test_base.TargetIndependentTest):
       """)
       self.assertErrorRegexes(errors, {"e1": r"\bc\b", "e2": r"\ba\b"})
 
-  def testUnionWithSuperclass(self):
+  def test_union_with_superclass(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A1(): pass
@@ -471,7 +471,7 @@ class PYITest(test_base.TargetIndependentTest):
         def f(x) -> a.A1
       """)
 
-  def testBuiltinsModule(self):
+  def test_builtins_module(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         import __builtin__
@@ -486,7 +486,7 @@ class PYITest(test_base.TargetIndependentTest):
         x = ...  # type: int
       """)
 
-  def testFrozenSet(self):
+  def test_frozenset(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Any, FrozenSet, Set
@@ -505,14 +505,14 @@ class PYITest(test_base.TargetIndependentTest):
         y = ...  # type: FrozenSet[str]
       """)
 
-  def testRaises(self):
+  def test_raises(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(raises): ...
       """)
       self.Check("import foo", pythonpath=[d.path])
 
-  def testTypeVarConflict(self):
+  def test_typevar_conflict(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List, Sequence
@@ -528,7 +528,7 @@ class PYITest(test_base.TargetIndependentTest):
         x = ...  # type: list
       """)
 
-  def testSameTypeVarName(self):
+  def test_same_typevar_name(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar
@@ -547,7 +547,7 @@ class PYITest(test_base.TargetIndependentTest):
         v = ...  # type: foo.Foo
       """)
 
-  def testTypeParamInMutation(self):
+  def test_type_param_in_mutation(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar
@@ -567,7 +567,7 @@ class PYITest(test_base.TargetIndependentTest):
         x = ...  # type: foo.Bar[int]
       """)
 
-  def testBadTypeParamInMutation(self):
+  def test_bad_type_param_in_mutation(self):
     with file_utils.Tempdir() as d:
       # T2 is not in scope when used in the mutation in Bar.bar()
       d.create_file("foo.pyi", """
@@ -587,7 +587,7 @@ class PYITest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"T2"})
 
-  def testStarImport(self):
+  def test_star_import(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         x = ...  # type: int
@@ -608,7 +608,7 @@ class PYITest(test_base.TargetIndependentTest):
         bar.B
       """, pythonpath=[d.path])
 
-  def testStarImportValue(self):
+  def test_star_import_value(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         T = TypeVar("T")
@@ -629,7 +629,7 @@ class PYITest(test_base.TargetIndependentTest):
         v2 = ...  # type: str
       """)
 
-  def testStarImportGetAttr(self):
+  def test_star_import_getattr(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def __getattr__(name) -> ?
@@ -642,7 +642,7 @@ class PYITest(test_base.TargetIndependentTest):
         bar.rumpelstiltskin
       """, pythonpath=[d.path])
 
-  def testAlias(self):
+  def test_alias(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x: Foo): ...
@@ -651,7 +651,7 @@ class PYITest(test_base.TargetIndependentTest):
       """)
       self.Check("import foo", pythonpath=[d.path])
 
-  def testCustomBinaryOperator(self):
+  def test_custom_binary_operator(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo(object):
@@ -664,7 +664,7 @@ class PYITest(test_base.TargetIndependentTest):
         (foo.Foo() - foo.Bar()).real
       """, pythonpath=[d.path])
 
-  def testParameterizedAny(self):
+  def test_parameterized_any(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any
@@ -675,7 +675,7 @@ class PYITest(test_base.TargetIndependentTest):
         import foo
       """, pythonpath=[d.path])
 
-  def testParameterizedExternalAny(self):
+  def test_parameterized_external_any(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any
@@ -690,7 +690,7 @@ class PYITest(test_base.TargetIndependentTest):
         import bar
       """, pythonpath=[d.path])
 
-  def testParameterizedAlias(self):
+  def test_parameterized_alias(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any
@@ -705,7 +705,7 @@ class PYITest(test_base.TargetIndependentTest):
         import bar
       """, pythonpath=[d.path])
 
-  def testAnythingConstant(self):
+  def test_anything_constant(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         Foo = ...  # type: ?
@@ -719,7 +719,7 @@ class PYITest(test_base.TargetIndependentTest):
         bar.f(42)
       """, pythonpath=[d.path])
 
-  def testAliasStaticMethod(self):
+  def test_alias_staticmethod(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class A:
@@ -736,7 +736,7 @@ class PYITest(test_base.TargetIndependentTest):
         ta = ...  # type: Callable[[str], None]
         """)
 
-  def testAliasConstant(self):
+  def test_alias_constant(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo(object):
@@ -752,7 +752,7 @@ class PYITest(test_base.TargetIndependentTest):
         Const = ...  # type: int
       """)
 
-  def testAliasMethod(self):
+  def test_alias_method(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo(object):
@@ -768,7 +768,7 @@ class PYITest(test_base.TargetIndependentTest):
         def Func(self) -> int: ...
       """)
 
-  def testAliasAliases(self):
+  def test_alias_aliases(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo(object):
@@ -790,7 +790,7 @@ class PYITest(test_base.TargetIndependentTest):
         def Func(self) -> int: ...
       """)
 
-  def testGenericInheritance(self):
+  def test_generic_inheritance(self):
     with file_utils.Tempdir() as d:
       # Inspired by typeshed/stdlib/2/UserString.pyi
       d.create_file("foo.pyi", """
@@ -809,7 +809,7 @@ class PYITest(test_base.TargetIndependentTest):
         v = ...  # type: foo.Bar
       """)
 
-  def testDotImport(self):
+  def test_dot_import(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo/a.pyi", "class A: ...")
       d.create_file("foo/b.pyi", """
@@ -825,7 +825,7 @@ class PYITest(test_base.TargetIndependentTest):
         a = ...  # type: foo.a.A
       """)
 
-  def testDotDotImport(self):
+  def test_dot_dot_import(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo/a.pyi", "class A: ...")
       d.create_file("foo/bar/b.pyi", """
@@ -841,7 +841,7 @@ class PYITest(test_base.TargetIndependentTest):
         a = ...  # type: foo.a.A
       """)
 
-  def testTypingAlias(self):
+  def test_typing_alias(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         import typing as _typing

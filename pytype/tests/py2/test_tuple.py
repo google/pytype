@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class TupleTest(test_base.TargetPython27FeatureTest):
   """Tests for __builtin__.tuple."""
 
-  def testIteration(self):
+  def test_iteration(self):
     ty = self.Infer("""
       class Foo(object):
         mytuple = (1, "foo", 3j)

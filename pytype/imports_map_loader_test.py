@@ -16,7 +16,7 @@ import unittest
 class ImportMapLoaderTest(unittest.TestCase):
   """Tests for imports_map_loader.py."""
 
-  def testReadImportsInfo(self):
+  def test_read_imports_info(self):
     """Test reading an imports_info file into ImportsInfo."""
     with tempfile.NamedTemporaryFile() as fi:
       fi.write(compat.bytestring(textwrap.dedent("""
@@ -40,7 +40,7 @@ class ImportMapLoaderTest(unittest.TestCase):
               ("a/b/e", ["2/a/b/foo/#2.py~", "2/a/b/e1.py~", "2/a/b/e2.py~"]),
           ])
 
-  def testImportsInfoFilter(self):
+  def test_imports_info_filter(self):
     """Test filtering out the current target's entry from the imports info."""
     with file_utils.Tempdir() as d:
       # The files in our "program" that we're building an imports_map for.
@@ -74,7 +74,7 @@ class ImportMapLoaderTest(unittest.TestCase):
               ("%s/a/__init__" % d.path[1:], os.devnull),
           ])
 
-  def testDoNotFilter(self):
+  def test_do_not_filter(self):
     with file_utils.Tempdir() as d:
       d.create_file("a/b/c.pyi")
       imports_info = "%s %s\n" % ("a/b/c.pyi", d["a/b/c.pyi"])
@@ -84,7 +84,7 @@ class ImportMapLoaderTest(unittest.TestCase):
           d["imports_info"], output)
       self.assertEqual(imports_map["a/b/c"], d["a/b/c.pyi"])
 
-  def testInvalidMapEntry(self):
+  def test_invalid_map_entry(self):
     with file_utils.Tempdir() as d:
       imports_info = "%s %s\n" % ("a/b/c.pyi", d["a/b/c.pyi"])
       d.create_file("imports_info", imports_info)

@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class OptionsTest(test_base.TargetIndependentTest):
   """Tests for VM options."""
 
-  def testNoMaxDepth(self):
+  def test_no_max_depth(self):
     ty = self.Infer("""
       def f1(x):
         return f2(x)
@@ -21,7 +21,7 @@ class OptionsTest(test_base.TargetIndependentTest):
       def f3(x) -> int
     """)
 
-  def testMaxDepth0(self):
+  def test_max_depth0(self):
     ty = self.Infer("""
       def f1(x):
         return f2(x)
@@ -36,7 +36,7 @@ class OptionsTest(test_base.TargetIndependentTest):
       def f3(x) -> ?
     """)
 
-  def testMaxDepth1(self):
+  def test_max_depth1(self):
     ty = self.Infer("""
       def f1(x):
         return f2(x)
@@ -51,7 +51,7 @@ class OptionsTest(test_base.TargetIndependentTest):
       def f3(x) -> int
     """)
 
-  def testMaxDepth2(self):
+  def test_max_depth2(self):
     ty = self.Infer("""
       def f1(x):
         return f2(x)
@@ -66,7 +66,7 @@ class OptionsTest(test_base.TargetIndependentTest):
       def f3(x) -> int
     """)
 
-  def testInitMaxDepth(self):
+  def test_init_max_depth(self):
     ty = self.Infer("""
       def f1(x):
         return f2(x)
@@ -89,7 +89,7 @@ class OptionsTest(test_base.TargetIndependentTest):
       def g3(x) -> ?  # not analyzed
     """)
 
-  def testMaxDepthForInit(self):
+  def test_max_depth_for_init(self):
     # This test will fail if we don't whitelist "__init__" methods from
     # maxdepth, because that would prevent the constructor of Foo from being
     # executed.

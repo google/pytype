@@ -6,14 +6,14 @@ from pytype.tests import test_base
 class TestAttributesPython27FeatureTest(test_base.TargetPython27FeatureTest):
   """Tests for attributes over target code using Python 2.7 features."""
 
-  def testEmptyTypeParameterInstance(self):
+  def test_empty_type_parameter_instance(self):
     self.Check("""
       args = {}
       for x, y in sorted(args.iteritems()):
         x.values
     """)
 
-  def testTypeParameterInstanceMultipleBindings(self):
+  def test_type_parameter_instance_multiple_bindings(self):
     _, errors = self.InferWithErrors("""
       class A(object):
         values = 42
@@ -23,7 +23,7 @@ class TestAttributesPython27FeatureTest(test_base.TargetPython27FeatureTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"'values' on bool"})
 
-  def testTypeParameterInstanceSetAttr(self):
+  def test_type_parameter_instance_set_attr(self):
     ty = self.Infer("""
       class Foo(object):
         pass
@@ -40,7 +40,7 @@ class TestAttributesPython27FeatureTest(test_base.TargetPython27FeatureTest):
         def bar(self) -> None: ...
     """)
 
-  def testTypeParameterInstance(self):
+  def test_type_parameter_instance(self):
     ty = self.Infer("""
       class A(object):
         values = 42
@@ -59,7 +59,7 @@ class TestAttributesPython27FeatureTest(test_base.TargetPython27FeatureTest):
     """)
 
   # TODO(sivachandra): Add an Python 3 equivalent after b/78645527 is fixed.
-  def testIter(self):
+  def test_iter(self):
     errors = self.CheckWithErrors("""
       def f():
         x = None
@@ -68,7 +68,7 @@ class TestAttributesPython27FeatureTest(test_base.TargetPython27FeatureTest):
     self.assertErrorRegexes(errors, {"e": r"__iter__.*None"})
 
   @test_base.skip("Needs vm._get_iter() to iterate over individual bindings.")
-  def testMetaclassIter(self):
+  def test_metaclass_iter(self):
     self.Check("""
       class Meta(type):
         def __iter__(cls):
@@ -82,7 +82,7 @@ class TestAttributesPython27FeatureTest(test_base.TargetPython27FeatureTest):
     """)
 
   @test_base.skip("Needs better handling of __getitem__ in vm._get_iter().")
-  def testMetaclassGetItem(self):
+  def test_metaclass_getitem(self):
     self.Check("""
       class Meta(type):
         def __getitem__(cls, x):

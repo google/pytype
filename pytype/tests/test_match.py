@@ -7,7 +7,7 @@ from pytype.tests import test_base
 class MatchTest(test_base.TargetIndependentTest):
   """Tests for matching types."""
 
-  def testTypeAgainstCallable(self):
+  def test_type_against_callable(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Callable
@@ -23,7 +23,7 @@ class MatchTest(test_base.TargetIndependentTest):
         def f() -> str
       """)
 
-  def testMatchStatic(self):
+  def test_match_static(self):
     ty = self.Infer("""
       s = {1}
       def f(x):
@@ -37,7 +37,7 @@ class MatchTest(test_base.TargetIndependentTest):
       def f(x) -> set: ...
     """)
 
-  def testGenericHierarchy(self):
+  def test_generic_hierarchy(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Iterable
@@ -52,7 +52,7 @@ class MatchTest(test_base.TargetIndependentTest):
         x = ...  # type: str
       """)
 
-  def testGeneric(self):
+  def test_generic(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, Iterable
@@ -74,7 +74,7 @@ class MatchTest(test_base.TargetIndependentTest):
         x = ...  # type: str
       """)
 
-  def testMatchIdentityFunction(self):
+  def test_match_identity_function(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import TypeVar
@@ -91,7 +91,7 @@ class MatchTest(test_base.TargetIndependentTest):
         v = ...  # type: Any
       """)
 
-  def testCallableReturn(self):
+  def test_callable_return(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Callable, TypeVar
@@ -106,7 +106,7 @@ class MatchTest(test_base.TargetIndependentTest):
         foo.foo(Foo).x
       """, pythonpath=[d.path])
 
-  def testCallableUnionReturn(self):
+  def test_callable_union_return(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Callable, TypeVar
@@ -124,7 +124,7 @@ class MatchTest(test_base.TargetIndependentTest):
           v.x
       """, pythonpath=[d.path])
 
-  def testAnyBaseClass(self):
+  def test_any_base_class(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any
@@ -137,7 +137,7 @@ class MatchTest(test_base.TargetIndependentTest):
         foo.f(foo.Foo())
       """, pythonpath=[d.path])
 
-  def testMaybeParameterized(self):
+  def test_maybe_parameterized(self):
     self.Check("""
       import collections
       class Foo(collections.MutableMapping):

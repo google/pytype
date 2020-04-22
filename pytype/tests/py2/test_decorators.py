@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class DecoratorsTest(test_base.TargetPython27FeatureTest):
   """Tests for decorators."""
 
-  def testAttributeErrorUnderClassDecorator(self):
+  def test_attribute_error_under_class_decorator(self):
     # This does not detect the error under target python3 (b/78591647)
     _, errors = self.InferWithErrors("""
       def decorate(cls):

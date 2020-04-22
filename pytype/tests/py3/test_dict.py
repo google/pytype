@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class DictTest(test_base.TargetPython3BasicTest):
   """Tests for dictionaries."""
 
-  def testFilteredGetItem(self):
+  def test_filtered_getitem(self):
     ty = self.Infer("""
       from typing import Union
       MAP = {0: "foo"}
@@ -20,14 +20,14 @@ class DictTest(test_base.TargetPython3BasicTest):
       def foo(x: Union[int, None]) -> Any
     """)
 
-  def testObjectInDict(self):
+  def test_object_in_dict(self):
     self.CheckWithErrors("""
       from typing import Any, Dict
       def objectIsStr() -> Dict[str, Any]:
         return {object(): ""}  # bad-return-type
     """)
 
-  def testBigConcreteDict(self):
+  def test_big_concrete_dict(self):
     # Test that we don't timeout.
     self.CheckWithErrors("""
       from typing import Dict, Tuple, Union
@@ -52,7 +52,7 @@ class DictTest(test_base.TargetPython3BasicTest):
         return d  # bad-return-type
     """)
 
-  def testDictOfTuple(self):
+  def test_dict_of_tuple(self):
     # utils.deep_variable_product(group_dict) generates a lot of combinations.
     # Test that we finish checking this code in a reasonable amount of time.
     self.Check("""

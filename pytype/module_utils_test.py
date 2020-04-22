@@ -11,7 +11,7 @@ import unittest
 class ModuleUtilsTest(unittest.TestCase):
   """Test module utilities."""
 
-  def testGetAbsoluteName(self):
+  def test_get_absolute_name(self):
     test_cases = [
         ("x.y", "a.b", "x.y.a.b"),
         ("", "a.b", "a.b"),
@@ -22,7 +22,7 @@ class ModuleUtilsTest(unittest.TestCase):
     for prefix, name, expected in test_cases:
       self.assertEqual(module_utils.get_absolute_name(prefix, name), expected)
 
-  def testPathToModuleName(self):
+  def test_path_to_module_name(self):
     self.assertIsNone(module_utils.path_to_module_name("../foo.py"))
     self.assertEqual("x.y.z", module_utils.path_to_module_name("x/y/z.pyi"))
     self.assertEqual("x.y.z", module_utils.path_to_module_name("x/y/z.pytd"))

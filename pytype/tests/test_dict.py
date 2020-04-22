@@ -8,7 +8,7 @@ from pytype.tests import test_base
 class DictTest(test_base.TargetIndependentTest):
   """Tests for dictionaries."""
 
-  def testPop(self):
+  def test_pop(self):
     ty = self.Infer("""
       d = {"a": 42}
       v1 = d.pop("a")
@@ -21,7 +21,7 @@ class DictTest(test_base.TargetIndependentTest):
       v2 = ...  # type: None
     """)
 
-  def testBadPop(self):
+  def test_bad_pop(self):
     ty, errors = self.InferWithErrors("""
       d = {"a": 42}
       v = d.pop("b")  # key-error[e]
@@ -33,7 +33,7 @@ class DictTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"b"})
 
-  def testAmbiguousPop(self):
+  def test_ambiguous_pop(self):
     ty = self.Infer("""
       d = {"a": 42}
       k = None  # type: str
@@ -48,7 +48,7 @@ class DictTest(test_base.TargetIndependentTest):
       v2 = ...  # type: Optional[int]
     """)
 
-  def testPopFromAmbiguousDict(self):
+  def test_pop_from_ambiguous_dict(self):
     ty = self.Infer("""
       d = {}
       k = None  # type: str
@@ -66,7 +66,7 @@ class DictTest(test_base.TargetIndependentTest):
       v2 = ...  # type: Optional[int]
     """)
 
-  def testUpdateEmpty(self):
+  def test_update_empty(self):
     ty = self.Infer("""
       from typing import Dict
       d1 = {}
@@ -79,7 +79,7 @@ class DictTest(test_base.TargetIndependentTest):
       d2 = ...  # type: Dict[str, int]
     """)
 
-  def testUpdateAnySubclass(self):
+  def test_update_any_subclass(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import TypeVar
@@ -95,7 +95,7 @@ class DictTest(test_base.TargetIndependentTest):
             kwargs.update(foo.f(self))
       """, pythonpath=[d.path])
 
-  def testDeterminism(self):
+  def test_determinism(self):
     # Regression test for code on which pytype used to be non-deterministic.
     canonical = None
     for _ in range(10):  # increase the chance of finding non-determinism

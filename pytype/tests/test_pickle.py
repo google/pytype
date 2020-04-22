@@ -32,7 +32,7 @@ class PickleTest(test_base.TargetIndependentTest):
       six.assertCountEqual(self, c.dependencies, immediate_deps)
       six.assertCountEqual(self, c.late_dependencies, late_deps)
 
-  def testType(self):
+  def test_type(self):
     pickled = self.Infer("""
       x = type
     """, deep=False, pickle=True, module_name="foo")
@@ -49,7 +49,7 @@ class PickleTest(test_base.TargetIndependentTest):
         r = ...  # type: Type[type]
       """)
 
-  def testCopyClassIntoOutput(self):
+  def test_copy_class_into_output(self):
     pickled_foo = self.Infer("""
       import asyncore
       a = 42
@@ -76,7 +76,7 @@ class PickleTest(test_base.TargetIndependentTest):
         r = ...  # type: asyncore.file_dispatcher
       """)
 
-  def testOptimizeOnLateTypes(self):
+  def test_optimize_on_late_types(self):
     with file_utils.Tempdir() as d:
       pickled_foo = self.Infer("""
         class X(object): pass
@@ -97,7 +97,7 @@ class PickleTest(test_base.TargetIndependentTest):
         f = bar.f
       """, deep=False, imports_map={"foo": foo, "bar": bar})
 
-  def testFileChange(self):
+  def test_file_change(self):
     with file_utils.Tempdir() as d:
       pickled_xy = self.Infer("""
         class X(object): pass
@@ -130,7 +130,7 @@ class PickleTest(test_base.TargetIndependentTest):
         b = bar.B()
       """, deep=False, imports_map={"foo": foo, "bar": bar})
 
-  def testFileRename(self):
+  def test_file_rename(self):
     with file_utils.Tempdir() as d:
       pickled_other_foo = self.Infer("""
         class Foo: pass
@@ -150,7 +150,7 @@ class PickleTest(test_base.TargetIndependentTest):
                               "foo": other_foo},
                  module_name="baz")
 
-  def testOptimize(self):
+  def test_optimize(self):
     with file_utils.Tempdir() as d:
       pickled_foo = self.PicklePyi("""
         import UserDict
@@ -168,7 +168,7 @@ class PickleTest(test_base.TargetIndependentTest):
           f = foo.f
       """, imports_map={"foo": foo}, module_name="bar")
 
-  def testFunctionType(self):
+  def test_function_type(self):
     self.ConfigureOptions(
         module_name="bar",
         pythonpath=[""],

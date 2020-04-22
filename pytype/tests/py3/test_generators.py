@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class GeneratorBasicTest(test_base.TargetPython3BasicTest):
   """Tests for iterators, generators, coroutines, and yield."""
 
-  def testReturnBeforeYield(self):
+  def test_return_before_yield(self):
     self.Check("""
       from typing import Generator
       def f() -> generator:
@@ -15,21 +15,21 @@ class GeneratorBasicTest(test_base.TargetPython3BasicTest):
         yield 5
     """)
 
-  def testEmptyIterator(self):
+  def test_empty_iterator(self):
     self.Check("""
       from typing import Iterator
       def f() -> Iterator:
         yield 5
     """)
 
-  def testEmptyIterable(self):
+  def test_empty_iterable(self):
     self.Check("""
       from typing import Iterable
       def f() -> Iterable:
         yield 5
     """)
 
-  def testNoReturn(self):
+  def test_no_return(self):
     _, errors = self.InferWithErrors("""
       from typing import Generator
       def f() -> Generator[str, None, None]:
@@ -41,7 +41,7 @@ class GeneratorBasicTest(test_base.TargetPython3BasicTest):
 class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
   """Tests for iterators, generators, coroutines, and yield."""
 
-  def testYieldRetType(self):
+  def test_yield_ret_type(self):
     ty = self.Infer("""
       from typing import Generator
       def f(x):
@@ -62,7 +62,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       y = ...  # type: Generator[int, Any, int]
     """)
 
-  def testYieldTypeInfer(self):
+  def test_yield_type_infer(self):
     ty = self.Infer("""
       def gen():
         l = [1, 2, 3]
@@ -77,7 +77,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       def gen() -> Generator[Union[int, str], Any, None]: ...
     """)
 
-  def testSendRetType(self):
+  def test_send_ret_type(self):
     ty = self.Infer("""
       from typing import Generator, Any
       def f() -> Generator[str, int, Any]:
@@ -89,7 +89,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       def f() -> Generator[str, int, Any]
     """)
 
-  def testParameterCount(self):
+  def test_parameter_count(self):
     _, errors = self.InferWithErrors("""
       from typing import Generator
 

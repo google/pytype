@@ -12,7 +12,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
   #
   # TODO(rechen): Write python3 versions of these.
 
-  def testIteratePyiListNothing(self):
+  def test_iterate_pyi_list_nothing(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List
@@ -32,7 +32,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
         y = ...  # type: Any
       """)
 
-  def testIteratePyiListAny(self):
+  def test_iterate_pyi_list_any(self):
     # Depends on [x for x in ...] binding x in the outer scope
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
@@ -53,7 +53,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
         y = ...  # type: Any
       """)
 
-  def testLeakingType(self):
+  def test_leaking_type(self):
     ty = self.Infer("""
       import sys
       a = [str(ty) for ty in (float, int, bool)[:len(sys.argv)]]
@@ -65,7 +65,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
       ty = ...  # type: Type[float or int]
     """)
 
-  def testCallEmpty(self):
+  def test_call_empty(self):
     ty = self.Infer("""
       empty = []
       y = [x() for x in empty]
@@ -77,7 +77,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
       x = ...  # type: Any
     """)
 
-  def testIteratePyiListUnion(self):
+  def test_iterate_pyi_list_union(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, Set
@@ -94,7 +94,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
         x = ...  # type: int
       """)
 
-  def testIteratePyiList(self):
+  def test_iterate_pyi_list(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         lst1 = ...  # type: list
@@ -113,7 +113,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
         y = ...  # type: Any
       """)
 
-  def testIteratePyiListInt(self):
+  def test_iterate_pyi_list_int(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List
@@ -130,7 +130,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
         x = ...  # type: int
       """)
 
-  def testIsInstanceEmpty(self):
+  def test_isinstance_empty(self):
     ty = self.Infer("""
       empty = []
       y = [isinstance(x, int) for x in empty]
@@ -142,7 +142,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
       x = ...  # type: Any
     """)
 
-  def testInnerClassEmpty(self):
+  def test_inner_class_empty(self):
     ty = self.Infer("""
       empty = []
       def f(x):
@@ -159,7 +159,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
       x = ...  # type: Any
     """)
 
-  def testIterateEmptyList(self):
+  def test_iterate_empty_list(self):
     ty = self.Infer("""
       lst1 = []
       lst2 = [x for x in lst1]
@@ -174,7 +174,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
       y = ...  # type: Any
     """)
 
-  def testBranchEmpty(self):
+  def test_branch_empty(self):
     ty = self.Infer("""
       empty = []
       def f(x):
@@ -192,7 +192,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
       x = ...  # type: Any
     """)
 
-  def testDictComprehension(self):
+  def test_dict_comprehension(self):
     # uses byte_MAP_ADD
     ty = self.Infer("""
       def f():
@@ -203,7 +203,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
                                  ((),
                                   self.int_int_dict))
 
-  def testConstructorEmpty(self):
+  def test_constructor_empty(self):
     ty = self.Infer("""
       empty = []
       y = [list(x) for x in empty]
@@ -216,7 +216,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
     """)
 
   # Uses unicode
-  def testEmptyTypeParamAsArg(self):
+  def test_empty_type_param_as_arg(self):
     ty = self.Infer("""
       def f():
         return u"".join(map(unicode, ()))

@@ -51,7 +51,7 @@ class TestOptimize(parser_test_base.ParserTest):
   def AssertOptimizeEquals(self, src, new_src):
     self.AssertSourceEquals(self.OptimizedString(src), new_src)
 
-  def testOneFunction(self):
+  def test_one_function(self):
     src = textwrap.dedent("""
         def foo(a: int, c: bool) -> int:
           raise AssertionError()
@@ -59,7 +59,7 @@ class TestOptimize(parser_test_base.ParserTest):
     """)
     self.AssertOptimizeEquals(src, src)
 
-  def testFunctionDuplicate(self):
+  def test_function_duplicate(self):
     src = textwrap.dedent("""
         def foo(a: int, c: bool) -> int:
           raise AssertionError()
@@ -75,7 +75,7 @@ class TestOptimize(parser_test_base.ParserTest):
     """)
     self.AssertOptimizeEquals(src, new_src)
 
-  def testComplexFunctionDuplicate(self):
+  def test_complex_function_duplicate(self):
     src = textwrap.dedent("""
         def foo(a: int or float, c: bool) -> list[int]:
           raise IndexError()
@@ -96,7 +96,7 @@ class TestOptimize(parser_test_base.ParserTest):
     """)
     self.AssertOptimizeEquals(src, new_src)
 
-  def testRemoveRedundantSignature(self):
+  def test_remove_redundant_signature(self):
     src = textwrap.dedent("""
         def foo(a: int) -> int
         def foo(a: int or bool) -> int
@@ -109,7 +109,7 @@ class TestOptimize(parser_test_base.ParserTest):
         optimize.SuperClassHierarchy({})))
     self.AssertSourceEquals(ast, expected)
 
-  def testRemoveRedundantSignatureWithExceptions(self):
+  def test_remove_redundant_signature_with_exceptions(self):
     src = textwrap.dedent("""
         def foo(a: int) -> int:
           raise IOError()
@@ -125,7 +125,7 @@ class TestOptimize(parser_test_base.ParserTest):
         optimize.SuperClassHierarchy({})))
     self.AssertSourceEquals(ast, expected)
 
-  def testRemoveRedundantSignatureWithSubclasses(self):
+  def test_remove_redundant_signature_with_subclasses(self):
     src = textwrap.dedent("""
         def foo(a: bool) -> int
         def foo(a: int) -> int
@@ -136,7 +136,7 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
 
-  def testRemoveRedundantSignatureWithAny1(self):
+  def test_remove_redundant_signature_with_any1(self):
     src = textwrap.dedent("""
         def foo(a: ?) -> ?
         def foo(a: int) -> int
@@ -147,7 +147,7 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
 
-  def testRemoveRedundantSignatureWithAny2(self):
+  def test_remove_redundant_signature_with_any2(self):
     src = textwrap.dedent("""
         def foo(a: int) -> int
         def foo(a: ?) -> ?
@@ -158,7 +158,7 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
 
-  def testRemoveRedundantSignatureWithOptional1(self):
+  def test_remove_redundant_signature_with_optional1(self):
     src = textwrap.dedent("""
         def foo(a: int = ...) -> int
         def foo(a: ? = ...) -> int
@@ -169,7 +169,7 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
 
-  def testRemoveRedundantSignatureWithOptional2(self):
+  def test_remove_redundant_signature_with_optional2(self):
     src = textwrap.dedent("""
         def foo(a: ? = ...) -> int
         def foo(a: int = ...) -> int
@@ -180,7 +180,7 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
 
-  def testRemoveRedundantSignaturesWithLongUnion(self):
+  def test_remove_redundant_signatures_with_long_union(self):
     src = textwrap.dedent("""
         from typing import Union
         def foo(x: None = ...) -> None: ...
@@ -195,7 +195,7 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
 
-  def testRemoveRedundantSignatureWithObject(self):
+  def test_remove_redundant_signature_with_object(self):
     src = textwrap.dedent("""
         def foo(x) -> ?
         def foo(x: int) -> int
@@ -206,7 +206,7 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
 
-  def testRemoveRedundantSignatureAnyType(self):
+  def test_remove_redundant_signature_any_type(self):
     src = textwrap.dedent("""
         def foo(a: int) -> int
         def foo(a: ?) -> int
@@ -226,7 +226,7 @@ class TestOptimize(parser_test_base.ParserTest):
     """)
     self.AssertOptimizeEquals(src, new_src)
 
-  def testRemoveRedundantSignatureGeneric(self):
+  def test_remove_redundant_signature_generic(self):
     src = textwrap.dedent("""
         def foo(a: list[int]) -> list[int]
         def foo(a: list) -> list
@@ -239,7 +239,7 @@ class TestOptimize(parser_test_base.ParserTest):
     """)
     self.AssertOptimizeEquals(src, new_src)
 
-  def testRemoveRedundantSignatureTemplate(self):
+  def test_remove_redundant_signature_template(self):
     src = textwrap.dedent("""
         T = TypeVar("T")
         class A(Generic[T]):
@@ -258,7 +258,7 @@ class TestOptimize(parser_test_base.ParserTest):
         optimize.SuperClassHierarchy({})))
     self.AssertSourceEquals(ast, expected)
 
-  def testRemoveRedundantSignatureTwoTypeParams(self):
+  def test_remove_redundant_signature_two_type_params(self):
     src = textwrap.dedent("""
         X = TypeVar("X")
         Y = TypeVar("Y")
@@ -279,7 +279,7 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertSourceEquals(ast, expected)
 
   @unittest.skip("Not supported yet.")
-  def testRemoveRedundantSignatureGenericLeftSide(self):
+  def test_remove_redundant_signature_generic_left_side(self):
     src = textwrap.dedent("""
         X = TypeVar("X")
         def foo(a: X, b: int) -> X
@@ -294,7 +294,7 @@ class TestOptimize(parser_test_base.ParserTest):
         optimize.SuperClassHierarchy({})))
     self.AssertSourceEquals(ast, expected)
 
-  def testRemoveRedundantSignaturePolymorphic(self):
+  def test_remove_redundant_signature_polymorphic(self):
     src = textwrap.dedent("""
         T = TypeVar("T")
         def foo(a: T) -> T
@@ -309,7 +309,7 @@ class TestOptimize(parser_test_base.ParserTest):
         optimize.SuperClassHierarchy({})))
     self.AssertSourceEquals(ast, expected)
 
-  def testCombineReturns(self):
+  def test_combine_returns(self):
     src = textwrap.dedent("""
         def foo(a: int) -> int
         def foo(a: int) -> float
@@ -319,7 +319,7 @@ class TestOptimize(parser_test_base.ParserTest):
     """)
     self.AssertOptimizeEquals(src, new_src)
 
-  def testCombineRedundantReturns(self):
+  def test_combine_redundant_returns(self):
     src = textwrap.dedent("""
         def foo(a: int) -> int
         def foo(a: int) -> float
@@ -330,7 +330,7 @@ class TestOptimize(parser_test_base.ParserTest):
     """)
     self.AssertOptimizeEquals(src, new_src)
 
-  def testCombineUnionReturns(self):
+  def test_combine_union_returns(self):
     src = textwrap.dedent("""
         def foo(a: int) -> int or float
         def bar(a: str) -> str
@@ -342,7 +342,7 @@ class TestOptimize(parser_test_base.ParserTest):
     """)
     self.AssertOptimizeEquals(src, new_src)
 
-  def testCombineExceptions(self):
+  def test_combine_exceptions(self):
     src = textwrap.dedent("""
         def foo(a: int) -> int:
           raise ValueError()
@@ -363,7 +363,7 @@ class TestOptimize(parser_test_base.ParserTest):
     """)
     self.AssertOptimizeEquals(src, new_src)
 
-  def testMixedCombine(self):
+  def test_mixed_combine(self):
     src = textwrap.dedent("""
         def foo(a: int) -> int:
           raise ValueError()
@@ -379,7 +379,7 @@ class TestOptimize(parser_test_base.ParserTest):
     """)
     self.AssertOptimizeEquals(src, new_src)
 
-  def testLossy(self):
+  def test_lossy(self):
     # Lossy compression is hard to test, since we don't know to which degree
     # "compressible" items will be compressed. This test only checks that
     # non-compressible things stay the same.
@@ -393,7 +393,7 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertSourceEquals(optimized, src)
 
   @unittest.skip("Needs ABCs to be included in the builtins")
-  def testABCs(self):
+  def test_abcs(self):
     src = textwrap.dedent("""
         def foo(a: int or float) -> NoneType
         def foo(a: int or complex or float) -> NoneType
@@ -405,7 +405,7 @@ class TestOptimize(parser_test_base.ParserTest):
     optimized = self.Optimize(self.Parse(src), lossy=True, use_abcs=True)
     self.AssertSourceEquals(optimized, new_src)
 
-  def testDuplicatesInUnions(self):
+  def test_duplicates_in_unions(self):
     src = textwrap.dedent("""
       def a(x: int or float or complex) -> bool
       def b(x: int or float) -> bool
@@ -427,7 +427,7 @@ class TestOptimize(parser_test_base.ParserTest):
     optimized = optimized.Visit(visitors.DropBuiltinPrefix())
     self.AssertSourceEquals(optimized, new_src)
 
-  def testSimplifyUnions(self):
+  def test_simplify_unions(self):
     src = textwrap.dedent("""
       a = ...  # type: int or int
       b = ...  # type: int or ?
@@ -442,7 +442,7 @@ class TestOptimize(parser_test_base.ParserTest):
         self.ApplyVisitorToString(src, optimize.SimplifyUnions()),
         new_src)
 
-  def testFactorize(self):
+  def test_factorize(self):
     src = textwrap.dedent("""
         def foo(a: int) -> file
         def foo(a: int, x: complex) -> file
@@ -459,7 +459,7 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertSourceEquals(
         self.ApplyVisitorToString(src, optimize.Factorize()), new_src)
 
-  def testFactorizeMutable(self):
+  def test_factorize_mutable(self):
     src = textwrap.dedent("""
         def foo(a: list[bool], b: X) -> file:
             a = list[int]
@@ -482,7 +482,7 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertSourceEquals(
         self.ApplyVisitorToString(src, optimize.Factorize()), new_src)
 
-  def testOptionalArguments(self):
+  def test_optional_arguments(self):
     src = textwrap.dedent("""
         def foo(a: A, ...) -> Z
         def foo(a: A) -> Z
@@ -497,7 +497,7 @@ class TestOptimize(parser_test_base.ParserTest):
     new_src = self.ApplyVisitorToString(src, optimize.ApplyOptionalArguments())
     self.AssertSourceEquals(new_src, expected)
 
-  def testBuiltinSuperClasses(self):
+  def test_builtin_superclasses(self):
     src = textwrap.dedent("""
         def f(x: list or object, y: complex or memoryview) -> int or bool
     """)
@@ -514,7 +514,7 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = ast.Visit(visitors.CanonicalOrderingVisitor())
     self.AssertSourceEquals(ast, expected)
 
-  def testUserSuperClassHierarchy(self):
+  def test_user_superclass_hierarchy(self):
     class_data = textwrap.dedent("""
         class AB(object):
             pass
@@ -557,7 +557,7 @@ class TestOptimize(parser_test_base.ParserTest):
     new_src = self.ApplyVisitorToString(src, visitor)
     self.AssertSourceEquals(new_src, expected)
 
-  def testFindCommonSuperClasses(self):
+  def test_find_common_superclasses(self):
     src = textwrap.dedent("""
         x = ...  # type: int or other.Bar
     """)
@@ -573,7 +573,7 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = ast.Visit(visitors.LateTypeToClassType())
     self.AssertSourceEquals(ast, expected)
 
-  def testSimplifyUnionsWithSuperclasses(self):
+  def test_simplify_unions_with_superclasses(self):
     src = textwrap.dedent("""
         x = ...  # type: int or bool
         y = ...  # type: int or bool or float
@@ -593,7 +593,7 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertSourceEquals(ast, expected)
 
   @unittest.skip("Needs better handling of GenericType")
-  def testSimplifyUnionsWithSuperclassesGeneric(self):
+  def test_simplify_unions_with_superclasses_generic(self):
     src = textwrap.dedent("""
         x = ...  # type: frozenset[int] or AbstractSet[int]
     """)
@@ -608,7 +608,7 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = ast.Visit(visitor)
     self.AssertSourceEquals(ast, expected)
 
-  def testCollapseLongUnions(self):
+  def test_collapse_long_unions(self):
     src = textwrap.dedent("""
         def f(x: A or B or C or D) -> X
         def g(x: A or B or C or D or E) -> X
@@ -624,7 +624,7 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = ast.Visit(visitors.DropBuiltinPrefix())
     self.AssertSourceEquals(ast, expected)
 
-  def testCollapseLongConstantUnions(self):
+  def test_collapse_long_constant_unions(self):
     src = textwrap.dedent("""
       x = ...  # type: A or B or C or D
       y = ...  # type: A or B or C or D or E
@@ -638,7 +638,7 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = ast.Visit(optimize.AdjustReturnAndConstantGenericType())
     self.AssertSourceEquals(ast, expected)
 
-  def testCombineContainers(self):
+  def test_combine_containers(self):
     src = textwrap.dedent("""
         def f(x: list[int] or list[float]) -> ?
         def g(x: list[int] or str or list[float] or set[int] or long) -> ?
@@ -658,7 +658,7 @@ class TestOptimize(parser_test_base.ParserTest):
     new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
     self.AssertSourceEquals(new_src, expected)
 
-  def testCombineContainersMultiLevel(self):
+  def test_combine_containers_multi_level(self):
     src = textwrap.dedent("""
       v = ...  # type: list[tuple[long or int, ...]] or list[tuple[float or bool, ...]]
     """)
@@ -668,7 +668,7 @@ class TestOptimize(parser_test_base.ParserTest):
     new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
     self.AssertSourceEquals(new_src, expected)
 
-  def testCombineSameLengthTuples(self):
+  def test_combine_same_length_tuples(self):
     src = textwrap.dedent("""
       x = ...  # type: tuple[int] or tuple[str]
     """)
@@ -678,7 +678,7 @@ class TestOptimize(parser_test_base.ParserTest):
     new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
     self.AssertSourceEquals(new_src, expected)
 
-  def testCombineDifferentLengthTuples(self):
+  def test_combine_different_length_tuples(self):
     src = textwrap.dedent("""
       x = ...  # type: tuple[int] or tuple[int, str]
     """)
@@ -688,7 +688,7 @@ class TestOptimize(parser_test_base.ParserTest):
     new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
     self.AssertSourceEquals(new_src, expected)
 
-  def testCombineDifferentLengthCallables(self):
+  def test_combine_different_length_callables(self):
     src = textwrap.dedent("""
       from typing import Callable
       x = ...  # type: Callable[[int], str] or Callable[[int, int], str]
@@ -700,7 +700,7 @@ class TestOptimize(parser_test_base.ParserTest):
     new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
     self.AssertSourceEquals(new_src, expected)
 
-  def testPullInMethodClasses(self):
+  def test_pull_in_method_classes(self):
     src = textwrap.dedent("""
         class A(object):
             mymethod1 = ...  # type: Method1
@@ -738,7 +738,7 @@ class TestOptimize(parser_test_base.ParserTest):
                                         optimize.PullInMethodClasses())
     self.AssertSourceEquals(new_src, expected)
 
-  def testAddInheritedMethods(self):
+  def test_add_inherited_methods(self):
     src = textwrap.dedent("""
         class A():
             foo = ...  # type: bool
@@ -758,7 +758,7 @@ class TestOptimize(parser_test_base.ParserTest):
     six.assertCountEqual(self, ("f", "g", "h"),
                          [m.name for m in ast.Lookup("B").methods])
 
-  def testAdjustInheritedMethodSelf(self):
+  def test_adjust_inherited_method_self(self):
     src = textwrap.dedent("""
       class A():
         def f(self: object) -> float
@@ -774,7 +774,7 @@ class TestOptimize(parser_test_base.ParserTest):
             def f(self) -> float: ...
     """).lstrip())
 
-  def testRemoveInheritedMethodsWithLateType(self):
+  def test_remove_inherited_methods_with_late_type(self):
     src = textwrap.dedent("""
         class Foo(other.Bar):
           def bar() -> float
@@ -790,7 +790,7 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = ast.Visit(visitors.LateTypeToClassType())
     self.AssertSourceEquals(ast, expected)
 
-  def testRemoveInheritedMethodsWithoutSelf(self):
+  def test_remove_inherited_methods_without_self(self):
     src = textwrap.dedent("""
         class Bar(object):
           def baz(self) -> int
@@ -811,7 +811,7 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = ast.Visit(optimize.RemoveInheritedMethods())
     self.AssertSourceEquals(ast, expected)
 
-  def testRemoveInheritedMethods(self):
+  def test_remove_inherited_methods(self):
     src = textwrap.dedent("""
         class A():
             def f(self, y: int) -> bool
@@ -848,7 +848,7 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = ast.Visit(optimize.RemoveInheritedMethods())
     self.AssertSourceEquals(ast, expected)
 
-  def testRemoveInheritedMethodsWithOverride(self):
+  def test_remove_inherited_methods_with_override(self):
     src = textwrap.dedent("""
         class A(object):
             def f(self, x) -> ?
@@ -874,7 +874,7 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = ast.Visit(optimize.RemoveInheritedMethods())
     self.AssertSourceEquals(ast, expected)
 
-  def testRemoveInheritedMethodsWithDiamond(self):
+  def test_remove_inherited_methods_with_diamond(self):
     src = textwrap.dedent("""
         class A(object):
             def f(self, x) -> ?
@@ -890,7 +890,7 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = ast.Visit(optimize.RemoveInheritedMethods())
     self.AssertSourceEquals(ast, src)
 
-  def testRemoveInheritedMethodsWithCircle(self):
+  def test_remove_inherited_methods_with_circle(self):
     src = textwrap.dedent("""
         class A(B):
             def f(self) -> ?
@@ -902,7 +902,7 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = ast.Visit(optimize.RemoveInheritedMethods())
     self.AssertSourceEquals(ast, src)
 
-  def testDontRemoveAbstractMethodImplementation(self):
+  def test_dont_remove_abstract_method_implementation(self):
     src = textwrap.dedent("""
       class A(object):
         @abstractmethod
@@ -915,7 +915,7 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = ast.Visit(optimize.RemoveInheritedMethods())
     self.AssertSourceEquals(ast, src)
 
-  def testAbsorbMutableParameters(self):
+  def test_absorb_mutable_parameters(self):
     src = textwrap.dedent("""
         def popall(x: list[?]) -> ?:
             x = list[nothing]
@@ -934,7 +934,7 @@ class TestOptimize(parser_test_base.ParserTest):
     new_tree = new_tree.Visit(optimize.CombineContainers())
     self.AssertSourceEquals(new_tree, expected)
 
-  def testAbsorbMutableParametersFromMethods(self):
+  def test_absorb_mutable_parameters_from_methods(self):
     # This is a test for intermediate data. See AbsorbMutableParameters class
     # pydoc about how AbsorbMutableParameters works on methods.
     src = textwrap.dedent("""
@@ -955,7 +955,7 @@ class TestOptimize(parser_test_base.ParserTest):
     new_tree = new_tree.Visit(optimize.CombineContainers())
     self.AssertSourceEquals(new_tree, expected)
 
-  def testMergeTypeParameters(self):
+  def test_merge_type_parameters(self):
     # This test uses pytd of the kind that's typically the output of
     # AbsorbMutableParameters.
     # See comment in RemoveMutableParameters

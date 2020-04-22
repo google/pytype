@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class SplitTest(test_base.TargetPython3BasicTest):
   """Tests for if-splitting."""
 
-  def testHasAttr(self):
+  def test_hasattr(self):
     ty = self.Infer("""
       class Foo():
         def bar(self):
@@ -33,7 +33,7 @@ class SplitTest(test_base.TargetPython3BasicTest):
       def a1(x) -> Union[int, str]: ...
     """)
 
-  def testUnion(self):
+  def test_union(self):
     self.Check("""
       from typing import Union
       def f(data: str):
@@ -43,7 +43,7 @@ class SplitTest(test_base.TargetPython3BasicTest):
           f(data)
     """)
 
-  def testUnion2(self):
+  def test_union2(self):
     self.Check("""
       from typing import Union
       class MyString(object):
@@ -58,7 +58,7 @@ class SplitTest(test_base.TargetPython3BasicTest):
         return result
     """)
 
-  def testLoadAttr(self):
+  def test_load_attr(self):
     self.Check("""
       class A(object):
         def __init__(self):
@@ -74,7 +74,7 @@ class SplitTest(test_base.TargetPython3BasicTest):
             return 0
     """)
 
-  def testGuardingIs(self):
+  def test_guarding_is(self):
     """Assert that conditions are remembered for is."""
     self.Check("""
       from typing import Optional
@@ -84,7 +84,7 @@ class SplitTest(test_base.TargetPython3BasicTest):
         return x
       """)
 
-  def testConditionsAreOrdered(self):
+  def test_conditions_are_ordered(self):
     """Assert that multiple conditions on a path work."""
     self.Check("""
       from typing import Optional
@@ -96,7 +96,7 @@ class SplitTest(test_base.TargetPython3BasicTest):
         return x
       """)
 
-  def testGuardingIsNot(self):
+  def test_guarding_is_not(self):
     """Assert that conditions are remembered for is not."""
     self.Check("""
       from typing import Optional
@@ -106,7 +106,7 @@ class SplitTest(test_base.TargetPython3BasicTest):
         return x
       """)
 
-  def testGuardingIsNotElse(self):
+  def test_guarding_is_not_else(self):
     """Assert that conditions are remembered for else if."""
     self.Check("""
       from typing import Optional
@@ -118,13 +118,13 @@ class SplitTest(test_base.TargetPython3BasicTest):
         return x
       """)
 
-  def testSimpleOr(self):
+  def test_simple_or(self):
     self.Check("""
       def f(self, x: str = None) -> str:
         return x or "foo"
     """)
 
-  def testOr(self):
+  def test_or(self):
     self.Check("""
       from typing import Optional
       def f(foo: Optional[int] = None) -> int:
@@ -142,7 +142,7 @@ class SplitTest(test_base.TargetPython3BasicTest):
         return foo
     """)
 
-  def testHiddenConflict(self):
+  def test_hidden_conflict(self):
     self.Check("""
       import typing
       def f(obj: typing.Union[int, dict, list, float, str, complex]):
@@ -152,7 +152,7 @@ class SplitTest(test_base.TargetPython3BasicTest):
           obj.values
     """)
 
-  def testIsInstanceList(self):
+  def test_isinstance_list(self):
     self.Check("""
       from typing import List
       def f(x: List[float]):
@@ -160,7 +160,7 @@ class SplitTest(test_base.TargetPython3BasicTest):
           return float(x)
     """)
 
-  def testLongSignature(self):
+  def test_long_signature(self):
     self.Check("""
 
       class Foo(object):
@@ -174,7 +174,7 @@ class SplitTest(test_base.TargetPython3BasicTest):
           self.credentials = credentials.upper()
     """)
 
-  def testCreateList(self):
+  def test_create_list(self):
     self.Check("""
       from typing import List, Optional
       def _CreateList(opt: Optional[str]) -> List[str]:
@@ -183,7 +183,7 @@ class SplitTest(test_base.TargetPython3BasicTest):
         return ["foo"]
     """)
 
-  def testCreateTuple(self):
+  def test_create_tuple(self):
     self.Check("""
       from typing import Optional, Tuple
       def _CreateTuple(opt: Optional[str]) -> Tuple[str]:
@@ -192,7 +192,7 @@ class SplitTest(test_base.TargetPython3BasicTest):
         return ("foo",)
     """)
 
-  def testClosure(self):
+  def test_closure(self):
     self.Check("""
       from typing import Optional
       def foo(arg: Optional[str]):
@@ -202,7 +202,7 @@ class SplitTest(test_base.TargetPython3BasicTest):
           print(arg.upper())
     """)
 
-  def testAnnotatedClosure(self):
+  def test_annotated_closure(self):
     self.Check("""
       from typing import Optional
       def foo(arg: Optional[str]):
@@ -216,7 +216,7 @@ class SplitTest(test_base.TargetPython3BasicTest):
 class SplitTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for if-splitting in Python 3."""
 
-  def testIsInstanceMultiple(self):
+  def test_isinstance_multiple(self):
     ty = self.Infer("""
       from typing import Union
       def UpperIfString(value: Union[bytes, str, int]):
@@ -232,7 +232,7 @@ class SplitTestPy3(test_base.TargetPython3FeatureTest):
       def ReturnIfNumeric(value: Union[str, int]) -> Optional[int]
     """)
 
-  def testIsInstanceAliased(self):
+  def test_isinstance_aliased(self):
     # Like the previous test, but with isinstance aliased to myisinstance.
     ty = self.Infer("""
       from typing import Union
@@ -247,7 +247,7 @@ class SplitTestPy3(test_base.TargetPython3FeatureTest):
       def UpperIfString(value: Union[bytes, int, str]) -> Optional[Union[bytes, str]]
     """)
 
-  def testShadowNone(self):
+  def test_shadow_none(self):
     self.Check("""
       from typing import Optional, Union
       def f(x: Optional[Union[str, bytes]]):

@@ -7,28 +7,28 @@ from pytype.tests import test_base
 class SuperTest(test_base.TargetIndependentTest):
   """Tests for super()."""
 
-  def testSetAttr(self):
+  def test_set_attr(self):
     self.Check("""
       class Foo(object):
         def foo(self, name, value):
           super(Foo, self).__setattr__(name, value)
     """)
 
-  def testStr(self):
+  def test_str(self):
     self.Check("""
       class Foo(object):
         def foo(self, name, value):
           super(Foo, self).__str__()
     """)
 
-  def testGet(self):
+  def test_get(self):
     self.Check("""
       class Foo(object):
         def foo(self, name, value):
           super(Foo, self).__get__(name)
     """)
 
-  def testInheritedGet(self):
+  def test_inherited_get(self):
     self.Check("""
       class Foo(object):
         def __get__(self, obj, objtype):
@@ -41,7 +41,7 @@ class SuperTest(test_base.TargetIndependentTest):
       Baz().x + 1
     """)
 
-  def testInheritedGetGrandparent(self):
+  def test_inherited_get_grandparent(self):
     self.Check("""
       class Foo(object):
         def __get__(self, obj, objtype):
@@ -56,7 +56,7 @@ class SuperTest(test_base.TargetIndependentTest):
       Baz().x + 1
     """)
 
-  def testInheritedGetMultiple(self):
+  def test_inherited_get_multiple(self):
     self.Check("""
       class Foo(object):
         def __get__(self, obj, objtype):
@@ -71,7 +71,7 @@ class SuperTest(test_base.TargetIndependentTest):
       Baz().x + 1
     """)
 
-  def testSet(self):
+  def test_set(self):
     _, errors = self.InferWithErrors("""
       class Foo(object):
         def foo(self, name, value):
@@ -79,7 +79,7 @@ class SuperTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"__set__.*super"})
 
-  def testInheritedSet(self):
+  def test_inherited_set(self):
     self.Check("""
       class Foo(object):
         def __init__(self):
@@ -95,21 +95,21 @@ class SuperTest(test_base.TargetIndependentTest):
       y.x = 42
     """)
 
-  def testInit(self):
+  def test_init(self):
     self.Check("""
       class Foo(object):
         def foo(self, name, value):
           super(Foo, self).__init__()
     """)
 
-  def testGetAttr(self):
+  def test_getattr(self):
     self.Check("""
       class Foo(object):
         def hello(self, name):
           getattr(super(Foo, self), name)
     """)
 
-  def testGetAttrMultipleInheritance(self):
+  def test_getattr_multiple_inheritance(self):
     self.Check("""
       class X(object):
         pass
@@ -122,7 +122,7 @@ class SuperTest(test_base.TargetIndependentTest):
           getattr(super(Foo, self), "bla")
     """)
 
-  def testGetAttrInheritance(self):
+  def test_getattr_inheritance(self):
     self.Check("""
       class Y(object):
         bla = 123
@@ -132,7 +132,7 @@ class SuperTest(test_base.TargetIndependentTest):
           getattr(super(Foo, self), "bla")
     """)
 
-  def testIsInstance(self):
+  def test_isinstance(self):
     self.Check("""
       class Y(object):
         pass
@@ -142,7 +142,7 @@ class SuperTest(test_base.TargetIndependentTest):
           return isinstance(super(Foo, self), Y)
     """)
 
-  def testCallSuper(self):
+  def test_call_super(self):
     _, errorlog = self.InferWithErrors("""
       class Y(object):
         pass
@@ -153,7 +153,7 @@ class SuperTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errorlog, {"e": r"super"})
 
-  def testSuperType(self):
+  def test_super_type(self):
     ty = self.Infer("""
       class A(object):
         pass
@@ -165,7 +165,7 @@ class SuperTest(test_base.TargetIndependentTest):
       x = ...  # type: super
     """)
 
-  def testSuperWithAmbiguousBase(self):
+  def test_super_with_ambiguous_base(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Grandparent(object):
@@ -188,19 +188,19 @@ class SuperTest(test_base.TargetIndependentTest):
         class Child(Any, Parent): ...
       """)
 
-  def testSuperWithAny(self):
+  def test_super_with_any(self):
     self.Check("""
       super(__any_object__, __any_object__)
     """)
 
-  def testSingleArgumentSuper(self):
+  def test_single_argument_super(self):
     _, errors = self.InferWithErrors("""
       super(object)
       super(object())  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"cls: type.*cls: object"})
 
-  def testMethodOnSingleArgumentSuper(self):
+  def test_method_on_single_argument_super(self):
     ty, errors = self.InferWithErrors("""
       sup = super(object)
       sup.foo  # attribute-error[e1]
@@ -214,7 +214,7 @@ class SuperTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e1": r"'foo' on super",
                                      "e2": r"Type\[super\].*Type\[object\]"})
 
-  def testSuperUnderDecorator(self):
+  def test_super_under_decorator(self):
     self.Check("""
       def decorate(cls):
         return __any_object__
@@ -227,7 +227,7 @@ class SuperTest(test_base.TargetIndependentTest):
           return super(Child, self).Hello()
     """)
 
-  def testSuperSetAttr(self):
+  def test_super_set_attr(self):
     _, errors = self.InferWithErrors("""
       class Foo(object):
         def __init__(self):
@@ -235,7 +235,7 @@ class SuperTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"super"})
 
-  def testSuperSubclassSetAttr(self):
+  def test_super_subclass_set_attr(self):
     _, errors = self.InferWithErrors("""
       class Foo(object): pass
       class Bar(Foo):
@@ -244,7 +244,7 @@ class SuperTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"super"})
 
-  def testSuperNothingSetAttr(self):
+  def test_super_nothing_set_attr(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo(nothing): ...
@@ -257,7 +257,7 @@ class SuperTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"super"})
 
-  def testSuperAnySetAttr(self):
+  def test_super_any_set_attr(self):
     _, errors = self.InferWithErrors("""
       class Foo(__any_object__):
         def __init__(self):

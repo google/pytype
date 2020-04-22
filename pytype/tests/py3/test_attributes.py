@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class TestStrictNone(test_base.TargetPython3BasicTest):
   """Tests for strict attribute checking on None."""
 
-  def testExplicitNone(self):
+  def test_explicit_none(self):
     errors = self.CheckWithErrors("""
       from typing import Optional
       def f(x: Optional[str]):
@@ -14,7 +14,7 @@ class TestStrictNone(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
-  def testClosure(self):
+  def test_closure(self):
     self.Check("""
       from typing import Optional
       d = ...  # type: Optional[dict]
@@ -25,7 +25,7 @@ class TestStrictNone(test_base.TargetPython3BasicTest):
       formatter('key')
     """)
 
-  def testOverwriteGlobal(self):
+  def test_overwrite_global(self):
     errors = self.CheckWithErrors("""
       from typing import Optional
       d = ...  # type: Optional[dict]
@@ -42,7 +42,7 @@ class TestStrictNone(test_base.TargetPython3BasicTest):
 class TestAttributes(test_base.TargetPython3BasicTest):
   """Tests for attributes."""
 
-  def testAttrOnOptional(self):
+  def test_attr_on_optional(self):
     errors = self.CheckWithErrors("""
       from typing import Optional
       def f(x: Optional[str]):
@@ -50,7 +50,7 @@ class TestAttributes(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
-  def testErrorInAny(self):
+  def test_error_in_any(self):
     errors = self.CheckWithErrors("""
       from typing import Any
       def f(x: Any):
@@ -64,14 +64,14 @@ class TestAttributes(test_base.TargetPython3BasicTest):
 class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):
   """Tests for attributes over target code using Python 3 features."""
 
-  def testEmptyTypeParameterInstance(self):
+  def test_empty_type_parameter_instance(self):
     self.Check("""
       args = {}
       for x, y in sorted(args.items()):
         x.values
     """)
 
-  def testTypeParameterInstanceMultipleBindings(self):
+  def test_type_parameter_instance_multiple_bindings(self):
     _, errors = self.InferWithErrors("""
       class A(object):
         values = 42
@@ -81,7 +81,7 @@ class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"'values' on bool"})
 
-  def testTypeParameterInstanceSetAttr(self):
+  def test_type_parameter_instance_set_attr(self):
     ty = self.Infer("""
       class Foo(object):
         pass
@@ -98,7 +98,7 @@ class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):
         def bar(self) -> None: ...
     """)
 
-  def testTypeParameterInstance(self):
+  def test_type_parameter_instance(self):
     ty = self.Infer("""
       class A(object):
         values = 42
@@ -116,7 +116,7 @@ class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):
       z = ...  # type: int
     """)
 
-  def testFilterSubclassAttribute(self):
+  def test_filter_subclass_attribute(self):
     self.Check("""
       from typing import List
 
@@ -147,7 +147,7 @@ class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   @test_base.skip("Needs vm._get_iter() to iterate over individual bindings.")
-  def testMetaclassIter(self):
+  def test_metaclass_iter(self):
     self.Check("""
       class Meta(type):
         def __iter__(cls):
@@ -160,7 +160,7 @@ class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   @test_base.skip("Needs better handling of __getitem__ in vm._get_iter().")
-  def testMetaclassGetItem(self):
+  def test_metaclass_getitem(self):
     self.Check("""
       class Meta(type):
         def __getitem__(cls, x):

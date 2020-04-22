@@ -18,7 +18,7 @@ class TestPytd(unittest.TestCase):
     self.float = pytd.ClassType("float")
     self.list = pytd.ClassType("list")
 
-  def testFunctionPickle(self):
+  def test_function_pickle(self):
     test_obj = "x1"
     f = pytd.FunctionType("test_name", test_obj)
     pickled_f = cPickle.dumps(f, pickle.HIGHEST_PROTOCOL)
@@ -28,7 +28,7 @@ class TestPytd(unittest.TestCase):
     self.assertEqual(f.name, unpickled_f.name)
     self.assertEqual(f.function, unpickled_f.function)
 
-  def testUnionTypeEq(self):
+  def test_union_type_eq(self):
     u1 = pytd.UnionType((self.int, self.float))
     u2 = pytd.UnionType((self.float, self.int))
     self.assertEqual(u1, u2)
@@ -36,7 +36,7 @@ class TestPytd(unittest.TestCase):
     self.assertEqual(u1.type_list, (self.int, self.float))
     self.assertEqual(u2.type_list, (self.float, self.int))
 
-  def testUnionTypeNe(self):
+  def test_union_type_ne(self):
     u1 = pytd.UnionType((self.int, self.float))
     u2 = pytd.UnionType((self.float, self.int, self.none_type))
     self.assertNotEqual(u1, u2)
@@ -44,7 +44,7 @@ class TestPytd(unittest.TestCase):
     self.assertEqual(u1.type_list, (self.int, self.float))
     self.assertEqual(u2.type_list, (self.float, self.int, self.none_type))
 
-  def testOrder(self):
+  def test_order(self):
     # pytd types' primary sort key is the class name, second sort key is
     # the contents when interpreted as a (named)tuple.
     nodes = [pytd.AnythingType(),
@@ -61,7 +61,7 @@ class TestPytd(unittest.TestCase):
     for p in itertools.permutations(nodes):
       self.assertEqual(list(sorted(p)), nodes)
 
-  def testEmptyNodesAreTrue(self):
+  def test_empty_nodes_are_true(self):
     self.assertTrue(pytd.AnythingType())
     self.assertTrue(pytd.NothingType())
 

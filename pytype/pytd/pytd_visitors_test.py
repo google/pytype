@@ -12,7 +12,7 @@ import unittest
 
 class PytdVisitorsTest(parser_test_base.ParserTest):
 
-  def testRenameModule(self):
+  def test_rename_module(self):
     module_name = "foo.bar"
     src = """
         import module2
@@ -43,7 +43,7 @@ class PytdVisitorsTest(parser_test_base.ParserTest):
     with self.assertRaises(KeyError):
       new_ast.Lookup("foo.bar.SomeClass")
 
-  def testRenameModuleWithTypeParameter(self):
+  def test_rename_module_with_type_parameter(self):
     module_name = "foo.bar"
     src = """
       import typing
@@ -67,7 +67,7 @@ class PytdVisitorsTest(parser_test_base.ParserTest):
     _, param2 = signature.params
     self.assertEqual(param2.type.scope, "other.name.SomeClass")
 
-  def testCanonicalOrderingVisitor(self):
+  def test_canonical_ordering_visitor(self):
     src1 = """
       from typing import TypeVar
       def f() -> ?:
@@ -105,7 +105,7 @@ class PytdVisitorsTest(parser_test_base.ParserTest):
     self.assertEqual(tree1.Lookup("f").signatures[0].template,
                      tree2.Lookup("f").signatures[0].template)
 
-  def testSuperClasses(self):
+  def test_superclasses(self):
     src = textwrap.dedent("""
       class classobj:
           pass
@@ -135,7 +135,7 @@ class PytdVisitorsTest(parser_test_base.ParserTest):
 
 class TestAncestorMap(unittest.TestCase):
 
-  def testGetAncestorMap(self):
+  def test_get_ancestor_map(self):
     ancestors = pytd_visitors._GetAncestorMap()
     # TypeDeclUnit is the top of the food chain - no ancestors other than
     # itself.

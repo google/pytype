@@ -10,7 +10,7 @@ from pytype.tests import test_base
 class BuiltinTests2(test_base.TargetIndependentTest):
   """Tests for builtin methods and classes."""
 
-  def testDivModWithUnknown(self):
+  def test_div_mod_with_unknown(self):
     ty = self.Infer("""
       def f(x, y):
         divmod(x, __any_object__)
@@ -21,7 +21,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       def f(x, y) -> Tuple[Any, Any]
     """)
 
-  def testDefaultDict(self):
+  def test_defaultdict(self):
     ty = self.Infer("""
       import collections
       r = collections.defaultdict()
@@ -32,7 +32,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       r = ...  # type: collections.defaultdict[int, int]
     """)
 
-  def testDictUpdate(self):
+  def test_dict_update(self):
     ty = self.Infer("""
       x = {}
       x.update(a=3, b=4)
@@ -42,7 +42,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       x = ...  # type: Dict[str, int]
     """)
 
-  def testImportLib(self):
+  def test_import_lib(self):
     ty = self.Infer("""
       import importlib
     """)
@@ -50,7 +50,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       importlib = ...  # type: module
     """)
 
-  def testSetUnion(self):
+  def test_set_union(self):
     ty = self.Infer("""
       def f(y):
         return set.union(*y)
@@ -65,7 +65,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       def h(y) -> set: ...
     """)
 
-  def testSetInit(self):
+  def test_set_init(self):
     ty = self.Infer("""
       data = set(x for x in [""])
     """, deep=False)
@@ -74,7 +74,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       data = ...  # type: Set[str]
     """)
 
-  def testFrozenSetInheritance(self):
+  def test_frozenset_inheritance(self):
     ty = self.Infer("""
       class Foo(frozenset):
         pass
@@ -85,7 +85,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
         pass
     """)
 
-  def testOldStyleClass(self):
+  def test_old_style_class(self):
     ty = self.Infer("""
       class Foo:
         def get_dict(self):
@@ -112,7 +112,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
         def get_bases(self) -> tuple
     """)
 
-  def testNewStyleClass(self):
+  def test_new_style_class(self):
     ty = self.Infer("""
       class Foo(object):
         def get_dict(self):
@@ -145,7 +145,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
         def get_bases(self) -> tuple
     """)
 
-  def testDictInit(self):
+  def test_dict_init(self):
     ty = self.Infer("""
       x1 = dict(u=3, v=4, w=5)
       x2 = dict([(3, "")])
@@ -164,7 +164,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       x6 = ...  # type: Dict[int, str]
     """)
 
-  def testMax(self):
+  def test_max(self):
     ty = self.Infer("""
       x = dict(u=3, v=4, w=5)
     """)
@@ -172,7 +172,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       x = ...  # type: dict
     """)
 
-  def testModule(self):
+  def test_module(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         x = ...  # type: module
@@ -190,7 +190,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
         y = ...  # type: Any
       """)
 
-  def testClassMethod(self):
+  def test_classmethod(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class A(object):
@@ -208,7 +208,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
         z = ...  # type: Any
       """)
 
-  def testStaticMethod(self):
+  def test_staticmethod(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class A(object):
@@ -226,7 +226,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
         z = ...  # type: Any
       """)
 
-  def testMinMax(self):
+  def test_min_max(self):
     ty = self.Infer("""
       x1 = min(x for x in range(3))
       x2 = min([3.1, 4.1], key=lambda n: n)
@@ -244,7 +244,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       y3 = ...  # type: int
     """)
 
-  def testMaxDifferentTypes(self):
+  def test_max_different_types(self):
     ty = self.Infer("""
       a = max(1, None)
       b = max(1, None, 3j)
@@ -269,7 +269,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       i = ...  # type: int
       """)
 
-  def testMinDifferentTypes(self):
+  def test_min_different_types(self):
     ty = self.Infer("""
       a = min(1, None)
       b = min(1, None, 3j)
@@ -294,7 +294,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       i = ...  # type: int
       """)
 
-  def testFromKeys(self):
+  def test_from_keys(self):
     ty = self.Infer("""
       d1 = dict.fromkeys([1])
       d2 = dict.fromkeys([1], 0)
@@ -313,7 +313,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       d7 = ...  # type: Dict[bool, None]
     """)
 
-  def testRedefinedBuiltin(self):
+  def test_redefined_builtin(self):
     ty = self.Infer("""
       class BaseException(Exception): pass
       class CryptoException(BaseException, ValueError): pass
@@ -326,7 +326,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       class CryptoException(BaseException, ValueError): ...
     """)
 
-  def testSum(self):
+  def test_sum(self):
     ty = self.Infer("""
       x1 = sum([1, 2])
       x2 = sum([1, 2], 0)
@@ -343,7 +343,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       x5 = ...  # type: List[int or str]
     """)
 
-  def testReversed(self):
+  def test_reversed(self):
     ty, errors = self.InferWithErrors("""
       x1 = reversed(range(42))
       x2 = reversed([42])
@@ -371,7 +371,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
                                      "e2": r"FrozenSet\[int\]",
                                      "e3": r"Dict\[bool, int\]"})
 
-  def testStrJoin(self):
+  def test_str_join(self):
     ty = self.Infer("""
       a = ",".join([])
       c = ",".join(["foo"])
@@ -381,7 +381,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       c = ...  # type: str
     """)
 
-  def testBytearrayJoin(self):
+  def test_bytearray_join(self):
     ty = self.Infer("""
       b = bytearray()
       x1 = b.join([])
@@ -393,7 +393,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       x3 = ...  # type: bytearray
     """)
 
-  def testReduce(self):
+  def test_reduce(self):
     _, errors = self.InferWithErrors("""
       reduce(lambda x, y: x+y, [1,2,3]).real
       reduce(lambda x, y: x+y, ["foo"]).upper()
@@ -403,7 +403,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"real.*str"})
 
-  def testDictPopItem(self):
+  def test_dict_pop_item(self):
     ty = self.Infer("""
       v = {"a": 1}.popitem()
     """, deep=False)
@@ -412,7 +412,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       v = ...  # type: Tuple[str, int]
     """)
 
-  def testLongConstant(self):
+  def test_long_constant(self):
     ty = self.Infer("""
       MAX_VALUE = 2**64
     """, deep=False)
@@ -420,7 +420,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       MAX_VALUE = ...  # type: int
     """)
 
-  def testIter(self):
+  def test_iter(self):
     ty = self.Infer("""
       x1 = iter("hello")
       x3 = iter(bytearray(42))
@@ -445,7 +445,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       x9 = ...  # type: `callable-iterator`[int]
     """)
 
-  def testListInit(self):
+  def test_list_init(self):
     ty = self.Infer("""
       l1 = list()
       l2 = list([42])
@@ -476,7 +476,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       l14 = ...  # type: List[int]
     """)
 
-  def testTupleInit(self):
+  def test_tuple_init(self):
     ty = self.Infer("""
       t1 = tuple()
       t2 = tuple([42])
@@ -507,7 +507,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       t14 = ...  # type: Tuple[int, ...]
     """)
 
-  def testEmptyTuple(self):
+  def test_empty_tuple(self):
     self.Check("""
       isinstance(42, ())
       issubclass(int, ())
@@ -515,7 +515,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       type("X", (), {})
     """)
 
-  def testListExtend(self):
+  def test_list_extend(self):
     ty = self.Infer("""
       x1 = [42]
       x1.extend([""])
@@ -534,7 +534,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       x4 = ...  # type: List[int or str]
     """)
 
-  def testSorted(self):
+  def test_sorted(self):
     ty = self.Infer("""
       x1 = sorted("hello")
       x3 = sorted(bytearray("hello"))
@@ -549,7 +549,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       x5 = ...  # type: List[int]
     """)
 
-  def testEnumerate(self):
+  def test_enumerate(self):
     ty = self.Infer("""
       x1 = enumerate([42])
       x2 = enumerate((42,))
@@ -563,7 +563,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       x4 = ...  # type: list[tuple[int, str]]
     """)
 
-  def testFrozenSetInit(self):
+  def test_frozenset_init(self):
     ty = self.Infer("""
       x1 = frozenset([42])
       x2 = frozenset({42})
@@ -575,7 +575,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       x3 = ...  # type: frozenset[str]
     """)
 
-  def testFrozenSetLiteral(self):
+  def test_frozenset_literal(self):
     # In python2 this calls LOAD_CONST 'foo'; BUILD_SET, but python3 calls
     # LOAD_CONST frozenset(['foo']) directly. Test that both versions work.
     ty = self.Infer("""
@@ -585,17 +585,17 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       a = ...  # type: bool
     """)
 
-  def testFuncTools(self):
+  def test_func_tools(self):
     self.Check("""
       import functools
     """)
 
-  def testABC(self):
+  def test_abc(self):
     self.Check("""
       import abc
     """)
 
-  def testSetDefault(self):
+  def test_set_default(self):
     ty = self.Infer("""
       x = {}
       x['bar'] = 3
@@ -609,7 +609,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       z = ...  # type: float
     """)
 
-  def testSetDefaultOneArg(self):
+  def test_set_default_one_arg(self):
     ty = self.Infer("""
       x = {}
       x['bar'] = 3
@@ -623,7 +623,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       z = ...  # type: None
     """)
 
-  def testSetDefaultVarargs(self):
+  def test_set_default_varargs(self):
     ty = self.Infer("""
       x1 = {}
       y1 = x1.setdefault(*("foo", 42))
@@ -641,7 +641,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       y2 = ...  # type: Any
     """)
 
-  def testRedefineNext(self):
+  def test_redefine_next(self):
     ty = self.Infer("""
       next = 42
     """, deep=False)
@@ -649,13 +649,13 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       next = ...  # type: int
     """)
 
-  def testOsEnvironCopy(self):
+  def test_os_environ_copy(self):
     self.Check("""
       import os
       os.environ.copy()["foo"] = "bar"
     """)
 
-  def testBytearrayInit(self):
+  def test_bytearray_init(self):
     self.Check("""
       bytearray(42)
       bytearray([42])
@@ -663,12 +663,12 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       bytearray(u"hello", "utf-8", "")
     """)
 
-  def testCompile(self):
+  def test_compile(self):
     self.Check("""
       code = compile("1 + 2", "foo.py", "single")
     """)
 
-  def testIntInit(self):
+  def test_int_init(self):
     self.Check("""
       int(42)
       int(42.0)
@@ -677,7 +677,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       int()
     """)
 
-  def testExec(self):
+  def test_exec(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         x = exec

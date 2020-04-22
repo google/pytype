@@ -12,7 +12,7 @@ from pytype.tests import test_base
 class BuiltinTests3(test_base.TargetIndependentTest):
   """Tests for builtin methods and classes."""
 
-  def testSuperAttribute(self):
+  def test_super_attribute(self):
     ty = self.Infer("""
       x = super.__name__
     """, deep=False)
@@ -20,7 +20,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       x = ...  # type: str
     """)
 
-  def testSlice(self):
+  def test_slice(self):
     ty = self.Infer("""
       x1 = [1,2,3][1:None]
       x2 = [1,2,3][None:2]
@@ -35,7 +35,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       x4 = ...  # type: List[int]
     """)
 
-  def testSliceAttributes(self):
+  def test_slice_attributes(self):
     ty = self.Infer("""
       v = slice(1)
       start = v.start
@@ -52,7 +52,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       indices = ...  # type: Tuple[int, int, int]
     """)
 
-  def testNextFunction(self):
+  def test_next_function(self):
     ty = self.Infer("""
       a = next(iter([1, 2, 3]))
       b = next(iter([1, 2, 3]), default = 4)
@@ -65,7 +65,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       c = ...  # type: Union[int, str]
     """)
 
-  def testImplicitTypeVarImport(self):
+  def test_implicit_typevar_import(self):
     ty, _ = self.InferWithErrors("""
       v = %s  # name-error
     """ % abstract_utils.T)
@@ -74,13 +74,13 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       v = ...  # type: Any
     """)
 
-  def testExplicitTypeVarImport(self):
+  def test_explicit_typevar_import(self):
     self.Check("""
       from __builtin__ import _T
       _T
     """)
 
-  def testClassOfType(self):
+  def test_class_of_type(self):
     ty = self.Infer("""
       v = int.__class__
     """, deep=False)
@@ -90,7 +90,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
     """)
 
   @test_base.skip("broken")
-  def testClear(self):
+  def test_clear(self):
     ty = self.Infer("""
       x = {1, 2}
       x.clear()
@@ -103,7 +103,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       y = ...  # type: Dict[nothing, nothing]
     """)
 
-  def testCmp(self):
+  def test_cmp(self):
     ty = self.Infer("""
       if not cmp(4, 4):
         x = 42
@@ -112,7 +112,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       x = ...  # type: int
     """)
 
-  def testRepr(self):
+  def test_repr(self):
     ty = self.Infer("""
       if repr("hello world"):
         x = 42
@@ -121,7 +121,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       x = ...  # type: int
     """)
 
-  def testIntInit(self):
+  def test_int_init(self):
     _, errors = self.InferWithErrors("""
       int()
       int(0)
@@ -133,7 +133,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"1.*4"})
 
-  def testNewlines(self):
+  def test_newlines(self):
     with file_utils.Tempdir() as d:
       d.create_file("newlines.txt", """
           1
@@ -148,29 +148,29 @@ class BuiltinTests3(test_base.TargetIndependentTest):
             newlines = f.newlines
           """)
 
-  def testInitWithUnicode(self):
+  def test_init_with_unicode(self):
     self.Check("""
         int(u"123.0")
         float(u"123.0")
         complex(u"123.0")
     """)
 
-  def testIOWrite(self):
+  def test_io_write(self):
     self.Check("""
         import sys
         sys.stdout.write("hello world")
     """)
 
-  def testBinaryIOWrite(self):
+  def test_binary_io_write(self):
     self.Check("""
       with open('foo', 'wb') as f:
         f.write(bytearray([1, 2, 3]))
     """)
 
-  def testHasAttrNone(self):
+  def test_hasattr_none(self):
     self.assertNoCrash(self.Check, "hasattr(int, None)")
 
-  def testNumberAttrs(self):
+  def test_number_attrs(self):
     ty = self.Infer("""
       a = (42).denominator
       b = (42).numerator
@@ -198,14 +198,14 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       k = ...  # type: float
     """)
 
-  def testBuiltins(self):
+  def test_builtins(self):
     # This module doesn't exist, on Python 2. However, it exists in typeshed, so
     # make sure that we don't break (report pyi-error) when we import it.
     self.Check("""
       import builtins  # pytype: disable=import-error
     """)
 
-  def testSpecialBuiltinTypes(self):
+  def test_special_builtin_types(self):
     self.InferWithErrors("""
       isinstance(1, int)
       isinstance(1, "no")  # wrong-arg-types
@@ -216,7 +216,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       hasattr(int, int)  # wrong-arg-types
       """)
 
-  def testUnpackList(self):
+  def test_unpack_list(self):
     ty = self.Infer("""
       x = [1, ""]
       a, b = x
@@ -232,7 +232,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       e = ...  # type: int or str
     """)
 
-  def testBytearraySetItem(self):
+  def test_bytearray_setitem(self):
     self.Check("""
       ba = bytearray(b"hello")
       ba[0] = 106
@@ -244,7 +244,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       ba[2:3:2] = b"u"
     """)
 
-  def testBytearraySetItemPy3(self):
+  def test_bytearray_setitem_py3(self):
     self.Check("""
       ba = bytearray(b"hello")
       ba[0] = 106
@@ -257,7 +257,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       ba[1:4:2] = b"at"
     """)
 
-  def testFromHex(self):
+  def test_from_hex(self):
     ty = self.Infer("""
       f1 = float.fromhex(b"feed")
       f2 = float.fromhex(bytearray(b"feed"))
@@ -271,11 +271,11 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       b2 = ...  # type: bytearray
     """)
 
-  def testNoneLength(self):
+  def test_none_length(self):
     errors = self.CheckWithErrors("len(None)  # wrong-arg-types[e]")
     self.assertErrorRegexes(errors, {"e": r"Sized.*None"})
 
-  def testSequenceLength(self):
+  def test_sequence_length(self):
     self.Check("""
       len("")
       len(u"")
@@ -286,12 +286,12 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       len(range(0))
     """)
 
-  def testMappingLength(self):
+  def test_mapping_length(self):
     self.Check("""
       len({})
     """)
 
-  def testPrintBareType(self):
+  def test_print_bare_type(self):
     ty = self.Infer("""
       from typing import Any, Dict, Type
       d1 = {}  # type: Dict[str, type]
@@ -303,10 +303,10 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       d2 = ...  # type: Dict[str, type]
     """)
 
-  def testGetFunctionAttr(self):
+  def test_get_function_attr(self):
     self.Check("getattr(lambda: None, '__defaults__')")
 
-  def testStrStartswith(self):
+  def test_str_startswith(self):
     self.Check("""
       s = "some str"
       s.startswith("s")
@@ -314,7 +314,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       s.startswith("a", start=1, end=2)
     """)
 
-  def testStrEndswith(self):
+  def test_str_endswith(self):
     self.Check("""
       s = "some str"
       s.endswith("r")
@@ -322,7 +322,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       s.endswith("a", start=1, end=2)
     """)
 
-  def testPath(self):
+  def test_path(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo/__init__.py")
       self.Check("""
@@ -330,19 +330,19 @@ class BuiltinTests3(test_base.TargetIndependentTest):
         __path__, foo.__path__
       """, pythonpath=[d.path])
 
-  def testDelByteArraySlice(self):
+  def test_del_byte_array_slice(self):
     self.Check("""
       ba = bytearray(b"hello")
       del ba[0:2]
     """)
 
-  def testInput(self):
+  def test_input(self):
     self.Check("""
       input()
       input('input: ')
     """)
 
-  def testSetDefaultError(self):
+  def test_set_default_error(self):
     ty, errors = self.InferWithErrors("""
       x = {}
       y = x.setdefault()  # wrong-arg-count[e1]
@@ -356,7 +356,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e1": r"2.*0", "e2": r"2.*3"})
 
-  def testTuple(self):
+  def test_tuple(self):
     ty = self.Infer("""
       def f(x, y):
         return y

@@ -7,7 +7,7 @@ from pytype.tests import test_base
 class AnyStrTest(test_base.TargetPython3BasicTest):
   """Tests for issues related to AnyStr."""
 
-  def testCallable(self):
+  def test_callable(self):
     """Tests Callable + AnyStr."""
     self.Check("""
       from typing import AnyStr, Callable
@@ -18,7 +18,7 @@ class AnyStrTest(test_base.TargetPython3BasicTest):
         pass
       """)
 
-  def testUnknownAgainstMultipleAnyStr(self):
+  def test_unknown_against_multiple_anystr(self):
     self.Check("""
       from typing import Any, Dict, Tuple, AnyStr
 
@@ -26,14 +26,14 @@ class AnyStrTest(test_base.TargetPython3BasicTest):
       foo(__any_object__)
     """)
 
-  def testMultipleUnknownAgainstMultipleAnyStr(self):
+  def test_multiple_unknown_against_multiple_anystr(self):
     self.Check("""
       from typing import AnyStr, List
       def foo(x: List[AnyStr], y: List[AnyStr]): ...
       foo(__any_object__, [__any_object__])
     """)
 
-  def testAnyStrInClosure(self):
+  def test_anystr_in_closure(self):
     self.assertNoCrash(self.Check, """
       from typing import AnyStr, Dict, Optional
       def foo(d: Dict[unicode, Optional[AnyStr]] = None):
@@ -46,7 +46,7 @@ class AnyStrTest(test_base.TargetPython3BasicTest):
 class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for issues related to AnyStr in Python 3."""
 
-  def testAnyStr(self):
+  def test_anystr(self):
     ty = self.Infer("""
       from typing import AnyStr
       def f(x: AnyStr) -> AnyStr:
@@ -59,7 +59,7 @@ class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
     """)
     self.assertTrue(ty.Lookup("f").signatures[0].template)
 
-  def testAnyStrFunctionImport(self):
+  def test_anystr_function_import(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import AnyStr
@@ -74,7 +74,7 @@ class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
         def f(x: AnyStr) -> AnyStr
       """)
 
-  def testUseAnyStrConstraints(self):
+  def test_use_anystr_constraints(self):
     ty, errors = self.InferWithErrors("""
       from typing import AnyStr, TypeVar
       def f(x: AnyStr, y: AnyStr) -> AnyStr:
@@ -91,7 +91,7 @@ class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"Union\[bytes, str\].*int"})
 
-  def testConstraintMismatch(self):
+  def test_constraint_mismatch(self):
     _, errors = self.InferWithErrors("""
       from typing import AnyStr
       def f(x: AnyStr, y: AnyStr): ...

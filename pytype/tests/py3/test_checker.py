@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class CheckerTest(test_base.TargetPython3BasicTest):
   """Tests for --check."""
 
-  def testSet(self):
+  def test_set(self):
     self.Check("""
       from typing import List, Set
       def f(data: List[str]):
@@ -16,7 +16,7 @@ class CheckerTest(test_base.TargetPython3BasicTest):
         pass
     """)
 
-  def testRecursiveForwardReference(self):
+  def test_recursive_forward_reference(self):
     errorlog = self.CheckWithErrors("""
       class X(object):
         def __init__(self, val: "X"):
@@ -26,7 +26,7 @@ class CheckerTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errorlog, {"e": r"X.*int"})
 
-  def testBadReturnTypeInline(self):
+  def test_bad_return_type_inline(self):
     errorlog = self.CheckWithErrors("""
       from typing import List
       def f() -> List[int]:
@@ -35,7 +35,7 @@ class CheckerTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errorlog, {"e": r"List\[int\].*List\[object\]"})
 
-  def testUseVarargsAndKwargs(self):
+  def test_use_varargs_and_kwargs(self):
     self.Check("""
       class A(object):
         pass
@@ -46,7 +46,7 @@ class CheckerTest(test_base.TargetPython3BasicTest):
           pass
     """)
 
-  def testNestedNoneType(self):
+  def test_nested_none_type(self):
     self.Check("""
       from typing import List, Union
       def f1() -> Union[None]:
@@ -59,7 +59,7 @@ class CheckerTest(test_base.TargetPython3BasicTest):
         pass
     """)
 
-  def testInnerClassInit(self):
+  def test_inner_class_init(self):
     self.Check("""
       from typing import List
       class A:
@@ -73,7 +73,7 @@ class CheckerTest(test_base.TargetPython3BasicTest):
         return g()[0].x
     """)
 
-  def testRecursion(self):
+  def test_recursion(self):
     self.Check("""
       class A:
         def __init__(self, x: "B"):
@@ -84,7 +84,7 @@ class CheckerTest(test_base.TargetPython3BasicTest):
           self.y = A(self)
     """)
 
-  def testBadDictValue(self):
+  def test_bad_dict_value(self):
     errorlog = self.CheckWithErrors("""
       from typing import Dict
       def f() -> Dict[str, int]:
@@ -92,7 +92,7 @@ class CheckerTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errorlog, {"e": r"int.*float"})
 
-  def testInstanceAsAnnotation(self):
+  def test_instance_as_annotation(self):
     errorlog = self.CheckWithErrors("""
       def f():
         pass
@@ -104,7 +104,7 @@ class CheckerTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(
         errorlog, {"e1": r"instance of Callable.*x", "e2": r"3.*x"})
 
-  def testBadGenerator(self):
+  def test_bad_generator(self):
     errorlog = self.CheckWithErrors("""
       from typing import Generator
       def f() -> Generator[str, None, None]:
@@ -113,7 +113,7 @@ class CheckerTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errorlog, {"e": r"str.*int"})
 
-  def testMultipleParameterBindings(self):
+  def test_multiple_parameter_bindings(self):
     errorlog = self.CheckWithErrors("""
       from typing import List
       def f(x) -> List[int]:
@@ -121,7 +121,7 @@ class CheckerTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errorlog, {"e": r"List\[int\].*List\[str\]"})
 
-  def testNoParamBinding(self):
+  def test_no_param_binding(self):
     errorlog = self.CheckWithErrors("""
       def f() -> None:
         x = []
@@ -129,7 +129,7 @@ class CheckerTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errorlog, {"e": r"None.*List\[nothing\]"})
 
-  def testAttributeInIncompleteInstance(self):
+  def test_attribute_in_incomplete_instance(self):
     errorlog = self.CheckWithErrors("""
       from typing import List
       class Foo(object):
@@ -143,14 +143,14 @@ class CheckerTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errorlog, {"e1": r"y.*List\[Foo\]",
                                        "e2": r"z.*Type\[Foo\]"})
 
-  def testBadGetItem(self):
+  def test_bad_getitem(self):
     errorlog = self.CheckWithErrors("""
       def f(x: int):
         return x[0]  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errorlog, {"e": r"int.*int"})
 
-  def testBadAnnotationContainer(self):
+  def test_bad_annotation_container(self):
     errorlog = self.CheckWithErrors("""
       class A(object):
         pass

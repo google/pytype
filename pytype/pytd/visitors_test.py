@@ -32,7 +32,7 @@ import unittest
 class TestVisitors(parser_test_base.ParserTest):
   """Tests the classes in parse/visitors."""
 
-  def testInventStarArgsParams(self):
+  def test_invent_starargs_params(self):
     call = lambda x: tuple(f.name for f in visitors.InventStarArgParams(x))
     self.assertEqual(("args", "kwargs"), call({}))
     self.assertEqual(("args", "kwargs"), call({"a"}))
@@ -42,7 +42,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertEqual(("__args", "_kwargs"), call({"args", "_args", "kwargs"}))
     self.assertEqual(("args", "__kwargs"), call({"kwargs", "_kwargs"}))
 
-  def testLookupClasses(self):
+  def test_lookup_classes(self):
     src = textwrap.dedent("""
         class object(object):
             pass
@@ -62,7 +62,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.AssertSourceEquals(new_tree, src)
     new_tree.Visit(visitors.VerifyLookup())
 
-  def testMaybeFillInLocalPointers(self):
+  def test_maybe_fill_in_local_pointers(self):
     src = textwrap.dedent("""
         class A(object):
             def a(self, a: A, b: B) -> A or B:
@@ -77,14 +77,14 @@ class TestVisitors(parser_test_base.ParserTest):
     ty_b.Visit(visitors.FillInLocalPointers({"": tree}))
     self.assertIsNone(ty_b.cls)
 
-  def testFillInFunctionTypePointers(self):
+  def test_fill_in_function_type_pointers(self):
     src = textwrap.dedent("def f(): ...")
     tree = self.Parse(src)
     ty = pytd.FunctionType("f", None)
     ty.Visit(visitors.FillInLocalPointers({"": tree}))
     self.assertEqual(ty.function, tree.Lookup("f"))
 
-  def testDefaceUnresolved(self):
+  def test_deface_unresolved(self):
     builtins = self.Parse(textwrap.dedent("""
       class int(object):
         pass
@@ -106,7 +106,7 @@ class TestVisitors(parser_test_base.ParserTest):
     new_tree.Visit(visitors.VerifyVisitor())
     self.AssertSourceEquals(new_tree, expected)
 
-  def testDefaceUnresolved2(self):
+  def test_deface_unresolved2(self):
     builtins = self.Parse(textwrap.dedent("""
       from typing import Generic, TypeVar
       class int(object):
@@ -134,7 +134,7 @@ class TestVisitors(parser_test_base.ParserTest):
     new_tree.Visit(visitors.VerifyVisitor())
     self.AssertSourceEquals(new_tree, expected)
 
-  def testReplaceTypes(self):
+  def test_replace_types(self):
     src = textwrap.dedent("""
         class A(object):
             def a(self, a: A or B) -> A or B:
@@ -151,7 +151,7 @@ class TestVisitors(parser_test_base.ParserTest):
     new_tree = tree.Visit(visitors.ReplaceTypes({"A": pytd.NamedType("A2")}))
     self.AssertSourceEquals(new_tree, expected)
 
-  def testSuperClassesByName(self):
+  def test_superclasses_by_name(self):
     src = textwrap.dedent("""
       class A():
           pass
@@ -172,7 +172,7 @@ class TestVisitors(parser_test_base.ParserTest):
     six.assertCountEqual(self, ("A", "B"), data["D"])
     six.assertCountEqual(self, ("A", "C", "D"), data["E"])
 
-  def testStripSelf(self):
+  def test_strip_self(self):
     src = textwrap.dedent("""
         def add(x: int, y: int) -> int
         class A(object):
@@ -192,7 +192,7 @@ class TestVisitors(parser_test_base.ParserTest):
     new_tree = tree.Visit(visitors.StripSelf())
     self.AssertSourceEquals(new_tree, expected)
 
-  def testRemoveUnknownClasses(self):
+  def test_remove_unknown_classes(self):
     src = textwrap.dedent("""
         class `~unknown1`():
             pass
@@ -210,7 +210,7 @@ class TestVisitors(parser_test_base.ParserTest):
     tree = tree.Visit(visitors.DropBuiltinPrefix())
     self.AssertSourceEquals(tree, expected)
 
-  def testFindUnknownVisitor(self):
+  def test_find_unknown_visitor(self):
     src = textwrap.dedent("""
         class classobj:
           pass
@@ -237,7 +237,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertRaises(visitors.RaiseIfContainsUnknown.HasUnknown, find_on, "C")
     self.assertRaises(visitors.RaiseIfContainsUnknown.HasUnknown, find_on, "D")
 
-  def testInPlaceLookupExternalClasses(self):
+  def test_in_place_lookup_external_classes(self):
     src1 = textwrap.dedent("""
       def f1() -> bar.Bar
       class Foo(object):
@@ -257,7 +257,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertIs(ast2.Lookup("bar.Bar"), f1.return_type.cls)
     self.assertIs(ast1.Lookup("foo.Foo"), f2.return_type.cls)
 
-  def testLookupConstant(self):
+  def test_lookup_constant(self):
     src1 = textwrap.dedent("""
       Foo = ...  # type: type
     """)
@@ -271,7 +271,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertEqual(ast2.Lookup("bar.Bar").constants[0],
                      pytd.Constant(name="bar", type=pytd.AnythingType()))
 
-  def testLookupStarAlias(self):
+  def test_lookup_star_alias(self):
     src1 = textwrap.dedent("""
       x = ...  # type: int
       T = TypeVar("T")
@@ -288,7 +288,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertSetEqual({a.name for a in ast2.aliases},
                         {"bar.x", "bar.T", "bar.A", "bar.f", "bar.B"})
 
-  def testLookupStarAliasInUnnamedModule(self):
+  def test_lookup_star_alias_in_unnamed_module(self):
     src1 = textwrap.dedent("""
       class A(object): ...
     """)
@@ -305,7 +305,7 @@ class TestVisitors(parser_test_base.ParserTest):
       A = foo.A
     """).strip())
 
-  def testLookupTwoStarAliases(self):
+  def test_lookup_two_star_aliases(self):
     src1 = "class A(object): ..."
     src2 = "class B(object): ..."
     src3 = textwrap.dedent("""
@@ -319,7 +319,7 @@ class TestVisitors(parser_test_base.ParserTest):
         {"foo": ast1, "bar": ast2, "baz": ast3}, self_name="baz"))
     self.assertSetEqual({a.name for a in ast3.aliases}, {"baz.A", "baz.B"})
 
-  def testLookupTwoStarAliasesWithSameClass(self):
+  def test_lookup_two_star_aliases_with_same_class(self):
     src1 = "class A(object): ..."
     src2 = "class A(object): ..."
     src3 = textwrap.dedent("""
@@ -332,7 +332,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertRaises(KeyError, ast3.Visit, visitors.LookupExternalTypes(
         {"foo": ast1, "bar": ast2, "baz": ast3}, self_name="baz"))
 
-  def testLookupStarAliasWithDuplicateClass(self):
+  def test_lookup_star_alias_with_duplicate_class(self):
     src1 = "class A(object): ..."
     src2 = textwrap.dedent("""
       from foo import *
@@ -348,7 +348,7 @@ class TestVisitors(parser_test_base.ParserTest):
           x: int
     """).strip())
 
-  def testLookupTwoStarAliasesWithDefaultPyi(self):
+  def test_lookup_two_star_aliases_with_default_pyi(self):
     src1 = "def __getattr__(name) -> ?"
     src2 = "def __getattr__(name) -> ?"
     src3 = textwrap.dedent("""
@@ -366,7 +366,7 @@ class TestVisitors(parser_test_base.ParserTest):
       def baz.__getattr__(name) -> Any: ...
     """).strip())
 
-  def testLookupStarAliasWithDuplicateGetAttr(self):
+  def test_lookup_star_alias_with_duplicate_getattr(self):
     src1 = "def __getattr__(name) -> ?"
     src2 = textwrap.dedent("""
       from foo import *
@@ -382,7 +382,7 @@ class TestVisitors(parser_test_base.ParserTest):
       def bar.__getattr__(name) -> Any: ...
     """).strip())
 
-  def testLookupTwoStarAliasesWithDifferentGetAttrs(self):
+  def test_lookup_two_star_aliases_with_different_getattrs(self):
     src1 = "def __getattr__(name) -> int"
     src2 = "def __getattr__(name) -> str"
     src3 = textwrap.dedent("""
@@ -395,7 +395,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertRaises(KeyError, ast3.Visit, visitors.LookupExternalTypes(
         {"foo": ast1, "bar": ast2, "baz": ast3}, self_name="baz"))
 
-  def testLookupStarAliasWithDifferentGetAttr(self):
+  def test_lookup_star_alias_with_different_getattr(self):
     src1 = "def __getattr__(name) -> int"
     src2 = textwrap.dedent("""
       from foo import *
@@ -409,7 +409,7 @@ class TestVisitors(parser_test_base.ParserTest):
       def bar.__getattr__(name) -> str: ...
     """).strip())
 
-  def testCollectDependencies(self):
+  def test_collect_dependencies(self):
     src = textwrap.dedent("""
       l = ... # type: list[int or baz.BigInt]
       def f1() -> bar.Bar
@@ -419,7 +419,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.Parse(src).Visit(deps)
     six.assertCountEqual(self, {"baz", "bar", "foo.bar"}, deps.dependencies)
 
-  def testCollectDependenciesOnFunctionType(self):
+  def test_collect_dependencies_on_function_type(self):
     other = self.Parse("""
       def f(): ...
     """)
@@ -428,7 +428,7 @@ class TestVisitors(parser_test_base.ParserTest):
     ast.Visit(deps)
     six.assertCountEqual(self, {"foo"}, deps.dependencies)
 
-  def testExpand(self):
+  def test_expand(self):
     src = textwrap.dedent("""
         def foo(a: int or float, z: complex or str, u: bool) -> file
         def bar(a: int) -> str or unicode
@@ -444,7 +444,7 @@ class TestVisitors(parser_test_base.ParserTest):
         self.ApplyVisitorToString(src, visitors.ExpandSignatures()),
         new_src)
 
-  def testPrintImports(self):
+  def test_print_imports(self):
     src = textwrap.dedent("""
       from typing import List, Tuple, Union
       def f(x: Union[int, slice]) -> List[?]: ...
@@ -462,7 +462,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.AssertSourceEquals(res, src)
     self.assertMultiLineEqual(res, expected)
 
-  def testPrintImportsNamedType(self):
+  def test_print_imports_named_type(self):
     # Can't get tree by parsing so build explicitly
     node = pytd.Constant("x", pytd.NamedType("typing.List"))
     tree = pytd_utils.CreateModule(name=None, constants=(node,))
@@ -474,14 +474,14 @@ class TestVisitors(parser_test_base.ParserTest):
     res = pytd_utils.Print(tree)
     self.assertMultiLineEqual(res, expected_src)
 
-  def testPrintImportsIgnoresExisting(self):
+  def test_print_imports_ignores_existing(self):
     src = "from foo import b"
 
     tree = self.Parse(src)
     res = pytd_utils.Print(tree)
     self.assertMultiLineEqual(res, src)
 
-  def testPrintUnionNameConflict(self):
+  def test_print_union_name_conflict(self):
     src = textwrap.dedent("""
       class Union: ...
       def g(x: Union) -> int or float: ...
@@ -490,7 +490,7 @@ class TestVisitors(parser_test_base.ParserTest):
     res = pytd_utils.Print(tree)
     self.AssertSourceEquals(res, src)
 
-  def testAdjustTypeParameters(self):
+  def test_adjust_type_parameters(self):
     ast = self.Parse("""
       T = TypeVar("T")
       T2 = TypeVar("T2")
@@ -519,7 +519,7 @@ class TestVisitors(parser_test_base.ParserTest):
                      (pytd.TypeParameter("T", scope="A"),))
     self.assertEqual(p_x_cls.type, pytd.TypeParameter("T2", scope="A.a"))
 
-  def testAdjustTypeParametersWithBuiltins(self):
+  def test_adjust_type_parameters_with_builtins(self):
     ast = self.ParseWithBuiltins("""
       T = TypeVar("T")
       K = TypeVar("K")
@@ -551,7 +551,7 @@ class TestVisitors(parser_test_base.ParserTest):
                      qux_parent.parameters)
     self.assertEqual((), qux.template)
 
-  def testAdjustTypeParametersWithDuplicates(self):
+  def test_adjust_type_parameters_with_duplicates(self):
     ast = self.ParseWithBuiltins("""
       T = TypeVar("T")
       class A(Dict[T, T], Generic[T]): pass
@@ -561,14 +561,14 @@ class TestVisitors(parser_test_base.ParserTest):
         (pytd.TemplateItem(pytd.TypeParameter("T", (), None, "A")),),
         a.template)
 
-  def testAdjustTypeParametersWithDuplicatesInGeneric(self):
+  def test_adjust_type_parameters_with_duplicates_in_generic(self):
     src = textwrap.dedent("""
       T = TypeVar("T")
       class A(Generic[T, T]): pass
     """)
     self.assertRaises(visitors.ContainerError, lambda: self.Parse(src))
 
-  def testVerifyContainers(self):
+  def test_verify_containers(self):
     ast1 = self.ParseWithBuiltins("""
       from typing import SupportsInt, TypeVar
       T = TypeVar("T")
@@ -595,13 +595,13 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertRaises(visitors.ContainerError,
                       lambda: ast4.Visit(visitors.VerifyContainers()))
 
-  def testClearClassPointers(self):
+  def test_clear_class_pointers(self):
     cls = pytd.Class("foo", None, (), (), (), (), None, ())
     t = pytd.ClassType("foo", cls)
     t = t.Visit(visitors.ClearClassPointers())
     self.assertIsNone(t.cls)
 
-  def testExpandCompatibleBuiltins(self):
+  def test_expand_compatible_builtins(self):
     src = textwrap.dedent("""
         from typing import Tuple, Union, TypeVar
 
@@ -642,7 +642,7 @@ class TestVisitors(parser_test_base.ParserTest):
         self.loader.builtins))
     self.AssertSourceEquals(new_tree, expected_tree)
 
-  def testAddNamePrefix(self):
+  def test_add_name_prefix(self):
     src = textwrap.dedent("""
       from typing import TypeVar
       def f(a: T) -> T: ...
@@ -661,7 +661,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertEqual("foo.X",
                      tree.Lookup("foo.X").template[0].type_param.scope)
 
-  def testAddNamePrefixTwice(self):
+  def test_add_name_prefix_twice(self):
     src = textwrap.dedent("""
       from typing import TypeVar
       x = ...  # type: ?
@@ -676,7 +676,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertEqual("foo.foo.X",
                      tree.Lookup("foo.foo.X").template[0].type_param.scope)
 
-  def testAddNamePrefixOnClassType(self):
+  def test_add_name_prefix_on_class_type(self):
     src = textwrap.dedent("""
         x = ...  # type: y
         class Y: ...
@@ -688,7 +688,7 @@ class TestVisitors(parser_test_base.ParserTest):
     tree = tree.Visit(visitors.AddNamePrefix())
     self.assertEqual("foo.Y", tree.Lookup("foo.x").type.name)
 
-  def testAddNamePrefixOnNestedClassAlias(self):
+  def test_add_name_prefix_on_nested_class_alias(self):
     src = textwrap.dedent("""
       class A:
         class B:
@@ -706,7 +706,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertMultiLineEqual(expected, pytd_utils.Print(
         self.Parse(src).Replace(name="foo").Visit(visitors.AddNamePrefix())))
 
-  def testAddNamePrefixOnNestedClassOutsideRef(self):
+  def test_add_name_prefix_on_nested_class_outside_ref(self):
     src = textwrap.dedent("""
       class A:
         class B: ...
@@ -735,7 +735,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertMultiLineEqual(expected, pytd_utils.Print(
         self.Parse(src).Replace(name="foo").Visit(visitors.AddNamePrefix())))
 
-  def testAddNamePrefixOnNestedClassMethod(self):
+  def test_add_name_prefix_on_nested_class_method(self):
     src = textwrap.dedent("""
       class A:
         class B:
@@ -749,7 +749,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertMultiLineEqual(expected, pytd_utils.Print(
         self.Parse(src).Replace(name="foo").Visit(visitors.AddNamePrefix())))
 
-  def testPrintMergeTypes(self):
+  def test_print_merge_types(self):
     src = textwrap.dedent("""
       from typing import Union
       def a(a: float) -> int: ...
@@ -770,12 +770,12 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertMultiLineEqual(expected.strip(),
                               pytd_utils.Print(self.ToAST(src)).strip())
 
-  def testPrintHeterogeneousTuple(self):
+  def test_print_heterogeneous_tuple(self):
     t = pytd.TupleType(pytd.NamedType("tuple"),
                        (pytd.NamedType("str"), pytd.NamedType("float")))
     self.assertEqual("Tuple[str, float]", pytd_utils.Print(t))
 
-  def testVerifyHeterogeneousTuple(self):
+  def test_verify_heterogeneous_tuple(self):
     # Error: does not inherit from Generic
     base = pytd.ClassType("tuple")
     base.cls = pytd.Class("tuple", None, (), (), (), (), None, ())
@@ -796,7 +796,7 @@ class TestVisitors(parser_test_base.ParserTest):
     t3 = pytd.TupleType(base, (pytd.NamedType("str"), pytd.NamedType("float")))
     t3.Visit(visitors.VerifyContainers())
 
-  def testTypeVarValueConflict(self):
+  def test_typevar_value_conflict(self):
     # Conflicting values for _T.
     ast = self.ParseWithBuiltins("""
       from typing import List
@@ -805,7 +805,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertRaises(visitors.ContainerError,
                       lambda: ast.Visit(visitors.VerifyContainers()))
 
-  def testTypeVarValueConflictHidden(self):
+  def test_typevar_value_conflict_hidden(self):
     # Conflicting value for _T hidden in MRO.
     ast = self.ParseWithBuiltins("""
       from typing import List
@@ -815,7 +815,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertRaises(visitors.ContainerError,
                       lambda: ast.Visit(visitors.VerifyContainers()))
 
-  def testTypeVarValueConflictRelatedContainers(self):
+  def test_typevar_value_conflict_related_containers(self):
     # List inherits from Sequence, so they share a type parameter.
     ast = self.ParseWithBuiltins("""
       from typing import List, Sequence
@@ -824,7 +824,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertRaises(visitors.ContainerError,
                       lambda: ast.Visit(visitors.VerifyContainers()))
 
-  def testTypeVarValueNoConflict(self):
+  def test_typevar_value_no_conflict(self):
     # Not an error if the containers are unrelated, even if they use the same
     # type parameter name.
     ast = self.ParseWithBuiltins("""
@@ -833,7 +833,7 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     ast.Visit(visitors.VerifyContainers())
 
-  def testTypeVarValueConsistency(self):
+  def test_typevar_value_consistency(self):
     # Type renaming makes all type parameters represent the same type `T1`.
     ast = self.ParseWithBuiltins("""
       from typing import Generic, TypeVar
@@ -850,7 +850,7 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     ast.Visit(visitors.VerifyContainers())
 
-  def testTypeVarValueAndAliasConflict(self):
+  def test_typevar_value_and_alias_conflict(self):
     ast = self.ParseWithBuiltins("""
       from typing import Generic, TypeVar
       T = TypeVar("T")
@@ -860,7 +860,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertRaises(visitors.ContainerError,
                       lambda: ast.Visit(visitors.VerifyContainers()))
 
-  def testTypeVarAliasAndValueConflict(self):
+  def test_typevar_alias_and_value_conflict(self):
     ast = self.ParseWithBuiltins("""
       from typing import Generic, TypeVar
       T = TypeVar("T")
@@ -870,7 +870,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertRaises(visitors.ContainerError,
                       lambda: ast.Visit(visitors.VerifyContainers()))
 
-  def testVerifyContainerWithMROError(self):
+  def test_verify_container_with_mro_error(self):
     # Make sure we don't crash.
     ast = self.ParseWithBuiltins("""
       from typing import List
@@ -879,7 +879,7 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     ast.Visit(visitors.VerifyContainers())
 
-  def testAliasPrinting(self):
+  def test_alias_printing(self):
     a = pytd.Alias("MyList", pytd.GenericType(
         pytd.NamedType("typing.List"), (pytd.AnythingType(),)))
     ty = pytd_utils.CreateModule("test", aliases=(a,))
@@ -889,7 +889,7 @@ class TestVisitors(parser_test_base.ParserTest):
       MyList = List[Any]""")
     self.assertMultiLineEqual(expected.strip(), pytd_utils.Print(ty).strip())
 
-  def testPrintNoneUnion(self):
+  def test_print_none_union(self):
     src = textwrap.dedent("""
       from typing import Union
       def f(x: Union[str, None]) -> None: ...
@@ -906,12 +906,12 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertMultiLineEqual(expected.strip(),
                               pytd_utils.Print(self.ToAST(src)).strip())
 
-  def testLookupTypingClass(self):
+  def test_lookup_typing_class(self):
     node = visitors.LookupClasses(pytd.NamedType("typing.Sequence"),
                                   self.loader.concat_all())
     assert node.cls
 
-  def testCreateTypeParametersFromUnknowns(self):
+  def test_create_type_parameters_from_unknowns(self):
     src = textwrap.dedent("""
       from typing import Dict
       def f(x: `~unknown1`) -> `~unknown1`: ...
@@ -942,7 +942,7 @@ class TestVisitors(parser_test_base.ParserTest):
     ast1 = ast1.Visit(visitors.CreateTypeParametersForSignatures())
     self.AssertSourceEquals(ast1, expected)
 
-  def testRedefineTypeVar(self):
+  def test_redefine_typevar(self):
     src = textwrap.dedent("""
       def f(x: `~unknown1`) -> `~unknown1`: ...
       class `TypeVar`(object): ...
@@ -957,7 +957,7 @@ class TestVisitors(parser_test_base.ParserTest):
 
       def f(x: _T0) -> _T0: ...""").strip())
 
-  def testCreateTypeParametersForNew(self):
+  def test_create_type_parameters_for_new(self):
     src = textwrap.dedent("""
       class Foo:
           def __new__(cls: Type[Foo]) -> Foo
@@ -978,7 +978,7 @@ class TestVisitors(parser_test_base.ParserTest):
           def __new__(cls: Type[_TBar], x, y, z) -> _TBar: ...
     """).strip())
 
-  def testKeepCustomNew(self):
+  def test_keep_custom_new(self):
     src = textwrap.dedent("""
       class Foo:
           def __new__(cls: Type[X]) -> X: ...
@@ -989,7 +989,7 @@ class TestVisitors(parser_test_base.ParserTest):
     ast = self.Parse(src).Visit(visitors.CreateTypeParametersForSignatures())
     self.assertMultiLineEqual(pytd_utils.Print(ast), src)
 
-  def testPrintTypeParameterBound(self):
+  def test_print_type_parameter_bound(self):
     src = textwrap.dedent("""
       from typing import TypeVar
       T = TypeVar("T", bound=str)
@@ -1000,7 +1000,7 @@ class TestVisitors(parser_test_base.ParserTest):
 
       T = TypeVar('T', bound=str)""").lstrip())
 
-  def testPrintCls(self):
+  def test_print_cls(self):
     src = textwrap.dedent("""
       class A(object):
           def __new__(cls: Type[A]) -> A: ...
@@ -1011,7 +1011,7 @@ class TestVisitors(parser_test_base.ParserTest):
           def __new__(cls) -> A: ...
     """).strip())
 
-  def testPrintNoReturn(self):
+  def test_print_no_return(self):
     src = textwrap.dedent("""
       def f() -> nothing
     """)
@@ -1021,7 +1021,7 @@ class TestVisitors(parser_test_base.ParserTest):
 
       def f() -> NoReturn: ...""").lstrip())
 
-  def testPrintMultilineSignature(self):
+  def test_print_multiline_signature(self):
     src = textwrap.dedent("""
       def f(x: int, y: str, z: bool) -> list[str]:
         pass
@@ -1038,7 +1038,7 @@ class TestVisitors(parser_test_base.ParserTest):
            ) -> List[str]: ...
         """).strip())
 
-  def testRenameBuiltinsPrefix(self):
+  def test_rename_builtins_prefix(self):
     """builtins.foo should get rewritten to __builtin__.foo and then to foo."""
     src = textwrap.dedent("""
       import builtins
@@ -1050,7 +1050,7 @@ class TestVisitors(parser_test_base.ParserTest):
 
 class ReplaceModulesWithAnyTest(unittest.TestCase):
 
-  def testAnyReplacement(self):
+  def test_any_replacement(self):
     class_type_match = pytd.ClassType("match.foo")
     named_type_match = pytd.NamedType("match.bar")
     class_type_no_match = pytd.ClassType("match_no.foo")
@@ -1073,7 +1073,7 @@ class ReplaceModulesWithAnyTest(unittest.TestCase):
 
 class ReplaceUnionsWithAnyTest(unittest.TestCase):
 
-  def testAnyReplacement(self):
+  def test_any_replacement(self):
     union = pytd.UnionType((pytd.NamedType("a"), pytd.NamedType("b")))
     self.assertEqual(
         union.Visit(visitors.ReplaceUnionsWithAny()), pytd.AnythingType())

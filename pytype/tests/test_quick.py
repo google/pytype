@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class QuickTest(test_base.TargetIndependentTest):
   """Tests for --quick."""
 
-  def testMaxDepth(self):
+  def test_max_depth(self):
     ty = self.Infer("""
       class Foo(object):
         def __init__(self, elements):
@@ -24,7 +24,7 @@ class QuickTest(test_base.TargetIndependentTest):
         def bar(self) -> Any: ...
     """)
 
-  def testArgUnknowns(self):
+  def test_arg_unknowns(self):
     # test that even with --quick, we still generate ~unknowns for parameters.
     ty = self.Infer("""
       def f(x):
@@ -39,7 +39,7 @@ class QuickTest(test_base.TargetIndependentTest):
     # Lookup that a class with same _unknown_ name as the param type exists.
     _ = ty.Lookup(p.type.name)
 
-  def testClosure(self):
+  def test_closure(self):
     ty = self.Infer("""
       def f():
         class A(object): pass
@@ -49,7 +49,7 @@ class QuickTest(test_base.TargetIndependentTest):
       def f() -> dict
     """)
 
-  def testInit(self):
+  def test_init(self):
     # Tests that it's possible for --quick to handle this case with a large
     # enough maximum depth, even though it can't currently due to
     # QUICK_INFER_MAXIMUM_DEPTH being 1.
@@ -73,7 +73,7 @@ class QuickTest(test_base.TargetIndependentTest):
       def f() -> Any
     """)
 
-  def testAnalyzeAnnotatedMaxDepth(self):
+  def test_analyze_annotated_max_depth(self):
     # --output with --analyze-annotated has the same max depth as --check.
     _, errors = self.InferWithErrors("""
       def make_greeting(user_id):

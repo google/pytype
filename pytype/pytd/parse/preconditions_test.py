@@ -33,13 +33,13 @@ class PreconditionsTest(unittest.TestCase):
     six.assertRaisesRegex(
         self, preconditions.PreconditionError, regex, condition.check, value)
 
-  def testClassNamePrecondition(self):
+  def test_class_name_precondition(self):
     c = preconditions._ClassNamePrecondition("str")
     self.assertEqual({"str"}, c.allowed_types())
     c.check("abc")
     self.assertError("actual=int.*expected=str", c, 1)
 
-  def testTuplePrecondition(self):
+  def test_tuple_precondition(self):
     c = preconditions._TuplePrecondition(
         preconditions._ClassNamePrecondition("int"))
     self.assertEqual({"int"}, c.allowed_types())
@@ -48,7 +48,7 @@ class PreconditionsTest(unittest.TestCase):
     c.check((1, 2))
     self.assertError("actual=int.*expected=tuple", c, 1)
 
-  def testOrPrecondition(self):
+  def test_or_precondition(self):
     c = preconditions._OrPrecondition([
         preconditions._ClassNamePrecondition("int"),
         preconditions._ClassNamePrecondition("str")])
@@ -59,7 +59,7 @@ class PreconditionsTest(unittest.TestCase):
         "actual=float.*expected=int.*actual=float.*expected=str",
         c, 1.23)
 
-  def testIsInstancePrecondition(self):
+  def test_is_instance_precondition(self):
     c = preconditions._IsInstancePrecondition(BaseClass)
     self.assertEqual({BaseClass}, c.allowed_types())
     c.check(BaseClass())
@@ -75,7 +75,7 @@ class CallCheckerTest(unittest.TestCase):
         ("x", preconditions._ClassNamePrecondition("int")),
         ("s", preconditions._ClassNamePrecondition("str"))])
 
-  def testAllowedTypes(self):
+  def test_allowed_types(self):
     self.assertEqual({"int", "str"}, self.checker.allowed_types())
 
   def assertError(self, regex, *args, **kwargs):
@@ -83,12 +83,12 @@ class CallCheckerTest(unittest.TestCase):
         self, preconditions.PreconditionError, regex, self.checker.check, *args,
         **kwargs)
 
-  def testPositionalArgs(self):
+  def test_positional_args(self):
     self.checker.check(1, "abc")
     self.assertError("argument=x.*actual=str.*expected=int", "a", "b")
     self.assertError("argument=s.*actual=int.*expected=str", 1, 2)
 
-  def testKeywordArgs(self):
+  def test_keyword_args(self):
     self.checker.check(1, s="abc")
     self.checker.check(s="abc", x=1)
     self.assertError("argument=x.*actual=str.*expected=int", x="xyz", s="aaa")
@@ -109,10 +109,10 @@ class ParserTest(unittest.TestCase):
     self.assertIsInstance(condition, preconditions._OrPrecondition)
     self.assertEqual(names, [get_name(c) for c in condition._choices])
 
-  def testName(self):
+  def test_name(self):
     self.assertClassName("Foo", preconditions.parse("Foo"))
 
-  def testIsInstance(self):
+  def test_is_instance(self):
     saved = dict(preconditions._REGISTERED_CLASSES)
     try:
       # Can't parse class until it is registered.
@@ -128,19 +128,19 @@ class ParserTest(unittest.TestCase):
       # Leave the world as we found it.
       preconditions._REGISTERED_CLASSES = saved
 
-  def testNone(self):
+  def test_none(self):
     self.assertClassName("NoneType", preconditions.parse("None"))
 
-  def testTuple(self):
+  def test_tuple(self):
     c = preconditions.parse("tuple[int]")
     self.assertIsInstance(c, preconditions._TuplePrecondition)
     self.assertClassName("int", c._element_condition)
 
-  def testOr(self):
+  def test_or(self):
     self.assertOr(["int", "str", "float"],
                   preconditions.parse("int or str or float"))
 
-  def testTupleAndOr(self):
+  def test_tuple_and_or(self):
     c = preconditions.parse("None or tuple[int or str]")
     self.assertIsInstance(c, preconditions._OrPrecondition)
     c1, c2 = c._choices
@@ -148,7 +148,7 @@ class ParserTest(unittest.TestCase):
     self.assertIsInstance(c2, preconditions._TuplePrecondition)
     self.assertOr(["int", "str"], c2._element_condition)
 
-  def testErrors(self):
+  def test_errors(self):
     self.assertRaises(ValueError, preconditions.parse, "")
     self.assertRaises(ValueError, preconditions.parse, "or")
     self.assertRaises(ValueError, preconditions.parse, "a or")
@@ -157,7 +157,7 @@ class ParserTest(unittest.TestCase):
     self.assertRaises(ValueError, preconditions.parse, "tuple[]")
     self.assertRaises(ValueError, preconditions.parse, "?")
 
-  def testParseArg(self):
+  def test_parse_arg(self):
     self.assertEqual(("x", None), preconditions.parse_arg("x"))
     name, cond = preconditions.parse_arg("foo: str")
     self.assertEqual("foo", name)

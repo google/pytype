@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class GeneratorTest(test_base.TargetIndependentTest):
   """Tests for iterators, generators, coroutines, and yield."""
 
-  def testNext(self):
+  def test_next(self):
     ty = self.Infer("""
       def f():
         return next(i for i in [1,2,3])
@@ -15,7 +15,7 @@ class GeneratorTest(test_base.TargetIndependentTest):
       def f() -> int
     """)
 
-  def testList(self):
+  def test_list(self):
     ty = self.Infer("""
       y = list(x for x in [1, 2, 3])
     """)
@@ -24,7 +24,7 @@ class GeneratorTest(test_base.TargetIndependentTest):
       y = ...  # type: List[int, ...]
     """)
 
-  def testReuse(self):
+  def test_reuse(self):
     ty = self.Infer("""
       y = list(x for x in [1, 2, 3])
       z = list(x for x in [1, 2, 3])
@@ -35,7 +35,7 @@ class GeneratorTest(test_base.TargetIndependentTest):
       z = ...  # type: List[int, ...]
     """)
 
-  def testNextWithDefault(self):
+  def test_next_with_default(self):
     ty = self.Infer("""
       def f():
         return next((i for i in [1,2,3]), None)
@@ -44,7 +44,7 @@ class GeneratorTest(test_base.TargetIndependentTest):
       def f() -> int or NoneType
     """)
 
-  def testIterMatch(self):
+  def test_iter_match(self):
     ty = self.Infer("""
       class Foo(object):
         def bar(self):
@@ -60,7 +60,7 @@ class GeneratorTest(test_base.TargetIndependentTest):
         def __iter__(self) -> Generator[nothing, nothing, nothing]
     """)
 
-  def testCoroutineType(self):
+  def test_coroutine_type(self):
     ty = self.Infer("""
       def foo(self):
         yield 3
@@ -70,7 +70,7 @@ class GeneratorTest(test_base.TargetIndependentTest):
       def foo(self) -> Generator[int, Any, None]
     """)
 
-  def testIterationOfGetItem(self):
+  def test_iteration_of_getitem(self):
     ty = self.Infer("""
       class Foo(object):
         def __getitem__(self, key):
@@ -87,7 +87,7 @@ class GeneratorTest(test_base.TargetIndependentTest):
       def foo(self) -> Union[None, str]
     """)
 
-  def testUnpackingOfGetItem(self):
+  def test_unpacking_of_getitem(self):
     ty = self.Infer("""
       class Foo(object):
         def __getitem__(self, pos):
@@ -107,7 +107,7 @@ class GeneratorTest(test_base.TargetIndependentTest):
       z = ...  # type: int
     """)
 
-  def testNoneCheck(self):
+  def test_none_check(self):
     ty = self.Infer("""
       def f():
         x = None if __random__ else 42
@@ -119,7 +119,7 @@ class GeneratorTest(test_base.TargetIndependentTest):
       def f() -> Generator[int, Any, None]
     """)
 
-  def testYieldType(self):
+  def test_yield_type(self):
     ty = self.Infer("""
       from typing import Generator
       def f(x):

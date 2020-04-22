@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class SpecialBuiltinsTest(test_base.TargetPython3BasicTest):
   """Tests for special_builtins.py."""
 
-  def testPropertyWithTypeParameter(self):
+  def test_property_with_type_parameter(self):
     ty = self.Infer("""
       from typing import Union
       class Foo(object):
@@ -19,7 +19,7 @@ class SpecialBuiltinsTest(test_base.TargetPython3BasicTest):
         foo = ...  # type: int or str
     """)
 
-  def testPropertyWithContainedTypeParameter(self):
+  def test_property_with_contained_type_parameter(self):
     ty = self.Infer("""
       from typing import List, Union
       class Foo(object):
@@ -33,7 +33,7 @@ class SpecialBuiltinsTest(test_base.TargetPython3BasicTest):
         foo = ...  # type: List[int or str]
     """)
 
-  def testCallableMatching(self):
+  def test_callable_matching(self):
     self.Check("""
       from typing import Any, Callable
       def f(x: Callable[[Any], bool]):

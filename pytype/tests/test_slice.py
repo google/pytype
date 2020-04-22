@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class SliceTest(test_base.TargetIndependentTest):
   """Tests for the SLICE_<n> opcodes, as well as for __getitem__(slice)."""
 
-  def testGetSlice(self):
+  def test_getslice(self):
     ty = self.Infer("""
       x = [1,2,3]
       a = x[:]
@@ -29,7 +29,7 @@ class SliceTest(test_base.TargetIndependentTest):
       g = ...  # type: List[int]
     """)
 
-  def testSliceGetItem(self):
+  def test_slice_getitem(self):
     ty = self.Infer("""
       class Foo(object):
         def __getitem__(self, s):

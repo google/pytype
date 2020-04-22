@@ -8,7 +8,7 @@ from pytype.tests import test_base
 class ReingestTest(test_base.TargetIndependentTest):
   """Tests for reloading the pyi we generate."""
 
-  def testContainer(self):
+  def test_container(self):
     ty = self.Infer("""
       class Container:
         def Add(self):
@@ -24,7 +24,7 @@ class ReingestTest(test_base.TargetIndependentTest):
         A().Add()
       """, pythonpath=[d.path])
 
-  def testUnion(self):
+  def test_union(self):
     ty = self.Infer("""
       class Union(object):
         pass
@@ -36,7 +36,7 @@ class ReingestTest(test_base.TargetIndependentTest):
         from foo import Union
       """, pythonpath=[d.path])
 
-  def testIdentityDecorators(self):
+  def test_identity_decorators(self):
     foo = self.Infer("""
       def decorate(f):
         return f
@@ -58,7 +58,7 @@ class ReingestTest(test_base.TargetIndependentTest):
       """)
 
   @test_base.skip("Needs better handling of Union[Callable, f] in output.py.""")
-  def testMaybeIdentityDecorators(self):
+  def test_maybe_identity_decorators(self):
     foo = self.Infer("""
       def maybe_decorate(f):
         return f or (lambda *args: 42)
@@ -79,7 +79,7 @@ class ReingestTest(test_base.TargetIndependentTest):
         def g() -> int
       """)
 
-  def testNamedTuple(self):
+  def test_namedtuple(self):
     foo = self.Infer("""
       import collections
       X = collections.namedtuple("X", ["a", "b"])
@@ -92,7 +92,7 @@ class ReingestTest(test_base.TargetIndependentTest):
         foo.X(a=0, b=0)
       """, pythonpath=[d.path])
 
-  def testNewChain(self):
+  def test_new_chain(self):
     foo = self.Infer("""
       class X(object):
         def __new__(cls, x):
@@ -110,7 +110,7 @@ class ReingestTest(test_base.TargetIndependentTest):
         Y("x").x
       """, pythonpath=[d.path])
 
-  def testNamedTupleSubclass(self):
+  def test_namedtuple_subclass(self):
     foo = self.Infer("""
       import collections
       class X(collections.namedtuple("X", ["a"])):
@@ -127,7 +127,7 @@ class ReingestTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"b.*__new__"})
 
-  def testAlias(self):
+  def test_alias(self):
     foo = self.Infer("""
       class _Foo(object):
         def __new__(cls, _):
@@ -141,7 +141,7 @@ class ReingestTest(test_base.TargetIndependentTest):
         foo.Foo("hello world")
       """, pythonpath=[d.path])
 
-  def testDynamicAttributes(self):
+  def test_dynamic_attributes(self):
     foo1 = self.Infer("""
       HAS_DYNAMIC_ATTRIBUTES = True
     """)
@@ -165,7 +165,7 @@ class ReingestTest(test_base.TargetIndependentTest):
         bar.zyx
       """, pythonpath=[d.path])
 
-  def testInheritedMutation(self):
+  def test_inherited_mutation(self):
     foo = self.Infer("""
       class MyList(list):
         write = list.append
@@ -184,7 +184,7 @@ class ReingestTest(test_base.TargetIndependentTest):
       """)
 
   @test_base.skip("Need to give MyList.write the right self mutation.")
-  def testInheritedMutationInGenericClass(self):
+  def test_inherited_mutation_in_generic_class(self):
     foo = self.Infer("""
       from typing import List, TypeVar
       T = TypeVar("T")
@@ -207,7 +207,7 @@ class ReingestTest(test_base.TargetIndependentTest):
 class StrictNoneTest(test_base.TargetIndependentTest):
   """Tests for strict none."""
 
-  def testPyiReturnConstant(self):
+  def test_pyi_return_constant(self):
     foo = self.Infer("""
       x = None
       def f():
@@ -221,7 +221,7 @@ class StrictNoneTest(test_base.TargetIndependentTest):
           return foo.f().upper()
       """, pythonpath=[d.path])
 
-  def testPyiYieldConstant(self):
+  def test_pyi_yield_constant(self):
     foo = self.Infer("""
       x = None
       def f():
@@ -235,7 +235,7 @@ class StrictNoneTest(test_base.TargetIndependentTest):
           return [v.upper() for v in foo.f()]
       """, pythonpath=[d.path])
 
-  def testPyiReturnContainedConstant(self):
+  def test_pyi_return_contained_constant(self):
     foo = self.Infer("""
       x = None
       def f():
@@ -249,7 +249,7 @@ class StrictNoneTest(test_base.TargetIndependentTest):
           return [v.upper() for v in foo.f()]
       """, pythonpath=[d.path])
 
-  def testPyiReturnAttribute(self):
+  def test_pyi_return_attribute(self):
     foo = self.Infer("""
       class Foo:
         x = None
@@ -264,7 +264,7 @@ class StrictNoneTest(test_base.TargetIndependentTest):
           return foo.f().upper()
       """, pythonpath=[d.path])
 
-  def testNoReturn(self):
+  def test_no_return(self):
     foo = self.Infer("""
       def fail():
         raise ValueError()
@@ -280,7 +280,7 @@ class StrictNoneTest(test_base.TargetIndependentTest):
           return x.upper()
       """, pythonpath=[d.path])
 
-  def testContextManagerSubclass(self):
+  def test_context_manager_subclass(self):
     foo = self.Infer("""
       class Foo(object):
         def __enter__(self):

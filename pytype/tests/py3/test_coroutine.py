@@ -7,7 +7,7 @@ from pytype.tests import test_base
 class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
   """Tests for coroutines."""
 
-  def testRetTypeMatch(self):
+  def test_ret_type_match(self):
     self.Check("""
       from typing import Any, Awaitable, Coroutine, List
 
@@ -25,7 +25,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
         return c
     """)
 
-  def testCoroutineTypeVarPyi(self):
+  def test_coroutine_typevar_pyi(self):
     ty = self.Infer("""
       from typing import List, Coroutine, Any
 
@@ -49,7 +49,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       def f() -> Coroutine[Any, Any, int]: ...
     """)
 
-  def testNativeCoroutinePyi(self):
+  def test_native_coroutine_pyi(self):
     ty = self.Infer("""
       async def callee():
         if __random__:
@@ -68,7 +68,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       def caller() -> Coroutine[Any, Any, Union[int, str]]: ...
     """)
 
-  def testNativeCoroutineError(self):
+  def test_native_coroutine_error(self):
     errors = self.CheckWithErrors("""
       async def f1() -> str:
         return 1  # bad-return-type[e1]
@@ -90,7 +90,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
     self.assertErrorRegexes(
         errors, {"e1": r"str.*int", "e2": r"str.*int", "e3": r"str.*int"})
 
-  def testGeneratorBasedCoroutinePyi(self):
+  def test_generator_based_coroutine_pyi(self):
     ty = self.Infer("""
       import asyncio
       import types
@@ -129,7 +129,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       def f3() -> Coroutine[Any, Any, Union[int, str]]: ...
     """)
 
-  def testGeneratorBasedCoroutineError(self):
+  def test_generator_based_coroutine_error(self):
     errors = self.CheckWithErrors("""
       from typing import Generator
       import types
@@ -154,7 +154,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
     self.assertErrorRegexes(
         errors, {"e1": r"Awaitable.*int", "e2": r"y: str.*y: int"})
 
-  def testAwaitablePyi(self):
+  def test_awaitable_pyi(self):
     ty = self.Infer("""
       from typing import Awaitable, Generator
       import types
@@ -211,7 +211,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       def f3() -> Coroutine[Any, Any, None]: ...
     """)
 
-  def testInvalidAwaitable(self):
+  def test_invalid_awaitable(self):
     errors = self.CheckWithErrors("""
       class A(object):
         pass
@@ -221,7 +221,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"Awaitable.*A"})
 
-  def testAsyncForPyi(self):
+  def test_async_for_pyi(self):
     ty = self.Infer("""
       class MyIter(object):
         def __aiter__(self):
@@ -257,7 +257,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       def caller() -> Coroutine[Any, Any, List[Union[int, str]]]: ...
     """)
 
-  def testAsyncForError(self):
+  def test_async_for_error(self):
     errors = self.CheckWithErrors("""
       class Iter1(object):
         pass
@@ -308,7 +308,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
                                      "e2": r"No attribute.*__anext__",
                                      "e3": r"Awaitable.*Union\[int, str\]"})
 
-  def testAsyncWithPyi(self):
+  def test_async_with_pyi(self):
     ty = self.Infer("""
       async def log(s):
         return s
@@ -348,7 +348,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       def log(s: _T0) -> Coroutine[Any, Any, _T0]: ...
     """)
 
-  def testAsyncWithError(self):
+  def test_async_with_error(self):
     # pylint: disable=anomalous-backslash-in-string
     errors = self.CheckWithErrors("""
       class AsyncCtx1(object):
@@ -372,7 +372,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
         "e1": r"No attribute.*__aexit__", "e2": r"No attribute.*__aenter__",
         "e3": r"Awaitable.*AsyncCtx2", "e4": r"Awaitable.*str"})
 
-  def testLoadPyi(self):
+  def test_load_pyi(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any, Coroutine, Awaitable, TypeVar
@@ -444,7 +444,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
         def func2(x: Coroutine[Any, Any, str]) -> Coroutine[Any, Any, List[str]]: ...
       """)
 
-  def testAwaitVariableWithMulitBindings(self):
+  def test_await_variable_with_multi_bindings(self):
     ty = self.Infer("""
       async def f1():
         return 123
@@ -467,7 +467,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       def f2() -> Coroutine[Any, Any, str]: ...
     """)
 
-  def testAwaitGenerator(self):
+  def test_await_generator(self):
     ty = self.Infer("""
       import asyncio
 
@@ -482,7 +482,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
         Tuple[asyncio.streams.StreamReader, asyncio.streams.StreamWriter]]: ...
     """)
 
-  def testQueue(self):
+  def test_queue(self):
     ty = self.Infer("""
       import asyncio
 
@@ -500,7 +500,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       def main() -> Coroutine[Any, Any, None]: ...
     """)
 
-  def testFuture(self):
+  def test_future(self):
     ty = self.Infer("""
       import asyncio
 
@@ -519,7 +519,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       def call_foo() -> Coroutine[Any, Any, Optional[int]]: ...
     """)
 
-  def testPyiAsyncDef(self):
+  def test_pyi_async_def(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         async def f() -> int: ...

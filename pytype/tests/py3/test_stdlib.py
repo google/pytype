@@ -8,7 +8,7 @@ class StdLibTestsBasic(test_base.TargetPython3BasicTest,
                        test_utils.TestCollectionsMixin):
   """Tests for files in typeshed/stdlib."""
 
-  def testCollectionsDeque(self):
+  def test_collections_deque(self):
     # This method is different from the preceding ones because we model
     # collections.deque as a subclass, rather than an alias, of typing.Deque.
     errors = self.CheckWithErrors("""
@@ -21,7 +21,7 @@ class StdLibTestsBasic(test_base.TargetPython3BasicTest,
     """)
     self.assertErrorRegexes(errors, {"e": r"int.*deque"})
 
-  def testCollectionsDequeInit(self):
+  def test_collections_deque_init(self):
     ty = self.Infer("""
       import collections
       x = collections.deque([1, 2, 3], maxlen=10)
@@ -31,7 +31,7 @@ class StdLibTestsBasic(test_base.TargetPython3BasicTest,
       x = ...  # type: collections.deque[int]
     """)
 
-  def testPartial(self):
+  def test_partial(self):
     self.Check("""
       import functools
       from typing import TypeVar
@@ -40,41 +40,41 @@ class StdLibTestsBasic(test_base.TargetPython3BasicTest,
       functools.partial(identity)
     """)
 
-  def testCollectionsContainer(self):
+  def test_collections_container(self):
     self._testCollectionsObject("Container", "[]", "42", r"Container.*int")
 
-  def testCollectionsHashable(self):
+  def test_collections_hashable(self):
     self._testCollectionsObject("Hashable", "42", "[]", r"Hashable.*List")
 
-  def testCollectionsIterable(self):
+  def test_collections_iterable(self):
     self._testCollectionsObject("Iterable", "[]", "42", r"Iterable.*int")
 
-  def testCollectionsIterator(self):
+  def test_collections_iterator(self):
     self._testCollectionsObject("Iterator", "iter([])", "42", r"Iterator.*int")
 
-  def testCollectionsSized(self):
+  def test_collections_sized(self):
     self._testCollectionsObject("Sized", "[]", "42", r"Sized.*int")
 
-  def testCollectionsCallable(self):
+  def test_collections_callable(self):
     self._testCollectionsObject("Callable", "list", "42", r"Callable.*int")
 
-  def testCollectionsSequence(self):
+  def test_collections_sequence(self):
     self._testCollectionsObject("Sequence", "[]", "42", r"Sequence.*int")
 
-  def testCollectionsMutableSequence(self):
+  def test_collections_mutable_sequence(self):
     self._testCollectionsObject(
         "MutableSequence", "[]", "42", r"MutableSequence.*int")
 
-  def testCollectionsSet(self):
+  def test_collections_set(self):
     self._testCollectionsObject("Set", "set()", "42", r"set.*int")
 
-  def testCollectionsMutableSet(self):
+  def test_collections_mutable_set(self):
     self._testCollectionsObject("MutableSet", "set()", "42", r"MutableSet.*int")
 
-  def testCollectionsMapping(self):
+  def test_collections_mapping(self):
     self._testCollectionsObject("Mapping", "{}", "42", r"Mapping.*int")
 
-  def testCollectionsMutableMapping(self):
+  def test_collections_mutable_mapping(self):
     self._testCollectionsObject(
         "MutableMapping", "{}", "42", r"MutableMapping.*int")
 
@@ -83,7 +83,7 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
                           test_utils.TestCollectionsMixin):
   """Tests for files in typeshed/stdlib."""
 
-  def testCollectionsSmokeTest(self):
+  def test_collections_smoke_test(self):
     # These classes are not fully implemented in typing.py.
     self.Check("""
       import collections
@@ -94,37 +94,37 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       collections.Coroutine
     """)
 
-  def testCollectionsByteString(self):
+  def test_collections_bytestring(self):
     self._testCollectionsObject("ByteString", "b'hello'", "42",
                                 r"ByteString.*int")
 
-  def testCollectionsCollection(self):
+  def test_collections_collection(self):
     self._testCollectionsObject("Collection", "[]", "42", r"Collection.*int")
 
-  def testCollectionsGenerator(self):
+  def test_collections_generator(self):
     self._testCollectionsObject("Generator", "i for i in range(42)", "42",
                                 r"generator.*int")
 
-  def testCollectionsReversible(self):
+  def test_collections_reversible(self):
     self._testCollectionsObject("Reversible", "[]", "42", r"Reversible.*int")
 
-  def testCollectionsMappingView(self):
+  def test_collections_mapping_view(self):
     self._testCollectionsObject(
         "MappingView", "{}.items()", "42", r"MappingView.*int")
 
-  def testCollectionsItemsView(self):
+  def test_collections_items_view(self):
     self._testCollectionsObject(
         "ItemsView", "{}.items()", "42", r"ItemsView.*int")
 
-  def testCollectionsKeysView(self):
+  def test_collections_keys_view(self):
     self._testCollectionsObject(
         "KeysView", "{}.keys()", "42", r"KeysView.*int")
 
-  def testCollectionsValuesView(self):
+  def test_collections_values_view(self):
     self._testCollectionsObject(
         "ValuesView", "{}.values()", "42", r"ValuesView.*int")
 
-  def testTempfile(self):
+  def test_tempfile(self):
     ty = self.Infer("""
       import tempfile
       import typing
@@ -149,14 +149,14 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       def f(fi: typing.IO) -> Union[bytes, str]: ...
     """)
 
-  def testDefaultDict(self):
+  def test_defaultdict(self):
     self.Check("""
       import collections
       import itertools
       ids = collections.defaultdict(itertools.count(17).__next__)
     """)
 
-  def testDefaultDictMatchesDict(self):
+  def test_defaultdict_matches_dict(self):
     self.Check("""
       import collections
       from typing import DefaultDict, Dict
@@ -167,7 +167,7 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       take_defaultdict(d)
     """)
 
-  def testSysVersionInfoLt(self):
+  def test_sys_version_info_lt(self):
     ty = self.Infer("""
       import sys
       if sys.version_info[0] < 3:
@@ -180,7 +180,7 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       v = ...  # type: str
     """)
 
-  def testSysVersionInfoLe(self):
+  def test_sys_version_info_le(self):
     ty = self.Infer("""
       import sys
       if sys.version_info[0] <= 3:
@@ -193,7 +193,7 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       v = ...  # type: int
     """)
 
-  def testSysVersionInfoEq(self):
+  def test_sys_version_info_eq(self):
     ty = self.Infer("""
       import sys
       if sys.version_info[0] == 2:
@@ -208,7 +208,7 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       v = ...  # type: str
     """)
 
-  def testSysVersionInfoGe(self):
+  def test_sys_version_info_ge(self):
     ty = self.Infer("""
       import sys
       if sys.version_info[0] >= 3:
@@ -221,7 +221,7 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       v = ...  # type: int
     """)
 
-  def testSysVersionInfoGt(self):
+  def test_sys_version_info_gt(self):
     ty = self.Infer("""
       import sys
       if sys.version_info[0] > 2:
@@ -234,7 +234,7 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       v = ...  # type: int
     """)
 
-  def testSysVersionInfoNamedAttribute(self):
+  def test_sys_version_info_named_attribute(self):
     ty = self.Infer("""
       import sys
       if sys.version_info.major == 2:

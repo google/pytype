@@ -6,7 +6,7 @@ from pytype.tests import test_base
 class RecoveryTests(test_base.TargetPython3BasicTest):
   """Tests for recovering after errors."""
 
-  def testFunctionWithUnknownDecorator(self):
+  def test_function_with_unknown_decorator(self):
     self.InferWithErrors("""
       from nowhere import decorator  # import-error
       @decorator
@@ -17,7 +17,7 @@ class RecoveryTests(test_base.TargetPython3BasicTest):
         x.upper()  # attribute-error
     """, deep=True)
 
-  def testComplexInit(self):
+  def test_complex_init(self):
     """Test that we recover when __init__ triggers a utils.TooComplexError."""
     _, errors = self.InferWithErrors("""
       from typing import AnyStr
@@ -41,7 +41,7 @@ class RecoveryTests(test_base.TargetPython3BasicTest):
 class RecoveryTestsPython3(test_base.TargetPython3FeatureTest):
   """Tests for recovering after errors(python3 only)."""
 
-  def testBadCallParameter(self):
+  def test_bad_call_parameter(self):
     ty = self.Infer("""
           def f():
             return "%s" % chr("foo")
@@ -50,7 +50,7 @@ class RecoveryTestsPython3(test_base.TargetPython3FeatureTest):
           def f() -> str
         """)
 
-  def testBadFunction(self):
+  def test_bad_function(self):
     ty = self.Infer("""
         import time
         def f():

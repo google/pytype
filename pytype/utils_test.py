@@ -9,18 +9,18 @@ import unittest
 class UtilsTest(unittest.TestCase):
   """Test generic utilities."""
 
-  def testNumericSortKey(self):
+  def test_numeric_sort_key(self):
     k = utils.numeric_sort_key
     self.assertLess(k("1aaa"), k("12aa"))
     self.assertLess(k("12aa"), k("123a"))
     self.assertLess(k("a1aa"), k("a12a"))
     self.assertLess(k("a12a"), k("a123"))
 
-  def testPrettyDNF(self):
+  def test_pretty_dnf(self):
     dnf = [["a", "b"], "c", ["d", "e", "f"]]
     self.assertEqual(utils.pretty_dnf(dnf), "(a & b) | c | (d & e & f)")
 
-  def testListStripPrefix(self):
+  def test_list_strip_prefix(self):
     self.assertEqual([1, 2, 3], utils.list_strip_prefix([1, 2, 3], []))
     self.assertEqual([2, 3], utils.list_strip_prefix([1, 2, 3], [1]))
     self.assertEqual([3], utils.list_strip_prefix([1, 2, 3], [1, 2]))
@@ -36,7 +36,7 @@ class UtilsTest(unittest.TestCase):
             "top.a.somewhat.long.path.src2.d3.shrdlu".split("."),
             "top".split(".")))
 
-  def testListStartsWith(self):
+  def test_list_starts_with(self):
     self.assertTrue(utils.list_startswith([1, 2, 3], []))
     self.assertTrue(utils.list_startswith([1, 2, 3], [1]))
     self.assertTrue(utils.list_startswith([1, 2, 3], [1, 2]))
@@ -45,14 +45,14 @@ class UtilsTest(unittest.TestCase):
     self.assertTrue(utils.list_startswith([], []))
     self.assertFalse(utils.list_startswith([], [1]))
 
-  def testInvertDict(self):
+  def test_invert_dict(self):
     a = {"p": ["q", "r"], "x": ["q", "z"]}
     b = utils.invert_dict(a)
     six.assertCountEqual(self, b["q"], ["p", "x"])
     self.assertEqual(b["r"], ["p"])
     self.assertEqual(b["z"], ["x"])
 
-  def testDynamicVar(self):
+  def test_dynamic_var(self):
     var = utils.DynamicVar()
     self.assertIsNone(var.get())
     with var.bind(123):
@@ -62,27 +62,27 @@ class UtilsTest(unittest.TestCase):
       self.assertEqual(123, var.get())
     self.assertIsNone(var.get())
 
-  def testVersionFromStringInt(self):
+  def test_version_from_string_int(self):
     self.assertEqual(utils.version_from_string("2"), (2, 7))
 
-  def testVersionFromStringTuple(self):
+  def test_version_from_string_tuple(self):
     self.assertEqual(utils.version_from_string("2.7"), (2, 7))
 
-  def testFullVersionFromMajor2(self):
+  def test_full_version_from_major2(self):
     self.assertEqual(utils.full_version_from_major(2), (2, 7))
 
   @unittest.skipUnless(six.PY3, "py3 minor version depends on host version")
-  def testFullVersionFromMajor3(self):
+  def test_full_version_from_major3(self):
     major, _ = utils.full_version_from_major(3)
     self.assertEqual(major, 3)
 
-  def testNormalizeVersionInt(self):
+  def test_normalize_version_int(self):
     self.assertEqual(utils.normalize_version(2), (2, 7))
 
-  def testNormalizeVersionTuple(self):
+  def test_normalize_version_tuple(self):
     self.assertEqual(utils.normalize_version((2, 7)), (2, 7))
 
-  def testValidateVersion(self):
+  def test_validate_version(self):
     self._validate_version_helper((1, 1))
     self._validate_version_helper((2, 1))
     self._validate_version_helper((2, 8))
@@ -93,7 +93,7 @@ class UtilsTest(unittest.TestCase):
     with self.assertRaises(utils.UsageError):
       utils.validate_version(python_version)
 
-  def testParseInterpreterVersion(self):
+  def test_parse_interpreter_version(self):
     test_cases = (
         ("Python 2.7.8", (2, 7)),
         ("Python 3.6.3", (3, 6)),
@@ -103,7 +103,7 @@ class UtilsTest(unittest.TestCase):
     for version_str, expected in test_cases:
       self.assertEqual(expected, utils.parse_exe_version_string(version_str))
 
-  def testGetPythonExeVersion(self):
+  def test_get_python_exe_version(self):
     version = utils.get_python_exe_version("python")
     self.assertIsInstance(version, tuple)
     self.assertEqual(len(version), 2)
@@ -120,7 +120,7 @@ class DecoratorsTest(unittest.TestCase):
   def _f1(self, x, y):
     return x + y
 
-  def testMemoize1(self):
+  def test_memoize1(self):
     l1 = self._f1((1,), (2,))
     l2 = self._f1(x=(1,), y=(2,))
     l3 = self._f1((1,), y=(2,))
@@ -134,7 +134,7 @@ class DecoratorsTest(unittest.TestCase):
   def _f2(self, x, y):
     return x + y
 
-  def testMemoize2(self):
+  def test_memoize2(self):
     l1 = self._f2((1,), (2,))
     l2 = self._f2((1,), (3,))
     self.assertIs(l1, l2)
@@ -149,7 +149,7 @@ class DecoratorsTest(unittest.TestCase):
   def _f3(self, x, y):
     return x + y
 
-  def testMemoize3(self):
+  def test_memoize3(self):
     # We make use of an indirect way to create two identical
     # tuples so that we do not end up with the same object
     # due to constant literal caching.
@@ -169,7 +169,7 @@ class DecoratorsTest(unittest.TestCase):
   def _f4(self, x=1, y=2):
     return x + y
 
-  def testMemoize4(self):
+  def test_memoize4(self):
     z1 = self._f4(1, 2)
     z2 = self._f4(1, 3)
     self.assertNotEqual(z1, z2)
@@ -183,7 +183,7 @@ class DecoratorsTest(unittest.TestCase):
     z2 = self._f4(1, 2)
     self.assertIs(z1, z2)
 
-  def testMemoize5(self):
+  def test_memoize5(self):
     class Foo(object):
 
       @utils.memoize("(self, x, y)")
@@ -197,7 +197,7 @@ class DecoratorsTest(unittest.TestCase):
     self.assertIsNot(z1, z2)
     self.assertIs(z2, z3)
 
-  def testAnnotatingDecorator(self):
+  def test_annotating_decorator(self):
     foo = utils.AnnotatingDecorator()
     @foo(3)
     def f():  # pylint: disable=unused-variable

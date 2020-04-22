@@ -7,7 +7,7 @@ from pytype.tests import test_base
 class CallsTest(test_base.TargetIndependentTest):
   """Tests for checking function calls."""
 
-  def testOptional(self):
+  def test_optional(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def foo(x: int, y: int = ..., z: int = ...) -> int
@@ -19,7 +19,7 @@ class CallsTest(test_base.TargetIndependentTest):
         mod.foo(1, 2, 3)
       """, pythonpath=[d.path])
 
-  def testMissing(self):
+  def test_missing(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def foo(x, y) -> int
@@ -29,7 +29,7 @@ class CallsTest(test_base.TargetIndependentTest):
         mod.foo(1)  # missing-parameter
       """, pythonpath=[d.path])
 
-  def testExtraneous(self):
+  def test_extraneous(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def foo(x, y) -> int
@@ -39,7 +39,7 @@ class CallsTest(test_base.TargetIndependentTest):
         mod.foo(1, 2, 3)  # wrong-arg-count
       """, pythonpath=[d.path])
 
-  def testMissingKwOnly(self):
+  def test_missing_kwonly(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def foo(x, y, *, z) -> int
@@ -50,7 +50,7 @@ class CallsTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"\bz\b"})
 
-  def testExtraKeyword(self):
+  def test_extra_keyword(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def foo(x, y) -> int
@@ -60,7 +60,7 @@ class CallsTest(test_base.TargetIndependentTest):
         mod.foo(1, 2, z=3)  # wrong-keyword-args
       """, pythonpath=[d.path])
 
-  def testVarArgsWithKwOnly(self):
+  def test_varargs_with_kwonly(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def foo(*args: int, z: int) -> int
@@ -71,7 +71,7 @@ class CallsTest(test_base.TargetIndependentTest):
         mod.foo(1, 2, z=3)
       """, pythonpath=[d.path])
 
-  def testVarArgsWithMissingKwOnly(self):
+  def test_varargs_with_missing_kwonly(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def foo(*args: int, z: int) -> int

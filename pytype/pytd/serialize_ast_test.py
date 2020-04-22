@@ -15,17 +15,17 @@ class SerializeAstTest(unittest.TestCase):
 
   python_version = (2, 7)
 
-  def _StoreAst(
+  def _store_ast(
       self, temp_dir, module_name, pickled_ast_filename, ast=None, loader=None):
     if not (ast and loader):
-      ast, loader = self._GetAst(temp_dir=temp_dir, module_name=module_name)
+      ast, loader = self._get_ast(temp_dir=temp_dir, module_name=module_name)
     serialize_ast.StoreAst(ast, pickled_ast_filename)
     module_map = {name: module.ast
                   for name, module in loader._modules.items()}
 
     return module_map
 
-  def _GetAst(self, temp_dir, module_name, src=None):
+  def _get_ast(self, temp_dir, module_name, src=None):
     src = src or ("""
         import module2
         from module2 import f
@@ -62,16 +62,16 @@ class SerializeAstTest(unittest.TestCase):
         visitors.CanonicalOrderingVisitor())
     return ast, loader
 
-  def testFindClassTypesVisitor(self):
+  def test_find_class_types_visitor(self):
     module_name = "foo.bar"
     with file_utils.Tempdir() as d:
-      ast, _ = self._GetAst(temp_dir=d, module_name=module_name)
+      ast, _ = self._get_ast(temp_dir=d, module_name=module_name)
     indexer = serialize_ast.FindClassAndFunctionTypesVisitor()
     ast.Visit(indexer)
 
     self.assertEqual(len(indexer.class_type_nodes), 9)
 
-  def testNodeIndexVisitorUsage(self):
+  def test_node_index_visitor_usage(self):
     """Confirms that the node index is used.
 
     This removes the first node from the class_type_nodes list and checks that
@@ -80,7 +80,7 @@ class SerializeAstTest(unittest.TestCase):
     with file_utils.Tempdir() as d:
       module_name = "module1"
       pickled_ast_filename = os.path.join(d.path, "module1.pyi.pickled")
-      module_map = self._StoreAst(d, module_name, pickled_ast_filename)
+      module_map = self._store_ast(d, module_name, pickled_ast_filename)
       del module_map[module_name]
       serialized_ast = pytd_utils.LoadPickle(pickled_ast_filename)
 
@@ -93,9 +93,9 @@ class SerializeAstTest(unittest.TestCase):
           self, ValueError, "Unresolved class: '__builtin__.NoneType'"):
         loaded_ast.Visit(visitors.VerifyLookup())
 
-  def testPickle(self):
+  def test_pickle(self):
     with file_utils.Tempdir() as d:
-      ast, _ = self._GetAst(temp_dir=d, module_name="foo.bar.module1")
+      ast, _ = self._get_ast(temp_dir=d, module_name="foo.bar.module1")
       pickled_ast_filename = os.path.join(d.path, "module1.pyi.pickled")
 
       result = serialize_ast.StoreAst(ast, pickled_ast_filename)
@@ -107,7 +107,7 @@ class SerializeAstTest(unittest.TestCase):
       six.assertCountEqual(self, dict(serialized_ast.dependencies),
                            ["__builtin__", "foo.bar.module1", "module2"])
 
-  def testUnrestorableChild(self):
+  def test_unrestorable_child(self):
     # Assume .cls in a ClassType X in module1 was referencing something for
     # which, Visitors.LookupExternalTypes returned AnythingType.
     # Now if something in module1 is referencing X external types need to be
@@ -153,13 +153,13 @@ class SerializeAstTest(unittest.TestCase):
           from typing import Any
           def __getattr__(self, name) -> Any: ..."""
                    )
-      ast, loader = self._GetAst(
+      ast, loader = self._get_ast(
           temp_dir=d, module_name="module1", src=src)
 
       ast = ast.Visit(RenameVisitor())
 
       pickled_ast_filename = os.path.join(d.path, "module1.pyi.pickled")
-      module_map = self._StoreAst(
+      module_map = self._store_ast(
           d, "module1", pickled_ast_filename, ast=ast, loader=loader)
       del module_map["module1"]
 
@@ -172,12 +172,12 @@ class SerializeAstTest(unittest.TestCase):
       cls = loaded_ast.functions[0].signatures[0].params[0].type.cls
       cls.Visit(visitors.VerifyLookup())
 
-  def testLoadTopLevel(self):
+  def test_load_top_level(self):
     """Tests that a pickled file can be read."""
     with file_utils.Tempdir() as d:
       module_name = "module1"
       pickled_ast_filename = os.path.join(d.path, "module1.pyi.pickled")
-      module_map = self._StoreAst(d, module_name, pickled_ast_filename)
+      module_map = self._store_ast(d, module_name, pickled_ast_filename)
       original_ast = module_map[module_name]
       del module_map[module_name]
       loaded_ast = serialize_ast.ProcessAst(
@@ -190,7 +190,7 @@ class SerializeAstTest(unittest.TestCase):
       self.assertTrue(pytd_utils.ASTeq(original_ast, loaded_ast))
       loaded_ast.Visit(visitors.VerifyLookup())
 
-  def testLoadWithSameModuleName(self):
+  def test_load_with_same_module_name(self):
     """Explicitly set the module name and reload with the same name.
 
     The difference to testLoadTopLevel is that the module name does not match
@@ -199,7 +199,7 @@ class SerializeAstTest(unittest.TestCase):
     with file_utils.Tempdir() as d:
       module_name = "foo.bar.module1"
       pickled_ast_filename = os.path.join(d.path, "module1.pyi.pickled")
-      module_map = self._StoreAst(d, module_name, pickled_ast_filename)
+      module_map = self._store_ast(d, module_name, pickled_ast_filename)
       original_ast = module_map[module_name]
       del module_map[module_name]
 
@@ -213,11 +213,11 @@ class SerializeAstTest(unittest.TestCase):
       self.assertTrue(pytd_utils.ASTeq(original_ast, loaded_ast))
       loaded_ast.Visit(visitors.VerifyLookup())
 
-  def testUnrestorableDependencyErrorWithModuleIndex(self):
+  def test_unrestorable_dependency_error_with_module_index(self):
     with file_utils.Tempdir() as d:
       module_name = "module1"
       pickled_ast_filename = os.path.join(d.path, "module1.pyi.pickled")
-      module_map = self._StoreAst(d, module_name, pickled_ast_filename)
+      module_map = self._store_ast(d, module_name, pickled_ast_filename)
       module_map = {}  # Remove module2
 
       with self.assertRaises(serialize_ast.UnrestorableDependencyError):
@@ -225,11 +225,11 @@ class SerializeAstTest(unittest.TestCase):
             pytd_utils.LoadPickle(pickled_ast_filename),
             module_map)
 
-  def testUnrestorableDependencyErrorWithoutModuleIndex(self):
+  def test_unrestorable_dependency_error_without_module_index(self):
     with file_utils.Tempdir() as d:
       module_name = "module1"
       pickled_ast_filename = os.path.join(d.path, "module1.pyi.pickled")
-      module_map = self._StoreAst(d, module_name, pickled_ast_filename)
+      module_map = self._store_ast(d, module_name, pickled_ast_filename)
       module_map = {}  # Remove module2
 
       loaded_ast = pytd_utils.LoadPickle(pickled_ast_filename)
@@ -237,11 +237,12 @@ class SerializeAstTest(unittest.TestCase):
       with self.assertRaises(serialize_ast.UnrestorableDependencyError):
         serialize_ast.ProcessAst(loaded_ast, module_map)
 
-  def testLoadWithDifferentModuleName(self):
+  def test_load_with_different_module_name(self):
     with file_utils.Tempdir() as d:
       original_module_name = "module1"
       pickled_ast_filename = os.path.join(d.path, "module1.pyi.pickled")
-      module_map = self._StoreAst(d, original_module_name, pickled_ast_filename)
+      module_map = self._store_ast(
+          d, original_module_name, pickled_ast_filename)
       original_ast = module_map[original_module_name]
       del module_map[original_module_name]
 
@@ -256,15 +257,16 @@ class SerializeAstTest(unittest.TestCase):
       self.assertEqual(loaded_ast.name, new_module_name)
       loaded_ast.Visit(visitors.VerifyLookup())
       self.assertFalse(pytd_utils.ASTeq(original_ast, loaded_ast))
-      ast_new_module, _ = self._GetAst(temp_dir=d, module_name=new_module_name)
+      ast_new_module, _ = self._get_ast(temp_dir=d, module_name=new_module_name)
       self.assertTrue(pytd_utils.ASTeq(ast_new_module, loaded_ast))
 
-  def testStoreRemovesInit(self):
+  def test_store_removes_init(self):
     with file_utils.Tempdir() as d:
       original_module_name = "module1.__init__"
       pickled_ast_filename = os.path.join(d.path, "module1.pyi.pickled")
 
-      module_map = self._StoreAst(d, original_module_name, pickled_ast_filename)
+      module_map = self._store_ast(
+          d, original_module_name, pickled_ast_filename)
       serializable_ast = pytd_utils.LoadPickle(pickled_ast_filename)
 
       expected_name = "module1"
@@ -275,10 +277,10 @@ class SerializeAstTest(unittest.TestCase):
       # Check that the saved ast had its name changed.
       self.assertEqual(serializable_ast.ast.name, expected_name)
 
-  def testFunctionType(self):
+  def test_function_type(self):
     with file_utils.Tempdir() as d:
       foo = d.create_file("foo.pickle")
-      module_map = self._StoreAst(d, "foo", foo, ast=self._GetAst(d, "foo"))
+      module_map = self._store_ast(d, "foo", foo, ast=self._get_ast(d, "foo"))
       p = pytd_utils.LoadPickle(foo)
       self.assertTrue(p.function_type_nodes)
       ast = serialize_ast.ProcessAst(p, module_map)

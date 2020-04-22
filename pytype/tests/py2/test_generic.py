@@ -7,7 +7,7 @@ from pytype.tests import test_base
 class GenericFeatureTest(test_base.TargetPython27FeatureTest):
   """Tests for User-defined Generic Type."""
 
-  def testTypeParameterDuplicated(self):
+  def test_type_parameter_duplicated(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, Dict, TypeVar
