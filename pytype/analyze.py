@@ -582,7 +582,12 @@ class CallTracer(vm.VirtualMachine):
   def _check_return(self, node, actual, formal):
     if not self.options.report_errors:
       return True
-    bad = self.matcher.bad_matches(actual, formal, node)
+    views = abstract_utils.get_views([actual], node)
+    # Check for typevars in the return value first, since bad_matches
+    # expects not to get any.
+    bad = [view for view in views if view[actual].data.formal]
+    if not bad:
+      bad = self.matcher.bad_matches(actual, formal, node)
     if bad:
       with self.convert.pytd_convert.produce_detailed_output():
         combined = pytd_utils.JoinTypes(

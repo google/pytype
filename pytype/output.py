@@ -260,9 +260,15 @@ class Converter(utils.VirtualMachineWeakrefMixin):
                                   for o in v.options))
     elif isinstance(v, special_builtins.SuperInstance):
       return pytd.NamedType("__builtin__.super")
-    elif isinstance(v, (abstract.Unsolvable, abstract.TypeParameter)):
+    elif isinstance(v, abstract.TypeParameter):
       # Arguably, the type of a type parameter is NamedType("typing.TypeVar"),
-      # but pytype doesn't know how to handle that, so let's just go with Any.
+      # but pytype doesn't know how to handle that, so let's just go with Any
+      # unless self._detailed is set.
+      if self._detailed:
+        return pytd.NamedType("typing.TypeVar")
+      else:
+        return pytd.AnythingType()
+    elif isinstance(v, abstract.Unsolvable):
       return pytd.AnythingType()
     elif isinstance(v, abstract.Unknown):
       return pytd.NamedType(v.class_name)

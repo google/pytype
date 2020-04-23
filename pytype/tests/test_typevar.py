@@ -438,5 +438,14 @@ class TypeVarTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": "Expected.*int.*Actual.*Sequence"})
 
+  def test_return_typevar(self):
+    errors = self.CheckWithErrors("""
+      from typing import TypeVar
+      T = TypeVar('T')
+      def f(x: T) -> T:
+        return T  # bad-return-type[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": "Expected.*T.*Actual.*TypeVar"})
+
 
 test_base.main(globals(), __name__ == "__main__")
