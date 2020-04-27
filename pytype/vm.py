@@ -172,8 +172,8 @@ class VirtualMachine(object):
     # local_ops contains the order of assignments and annotations, and
     # annotated_locals contains a record of the annotated and original values of
     # the locals.
-    self.local_ops = collections.defaultdict(list)
-    self.annotated_locals = collections.defaultdict(dict)
+    self.local_ops = {}
+    self.annotated_locals = {}
 
     # Map from builtin names to canonical objects.
     self.special_builtins = {
@@ -196,6 +196,7 @@ class VirtualMachine(object):
     # builtin functions
     for cls in (
         special_builtins.Abs,
+        special_builtins.Filter,
         special_builtins.HasAttr,
         special_builtins.IsCallable,
         special_builtins.IsInstance,
@@ -306,8 +307,10 @@ class VirtualMachine(object):
   def run_frame(self, frame, node):
     """Run a frame (typically belonging to a method)."""
     self.push_frame(frame)
-    frame.states[frame.f_code.co_code[0]] = frame_state.FrameState.init(node,
-                                                                        self)
+    frame.states[frame.f_code.co_code[0]] = frame_state.FrameState.init(
+        node, self)
+    self.local_ops[frame.f_code.co_name] = []
+    self.annotated_locals[frame.f_code.co_name] = {}
     can_return = False
     return_nodes = []
     for block in frame.f_code.order:

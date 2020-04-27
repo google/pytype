@@ -287,6 +287,15 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       x7 = ...  # type: Iterator[str]
       """)
 
+  def test_filter_types(self):
+    self.Check("""
+      from typing import Iterator, List, Optional, Tuple, Union
+      def f(xs: List[Optional[int]]) -> Iterator[int]:
+        return filter(None, xs)
+      def g(x: Tuple[int, str, None]) -> Iterator[Union[int, str]]:
+        return filter(None, x)
+    """)
+
   def test_sorted(self):
     ty = self.Infer("""
       x = sorted(u"hello")

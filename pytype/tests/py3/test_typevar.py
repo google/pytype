@@ -404,6 +404,15 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
           def __init__(self, foo: T) -> None
     """)
 
+  def test_return_typevar(self):
+    errors = self.CheckWithErrors("""
+      from typing import TypeVar
+      T = TypeVar('T')
+      def f(x: T) -> T:
+        return T  # bad-return-type[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": "Expected.*T.*Actual.*TypeVar"})
+
 
 class TypeVarTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for TypeVar in Python 3."""

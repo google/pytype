@@ -383,5 +383,34 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         def __init__(self, y: str = ...) -> None: ...
     """)
 
+  def test_duplicate_inner_class(self):
+    ty = self.Infer("""
+      import dataclasses
+      class Foo:
+        @dataclasses.dataclass
+        class Inner:
+          a: int
+      class Bar:
+        @dataclasses.dataclass
+        class Inner:
+          b: str
+      Inner1 = Foo.Inner
+      Inner2 = Bar.Inner
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Type
+      dataclasses: module
+      class Foo:
+        Inner: Type[Inner1]
+      class Bar:
+        Inner: Type[Inner2]
+      class Inner1:
+        a: int
+        def __init__(self, a: int) -> None: ...
+      class Inner2:
+        b: str
+        def __init__(self, b: str) -> None: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

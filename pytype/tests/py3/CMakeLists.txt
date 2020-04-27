@@ -123,6 +123,7 @@ py_test(
   SRCS
     test_functions.py
   DEPS
+    pytype.pytd_utils
     pytype.tests.test_base
 )
 
