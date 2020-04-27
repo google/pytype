@@ -1,0 +1,10 @@
+# Python dependencies for building and testing the pytype source code.
+# Make sure you also install the non-Python dependencies described in
+# https://github.com/google/pytype/blob/master/CONTRIBUTING.md#pytype-dependencies.
+# In particular, use the official ninja package, not the pip distribution.
+attrs
+importlab
+pylint
+pyyaml
+six
+typed_ast
