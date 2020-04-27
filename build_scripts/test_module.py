@@ -152,7 +152,7 @@ def _get_members_list(parent_object):
   # We want to create of list of members explicitly as dict.items in
   # Python 3 returns an iterator. Hence, we do not want to be in situation where
   # in the members dict changes during iteration and raises an exception.
-  return list(parent_object.__dict__.items())
+  return [(name, getattr(parent_object, name)) for name in dir(parent_object)]
 
 
 def run_tests_in_class(class_object, options, reporter):
