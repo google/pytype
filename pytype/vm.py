@@ -196,6 +196,7 @@ class VirtualMachine(object):
     # builtin functions
     for cls in (
         special_builtins.Abs,
+        special_builtins.Filter,
         special_builtins.HasAttr,
         special_builtins.IsCallable,
         special_builtins.IsInstance,
