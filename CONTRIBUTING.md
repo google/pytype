@@ -20,7 +20,6 @@ frustration later on.
 All submissions, including submissions by project members, require review. We
 use Github pull requests for this purpose.
 
-
 ### Pytype dependencies
 Before you can build and test Pytype, you will have to install a few
 dependencies.
