@@ -1,7 +1,6 @@
 """Test functions."""
 
 from pytype import file_utils
-from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
@@ -971,43 +970,6 @@ class TestFunctions(test_base.TargetIndependentTest):
       {name_error2 for x in ()}  # name-error
       (name_error3 for x in ())  # name-error
       lambda x: name_error4  # name-error
-    """)
-
-  def test_identity_decorator(self):
-    ty = self.Infer("""
-      from typing import TypeVar
-      T = TypeVar("T")
-      def decorate(func: T) -> T:
-        return func
-      @decorate
-      def f():
-        return 0
-    """)
-    self.assertTypesMatchPytd(ty, """
-      from typing import TypeVar
-      T = TypeVar("T")
-      def decorate(func: T) -> T: ...
-      def f() -> int: ...
-    """)
-    with file_utils.Tempdir() as d:
-      d.create_file("foo.pyi", pytd_utils.Print(ty))
-      ty2 = self.Infer("""
-        import foo
-        @foo.decorate
-        def g():
-          return ""
-      """, pythonpath=[d.path])
-    self.assertTypesMatchPytd(ty2, """
-      foo: module
-      def g() -> str: ...
-    """)
-
-  def test_function_type(self):
-    self.Check("""
-      import types
-      def f(x: types.FunctionType):
-        pass
-      f(lambda: None)
     """)
 
   def test_new_function(self):
