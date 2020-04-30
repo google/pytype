@@ -41,5 +41,11 @@ class SpecialBuiltinsTest(test_base.TargetPython3BasicTest):
       f(callable)
     """)
 
+  def test_filter_starargs(self):
+    self.Check("""
+      def f(*args, **kwargs):
+        filter(*args, **kwargs)
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
