@@ -288,26 +288,6 @@ class TestExceptions(test_base.TargetIndependentTest):
       def f() -> int
     """)
 
-  @test_base.skip("f is inferred as `-> Optional[int]`")
-  def test_return_or_call_to_raise(self):
-    ty = self.Infer("""
-      from typing import NoReturn
-      def e() -> NoReturn:
-        raise ValueError('this is an error')
-      def f():
-        if __random__:
-          return 16
-        else:
-          e()
-    """)
-    self.assertTypesMatchPytd(
-        ty, """
-      from typing import NoReturn
-
-      def e() -> NoReturn
-      def f() -> int
-    """)
-
   def test_return_or_raise_set_attribute(self):
     self.CheckWithErrors("""
       def f():

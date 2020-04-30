@@ -179,6 +179,8 @@ class Filter(BuiltinFunction):
   def _filter_none(self, data, node):
     if isinstance(data, abstract.Unsolvable):
       return None
+    elif not data.cls:
+      return None
     elif isinstance(data, mixin.PythonConstant):
       return self._filter_pyval(data, node)
     else:
@@ -187,6 +189,8 @@ class Filter(BuiltinFunction):
 
   def call(self, node, func, args):
     self.match_args(node, args)
+    if len(args.posargs) != 2:
+      return super(Filter, self).call(node, func, args)
     pred, seq = args.posargs
     # Special case filter(None, seq). We remove None from seq and then call the
     # regular filter() so we don't need to reimplement eveything.
