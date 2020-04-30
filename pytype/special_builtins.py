@@ -179,6 +179,8 @@ class Filter(BuiltinFunction):
   def _filter_none(self, data, node):
     if isinstance(data, abstract.Unsolvable):
       return None
+    elif not data.cls:
+      return None
     elif isinstance(data, mixin.PythonConstant):
       return self._filter_pyval(data, node)
     else:
