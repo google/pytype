@@ -285,7 +285,7 @@ class Director(object):
           open_decorator = True
       elif tok == tokenize.NAME:
         if open_decorator and token.string in ("class", "def"):
-          self.decorators.add(lineno - 1)
+          self.decorators.add(lineno)
           open_decorator = False
         if token.string == "def":
           last_function_definition = _FunctionDefinition.start(lineno)

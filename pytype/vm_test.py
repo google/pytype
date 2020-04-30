@@ -246,22 +246,25 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     self.errorlog = errors.ErrorLog()
     self.vm = analyze.CallTracer(self.errorlog, self.options, self.loader)
 
+  def run_program(self, src):
+    return self.vm.run_program(textwrap.dedent(src), "", maximum_depth=10)
+
   def test_type_comment_on_multiline_value(self):
-    self.vm.run_program(textwrap.dedent("""
+    self.run_program("""
       v = [
         ("hello",
          "world",  # type: should_be_ignored
 
         )
       ]  # type: dict
-    """), "", maximum_depth=10)
+    """)
     # In Python 3.7, STORE_NAME v is on the `("hello",` line.
     self.assertEqual({
         3 if self.python_version >= (3, 7) else 4: "dict",
     }, self.vm.director.type_comments)
 
   def test_type_comment_with_trailing_comma(self):
-    self.vm.run_program(textwrap.dedent("""
+    self.run_program("""
       v = [
         ("hello",
          "world"
@@ -272,7 +275,7 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
          "world"
         ],  # some comment
       ]  # type: dict
-    """), "", maximum_depth=10)
+    """)
     # In Python 3.7, STORE_NAME v is on the `("hello",` line.
     self.assertEqual({
         3 if self.python_version >= (3, 7) else 4: "dict",
@@ -280,7 +283,7 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     }, self.vm.director.type_comments)
 
   def test_decorators(self):
-    self.vm.run_program(textwrap.dedent("""
+    self.run_program("""
       class A:
         '''
         @decorator in a docstring
@@ -295,11 +298,11 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
 
         def bar():
           pass
-    """), "", maximum_depth=10)
+    """)
     self.assertEqual(self.vm.director.decorators, {6, 11})
 
   def test_stacked_decorators(self):
-    self.vm.run_program(textwrap.dedent("""
+    self.run_program("""
       @decorator(
           x, y
       )
@@ -308,8 +311,23 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
 
       class A:
           pass
-    """), "", maximum_depth=10)
+    """)
     self.assertEqual(self.vm.director.decorators, {6})
+
+  def test_overload(self):
+    self.run_program("""
+      from typing import overload
+
+      @overload
+      def f() -> int: ...
+
+      @overload
+      def f(x: str) -> str: ...
+
+      def f(x=None):
+        return 0 if x is None else x
+    """)
+    self.assertEqual(self.vm.director.decorators, {5, 8})
 
 
 test_base.main(globals(), __name__ == "__main__")
