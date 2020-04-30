@@ -2,9 +2,10 @@
 
 **Under Construction**
 
-This documentation is for developers of and contributors to pytype. See the page
-on the [development process][development-process] for tips on suggested
-workflow. The rest of this guide covers pytype's core concepts and code layout.
+This documentation is for developers of and contributors to pytype. It covers
+[tips][development-process] on suggested workflow, how to
+[upgrade][python-upgrade] pytype for new Python versions, and pytype's core
+concepts and code layout.
 
 <!--ts-->
    * [Developer guide](#developer-guide)
@@ -19,7 +20,7 @@ workflow. The rest of this guide covers pytype's core concepts and code layout.
          * [Bytecode handling](#bytecode-handling)
          * [CFG](#cfg)
 
-<!-- Added by: rechen, at: 2020-03-20T10:14-07:00 -->
+<!-- Added by: rechen, at: 2020-04-29T19:06-07:00 -->
 
 <!--te-->
 
@@ -125,4 +126,5 @@ typeshed, `pytd/builtins/`, `pytd/stdlib/`,
 <!-- General references -->
 [development-process]: process.md
 [main-loop]: main_loop.md
+[python-upgrade]: python_version_upgrades.md
 [wiki-cfg]: https://en.wikipedia.org/wiki/Control-flow_graph
