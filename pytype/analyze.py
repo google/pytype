@@ -585,7 +585,8 @@ class CallTracer(vm.VirtualMachine):
     views = abstract_utils.get_views([actual], node)
     # Check for typevars in the return value first, since bad_matches
     # expects not to get any.
-    bad = [view for view in views if view[actual].data.formal]
+    bad = [view for view in views
+           if actual in view and view[actual].data.formal]
     if not bad:
       bad = self.matcher.bad_matches(actual, formal, node)
     if bad:
