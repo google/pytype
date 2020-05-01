@@ -38,4 +38,29 @@ class DecoratorsTest(test_base.TargetPython3BasicTest):
       x.func(12)
     """)
 
+  def test_class_decorators(self):
+    ty = self.Infer("""
+      from typing import Callable, TypeVar
+      C = TypeVar('C')
+      def decorator(cls: C) -> C:
+        return cls
+      def decorator_factory() -> Callable[[C], C]:
+        return lambda x: x
+      @decorator
+      class Foo:
+        pass
+      @decorator_factory()
+      class Bar:
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable, TypeVar
+      C = TypeVar('C')
+      def decorator(cls: C) -> C: ...
+      def decorator_factory() -> Callable[[C], C]: ...
+      class Foo: ...
+      class Bar: ...
+    """)
+
+
 test_base.main(globals(), __name__ == "__main__")

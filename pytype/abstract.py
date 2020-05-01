@@ -667,6 +667,9 @@ class SimpleAbstractValue(AtomicAbstractValue):
     # See Py_TYPE() in Include/object.h
     if self.cls:
       return self.cls
+    elif isinstance(self, InterpreterClass):
+      return ParameterizedClass(
+          self.vm.convert.type_type, {abstract_utils.T: self}, self.vm)
     elif isinstance(self, (AnnotationClass, mixin.Class)):
       return self.vm.convert.type_type
 
