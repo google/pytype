@@ -39,7 +39,7 @@ class TestPEP484(parser_test_base.ParserTest):
     self.assertEqual(self.convert(t, python_version=(2, 7)),
                      "AnyStr")
     t = pytd.NamedType("typing.AnyStr")
-    self.assertEqual(self.convert(t, python_version=(3, 4)),
+    self.assertEqual(self.convert(t, python_version=(3, 5)),
                      "AnyStr")
 
 

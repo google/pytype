@@ -364,7 +364,7 @@ class PytypeTest(unittest.TestCase):
         pass
     """))
     # Set up a python version mismatch
-    self.pytype_args["--python_version"] = "3.4"
+    self.pytype_args["--python_version"] = "3.5"
     self.pytype_args["--output-errors-csv"] = self.errors_csv
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
