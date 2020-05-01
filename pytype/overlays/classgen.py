@@ -140,6 +140,10 @@ class Decorator(abstract.PyTDFunction):
     # TODO(rechen): Once we drop Python 2 support, either use a normal dict or
     # replace key deletion with OrderedDict.move_to_end().
     out = collections.OrderedDict()
+    if cls.name not in self.vm.local_ops:
+      # See TestAttribPy3.test_cannot_decorate in tests/py3/test_attr.py. The
+      # class will not be in local_ops if a previous decorator hides it.
+      return out
     for op in self.vm.local_ops[cls.name]:
       if is_dunder(op.name):
         continue
