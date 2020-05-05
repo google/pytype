@@ -1,6 +1,197 @@
 """Test decorators."""
 
+from pytype import file_utils
+from pytype.pytd import pytd_utils
 from pytype.tests import test_base
+
+
+class AnnotatedDecoratorsTest(test_base.TargetPython3BasicTest):
+  """A collection of tested examples of annotated decorators."""
+
+  def test_identity_decorator(self):
+    ty = self.Infer("""
+      from typing import Any, Callable, TypeVar
+      Fn = TypeVar('Fn', bound=Callable[..., Any])
+
+      def decorate(fn: Fn) -> Fn:
+        return fn
+
+      @decorate
+      def f(x: int) -> str:
+        return str(x)
+
+      @decorate
+      class Foo:
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable, TypeVar
+      Fn = TypeVar('Fn', bound=Callable)
+      def decorate(fn: Fn) -> Fn: ...
+      def f(x: int) -> str: ...
+      class Foo: ...
+    """)
+    # Prints the inferred types as a stub file and tests that the decorator
+    # works correctly when imported in another file.
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(ty))
+      ty = self.Infer("""
+        import foo
+
+        @foo.decorate
+        def f(x: str) -> int:
+          return int(x)
+
+        @foo.decorate
+        class Bar:
+          pass
+      """, pythonpath=[d.path])
+    self.assertTypesMatchPytd(ty, """
+      foo: module
+      def f(x: str) -> int: ...
+      class Bar: ...
+    """)
+
+  def test_decorator_factory(self):
+    ty = self.Infer("""
+      from typing import Any, Callable, TypeVar
+      Fn = TypeVar('Fn', bound=Callable[..., Any])
+
+      def decorate(**options: Any) -> Callable[[Fn], Fn]:
+        def inner(fn):
+          return fn
+        return inner
+
+      @decorate()
+      def f(x: int) -> str:
+        return str(x)
+
+      @decorate(x=0, y=False)
+      def g() -> float:
+        return 0.0
+
+      @decorate()
+      class Foo:
+        pass
+
+      @decorate(x=0, y=False)
+      class Bar:
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable, TypeVar
+      Fn = TypeVar('Fn', bound=Callable)
+      def decorate(**options) -> Callable[[Fn], Fn]: ...
+      def f(x: int) -> str: ...
+      def g() -> float: ...
+      class Foo: ...
+      class Bar: ...
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(ty))
+      ty = self.Infer("""
+        import foo
+
+        @foo.decorate()
+        def f() -> None:
+          return None
+
+        @foo.decorate(z=42)
+        def g(x: int, y: int) -> int:
+          return x + y
+
+        @foo.decorate()
+        class Foo:
+          pass
+
+        @foo.decorate(z=42)
+        class Bar:
+          pass
+      """, pythonpath=[d.path])
+    self.assertTypesMatchPytd(ty, """
+      foo: module
+      def f() -> None: ...
+      def g(x: int, y: int) -> int: ...
+      class Foo: ...
+      class Bar: ...
+    """)
+
+  def test_identity_or_factory(self):
+    ty = self.Infer("""
+      from typing import Any, Callable, overload, TypeVar
+      Fn = TypeVar('Fn', bound=Callable[..., Any])
+
+      @overload
+      def decorate(fn: Fn) -> Fn: ...
+
+      @overload
+      def decorate(fn: None = None, **options: Any) -> Callable[[Fn], Fn]: ...
+
+      def decorate(fn=None, **options):
+        if fn:
+          return fn
+        def inner(fn):
+          return fn
+        return inner
+
+      @decorate
+      def f() -> bool:
+        return True
+
+      @decorate()
+      def g(x: complex) -> float:
+        return x.real
+
+      @decorate
+      class Foo:
+        pass
+
+      @decorate(x=3.14)
+      class Bar:
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable, overload, TypeVar
+      Fn = TypeVar('Fn', bound=Callable)
+
+      @overload
+      def decorate(fn: Fn) -> Fn: ...
+      @overload
+      def decorate(fn: None = ..., **options) -> Callable[[Fn], Fn]: ...
+
+      def f() -> bool: ...
+      def g(x: complex) -> float: ...
+      class Foo: ...
+      class Bar: ...
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(ty))
+      ty = self.Infer("""
+        import foo
+
+        @foo.decorate
+        def f(x: float) -> str:
+          return str(x)
+
+        @foo.decorate(y=False, z=None)
+        def g(x: int, y: float) -> float:
+          return x + y
+
+        @foo.decorate
+        class Foo:
+          pass
+
+        @foo.decorate()
+        class Bar:
+          pass
+      """, pythonpath=[d.path])
+    self.assertTypesMatchPytd(ty, """
+      foo: module
+      def f(x: float) -> str: ...
+      def g(x: int, y: float) -> float: ...
+      class Foo: ...
+      class Bar: ...
+    """)
 
 
 class DecoratorsTest(test_base.TargetPython3BasicTest):
@@ -36,30 +227,6 @@ class DecoratorsTest(test_base.TargetPython3BasicTest):
 
       x = MyClass()
       x.func(12)
-    """)
-
-  def test_class_decorators(self):
-    ty = self.Infer("""
-      from typing import Callable, TypeVar
-      C = TypeVar('C')
-      def decorator(cls: C) -> C:
-        return cls
-      def decorator_factory() -> Callable[[C], C]:
-        return lambda x: x
-      @decorator
-      class Foo:
-        pass
-      @decorator_factory()
-      class Bar:
-        pass
-    """)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Callable, TypeVar
-      C = TypeVar('C')
-      def decorator(cls: C) -> C: ...
-      def decorator_factory() -> Callable[[C], C]: ...
-      class Foo: ...
-      class Bar: ...
     """)
 
 
