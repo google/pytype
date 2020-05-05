@@ -1503,8 +1503,6 @@ class Function(SimpleAbstractValue):
       try:
         match = self._match_view(node, args, view, alias_map)
       except function.FailedFunctionCall as e:
-        # We could also pass "filter_strict=True" to abstract_utils.get_views()
-        # above, but it's cheaper to delay verification until the error case.
         if e > error and node.HasCombination(list(view.values())):
           # Add the name of the caller if possible.
           if hasattr(self, "parent"):

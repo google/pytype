@@ -3040,33 +3040,36 @@ class VirtualMachine(object):
     Returns:
       A tuple of the state and a cfg.Variable of coroutines.
     """
-    bad = self.matcher.bad_matches(obj, self.convert.coroutine_type, state.node)
-    if not bad:  # there are no non-coroutines
+    bad_bindings = []
+    for b in obj.bindings:
+      if self.matcher.match_var_against_type(
+          obj, self.convert.coroutine_type, {}, state.node, {obj: b}) is None:
+        bad_bindings.append(b)
+    if not bad_bindings:  # there are no non-coroutines
       return state, obj
     ret = self.program.NewVariable()
-    bad_views = {view[obj]: view for view in bad}
     for b in obj.bindings:
-      state = self._binding_to_coroutine(state, b, bad_views, ret, top)
+      state = self._binding_to_coroutine(state, b, bad_bindings, ret, top)
     return state, ret
 
-  def _binding_to_coroutine(self, state, b, bad_views, ret, top):
+  def _binding_to_coroutine(self, state, b, bad_bindings, ret, top):
     """Helper for _to_coroutine.
 
     Args:
       state: The current state.
       b: A cfg.Binding.
-      bad_views: Map from binding to a view in which it is not a coroutine.
+      bad_bindings: Bindings that are not coroutines.
       ret: A return variable that this helper will add to.
       top: Whether this is the top-level recursive call.
 
     Returns:
       The state.
     """
-    if b not in bad_views:  # this is already a coroutine
+    if b not in bad_bindings:  # this is already a coroutine
       ret.PasteBinding(b)
       return state
     if self.matcher.match_var_against_type(
-        b.variable, self.convert.generator_type, {}, state.node, bad_views[b]
+        b.variable, self.convert.generator_type, {}, state.node, {b.variable: b}
     ) is not None:
       # This is a generator; convert it to a coroutine. This conversion is
       # necessary even though generator-based coroutines convert their return

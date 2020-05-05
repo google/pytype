@@ -102,13 +102,15 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       A list of all the views of var that didn't match.
     """
     bad = []
-    views = abstract_utils.get_views([var], node, filter_strict=True)
+    views = abstract_utils.get_views([var], node)
     skip_future = None
+    num_views = 0
     while True:
       try:
         view = views.send(skip_future)
       except StopIteration:
         break
+      num_views += 1
       if self.match_var_against_type(var, other_type, {}, node, view) is None:
         bad.append(view)
         # To get complete error messages, we need to collect all bad views, so
@@ -116,6 +118,9 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         skip_future = False
       else:
         skip_future = True
+    # Optimization: if this variable has only one view, assume it is visible.
+    if num_views > 1:
+      bad = [view for view in bad if node.HasCombination(list(view.values()))]
     return bad
 
   def match_from_mro(self, left, other_type, allow_compat_builtins=True):
