@@ -84,13 +84,13 @@ def validate_version(python_version):
   elif (2, 8) <= python_version < (3, 0):
     raise UsageError("Python version %r is not a valid Python version." %
                      format_version(python_version))
-  elif (3, 0) <= python_version <= (3, 3):
+  elif (3, 0) <= python_version <= (3, 4):
     # These have odd __build_class__ parameters, store co_code.co_name fields
     # as unicode, and don't yet have the extra qualname parameter to
     # MAKE_FUNCTION. Jumping through these extra hoops is not worth it, given
     # that typing.py isn't introduced until 3.5, anyway.
     raise UsageError(
-        "Python versions 3.0 - 3.3 are not supported. Use 3.4 and higher.")
+        "Python versions 3.0 - 3.4 are not supported. Use 3.5 and higher.")
   elif python_version > (3, 7):
     # We have an explicit per-minor-version mapping in opcodes.py
     raise UsageError("Python versions > 3.7 are not yet supported.")

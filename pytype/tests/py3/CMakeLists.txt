@@ -87,6 +87,8 @@ py_test(
   SRCS
     test_decorators.py
   DEPS
+    pytype.pytd_utils
+    pytype.utils
     pytype.tests.test_base
 )
 
@@ -123,7 +125,6 @@ py_test(
   SRCS
     test_functions.py
   DEPS
-    pytype.pytd_utils
     pytype.tests.test_base
 )
 

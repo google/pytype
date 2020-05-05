@@ -523,6 +523,7 @@ py_test(
     test_attr.py
   DEPS
     .test_base
+    pytype.utils
 )
 
 py_test(

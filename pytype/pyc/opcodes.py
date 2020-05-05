@@ -957,7 +957,7 @@ python2_mapping = {
     147: MAP_ADD,
 }
 
-python3_mapping = {
+python_3_5_mapping = {
     1: POP_TOP,
     2: ROT_TWO,
     3: ROT_THREE,
@@ -968,6 +968,8 @@ python3_mapping = {
     11: UNARY_NEGATIVE,
     12: UNARY_NOT,
     15: UNARY_INVERT,
+    16: BINARY_MATRIX_MULTIPLY,
+    17: INPLACE_MATRIX_MULTIPLY,
     19: BINARY_POWER,
     20: BINARY_MULTIPLY,
     22: BINARY_MODULO,
@@ -981,7 +983,6 @@ python3_mapping = {
     50: GET_AITER,
     51: GET_ANEXT,
     52: BEFORE_ASYNC_WITH,
-    54: STORE_MAP,  # removed in Python 3.5.2
     55: INPLACE_ADD,
     56: INPLACE_SUBTRACT,
     57: INPLACE_MULTIPLY,
@@ -995,7 +996,7 @@ python3_mapping = {
     66: BINARY_OR,
     67: INPLACE_POWER,
     68: GET_ITER,
-    69: STORE_LOCALS,  # removed in Python 3.4
+    69: GET_YIELD_FROM_ITER,
     70: PRINT_EXPR,
     71: LOAD_BUILD_CLASS,  # PRINT_ITEM in Python 2
     72: YIELD_FROM,  # PRINT_NEWLINE in Python 2
@@ -1006,7 +1007,8 @@ python3_mapping = {
     78: INPLACE_XOR,
     79: INPLACE_OR,
     80: BREAK_LOOP,
-    81: WITH_CLEANUP,
+    81: WITH_CLEANUP_START,
+    82: WITH_CLEANUP_FINISH,
     83: RETURN_VALUE,
     84: IMPORT_STAR,
     86: YIELD_VALUE,
@@ -1064,6 +1066,11 @@ python3_mapping = {
     146: SET_ADD,
     147: MAP_ADD,
     148: LOAD_CLASSDEREF,  # not in Python 2
+    149: BUILD_LIST_UNPACK,
+    150: BUILD_MAP_UNPACK,
+    151: BUILD_MAP_UNPACK_WITH_CALL,
+    152: BUILD_TUPLE_UNPACK,
+    153: BUILD_SET_UNPACK,
     154: SETUP_ASYNC_WITH,
 }
 
@@ -1072,20 +1079,6 @@ def _overlay_mapping(mapping, new_entries):
   ret = mapping.copy()
   ret.update(new_entries)
   return dict((k, v) for k, v in six.iteritems(ret) if v is not None)
-
-python_3_5_mapping = _overlay_mapping(python3_mapping, {
-    16: BINARY_MATRIX_MULTIPLY,
-    17: INPLACE_MATRIX_MULTIPLY,
-    54: None,
-    69: GET_YIELD_FROM_ITER,  # STORE_LOCALS in Python 3.3
-    81: WITH_CLEANUP_START,  # WITH_CLEANUP in Python 3.4
-    82: WITH_CLEANUP_FINISH,
-    149: BUILD_LIST_UNPACK,
-    150: BUILD_MAP_UNPACK,
-    151: BUILD_MAP_UNPACK_WITH_CALL,
-    152: BUILD_TUPLE_UNPACK,
-    153: BUILD_SET_UNPACK,
-})
 
 python_3_6_mapping = _overlay_mapping(python_3_5_mapping, {
     85: SETUP_ANNOTATIONS,
@@ -1275,7 +1268,6 @@ def dis(data, python_version, *args, **kwargs):
   assert major in (2, 3)
   mapping = {
       (2, 7): python2_mapping,
-      (3, 4): python3_mapping,
       (3, 5): python_3_5_mapping,
       (3, 6): python_3_6_mapping,
       (3, 7): python_3_7_mapping,

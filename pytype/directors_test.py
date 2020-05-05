@@ -405,8 +405,8 @@ class DirectorTest(DirectorTestCase):
           pass
     """)
     self.assertEqual({
-        6,  # real_decorator
-        13  # decorator
+        7,  # real_decorator
+        14  # decorator
     }, self._director._decorators)
 
   def test_stacked_decorators(self):
@@ -421,7 +421,7 @@ class DirectorTest(DirectorTestCase):
           pass
     """)
     self.assertEqual({
-        7  # foo
+        8  # foo
     }, self._director._decorators)
 
 

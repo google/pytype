@@ -185,5 +185,45 @@ class OverloadTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"overload"})
 
+  def test_varargs(self):
+    ty = self.Infer("""
+      from typing import overload
+      @overload
+      def f() -> int: ...
+      @overload
+      def f(x: float, *args) -> float: ...
+      def f(*args):
+        return args[0] if args else 0
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import overload
+      @overload
+      def f() -> int: ...
+      @overload
+      def f(x: float, *args) -> float: ...
+    """)
+
+
+class OverloadTestPy3(test_base.TargetPython3FeatureTest):
+  """Python 3 tests for typing.overload."""
+
+  def test_kwargs(self):
+    ty = self.Infer("""
+      from typing import overload
+      @overload
+      def f() -> int: ...
+      @overload
+      def f(*, x: float = 0.0, **kwargs) -> float: ...
+      def f(**kwargs):
+        return kwargs['x'] if kwargs else 0
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import overload
+      @overload
+      def f() -> int: ...
+      @overload
+      def f(*, x: float = ..., **kwargs) -> float: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

@@ -535,10 +535,7 @@ if sys.version_info >= (3, 0):
     ) -> ChainMap[Union[_K, _K2], Union[_V2, _V2]]: ...
 
 
-# TODO(rechen): See https://github.com/google/pytype/issues/241. Due to a
-# typeshed bug, Awaitable and Coroutine need to be defined in 3.4. Once this bug
-# is fixed, we should define these classes only in 3.5+.
-if sys.version_info >= (3, 4):
+if sys.version_info >= (3, 5):
   class Awaitable(Generic[_T], Protocol):
     @abstractmethod
     def __await__(self) -> Generator[Any, None, _T]: ...

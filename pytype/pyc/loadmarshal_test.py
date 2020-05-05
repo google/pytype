@@ -112,7 +112,7 @@ class TestLoadMarshal(unittest.TestCase):
           b'z\4test'  # name: 'test.py'
           b'\6\0\0\0'  # first line no: 6
           b'N')  # lnotab: None
-    code = self.load(co, python_version=(3, 4))
+    code = self.load(co, python_version=(3, 5))
     self.assertEqual(code.co_argcount, 1)
     self.assertEqual(code.co_kwonlyargcount, 2)
     self.assertEqual(code.co_nlocals, 3)

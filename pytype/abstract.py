@@ -667,6 +667,9 @@ class SimpleAbstractValue(AtomicAbstractValue):
     # See Py_TYPE() in Include/object.h
     if self.cls:
       return self.cls
+    elif isinstance(self, InterpreterClass):
+      return ParameterizedClass(
+          self.vm.convert.type_type, {abstract_utils.T: self}, self.vm)
     elif isinstance(self, (AnnotationClass, mixin.Class)):
       return self.vm.convert.type_type
 
@@ -3119,7 +3122,7 @@ class InterpreterFunction(SignedFunction):
       for name in callargs:
         if (name in annotations and (not self.is_attribute_of_class or
                                      self.argcount(node) == 0 or
-                                     name != self.signature.param_names[0])):
+                                     name != sig.param_names[0])):
           extra_key = (self.get_first_opcode(), name)
           node, callargs[name] = self.vm.init_class(
               node, annotations[name], extra_key=extra_key)
@@ -3138,8 +3141,7 @@ class InterpreterFunction(SignedFunction):
       # as incomplete.
       self._set_callself_maybe_missing_members()
       return node, self.vm.new_unsolvable(node)
-    self_var = (self.signature.param_names and
-                callargs.get(self.signature.param_names[0]))
+    self_var = sig.param_names and callargs.get(sig.param_names[0])
     caller_is_abstract = abstract_utils.check_classes(
         self_var, lambda cls: cls.is_abstract)
     caller_is_protocol = abstract_utils.check_classes(
@@ -3181,7 +3183,7 @@ class InterpreterFunction(SignedFunction):
         ret = old_ret.AssignToNewVariable(node)
         if self._store_call_records:
           # Even if the call is cached, we might not have been recording it.
-          self._call_records.append((sig, callargs, ret, node))
+          self._call_records.append((callargs, ret, node))
         return node, ret
     if self.code.has_generator():
       generator = Generator(frame, self.vm)
@@ -3212,7 +3214,7 @@ class InterpreterFunction(SignedFunction):
     node_after_call = abstract_utils.apply_mutations(node_after_call, mutations)
     self._call_cache[callkey] = ret, self.vm.remaining_depth()
     if self._store_call_records or self.vm.store_all_calls:
-      self._call_records.append((sig, callargs, ret, node_after_call))
+      self._call_records.append((callargs, ret, node_after_call))
     self.last_frame = frame
     return node_after_call, ret
 
@@ -3220,7 +3222,7 @@ class InterpreterFunction(SignedFunction):
     """Get this function's call records."""
     all_combinations = []
     signature_data = set()
-    for sig, callargs, ret, node_after_call in self._call_records:
+    for callargs, ret, node_after_call in self._call_records:
       try:
         combinations = cfg_utils.variable_product_dict(callargs)
       except cfg_utils.TooComplexError:
@@ -3241,15 +3243,14 @@ class InterpreterFunction(SignedFunction):
               node_after_call.HasCombination(values)):
             signature_data.add(data)
             all_combinations.append(
-                (sig, node_after_call, combination, return_value))
+                (node_after_call, combination, return_value))
     if not all_combinations:
       # Fallback: Generate signatures only from the definition of the
       # method, not the way it's being used.
       param_binding = self.vm.convert.unsolvable.to_binding(node)
       params = collections.defaultdict(lambda: param_binding)
       ret = self.vm.convert.unsolvable.to_binding(node)
-      for f in self.signature_functions():
-        all_combinations.append((f.signature, node, params, ret))
+      all_combinations.append((node, params, ret))
     return all_combinations
 
   def get_positional_names(self):

@@ -1,5 +1,6 @@
 """Tests for attrs library in attr_overlay.py."""
 
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -102,6 +103,28 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
         x: int
         y: str
         def __init__(self, x: int = ..., y: str = ...) -> None: ...
+    """)
+
+  def test_cannot_decorate(self):
+    # Tests the attr.s decorator being passed an object it can't process.
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Type
+        class Foo: ...
+        def decorate(cls: Type[Foo]) -> Type[Foo]: ...
+      """)
+      ty = self.Infer("""
+        import attr
+        import foo
+        @attr.s
+        @foo.decorate
+        class Bar(foo.Foo): ...
+      """, pythonpath=[d.path])
+    self.assertTypesMatchPytd(ty, """
+      from typing import Type
+      attr: module
+      foo: module
+      Bar: Type[foo.Foo]
     """)
 
 

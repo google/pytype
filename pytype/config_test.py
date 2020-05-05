@@ -142,12 +142,12 @@ class PostprocessorTest(unittest.TestCase):
 
   def test_subset(self):
     input_options = datatypes.SimpleNamespace(
-        pythonpath=".", python_version="3.4")
+        pythonpath=".", python_version="3.5")
     config.Postprocessor(
         {"python_version"}, input_options, self.output_options).process()
     with self.assertRaises(AttributeError):
       _ = self.output_options.pythonpath  # not processed
-    self.assertTupleEqual(self.output_options.python_version, (3, 4))
+    self.assertTupleEqual(self.output_options.python_version, (3, 5))
 
   def test_error(self):
     input_options = datatypes.SimpleNamespace(check=True, output="test.pyi")
@@ -157,12 +157,12 @@ class PostprocessorTest(unittest.TestCase):
 
   def test_inplace(self):
     input_options = datatypes.SimpleNamespace(
-        disable="import-error,attribute-error", python_version="3.4")
+        disable="import-error,attribute-error", python_version="3.5")
     config.Postprocessor(
         {"disable", "python_version"}, input_options).process()
     self.assertSequenceEqual(
         input_options.disable, ["import-error", "attribute-error"])
-    self.assertTupleEqual(input_options.python_version, (3, 4))
+    self.assertTupleEqual(input_options.python_version, (3, 5))
 
   def test_typeshed_default(self):
     input_options = datatypes.SimpleNamespace(
