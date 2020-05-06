@@ -1159,8 +1159,7 @@ class LateAnnotation(object):
     try:
       self._type = abstract_utils.get_atomic_value(var)
     except abstract_utils.ConversionError:
-      self.vm.errorlog.invalid_annotation(
-          self.stack, self, details="Must be constant.")
+      self.vm.errorlog.ambiguous_annotation(self.stack, [self])
     else:
       # We may have tried to call __init__ on instances of this annotation.
       # Since the annotation was unresolved at the time, we need to call

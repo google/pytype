@@ -191,8 +191,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     try:
       typ = abstract_utils.get_atomic_value(var)
     except abstract_utils.ConversionError:
-      error = "Must be constant"
-      self.vm.errorlog.invalid_annotation(self.vm.frames, None, error, name)
+      self.vm.errorlog.ambiguous_annotation(self.vm.frames, None, name)
       return self.vm.new_unsolvable(node)
     else:
       if typ.formal:
@@ -219,8 +218,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     try:
       typ = abstract_utils.get_atomic_value(var)
     except abstract_utils.ConversionError:
-      self.vm.errorlog.invalid_annotation(
-          self.vm.frames, annot, details="Must be constant.")
+      self.vm.errorlog.ambiguous_annotation(self.vm.frames, annot)
       value = self.vm.new_unsolvable(state.node)
     else:
       typ = self._process_one_annotation(
@@ -345,8 +343,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         if len(v.data) == 1:
           return self._process_one_annotation(
               node, v.data[0], name, stack, seen)
-      self.vm.errorlog.invalid_annotation(
-          stack, annotation, "Must be constant", name)
+      self.vm.errorlog.ambiguous_annotation(stack, [annotation], name)
       return None
     elif annotation.cls == self.vm.convert.none_type:
       # PEP 484 allows to write "NoneType" as "None"
