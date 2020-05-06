@@ -202,6 +202,10 @@ def func_name_is_class_init(name):
 def has_type_parameters(node, val, seen=None):
   """Checks if the given object contains any TypeParameters.
 
+  This method differs from the `.formal` attribute on abstract values in that it
+  recurses into container instances to detect type parameters that have
+  (likely incorrectly) been inserted into runtime objects.
+
   Args:
     node: The current CFG node.
     val: The object to check for TypeParameters. Will likely be a

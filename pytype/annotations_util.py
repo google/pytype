@@ -108,7 +108,15 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     return annot
 
   def get_type_parameters(self, annot, seen=None):
-    """Get all the TypeParameter instances that appear in the annotation."""
+    """Returns all the TypeParameter instances that appear in the annotation.
+
+    Note that if you just need to know whether or not the annotation contains
+    type parameters, you can check its `.formal` attribute.
+
+    Args:
+      annot: An annotation.
+      seen: A seen set.
+    """
     seen = seen or set()
     if annot in seen:
       return []
@@ -187,7 +195,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       self.vm.errorlog.invalid_annotation(self.vm.frames, None, error, name)
       return self.vm.new_unsolvable(node)
     else:
-      if self.get_type_parameters(typ):
+      if typ.formal:
         self.vm.errorlog.not_supported_yet(
             self.vm.frames, "using type parameter in variable annotation")
         return self.vm.new_unsolvable(node)
@@ -218,7 +226,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       typ = self._process_one_annotation(
           state.node, typ, name, self.vm.simple_stack())
       if typ:
-        if self.get_type_parameters(typ):
+        if typ.formal:
           self.vm.errorlog.not_supported_yet(
               self.vm.frames, "using type parameter in variable annotation")
           value = self.vm.new_unsolvable(state.node)
