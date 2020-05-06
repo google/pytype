@@ -1154,13 +1154,9 @@ class LateAnnotation(object):
         self.vm, node, f_globals, f_locals, self.expr)
     if errorlog:
       self.vm.errorlog.copy_from(errorlog.errors, self.stack)
-    var = self.vm.annotations_util.process_annotation_var(
+    self._type = self.vm.annotations_util.extract_annotation(
         node, var, None, self.stack)
-    try:
-      self._type = abstract_utils.get_atomic_value(var)
-    except abstract_utils.ConversionError:
-      self.vm.errorlog.ambiguous_annotation(self.stack, [self])
-    else:
+    if self._type != self.vm.convert.unsolvable:
       # We may have tried to call __init__ on instances of this annotation.
       # Since the annotation was unresolved at the time, we need to call
       # __init__ again to define any instance attributes.

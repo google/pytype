@@ -186,21 +186,6 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       annotations[name] = annot or self.vm.convert.unsolvable
     return annotations
 
-  def init_annotation_var(self, node, name, var):
-    """Instantiate a variable of an annotation, calling __init__."""
-    try:
-      typ = abstract_utils.get_atomic_value(var)
-    except abstract_utils.ConversionError:
-      self.vm.errorlog.ambiguous_annotation(self.vm.frames, None, name)
-      return self.vm.new_unsolvable(node)
-    else:
-      if typ.formal:
-        self.vm.errorlog.not_supported_yet(
-            self.vm.frames, "using type parameter in variable annotation")
-        return self.vm.new_unsolvable(node)
-      _, instance = self.vm.init_class(node, typ)
-      return instance
-
   def apply_annotation(self, state, op, name, value):
     """If there is a type comment for the op, return its value."""
     assert op is self.vm.frame.current_opcode
@@ -215,33 +200,25 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     if errorlog:
       self.vm.errorlog.invalid_annotation(
           self.vm.frames, annot, details=errorlog.details)
+    typ = self.extract_annotation(
+        state.node, var, name, self.vm.simple_stack(), is_var=True)
+    _, value = self.vm.init_class(state.node, typ)
+    return value
+
+  def extract_annotation(self, node, var, name, stack, is_var=False):
     try:
       typ = abstract_utils.get_atomic_value(var)
     except abstract_utils.ConversionError:
-      self.vm.errorlog.ambiguous_annotation(self.vm.frames, annot)
-      value = self.vm.new_unsolvable(state.node)
-    else:
-      typ = self._process_one_annotation(
-          state.node, typ, name, self.vm.simple_stack())
-      if typ:
-        if typ.formal:
-          self.vm.errorlog.not_supported_yet(
-              self.vm.frames, "using type parameter in variable annotation")
-          value = self.vm.new_unsolvable(state.node)
-        else:
-          _, value = self.vm.init_class(state.node, typ)
-      else:
-        value = self.vm.new_unsolvable(state.node)
-    return value
-
-  def process_annotation_var(self, node, var, name, stack):
-    new_var = self.vm.program.NewVariable()
-    for b in var.bindings:
-      annot = self._process_one_annotation(node, b.data, name, stack)
-      if annot is None:
-        return self.vm.new_unsolvable(node)
-      new_var.AddBinding(annot, {b}, node)
-    return new_var
+      self.vm.errorlog.ambiguous_annotation(self.vm.frames, None, name)
+      return self.vm.convert.unsolvable
+    typ = self._process_one_annotation(node, typ, name, stack)
+    if not typ:
+      return self.vm.convert.unsolvable
+    if typ.formal and is_var:
+      self.vm.errorlog.not_supported_yet(
+          stack, "using type parameter in variable annotation")
+      return self.vm.convert.unsolvable
+    return typ
 
   def init_from_annotations(self, node, name, annots_var):
     """Instantiate `name` from the given annotations dict, calling __init__."""
@@ -251,7 +228,13 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       return None
     if name not in annots:
       return None
-    return self.init_annotation_var(node, name, annots[name])
+    try:
+      typ = abstract_utils.get_atomic_value(annots[name])
+    except abstract_utils.ConversionError:
+      self.vm.errorlog.ambiguous_annotation(self.vm.frames, None, name)
+      return self.vm.new_unsolvable(node)
+    _, value = self.vm.init_class(node, typ)
+    return value
 
   def eval_multi_arg_annotation(self, node, func, annot, stack):
     """Evaluate annotation for multiple arguments (from a type comment)."""

@@ -2103,9 +2103,10 @@ class VirtualMachine(object):
       except abstract_utils.ConversionError:
         pass
       else:
-        val = self.annotations_util.process_annotation_var(
-            state.node, val, name, self.simple_stack())
-        state = self._record_annotation(state, name, val)
+        typ = self.annotations_util.extract_annotation(
+            state.node, val, name, self.simple_stack(), is_var=True)
+        state = self._record_annotation(state, name, typ)
+        val = typ.to_variable(state.node)
     state = self.store_subscr(state, obj, subscr, val)
     return state
 
@@ -2603,8 +2604,8 @@ class VirtualMachine(object):
 
     ret = self.convert.build_string(None, return_type)
     func.signature.set_annotation(
-        "return", self.annotations_util.process_annotation_var(
-            node, ret, "return", fake_stack).data[0])
+        "return", self.annotations_util.extract_annotation(
+            node, ret, "return", fake_stack))
 
   def byte_MAKE_FUNCTION(self, state, op):
     """Create a function and push it onto the stack."""
@@ -2862,16 +2863,15 @@ class VirtualMachine(object):
     annotations = self.convert.build_map(state.node)
     return self.store_local(state, "__annotations__", annotations)
 
-  def _record_annotation(self, state, name, value):
+  def _record_annotation(self, state, name, typ):
     """Record a variable annotation."""
     try:
       self.load_local(state, name)
     except KeyError:
       # An annotation on a not-yet-defined variable is recorded for use in attrs
       # and dataclasses.
-      new_value = self.annotations_util.init_annotation_var(
-          state.node, name, value)
-      self._record_local(name, new_value)
+      _, value = self.init_class(state.node, typ)
+      self._record_local(name, value)
       return state
     # If the variable is defined, then either:
     # (1) We have an annotated assignment (e.g., `v: int = 0`), which has
@@ -2882,7 +2882,7 @@ class VirtualMachine(object):
     #     ), which is forbidden.
     if self.frame.current_opcode.line not in self.director.annotations:  # (2)
       self.errorlog.invalid_annotation(
-          self.frames, self.merge_values(value.data),
+          self.frames, typ,
           details="Annotating an already defined variable", name=name)
     return state
 
@@ -2891,11 +2891,12 @@ class VirtualMachine(object):
     state, annotations_var = self.load_local(state, "__annotations__")
     name = self.frame.f_code.co_names[op.arg]
     state, value = state.pop()
-    value = self.annotations_util.process_annotation_var(
-        state.node, value, name, self.simple_stack())
-    state = self._record_annotation(state, name, value)
+    typ = self.annotations_util.extract_annotation(
+        state.node, value, name, self.simple_stack(), is_var=True)
+    state = self._record_annotation(state, name, typ)
     name_var = self.convert.build_string(state.node, name)
-    state = self.store_subscr(state, annotations_var, name_var, value)
+    state = self.store_subscr(
+        state, annotations_var, name_var, typ.to_variable(state.node))
     return self.store_local(state, "__annotations__", annotations_var)
 
   def byte_GET_YIELD_FROM_ITER(self, state, op):

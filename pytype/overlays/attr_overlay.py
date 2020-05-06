@@ -175,9 +175,9 @@ class Attrib(classgen.FieldConstructor):
     return node, default_var
 
   def _instantiate_type(self, node, args, type_var):
-    cls = self.vm.annotations_util.process_annotation_var(
+    cls = self.vm.annotations_util.extract_annotation(
         node, type_var, "attr.ib", self.vm.simple_stack())
-    _, instance = self.vm.init_class(node, cls.data[0])
+    _, instance = self.vm.init_class(node, cls)
     return instance
 
 

@@ -56,12 +56,12 @@ class TypingTest(test_base.TargetIndependentTest):
 
   def test_no_typevars_for_cast(self):
     self.InferWithErrors("""
-        from typing import cast, AnyStr, Type, TypeVar, _T
+        from typing import cast, AnyStr, Type, TypeVar, _T, Union
         def f(x):
           return cast(AnyStr, x)  # invalid-typevar
         f("hello")
         def g(x):
-          return cast(AnyStr if __random__ else int, x)  # invalid-typevar
+          return cast(Union[AnyStr, _T], x)  # invalid-typevar
         g("quack")
         """)
 
