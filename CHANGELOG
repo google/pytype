@@ -1,3 +1,10 @@
+Version 2020.05.07
+* Drop support for analyzing Python 3.4.
+* Add special builtins support for filter(None, xs).
+* Open-source a developer doc on minor version upgrades.
+* Improve support for @typing.overload.
+* Improve annotated decorators' handling of classes.
+
 Version 2020.04.22
 * Drop support for running pytype under Python 2.
 * Report [not-supported-yet] when aliasing Union[T, ...].
