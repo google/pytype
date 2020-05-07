@@ -1154,14 +1154,9 @@ class LateAnnotation(object):
         self.vm, node, f_globals, f_locals, self.expr)
     if errorlog:
       self.vm.errorlog.copy_from(errorlog.errors, self.stack)
-    var = self.vm.annotations_util.process_annotation_var(
+    self._type = self.vm.annotations_util.extract_annotation(
         node, var, None, self.stack)
-    try:
-      self._type = abstract_utils.get_atomic_value(var)
-    except abstract_utils.ConversionError:
-      self.vm.errorlog.invalid_annotation(
-          self.stack, self, details="Must be constant.")
-    else:
+    if self._type != self.vm.convert.unsolvable:
       # We may have tried to call __init__ on instances of this annotation.
       # Since the annotation was unresolved at the time, we need to call
       # __init__ again to define any instance attributes.
@@ -1503,8 +1498,6 @@ class Function(SimpleAbstractValue):
       try:
         match = self._match_view(node, args, view, alias_map)
       except function.FailedFunctionCall as e:
-        # We could also pass "filter_strict=True" to abstract_utils.get_views()
-        # above, but it's cheaper to delay verification until the error case.
         if e > error and node.HasCombination(list(view.values())):
           # Add the name of the caller if possible.
           if hasattr(self, "parent"):

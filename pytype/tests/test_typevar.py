@@ -52,7 +52,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {
         "e1": r"wrong arguments", "e2": r"Expected.*str.*Actual.*int",
-        "e3": r"constant str", "e4": r"must be constant",
+        "e3": r"constant str", "e4": r"constraint.*Must be constant",
         "e5": r"Expected.*_1:.*type.*Actual.*_1: int", "e6": r"0 or more than 1"
     })
 

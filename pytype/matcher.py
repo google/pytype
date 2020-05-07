@@ -102,7 +102,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       A list of all the views of var that didn't match.
     """
     bad = []
-    views = abstract_utils.get_views([var], node, filter_strict=True)
+    views = abstract_utils.get_views([var], node)
     skip_future = None
     while True:
       try:
@@ -110,7 +110,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       except StopIteration:
         break
       if self.match_var_against_type(var, other_type, {}, node, view) is None:
-        bad.append(view)
+        if node.HasCombination(list(view.values())):
+          bad.append(view)
         # To get complete error messages, we need to collect all bad views, so
         # we can't skip any.
         skip_future = False

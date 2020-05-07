@@ -89,8 +89,7 @@ class Callable(TypingContainer):
           self.vm.frames, inner_ellipses, args.name)
     else:
       if args.cls and args.cls.full_name == "__builtin__.list":
-        self.vm.errorlog.invalid_annotation(
-            self.vm.frames, args, "Must be constant")
+        self.vm.errorlog.ambiguous_annotation(self.vm.frames, [args])
       elif 0 not in ellipses or not isinstance(args, abstract.Unsolvable):
         self.vm.errorlog.invalid_annotation(
             self.vm.frames, args, ("First argument to Callable must be a list"
@@ -134,14 +133,11 @@ class TypeVar(abstract.PyTDFunction):
 
   def _get_annotation(self, node, var, name):
     with self.vm.errorlog.checkpoint() as record:
-      retvar = self.vm.annotations_util.process_annotation_var(
+      annot = self.vm.annotations_util.extract_annotation(
           node, var, name, self.vm.simple_stack())
     if record.errors:
       raise TypeVarError("\n".join(error.message for error in record.errors))
-    try:
-      return abstract_utils.get_atomic_value(retvar)
-    except abstract_utils.ConversionError:
-      raise TypeVarError("%s must be constant" % name)
+    return annot
 
   def _get_namedarg(self, node, args, name, default_value):
     if name not in args.namedargs:
@@ -203,14 +199,13 @@ class Cast(abstract.PyTDFunction):
 
   def call(self, node, func, args):
     if args.posargs:
-      annot = self.vm.annotations_util.process_annotation_var(
+      annot = self.vm.annotations_util.extract_annotation(
           node, args.posargs[0], "typing.cast", self.vm.simple_stack())
-      if any(t.formal for t in annot.data):
+      if annot.formal:
         self.vm.errorlog.invalid_typevar(
             self.vm.frames, "cannot pass a TypeVar to a function")
         return node, self.vm.new_unsolvable(node)
-      return node, self.vm.annotations_util.init_annotation_var(
-          node, "typing.cast", annot)
+      return self.vm.init_class(node, annot)
     return super(Cast, self).call(node, func, args)
 
 

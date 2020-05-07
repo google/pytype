@@ -7,7 +7,7 @@ import csv
 import logging
 import re
 import sys
-from typing import Optional, Union
+from typing import Iterable, Optional, Union
 
 from pytype import abstract
 from pytype import debug
@@ -881,8 +881,15 @@ class ErrorLog(ErrorLogBase):
           container_name)
       self._invalid_annotation(stack, "Ellipsis", details, None)
 
-  def ambiguous_annotation(self, stack, options, name=None):
-    desc = " or ".join(sorted(self._print_as_expected_type(o) for o in options))
+  def ambiguous_annotation(
+      self, stack,
+      options: Optional[Union[str, Iterable[abstract.AtomicAbstractValue]]],
+      name=None):
+    if isinstance(options, (str, type(None))):
+      desc = options
+    else:
+      desc = " or ".join(
+          sorted(self._print_as_expected_type(o) for o in options))
     self._invalid_annotation(stack, desc, "Must be constant", name)
 
   @_error_name("invalid-annotation")

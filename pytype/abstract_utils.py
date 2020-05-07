@@ -122,8 +122,13 @@ def get_atomic_python_constant(variable, constant_type=None):
   return atomic.vm.convert.value_to_constant(atomic, constant_type)
 
 
-def get_views(variables, node, filter_strict=False):
+def get_views(variables, node):
   """Get all possible views of the given variables at a particular node.
+
+  For performance reasons, this method uses node.CanHaveCombination for
+  filtering. For a more precise check, you can call
+  node.HasCombination(list(view.values())). Do so judiciously, as the latter
+  method can be very slow.
 
   This function can be used either as a regular generator or in an optimized way
   to yield only functionally unique views:
@@ -141,8 +146,6 @@ def get_views(variables, node, filter_strict=False):
   Args:
     variables: The variables.
     node: The node.
-    filter_strict: If True, emit a view only when node.HasCombination is
-      satisfied; else, use the faster node.CanHaveCombination.
 
   Yields:
     A datatypes.AcessTrackingDict mapping variables to bindings.
@@ -161,8 +164,7 @@ def get_views(variables, node, filter_strict=False):
       log.info("Skipping view (already seen): %r", view)
       continue
     combination = list(view.values())
-    check = node.HasCombination if filter_strict else node.CanHaveCombination
-    if not check(combination):
+    if not node.CanHaveCombination(combination):
       log.info("Skipping combination (unreachable): %r", combination)
       continue
     view = datatypes.AccessTrackingDict(view)
@@ -199,6 +201,10 @@ def func_name_is_class_init(name):
 
 def has_type_parameters(node, val, seen=None):
   """Checks if the given object contains any TypeParameters.
+
+  This method differs from the `.formal` attribute on abstract values in that it
+  recurses into container instances to detect type parameters that have
+  (likely incorrectly) been inserted into runtime objects.
 
   Args:
     node: The current CFG node.

@@ -1232,11 +1232,9 @@ class VirtualMachine(object):
 
   def _check_aliased_type_params(self, value):
     for v in value.data:
-      if isinstance(v, abstract.Union):
-        params = self.annotations_util.get_type_parameters(v)
-        if params:
-          self.errorlog.not_supported_yet(
-              self.frames, "aliases of Unions with type parameters")
+      if isinstance(v, abstract.Union) and v.formal:
+        self.errorlog.not_supported_yet(
+            self.frames, "aliases of Unions with type parameters")
 
   def _pop_and_store(self, state, op, name, local):
     """Pop a value off the stack and store it in a variable."""
@@ -2105,9 +2103,10 @@ class VirtualMachine(object):
       except abstract_utils.ConversionError:
         pass
       else:
-        val = self.annotations_util.process_annotation_var(
-            state.node, val, name, self.simple_stack())
-        state = self._record_annotation(state, name, val)
+        typ = self.annotations_util.extract_annotation(
+            state.node, val, name, self.simple_stack(), is_var=True)
+        state = self._record_annotation(state, name, typ)
+        val = typ.to_variable(state.node)
     state = self.store_subscr(state, obj, subscr, val)
     return state
 
@@ -2605,8 +2604,8 @@ class VirtualMachine(object):
 
     ret = self.convert.build_string(None, return_type)
     func.signature.set_annotation(
-        "return", self.annotations_util.process_annotation_var(
-            node, ret, "return", fake_stack).data[0])
+        "return", self.annotations_util.extract_annotation(
+            node, ret, "return", fake_stack))
 
   def byte_MAKE_FUNCTION(self, state, op):
     """Create a function and push it onto the stack."""
@@ -2864,16 +2863,15 @@ class VirtualMachine(object):
     annotations = self.convert.build_map(state.node)
     return self.store_local(state, "__annotations__", annotations)
 
-  def _record_annotation(self, state, name, value):
+  def _record_annotation(self, state, name, typ):
     """Record a variable annotation."""
     try:
       self.load_local(state, name)
     except KeyError:
       # An annotation on a not-yet-defined variable is recorded for use in attrs
       # and dataclasses.
-      new_value = self.annotations_util.init_annotation_var(
-          state.node, name, value)
-      self._record_local(name, new_value)
+      _, value = self.init_class(state.node, typ)
+      self._record_local(name, value)
       return state
     # If the variable is defined, then either:
     # (1) We have an annotated assignment (e.g., `v: int = 0`), which has
@@ -2884,7 +2882,7 @@ class VirtualMachine(object):
     #     ), which is forbidden.
     if self.frame.current_opcode.line not in self.director.annotations:  # (2)
       self.errorlog.invalid_annotation(
-          self.frames, self.merge_values(value.data),
+          self.frames, typ,
           details="Annotating an already defined variable", name=name)
     return state
 
@@ -2893,11 +2891,12 @@ class VirtualMachine(object):
     state, annotations_var = self.load_local(state, "__annotations__")
     name = self.frame.f_code.co_names[op.arg]
     state, value = state.pop()
-    value = self.annotations_util.process_annotation_var(
-        state.node, value, name, self.simple_stack())
-    state = self._record_annotation(state, name, value)
+    typ = self.annotations_util.extract_annotation(
+        state.node, value, name, self.simple_stack(), is_var=True)
+    state = self._record_annotation(state, name, typ)
     name_var = self.convert.build_string(state.node, name)
-    state = self.store_subscr(state, annotations_var, name_var, value)
+    state = self.store_subscr(
+        state, annotations_var, name_var, typ.to_variable(state.node))
     return self.store_local(state, "__annotations__", annotations_var)
 
   def byte_GET_YIELD_FROM_ITER(self, state, op):
@@ -3040,33 +3039,36 @@ class VirtualMachine(object):
     Returns:
       A tuple of the state and a cfg.Variable of coroutines.
     """
-    bad = self.matcher.bad_matches(obj, self.convert.coroutine_type, state.node)
-    if not bad:  # there are no non-coroutines
+    bad_bindings = []
+    for b in obj.bindings:
+      if self.matcher.match_var_against_type(
+          obj, self.convert.coroutine_type, {}, state.node, {obj: b}) is None:
+        bad_bindings.append(b)
+    if not bad_bindings:  # there are no non-coroutines
       return state, obj
     ret = self.program.NewVariable()
-    bad_views = {view[obj]: view for view in bad}
     for b in obj.bindings:
-      state = self._binding_to_coroutine(state, b, bad_views, ret, top)
+      state = self._binding_to_coroutine(state, b, bad_bindings, ret, top)
     return state, ret
 
-  def _binding_to_coroutine(self, state, b, bad_views, ret, top):
+  def _binding_to_coroutine(self, state, b, bad_bindings, ret, top):
     """Helper for _to_coroutine.
 
     Args:
       state: The current state.
       b: A cfg.Binding.
-      bad_views: Map from binding to a view in which it is not a coroutine.
+      bad_bindings: Bindings that are not coroutines.
       ret: A return variable that this helper will add to.
       top: Whether this is the top-level recursive call.
 
     Returns:
       The state.
     """
-    if b not in bad_views:  # this is already a coroutine
+    if b not in bad_bindings:  # this is already a coroutine
       ret.PasteBinding(b)
       return state
     if self.matcher.match_var_against_type(
-        b.variable, self.convert.generator_type, {}, state.node, bad_views[b]
+        b.variable, self.convert.generator_type, {}, state.node, {b.variable: b}
     ) is not None:
       # This is a generator; convert it to a coroutine. This conversion is
       # necessary even though generator-based coroutines convert their return

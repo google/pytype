@@ -286,6 +286,24 @@ class MatchTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {
         "e": r"Callable\[\[T\], T\].*Callable\[\[AnyStr\], AnyStr\]"})
 
+  def test_filter_return(self):
+    # See b/155895991 for context.
+    self.Check("""
+      import collections
+      import six
+      from typing import Dict
+
+      def f() -> Dict[str, bytes]:
+        d = collections.defaultdict(list)
+        for _ in range(10):
+          subdict = {}  # type: Dict[str, str]
+          k = subdict.get('k')
+          if not k:
+            continue
+          d[k].append(b'')
+        return {k: b', '.join(v) for k, v in six.iteritems(d)}
+    """)
+
 
 class MatchTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for matching types."""

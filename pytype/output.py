@@ -110,8 +110,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           param_values = [self.vm.convert.unsolvable]
         if (param_values == [self.vm.convert.unsolvable] and
             isinstance(v, abstract.ParameterizedClass) and
-            not self.vm.annotations_util.get_type_parameters(
-                v.get_formal_type_parameter(t))):
+            not v.get_formal_type_parameter(t).formal):
           # When the instance's parameter value is unsolvable, we can get a
           # more precise type from the class. Note that we need to be careful
           # not to introduce unbound type parameters.
@@ -224,8 +223,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         return pytd.NamedType("typing.Callable")
       if len(signatures) == 1:
         val = self.signature_to_callable(signatures[0], self.vm)
-        if (not isinstance(v, abstract.PYTD_FUNCTION_TYPES) or
-            not self.vm.annotations_util.get_type_parameters(val)):
+        if not isinstance(v, abstract.PYTD_FUNCTION_TYPES) or not val.formal:
           # This is a workaround to make sure we don't put unexpected type
           # parameters in call traces.
           return self.value_instance_to_pytd_type(node, val, None, seen, view)

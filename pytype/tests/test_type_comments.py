@@ -353,7 +353,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
     ty, errors = self.InferWithErrors("""
       X = None  # type: 1 if __random__ else 2  # invalid-annotation[e]
     """, deep=True)
-    self.assertErrorRegexes(errors, {"e": r"1 if __random__ else 2.*constant"})
+    self.assertErrorRegexes(errors, {"e": r"X.*Must be constant"})
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       X = ...  # type: Any
