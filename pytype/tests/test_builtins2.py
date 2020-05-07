@@ -338,9 +338,26 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       from typing import List
       x1 = ...  # type: int
       x2 = ...  # type: int
-      x3 = ...  # type: float or complex
+      x3 = ...  # type: int or float or complex
       x4 = ...  # type: int or float or complex
       x5 = ...  # type: List[int or str]
+    """)
+
+  def test_custom_sum(self):
+    ty = self.Infer("""
+      from typing import List
+      class A(object):
+        def __add__(self, other):
+          return self
+      def f(xs: List[A]):
+        return sum(xs)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List, TypeVar, Union
+      _TA = TypeVar('_TA', bound=A)
+      class A(object):
+        def __add__(self: _TA, other) -> _TA: ...
+      def f(xs: List[A]) -> Union[A, int]: ...
     """)
 
   def test_reversed(self):
