@@ -177,13 +177,14 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
 
   def test_defaults(self):
-    ty = self.Infer("""
+    ty, err = self.InferWithErrors("""
       import attr
       @attr.s
-      class Foo(object):
+      class Foo(object):  # annotation-type-mismatch[e]
         x = attr.ib(default=42)
         y = attr.ib(type=int, default=6)
         z = attr.ib(type=str, default=28)
+        a = attr.ib(type=str, default=None)
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
@@ -191,15 +192,18 @@ class TestAttrib(test_base.TargetIndependentTest):
         x: int
         y: int
         z: str
-        def __init__(self, x: int = ..., y: int = ..., z: str = ...) -> None: ...
+        a: str
+        def __init__(self, x: int = ..., y: int = ..., z: str = ...,
+                     a: str = ...) -> None: ...
     """)
+    self.assertErrorRegexes(err, {"e": "annotation for z"})
 
   def test_defaults_with_typecomment(self):
     # Typecomments should override the type of default
-    ty = self.Infer("""
+    ty, err = self.InferWithErrors("""
       import attr
       @attr.s
-      class Foo(object):
+      class Foo(object):  # annotation-type-mismatch[e]
         x = attr.ib(default=42) # type: int
         y = attr.ib(default=42) # type: str
     """)
@@ -210,6 +214,7 @@ class TestAttrib(test_base.TargetIndependentTest):
         y: str
         def __init__(self, x: int = ..., y: str = ...) -> None: ...
     """)
+    self.assertErrorRegexes(err, {"e": "annotation for y"})
 
   def test_factory_class(self):
     ty = self.Infer("""
@@ -521,27 +526,65 @@ class TestAttrib(test_base.TargetIndependentTest):
     # - validator decorator does not throw an error
     # - default decorator sets type if it isn't set
     # - default decorator does not override type
-    ty = self.Infer("""
+    ty, err = self.InferWithErrors("""
       import attr
       @attr.s
-      class Foo(object):
+      class Foo(object):  # annotation-type-mismatch[e]
         a = attr.ib()
         b = attr.ib()
         c = attr.ib(type=str)
         @a.validator
-        def validate(self):
+        def validate(self, attribute, value):
           pass
         @a.default
-        def default_a(self, attribute, value):
+        def default_a(self):
           # type: (...) -> int
           return 10
         @b.default
-        def default_b(self, attribute, value):
+        def default_b(self):
           return 10
         @c.default
-        def default_c(self, attribute, value):
+        def default_c(self):
           # type: (...) -> int
           return 10
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo(object):
+        a: int
+        b: int
+        c: str
+        def __init__(self, a: int = ..., b: int = ..., c: str = ...) -> None: ...
+        def default_a(self) -> int: ...
+        def default_b(self) -> int: ...
+        def default_c(self) -> int: ...
+        def validate(self, attribute, value) -> None: ...
+    """)
+    self.assertErrorRegexes(err, {"e": "annotation for c"})
+
+  def test_default_decorator_using_self(self):
+    # default_b refers to self.a; the method itself will be annotated with the
+    # correct type, but since this happens after the attribute defaults have
+    # been processed, b will have an inferred default types of `Any` rather than
+    # `int`.
+    #
+    # default_c refers to self.b, which has been inferred as `Any`, so default_c
+    # gets a type of `-> Any`, but since the type annotation for c is more
+    # specific it overrides that.
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class Foo(object):
+        a = attr.ib(default=42)
+        b = attr.ib()
+        c = attr.ib(type=str)
+        @b.default
+        def default_b(self):
+          return self.a
+        @c.default
+        def default_c(self):
+          return self.b
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
@@ -551,10 +594,8 @@ class TestAttrib(test_base.TargetIndependentTest):
         b: Any
         c: str
         def __init__(self, a: int = ..., b = ..., c: str = ...) -> None: ...
-        def default_a(self, attribute, value) -> int: ...
-        def default_b(self, attribute, value) -> int: ...
-        def default_c(self, attribute, value) -> int: ...
-        def validate(self) -> None: ...
+        def default_b(self) -> int: ...
+        def default_c(self) -> Any: ...
     """)
 
 

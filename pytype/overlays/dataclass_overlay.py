@@ -37,16 +37,6 @@ class Dataclass(classgen.Decorator):
   def make(cls, name, vm):
     return super(Dataclass, cls).make(name, vm, "dataclasses")
 
-  def _check_default(self, node, name, value, orig):
-    if not orig:
-      return
-    typ = self.vm.convert.merge_classes(value.data)
-    bad = self.vm.matcher.bad_matches(orig, typ, node)
-    if bad:
-      binding = bad[0][orig]
-      self.vm.errorlog.annotation_type_mismatch(
-          self.vm.frames, typ, binding, name)
-
   def _handle_initvar(self, node, cls, name, value, orig):
     """Unpack or delete an initvar in the class annotations."""
     initvar = match_initvar(value)
@@ -92,7 +82,7 @@ class Dataclass(classgen.Decorator):
           init = True
 
       # Check that default matches the declared type
-      self._check_default(node, name, value, orig)
+      self.check_default(node, name, value, orig)
 
       attr = classgen.Attribute(name=name, typ=value, init=init, default=orig)
       own_attrs.append(attr)

@@ -90,10 +90,10 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
     """)
 
   def test_defaults_with_annotation(self):
-    ty = self.Infer("""
+    ty, err = self.InferWithErrors("""
       import attr
       @attr.s
-      class Foo(object):
+      class Foo(object):  # annotation-type-mismatch[e]
         x: int = attr.ib(default=42)
         y: str = attr.ib(default=42)
     """)
@@ -104,6 +104,7 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
         y: str
         def __init__(self, x: int = ..., y: str = ...) -> None: ...
     """)
+    self.assertErrorRegexes(err, {"e": "annotation for y"})
 
   def test_cannot_decorate(self):
     # Tests the attr.s decorator being passed an object it can't process.

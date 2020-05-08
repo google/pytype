@@ -81,9 +81,12 @@ class Attrs(classgen.Decorator):
                 typ=value,
                 init=orig.data[0].init,
                 default=orig.data[0].default)
+        self.check_default(node, attr.name, attr.typ, attr.default,
+                           allow_none=True)
         own_attrs.append(attr)
       elif self.args[cls]["auto_attribs"]:
         if not match_classvar(value):
+          self.check_default(node, name, value, orig, allow_none=True)
           attr = Attribute(name=name, typ=value, init=True, default=orig)
           cls.members[name] = value
           own_attrs.append(attr)
@@ -115,17 +118,32 @@ class AttribInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
     self.set_slot("validator", self.validator_slot)
 
   def default_slot(self, node, default):
-    self.default = default
-    # If we don't have a type, and the default function has an explicit return
-    # annotation, use it for the type.
-    # TODO(mdemello): If there is no annotation but we can infer a return type
-    # for the default, use that as the type too.
+    # If the default is a method, call it and use its return type.
+    fn = default.data[0]
+    # TODO(mdemello): it is not clear what to use for self in fn_args; using
+    # fn.cls.instantiate(node) is fraught because we are in the process of
+    # constructing the class. If fn does not use `self` setting self=Any will
+    # make no difference; if it does use `self` we might as well fall back to a
+    # return type of `Any` rather than raising attribute errors in cases like
+    # class A:
+    #   x = attr.ib(default=42)
+    #   y = attr.ib()
+    #   @y.default
+    #   def _y(self):
+    #     return self.x
+    #
+    # The correct thing to do would probably be to defer inference if we see a
+    # default method, then infer all the method-based defaults after the class
+    # is fully constructed. The workaround is simply to use type annotations,
+    # which users should ideally be doing anyway.
+    self_var = self.vm.new_unsolvable(node)
+    fn_args = function.Args(posargs=(self_var,))
+    node, default_var = fn.call(node, default.bindings[0], fn_args)
+    self.default = default_var
+    # If we don't have a type, set the type from the default type
     if not self.has_type:
-      func = default.data[0]
-      if (isinstance(func, abstract.SignedFunction) and
-          func.signature.has_return_annotation):
-        ret = func.signature.annotations["return"]
-        self.typ = ret.instantiate(node)
+      self.typ = default_var
+    # Return the original decorated method so we don't lose it.
     return node, default
 
   def validator_slot(self, node, validator):

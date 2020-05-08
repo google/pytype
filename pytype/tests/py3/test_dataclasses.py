@@ -142,6 +142,14 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         x: bool = 10
     """)
 
+  def test_type_mismatch_on_none(self):
+    self.CheckWithErrors("""
+      import dataclasses
+      @dataclasses.dataclass()
+      class Foo(object):  # annotation-type-mismatch
+        x: int = None
+    """)
+
   def test_field_type_mismatch(self):
     self.CheckWithErrors("""
       import dataclasses
