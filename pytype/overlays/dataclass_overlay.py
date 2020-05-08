@@ -73,10 +73,11 @@ class Dataclass(classgen.Decorator):
         value = initvar_value
         init = True
       else:
-        cls.members[name] = value
+        if not orig:
+          cls.members[name] = value
         if is_field(orig):
           field = orig.data[0]
-          orig = field.typ if field.default else None
+          orig = field.default
           init = field.init
         else:
           init = True
@@ -103,9 +104,8 @@ class Dataclass(classgen.Decorator):
 class FieldInstance(abstract.SimpleAbstractValue):
   """Return value of a field() call."""
 
-  def __init__(self, vm, typ, init, default=None):
+  def __init__(self, vm, init, default):
     super(FieldInstance, self).__init__("field", vm)
-    self.typ = typ
     self.init = init
     self.default = default
     self.cls = vm.convert.unsolvable
@@ -123,11 +123,7 @@ class Field(classgen.FieldConstructor):
     self.match_args(node, args)
     node, default_var = self._get_default_var(node, args)
     init = self.get_kwarg(args, "init", True)
-    if default_var:
-      typ = self.get_type_from_default(node, default_var)
-    else:
-      typ = self.vm.new_unsolvable(node)
-    typ = FieldInstance(self.vm, typ, init, default_var).to_variable(node)
+    typ = FieldInstance(self.vm, init, default_var).to_variable(node)
     return node, typ
 
   def _get_default_var(self, node, args):

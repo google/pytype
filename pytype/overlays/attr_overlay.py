@@ -65,22 +65,21 @@ class Attrs(classgen.Decorator):
               typ=self.vm.new_unsolvable(node),
               init=orig.data[0].init,
               default=orig.data[0].default)
+        elif is_attrib(value):
+          # Replace the attrib in the class dict with its type.
+          attr = Attribute(
+              name=name,
+              typ=orig.data[0].typ,
+              init=orig.data[0].init,
+              default=orig.data[0].default)
+          cls.members[name] = attr.typ
         else:
-          if is_attrib(value):
-            # Replace the attrib in the class dict with its type.
-            attr = Attribute(
-                name=name,
-                typ=value.data[0].typ,
-                init=value.data[0].init,
-                default=value.data[0].default)
-            cls.members[name] = attr.typ
-          else:
-            # cls.members[name] has already been set via a typecomment
-            attr = Attribute(
-                name=name,
-                typ=value,
-                init=orig.data[0].init,
-                default=orig.data[0].default)
+          # cls.members[name] has already been set via a typecomment
+          attr = Attribute(
+              name=name,
+              typ=value,
+              init=orig.data[0].init,
+              default=orig.data[0].default)
         self.check_default(node, attr.name, attr.typ, attr.default,
                            allow_none=True)
         own_attrs.append(attr)
@@ -88,7 +87,8 @@ class Attrs(classgen.Decorator):
         if not match_classvar(value):
           self.check_default(node, name, value, orig, allow_none=True)
           attr = Attribute(name=name, typ=value, init=True, default=orig)
-          cls.members[name] = value
+          if not orig:
+            cls.members[name] = value
           own_attrs.append(attr)
 
     base_attrs = self.get_base_class_attrs(cls, own_attrs, _ATTRS_METADATA_KEY)
@@ -105,7 +105,7 @@ class Attrs(classgen.Decorator):
 class AttribInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
   """Return value of an attr.ib() call."""
 
-  def __init__(self, vm, typ, has_type, init, default=None):
+  def __init__(self, vm, typ, has_type, init, default):
     super(AttribInstance, self).__init__("attrib", vm)
     mixin.HasSlots.init_mixin(self)
     self.typ = typ
@@ -142,7 +142,7 @@ class AttribInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
     self.default = default_var
     # If we don't have a type, set the type from the default type
     if not self.has_type:
-      self.typ = default_var
+      self.typ = get_type_from_default(node, default_var, self.vm)
     # Return the original decorated method so we don't lose it.
     return node, default
 
@@ -167,7 +167,7 @@ class Attrib(classgen.FieldConstructor):
     if type_var:
       typ = self._instantiate_type(node, args, type_var)
     elif default_var:
-      typ = self.get_type_from_default(node, default_var)
+      typ = get_type_from_default(node, default_var, self.vm)
     else:
       typ = self.vm.new_unsolvable(node)
     typ = AttribInstance(self.vm, typ, has_type, init,
@@ -206,6 +206,14 @@ def is_attrib(var):
 def match_classvar(var):
   """Unpack the type parameter from ClassVar[T]."""
   return abstract_utils.match_type_container(var, "typing.ClassVar")
+
+
+def get_type_from_default(node, default_var, vm):
+  if default_var and default_var.data == [vm.convert.none]:
+    # A default of None doesn't give us any information about the actual type.
+    return vm.program.NewVariable([vm.convert.unsolvable],
+                                  [default_var.bindings[0]], node)
+  return default_var
 
 
 class Factory(abstract.PyTDFunction):

@@ -166,13 +166,8 @@ class VirtualMachine(object):
     self._late_annotations_stack = None
 
     # Track the order of creation of local vars, for attrs and dataclasses.
-    # { code.co_name: (var_name, value-or-type, original value) }
-    # (We store the original value because type-annotated classvars are replaced
-    # by their stated type in the locals dict.)
-    # local_ops contains the order of assignments and annotations, and
-    # annotated_locals contains a record of the annotated and original values of
-    # the locals.
     self.local_ops = {}
+    # Record the annotated and original values of locals.
     self.annotated_locals = {}
 
     # Map from builtin names to canonical objects.
@@ -205,6 +200,14 @@ class VirtualMachine(object):
         special_builtins.Open
     ):
       self.special_builtins[cls.name] = cls.make(self)
+
+  @property
+  def current_local_ops(self):
+    return self.local_ops[self.frame.f_code.co_name]
+
+  @property
+  def current_annotated_locals(self):
+    return self.annotated_locals[self.frame.f_code.co_name]
 
   @contextlib.contextmanager
   def _suppress_opcode_tracing(self):
@@ -1200,16 +1203,15 @@ class VirtualMachine(object):
       value: The final value.
       orig_val: The original value, if any.
     """
-    frame_name = self.frame.f_code.co_name
     if orig_val:
-      self.local_ops[frame_name].append(LocalOp(name, LocalOp.ASSIGN))
+      self.current_local_ops.append(LocalOp(name, LocalOp.ASSIGN))
     if value != orig_val:
-      self.local_ops[frame_name].append(LocalOp(name, LocalOp.ANNOTATE))
-    if not orig_val and name in self.annotated_locals[frame_name]:
-      self.annotated_locals[frame_name][name] = (
-          self.annotated_locals[frame_name][name]._replace(value=value))
+      self.current_local_ops.append(LocalOp(name, LocalOp.ANNOTATE))
+    if not orig_val and name in self.current_annotated_locals:
+      self.current_annotated_locals[name] = (
+          self.current_annotated_locals[name]._replace(value=value))
     else:
-      self.annotated_locals[frame_name][name] = Local(value, orig_val)
+      self.current_annotated_locals[name] = Local(value, orig_val)
 
   def _store_value(self, state, name, value, local):
     if local:

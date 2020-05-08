@@ -267,13 +267,6 @@ class FieldConstructor(abstract.PyTDFunction):
       self.vm.errorlog.not_supported_yet(
           self.vm.frames, "Non-constant argument %r" % name)
 
-  def get_type_from_default(self, node, default_var):
-    if default_var and default_var.data == [self.vm.convert.none]:
-      # A default of None doesn't give us any information about the actual type.
-      return self.vm.program.NewVariable([self.vm.convert.unsolvable],
-                                         [default_var.bindings[0]], node)
-    return default_var
-
 
 def is_method(var):
   if var is None:
