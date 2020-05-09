@@ -187,12 +187,12 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     return annotations
 
   def apply_annotation(self, state, op, name, value):
-    """If there is a type comment for the op, return its value."""
+    """If there is an annotation for the op, return its value."""
     assert op is self.vm.frame.current_opcode
     if op.code.co_filename != self.vm.filename:
-      return value
+      return None, value
     if not op.annotation:
-      return value
+      return None, value
     annot = op.annotation
     frame = self.vm.frame
     var, errorlog = abstract_utils.eval_expr(
@@ -203,7 +203,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     typ = self.extract_annotation(
         state.node, var, name, self.vm.simple_stack(), is_var=True)
     _, value = self.vm.init_class(state.node, typ)
-    return value
+    return typ, value
 
   def extract_annotation(self, node, var, name, stack, is_var=False):
     try:

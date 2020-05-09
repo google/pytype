@@ -598,6 +598,33 @@ class TestAttrib(test_base.TargetIndependentTest):
         def default_c(self) -> Any: ...
     """)
 
+  def test_repeated_default(self):
+    # Regression test for a bug where `params` and `calls` shared an underlying
+    # list object, so modifying one affected the type of the other.
+    self.Check("""
+      import attr
+
+      class Call(object):
+        pass
+
+      @attr.s
+      class Function(object):
+        params = attr.ib(factory=list)
+        calls = attr.ib(factory=list)
+
+      class FunctionMap(object):
+
+        def __init__(self, index):
+          self.fmap = {"": Function()}
+
+        def print_params(self):
+          for param in self.fmap[""].params:
+            print(param.name)
+
+        def add_call(self, call):
+          self.fmap[""].calls.append(Call())
+    """)
+
 
 class TestAttrs(test_base.TargetIndependentTest):
   """Tests for attr.s."""

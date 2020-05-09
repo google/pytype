@@ -55,40 +55,40 @@ class Attrs(classgen.Decorator):
     ordered_locals = self.get_class_locals(
         cls, allow_methods=False, ordering=ordering)
     own_attrs = []
-    for name, (value, orig) in ordered_locals.items():
+    for name, (typ, orig) in ordered_locals.items():
       if is_attrib(orig):
-        if not is_attrib(value) and orig.data[0].has_type:
+        if typ and orig.data[0].has_type:
           # We cannot have both a type annotation and a type argument.
-          self.vm.errorlog.invalid_annotation(self.vm.frames, value.data[0].cls)
+          self.vm.errorlog.invalid_annotation(self.vm.frames, typ)
           attr = Attribute(
               name=name,
-              typ=self.vm.new_unsolvable(node),
+              typ=self.vm.convert.unsolvable,
               init=orig.data[0].init,
               default=orig.data[0].default)
-        elif is_attrib(value):
+        elif not typ:
           # Replace the attrib in the class dict with its type.
           attr = Attribute(
               name=name,
               typ=orig.data[0].typ,
               init=orig.data[0].init,
               default=orig.data[0].default)
-          cls.members[name] = attr.typ
+          cls.members[name] = classgen.instantiate(node, name, attr.typ)
         else:
           # cls.members[name] has already been set via a typecomment
           attr = Attribute(
               name=name,
-              typ=value,
+              typ=typ,
               init=orig.data[0].init,
               default=orig.data[0].default)
         self.check_default(node, attr.name, attr.typ, attr.default,
                            allow_none=True)
         own_attrs.append(attr)
       elif self.args[cls]["auto_attribs"]:
-        if not match_classvar(value):
-          self.check_default(node, name, value, orig, allow_none=True)
-          attr = Attribute(name=name, typ=value, init=True, default=orig)
+        if not match_classvar(typ):
+          self.check_default(node, name, typ, orig, allow_none=True)
+          attr = Attribute(name=name, typ=typ, init=True, default=orig)
           if not orig:
-            cls.members[name] = value
+            cls.members[name] = classgen.instantiate(node, name, typ)
           own_attrs.append(attr)
 
     base_attrs = self.get_base_class_attrs(cls, own_attrs, _ATTRS_METADATA_KEY)
@@ -142,7 +142,7 @@ class AttribInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
     self.default = default_var
     # If we don't have a type, set the type from the default type
     if not self.has_type:
-      self.typ = get_type_from_default(node, default_var, self.vm)
+      self.typ = get_type_from_default(default_var, self.vm)
     # Return the original decorated method so we don't lose it.
     return node, default
 
@@ -165,11 +165,12 @@ class Attrib(classgen.FieldConstructor):
     init = self.get_kwarg(args, "init", True)
     has_type = type_var is not None
     if type_var:
-      typ = self._instantiate_type(node, args, type_var)
+      typ = self.vm.annotations_util.extract_annotation(
+          node, type_var, "attr.ib", self.vm.simple_stack())
     elif default_var:
-      typ = get_type_from_default(node, default_var, self.vm)
+      typ = get_type_from_default(default_var, self.vm)
     else:
-      typ = self.vm.new_unsolvable(node)
+      typ = self.vm.convert.unsolvable
     typ = AttribInstance(self.vm, typ, has_type, init,
                          default_var).to_variable(node)
     return node, typ
@@ -192,28 +193,21 @@ class Attrib(classgen.FieldConstructor):
       default_var = None
     return node, default_var
 
-  def _instantiate_type(self, node, args, type_var):
-    cls = self.vm.annotations_util.extract_annotation(
-        node, type_var, "attr.ib", self.vm.simple_stack())
-    _, instance = self.vm.init_class(node, cls)
-    return instance
-
 
 def is_attrib(var):
   return var and isinstance(var.data[0], AttribInstance)
 
 
-def match_classvar(var):
+def match_classvar(typ):
   """Unpack the type parameter from ClassVar[T]."""
-  return abstract_utils.match_type_container(var, "typing.ClassVar")
+  return abstract_utils.match_type_container(typ, "typing.ClassVar")
 
 
-def get_type_from_default(node, default_var, vm):
+def get_type_from_default(default_var, vm):
   if default_var and default_var.data == [vm.convert.none]:
     # A default of None doesn't give us any information about the actual type.
-    return vm.program.NewVariable([vm.convert.unsolvable],
-                                  [default_var.bindings[0]], node)
-  return default_var
+    return vm.convert.unsolvable
+  return vm.convert.merge_classes(default_var.data)
 
 
 class Factory(abstract.PyTDFunction):

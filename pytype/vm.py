@@ -74,7 +74,7 @@ class LocalOp(collections.namedtuple("_LocalOp", ["name", "op"])):
     return self.op == self.ANNOTATE
 
 
-Local = collections.namedtuple("Local", ["value", "orig"])
+Local = collections.namedtuple("Local", ["typ", "orig"])
 
 
 _opcode_counter = metrics.MapCounter("vm_opcode")
@@ -1185,33 +1185,31 @@ class VirtualMachine(object):
       return state, ret
     raise KeyError(name)
 
-  def _record_local(self, name, value, orig_val=None):
+  def _record_local(self, name, typ, orig_val=None):
     """Record a type annotation on a local variable.
 
     This method records three types of local operations:
-      - An annotation, e.g., `x: int`. In this case, `value` is the value of the
-        variable after the annotation is applied - Instance(int) - and
+      - An annotation, e.g., `x: int`. In this case, `typ` is PyTDClass(int) and
         `orig_val` is None.
-      - An assignment, e.g., `x = 0`. In this case, both `value` and `orig_val`
-        are the assigned value, Instance(int).
-      - An annotated assignment, e.g., `x: int = None`. In this case, `value` is
-        the post-annotation value, Instance(int), and `orig_val` is the
-        pre-annotation value, Instance(None).
+      - An assignment, e.g., `x = 0`. In this case, `typ` is None and `orig_val`
+        is Instance(int).
+      - An annotated assignment, e.g., `x: int = None`. In this case, `typ` is
+        PyTDClass(int) and `orig_val` is Instance(None).
 
     Args:
       name: The variable name.
-      value: The final value.
+      typ: The annotation.
       orig_val: The original value, if any.
     """
     if orig_val:
       self.current_local_ops.append(LocalOp(name, LocalOp.ASSIGN))
-    if value != orig_val:
+    if typ:
       self.current_local_ops.append(LocalOp(name, LocalOp.ANNOTATE))
-    if not orig_val and name in self.current_annotated_locals:
+    if not typ and name in self.current_annotated_locals:
       self.current_annotated_locals[name] = (
-          self.current_annotated_locals[name]._replace(value=value))
+          self.current_annotated_locals[name]._replace(orig=orig_val))
     else:
-      self.current_annotated_locals[name] = Local(value, orig_val)
+      self.current_annotated_locals[name] = Local(typ, orig_val)
 
   def _store_value(self, state, name, value, local):
     if local:
@@ -1241,10 +1239,11 @@ class VirtualMachine(object):
   def _pop_and_store(self, state, op, name, local):
     """Pop a value off the stack and store it in a variable."""
     state, orig_val = state.pop()
-    value = self.annotations_util.apply_annotation(state, op, name, orig_val)
+    typ, value = self.annotations_util.apply_annotation(
+        state, op, name, orig_val)
     self._check_aliased_type_params(value)
     if local:
-      self._record_local(name, value, orig_val)
+      self._record_local(name, typ, orig_val)
     state = state.forward_cfg_node()
     state = self._store_value(state, name, value, local)
     self.trace_opcode(op, name, value)
@@ -1860,7 +1859,7 @@ class VirtualMachine(object):
     state, value = state.pop()
     assert isinstance(value, cfg.Variable)
     name = self.get_closure_var_name(op.arg)
-    value = self.annotations_util.apply_annotation(state, op, name, value)
+    _, value = self.annotations_util.apply_annotation(state, op, name, value)
     state = state.forward_cfg_node()
     self.frame.cells[op.arg].PasteVariable(value, state.node)
     state = state.forward_cfg_node()
@@ -2069,7 +2068,7 @@ class VirtualMachine(object):
   def byte_STORE_ATTR(self, state, op):
     name = self.frame.f_code.co_names[op.arg]
     state, (val, obj) = state.popn(2)
-    val = self.annotations_util.apply_annotation(state, op, name, val)
+    _, val = self.annotations_util.apply_annotation(state, op, name, val)
     state = state.forward_cfg_node()
     state = self.store_attr(state, obj, name, val)
     state = state.forward_cfg_node()
@@ -2872,8 +2871,7 @@ class VirtualMachine(object):
     except KeyError:
       # An annotation on a not-yet-defined variable is recorded for use in attrs
       # and dataclasses.
-      _, value = self.init_class(state.node, typ)
-      self._record_local(name, value)
+      self._record_local(name, typ)
       return state
     # If the variable is defined, then either:
     # (1) We have an annotated assignment (e.g., `v: int = 0`), which has

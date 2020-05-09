@@ -179,24 +179,23 @@ class Decorator(abstract.PyTDFunction):
           base_attrs.append(a)
     return base_attrs
 
-  def check_default(self, node, name, annotation, default, allow_none=False):
+  def check_default(self, node, name, typ, default, allow_none=False):
     """Check that the type annotation and the default value are consistent.
 
     Args:
       node: node
       name: variable name
-      annotation: variable annotation
+      typ: variable annotation
       default: variable assignment or default value
       allow_none: whether a default of None is allowed for any type
     """
-    if not default:
+    if not typ or not default:
       return
     # Check for permitted uses of x: T = None
     if (allow_none and
         len(default.data) == 1 and
         default.data[0].cls == self.vm.convert.none_type):
       return
-    typ = self.vm.convert.merge_classes(annotation.data)
     bad = self.vm.matcher.bad_matches(default, typ, node)
     if bad:
       binding = bad[0][default]
@@ -281,3 +280,10 @@ def is_method(var):
 
 def is_dunder(name):
   return name.startswith("__") and name.endswith("__")
+
+
+def instantiate(node, name, typ):
+  # See test_attr.TestAttrib.test_repeated_default - keying on the name prevents
+  # attributes from sharing the same default object.
+  _, instance = typ.vm.init_class(node, typ, extra_key=name)
+  return instance

@@ -60,25 +60,24 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
 
   def test_redefine_as_method(self):
-    # NOTE: This arguably does the wrong thing, but it is what dataclass
-    # actually does. We might want to make it an error.
-    ty = self.Infer("""
+    ty, errors = self.InferWithErrors("""
       import dataclasses
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo(object):  # annotation-type-mismatch[e]
         x: str = 'hello'
         y: int = 10
         def x(self):
           return 10
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Callable
       dataclasses: module
       class Foo(object):
         y: int
-        def __init__(self, x: Callable = ..., y: int = ...) -> None: ...
+        def __init__(self, x: str = ..., y: int = ...) -> None: ...
         def x(self) -> int: ...
     """)
+    self.assertErrorRegexes(
+        errors, {"e": r"Annotation: str.*Assignment: Callable"})
 
   def test_no_init(self):
     ty = self.Infer("""

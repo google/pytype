@@ -37,19 +37,18 @@ class Dataclass(classgen.Decorator):
   def make(cls, name, vm):
     return super(Dataclass, cls).make(name, vm, "dataclasses")
 
-  def _handle_initvar(self, node, cls, name, value, orig):
+  def _handle_initvar(self, node, cls, name, typ, orig):
     """Unpack or delete an initvar in the class annotations."""
-    initvar = match_initvar(value)
+    initvar = match_initvar(typ)
     if not initvar:
       return None
     annots = abstract_utils.get_annotations_dict(cls.members)
     # The InitVar annotation is not retained as a class member, but any default
     # value is retained.
     del annots[name]
-    value = initvar.instantiate(node)
     if orig is not None:
-      cls.members[name] = value
-    return value
+      cls.members[name] = classgen.instantiate(node, name, initvar)
+    return initvar
 
   def decorate(self, node, cls):
     """Processes class members."""
@@ -64,17 +63,17 @@ class Dataclass(classgen.Decorator):
     own_attrs = []
     cls_locals = self.get_class_locals(
         cls, allow_methods=True, ordering=classgen.Ordering.FIRST_ANNOTATE)
-    for name, (value, orig) in cls_locals.items():
-      clsvar = match_classvar(value)
-      if clsvar:
+    for name, (typ, orig) in cls_locals.items():
+      assert typ
+      if match_classvar(typ):
         continue
-      initvar_value = self._handle_initvar(node, cls, name, value, orig)
-      if initvar_value:
-        value = initvar_value
+      initvar_typ = self._handle_initvar(node, cls, name, typ, orig)
+      if initvar_typ:
+        typ = initvar_typ
         init = True
       else:
         if not orig:
-          cls.members[name] = value
+          cls.members[name] = classgen.instantiate(node, name, typ)
         if is_field(orig):
           field = orig.data[0]
           orig = field.default
@@ -83,9 +82,9 @@ class Dataclass(classgen.Decorator):
           init = True
 
       # Check that default matches the declared type
-      self.check_default(node, name, value, orig)
+      self.check_default(node, name, typ, orig)
 
-      attr = classgen.Attribute(name=name, typ=value, init=init, default=orig)
+      attr = classgen.Attribute(name=name, typ=typ, init=init, default=orig)
       own_attrs.append(attr)
 
     base_attrs = self.get_base_class_attrs(
