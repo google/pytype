@@ -390,7 +390,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
 
   def test_none_to_none_type(self):
     ty = self.Infer("""
-      x = ...  # type: None
+      x = None  # type: None
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: None
