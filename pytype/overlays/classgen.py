@@ -243,13 +243,6 @@ class FieldConstructor(abstract.PyTDFunction):
       self.vm.errorlog.not_supported_yet(
           self.vm.frames, "Non-constant argument %r" % name)
 
-  def get_type_from_default(self, node, default_var):
-    if default_var and default_var.data == [self.vm.convert.none]:
-      # A default of None doesn't give us any information about the actual type.
-      return self.vm.program.NewVariable([self.vm.convert.unsolvable],
-                                         [default_var.bindings[0]], node)
-    return default_var
-
 
 def is_method(var):
   if var is None:
@@ -264,3 +257,10 @@ def is_method(var):
 
 def is_dunder(name):
   return name.startswith("__") and name.endswith("__")
+
+
+def instantiate(node, name, typ):
+  # See test_attr.TestAttrib.test_repeated_default - keying on the name prevents
+  # attributes from sharing the same default object.
+  _, instance = typ.vm.init_class(node, typ, extra_key=name)
+  return instance

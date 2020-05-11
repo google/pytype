@@ -14,12 +14,12 @@ class FunctionCommentWithAnnotationsTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_list_comprehension_comments(self):
-    ty = self.Infer("""
+    ty, errors = self.InferWithErrors("""
       from typing import List
       def f(x: str):
         pass
       def g(xs: List[str]) -> List[str]:
-        ys = [f(x) for x in xs]  # type: List[str]
+        ys = [f(x) for x in xs]  # type: List[str]  # annotation-type-mismatch[e]
         return ys
     """)
     self.assertTypesMatchPytd(ty, """
@@ -27,6 +27,8 @@ class FunctionCommentWithAnnotationsTest(test_base.TargetPython3BasicTest):
       def f(x: str) -> None: ...
       def g(xs: List[str]) -> List[str]: ...
     """)
+    self.assertErrorRegexes(
+        errors, {"e": r"Annotation: List\[str\].*Assignment: List\[None\]"})
 
 
 class Py3TypeCommentTest(test_base.TargetPython3FeatureTest):

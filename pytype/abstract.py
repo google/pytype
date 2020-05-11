@@ -2455,9 +2455,11 @@ class InterpreterClass(SimpleAbstractValue, mixin.Class):
       """Replace classvars in a dictionary."""
       replace = {}
       for k, v in d.items():
-        if len(v.data) != 1:
+        try:
+          v = abstract_utils.get_atomic_value(v)
+        except abstract_utils.ConversionError:
           continue
-        classvar = abstract_utils.match_type_container(v, "typing.ClassVar")
+        classvar = abstract_utils.match_type_container(v.cls, "typing.ClassVar")
         if classvar:
           if make_instance:
             replace[k] = classvar.instantiate(node)

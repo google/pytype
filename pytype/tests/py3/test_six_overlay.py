@@ -30,14 +30,14 @@ class SixTests(test_base.TargetPython3FeatureTest):
         a = [a]
       b = ''  # type: Text
       if isinstance(b, six.string_types):
-        b = len(b)
+        c = len(b)
     """)
-    self.assertTypesMatchPytd(
-        ty, """
+    self.assertTypesMatchPytd(ty, """
       from typing import List
-      six: module = ...
-      a: List[str] = ...
-      b: int = ...
+      six: module
+      a: List[str]
+      b: str
+      c: int
     """)
 
   def test_integer_types(self):

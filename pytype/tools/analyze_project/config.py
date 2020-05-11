@@ -62,6 +62,8 @@ ITEMS = {
 
 # The missing fields will be filled in by generate_sample_config_or_die.
 _PYTYPE_SINGLE_ITEMS = {
+    'check_variable_types': Item(
+        None, 'False', ArgInfo('--check-variable-types', None), None),
     'disable': Item(
         None, 'pyi-error', ArgInfo('--disable', ','.join),
         'Comma or space separated list of error names to ignore.'),

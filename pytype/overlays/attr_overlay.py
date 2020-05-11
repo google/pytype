@@ -55,37 +55,43 @@ class Attrs(classgen.Decorator):
     ordered_locals = self.get_class_locals(
         cls, allow_methods=False, ordering=ordering)
     own_attrs = []
-    for name, (value, orig) in ordered_locals.items():
+    for name, local in ordered_locals.items():
+      typ, orig = local.get_type(node, name), local.orig
       if is_attrib(orig):
-        if not is_attrib(value) and orig.data[0].has_type:
+        if typ and orig.data[0].has_type:
           # We cannot have both a type annotation and a type argument.
-          self.vm.errorlog.invalid_annotation(self.vm.frames, value.data[0].cls)
+          self.vm.errorlog.invalid_annotation(self.vm.frames, typ)
           attr = Attribute(
               name=name,
-              typ=self.vm.new_unsolvable(node),
+              typ=self.vm.convert.unsolvable,
               init=orig.data[0].init,
               default=orig.data[0].default)
+        elif not typ:
+          # Replace the attrib in the class dict with its type.
+          attr = Attribute(
+              name=name,
+              typ=orig.data[0].typ,
+              init=orig.data[0].init,
+              default=orig.data[0].default)
+          cls.members[name] = classgen.instantiate(node, name, attr.typ)
         else:
-          if is_attrib(value):
-            # Replace the attrib in the class dict with its type.
-            attr = Attribute(
-                name=name,
-                typ=value.data[0].typ,
-                init=value.data[0].init,
-                default=value.data[0].default)
-            cls.members[name] = attr.typ
-          else:
-            # cls.members[name] has already been set via a typecomment
-            attr = Attribute(
-                name=name,
-                typ=value,
-                init=orig.data[0].init,
-                default=orig.data[0].default)
+          # cls.members[name] has already been set via a typecomment
+          attr = Attribute(
+              name=name,
+              typ=typ,
+              init=orig.data[0].init,
+              default=orig.data[0].default)
+        self.vm.check_annotation_type_mismatch(
+            node, attr.name, attr.typ, attr.default, local.stack,
+            allow_none=True)
         own_attrs.append(attr)
       elif self.args[cls]["auto_attribs"]:
-        if not match_classvar(value):
-          attr = Attribute(name=name, typ=value, init=True, default=orig)
-          cls.members[name] = value
+        if not match_classvar(typ):
+          self.vm.check_annotation_type_mismatch(
+              node, name, typ, orig, local.stack, allow_none=True)
+          attr = Attribute(name=name, typ=typ, init=True, default=orig)
+          if not orig:
+            cls.members[name] = classgen.instantiate(node, name, typ)
           own_attrs.append(attr)
 
     base_attrs = self.get_base_class_attrs(cls, own_attrs, _ATTRS_METADATA_KEY)
@@ -102,7 +108,7 @@ class Attrs(classgen.Decorator):
 class AttribInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
   """Return value of an attr.ib() call."""
 
-  def __init__(self, vm, typ, has_type, init, default=None):
+  def __init__(self, vm, typ, has_type, init, default):
     super(AttribInstance, self).__init__("attrib", vm)
     mixin.HasSlots.init_mixin(self)
     self.typ = typ
@@ -115,17 +121,32 @@ class AttribInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
     self.set_slot("validator", self.validator_slot)
 
   def default_slot(self, node, default):
-    self.default = default
-    # If we don't have a type, and the default function has an explicit return
-    # annotation, use it for the type.
-    # TODO(mdemello): If there is no annotation but we can infer a return type
-    # for the default, use that as the type too.
+    # If the default is a method, call it and use its return type.
+    fn = default.data[0]
+    # TODO(mdemello): it is not clear what to use for self in fn_args; using
+    # fn.cls.instantiate(node) is fraught because we are in the process of
+    # constructing the class. If fn does not use `self` setting self=Any will
+    # make no difference; if it does use `self` we might as well fall back to a
+    # return type of `Any` rather than raising attribute errors in cases like
+    # class A:
+    #   x = attr.ib(default=42)
+    #   y = attr.ib()
+    #   @y.default
+    #   def _y(self):
+    #     return self.x
+    #
+    # The correct thing to do would probably be to defer inference if we see a
+    # default method, then infer all the method-based defaults after the class
+    # is fully constructed. The workaround is simply to use type annotations,
+    # which users should ideally be doing anyway.
+    self_var = self.vm.new_unsolvable(node)
+    fn_args = function.Args(posargs=(self_var,))
+    node, default_var = fn.call(node, default.bindings[0], fn_args)
+    self.default = default_var
+    # If we don't have a type, set the type from the default type
     if not self.has_type:
-      func = default.data[0]
-      if (isinstance(func, abstract.SignedFunction) and
-          func.signature.has_return_annotation):
-        ret = func.signature.annotations["return"]
-        self.typ = ret.instantiate(node)
+      self.typ = get_type_from_default(default_var, self.vm)
+    # Return the original decorated method so we don't lose it.
     return node, default
 
   def validator_slot(self, node, validator):
@@ -147,11 +168,12 @@ class Attrib(classgen.FieldConstructor):
     init = self.get_kwarg(args, "init", True)
     has_type = type_var is not None
     if type_var:
-      typ = self._instantiate_type(node, args, type_var)
+      typ = self.vm.annotations_util.extract_annotation(
+          node, type_var, "attr.ib", self.vm.simple_stack())
     elif default_var:
-      typ = self.get_type_from_default(node, default_var)
+      typ = get_type_from_default(default_var, self.vm)
     else:
-      typ = self.vm.new_unsolvable(node)
+      typ = self.vm.convert.unsolvable
     typ = AttribInstance(self.vm, typ, has_type, init,
                          default_var).to_variable(node)
     return node, typ
@@ -174,20 +196,24 @@ class Attrib(classgen.FieldConstructor):
       default_var = None
     return node, default_var
 
-  def _instantiate_type(self, node, args, type_var):
-    cls = self.vm.annotations_util.extract_annotation(
-        node, type_var, "attr.ib", self.vm.simple_stack())
-    _, instance = self.vm.init_class(node, cls)
-    return instance
-
 
 def is_attrib(var):
   return var and isinstance(var.data[0], AttribInstance)
 
 
-def match_classvar(var):
+def match_classvar(typ):
   """Unpack the type parameter from ClassVar[T]."""
-  return abstract_utils.match_type_container(var, "typing.ClassVar")
+  return abstract_utils.match_type_container(typ, "typing.ClassVar")
+
+
+def get_type_from_default(default_var, vm):
+  if default_var and default_var.data == [vm.convert.none]:
+    # A default of None doesn't give us any information about the actual type.
+    return vm.convert.unsolvable
+  typ = vm.convert.merge_classes(default_var.data)
+  if typ == vm.convert.empty:
+    return vm.convert.unsolvable
+  return typ
 
 
 class Factory(abstract.PyTDFunction):

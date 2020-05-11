@@ -135,6 +135,10 @@ def add_basic_options(o):
       dest="strict_import", default=False,
       help="Experimental: Only load submodules that are explicitly imported.")
   o.add_argument(
+      "--check-variable-types", action="store_true",
+      dest="check_variable_types", default=False,
+      help="Experimental: Check variable values against their annotations.")
+  o.add_argument(
       "--precise-return", action="store_true", dest="precise_return",
       default=False, help=("Experimental: Infer precise return types even for "
                            "invalid function calls."))

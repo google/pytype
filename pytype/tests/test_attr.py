@@ -1,3 +1,4 @@
+# Lint as: python3
 """Tests for attrs library in attr_overlay.py."""
 
 from pytype.tests import test_base
@@ -5,6 +6,12 @@ from pytype.tests import test_base
 
 class TestAttrib(test_base.TargetIndependentTest):
   """Tests for attr.ib."""
+
+  def setUp(self):
+    super().setUp()
+    # Checking field defaults against their types should work even when general
+    # variable checking is disabled.
+    self.options.tweak(check_variable_types=False)
 
   def test_basic(self):
     ty = self.Infer("""
@@ -177,13 +184,14 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
 
   def test_defaults(self):
-    ty = self.Infer("""
+    ty, err = self.InferWithErrors("""
       import attr
       @attr.s
       class Foo(object):
         x = attr.ib(default=42)
         y = attr.ib(type=int, default=6)
-        z = attr.ib(type=str, default=28)
+        z = attr.ib(type=str, default=28)  # annotation-type-mismatch[e]
+        a = attr.ib(type=str, default=None)
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
@@ -191,17 +199,20 @@ class TestAttrib(test_base.TargetIndependentTest):
         x: int
         y: int
         z: str
-        def __init__(self, x: int = ..., y: int = ..., z: str = ...) -> None: ...
+        a: str
+        def __init__(self, x: int = ..., y: int = ..., z: str = ...,
+                     a: str = ...) -> None: ...
     """)
+    self.assertErrorRegexes(err, {"e": "annotation for z"})
 
   def test_defaults_with_typecomment(self):
     # Typecomments should override the type of default
-    ty = self.Infer("""
+    ty, err = self.InferWithErrors("""
       import attr
       @attr.s
       class Foo(object):
         x = attr.ib(default=42) # type: int
-        y = attr.ib(default=42) # type: str
+        y = attr.ib(default=42) # type: str  # annotation-type-mismatch[e]
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
@@ -210,6 +221,7 @@ class TestAttrib(test_base.TargetIndependentTest):
         y: str
         def __init__(self, x: int = ..., y: str = ...) -> None: ...
     """)
+    self.assertErrorRegexes(err, {"e": "annotation for y"})
 
   def test_factory_class(self):
     ty = self.Infer("""
@@ -521,27 +533,65 @@ class TestAttrib(test_base.TargetIndependentTest):
     # - validator decorator does not throw an error
     # - default decorator sets type if it isn't set
     # - default decorator does not override type
-    ty = self.Infer("""
+    ty, err = self.InferWithErrors("""
       import attr
       @attr.s
       class Foo(object):
         a = attr.ib()
         b = attr.ib()
-        c = attr.ib(type=str)
+        c = attr.ib(type=str)  # annotation-type-mismatch[e]
         @a.validator
-        def validate(self):
+        def validate(self, attribute, value):
           pass
         @a.default
-        def default_a(self, attribute, value):
+        def default_a(self):
           # type: (...) -> int
           return 10
         @b.default
-        def default_b(self, attribute, value):
+        def default_b(self):
           return 10
         @c.default
-        def default_c(self, attribute, value):
+        def default_c(self):
           # type: (...) -> int
           return 10
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo(object):
+        a: int
+        b: int
+        c: str
+        def __init__(self, a: int = ..., b: int = ..., c: str = ...) -> None: ...
+        def default_a(self) -> int: ...
+        def default_b(self) -> int: ...
+        def default_c(self) -> int: ...
+        def validate(self, attribute, value) -> None: ...
+    """)
+    self.assertErrorRegexes(err, {"e": "annotation for c"})
+
+  def test_default_decorator_using_self(self):
+    # default_b refers to self.a; the method itself will be annotated with the
+    # correct type, but since this happens after the attribute defaults have
+    # been processed, b will have an inferred default types of `Any` rather than
+    # `int`.
+    #
+    # default_c refers to self.b, which has been inferred as `Any`, so default_c
+    # gets a type of `-> Any`, but since the type annotation for c is more
+    # specific it overrides that.
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class Foo(object):
+        a = attr.ib(default=42)
+        b = attr.ib()
+        c = attr.ib(type=str)
+        @b.default
+        def default_b(self):
+          return self.a
+        @c.default
+        def default_c(self):
+          return self.b
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
@@ -551,15 +601,64 @@ class TestAttrib(test_base.TargetIndependentTest):
         b: Any
         c: str
         def __init__(self, a: int = ..., b = ..., c: str = ...) -> None: ...
-        def default_a(self, attribute, value) -> int: ...
-        def default_b(self, attribute, value) -> int: ...
-        def default_c(self, attribute, value) -> int: ...
-        def validate(self) -> None: ...
+        def default_b(self) -> int: ...
+        def default_c(self) -> Any: ...
+    """)
+
+  def test_repeated_default(self):
+    # Regression test for a bug where `params` and `calls` shared an underlying
+    # list object, so modifying one affected the type of the other.
+    self.Check("""
+      import attr
+
+      class Call(object):
+        pass
+
+      @attr.s
+      class Function(object):
+        params = attr.ib(factory=list)
+        calls = attr.ib(factory=list)
+
+      class FunctionMap(object):
+
+        def __init__(self, index):
+          self.fmap = {"": Function()}
+
+        def print_params(self):
+          for param in self.fmap[""].params:
+            print(param.name)
+
+        def add_call(self, call):
+          self.fmap[""].calls.append(Call())
+    """)
+
+  def test_empty_factory(self):
+    ty = self.Infer("""
+      import attr
+      FACTORIES = []
+      @attr.s
+      class Foo:
+        x = attr.ib(factory=FACTORIES[0])
+      Foo(x=0)  # should not be an error
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, List
+      attr: module
+      FACTORIES: List[nothing]
+      class Foo:
+        x: Any
+        def __init__(self, x = ...) -> None: ...
     """)
 
 
 class TestAttrs(test_base.TargetIndependentTest):
   """Tests for attr.s."""
+
+  def setUp(self):
+    super().setUp()
+    # Checking field defaults against their types should work even when general
+    # variable checking is disabled.
+    self.options.tweak(check_variable_types=False)
 
   def test_basic(self):
     ty = self.Infer("""

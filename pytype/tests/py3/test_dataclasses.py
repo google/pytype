@@ -1,3 +1,4 @@
+# Lint as: python3
 """Tests for the dataclasses overlay."""
 
 from pytype.tests import test_base
@@ -5,6 +6,12 @@ from pytype.tests import test_base
 
 class TestDataclass(test_base.TargetPython3FeatureTest):
   """Tests for @dataclass."""
+
+  def setUp(self):
+    super().setUp()
+    # Checking field defaults against their types should work even when general
+    # variable checking is disabled.
+    self.options.tweak(check_variable_types=False)
 
   def test_basic(self):
     ty = self.Infer("""
@@ -60,25 +67,24 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
 
   def test_redefine_as_method(self):
-    # NOTE: This arguably does the wrong thing, but it is what dataclass
-    # actually does. We might want to make it an error.
-    ty = self.Infer("""
+    ty, errors = self.InferWithErrors("""
       import dataclasses
       @dataclasses.dataclass
       class Foo(object):
         x: str = 'hello'
         y: int = 10
-        def x(self):
+        def x(self):  # annotation-type-mismatch[e]
           return 10
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Callable
       dataclasses: module
       class Foo(object):
         y: int
-        def __init__(self, x: Callable = ..., y: int = ...) -> None: ...
+        def __init__(self, x: str = ..., y: int = ...) -> None: ...
         def x(self) -> int: ...
     """)
+    self.assertErrorRegexes(
+        errors, {"e": r"Annotation: str.*Assignment: Callable"})
 
   def test_no_init(self):
     ty = self.Infer("""
@@ -138,24 +144,32 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     self.CheckWithErrors("""
       import dataclasses
       @dataclasses.dataclass()
-      class Foo(object):  # annotation-type-mismatch
-        x: bool = 10
+      class Foo(object):
+        x: bool = 10  # annotation-type-mismatch
+    """)
+
+  def test_type_mismatch_on_none(self):
+    self.CheckWithErrors("""
+      import dataclasses
+      @dataclasses.dataclass()
+      class Foo(object):
+        x: int = None  # annotation-type-mismatch
     """)
 
   def test_field_type_mismatch(self):
     self.CheckWithErrors("""
       import dataclasses
       @dataclasses.dataclass()
-      class Foo(object):  # annotation-type-mismatch
-        x: bool = dataclasses.field(default=10)
+      class Foo(object):
+        x: bool = dataclasses.field(default=10)  # annotation-type-mismatch
     """)
 
   def test_factory_type_mismatch(self):
     self.CheckWithErrors("""
       import dataclasses
       @dataclasses.dataclass()
-      class Foo(object):  # annotation-type-mismatch
-        x: bool = dataclasses.field(default_factory=set)
+      class Foo(object):
+        x: bool = dataclasses.field(default_factory=set)  # annotation-type-mismatch
     """)
 
   def test_field_no_init(self):

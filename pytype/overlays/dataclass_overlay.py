@@ -37,29 +37,18 @@ class Dataclass(classgen.Decorator):
   def make(cls, name, vm):
     return super(Dataclass, cls).make(name, vm, "dataclasses")
 
-  def _check_default(self, node, name, value, orig):
-    if not orig:
-      return
-    typ = self.vm.convert.merge_classes(value.data)
-    bad = self.vm.matcher.bad_matches(orig, typ, node)
-    if bad:
-      binding = bad[0][orig]
-      self.vm.errorlog.annotation_type_mismatch(
-          self.vm.frames, typ, binding, name)
-
-  def _handle_initvar(self, node, cls, name, value, orig):
+  def _handle_initvar(self, node, cls, name, typ, orig):
     """Unpack or delete an initvar in the class annotations."""
-    initvar = match_initvar(value)
+    initvar = match_initvar(typ)
     if not initvar:
       return None
     annots = abstract_utils.get_annotations_dict(cls.members)
     # The InitVar annotation is not retained as a class member, but any default
     # value is retained.
     del annots[name]
-    value = initvar.instantiate(node)
     if orig is not None:
-      cls.members[name] = value
-    return value
+      cls.members[name] = classgen.instantiate(node, name, initvar)
+    return initvar
 
   def decorate(self, node, cls):
     """Processes class members."""
@@ -74,27 +63,34 @@ class Dataclass(classgen.Decorator):
     own_attrs = []
     cls_locals = self.get_class_locals(
         cls, allow_methods=True, ordering=classgen.Ordering.FIRST_ANNOTATE)
-    for name, (value, orig) in cls_locals.items():
-      clsvar = match_classvar(value)
-      if clsvar:
+    for name, local in cls_locals.items():
+      typ, orig = local.get_type(node, name), local.orig
+      assert typ
+      if match_classvar(typ):
         continue
-      initvar_value = self._handle_initvar(node, cls, name, value, orig)
-      if initvar_value:
-        value = initvar_value
+      initvar_typ = self._handle_initvar(node, cls, name, typ, orig)
+      if initvar_typ:
+        typ = initvar_typ
         init = True
       else:
-        cls.members[name] = value
+        if not orig:
+          cls.members[name] = classgen.instantiate(node, name, typ)
         if is_field(orig):
           field = orig.data[0]
-          orig = field.typ if field.default else None
+          orig = field.default
           init = field.init
         else:
           init = True
 
-      # Check that default matches the declared type
-      self._check_default(node, name, value, orig)
+      if (not self.vm.options.check_variable_types or
+          orig and orig.data == [self.vm.convert.none]):
+        # vm._apply_annotation mostly takes care of checking that the default
+        # matches the declared type. However, it allows None defaults, and
+        # dataclasses do not.
+        self.vm.check_annotation_type_mismatch(
+            node, name, typ, orig, local.stack, allow_none=False)
 
-      attr = classgen.Attribute(name=name, typ=value, init=init, default=orig)
+      attr = classgen.Attribute(name=name, typ=typ, init=init, default=orig)
       own_attrs.append(attr)
 
     base_attrs = self.get_base_class_attrs(
@@ -113,9 +109,8 @@ class Dataclass(classgen.Decorator):
 class FieldInstance(abstract.SimpleAbstractValue):
   """Return value of a field() call."""
 
-  def __init__(self, vm, typ, init, default=None):
+  def __init__(self, vm, init, default):
     super(FieldInstance, self).__init__("field", vm)
-    self.typ = typ
     self.init = init
     self.default = default
     self.cls = vm.convert.unsolvable
@@ -133,11 +128,7 @@ class Field(classgen.FieldConstructor):
     self.match_args(node, args)
     node, default_var = self._get_default_var(node, args)
     init = self.get_kwarg(args, "init", True)
-    if default_var:
-      typ = self.get_type_from_default(node, default_var)
-    else:
-      typ = self.vm.new_unsolvable(node)
-    typ = FieldInstance(self.vm, typ, init, default_var).to_variable(node)
+    typ = FieldInstance(self.vm, init, default_var).to_variable(node)
     return node, typ
 
   def _get_default_var(self, node, args):

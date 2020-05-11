@@ -1,3 +1,4 @@
+# Lint as: python3
 """Tests for attrs library in attr_overlay.py."""
 
 from pytype import file_utils
@@ -5,7 +6,13 @@ from pytype.tests import test_base
 
 
 class TestAttrib(test_base.TargetPython3BasicTest):
-  """Tests for attr.ib using type annotations."""
+  """Tests for attr.ib."""
+
+  def setUp(self):
+    super().setUp()
+    # Checking field defaults against their types should work even when general
+    # variable checking is disabled.
+    self.options.tweak(check_variable_types=False)
 
   def test_factory_function(self):
     ty = self.Infer("""
@@ -30,6 +37,12 @@ class TestAttrib(test_base.TargetPython3BasicTest):
 
 class TestAttribPy3(test_base.TargetPython3FeatureTest):
   """Tests for attr.ib using PEP526 syntax."""
+
+  def setUp(self):
+    super().setUp()
+    # Checking field defaults against their types should work even when general
+    # variable checking is disabled.
+    self.options.tweak(check_variable_types=False)
 
   def test_variable_annotations(self):
     ty = self.Infer("""
@@ -90,12 +103,12 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
     """)
 
   def test_defaults_with_annotation(self):
-    ty = self.Infer("""
+    ty, err = self.InferWithErrors("""
       import attr
       @attr.s
       class Foo(object):
         x: int = attr.ib(default=42)
-        y: str = attr.ib(default=42)
+        y: str = attr.ib(default=42)  # annotation-type-mismatch[e]
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
@@ -104,6 +117,7 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
         y: str
         def __init__(self, x: int = ..., y: str = ...) -> None: ...
     """)
+    self.assertErrorRegexes(err, {"e": "annotation for y"})
 
   def test_cannot_decorate(self):
     # Tests the attr.s decorator being passed an object it can't process.
@@ -127,9 +141,34 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
       Bar: Type[foo.Foo]
     """)
 
+  def test_conflicting_annotations(self):
+    # If an annotation has multiple visible values, they must be the same.
+    errors = self.CheckWithErrors("""
+      import attr
+      @attr.s
+      class Foo(object):
+        if __random__:
+          v: int = attr.ib()
+        else:
+          v: int = attr.ib()
+      @attr.s
+      class Bar(object):
+        if __random__:
+          v: int = attr.ib()
+        else:
+          v: str = attr.ib()  # invalid-annotation[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": "'int or str' for v"})
+
 
 class TestAttrs(test_base.TargetPython3FeatureTest):
   """Tests for attr.s."""
+
+  def setUp(self):
+    super().setUp()
+    # Checking field defaults against their types should work even when general
+    # variable checking is disabled.
+    self.options.tweak(check_variable_types=False)
 
   def test_kw_only(self):
     ty = self.Infer("""
