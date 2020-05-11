@@ -1282,11 +1282,47 @@ class VirtualMachine(object):
             self.frames, "aliases of Unions with type parameters")
 
   def _apply_annotation(self, state, op, name, orig_val, local):
+    """Applies the type annotation, if any, associated with this object."""
     typ, value = self.annotations_util.apply_annotation(
         state, op, name, orig_val)
     if local:
       self._record_local(state.node, op, name, typ, orig_val)
+      if typ is None and name in self.current_annotated_locals:
+        typ = self.current_annotated_locals[name].get_type(state.node, name)
+    if self.options.check_variable_types:
+      self.check_annotation_type_mismatch(
+          state.node, name, typ, orig_val, self.frames, allow_none=True)
+    # TODO(rechen): In cases like
+    #   v: float
+    #   v = 0
+    # do we want to replace 0 with Instance(float)?
     return value
+
+  def check_annotation_type_mismatch(
+      self, node, name, typ, value, stack, allow_none):
+    """Checks for a mismatch between a variable's annotation and value.
+
+    Args:
+      node: node
+      name: variable name
+      typ: variable annotation
+      value: variable value
+      stack: a frame stack for error reporting
+      allow_none: whether a value of None is allowed for any type
+    """
+    if not typ or not value:
+      return
+    if (value.data == [self.convert.ellipsis] or
+        allow_none and value.data == [self.convert.none]):
+      return
+    contained_type = abstract_utils.match_type_container(
+        typ, ("typing.ClassVar", "dataclasses.InitVar"))
+    if contained_type:
+      typ = contained_type
+    bad = self.matcher.bad_matches(value, typ, node)
+    for view in bad:
+      binding = view[value]
+      self.errorlog.annotation_type_mismatch(stack, typ, binding, name)
 
   def _pop_and_store(self, state, op, name, local):
     """Pop a value off the stack and store it in a variable."""

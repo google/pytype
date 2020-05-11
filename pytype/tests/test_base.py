@@ -150,7 +150,8 @@ class BaseTest(unittest.TestCase):
 
   def setUp(self):
     super(BaseTest, self).setUp()
-    self.options = config.Options.create(python_version=self.python_version)
+    self.options = config.Options.create(python_version=self.python_version,
+                                         check_variable_types=True)
 
   @property
   def loader(self):

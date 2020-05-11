@@ -1,8 +1,10 @@
+# Lint as: python3
 """Utilities for abstract.py."""
 
 import collections
 import hashlib
 import logging
+from typing import Tuple, Union
 
 from pytype import compat
 from pytype import datatypes
@@ -605,12 +607,14 @@ def check_classes(var, check):
       v.cls.isinstance_Class() and check(v.cls) for v in var.data if v.cls)
 
 
-def match_type_container(typ, container_type_name):
+def match_type_container(typ, container_type_name: Union[str, Tuple[str, ...]]):
   """Unpack the type parameter from ContainerType[T]."""
   if typ is None:
     return None
+  if isinstance(container_type_name, str):
+    container_type_name = (container_type_name,)
   if not (typ.isinstance_ParameterizedClass() and
-          typ.full_name == container_type_name):
+          typ.full_name in container_type_name):
     return None
   param = typ.get_formal_type_parameter(T)
   return param

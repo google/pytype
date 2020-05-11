@@ -82,8 +82,13 @@ class Dataclass(classgen.Decorator):
         else:
           init = True
 
-      # Check that default matches the declared type
-      self.check_default(node, name, typ, orig, local.stack)
+      if (not self.vm.options.check_variable_types or
+          orig and orig.data == [self.vm.convert.none]):
+        # vm._apply_annotation mostly takes care of checking that the default
+        # matches the declared type. However, it allows None defaults, and
+        # dataclasses do not.
+        self.vm.check_annotation_type_mismatch(
+            node, name, typ, orig, local.stack, allow_none=False)
 
       attr = classgen.Attribute(name=name, typ=typ, init=init, default=orig)
       own_attrs.append(attr)

@@ -117,22 +117,24 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
   def test_overwrite_annotation(self):
-    ty = self.Infer("""
+    ty, errors = self.InferWithErrors("""
       x: int
-      x = ""
+      x = ""  # annotation-type-mismatch[e]
     """)
     self.assertTypesMatchPytd(ty, "x: str")
+    self.assertErrorRegexes(errors, {"e": r"Annotation: int.*Assignment: str"})
 
   def test_overwrite_annotation_in_class(self):
-    ty = self.Infer("""
+    ty, errors = self.InferWithErrors("""
       class Foo:
         x: int
-        x = ""
+        x = ""  # annotation-type-mismatch[e]
     """)
     self.assertTypesMatchPytd(ty, """
       class Foo:
         x: str
     """)
+    self.assertErrorRegexes(errors, {"e": r"Annotation: int.*Assignment: str"})
 
   def test_class_variable_forward_reference(self):
     ty = self.Infer("""
@@ -225,6 +227,12 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
       def f() -> Dict[str, Dict[str, bool]]: ...
+    """)
+
+  def test_none_or_ellipsis_assignment(self):
+    self.Check("""
+      v1: int = None
+      v2: str = ...
     """)
 
 

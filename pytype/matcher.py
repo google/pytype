@@ -11,6 +11,7 @@ from pytype import function
 from pytype import mixin
 from pytype import special_builtins
 from pytype import utils
+from pytype.overlays import dataclass_overlay
 from pytype.overlays import typing_overlay
 from pytype.pytd import pep484
 from pytype.pytd import pytd
@@ -102,6 +103,11 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       A list of all the views of var that didn't match.
     """
     bad = []
+    if (var.data == [self.vm.convert.unsolvable] or
+        other_type == self.vm.convert.unsolvable):
+      # An unsolvable matches everything. Since bad_matches doesn't need to
+      # compute substitutions, we can return immediately.
+      return bad
     views = abstract_utils.get_views([var], node)
     skip_future = None
     while True:
@@ -397,6 +403,10 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           if new_subst is not None:
             return new_subst
         return None
+    elif isinstance(left, dataclass_overlay.FieldInstance) and left.default:
+      default = self.vm.merge_values(left.default.data)
+      return self._match_type_against_type(
+          default, other_type, subst, node, view)
     elif isinstance(left, abstract.SimpleAbstractValue):
       return self._match_instance_against_type(
           left, other_type, subst, node, view)

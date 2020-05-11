@@ -1,3 +1,4 @@
+# Lint as: python3
 """Tests for attrs library in attr_overlay.py."""
 
 from pytype.tests import test_base
@@ -5,6 +6,12 @@ from pytype.tests import test_base
 
 class TestAttrib(test_base.TargetIndependentTest):
   """Tests for attr.ib."""
+
+  def setUp(self):
+    super().setUp()
+    # Checking field defaults against their types should work even when general
+    # variable checking is disabled.
+    self.options.tweak(check_variable_types=False)
 
   def test_basic(self):
     ty = self.Infer("""
@@ -646,6 +653,12 @@ class TestAttrib(test_base.TargetIndependentTest):
 
 class TestAttrs(test_base.TargetIndependentTest):
   """Tests for attr.s."""
+
+  def setUp(self):
+    super().setUp()
+    # Checking field defaults against their types should work even when general
+    # variable checking is disabled.
+    self.options.tweak(check_variable_types=False)
 
   def test_basic(self):
     ty = self.Infer("""

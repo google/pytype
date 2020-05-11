@@ -33,15 +33,15 @@ class SixTests(test_base.TargetPython27FeatureTest):
         b = [b]
       c = ''  # type: Text
       if isinstance(c, six.string_types):
-        c = len(c)
+        d = len(c)
     """)
-    self.assertTypesMatchPytd(
-        ty, """
-      from typing import List
-      six: module = ...
-      a: List[str] = ...
-      b: List[unicode] = ...
-      c: int = ...
+    self.assertTypesMatchPytd(ty, """
+      from typing import List, Union
+      six: module
+      a: List[str]
+      b: List[unicode]
+      c: Union[str, unicode]
+      d: int
     """)
 
 

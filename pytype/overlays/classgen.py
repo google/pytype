@@ -179,29 +179,6 @@ class Decorator(abstract.PyTDFunction):
           base_attrs.append(a)
     return base_attrs
 
-  def check_default(self, node, name, typ, default, stack, allow_none=False):
-    """Check that the type annotation and the default value are consistent.
-
-    Args:
-      node: node
-      name: variable name
-      typ: variable annotation
-      default: variable assignment or default value
-      stack: a frame stack for error reporting
-      allow_none: whether a default of None is allowed for any type
-    """
-    if not typ or not default:
-      return
-    # Check for permitted uses of x: T = None
-    if (allow_none and
-        len(default.data) == 1 and
-        default.data[0].cls == self.vm.convert.none_type):
-      return
-    bad = self.vm.matcher.bad_matches(default, typ, node)
-    if bad:
-      binding = bad[0][default]
-      self.vm.errorlog.annotation_type_mismatch(stack, typ, binding, name)
-
   def call(self, node, func, args):
     """Construct a decorator, and call it on the class."""
     self.match_args(node, args)

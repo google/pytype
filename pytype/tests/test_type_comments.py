@@ -390,7 +390,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
 
   def test_none_to_none_type(self):
     ty = self.Infer("""
-      x = 0  # type: None
+      x = ...  # type: None
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: None
@@ -581,14 +581,14 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       """)
 
   def test_list_comprehension_comments(self):
-    ty = self.Infer("""
+    ty, errors = self.InferWithErrors("""
       from typing import List
       def f(x):
         # type: (str) -> None
         pass
       def g(xs):
         # type: (List[str]) -> List[str]
-        ys = [f(x) for x in xs]  # type: List[str]
+        ys = [f(x) for x in xs]  # type: List[str]  # annotation-type-mismatch[e]
         return ys
     """)
     self.assertTypesMatchPytd(ty, """
@@ -596,6 +596,8 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       def f(x: str) -> None: ...
       def g(xs: List[str]) -> List[str]: ...
     """)
+    self.assertErrorRegexes(
+        errors, {"e": r"Annotation: List\[str\].*Assignment: List\[None\]"})
 
   def test_multiple_assignments(self):
     ty = self.Infer("""

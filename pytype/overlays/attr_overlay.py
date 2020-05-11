@@ -81,12 +81,13 @@ class Attrs(classgen.Decorator):
               typ=typ,
               init=orig.data[0].init,
               default=orig.data[0].default)
-        self.check_default(node, attr.name, attr.typ, attr.default, local.stack,
-                           allow_none=True)
+        self.vm.check_annotation_type_mismatch(
+            node, attr.name, attr.typ, attr.default, local.stack,
+            allow_none=True)
         own_attrs.append(attr)
       elif self.args[cls]["auto_attribs"]:
         if not match_classvar(typ):
-          self.check_default(
+          self.vm.check_annotation_type_mismatch(
               node, name, typ, orig, local.stack, allow_none=True)
           attr = Attribute(name=name, typ=typ, init=True, default=orig)
           if not orig:
