@@ -5,7 +5,7 @@ from pytype.tests import test_base
 
 
 class TestAttrib(test_base.TargetPython3BasicTest):
-  """Tests for attr.ib using type annotations."""
+  """Tests for attr.ib."""
 
   def test_factory_function(self):
     ty = self.Infer("""
@@ -127,6 +127,25 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
       foo: module
       Bar: Type[foo.Foo]
     """)
+
+  def test_conflicting_annotations(self):
+    # If an annotation has multiple visible values, they must be the same.
+    errors = self.CheckWithErrors("""
+      import attr
+      @attr.s
+      class Foo(object):
+        if __random__:
+          v: int = attr.ib()
+        else:
+          v: int = attr.ib()
+      @attr.s
+      class Bar(object):  # invalid-annotation[e]
+        if __random__:
+          v: int = attr.ib()
+        else:
+          v: str = attr.ib()
+    """)
+    self.assertErrorRegexes(errors, {"e": "'int or str' for v"})
 
 
 class TestAttrs(test_base.TargetPython3FeatureTest):

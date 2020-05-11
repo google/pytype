@@ -1,3 +1,4 @@
+# Lint as: python3
 """A abstract virtual machine for python bytecode.
 
 A VM for python byte code that uses pytype/pytd/cfg to generate a trace of the
@@ -74,7 +75,40 @@ class LocalOp(collections.namedtuple("_LocalOp", ["name", "op"])):
     return self.op == self.ANNOTATE
 
 
-Local = collections.namedtuple("Local", ["typ", "orig"])
+class Local:
+  """A possibly annotated local variable."""
+
+  def __init__(self, node, typ, orig, vm):
+    if typ:
+      self.typ = vm.program.NewVariable([typ], [], node)
+    else:
+      # Creating too many variables bloats the typegraph, hurting performance,
+      # so we use None instead of an empty variable.
+      self.typ = None
+    self.orig = orig
+    self.vm = vm
+
+  def update(self, node, typ, orig):
+    if typ:
+      if self.typ:
+        self.typ.AddBinding(typ, [], node)
+      else:
+        self.typ = self.vm.program.NewVariable([typ], [], node)
+    if orig:
+      self.orig = orig
+
+  def get_type(self, node, name):
+    """Gets the variable's annotation."""
+    if not self.typ:
+      return None
+    values = self.typ.Data(node)
+    if len(values) > 1:
+      self.vm.errorlog.ambiguous_annotation(self.vm.frames, values, name)
+      return self.vm.convert.unsolvable
+    elif values:
+      return values[0]
+    else:
+      return None
 
 
 _opcode_counter = metrics.MapCounter("vm_opcode")
@@ -312,8 +346,13 @@ class VirtualMachine(object):
     self.push_frame(frame)
     frame.states[frame.f_code.co_code[0]] = frame_state.FrameState.init(
         node, self)
-    self.local_ops[frame.f_code.co_name] = []
-    self.annotated_locals[frame.f_code.co_name] = {}
+    frame_name = frame.f_code.co_name
+    if frame_name not in self.local_ops or frame_name != "<module>":
+      # abstract_utils.eval_expr creates a temporary frame called "<module>". We
+      # don't care to track locals for this frame and don't want it to overwrite
+      # the locals of the actual module frame.
+      self.local_ops[frame_name] = []
+      self.annotated_locals[frame_name] = {}
     can_return = False
     return_nodes = []
     for block in frame.f_code.order:
@@ -712,7 +751,6 @@ class VirtualMachine(object):
   def run_bytecode(self, node, code, f_globals=None, f_locals=None):
     """Run the given bytecode."""
     if f_globals is not None:
-      f_globals = f_globals
       assert f_locals
     else:
       assert not self.frames
@@ -1185,7 +1223,7 @@ class VirtualMachine(object):
       return state, ret
     raise KeyError(name)
 
-  def _record_local(self, name, typ, orig_val=None):
+  def _record_local(self, node, name, typ, orig_val=None):
     """Record a type annotation on a local variable.
 
     This method records three types of local operations:
@@ -1197,6 +1235,7 @@ class VirtualMachine(object):
         PyTDClass(int) and `orig_val` is Instance(None).
 
     Args:
+      node: The current node.
       name: The variable name.
       typ: The annotation.
       orig_val: The original value, if any.
@@ -1205,11 +1244,10 @@ class VirtualMachine(object):
       self.current_local_ops.append(LocalOp(name, LocalOp.ASSIGN))
     if typ:
       self.current_local_ops.append(LocalOp(name, LocalOp.ANNOTATE))
-    if not typ and name in self.current_annotated_locals:
-      self.current_annotated_locals[name] = (
-          self.current_annotated_locals[name]._replace(orig=orig_val))
+    if name in self.current_annotated_locals:
+      self.current_annotated_locals[name].update(node, typ, orig_val)
     else:
-      self.current_annotated_locals[name] = Local(typ, orig_val)
+      self.current_annotated_locals[name] = Local(node, typ, orig_val, self)
 
   def _store_value(self, state, name, value, local):
     if local:
@@ -1236,14 +1274,18 @@ class VirtualMachine(object):
         self.errorlog.not_supported_yet(
             self.frames, "aliases of Unions with type parameters")
 
+  def _apply_annotation(self, state, op, name, orig_val, local):
+    typ, value = self.annotations_util.apply_annotation(
+        state, op, name, orig_val)
+    if local:
+      self._record_local(state.node, name, typ, orig_val)
+    return value
+
   def _pop_and_store(self, state, op, name, local):
     """Pop a value off the stack and store it in a variable."""
     state, orig_val = state.pop()
-    typ, value = self.annotations_util.apply_annotation(
-        state, op, name, orig_val)
+    value = self._apply_annotation(state, op, name, orig_val, local)
     self._check_aliased_type_params(value)
-    if local:
-      self._record_local(name, typ, orig_val)
     state = state.forward_cfg_node()
     state = self._store_value(state, name, value, local)
     self.trace_opcode(op, name, value)
@@ -1859,7 +1901,7 @@ class VirtualMachine(object):
     state, value = state.pop()
     assert isinstance(value, cfg.Variable)
     name = self.get_closure_var_name(op.arg)
-    _, value = self.annotations_util.apply_annotation(state, op, name, value)
+    value = self._apply_annotation(state, op, name, value, True)
     state = state.forward_cfg_node()
     self.frame.cells[op.arg].PasteVariable(value, state.node)
     state = state.forward_cfg_node()
@@ -2066,9 +2108,11 @@ class VirtualMachine(object):
     return state.push(val)
 
   def byte_STORE_ATTR(self, state, op):
+    """Store an attribute."""
     name = self.frame.f_code.co_names[op.arg]
     state, (val, obj) = state.popn(2)
-    _, val = self.annotations_util.apply_annotation(state, op, name, val)
+    # We do not want to record attributes as local variables.
+    val = self._apply_annotation(state, op, name, val, False)
     state = state.forward_cfg_node()
     state = self.store_attr(state, obj, name, val)
     state = state.forward_cfg_node()
@@ -2106,7 +2150,7 @@ class VirtualMachine(object):
       else:
         typ = self.annotations_util.extract_annotation(
             state.node, val, name, self.simple_stack(), is_var=True)
-        state = self._record_annotation(state, name, typ)
+        self._record_annotation(state.node, name, typ)
         val = typ.to_variable(state.node)
     state = self.store_subscr(state, obj, subscr, val)
     return state
@@ -2864,27 +2908,10 @@ class VirtualMachine(object):
     annotations = self.convert.build_map(state.node)
     return self.store_local(state, "__annotations__", annotations)
 
-  def _record_annotation(self, state, name, typ):
-    """Record a variable annotation."""
-    try:
-      self.load_local(state, name)
-    except KeyError:
-      # An annotation on a not-yet-defined variable is recorded for use in attrs
-      # and dataclasses.
-      self._record_local(name, typ)
-      return state
-    # If the variable is defined, then either:
-    # (1) We have an annotated assignment (e.g., `v: int = 0`), which has
-    #     already been handled by annotations_util.apply_annotation, or
-    # (2) We are annotating an already defined variable (e.g.,
-    #       v = 0
-    #       v: str
-    #     ), which is forbidden.
-    if self.frame.current_opcode.line not in self.director.annotations:  # (2)
-      self.errorlog.invalid_annotation(
-          self.frames, typ,
-          details="Annotating an already defined variable", name=name)
-    return state
+  def _record_annotation(self, node, name, typ):
+    # Annotations in self.director are handled by _apply_annotation.
+    if self.frame.current_opcode.line not in self.director.annotations:
+      self._record_local(node, name, typ)
 
   def byte_STORE_ANNOTATION(self, state, op):
     """Implementation of the STORE_ANNOTATION opcode."""
@@ -2893,7 +2920,7 @@ class VirtualMachine(object):
     state, value = state.pop()
     typ = self.annotations_util.extract_annotation(
         state.node, value, name, self.simple_stack(), is_var=True)
-    state = self._record_annotation(state, name, typ)
+    self._record_annotation(state.node, name, typ)
     name_var = self.convert.build_string(state.node, name)
     state = self.store_subscr(
         state, annotations_var, name_var, typ.to_variable(state.node))

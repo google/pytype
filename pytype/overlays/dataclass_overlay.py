@@ -63,7 +63,8 @@ class Dataclass(classgen.Decorator):
     own_attrs = []
     cls_locals = self.get_class_locals(
         cls, allow_methods=True, ordering=classgen.Ordering.FIRST_ANNOTATE)
-    for name, (typ, orig) in cls_locals.items():
+    for name, local in cls_locals.items():
+      typ, orig = local.get_type(node, name), local.orig
       assert typ
       if match_classvar(typ):
         continue

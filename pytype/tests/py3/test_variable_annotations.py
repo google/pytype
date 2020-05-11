@@ -201,14 +201,6 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
     ty = self.Infer("if __random__: v: int = None")
     self.assertTypesMatchPytd(ty, "v: int")
 
-  def test_retype_defined_variable(self):
-    errors = self.CheckWithErrors("""
-      v = 0
-      v: str  # invalid-annotation[e]
-    """)
-    self.assertErrorRegexes(
-        errors, {"e": r"'str' for v.*Annotating an already defined variable"})
-
   def test_multi_line_assignment(self):
     ty = self.Infer("""
       v: int = (

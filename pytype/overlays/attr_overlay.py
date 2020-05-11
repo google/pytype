@@ -55,7 +55,8 @@ class Attrs(classgen.Decorator):
     ordered_locals = self.get_class_locals(
         cls, allow_methods=False, ordering=ordering)
     own_attrs = []
-    for name, (typ, orig) in ordered_locals.items():
+    for name, local in ordered_locals.items():
+      typ, orig = local.get_type(node, name), local.orig
       if is_attrib(orig):
         if typ and orig.data[0].has_type:
           # We cannot have both a type annotation and a type argument.
