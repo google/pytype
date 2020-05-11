@@ -209,7 +209,10 @@ def get_type_from_default(default_var, vm):
   if default_var and default_var.data == [vm.convert.none]:
     # A default of None doesn't give us any information about the actual type.
     return vm.convert.unsolvable
-  return vm.convert.merge_classes(default_var.data)
+  typ = vm.convert.merge_classes(default_var.data)
+  if typ == vm.convert.empty:
+    return vm.convert.unsolvable
+  return typ
 
 
 class Factory(abstract.PyTDFunction):

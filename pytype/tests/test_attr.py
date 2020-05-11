@@ -625,6 +625,24 @@ class TestAttrib(test_base.TargetIndependentTest):
           self.fmap[""].calls.append(Call())
     """)
 
+  def test_empty_factory(self):
+    ty = self.Infer("""
+      import attr
+      FACTORIES = []
+      @attr.s
+      class Foo:
+        x = attr.ib(factory=FACTORIES[0])
+      Foo(x=0)  # should not be an error
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, List
+      attr: module
+      FACTORIES: List[nothing]
+      class Foo:
+        x: Any
+        def __init__(self, x = ...) -> None: ...
+    """)
+
 
 class TestAttrs(test_base.TargetIndependentTest):
   """Tests for attr.s."""
