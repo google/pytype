@@ -78,7 +78,8 @@ class LocalOp(collections.namedtuple("_LocalOp", ["name", "op"])):
 class Local:
   """A possibly annotated local variable."""
 
-  def __init__(self, node, typ, orig, vm):
+  def __init__(self, node, op, typ, orig, vm):
+    self.last_op = op
     if typ:
       self.typ = vm.program.NewVariable([typ], [], node)
     else:
@@ -88,7 +89,12 @@ class Local:
     self.orig = orig
     self.vm = vm
 
-  def update(self, node, typ, orig):
+  @property
+  def stack(self):
+    return self.vm.simple_stack(self.last_op)
+
+  def update(self, node, op, typ, orig):
+    self.last_op = op
     if typ:
       if self.typ:
         self.typ.AddBinding(typ, [], node)
@@ -103,7 +109,7 @@ class Local:
       return None
     values = self.typ.Data(node)
     if len(values) > 1:
-      self.vm.errorlog.ambiguous_annotation(self.vm.frames, values, name)
+      self.vm.errorlog.ambiguous_annotation(self.stack, values, name)
       return self.vm.convert.unsolvable
     elif values:
       return values[0]
@@ -1223,7 +1229,7 @@ class VirtualMachine(object):
       return state, ret
     raise KeyError(name)
 
-  def _record_local(self, node, name, typ, orig_val=None):
+  def _record_local(self, node, op, name, typ, orig_val=None):
     """Record a type annotation on a local variable.
 
     This method records three types of local operations:
@@ -1236,6 +1242,7 @@ class VirtualMachine(object):
 
     Args:
       node: The current node.
+      op: The current opcode.
       name: The variable name.
       typ: The annotation.
       orig_val: The original value, if any.
@@ -1245,9 +1252,9 @@ class VirtualMachine(object):
     if typ:
       self.current_local_ops.append(LocalOp(name, LocalOp.ANNOTATE))
     if name in self.current_annotated_locals:
-      self.current_annotated_locals[name].update(node, typ, orig_val)
+      self.current_annotated_locals[name].update(node, op, typ, orig_val)
     else:
-      self.current_annotated_locals[name] = Local(node, typ, orig_val, self)
+      self.current_annotated_locals[name] = Local(node, op, typ, orig_val, self)
 
   def _store_value(self, state, name, value, local):
     if local:
@@ -1278,7 +1285,7 @@ class VirtualMachine(object):
     typ, value = self.annotations_util.apply_annotation(
         state, op, name, orig_val)
     if local:
-      self._record_local(state.node, name, typ, orig_val)
+      self._record_local(state.node, op, name, typ, orig_val)
     return value
 
   def _pop_and_store(self, state, op, name, local):
@@ -2150,7 +2157,7 @@ class VirtualMachine(object):
       else:
         typ = self.annotations_util.extract_annotation(
             state.node, val, name, self.simple_stack(), is_var=True)
-        self._record_annotation(state.node, name, typ)
+        self._record_annotation(state.node, op, name, typ)
         val = typ.to_variable(state.node)
     state = self.store_subscr(state, obj, subscr, val)
     return state
@@ -2908,10 +2915,10 @@ class VirtualMachine(object):
     annotations = self.convert.build_map(state.node)
     return self.store_local(state, "__annotations__", annotations)
 
-  def _record_annotation(self, node, name, typ):
+  def _record_annotation(self, node, op, name, typ):
     # Annotations in self.director are handled by _apply_annotation.
     if self.frame.current_opcode.line not in self.director.annotations:
-      self._record_local(node, name, typ)
+      self._record_local(node, op, name, typ)
 
   def byte_STORE_ANNOTATION(self, state, op):
     """Implementation of the STORE_ANNOTATION opcode."""
@@ -2920,7 +2927,7 @@ class VirtualMachine(object):
     state, value = state.pop()
     typ = self.annotations_util.extract_annotation(
         state.node, value, name, self.simple_stack(), is_var=True)
-    self._record_annotation(state.node, name, typ)
+    self._record_annotation(state.node, op, name, typ)
     name_var = self.convert.build_string(state.node, name)
     state = self.store_subscr(
         state, annotations_var, name_var, typ.to_variable(state.node))

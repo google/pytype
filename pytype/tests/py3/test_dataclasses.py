@@ -63,10 +63,10 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     ty, errors = self.InferWithErrors("""
       import dataclasses
       @dataclasses.dataclass
-      class Foo(object):  # annotation-type-mismatch[e]
+      class Foo(object):
         x: str = 'hello'
         y: int = 10
-        def x(self):
+        def x(self):  # annotation-type-mismatch[e]
           return 10
     """)
     self.assertTypesMatchPytd(ty, """
@@ -137,32 +137,32 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     self.CheckWithErrors("""
       import dataclasses
       @dataclasses.dataclass()
-      class Foo(object):  # annotation-type-mismatch
-        x: bool = 10
+      class Foo(object):
+        x: bool = 10  # annotation-type-mismatch
     """)
 
   def test_type_mismatch_on_none(self):
     self.CheckWithErrors("""
       import dataclasses
       @dataclasses.dataclass()
-      class Foo(object):  # annotation-type-mismatch
-        x: int = None
+      class Foo(object):
+        x: int = None  # annotation-type-mismatch
     """)
 
   def test_field_type_mismatch(self):
     self.CheckWithErrors("""
       import dataclasses
       @dataclasses.dataclass()
-      class Foo(object):  # annotation-type-mismatch
-        x: bool = dataclasses.field(default=10)
+      class Foo(object):
+        x: bool = dataclasses.field(default=10)  # annotation-type-mismatch
     """)
 
   def test_factory_type_mismatch(self):
     self.CheckWithErrors("""
       import dataclasses
       @dataclasses.dataclass()
-      class Foo(object):  # annotation-type-mismatch
-        x: bool = dataclasses.field(default_factory=set)
+      class Foo(object):
+        x: bool = dataclasses.field(default_factory=set)  # annotation-type-mismatch
     """)
 
   def test_field_no_init(self):

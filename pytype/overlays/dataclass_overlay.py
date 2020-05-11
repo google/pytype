@@ -83,7 +83,7 @@ class Dataclass(classgen.Decorator):
           init = True
 
       # Check that default matches the declared type
-      self.check_default(node, name, typ, orig)
+      self.check_default(node, name, typ, orig, local.stack)
 
       attr = classgen.Attribute(name=name, typ=typ, init=init, default=orig)
       own_attrs.append(attr)

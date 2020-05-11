@@ -93,9 +93,9 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
     ty, err = self.InferWithErrors("""
       import attr
       @attr.s
-      class Foo(object):  # annotation-type-mismatch[e]
+      class Foo(object):
         x: int = attr.ib(default=42)
-        y: str = attr.ib(default=42)
+        y: str = attr.ib(default=42)  # annotation-type-mismatch[e]
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
@@ -139,11 +139,11 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
         else:
           v: int = attr.ib()
       @attr.s
-      class Bar(object):  # invalid-annotation[e]
+      class Bar(object):
         if __random__:
           v: int = attr.ib()
         else:
-          v: str = attr.ib()
+          v: str = attr.ib()  # invalid-annotation[e]
     """)
     self.assertErrorRegexes(errors, {"e": "'int or str' for v"})
 

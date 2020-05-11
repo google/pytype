@@ -180,10 +180,10 @@ class TestAttrib(test_base.TargetIndependentTest):
     ty, err = self.InferWithErrors("""
       import attr
       @attr.s
-      class Foo(object):  # annotation-type-mismatch[e]
+      class Foo(object):
         x = attr.ib(default=42)
         y = attr.ib(type=int, default=6)
-        z = attr.ib(type=str, default=28)
+        z = attr.ib(type=str, default=28)  # annotation-type-mismatch[e]
         a = attr.ib(type=str, default=None)
     """)
     self.assertTypesMatchPytd(ty, """
@@ -203,9 +203,9 @@ class TestAttrib(test_base.TargetIndependentTest):
     ty, err = self.InferWithErrors("""
       import attr
       @attr.s
-      class Foo(object):  # annotation-type-mismatch[e]
+      class Foo(object):
         x = attr.ib(default=42) # type: int
-        y = attr.ib(default=42) # type: str
+        y = attr.ib(default=42) # type: str  # annotation-type-mismatch[e]
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
@@ -529,10 +529,10 @@ class TestAttrib(test_base.TargetIndependentTest):
     ty, err = self.InferWithErrors("""
       import attr
       @attr.s
-      class Foo(object):  # annotation-type-mismatch[e]
+      class Foo(object):
         a = attr.ib()
         b = attr.ib()
-        c = attr.ib(type=str)
+        c = attr.ib(type=str)  # annotation-type-mismatch[e]
         @a.validator
         def validate(self, attribute, value):
           pass
