@@ -14,6 +14,7 @@ _K = TypeVar('_K')
 _V = TypeVar('_V')
 _K2 = TypeVar('_K2')
 _V2 = TypeVar('_V2')
+_NUMBER = TypeVar('_NUMBER', bound=complex)
 
 # isinstance() and issubclass() can take a type or an arbitrarily nested
 # tuple of types. This adds support for a few levels; in theory we want
@@ -107,7 +108,7 @@ def repr(x) -> str
 def round(number: int or float or typing.SupportsRound, ...) -> float
 def setattr(object, name: str or unicode or bytearray, value) -> NoneType
 def sorted(iterable: Iterable[_T], ...) -> list[_T]
-def sum(iterable: Iterable[_T]) -> Union[_T, int]
+def sum(iterable: Iterable[_NUMBER]) -> _NUMBER
 def sum(iterable: Iterable[_T], start: _T) -> _T
 def unichr(i: int) -> unicode
 def vars(...) -> dict[str, ?]

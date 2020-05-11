@@ -436,7 +436,7 @@ class ContainerTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      def f() -> int
+      def f() -> Any
     """)
 
   def test_access_empty_dict_in_if(self):
