@@ -8,9 +8,14 @@ language: python
 
 matrix:
   include:
-  - python: "3.5"
-  - python: "3.6"
-  - python: "3.7"
+    - python: "3.5"
+    - python: "3.6"
+    - python: "3.7"
+    - python: "3.8"
+    - python: "nightly"
+  allow_failures:
+    - python: "3.8"
+    - python: "nightly"
 
 before_install:
   - sudo apt-get install g++
