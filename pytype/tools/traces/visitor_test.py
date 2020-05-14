@@ -2,7 +2,6 @@
 """Tests for traces.visitor."""
 
 import ast
-import sys
 import textwrap
 from pytype.tools.traces import visitor
 import unittest
@@ -121,18 +120,10 @@ class BaseVisitorTest(unittest.TestCase):
     #      |
     #    Assign
     #   /      \
-    # Name     Constant (Num)
+    # Name     Num
     #  |
     # Store
-
-    # The "Num" ast class is deprecated as of Python 3.8 and ast.parse returns
-    # "Constant" instead.
-    if sys.hexversion >= 0x03080000:
-      CONSTANT = "Constant"
-    else:
-      CONSTANT = "Num"
-
-    self.assertEqual(v.nodes, ["Store", "Name", CONSTANT, "Assign", "Module"])
+    self.assertEqual(v.nodes, ["Store", "Name", "Num", "Assign", "Module"])
 
   def test_enter(self):
     module = ast.parse(textwrap.dedent("""

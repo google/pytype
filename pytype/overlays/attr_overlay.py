@@ -52,8 +52,8 @@ class Attrs(classgen.Decorator):
       ordering = classgen.Ordering.FIRST_ANNOTATE
     else:
       ordering = classgen.Ordering.LAST_ASSIGN
-    ordered_locals = self.get_class_locals(
-        cls, allow_methods=False, ordering=ordering)
+    ordered_locals = classgen.get_class_locals(
+        cls.name, allow_methods=False, ordering=ordering, vm=self.vm)
     own_attrs = []
     for name, local in ordered_locals.items():
       typ, orig = local.get_type(node, name), local.orig

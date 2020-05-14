@@ -636,7 +636,7 @@ def get_annotations_dict(members):
     return None
   annots_var = members["__annotations__"]
   try:
-    annots = get_atomic_python_constant(annots_var, dict)
+    annots = get_atomic_value(annots_var)
   except ConversionError:
     return None
-  return annots
+  return annots if annots.isinstance_AnnotationsDict() else None

@@ -645,9 +645,6 @@ class VirtualMachine(object):
         self.errorlog.invalid_annotation(self.frames, e.annot, e.error)
         var = self.new_unsolvable(node)
       else:
-        # We have recorded ClassVar annotations in vm.annotated_locals, so when
-        # we construct the class we can replace them with their contained types.
-        val.replace_classvars(node)
         if new_class_var:
           var = new_class_var
         else:
@@ -1189,7 +1186,7 @@ class VirtualMachine(object):
     except KeyError:
       # A variable has been declared but not defined, e.g.,
       #   constant: str
-      return self._load_annotation(state, name)
+      return state, self._load_annotation(state.node, name)
 
   def load_global(self, state, name):
     return self.load_from(
@@ -1218,15 +1215,13 @@ class VirtualMachine(object):
     self.trace_opcode(op, raw_const, const)
     return state.push(const)
 
-  def _load_annotation(self, state, name):
-    try:
-      state, annots = self.load_from(
-          state, self.frame.f_locals, "__annotations__")
-    except KeyError:
-      raise KeyError(name)
-    ret = self.annotations_util.init_from_annotations(state.node, name, annots)
-    if ret:
-      return state, ret
+  def _load_annotation(self, node, name):
+    annots = abstract_utils.get_annotations_dict(self.frame.f_locals.members)
+    if annots:
+      typ = annots.get_type(node, name)
+      if typ:
+        _, ret = self.init_class(node, typ)
+        return ret
     raise KeyError(name)
 
   def _record_local(self, node, op, name, typ, orig_val=None):
@@ -2173,18 +2168,16 @@ class VirtualMachine(object):
     state, _ = self.call_function_with_state(state, f, (key, val))
     return state
 
-  def _is_annotations_dict(self, obj):
-    if "__annotations__" not in self.frame.f_locals.members:
-      return False
-    annotations_var = self.frame.f_locals.members["__annotations__"]
-    return (len(obj.data) == len(annotations_var.data) and
-            all(v1 is v2 for v1, v2 in zip(obj.data, annotations_var.data)))
-
   def byte_STORE_SUBSCR(self, state, op):
     """Implement obj[subscr] = val."""
     state, (val, obj, subscr) = state.popn(3)
     state = state.forward_cfg_node()
-    if self._is_annotations_dict(obj):
+    try:
+      # Check whether obj is the __annotations__ dict.
+      abstract_utils.get_atomic_value(obj, abstract.AnnotationsDict)
+    except abstract_utils.ConversionError:
+      pass
+    else:
       try:
         name = abstract_utils.get_atomic_python_constant(
             subscr, six.string_types)
@@ -2194,7 +2187,6 @@ class VirtualMachine(object):
         typ = self.annotations_util.extract_annotation(
             state.node, val, name, self.simple_stack(), is_var=True)
         self._record_annotation(state.node, op, name, typ)
-        val = typ.to_variable(state.node)
     state = self.store_subscr(state, obj, subscr, val)
     return state
 
@@ -2948,7 +2940,7 @@ class VirtualMachine(object):
 
   def byte_SETUP_ANNOTATIONS(self, state, op):
     """Sets up variable annotations in locals()."""
-    annotations = self.convert.build_map(state.node)
+    annotations = abstract.AnnotationsDict(self).to_variable(state.node)
     return self.store_local(state, "__annotations__", annotations)
 
   def _record_annotation(self, node, op, name, typ):
@@ -2964,9 +2956,9 @@ class VirtualMachine(object):
     typ = self.annotations_util.extract_annotation(
         state.node, value, name, self.simple_stack(), is_var=True)
     self._record_annotation(state.node, op, name, typ)
-    name_var = self.convert.build_string(state.node, name)
+    key = self.convert.primitive_class_instances[str]
     state = self.store_subscr(
-        state, annotations_var, name_var, typ.to_variable(state.node))
+        state, annotations_var, key.to_variable(state.node), value)
     return self.store_local(state, "__annotations__", annotations_var)
 
   def byte_GET_YIELD_FROM_ITER(self, state, op):

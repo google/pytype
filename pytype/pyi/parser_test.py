@@ -655,8 +655,8 @@ class NamedTupleTest(_ParserTestBase):
     self.check("x = ...  # type: NamedTuple('foo', [('a', int,), ('b', str),])",
                expected)
 
-  # pylint: disable=line-too-long
   def test_dedup_basename(self):
+    # pylint: disable=line-too-long
     self.check("""
       x = ...  # type: NamedTuple('foo', [('a', int,)])
       y = ...  # type: NamedTuple('foo', [('b', str,)])""",

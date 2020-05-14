@@ -504,11 +504,7 @@ PyTypeObject PyProgram = {
   tp_basicsize : sizeof(PyProgramObj),
   tp_itemsize : 0,
   tp_dealloc : ProgramDealloc,
-#if PY_VERSION_HEX >= 0x03080000 // 3.8
-  tp_vectorcall_offset: -1,
-# else
   tp_print : nullptr,
-# endif
   tp_getattr : nullptr,
   tp_setattr : nullptr,
 #if PY_VERSION_HEX >= 0x03050000  // 3.5
@@ -777,11 +773,7 @@ PyTypeObject PyCFGNode = {
   tp_basicsize : sizeof(PyCFGNodeObj),
   tp_itemsize : 0,
   tp_dealloc : CFGNodeDealloc,
-#if PY_VERSION_HEX >= 0x03080000 // 3.8
-  tp_vectorcall_offset: -1,
-# else
   tp_print : nullptr,
-# endif
   tp_getattr : nullptr,
   tp_setattr : nullptr,
 #if PY_VERSION_HEX >= 0x03050000  // 3.5
@@ -1011,11 +1003,7 @@ PyTypeObject PyBinding = {
   tp_basicsize : sizeof(PyBindingObj),
   tp_itemsize : 0,
   tp_dealloc : BindingDealloc,
-#if PY_VERSION_HEX >= 0x03080000 // 3.8
-  tp_vectorcall_offset: -1,
-# else
   tp_print : nullptr,
-# endif
   tp_getattr : nullptr,
   tp_setattr : nullptr,
 #if PY_VERSION_HEX >= 0x03050000  // 3.5
@@ -1410,11 +1398,7 @@ PyTypeObject PyVariable = {
   tp_basicsize : sizeof(PyVariableObj),
   tp_itemsize : 0,
   tp_dealloc : VariableDealloc,
-#if PY_VERSION_HEX >= 0x03080000 // 3.8
-  tp_vectorcall_offset: -1,
-# else
   tp_print : nullptr,
-# endif
   tp_getattr : nullptr,
   tp_setattr : nullptr,
 #if PY_VERSION_HEX >= 0x03050000  // 3.5

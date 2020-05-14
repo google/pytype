@@ -358,10 +358,14 @@ class Converter(utils.VirtualMachineWeakrefMixin):
 
   def uninitialized_annotations_to_instance_types(self, node, annots, members):
     """Get instance types for annotations not present in the members map."""
-    for name in annots:
-      if name not in members:
-        yield name, pytd_utils.JoinTypes(
-            value.get_instance_type(node) for value in annots[name].data)
+    if annots:
+      for name, typ in annots.get_annotations(node):
+        if name not in members:
+          contained_type = abstract_utils.match_type_container(
+              typ, "typing.ClassVar")
+          if contained_type:
+            typ = contained_type
+          yield name, typ.get_instance_type(node)
 
   def _function_call_to_return_type(self, node, v, seen_return, num_returns):
     """Get a function call's pytd return type."""
@@ -518,7 +522,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     methods = {}
     constants = collections.defaultdict(pytd_utils.TypeBuilder)
 
-    annots = abstract_utils.get_annotations_dict(v.members) or {}
+    annots = abstract_utils.get_annotations_dict(v.members)
 
     for name, t in self.uninitialized_annotations_to_instance_types(
         node, annots, v.members):

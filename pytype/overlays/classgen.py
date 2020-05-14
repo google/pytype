@@ -23,7 +23,7 @@ Param = overlay_utils.Param
 
 
 class Ordering(object):
-  """Possible orderings for Decorator.get_class_locals."""
+  """Possible orderings for get_class_locals."""
   # Order by each variable's first annotation. For example, for
   #   class Foo:
   #     x: int
@@ -124,43 +124,6 @@ class Decorator(abstract.PyTDFunction):
 
     return overlay_utils.make_method(self.vm, node, "__init__", params,
                                      kwonly_params)
-
-  def get_class_locals(self, cls, allow_methods, ordering):
-    """Gets a dictionary of the class's local variables.
-
-    Args:
-      cls: An abstract.InterpreterClass.
-      allow_methods: A bool, whether to allow methods as variables.
-      ordering: A classgen.Ordering describing the order in which the variables
-        should appear.
-
-    Returns:
-      A collections.OrderedDict of the locals.
-    """
-    # TODO(rechen): Once we drop Python 2 support, either use a normal dict or
-    # replace key deletion with OrderedDict.move_to_end().
-    out = collections.OrderedDict()
-    if cls.name not in self.vm.local_ops:
-      # See TestAttribPy3.test_cannot_decorate in tests/py3/test_attr.py. The
-      # class will not be in local_ops if a previous decorator hides it.
-      return out
-    for op in self.vm.local_ops[cls.name]:
-      if is_dunder(op.name):
-        continue
-      local = self.vm.annotated_locals[cls.name][op.name]
-      if not allow_methods and is_method(local.orig):
-        continue
-      if ordering is Ordering.FIRST_ANNOTATE:
-        if not op.is_annotate() or op.name in out:
-          continue
-      else:
-        assert ordering is Ordering.LAST_ASSIGN
-        if not op.is_assign():
-          continue
-        elif op.name in out:
-          del out[op.name]
-      out[op.name] = local
-    return out
 
   def get_base_class_attrs(self, cls, cls_attrs, metadata_key):
     # Traverse the MRO and collect base class attributes. We only add an
@@ -264,3 +227,42 @@ def instantiate(node, name, typ):
   # attributes from sharing the same default object.
   _, instance = typ.vm.init_class(node, typ, extra_key=name)
   return instance
+
+
+def get_class_locals(cls_name, allow_methods, ordering, vm):
+  """Gets a dictionary of the class's local variables.
+
+  Args:
+    cls_name: The name of an abstract.InterpreterClass.
+    allow_methods: A bool, whether to allow methods as variables.
+    ordering: A classgen.Ordering describing the order in which the variables
+      should appear.
+    vm: The VirtualMachine.
+
+  Returns:
+    A collections.OrderedDict of the locals.
+  """
+  # TODO(rechen): Once we drop Python 2 support, either use a normal dict or
+  # replace key deletion with OrderedDict.move_to_end().
+  out = collections.OrderedDict()
+  if cls_name not in vm.local_ops:
+    # See TestAttribPy3.test_cannot_decorate in tests/py3/test_attr.py. The
+    # class will not be in local_ops if a previous decorator hides it.
+    return out
+  for op in vm.local_ops[cls_name]:
+    if is_dunder(op.name):
+      continue
+    local = vm.annotated_locals[cls_name][op.name]
+    if not allow_methods and is_method(local.orig):
+      continue
+    if ordering is Ordering.FIRST_ANNOTATE:
+      if not op.is_annotate() or op.name in out:
+        continue
+    else:
+      assert ordering is Ordering.LAST_ASSIGN
+      if not op.is_assign():
+        continue
+      elif op.name in out:
+        del out[op.name]
+    out[op.name] = local
+  return out
