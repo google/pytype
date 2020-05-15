@@ -34,6 +34,7 @@ addons:
     - python3.6  # To compile targets with a 3.6 compiler.
     - python3.6-dev  # To build host extension modules under 3.6
     - python3.7-dev  # To build host extension modules under 3.7
+    - python3.8-dev  # To build host extension modules under 3.8
 
 install:
   - pip install attrs

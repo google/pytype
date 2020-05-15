@@ -2508,6 +2508,28 @@ class VirtualMachine(object):
     self.store_jump(op.target, state.push(self.convert.build_none(state.node)))
     return self.push_block(state, "finally", op, op.target)
 
+  # New python3.8+ exception handling opcodes:
+  # BEGIN_FINALLY, END_ASYNC_FOR, CALL_FINALLY, POP_FINALLY
+  def byte_BEGIN_FINALLY(self, state, op):
+    # TODO: Figure out how to handle 3.8's new exception handling
+    #       and adjust these opcode handlers accordingly.
+    return state
+
+  def byte_CALL_FINALLY(self, state, op):
+    # TODO: Figure out how to handle 3.8's new exception handling
+    #       and adjust these opcode handlers accordingly.
+    return state
+
+  def byte_END_ASYNC_FOR(self, state, op):
+    # TODO: Figure out how to handle 3.8's new exception handling
+    #       and adjust these opcode handlers accordingly.
+    return state
+
+  def byte_POP_FINALLY(self, state, op):
+    # TODO: Figure out how to handle 3.8's new exception handling
+    #       and adjust these opcode handlers accordingly.
+    return state
+
   def byte_POP_BLOCK(self, state, op):
     state, _ = state.pop_block()
     return state

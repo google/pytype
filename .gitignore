@@ -130,3 +130,6 @@ dmypy.json
 
 # Cmake and friends
 CMakeFiles/
+
+# Our own type checker
+.pytype/

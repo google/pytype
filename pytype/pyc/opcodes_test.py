@@ -6,9 +6,10 @@ import unittest
 class _TestBase(unittest.TestCase):
   """Base class for all opcodes.dis testing."""
 
-  def dis(self, code):
+  def dis(self, code, **kwargs):
     """Return the opcodes from disassbling a code sequence."""
-    return opcodes.dis(compat.int_array_to_bytes(code), self.python_version)
+    return opcodes.dis(compat.int_array_to_bytes(code),
+                       self.python_version, **kwargs)
 
   def assertSimple(self, opcode, name):
     """Assert that a single opcode byte diassembles to the given name."""
@@ -27,6 +28,14 @@ class _TestBase(unittest.TestCase):
         self.assertEqual(e, (o.name,))
       else:
         self.assertEqual(e, (o.name, o.arg))
+
+  def assertLineNumbers(self, code, co_lnotab, expected):
+    """Assert that the opcodes have the expected line numbers."""
+    ops = self.dis(code, co_lnotab=compat.int_array_to_bytes(co_lnotab),
+                   co_firstlineno=1)
+    self.assertEqual(len(ops), len(expected))
+    for o, e in zip(ops, expected):
+      self.assertEqual(e, o.line)
 
 
 class CommonTest(_TestBase):
@@ -189,6 +198,45 @@ class Python37Test(_TestBase):
 
   def test_call_method(self):
     self.assertName([161, 0], 'CALL_METHOD')
+
+
+class Python38Test(_TestBase):
+  python_version = (3, 8, 0)
+
+  def test_non_monotonic_line_numbers(self):
+    # Make sure we can deal with line number tables that aren't
+    # monotonic. That is:
+    #
+    # line 1: OPCODE_1
+    # line 2: OPCODE_2
+    # line 1: OPCODE 3
+
+    # Compiled from:
+    # f(
+    #   1,
+    #   2
+    #  )
+    code = [
+        0x65, 0,    # LOAD_NAME, arg=0th name
+        0x64, 0,    # LOAD_CONST, arg=0th constant
+        0x64, 1,    # LOAD_CONST, arg=1st constant
+        0x83, 0x2,  # CALL_FUNCTION, arg=2 function arguments
+        0x53, 0x0   # RETURN_VALUE
+    ]
+    expected = [
+        ('LOAD_NAME', 0),
+        ('LOAD_CONST', 0),
+        ('LOAD_CONST', 1),
+        ('CALL_FUNCTION', 2),
+        ('RETURN_VALUE',)
+    ]
+    self.assertDisassembly(code, expected)
+    lnotab = [
+        0x2, 0x1,  # +2 addr, +1 line number
+        0x2, 0x1,  # +2 addr, +1 line number
+        0x2, 0xfe  # +2 addr, -2 line number
+    ]
+    self.assertLineNumbers(code, lnotab, [1, 2, 3, 1, 1])
 
 
 if __name__ == '__main__':

@@ -97,14 +97,15 @@ class CodeType(object):
   CO_FUTURE_PRINT_FUNCTION = 0x10000
   CO_FUTURE_UNICODE_LITERALS = 0x20000
 
-  def __init__(self, argcount, kwonlyargcount, nlocals, stacksize, flags, code,
-               consts, names, varnames, filename, name, firstlineno, lnotab,
-               freevars, cellvars, python_version):
+  def __init__(self, argcount, posonlyargcount, kwonlyargcount, nlocals,
+               stacksize, flags, code, consts, names, varnames, filename,
+               name, firstlineno, lnotab, freevars, cellvars, python_version):
     assert isinstance(nlocals, int)
     assert isinstance(stacksize, int)
     assert isinstance(flags, int)
     assert isinstance(filename, (bytes, six.string_types))
     self.co_argcount = argcount
+    self.co_posonlyargcount = posonlyargcount
     self.co_kwonlyargcount = kwonlyargcount
     self.co_nlocals = nlocals
     self.co_stacksize = stacksize
@@ -367,6 +368,11 @@ class _LoadMarshal(object):
   def load_code(self):
     """Load a Python code object."""
     argcount = self._read_long()
+    # Python 3.8+ has positional only arguments.
+    if self.python_version >= (3, 8):
+      posonlyargcount = self._read_long()
+    else:
+      posonlyargcount = -1
     if self.python_version[0] >= 3:
       kwonlyargcount = self._read_long()
     else:
@@ -391,9 +397,10 @@ class _LoadMarshal(object):
       # https://github.com/python/cpython/blob/master/Objects/lnotab_notes.txt:
       # 'an array of unsigned bytes disguised as a Python bytes object'.
       lnotab = self.load()
-    return CodeType(argcount, kwonlyargcount, nlocals, stacksize, flags,
-                    code, consts, names, varnames, filename, name, firstlineno,
-                    lnotab, freevars, cellvars, self.python_version)
+    return CodeType(argcount, posonlyargcount, kwonlyargcount, nlocals,
+                    stacksize, flags, code, consts, names, varnames, filename,
+                    name, firstlineno, lnotab, freevars, cellvars,
+                    self.python_version)
 
   def load_set(self):
     n = self._read_long()
