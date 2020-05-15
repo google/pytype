@@ -42,10 +42,9 @@ class Dataclass(classgen.Decorator):
     initvar = match_initvar(typ)
     if not initvar:
       return None
-    annots = abstract_utils.get_annotations_dict(cls.members)
     # The InitVar annotation is not retained as a class member, but any default
     # value is retained.
-    del annots[name]
+    del self.vm.annotated_locals[cls.name][name]
     if orig is not None:
       cls.members[name] = classgen.instantiate(node, name, initvar)
     return initvar
@@ -61,8 +60,9 @@ class Dataclass(classgen.Decorator):
     #   x = 10
     # would have init(x:int = 10, y:str = 'hello')
     own_attrs = []
-    cls_locals = self.get_class_locals(
-        cls, allow_methods=True, ordering=classgen.Ordering.FIRST_ANNOTATE)
+    cls_locals = classgen.get_class_locals(
+        cls.name, allow_methods=True, ordering=classgen.Ordering.FIRST_ANNOTATE,
+        vm=self.vm)
     for name, local in cls_locals.items():
       typ, orig = local.get_type(node, name), local.orig
       assert typ

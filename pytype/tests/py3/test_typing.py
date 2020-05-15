@@ -642,10 +642,22 @@ class TypingTestPython3Feature(test_base.TargetPython3FeatureTest):
       from typing import ClassVar
       class A(object):
         x: ClassVar[int] = 5
+      print(A.x + 3)  # make sure using a ClassVar[int] as an int works
     """)
     self.assertTypesMatchPytd(ty, """
       class A(object):
-        x: int = ...
+        x: int
+    """)
+
+  def test_uninitialized_classvar(self):
+    ty = self.Infer("""
+      from typing import ClassVar
+      class A:
+        x: ClassVar[int]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class A:
+        x: int
     """)
 
   @test_utils.skipBeforePy((3, 7), "typing.OrderedDict is new in 3.7")

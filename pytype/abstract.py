@@ -348,6 +348,9 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   def isinstance_AMBIGUOUS_OR_EMPTY(self):
     return isinstance(self, AMBIGUOUS_OR_EMPTY)
 
+  def isinstance_AnnotationsDict(self):
+    return isinstance(self, AnnotationsDict)
+
   def isinstance_BoundFunction(self):
     return isinstance(self, BoundFunction)
 
@@ -1101,6 +1104,25 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
       self.could_contain_anything = True
 
 
+class AnnotationsDict(Dict):
+  """__annotations__ dict."""
+
+  def __init__(self, vm):
+    super().__init__(vm)
+    self.annotated_locals = vm.current_annotated_locals
+
+  def get_type(self, node, name):
+    if name not in self.annotated_locals:
+      return None
+    return self.annotated_locals[name].get_type(node, name)
+
+  def get_annotations(self, node):
+    for name, local in self.annotated_locals.items():
+      typ = local.get_type(node, name)
+      if typ:
+        yield name, typ
+
+
 class LateAnnotation(object):
   """A late annotation.
 
@@ -1365,7 +1387,7 @@ class LazyConcreteDict(SimpleAbstractValue, mixin.PythonConstant):
   is_lazy = True  # uses _convert_member
 
   def __init__(self, name, member_map, vm):
-    SimpleAbstractValue.__init__(self, name, vm)
+    super().__init__(name, vm)
     self._member_map = member_map
     mixin.PythonConstant.init_mixin(self, self.members)
 
@@ -2052,6 +2074,9 @@ class ParameterizedClass(AtomicAbstractValue, mixin.Class):
       instance = self.vm.annotations_util.deformalize(
           self.formal_type_parameters[abstract_utils.T])
       return instance.to_variable(node)
+    elif self.full_name == "typing.ClassVar":
+      return self.formal_type_parameters[abstract_utils.T].instantiate(
+          node, container)
     elif self.vm.frame and self.vm.frame.current_opcode:
       return self._new_instance().to_variable(node)
     else:
@@ -2447,33 +2472,6 @@ class InterpreterClass(SimpleAbstractValue, mixin.Class):
     self.is_dynamic = self.compute_is_dynamic()
     log.info("Created class: %r", self)
     self.type_param_check()
-
-  def replace_classvars(self, node):
-    """Replace typing.ClassVars with their contained types."""
-
-    def replace_classvars_in_dict(d, make_instance):
-      """Replace classvars in a dictionary."""
-      replace = {}
-      for k, v in d.items():
-        try:
-          v = abstract_utils.get_atomic_value(v)
-        except abstract_utils.ConversionError:
-          continue
-        classvar = abstract_utils.match_type_container(v.cls, "typing.ClassVar")
-        if classvar:
-          if make_instance:
-            replace[k] = classvar.instantiate(node)
-          else:
-            replace[k] = classvar.to_variable(node)
-      d.update(replace)
-
-    # type comments like `x = ... # type: ClassVar[T]` go into members
-    replace_classvars_in_dict(self.members, make_instance=True)
-
-    # x: ClassVar[T] = ... goes into annotations
-    annots = abstract_utils.get_annotations_dict(self.members)
-    if annots:
-      replace_classvars_in_dict(annots, make_instance=False)
 
   def type_param_check(self):
     """Throw exception for invalid type parameters."""

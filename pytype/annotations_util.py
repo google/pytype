@@ -220,22 +220,6 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       return self.vm.convert.unsolvable
     return typ
 
-  def init_from_annotations(self, node, name, annots_var):
-    """Instantiate `name` from the given annotations dict, calling __init__."""
-    try:
-      annots = abstract_utils.get_atomic_python_constant(annots_var, dict)
-    except abstract_utils.ConversionError:
-      return None
-    if name not in annots:
-      return None
-    try:
-      typ = abstract_utils.get_atomic_value(annots[name])
-    except abstract_utils.ConversionError:
-      self.vm.errorlog.ambiguous_annotation(self.vm.frames, None, name)
-      return self.vm.new_unsolvable(node)
-    _, value = self.vm.init_class(node, typ)
-    return value
-
   def eval_multi_arg_annotation(self, node, func, annot, stack):
     """Evaluate annotation for multiple arguments (from a type comment)."""
     args, errorlog = self._eval_expr_as_tuple(node, annot, stack)

@@ -695,6 +695,7 @@ class NamedTupleTest(_ParserTestBase):
           def __new__(cls: Type[`_Tnamedtuple-foo-1`], b: str) -> `_Tnamedtuple-foo-1`: ...
           def __init__(self, *args, **kwargs) -> None: ...
         """)
+  # pylint: enable=line-too-long
 
   def test_assign_namedtuple(self):
     self.check("X = NamedTuple('X', [])", """

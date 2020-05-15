@@ -285,5 +285,13 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
         def f() -> None: ...
         """)
 
+  def test_bad_default(self):
+    errors = self.CheckWithErrors("""
+      from typing import NamedTuple
+      class Foo(NamedTuple):
+        x: str = 0  # annotation-type-mismatch[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Annotation: str.*Assignment: int"})
+
 
 test_base.main(globals(), __name__ == "__main__")

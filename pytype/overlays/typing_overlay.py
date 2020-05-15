@@ -10,6 +10,7 @@ from pytype import function
 from pytype import overlay
 from pytype import overlay_utils
 from pytype import utils
+from pytype.overlays import classgen
 from pytype.overlays import collections_overlay
 from pytype.pytd import pep484
 from pytype.pytd import pytd
@@ -520,21 +521,19 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
 
     # retrieve __qualname__ to get the name of class
     name = f_locals["__qualname__"]
-    # retrieve __annotations__ to get the dict
-    # with key-value pair of (variable, type)
-    anno = f_locals.get("__annotations__", {})
-    if anno:
-      anno = abstract_utils.get_atomic_value(anno)
 
     # assemble the arguments that are compatible with NamedTupleFuncBuilder.call
     field_list = []
     defaults = []
-    for k, v in anno.items():
+    cls_locals = classgen.get_class_locals(
+        abstract_utils.get_atomic_python_constant(name), allow_methods=True,
+        ordering=classgen.Ordering.FIRST_ANNOTATE, vm=self.vm)
+    for k, local in cls_locals.items():
+      assert local.typ
       if k in f_locals:
-        defaults.append(f_locals.get(k))
-        # TODO(ahxun): check if the value matches the declared type
+        defaults.append(f_locals[k])
       k = self.vm.convert.constant_to_var(k, node=node)
-      field_list.append(self.vm.convert.build_tuple(node, (k, v)))
+      field_list.append(self.vm.convert.build_tuple(node, (k, local.typ)))
     anno = self.vm.convert.build_list(node, field_list)
     posargs = (name, anno)
     args = function.Args(posargs=posargs)
