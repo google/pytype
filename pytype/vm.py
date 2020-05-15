@@ -2172,12 +2172,8 @@ class VirtualMachine(object):
     """Implement obj[subscr] = val."""
     state, (val, obj, subscr) = state.popn(3)
     state = state.forward_cfg_node()
-    try:
-      # Check whether obj is the __annotations__ dict.
-      abstract_utils.get_atomic_value(obj, abstract.AnnotationsDict)
-    except abstract_utils.ConversionError:
-      pass
-    else:
+    # Check whether obj is the __annotations__ dict.
+    if len(obj.data) == 1 and isinstance(obj.data[0], abstract.AnnotationsDict):
       try:
         name = abstract_utils.get_atomic_python_constant(
             subscr, six.string_types)
