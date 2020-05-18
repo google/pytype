@@ -376,6 +376,9 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       elif other_type.full_name in [
           "__builtin__.type", "__builtin__.object", "typing.Callable"]:
         return subst
+      elif other_type.is_protocol and "__call__" in other_type.protocol_methods:
+        return self._match_type_against_callback_protocol(
+            left, other_type, subst, node, view)
       elif left.cls:
         return self._match_instance_against_type(
             left, other_type, subst, node, view)
@@ -402,6 +405,11 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
               sig, other_type, subst, node, view)
           if new_subst is not None:
             return new_subst
+        return None
+      elif other_type.is_protocol and "__call__" in other_type.protocol_methods:
+        return self._match_type_against_callback_protocol(
+            left, other_type, subst, node, view)
+      else:
         return None
     elif isinstance(left, dataclass_overlay.FieldInstance) and left.default:
       default = self.vm.merge_values(left.default.data)
@@ -437,6 +445,32 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     else:
       raise NotImplementedError("Matching not implemented for %s against %s" %
                                 (type(left), type(other_type)))
+
+  def _match_type_against_callback_protocol(
+      self, left, other_type, subst, node, view):
+    """See https://www.python.org/dev/peps/pep-0544/#callback-protocols."""
+    _, method_var = self.vm.attribute_handler.get_attribute(
+        node, other_type, "__call__")
+    if not method_var or not method_var.data or any(
+        not isinstance(v, abstract.Function) for v in method_var.data):
+      return None
+    new_substs = []
+    for expected_method in method_var.data:
+      signatures = abstract_utils.get_signatures(expected_method)
+      for sig in signatures:
+        sig = sig.drop_first_parameter()  # drop `self`
+        expected_callable = (
+            self.vm.convert.pytd_convert.signature_to_callable(sig))
+        new_subst = self._match_type_against_type(
+            left, expected_callable, subst, node, view)
+        if new_subst is not None:
+          # For a set of overloaded signatures, only one needs to match.
+          new_substs.append(new_subst)
+          break
+      else:
+        # Every method_var binding must have a matching signature.
+        return None
+    return self._merge_substs(subst, new_substs)
 
   def _mutate_type_parameters(self, params, value, subst, node):
     new_subst = {p.full_name: value.to_variable(node) for p in params}
@@ -871,7 +905,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       converter = self.vm.convert.pytd_convert
       for signature in abstract_method.signatures:
         callable_signature = converter.signature_to_callable(
-            signature.signature, self.vm)
+            signature.signature)
         if isinstance(callable_signature, abstract.CallableClass):
           # Prevent the matcher from trying to enforce contravariance on 'self'.
           callable_signature.formal_type_parameters[0] = (

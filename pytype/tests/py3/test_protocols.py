@@ -515,6 +515,77 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"int.*None.*line 7"})
 
+  def test_callback_protocol(self):
+    self.CheckWithErrors("""
+      from typing_extensions import Protocol
+      class Foo(Protocol):
+        def __call__(self) -> int:
+          return 0
+
+      def f1() -> int:
+        return 0
+      def f2(x) -> int:
+        return x
+      def f3() -> str:
+        return ''
+
+      def accepts_foo(f: Foo):
+        pass
+
+      accepts_foo(f1)
+      accepts_foo(f2)  # wrong-arg-types
+      accepts_foo(f3)  # wrong-arg-types
+    """)
+
+  def test_callback_protocol_pyi(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Protocol
+        class Foo(Protocol):
+          def __call__(self, x: str) -> str: ...
+        def accepts_foo(f: Foo) -> None: ...
+      """)
+      self.CheckWithErrors("""
+        import foo
+        def f1(x: str) -> str:
+          return x
+        def f2() -> str:
+          return ''
+        def f3(x: int) -> str:
+          return str(x)
+
+        foo.accepts_foo(f1)
+        foo.accepts_foo(f2)  # wrong-arg-types
+        foo.accepts_foo(f3)  # wrong-arg-types
+      """, pythonpath=[d.path])
+
+  def test_class_matches_callback_protocol(self):
+    self.CheckWithErrors("""
+      from typing_extensions import Protocol
+      class Foo(Protocol):
+        def __call__(self) -> int:
+          return 0
+      def accepts_foo(f: Foo):
+        pass
+
+      accepts_foo(int)
+      accepts_foo(str)  # wrong-arg-types
+    """)
+
+  def test_class_matches_callback_protocol_pyi(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Protocol
+        class Foo(Protocol):
+          def __call__(self) -> int: ...
+        def accepts_foo(f: Foo) -> None: ...
+      """)
+      self.CheckWithErrors("""
+        import foo
+        foo.accepts_foo(int)
+        foo.accepts_foo(str)  # wrong-arg-types
+      """, pythonpath=[d.path])
+
 
 class ProtocolsTestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for protocol implementation on a target using a Python 3 feature."""
