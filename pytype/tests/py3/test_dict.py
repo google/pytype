@@ -68,5 +68,20 @@ class DictTest(test_base.TargetPython3BasicTest):
         return group_dict
     """)
 
+  def test_recursion(self):
+    # Regression test for code that caused a RecursionError in STORE_SUBSCR.
+    self.Check("""
+      from typing import Any, Dict
+      def convert(d: Dict[Any, Any]):
+        keys = ['foo', 'bar']
+        for key in keys:
+          if key not in d:
+            d[key + '_suffix1'] = {}
+          if key + '_suffix2' in d:
+            d[key + '_suffix1']['suffix2'] = d[key + '_suffix2']
+          if key + '_suffix3' in d:
+            d[key + '_suffix1']['suffix3'] = d[key + '_suffix3']
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
