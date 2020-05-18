@@ -742,7 +742,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           return self.unsolvable
         base = actual.cls
       else:
-        assert isinstance(pyval.base_type, pytd.ClassType)
+        assert isinstance(pyval.base_type, pytd.ClassType), pyval
         base = pyval.base_type.cls
       assert isinstance(base, pytd.Class), base
       base_cls = self.constant_to_value(

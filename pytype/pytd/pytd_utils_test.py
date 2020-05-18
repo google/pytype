@@ -318,7 +318,7 @@ class TestUtils(parser_test_base.ParserTest):
 
       x: List[str]
 
-      class MyClass(object):
+      class MyClass:
           List: Any
           x: typing.List[str]
     """)

@@ -1773,30 +1773,30 @@ class PropertyDecoratorTest(_ParserTestBase):
 
   def test_property_with_type(self):
     expected = """
-      class A(object):
+      class A:
           name: str
     """
 
     # The return type of @property is used for the property type.
     self.check("""
-      class A(object):
+      class A:
           @property
           def name(self) -> str:...
       """, expected)
 
     self.check("""
-      class A(object):
+      class A:
           @name.setter
           def name(self, value: str) -> None: ...
       """, """
       from typing import Any
 
-      class A(object):
+      class A:
           name: Any
       """)
 
     self.check("""
-      class A(object):
+      class A:
           @property
           def name(self) -> str:...
 
@@ -1805,7 +1805,7 @@ class PropertyDecoratorTest(_ParserTestBase):
       """, expected)
 
     self.check("""
-      class A(object):
+      class A:
           @property
           def name(self) -> str:...
 
@@ -1814,7 +1814,7 @@ class PropertyDecoratorTest(_ParserTestBase):
       """, expected)
 
     self.check("""
-      class A(object):
+      class A:
           @property
           def name(self) -> str:...
 
@@ -1826,30 +1826,30 @@ class PropertyDecoratorTest(_ParserTestBase):
     expected = """
           from typing import Any
 
-          class A(object):
+          class A:
               name: Any
               """
 
     self.check("""
-      class A(object):
+      class A:
           @property
           def name(self): ...
       """, expected)
 
     self.check("""
-      class A(object):
+      class A:
           @name.setter
           def name(self, value): ...
       """, expected)
 
     self.check("""
-      class A(object):
+      class A:
           @name.deleter
           def name(self): ...
       """, expected)
 
     self.check("""
-      class A(object):
+      class A:
           @name.setter
           def name(self, value): ...
 
@@ -1896,7 +1896,7 @@ class PropertyDecoratorTest(_ParserTestBase):
 
   def test_property_getter(self):
     self.check("""
-      class A(object):
+      class A:
         @property
         def name(self) -> str: ...
 
@@ -1905,7 +1905,7 @@ class PropertyDecoratorTest(_ParserTestBase):
     """, """
     from typing import Union
 
-    class A(object):
+    class A:
         name: Union[str, int]
     """)
 
@@ -1914,17 +1914,17 @@ class MergeSignaturesTest(_ParserTestBase):
 
   def test_property(self):
     self.check("""
-      class A(object):
+      class A:
           @property
           def name(self) -> str: ...
       """, """
-      class A(object):
+      class A:
           name: str
       """)
 
   def test_merge_property_types(self):
     self.check("""
-      class A(object):
+      class A:
           @property
           def name(self) -> str: ...
 
@@ -1933,12 +1933,12 @@ class MergeSignaturesTest(_ParserTestBase):
       """, """
       from typing import Union
 
-      class A(object):
+      class A:
           name: Union[str, int]
       """)
 
     self.check("""
-      class A(object):
+      class A:
           @property
           def name(self) -> str: ...
 
@@ -1947,13 +1947,13 @@ class MergeSignaturesTest(_ParserTestBase):
     """, """
       from typing import Any
 
-      class A(object):
+      class A:
           name: Any
     """)
 
   def test_method(self):
     self.check("""
-      class A(object):
+      class A:
           def name(self) -> str: ...
       """)
 
@@ -1990,7 +1990,7 @@ class MergeSignaturesTest(_ParserTestBase):
 
   def test_classmethod(self):
     ast = self.check("""
-      class A(object):
+      class A:
           @classmethod
           def foo(x: int) -> str: ...
       """)
@@ -1998,7 +1998,7 @@ class MergeSignaturesTest(_ParserTestBase):
 
   def test_staticmethod(self):
     ast = self.check("""
-      class A(object):
+      class A:
           @staticmethod
           def foo(x: int) -> str: ...
       """)
@@ -2006,14 +2006,14 @@ class MergeSignaturesTest(_ParserTestBase):
 
   def test_new(self):
     ast = self.check("""
-      class A(object):
+      class A:
           def __new__(self) -> A: ...
       """)
     self.assertEqual("staticmethod", ast.classes[0].methods[0].kind)
 
   def test_abstractmethod(self):
     ast = self.check("""
-      class A(object):
+      class A:
           @abstractmethod
           def foo(x: int) -> str: ...
       """)
@@ -2022,7 +2022,7 @@ class MergeSignaturesTest(_ParserTestBase):
 
   def test_abstractmethod_manysignatures(self):
     ast = self.check("""
-      class A(object):
+      class A:
           @abstractmethod
           def foo(x: int) -> str: ...
           @abstractmethod
@@ -2030,7 +2030,7 @@ class MergeSignaturesTest(_ParserTestBase):
           @abstractmethod
           def foo(x: int, y: int, z: int) -> str: ...
       """, """
-      class A(object):
+      class A:
           @abstractmethod
           @overload
           def foo(x: int) -> str: ...

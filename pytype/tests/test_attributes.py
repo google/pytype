@@ -687,10 +687,10 @@ class TestAttributes(test_base.TargetIndependentTest):
 
   def test_property_on_union(self):
     ty = self.Infer("""
-      class A():
+      class A(object):
         def __init__(self):
           self.foo = 1
-      class B():
+      class B(object):
         def __init__(self):
           self.bar = 2
         @property
@@ -705,11 +705,9 @@ class TestAttributes(test_base.TargetIndependentTest):
       x = ...  # type: Union[A, B]
       class A:
           foo = ...  # type: int
-          def __init__(self) -> None: ...
       class B:
           bar = ...  # type: int
           foo = ...  # type: int
-          def __init__(self) -> None: ...
     """)
 
   @test_base.skip("Needs vm._get_iter() to iterate over individual bindings.")

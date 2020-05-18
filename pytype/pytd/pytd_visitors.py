@@ -470,9 +470,8 @@ class PrintVisitor(Visitor):
   def VisitClass(self, node):
     """Visit a class, producing a multi-line, properly indented string."""
     parents = node.parents
-    # If classobj is the only parent, then this is an old-style class, don't
-    # list any parents.
-    if parents == ("classobj",):
+    # If object is the only parent, we don't need to list any parents.
+    if parents == ("object",):
       parents = ()
     if node.metaclass is not None:
       parents += ("metaclass=" + node.metaclass,)

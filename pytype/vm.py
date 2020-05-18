@@ -607,8 +607,13 @@ class VirtualMachine(object):
     # Flatten Unions in the bases
     bases = [self._process_base_class(node, base) for base in bases]
     if not bases:
-      # Old style class.
-      bases = [self.convert.oldstyleclass_type.to_variable(self.root_cfg_node)]
+      # A parent-less class inherits from classobj in Python 2 and from object
+      # in Python 3.
+      if self.PY2:
+        base = self.convert.oldstyleclass_type
+      else:
+        base = self.convert.object_type
+      bases = [base.to_variable(self.root_cfg_node)]
     if (isinstance(class_dict, abstract.Unsolvable) or
         not isinstance(class_dict, mixin.PythonConstant)):
       # An unsolvable appears here if the vm hit maximum depth and gave up on
