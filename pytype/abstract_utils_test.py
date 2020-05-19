@@ -5,15 +5,14 @@ from pytype import config
 from pytype import errors
 from pytype import load_pytd
 from pytype import vm
+from pytype.tests import test_base
 
 import six
 
 import unittest
 
 
-class GetViewsTest(unittest.TestCase):
-
-  python_version = (2, 7)
+class GetViewsTest(test_base.UnitTest):
 
   def setUp(self):
     super(GetViewsTest, self).setUp()

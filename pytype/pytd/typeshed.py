@@ -33,7 +33,7 @@ class Typeshed(object):
   # The path is relative to typeshed's root directory, e.g. if you set this to
   # "missing.txt" you need to create $TYPESHED_HOME/missing.txt or
   # pytype/typeshed/missing.txt
-  # For testing, this file must contain the entry 'stdlib/2.7/pytypecanary'.
+  # For testing, this file must contain the entry 'stdlib/3/pytypecanary'.
   MISSING_FILE = None
 
   def __init__(self):

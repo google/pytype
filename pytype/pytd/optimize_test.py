@@ -334,10 +334,10 @@ class TestOptimize(parser_test_base.ParserTest):
     src = textwrap.dedent("""
         def foo(a: int) -> int or float
         def bar(a: str) -> str
-        def foo(a: int) -> str or unicode
+        def foo(a: int) -> str or bytes
     """)
     new_src = textwrap.dedent("""
-        def foo(a: int) -> int or float or str or unicode
+        def foo(a: int) -> int or float or str or bytes
         def bar(a: str) -> str
     """)
     self.AssertOptimizeEquals(src, new_src)

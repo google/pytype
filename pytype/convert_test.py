@@ -9,14 +9,13 @@ from pytype import load_pytd
 from pytype import vm
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+from pytype.tests import test_base
 import six
 
 import unittest
 
 
-class ConvertTest(unittest.TestCase):
-
-  python_version = (2, 7)
+class ConvertTest(test_base.UnitTest):
 
   def setUp(self):
     super(ConvertTest, self).setUp()

@@ -7,16 +7,15 @@ from pytype import errors
 from pytype import file_utils
 from pytype import load_pytd
 from pytype import vm
+from pytype.tests import test_base
 
 import six
 
 import unittest
 
 
-class MatcherTest(unittest.TestCase):
+class MatcherTest(test_base.UnitTest):
   """Test matcher.AbstractMatcher."""
-
-  python_version = (2, 7)
 
   def setUp(self):
     super(MatcherTest, self).setUp()
@@ -403,7 +402,7 @@ class MatcherTest(unittest.TestCase):
     left1 = self._convert_type("Iterator", as_instance=True)
     left2 = self._convert("""
       class A(object):
-        def next(self): ...
+        def __next__(self): ...
         def __iter__(self): ...
     """, "A", as_instance=True)
     left3 = self._convert_type("int", as_instance=True)

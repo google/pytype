@@ -7,6 +7,7 @@ from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+from pytype.tests import test_base
 import six
 
 import unittest
@@ -21,9 +22,7 @@ def get_builtins_source(python_version):
     return f.read()
 
 
-class _ParserTestBase(unittest.TestCase):
-
-  python_version = (2, 7, 6)
+class _ParserTestBase(test_base.UnitTest):
 
   def check(self, src, expected=None, prologue=None, name=None,
             version=None, platform=None):
@@ -278,7 +277,7 @@ class ParserTest(_ParserTestBase):
 
   def test_conditional_nested_class(self):
     self.check("""
-      if sys.version_info >= (3, 6):
+      if sys.version_info < (3, 5):
         class A:
           class B: ...
     """, "")
@@ -1383,7 +1382,7 @@ class IfTest(_ParserTestBase):
 
   def test_if_true(self):
     self.check("""
-      if sys.version_info == (2, 7, 6):
+      if sys.version_info >= (3, 5, 0):
         x = ...  # type: int
       """, """
       x: int""")
@@ -1405,7 +1404,7 @@ class IfTest(_ParserTestBase):
 
   def test_else_ignored(self):
     self.check("""
-      if sys.version_info == (2, 7, 6):
+      if sys.version_info >= (3, 5, 0):
         x = ...  # type: int
       else:
         y = ...  # type: str
@@ -1416,7 +1415,7 @@ class IfTest(_ParserTestBase):
     self.check("""
       if sys.version_info == (1, 2, 3):
         x = ...  # type: int
-      elif sys.version_info == (2, 7, 6):
+      elif sys.version_info >= (3, 5, 0):
         y = ...  # type: float
       else:
         z = ...  # type: str
@@ -1427,7 +1426,7 @@ class IfTest(_ParserTestBase):
     self.check("""
       if sys.version_info > (1, 2, 3):
         x = ...  # type: int
-      elif sys.version_info == (2, 7, 6):
+      elif sys.version_info >= (3, 5, 0):
         y = ...  # type: float
       else:
         z = ...  # type: str
@@ -1465,12 +1464,12 @@ class IfTest(_ParserTestBase):
         a = ...  # type: int
       if sys.version_info < (0, 0, 0) or sys.version_info >= (2, 0):
         b = ...  # type: int
-      if sys.version_info < (0, 0, 0) or sys.version_info > (3,):
+      if sys.version_info < (0, 0, 0) or sys.version_info > (4,):
         c = ...  # type: int
-      if sys.version_info >= (2, 0) or sys.version_info >= (2, 7):
+      if sys.version_info >= (2, 0) or sys.version_info >= (4, 7):
         d = ...  # type: int
       if (sys.platform == "windows" or sys.version_info < (0,) or
-          sys.version_info >= (2, 7)):
+          sys.version_info >= (3, 5)):
         e = ...  # type: int
     """, """
       a: int
@@ -1480,9 +1479,9 @@ class IfTest(_ParserTestBase):
 
   def test_if_and(self):
     self.check("""
-      if sys.version_info >= (2, 0) and sys.version_info < (3, 0):
+      if sys.version_info >= (3, 0) and sys.version_info < (4, 0):
         a = ...  # type: int
-      if sys.version_info >= (2, 0) and sys.version_info >= (3, 0):
+      if sys.version_info >= (3, 0) and sys.version_info >= (4, 0):
         b = ...  # type: int
     """, """
       a: int""")
@@ -1492,7 +1491,7 @@ class IfTest(_ParserTestBase):
 
   def test_conditional_import(self):
     self.check("""
-      if sys.version_info == (2, 7, 6):
+      if sys.version_info >= (3, 5, 0):
         from foo import Processed
       else:
         from foo import Ignored
@@ -1500,7 +1499,7 @@ class IfTest(_ParserTestBase):
 
   def test_conditional_alias_or_constant(self):
     self.check("""
-      if sys.version_info == (2, 7, 6):
+      if sys.version_info >= (3, 5, 0):
         x = Processed
       else:
         y = Ignored
@@ -1508,7 +1507,7 @@ class IfTest(_ParserTestBase):
 
   def test_conditional_class(self):
     self.check("""
-      if sys.version_info == (2, 7, 6):
+      if sys.version_info >= (3, 5, 0):
         class Processed: ...
       else:
         class Ignored: ...
@@ -1527,7 +1526,7 @@ class IfTest(_ParserTestBase):
     # to the PEP 484 list class.
     self.check("""
       from typing import List
-      if sys.version_info == (2, 7, 6):
+      if sys.version_info >= (3, 5, 0):
         class Dict: ...
       else:
         class List: ...
@@ -1545,7 +1544,7 @@ class IfTest(_ParserTestBase):
     # The legacy parser did not handle this correctly - typevars are added
     # regardless of any conditions.
     self.check("""
-      if sys.version_info == (2, 7, 6):
+      if sys.version_info >= (3, 5, 0):
         T = TypeVar('T')
       else:
         F = TypeVar('F')
@@ -1566,9 +1565,9 @@ class ClassIfTest(_ParserTestBase):
   def test_conditional_constant(self):
     self.check("""
       class Foo:
-        if sys.version_info == (2, 7, 0):
+        if sys.version_info == (3, 4, 0):
           x = ...  # type: int
-        elif sys.version_info == (2, 7, 6):
+        elif sys.version_info >= (3, 5, 0):
           y = ...  # type: str
         else:
           z = ...  # type: float
@@ -1580,9 +1579,9 @@ class ClassIfTest(_ParserTestBase):
   def test_conditional_method(self):
     self.check("""
       class Foo:
-        if sys.version_info == (2, 7, 0):
+        if sys.version_info == (3, 4, 0):
           def a(self, x: int) -> str: ...
-        elif sys.version_info == (2, 7, 6):
+        elif sys.version_info >= (3, 5, 0):
           def b(self, x: int) -> str: ...
         else:
           def c(self, x: int) -> str: ...
@@ -1594,8 +1593,8 @@ class ClassIfTest(_ParserTestBase):
   def test_nested(self):
     self.check("""
       class Foo:
-        if sys.version_info > (2, 7, 0):
-          if sys.version_info == (2, 7, 6):
+        if sys.version_info > (3, 4, 0):
+          if sys.version_info >= (3, 5, 0):
             def b(self, x: int) -> str: ...
       """, """
       class Foo:
@@ -1605,21 +1604,21 @@ class ClassIfTest(_ParserTestBase):
   def test_no_import(self):
     self.check_error("""
       class Foo:
-        if sys.version_info > (2, 7, 0):
+        if sys.version_info > (3, 4, 0):
           import foo
     """, 3, "syntax error")
 
   def test_bad_alias(self):
     self.check_error("""
       class Foo:
-        if sys.version_info > (2, 7, 0):
+        if sys.version_info > (3, 4, 0):
           a = b
     """, 1, "Illegal value for alias 'a'")
 
   def test_no_class(self):
     self.check("""
       class Foo:
-        if sys.version_info <= (2, 7, 0):
+        if sys.version_info <= (3, 4, 0):
           class Bar: ...
     """, """
       class Foo: ...
@@ -1628,7 +1627,7 @@ class ClassIfTest(_ParserTestBase):
   def test_no_typevar(self):
     self.check_error("""
       class Foo:
-        if sys.version_info > (2, 7, 0):
+        if sys.version_info > (3, 4, 0):
           T = TypeVar('T')
     """, 3, "syntax error")
 
@@ -1637,6 +1636,8 @@ class ConditionTest(_ParserTestBase):
 
   def check_cond(self, condition, expected, **kwargs):
     out = "x: int" if expected else ""
+    if "version" not in kwargs:
+      kwargs["version"] = (3, 6, 5)
     self.check("""
       if %s:
         x = ...  # type: int
@@ -1649,55 +1650,55 @@ class ConditionTest(_ParserTestBase):
       """ % condition, 1, message)
 
   def test_version_eq(self):
-    self.check_cond("sys.version_info == (2, 7, 5)", False)
-    self.check_cond("sys.version_info == (2, 7, 6)", True)
-    self.check_cond("sys.version_info == (2, 7, 7)", False)
+    self.check_cond("sys.version_info == (3, 6, 4)", False)
+    self.check_cond("sys.version_info == (3, 6, 5)", True)
+    self.check_cond("sys.version_info == (3, 6, 6)", False)
 
   def test_version_ne(self):
-    self.check_cond("sys.version_info != (2, 7, 5)", True)
-    self.check_cond("sys.version_info != (2, 7, 6)", False)
-    self.check_cond("sys.version_info != (2, 7, 7)", True)
+    self.check_cond("sys.version_info != (3, 6, 4)", True)
+    self.check_cond("sys.version_info != (3, 6, 5)", False)
+    self.check_cond("sys.version_info != (3, 6, 6)", True)
 
   def test_version_lt(self):
-    self.check_cond("sys.version_info < (2, 7, 5)", False)
-    self.check_cond("sys.version_info < (2, 7, 6)", False)
-    self.check_cond("sys.version_info < (2, 7, 7)", True)
-    self.check_cond("sys.version_info < (2, 8, 0)", True)
+    self.check_cond("sys.version_info < (3, 6, 4)", False)
+    self.check_cond("sys.version_info < (3, 6, 5)", False)
+    self.check_cond("sys.version_info < (3, 6, 6)", True)
+    self.check_cond("sys.version_info < (3, 7, 0)", True)
 
   def test_version_le(self):
-    self.check_cond("sys.version_info <= (2, 7, 5)", False)
-    self.check_cond("sys.version_info <= (2, 7, 6)", True)
-    self.check_cond("sys.version_info <= (2, 7, 7)", True)
-    self.check_cond("sys.version_info <= (2, 8, 0)", True)
+    self.check_cond("sys.version_info <= (3, 6, 4)", False)
+    self.check_cond("sys.version_info <= (3, 6, 5)", True)
+    self.check_cond("sys.version_info <= (3, 6, 6)", True)
+    self.check_cond("sys.version_info <= (3, 7, 0)", True)
 
   def test_version_gt(self):
-    self.check_cond("sys.version_info > (2, 6, 0)", True)
-    self.check_cond("sys.version_info > (2, 7, 5)", True)
-    self.check_cond("sys.version_info > (2, 7, 6)", False)
-    self.check_cond("sys.version_info > (2, 7, 7)", False)
+    self.check_cond("sys.version_info > (3, 6, 0)", True)
+    self.check_cond("sys.version_info > (3, 6, 4)", True)
+    self.check_cond("sys.version_info > (3, 6, 5)", False)
+    self.check_cond("sys.version_info > (3, 6, 6)", False)
 
   def test_version_ge(self):
-    self.check_cond("sys.version_info >= (2, 6, 0)", True)
-    self.check_cond("sys.version_info >= (2, 7, 5)", True)
-    self.check_cond("sys.version_info >= (2, 7, 6)", True)
-    self.check_cond("sys.version_info >= (2, 7, 7)", False)
+    self.check_cond("sys.version_info >= (3, 6, 0)", True)
+    self.check_cond("sys.version_info >= (3, 6, 4)", True)
+    self.check_cond("sys.version_info >= (3, 6, 5)", True)
+    self.check_cond("sys.version_info >= (3, 6, 6)", False)
 
   def test_version_item(self):
-    self.check_cond("sys.version_info[0] == 2", True)
+    self.check_cond("sys.version_info[0] == 3", True)
 
   def test_version_slice(self):
-    self.check_cond("sys.version_info[:] == (2, 7, 6)", True)
-    self.check_cond("sys.version_info[:2] == (2, 7)", True)
-    self.check_cond("sys.version_info[2:] == (6,)", True)
-    self.check_cond("sys.version_info[0:1] == (2,)", True)
-    self.check_cond("sys.version_info[::] == (2, 7, 6)", True)
-    self.check_cond("sys.version_info[1::] == (7, 6)", True)
-    self.check_cond("sys.version_info[:2:] == (2, 7)", True)
-    self.check_cond("sys.version_info[::-2] == (6, 2)", True)
-    self.check_cond("sys.version_info[1:3:] == (7, 6)", True)
-    self.check_cond("sys.version_info[1::2] == (7,)", True)
-    self.check_cond("sys.version_info[:2:2] == (2,)", True)
-    self.check_cond("sys.version_info[3:1:-1] == (6,)", True)
+    self.check_cond("sys.version_info[:] == (3, 6, 5)", True)
+    self.check_cond("sys.version_info[:2] == (3, 6)", True)
+    self.check_cond("sys.version_info[2:] == (5,)", True)
+    self.check_cond("sys.version_info[0:1] == (3,)", True)
+    self.check_cond("sys.version_info[::] == (3, 6, 5)", True)
+    self.check_cond("sys.version_info[1::] == (6, 5)", True)
+    self.check_cond("sys.version_info[:2:] == (3, 6)", True)
+    self.check_cond("sys.version_info[::-2] == (5, 3)", True)
+    self.check_cond("sys.version_info[1:3:] == (6, 5)", True)
+    self.check_cond("sys.version_info[1::2] == (6,)", True)
+    self.check_cond("sys.version_info[:2:2] == (3,)", True)
+    self.check_cond("sys.version_info[3:1:-1] == (5,)", True)
 
   def test_version_shorter_tuples(self):
     self.check_cond("sys.version_info == (3,)", True, version=(3, 0, 0))

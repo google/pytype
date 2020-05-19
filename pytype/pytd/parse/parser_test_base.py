@@ -24,14 +24,12 @@ from pytype import load_pytd
 from pytype.pyi import parser
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
+from pytype.tests import test_base
 import six
-import unittest
 
 
-class ParserTest(unittest.TestCase):
+class ParserTest(test_base.UnitTest):
   """Test utility class. Knows how to parse PYTD and compare source code."""
-
-  python_version = (2, 7)
 
   @classmethod
   def setUpClass(cls):

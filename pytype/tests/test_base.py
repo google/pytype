@@ -87,6 +87,12 @@ def _Format(code):
   return textwrap.dedent(code)
 
 
+class UnitTest(unittest.TestCase):
+  """Base class for tests that specify a target Python version."""
+
+  python_version = utils.full_version_from_major(3)
+
+
 class BaseTest(unittest.TestCase):
   """Base class for implementing tests that check PyTD output."""
 

@@ -11,15 +11,14 @@ from pytype import state as frame_state
 from pytype import vm
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+from pytype.tests import test_base
 from pytype.typegraph import cfg
 import six
 
 import unittest
 
 
-class AbstractTestBase(unittest.TestCase):
-
-  python_version = (2, 7)
+class AbstractTestBase(test_base.UnitTest):
 
   def setUp(self):
     super(AbstractTestBase, self).setUp()

@@ -25,6 +25,7 @@ py_test(
       pyc_test.py
     DEPS
       pytype.pyc
+      pytype.tests.test_base
 )
 
 py_test(

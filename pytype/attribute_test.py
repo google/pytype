@@ -6,13 +6,12 @@ from pytype import config
 from pytype import errors
 from pytype import load_pytd
 from pytype import vm
+from pytype.tests import test_base
 
 import unittest
 
 
-class AttributeTest(unittest.TestCase):
-
-  python_version = (2, 7)
+class AttributeTest(test_base.UnitTest):
 
   def setUp(self):
     super(AttributeTest, self).setUp()

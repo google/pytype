@@ -3,6 +3,7 @@
 
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
+from pytype.tests import test_base
 import six
 import unittest
 
@@ -22,10 +23,8 @@ class TestCompileError(unittest.TestCase):
     self.assertEqual("some error in foo.py at line 123", e.error)
 
 
-class TestPyc(unittest.TestCase):
+class TestPyc(test_base.UnitTest):
   """Tests for pyc.py."""
-
-  python_version = (2, 7)
 
   def _compile(self, src, mode="exec"):
     exe = ("python" + ".".join(map(str, self.python_version)), [])

@@ -3,6 +3,7 @@ import textwrap
 
 from pytype.pyi import parser_ext
 from pytype.pytd.parse import parser_constants
+from pytype.tests import test_base
 
 import unittest
 
@@ -71,9 +72,7 @@ def convert_token(t):
   return tuple(pieces)
 
 
-class LexerTest(unittest.TestCase):
-
-  python_version = (2, 7, 6)
+class LexerTest(test_base.UnitTest):
 
   def check(self, expected, text):
     text = textwrap.dedent(text)

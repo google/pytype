@@ -4,22 +4,19 @@ import collections
 import os
 import textwrap
 
-from pytype import config
 from pytype import file_utils
 from pytype import load_pytd
-from pytype import utils
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
+from pytype.tests import test_base
 
 import unittest
 
 
-class ImportPathsTest(unittest.TestCase):
+class ImportPathsTest(test_base.UnitTest):
   """Tests for load_pytd.py."""
-
-  python_version = (2, 7)
 
   def test_filepath_to_module(self):
     # (filename, pythonpath, expected)
@@ -102,8 +99,8 @@ class ImportPathsTest(unittest.TestCase):
 
   def test_stdlib(self):
     loader = load_pytd.Loader("base", self.python_version)
-    ast = loader.import_name("StringIO")
-    self.assertTrue(ast.Lookup("StringIO.StringIO"))
+    ast = loader.import_name("io")
+    self.assertTrue(ast.Lookup("io.StringIO"))
 
   def test_deep_dependency(self):
     with file_utils.Tempdir() as d:
@@ -156,7 +153,7 @@ class ImportPathsTest(unittest.TestCase):
 
   def test_typeshed(self):
     loader = load_pytd.Loader("base", self.python_version)
-    self.assertTrue(loader.import_name("UserDict"))
+    self.assertTrue(loader.import_name("urllib.request"))
 
   def test_resolve_alias(self):
     with file_utils.Tempdir() as d:
@@ -278,7 +275,7 @@ class ImportPathsTest(unittest.TestCase):
       loader = load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
       ast = loader.import_name("os2.path")
       self.assertEqual(ast.Lookup("os2.path._PathType").type.name,
-                       "__builtin__.str")
+                       "__builtin__.bytes")
 
   def test_circular_import_with_external_type(self):
     with file_utils.Tempdir() as d:
@@ -333,13 +330,25 @@ class ImportPathsTest(unittest.TestCase):
       x = ast.Lookup("test.x")
       self.assertIsInstance(x.type, pytd.IntersectionType)
 
+  def test_python2_builtins(self):
+    # Test that we read python2 builtins from builtin.pytd if we pass a python2
+    # version to the loader.
+    with file_utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+          from UserDict import UserDict
+          class A(UserDict): ...""")
+      loader = load_pytd.Loader("base",
+                                python_version=(2, 7),
+                                pythonpath=[d.path])
+      a = loader.import_name("a")
+      cls = a.Lookup("a.A")
+      self.assertEqual("UserDict.UserDict", pytd_utils.Print(cls.parents[0]))
+
 
 _Module = collections.namedtuple("_", ["module_name", "file_name"])
 
 
-class PickledPyiLoaderTest(unittest.TestCase):
-
-  python_version = (2, 7)
+class PickledPyiLoaderTest(test_base.UnitTest):
 
   def _create_files(self, tempdir):
     src = """
@@ -468,31 +477,6 @@ class PickledPyiLoaderTest(unittest.TestCase):
       self.assertTrue(loader.import_name("datetime"))
       self.assertTrue(loader.import_name("foo"))
       self.assertTrue(loader.import_name("ctypes"))
-
-
-class Python3Test(unittest.TestCase):
-  """Tests for load_pytd.py on (target) Python 3."""
-
-  python_version = utils.full_version_from_major(3)
-
-  def setUp(self):
-    super(Python3Test, self).setUp()
-    self.options = config.Options.create(python_version=self.python_version)
-
-  def test_python3_builtins(self):
-    # Test that we read python3 builtins from builtin.pytd if we pass a python3
-    # version to the loader.
-    with file_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
-          from typing import AsyncContextManager
-          class A(AsyncContextManager[str]): ...""")
-      loader = load_pytd.Loader("base",
-                                python_version=self.python_version,
-                                pythonpath=[d.path])
-      a = loader.import_name("a")
-      cls = a.Lookup("a.A")
-      self.assertEqual("AsyncContextManager[str]",
-                       pytd_utils.Print(cls.parents[0]))
 
 
 if __name__ == "__main__":
