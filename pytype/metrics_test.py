@@ -1,12 +1,12 @@
 # Lint as: python3
 """Test errors.py."""
 
-import io
 import math
 import tempfile
 import time
 
 from pytype import metrics
+from six import moves
 
 import unittest
 
@@ -63,24 +63,21 @@ class MetricsTest(unittest.TestCase):
     # Create a counter, increment it, and dump it.
     c1 = metrics.Counter("foo")
     c1.inc(1)
-    dump = io.StringIO("")
-    metrics.dump_all([c1], dump)
+    dump = metrics.dump([c1], encoding=None)
     # Reset metrics, merge from dump, which will create a new metric.
     metrics._prepare_for_test()
     self.assertFalse(metrics._registered_metrics)
-    dump.seek(0)
-    metrics.merge_from_file(dump)
+    metrics.merge_from_file(moves.cStringIO(dump))
     m = metrics._registered_metrics["foo"]
     self.assertEqual(1, m._total)
     # Merge again, this time it will merge data into the existing metric.
-    dump.seek(0)
-    metrics.merge_from_file(dump)
+    metrics.merge_from_file(moves.cStringIO(dump))
     self.assertEqual(2, m._total)
     # It's an error to merge an incompatible type.
     metrics._prepare_for_test()
     _ = metrics.MapCounter("foo")
-    dump.seek(0)
-    self.assertRaises(TypeError, metrics.merge_from_file, dump)
+    self.assertRaises(TypeError, metrics.merge_from_file,
+                      moves.cStringIO(dump))
 
   def test_get_metric(self):
     c1 = metrics.get_metric("foo", metrics.Counter)
@@ -303,7 +300,7 @@ class MetricsContextTest(unittest.TestCase):
         self._counter.inc()
       self.assertEqual(1, self._counter._total)
       with open(out.name) as f:
-        dumped = metrics.load_all(f)
+        dumped = metrics.load(f)
         self.assertEqual(len(dumped), 1)
         self.assertEqual("foo", dumped[0].name)
         self.assertEqual("foo: 1", str(dumped[0]))

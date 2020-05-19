@@ -1,5 +1,3 @@
-# Lint as: python3
-
 """Classes for instrumenting code to collect various metrics.
 
 Instrumentation consists of creating the metric and then updating it.
@@ -20,58 +18,18 @@ def bar(n):
   _my_counter.inc(n)  # calls to bar() count as n units.
 """
 
-import json
 import math
 import re
 import sys
 import time
-import tracemalloc
 
-import six
+import yaml
 
-
-# Metric serialization/deserialization code, taking advantage of the fact that
-# all instance vars of metrics are things that json can serialize, so we don't
-# need to write custom JsonEncoder and JsonDecoder classes per Metric subclass.
-
-# Register metric types for deserialization
-_METRIC_TYPES = {}
-
-
-class _RegistryMeta(type):
-  """Metaclass that registers subclasses in _METRIC_TYPES."""
-
-  def __new__(cls, name, bases, class_dict):
-    subcls = super().__new__(cls, name, bases, class_dict)
-    _METRIC_TYPES[subcls.__name__] = subcls
-    return subcls
-
-
-def _deserialize(typ, payload):
-  """Construct a Metric from a typename and payload loaded from json."""
-  if typ not in _METRIC_TYPES:
-    raise TypeError("Could not decode class %s" % typ)
-  cls = _METRIC_TYPES[typ]
-  out = cls(None)
-  out.__dict__.update(payload)
-  return out
-
-
-def _serialize(obj):
-  """Return a json-serializable form of object."""
-  return [obj.__class__.__name__, vars(obj)]
-
-
-def dump_all(objs, fp):
-  """Write a list of metrics to a json file."""
-  json.dump([_serialize(x) for x in objs], fp)
-
-
-def load_all(fp):
-  """Read a list of metrics from a json file."""
-  metrics = json.load(fp)
-  return [_deserialize(*x) for x in metrics]
-
+# TODO(tsudol): Not needed once pytype is ported to Python 3.
+try:
+  import tracemalloc  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
+except ImportError:
+  tracemalloc = None
 
 # TODO(dbaum): Investigate mechanisms to ensure that counter variable names
 # match metric names.
@@ -81,10 +39,16 @@ _METRIC_NAME_RE = re.compile(r"^[a-zA-Z_]\w+$")
 _registered_metrics = {}  # Map from metric name to Metric object.
 _enabled = False  # True iff metrics should be collected.
 
-
-def _validate_metric_name(name):
-  if _METRIC_NAME_RE.match(name) is None:
-    raise ValueError("Illegal metric name: %s" % name)
+# pyyaml 4+ switched to using safe dump/load methods by default, which does not
+# work with our classes. The danger_* methods were provided as a fallback.
+try:
+  # pytype: disable=module-attr
+  dump = yaml.danger_dump
+  load = yaml.danger_load
+  # pytype: enable=module-attr
+except AttributeError:
+  dump = yaml.dump
+  load = yaml.load
 
 
 def _prepare_for_test(enabled=True):
@@ -134,10 +98,9 @@ def get_report():
 
 def merge_from_file(metrics_file):
   """Merge metrics recorded in another file into the current metrics."""
-  for metric in load_all(metrics_file):
+  for metric in load(metrics_file):
     existing = _registered_metrics.get(metric.name)
     if existing is None:
-      _validate_metric_name(metric.name)
       _registered_metrics[metric.name] = metric
     else:
       if type(metric) != type(existing):  # pylint: disable=unidiomatic-typecheck
@@ -145,18 +108,13 @@ def merge_from_file(metrics_file):
       existing._merge(metric)  # pylint: disable=protected-access
 
 
-@six.add_metaclass(_RegistryMeta)
 class Metric(object):
   """Abstract base class for metrics."""
 
   def __init__(self, name):
     """Initialize the metric and register it under the specified name."""
-    if name is None:
-      # We do not want to register this metric (e.g. we are deserializing a
-      # metric from file and need to merge it into the existing metric with the
-      # same name.)
-      return
-    _validate_metric_name(name)
+    if _METRIC_NAME_RE.match(name) is None:
+      raise ValueError("Illegal metric name: %s" % name)
     if name in _registered_metrics:
       raise ValueError("Metric %s has already been defined." % name)
     self._name = name
@@ -167,7 +125,7 @@ class Metric(object):
     return self._name
 
   def _summary(self):
-    """Return a string summarizing the value of the metric."""
+    """Return a string sumamrizing the value of the metric."""
     raise NotImplementedError
 
   def _merge(self, other):
@@ -383,7 +341,7 @@ class Snapshot(Metric):
     snap = tracemalloc.take_snapshot()
     # Store the top self.count memory consumers by self.groupby
     # We can't just store the list of statistics though! Statistic.__eq__
-    # doesn't take None into account during comparisons, and json will compare
+    # doesn't take None into account during comparisons, and yaml will compare
     # it to None when trying to process it, causing an error. So, store it as a
     # string instead.
     self.snapshots.append("%s:\n%s" % (where, "\n".join(
@@ -428,4 +386,4 @@ class MetricsContext(object):
     _enabled = self._old_enabled
     if self._output_path:
       with open(self._output_path, "w") as f:
-        dump_all(_registered_metrics.values(), f)
+        dump(list(_registered_metrics.values()), f)
