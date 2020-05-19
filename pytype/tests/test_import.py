@@ -561,7 +561,7 @@ class ImportTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       os = ...  # type: module
       class Foo(object):
-        def killpg(pgid: int, sig: int) -> None
+        def killpg(__pgid: int, __signal: int) -> None
     """)
 
   def test_match_against_imported(self):
