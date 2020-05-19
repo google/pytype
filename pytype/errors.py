@@ -1013,8 +1013,12 @@ class ErrorLog(ErrorLogBase):
     if len(binding.variable.bindings) > 1:
       # Joining the printed types rather than merging them before printing
       # ensures that we print all of the options when 'Any' is among them.
-      details += "\nIn assignment of type: %s" % self._join_printed_types(
-          self._print_as_actual_type(v) for v in binding.variable.data)
+      # We don't need to print this if there is only 1 unique type.
+      print_types = set(self._print_as_actual_type(v)
+                        for v in binding.variable.data)
+      if len(print_types) > 1:
+        details += "\nIn assignment of type: %s" % self._join_printed_types(
+            print_types)
     suffix = "" if name is None else " for " + name
     err_msg = "Type annotation%s does not match type of assignment" % suffix
     self.error(stack, err_msg, details=details)

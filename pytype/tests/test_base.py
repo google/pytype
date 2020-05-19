@@ -392,7 +392,8 @@ class BaseTest(unittest.TestCase):
     unit.Visit(visitors.VerifyVisitor())
     if report_errors and errorlog:
       errorlog.print_to_stderr()
-      self.fail("Inferencer found %d errors" % len(errorlog))
+      self.fail(
+          "Inferencer found {} errors:\n{}".format(len(errorlog), errorlog))
     return unit, builtins_pytd
 
   def assertTypesMatchPytd(self, ty, pytd_src):

@@ -1182,9 +1182,11 @@ class _Parser(object):
     # perhaps it should be a ParseError.
     parents = [p for p in parents if not isinstance(p, pytd.NothingType)]
     methods = _merge_method_signatures(methods)
-    # Ensure that old style classes inherit from classobj.
     if not parents and class_name not in ["classobj", "object"]:
-      parents = (pytd.NamedType("classobj"),)
+      # A parent-less class inherits from classobj in Python 2 and from object
+      # in Python 3. typeshed assumes the Python 3 behavior for all stubs, so we
+      # do the same here.
+      parents = (pytd.NamedType("object"),)
     return pytd.Class(name=class_name, metaclass=metaclass,
                       parents=tuple(parents),
                       methods=tuple(methods),

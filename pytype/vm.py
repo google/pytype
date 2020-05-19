@@ -607,8 +607,13 @@ class VirtualMachine(object):
     # Flatten Unions in the bases
     bases = [self._process_base_class(node, base) for base in bases]
     if not bases:
-      # Old style class.
-      bases = [self.convert.oldstyleclass_type.to_variable(self.root_cfg_node)]
+      # A parent-less class inherits from classobj in Python 2 and from object
+      # in Python 3.
+      if self.PY2:
+        base = self.convert.oldstyleclass_type
+      else:
+        base = self.convert.object_type
+      bases = [base.to_variable(self.root_cfg_node)]
     if (isinstance(class_dict, abstract.Unsolvable) or
         not isinstance(class_dict, mixin.PythonConstant)):
       # An unsolvable appears here if the vm hit maximum depth and gave up on
@@ -2172,12 +2177,8 @@ class VirtualMachine(object):
     """Implement obj[subscr] = val."""
     state, (val, obj, subscr) = state.popn(3)
     state = state.forward_cfg_node()
-    try:
-      # Check whether obj is the __annotations__ dict.
-      abstract_utils.get_atomic_value(obj, abstract.AnnotationsDict)
-    except abstract_utils.ConversionError:
-      pass
-    else:
+    # Check whether obj is the __annotations__ dict.
+    if len(obj.data) == 1 and isinstance(obj.data[0], abstract.AnnotationsDict):
       try:
         name = abstract_utils.get_atomic_python_constant(
             subscr, six.string_types)

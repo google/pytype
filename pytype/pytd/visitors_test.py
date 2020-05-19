@@ -166,8 +166,8 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     tree = self.Parse(src)
     data = tree.Visit(visitors.ExtractSuperClassesByName())
-    six.assertCountEqual(self, ("classobj",), data["A"])
-    six.assertCountEqual(self, ("classobj",), data["B"])
+    six.assertCountEqual(self, ("object",), data["A"])
+    six.assertCountEqual(self, ("object",), data["B"])
     six.assertCountEqual(self, ("A",), data["C"])
     six.assertCountEqual(self, ("A", "B"), data["D"])
     six.assertCountEqual(self, ("A", "C", "D"), data["E"])
@@ -212,7 +212,7 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_find_unknown_visitor(self):
     src = textwrap.dedent("""
-        class classobj:
+        class object:
           pass
         class `~unknown1`():
           pass
@@ -344,7 +344,7 @@ class TestVisitors(parser_test_base.ParserTest):
     ast2 = ast2.Visit(visitors.LookupExternalTypes(
         {"foo": ast1, "bar": ast2}, self_name="bar"))
     self.assertMultiLineEqual(pytd_utils.Print(ast2), textwrap.dedent("""
-      class bar.A(object):
+      class bar.A:
           x: int
     """).strip())
 
@@ -953,7 +953,7 @@ class TestVisitors(parser_test_base.ParserTest):
 
       _T0 = TypeVar('_T0')
 
-      class `TypeVar`(object): ...
+      class `TypeVar`: ...
 
       def f(x: _T0) -> _T0: ...""").strip())
 
@@ -1007,7 +1007,7 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     self.assertMultiLineEqual(pytd_utils.Print(self.Parse(src)),
                               textwrap.dedent("""
-      class A(object):
+      class A:
           def __new__(cls) -> A: ...
     """).strip())
 

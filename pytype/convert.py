@@ -624,6 +624,12 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           isinstance(pyval.type, pytd.AnythingType)):
       # We allow "X = ... # type: Any" to declare X as a type.
       return self.unsolvable
+    elif (isinstance(pyval, pytd.Constant) and
+          isinstance(pyval.type, pytd.GenericType) and
+          pyval.type.base_type.name == "__builtin__.type"):
+      # `X: Type[other_mod.X]` is equivalent to `X = other_mod.X`.
+      param, = pyval.type.parameters
+      return self.constant_to_value(param, subst, self.vm.root_cfg_node)
     elif isinstance(pyval, pytd.FunctionType):
       return self.constant_to_value(
           pyval.function, subst, self.vm.root_cfg_node)
@@ -736,7 +742,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           return self.unsolvable
         base = actual.cls
       else:
-        assert isinstance(pyval.base_type, pytd.ClassType)
+        assert isinstance(pyval.base_type, pytd.ClassType), pyval
         base = pyval.base_type.cls
       assert isinstance(base, pytd.Class), base
       base_cls = self.constant_to_value(

@@ -222,7 +222,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       except NotImplementedError:
         return pytd.NamedType("typing.Callable")
       if len(signatures) == 1:
-        val = self.signature_to_callable(signatures[0], self.vm)
+        val = self.signature_to_callable(signatures[0])
         if not isinstance(v, abstract.PYTD_FUNCTION_TYPES) or not val.formal:
           # This is a workaround to make sure we don't put unexpected type
           # parameters in call traces.
@@ -275,37 +275,36 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     else:
       raise NotImplementedError(v.__class__.__name__)
 
-  def signature_to_callable(self, sig, vm):
+  def signature_to_callable(self, sig):
     """Converts a function.Signature object into a callable object.
 
     Args:
       sig: The signature to convert.
-      vm: The vm instance.
 
     Returns:
       An abstract.CallableClass representing the signature, or an
       abstract.ParameterizedClass if the signature has a variable number of
       arguments.
     """
-    base_cls = vm.convert.function_type
-    ret = sig.annotations.get("return", vm.convert.unsolvable)
+    base_cls = self.vm.convert.function_type
+    ret = sig.annotations.get("return", self.vm.convert.unsolvable)
     if self._detailed or (
         sig.mandatory_param_count() == sig.maximum_param_count()):
       # If self._detailed is false, we throw away the argument types if the
       # function takes a variable number of arguments, which is correct for pyi
       # generation but undesirable for, say, error message printing.
-      args = [sig.annotations.get(name, vm.convert.unsolvable)
+      args = [sig.annotations.get(name, self.vm.convert.unsolvable)
               for name in sig.param_names]
-      params = {abstract_utils.ARGS: vm.merge_values(args),
+      params = {abstract_utils.ARGS: self.vm.merge_values(args),
                 abstract_utils.RET: ret}
       params.update(enumerate(args))
-      return abstract.CallableClass(base_cls, params, vm)
+      return abstract.CallableClass(base_cls, params, self.vm)
     else:
       # The only way to indicate a variable number of arguments in a Callable
       # is to not specify argument types at all.
-      params = {abstract_utils.ARGS: vm.convert.unsolvable,
+      params = {abstract_utils.ARGS: self.vm.convert.unsolvable,
                 abstract_utils.RET: ret}
-      return abstract.ParameterizedClass(base_cls, params, vm)
+      return abstract.ParameterizedClass(base_cls, params, self.vm)
 
   def value_to_pytd_def(self, node, v, name):
     """Get a PyTD definition for this object.

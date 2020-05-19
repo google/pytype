@@ -107,7 +107,7 @@ class PytdVisitorsTest(parser_test_base.ParserTest):
 
   def test_superclasses(self):
     src = textwrap.dedent("""
-      class classobj:
+      class object:
           pass
       class A():
           pass
@@ -123,9 +123,9 @@ class PytdVisitorsTest(parser_test_base.ParserTest):
     ast = visitors.LookupClasses(self.Parse(src))
     data = ast.Visit(pytd_visitors.ExtractSuperClasses())
     six.assertCountEqual(self,
-                         ["classobj"], [t.name for t in data[ast.Lookup("A")]])
+                         ["object"], [t.name for t in data[ast.Lookup("A")]])
     six.assertCountEqual(self,
-                         ["classobj"], [t.name for t in data[ast.Lookup("B")]])
+                         ["object"], [t.name for t in data[ast.Lookup("B")]])
     six.assertCountEqual(self, ["A"], [t.name for t in data[ast.Lookup("C")]])
     six.assertCountEqual(self,
                          ["A", "B"], [t.name for t in data[ast.Lookup("D")]])

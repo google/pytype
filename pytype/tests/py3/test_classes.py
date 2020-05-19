@@ -421,5 +421,26 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"abc\.ABCMeta.*Foo"})
 
+  def test_new_no_parents(self):
+    self.Check("""
+      class Foo:
+        def __new__(cls, x):
+          self = super().__new__(cls)
+          self.x = x
+          return self
+      Foo(0)
+    """)
+
+  def test_new_pyi_no_parents(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class Foo:
+          def __new__(cls, x) -> Foo: ...
+      """)
+      self.Check("""
+        import foo
+        foo.Foo(0)
+      """, pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")
