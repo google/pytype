@@ -28,6 +28,11 @@ _COMPATIBLE_BUILTINS = [
 ]
 
 
+def _is_callback_protocol(typ):
+  return (isinstance(typ, mixin.Class) and typ.is_protocol and
+          "__call__" in typ.protocol_methods)
+
+
 class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
   """Matcher for abstract values."""
 
@@ -376,7 +381,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       elif other_type.full_name in [
           "__builtin__.type", "__builtin__.object", "typing.Callable"]:
         return subst
-      elif other_type.is_protocol and "__call__" in other_type.protocol_methods:
+      elif _is_callback_protocol(other_type):
         return self._match_type_against_callback_protocol(
             left, other_type, subst, node, view)
       elif left.cls:
@@ -406,7 +411,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           if new_subst is not None:
             return new_subst
         return None
-      elif other_type.is_protocol and "__call__" in other_type.protocol_methods:
+      elif _is_callback_protocol(other_type):
         return self._match_type_against_callback_protocol(
             left, other_type, subst, node, view)
       else:
