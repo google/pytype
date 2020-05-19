@@ -211,6 +211,7 @@ class Cast(abstract.PyTDFunction):
 
 
 class NoReturn(abstract.AtomicAbstractValue):
+  """Implements typing.NoReturn as a singleton."""
 
   def __init__(self, vm):
     super(NoReturn, self).__init__("NoReturn", vm)
@@ -220,6 +221,15 @@ class NoReturn(abstract.AtomicAbstractValue):
 
   def compute_mro(self):
     return self.default_mro()
+
+  def call(self, node, func, args, alias_map=None):
+    del func, args
+    # Since this is a singleton, return ourself. (e.g. abstract.Unsolvable)
+    return node, self.to_variable(node)
+
+  def instantiate(self, node, container=None):
+    # Return ourself.
+    return self.to_variable(node)
 
 
 def build_any(name, vm):
