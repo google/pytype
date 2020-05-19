@@ -1179,6 +1179,13 @@ class AbstractTest(AbstractTestBase):
         self._vm.root_cfg_node, type_param, [{abstract_utils.K: subst_value}])
     self.assertEqual(cls, subbed_cls)
 
+  def test_singleton(self):
+    self.assertIs(abstract.Unsolvable(self._vm), abstract.Unsolvable(self._vm))
+
+  def test_singleton_subclass(self):
+    self.assertIs(abstract.Empty(self._vm), abstract.Empty(self._vm))
+    self.assertIsNot(abstract.Deleted(self._vm), abstract.Empty(self._vm))
+
 
 if __name__ == "__main__":
   unittest.main()
