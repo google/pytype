@@ -1,19 +1,38 @@
-os: osx
 # https://docs.travis-ci.com/user/reference/osx
+# https://github.com/simplejson/simplejson/blob/master/.travis.yml
+# https://github.com/travis-ci/travis-ci/issues/9929
+# https://docs.travis-ci.com/user/languages/python/
+# https://github.com/travis-ci/travis-ci/issues/2312
+
+os: osx
+language: c++
 
 git:
   submodules: true
 
-language: python
+cache:
+  directories:
+  - "$HOME/.cache/pip"
+  - "$HOME/.pyenv"
 
 matrix:
   include:
-    - python: "3.5"
-    - python: "3.6"
-    - python: "3.7"
+  - name: Python 3.5
+    env: PYENV_VERSION=3.5.9
+  - name: Python 3.6
+    env: PYENV_VERSION=3.6.10
+  - name: Python 3.7
+    env: PYENV_VERSION=3.7.7
+  - name: Python 3.8
+    env: PYENV_VERSION=3.5.9
 
-before_install:
-  # TODO: need xcode-select --install?
+install:
+  - eval "$(pyenv init -)"
+  - export PYENV_ROOT="$HOME/.pyenv"
+  - export PATH="$PYENV_ROOT/bin:$PATH"
+  - pyenv --version
+  - pyenv install -s $PYENV_VERSION
+  - python -V
   - brew install -v bison
   - brew install -v cmake
   - brew install -v ninja
