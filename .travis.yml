@@ -46,3 +46,6 @@ install:
 
 script:
   - CMAKE_PREFIX_PATH="$(brew --prefix bison)" python setup.py bdist_wheel
+
+after_success:
+  - ls -1 dist/
