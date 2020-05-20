@@ -1,5 +1,5 @@
-os: linux
-dist: xenial  # Python3.7 virtualenv is available only on Travis Xenial VMs.
+os: osx
+# https://docs.travis-ci.com/user/reference/osx
 
 git:
   submodules: true
@@ -11,37 +11,13 @@ matrix:
     - python: "3.5"
     - python: "3.6"
     - python: "3.7"
-    - python: "3.8"
-    - python: "nightly"
-  allow_failures:
-    - python: "3.8"
-    - python: "nightly"
 
 before_install:
-  - sudo apt-get install g++
-  - sudo apt-get install cmake
-  - sudo apt-get install bison
-  - sudo apt-get install flex
-  - sudo apt-get install ninja-build
+  # TODO: need xcode-select --install?
+  - brew install -v bison
+  - brew install -v cmake
+  - brew install -v ninja
+  - python -m pip install -U wheel setuptools
 
-# We need to install python3.6 and python3.7 packages from a third party
-# repo as they are not available on standard Ubuntu Xenial.
-addons:
-  apt:
-    sources:
-    - sourceline: 'ppa:deadsnakes/ppa'
-    packages:
-    - python3.6  # To compile targets with a 3.6 compiler.
-    - python3.6-dev  # To build host extension modules under 3.6
-    - python3.7-dev  # To build host extension modules under 3.7
-
-install:
-  - pip install attrs
-  - pip install importlab
-  - pip install pylint
-  - pip install pyyaml
-  - pip install six
-  - pip install typed_ast
-
-script: 
-  - python build_scripts/travis_script.py
+script:
+  - CMAKE_PREFIX_PATH="$(brew --prefix bison)" python setup.py bdist_wheel
