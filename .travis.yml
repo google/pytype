@@ -9,6 +9,7 @@ language: c++
 
 git:
   submodules: true
+  depth: 1
 
 cache:
   directories:
@@ -36,9 +37,9 @@ install:
   - pyenv install -s $PYENV_VERSION
   - pyenv local $PYENV_VERSION
   - python -V
-  - brew install -v bison
-  - brew install -v cmake
-  - brew install -v ninja
+  - brew install -v bison || brew upgrade bison
+  - brew install -v cmake || brew upgrade cmake
+  - brew install -v ninja || brew upgrade ninja
   - python -m pip install -U wheel setuptools
 
 script:
