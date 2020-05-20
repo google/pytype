@@ -1252,6 +1252,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       def make_base(x) -> type: ...
       class BX(list):
         x = ...  # type: int
+        def __init__(self) -> None: ...
     """)
 
   def test_subclass_bases_overlap(self):

@@ -780,6 +780,10 @@ class RemoveInheritedMethods(visitors.Visitor):
             isinstance(sig.params[0].type, pytd.ClassType)):
           stripped_signatures[method.name] = (
               sig.Replace(params=sig.params[1:]), method.is_abstract)
+        else:
+          # Add a signature that will never match anything, so that a generic
+          # class overriding a method will have that preserved in the pytd
+          stripped_signatures[method.name] = object()
     return stripped_signatures
 
   def _FindNameAndSig(self, classes, name, sig):
