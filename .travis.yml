@@ -32,6 +32,7 @@ install:
   - export PATH="$PYENV_ROOT/bin:$PATH"
   - pyenv --version
   - pyenv install -s $PYENV_VERSION
+  - pyenv local $PYENV_VERSION
   - python -V
   - brew install -v bison
   - brew install -v cmake
