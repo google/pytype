@@ -24,7 +24,7 @@ matrix:
   - name: Python 3.7
     env: PYENV_VERSION=3.7.7
   - name: Python 3.8
-    env: PYENV_VERSION=3.5.9
+    env: PYENV_VERSION=3.8.3
 
 install:
   - eval "$(pyenv init -)"
