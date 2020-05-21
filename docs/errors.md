@@ -63,7 +63,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: mdemello, at: 2019-09-19T16:24-07:00 -->
+<!-- Added by: mdemello, at: 2020-05-21T16:31-07:00 -->
 
 <!--te-->
 
@@ -143,6 +143,16 @@ def f(x) -> int:
     return 42
   else:
     return None  # bad-return-type
+```
+
+NOTE: For the corner case of an empty function whose body is a docstring, use
+the block form of `disable` to suppress the error:
+
+```python
+# pytype: disable=bad-return-type
+def f() -> int:
+  """Override in subclasses and return int."""
+# pytype: enable=bad-return-type
 ```
 
 ## bad-slots

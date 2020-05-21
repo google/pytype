@@ -154,7 +154,7 @@ positional arguments:
 Common options:
 
 * `-V, --python-version`: Python version (major.minor) of the target code.
-  Defaults to `3.6`.
+  Defaults to the version that pytype is running under.
 * `-o, --output`: The directory into which all pytype output goes, including
   generated .pyi files. Defaults to `.pytype`.
 * `-d, --disable`. Comma or space separated list of error names to ignore.
