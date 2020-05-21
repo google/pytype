@@ -68,6 +68,7 @@ class QuickTest(test_base.TargetIndependentTest):
       from typing import Any
       class A(object):
         x = ...  # type: int
+        def __init__(self) -> None: ...
         def real_init(self) -> None
         def f(self) -> int
       def f() -> Any

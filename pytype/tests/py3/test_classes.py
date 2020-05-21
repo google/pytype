@@ -189,6 +189,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         bar: int
+        def __init__(self) -> None: ...
     """)
 
   def test_generic_super(self):
@@ -246,7 +247,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       class A(object):
-        pass
+        def __init__(self) -> None: ...
       x = ...  # type: str
     """)
 
@@ -289,6 +290,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
       class A(unittest.case.TestCase):
           x = ...  # type: int
           def fooTest(self) -> int: ...
+          def setUp(self) -> None : ...
     """)
 
   def test_init_inherited_test_class_in_setup(self):
@@ -306,6 +308,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
       unittest = ...  # type: module
       class A(unittest.case.TestCase):
           x = ...  # type: int
+          def setUp(self) -> None : ...
       class B(A):
           x = ...  # type: int
           def fooTest(self) -> int: ...
@@ -330,6 +333,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
           foo = ...  # type: str
           def __init__(self, foo: str) -> NoneType
           def fooTest(self) -> int: ...
+          def setUp(self) -> None : ...
     """)
 
   def test_set_metaclass(self):

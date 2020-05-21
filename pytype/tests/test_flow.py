@@ -293,6 +293,7 @@ class FlowTest(test_base.TargetIndependentTest):
       from typing import Any
       class Foo(object):
         _node = ...  # type: Any
+        def __init__(self) -> None: ...
         def bar(self) -> NoneType: ...
     """)
 

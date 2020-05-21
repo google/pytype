@@ -187,6 +187,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
       class Foo(object):
         foo = ...  # type: Union[int, str]
         bar = ...  # type: Any
+        def __init__(self) -> None: ...
       def f() -> Tuple[int, str]
     """)
 

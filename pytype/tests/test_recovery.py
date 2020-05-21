@@ -96,6 +96,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
       from typing import Any
       class A(object):
         foo = ...  # type: Any
+        def __init__(self) -> None: ...
     """)
 
   def test_method_with_unknown_decorator(self):

@@ -375,6 +375,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
       array = ...  # type: module
       class Foo(object):
         bar = ...  # type: array.array[int]
+        def __init__(self) -> None: ...
     """)
 
   def test_inherit_from_builtin(self):

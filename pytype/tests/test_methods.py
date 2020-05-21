@@ -99,6 +99,7 @@ class MethodsTest(test_base.TargetIndependentTest):
       y = ...  # type: int
       class A(object):
         x = ...  # type: float
+        def __init__(self) -> None : ...
         def get_x(self) -> Union[float, int]
         def set_x(self, x: float) -> None
     """)
@@ -946,6 +947,7 @@ class MethodsTest(test_base.TargetIndependentTest):
         name = ...  # type: str
         nickname = ...  # type: int
         def __new__(cls: Type[_TFoo]) -> _TFoo
+        def __init__(self) -> None : ...
     """)
 
   def test_variable_product_complexity_limit(self):

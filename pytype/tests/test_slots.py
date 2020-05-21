@@ -21,6 +21,7 @@ class SlotsTest(test_base.TargetIndependentTest):
         foo = ...  # type: int
         bar = ...  # type: int
         baz = ...  # type: int
+        def __init__(self) -> None: ...
     """)
 
   def test_ambiguous_slot(self):
@@ -33,6 +34,7 @@ class SlotsTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         foo = ...  # type: int
+        def __init__(self) -> None: ...
     """)
 
   def test_ambiguous_slot_entry(self):
@@ -85,7 +87,7 @@ class SlotsTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
-        pass
+        def __init__(self) -> None: ...
     """)
 
   def test_slot_as_late_class_attribute(self):

@@ -20,7 +20,7 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class A(object):
-        pass
+        def __init__(self) -> None: ...
       x = ...  # type: Any
     """)
 
@@ -39,6 +39,7 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
       class A(unittest.TestCase):
           x = ...  # type: int
           def fooTest(self) -> int: ...
+          def setUp(self) -> None: ...
     """)
 
   def test_init_inherited_test_class_in_setup(self):
@@ -56,6 +57,7 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
       unittest = ...  # type: module
       class A(unittest.TestCase):
           x = ...  # type: int
+          def setUp(self) -> None: ...
       class B(A):
           x = ...  # type: int
           def fooTest(self) -> int: ...

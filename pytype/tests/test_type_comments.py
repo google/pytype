@@ -293,6 +293,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         s = ...  # type: str
+        def __init__(self) -> None: ...
     """)
 
   def test_global_comment(self):
@@ -384,6 +385,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       class A(object):
         x = ...  # type: int
+        def __init__(self) -> None: ...
       a = ...  # type: A
       x = ...  # type: int
     """)
@@ -417,6 +419,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       from typing import Any
       class A(object):
         x = ...  # type: int
+        def __init__(self) -> None: ...
         def f(self) -> int
       a = ...  # type: A
       b = ...  # type: Any
@@ -434,6 +437,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       class A(object):
         a: A
         x: int
+        def __init__(self) -> None: ...
     """)
 
   def test_use_forward_reference(self):
@@ -448,6 +452,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       from typing import Any
       class A(object):
         x = ...  # type: int
+        def __init__(self) -> None: ...
       a = ...  # type: A
       x = ...  # type: Any
     """)

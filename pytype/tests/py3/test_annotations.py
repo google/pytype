@@ -503,6 +503,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         # We expect to *not* see _analyzed_bar here, because it's an attribute
         # initialized by a function we're not analyzing.
         _executed_init = ...  # type: bool
+        def __init__(self) -> None: ...
         def bar(self, x: int) -> None: ...
       def baz(x: int) -> None: ...
     """)
@@ -754,6 +755,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     self.assertTypesMatchPytd(ty, """
       class A(object):
         x = ...  # type: int
+        def __init__(self) -> None: ...
         @staticmethod
         def New() -> A: ...
       x = ...  # type: int
@@ -773,6 +775,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     self.assertTypesMatchPytd(ty, """
       class A(object):
         x = ...  # type: int
+        def __init__(self) -> None: ...
         @staticmethod
         def New() -> A: ...
       def f() -> int: ...
@@ -812,6 +815,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 
       class X(object):
         foo = ...  # type: int
+        def __init__(self) -> None: ...
     """)
 
   def test_change_annotated_arg(self):

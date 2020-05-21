@@ -29,7 +29,6 @@ import logging
 from pytype import utils
 from pytype.pytd import abc_hierarchy
 from pytype.pytd import booleq
-from pytype.pytd import mro
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import type_match
@@ -736,108 +735,6 @@ class AddInheritedMethods(visitors.Visitor):
                        constants=tuple(new_constants))
 
 
-class RemoveInheritedMethods(visitors.Visitor):
-  """Removes methods from classes if they also exist in their superclass.
-
-  E.g. this changes
-        class A:
-            def f(self, y: int) -> bool
-        class B(A):
-            def f(self, y: int) -> bool
-  to
-        class A:
-            def f(self, y: int) -> bool
-        class B(A):
-            pass
-  .
-  """
-
-  def __init__(self):
-    super(RemoveInheritedMethods, self).__init__()
-    self.class_to_stripped_signatures = {}
-
-  def _StrippedSignatures(self, t):
-    """Given a class, list method name + signature without "self".
-
-    Args:
-      t: A pytd.Type.
-
-    Returns:
-      A set of name + signature tuples, with the self parameter of the
-      signature removed.
-    """
-    if not isinstance(t, pytd.ClassType):
-      # For union types, generic types etc., inheritance is more complicated.
-      # Be conservative and default to not removing methods inherited from
-      # those.
-      return {}
-
-    stripped_signatures = {}
-    for method in t.cls.methods:
-      for sig in method.signatures:
-        if (sig.params and
-            sig.params[0].name == "self" and
-            isinstance(sig.params[0].type, pytd.ClassType)):
-          stripped_signatures[method.name] = (
-              sig.Replace(params=sig.params[1:]), method.is_abstract)
-        else:
-          # Add a signature that will never match anything, so that a generic
-          # class overriding a method will have that preserved in the pytd
-          stripped_signatures[method.name] = object()
-    return stripped_signatures
-
-  def _FindNameAndSig(self, classes, name, sig):
-    """Find a tuple(name, signature) in all methods of a type/class."""
-    if classes:
-      t = classes[0]
-      classes = classes[1:]
-      if t not in self.class_to_stripped_signatures:
-        self.class_to_stripped_signatures[t] = self._StrippedSignatures(t)
-      if name in self.class_to_stripped_signatures[t]:
-        return sig == self.class_to_stripped_signatures[t][name]
-      return self._FindNameAndSig(classes, name, sig)
-    return False
-
-  def _MaybeRemoveSignature(self, name, sig, is_abstract):
-    """Visit a Signature and return None if we can remove it."""
-    if (not sig.params or
-        sig.params[0].name != "self" or
-        not isinstance(sig.params[0].type, pytd.ClassType)):
-      return sig  # Not a method
-    cls = sig.params[0].type.cls
-    if cls is None:
-      # TODO(kramm): Remove once pytype stops generating ClassType(name, None).
-      return sig
-    try:
-      if self._FindNameAndSig(
-          mro.GetBasesInMRO(cls), name,
-          (sig.Replace(params=sig.params[1:]), is_abstract)):
-        return None  # remove (see VisitFunction)
-    except mro.MROError:
-      return sig
-    return sig
-
-  def _MaybeDeleteFunction(self, f):
-    """Visit a Function and return None if we can remove it."""
-    signatures = tuple(self._MaybeRemoveSignature(f.name, sig, f.is_abstract)
-                       for sig in f.signatures)
-    if any(signatures):
-      if signatures.count(None):
-        return f.Replace(
-            signatures=tuple(s for s in signatures if s is not None))
-      else:
-        return f  # unchanged
-    else:
-      return None  # delete function
-
-  def VisitClass(self, cls):
-    methods = tuple(self._MaybeDeleteFunction(m) for m in cls.methods)
-    if methods.count(None):
-      return cls.Replace(methods=tuple(m for m in methods if m is not None))
-    else:
-      return cls  # unchanged
-
-
 class PullInMethodClasses(visitors.Visitor):
   """Simplifies classes with only a __call__ function to just a method.
 
@@ -1185,6 +1082,5 @@ def Optimize(node,
   node = node.Visit(SimplifyContainers())
   if builtins and can_do_lookup:
     node = visitors.LookupClasses(node, builtins, ignore_late_types=True)
-    node = node.Visit(RemoveInheritedMethods())
     node = node.Visit(RemoveRedundantSignatures(hierarchy))
   return node

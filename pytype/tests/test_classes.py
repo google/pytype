@@ -235,11 +235,13 @@ class ClassesTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
         class A(object):
           x = ...  # type: int
+          def __init__(self) -> None: ...
 
         class B(A):
           # TODO(kramm): optimize this out
           x = ...  # type: int
           def get_x(self) -> int
+          def __init__(self) -> None: ...
     """)
 
   def test_super_diamond(self):
@@ -361,6 +363,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       class Foo(object):
         _name = ...  # type: str
         name = ...  # type: Any
+        def __init__(self) -> None: ...
         def test(self) -> str: ...
     """)
 
@@ -379,6 +382,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
         _name = ...  # type: str
+        def __init__(self) -> None: ...
         def __get__(self, obj, objtype) -> str: ...
       class Bar(object):
         foo = ...  # type: str
@@ -404,6 +408,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       class Bar(object):
         _name = ...  # type: str
         foo = ...  # type: Any
+        def __init__(self) -> None: ...
         def test(self) -> str: ...
     """)
 
@@ -927,6 +932,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         attr = ...  # type: int
         instance_attr = ...  # type: int
         def __new__(cls) -> Any: ...
+        def __init__(self) -> None: ...
         def f(self) -> int: ...
     """)
 
@@ -944,6 +950,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       class Foo(object):
         instance_attr = ...  # type: str
         def __new__(cls) -> bool: ...
+        def __init__(self) -> None: ...
         def f(self) -> str: ...
     """)
 
@@ -964,6 +971,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       class Foo(object):
         instance_attr = ...  # type: str
         def __new__(cls) -> str or Foo
+        def __init__(self) -> None: ...
         def f(self) -> str
     """)
 
@@ -1235,6 +1243,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         a = ...  # type: int
         b = ...  # type: str
         c = ...  # type: str
+        def __init__(self) -> None: ...
         def bar(self, x) -> None: ...
         def baz(self) -> None: ...
     """)
@@ -1275,6 +1284,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       def make_b() -> type: ...
       class C(object):
         x = ...  # type: int
+        def __init__(self) -> None: ...
     """)
 
   def test_pyi_nested_class(self):
@@ -1359,6 +1369,7 @@ class ClassesTest(test_base.TargetIndependentTest):
         bar: Bar
       class Bar(object):
         x: int
+        def __init__(self) -> None: ...
       class Baz(Foo):
         def f(self) -> int: ...
     """)

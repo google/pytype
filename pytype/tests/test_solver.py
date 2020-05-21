@@ -20,6 +20,7 @@ class SolverTests(test_base.TargetIndependentTest):
     from typing import List, Tuple
     class Node(object):
       children = ...  # type: List[nothing, ...] or Tuple[()]
+      def __init__(self) -> None: ...
     """)
 
   def test_call(self):
@@ -252,6 +253,7 @@ class SolverTests(test_base.TargetIndependentTest):
       class Container(object):
         foo = ...  # type: List[List[int, ...], ...]
         bar = ...  # type: List[int, ...]
+        def __init__(self) -> None: ...
 
       container = ...  # type: Container
 

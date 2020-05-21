@@ -54,6 +54,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
       from typing import Any, Optional
       class Foo(object):
         x = ...  # type: Optional[str]
+        def __init__(self) -> None: ...
         def f(self) -> Any: ...
         def set_x(self) -> None: ...
     """)
@@ -377,6 +378,7 @@ class TestAttributes(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       class C(object):
         _x = ...  # type: int
+        def __init__(self) -> None: ...
         def foo(self) -> int
     """)
 
@@ -391,6 +393,7 @@ class TestAttributes(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       class C(object):
         x = ...  # type: int
+        def __init__(self) -> None: ...
         def foo(self) -> int
     """)
 
@@ -413,10 +416,12 @@ class TestAttributes(test_base.TargetIndependentTest):
       class A(object):
         b = ...  # type: B
         x = ...  # type: complex
+        def __init__(self) -> None: ...
         def set_on_b(self) -> NoneType
       class B(object):
         a = ...  # type: A
         x = ...  # type: int
+        def __init__(self) -> None: ...
         def set_on_a(self) -> NoneType
     """)
 
@@ -452,8 +457,11 @@ class TestAttributes(test_base.TargetIndependentTest):
           return object.__getattribute__(self, name)
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      class MyClass1(object): pass
-      class MyClass2(object): pass
+      from typing import Any
+      class MyClass1(object):
+        def __getattribute__(self, name) -> Any: ...
+      class MyClass2(object):
+        def __getattribute__(self, name) -> Any: ...
     """)
 
   def test_getattribute(self):
@@ -704,10 +712,12 @@ class TestAttributes(test_base.TargetIndependentTest):
       a = ...  # type: int
       x = ...  # type: Union[A, B]
       class A:
-          foo = ...  # type: int
+        foo = ...  # type: int
+        def __init__(self) -> None: ...
       class B:
-          bar = ...  # type: int
-          foo = ...  # type: int
+        bar = ...  # type: int
+        foo = ...  # type: int
+        def __init__(self) -> None: ...
     """)
 
   @test_base.skip("Needs vm._get_iter() to iterate over individual bindings.")
