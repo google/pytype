@@ -318,10 +318,14 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       return subst
     elif (isinstance(other_type, typing_overlay.NoReturn) or
           isinstance(left, typing_overlay.NoReturn)):
-      # `NoReturn` can only matches itself or `abstract.TypeParameter`.
+      # `NoReturn` can only matches itself, `Any`, or `abstract.TypeParameter`.
       # For the latter case, it will be used in byte code `STORE_ANNOTATION`
       # to store the `NoReturn` annotation in a dict.
-      return subst if left == other_type else None
+      if (left == other_type or isinstance(other_type, abstract.Unsolvable) or
+          isinstance(left, abstract.Unsolvable)):
+        return subst
+      else:
+        return None
     elif isinstance(other_type, mixin.Class):
       # Accumulate substitutions in "subst", or break in case of error:
       return self._match_type_against_type(left, other_type, subst, node, view)
