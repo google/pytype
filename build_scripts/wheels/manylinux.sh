@@ -1,0 +1,99 @@
+#!/bin/bash
+#
+# Use this like:
+# docker container run --rm -e PLAT=$PLAT -v "$(pwd)":/io <IMAGE> /io/build_scripts/manylinux.sh
+
+set -eux
+
+if [[ -z "$PLAT" ]]; then
+    # Early check, don't wait for -u to catch it later
+    echo "Specify non-empty PLAT variable" >&2
+    exit 1
+fi
+
+yum install -y gettext-devel python3-devel  # gettext is for flex
+
+CMAKE_VERSION='3.17.2'
+NINJA_VERSION='1.10.0'
+BISON_VERSION='3.6'
+FLEX_VERSION='2.6.4'
+
+untar() {
+    mkdir -pv "$1"
+    tar -C "$1" -xzvf "${1}.tar.gz" --strip-components=1
+    rm -vf "${1}.tar.gz"
+}
+
+# Install CMake
+pushd /usr/local/share
+if [[ "$(arch)" != "x86_64" ]]; then
+    echo "Only supported for x86_64 arch, not $(arch)" >&2
+    exit 1
+fi
+curl -sSL \
+    -o cmake.tar.gz \
+    "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz"
+untar cmake
+ln -s "$(pwd)/cmake/bin/cmake" /usr/local/bin/cmake
+
+# For other arch e.g. i686 (warning: this is *really* slow):
+#
+# yum install -y openssl-devel
+# curl -sSL \
+#     -o cmake.tar.gz \
+#     "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz"
+# untar cmake
+# pushd cmake
+# ./bootstrap && make && sudo make install
+
+# Install ninja/ninja-build (requires CMake)
+curl -sSL \
+    -o ninja.zip \
+    "https://github.com/ninja-build/ninja/releases/download/v${NINJA_VERSION}/ninja-linux.zip"
+unzip ninja.zip
+mv ninja /usr/local/bin/
+rm -vf ninja*
+ln -s /usr/local/bin/ninja /usr/local/bin/ninja-build
+
+TD="$(mktemp -d)"
+pushd "$TD" || exit 1
+
+# Install Flex
+curl -sSL \
+    -o flex.tar.gz \
+    "https://github.com/westes/flex/releases/download/v${FLEX_VERSION}/flex-${FLEX_VERSION}.tar.gz"
+untar flex
+pushd flex
+./autogen.sh && ./configure && make && make install
+dirs -c
+cd /io
+rm -rf "$TD"
+
+# Install GNU Bison
+curl -sSL \
+    -o bison.tar.gz \
+    "https://ftp.gnu.org/gnu/bison/bison-${BISON_VERSION}.tar.gz"
+untar bison
+pushd bison
+./configure && make && make install
+popd
+
+cmake --version
+ninja --version
+flex --version
+bison --version
+
+# Pytype supports CPython 3.5 thru 3.7
+rm -rvf linux-wheelhouse
+for PYBIN in /opt/python/cp3{5,6,7}*/bin; do
+    rm -rvf out/CMake* CMakeCache.txt cmake_install.cmake build.ninja rules.ninja
+    pyv="$(basename "$(dirname "$PYBIN")")"
+    "${PYBIN}/python" -m pip install -U wheel setuptools pip
+    "${PYBIN}/python" setup.py bdist_wheel -d linux-wheelhouse/ > "build-${pyv}.log"
+    echo "DONE: built initial wheel for $pyv"
+done
+
+for whl in linux-wheelhouse/*.whl; do
+    auditwheel repair "$whl" --plat "$PLAT" -w linux-wheelhouse/
+    rm -f "$whl"
+done

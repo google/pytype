@@ -4,9 +4,6 @@
 # https://docs.travis-ci.com/user/languages/python/
 # https://github.com/travis-ci/travis-ci/issues/2312
 
-os: osx
-language: c++
-
 git:
   submodules: true
   depth: 1
@@ -18,34 +15,43 @@ cache:
 
 matrix:
   include:
-  - name: Python 3.5
+  - name: MacOS Python 3.5
     env: PYENV_VERSION=3.5.9
-  - name: Python 3.6
+    os: osx
+    language: c++
+  - name: MacOS Python 3.6
     env: PYENV_VERSION=3.6.10
-  - name: Python 3.7
+    os: osx
+    language: c++
+  - name: MacOS Python 3.7
     env: PYENV_VERSION=3.7.7
-  - name: Python 3.8
+    os: osx
+    language: c++
+  - name: MacOS Python 3.8
     env: PYENV_VERSION=3.8.3
+    os: osx
+    language: c++
+  - name: manylinux2014-x86-64
+    sudo: required
+    services:
+    - docker
+    env: DOCKER_IMAGE=quay.io/pypa/manylinux2014_x86_64:latest
+         PLAT=manylinux2014_x86_64
   allow_failures:
-  - name: Python 3.8
+  - name: MacOS Python 3.8
 
 install:
-  - brew update
-  - brew upgrade pyenv
-  - eval "$(pyenv init -)"
-  - export PYENV_ROOT="$HOME/.pyenv"
-  - export PATH="$PYENV_ROOT/bin:$PATH"
-  - pyenv --version
-  - pyenv install -s $PYENV_VERSION
-  - pyenv local $PYENV_VERSION
-  - python -V
-  - brew install -v bison || brew upgrade bison
-  - brew install -v cmake || brew upgrade cmake
-  - brew install -v ninja || brew upgrade ninja
-  - python -m pip install -U wheel setuptools
+  - if [[ "$TRAVIS_OS_NAME" == 'linux' ]]; then
+      docker pull "$DOCKER_IMAGE" ;
+    fi
 
 script:
-  - CMAKE_PREFIX_PATH="$(brew --prefix bison)" python setup.py bdist_wheel
+  - if [[ "$TRAVIS_OS_NAME" == 'linux' ]]; then
+      docker container run --rm -e PLAT="$PLAT" -v "$(pwd)":/io $DOCKER_IMAGE /io/build_scripts/wheels/manylinux.sh ;
+    fi
+  - if [[ "$TRAVIS_OS_NAME" == 'osx' ]]; then
+      ./build_scripts/wheels/macos.sh ;
+    fi
 
 after_success:
-  - ls -1 dist/
+  - ls -1 {macos,linux}-wheelhouse/
