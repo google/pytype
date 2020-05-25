@@ -65,9 +65,7 @@ curl -sSL \
 untar flex
 pushd flex
 ./autogen.sh && ./configure && make && make install
-dirs -c
-cd /io
-rm -rf "$TD"
+popd
 
 # Install GNU Bison
 curl -sSL \
@@ -76,7 +74,10 @@ curl -sSL \
 untar bison
 pushd bison
 ./configure && make && make install
-popd
+
+cd /io
+dirs -c
+rm -rf "$TD"
 
 cmake --version
 ninja --version
