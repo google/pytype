@@ -36,16 +36,6 @@ curl -sSL \
 untar cmake
 ln -s "$(pwd)/cmake/bin/cmake" /usr/local/bin/cmake
 
-# For other arch e.g. i686 (warning: this is *really* slow):
-#
-# yum install -y openssl-devel
-# curl -sSL \
-#     -o cmake.tar.gz \
-#     "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}.tar.gz"
-# untar cmake
-# pushd cmake
-# ./bootstrap && make && sudo make install
-
 # Install ninja/ninja-build (requires CMake)
 curl -sSL \
     -o ninja.zip \
