@@ -421,9 +421,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       else:
         return None
     elif isinstance(left, dataclass_overlay.FieldInstance) and left.default:
-      default = self.vm.merge_values(left.default.data)
-      return self._match_type_against_type(
-          default, other_type, subst, node, view)
+      return self._match_all_bindings(
+          left.default, other_type, subst, node, view)
     elif isinstance(left, abstract.SimpleAbstractValue):
       return self._match_instance_against_type(
           left, other_type, subst, node, view)
@@ -567,13 +566,17 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
                              container=None):
     """Instantiate and match an abstract value."""
     instance = left.instantiate(node, container=container)
+    return self._match_all_bindings(instance, other_type, subst, node, view)
+
+  def _match_all_bindings(self, var, other_type, subst, node, view):
+    """Matches all of var's bindings against other_type."""
     new_substs = []
-    for new_view in abstract_utils.get_views([instance], node):
+    for new_view in abstract_utils.get_views([var], node):
       # When new_view and view have entries in common, we want to use the
       # entries from the old view.
       new_view.update(view)
       new_subst = self.match_var_against_type(
-          instance, other_type, subst, node, new_view)
+          var, other_type, subst, node, new_view)
       if new_subst is not None:
         new_substs.append(new_subst)
     if new_substs:

@@ -426,5 +426,16 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         def __init__(self, b: str) -> None: ...
     """)
 
+  def test_check_field_against_container(self):
+    self.options.tweak(check_variable_types=True)
+    self.Check("""
+      import dataclasses
+      from typing import List
+      @dataclasses.dataclass
+      class NHNetConfig:
+        passage_list: List[str] = dataclasses.field(
+            default_factory=lambda: [chr(i) for i in range(5)])
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
