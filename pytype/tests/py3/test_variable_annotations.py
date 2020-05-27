@@ -121,7 +121,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
       x: int
       x = ""  # annotation-type-mismatch[e]
     """)
-    self.assertTypesMatchPytd(ty, "x: str")
+    self.assertTypesMatchPytd(ty, "x: int")
     self.assertErrorRegexes(errors, {"e": r"Annotation: int.*Assignment: str"})
 
   def test_overwrite_annotation_in_class(self):
@@ -132,7 +132,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       class Foo:
-        x: str
+        x: int
     """)
     self.assertErrorRegexes(errors, {"e": r"Annotation: int.*Assignment: str"})
 

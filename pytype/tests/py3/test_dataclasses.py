@@ -79,9 +79,9 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       dataclasses: module
       class Foo(object):
+        x: str
         y: int
         def __init__(self, x: str = ..., y: int = ...) -> None: ...
-        def x(self) -> int: ...
     """)
     self.assertErrorRegexes(
         errors, {"e": r"Annotation: str.*Assignment: Callable"})

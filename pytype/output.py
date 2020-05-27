@@ -355,16 +355,15 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     else:
       raise NotImplementedError(v.__class__.__name__)
 
-  def uninitialized_annotations_to_instance_types(self, node, annots, members):
+  def annotations_to_instance_types(self, node, annots):
     """Get instance types for annotations not present in the members map."""
     if annots:
       for name, typ in annots.get_annotations(node):
-        if name not in members:
-          contained_type = abstract_utils.match_type_container(
-              typ, "typing.ClassVar")
-          if contained_type:
-            typ = contained_type
-          yield name, typ.get_instance_type(node)
+        contained_type = abstract_utils.match_type_container(
+            typ, "typing.ClassVar")
+        if contained_type:
+          typ = contained_type
+        yield name, typ.get_instance_type(node)
 
   def _function_call_to_return_type(self, node, v, seen_return, num_returns):
     """Get a function call's pytd return type."""
@@ -523,13 +522,12 @@ class Converter(utils.VirtualMachineWeakrefMixin):
 
     annots = abstract_utils.get_annotations_dict(v.members)
 
-    for name, t in self.uninitialized_annotations_to_instance_types(
-        node, annots, v.members):
+    for name, t in self.annotations_to_instance_types(node, annots):
       constants[name].add_type(t)
 
     # class-level attributes
     for name, member in v.members.items():
-      if name in CLASS_LEVEL_IGNORE:
+      if name in CLASS_LEVEL_IGNORE or name in constants:
         continue
       for value in member.FilteredData(self.vm.exitpoint, strict=False):
         if isinstance(value, special_builtins.PropertyInstance):
