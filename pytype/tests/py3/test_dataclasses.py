@@ -79,9 +79,9 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       dataclasses: module
       class Foo(object):
+        x: str
         y: int
         def __init__(self, x: str = ..., y: int = ...) -> None: ...
-        def x(self) -> int: ...
     """)
     self.assertErrorRegexes(
         errors, {"e": r"Annotation: str.*Assignment: Callable"})
@@ -424,6 +424,17 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       class Inner2:
         b: str
         def __init__(self, b: str) -> None: ...
+    """)
+
+  def test_check_field_against_container(self):
+    self.options.tweak(check_variable_types=True)
+    self.Check("""
+      import dataclasses
+      from typing import List
+      @dataclasses.dataclass
+      class NHNetConfig:
+        passage_list: List[str] = dataclasses.field(
+            default_factory=lambda: [chr(i) for i in range(5)])
     """)
 
 

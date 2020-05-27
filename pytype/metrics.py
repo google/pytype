@@ -25,9 +25,15 @@ import math
 import re
 import sys
 import time
-import tracemalloc
 
 import six
+
+
+# TODO(tsudol): Not needed once pytype is ported to Python 3.
+try:
+  import tracemalloc  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
+except ImportError:
+  tracemalloc = None
 
 
 # Metric serialization/deserialization code, taking advantage of the fact that
@@ -42,7 +48,7 @@ class _RegistryMeta(type):
   """Metaclass that registers subclasses in _METRIC_TYPES."""
 
   def __new__(cls, name, bases, class_dict):
-    subcls = super().__new__(cls, name, bases, class_dict)
+    subcls = super(_RegistryMeta, cls).__new__(cls, name, bases, class_dict)
     _METRIC_TYPES[subcls.__name__] = subcls
     return subcls
 

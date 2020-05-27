@@ -6,14 +6,13 @@ from pytype import load_pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
+from pytype.tests import test_base
 import six
 
 import unittest
 
 
-class SerializeAstTest(unittest.TestCase):
-
-  python_version = (2, 7)
+class SerializeAstTest(test_base.UnitTest):
 
   def _store_ast(
       self, temp_dir, module_name, pickled_ast_filename, ast=None, loader=None):
@@ -45,8 +44,8 @@ class SerializeAstTest(unittest.TestCase):
     """)
     pyi_filename = temp_dir.create_file("module1.pyi", src)
     temp_dir.create_file("module2.pyi", """
-        import UserDict
-        def f() -> UserDict.UserDict: ...
+        import queue
+        def f() -> queue.Queue: ...
         class ObjectMod2(object):
           def __init__(self):
             pass

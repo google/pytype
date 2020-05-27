@@ -3,12 +3,11 @@
 from pytype.pytd import pytd
 from pytype.pytd import visitors
 from pytype.pytd.parse import builtins
+from pytype.tests import test_base
 import unittest
 
 
-class UtilsTest(unittest.TestCase):
-
-  python_version = (2, 7)
+class UtilsTest(test_base.UnitTest):
 
   @classmethod
   def setUpClass(cls):

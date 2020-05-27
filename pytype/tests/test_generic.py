@@ -1025,5 +1025,26 @@ class GenericTest(test_base.TargetIndependentTest):
         a = ...  # type: foo.A[int]
       """)
 
+  def test_override_inherited_method(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import Generic, TypeVar
+        T = TypeVar("T")
+        class Base(Generic[T]):
+          def __init__(self, x: T) -> None
+      """)
+      ty = self.Infer("""
+        import a
+        class Derived(a.Base):
+          def __init__(self):
+            pass
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Any
+        a = ...  # type: module
+        class Derived(a.Base):
+          def __init__(self) -> None: ...
+      """)
+
 
 test_base.main(globals(), __name__ == "__main__")

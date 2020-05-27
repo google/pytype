@@ -210,16 +210,11 @@ class Cast(abstract.PyTDFunction):
     return super(Cast, self).call(node, func, args)
 
 
-class NoReturn(abstract.AtomicAbstractValue):
+class NoReturn(abstract.Singleton):
+  """Implements typing.NoReturn as a singleton."""
 
   def __init__(self, vm):
     super(NoReturn, self).__init__("NoReturn", vm)
-
-  def get_class(self):
-    return self
-
-  def compute_mro(self):
-    return self.default_mro()
 
 
 def build_any(name, vm):

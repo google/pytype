@@ -3,14 +3,13 @@
 from pytype.overlays import collections_overlay
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+from pytype.tests import test_base
 
 import unittest
 
 
-class NamedTupleAstTest(unittest.TestCase):
+class NamedTupleAstTest(test_base.UnitTest):
   """Test collection_overlay's namedtuple AST generation."""
-
-  python_version = (2, 7)
 
   def _namedtuple_ast(self, name, fields):
     return collections_overlay.namedtuple_ast(name, fields, self.python_version)

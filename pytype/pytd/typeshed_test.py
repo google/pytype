@@ -16,32 +16,35 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     self.ts = typeshed.Typeshed()
 
   def test_get_typeshed_file(self):
-    filename, data = self.ts.get_module_file("stdlib", "errno", (2, 7))
+    filename, data = self.ts.get_module_file(
+        "stdlib", "errno", self.python_version)
     self.assertEqual("errno.pyi", os.path.basename(filename))
     self.assertIn(b"errorcode", data)
 
   def test_get_typeshed_dir(self):
     filename, data = self.ts.get_module_file(
-        "stdlib", "logging", (2, 7))
+        "stdlib", "logging", self.python_version)
     self.assertEqual("__init__.pyi", os.path.basename(filename))
     self.assertIn(b"LogRecord", data)
 
   def test_parse_type_definition(self):
-    filename, ast = typeshed.parse_type_definition("stdlib", "_random", (2, 7))
+    filename, ast = typeshed.parse_type_definition(
+        "stdlib", "_random", self.python_version)
     self.assertEqual(os.path.basename(filename), "_random.pyi")
     self.assertIn("_random.Random", [cls.name for cls in ast.classes])
 
   def test_get_typeshed_missing(self):
     if not self.ts.missing:
       return  # nothing to test
-    self.assertIn(os.path.join("stdlib", "2", "pytypecanary"), self.ts.missing)
-    _, data = self.ts.get_module_file("stdlib", "pytypecanary", (2, 7))
+    self.assertIn(os.path.join("stdlib", "3", "pytypecanary"), self.ts.missing)
+    _, data = self.ts.get_module_file(
+        "stdlib", "pytypecanary", self.python_version)
     self.assertEqual(data, builtins.DEFAULT_SRC)
 
   def test_get_google_only_module_names(self):
     if not self.ts.missing:
       return  # nothing to test
-    modules = self.ts.get_all_module_names([2, 7])
+    modules = self.ts.get_all_module_names(self.python_version)
     self.assertIn("pytypecanary", modules)
 
   def test_get_all_module_names_2(self):
@@ -67,8 +70,8 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
       # reads from TYPESHED_HOME.
 
       paths = {p.rsplit("pytype/", 1)[-1]
-               for p in self.ts.get_pytd_paths([2, 7])}
-      self.assertSetEqual(paths, {"pytd/builtins/2", "pytd/stdlib/2"})
+               for p in self.ts.get_pytd_paths(self.python_version)}
+      self.assertSetEqual(paths, {"pytd/builtins/3", "pytd/stdlib/3"})
     finally:
       os.environ = old_env
 

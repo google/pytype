@@ -505,6 +505,7 @@ class TestAttrib(test_base.TargetIndependentTest):
       attr: module
       class A(object):
         a: int
+        def __init__(self) -> None: ...
       class B(object):
         b: str
         def __init__(self, b: str) -> None: ...

@@ -397,7 +397,7 @@ class bytearray(MutableSequence[int], ByteString):
     def zfill(self, width: int) -> bytearray
 
     @classmethod
-    def fromhex(cls, string: bytes or bytearray) -> bytearray
+    def fromhex(cls, string: str) -> bytearray
 
 class bytearray_iterator(Iterator[int]):
     __slots__ = []
@@ -788,7 +788,7 @@ class float(SupportsInt, SupportsFloat, SupportsAbs):
     def is_integer(self) -> bool
 
     @classmethod
-    def fromhex(cls, string: str or bytes or bytearray) -> float
+    def fromhex(cls, string: str) -> float
 
 # TODO(b/136684177): SupportsComplex should accept complex.
 class complex(SupportsAbs, SupportsInt, SupportsFloat, SupportsComplex):

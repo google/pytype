@@ -21,10 +21,8 @@ from pytype.tests import test_base
 import unittest
 
 
-class PytypeTest(unittest.TestCase):
+class PytypeTest(test_base.UnitTest):
   """Integration test for pytype."""
-
-  python_version = (2, 7)
 
   DEFAULT_PYI = builtins.DEFAULT_SRC
   INCLUDE = object()
@@ -503,6 +501,7 @@ class PytypeTest(unittest.TestCase):
     canary = "import pytypecanary" if typeshed.Typeshed.MISSING_FILE else ""
     src = self._make_py_file("""
       import __future__
+      import asyncio
       import sys
       import collections
       import typing
@@ -510,11 +509,10 @@ class PytypeTest(unittest.TestCase):
       import csv
       import ctypes
       import xml.etree.ElementTree as ElementTree
-      import md5
       %s
       x = foo.x
       y = csv.writer
-      z = md5.new
+      z = asyncio.coroutine
     """ % canary)
     pyi = self._make_file("""
       import datetime

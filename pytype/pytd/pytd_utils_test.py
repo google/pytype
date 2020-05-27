@@ -466,13 +466,13 @@ class TestUtils(parser_test_base.ParserTest):
 class TestDataFiles(parser_test_base.ParserTest):
   """Test pytd_utils.GetPredefinedFile()."""
 
-  BUILTINS = "builtins/2"
+  BUILTINS = "builtins/3"
 
   def test_get_predefined_file_basic(self):
     # smoke test, only checks that it doesn't throw, the filepath is correct,
     # and the result is a string
     path, src = pytd_utils.GetPredefinedFile(self.BUILTINS, "__builtin__")
-    self.assertEqual(path, "pytd/builtins/2/__builtin__.pytd")
+    self.assertEqual(path, "pytd/builtins/3/__builtin__.pytd")
     self.assertIsInstance(src, bytes)
 
   def test_get_predefined_file_throws(self):

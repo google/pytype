@@ -1,3 +1,4 @@
+# Lint as: python3
 """Trivial test program."""
 
 
@@ -11,4 +12,4 @@ class World(object):
 
 
 def helloworld():
-  print "hello world"
+  print("hello world")

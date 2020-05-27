@@ -259,16 +259,12 @@ class BuiltinTests3(test_base.TargetIndependentTest):
 
   def test_from_hex(self):
     ty = self.Infer("""
-      f1 = float.fromhex(b"feed")
-      f2 = float.fromhex(bytearray(b"feed"))
-      b1 = bytearray.fromhex(b"beef")
-      b2 = bytearray.fromhex(bytearray("beef"))
+      f = float.fromhex("feed")
+      b = bytearray.fromhex("beef")
     """)
     self.assertTypesMatchPytd(ty, """
-      f1 = ...  # type: float
-      f2 = ...  # type: float
-      b1 = ...  # type: bytearray
-      b2 = ...  # type: bytearray
+      f = ...  # type: float
+      b = ...  # type: bytearray
     """)
 
   def test_none_length(self):

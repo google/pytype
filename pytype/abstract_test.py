@@ -11,15 +11,14 @@ from pytype import state as frame_state
 from pytype import vm
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+from pytype.tests import test_base
 from pytype.typegraph import cfg
 import six
 
 import unittest
 
 
-class AbstractTestBase(unittest.TestCase):
-
-  python_version = (2, 7)
+class AbstractTestBase(test_base.UnitTest):
 
   def setUp(self):
     super(AbstractTestBase, self).setUp()
@@ -1179,6 +1178,13 @@ class AbstractTest(AbstractTestBase):
     subbed_cls = self._vm.annotations_util.sub_one_annotation(
         self._vm.root_cfg_node, type_param, [{abstract_utils.K: subst_value}])
     self.assertEqual(cls, subbed_cls)
+
+  def test_singleton(self):
+    self.assertIs(abstract.Unsolvable(self._vm), abstract.Unsolvable(self._vm))
+
+  def test_singleton_subclass(self):
+    self.assertIs(abstract.Empty(self._vm), abstract.Empty(self._vm))
+    self.assertIsNot(abstract.Deleted(self._vm), abstract.Empty(self._vm))
 
 
 if __name__ == "__main__":

@@ -10,13 +10,12 @@ from pytype import load_pytd
 from pytype import vm
 from pytype.pytd import pytd
 from pytype.pytd import slots
+from pytype.tests import test_base
 
 import unittest
 
 
-class CompareTestBase(unittest.TestCase):
-
-  python_version = (2, 7)
+class CompareTestBase(test_base.UnitTest):
 
   def setUp(self):
     super(CompareTestBase, self).setUp()

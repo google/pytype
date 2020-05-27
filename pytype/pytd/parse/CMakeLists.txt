@@ -7,6 +7,7 @@ py_test(
     builtins_test.py
   DEPS
     pytype.pytdtest
+    pytype.tests.test_base
 )
 
 py_test(

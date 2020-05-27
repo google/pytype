@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 
 from pytype.pyi import parser
 from pytype.pytd import typeshed
@@ -24,7 +25,7 @@ def _filename_to_testname(f):
 
 
 def _test_parse(pyi_file):
-  python_version = (2, 7)
+  python_version = sys.version_info[:2]
   module = os.path.splitext(os.path.basename(pyi_file))[0]
   if module == "__init__":
     module = os.path.basename(os.path.dirname(pyi_file))

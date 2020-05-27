@@ -28,6 +28,11 @@ _COMPATIBLE_BUILTINS = [
 ]
 
 
+def _is_callback_protocol(typ):
+  return (isinstance(typ, mixin.Class) and typ.is_protocol and
+          "__call__" in typ.protocol_methods)
+
+
 class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
   """Matcher for abstract values."""
 
@@ -313,10 +318,14 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       return subst
     elif (isinstance(other_type, typing_overlay.NoReturn) or
           isinstance(left, typing_overlay.NoReturn)):
-      # `NoReturn` can only matches itself or `abstract.TypeParameter`.
+      # `NoReturn` can only matches itself, `Any`, or `abstract.TypeParameter`.
       # For the latter case, it will be used in byte code `STORE_ANNOTATION`
       # to store the `NoReturn` annotation in a dict.
-      return subst if left == other_type else None
+      if (left == other_type or isinstance(other_type, abstract.Unsolvable) or
+          isinstance(left, abstract.Unsolvable)):
+        return subst
+      else:
+        return None
     elif isinstance(other_type, mixin.Class):
       # Accumulate substitutions in "subst", or break in case of error:
       return self._match_type_against_type(left, other_type, subst, node, view)
@@ -376,7 +385,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       elif other_type.full_name in [
           "__builtin__.type", "__builtin__.object", "typing.Callable"]:
         return subst
-      elif other_type.is_protocol and "__call__" in other_type.protocol_methods:
+      elif _is_callback_protocol(other_type):
         return self._match_type_against_callback_protocol(
             left, other_type, subst, node, view)
       elif left.cls:
@@ -406,15 +415,14 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           if new_subst is not None:
             return new_subst
         return None
-      elif other_type.is_protocol and "__call__" in other_type.protocol_methods:
+      elif _is_callback_protocol(other_type):
         return self._match_type_against_callback_protocol(
             left, other_type, subst, node, view)
       else:
         return None
     elif isinstance(left, dataclass_overlay.FieldInstance) and left.default:
-      default = self.vm.merge_values(left.default.data)
-      return self._match_type_against_type(
-          default, other_type, subst, node, view)
+      return self._match_all_bindings(
+          left.default, other_type, subst, node, view)
     elif isinstance(left, abstract.SimpleAbstractValue):
       return self._match_instance_against_type(
           left, other_type, subst, node, view)
@@ -558,13 +566,17 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
                              container=None):
     """Instantiate and match an abstract value."""
     instance = left.instantiate(node, container=container)
+    return self._match_all_bindings(instance, other_type, subst, node, view)
+
+  def _match_all_bindings(self, var, other_type, subst, node, view):
+    """Matches all of var's bindings against other_type."""
     new_substs = []
-    for new_view in abstract_utils.get_views([instance], node):
+    for new_view in abstract_utils.get_views([var], node):
       # When new_view and view have entries in common, we want to use the
       # entries from the old view.
       new_view.update(view)
       new_subst = self.match_var_against_type(
-          instance, other_type, subst, node, new_view)
+          var, other_type, subst, node, new_view)
       if new_subst is not None:
         new_substs.append(new_subst)
     if new_substs:

@@ -334,6 +334,29 @@ class TestFunctions(test_base.TargetPython3BasicTest):
       f(lambda: None)
     """)
 
+  def test_bad_function_match(self):
+    # Tests matching a function against abstract.Empty.
+    self.CheckWithErrors("""
+      def f():
+        pass
+      def g(x: [][0]):
+        pass
+      g(f)  # wrong-arg-types
+    """)
+
+  def test_noreturn(self):
+    self.Check("""
+      from typing import Any, Callable, NoReturn
+
+      def f(x: int) -> NoReturn:
+        raise NotImplementedError()
+
+      def g(x: Callable[[int], Any]):
+        pass
+
+      g(f)
+    """)
+
 
 class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for functions."""

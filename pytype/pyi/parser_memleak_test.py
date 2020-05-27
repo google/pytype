@@ -4,6 +4,7 @@ import sys
 
 from pytype.pyi import parser
 from pytype.pytd import pytd
+from pytype.tests import test_base
 import six
 
 import unittest
@@ -16,9 +17,7 @@ def get_builtins_source(python_version):
     return f.read()
 
 
-class MemoryLeakTest(unittest.TestCase):
-
-  python_version = (2, 7)
+class MemoryLeakTest(test_base.UnitTest):
 
   def check(self, src):
     def parse():

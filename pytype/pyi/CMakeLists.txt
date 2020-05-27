@@ -43,6 +43,7 @@ py_test(
   DEPS
     .parser_ext
     pytype.pytd
+    pytype.tests.test_base
 )
 
 py_test(
@@ -53,6 +54,7 @@ py_test(
   DEPS
     pytype.parser
     pytype.pytd
+    pytype.tests.test_base
 )
 
 py_test(
@@ -63,6 +65,7 @@ py_test(
   DEPS
     pytype.parser
     pytype.pytd
+    pytype.tests.test_base
 )
 
 py_test(

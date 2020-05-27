@@ -553,6 +553,13 @@ class TypingTest(test_base.TargetPython3BasicTest):
       foo(1j)
     """)
 
+  def test_mutable_set_sub(self):
+    self.Check("""
+      from typing import MutableSet
+      def f(x: MutableSet) -> MutableSet:
+        return x - {0}
+    """)
+
 
 class CounterTest(test_base.TargetPython3BasicTest):
   """Tests for typing.Counter."""

@@ -488,6 +488,7 @@ py_test(
   DEPS
     .config
     .libvm
+    pytype.tests.test_base
 )
 
 py_test(
@@ -499,6 +500,7 @@ py_test(
     .abstract_utils
     .config
     .libvm
+    pytype.tests.test_base
 )
 
 py_test(
@@ -509,6 +511,7 @@ py_test(
   DEPS
     .config
     .libvm
+    pytype.tests.test_base
 )
 
 py_test(
@@ -528,6 +531,7 @@ py_test(
   DEPS
     .config
     .libvm
+    pytype.tests.test_base
 )
 
 py_test(
@@ -538,6 +542,7 @@ py_test(
   DEPS
     .config
     .libvm
+    pytype.tests.test_base
 )
 
 py_test(
@@ -548,6 +553,7 @@ py_test(
   DEPS
     .config
     .libvm
+    pytype.tests.test_base
 )
 
 py_test(
@@ -586,8 +592,8 @@ py_test(
     load_pytd_test.py
   DEPS
     .builtins_pytd
-    .config
     .libvm
+    pytype.tests.test_base
 )
 
 py_test(
@@ -625,6 +631,7 @@ py_test(
     collections_overlay_test.py
   DEPS
     .libvm
+    pytype.tests.test_base
 )
 
 py_library(
@@ -634,6 +641,7 @@ py_library(
     pytd/parse/parser_test_base.py
   DEPS
     .pytd
+    pytype.tests.test_base
 )
 
 py_test(

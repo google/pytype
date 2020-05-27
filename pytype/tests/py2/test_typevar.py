@@ -65,6 +65,7 @@ class Test(test_base.TargetPython27FeatureTest):
       from typing import Dict, Optional, Type
       class Foo(object):
         callbacks = ...  # type: Dict[str, Type[int]]
+        def __init__(self) -> None: ...
         def call(self) -> Optional[int]
     """)
 

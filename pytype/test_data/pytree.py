@@ -1,5 +1,6 @@
 # Copyright 2006 Google, Inc. All Rights Reserved.
 # Licensed to PSF under a Contributor Agreement.
+# pylint: disable=bad-indentation,g-importing-member,unidiomatic-typecheck
 
 """
 Python parse tree definitions.
@@ -12,9 +13,9 @@ There's also a pattern matching implementation here.
 
 __author__ = "Guido van Rossum <guido@python.org>"
 
+from io import StringIO
 import sys
 import warnings
-from StringIO import StringIO
 
 HUGE = 0x7FFFFFFF  # maximum repeat count, default max
 
@@ -28,15 +29,15 @@ def type_repr(type_num):
         # Fill in _type_reprs mappings from the symbols and tokens to strings.
         # Requires that the symbols and tokens have disjoint numeric ranges ...
         # they're partitioned at 256 (see comment for Symbols in pygram.py).
-        for name, val in python_symbols.__dict__.iteritems():
+        for name, val in python_symbols.__dict__.items():
             assert val not in _type_reprs, (val, _type_reprs)
             _type_reprs[val] = name
-        for val, name in token.tok_name.iteritems():
+        for val, name in token.tok_name.items():
             if val >= token.N_TOKENS:
                 continue
             assert val not in _type_reprs, (val, _type_reprs)
             _type_reprs[val] = name
-        assert all(type(v) == int for v in _type_reprs.iterkeys()), _type_reprs
+        assert all(type(v) == int for v in _type_reprs.keys()), _type_reprs
     return _type_reprs.setdefault(type_num, str(type_num))
 
 
@@ -260,7 +261,7 @@ class Base(object):
 
     if sys.version_info < (3, 0):
         def __str__(self):
-            return unicode(self).encode("ascii")
+            return str(self).encode("ascii")
 
     @property
     def type_repr(self):
@@ -349,7 +350,7 @@ class Node(Base):
 
         This reproduces the input source exactly.
         """
-        return u"".join(map(unicode, self.children))
+        return u"".join(map(str, self.children))
 
     if sys.version_info > (3, 0):
         __str__ = __unicode__
@@ -477,7 +478,7 @@ class Leaf(Base):
 
         This reproduces the input source exactly.
         """
-        return self.prefix + unicode(self.value)
+        return self.prefix + str(self.value)
 
     if sys.version_info > (3, 0):
         __str__ = __unicode__
@@ -649,7 +650,7 @@ class LeafPattern(BasePattern):
         if type is not None:
             assert 0 <= type < 256, type
         if content is not None:
-            assert isinstance(content, basestring), repr(content)
+            assert isinstance(content, str), repr(content)
         self.type = type
         self.content = content
         self.name = name
@@ -699,7 +700,7 @@ class NodePattern(BasePattern):
         if type is not None:
             assert type >= 256, (type, repr_type(type))
         if content is not None:
-            assert not isinstance(content, basestring), repr(content)
+            assert not isinstance(content, str), repr(content)
             content = list(content)
             for i, item in enumerate(content):
                 assert isinstance(item, BasePattern), (i, item)
@@ -833,7 +834,7 @@ class WildcardPattern(BasePattern):
         """
         if self.content is None:
             # Shortcut for special case (see __init__.__doc__)
-            for count in xrange(self.min, 1 + min(len(nodes), self.max)):
+            for count in range(self.min, 1 + min(len(nodes), self.max)):
                 r = {}
                 if self.name:
                     r[self.name] = nodes[:count]

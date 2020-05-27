@@ -15,7 +15,7 @@
       * [How do I disable all pytype checks for a particular import?](#how-do-i-disable-all-pytype-checks-for-a-particular-import)
       * [How do I write code that is seen by pytype but ignored at runtime?](#how-do-i-write-code-that-is-seen-by-pytype-but-ignored-at-runtime)
 
-<!-- Added by: rechen, at: 2020-01-24T10:06-08:00 -->
+<!-- Added by: mdemello, at: 2020-05-21T16:31-07:00 -->
 
 <!--te-->
 
@@ -57,7 +57,7 @@ works. For example,
 ```python
 def f(x: float):
   return x
-f(random.random() or "foo")
+f(random.random() or 'foo')
 ```
 
 is not considered an error, because `f()` works for `float`. I.e., the `str`
@@ -65,7 +65,7 @@ argument isn't considered. (This will change at some point in the future.) Note
 that this is different to attribute checking, where e.g.
 
 ```python
-(random.random() or "foo").as_integer_ratio()
+(random.random() or 'foo').as_integer_ratio()
 ```
 
 will indeed result in a type error.
@@ -105,7 +105,7 @@ particular functions. Let's say we have a `LoggerMixin` class that expects a
 class LoggerMixin:
   ...  # Other initialization.
   def log(self, msg: str):
-    self._log.print(f"{self.name()}: {msg}")
+    self._log.print(f'{self.name()}: {msg}')
 ```
 
 When pytype checks `LoggerMixin`, it will raise an error that `LoggerMixin` has
@@ -125,7 +125,7 @@ class LoggerMixinInterface(metaclass=abc.ABCMeta):
 class LoggerMixin(LoggerMixinInterface):
   ...  # Other initialization
   def log(self, msg: str):
-    self._log.print(f"{self.name()}: {msg}")
+    self._log.print(f'{self.name()}: {msg}')
 
 class Person(LoggerMixinInterface):
   ...  # Other initialization

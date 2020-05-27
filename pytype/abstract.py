@@ -394,7 +394,41 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
     return False
 
 
-class Empty(AtomicAbstractValue):
+class Singleton(AtomicAbstractValue):
+  """A Singleton class must only be instantiated once.
+
+  This is essentially an ABC for Unsolvable, Empty, and others.
+  """
+
+  _instance = None
+
+  def __new__(cls, *args, **kwargs):
+    # If cls is a subclass of a subclass of Singleton, cls._instance will be
+    # filled by its parent. cls needs to be given its own instance.
+    if not cls._instance or type(cls._instance) != cls:  # pylint: disable=unidiomatic-typecheck
+      log.debug("Singleton: Making new instance for %s", cls)
+      cls._instance = super(Singleton, cls).__new__(cls)
+    return cls._instance
+
+  def get_special_attribute(self, node, name, valself):
+    del name, valself
+    return self.to_variable(node)
+
+  def compute_mro(self):
+    return self.default_mro()
+
+  def call(self, node, func, args, alias_map=None):
+    del func, args
+    return node, self.to_variable(node)
+
+  def get_class(self):
+    return self
+
+  def instantiate(self, node, container=None):
+    return self.to_variable(node)
+
+
+class Empty(Singleton):
   """An empty value.
 
   These values represent items extracted from empty containers. Because of false
@@ -422,20 +456,6 @@ class Empty(AtomicAbstractValue):
 
   def __init__(self, vm):
     super(Empty, self).__init__("empty", vm)
-
-  def get_special_attribute(self, node, name, valself):
-    del name, valself
-    return self.to_variable(node)
-
-  def call(self, node, func, args, alias_map=None):
-    del func, args
-    return node, self.to_variable(node)
-
-  def get_class(self):
-    return self
-
-  def instantiate(self, node, container=None):
-    return self.to_variable(node)
 
 
 class Deleted(Empty):
@@ -3741,10 +3761,7 @@ class BuildClass(AtomicAbstractValue):
         new_class_var=class_closure_var, is_decorated=self.is_decorated)
 
 
-# TODO(rechen): Don't allow this class to be instantiated multiple times. It's
-# useful to be able to do comparisons like `var.data == [convert.unsolvable]`,
-# and those require Unsolvable to be a singleton.
-class Unsolvable(AtomicAbstractValue):
+class Unsolvable(Singleton):
   """Representation of value we know nothing about.
 
   Unlike "Unknowns", we don't treat these as solveable. We just put them
@@ -3764,30 +3781,15 @@ class Unsolvable(AtomicAbstractValue):
   def __init__(self, vm):
     super(Unsolvable, self).__init__("unsolveable", vm)
 
-  def compute_mro(self):
-    return self.default_mro()
-
   def get_special_attribute(self, node, name, _):
+    # Overrides Singleton.get_special_attributes.
     if name in self.IGNORED_ATTRIBUTES:
       return None
     else:
       return self.to_variable(node)
 
-  def call(self, node, func, args, alias_map=None):
-    del func, args
-    # return ourself.
-    return node, self.to_variable(node)
-
   def argcount(self, _):
     return 0
-
-  def get_class(self):
-    # return ourself.
-    return self
-
-  def instantiate(self, node, container=None):
-    # return ourself.
-    return self.to_variable(node)
 
 
 class Unknown(AtomicAbstractValue):

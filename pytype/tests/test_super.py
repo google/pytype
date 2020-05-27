@@ -185,7 +185,8 @@ class SuperTest(test_base.TargetIndependentTest):
         foo = ...  # type: module
         class Parent(foo.Grandparent): ...
         OtherParent = ...  # type: Any
-        class Child(Any, Parent): ...
+        class Child(Any, Parent):
+          def f(self) -> int: ...
       """)
 
   def test_super_with_any(self):
