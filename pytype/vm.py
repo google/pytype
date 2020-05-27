@@ -1289,13 +1289,13 @@ class VirtualMachine(object):
       self._record_local(state.node, op, name, typ, orig_val)
       if typ is None and name in self.current_annotated_locals:
         typ = self.current_annotated_locals[name].get_type(state.node, name)
+        if typ == self.convert.unsolvable:
+          # An Any annotation can be used to essentially turn off inference in
+          # cases where it is causing false positives or other issues.
+          value = self.new_unsolvable(state.node)
     if self.options.check_variable_types:
       self.check_annotation_type_mismatch(
           state.node, name, typ, orig_val, self.frames, allow_none=True)
-    # TODO(rechen): In cases like
-    #   v: float
-    #   v = 0
-    # do we want to replace 0 with Instance(float)?
     return value
 
   def check_annotation_type_mismatch(

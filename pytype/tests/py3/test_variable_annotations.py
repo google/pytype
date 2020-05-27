@@ -235,5 +235,15 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
       v2: str = ...
     """)
 
+  def test_any(self):
+    self.Check("""
+      from typing import Any
+      def f():
+        x: Any = None
+        print(x.upper())
+        x = None
+        print(x.upper())
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
