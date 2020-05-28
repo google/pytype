@@ -175,9 +175,10 @@ class MakeCodeMixin(object):
   def make_code(self, int_array, name="testcode"):
     """Utility method for creating CodeType objects."""
     return loadmarshal.CodeType(
-        argcount=0, kwonlyargcount=0, nlocals=2, stacksize=2, flags=0,
-        consts=[None, 1, 2], names=[], varnames=["x", "y"], filename="",
-        name=name, firstlineno=1, lnotab=[], freevars=[], cellvars=[],
+        argcount=0, posonlyargcount=0, kwonlyargcount=0, nlocals=2,
+        stacksize=2, flags=0, consts=[None, 1, 2], names=[],
+        varnames=["x", "y"], filename="", name=name, firstlineno=1,
+        lnotab=[], freevars=[], cellvars=[],
         code=compat.int_array_to_bytes(int_array),
         python_version=self.python_version)
 

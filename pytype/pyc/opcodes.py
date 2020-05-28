@@ -319,6 +319,15 @@ class BEFORE_ASYNC_WITH(Opcode):
   __slots__ = ()
 
 
+class BEGIN_FINALLY(Opcode):
+  __slots__ = ()
+
+
+class END_ASYNC_FOR(Opcode):
+  FLAGS = HAS_JUNKNOWN | NO_NEXT  # might re-raise an exception
+  __slots__ = ()
+
+
 class STORE_MAP(Opcode):
   __slots__ = ()
 
@@ -835,6 +844,17 @@ class CALL_METHOD(OpcodeWithArg):  # Arg: #args
   __slots__ = ()
 
 
+class CALL_FINALLY(OpcodeWithArg):  # Arg: Jump offset to finally block
+  FLAGS = HAS_JREL | HAS_ARGUMENT
+  __slots__ = ()
+
+
+class POP_FINALLY(OpcodeWithArg):
+  # might re-raise an exception or jump to a finally
+  FLAGS = HAS_ARGUMENT | HAS_JUNKNOWN
+  __slots__ = ()
+
+
 python2_mapping = {
     0: STOP_CODE,  # removed in Python 3
     1: POP_TOP,
@@ -1097,16 +1117,29 @@ python_3_7_mapping = _overlay_mapping(python_3_6_mapping, {
     161: CALL_METHOD,
 })
 
+python_3_8_mapping = _overlay_mapping(python_3_7_mapping, {
+    6: ROT_FOUR,  # ROT_FOUR returns under a different, cooler id!
+    53: BEGIN_FINALLY,
+    54: END_ASYNC_FOR,
+    80: None,   # BREAK_LOOP was removed in 3.8
+    119: None,  # CONTINUE_LOOP was removed in 3.8
+    120: None,  # SETUP_LOOP was removed in 3.8
+    121: None,  # SETUP_EXCEPT was removed in 3.8
+    162: CALL_FINALLY,
+    163: POP_FINALLY,
+})
+
 
 class _LineNumberTableParser(object):
   """State machine for decoding a Python line number array."""
 
-  def __init__(self, lnotab, firstlineno):
+  def __init__(self, python_version, lnotab, firstlineno):
     assert not len(lnotab) & 1  # lnotab always has an even number of elements
     self.lnotab = lnotab
     self.lineno = firstlineno
     self.next_addr = six.indexbytes(self.lnotab, 0) if self.lnotab else 0
     self.pos = 0
+    self.python_version = python_version
 
   def get(self, i):
     """Get the line number for the instruction at the given position.
@@ -1121,7 +1154,14 @@ class _LineNumberTableParser(object):
       The line number corresponding to the position at i.
     """
     while i >= self.next_addr and self.pos < len(self.lnotab):
-      self.lineno += six.indexbytes(self.lnotab, self.pos + 1)
+      line_diff = six.indexbytes(self.lnotab, self.pos + 1)
+      # The Python docs have more details on this weird bit twiddling.
+      # https://github.com/python/cpython/blob/master/Objects/lnotab_notes.txt
+      # https://github.com/python/cpython/commit/f3914eb16d28ad9eb20fe5133d9aa83658bcc27f
+      if self.python_version >= (3, 6) and line_diff >= 0x80:
+        line_diff -= 0x100
+      self.lineno += line_diff
+
       self.pos += 2
       if self.pos < len(self.lnotab):
         self.next_addr += six.indexbytes(self.lnotab, self.pos)
@@ -1222,12 +1262,15 @@ def _wordcode_reader(data, mapping):
       start = pos + 2
 
 
-def _dis(data, mapping, reader,
+def _dis(python_version, data, mapping, reader,
          co_varnames=None, co_names=None, co_consts=None, co_cellvars=None,
          co_freevars=None, co_lnotab=None, co_firstlineno=None):
   """Disassemble a string into a list of Opcode instances."""
   code = []
-  lp = _LineNumberTableParser(co_lnotab, co_firstlineno) if co_lnotab else None
+  if co_lnotab:
+    lp = _LineNumberTableParser(python_version, co_lnotab, co_firstlineno)
+  else:
+    lp = None
   offset_to_index = {}
   if co_cellvars is not None and co_freevars is not None:
     cellvars_freevars = co_cellvars + co_freevars
@@ -1271,9 +1314,10 @@ def dis(data, python_version, *args, **kwargs):
       (3, 5): python_3_5_mapping,
       (3, 6): python_3_6_mapping,
       (3, 7): python_3_7_mapping,
+      (3, 8): python_3_8_mapping
   }[(major, minor)]
   reader = _wordcode_reader if (major, minor) > (3, 5) else _bytecode_reader
-  return _dis(data, mapping, reader, *args, **kwargs)
+  return _dis(python_version, data, mapping, reader, *args, **kwargs)
 
 
 def dis_code(code):
