@@ -283,28 +283,40 @@ class MatchCallTest(MatchAstTestCase):
 class MatchConstantTest(MatchAstTestCase):
 
   def test_num(self):
-    matches = self._get_traces("v = 42", ast.Num)
+    matches = self._get_traces(
+        "v = 42",
+        ast.Constant if sys.version_info >= (3, 8) else ast.Num)
     self.assertTracesEqual(matches, [((1, 4), "LOAD_CONST", 42, ("int",))])
 
   def test_str(self):
-    matches = self._get_traces("v = 'hello'", ast.Str)
+    matches = self._get_traces(
+        "v = 'hello'",
+        ast.Constant if sys.version_info >= (3, 8) else ast.Str)
     self.assertTracesEqual(matches, [((1, 4), "LOAD_CONST", "hello", ("str",))])
 
   def test_unicode(self):
-    matches = self._get_traces("v = u'hello'", ast.Str)
+    matches = self._get_traces(
+        "v = u'hello'",
+        ast.Constant if sys.version_info >= (3, 8) else ast.Str)
     self.assertTracesEqual(matches, [((1, 4), "LOAD_CONST", "hello", ("str",))])
 
   def test_bytes(self):
-    matches = self._get_traces("v = b'hello'", ast.Bytes)
+    matches = self._get_traces(
+        "v = b'hello'",
+        ast.Constant if sys.version_info >= (3, 8) else ast.Bytes)
     self.assertTracesEqual(
         matches, [((1, 4), "LOAD_CONST", b"hello", ("bytes",))])
 
   def test_bool(self):
-    matches = self._get_traces("v = True", ast.NameConstant)
+    matches = self._get_traces(
+        "v = True",
+        ast.Constant if sys.version_info >= (3, 8) else ast.NameConstant)
     self.assertTracesEqual(matches, [((1, 4), "LOAD_CONST", True, ("bool",))])
 
   def test_ellipsis(self):
-    matches = self._get_traces("v = ...", ast.Ellipsis)
+    matches = self._get_traces(
+        "v = ...",
+        ast.Constant if sys.version_info >= (3, 8) else ast.Ellipsis)
     self.assertTracesEqual(
         matches, [((1, 4), "LOAD_CONST", Ellipsis, ("ellipsis",))])
 
