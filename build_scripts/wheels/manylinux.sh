@@ -79,8 +79,8 @@ rm -rvf linux-wheelhouse
 for PYBIN in /opt/python/cp3{5,6,7}*/bin; do
     rm -rvf out/CMake* CMakeCache.txt cmake_install.cmake build.ninja rules.ninja
     pyv="$(basename "$(dirname "$PYBIN")")"
-    "${PYBIN}/python" -m pip install -U wheel setuptools pip
-    "${PYBIN}/python" setup.py bdist_wheel -d linux-wheelhouse/
+    "${PYBIN}/python" -m pip install -U pip setuptools wheel
+    "${PYBIN}/python" -m pip wheel . --verbose --no-deps -w linux-wheelhouse
 done
 
 for whl in linux-wheelhouse/*.whl; do
