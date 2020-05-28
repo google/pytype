@@ -812,7 +812,11 @@ PyTypeObject PyCFGNode = {
 
 // --- Origin --------------------------------------------------------------
 
-static PyTypeObject PyOrigin;
+static PyTypeObject PyOrigin = {
+  // initialized in inittypegraph
+  PyVarObject_HEAD_INIT(nullptr, 0)
+  tp_name: nullptr
+};
 
 PyDoc_STRVAR(origin_doc,
              "An \"origin\" is an explanation of how a binding was "
@@ -1470,10 +1474,8 @@ static struct PyModuleDef typegraph_moduledef = {
 
 static PyObject* InitModule(PyObject* module) {
   PyObject* module_dict = PyModule_GetDict(module);
-  if (PyOrigin.tp_name == 0) {
-    if (PyStructSequence_InitType2(&PyOrigin, &origin_desc) == -1)
-      return NULL;
-  }
+  if (PyOrigin.tp_name == 0)
+    PyStructSequence_InitType(&PyOrigin, &origin_desc);
   PyDict_SetItemString(module_dict, "Program",
                        reinterpret_cast<PyObject*>(&PyProgram));
   PyDict_SetItemString(module_dict, "CFGNode",
@@ -1540,9 +1542,7 @@ PyMODINIT_FUNC initcfg(void) {
   PyType_Ready(&PyCFGNode);
   PyType_Ready(&PyVariable);
   PyType_Ready(&PyBinding);
-  PyObject* module = InitModule(module);
-  if (module == NULL)
-    return NULL;
+  InitModule(module);
   pytype::typegraph::internal::CFGLogger::Init();
 }
 #endif

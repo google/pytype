@@ -218,11 +218,6 @@ class MatchAstVisitor(visitor.BaseVisitor):
   def match_Ellipsis(self, node):
     return self._match_constant(node, Ellipsis)
 
-  def match_Constant(self, node):
-    # As of Python 3.8, bools, numbers, bytes, strings, ellipsis etc are
-    # all constants instead of individual ast nodes.
-    return self._match_constant(node, node.s)
-
   def match_Import(self, node):
     return list(self._match_import(node, is_from=False))
 

@@ -24,7 +24,6 @@ class OrderedCode(object):
 
   Attributes:
     co_argcount: Same as loadmarshal.CodeType.
-    co_posonlyargcount: Same as loadmarshal.CodeType.
     co_kwonlyargcount: Same as loadmarshal.CodeType.
     co_nlocals: Same as loadmarshal.CodeType.
     co_stacksize: Same as loadmarshal.CodeType.
