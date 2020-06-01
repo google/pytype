@@ -1,3 +1,9 @@
+Version 2020.06.01
+* Update typeshed pin to commit 5fe6a5b from May 18.
+* Support callback protocols.
+* Get rid of the RemoveInheritedMethods pyi optimisation.
+* (In-progress) Add partial Python 3.8 support.
+
 Version 2020.05.13
 * Check attrs default values against annotations.
 * Add an experimental --check-variable-types mode.
