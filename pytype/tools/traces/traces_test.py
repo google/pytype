@@ -282,29 +282,79 @@ class MatchCallTest(MatchAstTestCase):
 
 class MatchConstantTest(MatchAstTestCase):
 
+  @test_utils.skipFromPy((3, 8),
+                         reason="numbers are ast.Constant in 3.8+")
   def test_num(self):
     matches = self._get_traces("v = 42", ast.Num)
     self.assertTracesEqual(matches, [((1, 4), "LOAD_CONST", 42, ("int",))])
 
+  @test_utils.skipFromPy((3, 8),
+                         reason="strings are ast.Constant in 3.8+")
   def test_str(self):
     matches = self._get_traces("v = 'hello'", ast.Str)
     self.assertTracesEqual(matches, [((1, 4), "LOAD_CONST", "hello", ("str",))])
 
+  @test_utils.skipFromPy((3, 8),
+                         reason="unicode strings are ast.Constant in 3.8+")
   def test_unicode(self):
     matches = self._get_traces("v = u'hello'", ast.Str)
     self.assertTracesEqual(matches, [((1, 4), "LOAD_CONST", "hello", ("str",))])
 
+  @test_utils.skipFromPy((3, 8),
+                         reason="byte strings are ast.Constant in 3.8+")
   def test_bytes(self):
     matches = self._get_traces("v = b'hello'", ast.Bytes)
     self.assertTracesEqual(
         matches, [((1, 4), "LOAD_CONST", b"hello", ("bytes",))])
 
+  @test_utils.skipFromPy((3, 8),
+                         reason="bools are ast.Constant in 3.8+")
   def test_bool(self):
     matches = self._get_traces("v = True", ast.NameConstant)
     self.assertTracesEqual(matches, [((1, 4), "LOAD_CONST", True, ("bool",))])
 
+  @test_utils.skipFromPy((3, 8),
+                         reason="ellipsis are ast.Constant in 3.8+")
   def test_ellipsis(self):
     matches = self._get_traces("v = ...", ast.Ellipsis)
+    self.assertTracesEqual(
+        matches, [((1, 4), "LOAD_CONST", Ellipsis, ("ellipsis",))])
+
+  @test_utils.skipBeforePy((3, 8),
+                           reason="numbers are ast.Constant in 3.8+")
+  def test_num_38(self):
+    matches = self._get_traces("v = 42", ast.Constant)
+    self.assertTracesEqual(matches, [((1, 4), "LOAD_CONST", 42, ("int",))])
+
+  @test_utils.skipBeforePy((3, 8),
+                           reason="strings are ast.Constant in 3.8+")
+  def test_str_38(self):
+    matches = self._get_traces("v = 'hello'", ast.Constant)
+    self.assertTracesEqual(matches, [((1, 4), "LOAD_CONST", "hello", ("str",))])
+
+  @test_utils.skipBeforePy((3, 8),
+                           reason="unicode strings are ast.Constant in 3.8+")
+  def test_unicode_38(self):
+    matches = self._get_traces("v = u'hello'", ast.Constant)
+    self.assertTracesEqual(matches, [((1, 4), "LOAD_CONST", "hello", ("str",))])
+
+  @test_utils.skipBeforePy((3, 8),
+                           reason="byte strings are ast.Constant in 3.8+")
+  def test_bytes_38(self):
+    matches = self._get_traces("v = b'hello'", ast.Constant)
+    self.assertTracesEqual(
+        matches, [((1, 4), "LOAD_CONST", b"hello", ("bytes",))])
+
+  @test_utils.skipBeforePy((3, 8),
+                           reason="bools are ast.Constant in 3.8+")
+  def test_bool_38(self):
+    matches = self._get_traces("v = True", ast.Constant)
+    self.assertTracesEqual(matches, [((1, 4), "LOAD_CONST", True, ("bool",))])
+
+  @test_utils.skipBeforePy((3, 8),
+                           reason="ellipsis are ast.Constant in 3.8+")
+  def test_ellipsis_38(self):
+    matches = self._get_traces("v = ...", ast.Constant)
     self.assertTracesEqual(
         matches, [((1, 4), "LOAD_CONST", Ellipsis, ("ellipsis",))])
 
