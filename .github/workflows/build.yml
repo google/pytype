@@ -25,6 +25,7 @@ jobs:
       - name: Pull Docker image
         run: |
           DOCKER_IMAGE="quay.io/pypa/${{ matrix.platform }}"
+          echo "::set-env name=DOCKER_IMAGE::$DOCKER_IMAGE"
           docker image pull "$DOCKER_IMAGE"
       - name: Build manylinux wheels
         env:
