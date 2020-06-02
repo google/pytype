@@ -12,9 +12,10 @@ jobs:
   manylinux_wheels:
     name: Python ${{ matrix.python_tag }} ${{ matrix.platform }} wheels
     runs-on: ubuntu-latest
-    matrix:
-      platform:
-        - manylinux2014_x86_64
+    strategy:
+      matrix:
+        platform:
+          - manylinux2014_x86_64
     steps:
       - uses: actions/checkout@v2
         with:
@@ -47,8 +48,9 @@ jobs:
     # the wheel's platform tag.
     # https://github.com/actions/virtual-environments/issues/696
     runs-on: macos-latest
-    matrix:
-      python_version: [3.5, 3.6, 3.7]
+    strategy:
+      matrix:
+        python_version: [3.5, 3.6, 3.7]
     steps:
       - uses: actions/checkout@v2
         with:
