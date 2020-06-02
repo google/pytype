@@ -1791,6 +1791,8 @@ class PyTDFunction(Function):
             return True
         return False
 
+      errors = collections.defaultdict(dict)
+
       for obj, name, values in all_mutations:
         if obj.from_annotation:
           params = obj.get_instance_type_parameter(name)
@@ -1802,12 +1804,12 @@ class PyTDFunction(Function):
             if new:
               # TODO(mdemello): Can we get the variable name of the container
               # object from the opcode traces?
-              # TODO(mdemello): If the same object has several violations, e.g.
-              #   a: Dict[str, int] = {}
-              #   a[1] = 'a'
-              # we will print each mutation as a separate error.
-              self.vm.errorlog.container_type_mismatch(
-                  self.vm.frames, obj.cls, params, values, None)
+              formal = name.split(".")[-1]
+              errors[obj][formal] = (params, values)
+
+      for obj, errs in errors.items():
+        self.vm.errorlog.container_type_mismatch(
+            self.vm.frames, obj, errs, None)
 
     node = abstract_utils.apply_mutations(node, all_mutations.__iter__)
     return node, retvar

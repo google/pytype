@@ -1050,6 +1050,17 @@ class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
     pattern = r"Annot.*List\[int\].*Contained.*int.*New.*Union\[int, str\]"
     self.assertErrorRegexes(errors, {"e": pattern})
 
+  def test_container_multiple_mutations(self):
+    errors = self.CheckWithErrors("""
+      from typing import Dict
+      x: Dict[int, str] = {}
+      x["hello"] = 1.0  # container-type-mismatch[e]
+    """)
+    pattern = (r"Annot.*Dict\[int, str\].*Dict\[_K, _V\].*" +
+               r"Contained.*_K.*int.*_V.*str.*"
+               r"New.*_K.*Union\[int, str\].*_V.*Union\[float, str\]")
+    self.assertErrorRegexes(errors, {"e": pattern})
+
   def test_allowed_container_mutation_subclass(self):
     self.Check("""
       from typing import List
