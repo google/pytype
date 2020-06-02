@@ -34,15 +34,15 @@ jobs:
             --rm \
             -e PLAT=${{ matrix.platform }} \
             -e PYTHON_TAGS="$PYTHON_TAGS" \
-            -v "$(pwd)":/io \
-            $DOCKER_IMAGE \
+            -v "$(pwd):/io" \
+            "$DOCKER_IMAGE" \
             /io/build_scripts/wheels/manylinux.sh
       - uses: actions/upload-artifact@v2
         with:
           name: dist
           path: dist
   macosx_wheels:
-    name: Python ${{ matrix.python_version }} ${{ matrix.platform }} wheels
+    name: Python ${{ matrix.python_version }} MacOS wheels
     # Note: the container MacOS version may differ from the SDK
     # used to build Python there.  It is the latter that determines
     # the wheel's platform tag.
