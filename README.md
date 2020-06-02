@@ -1,4 +1,5 @@
-[![Build Status](https://travis-ci.org/google/pytype.svg?branch=master)](https://travis-ci.org/google/pytype)
+[![Tests](https://travis-ci.org/google/pytype.svg?branch=master)](https://travis-ci.org/google/pytype)
+[![Wheels](https://img.shields.io/github/workflow/status/google/pytype/Build%20wheels?label=wheels)](https://github.com/google/pytype/actions)
 
 # pytype - 🦆✔
 
