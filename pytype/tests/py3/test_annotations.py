@@ -1041,6 +1041,31 @@ class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
       a: int
     """)
 
+  def test_container_mutation(self):
+    errors = self.CheckWithErrors("""
+      from typing import List
+      x: List[int] = []
+      x.append("hello")  # container-type-mismatch[e]
+    """)
+    pattern = r"Annot.*List\[int\].*Contained.*int.*New.*Union\[int, str\]"
+    self.assertErrorRegexes(errors, {"e": pattern})
+
+  def test_allowed_container_mutation_subclass(self):
+    self.Check("""
+      from typing import List
+      class A: pass
+      class B(A): pass
+      x: List[A] = []
+      x.append(B())
+    """)
+
+  def test_allowed_container_mutation_builtins(self):
+    self.Check("""
+      from typing import List
+      x: List[float] = []
+      x.append(0)
+    """)
+
   @test_utils.skipUnlessPy((3, 7), reason="__future__.annotations is 3.7+ and "
                            "is the default behavior in 3.8+")
   def test_postponed_evaluation(self):

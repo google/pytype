@@ -1023,6 +1023,21 @@ class ErrorLog(ErrorLogBase):
     err_msg = "Type annotation%s does not match type of assignment" % suffix
     self.error(stack, err_msg, details=details)
 
+  @_error_name("container-type-mismatch")
+  def container_type_mismatch(self, stack, obj, params, values, name):
+    """Invalid combination of annotation and mutation."""
+    annot_string = self._print_as_expected_type(obj)
+    old_content = self._join_printed_types(
+        set(self._print_as_actual_type(v) for v in params.data))
+    new_content = self._join_printed_types(
+        set(self._print_as_actual_type(v) for v in values.data))
+    details = ("Annotation: %s\n" % annot_string +
+               "Contained type: %s\n" % old_content +
+               "New contained type: %s" % new_content)
+    suffix = "" if name is None else " for " + name
+    err_msg = "New container type%s does not match type annotation" % suffix
+    self.error(stack, err_msg, details=details)
+
   @_error_name("invalid-function-definition")
   def invalid_function_definition(self, stack, msg):
     """Invalid function constructed via metaprogramming."""

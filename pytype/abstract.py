@@ -74,6 +74,9 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
     self._all_template_names = None
     self._instance = None
 
+    # true for instances created to apply type annotations
+    self.from_annotation = False
+
   @property
   def all_template_names(self):
     if self._all_template_names is None:
@@ -1770,6 +1773,41 @@ class PyTDFunction(Function):
       node, result, mutations = ret
       retvar.PasteVariable(result, node)
       all_mutations.update(mutations)
+
+    if all_mutations and self.vm.options.check_variable_types:
+      # Raise an error if:
+      # - An annotation has a type param that is not ambigious or empty
+      # - The mutation adds a type that is not ambiguous or empty
+      # TODO(mdemello): This does not check annotations in function args.
+      def filter_contents(var):
+        # reduces the work compatible_with has to do.
+        return set(x for x in var.data
+                   if not x.isinstance_AMBIGUOUS_OR_EMPTY())
+
+      def compatible_with(existing, new):
+        """Check whether a new type can be added to a container."""
+        for data in existing:
+          if self.vm.matcher.match_from_mro(new.cls, data.cls):
+            return True
+        return False
+
+      for obj, name, values in all_mutations:
+        if obj.from_annotation:
+          params = obj.get_instance_type_parameter(name)
+          ps = filter_contents(params)
+          if ps:
+            # check if the container type is being broadened.
+            vs = filter_contents(values)
+            new = [x for x in (vs - ps) if not compatible_with(ps, x)]
+            if new:
+              # TODO(mdemello): Can we get the variable name of the container
+              # object from the opcode traces?
+              # TODO(mdemello): If the same object has several violations, e.g.
+              #   a: Dict[str, int] = {}
+              #   a[1] = 'a'
+              # we will print each mutation as a separate error.
+              self.vm.errorlog.container_type_mismatch(
+                  self.vm.frames, obj.cls, params, values, None)
 
     node = abstract_utils.apply_mutations(node, all_mutations.__iter__)
     return node, retvar
