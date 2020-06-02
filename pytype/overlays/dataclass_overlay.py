@@ -82,7 +82,10 @@ class Dataclass(classgen.Decorator):
         else:
           init = True
 
-      if (not self.vm.options.check_variable_types or
+      # TODO(b/74434237): The first check can be removed once
+      # --check-variable-types is on by default.
+      if ((not self.vm.options.check_variable_types and
+           local.last_op.line not in self.vm.director._variable_annotations) or  # pylint: disable=protected-access
           orig and orig.data == [self.vm.convert.none]):
         # vm._apply_annotation mostly takes care of checking that the default
         # matches the declared type. However, it allows None defaults, and

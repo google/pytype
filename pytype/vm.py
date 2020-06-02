@@ -1293,7 +1293,9 @@ class VirtualMachine(object):
           # An Any annotation can be used to essentially turn off inference in
           # cases where it is causing false positives or other issues.
           value = self.new_unsolvable(state.node)
-    if self.options.check_variable_types:
+    # TODO(b/74434237): Enable --check-variable-types by default.
+    if (self.options.check_variable_types or
+        op.line in self.director._variable_annotations):  # pylint: disable=protected-access
       self.check_annotation_type_mismatch(
           state.node, name, typ, orig_val, self.frames, allow_none=True)
     return value
