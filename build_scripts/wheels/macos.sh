@@ -16,4 +16,4 @@ brew install -v cmake || brew upgrade cmake
 brew install -v ninja || brew upgrade ninja
 python -m pip install -U pip setuptools wheel
 export CMAKE_PREFIX_PATH="$(brew --prefix bison)"
-python -m pip wheel . --verbose --no-deps -w macos-wheelhouse
+python -m pip wheel . --verbose --no-deps -w dist

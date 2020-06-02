@@ -1,7 +1,4 @@
 #!/bin/bash
-#
-# Use this like:
-# docker container run --rm -e PLAT=$PLAT -v "$(pwd)":/io <IMAGE> /io/build_scripts/manylinux.sh
 
 set -eux
 
@@ -13,6 +10,7 @@ fi
 
 yum install -y gettext-devel python3-devel  # gettext is for flex
 
+# TODO: what should be the update cadence for these?
 CMAKE_VERSION='3.17.2'
 NINJA_VERSION='1.10.0'
 BISON_VERSION='3.6'
@@ -76,9 +74,9 @@ bison --version
 
 # Pytype supports CPython 3.5 thru 3.7
 rm -rvf linux-wheelhouse
-for PYBIN in /opt/python/cp3{5,6,7}*/bin; do
+for tag in $PYTHON_TAGS; do
+    PYBIN="/opt/python/${tag}/bin"
     rm -rvf out/CMake* CMakeCache.txt cmake_install.cmake build.ninja rules.ninja
-    pyv="$(basename "$(dirname "$PYBIN")")"
     "${PYBIN}/python" -m pip install -U pip setuptools wheel
     "${PYBIN}/python" -m pip wheel . --verbose --no-deps -w linux-wheelhouse
 done
@@ -87,3 +85,6 @@ for whl in linux-wheelhouse/*.whl; do
     auditwheel repair "$whl" --plat "$PLAT" -w linux-wheelhouse/
     rm -f "$whl"
 done
+
+mkdir dist
+mv wheelhouse/*.whl dist/
