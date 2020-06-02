@@ -78,7 +78,7 @@ for tag in $PYTHON_TAGS; do
     PYBIN="/opt/python/${tag}/bin"
     rm -rvf out/CMake* CMakeCache.txt cmake_install.cmake build.ninja rules.ninja
     "${PYBIN}/python" -m pip install -U pip setuptools wheel
-    "${PYBIN}/python" -m pip wheel . --verbose --no-deps -w linux-wheelhouse
+    "${PYBIN}/python" -m pip wheel . --no-deps -w linux-wheelhouse
 done
 
 for whl in linux-wheelhouse/*.whl; do
@@ -87,4 +87,4 @@ for whl in linux-wheelhouse/*.whl; do
 done
 
 mkdir dist
-mv wheelhouse/*.whl dist/
+mv linux-wheelhouse/*.whl dist/
