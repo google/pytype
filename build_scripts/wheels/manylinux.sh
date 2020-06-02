@@ -72,7 +72,6 @@ ninja --version
 flex --version
 bison --version
 
-# Pytype supports CPython 3.5 thru 3.7
 rm -rvf linux-wheelhouse
 for tag in $PYTHON_TAGS; do
     PYBIN="/opt/python/${tag}/bin"
