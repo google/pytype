@@ -158,6 +158,7 @@ class Class(object):
     self._instance_cache = {}
     self._init_abstract_methods()
     self._init_protocol_methods()
+    self._init_overrides_bool()
     self._all_formal_type_parameters = datatypes.AliasingMonitorDict()
     self._all_formal_type_parameters_loaded = False
 
@@ -231,6 +232,21 @@ class Class(object):
         # Remove methods implemented by this class.
         protocol_methods = {m for m in protocol_methods if m not in cls}
     self.protocol_methods = protocol_methods
+
+  def _init_overrides_bool(self):
+    """Compute and cache whether the class sets its own boolean value."""
+    # A class's instances can evaluate to False if it defines __bool__ or
+    # __len__. Python2 used __nonzero__ rather than __bool__.
+    bool_override = "__bool__" if self.vm.PY3 else "__nonzero__"
+    if self.isinstance_ParameterizedClass():
+      self.overrides_bool = self.base_cls.overrides_bool
+      return
+    for cls in self.mro:
+      if isinstance(cls, Class):
+        if any(x in cls.get_own_methods() for x in (bool_override, "__len__")):
+          self.overrides_bool = True
+          return
+    self.overrides_bool = False
 
   def get_own_abstract_methods(self):
     """Get the abstract methods defined by this class."""

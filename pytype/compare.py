@@ -119,14 +119,22 @@ def compatible_with(value, logical_value):
   elif isinstance(value, mixin.PythonConstant):
     return bool(value.pyval) == logical_value
   elif isinstance(value, abstract.Instance):
-    # Containers with unset parameters and NoneType instances cannot match True.
     name = value.full_name
     if logical_value and name in _CONTAINER_NAMES:
-      return (
+      # Containers with unset parameters cannot match True.
+      ret = (
           value.has_instance_type_parameter(abstract_utils.T) and
           bool(value.get_instance_type_parameter(abstract_utils.T).bindings))
+      return ret
     elif name == "__builtin__.NoneType":
+      # NoneType instances cannot match True.
       return not logical_value
+    elif name in NUMERIC:
+      # Numeric types can match both True and False
+      return True
+    elif not value.cls.overrides_bool:
+      # Objects evaluate to True unless explicitly overridden.
+      return logical_value
     return True
   elif isinstance(value, (abstract.Function, mixin.Class)):
     # Functions and classes always evaluate to True.

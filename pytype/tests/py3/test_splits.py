@@ -256,5 +256,20 @@ class SplitTestPy3(test_base.TargetPython3FeatureTest):
         return x.upper()
     """)
 
+  def test_override_bool(self):
+    ty = self.Infer("""
+      class A:
+        def __bool__(self):
+          return __random__
+
+      x = A() and True
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Union
+      class A:
+        def __bool__(self) -> bool: ...
+      x: Union[A, bool]
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

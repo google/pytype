@@ -794,5 +794,28 @@ class SplitTest(test_base.TargetIndependentTest):
         return f(object).values()
     """)
 
+  def test_object_truthiness(self):
+    ty = self.Infer("""
+      x = object() and True
+    """)
+    self.assertTypesMatchPytd(ty, """
+      x: bool
+    """)
+
+  def test_override_len(self):
+    ty = self.Infer("""
+      class A:
+        def __len__(self):
+          return 42
+
+      x = A() and True
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Union
+      class A:
+        def __len__(self) -> int: ...
+      x: Union[A, bool]
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
