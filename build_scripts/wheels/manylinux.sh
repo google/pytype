@@ -3,12 +3,12 @@
 set -eux
 
 if [[ -z "$PLAT" ]]; then
-    # Early check, don't wait for -u to catch it later
-    echo "Specify non-empty PLAT variable" >&2
-    exit 1
+  # Early check, don't wait for -u to catch it later
+  echo "Specify non-empty PLAT variable" >&2
+  exit 1
 fi
 
-yum install -y gettext-devel python3-devel  # gettext is for flex
+yum install -y gettext-devel python3-devel # gettext is for flex
 
 # TODO: what should be the update cadence for these?
 CMAKE_VERSION='3.17.2'
@@ -17,27 +17,27 @@ BISON_VERSION='3.6'
 FLEX_VERSION='2.6.4'
 
 untar() {
-    mkdir -pv "$1"
-    tar -C "$1" -xzvf "${1}.tar.gz" --strip-components=1
-    rm -vf "${1}.tar.gz"
+  mkdir -pv "$1"
+  tar -C "$1" -xzvf "${1}.tar.gz" --strip-components=1
+  rm -vf "${1}.tar.gz"
 }
 
 # Install CMake
 pushd /usr/local/share
 if [[ "$(arch)" != "x86_64" ]]; then
-    echo "Only supported for x86_64 arch, not $(arch)" >&2
-    exit 1
+  echo "Only supported for x86_64 arch, not $(arch)" >&2
+  exit 1
 fi
 curl -sSL \
-    -o cmake.tar.gz \
-    "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz"
+  -o cmake.tar.gz \
+  "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz"
 untar cmake
 ln -s "$(pwd)/cmake/bin/cmake" /usr/local/bin/cmake
 
 # Install ninja/ninja-build (requires CMake)
 curl -sSL \
-    -o ninja.zip \
-    "https://github.com/ninja-build/ninja/releases/download/v${NINJA_VERSION}/ninja-linux.zip"
+  -o ninja.zip \
+  "https://github.com/ninja-build/ninja/releases/download/v${NINJA_VERSION}/ninja-linux.zip"
 unzip ninja.zip
 mv ninja /usr/local/bin/
 rm -vf ninja*
@@ -48,8 +48,8 @@ pushd "$TD" || exit 1
 
 # Install Flex
 curl -sSL \
-    -o flex.tar.gz \
-    "https://github.com/westes/flex/releases/download/v${FLEX_VERSION}/flex-${FLEX_VERSION}.tar.gz"
+  -o flex.tar.gz \
+  "https://github.com/westes/flex/releases/download/v${FLEX_VERSION}/flex-${FLEX_VERSION}.tar.gz"
 untar flex
 pushd flex
 ./autogen.sh && ./configure && make && make install
@@ -57,8 +57,8 @@ popd
 
 # Install GNU Bison
 curl -sSL \
-    -o bison.tar.gz \
-    "https://ftp.gnu.org/gnu/bison/bison-${BISON_VERSION}.tar.gz"
+  -o bison.tar.gz \
+  "https://ftp.gnu.org/gnu/bison/bison-${BISON_VERSION}.tar.gz"
 untar bison
 pushd bison
 ./configure && make && make install
@@ -74,15 +74,15 @@ bison --version
 
 rm -rvf linux-wheelhouse
 for tag in $PYTHON_TAGS; do
-    PYBIN="/opt/python/${tag}/bin"
-    rm -rvf out/CMake* CMakeCache.txt cmake_install.cmake build.ninja rules.ninja
-    "${PYBIN}/python" -m pip install -U pip setuptools wheel
-    "${PYBIN}/python" -m pip wheel . --no-deps -w linux-wheelhouse
+  PYBIN="/opt/python/${tag}/bin"
+  rm -rvf out/CMake* CMakeCache.txt cmake_install.cmake build.ninja rules.ninja
+  "${PYBIN}/python" -m pip install -U pip setuptools wheel
+  "${PYBIN}/python" -m pip wheel . --no-deps -w linux-wheelhouse
 done
 
 for whl in linux-wheelhouse/*.whl; do
-    auditwheel repair "$whl" --plat "$PLAT" -w linux-wheelhouse/
-    rm -f "$whl"
+  auditwheel repair "$whl" --plat "$PLAT" -w linux-wheelhouse/
+  rm -f "$whl"
 done
 
 mkdir dist
