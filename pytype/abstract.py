@@ -1130,9 +1130,9 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
 class AnnotationsDict(Dict):
   """__annotations__ dict."""
 
-  def __init__(self, vm):
+  def __init__(self, annotated_locals, vm):
     super().__init__(vm)
-    self.annotated_locals = vm.current_annotated_locals
+    self.annotated_locals = annotated_locals
 
   def get_type(self, node, name):
     if name not in self.annotated_locals:
@@ -1774,7 +1774,7 @@ class PyTDFunction(Function):
       retvar.PasteVariable(result, node)
       all_mutations.update(mutations)
 
-    if all_mutations and self.vm.options.check_variable_types:
+    if all_mutations and self.vm.options.check_container_types:
       # Raise an error if:
       # - An annotation has a type param that is not ambigious or empty
       # - The mutation adds a type that is not ambiguous or empty

@@ -789,5 +789,33 @@ class TestAttributes(test_base.TargetIndependentTest):
       def f() -> Optional[str]: ...
     """)
 
+  def test_bad_instance_assignment(self):
+    errors = self.CheckWithErrors("""
+      class Foo:
+        x = None  # type: int
+        def foo(self):
+          self.x = 'hello, world'  # annotation-type-mismatch[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Annotation: int.*Assignment: str"})
+
+  def test_bad_cls_assignment(self):
+    errors = self.CheckWithErrors("""
+      class Foo:
+        x = None  # type: int
+      Foo.x = 'hello, world'  # annotation-type-mismatch[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Annotation: int.*Assignment: str"})
+
+  def test_any_annotation(self):
+    self.Check("""
+      from typing import Any
+      class Foo:
+        x = None  # type: Any
+        def foo(self):
+          print(self.x.some_attr)
+          self.x = 0
+          print(self.x.some_attr)
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
