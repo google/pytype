@@ -132,7 +132,7 @@ def compatible_with(value, logical_value):
     elif name in NUMERIC:
       # Numeric types can match both True and False
       return True
-    elif not value.cls.overrides_bool:
+    elif isinstance(value.cls, mixin.Class) and not value.cls.overrides_bool:
       # Objects evaluate to True unless explicitly overridden.
       return logical_value
     return True
