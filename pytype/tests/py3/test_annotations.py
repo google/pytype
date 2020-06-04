@@ -90,6 +90,9 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e": r"upper.*int"})
 
   def test_list(self):
+    # TODO(mdemello): Do not check variables with bindings from multiple
+    # annotations.
+    self.options.tweak(check_container_types=False)
     ty = self.Infer("""
       from typing import List
 
@@ -819,10 +822,10 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_change_annotated_arg(self):
-    ty = self.Infer("""
+    ty, _ = self.InferWithErrors("""
       from typing import Dict
       def f(x: Dict[str, str]):
-        x[True] = 42
+        x[True] = 42  # container-type-mismatch
         return x
       v = f({"a": "b"})
     """, deep=False)

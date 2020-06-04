@@ -3179,6 +3179,8 @@ class InterpreterFunction(SignedFunction):
           extra_key = (self.get_first_opcode(), name)
           node, callargs[name] = self.vm.init_class(
               node, annotations[name], extra_key=extra_key)
+          for d in callargs[name].data:
+            d.from_annotation = True
     try:
       frame = self.vm.make_frame(
           node, self.code, self.f_globals, self.f_locals, callargs,
