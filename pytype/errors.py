@@ -1050,7 +1050,7 @@ class ErrorLog(ErrorLogBase):
     new_contained = ""
     for formal in cls.formal_type_parameters.keys():
       if formal in mutations:
-        params, values = mutations[formal]
+        params, values, _ = mutations[formal]
         old_content = self._join_printed_types(
             set(self._print_as_actual_type(v) for v in params.data))
         new_content = self._join_printed_types(

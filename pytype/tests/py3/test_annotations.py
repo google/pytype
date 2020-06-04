@@ -825,7 +825,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     ty, _ = self.InferWithErrors("""
       from typing import Dict
       def f(x: Dict[str, str]):
-        x[True] = 42  # container-type-mismatch
+        x[True] = 42  # container-type-mismatch[e]
         return x
       v = f({"a": "b"})
     """, deep=False)
@@ -1059,7 +1059,7 @@ class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
       x: Dict[int, str] = {}
       x["hello"] = 1.0  # container-type-mismatch[e]
     """)
-    pattern = (r"Annot.*Dict\[int, str\].*Dict\[_K, _V\].*" +
+    pattern = (r"New container.*for x.*Dict\[int, str\].*Dict\[_K, _V\].*" +
                r"Contained.*_K.*int.*_V.*str.*"
                r"New.*_K.*Union\[int, str\].*_V.*Union\[float, str\]")
     self.assertErrorRegexes(errors, {"e": pattern})

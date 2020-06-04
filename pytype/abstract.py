@@ -74,8 +74,11 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
     self._all_template_names = None
     self._instance = None
 
-    # true for instances created to apply type annotations
-    self.from_annotation = False
+    # The variable or function arg name with the type annotation that this
+    # instance was created from. For example,
+    #   x: str = "hello"
+    # would create an instance of str with from_annotation = 'x'
+    self.from_annotation = None
 
   @property
   def all_template_names(self):
@@ -1778,7 +1781,6 @@ class PyTDFunction(Function):
       # Raise an error if:
       # - An annotation has a type param that is not ambigious or empty
       # - The mutation adds a type that is not ambiguous or empty
-      # TODO(mdemello): This does not check annotations in function args.
       def filter_contents(var):
         # reduces the work compatible_with has to do.
         return set(x for x in var.data
@@ -1802,14 +1804,14 @@ class PyTDFunction(Function):
             vs = filter_contents(values)
             new = [x for x in (vs - ps) if not compatible_with(ps, x)]
             if new:
-              # TODO(mdemello): Can we get the variable name of the container
-              # object from the opcode traces?
               formal = name.split(".")[-1]
-              errors[obj][formal] = (params, values)
+              errors[obj][formal] = (params, values, obj.from_annotation)
 
       for obj, errs in errors.items():
+        names = {name for _, _, name in errs.values()}
+        name = list(names)[0] if len(names) == 1 else None
         self.vm.errorlog.container_type_mismatch(
-            self.vm.frames, obj, errs, None)
+            self.vm.frames, obj, errs, name)
 
     node = abstract_utils.apply_mutations(node, all_mutations.__iter__)
     return node, retvar
@@ -3180,7 +3182,7 @@ class InterpreterFunction(SignedFunction):
           node, callargs[name] = self.vm.init_class(
               node, annotations[name], extra_key=extra_key)
           for d in callargs[name].data:
-            d.from_annotation = True
+            d.from_annotation = name
     try:
       frame = self.vm.make_frame(
           node, self.code, self.f_globals, self.f_locals, callargs,
