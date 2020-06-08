@@ -212,6 +212,33 @@ class SplitTest(test_base.TargetPython3BasicTest):
           print(arg.upper())
     """)
 
+  def test_iterable_truthiness(self):
+    ty = self.Infer("""
+      from typing import Iterable
+      def f(x: Iterable[int]):
+        return 0 if x else ''
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Iterable, Union
+      def f(x: Iterable[int]) -> Union[int, str]: ...
+    """)
+
+  def test_custom_container_truthiness(self):
+    ty = self.Infer("""
+      from typing import Iterable, TypeVar
+      T = TypeVar('T')
+      class MyIterable(Iterable[T]):
+        pass
+      def f(x: MyIterable[int]):
+        return 0 if x else ''
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Iterable, TypeVar, Union
+      T = TypeVar('T')
+      class MyIterable(Iterable[T]): ...
+      def f(x: MyIterable[int]) -> Union[int, str]: ...
+    """)
+
 
 class SplitTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for if-splitting in Python 3."""

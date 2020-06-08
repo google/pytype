@@ -133,6 +133,10 @@ def compatible_with(value, logical_value):
       # Numeric types can match both True and False
       return True
     elif isinstance(value.cls, mixin.Class) and not value.cls.overrides_bool:
+      if getattr(value.cls, "template", None):
+        # A parameterized class can match both True and False, since it might be
+        # an empty container.
+        return True
       # Objects evaluate to True unless explicitly overridden.
       return logical_value
     return True
