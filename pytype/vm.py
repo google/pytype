@@ -1587,7 +1587,28 @@ class VirtualMachine(object):
     state = state.push(result)
     return state
 
+  def _is_classmethod_cls_arg(self, var):
+    """True if var is the first arg of a class method in the current frame."""
+    if not (self.frame.func and self.frame.first_posarg):
+      return False
+
+    func = self.frame.func.data
+    # TODO(b/158525984): right now the only classmethod we infer a bound cls
+    # type for is cls.__new__
+    if func.name.rsplit(".")[-1] == "__new__":
+      is_cls = not set(var.data) - set(self.frame.first_posarg.data)
+      return is_cls
+    return False
+
   def expand_bool_result(self, node, left, right, name, maybe_predicate):
+    """Common functionality for 'is' and 'is not'."""
+    if (self._is_classmethod_cls_arg(left) or
+        self._is_classmethod_cls_arg(right)):
+      # If cls is the first argument of a classmethod, it could be bound to
+      # either the defining class or one of its subclasses, so `is` is
+      # ambiguous.
+      return self.new_unsolvable(node)
+
     result = self.program.NewVariable()
     for x in left.bindings:
       for y in right.bindings:
