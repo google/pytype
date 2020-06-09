@@ -133,6 +133,10 @@ class FunctionMap(object):
     """Add an attr access within a function body."""
     attrib = ref.name
     scope = ref.ref_scope
+    if scope not in self.fmap:
+      # This call was not within a function body.
+      return
+
     try:
       d = self.index.envs[scope].env[ref.target]
     except KeyError:
