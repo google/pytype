@@ -165,6 +165,36 @@ class ClassesTest(test_base.TargetIndependentTest):
       def bar(cls) -> None: ...
     """)
 
+  def test_factory_classmethod(self):
+    ty = self.Infer("""
+      class Foo(object):
+        @classmethod
+        def factory(cls, *args, **kwargs):
+          return object.__new__(cls)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Type, TypeVar
+      _TFoo = TypeVar('_TFoo', bound=Foo)
+      class Foo:
+        @classmethod
+        def factory(cls: Type[_TFoo], *args, **kwargs) -> _TFoo: ...
+    """)
+
+  def test_classmethod_return_inference(self):
+    ty = self.Infer("""
+      class Foo(object):
+        A = 10
+        @classmethod
+        def bar(cls):
+          return cls.A
+    """)
+    self.assertTypesMatchPytd(ty, """
+    class Foo(object):
+      A: int
+      @classmethod
+      def bar(cls) -> int: ...
+    """)
+
   def test_inherit_from_unknown_attributes(self):
     ty = self.Infer("""
       class Foo(__any_object__):

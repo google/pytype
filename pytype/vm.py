@@ -1593,9 +1593,7 @@ class VirtualMachine(object):
       return False
 
     func = self.frame.func.data
-    # TODO(b/158525984): right now the only classmethod we infer a bound cls
-    # type for is cls.__new__
-    if func.name.rsplit(".")[-1] == "__new__":
+    if func.is_classmethod or func.name.rsplit(".")[-1] == "__new__":
       is_cls = not set(var.data) - set(self.frame.first_posarg.data)
       return is_cls
     return False

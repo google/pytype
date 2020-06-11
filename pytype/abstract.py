@@ -1492,6 +1492,7 @@ class Function(SimpleAbstractValue):
     super(Function, self).__init__(name, vm)
     self.cls = FunctionPyTDClass(self, vm)
     self.is_attribute_of_class = False
+    self.is_classmethod = False
     self.is_abstract = False
     self.members["func_name"] = self.vm.convert.build_string(
         self.vm.root_cfg_node, name)
@@ -3487,6 +3488,10 @@ class BoundFunction(AtomicAbstractValue):
   @is_abstract.setter
   def is_abstract(self, value):
     self.underlying.is_abstract = value
+
+  @property
+  def is_classmethod(self):
+    return self.underlying.is_classmethod
 
   def repr_names(self, callself_repr=None):
     """Names to use in the bound function's string representation.
