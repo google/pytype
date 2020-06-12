@@ -1341,7 +1341,7 @@ class VirtualMachine(object):
     annotations_dict = self.current_annotated_locals if local else None
     # TODO(b/74434237): Enable --check-variable-types by default.
     check_types = (self.options.check_variable_types or
-                   op.line in self.director._variable_annotations)  # pylint: disable=protected-access
+                   op.line not in self.director.type_comments)
     value = self._apply_annotation(
         state, op, name, orig_val, annotations_dict, check_types)
     self._check_aliased_type_params(value)
