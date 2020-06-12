@@ -1014,6 +1014,12 @@ class FunctionTest(_ParserTestBase):
       class Foo:
           bar: str
     """)
+    self.check("""
+      def f(  # type: ignore
+        x: int) -> None: ...
+    """, """
+      def f(x: int) -> None: ...
+    """)
 
   def test_decorators(self):
     # These tests are a bit questionable because most of the decorators only

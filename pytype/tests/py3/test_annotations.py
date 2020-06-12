@@ -90,6 +90,9 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e": r"upper.*int"})
 
   def test_list(self):
+    # TODO(mdemello): Do not check variables with bindings from multiple
+    # annotations.
+    self.options.tweak(check_container_types=False)
     ty = self.Infer("""
       from typing import List
 
@@ -819,10 +822,10 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_change_annotated_arg(self):
-    ty = self.Infer("""
+    ty, _ = self.InferWithErrors("""
       from typing import Dict
       def f(x: Dict[str, str]):
-        x[True] = 42
+        x[True] = 42  # container-type-mismatch[e]
         return x
       v = f({"a": "b"})
     """, deep=False)
@@ -1039,6 +1042,42 @@ class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       a: int
+    """)
+
+  def test_container_mutation(self):
+    errors = self.CheckWithErrors("""
+      from typing import List
+      x: List[int] = []
+      x.append("hello")  # container-type-mismatch[e]
+    """)
+    pattern = r"Annot.*List\[int\].*Contained.*int.*New.*Union\[int, str\]"
+    self.assertErrorRegexes(errors, {"e": pattern})
+
+  def test_container_multiple_mutations(self):
+    errors = self.CheckWithErrors("""
+      from typing import Dict
+      x: Dict[int, str] = {}
+      x["hello"] = 1.0  # container-type-mismatch[e]
+    """)
+    pattern = (r"New container.*for x.*Dict\[int, str\].*Dict\[_K, _V\].*" +
+               r"Contained.*_K.*int.*_V.*str.*"
+               r"New.*_K.*Union\[int, str\].*_V.*Union\[float, str\]")
+    self.assertErrorRegexes(errors, {"e": pattern})
+
+  def test_allowed_container_mutation_subclass(self):
+    self.Check("""
+      from typing import List
+      class A: pass
+      class B(A): pass
+      x: List[A] = []
+      x.append(B())
+    """)
+
+  def test_allowed_container_mutation_builtins(self):
+    self.Check("""
+      from typing import List
+      x: List[float] = []
+      x.append(0)
     """)
 
   @test_utils.skipUnlessPy((3, 7), reason="__future__.annotations is 3.7+ and "

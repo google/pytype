@@ -797,4 +797,6 @@ class ClassMethod(BuiltinClass):
     if len(args.posargs) != 1:
       raise function.WrongArgCount(self._SIGNATURE, args, self.vm)
     arg = args.posargs[0]
+    for d in arg.data:
+      d.is_classmethod = True
     return node, ClassMethodInstance(self.vm, self, arg).to_variable(node)

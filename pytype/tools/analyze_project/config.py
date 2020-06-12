@@ -62,6 +62,10 @@ ITEMS = {
 
 # The missing fields will be filled in by generate_sample_config_or_die.
 _PYTYPE_SINGLE_ITEMS = {
+    'check_attribute_types': Item(
+        None, 'False', ArgInfo('--check-attribute-types', None), None),
+    'check_container_types': Item(
+        None, 'False', ArgInfo('--check-container-types', None), None),
     'check_variable_types': Item(
         None, 'False', ArgInfo('--check-variable-types', None), None),
     'disable': Item(

@@ -479,8 +479,9 @@ typevar_kwarg
   ;
 
 funcdef
-  : decorators maybe_async DEF funcname '(' params ')' return maybe_body {
-      $$ = ctx->Call(kNewFunction, "(NONNNN)", $1, $2, $4, $6, $8, $9);
+  : decorators maybe_async DEF funcname '(' maybe_type_ignore params ')' return
+    maybe_body {
+      $$ = ctx->Call(kNewFunction, "(NONNNN)", $1, $2, $4, $7, $9, $10);
       // Decorators is nullable and messes up the location tracking by
       // using the previous symbol as the start location for this production,
       // which is very misleading.  It is better to ignore decorators and

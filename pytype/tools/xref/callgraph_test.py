@@ -160,5 +160,32 @@ class CallgraphTest(test_base.TargetIndependentTest):
       f = fns["module.%s" % fn]
       self.assertParamsEqual(f.params, params)
 
+  def test_toplevel_calls(self):
+    """Don't index calls outside a function."""
+    ix = self.index_code("""
+        def f(x: int):
+          return "hello"
+
+        a = f(10)
+        a.upcase()
+    """)
+    fns = ix.function_map
+    # we should only have f in fns, despite function calls at module scope
+    self.assertHasFunctions(fns, ["f"])
+
+  def test_class_level_calls(self):
+    """Don't index calls outside a function."""
+    ix = self.index_code("""
+        def f(x: int):
+          return "hello"
+
+        class A:
+          a = f(10)
+          b = a.upcase()
+    """)
+    fns = ix.function_map
+    # we should only have f in fns, despite function calls at class scope
+    self.assertHasFunctions(fns, ["f"])
+
 
 test_base.main(globals(), __name__ == "__main__")

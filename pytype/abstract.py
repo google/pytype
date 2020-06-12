@@ -74,6 +74,12 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
     self._all_template_names = None
     self._instance = None
 
+    # The variable or function arg name with the type annotation that this
+    # instance was created from. For example,
+    #   x: str = "hello"
+    # would create an instance of str with from_annotation = 'x'
+    self.from_annotation = None
+
   @property
   def all_template_names(self):
     if self._all_template_names is None:
@@ -1127,9 +1133,9 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
 class AnnotationsDict(Dict):
   """__annotations__ dict."""
 
-  def __init__(self, vm):
+  def __init__(self, annotated_locals, vm):
     super().__init__(vm)
-    self.annotated_locals = vm.current_annotated_locals
+    self.annotated_locals = annotated_locals
 
   def get_type(self, node, name):
     if name not in self.annotated_locals:
@@ -1486,6 +1492,7 @@ class Function(SimpleAbstractValue):
     super(Function, self).__init__(name, vm)
     self.cls = FunctionPyTDClass(self, vm)
     self.is_attribute_of_class = False
+    self.is_classmethod = False
     self.is_abstract = False
     self.members["func_name"] = self.vm.convert.build_string(
         self.vm.root_cfg_node, name)
@@ -1770,6 +1777,42 @@ class PyTDFunction(Function):
       node, result, mutations = ret
       retvar.PasteVariable(result, node)
       all_mutations.update(mutations)
+
+    if all_mutations and self.vm.options.check_container_types:
+      # Raise an error if:
+      # - An annotation has a type param that is not ambigious or empty
+      # - The mutation adds a type that is not ambiguous or empty
+      def filter_contents(var):
+        # reduces the work compatible_with has to do.
+        return set(x for x in var.data
+                   if not x.isinstance_AMBIGUOUS_OR_EMPTY())
+
+      def compatible_with(existing, new):
+        """Check whether a new type can be added to a container."""
+        for data in existing:
+          if self.vm.matcher.match_from_mro(new.cls, data.cls):
+            return True
+        return False
+
+      errors = collections.defaultdict(dict)
+
+      for obj, name, values in all_mutations:
+        if obj.from_annotation:
+          params = obj.get_instance_type_parameter(name)
+          ps = filter_contents(params)
+          if ps:
+            # check if the container type is being broadened.
+            vs = filter_contents(values)
+            new = [x for x in (vs - ps) if not compatible_with(ps, x)]
+            if new:
+              formal = name.split(".")[-1]
+              errors[obj][formal] = (params, values, obj.from_annotation)
+
+      for obj, errs in errors.items():
+        names = {name for _, _, name in errs.values()}
+        name = list(names)[0] if len(names) == 1 else None
+        self.vm.errorlog.container_type_mismatch(
+            self.vm.frames, obj, errs, name)
 
     node = abstract_utils.apply_mutations(node, all_mutations.__iter__)
     return node, retvar
@@ -3139,6 +3182,8 @@ class InterpreterFunction(SignedFunction):
           extra_key = (self.get_first_opcode(), name)
           node, callargs[name] = self.vm.init_class(
               node, annotations[name], extra_key=extra_key)
+          for d in callargs[name].data:
+            d.from_annotation = name
     try:
       frame = self.vm.make_frame(
           node, self.code, self.f_globals, self.f_locals, callargs,
@@ -3443,6 +3488,10 @@ class BoundFunction(AtomicAbstractValue):
   @is_abstract.setter
   def is_abstract(self, value):
     self.underlying.is_abstract = value
+
+  @property
+  def is_classmethod(self):
+    return self.underlying.is_classmethod
 
   def repr_names(self, callself_repr=None):
     """Names to use in the bound function's string representation.

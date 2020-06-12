@@ -635,6 +635,15 @@ class VirtualMachine(object):
       # pylint: disable=g-long-ternary
       cls = abstract_utils.get_atomic_value(
           cls_var, default=self.convert.unsolvable) if cls_var else None
+      if ("__annotations__" not in class_dict.members and
+          name in self.annotated_locals):
+        # Stores type comments in an __annotations__ member as if they were
+        # PEP 526-style variable annotations, so that we can type-check
+        # attribute assignments.
+        annotations_dict = self.annotated_locals[name]
+        if any(local.typ for local in annotations_dict.values()):
+          class_dict.members["__annotations__"] = abstract.AnnotationsDict(
+              annotations_dict, self).to_variable(node)
       try:
         val = abstract.InterpreterClass(
             name,
@@ -1281,19 +1290,21 @@ class VirtualMachine(object):
         self.errorlog.not_supported_yet(
             self.frames, "aliases of Unions with type parameters")
 
-  def _apply_annotation(self, state, op, name, orig_val, local):
+  def _apply_annotation(
+      self, state, op, name, orig_val, annotations_dict, check_types):
     """Applies the type annotation, if any, associated with this object."""
     typ, value = self.annotations_util.apply_annotation(
         state, op, name, orig_val)
-    if local:
-      self._record_local(state.node, op, name, typ, orig_val)
-      if typ is None and name in self.current_annotated_locals:
-        typ = self.current_annotated_locals[name].get_type(state.node, name)
+    if annotations_dict is not None:
+      if annotations_dict is self.current_annotated_locals:
+        self._record_local(state.node, op, name, typ, orig_val)
+      if typ is None and name in annotations_dict:
+        typ = annotations_dict[name].get_type(state.node, name)
         if typ == self.convert.unsolvable:
           # An Any annotation can be used to essentially turn off inference in
           # cases where it is causing false positives or other issues.
           value = self.new_unsolvable(state.node)
-    if self.options.check_variable_types:
+    if check_types:
       self.check_annotation_type_mismatch(
           state.node, name, typ, orig_val, self.frames, allow_none=True)
     return value
@@ -1327,7 +1338,12 @@ class VirtualMachine(object):
   def _pop_and_store(self, state, op, name, local):
     """Pop a value off the stack and store it in a variable."""
     state, orig_val = state.pop()
-    value = self._apply_annotation(state, op, name, orig_val, local)
+    annotations_dict = self.current_annotated_locals if local else None
+    # TODO(b/74434237): Enable --check-variable-types by default.
+    check_types = (self.options.check_variable_types or
+                   op.line not in self.director.type_comments)
+    value = self._apply_annotation(
+        state, op, name, orig_val, annotations_dict, check_types)
     self._check_aliased_type_params(value)
     state = state.forward_cfg_node()
     state = self._store_value(state, name, value, local)
@@ -1571,7 +1587,26 @@ class VirtualMachine(object):
     state = state.push(result)
     return state
 
+  def _is_classmethod_cls_arg(self, var):
+    """True if var is the first arg of a class method in the current frame."""
+    if not (self.frame.func and self.frame.first_posarg):
+      return False
+
+    func = self.frame.func.data
+    if func.is_classmethod or func.name.rsplit(".")[-1] == "__new__":
+      is_cls = not set(var.data) - set(self.frame.first_posarg.data)
+      return is_cls
+    return False
+
   def expand_bool_result(self, node, left, right, name, maybe_predicate):
+    """Common functionality for 'is' and 'is not'."""
+    if (self._is_classmethod_cls_arg(left) or
+        self._is_classmethod_cls_arg(right)):
+      # If cls is the first argument of a classmethod, it could be bound to
+      # either the defining class or one of its subclasses, so `is` is
+      # ambiguous.
+      return self.new_unsolvable(node)
+
     result = self.program.NewVariable()
     for x in left.bindings:
       for y in right.bindings:
@@ -1944,7 +1979,8 @@ class VirtualMachine(object):
     state, value = state.pop()
     assert isinstance(value, cfg.Variable)
     name = self.get_closure_var_name(op.arg)
-    value = self._apply_annotation(state, op, name, value, True)
+    value = self._apply_annotation(
+        state, op, name, value, self.current_annotated_locals, check_types=True)
     state = state.forward_cfg_node()
     self.frame.cells[op.arg].PasteVariable(value, state.node)
     state = state.forward_cfg_node()
@@ -2154,8 +2190,24 @@ class VirtualMachine(object):
     """Store an attribute."""
     name = self.frame.f_code.co_names[op.arg]
     state, (val, obj) = state.popn(2)
-    # We do not want to record attributes as local variables.
-    val = self._apply_annotation(state, op, name, val, False)
+    # If `obj` is a single InterpreterClass or an instance of one, then grab its
+    # __annotations__ dict so we can type-check the new attribute value.
+    try:
+      maybe_cls = abstract_utils.get_atomic_value(obj)
+    except abstract_utils.ConversionError:
+      annotations_dict = None
+    else:
+      if not isinstance(maybe_cls, abstract.InterpreterClass):
+        maybe_cls = maybe_cls.cls
+      if isinstance(maybe_cls, abstract.InterpreterClass):
+        annotations_dict = abstract_utils.get_annotations_dict(
+            maybe_cls.members)
+        if annotations_dict:
+          annotations_dict = annotations_dict.annotated_locals
+      else:
+        annotations_dict = None
+    val = self._apply_annotation(state, op, name, val, annotations_dict,
+                                 self.options.check_attribute_types)
     state = state.forward_cfg_node()
     state = self.store_attr(state, obj, name, val)
     state = state.forward_cfg_node()
@@ -2958,7 +3010,8 @@ class VirtualMachine(object):
 
   def byte_SETUP_ANNOTATIONS(self, state, op):
     """Sets up variable annotations in locals()."""
-    annotations = abstract.AnnotationsDict(self).to_variable(state.node)
+    annotations = abstract.AnnotationsDict(
+        self.current_annotated_locals, self).to_variable(state.node)
     return self.store_local(state, "__annotations__", annotations)
 
   def _record_annotation(self, node, op, name, typ):

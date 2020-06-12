@@ -510,6 +510,14 @@ class ErrorLog(ErrorLogBase):
     with t.vm.convert.pytd_convert.produce_detailed_output():
       return self._pytd_print(t.to_type())
 
+  def _print_as_generic_type(self, t):
+    generic = pytd_utils.MakeClassOrContainerType(
+        t.get_instance_type().base_type,
+        t.formal_type_parameters.keys(),
+        False)
+    with t.vm.convert.pytd_convert.produce_detailed_output():
+      return self._pytd_print(generic)
+
   def _print_as_return_type(self, t):
     ret = self._pytd_print(t)
     # typing.NoReturn is a prettier alias for nothing.
@@ -1021,6 +1029,38 @@ class ErrorLog(ErrorLogBase):
             print_types)
     suffix = "" if name is None else " for " + name
     err_msg = "Type annotation%s does not match type of assignment" % suffix
+    self.error(stack, err_msg, details=details)
+
+  @_error_name("container-type-mismatch")
+  def container_type_mismatch(self, stack, obj, mutations, name):
+    """Invalid combination of annotation and mutation.
+
+    Args:
+      stack: the frame stack
+      obj: the container instance being mutated
+      mutations: a dict of {parameter name: (annotated types, new types)}
+      name: the variable name (or None)
+    """
+    cls = obj.cls
+    annot_string = "%s (type parameters %s)" % (
+        self._print_as_expected_type(cls),
+        self._print_as_generic_type(cls))
+    details = "Annotation: %s\n" % annot_string
+    contained = ""
+    new_contained = ""
+    for formal in cls.formal_type_parameters.keys():
+      if formal in mutations:
+        params, values, _ = mutations[formal]
+        old_content = self._join_printed_types(
+            set(self._print_as_actual_type(v) for v in params.data))
+        new_content = self._join_printed_types(
+            set(self._print_as_actual_type(v) for v in values.data))
+        contained += "  %s: %s\n" % (formal, old_content)
+        new_contained += "  %s: %s\n" % (formal, new_content)
+    details += ("Contained types:\n" + contained +
+                "New contained types:\n" + new_contained)
+    suffix = "" if name is None else " for " + name
+    err_msg = "New container type%s does not match type annotation" % suffix
     self.error(stack, err_msg, details=details)
 
   @_error_name("invalid-function-definition")

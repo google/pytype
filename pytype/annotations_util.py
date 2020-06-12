@@ -203,6 +203,8 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     typ = self.extract_annotation(
         state.node, var, name, self.vm.simple_stack(), is_var=True)
     _, value = self.vm.init_class(state.node, typ)
+    for d in value.data:
+      d.from_annotation = name
     return typ, value
 
   def extract_annotation(self, node, var, name, stack, is_var=False):

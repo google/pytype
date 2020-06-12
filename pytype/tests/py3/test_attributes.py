@@ -172,5 +172,14 @@ class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):
         pass
     """)
 
+  def test_check_variable_annotation(self):
+    errors = self.CheckWithErrors("""
+      class Foo:
+        x: int
+        def foo(self):
+          self.x = 'hello, world'  # annotation-type-mismatch[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Annotation: int.*Assignment: str"})
+
 
 test_base.main(globals(), __name__ == "__main__")

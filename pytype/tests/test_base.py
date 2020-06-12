@@ -157,6 +157,8 @@ class BaseTest(unittest.TestCase):
   def setUp(self):
     super(BaseTest, self).setUp()
     self.options = config.Options.create(python_version=self.python_version,
+                                         check_attribute_types=True,
+                                         check_container_types=True,
                                          check_variable_types=True)
 
   @property

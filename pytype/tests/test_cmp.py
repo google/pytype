@@ -139,6 +139,40 @@ class IsNotTest(test_base.TargetIndependentTest):
     """, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
+  def test_class_new(self):
+    # The assert should not block inference of the return type, since cls could
+    # be a subclass of Foo
+    ty = self.Infer("""
+      class Foo(object):
+        def __new__(cls, *args, **kwargs):
+          assert(cls is not Foo)
+          return object.__new__(cls)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Type, TypeVar
+      _TFoo = TypeVar('_TFoo', bound=Foo)
+      class Foo:
+        def __new__(cls: Type[_TFoo], *args, **kwargs) -> _TFoo: ...
+    """)
+
+  def test_class_factory(self):
+    # The assert should not block inference of the return type, since cls could
+    # be a subclass of Foo
+    ty = self.Infer("""
+      class Foo(object):
+        @classmethod
+        def factory(cls, *args, **kwargs):
+          assert(cls is not Foo)
+          return object.__new__(cls)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Type, TypeVar
+      _TFoo = TypeVar('_TFoo', bound=Foo)
+      class Foo:
+        @classmethod
+        def factory(cls: Type[_TFoo], *args, **kwargs) -> _TFoo: ...
+    """)
+
 
 class LtTest(test_base.TargetIndependentTest):
   """Test for "x < y". Also test overloading."""

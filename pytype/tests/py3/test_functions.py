@@ -206,10 +206,10 @@ class TestFunctions(test_base.TargetPython3BasicTest):
       """)
 
   def test_argument_name_conflict(self):
-    ty = self.Infer("""
+    ty, _ = self.InferWithErrors("""
       from typing import Dict
       def f(x: Dict[str, int]):
-        x[""] = ""
+        x[""] = ""  # container-type-mismatch
         return x
       def g(x: Dict[str, int]):
         return x
@@ -221,10 +221,10 @@ class TestFunctions(test_base.TargetPython3BasicTest):
     """)
 
   def test_argument_type_conflict(self):
-    ty = self.Infer("""
+    ty, _ = self.InferWithErrors("""
       from typing import Dict
       def f(x: Dict[str, int], y: Dict[str, int]):
-        x[""] = ""
+        x[""] = ""  # container-type-mismatch
         return x, y
     """)
     self.assertTypesMatchPytd(ty, """

@@ -12,6 +12,7 @@ from pytype import debug
 from pytype import function
 from pytype import metrics
 from pytype import output
+from pytype import special_builtins
 from pytype import state as frame_state
 from pytype import vm
 from pytype.overlays import typing_overlay
@@ -138,7 +139,17 @@ class CallTracer(vm.VirtualMachine):
     self.pop_frame(frame)
     return state.node, ret
 
-  def maybe_analyze_method(self, node, val):
+  def _maybe_fix_classmethod_cls_arg(self, node, cls, func, args):
+    sig = func.signature
+    if (args.posargs and sig.param_names and
+        (sig.param_names[0] not in sig.annotations)):
+      # fix "cls" parameter
+      return args._replace(
+          posargs=(cls.AssignToNewVariable(node),) + args.posargs[1:])
+    else:
+      return args
+
+  def maybe_analyze_method(self, node, val, cls=None):
     method = val.data
     fname = val.data.name
     if isinstance(method, abstract.INTERPRETER_FUNCTION_TYPES):
@@ -150,6 +161,8 @@ class CallTracer(vm.VirtualMachine):
       else:
         for f in method.iter_signature_functions():
           node, args = self.create_method_arguments(node, f)
+          if f.is_classmethod and cls:
+            args = self._maybe_fix_classmethod_cls_arg(node, cls, f, args)
           node, _ = self.call_function_with_args(node, val, args)
     return node
 
@@ -191,18 +204,23 @@ class CallTracer(vm.VirtualMachine):
     log.info("Unable to generate fake arguments for %s", funcv)
     return node, self.new_unsolvable(node)
 
-  def analyze_method_var(self, node0, name, var):
+  def analyze_method_var(self, node0, name, var, cls=None):
     log.info("Analyzing %s", name)
     node1 = node0.ConnectNew(name)
     for val in var.bindings:
-      node2 = self.maybe_analyze_method(node1, val)
+      node2 = self.maybe_analyze_method(node1, val, cls)
       node2.ConnectTo(node0)
     return node0
 
   def bind_method(self, node, name, methodvar, instance_var):
     bound = self.program.NewVariable()
     for m in methodvar.Data(node):
-      bound.AddBinding(m.property_get(instance_var), [], node)
+      if isinstance(m, special_builtins.ClassMethodInstance):
+        m = m.func.data[0]
+        is_cls = True
+      else:
+        is_cls = (m.isinstance_InterpreterFunction() and m.is_classmethod)
+      bound.AddBinding(m.property_get(instance_var, is_cls), [], node)
     return bound
 
   def _instantiate_binding(self, node0, cls):
@@ -218,11 +236,7 @@ class CallTracer(vm.VirtualMachine):
     for b in new.bindings:
       self._analyzed_functions.add(b.data.get_first_opcode())
       node2, args = self.create_method_arguments(node1, b.data)
-      if args.posargs and (
-          b.data.signature.param_names[0] not in b.data.signature.annotations):
-        # fix "cls" parameter
-        args = args._replace(
-            posargs=(cls.AssignToNewVariable(node0),) + args.posargs[1:])
+      args = self._maybe_fix_classmethod_cls_arg(node0, cls, b.data, args)
       node3 = node2.ConnectNew()
       node4, ret = self.call_function_with_args(node3, b, args)
       instance.PasteVariable(ret)
@@ -345,7 +359,7 @@ class CallTracer(vm.VirtualMachine):
       if name in self._CONSTRUCTORS:
         continue  # We already called this method during initialization.
       b = self.bind_method(node, name, methodvar, instance)
-      node = self.analyze_method_var(node, name, b)
+      node = self.analyze_method_var(node, name, b, val)
     return node
 
   def analyze_function(self, node0, val):

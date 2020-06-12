@@ -34,8 +34,8 @@ class Dataclass(classgen.Decorator):
   """Implements the @dataclass decorator."""
 
   @classmethod
-  def make(cls, name, vm):
-    return super(Dataclass, cls).make(name, vm, "dataclasses")
+  def make(cls, name, vm, mod="dataclasses"):
+    return super(Dataclass, cls).make(name, vm, mod)
 
   def _handle_initvar(self, node, cls, name, typ, orig):
     """Unpack or delete an initvar in the class annotations."""
@@ -82,7 +82,10 @@ class Dataclass(classgen.Decorator):
         else:
           init = True
 
-      if (not self.vm.options.check_variable_types or
+      # TODO(b/74434237): The first check can be removed once
+      # --check-variable-types is on by default.
+      if ((not self.vm.options.check_variable_types and
+           local.last_op.line in self.vm.director.type_comments) or
           orig and orig.data == [self.vm.convert.none]):
         # vm._apply_annotation mostly takes care of checking that the default
         # matches the declared type. However, it allows None defaults, and
