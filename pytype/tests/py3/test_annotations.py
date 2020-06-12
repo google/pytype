@@ -90,9 +90,6 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e": r"upper.*int"})
 
   def test_list(self):
-    # TODO(mdemello): Do not check variables with bindings from multiple
-    # annotations.
-    self.options.tweak(check_container_types=False)
     ty = self.Infer("""
       from typing import List
 

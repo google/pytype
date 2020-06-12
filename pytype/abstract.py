@@ -1778,7 +1778,14 @@ class PyTDFunction(Function):
       retvar.PasteVariable(result, node)
       all_mutations.update(mutations)
 
-    if all_mutations and self.vm.options.check_container_types:
+    # Don't check container types if the function has multiple bindings.
+    # This is a hack to prevent false positives when we call a method on a
+    # variable with multiple bindings, since we don't always filter rigorously
+    # enough in get_views.
+    # See tests/py3/test_annotations:test_list for an example that would break
+    # if we removed the len(bindings) check.
+    if all_mutations and self.vm.options.check_container_types and (
+        len(func.variable.Bindings(node)) == 1):
       # Raise an error if:
       # - An annotation has a type param that is not ambigious or empty
       # - The mutation adds a type that is not ambiguous or empty
