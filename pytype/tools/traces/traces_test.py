@@ -124,10 +124,10 @@ class MatchAstVisitorTest(MatchAstTestCase):
 
   def test_import_from(self):
     matches = self._get_traces(
-        "from os import path as _path, environ", ast.ImportFrom)
+        "from os import path as p, environ", ast.ImportFrom)
     self.assertTracesEqual(matches, [
-        ((1, 23), "STORE_NAME", "_path", ("module",)),
-        ((1, 30), "STORE_NAME", "environ", ("os._Environ[str]",))])
+        ((1, 23), "STORE_NAME", "p", ("module",)),
+        ((1, 26), "STORE_NAME", "environ", ("os._Environ[str]",))])
 
 
 class MatchAttributeTest(MatchAstTestCase):

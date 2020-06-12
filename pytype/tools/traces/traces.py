@@ -297,11 +297,9 @@ class MatchAstVisitor(visitor.BaseVisitor):
       return loc
     if isinstance(node, (self._ast.Import, self._ast.ImportFrom)):
       # Search for imported module names
-      text = self.source.line(node.lineno)
-      c = text.find(" " + name)
-      if c == -1:
-        c = text.find("," + name)
-      if c != -1:
+      m = re.search("[ ,]" + name + r"\b", self.source.line(node.lineno))
+      if m is not None:
+        c, _ = m.span()
         return source.Location(node.lineno, c + 1)
     elif isinstance(node, self._ast.Attribute):
       attr_loc, _ = self.source.get_attr_location(name, loc)
