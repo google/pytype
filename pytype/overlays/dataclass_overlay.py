@@ -34,8 +34,8 @@ class Dataclass(classgen.Decorator):
   """Implements the @dataclass decorator."""
 
   @classmethod
-  def make(cls, name, vm):
-    return super(Dataclass, cls).make(name, vm, "dataclasses")
+  def make(cls, name, vm, mod="dataclasses"):
+    return super(Dataclass, cls).make(name, vm, mod)
 
   def _handle_initvar(self, node, cls, name, typ, orig):
     """Unpack or delete an initvar in the class annotations."""

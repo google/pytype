@@ -174,6 +174,7 @@ py_library(
     overlays/classgen.py
     overlays/collections_overlay.py
     overlays/dataclass_overlay.py
+    overlays/flax_overlay.py
     overlays/future_overlay.py
     overlays/six_overlay.py
     overlays/subprocess_overlay.py
