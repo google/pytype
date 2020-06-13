@@ -1234,7 +1234,7 @@ class VirtualMachine(object):
     if annots:
       typ = annots.get_type(node, name)
       if typ:
-        _, ret = self.init_class(node, typ)
+        _, ret = self.annotations_util.init_annotation(node, name, typ)
         return ret
     raise KeyError(name)
 

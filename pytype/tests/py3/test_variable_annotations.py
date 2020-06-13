@@ -245,5 +245,36 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
         print(x.upper())
     """)
 
+  def test_uninitialized_variable_container_check(self):
+    self.CheckWithErrors("""
+      from typing import List
+      x: List[str]
+      x.append(0)  # container-type-mismatch
+    """)
+
+  def test_uninitialized_attribute_container_check(self):
+    self.CheckWithErrors("""
+      from typing import List
+      class Foo:
+        x: List[str]
+        def __init__(self):
+          self.x.append(0)  # container-type-mismatch
+    """)
+
+  def test_any_container(self):
+    ty = self.Infer("""
+      from typing import Any, Dict
+      def f():
+        x: Dict[str, Any] = {}
+        x['a'] = 'b'
+        for v in x.values():
+          print(v.whatever)
+        return x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Dict
+      def f() -> Dict[str, Any]: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

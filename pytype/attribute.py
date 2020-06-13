@@ -271,7 +271,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
           # An attribute has been declared but not defined, e.g.,
           #   class Foo:
           #     bar: int
-          _, attr = self.vm.init_class(node, typ)
+          _, attr = self.vm.annotations_util.init_annotation(node, name, typ)
     if attr is not None:
       attr = self._filter_var(node, attr)
     if attr is None and obj.maybe_missing_members:

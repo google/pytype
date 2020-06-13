@@ -1801,6 +1801,7 @@ class PyTDFunction(Function):
             return True
         return False
 
+      filtered_mutations = []
       errors = collections.defaultdict(dict)
 
       for obj, name, values in all_mutations:
@@ -1808,12 +1809,18 @@ class PyTDFunction(Function):
           params = obj.get_instance_type_parameter(name)
           ps = filter_contents(params)
           if ps:
+            # We filter out mutations to parameters with type Any.
+            filtered_mutations.append((obj, name, values))
             # check if the container type is being broadened.
             vs = filter_contents(values)
             new = [x for x in (vs - ps) if not compatible_with(ps, x)]
             if new:
               formal = name.split(".")[-1]
               errors[obj][formal] = (params, values, obj.from_annotation)
+        else:
+          filtered_mutations.append((obj, name, values))
+
+      all_mutations = filtered_mutations
 
       for obj, errs in errors.items():
         names = {name for _, _, name in errs.values()}
@@ -3187,10 +3194,8 @@ class InterpreterFunction(SignedFunction):
                                      self.argcount(node) == 0 or
                                      name != sig.param_names[0])):
           extra_key = (self.get_first_opcode(), name)
-          node, callargs[name] = self.vm.init_class(
-              node, annotations[name], extra_key=extra_key)
-          for d in callargs[name].data:
-            d.from_annotation = name
+          node, callargs[name] = self.vm.annotations_util.init_annotation(
+              node, name, annotations[name], extra_key=extra_key)
     try:
       frame = self.vm.make_frame(
           node, self.code, self.f_globals, self.f_locals, callargs,
