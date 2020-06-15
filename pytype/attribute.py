@@ -496,8 +496,6 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       log.debug("Adding choice(s) to %s: %d new values (%d total)", name,
                 len(variable.bindings) - old_len, len(variable.bindings))
     else:
-      # TODO(kramm): Under what circumstances can we just reuse var?
-      #              (variable = self.members[name] = var)?
       log.debug("Setting %s to the %d values in %r",
                 name, len(var.bindings), var)
       variable = var.AssignToNewVariable(node)

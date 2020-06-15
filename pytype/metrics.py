@@ -79,9 +79,6 @@ def load_all(fp):
   return [_deserialize(*x) for x in metrics]
 
 
-# TODO(dbaum): Investigate mechanisms to ensure that counter variable names
-# match metric names.
-
 _METRIC_NAME_RE = re.compile(r"^[a-zA-Z_]\w+$")
 
 _registered_metrics = {}  # Map from metric name to Metric object.
