@@ -8,11 +8,24 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
   """Tests for special_builtins.py."""
 
   def test_next(self):
+    ty, _ = self.InferWithErrors("""
+      a = iter([1, 2, 3])
+      b = next(a)
+      c = next(42) # wrong-arg-types
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      a: listiterator[int]
+      b: int
+      c: Any
+    """)
+
+  def test_next_none(self):
     self.assertNoCrash(self.Check, """
       next(None)
     """)
 
-  def test_next2(self):
+  def test_next_ambiguous(self):
     self.assertNoCrash(self.Check, """
       class Foo(object):
         def a(self):

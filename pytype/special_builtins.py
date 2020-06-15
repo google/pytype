@@ -143,7 +143,6 @@ class Next(BuiltinFunction):
       ret.PasteVariable(default)
       return node, ret
     else:
-      # TODO(kramm): This needs a test case.
       return node, self.vm.new_unsolvable(node)
 
 
