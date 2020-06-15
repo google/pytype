@@ -76,7 +76,6 @@ class _LineSet(object):
     # indefinite end).
     previous = (len(self._transitions) % 2) == 1
     if membership == previous:
-      # TODO(dbaum): Consider issuing a warning here.
       return  # Redundant with previous state, do nothing.
     elif line == last:
       # We have either enable/disable or disable/enable on the same line,
