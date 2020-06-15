@@ -43,7 +43,6 @@ class BooleanTerm(object):
     """
     raise NotImplementedError()
 
-  # TODO(kramm): "pivot" is probably the wrong name.
   def extract_pivots(self, assignments):
     """Find values for every variable that appears in this term.
 
