@@ -421,7 +421,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         starargs=starargs,
         starstarargs=starstarargs,
         return_type=ret,
-        exceptions=(),  # TODO(kramm): record exceptions
+        exceptions=(),  # TODO(b/159052087): record exceptions
         template=())
 
   def _function_to_def(self, node, v, function_name):
