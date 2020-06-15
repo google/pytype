@@ -678,7 +678,6 @@ class PickledPyiLoader(Loader):
       return super(PickledPyiLoader, self).load_file(module_name, filename, ast)
     existing = self._get_existing_ast(module_name)
     if existing:
-      # TODO(kramm): When does this happen?
       return existing
     loaded_ast = pytd_utils.LoadPickle(filename)
     # At this point ast.name and module_name could be different.
