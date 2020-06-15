@@ -1108,7 +1108,6 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
   def update(self, node, other_dict, omit=()):
     if isinstance(other_dict, (Dict, dict)):
       for key, value in other_dict.items():
-        # TODO(kramm): sources
         if key not in omit:
           self.set_str_item(node, key, value)
       if isinstance(other_dict, Dict):
@@ -1358,8 +1357,6 @@ class AnnotationContainer(AnnotationClass):
         # It's a common mistake to index tuple, not tuple().
         # We only check the "int" case, since string literals are allowed for
         # late annotations.
-        # TODO(kramm): Instead of blacklisting only int, this should use
-        # annotations_util.py to look up legal types.
         if isinstance(val, Instance) and val.cls == self.vm.convert.int_type:
           # Don't report this error again.
           inner = (self.vm.convert.unsolvable,)
@@ -1758,8 +1755,7 @@ class PyTDFunction(Function):
                            logged | {value.data})
 
   def call(self, node, func, args, alias_map=None):
-    # TODO(sivachandra): Refactor this method to pass the signature to
-    # simplify.
+    # TODO(b/159052609): We should be passing function signatures to simplify.
     args = args.simplify(node, self.vm)
     self._log_args(arg.bindings for arg in args.posargs)
     ret_map = {}
@@ -1902,7 +1898,7 @@ class PyTDFunction(Function):
             view[arg] = arg.AddBinding(self.vm.convert.unsolvable, [], node)
             break
     if self._has_mutable:
-      # TODO(kramm): We only need to whack the type params that appear in
+      # TODO(b/159055015): We only need to whack the type params that appear in
       # a mutable parameter.
       mutations = self._get_mutation_to_unknown(
           node, (view[p].data for p in itertools.chain(
@@ -2890,7 +2886,6 @@ class SignedFunction(Function):
       kwargs_name = sig.kwargs_name
       # Build a **kwargs dictionary out of the extraneous parameters
       if args.starstarargs:
-        # TODO(kramm): modify type parameters to account for namedargs
         callargs[kwargs_name] = args.starstarargs.AssignToNewVariable(node)
       else:
         omit = sig.param_names + sig.kwonly_params
@@ -3070,10 +3065,6 @@ class InterpreterFunction(SignedFunction):
         kwarg_name,
         defaults,
         annotations)
-
-  # TODO(kramm): support retrieving the following attributes:
-  # 'func_{code, name, defaults, globals, locals, dict, closure},
-  # '__name__', '__dict__', '__doc__', '_vm', '_func'
 
   def get_first_opcode(self):
     return self.code.co_code[0]
@@ -3954,7 +3945,6 @@ class Unknown(AtomicAbstractValue):
     """Convert this Unknown to a pytd.Class."""
     self_param = (pytd.Parameter("self", pytd.AnythingType(),
                                  False, False, None),)
-    # TODO(kramm): Record these.
     starargs = None
     starstarargs = None
     def _make_sig(args, ret):
