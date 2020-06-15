@@ -256,12 +256,6 @@ if_and_elifs
  * alldefs).  The corresponding "if" statement thus requires its own
  * set of productions which are similar to the top level if, except they
  * recurse to funcdefs instead of alldefs.
- *
- * TODO(dbaum): Consider changing the grammar such that it accepts all
- * definitions within a class and then raises an error during semantic
- * checks.  This will probably be cleaner as the differences between
- * funcdefs and alldefs grow smaller (i.e. if support for nested classes
- * is added).
  */
 
 class_if_stmt
@@ -319,7 +313,6 @@ condition
   | '(' condition ')' { $$ = $2; }
   ;
 
-/* TODO(dbaum): Consider more general rules for tuple parsing. */
 version_tuple
   : '(' NUMBER ',' ')' { $$ = Py_BuildValue("(N)", $2); }
   | '(' NUMBER ',' NUMBER ')' { $$ = Py_BuildValue("(NN)", $2, $4); }
@@ -487,10 +480,6 @@ funcdef
       // which is very misleading.  It is better to ignore decorators and
       // pretend the production started with DEF.  Even when decorators are
       // present the error line will be close enough to be helpful.
-      //
-      // TODO(dbaum): Consider making this smarter and only ignoring decorators
-      // when they are empty.  Making decorators non-nullable and having two
-      // productions for funcdef would be a reasonable solution.
       @$.begin = @3.begin;
       CHECK($$, @$);
     }

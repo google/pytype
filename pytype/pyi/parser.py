@@ -443,8 +443,6 @@ class _Parser(object):
     ast = ast.Visit(_PropertyToConstant())
     ast = ast.Visit(_InsertTypeParameters(ast.type_params))
     ast = ast.Visit(_VerifyMutators())
-    # TODO(kramm): This is in the wrong place- it should happen after resolving
-    # local names, in load_pytd.
     ast = ast.Visit(pep484.ConvertTypingToNative(name))
 
     if name:
@@ -669,7 +667,6 @@ class _Parser(object):
     """
     if not self._current_condition.active:
       return
-    # TODO(dbaum): Consider merging this with new_constant().
     alias_or_constant = self.new_alias_or_constant(name_and_value)
     if isinstance(alias_or_constant, pytd.Constant):
       self._constants.append(alias_or_constant)
@@ -993,7 +990,6 @@ class _Parser(object):
         decorators, {"abstractmethod", "abc.abstractmethod"})
     is_coroutine = _check_decorator(
         decorators, {"coroutine", "asyncio.coroutine", "coroutines.coroutine"})
-    # TODO(acaceres): if not inside a class, any decorator should be an error
     if len(decorators) > 1:
       raise ParseError("Too many decorators for %s" % name)
     decorator, = decorators if decorators else (None,)
@@ -1145,7 +1141,6 @@ class _Parser(object):
                   for name, count in collections.Counter(all_names).items()
                   if count >= 2]
     if duplicates:
-      # TODO(kramm): raise a syntax error right when the identifier is defined.
       raise ParseError("Duplicate identifier(s): " + ", ".join(duplicates))
 
     # This check is performed after the above error checking so that errors
@@ -1178,8 +1173,6 @@ class _Parser(object):
             t = val.type
           constants.append(pytd.Constant(name, t))
 
-    # TODO(dbaum): Is NothingType even legal here?  The grammar accepts it but
-    # perhaps it should be a ParseError.
     parents = [p for p in parents if not isinstance(p, pytd.NothingType)]
     methods = _merge_method_signatures(methods)
     if not parents and class_name not in ["classobj", "object"]:
@@ -1333,8 +1326,6 @@ def _validate_params(param_list):
     ParseError: if special arguments are present in the wrong positions or
         combinations.
   """
-  # TODO(kramm): Disallow "self" and "cls" as names for param (if it's not
-  # the first parameter).
 
   params = []
   has_bare_star = False
@@ -1348,9 +1339,6 @@ def _validate_params(param_list):
         raise ParseError("ellipsis (...) must be last parameter")
       if has_bare_star:
         raise ParseError("ellipsis (...) not compatible with bare *")
-      # TODO(dbaum): Shouldn't we pass the existing parameter names to
-      # InventStarArgParams()?  The legacy parser doesn't, so leaving the
-      # code identical to legacy for now.
       stararg, starstararg = visitors.InventStarArgParams([])
       continue
 
@@ -1415,7 +1403,6 @@ def _starstar_param(name, param_type):
 
 def _type_for_default(default):
   """Return a pytd type object for the given default value."""
-  # TODO(kramm): We should use __builtin__ types here. (And other places)
   if default == "None":
     return pytd.NamedType("NoneType")
   elif isinstance(default, float):

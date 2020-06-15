@@ -67,13 +67,3 @@ py_test(
     pytype.pytd
     pytype.tests.test_base
 )
-
-py_test(
-  NAME
-    parse_typeshed_test
-  SRCS
-    parse_typeshed_test.py
-  DEPS
-    pytype.parser
-    pytype.pytd
-)
