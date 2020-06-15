@@ -14,7 +14,7 @@ from pytype.pytd import visitors
 log = logging.getLogger(__name__)
 
 # How deep to nest type parameters
-# TODO(kramm): Currently, the solver only generates variables for depth 1.
+# TODO(b/159041279): Currently, the solver only generates variables for depth 1.
 MAX_DEPTH = 1
 
 is_unknown = type_match.is_unknown
