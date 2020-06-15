@@ -332,7 +332,6 @@ class CallTracer(vm.VirtualMachine):
 
   def call_init(self, node, instance):
     # Call __init__ on each binding.
-    # TODO(kramm): This should do join_cfg_nodes, instead of concatenating them.
     for b in instance.bindings:
       if b.data in self._initialized_instances:
         continue
@@ -523,7 +522,6 @@ class CallTracer(vm.VirtualMachine):
           arg_names[i] = function.argname(i)
       arg_types = (a.data.to_type(node) for a in args)
       ret = pytd_utils.JoinTypes(t.to_type(node) for t in retvar.data)
-      # TODO(kramm): Record these:
       starargs = None
       starstarargs = None
       funcs[func.data.name].add(pytd.Signature(
@@ -575,9 +573,6 @@ class CallTracer(vm.VirtualMachine):
       ))
     return classes
 
-  def pytd_aliases(self):
-    return ()  # TODO(kramm): Compute these.
-
   def pytd_classes_for_namedtuple_instances(self):
     return tuple(v.generate_ast() for v in self._generated_classes.values())
 
@@ -586,7 +581,7 @@ class CallTracer(vm.VirtualMachine):
                tuple(self.pytd_classes_for_call_traces()) +
                self.pytd_classes_for_namedtuple_instances())
     functions = tuple(self.pytd_functions_for_call_traces())
-    aliases = tuple(self.pytd_aliases())
+    aliases = ()  # aliases are instead recorded as constants
     ty = pytd_utils.Concat(
         self.pytd_for_types(defs),
         pytd_utils.CreateModule("unknowns", classes=classes,
