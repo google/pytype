@@ -574,7 +574,7 @@ class SimplifyUnionsWithSuperclasses(visitors.Visitor):
   def VisitUnionType(self, union):
     c = collections.Counter()
     for t in set(union.type_list):
-      # TODO(rechen): How can we make this work with GenericType?
+      # TODO(b/159052794): How can we make this work with GenericType?
       if isinstance(t, pytd.GENERIC_BASE_TYPE):
         c += collections.Counter(self.hierarchy.ExpandSubClasses(str(t)))
     # Below, c[str[t]] can be zero - that's the default for non-existent items
@@ -711,14 +711,14 @@ class AddInheritedMethods(visitors.Visitor):
     if any(base for base in cls.parents if isinstance(base, pytd.NamedType)):
       raise AssertionError("AddInheritedMethods needs a resolved AST")
     # Filter out only the types we can reason about.
-    # TODO(kramm): Do we want handle UnionTypes and GenericTypes at some point?
+    # TODO(b/159052794): Do we want handle UnionTypes and GenericTypes?
     bases = [base.cls
              for base in cls.parents
              if isinstance(base, pytd.ClassType)]
     # Don't pull in methods that are named the same as existing methods in
     # this class, local methods override parent class methods.
     names = {m.name for m in cls.methods} | {c.name for c in cls.constants}
-    # TODO(kramm): This should do full-blown MRO.
+    # TODO(b/159052405): This should do full-blown MRO.
     adjust_self = visitors.AdjustSelf(force=True)
     adjust_self.class_types.append(visitors.ClassAsType(cls))
     new_methods = list(cls.methods)
@@ -1011,7 +1011,6 @@ class MergeTypeParameters(TypeParameterScope):
     else:
       # It's a function type parameter that appears in a union with other
       # function type parameters.
-      # TODO(kramm): We could merge those, too.
       return [item]
 
   def VisitSignature(self, sig):
