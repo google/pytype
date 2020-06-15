@@ -197,6 +197,17 @@ class PytypeTest(test_base.UnitTest):
     self.assertTrue(os.path.exists(pickled_location))
     return pickled_location
 
+  def test_run_pytype(self):
+    """Basic unit test (smoke test) for _run_pytype."""
+    # Note: all other tests in this file are integration tests.
+    infile = self._tmp_path("input")
+    outfile = self._tmp_path("output")
+    with open(infile, "w") as f:
+      f.write("def f(x): pass")
+    options = config.Options.create(infile, output=outfile)
+    single._run_pytype(options)
+    self.assertTrue(os.path.isfile(outfile))
+
   def test_pickled_file_stableness(self):
     # Tests that the pickled format is stable under a constant PYTHONHASHSEED.
     l_1 = self.generate_pickled_simple_file("simple1.pickled")
@@ -455,18 +466,6 @@ class PytypeTest(test_base.UnitTest):
     self.pytype_args["--analyze-annotated"] = self.INCLUDE
     self._infer_types_and_check_errors(self._data_path(filename),
                                        ["bad-return-type"])
-
-  def test_run_pytype(self):
-    """Basic unit test (smoke test) for _run_pytype."""
-    # TODO(kramm): This is a unit test, whereas all other tests in this file
-    # are integration tests. Move this somewhere else?
-    infile = self._tmp_path("input")
-    outfile = self._tmp_path("output")
-    with open(infile, "w") as f:
-      f.write("def f(x): pass")
-    options = config.Options.create(infile, output=outfile)
-    single._run_pytype(options)
-    self.assertTrue(os.path.isfile(outfile))
 
   def test_generate_and_use_builtins(self):
     """Test for --generate-builtins."""
