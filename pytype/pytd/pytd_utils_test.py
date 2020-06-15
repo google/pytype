@@ -173,7 +173,7 @@ class TestUtils(parser_test_base.ParserTest):
       Y = TypeVar('Y')
       def bar(x: X or Y) -> ?
     """)
-    # TODO(kramm): Do more extensive testing.
+    # TODO(b/159051689): Do more extensive testing.
     pytd_utils.Print(ast)
 
   def test_named_type_with_module(self):
@@ -427,6 +427,7 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertIsInstance(tree2, pytd.TypeDeclUnit)
     # For the ==, != tests, TypeDeclUnit uses identity
     # pylint: disable=g-generic-assert
+    # pylint: disable=comparison-with-itself
     self.assertTrue(tree1 == tree1)
     self.assertTrue(tree2 == tree2)
     self.assertFalse(tree1 == tree2)
@@ -436,6 +437,7 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertTrue(tree1 != tree2)
     self.assertTrue(tree2 != tree1)
     # pylint: enable=g-generic-assert
+    # pylint: enable=comparison-with-itself
     self.assertEqual(tree1, tree1)
     self.assertEqual(tree2, tree2)
     self.assertNotEqual(tree1, tree2)
