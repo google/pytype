@@ -689,8 +689,6 @@ class VirtualMachine(object):
         f_locals=self.frame.f_locals, f_globals=globs,
         defaults=defaults, kw_defaults=kw_defaults,
         closure=closure, annotations=annotations, vm=self)
-    # TODO(ampere): What else needs to be an origin in this case? Probably stuff
-    # in closure.
     var = self.program.NewVariable()
     var.AddBinding(val, code.bindings, node)
     if val.signature.annotations:
@@ -958,7 +956,7 @@ class VirtualMachine(object):
       state, ret = self.call_binary_operator(
           state, name, x, y, report_errors=True)
     else:
-      # TODO(kramm): If x is a Variable with distinct types, both __add__
+      # TODO(b/159039220): If x is a Variable with distinct types, both __add__
       # and __iadd__ might happen.
       try:
         state, ret = self.call_function_with_state(state, attr, (y,),
@@ -1143,7 +1141,6 @@ class VirtualMachine(object):
     if self.python_version < (3, 6):
       num_kw, num_pos = divmod(num, 256)
 
-      # TODO(kramm): Can we omit creating this Dict if num_kw=0?
       for _ in range(num_kw):
         state, (key, val) = state.popn(2)
         namedargs.setitem_slot(state.node, key, val)
@@ -1479,14 +1476,15 @@ class VirtualMachine(object):
       return state
     nodes = []
     for val in obj.bindings:
-      # TODO(kramm): Check whether val.data is a descriptor (i.e. has "__set__")
+      # TODO(b/159038991): Check whether val.data is a descriptor (i.e. has
+      # "__set__")
       nodes.append(self.attribute_handler.set_attribute(
           state.node, val.data, attr, value))
     return state.change_cfg_node(self.join_cfg_nodes(nodes))
 
   def del_attr(self, state, obj, attr):
     """Delete an attribute."""
-    # TODO(kramm): Store abstract.Empty
+    # TODO(b/159039569): Store abstract.Empty
     log.warning("Attribute removal does not actually do "
                 "anything in the abstract interpreter")
     return state
@@ -1520,7 +1518,7 @@ class VirtualMachine(object):
       module = self.convert.unsolvable
     return module
 
-  # TODO(kramm): memoize
+  @utils.memoize
   def _import_module(self, name, level):
     """Import the module and return the module object.
 
@@ -1640,11 +1638,6 @@ class VirtualMachine(object):
       node, func, missing = self._retrieve_attr(state.node, seq, "__getitem__")
       state = state.change_cfg_node(node)
       if func:
-        # TODO(dbaum): Consider delaying the call to __getitem__ until
-        # the iterator's next() is called.  That would more closely match
-        # actual execution at the cost of making the code and Iterator class
-        # a little more complicated.
-
         # Call __getitem__(int).
         state, item = self.call_function_with_state(
             state, func, (self.convert.build_int(state.node),))
@@ -2771,8 +2764,6 @@ class VirtualMachine(object):
     else:
       get_args = self._get_extra_function_args
     state, defaults, kw_defaults, annot, free_vars = get_args(state, op.arg)
-    # TODO(dbaum): Add support for per-arg type comments.
-    # TODO(dbaum): Add support for variable type comments.
     globs = self.get_globals_dict()
     fn = self._make_function(name, state.node, code, globs, defaults,
                              kw_defaults, annotations=annot, closure=free_vars)
@@ -2959,7 +2950,7 @@ class VirtualMachine(object):
 
   def byte_IMPORT_STAR(self, state, op):
     """Pops a module and stores all its contents in locals()."""
-    # TODO(kramm): this doesn't use __all__ properly.
+    # TODO(b/159041010): this doesn't use __all__ properly.
     state, mod_var = state.pop()
     mod = abstract_utils.get_atomic_value(mod_var)
     # TODO(rechen): Is mod ever an unknown?
