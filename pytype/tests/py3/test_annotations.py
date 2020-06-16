@@ -1050,6 +1050,22 @@ class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
     pattern = r"Annot.*List\[int\].*Contained.*int.*New.*Union\[int, str\]"
     self.assertErrorRegexes(errors, {"e": pattern})
 
+  def test_varargs(self):
+    ty, errors = self.InferWithErrors("""
+      def quack(x, *args: int):
+        return args
+      quack("", 42)
+      quack("", *[])
+      quack("", *[42])
+      quack("", *[42.0])  # wrong-arg-types[e]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Tuple
+      def quack(x, *args: int) -> Tuple[int, ...]
+    """)
+    error = r"Expected.*Iterable\[int\].*Actually passed.*Tuple\[float\]"
+    self.assertErrorRegexes(errors, {"e": error})
+
   def test_container_multiple_mutations(self):
     errors = self.CheckWithErrors("""
       from typing import Dict
