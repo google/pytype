@@ -528,10 +528,6 @@ class ImportTest(test_base.TargetIndependentTest):
       def my_foo(x):
         return x.read()
     """)
-    # TODO(kramm): Instead of typing.IO[object] we should have typing.IO[AnyStr]
-    # (or typing.IO[str or unicode]). The return type should be str or unicode.
-    # Also, the optimizer should be smart enough to collapse the Union into just
-    # typing.IO[AnyStr].
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       StringIO = ...  # type: module

@@ -25,7 +25,6 @@ class ConcreteTest(test_base.TargetIndependentTest,
 
   def test_add3(self):
     # split out from test_add for better sharding
-    # TODO(pludemann): add unicode, bytearray:
     self.check_expr("x + y", ["x='1'", "y='2'"], self.str)
     self.check_expr("x + y", ["x=[1]", "y=[2]"], self.int_list)
     self.check_expr("x + y", ["a=1", "x=[a,a,a]", "y=[a,a,a]"], self.int_list)

@@ -167,7 +167,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Iterator, List, Sequence, Union
         foo = ...  # type: module
-        # TODO(kramm): Should be List[Union[int, str]]
+        # TODO(b/159065400): Should be List[Union[int, str]]
         seq = ...  # type: list or typing.MutableSequence[Union[int, str]]
         a = ...  # type: None
         b = ...  # type: None
@@ -302,8 +302,8 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
         from typing import MutableSet, Union
         foo = ...  # type: module
         a = ...  # type: Union[int, str]
-        # TODO(kramm): We do a clear() after adding "int".
-        #              Why does "int" still appear for b?
+        # TODO(b/159067449): We do a clear() after adding "int".
+        # Why does "int" still appear for b?
         b = ...  # type: MutableSet[Union[complex, int, str]]
         c = ...  # type: MutableSet[Union[complex, int, str]]
         d = ...  # type: MutableSet[Union[complex, int, str]]

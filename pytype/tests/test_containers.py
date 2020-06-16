@@ -532,7 +532,7 @@ class ContainerTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, Union
-      # TODO(kramm): This should be "Dict[str, none]". s1 above can never
+      # TODO(159069936): This should be "Dict[str, none]". s1 above can never
       # contain another dictionary.
       def f() -> Dict[str, Union[None, dict]]: ...
     """)

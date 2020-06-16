@@ -78,7 +78,7 @@ class TestExceptions(test_base.TargetIndependentTest):
 
   def test_global_name_error(self):
     self.CheckWithErrors("fooey  # name-error")
-    # TODO(kramm): Don't warn about NameErrors that are being caught.
+    # TODO(b/159068542): Don't warn about NameErrors that are being caught.
     self.assertNoCrash(self.Check, """
       try:
         fooey
