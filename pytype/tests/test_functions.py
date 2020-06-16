@@ -147,7 +147,6 @@ class TestGenerators(test_base.TargetIndependentTest):
       """)
 
   def test_yield_multiple_values(self):
-    # TODO(kramm): The generator doesn't have __iter__?
     self.assertNoCrash(self.Check, """
       def triples():
         yield 1, 2, 3
@@ -175,7 +174,6 @@ class TestGenerators(test_base.TargetIndependentTest):
       """)
 
   def test_generator_from_generator(self):
-    # TODO(kramm): The generator doesn't have __iter__?
     self.assertNoCrash(self.Check, """
       class Thing(object):
         RESOURCES = ('abc', 'def')
