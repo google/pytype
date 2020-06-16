@@ -54,7 +54,7 @@ class ndarray(object):
   @property
   def __array_interface__(self) -> dict: ...
 
-  # TODO(shoyer): add array methods:
+  # TODO(b/159138694): add array methods:
   # https://docs.scipy.org/doc/numpy/reference/arrays.ndarray.html#array-methods
 
   # https://docs.python.org/2/reference/datamodel.html
@@ -84,8 +84,8 @@ class ndarray(object):
 
   # https://github.com/numpy/numpy/blob/v1.13.0/numpy/lib/mixins.py#L63-L181
 
-  # TODO(shoyer): add overloads (returning ndarray) for cases where other is
-  # known not to define __array_priority__ or __array_ufunc__, such as for
+  # TODO(b/159138694): add overloads (returning ndarray) for cases where other
+  # is known not to define __array_priority__ or __array_ufunc__, such as for
   # numbers or other numpy arrays. Or even better, use protocols (once they
   # work).
 
