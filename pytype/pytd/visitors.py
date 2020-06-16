@@ -379,7 +379,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
       g = module.Lookup(module_name + ".__getattr__")
     except KeyError:
       return None
-    # TODO(kramm): Make parser.py actually enforce this:
+    # TODO(b/159059370): Make parser.py actually enforce this:
     assert len(g.signatures) == 1
     return g.signatures[0].return_type
 
@@ -875,7 +875,6 @@ class CreateTypeParametersForSignatures(Visitor):
         self._IsIncomplete(self.function_name)):
       # Leave unknown classes and call traces as-is, they'll never be part of
       # the output.
-      # TODO(kramm): We shouldn't run on call traces in the first place.
       return sig
     counter = _CountUnknowns()
     sig.Visit(counter)
@@ -906,10 +905,6 @@ class CreateTypeParametersForSignatures(Visitor):
       return unit
 
 
-# TODO(kramm): The `~unknown` functionality is becoming more important. Should
-#              we have support for this on the pytd level? (That would mean
-#              changing Class.name to a TYPE). Also, should we just use ~X
-#              instead of ~unknownX?
 class RaiseIfContainsUnknown(Visitor):
   """Find any 'unknown' Class or ClassType (not: pytd.AnythingType!) in a class.
 
