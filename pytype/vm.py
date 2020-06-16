@@ -1257,10 +1257,15 @@ class VirtualMachine(object):
       self.current_local_ops.append(LocalOp(name, LocalOp.ASSIGN))
     if typ:
       self.current_local_ops.append(LocalOp(name, LocalOp.ANNOTATE))
-    if name in self.current_annotated_locals:
-      self.current_annotated_locals[name].update(node, op, typ, orig_val)
+    self._update_annotations_dict(
+        node, op, name, typ, orig_val, self.current_annotated_locals)
+
+  def _update_annotations_dict(
+      self, node, op, name, typ, orig_val, annotations_dict):
+    if name in annotations_dict:
+      annotations_dict[name].update(node, op, typ, orig_val)
     else:
-      self.current_annotated_locals[name] = Local(node, op, typ, orig_val, self)
+      annotations_dict[name] = Local(node, op, typ, orig_val, self)
 
   def _store_value(self, state, name, value, local):
     if local:
@@ -1295,6 +1300,9 @@ class VirtualMachine(object):
     if annotations_dict is not None:
       if annotations_dict is self.current_annotated_locals:
         self._record_local(state.node, op, name, typ, orig_val)
+      else:
+        self._update_annotations_dict(
+            state.node, op, name, typ, orig_val, annotations_dict)
       if typ is None and name in annotations_dict:
         typ = annotations_dict[name].get_type(state.node, name)
         if typ == self.convert.unsolvable:
@@ -2193,6 +2201,13 @@ class VirtualMachine(object):
       if not isinstance(maybe_cls, abstract.InterpreterClass):
         maybe_cls = maybe_cls.cls
       if isinstance(maybe_cls, abstract.InterpreterClass):
+        if ("__annotations__" not in maybe_cls.members and
+            op.line in self.director.annotations):
+          # The class has no annotated class attributes but does have an
+          # annotated instance attribute.
+          annotations_dict = abstract.AnnotationsDict({}, self)
+          maybe_cls.members["__annotations__"] = annotations_dict.to_variable(
+              self.root_cfg_node)
         annotations_dict = abstract_utils.get_annotations_dict(
             maybe_cls.members)
         if annotations_dict:

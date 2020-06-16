@@ -521,13 +521,15 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     constants = collections.defaultdict(pytd_utils.TypeBuilder)
 
     annots = abstract_utils.get_annotations_dict(v.members)
+    annotated_names = set()
 
     for name, t in self.annotations_to_instance_types(node, annots):
       constants[name].add_type(t)
+      annotated_names.add(name)
 
     # class-level attributes
     for name, member in v.members.items():
-      if name in CLASS_LEVEL_IGNORE or name in constants:
+      if name in CLASS_LEVEL_IGNORE or name in annotated_names:
         continue
       for value in member.FilteredData(self.vm.exitpoint, strict=False):
         if isinstance(value, special_builtins.PropertyInstance):
@@ -573,9 +575,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     # instance-level attributes
     for instance in set(v.instances):
       for name, member in instance.members.items():
-        if name not in CLASS_LEVEL_IGNORE:
-          for value in member.FilteredData(self.vm.exitpoint, strict=False):
-            constants[name].add_type(value.to_type(node))
+        if name in CLASS_LEVEL_IGNORE or name in annotated_names:
+          continue
+        for value in member.FilteredData(self.vm.exitpoint, strict=False):
+          constants[name].add_type(value.to_type(node))
 
     for name in list(methods):
       if name in constants:
