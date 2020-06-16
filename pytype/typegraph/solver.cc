@@ -262,7 +262,6 @@ bool Solver::GoalsConflict(const internal::GoalSet& goals) const {
                                                       goal->variable());
     if (existing) {
       CHECK(existing != goal) << "Internal error. Duplicate goal.";
-      // TODO(kramm): What if existing->binding == goal->binding ?
       CHECK(existing->data() != goal->data()) <<
           "Internal error. Duplicate data across bindings.";
       return true;

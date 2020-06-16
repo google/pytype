@@ -213,7 +213,6 @@ typedef std::set<Binding*, pointer_less<Binding>> SourceSet;
 struct Origin {
   CFGNode* where = nullptr;
 
-  // TODO(kramm): we should store this as a BDD (binary decision diagram)
   std::set<SourceSet> source_sets;
 
   explicit Origin(CFGNode* where) { this->where = where; }
@@ -293,9 +292,6 @@ class Binding {
   Origin* FindOrAddOrigin(CFGNode* node);
 
   std::vector<std::unique_ptr<Origin>> origins_;
-  // We have to use a hash_map with pointers as bindings (i.e., Origin* instead
-  // of just Origin) because hash_map doesn't have emplace.
-  // TODO(pludemann): map has emplace(); change to map instead of hash_map?
   std::unordered_map<const CFGNode*, Origin*, CFGNodePtrHash> node_to_origin_;
   Variable* variable_;
   BindingData data_;

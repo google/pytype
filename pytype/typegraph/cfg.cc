@@ -437,7 +437,6 @@ static PyObject* NewVariable(PyProgramObj* self,
   typegraph::Variable* u = self->program->NewVariable();
 
   if (bindings) {
-    // TODO(kramm): Is assert the right thing to use, inside a Python extension?
     CHECK(bindings && source_set && where);
     PyObject* item;
     PyObject* bind_iter = PyObject_GetIter(bindings);
