@@ -837,7 +837,8 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
       # name in order to reference the imported module.
       defn: Optional[Definition] = None
       if alias.asname:
-        defn = self.add_local_def(node, name=symbol, data=data)
+        defn = self.add_local_def(
+            node, name=symbol, target=alias.name, data=data)
         defloc = self.locs[defn.id].pop()
         self.locs[defn.id].append(DefLocation(defloc.def_id, loc))
 
@@ -855,10 +856,16 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
 
       if op == "STORE_NAME":
         # for |import x.y as z| or |from x import y as z| we want {z: x.y}
+        self.add_local_ref(node, name=symbol, data=data, location=loc)
         if not isinstance(imported, abstract.Module):
+          # Make the from-imported symbol available in the current namespace.
+          remote = Remote(imported.module, name=symbol, resolved=True)
+          if defn:
+            self.aliases[defn.id] = remote
+          self.current_env[symbol] = remote
+          self.typemap[remote.id] = [imported]
           continue
 
-        self.add_local_ref(node, name=symbol, data=data, location=loc)
         if defn:
           remote = Remote(imported.full_name, IMPORT_FILE_MARKER, resolved=True)
           self.aliases[defn.id] = remote
@@ -990,22 +997,24 @@ class Indexer(object):
     else:
       return self.get_anchor_bounds(ref.location, len(ref.name))
 
-  def _lookup_remote_symbol(self, ref, defn):
+  def _lookup_remote_symbol(self, defn, attr_name):
     """Try to look up a definition in an imported module."""
-
     if defn.id in self.modules:
-      remote = self.modules[defn.id]
-      resolved = True
-    elif defn.typ in ["Import", "ImportFrom"]:
-      # Allow unresolved modules too.
-      remote = defn.name
-      resolved = False
-    else:
+      return Remote(self.modules[defn.id], name=attr_name, resolved=True)
+
+    if not (defn.typ == "Import" or defn.typ == "ImportFrom"):
       return None
-    name = ref.name
-    if name.startswith(remote):
-      name = name[(len(remote) + 1):]
-    return Remote(module=remote, name=name, resolved=resolved)
+
+    try:
+      [imported] = _unwrap(defn.data)
+    except ValueError:
+      # Unresolved module.
+      return Remote(defn.name, name=attr_name, resolved=False)
+
+    assert not isinstance(imported, abstract.Module)
+    assert defn.target
+    remote = Remote(imported.module, name=defn.target, resolved=True)
+    return remote.attr(attr_name)
 
   def _lookup_class_attr(self, name, attrib):
     """Look up a class attribute in the environment."""
@@ -1094,7 +1103,7 @@ class Indexer(object):
 
     for r in self.refs:
       if r.typ == "Attribute":
-        attr_name = r.name.split(".")[-1]
+        attr_name = r.name.rsplit(".", 1)[-1]
         defs = self._lookup_attribute_by_type(r, attr_name)
         if defs:
           links.extend(defs)
@@ -1104,7 +1113,7 @@ class Indexer(object):
           env, defn = env.lookup(r.target)
           if defn:
             # See if this is a definition from an imported module first.
-            remote = self._lookup_remote_symbol(r, defn)
+            remote = self._lookup_remote_symbol(defn, attr_name)
             if remote:
               links.append((r, remote))
             else:
@@ -1127,12 +1136,19 @@ class Indexer(object):
               else:
                 links.append((r, defn))
       elif r.typ == "Import" or r.typ == "ImportFrom":
-        if r.name in self.resolved_modules:
-          module = r.name
+        [imported] = _unwrap(r.data)
+        if isinstance(imported, abstract.Module):
+          name = IMPORT_FILE_MARKER
+          if r.name in self.resolved_modules:
+            module = r.name
+          else:
+            module = imported.full_name
         else:
-          module = _unwrap(r.data)[0].full_name
-        remote = Remote(module=module, name=IMPORT_FILE_MARKER, resolved=True)
-        links.append((r, remote))
+          assert imported.module
+          name = r.name
+          module = imported.module
+
+        links.append((r, Remote(module, name=name, resolved=True)))
       else:
         try:
           env, defn = self.envs[r.scope].lookup(r.name)
