@@ -79,7 +79,7 @@ class Local:
   """A possibly annotated local variable."""
 
   def __init__(self, node, op, typ, orig, vm):
-    self.last_op = op
+    self._ops = [op]
     if typ:
       self.typ = vm.program.NewVariable([typ], [], node)
     else:
@@ -90,11 +90,20 @@ class Local:
     self.vm = vm
 
   @property
+  def last_op(self):
+    # TODO(b/74434237): This property can be removed once the usage of it in
+    # dataclass_overlay is gone.
+    return self._ops[-1]
+
+  @property
   def stack(self):
     return self.vm.simple_stack(self.last_op)
 
   def update(self, node, op, typ, orig):
-    self.last_op = op
+    """Update this variable's annotation and/or value."""
+    if op in self._ops:
+      return
+    self._ops.append(op)
     if typ:
       if self.typ:
         self.typ.AddBinding(typ, [], node)

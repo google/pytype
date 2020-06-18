@@ -1029,6 +1029,21 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         return __any_object__
     """)
 
+  def test_set_annotated_attribute(self):
+    self.Check("""
+      from typing import Optional
+
+      class A:
+        def __init__(self):
+          self.x = None  # type: Optional[str]
+
+        def Set(self, x: str) -> None:
+          if self.x is None:
+            self.x = x
+
+      x = None  # type: Optional[A]
+    """)
+
 
 class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for PEP 484 style inline annotations."""
