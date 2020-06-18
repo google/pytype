@@ -9,6 +9,7 @@ from pytype import abstract_utils
 from pytype import mixin
 from pytype import special_builtins
 from pytype import utils
+from pytype.overlays import dataclass_overlay
 from pytype.overlays import typing_overlay
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -216,6 +217,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         return pytd.AnythingType()
     elif isinstance(v, typing_overlay.TypeVar):
       return pytd.NamedType("__builtin__.type")
+    elif isinstance(v, dataclass_overlay.FieldInstance):
+      return pytd_utils.JoinTypes(
+          self.value_to_pytd_type(node, d, seen, view)
+          for d in v.default.data)
     elif isinstance(v, abstract.FUNCTION_TYPES):
       try:
         signatures = abstract_utils.get_signatures(v)

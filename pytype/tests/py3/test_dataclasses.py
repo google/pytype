@@ -173,6 +173,21 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         x: bool = dataclasses.field(default_factory=set)  # annotation-type-mismatch
     """)
 
+  def test_factory_type_mismatch_output(self):
+    err = self.CheckWithErrors("""
+      import dataclasses
+      from typing import Any, List, Union
+      def f() -> Union[int, str]:
+        if __random__:
+          return 1
+        else:
+          return "hello"
+      @dataclasses.dataclass
+      class Foo:
+        x: List[int] = dataclasses.field(default_factory=f) # annotation-type-mismatch[e]
+    """)
+    self.assertErrorRegexes(err, {"e": r"Union\[int, str\]"})
+
   def test_field_no_init(self):
     ty = self.Infer("""
       import dataclasses
