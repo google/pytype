@@ -92,7 +92,7 @@ class SplitTest(test_base.TargetPython3BasicTest):
         if x is not None:
           x = None
         if x is None:
-          x = 1
+          x = 1  # type: int
         return x
       """)
 
@@ -112,9 +112,9 @@ class SplitTest(test_base.TargetPython3BasicTest):
       from typing import Optional
       def f(x: Optional[str]) -> int:
         if x is None:
-          x = 1
+          x = 1  # type: int
         else:
-          x = 1
+          x = 1  # type: int
         return x
       """)
 

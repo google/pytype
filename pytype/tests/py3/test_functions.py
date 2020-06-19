@@ -206,6 +206,28 @@ class TestCheckDefaults(test_base.TargetPython3FeatureTest):
                                      "e2": r"Annotation: str.*Assignment: int"})
 
 
+class TestCheckParameterAssignment(test_base.TargetPython3BasicTest):
+  """Tests for checking assignments to annotated parameters."""
+
+  def test_basic(self):
+    errors = self.CheckWithErrors("""
+      def f(x: int):
+        x = ''  # annotation-type-mismatch[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Annotation: int.*Assignment: str"})
+
+  def test_typevar(self):
+    errors = self.CheckWithErrors("""
+      from typing import TypeVar
+      T = TypeVar('T')
+      def f(x: T, y: T):
+        x = 0  # annotation-type-mismatch[e]
+      f('', '')
+    """)
+    self.assertErrorRegexes(
+        errors, {"e": r"Annotation: str.*Assignment: int.*Called from.*line 5"})
+
+
 class TestFunctions(test_base.TargetPython3BasicTest):
   """Tests for functions."""
 

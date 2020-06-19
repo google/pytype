@@ -3265,7 +3265,14 @@ class InterpreterFunction(SignedFunction):
       node2, _ = async_generator.run_generator(node)
       node_after_call, ret = node2, async_generator.to_variable(node2)
     else:
-      node2, ret = self.vm.run_frame(frame, node)
+      if self.vm.options.check_parameter_types:
+        annotated_locals = {
+            name: abstract_utils.Local(node, self.get_first_opcode(), annot,
+                                       callargs.get(name), self.vm)
+            for name, annot in annotations.items() if name != "return"}
+      else:
+        annotated_locals = {}
+      node2, ret = self.vm.run_frame(frame, node, annotated_locals)
       if self.is_coroutine():
         ret = Coroutine(self.vm, ret, node2).to_variable(node2)
       node_after_call = node2

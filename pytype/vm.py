@@ -75,57 +75,6 @@ class LocalOp(collections.namedtuple("_LocalOp", ["name", "op"])):
     return self.op == self.ANNOTATE
 
 
-class Local:
-  """A possibly annotated local variable."""
-
-  def __init__(self, node, op, typ, orig, vm):
-    self._ops = [op]
-    if typ:
-      self.typ = vm.program.NewVariable([typ], [], node)
-    else:
-      # Creating too many variables bloats the typegraph, hurting performance,
-      # so we use None instead of an empty variable.
-      self.typ = None
-    self.orig = orig
-    self.vm = vm
-
-  @property
-  def last_op(self):
-    # TODO(b/74434237): This property can be removed once the usage of it in
-    # dataclass_overlay is gone.
-    return self._ops[-1]
-
-  @property
-  def stack(self):
-    return self.vm.simple_stack(self.last_op)
-
-  def update(self, node, op, typ, orig):
-    """Update this variable's annotation and/or value."""
-    if op in self._ops:
-      return
-    self._ops.append(op)
-    if typ:
-      if self.typ:
-        self.typ.AddBinding(typ, [], node)
-      else:
-        self.typ = self.vm.program.NewVariable([typ], [], node)
-    if orig:
-      self.orig = orig
-
-  def get_type(self, node, name):
-    """Gets the variable's annotation."""
-    if not self.typ:
-      return None
-    values = self.typ.Data(node)
-    if len(values) > 1:
-      self.vm.errorlog.ambiguous_annotation(self.stack, values, name)
-      return self.vm.convert.unsolvable
-    elif values:
-      return values[0]
-    else:
-      return None
-
-
 _opcode_counter = metrics.MapCounter("vm_opcode")
 
 
@@ -356,7 +305,7 @@ class VirtualMachine(object):
         node.ConnectTo(ret)
       return ret
 
-  def run_frame(self, frame, node):
+  def run_frame(self, frame, node, annotated_locals=None):
     """Run a frame (typically belonging to a method)."""
     self.push_frame(frame)
     frame.states[frame.f_code.co_code[0]] = frame_state.FrameState.init(
@@ -367,7 +316,9 @@ class VirtualMachine(object):
       # don't care to track locals for this frame and don't want it to overwrite
       # the locals of the actual module frame.
       self.local_ops[frame_name] = []
-      self.annotated_locals[frame_name] = {}
+      self.annotated_locals[frame_name] = annotated_locals or {}
+    else:
+      assert annotated_locals is None
     can_return = False
     return_nodes = []
     for block in frame.f_code.order:
@@ -1315,7 +1266,8 @@ class VirtualMachine(object):
     if name in annotations_dict:
       annotations_dict[name].update(node, op, typ, orig_val)
     else:
-      annotations_dict[name] = Local(node, op, typ, orig_val, self)
+      annotations_dict[name] = abstract_utils.Local(
+          node, op, typ, orig_val, self)
 
   def _store_value(self, state, name, value, local):
     if local:
