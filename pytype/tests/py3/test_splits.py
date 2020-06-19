@@ -120,7 +120,8 @@ class SplitTest(test_base.TargetPython3BasicTest):
 
   def test_simple_or(self):
     self.Check("""
-      def f(self, x: str = None) -> str:
+      from typing import Optional
+      def f(self, x: Optional[str] = None) -> str:
         return x or "foo"
     """)
 
@@ -162,13 +163,16 @@ class SplitTest(test_base.TargetPython3BasicTest):
 
   def test_long_signature(self):
     self.Check("""
+      from typing import Optional
 
       class Foo(object):
 
-        def __init__(self, x1: str = None, x2: str = None, x3: str = None,
-                     x4: str = None, x5: str = None, x6: str = None,
-                     x7: str = None, x8: str = None, x9: str = None,
-                     credentials: str = None):
+        def __init__(
+            self, x1: Optional[str] = None, x2: Optional[str] = None,
+            x3: Optional[str] = None, x4: Optional[str] = None,
+            x5: Optional[str] = None, x6: Optional[str] = None,
+            x7: Optional[str] = None, x8: Optional[str] = None,
+            x9: Optional[str] = None, credentials: Optional[str] = None):
           if not credentials:
             credentials = ""
           self.credentials = credentials.upper()

@@ -932,13 +932,13 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
   def test_no_implicit_optional(self):
     ty, _ = self.InferWithErrors("""
       from typing import Optional, Union
-      def f1(x: str = None):
+      def f1(x: str = None):  # annotation-type-mismatch
         pass
       def f2(x: Optional[str] = None):
         pass
       def f3(x: Union[str, None] = None):
         pass
-      def f4(x: Union[str, int] = None):
+      def f4(x: Union[str, int] = None):  # annotation-type-mismatch
         pass
       f1(None)  # wrong-arg-types
       f2(None)

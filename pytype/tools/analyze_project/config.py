@@ -66,6 +66,8 @@ _PYTYPE_SINGLE_ITEMS = {
         None, 'False', ArgInfo('--check-attribute-types', None), None),
     'check_container_types': Item(
         None, 'False', ArgInfo('--check-container-types', None), None),
+    'check_parameter_types': Item(
+        None, 'False', ArgInfo('--check-parameter-types', None), None),
     'check_variable_types': Item(
         None, 'False', ArgInfo('--check-variable-types', None), None),
     'disable': Item(

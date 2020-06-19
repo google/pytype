@@ -68,13 +68,13 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
 
   def test_type_erasure_error(self):
     _, errors = self.InferWithErrors("""
-      from typing import TypeVar, Generic
+      from typing import Optional, TypeVar, Generic
 
       T = TypeVar('T', int, float)
       S = TypeVar('S')
 
       class MyClass(Generic[T, S]):
-        def __init__(self, x: T = None, y: S = None):
+        def __init__(self, x: Optional[T] = None, y: Optional[S] = None):
             pass
 
         def fun(self, x: T, y: S):
@@ -160,13 +160,13 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
 
   def test_class_in_class_error(self):
     _, errors = self.InferWithErrors("""
-     from typing import TypeVar, Generic, Iterator
+     from typing import Optional, TypeVar, Generic, Iterator
 
      T = TypeVar('T', int, float, str)
      S = TypeVar('S')
 
      class MyClass(Generic[T, S]):  # invalid-annotation[e1]
-       def __init__(self, x: T = None, y: S = None):
+       def __init__(self, x: Optional[T] = None, y: Optional[S] = None):
          pass
 
        def f(self, x: T, y: S):
@@ -185,14 +185,14 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
 
   def test_signature_type_param(self):
     _, errors = self.InferWithErrors("""
-      from typing import TypeVar, Generic
+      from typing import Optional, TypeVar, Generic
 
       T = TypeVar('T', int, float, str)
       S = TypeVar('S')
       V = TypeVar('V')
 
       class MyClass(Generic[T, S]):
-        def __init__(self, x: T = None, y: S = None):
+        def __init__(self, x: Optional[T] = None, y: Optional[S] = None):
             pass
 
         def func1(self, x: T, y: S): pass

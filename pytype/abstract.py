@@ -1,4 +1,3 @@
-# Lint as: python3
 """The abstract values used by vm.py.
 
 This file contains AtomicAbstractValue and its subclasses. Mixins such as Class
@@ -3072,10 +3071,10 @@ class InterpreterFunction(SignedFunction):
   def argcount(self, _):
     return self.code.co_argcount
 
-  def match_args(self, node, args, alias_map):
+  def match_args(self, node, args, alias_map=None, match_all_views=False):
     if not self.signature.has_param_annotations:
       return
-    return super(InterpreterFunction, self).match_args(node, args, alias_map)
+    return super().match_args(node, args, alias_map, match_all_views)
 
   def _inner_cls_check(self, last_frame):
     """Check if the function and its nested class use same type parameter."""
@@ -3179,7 +3178,7 @@ class InterpreterFunction(SignedFunction):
     # type-checking down the road.
     annotations = self.vm.annotations_util.sub_annotations(
         node, sig.annotations, substs, instantiate_unbound=False)
-    if annotations:
+    if sig.has_param_annotations:
       for name in callargs:
         if (name in annotations and (not self.is_attribute_of_class or
                                      self.argcount(node) == 0 or
@@ -3546,6 +3545,10 @@ class BoundInterpreterFunction(BoundFunction):
   @is_overload.setter
   def is_overload(self, value):
     self.underlying.is_overload = value
+
+  @property
+  def defaults(self):
+    return self.underlying.defaults
 
   def iter_signature_functions(self):
     for f in self.underlying.iter_signature_functions():

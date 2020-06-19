@@ -682,6 +682,46 @@ class VirtualMachine(object):
     self.trace_opcode(None, name, var)
     return node, var
 
+  def _check_defaults(self, node, method):
+    """Check parameter defaults against annotations."""
+    if (not self.options.check_parameter_types or
+        not method.signature.has_param_annotations):
+      return
+    _, args = self.create_method_arguments(node, method, use_defaults=True)
+    positional_names = method.get_positional_names()
+    # We may need to call match_args multiple times to find all type errors.
+    needs_checking = True
+    while needs_checking:
+      try:
+        method.match_args(node, args)
+      except function.FailedFunctionCall as e:
+        if not isinstance(e, function.InvalidParameters):
+          raise AssertionError(
+              "Unexpected argument matching error: %s" % e.__class__.__name__)
+        arg_name = e.bad_call.bad_param.name
+        expected_type = e.bad_call.bad_param.expected
+        for name, value in e.bad_call.passed_args:
+          if name != arg_name:
+            continue
+          self.errorlog.annotation_type_mismatch(
+              self.frames, expected_type, value.to_binding(node), arg_name)
+          # Replace the bad default with Any so we can call match_args again to
+          # find other type errors.
+          try:
+            pos = positional_names.index(name)
+          except ValueError:
+            args.namedargs[name] = self.new_unsolvable(node)
+          else:
+            args = args._replace(
+                posargs=args.posargs[:pos] + (self.new_unsolvable(node),) +
+                args.posargs[pos+1:])
+          break
+        else:
+          raise AssertionError(
+              "Mismatched parameter %s not found in passed_args" % arg_name)
+      else:
+        needs_checking = False
+
   def _make_function(self, name, node, code, globs, defaults, kw_defaults,
                      closure=None, annotations=None):
     """Create a function or closure given the arguments."""
@@ -700,6 +740,7 @@ class VirtualMachine(object):
         closure=closure, annotations=annotations, vm=self)
     var = self.program.NewVariable()
     var.AddBinding(val, code.bindings, node)
+    self._check_defaults(node, val)
     if val.signature.annotations:
       self.functions_type_params_check.append((val, self.frame.current_opcode))
     return var

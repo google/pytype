@@ -20,17 +20,17 @@ class RecoveryTests(test_base.TargetPython3BasicTest):
   def test_complex_init(self):
     """Test that we recover when __init__ triggers a utils.TooComplexError."""
     _, errors = self.InferWithErrors("""
-      from typing import AnyStr
+      from typing import AnyStr, Optional
       class X(object):
         def __init__(self,
-                     literal: int = None,
-                     target_index: int = None,
-                     register_range_first: int = None,
-                     register_range_last: int = None,
-                     method_ref: AnyStr = None,
-                     field_ref: AnyStr = None,
-                     string_ref: AnyStr = None,
-                     type_ref: AnyStr = None) -> None:
+                     literal: Optional[int] = None,
+                     target_index: Optional[int] = None,
+                     register_range_first: Optional[int] = None,
+                     register_range_last: Optional[int] = None,
+                     method_ref: Optional[AnyStr] = None,
+                     field_ref: Optional[AnyStr] = None,
+                     string_ref: Optional[AnyStr] = None,
+                     type_ref: Optional[AnyStr] = None) -> None:
           pass
         def foo(self, x: other_module.X) -> None:  # name-error[e]
           pass
