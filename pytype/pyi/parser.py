@@ -985,7 +985,7 @@ class _Parser(object):
     # Extract out abstractmethod and coroutine decorators, there should be at
     # most one remaining decorator.
     def _check_decorator(decorators, decorator_set):
-      exists = any([x in decorators for x in decorator_set])
+      exists = any(x in decorators for x in decorator_set)
       if exists:
         decorators -= decorator_set
       return exists
