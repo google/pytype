@@ -1,6 +1,7 @@
 """Argument parsing for analyze_project."""
 
 import argparse
+import os
 
 from pytype import config as pytype_config
 from pytype.tools import arg_parser
@@ -9,6 +10,20 @@ from pytype.tools.analyze_project import config
 
 _ARG_PREFIX = '--'
 
+def _auto_detect_cpus():
+  try:
+    return len(os.sched_getaffinity(0))
+  except AttributeError:
+    return os.cpu_count()
+
+
+def parse_jobs(s):
+  """Parse the --jobs option"""
+  if s == 'auto':
+    n = _auto_detect_cpus()
+    return n if n else 1
+  elif s is not None:
+    return int(s)
 
 class Parser(arg_parser.Parser):
   """Subclasses Parser to add a config file processor."""
@@ -93,7 +108,8 @@ def make_parser():
       (('-x', '--exclude'), {'nargs': '*', 'action': 'flatten'}),
       (('inputs',), {'metavar': 'input', 'nargs': '*', 'action': 'flatten'}),
       (('-k', '--keep-going'), {'action': 'store_true', 'type': None}),
-      (('-j', '--jobs'), {'action': 'store', 'type': int, 'metavar': 'N'}),
+      (('-j', '--jobs'), {'action': 'store', 'type': parse_jobs,
+                          'metavar': 'N'}),
       (('-P', '--pythonpath'),),
       (('-V', '--python-version'),)
   ]:
