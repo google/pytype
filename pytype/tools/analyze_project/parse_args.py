@@ -10,6 +10,7 @@ from pytype.tools.analyze_project import config
 
 _ARG_PREFIX = '--'
 
+
 def _auto_detect_cpus():
   try:
     return len(os.sched_getaffinity(0))
@@ -18,12 +19,15 @@ def _auto_detect_cpus():
 
 
 def parse_jobs(s):
-  """Parse the --jobs option"""
+  """Parse the --jobs option."""
   if s == 'auto':
     n = _auto_detect_cpus()
     return n if n else 1
   elif s is not None:
     return int(s)
+  else:
+    return None
+
 
 class Parser(arg_parser.Parser):
   """Subclasses Parser to add a config file processor."""
