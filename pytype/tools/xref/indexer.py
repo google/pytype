@@ -835,7 +835,7 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
       # If an import is aliased, match() returns only the symbol/loc of
       # the alias, whereas the indexer also needs access to the unaliased
       # name in order to reference the imported module.
-      defn: Optional[Definition] = None
+      defn = None  # type: Optional[Definition]
       if alias.asname:
         defn = self.add_local_def(
             node, name=symbol, target=alias.name, data=data)
