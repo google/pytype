@@ -50,15 +50,14 @@ class TestAttributes(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
-  def test_error_in_any(self):
-    errors = self.CheckWithErrors("""
+  def test_any_annotation(self):
+    self.Check("""
       from typing import Any
       def f(x: Any):
         if __random__:
           x = 42
-        x.upper()  # attribute-error[e]
+        x.upper()
     """)
-    self.assertErrorRegexes(errors, {"e": r"upper.*int.*Union\[Any, int\]"})
 
 
 class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):

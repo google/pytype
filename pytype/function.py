@@ -120,7 +120,7 @@ class Signature(object):
   @classmethod
   def from_pytd(cls, vm, name, sig):
     """Construct an abstract signature from a pytd signature."""
-    # TODO(kramm): templates
+    # TODO(b/159041421): templates
     pytd_annotations = [(p.name, p.type)
                         for p in sig.params + (sig.starargs, sig.starstarargs)
                         if p is not None]
@@ -351,9 +351,9 @@ class Args(collections.namedtuple(
         starargs = None
     starstarargs_as_dict = self.starstarargs_as_dict()
     if starstarargs_as_dict is not None:
-      # TODO(sivachandra): Similar to adjusting varargs in to missing positional
-      # args, there might be a benefit in adjusting starstarargs in to named
-      # args if function signature has matching param_names.
+      # Unlike varargs above, we do not adjust starstarargs into namedargs when
+      # the function signature has matching param_names because we have not
+      # found a benefit in doing so.
       if namedargs is None:
         namedargs = starstarargs_as_dict
       else:

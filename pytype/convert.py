@@ -110,8 +110,6 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     self.tuple_type = self.constant_to_value(tuple)
     self.generator_type = self.constant_to_value(types.GeneratorType)
     self.iterator_type = self.constant_to_value(compat.IteratorType)
-    # TODO(ahxun): We should clean up/standardize how we initialize
-    # version-specific attributes.
     if self.vm.python_version >= (3, 5):
       self.coroutine_type = self.constant_to_value(compat.CoroutineType)
       self.awaitable_type = self.constant_to_value(compat.AwaitableType)
@@ -416,8 +414,6 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     # e.g. a list of values instead of a list of types:
     assert pyval.__class__ != cfg.Variable, pyval
     if pyval.__class__ == tuple:
-      # TODO(ampere): This does not allow subclasses. Handle namedtuple
-      # correctly.
       # This case needs to go at the end because many things are actually also
       # tuples.
       return self.build_tuple(
@@ -484,7 +480,6 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       ast = self.vm.loader.import_name(module)
       if ast is not None:
         try:
-          # TODO(kramm): Should this use pytd.py:ToType?
           cls = ast.Lookup(late_type.name)
         except KeyError:
           try:

@@ -316,7 +316,7 @@ class TypeMatch(pytd_utils.TypeMatcher):
     """Match a pytd.Type against another pytd.Type."""
     t1 = self.maybe_lookup_type_param(t1, subst)
     t2 = self.maybe_lookup_type_param(t2, subst)
-    # TODO(kramm): Use utils:TypeMatcher to simplify this?
+    # TODO(b/159058933): Use utils:TypeMatcher to simplify this?
     if isinstance(t2, pytd.AnythingType):
       # We can match anything against AnythingType. (It's like top)
       return booleq.TRUE
@@ -430,8 +430,8 @@ class TypeMatch(pytd_utils.TypeMatcher):
     if sig1.starstarargs is not None and sig2.starstarargs is not None:
       equalities.append(self.match_type_against_type(
           sig1.starstarargs.type, sig2.starstarargs.type, subst))
-    # TODO(kramm): Handle kwonly parameters (on either side). Presumably, a
-    #              kwonly on the left side means that it was a keyword param.
+    # TODO(b/159058933): Handle kwonly parameters (on either side). Presumably,
+    # a kwonly on the left side means that it was a keyword param.
     for p1, p2 in zip(params1, params2):
       if p1.optional and not p2.optional:
         return booleq.FALSE  # needed for optimize.py:RemoveRedundantSignatures
@@ -471,7 +471,7 @@ class TypeMatch(pytd_utils.TypeMatcher):
       cls2_methods = cache[id(cls2)] = {f.name: f for f in cls2.methods}
     if f1.name not in cls2_methods:
       # The class itself doesn't have this method, but base classes might.
-      # TODO(kramm): This should do MRO order, not depth-first.
+      # TODO(b/159058933): This should do MRO order, not depth-first.
       for base in cls2.parents:
         if isinstance(base, pytd.AnythingType):
           # AnythingType can contain any method. However, that would mean that
@@ -527,5 +527,5 @@ class TypeMatch(pytd_utils.TypeMatcher):
       implications.append(implication)
       if implication is booleq.FALSE:
         break
-    # TODO(kramm): class attributes
+    # TODO(b/159058933): class attributes
     return booleq.And(implications)

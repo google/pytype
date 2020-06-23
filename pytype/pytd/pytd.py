@@ -71,7 +71,7 @@ class TypeDeclUnit(node.Node('name: str or None',
     Raises:
       KeyError: if this identifier doesn't exist.
     """
-    # TODO(kramm): Put constants, functions, classes and aliases into a
+    # TODO(b/159053187): Put constants, functions, classes and aliases into a
     # combined dict.
     try:
       return self._name2item[name]
@@ -140,8 +140,8 @@ class Class(node.Node('name: str',
     slots: A.k.a. __slots__, declaring which instance attributes are writable.
     template: Tuple of pytd.TemplateItem instances.
   """
-  # TODO(kramm): Rename "parents" to "bases". "Parents" is confusing since we're
-  #              in a tree.
+  # TODO(b/159053187): Rename "parents" to "bases". "Parents" is confusing since
+  # we're in a tree.
 
   def Lookup(self, name):
     """Convenience function: Look up a given name in the class namespace.
@@ -157,7 +157,7 @@ class Class(node.Node('name: str',
     Raises:
       KeyError: if this identifier doesn't exist in this class.
     """
-    # TODO(kramm): Remove this. Make methods and constants dictionaries.
+    # TODO(b/159053187): Remove this. Make methods and constants dictionaries.
     try:
       return self._name2item[name]
     except AttributeError:
@@ -216,7 +216,7 @@ class Function(node.Node('name: str',
   @classmethod
   def abstract_flag(cls, is_abstract):
     # Temporary hack to support existing code that creates a Function
-    # TODO(mdemello): Implement a common flag bitmap for all function types
+    # TODO(b/159053187): Implement a common flag bitmap for all function types
     return cls.IS_ABSTRACT if is_abstract else 0
 
 
@@ -581,12 +581,12 @@ def ToType(item, allow_constants=True):
     return FunctionType(item.name, item)
   elif isinstance(item, Constant):
     if allow_constants:
-      # TODO(kramm): This is wrong. It would be better if we resolve Alias
+      # TODO(b/159053187): This is wrong. It would be better if we resolve Alias
       # in the same way we resolve NamedType.
       return item
     else:
-      # TODO(kramm): We should be more picky here. In particular, we shouldn't
-      # allow pyi like this:
+      # TODO(b/159053187): We should be more picky here. In particular, we
+      # shouldn't allow pyi like this:
       #  object = ...  # type: int
       #  def f(x: object) -> Any
       return AnythingType()

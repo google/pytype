@@ -57,8 +57,6 @@ class PYITest(test_base.TargetPython27FeatureTest):
               r"Actually passed: \(x, args: None\)")
       self.assertErrorRegexes(errors, {"e1": msg1, "e2": msg2})
 
-  # TODO(sivachandra): Make this a target independent test after
-  # after b/78785264 is fixed.
   def test_kwargs(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """

@@ -5,6 +5,8 @@
 from __future__ import print_function
 
 import collections
+import re
+from typing import Optional
 
 import attr
 from pytype import abstract
@@ -238,6 +240,11 @@ class Definition(object):
       return "function"
     else:
       return "variable"
+
+  def subkind(self) -> Optional[str]:
+    if self.typ == "Import" or self.typ == "ImportFrom":
+      return "import"
+    return None
 
   @property
   def typename(self):
@@ -547,6 +554,7 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
     self.locs = collections.defaultdict(list)
     self.refs = []
     self.modules = {}
+    self.aliases = {}
     self.source = src
     self.traces = src.traces
     self.typemap = {}
@@ -823,37 +831,59 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
   def process_import(self, node):
     """Common code for Import and ImportFrom."""
 
-    # Only record modules that pytype has resolved in self.modules
-    def is_resolved(data):
-      return data and isinstance(data[0], abstract.Module)
+    for alias, (loc, (op, symbol, data)) in zip(node.names, self.match(node)):
+      # If an import is aliased, match() returns only the symbol/loc of
+      # the alias, whereas the indexer also needs access to the unaliased
+      # name in order to reference the imported module.
+      defn = None  # type: Optional[Definition]
+      if alias.asname:
+        defn = self.add_local_def(
+            node, name=symbol, target=alias.name, data=data)
+        defloc = self.locs[defn.id].pop()
+        self.locs[defn.id].append(DefLocation(defloc.def_id, loc))
 
-    def add_import_ref(name, data, loc):
-      self.add_global_ref(
-          node, name=name, data=data, location=loc, typ="Import")
+        # Shift symbol/loc back to the unaliased name.
+        symbol = alias.name
+        m = re.search("[ ,]" + symbol + r"\b", self.source.line(loc.line))
+        assert m is not None
+        c, _ = m.span()
+        loc = source.Location(loc.line, c + 1)
 
-    for loc, (op, symbol, data) in self.match(node):
-      d = self.add_local_def(node, name=symbol)
-      defloc = self.locs[d.id][-1]
+      try:
+        [imported] = _unwrap(data)
+      except ValueError:
+        continue  # Unresolved import.
 
-      # tweak the definition location slightly
-      line, _ = loc
-      text = self.source.line(line)
-      c = text.find("import ")
-      new_loc = source.Location(line, c) if c > -1 else loc
-      self.locs[d.id][-1] = DefLocation(defloc.def_id, new_loc)
-
-      if not is_resolved(_unwrap(data)):
-        continue
-      elif op == "STORE_NAME":
+      if op == "STORE_NAME":
         # for |import x.y as z| or |from x import y as z| we want {z: x.y}
-        self.modules[d.id] = _unwrap(data)[0].full_name
-        add_import_ref(name=symbol, data=data, loc=loc)
+        self.add_local_ref(node, name=symbol, data=data, location=loc)
+        if not isinstance(imported, abstract.Module):
+          # Make the from-imported symbol available in the current namespace.
+          remote = Remote(imported.module, name=symbol, resolved=True)
+          if defn:
+            self.aliases[defn.id] = remote
+          self.current_env[symbol] = remote
+          self.typemap[remote.id] = [imported]
+          continue
+
+        if defn:
+          remote = Remote(imported.full_name, IMPORT_FILE_MARKER, resolved=True)
+          self.aliases[defn.id] = remote
+          self.modules[defn.id] = imported.full_name
+        else:
+          self.modules[self.scope_id() + "." + symbol] = imported.full_name
       elif op == "IMPORT_NAME":
         # |import x.y| puts both {x: x} and {x.y: x.y} in modules
-        add_import_ref(name=symbol, data=data, loc=loc)
+        self.add_local_ref(node, name=symbol, data=data, location=loc)
+        # TODO(slebedev): Reference every import path component.
+        # For example here
+        #
+        #   from foo.bar import boo
+        #   import foo.bar.boo
+        #
+        # we should reference both foo and foo.bar (in addition to foo.bar.boo).
         for mod in module_utils.get_all_prefixes(symbol):
-          # TODO(mdemello): Create references for every element.
-          self.modules[d.scope + "." + mod] = mod
+          self.modules[self.scope_id() + "." + mod] = mod
 
   def visit_Import(self, node):
     self.process_import(node)
@@ -897,6 +927,7 @@ class Indexer(object):
     self.refs = None
     self.envs = None
     self.modules = None
+    self.aliases = None
     self.typemap = None
     self.classmap = None
     self.calls = None
@@ -917,6 +948,7 @@ class Indexer(object):
     self.refs = v.refs
     self.envs = v.envs
     self.modules = v.modules
+    self.aliases = v.aliases
     self.typemap = v.typemap
     self.classmap = v.classmap
     self.calls = v.calls
@@ -933,11 +965,7 @@ class Indexer(object):
       start = self.source.get_offset(defloc.location)
       if typ in DEF_OFFSETS:
         start += DEF_OFFSETS[typ]
-      if typ == "Import" or typ == "ImportFrom":
-        # We link an import def to the word "import"
-        end = start + len("import")
-      else:
-        end = start + len(defn.name)
+      end = start + len(defn.name)
     return (start, end)
 
   def get_doc_offsets(self, doc):
@@ -969,22 +997,24 @@ class Indexer(object):
     else:
       return self.get_anchor_bounds(ref.location, len(ref.name))
 
-  def _lookup_remote_symbol(self, ref, defn):
+  def _lookup_remote_symbol(self, defn, attr_name):
     """Try to look up a definition in an imported module."""
-
     if defn.id in self.modules:
-      remote = self.modules[defn.id]
-      resolved = True
-    elif defn.typ in ["Import", "ImportFrom"]:
-      # Allow unresolved modules too.
-      remote = defn.name
-      resolved = False
-    else:
+      return Remote(self.modules[defn.id], name=attr_name, resolved=True)
+
+    if not (defn.typ == "Import" or defn.typ == "ImportFrom"):
       return None
-    name = ref.name
-    if name.startswith(remote):
-      name = name[(len(remote) + 1):]
-    return Remote(module=remote, name=name, resolved=resolved)
+
+    try:
+      [imported] = _unwrap(defn.data)
+    except ValueError:
+      # Unresolved module.
+      return Remote(defn.name, name=attr_name, resolved=False)
+
+    assert not isinstance(imported, abstract.Module)
+    assert defn.target
+    remote = Remote(imported.module, name=defn.target, resolved=True)
+    return remote.attr(attr_name)
 
   def _lookup_class_attr(self, name, attrib):
     """Look up a class attribute in the environment."""
@@ -1073,7 +1103,7 @@ class Indexer(object):
 
     for r in self.refs:
       if r.typ == "Attribute":
-        attr_name = r.name.split(".")[-1]
+        attr_name = r.name.rsplit(".", 1)[-1]
         defs = self._lookup_attribute_by_type(r, attr_name)
         if defs:
           links.extend(defs)
@@ -1083,7 +1113,7 @@ class Indexer(object):
           env, defn = env.lookup(r.target)
           if defn:
             # See if this is a definition from an imported module first.
-            remote = self._lookup_remote_symbol(r, defn)
+            remote = self._lookup_remote_symbol(defn, attr_name)
             if remote:
               links.append((r, remote))
             else:
@@ -1105,13 +1135,20 @@ class Indexer(object):
                     links.append((r, x))
               else:
                 links.append((r, defn))
-      elif r.typ == "Import":
-        if r.name in self.resolved_modules:
-          module = r.name
+      elif r.typ == "Import" or r.typ == "ImportFrom":
+        [imported] = _unwrap(r.data)
+        if isinstance(imported, abstract.Module):
+          name = IMPORT_FILE_MARKER
+          if r.name in self.resolved_modules:
+            module = r.name
+          else:
+            module = imported.full_name
         else:
-          module = _unwrap(r.data)[0].full_name
-        remote = Remote(module=module, name=IMPORT_FILE_MARKER, resolved=True)
-        links.append((r, remote))
+          assert imported.module
+          name = r.name
+          module = imported.module
+
+        links.append((r, Remote(module, name=name, resolved=True)))
       else:
         try:
           env, defn = self.envs[r.scope].lookup(r.name)
@@ -1151,6 +1188,9 @@ class Indexer(object):
 
     for call in self.calls:
       call.return_type = None
+
+    for a in self.aliases.values():
+      a.data = None
 
     for r, d in self.links:
       r.data = None

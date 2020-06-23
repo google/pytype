@@ -199,9 +199,7 @@ class property(object):
     def __set__(self, ...) -> ?
     def __delete__(self, ...) -> ?
 
-# TODO(kramm): This is wrong. These classes shouldn't inherit from
-# Callable. We should instead generate the right information in pyi (I.e.,
-# decorate classes instead of creating constants of type {class,static}method)
+# staticmethod and classmethod are handled in special_builtins.py.
 class staticmethod(typing.Callable):
     __slots__ = []
     def __init__(self, func) -> NoneType

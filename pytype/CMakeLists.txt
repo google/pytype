@@ -371,7 +371,7 @@ py_library(
     pytd/type_match.py
     pytd/visitors.py
   DEPS
-    .builtins_pytd  # TODO(sivachandra): Move this into a data dependency
+    .builtins_pytd  # TODO(b/159043305): Move this into a data dependency
     .debug
     .metrics
     .node

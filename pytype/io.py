@@ -114,7 +114,7 @@ def generate_pyi(input_filename, options=None, loader=None):
     mod.Visit(visitors.VerifyVisitor())
     mod = optimize.Optimize(mod,
                             builtins,
-                            # TODO(kramm): Add FLAGs for these
+                            # TODO(b/159038508): Add FLAGs for these
                             lossy=False,
                             use_abcs=False,
                             max_union=7,

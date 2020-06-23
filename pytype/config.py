@@ -149,6 +149,11 @@ def add_basic_options(o):
       dest="check_container_types", default=False,
       help="Check container mutations against their annotations. " + temporary)
   o.add_argument(
+      "--check-parameter-types", action="store_true",
+      dest="check_parameter_types", default=False,
+      help=("Check parameter defaults and assignments against their "
+            "annotations. " + temporary))
+  o.add_argument(
       "--check-variable-types", action="store_true",
       dest="check_variable_types", default=False,
       help="Check variable values against their annotations. " + temporary)

@@ -124,7 +124,7 @@ class Kythe(object):
 # Generate kythe facts from an indexer.Indexer
 
 
-def _process_deflocs(kythe, index):
+def _process_deflocs(kythe: Kythe, index: indexer.Indexer):
   """Generate kythe edges for definitions."""
 
   for def_id in index.locs:
@@ -138,10 +138,24 @@ def _process_deflocs(kythe, index):
           source=defn_vname,
           fact_name="node/kind",
           fact_value=defn.node_kind())
+      if defn.subkind() is not None:
+        kythe.add_fact(
+            source=defn_vname,
+            fact_name="subkind",
+            fact_value=defn.subkind())
       kythe.add_edge(
           source=anchor_vname,
           target=defn_vname,
           edge_name="defines/binding")
+
+      try:
+        alias = index.aliases[defn.id]
+      except KeyError:
+        pass
+      else:
+        alias_vname = _make_defn_vname(kythe, index, alias)
+        kythe.add_edge(
+            source=defn_vname, target=alias_vname, edge_name="aliases")
 
       # Emit a docstring if we have one.
       doc = defn.doc
@@ -210,7 +224,7 @@ def _make_defn_vname(kythe, index, defn):
     return kythe.vname(defn.to_signature())
 
 
-def _process_links(kythe, index):
+def _process_links(kythe: Kythe, index: indexer.Indexer):
   """Generate kythe edges for references."""
 
   for ref, defn in index.links:
@@ -221,11 +235,12 @@ def _process_links(kythe, index):
     start, end = index.get_ref_bounds(ref)
     vname = kythe.add_anchor(start, end)
     target = _make_defn_vname(kythe, index, defn)
-    if target:
-      kythe.add_edge(
-          source=vname,
-          target=target,
-          edge_name="ref")
+    if target is None:
+      continue
+    edge_name = "ref"
+    if ref.typ == "Import" or ref.typ == "ImportFrom":
+      edge_name = "ref/imports"
+    kythe.add_edge(source=vname, target=target, edge_name=edge_name)
 
 
 def _process_calls(kythe, index):

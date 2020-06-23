@@ -363,7 +363,7 @@ class PYITest(test_base.TargetIndependentTest):
 
   def test_dubious_function_reference(self):
     with file_utils.Tempdir() as d:
-      # TODO(kramm): pytd.ToType() currently allows this. Should it?
+      # TODO(b/159148301): pytd.ToType() currently allows this. Should it?
       d.create_file("a.pyi", """
         def DubiousType() -> None
         x = ...  # type: DubiousType

@@ -285,7 +285,7 @@ def order_code(code):
     A CodeBlocks instance.
   """
   bytecodes = code.co_code
-  add_pop_block_targets(bytecodes)  # TODO(kramm): move into pyc/opcodes.py?
+  add_pop_block_targets(bytecodes)
   return OrderedCode(code, bytecodes, compute_order(bytecodes),
                      code.python_version)
 

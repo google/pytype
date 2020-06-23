@@ -10,7 +10,7 @@ class CheckerTest(test_base.TargetPython3BasicTest):
     self.Check("""
       from typing import List, Set
       def f(data: List[str]):
-        data = set(x for x in data)
+        data = set(x for x in data)  # type: Set[str]
         g(data)
       def g(data: Set[str]):
         pass

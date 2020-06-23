@@ -87,7 +87,7 @@ class CallTracer(vm.VirtualMachine):
     kwargs.merge_instance_type_parameter(node, abstract_utils.V, value_type)
     return kwargs.to_variable(node)
 
-  def create_method_arguments(self, node, method):
+  def create_method_arguments(self, node, method, use_defaults=False):
     """Create arguments for the given method.
 
     Creates Unknown objects as arguments for the given method. Note that we
@@ -97,14 +97,29 @@ class CallTracer(vm.VirtualMachine):
     Args:
       node: The current node.
       method: An abstract.InterpreterFunction.
+      use_defaults: Whether to use parameter defaults for arguments. When True,
+        unknown arguments are created with force=False, as it is fine to use
+        Unsolvable rather than Unknown objects for type-checking defaults.
 
     Returns:
       A tuple of a node and a function.Args object.
     """
-    args = [self.convert.create_new_unknown(node, force=True)
-            for _ in range(method.argcount(node))]
-    kws = {key: self.convert.create_new_unknown(node, force=True)
-           for key in method.signature.kwonly_params}
+    args = []
+    num_posargs = method.argcount(node)
+    num_posargs_no_default = num_posargs - len(method.defaults)
+    for i in range(num_posargs):
+      default_idx = i - num_posargs_no_default
+      if use_defaults and default_idx >= 0:
+        arg = method.defaults[default_idx]
+      else:
+        arg = self.convert.create_new_unknown(node, force=not use_defaults)
+      args.append(arg)
+    kws = {}
+    for key in method.signature.kwonly_params:
+      if use_defaults and key in method.kw_defaults:
+        kws[key] = method.kw_defaults[key]
+      else:
+        kws[key] = self.convert.create_new_unknown(node, force=not use_defaults)
     starargs = self.create_varargs(node) if method.has_varargs() else None
     starstarargs = self.create_kwargs(node) if method.has_kwargs() else None
     return node, function.Args(posargs=tuple(args),
@@ -332,7 +347,6 @@ class CallTracer(vm.VirtualMachine):
 
   def call_init(self, node, instance):
     # Call __init__ on each binding.
-    # TODO(kramm): This should do join_cfg_nodes, instead of concatenating them.
     for b in instance.bindings:
       if b.data in self._initialized_instances:
         continue
@@ -523,7 +537,6 @@ class CallTracer(vm.VirtualMachine):
           arg_names[i] = function.argname(i)
       arg_types = (a.data.to_type(node) for a in args)
       ret = pytd_utils.JoinTypes(t.to_type(node) for t in retvar.data)
-      # TODO(kramm): Record these:
       starargs = None
       starstarargs = None
       funcs[func.data.name].add(pytd.Signature(
@@ -575,9 +588,6 @@ class CallTracer(vm.VirtualMachine):
       ))
     return classes
 
-  def pytd_aliases(self):
-    return ()  # TODO(kramm): Compute these.
-
   def pytd_classes_for_namedtuple_instances(self):
     return tuple(v.generate_ast() for v in self._generated_classes.values())
 
@@ -586,7 +596,7 @@ class CallTracer(vm.VirtualMachine):
                tuple(self.pytd_classes_for_call_traces()) +
                self.pytd_classes_for_namedtuple_instances())
     functions = tuple(self.pytd_functions_for_call_traces())
-    aliases = tuple(self.pytd_aliases())
+    aliases = ()  # aliases are instead recorded as constants
     ty = pytd_utils.Concat(
         self.pytd_for_types(defs),
         pytd_utils.CreateModule("unknowns", classes=classes,

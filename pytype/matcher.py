@@ -246,7 +246,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
             left.param, other_type, subst, node, view)
         if new_subst is not None:
           subst = new_subst.copy()
-          # TODO(kramm): Can we put in something more precise?
+          # NOTE: This is pretty imprecise, there might be something better to
+          # do here.
           subst[other_type.full_name] = node.program.NewVariable([], [], node)
           return subst
         else:
@@ -341,7 +342,6 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           isinstance(left, (abstract.Unknown, abstract.Unsolvable))):
       # We can match anything against unknown types, and unknown types against
       # anything.
-      # TODO(kramm): Do we want to record what we matched them against?
       assert not isinstance(other_type, abstract.ParameterizedClass)
       return subst
     elif isinstance(other_type, abstract.Empty):

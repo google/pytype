@@ -136,9 +136,6 @@ class OperatorsTestMixin(object):
     self.assertHasReturnType(ty.Lookup("f"), self.complex)
 
 
-# TODO(sivachandra): Remove this class in favor of the class OperatorsTestMixin.
-# It is not a drop-in-replacement currently, but there is no reason why it
-# cannot be made one.
 class InplaceTestMixin(object):
   """Mixin providing a method to check in-place operators."""
 

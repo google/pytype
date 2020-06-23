@@ -424,7 +424,7 @@ class Class(object):
     # So this has MRO order issue, but because the template names of
     # `ParameterizedClass` of `Iterator` are different, they will be treated as
     # different base classes and it will infer the MRO order is correct.
-    # TODO(ahxun): fix this by solving the template rename problem
+    # TODO(b/159044968): fix this by solving the template rename problem
     base2cls = {}
     newbases = []
     for row in bases:

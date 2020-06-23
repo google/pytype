@@ -817,5 +817,34 @@ class TestAttributes(test_base.TargetIndependentTest):
           print(self.x.some_attr)
     """)
 
+  def test_preserve_annotation_in_pyi(self):
+    ty = self.Infer("""
+      class Foo:
+        x = None  # type: float
+        def __init__(self):
+          self.x = 0
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Foo:
+        x: float
+        def __init__(self) -> None: ...
+    """)
+
+  def test_annotation_in_init(self):
+    ty, errors = self.InferWithErrors("""
+      class Foo:
+        def __init__(self):
+          self.x = 0  # type: int
+        def oops(self):
+          self.x = ''  # annotation-type-mismatch[e]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Foo:
+        x: int
+        def __init__(self) -> None: ...
+        def oops(self) -> None: ...
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Annotation: int.*Assignment: str"})
+
 
 test_base.main(globals(), __name__ == "__main__")

@@ -287,7 +287,6 @@ class SolverTests(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       import typing
       collections = ...  # type: module
-      # TODO(kramm): The optimizer should collapse these two.
       def bar(l) -> NoneType
     """)
 

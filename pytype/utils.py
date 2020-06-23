@@ -277,8 +277,8 @@ class memoize(object):  # pylint: disable=invalid-name
       defaults = {}
     pos_and_arg_tuples = list(zip(range(f.__code__.co_argcount), argnames))
     shared_dict = {}
-    # TODO(kramm): Use functools.wraps or functools.update_wrapper to preserve
-    # the metadata of the original function.
+    # TODO(b/159037011): Use functools.wraps or functools.update_wrapper to
+    # preserve the metadata of the original function.
     def call(*posargs, **kwargs):
       """Call a memoized function."""
       if kwargs or defaults:

@@ -1,15 +1,32 @@
 # pylint: skip-file
 
-#- @import defines/binding ImportXY
-#- ImportXY.node/kind variable
-import x.y
-#- @import defines/binding ImportPQ
-#- ImportPQ.node/kind variable
-import p.q
+#- @#0os ref/imports ModuleOs
+import os
+#- @#0os ref/imports ModuleOs
+#- @os_alias defines/binding OsAlias
+#- OsAlias.node/kind variable
+#- OsAlias.subkind import
+#- OsAlias aliases ModuleOs
+import os as os_alias
 
-#- @import defines/binding ImportBar
-#- ImportBar.node/kind variable
-from foo import bar
-#- @import defines/binding ImportQuux
-#- ImportQuux.node/kind variable
-from foo import baz as quux
+#- @"os.path" ref/imports ModuleOsPath
+import os.path
+#- @os ref ModuleOs
+#- @path ref ModuleOsPath
+os.path.exists
+
+#- @path ref/imports ModuleOsPath
+from os import path
+#- @path ref ModuleOsPath
+path.exists
+
+#- @name ref OsName
+os.name
+#- @name ref/imports OsName
+from os import name
+
+#- @name_alias defines/binding OsNameAlias
+#- OsNameAlias.node/kind variable
+#- OsNameAlias.subkind import
+#- OsNameAlias aliases OsName
+from os import name as name_alias

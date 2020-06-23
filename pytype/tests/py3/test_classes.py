@@ -92,10 +92,11 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def test_name_exists(self):
     self.Check("""
+      from typing import Optional
       class Foo(object): pass
       class Bar(object):
         @staticmethod
-        def Create(x: Foo=None):
+        def Create(x: Optional[Foo] = None):
           return Bar(x)
         @staticmethod
         def bar():

@@ -42,6 +42,13 @@ class IndexerTestMixin(object):
       kythe_index = [json.loads(x) for x in output.json_kythe_graph(kg)]
       return kythe_index
 
+  def assertAlias(self, index, fqname, target):
+    self.assertIn(fqname, index.aliases)
+    alias = index.aliases[fqname]
+    self.assertIsInstance(alias, indexer.Remote)
+    self.assertEqual(
+        "{module}.{name}".format(module=alias.module, name=alias.name), target)
+
   def assertDef(self, index, fqname, name, typ):
     self.assertIn(fqname, index.defs)
     d = index.defs[fqname]
@@ -77,12 +84,18 @@ class IndexerTest(test_base.TargetIndependentTest, IndexerTestMixin):
         import a.b as c
         from a import b
         from p import q as r
+        from u.v import X
+        from u.v import X as Y
 
         fx = f.X()
         cx = c.X()
         bx = b.X()
         rx = r.X()
         yx = x.y.X()
+        uvx = X()
+        X.__name__
+        uvy = Y()
+        Y.__name__
     """
     stub = "class X: pass"
     with file_utils.Tempdir() as d:
@@ -91,25 +104,26 @@ class IndexerTest(test_base.TargetIndependentTest, IndexerTestMixin):
       d.create_file("x/y.pyi", stub)
       d.create_file("a/b.pyi", stub)
       d.create_file("p/q.pyi", stub)
+      d.create_file("u/v.pyi", stub)
       options = config.Options.create(d["t.py"])
       options.tweak(pythonpath=[d.path], version=self.python_version)
       ix = indexer.process_file(options)
-      self.assertDef(ix, "module.f", "f", "Import")
-      self.assertDef(ix, "module.x.y", "x.y", "Import")
       self.assertDef(ix, "module.c", "c", "Import")
-      self.assertDef(ix, "module.b", "b", "ImportFrom")
       self.assertDef(ix, "module.r", "r", "ImportFrom")
       self.assertEqual(ix.modules["module.f"], "f")
       self.assertEqual(ix.modules["module.x.y"], "x.y")
       self.assertEqual(ix.modules["module.b"], "a.b")
       self.assertEqual(ix.modules["module.c"], "a.b")
       self.assertEqual(ix.modules["module.r"], "p.q")
+      self.assertAlias(ix, "module.c", "a.b.<__FILE__>")
+      self.assertAlias(ix, "module.r", "p.q.<__FILE__>")
+      self.assertAlias(ix, "module.Y", "u.v.X")
 
       # Collect all the references from the kythe graph.
       kg = kythe.generate_graph(ix, kythe_args=None)
       kythe_index = [json.loads(x) for x in output.json_kythe_graph(kg)]
       refs = [x for x in kythe_index
-              if x.get("edge_kind") == "/kythe/edge/ref"]
+              if x.get("edge_kind", "").startswith("/kythe/edge/ref")]
 
       # Extract the span of text and the target symbol for each reference.
       src = ix.source.text
@@ -122,10 +136,9 @@ class IndexerTest(test_base.TargetIndependentTest, IndexerTestMixin):
         out.append((text, r["target"]["signature"], r["target"]["path"]))
 
       expected = {
-          # Imports as declarations in the source file
-          ("f", "module.f", "t.py"),
+          # Aliased imports as declarations in the source file
           ("c", "module.c", "t.py"),
-          ("b", "module.b", "t.py"),
+          ("Y", "module.Y", "t.py"),
           # Class X in remote files
           ("X", "module.X", "f.py"),
           ("X", "module.X", "a/b.py"),
@@ -134,10 +147,12 @@ class IndexerTest(test_base.TargetIndependentTest, IndexerTestMixin):
           # Imports as references to remote files
           ("r", "module.r", "t.py"),
           ("b", ":module:", "a/b.py"),
-          ("c", ":module:", "a/b.py"),
+          ("a.b", ":module:", "a/b.py"),
           ("f", ":module:", "f.py"),
-          ("r", ":module:", "p/q.py"),
+          ("q", ":module:", "p/q.py"),
           ("x.y", ":module:", "x/y.py"),
+          ("X", "module.X", "u/v.py"),
+          ("__name__", "module.X.__name__", "u/v.py"),
           # x.y as references to remote files
           ("x", ":module:", "x/__init__.py"),
           ("y", ":module:", "x/y.py"),

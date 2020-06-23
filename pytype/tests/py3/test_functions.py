@@ -163,6 +163,71 @@ class PreciseReturnTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e": r"str.*int"})
 
 
+class TestCheckDefaults(test_base.TargetPython3FeatureTest):
+  """Tests for checking parameter defaults against annotations."""
+
+  def test_basic(self):
+    errors = self.CheckWithErrors("""
+      def f(x: int = ''):  # annotation-type-mismatch[e]
+        pass
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Annotation: int.*Assignment: str"})
+
+  def test_typevar(self):
+    errors = self.CheckWithErrors("""
+      from typing import TypeVar
+      T = TypeVar('T')
+      def f(x: T = 0, y: T = ''):  # annotation-type-mismatch[e]
+        pass
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Annotation: int.*Assignment: str"})
+
+  def test_instance_method(self):
+    errors = self.CheckWithErrors("""
+      class Foo:
+        def f(self, x: int = ''):  # annotation-type-mismatch[e]
+          pass
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Annotation: int.*Assignment: str"})
+
+  def test_kwonly_arg(self):
+    errors = self.CheckWithErrors("""
+      def f(*, x: int = ''):  # annotation-type-mismatch[e]
+        pass
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Annotation: int.*Assignment: str"})
+
+  def test_multiple_errors(self):
+    errors = self.CheckWithErrors("""
+      def f(x: int = '', y: str = 0):  # annotation-type-mismatch[e1]  # annotation-type-mismatch[e2]
+        pass
+    """)
+    self.assertErrorRegexes(errors, {"e1": r"Annotation: int.*Assignment: str",
+                                     "e2": r"Annotation: str.*Assignment: int"})
+
+
+class TestCheckParameterAssignment(test_base.TargetPython3BasicTest):
+  """Tests for checking assignments to annotated parameters."""
+
+  def test_basic(self):
+    errors = self.CheckWithErrors("""
+      def f(x: int):
+        x = ''  # annotation-type-mismatch[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Annotation: int.*Assignment: str"})
+
+  def test_typevar(self):
+    errors = self.CheckWithErrors("""
+      from typing import TypeVar
+      T = TypeVar('T')
+      def f(x: T, y: T):
+        x = 0  # annotation-type-mismatch[e]
+      f('', '')
+    """)
+    self.assertErrorRegexes(
+        errors, {"e": r"Annotation: str.*Assignment: int.*Called from.*line 5"})
+
+
 class TestFunctions(test_base.TargetPython3BasicTest):
   """Tests for functions."""
 
@@ -599,7 +664,8 @@ class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
 
   def test_kwonly(self):
     self.Check("""
-      def foo(x: int, *, z: int = None) -> None:
+      from typing import Optional
+      def foo(x: int, *, z: Optional[int] = None) -> None:
         pass
 
       foo(1, z=5)

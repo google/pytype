@@ -90,9 +90,6 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e": r"upper.*int"})
 
   def test_list(self):
-    # TODO(mdemello): Do not check variables with bindings from multiple
-    # annotations.
-    self.options.tweak(check_container_types=False)
     ty = self.Infer("""
       from typing import List
 
@@ -935,13 +932,13 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
   def test_no_implicit_optional(self):
     ty, _ = self.InferWithErrors("""
       from typing import Optional, Union
-      def f1(x: str = None):
+      def f1(x: str = None):  # annotation-type-mismatch
         pass
       def f2(x: Optional[str] = None):
         pass
       def f3(x: Union[str, None] = None):
         pass
-      def f4(x: Union[str, int] = None):
+      def f4(x: Union[str, int] = None):  # annotation-type-mismatch
         pass
       f1(None)  # wrong-arg-types
       f2(None)
@@ -1032,6 +1029,21 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         return __any_object__
     """)
 
+  def test_set_annotated_attribute(self):
+    self.Check("""
+      from typing import Optional
+
+      class A:
+        def __init__(self):
+          self.x = None  # type: Optional[str]
+
+        def Set(self, x: str) -> None:
+          if self.x is None:
+            self.x = x
+
+      x = None  # type: Optional[A]
+    """)
+
 
 class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for PEP 484 style inline annotations."""
@@ -1052,6 +1064,22 @@ class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
     """)
     pattern = r"Annot.*List\[int\].*Contained.*int.*New.*Union\[int, str\]"
     self.assertErrorRegexes(errors, {"e": pattern})
+
+  def test_varargs(self):
+    ty, errors = self.InferWithErrors("""
+      def quack(x, *args: int):
+        return args
+      quack("", 42)
+      quack("", *[])
+      quack("", *[42])
+      quack("", *[42.0])  # wrong-arg-types[e]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Tuple
+      def quack(x, *args: int) -> Tuple[int, ...]
+    """)
+    error = r"Expected.*Iterable\[int\].*Actually passed.*Tuple\[float\]"
+    self.assertErrorRegexes(errors, {"e": error})
 
   def test_container_multiple_mutations(self):
     errors = self.CheckWithErrors("""

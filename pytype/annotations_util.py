@@ -186,6 +186,12 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       annotations[name] = annot or self.vm.convert.unsolvable
     return annotations
 
+  def init_annotation(self, node, name, annot, extra_key=None):
+    node, value = self.vm.init_class(node, annot, extra_key=extra_key)
+    for d in value.data:
+      d.from_annotation = name
+    return node, value
+
   def apply_annotation(self, state, op, name, value):
     """If there is an annotation for the op, return its value."""
     assert op is self.vm.frame.current_opcode
@@ -202,9 +208,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
           self.vm.frames, annot, details=errorlog.details)
     typ = self.extract_annotation(
         state.node, var, name, self.vm.simple_stack(), is_var=True)
-    _, value = self.vm.init_class(state.node, typ)
-    for d in value.data:
-      d.from_annotation = name
+    _, value = self.init_annotation(state.node, name, typ)
     return typ, value
 
   def extract_annotation(self, node, var, name, stack, is_var=False):

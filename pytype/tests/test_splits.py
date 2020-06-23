@@ -160,9 +160,6 @@ class SplitTest(test_base.TargetIndependentTest):
           return obj.method()
         return None
     """)
-    # TODO(dbaum): This test could be more focused if assertTypesMatchPytd
-    # accepted some sort of filter that would be applied to both pytd trees
-    # before matching.
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       class Foo(object):

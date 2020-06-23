@@ -1,4 +1,3 @@
-# Lint as: python3
 """The abstract values used by vm.py.
 
 This file contains AtomicAbstractValue and its subclasses. Mixins such as Class
@@ -1108,7 +1107,6 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
   def update(self, node, other_dict, omit=()):
     if isinstance(other_dict, (Dict, dict)):
       for key, value in other_dict.items():
-        # TODO(kramm): sources
         if key not in omit:
           self.set_str_item(node, key, value)
       if isinstance(other_dict, Dict):
@@ -1358,8 +1356,6 @@ class AnnotationContainer(AnnotationClass):
         # It's a common mistake to index tuple, not tuple().
         # We only check the "int" case, since string literals are allowed for
         # late annotations.
-        # TODO(kramm): Instead of blacklisting only int, this should use
-        # annotations_util.py to look up legal types.
         if isinstance(val, Instance) and val.cls == self.vm.convert.int_type:
           # Don't report this error again.
           inner = (self.vm.convert.unsolvable,)
@@ -1758,8 +1754,7 @@ class PyTDFunction(Function):
                            logged | {value.data})
 
   def call(self, node, func, args, alias_map=None):
-    # TODO(sivachandra): Refactor this method to pass the signature to
-    # simplify.
+    # TODO(b/159052609): We should be passing function signatures to simplify.
     args = args.simplify(node, self.vm)
     self._log_args(arg.bindings for arg in args.posargs)
     ret_map = {}
@@ -1778,7 +1773,14 @@ class PyTDFunction(Function):
       retvar.PasteVariable(result, node)
       all_mutations.update(mutations)
 
-    if all_mutations and self.vm.options.check_container_types:
+    # Don't check container types if the function has multiple bindings.
+    # This is a hack to prevent false positives when we call a method on a
+    # variable with multiple bindings, since we don't always filter rigorously
+    # enough in get_views.
+    # See tests/py3/test_annotations:test_list for an example that would break
+    # if we removed the len(bindings) check.
+    if all_mutations and self.vm.options.check_container_types and (
+        len(func.variable.Bindings(node)) == 1):
       # Raise an error if:
       # - An annotation has a type param that is not ambigious or empty
       # - The mutation adds a type that is not ambiguous or empty
@@ -1794,6 +1796,7 @@ class PyTDFunction(Function):
             return True
         return False
 
+      filtered_mutations = []
       errors = collections.defaultdict(dict)
 
       for obj, name, values in all_mutations:
@@ -1801,12 +1804,18 @@ class PyTDFunction(Function):
           params = obj.get_instance_type_parameter(name)
           ps = filter_contents(params)
           if ps:
+            # We filter out mutations to parameters with type Any.
+            filtered_mutations.append((obj, name, values))
             # check if the container type is being broadened.
             vs = filter_contents(values)
             new = [x for x in (vs - ps) if not compatible_with(ps, x)]
             if new:
               formal = name.split(".")[-1]
               errors[obj][formal] = (params, values, obj.from_annotation)
+        else:
+          filtered_mutations.append((obj, name, values))
+
+      all_mutations = filtered_mutations
 
       for obj, errs in errors.items():
         names = {name for _, _, name in errs.values()}
@@ -1888,7 +1897,7 @@ class PyTDFunction(Function):
             view[arg] = arg.AddBinding(self.vm.convert.unsolvable, [], node)
             break
     if self._has_mutable:
-      # TODO(kramm): We only need to whack the type params that appear in
+      # TODO(b/159055015): We only need to whack the type params that appear in
       # a mutable parameter.
       mutations = self._get_mutation_to_unknown(
           node, (view[p].data for p in itertools.chain(
@@ -2876,7 +2885,6 @@ class SignedFunction(Function):
       kwargs_name = sig.kwargs_name
       # Build a **kwargs dictionary out of the extraneous parameters
       if args.starstarargs:
-        # TODO(kramm): modify type parameters to account for namedargs
         callargs[kwargs_name] = args.starstarargs.AssignToNewVariable(node)
       else:
         omit = sig.param_names + sig.kwonly_params
@@ -3057,20 +3065,16 @@ class InterpreterFunction(SignedFunction):
         defaults,
         annotations)
 
-  # TODO(kramm): support retrieving the following attributes:
-  # 'func_{code, name, defaults, globals, locals, dict, closure},
-  # '__name__', '__dict__', '__doc__', '_vm', '_func'
-
   def get_first_opcode(self):
     return self.code.co_code[0]
 
   def argcount(self, _):
     return self.code.co_argcount
 
-  def match_args(self, node, args, alias_map):
+  def match_args(self, node, args, alias_map=None, match_all_views=False):
     if not self.signature.has_param_annotations:
       return
-    return super(InterpreterFunction, self).match_args(node, args, alias_map)
+    return super().match_args(node, args, alias_map, match_all_views)
 
   def _inner_cls_check(self, last_frame):
     """Check if the function and its nested class use same type parameter."""
@@ -3174,16 +3178,14 @@ class InterpreterFunction(SignedFunction):
     # type-checking down the road.
     annotations = self.vm.annotations_util.sub_annotations(
         node, sig.annotations, substs, instantiate_unbound=False)
-    if annotations:
+    if sig.has_param_annotations:
       for name in callargs:
         if (name in annotations and (not self.is_attribute_of_class or
                                      self.argcount(node) == 0 or
                                      name != sig.param_names[0])):
           extra_key = (self.get_first_opcode(), name)
-          node, callargs[name] = self.vm.init_class(
-              node, annotations[name], extra_key=extra_key)
-          for d in callargs[name].data:
-            d.from_annotation = name
+          node, callargs[name] = self.vm.annotations_util.init_annotation(
+              node, name, annotations[name], extra_key=extra_key)
     try:
       frame = self.vm.make_frame(
           node, self.code, self.f_globals, self.f_locals, callargs,
@@ -3263,7 +3265,14 @@ class InterpreterFunction(SignedFunction):
       node2, _ = async_generator.run_generator(node)
       node_after_call, ret = node2, async_generator.to_variable(node2)
     else:
-      node2, ret = self.vm.run_frame(frame, node)
+      if self.vm.options.check_parameter_types:
+        annotated_locals = {
+            name: abstract_utils.Local(node, self.get_first_opcode(), annot,
+                                       callargs.get(name), self.vm)
+            for name, annot in annotations.items() if name != "return"}
+      else:
+        annotated_locals = {}
+      node2, ret = self.vm.run_frame(frame, node, annotated_locals)
       if self.is_coroutine():
         ret = Coroutine(self.vm, ret, node2).to_variable(node2)
       node_after_call = node2
@@ -3543,6 +3552,10 @@ class BoundInterpreterFunction(BoundFunction):
   @is_overload.setter
   def is_overload(self, value):
     self.underlying.is_overload = value
+
+  @property
+  def defaults(self):
+    return self.underlying.defaults
 
   def iter_signature_functions(self):
     for f in self.underlying.iter_signature_functions():
@@ -3942,7 +3955,6 @@ class Unknown(AtomicAbstractValue):
     """Convert this Unknown to a pytd.Class."""
     self_param = (pytd.Parameter("self", pytd.AnythingType(),
                                  False, False, None),)
-    # TODO(kramm): Record these.
     starargs = None
     starstarargs = None
     def _make_sig(args, ret):

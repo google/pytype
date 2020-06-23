@@ -130,8 +130,6 @@ class ParserTest(_ParserTestBase):
        y""", 3, "Invalid indentation")
 
   def test_type_on_next_line(self):
-    # TODO(dbaum): This probably should be an error.  Current behavior matches
-    # legacy parser. Consider changing to an error.
     self.check("""
       a = ...
       # type: int""",

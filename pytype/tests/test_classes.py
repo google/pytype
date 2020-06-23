@@ -268,7 +268,6 @@ class ClassesTest(test_base.TargetIndependentTest):
           def __init__(self) -> None: ...
 
         class B(A):
-          # TODO(kramm): optimize this out
           x = ...  # type: int
           def get_x(self) -> int
           def __init__(self) -> None: ...

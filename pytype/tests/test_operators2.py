@@ -75,7 +75,6 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
   def test_isinstance1(self):
     ty = self.Infer("""
       def t_testIsinstance1(x):
-        # TODO: if isinstance(x, int): return "abc" else: return None
         return isinstance(x, int)
     """)
     self.assertTypesMatchPytd(ty, """

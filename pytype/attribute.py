@@ -271,7 +271,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
           # An attribute has been declared but not defined, e.g.,
           #   class Foo:
           #     bar: int
-          _, attr = self.vm.init_class(node, typ)
+          _, attr = self.vm.annotations_util.init_annotation(node, name, typ)
     if attr is not None:
       attr = self._filter_var(node, attr)
     if attr is None and obj.maybe_missing_members:
@@ -496,8 +496,6 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       log.debug("Adding choice(s) to %s: %d new values (%d total)", name,
                 len(variable.bindings) - old_len, len(variable.bindings))
     else:
-      # TODO(kramm): Under what circumstances can we just reuse var?
-      #              (variable = self.members[name] = var)?
       log.debug("Setting %s to the %d values in %r",
                 name, len(var.bindings), var)
       variable = var.AssignToNewVariable(node)

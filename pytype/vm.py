@@ -75,48 +75,6 @@ class LocalOp(collections.namedtuple("_LocalOp", ["name", "op"])):
     return self.op == self.ANNOTATE
 
 
-class Local:
-  """A possibly annotated local variable."""
-
-  def __init__(self, node, op, typ, orig, vm):
-    self.last_op = op
-    if typ:
-      self.typ = vm.program.NewVariable([typ], [], node)
-    else:
-      # Creating too many variables bloats the typegraph, hurting performance,
-      # so we use None instead of an empty variable.
-      self.typ = None
-    self.orig = orig
-    self.vm = vm
-
-  @property
-  def stack(self):
-    return self.vm.simple_stack(self.last_op)
-
-  def update(self, node, op, typ, orig):
-    self.last_op = op
-    if typ:
-      if self.typ:
-        self.typ.AddBinding(typ, [], node)
-      else:
-        self.typ = self.vm.program.NewVariable([typ], [], node)
-    if orig:
-      self.orig = orig
-
-  def get_type(self, node, name):
-    """Gets the variable's annotation."""
-    if not self.typ:
-      return None
-    values = self.typ.Data(node)
-    if len(values) > 1:
-      self.vm.errorlog.ambiguous_annotation(self.stack, values, name)
-      return self.vm.convert.unsolvable
-    elif values:
-      return values[0]
-    else:
-      return None
-
-
 _opcode_counter = metrics.MapCounter("vm_opcode")
 
 
@@ -347,7 +305,7 @@ class VirtualMachine(object):
         node.ConnectTo(ret)
       return ret
 
-  def run_frame(self, frame, node):
+  def run_frame(self, frame, node, annotated_locals=None):
     """Run a frame (typically belonging to a method)."""
     self.push_frame(frame)
     frame.states[frame.f_code.co_code[0]] = frame_state.FrameState.init(
@@ -358,7 +316,9 @@ class VirtualMachine(object):
       # don't care to track locals for this frame and don't want it to overwrite
       # the locals of the actual module frame.
       self.local_ops[frame_name] = []
-      self.annotated_locals[frame_name] = {}
+      self.annotated_locals[frame_name] = annotated_locals or {}
+    else:
+      assert annotated_locals is None
     can_return = False
     return_nodes = []
     for block in frame.f_code.order:
@@ -673,6 +633,46 @@ class VirtualMachine(object):
     self.trace_opcode(None, name, var)
     return node, var
 
+  def _check_defaults(self, node, method):
+    """Check parameter defaults against annotations."""
+    if (not self.options.check_parameter_types or
+        not method.signature.has_param_annotations):
+      return
+    _, args = self.create_method_arguments(node, method, use_defaults=True)
+    positional_names = method.get_positional_names()
+    # We may need to call match_args multiple times to find all type errors.
+    needs_checking = True
+    while needs_checking:
+      try:
+        method.match_args(node, args)
+      except function.FailedFunctionCall as e:
+        if not isinstance(e, function.InvalidParameters):
+          raise AssertionError(
+              "Unexpected argument matching error: %s" % e.__class__.__name__)
+        arg_name = e.bad_call.bad_param.name
+        expected_type = e.bad_call.bad_param.expected
+        for name, value in e.bad_call.passed_args:
+          if name != arg_name:
+            continue
+          self.errorlog.annotation_type_mismatch(
+              self.frames, expected_type, value.to_binding(node), arg_name)
+          # Replace the bad default with Any so we can call match_args again to
+          # find other type errors.
+          try:
+            pos = positional_names.index(name)
+          except ValueError:
+            args.namedargs[name] = self.new_unsolvable(node)
+          else:
+            args = args._replace(
+                posargs=args.posargs[:pos] + (self.new_unsolvable(node),) +
+                args.posargs[pos+1:])
+          break
+        else:
+          raise AssertionError(
+              "Mismatched parameter %s not found in passed_args" % arg_name)
+      else:
+        needs_checking = False
+
   def _make_function(self, name, node, code, globs, defaults, kw_defaults,
                      closure=None, annotations=None):
     """Create a function or closure given the arguments."""
@@ -689,10 +689,9 @@ class VirtualMachine(object):
         f_locals=self.frame.f_locals, f_globals=globs,
         defaults=defaults, kw_defaults=kw_defaults,
         closure=closure, annotations=annotations, vm=self)
-    # TODO(ampere): What else needs to be an origin in this case? Probably stuff
-    # in closure.
     var = self.program.NewVariable()
     var.AddBinding(val, code.bindings, node)
+    self._check_defaults(node, val)
     if val.signature.annotations:
       self.functions_type_params_check.append((val, self.frame.current_opcode))
     return var
@@ -958,7 +957,7 @@ class VirtualMachine(object):
       state, ret = self.call_binary_operator(
           state, name, x, y, report_errors=True)
     else:
-      # TODO(kramm): If x is a Variable with distinct types, both __add__
+      # TODO(b/159039220): If x is a Variable with distinct types, both __add__
       # and __iadd__ might happen.
       try:
         state, ret = self.call_function_with_state(state, attr, (y,),
@@ -1143,7 +1142,6 @@ class VirtualMachine(object):
     if self.python_version < (3, 6):
       num_kw, num_pos = divmod(num, 256)
 
-      # TODO(kramm): Can we omit creating this Dict if num_kw=0?
       for _ in range(num_kw):
         state, (key, val) = state.popn(2)
         namedargs.setitem_slot(state.node, key, val)
@@ -1234,7 +1232,7 @@ class VirtualMachine(object):
     if annots:
       typ = annots.get_type(node, name)
       if typ:
-        _, ret = self.init_class(node, typ)
+        _, ret = self.annotations_util.init_annotation(node, name, typ)
         return ret
     raise KeyError(name)
 
@@ -1260,10 +1258,16 @@ class VirtualMachine(object):
       self.current_local_ops.append(LocalOp(name, LocalOp.ASSIGN))
     if typ:
       self.current_local_ops.append(LocalOp(name, LocalOp.ANNOTATE))
-    if name in self.current_annotated_locals:
-      self.current_annotated_locals[name].update(node, op, typ, orig_val)
+    self._update_annotations_dict(
+        node, op, name, typ, orig_val, self.current_annotated_locals)
+
+  def _update_annotations_dict(
+      self, node, op, name, typ, orig_val, annotations_dict):
+    if name in annotations_dict:
+      annotations_dict[name].update(node, op, typ, orig_val)
     else:
-      self.current_annotated_locals[name] = Local(node, op, typ, orig_val, self)
+      annotations_dict[name] = abstract_utils.Local(
+          node, op, typ, orig_val, self)
 
   def _store_value(self, state, name, value, local):
     if local:
@@ -1298,6 +1302,9 @@ class VirtualMachine(object):
     if annotations_dict is not None:
       if annotations_dict is self.current_annotated_locals:
         self._record_local(state.node, op, name, typ, orig_val)
+      else:
+        self._update_annotations_dict(
+            state.node, op, name, typ, orig_val, annotations_dict)
       if typ is None and name in annotations_dict:
         typ = annotations_dict[name].get_type(state.node, name)
         if typ == self.convert.unsolvable:
@@ -1479,14 +1486,15 @@ class VirtualMachine(object):
       return state
     nodes = []
     for val in obj.bindings:
-      # TODO(kramm): Check whether val.data is a descriptor (i.e. has "__set__")
+      # TODO(b/159038991): Check whether val.data is a descriptor (i.e. has
+      # "__set__")
       nodes.append(self.attribute_handler.set_attribute(
           state.node, val.data, attr, value))
     return state.change_cfg_node(self.join_cfg_nodes(nodes))
 
   def del_attr(self, state, obj, attr):
     """Delete an attribute."""
-    # TODO(kramm): Store abstract.Empty
+    # TODO(b/159039569): Store abstract.Empty
     log.warning("Attribute removal does not actually do "
                 "anything in the abstract interpreter")
     return state
@@ -1520,7 +1528,7 @@ class VirtualMachine(object):
       module = self.convert.unsolvable
     return module
 
-  # TODO(kramm): memoize
+  @utils.memoize
   def _import_module(self, name, level):
     """Import the module and return the module object.
 
@@ -1640,11 +1648,6 @@ class VirtualMachine(object):
       node, func, missing = self._retrieve_attr(state.node, seq, "__getitem__")
       state = state.change_cfg_node(node)
       if func:
-        # TODO(dbaum): Consider delaying the call to __getitem__ until
-        # the iterator's next() is called.  That would more closely match
-        # actual execution at the cost of making the code and Iterator class
-        # a little more complicated.
-
         # Call __getitem__(int).
         state, item = self.call_function_with_state(
             state, func, (self.convert.build_int(state.node),))
@@ -2200,6 +2203,13 @@ class VirtualMachine(object):
       if not isinstance(maybe_cls, abstract.InterpreterClass):
         maybe_cls = maybe_cls.cls
       if isinstance(maybe_cls, abstract.InterpreterClass):
+        if ("__annotations__" not in maybe_cls.members and
+            op.line in self.director.annotations):
+          # The class has no annotated class attributes but does have an
+          # annotated instance attribute.
+          annotations_dict = abstract.AnnotationsDict({}, self)
+          maybe_cls.members["__annotations__"] = annotations_dict.to_variable(
+              self.root_cfg_node)
         annotations_dict = abstract_utils.get_annotations_dict(
             maybe_cls.members)
         if annotations_dict:
@@ -2771,8 +2781,6 @@ class VirtualMachine(object):
     else:
       get_args = self._get_extra_function_args
     state, defaults, kw_defaults, annot, free_vars = get_args(state, op.arg)
-    # TODO(dbaum): Add support for per-arg type comments.
-    # TODO(dbaum): Add support for variable type comments.
     globs = self.get_globals_dict()
     fn = self._make_function(name, state.node, code, globs, defaults,
                              kw_defaults, annotations=annot, closure=free_vars)
@@ -2959,7 +2967,7 @@ class VirtualMachine(object):
 
   def byte_IMPORT_STAR(self, state, op):
     """Pops a module and stores all its contents in locals()."""
-    # TODO(kramm): this doesn't use __all__ properly.
+    # TODO(b/159041010): this doesn't use __all__ properly.
     state, mod_var = state.pop()
     mod = abstract_utils.get_atomic_value(mod_var)
     # TODO(rechen): Is mod ever an unknown?

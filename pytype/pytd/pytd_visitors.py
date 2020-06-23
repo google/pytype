@@ -261,6 +261,7 @@ class ExtractSuperClasses(Visitor):
     self._superclasses = {}
 
   def _Key(self, node):
+    # This method should be implemented by subclasses.
     return node
 
   def VisitTypeDeclUnit(self, module):
@@ -273,8 +274,6 @@ class ExtractSuperClasses(Visitor):
       parent = self._Key(p)
       if parent is not None:
         parents.append(parent)
-    # TODO(kramm): This uses the entire class node as a key, instead of just
-    # its id.
     self._superclasses[self._Key(cls)] = parents
 
 

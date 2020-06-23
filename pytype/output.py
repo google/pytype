@@ -9,6 +9,7 @@ from pytype import abstract_utils
 from pytype import mixin
 from pytype import special_builtins
 from pytype import utils
+from pytype.overlays import dataclass_overlay
 from pytype.overlays import typing_overlay
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -216,6 +217,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         return pytd.AnythingType()
     elif isinstance(v, typing_overlay.TypeVar):
       return pytd.NamedType("__builtin__.type")
+    elif isinstance(v, dataclass_overlay.FieldInstance):
+      return pytd_utils.JoinTypes(
+          self.value_to_pytd_type(node, d, seen, view)
+          for d in v.default.data)
     elif isinstance(v, abstract.FUNCTION_TYPES):
       try:
         signatures = abstract_utils.get_signatures(v)
@@ -421,7 +426,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         starargs=starargs,
         starstarargs=starstarargs,
         return_type=ret,
-        exceptions=(),  # TODO(kramm): record exceptions
+        exceptions=(),  # TODO(b/159052087): record exceptions
         template=())
 
   def _function_to_def(self, node, v, function_name):
@@ -521,13 +526,15 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     constants = collections.defaultdict(pytd_utils.TypeBuilder)
 
     annots = abstract_utils.get_annotations_dict(v.members)
+    annotated_names = set()
 
     for name, t in self.annotations_to_instance_types(node, annots):
       constants[name].add_type(t)
+      annotated_names.add(name)
 
     # class-level attributes
     for name, member in v.members.items():
-      if name in CLASS_LEVEL_IGNORE or name in constants:
+      if name in CLASS_LEVEL_IGNORE or name in annotated_names:
         continue
       for value in member.FilteredData(self.vm.exitpoint, strict=False):
         if isinstance(value, special_builtins.PropertyInstance):
@@ -573,9 +580,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     # instance-level attributes
     for instance in set(v.instances):
       for name, member in instance.members.items():
-        if name not in CLASS_LEVEL_IGNORE:
-          for value in member.FilteredData(self.vm.exitpoint, strict=False):
-            constants[name].add_type(value.to_type(node))
+        if name in CLASS_LEVEL_IGNORE or name in annotated_names:
+          continue
+        for value in member.FilteredData(self.vm.exitpoint, strict=False):
+          constants[name].add_type(value.to_type(node))
 
     for name in list(methods):
       if name in constants:
