@@ -48,7 +48,8 @@ ITEMS = {
         'Keep going past errors to analyze as many files as possible.'),
     'jobs': Item(
         1, '4', None,
-        'Run N jobs in parallel.'),
+        "Run N jobs in parallel. When 'auto' is used, this will be equivalent "
+        'to the number of CPUs on the host system.'),
     'output': Item(
         '.pytype', '.pytype', None, 'All pytype output goes here.'),
     'pythonpath': Item(
