@@ -1302,7 +1302,10 @@ class VirtualMachine(object):
     if annotations_dict is not None:
       if annotations_dict is self.current_annotated_locals:
         self._record_local(state.node, op, name, typ, orig_val)
-      else:
+      elif name not in annotations_dict or not annotations_dict[name].typ:
+        # When updating non-local annotations, we only record the first one
+        # encountered so that if, say, an instance attribute is annotated in
+        # both __init__ and another method, the __init__ annotation is used.
         self._update_annotations_dict(
             state.node, op, name, typ, orig_val, annotations_dict)
       if typ is None and name in annotations_dict:
