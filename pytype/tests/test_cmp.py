@@ -155,7 +155,6 @@ class IsNotTest(test_base.TargetIndependentTest):
         def __new__(cls: Type[_TFoo], *args, **kwargs) -> _TFoo: ...
     """)
 
-  @test_base.skip("Temporary rollback")
   def test_class_factory(self):
     # The assert should not block inference of the return type, since cls could
     # be a subclass of Foo
