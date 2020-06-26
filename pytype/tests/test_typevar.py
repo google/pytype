@@ -411,12 +411,13 @@ class TypeVarTest(test_base.TargetIndependentTest):
         err, {"e": "aliases of Unions with type parameters"})
 
   def test_recursive_alias(self):
-    self.Check("""
+    errors = self.CheckWithErrors("""
       from typing import Any, Iterable, TypeVar, Union
       T = TypeVar("T")
-      X = Union[Any, Iterable["X"]]
+      X = Union[Any, Iterable["X"]]  # not-supported-yet[e]
       Y = Union[Any, X]
     """)
+    self.assertErrorRegexes(errors, {"e": r"Recursive.*X"})
 
   def test_type_of_typevar(self):
     self.Check("""

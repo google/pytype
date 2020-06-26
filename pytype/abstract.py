@@ -1433,6 +1433,7 @@ class Union(AtomicAbstractValue, mixin.NestedAnnotation):
     self.options = list(options)
     # TODO(rechen): Don't allow a mix of formal and non-formal types
     self.formal = any(t.formal for t in options)
+    mixin.NestedAnnotation.init_mixin(self)
 
   def __repr__(self):
     return "%s[%s]" % (self.name, ", ".join(repr(o) for o in self.options))
@@ -2050,6 +2051,7 @@ class ParameterizedClass(
     self.slots = self.base_cls.slots
     self.self_annot = None
     mixin.Class.init_mixin(self, base_cls.cls)
+    mixin.NestedAnnotation.init_mixin(self)
     self.type_param_check()
 
   def __repr__(self):

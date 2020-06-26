@@ -617,8 +617,8 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
   def test_recursive_type_alias(self):
     errors = self.CheckWithErrors("""
       from typing import List, Union
-      Foo = Union[str, List['Foo']]
-      x = 'hello'  # type: Foo  # not-supported-yet[e]
+      Foo = Union[str, List['Foo']]  # not-supported-yet[e]
+      x = 'hello'  # type: Foo
     """)
     self.assertErrorRegexes(errors, {"e": r"Recursive.*Foo"})
 

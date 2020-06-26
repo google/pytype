@@ -41,6 +41,13 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       return annot.replace(inner_types)
     return annot
 
+  def get_late_annotations(self, annot):
+    if annot.is_late_annotation() and not annot.resolved:
+      yield annot
+    elif isinstance(annot, mixin.NestedAnnotation):
+      for _, typ in annot.get_inner_types():
+        yield from self.get_late_annotations(typ)
+
   def remove_late_annotations(self, annot):
     """Replace unresolved late annotations with unsolvables."""
     if annot.is_late_annotation() and not annot.resolved:
@@ -228,24 +235,12 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       if resolved is not None:
         func.signature.set_annotation(name, resolved)
 
-  def _process_one_annotation(self, node, annotation, name, stack, seen=None):
+  def _process_one_annotation(self, node, annotation, name, stack):
     """Change annotation / record errors where required."""
     # Make sure we pass in a frozen snapshot of the frame stack, rather than the
     # actual stack, since late annotations need to snapshot the stack at time of
     # creation in order to get the right line information for error messages.
     assert isinstance(stack, tuple), "stack must be an immutable sequence"
-
-    # Check for recursive type annotations so we can emit an error message
-    # rather than crashing.
-    if seen is None:
-      seen = set()
-    if annotation.is_late_annotation():
-      if annotation in seen:
-        self.vm.errorlog.not_supported_yet(
-            stack, "Recursive type annotations",
-            details="In annotation '%s' on %s" % (annotation.expr, name))
-        return None
-      seen = seen | {annotation}
 
     if isinstance(annotation, abstract.AnnotationContainer):
       annotation = annotation.base_cls
@@ -286,16 +281,18 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         if errorlog:
           self.vm.errorlog.copy_from(errorlog.errors, stack)
         if len(v.data) == 1:
-          return self._process_one_annotation(
-              node, v.data[0], name, stack, seen)
+          return self._process_one_annotation(node, v.data[0], name, stack)
       self.vm.errorlog.ambiguous_annotation(stack, [annotation], name)
       return None
     elif annotation.cls == self.vm.convert.none_type:
       # PEP 484 allows to write "NoneType" as "None"
       return self.vm.convert.none_type
     elif isinstance(annotation, mixin.NestedAnnotation):
+      if annotation.processed:
+        return annotation
+      annotation.processed = True
       for key, typ in annotation.get_inner_types():
-        processed = self._process_one_annotation(node, typ, name, stack, seen)
+        processed = self._process_one_annotation(node, typ, name, stack)
         if processed is None:
           return None
         elif isinstance(processed, typing_overlay.NoReturn):

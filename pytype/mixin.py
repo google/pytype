@@ -458,6 +458,9 @@ class NestedAnnotation(object):
     one but with the given inner types, again as a (key, typ) sequence.
   """
 
+  def init_mixin(self):
+    self.processed = False
+
   def get_inner_types(self):
     raise NotImplementedError()
 

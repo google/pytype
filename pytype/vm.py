@@ -1294,6 +1294,23 @@ class VirtualMachine(object):
         self.errorlog.not_supported_yet(
             self.frames, "aliases of Unions with type parameters")
 
+  def _remove_recursion(self, node, name, value):
+    """Remove any recursion in the named value."""
+    if not value.data or any(not isinstance(v, mixin.NestedAnnotation)
+                             for v in value.data):
+      return value
+    stack = self.simple_stack()
+    typ = self.annotations_util.extract_annotation(node, value, name, stack)
+    recursive_annots = set(self.late_annotations[name])
+    for late_annot in self.annotations_util.get_late_annotations(typ):
+      if late_annot in recursive_annots:
+        self.errorlog.not_supported_yet(
+            stack, "Recursive type annotations",
+            details="In annotation %r on %s" % (late_annot.expr, name))
+        typ = self.annotations_util.remove_late_annotations(typ)
+        break
+    return typ.to_variable(node)
+
   def _apply_annotation(
       self, state, op, name, orig_val, annotations_dict, check_types):
     """Applies the type annotation, if any, associated with this object."""
@@ -1354,6 +1371,7 @@ class VirtualMachine(object):
                    op.line not in self.director.type_comments)
     value = self._apply_annotation(
         state, op, name, orig_val, annotations_dict, check_types)
+    value = self._remove_recursion(state.node, name, value)
     self._check_aliased_type_params(value)
     state = state.forward_cfg_node()
     state = self._store_value(state, name, value, local)
