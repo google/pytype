@@ -480,4 +480,19 @@ class TestFlaxDataclass(test_base.TargetPython3FeatureTest):
           def __init__(self, x: bool, y: int, z: str) -> None: ...
       """)
 
+  def test_redefine_field(self):
+    # Tests that pytype can infer types for this (simplified) snippet of code
+    # from flax.struct.py.
+    ty = self.Infer("""
+      import dataclasses
+      def field(**kwargs):
+        return dataclasses.field(**kwargs)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      dataclasses: module
+      def field(**kwargs) -> Any: ...
+    """)
+
+
 test_base.main(globals(), __name__ == "__main__")
