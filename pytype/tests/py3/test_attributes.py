@@ -59,6 +59,38 @@ class TestAttributes(test_base.TargetPython3BasicTest):
         x.upper()
     """)
 
+  def test_non_init_annotation(self):
+    ty, errors = self.InferWithErrors("""
+      from typing import List
+      class Foo:
+        def __init__(self):
+          # This annotation should be used when inferring the attribute type.
+          self.x = []  # type: List[int]
+        def f1(self):
+          # This annotation should be applied to the attribute value but ignored
+          # when inferring the attribute type.
+          self.x = []  # type: List[str]
+          return self.x
+        def f2(self):
+          # This assignment should be checked against the __init__ annotation.
+          self.x = ['']  # annotation-type-mismatch[e]
+        def f3(self):
+          # The return type should reflect all assignments, even ones that
+          # violate the __init__ annotation.
+          return self.x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List, Union
+      class Foo:
+        x: List[int]
+        def __init__(self) -> None: ...
+        def f1(self) -> List[str]: ...
+        def f2(self) -> None: ...
+        def f3(self) -> List[Union[int, str]]: ...
+    """)
+    self.assertErrorRegexes(
+        errors, {"e": r"Annotation: List\[int\].*Assignment: List\[str\]"})
+
 
 class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):
   """Tests for attributes over target code using Python 3 features."""

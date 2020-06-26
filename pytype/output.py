@@ -218,6 +218,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     elif isinstance(v, typing_overlay.TypeVar):
       return pytd.NamedType("__builtin__.type")
     elif isinstance(v, dataclass_overlay.FieldInstance):
+      if not v.default:
+        return pytd.AnythingType()
       return pytd_utils.JoinTypes(
           self.value_to_pytd_type(node, d, seen, view)
           for d in v.default.data)
