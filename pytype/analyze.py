@@ -12,7 +12,6 @@ from pytype import debug
 from pytype import function
 from pytype import metrics
 from pytype import output
-from pytype import special_builtins
 from pytype import state as frame_state
 from pytype import vm
 from pytype.overlays import typing_overlay
@@ -176,8 +175,6 @@ class CallTracer(vm.VirtualMachine):
       else:
         for f in method.iter_signature_functions():
           node, args = self.create_method_arguments(node, f)
-          if f.is_classmethod and cls:
-            args = self._maybe_fix_classmethod_cls_arg(node, cls, f, args)
           node, _ = self.call_function_with_args(node, val, args)
     return node
 
@@ -230,11 +227,7 @@ class CallTracer(vm.VirtualMachine):
   def bind_method(self, node, name, methodvar, instance_var):
     bound = self.program.NewVariable()
     for m in methodvar.Data(node):
-      if isinstance(m, special_builtins.ClassMethodInstance):
-        m = m.func.data[0]
-        is_cls = True
-      else:
-        is_cls = (m.isinstance_InterpreterFunction() and m.is_classmethod)
+      is_cls = False
       bound.AddBinding(m.property_get(instance_var, is_cls), [], node)
     return bound
 

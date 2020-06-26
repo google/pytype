@@ -1,3 +1,9 @@
+Version 2020.06.28
+* Treat objects as True in a boolean context, unless explicitly overridden.
+* If cls is the class argument of Foo.__new__, treat `cls is Foo` as ambiguous.
+* Add basic support for third-party flax dataclasses.
+* Autodetect number of jobs with --jobs auto.
+
 Version 2020.06.01
 * Update typeshed pin to commit 5fe6a5b from May 18.
 * Support callback protocols.

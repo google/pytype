@@ -1604,7 +1604,7 @@ class VirtualMachine(object):
       return False
 
     func = self.frame.func.data
-    if func.is_classmethod or func.name.rsplit(".")[-1] == "__new__":
+    if func.name.rsplit(".")[-1] == "__new__":
       is_cls = not set(var.data) - set(self.frame.first_posarg.data)
       return is_cls
     return False
