@@ -440,3 +440,29 @@ class Class(object):
 
     # calc MRO and replace them with original base classes
     return tuple(base2cls[base] for base in mro.MROMerge(newbases))
+
+
+@six.add_metaclass(MixinMeta)
+class NestedAnnotation(object):
+  """An annotation containing inner types, such as a Union.
+
+  For example, in `Union[int, str]`, `int` and `str` are the annotation's inner
+  types. Classes that inherit from this mixin should implement:
+
+  get_inner_types(): Returns a sequence of (key, typ) of the inner types. A
+  Union's inner types can be keyed on their position: `[(0, int), (1, str)]`.
+
+  update_inner_type(key, typ): Updates the inner type with the given key.
+
+  replace(inner_types): Returns a new annotation that is a copy of the current
+    one but with the given inner types, again as a (key, typ) sequence.
+  """
+
+  def get_inner_types(self):
+    raise NotImplementedError()
+
+  def update_inner_type(self, key, typ):
+    raise NotImplementedError()
+
+  def replace(self, inner_types):
+    raise NotImplementedError()
