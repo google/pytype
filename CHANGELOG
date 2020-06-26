@@ -1,4 +1,4 @@
-Version 2020.06.28
+Version 2020.06.26
 * Treat objects as True in a boolean context, unless explicitly overridden.
 * If cls is the class argument of Foo.__new__, treat `cls is Foo` as ambiguous.
 * Add basic support for third-party flax dataclasses.
