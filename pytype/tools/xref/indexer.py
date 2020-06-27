@@ -845,14 +845,21 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
         # Shift symbol/loc back to the unaliased name.
         symbol = alias.name
         m = re.search("[ ,]" + symbol + r"\b", self.source.line(loc.line))
-        assert m is not None
+        if m is None:
+          # TODO(slebedev): Support multi-line from-imports.
+          continue
         c, _ = m.span()
         loc = source.Location(loc.line, c + 1)
 
       try:
         [imported] = _unwrap(data)
-      except ValueError:
-        continue  # Unresolved import.
+      except (TypeError, ValueError):
+        resolved = False
+      else:
+        resolved = not isinstance(imported, abstract.Unsolvable)
+
+      if not resolved:
+        continue
 
       if op == "STORE_NAME":
         # for |import x.y as z| or |from x import y as z| we want {z: x.y}
@@ -1007,8 +1014,12 @@ class Indexer(object):
 
     try:
       [imported] = _unwrap(defn.data)
-    except ValueError:
-      # Unresolved module.
+    except (TypeError, ValueError):
+      resolved = False
+    else:
+      resolved = not isinstance(imported, abstract.Unsolvable)
+
+    if not resolved:
       return Remote(defn.name, name=attr_name, resolved=False)
 
     assert not isinstance(imported, abstract.Module)
@@ -1122,7 +1133,9 @@ class Indexer(object):
               typ = self.typemap.get(defn.id)
               if typ:
                 for x in PytypeValue.from_data(typ):
-                  if isinstance(x, Remote):
+                  if x is None:
+                    continue  # Not-yet-special-cased type, e.g. namedtuple.
+                  elif isinstance(x, Remote):
                     links.append((r, x.attr(attr_name)))
                   elif x.typ == "Class":
                     d = self._lookup_class_attr(x.name, attr_name)
