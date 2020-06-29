@@ -1084,8 +1084,8 @@ class _Parser(object):
       class_name: The name of the class (a string).
       parent_args: A list of parent types and (keyword, value) tuples.
           Parent types must be instances of pytd.Type.  Keyword tuples must
-          appear at the end of the list.  Currently the only supported keyword
-          is 'metaclass'.
+          appear at the end of the list.  Currently the only supported keywords
+          are 'total' for TypedDict and 'metaclass'.
       defs: A list of constant (pytd.Constant), function (_NameAndSig), alias
           (pytd.Alias), slot (_SlotDecl), and class (pytd.Class) definitions.
 
@@ -1104,8 +1104,24 @@ class _Parser(object):
     parents = []
     metaclass = None
     namedtuple_index = None
+    found_kwarg = False
     for i, p in enumerate(parent_args):
-      if self._is_parameterized_protocol(p):
+      if p.__class__ is tuple and len(p) == 2:
+        found_kwarg = True
+        keyword, value = p
+        if keyword not in ("metaclass", "total"):
+          raise ParseError("Unexpected classdef kwarg %r" % keyword)
+        elif keyword == "total" and not any(
+            isinstance(parent, pytd.NamedType) and
+            parent.name == "typing.TypedDict" for parent in parents):
+          raise ParseError(
+              "'total' allowed as classdef kwarg only for TypedDict subclasses")
+        if keyword == "metaclass":
+          metaclass = value
+      elif found_kwarg:
+        raise ParseError(
+            "non-keyword arguments cannot follow keyword arguments")
+      elif self._is_parameterized_protocol(p):
         # From PEP 544: "`Protocol[T, S, ...]` is allowed as a shorthand for
         # `Protocol, Generic[T, S, ...]`."
         # https://www.python.org/dev/peps/pep-0544/#generic-protocols
@@ -1113,18 +1129,12 @@ class _Parser(object):
         parents.append(p.Replace(base_type=pytd.NamedType("typing.Generic")))
       elif isinstance(p, pytd.Type):
         parents.append(p)
-      elif p == "NamedTuple":
+      else:
+        assert p == "NamedTuple"
         if namedtuple_index is not None:
           raise ParseError("cannot inherit from bare NamedTuple more than once")
         namedtuple_index = i
         parents.append(p)
-      else:
-        keyword, value = p
-        if i != len(parent_args) - 1:
-          raise ParseError("metaclass must be last argument")
-        if keyword != "metaclass":
-          raise ParseError("Only 'metaclass' allowed as classdef kwarg")
-        metaclass = value
 
     constants, methods, aliases, slots, classes = _split_definitions(defs)
 
