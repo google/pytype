@@ -1072,6 +1072,14 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       x = None  # type: Optional[A]
     """)
 
+  def test_nested_class_forward_ref(self):
+    self.Check("""
+      from typing import List
+      def f():
+        class Foo:
+          X = List['int']
+    """)
+
 
 class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for PEP 484 style inline annotations."""

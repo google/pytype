@@ -1301,7 +1301,10 @@ class VirtualMachine(object):
       return value
     stack = self.simple_stack()
     typ = self.annotations_util.extract_annotation(node, value, name, stack)
-    recursive_annots = set(self.late_annotations[name])
+    if self.late_annotations:
+      recursive_annots = set(self.late_annotations[name])
+    else:
+      recursive_annots = set()
     for late_annot in self.annotations_util.get_late_annotations(typ):
       if late_annot in recursive_annots:
         self.errorlog.not_supported_yet(
