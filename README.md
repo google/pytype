@@ -1,5 +1,4 @@
-[![Tests](https://travis-ci.org/google/pytype.svg?branch=master)](https://travis-ci.org/google/pytype)
-[![PyPI - Wheel](https://img.shields.io/pypi/wheel/pytype)](https://pypi.org/project/pytype/#files)
+[![Build Status](https://travis-ci.org/google/pytype.svg?branch=master)](https://travis-ci.org/google/pytype)
 
 # pytype - 🦆✔
 
