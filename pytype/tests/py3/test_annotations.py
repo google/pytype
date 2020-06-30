@@ -974,13 +974,41 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_recursive_type_alias(self):
+    ty, errors = self.InferWithErrors("""
+      from typing import List
+      Foo = List["Foo"]  # not-supported-yet[e]
+    """)
+    self.assertTypesMatchPytd(ty, "from builtins import list as Foo")
+    self.assertErrorRegexes(errors, {"e": r"Recursive.*Foo"})
+
+  def test_use_recursive_type_alias(self):
     errors = self.CheckWithErrors("""
       from typing import List, Union
-      Foo = Union[str, List['Foo']]
-      def f(x: Foo):  # not-supported-yet[e]
+      Foo = Union[str, List['Foo']]  # not-supported-yet[e]
+      def f(x: Foo):
         pass
     """)
     self.assertErrorRegexes(errors, {"e": r"Recursive.*Foo"})
+
+  def test_mutually_recursive_type_aliases(self):
+    ty, errors = self.InferWithErrors("""
+      from typing import List
+      X = List["Y"]
+      Y = List["X"]  # not-supported-yet[e]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, List
+      X = List[Y]
+      Y = List[list]
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Recursive.*Y"})
+
+  def test_forward_reference_in_type_alias(self):
+    self.Check("""
+      from typing import List
+      X = List["Y"]
+      Y = List[int]
+    """)
 
   def test_fully_quoted_annotation(self):
     self.Check("""
@@ -1042,6 +1070,14 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
             self.x = x
 
       x = None  # type: Optional[A]
+    """)
+
+  def test_nested_class_forward_ref(self):
+    self.Check("""
+      from typing import List
+      def f():
+        class Foo:
+          X = List['int']
     """)
 
 

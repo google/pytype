@@ -165,7 +165,6 @@ class ClassesTest(test_base.TargetIndependentTest):
       def bar(cls) -> None: ...
     """)
 
-  @test_base.skip("Temporary rollback")
   def test_factory_classmethod(self):
     ty = self.Infer("""
       class Foo(object):
@@ -181,7 +180,6 @@ class ClassesTest(test_base.TargetIndependentTest):
         def factory(cls: Type[_TFoo], *args, **kwargs) -> _TFoo: ...
     """)
 
-  @test_base.skip("Temporary rollback")
   def test_classmethod_return_inference(self):
     ty = self.Infer("""
       class Foo(object):

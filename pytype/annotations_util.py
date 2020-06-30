@@ -34,43 +34,28 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       else:
         vals = [annot]
       return self.vm.convert.merge_classes(vals)
-    elif isinstance(annot, abstract.ParameterizedClass):
-      type_parameters = {
-          name: self.sub_one_annotation(
-              node, param, substs, instantiate_unbound)
-          for name, param in annot.formal_type_parameters.items()}
-      # annot may be a subtype of ParameterizedClass, such as TupleClass.
-      if isinstance(annot, abstract.LiteralClass):
-        # We can't create a LiteralClass because we don't have a concrete value.
-        typ = abstract.ParameterizedClass
-      else:
-        typ = annot.__class__
-      return typ(annot.base_cls, type_parameters, self.vm, annot.template)
-    elif isinstance(annot, abstract.Union):
-      options = tuple(self.sub_one_annotation(node, o, substs,
-                                              instantiate_unbound)
-                      for o in annot.options)
-      return annot.__class__(options, self.vm)
+    elif isinstance(annot, mixin.NestedAnnotation):
+      inner_types = [(key, self.sub_one_annotation(node, val, substs,
+                                                   instantiate_unbound))
+                     for key, val in annot.get_inner_types()]
+      return annot.replace(inner_types)
     return annot
+
+  def get_late_annotations(self, annot):
+    if annot.is_late_annotation() and not annot.resolved:
+      yield annot
+    elif isinstance(annot, mixin.NestedAnnotation):
+      for _, typ in annot.get_inner_types():
+        yield from self.get_late_annotations(typ)
 
   def remove_late_annotations(self, annot):
     """Replace unresolved late annotations with unsolvables."""
     if annot.is_late_annotation() and not annot.resolved:
       return self.vm.convert.unsolvable
-    elif isinstance(annot, abstract.ParameterizedClass):
-      type_parameters = {
-          name: self.remove_late_annotations(param)
-          for name, param in annot.formal_type_parameters.items()}
-      # annot may be a subtype of ParameterizedClass, such as TupleClass.
-      if isinstance(annot, abstract.LiteralClass):
-        # We can't create a LiteralClass because we don't have a concrete value.
-        typ = abstract.ParameterizedClass
-      else:
-        typ = annot.__class__
-      return typ(annot.base_cls, type_parameters, self.vm, annot.template)
-    elif isinstance(annot, abstract.Union):
-      options = tuple(self.remove_late_annotations(o) for o in annot.options)
-      return annot.__class__(options, self.vm)
+    elif isinstance(annot, mixin.NestedAnnotation):
+      inner_types = [(key, self.remove_late_annotations(val))
+                     for key, val in annot.get_inner_types()]
+      return annot.replace(inner_types)
     return annot
 
   def add_scope(self, annot, types, module):
@@ -97,13 +82,9 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       annot.formal_type_parameters[abstract_utils.T] = self.add_scope(
           annot.formal_type_parameters[abstract_utils.T], types, module)
       return annot
-    elif isinstance(annot, abstract.ParameterizedClass):
-      for key, val in annot.formal_type_parameters.items():
-        annot.formal_type_parameters[key] = self.add_scope(val, types, module)
-      return annot
-    elif isinstance(annot, abstract.Union):
-      annot.options = tuple(self.add_scope(option, types, module)
-                            for option in annot.options)
+    elif isinstance(annot, mixin.NestedAnnotation):
+      for key, typ in annot.get_inner_types():
+        annot.update_inner_type(key, self.add_scope(typ, types, module))
       return annot
     return annot
 
@@ -129,11 +110,9 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     elif isinstance(annot, abstract.TupleClass):
       return self.get_type_parameters(
           annot.formal_type_parameters[abstract_utils.T], seen)
-    elif isinstance(annot, abstract.ParameterizedClass):
-      return sum((self.get_type_parameters(p, seen)
-                  for p in annot.formal_type_parameters.values()), [])
-    elif isinstance(annot, abstract.Union):
-      return sum((self.get_type_parameters(o, seen) for o in annot.options), [])
+    elif isinstance(annot, mixin.NestedAnnotation):
+      return sum((self.get_type_parameters(t, seen)
+                  for _, t in annot.get_inner_types()), [])
     return []
 
   def convert_function_type_annotation(self, name, typ):
@@ -256,24 +235,12 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       if resolved is not None:
         func.signature.set_annotation(name, resolved)
 
-  def _process_one_annotation(self, node, annotation, name, stack, seen=None):
+  def _process_one_annotation(self, node, annotation, name, stack):
     """Change annotation / record errors where required."""
     # Make sure we pass in a frozen snapshot of the frame stack, rather than the
     # actual stack, since late annotations need to snapshot the stack at time of
     # creation in order to get the right line information for error messages.
     assert isinstance(stack, tuple), "stack must be an immutable sequence"
-
-    # Check for recursive type annotations so we can emit an error message
-    # rather than crashing.
-    if seen is None:
-      seen = set()
-    if annotation.is_late_annotation():
-      if annotation in seen:
-        self.vm.errorlog.not_supported_yet(
-            stack, "Recursive type annotations",
-            details="In annotation '%s' on %s" % (annotation.expr, name))
-        return None
-      seen = seen | {annotation}
 
     if isinstance(annotation, abstract.AnnotationContainer):
       annotation = annotation.base_cls
@@ -314,37 +281,25 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         if errorlog:
           self.vm.errorlog.copy_from(errorlog.errors, stack)
         if len(v.data) == 1:
-          return self._process_one_annotation(
-              node, v.data[0], name, stack, seen)
+          return self._process_one_annotation(node, v.data[0], name, stack)
       self.vm.errorlog.ambiguous_annotation(stack, [annotation], name)
       return None
     elif annotation.cls == self.vm.convert.none_type:
       # PEP 484 allows to write "NoneType" as "None"
       return self.vm.convert.none_type
-    elif isinstance(annotation, abstract.ParameterizedClass):
-      for param_name, param in annotation.formal_type_parameters.items():
-        processed = self._process_one_annotation(node, param, name, stack, seen)
+    elif isinstance(annotation, mixin.NestedAnnotation):
+      if annotation.processed:
+        return annotation
+      annotation.processed = True
+      for key, typ in annotation.get_inner_types():
+        processed = self._process_one_annotation(node, typ, name, stack)
         if processed is None:
           return None
         elif isinstance(processed, typing_overlay.NoReturn):
           self.vm.errorlog.invalid_annotation(
-              stack, param, "NoReturn is not allowed as inner type", name)
+              stack, typ, "NoReturn is not allowed as inner type", name)
           return None
-        annotation.formal_type_parameters[param_name] = processed
-      return annotation
-    elif isinstance(annotation, abstract.Union):
-      options = []
-      for option in annotation.options:
-        processed = self._process_one_annotation(
-            node, option, name, stack, seen)
-        if processed is None:
-          return None
-        elif isinstance(processed, typing_overlay.NoReturn):
-          self.vm.errorlog.invalid_annotation(
-              stack, option, "NoReturn is not allowed as inner type", name)
-          return None
-        options.append(processed)
-      annotation.options = tuple(options)
+        annotation.update_inner_type(key, processed)
       return annotation
     elif isinstance(annotation, (mixin.Class,
                                  abstract.AMBIGUOUS_OR_EMPTY,

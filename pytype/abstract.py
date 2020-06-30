@@ -1420,7 +1420,7 @@ class LazyConcreteDict(SimpleAbstractValue, mixin.PythonConstant):
     return not bool(self._member_map)
 
 
-class Union(AtomicAbstractValue):
+class Union(AtomicAbstractValue, mixin.NestedAnnotation):
   """A list of types. Used for parameter matching.
 
   Attributes:
@@ -1430,9 +1430,10 @@ class Union(AtomicAbstractValue):
   def __init__(self, options, vm):
     super(Union, self).__init__("Union", vm)
     assert options
-    self.options = tuple(options)
+    self.options = list(options)
     # TODO(rechen): Don't allow a mix of formal and non-formal types
     self.formal = any(t.formal for t in options)
+    mixin.NestedAnnotation.init_mixin(self)
 
   def __repr__(self):
     return "%s[%s]" % (self.name, ", ".join(repr(o) for o in self.options))
@@ -1446,7 +1447,7 @@ class Union(AtomicAbstractValue):
     return not self == other
 
   def __hash__(self):
-    return hash(self.options)
+    return hash(tuple(self.options))
 
   def _unique_parameters(self):
     return [o.to_variable(self.vm.root_cfg_node) for o in self.options]
@@ -1472,6 +1473,15 @@ class Union(AtomicAbstractValue):
     new_options = [option.get_formal_type_parameter(t)
                    for option in self.options]
     return Union(new_options, self.vm)
+
+  def get_inner_types(self):
+    return enumerate(self.options)
+
+  def update_inner_type(self, key, typ):
+    self.options[key] = typ
+
+  def replace(self, inner_types):
+    return self.__class__((v for _, v in sorted(inner_types)), self.vm)
 
 
 class Function(SimpleAbstractValue):
@@ -1997,7 +2007,8 @@ class PyTDFunction(Function):
         flags=pytd.Function.abstract_flag(self.is_abstract))
 
 
-class ParameterizedClass(AtomicAbstractValue, mixin.Class):
+class ParameterizedClass(
+    AtomicAbstractValue, mixin.Class, mixin.NestedAnnotation):
   """A class that contains additional parameters. E.g. a container.
 
   Attributes:
@@ -2040,6 +2051,7 @@ class ParameterizedClass(AtomicAbstractValue, mixin.Class):
     self.slots = self.base_cls.slots
     self.self_annot = None
     mixin.Class.init_mixin(self, base_cls.cls)
+    mixin.NestedAnnotation.init_mixin(self)
     self.type_param_check()
 
   def __repr__(self):
@@ -2190,6 +2202,20 @@ class ParameterizedClass(AtomicAbstractValue, mixin.Class):
 
   def get_formal_type_parameter(self, t):
     return self.formal_type_parameters.get(t, self.vm.convert.unsolvable)
+
+  def get_inner_types(self):
+    return self.formal_type_parameters.items()
+
+  def update_inner_type(self, key, typ):
+    self.formal_type_parameters[key] = typ
+
+  def replace(self, inner_types):
+    if isinstance(self, LiteralClass):
+      # We can't create a LiteralClass because we don't have a concrete value.
+      typ = ParameterizedClass
+    else:
+      typ = self.__class__
+    return typ(self.base_cls, dict(inner_types), self.vm, self.template)
 
 
 class TupleClass(ParameterizedClass, mixin.HasSlots):
