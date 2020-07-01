@@ -1,0 +1,68 @@
+---
+
+# Outstanding TODOs:
+# - manylinux{1,2010,2014}?
+# - Auto PyPI upload?
+# - Build sdist here too while we're at it?
+# - Don't run this on every push ('on' param)
+
+name: Build wheels
+on: push
+jobs:
+  manylinux_wheels:
+    name: Python ${{ matrix.python_tag }} ${{ matrix.platform }} wheels
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform:
+          - manylinux2014_x86_64
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Install Docker
+        run: sudo apt-get install -y --no-install-recommends docker
+      - name: Pull Docker image
+        run: |
+          DOCKER_IMAGE="quay.io/pypa/${{ matrix.platform }}"
+          echo "::set-env name=DOCKER_IMAGE::$DOCKER_IMAGE"
+          docker image pull "$DOCKER_IMAGE"
+      - name: Build manylinux wheels
+        env:
+          PYTHON_TAGS: 'cp35-cp35m cp36-cp36m cp37-cp37m'
+        run: |
+          docker container run \
+            --rm \
+            -e PLAT=${{ matrix.platform }} \
+            -e PYTHON_TAGS="$PYTHON_TAGS" \
+            -v "$(pwd):/io" \
+            "$DOCKER_IMAGE" \
+            /io/build_scripts/wheels/manylinux.sh
+      - uses: actions/upload-artifact@v2
+        with:
+          name: dist
+          path: dist
+  macosx_wheels:
+    name: Python ${{ matrix.python_version }} MacOS wheels
+    # Note: the container MacOS version may differ from the SDK
+    # used to build Python there.  It is the latter that determines
+    # the wheel's platform tag.
+    # https://github.com/actions/virtual-environments/issues/696
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        python_version: [3.5, 3.6, 3.7]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Set up Python ${{ matrix.python_version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python_version }}
+      - name: Build MacOS wheels
+        run: './build_scripts/wheels/macos.sh'
+      - uses: actions/upload-artifact@v2
+        with:
+          name: dist
+          path: dist
