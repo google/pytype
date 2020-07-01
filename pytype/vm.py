@@ -195,7 +195,6 @@ class VirtualMachine(object):
         special_builtins.IsInstance,
         special_builtins.IsSubclass,
         special_builtins.Next,
-        special_builtins.Open
     ):
       self.special_builtins[cls.name] = cls.make(self)
 

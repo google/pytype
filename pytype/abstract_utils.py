@@ -4,7 +4,7 @@
 import collections
 import hashlib
 import logging
-from typing import Tuple, Union
+from typing import Any, Optional, Tuple, Union
 
 from pytype import compat
 from pytype import datatypes
@@ -18,6 +18,8 @@ import six
 
 log = logging.getLogger(__name__)
 
+# We can't import abstract.AtomicAbstractValue here due to a circular dep.
+_AbstractValueType = Any
 
 # Type parameter names matching the ones in __builtin__.pytd and typing.pytd.
 T = "_T"
@@ -27,14 +29,12 @@ V = "_V"
 ARGS = "_ARGS"
 RET = "_RET"
 
-
 # TODO(rechen): Stop supporting all variants except _HAS_DYNAMIC_ATTRIBUTES.
 DYNAMIC_ATTRIBUTE_MARKERS = [
     "HAS_DYNAMIC_ATTRIBUTES",
     "_HAS_DYNAMIC_ATTRIBUTES",
     "has_dynamic_attributes",
 ]
-
 
 # A dummy container object for use in instantiating type parameters.
 # A container is needed to preserve type parameter names for error messages
@@ -691,3 +691,11 @@ class Local:
       return values[0]
     else:
       return None
+
+
+def is_literal(annot: Optional[_AbstractValueType]):
+  if not annot:
+    return False
+  if annot.isinstance_Union():
+    return all(is_literal(o) for o in annot.options)
+  return annot.isinstance_LiteralClass()

@@ -248,17 +248,26 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       f2 = open("foo.pickled", "rb")
       v1 = f1.read()
       v2 = f2.read()
-      def open_file(mode):
+      def open_file1(mode):
+        f = open("foo.x", mode)
+        return f, f.read()
+      def open_file2(mode: str):
         f = open("foo.x", mode)
         return f, f.read()
     """)
+    # The different return types of open_file1 and open_file2 are due to a quirk
+    # of our implementation of Literal: Any matches a Literal, but a
+    # non-constant instance of the Literal's type does not, so in the first
+    # case, multiple signatures match and pytype falls back to Any, whereas in
+    # the second, only the fallback signature matches.
     self.assertTypesMatchPytd(ty, """
-      from typing import BinaryIO, IO, TextIO, Tuple, Union
-      f1 = ...  # type: TextIO
-      f2 = ...  # type: BinaryIO
-      v1 = ...  # type: str
-      v2 = ...  # type: bytes
-      def open_file(mode) -> Tuple[IO[Union[bytes, str]], Union[bytes, str]]
+      from typing import Any, BinaryIO, IO, TextIO, Tuple, Union
+      f1: TextIO
+      f2: BinaryIO
+      v1: str
+      v2: bytes
+      def open_file1(mode) -> Tuple[Any, Any]: ...
+      def open_file2(mode: str) -> Tuple[IO[Union[bytes, str]], Union[bytes, str]]: ...
     """)
 
   def test_filter(self):

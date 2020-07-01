@@ -82,28 +82,6 @@ def get_file_mode(sig, args):
     return ""
 
 
-class Open(BuiltinFunction):
-  """Implementation of open(...)."""
-
-  name = "open"
-
-  def call(self, node, func, args):
-    if self.vm.PY3:
-      # In Python 3, the type of IO object returned depends on the mode.
-      self.match_args(node, args)  # May raise FailedFunctionCall.
-      sig, = self.signatures
-      try:
-        mode = get_file_mode(sig, args)
-      except abstract_utils.ConversionError:
-        pass
-      else:
-        # The default mode is 'r'.
-        io_type = "Binary" if "b" in mode else "Text"
-        return node, self.vm.convert.constant_to_var(abstract_utils.AsInstance(
-            self.vm.lookup_builtin("typing.%sIO" % io_type)), {}, node)
-    return super(Open, self).call(node, func, args)
-
-
 class Abs(BuiltinFunction):
   """Implements abs."""
 

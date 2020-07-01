@@ -446,5 +446,16 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       sys.stdout.buffer
     """)
 
+  def test_io_open(self):
+    ty = self.Infer("""
+      import io
+      def f(name):
+        return io.open(name, "rb").read()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      io: module
+      def f(name) -> bytes: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
