@@ -2177,11 +2177,12 @@ class VirtualMachine(object):
     elif op.arg == slots.CMP_IN:
       state, ret = self._cmp_in(state, x, y)
     elif op.arg == slots.CMP_EXC_MATCH:
-      # When the `try` block is set up, push_abstract_exception pushes on
-      # unknowns for the value and exception type. CMP_EXC_MATCH occurs at the
-      # beginning  of the `except` block, when we know the exception being
-      # caught, so we can replace the unknowns with more useful variables.
-      state, _ = state.popn(2)
+      if self.python_version < (3, 8):
+        # When the `try` block is set up, push_abstract_exception pushes on
+        # unknowns for the value and exception type. CMP_EXC_MATCH occurs at the
+        # beginning  of the `except` block, when we know the exception being
+        # caught, so we can replace the unknowns with more useful variables.
+        state, _ = state.popn(2)
       exc_type = y
       value, types = self._instantiate_exception(state.node, exc_type)
       if None in types:
@@ -2581,6 +2582,7 @@ class VirtualMachine(object):
     self.store_jump(op.target, new_state)
     return state
 
+  # Note: this opcode is removed in Python 3.8.
   def byte_SETUP_EXCEPT(self, state, op):
     # Assume that it's possible to throw the exception at the first
     # instruction of the code:
@@ -2599,7 +2601,7 @@ class VirtualMachine(object):
   # TODO(b/157603915): Figure out how to handle 3.8's new exception handling and
   # adjust these opcode handlers accordingly.
   def byte_BEGIN_FINALLY(self, state, op):
-    return state
+    return state.push(self.convert.build_none(state.node))
 
   def byte_CALL_FINALLY(self, state, op):
     return state
@@ -2608,6 +2610,16 @@ class VirtualMachine(object):
     return state
 
   def byte_POP_FINALLY(self, state, op):
+    """Implements POP_FINALLY."""
+    preserve_tos = op.arg
+    if preserve_tos:
+      state, saved_tos = state.pop()
+    state, tos = state.pop()
+    if any(d != self.convert.none and d.cls != self.convert.int_type
+           for d in tos.data):
+      state, _ = state.popn(5)
+    if preserve_tos:
+      state = state.push(saved_tos)
     return state
 
   def byte_POP_BLOCK(self, state, op):
@@ -2673,8 +2685,8 @@ class VirtualMachine(object):
     return self.byte_WITH_CLEANUP_FINISH(
         self.byte_WITH_CLEANUP_START(state, op), op)
 
-  def byte_WITH_CLEANUP_START(self, state, op):
-    """Called to start cleaning up a with block. Calls the exit handlers etc."""
+  def _with_cleanup_start(self, state, op):
+    """Implements WITH_CLEANUP_START before Python 3.8."""
     state, u = state.pop()  # pop 'None'
     state, exit_func = state.pop()
     state = state.push(u)
@@ -2685,11 +2697,33 @@ class VirtualMachine(object):
         state, exit_func, (u, v, w))
     return state.push(suppress_exception)
 
+  def _with_cleanup_start_3_8(self, state, op):
+    """Implements WITH_CLEANUP_START in Python 3.8+."""
+    tos = state.top()
+    if tos.data == [self.convert.none]:
+      return self._with_cleanup_start(state, op)
+    state, (w, v, u, *rest, exit_func) = state.popn(7)
+    state = state.push(*rest)
+    state = state.push(self.convert.build_none(state.node))
+    state = state.push(w, v, u)
+    state, suppress_exception = self.call_function_with_state(
+        state, exit_func, (u, v, w))
+    return state.push(suppress_exception)
+
+  def byte_WITH_CLEANUP_START(self, state, op):
+    """Called to start cleaning up a with block. Calls the exit handlers etc."""
+    if self.python_version >= (3, 8):
+      return self._with_cleanup_start_3_8(state, op)
+    else:
+      return self._with_cleanup_start(state, op)
+
   def byte_WITH_CLEANUP_FINISH(self, state, op):
     """Called to finish cleaning up a with block."""
-    # TODO(mdemello): Should we do something with the result here?
-    state, unused_suppress_exception = state.pop()
-    state, unused_none = state.pop()
+    state, suppress_exception = state.pop()
+    state, second = state.pop()
+    if (suppress_exception.data == [self.convert.true] and
+        second.data != [self.convert.none]):
+      state = state.push(self.convert.build_none(state.node))
     return state
 
   def _convert_kw_defaults(self, values):
