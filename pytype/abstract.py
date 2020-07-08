@@ -371,6 +371,9 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   def isinstance_InterpreterFunction(self):
     return isinstance(self, InterpreterFunction)
 
+  def isinstance_LiteralClass(self):
+    return isinstance(self, LiteralClass)
+
   def isinstance_ParameterizedClass(self):
     return isinstance(self, ParameterizedClass)
 
@@ -1953,7 +1956,18 @@ class PyTDFunction(Function):
     """Try, in order, all pytd signatures, yielding matches."""
     error = None
     matched = False
+    # Once a constant has matched a literal type, it should no longer be able to
+    # match non-literal types. For example, with:
+    #   @overload
+    #   def f(x: Literal['r']): ...
+    #   @overload
+    #   def f(x: str): ...
+    # f('r') should match only the first signature.
+    literal_matches = set()
     for sig in self.signatures:
+      if any(not abstract_utils.is_literal(sig.signature.annotations.get(name))
+             for name in literal_matches):
+        continue
       try:
         arg_dict, subst = sig.substitute_formal_args(
             node, args, view, alias_map)
@@ -1962,6 +1976,10 @@ class PyTDFunction(Function):
           error = e
       else:
         matched = True
+        for name, binding in arg_dict.items():
+          if (isinstance(binding.data, mixin.PythonConstant) and
+              abstract_utils.is_literal(sig.signature.annotations.get(name))):
+            literal_matches.add(name)
         yield sig, arg_dict, subst
     if not matched:
       raise error  # pylint: disable=raising-bad-type
