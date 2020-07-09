@@ -46,6 +46,8 @@ class AnnotaterTest(test_base.TargetIndependentTest):
 
     if isinstance(node, ast.Name):
       return base + (node.id,)
+    elif isinstance(node, ast.Attribute):
+      return base + (node.attr,)
     else:
       return base
 
@@ -66,5 +68,22 @@ class AnnotaterTest(test_base.TargetIndependentTest):
     }
     self.assert_annotations_equal(expected, module)
 
+  def test_annotating_attribute(self):
+    source = """
+    f = Foo()
+    x = f.Bar().bar()
+    """
+
+    module = self.annotate(source)
+
+    expected = {
+        (1, 'Name', 'f'): 'Any',
+        (1, 'Name', 'Foo'): 'Any',
+        (2, 'Name', 'x'): 'Any',
+        (2, 'Name', 'f'): 'Any',
+        (2, 'Attribute', 'Bar'): 'Any',
+        (2, 'Attribute', 'bar'): 'Any',
+    }
+    self.assert_annotations_equal(expected, module)
 
 test_base.main(globals(), __name__ == '__main__')
