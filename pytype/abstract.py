@@ -1184,10 +1184,10 @@ class LateAnnotation(object):
   # set/dict comparisons.
 
   def __hash__(self):
-    return hash(self._type)
+    return hash(self._type) if self.resolved else hash(self.expr)
 
   def __eq__(self, other):
-    return self._type == other
+    return hash(self) == hash(other)
 
   def __getattribute__(self, name):
     if name == "_attribute_names" or name in self._attribute_names:
