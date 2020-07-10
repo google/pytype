@@ -2227,7 +2227,8 @@ class VirtualMachine(object):
       if not isinstance(maybe_cls, abstract.InterpreterClass):
         maybe_cls = maybe_cls.cls
       if isinstance(maybe_cls, abstract.InterpreterClass):
-        if ("__annotations__" not in maybe_cls.members and
+        if (self.options.check_attribute_types and
+            "__annotations__" not in maybe_cls.members and
             op.line in self.director.annotations):
           # The class has no annotated class attributes but does have an
           # annotated instance attribute.
