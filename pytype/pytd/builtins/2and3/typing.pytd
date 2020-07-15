@@ -108,6 +108,13 @@ if sys.version_info >= (3, 0):
     def __bytes__(self) -> bytes: ...
 
 
+if sys.version_info >= (3, 8):
+  class SupportsIndex(Protocol):
+    __slots__ = []
+    @abstractmethod
+    def __index__(self) -> int: ...
+
+
 class Reversible(Generic[_T], Protocol):
   __slots__ = []
   @abstractmethod
