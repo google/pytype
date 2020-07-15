@@ -49,7 +49,7 @@ def main():
             command=[
                 "python", build_utils.build_script("run_tests.py"), "-f", "-v"])
   s4 = STEP(name="Type Check",
-            command=[os.path.join("out", "bin", "pytype")])
+            command=[os.path.join("out", "bin", "pytype"), "-j", "auto"])
   _run_steps([s1, s2, s3, s4])
   print("\n*** All build steps completed successfully! ***\n")
 
