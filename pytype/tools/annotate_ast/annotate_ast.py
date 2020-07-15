@@ -54,7 +54,13 @@ class AnnotateAstVisitor(traces.MatchAstVisitor):
   """
 
   def visit_Name(self, node):
-    """Visits a `Name` node."""
+    self._maybe_annotate(node)
+
+  def visit_Attribute(self, node):
+    self._maybe_annotate(node)
+
+  def _maybe_annotate(self, node):
+    """Annotates a node."""
     try:
       ops = self.match(node)
     except NotImplementedError:

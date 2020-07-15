@@ -1149,7 +1149,7 @@ else:
 @overload
 def open(
     file: _FileType,
-    mode: Literal["rb", "wb", "ab", "xb", "r+b", "w+b", "a+b", "x+b"],
+    mode: Literal["rb", "wb", "ab", "xb", "r+b", "w+b", "a+b", "x+b", "rb+", "wb+", "ab+", "xb+"],
     buffering: int = ...,
     encoding: Optional[str] = ...,
     errors: Optional[str] = ...,
@@ -1159,7 +1159,7 @@ def open(
 @overload
 def open(
     file: _FileType,
-    mode: Literal["r", "w", "a", "x", "r+", "w+", "a+", "x+", "rt", "wt", "at", "xt", "r+t", "w+t", "a+t", "x+t"] = ...,
+    mode: Literal["r", "w", "a", "x", "r+", "w+", "a+", "x+", "rt", "wt", "at", "xt", "r+t", "w+t", "a+t", "x+t", "rt+", "wt+", "at+", "xt+"] = ...,
     buffering: int = ...,
     encoding: Optional[str] = ...,
     errors: Optional[str] = ...,

@@ -1007,7 +1007,8 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     self.Check("""
       from typing import List
       X = List["Y"]
-      Y = List[int]
+      Y = List["Z"]
+      Z = List[int]
     """)
 
   def test_fully_quoted_annotation(self):

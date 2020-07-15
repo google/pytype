@@ -1184,10 +1184,10 @@ class LateAnnotation(object):
   # set/dict comparisons.
 
   def __hash__(self):
-    return hash(self._type)
+    return hash(self._type) if self.resolved else hash(self.expr)
 
   def __eq__(self, other):
-    return self._type == other
+    return hash(self) == hash(other)
 
   def __getattribute__(self, name):
     if name == "_attribute_names" or name in self._attribute_names:
@@ -1734,10 +1734,14 @@ class PyTDFunction(Function):
       return StaticMethod(self.name, self, callself, self.vm)
     elif self.kind == pytd.CLASSMETHOD:
       if not is_class:
-        # callself is the instance, and we want to bind to its class.
         callself = abstract_utils.get_atomic_value(
-            callself, default=self.vm.convert.unsolvable
-        ).get_class().to_variable(self.vm.root_cfg_node)
+            callself, default=self.vm.convert.unsolvable)
+        if isinstance(callself, TypeParameterInstance):
+          callself = abstract_utils.get_atomic_value(
+              callself.instance.get_instance_type_parameter(callself.name),
+              default=self.vm.convert.unsolvable)
+        # callself is the instance, and we want to bind to its class.
+        callself = callself.get_class().to_variable(self.vm.root_cfg_node)
       return ClassMethod(self.name, self, callself, self.vm)
     elif self.kind == pytd.PROPERTY and not is_class:
       return Property(self.name, self, callself, self.vm)

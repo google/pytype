@@ -1,5 +1,6 @@
 """Test methods."""
 
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -52,6 +53,29 @@ class TestMethods(test_base.TargetPython3BasicTest):
         pass
     """)
     self.assertErrorRegexes(errors, {"e": r"int.*self"})
+
+  def test_use_abstract_classmethod(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import abc
+
+        class Foo(metaclass=abc.ABCMeta):
+          @abc.abstractmethod
+          @classmethod
+          def foo(cls, value) -> int: ...
+      """)
+      self.Check("""
+        import collections
+        import foo
+
+        class Bar:
+          def __init__(self, **kwargs):
+            for k, v in self.f().items():
+              v.foo(kwargs[k])
+
+          def f(self) -> collections.OrderedDict[str, foo.Foo]:
+            return __any_object__
+      """, pythonpath=[d.path])
 
 
 test_base.main(globals(), __name__ == "__main__")

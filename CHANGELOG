@@ -1,3 +1,11 @@
+Version 2020.07.14
+* Populate the `cls` arg in classmethods with the class type.
+* Log [not-supported-yet] as soon as a recursive type alias is defined.
+* pyi parser: allow the 'total' keyword for subclasses of TypedDict.
+* Make collections.OrderedDict reversible.
+* Make the behavior of io.open match builtins.open.
+* Add/fix some opcodes for Python 3.8.
+
 Version 2020.06.26
 * Treat objects as True in a boolean context, unless explicitly overridden.
 * If cls is the class argument of Foo.__new__, treat `cls is Foo` as ambiguous.

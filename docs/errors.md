@@ -29,6 +29,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [bad-slots](#bad-slots)
       * [bad-unpacking](#bad-unpacking)
       * [base-class-error](#base-class-error)
+      * [container-type-mismatch](#container-type-mismatch)
       * [duplicate-keyword-argument](#duplicate-keyword-argument)
       * [ignored-abstractmethod](#ignored-abstractmethod)
       * [ignored-metaclass](#ignored-metaclass)
@@ -63,7 +64,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: mdemello, at: 2020-05-21T16:31-07:00 -->
+<!-- Added by: rechen, at: 2020-07-14T14:44-07:00 -->
 
 <!--te-->
 
@@ -72,9 +73,10 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
 A variable had a type annotation and an assignment with incompatible types.
 
 Example:
+
 <!-- bad -->
 ```python
-x : int = 'hello world'
+x: int = 'hello world'
 ```
 
 NOTE: This is currently only checked for fields within a @dataclass definition.
@@ -93,14 +95,27 @@ class A(object):
     return self.foo  # attribute-error
 ```
 
-To make pytype aware of `foo`, declare it as a class attribute (with the literal
-ellipses) and supply the type in a type comment:
+To make pytype aware of `foo`, declare its type with a variable annotation:
+
+<!-- good -->
+```python
+class A(object):
+  foo: int
+```
+
+NOTE: This declaration does *not* define the attribute at runtime.
+
+The above variable annotation syntax is available only in Python 3.6+, so in
+earlier versions, declare a class attribute (with the literal ellipses) and
+supply the type in a type comment:
 
 <!-- good -->
 ```python
 class A(object):
   foo = ...  # type: int
 ```
+
+NOTE: This pattern *does* define a runtime attribute.
 
 ## bad-concrete-type
 
@@ -184,6 +199,21 @@ The class definition uses an illegal value for a base class. Example:
 class A(42):  # base-class-error
   pass
 ```
+
+## container-type-mismatch
+
+A method call violated the type annotation of a container by modifying its
+contained type.
+
+Example:
+
+<!-- bad -->
+```python
+a: List[int] = [1, 2]
+a.append("hello")  # <-- contained type is now Union[int, str]
+```
+
+NOTE: This is currently only checked when using the `--check-variable-types` flag.
 
 ## duplicate-keyword-argument
 
@@ -354,8 +384,8 @@ from dataclasses import dataclass
 
 @dataclass
 class A:
-  x : int = 10
-  y : str
+  x: int = 10
+  y: str
 ```
 
 which creates

@@ -270,6 +270,17 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       def open_file2(mode: str) -> Tuple[IO[Union[bytes, str]], Union[bytes, str]]: ...
     """)
 
+  def test_open_extended_file_modes(self):
+    ty = self.Infer("""
+      f1 = open("f1", "rb+")
+      f2 = open("f2", "w+t")
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import BinaryIO, TextIO
+      f1: BinaryIO
+      f2: TextIO
+    """)
+
   def test_filter(self):
     ty = self.Infer("""
       import re
