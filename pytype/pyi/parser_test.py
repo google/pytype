@@ -1275,6 +1275,19 @@ class ClassTest(_ParserTestBase):
       class Foo(object, total=False): ...
     """, 1, "'total' allowed as classdef kwarg only for TypedDict subclasses")
 
+  def test_typing_extensions_typed_dict(self):
+    self.check("""
+      from typing_extensions import TypedDict
+
+      class Foo(TypedDict, total=False): ...
+    """, """
+      import typing_extensions
+
+      from typing_extensions import TypedDict
+
+      class Foo(typing_extensions.TypedDict): ...
+    """)
+
   def test_multiple_classdef_kwargs(self):
     self.check("""
       from typing import TypedDict

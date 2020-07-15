@@ -18,6 +18,10 @@ _DEFAULT_PLATFORM = "linux"
 # Typing members that represent sets of types.
 _TYPING_SETS = ("typing.Intersection", "typing.Optional", "typing.Union")
 
+_TYPED_DICT_ALIASES = (
+    "typing.TypedDict",
+    parser_constants.EXTERNAL_NAME_PREFIX + "typing_extensions.TypedDict")
+
 
 _Params = collections.namedtuple("_", ["required",
                                        "starargs", "starstarargs",
@@ -1113,7 +1117,7 @@ class _Parser(object):
           raise ParseError("Unexpected classdef kwarg %r" % keyword)
         elif keyword == "total" and not any(
             isinstance(parent, pytd.NamedType) and
-            parent.name == "typing.TypedDict" for parent in parents):
+            parent.name in _TYPED_DICT_ALIASES for parent in parents):
           raise ParseError(
               "'total' allowed as classdef kwarg only for TypedDict subclasses")
         if keyword == "metaclass":
