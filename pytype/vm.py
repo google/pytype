@@ -3327,6 +3327,7 @@ class VirtualMachine(object):
     return state.push(result)
 
   def byte_LOAD_METHOD(self, state, op):
+    """Implementation of the LOAD_METHOD opcode."""
     name = self.frame.f_code.co_names[op.arg]
     state, self_obj = state.pop()
     state, result = self.load_attr(state, self_obj, name)
@@ -3335,6 +3336,7 @@ class VirtualMachine(object):
     # method and its `self` or NULL and the bound method. However, pushing only
     # the bound method and modifying CALL_METHOD accordingly works in all cases
     # we've tested.
+    self.trace_opcode(op, name, (self_obj, result))
     return state.push(result)
 
   def byte_CALL_METHOD(self, state, op):

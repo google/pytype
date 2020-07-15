@@ -18,6 +18,7 @@ from pytype.tools.traces import visitor
 
 _ATTR_OPS = frozenset((
     "LOAD_ATTR",
+    "LOAD_METHOD",
     "STORE_ATTR",
 ))
 

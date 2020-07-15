@@ -803,7 +803,7 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
     # the location of the value on which the attribute is accessed, in order to
     # link function calls. We'll manually adjust the location later.
     for unused_loc, (op, unused_symbol, data) in self.match(node):
-      if op == "LOAD_ATTR":
+      if op in ("LOAD_ATTR", "LOAD_METHOD"):
         ref = self.add_local_ref(
             node,
             target=node.value,
