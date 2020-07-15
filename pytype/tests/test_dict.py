@@ -95,6 +95,13 @@ class DictTest(test_base.TargetIndependentTest):
             kwargs.update(foo.f(self))
       """, pythonpath=[d.path])
 
+  def test_update_noargs(self):
+    self.Check("""
+      from typing import Dict
+      d = {}  # type: Dict
+      d.update()
+    """)
+
   def test_determinism(self):
     # Regression test for code on which pytype used to be non-deterministic.
     canonical = None

@@ -471,13 +471,13 @@ class dict(Dict[_K, _V]):
         self = dict[_K or _K2, _V or NoneType]
     def setdefault(self, k: _K2, v: _V2) -> _V or _V2:
         self = dict[_K or _K2, _V or _V2]
-    def update(self, other: dict[_K2, _V2]):
+    def update(self) -> None: ...
+    def update(self, other: dict[_K2, _V2]) -> None:
         self = dict[_K or _K2, _V or _V2]
-    def update(self, **kwargs: _V2):
+    def update(self, **kwargs: _V2) -> None:
         self = dict[_K or str, _V or _V2]
-    def update(self, E, ...) -> NoneType:
+    def update(self, E, ...) -> None:
         self = dict[?, ?]
-    def update(self) -> NoneType
     def values(self) -> dict_values[_V]
 
 class listiterator(Iterator[_T]):
