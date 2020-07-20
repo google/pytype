@@ -477,7 +477,6 @@ class dict(Dict[_K, _V]):
         self = dict[_K or str, _V or _V2]
     def update(self, E, ...) -> None:
         self = dict[?, ?]
-    def update(self) -> NoneType
     def viewitems(self) -> dict_items[_K,_V]
     def viewkeys(self) -> dict_keys[_K]
     def viewvalues(self) -> dict_values[_V]
