@@ -225,5 +225,18 @@ class SlotsTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"__baz"})
 
+  def test_union(self):
+    self.Check("""
+      from typing import Union
+      class Foo(object):
+        pass
+      class Bar(object):
+        __slots__ = ()
+      def f(x):
+        # type: (Union[Foo, Bar]) -> None
+        if isinstance(x, Foo):
+          x.foo = 42
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
