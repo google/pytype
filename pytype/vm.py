@@ -1391,6 +1391,9 @@ class VirtualMachine(object):
   def _retrieve_attr(self, node, obj, attr):
     """Load an attribute from an object."""
     assert isinstance(obj, cfg.Variable), obj
+    if (attr == "__class__" and self.callself_stack and
+        obj.data == self.callself_stack[-1].data):
+      return node, self.new_unsolvable(node), []
     # Resolve the value independently for each value of obj
     result = self.program.NewVariable()
     log.debug("getting attr %s from %r", attr, obj)

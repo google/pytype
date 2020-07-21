@@ -1411,5 +1411,19 @@ class ClassesTest(test_base.TargetIndependentTest):
       list(Foo())
     """)
 
+  def test_instantiate_class(self):
+    self.Check("""
+      import abc
+      import six
+      @six.add_metaclass(abc.ABCMeta)
+      class Foo(object):
+        def __init__(self, x):
+          if x > 0:
+            print(self.__class__(x-1))
+        @abc.abstractmethod
+        def f(self):
+          pass
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
