@@ -1513,7 +1513,7 @@ class VirtualMachine(object):
       # "__set__")
       nodes.append(self.attribute_handler.set_attribute(
           state.node, val.data, attr, value))
-    return state.change_cfg_node(self.join_cfg_nodes(nodes))
+    return state.change_cfg_node(self.join_cfg_nodes(nodes)) if nodes else state
 
   def del_attr(self, state, obj, attr):
     """Delete an attribute."""
