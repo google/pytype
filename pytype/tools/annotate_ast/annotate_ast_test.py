@@ -28,6 +28,8 @@ class AnnotaterTest(test_base.TargetIndependentTest):
       return base + (node.id,)
     elif isinstance(node, ast.Attribute):
       return base + (node.attr,)
+    elif isinstance(node, ast.FunctionDef):
+      return base + (node.name,)
     else:
       return base
 
@@ -90,6 +92,20 @@ class AnnotaterTest(test_base.TargetIndependentTest):
     expected = {
         (1, 'Name', 'foo'): 'Any',
         (1, 'Name', 'f'): 'Any',
+    }
+    self.assertEqual(expected, self.get_annotations_dict(module))
+
+  def test_annotating_def(self):
+    source = """
+    def foo(a, b):
+      # type: (str, int) -> str
+      pass
+    """
+
+    module = self.annotate(source)
+
+    expected = {
+        (1, 'FunctionDef', 'foo'): 'Callable[[str, int], str]',
     }
     self.assertEqual(expected, self.get_annotations_dict(module))
 
