@@ -565,7 +565,7 @@ def MergeBaseClass(cls, base):
   classes = cls.classes + tuple(c for c in base.classes
                                 if c.name not in class_names)
   if cls.slots:
-    slots = cls.clots + tuple(s for s in base.slots or () if s not in cls.slots)
+    slots = cls.slots + tuple(s for s in base.slots or () if s not in cls.slots)
   else:
     slots = base.slots
   return pytd.Class(name=cls.name,

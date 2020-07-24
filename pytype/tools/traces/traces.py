@@ -131,7 +131,7 @@ class _SymbolMatcher(object):
   def match(self, symbol):
     for match in self._matches:
       if isinstance(match, self._PATTERN_TYPE):
-        if match.match(symbol):
+        if match.match(str(symbol)):
           return True
       elif match == symbol:
         return True
@@ -216,13 +216,20 @@ class MatchAstVisitor(visitor.BaseVisitor):
             for tr in self._get_traces(
                 node.lineno, _CALL_OPS, name, maxmatch=1, num_lines=5)]
 
-  def match_Ellipsis(self, node):
-    return self._match_constant(node, Ellipsis)
-
   def match_Constant(self, node):
     # As of Python 3.8, bools, numbers, bytes, strings, ellipsis etc are
     # all constants instead of individual ast nodes.
     return self._match_constant(node, node.s)
+
+  def match_Ellipsis(self, node):
+    return self._match_constant(node, Ellipsis)
+
+  def match_FunctionDef(self, node):
+    symbol = _SymbolMatcher.from_regex(r"(%s|None)" % node.name)
+    return [
+        (self._get_match_location(node, tr.symbol), tr)
+        for tr in self._get_traces(node.lineno, ["MAKE_FUNCTION"], symbol, 1)
+    ]
 
   def match_Import(self, node):
     return list(self._match_import(node, is_from=False))

@@ -374,6 +374,33 @@ class ParserTest(_ParserTestBase):
 
       x: somewhere.Foo""")
 
+  def test_external_alias(self):
+    self.check("""
+      from somewhere import Foo
+
+      class Bar:
+          Baz = Foo
+    """, """
+      from typing import Any
+
+      from somewhere import Foo
+
+      class Bar:
+          Baz: Any
+    """)
+
+  def test_same_named_alias(self):
+    self.check("""
+      import somewhere
+      class Bar:
+          Foo = somewhere.Foo
+    """, """
+      from typing import Any
+
+      class Bar:
+          Foo: Any
+    """)
+
   def test_type_params(self):
     ast = self.check("""
       from typing import TypeVar
@@ -1649,13 +1676,6 @@ class ClassIfTest(_ParserTestBase):
         if sys.version_info > (3, 4, 0):
           import foo
     """, 3, "syntax error")
-
-  def test_bad_alias(self):
-    self.check_error("""
-      class Foo:
-        if sys.version_info > (3, 4, 0):
-          a = b
-    """, 1, "Illegal value for alias 'a'")
 
   def test_no_class(self):
     self.check("""

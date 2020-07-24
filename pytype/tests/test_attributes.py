@@ -503,24 +503,6 @@ class TestAttributes(test_base.TargetIndependentTest):
       def f(x) -> Any
     """)
 
-  @test_base.skip("TODO(b/63407497): implement strict checking for __setitem__")
-  def test_union_set_attribute(self):
-    ty, _ = self.InferWithErrors("""
-      class A(object):
-        x = "Hello world"
-      def f(i):
-        t = A()
-        l = [t]
-        l[i].x = 1  # not-writable
-        return l[i].x
-    """)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Any
-      class A(object):
-        x = ...  # type: str
-      def f(i) -> Any
-    """)
-
   def test_set_class(self):
     ty = self.Infer("""
       def f(x):
@@ -845,6 +827,26 @@ class TestAttributes(test_base.TargetIndependentTest):
         def oops(self) -> None: ...
     """)
     self.assertErrorRegexes(errors, {"e": r"Annotation: int.*Assignment: str"})
+
+  def test_split(self):
+    ty = self.Infer("""
+      from typing import Union
+      class Foo:
+        pass
+      class Bar:
+        pass
+      def f(x):
+        # type: (Union[Foo, Bar]) -> None
+        if isinstance(x, Foo):
+          x.foo = 42
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Union
+      class Foo:
+        foo: int
+      class Bar: ...
+      def f(x: Union[Foo, Bar]) -> None: ...
+    """)
 
 
 test_base.main(globals(), __name__ == "__main__")

@@ -1391,6 +1391,9 @@ class VirtualMachine(object):
   def _retrieve_attr(self, node, obj, attr):
     """Load an attribute from an object."""
     assert isinstance(obj, cfg.Variable), obj
+    if (attr == "__class__" and self.callself_stack and
+        obj.data == self.callself_stack[-1].data):
+      return node, self.new_unsolvable(node), []
     # Resolve the value independently for each value of obj
     result = self.program.NewVariable()
     log.debug("getting attr %s from %r", attr, obj)
@@ -1508,12 +1511,12 @@ class VirtualMachine(object):
       log.info("Ignoring setattr on %r", obj)
       return state
     nodes = []
-    for val in obj.bindings:
+    for val in obj.Filter(state.node):
       # TODO(b/159038991): Check whether val.data is a descriptor (i.e. has
       # "__set__")
       nodes.append(self.attribute_handler.set_attribute(
           state.node, val.data, attr, value))
-    return state.change_cfg_node(self.join_cfg_nodes(nodes))
+    return state.change_cfg_node(self.join_cfg_nodes(nodes)) if nodes else state
 
   def del_attr(self, state, obj, attr):
     """Delete an attribute."""

@@ -59,6 +59,9 @@ class AnnotateAstVisitor(traces.MatchAstVisitor):
   def visit_Attribute(self, node):
     self._maybe_annotate(node)
 
+  def visit_FunctionDef(self, node):
+    self._maybe_annotate(node)
+
   def _maybe_annotate(self, node):
     """Annotates a node."""
     try:

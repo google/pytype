@@ -1169,15 +1169,26 @@ class _Parser(object):
                    for val in constants + aliases + methods + classes}
       for val in aliases:
         name = val.name
+        seen_names = set()
         while isinstance(val, pytd.Alias):
           if isinstance(val.type, pytd.NamedType):
             _, _, base_name = val.type.name.rpartition(".")
+            if base_name in seen_names:
+              # This happens in cases like:
+              # class X:
+              #   Y = something.Y
+              # Since we try to resolve aliases immediately, we don't know what
+              # type to fill in when the alias value comes from outside the
+              # class. The best we can do is Any.
+              val = pytd.Constant(name, pytd.AnythingType())
+              continue
+            seen_names.add(base_name)
             if base_name in vals_dict:
               val = vals_dict[base_name]
               continue
-          raise ParseError(
-              "Illegal value for alias %r. Value must be an attribute "
-              "on the same class." % val.name)
+          # The alias value comes from outside the class. The best we can do is
+          # to fill in Any.
+          val = pytd.Constant(name, pytd.AnythingType())
         if isinstance(val, _NameAndSig):
           methods.append(val._replace(name=name))
         else:
