@@ -1,3 +1,9 @@
+Version 2020.07.24
+* pyi parser: allow aliases inside a class to values outside the class.
+* Copy annotations instead of modifying them when adding a scope.
+* Make self.__class__ return Any in __init__.
+* Check object visibility before setting attributes.
+
 Version 2020.07.20
 * pyi parser: support importing TypedDict from typing_extensions.
 
