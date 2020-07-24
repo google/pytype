@@ -579,6 +579,21 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
         pass
     """)
 
+  def test_type_parameter_count(self):
+    self.Check("""
+      from typing import Generic, List, TypeVar
+
+      T = TypeVar('T')
+      SomeAlias = List[T]
+
+      class Foo(Generic[T]):
+        def __init__(self, x: T, y: SomeAlias):
+          pass
+
+      def f(x: T) -> SomeAlias:
+        return [x]
+    """)
+
 
 class GenericFeatureTest(test_base.TargetPython3FeatureTest):
   """Tests for User-defined Generic Type."""
