@@ -209,6 +209,7 @@ class CanonicalOrderingVisitor(Visitor):
         parents=node.parents,
         methods=tuple(sorted(node.methods)),
         constants=tuple(sorted(node.constants)),
+        decorators=tuple(sorted(node.decorators)),
         classes=tuple(sorted(node.classes)),
         slots=tuple(sorted(node.slots)) if node.slots is not None else None,
         template=node.template)
@@ -481,6 +482,7 @@ class PrintVisitor(Visitor):
       slots = [self.INDENT + "__slots__ = [" + slots_str + "]"]
     else:
       slots = []
+    decorators = ["@" + d for d in node.decorators]
     if node.classes or node.methods or node.constants or slots:
       # We have multiple methods, and every method has multiple signatures
       # (i.e., the method string will have multiple lines). Combine this into
@@ -495,7 +497,8 @@ class PrintVisitor(Visitor):
       constants = []
       classes = []
       methods = []
-    return "\n".join(header + slots + classes + constants + methods) + "\n"
+    lines = decorators + header + slots + classes + constants + methods
+    return "\n".join(lines) + "\n"
 
   def VisitFunction(self, node):
     """Visit function, producing multi-line string (one for each signature)."""

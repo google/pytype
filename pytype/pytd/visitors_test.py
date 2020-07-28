@@ -596,7 +596,7 @@ class TestVisitors(parser_test_base.ParserTest):
                       lambda: ast4.Visit(visitors.VerifyContainers()))
 
   def test_clear_class_pointers(self):
-    cls = pytd.Class("foo", None, (), (), (), (), None, ())
+    cls = pytd.Class("foo", None, (), (), (), (), (), None, ())
     t = pytd.ClassType("foo", cls)
     t = t.Visit(visitors.ClearClassPointers())
     self.assertIsNone(t.cls)
@@ -778,13 +778,13 @@ class TestVisitors(parser_test_base.ParserTest):
   def test_verify_heterogeneous_tuple(self):
     # Error: does not inherit from Generic
     base = pytd.ClassType("tuple")
-    base.cls = pytd.Class("tuple", None, (), (), (), (), None, ())
+    base.cls = pytd.Class("tuple", None, (), (), (), (), (), None, ())
     t1 = pytd.TupleType(base, (pytd.NamedType("str"), pytd.NamedType("float")))
     self.assertRaises(visitors.ContainerError,
                       lambda: t1.Visit(visitors.VerifyContainers()))
     # Error: Generic[str, float]
     gen = pytd.ClassType("typing.Generic")
-    gen.cls = pytd.Class("typing.Generic", None, (), (), (), (), None, ())
+    gen.cls = pytd.Class("typing.Generic", None, (), (), (), (), (), None, ())
     t2 = pytd.TupleType(gen, (pytd.NamedType("str"), pytd.NamedType("float")))
     self.assertRaises(visitors.ContainerError,
                       lambda: t2.Visit(visitors.VerifyContainers()))
@@ -792,7 +792,8 @@ class TestVisitors(parser_test_base.ParserTest):
     param = pytd.TypeParameter("T")
     parent = pytd.GenericType(gen, (param,))
     base.cls = pytd.Class(
-        "tuple", None, (parent,), (), (), (), None, (pytd.TemplateItem(param),))
+        "tuple", None, (parent,), (), (), (), (), None,
+        (pytd.TemplateItem(param),))
     t3 = pytd.TupleType(base, (pytd.NamedType("str"), pytd.NamedType("float")))
     t3.Visit(visitors.VerifyContainers())
 

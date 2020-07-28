@@ -2548,6 +2548,7 @@ class PyTDClass(SimpleAbstractValue, mixin.Class):
         methods=tuple(self._member_map[m.name] for m in self.pytd_cls.methods),
         constants=self.pytd_cls.constants,
         classes=self.pytd_cls.classes,
+        decorators=self.pytd_cls.decorators,
         slots=self.pytd_cls.slots,
         template=self.pytd_cls.template)
 
@@ -4027,6 +4028,7 @@ class Unknown(AtomicAbstractValue):
         constants=tuple(pytd.Constant(name, Unknown._to_pytd(node, c))
                         for name, c in self.members.items()),
         classes=(),
+        decorators=(),
         slots=None,
         template=())
 

@@ -583,6 +583,7 @@ class CallTracer(vm.VirtualMachine):
           methods=tuple(self._call_traces_to_function(call_records)),
           constants=(),
           classes=(),
+          decorators=(),
           slots=None,
           template=(),
       ))
