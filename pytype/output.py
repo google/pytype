@@ -633,7 +633,6 @@ class Converter(utils.VirtualMachineWeakrefMixin):
                      methods=tuple(methods.values()),
                      constants=tuple(constants),
                      classes=(),
-                     decorators=(),
                      slots=v.slots,
                      template=())
     for base in missing_bases:

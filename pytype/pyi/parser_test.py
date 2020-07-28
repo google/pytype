@@ -2,7 +2,6 @@ import hashlib
 import os
 import re
 import textwrap
-import unittest
 
 from pytype import utils
 from pytype.pyi import parser
@@ -1162,13 +1161,6 @@ class FunctionTest(_ParserTestBase):
       class Foo: ...
     """, "class Foo: ...")
 
-  def test_decorated_class(self):
-    self.check("""
-      @dataclass
-      class Foo: ...
-    """)
-
-  @unittest.skip("Decorator work in progress b/159641684")
   def test_bad_decorated_class(self):
     self.check_error("""
       @classmethod

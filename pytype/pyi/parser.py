@@ -1067,7 +1067,6 @@ class _Parser(object):
                           parents=(class_parent,),
                           methods=tuple(methods),
                           constants=class_constants,
-                          decorators=(),
                           classes=(),
                           slots=tuple(n for n, _ in fields),
                           template=())
@@ -1101,9 +1100,10 @@ class _Parser(object):
       ParseError: if defs contains duplicate names (excluding multiple
           definitions of a function, which is allowed).
     """
-    # Drop the @type_check_only decorator from classes
-    decorators = [x for x in decorators if x != "type_check_only"]
-
+    unsupported_decorators = [d for d in decorators if d != "type_check_only"]
+    if unsupported_decorators:
+      raise ParseError("Unsupported class decorators: %s" % ", ".join(
+          unsupported_decorators))
     # Process parent_args, extracting parents and possibly a metaclass.
     parents = []
     metaclass = None
@@ -1210,7 +1210,6 @@ class _Parser(object):
                       methods=tuple(methods),
                       constants=tuple(constants),
                       classes=tuple(classes),
-                      decorators=tuple(decorators),
                       slots=slots,
                       template=())
 
