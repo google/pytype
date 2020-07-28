@@ -102,5 +102,17 @@ class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
     self.assertErrorRegexes(
         errors, {"e": r"Expected.*y: str.*Actual.*y: bytes"})
 
+  def test_custom_generic(self):
+    ty = self.Infer("""
+      from typing import AnyStr, Generic
+      class Foo(Generic[AnyStr]):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Generic, TypeVar
+      AnyStr = TypeVar('AnyStr', str, bytes)
+      class Foo(Generic[AnyStr]): ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
