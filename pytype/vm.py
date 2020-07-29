@@ -1287,11 +1287,13 @@ class VirtualMachine(object):
     """Same as store_local except for globals."""
     return self._store_value(state, name, value, local=False)
 
-  def _check_aliased_type_params(self, value):
+  def _check_for_aliased_type_params(self, value):
     for v in value.data:
       if isinstance(v, abstract.Union) and v.formal:
         self.errorlog.not_supported_yet(
             self.frames, "aliases of Unions with type parameters")
+        return True
+    return False
 
   def _remove_recursion(self, node, name, value):
     """Remove any recursion in the named value."""
@@ -1374,7 +1376,8 @@ class VirtualMachine(object):
     value = self._apply_annotation(
         state, op, name, orig_val, annotations_dict, check_types)
     value = self._remove_recursion(state.node, name, value)
-    self._check_aliased_type_params(value)
+    if self._check_for_aliased_type_params(value):
+      value = self.new_unsolvable(state.node)
     state = state.forward_cfg_node()
     state = self._store_value(state, name, value, local)
     self.trace_opcode(op, name, value)
