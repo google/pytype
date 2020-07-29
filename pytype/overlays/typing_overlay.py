@@ -636,7 +636,7 @@ class Generic(TypingContainer):
       inner = [item for item in inner
                if isinstance(item, abstract.TypeParameter)]
 
-    template = [item.full_name for item in inner]
+    template = [item.name for item in inner]
 
     if len(set(template)) != len(template):
       self.vm.errorlog.invalid_annotation(

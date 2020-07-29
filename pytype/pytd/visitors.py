@@ -351,6 +351,24 @@ class LookupBuiltins(Visitor):
       return t
 
 
+def MaybeSubstituteParameters(base_type, parameters=None):
+  """Substitutes parameters into base_type if the latter has a template."""
+  # Check if `base_type` is a generic type whose type parameters should be
+  # substituted by `parameters` (a "type macro").
+  template = pytd_utils.GetTypeParameters(base_type)
+  if not template:
+    return None
+  if parameters is None:
+    # TODO(rechen): Respect type parameters' bounds and constraints.
+    mapping = {t: pytd.AnythingType() for t in template}
+  elif len(template) != len(parameters):
+    raise ValueError("%s expected %d parameters, got %s" % (
+        pytd_utils.Print(base_type), len(template), len(parameters)))
+  else:
+    mapping = dict(zip(template, parameters))
+  return base_type.Visit(ReplaceTypeParameters(mapping))
+
+
 class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
   """Look up NamedType pointers using a symbol table."""
 
@@ -371,6 +389,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
     self.name = self_name
     self._in_constant = []
     self._alias_name = None
+    self._in_generic_type = []
     self._star_imports = set()
 
   def _ResolveUsingGetattr(self, module_name, module):
@@ -396,6 +415,12 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
   def LeaveAlias(self, _):
     assert self._alias_name
     self._alias_name = None
+
+  def EnterGenericType(self, _):
+    self._in_generic_type.append(True)
+
+  def LeaveGenericType(self, _):
+    self._in_generic_type.pop()
 
   def _LookupModuleRecursive(self, name):
     module_name, cls_prefix = name, ""
@@ -453,6 +478,10 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
       item = self._ResolveUsingGetattr(module_name, module)
       if item is None:
         raise KeyError("No %s in module %s" % (name, module_name))
+    if not self._in_generic_type and isinstance(item, pytd.Alias):
+      # If `item` contains type parameters and is not inside a GenericType, then
+      # we replace the parameters with Any.
+      item = MaybeSubstituteParameters(item.type) or item
     return pytd.ToType(item, allow_constants=not self._in_constant)
 
   def VisitClassType(self, t):
@@ -462,6 +491,14 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
       return t
     else:
       return new_type
+
+  def VisitGenericType(self, t):
+    if isinstance(t.base_type, (pytd.GenericType, pytd.UnionType)):
+      try:
+        t = MaybeSubstituteParameters(t.base_type, t.parameters) or t
+      except ValueError as e:
+        raise KeyError(str(e))
+    return t
 
   def _ModulePrefix(self):
     return self.name + "." if self.name else ""

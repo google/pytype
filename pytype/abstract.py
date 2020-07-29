@@ -1435,7 +1435,7 @@ class Union(AtomicAbstractValue, mixin.NestedAnnotation):
     assert options
     self.options = list(options)
     # TODO(rechen): Don't allow a mix of formal and non-formal types
-    self.formal = any(t.formal for t in options)
+    self.formal = any(t.formal for t in self.options)
     mixin.NestedAnnotation.init_mixin(self)
 
   def __repr__(self):

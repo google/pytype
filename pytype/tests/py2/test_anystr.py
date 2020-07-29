@@ -22,5 +22,17 @@ class AnyStrTest(test_base.TargetPython27FeatureTest):
         def f(x: AnyStr) -> AnyStr
       """)
 
+  def test_custom_generic(self):
+    ty = self.Infer("""
+      from typing import AnyStr, Generic
+      class Foo(Generic[AnyStr]):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Generic, TypeVar
+      AnyStr = TypeVar('AnyStr', bytes, unicode)
+      class Foo(Generic[AnyStr]): ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
