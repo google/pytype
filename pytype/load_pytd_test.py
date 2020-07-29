@@ -345,6 +345,66 @@ class ImportPathsTest(test_base.UnitTest):
       self.assertEqual("UserDict.UserDict", pytd_utils.Print(cls.parents[0]))
 
 
+class ImportTypeMacroTest(test_base.UnitTest):
+
+  def _import(self, a_pyi, b_pyi):
+    with file_utils.Tempdir() as d:
+      d.create_file("a.pyi", a_pyi)
+      d.create_file("b.pyi", b_pyi)
+      loader = load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
+      return loader.import_name("b")
+
+  def test_container(self):
+    ast = self._import("""
+      from typing import List, TypeVar
+      T = TypeVar('T')
+      Alias = List[T]
+    """, """
+      import a
+      Strings = a.Alias[str]
+    """)
+    self.assertEqual(
+        pytd_utils.Print(ast.Lookup("b.Strings").type), "List[str]")
+
+  def test_union(self):
+    ast = self._import("""
+      from typing import List, TypeVar, Union
+      T = TypeVar('T')
+      Alias = Union[T, List[T]]
+    """, """
+      import a
+      Strings = a.Alias[str]
+    """)
+    self.assertEqual(pytd_utils.Print(ast.Lookup("b.Strings").type),
+                     "Union[str, List[str]]")
+
+  def test_bad_parameterization(self):
+    with self.assertRaisesRegex(
+        load_pytd.BadDependencyError,
+        r"Union\[T, List\[T\]\] expected 1 parameters, got 2"):
+      self._import("""
+        from typing import List, TypeVar, Union
+        T = TypeVar('T')
+        Alias = Union[T, List[T]]
+      """, """
+        import a
+        Strings = a.Alias[str, str]
+      """)
+
+  def test_no_parameters(self):
+    ast = self._import("""
+      from typing import List, TypeVar
+      T = TypeVar('T')
+      Alias = List[T]
+    """, """
+      import a
+      def f(x: a.Alias): ...
+    """)
+    self.assertEqual(
+        pytd_utils.Print(ast.Lookup("b.f").signatures[0].params[0].type),
+        "List[Any]")
+
+
 _Module = collections.namedtuple("_", ["module_name", "file_name"])
 
 

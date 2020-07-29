@@ -243,10 +243,13 @@ class CollectTypeParameters(Visitor):
 
   def __init__(self):
     super(CollectTypeParameters, self).__init__()
-    self.params = set()
+    self._seen = set()
+    self.params = []
 
   def EnterTypeParameter(self, p):
-    self.params.add(p)
+    if p.name not in self._seen:
+      self.params.append(p)
+      self._seen.add(p.name)
 
 
 class ExtractSuperClasses(Visitor):

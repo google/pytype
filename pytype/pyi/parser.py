@@ -152,14 +152,9 @@ class _InsertTypeParameters(visitors.Visitor):
   def __init__(self, type_params):
     super(_InsertTypeParameters, self).__init__()
     self.type_params = {p.name: p for p in type_params}
-    self.inserted = []
-    self._seen = set()
 
   def VisitNamedType(self, node):
     if node.name in self.type_params:
-      if node.name not in self._seen:
-        self.inserted.append(node.name)
-        self._seen.add(node.name)
       return self.type_params[node.name]
     else:
       return node
@@ -765,19 +760,19 @@ class _Parser(object):
       full_name = self._module_path_map.get(module, module) + dot + tail
       base_type = pytd.NamedType(full_name)
     elif not isinstance(base_type, pytd.NamedType):
-      # If base_type is not a simple name, check if it is a generic type whose
-      # type parameters should be substituted by `parameters` (a "type macro").
       # We assume that all type parameters have been defined. Since pytype
       # orders type parameters to appear before classes and functions, this
       # assumption is generally safe. AnyStr is special-cased because imported
       # type parameters aren't recognized.
-      # TODO(rechen): Respect type parameters' bounds and constraints.
       type_params = self._type_params + [pytd.TypeParameter("typing.AnyStr")]
-      inserter = _InsertTypeParameters(type_params)
-      # Records base_type's template without actually inserting type parameters.
-      base_type.Visit(inserter)
-      if inserter.inserted:
-        return self._type_macro(base_type, inserter.inserted, parameters)
+      base_type = base_type.Visit(_InsertTypeParameters(type_params))
+      try:
+        resolved_type = visitors.MaybeSubstituteParameters(
+            base_type, parameters)
+      except ValueError as e:
+        raise ParseError(str(e))
+      if resolved_type:
+        return resolved_type
     if parameters is not None:
       if (len(parameters) > 1 and isinstance(base_type, pytd.NamedType) and
           base_type.name == "typing.Optional"):
@@ -788,16 +783,6 @@ class _Parser(object):
           base_type.name in _TYPING_SETS):
         raise ParseError("Missing options to %s" % base_type.name)
       return base_type
-
-  def _type_macro(self, base_type, template, parameters):
-    if parameters is None:
-      mapping = {t: pytd.AnythingType() for t in template}
-    elif len(template) != len(parameters):
-      raise ParseError("%s expected %d parameters, got %s" % (
-          pytd_utils.Print(base_type), len(template), len(parameters)))
-    else:
-      mapping = dict(zip(template, parameters))
-    return base_type.Visit(visitors.ReplaceTypes(mapping))
 
   def _matches_full_name(self, t, full_name):
     """Whether t.name matches full_name in format {module}.{member}."""
