@@ -419,16 +419,6 @@ class TypeVarTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"Recursive.*X"})
 
-  def test_use_unsupported_typevar(self):
-    # Test that we don't crash when using this pattern (b/162274390)
-    # Note that it throws four distinct errors, which is less than ideal.
-    self.CheckWithErrors("""
-      from typing import List, TypeVar, Union
-      T = TypeVar("T")
-      Tree = Union[T, List['Tree']]  # not-supported-yet  # not-supported-yet
-      def f(x: Tree[int]): ...  # invalid-typevar  # unsupported-operands
-    """)
-
   def test_type_of_typevar(self):
     self.Check("""
       from typing import Sequence, TypeVar
