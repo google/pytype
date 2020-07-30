@@ -1,3 +1,9 @@
+Version 2020.07.30
+* Allow typing.AnyStr to be used to parameterize custom generic classes.
+* FIX: We were occasionally reusing an exhausted generator in Union constructor.
+* Support imported type macros in pyi files.
+* When raising not-supported-yet for Alias = Union[T, ...] set the type to Any.
+
 Version 2020.07.24
 * pyi parser: allow aliases inside a class to values outside the class.
 * Copy annotations instead of modifying them when adding a scope.
