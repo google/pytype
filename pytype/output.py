@@ -261,8 +261,16 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         log.info("Using ? for %s", v.name)
         return pytd.AnythingType()
     elif isinstance(v, abstract.Union):
-      return pytd.UnionType(tuple(self.value_to_pytd_type(node, o, seen, view)
-                                  for o in v.options))
+      opts = []
+      for o in v.options:
+        # NOTE: Guarding printing of type parameters behind _detailed until
+        # round-tripping is working properly.
+        if self._detailed and isinstance(o, abstract.TypeParameter):
+          opt = self._typeparam_to_def(node, o, o.name)
+        else:
+          opt = self.value_to_pytd_type(node, o, seen, view)
+        opts.append(opt)
+      return pytd.UnionType(tuple(opts))
     elif isinstance(v, special_builtins.SuperInstance):
       return pytd.NamedType("__builtin__.super")
     elif isinstance(v, abstract.TypeParameter):

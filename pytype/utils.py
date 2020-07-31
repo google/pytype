@@ -322,6 +322,17 @@ def invert_dict(d):
   return inverted
 
 
+def unique_list(xs):
+  """Return a unique list from an iterable, preserving order."""
+  seen = set()
+  out = []
+  for x in xs:
+    if x not in seen:
+      seen.add(x)
+      out.append(x)
+  return out
+
+
 class DynamicVar(object):
   """A dynamically scoped variable.
 

@@ -413,12 +413,38 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": "Expected.*T.*Actual.*TypeVar"})
 
+  def test_typevar_in_union_alias(self):
+    ty = self.Infer("""
+      from typing import Dict, List, TypeVar, Union
+      T = TypeVar("T")
+      U = TypeVar("U")
+      Foo = Union[T, List[T], Dict[T, List[U]], complex]
+      def f(x: Foo[int, str]): ...
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict, List, TypeVar, Union, Any
+      T = TypeVar("T")
+      U = TypeVar("U")
+      Foo: Any
+      def f(x: Union[Dict[int, List[str]], List[int], complex, int]) -> None: ...
+    """)
+
+  def test_typevar_in_union_alias_error(self):
+    err = self.CheckWithErrors("""
+      from typing import Dict, List, TypeVar, Union
+      T = TypeVar("T")
+      U = TypeVar("U")
+      Foo = Union[T, List[T], Dict[T, List[U]], complex]
+      def f(x: Foo[int]): ...  # invalid-annotation[e]
+    """)
+    self.assertErrorRegexes(err, {"e": "Union.*2.*instantiated.*1"})
+
   def test_use_unsupported_typevar(self):
     # Test that we don't crash when using this pattern (b/162274390)
     self.CheckWithErrors("""
       from typing import List, TypeVar, Union
       T = TypeVar("T")
-      Tree = Union[T, List['Tree']]  # not-supported-yet  # not-supported-yet
+      Tree = Union[T, List['Tree']]  # not-supported-yet
       def f(x: Tree[int]): ... # no error since Tree is set to Any
     """)
 

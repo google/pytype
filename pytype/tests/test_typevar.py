@@ -402,13 +402,18 @@ class TypeVarTest(test_base.TargetIndependentTest):
     """)
 
   def test_typevar_in_alias(self):
-    err = self.CheckWithErrors("""
+    ty = self.Infer("""
       from typing import TypeVar, Union
       T = TypeVar("T", int, float)
-      Num = Union[T, complex]  # not-supported-yet[e]
+      Num = Union[T, complex]
+      x = 10  # type: Num[int]
     """)
-    self.assertErrorRegexes(
-        err, {"e": "aliases of Unions with type parameters"})
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, TypeVar, Union
+      T = TypeVar("T", int, float)
+      Num: Any
+      x: Union[int, complex] = ...
+    """)
 
   def test_recursive_alias(self):
     errors = self.CheckWithErrors("""

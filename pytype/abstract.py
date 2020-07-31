@@ -1423,7 +1423,7 @@ class LazyConcreteDict(SimpleAbstractValue, mixin.PythonConstant):
     return not bool(self._member_map)
 
 
-class Union(AtomicAbstractValue, mixin.NestedAnnotation):
+class Union(AtomicAbstractValue, mixin.NestedAnnotation, mixin.HasSlots):
   """A list of types. Used for parameter matching.
 
   Attributes:
@@ -1437,6 +1437,8 @@ class Union(AtomicAbstractValue, mixin.NestedAnnotation):
     # TODO(rechen): Don't allow a mix of formal and non-formal types
     self.formal = any(t.formal for t in self.options)
     mixin.NestedAnnotation.init_mixin(self)
+    mixin.HasSlots.init_mixin(self)
+    self.set_slot("__getitem__", self.getitem_slot)
 
   def __repr__(self):
     return "%s[%s]" % (self.name, ", ".join(repr(o) for o in self.options))
@@ -1454,6 +1456,27 @@ class Union(AtomicAbstractValue, mixin.NestedAnnotation):
 
   def _unique_parameters(self):
     return [o.to_variable(self.vm.root_cfg_node) for o in self.options]
+
+  def _get_type_params(self):
+    params = self.vm.annotations_util.get_type_parameters(self)
+    params = [x.name for x in params]
+    return utils.unique_list(params)
+
+  def getitem_slot(self, node, slice_var):
+    """Custom __getitem__ implementation."""
+    slice_content = abstract_utils.maybe_extract_tuple(slice_var)
+    params = self._get_type_params()
+    # Check that we are instantiating all the unbound type parameters
+    if len(params) != len(slice_content):
+      details = ("Union has %d type parameters but was instantiated with %d" %
+                 (len(params), len(slice_content)))
+      self.vm.errorlog.invalid_annotation(
+          self.vm.frames, self, details=details)
+      return node, self.vm.new_unsolvable(node)
+    concrete = [x.data[0].instantiate(node) for x in slice_content]
+    substs = [dict(zip(params, concrete))]
+    new = self.vm.annotations_util.sub_one_annotation(node, self, substs)
+    return node, new.to_variable(node)
 
   def instantiate(self, node, container=None):
     var = self.vm.program.NewVariable()
