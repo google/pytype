@@ -294,5 +294,18 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"Annotation: str.*Assignment: int"})
 
+  def test_nested_namedtuple(self):
+    # Guard against a crash when hitting max depth (b/162619036)
+    self.assertNoCrash(self.Check, """
+      from typing import NamedTuple
+
+      def foo() -> None:
+        class A(NamedTuple):
+          x: int
+
+      def bar():
+        foo()
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
