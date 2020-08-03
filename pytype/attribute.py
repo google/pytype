@@ -58,6 +58,9 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     elif isinstance(obj, abstract.SimpleAbstractValue):
       return self._get_instance_attribute(node, obj, name, valself)
     elif isinstance(obj, abstract.Union):
+      if name == "__getitem__":
+        # __getitem__ is implemented in abstract.Union.getitem_slot.
+        return node, self.vm.new_unsolvable(node)
       nodes = []
       ret = self.vm.program.NewVariable()
       for o in obj.options:

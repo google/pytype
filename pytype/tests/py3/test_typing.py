@@ -560,6 +560,41 @@ class TypingTest(test_base.TargetPython3BasicTest):
         return x - {0}
     """)
 
+  def test_union_of_classes(self):
+    ty = self.Infer("""
+      from typing import Type, Union
+
+      class Foo(object):
+        def __getitem__(self, x) -> int:
+          return 0
+      class Bar(object):
+        def __getitem__(self, x) -> str:
+          return ''
+
+      def f(x: Union[Type[Foo], Type[Bar]]):
+        return x.__getitem__
+      def g(x: Type[Union[Foo, Bar]]):
+        return x.__getitem__
+    """)
+    # The inferred return type of `g` is technically incorrect: it is inferred
+    # from the type of abstract.Union.getitem_slot, which is a NativeFunction,
+    # so its type defaults to a plain Callable. We should instead look up
+    # Foo.__getitem__ and Bar.__getitem__ as we do for `f`, but it is currently
+    # not possible to distinguish between using Union.getitem_slot and accessing
+    # the actual __getitem__ method on a union's options. Inferring `Callable`
+    # should generally be safe, since __getitem__ is a method by convention.
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Callable, Type, Union
+
+      class Foo:
+        def __getitem__(self, x) -> int: ...
+      class Bar:
+        def __getitem__(self, x) -> str: ...
+
+      def f(x: Type[Union[Foo, Bar]]) -> Callable[[Any, Any], Union[int, str]]: ...
+      def g(x: Type[Union[Foo, Bar]]) -> Callable: ...
+    """)
+
 
 class CounterTest(test_base.TargetPython3BasicTest):
   """Tests for typing.Counter."""
