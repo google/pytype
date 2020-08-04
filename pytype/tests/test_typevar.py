@@ -402,13 +402,18 @@ class TypeVarTest(test_base.TargetIndependentTest):
     """)
 
   def test_typevar_in_alias(self):
-    err = self.CheckWithErrors("""
+    ty = self.Infer("""
       from typing import TypeVar, Union
       T = TypeVar("T", int, float)
-      Num = Union[T, complex]  # not-supported-yet[e]
+      Num = Union[T, complex]
+      x = 10  # type: Num[int]
     """)
-    self.assertErrorRegexes(
-        err, {"e": "aliases of Unions with type parameters"})
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, TypeVar, Union
+      T = TypeVar("T", int, float)
+      Num: Any
+      x: Union[int, complex] = ...
+    """)
 
   def test_recursive_alias(self):
     errors = self.CheckWithErrors("""
@@ -438,6 +443,26 @@ class TypeVarTest(test_base.TargetIndependentTest):
         return f(type(x))  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(errors, {"e": "Expected.*int.*Actual.*Sequence"})
+
+  def test_typevar_in_constant(self):
+    ty = self.Infer("""
+      from typing import TypeVar
+      T = TypeVar('T')
+      class Foo(object):
+        def __init__(self):
+          self.f1 = self.f2
+        def f2(self, x):
+          # type: (T) -> T
+          return x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable, TypeVar
+      T = TypeVar('T')
+      class Foo:
+        f1: Callable[[T], T]
+        def __init__(self) -> None: ...
+        def f2(self, x: T) -> T: ...
+    """)
 
 
 test_base.main(globals(), __name__ == "__main__")

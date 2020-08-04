@@ -512,6 +512,13 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
     return self.namedtuple.call(node, None, args)
 
   def make_class(self, node, f_locals):
+    # If BuildClass.call() hits max depth, f_locals will be [unsolvable]
+    # Since we don't support defining NamedTuple subclasses in a nested scope
+    # anyway, we can just return unsolvable here to prevent a crash, and let the
+    # invalid namedtuple error get raised later.
+    if f_locals.data[0].isinstance_Unsolvable():
+      return node, self.vm.new_unsolvable(node)
+
     f_locals = abstract_utils.get_atomic_python_constant(f_locals)
 
     # retrieve __qualname__ to get the name of class

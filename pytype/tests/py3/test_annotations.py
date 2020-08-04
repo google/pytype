@@ -1081,6 +1081,18 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
           X = List['int']
     """)
 
+  def test_nested_forward_ref_to_import(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class Foo: ...
+      """)
+      self.Check("""
+        import foo
+        from typing import Tuple
+        def f(x: Tuple[str, 'foo.Foo']):
+          pass
+      """, pythonpath=[d.path])
+
 
 class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for PEP 484 style inline annotations."""

@@ -1274,6 +1274,7 @@ class AdjustTypeParameters(Visitor):
     self.function_name = None
     self.constant_name = None
     self.all_typeparams = set()
+    self.generic_level = 0
 
   def _GetTemplateItems(self, param):
     """Get a list of template items from a parameter."""
@@ -1396,6 +1397,30 @@ class AdjustTypeParameters(Visitor):
   def LeaveConstant(self, unused_node):
     self.constant_name = None
 
+  def EnterGenericType(self, unused_node):
+    self.generic_level += 1
+
+  def LeaveGenericType(self, unused_node):
+    self.generic_level -= 1
+
+  def EnterCallableType(self, node):
+    self.EnterGenericType(node)
+
+  def LeaveCallableType(self, node):
+    self.LeaveGenericType(node)
+
+  def EnterTupleType(self, node):
+    self.EnterGenericType(node)
+
+  def LeaveTupleType(self, node):
+    self.LeaveGenericType(node)
+
+  def EnterUnionType(self, node):
+    self.EnterGenericType(node)
+
+  def LeaveUnionType(self, node):
+    self.LeaveGenericType(node)
+
   def _GetFullName(self, name):
     return ".".join(n for n in [self.class_name, name] if n)
 
@@ -1404,10 +1429,13 @@ class AdjustTypeParameters(Visitor):
       return self.class_name
     return self._GetFullName(self.function_name)
 
+  def _IsBoundTypeParam(self, node):
+    in_class = self.class_name and node.name in self.class_typeparams
+    return in_class or self.generic_level
+
   def VisitTypeParameter(self, node):
     """Add scopes to type parameters, track unbound params."""
-    if self.constant_name and (not self.class_name or
-                               node.name not in self.class_typeparams):
+    if self.constant_name and not self._IsBoundTypeParam(node):
       raise ContainerError("Unbound type parameter %s in %s" % (
           node.name, self._GetFullName(self.constant_name)))
     scope = self._GetScope(node.name)
