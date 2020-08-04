@@ -444,5 +444,25 @@ class TypeVarTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": "Expected.*int.*Actual.*Sequence"})
 
+  def test_typevar_in_constant(self):
+    ty = self.Infer("""
+      from typing import TypeVar
+      T = TypeVar('T')
+      class Foo(object):
+        def __init__(self):
+          self.f1 = self.f2
+        def f2(self, x):
+          # type: (T) -> T
+          return x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable, TypeVar
+      T = TypeVar('T')
+      class Foo:
+        f1: Callable[[T], T]
+        def __init__(self) -> None: ...
+        def f2(self, x: T) -> T: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

@@ -1397,17 +1397,29 @@ class AdjustTypeParameters(Visitor):
   def LeaveConstant(self, unused_node):
     self.constant_name = None
 
-  def EnterUnionType(self, unused_node):
-    self.generic_level += 1
-
-  def LeaveUnionType(self, unused_node):
-    self.generic_level -= 1
-
   def EnterGenericType(self, unused_node):
     self.generic_level += 1
 
   def LeaveGenericType(self, unused_node):
     self.generic_level -= 1
+
+  def EnterCallableType(self, node):
+    self.EnterGenericType(node)
+
+  def LeaveCallableType(self, node):
+    self.LeaveGenericType(node)
+
+  def EnterTupleType(self, node):
+    self.EnterGenericType(node)
+
+  def LeaveTupleType(self, node):
+    self.LeaveGenericType(node)
+
+  def EnterUnionType(self, node):
+    self.EnterGenericType(node)
+
+  def LeaveUnionType(self, node):
+    self.LeaveGenericType(node)
 
   def _GetFullName(self, name):
     return ".".join(n for n in [self.class_name, name] if n)
