@@ -17,8 +17,8 @@ The process is as follows:
    code in the new version.
 1. Run the [regression tests](#regression_tests) and fix failures.
 1. [Update setup.cfg](#github_release) to declare support for the new version.
-   Even though any new features have not yet been implemented, we can start
-   offering type-checking for backwards-compatible code.
+   We can start offering type-checking for backwards-compatible code, even
+   before any new features have been implemented.
 1. Implement [new features](#new_features).
 
 ### minimal changes
