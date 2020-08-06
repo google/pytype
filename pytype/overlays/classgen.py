@@ -50,13 +50,15 @@ class Attribute(object):
     name: field name
     typ: field python type
     init: Whether the field should be included in the generated __init__
+    kw_only: Whether the field is kw_only in the generated __init__
     default: Default value
   """
 
-  def __init__(self, name, typ, init, default):
+  def __init__(self, name, typ, init, kw_only, default):
     self.name = name
     self.typ = typ
     self.init = init
+    self.kw_only = kw_only
     self.default = default
 
   def __repr__(self):
@@ -103,27 +105,29 @@ class Decorator(abstract.PyTDFunction):
     return attr.name
 
   def make_init(self, node, cls, attrs):
-    attr_params = []
+    pos_params = []
+    kwonly_params = []
+    all_kwonly = self.args[cls]["kw_only"]
     for attr in attrs:
-      if attr.init:
-        # call self.init_name in case the name differs from the field name -
-        # e.g. attrs removes leading underscores from attrib names when
-        # generating kwargs for __init__.
-        attr_params.append(
-            Param(name=self.init_name(attr),
-                  typ=attr.typ,
-                  default=attr.default))
+      if not attr.init:
+        continue
+      # call self.init_name in case the name differs from the field name -
+      # e.g. attrs removes leading underscores from attrib names when
+      # generating kwargs for __init__.
+      param = Param(
+          name=self.init_name(attr),
+          typ=attr.typ,
+          default=attr.default)
 
-    # The kw_only arg is ignored in python2; using it is not an error.
-    if self.args[cls]["kw_only"] and self.vm.PY3:
-      params = []
-      kwonly_params = attr_params
-    else:
-      params = attr_params
-      kwonly_params = []
+      # The kw_only arg is ignored in python2; using it is not an error.
+      # kw_only=False in a field does not override kw_only=True in the class.
+      if self.vm.PY3 and (all_kwonly or attr.kw_only):
+        kwonly_params.append(param)
+      else:
+        pos_params.append(param)
 
-    return overlay_utils.make_method(self.vm, node, "__init__", params,
-                                     kwonly_params)
+    return overlay_utils.make_method(
+        self.vm, node, "__init__", pos_params, kwonly_params)
 
   def get_base_class_attrs(self, cls, cls_attrs, metadata_key):
     # Traverse the MRO and collect base class attributes. We only add an

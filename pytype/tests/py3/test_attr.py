@@ -160,6 +160,25 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
     """)
     self.assertErrorRegexes(errors, {"e": "'int or str' for v"})
 
+  def test_kw_only(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s(kw_only=False)
+      class Foo(object):
+        x = attr.ib(default=42)
+        y = attr.ib(type=int, kw_only=True)
+        z = attr.ib(type=str, default="hello")
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      class Foo(object):
+        x: int
+        y: int
+        z: str
+        def __init__(self, x: int = ..., z: str = ..., *, y: int) -> None: ...
+    """)
+
 
 class TestAttrs(test_base.TargetPython3FeatureTest):
   """Tests for attr.s."""

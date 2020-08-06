@@ -58,29 +58,33 @@ class Attrs(classgen.Decorator):
     for name, local in ordered_locals.items():
       typ, orig = local.get_type(node, name), local.orig
       if is_attrib(orig):
-        if typ and orig.data[0].has_type:
+        attrib = orig.data[0]
+        if typ and attrib.has_type:
           # We cannot have both a type annotation and a type argument.
           self.vm.errorlog.invalid_annotation(self.vm.frames, typ)
           attr = Attribute(
               name=name,
               typ=self.vm.convert.unsolvable,
-              init=orig.data[0].init,
-              default=orig.data[0].default)
+              init=attrib.init,
+              kw_only=attrib.kw_only,
+              default=attrib.default)
         elif not typ:
           # Replace the attrib in the class dict with its type.
           attr = Attribute(
               name=name,
-              typ=orig.data[0].typ,
-              init=orig.data[0].init,
-              default=orig.data[0].default)
+              typ=attrib.typ,
+              init=attrib.init,
+              kw_only=attrib.kw_only,
+              default=attrib.default)
           cls.members[name] = classgen.instantiate(node, name, attr.typ)
         else:
           # cls.members[name] has already been set via a typecomment
           attr = Attribute(
               name=name,
               typ=typ,
-              init=orig.data[0].init,
-              default=orig.data[0].default)
+              init=attrib.init,
+              kw_only=attrib.kw_only,
+              default=attrib.default)
         self.vm.check_annotation_type_mismatch(
             node, attr.name, attr.typ, attr.default, local.stack,
             allow_none=True)
@@ -89,7 +93,8 @@ class Attrs(classgen.Decorator):
         if not match_classvar(typ):
           self.vm.check_annotation_type_mismatch(
               node, name, typ, orig, local.stack, allow_none=True)
-          attr = Attribute(name=name, typ=typ, init=True, default=orig)
+          attr = Attribute(
+              name=name, typ=typ, init=True, kw_only=False, default=orig)
           if not orig:
             cls.members[name] = classgen.instantiate(node, name, typ)
           own_attrs.append(attr)
@@ -108,12 +113,13 @@ class Attrs(classgen.Decorator):
 class AttribInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
   """Return value of an attr.ib() call."""
 
-  def __init__(self, vm, typ, has_type, init, default):
+  def __init__(self, vm, typ, has_type, init, kw_only, default):
     super(AttribInstance, self).__init__("attrib", vm)
     mixin.HasSlots.init_mixin(self)
     self.typ = typ
     self.has_type = has_type
     self.init = init
+    self.kw_only = kw_only
     self.default = default
     # TODO(rechen): attr.ib() returns an instance of attr._make._CountingAttr.
     self.cls = vm.convert.unsolvable
@@ -166,6 +172,7 @@ class Attrib(classgen.FieldConstructor):
     node, default_var = self._get_default_var(node, args)
     type_var = args.namedargs.get("type")
     init = self.get_kwarg(args, "init", True)
+    kw_only = self.get_kwarg(args, "kw_only", False)
     has_type = type_var is not None
     if type_var:
       typ = self.vm.annotations_util.extract_annotation(
@@ -174,8 +181,8 @@ class Attrib(classgen.FieldConstructor):
       typ = get_type_from_default(default_var, self.vm)
     else:
       typ = self.vm.convert.unsolvable
-    typ = AttribInstance(self.vm, typ, has_type, init,
-                         default_var).to_variable(node)
+    typ = AttribInstance(
+        self.vm, typ, has_type, init, kw_only, default_var).to_variable(node)
     return node, typ
 
   def _get_default_var(self, node, args):
