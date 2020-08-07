@@ -1,15 +1,15 @@
-# Directives and Annotations
+# Directives and annotations
 
 <!--*
 freshness: { owner: 'mdemello' reviewed: '2020-08-04' }
 *-->
 
 <!--ts-->
-   * [Directives and Annotations](#directives-and-annotations)
+   * [Directives and annotations](#directives-and-annotations)
       * [Overview](#overview)
       * [Director](#director)
 
-<!-- Added by: mdemello, at: 2020-08-04T17:24-07:00 -->
+<!-- Added by: rechen, at: 2020-08-07T12:38-07:00 -->
 
 <!--te-->
 

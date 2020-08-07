@@ -1,16 +1,16 @@
-# Abstract Values
+# Abstract values
 
 <!--*
 freshness: { owner: 'mdemello' reviewed: '2020-07-09' }
 *-->
 
 <!--ts-->
-   * [Abstract Values](#abstract-values)
+   * [Abstract values](#abstract-values)
       * [Objects, Types and Values](#objects-types-and-values)
       * [Abstract Values](#abstract-values-1)
       * [Type Information](#type-information)
 
-<!-- Added by: mdemello, at: 2020-08-04T17:24-07:00 -->
+<!-- Added by: rechen, at: 2020-08-07T12:38-07:00 -->
 
 <!--te-->
 
