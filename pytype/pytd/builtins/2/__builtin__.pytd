@@ -244,8 +244,8 @@ class str(basestring, Sequence[str]):
     def isspace(self) -> bool
     def istitle(self) -> bool
     def isupper(self) -> bool
-    def join(self, iterable: Iterable[nothing]) -> str
     def join(self, iterable: Iterable[str]) -> str
+    def join(self, iterable: Iterable[nothing]) -> str
     def join(self, iterable: Iterable[unicode]) -> unicode
     def ljust(self, width: int, ...) -> str
     def lower(self) -> str
