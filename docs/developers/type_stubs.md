@@ -9,7 +9,7 @@
       * [Stub generation](#stub-generation)
       * [Pickling](#pickling)
 
-<!-- Added by: rechen, at: 2020-08-08T00:28-07:00 -->
+<!-- Added by: mdemello, at: 2020-08-10T13:15-07:00 -->
 
 <!--te-->
 

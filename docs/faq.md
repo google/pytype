@@ -15,7 +15,7 @@
       * [How do I disable all pytype checks for a particular import?](#how-do-i-disable-all-pytype-checks-for-a-particular-import)
       * [How do I write code that is seen by pytype but ignored at runtime?](#how-do-i-write-code-that-is-seen-by-pytype-but-ignored-at-runtime)
 
-<!-- Added by: mdemello, at: 2020-08-04T17:24-07:00 -->
+<!-- Added by: mdemello, at: 2020-08-10T13:15-07:00 -->
 
 <!--te-->
 
