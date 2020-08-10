@@ -93,7 +93,8 @@ class Dataclass(classgen.Decorator):
         self.vm.check_annotation_type_mismatch(
             node, name, typ, orig, local.stack, allow_none=False)
 
-      attr = classgen.Attribute(name=name, typ=typ, init=init, default=orig)
+      attr = classgen.Attribute(
+          name=name, typ=typ, init=init, kw_only=False, default=orig)
       own_attrs.append(attr)
 
     base_attrs = self.get_base_class_attrs(
