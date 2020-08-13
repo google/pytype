@@ -564,6 +564,8 @@ def MergeBaseClass(cls, base):
   class_names = [c.name for c in cls.classes]
   classes = cls.classes + tuple(c for c in base.classes
                                 if c.name not in class_names)
+  # Keep decorators from the base class only if the derived class has none
+  decorators = cls.decorators or base.decorators
   if cls.slots:
     slots = cls.slots + tuple(s for s in base.slots or () if s not in cls.slots)
   else:
@@ -574,5 +576,6 @@ def MergeBaseClass(cls, base):
                     methods=methods,
                     constants=constants,
                     classes=classes,
+                    decorators=decorators,
                     slots=slots,
                     template=cls.template or base.template)
