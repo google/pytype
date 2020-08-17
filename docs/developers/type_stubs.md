@@ -9,7 +9,7 @@
       * [Stub generation](#stub-generation)
       * [Pickling](#pickling)
 
-<!-- Added by: rechen, at: 2020-08-08T00:28-07:00 -->
+<!-- Added by: rechen, at: 2020-08-14T17:30-07:00 -->
 
 <!--te-->
 
@@ -117,15 +117,69 @@ attributes may be other namedtuples.
 
 ## AST manipulation
 
+AST nodes are manipulated via a visitor interface. A visitor has `Enter` and
+`Visit` methods for pre- and post-order traversal of the tree, as well as
+`Leave` methods for cleanup (more detail [here][node._VisitNode]). For example,
+`pytype.pytd.pytd_visitors.PrintVisitor`, which produces a string representation
+of an AST, contains the following (simplified) logic for visiting a class:
+
+```python
+def VisitClass(self, node):
+  parents_str = "(" + ", ".join(node.parents) + ")"
+  header = ["class " + node.name + parents_str + ":"]
+  method_lines = sum((m.splitlines() for m in node.methods), [])
+  methods = ["  " + m for m in method_lines]
+  return "\n".join(header + methods) + "\n"
+```
+
+Nodes of type `pytype.pytd.pytd.Class` are passed to this method, which returns
+a string representation of its input. Note that, because the class's children
+have already been visited, they are strings by the time `VisitClass` runs.
+
 ## Stub generation
 
+When pytype finishes analyzing a module that another module depends on, it
+outputs a type stub for the former that the latter will use to resolve imports.
+The [`pytype.output`][pytype.output] module is responsible for converting the
+[abstract values][abstract-values] produced by pytype's shadow bytecode
+interpreter into AST nodes.
+
+NOTE: Conversely, [`pytype.convert`][pytype.convert] converts AST nodes into
+abstract values.
+
+The `output` module contains two core methods: `value_to_pytd_def`, which
+converts an object to its definition (for example, `InterpreterClass(Foo)` to
+`class Foo: ...`); and `value_to_pytd_type`, which converts to the type
+(`InterpreterClass(Foo)` to `Type[Foo]`). For convenience, these methods can be
+accessed as `to_pytd_def` and `to_type`, respectively, on abstract values.
+
 ## Pickling
+
+For improved performance, pytype will read and write pickled pyi files instead
+of plaintext when run with:
+
+```shell
+--pickle-output --use-pickled-files --precompiled-builtins
+```
+
+The [`pytype.pytd.pytd_utils.{Load,Save}Pickle`][pickle-utils] methods can be
+used to debug pickles.
+
+[abstract-values]: abstract_values.md
 
 [importlab]: https://github.com/google/importlab
 
 [load_pytd.Loader]: https://github.com/google/pytype/blob/2d8c8960ce8621c9c3d883d44eb3fc219355bd2b/pytype/load_pytd.py#L112
 
+[node._VisitNode]: https://github.com/google/pytype/blob/0206bf70c0ebc6e2ab3db12e35045aa05ff0ae02/pytype/pytd/parse/node.py#L263
+
+[pickle-utils]: https://github.com/google/pytype/blob/0206bf70c0ebc6e2ab3db12e35045aa05ff0ae02/pytype/pytd/pytd_utils.py#L445-L475
+
 [pytd]: https://github.com/google/pytype/tree/master/pytype/pytd
+
+[pytype.convert]: https://github.com/google/pytype/blob/master/pytype/convert.py
+
+[pytype.output]: https://github.com/google/pytype/blob/master/pytype/output.py
 
 [pytype.pyi]: https://github.com/google/pytype/tree/master/pytype/pyi
 

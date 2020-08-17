@@ -244,8 +244,8 @@ class str(Sequence[str], Hashable):
     def isspace(self) -> bool
     def istitle(self) -> bool
     def isupper(self) -> bool
-    def join(self, iterable: Iterable[nothing]) -> str
     def join(self, iterable: Iterable[str]) -> str
+    def join(self, iterable: Iterable[nothing]) -> str
     def ljust(self, width: int, fillchar: str = ...) -> str
     def lower(self) -> str
     def lstrip(self, chars: Optional[str] = ...) -> str

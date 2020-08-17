@@ -1046,6 +1046,26 @@ class FunctionTest(_ParserTestBase):
       def f(x: int) -> None: ...
     """)
 
+  def test_typeignore_alias(self):
+    self.check("""
+      class Foo:
+          def f(self) -> None: ...
+          g = f  # type: ignore
+    """, """
+      class Foo:
+          def f(self) -> None: ...
+          def g(self) -> None: ...
+    """)
+
+  def test_typeignore_slots(self):
+    self.check("""
+      class Foo:
+          __slots__ = ["a", "b"]  # type: ignore
+    """, """
+      class Foo:
+          __slots__ = ["a", "b"]
+    """)
+
   def test_decorators(self):
     # These tests are a bit questionable because most of the decorators only
     # make sense for methods of classes.  But this at least gives us some
@@ -1161,6 +1181,13 @@ class FunctionTest(_ParserTestBase):
       class Foo: ...
     """, "class Foo: ...")
 
+  def test_decorated_class(self):
+    self.check("""
+      @dataclass
+      class Foo: ...
+    """)
+
+  @unittest.skip("Decorator work in progress b/159641684")
   def test_bad_decorated_class(self):
     self.check_error("""
       @classmethod

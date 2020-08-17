@@ -368,5 +368,10 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       def g() -> int: ...
     """)
 
+  def test_str_join_error(self):
+    errors = self.CheckWithErrors("', '.join([1, 2, 3])  # wrong-arg-types[e]")
+    self.assertErrorRegexes(
+        errors, {"e": r"Expected.*Iterable\[str\].*Actual.*List\[int\]"})
+
 
 test_base.main(globals(), __name__ == "__main__")

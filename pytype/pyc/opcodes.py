@@ -840,7 +840,7 @@ class LOAD_METHOD(OpcodeWithArg):  # Arg: Index in name list
 
 
 class CALL_METHOD(OpcodeWithArg):  # Arg: #args
-  FLAGS = HAS_ARGUMENT
+  FLAGS = HAS_NARGS|HAS_ARGUMENT|HAS_JUNKNOWN
   __slots__ = ()
 
 
