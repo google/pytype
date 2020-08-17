@@ -2,7 +2,6 @@ import hashlib
 import os
 import re
 import textwrap
-import unittest
 
 from pytype import utils
 from pytype.pyi import parser
