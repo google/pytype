@@ -432,8 +432,8 @@ from_item
   ;
 
 alias_or_constant
-  : NAME '=' type { $$ = Py_BuildValue("(NN)", $1, $3); }
-  | NAME '=' '[' maybe_string_list ']' { $$ = Py_BuildValue("(NN)", $1, $4); }
+  : NAME '=' type maybe_type_ignore { $$ = Py_BuildValue("(NN)", $1, $3); }
+  | NAME '=' '[' maybe_string_list ']' maybe_type_ignore { $$ = Py_BuildValue("(NN)", $1, $4); }
   ;
 
 maybe_string_list
