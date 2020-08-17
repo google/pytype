@@ -1,3 +1,7 @@
+Version 2020.08.17
+* Allow `# type: ignore` in more places in pyi files.
+* Add more developer documentation.
+
 Version 2020.08.10
 * Support aliases to unions with type parameters.
 * Don't crash when a nested NamedTuple subclass hits max depth.
