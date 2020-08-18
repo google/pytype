@@ -1060,6 +1060,28 @@ class _Parser(object):
     self._generated_classes[base_name].append(nt_class)
     return pytd.NamedType(nt_class.name)
 
+  def new_typed_dict(self, name, items, total):
+    """Returns a type for a TypedDict.
+
+    This method is currently called only for TypedDict objects defined via
+    the following function-based syntax:
+
+      Foo = TypeDict('Foo', {'a': int, 'b': str}, total=False)
+
+    rather than the recommended class-based syntax.
+
+    Args:
+      name: the name of the TypedDict instance, e.g., "'Foo'".
+      items: a {key: value_type} dict, e.g., {"'a'": "int", "'b'": "str"}.
+      total: A tuple of a single kwarg, e.g., ("total", NamedType("False")), or
+        None when no kwarg is passed.
+    """
+    # TODO(b/157603915): Add real support for TypedDict.
+    del name, items, total  # unused
+    return pytd.GenericType(
+        pytd.NamedType("typing.Dict"),
+        (pytd.NamedType("str"), pytd.NamedType("typing.Any")))
+
   def register_class_name(self, class_name):
     """Register a class name so that it can shadow aliases."""
     if not self._current_condition.active:

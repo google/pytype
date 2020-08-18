@@ -297,6 +297,11 @@ class LexerTest(test_base.UnitTest):
     self.check(["COLL_NAMEDTUPLE"], "namedtuple")
     self.check(["COLL_NAMEDTUPLE"], "collections.namedtuple")
 
+  def test_typeddict(self):
+    self.check(["TYPEDDICT"], "TypedDict")
+    self.check(["TYPEDDICT"], "typing.TypedDict")
+    self.check(["TYPEDDICT"], "typing_extensions.TypedDict")
+
 
 if __name__ == "__main__":
   unittest.main()
