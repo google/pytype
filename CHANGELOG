@@ -1,5 +1,6 @@
 Version 2020.08.17
 * Allow `# type: ignore` in more places in pyi files.
+* Support TypedDict function-based syntax in pyi files.
 * Add more developer documentation.
 
 Version 2020.08.10

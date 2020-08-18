@@ -711,5 +711,30 @@ class TypingTestPython3Feature(test_base.TargetPython3FeatureTest):
       f(collections.OrderedDict(a=0))
     """)
 
+  def test_typed_dict(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing_extensions import TypedDict
+        X = TypedDict('X', {'a': int})
+      """)
+      self.CheckWithErrors("""
+        import foo
+        from typing import Dict
+
+        def f1(x: Dict[str, int]):
+          pass
+        def f2(x: Dict[int, str]):
+          pass
+        def f3(x: foo.X):
+          pass
+
+        x = None  # type: foo.X
+
+        f1(x)  # okay
+        f2(x)  # wrong-arg-types
+        f3({'a': 0})  # okay
+        f3({0: 'a'})  # wrong-arg-types
+      """, pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")

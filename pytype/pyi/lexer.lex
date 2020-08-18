@@ -55,6 +55,8 @@ typedef pytype::parser::token t;
 \] { --yyextra->bracket_count_; return yytext[0]; }
 \( { ++yyextra->bracket_count_; return yytext[0]; }
 \) { --yyextra->bracket_count_; return yytext[0]; }
+\{ { ++yyextra->bracket_count_; return yytext[0]; }
+\} { --yyextra->bracket_count_; return yytext[0]; }
 
  /* STRING */
  /* TODO(rechen): the string parsing below doesn't handle escaped quotes. */
@@ -101,6 +103,9 @@ typedef pytype::parser::token t;
 "typing.NamedTuple" { return t::NAMEDTUPLE; }
 "namedtuple" { return t::COLL_NAMEDTUPLE; }
 "collections.namedtuple" { return t::COLL_NAMEDTUPLE; }
+"TypedDict" { return t::TYPEDDICT; }
+"typing.TypedDict" { return t::TYPEDDICT; }
+"typing_extensions.TypedDict" { return t::TYPEDDICT; }
 "TypeVar" { return t::TYPEVAR; }
 "typing.TypeVar" { return t::TYPEVAR; }
 

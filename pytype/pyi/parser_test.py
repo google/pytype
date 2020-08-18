@@ -1315,44 +1315,6 @@ class ClassTest(_ParserTestBase):
       class Foo(metaclass=Meta, Bar): ...
       """, 1, "non-keyword arguments cannot follow keyword arguments")
 
-  def test_typed_dict_kwarg(self):
-    self.check("""
-      from typing import TypedDict
-
-      class Foo(TypedDict, total=False): ...
-    """, """
-      from typing import TypedDict
-
-      class Foo(TypedDict): ...
-    """)
-    self.check_error("""
-      class Foo(object, total=False): ...
-    """, 1, "'total' allowed as classdef kwarg only for TypedDict subclasses")
-
-  def test_typing_extensions_typed_dict(self):
-    self.check("""
-      from typing_extensions import TypedDict
-
-      class Foo(TypedDict, total=False): ...
-    """, """
-      import typing_extensions
-
-      from typing_extensions import TypedDict
-
-      class Foo(typing_extensions.TypedDict): ...
-    """)
-
-  def test_multiple_classdef_kwargs(self):
-    self.check("""
-      from typing import TypedDict
-
-      class Foo(TypedDict, total=False, metaclass=Meta): ...
-    """, """
-      from typing import TypedDict
-
-      class Foo(TypedDict, metaclass=Meta): ...
-    """)
-
   def test_shadow_pep484(self):
     self.check("""
       class List:
@@ -2465,6 +2427,94 @@ class LiteralTest(_ParserTestBase):
       from typing_extensions import Literal
 
       x: Literal[42]
+    """)
+
+
+class TypedDictTest(_ParserTestBase):
+
+  def test_assign(self):
+    self.check("""
+      from typing_extensions import TypedDict
+      X = TypedDict('X', {})
+    """, """
+      from typing import Any, Dict
+
+      from typing_extensions import TypedDict
+      X = Dict[str, Any]
+    """)
+
+  def test_assign_with_items(self):
+    self.check("""
+      from typing_extensions import TypedDict
+      X = TypedDict('X', {'a': int, 'b': str})
+    """, """
+      from typing import Any, Dict
+
+      from typing_extensions import TypedDict
+      X = Dict[str, Any]
+    """)
+
+  def test_assign_with_kwarg(self):
+    self.check("""
+      from typing_extensions import TypedDict
+      X = TypedDict('X', {}, total=False)
+    """, """
+      from typing import Any, Dict
+
+      from typing_extensions import TypedDict
+      X = Dict[str, Any]
+    """)
+
+  def test_trailing_comma(self):
+    self.check("""
+      from typing_extensions import TypedDict
+      X = TypedDict('X', {
+          'a': int,
+          'b': str,
+      },)
+    """, """
+      from typing import Any, Dict
+
+      from typing_extensions import TypedDict
+      X = Dict[str, Any]
+    """)
+
+  def test_kwarg(self):
+    self.check("""
+      from typing import TypedDict
+
+      class Foo(TypedDict, total=False): ...
+    """, """
+      from typing import TypedDict
+
+      class Foo(TypedDict): ...
+    """)
+    self.check_error("""
+      class Foo(object, total=False): ...
+    """, 1, "'total' allowed as classdef kwarg only for TypedDict subclasses")
+
+  def test_typing_extensions(self):
+    self.check("""
+      from typing_extensions import TypedDict
+
+      class Foo(TypedDict, total=False): ...
+    """, """
+      import typing_extensions
+
+      from typing_extensions import TypedDict
+
+      class Foo(typing_extensions.TypedDict): ...
+    """)
+
+  def test_multiple_classdef_kwargs(self):
+    self.check("""
+      from typing import TypedDict
+
+      class Foo(TypedDict, total=False, metaclass=Meta): ...
+    """, """
+      from typing import TypedDict
+
+      class Foo(TypedDict, metaclass=Meta): ...
     """)
 
 

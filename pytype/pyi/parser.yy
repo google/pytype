@@ -70,7 +70,7 @@ int pytypelex(pytype::parser::semantic_type* lvalp, pytype::location* llocp,
 
 /* Reserved words. */
 %token ASYNC CLASS DEF ELSE ELIF IF OR AND PASS IMPORT FROM AS RAISE
-%token NOTHING NAMEDTUPLE COLL_NAMEDTUPLE TYPEVAR
+%token NOTHING NAMEDTUPLE COLL_NAMEDTUPLE TYPEDDICT TYPEVAR
 /* Punctuation. */
 %token ARROW ELLIPSIS EQ NE LE GE
 /* Other. */
@@ -91,6 +91,7 @@ int pytypelex(pytype::parser::semantic_type* lvalp, pytype::location* llocp,
 %type <obj> type type_parameters type_parameter
 %type <obj> named_tuple_fields named_tuple_field_list named_tuple_field
 %type <obj> coll_named_tuple_fields coll_named_tuple_field_list coll_named_tuple_field
+%type <obj> typed_dict_fields typed_dict_field_dict typed_dict_field maybe_typed_dict_kwarg
 %type <obj> maybe_string_list string_list
 %type <obj> maybe_type_list type_list type_tuple_elements type_tuple_literal
 %type <obj> dotted_name
@@ -203,6 +204,10 @@ parent
   : type { $$ = $1; }
   | NAME '=' type { $$ = Py_BuildValue("(NN)", $1, $3); }
   | NAMEDTUPLE { $$ = PyString_FromString("NamedTuple"); }
+  | TYPEDDICT {
+      $$ = ctx->Call(kNewType, "(N)", PyString_FromString("TypedDict"));
+      CHECK($$, @$);
+    }
   ;
 
 maybe_class_funcs
@@ -359,6 +364,14 @@ constantdef
       $$ = ctx->Call(kNewConstant, "(NN)", $1, $3);
       CHECK($$, @$);
     }
+  | TYPEDDICT ':' type maybe_type_ignore {
+      $$ = ctx->Call(kNewConstant, "(NN)", PyString_FromString("TypedDict"), $3);
+      CHECK($$, @$);
+    }
+  | TYPEDDICT ':' type '=' ELLIPSIS maybe_type_ignore {
+      $$ = ctx->Call(kNewConstant, "(NN)", PyString_FromString("TypedDict"), $3);
+      CHECK($$, @$);
+    }
   ;
 
 importdef
@@ -421,6 +434,9 @@ from_item
     }
   | COLL_NAMEDTUPLE {
       $$ = PyString_FromString("namedtuple");
+    }
+  | TYPEDDICT {
+      $$ = PyString_FromString("TypedDict");
     }
   | TYPEVAR {
       $$ = PyString_FromString("TypeVar");
@@ -488,6 +504,7 @@ funcdef
 funcname
   : NAME { $$ = $1; }
   | COLL_NAMEDTUPLE { $$ = PyString_FromString("namedtuple"); }
+  | TYPEDDICT { $$ = PyString_FromString("TypedDict"); }
   ;
 
 decorators
@@ -631,6 +648,10 @@ type
       $$ = ctx->Call(kNewNamedTuple, "(NN)", $3, $5);
       CHECK($$, @$);
     }
+  | TYPEDDICT '(' STRING ',' typed_dict_fields maybe_typed_dict_kwarg ')' {
+      $$ = ctx->Call(kNewTypedDict, "(NNN)", $3, $5, $6);
+      CHECK($$, @$);
+    }
   | '(' type ')' { $$ = $2; }
   | type AND type { $$ = ctx->Call(kNewIntersectionType, "([NN])", $1, $3); }
   | type OR type { $$ = ctx->Call(kNewUnionType, "([NN])", $1, $3); }
@@ -671,6 +692,29 @@ coll_named_tuple_field_list
 
 coll_named_tuple_field
   : STRING { $$ = Py_BuildValue("(NN)", $1, ctx->Value(kAnything)); }
+  ;
+
+typed_dict_fields
+  : '{' typed_dict_field_dict maybe_comma '}' { $$ = $2; }
+  | '{' '}' { $$ = PyDict_New(); }
+  ;
+
+typed_dict_field_dict
+  : typed_dict_field_dict ',' typed_dict_field {
+      PyDict_Update($1, $3);
+      $$ = $1;
+      Py_DECREF($3);
+    }
+  | typed_dict_field { $$ = $1; }
+  ;
+
+typed_dict_field
+  : STRING ':' NAME { $$ = Py_BuildValue("{N: N}", $1, $3); }
+  ;
+
+maybe_typed_dict_kwarg
+  : ',' NAME '=' type maybe_comma { $$ = Py_BuildValue("(NN)", $2, $4); }
+  | maybe_comma { $$ = Py_None; }
   ;
 
 /* Handle the case of a "regular" tuple of at least two elements, separated by
