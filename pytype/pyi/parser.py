@@ -1109,7 +1109,16 @@ class _Parser(object):
           definitions of a function, which is allowed).
     """
     # Drop the @type_check_only decorator from classes
+    # TODO(mdemello): Workaround for the bug that typing.foo class decorators
+    # don't add the import, since typing.type_check_only is the only one.
     decorators = [x for x in decorators if x != "type_check_only"]
+
+    # Check for some function/method-only decorators
+    nonclass = {"property", "classmethod", "staticmethod", "overload"}
+    unsupported_decorators = set(decorators) & nonclass
+    if unsupported_decorators:
+      raise ParseError("Unsupported class decorators: %s" % ", ".join(
+          unsupported_decorators))
 
     # Process parent_args, extracting parents and possibly a metaclass.
     parents = []

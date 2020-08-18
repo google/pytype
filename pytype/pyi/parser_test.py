@@ -1183,11 +1183,19 @@ class FunctionTest(_ParserTestBase):
 
   def test_decorated_class(self):
     self.check("""
+      from dataclasses import dataclass
+
       @dataclass
       class Foo: ...
     """)
 
-  @unittest.skip("Decorator work in progress b/159641684")
+  def test_multiple_class_decorators(self):
+    self.check("""
+      @decorator1
+      @decorator2
+      class Foo: ...
+    """)
+
   def test_bad_decorated_class(self):
     self.check_error("""
       @classmethod
