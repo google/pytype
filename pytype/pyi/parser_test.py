@@ -1187,6 +1187,13 @@ class FunctionTest(_ParserTestBase):
 
       @dataclass
       class Foo: ...
+    """, """
+    import dataclasses
+
+    from dataclasses import dataclass
+
+    @dataclasses.dataclass
+    class Foo: ...
     """)
 
   def test_multiple_class_decorators(self):

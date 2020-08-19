@@ -1120,6 +1120,10 @@ class _Parser(object):
       raise ParseError("Unsupported class decorators: %s" % ", ".join(
           unsupported_decorators))
 
+    # Convert decorators to named types
+    decorators = [self._type_map.get(d) or pytd.NamedType(d)
+                  for d in decorators]
+
     # Process parent_args, extracting parents and possibly a metaclass.
     parents = []
     metaclass = None
