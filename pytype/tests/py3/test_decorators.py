@@ -3,6 +3,7 @@
 from pytype import file_utils
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class AnnotatedDecoratorsTest(test_base.TargetPython3BasicTest):
@@ -228,6 +229,66 @@ class DecoratorsTest(test_base.TargetPython3BasicTest):
       x = MyClass()
       x.func(12)
     """)
+
+  @test_utils.skipFromPy((3, 8), "error line number changed in 3.8")
+  def test_instance_as_decorator_error_pre_38(self):
+    errors = self.CheckWithErrors("""
+      class Decorate(object):
+        def __call__(self, func):
+          return func
+      class Foo(object):
+        @classmethod
+        @Decorate  # forgot to instantiate Decorate  # wrong-arg-count[e]
+        def bar(cls):
+          pass
+      Foo.bar()
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Decorate.*1.*2"})
+
+  @test_utils.skipBeforePy((3, 8), "error line number changed in 3.8")
+  def test_instance_as_decorator_error(self):
+    errors = self.CheckWithErrors("""
+      class Decorate(object):
+        def __call__(self, func):
+          return func
+      class Foo(object):
+        @classmethod
+        @Decorate  # forgot to instantiate Decorate
+        def bar(cls):  # wrong-arg-count[e]
+          pass
+      Foo.bar()
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Decorate.*1.*2"})
+
+  @test_utils.skipFromPy((3, 8), "error line number changed in 3.8")
+  def test_uncallable_instance_as_decorator_pre_38(self):
+    errors = self.CheckWithErrors("""
+      class Decorate(object):
+        pass  # forgot to define __call__
+      class Foo(object):
+        @classmethod
+        @Decorate  # forgot to instantiate Decorate  # wrong-arg-count[e1]
+        def bar(cls):
+          pass
+      Foo.bar()  # not-callable[e2]
+    """)
+    self.assertErrorRegexes(
+        errors, {"e1": r"Decorate.*1.*2", "e2": r"Decorate"})
+
+  @test_utils.skipBeforePy((3, 8), "error line number changed in 3.8")
+  def test_uncallable_instance_as_decorator(self):
+    errors = self.CheckWithErrors("""
+      class Decorate(object):
+        pass  # forgot to define __call__
+      class Foo(object):
+        @classmethod
+        @Decorate  # forgot to instantiate Decorate
+        def bar(cls):  # wrong-arg-count[e1]
+          pass
+      Foo.bar()  # not-callable[e2]
+    """)
+    self.assertErrorRegexes(
+        errors, {"e1": r"Decorate.*1.*2", "e2": r"Decorate"})
 
 
 test_base.main(globals(), __name__ == "__main__")
