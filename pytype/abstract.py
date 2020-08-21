@@ -1888,14 +1888,24 @@ class PyTDFunction(Function):
                   node, action="type_param_" + name)))
     return mutations
 
-  def _match_view(self, node, args, view, alias_map=None):
+  def _can_match_multiple(self, args, view):
     # If we're calling an overloaded pytd function with an unknown as a
     # parameter, we can't tell whether it matched or not. Hence, if multiple
     # signatures are possible matches, we don't know which got called. Check
     # if this is the case.
-    if (len(self.signatures) > 1 and
-        any(isinstance(view[arg].data, AMBIGUOUS_OR_EMPTY)
-            for arg in args.get_variables())):
+    if len(self.signatures) <= 1:
+      return False
+    if any(isinstance(view[arg].data, AMBIGUOUS_OR_EMPTY)
+           for arg in args.get_variables()):
+      return True
+    for arg in (args.starargs, args.starstarargs):
+      # An opaque *args or **kwargs behaves like an unknown.
+      if arg and not isinstance(arg, mixin.PythonConstant):
+        return True
+    return False
+
+  def _match_view(self, node, args, view, alias_map=None):
+    if self._can_match_multiple(args, view):
       signatures = tuple(self._yield_matching_signatures(
           node, args, view, alias_map))
     else:

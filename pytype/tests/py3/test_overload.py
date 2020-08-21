@@ -203,6 +203,35 @@ class OverloadTest(test_base.TargetPython3BasicTest):
       def f(x: float, *args) -> float: ...
     """)
 
+  def test_varargs_and_kwargs(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import overload
+        @overload
+        def f(x: int) -> int: ...
+        @overload
+        def f(x: str) -> str: ...
+      """)
+      ty = self.Infer("""
+        import foo
+        def f1(*args):
+          return foo.f(*args)
+        def f2(**kwargs):
+          return foo.f(**kwargs)
+        def f3():
+          return foo.f(*(0,))
+        def f4():
+          return foo.f(**{"x": "y"})
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Any
+        foo: module
+        def f1(*args) -> Any: ...
+        def f2(**kwargs) -> Any: ...
+        def f3() -> int: ...
+        def f4() -> str: ...
+      """)
+
 
 class OverloadTestPy3(test_base.TargetPython3FeatureTest):
   """Python 3 tests for typing.overload."""
