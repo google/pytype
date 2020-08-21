@@ -295,34 +295,6 @@ class DecoratorsTest(test_base.TargetIndependentTest):
       Foo.bar()
     """)
 
-  def test_instance_as_decorator_error(self):
-    errors = self.CheckWithErrors("""
-      class Decorate(object):
-        def __call__(self, func):
-          return func
-      class Foo(object):
-        @classmethod
-        @Decorate  # forgot to instantiate Decorate  # wrong-arg-count[e]
-        def bar(cls):
-          pass
-      Foo.bar()
-    """)
-    self.assertErrorRegexes(errors, {"e": r"Decorate.*1.*2"})
-
-  def test_uncallable_instance_as_decorator(self):
-    errors = self.CheckWithErrors("""
-      class Decorate(object):
-        pass  # forgot to define __call__
-      class Foo(object):
-        @classmethod
-        @Decorate  # forgot to instantiate Decorate  # wrong-arg-count[e1]
-        def bar(cls):
-          pass
-      Foo.bar()  # not-callable[e2]
-    """)
-    self.assertErrorRegexes(
-        errors, {"e1": r"Decorate.*1.*2", "e2": r"Decorate"})
-
   def test_ambiguous_classmethod(self):
     self.Check("""
       class Foo():

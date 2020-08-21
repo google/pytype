@@ -124,7 +124,7 @@ class Class(node.Node('name: str',
                       'methods: tuple[Function]',
                       'constants: tuple[Constant]',
                       'classes: tuple[Class]',
-                      'decorators: tuple[str]',
+                      'decorators: tuple[Function or {Type}]',
                       'slots: None or tuple[str]',
                       'template: tuple[TemplateItem]')):
   """Represents a class declaration.

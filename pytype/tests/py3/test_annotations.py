@@ -443,7 +443,8 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         def f(x) -> Any
       """)
 
-  def test_bad_call_no_kwarg(self):
+  @test_utils.skipFromPy((3, 8), "error line number changed in 3.8")
+  def test_bad_call_no_kwarg_pre_38(self):
     ty, errors = self.InferWithErrors("""
       def foo():
         labels = {
@@ -464,7 +465,30 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     error = r"Actually passed:.*path: None"
     self.assertErrorRegexes(errors, {"e": error})
 
-  def test_bad_call_with_kwarg(self):
+  @test_utils.skipBeforePy((3, 8), "error line number changed in 3.8")
+  def test_bad_call_no_kwarg(self):
+    ty, errors = self.InferWithErrors("""
+      def foo():
+        labels = {
+          'baz': None
+        }
+
+        labels['baz'] = bar(  # wrong-arg-types[e]
+          labels['baz'])
+
+      def bar(path: str, **kwargs):
+        return path
+
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def foo() -> None
+      def bar(path: str, **kwargs) -> str
+    """)
+    error = r"Actually passed:.*path: None"
+    self.assertErrorRegexes(errors, {"e": error})
+
+  @test_utils.skipFromPy((3, 8), "error line number changed in 3.8")
+  def test_bad_call_with_kwarg_pre_38(self):
     ty, errors = self.InferWithErrors("""
       def foo():
         labels = {
@@ -473,6 +497,28 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 
         labels['baz'] = bar(
           labels['baz'], x=42)  # wrong-arg-types[e]
+
+      def bar(path: str, **kwargs):
+        return path
+
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def foo() -> None
+      def bar(path: str, **kwargs) -> str
+    """)
+    error = r"Actually passed:.*path: None"
+    self.assertErrorRegexes(errors, {"e": error})
+
+  @test_utils.skipBeforePy((3, 8), "error line number changed in 3.8")
+  def test_bad_call_with_kwarg(self):
+    ty, errors = self.InferWithErrors("""
+      def foo():
+        labels = {
+          'baz': None
+        }
+
+        labels['baz'] = bar(  # wrong-arg-types[e]
+          labels['baz'], x=42)
 
       def bar(path: str, **kwargs):
         return path
