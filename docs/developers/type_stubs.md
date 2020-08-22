@@ -9,7 +9,7 @@
       * [Stub generation](#stub-generation)
       * [Pickling](#pickling)
 
-<!-- Added by: rechen, at: 2020-08-14T17:30-07:00 -->
+<!-- Added by: rechen, at: 2020-08-21T16:54-07:00 -->
 
 <!--te-->
 
@@ -83,8 +83,12 @@ dependency graph from which imports_info is constructed.
 If an import can't be resolved locally, pytype falls back to the standard
 library, then typeshed/third_party.
 
-<!-- TODO(rechen): Add a diagram showing the relationship between all the
-import and load methods in load_pytd. -->
+The following diagram shows a common import resolution path: the VM calls the
+loader, which finds the right file path and then parses the contents into an
+AST. The bolded methods are the entrypoints into the loader, which also happen
+to be the methods that do AST postprocessing and finalization.
+
+![load_pytd diagram](load_pytd.png)
 
 ## Parser
 
