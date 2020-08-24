@@ -9,7 +9,7 @@
       * [Stub generation](#stub-generation)
       * [Pickling](#pickling)
 
-<!-- Added by: rechen, at: 2020-08-21T16:54-07:00 -->
+<!-- Added by: rechen, at: 2020-08-21T19:16-07:00 -->
 
 <!--te-->
 
@@ -88,7 +88,7 @@ loader, which finds the right file path and then parses the contents into an
 AST. The bolded methods are the entrypoints into the loader, which also happen
 to be the methods that do AST postprocessing and finalization.
 
-![load_pytd diagram](load_pytd.png)
+![load_pytd diagram](../images/load_pytd.png)
 
 ## Parser
 
