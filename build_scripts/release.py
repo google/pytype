@@ -31,7 +31,7 @@ RELEASE_MODE = "RELEASE"
 class ReleaseError(Exception):
 
   def __init__(self, msg):
-    super(ReleaseError, self).__init__()
+    super().__init__()
     self.msg = msg
 
 
