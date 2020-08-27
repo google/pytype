@@ -18,7 +18,7 @@ import unittest
 class CompareTestBase(test_base.UnitTest):
 
   def setUp(self):
-    super(CompareTestBase, self).setUp()
+    super().setUp()
     options = config.Options.create(python_version=self.python_version)
     self._vm = vm.VirtualMachine(
         errors.ErrorLog(), options, load_pytd.Loader(None, self.python_version))
@@ -87,7 +87,7 @@ class InstanceTest(CompareTestBase):
 class TupleTest(CompareTestBase):
 
   def setUp(self):
-    super(TupleTest, self).setUp()
+    super().setUp()
     self._var = self._program.NewVariable()
     self._var.AddBinding(abstract.Unknown(self._vm), [], self._node)
 
@@ -119,7 +119,7 @@ class TupleTest(CompareTestBase):
 class DictTest(CompareTestBase):
 
   def setUp(self):
-    super(DictTest, self).setUp()
+    super().setUp()
     self._d = abstract.Dict(self._vm)
     self._var = self._program.NewVariable()
     self._var.AddBinding(abstract.Unknown(self._vm), [], self._node)

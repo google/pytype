@@ -12,7 +12,7 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
   """Test the code for loading files from typeshed."""
 
   def setUp(self):
-    super(TestTypeshedLoading, self).setUp()
+    super().setUp()
     self.ts = typeshed.Typeshed()
 
   def test_get_typeshed_file(self):
@@ -95,7 +95,7 @@ class TestTypeshedParsing(test_base.TargetPython27FeatureTest):
   """
 
   def setUp(self):
-    super(TestTypeshedParsing, self).setUp()
+    super().setUp()
     self.ConfigureOptions(module_name="base")
 
   def test_quopri(self):

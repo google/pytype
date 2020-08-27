@@ -70,7 +70,7 @@ class PreconditionsTest(unittest.TestCase):
 class CallCheckerTest(unittest.TestCase):
 
   def setUp(self):
-    super(CallCheckerTest, self).setUp()
+    super().setUp()
     self.checker = preconditions.CallChecker([
         ("x", preconditions._ClassNamePrecondition("int")),
         ("s", preconditions._ClassNamePrecondition("str"))])

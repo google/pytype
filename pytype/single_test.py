@@ -29,17 +29,17 @@ class PytypeTest(test_base.UnitTest):
 
   @classmethod
   def setUpClass(cls):
-    super(PytypeTest, cls).setUpClass()
+    super().setUpClass()
     cls.pytype_dir = os.path.dirname(os.path.dirname(parser.__file__))
 
   def setUp(self):
-    super(PytypeTest, self).setUp()
+    super().setUp()
     self._reset_pytype_args()
     self.tmp_dir = tempfile.mkdtemp()
     self.errors_csv = os.path.join(self.tmp_dir, "errors.csv")
 
   def tearDown(self):
-    super(PytypeTest, self).tearDown()
+    super().tearDown()
     shutil.rmtree(self.tmp_dir)
 
   def _reset_pytype_args(self):

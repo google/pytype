@@ -62,7 +62,7 @@ class GenericTypeError(Exception):
   """The error for user-defined generic types."""
 
   def __init__(self, annot, error):
-    super(GenericTypeError, self).__init__(annot, error)
+    super().__init__(annot, error)
     self.annot = annot
     self.error = error
 
@@ -488,9 +488,9 @@ def compute_template(val):
         seqs.append(seq)
     try:
       template.extend(mro.MergeSequences(seqs))
-    except ValueError:
+    except ValueError as e:
       raise GenericTypeError(
-          val, "Illegal type parameter order in class %s" % val.name)
+          val, "Illegal type parameter order in class %s" % val.name) from e
 
   return template
 

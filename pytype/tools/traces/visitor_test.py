@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 """Tests for traces.visitor."""
 
 import ast
@@ -12,7 +12,7 @@ class _VisitOrderVisitor(visitor.BaseVisitor):
   """Tests visit order."""
 
   def __init__(self, *args, **kwargs):
-    super(_VisitOrderVisitor, self).__init__(*args, **kwargs)
+    super().__init__(*args, **kwargs)
     self.funcs = []
 
   def visit_FunctionDef(self, node):
@@ -35,7 +35,7 @@ class _GenericVisitVisitor(visitor.BaseVisitor):
   """Tests generic_visit()."""
 
   def __init__(self, *args, **kwargs):
-    super(_GenericVisitVisitor, self).__init__(*args, **kwargs)
+    super().__init__(*args, **kwargs)
     self.nodes = []
 
   def generic_visit(self, node):
@@ -46,7 +46,7 @@ class _EnterVisitor(visitor.BaseVisitor):
   """Tests enter() by recording names."""
 
   def __init__(self, *args, **kwargs):
-    super(_EnterVisitor, self).__init__(*args, **kwargs)
+    super().__init__(*args, **kwargs)
     self.names = []
 
   def enter_Name(self, node):

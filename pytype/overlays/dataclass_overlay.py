@@ -27,7 +27,7 @@ class DataclassOverlay(overlay.Overlay):
         "field": Field.make,
     }
     ast = vm.loader.import_name("dataclasses")
-    super(DataclassOverlay, self).__init__(vm, "dataclasses", member_map, ast)
+    super().__init__(vm, "dataclasses", member_map, ast)
 
 
 class Dataclass(classgen.Decorator):
@@ -35,7 +35,7 @@ class Dataclass(classgen.Decorator):
 
   @classmethod
   def make(cls, name, vm, mod="dataclasses"):
-    return super(Dataclass, cls).make(name, vm, mod)
+    return super().make(name, vm, mod)
 
   def _handle_initvar(self, node, cls, name, typ, orig):
     """Unpack or delete an initvar in the class annotations."""
@@ -114,7 +114,7 @@ class FieldInstance(abstract.SimpleAbstractValue):
   """Return value of a field() call."""
 
   def __init__(self, vm, init, default):
-    super(FieldInstance, self).__init__("field", vm)
+    super().__init__("field", vm)
     self.init = init
     self.default = default
     self.cls = vm.convert.unsolvable
@@ -125,7 +125,7 @@ class Field(classgen.FieldConstructor):
 
   @classmethod
   def make(cls, name, vm):
-    return super(Field, cls).make(name, vm, "dataclasses")
+    return super().make(name, vm, "dataclasses")
 
   def call(self, node, unused_func, args):
     """Returns a type corresponding to a field."""

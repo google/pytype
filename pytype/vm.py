@@ -646,8 +646,8 @@ class VirtualMachine(object):
         method.match_args(node, args)
       except function.FailedFunctionCall as e:
         if not isinstance(e, function.InvalidParameters):
-          raise AssertionError(
-              "Unexpected argument matching error: %s" % e.__class__.__name__)
+          raise AssertionError("Unexpected argument matching error: %s" %
+                               e.__class__.__name__) from e
         arg_name = e.bad_call.bad_param.name
         expected_type = e.bad_call.bad_param.expected
         for name, value in e.bad_call.passed_args:
@@ -668,7 +668,8 @@ class VirtualMachine(object):
           break
         else:
           raise AssertionError(
-              "Mismatched parameter %s not found in passed_args" % arg_name)
+              "Mismatched parameter %s not found in passed_args" %
+              arg_name) from e
       else:
         needs_checking = False
 
@@ -1864,12 +1865,12 @@ class VirtualMachine(object):
     except KeyError:
       try:
         state, val = self.load_global(state, name)
-      except KeyError:
+      except KeyError as e:
         try:
           if self._is_private(name):
             # Private names must be explicitly imported.
             self.trace_opcode(op, name, None)
-            raise KeyError()
+            raise KeyError(name) from e
           state, val = self.load_builtin(state, name)
         except KeyError:
           if self._is_private(name) or not self.has_unknown_wildcard_imports:

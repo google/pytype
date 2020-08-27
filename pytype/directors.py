@@ -382,8 +382,8 @@ class Director(object):
       try:
         command, values = option.split("=", 1)
         values = values.split(",")
-      except ValueError:
-        raise _DirectiveError("Invalid directive syntax.")
+      except ValueError as e:
+        raise _DirectiveError("Invalid directive syntax.") from e
       # Additional commands may be added in the future.  For now, only
       # "disable" and "enable" are supported.
       if command == "disable":

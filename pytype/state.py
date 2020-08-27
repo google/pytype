@@ -23,7 +23,7 @@ class FrameState(utils.VirtualMachineWeakrefMixin):
   __slots__ = ["block_stack", "data_stack", "node", "exception", "why"]
 
   def __init__(self, data_stack, block_stack, node, vm, exception, why):
-    super(FrameState, self).__init__(vm)
+    super().__init__(vm)
     self.data_stack = data_stack
     self.block_stack = block_stack
     self.node = node
@@ -250,7 +250,7 @@ class Frame(utils.VirtualMachineWeakrefMixin):
     Raises:
       NameError: If we can't resolve any references into the outer frame.
     """
-    super(Frame, self).__init__(vm)
+    super().__init__(vm)
     assert isinstance(f_globals, abstract.LazyConcreteDict)
     assert isinstance(f_locals, abstract.LazyConcreteDict)
     self.node = node

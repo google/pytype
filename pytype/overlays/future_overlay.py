@@ -12,8 +12,7 @@ class FutureUtilsOverlay(overlay.Overlay):
         "with_metaclass": build_with_metaclass,
     }
     ast = vm.loader.import_name("future.utils")
-    super(FutureUtilsOverlay, self).__init__(vm, "future.utils", member_map,
-                                             ast)
+    super().__init__(vm, "future.utils", member_map, ast)
 
 
 def build_with_metaclass(name, vm):

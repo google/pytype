@@ -42,8 +42,9 @@ def read_source_file(input_filename):
     else:
       with open(input_filename, "rb") as fi:
         return fi.read().decode("utf8")
-  except IOError:
-    raise utils.UsageError("Could not load input file %s" % input_filename)
+  except IOError as e:
+    raise utils.UsageError("Could not load input file %s" %
+                           input_filename) from e
 
 
 def _set_verbosity_from(posarg):
@@ -167,7 +168,7 @@ def check_or_generate_pyi(options, loader=None):
     result += "# skip-file found, file not analyzed"
   except Exception as e:  # pylint: disable=broad-except
     if options.nofail:
-      log.warn("***Caught exception: %s", str(e), exc_info=True)
+      log.warning("***Caught exception: %s", str(e), exc_info=True)
       if not options.check:
         result += (  # pytype: disable=name-error
             "# Caught error in pytype: " + str(e).replace("\n", "\n#")
@@ -246,7 +247,7 @@ def write_pickle(ast, options, loader=None):
       ast = serialize_ast.PrepareForExport(
           options.module_name,
           pytd_builtins.GetDefaultAst(options.python_version), loader)
-      log.warn("***Caught exception: %s", str(e), exc_info=True)
+      log.warning("***Caught exception: %s", str(e), exc_info=True)
     else:
       raise
   if options.verify_pickle:
@@ -319,17 +320,17 @@ def wrap_pytype_exceptions(exception_type, filename=""):
   try:
     yield
   except utils.UsageError as e:
-    raise exception_type("Pytype usage error: %s" % utils.message(e))
+    raise exception_type("Pytype usage error: %s" % utils.message(e)) from e
   except pyc.CompileError as e:
     raise exception_type("Error reading file %s at line %s: %s" %
-                         (filename, e.lineno, e.error))
+                         (filename, e.lineno, e.error)) from e
   except tokenize.TokenError as e:
     msg, (lineno, unused_column) = e.args  # pylint: disable=unbalanced-tuple-unpacking
     raise exception_type("Error reading file %s at line %s: %s" %
-                         (filename, lineno, msg))
-  except directors.SkipFileError:
+                         (filename, lineno, msg)) from e
+  except directors.SkipFileError as e:
     raise exception_type("Pytype could not analyze file %s: "
-                         "'# skip-file' directive found" % filename)
+                         "'# skip-file' directive found" % filename) from e
   except Exception as e:  # pylint: disable=broad-except
     msg = "Pytype error: %s: %s" % (e.__class__.__name__, e.args[0])
     # We need the version check here because six.reraise doesn't work properly

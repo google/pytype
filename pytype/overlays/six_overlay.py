@@ -17,7 +17,7 @@ class SixOverlay(overlay.Overlay):
         "PY3": build_version_bool(3),
     }
     ast = vm.loader.import_name("six")
-    super(SixOverlay, self).__init__(vm, "six", member_map, ast)
+    super().__init__(vm, "six", member_map, ast)
 
 
 def build_add_metaclass(name, vm):

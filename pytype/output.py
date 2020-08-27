@@ -44,7 +44,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
   """Functions for converting abstract classes into PyTD."""
 
   def __init__(self, vm):
-    super(Converter, self).__init__(vm)
+    super().__init__(vm)
     self._detailed = False
 
   @contextlib.contextmanager

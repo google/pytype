@@ -92,7 +92,7 @@ class ConfigTest(unittest.TestCase):
 class PostprocessorTest(unittest.TestCase):
 
   def setUp(self):
-    super(PostprocessorTest, self).setUp()
+    super().setUp()
     self.output_options = datatypes.SimpleNamespace()
 
   def test_input(self):

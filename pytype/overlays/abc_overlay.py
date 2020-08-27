@@ -14,7 +14,7 @@ class ABCOverlay(overlay.Overlay):
         "abstractproperty": AbstractProperty
     }
     ast = vm.loader.import_name("abc")
-    super(ABCOverlay, self).__init__(vm, "abc", member_map, ast)
+    super().__init__(vm, "abc", member_map, ast)
 
 
 class AbstractMethod(abstract.PyTDFunction):
@@ -22,7 +22,7 @@ class AbstractMethod(abstract.PyTDFunction):
 
   @classmethod
   def make(cls, name, vm):
-    return super(AbstractMethod, cls).make(name, vm, "abc")
+    return super().make(name, vm, "abc")
 
   def call(self, node, unused_func, args):
     """Marks that the given function is abstract."""
@@ -45,7 +45,7 @@ class AbstractProperty(special_builtins.PropertyTemplate):
   """Implements the @abc.abstractproperty decorator."""
 
   def __init__(self, name, vm):
-    super(AbstractProperty, self).__init__(vm, name, "abc")
+    super().__init__(vm, name, "abc")
 
   def call(self, node, funcv, args):
     property_args = self._get_args(args)

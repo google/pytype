@@ -30,7 +30,7 @@ class AttrOverlay(overlay.Overlay):
         "Factory": Factory.make,
     }
     ast = vm.loader.import_name("attr")
-    super(AttrOverlay, self).__init__(vm, "attr", member_map, ast)
+    super().__init__(vm, "attr", member_map, ast)
 
 
 class Attrs(classgen.Decorator):
@@ -38,7 +38,7 @@ class Attrs(classgen.Decorator):
 
   @classmethod
   def make(cls, name, vm):
-    return super(Attrs, cls).make(name, vm, "attr")
+    return super().make(name, vm, "attr")
 
   def init_name(self, attr):
     # attrs removes leading underscores from attrib names when generating kwargs
@@ -114,7 +114,7 @@ class AttribInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
   """Return value of an attr.ib() call."""
 
   def __init__(self, vm, typ, has_type, init, kw_only, default):
-    super(AttribInstance, self).__init__("attrib", vm)
+    super().__init__("attrib", vm)
     mixin.HasSlots.init_mixin(self)
     self.typ = typ
     self.has_type = has_type
@@ -164,7 +164,7 @@ class Attrib(classgen.FieldConstructor):
 
   @classmethod
   def make(cls, name, vm):
-    return super(Attrib, cls).make(name, vm, "attr")
+    return super().make(name, vm, "attr")
 
   def call(self, node, unused_func, args):
     """Returns a type corresponding to an attr."""
@@ -228,4 +228,4 @@ class Factory(abstract.PyTDFunction):
 
   @classmethod
   def make(cls, name, vm):
-    return super(Factory, cls).make(name, vm, "attr")
+    return super().make(name, vm, "attr")

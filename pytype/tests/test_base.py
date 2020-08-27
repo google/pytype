@@ -98,7 +98,7 @@ class BaseTest(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    super(BaseTest, cls).setUpClass()
+    super().setUpClass()
     # We use class-wide loader to avoid creating a new loader for every test
     # method if not required.
     cls._loader = None
@@ -155,7 +155,7 @@ class BaseTest(unittest.TestCase):
                                                 (cls.nothing, cls.nothing))
 
   def setUp(self):
-    super(BaseTest, self).setUp()
+    super().setUp()
     self.options = config.Options.create(python_version=self.python_version,
                                          check_attribute_types=True,
                                          check_container_types=True,

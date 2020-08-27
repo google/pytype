@@ -15,7 +15,7 @@ import unittest
 class GetViewsTest(test_base.UnitTest):
 
   def setUp(self):
-    super(GetViewsTest, self).setUp()
+    super().setUp()
     self._vm = vm.VirtualMachine(
         errors.ErrorLog(), config.Options.create(
             python_version=self.python_version),

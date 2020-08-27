@@ -138,7 +138,7 @@ class OpcodeWithArg(Opcode):
   __slots__ = ("arg", "pretty_arg")
 
   def __init__(self, index, line, arg, pretty_arg):
-    super(OpcodeWithArg, self).__init__(index, line)
+    super().__init__(index, line)
     self.arg = arg
     self.pretty_arg = pretty_arg
 

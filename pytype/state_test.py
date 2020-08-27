@@ -42,14 +42,14 @@ def fake_compatible_with(value, logical_value):
 class ConditionTestBase(unittest.TestCase):
 
   def setUp(self):
-    super(ConditionTestBase, self).setUp()
+    super().setUp()
     self._program = cfg.Program()
     self._node = self._program.NewCFGNode("test")
     self._old_compatible_with = compare.compatible_with
     compare.compatible_with = fake_compatible_with
 
   def tearDown(self):
-    super(ConditionTestBase, self).tearDown()
+    super().tearDown()
     compare.compatible_with = self._old_compatible_with
 
   def new_binding(self, value=AMBIGUOUS):
@@ -103,7 +103,7 @@ class SplitConditionTest(ConditionTestBase):
 class RestrictConditionTest(ConditionTestBase):
 
   def setUp(self):
-    super(RestrictConditionTest, self).setUp()
+    super().setUp()
     p = self.new_binding()
     self._parent = state.Condition(self._node, [[p]])
 

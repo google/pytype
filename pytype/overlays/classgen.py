@@ -12,7 +12,6 @@ from pytype import abstract_utils
 from pytype import mixin
 from pytype import overlay_utils
 from pytype import special_builtins
-import six
 
 
 log = logging.getLogger(__name__)
@@ -66,8 +65,7 @@ class Attribute(object):
                 "default": self.default})
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Decorator(abstract.PyTDFunction):
+class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
   """Base class for decorators that generate classes from data declarations."""
 
   # Defaults for the args that we support (dataclasses only support 'init',
@@ -79,7 +77,7 @@ class Decorator(abstract.PyTDFunction):
   }
 
   def __init__(self, *args, **kwargs):
-    super(Decorator, self).__init__(*args, **kwargs)
+    super().__init__(*args, **kwargs)
     # Decorator.call() is invoked first with args, then with the class to
     # decorate, so we need to first store the args and then associate them to
     # the right class.

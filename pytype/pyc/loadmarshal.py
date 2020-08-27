@@ -162,10 +162,10 @@ class _LoadMarshal(object):
       else:
         result = _LoadMarshal.dispatch[c](self)
       return result
-    except KeyError:
-      raise ValueError('bad marshal code: %r (%02x)' % (chr(c), c))
-    except IndexError:
-      raise EOFError
+    except KeyError as e:
+      raise ValueError('bad marshal code: %r (%02x)' % (chr(c), c)) from e
+    except IndexError as e:
+      raise EOFError() from e
 
   def _read(self, n):
     """Read n bytes as a string."""

@@ -21,7 +21,7 @@ import unittest
 class AbstractTestBase(test_base.UnitTest):
 
   def setUp(self):
-    super(AbstractTestBase, self).setUp()
+    super().setUp()
     options = config.Options.create(python_version=self.python_version)
     self._vm = vm.VirtualMachine(
         errors.ErrorLog(), options, load_pytd.Loader(None, self.python_version))
@@ -46,7 +46,7 @@ class AbstractTestBase(test_base.UnitTest):
 class IsInstanceTest(AbstractTestBase):
 
   def setUp(self):
-    super(IsInstanceTest, self).setUp()
+    super().setUp()
     self._is_instance = special_builtins.IsInstance.make(self._vm)
     # Easier access to some primitive instances.
     self._bool = self._vm.convert.primitive_class_instances[bool]

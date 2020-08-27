@@ -13,7 +13,7 @@ class SubprocessOverlay(overlay.Overlay):
         "Popen": Popen,
     }
     ast = vm.loader.import_name("subprocess")
-    super(SubprocessOverlay, self).__init__(vm, "subprocess", member_map, ast)
+    super().__init__(vm, "subprocess", member_map, ast)
 
 
 class Popen(abstract.PyTDClass):
@@ -23,7 +23,7 @@ class Popen(abstract.PyTDClass):
 
   def __init__(self, name, vm):
     pyval = vm.loader.import_name("subprocess").Lookup("subprocess.Popen")
-    super(Popen, self).__init__(name, pyval, vm)
+    super().__init__(name, pyval, vm)
     # lazily loaded because the signatures refer back to Popen itself
     self._new = self._UNLOADED
 
@@ -43,7 +43,7 @@ class Popen(abstract.PyTDClass):
   def get_own_new(self, node, value):
     if self.new:
       return node, self.new.to_variable(node)
-    return super(Popen, self).get_own_new(node, value)
+    return super().get_own_new(node, value)
 
 
 class PopenNew(abstract.PyTDFunction):
@@ -85,7 +85,7 @@ class PopenNew(abstract.PyTDFunction):
       if sig is None:
         sig = self._match_bytes_mode(args, view)
     if sig is None:
-      for sig_info in super(PopenNew, self)._yield_matching_signatures(
+      for sig_info in super()._yield_matching_signatures(
           node, args, view, alias_map):
         yield sig_info
       return

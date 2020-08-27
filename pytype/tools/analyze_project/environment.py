@@ -10,7 +10,7 @@ class PytdFileSystem(fs.ExtensionRemappingFileSystem):
   """File system that remaps .py file extensions to pytd."""
 
   def __init__(self, underlying):
-    super(PytdFileSystem, self).__init__(underlying, 'pytd')
+    super().__init__(underlying, 'pytd')
 
 
 def create_importlab_environment(conf, typeshed):

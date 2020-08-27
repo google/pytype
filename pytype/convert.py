@@ -34,11 +34,11 @@ class Converter(utils.VirtualMachineWeakrefMixin):
   class TypeParameterError(Exception):
 
     def __init__(self, type_param_name):
-      super(Converter.TypeParameterError, self).__init__(type_param_name)
+      super().__init__(type_param_name)
       self.type_param_name = type_param_name
 
   def __init__(self, vm):
-    super(Converter, self).__init__(vm)
+    super().__init__(vm)
     self.vm.convert = self  # to make constant_to_value calls below work
     self.pytd_convert = output.Converter(vm)
 

@@ -199,7 +199,7 @@ class TestErrorLog(errors.ErrorLog):
   ERROR_RE = re.compile(r"^(?P<code>(\w+-)+\w+)(\[(?P<mark>.+)\])?$")
 
   def __init__(self, src):
-    super(TestErrorLog, self).__init__()
+    super().__init__()
     self.marks = None  # set by assert_errors_match_expected()
     self.expected = self._parse_comments(src)
 

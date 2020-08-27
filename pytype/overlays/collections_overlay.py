@@ -88,7 +88,7 @@ class CollectionsOverlay(overlay.Overlay):
     # collections_overlay contains all the members that have special definitions
     member_map = collections_overlay.copy()
     ast = vm.loader.import_name("collections")
-    super(CollectionsOverlay, self).__init__(vm, "collections", member_map, ast)
+    super().__init__(vm, "collections", member_map, ast)
 
 
 class NamedTupleBuilder(abstract.PyTDFunction):
@@ -101,8 +101,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
     # Subclasses of NamedTupleBuilder need a different pyval.
     if not pyval:
       pyval = collections_ast.Lookup("collections.namedtuple")
-    self = super(NamedTupleBuilder, cls).make(
-        name, vm, "collections", pyval=pyval)
+    self = super().make(name, vm, "collections", pyval=pyval)
     self.collections_ast = collections_ast
     return self
 

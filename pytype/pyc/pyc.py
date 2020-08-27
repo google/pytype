@@ -23,7 +23,7 @@ class CompileError(Exception):
   """A compilation error."""
 
   def __init__(self, msg):
-    super(CompileError, self).__init__(msg)
+    super().__init__(msg)
     match = COMPILE_ERROR_RE.match(msg)
     if match:
       self.error = match.group(1)

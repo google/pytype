@@ -22,7 +22,7 @@ class FindClassAndFunctionTypesVisitor(visitors.Visitor):
   """Visitor to find class and function types."""
 
   def __init__(self):
-    super(FindClassAndFunctionTypesVisitor, self).__init__()
+    super().__init__()
     self.class_type_nodes = []
     self.function_type_nodes = []
 

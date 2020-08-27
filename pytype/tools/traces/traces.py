@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 """A library for accessing pytype's inferred local types."""
 
 import itertools
@@ -146,7 +146,7 @@ class MatchAstVisitor(visitor.BaseVisitor):
   """
 
   def __init__(self, src_code, *args, **kwargs):
-    super(MatchAstVisitor, self).__init__(*args, **kwargs)
+    super().__init__(*args, **kwargs)
     self.source = src_code
     # In Python versions before 3.7, there is a mismatch between where the ast
     # and bytecode representations think some nodes are located, so we manually
@@ -184,8 +184,8 @@ class MatchAstVisitor(visitor.BaseVisitor):
     method = "match_" + node.__class__.__name__
     try:
       match = getattr(self, method)
-    except AttributeError:
-      raise NotImplementedError(method)
+    except AttributeError as e:
+      raise NotImplementedError(method) from e
     return match(node)
 
   def match_Attribute(self, node):
@@ -341,7 +341,7 @@ class MatchAstVisitor(visitor.BaseVisitor):
 class _LineNumberVisitor(visitor.BaseVisitor):
 
   def __init__(self, *args, **kwargs):
-    super(_LineNumberVisitor, self).__init__(*args, **kwargs)
+    super().__init__(*args, **kwargs)
     self.line = 0
 
   def generic_visit(self, node):
