@@ -3,29 +3,8 @@
 import argparse
 
 from pytype import config as pytype_config
+from pytype import datatypes
 from pytype import utils as pytype_utils
-
-
-class ParserWrapper(object):
-  """Wrapper that adds arguments to a parser while recording them."""
-
-  def __init__(self, parser, actions=None):
-    self.parser = parser
-    self.actions = {} if actions is None else actions
-
-  def add_argument(self, *args, **kwargs):
-    try:
-      action = self.parser.add_argument(*args, **kwargs)
-    except argparse.ArgumentError:
-      # We might want to mask some pytype-single options.
-      pass
-    else:
-      self.actions[action.dest] = action
-
-  def add_argument_group(self, *args, **kwargs):
-    group = self.parser.add_argument_group(*args, **kwargs)
-    wrapped_group = self.__class__(group, actions=self.actions)
-    return wrapped_group
 
 
 def string_to_bool(s):
@@ -128,7 +107,7 @@ def add_pytype_and_parse(parser, argv):
                       help="A .py file to index")
 
   # Add options from pytype-single.
-  wrapper = ParserWrapper(parser)
+  wrapper = datatypes.ParserWrapper(parser)
   pytype_config.add_basic_options(wrapper)
   parser = Parser(parser, wrapper.actions)
 

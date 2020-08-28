@@ -1,5 +1,6 @@
 """Generic data structures and collection classes."""
 
+import argparse
 import itertools
 
 
@@ -152,9 +153,6 @@ class MonitorDict(dict):
 
   def __delitem__(self, name):
     raise NotImplementedError
-
-  def __setitem__(self, name, var):
-    super(MonitorDict, self).__setitem__(name, var)
 
   @property
   def changestamp(self):
@@ -397,3 +395,31 @@ class AliasingMonitorDict(AliasingDict, MonitorDict):
     elif name in self:
       root = self.uf.merge(alias, name)
       self._copy_item(name, root)
+
+
+class ParserWrapper(object):
+  """Wrapper that adds arguments to a parser while recording them."""
+
+  def __init__(self, parser, actions=None):
+    self.parser = parser
+    self.actions = {} if actions is None else actions
+
+  def add_argument(self, *args, **kwargs):
+    try:
+      action = self.parser.add_argument(*args, **kwargs)
+    except argparse.ArgumentError:
+      # We might want to mask some pytype-single options.
+      pass
+    else:
+      self.actions[action.dest] = action
+
+  def add_argument_group(self, *args, **kwargs):
+    group = self.parser.add_argument_group(*args, **kwargs)
+    wrapped_group = self.__class__(group, actions=self.actions)
+    return wrapped_group
+
+  def parse_args(self, *args, **kwargs):
+    return self.parser.parse_args(*args, **kwargs)
+
+  def error(self, *args, **kwargs):
+    return self.parser.error(*args, **kwargs)

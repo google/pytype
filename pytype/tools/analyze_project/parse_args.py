@@ -4,6 +4,7 @@ import argparse
 import os
 
 from pytype import config as pytype_config
+from pytype import datatypes
 from pytype.tools import arg_parser
 from pytype.tools.analyze_project import config
 
@@ -125,7 +126,7 @@ def make_parser():
       help='Send pytype output to a temporary directory.')
 
   # Adds options from pytype-single.
-  wrapper = arg_parser.ParserWrapper(parser)
+  wrapper = datatypes.ParserWrapper(parser)
   pytype_config.add_basic_options(wrapper)
   return Parser(parser, wrapper.actions)
 

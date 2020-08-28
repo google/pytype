@@ -224,6 +224,10 @@ class PostprocessorTest(unittest.TestCase):
     self.assertEqual(self.output_options.python_version,
                      (sys.version_info.major, sys.version_info.minor))
 
+  def test_unknown_option(self):
+    with self.assertRaises(ValueError):
+      config.Options.create(something_something_something_shrubbery=0)
+
 
 if __name__ == "__main__":
   unittest.main()

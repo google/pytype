@@ -10,6 +10,7 @@ import logging
 import os
 import sys
 
+from pytype import datatypes
 from pytype import errors
 from pytype import imports_map_loader
 from pytype import load_pytd
@@ -70,6 +71,9 @@ class Options(object):
   def create(cls, input_filename=None, **kwargs):
     """Create options from kwargs."""
     argument_parser = make_parser()
+    unknown_options = set(kwargs) - set(argument_parser.actions)
+    if unknown_options:
+      raise ValueError("Unrecognized options: %s" % ", ".join(unknown_options))
     options = argument_parser.parse_args(
         [input_filename or "dummpy_input_file"])
     for k, v in kwargs.items():
@@ -89,9 +93,9 @@ class Options(object):
 
 def make_parser():
   """Use argparse to make a parser for configuration options."""
-  o = argparse.ArgumentParser(
+  o = datatypes.ParserWrapper(argparse.ArgumentParser(
       usage="%(prog)s [options] input",
-      description="Infer/check types in a Python module")
+      description="Infer/check types in a Python module"))
 
   # Input files
   o.add_argument(

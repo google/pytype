@@ -3,6 +3,7 @@
 import argparse
 
 from pytype import config as pytype_config
+from pytype import datatypes
 from pytype import utils as pytype_utils
 from pytype.tools import arg_parser
 from pytype.tools.xref import kythe
@@ -34,7 +35,7 @@ def make_parser():
       dest="imports_info", default=None,
       help="Information for mapping import .pyi to files. ")
   # Add options from pytype-single.
-  wrapper = arg_parser.ParserWrapper(parser)
+  wrapper = datatypes.ParserWrapper(parser)
   pytype_config.add_basic_options(wrapper)
   return arg_parser.Parser(parser, wrapper.actions)
 
