@@ -1,7 +1,7 @@
 """Configuration for pytype (mostly derived from the commandline args).
 
-Various parts of pytype use the command-line options. This module packages the
-options into an Options class.
+Various parts of pytype use these options. This module packages the options into
+an Options class.
 """
 
 import argparse
@@ -27,33 +27,44 @@ uses = utils.AnnotatingDecorator()  # model relationship between options
 
 
 class Options(object):
-  """Encapsulation of the command-line options."""
+  """Encapsulation of the configuration options."""
 
   _HAS_DYNAMIC_ATTRIBUTES = True
 
-  def __init__(self, argv_or_options):
-    """Parse and encapsulate the command-line options.
+  def __init__(self, argv_or_options, command_line=False):
+    """Parse and encapsulate the configuration options.
 
     Also sets up some basic logger configuration.
+
+    IMPORTANT: If creating an Options object from code, do not construct it
+    directly! Call Options.create() instead.
 
     Args:
       argv_or_options: Either sys.argv[1:] (sys.argv[0] is the main script), or
                        already parsed options object returned by
                        ArgumentParser.parse_args.
+      command_line: Set this to true when argv_or_options == sys.argv[1:].
 
     Raises:
       sys.exit(2): bad option or input filenames.
     """
     argument_parser = make_parser()
-    if isinstance(argv_or_options, list):
+    if command_line:
+      assert isinstance(argv_or_options, list)
       options = argument_parser.parse_args(argv_or_options)
     else:
+      if isinstance(argv_or_options, list):
+        raise TypeError("Do not construct an Options object directly; call "
+                        "Options.create() instead.")
       options = argv_or_options
     names = set(vars(options))
     try:
       Postprocessor(names, options, self).process()
     except PostprocessingError as e:
-      argument_parser.error(utils.message(e))
+      if command_line:
+        argument_parser.error(utils.message(e))
+      else:
+        raise
 
   @classmethod
   def create(cls, input_filename=None, **kwargs):
@@ -77,7 +88,7 @@ class Options(object):
 
 
 def make_parser():
-  """Use argparse to make a parser for command line options."""
+  """Use argparse to make a parser for configuration options."""
   o = argparse.ArgumentParser(
       usage="%(prog)s [options] input",
       description="Infer/check types in a Python module")
@@ -336,7 +347,7 @@ class PostprocessingError(Exception):
 
 
 class Postprocessor(object):
-  """Postprocesses options read from the command line."""
+  """Postprocesses configuration options."""
 
   def __init__(self, names, input_options, output_options=None):
     self.names = names

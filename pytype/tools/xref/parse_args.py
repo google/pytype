@@ -64,7 +64,7 @@ def parse_args(argv):
   if args.python_version:
     cli_args += ["-V", pytype_utils.format_version(args.python_version)]
 
-  pytype_options = pytype_config.Options(cli_args)
+  pytype_options = pytype_config.Options(cli_args, command_line=True)
   pytype_options.tweak(**parser.get_pytype_kwargs(args))
   kythe_args = kythe.Args(corpus=args.kythe_corpus, root=args.kythe_root)
   return (args, kythe_args, pytype_options)

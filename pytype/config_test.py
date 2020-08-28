@@ -21,7 +21,7 @@ class ConfigTest(unittest.TestCase):
         "--pythonpath", "foo:bar",
         "test.py"
     ]
-    opts = config.Options(argv)
+    opts = config.Options(argv, command_line=True)
     self.assertEqual(opts.python_version, version)
     self.assertEqual(opts.use_pickled_files, True)
     self.assertEqual(opts.pythonpath, ["foo", "bar"])
@@ -47,18 +47,18 @@ class ConfigTest(unittest.TestCase):
 
   def test_analyze_annotated_check(self):
     argv = ["--check", "test.py"]
-    opts = config.Options(argv)
+    opts = config.Options(argv, command_line=True)
     self.assertTrue(opts.analyze_annotated)  # default
     argv.append("--analyze-annotated")
-    opts = config.Options(argv)
+    opts = config.Options(argv, command_line=True)
     self.assertTrue(opts.analyze_annotated)
 
   def test_analyze_annotated_output(self):
     argv = ["--output=out.pyi", "test.py"]
-    opts = config.Options(argv)
+    opts = config.Options(argv, command_line=True)
     self.assertFalse(opts.analyze_annotated)  # default
     argv.append("--analyze-annotated")
-    opts = config.Options(argv)
+    opts = config.Options(argv, command_line=True)
     self.assertTrue(opts.analyze_annotated)
 
   def test_verbosity(self):
@@ -72,12 +72,16 @@ class ConfigTest(unittest.TestCase):
   def test_bad_verbosity(self):
     argv = ["--verbosity", "5", "test.py"]
     with self.assertRaises(SystemExit):
-      config.Options(argv)
+      config.Options(argv, command_line=True)
+
+  def test_bad_verbosity_create(self):
+    with self.assertRaises(config.PostprocessingError):
+      config.Options.create("test.py", verbosity=5)
 
   def _test_arg_conflict(self, arg1, arg2):
     argv = [arg1, arg2, "test.py"]
     with self.assertRaises(SystemExit):
-      config.Options(argv)
+      config.Options(argv, command_line=True)
 
   def test_arg_conflicts(self):
     for arg1, arg2 in [
@@ -87,6 +91,12 @@ class ConfigTest(unittest.TestCase):
         ("--pythonpath=foo", "--imports_info=bar")
     ]:
       self._test_arg_conflict(arg1, arg2)
+
+  def test_bad_construction(self):
+    with self.assertRaises(TypeError):
+      # To prevent accidental misuse, command_line must be explicitly set when
+      # directly constructing Options.
+      config.Options([])
 
 
 class PostprocessorTest(unittest.TestCase):

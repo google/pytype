@@ -29,11 +29,11 @@ class ParserWrapper(object):
 
 
 def string_to_bool(s):
-  return s == 'True' if s in ('True', 'False') else s
+  return s == "True" if s in ("True", "False") else s
 
 
 def convert_string(s):
-  s = s.replace('\n', '')
+  s = s.replace("\n", "")
   try:
     return int(s)
   except ValueError:
@@ -147,6 +147,6 @@ def add_pytype_and_parse(parser, argv):
   if args.python_version:
     cli_args += ["-V", pytype_utils.format_version(args.python_version)]
 
-  pytype_options = pytype_config.Options(cli_args)
+  pytype_options = pytype_config.Options(cli_args, command_line=True)
   pytype_options.tweak(**parser.get_pytype_kwargs(args))
   return (args, pytype_options)

@@ -63,7 +63,7 @@ def _generate_builtins_pickle(options):
 
 def main():
   try:
-    options = config.Options(sys.argv[1:])
+    options = config.Options(sys.argv[1:], command_line=True)
   except utils.UsageError as e:
     print(str(e), file=sys.stderr)
     sys.exit(1)
