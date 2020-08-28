@@ -1,9 +1,9 @@
 """Tests for arg_parser."""
 
 import argparse
+import types
 
 from pytype import config as pytype_config
-from pytype import datatypes
 from pytype.tools import arg_parser
 
 import unittest
@@ -74,12 +74,12 @@ class TestParser(unittest.TestCase):
     self.assertSequenceEqual(args.disable, ['import-error'])
 
   def test_postprocess(self):
-    args = datatypes.SimpleNamespace(disable='import-error')
+    args = types.SimpleNamespace(disable='import-error')
     self.parser.postprocess(args)
     self.assertSequenceEqual(args.disable, ['import-error'])
 
   def test_postprocess_from_strings(self):
-    args = datatypes.SimpleNamespace(report_errors='False', protocols='True')
+    args = types.SimpleNamespace(report_errors='False', protocols='True')
     self.parser.postprocess(args, from_strings=True)
     self.assertFalse(args.report_errors)
     self.assertTrue(args.protocols)
