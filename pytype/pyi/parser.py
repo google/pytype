@@ -1304,10 +1304,13 @@ def parse_string(src, python_version, name=None, filename=None, platform=None):
 
 
 def parse_file(filename, python_version, name=None, platform=None):
+  src = read_file(filename)
+  return parse_string(src, python_version, name, filename, platform)
+
+
+def read_file(filename):
   with open(filename, "r") as fi:
-    src = fi.read()
-  return _Parser(version=python_version, platform=platform).parse(
-      src, name, filename)
+    return fi.read()
 
 
 def canonical_pyi(pyi, python_version, multiline_args=False):
