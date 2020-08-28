@@ -411,14 +411,16 @@ class Snapshot(Metric):
 class MetricsContext(object):
   """A context manager that configures metrics and writes their output."""
 
-  def __init__(self, output_path):
+  def __init__(self, output_path, open_function=open):
     """Initialize.
 
     Args:
       output_path: The path for the metrics data.  If empty, no metrics are
           collected.
+      open_function: A custom file opening function.
     """
     self._output_path = output_path
+    self._open_function = open_function
     self._old_enabled = None  # Set in __enter__.
 
   def __enter__(self):
@@ -430,5 +432,5 @@ class MetricsContext(object):
     global _enabled
     _enabled = self._old_enabled
     if self._output_path:
-      with open(self._output_path, "w") as f:
+      with self._open_function(self._output_path, "w") as f:
         dump_all(_registered_metrics.values(), f)

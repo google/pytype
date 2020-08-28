@@ -58,13 +58,14 @@ class SerializableAst(SerializableTupleClass):
   Replace = SerializableTupleClass._replace  # pylint: disable=no-member,invalid-name
 
 
-def StoreAst(ast, filename=None):
+def StoreAst(ast, filename=None, open_function=open):
   """Loads and stores an ast to disk.
 
   Args:
     ast: The pytd.TypeDeclUnit to save to disk.
     filename: The filename for the pickled output. If this is None, this
       function instead returns the pickled string.
+    open_function: A custom file opening function.
 
   Returns:
     The pickled string, if no filename was given. (None otherwise.)
@@ -83,11 +84,13 @@ def StoreAst(ast, filename=None):
   indexer = FindClassAndFunctionTypesVisitor()
   ast.Visit(indexer)
   ast = ast.Visit(visitors.CanonicalOrderingVisitor())
-  return pytd_utils.SavePickle(SerializableAst(
-      ast, sorted(dependencies.items()),
-      sorted(late_dependencies.items()),
-      sorted(indexer.class_type_nodes),
-      sorted(indexer.function_type_nodes)), filename)
+  return pytd_utils.SavePickle(
+      SerializableAst(
+          ast, sorted(dependencies.items()),
+          sorted(late_dependencies.items()),
+          sorted(indexer.class_type_nodes),
+          sorted(indexer.function_type_nodes)),
+      filename, open_function=open_function)
 
 
 def EnsureAstName(ast, module_name, fix=False):

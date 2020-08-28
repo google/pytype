@@ -228,6 +228,15 @@ class PostprocessorTest(unittest.TestCase):
     with self.assertRaises(ValueError):
       config.Options.create(something_something_something_shrubbery=0)
 
+  def test_open_function(self):
+    options = config.Options.create()
+    self.assertIs(options.open_function, open)
+
+  def test_custom_open_function(self):
+    open_function = lambda _: None
+    options = config.Options.create(open_function=open_function)
+    self.assertIs(options.open_function, open_function)
+
 
 if __name__ == "__main__":
   unittest.main()

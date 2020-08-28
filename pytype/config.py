@@ -23,8 +23,12 @@ import six
 LOG_LEVELS = [logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO,
               logging.DEBUG]
 
-
 uses = utils.AnnotatingDecorator()  # model relationship between options
+
+_LIBRARY_ONLY_OPTIONS = {
+    # a custom file opening function that will be used in place of builtins.open
+    "open_function": open
+}
 
 
 class Options(object):
@@ -58,6 +62,9 @@ class Options(object):
         raise TypeError("Do not construct an Options object directly; call "
                         "Options.create() instead.")
       options = argv_or_options
+    for name, default in _LIBRARY_ONLY_OPTIONS.items():
+      if not hasattr(options, name):
+        setattr(options, name, default)
     names = set(vars(options))
     try:
       Postprocessor(names, options, self).process()
@@ -71,7 +78,8 @@ class Options(object):
   def create(cls, input_filename=None, **kwargs):
     """Create options from kwargs."""
     argument_parser = make_parser()
-    unknown_options = set(kwargs) - set(argument_parser.actions)
+    unknown_options = (set(kwargs) - set(argument_parser.actions) -
+                       set(_LIBRARY_ONLY_OPTIONS))
     if unknown_options:
       raise ValueError("Unrecognized options: %s" % ", ".join(unknown_options))
     options = argument_parser.parse_args(
@@ -524,7 +532,7 @@ class Postprocessor(object):
       # expect a list.
       self.output_options.enable_only = []
 
-  @uses(["pythonpath", "output", "verbosity"])
+  @uses(["pythonpath", "output", "verbosity", "open_function"])
   def _store_imports_map(self, imports_map):
     """Postprocess --imports_info."""
     if imports_map:
@@ -533,7 +541,8 @@ class Postprocessor(object):
 
       with verbosity_from(self.output_options):
         self.output_options.imports_map = imports_map_loader.build_imports_map(
-            imports_map, self.output_options.output)
+            imports_map, self.output_options.output,
+            self.output_options.open_function)
     else:
       self.output_options.imports_map = None
 

@@ -1303,16 +1303,6 @@ def parse_string(src, python_version, name=None, filename=None, platform=None):
       src, name, filename)
 
 
-def parse_file(filename, python_version, name=None, platform=None):
-  src = read_file(filename)
-  return parse_string(src, python_version, name, filename, platform)
-
-
-def read_file(filename):
-  with open(filename, "r") as fi:
-    return fi.read()
-
-
 def canonical_pyi(pyi, python_version, multiline_args=False):
   ast = parse_string(pyi, python_version=python_version)
   ast = ast.Visit(visitors.ClassTypeToNamedType())

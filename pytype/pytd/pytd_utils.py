@@ -442,24 +442,24 @@ def GetPredefinedFile(pytd_subdir, module, extension=".pytd",
   return path, pytype_source_utils.load_pytype_file(path)
 
 
-def LoadPickle(filename, compress=False):
-  if compress:
-    with gzip.GzipFile(filename, "rb") as fi:
-      # TODO(b/117797409): Remove the disable once the typeshed bug is fixed.
-      return cPickle.load(fi)  # pytype: disable=wrong-arg-types
-  else:
-    with open(filename, "rb") as fi:
+def LoadPickle(filename, compress=False, open_function=open):
+  with open_function(filename, "rb") as fi:
+    if compress:
+      with gzip.GzipFile(fileobj=fi) as zfi:
+        # TODO(b/117797409): Remove the disable once the typeshed bug is fixed.
+        return cPickle.load(zfi)  # pytype: disable=wrong-arg-types
+    else:
       return cPickle.load(fi)
 
 
-def SavePickle(data, filename=None, compress=False):
+def SavePickle(data, filename=None, compress=False, open_function=open):
   """Pickle the data."""
   recursion_limit = sys.getrecursionlimit()
   sys.setrecursionlimit(_PICKLE_RECURSION_LIMIT_AST)
   assert not compress or filename, "gzip only supported with a filename"
   try:
     if compress:
-      with open(filename, mode="wb") as fi:
+      with open_function(filename, mode="wb") as fi:
         # We blank the filename and set the mtime explicitly to produce
         # deterministic gzip files.
         with gzip.GzipFile(filename="", mode="wb",
@@ -467,7 +467,7 @@ def SavePickle(data, filename=None, compress=False):
           # TODO(b/117797409): Remove disable once typeshed bug is fixed.
           cPickle.dump(data, zfi, _PICKLE_PROTOCOL)  # pytype: disable=wrong-arg-types
     elif filename is not None:
-      with open(filename, "wb") as fi:
+      with open_function(filename, "wb") as fi:
         cPickle.dump(data, fi, _PICKLE_PROTOCOL)
     else:
       return cPickle.dumps(data, _PICKLE_PROTOCOL)

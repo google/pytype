@@ -34,13 +34,13 @@ log = logging.getLogger(__name__)
 ERROR_DOC_URL = "https://google.github.io/pytype/errors.html"
 
 
-def read_source_file(input_filename):
+def read_source_file(input_filename, open_function=open):
   try:
     if six.PY3:
-      with open(input_filename, "r", encoding="utf8") as fi:
+      with open_function(input_filename, "r", encoding="utf8") as fi:
         return fi.read()
     else:
-      with open(input_filename, "rb") as fi:
+      with open_function(input_filename, "rb") as fi:
         return fi.read().decode("utf8")
   except IOError as e:
     raise utils.UsageError("Could not load input file %s" %
@@ -146,7 +146,7 @@ def check_or_generate_pyi(options, loader=None):
   result = pytd_builtins.DEFAULT_SRC
   ast = pytd_builtins.GetDefaultAst(options.python_version)
   try:
-    src = read_source_file(options.input)
+    src = read_source_file(options.input, options.open_function)
     if options.check:
       return check_py(src=src, options=options, loader=loader), None, None
     else:
@@ -184,7 +184,7 @@ def _write_pyi_output(options, contents, filename):
     sys.stdout.write(contents)
   else:
     log.info("write pyi %r => %r", options.input, filename)
-    with open(filename, "w") as fi:
+    with options.open_function(filename, "w") as fi:
       fi.write(contents)
 
 
@@ -228,7 +228,7 @@ def process_one_file(options):
 
   # Touch output file upon success.
   if options.touch and not exit_status:
-    with open(options.touch, "a"):
+    with options.open_function(options.touch, "a"):
       os.utime(options.touch, None)
   return exit_status
 
@@ -254,7 +254,7 @@ def write_pickle(ast, options, loader=None):
     ast2 = ast2.Visit(visitors.ClearClassPointers())
     if not pytd_utils.ASTeq(ast1, ast2):
       raise AssertionError()
-  serialize_ast.StoreAst(ast, options.output)
+  serialize_ast.StoreAst(ast, options.output, options.open_function)
 
 
 def print_error_doc_url(errorlog):
@@ -273,7 +273,7 @@ def handle_errors(errorlog, options):
     return 0
 
   if options.output_errors_csv:
-    errorlog.print_to_csv_file(options.output_errors_csv)
+    errorlog.print_to_csv_file(options.output_errors_csv, options.open_function)
     return 0  # Command is successful regardless of errors.
 
   errorlog.print_to_stderr()

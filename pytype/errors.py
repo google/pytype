@@ -395,9 +395,9 @@ class ErrorLogBase(object):
     _log.info("Restored errorlog to checkpoint: %d errors reverted",
               len(checkpoint.errors))
 
-  def print_to_csv_file(self, filename):
+  def print_to_csv_file(self, filename, open_function=open):
     """Print the errorlog to a csv file."""
-    with open(filename, "w") as f:
+    with open_function(filename, "w") as f:
       csv_file = csv.writer(f, delimiter=",")
       for error in self.unique_sorted_errors():
         # pylint: disable=protected-access

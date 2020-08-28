@@ -1,6 +1,7 @@
 # coding=utf8
 """Tests for io.py."""
 
+import io as builtins_io
 import os
 import sys
 import tempfile
@@ -100,6 +101,17 @@ class IOTest(unittest.TestCase):
       _, pyi_string, pytd_ast = io.check_or_generate_pyi(options)
     self.assertIsNotNone(pyi_string)
     self.assertIsNotNone(pytd_ast)
+
+  def test_check_or_generate_pyi__open_function(self):
+    def mock_open(filename, *args, **kwargs):
+      if filename == "my_amazing_file.py":
+        return builtins_io.StringIO("x = 0.0")
+      else:
+        return open(filename, *args, **kwargs)
+    options = config.Options.create(
+        "my_amazing_file.py", check=False, open_function=mock_open)
+    _, pyi_string, _ = io.check_or_generate_pyi(options)
+    self.assertEqual(pyi_string, "x: float\n")
 
   def test_write_pickle(self):
     ast = pytd.TypeDeclUnit(None, (), (), (), (), ())

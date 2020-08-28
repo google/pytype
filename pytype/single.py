@@ -82,7 +82,7 @@ def main():
     signal.alarm(options.timeout)
 
   with _ProfileContext(options.profile):
-    with metrics.MetricsContext(options.metrics):
+    with metrics.MetricsContext(options.metrics, options.open_function):
       with metrics.StopWatch("total_time"):
         with metrics.Snapshot("memory", enabled=options.memory_snapshots):
           return _run_pytype(options)
