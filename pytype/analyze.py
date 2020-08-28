@@ -56,7 +56,7 @@ class CallTracer(vm.VirtualMachine):
   _CONSTRUCTORS = ("__new__", "__init__")
 
   def __init__(self, *args, **kwargs):
-    super(CallTracer, self).__init__(*args, **kwargs)
+    super().__init__(*args, **kwargs)
     self._unknowns = {}
     self._builtin_map = {}
     self._calls = set()

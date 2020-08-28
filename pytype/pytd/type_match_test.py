@@ -38,7 +38,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
   """Test algorithms and datastructures of booleq.py."""
 
   def setUp(self):
-    super(TestTypeMatch, self).setUp()
+    super().setUp()
     builtins = parser.parse_string(textwrap.dedent(_BUILTINS),
                                    name="__builtin__",
                                    python_version=self.python_version)
@@ -331,10 +331,10 @@ class TestTypeMatch(parser_test_base.ParserTest):
     tup = ast.Lookup("x").type
     m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
     match = m.match_Unknown_against_Generic(unk, tup, {})
-    self.assertListEqual(sorted(match.extract_equalities()),
-                         [("~unknown0", "__builtin__.tuple"),
-                          ("~unknown0.__builtin__.tuple._T", "int"),
-                          ("~unknown0.__builtin__.tuple._T", "str")])
+    self.assertCountEqual(sorted(match.extract_equalities()),
+                          [("~unknown0", "__builtin__.tuple"),
+                           ("~unknown0.__builtin__.tuple._T", "int"),
+                           ("~unknown0.__builtin__.tuple._T", "str")])
 
   def test_function_against_tuple_subclass(self):
     ast = self.ParseWithBuiltins("""

@@ -36,14 +36,14 @@ class TypingOverlay(overlay.Overlay):
       _, name = cls.name.rsplit(".", 1)
       if name not in member_map and pytd.IsContainer(cls) and cls.template:
         member_map[name] = TypingContainer
-    super(TypingOverlay, self).__init__(vm, "typing", member_map, ast)
+    super().__init__(vm, "typing", member_map, ast)
 
 
 class Union(abstract.AnnotationClass):
   """Implementation of typing.Union[...]."""
 
   def __init__(self, name, vm, options=()):
-    super(Union, self).__init__(name, vm)
+    super().__init__(name, vm)
     self.options = options
 
   def _build_value(self, node, inner, ellipses):
@@ -59,7 +59,7 @@ class TypingContainer(abstract.AnnotationContainer):
     else:
       pytd_name = "typing." + name
     base = vm.convert.name_to_value(pytd_name)
-    super(TypingContainer, self).__init__(name, vm, base)
+    super().__init__(name, vm, base)
 
 
 class Tuple(TypingContainer):
@@ -69,7 +69,7 @@ class Tuple(TypingContainer):
     if ellipses:
       # An ellipsis may appear at the end of the parameter list as long as it is
       # not the only parameter.
-      return super(Tuple, self)._get_value_info(
+      return super()._get_value_info(
           inner, ellipses, allowed_ellipses={len(inner) - 1} - {0})
     else:
       template = list(moves.range(len(inner))) + [abstract_utils.T]
@@ -109,15 +109,14 @@ class Callable(TypingContainer):
       return template, inner, abstract.CallableClass
     else:
       # An ellipsis may take the place of the ARGS list.
-      return super(Callable, self)._get_value_info(
-          inner, ellipses, allowed_ellipses={0})
+      return super()._get_value_info(inner, ellipses, allowed_ellipses={0})
 
 
 class TypeVarError(Exception):
   """Raised if an error is encountered while initializing a TypeVar."""
 
   def __init__(self, message, bad_call=None):
-    super(TypeVarError, self).__init__(message)
+    super().__init__(message)
     self.bad_call = bad_call
 
 
@@ -127,9 +126,10 @@ class TypeVar(abstract.PyTDFunction):
   def _get_constant(self, var, name, arg_type, arg_type_desc=None):
     try:
       ret = abstract_utils.get_atomic_python_constant(var, arg_type)
-    except abstract_utils.ConversionError:
-      raise TypeVarError("%s must be %s" % (
-          name, arg_type_desc or "a constant " + arg_type.__name__))
+    except abstract_utils.ConversionError as e:
+      raise TypeVarError(
+          "%s must be %s" %
+          (name, arg_type_desc or "a constant " + arg_type.__name__)) from e
     return ret
 
   def _get_annotation(self, node, var, name):
@@ -157,11 +157,11 @@ class TypeVar(abstract.PyTDFunction):
     try:
       self.match_args(node, args)
     except function.InvalidParameters as e:
-      raise TypeVarError("wrong arguments", e.bad_call)
-    except function.FailedFunctionCall:
+      raise TypeVarError("wrong arguments", e.bad_call) from e
+    except function.FailedFunctionCall as e:
       # It is currently impossible to get here, since the only
       # FailedFunctionCall that is not an InvalidParameters is NotCallable.
-      raise TypeVarError("initialization failed")
+      raise TypeVarError("initialization failed") from e
     name = self._get_constant(args.posargs[0], "name", six.string_types,
                               arg_type_desc="a constant str")
     constraints = tuple(
@@ -207,14 +207,14 @@ class Cast(abstract.PyTDFunction):
             self.vm.frames, "cannot pass a TypeVar to a function")
         return node, self.vm.new_unsolvable(node)
       return self.vm.init_class(node, annot)
-    return super(Cast, self).call(node, func, args)
+    return super().call(node, func, args)
 
 
 class NoReturn(abstract.Singleton):
   """Implements typing.NoReturn as a singleton."""
 
   def __init__(self, vm):
-    super(NoReturn, self).__init__("NoReturn", vm)
+    super().__init__("NoReturn", vm)
 
 
 def build_any(name, vm):
@@ -233,7 +233,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     # error messages will correctly display "typing.NamedTuple".
     pyval = typing_ast.Lookup("typing._NamedTuple")
     pyval = pyval.Replace(name="typing.NamedTuple")
-    self = super(NamedTupleFuncBuilder, cls).make(name, vm, pyval)
+    self = super().make(name, vm, pyval)
     # NamedTuple's fields arg has type Sequence[Sequence[Union[str, type]]],
     # which doesn't provide precise enough type-checking, so we have to do
     # some of our own in _getargs. _NamedTupleFields is an alias to
@@ -482,7 +482,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
     typing_ast = vm.loader.import_name("typing")
     pyval = typing_ast.Lookup("typing._NamedTupleClass")
     pyval = pyval.Replace(name="typing.NamedTuple")
-    super(NamedTupleClassBuilder, self).__init__(name, pyval, vm)
+    super().__init__(name, pyval, vm)
     # Prior to python 3.6, NamedTuple is a function. Although NamedTuple is a
     # class in python 3.6+, we can still use it like a function. Hold the
     # an instance of 'NamedTupleFuncBuilder' so that we can reuse the
@@ -571,7 +571,7 @@ class NewType(abstract.PyTDFunction):
   """Implementation of typing.NewType as a function."""
 
   def __init__(self, name, signatures, kind, vm):
-    super(NewType, self).__init__(name, signatures, kind, vm)
+    super().__init__(name, signatures, kind, vm)
     assert len(self.signatures) == 1, "NewType has more than one signature."
     signature = self.signatures[0].signature
     self._name_arg_name = signature.param_names[0]

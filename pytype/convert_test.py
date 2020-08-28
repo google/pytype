@@ -18,7 +18,7 @@ import unittest
 class ConvertTest(test_base.UnitTest):
 
   def setUp(self):
-    super(ConvertTest, self).setUp()
+    super().setUp()
     options = config.Options.create(python_version=self.python_version)
     self._vm = vm.VirtualMachine(
         errors.ErrorLog(), options, load_pytd.Loader(None, self.python_version))

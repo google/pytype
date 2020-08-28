@@ -55,7 +55,7 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
 
   def __init__(self, name, vm):
     """Basic initializer for all AtomicAbstractValues."""
-    super(AtomicAbstractValue, self).__init__(vm)
+    super().__init__(vm)
     assert hasattr(vm, "program"), type(self)
     self.cls = None
     self.name = name
@@ -415,7 +415,7 @@ class Singleton(AtomicAbstractValue):
     # filled by its parent. cls needs to be given its own instance.
     if not cls._instance or type(cls._instance) != cls:  # pylint: disable=unidiomatic-typecheck
       log.debug("Singleton: Making new instance for %s", cls)
-      cls._instance = super(Singleton, cls).__new__(cls)
+      cls._instance = super().__new__(cls)
     return cls._instance
 
   def get_special_attribute(self, node, name, valself):
@@ -463,14 +463,14 @@ class Empty(Singleton):
   """
 
   def __init__(self, vm):
-    super(Empty, self).__init__("empty", vm)
+    super().__init__("empty", vm)
 
 
 class Deleted(Empty):
   """Assigned to variables that have del called on them."""
 
   def __init__(self, vm):
-    super(Deleted, self).__init__(vm)
+    super().__init__(vm)
     self.name = "deleted"
 
 
@@ -481,7 +481,7 @@ class TypeParameter(AtomicAbstractValue):
 
   def __init__(self, name, vm, constraints=(), bound=None,
                covariant=False, contravariant=False, module=None):
-    super(TypeParameter, self).__init__(name, vm)
+    super().__init__(name, vm)
     self.constraints = constraints
     self.bound = bound
     self.covariant = covariant
@@ -553,7 +553,7 @@ class TypeParameterInstance(AtomicAbstractValue):
   """An instance of a type parameter."""
 
   def __init__(self, param, instance, vm):
-    super(TypeParameterInstance, self).__init__(param.name, vm)
+    super().__init__(param.name, vm)
     self.param = param
     self.instance = instance
     self.module = param.module
@@ -598,7 +598,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
       name: Name of this value. For debugging and error reporting.
       vm: The TypegraphVirtualMachine to use.
     """
-    super(SimpleAbstractValue, self).__init__(name, vm)
+    super().__init__(name, vm)
     self.members = datatypes.MonitorDict()
     # Lazily loaded to handle recursive types.
     # See Instance._load_instance_type_parameters().
@@ -742,14 +742,14 @@ class SimpleAbstractValue(AtomicAbstractValue):
     if key:
       type_key = frozenset(key)
     else:
-      type_key = super(SimpleAbstractValue, self).get_type_key()
+      type_key = super().get_type_key()
     self._cached_type_key = (
         (self.members.changestamp, self.instance_type_parameters.changestamp),
         type_key)
     return type_key
 
   def _unique_parameters(self):
-    parameters = super(SimpleAbstractValue, self)._unique_parameters()
+    parameters = super()._unique_parameters()
     parameters.extend(self.instance_type_parameters.values())
     return parameters
 
@@ -758,7 +758,7 @@ class Instance(SimpleAbstractValue):
   """An instance of some object."""
 
   def __init__(self, cls, vm):
-    super(Instance, self).__init__(cls.name, vm)
+    super().__init__(cls.name, vm)
     self.cls = cls
     self._instance_type_parameters_loaded = False
     cls.register_instance(self)
@@ -797,7 +797,7 @@ class List(Instance, mixin.HasSlots, mixin.PythonConstant):
   """Representation of Python 'list' objects."""
 
   def __init__(self, content, vm):
-    super(List, self).__init__(vm.convert.list_type, vm)
+    super().__init__(vm.convert.list_type, vm)
     self._instance_cache = {}
     mixin.PythonConstant.init_mixin(self, content)
     mixin.HasSlots.init_mixin(self)
@@ -819,7 +819,7 @@ class List(Instance, mixin.HasSlots, mixin.PythonConstant):
 
   def merge_instance_type_parameter(self, node, name, value):
     self.could_contain_anything = True
-    super(List, self).merge_instance_type_parameter(node, name, value)
+    super().merge_instance_type_parameter(node, name, value)
 
   def getitem_slot(self, node, index_var):
     """Implements __getitem__ for List.
@@ -918,7 +918,7 @@ class Tuple(Instance, mixin.PythonConstant):
         for name, instance_param in
         tuple(enumerate(content)) + ((abstract_utils.T, combined_content),)}
     cls = TupleClass(vm.convert.tuple_type, class_params, vm)
-    super(Tuple, self).__init__(cls, vm)
+    super().__init__(cls, vm)
     self.merge_instance_type_parameter(None, abstract_utils.T, combined_content)
     mixin.PythonConstant.init_mixin(self, content)
     self.tuple_length = len(self.pyval)
@@ -932,7 +932,7 @@ class Tuple(Instance, mixin.PythonConstant):
     return "(%s)" % content
 
   def _unique_parameters(self):
-    parameters = super(Tuple, self)._unique_parameters()
+    parameters = super()._unique_parameters()
     parameters.extend(self.pyval)
     return parameters
 
@@ -963,7 +963,7 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
   """
 
   def __init__(self, vm):
-    super(Dict, self).__init__(vm.convert.dict_type, vm)
+    super().__init__(vm.convert.dict_type, vm)
     mixin.HasSlots.init_mixin(self)
     self.set_slot("__contains__", self.contains_slot)
     self.set_slot("__getitem__", self.getitem_slot)
@@ -1002,9 +1002,9 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
         else:
           try:
             results.append(self.pyval[name])
-          except KeyError:
+          except KeyError as e:
             unresolved = True
-            raise function.DictKeyMissing(name)
+            raise function.DictKeyMissing(name) from e
     node, ret = self.call_pytd(node, "__getitem__", name_var)
     if unresolved or self.could_contain_anything:
       # We *do* know the overall type of the values through the "V" type
@@ -1088,8 +1088,8 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
     else:
       try:
         return node, self.pyval.pop(str_key)
-      except KeyError:
-        raise function.DictKeyMissing(str_key)
+      except KeyError as e:
+        raise function.DictKeyMissing(str_key) from e
 
   def update_slot(self, node, *args, **kwargs):
     posargs_handled = False
@@ -1174,7 +1174,7 @@ class LateAnnotation(object):
     # _attribute_names needs to be defined last!
     self._attribute_names = (
         set(LateAnnotation.__dict__) |
-        set(super(LateAnnotation, self).__getattribute__("__dict__")))
+        set(super().__getattribute__("__dict__")))
 
   def __repr__(self):
     return "LateAnnotation(%r, resolved=%r)" % (
@@ -1191,7 +1191,7 @@ class LateAnnotation(object):
 
   def __getattribute__(self, name):
     if name == "_attribute_names" or name in self._attribute_names:
-      return super(LateAnnotation, self).__getattribute__(name)
+      return super().__getattribute__(name)
     return self._type.__getattribute__(name)
 
   def resolve(self, node, f_globals, f_locals):
@@ -1241,7 +1241,7 @@ class AnnotationClass(SimpleAbstractValue, mixin.HasSlots):
   """Base class of annotations that can be parameterized."""
 
   def __init__(self, name, vm):
-    super(AnnotationClass, self).__init__(name, vm)
+    super().__init__(name, vm)
     mixin.HasSlots.init_mixin(self)
     self.set_slot("__getitem__", self.getitem_slot)
 
@@ -1290,7 +1290,7 @@ class AnnotationContainer(AnnotationClass):
   """Implementation of X[...] for annotations."""
 
   def __init__(self, name, vm, base_cls):
-    super(AnnotationContainer, self).__init__(name, vm)
+    super().__init__(name, vm)
     self.base_cls = base_cls
 
   def _get_value_info(self, inner, ellipses, allowed_ellipses=frozenset()):
@@ -1402,7 +1402,7 @@ class AbstractOrConcreteValue(Instance, mixin.PythonConstant):
   """Abstract value with a concrete fallback."""
 
   def __init__(self, pyval, cls, vm):
-    super(AbstractOrConcreteValue, self).__init__(cls, vm)
+    super().__init__(cls, vm)
     mixin.PythonConstant.init_mixin(self, pyval)
 
 
@@ -1431,7 +1431,7 @@ class Union(AtomicAbstractValue, mixin.NestedAnnotation, mixin.HasSlots):
   """
 
   def __init__(self, options, vm):
-    super(Union, self).__init__("Union", vm)
+    super().__init__("Union", vm)
     assert options
     self.options = list(options)
     # TODO(rechen): Don't allow a mix of formal and non-formal types
@@ -1521,7 +1521,7 @@ class Function(SimpleAbstractValue):
   CAN_BE_ABSTRACT = True
 
   def __init__(self, name, vm):
-    super(Function, self).__init__(name, vm)
+    super().__init__(name, vm)
     self.cls = FunctionPyTDClass(self, vm)
     self.is_attribute_of_class = False
     self.is_classmethod = False
@@ -1636,7 +1636,7 @@ class ClassMethod(AtomicAbstractValue):
   """Implements @classmethod methods in pyi."""
 
   def __init__(self, name, method, callself, vm):
-    super(ClassMethod, self).__init__(name, vm)
+    super().__init__(name, vm)
     self.method = method
     self.method.is_attribute_of_class = True
     # Rename to callcls to make clear that callself is the cls parameter.
@@ -1658,7 +1658,7 @@ class StaticMethod(AtomicAbstractValue):
   """Implements @staticmethod methods in pyi."""
 
   def __init__(self, name, method, _, vm):
-    super(StaticMethod, self).__init__(name, vm)
+    super().__init__(name, vm)
     self.method = method
     self.signatures = self.method.signatures
 
@@ -1677,7 +1677,7 @@ class Property(AtomicAbstractValue):
   """
 
   def __init__(self, name, method, callself, vm):
-    super(Property, self).__init__(name, vm)
+    super().__init__(name, vm)
     self.method = method
     self._callself = callself
     self.signatures = self.method.signatures
@@ -1728,7 +1728,7 @@ class PyTDFunction(Function):
     return cls(function_name, f.signatures, pyval.kind, vm)
 
   def __init__(self, name, signatures, kind, vm):
-    super(PyTDFunction, self).__init__(name, vm)
+    super().__init__(name, vm)
     assert signatures
     self.kind = kind
     self.bound_class = BoundPyTDFunction
@@ -1769,7 +1769,7 @@ class PyTDFunction(Function):
     elif self.kind == pytd.PROPERTY and not is_class:
       return Property(self.name, self, callself, self.vm)
     else:
-      return super(PyTDFunction, self).property_get(callself, is_class)
+      return super().property_get(callself, is_class)
 
   def argcount(self, _):
     return min(sig.signature.mandatory_param_count() for sig in self.signatures)
@@ -1888,14 +1888,24 @@ class PyTDFunction(Function):
                   node, action="type_param_" + name)))
     return mutations
 
-  def _match_view(self, node, args, view, alias_map=None):
+  def _can_match_multiple(self, args, view):
     # If we're calling an overloaded pytd function with an unknown as a
     # parameter, we can't tell whether it matched or not. Hence, if multiple
     # signatures are possible matches, we don't know which got called. Check
     # if this is the case.
-    if (len(self.signatures) > 1 and
-        any(isinstance(view[arg].data, AMBIGUOUS_OR_EMPTY)
-            for arg in args.get_variables())):
+    if len(self.signatures) <= 1:
+      return False
+    if any(isinstance(view[arg].data, AMBIGUOUS_OR_EMPTY)
+           for arg in args.get_variables()):
+      return True
+    for arg in (args.starargs, args.starstarargs):
+      # An opaque *args or **kwargs behaves like an unknown.
+      if arg and not isinstance(arg, mixin.PythonConstant):
+        return True
+    return False
+
+  def _match_view(self, node, args, view, alias_map=None):
+    if self._can_match_multiple(args, view):
       signatures = tuple(self._yield_matching_signatures(
           node, args, view, alias_map))
     else:
@@ -2079,7 +2089,7 @@ class ParameterizedClass(
     # base type is restricted to NamedType and ClassType.
     assert isinstance(base_cls, mixin.Class)
     self.base_cls = base_cls
-    super(ParameterizedClass, self).__init__(base_cls.name, vm)
+    super().__init__(base_cls.name, vm)
     self.module = base_cls.module
     # Lazily loaded to handle recursive types.
     # See the formal_type_parameters() property.
@@ -2209,7 +2219,7 @@ class ParameterizedClass(
     elif self.vm.frame and self.vm.frame.current_opcode:
       return self._new_instance().to_variable(node)
     else:
-      return super(ParameterizedClass, self).instantiate(node, container)
+      return super().instantiate(node, container)
 
   def get_class(self):
     return self.base_cls.get_class()
@@ -2276,8 +2286,7 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):
   """
 
   def __init__(self, base_cls, formal_type_parameters, vm, template=None):
-    super(TupleClass, self).__init__(
-        base_cls, formal_type_parameters, vm, template)
+    super().__init__(base_cls, formal_type_parameters, vm, template)
     mixin.HasSlots.init_mixin(self)
     self.set_slot("__getitem__", self.getitem_slot)
     if isinstance(self._formal_type_parameters,
@@ -2355,7 +2364,7 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):
     if (valself and not abstract_utils.equivalent_to(valself, self) and
         name in self._slots):
       return mixin.HasSlots.get_special_attribute(self, node, name, valself)
-    return super(TupleClass, self).get_special_attribute(node, name, valself)
+    return super().get_special_attribute(node, name, valself)
 
 
 class CallableClass(ParameterizedClass, mixin.HasSlots):
@@ -2371,8 +2380,7 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):
   """
 
   def __init__(self, base_cls, formal_type_parameters, vm, template=None):
-    super(CallableClass, self).__init__(
-        base_cls, formal_type_parameters, vm, template)
+    super().__init__(base_cls, formal_type_parameters, vm, template)
     mixin.HasSlots.init_mixin(self)
     self.set_slot("__call__", self.call_slot)
     # We subtract two to account for "ARGS" and "RET".
@@ -2423,7 +2431,7 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):
     if (valself and not abstract_utils.equivalent_to(valself, self) and
         name in self._slots):
       return mixin.HasSlots.get_special_attribute(self, node, name, valself)
-    return super(CallableClass, self).get_special_attribute(node, name, valself)
+    return super().get_special_attribute(node, name, valself)
 
 
 class LiteralClass(ParameterizedClass):
@@ -2431,8 +2439,7 @@ class LiteralClass(ParameterizedClass):
 
   def __init__(self, base_cls, instance, vm, template=None):
     formal_type_parameters = {abstract_utils.T: instance.get_class()}
-    super(LiteralClass, self).__init__(
-        base_cls, formal_type_parameters, vm, template)
+    super().__init__(base_cls, formal_type_parameters, vm, template)
     self._instance = instance
 
   def __repr__(self):
@@ -2460,7 +2467,7 @@ class PyTDClass(SimpleAbstractValue, mixin.Class):
 
   def __init__(self, name, pytd_cls, vm):
     self.pytd_cls = pytd_cls
-    super(PyTDClass, self).__init__(name, vm)
+    super().__init__(name, vm)
     mm = {}
     for val in pytd_cls.constants + pytd_cls.methods:
       mm[val.name] = val
@@ -2494,7 +2501,7 @@ class PyTDClass(SimpleAbstractValue, mixin.Class):
 
   def load_lazy_attribute(self, name):
     try:
-      super(PyTDClass, self).load_lazy_attribute(name)
+      super().load_lazy_attribute(name)
     except self.vm.convert.TypeParameterError as e:
       self.vm.errorlog.unbound_type_param(
           self.vm.frames, self, name, e.type_param_name)
@@ -2608,7 +2615,7 @@ class InterpreterClass(SimpleAbstractValue, mixin.Class):
     assert isinstance(bases, list)
     assert isinstance(members, dict)
     self._bases = bases
-    super(InterpreterClass, self).__init__(name, vm)
+    super().__init__(name, vm)
     self.members = datatypes.MonitorDict(members)
     mixin.Class.init_mixin(self, cls)
     self.instances = set()  # filled through register_instance
@@ -2768,7 +2775,7 @@ class InterpreterClass(SimpleAbstractValue, mixin.Class):
       # When the analyze_x methods in CallTracer instantiate classes in
       # preparation for analysis, often there is no frame on the stack yet, or
       # the frame is a SimpleFrame with no opcode.
-      return super(InterpreterClass, self).instantiate(node, container)
+      return super().instantiate(node, container)
 
   def __repr__(self):
     return "InterpreterClass(%s)" % self.name
@@ -2796,7 +2803,7 @@ class NativeFunction(Function):
   """
 
   def __init__(self, name, func, vm):
-    super(NativeFunction, self).__init__(name, vm)
+    super().__init__(name, vm)
     self.func = func
     self.bound_class = lambda callself, underlying: self
 
@@ -2810,11 +2817,11 @@ class NativeFunction(Function):
                  for k, u in args.namedargs.items()}
     try:
       inspect.signature(self.func).bind(node, *posargs, **namedargs)
-    except ValueError:
+    except ValueError as e:
       # Happens for, e.g.,
       #   def f((x, y)): pass
       #   f((42,))
-      raise NotImplementedError("Wrong number of values to unpack")
+      raise NotImplementedError("Wrong number of values to unpack") from e
     except TypeError as e:
       # The possible errors here are:
       #   (1) wrong arg count
@@ -2825,7 +2832,7 @@ class NativeFunction(Function):
         # Happens for, e.g.,
         #   def f(*args): pass
         #   f(x=42)
-        raise NotImplementedError("Unexpected keyword")
+        raise NotImplementedError("Unexpected keyword") from e
       # The function was passed the wrong number of arguments. The signature is
       # ([self, ]node, ...). The length of "..." tells us how many variables
       # are expected.
@@ -2863,7 +2870,7 @@ class SignedFunction(Function):
   """
 
   def __init__(self, signature, vm):
-    super(SignedFunction, self).__init__(signature.name, vm)
+    super().__init__(signature.name, vm)
     self.signature = signature
     # Track whether we've annotated `self` with `set_self_annot`, since
     # annotating `self` in `__init__` is otherwise illegal.
@@ -3096,7 +3103,7 @@ class InterpreterFunction(SignedFunction):
     if self.code.co_kwonlyargcount >= 0:  # This is usually -1 or 0 (fast call)
       self.nonstararg_count += self.code.co_kwonlyargcount
     signature = self._build_signature(name, annotations)
-    super(InterpreterFunction, self).__init__(signature, vm)
+    super().__init__(signature, vm)
     self.last_frame = None  # for BuildClass
     self._store_call_records = False
     if self.vm.PY3:
@@ -3431,7 +3438,7 @@ class InterpreterFunction(SignedFunction):
             self.signature.annotations[self_name],
             details="Cannot annotate self argument of __init__", name=self_name)
         self.signature.del_annotation(self_name)
-    return super(InterpreterFunction, self).property_get(callself, is_class)
+    return super().property_get(callself, is_class)
 
   def is_coroutine(self):
     return self.code.has_coroutine() or self.code.has_iterable_coroutine()
@@ -3470,7 +3477,7 @@ class SimpleFunction(SignedFunction):
     signature = function.Signature(name, param_names, varargs_name,
                                    kwonly_params, kwargs_name, defaults,
                                    annotations)
-    super(SimpleFunction, self).__init__(signature, vm)
+    super().__init__(signature, vm)
     self.bound_class = BoundFunction
 
   def call(self, node, _, args, alias_map=None):
@@ -3495,7 +3502,7 @@ class BoundFunction(AtomicAbstractValue):
   """An function type which has had an argument bound into it."""
 
   def __init__(self, callself, underlying):
-    super(BoundFunction, self).__init__(underlying.name, underlying.vm)
+    super().__init__(underlying.name, underlying.vm)
     self._callself = callself
     self.underlying = underlying
     self.is_attribute_of_class = False
@@ -3642,7 +3649,7 @@ class Coroutine(Instance):
   """A representation of instances of coroutine."""
 
   def __init__(self, vm, ret_var, node):
-    super(Coroutine, self).__init__(vm.convert.coroutine_type, vm)
+    super().__init__(vm.convert.coroutine_type, vm)
     self.merge_instance_type_parameter(
         node, abstract_utils.T, self.vm.new_unsolvable(node))
     self.merge_instance_type_parameter(
@@ -3667,7 +3674,7 @@ class BaseGenerator(Instance):
   """A base class of instances of generators and async generators."""
 
   def __init__(self, generator_type, frame, vm, is_return_allowed):
-    super(BaseGenerator, self).__init__(generator_type, vm)
+    super().__init__(generator_type, vm)
     self.frame = frame
     self.runs = 0
     self.is_return_allowed = is_return_allowed  # if return statement is allowed
@@ -3712,8 +3719,7 @@ class Generator(BaseGenerator):
   """A representation of instances of generators."""
 
   def __init__(self, generator_frame, vm):
-    super(Generator, self).__init__(vm.convert.generator_type,
-                                    generator_frame, vm, True)
+    super().__init__(vm.convert.generator_type, generator_frame, vm, True)
 
   def get_special_attribute(self, node, name, valself):
     if name == "__iter__":
@@ -3727,7 +3733,7 @@ class Generator(BaseGenerator):
       # throw() to a next() (which won't be executed).
       return self.to_variable(node)
     else:
-      return super(Generator, self).get_special_attribute(node, name, valself)
+      return super().get_special_attribute(node, name, valself)
 
   def __iter__(self, node):  # pylint: disable=non-iterator-returned,unexpected-special-method-signature
     return node, self.to_variable(node)
@@ -3737,15 +3743,15 @@ class AsyncGenerator(BaseGenerator):
   """A representation of instances of async generators."""
 
   def __init__(self, async_generator_frame, vm):
-    super(AsyncGenerator, self).__init__(vm.convert.async_generator_type,
-                                         async_generator_frame, vm, False)
+    super().__init__(vm.convert.async_generator_type, async_generator_frame, vm,
+                     False)
 
 
 class Iterator(Instance, mixin.HasSlots):
   """A representation of instances of iterators."""
 
   def __init__(self, vm, return_var):
-    super(Iterator, self).__init__(vm.convert.iterator_type, vm)
+    super().__init__(vm.convert.iterator_type, vm)
     mixin.HasSlots.init_mixin(self)
     self.set_slot(self.vm.convert.next_attr, self.next_slot)
     # TODO(dbaum): Should we set instance_type_parameters[self.TYPE_PARAM] to
@@ -3762,7 +3768,7 @@ class Module(Instance):
   is_lazy = True  # uses _convert_member
 
   def __init__(self, vm, name, member_map, ast):
-    super(Module, self).__init__(vm.convert.module_type, vm)
+    super().__init__(vm.convert.module_type, vm)
     self.name = name
     self._member_map = member_map
     self.ast = ast
@@ -3847,7 +3853,7 @@ class BuildClass(AtomicAbstractValue):
   CLOSURE_NAME = "__class__"
 
   def __init__(self, vm):
-    super(BuildClass, self).__init__("__build_class__", vm)
+    super().__init__("__build_class__", vm)
 
   def call(self, node, _, args, alias_map=None):
     funcvar, name = args.posargs[0:2]
@@ -3913,7 +3919,7 @@ class Unsolvable(Singleton):
   SINGLETON = True
 
   def __init__(self, vm):
-    super(Unsolvable, self).__init__("unsolveable", vm)
+    super().__init__("unsolveable", vm)
 
   def get_special_attribute(self, node, name, _):
     # Overrides Singleton.get_special_attributes.
@@ -3946,7 +3952,7 @@ class Unknown(AtomicAbstractValue):
 
   def __init__(self, vm):
     name = "~unknown%d" % Unknown._current_id
-    super(Unknown, self).__init__(name, vm)
+    super().__init__(name, vm)
     self.members = datatypes.MonitorDict()
     self.owner = None
     Unknown._current_id += 1

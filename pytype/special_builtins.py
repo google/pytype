@@ -40,7 +40,7 @@ class TypeNew(abstract.PyTDFunction):
       # bound to a class or function, so we'll go with Any.
       self.match_args(node, args)  # May raise FailedFunctionCall.
       return node, self.vm.new_unsolvable(node)
-    node, raw_ret = super(TypeNew, self).call(node, func, args)
+    node, raw_ret = super().call(node, func, args)
     # Removes TypeVars from the return value.
     # See test_typevar.TypeVarTest.test_type_of_typevar(_error).
     ret = self.vm.program.NewVariable()
@@ -58,7 +58,7 @@ class BuiltinFunction(abstract.PyTDFunction):
   @classmethod
   def make(cls, vm):
     assert cls.name
-    return super(BuiltinFunction, cls).make(cls.name, vm, "__builtin__")
+    return super().make(cls.name, vm, "__builtin__")
 
   def get_underlying_method(self, node, receiver, method_name):
     """Get the bound method that a built-in function delegates to."""
@@ -167,7 +167,7 @@ class Filter(BuiltinFunction):
   def call(self, node, func, args):
     self.match_args(node, args)
     if len(args.posargs) != 2:
-      return super(Filter, self).call(node, func, args)
+      return super().call(node, func, args)
     pred, seq = args.posargs
     # Special case filter(None, seq). We remove None from seq and then call the
     # regular filter() so we don't need to reimplement eveything.
@@ -180,7 +180,7 @@ class Filter(BuiltinFunction):
         else:
           result.PasteBinding(b)
       args = function.Args((pred, result))
-    return super(Filter, self).call(node, func, args)
+    return super().call(node, func, args)
 
 
 class ObjectPredicate(BuiltinFunction):
@@ -191,7 +191,7 @@ class ObjectPredicate(BuiltinFunction):
   """
 
   def __init__(self, name, signatures, kind, vm):
-    super(ObjectPredicate, self).__init__(name, signatures, kind, vm)
+    super().__init__(name, signatures, kind, vm)
     # Map of True/False/None (where None signals an ambiguous bool) to
     # vm values.
     self._vm_values = {
@@ -436,7 +436,7 @@ class BuiltinClass(abstract.PyTDClass):
     else:
       ast = vm.loader.import_name(module)
       pytd_cls = ast.Lookup("%s.%s" % (module, name))
-    super(BuiltinClass, self).__init__(name, pytd_cls, vm)
+    super().__init__(name, pytd_cls, vm)
     self.module = module
 
 
@@ -444,7 +444,7 @@ class SuperInstance(abstract.AtomicAbstractValue):
   """The result of a super() call, i.e., a lookup proxy."""
 
   def __init__(self, cls, obj, vm):
-    super(SuperInstance, self).__init__("super", vm)
+    super().__init__("super", vm)
     self.cls = self.vm.convert.super_type
     self.super_cls = cls
     self.super_obj = obj
@@ -475,8 +475,7 @@ class SuperInstance(abstract.AtomicAbstractValue):
       # superclass, fall back to returning self.
       return self.get.to_variable(node)
     else:
-      return super(SuperInstance, self).get_special_attribute(
-          node, name, valself)
+      return super().get_special_attribute(node, name, valself)
 
   def get_class(self):
     return self.cls
@@ -493,7 +492,7 @@ class Super(BuiltinClass):
   _SIGNATURE = function.Signature.from_param_names("super", ("cls", "self"))
 
   def __init__(self, vm):
-    super(Super, self).__init__(vm, "super")
+    super().__init__(vm, "super")
 
   def call(self, node, _, args):
     result = self.vm.program.NewVariable()
@@ -544,7 +543,7 @@ class Object(BuiltinClass):
   """Implementation of __builtin__.object."""
 
   def __init__(self, vm):
-    super(Object, self).__init__(vm, "object")
+    super().__init__(vm, "object")
 
   def is_object_new(self, func):
     """Whether the given function is object.__new__.
@@ -596,14 +595,14 @@ class Object(BuiltinClass):
             self._has_own(node, val.cls, "__new__")):
         self.load_lazy_attribute("__init__extra_args")
         return self.members["__init__extra_args"]
-    return super(Object, self).get_special_attribute(node, name, valself)
+    return super().get_special_attribute(node, name, valself)
 
 
 class RevealType(abstract.AtomicAbstractValue):
   """For debugging. reveal_type(x) prints the type of "x"."""
 
   def __init__(self, vm):
-    super(RevealType, self).__init__("reveal_type", vm)
+    super().__init__("reveal_type", vm)
 
   def call(self, node, _, args):
     for a in args.posargs:
@@ -617,7 +616,7 @@ class PropertyTemplate(BuiltinClass):
   _KEYS = ["fget", "fset", "fdel", "doc"]
 
   def __init__(self, vm, name, module="__builtin__"):  # pylint: disable=useless-super-delegation
-    super(PropertyTemplate, self).__init__(vm, name, module)
+    super().__init__(vm, name, module)
 
   def signature(self):
     # Minimal signature, only used for constructing exceptions.
@@ -641,7 +640,7 @@ class PropertyInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
   CAN_BE_ABSTRACT = True
 
   def __init__(self, vm, name, cls, fget=None, fset=None, fdel=None, doc=None):
-    super(PropertyInstance, self).__init__("property", vm)
+    super().__init__("property", vm)
     mixin.HasSlots.init_mixin(self)
     self.name = name  # Reports the correct decorator in error messages.
     self.fget = fget
@@ -699,7 +698,7 @@ class Property(PropertyTemplate):
   """Property method decorator."""
 
   def __init__(self, vm):
-    super(Property, self).__init__(vm, "property")
+    super().__init__(vm, "property")
 
   def call(self, node, funcv, args):
     property_args = self._get_args(args)
@@ -711,7 +710,7 @@ class StaticMethodInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
   """StaticMethod instance (constructed by StaticMethod.call())."""
 
   def __init__(self, vm, cls, func):
-    super(StaticMethodInstance, self).__init__("staticmethod", vm)
+    super().__init__("staticmethod", vm)
     mixin.HasSlots.init_mixin(self)
     self.func = func
     self.cls = cls
@@ -731,7 +730,7 @@ class StaticMethod(BuiltinClass):
   _SIGNATURE = function.Signature.from_param_names("staticmethod", ("func",))
 
   def __init__(self, vm):
-    super(StaticMethod, self).__init__(vm, "staticmethod")
+    super().__init__(vm, "staticmethod")
 
   def call(self, node, funcv, args):
     if len(args.posargs) != 1:
@@ -748,7 +747,7 @@ class ClassMethodInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
   """ClassMethod instance (constructed by ClassMethod.call())."""
 
   def __init__(self, vm, cls, func):
-    super(ClassMethodInstance, self).__init__("classmethod", vm)
+    super().__init__("classmethod", vm)
     mixin.HasSlots.init_mixin(self)
     self.cls = cls
     self.func = func
@@ -768,7 +767,7 @@ class ClassMethod(BuiltinClass):
   _SIGNATURE = function.Signature.from_param_names("classmethod", ("func",))
 
   def __init__(self, vm):
-    super(ClassMethod, self).__init__(vm, "classmethod")
+    super().__init__(vm, "classmethod")
 
   def call(self, node, funcv, args):
     if len(args.posargs) != 1:

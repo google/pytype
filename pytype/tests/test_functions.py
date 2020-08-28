@@ -199,7 +199,7 @@ class PreciseReturnTest(test_base.TargetIndependentTest):
   """Tests for --precise-return."""
 
   def setUp(self):
-    super(PreciseReturnTest, self).setUp()
+    super().setUp()
     self.options.tweak(precise_return=True)
 
   def test_pytd_return(self):

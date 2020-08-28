@@ -446,7 +446,7 @@ class CollectNamesVisitor(ast_visitor.BaseVisitor):
   """Collect all occurences of Name in a subtree."""
 
   def __init__(self, ast):
-    super(CollectNamesVisitor, self).__init__(ast)
+    super().__init__(ast)
     self.names = []
 
   def visit_Name(self, node):
@@ -467,7 +467,7 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
   # anything by way of maintainability or readability?
 
   def __init__(self, ast, module_name, **kwargs):
-    super(ScopedVisitor, self).__init__(ast=ast, **kwargs)  # pytype: disable=wrong-keyword-args
+    super().__init__(ast=ast, **kwargs)  # pytype: disable=wrong-keyword-args
     self.stack = []
     self.class_ids = []
     self.envs = {}
@@ -533,12 +533,12 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
     self.add_scope(node)
 
   def enter_Module(self, node):
-    super(ScopedVisitor, self).enter_Module(node)  # pytype: disable=attribute-error
+    super().enter_Module(node)  # pytype: disable=attribute-error
     self.add_scope(node)
 
   def leave(self, node):
     """If the node has introduced a new scope, we need to pop it off."""
-    super(ScopedVisitor, self).leave(node)
+    super().leave(node)
     if node == self.stack[-1]:
       self.stack.pop()
 
@@ -547,9 +547,7 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
   """Visitor that generates indexes."""
 
   def __init__(self, ast, src, module_name):
-    super(IndexVisitor, self).__init__(ast=ast,
-                                       src_code=src,
-                                       module_name=module_name)
+    super().__init__(ast=ast, src_code=src, module_name=module_name)
     self.defs = {}
     self.locs = collections.defaultdict(list)
     self.refs = []
@@ -589,7 +587,7 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
     if isinstance(node, str):
       # We replace nodes with their names after visiting them.
       return node
-    return super(IndexVisitor, self)._get_node_name(node)
+    return super()._get_node_name(node)
 
   def make_def(self, node, **kwargs):
     """Make a definition from a node."""
@@ -717,7 +715,7 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
     defn = self.add_local_def(node, data=data,
                               doc=DocString.from_node(self._ast, node))
     self.classmap[d[0]] = defn
-    super(IndexVisitor, self).enter_ClassDef(node)
+    super().enter_ClassDef(node)
 
   def enter_FunctionDef(self, node):
     last_line = max(node.lineno, node.body[0].lineno - 1)
@@ -1237,7 +1235,7 @@ class VmTrace(source.AbstractTrace):
     types_repr = tuple(
         t and [node_utils.typename(x) for x in t]
         for t in self.types)
-    return "%s %s" % (super(VmTrace, self).__repr__(), types_repr)
+    return "%s %s" % (super().__repr__(), types_repr)
 
 
 def process_file(options, source_text=None, generate_callgraphs=False,

@@ -18,7 +18,7 @@ class AddMetaclassInstance(abstract.AtomicAbstractValue):
   """AddMetaclass instance (constructed by AddMetaclass.call())."""
 
   def __init__(self, meta, vm, module_name):
-    super(AddMetaclassInstance, self).__init__("AddMetaclassInstance", vm)
+    super().__init__("AddMetaclassInstance", vm)
     self.meta = meta
     self.module_name = module_name
 
@@ -45,7 +45,7 @@ class AddMetaclass(abstract.PyTDFunction):
 
   @classmethod
   def make(cls, name, vm, module_name):
-    self = super(AddMetaclass, cls).make(name, vm, module_name)
+    self = super().make(name, vm, module_name)
     self.module_name = module_name
     return self
 
@@ -62,7 +62,7 @@ class WithMetaclassInstance(abstract.AtomicAbstractValue):
   """Anonymous class created by with_metaclass."""
 
   def __init__(self, vm, cls, bases):
-    super(WithMetaclassInstance, self).__init__("WithMetaclassInstance", vm)
+    super().__init__("WithMetaclassInstance", vm)
     self.cls = cls
     self.bases = bases
 

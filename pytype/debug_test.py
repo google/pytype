@@ -29,7 +29,7 @@ class Node(object):
 class DebugTest(unittest.TestCase):
 
   def setUp(self):
-    super(DebugTest, self).setUp()
+    super().setUp()
     self.prog = cfg.Program()
     self.current_location = self.prog.NewCFGNode()
 

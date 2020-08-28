@@ -117,7 +117,7 @@ class SerializeAstTest(test_base.UnitTest):
     class RenameVisitor(visitors.Visitor):
 
       def __init__(self, *args, **kwargs):
-        super(RenameVisitor, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._init = False
 
       def EnterFunction(self, func):

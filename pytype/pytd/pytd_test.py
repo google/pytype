@@ -12,7 +12,7 @@ class TestPytd(unittest.TestCase):
   """Test the simple functionality in pytd.py."""
 
   def setUp(self):
-    super(TestPytd, self).setUp()
+    super().setUp()
     self.int = pytd.ClassType("int")
     self.none_type = pytd.ClassType("NoneType")
     self.float = pytd.ClassType("float")

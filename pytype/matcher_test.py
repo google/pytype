@@ -18,7 +18,7 @@ class MatcherTest(test_base.UnitTest):
   """Test matcher.AbstractMatcher."""
 
   def setUp(self):
-    super(MatcherTest, self).setUp()
+    super().setUp()
     options = config.Options.create(python_version=self.python_version)
     self.vm = vm.VirtualMachine(
         errors.ErrorLog(), options, load_pytd.Loader(None, self.python_version))

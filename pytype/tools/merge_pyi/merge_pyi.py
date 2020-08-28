@@ -541,7 +541,7 @@ class FixMergePyi(BaseFix):
   PATTERN = FuncSignature.PATTERN
 
   def __init__(self, options, log):
-    super(FixMergePyi, self).__init__(options, log)
+    super().__init__(options, log)
 
     # name -> FuncSignature map obtained from .pyi file
     self.pyi_funcs = None
@@ -893,7 +893,7 @@ class StandaloneRefactoringTool(refactor.RefactoringTool):
 
   def __init__(self, options):
     self._fixer = None
-    super(StandaloneRefactoringTool, self).__init__([], options=options)
+    super().__init__([], options=options)
 
   def get_fixers(self):
     if self.fixer.order == 'pre':

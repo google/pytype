@@ -23,7 +23,7 @@ class DataclassOverlay(overlay.Overlay):
         "dataclass": Dataclass.make,
     }
     ast = vm.loader.import_name("flax.struct")
-    super(DataclassOverlay, self).__init__(vm, "flax.struct", member_map, ast)
+    super().__init__(vm, "flax.struct", member_map, ast)
 
 
 class Dataclass(dataclass_overlay.Dataclass):
@@ -31,4 +31,4 @@ class Dataclass(dataclass_overlay.Dataclass):
 
   @classmethod
   def make(cls, name, vm):
-    return super(Dataclass, cls).make(name, vm, "flax.struct")
+    return super().make(name, vm, "flax.struct")

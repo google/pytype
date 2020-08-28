@@ -38,7 +38,7 @@ class Overlay(abstract.Module):
         Used to access type information for members of the module that are not
         explicitly provided by the overlay.
     """
-    super(Overlay, self).__init__(vm, name, member_map, ast)
+    super().__init__(vm, name, member_map, ast)
     self.real_module = vm.convert.constant_to_value(
         ast, subst=datatypes.AliasingDict(), node=vm.root_cfg_node)
 
@@ -57,7 +57,7 @@ class Overlay(abstract.Module):
       return self.real_module
 
   def items(self):
-    items = super(Overlay, self).items()
+    items = super().items()
     items += [(name, item) for name, item in self.real_module.items()
               if name not in self._member_map]
     return items

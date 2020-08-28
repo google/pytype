@@ -12,7 +12,7 @@ class TypesOverlay(overlay.Overlay):
         "coroutine": CoroutineDecorator.make_for_types
     }
     ast = vm.loader.import_name("types")
-    super(TypesOverlay, self).__init__(vm, "types", member_map, ast)
+    super().__init__(vm, "types", member_map, ast)
 
 
 class AsyncioOverlay(overlay.Overlay):
@@ -23,7 +23,7 @@ class AsyncioOverlay(overlay.Overlay):
         "coroutine": CoroutineDecorator.make_for_asyncio
     }
     ast = vm.loader.import_name("asyncio")
-    super(AsyncioOverlay, self).__init__(vm, "asyncio", member_map, ast)
+    super().__init__(vm, "asyncio", member_map, ast)
 
 
 class CoroutineDecorator(abstract.PyTDFunction):
@@ -31,11 +31,11 @@ class CoroutineDecorator(abstract.PyTDFunction):
 
   @classmethod
   def make_for_types(cls, name, vm):
-    return super(CoroutineDecorator, cls).make(name, vm, "types")
+    return super().make(name, vm, "types")
 
   @classmethod
   def make_for_asyncio(cls, name, vm):
-    return super(CoroutineDecorator, cls).make(name, vm, "asyncio")
+    return super().make(name, vm, "asyncio")
 
   def call(self, node, unused_func, args):
     """Marks the function as a generator-based coroutine."""

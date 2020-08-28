@@ -302,8 +302,11 @@ class Args(collections.namedtuple(
     """
     assert isinstance(posargs, tuple), posargs
     cls.replace = cls._replace
-    return super(Args, cls).__new__(
-        cls, posargs=posargs, namedargs=namedargs or {}, starargs=starargs,
+    return super().__new__(
+        cls,
+        posargs=posargs,
+        namedargs=namedargs or {},
+        starargs=starargs,
         starstarargs=starstarargs)
 
   def starargs_as_tuple(self, node, vm):
@@ -374,7 +377,7 @@ class ReturnValueMixin(object):
   """Mixin for exceptions that hold a return node and variable."""
 
   def __init__(self):
-    super(ReturnValueMixin, self).__init__()
+    super().__init__()
     self.return_node = None
     self.return_variable = None
 
@@ -399,7 +402,7 @@ class NotCallable(FailedFunctionCall):
   """For objects that don't have __call__."""
 
   def __init__(self, obj):
-    super(NotCallable, self).__init__()
+    super().__init__()
     self.obj = obj
 
 
@@ -407,7 +410,7 @@ class UndefinedParameterError(FailedFunctionCall):
   """Function called with an undefined variable."""
 
   def __init__(self, name):
-    super(UndefinedParameterError, self).__init__()
+    super().__init__()
     self.name = name
 
 
@@ -415,7 +418,7 @@ class DictKeyMissing(Exception, ReturnValueMixin):
   """When retrieving a key that does not exist in a dict."""
 
   def __init__(self, name):
-    super(DictKeyMissing, self).__init__()
+    super().__init__()
     self.name = name
 
   def __gt__(self, other):
@@ -432,7 +435,7 @@ class InvalidParameters(FailedFunctionCall):
   """Exception for functions called with an incorrect parameter combination."""
 
   def __init__(self, sig, passed_args, vm, bad_param=None):
-    super(InvalidParameters, self).__init__()
+    super().__init__()
     self.name = sig.name
     passed_args = [(name, vm.merge_values(arg.data))
                    for name, arg, _ in sig.iter_args(passed_args)]
@@ -456,7 +459,7 @@ class WrongKeywordArgs(InvalidParameters):
   """E.g. an arg "x" is passed to a function that doesn't have an "x" param."""
 
   def __init__(self, sig, passed_args, vm, extra_keywords):
-    super(WrongKeywordArgs, self).__init__(sig, passed_args, vm)
+    super().__init__(sig, passed_args, vm)
     self.extra_keywords = tuple(extra_keywords)
 
 
@@ -464,7 +467,7 @@ class DuplicateKeyword(InvalidParameters):
   """E.g. an arg "x" is passed to a function as both a posarg and a kwarg."""
 
   def __init__(self, sig, passed_args, vm, duplicate):
-    super(DuplicateKeyword, self).__init__(sig, passed_args, vm)
+    super().__init__(sig, passed_args, vm)
     self.duplicate = duplicate
 
 
@@ -472,7 +475,7 @@ class MissingParameter(InvalidParameters):
   """E.g. a function requires parameter 'x' but 'x' isn't passed."""
 
   def __init__(self, sig, passed_args, vm, missing_parameter):
-    super(MissingParameter, self).__init__(sig, passed_args, vm)
+    super().__init__(sig, passed_args, vm)
     self.missing_parameter = missing_parameter
 # pylint: enable=g-bad-exception-name
 
@@ -496,7 +499,7 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
   """
 
   def __init__(self, name, pytd_sig, vm):
-    super(PyTDSignature, self).__init__(vm)
+    super().__init__(vm)
     self.name = name
     self.pytd_sig = pytd_sig
     self.param_types = [

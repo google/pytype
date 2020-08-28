@@ -12,7 +12,7 @@ class SysOverlay(overlay.Overlay):
         "version_info": build_version_info
     }
     ast = vm.loader.import_name("sys")
-    super(SysOverlay, self).__init__(vm, "sys", member_map, ast)
+    super().__init__(vm, "sys", member_map, ast)
 
 
 class VersionInfo(abstract.Tuple):

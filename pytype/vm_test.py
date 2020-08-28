@@ -20,7 +20,7 @@ class TraceVM(vm.VirtualMachine):
   """Special VM that remembers which instructions it executed."""
 
   def __init__(self, options, loader):
-    super(TraceVM, self).__init__(errors.ErrorLog(), options, loader=loader)
+    super().__init__(errors.ErrorLog(), options, loader=loader)
     # There are multiple possible orderings of the basic blocks of the code, so
     # we collect the instructions in an order-independent way:
     self.instructions_executed = set()
@@ -32,7 +32,7 @@ class TraceVM(vm.VirtualMachine):
 
   def run_instruction(self, op, state):
     self.instructions_executed.add(op.index)
-    return super(TraceVM, self).run_instruction(op, state)
+    return super().run_instruction(op, state)
 
 
 class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
@@ -42,7 +42,7 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
   PY_MAJOR_VERSIONS = [2]
 
   def setUp(self):
-    super(BytecodeTest, self).setUp()
+    super().setUp()
     self.errorlog = errors.ErrorLog()
     self.trace_vm = TraceVM(self.options, self.loader)
 
@@ -186,7 +186,7 @@ class TraceTest(test_base.BaseTest, test_utils.MakeCodeMixin):
   """Tests for opcode tracing in the VM."""
 
   def setUp(self):
-    super(TraceTest, self).setUp()
+    super().setUp()
     self.errorlog = errors.ErrorLog()
     self.trace_vm = TraceVM(self.options, self.loader)
 
@@ -228,7 +228,7 @@ class AnnotationsTest(test_base.BaseTest, test_utils.MakeCodeMixin):
   """Tests for recording annotations."""
 
   def setUp(self):
-    super(AnnotationsTest, self).setUp()
+    super().setUp()
     self.errorlog = errors.ErrorLog()
     self.vm = analyze.CallTracer(self.errorlog, self.options, self.loader)
 
@@ -242,7 +242,7 @@ class AnnotationsTest(test_base.BaseTest, test_utils.MakeCodeMixin):
 class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
 
   def setUp(self):
-    super(DirectorLineNumbersTest, self).setUp()
+    super().setUp()
     self.errorlog = errors.ErrorLog()
     self.vm = analyze.CallTracer(self.errorlog, self.options, self.loader)
 

@@ -1,4 +1,4 @@
-# Lint as: python2, python3
+# Lint as: python3
 """Tests for traces.traces."""
 
 import ast
@@ -23,7 +23,7 @@ class _NotImplementedVisitor(traces.MatchAstVisitor):
 class _TestVisitor(traces.MatchAstVisitor):
 
   def __init__(self, *args, **kwargs):
-    super(_TestVisitor, self).__init__(*args, **kwargs)
+    super().__init__(*args, **kwargs)
     self.traces_by_node_type = collections.defaultdict(list)
 
   def generic_visit(self, node):
@@ -41,7 +41,7 @@ class TraceTest(unittest.TestCase):
     src = traces.trace("")
     trace, = src.traces[1]
     self.assertEqual(trace.op, "LOAD_CONST")
-    self.assertEqual(trace.symbol, None)
+    self.assertIsNone(trace.symbol)
     pyval, = trace.types
     self.assertEqual(pyval.name, "__builtin__.NoneType")
     self.assertEqual(pyval.cls.name, "__builtin__.NoneType")

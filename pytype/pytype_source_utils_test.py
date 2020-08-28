@@ -13,7 +13,7 @@ class PytypeSourceUtilsTest(unittest.TestCase):
   """Test pytype source utilities."""
 
   def setUp(self):
-    super(PytypeSourceUtilsTest, self).setUp()
+    super().setUp()
     self.root = os.path.dirname(__file__)
 
   def test_pytype_source_dir(self):

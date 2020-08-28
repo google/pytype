@@ -37,7 +37,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
   """Matcher for abstract values."""
 
   def __init__(self, vm):
-    super(AbstractMatcher, self).__init__(vm)
+    super().__init__(vm)
     self._protocol_cache = set()
 
   def _set_error_subst(self, subst):
