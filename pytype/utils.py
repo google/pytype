@@ -39,7 +39,7 @@ class UsageError(Exception):
 
 def format_version(python_version):
   """Format a version tuple into a dotted version string."""
-  return ".".join([str(x) for x in python_version])
+  return ".".join(str(x) for x in python_version)
 
 
 def version_from_string(version_string):
@@ -155,12 +155,12 @@ def concat_tuples(tuples):
 
 
 def get_python_exe(python_version):
-  """Automatically infer the --python_exe argument.
+  """Find a python executable to use.
 
   Arguments:
     python_version: the version tuple (e.g. (2, 7))
   Returns:
-    A tuple of the inferred python_exe argument and any command-line flags
+    A tuple of the path to the executable and any command-line flags
   """
   # Use custom interpreters, if provided, in preference to the ones in $PATH
   custom_python_exe = pytype_source_utils.get_custom_python_exe(python_version)

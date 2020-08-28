@@ -97,13 +97,6 @@ def make_parser():
       help=("Output file. Use '-' for stdout."))
 
   # Options
-  # TODO(b/80098600): Change the typeshed test so we can get rid of this option.
-  o.add_argument(
-      "--python_exe", type=str, action="store",
-      dest="python_exe", default=None,
-      help=("Full path to a Python interpreter that is used to compile the "
-            "source(s) to byte code. If not specified, --python_version is "
-            "used to create the name of an interpreter."))
   add_basic_options(o)
   add_subtools(o)
   add_pickle_options(o)
@@ -484,6 +477,19 @@ class Postprocessor(object):
     # Check that we have a version supported by pytype.
     utils.validate_version(self.output_options.python_version)
 
+    if utils.can_compile_bytecode_natively(self.output_options.python_version):
+      # pytype does not need an exe for bytecode compilation. Abort early to
+      # avoid extracting a large unused exe into /tmp.
+      self.output_options.python_exe = (None, None)
+      return
+
+    python_exe, flags = utils.get_python_exe(self.output_options.python_version)
+    python_exe_version = utils.get_python_exe_version(python_exe)
+    if python_exe_version != self.output_options.python_version:
+      self.error("Need a valid python%d.%d executable in $PATH" %
+                 self.output_options.python_version)
+    self.output_options.python_exe = (python_exe, flags)
+
   def _store_disable(self, disable):
     if disable:
       self.output_options.disable = disable.split(",")
@@ -502,41 +508,6 @@ class Postprocessor(object):
       # We set the field to an empty list as clients using this postprocessor
       # expect a list.
       self.output_options.enable_only = []
-
-  @uses(["python_version"])
-  def _store_python_exe(self, python_exe):
-    """Postprocess --python_exe."""
-    if python_exe is None and utils.can_compile_bytecode_natively(
-        self.output_options.python_version):
-      # The user has not requested a custom exe and pytype does not need an exe
-      # for bytecode compilation. Abort early to avoid extracting a large unused
-      # exe into /tmp.
-      self.output_options.python_exe = (None, None)
-      return
-
-    if python_exe is None:
-      python_exe, flags = utils.get_python_exe(
-          self.output_options.python_version)
-      user_provided_exe = False
-    else:
-      if isinstance(python_exe, tuple):
-        python_exe, flags = python_exe
-      else:
-        flags = []
-      user_provided_exe = True
-    python_exe_version = utils.get_python_exe_version(python_exe)
-    if python_exe_version != self.output_options.python_version:
-      if not user_provided_exe:
-        err = ("Need a valid python%d.%d executable in $PATH" %
-               self.output_options.python_version)
-      elif python_exe_version:
-        err = ("--python_exe version %d.%d does not match "
-               "--python_version %d.%d" % (
-                   python_exe_version + self.output_options.python_version))
-      else:
-        err = "Bad flag --python_exe: could not run %s" % python_exe
-      self.error(err)
-    self.output_options.python_exe = (python_exe, flags)
 
   @uses(["pythonpath", "output", "verbosity"])
   def _store_imports_map(self, imports_map):

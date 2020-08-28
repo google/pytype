@@ -10,7 +10,7 @@ freshness: { owner: 'mdemello' reviewed: '2020-08-07' }
       * [Host and Target Versions](#host-and-target-versions)
       * [Opcodes](#opcodes)
 
-<!-- Added by: mdemello, at: 2020-08-10T13:15-07:00 -->
+<!-- Added by: rechen, at: 2020-08-27T17:12-07:00 -->
 
 <!--te-->
 
@@ -60,10 +60,10 @@ else:
   bytecode = read(src.pyc)
 ```
 
-To support `host != target`, we have a check in `config.py/_store_python_exe()`
-to make sure there is a target-version python interpreter available, and a
-standalone executable, `pyc/compile_bytecode.py` that can be called as a
-subprocess.
+To support `host != target`, we have a check in
+`config.py/_store_python_version()` to make sure there is a target-version
+python interpreter available, and a standalone executable,
+`pyc/compile_bytecode.py` that can be called as a subprocess.
 
 ## Opcodes
 
