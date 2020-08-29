@@ -10,7 +10,7 @@ freshness: { owner: 'mdemello' reviewed: '2020-07-09' }
       * [Abstract Values](#abstract-values-1)
       * [Type Information](#type-information)
 
-<!-- Added by: mdemello, at: 2020-08-10T13:15-07:00 -->
+<!-- Added by: rechen, at: 2020-08-29T02:25-07:00 -->
 
 <!--te-->
 
@@ -19,7 +19,7 @@ freshness: { owner: 'mdemello' reviewed: '2020-07-09' }
 The regular python interpreter tracks the *values* of objects. That is, given
 the code
 
-```
+```python
 x = "hello world"
 ```
 
@@ -30,7 +30,7 @@ it will create an object (a block of memory) whose contents are the string
 If an object is mutable, calling one of the mutation methods will change the
 contents of the object while retaining the object's identity, for example
 
-```
+```python
 x = [1, 2, 3]
 y = x  # y and x now point to the same list object
 x[0] = 4
@@ -40,13 +40,13 @@ print(y)  # => [4, 2, 3]
 Pytype likewise creates and maintains objects, but it tracks the *types* of
 those objects rather than their values. In the examples above,
 
-```
+```python
 x = "hello world"
 ```
 
 will create an object whose contents are essentially "this is a string", and
 
-```
+```python
 x = [1, 2, 3]
 ```
 
@@ -69,7 +69,7 @@ representations of python objects.
 This is easier to explain with a concrete example, so consider the following
 code:
 
-```
+```python
 class A(object):
   def __init__(self, x):
     self.x = x
@@ -79,7 +79,7 @@ foo = A(10)
 
 Pytype would execute the following pseudocode to model it:
 
-```
+```python
 # Create a "class" object for A
 obj1 = abstract.InterpreterClass(
   name = "A",
@@ -158,15 +158,15 @@ intent of the code better.
 
 For instance, given the following code:
 
-```
+```python
 x: List[int] = []
 x.append("hello")
 ```
 
 python will consider the type of the object x points to to be `list` throughout,
 whereas pytype will first create it as `List[int]`, and then raise a type error
-because we are trying to mutate it to `List[int, string]` which contradicts the
-type annotation.
+because we are trying to mutate it to `List[Union[int, string]]` which
+contradicts the type annotation.
 
 Python will *not* raise a type error for the same code, because (a) type
 annotations are treated as comments and not directives, and (b) because the type

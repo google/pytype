@@ -10,7 +10,7 @@ freshness: { owner: 'mdemello' reviewed: '2020-08-07' }
       * [Host and Target Versions](#host-and-target-versions)
       * [Opcodes](#opcodes)
 
-<!-- Added by: rechen, at: 2020-08-27T17:12-07:00 -->
+<!-- Added by: rechen, at: 2020-08-29T02:25-07:00 -->
 
 <!--te-->
 
@@ -51,7 +51,7 @@ through our VirtualMachine.
 
 The relevant compilation code can be found at `pyc/pyc.py`. The process is:
 
-```
+```python
 if host_version == target_version:
   bytecode = compile_source(src)
 else:
@@ -85,7 +85,7 @@ opcode. Opcodes have a set of properties like `HAS_LOCAL` and `PUSHES_BLOCK`
 bit), and optionally a single argument. The semantic value of the argument
 depends on the opcode. For example,
 
-```
+```python
 class STORE_ATTR(OpcodeWithArg):  # Indexes into name list
   FLAGS = HAS_NAME|HAS_ARGUMENT
     __slots__ = ()
@@ -100,7 +100,7 @@ associated argument, and that that argument is an index into the list of names.
 > with actually interpreting that opcode. The `byte_STORE_ATTR` method starts off
 > with the code
 >
-> ```
+> ```python
 > name = self.frame.f_code.co_names[op.arg]
 > ```
 >
