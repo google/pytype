@@ -24,7 +24,7 @@ concepts and code layout.
             * [Utilities](#utilities)
       * [Updating the developer guide](#updating-the-developer-guide)
 
-<!-- Added by: rechen, at: 2020-08-28T12:50-07:00 -->
+<!-- Added by: rechen, at: 2020-08-29T02:18-07:00 -->
 
 <!--te-->
 
@@ -113,7 +113,7 @@ typeshed, `pytd/builtins/`, `pytd/stdlib/`,
 
 ### Abstract representation of types
 
-`abstract.py`, `matcher.py`, `overlays/`
+`abstract.py`, `overlays/`
 
 ### Conversion between representations
 

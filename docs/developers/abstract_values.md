@@ -9,6 +9,7 @@ freshness: { owner: 'mdemello' reviewed: '2020-07-09' }
       * [Objects, Types and Values](#objects-types-and-values)
       * [Abstract Values](#abstract-values-1)
       * [Type Information](#type-information)
+      * [Matching](#matching)
 
 <!-- Added by: rechen, at: 2020-08-29T02:25-07:00 -->
 
@@ -172,3 +173,38 @@ Python will *not* raise a type error for the same code, because (a) type
 annotations are treated as comments and not directives, and (b) because the type
 of all lists is simply `list`, and is not parametrised by the type of its
 contents, so there was no type violation.
+
+## Matching
+
+Most of the errors that pytype reports are detected via a mismatch between an
+expected and an observed type. [`pytype/matcher.py`][matcher] contains the logic
+for matching abstract values against each other. For example, when analyzing:
+
+```python
+def f(x: int): ...
+f(0)
+```
+
+pytype will call
+
+```python
+matcher.match_var_against_type(
+    Variable(Binding(PythonConstant(0))), PyTDClass(int))
+```
+
+in order to determine whether `f(0)` is a valid function call.
+
+A second important function of the matcher is to compute type parameter
+substitutions. Consider this code snippet:
+
+```python
+T = TypeVar('T')
+def f(x: T, y: T): ...
+f(0, 1)
+```
+
+When matching `(0, 1)` against `(T, T)`, the matcher determines that the call is
+valid due to `0` and `1` having the same type. It also returns a substitution
+dictionary `{T: int}` so that the type `T` is mapped to can be propagated.
+
+[matcher]: https://github.com/google/pytype/blob/master/pytype/matcher.py
