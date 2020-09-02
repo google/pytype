@@ -59,7 +59,7 @@ def Dedup(seq):
 class MROError(Exception):  # pylint: disable=g-bad-exception-name
 
   def __init__(self, seqs):
-    super(MROError, self).__init__()
+    super().__init__()
     self.mro_seqs = seqs
 
 

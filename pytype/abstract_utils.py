@@ -1,4 +1,3 @@
-# Lint as: python3
 """Utilities for abstract.py."""
 
 import collections
@@ -13,8 +12,6 @@ from pytype.pyc import pyc
 from pytype.pytd import mro
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
-
-import six
 
 log = logging.getLogger(__name__)
 
@@ -67,7 +64,7 @@ class GenericTypeError(Exception):
     self.error = error
 
 
-class AsInstance(object):
+class AsInstance:
   """Wrapper, used for marking things that we want to convert to an instance."""
 
   def __init__(self, cls):
@@ -160,7 +157,7 @@ def get_views(variables, node):
   seen = []  # the accessed subsets of previously seen views
   for combination in combinations:
     view = {value.variable: value for value in combination}
-    if any(subset <= six.viewitems(view) for subset in seen):
+    if any(subset <= view.items() for subset in seen):
       # Optimization: This view can be skipped because it matches the accessed
       # subset of a previous one.
       log.info("Skipping view (already seen): %r", view)
@@ -173,7 +170,7 @@ def get_views(variables, node):
     skip_future = yield view
     if skip_future:
       # Skip future views matching this accessed subset.
-      seen.append(six.viewitems(view.accessed_subset))
+      seen.append(view.accessed_subset.items())
 
 
 def get_signatures(func):

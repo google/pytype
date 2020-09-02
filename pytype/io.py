@@ -1,7 +1,5 @@
 """Public interface to top-level pytype functions."""
 
-from __future__ import print_function
-
 import contextlib
 import logging
 import os
@@ -34,13 +32,13 @@ log = logging.getLogger(__name__)
 ERROR_DOC_URL = "https://google.github.io/pytype/errors.html"
 
 
-def read_source_file(input_filename):
+def read_source_file(input_filename, open_function=open):
   try:
     if six.PY3:
-      with open(input_filename, "r", encoding="utf8") as fi:
+      with open_function(input_filename, "r", encoding="utf8") as fi:
         return fi.read()
     else:
-      with open(input_filename, "rb") as fi:
+      with open_function(input_filename, "rb") as fi:
         return fi.read().decode("utf8")
   except IOError as e:
     raise utils.UsageError("Could not load input file %s" %
@@ -69,35 +67,34 @@ def _set_verbosity_from(posarg):
 
 
 @_set_verbosity_from(posarg=2)
-def _call(analyze_types, input_filename, options, loader):
+def _call(analyze_types, src, options, loader):
   """Helper function to call analyze.check/infer_types."""
-  src = read_source_file(input_filename)
   errorlog = errors.ErrorLog()
   # 'deep' tells the analyzer whether to analyze functions not called from main.
   deep = not options.main_only
   loader = loader or load_pytd.create_loader(options)
   return errorlog, analyze_types(
       src=src,
-      filename=input_filename,
+      filename=options.input,
       errorlog=errorlog,
       options=options,
       loader=loader,
       deep=deep)
 
 
-def check_py(input_filename, options=None, loader=None):
-  """Check the types of one file."""
-  options = options or config.Options.create(input_filename)
+def check_py(src, options=None, loader=None):
+  """Check the types of a string of source code."""
+  options = options or config.Options.create()
   with config.verbosity_from(options):
-    errorlog, _ = _call(analyze.check_types, input_filename, options, loader)
+    errorlog, _ = _call(analyze.check_types, src, options, loader)
   return errorlog
 
 
-def generate_pyi(input_filename, options=None, loader=None):
-  """Run the inferencer on one file, producing output.
+def generate_pyi(src, options=None, loader=None):
+  """Run the inferencer on a string of source code, producing output.
 
   Args:
-    input_filename: name of the file to process
+    src: The source code.
     options: config.Options object.
     loader: A load_pytd.Loader instance.
 
@@ -108,10 +105,9 @@ def generate_pyi(input_filename, options=None, loader=None):
     CompileError: If we couldn't parse the input file.
     UsageError: If the input filepath is invalid.
   """
-  options = options or config.Options.create(input_filename)
+  options = options or config.Options.create()
   with config.verbosity_from(options):
-    errorlog, (mod, builtins) = _call(
-        analyze.infer_types, input_filename, options, loader)
+    errorlog, (mod, builtins) = _call(analyze.infer_types, src, options, loader)
     mod.Visit(visitors.VerifyVisitor())
     mod = optimize.Optimize(mod,
                             builtins,
@@ -148,13 +144,12 @@ def check_or_generate_pyi(options, loader=None):
   result = pytd_builtins.DEFAULT_SRC
   ast = pytd_builtins.GetDefaultAst(options.python_version)
   try:
+    src = read_source_file(options.input, options.open_function)
     if options.check:
-      return check_py(
-          input_filename=options.input, options=options, loader=loader
-      ), None, None
+      return check_py(src=src, options=options, loader=loader), None, None
     else:
       errorlog, result, ast = generate_pyi(
-          input_filename=options.input, options=options, loader=loader)
+          src=src, options=options, loader=loader)
   except utils.UsageError as e:
     raise
   except pyc.CompileError as e:
@@ -187,7 +182,7 @@ def _write_pyi_output(options, contents, filename):
     sys.stdout.write(contents)
   else:
     log.info("write pyi %r => %r", options.input, filename)
-    with open(filename, "w") as fi:
+    with options.open_function(filename, "w") as fi:
       fi.write(contents)
 
 
@@ -231,7 +226,7 @@ def process_one_file(options):
 
   # Touch output file upon success.
   if options.touch and not exit_status:
-    with open(options.touch, "a"):
+    with options.open_function(options.touch, "a"):
       os.utime(options.touch, None)
   return exit_status
 
@@ -257,7 +252,7 @@ def write_pickle(ast, options, loader=None):
     ast2 = ast2.Visit(visitors.ClearClassPointers())
     if not pytd_utils.ASTeq(ast1, ast2):
       raise AssertionError()
-  serialize_ast.StoreAst(ast, options.output)
+  serialize_ast.StoreAst(ast, options.output, options.open_function)
 
 
 def print_error_doc_url(errorlog):
@@ -276,7 +271,7 @@ def handle_errors(errorlog, options):
     return 0
 
   if options.output_errors_csv:
-    errorlog.print_to_csv_file(options.output_errors_csv)
+    errorlog.print_to_csv_file(options.output_errors_csv, options.open_function)
     return 0  # Command is successful regardless of errors.
 
   errorlog.print_to_stderr()

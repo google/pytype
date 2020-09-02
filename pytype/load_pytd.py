@@ -21,9 +21,10 @@ log = logging.getLogger(__name__)
 
 LOADER_ATTR_TO_CONFIG_OPTION_MAP = {
     "base_module": "module_name",
+    "imports_map": "imports_map",
+    "open_function": "open_function",
     "python_version": "python_version",
     "pythonpath": "pythonpath",
-    "imports_map": "imports_map",
     "use_typeshed": "typeshed",
 }
 
@@ -69,7 +70,7 @@ ResolvedModule = collections.namedtuple(
     "ResolvedModule", ("module_name", "filename", "ast"))
 
 
-class Module(object):
+class Module:
   """Represents a parsed module.
 
   Attributes:
@@ -109,7 +110,7 @@ class BadDependencyError(Exception):
     return utils.message(self)
 
 
-class Loader(object):
+class Loader:
   """A cache for loaded PyTD files.
 
   Typically, you'll have one instance of this class, per module.
@@ -123,6 +124,7 @@ class Loader(object):
     pythonpath: The PYTHONPATH.
     imports_map: A short_path -> full_name mapping for imports.
     use_typeshed: Whether to use https://github.com/python/typeshed.
+    open_function: A custom file opening function.
   """
 
   PREFIX = "pytd:"  # for pytd files that ship with pytype
@@ -133,7 +135,8 @@ class Loader(object):
                pythonpath=(),
                imports_map=None,
                use_typeshed=True,
-               modules=None):
+               modules=None,
+               open_function=open):
     self.python_version = utils.normalize_version(python_version)
     self._modules = modules or self._base_modules(self.python_version)
     if self._modules["__builtin__"].needs_unpickling():
@@ -146,6 +149,7 @@ class Loader(object):
     self.pythonpath = pythonpath
     self.imports_map = imports_map
     self.use_typeshed = use_typeshed
+    self.open_function = open_function
     self._concatenated = None
     self._import_name_cache = {}  # performance cache
     self._aliases = {}
@@ -159,14 +163,17 @@ class Loader(object):
     # We assume that the Loader is in a consistent state here. In particular, we
     # assume that for every module in _modules, all the transitive dependencies
     # have been loaded.
-    items = tuple((name, serialize_ast.StoreAst(module.ast))
-                  for name, module in sorted(self._modules.items()))
+    items = tuple(
+        (name, serialize_ast.StoreAst(
+            module.ast, open_function=self.open_function))
+        for name, module in sorted(self._modules.items()))
     # Preparing an ast for pickling clears its class pointers, making it
     # unsuitable for reuse, so we have to discard the builtins cache.
     builtins.InvalidateCache(self.python_version)
     # Now pickle the pickles. We keep the "inner" modules as pickles as a
     # performance optimization - unpickling is slow.
-    pytd_utils.SavePickle(items, filename, compress=True)
+    pytd_utils.SavePickle(
+        items, filename, compress=True, open_function=self.open_function)
 
   def _unpickle_module(self, module):
     raise NotImplementedError()  # overwritten in PickledPyiLoader
@@ -237,8 +244,9 @@ class Loader(object):
     if existing:
       return existing
     if not ast:
-      ast = parser.parse_file(filename=filename, name=module_name,
-                              python_version=self.python_version)
+      with self.open_function(filename, "r") as f:
+        ast = parser.parse_string(f.read(), filename=filename, name=module_name,
+                                  python_version=self.python_version)
     return self._process_module(module_name, filename, ast)
 
   def _process_module(self, module_name, filename, ast):
@@ -637,7 +645,9 @@ class PickledPyiLoader(Loader):
 
   @classmethod
   def load_from_pickle(cls, filename, base_module, **kwargs):
-    items = pytd_utils.LoadPickle(filename, compress=True)
+    items = pytd_utils.LoadPickle(
+        filename, compress=True,
+        open_function=kwargs.get("open_function", open))
     modules = {
         name: Module(name, filename=None, ast=None, pickle=pickle, dirty=False)
         for name, pickle in items
@@ -679,7 +689,8 @@ class PickledPyiLoader(Loader):
     existing = self._get_existing_ast(module_name)
     if existing:
       return existing
-    loaded_ast = pytd_utils.LoadPickle(filename)
+    loaded_ast = pytd_utils.LoadPickle(
+        filename, open_function=self.open_function)
     # At this point ast.name and module_name could be different.
     # They are later synced in ProcessAst.
     dependencies = {d: names for d, names in loaded_ast.dependencies

@@ -12,7 +12,6 @@ from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import visitors
-import six
 
 
 def _repeat_type(type_str, n):
@@ -167,7 +166,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
     # namedtuple fields can be given as a single string, e.g. "a, b, c" or as a
     # list [Variable('a'), Variable('b'), Variable('c')].
     # We just want a list of strings.
-    if isinstance(fields, (bytes, six.text_type)):
+    if isinstance(fields, (bytes, str)):
       fields = compat.native_str(fields)
       field_names = fields.replace(",", " ").split()
     else:

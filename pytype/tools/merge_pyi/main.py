@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 
 #   Copyright 2016 Google Inc.
 #
@@ -15,8 +14,6 @@
 #   limitations under the License.
 
 """Merge .pyi file annotations into a .py file."""
-
-from __future__ import print_function
 
 import argparse
 import difflib

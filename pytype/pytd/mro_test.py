@@ -1,4 +1,3 @@
-# -*- coding:utf-8; python-indent:2; indent-tabs-mode:nil -*-
 # Copyright 2013 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

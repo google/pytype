@@ -1,8 +1,5 @@
-# python3
 
 """Generate cross references from a project."""
-
-from __future__ import print_function
 
 import collections
 import re
@@ -101,7 +98,7 @@ class AttrError(Exception):
 
 
 @attr.s
-class PytypeValue(object):
+class PytypeValue:
   """Stores a value inferred by pytype."""
 
   module = attr.ib()
@@ -158,7 +155,7 @@ class PytypeValue(object):
 
 
 @attr.s
-class Module(object):
+class Module:
   """Module representation."""
   name = attr.ib()
 
@@ -171,7 +168,7 @@ class Module(object):
 
 
 @attr.s
-class DocString(object):
+class DocString:
   """Store the text and location of a docstring."""
 
   text = attr.ib()
@@ -198,7 +195,7 @@ class DocString(object):
 
 
 @attr.s
-class Definition(object):
+class Definition:
   """A symbol definition.
 
   Attributes:
@@ -260,7 +257,7 @@ class Definition(object):
 
 
 @attr.s
-class Remote(object):
+class Remote:
   """A symbol from another module."""
 
   module = attr.ib()
@@ -285,7 +282,7 @@ class Remote(object):
 
 
 @attr.s
-class DefLocation(object):
+class DefLocation:
   """A location of a symbol definition.
 
   Attributes:
@@ -301,7 +298,7 @@ class DefLocation(object):
 
 
 @attr.s
-class FunctionParam(object):
+class FunctionParam:
   """A link between a function def and the defs of its params."""
 
   def_id = attr.ib(type=str)
@@ -310,7 +307,7 @@ class FunctionParam(object):
 
 
 @attr.s
-class Reference(object):
+class Reference:
   """A symbol holding a reference to a definition.
 
   Attributes:
@@ -341,7 +338,7 @@ class Reference(object):
 
 
 @attr.s
-class NameArg(object):
+class NameArg:
   """Representation of a single-variable function call argument."""
 
   name = attr.ib()
@@ -349,7 +346,7 @@ class NameArg(object):
 
 
 @attr.s
-class ExprArg(object):
+class ExprArg:
   """Representation of an expression function call argument."""
 
   names = attr.ib()
@@ -357,7 +354,7 @@ class ExprArg(object):
 
 
 @attr.s
-class Funcall(object):
+class Funcall:
   """Representation of a function call."""
 
   name = attr.ib()
@@ -368,7 +365,7 @@ class Funcall(object):
   return_type = attr.ib()
 
 
-class Env(object):
+class Env:
   """A collection of namespaced symbols."""
 
   def __init__(self, ast, scope, parent, cls):
@@ -909,7 +906,7 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
 # pylint: enable=missing-docstring
 
 
-class Indexer(object):
+class Indexer:
   """Runs the indexer visitor and collects its results."""
 
   def __init__(self,

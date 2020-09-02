@@ -21,7 +21,7 @@ def _get_module_names_in_path(lister, path):
   return names
 
 
-class Typeshed(object):
+class Typeshed:
   """A typeshed installation.
 
   The location is either retrieved from the environment variable

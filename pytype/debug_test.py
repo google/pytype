@@ -8,7 +8,7 @@ from pytype.typegraph import cfg
 import unittest
 
 
-class Node(object):
+class Node:
   """A graph node, for testing tree printing."""
 
   def __init__(self, name, *incoming):

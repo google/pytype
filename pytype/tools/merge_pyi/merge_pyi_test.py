@@ -26,7 +26,7 @@ def load_tests(unused_loader, standard_tests, unused_pattern):
   return standard_tests
 
 
-class TestBuilder(object):
+class TestBuilder:
 
   def build(self, data_dir):
     """Return a unittest.TestSuite with tests for the files in data_dir."""
@@ -70,7 +70,7 @@ class TestBuilder(object):
     return ret
 
 
-class Args(object):
+class Args:
 
   def __init__(self, as_comments=False):
     self.as_comments = as_comments

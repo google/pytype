@@ -184,7 +184,7 @@ class DecoratorsTest(unittest.TestCase):
     self.assertIs(z1, z2)
 
   def test_memoize5(self):
-    class Foo(object):
+    class Foo:
 
       @utils.memoize("(self, x, y)")
       def _f5(self, x, y):

@@ -1,4 +1,3 @@
-# Lint as: python3
 """Tests for traces.visitor."""
 
 import ast
@@ -60,10 +59,10 @@ class _LeaveVisitor(_EnterVisitor):
     self.names.pop()
 
 
-class custom_ast(object):  # pylint: disable=invalid-name
+class custom_ast:  # pylint: disable=invalid-name
   """Tests a custom ast module."""
 
-  class AST(object):
+  class AST:
     pass
 
   class Thing(AST):

@@ -2,8 +2,8 @@
 
 import os
 import sys
+import types
 
-from pytype import datatypes
 from pytype import file_utils
 from pytype.tools.analyze_project import config
 from pytype.tools.analyze_project import parse_args
@@ -68,7 +68,7 @@ class TestFileConfig(TestBase):
       f = d.create_file('test.cfg', RANDOM_CFG)
       conf = config.FileConfig()
       path = conf.read_from_file(f)
-      self.assertEqual(path, None)
+      self.assertIsNone(path)
       self._validate_empty_contents(conf)
 
   def test_read_nonexistent(self):
@@ -91,7 +91,7 @@ class TestConfig(TestBase):
     conf = config.Config()
     self._validate_empty_contents(conf)
     conf.populate_from(
-        datatypes.SimpleNamespace(**{k: 42 for k in config.ITEMS}))
+        types.SimpleNamespace(**{k: 42 for k in config.ITEMS}))
     for k in config.ITEMS:
       self.assertEqual(getattr(conf, k), 42)
 
@@ -100,7 +100,7 @@ class TestConfig(TestBase):
     self._validate_empty_contents(conf)
     # None is a valid value.
     conf.populate_from(
-        datatypes.SimpleNamespace(**{k: None for k in config.ITEMS}))
+        types.SimpleNamespace(**{k: None for k in config.ITEMS}))
     for k in config.ITEMS:
       self.assertIsNone(getattr(conf, k))
 

@@ -1,7 +1,5 @@
-# Lint as: python2, python3
 """Source and trace information."""
 
-from __future__ import print_function
 import collections
 
 from pytype import compat
@@ -22,7 +20,7 @@ class AbstractTrace(
     return "%s : %s <- %s" % self
 
 
-class Code(object):
+class Code:
   """Line-based source code access.
 
   Attributes:

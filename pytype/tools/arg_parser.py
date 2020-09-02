@@ -3,44 +3,23 @@
 import argparse
 
 from pytype import config as pytype_config
+from pytype import datatypes
 from pytype import utils as pytype_utils
 
 
-class ParserWrapper(object):
-  """Wrapper that adds arguments to a parser while recording them."""
-
-  def __init__(self, parser, actions=None):
-    self.parser = parser
-    self.actions = {} if actions is None else actions
-
-  def add_argument(self, *args, **kwargs):
-    try:
-      action = self.parser.add_argument(*args, **kwargs)
-    except argparse.ArgumentError:
-      # We might want to mask some pytype-single options.
-      pass
-    else:
-      self.actions[action.dest] = action
-
-  def add_argument_group(self, *args, **kwargs):
-    group = self.parser.add_argument_group(*args, **kwargs)
-    wrapped_group = self.__class__(group, actions=self.actions)
-    return wrapped_group
-
-
 def string_to_bool(s):
-  return s == 'True' if s in ('True', 'False') else s
+  return s == "True" if s in ("True", "False") else s
 
 
 def convert_string(s):
-  s = s.replace('\n', '')
+  s = s.replace("\n", "")
   try:
     return int(s)
   except ValueError:
     return string_to_bool(s)
 
 
-class Parser(object):
+class Parser:
   """Parser that integrates tool and pytype-single args."""
 
   def __init__(self, parser, pytype_single_args):
@@ -128,7 +107,7 @@ def add_pytype_and_parse(parser, argv):
                       help="A .py file to index")
 
   # Add options from pytype-single.
-  wrapper = ParserWrapper(parser)
+  wrapper = datatypes.ParserWrapper(parser)
   pytype_config.add_basic_options(wrapper)
   parser = Parser(parser, wrapper.actions)
 
@@ -147,6 +126,6 @@ def add_pytype_and_parse(parser, argv):
   if args.python_version:
     cli_args += ["-V", pytype_utils.format_version(args.python_version)]
 
-  pytype_options = pytype_config.Options(cli_args)
+  pytype_options = pytype_config.Options(cli_args, command_line=True)
   pytype_options.tweak(**parser.get_pytype_kwargs(args))
   return (args, pytype_options)

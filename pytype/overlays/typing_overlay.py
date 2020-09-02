@@ -15,7 +15,6 @@ from pytype.overlays import collections_overlay
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import visitors
-import six
 from six import moves
 
 
@@ -162,7 +161,7 @@ class TypeVar(abstract.PyTDFunction):
       # It is currently impossible to get here, since the only
       # FailedFunctionCall that is not an InvalidParameters is NotCallable.
       raise TypeVarError("initialization failed") from e
-    name = self._get_constant(args.posargs[0], "name", six.string_types,
+    name = self._get_constant(args.posargs[0], "name", str,
                               arg_type_desc="a constant str")
     constraints = tuple(
         self._get_annotation(node, c, "constraint") for c in args.posargs[1:])
@@ -257,7 +256,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     name_var = callargs["typename"]
     fields_var = callargs["fields"]
     fields = abstract_utils.get_atomic_python_constant(fields_var)
-    if isinstance(fields, six.string_types):
+    if isinstance(fields, str):
       # Since str matches Sequence, we have to manually check for it.
       raise function.WrongArgTypes(
           sig.signature, args, self.vm, self._fields_param)
@@ -268,7 +267,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     names = []
     types = []
     for field in fields:
-      if isinstance(field, six.string_types):
+      if isinstance(field, str):
         # Since str matches Sequence, we have to manually check for it.
         raise function.WrongArgTypes(
             sig.signature, args, self.vm, self._fields_param)

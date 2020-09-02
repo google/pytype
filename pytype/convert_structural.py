@@ -26,7 +26,7 @@ class FlawedQuery(Exception):  # pylint: disable=g-bad-exception-name
   """Thrown if there is a fundamental flaw in the query."""
 
 
-class TypeSolver(object):
+class TypeSolver:
   """Class for solving ~unknowns in type inference results."""
 
   def __init__(self, ast, builtins, protocols):

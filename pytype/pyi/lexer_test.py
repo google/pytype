@@ -11,7 +11,7 @@ import unittest
 TOKEN_NAMES = {code: name for name, code in parser_ext.TOKENS.items()}
 
 
-class ExpectedToken(object):
+class ExpectedToken:
   """An object used for token comparison.
 
   When checking for equality, ExpectedToken compares only as many fields as

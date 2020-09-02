@@ -24,7 +24,7 @@ concepts and code layout.
             * [Utilities](#utilities)
       * [Updating the developer guide](#updating-the-developer-guide)
 
-<!-- Added by: rechen, at: 2020-08-21T19:31-07:00 -->
+<!-- Added by: rechen, at: 2020-08-29T02:18-07:00 -->
 
 <!--te-->
 
@@ -104,7 +104,7 @@ pytd node, abstract value, conversion both ways
 
 ### AST representation of type stubs
 
-`pyi/` (parser), `pytd/`
+`pytd/optimize.py`
 
 #### Where stubs are located
 
@@ -113,11 +113,11 @@ typeshed, `pytd/builtins/`, `pytd/stdlib/`,
 
 ### Abstract representation of types
 
-`abstract.py`, `matcher.py`, `overlays/`
+`abstract.py`, `overlays/`
 
 ### Conversion between representations
 
-`convert.py`, `output.py`
+`convert.py`
 
 ### Bytecode handling
 

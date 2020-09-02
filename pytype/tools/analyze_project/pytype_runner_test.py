@@ -33,7 +33,7 @@ ExpectedBuildStatement = collections.namedtuple(
 _PREAMBLE_LENGTH = 6
 
 
-class FakeImportGraph(object):
+class FakeImportGraph:
   """Just enough of the ImportGraph interface to run tests."""
 
   def __init__(self, source_files, provenance, source_to_deps):
@@ -221,7 +221,7 @@ class TestGetRunCmd(TestBase):
     self.assertEqual(end-start, 1)
     args.pop(end)
     args.pop(start)
-    return pytype_config.Options(args)
+    return pytype_config.Options(args, command_line=True)
 
   def get_basic_options(self, report_errors=False):
     return self.get_options(

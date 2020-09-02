@@ -1,4 +1,3 @@
-# -*- coding:utf-8; python-indent:2; indent-tabs-mode:nil -*-
 
 # Copyright 2014 Google Inc. All Rights Reserved.
 #
@@ -31,7 +30,7 @@ Example usage:
   y = Y([1], {"data": data})
   xy = XY(x, y)
 
-  class Visitor(object):
+  class Visitor:
     def X(self):
       count_x += 1
     def VisitData(self, node):

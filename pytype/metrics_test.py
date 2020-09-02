@@ -1,4 +1,3 @@
-# Lint as: python3
 """Test errors.py."""
 
 import io

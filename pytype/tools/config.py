@@ -23,7 +23,7 @@ def find_config_file(path, filename='setup.cfg'):
   return None
 
 
-class ConfigSection(object):
+class ConfigSection:
   """Read a given set of keys from a section of a config file."""
 
   def __init__(self, parser, section):

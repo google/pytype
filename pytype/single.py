@@ -1,4 +1,3 @@
-#!/usr/bin/python2.7
 """Tool for inferring types from Python programs.
 
 'pytype' is a tool for generating pyi from Python programs.
@@ -6,8 +5,6 @@
 Usage:
   pytype [flags] file.py
 """
-
-from __future__ import print_function
 
 import cProfile
 import logging
@@ -26,7 +23,7 @@ from pytype.pytd.parse import node
 log = logging.getLogger(__name__)
 
 
-class _ProfileContext(object):
+class _ProfileContext:
   """A context manager for optionally profiling code."""
 
   def __init__(self, output_path):
@@ -63,7 +60,7 @@ def _generate_builtins_pickle(options):
 
 def main():
   try:
-    options = config.Options(sys.argv[1:])
+    options = config.Options(sys.argv[1:], command_line=True)
   except utils.UsageError as e:
     print(str(e), file=sys.stderr)
     sys.exit(1)
@@ -82,7 +79,7 @@ def main():
     signal.alarm(options.timeout)
 
   with _ProfileContext(options.profile):
-    with metrics.MetricsContext(options.metrics):
+    with metrics.MetricsContext(options.metrics, options.open_function):
       with metrics.StopWatch("total_time"):
         with metrics.Snapshot("memory", enabled=options.memory_snapshots):
           return _run_pytype(options)

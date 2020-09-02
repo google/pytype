@@ -1,4 +1,3 @@
-# Lint as: python3
 """A abstract virtual machine for python bytecode.
 
 A VM for python byte code that uses pytype/pytd/cfg to generate a trace of the
@@ -82,7 +81,7 @@ class VirtualMachineError(Exception):
   """For raising errors in the operation of the VM."""
 
 
-class _FindIgnoredTypeComments(object):
+class _FindIgnoredTypeComments:
   """A visitor that finds type comments that will be ignored."""
 
   def __init__(self, type_comments):
@@ -111,7 +110,7 @@ class _FindIgnoredTypeComments(object):
     return self._ignored_type_lines
 
 
-class VirtualMachine(object):
+class VirtualMachine:
   """A bytecode VM that generates a cfg as it executes."""
 
   # This class is defined inside VirtualMachine so abstract.py can use it.
@@ -320,7 +319,7 @@ class VirtualMachine(object):
       assert annotated_locals is None
     can_return = False
     return_nodes = []
-    for block in frame.f_code.order:
+    for block in frame.f_code.order.values():
       state = frame.states.get(block[0])
       if not state:
         log.warning("Skipping block %d,"
@@ -2265,8 +2264,7 @@ class VirtualMachine(object):
     # Check whether obj is the __annotations__ dict.
     if len(obj.data) == 1 and isinstance(obj.data[0], abstract.AnnotationsDict):
       try:
-        name = abstract_utils.get_atomic_python_constant(
-            subscr, six.string_types)
+        name = abstract_utils.get_atomic_python_constant(subscr, str)
       except abstract_utils.ConversionError:
         pass
       else:
@@ -2589,6 +2587,13 @@ class VirtualMachine(object):
     return self.push_block(state, "setup-except", op, op.target)
 
   def byte_SETUP_FINALLY(self, state, op):
+    """Implements the SETUP_FINALLY opcode."""
+    # In Python 3.8+, SETUP_FINALLY handles setup for both except and finally
+    # blocks. Examine the targeted block to determine which setup to do.
+    if (self.python_version >= (3, 8) and
+        any(isinstance(o, opcodes.POP_EXCEPT)
+            for o in self.frame.f_code.order.get(op.arg, ()))):
+      return self.byte_SETUP_EXCEPT(state, op)
     # Emulate finally by connecting the try to the finally block (with
     # empty reason/why/continuation):
     self.store_jump(op.target, state.push(self.convert.build_none(state.node)))

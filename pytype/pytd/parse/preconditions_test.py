@@ -19,7 +19,7 @@ import six
 import unittest
 
 
-class BaseClass(object):
+class BaseClass:
   pass
 
 

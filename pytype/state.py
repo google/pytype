@@ -185,7 +185,7 @@ class FrameState(utils.VirtualMachineWeakrefMixin):
                       self.why)
 
 
-class SimpleFrame(object):
+class SimpleFrame:
   """A lightweight placeholder frame.
 
   A frame used when we need a placeholder on the stack, e.g., to imitate a
@@ -326,7 +326,7 @@ class Frame(utils.VirtualMachineWeakrefMixin):
     )
 
 
-class Condition(object):
+class Condition:
   """Represents a condition due to if-splitting.
 
   Properties:

@@ -1,4 +1,3 @@
-# -*- coding:utf-8; python-indent:2; indent-tabs-mode:nil -*-
 
 # Copyright 2013 Google Inc. All Rights Reserved.
 #
@@ -19,7 +18,6 @@
 
 """AST representation of a pytd file."""
 
-
 import collections
 import itertools
 
@@ -32,7 +30,7 @@ from pytype.pytd.parse import preconditions
 # Note that the mixin must be registered with preconditions.register() below.
 
 
-class Type(object):
+class Type:
 
   __slots__ = ()
 
@@ -290,7 +288,7 @@ class TypeParameter(node.Node('name: str',
 
   def __lt__(self, other):
     try:
-      return super(TypeParameter, self).__lt__(other)
+      return super().__lt__(other)
     except TypeError:
       # In Python 3, str and None are not comparable. Declare None to be less
       # than every str so that visitors.AdjustTypeParameters.VisitTypeDeclUnit

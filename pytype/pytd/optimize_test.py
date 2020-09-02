@@ -1,4 +1,3 @@
-# -*- coding:utf-8; python-indent:2; indent-tabs-mode:nil -*-
 # Copyright 2013 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,7 +21,6 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.pytd.parse import parser_test_base
-import six
 import unittest
 
 
@@ -44,7 +42,7 @@ class TestOptimize(parser_test_base.ParserTest):
     return optimize.Optimize(ast, self.builtins, **kwargs)
 
   def OptimizedString(self, data):
-    tree = self.Parse(data) if isinstance(data, six.string_types) else data
+    tree = self.Parse(data) if isinstance(data, str) else data
     new_tree = self.Optimize(tree)
     return pytd_utils.Print(new_tree)
 
@@ -752,11 +750,10 @@ class TestOptimize(parser_test_base.ParserTest):
     """)
     ast = self.Parse(src)
     ast = visitors.LookupClasses(ast, self.builtins)
-    six.assertCountEqual(self,
-                         ("g", "h"), [m.name for m in ast.Lookup("B").methods])
+    self.assertCountEqual(("g", "h"), [m.name for m in ast.Lookup("B").methods])
     ast = ast.Visit(optimize.AddInheritedMethods())
-    six.assertCountEqual(self, ("f", "g", "h"),
-                         [m.name for m in ast.Lookup("B").methods])
+    self.assertCountEqual(("f", "g", "h"),
+                          [m.name for m in ast.Lookup("B").methods])
 
   def test_adjust_inherited_method_self(self):
     src = textwrap.dedent("""

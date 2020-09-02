@@ -9,7 +9,7 @@ freshness: { owner: 'mdemello' reviewed: '2020-08-04' }
       * [Overview](#overview)
       * [Director](#director)
 
-<!-- Added by: mdemello, at: 2020-08-10T13:15-07:00 -->
+<!-- Added by: rechen, at: 2020-08-29T02:25-07:00 -->
 
 <!--te-->
 
@@ -17,19 +17,19 @@ freshness: { owner: 'mdemello' reviewed: '2020-08-04' }
 
 Pytype accepts directives in the form of python comments, both typecomments like
 
-```
+```python
   x = []  # type: List[int]
 ```
 
 and error disabling
 
-```
+```python
   x = f(a, b)  # pytype: disable=wrong-arg-types
 ```
 
 We also support range-based disabling:
 
-```
+```python
   # pytype: disable=attribute-error
   x.foo()
   x.bar()

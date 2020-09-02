@@ -1,8 +1,7 @@
-# Lint as: python2, python3
 """AST visiting."""
 
 
-class BaseVisitor(object):
+class BaseVisitor:
   """A base class for writing AST visitors.
 
     Subclasses should define {visit,enter,leave}_X to process nodes of type X.

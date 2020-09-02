@@ -18,7 +18,7 @@ from six import moves
 
 log = logging.getLogger(__name__)
 
-TOP_LEVEL_IGNORE = {
+TOP_LEVEL_IGNORE = frozenset({
     "__builtins__",
     "__doc__",
     "__file__",
@@ -27,9 +27,9 @@ TOP_LEVEL_IGNORE = {
     "__name__",
     "__annotations__",
     "google_type_annotations",
-}
+})
 
-CLASS_LEVEL_IGNORE = {
+CLASS_LEVEL_IGNORE = frozenset({
     "__builtins__",
     "__class__",
     "__module__",
@@ -37,7 +37,7 @@ CLASS_LEVEL_IGNORE = {
     "__qualname__",
     "__slots__",
     "__annotations__",
-}
+})
 
 
 class Converter(utils.VirtualMachineWeakrefMixin):

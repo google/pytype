@@ -1,4 +1,3 @@
-# Lint as: python2, python3
 """Trace the types in a file."""
 
 import argparse

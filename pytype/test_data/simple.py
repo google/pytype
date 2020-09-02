@@ -1,11 +1,10 @@
-# Lint as: python3
 """Trivial test program."""
 
 
 hello = []
 
 
-class World(object):
+class World:
 
   def dominate(self):
     pass

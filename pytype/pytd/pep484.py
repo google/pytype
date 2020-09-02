@@ -25,12 +25,12 @@ COMPAT_ITEMS = [
     ("float", "complex")]
 
 
-PEP484_CAPITALIZED = {
+PEP484_CAPITALIZED = frozenset({
     # The PEP 484 definition of built-in types.
     # E.g. "typing.List" is used to represent the "list" type.
     "List", "Dict", "Tuple", "Set", "FrozenSet", "Generator", "Type",
     "Coroutine", "AsyncGenerator"
-}
+})
 
 
 def PEP484_MaybeCapitalize(name):  # pylint: disable=invalid-name
@@ -43,7 +43,7 @@ class ConvertTypingToNative(visitors.Visitor):
   """Visitor for converting PEP 484 types to native representation."""
 
   def __init__(self, module):
-    super(ConvertTypingToNative, self).__init__()
+    super().__init__()
     self.module = module
 
   def _GetModuleAndName(self, t):

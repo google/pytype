@@ -1,6 +1,7 @@
 """Tests for load_pytd.py."""
 
 import collections
+import io
 import os
 import textwrap
 
@@ -343,6 +344,14 @@ class ImportPathsTest(test_base.UnitTest):
       a = loader.import_name("a")
       cls = a.Lookup("a.A")
       self.assertEqual("UserDict.UserDict", pytd_utils.Print(cls.parents[0]))
+
+  def test_open_function(self):
+    def mock_open(*unused_args, **unused_kwargs):
+      return io.StringIO("x: int")
+    loader = load_pytd.Loader(
+        "base", self.python_version, open_function=mock_open)
+    a = loader.load_file("a", "a.pyi")
+    self.assertEqual("int", pytd_utils.Print(a.Lookup("a.x").type))
 
 
 class ImportTypeMacroTest(test_base.UnitTest):

@@ -1,6 +1,7 @@
 # coding=utf8
 """Tests for io.py."""
 
+import io as builtins_io
 import os
 import sys
 import tempfile
@@ -62,20 +63,17 @@ class IOTest(unittest.TestCase):
     self.assertTrue(any("in calling_function" in x for x in trace))
 
   def test_check_py(self):
-    with self._tmpfile("undefined_var") as f:
-      errorlog = io.check_py(f.name)
+    errorlog = io.check_py("undefined_var")
     error, = errorlog.unique_sorted_errors()
     self.assertEqual(error.name, "name-error")
 
   def test_check_py_with_options(self):
-    with self._tmpfile("undefined_var") as f:
-      options = config.Options.create(f.name, disable="name-error")
-      errorlog = io.check_py(f.name, options)
+    options = config.Options.create(disable="name-error")
+    errorlog = io.check_py("undefined_var", options)
     self.assertFalse(errorlog.unique_sorted_errors())
 
   def test_generate_pyi(self):
-    with self._tmpfile("x = 42") as f:
-      errorlog, pyi_string, pytd_ast = io.generate_pyi(f.name)
+    errorlog, pyi_string, pytd_ast = io.generate_pyi("x = 42")
     self.assertFalse(errorlog.unique_sorted_errors())
     self.assertEqual(pyi_string, "x: int\n")
     self.assertIsInstance(pytd_ast, pytd.TypeDeclUnit)
@@ -85,10 +83,9 @@ class IOTest(unittest.TestCase):
       pyi_name, _ = os.path.splitext(os.path.basename(pyi.name))
       with self._tmpfile(
           "{mod} {path}".format(mod=pyi_name, path=pyi.name)) as imports_map:
-        with self._tmpfile(
-            "import {mod}; y = {mod}.x".format(mod=pyi_name)) as py:
-          options = config.Options.create(py.name, imports_map=imports_map.name)
-          _, pyi_string, _ = io.generate_pyi(py.name, options)
+        src = "import {mod}; y = {mod}.x".format(mod=pyi_name)
+        options = config.Options.create(imports_map=imports_map.name)
+        _, pyi_string, _ = io.generate_pyi(src, options)
     self.assertEqual(pyi_string, "{mod}: module\ny: int\n".format(mod=pyi_name))
 
   def test_check_or_generate_pyi__check(self):
@@ -104,6 +101,17 @@ class IOTest(unittest.TestCase):
       _, pyi_string, pytd_ast = io.check_or_generate_pyi(options)
     self.assertIsNotNone(pyi_string)
     self.assertIsNotNone(pytd_ast)
+
+  def test_check_or_generate_pyi__open_function(self):
+    def mock_open(filename, *args, **kwargs):
+      if filename == "my_amazing_file.py":
+        return builtins_io.StringIO("x = 0.0")
+      else:
+        return open(filename, *args, **kwargs)
+    options = config.Options.create(
+        "my_amazing_file.py", check=False, open_function=mock_open)
+    _, pyi_string, _ = io.check_or_generate_pyi(options)
+    self.assertEqual(pyi_string, "x: float\n")
 
   def test_write_pickle(self):
     ast = pytd.TypeDeclUnit(None, (), (), (), (), ())

@@ -12,13 +12,13 @@ SEQUENCE_PREFIX = "sq_"
 MAPPING_PREFIX = "mp_"
 
 
-class Slot(object):
+class Slot:
   """A "slot" describes a Python operator.
 
   In particular, it describes how a magic method (E.g. "__add__") relates to the
   opcode ("BINARY_ADD") and the C function pointer ("nb_add").
 
-  Args:
+  Attributes:
     python_name: The name of the Python method. E.g. "__add__".
     c_name: The name of the C function pointer. Only use the base name, e.g.
       for tp_as_number->nb_add, use nb_add.
@@ -242,14 +242,14 @@ CMP_IS_NOT = 9
 CMP_EXC_MATCH = 10
 
 
-CMP_ALWAYS_SUPPORTED_PY2 = {
+CMP_ALWAYS_SUPPORTED_PY2 = frozenset({
     CMP_LT, CMP_LE, CMP_EQ, CMP_NE, CMP_GT, CMP_GE, CMP_IS, CMP_IS_NOT
-}
+})
 
 
-CMP_ALWAYS_SUPPORTED_PY3 = {
+CMP_ALWAYS_SUPPORTED_PY3 = frozenset({
     CMP_EQ, CMP_NE, CMP_IS, CMP_IS_NOT
-}
+})
 
 
 EQ, NE, LT, LE, GT, GE = "==", "!=", "<", "<=", ">", ">="

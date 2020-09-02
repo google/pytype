@@ -18,7 +18,7 @@ def source_summary(binding, **varnames):
   return " | ".join(sorted(clauses))
 
 
-class FakeValue(object):
+class FakeValue:
 
   def __init__(self, name, true_compat, false_compat):
     self._name = name

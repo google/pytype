@@ -1,7 +1,7 @@
 """Configuration for pytype (mostly derived from the commandline args).
 
-Various parts of pytype use the command-line options. This module packages the
-options into an Options class.
+Various parts of pytype use these options. This module packages the options into
+an Options class.
 """
 
 import argparse
@@ -10,55 +10,76 @@ import logging
 import os
 import sys
 
+from pytype import datatypes
 from pytype import errors
 from pytype import imports_map_loader
 from pytype import load_pytd
 from pytype import utils
 from pytype.typegraph import cfg_utils
 
-import six
-
 
 LOG_LEVELS = [logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO,
               logging.DEBUG]
 
-
 uses = utils.AnnotatingDecorator()  # model relationship between options
 
+_LIBRARY_ONLY_OPTIONS = {
+    # a custom file opening function that will be used in place of builtins.open
+    "open_function": open
+}
 
-class Options(object):
-  """Encapsulation of the command-line options."""
+
+class Options:
+  """Encapsulation of the configuration options."""
 
   _HAS_DYNAMIC_ATTRIBUTES = True
 
-  def __init__(self, argv_or_options):
-    """Parse and encapsulate the command-line options.
+  def __init__(self, argv_or_options, command_line=False):
+    """Parse and encapsulate the configuration options.
 
     Also sets up some basic logger configuration.
+
+    IMPORTANT: If creating an Options object from code, do not construct it
+    directly! Call Options.create() instead.
 
     Args:
       argv_or_options: Either sys.argv[1:] (sys.argv[0] is the main script), or
                        already parsed options object returned by
                        ArgumentParser.parse_args.
+      command_line: Set this to true when argv_or_options == sys.argv[1:].
 
     Raises:
       sys.exit(2): bad option or input filenames.
     """
     argument_parser = make_parser()
-    if isinstance(argv_or_options, list):
+    if command_line:
+      assert isinstance(argv_or_options, list)
       options = argument_parser.parse_args(argv_or_options)
     else:
+      if isinstance(argv_or_options, list):
+        raise TypeError("Do not construct an Options object directly; call "
+                        "Options.create() instead.")
       options = argv_or_options
+    for name, default in _LIBRARY_ONLY_OPTIONS.items():
+      if not hasattr(options, name):
+        setattr(options, name, default)
     names = set(vars(options))
     try:
       Postprocessor(names, options, self).process()
     except PostprocessingError as e:
-      argument_parser.error(utils.message(e))
+      if command_line:
+        argument_parser.error(utils.message(e))
+      else:
+        raise
 
   @classmethod
   def create(cls, input_filename=None, **kwargs):
     """Create options from kwargs."""
     argument_parser = make_parser()
+    unknown_options = (set(kwargs) - set(argument_parser.actions) -
+                       set(_LIBRARY_ONLY_OPTIONS))
+    if unknown_options:
+      raise ValueError("Unrecognized options: %s" % ", ".join(unknown_options))
     options = argument_parser.parse_args(
         [input_filename or "dummpy_input_file"])
     for k, v in kwargs.items():
@@ -72,15 +93,15 @@ class Options(object):
 
   def __repr__(self):
     return "\n".join(["%s: %r" % (k, v)
-                      for k, v in sorted(six.iteritems(self.__dict__))
+                      for k, v in sorted(self.__dict__.items())
                       if not k.startswith("_")])
 
 
 def make_parser():
-  """Use argparse to make a parser for command line options."""
-  o = argparse.ArgumentParser(
+  """Use argparse to make a parser for configuration options."""
+  o = datatypes.ParserWrapper(argparse.ArgumentParser(
       usage="%(prog)s [options] input",
-      description="Infer/check types in a Python module")
+      description="Infer/check types in a Python module"))
 
   # Input files
   o.add_argument(
@@ -97,13 +118,6 @@ def make_parser():
       help=("Output file. Use '-' for stdout."))
 
   # Options
-  # TODO(b/80098600): Change the typeshed test so we can get rid of this option.
-  o.add_argument(
-      "--python_exe", type=str, action="store",
-      dest="python_exe", default=None,
-      help=("Full path to a Python interpreter that is used to compile the "
-            "source(s) to byte code. If not specified, --python_version is "
-            "used to create the name of an interpreter."))
   add_basic_options(o)
   add_subtools(o)
   add_pickle_options(o)
@@ -342,8 +356,8 @@ class PostprocessingError(Exception):
   """Exception raised if Postprocessor.process() fails."""
 
 
-class Postprocessor(object):
-  """Postprocesses options read from the command line."""
+class Postprocessor:
+  """Postprocesses configuration options."""
 
   def __init__(self, names, input_options, output_options=None):
     self.names = names
@@ -371,7 +385,7 @@ class Postprocessor(object):
         self.error("x:y notation not allowed with -o")
       self.input_options.output = output
     # prepare function objects for topological sort:
-    class Node(object):  # pylint: disable=g-wrong-blank-lines
+    class Node:  # pylint: disable=g-wrong-blank-lines
       def __init__(self, name, processor):  # pylint: disable=g-wrong-blank-lines
         self.name = name
         self.processor = processor
@@ -484,6 +498,19 @@ class Postprocessor(object):
     # Check that we have a version supported by pytype.
     utils.validate_version(self.output_options.python_version)
 
+    if utils.can_compile_bytecode_natively(self.output_options.python_version):
+      # pytype does not need an exe for bytecode compilation. Abort early to
+      # avoid extracting a large unused exe into /tmp.
+      self.output_options.python_exe = (None, None)
+      return
+
+    python_exe, flags = utils.get_python_exe(self.output_options.python_version)
+    python_exe_version = utils.get_python_exe_version(python_exe)
+    if python_exe_version != self.output_options.python_version:
+      self.error("Need a valid python%d.%d executable in $PATH" %
+                 self.output_options.python_version)
+    self.output_options.python_exe = (python_exe, flags)
+
   def _store_disable(self, disable):
     if disable:
       self.output_options.disable = disable.split(",")
@@ -503,42 +530,7 @@ class Postprocessor(object):
       # expect a list.
       self.output_options.enable_only = []
 
-  @uses(["python_version"])
-  def _store_python_exe(self, python_exe):
-    """Postprocess --python_exe."""
-    if python_exe is None and utils.can_compile_bytecode_natively(
-        self.output_options.python_version):
-      # The user has not requested a custom exe and pytype does not need an exe
-      # for bytecode compilation. Abort early to avoid extracting a large unused
-      # exe into /tmp.
-      self.output_options.python_exe = (None, None)
-      return
-
-    if python_exe is None:
-      python_exe, flags = utils.get_python_exe(
-          self.output_options.python_version)
-      user_provided_exe = False
-    else:
-      if isinstance(python_exe, tuple):
-        python_exe, flags = python_exe
-      else:
-        flags = []
-      user_provided_exe = True
-    python_exe_version = utils.get_python_exe_version(python_exe)
-    if python_exe_version != self.output_options.python_version:
-      if not user_provided_exe:
-        err = ("Need a valid python%d.%d executable in $PATH" %
-               self.output_options.python_version)
-      elif python_exe_version:
-        err = ("--python_exe version %d.%d does not match "
-               "--python_version %d.%d" % (
-                   python_exe_version + self.output_options.python_version))
-      else:
-        err = "Bad flag --python_exe: could not run %s" % python_exe
-      self.error(err)
-    self.output_options.python_exe = (python_exe, flags)
-
-  @uses(["pythonpath", "output", "verbosity"])
+  @uses(["pythonpath", "output", "verbosity", "open_function"])
   def _store_imports_map(self, imports_map):
     """Postprocess --imports_info."""
     if imports_map:
@@ -547,7 +539,8 @@ class Postprocessor(object):
 
       with verbosity_from(self.output_options):
         self.output_options.imports_map = imports_map_loader.build_imports_map(
-            imports_map, self.output_options.output)
+            imports_map, self.output_options.output,
+            self.output_options.open_function)
     else:
       self.output_options.imports_map = None
 

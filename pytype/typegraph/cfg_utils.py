@@ -58,7 +58,7 @@ class TooComplexError(Exception):
   """Thrown if we determine that something in our program is too complex."""
 
 
-class ComplexityLimit(object):
+class ComplexityLimit:
   """A class that raises TooComplexError if we hit a limit."""
 
   def __init__(self, limit):

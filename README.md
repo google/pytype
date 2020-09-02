@@ -89,8 +89,9 @@ merge-pyi -i <filepath>.py .pytype/pyi/<filename>.pyi
 
 ## Requirements
 
-You need a Python 2.7 or 3.5+ interpreter to run pytype, as well as an
-interpreter in `$PATH` for the Python version of the code you're analyzing.
+You need a Python 3.5-3.8 interpreter to run pytype, as well as an
+interpreter in `$PATH` for the Python version of the code you're analyzing
+(supported: 2.7, 3.5-3.7).
 
 Platform support:
 

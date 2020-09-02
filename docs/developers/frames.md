@@ -11,7 +11,7 @@
          * [Values and variables](#values-and-variables)
          * [LOAD and STORE operations](#load-and-store-operations)
 
-<!-- Added by: mdemello, at: 2020-08-24T14:06-07:00 -->
+<!-- Added by: rechen, at: 2020-09-01T20:08-07:00 -->
 
 <!--te-->
 
@@ -55,11 +55,11 @@ opcode execution).
 At a high level, a frame's code consists of an ordered series of blocks, each of
 which consists of several opcodes. The overall execution loop is (simplified):
 
-```
+```python
 def run_bytecode(code):
   frame = make_frame(code)
   push_frame(frame)
-  for block in frame.f_code.order:
+  for block in frame.f_code.order.values():
     state = initial state for block
     for op in block:
       state = self.run_instruction(op, state)
@@ -110,7 +110,7 @@ a single python object on the stack, pytype pushes a Variable with multiple
 bindings, each one representing a different potential value that the opcode
 might be pushing. As a quick example, given the code
 
-```
+```python
 if a:
   y = 10
 else:
@@ -129,7 +129,7 @@ frame's other data stores (e.g. the locals dictionary) and push them onto the
 stack. Similarly, the `STORE_*` family pops a value off the stack and writes it
 to a heap location. So the following code:
 
-```
+```python
 x = a + b
 ```
 
@@ -146,7 +146,7 @@ The pytype implementations of these opcodes can be seen in
 `vm.py/byte_LOAD_FAST` etc. Let us do a quick code tour of the execution of
 `byte_LOAD_FAST` when running the first opcode, `LOAD_FAST 0`
 
-```
+```python
   def byte_LOAD_FAST(self, state, op):
     """Load a local. Unlike LOAD_NAME, it doesn't fall back to globals."""
     # op.arg is an index into the current frame's table of local variable names.

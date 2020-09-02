@@ -1,5 +1,6 @@
-# Lint as: python3
 """Tests for datatypes.py."""
+
+import argparse
 
 from pytype import datatypes
 from pytype.typegraph import cfg
@@ -83,7 +84,7 @@ class DatatypesTest(unittest.TestCase):
     self.assertEqual(d["name"], d["alias"])
     self.assertEqual(d["alias"], d.get("alias"))
     self.assertEqual(d["name"], d.get("name"))
-    self.assertEqual(None, d.get("other_name"))
+    self.assertIsNone(d.get("other_name"))
     var2 = self.prog.NewVariable()
     d["name"] = var2
     self.assertEqual(var2, d["name"])
@@ -181,7 +182,7 @@ class DatatypesTest(unittest.TestCase):
     self.assertEqual(d.get("alias1"), "1")
     self.assertEqual(d.get("alias2"), "1")
     self.assertEqual(d.get("alias3", "2"), "2")
-    self.assertEqual(d.get("alias3"), None)
+    self.assertIsNone(d.get("alias3"))
 
   def test_add_alias_for_aliasing_monitor_dict(self):
     def merge_value(v0, v1, name):
@@ -246,6 +247,21 @@ class DatatypesTest(unittest.TestCase):
     d3["alias5"] = 3
     with self.assertRaises(datatypes.AliasingDictConflictError):
       d1.merge_from(d3, merge_value)
+
+
+class ParserWrapperTest(unittest.TestCase):
+  """Test parser wrapper."""
+
+  def test_group(self):
+    parser = argparse.ArgumentParser()
+    wrapper = datatypes.ParserWrapper(parser)
+    wrapper.add_argument("--foo", dest="foo")
+    group = wrapper.add_argument_group("test1")
+    group.add_argument("--bar", dest="bar")
+    subgroup = wrapper.add_argument_group("test2")
+    subgroup.add_argument("--baz", dest="baz")
+    self.assertSetEqual(set(wrapper.actions), {"foo", "bar", "baz"})
+
 
 if __name__ == "__main__":
   unittest.main()

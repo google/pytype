@@ -1,4 +1,3 @@
-# -*- coding:utf-8; python-indent:2; indent-tabs-mode:nil -*-
 # Copyright 2013 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,7 +13,6 @@
 # limitations under the License.
 
 """Utility classes for testing the PYTD parser."""
-from __future__ import print_function
 
 import os
 import sys
@@ -25,7 +23,6 @@ from pytype.pyi import parser
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.tests import test_base
-import six
 
 
 class ParserTest(test_base.UnitTest):
@@ -61,7 +58,7 @@ class ParserTest(test_base.UnitTest):
     return ast
 
   def ToAST(self, src_or_tree):
-    if isinstance(src_or_tree, six.string_types):
+    if isinstance(src_or_tree, str):
       # Put into a canonical form (removes comments, standard indents):
       return self.Parse(src_or_tree + "\n")
     else:  # isinstance(src_or_tree, tuple):

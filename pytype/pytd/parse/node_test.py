@@ -99,7 +99,7 @@ class TestNode(unittest.TestCase):
     """Test the __eq__ and __ne__ functions of node.Node."""
     n1 = Node1(a=1, b=2)
     n2 = Node1(a=1, b=2)
-    self.assertTrue(n1 == n2)
+    self.assertEqual(n1, n2)
     self.assertFalse(n1 != n2)
 
   def test_hash1(self):
@@ -139,12 +139,12 @@ class TestNode(unittest.TestCase):
     d2 = Node3(x="foo", y=n1)
     d3 = Node2(x="foo", y=n2)
     d4 = Node3(x="foo", y=n2)
-    self.assertTrue(d1 != d2)
-    self.assertTrue(d1 != d3)
-    self.assertTrue(d1 != d4)
-    self.assertTrue(d2 != d3)
-    self.assertTrue(d2 != d4)
-    self.assertTrue(d3 != d4)
+    self.assertNotEqual(d1, d2)
+    self.assertNotEqual(d1, d3)
+    self.assertNotEqual(d1, d4)
+    self.assertNotEqual(d2, d3)
+    self.assertNotEqual(d2, d4)
+    self.assertNotEqual(d3, d4)
     self.assertFalse(d1 == d2)
     self.assertFalse(d1 == d3)
     self.assertFalse(d1 == d4)

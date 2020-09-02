@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 
 # Copyright 2017 Google Inc.
 #
@@ -15,8 +14,6 @@
 # limitations under the License.
 
 """Analyze an entire project using pytype."""
-
-from __future__ import print_function
 
 import logging
 import sys

@@ -31,7 +31,7 @@ class ImportMapLoaderTest(unittest.TestCase):
       fi.seek(0)  # ready for reading
       six.assertCountEqual(
           self,
-          imports_map_loader._read_imports_map(fi.name).items(),
+          imports_map_loader._read_imports_map(fi.name, open).items(),
           [
               ("a/b/__init__", ["prefix/1/a/b/__init__.py~"]),
               ("a/b/b", ["prefix/1/a/b/b.py~suffix"]),

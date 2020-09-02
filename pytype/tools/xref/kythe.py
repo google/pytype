@@ -27,7 +27,7 @@ Edge = collections.namedtuple(
     "Edge", ["source", "edge_kind", "target", "fact_name"])
 
 
-class Kythe(object):
+class Kythe:
   """Store a list of kythe graph entries."""
 
   def __init__(self, source, args=None):

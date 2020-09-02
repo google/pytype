@@ -1,7 +1,5 @@
 """Output utilities for xref."""
 
-from __future__ import print_function
-
 import json
 
 

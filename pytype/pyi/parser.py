@@ -36,7 +36,7 @@ _SlotDecl = collections.namedtuple("_", ["slots"])
 _Property = collections.namedtuple("_", ["precedence", "arity"])
 
 
-class _ConditionScope(object):
+class _ConditionScope:
   """State associated with a condition if/elif/else block."""
 
   def __init__(self, parent):
@@ -83,7 +83,7 @@ class ParseError(Exception):
   """Exceptions raised by the parser."""
 
   def __init__(self, msg, line=None, filename=None, column=None, text=None):
-    super(ParseError, self).__init__(msg)
+    super().__init__(msg)
     self._line = line
     self._filename = filename
     self._column = column
@@ -114,7 +114,7 @@ class OverloadedDecoratorError(ParseError):
   def __init__(self, name, typ, *args, **kwargs):
     msg = "Overloaded signatures for %s disagree on %sdecorators" % (
         name, (typ + " " if typ else ""))
-    super(OverloadedDecoratorError, self).__init__(msg, *args, **kwargs)
+    super().__init__(msg, *args, **kwargs)
 
 
 class _Mutator(visitors.Visitor):
@@ -130,7 +130,7 @@ class _Mutator(visitors.Visitor):
   """
 
   def __init__(self, name, new_type):
-    super(_Mutator, self).__init__()
+    super().__init__()
     self.name = name
     self.new_type = new_type
     self.successful = False
@@ -150,7 +150,7 @@ class _InsertTypeParameters(visitors.Visitor):
   """Visitor for inserting TypeParameter instances."""
 
   def __init__(self, type_params):
-    super(_InsertTypeParameters, self).__init__()
+    super().__init__()
     self.type_params = {p.name: p for p in type_params}
 
   def VisitNamedType(self, node):
@@ -164,7 +164,7 @@ class _VerifyMutators(visitors.Visitor):
   """Visitor for verifying TypeParameters used in mutations are in scope."""
 
   def __init__(self):
-    super(_VerifyMutators, self).__init__()
+    super().__init__()
     # A stack of type parameters introduced into the scope. The top of the stack
     # contains the currently accessible parameter set.
     self.type_params_in_scope = [set()]
@@ -215,7 +215,7 @@ class _ContainsAnyType(visitors.Visitor):
   """Check if a pytd object contains a type of any of the given names."""
 
   def __init__(self, type_names):
-    super(_ContainsAnyType, self).__init__()
+    super().__init__()
     self._type_names = set(type_names)
     self.found = False
 
@@ -268,7 +268,7 @@ class _PropertyToConstant(visitors.Visitor):
         return True
 
 
-class _Parser(object):
+class _Parser:
   """A class used to parse a single PYI file.
 
   The PYI parser is split into two parts: a low level parser implemented in
@@ -1301,16 +1301,6 @@ class _Parser(object):
 def parse_string(src, python_version, name=None, filename=None, platform=None):
   return _Parser(version=python_version, platform=platform).parse(
       src, name, filename)
-
-
-def parse_file(filename, python_version, name=None, platform=None):
-  src = read_file(filename)
-  return parse_string(src, python_version, name, filename, platform)
-
-
-def read_file(filename):
-  with open(filename, "r") as fi:
-    return fi.read()
 
 
 def canonical_pyi(pyi, python_version, multiline_args=False):

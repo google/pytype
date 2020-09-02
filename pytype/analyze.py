@@ -742,5 +742,5 @@ def _maybe_output_debug(options, program):
     if options.output_debug == "-":
       log.info("=========== Program Dump =============\n%s", text)
     else:
-      with open(options.output_debug, "w") as fi:
+      with options.open_function(options.output_debug, "w") as fi:
         fi.write(text)

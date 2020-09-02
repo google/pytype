@@ -1,4 +1,3 @@
-# -*- coding:utf-8; python-indent:2; indent-tabs-mode:nil -*-
 # Copyright 2013 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -137,7 +136,7 @@ def disabled_function(*unused_args, **unused_kwargs):
   raise AssertionError("Cannot call disabled function.")
 
 
-class TypeMatcher(object):
+class TypeMatcher:
   """Base class for modules that match types against each other.
 
   Maps pytd node types (<type1>, <type2>) to a method "match_<type1>_<type2>".
@@ -273,7 +272,7 @@ def _check_intersection(items1, items2, name1, name2):
                     (", ".join(map(repr, sorted(items))), name1, name2))
 
 
-class TypeBuilder(object):
+class TypeBuilder:
   """Utility class for building union types."""
 
   def __init__(self):
@@ -314,7 +313,7 @@ class OrderedSet(collections.OrderedDict):
   """A simple ordered set."""
 
   def __init__(self, iterable=None):
-    super(OrderedSet, self).__init__((item, None) for item in (iterable or []))
+    super().__init__((item, None) for item in (iterable or []))
 
   def add(self, item):
     self[item] = None
@@ -340,7 +339,7 @@ def WrapsDict(member_name, writable=False, implement_len=False):
   """
   src = "if True:\n"  # To allow the code below to be indented
   src += """
-    class WrapsDict(object):
+    class WrapsDict:
 
       def __getitem__(self, key):
         return self.{member_name}[key]
@@ -442,24 +441,24 @@ def GetPredefinedFile(pytd_subdir, module, extension=".pytd",
   return path, pytype_source_utils.load_pytype_file(path)
 
 
-def LoadPickle(filename, compress=False):
-  if compress:
-    with gzip.GzipFile(filename, "rb") as fi:
-      # TODO(b/117797409): Remove the disable once the typeshed bug is fixed.
-      return cPickle.load(fi)  # pytype: disable=wrong-arg-types
-  else:
-    with open(filename, "rb") as fi:
+def LoadPickle(filename, compress=False, open_function=open):
+  with open_function(filename, "rb") as fi:
+    if compress:
+      with gzip.GzipFile(fileobj=fi) as zfi:
+        # TODO(b/117797409): Remove the disable once the typeshed bug is fixed.
+        return cPickle.load(zfi)  # pytype: disable=wrong-arg-types
+    else:
       return cPickle.load(fi)
 
 
-def SavePickle(data, filename=None, compress=False):
+def SavePickle(data, filename=None, compress=False, open_function=open):
   """Pickle the data."""
   recursion_limit = sys.getrecursionlimit()
   sys.setrecursionlimit(_PICKLE_RECURSION_LIMIT_AST)
   assert not compress or filename, "gzip only supported with a filename"
   try:
     if compress:
-      with open(filename, mode="wb") as fi:
+      with open_function(filename, mode="wb") as fi:
         # We blank the filename and set the mtime explicitly to produce
         # deterministic gzip files.
         with gzip.GzipFile(filename="", mode="wb",
@@ -467,7 +466,7 @@ def SavePickle(data, filename=None, compress=False):
           # TODO(b/117797409): Remove disable once typeshed bug is fixed.
           cPickle.dump(data, zfi, _PICKLE_PROTOCOL)  # pytype: disable=wrong-arg-types
     elif filename is not None:
-      with open(filename, "wb") as fi:
+      with open_function(filename, "wb") as fi:
         cPickle.dump(data, fi, _PICKLE_PROTOCOL)
     else:
       return cPickle.dumps(data, _PICKLE_PROTOCOL)

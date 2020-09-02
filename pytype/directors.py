@@ -1,4 +1,3 @@
-# Lint as: python3
 """Code and data structures for managing source directives."""
 
 import bisect
@@ -32,7 +31,7 @@ class SkipFileError(Exception):
   """Exception thrown if we encounter "pytype: skip-file" in the source code."""
 
 
-class _LineSet(object):
+class _LineSet:
   """A set of line numbers.
 
   The data structure is optimized to represent the union of a sparse set
@@ -204,7 +203,7 @@ def _collect_bytecode(ordered_code):
   return bytecode_blocks
 
 
-class Director(object):
+class Director:
   """Holds all of the directive information for a source file."""
 
   def __init__(self, src, errorlog, filename, disable):

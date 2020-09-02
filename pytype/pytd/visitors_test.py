@@ -1,4 +1,3 @@
-# -*- coding:utf-8; python-indent:2; indent-tabs-mode:nil -*-
 # Copyright 2013 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,15 +43,15 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_lookup_classes(self):
     src = textwrap.dedent("""
-        class object(object):
+        class object:
             pass
 
-        class A(object):
+        class A:
             def a(self, a: A, b: B) -> A or B:
                 raise A()
                 raise B()
 
-        class B(object):
+        class B:
             def b(self, a: A, b: B) -> A or B:
                 raise A()
                 raise B()
@@ -64,7 +63,7 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_maybe_fill_in_local_pointers(self):
     src = textwrap.dedent("""
-        class A(object):
+        class A:
             def a(self, a: A, b: B) -> A or B:
                 raise A()
                 raise B()
@@ -86,7 +85,7 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_deface_unresolved(self):
     builtins = self.Parse(textwrap.dedent("""
-      class int(object):
+      class int:
         pass
     """))
     src = textwrap.dedent("""
@@ -109,7 +108,7 @@ class TestVisitors(parser_test_base.ParserTest):
   def test_deface_unresolved2(self):
     builtins = self.Parse(textwrap.dedent("""
       from typing import Generic, TypeVar
-      class int(object):
+      class int:
         pass
       T = TypeVar("T")
       class list(Generic[T]):
@@ -136,13 +135,13 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_replace_types(self):
     src = textwrap.dedent("""
-        class A(object):
+        class A:
             def a(self, a: A or B) -> A or B:
                 raise A()
                 raise B()
     """)
     expected = textwrap.dedent("""
-        class A(object):
+        class A:
             def a(self: A2, a: A2 or B) -> A2 or B:
                 raise A2()
                 raise B()
@@ -175,7 +174,7 @@ class TestVisitors(parser_test_base.ParserTest):
   def test_strip_self(self):
     src = textwrap.dedent("""
         def add(x: int, y: int) -> int
-        class A(object):
+        class A:
             def bar(self, x: int) -> float
             def baz(self) -> float
             def foo(self, x: int, y: float) -> float
@@ -183,7 +182,7 @@ class TestVisitors(parser_test_base.ParserTest):
     expected = textwrap.dedent("""
         def add(x: int, y: int) -> int
 
-        class A(object):
+        class A:
             def bar(x: int) -> float
             def baz() -> float
             def foo(x: int, y: float) -> float
@@ -198,11 +197,11 @@ class TestVisitors(parser_test_base.ParserTest):
             pass
         class `~unknown2`():
             pass
-        class A(object):
+        class A:
             def foobar(x: `~unknown1`, y: `~unknown2`) -> `~unknown1` or int
     """)
     expected = textwrap.dedent("""
-        class A(object):
+        class A:
             def foobar(x, y) -> ? or int
     """)
     tree = self.Parse(src)
@@ -240,12 +239,12 @@ class TestVisitors(parser_test_base.ParserTest):
   def test_in_place_lookup_external_classes(self):
     src1 = textwrap.dedent("""
       def f1() -> bar.Bar
-      class Foo(object):
+      class Foo:
         pass
     """)
     src2 = textwrap.dedent("""
       def f2() -> foo.Foo
-      class Bar(object):
+      class Bar:
         pass
     """)
     ast1 = self.Parse(src1, name="foo")
@@ -262,7 +261,7 @@ class TestVisitors(parser_test_base.ParserTest):
       Foo = ...  # type: type
     """)
     src2 = textwrap.dedent("""
-      class Bar(object):
+      class Bar:
         bar = ...  # type: foo.Foo
     """)
     ast1 = self.Parse(src1, name="foo")
@@ -275,7 +274,7 @@ class TestVisitors(parser_test_base.ParserTest):
     src1 = textwrap.dedent("""
       x = ...  # type: int
       T = TypeVar("T")
-      class A(object): ...
+      class A: ...
       def f(x: T) -> T: ...
       B = A
     """)
@@ -290,7 +289,7 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_lookup_star_alias_in_unnamed_module(self):
     src1 = textwrap.dedent("""
-      class A(object): ...
+      class A: ...
     """)
     src2 = "from foo import *"
     ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
@@ -306,8 +305,8 @@ class TestVisitors(parser_test_base.ParserTest):
     """).strip())
 
   def test_lookup_two_star_aliases(self):
-    src1 = "class A(object): ..."
-    src2 = "class B(object): ..."
+    src1 = "class A: ..."
+    src2 = "class B: ..."
     src3 = textwrap.dedent("""
       from foo import *
       from bar import *
@@ -320,8 +319,8 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertSetEqual({a.name for a in ast3.aliases}, {"baz.A", "baz.B"})
 
   def test_lookup_two_star_aliases_with_same_class(self):
-    src1 = "class A(object): ..."
-    src2 = "class A(object): ..."
+    src1 = "class A: ..."
+    src2 = "class A: ..."
     src3 = textwrap.dedent("""
       from foo import *
       from bar import *
@@ -333,10 +332,10 @@ class TestVisitors(parser_test_base.ParserTest):
         {"foo": ast1, "bar": ast2, "baz": ast3}, self_name="baz"))
 
   def test_lookup_star_alias_with_duplicate_class(self):
-    src1 = "class A(object): ..."
+    src1 = "class A: ..."
     src2 = textwrap.dedent("""
       from foo import *
-      class A(object):
+      class A:
         x = ...  # type: int
     """)
     ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
@@ -921,7 +920,7 @@ class TestVisitors(parser_test_base.ParserTest):
       def i(x: Dict[`~unknown4`, `~unknown4`]) -> None: ...
 
       # Should not be changed
-      class `~unknown5`(object):
+      class `~unknown5`:
         def __add__(self, x: `~unknown6`) -> `~unknown6`: ...
       def `~f`(x: `~unknown7`) -> `~unknown7`: ...
     """)
@@ -935,7 +934,7 @@ class TestVisitors(parser_test_base.ParserTest):
       def h(x: `~unknown3`) -> None: ...
       def i(x: Dict[_T0, _T0]) -> None: ...
 
-      class `~unknown5`(object):
+      class `~unknown5`:
         def __add__(self, x: `~unknown6`) -> `~unknown6`: ...
       def `~f`(x: `~unknown7`) -> `~unknown7`: ...
     """)
@@ -946,7 +945,7 @@ class TestVisitors(parser_test_base.ParserTest):
   def test_redefine_typevar(self):
     src = textwrap.dedent("""
       def f(x: `~unknown1`) -> `~unknown1`: ...
-      class `TypeVar`(object): ...
+      class `TypeVar`: ...
     """)
     ast = self.Parse(src).Visit(visitors.CreateTypeParametersForSignatures())
     self.assertMultiLineEqual(pytd_utils.Print(ast), textwrap.dedent("""
@@ -1003,7 +1002,7 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_print_cls(self):
     src = textwrap.dedent("""
-      class A(object):
+      class A:
           def __new__(cls: Type[A]) -> A: ...
     """)
     self.assertMultiLineEqual(pytd_utils.Print(self.Parse(src)),

@@ -7,12 +7,12 @@ import os
 log = logging.getLogger(__name__)
 
 
-def _read_imports_map(options_info_path):
+def _read_imports_map(options_info_path, open_function):
   """Read the imports_map file, fold duplicate entries into a multimap."""
   if options_info_path is None:
     return None
   imports_multimap = collections.defaultdict(set)
-  with open(options_info_path) as fi:
+  with open_function(options_info_path) as fi:
     for line in fi:
       line = line.strip()
       if line:
@@ -46,7 +46,7 @@ def _validate_imports_map(imports_map):
   return errors
 
 
-def build_imports_map(options_info_path, output=None):
+def build_imports_map(options_info_path, output=None, open_function=open):
   """Create a file mapping from a .imports_info file.
 
   Builds a dict of short_path to full name
@@ -56,19 +56,20 @@ def build_imports_map(options_info_path, output=None):
     options_info_path: The file with the info (may be None, for do-nothing)
     output: The output file from the command line. When validating
              imports_info, this output should *not* exist.
+    open_function: A custom file opening function.
   Returns:
     Dict of .py short_path to list of .pytd path or None if no options_info_path
   Raises:
     ValueError if the imports map is invalid
   """
-  imports_multimap = _read_imports_map(options_info_path)
+  imports_multimap = _read_imports_map(options_info_path, open_function)
 
   # Output warnings for all multiple
   # mappings and keep the lexicographically first.
   for short_path, paths in imports_multimap.items():
     if len(paths) > 1:
-      log.warn("Multiple files for %r => %r ignoring %r",
-               short_path, paths[0], paths[1:])
+      log.warning("Multiple files for %r => %r ignoring %r",
+                  short_path, paths[0], paths[1:])
   imports_map = {short_path: os.path.abspath(paths[0])
                  for short_path, paths in imports_multimap.items()}
   # It's not helpful for a file that's being analyzed to import its own pyi,
@@ -105,6 +106,6 @@ def build_imports_map(options_info_path, output=None):
           short_path_pieces[:i] + ["__init__"]))
       if (intermediate_dir_init not in imports_map and
           intermediate_dir_init not in dir_paths):
-        log.warn("Created empty __init__ %r", intermediate_dir_init)
+        log.warning("Created empty __init__ %r", intermediate_dir_init)
         dir_paths[intermediate_dir_init] = os.devnull
   return dir_paths

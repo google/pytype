@@ -39,7 +39,7 @@ class UsageError(Exception):
 
 def format_version(python_version):
   """Format a version tuple into a dotted version string."""
-  return ".".join([str(x) for x in python_version])
+  return ".".join(str(x) for x in python_version)
 
 
 def version_from_string(version_string):
@@ -155,12 +155,12 @@ def concat_tuples(tuples):
 
 
 def get_python_exe(python_version):
-  """Automatically infer the --python_exe argument.
+  """Find a python executable to use.
 
   Arguments:
     python_version: the version tuple (e.g. (2, 7))
   Returns:
-    A tuple of the inferred python_exe argument and any command-line flags
+    A tuple of the path to the executable and any command-line flags
   """
   # Use custom interpreters, if provided, in preference to the ones in $PATH
   custom_python_exe = pytype_source_utils.get_custom_python_exe(python_version)
@@ -233,7 +233,7 @@ def _arg_names(f):
   return f.__code__.co_varnames[:f.__code__.co_argcount]
 
 
-class memoize(object):  # pylint: disable=invalid-name
+class memoize:  # pylint: disable=invalid-name
   """A memoizing decorator that supports expressions as keys.
 
   Use it like this:
@@ -333,7 +333,7 @@ def unique_list(xs):
   return out
 
 
-class DynamicVar(object):
+class DynamicVar:
   """A dynamically scoped variable.
 
   This is a per-thread dynamic variable, with an initial value of None.
@@ -367,7 +367,7 @@ class DynamicVar(object):
     return self._values()[-1]
 
 
-class AnnotatingDecorator(object):
+class AnnotatingDecorator:
   """A decorator for storing function attributes.
 
   Attributes:
@@ -384,7 +384,7 @@ class AnnotatingDecorator(object):
     return decorate
 
 
-class VirtualMachineWeakrefMixin(object):
+class VirtualMachineWeakrefMixin:
 
   __slots__ = ["vm_weakref"]
 

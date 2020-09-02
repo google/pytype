@@ -1,7 +1,5 @@
 """Config file processing."""
 
-from __future__ import print_function
-
 import collections
 import logging
 import os
@@ -150,7 +148,7 @@ def make_formatters():
 def Config(*extra_variables):  # pylint: disable=invalid-name
   """Builds a Config class and returns an instance of it."""
 
-  class Config(object):  # pylint: disable=redefined-outer-name
+  class Config:  # pylint: disable=redefined-outer-name
     """Configuration variables.
 
     A lightweight configuration class that reads in attributes from other
@@ -174,7 +172,7 @@ def Config(*extra_variables):  # pylint: disable=invalid-name
   return Config()
 
 
-class FileConfig(object):
+class FileConfig:
   """Configuration variables from a file."""
 
   def read_from_file(self, filepath):

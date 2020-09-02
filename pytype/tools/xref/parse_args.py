@@ -3,6 +3,7 @@
 import argparse
 
 from pytype import config as pytype_config
+from pytype import datatypes
 from pytype import utils as pytype_utils
 from pytype.tools import arg_parser
 from pytype.tools.xref import kythe
@@ -34,7 +35,7 @@ def make_parser():
       dest="imports_info", default=None,
       help="Information for mapping import .pyi to files. ")
   # Add options from pytype-single.
-  wrapper = arg_parser.ParserWrapper(parser)
+  wrapper = datatypes.ParserWrapper(parser)
   pytype_config.add_basic_options(wrapper)
   return arg_parser.Parser(parser, wrapper.actions)
 
@@ -64,7 +65,7 @@ def parse_args(argv):
   if args.python_version:
     cli_args += ["-V", pytype_utils.format_version(args.python_version)]
 
-  pytype_options = pytype_config.Options(cli_args)
+  pytype_options = pytype_config.Options(cli_args, command_line=True)
   pytype_options.tweak(**parser.get_pytype_kwargs(args))
   kythe_args = kythe.Args(corpus=args.kythe_corpus, root=args.kythe_root)
   return (args, kythe_args, pytype_options)

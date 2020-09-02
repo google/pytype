@@ -8,7 +8,6 @@ py_test(
   DEPS
     pytype.config
     pytype.tools
-    pytype.utils
 )
 
 py_test(

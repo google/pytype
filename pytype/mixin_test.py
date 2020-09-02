@@ -10,11 +10,11 @@ class MixinMetaTest(unittest.TestCase):
   def test_mixin_super(self):
     """Test the imitation 'super' method on MixinMeta."""
     # pylint: disable=g-wrong-blank-lines
-    class A(object):
+    class A:
       def f(self, x):
         return x
     @six.add_metaclass(mixin.MixinMeta)
-    class MyMixin(object):
+    class MyMixin:
       overloads = ("f",)
       def f(self, x):
         if x == 0:

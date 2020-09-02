@@ -1,9 +1,10 @@
 """Generic data structures and collection classes."""
 
+import argparse
 import itertools
 
 
-class UnionFind(object):
+class UnionFind:
   r"""A disjoint-set data structure for `AliasingDict`.
 
   This is used to record the alias information for `AliasingDict`. It is
@@ -120,11 +121,11 @@ class AccessTrackingDict(dict):
   """A dict that tracks access of its original items."""
 
   def __init__(self, d):
-    super(AccessTrackingDict, self).__init__(d)
+    super().__init__(d)
     self.accessed_subset = {}
 
   def __getitem__(self, k):
-    v = super(AccessTrackingDict, self).__getitem__(k)
+    v = super().__getitem__(k)
     if k not in self.accessed_subset:
       self.accessed_subset[k] = v
     return v
@@ -133,12 +134,12 @@ class AccessTrackingDict(dict):
     if k in self:
       _ = self[k]
     # If the key is new, we don't track it.
-    return super(AccessTrackingDict, self).__setitem__(k, v)
+    return super().__setitem__(k, v)
 
   def __delitem__(self, k):
     if k in self:
       _ = self[k]
-    return super(AccessTrackingDict, self).__delitem__(k)
+    return super().__delitem__(k)
 
 
 class MonitorDict(dict):
@@ -153,9 +154,6 @@ class MonitorDict(dict):
   def __delitem__(self, name):
     raise NotImplementedError
 
-  def __setitem__(self, name, var):
-    super(MonitorDict, self).__setitem__(name, var)
-
   @property
   def changestamp(self):
     return len(self) + sum((len(var.bindings) for var in self.values()))
@@ -168,7 +166,7 @@ class MonitorDict(dict):
 class AliasingDictConflictError(Exception):
 
   def __init__(self, existing_name):
-    super(AliasingDictConflictError, self).__init__()
+    super().__init__()
     self.existing_name = existing_name
 
 
@@ -183,7 +181,7 @@ class AliasingDict(dict):
 
   def __init__(self, *args, **kwargs):
     self._uf = UnionFind()
-    super(AliasingDict, self).__init__(*args, **kwargs)
+    super().__init__(*args, **kwargs)
 
   @property
   def uf(self):
@@ -237,17 +235,17 @@ class AliasingDict(dict):
     return self.uf.find_by_name(name1) == self.uf.find_by_name(name2)
 
   def __contains__(self, name):
-    return super(AliasingDict, self).__contains__(self.uf.find_by_name(name))
+    return super().__contains__(self.uf.find_by_name(name))
 
   def __setitem__(self, name, var):
-    super(AliasingDict, self).__setitem__(self.uf.find_by_name(name), var)
+    super().__setitem__(self.uf.find_by_name(name), var)
 
   def __getitem__(self, name):
-    return super(AliasingDict, self).__getitem__(self.uf.find_by_name(name))
+    return super().__getitem__(self.uf.find_by_name(name))
 
   def __repr__(self):
     return ("%r, _alias=%r" %
-            (super(AliasingDict, self).__repr__(), repr(self.uf)))
+            (super().__repr__(), repr(self.uf)))
 
   def __hash__(self):
     return hash(frozenset(self.items()))
@@ -309,10 +307,10 @@ class HashableDict(AliasingDict):
 
   def __init__(self, alias_dict=None):
     if alias_dict:
-      super(HashableDict, self).__init__(alias_dict)
+      super().__init__(alias_dict)
       self.uf = alias_dict.uf
     else:
-      super(HashableDict, self).__init__()
+      super().__init__()
     self._hash = hash(frozenset(self.items()))
 
   def update(self):
@@ -399,10 +397,29 @@ class AliasingMonitorDict(AliasingDict, MonitorDict):
       self._copy_item(name, root)
 
 
-# Based on https://docs.python.org/3/library/types.html#types.SimpleNamespace
-# and can be replaced with types.SimpleNamespace when we drop Python 2 support.
-class SimpleNamespace(object):
-  """A simple object class that provides attribute access to its namespace."""
+class ParserWrapper:
+  """Wrapper that adds arguments to a parser while recording them."""
 
-  def __init__(self, **kwargs):
-    self.__dict__.update(kwargs)
+  def __init__(self, parser, actions=None):
+    self.parser = parser
+    self.actions = {} if actions is None else actions
+
+  def add_argument(self, *args, **kwargs):
+    try:
+      action = self.parser.add_argument(*args, **kwargs)
+    except argparse.ArgumentError:
+      # We might want to mask some pytype-single options.
+      pass
+    else:
+      self.actions[action.dest] = action
+
+  def add_argument_group(self, *args, **kwargs):
+    group = self.parser.add_argument_group(*args, **kwargs)
+    wrapped_group = self.__class__(group, actions=self.actions)
+    return wrapped_group
+
+  def parse_args(self, *args, **kwargs):
+    return self.parser.parse_args(*args, **kwargs)
+
+  def error(self, *args, **kwargs):
+    return self.parser.error(*args, **kwargs)
