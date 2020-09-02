@@ -320,7 +320,7 @@ class VirtualMachine(object):
       assert annotated_locals is None
     can_return = False
     return_nodes = []
-    for block in frame.f_code.order:
+    for block in frame.f_code.order.values():
       state = frame.states.get(block[0])
       if not state:
         log.warning("Skipping block %d,"
@@ -2589,6 +2589,13 @@ class VirtualMachine(object):
     return self.push_block(state, "setup-except", op, op.target)
 
   def byte_SETUP_FINALLY(self, state, op):
+    """Implements the SETUP_FINALLY opcode."""
+    # In Python 3.8+, SETUP_FINALLY handles setup for both except and finally
+    # blocks. Examine the targeted block to determine which setup to do.
+    if (self.python_version >= (3, 8) and
+        any(isinstance(o, opcodes.POP_EXCEPT)
+            for o in self.frame.f_code.order.get(op.arg, ()))):
+      return self.byte_SETUP_EXCEPT(state, op)
     # Emulate finally by connecting the try to the finally block (with
     # empty reason/why/continuation):
     self.store_jump(op.target, state.push(self.convert.build_none(state.node)))

@@ -11,7 +11,7 @@
          * [Values and variables](#values-and-variables)
          * [LOAD and STORE operations](#load-and-store-operations)
 
-<!-- Added by: rechen, at: 2020-08-29T02:25-07:00 -->
+<!-- Added by: rechen, at: 2020-09-01T20:08-07:00 -->
 
 <!--te-->
 
@@ -59,7 +59,7 @@ which consists of several opcodes. The overall execution loop is (simplified):
 def run_bytecode(code):
   frame = make_frame(code)
   push_frame(frame)
-  for block in frame.f_code.order:
+  for block in frame.f_code.order.values():
     state = initial state for block
     for op in block:
       state = self.run_instruction(op, state)

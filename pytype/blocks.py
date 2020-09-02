@@ -1,7 +1,7 @@
 """Functions for computing the execution order of bytecode."""
 
 import bisect
-import itertools
+import collections
 
 from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
@@ -53,7 +53,8 @@ class OrderedCode(object):
     assert hasattr(code, "co_code")
     self.__dict__.update({name: value for name, value in code.__dict__.items()
                           if name.startswith("co_")})
-    self.order = order
+    # TODO(rechen): Use a normal dict once we drop host 3.5 support.
+    self.order = collections.OrderedDict((block.id, block) for block in order)
     self.python_version = python_version
     # Store the "nice" version of the bytecode under co_code. We never claimed
     # to be compatible with CodeType.
@@ -62,8 +63,7 @@ class OrderedCode(object):
       insn.code = self
 
   def has_opcode(self, op_type):
-    return any(isinstance(op, op_type)
-               for op in itertools.chain(*(block.code for block in self.order)))
+    return any(isinstance(op, op_type) for op in self.co_code)
 
   def has_iterable_coroutine(self):
     return bool(self.co_flags & loadmarshal.CodeType.CO_ITERABLE_COROUTINE)
