@@ -1,4 +1,3 @@
-# Copyright (c) 2016 Google Inc. (under http://www.apache.org/licenses/LICENSE-2.0)
 # If not annotate_pep484, info in pyi files is augmented with heuristics to decide if un-annotated
 # arguments are "Any" or "" (like "self")
 

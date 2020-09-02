@@ -1,4 +1,3 @@
-
 """Generate cross references from a project."""
 
 import signal

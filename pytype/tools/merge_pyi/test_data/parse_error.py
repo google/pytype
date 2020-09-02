@@ -1,4 +1,3 @@
-# Copyright (c) 2016 Google Inc. (under http://www.apache.org/licenses/LICENSE-2.0)
 # syntax error doesn't get detected by 2to3
 
 def f(*): pass
