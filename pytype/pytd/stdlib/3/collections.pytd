@@ -14,16 +14,16 @@ V2 = TypeVar("V2")
 DV = TypeVar("DV")
 T = TypeVar("T")
 
-__all__ = ...  # type: list[?]
-_abcoll = ...  # type: ?
+__all__ = ...  # type: list[Any]
+_abcoll = ...  # type: Any
 _chain = ...  # type: type
 _class_template = ...  # type: str
-_eq = ...  # type: ?
+_eq = ...  # type: Any
 _field_template = ...  # type: str
-_get_ident = ...  # type: ?
-_heapq = ...  # type: ?
+_get_ident = ...  # type: Any
+_heapq = ...  # type: Any
 _imap = ...  # type: type
-_iskeyword = ...  # type: ?
+_iskeyword = ...  # type: Any
 _itemgetter = ...  # type: Callable
 _repeat = ...  # type: type
 _repr_template = ...  # type: str
@@ -86,7 +86,7 @@ class _OrderedDictValuesView(ValuesView[V], Reversible[V]):
     def __reversed__(self) -> Iterator[V]: ...
 
 class OrderedDict(_OrderedDict[K, V], Reversible[K]):
-  def popitem(self, last: bool = ...) -> Tuple[K, V]
+  def popitem(self, last: bool = ...) -> Tuple[K, V]: ...
   def move_to_end(self, key: K, last: bool = ...) -> None: ...
   def __reversed__(self) -> Iterator[K]: ...
   def keys(self) -> _OrderedDictKeysView[K]: ...
@@ -115,12 +115,12 @@ class defaultdict(DefaultDict[K, V]):
     self = defaultdict[K2, DV or V2]
   def __init__(self, default_factory: Callable[[], DV], iter: Iterable[Tuple[K2, V2]]) -> None:
     self = defaultdict[K2, DV or V2]
-  def __missing__(self, key: K) -> V
+  def __missing__(self, key: K) -> V: ...
   def __getitem__(self, key: K2) -> Any:
     self = defaultdict[K or K2, Any]
 
 if sys.version_info[0] >= 3:
     # TODO(kramm): Implement these
-    UserDict = ...  # type: ?
-    UserList = ...  # type: ?
-    UserString = ...  # type: ?
+    UserDict = ...  # type: Any
+    UserList = ...  # type: Any
+    UserString = ...  # type: Any
