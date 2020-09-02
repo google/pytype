@@ -1,4 +1,3 @@
-# Lint as: python3
 """A library for accessing pytype's inferred local types."""
 
 import itertools
@@ -101,7 +100,7 @@ def _to_pytd(datum, loader, ast):
   return loader.resolve_type(t, ast)
 
 
-class _SymbolMatcher(object):
+class _SymbolMatcher:
   """Symbol matcher for MatchAstVisitor._get_traces.
 
   Allows matching against:

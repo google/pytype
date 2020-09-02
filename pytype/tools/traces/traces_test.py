@@ -1,4 +1,3 @@
-# Lint as: python3
 """Tests for traces.traces."""
 
 import ast
@@ -52,7 +51,7 @@ class TraceTest(unittest.TestCase):
 
   def test_external_type(self):
     with file_utils.Tempdir() as d:
-      pyi_path = d.create_file("foo.pyi", "class Foo(object): ...")
+      pyi_path = d.create_file("foo.pyi", "class Foo: ...")
       imports_info = d.create_file("imports_info", "foo %s" % pyi_path)
       src = traces.trace(
           "import foo\nx = foo.Foo()",
@@ -64,7 +63,7 @@ class TraceTest(unittest.TestCase):
 
   def test_py3_class(self):
     src = traces.trace(textwrap.dedent("""
-      class Foo(object):
+      class Foo:
         pass
     """).lstrip())
     trace, = (x for x in src.traces[1] if x.op == "LOAD_BUILD_CLASS")
@@ -143,7 +142,7 @@ class MatchAttributeTest(MatchAstTestCase):
 
   def test_multi(self):
     matches = self._get_traces("""
-      class Foo(object):
+      class Foo:
         real = True
       x = 0
       (Foo.real, x.real)
@@ -157,7 +156,7 @@ class MatchAttributeTest(MatchAstTestCase):
 
   def test_property(self):
     matches = self._get_traces("""
-      class Foo(object):
+      class Foo:
         @property
         def x(self):
           return 42
@@ -206,7 +205,7 @@ class MatchCallTest(MatchAstTestCase):
 
   def _test_chain(self, call_method_op):
     matches = self._get_traces("""
-      class Foo(object):
+      class Foo:
         def f(self, x):
           return x
       Foo().f(42)
@@ -227,11 +226,11 @@ class MatchCallTest(MatchAstTestCase):
 
   def test_multiple_bindings(self):
     matches = self._get_traces("""
-      class Foo(object):
+      class Foo:
         @staticmethod
         def f(x):
           return x
-      class Bar(object):
+      class Bar:
         @staticmethod
         def f(x):
           return x + 1.0

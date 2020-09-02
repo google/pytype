@@ -73,11 +73,11 @@ MAKE_FUNCTION_HAS_FREE_VARS = 0x8
 REF = 0x80
 
 
-class _NULL(object):
+class _NULL:
   """Used internally, e.g. as a sentinel in dictionary entry lists."""
 
 
-class CodeType(object):
+class CodeType:
   """Version-agnostic types.CodeType."""
 
   # for co_flags:
@@ -103,7 +103,7 @@ class CodeType(object):
     assert isinstance(nlocals, int)
     assert isinstance(stacksize, int)
     assert isinstance(flags, int)
-    assert isinstance(filename, (bytes, six.string_types))
+    assert isinstance(filename, (bytes, str))
     self.co_argcount = argcount
     self.co_posonlyargcount = posonlyargcount
     self.co_kwonlyargcount = kwonlyargcount
@@ -123,7 +123,7 @@ class CodeType(object):
     self.python_version = python_version  # This field is not in types.CodeType.
 
 
-class _LoadMarshal(object):
+class _LoadMarshal:
   """Stateful loader for marshalled files."""
 
   def __init__(self, data, python_version):

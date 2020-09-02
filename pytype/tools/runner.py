@@ -1,11 +1,9 @@
 """Utilities to deal with running subprocesses."""
 
-from __future__ import print_function
-
 import subprocess
 
 
-class BinaryRun(object):
+class BinaryRun:
   """Convenience wrapper around subprocess.
 
   Use as:

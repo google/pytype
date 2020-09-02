@@ -1,12 +1,9 @@
-# python2 python3
 """Python 2 and 3 compatibility functions."""
 
 import glob
 import os
 import sys
 import types
-
-import six
 
 
 def recursive_glob(path):
@@ -61,7 +58,7 @@ def int_array_to_bytes(int_array):
 def bytestring(obj):
   """Like the builtin str() but always returns a utf-8 encoded bytestring."""
   out = str(obj)
-  if isinstance(out, six.text_type):
+  if isinstance(out, str):
     return out.encode("utf-8")
   else:
     return out
@@ -91,23 +88,23 @@ class UnicodePy2(str):
   pass
 
 
-class OldStyleClassPy3(object):
+class OldStyleClassPy3:
   pass
 
 
-class IteratorType(object):
+class IteratorType:
   pass
 
 
-class CoroutineType(object):
+class CoroutineType:
   pass
 
 
-class AwaitableType(object):
+class AwaitableType:
   pass
 
 
-class AsyncGeneratorType(object):
+class AsyncGeneratorType:
   pass
 
 

@@ -1,4 +1,3 @@
-from __future__ import print_function
 
 from pytype import config
 from pytype import file_utils

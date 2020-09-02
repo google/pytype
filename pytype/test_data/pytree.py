@@ -11,8 +11,6 @@ even the comments and whitespace between tokens.
 There's also a pattern matching implementation here.
 """
 
-__author__ = "Guido van Rossum <guido@python.org>"
-
 from io import StringIO
 import sys
 import warnings
@@ -41,7 +39,7 @@ def type_repr(type_num):
     return _type_reprs.setdefault(type_num, str(type_num))
 
 
-class Base(object):
+class Base:
 
     """
     Abstract base class for Node and Leaf.
@@ -542,7 +540,7 @@ def convert(gr, raw_node):
         return Leaf(type, value, context=context)
 
 
-class BasePattern(object):
+class BasePattern:
 
     """
     A pattern is a tree matching pattern.

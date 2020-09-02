@@ -76,8 +76,6 @@ argument of a class method:
 Finally, it knows that __init__() is supposed to return None.
 """
 
-from __future__ import print_function
-
 import collections
 import itertools
 import logging
@@ -125,7 +123,7 @@ class KnownError(Exception):
   """Exceptions we already know about."""
 
 
-class Util(object):
+class Util:
   """Utility functions for working with Nodes."""
 
   return_expr = compile_pattern("""return_stmt< 'return' any >""")
@@ -166,7 +164,7 @@ class Util(object):
     return cls.driver.parse_string(text)
 
 
-class ArgSignature(object):
+class ArgSignature:
   """Partially parsed representation of a function argument."""
 
   def __init__(self, arg_nodes):
@@ -328,7 +326,7 @@ class ArgSignature(object):
     name.replace(typed_name)
 
 
-class FuncSignature(object):
+class FuncSignature:
   """A function or method."""
 
   # The pattern to match.
@@ -481,7 +479,7 @@ class FuncSignature(object):
 
     If source is
 
-    class C(object):
+    class C:
       def foo(self):
         x = 1
 

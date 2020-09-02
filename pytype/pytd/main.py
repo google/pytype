@@ -1,4 +1,3 @@
-#!/usr/bin/python2.7
 """Tool for processing pytd files.
 
 pytd is a type declaration language for Python. Each .py file can have an

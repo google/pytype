@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 Param = overlay_utils.Param
 
 
-class Ordering(object):
+class Ordering:
   """Possible orderings for get_class_locals."""
   # Order by each variable's first annotation. For example, for
   #   class Foo:
@@ -42,7 +42,7 @@ class Ordering(object):
   LAST_ASSIGN = object()
 
 
-class Attribute(object):
+class Attribute:
   """Represents a class member variable.
 
   Members:

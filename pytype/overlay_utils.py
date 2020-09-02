@@ -18,7 +18,7 @@ PARAM_TYPES = (
 )
 
 
-class Param(object):
+class Param:
   """Internal representation of method parameters."""
 
   def __init__(self, name, typ=None, default=None):

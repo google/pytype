@@ -233,7 +233,7 @@ def _arg_names(f):
   return f.__code__.co_varnames[:f.__code__.co_argcount]
 
 
-class memoize(object):  # pylint: disable=invalid-name
+class memoize:  # pylint: disable=invalid-name
   """A memoizing decorator that supports expressions as keys.
 
   Use it like this:
@@ -333,7 +333,7 @@ def unique_list(xs):
   return out
 
 
-class DynamicVar(object):
+class DynamicVar:
   """A dynamically scoped variable.
 
   This is a per-thread dynamic variable, with an initial value of None.
@@ -367,7 +367,7 @@ class DynamicVar(object):
     return self._values()[-1]
 
 
-class AnnotatingDecorator(object):
+class AnnotatingDecorator:
   """A decorator for storing function attributes.
 
   Attributes:
@@ -384,7 +384,7 @@ class AnnotatingDecorator(object):
     return decorate
 
 
-class VirtualMachineWeakrefMixin(object):
+class VirtualMachineWeakrefMixin:
 
   __slots__ = ["vm_weakref"]
 

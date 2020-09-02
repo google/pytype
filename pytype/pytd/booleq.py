@@ -1,4 +1,3 @@
-# -*- coding:utf-8; python-indent:2; indent-tabs-mode:nil -*-
 # Copyright 2013 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +25,7 @@ from pytype.pytd import pytd_utils
 chain = itertools.chain.from_iterable
 
 
-class BooleanTerm(object):
+class BooleanTerm:
   """Base class for boolean terms."""
 
   __slots__ = ()
@@ -385,7 +384,7 @@ def Or(exprs):  # pylint: disable=invalid-name
   return simplify_exprs(exprs, _Or, TRUE, FALSE)
 
 
-class Solver(object):
+class Solver:
   """Solver for boolean equations.
 
   This solver computes the union of all solutions. I.e. rather than assigning

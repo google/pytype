@@ -1,5 +1,3 @@
-# lint-as: python3
-
 """Custom implementations of builtin types."""
 
 from pytype import abstract

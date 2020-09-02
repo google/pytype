@@ -24,7 +24,7 @@ PUSHES_BLOCK = 2048  # starts a block (while, try, finally, with, etc.)
 POPS_BLOCK = 4096  # ends a block
 
 
-class Opcode(object):
+class Opcode:
   """An opcode without arguments."""
 
   __slots__ = ("line", "index", "prev", "next", "target", "block_target",
@@ -1098,7 +1098,7 @@ python_3_5_mapping = {
 def _overlay_mapping(mapping, new_entries):
   ret = mapping.copy()
   ret.update(new_entries)
-  return dict((k, v) for k, v in six.iteritems(ret) if v is not None)
+  return dict((k, v) for k, v in ret.items() if v is not None)
 
 python_3_6_mapping = _overlay_mapping(python_3_5_mapping, {
     85: SETUP_ANNOTATIONS,
@@ -1130,7 +1130,7 @@ python_3_8_mapping = _overlay_mapping(python_3_7_mapping, {
 })
 
 
-class _LineNumberTableParser(object):
+class _LineNumberTableParser:
   """State machine for decoding a Python line number array."""
 
   def __init__(self, python_version, lnotab, firstlineno):

@@ -1,4 +1,3 @@
-# Lint as: python3
 """A abstract virtual machine for python bytecode.
 
 A VM for python byte code that uses pytype/pytd/cfg to generate a trace of the
@@ -82,7 +81,7 @@ class VirtualMachineError(Exception):
   """For raising errors in the operation of the VM."""
 
 
-class _FindIgnoredTypeComments(object):
+class _FindIgnoredTypeComments:
   """A visitor that finds type comments that will be ignored."""
 
   def __init__(self, type_comments):
@@ -111,7 +110,7 @@ class _FindIgnoredTypeComments(object):
     return self._ignored_type_lines
 
 
-class VirtualMachine(object):
+class VirtualMachine:
   """A bytecode VM that generates a cfg as it executes."""
 
   # This class is defined inside VirtualMachine so abstract.py can use it.
@@ -2265,8 +2264,7 @@ class VirtualMachine(object):
     # Check whether obj is the __annotations__ dict.
     if len(obj.data) == 1 and isinstance(obj.data[0], abstract.AnnotationsDict):
       try:
-        name = abstract_utils.get_atomic_python_constant(
-            subscr, six.string_types)
+        name = abstract_utils.get_atomic_python_constant(subscr, str)
       except abstract_utils.ConversionError:
         pass
       else:

@@ -1,9 +1,5 @@
 """Library to take a Python AST and add Pytype type information to it."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from pytype import io
 from pytype.pytd import pytd_utils
 from pytype.tools.traces import traces

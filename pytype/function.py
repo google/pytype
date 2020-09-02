@@ -10,8 +10,6 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 
-import six
-
 log = logging.getLogger(__name__)
 
 
@@ -24,7 +22,7 @@ def _print(t):
   return pytd_utils.Print(t.get_instance_type())
 
 
-class Signature(object):
+class Signature:
   """Representation of a Python function signature.
 
   Attributes:
@@ -55,7 +53,7 @@ class Signature(object):
     self.annotations = annotations
     self.excluded_types = set()
     if postprocess_annotations:
-      for k, annot in six.iteritems(self.annotations):
+      for k, annot in self.annotations.items():
         self.annotations[k] = self._postprocess_annotation(k, annot)
 
   @property
@@ -64,7 +62,7 @@ class Signature(object):
 
   @property
   def has_param_annotations(self):
-    return bool(six.viewkeys(self.annotations) - {"return"})
+    return bool(self.annotations.keys() - {"return"})
 
   def add_scope(self, module):
     """Add scope for type parameters in annotations."""
@@ -93,7 +91,7 @@ class Signature(object):
     c = collections.Counter()
     for annot in self.annotations.values():
       c.update(annot.vm.annotations_util.get_type_parameters(annot))
-    for param, count in six.iteritems(c):
+    for param, count in c.items():
       if param.name in self.excluded_types:
         # skip all the type parameters in `excluded_types`
         continue
@@ -373,7 +371,7 @@ class Args(collections.namedtuple(
     return variables
 
 
-class ReturnValueMixin(object):
+class ReturnValueMixin:
   """Mixin for exceptions that hold a return node and variable."""
 
   def __init__(self):

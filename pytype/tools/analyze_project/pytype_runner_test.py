@@ -33,7 +33,7 @@ ExpectedBuildStatement = collections.namedtuple(
 _PREAMBLE_LENGTH = 6
 
 
-class FakeImportGraph(object):
+class FakeImportGraph:
   """Just enough of the ImportGraph interface to run tests."""
 
   def __init__(self, source_files, provenance, source_to_deps):

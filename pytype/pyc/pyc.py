@@ -136,7 +136,7 @@ def parse_pyc_string(data):
   return parse_pyc_stream(six.BytesIO(data))
 
 
-class AdjustFilename(object):
+class AdjustFilename:
   """Visitor for changing co_filename in a code object."""
 
   def __init__(self, filename):

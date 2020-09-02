@@ -33,7 +33,7 @@ def makedirs(path):
       raise
 
 
-class Tempdir(object):
+class Tempdir:
   """Context handler for creating temporary directories."""
 
   def __enter__(self):

@@ -70,7 +70,7 @@ ResolvedModule = collections.namedtuple(
     "ResolvedModule", ("module_name", "filename", "ast"))
 
 
-class Module(object):
+class Module:
   """Represents a parsed module.
 
   Attributes:
@@ -110,7 +110,7 @@ class BadDependencyError(Exception):
     return utils.message(self)
 
 
-class Loader(object):
+class Loader:
   """A cache for loaded PyTD files.
 
   Typically, you'll have one instance of this class, per module.

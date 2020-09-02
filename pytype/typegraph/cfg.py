@@ -22,7 +22,7 @@ _variable_size_metric = metrics.Distribution("variable_size")
 MAX_VAR_SIZE = 64
 
 
-class Program(object):
+class Program:
   """Program instances describe program entities.
 
   This class ties together the CFG, the data flow graph (variables + bindings)
@@ -101,7 +101,7 @@ class Program(object):
     return _PathFinder().FindAnyPathToNode(dst, src, frozenset())
 
 
-class CFGNode(object):
+class CFGNode:
   """A node in the CFG.
 
   Assignments within one CFG node are treated as unordered: E.g. if "x = x + 1"
@@ -219,7 +219,7 @@ class Origin(collections.namedtuple("_", "where, source_sets")):
     self.source_sets.add(SourceSet(source_set))
 
 
-class Binding(object):
+class Binding:
   """A Binding assigns a binding to a (specific) variable.
 
   Bindings will therefore be stored in a dictionary in the Variable class,
@@ -314,7 +314,7 @@ class Binding(object):
     return "<binding of variable %d to data %d>" % (self.variable.id, data_id)
 
 
-class Variable(object):
+class Variable:
   """A collection of possible bindings for a variable, along with their origins.
 
   A variable stores the bindings it can have as well as the CFG nodes at which
@@ -526,7 +526,7 @@ def _GoalsConflict(goals):
   return False
 
 
-class State(object):
+class State:
   """A state needs to "solve" a list of goals to succeed.
 
   Attributes:
@@ -593,7 +593,7 @@ class State(object):
     return not self == other
 
 
-class _PathFinder(object):
+class _PathFinder:
   """Finds a path between two nodes and collects nodes with conditions."""
 
   def __init__(self):
@@ -745,7 +745,7 @@ class _PathFinder(object):
     return result
 
 
-class Solver(object):
+class Solver:
   """The solver class is instantiated for a given "problem" instance.
 
   It maintains a cache of solutions for subproblems to be able to recall them if

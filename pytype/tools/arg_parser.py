@@ -19,7 +19,7 @@ def convert_string(s):
     return string_to_bool(s)
 
 
-class Parser(object):
+class Parser:
   """Parser that integrates tool and pytype-single args."""
 
   def __init__(self, parser, pytype_single_args):

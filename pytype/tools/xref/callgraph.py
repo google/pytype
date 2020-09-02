@@ -8,7 +8,7 @@ from pytype.pytd import pytd_utils
 
 
 @attr.s
-class Attr(object):
+class Attr:
   name = attr.ib()
   node_type = attr.ib()
   type = attr.ib()
@@ -17,27 +17,27 @@ class Attr(object):
 
 
 @attr.s
-class Arg(object):
+class Arg:
   name = attr.ib()
   node_type = attr.ib()
   type = attr.ib()
 
 
 @attr.s
-class Param(object):
+class Param:
   name = attr.ib()
   type = attr.ib()
 
 
 @attr.s
-class Call(object):
+class Call:
   function_id = attr.ib()
   args = attr.ib()
   location = attr.ib()
 
 
 @attr.s
-class Function(object):
+class Function:
   id = attr.ib()
   params = attr.ib(factory=list)
   param_attrs = attr.ib(factory=list)
@@ -83,7 +83,7 @@ def get_function_params(pytd_fn):
   return [(k, unwrap_type(v)) for k, v in params.items()]
 
 
-class FunctionMap(object):
+class FunctionMap:
   """Collect a map of function types and outbound callgraph edges."""
 
   def __init__(self, index):

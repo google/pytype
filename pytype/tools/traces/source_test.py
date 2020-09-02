@@ -2,13 +2,12 @@
 # Lint as: python2, python3
 """Tests for traces.source."""
 
-from __future__ import print_function
 from pytype.tools.traces import source
 import six
 import unittest
 
 
-class _FakeOpcode(object):
+class _FakeOpcode:
 
   def __init__(self, name, line):
     self.name = name

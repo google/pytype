@@ -1,7 +1,4 @@
-# python3
 """Call annotate_ast on a source file."""
-
-from __future__ import print_function
 
 import argparse
 import sys

@@ -17,8 +17,6 @@ from pytype import load_pytd
 from pytype import utils
 from pytype.typegraph import cfg_utils
 
-import six
-
 
 LOG_LEVELS = [logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO,
               logging.DEBUG]
@@ -31,7 +29,7 @@ _LIBRARY_ONLY_OPTIONS = {
 }
 
 
-class Options(object):
+class Options:
   """Encapsulation of the configuration options."""
 
   _HAS_DYNAMIC_ATTRIBUTES = True
@@ -95,7 +93,7 @@ class Options(object):
 
   def __repr__(self):
     return "\n".join(["%s: %r" % (k, v)
-                      for k, v in sorted(six.iteritems(self.__dict__))
+                      for k, v in sorted(self.__dict__.items())
                       if not k.startswith("_")])
 
 
@@ -358,7 +356,7 @@ class PostprocessingError(Exception):
   """Exception raised if Postprocessor.process() fails."""
 
 
-class Postprocessor(object):
+class Postprocessor:
   """Postprocesses configuration options."""
 
   def __init__(self, names, input_options, output_options=None):
@@ -387,7 +385,7 @@ class Postprocessor(object):
         self.error("x:y notation not allowed with -o")
       self.input_options.output = output
     # prepare function objects for topological sort:
-    class Node(object):  # pylint: disable=g-wrong-blank-lines
+    class Node:  # pylint: disable=g-wrong-blank-lines
       def __init__(self, name, processor):  # pylint: disable=g-wrong-blank-lines
         self.name = name
         self.processor = processor

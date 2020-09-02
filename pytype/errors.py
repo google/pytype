@@ -1,4 +1,3 @@
-# Lint as: python3
 """Code and data structures for storing and displaying errors."""
 
 import collections
@@ -158,7 +157,7 @@ def _function_name(name, capitalize=False):
     return ret
 
 
-class CheckPoint(object):
+class CheckPoint:
   """Represents a position in an error log."""
 
   def __init__(self, errors):
@@ -171,7 +170,7 @@ class CheckPoint(object):
     self._errorlog_errors[:] = self._errorlog_errors[:self._position]
 
 
-class Error(object):
+class Error:
   """Representation of an error in the error log.
 
   Attributes:
@@ -325,7 +324,7 @@ class Error(object):
           traceback=None)
 
 
-class ErrorLogBase(object):
+class ErrorLogBase:
   """A stream of errors."""
 
   def __init__(self):

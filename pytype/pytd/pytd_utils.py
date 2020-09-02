@@ -1,4 +1,3 @@
-# -*- coding:utf-8; python-indent:2; indent-tabs-mode:nil -*-
 # Copyright 2013 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -137,7 +136,7 @@ def disabled_function(*unused_args, **unused_kwargs):
   raise AssertionError("Cannot call disabled function.")
 
 
-class TypeMatcher(object):
+class TypeMatcher:
   """Base class for modules that match types against each other.
 
   Maps pytd node types (<type1>, <type2>) to a method "match_<type1>_<type2>".
@@ -273,7 +272,7 @@ def _check_intersection(items1, items2, name1, name2):
                     (", ".join(map(repr, sorted(items))), name1, name2))
 
 
-class TypeBuilder(object):
+class TypeBuilder:
   """Utility class for building union types."""
 
   def __init__(self):
@@ -314,7 +313,7 @@ class OrderedSet(collections.OrderedDict):
   """A simple ordered set."""
 
   def __init__(self, iterable=None):
-    super(OrderedSet, self).__init__((item, None) for item in (iterable or []))
+    super().__init__((item, None) for item in (iterable or []))
 
   def add(self, item):
     self[item] = None
@@ -340,7 +339,7 @@ def WrapsDict(member_name, writable=False, implement_len=False):
   """
   src = "if True:\n"  # To allow the code below to be indented
   src += """
-    class WrapsDict(object):
+    class WrapsDict:
 
       def __getitem__(self, key):
         return self.{member_name}[key]

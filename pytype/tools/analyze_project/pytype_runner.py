@@ -1,7 +1,5 @@
 """Use pytype to analyze and infer types for an entire project."""
 
-from __future__ import print_function
-
 import logging
 import os
 import subprocess
@@ -10,7 +8,6 @@ import sys
 from pytype import file_utils
 from pytype import module_utils
 from pytype.tools.analyze_project import config
-import six
 
 
 # Generate a default pyi for builtin and system dependencies.
@@ -20,13 +17,13 @@ def __getattr__(name) -> Any: ...
 """
 
 
-class Action(object):
+class Action:
   CHECK = 'check'
   INFER = 'infer'
   GENERATE_DEFAULT = 'generate default'
 
 
-class Stage(object):
+class Stage:
   SINGLE_PASS = 'single pass'
   FIRST_PASS = 'first pass'
   SECOND_PASS = 'second pass'
@@ -74,7 +71,7 @@ def deps_from_import_graph(import_graph):
     List of (tuple of source modules, tuple of direct deps) in dependency order.
   """
   def get_filenames(node):
-    if isinstance(node, six.string_types):
+    if isinstance(node, str):
       return (node,)
     else:
       # Make the build as deterministic as possible to minimize rebuilds.
@@ -130,7 +127,7 @@ def get_imports_map(deps, module_to_imports_map, module_to_output):
   return imports_map
 
 
-class PytypeRunner(object):
+class PytypeRunner:
   """Runs pytype over an import graph."""
 
   def __init__(self, conf, sorted_sources):

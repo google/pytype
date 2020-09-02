@@ -1,7 +1,5 @@
 """Public interface to top-level pytype functions."""
 
-from __future__ import print_function
-
 import contextlib
 import logging
 import os

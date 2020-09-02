@@ -1926,31 +1926,31 @@ class PropertyDecoratorTest(_ParserTestBase):
 
   def test_property_decorator_bad_syntax(self):
     self.check_error("""
-      class A(object):
+      class A:
           @property
           def name(self, bad_arg): ...
     """, 1, "Unhandled decorator: property")
 
     self.check_error("""
-      class A(object):
+      class A:
           @name.setter
           def name(self): ...
       """, 1, "Unhandled decorator: name.setter")
 
     self.check_error("""
-      class A(object):
+      class A:
           @name.foo
           def name(self): ...
       """, 1, "Unhandled decorator: name.foo")
 
     self.check_error("""
-      class A(object):
+      class A:
           @notname.deleter
           def name(self): ...
       """, 1, "Unhandled decorator: notname.deleter")
 
     self.check_error("""
-      class A(object):
+      class A:
           @property
           @staticmethod
           def name(self): ...
@@ -2039,7 +2039,7 @@ class MergeSignaturesTest(_ParserTestBase):
 
   def test_method_and_property_error(self):
     self.check_error("""
-      class A(object):
+      class A:
           @property
           def name(self): ...
 
@@ -2048,7 +2048,7 @@ class MergeSignaturesTest(_ParserTestBase):
 
   def test_overloaded_signatures_disagree(self):
     self.check_error("""
-      class A(object):
+      class A:
           @staticmethod
           def foo(x: int): ...
           @classmethod
@@ -2113,7 +2113,7 @@ class MergeSignaturesTest(_ParserTestBase):
 
   def test_abstractmethod_conflict(self):
     self.check_error("""
-      class A(object):
+      class A:
           @abstractmethod
           def foo(x: int) -> str: ...
           def foo(x: int, y: int) -> str: ...

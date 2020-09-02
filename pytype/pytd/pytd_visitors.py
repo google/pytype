@@ -1,4 +1,3 @@
-# -*- coding:utf-8; python-indent:2; indent-tabs-mode:nil -*-
 
 # Copyright 2013 Google Inc. All Rights Reserved.
 #
@@ -37,7 +36,7 @@ ALL_NODE_NAMES = type(
     {"__contains__": lambda *args: True})()
 
 
-class _NodeClassInfo(object):
+class _NodeClassInfo:
   """Representation of a node class in the precondition graph."""
 
   def __init__(self, cls):
@@ -56,7 +55,7 @@ def _FindNodeClasses():
       yield _NodeClassInfo(value)
 
 
-_IGNORED_TYPENAMES = set(["str", "bool", "int", "NoneType"])
+_IGNORED_TYPENAMES = frozenset(["str", "bool", "int", "NoneType"])
 _ancestor_map = None  # Memoized ancestors map.
 
 
@@ -90,7 +89,7 @@ def _GetAncestorMap():
   return _ancestor_map
 
 
-class Visitor(object):
+class Visitor:
   """Base class for visitors.
 
   Each class inheriting from visitor SHOULD have a fixed set of methods,
@@ -191,7 +190,7 @@ class CanonicalOrderingVisitor(Visitor):
   """Visitor for converting ASTs back to canonical (sorted) ordering."""
 
   def __init__(self, sort_signatures=False):
-    super(CanonicalOrderingVisitor, self).__init__()
+    super().__init__()
     self.sort_signatures = sort_signatures
 
   def VisitTypeDeclUnit(self, node):
@@ -243,7 +242,7 @@ class CollectTypeParameters(Visitor):
   """Visitor that accumulates type parameters in its "params" attribute."""
 
   def __init__(self):
-    super(CollectTypeParameters, self).__init__()
+    super().__init__()
     self._seen = set()
     self.params = []
 
@@ -261,7 +260,7 @@ class ExtractSuperClasses(Visitor):
   """
 
   def __init__(self):
-    super(ExtractSuperClasses, self).__init__()
+    super().__init__()
     self._superclasses = {}
 
   def _Key(self, node):
@@ -291,7 +290,7 @@ class PrintVisitor(Visitor):
                         parser_constants.RESERVED_PYTHON)
 
   def __init__(self, multiline_args=False):
-    super(PrintVisitor, self).__init__()
+    super().__init__()
     self.class_names = []  # allow nested classes
     self.imports = collections.defaultdict(set)
     self.in_alias = False
@@ -801,7 +800,7 @@ class RenameModuleVisitor(Visitor):
     Raises:
       ValueError: If the old_module name is an empty string.
     """
-    super(RenameModuleVisitor, self).__init__()
+    super().__init__()
     if not old_module_name:
       raise ValueError("old_module_name must be a non empty string.")
     assert not old_module_name.endswith(".")

@@ -19,7 +19,7 @@ STORE_OPCODES = (
 CODE_LOADING_OPCODES = (opcodes.LOAD_CONST,)
 
 
-class OrderedCode(object):
+class OrderedCode:
   """Code object which knows about instruction ordering.
 
   Attributes:
@@ -98,7 +98,7 @@ class OrderedCode(object):
     return count
 
 
-class Block(object):
+class Block:
   """A block is a node in a directed graph.
 
   It has incoming and outgoing edges (jumps). Incoming jumps always jump
@@ -264,7 +264,7 @@ def compute_order(bytecode):
   return cfg_utils.order_nodes(blocks)
 
 
-class DisCodeVisitor(object):
+class DisCodeVisitor:
   """Visitor for disassembling code into Opcode objects."""
 
   def visit_code(self, code):
@@ -290,7 +290,7 @@ def order_code(code):
                      code.python_version)
 
 
-class OrderCodeVisitor(object):
+class OrderCodeVisitor:
   """Visitor for recursively changing all CodeType to OrderedCode.
 
   Depends on DisCodeVisitor having been run first.
@@ -300,7 +300,7 @@ class OrderCodeVisitor(object):
     return order_code(code)
 
 
-class CollectAnnotationTargetsVisitor(object):
+class CollectAnnotationTargetsVisitor:
   """Collect opcodes that might have annotations attached.
 
   Depends on DisCodeVisitor having been run first.

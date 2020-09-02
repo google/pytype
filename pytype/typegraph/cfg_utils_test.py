@@ -1,4 +1,3 @@
-# Lint as: python3
 """Tests for the additional CFG utilities."""
 
 import itertools
@@ -54,7 +53,7 @@ class CFGUtilTest(unittest.TestCase):
     six.assertCountEqual(self, w2.data, ["1", "2"])
 
 
-class DummyValue(object):
+class DummyValue:
   """A class with a 'parameters' function, for testing cartesian products."""
 
   def __init__(self, index):
@@ -201,7 +200,7 @@ class VariableProductTest(unittest.TestCase):
     ])
 
 
-class Node(object):
+class Node:
   """A graph node, for testing topological sorting."""
 
   def __init__(self, name, *incoming):

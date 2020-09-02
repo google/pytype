@@ -6,13 +6,13 @@ from pytype import mixin
 from pytype.pytd import slots
 
 # Equality classes.
-NUMERIC = {"__builtin__.bool", "__builtin__.int", "__builtin__.float",
-           "__builtin__.complex"}
-STRING = {"__builtin__.str", "__builtin__.unicode"}
+NUMERIC = frozenset({"__builtin__.bool", "__builtin__.int", "__builtin__.float",
+                     "__builtin__.complex"})
+STRING = frozenset({"__builtin__.str", "__builtin__.unicode"})
 
 # Fully qualified names of types that are parameterized containers.
-_CONTAINER_NAMES = {
-    "__builtin__.list", "__builtin__.set", "__builtin__.frozenset"}
+_CONTAINER_NAMES = frozenset({
+    "__builtin__.list", "__builtin__.set", "__builtin__.frozenset"})
 
 
 def _incompatible(left_name, right_name):

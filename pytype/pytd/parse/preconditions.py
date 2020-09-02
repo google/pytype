@@ -23,7 +23,7 @@ class PreconditionError(ValueError):
   pass
 
 
-class _Precondition(object):
+class _Precondition:
   """Base class for preconditions."""
 
   def check(self, value):
@@ -39,7 +39,7 @@ class _ClassNamePrecondition(_Precondition):
   """Precondition that expects an instance of a specific class."""
 
   def __init__(self, class_name):
-    super(_ClassNamePrecondition, self).__init__()
+    super().__init__()
     self._class_name = class_name
 
   def check(self, value):
@@ -56,7 +56,7 @@ class _IsInstancePrecondition(_Precondition):
   """Precondition that expects an instance of a class or subclass."""
 
   def __init__(self, cls):
-    super(_IsInstancePrecondition, self).__init__()
+    super().__init__()
     self._cls = cls
 
   def check(self, value):
@@ -83,7 +83,7 @@ class _TuplePrecondition(_Precondition):
   """Precondition that expects a tuple."""
 
   def __init__(self, element_condition):
-    super(_TuplePrecondition, self).__init__()
+    super().__init__()
     self._element_condition = element_condition
 
   def check(self, value):
@@ -101,7 +101,7 @@ class _OrPrecondition(_Precondition):
   """Precondition that expects one of various choices to match."""
 
   def __init__(self, choices):
-    super(_OrPrecondition, self).__init__()
+    super().__init__()
     self._choices = choices
 
   def check(self, value):
@@ -122,7 +122,7 @@ class _OrPrecondition(_Precondition):
     return allowed
 
 
-class CallChecker(object):
+class CallChecker:
   """Class that performs argument checks against a collection of conditions."""
 
   def __init__(self, condition_pairs):
@@ -176,7 +176,7 @@ _RESERVED = {
 }
 
 
-class _Parser(object):
+class _Parser:
   """A parser for precondition specifications."""
 
   def __init__(self, spec):

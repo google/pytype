@@ -1,4 +1,3 @@
-# -*- coding:utf-8; python-indent:2; indent-tabs-mode:nil -*-
 
 # Copyright 2013 Google Inc. All Rights Reserved.
 #
@@ -32,8 +31,6 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import pytd_visitors
 from pytype.pytd.parse import parser_constants  # pylint: disable=g-importing-member
-
-import six
 
 
 class ContainerError(Exception):
@@ -107,7 +104,7 @@ class FillInLocalPointers(Visitor):
         "Lookup" function).
       fallback: A symbol table to be tried if lookup otherwise fails.
     """
-    super(FillInLocalPointers, self).__init__()
+    super().__init__()
     if fallback is not None:
       lookup_map["*"] = fallback
     self._lookup_map = lookup_map
@@ -187,7 +184,7 @@ class DefaceUnresolved(RemoveTypeParametersFromGenericAny):
       do_not_log_prefix: If given, don't log error messages for classes with
         this prefix.
     """
-    super(DefaceUnresolved, self).__init__()
+    super().__init__()
     self._lookup_list = lookup_list
     self._do_not_log_prefix = do_not_log_prefix
 
@@ -295,7 +292,7 @@ class VerifyLookup(Visitor):
   """Utility class for testing visitors.LookupClasses."""
 
   def __init__(self, ignore_late_types=False):
-    super(VerifyLookup, self).__init__()
+    super().__init__()
     self.ignore_late_types = ignore_late_types
 
   def EnterLateType(self, node):
@@ -320,7 +317,7 @@ class LookupBuiltins(Visitor):
       builtins: The builtins module.
       full_names: Whether to use fully qualified names for lookup.
     """
-    super(LookupBuiltins, self).__init__()
+    super().__init__()
     self._builtins = builtins
     self._full_names = full_names
 
@@ -383,7 +380,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
         names. If the source contains "import X as Y", module_alias_map should
         contain an entry mapping "Y": "X".
     """
-    super(LookupExternalTypes, self).__init__()
+    super().__init__()
     self._module_map = module_map
     self._module_alias_map = module_alias_map or {}
     self.name = self_name
@@ -655,7 +652,7 @@ class ReplaceTypes(Visitor):
       record: Optional. A set. If given, this records which entries in
         the map were used.
     """
-    super(ReplaceTypes, self).__init__()
+    super().__init__()
     self.mapping = mapping
     self.record = record
 
@@ -696,7 +693,7 @@ class ReplaceTypeParameters(Visitor):
   """Visitor for replacing type parameters with actual types."""
 
   def __init__(self, mapping):
-    super(ReplaceTypeParameters, self).__init__()
+    super().__init__()
     self.mapping = mapping
 
   def VisitTypeParameter(self, p):
@@ -727,7 +724,7 @@ class AdjustSelf(Visitor):
   """
 
   def __init__(self, force=False):
-    super(AdjustSelf, self).__init__()
+    super().__init__()
     self.class_types = []  # allow nested classes
     self.force = force
 
@@ -776,7 +773,7 @@ class RemoveUnknownClasses(Visitor):
   """
 
   def __init__(self):
-    super(RemoveUnknownClasses, self).__init__()
+    super().__init__()
     self.parameter = None
 
   def EnterParameter(self, p):
@@ -807,7 +804,7 @@ class _CountUnknowns(Visitor):
   """Visitor for counting how often given unknowns occur in a type."""
 
   def __init__(self):
-    super(_CountUnknowns, self).__init__()
+    super().__init__()
     self.counter = collections.Counter()
     self.position = {}
 
@@ -856,7 +853,7 @@ class CreateTypeParametersForSignatures(Visitor):
   PREFIX = "_T"  # Prefix for new type params
 
   def __init__(self):
-    super(CreateTypeParametersForSignatures, self).__init__()
+    super().__init__()
     self.parameter = None
     self.class_name = None
     self.function_name = None
@@ -885,7 +882,7 @@ class CreateTypeParametersForSignatures(Visitor):
       (self: X[, ...]) -> X
     so that we can replace X with a bounded TypeVar. This heuristic
     isn't perfect; for example, in this naive copy method:
-      class X(object):
+      class X:
         def copy(self):
           return X()
     we should have left X alone. But it prevents a number of false
@@ -969,11 +966,11 @@ class VerifyVisitor(Visitor):
   """Visitor for verifying pytd ASTs. For tests."""
 
   def __init__(self):
-    super(VerifyVisitor, self).__init__()
+    super().__init__()
     self._valid_param_name = re.compile(r"[a-zA-Z_]\w*$")
 
   def Enter(self, node):
-    super(VerifyVisitor, self).Enter(node)
+    super().Enter(node)
     node.Validate()
 
   def _AssertNoDuplicates(self, node, attrs):
@@ -1031,7 +1028,7 @@ class RemoveFunctionsAndClasses(Visitor):
   """Visitor for removing unwanted functions or classes."""
 
   def __init__(self, names):
-    super(RemoveFunctionsAndClasses, self).__init__()
+    super().__init__()
     self.names = names
 
   def VisitTypeDeclUnit(self, node):
@@ -1067,7 +1064,7 @@ class AddNamePrefix(Visitor):
   """
 
   def __init__(self):
-    super(AddNamePrefix, self).__init__()
+    super().__init__()
     self.cls_stack = []
     self.classes = None
     self.prefix = None
@@ -1158,7 +1155,7 @@ class CollectDependencies(Visitor):
   """
 
   def __init__(self):
-    super(CollectDependencies, self).__init__()
+    super().__init__()
     self.dependencies = {}
     self.late_dependencies = {}
 
@@ -1266,7 +1263,7 @@ class AdjustTypeParameters(Visitor):
   """
 
   def __init__(self):
-    super(AdjustTypeParameters, self).__init__()
+    super().__init__()
     self.class_typeparams = set()
     self.function_typeparams = None
     self.class_template = []
@@ -1628,7 +1625,7 @@ class ExpandCompatibleBuiltins(Visitor):
   """
 
   def __init__(self, builtins):
-    super(ExpandCompatibleBuiltins, self).__init__()
+    super().__init__()
     self.in_parameter = False
     self.in_type_parameter = False
     self.replacements = self._BuildReplacementMap(builtins)
@@ -1656,7 +1653,7 @@ class ExpandCompatibleBuiltins(Visitor):
         # want it in our union
         rmap[prefix + name].append(pytd.ClassType(full_name, t))
 
-    return {k: pytd.UnionType(tuple(v)) for k, v in six.iteritems(rmap)}
+    return {k: pytd.UnionType(tuple(v)) for k, v in rmap.items()}
 
   def EnterParameter(self, _):
     assert not self.in_parameter
@@ -1700,7 +1697,7 @@ class ReplaceModulesWithAny(RemoveTypeParametersFromGenericAny):
   """Replace all references to modules in a list with AnythingType."""
 
   def __init__(self, module_list):
-    super(ReplaceModulesWithAny, self).__init__()
+    super().__init__()
     assert isinstance(module_list, list)
     self._any_modules = module_list
 
@@ -1734,7 +1731,7 @@ class ClassTypeToLateType(Visitor):
         convert builtin types to late types. (And, more generally, types of
         modules that are always loaded by pytype don't need to be late types)
     """
-    super(ClassTypeToLateType, self).__init__()
+    super().__init__()
     self._ignore = ignore
 
   def VisitClassType(self, n):

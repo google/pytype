@@ -1,4 +1,3 @@
-#!/usr/bin/python2.7
 """Tool for inferring types from Python programs.
 
 'pytype' is a tool for generating pyi from Python programs.
@@ -6,8 +5,6 @@
 Usage:
   pytype [flags] file.py
 """
-
-from __future__ import print_function
 
 import cProfile
 import logging
@@ -26,7 +23,7 @@ from pytype.pytd.parse import node
 log = logging.getLogger(__name__)
 
 
-class _ProfileContext(object):
+class _ProfileContext:
   """A context manager for optionally profiling code."""
 
   def __init__(self, output_path):

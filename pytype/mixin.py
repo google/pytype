@@ -57,7 +57,7 @@ class MixinMeta(type):
 
 
 @six.add_metaclass(MixinMeta)
-class PythonConstant(object):
+class PythonConstant:
   """A mix-in for storing actual Python constants, not just their types.
 
   This is used for things that are stored in cfg.Variable, but where we
@@ -90,7 +90,7 @@ class PythonConstant(object):
 
 
 @six.add_metaclass(MixinMeta)
-class HasSlots(object):
+class HasSlots:
   """Mix-in for overriding slots with custom methods.
 
   This makes it easier to emulate built-in classes like dict which need special
@@ -135,7 +135,7 @@ class HasSlots(object):
 
 
 @six.add_metaclass(MixinMeta)
-class Class(object):
+class Class:
   """Mix-in to mark all class-like values."""
 
   overloads = ("get_special_attribute", "get_own_new", "call", "compute_mro")
@@ -443,7 +443,7 @@ class Class(object):
 
 
 @six.add_metaclass(MixinMeta)
-class NestedAnnotation(object):
+class NestedAnnotation:
   """An annotation containing inner types, such as a Union.
 
   For example, in `Union[int, str]`, `int` and `str` are the annotation's inner

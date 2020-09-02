@@ -1,4 +1,3 @@
-from __future__ import print_function
 
 import json
 import textwrap
@@ -16,7 +15,7 @@ from pytype.tools.xref import kythe
 from pytype.tools.xref import output
 
 
-class IndexerTestMixin(object):
+class IndexerTestMixin:
   """Mixin for indexer tests."""
 
   def index_code(self, code, **kwargs):

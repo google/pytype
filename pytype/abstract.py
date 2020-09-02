@@ -32,8 +32,6 @@ from pytype.pytd import visitors
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 
-import six
-
 log = logging.getLogger(__name__)
 
 
@@ -1150,7 +1148,7 @@ class AnnotationsDict(Dict):
         yield name, typ
 
 
-class LateAnnotation(object):
+class LateAnnotation:
   """A late annotation.
 
   A late annotation stores a string expression and a snapshot of the VM stack at
@@ -2746,7 +2744,7 @@ class InterpreterClass(SimpleAbstractValue, mixin.Class):
           pass
         else:
           continue
-      if isinstance(s, six.text_type):
+      if isinstance(s, str):
         name = s.encode("utf8", "ignore")
       else:
         name = str(s)

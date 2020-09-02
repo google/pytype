@@ -1,5 +1,4 @@
 """Integration test for pytype."""
-from __future__ import print_function
 
 import csv
 import hashlib

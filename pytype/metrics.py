@@ -1,4 +1,3 @@
-# Lint as: python3
 
 """Classes for instrumenting code to collect various metrics.
 
@@ -149,7 +148,7 @@ def merge_from_file(metrics_file):
 
 
 @six.add_metaclass(_RegistryMeta)
-class Metric(object):
+class Metric:
   """Abstract base class for metrics."""
 
   def __init__(self, name):
@@ -185,7 +184,7 @@ class Counter(Metric):
   """A monotonically increasing metric."""
 
   def __init__(self, name):
-    super(Counter, self).__init__(name)
+    super().__init__(name)
     self._total = 0
 
   def inc(self, count=1):
@@ -226,7 +225,7 @@ class ReentrantStopWatch(Metric):
   """A watch that supports being called multiple times and recursively."""
 
   def __init__(self, name):
-    super(ReentrantStopWatch, self).__init__(name)
+    super().__init__(name)
     self._time = 0
     self._calls = 0
 
@@ -252,7 +251,7 @@ class MapCounter(Metric):
   """A set of related counters keyed by an arbitrary string."""
 
   def __init__(self, name):
-    super(MapCounter, self).__init__(name)
+    super().__init__(name)
     self._counts = {}
     self._total = 0
 
@@ -289,7 +288,7 @@ class Distribution(Metric):
   """A metric to track simple statistics from a distribution of values."""
 
   def __init__(self, name):
-    super(Distribution, self).__init__(name)
+    super().__init__(name)
     self._count = 0  # Number of values.
     self._total = 0.0  # Sum of the values.
     self._squared = 0.0  # Sum of the squares of the values.
@@ -350,7 +349,7 @@ class Snapshot(Metric):
 
   def __init__(self, name, enabled=False, groupby="lineno",
                nframes=1, count=10):
-    super(Snapshot, self).__init__(name)
+    super().__init__(name)
     self.snapshots = []
     # The metric to group memory blocks by. Default is "lineno", which groups by
     # which file and line allocated the block. The other useful value is
@@ -408,7 +407,7 @@ class Snapshot(Metric):
     return "\n\n".join(self.snapshots)
 
 
-class MetricsContext(object):
+class MetricsContext:
   """A context manager that configures metrics and writes their output."""
 
   def __init__(self, output_path, open_function=open):

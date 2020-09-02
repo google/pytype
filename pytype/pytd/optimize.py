@@ -1,4 +1,3 @@
-# -*- coding:utf-8; python-indent:2; indent-tabs-mode:nil -*-
 
 # Copyright 2013 Google Inc. All Rights Reserved.
 #
@@ -42,7 +41,7 @@ class RenameUnknowns(visitors.Visitor):
   """Give unknowns that map to the same set of concrete types the same name."""
 
   def __init__(self, mapping):
-    super(RenameUnknowns, self).__init__()
+    super().__init__()
     self.name_to_cls = {name: hash(cls) for name, cls in mapping.items()}
     self.cls_to_canonical_name = {
         cls: name for name, cls in self.name_to_cls.items()}
@@ -86,7 +85,7 @@ class RemoveRedundantSignatures(visitors.Visitor):
   """
 
   def __init__(self, hierarchy):
-    super(RemoveRedundantSignatures, self).__init__()
+    super().__init__()
     self.match = type_match.TypeMatch(hierarchy.GetSuperClasses(),
                                       any_also_is_bottom=False)
     self.subst = {}
@@ -140,7 +139,7 @@ class SimplifyUnions(visitors.Visitor):
     return pytd_utils.JoinTypes(union.type_list)
 
 
-class _ReturnsAndExceptions(object):
+class _ReturnsAndExceptions:
   """Mutable class for collecting return types and exceptions of functions.
 
   The collecting is stable: Items are kept in the order in which they were
@@ -488,7 +487,7 @@ class ApplyOptionalArguments(visitors.Visitor):
     return f.Replace(signatures=tuple(new_signatures))
 
 
-class SuperClassHierarchy(object):
+class SuperClassHierarchy:
   """Utility class for optimizations working with superclasses."""
 
   def __init__(self, superclasses):
@@ -568,7 +567,7 @@ class SimplifyUnionsWithSuperclasses(visitors.Visitor):
   """
 
   def __init__(self, hierarchy):
-    super(SimplifyUnionsWithSuperclasses, self).__init__()
+    super().__init__()
     self.hierarchy = hierarchy
 
   def VisitUnionType(self, union):
@@ -594,7 +593,7 @@ class FindCommonSuperClasses(visitors.Visitor):
   """
 
   def __init__(self, hierarchy):
-    super(FindCommonSuperClasses, self).__init__()
+    super().__init__()
     self.hierarchy = hierarchy
 
   def VisitUnionType(self, union):
@@ -644,8 +643,8 @@ class CollapseLongUnions(visitors.Visitor):
   """
 
   def __init__(self, max_length=7):
-    assert isinstance(max_length, six.integer_types)
-    super(CollapseLongUnions, self).__init__()
+    assert isinstance(max_length, int)
+    super().__init__()
     self.generic_type = pytd.AnythingType()
     self.max_length = max_length
 
@@ -662,7 +661,7 @@ class AdjustGenericType(visitors.Visitor):
   """Changes the generic type from "object" to "Any"."""
 
   def __init__(self):
-    super(AdjustGenericType, self).__init__()
+    super().__init__()
     self.old_generic_type = pytd.ClassType("__builtin__.object")
     self.new_generic_type = pytd.AnythingType()
 
@@ -750,7 +749,7 @@ class PullInMethodClasses(visitors.Visitor):
   """
 
   def __init__(self):
-    super(PullInMethodClasses, self).__init__()
+    super().__init__()
     self._module = None
     self._total_count = collections.defaultdict(int)
     self._processed_count = collections.defaultdict(int)
@@ -897,7 +896,7 @@ class TypeParameterScope(visitors.Visitor):
   """Common superclass for optimizations that track type parameters."""
 
   def __init__(self):
-    super(TypeParameterScope, self).__init__()
+    super().__init__()
     self.type_params_stack = [{}]
 
   def EnterClass(self, cls):
@@ -950,7 +949,7 @@ class MergeTypeParameters(TypeParameterScope):
   """
 
   def __init__(self):
-    super(MergeTypeParameters, self).__init__()
+    super().__init__()
     self.type_param_union = None
 
   def _AppendNew(self, l1, l2):
@@ -962,13 +961,13 @@ class MergeTypeParameters(TypeParameterScope):
 
   def EnterSignature(self, node):
     # Necessary because TypeParameterScope also defines this function
-    super(MergeTypeParameters, self).EnterSignature(node)
+    super().EnterSignature(node)
     assert self.type_param_union is None
     self.type_param_union = collections.defaultdict(list)
 
   def LeaveSignature(self, node):
     # Necessary because TypeParameterScope also defines this function
-    super(MergeTypeParameters, self).LeaveSignature(node)
+    super().LeaveSignature(node)
     self.type_param_union = None
 
   def VisitUnionType(self, u):

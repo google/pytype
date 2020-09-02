@@ -1,8 +1,5 @@
-#!/usr/bin/env python
 
 """Generate cross references from a project."""
-
-from __future__ import print_function
 
 import signal
 import sys
