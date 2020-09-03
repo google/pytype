@@ -1,9 +1,9 @@
 # This module does not exist in typeshed.
 #
-from typing import Any, Text
+from typing import Any, Text, Union
 
 __builtin__ = ...  # type: module
-_aliases = ...  # type: dict[bytes or Text, bytes or Text]
+_aliases = ...  # type: dict[Union[bytes, Text], Union[bytes, Text]]
 _cache = ...  # type: dict[Any, Any]
 _import_tail = ...  # type: list[str]
 _norm_encoding_map = ...  # type: str
