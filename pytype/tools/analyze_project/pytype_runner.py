@@ -347,7 +347,9 @@ class PytypeRunner:
     command = ['ninja', '-k', k, '-C', c, '-j', str(self.jobs)]
     if logging.getLogger().isEnabledFor(logging.INFO):
       command.append('-v')
-    return subprocess.call(command)
+    ret = subprocess.call(command)
+    print('Leaving directory %r' % c)
+    return ret
 
   def run(self):
     """Run pytype over the project."""

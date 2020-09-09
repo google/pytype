@@ -439,10 +439,10 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       x5 = ...  # type: listiterator[int]
       x6 = ...  # type: tupleiterator[int]
       x7 = ...  # type: setiterator[int]
-      x8 = ...  # type: `dictionary-keyiterator`[str]
+      x8 = ...  # type: Iterator[str]
       # The "nothing" is due to pytype ignoring Callable parameters and
       # therefore not seeing the type parameter value tucked away in _RET.
-      x9 = ...  # type: `callable-iterator`[int]
+      x9 = ...  # type: Iterator[int]
     """)
 
   def test_list_init(self):

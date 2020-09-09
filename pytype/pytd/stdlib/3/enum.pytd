@@ -6,11 +6,11 @@ _T = TypeVar('_T')
 _EnumType = TypeVar('_EnumType', bound=Type[Enum])
 
 class EnumMeta(type, Iterable):
-  def __getattribute__(self, name) -> Any
-  def __iter__(self: Type[_T]) -> Iterator[_T]
-  def __getitem__(cls: EnumMeta, name: str) -> Any
-  def __contains__(self, member: Any) -> bool
-  def __len__(self) -> int
+  def __getattribute__(self, name) -> Any: ...
+  def __iter__(self: Type[_T]) -> Iterator[_T]: ...
+  def __getitem__(cls: EnumMeta, name: str) -> Any: ...
+  def __contains__(self, member: Any) -> bool: ...
+  def __len__(self) -> int: ...
 
 class Enum(metaclass=EnumMeta):
   __members__ = ...  # type: collections.OrderedDict[str, Enum]
@@ -24,7 +24,7 @@ class Enum(metaclass=EnumMeta):
 class IntEnum(Enum, int):
   value = ...  # type: int
 
-def unique(enumeration: _EnumType) -> _EnumType
+def unique(enumeration: _EnumType) -> _EnumType: ...
 
 # Everything below this point is copied directly from the typeshed version,
 # with the exception of a tweak to the definition of IntFlag, documented below,

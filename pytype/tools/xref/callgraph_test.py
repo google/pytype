@@ -1,4 +1,3 @@
-
 from pytype import config
 from pytype import file_utils
 
