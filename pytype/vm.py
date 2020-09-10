@@ -797,7 +797,7 @@ class VirtualMachine:
         well as all the top-level names defined by it.
     """
     director = directors.Director(
-        src, self.errorlog, filename, self.options.disable)
+        src, self.errorlog, filename, self.options.disable, self.python_version)
 
     # This modifies the errorlog passed to the constructor.  Kind of ugly,
     # but there isn't a better way to wire both pieces together.
@@ -2441,9 +2441,16 @@ class VirtualMachine:
     return state
 
   def byte_MAP_ADD(self, state, op):
+    """Implements the MAP_ADD opcode."""
     # Used by the compiler e.g. for {x, y for x, y in ...}
     count = op.arg
-    state, (val, key) = state.popn(2)
+    # In 3.8+, the value is at the top of the stack, followed by the key. Before
+    # that, it's the other way around.
+    state, item = state.popn(2)
+    if self.python_version >= (3, 8):
+      key, val = item
+    else:
+      val, key = item
     the_map = state.peek(count)
     state, f = self.load_attr(state, the_map, "__setitem__")
     state, _ = self.call_function_with_state(state, f, (key, val))
