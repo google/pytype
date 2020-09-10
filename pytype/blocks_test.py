@@ -32,7 +32,7 @@ class OrderingTest(BaseBlocksTest):
         o.RETURN_VALUE,
     ], name="trivial")
     ordered_code = self._order_code(co)
-    b0, = ordered_code.order.values()
+    b0, = ordered_code.order
     self.assertEqual(len(b0.code), 2)
     six.assertCountEqual(self, [], b0.incoming)
     six.assertCountEqual(self, [], b0.outgoing)
@@ -66,7 +66,7 @@ class OrderingTest(BaseBlocksTest):
     ], name="yield")
     ordered_code = self._order_code(co)
     self.assertEqual(ordered_code.co_name, "yield")
-    b0, b1 = ordered_code.order.values()
+    b0, b1 = ordered_code.order
     six.assertCountEqual(self, b0.outgoing, [b1])
     six.assertCountEqual(self, b1.incoming, [b0])
     six.assertCountEqual(self, b0.incoming, [])
@@ -99,7 +99,7 @@ class OrderingTest(BaseBlocksTest):
     ], name="triangle")
     ordered_code = self._order_code(co)
     self.assertEqual(ordered_code.co_name, "triangle")
-    b0, b1, b2 = ordered_code.order.values()
+    b0, b1, b2 = ordered_code.order
     six.assertCountEqual(self, b0.incoming, [])
     six.assertCountEqual(self, b0.outgoing, [b1, b2])
     six.assertCountEqual(self, b1.incoming, [b0])
@@ -141,7 +141,7 @@ class OrderingTest(BaseBlocksTest):
     ], name="diamond")
     ordered_code = self._order_code(co)
     self.assertEqual(ordered_code.co_name, "diamond")
-    b0, b1, b2, b3 = ordered_code.order.values()
+    b0, b1, b2, b3 = ordered_code.order
     six.assertCountEqual(self, b0.incoming, [])
     six.assertCountEqual(self, b0.outgoing, [b1, b2])
     six.assertCountEqual(self, b1.incoming, [b0])
@@ -165,7 +165,7 @@ class OrderingTest(BaseBlocksTest):
     ], name="raise")
     ordered_code = self._order_code(co)
     self.assertEqual(ordered_code.co_name, "raise")
-    b0, = ordered_code.order.values()
+    b0, = ordered_code.order
     self.assertEqual(len(b0.code), 2)
     six.assertCountEqual(self, b0.incoming, [])
     six.assertCountEqual(self, b0.outgoing, [])
@@ -184,7 +184,7 @@ class OrderingTest(BaseBlocksTest):
         o.RETURN_VALUE,
     ], name="call")
     ordered_code = self._order_code(co)
-    b0, b1 = ordered_code.order.values()
+    b0, b1 = ordered_code.order
     self.assertEqual(len(b0.code), 2)
     self.assertEqual(len(b1.code), 3)
     six.assertCountEqual(self, b0.outgoing, [b1])
@@ -209,7 +209,7 @@ class OrderingTest(BaseBlocksTest):
         o.RETURN_VALUE,
     ], name="finally")
     ordered_code = self._order_code(co)
-    b0, b1, b2, b3 = ordered_code.order.values()
+    b0, b1, b2, b3 = ordered_code.order
     self.assertEqual(len(b0.code), 2)
     self.assertEqual(len(b1.code), 1)
     self.assertEqual(len(b2.code), 1)
@@ -241,7 +241,7 @@ class OrderingTest(BaseBlocksTest):
         o.RETURN_VALUE,
     ], name="except")
     ordered_code = self._order_code(co)
-    b0, b1, b2, b3 = ordered_code.order.values()
+    b0, b1, b2, b3 = ordered_code.order
     self.assertEqual(len(b0.code), 2)
     self.assertEqual(len(b1.code), 1)
     self.assertEqual(len(b2.code), 4)
@@ -262,7 +262,7 @@ class OrderingTest(BaseBlocksTest):
         o.RETURN_VALUE,  # dead.
     ], name="return")
     ordered_code = self._order_code(co)
-    b0, = ordered_code.order.values()
+    b0, = ordered_code.order
     self.assertEqual(len(b0.code), 2)
 
   def test_with(self):
@@ -287,7 +287,7 @@ class OrderingTest(BaseBlocksTest):
         o.RETURN_VALUE,
     ], name="with")
     ordered_code = self._order_code(co)
-    b0, b1, b2, b3, b4 = ordered_code.order.values()
+    b0, b1, b2, b3, b4 = ordered_code.order
     self.assertEqual(len(b0.code), 4)
     self.assertEqual(len(b1.code), 1)
     self.assertEqual(len(b2.code), 1)
@@ -461,7 +461,7 @@ class BlockStackTest(BaseBlocksTest):
     ])
     ordered_code = blocks.merge_annotations(
         blocks.process_code(co), {1: "float"}, [])
-    bytecode = next(iter(ordered_code.order.values())).code
+    bytecode = ordered_code.order[0].code
     self.assertIsNone(bytecode[1].annotation)
     self.assertEqual(bytecode[3].annotation, "float")
 

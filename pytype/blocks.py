@@ -1,7 +1,6 @@
 """Functions for computing the execution order of bytecode."""
 
 import bisect
-import collections
 
 from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
@@ -53,8 +52,7 @@ class OrderedCode:
     assert hasattr(code, "co_code")
     self.__dict__.update({name: value for name, value in code.__dict__.items()
                           if name.startswith("co_")})
-    # TODO(rechen): Use a normal dict once we drop host 3.5 support.
-    self.order = collections.OrderedDict((block.id, block) for block in order)
+    self.order = order
     self.python_version = python_version
     # Store the "nice" version of the bytecode under co_code. We never claimed
     # to be compatible with CodeType.
@@ -184,7 +182,7 @@ def add_pop_block_targets(bytecode):
       # Make "raise" statements jump to the innermost exception handler.
       # (If there's no exception handler, do nothing.)
       for b in reversed(block_stack):
-        if isinstance(b, opcodes.SETUP_EXCEPT):
+        if isinstance(b, (opcodes.SETUP_EXCEPT, opcodes.SETUP_FINALLY)):
           op.block_target = b.target
           break
     elif isinstance(op, opcodes.BREAK_LOOP):
@@ -196,7 +194,7 @@ def add_pop_block_targets(bytecode):
           assert b.target != op
           todo.append((op.block_target, block_stack[0:i]))
           break
-    elif isinstance(op, opcodes.SETUP_EXCEPT):
+    elif isinstance(op, (opcodes.SETUP_EXCEPT, opcodes.SETUP_FINALLY)):
       # Exceptions pop the block, so store the previous block stack.
       todo.append((op.target, block_stack))
       block_stack += (op,)
