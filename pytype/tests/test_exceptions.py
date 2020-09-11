@@ -276,6 +276,19 @@ class TestExceptions(test_base.TargetIndependentTest):
       def g() -> NoReturn
     """)
 
+  def test_try_except_noreturn(self):
+    ty = self.Infer("""
+      def f():
+        try:
+          raise ValueError()
+        except ValueError as e:
+          raise ValueError(str(e))
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import NoReturn
+      def f() -> NoReturn: ...
+    """)
+
   def test_return_or_raise(self):
     ty = self.Infer("""
       def f():
