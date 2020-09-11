@@ -25,9 +25,15 @@ def _incompatible(left_name, right_name):
   return True
 
 
-def _is_primitive(vm, value):
+def _is_primitive_constant(vm, value):
   if isinstance(value, mixin.PythonConstant):
     return value.pyval.__class__ in vm.convert.primitive_classes
+  return False
+
+
+def _is_primitive(vm, value):
+  if _is_primitive_constant(vm, value):
+    return True
   elif isinstance(value, abstract.Instance):
     return value.full_name in vm.convert.primitive_class_names
   return False
@@ -37,15 +43,21 @@ def _is_equality_cmp(op):
   return op in (slots.EQ, slots.NE)
 
 
-def _compare_primitive_value(vm, op, left, right):
-  if _is_primitive(vm, right) and isinstance(right, mixin.PythonConstant):
-    try:
-      return slots.COMPARES[op](left.pyval, right.pyval)
-    except TypeError:
-      # TODO(rechen): In host Python 3, some types are not comparable; e.g.,
-      # `3 < ""` leads to a type error. We should do a Python 2-style comparison
-      # for target Python 2 and log an error for target Python 3.
-      pass
+def _compare_constants(op, left, right):
+  try:
+    return slots.COMPARES[op](left, right)
+  except TypeError:
+    # TODO(rechen): In host Python 3, some types are not comparable; e.g.,
+    # `3 < ""` leads to a type error. We should do a Python 2-style comparison
+    # for target Python 2 and log an error for target Python 3.
+    return None
+
+
+def _compare_primitive_constant(vm, op, left, right):
+  if _is_primitive_constant(vm, right):
+    ret = _compare_constants(op, left.pyval, right.pyval)
+    if ret is not None:
+      return ret
   return _compare_primitive(op, left, right)
 
 
@@ -81,8 +93,8 @@ def _compare_dict(op, left, right):
 
 def cmp_rel(vm, op, left, right):
   """Compare two variables."""
-  if _is_primitive(vm, left) and isinstance(left, mixin.PythonConstant):
-    return _compare_primitive_value(vm, op, left, right)
+  if _is_primitive_constant(vm, left):
+    return _compare_primitive_constant(vm, op, left, right)
   elif _is_primitive(vm, left) and _is_primitive(vm, right):
     return _compare_primitive(op, left, right)
   elif isinstance(left, abstract.Tuple):
