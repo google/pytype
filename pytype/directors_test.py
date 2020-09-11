@@ -1,6 +1,8 @@
 # coding=utf8
 """Tests for directors.py."""
 
+import sys
+
 from pytype import directors
 from pytype import errors
 from pytype.tests import test_utils
@@ -110,7 +112,7 @@ class DirectorTestCase(unittest.TestCase):
   def _create(self, src, disable=()):
     self._errorlog = errors.ErrorLog()
     self._director = directors.Director(src, self._errorlog, _TEST_FILENAME,
-                                        disable)
+                                        disable, sys.version_info[:2])
 
   def _should_report(self, expected, lineno, error_name="test-error",
                      filename=_TEST_FILENAME):
@@ -485,7 +487,8 @@ class VariableAnnotationsTest(DirectorTestCase):
       v: Callable[
           [], int] = None
     """)
-    self.assertEqual({3: "Callable[[], int]"}, self._director.annotations)
+    lineno = 2 if sys.version_info[:2] >= (3, 8) else 3
+    self.assertEqual({lineno: "Callable[[], int]"}, self._director.annotations)
 
   def test_multiline_assignment(self):
     self._create("""
@@ -494,7 +497,8 @@ class VariableAnnotationsTest(DirectorTestCase):
           1,
       ]
     """)
-    self.assertEqual({5: "List[int]"}, self._director.annotations)
+    lineno = 2 if sys.version_info[:2] >= (3, 8) else 5
+    self.assertEqual({lineno: "List[int]"}, self._director.annotations)
 
   def test_complicated_annotation(self):
     self._create("v: int if __random__ else str = None")

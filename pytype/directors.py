@@ -148,9 +148,9 @@ class _VariableAnnotation:
   """Processes a single logical line, looking for a variable annotation."""
 
   @classmethod
-  def start(cls, token):
+  def start(cls, lineno, token):
     self = cls()
-    self.add_token(token)
+    self.add_token(lineno, token)
     return self
 
   def __init__(self):
@@ -159,6 +159,9 @@ class _VariableAnnotation:
     # Set to True when the full annotation has been found, or if we determine
     # that the line does not contain an annotation.
     self.closed = False
+    # Set to the line on which the colon is found. We do not use the line at
+    # which start() is called because the latter may be a blank line.
+    self.start_lineno = None
 
   def _accept(self, token):
     if self.closed:
@@ -167,7 +170,7 @@ class _VariableAnnotation:
     # of the annotation.
     return token.exact_type != tokenize.COMMENT and token.string.strip()
 
-  def add_token(self, token):
+  def add_token(self, lineno, token):
     """Process a token."""
     if not self._accept(token):
       return
@@ -179,7 +182,9 @@ class _VariableAnnotation:
       if token.exact_type != tokenize.NAME or keyword.iskeyword(token.string):
         self.closed = True
     elif len(self._tokens) == 1:
-      if token.exact_type != tokenize.COLON:
+      if token.exact_type == tokenize.COLON:
+        self.start_lineno = lineno
+      else:
         self.closed = True
     elif token.exact_type == tokenize.EQUAL:
       self.closed = True
@@ -206,7 +211,7 @@ def _collect_bytecode(ordered_code):
 class Director:
   """Holds all of the directive information for a source file."""
 
-  def __init__(self, src, errorlog, filename, disable):
+  def __init__(self, src, errorlog, filename, disable, python_version):
     """Create a Director for a source file.
 
     Args:
@@ -215,6 +220,7 @@ class Director:
           errorlog.
       filename: The name of the source file.
       disable: List of error messages to always ignore.
+      python_version: The target python version.
     """
     self._filename = filename
     self._errorlog = errorlog
@@ -236,7 +242,7 @@ class Director:
     for error_name in disable:
       self._disables[error_name].start_range(0, True)
     # Parse the source code for directives.
-    self._parse_source(src)
+    self._parse_source(src, python_version)
 
   @property
   def type_comments(self):
@@ -260,7 +266,7 @@ class Director:
   def decorators(self):
     return self._decorators
 
-  def _parse_source(self, src):
+  def _parse_source(self, src, python_version):
     """Parse a source file, extracting directives from comments."""
     f = moves.StringIO(src)
     defs_start = None
@@ -305,16 +311,23 @@ class Director:
       if last_function_definition and last_function_definition.contains(lineno):
         pass  # ignore function annotations
       elif not open_variable_annotation:
-        open_variable_annotation = _VariableAnnotation.start(token)
+        open_variable_annotation = _VariableAnnotation.start(lineno, token)
       elif tok in (tokenize.NEWLINE, tokenize.SEMI):
         # NEWLINE indicates the end of a *logical* line of Python code, allowing
         # us to handle annotations split over multiple lines.
         annotation = open_variable_annotation.annotation
         if annotation and open_variable_annotation.closed:
-          self._variable_annotations[lineno] = annotation
+          # In 3.8+, the STORE_* opcode for a multiline variable assignment is
+          # at the first line in the assignment; before that, it is at the last.
+          if python_version >= (3, 8):
+            assert open_variable_annotation.start_lineno
+            annotation_lineno = open_variable_annotation.start_lineno
+          else:
+            annotation_lineno = lineno
+          self._variable_annotations[annotation_lineno] = annotation
         open_variable_annotation = None
       else:
-        open_variable_annotation.add_token(token)
+        open_variable_annotation.add_token(lineno, token)
 
       # Record docstrings.
       if _DOCSTRING_RE.match(line):

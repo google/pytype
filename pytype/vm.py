@@ -319,7 +319,7 @@ class VirtualMachine:
       assert annotated_locals is None
     can_return = False
     return_nodes = []
-    for block in frame.f_code.order.values():
+    for block in frame.f_code.order:
       state = frame.states.get(block[0])
       if not state:
         log.warning("Skipping block %d,"
@@ -797,7 +797,7 @@ class VirtualMachine:
         well as all the top-level names defined by it.
     """
     director = directors.Director(
-        src, self.errorlog, filename, self.options.disable)
+        src, self.errorlog, filename, self.options.disable, self.python_version)
 
     # This modifies the errorlog passed to the constructor.  Kind of ugly,
     # but there isn't a better way to wire both pieces together.
@@ -2174,17 +2174,21 @@ class VirtualMachine:
     elif op.arg == slots.CMP_IN:
       state, ret = self._cmp_in(state, x, y)
     elif op.arg == slots.CMP_EXC_MATCH:
-      if self.python_version < (3, 8):
-        # When the `try` block is set up, push_abstract_exception pushes on
-        # unknowns for the value and exception type. CMP_EXC_MATCH occurs at the
-        # beginning  of the `except` block, when we know the exception being
-        # caught, so we can replace the unknowns with more useful variables.
-        state, _ = state.popn(2)
+      # When the `try` block is set up, push_abstract_exception pushes on
+      # unknowns for the value and exception type. CMP_EXC_MATCH occurs at the
+      # beginning  of the `except` block, when we know the exception being
+      # caught, so we can replace the unknowns with more useful variables.
       exc_type = y
       value, types = self._instantiate_exception(state.node, exc_type)
       if None in types:
         exc_type = self.new_unsolvable(state.node)
-      state = state.push(value, exc_type)
+      if self.python_version >= (3, 8):
+        # See SETUP_FINALLY: in 3.8+, we push the exception on twice.
+        state, (_, _, tb, _, _) = state.popn(5)
+        state = state.push(value, exc_type, tb, value, exc_type)
+      else:
+        state, _ = state.popn(2)
+        state = state.push(value, exc_type)
       ret = self.convert.build_bool(state.node)
     else:
       raise VirtualMachineError("Invalid argument to COMPARE_OP: %d" % op.arg)
@@ -2437,9 +2441,16 @@ class VirtualMachine:
     return state
 
   def byte_MAP_ADD(self, state, op):
+    """Implements the MAP_ADD opcode."""
     # Used by the compiler e.g. for {x, y for x, y in ...}
     count = op.arg
-    state, (val, key) = state.popn(2)
+    # In 3.8+, the value is at the top of the stack, followed by the key. Before
+    # that, it's the other way around.
+    state, item = state.popn(2)
+    if self.python_version >= (3, 8):
+      key, val = item
+    else:
+      val, key = item
     the_map = state.peek(count)
     state, f = self.load_attr(state, the_map, "__setitem__")
     state, _ = self.call_function_with_state(state, f, (key, val))
@@ -2579,21 +2590,34 @@ class VirtualMachine:
     self.store_jump(op.target, new_state)
     return state
 
-  # Note: this opcode is removed in Python 3.8.
-  def byte_SETUP_EXCEPT(self, state, op):
+  def _setup_except(self, state, op):
+    """Sets up an except block."""
     # Assume that it's possible to throw the exception at the first
     # instruction of the code:
-    self.store_jump(op.target, self.push_abstract_exception(state))
+    jump_state = self.push_abstract_exception(state)
+    if self.python_version >= (3, 8):
+      # I have no idea why we need to push the exception twice! See
+      # test_exceptions.TestExceptions.test_reuse_name for a test that fails if
+      # we don't do this.
+      jump_state = self.push_abstract_exception(jump_state)
+    self.store_jump(op.target, jump_state)
     return self.push_block(state, "setup-except", op, op.target)
+
+  # Note: this opcode is removed in Python 3.8.
+  def byte_SETUP_EXCEPT(self, state, op):
+    return self._setup_except(state, op)
 
   def byte_SETUP_FINALLY(self, state, op):
     """Implements the SETUP_FINALLY opcode."""
     # In Python 3.8+, SETUP_FINALLY handles setup for both except and finally
     # blocks. Examine the targeted block to determine which setup to do.
-    if (self.python_version >= (3, 8) and
-        any(isinstance(o, opcodes.POP_EXCEPT)
-            for o in self.frame.f_code.order.get(op.arg, ()))):
-      return self.byte_SETUP_EXCEPT(state, op)
+    if self.python_version >= (3, 8):
+      for i, block in enumerate(self.frame.f_code.order):
+        if block.id == op.arg:
+          if not any(isinstance(o, opcodes.BEGIN_FINALLY)
+                     for o in self.frame.f_code.order[i-1]):
+            return self._setup_except(state, op)
+          break
     # Emulate finally by connecting the try to the finally block (with
     # empty reason/why/continuation):
     self.store_jump(op.target, state.push(self.convert.build_none(state.node)))
@@ -2630,7 +2654,7 @@ class VirtualMachine:
     state, _ = state.pop_block()
     return state
 
-  def byte_RAISE_VARARGS_PY2(self, state, op):
+  def _raise_varargs_py2(self, state, op):
     """Raise an exception (Python 2 version)."""
     # NOTE: the dis docs are completely wrong about the order of the
     # operands on the stack!
@@ -2643,7 +2667,7 @@ class VirtualMachine:
     else:
       return state.set_why("exception")
 
-  def byte_RAISE_VARARGS_PY3(self, state, op):
+  def _raise_varargs_py3(self, state, op):
     """Raise an exception (Python 3 version)."""
     argc = op.arg
     state, _ = state.popn(argc)
@@ -2655,13 +2679,15 @@ class VirtualMachine:
 
   def byte_RAISE_VARARGS(self, state, op):
     if self.PY2:
-      return self.byte_RAISE_VARARGS_PY2(state, op)
+      return self._raise_varargs_py2(state, op)
     else:
-      return self.byte_RAISE_VARARGS_PY3(state, op)
+      return self._raise_varargs_py3(state, op)
 
   def byte_POP_EXCEPT(self, state, op):  # Python 3 only
     # We don't push the special except-handler block, so we don't need to
     # pop it, either.
+    if self.python_version >= (3, 8):
+      state, _ = state.popn(3)
     return state
 
   def byte_SETUP_WITH(self, state, op):
