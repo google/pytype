@@ -247,6 +247,19 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       v: str
     """)
 
+  def test_sys_version_info_tuple(self):
+    ty = self.Infer("""
+      import sys
+      if sys.version_info >= (3, 5):
+        v = 42
+      else:
+        v = "hello world"
+    """)
+    self.assertTypesMatchPytd(ty, """
+      sys: module
+      v: int
+    """)
+
   def test_async(self):
     """Test various asyncio features."""
     ty = self.Infer("""

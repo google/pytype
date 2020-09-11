@@ -116,6 +116,88 @@ class TupleTest(CompareTestBase):
     self.assertIs(abstract_utils.get_atomic_value(var),
                   abstract_utils.get_atomic_value(self._var))
 
+  def test_cmp_rel__equal(self):
+    tup = self._convert.constant_to_value((3, 1))
+    self.assertIs(False, compare.cmp_rel(self._vm, slots.LT, tup, tup))
+    self.assertIs(True, compare.cmp_rel(self._vm, slots.LE, tup, tup))
+    self.assertIs(True, compare.cmp_rel(self._vm, slots.EQ, tup, tup))
+    self.assertIs(False, compare.cmp_rel(self._vm, slots.NE, tup, tup))
+    self.assertIs(True, compare.cmp_rel(self._vm, slots.GE, tup, tup))
+    self.assertIs(False, compare.cmp_rel(self._vm, slots.GT, tup, tup))
+
+  def test_cmp_rel__not_equal(self):
+    tup1 = self._convert.constant_to_value((3, 1))
+    tup2 = self._convert.constant_to_value((3, 5))
+    self.assertIs(True, compare.cmp_rel(self._vm, slots.LT, tup1, tup2))
+    self.assertIs(False, compare.cmp_rel(self._vm, slots.LT, tup2, tup1))
+    self.assertIs(True, compare.cmp_rel(self._vm, slots.LE, tup1, tup2))
+    self.assertIs(False, compare.cmp_rel(self._vm, slots.LE, tup2, tup1))
+    self.assertIs(False, compare.cmp_rel(self._vm, slots.EQ, tup1, tup2))
+    self.assertIs(False, compare.cmp_rel(self._vm, slots.EQ, tup2, tup1))
+    self.assertIs(True, compare.cmp_rel(self._vm, slots.NE, tup1, tup2))
+    self.assertIs(True, compare.cmp_rel(self._vm, slots.NE, tup2, tup1))
+    self.assertIs(False, compare.cmp_rel(self._vm, slots.GE, tup1, tup2))
+    self.assertIs(True, compare.cmp_rel(self._vm, slots.GE, tup2, tup1))
+    self.assertIs(False, compare.cmp_rel(self._vm, slots.GT, tup1, tup2))
+    self.assertIs(True, compare.cmp_rel(self._vm, slots.GT, tup2, tup1))
+
+  def test_cmp_rel__unknown(self):
+    tup1 = self._convert.constant_to_value((3, 1))
+    tup2 = abstract.Instance(self._convert.tuple_type, self._vm)
+    for op in (slots.LT, slots.LE, slots.EQ, slots.NE, slots.GE, slots.GT):
+      self.assertIsNone(compare.cmp_rel(self._vm, op, tup1, tup2))
+      self.assertIsNone(compare.cmp_rel(self._vm, op, tup2, tup1))
+
+  def test_cmp_rel__prefix_equal(self):
+    tup1 = abstract.Tuple(
+        (self._convert.constant_to_value(3).to_variable(self._node),
+         self._convert.constant_to_value(1).to_variable(self._node),
+         self._convert.primitive_class_instances[int].to_variable(self._node)),
+        self._vm)
+    tup2 = self._convert.constant_to_value((3, 1))
+    self.assertIs(False, compare.cmp_rel(self._vm, slots.LT, tup1, tup2))
+    self.assertIs(True, compare.cmp_rel(self._vm, slots.LT, tup2, tup1))
+    self.assertIs(False, compare.cmp_rel(self._vm, slots.LE, tup1, tup2))
+    self.assertIs(True, compare.cmp_rel(self._vm, slots.LE, tup2, tup1))
+    self.assertIs(False, compare.cmp_rel(self._vm, slots.EQ, tup1, tup2))
+    self.assertIs(False, compare.cmp_rel(self._vm, slots.EQ, tup2, tup1))
+    self.assertIs(True, compare.cmp_rel(self._vm, slots.NE, tup1, tup2))
+    self.assertIs(True, compare.cmp_rel(self._vm, slots.NE, tup2, tup1))
+    self.assertIs(True, compare.cmp_rel(self._vm, slots.GE, tup1, tup2))
+    self.assertIs(False, compare.cmp_rel(self._vm, slots.GE, tup2, tup1))
+    self.assertIs(True, compare.cmp_rel(self._vm, slots.GT, tup1, tup2))
+    self.assertIs(False, compare.cmp_rel(self._vm, slots.GT, tup2, tup1))
+
+  def test_cmp_rel__prefix_not_equal(self):
+    tup1 = abstract.Tuple(
+        (self._convert.constant_to_value(3).to_variable(self._node),
+         self._convert.constant_to_value(1).to_variable(self._node),
+         self._convert.primitive_class_instances[int].to_variable(self._node)),
+        self._vm)
+    tup2 = self._convert.constant_to_value((4, 2))
+    self.assertIs(True, compare.cmp_rel(self._vm, slots.LT, tup1, tup2))
+    self.assertIs(False, compare.cmp_rel(self._vm, slots.LT, tup2, tup1))
+    self.assertIs(True, compare.cmp_rel(self._vm, slots.LE, tup1, tup2))
+    self.assertIs(False, compare.cmp_rel(self._vm, slots.LE, tup2, tup1))
+    self.assertIs(False, compare.cmp_rel(self._vm, slots.EQ, tup1, tup2))
+    self.assertIs(False, compare.cmp_rel(self._vm, slots.EQ, tup2, tup1))
+    self.assertIs(True, compare.cmp_rel(self._vm, slots.NE, tup1, tup2))
+    self.assertIs(True, compare.cmp_rel(self._vm, slots.NE, tup2, tup1))
+    self.assertIs(False, compare.cmp_rel(self._vm, slots.GE, tup1, tup2))
+    self.assertIs(True, compare.cmp_rel(self._vm, slots.GE, tup2, tup1))
+    self.assertIs(False, compare.cmp_rel(self._vm, slots.GT, tup1, tup2))
+    self.assertIs(True, compare.cmp_rel(self._vm, slots.GT, tup2, tup1))
+
+  def test_cmp_rel__prefix_unknown(self):
+    tup1 = abstract.Tuple(
+        (self._convert.constant_to_value(3).to_variable(self._node),
+         self._convert.primitive_class_instances[int].to_variable(self._node)),
+        self._vm)
+    tup2 = self._convert.constant_to_value((3, 1))
+    for op in (slots.LT, slots.LE, slots.EQ, slots.NE, slots.GE, slots.GT):
+      self.assertIsNone(compare.cmp_rel(self._vm, op, tup1, tup2))
+      self.assertIsNone(compare.cmp_rel(self._vm, op, tup2, tup1))
+
 
 class DictTest(CompareTestBase):
 

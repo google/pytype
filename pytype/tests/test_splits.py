@@ -618,7 +618,7 @@ class SplitTest(test_base.TargetIndependentTest):
       y: Tuple[int, int]
       z: str or float
       v1: float
-      v2: str or float
+      v2: str
     """)
 
   def test_primitive_eq(self):
