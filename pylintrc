@@ -41,12 +41,10 @@ disable=
   no-self-use,
   not-an-iterable,
   protected-access,
-  raise-missing-from,  # https://github.com/google/pytype/issues/656
   relative-import,
   self-assigning-variable,
   signature-differs,
   slots-on-old-class,
-  super-with-arguments,  # https://github.com/google/pytype/issues/656
   too-few-public-methods,
   too-many-ancestors,
   too-many-arguments,
