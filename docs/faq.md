@@ -15,7 +15,7 @@
       * [How do I disable all pytype checks for a particular import?](#how-do-i-disable-all-pytype-checks-for-a-particular-import)
       * [How do I write code that is seen by pytype but ignored at runtime?](#how-do-i-write-code-that-is-seen-by-pytype-but-ignored-at-runtime)
 
-<!-- Added by: mdemello, at: 2020-08-10T13:15-07:00 -->
+<!-- Added by: rechen, at: 2020-09-11T15:57-07:00 -->
 
 <!--te-->
 
@@ -140,12 +140,17 @@ that `LoggerMixin` should only be mixed into classes that implement `name`.
 
 If pytype is taking a long time on a file, the easiest workaround is to
 [disable][how-do-i-disable-all-pytype-checks-for-a-particular-file] it with a
-`skip-file` directive. Otherwise, there are two things you can try to speed up
+`skip-file` directive. Otherwise, there are a few things you can try to speed up
 the analysis:
 
+* Split up the file. Anecdotally, pytype gets noticeable slower once a file
+  grows past ~1500 lines.
 * Annotate the return types of functions to speed up inference.
 * Simplify function inputs (e.g., by reducing the number of types in unions) to
   speed up checking.
+* Avoid large concrete data structures (e.g., a module-level dict of a hundred
+  constants). pytype tracks individual values for some builtin data structures,
+  which can quickly get unwieldy.
 
 ## How do I disable all pytype checks for a particular file?
 

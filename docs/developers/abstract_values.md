@@ -11,7 +11,7 @@ freshness: { owner: 'mdemello' reviewed: '2020-07-09' }
       * [Type Information](#type-information)
       * [Matching](#matching)
 
-<!-- Added by: rechen, at: 2020-08-29T02:25-07:00 -->
+<!-- Added by: rechen, at: 2020-09-14T12:22-07:00 -->
 
 <!--te-->
 
@@ -192,7 +192,9 @@ matcher.match_var_against_type(
     Variable(Binding(PythonConstant(0))), PyTDClass(int))
 ```
 
-in order to determine whether `f(0)` is a valid function call.
+in order to determine whether `f(0)` is a valid function call. Here,
+`match_var_against_type` will return `True`, since the value `PythonConstant(0)`
+is compatible with the type `PyTDClass(int)`.
 
 A second important function of the matcher is to compute type parameter
 substitutions. Consider this code snippet:
@@ -204,7 +206,8 @@ f(0, 1)
 ```
 
 When matching `(0, 1)` against `(T, T)`, the matcher determines that the call is
-valid due to `0` and `1` having the same type. It also returns a substitution
-dictionary `{T: int}` so that the type `T` is mapped to can be propagated.
+valid because we can find a substitution, `{T: int}`, that matches the types of
+the arguments for `x` and `y`. The matcher also returns this substitution
+dictionary so that the type `T` is mapped to can be propagated.
 
 [matcher]: https://github.com/google/pytype/blob/master/pytype/matcher.py

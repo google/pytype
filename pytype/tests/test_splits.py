@@ -614,11 +614,11 @@ class SplitTest(test_base.TargetIndependentTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
-      x = ...  # type: Tuple[int, ...]
-      y = ...  # type: Tuple[int, int]
-      z = ...  # type: str or float
-      v1 = ...  # type: float
-      v2 = ...  # type: str or float
+      x: Tuple[int, ...]
+      y: Tuple[int, int]
+      z: str or float
+      v1: float
+      v2: str
     """)
 
   def test_primitive_eq(self):

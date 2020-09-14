@@ -139,7 +139,7 @@ class Block:
     return self.code.__iter__()
 
 
-def add_pop_block_targets(bytecode):
+def add_pop_block_targets(bytecode, python_version):
   """Modifies bytecode so that each POP_BLOCK has a block_target.
 
   This is to achieve better initial ordering of try/except and try/finally code.
@@ -157,6 +157,7 @@ def add_pop_block_targets(bytecode):
 
   Args:
     bytecode: An array of bytecodes.
+    python_version: The target python version.
   """
   if not bytecode:
     return
@@ -164,6 +165,10 @@ def add_pop_block_targets(bytecode):
   for op in bytecode:
     op.block_target = None
 
+  if python_version >= (3, 8):
+    setup_except_op = opcodes.SETUP_FINALLY
+  else:
+    setup_except_op = opcodes.SETUP_EXCEPT
   todo = [(bytecode[0], ())]  # unordered queue of (position, block_stack)
   seen = set()
   while todo:
@@ -182,7 +187,7 @@ def add_pop_block_targets(bytecode):
       # Make "raise" statements jump to the innermost exception handler.
       # (If there's no exception handler, do nothing.)
       for b in reversed(block_stack):
-        if isinstance(b, (opcodes.SETUP_EXCEPT, opcodes.SETUP_FINALLY)):
+        if isinstance(b, setup_except_op):
           op.block_target = b.target
           break
     elif isinstance(op, opcodes.BREAK_LOOP):
@@ -194,7 +199,7 @@ def add_pop_block_targets(bytecode):
           assert b.target != op
           todo.append((op.block_target, block_stack[0:i]))
           break
-    elif isinstance(op, (opcodes.SETUP_EXCEPT, opcodes.SETUP_FINALLY)):
+    elif isinstance(op, setup_except_op):
       # Exceptions pop the block, so store the previous block stack.
       todo.append((op.target, block_stack))
       block_stack += (op,)
@@ -270,7 +275,7 @@ class DisCodeVisitor:
     return code
 
 
-def order_code(code):
+def order_code(code, python_version):
   """Split a CodeType object into ordered blocks.
 
   This takes a CodeType object (i.e., a piece of compiled Python code) and
@@ -278,12 +283,13 @@ def order_code(code):
 
   Args:
     code: A loadmarshal.CodeType object.
+    python_version: The target python version.
 
   Returns:
     A CodeBlocks instance.
   """
   bytecodes = code.co_code
-  add_pop_block_targets(bytecodes)
+  add_pop_block_targets(bytecodes, python_version)
   return OrderedCode(code, bytecodes, compute_order(bytecodes),
                      code.python_version)
 
@@ -294,8 +300,11 @@ class OrderCodeVisitor:
   Depends on DisCodeVisitor having been run first.
   """
 
+  def __init__(self, python_version):
+    self._python_version = python_version
+
   def visit_code(self, code):
-    return order_code(code)
+    return order_code(code, self._python_version)
 
 
 class CollectAnnotationTargetsVisitor:
@@ -402,5 +411,6 @@ def merge_annotations(code, annotations, docstrings):
   return code
 
 
-def process_code(code):
-  return pyc.visit(pyc.visit(code, DisCodeVisitor()), OrderCodeVisitor())
+def process_code(code, python_version):
+  return pyc.visit(
+      pyc.visit(code, DisCodeVisitor()), OrderCodeVisitor(python_version))

@@ -25,9 +25,15 @@ def _incompatible(left_name, right_name):
   return True
 
 
-def _is_primitive(vm, value):
+def _is_primitive_constant(vm, value):
   if isinstance(value, mixin.PythonConstant):
     return value.pyval.__class__ in vm.convert.primitive_classes
+  return False
+
+
+def _is_primitive(vm, value):
+  if _is_primitive_constant(vm, value):
+    return True
   elif isinstance(value, abstract.Instance):
     return value.full_name in vm.convert.primitive_class_names
   return False
@@ -37,15 +43,21 @@ def _is_equality_cmp(op):
   return op in (slots.EQ, slots.NE)
 
 
-def _compare_primitive_value(vm, op, left, right):
-  if _is_primitive(vm, right) and isinstance(right, mixin.PythonConstant):
-    try:
-      return slots.COMPARES[op](left.pyval, right.pyval)
-    except TypeError:
-      # TODO(rechen): In host Python 3, some types are not comparable; e.g.,
-      # `3 < ""` leads to a type error. We should do a Python 2-style comparison
-      # for target Python 2 and log an error for target Python 3.
-      pass
+def _compare_constants(op, left, right):
+  try:
+    return slots.COMPARES[op](left, right)
+  except TypeError:
+    # TODO(rechen): In host Python 3, some types are not comparable; e.g.,
+    # `3 < ""` leads to a type error. We should do a Python 2-style comparison
+    # for target Python 2 and log an error for target Python 3.
+    return None
+
+
+def _compare_primitive_constant(vm, op, left, right):
+  if _is_primitive_constant(vm, right):
+    ret = _compare_constants(op, left.pyval, right.pyval)
+    if ret is not None:
+      return ret
   return _compare_primitive(op, left, right)
 
 
@@ -59,7 +71,90 @@ def _compare_primitive(op, left, right):
   return None
 
 
+def _get_constant_tuple_prefix(value: abstract.Tuple):
+  """Given a tuple, get its longest prefix of constant elements."""
+  elements = []
+  for element_var in value.pyval:
+    try:
+      element = abstract_utils.get_atomic_python_constant(
+          element_var, tuple(value.vm.convert.primitive_classes))
+    except abstract_utils.ConversionError:
+      return tuple(elements)
+    elements.append(element)
+  return tuple(elements)
+
+
+def _compare_constant_tuple_prefix(op, prefix, constant_tuple, reverse):
+  """Compares a tuple's constant prefix against a constant tuple.
+
+  Args:
+    op: A comparison operator, such as LT (less than).
+    prefix: A constant prefix of a non-constant tuple (referred to as "left" in
+      the inline comments). So if left=(3, 2, ...), prefix=(3, 2).
+    constant_tuple: A constant tuple (referred to as "right").
+    reverse: Whether left and right should be reversed for the comparison.
+
+  Returns:
+    A bool of the comparison result if it can be determined, None otherwise.
+  """
+  length = min(len(prefix), len(constant_tuple))
+  trimmed_prefix = prefix[:length]
+  trimmed_constant_tuple = constant_tuple[:length]
+  if trimmed_prefix == trimmed_constant_tuple:
+    if len(prefix) >= len(constant_tuple):
+      # right is a strict prefix of left (since left contains at least one
+      # non-constant element in addition to `prefix`), so left > right.
+      if reverse:
+        return op in (slots.LT, slots.LE, slots.NE)
+      else:
+        return op in (slots.NE, slots.GE, slots.GT)
+    # We have something like left=(3, ...), right=(3, 2). We cannot tell how
+    # they would compare.
+    return None
+  # When left and right have non-equal, same-length prefixes, we can compare the
+  # prefixes to get the comparison results for the full tuples. For example, if
+  # we have op=LT, left=(3, ...), right=(4, 0), then:
+  #   (3,) < (4,) => (3, ...) < (4, ...) => (3, ...) < (4, 0)
+  if reverse:
+    return _compare_constants(op, trimmed_constant_tuple, trimmed_prefix)
+  else:
+    return _compare_constants(op, trimmed_prefix, trimmed_constant_tuple)
+
+
+def _compare_as_constant_tuples(op, left, right):
+  """Checks if the values are constant tuples and compares them if so."""
+  if (not isinstance(left, abstract.Tuple) or
+      not isinstance(right, abstract.Tuple)):
+    return None
+  # For each tuple, get the longest prefix of constant elements. For example:
+  #   Tuple(PythonConstant(2), Instance(int), PythonConstant(3))
+  # will produce (2,).
+  left_prefix = _get_constant_tuple_prefix(left)
+  right_prefix = _get_constant_tuple_prefix(right)
+  left_is_constant = len(left_prefix) == len(left.pyval)
+  right_is_constant = len(right_prefix) == len(right.pyval)
+  if left_is_constant and right_is_constant:
+    # When all elements of both tuples are constants, we can natively call the
+    # comparison operator on the tuples.
+    return _compare_constants(op, left_prefix, right_prefix)
+  if not left_is_constant and not right_is_constant:
+    # Both tuples contain at least one non-constant element. It would be
+    # possible in some cases to return a more precise result than None by
+    # comparing constant prefixes, but it's complicated and not necessary for
+    # the main motivating use case, `sys.version_info {op} (major, minor)`.
+    return None
+  # When only one tuple has non-constant elements, we can still get some
+  # information by comparing its constant prefix against the constant tuple.
+  if left_is_constant:
+    return _compare_constant_tuple_prefix(op, right_prefix, left_prefix, True)
+  else:
+    return _compare_constant_tuple_prefix(op, left_prefix, right_prefix, False)
+
+
 def _compare_tuple(op, left, right):
+  ret = _compare_as_constant_tuples(op, left, right)
+  if ret is not None:
+    return ret
   # Determines when tuples are definitely not equal by checking their lengths.
   if (_is_equality_cmp(op) and
       isinstance(right, abstract.Tuple) and
@@ -81,8 +176,8 @@ def _compare_dict(op, left, right):
 
 def cmp_rel(vm, op, left, right):
   """Compare two variables."""
-  if _is_primitive(vm, left) and isinstance(left, mixin.PythonConstant):
-    return _compare_primitive_value(vm, op, left, right)
+  if _is_primitive_constant(vm, left):
+    return _compare_primitive_constant(vm, op, left, right)
   elif _is_primitive(vm, left) and _is_primitive(vm, right):
     return _compare_primitive(op, left, right)
   elif isinstance(left, abstract.Tuple):

@@ -294,8 +294,8 @@ class TestYieldSortedModules(TestBase):
          expected_stage) in expected_list:
       try:
         mod, actual_report_errors, actual_deps, actual_stage = next(mod_gen)
-      except StopIteration:
-        raise AssertionError('Not enough modules')
+      except StopIteration as e:
+        raise AssertionError('Not enough modules') from e
       self.assertEqual(mod, expected_mod)
       self.assertEqual(actual_report_errors, expected_report_errors)
       self.assertEqual(actual_deps, expected_deps)

@@ -35,7 +35,18 @@ should be added to
 implemented in [pytype/vm.py][vm.VirtualMachine.byte_LOAD_METHOD].
 
 The [documentation](https://docs.python.org/3/library/dis.html) for the dis
-library is a good reference for bytecode changes.
+library is a good reference for bytecode changes. dis is also handy for
+disassembling a piece of code and comparing the bytecode between two versions.
+For example, to disassemble a function `foo.f`:
+
+```python
+import dis
+import foo
+dis.dis(foo.f)  # pretty-prints the bytecode to stdout
+```
+
+Finally, if all else fails, you can consult the [CPython source code](
+https://github.com/python/cpython/blob/master/Python/ceval.c).
 
 #### magic numbers
 

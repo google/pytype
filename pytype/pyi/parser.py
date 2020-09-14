@@ -435,7 +435,7 @@ class _Parser:
         except IndexError:
           text = None
         raise ParseError(utils.message(e), line=line, filename=self._filename,
-                         column=self._error_location[1], text=text)
+                         column=self._error_location[1], text=text) from e
       else:
         raise e
 
@@ -567,7 +567,7 @@ class _Parser:
       try:
         actual = self._version[key]
       except IndexError as e:
-        raise ParseError(utils.message(e))
+        raise ParseError(utils.message(e)) from e
       if isinstance(key, slice):
         actual = _three_tuple(actual)
         value = _three_tuple(value)
@@ -770,7 +770,7 @@ class _Parser:
         resolved_type = visitors.MaybeSubstituteParameters(
             base_type, parameters)
       except ValueError as e:
-        raise ParseError(str(e))
+        raise ParseError(str(e)) from e
       if resolved_type:
         return resolved_type
     if parameters is not None:
@@ -962,7 +962,7 @@ class _Parser:
       try:
         signature = signature.Visit(mutator)
       except NotImplementedError as e:
-        raise ParseError(utils.message(e))
+        raise ParseError(utils.message(e)) from e
       if not mutator.successful:
         raise ParseError("No parameter named %s" % mutator.name)
 

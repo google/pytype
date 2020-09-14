@@ -21,7 +21,7 @@ class OrderingTest(BaseBlocksTest):
   def _order_code(self, code):
     """Helper function to disassemble and then order code."""
     disassembled_code = pyc.visit(code, blocks.DisCodeVisitor())
-    return blocks.order_code(disassembled_code)
+    return blocks.order_code(disassembled_code, self.python_version)
 
   def test_trivial(self):
     # Disassembled from:
@@ -314,7 +314,7 @@ class BlockStackTest(BaseBlocksTest):
         o.RETURN_VALUE,
     ], name="finally")
     bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
-    blocks.add_pop_block_targets(bytecode)
+    blocks.add_pop_block_targets(bytecode, self.python_version)
     self.assertEqual(bytecode[3], bytecode[0].target)
     self.assertEqual(bytecode[3], bytecode[1].block_target)
 
@@ -338,7 +338,7 @@ class BlockStackTest(BaseBlocksTest):
         o.RETURN_VALUE,
     ], name="except")
     bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
-    blocks.add_pop_block_targets(bytecode)
+    blocks.add_pop_block_targets(bytecode, self.python_version)
     self.assertEqual(bytecode[3], bytecode[0].target)
     self.assertEqual(bytecode[3], bytecode[1].block_target)
 
@@ -359,7 +359,7 @@ class BlockStackTest(BaseBlocksTest):
         o.RETURN_VALUE,
     ], name="with")
     bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
-    blocks.add_pop_block_targets(bytecode)
+    blocks.add_pop_block_targets(bytecode, self.python_version)
     self.assertEqual(bytecode[5], bytecode[1].target)
     self.assertEqual(bytecode[5], bytecode[3].block_target)
 
@@ -378,7 +378,7 @@ class BlockStackTest(BaseBlocksTest):
         o.RETURN_VALUE,
     ])
     bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
-    blocks.add_pop_block_targets(bytecode)
+    blocks.add_pop_block_targets(bytecode, self.python_version)
     self.assertEqual(bytecode[5], bytecode[0].target)
     self.assertEqual(bytecode[4], bytecode[2].target)
     self.assertEqual(bytecode[1], bytecode[3].target)
@@ -404,7 +404,7 @@ class BlockStackTest(BaseBlocksTest):
         o.RETURN_VALUE,
     ])
     bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
-    blocks.add_pop_block_targets(bytecode)
+    blocks.add_pop_block_targets(bytecode, self.python_version)
     self.assertEqual(bytecode[9], bytecode[0].target)
     self.assertEqual(bytecode[9], bytecode[5].block_target)
     self.assertEqual(bytecode[1], bytecode[6].target)
@@ -437,7 +437,7 @@ class BlockStackTest(BaseBlocksTest):
         o.RETURN_VALUE,
     ])
     bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
-    blocks.add_pop_block_targets(bytecode)
+    blocks.add_pop_block_targets(bytecode, self.python_version)
     self.assertEqual(bytecode[14], bytecode[0].target)
     self.assertEqual(bytecode[13], bytecode[2].target)
     self.assertEqual(bytecode[7], bytecode[3].target)
@@ -460,7 +460,7 @@ class BlockStackTest(BaseBlocksTest):
         o.RETURN_VALUE
     ])
     ordered_code = blocks.merge_annotations(
-        blocks.process_code(co), {1: "float"}, [])
+        blocks.process_code(co, self.python_version), {1: "float"}, [])
     bytecode = ordered_code.order[0].code
     self.assertIsNone(bytecode[1].annotation)
     self.assertEqual(bytecode[3].annotation, "float")

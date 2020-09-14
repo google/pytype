@@ -10,8 +10,9 @@
       * [The data stack](#the-data-stack)
          * [Values and variables](#values-and-variables)
          * [LOAD and STORE operations](#load-and-store-operations)
+      * [The block stack](#the-block-stack)
 
-<!-- Added by: rechen, at: 2020-09-09T21:16-07:00 -->
+<!-- Added by: mdemello, at: 2020-09-14T12:37-07:00 -->
 
 <!--te-->
 
@@ -161,7 +162,7 @@ The pytype implementations of these opcodes can be seen in
     except KeyError:
       # Raise an error if we have referred to an undefined local variable
       val = self._name_error_or_late_annotation(name).to_variable(state.node)
-    # Raise an error if we have referred to an deleted local variable. (We need
+    # Raise an error if we have referred to a deleted local variable. (We need
     # to do this because pytype stores deleted variables as a `Deleted` object
     # rather than removing them from the symbol table.
     self.check_for_deleted(state, name, val)
@@ -180,3 +181,54 @@ LOAD_FAST   1 (b)  | (b), (a)  | b has been loaded from locals[b] and pushed
 BINARY_ADD         | (a+b)     | a and b have been popped and a+b pushed
 STORE_FAST  2 (x)  |           | a+b has been popped and stored in locals[x]
 ```
+
+## The block stack
+
+The block stack is the third of the stacks that python, and hence pytype,
+maintain when running bytecode. [This blog
+post](https://tech.blog.aknin.name/2010/07/22/pythons-innards-interpreter-stacks/)
+is a good introduction to it from a cpython perspective.
+
+The block stack tracks [*compound
+statements*](https://docs.python.org/3/reference/compound_stmts.html),
+statements like `if` and `for` which have an associated block of code. In python
+source code, compound statements contain an indented block of code:
+```
+for x in xs:
+  code block
+  ...
+```
+
+The corresponding bytecode has paired `SETUP_*` and `POP_BLOCK` statements to
+delimit the code block, for instance the bytecode for the `for` statement above
+would compile to
+
+```
+SETUP_LOOP
+LOAD_FAST xs
+GET_ITER
+FOR_ITER
+STORE_FAST x
+...
+code block
+...
+POP_BLOCK
+```
+
+NOTE: Some of the `SETUP_*` opcodes changed in python 3.8, however the basic
+principle remains the same. See `vm.py/byte_SETUP_FINALLY()` for a quick look at
+how pytype handles version-specific opcode differences.
+
+Internally, pytype represents a block as an object with four fields:
+
+```
+Block = collections.namedtuple("Block", [
+  "type",     # string representing the block type ("loop", "except", etc)
+  "op",       # start-of-block opcode (SETUP_LOOP etc)
+  "handler",  # opcode target
+  "level"     # the length of the data stack when entering the block
+])
+```
+
+Pytype's primary use for the block stack is to ensure the data stack is cleaned
+up when exiting a block (see `vm.py/_revert_state_to()`).

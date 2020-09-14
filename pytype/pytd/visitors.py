@@ -456,10 +456,10 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
         item = t  # VisitTypeDeclUnit will remove this unneeded item.
       else:
         item = self._LookupItemRecursive(module, module_name, name)
-    except KeyError:
+    except KeyError as e:
       item = self._ResolveUsingGetattr(module_name, module)
       if item is None:
-        raise KeyError("No %s in module %s" % (name, module_name))
+        raise KeyError("No %s in module %s" % (name, module_name)) from e
     if not self._in_generic_type and isinstance(item, pytd.Alias):
       # If `item` contains type parameters and is not inside a GenericType, then
       # we replace the parameters with Any.
@@ -479,7 +479,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
       try:
         t = MaybeSubstituteParameters(t.base_type, t.parameters) or t
       except ValueError as e:
-        raise KeyError(str(e))
+        raise KeyError(str(e)) from e
     return t
 
   def _ModulePrefix(self):
@@ -610,9 +610,9 @@ class LookupLocalTypes(RemoveTypeParametersFromGenericAny):
         # Happens for infer calling load_pytd.resolve_ast() for the final pyi
         try:
           item = self.unit.Lookup(node.name)
-        except KeyError:
+        except KeyError as e:
           raise SymbolLookupError("Couldn't find %s in %s" % (
-              node.name, self.unit.name))
+              node.name, self.unit.name)) from e
       return pytd.ToType(item, allow_constants=False)
     elif module_name == self.unit.name:
       return pytd.ToType(self.unit.Lookup(node.name), allow_constants=False)
@@ -1324,9 +1324,9 @@ class AdjustTypeParameters(Visitor):
 
     try:
       template = mro.MergeSequences(templates)
-    except ValueError:
+    except ValueError as e:
       raise ContainerError(
-          "Illegal type parameter order in class %s" % node.name)
+          "Illegal type parameter order in class %s" % node.name) from e
 
     self.class_template.append(template)
 

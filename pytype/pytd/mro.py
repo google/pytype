@@ -78,8 +78,8 @@ def MROMerge(input_seqs):
   seqs = [Dedup(s) for s in input_seqs]
   try:
     return MergeSequences(seqs)
-  except ValueError:
-    raise MROError(input_seqs)
+  except ValueError as e:
+    raise MROError(input_seqs) from e
 
 
 def _GetClass(t, lookup_ast):

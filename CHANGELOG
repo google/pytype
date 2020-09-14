@@ -1,3 +1,12 @@
+Version 2020.09.14
+* Drop the --python_exe option.
+* Have check_py and generate_pyi accept a source string instead of a filename.
+* Pass around an options.open_function that is used in place of builtins.open.
+* Fix some Python 3.8 bugs.
+* Fix python-incompatible syntax in pytd files.
+* Print 'leaving directory' after ninja command.
+* Support sys.version_info tuple checks that do not use slicing.
+
 Version 2020.08.28
 * Let multiple PyTDFunction signatures match when *args/**kwargs is present.
 

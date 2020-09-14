@@ -757,7 +757,7 @@ class VirtualMachine:
         src, python_version=self.python_version,
         python_exe=self.options.python_exe,
         filename=filename, mode=mode)
-    code = blocks.process_code(code)
+    code = blocks.process_code(code, self.python_version)
     if mode == "exec":
       self.director.adjust_line_numbers(code)
     return blocks.merge_annotations(
