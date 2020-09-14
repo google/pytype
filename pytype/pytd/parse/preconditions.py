@@ -132,7 +132,8 @@ class CallChecker:
       try:
         condition.check(value)
       except PreconditionError as e:
-        raise PreconditionError("argument=%s: %s." % (name, utils.message(e)))
+        raise PreconditionError(
+            "argument=%s: %s." % (name, utils.message(e))) from e
 
   def allowed_types(self):
     """Determines the types and typenames allowed by calls to the checker.

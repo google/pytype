@@ -185,7 +185,7 @@ def _LookupClassReferences(serializable_ast, module_map, self_name):
         break
     except KeyError as e:
       raise UnrestorableDependencyError(
-          "Unresolved class: %r." % utils.message(e))
+          "Unresolved class: %r." % utils.message(e)) from e
   for node in (serializable_ast.function_type_nodes or ()):
     try:
       # Use VisitNamedType, even though this is a FunctionType. We want to
@@ -195,14 +195,14 @@ def _LookupClassReferences(serializable_ast, module_map, self_name):
         break
     except KeyError as e:
       raise UnrestorableDependencyError(
-          "Unresolved class: %r." % utils.message(e))
+          "Unresolved class: %r." % utils.message(e)) from e
   if (serializable_ast.class_type_nodes is None or
       serializable_ast.function_type_nodes is None):
     try:
       raw_ast = raw_ast.Visit(class_lookup)
     except KeyError as e:
       raise UnrestorableDependencyError(
-          "Unresolved class: %r." % utils.message(e))
+          "Unresolved class: %r." % utils.message(e)) from e
   serializable_ast = serializable_ast.Replace(ast=raw_ast)
   return serializable_ast
 
