@@ -7,9 +7,9 @@
       * [Program](#program)
          * [Default Data](#default-data)
       * [Sets in the Typegraph](#sets-in-the-typegraph)
-         * [<code>std::set</code> or <code>std::unordered_set</code>?](#stdset-or-stdunordered_set)
+         * [std::set or std::unordered_set?](#stdset-or-stdunordered_set)
 
-<!-- Added by: tsudol, at: 2020-09-11T16:28-07:00 -->
+<!-- Added by: tsudol, at: 2020-09-14T11:28-07:00 -->
 
 <!--te-->
 
@@ -137,7 +137,7 @@ pointer_less<CFGNode>`, and similarly for `SourceSet`.
 Originally, these sets did not use `pointer_less` and just compared the
 pointers. This is undefined behavior.
 
-### `std::set` or `std::unordered_set`?
+### std::set or std::unordered_set?
 
 The typegraph uses `std::set` to increase determinism: any source of
 nondeterminism or randomness in pytype has a chance to leak into the pickled
