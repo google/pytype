@@ -1,5 +1,9 @@
 # The Typegraph
 
+<!--*
+freshness: { owner: 'tsudol' reviewed: '2020-09-11' }
+*-->
+
 <!--ts-->
    * [The Typegraph](#the-typegraph)
       * [Introduction](#introduction)
@@ -9,7 +13,7 @@
       * [Sets in the Typegraph](#sets-in-the-typegraph)
          * [std::set or std::unordered_set?](#stdset-or-stdunordered_set)
 
-<!-- Added by: tsudol, at: 2020-09-14T11:28-07:00 -->
+<!-- Added by: rechen, at: 2020-09-14T12:22-07:00 -->
 
 <!--te-->
 
