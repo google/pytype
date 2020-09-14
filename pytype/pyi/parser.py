@@ -701,9 +701,14 @@ class _Parser:
           name = new_name = item
         qualified_name = self._qualify_name("%s.%s" % (from_package, name))
         if (from_package in ["__PACKAGE__", "__PARENT__"]
-            and isinstance(item, str)):
+            and name == new_name):
           # This will always be a simple module import (from . cannot import a
-          # NamedType, and without 'as' the name will not be reexported).
+          # NamedType). Note that "from a import b" and "from a import b as b"
+          # are treated identically, since pytype does not require explicit
+          # re-exports anyway. If for the latter case, we were to instead create
+          # an alias in which the name and aliased name were identical, this
+          # would create problems when load_pytd later detects submodules by
+          # checking whether a name is present in a package's __init__ file.
           t = pytd.Module(name=new_name, module_name=qualified_name)
         else:
           # We should ideally not need this check, but we have typing
