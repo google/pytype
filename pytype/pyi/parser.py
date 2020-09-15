@@ -645,6 +645,7 @@ class _Parser:
     return pytd.Constant(name, t)
 
   def new_alias_or_constant(self, name_and_value):
+    """Build an alias or constant."""
     name, value = name_and_value
     if name == "__slots__":
       if not isinstance(value, list):
@@ -652,6 +653,11 @@ class _Parser:
       return _SlotDecl(tuple(_handle_string_literal(s) for s in value))
     elif value in [pytd.NamedType("True"), pytd.NamedType("False")]:
       return pytd.Constant(name, pytd.NamedType("bool"))
+    elif isinstance(value, list):
+      if name != "__all__":
+        raise ParseError("Only __slots__ and __all__ can be literal lists")
+      return pytd.Constant(name, pytd.GenericType(
+          pytd.NamedType("typing.List"), (pytd.NamedType("str"),)))
     else:
       return pytd.Alias(name, value)
 
