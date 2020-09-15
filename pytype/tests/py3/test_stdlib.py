@@ -470,5 +470,12 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       def f(name) -> bytes: ...
     """)
 
+  def test_collections_abc(self):
+    self.Check("""
+      import collections
+      class Foo(collections.abc.Mapping):
+        pass
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
