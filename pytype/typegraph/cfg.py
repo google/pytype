@@ -380,7 +380,7 @@ class Variable:
         continue
       else:
         stack.extend(set(node.incoming) - seen)
-    return result
+    return list(result)
 
   def Data(self, viewpoint):
     """Like Bindings(cfg_node), but only return the data."""
