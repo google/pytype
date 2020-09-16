@@ -22,7 +22,6 @@ before_install:
   - sudo apt-get install cmake
   - sudo apt-get install bison
   - sudo apt-get install flex
-  - sudo apt-get install ninja-build
 
 # We need to install python3.6 and python3.7 packages from a third party
 # repo as they are not available on standard Ubuntu Xenial.
@@ -38,6 +37,7 @@ addons:
 install:
   - pip install attrs
   - pip install importlab
+  - pip install ninja
   - pip install pylint
   - pip install pyyaml
   - pip install six
