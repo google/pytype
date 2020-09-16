@@ -438,18 +438,6 @@ class Env:
 # Also names like visit_Name are self-documenting and do not need docstrings.
 
 
-class CollectNamesVisitor(ast_visitor.BaseVisitor):
-  """Collect all occurences of Name in a subtree."""
-
-  def __init__(self, ast):
-    super().__init__(ast)
-    self.names = []
-
-  def visit_Name(self, node):
-    if isinstance(node.ctx, self._ast.Load):
-      self.names.append(node)
-
-
 class ScopedVisitor(ast_visitor.BaseVisitor):
   """An AST node visitor that keeps track of scopes and environments.
 
@@ -771,9 +759,8 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
 
   def visit_Call(self, node):
     name = self._get_node_name(node)
-    name_visitor = CollectNamesVisitor(self._ast)
-    name_visitor.visit(node)
-    arg_varnames = [x.id for x in name_visitor.names]
+    # We have replaced Name() in args with the corresponding string
+    arg_varnames = [x for x in node.args if isinstance(x, str)]
     seen = set()
     for _, (_, _, data) in self.match(node):
       call, return_type = data
