@@ -12,7 +12,7 @@
          * [LOAD and STORE operations](#load-and-store-operations)
       * [The block stack](#the-block-stack)
 
-<!-- Added by: mdemello, at: 2020-09-14T12:37-07:00 -->
+<!-- Added by: mdemello, at: 2020-09-14T16:26-07:00 -->
 
 <!--te-->
 
@@ -224,9 +224,7 @@ Internally, pytype represents a block as an object with four fields:
 ```
 Block = collections.namedtuple("Block", [
   "type",     # string representing the block type ("loop", "except", etc)
-  "op",       # start-of-block opcode (SETUP_LOOP etc)
-  "handler",  # opcode target
-  "level"     # the length of the data stack when entering the block
+  "level"     # the size of the data stack when entering the block
 ])
 ```
 

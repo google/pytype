@@ -32,17 +32,19 @@ class Stage:
 FIRST_PASS_SUFFIX = '-1'
 
 
-def _get_pytype_single_executable():
-  custom_bin = os.path.join('out', 'bin', 'pytype')
-  if sys.argv[0] == custom_bin:
-    # The Travis type-check step uses custom pytype binaries in pytype/out/bin/.
-    return [os.path.join(os.path.abspath(os.path.dirname(custom_bin)),
-                         'pytype-single')]
-  elif sys.executable is not None:
-    return [sys.executable, '-m', 'pytype.single']
+def _get_executable(binary, module=None):
+  """Get the path to the executable with the given name."""
+  if binary == 'pytype-single':
+    custom_bin = os.path.join('out', 'bin', 'pytype')
+    if sys.argv[0] == custom_bin:
+      # The Travis type-check step uses custom binaries in pytype/out/bin/.
+      return [os.path.join(os.path.abspath(os.path.dirname(custom_bin)),
+                           'pytype-single')]
+  if sys.executable is not None:
+    return [sys.executable, '-m', module or binary]
   else:
-    return ['pytype-single']
-PYTYPE_SINGLE = _get_pytype_single_executable()
+    return [binary]
+PYTYPE_SINGLE = _get_executable('pytype-single', 'pytype.single')
 
 
 def resolved_file_to_module(f):
@@ -344,7 +346,8 @@ class PytypeRunner:
     # -v       show all command lines while building
     k = '0' if self.keep_going else '1'
     c = os.path.dirname(self.ninja_file)
-    command = ['ninja', '-k', k, '-C', c, '-j', str(self.jobs)]
+    command = _get_executable('ninja') + [
+        '-k', k, '-C', c, '-j', str(self.jobs)]
     if logging.getLogger().isEnabledFor(logging.INFO):
       command.append('-v')
     ret = subprocess.call(command)

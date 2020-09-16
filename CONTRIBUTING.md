@@ -34,7 +34,9 @@ dependencies.
    using Flex and Bison.
 4. __[Flex](https://www.gnu.org/software/flex/) version 2.5.35 or higher__
 5. __[ninja build](https://ninja-build.org/)__: Pytype's test utility scripts
-   make use of ninja as the CMake generated build system.
+   make use of ninja as the CMake generated build system. NOTE: if you
+   have a [ninja Python distribution](https://pypi.org/project/ninja/) installed
+   and active, you can skip installing the official ninja distribution.
 6. __Python2.7 and Python3.x Interpreters__: A large subset of Pytype's
    functional tests analyse the target (the Python source code that is being
    analyzed by Pytype) twice: once as if it were Python2.7 code, and another

@@ -341,9 +341,16 @@ class Loader:
           if base_name == "*":
             continue
           full_name = "%s.%s" % (name, base_name)
+          # Check whether full_name is a submodule based on whether it is
+          # defined in the __init__ file.
           try:
-            other_ast.Lookup(full_name)
+            attr = other_ast.Lookup(full_name)
           except KeyError:
+            attr = None
+          # 'from . import submodule as submodule' produces
+          # Alias(submodule, NamedType(submodule)).
+          if attr is None or (isinstance(attr, pytd.Alias) and
+                              attr.name == getattr(attr.type, "name", None)):
             # Don't check the import result - _resolve_external_types will raise
             # a better error.
             self._import_name(full_name)

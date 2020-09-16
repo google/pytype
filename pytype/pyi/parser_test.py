@@ -516,6 +516,15 @@ class ParserTest(_ParserTestBase):
       x: Callable[[int, int], Any]
     """)
 
+  def test_all(self):
+    self.check("""
+      __all__ = ['a']
+    """, """
+      from typing import List
+
+      __all__: List[str]
+    """)
+
 
 class HomogeneousTypeTest(_ParserTestBase):
 

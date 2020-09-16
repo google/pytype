@@ -353,6 +353,26 @@ class ImportPathsTest(test_base.UnitTest):
     a = loader.load_file("a", "a.pyi")
     self.assertEqual("int", pytd_utils.Print(a.Lookup("a.x").type))
 
+  def test_submodule_reexport(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo/bar.pyi", "")
+      d.create_file("foo/__init__.pyi", """
+        from . import bar as bar
+      """)
+      loader = load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
+      foo = loader.import_name("foo")
+      self.assertEqual(pytd_utils.Print(foo), "import foo.bar")
+
+  def test_submodule_rename(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo/bar.pyi", "")
+      d.create_file("foo/__init__.pyi", """
+        from . import bar as baz
+      """)
+      loader = load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
+      foo = loader.import_name("foo")
+      self.assertEqual(pytd_utils.Print(foo), "import foo.bar as foo.baz")
+
 
 class ImportTypeMacroTest(test_base.UnitTest):
 

@@ -437,7 +437,8 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
     if t.name in self._module_map:
       if self._alias_name and "." in self._alias_name:
         # Module aliases appear only in asts that use fully-qualified names.
-        return pytd.ToType(pytd.Module(name=t.name, module_name=t.name))
+        return pytd.ToType(
+            pytd.Module(name=self._alias_name, module_name=t.name))
       else:
         # We have a class with the same name as a module.
         return t

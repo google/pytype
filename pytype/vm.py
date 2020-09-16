@@ -60,7 +60,7 @@ repr_obj.maxstring = _TRUNCATE_STR
 repper = repr_obj.repr
 
 
-Block = collections.namedtuple("Block", ["type", "op", "handler", "level"])
+Block = collections.namedtuple("Block", ["type", "level"])
 
 
 class LocalOp(collections.namedtuple("_LocalOp", ["name", "op"])):
@@ -358,10 +358,10 @@ class VirtualMachine:
             node, frame, self.convert.no_return.to_variable(node))
     return node, frame.return_variable
 
-  def push_block(self, state, t, op, handler=None, level=None):
+  def push_block(self, state, t, level=None):
     if level is None:
       level = len(state.data_stack)
-    return state.push_block(Block(t, op, handler, level))
+    return state.push_block(Block(t, level))
 
   def push_frame(self, frame):
     self.frames.append(frame)
@@ -2552,7 +2552,7 @@ class VirtualMachine:
 
   def byte_SETUP_LOOP(self, state, op):
     # We ignore the implicit jump in SETUP_LOOP; the interpreter never takes it.
-    return self.push_block(state, "loop", op, op.target)
+    return self.push_block(state, "loop")
 
   def byte_GET_ITER(self, state, op):
     """Get the iterator for an object."""
@@ -2601,7 +2601,7 @@ class VirtualMachine:
       # we don't do this.
       jump_state = self.push_abstract_exception(jump_state)
     self.store_jump(op.target, jump_state)
-    return self.push_block(state, "setup-except", op, op.target)
+    return self.push_block(state, "setup-except")
 
   # Note: this opcode is removed in Python 3.8.
   def byte_SETUP_EXCEPT(self, state, op):
@@ -2621,7 +2621,7 @@ class VirtualMachine:
     # Emulate finally by connecting the try to the finally block (with
     # empty reason/why/continuation):
     self.store_jump(op.target, state.push(self.convert.build_none(state.node)))
-    return self.push_block(state, "finally", op, op.target)
+    return self.push_block(state, "finally")
 
   # New python3.8+ exception handling opcodes:
   # BEGIN_FINALLY, END_ASYNC_FOR, CALL_FINALLY, POP_FINALLY
@@ -2699,10 +2699,10 @@ class VirtualMachine:
     state, enter = self.load_attr(state, ctxmgr, "__enter__")
     state, ctxmgr_obj = self.call_function_with_state(state, enter, ())
     if self.PY2:
-      state = self.push_block(state, "with", op, op.target, level)
+      state = self.push_block(state, "with", level)
     else:
       assert self.PY3
-      state = self.push_block(state, "finally", op, op.target, level)
+      state = self.push_block(state, "finally", level)
     return state.push(ctxmgr_obj)
 
   def byte_WITH_CLEANUP(self, state, op):
@@ -3192,7 +3192,7 @@ class VirtualMachine:
   def byte_SETUP_ASYNC_WITH(self, state, op):
     state, res = state.pop()
     level = len(state.data_stack)
-    state = self.push_block(state, "finally", op, op.target, level)
+    state = self.push_block(state, "finally", level)
     return state.push(res)
 
   def byte_FORMAT_VALUE(self, state, op):
