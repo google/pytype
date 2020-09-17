@@ -2625,16 +2625,16 @@ class VirtualMachine:
 
   # New python3.8+ exception handling opcodes:
   # BEGIN_FINALLY, END_ASYNC_FOR, CALL_FINALLY, POP_FINALLY
-  #
-  # TODO(b/157603915): Figure out how to handle 3.8's new exception handling and
-  # adjust these opcode handlers accordingly.
+
   def byte_BEGIN_FINALLY(self, state, op):
     return state.push(self.convert.build_none(state.node))
 
   def byte_CALL_FINALLY(self, state, op):
+    # TODO(b/157603915): Don't we need to do something here?
     return state
 
   def byte_END_ASYNC_FOR(self, state, op):
+    # TODO(b/157603915): Don't we need to do something here?
     return state
 
   def byte_POP_FINALLY(self, state, op):

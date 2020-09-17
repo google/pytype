@@ -234,9 +234,25 @@ class TestExceptions(test_base.TargetIndependentTest):
         except Exception:
           return 1+3j
     """)
-    self.assertTypesMatchPytd(ty, """
-      def foo() -> int
-    """)
+    # Before 3.8, pytype knows that the except block is dead in this case but
+    # not in cases like:
+    #   def foo():
+    #     try:
+    #       pass
+    #     except Exception:
+    #       return 1 + 3j
+    # The apparent inconsistency is due to there not being a POP_BLOCK opcode
+    # before `return 42` that connects to the except block. In 3.8, the
+    # POP_BLOCK is present, so the except is always analyzed.
+    if self.python_version >= (3, 8):
+      self.assertTypesMatchPytd(ty, """
+        from typing import Union
+        def foo() -> Union[int, complex]: ...
+      """)
+    else:
+      self.assertTypesMatchPytd(ty, """
+        def foo() -> int
+      """)
 
   def test_assert(self):
     ty = self.Infer("""

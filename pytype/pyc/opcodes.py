@@ -324,7 +324,14 @@ class BEGIN_FINALLY(Opcode):
 
 
 class END_ASYNC_FOR(Opcode):
-  FLAGS = HAS_JUNKNOWN | NO_NEXT  # might re-raise an exception
+  # Even though dis documentation says that END_ASYNC_FOR may reraise an
+  # exception, we do not include NO_NEXT in the flags because doing so would
+  # cause the return statement for an async method to be skipped, leading to
+  # an incorrect return type.
+  # See tests/py3/test_stdlib:StdlibTestsFeatures.test_async_iter and
+  # tests/py3/test_coroutine:GeneratorFeatureTest.test_async_for_pyi for tests
+  # that fail if we add NO_NEXT.
+  FLAGS = HAS_JUNKNOWN
   __slots__ = ()
 
 

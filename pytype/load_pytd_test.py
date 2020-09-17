@@ -373,6 +373,27 @@ class ImportPathsTest(test_base.UnitTest):
       foo = loader.import_name("foo")
       self.assertEqual(pytd_utils.Print(foo), "import foo.bar as foo.baz")
 
+  def test_typing_reexport(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import List as List
+      """)
+      d.create_file("bar.pyi", """
+        from foo import *
+        def f() -> List[int]: ...
+      """)
+      loader = load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
+      foo = loader.import_name("foo")
+      bar = loader.import_name("bar")
+      self.assertEqual(pytd_utils.Print(foo), "foo.List = list")
+      self.assertEqual(pytd_utils.Print(bar), textwrap.dedent("""
+        from typing import List
+
+        bar.List = list
+
+        def bar.f() -> List[int]: ...
+      """).strip())
+
 
 class ImportTypeMacroTest(test_base.UnitTest):
 
