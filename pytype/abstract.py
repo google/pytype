@@ -2343,10 +2343,13 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):
     """Implementation of tuple.__getitem__."""
     try:
       index = self.vm.convert.value_to_constant(
-          abstract_utils.get_atomic_value(index_var), int)
+          abstract_utils.get_atomic_value(index_var), (int, slice))
     except abstract_utils.ConversionError:
       pass
     else:
+      if isinstance(index, slice):
+        slice_content = self._instance.pyval[index]
+        return node, self.vm.convert.build_tuple(node, slice_content)
       if -self.tuple_length <= index < self.tuple_length:
         # Index out of bounds is not a pytype error because of the high
         # likelihood of false positives, e.g.,

@@ -218,10 +218,19 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     return var
 
   def build_slice(self, node, start, stop, step=None):
-    del start
-    del stop
-    del step
-    return self.primitive_class_instances[slice].to_variable(node)
+    const_types = (int, type(None))
+    try:
+      if start:
+        start = abstract_utils.get_atomic_python_constant(start, const_types)
+      if stop:
+        stop = abstract_utils.get_atomic_python_constant(stop, const_types)
+      if step:
+        step = abstract_utils.get_atomic_python_constant(step, const_types)
+    except abstract_utils.ConversionError:
+      return self.primitive_class_instances[slice].to_variable(node)
+    return abstract.AbstractOrConcreteValue(
+        slice(start, stop, step), self.primitive_classes[slice], self.vm
+    ).to_variable(node)
 
   def build_list(self, node, content):
     """Create a VM list from the given sequence."""
