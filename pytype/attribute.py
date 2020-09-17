@@ -74,14 +74,40 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         return node, None
     elif isinstance(obj, special_builtins.SuperInstance):
       if obj.super_obj:
-        cls = obj.super_cls
+        # When we have a chain of super calls, `starting_cls` is the cls in
+        # which the first call was made, and `current_cls` is the one currently
+        # being processed. E.g., for:
+        #  class Foo(Bar):
+        #    def __init__(self):
+        #      super().__init__()  # line 3
+        #  class Bar(Baz):
+        #    def __init__(self):
+        #      super().__init__()  # line 6
+        # if we're looking up super.__init__ in line 6 as part of analyzing the
+        # super call in line 3, then starting_cls=Foo, current_cls=Bar. When
+        # either of these classes is unknown, we set it to the other, which is
+        # technically wrong but behaves correctly in the common case of there
+        # being only a single super call.
+        starting_cls = obj.super_obj.cls
+        if isinstance(starting_cls, (type(None), abstract.AMBIGUOUS_OR_EMPTY)):
+          starting_cls = obj.super_cls
+        current_cls = obj.super_cls
+        if isinstance(current_cls, abstract.AMBIGUOUS_OR_EMPTY):
+          current_cls = starting_cls
         valself = obj.super_obj.to_binding(node)
-        skip = obj.super_cls
+        # When multiple inheritance is present, the two classes' MROs may
+        # differ. In this case, we want to use the MRO of starting_cls but skip
+        # all the classes up to and including current_cls.
+        skip = set()
+        for parent in starting_cls.mro:
+          skip.add(parent)
+          if parent is current_cls:
+            break
       else:
-        cls = self.vm.convert.super_type
-        skip = None
+        starting_cls = self.vm.convert.super_type
+        skip = ()
       return self._lookup_from_mro_and_handle_descriptors(
-          node, cls, name, valself, skip)
+          node, starting_cls, name, valself, skip)
     elif isinstance(obj, special_builtins.Super):
       return self.get_attribute(node, self.vm.convert.super_type, name, valself)
     elif isinstance(obj, abstract.BoundFunction):
@@ -256,7 +282,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       if isinstance(obj, mixin.Class):
         # A class is an instance of its metaclass.
         node, attr = self._lookup_from_mro_and_handle_descriptors(
-            node, obj, name, valself, skip=None)
+            node, obj, name, valself, skip=())
       else:
         node, attr = self._get_member(node, obj, name)
     if attr is None and cls:
@@ -322,7 +348,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     if (valself and not isinstance(valself.data, abstract.Module) and
         self._computable(name)):
       attr_var = self._lookup_from_mro(node, cls, compute_function, valself,
-                                       skip=self.vm.convert.object_type)
+                                       skip={self.vm.convert.object_type})
       if attr_var and attr_var.bindings:
         name_var = abstract.AbstractOrConcreteValue(
             name, self.vm.convert.str_type, self.vm).to_variable(node)
@@ -338,8 +364,8 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     ret = self.vm.program.NewVariable()
     add_origins = [valself] if valself else []
     for base in cls.mro:
-      # Potentially skip start of MRO, for super()
-      if base is skip:
+      # Potentially skip part of MRO, for super()
+      if base in skip:
         continue
       # When a special attribute is defined on a class buried in the MRO,
       # get_attribute (which calls get_special_attribute) is never called on

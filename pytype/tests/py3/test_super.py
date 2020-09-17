@@ -81,5 +81,21 @@ class TestSuperPython3Featue(test_base.TargetPython3FeatureTest):
     self.assertErrorRegexes(errors, {"e1": r".*Missing 'self' argument.*",
                                      "e2": r".*Missing __class__ closure.*"})
 
+  def test_mixin(self):
+    self.Check("""
+      class Mixin:
+        def __init__(self, x, **kwargs):
+          super().__init__(**kwargs)
+          self.x = x
+
+      class Foo:
+        def __init__(self, y):
+          self.y = y
+
+      class Bar(Mixin, Foo):
+        def __init__(self, x, y):
+          return super().__init__(x=x, y=y)
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
