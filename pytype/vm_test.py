@@ -260,10 +260,14 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
         )
       ]  # type: dict
     """)
-    # In Python 3.7, STORE_NAME v is on the `("hello",` line.
-    self.assertEqual({
-        3 if self.python_version >= (3, 7) else 4: "dict",
-    }, self.vm.director.type_comments)
+    # The line number of STORE_NAME v changes between versions.
+    if self.python_version >= (3, 8):
+      lineno = 2
+    elif self.python_version >= (3, 7):
+      lineno = 3
+    else:
+      lineno = 4
+    self.assertEqual({lineno: "dict"}, self.vm.director.type_comments)
 
   def test_type_comment_with_trailing_comma(self):
     self.run_program("""
@@ -278,11 +282,18 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
         ],  # some comment
       ]  # type: dict
     """)
-    # In Python 3.7, STORE_NAME v is on the `("hello",` line.
-    self.assertEqual({
-        3 if self.python_version >= (3, 7) else 4: "dict",
-        9: "dict",
-    }, self.vm.director.type_comments)
+    # The line numbers of STORE_NAME change between versions.
+    if self.python_version >= (3, 8):
+      v_lineno = 2
+      w_lineno = 7
+    elif self.python_version >= (3, 7):
+      v_lineno = 3
+      w_lineno = 9
+    else:
+      v_lineno = 4
+      w_lineno = 9
+    self.assertEqual({v_lineno: "dict", w_lineno: "dict"},
+                     self.vm.director.type_comments)
 
   def test_decorators(self):
     self.run_program("""
@@ -301,7 +312,14 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
         def bar():
           pass
     """)
-    self.assertEqual(self.vm.director.decorators, {6, 11})
+    if self.python_version >= (3, 8):
+      real_decorator_lineno = 7
+      decorator_lineno = 14
+    else:
+      real_decorator_lineno = 6
+      decorator_lineno = 11
+    self.assertEqual(
+        self.vm.director.decorators, {real_decorator_lineno, decorator_lineno})
 
   def test_stacked_decorators(self):
     self.run_program("""
@@ -314,7 +332,8 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
       class A:
           pass
     """)
-    self.assertEqual(self.vm.director.decorators, {6})
+    lineno = 8 if self.python_version >= (3, 8) else 6
+    self.assertEqual(self.vm.director.decorators, {lineno})
 
   def test_overload(self):
     self.run_program("""
