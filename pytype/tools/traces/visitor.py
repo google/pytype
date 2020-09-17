@@ -29,15 +29,17 @@ class BaseVisitor:
       if out is not None:
         return out
     elif isinstance(node, list):
-      for v in node:
-        self.visit(v)
+      for i, v in enumerate(node):
+        ret = self.visit(v)
+        if ret is not None:
+          node[i] = ret
 
   def _children(self, node):
     """Children to recurse over."""
     node_children = {
         self._ast.Module: ["body"],
         self._ast.ClassDef: ["bases", "body"],
-        self._ast.FunctionDef: ["body"],
+        self._ast.FunctionDef: ["body", "args", "returns"],
         self._ast.Assign: ["targets", "value"],
     }
     ks = node_children.get(node.__class__, None)

@@ -1,3 +1,9 @@
+Version 2020.09.16
+* Fix a parser bug when importing and re-exporting a submodule.
+* Call `python -m ninja` instead of `ninja`.
+* Don't crash when processing a pyi containing __all__.
+* Convert Bindings() to a list in cfg.py.
+
 Version 2020.09.14
 * Drop the --python_exe option.
 * Have check_py and generate_pyi accept a source string instead of a filename.
