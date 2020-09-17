@@ -729,7 +729,7 @@ class _Parser:
           assert new_name == name
           new_name = t.name
         self._type_map[new_name] = t
-        if (new_name != name or
+        if (isinstance(item, tuple) or
             from_package != "typing" or
             self._ast_name == "protocols"):
           self._aliases[new_name] = pytd.Alias(new_name, t)
