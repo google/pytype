@@ -2348,8 +2348,17 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):
       pass
     else:
       if isinstance(index, slice):
-        slice_content = self._instance.pyval[index]
-        return node, self.vm.convert.build_tuple(node, slice_content)
+        if self._instance:
+          slice_content = self._instance.pyval[index]
+          return node, self.vm.convert.build_tuple(node, slice_content)
+        else:
+          # Constructing the tuple directly is faster than calling call_pytd.
+          instance = Instance(self.vm.convert.tuple_type, self.vm)
+          node, contained_type = self.vm.init_class(
+              node, self.formal_type_parameters[abstract_utils.T])
+          instance.merge_instance_type_parameter(
+              node, abstract_utils.T, contained_type)
+          return node, instance.to_variable(node)
       if -self.tuple_length <= index < self.tuple_length:
         # Index out of bounds is not a pytype error because of the high
         # likelihood of false positives, e.g.,
