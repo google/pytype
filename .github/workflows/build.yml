@@ -27,7 +27,7 @@ jobs:
           docker image pull "$DOCKER_IMAGE"
       - name: Build manylinux wheels
         env:
-          PYTHON_TAGS: 'cp35-cp35m cp36-cp36m cp37-cp37m'
+          PYTHON_TAGS: 'cp35-cp35m cp36-cp36m cp37-cp37m cp38-cp38'
         run: |
           docker container run \
             --rm \
@@ -49,7 +49,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        python_version: [3.5, 3.6, 3.7]
+        python_version: [3.5, 3.6, 3.7, 3.8]
     steps:
       - uses: actions/checkout@v2
         with:
