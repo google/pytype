@@ -88,7 +88,10 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         # either of these classes is unknown, we set it to the other, which is
         # technically wrong but behaves correctly in the common case of there
         # being only a single super call.
-        starting_cls = obj.super_obj.cls
+        if obj.super_obj == obj.super_cls:  # super() in a classmethod
+          starting_cls = obj.super_obj
+        else:
+          starting_cls = obj.super_obj.cls
         if isinstance(starting_cls, (type(None), abstract.AMBIGUOUS_OR_EMPTY)):
           starting_cls = obj.super_cls
         current_cls = obj.super_cls

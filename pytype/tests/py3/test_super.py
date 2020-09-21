@@ -97,5 +97,17 @@ class TestSuperPython3Featue(test_base.TargetPython3FeatureTest):
           return super().__init__(x=x, y=y)
     """)
 
+  def test_classmethod(self):
+    self.Check("""
+      import abc
+
+      class Foo(metaclass=abc.ABCMeta):
+        pass
+
+      class Bar(Foo):
+        def __new__(cls):
+          return super().__new__(cls)
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
