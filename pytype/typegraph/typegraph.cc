@@ -41,8 +41,6 @@ Variable* Program::NewVariable() {
   return up;
 }
 
-size_t Program::CountCFGNodes() const { return cfg_nodes_.size(); }
-
 Program::Program()
     : entrypoint_(nullptr),
       next_variable_id_(0),
@@ -223,7 +221,7 @@ Binding* Variable::FindOrAddBindingHelper(const BindingData& data) {
     program_->InvalidateSolver();
     auto binding =
         std::unique_ptr<Binding>(new Binding(program_, this, data,
-                                             program_->next_binding_id()));
+                                             program_->MakeBindingId()));
     Binding* bp = binding.get();
     bindings_.push_back(std::move(binding));
     data_to_binding_[data.get()] = bp;
