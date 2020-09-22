@@ -3,6 +3,7 @@
 import logging
 import os
 import sys
+from typing import List
 
 from pytype.pytd import typeshed
 from pytype.tools import runner
@@ -15,11 +16,11 @@ def check_pytype_or_die():
     sys.exit(1)
 
 
-def check_python_version(exe, required):
+def check_python_version(exe: List[str], required):
   """Check if exe is a python executable with the required version."""
   try:
     # python --version outputs to stderr for earlier versions
-    _, out, err = runner.BinaryRun([exe, "--version"]).communicate()  # pylint: disable=unpacking-non-sequence
+    _, out, err = runner.BinaryRun(exe + ["--version"]).communicate()  # pylint: disable=unpacking-non-sequence
     version = out or err
     version = version.decode("utf-8")
     if version.startswith("Python %s" % required):
@@ -30,10 +31,14 @@ def check_python_version(exe, required):
     return False, None
 
 
-def check_python_exe_or_die(required):
+def check_python_exe_or_die(required) -> List[str]:
   """Check if a python executable with the required version is in path."""
   error = []
-  for exe in ["python", "python%s" % required]:
+  if sys.platform == "win32":
+    possible_exes = (["py"], ["py", "-%s" % required])
+  else:
+    possible_exes = (["python"], ["python%s" % required])
+  for exe in possible_exes:
     valid, out = check_python_version(exe, required)
     if valid:
       return exe

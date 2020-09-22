@@ -42,7 +42,7 @@ class ConfigTest(unittest.TestCase):
     opts = config.Options.create(python_version=(2, 7), use_pickled_files=True)
     self.assertEqual(opts.use_pickled_files, True)
     self.assertEqual(opts.python_version, (2, 7))
-    exe, _ = opts.python_exe
+    (exe,), _ = opts.python_exe
     self.assertIn("2.7", exe)
 
   def test_analyze_annotated_check(self):
