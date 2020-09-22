@@ -19,6 +19,7 @@
 
 #include "reachable.h"
 #include "map_util.h"
+#include "metrics.h"
 
 namespace devtools_python_typegraph {
 
@@ -107,6 +108,8 @@ class Program {
   void InvalidateSolver();
 
   bool is_reachable(const CFGNode* src, const CFGNode* dst);
+
+  Metrics CalculateMetrics();
 
  private:
   CFGNode* entrypoint_;

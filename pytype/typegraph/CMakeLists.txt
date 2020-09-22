@@ -31,6 +31,13 @@ cc_test(
 
 cc_library(
   NAME
+    metrics
+  HDRS
+    metrics.h
+)
+
+cc_library(
+  NAME
     typegraph
   SRCS
     solver.cc

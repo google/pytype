@@ -9,6 +9,7 @@
 #include "cfg_logging.h"
 #include "map_util.h"
 #include "memory_util.h"
+#include "metrics.h"
 #include "solver.h"
 
 namespace devtools_python_typegraph {
@@ -59,6 +60,38 @@ void Program::InvalidateSolver() { solver_.reset(); }
 
 bool Program::is_reachable(const CFGNode* src, const CFGNode* dst) {
   return backward_reachability_->is_reachable(dst->id(), src->id());
+}
+
+Metrics Program::CalculateMetrics() {
+  auto binding_count = next_binding_id();
+
+  std::vector<NodeMetrics> cfg_node_metrics;
+  cfg_node_metrics.reserve(CountCFGNodes());
+  for (auto const& node : cfg_nodes_) {
+    cfg_node_metrics.push_back(NodeMetrics(node->incoming().size(),
+                                           node->outgoing().size(),
+                                           node->condition() != nullptr));
+  }
+
+  std::vector<VariableMetrics> variable_metrics;
+  variable_metrics.reserve(variables_.size());
+  for (auto const& var : variables_) {
+    std::vector<NodeID> node_ids;
+    for (auto const& node : var->nodes()) {
+      node_ids.push_back(node->id());
+    }
+    variable_metrics.push_back(VariableMetrics(var->size(), node_ids));
+  }
+
+  // TODO(tsudol): Track solver metrics.
+  std::vector<SolverMetrics> solver_metrics;
+
+  // TODO(tsudol): Track reachability cache metrics.
+  auto reachability_metrics =
+      CacheMetrics(backward_reachability_->size(), 0, 0);
+
+  return Metrics(binding_count, cfg_node_metrics, variable_metrics,
+                 solver_metrics, reachability_metrics);
 }
 
 CFGNode::CFGNode(Program* program, const std::string& name, size_t id,
