@@ -1,5 +1,6 @@
 """Tests for super()."""
 
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -107,6 +108,73 @@ class TestSuperPython3Featue(test_base.TargetPython3FeatureTest):
       class Bar(Foo):
         def __new__(cls):
           return super().__new__(cls)
+    """)
+
+  def test_metaclass(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class Meta(type): ...
+        class Foo(metaclass=Meta):
+          @classmethod
+          def hook(cls): ...
+      """)
+      self.Check("""
+        import foo
+        class Bar(foo.Foo):
+          @classmethod
+          def hook(cls):
+            return super().hook()
+        class Baz(Bar):
+          @classmethod
+          def hook(cls):
+            return super().hook()
+      """, pythonpath=[d.path])
+
+  def test_metaclass_calling_super(self):
+    # Regression test distilled from a custom enum module that was already using
+    # some pytype disables to squeak past type-checking.
+    self.Check("""
+      class Meta(type):
+        def __init__(cls, name, bases, dct):
+          super(Meta, cls).__init__(name, bases, dct)
+          cls.hook()  # pytype: disable=attribute-error
+      class Foo(metaclass=Meta):
+        @classmethod
+        def hook(cls):
+          pass
+      class Bar(Foo):
+        @classmethod
+        def hook(cls):
+          super(Bar, cls).hook()  # pytype: disable=name-error
+    """)
+
+  def test_generic_class(self):
+    self.Check("""
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        pass
+      class Bar(Foo[T]):
+        def __init__(self):
+          super().__init__()
+      class Baz(Bar[T]):
+        pass
+    """)
+
+  def test_nested_class(self):
+    self.Check("""
+      class Parent1:
+        def hook(self):
+          pass
+      class Parent2(Parent1):
+        pass
+      def _BuildChild(parent):
+        class Child(parent):
+          def hook(self):
+            return super().hook()
+        return Child
+      Child1 = _BuildChild(Parent1)
+      Child2 = _BuildChild(Parent2)
     """)
 
 

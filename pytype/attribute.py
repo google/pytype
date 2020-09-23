@@ -73,44 +73,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       else:
         return node, None
     elif isinstance(obj, special_builtins.SuperInstance):
-      if obj.super_obj:
-        # When we have a chain of super calls, `starting_cls` is the cls in
-        # which the first call was made, and `current_cls` is the one currently
-        # being processed. E.g., for:
-        #  class Foo(Bar):
-        #    def __init__(self):
-        #      super().__init__()  # line 3
-        #  class Bar(Baz):
-        #    def __init__(self):
-        #      super().__init__()  # line 6
-        # if we're looking up super.__init__ in line 6 as part of analyzing the
-        # super call in line 3, then starting_cls=Foo, current_cls=Bar. When
-        # either of these classes is unknown, we set it to the other, which is
-        # technically wrong but behaves correctly in the common case of there
-        # being only a single super call.
-        if obj.super_obj == obj.super_cls:  # super() in a classmethod
-          starting_cls = obj.super_obj
-        else:
-          starting_cls = obj.super_obj.cls
-        if isinstance(starting_cls, (type(None), abstract.AMBIGUOUS_OR_EMPTY)):
-          starting_cls = obj.super_cls
-        current_cls = obj.super_cls
-        if isinstance(current_cls, abstract.AMBIGUOUS_OR_EMPTY):
-          current_cls = starting_cls
-        valself = obj.super_obj.to_binding(node)
-        # When multiple inheritance is present, the two classes' MROs may
-        # differ. In this case, we want to use the MRO of starting_cls but skip
-        # all the classes up to and including current_cls.
-        skip = set()
-        for parent in starting_cls.mro:
-          skip.add(parent)
-          if parent is current_cls:
-            break
-      else:
-        starting_cls = self.vm.convert.super_type
-        skip = ()
-      return self._lookup_from_mro_and_handle_descriptors(
-          node, starting_cls, name, valself, skip)
+      return self._get_attribute_from_super_instance(node, obj, name, valself)
     elif isinstance(obj, special_builtins.Super):
       return self.get_attribute(node, self.vm.convert.super_type, name, valself)
     elif isinstance(obj, abstract.BoundFunction):
@@ -311,6 +274,53 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       # have attributes that we don't know about.
       attr = self.vm.new_unsolvable(node)
     return node, attr
+
+  def _get_attribute_from_super_instance(
+      self, node, obj: special_builtins.SuperInstance, name, valself):
+    """Get an attribute from a super instance."""
+    # A SuperInstance has `super_cls` and `super_obj` attributes recording the
+    # arguments that super was (explicitly or implicitly) called with. For
+    # example, if the call is `super(Foo, self)`, then super_cls=Foo,
+    # super_obj=self. When the arguments  are omitted, super_cls and super_obj
+    # are inferred from the surrounding context.
+    if obj.super_obj:
+      # When we have a chain of super calls, `starting_cls` is the cls in which
+      # the first call was made, and `current_cls` is the one currently being
+      # processed. E.g., for:
+      #  class Foo(Bar):
+      #    def __init__(self):
+      #      super().__init__()  # line 3
+      #  class Bar(Baz):
+      #    def __init__(self):
+      #      super().__init__()  # line 6
+      # if we're looking up super.__init__ in line 6 as part of analyzing the
+      # super call in line 3, then starting_cls=Foo, current_cls=Bar.
+      if obj.super_cls in obj.super_obj.mro:  # super() in a classmethod
+        starting_cls = obj.super_obj
+      elif (isinstance(obj.super_obj.cls,
+                       (type(None), abstract.AMBIGUOUS_OR_EMPTY)) or
+            isinstance(obj.super_cls, abstract.AMBIGUOUS_OR_EMPTY)):
+        # Setting starting_cls to the current class when either of them is
+        # ambiguous is technically incorrect but behaves correctly in the common
+        # case of there being only a single super call.
+        starting_cls = obj.super_cls
+      else:
+        starting_cls = obj.super_obj.cls
+      current_cls = obj.super_cls
+      valself = obj.super_obj.to_binding(node)
+      # When multiple inheritance is present, the two classes' MROs may differ.
+      # In this case, we want to use the MRO of starting_cls but skip all the
+      # classes up to and including current_cls.
+      skip = set()
+      for parent in starting_cls.mro:
+        skip.add(parent)
+        if parent.full_name == current_cls.full_name:
+          break
+    else:
+      starting_cls = self.vm.convert.super_type
+      skip = ()
+    return self._lookup_from_mro_and_handle_descriptors(
+        node, starting_cls, name, valself, skip)
 
   def _lookup_from_mro_and_handle_descriptors(
       self, node, cls, name, valself, skip):
