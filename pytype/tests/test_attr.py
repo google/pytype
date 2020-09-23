@@ -724,5 +724,14 @@ class TestAttrs(test_base.TargetIndependentTest):
           pass
     """, maximum_depth=1)
 
+  def test_signature(self):
+    self.Check("""
+      import attr
+      @attr.s()
+      class A:
+        id = attr.ib(
+            default='', converter=str,
+            on_setattr=attr.setters.convert)
+    """)
 
 test_base.main(globals(), __name__ == "__main__")

@@ -11,10 +11,16 @@ class AttrsAttributeNotFoundError(ValueError):
 class DefaultAlreadySetError(RuntimeError):
     __doc__: str
 
-class FrozenInstanceError(AttributeError):
+class FrozenError(AttributeError):
     __doc__: str
     args: List[str]
     msg: str
+
+class FrozenInstanceError(FrozenError):
+    __doc__: str
+
+class FrozenAttributeError(FrozenError):
+    __doc__: str
 
 class NotAnAttrsClassError(ValueError):
     __doc__: str
@@ -24,3 +30,7 @@ class PythonTooOldError(RuntimeError):
 
 class UnannotatedAttributeError(RuntimeError):
     __doc__: str
+
+class NotCallableError(TypeError):
+    def __init__(self, msg, value): ...
+    def __str__(self) -> str: ...
