@@ -1,3 +1,11 @@
+Version 2020.09.24
+* Fix a bug involving multiple super calls.
+* Support tuple slicing.
+* Make all tests pass in Python 3.8.
+* Respect all typing re-exports in the pyi parser.
+* Create C++ metrics classes for tracking typegraph metrics.
+* Update attrs pytd files to support version 20.2.0.
+
 Version 2020.09.16
 * Fix a parser bug when importing and re-exporting a submodule.
 * Call `python -m ninja` instead of `ninja`.
