@@ -242,9 +242,6 @@ function(cc_library)
   if(NOT CC_LIBRARY_NAME)
     message(FATAL_ERROR "'cc_library' rule requires a NAME argument.")
   endif()
-  if(NOT CC_LIBRARY_SRCS)
-    message(FATAL_ERROR "'cc_library' rule requires a SRCS argument specifying the list of .cc files of the library.")
-  endif()
 
   _gen_fq_target_name(${CC_LIBRARY_NAME} fq_target_name)
 
@@ -264,6 +261,7 @@ function(cc_library)
   set_target_properties(
     ${fq_target_name}
     PROPERTIES
+      LINKER_LANGUAGE CXX
       OUTPUT_NAME ${CC_LIBRARY_NAME}
   )
 
