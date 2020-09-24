@@ -266,5 +266,15 @@ class SuperTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"super"})
 
+  def test_duplicate_class_names(self):
+    self.Check("""
+      class Foo(object):
+        def __new__(self, *args, **kwargs):
+          typ = type('Foo', (Foo,), {})
+          return super(Foo, typ).__new__(typ)
+        def __init__(self, x):
+          super(Foo, self).__init__()
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

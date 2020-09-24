@@ -310,11 +310,13 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       valself = obj.super_obj.to_binding(node)
       # When multiple inheritance is present, the two classes' MROs may differ.
       # In this case, we want to use the MRO of starting_cls but skip all the
-      # classes up to and including current_cls.
+      # classes up to and including current_cls. We traverse the MRO backwards
+      # to correctly handle the case in which the starting and current classes
+      # are different classes with the same name.
       skip = set()
-      for parent in starting_cls.mro:
-        skip.add(parent)
+      for i, parent in enumerate(reversed(starting_cls.mro)):
         if parent.full_name == current_cls.full_name:
+          skip.update(starting_cls.mro[:len(starting_cls.mro)-i])
           break
     else:
       starting_cls = self.vm.convert.super_type
