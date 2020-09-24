@@ -295,15 +295,15 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       #      super().__init__()  # line 6
       # if we're looking up super.__init__ in line 6 as part of analyzing the
       # super call in line 3, then starting_cls=Foo, current_cls=Bar.
-      if obj.super_cls in obj.super_obj.mro:  # super() in a classmethod
-        starting_cls = obj.super_obj
-      elif (isinstance(obj.super_obj.cls,
-                       (type(None), abstract.AMBIGUOUS_OR_EMPTY)) or
-            isinstance(obj.super_cls, abstract.AMBIGUOUS_OR_EMPTY)):
+      if (isinstance(obj.super_obj.cls,
+                     (type(None), abstract.AMBIGUOUS_OR_EMPTY)) or
+          isinstance(obj.super_cls, abstract.AMBIGUOUS_OR_EMPTY)):
         # Setting starting_cls to the current class when either of them is
         # ambiguous is technically incorrect but behaves correctly in the common
         # case of there being only a single super call.
         starting_cls = obj.super_cls
+      elif obj.super_cls in obj.super_obj.mro:  # super() in a classmethod
+        starting_cls = obj.super_obj
       else:
         starting_cls = obj.super_obj.cls
       current_cls = obj.super_cls
