@@ -16,10 +16,12 @@ class ReachabilityAnalyzer {
   void add_connection(const int src, const int dst);
   const bool is_reachable(const int src, const int dst);
 
+  size_t size() const { return size_; }
+
  private:
   std::vector<std::vector<int64_t>> adj_;
-  int num_nodes_;  // == adj_.size() == adj_[0].size()
-  int size_;
+  size_t num_nodes_;  // == adj_.size() == adj_[0].size()
+  size_t size_;
 };
 
 }  // namespace devtools_python_typegraph

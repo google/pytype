@@ -179,5 +179,21 @@ class TupleTestPython3Feature(test_base.TargetPython3FeatureTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"1 value.*3 variables"})
 
+  def test_strptime(self):
+    ty = self.Infer("""
+      import time
+      (year, month, day, hour, minute) = (
+          time.strptime('', '%m %d %Y')[0:5])
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Union
+      time: module
+      year: Union[int, str]
+      month: Union[int, str]
+      day: Union[int, str]
+      hour: Union[int, str]
+      minute: Union[int, str]
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

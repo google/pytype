@@ -19,6 +19,7 @@
 
 #include "reachable.h"
 #include "map_util.h"
+#include "metrics.h"
 
 namespace devtools_python_typegraph {
 
@@ -76,11 +77,12 @@ class Program {
   CFGNode* NewCFGNode(const std::string& name);
   CFGNode* NewCFGNode(const std::string& name, Binding* condition);
   Variable* NewVariable();
-  size_t CountCFGNodes() const;
+  size_t CountCFGNodes() const { return cfg_nodes_.size(); }
 
   const std::vector<std::unique_ptr<CFGNode>>& cfg_nodes() const {
     return cfg_nodes_;
   }
+
   size_t next_variable_id() { return next_variable_id_; }
 
   const BindingData& default_data() const { return default_data_; }
@@ -89,7 +91,9 @@ class Program {
     default_data_ = new_default;
   }
 
-  size_t next_binding_id() {
+  size_t next_binding_id() const { return next_binding_id_; }
+
+  size_t MakeBindingId() {
     size_t id = next_binding_id_++;
     return id;
   }
@@ -104,6 +108,8 @@ class Program {
   void InvalidateSolver();
 
   bool is_reachable(const CFGNode* src, const CFGNode* dst);
+
+  Metrics CalculateMetrics();
 
  private:
   CFGNode* entrypoint_;

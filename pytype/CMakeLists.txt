@@ -17,6 +17,7 @@ filegroup(
     pytd/builtins/2/attr/converters.pytd
     pytd/builtins/2/attr/exceptions.pytd
     pytd/builtins/2/attr/filters.pytd
+    pytd/builtins/2/attr/setters.pytd
     pytd/builtins/2/attr/validators.pytd
     pytd/builtins/2/mypy_extensions.pytd
     pytd/builtins/2/numpy/__init__.pytd
@@ -33,6 +34,7 @@ filegroup(
     pytd/builtins/2and3/attr/converters.pytd
     pytd/builtins/2and3/attr/exceptions.pytd
     pytd/builtins/2and3/attr/filters.pytd
+    pytd/builtins/2and3/attr/setters.pytd
     pytd/builtins/2and3/attr/validators.pytd
     pytd/builtins/2and3/mypy_extensions.pytd
     pytd/builtins/2and3/numpy/__init__.pytd
@@ -50,6 +52,7 @@ filegroup(
     pytd/builtins/3/attr/converters.pytd
     pytd/builtins/3/attr/exceptions.pytd
     pytd/builtins/3/attr/filters.pytd
+    pytd/builtins/3/attr/setters.pytd
     pytd/builtins/3/attr/validators.pytd
     pytd/builtins/3/builtins.pytd
     pytd/builtins/3/mypy_extensions.pytd

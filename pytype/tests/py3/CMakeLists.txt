@@ -378,6 +378,7 @@ py_test(
   SRCS
     test_super.py
   DEPS
+    pytype.utils
     pytype.tests.test_base
 )
 
