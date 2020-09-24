@@ -43,10 +43,11 @@ def main():
   targets = opts.targets or ["test_all"]
   if not build_utils.run_cmake(log_output=True, debug_build=opts.debug):
     sys.exit(1)
-  fail_collector = build_utils.FailCollector(opts.verbose)
+  fail_collector = build_utils.FailCollector()
   print("Running tests (build steps will be executed as required) ...\n")
-  if not build_utils.run_ninja(targets, fail_collector, opts.fail_fast):
-    fail_collector.print_report()
+  if not build_utils.run_ninja(
+      targets, fail_collector, opts.fail_fast, opts.verbose):
+    fail_collector.print_report(opts.verbose)
     sys.exit(1)
   print("!!! All tests passed !!!\n"
         "Some tests might not have been run because they were already passing.")
