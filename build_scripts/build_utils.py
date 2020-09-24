@@ -187,14 +187,13 @@ def run_cmake(force_clean=False, log_output=False, debug_build=False):
 class FailCollector(object):
   """A class to collect failures."""
 
-  def __init__(self, verbose):
+  def __init__(self):
     self._failures = []
-    self._verbose = verbose
 
   def add_failure(self, mod_name, log_file):
     self._failures.append((mod_name, log_file))
 
-  def print_report(self):
+  def print_report(self, verbose):
     num_failures = len(self._failures)
     if num_failures == 0:
       return
@@ -204,18 +203,19 @@ class FailCollector(object):
       if log_file:
         msg += " - %s" % log_file
       print(msg)
-      if log_file and self._verbose:
+      if log_file and verbose:
         with open(log_file.strip(), 'r') as f:
           print(f.read(), file=sys.stderr)
 
 
-def run_ninja(targets, fail_collector=None, fail_fast=False):
+def run_ninja(targets, fail_collector=None, fail_fast=False, verbose=False):
   """Run ninja over the list of specified targets.
 
   Arguments:
     targets: The list of targets to run.
     fail_collector: A FailCollector object to collect failures.
     fail_fast: If True, abort at the first target failure.
+    verbose: If True, print verbose output.
 
   Returns:
     True if no target fails. False, otherwise.
@@ -227,6 +227,10 @@ def run_ninja(targets, fail_collector=None, fail_fast=False):
   process = subprocess.Popen(cmd, cwd=OUT_DIR,
                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
   failed_targets = []
+  # When verbose output is requested, test failure logs are printed to stderr.
+  # However, sometimes a test fails without generating a log, in which case we
+  # need to print the ninja build output to see what happened.
+  print_if_verbose = False
   with open(NINJA_LOG, "w") as ninja_log:
     while True:
       line = process.stdout.readline()
@@ -240,10 +244,14 @@ def run_ninja(targets, fail_collector=None, fail_fast=False):
       if msg_type == _NINJA_FAILURE_MSG:
         # This is a failed ninja target.
         failed_targets.append(line[len(NINJA_FAILURE_PREFIX):].strip())
+        print_if_verbose = True
       if msg_type == _TEST_MODULE_PASS_MSG or msg_type == _TEST_MODULE_FAIL_MSG:
         print(line)
         if msg_type == _TEST_MODULE_FAIL_MSG:
           fail_collector.add_failure(modname, logfile)
+        print_if_verbose = False
+      if verbose and print_if_verbose:
+        print(line.rstrip())
     if failed_targets:
       # For convenience, we will print the list of failed targets.
       summary_hdr = ">>> Found Ninja target failures (includes test failures):"
