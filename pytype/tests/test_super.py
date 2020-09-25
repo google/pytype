@@ -266,6 +266,7 @@ class SuperTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"super"})
 
+  @test_base.skip("pytype thinks the two Foo classes are the same")
   def test_duplicate_class_names(self):
     self.Check("""
       class Foo(object):
