@@ -5,6 +5,7 @@ import os
 import re
 import subprocess
 import tempfile
+from typing import List, Tuple
 
 from pytype import compat
 from pytype import pytype_source_utils
@@ -35,8 +36,9 @@ class CompileError(Exception):
       self.lineno = 1
 
 
-def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
-                                     mode="exec"):
+def compile_src_string_to_pyc_string(
+    src, filename, python_version, python_exe: Tuple[List[str], List[str]],
+    mode="exec"):
   """Compile Python source code to pyc data.
 
   This may use py_compile if the src is for the same version as we're running,
@@ -81,7 +83,7 @@ def compile_src_string_to_pyc_string(src, filename, python_version, python_exe,
       # We pass -E to ignore the environment so that PYTHONPATH and
       # sitecustomize on some people's systems don't mess with the interpreter.
       exe, flags = python_exe
-      cmd = [exe] + flags + ["-E", "-", fi.name, filename or fi.name, mode]
+      cmd = exe + flags + ["-E", "-", fi.name, filename or fi.name, mode]
 
       compile_script_src = pytype_source_utils.load_pytype_file(COMPILE_SCRIPT)
 

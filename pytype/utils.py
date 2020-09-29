@@ -8,6 +8,7 @@ import subprocess
 import sys
 import threading
 import types
+from typing import List, Tuple
 import weakref
 
 from pytype import pytype_source_utils
@@ -154,7 +155,7 @@ def concat_tuples(tuples):
   return tuple(itertools.chain.from_iterable(tuples))
 
 
-def get_python_exe(python_version):
+def get_python_exe(python_version) -> Tuple[List[str], List[str]]:
   """Find a python executable to use.
 
   Arguments:
@@ -165,9 +166,11 @@ def get_python_exe(python_version):
   # Use custom interpreters, if provided, in preference to the ones in $PATH
   custom_python_exe = pytype_source_utils.get_custom_python_exe(python_version)
   if custom_python_exe:
-    python_exe = custom_python_exe
+    python_exe = [custom_python_exe]
+  elif sys.platform == "win32":
+    python_exe = ["py", "-%d.%d" % python_version]
   else:
-    python_exe = "python%d.%d" % python_version
+    python_exe = ["python%d.%d" % python_version]
   if USE_ANNOTATIONS_BACKPORT and python_version == (2, 7):
     flags = ["-T"]
   else:
@@ -175,7 +178,7 @@ def get_python_exe(python_version):
   return python_exe, flags
 
 
-def get_python_exe_version(python_exe):
+def get_python_exe_version(python_exe: List[str]):
   """Determine the major and minor version of given Python executable.
 
   Arguments:
@@ -185,7 +188,7 @@ def get_python_exe_version(python_exe):
   """
   try:
     python_exe_version = subprocess.check_output(
-        [python_exe, "-V"], stderr=subprocess.STDOUT).decode()
+        python_exe + ["-V"], stderr=subprocess.STDOUT).decode()
   except subprocess.CalledProcessError:
     return None
 
