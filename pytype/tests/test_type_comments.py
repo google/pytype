@@ -683,5 +683,18 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
                         also_long_attribute_name))  # type: int
     """)
 
+  def test_assignment_between_functions(self):
+    ty = self.Infer("""
+      def f(): pass
+      x = 0  # type: int
+      def g():
+        '''Docstring.'''
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> None: ...
+      x: int
+      def g() -> None: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

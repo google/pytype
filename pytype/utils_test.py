@@ -104,7 +104,7 @@ class UtilsTest(unittest.TestCase):
       self.assertEqual(expected, utils.parse_exe_version_string(version_str))
 
   def test_get_python_exe_version(self):
-    version = utils.get_python_exe_version("python")
+    version = utils.get_python_exe_version(["python"])
     self.assertIsInstance(version, tuple)
     self.assertEqual(len(version), 2)
 

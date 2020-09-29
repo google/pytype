@@ -177,5 +177,13 @@ class TestSuperPython3Featue(test_base.TargetPython3FeatureTest):
       Child2 = _BuildChild(Parent2)
     """)
 
+  def test_namedtuple(self):
+    self.Check("""
+      from typing import NamedTuple
+      class Foo(NamedTuple('Foo', [('x', int)])):
+        def replace(self, *args, **kwargs):
+          return super()._replace(*args, **kwargs)
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

@@ -11,7 +11,7 @@ freshness: { owner: 'mdemello' reviewed: '2020-07-09' }
       * [Type Information](#type-information)
       * [Matching](#matching)
 
-<!-- Added by: rechen, at: 2020-09-14T12:22-07:00 -->
+<!-- Added by: rechen, at: 2020-09-26T03:28-07:00 -->
 
 <!--te-->
 
@@ -124,6 +124,11 @@ checking (e.g.  the `InterpreterClass` object stores a list of base classes and
 a dictionary of members, and the `Instance` object stores a reference to the
 `InterpreterClass` object it was instantiated from).
 
+TIP: The [abstract_utils][abstract_utils] module contains many useful functions
+for working with abstract values. Additionally, all abstract values have a `vm`
+attribute that references the current virtual machine, through which various
+[handlers][vm-attributes] for abstract values can be accessed.
+
 ## Type Information
 
 In python, the type of an object is determined (at runtime) by the class it is
@@ -210,4 +215,8 @@ valid because we can find a substitution, `{T: int}`, that matches the types of
 the arguments for `x` and `y`. The matcher also returns this substitution
 dictionary so that the type `T` is mapped to can be propagated.
 
+[abstract_utils]: https://github.com/google/pytype/blob/master/pytype/abstract_utils.py
+
 [matcher]: https://github.com/google/pytype/blob/master/pytype/matcher.py
+
+[vm-attributes]: https://github.com/google/pytype/blob/62b9bd1d636965e695bd2e735244be47168dc5b0/pytype/vm.py#L147-L151
