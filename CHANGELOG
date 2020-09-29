@@ -1,3 +1,7 @@
+Version 2020.09.29
+* Fix a bug in attaching function type comments to opcodes.
+* Use `py -x.y` instead of `pythonx.y` for windows.
+
 Version 2020.09.24
 * Fix a bug involving multiple super calls.
 * Support tuple slicing.
