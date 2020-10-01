@@ -1235,9 +1235,9 @@ class ExpandSignatures(Visitor):
       Function with the new signatures.
     """
 
-    # concatenate return value(s) from VisitSignature
-    signatures = sum([ExpandSignature(s) for s in f.signatures], [])
-    return f.Replace(signatures=tuple(signatures))
+    # flatten return value(s) from VisitSignature
+    signatures = tuple(ex for s in f.signatures for ex in ExpandSignature(s))
+    return f.Replace(signatures=signatures)
 
 
 class AdjustTypeParameters(Visitor):
