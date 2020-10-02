@@ -105,8 +105,8 @@ def _deep_values_list_product(values_list, seen, complexity_limit):
   """Take the deep Cartesian product of a list of list of Values."""
   result = []
   for row in itertools.product(*(values for values in values_list if values)):
-    extra_params = sum([entry.data.unique_parameter_values()
-                        for entry in row if entry not in seen], [])
+    extra_params = [value for entry in row if entry not in seen  # pylint: disable=g-complex-comprehension
+                    for value in entry.data.unique_parameter_values()]
     extra_values = (extra_params and
                     _deep_values_list_product(extra_params, seen.union(row),
                                               complexity_limit))
