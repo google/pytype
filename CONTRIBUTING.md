@@ -56,16 +56,16 @@ The Pytype Git repository also contains few Git submodules. Before building
 the `pytype` executable or running tests, one has to ensure that the submodules
 are up to date. This can be done with the following command:
 
-```
-$> git submodule update --init
+```shell
+git submodule update --init
 ```
 
 ### Building `pytype` and other executables
 The executables like `pytype` etc. are built using a convenience script as
 follows:
 
-```
-$> python build_scripts/build.py
+```shell
+python build_scripts/build.py
 ```
 
 `build.py` will build the executables in the `out/bin` directory.
@@ -74,8 +74,8 @@ $> python build_scripts/build.py
 One can pass the logging verbosity level option to `pytype-single` to see the
 logs:
 
-```
-$> out/bin/pytype-single -v<N> <other command like arguments>
+```shell
+out/bin/pytype-single -v<N> <other command like arguments>
 ```
 
 For information about the logging levels, run `pytype-single --help`.
@@ -86,8 +86,8 @@ from these extension modules is enabled only in debug builds. One can build
 `pytype-single` in debug mode by passing the `--debug` option to the build
 script as follows:
 
-```
-$> python build_scripts/build.py --debug
+```shell
+python build_scripts/build.py --debug
 ```
 
 In a debug build of `pytype-single`, logging from extension modules follows the
@@ -115,8 +115,8 @@ new functional tests.
 There exists a convenience script to run Pytype tests. A typical usage of this
 script is as follows:
 
-```
-$> python build_scripts/run_tests.py <TARGET>
+```shell
+python build_scripts/run_tests.py <TARGET>
 ```
 
 `TARGET` is the fully qualified name of the test target within the root Pytype
