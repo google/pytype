@@ -22,18 +22,6 @@ untar() {
   rm -vf "${1}.tar.gz"
 }
 
-# Install CMake
-pushd /usr/local/share
-if [[ "$(arch)" != "x86_64" ]]; then
-  echo "Only supported for x86_64 arch, not $(arch)" >&2
-  exit 1
-fi
-curl -sSL \
-  -o cmake.tar.gz \
-  "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz"
-untar cmake
-ln -s "$(pwd)/cmake/bin/cmake" /usr/local/bin/cmake
-
 # Install ninja/ninja-build (requires CMake)
 curl -sSL \
   -o ninja.zip \
