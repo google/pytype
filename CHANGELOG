@@ -1,3 +1,6 @@
+Version 2020.10.08
+* Add runtime_checkable to typing.pytd.
+
 Version 2020.09.29
 * Fix a bug in attaching function type comments to opcodes.
 * Use `py -x.y` instead of `pythonx.y` for windows.
