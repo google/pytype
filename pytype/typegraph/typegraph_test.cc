@@ -237,5 +237,31 @@ TEST_F(TypeGraphTest, TestBindingIDs) {
   EXPECT_EQ(1, ax2->id());
   EXPECT_EQ(2, p.next_binding_id());
 }
+
+
+TEST_F(TypeGraphTest, TestMetrics) {
+  // Small test for making sure Metrics are collected.
+
+  Program p;
+  Variable* x = p.NewVariable();
+  CFGNode* n0 = p.NewCFGNode("n0");
+  CFGNode* n1 = n0->ConnectNew("n1");
+  int one = 1;
+  Binding* ax1 = AddBinding(x, &one, n1, {});
+  ax1->AddOrigin(n0);
+
+  auto metrics = p.CalculateMetrics();
+  EXPECT_EQ(metrics.binding_count(), 1);
+
+  auto cfgm = metrics.cfg_node_metrics();
+  EXPECT_EQ(cfgm[0].incoming_edge_count(), 0);
+  EXPECT_EQ(cfgm[0].outgoing_edge_count(), 1);
+  EXPECT_FALSE(cfgm[0].has_condition());
+
+  auto varm = metrics.variable_metrics();
+  EXPECT_EQ(varm.size(), 1);
+  EXPECT_EQ(varm[0].binding_count(), 1);
+  EXPECT_THAT(varm[0].node_ids(), testing::UnorderedElementsAre(0, 1));
+}
 }  // namespace
 }  // namespace devtools_python_typegraph
