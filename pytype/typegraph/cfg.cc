@@ -1,3 +1,5 @@
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 #include <Python.h>
 #include <structseq.h>
 
@@ -6,11 +8,10 @@
 #include <utility>
 
 #include "cfg_logging.h"
+#include "metrics.h"
 #include "typegraph.h"
 
 namespace typegraph = devtools_python_typegraph;
-
-static const char* kModuleName = "cfg";
 
 #if PY_MAJOR_VERSION >= 3
 #  define PyString_Check(s) (PyBytes_Check(s) || PyUnicode_Check(s))
@@ -477,6 +478,13 @@ static PyObject* is_reachable(PyProgramObj* self,
   }
 }
 
+PyDoc_STRVAR(calculate_metrics_doc, "Get a snapshot of the program's metrics.");
+
+static PyObject* calculate_metrics(PyProgramObj* self, PyObject* _args) {
+  auto data = self->program->CalculateMetrics();
+  return pybind11::cast(data).release().ptr();
+}
+
 static PyMethodDef program_methods[] = {
   {"NewCFGNode", reinterpret_cast<PyCFunction>(NewCFGNode),
     METH_VARARGS|METH_KEYWORDS, new_cfg_node_doc},
@@ -484,6 +492,8 @@ static PyMethodDef program_methods[] = {
     METH_VARARGS|METH_KEYWORDS, new_variable_doc},
   {"is_reachable", reinterpret_cast<PyCFunction>(is_reachable),
    METH_VARARGS|METH_KEYWORDS, is_reachable_doc},
+  {"calculate_metrics", reinterpret_cast<PyCFunction>(calculate_metrics),
+   METH_NOARGS, calculate_metrics_doc},
   {0, 0, 0, nullptr}  // sentinel
 };
 
@@ -1438,34 +1448,7 @@ PyTypeObject PyVariable = {
   tp_methods : variable_methods,
 };
 
-// --- typegraph ---------------------------------------------------------------
-
-PyDoc_STRVAR(typegraph_doc,
-    "Typegraph is a points-to / dataflow / cfg graph engine.\n"
-    "It can be used to run reaching-definition queries on a nested CFG graph "
-    "and to model path-specific visibility of nested data structures.");
-
-static PyMethodDef typegraph_methods[] = {
-  {0, 0, 0, nullptr},  // sentinel
-};
-
-#if PY_MAJOR_VERSION >= 3
-static struct PyModuleDef typegraph_moduledef = {
-  PyModuleDef_HEAD_INIT,
-  m_name : kModuleName,
-  m_doc : typegraph_doc,
-  m_size : -1,
-  m_methods : typegraph_methods,
-#if PY_VERSION_HEX >= 0x03050000  // 3.5
-  m_slots : nullptr,
-#else
-  m_reload : nullptr,
-#endif
-  m_traverse : nullptr,
-  m_clear : &pytype::typegraph::internal::CFGLogger::Shutdown,
-  m_free : nullptr,
-};
-#endif
+// --- cfg module and metrics --------------------------------------------------
 
 static PyObject* InitModule(PyObject* module) {
   PyObject* module_dict = PyModule_GetDict(module);
@@ -1529,21 +1512,67 @@ static PyObject* InitModule(PyObject* module) {
   return module;
 }
 
-#if PY_MAJOR_VERSION >= 3
-PyMODINIT_FUNC PyInit_cfg(void) {
-  PyObject* module = PyModule_Create(&typegraph_moduledef);
-  pytype::typegraph::internal::CFGLogger::Init();
-  return InitModule(module);
-}
-#else
-PyMODINIT_FUNC initcfg(void) {
-  PyObject* module = Py_InitModule3(
-      kModuleName, typegraph_methods, typegraph_doc);
+// This creates a module called cfg inside typegraph.
+// The full path is pytype.typegraph.cfg.
+PYBIND11_MODULE(cfg, m) {
+  m.doc() = "Typegraph is a points-to / dataflow / cfg graph engine.\n"
+    "It can be used to run reaching-definition queries on a nested CFG graph "
+    "and to model path-specific visibility of nested data structures.";
+
+  pybind11::class_<typegraph::NodeMetrics>(m, "NodeMetrics")
+      .def_property_readonly("incoming_edge_count",
+                             &typegraph::NodeMetrics::incoming_edge_count)
+      .def_property_readonly("outgoing_edge_count",
+                             &typegraph::NodeMetrics::outgoing_edge_count)
+      .def_property_readonly("has_condition",
+                             &typegraph::NodeMetrics::has_condition);
+
+  pybind11::class_<typegraph::VariableMetrics>(m, "VariableMetrics")
+      .def_property_readonly("binding_count",
+                             &typegraph::VariableMetrics::binding_count)
+      .def_property_readonly("node_ids", &typegraph::VariableMetrics::node_ids);
+
+  pybind11::class_<typegraph::QueryMetrics>(m, "QueryMetrics")
+      .def_property_readonly("nodes_visited",
+                             &typegraph::QueryMetrics::nodes_visited)
+      .def_property_readonly("start_node", &typegraph::QueryMetrics::start_node)
+      .def_property_readonly("end_node", &typegraph::QueryMetrics::end_node)
+      .def_property_readonly("initial_binding_count",
+                             &typegraph::QueryMetrics::initial_binding_count)
+      .def_property_readonly("total_binding_count",
+                             &typegraph::QueryMetrics::total_binding_count)
+      .def_property_readonly("shortcircuited",
+                             &typegraph::QueryMetrics::shortcircuited)
+      .def_property_readonly("from_cache",
+                             &typegraph::QueryMetrics::from_cache);
+
+  pybind11::class_<typegraph::CacheMetrics>(m, "CacheMetrics")
+      .def_property_readonly("total_size", &typegraph::CacheMetrics::total_size)
+      .def_property_readonly("hits", &typegraph::CacheMetrics::hits)
+      .def_property_readonly("misses", &typegraph::CacheMetrics::misses);
+
+  pybind11::class_<typegraph::SolverMetrics>(m, "SolverMetrics")
+      .def_property_readonly("query_metrics",
+                             &typegraph::SolverMetrics::query_metrics)
+      .def_property_readonly("cache_metrics",
+                             &typegraph::SolverMetrics::cache_metrics);
+
+  pybind11::class_<typegraph::Metrics>(m, "Metrics")
+      .def_property_readonly("binding_count",
+                             &typegraph::Metrics::binding_count)
+      .def_property_readonly("cfg_node_metrics",
+                             &typegraph::Metrics::cfg_node_metrics)
+      .def_property_readonly("variable_metrics",
+                             &typegraph::Metrics::variable_metrics)
+      .def_property_readonly("solver_metrics",
+                             &typegraph::Metrics::solver_metrics)
+      .def_property_readonly("reachability_metrics",
+                             &typegraph::Metrics::reachability_metrics);
+
   PyType_Ready(&PyProgram);
   PyType_Ready(&PyCFGNode);
   PyType_Ready(&PyVariable);
   PyType_Ready(&PyBinding);
-  InitModule(module);
+  InitModule(m.ptr());
   pytype::typegraph::internal::CFGLogger::Init();
 }
-#endif
