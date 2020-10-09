@@ -277,17 +277,15 @@ py_library(
       .utils
 )
 
-# This library is disabled because cfg.py can conflict with the typegraph.cfg
-# extension module.
-# py_library(
-#   NAME
-#     cfg_py
-#   SRCS
-#     typegraph/cfg.py
-#   DEPS
-#     .debug
-#     .metrics
-# )
+py_library(
+  NAME
+    cfg_py
+  SRCS
+    typegraph/cfg.py
+  DEPS
+    .debug
+    .metrics
+)
 
 py_library(
   NAME
@@ -659,6 +657,17 @@ py_test(
     .debug
     .pytd
 )
+
+py_test(
+  NAME
+    typegraph_metrics_test
+  SRCS
+    typegraph_metrics_test.py
+  DEPS
+    .config
+    .libvm
+    pytype.typegraph.cfg
+    pytype.tests.test_base
 
 add_subdirectory(overlays)
 add_subdirectory(pyc)
