@@ -668,6 +668,7 @@ py_test(
     .libvm
     pytype.typegraph.cfg
     pytype.tests.test_base
+)
 
 add_subdirectory(overlays)
 add_subdirectory(pyc)
