@@ -418,6 +418,9 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       elif _is_callback_protocol(other_type):
         return self._match_type_against_callback_protocol(
             left, other_type, subst, node, view)
+      elif left.cls:
+        return self._match_type_against_type(
+            abstract.Instance(left.cls, self.vm), other_type, subst, node, view)
       else:
         return None
     elif isinstance(left, dataclass_overlay.FieldInstance) and left.default:
