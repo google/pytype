@@ -5,14 +5,14 @@ git:
   submodules: true
 
 language: python
+python:
+  - "3.6"
+  - "3.7"
+  - "3.8"
+  - "3.9-dev"
+  - "nightly"
 
 matrix:
-  include:
-    - python: "3.6"
-    - python: "3.7"
-    - python: "3.8"
-    - python: "3.9-dev"
-    - python: "nightly"
   allow_failures:
     - python: "3.9-dev"
     - python: "nightly"
@@ -25,13 +25,7 @@ before_install:
   - sudo apt-get install python2-minimal
 
 install:
-  - pip install attrs
-  - pip install importlab
-  - pip install ninja
-  - pip install pylint
-  - pip install pyyaml
-  - pip install six
-  - pip install typed_ast
+  - pip install -r requirements.txt
 
 script:
   - python build_scripts/travis_script.py
