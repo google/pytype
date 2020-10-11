@@ -373,5 +373,17 @@ class BuiltinTests3(test_base.TargetIndependentTest):
     self.assertErrorRegexes(
         errors, {"e": r"Expected.*Iterable\[str\].*Actual.*List\[int\]"})
 
+  def test_int_protocols(self):
+    self.Check("""
+      class Foo:
+        def __int__(self):
+          return 0
+      class Bar:
+        def __trunc__(self):
+          return 0
+      int(Foo())
+      int(Bar())
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

@@ -2,6 +2,7 @@
 
 from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class BuiltinTests(test_base.TargetPython3BasicTest):
@@ -657,6 +658,15 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       from typing import SupportsFloat
       def f(x: SupportsFloat): pass
       f("")  # wrong-arg-types
+    """)
+
+  @test_utils.skipBeforePy((3, 8), "__index__ support is new in 3.8")
+  def test_int_from_index(self):
+    self.Check("""
+      class Foo:
+        def __index__(self):
+          return 0
+      int(Foo())
     """)
 
 
