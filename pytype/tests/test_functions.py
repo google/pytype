@@ -994,5 +994,16 @@ class TestFunctions(test_base.TargetIndependentTest):
       def f() -> Dict[str, Any]: ...
     """)
 
+  def test_hashable(self):
+    self.Check("""
+      from typing import Hashable
+      def f(x):
+        # type: (Hashable) -> None
+        pass
+      def g():
+        pass
+      f(g)
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
