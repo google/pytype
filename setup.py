@@ -69,7 +69,7 @@ def get_typegraph_ext():
   return Extension(
     'pytype.typegraph.cfg',
     sources=[
-      "pytype/typegraph/cfg.cc"
+      "pytype/typegraph/cfg.cc",
       "pytype/typegraph/cfg_logging.cc",
       "pytype/typegraph/pylogging.cc",
       "pytype/typegraph/reachable.cc",
