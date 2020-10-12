@@ -53,6 +53,42 @@ def get_parser_ext():
   )
 
 
+def get_typegraph_ext():
+  """Generates the typegraph extension."""
+  if sys.platform == 'win32':
+    # At this time, windows requires no additional flags.
+    extra_compile_args = []
+    extra_link_args = []
+  elif sys.platform == 'darwin':
+    # clang on darwin requires some extra flags, which gcc does not support
+    extra_compile_args = ['-std=c++11', '-stdlib=libc++']
+    extra_link_args = ['-stdlib=libc++']
+  else:
+    extra_compile_args = ['-std=c++11']
+    extra_link_args = []
+  return Extension(
+    'pytype.typegraph.cfg',
+    sources=[
+      "pytype/typegraph/cfg.cc"
+      "pytype/typegraph/cfg_logging.cc",
+      "pytype/typegraph/pylogging.cc",
+      "pytype/typegraph/reachable.cc",
+      "pytype/typegraph/solver.cc",
+      "pytype/typegraph/typegraph.cc",
+    ],
+    depends=[
+      "pytype/typegraph/cfg_logging.h",
+      "pytype/typegraph/map_util.h",
+      "pytype/typegraph/memory_util.h",
+      "pytype/typegraph/pylogging.h",
+      "pytype/typegraph/reachable.h",
+      "pytype/typegraph/solver.h",
+      "pytype/typegraph/typegraph.h",
+    ],
+    extra_compile_args=extra_compile_args,
+    extra_link_args=extra_link_args,
+  )
+
 def copy_typeshed():
   """Windows install workaround: copy typeshed if the symlink doesn't work."""
   internal_typeshed = os.path.join(here, 'pytype', 'typeshed')
@@ -118,7 +154,7 @@ if build_utils:
 setup(
     long_description=get_long_description(),
     package_data={'pytype': get_data_files()},
-    ext_modules=[get_parser_ext()],
+    ext_modules=[get_parser_ext(), get_typegraph_ext()],
 )
 
 if build_utils:

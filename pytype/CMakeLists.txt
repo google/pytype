@@ -277,15 +277,17 @@ py_library(
       .utils
 )
 
-py_library(
-  NAME
-    cfg_py
-  SRCS
-    typegraph/cfg.py
-  DEPS
-    .debug
-    .metrics
-)
+# This library is disabled because cfg.py can conflict with the typegraph.cfg
+# extension module.
+# py_library(
+#   NAME
+#     cfg_py
+#   SRCS
+#     typegraph/cfg.py
+#   DEPS
+#     .debug
+#     .metrics
+# )
 
 py_library(
   NAME

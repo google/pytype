@@ -4,6 +4,7 @@
 attrs
 importlab
 ninja
+pybind11
 pylint
 pyyaml
 six
