@@ -669,5 +669,13 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       int(Foo())
     """)
 
+  def test_bytearray_compatible_with_bytes(self):
+    self.Check("""
+      def f(x):
+        # type: (bytes) -> None
+        pass
+      f(bytearray())
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

@@ -22,7 +22,10 @@ COMPAT_ITEMS = [
     ("None", "bool"),
     ("int", "float"),
     ("int", "complex"),
-    ("float", "complex")]
+    ("float", "complex"),
+    ("bytearray", "bytes"),
+    ("memoryview", "bytes"),
+]
 
 
 PEP484_CAPITALIZED = frozenset({
