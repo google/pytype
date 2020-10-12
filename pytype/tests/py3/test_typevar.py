@@ -209,15 +209,15 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
   def test_filter_value(self):
     _, errors = self.InferWithErrors("""
       from typing import TypeVar
-      T = TypeVar("T", int, float)
+      T = TypeVar("T", str, float)
       def f(x: T, y: T): ...
-      x = 3
+      x = ''
       x = 42.0
-      f(x, 3)  # wrong-arg-types[e]
+      f(x, '')  # wrong-arg-types[e]
       f(x, 42.0)  # ok
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"Expected.*y: float.*Actual.*y: int"})
+        errors, {"e": r"Expected.*y: float.*Actual.*y: str"})
 
   def test_filter_class(self):
     self.Check("""
