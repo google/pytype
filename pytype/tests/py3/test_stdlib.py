@@ -96,7 +96,7 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
 
   def test_collections_bytestring(self):
     self._testCollectionsObject("ByteString", "b'hello'", "42",
-                                r"ByteString.*int")
+                                r"Union\[bytearray, bytes, memoryview\].*int")
 
   def test_collections_collection(self):
     self._testCollectionsObject("Collection", "[]", "42", r"Collection.*int")
