@@ -595,6 +595,15 @@ class TypingTest(test_base.TargetPython3BasicTest):
       def g(x: Type[Union[Foo, Bar]]) -> Callable: ...
     """)
 
+  def test_bytestring(self):
+    self.Check("""
+      from typing import ByteString, Union
+      def f(x: Union[bytes, bytearray, memoryview]):
+        pass
+      x = None  # type: ByteString
+      f(x)
+    """)
+
 
 class CounterTest(test_base.TargetPython3BasicTest):
   """Tests for typing.Counter."""
