@@ -10,14 +10,9 @@
          * [get_special_attribute](#get_special_attribute)
          * [valself](#valself)
 
-<!-- Added by: rechen, at: 2020-10-03T02:13-07:00 -->
+<!-- Added by: rechen, at: 2020-10-12T17:27-07:00 -->
 
 <!--te-->
-
-<!-- TODO(rechen):
-* Do testing to verify that the `valself` section is accurate; it is based on
-  the docstring of `get_attribute`.
--->
 
 ## Introduction
 
