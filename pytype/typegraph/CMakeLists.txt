@@ -95,8 +95,8 @@ py_test(
 )
 
 pybind11_add_module(
-  # NAME
-    cfg
+  # NAME -- this must be the fully qualified name.
+    pytype.typegraph.cfg
   # Library type -- py_extensions are always SHARED.
     SHARED
   # SRCS
