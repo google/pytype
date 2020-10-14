@@ -10,8 +10,6 @@ import re
 import shutil
 import sys
 
-import pybind11
-
 from setuptools import setup, Extension  # pylint: disable=g-multiple-import
 
 # Path to directory containing setup.py
@@ -89,7 +87,7 @@ def get_typegraph_ext():
       "pytype/typegraph/typegraph.h",
     ],
     # Include the path to the pybind11 headers.
-    include_dirs=[pybind11.get_include()],
+    include_dirs=["../pybind11/include"],
     extra_compile_args=extra_compile_args,
     extra_link_args=extra_link_args,
   )
