@@ -160,7 +160,7 @@ setup(
     long_description=get_long_description(),
     package_data={'pytype': get_data_files()},
     ext_modules=[get_parser_ext(), get_typegraph_ext()],
-    setup_requires=['pybind11'],
+    setup_requires=['pybind11>=2.5.0'],
 )
 
 if build_utils:
