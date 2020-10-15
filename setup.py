@@ -52,6 +52,10 @@ def get_parser_ext():
       extra_link_args=extra_link_args
   )
 
+def get_pybind11_include():
+  # Because pybind11 is set in setup_requires, it can't be imported at the top of the file.
+  import pybind11
+  return pybind11.get_include()
 
 def get_typegraph_ext():
   """Generates the typegraph extension."""
@@ -85,6 +89,7 @@ def get_typegraph_ext():
       "pytype/typegraph/solver.h",
       "pytype/typegraph/typegraph.h",
     ],
+    include_dirs = [get_pybind11_include()],
     extra_compile_args=extra_compile_args,
     extra_link_args=extra_link_args,
   )
@@ -155,6 +160,7 @@ setup(
     long_description=get_long_description(),
     package_data={'pytype': get_data_files()},
     ext_modules=[get_parser_ext(), get_typegraph_ext()],
+    setup_requires=['pybind11'],
 )
 
 if build_utils:
