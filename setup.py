@@ -53,7 +53,8 @@ def get_parser_ext():
   )
 
 def get_pybind11_include():
-  # Because pybind11 is set in setup_requires, it can't be imported at the top of the file.
+  # Because pybind11 is set in setup_requires,
+  # it can't be imported at the top of the file.
   import pybind11
   return pybind11.get_include()
 
