@@ -1,4 +1,4 @@
 """Test import-as."""
 
-def f(a, b, c):
+def f(a, b, c, d, e):
     pass
