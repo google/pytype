@@ -56,6 +56,7 @@ def get_pybind11_include():
   # Because pybind11 is set in setup_requires,
   # it can't be imported at the top of the file.
   import pybind11
+  print(dir(pybind11))
   v = pybind11.version_info[:2]
   assert v == (2,6), "pybind11 version {} != 2.6".format(v)
   return pybind11.get_include()
