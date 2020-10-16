@@ -53,6 +53,18 @@ def get_parser_ext():
   )
 
 
+def get_pybind11_include():
+  try:
+    # pybind11 is guaranteed to be installed when setup.py runs,
+    # so it has to be imported late.
+    import pybind11
+    return pybind11.get_include()
+  except ModuleNotFoundError, AttributeError:
+    # Due to the submodule, pybind11 may not have get_include().
+    # Use the submodule's include instead.
+    return os.path.join(here, 'pybind11', 'include')
+
+
 def get_typegraph_ext():
   """Generates the typegraph extension."""
   if sys.platform == 'win32':
@@ -80,11 +92,15 @@ def get_typegraph_ext():
       "pytype/typegraph/cfg_logging.h",
       "pytype/typegraph/map_util.h",
       "pytype/typegraph/memory_util.h",
+      "pytype/typegraph/metrics.h",
       "pytype/typegraph/pylogging.h",
       "pytype/typegraph/reachable.h",
       "pytype/typegraph/solver.h",
       "pytype/typegraph/typegraph.h",
     ],
+    include_dirs=[
+      get_pybind11_include(),
+    ]
     extra_compile_args=extra_compile_args,
     extra_link_args=extra_link_args,
   )
