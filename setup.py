@@ -100,7 +100,7 @@ def get_typegraph_ext():
     ],
     include_dirs=[
       get_pybind11_include(),
-    ]
+    ],
     extra_compile_args=extra_compile_args,
     extra_link_args=extra_link_args,
   )
