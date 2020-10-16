@@ -205,6 +205,25 @@ class TestCheckDefaults(test_base.TargetPython3FeatureTest):
     self.assertErrorRegexes(errors, {"e1": r"Annotation: int.*Assignment: str",
                                      "e2": r"Annotation: str.*Assignment: int"})
 
+  def test_ellipsis(self):
+    self.CheckWithErrors("""
+      def f(x: int = ...):  # annotation-type-mismatch
+        return x
+    """)
+
+  def test_overload_ellipsis(self):
+    self.Check("""
+      from typing import overload
+
+      @overload
+      def f(x: int = ...): ...
+      @overload
+      def f(x: str = ...): ...
+
+      def f(x):
+        return x
+    """)
+
 
 class TestCheckParameterAssignment(test_base.TargetPython3BasicTest):
   """Tests for checking assignments to annotated parameters."""

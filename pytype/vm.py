@@ -652,8 +652,18 @@ class VirtualMachine:
         for name, value in e.bad_call.passed_args:
           if name != arg_name:
             continue
-          self.errorlog.annotation_type_mismatch(
-              self.frames, expected_type, value.to_binding(node), arg_name)
+          if value == self.convert.ellipsis:
+            # `...` should be a valid default parameter value for overloads.
+            # Unfortunately, the is_overload attribute is not yet set when
+            # _check_defaults runs, so we instead check that the method body is
+            # empty. As a side effect, `...` is allowed as a default value for
+            # any method that does nothing except return None.
+            should_report = not method.has_empty_body()
+          else:
+            should_report = True
+          if should_report:
+            self.errorlog.annotation_type_mismatch(
+                self.frames, expected_type, value.to_binding(node), arg_name)
           # Replace the bad default with Any so we can call match_args again to
           # find other type errors.
           try:

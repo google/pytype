@@ -3453,6 +3453,16 @@ class InterpreterFunction(SignedFunction):
   def is_coroutine(self):
     return self.code.has_coroutine() or self.code.has_iterable_coroutine()
 
+  def has_empty_body(self):
+    ops = self.code.co_code
+    if len(ops) != 2:
+      # This check isn't strictly necessary but prevents us from wastefully
+      # building a list of opcode names for a long method.
+      return False
+    if [op.name for op in ops] != ["LOAD_CONST", "RETURN_VALUE"]:
+      return False
+    return self.code.co_consts[ops[0].arg] is None
+
 
 class SimpleFunction(SignedFunction):
   """An abstract value representing a function with a particular signature.
