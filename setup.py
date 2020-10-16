@@ -10,18 +10,18 @@ import re
 import shutil
 import sys
 
-from setuptools import setup  # pylint: disable=g-multiple-import
+from setuptools import setup
 
 # Path to directory containing setup.py
 here = os.path.abspath(os.path.dirname(__file__))
 
 # Get the pybind11 setup helpers
+#
+# This is appended, so if already available in site-packages, that is used
+# instead
 sys.path.append(os.path.join(here, "pybind11"))
-try:
-    from pybind11.setup_helpers import Pybind11Extension
-except ImportError:
-    print("pybind11 missing, probably a source checkout without submodules?")
-    raise
+
+from pybind11.setup_helpers import Pybind11Extension  # pylint: disable=g-import-not-at-top
 
 del sys.path[-1]
 
