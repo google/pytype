@@ -59,7 +59,7 @@ def get_pybind11_include():
     import pybind11
     return pybind11.get_include()
   except AttributeError:
-    return os.join(here, "pybind11", "include")
+    return os.path.join(here, "pybind11", "include")
 
 def get_typegraph_ext():
   """Generates the typegraph extension."""
