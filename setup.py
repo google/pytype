@@ -21,9 +21,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 # instead
 sys.path.append(os.path.join(here, "pybind11"))
 
-from pybind11.setup_helpers import Pybind11Extension  # pylint: disable=g-import-not-at-top
-
-del sys.path[-1]
+from pybind11.setup_helpers import Pybind11Extension  # pylint: disable=g-import-not-at-top,wrong-import-position
 
 try:
   # The repository root is not on the pythonpath with PEP 517 builds
@@ -45,6 +43,8 @@ def get_parser_ext():
     # windows does not have unistd.h; lex/yacc needs this define.
     extra_compile_args.append('-DYY_NO_UNISTD_H')
 
+  # This is a setuptools.Extension, with an added include for pybind11, a few
+  # flags, and a cxx_std setting.
   return Pybind11Extension(
       'pytype.pyi.parser_ext',
       sources=[
