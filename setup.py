@@ -58,7 +58,7 @@ def get_pybind11_include():
   try:
     import pybind11
     return pybind11.get_include()
-  except AttributeError e:
+  except AttributeError:
     return os.join(here, "pybind11", "include")
 
 def get_typegraph_ext():
