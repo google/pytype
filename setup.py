@@ -55,12 +55,11 @@ def get_parser_ext():
 def get_pybind11_include():
   # Because pybind11 is set in setup_requires,
   # it can't be imported at the top of the file.
-  import pybind11
-  print(pybind11.__path__)
-  print(pybind11.__spec__)
-  v = pybind11.version_info[:2]
-  assert v == (2,6), "pybind11 version {} != 2.6".format(v)
-  return pybind11.get_include()
+  try:
+    import pybind11
+    return pybind11.get_include()
+  except AttributeError e:
+    return os.join(here, "pybind11", "include")
 
 def get_typegraph_ext():
   """Generates the typegraph extension."""
