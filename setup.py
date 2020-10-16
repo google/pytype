@@ -59,7 +59,7 @@ def get_pybind11_include():
     # so it has to be imported late.
     import pybind11
     return pybind11.get_include()
-  except ModuleNotFoundError, AttributeError:
+  except (ModuleNotFoundError, AttributeError):
     # Due to the submodule, pybind11 may not have get_include().
     # Use the submodule's include instead.
     return os.path.join(here, 'pybind11', 'include')
