@@ -10,10 +10,18 @@ import re
 import shutil
 import sys
 
-from setuptools import setup, Extension  # pylint: disable=g-multiple-import
+from setuptools import setup
 
 # Path to directory containing setup.py
 here = os.path.abspath(os.path.dirname(__file__))
+
+# Get the pybind11 setup helpers
+#
+# This is appended, so if already available in site-packages, that is used
+# instead
+sys.path.append(os.path.join(here, "pybind11"))
+
+from pybind11.setup_helpers import Pybind11Extension  # pylint: disable=g-import-not-at-top,wrong-import-position
 
 try:
   # The repository root is not on the pythonpath with PEP 517 builds
@@ -29,44 +37,29 @@ except ImportError:
 
 def get_parser_ext():
   """Get the parser extension."""
+  extra_compile_args = []
   # We need some platform-dependent compile args for the C extensions.
   if sys.platform == 'win32':
     # windows does not have unistd.h; lex/yacc needs this define.
-    extra_compile_args = ['-DYY_NO_UNISTD_H']
-    extra_link_args = []
-  elif sys.platform == 'darwin':
-    # clang on darwin requires some extra flags, which gcc does not support
-    extra_compile_args = ['-std=c++11', '-stdlib=libc++']
-    extra_link_args = ['-stdlib=libc++']
-  else:
-    extra_compile_args = ['-std=c++11']
-    extra_link_args = []
-  return Extension(
+    extra_compile_args.append('-DYY_NO_UNISTD_H')
+
+  # This is a setuptools.Extension, with an added include for pybind11, a few
+  # flags, and a cxx_std setting.
+  return Pybind11Extension(
       'pytype.pyi.parser_ext',
       sources=[
           'pytype/pyi/parser_ext.cc',
           'pytype/pyi/lexer.lex.cc',
           'pytype/pyi/parser.tab.cc',
       ],
+      cxx_std=11,
       extra_compile_args=extra_compile_args,
-      extra_link_args=extra_link_args
   )
 
 
 def get_typegraph_ext():
   """Generates the typegraph extension."""
-  if sys.platform == 'win32':
-    # At this time, windows requires no additional flags.
-    extra_compile_args = []
-    extra_link_args = []
-  elif sys.platform == 'darwin':
-    # clang on darwin requires some extra flags, which gcc does not support
-    extra_compile_args = ['-std=c++11', '-stdlib=libc++']
-    extra_link_args = ['-stdlib=libc++']
-  else:
-    extra_compile_args = ['-std=c++11']
-    extra_link_args = []
-  return Extension(
+  return Pybind11Extension(
     'pytype.typegraph.cfg',
     sources=[
       "pytype/typegraph/cfg.cc",
@@ -85,8 +78,7 @@ def get_typegraph_ext():
       "pytype/typegraph/solver.h",
       "pytype/typegraph/typegraph.h",
     ],
-    extra_compile_args=extra_compile_args,
-    extra_link_args=extra_link_args,
+    cxx_std=11,
   )
 
 def copy_typeshed():
