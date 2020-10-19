@@ -1,9 +1,9 @@
 from typing import (
     AbstractSet, Any, AnyStr, BinaryIO, Callable, Dict, FrozenSet, Generator,
     Generic, ItemsView, Iterable, Iterator, KeysView, List, Mapping,
-    MutableSequence, Optional, Reversible, Sequence, Set, Sized, SupportsAbs,
-    SupportsComplex, SupportsFloat, SupportsInt, Text, Tuple, Type, Union,
-    ValuesView)
+    MutableSequence, Optional, Protocol, Reversible, Sequence, Set, Sized,
+    SupportsAbs, SupportsComplex, SupportsFloat, SupportsInt, Text, Tuple, Type,
+    Union, ValuesView)
 
 # "_T", "_K", and "_V" are hardcoded in abstract.py
 _T = TypeVar('_T')
@@ -659,6 +659,11 @@ class bool(int, SupportsInt, SupportsFloat):
     def bit_length(self) -> int: ...
     def conjugate(self, *args, **kwargs) -> int: ...
 
+# This class does not exist at runtime; it is here to help describe the types
+# int accepts.
+class _SupportsTrunc(Protocol):
+    def __trunc__(self) -> int: ...
+
 class int(SupportsInt, SupportsFloat, SupportsAbs[int]):
     __slots__ = []
     denominator = ...  # type: int
@@ -666,7 +671,7 @@ class int(SupportsInt, SupportsFloat, SupportsAbs[int]):
     real = ... # type: int
     imag = ... # type: int
     def __init__(self) -> NoneType: ...
-    def __init__(self, x: Union[int, float, str, unicode, SupportsInt]) -> NoneType: ...
+    def __init__(self, x: Union[int, float, str, unicode, SupportsInt, _SupportsTrunc]) -> NoneType: ...
     def __init__(self, x: Union[str, unicode], base: int) -> NoneType: ...
     def __add__(self, y: int) -> int: ...
     def __add__(self, y: float) -> float: ...

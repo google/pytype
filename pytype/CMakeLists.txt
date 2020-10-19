@@ -660,6 +660,18 @@ py_test(
     .pytd
 )
 
+py_test(
+  NAME
+    typegraph_metrics_test
+  SRCS
+    typegraph_metrics_test.py
+  DEPS
+    .config
+    .libvm
+    pytype.typegraph.cfg
+    pytype.tests.test_base
+)
+
 add_subdirectory(overlays)
 add_subdirectory(pyc)
 add_subdirectory(pyi)

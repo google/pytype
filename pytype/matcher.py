@@ -418,6 +418,9 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       elif _is_callback_protocol(other_type):
         return self._match_type_against_callback_protocol(
             left, other_type, subst, node, view)
+      elif left.cls:
+        return self._match_type_against_type(
+            abstract.Instance(left.cls, self.vm), other_type, subst, node, view)
       else:
         return None
     elif isinstance(left, dataclass_overlay.FieldInstance) and left.default:
@@ -961,7 +964,11 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
   def _enforce_single_type(self, var, node):
     """Enforce that the variable contains only one concrete type."""
     concrete_values, classes = self._get_concrete_values_and_classes(var)
-    if len(set(classes)) > 1:
+    class_names = {c.full_name for c in classes}
+    for compat_name, name in _COMPATIBLE_BUILTINS:
+      if {compat_name, name} <= class_names:
+        class_names.remove(compat_name)
+    if len(class_names) > 1:
       # We require all occurrences to be of the same type, no subtyping allowed.
       return None
     if concrete_values and len(concrete_values) < len(var.data):

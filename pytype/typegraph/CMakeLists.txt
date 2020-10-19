@@ -94,15 +94,18 @@ py_test(
     pytype.cfg_utils
 )
 
-py_extension(
-  NAME
-    cfg
-  SRCS
+pybind11_add_module(
+  # NAME -- this must be the fully qualified name.
+    pytype.typegraph.cfg
+  # Library type -- py_extensions are always SHARED.
+    SHARED
+  # SRCS
     cfg.cc
     cfg_logging.cc
     cfg_logging.h
     map_util.h
     memory_util.h
+    metrics.h
     pylogging.cc
     pylogging.h
     reachable.cc
@@ -111,4 +114,14 @@ py_extension(
     solver.h
     typegraph.cc
     typegraph.h
+)
+
+# pybind11_add_module changes the name of the output library, which makes
+# pytype unable to discover it.
+set_target_properties(
+    pytype.typegraph.cfg
+    PROPERTIES
+    PREFIX ""
+    SUFFIX ".so"
+    OUTPUT_NAME cfg
 )
