@@ -798,9 +798,9 @@ class Pyi(collections.namedtuple('Pyi', 'imports assignments funcs')):
 
   @classmethod
   def _parse_import_alias(cls, leaves):
-    assert [leaf.type for leaf in leaves] == [token.NAME] * 3
-    assert leaves[1].value == 'as'
-    return (leaves[0].value, leaves[2].value)
+    assert leaves[-2].value == 'as'
+    name = ''.join(leaf.value for leaf in leaves[:-2])
+    return (name, leaves[-1].value)
 
   @classmethod
   def parse_top_import(cls, results):
@@ -819,6 +819,9 @@ class Pyi(collections.namedtuple('Pyi', 'imports assignments funcs')):
 
     'import pkg as pkg2' gives
     (('pkg', 'pkg2'), [])
+
+    'import pkg.a as b' gives
+    (('pkg.a', 'b'), [])
 
     Args:
       results: The values from import_pattern.
