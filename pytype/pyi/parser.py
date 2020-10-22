@@ -464,6 +464,9 @@ class _Parser:
     assert not aliases  # We handle top-level aliases in add_alias_or_constant.
     constants.extend(self._constants)
 
+    if self._ast_name == "__builtin__":
+      constants.extend(_builtin_keyword_constants())
+
     generated_classes = sum(self._generated_classes.values(), [])
 
     classes = generated_classes + classes
@@ -1674,3 +1677,14 @@ def _handle_string_literal(value):
   if not match:
     return value
   return match.groups()[1][1:-1]
+
+
+def _builtin_keyword_constants():
+  defs = [
+      ("True", "bool"),
+      ("False", "bool"),
+      ("None", "NoneType"),
+      ("__debug__", "bool")
+  ]
+  return [pytd.Constant(name, pytd.NamedType(typ)) for name, typ in defs]
+
