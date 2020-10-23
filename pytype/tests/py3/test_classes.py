@@ -210,6 +210,21 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for classes."""
 
+  def test_class_starargs(self):
+    ty = self.Infer("""
+      class Foo: pass
+      class Bar: pass
+      bases = (Foo, Bar)
+      class Baz(*bases): pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Tuple, Type
+      bases: Tuple[Type[Foo], Type[Bar]]
+      class Foo: ...
+      class Bar: ...
+      class Baz(Foo, Bar): ...
+    """)
+
   def test_class_kwargs(self):
     ty = self.Infer("""
       # x, y are passed to type() or the metaclass. We currently ignore them.
@@ -226,6 +241,14 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
         @abc.abstractmethod
         def foo(self) -> int:
           return None
+    """)
+
+  def test_class_starargs_with_metaclass(self):
+    self.Check("""
+      class Foo: pass
+      class Bar: pass
+      bases = (Foo, Bar)
+      class Baz(*bases, metaclass=type): pass
     """)
 
   def test_build_class_quick(self):
