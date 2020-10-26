@@ -44,3 +44,11 @@ class Baz(
         ['bar', 'baz',
          'quux'])
 ): pass
+
+
+#- @Quux defines/binding ClassQuux
+#- ClassQuux.node/kind class
+class Quux: pass
+
+def f():
+  global Quux
