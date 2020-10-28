@@ -10,6 +10,7 @@
 
 #include "cfg_logging.h"
 #include "map_util.h"
+#include "metrics.h"
 #include "typegraph.h"
 
 namespace devtools_python_typegraph {
@@ -253,7 +254,16 @@ QueryResult PathFinder::FindNodeBackwards(
 }  // namespace internal
 
 Solver::Solver(const Program* program)
-    : solved_states_(new internal::StateMap), program_(program) {}
+    : solved_states_(new internal::StateMap),
+      state_cache_hits_(0),
+      state_cache_misses_(0),
+      program_(program) {}
+
+SolverMetrics Solver::CalculateMetrics() const {
+  auto cm = CacheMetrics(solved_states_->size(), state_cache_hits_,
+                         state_cache_misses_);
+  return SolverMetrics(std::vector<QueryMetrics>(query_metrics_), cm);
+}
 
 bool Solver::GoalsConflict(const internal::GoalSet& goals) const {
   std::unordered_map<const Variable*, const Binding*> variables;
@@ -275,6 +285,14 @@ bool Solver::FindSolution(const internal::State& state, int current_depth) {
   std::string indent(current_depth, ' ');
   LOG(INFO) << indent << "I'm at <" << state.pos()->id() << "> "
             << state.pos()->name();
+  query_metrics_.back().add_visited_node();
+  // By setting the end node early, we ensure that end_node indicates the last
+  // node visited by the query.
+  query_metrics_.back().set_end_node(state.pos()->id());
+  // As of now, the total number of bindings considered by a query is the sum
+  // of all sets of bindings. This is because deduping the sets of bindings is
+  // expensive and not currently worthwhile.
+  query_metrics_.back().add_bindings(state.goals().size());
   for (const Binding* goal : state.goals()) {
     LOG(INFO) << indent << "Goal: " << goal->variable()->id() << " = "
               << goal->data();
@@ -335,11 +353,13 @@ bool Solver::FindSolution(const internal::State& state, int current_depth) {
       LOG(INFO) << indent << "New pos: <" << new_pos->id() << "> "
                 << new_pos->name();
       internal::State new_state(new_pos, result.new_goals);
-      if (RecallOrFindSolution(new_state, current_depth))
+      if (RecallOrFindSolution(new_state, current_depth)) {
         return true;
+      }
     }
     current_depth -= 1;
   }
+
   return false;
 }
 
@@ -352,7 +372,7 @@ bool Solver::CanHaveSolution(
   attr.reserve(1);
   for (const Binding* goal : start_attrs) {
     attr.push_back(goal);
-    if (!Solve(attr, start_node))
+    if (!Solve_(attr, start_node))
       return false;
     attr.clear();
   }
@@ -364,6 +384,8 @@ bool Solver::RecallOrFindSolution(const internal::State& state,
                                   int current_depth) {
   const bool* status = map_util::FindOrNull(*solved_states_, state);
   if (status) {
+    state_cache_hits_ += 1;
+    query_metrics_.back().set_from_cache(true);
     std::string indent(current_depth, ' ');
     if (*status) {
       LOG(INFO) << indent << "Known state: solveable.";
@@ -371,6 +393,8 @@ bool Solver::RecallOrFindSolution(const internal::State& state,
       LOG(INFO) << indent << "Known state: not solvable.";
     }
     return *status;
+  } else {
+    state_cache_misses_ += 1;
   }
 
   // To prevent infinite loops, we insert this state into the hashmap as a
@@ -384,16 +408,24 @@ bool Solver::RecallOrFindSolution(const internal::State& state,
   return result;
 }
 
-// "Main method" of the solver.
-bool Solver::Solve(const std::vector<const Binding*>& start_attrs,
+// Helper for Solve to separate out query setup.
+bool Solver::Solve_(const std::vector<const Binding*>& start_attrs,
                    const CFGNode* start_node) {
   // If there's multiple bindings, check that they're all possible before trying
   // to solve for all of them.
   if (start_attrs.size() > 1 && !CanHaveSolution(start_attrs, start_node)) {
+    query_metrics_.back().set_shortcircuited(true);
     return false;
   }
   internal::State state(start_node, start_attrs);
   return RecallOrFindSolution(state, 0);
+}
+
+// "Main method" of the solver.
+bool Solver::Solve(const std::vector<const Binding*>& start_attrs,
+                   const CFGNode* start_node) {
+  query_metrics_.push_back(QueryMetrics(start_node->id(), start_attrs.size()));
+  return Solve_(start_attrs, start_node);
 }
 
 }  // namespace devtools_python_typegraph

@@ -56,7 +56,12 @@ Solver* Program::GetSolver() {
   return solver_.get();
 }
 
-void Program::InvalidateSolver() { solver_.reset(); }
+void Program::InvalidateSolver() {
+  if (solver_) {
+    solver_metrics_.push_back(solver_->CalculateMetrics());
+  }
+  solver_.reset();
+}
 
 bool Program::is_reachable(const CFGNode* src, const CFGNode* dst) {
   return backward_reachability_->is_reachable(dst->id(), src->id());
@@ -83,8 +88,14 @@ Metrics Program::CalculateMetrics() {
     variable_metrics.push_back(VariableMetrics(var->size(), node_ids));
   }
 
-  // TODO(tsudol): Track solver metrics.
-  std::vector<SolverMetrics> solver_metrics;
+  std::vector<SolverMetrics> solver_metrics(solver_metrics_);
+  // If there's a live Solver, grab its metrics.
+  // But since CalculateMetrics may be called to snapshot the current metrics,
+  // don't modify solver_metrics_. Doing so would cause the live Solver to have
+  // two entries in solver_metrics_.
+  if (solver_) {
+    solver_metrics.push_back(solver_->CalculateMetrics());
+  }
 
   // TODO(tsudol): Track reachability cache metrics.
   auto reachability_metrics =

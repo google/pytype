@@ -50,6 +50,12 @@ class VariableMetrics {
   const std::vector<NodeID> node_ids_;
 };
 
+/* QueryMetrics stores metrics for a single Solver query.
+ * A "query" is a call to Solver::Solve. Large queries are broken into small
+ * sub-queries, and the QueryMetrics for a large query will include all the
+ * metrics of the sub-queries. If a single sub-query evaluates to false, then
+ * the whole query evaluates to false; this is called "shortcircuiting".
+ */
 class QueryMetrics {
  public:
   QueryMetrics(size_t nodes_visited, NodeID start, NodeID end,
@@ -63,27 +69,44 @@ class QueryMetrics {
         shortcircuited_(shortcircuited),
         from_cache_(from_cache) {}
 
+  // A constructor for creating QueryMetrics that will be filled in later.
+  QueryMetrics(NodeID start, size_t initial_binding_count)
+      : nodes_visited_(0),
+        start_node_(start),
+        end_node_(start),
+        initial_binding_count_(initial_binding_count),
+        total_binding_count_(0),
+        shortcircuited_(false),
+        from_cache_(false) {}
+
   ~QueryMetrics() {}
 
   size_t nodes_visited() const { return nodes_visited_; }
+  void add_visited_node() { nodes_visited_ += 1; }
 
   NodeID start_node() const { return start_node_; }
 
   NodeID end_node() const { return end_node_; }
+  void set_end_node(NodeID node) { end_node_ = node; }
 
   size_t initial_binding_count() const { return initial_binding_count_; }
 
   size_t total_binding_count() const { return total_binding_count_; }
+  void add_bindings(size_t delta) { total_binding_count_ += delta; }
 
   bool shortcircuited() const { return shortcircuited_; }
+  void set_shortcircuited(bool status) { shortcircuited_ = status; }
 
   bool from_cache() const { return from_cache_; }
+  void set_from_cache(bool status) { from_cache_ = status; }
 
  private:
   size_t nodes_visited_;
   NodeID start_node_;
   NodeID end_node_;
   size_t initial_binding_count_;
+  // Note that the total_binding_count_ is the sum of all sets of goals that
+  // the solver considers when solving a query. Deduplication is expensive.
   size_t total_binding_count_;
   bool shortcircuited_;
   bool from_cache_;
@@ -111,7 +134,7 @@ class CacheMetrics {
 class SolverMetrics {
  public:
   SolverMetrics(std::vector<QueryMetrics> query_metrics,
-                std::vector<CacheMetrics> cache_metrics)
+                CacheMetrics cache_metrics)
       : query_metrics_(query_metrics), cache_metrics_(cache_metrics) {}
 
   ~SolverMetrics() {}
@@ -120,13 +143,13 @@ class SolverMetrics {
     return query_metrics_;
   }
 
-  const std::vector<CacheMetrics> cache_metrics() const {
+  const CacheMetrics cache_metrics() const {
     return cache_metrics_;
   }
 
  private:
   const std::vector<QueryMetrics> query_metrics_;
-  const std::vector<CacheMetrics> cache_metrics_;
+  const CacheMetrics cache_metrics_;
 };
 
 class Metrics {

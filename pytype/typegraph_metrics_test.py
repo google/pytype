@@ -34,8 +34,9 @@ class MetricsTest(test_base.BaseTest):
     self.assertGreater(metrics.binding_count, 0)
     self.assertNotEmpty(metrics.cfg_node_metrics)
     self.assertNotEmpty(metrics.variable_metrics)
-    # TODO(tsudol): Need to implement solver and reachability metrics.
-    # self.assertNotEmpty(metrics.solver_metrics)
+    self.assertNotEmpty(metrics.solver_metrics)
+    self.assertNotEmpty(metrics.solver_metrics[0].query_metrics)
+    # TODO(tsudol): Need to implement reachability metrics.
     self.assertGreater(metrics.reachability_metrics.total_size, 0)
 
 

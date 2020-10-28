@@ -120,6 +120,7 @@ class Program {
   std::vector<std::unique_ptr<CFGNode>> cfg_nodes_;
   std::vector<std::unique_ptr<Variable>> variables_;
   std::unique_ptr<Solver> solver_;
+  std::vector<SolverMetrics> solver_metrics_;
   BindingData default_data_;
 };
 

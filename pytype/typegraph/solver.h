@@ -30,6 +30,7 @@
 
 #include "typegraph.h"
 #include "map_util.h"
+#include "metrics.h"
 
 namespace devtools_python_typegraph {
 
@@ -204,6 +205,8 @@ class Solver {
   bool Solve(const std::vector<const Binding*>& start_attrs,
              const CFGNode* start_node);
 
+  SolverMetrics CalculateMetrics () const;
+
  private:
   // Do a quick (one DFS run) sanity check of whether a solution might exist.
   bool CanHaveSolution(const std::vector<const Binding*>& start_attrs,
@@ -216,7 +219,17 @@ class Solver {
   // Are the given Bindings conflicting?
   bool GoalsConflict(const internal::GoalSet& goals) const;
 
+  // Helper for Solve, allowing the public Solve to be purely the external API.
+  // This makes gathering query metrics easier, for example.
+  bool Solve_(const std::vector<const Binding*>& start_attrs,
+             const CFGNode* start_node);
+
   const std::unique_ptr<internal::StateMap> solved_states_;
+  size_t state_cache_hits_;
+  size_t state_cache_misses_;
+
+  std::vector<QueryMetrics> query_metrics_;
+
   const Program* program_;
   internal::PathFinder path_finder_;
 };
