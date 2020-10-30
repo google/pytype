@@ -97,12 +97,8 @@ Metrics Program::CalculateMetrics() {
     solver_metrics.push_back(solver_->CalculateMetrics());
   }
 
-  // TODO(tsudol): Track reachability cache metrics.
-  auto reachability_metrics =
-      CacheMetrics(backward_reachability_->size(), 0, 0);
-
   return Metrics(binding_count, cfg_node_metrics, variable_metrics,
-                 solver_metrics, reachability_metrics);
+                 solver_metrics);
 }
 
 CFGNode::CFGNode(Program* program, const std::string& name, size_t id,

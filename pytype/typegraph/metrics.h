@@ -156,13 +156,11 @@ class Metrics {
  public:
   Metrics(size_t binding_count, std::vector<NodeMetrics> cfg_node_metrics,
           std::vector<VariableMetrics> variable_metrics,
-          std::vector<SolverMetrics> solver_metrics,
-          CacheMetrics reachability_metrics)
+          std::vector<SolverMetrics> solver_metrics)
       : binding_count_(binding_count),
         cfg_node_metrics_(cfg_node_metrics),
         variable_metrics_(variable_metrics),
-        solver_metrics_(solver_metrics),
-        reachability_metrics_(reachability_metrics) {}
+        solver_metrics_(solver_metrics) {}
 
   ~Metrics() {}
 
@@ -180,16 +178,11 @@ class Metrics {
     return solver_metrics_;
   }
 
-  CacheMetrics reachability_metrics() const {
-    return reachability_metrics_;
-  }
-
  private:
   size_t binding_count_;
   const std::vector<NodeMetrics> cfg_node_metrics_;
   const std::vector<VariableMetrics> variable_metrics_;
   const std::vector<SolverMetrics> solver_metrics_;
-  CacheMetrics reachability_metrics_;
 };
 
 }  // namespace devtools_python_typegraph

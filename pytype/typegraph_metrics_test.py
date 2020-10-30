@@ -36,8 +36,6 @@ class MetricsTest(test_base.BaseTest):
     self.assertNotEmpty(metrics.variable_metrics)
     self.assertNotEmpty(metrics.solver_metrics)
     self.assertNotEmpty(metrics.solver_metrics[0].query_metrics)
-    # TODO(tsudol): Need to implement reachability metrics.
-    self.assertGreater(metrics.reachability_metrics.total_size, 0)
 
 
 test_base.main(globals(), __name__ == "__main__")
