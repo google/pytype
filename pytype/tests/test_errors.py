@@ -888,7 +888,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         import foo
         foo.f(foo.X())  # wrong-arg-types[e]
       """, pythonpath=[d.path])
-      self.assertErrorRegexes(errors, {"e": r"`X`"})
+      self.assertErrorRegexes(errors, {"e": r"foo.X"})
 
   def test_bad_annotation(self):
     _, errors = self.InferWithErrors("""
