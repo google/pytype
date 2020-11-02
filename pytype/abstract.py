@@ -25,6 +25,7 @@ from pytype import function
 from pytype import mixin
 from pytype import utils
 from pytype.pyc import opcodes
+from pytype.pytd import escape
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -3972,7 +3973,7 @@ class Unknown(AtomicAbstractValue):
   IGNORED_ATTRIBUTES = ["__get__", "__set__", "__getattribute__"]
 
   def __init__(self, vm):
-    name = "~unknown%d" % Unknown._current_id
+    name = escape.unknown(Unknown._current_id)
     super().__init__(name, vm)
     self.members = datatypes.MonitorDict()
     self.owner = None

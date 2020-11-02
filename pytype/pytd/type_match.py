@@ -14,6 +14,7 @@ import logging
 
 from pytype import utils
 from pytype.pytd import booleq
+from pytype.pytd import escape
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
@@ -22,42 +23,18 @@ from pytype.pytd.parse import node
 log = logging.getLogger(__name__)
 
 
+is_complete = escape.is_complete
+
+
 # Might not be needed anymore once pytd has builtin support for ~unknown.
 def is_unknown(t):
   """Return True if this is an ~unknown."""
   if isinstance(t, (pytd.ClassType, pytd.NamedType, pytd.Class, StrictType)):
-    return t.name.startswith("~unknown")
+    return escape.is_unknown(t.name)
   elif isinstance(t, str):
-    return t.startswith("~unknown")
+    return escape.is_unknown(t)
   else:
     return False
-
-
-# Might not be needed anymore once pytd has Interface types.
-def is_complete(cls):
-  """Return True if this class is complete."""
-  # Incomplete classes are marked with "~". E.g. "class ~int".
-  if isinstance(cls, str):
-    return not cls.startswith("~")
-  else:
-    return not cls.name.startswith("~")
-
-
-def is_partial(cls):
-  """Returns True if this is a partial class, e.g. "~list"."""
-  if isinstance(cls, str):
-    return cls.startswith("~")
-  elif hasattr(cls, "name"):
-    return cls.name.startswith("~")
-  else:
-    return False
-
-
-def unpack_name_of_partial(name):
-  """Convert e.g. "~int" to "int"."""
-  assert isinstance(name, str)
-  assert name.startswith("~")
-  return name.lstrip("~").replace("~", ".")
 
 
 def get_all_subclasses(asts):

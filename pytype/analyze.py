@@ -16,6 +16,7 @@ from pytype import special_builtins
 from pytype import state as frame_state
 from pytype import vm
 from pytype.overlays import typing_overlay
+from pytype.pytd import escape
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -555,12 +556,8 @@ class CallTracer(vm.VirtualMachine):
   def _is_builtin(self, name, data):
     return self._builtin_map.get(name) == data
 
-  def _pack_name(self, name):
-    """Pack a name, for unpacking with type_match.unpack_name_of_partial()."""
-    return "~" + name.replace(".", "~")
-
   def pytd_functions_for_call_traces(self):
-    return self._call_traces_to_function(self._calls, self._pack_name)
+    return self._call_traces_to_function(self._calls, escape.pack_partial)
 
   def pytd_classes_for_call_traces(self):
     class_to_records = collections.defaultdict(list)
@@ -577,7 +574,7 @@ class CallTracer(vm.VirtualMachine):
     for cls, call_records in class_to_records.items():
       full_name = cls.module + "." + cls.name if cls.module else cls.name
       classes.append(pytd.Class(
-          name=self._pack_name(full_name),
+          name=escape.pack_partial(full_name),
           metaclass=None,
           parents=(pytd.NamedType("__builtin__.object"),),  # not used in solver
           methods=tuple(self._call_traces_to_function(call_records)),
@@ -605,7 +602,7 @@ class CallTracer(vm.VirtualMachine):
     ty = ty.Visit(optimize.CombineReturnsAndExceptions())
     ty = ty.Visit(optimize.PullInMethodClasses())
     ty = ty.Visit(visitors.DefaceUnresolved(
-        [ty, self.loader.concat_all()], "~unknown"))
+        [ty, self.loader.concat_all()], escape.UNKNOWN))
     return ty.Visit(visitors.AdjustTypeParameters())
 
   def _check_return(self, node, actual, formal):
