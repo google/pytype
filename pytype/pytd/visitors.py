@@ -11,6 +11,7 @@ import re
 from pytype import datatypes
 from pytype import module_utils
 from pytype import utils
+from pytype.pytd import escape
 from pytype.pytd import mro
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -770,20 +771,20 @@ class RemoveUnknownClasses(Visitor):
     self.parameter = None
 
   def VisitClassType(self, t):
-    if t.name.startswith("~unknown"):
+    if escape.is_unknown(t.name):
       return pytd.AnythingType()
     else:
       return t
 
   def VisitNamedType(self, t):
-    if t.name.startswith("~unknown"):
+    if escape.is_unknown(t.name):
       return pytd.AnythingType()
     else:
       return t
 
   def VisitTypeDeclUnit(self, u):
     return u.Replace(classes=tuple(
-        cls for cls in u.classes if not cls.name.startswith("~unknown")))
+        cls for cls in u.classes if not escape.is_unknown(cls.name)))
 
 
 class _CountUnknowns(Visitor):
@@ -795,7 +796,7 @@ class _CountUnknowns(Visitor):
     self.position = {}
 
   def EnterNamedType(self, t):
-    _, is_unknown, suffix = t.name.partition("~unknown")
+    _, is_unknown, suffix = t.name.partition(escape.UNKNOWN)
     if is_unknown:
       if suffix not in self.counter:
         # Also record the order in which we see the ~unknowns
@@ -844,9 +845,6 @@ class CreateTypeParametersForSignatures(Visitor):
     self.class_name = None
     self.function_name = None
 
-  def _IsIncomplete(self, name):
-    return name and name.startswith("~")
-
   def EnterClass(self, node):
     self.class_name = node.name
 
@@ -891,8 +889,8 @@ class CreateTypeParametersForSignatures(Visitor):
 
   def VisitSignature(self, sig):
     """Potentially replace ~unknowns with type parameters, in a signature."""
-    if (self._IsIncomplete(self.class_name) or
-        self._IsIncomplete(self.function_name)):
+    if (escape.is_partial(self.class_name) or
+        escape.is_partial(self.function_name)):
       # Leave unknown classes and call traces as-is, they'll never be part of
       # the output.
       return sig
@@ -905,7 +903,8 @@ class CreateTypeParametersForSignatures(Visitor):
         # way, e.g. "def f(Dict[T, T])" works, too.
         type_param = pytd.TypeParameter(
             self.PREFIX + str(counter.position[suffix]))
-        replacements["~unknown"+suffix] = type_param
+        key = escape.UNKNOWN + suffix
+        replacements[key] = type_param
     if self._NeedsClassParam(sig):
       type_param = pytd.TypeParameter(
           self.PREFIX + self.class_name, bound=pytd.NamedType(self.class_name))
@@ -940,11 +939,11 @@ class RaiseIfContainsUnknown(Visitor):
   # COV_NF_END
 
   def EnterClassType(self, t):
-    if t.name.startswith("~unknown"):
+    if escape.is_unknown(t.name):
       raise RaiseIfContainsUnknown.HasUnknown()
 
   def EnterClass(self, cls):
-    if cls.name.startswith("~unknown"):
+    if escape.is_unknown(cls.name):
       raise RaiseIfContainsUnknown.HasUnknown()
 
 

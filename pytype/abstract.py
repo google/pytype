@@ -25,6 +25,7 @@ from pytype import function
 from pytype import mixin
 from pytype import utils
 from pytype.pyc import opcodes
+from pytype.pytd import escape
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -3876,6 +3877,7 @@ class BuildClass(AtomicAbstractValue):
     super().__init__("__build_class__", vm)
 
   def call(self, node, _, args, alias_map=None):
+    args = args.simplify(node, self.vm)
     funcvar, name = args.posargs[0:2]
     if isinstance(args.namedargs, dict):
       kwargs = args.namedargs
@@ -3971,7 +3973,7 @@ class Unknown(AtomicAbstractValue):
   IGNORED_ATTRIBUTES = ["__get__", "__set__", "__getattribute__"]
 
   def __init__(self, vm):
-    name = "~unknown%d" % Unknown._current_id
+    name = escape.unknown(Unknown._current_id)
     super().__init__(name, vm)
     self.members = datatypes.MonitorDict()
     self.owner = None

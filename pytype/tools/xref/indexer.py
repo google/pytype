@@ -687,14 +687,17 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
           ("STORE_NAME", class_name),
           # Classes defined within a function generate a STORE_FAST op.
           ("STORE_FAST", class_name),
+          # A class being declared global anywhere generates a STORE_GLOBAL op.
+          ("STORE_GLOBAL", class_name),
       ])
       # pytype sometimes analyses this twice, leading to duplicate opcode
       # traces. We only want the first two in the list.
       if (len(ops) >= 2 and
           ops[0][0] == "LOAD_BUILD_CLASS" and
-          ops[1][0] in ("STORE_NAME", "STORE_FAST")):
+          ops[1][0] in ("STORE_NAME", "STORE_FAST", "STORE_GLOBAL")):
         _, _, data = ops[1]
         d = _unwrap(data)
+
     assert d, "Did not get pytype data for class %s" % class_name
     defn = self.add_local_def(node, data=data,
                               doc=DocString.from_node(self._ast, node))

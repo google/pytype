@@ -260,7 +260,7 @@ class NamedtupleTests(test_base.TargetIndependentTest):
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
-        v = ...  # type: foo.`namedtuple-X-0`
+        v = ...  # type: foo.namedtuple_X_0
         a = ...  # type: str
         b = ...  # type: int
       """)

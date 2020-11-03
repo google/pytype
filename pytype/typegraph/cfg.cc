@@ -1565,9 +1565,7 @@ PYBIND11_MODULE(cfg, m) {
       .def_property_readonly("variable_metrics",
                              &typegraph::Metrics::variable_metrics)
       .def_property_readonly("solver_metrics",
-                             &typegraph::Metrics::solver_metrics)
-      .def_property_readonly("reachability_metrics",
-                             &typegraph::Metrics::reachability_metrics);
+                             &typegraph::Metrics::solver_metrics);
 
   PyType_Ready(&PyProgram);
   PyType_Ready(&PyCFGNode);

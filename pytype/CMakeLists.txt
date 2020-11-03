@@ -368,6 +368,7 @@ py_library(
   SRCS
     pytd/abc_hierarchy.py
     pytd/booleq.py
+    pytd/escape.py
     pytd/mro.py
     pytd/optimize.py
     pytd/pep484.py

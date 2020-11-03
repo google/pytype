@@ -475,5 +475,160 @@ TEST(SolverTest, TestStrict) {
               testing::UnorderedElementsAre(AsDataType(&a)));
 }
 
+TEST(SolverTest, TestMetricsBasic) {
+  // Are metrics gathered correctly? Check with a very basic query.
+  Program p;
+  auto n1 = p.NewCFGNode("n1");
+  std::string a("a");
+  auto x = p.NewVariable();
+  auto xa = AddBinding(x, &a, n1, {});
+
+  auto solver = p.GetSolver();
+  EXPECT_TRUE(solver->Solve({xa}, n1));
+
+  auto metrics = solver->CalculateMetrics();
+  // There should have been only one query.
+  EXPECT_EQ(metrics.query_metrics().size(), 1);
+
+  auto qm = metrics.query_metrics().front();
+  // The query is resolved at n1, the only node in the CFG.
+  EXPECT_EQ(qm.nodes_visited(), 1);
+  // n1 is both the first and last node that the query visits.
+  EXPECT_EQ(qm.start_node(), n1->id());
+  EXPECT_EQ(qm.end_node(), n1->id());
+  // Because xa has no source set, it can be solved by itself with no additional
+  // bindings needed.
+  EXPECT_EQ(qm.initial_binding_count(), 1);
+  EXPECT_EQ(qm.total_binding_count(), 1);
+  // It's the first query and has only one binding, so it by definition can't be
+  // shortcircuited or solved from the cache.
+  EXPECT_FALSE(qm.shortcircuited());
+  EXPECT_FALSE(qm.from_cache());
+}
+
+TEST(SolverTest, TestMetricsCache) {
+  Program p;
+  auto n0 = p.NewCFGNode("n0");
+  auto n1 = n0->ConnectNew("n1");
+  auto n2 = n1->ConnectNew("n2");
+
+  std::string a("a"), b("b");
+
+  // At the root, x = "a"
+  auto x = p.NewVariable();
+  auto xa = AddBinding(x, &a, n0, {});
+
+  auto solver = p.GetSolver();
+  EXPECT_TRUE(solver->Solve({xa}, n0));
+  EXPECT_TRUE(solver->Solve({xa}, n1));
+  EXPECT_TRUE(solver->Solve({xa}, n2));
+
+  auto metrics = solver->CalculateMetrics();
+
+  auto cm = metrics.cache_metrics();
+  // There are three cache entries, one from each query.
+  EXPECT_EQ(cm.total_size(), 3);
+  // The second and third queries hit the cache.
+  EXPECT_EQ(cm.hits(), 2);
+  // Since each query adds a cache entry, they all must miss the cache first.
+  EXPECT_EQ(cm.misses(), 3);
+
+  auto qm = metrics.query_metrics();
+  EXPECT_FALSE(qm[0].from_cache());
+  EXPECT_EQ(qm[0].end_node(), n0->id());
+
+  EXPECT_TRUE(qm[1].from_cache());
+  EXPECT_EQ(qm[1].end_node(), n1->id());
+
+  EXPECT_TRUE(qm[2].from_cache());
+  EXPECT_EQ(qm[2].end_node(), n2->id());
+
+  // Adding a new binding will invalidate the solver and destroy the cache.
+  auto y = p.NewVariable();
+  auto yb = AddBinding(y, &b, n2, {});
+
+  // Seed the cache.
+  solver = p.GetSolver();
+  EXPECT_TRUE(solver->Solve({xa}, n1));
+  // Since xa is bound at n0, the previous query adds 2 entries to the cache.
+  EXPECT_EQ(solver->CalculateMetrics().cache_metrics().total_size(), 2);
+
+  EXPECT_TRUE(solver->Solve({xa, yb}, n2));
+  auto m2 = solver->CalculateMetrics();
+  auto cm2 = metrics.cache_metrics();
+  EXPECT_EQ(cm2.total_size(), 3);
+  // Because there are >1 initial bindings, the Solver performs a short-circuit
+  // check. This hits the cache. The query isn't shortcircuited, so the cache is
+  // hit a second time during regular evaluation.
+  EXPECT_EQ(cm2.hits(), 2);
+  EXPECT_EQ(cm2.misses(), 3);
+
+  auto xy_qm = m2.query_metrics().back();
+  // from_cache is set if any part of the query is answered by the cache.
+  EXPECT_TRUE(xy_qm.from_cache());
+  EXPECT_FALSE(xy_qm.shortcircuited());
+  // Shortcircuiting adds 2, then evaluating adds another 2.
+  EXPECT_EQ(xy_qm.total_binding_count(), 4);
+  // xa is set on n0, but the cache means we can answer the query at n2.
+  EXPECT_EQ(xy_qm.end_node(), n2->id());
+}
+
+TEST(SolverTest, TestMetricsShortcircuit) {
+  Program p;
+  auto root = p.NewCFGNode("root");
+  auto left = root->ConnectNew("left");
+  auto right = root->ConnectNew("right");
+
+  std::string a("a");
+  auto la = AddBinding(p.NewVariable(), &a, left, {});
+  auto ra = AddBinding(p.NewVariable(), &a, right, {});
+
+  auto solver = p.GetSolver();
+  EXPECT_FALSE(solver->Solve({ra, la}, right));
+
+  auto metrics = solver->CalculateMetrics();
+
+  auto cm = metrics.cache_metrics();
+  EXPECT_EQ(cm.total_size(), 2);
+  EXPECT_EQ(cm.hits(), 0);
+  EXPECT_EQ(cm.misses(), 2);
+
+  auto qm = metrics.query_metrics().back();
+  EXPECT_TRUE(qm.shortcircuited());
+  // During shortcircuiting, the solver tries to solve ({la}, right).
+  // But there's no path from right to la's origin, left, so the solver returns
+  // false without leaving right.
+  EXPECT_EQ(qm.end_node(), right->id());
+  EXPECT_FALSE(qm.from_cache());
+}
+
+TEST(SolverTest, TestMetricsContradiction) {
+  Program p;
+  auto root = p.NewCFGNode("root");
+  auto left = root->ConnectNew("left");
+  auto right = root->ConnectNew("right");
+  auto bottom = left->ConnectNew("bottom");
+  right->ConnectTo(bottom);
+
+  std::string a("a"), b("b");
+
+  auto ra = AddBinding(p.NewVariable(), &a, root, {});
+  auto fa = AddBinding(p.NewVariable(), &a, left, {ra});
+  auto fb = AddBinding(p.NewVariable(), &b, right, {});
+
+  auto y = p.NewVariable();
+  auto ya = AddBinding(y, &a, bottom, {fa});
+  AddBinding(y, &b, bottom, {fb});
+
+  auto solver = p.GetSolver();
+  // This query won't be shortcircuited, but will fail.
+  EXPECT_FALSE(solver->Solve({ya, fb}, bottom));
+
+  auto qm = solver->CalculateMetrics().query_metrics().back();
+  EXPECT_EQ(qm.start_node(), bottom->id());
+  EXPECT_FALSE(qm.shortcircuited());
+  EXPECT_FALSE(qm.from_cache());
+}
+
 }  // namespace
 }  // namespace devtools_python_typegraph

@@ -4,6 +4,7 @@ import itertools
 import logging
 
 from pytype.pytd import booleq
+from pytype.pytd import escape
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -18,8 +19,8 @@ log = logging.getLogger(__name__)
 MAX_DEPTH = 1
 
 is_unknown = type_match.is_unknown
-is_partial = type_match.is_partial
-is_complete = type_match.is_complete
+is_partial = escape.is_partial
+is_complete = escape.is_complete
 
 
 class FlawedQuery(Exception):  # pylint: disable=g-bad-exception-name
@@ -104,7 +105,7 @@ class TypeSolver:
       else:
         faulty_signature = ""
       raise FlawedQuery("Bad call\n%s%s\nagainst:\n%s" % (
-          type_match.unpack_name_of_partial(call_record.name),
+          escape.unpack_partial(call_record.name),
           faulty_signature, pytd_utils.Print(complete)))
     solver.always_true(formula)
 
@@ -150,7 +151,7 @@ class TypeSolver:
     # also solve partial equations
     for complete in complete_classes.union(self.builtins.classes):
       for partial in partial_classes:
-        if type_match.unpack_name_of_partial(partial.name) == complete.name:
+        if escape.unpack_partial(partial.name) == complete.name:
           self.match_partial_against_complete(
               factory_partial, solver_partial, partial, complete)
 
@@ -163,7 +164,7 @@ class TypeSolver:
         complete_functions.add(f)
     for partial in partial_functions:
       for complete in complete_functions.union(self.builtins.functions):
-        if type_match.unpack_name_of_partial(partial.name) == complete.name:
+        if escape.unpack_partial(partial.name) == complete.name:
           self.match_call_record(
               factory_partial, solver_partial, partial, complete)
 
