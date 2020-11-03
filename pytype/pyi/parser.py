@@ -1687,4 +1687,3 @@ def _builtin_keyword_constants():
       ("__debug__", "bool")
   ]
   return [pytd.Constant(name, pytd.NamedType(typ)) for name, typ in defs]
-
