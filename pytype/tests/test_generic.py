@@ -89,9 +89,10 @@ class GenericTest(test_base.TargetIndependentTest):
             return foo()[0]
         """, pythonpath=[d1.path, d2.path])
         self.assertTypesMatchPytd(ty, """
+          from typing import Union
           b = ...  # type: module
           def foo() -> b.B
-          def bar() -> int or str
+          def bar() -> Union[int, str]
         """)
 
   def test_specialized_partial(self):
@@ -161,21 +162,22 @@ class GenericTest(test_base.TargetIndependentTest):
           return x[0]
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Union
         a = ...  # type: module
         def foo() -> a.A[nothing]
         def bar() -> int
-        def baz() -> int or str
+        def baz() -> Union[int, str]
       """)
 
   def test_type_parameter_renaming_chain(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
-        from typing import List, Set, TypeVar
+        from typing import List, Set, TypeVar, Union
         A = TypeVar("A")
         B = TypeVar("B")
         class Foo(List[A]):
           def foo(self) -> None:
-            self = Foo[A or complex]
+            self = Foo[Union[A, complex]]
         class Bar(Foo[B], Set[B]):
           def bar(self) -> B
       """)
@@ -189,8 +191,9 @@ class GenericTest(test_base.TargetIndependentTest):
           return x.bar()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Union
         a = ...  # type: module
-        def f() -> int or float or complex or str
+        def f() -> Union[int, float, complex, str]
       """)
 
   def test_type_parameter_renaming_conflict1(self):
@@ -306,11 +309,11 @@ class GenericTest(test_base.TargetIndependentTest):
       """)
       with file_utils.Tempdir() as d2:
         d2.create_file("b.pyi", """
-          from typing import Generic
+          from typing import Generic, Union
           from a import T
           class A(Generic[T]):
             def __init__(self, x: T) -> None:
-              self = A[int or T]
+              self = A[Union[int, T]]
             def a(self) -> T
         """)
         ty = self.Infer("""
@@ -321,9 +324,10 @@ class GenericTest(test_base.TargetIndependentTest):
             return b.A(3.14).a()
         """, pythonpath=[d1.path, d2.path])
         self.assertTypesMatchPytd(ty, """
+          from typing import Union
           b = ...  # type: module
-          def f() -> b.A[int or str]
-          def g() -> int or float
+          def f() -> b.A[Union[int, str]]
+          def g() -> Union[int, float]
         """)
 
   def test_type_parameter_conflict(self):
@@ -391,8 +395,8 @@ class GenericTest(test_base.TargetIndependentTest):
   def test_union(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
-        from typing import List
-        class A(List[int or str]): pass
+        from typing import List, Union
+        class A(List[Union[int, str]]): pass
       """)
       ty = self.Infer("""
         import a
@@ -402,9 +406,10 @@ class GenericTest(test_base.TargetIndependentTest):
           return f()[0]
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Union
         a = ...  # type: module
         def f() -> a.A
-        def g() -> int or str
+        def g() -> Union[int, str]
       """)
 
   def test_multiple_templates(self):
@@ -490,8 +495,9 @@ class GenericTest(test_base.TargetIndependentTest):
           return a.A().f()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Union
         a = ...  # type: module
-        def f() -> str or unicode
+        def f() -> Union[str, unicode]
       """)
 
   def test_prevent_infinite_loop_on_type_param_collision(self):
@@ -644,9 +650,9 @@ class GenericTest(test_base.TargetIndependentTest):
           return a.A([42]).x
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Any
+        from typing import Any, Union
         a = ...  # type: module
-        def f() -> int or float
+        def f() -> Union[int, float]
         def g() -> int
       """)
 
@@ -734,12 +740,12 @@ class GenericTest(test_base.TargetIndependentTest):
           return B([42]).x
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Any, TypeVar
+        from typing import Any, TypeVar, Union
         a = ...  # type: module
         T = TypeVar("T")
         class B(a.A[T]):
-          x = ...  # type: int or float
-        def f() -> int or float
+          x = ...  # type: Union[int, float]
+        def f() -> Union[int, float]
         def g() -> int
       """)
 
@@ -787,9 +793,10 @@ class GenericTest(test_base.TargetIndependentTest):
             return inst.x
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Union
         a = ...  # type: module
-        def f(x) -> int or float
-        def g(x) -> None or int
+        def f(x) -> Union[int, float]
+        def g(x) -> Union[None, int]
       """)
 
   def test_instance_attribute_method(self):
@@ -883,10 +890,10 @@ class GenericTest(test_base.TargetIndependentTest):
   def test_type_parameter_union(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        from typing import List, TypeVar
+        from typing import List, TypeVar, Union
         K = TypeVar("K")
         V = TypeVar("V")
-        class Foo(List[K or V]):
+        class Foo(List[Union[K, V]]):
           def __init__(self):
             self = Foo[int, str]
       """)
@@ -895,8 +902,9 @@ class GenericTest(test_base.TargetIndependentTest):
         v = list(foo.Foo())
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Union
         foo = ...  # type: module
-        v = ...  # type: list[int or str]
+        v = ...  # type: list[Union[int, str]]
       """)
 
   def test_type_parameter_subclass(self):
@@ -981,8 +989,9 @@ class GenericTest(test_base.TargetIndependentTest):
         v = foo.make_A().v
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Union
         foo = ...  # type: module
-        v = ...  # type: int or float
+        v = ...  # type: Union[int, float]
       """)
 
   def test_bounded_type_parameter(self):

@@ -534,10 +534,10 @@ class ImportTest(test_base.TargetIndependentTest):
         return x.read()
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, Union
       StringIO = ...  # type: module
-      def my_foo(x:StringIO.StringIO[object] or typing.IO[object] or
-                   typing.BinaryIO or typing.TextIO) -> Any
+      def my_foo(x: Union[StringIO.StringIO[object], typing.IO[object],
+                          typing.BinaryIO, typing.TextIO]) -> Any
     """)
 
   def test_import_builtins(self):

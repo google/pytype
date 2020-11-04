@@ -15,12 +15,12 @@ class TupleTest(test_base.TargetPython27FeatureTest):
       r = [x for x in Foo()]  # Py 2 leaks 'x'
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import List, Tuple
+      from typing import List, Tuple, Union
       class Foo(object):
         mytuple = ...  # type: Tuple[int, str, complex]
-        def __getitem__(self, pos: int) -> int or str or complex
-      x = ...  # type: int or str or complex
-      r = ...  # type: List[int or str or complex]
+        def __getitem__(self, pos: int) -> Union[int, str, complex]
+      x = ...  # type: Union[int, str, complex]
+      r = ...  # type: List[Union[int, str, complex]]
     """)
 
 

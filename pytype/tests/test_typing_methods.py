@@ -134,12 +134,12 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Iterator, List, Sequence, Tuple, Union
         foo = ...  # type: module
-        seq = ...  # type: Sequence[str] or Tuple[str]
+        seq = ...  # type: Union[Sequence[str], Tuple[str]]
         a = ...  # type: str
         b = ...  # type: int
         c = ...  # type: int
         d = ...  # type: bool
-        e = ...  # type: Iterator[str] or tupleiterator[str]
+        e = ...  # type: Union[Iterator[str], tupleiterator[str]]
         f = ...  # type: reversed[str]
       """)
 
@@ -168,13 +168,13 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
         from typing import Iterator, List, Sequence, Union
         foo = ...  # type: module
         # TODO(b/159065400): Should be List[Union[int, str]]
-        seq = ...  # type: list or typing.MutableSequence[Union[int, str]]
+        seq = ...  # type: Union[list, typing.MutableSequence[Union[int, str]]]
         a = ...  # type: None
         b = ...  # type: None
         c = ...  # type: None
         d = ...  # type: None
-        e = ...  # type: int or str
-        f = ...  # type: int or str
+        e = ...  # type: Union[int, str]
+        f = ...  # type: Union[int, str]
         g = ...  # type: None
       """)
 

@@ -41,7 +41,8 @@ class GeneratorTest(test_base.TargetIndependentTest):
         return next((i for i in [1,2,3]), None)
     """)
     self.assertTypesMatchPytd(ty, """
-      def f() -> int or NoneType
+      from typing import Union
+      def f() -> Union[int, NoneType]
     """)
 
   def test_iter_match(self):

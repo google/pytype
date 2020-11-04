@@ -224,12 +224,13 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       c, d, e = x
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      x = ...  # type: list[int or str]
+      from typing import List, Union
+      x = ...  # type: List[Union[int, str]]
       a = ...  # type: int
       b = ...  # type: str
-      c = ...  # type: int or str
-      d = ...  # type: int or str
-      e = ...  # type: int or str
+      c = ...  # type: Union[int, str]
+      d = ...  # type: Union[int, str]
+      e = ...  # type: Union[int, str]
     """)
 
   def test_bytearray_setitem(self):

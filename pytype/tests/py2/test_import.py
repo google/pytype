@@ -16,11 +16,11 @@ class ImportTest(test_base.TargetPython27FeatureTest):
       p = os.__package__
       """)
     self.assertTypesMatchPytd(ty, """
-       from typing import Optional
+       from typing import Optional, Union
        os = ...  # type: module
        f = ...  # type: str
        n = ...  # type: str
-       d = ...  # type: str or unicode
+       d = ...  # type: Union[str, unicode]
        p = ...  # type: Optional[str]
     """)
 

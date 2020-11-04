@@ -109,10 +109,10 @@ class MatchTest(test_base.TargetIndependentTest):
   def test_callable_union_return(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        from typing import Callable, TypeVar
+        from typing import Callable, TypeVar, Union
         T1 = TypeVar("T1")
         T2 = TypeVar("T2")
-        def foo(func: Callable[[], T1]) -> T1 or T2: ...
+        def foo(func: Callable[[], T1]) -> Union[T1, T2]: ...
       """)
       self.Check("""
         import foo

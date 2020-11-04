@@ -62,9 +62,9 @@ class RemoveRedundantSignatures(visitors.Visitor):
 
   For example, this transforms
     def f(x: int) -> float
-    def f(x: int or float) -> float
+    def f(x: Union[int, float]) -> float
   to
-    def f(x: int or float) -> float
+    def f(x: Union[int, float]) -> float
   In order to be removed, a signature has to be "contained" (a subclass of)
   an existing one.
   """
@@ -111,13 +111,13 @@ class SimplifyUnions(visitors.Visitor):
   """Remove duplicate or redundant entries in union types.
 
   For example, this transforms
-    a: int or int
-    b: int or Any
-    c: int or (int or float)
+    a: Union[int, int]
+    b: Union[int, Any]
+    c: Union[int, int, float]
   to
     a: int
     b: Any
-    c: int or float
+    c: Union[int, float]
   """
 
   def VisitUnionType(self, union):
@@ -159,7 +159,7 @@ class CombineReturnsAndExceptions(visitors.Visitor):
     def f(x: int) -> int:
       raise IndexError()
   to
-    def f(x: int) -> float or int:
+    def f(x: int) -> Union[float, int]:
       raise IndexError()
       raise OverflowError()
   """
@@ -216,9 +216,9 @@ class CombineContainers(visitors.Visitor):
   """Change unions of containers to containers of unions.
 
   For example, this transforms
-    list[int] or list[float]
+    Union[list[int], list[float]]
   to
-    list[int or float]
+    list[Union[int, float]]
   .
   """
 
@@ -333,7 +333,7 @@ class Factorize(visitors.Visitor):
     def f(x: float, y: int)
     def f(x: float, y: float)
   to
-    def f(x: int or float, y: int or float)
+    def f(x: Union[int, float], y: Union[int, float])
   """
 
   def _GroupByOmittedArg(self, signatures, i):
@@ -542,7 +542,7 @@ class SimplifyUnionsWithSuperclasses(visitors.Visitor):
   """Simplify Unions with superclasses.
 
   E.g., this changes
-    int or bool
+    Union[int, bool]
   to
     int
   since bool is a subclass of int.
@@ -572,7 +572,7 @@ class FindCommonSuperClasses(visitors.Visitor):
   """Find common super classes. Optionally also uses abstract base classes.
 
   E.g., this changes
-    def f(x: list or tuple, y: frozenset or set) -> int or float
+    def f(x: Union[list, tuple], y: Union[frozenset, set]) -> Union[int, float]
   to
     def f(x: Sequence, y: Set) -> Real
   """
@@ -586,7 +586,7 @@ class FindCommonSuperClasses(visitors.Visitor):
 
     This is a lossy optimization that tries to map a list of types to a common
     base type. For example, int and bool are both base classes of int, so it
-    would convert "int or bool" to "int".
+    would convert "Union[int, bool]" to "int".
 
     Arguments:
       union: A union type.
@@ -837,11 +837,11 @@ class AbsorbMutableParameters(visitors.Visitor):
 
   For example, this will change
     def f(x: list[int]):
-      x = list[int or float]
+      x = list[Union[int, float]]
   to
-    def f(x: list[int] or list[int or float])
+    def f(x: Union[list[int], list[Union[int, float]])
   .
-  (Use optimize.CombineContainers to then change x to list[int or float].)
+  (Use optimize.CombineContainers to then change x to list[Union[int, float]].)
 
   This also works for methods - it will then potentially change the type of
   "self". The resulting AST is temporary and needs careful handling.
@@ -914,7 +914,7 @@ class MergeTypeParameters(TypeParameterScope):
 
   For example, this will change
     class A(typing.Generic(T)):
-      def append(self, T or T2) -> T2
+      def append(self, Union[T, T2]) -> T2
   to
     class A(typing.Generic(T)):
       def append(self, T) -> T
@@ -925,12 +925,12 @@ class MergeTypeParameters(TypeParameterScope):
   MergeTypeParameters transforms
     class list(typing.Generic(T)):
       def append(self, v: T2) -> NoneType:
-        self = T or T2
+        self = Union[T, T2]
   to
     class list(typing.Generic(T')):
       def append(self, V:T') -> NoneType
   by creating a *new* template variable T' that propagates the
-  mutations to the outermost level (in this example, T' = T or T2)
+  mutations to the outermost level (in this example, T' = Union[T, T2])
   """
 
   def __init__(self):
@@ -1026,7 +1026,7 @@ def Optimize(node,
     builtins: Definitions of all of the external types in node.
     lossy: Allow optimizations that change the meaning of the pytd.
     use_abcs: Use abstract base classes to represent unions like
-        e.g. "float or int" as "Real".
+        e.g. "Union[float, int]" as "Real".
     max_union: How many types we allow in a union before we simplify
         it to just "object".
     remove_mutable: Whether to simplify mutable parameters to normal

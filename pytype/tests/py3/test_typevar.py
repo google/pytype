@@ -149,12 +149,12 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       u = f(__any_object__)  # ok
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, TypeVar
+      from typing import Any, TypeVar, Union
       T = TypeVar("T", int, float)
       def f(x: T) -> T: ...
       v = ...  # type: Any
       w = ...  # type: bool
-      u = ...  # type: int or float
+      u = ...  # type: Union[int, float]
     """)
     self.assertErrorRegexes(errors, {"e": r"Union\[float, int\].*str"})
 

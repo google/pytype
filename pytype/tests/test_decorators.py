@@ -204,9 +204,9 @@ class DecoratorsTest(test_base.TargetIndependentTest):
             return [42]
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import List
+      from typing import List, Union
       class Foo(object):
-        name = ...  # type: int or List[int]
+        name = ...  # type: Union[int, List[int]]
     """)
 
   def test_overwrite_property_type(self):

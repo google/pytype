@@ -22,8 +22,9 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
           return foo.f(x, y)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Union
         foo = ...  # type: module
-        def f(x, y: int or str) -> list
+        def f(x, y: Union[int, str]) -> list
       """)
 
   def test_unknown_single_signature(self):
@@ -60,8 +61,9 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
           return foo.f(x)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Union
         foo = ...  # type: module
-        def f(x: int or str) -> float or bool
+        def f(x: Union[int, str]) -> Union[float, bool]
       """)
 
   def test_multiple_signatures_with_optional_arg(self):
@@ -77,8 +79,9 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
           return foo.f(x)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Union
         foo = ...  # type: module
-        def f(x: str) -> int or float
+        def f(x: str) -> Union[int, float]
       """)
 
   def test_multiple_signatures_with_kwarg(self):
@@ -94,8 +97,9 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
           return foo.f(y=x)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Union
         foo = ...  # type: module
-        def f(x: int or str) -> bool or float
+        def f(x: Union[int, str]) -> Union[bool, float]
       """)
 
   def test_pow2(self):
@@ -107,7 +111,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
         return pow(x, y)
     """)
     self.assertTypesMatchPytd(ty, """
-      def t_testPow2(x: complex or float or int, y: complex or float or int) -> complex or float or int
+      from typing import Union
+      def t_testPow2(x: Union[complex, float, int], y: Union[complex, float, int]) -> Union[complex, float, int]
     """)
 
   @test_base.skip("Moving to protocols.")
@@ -121,8 +126,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
         return lines
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import List
-      def trim(docstring: bytearray or str or unicode) -> List[bytearray or str or unicode, ...]
+      from typing import List, Union
+      def trim(docstring: Union[bytearray, str, unicode]) -> List[Union[bytearray, str, unicode], ...]
     """)
 
   def test_match_unknown_against_container(self):

@@ -69,12 +69,12 @@ class PytdVisitorsTest(parser_test_base.ParserTest):
 
   def test_canonical_ordering_visitor(self):
     src1 = """
-      from typing import Any, TypeVar
+      from typing import Any, TypeVar, Union
       def f() -> Any:
         raise MemoryError()
         raise IOError()
       def f(x: list[a]) -> Any
-      def f(x: list[b or c]) -> Any
+      def f(x: list[Union[b, c]]) -> Any
       def f(x: list[tuple[d]]) -> Any
       A = TypeVar("A")
       C = TypeVar("C")
@@ -83,13 +83,13 @@ class PytdVisitorsTest(parser_test_base.ParserTest):
       def f(d: A, c: B, b: C, a: D) -> Any
     """
     src2 = """
-      from typing import Any
+      from typing import Any, Union
       def f() -> Any:
         raise IOError()
         raise MemoryError()
       def f(x: list[tuple[d]]) -> Any
       def f(x: list[a]) -> Any
-      def f(x: list[b or c]) -> Any
+      def f(x: list[Union[b, c]]) -> Any
       A = TypeVar("A")
       C = TypeVar("C")
       B = TypeVar("B")

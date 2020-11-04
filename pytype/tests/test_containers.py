@@ -170,10 +170,10 @@ class ContainerTest(test_base.TargetIndependentTest):
       l.append(x)
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, List
-      x = ...  # type: int or float
+      from typing import Any, List, Union
+      x = ...  # type: Union[int, float]
       y = ...  # type: Any
-      l = ...  # type: List[int or float, ...]
+      l = ...  # type: List[Union[int, float], ...]
     """)
 
   def test_list_concat_unlike(self):
@@ -263,8 +263,8 @@ class ContainerTest(test_base.TargetIndependentTest):
       d.update({"a": 1}, b=2j)
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import Dict
-      d = ...  # type: Dict[str, int or complex]
+      from typing import Dict, Union
+      d = ...  # type: Dict[str, Union[int, complex]]
     """)
 
   def test_ambiguous_dict_update(self):
@@ -273,8 +273,8 @@ class ContainerTest(test_base.TargetIndependentTest):
       d.update({"a": 1} if __random__ else {"b": 2j}, c=3.0)
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, Dict
-      d = ...  # type: Dict[str, int or float or complex]
+      from typing import Any, Dict, Union
+      d = ...  # type: Dict[str, Union[int, float, complex]]
     """)
 
   def test_for_iter(self):
@@ -426,7 +426,8 @@ class ContainerTest(test_base.TargetIndependentTest):
           return 3j
     """)
     self.assertTypesMatchPytd(ty, """
-      def f(x) -> bool or complex
+      from typing import Union
+      def f(x) -> Union[bool, complex]
     """)
 
   def test_empty_type_param_as_arg(self):
@@ -469,9 +470,9 @@ class ContainerTest(test_base.TargetIndependentTest):
       y = divmod(x, x)
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Tuple
-      x = ...  # type: float or int
-      y = ...  # type: Tuple[float or int, float or int]
+      from typing import Tuple, Union
+      x = ...  # type: Union[float, int]
+      y = ...  # type: Tuple[Union[float, int], Union[float, int]]
     """)
 
   def test_maybe_any(self):
@@ -593,8 +594,8 @@ class ContainerTest(test_base.TargetIndependentTest):
           return oldest
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, Dict
-      cache = ...  # type: Dict[str, Dict[nothing, nothing] or list]
+      from typing import Any, Dict, Union
+      cache = ...  # type: Dict[str, Union[Dict[nothing, nothing], list]]
       def read(path) -> Any
     """)
 

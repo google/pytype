@@ -345,8 +345,9 @@ class TestAttributes(test_base.TargetIndependentTest):
           self.a = 3j
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Union
       class A(object):
-        a = ...  # type: complex or int
+        a = ...  # type: Union[complex, int]
         def method1(self) -> NoneType
         def method2(self) -> NoneType
     """)
@@ -361,8 +362,9 @@ class TestAttributes(test_base.TargetIndependentTest):
         A().a = 3j
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Union
       class A(object):
-        a = ...  # type: complex or int
+        a = ...  # type: Union[complex, int]
       def f1() -> NoneType
       def f2() -> NoneType
     """)

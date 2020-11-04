@@ -15,11 +15,11 @@ class TupleTest(test_base.TargetIndependentTest):
       v4 = t[-1]
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Tuple
+      from typing import Tuple, Union
       t = ...   # type: Tuple[str, int]
       v1 = ...  # type: str
       v2 = ...  # type: int
-      v3 = ...  # type: str or int
+      v3 = ...  # type: Union[str, int]
       v4 = ...  # type: int
     """)
 
@@ -68,12 +68,12 @@ class TupleTest(test_base.TargetIndependentTest):
       b, c, d = tup  # bad-unpacking[e2]
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Tuple
+      from typing import Tuple, Union
       tup = ...  # type: Tuple[int, str]
-      a = ...  # type: int or str
-      b = ...  # type: int or str
-      c = ...  # type: int or str
-      d = ...  # type: int or str
+      a = ...  # type: Union[int, str]
+      b = ...  # type: Union[int, str]
+      c = ...  # type: Union[int, str]
+      d = ...  # type: Union[int, str]
     """)
     self.assertErrorRegexes(
         errors, {"e1": r"2 values.*1 variable", "e2": r"2 values.*3 variables"})

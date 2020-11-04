@@ -93,9 +93,10 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
           foo = property(fget=foo.Foo.get_foo)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Union
         foo = ...  # type: module
         class Bar(foo.Foo):
-          foo = ...  # type: str or int
+          foo = ...  # type: Union[str, int]
       """)
 
   def test_callable_if_splitting(self):

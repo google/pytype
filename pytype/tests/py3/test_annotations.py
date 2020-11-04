@@ -873,9 +873,9 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       v = f({"a": "b"})
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import Dict
-      def f(x: Dict[str, str]) -> Dict[str or bool, str or int]: ...
-      v = ...  # type: Dict[str or bool, str or int]
+      from typing import Dict, Union
+      def f(x: Dict[str, str]) -> Dict[Union[str, bool], Union[str, int]]: ...
+      v = ...  # type: Dict[Union[str, bool], Union[str, int]]
     """)
 
   def test_inner_string_annotation(self):

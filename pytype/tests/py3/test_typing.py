@@ -299,10 +299,10 @@ class TypingTest(test_base.TargetPython3BasicTest):
       v2 = f(__any_object__, 42, "hello world")
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, Callable, TypeVar
+      from typing import Any, Callable, TypeVar, Union
       T = TypeVar("T")
       def f(g: Callable[[T, T], T], y, z): ...
-      v1 = ...  # type: int or float
+      v1 = ...  # type: Union[int, float]
       v2 = ...  # type: Any
     """)
     self.assertErrorRegexes(errors, {"e": r"int.*str"})
@@ -667,11 +667,12 @@ class TypingTestPython3Feature(test_base.TargetPython3FeatureTest):
         z = foo.f()[2]  # out of bounds, fall back to the combined element type
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Union
         foo: module
         w: str
         x: int
         y: str
-        z: int or str
+        z: Union[int, str]
       """)
 
   def test_import_all(self):

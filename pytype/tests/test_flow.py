@@ -19,7 +19,8 @@ class FlowTest(test_base.TargetIndependentTest):
         x = 3.1
     """, deep=False, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
-      x = ...  # type: int or float
+      from typing import Union
+      x = ...  # type: Union[int, float]
     """)
 
   def test_exception(self):

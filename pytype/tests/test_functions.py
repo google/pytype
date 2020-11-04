@@ -507,9 +507,9 @@ class TestFunctions(test_base.TargetIndependentTest):
           return foo.f(x, "")
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Any
+        from typing import Any, Union
         foo = ...  # type: module
-        # TODO(rechen): def f(x: str or List[str]) -> List[str]
+        # TODO(rechen): def f(x: Union[str, List[str]]) -> List[str]
         def f(x) -> list
       """)
 
@@ -535,10 +535,10 @@ class TestFunctions(test_base.TargetIndependentTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Any, List, MutableSequence
         foo = ...  # type: module
-        # TODO(rechen): def f(x: unicode or List[unicode]) -> bool
+        # TODO(rechen): def f(x: Union[unicode, List[unicode]]) -> bool
         def f(x) -> Any
         def g(x) -> list
-        # TODO(rechen): def h(x: buffer or bytearray or unicode) -> List[buffer or bytearray or unicode]
+        # TODO(rechen): def h(x: Union[buffer, bytearray, unicode]) -> List[Union[buffer, bytearray, unicode]]
         def h(x) -> list
       """)
 
@@ -700,8 +700,9 @@ class TestFunctions(test_base.TargetIndependentTest):
         v1, v2 = foo.f(42j)
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Union
         foo = ...  # type: module
-        v1 = ...  # type: str or complex
+        v1 = ...  # type: Union[str, complex]
         v2 = ...  # type: int
       """)
 
@@ -889,16 +890,18 @@ class TestFunctions(test_base.TargetIndependentTest):
   def test_preserve_return_union(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        def f(x: int) -> int or str
-        def f(x: float) -> int or str
+        from typing import Union
+        def f(x: int) -> Union[int, str]
+        def f(x: float) -> Union[int, str]
       """)
       ty = self.Infer("""
         import foo
         v = foo.f(__any_object__)
       """, pythonpath=[d.path])
     self.assertTypesMatchPytd(ty, """
+      from typing import Union
       foo = ...  # type: module
-      v = ...  # type: int or str
+      v = ...  # type: Union[int, str]
     """)
 
   def test_call_with_varargs_and_kwargs(self):

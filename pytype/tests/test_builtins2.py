@@ -335,12 +335,12 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       x5 = sum([[1], ["2"]], [])
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import List
+      from typing import List, Union
       x1 = ...  # type: int
       x2 = ...  # type: int
-      x3 = ...  # type: float or complex
-      x4 = ...  # type: int or float or complex
-      x5 = ...  # type: List[int or str]
+      x3 = ...  # type: Union[float, complex]
+      x4 = ...  # type: Union[int, float, complex]
+      x5 = ...  # type: List[Union[int, str]]
     """)
 
   def test_reversed(self):
@@ -527,11 +527,11 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       x4.extend(frozenset({""}))
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import List
-      x1 = ...  # type: List[int or str]
-      x2 = ...  # type: List[int or str]
-      x3 = ...  # type: List[int or str]
-      x4 = ...  # type: List[int or str]
+      from typing import List, Union
+      x1 = ...  # type: List[Union[int, str]]
+      x2 = ...  # type: List[Union[int, str]]
+      x3 = ...  # type: List[Union[int, str]]
+      x4 = ...  # type: List[Union[int, str]]
     """)
 
   def test_sorted(self):
@@ -603,9 +603,9 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       z = x['foo']
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import Dict
-      x = ...  # type: Dict[str, float or int]
-      y = ...  # type: float or int
+      from typing import Dict, Union
+      x = ...  # type: Dict[str, Union[float, int]]
+      y = ...  # type: Union[float, int]
       z = ...  # type: float
     """)
 

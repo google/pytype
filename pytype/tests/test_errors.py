@@ -181,7 +181,8 @@ class ErrorTest(test_base.TargetIndependentTest):
   def test_wrong_keyword_arg(self):
     with file_utils.Tempdir() as d:
       d.create_file("mycgi.pyi", """
-        def escape(x: str or int) -> str or int
+        from typing import Union
+        def escape(x: Union[str, int]) -> Union[str, int]
       """)
       _, errors = self.InferWithErrors("""
         import mycgi
@@ -453,7 +454,8 @@ class ErrorTest(test_base.TargetIndependentTest):
   def test_print_union_arg(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
-        def f(x: int or str) -> None
+        from typing import Union
+        def f(x: Union[int, str]) -> None
       """)
       _, errors = self.InferWithErrors("""
         import a

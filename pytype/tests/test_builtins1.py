@@ -32,7 +32,8 @@ class BuiltinTests(test_base.TargetIndependentTest):
       t_testRepr2('abc')
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      def t_testRepr2(x: float or int or str) -> str
+      from typing import Union
+      def t_testRepr2(x: Union[float, int, str]) -> str
     """)
 
   def test_repr3(self):
@@ -90,7 +91,8 @@ class BuiltinTests(test_base.TargetIndependentTest):
         return pow(1, -2)
     """)
     self.assertTypesMatchPytd(ty, """
-      def t_testPow1() -> float or int
+      from typing import Union
+      def t_testPow1() -> Union[float, int]
     """)
 
   def test_max1(self):
@@ -142,7 +144,8 @@ class BuiltinTests(test_base.TargetIndependentTest):
         return mydict.get("42")
     """)
     self.assertTypesMatchPytd(ty, """
-      def f() -> int or NoneType
+      from typing import Union
+      def f() -> Union[int, NoneType]
     """)
 
   def test_dict_get_or_default(self):
@@ -196,8 +199,8 @@ class BuiltinTests(test_base.TargetIndependentTest):
     t_testListInit3([1,2,3,'abc'], 0)
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import List
-      def t_testListInit3(x: List[int or str, ...], i: int) -> int
+      from typing import List, Union
+      def t_testListInit3(x: List[Union[int, str], ...], i: int) -> int
     """)
 
   def test_list_init4(self):
@@ -276,7 +279,8 @@ class BuiltinTests(test_base.TargetIndependentTest):
       t_testCmpMulti(1.0, 2)
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      def t_testCmpMulti(x: float or int, y: int) -> int
+      from typing import Union
+      def t_testCmpMulti(x: Union[float, int], y: int) -> int
       def t_testCmpMulti(x: int, y: float) -> int
     """)
 
@@ -421,9 +425,10 @@ class BuiltinTests(test_base.TargetIndependentTest):
           return 3j
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Union
       time = ...  # type: module
 
-      def f(x) -> complex or float
+      def f(x) -> Union[complex, float]
     """)
 
   def test_div_mod(self):

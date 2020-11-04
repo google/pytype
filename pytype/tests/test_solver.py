@@ -17,9 +17,9 @@ class SolverTests(test_base.TargetIndependentTest):
                   pass
     """)
     self.assertTypesMatchPytd(ty, """
-    from typing import List, Tuple
+    from typing import List, Tuple, Union
     class Node(object):
-      children = ...  # type: List[nothing, ...] or Tuple[()]
+      children = ...  # type: Union[List[nothing, ...], Tuple[()]]
       def __init__(self) -> None: ...
     """)
 
@@ -319,9 +319,9 @@ class SolverTests(test_base.TargetIndependentTest):
           return x
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import List
+        from typing import List, Union
         foo = ...  # type: module
-        def f() -> List[int or str]
+        def f() -> List[Union[int, str]]
       """)
 
   def test_duplicate_keyword(self):

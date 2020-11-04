@@ -614,14 +614,14 @@ class ClassesTest(test_base.TargetIndependentTest):
   def test_return_class_type(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
-        from typing import Type
+        from typing import Type, Union
         class A(object):
           x = ...  # type: int
         class B(object):
           x = ...  # type: str
         def f(x: Type[A]) -> Type[A]
-        def g() -> Type[A or B]
-        def h() -> Type[int or B]
+        def g() -> Type[Union[A, B]]
+        def h() -> Type[Union[int, B]]
       """)
       ty = self.Infer("""
         import a
@@ -630,9 +630,10 @@ class ClassesTest(test_base.TargetIndependentTest):
         x3 = a.h().x
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Union
         a = ...  # type: module
         x1 = ...  # type: int
-        x2 = ...  # type: int or str
+        x2 = ...  # type: Union[int, str]
         x3 = ...  # type: str
       """)
 
@@ -768,12 +769,12 @@ class ClassesTest(test_base.TargetIndependentTest):
       D = type(int)
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Type
+      from typing import Type, Union
       class A:
         x = ...  # type: int
-      def f() -> A or str
+      def f() -> Union[A, str]
       B = A
-      C = ...  # type: Type[A or str]
+      C = ...  # type: Type[Union[A, str]]
       D = ...  # type: Type[type]
     """)
 
@@ -1004,9 +1005,10 @@ class ClassesTest(test_base.TargetIndependentTest):
           return self.instance_attr
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Union
       class Foo(object):
         instance_attr = ...  # type: str
-        def __new__(cls) -> str or Foo
+        def __new__(cls) -> Union[str, Foo]
         def __init__(self) -> None: ...
         def f(self) -> str
     """)
@@ -1029,10 +1031,10 @@ class ClassesTest(test_base.TargetIndependentTest):
           return self
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import TypeVar
+      from typing import TypeVar, Union
       _TFoo = TypeVar("_TFoo", bound=Foo)
       class Foo(object):
-        def __new__(cls) -> Foo or None
+        def __new__(cls) -> Union[Foo, None]
         def foo(self: _TFoo) -> _TFoo
     """)
 

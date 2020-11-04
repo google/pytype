@@ -166,11 +166,11 @@ class TupleTestPython3Feature(test_base.TargetPython3FeatureTest):
       r = [x for x in Foo()]  # Py 3 does not leak 'x'
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import List, Tuple
+      from typing import List, Tuple, Union
       class Foo(object):
         mytuple = ...  # type: Tuple[int, str, complex]
-        def __getitem__(self, pos: int) -> int or str or complex
-      r = ...  # type: List[int or str or complex]
+        def __getitem__(self, pos: int) -> Union[int, str, complex]
+      r = ...  # type: List[Union[int, str, complex]]
     """)
 
   def test_bad_unpacking_with_slurp(self):
