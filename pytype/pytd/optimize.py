@@ -12,6 +12,7 @@ import logging
 from pytype import utils
 from pytype.pytd import abc_hierarchy
 from pytype.pytd import booleq
+from pytype.pytd import escape
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import type_match
@@ -31,7 +32,7 @@ class RenameUnknowns(visitors.Visitor):
         cls: name for name, cls in self.name_to_cls.items()}
 
   def VisitClassType(self, node):
-    if node.name.startswith("~unknown"):
+    if escape.is_unknown(node.name):
       return pytd.ClassType(
           self.cls_to_canonical_name[self.name_to_cls[node.name]], None)
     else:

@@ -4,6 +4,7 @@ import textwrap
 
 from pytype.pyi import parser
 from pytype.pytd import booleq
+from pytype.pytd import escape
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import type_match
@@ -17,6 +18,10 @@ _BUILTINS = """
   class object: ...
   class classobj: ...
 """
+
+
+def pytd_src(text):
+  return textwrap.dedent(escape.preprocess_pytd(text))
 
 
 class TestTypeMatch(parser_test_base.ParserTest):
@@ -187,7 +192,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
     self.assertNotEqual(m.match(right, left, {}), booleq.TRUE)
 
   def _TestTypeParameters(self, reverse=False):
-    ast = parser.parse_string(textwrap.dedent("""
+    ast = parser.parse_string(pytd_src("""
       import typing
       class `~unknown0`():
         def next(self) -> ?
@@ -203,9 +208,10 @@ class TestTypeMatch(parser_test_base.ParserTest):
     m = type_match.TypeMatch()
     left, right = ast.Lookup("left"), ast.Lookup("right")
     match = m.match(right, left, {}) if reverse else m.match(left, right, {})
-    self.assertEqual(match, booleq.And((booleq.Eq("~unknown0", "A"),
-                                        booleq.Eq("~unknown0.A.T", "B"))))
-    self.assertIn("~unknown0.A.T", m.solver.variables)
+    unknown0 = escape.unknown(0)
+    self.assertEqual(match, booleq.And((booleq.Eq(unknown0, "A"),
+                                        booleq.Eq(f"{unknown0}.A.T", "B"))))
+    self.assertIn(f"{unknown0}.A.T", m.solver.variables)
 
   def test_unknown_against_generic(self):
     self._TestTypeParameters()
@@ -214,7 +220,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
     self._TestTypeParameters(reverse=True)
 
   def test_strict(self):
-    ast = parser.parse_string(textwrap.dedent("""
+    ast = parser.parse_string(pytd_src("""
       import typing
 
       T = TypeVar('T')
@@ -233,9 +239,10 @@ class TestTypeMatch(parser_test_base.ParserTest):
     ast = self.LinkAgainstSimpleBuiltins(ast)
     m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
     left, right = ast.Lookup("left"), ast.Lookup("right")
+    unknown0 = escape.unknown(0)
     self.assertEqual(m.match(left, right, {}),
-                     booleq.And((booleq.Eq("~unknown0", "list"),
-                                 booleq.Eq("~unknown0.list.T", "A"))))
+                     booleq.And((booleq.Eq(unknown0, "list"),
+                                 booleq.Eq(f"{unknown0}.list.T", "A"))))
 
   def test_base_class(self):
     ast = parser.parse_string(textwrap.dedent("""
@@ -306,20 +313,21 @@ class TestTypeMatch(parser_test_base.ParserTest):
     self.assertEqual(m.match_Generic_against_Generic(y1, x2, {}), booleq.TRUE)
 
   def test_unknown_against_tuple(self):
-    ast = self.ParseWithBuiltins("""
+    ast = self.ParseWithBuiltins(pytd_src("""
       from typing import Tuple
       class `~unknown0`():
         pass
       x = ...  # type: Tuple[int, str]
-    """)
-    unk = ast.Lookup("~unknown0")
+    """))
+    unknown0 = escape.unknown(0)
+    unk = ast.Lookup(unknown0)
     tup = ast.Lookup("x").type
     m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
     match = m.match_Unknown_against_Generic(unk, tup, {})
     self.assertCountEqual(sorted(match.extract_equalities()),
-                          [("~unknown0", "__builtin__.tuple"),
-                           ("~unknown0.__builtin__.tuple._T", "int"),
-                           ("~unknown0.__builtin__.tuple._T", "str")])
+                          [(unknown0, "__builtin__.tuple"),
+                           (f"{unknown0}.__builtin__.tuple._T", "int"),
+                           (f"{unknown0}.__builtin__.tuple._T", "str")])
 
   def test_function_against_tuple_subclass(self):
     ast = self.ParseWithBuiltins("""

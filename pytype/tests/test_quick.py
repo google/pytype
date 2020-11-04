@@ -1,5 +1,6 @@
 """Tests for --quick."""
 
+from pytype.pytd import escape
 from pytype.tests import test_base
 
 
@@ -35,7 +36,7 @@ class QuickTest(test_base.TargetIndependentTest):
     s = f.signatures[0]
     self.assertEqual(len(s.params), 1)
     p = s.params[0]
-    self.assertTrue(p.type.name.startswith("~unknown"))
+    self.assertTrue(escape.is_unknown(p.type.name))
     # Lookup that a class with same _unknown_ name as the param type exists.
     _ = ty.Lookup(p.type.name)
 

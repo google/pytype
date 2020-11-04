@@ -1,5 +1,6 @@
 import textwrap
 
+from pytype.pytd import escape
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
@@ -11,6 +12,10 @@ import unittest
 
 # All of these tests implicitly test pytd_utils.Print because
 # parser_test_base.AssertSourceEquals() uses pytd_utils.Print.
+
+
+def pytd_src(text):
+  return textwrap.dedent(escape.preprocess_pytd(text))
 
 
 class TestVisitors(parser_test_base.ParserTest):
@@ -177,7 +182,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.AssertSourceEquals(new_tree, expected)
 
   def test_remove_unknown_classes(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
         class `~unknown1`():
             pass
         class `~unknown2`():
@@ -195,7 +200,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.AssertSourceEquals(tree, expected)
 
   def test_find_unknown_visitor(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
         class object:
           pass
         class `~unknown1`():
@@ -897,7 +902,7 @@ class TestVisitors(parser_test_base.ParserTest):
     assert node.cls
 
   def test_create_type_parameters_from_unknowns(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
       from typing import Dict
       def f(x: `~unknown1`) -> `~unknown1`: ...
       def g(x: `~unknown2`, y: `~unknown2`) -> None: ...
@@ -909,7 +914,7 @@ class TestVisitors(parser_test_base.ParserTest):
         def __add__(self, x: `~unknown6`) -> `~unknown6`: ...
       def `~f`(x: `~unknown7`) -> `~unknown7`: ...
     """)
-    expected = textwrap.dedent("""
+    expected = pytd_src("""
       from typing import Dict
 
       _T0 = TypeVar('_T0')
@@ -928,7 +933,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.AssertSourceEquals(ast1, expected)
 
   def test_redefine_typevar(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
       def f(x: `~unknown1`) -> `~unknown1`: ...
       class `TypeVar`: ...
     """)

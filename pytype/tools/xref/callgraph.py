@@ -3,6 +3,7 @@
 import collections
 
 import attr
+from pytype.pytd import escape
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 
@@ -48,7 +49,7 @@ class Function:
 
 
 def unknown_to_any(typename):
-  if '~unknown' in typename:
+  if escape.UNKNOWN in typename:
     return 'typing.Any'
   return typename
 
@@ -76,7 +77,7 @@ def get_function_params(pytd_fn):
     for p in sig.params:
       if p.name not in params:
         params[p.name] = []
-      if '~unknown' not in str(p.type):
+      if escape.UNKNOWN not in str(p.type):
         params[p.name].append(p.type)
   for k in params:
     params[k] = pytd_utils.JoinTypes(params[k])

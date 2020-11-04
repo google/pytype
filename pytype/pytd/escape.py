@@ -14,7 +14,7 @@ def unpack_partial(name: str) -> str:
   """Convert e.g. "~int" to "int"."""
   assert isinstance(name, str)
   assert name.startswith(PARTIAL)
-  return name.lstrip(PARTIAL).replace(PARTIAL, ".")
+  return name[len(PARTIAL):].replace(PARTIAL, ".")
 
 
 def is_partial(cls) -> bool:
@@ -37,3 +37,8 @@ def unknown(idcode: int) -> str:
 
 def is_unknown(name: str) -> bool:
   return name.startswith(UNKNOWN)
+
+
+def preprocess_pytd(text: str) -> str:
+  """Replace ~ in a text pytd with PARTIAL."""
+  return text.replace("~", PARTIAL)
