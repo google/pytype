@@ -10,7 +10,7 @@ import re
 import shutil
 import sys
 
-from setuptools import setup
+from setuptools import setup, Extension
 
 # Path to directory containing setup.py
 here = os.path.abspath(os.path.dirname(__file__))
@@ -37,23 +37,27 @@ except ImportError:
 
 def get_parser_ext():
   """Get the parser extension."""
-  extra_compile_args = []
   # We need some platform-dependent compile args for the C extensions.
   if sys.platform == 'win32':
     # windows does not have unistd.h; lex/yacc needs this define.
-    extra_compile_args.append('-DYY_NO_UNISTD_H')
-
-  # This is a setuptools.Extension, with an added include for pybind11, a few
-  # flags, and a cxx_std setting.
-  return Pybind11Extension(
+    extra_compile_args = ['-DYY_NO_UNISTD_H']
+    extra_link_args = []
+  elif sys.platform == 'darwin':
+    # clang on darwin requires some extra flags, which gcc does not support
+    extra_compile_args = ['-std=c++11', '-stdlib=libc++']
+    extra_link_args = ['-stdlib=libc++']
+  else:
+    extra_compile_args = ['-std=c++11']
+    extra_link_args = []
+  return Extension(
       'pytype.pyi.parser_ext',
       sources=[
           'pytype/pyi/parser_ext.cc',
           'pytype/pyi/lexer.lex.cc',
           'pytype/pyi/parser.tab.cc',
       ],
-      cxx_std=11,
       extra_compile_args=extra_compile_args,
+      extra_link_args=extra_link_args,
   )
 
 
