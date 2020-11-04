@@ -6,6 +6,12 @@ from pytype import imports_map_loader
 from pytype.tests import test_base
 
 
+DEFAULT_PYI = """
+from typing import Any
+def __getattr__(name) -> Any
+"""
+
+
 class ImportTest(test_base.TargetIndependentTest):
   """Tests for import."""
 
@@ -22,7 +28,8 @@ class ImportTest(test_base.TargetIndependentTest):
       import bad_import  # doesn't exist
       """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
-      bad_import = ...  # type: ?
+      from typing import Any
+      bad_import = ...  # type: Any
     """)
 
   def test_from_import_smoke(self):
@@ -75,10 +82,7 @@ class ImportTest(test_base.TargetIndependentTest):
 
   def test_star_import_any(self):
     with file_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
-        from typing import Any
-        def __getattr__(name) -> Any
-      """)
+      d.create_file("a.pyi", DEFAULT_PYI)
       ty = self.Infer("""
         from a import *
       """, pythonpath=[d.path])
@@ -148,8 +152,9 @@ class ImportTest(test_base.TargetIndependentTest):
       """, deep=True, report_errors=False,
                       pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        nonexistant_path = ...  # type: ?
-        def foo() -> ?
+        from typing import Any
+        nonexistant_path = ...  # type: Any
+        def foo() -> Any
       """)
 
   def test_import_all(self):
@@ -712,10 +717,7 @@ class ImportTest(test_base.TargetIndependentTest):
 
   def test_import_resolve_on_dummy(self):
     with file_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
-          from typing import Any
-          def __getattr__(name) -> Any: ...
-      """)
+      d.create_file("a.pyi", DEFAULT_PYI)
       d.create_file("b.pyi", """
           from a import Foo
           def f(x: Foo) -> Foo: ...
@@ -1058,7 +1060,7 @@ class ImportTest(test_base.TargetIndependentTest):
 
   def test_module_class_conflict(self):
     with file_utils.Tempdir() as d:
-      d.create_file("foo/bar.pyi", "def __getattr__(name) -> ?")
+      d.create_file("foo/bar.pyi", DEFAULT_PYI)
       ty = self.Infer("""
         from foo import bar
         class foo(object):
@@ -1075,7 +1077,7 @@ class ImportTest(test_base.TargetIndependentTest):
 
   def test_class_alias(self):
     with file_utils.Tempdir() as d:
-      d.create_file("foo/bar.pyi", "def __getattr__(name) -> ?")
+      d.create_file("foo/bar.pyi", DEFAULT_PYI)
       ty = self.Infer("""
         from foo import bar
         class foo(object):

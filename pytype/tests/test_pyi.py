@@ -167,7 +167,8 @@ class PYITest(test_base.TargetIndependentTest):
   def test_optimize(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
-        class Bar(dict[?, int]): ...
+        from typing import Any
+        class Bar(dict[Any, int]): ...
       """)
       ty = self.Infer("""
       import a
@@ -632,7 +633,8 @@ class PYITest(test_base.TargetIndependentTest):
   def test_star_import_getattr(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        def __getattr__(name) -> ?
+        from typing import Any
+        def __getattr__(name) -> Any
       """)
       d.create_file("bar.pyi", """
         from foo import *
@@ -708,7 +710,8 @@ class PYITest(test_base.TargetIndependentTest):
   def test_anything_constant(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        Foo = ...  # type: ?
+        from typing import Any
+        Foo = ...  # type: Any
       """)
       d.create_file("bar.pyi", """
         import foo

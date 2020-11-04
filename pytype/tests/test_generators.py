@@ -54,9 +54,9 @@ class GeneratorTest(test_base.TargetIndependentTest):
           return generator()
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Generator
+      from typing import Any, Generator
       class Foo(object):
-        def bar(self) -> ?
+        def bar(self) -> Any
         def __iter__(self) -> Generator[nothing, nothing, nothing]
     """)
 

@@ -52,7 +52,8 @@ class BuiltinTests(test_base.TargetIndependentTest):
       t_testEval(4)
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      def t_testEval(x: int) -> ?
+      from typing import Any
+      def t_testEval(x: int) -> Any
     """)
 
   def test_isinstance1(self):
@@ -109,7 +110,8 @@ class BuiltinTests(test_base.TargetIndependentTest):
         return max(x, y)
     """)
     self.assertTypesMatchPytd(ty, """
-      def t_testMax2(x, y) -> ?
+      from typing import Any
+      def t_testMax2(x, y) -> Any
       """)
 
   def test_zip_error(self):
@@ -207,7 +209,8 @@ class BuiltinTests(test_base.TargetIndependentTest):
     t_testListInit4(__any_object__)
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      def t_testListInit4(x) -> ?
+      from typing import Any
+      def t_testListInit4(x) -> Any
       def _i_(x: list) -> list
     """)
 
@@ -228,9 +231,10 @@ class BuiltinTests(test_base.TargetIndependentTest):
       t_testAbs(__any_object__)
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       # Since SupportsAbs.__abs__ returns a type parameter, the return type
       # of abs(...) can be anything.
-      def t_testAbs(x) -> ?
+      def t_testAbs(x) -> Any
     """)
 
   def test_abs_union(self):

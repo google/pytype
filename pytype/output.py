@@ -182,7 +182,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     elif isinstance(v, typing_overlay.NoReturn):
       return pytd.NothingType()
     else:
-      log.info("Using ? for instance of %s", v.name)
+      log.info("Using Any for instance of %s", v.name)
       return pytd.AnythingType()
 
   def value_to_pytd_type(self, node, v, seen, view):
@@ -258,7 +258,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         # indicate that we don't know anything about what this is.
         # This happens e.g. for locals / globals, which are returned from the
         # code in class declarations.
-        log.info("Using ? for %s", v.name)
+        log.info("Using Any for %s", v.name)
         return pytd.AnythingType()
     elif isinstance(v, abstract.Union):
       opts = []

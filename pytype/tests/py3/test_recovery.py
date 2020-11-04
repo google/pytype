@@ -59,8 +59,9 @@ class RecoveryTestsPython3(test_base.TargetPython3FeatureTest):
           return '%s' % f()
       """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
+        from typing import Any
         time = ...  # type: module
-        def f() -> ?
+        def f() -> Any
         def g() -> str
       """)
 

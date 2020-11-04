@@ -169,8 +169,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
         return x.__int__()
       """)
     self.assertTypesMatchPytd(ty, """
-      from typing import SupportsInt
-      def f(x: SupportsInt) -> ?
+      from typing import Any, SupportsInt
+      def f(x: SupportsInt) -> Any
     """)
 
   def test_supports_float(self):
@@ -181,7 +181,7 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
       """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, SupportsFloat
-      def f(x: SupportsFloat) -> ?
+      def f(x: SupportsFloat) -> Any
     """)
 
   def test_supports_complex(self):
@@ -202,8 +202,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
         return x.__len__()
       """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Sized
-      def f(x: Sized) -> ?
+      from typing import Any, Sized
+      def f(x: Sized) -> Any
     """)
 
   def test_supports_abs(self):
@@ -214,8 +214,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
         return y.__len__()
       """)
     self.assertTypesMatchPytd(ty, """
-      from typing import SupportsAbs, Sized
-      def f(x: SupportsAbs[Sized]) -> ?
+      from typing import Any, SupportsAbs, Sized
+      def f(x: SupportsAbs[Sized]) -> Any
     """)
 
   @test_base.skip("doesn't match arguments correctly")
@@ -226,8 +226,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
         y = x.__round__()
       """)
     self.assertTypesMatchPytd(ty, """
-      from typing import SupportsRound
-      def f(x: SupportsRound) -> ?
+      from typing import Any, SupportsRound
+      def f(x: SupportsRound) -> Any
     """)
 
   def test_reversible(self):
@@ -261,8 +261,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
         return x.next()
       """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Iterator
-      def f(x: Iterator) -> ?
+      from typing import Any, Iterator
+      def f(x: Iterator) -> Any
     """)
 
   def test_callable(self):
@@ -274,7 +274,7 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       import protocols
       from typing import Any, Callable
-      def f(x: Callable[Any, protocols.SupportsLower]) -> ?
+      def f(x: Callable[Any, protocols.SupportsLower]) -> Any
     """)
 
   @test_base.skip("Matches Mapping[int, Any] but not Sequence")
@@ -289,7 +289,7 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       import protocols
       from typing import Any, Sequence
-      def f(x: Sequence) -> ?
+      def f(x: Sequence) -> Any
     """)
 
   @test_base.skip("doesn't match arguments correctly on exit")
@@ -302,8 +302,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
       """)
     self.assertTypesMatchPytd(ty, """
       import protocols
-      from typing import ContextManager
-      def f(x: ContextManager) -> ?
+      from typing import Any, ContextManager
+      def f(x: ContextManager) -> Any
     """)
 
   def test_protocol_needs_parameter(self):
@@ -350,8 +350,8 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
         return x.__getitem__(y)
       """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Mapping
-      def f(x: Mapping, y) -> ?
+      from typing import Any, Mapping
+      def f(x: Mapping, y) -> Any
     """)
 
   def test_supports_upper(self):

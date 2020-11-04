@@ -561,9 +561,10 @@ class MethodsTest(test_base.TargetIndependentTest):
           self.kwargs = kwargs
     """)
     self.assertTypesMatchPytd(ty, """
+    from typing import Any
     class Foo(object):
       def __init__(self, **kwargs) -> NoneType
-      kwargs = ...  # type: dict[str, ?]
+      kwargs = ...  # type: dict[str, Any]
     """)
 
   def test_starstar_deep2(self):
@@ -576,9 +577,10 @@ class MethodsTest(test_base.TargetIndependentTest):
         return kwargs
     """)
     self.assertTypesMatchPytd(ty, """
-    def f(**kwargs) -> dict[str, ?]
-    def g(x, **kwargs) -> dict[str, ?]
-    def h(x, y, **kwargs) -> dict[str, ?]
+    from typing import Any
+    def f(**kwargs) -> dict[str, Any]
+    def g(x, **kwargs) -> dict[str, Any]
+    def h(x, y, **kwargs) -> dict[str, Any]
     """)
 
   def test_builtin_starargs(self):
@@ -593,8 +595,9 @@ class MethodsTest(test_base.TargetIndependentTest):
           return myjson.loads(*args)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+      from typing import Any
       myjson = ...  # type: module
-      def f(*args) -> ?
+      def f(*args) -> Any
       """)
 
   def test_builtin_starstarargs(self):
@@ -609,8 +612,9 @@ class MethodsTest(test_base.TargetIndependentTest):
           return myjson.loads(**args)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+      from typing import Any
       myjson = ...  # type: module
-      def f(**args) -> ?
+      def f(**args) -> Any
       """)
 
   def test_builtin_keyword(self):
@@ -625,9 +629,10 @@ class MethodsTest(test_base.TargetIndependentTest):
           return myjson.loads(s="{}")
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+      from typing import Any
       myjson = ...  # type: module
 
-      def f() -> ?
+      def f() -> Any
       """)
 
   def test_none_or_function(self):

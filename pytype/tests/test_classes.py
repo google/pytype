@@ -52,7 +52,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       MyClass = ...  # type: Any
-      def f() -> ?
+      def f() -> Any
     """)
 
   def test_class_name(self):
@@ -78,7 +78,8 @@ class ClassesTest(test_base.TargetIndependentTest):
         pass
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-    class A(?):
+    from typing import Any
+    class A(Any):
       pass
     """)
 
@@ -90,8 +91,9 @@ class ClassesTest(test_base.TargetIndependentTest):
           x.__init__(self)
     """)
     self.assertTypesMatchPytd(ty, """
-    x = ...  # type: ?
-    class A(?):
+    from typing import Any
+    x = ...  # type: Any
+    class A(Any):
       def __init__(self) -> NoneType
     """)
 
@@ -102,7 +104,8 @@ class ClassesTest(test_base.TargetIndependentTest):
           setattr(self, "test", True)
     """)
     self.assertTypesMatchPytd(ty, """
-    class Foo(?):
+    from typing import Any
+    class Foo(Any):
       def __init__(self) -> NoneType
     """)
 
@@ -158,7 +161,8 @@ class ClassesTest(test_base.TargetIndependentTest):
         return Foo.bar()
     """)
     self.assertTypesMatchPytd(ty, """
-    module = ...  # type: ?
+    from typing import Any
+    module = ...  # type: Any
     def f() -> NoneType
     class Foo(object):
       @classmethod
@@ -204,7 +208,8 @@ class ClassesTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
     from typing import List
-    class Foo(?):
+    from typing import Any
+    class Foo(Any):
       x = ...  # type: List[int, ...]
       y = ...  # type: List[int, ...]
       def f(self) -> NoneType
@@ -311,8 +316,9 @@ class ClassesTest(test_base.TargetIndependentTest):
           return getattr(self, '__str__')
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       class MyList(list):
-        def foo(self) -> ?
+        def foo(self) -> Any
     """)
 
   def test_class_attr(self):
@@ -370,11 +376,12 @@ class ClassesTest(test_base.TargetIndependentTest):
         pass
     """)
     self.assertTypesMatchPytd(ty, """
-      X = ...  # type: ?
-      Y = ...  # type: ?
-      class Foo(?):
+      from typing import Any
+      X = ...  # type: Any
+      Y = ...  # type: Any
+      class Foo(Any):
         ...
-      class Bar(?, Foo, ?):
+      class Bar(Any, Foo, Any):
         ...
     """)
 
@@ -1161,7 +1168,8 @@ class ClassesTest(test_base.TargetIndependentTest):
       X = type("", (), dict())
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      X = ...  # type: ?
+      from typing import Any
+      X = ...  # type: Any
     """)
 
   def test_not_instantiable(self):

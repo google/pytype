@@ -14,6 +14,12 @@ import unittest
 # parser_test_base.AssertSourceEquals() uses pytd_utils.Print.
 
 
+DEFAULT_PYI = """
+from typing import Any
+def __getattr__(name) -> Any: ...
+"""
+
+
 def pytd_src(text):
   return textwrap.dedent(escape.preprocess_pytd(text))
 
@@ -85,10 +91,11 @@ class TestVisitors(parser_test_base.ParserTest):
             def b(self) -> X[int]
     """)
     expected = textwrap.dedent("""
-        class A(?):
-            def a(self, a: A, b: ?, c: int) -> ?:
-                raise ?
-            def b(self) -> ?
+        from typing import Any
+        class A(Any):
+            def a(self, a: A, b: Any, c: int) -> Any:
+                raise Any
+            def b(self) -> Any
     """)
     tree = self.Parse(src)
     new_tree = tree.Visit(visitors.DefaceUnresolved([tree, builtins]))
@@ -112,11 +119,11 @@ class TestVisitors(parser_test_base.ParserTest):
             def c(self) -> Union[list[X], int]
     """)
     expected = textwrap.dedent("""
-        from typing import Union
-        class A(?):
-            def a(self, a: A, b: ?, c: int) -> ?:
-                raise ?
-            def c(self) -> Union[list[?], int]
+        from typing import Any, Union
+        class A(Any):
+            def a(self, a: A, b: Any, c: int) -> Any:
+                raise Any
+            def c(self) -> Union[list[Any], int]
     """)
     tree = self.Parse(src)
     new_tree = tree.Visit(visitors.DefaceUnresolved([tree, builtins]))
@@ -191,8 +198,9 @@ class TestVisitors(parser_test_base.ParserTest):
             def foobar(x: `~unknown1`, y: `~unknown2`) -> `~unknown1` or int
     """)
     expected = textwrap.dedent("""
+        from typing import Any
         class A:
-            def foobar(x, y) -> ? or int
+            def foobar(x, y) -> Any or int
     """)
     tree = self.Parse(src)
     tree = tree.Visit(visitors.RemoveUnknownClasses())
@@ -201,6 +209,7 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_find_unknown_visitor(self):
     src = pytd_src("""
+        from typing import Any
         class object:
           pass
         class `~unknown1`():
@@ -210,9 +219,9 @@ class TestVisitors(parser_test_base.ParserTest):
         class `~int`():
           pass
         class A():
-          def foobar(self, x: `~unknown1`) -> ?
+          def foobar(self, x: `~unknown1`) -> Any
         class B():
-          def foobar(self, x: `~int`) -> ?
+          def foobar(self, x: `~int`) -> Any
         class C():
           x = ... # type: `~unknown_foobar`
         class D(`~unknown1`):
@@ -338,8 +347,8 @@ class TestVisitors(parser_test_base.ParserTest):
     """).strip())
 
   def test_lookup_two_star_aliases_with_default_pyi(self):
-    src1 = "def __getattr__(name) -> ?"
-    src2 = "def __getattr__(name) -> ?"
+    src1 = DEFAULT_PYI
+    src2 = DEFAULT_PYI
     src3 = textwrap.dedent("""
       from foo import *
       from bar import *
@@ -356,10 +365,11 @@ class TestVisitors(parser_test_base.ParserTest):
     """).strip())
 
   def test_lookup_star_alias_with_duplicate_getattr(self):
-    src1 = "def __getattr__(name) -> ?"
+    src1 = DEFAULT_PYI
     src2 = textwrap.dedent("""
+      from typing import Any
       from foo import *
-      def __getattr__(name) -> ?
+      def __getattr__(name) -> Any
     """)
     ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
     ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
@@ -435,8 +445,8 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_print_imports(self):
     src = textwrap.dedent("""
-      from typing import List, Tuple, Union
-      def f(x: Union[int, slice]) -> List[?]: ...
+      from typing import Any, List, Tuple, Union
+      def f(x: Union[int, slice]) -> List[Any]: ...
       def g(x: foo.C.C2) -> None: ...
     """)
     expected = textwrap.dedent("""
@@ -652,8 +662,8 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_add_name_prefix_twice(self):
     src = textwrap.dedent("""
-      from typing import TypeVar
-      x = ...  # type: ?
+      from typing import Any, TypeVar
+      x = ...  # type: Any
       T = TypeVar("T")
       class X(Generic[T]): ...
     """)

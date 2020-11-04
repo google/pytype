@@ -121,30 +121,35 @@ class TestOptimize(parser_test_base.ParserTest):
 
   def test_remove_redundant_signature_with_any1(self):
     src = textwrap.dedent("""
-        def foo(a: ?) -> ?
+        from typing import Any
+        def foo(a: Any) -> Any
         def foo(a: int) -> int
     """)
     new_src = textwrap.dedent("""
-        def foo(a) -> ?
+        from typing import Any
+        def foo(a) -> Any
     """)
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
 
   def test_remove_redundant_signature_with_any2(self):
     src = textwrap.dedent("""
+        from typing import Any
         def foo(a: int) -> int
-        def foo(a: ?) -> ?
+        def foo(a: Any) -> Any
     """)
     new_src = textwrap.dedent("""
-        def foo(a) -> ?
+        from typing import Any
+        def foo(a) -> Any
     """)
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
 
   def test_remove_redundant_signature_with_optional1(self):
     src = textwrap.dedent("""
+        from typing import Any
         def foo(a: int = ...) -> int
-        def foo(a: ? = ...) -> int
+        def foo(a: Any = ...) -> int
     """)
     new_src = textwrap.dedent("""
         def foo(a = ...) -> int
@@ -154,7 +159,8 @@ class TestOptimize(parser_test_base.ParserTest):
 
   def test_remove_redundant_signature_with_optional2(self):
     src = textwrap.dedent("""
-        def foo(a: ? = ...) -> int
+        from typing import Any
+        def foo(a: Any = ...) -> int
         def foo(a: int = ...) -> int
     """)
     new_src = textwrap.dedent("""
@@ -180,32 +186,36 @@ class TestOptimize(parser_test_base.ParserTest):
 
   def test_remove_redundant_signature_with_object(self):
     src = textwrap.dedent("""
-        def foo(x) -> ?
+        from typing import Any
+        def foo(x) -> Any
         def foo(x: int) -> int
     """)
     new_src = textwrap.dedent("""
-        def foo(x) -> ?
+        from typing import Any
+        def foo(x) -> Any
     """)
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
 
   def test_remove_redundant_signature_any_type(self):
     src = textwrap.dedent("""
+        from typing import Any
         def foo(a: int) -> int
-        def foo(a: ?) -> int
-        def bar(a: ?) -> int
+        def foo(a: Any) -> int
+        def bar(a: Any) -> int
         def bar(a: int) -> int
-        def baz(a: ?) -> ?
+        def baz(a: Any) -> Any
         def baz(a: int) -> int
-        def two(a: ?) -> int
-        def two(a: int) -> ?
+        def two(a: Any) -> int
+        def two(a: int) -> Any
     """)
     new_src = textwrap.dedent("""
+        from typing import Any
         def foo(a) -> int
         def bar(a) -> int
-        def baz(a) -> ?
+        def baz(a) -> Any
         def two(a) -> int
-        def two(a: int) -> ?
+        def two(a: int) -> Any
     """)
     self.AssertOptimizeEquals(src, new_src)
 
@@ -264,13 +274,15 @@ class TestOptimize(parser_test_base.ParserTest):
   @unittest.skip("Not supported yet.")
   def test_remove_redundant_signature_generic_left_side(self):
     src = textwrap.dedent("""
+        from typing import Any
         X = TypeVar("X")
         def foo(a: X, b: int) -> X
-        def foo(a: X, b: ?) -> X
+        def foo(a: X, b: Any) -> X
     """)
     expected = textwrap.dedent("""
+        from typing import Any
         X = TypeVar("X")
-        def foo(a: X, b: ?) -> X
+        def foo(a: X, b: Any) -> X
     """)
     ast = self.Parse(src)
     ast = ast.Visit(optimize.RemoveRedundantSignatures(
@@ -412,13 +424,15 @@ class TestOptimize(parser_test_base.ParserTest):
 
   def test_simplify_unions(self):
     src = textwrap.dedent("""
+      from typing import Any
       a = ...  # type: int or int
-      b = ...  # type: int or ?
+      b = ...  # type: int or Any
       c = ...  # type: int or (int or float)
     """)
     new_src = textwrap.dedent("""
+      from typing import Any
       a = ...  # type: int
-      b = ...  # type: ?
+      b = ...  # type: Any
       c = ...  # type: int or float
     """)
     self.AssertSourceEquals(
@@ -522,15 +536,17 @@ class TestOptimize(parser_test_base.ParserTest):
     """)
 
     src = textwrap.dedent("""
+        from typing import Any
         def f(x: A or B, y: A, z: B) -> E or F or G
         def g(x: E or F or G or B) -> E or F
-        def h(x) -> ?
+        def h(x) -> Any
     """) + class_data
 
     expected = textwrap.dedent("""
+        from typing import Any
         def f(x: AB, y: A, z: B) -> EFG
         def g(x: object) -> EFG
-        def h(x) -> ?
+        def h(x) -> Any
     """) + class_data
 
     hierarchy = self.Parse(src).Visit(
@@ -593,9 +609,10 @@ class TestOptimize(parser_test_base.ParserTest):
 
   def test_collapse_long_unions(self):
     src = textwrap.dedent("""
+        from typing import Any
         def f(x: A or B or C or D) -> X
         def g(x: A or B or C or D or E) -> X
-        def h(x: A or ?) -> X
+        def h(x: A or Any) -> X
     """)
     expected = textwrap.dedent("""
         def f(x: A or B or C or D) -> X
@@ -613,8 +630,9 @@ class TestOptimize(parser_test_base.ParserTest):
       y = ...  # type: A or B or C or D or E
     """)
     expected = textwrap.dedent("""
+      from typing import Any
       x = ...  # type: A or B or C or D
-      y = ...  # type: ?
+      y = ...  # type: Any
     """)
     ast = self.ParseAndResolve(src)
     ast = ast.Visit(optimize.CollapseLongUnions(max_length=4))
@@ -623,20 +641,22 @@ class TestOptimize(parser_test_base.ParserTest):
 
   def test_combine_containers(self):
     src = textwrap.dedent("""
-        def f(x: list[int] or list[float]) -> ?
-        def g(x: list[int] or str or list[float] or set[int] or long) -> ?
-        def h(x: list[int] or list[str] or set[int] or set[float]) -> ?
-        def i(x: list[int] or list[int]) -> ?
-        def j(x: dict[int, float] or dict[float, int]) -> ?
-        def k(x: dict[int, bool] or list[int] or dict[bool, int] or list[bool]) -> ?
+        from typing import Any
+        def f(x: list[int] or list[float]) -> Any
+        def g(x: list[int] or str or list[float] or set[int] or long) -> Any
+        def h(x: list[int] or list[str] or set[int] or set[float]) -> Any
+        def i(x: list[int] or list[int]) -> Any
+        def j(x: dict[int, float] or dict[float, int]) -> Any
+        def k(x: dict[int, bool] or list[int] or dict[bool, int] or list[bool]) -> Any
     """)
     expected = textwrap.dedent("""
-        def f(x: list[float]) -> ?: ...
-        def g(x: list[float] or str or set[int] or long) -> ?: ...
-        def h(x: list[int or str] or set[float]) -> ?: ...
-        def i(x: list[int]) -> ?: ...
-        def j(x: dict[float, float]) -> ?: ...
-        def k(x: dict[int or bool, bool or int] or list[int or bool]) -> ?: ...
+        from typing import Any
+        def f(x: list[float]) -> Any: ...
+        def g(x: list[float] or str or set[int] or long) -> Any: ...
+        def h(x: list[int or str] or set[float]) -> Any: ...
+        def i(x: list[int]) -> Any: ...
+        def j(x: dict[float, float]) -> Any: ...
+        def k(x: dict[int or bool, bool or int] or list[int or bool]) -> Any: ...
     """)
     new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
     self.AssertSourceEquals(new_src, expected)
@@ -685,34 +705,36 @@ class TestOptimize(parser_test_base.ParserTest):
 
   def test_pull_in_method_classes(self):
     src = textwrap.dedent("""
+        from typing import Any
         class A(object):
             mymethod1 = ...  # type: Method1
             mymethod2 = ...  # type: Method2
             member = ...  # type: Method3
             mymethod4 = ...  # type: Method4
         class Method1(object):
-            def __call__(self: A, x: int) -> ?
+            def __call__(self: A, x: int) -> Any
         class Method2(object):
-            def __call__(self: object, x: int) -> ?
+            def __call__(self: object, x: int) -> Any
         class Method3(object):
-            def __call__(x: bool, y: int) -> ?
+            def __call__(x: bool, y: int) -> Any
         class Method4(object):
-            def __call__(self: ?) -> ?
+            def __call__(self: Any) -> Any
         class B(Method4):
             pass
     """)
     expected = textwrap.dedent("""
+        from typing import Any
         class A(object):
             member = ...  # type: Method3
-            def mymethod1(self, x: int) -> ?
-            def mymethod2(self, x: int) -> ?
-            def mymethod4(self) -> ?
+            def mymethod1(self, x: int) -> Any
+            def mymethod2(self, x: int) -> Any
+            def mymethod4(self) -> Any
 
         class Method3(object):
-            def __call__(x: bool, y: int) -> ?
+            def __call__(x: bool, y: int) -> Any
 
         class Method4(object):
-            def __call__(self) -> ?
+            def __call__(self) -> Any
 
         class B(Method4):
             pass
@@ -723,6 +745,7 @@ class TestOptimize(parser_test_base.ParserTest):
 
   def test_add_inherited_methods(self):
     src = textwrap.dedent("""
+        from typing import Any
         class A():
             foo = ...  # type: bool
             def f(self, x: int) -> float
@@ -731,7 +754,7 @@ class TestOptimize(parser_test_base.ParserTest):
         class B(A):
             bar = ...  # type: int
             def g(self, y: int) -> bool
-            def h(self, z: float) -> ?
+            def h(self, z: float) -> Any
     """)
     ast = self.Parse(src)
     ast = visitors.LookupClasses(ast, self.builtins)
@@ -758,17 +781,19 @@ class TestOptimize(parser_test_base.ParserTest):
 
   def test_absorb_mutable_parameters(self):
     src = textwrap.dedent("""
-        def popall(x: list[?]) -> ?:
+        from typing import Any
+        def popall(x: list[Any]) -> Any:
             x = list[nothing]
-        def add_float(x: list[int]) -> ?:
+        def add_float(x: list[int]) -> Any:
             x = list[int or float]
-        def f(x: list[int]) -> ?:
+        def f(x: list[int]) -> Any:
             x = list[int or float]
     """)
     expected = textwrap.dedent("""
-        def popall(x: list[?]) -> ?
-        def add_float(x: list[int or float]) -> ?
-        def f(x: list[int or float]) -> ?
+        from typing import Any
+        def popall(x: list[Any]) -> Any
+        def add_float(x: list[int or float]) -> Any
+        def f(x: list[int or float]) -> Any
     """)
     tree = self.Parse(src)
     new_tree = tree.Visit(optimize.AbsorbMutableParameters())
@@ -779,17 +804,19 @@ class TestOptimize(parser_test_base.ParserTest):
     # This is a test for intermediate data. See AbsorbMutableParameters class
     # pydoc about how AbsorbMutableParameters works on methods.
     src = textwrap.dedent("""
+        from typing import Any
         T = TypeVar('T')
         NEW = TypeVar('NEW')
         class MyClass(typing.Generic[T], object):
-            def append(self, x: NEW) -> ?:
+            def append(self, x: NEW) -> Any:
                 self = MyClass[T or NEW]
     """)
     expected = textwrap.dedent("""
+        from typing import Any
         T = TypeVar('T')
         NEW = TypeVar('NEW')
         class MyClass(typing.Generic[T], object):
-            def append(self: MyClass[T or NEW], x: NEW) -> ?
+            def append(self: MyClass[T or NEW], x: NEW) -> Any
     """)
     tree = self.Parse(src)
     new_tree = tree.Visit(optimize.AbsorbMutableParameters())
@@ -801,13 +828,14 @@ class TestOptimize(parser_test_base.ParserTest):
     # AbsorbMutableParameters.
     # See comment in RemoveMutableParameters
     src = textwrap.dedent("""
+      from typing import Any
       T = TypeVar('T')
       T2 = TypeVar('T2')
       T3 = TypeVar('T3')
       class A(typing.Generic[T], object):
           def foo(self, x: T or T2) -> T2
           def bar(self, x: T or T2 or T3) -> T3
-          def baz(self, x: T or T2, y: T2 or T3) -> ?
+          def baz(self, x: T or T2, y: T2 or T3) -> Any
 
       K = TypeVar('K')
       V = TypeVar('V')
@@ -819,13 +847,14 @@ class TestOptimize(parser_test_base.ParserTest):
           def ipsum(self, x: T) -> T or K
     """)
     expected = textwrap.dedent("""
+      from typing import Any
       T = TypeVar('T')
       T2 = TypeVar('T2')
       T3 = TypeVar('T3')
       class A(typing.Generic[T], object):
           def foo(self, x: T) -> T
           def bar(self, x: T) -> T
-          def baz(self, x: T, y: T) -> ?
+          def baz(self, x: T, y: T) -> Any
 
       K = TypeVar('K')
       V = TypeVar('V')

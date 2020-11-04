@@ -149,11 +149,12 @@ class TestTypeMatch(parser_test_base.ParserTest):
 
   def test_generic(self):
     ast = parser.parse_string(textwrap.dedent("""
+      from typing import Any
       T = TypeVar('T')
       class A(typing.Generic[T], object):
         pass
-      left = ...  # type: A[?]
-      right = ...  # type: A[?]
+      left = ...  # type: A[Any]
+      right = ...  # type: A[Any]
     """), python_version=self.python_version)
     ast = self.LinkAgainstSimpleBuiltins(ast)
     m = type_match.TypeMatch()
@@ -163,11 +164,12 @@ class TestTypeMatch(parser_test_base.ParserTest):
 
   def test_class_match(self):
     ast = parser.parse_string(textwrap.dedent("""
+      from typing import Any
       class Left():
-        def method(self) -> ?
+        def method(self) -> Any
       class Right():
-        def method(self) -> ?
-        def method2(self) -> ?
+        def method(self) -> Any
+        def method2(self) -> Any
     """), python_version=self.python_version)
     ast = visitors.LookupClasses(ast, self.mini_builtins)
     m = type_match.TypeMatch()
@@ -193,16 +195,16 @@ class TestTypeMatch(parser_test_base.ParserTest):
 
   def _TestTypeParameters(self, reverse=False):
     ast = parser.parse_string(pytd_src("""
-      import typing
+      from typing import Any, Generic
       class `~unknown0`():
-        def next(self) -> ?
+        def next(self) -> Any
       T = TypeVar('T')
-      class A(typing.Generic[T], object):
-        def next(self) -> ?
+      class A(Generic[T], object):
+        def next(self) -> Any
       class B():
         pass
-      def left(x: `~unknown0`) -> ?
-      def right(x: A[B]) -> ?
+      def left(x: `~unknown0`) -> Any
+      def right(x: A[B]) -> Any
     """), python_version=self.python_version)
     ast = self.LinkAgainstSimpleBuiltins(ast)
     m = type_match.TypeMatch()

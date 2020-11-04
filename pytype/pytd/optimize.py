@@ -112,11 +112,11 @@ class SimplifyUnions(visitors.Visitor):
 
   For example, this transforms
     a: int or int
-    b: int or ?
+    b: int or Any
     c: int or (int or float)
   to
     a: int
-    b: ?
+    b: Any
     c: int or float
   """
 

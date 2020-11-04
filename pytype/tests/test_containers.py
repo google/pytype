@@ -170,9 +170,9 @@ class ContainerTest(test_base.TargetIndependentTest):
       l.append(x)
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import List
+      from typing import Any, List
       x = ...  # type: int or float
-      y = ...  # type: ?
+      y = ...  # type: Any
       l = ...  # type: List[int or float, ...]
     """)
 

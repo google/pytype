@@ -115,7 +115,7 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertIsInstance(pytd_utils.JoinTypes([]), pytd.NothingType)
 
   def test_join_anything_types(self):
-    """Test that JoinTypes() simplifies unions containing '?'."""
+    """Test that JoinTypes() simplifies unions containing 'Any'."""
     types = [pytd.AnythingType(), pytd.NamedType("a")]
     self.assertIsInstance(pytd_utils.JoinTypes(types), pytd.AnythingType)
 
@@ -147,6 +147,7 @@ class TestUtils(parser_test_base.ParserTest):
   def test_print(self):
     """Smoketest for printing pytd."""
     ast = self.Parse("""
+      from typing import Any
       c1 = ...  # type: int
       T = TypeVar('T')
       class A(typing.Generic[T], object):
@@ -155,7 +156,7 @@ class TestUtils(parser_test_base.ParserTest):
           raise ValueError()
       X = TypeVar('X')
       Y = TypeVar('Y')
-      def bar(x: X or Y) -> ?
+      def bar(x: X or Y) -> Any
     """)
     # TODO(b/159051689): Do more extensive testing.
     pytd_utils.Print(ast)

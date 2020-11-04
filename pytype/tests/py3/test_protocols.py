@@ -244,8 +244,9 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
   def test_pyi_iterable_iter(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import Any
         class Foo(object):
-          def __iter__(self) -> ?: ...
+          def __iter__(self) -> Any: ...
       """)
       self.Check("""
         from typing import Iterable, TypeVar

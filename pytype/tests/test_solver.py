@@ -33,7 +33,8 @@ class SolverTests(test_base.TargetIndependentTest):
         return z
     """)
     self.assertTypesMatchPytd(ty, """
-      def f() -> ?
+      from typing import Any
+      def f() -> Any
     """)
 
   def test_type_parameters(self):
@@ -65,9 +66,10 @@ class SolverTests(test_base.TargetIndependentTest):
         pass
     """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
-      Foo = ...  # type: ?
+      from typing import Any
+      Foo = ...  # type: Any
 
-      class Bar(?):
+      class Bar(Any):
         pass
     """)
 
@@ -122,8 +124,9 @@ class SolverTests(test_base.TargetIndependentTest):
           return Foo()
     """)
     self.assertTypesMatchPytd(ty, """
+    from typing import Any
     class Foo(object):
-      def f(self) -> ?
+      def f(self) -> Any
     """)
 
   def test_empty_tuple_as_arg(self):

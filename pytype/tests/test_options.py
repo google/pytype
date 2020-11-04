@@ -31,9 +31,10 @@ class OptionsTest(test_base.TargetIndependentTest):
         return 1
     """, maximum_depth=0)
     self.assertTypesMatchPytd(ty, """
-      def f1(x) -> ?
-      def f2(x) -> ?
-      def f3(x) -> ?
+      from typing import Any
+      def f1(x) -> Any
+      def f2(x) -> Any
+      def f3(x) -> Any
     """)
 
   def test_max_depth1(self):
@@ -46,8 +47,9 @@ class OptionsTest(test_base.TargetIndependentTest):
         return 1
     """, maximum_depth=1)
     self.assertTypesMatchPytd(ty, """
-      def f1(x) -> ?
-      def f2(x) -> ?
+      from typing import Any
+      def f1(x) -> Any
+      def f2(x) -> Any
       def f3(x) -> int
     """)
 
@@ -61,7 +63,8 @@ class OptionsTest(test_base.TargetIndependentTest):
         return 1
     """, maximum_depth=2)
     self.assertTypesMatchPytd(ty, """
-      def f1(x) -> ?
+      from typing import Any
+      def f1(x) -> Any
       def f2(x) -> int
       def f3(x) -> int
     """)
@@ -82,11 +85,12 @@ class OptionsTest(test_base.TargetIndependentTest):
       g1(__any_object__)
     """, deep=False, init_maximum_depth=2)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       def f1(x) -> int
       def f2(x) -> int
-      def g1(x) -> ?
-      def g2(x) -> ?  # not analyzed
-      def g3(x) -> ?  # not analyzed
+      def g1(x) -> Any
+      def g2(x) -> Any  # not analyzed
+      def g3(x) -> Any  # not analyzed
     """)
 
   def test_max_depth_for_init(self):

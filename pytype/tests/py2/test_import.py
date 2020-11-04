@@ -36,8 +36,8 @@ class ImportTest(test_base.TargetPython27FeatureTest):
         return sys.getrecursionlimit()
     """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import IO
-      bad_import = ...  # type: ?
+      from typing import Any, IO
+      bad_import = ...  # type: Any
       sys = ...  # type: module
       def f() -> IO[str]
       def g() -> int

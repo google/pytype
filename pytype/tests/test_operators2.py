@@ -49,7 +49,8 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
     """)
     # Currently missing str and unicode
     self.assertTypesMatchPytd(ty, """
-      def t_testAdd5(x: str or unicode or bytearray or list[?]) -> str or unicode or bytearray or list[?]
+      from typing import Any
+      def t_testAdd5(x: str or unicode or bytearray or list[Any]) -> str or unicode or bytearray or list[Any]
     """)
 
   def test_str_mul(self):
@@ -87,7 +88,8 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
       t_testCallAny()  # error because there's no "def f()..."
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      t_testCallAny = ...  # type: ?
+      from typing import Any
+      t_testCallAny = ...  # type: Any
     """)
 
   @test_base.skip("Needs NameError support")

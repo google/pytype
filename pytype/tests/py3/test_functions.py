@@ -464,10 +464,11 @@ class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
         return __any_object__
     """
     output = """
+      from typing import Any
       def uses_annotations(x: int) -> int
-      def uses_pos_defaults(x, y=...) -> ?
-      def uses_kw_defaults(x, *myargs, y=...) -> ?
-      def uses_kwargs(x, **mykwargs) -> ?
+      def uses_pos_defaults(x, y=...) -> Any
+      def uses_kw_defaults(x, *myargs, y=...) -> Any
+      def uses_kwargs(x, **mykwargs) -> Any
     """
     self.assertTypesMatchPytd(
         self.Infer(src, deep=False), output)
@@ -480,7 +481,8 @@ class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
         return __any_object__
     """)
     self.assertTypesMatchPytd(ty, """
-      def f(x, *myargs, y) -> ?
+      from typing import Any
+      def f(x, *myargs, y) -> Any
     """)
 
   def test_make_function3(self):

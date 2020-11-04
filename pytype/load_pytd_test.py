@@ -136,10 +136,10 @@ class ImportPathsTest(test_base.UnitTest):
 
   def test_relative(self):
     with file_utils.Tempdir() as d:
-      d.create_file("__init__.pyi", "base = ...  # type: ?")
-      d.create_file("path/__init__.pyi", "path = ...  # type: ?")
-      d.create_file("path/to/__init__.pyi", "to = ...  # type: ?")
-      d.create_file("path/to/some/__init__.pyi", "some = ...  # type: ?")
+      d.create_file("__init__.pyi", "base = ...  # type: str")
+      d.create_file("path/__init__.pyi", "path = ...  # type: str")
+      d.create_file("path/to/__init__.pyi", "to = ...  # type: str")
+      d.create_file("path/to/some/__init__.pyi", "some = ...  # type: str")
       d.create_file("path/to/some/module.pyi", "")
       loader = load_pytd.Loader("path.to.some.module",
                                 self.python_version,
