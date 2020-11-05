@@ -15,7 +15,7 @@ freshness: { owner: 'tsudol' reviewed: '2020-11-02' }
       * [Reachability](#reachability)
          * [Implementation](#implementation)
 
-<!-- Added by: tsudol, at: 2020-11-02T11:52-08:00 -->
+<!-- Added by: rechen, at: 2020-11-05T09:16-08:00 -->
 
 <!--te-->
 
@@ -164,7 +164,7 @@ the reachability analysis proceeds from child to parent, in the opposite
 direction of the directed edges of the graph.
 
 The `ReachabilityAnalyzer` tracks the list of adjacent nodes for each CFG node.
-For node `i`, `reacahble[i][j]` indicates whether `j` is reachable from `i`.
+For node `i`, `reachable[i][j]` indicates whether `j` is reachable from `i`.
 When an edge is added to the reachability cache, the cache updates every node to
 see if connections are possible.
 
