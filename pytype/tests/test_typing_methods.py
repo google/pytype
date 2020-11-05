@@ -13,7 +13,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import %(type)s
-        def f() -> %(type)s
+        def f() -> %(type)s: ...
       """ % {"type": t})
       indented_expr = textwrap.dedent(expr).replace("\n", "\n" + " "*8)
       self.Check("""
@@ -62,7 +62,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import IO
-        def f() -> IO[str]
+        def f() -> IO[str]: ...
       """)
       ty = self.Infer("""
         import foo
@@ -117,8 +117,8 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Sequence, Tuple
-        def seq() -> Sequence[str]
-        def tpl() -> Tuple[str]
+        def seq() -> Sequence[str]: ...
+        def tpl() -> Tuple[str]: ...
       """)
       ty = self.Infer("""
         import foo
@@ -147,8 +147,8 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List, MutableSequence
-        def seq() -> MutableSequence[str]
-        def lst() -> List[str]
+        def seq() -> MutableSequence[str]: ...
+        def lst() -> List[str]: ...
       """)
       ty = self.Infer("""
         import foo
@@ -182,7 +182,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Deque
-        def deq() -> Deque[int]
+        def deq() -> Deque[int]: ...
         """)
       ty = self.Infer("""
         import foo
@@ -217,7 +217,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
         K = TypeVar("K")
         V = TypeVar("V")
         class MyDict(MutableMapping[K, V]): ...
-        def f() -> MyDict[str, int]
+        def f() -> MyDict[str, int]: ...
       """)
       ty = self.Infer("""
         import foo
@@ -250,7 +250,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import AbstractSet
-        def f() -> AbstractSet[str]
+        def f() -> AbstractSet[str]: ...
       """)
       ty = self.Infer("""
         import foo
@@ -282,7 +282,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import MutableSet
-        def f() -> MutableSet[str]
+        def f() -> MutableSet[str]: ...
       """)
       ty = self.Infer("""
         import foo
@@ -328,7 +328,7 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Pattern
-        def f() -> Pattern[str]
+        def f() -> Pattern[str]: ...
       """)
       ty = self.Infer("""
         import foo

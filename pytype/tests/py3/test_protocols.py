@@ -204,7 +204,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
       class Bar(object):
         def __getitem__(self, i: T) -> T: ...
       T2 = TypeVar("T2")
-      def f(s: Iterable[T2]) -> Iterator[T2]
+      def f(s: Iterable[T2]) -> Iterator[T2]: ...
     """)
 
   def test_iterable_iter(self):
@@ -223,7 +223,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
       class Bar(object):
         def __iter__(self) -> Iterator: ...
       T = TypeVar("T")
-      def f(s: Iterable[T]) -> Iterator[T]
+      def f(s: Iterable[T]) -> Iterator[T]: ...
     """)
 
   def test_pyi_iterable_getitem(self):

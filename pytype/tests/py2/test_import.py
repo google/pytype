@@ -39,9 +39,9 @@ class ImportTest(test_base.TargetPython27FeatureTest):
       from typing import Any, IO
       bad_import = ...  # type: Any
       sys = ...  # type: module
-      def f() -> IO[str]
-      def g() -> int
-      def h() -> int
+      def f() -> IO[str]: ...
+      def g() -> int: ...
+      def h() -> int: ...
     """)
 
   def test_module_name(self):
@@ -80,7 +80,7 @@ class ImportTest(test_base.TargetPython27FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       StringIO = ...  # type: module
-      def f() -> bool
+      def f() -> bool: ...
     """)
 
 

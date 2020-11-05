@@ -11,7 +11,7 @@ class AnyStrTest(test_base.TargetPython27FeatureTest):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import AnyStr
-        def f(x: AnyStr) -> AnyStr
+        def f(x: AnyStr) -> AnyStr: ...
       """)
       ty = self.Infer("""
         from a import f
@@ -19,7 +19,7 @@ class AnyStrTest(test_base.TargetPython27FeatureTest):
       self.assertTypesMatchPytd(ty, """
         from typing import TypesVar
         AnyStr = TypeVar("AnyStr", str, unicode)
-        def f(x: AnyStr) -> AnyStr
+        def f(x: AnyStr) -> AnyStr: ...
       """)
 
   def test_custom_generic(self):

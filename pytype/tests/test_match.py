@@ -11,7 +11,7 @@ class MatchTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Callable
-        def f(x: Callable) -> str
+        def f(x: Callable) -> str: ...
       """)
       ty = self.Infer("""
         import foo
@@ -20,7 +20,7 @@ class MatchTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
-        def f() -> str
+        def f() -> str: ...
       """)
 
   def test_match_static(self):
@@ -41,7 +41,7 @@ class MatchTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Iterable
-        def f(x: Iterable[str]) -> str
+        def f(x: Iterable[str]) -> str: ...
       """)
       ty = self.Infer("""
         import a
@@ -63,7 +63,7 @@ class MatchTest(test_base.TargetIndependentTest):
         class B(A[K, V]):
           def __init__(self):
             self = B[bool, str]
-        def f(x: Iterable[Q]) -> Q
+        def f(x: Iterable[Q]) -> Q: ...
       """)
       ty = self.Infer("""
         import a
@@ -130,7 +130,7 @@ class MatchTest(test_base.TargetIndependentTest):
         from typing import Any
         class Foo(Any): pass
         class Bar(object): pass
-        def f(x: Bar) -> None
+        def f(x: Bar) -> None: ...
       """)
       self.Check("""
         import foo

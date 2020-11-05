@@ -20,7 +20,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
       t_testRepr1(4)
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      def t_testRepr1(x: int) -> str
+      def t_testRepr1(x: int) -> str: ...
     """)
 
   def test_repr2(self):
@@ -33,7 +33,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
-      def t_testRepr2(x: Union[float, int, str]) -> str
+      def t_testRepr2(x: Union[float, int, str]) -> str: ...
     """)
 
   def test_repr3(self):
@@ -43,7 +43,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
       t_testRepr3(__any_object__())
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      def t_testRepr3(x) -> str
+      def t_testRepr3(x) -> str: ...
     """)
 
   def test_eval_solve(self):
@@ -54,7 +54,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      def t_testEval(x: int) -> Any
+      def t_testEval(x: int) -> Any: ...
     """)
 
   def test_isinstance1(self):
@@ -63,7 +63,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
         return isinstance(x, int)
     """)
     self.assertTypesMatchPytd(ty, """
-      def t_testIsinstance1(x) -> bool
+      def t_testIsinstance1(x) -> bool: ...
     """)
 
   def test_isinstance2(self):
@@ -77,7 +77,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
     class Bar(object):
-      def foo(self) -> bool
+      def foo(self) -> bool: ...
 
     class Baz(Bar):
       pass
@@ -92,7 +92,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
-      def t_testPow1() -> Union[float, int]
+      def t_testPow1() -> Union[float, int]: ...
     """)
 
   def test_max1(self):
@@ -102,7 +102,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
         return max(1, 2)
     """)
     self.assertTypesMatchPytd(ty, """
-      def t_testMax1() -> int
+      def t_testMax1() -> int: ...
       """)
 
   def test_max2(self):
@@ -113,7 +113,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      def t_testMax2(x, y) -> Any
+      def t_testMax2(x, y) -> Any: ...
       """)
 
   def test_zip_error(self):
@@ -132,9 +132,9 @@ class BuiltinTests(test_base.TargetIndependentTest):
     t_testDictDefaults(3)
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      def t_testDictDefaults(x: int) -> str
+      def t_testDictDefaults(x: int) -> str: ...
       # _i_ captures the more precise definition of the dict
-      def _i_(x: dict[int, str]) -> dict[int, str]
+      def _i_(x: dict[int, str]) -> dict[int, str]: ...
     """)
 
   def test_dict_get(self):
@@ -145,7 +145,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
-      def f() -> Union[int, NoneType]
+      def f() -> Union[int, NoneType]: ...
     """)
 
   def test_dict_get_or_default(self):
@@ -155,7 +155,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
         return mydict.get("42", False)
     """)
     self.assertTypesMatchPytd(ty, """
-      def f() -> int
+      def f() -> int: ...
     """)
 
   def test_list_init0(self):
@@ -164,7 +164,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
       return list(x)
     """)
     self.assertTypesMatchPytd(ty, """
-      def t_testListInit0(x) -> list
+      def t_testListInit0(x) -> list: ...
     """)
 
   def test_list_init1(self):
@@ -174,7 +174,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      def t_testListInit1(x, y) -> Any
+      def t_testListInit1(x, y) -> Any: ...
     """)
 
   def test_list_init2(self):
@@ -189,7 +189,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
       from typing import Any
       z = ...  # type: Any
 
-      def t_testListInit2(x, i) -> Any
+      def t_testListInit2(x, i) -> Any: ...
     """)
 
   def test_list_init3(self):
@@ -200,7 +200,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Union
-      def t_testListInit3(x: List[Union[int, str], ...], i: int) -> int
+      def t_testListInit3(x: List[Union[int, str], ...], i: int) -> int: ...
     """)
 
   def test_list_init4(self):
@@ -213,8 +213,8 @@ class BuiltinTests(test_base.TargetIndependentTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      def t_testListInit4(x) -> Any
-      def _i_(x: list) -> list
+      def t_testListInit4(x) -> Any: ...
+      def _i_(x: list) -> list: ...
     """)
 
   def test_abs_int(self):
@@ -224,7 +224,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
       t_testAbsInt(1)
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      def t_testAbsInt(x: int) -> int
+      def t_testAbsInt(x: int) -> int: ...
   """)
 
   def test_abs(self):
@@ -237,7 +237,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
       from typing import Any
       # Since SupportsAbs.__abs__ returns a type parameter, the return type
       # of abs(...) can be anything.
-      def t_testAbs(x) -> Any
+      def t_testAbs(x) -> Any: ...
     """)
 
   def test_abs_union(self):
@@ -267,7 +267,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
         return cmp(x, y)
     """)
     self.assertTypesMatchPytd(ty, """
-    def t_testCmp(x, y) -> int
+    def t_testCmp(x, y) -> int: ...
     """)
 
   def test_cmp_multi(self):
@@ -280,8 +280,8 @@ class BuiltinTests(test_base.TargetIndependentTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
-      def t_testCmpMulti(x: Union[float, int], y: int) -> int
-      def t_testCmpMulti(x: int, y: float) -> int
+      def t_testCmpMulti(x: Union[float, int], y: int) -> int: ...
+      def t_testCmpMulti(x: int, y: float) -> int: ...
     """)
 
   def test_cmp_str(self):
@@ -291,7 +291,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
       t_testCmpStr("abc", "def")
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      def t_testCmpStr(x: str, y: str) -> int
+      def t_testCmpStr(x: str, y: str) -> int: ...
     """)
 
   def test_cmp_str2(self):
@@ -301,7 +301,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
       t_testCmpStr2("abc", __any_object__)
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      def t_testCmpStr2(x: str, y) -> int
+      def t_testCmpStr2(x: str, y) -> int: ...
     """)
 
   def test_tuple(self):
@@ -319,7 +319,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
           return fi.read()
       """)
     self.assertTypesMatchPytd(ty, """
-      def f(x) -> str
+      def f(x) -> str: ...
     """)
 
   def test_open_error(self):
@@ -335,7 +335,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       signal = ...  # type: module
 
-      def f() -> NoneType
+      def f() -> NoneType: ...
     """)
 
   def test_sys_argv(self):
@@ -347,7 +347,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
       sys = ...  # type: module
-      def args() -> str
+      def args() -> str: ...
     """)
 
   def test_setattr(self):
@@ -359,7 +359,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
-        def __init__(self, x) -> NoneType
+        def __init__(self, x) -> NoneType: ...
     """)
 
   def test_array_smoke(self):
@@ -427,8 +427,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       time = ...  # type: module
-
-      def f(x) -> Union[complex, float]
+      def f(x) -> Union[complex, float]: ...
     """)
 
   def test_div_mod(self):
@@ -438,7 +437,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
         divmod(a, 30268)
     """)
     self.assertTypesMatchPytd(ty, """
-      def seed(self, a=...) -> NoneType
+      def seed(self, a=...) -> NoneType: ...
     """)
 
   def test_div_mod2(self):
@@ -450,7 +449,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Tuple
-      def seed(self, a = ...) -> Tuple[Any, Any]
+      def seed(self, a = ...) -> Tuple[Any, Any]: ...
     """)
 
   def test_join(self):
@@ -459,7 +458,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
         return ",".join(t for t in elements)
     """)
     self.assertTypesMatchPytd(ty, """
-      def f(elements) -> str
+      def f(elements) -> str: ...
     """)
 
   def test_version_info(self):
@@ -470,7 +469,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       sys = ...  # type: module
-      def f() -> str
+      def f() -> str: ...
     """)
 
   def test_inherit_from_namedtuple(self):
@@ -518,7 +517,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      def f(n) -> Any
+      def f(n) -> Any: ...
     """)
 
   def test_type_equals2(self):
@@ -530,7 +529,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       types = ...  # type: module
-      def f(mod) -> Any
+      def f(mod) -> Any: ...
     """)
 
   def test_date_time(self):
@@ -543,7 +542,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       datetime = ...  # type: module
-      def f(date) -> Any
+      def f(date) -> Any: ...
   """)
 
   def test_from_utc(self):
@@ -555,7 +554,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       datetime = ...  # type: module
-      def f(tz) -> NoneType
+      def f(tz) -> NoneType: ...
   """)
 
 

@@ -49,7 +49,7 @@ class ImportPathsTest(test_base.UnitTest):
 
   def test_basic(self):
     with file_utils.Tempdir() as d:
-      d.create_file("path/to/some/module.pyi", "def foo(x:int) -> str")
+      d.create_file("path/to/some/module.pyi", "def foo(x:int) -> str: ...")
       loader = load_pytd.Loader(
           "base", self.python_version, pythonpath=[d.path])
       ast = loader.import_name("path.to.some.module")
@@ -58,8 +58,8 @@ class ImportPathsTest(test_base.UnitTest):
   def test_path(self):
     with file_utils.Tempdir() as d1:
       with file_utils.Tempdir() as d2:
-        d1.create_file("dir1/module1.pyi", "def foo1() -> str")
-        d2.create_file("dir2/module2.pyi", "def foo2() -> str")
+        d1.create_file("dir1/module1.pyi", "def foo1() -> str: ...")
+        d2.create_file("dir2/module2.pyi", "def foo2() -> str: ...")
         loader = load_pytd.Loader(
             "base", self.python_version, pythonpath=[d1.path, d2.path])
         module1 = loader.import_name("dir1.module1")
@@ -105,7 +105,7 @@ class ImportPathsTest(test_base.UnitTest):
 
   def test_deep_dependency(self):
     with file_utils.Tempdir() as d:
-      d.create_file("module1.pyi", "def get_bar() -> module2.Bar")
+      d.create_file("module1.pyi", "def get_bar() -> module2.Bar: ...")
       d.create_file("module2.pyi", "class Bar:\n  pass")
       loader = load_pytd.Loader(
           "base", self.python_version, pythonpath=[d.path])
@@ -116,12 +116,12 @@ class ImportPathsTest(test_base.UnitTest):
   def test_circular_dependency(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        def get_bar() -> bar.Bar
+        def get_bar() -> bar.Bar: ...
         class Foo:
           pass
       """)
       d.create_file("bar.pyi", """
-        def get_foo() -> foo.Foo
+        def get_foo() -> foo.Foo: ...
         class Bar:
           pass
       """)
@@ -163,7 +163,7 @@ class ImportPathsTest(test_base.UnitTest):
           x = List[int]
       """)
       d.create_file("module2.pyi", """
-          def f() -> module1.x
+          def f() -> module1.x: ...
       """)
       loader = load_pytd.Loader(
           "base", self.python_version, pythonpath=[d.path])
@@ -250,7 +250,7 @@ class ImportPathsTest(test_base.UnitTest):
 
   def test_get_resolved_modules(self):
     with file_utils.Tempdir() as d:
-      filename = d.create_file("dir/module.pyi", "def foo() -> str")
+      filename = d.create_file("dir/module.pyi", "def foo() -> str: ...")
       loader = load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
       ast = loader.import_name("dir.module")
       modules = loader.get_resolved_modules()

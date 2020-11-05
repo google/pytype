@@ -36,7 +36,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       class A(object):
         pass
 
-      def f() -> str
+      def f() -> str: ...
     """)
     self.assertErrorRegexes(errors, {"e": r"parrot.*int"})
 
@@ -182,7 +182,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("mycgi.pyi", """
         from typing import Union
-        def escape(x: Union[str, int]) -> Union[str, int]
+        def escape(x: Union[str, int]) -> Union[str, int]: ...
       """)
       _, errors = self.InferWithErrors("""
         import mycgi
@@ -194,7 +194,7 @@ class ErrorTest(test_base.TargetIndependentTest):
   def test_missing_parameter(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        def bar(xray, yankee, zulu) -> str
+        def bar(xray, yankee, zulu) -> str: ...
       """)
       _, errors = self.InferWithErrors("""
         import foo
@@ -455,7 +455,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Union
-        def f(x: Union[int, str]) -> None
+        def f(x: Union[int, str]) -> None: ...
       """)
       _, errors = self.InferWithErrors("""
         import a
@@ -489,7 +489,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     # Make sure we recovered from the error and got the right return type
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      def main() -> Any
+      def main() -> Any: ...
     """)
 
   def test_set_int_attribute(self):
@@ -503,7 +503,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A(object):
-          def __init__(self, x: int) -> None
+          def __init__(self, x: int) -> None: ...
       """)
       _, errors = self.InferWithErrors("""
         import a
@@ -520,7 +520,7 @@ class ErrorTest(test_base.TargetIndependentTest):
   def test_duplicate_keywords(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        def f(x, *args, y) -> None
+        def f(x, *args, y) -> None: ...
       """)
       self.InferWithErrors("""
         import foo
@@ -599,7 +599,7 @@ class ErrorTest(test_base.TargetIndependentTest):
         class A(object): ...
         class B(A): ...
         class C(object): ...
-        def f(x: Type[A]) -> bool
+        def f(x: Type[A]) -> bool: ...
       """)
       ty, errors = self.InferWithErrors("""
         import a
@@ -664,7 +664,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Any
-        def __getattr__(name) -> Any
+        def __getattr__(name) -> Any: ...
       """)
       d.create_file("b.pyi", """
         from a import A
@@ -702,8 +702,8 @@ class ErrorTest(test_base.TargetIndependentTest):
   def test_failed_function_call(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
-        def f(x: str, y: int) -> bool
-        def f(x: str) -> bool
+        def f(x: str, y: int) -> bool: ...
+        def f(x: str) -> bool: ...
       """)
       self.InferWithErrors("""
         import a
@@ -714,7 +714,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         T = TypeVar("T")
-        def copy(x: T) -> T
+        def copy(x: T) -> T: ...
       """)
       _, errors = self.InferWithErrors("""
         import a

@@ -67,10 +67,10 @@ class TypingTest(test_base.TargetPython3BasicTest):
       from typing import Any, Type
       class Foo:
         x = ...  # type: int
-      def f1(foo: Type[Foo]) -> int
-      def f2(foo: Type[Foo]) -> Any
-      def f3(foo: Type[Foo]) -> list
-      def f4(foo: Type[Foo]) -> Foo
+      def f1(foo: Type[Foo]) -> int: ...
+      def f2(foo: Type[Foo]) -> Any: ...
+      def f3(foo: Type[Foo]) -> list: ...
+      def f4(foo: Type[Foo]) -> Foo: ...
       v1 = ...  # type: int
       v2 = ...  # type: Any
       v3 = ...  # type: list
@@ -112,7 +112,7 @@ class TypingTest(test_base.TargetPython3BasicTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Callable
-        def f() -> Callable
+        def f() -> Callable: ...
       """)
       self.Check("""
         from typing import Callable
@@ -657,7 +657,7 @@ class TypingTestPython3Feature(test_base.TargetPython3FeatureTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import NamedTuple
-        def f() -> NamedTuple("ret", [("x", int), ("y", str)])
+        def f() -> NamedTuple("ret", [("x", int), ("y", str)]): ...
       """)
       ty = self.Infer("""
         import foo

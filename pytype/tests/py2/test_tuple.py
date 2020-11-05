@@ -18,7 +18,7 @@ class TupleTest(test_base.TargetPython27FeatureTest):
       from typing import List, Tuple, Union
       class Foo(object):
         mytuple = ...  # type: Tuple[int, str, complex]
-        def __getitem__(self, pos: int) -> Union[int, str, complex]
+        def __getitem__(self, pos: int) -> Union[int, str, complex]: ...
       x = ...  # type: Union[int, str, complex]
       r = ...  # type: List[Union[int, str, complex]]
     """)

@@ -57,7 +57,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Generator, Union
-      def f(x) -> Generator[Union[int, str], Any, Union[int, str]]
+      def f(x) -> Generator[Union[int, str], Any, Union[int, str]]: ...
       x = ...  # type: Generator[str, Any, str]
       y = ...  # type: Generator[int, Any, int]
     """)
@@ -86,7 +86,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Generator
-      def f() -> Generator[str, int, Any]
+      def f() -> Generator[str, int, Any]: ...
     """)
 
   def test_parameter_count(self):

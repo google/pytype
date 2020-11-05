@@ -15,7 +15,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
-      def t_testAdd1(x: Union[int, float, complex, bool]) -> Union[float, complex]
+      def t_testAdd1(x: Union[int, float, complex, bool]) -> Union[float, complex]: ...
     """)
 
   @test_base.skip("Needs __radd__ on all builtins")
@@ -27,7 +27,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
-      def t_testAdd2(x: Union[int, float, complex, bool]) -> Union[float, complex]
+      def t_testAdd2(x: Union[int, float, complex, bool]) -> Union[float, complex]: ...
     """)
 
   def test_add3(self):
@@ -38,7 +38,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      def t_testAdd3(x) -> Any
+      def t_testAdd3(x) -> Any: ...
     """)
 
   @test_base.skip("Needs handling of immutable types for += on an unknown")
@@ -52,7 +52,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
     # Currently missing str and unicode
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Union
-      def t_testAdd5(x: Union[str, unicode, bytearray, list[Any]]) -> Union[str, unicode, bytearray, list[Any]]
+      def t_testAdd5(x: Union[str, unicode, bytearray, list[Any]]) -> Union[str, unicode, bytearray, list[Any]]: ...
     """)
 
   def test_str_mul(self):
@@ -62,7 +62,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
         return "abc" * x
     """)
     self.assertTypesMatchPytd(ty, """
-      def t_testAdd4(x) -> str
+      def t_testAdd4(x) -> str: ...
     """)
 
   def test_pow1(self):
@@ -72,7 +72,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      def t_testPow1(x, y) -> Any
+      def t_testPow1(x, y) -> Any: ...
     """)
 
   def test_isinstance1(self):
@@ -81,7 +81,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
         return isinstance(x, int)
     """)
     self.assertTypesMatchPytd(ty, """
-      def t_testIsinstance1(x) -> bool
+      def t_testIsinstance1(x) -> bool: ...
     """)
 
   def test_call_any(self):

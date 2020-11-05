@@ -47,7 +47,7 @@ class QuickTest(test_base.TargetIndependentTest):
         return {A: A()}
     """, quick=True, maximum_depth=1)
     self.assertTypesMatchPytd(ty, """
-      def f() -> dict
+      def f() -> dict: ...
     """)
 
   def test_init(self):
@@ -70,9 +70,9 @@ class QuickTest(test_base.TargetIndependentTest):
       class A(object):
         x = ...  # type: int
         def __init__(self) -> None: ...
-        def real_init(self) -> None
-        def f(self) -> int
-      def f() -> Any
+        def real_init(self) -> None: ...
+        def f(self) -> int: ...
+      def f() -> Any: ...
     """)
 
   def test_analyze_annotated_max_depth(self):

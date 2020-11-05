@@ -18,7 +18,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
     """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      def f() -> Any
+      def f() -> Any: ...
     """)
 
   def test_inherit_from_instance(self):

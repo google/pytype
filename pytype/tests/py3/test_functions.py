@@ -33,7 +33,7 @@ class TestClosuresPy3(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Optional
-      def f(a: int) -> Optional[str]
+      def f(a: int) -> Optional[str]: ...
     """)
 
   def test_closures_delete_deref(self):
@@ -58,7 +58,7 @@ class TestClosuresPy3(test_base.TargetPython3FeatureTest):
         return x
     """)
     self.assertTypesMatchPytd(ty, """
-      def f() -> int
+      def f() -> int: ...
     """)
 
   def test_nonlocal_delete_deref(self):
@@ -84,7 +84,7 @@ class TestClosuresPy3(test_base.TargetPython3FeatureTest):
         return x
     """)
     self.assertTypesMatchPytd(ty, """
-      def f() -> int
+      def f() -> int: ...
     """)
 
   def test_closure_annotations(self):
@@ -261,7 +261,7 @@ class TestFunctions(test_base.TargetPython3BasicTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Callable, Tuple
-      def f() -> Tuple[Callable[[int, bool], str], Callable[[], int]]
+      def f() -> Tuple[Callable[[int, bool], str], Callable[[], int]]: ...
     """)
 
   def test_function_to_callable_return_only(self):
@@ -275,7 +275,7 @@ class TestFunctions(test_base.TargetPython3BasicTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Callable, Tuple
-      def f() -> Tuple[Callable[..., int], Callable[..., str]]
+      def f() -> Tuple[Callable[..., int], Callable[..., str]]: ...
     """)
 
   def test_fake_arguments(self):
@@ -301,7 +301,7 @@ class TestFunctions(test_base.TargetPython3BasicTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, Union
       def f(x: Dict[str, int]) -> Dict[str, Union[str, int]]: ...
-      def g(x: Dict[str, int]) -> Dict[str, int]
+      def g(x: Dict[str, int]) -> Dict[str, int]: ...
     """)
 
   def test_argument_type_conflict(self):
@@ -465,10 +465,10 @@ class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
     """
     output = """
       from typing import Any
-      def uses_annotations(x: int) -> int
-      def uses_pos_defaults(x, y=...) -> Any
-      def uses_kw_defaults(x, *myargs, y=...) -> Any
-      def uses_kwargs(x, **mykwargs) -> Any
+      def uses_annotations(x: int) -> int: ...
+      def uses_pos_defaults(x, y=...) -> Any: ...
+      def uses_kw_defaults(x, *myargs, y=...) -> Any: ...
+      def uses_kwargs(x, **mykwargs) -> Any: ...
     """
     self.assertTypesMatchPytd(
         self.Infer(src, deep=False), output)
@@ -482,7 +482,7 @@ class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      def f(x, *myargs, y) -> Any
+      def f(x, *myargs, y) -> Any: ...
     """)
 
   def test_make_function3(self):
@@ -498,7 +498,7 @@ class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Callable
 
-      def f(a: int = ..., *args, b: int = ..., **kwargs) -> Callable[Any, int]
+      def f(a: int = ..., *args, b: int = ..., **kwargs) -> Callable[Any, int]: ...
       def y(i: int = ...) -> int: ...
     """)
 
@@ -516,7 +516,7 @@ class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Callable
 
-      def f(a = ..., *args, b: int = ..., **kwargs) -> Callable[Any, int]
+      def f(a = ..., *args, b: int = ..., **kwargs) -> Callable[Any, int]: ...
       def y(i: int = ...) -> int: ...
     """)
 
@@ -528,7 +528,7 @@ class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       def foo(a, b, c, d=..., e=..., f=..., g=..., *myargs,
-              u, v, x, y=..., z=..., **mykwargs)
+              u, v, x, y=..., z=..., **mykwargs): ...
     """)
 
   def test_defaults_and_annotations(self):
@@ -539,7 +539,7 @@ class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       def foo(a, b, c:int, d=..., e=..., f=..., g=..., *myargs,
-              u:str, v, x:float=..., y=..., z=..., **mykwargs)
+              u:str, v, x:float=..., y=..., z=..., **mykwargs): ...
     """)
 
   def test_namedtuple_defaults(self):
@@ -569,13 +569,13 @@ class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Iterator
-      def f() -> int
+      def f() -> int: ...
       class Foo(object):
-        def match_method(self) -> Iterator[nothing, ...]
-        def match_function(self) -> Iterator[nothing, ...]
-        def match_pytd_function(self) -> Iterator[nothing, ...]
-        def match_bound_pytd_function(self) -> Iterator[nothing, ...]
-        def method(self) -> NoneType
+        def match_method(self) -> Iterator[nothing, ...]: ...
+        def match_function(self) -> Iterator[nothing, ...]: ...
+        def match_pytd_function(self) -> Iterator[nothing, ...]: ...
+        def match_bound_pytd_function(self) -> Iterator[nothing, ...]: ...
+        def method(self) -> NoneType: ...
     """)
 
   def test_build_with_unpack(self):

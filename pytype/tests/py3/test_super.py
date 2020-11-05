@@ -61,7 +61,7 @@ class TestSuperPython3Featue(test_base.TargetPython3FeatureTest):
     def call_my_c(x: int, y: int) -> int: ...
     class Outer(object):
       InnerA = ...  # type: type
-    def call_inner(a) -> int
+    def call_inner(a) -> int: ...
     b = ...  # type: B
     i = ...  # type: int
     """)

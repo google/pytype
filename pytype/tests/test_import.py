@@ -1,6 +1,5 @@
 """Tests for import."""
 
-
 from pytype import file_utils
 from pytype import imports_map_loader
 from pytype.tests import test_base
@@ -8,7 +7,7 @@ from pytype.tests import test_base
 
 DEFAULT_PYI = """
 from typing import Any
-def __getattr__(name) -> Any
+def __getattr__(name) -> Any: ...
 """
 
 
@@ -41,7 +40,7 @@ class ImportTest(test_base.TargetIndependentTest):
   def test_long_from(self):
     with file_utils.Tempdir() as d:
       d.create_file("path/to/my_module.pyi",
-                    "def foo() -> str")
+                    "def foo() -> str: ...")
       ty = self.Infer("""
       from path.to import my_module
       def foo():
@@ -49,7 +48,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         my_module = ...  # type: module
-        def foo() -> str
+        def foo() -> str: ...
       """)
 
   def test_star_import_smoke(self):
@@ -65,7 +64,7 @@ class ImportTest(test_base.TargetIndependentTest):
   def test_star_import(self):
     with file_utils.Tempdir() as d:
       d.create_file("my_module.pyi", """
-        def f() -> str
+        def f() -> str: ...
         class A(object):
           pass
         a = ...  # type: A
@@ -77,7 +76,7 @@ class ImportTest(test_base.TargetIndependentTest):
         from typing import Type
         A = ...  # type: Type[my_module.A]
         a = ...  # type: my_module.A
-        def f() -> str
+        def f() -> str: ...
       """)
 
   def test_star_import_any(self):
@@ -88,7 +87,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
-        def __getattr__(name) -> Any
+        def __getattr__(name) -> Any: ...
       """)
 
   def test_star_import_in_pyi(self):
@@ -119,14 +118,14 @@ class ImportTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      def __getattr__(name) -> Any
+      def __getattr__(name) -> Any: ...
       x = ...  # type: Any
     """)
 
   def test_path_import(self):
     with file_utils.Tempdir() as d:
       d.create_file("path/to/my_module.pyi",
-                    "def qqsv() -> str")
+                    "def qqsv() -> str: ...")
       d.create_file("path/to/__init__.pyi", "")
       d.create_file("path/__init__.pyi", "")
       ty = self.Infer("""
@@ -136,13 +135,13 @@ class ImportTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         path = ...  # type: module
-        def foo() -> str
+        def foo() -> str: ...
       """)
 
   def test_path_import2(self):
     with file_utils.Tempdir() as d:
       d.create_file("path/to/my_module.pyi",
-                    "def qqsv() -> str")
+                    "def qqsv() -> str: ...")
       d.create_file("path/to/__init__.pyi", "")
       d.create_file("path/__init__.pyi", "")
       ty = self.Infer("""
@@ -154,7 +153,7 @@ class ImportTest(test_base.TargetIndependentTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         nonexistant_path = ...  # type: Any
-        def foo() -> Any
+        def foo() -> Any: ...
       """)
 
   def test_import_all(self):
@@ -178,7 +177,7 @@ class ImportTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       sys = ...  # type: module
-      def f() -> module
+      def f() -> module: ...
     """)
 
   def test_match_module(self):
@@ -192,7 +191,7 @@ class ImportTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       sys = ...  # type: module
-      def f() -> module
+      def f() -> module: ...
     """)
 
   def test_sys(self):
@@ -204,7 +203,7 @@ class ImportTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import List
       sys = ...  # type: module
-      def f() -> List[str, ...]
+      def f() -> List[str, ...]: ...
     """)
 
   def test_from_sys_import(self):
@@ -216,7 +215,7 @@ class ImportTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import List
       path = ...  # type: List[str, ...]
-      def f() -> List[str, ...]
+      def f() -> List[str, ...]: ...
     """)
 
   def test_stdlib(self):
@@ -227,26 +226,26 @@ class ImportTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       datetime = ...  # type: module
-      def f() -> float
+      def f() -> float: ...
     """)
 
   def test_import_pytd(self):
     with file_utils.Tempdir() as d:
       d.create_file("other_file.pyi", """
-        def f() -> int
+        def f() -> int: ...
       """)
       d.create_file("main.py", """
         from other_file import f
       """)
       ty = self.InferFromFile(filename=d["main.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        def f() -> int
+        def f() -> int: ...
       """)
 
   def test_import_pytd2(self):
     with file_utils.Tempdir() as d:
       d.create_file("other_file.pyi", """
-        def f() -> int
+        def f() -> int: ...
       """)
       d.create_file("main.py", """
         from other_file import f
@@ -255,14 +254,14 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
       ty = self.InferFromFile(filename=d["main.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        def f() -> int
-        def g() -> int
+        def f() -> int: ...
+        def g() -> int: ...
       """)
 
   def test_import_directory(self):
     with file_utils.Tempdir() as d:
-      d.create_file("sub/other_file.pyi", "def f() -> int")
-      d.create_file("sub/bar/baz.pyi", "def g() -> float")
+      d.create_file("sub/other_file.pyi", "def f() -> int: ...")
+      d.create_file("sub/bar/baz.pyi", "def g() -> float: ...")
       d.create_file("sub/__init__.pyi", "")
       d.create_file("sub/bar/__init__.pyi", "")
       d.create_file("main.py", """
@@ -280,16 +279,16 @@ class ImportTest(test_base.TargetIndependentTest):
       self.assertTypesMatchPytd(ty, """
         other_file = ...  # type: module
         sub = ...  # type: module  # from 'import sub.bar.baz'
-        def g() -> float
-        def h() -> int
-        def i() -> float
-        def j() -> float
+        def g() -> float: ...
+        def h() -> int: ...
+        def i() -> float: ...
+        def j() -> float: ...
       """)
 
   def test_import_init(self):
     with file_utils.Tempdir() as d:
       d.create_file("sub/__init__.pyi", """
-        def f() -> int
+        def f() -> int: ...
       """)
       d.create_file("main.py", """
         from sub import f
@@ -298,8 +297,8 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
       ty = self.InferFromFile(filename=d["main.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        def f() -> int
-        def g() -> int
+        def f() -> int: ...
+        def g() -> int: ...
       """)
 
   def test_import_name(self):
@@ -307,7 +306,7 @@ class ImportTest(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         class A(object):
           pass
-        def f() -> A
+        def f() -> A: ...
       """)
       d.create_file("main.py", """
         from foo import f
@@ -316,8 +315,8 @@ class ImportTest(test_base.TargetIndependentTest):
       """)
       ty = self.InferFromFile(filename=d["main.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        def f() -> foo.A
-        def g() -> foo.A
+        def f() -> foo.A: ...
+        def g() -> foo.A: ...
     """)
 
   def test_deep_dependency(self):
@@ -325,7 +324,7 @@ class ImportTest(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", "x = ...  # type: bar.Bar")
       d.create_file("bar.pyi", """
           class Bar(object):
-            def bar(self) -> int
+            def bar(self) -> int: ...
       """)
       d.create_file("main.py", """
         from foo import x
@@ -335,7 +334,7 @@ class ImportTest(test_base.TargetIndependentTest):
       ty = self.InferFromFile(filename=d["main.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         x = ...  # type: bar.Bar
-        def f() -> int
+        def f() -> int: ...
     """)
 
   def test_relative_import(self):
@@ -350,7 +349,7 @@ class ImportTest(test_base.TargetIndependentTest):
       ty = self.InferFromFile(filename=d["foo/bar.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         baz = ...  # type: module
-        def f() -> int
+        def f() -> int: ...
     """)
 
   def test_dot_package(self):
@@ -419,7 +418,7 @@ class ImportTest(test_base.TargetIndependentTest):
                               pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         baz = ...  # type: module
-        def f() -> int
+        def f() -> int: ...
     """)
 
   def test_dot_dot_package_in_pyi(self):
@@ -495,7 +494,7 @@ class ImportTest(test_base.TargetIndependentTest):
   def test_file_import1(self):
     with file_utils.Tempdir() as d:
       d.create_file("path/to/some/module.pyi",
-                    "def foo(x:int) -> str")
+                    "def foo(x:int) -> str: ...")
       d.create_file("path/to/some/__init__.pyi", "")
       d.create_file("path/to/__init__.pyi", "")
       d.create_file("path/__init__.pyi", "")
@@ -506,13 +505,13 @@ class ImportTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         path = ...  # type: module
-        def my_foo(x) -> str
+        def my_foo(x) -> str: ...
       """)
 
   def test_file_import2(self):
     with file_utils.Tempdir() as d:
       d.create_file("path/to/some/module.pyi",
-                    "def foo(x:int) -> str")
+                    "def foo(x:int) -> str: ...")
       d.create_file("path/to/some/__init__.pyi", "")
       d.create_file("path/to/__init__.pyi", "")
       d.create_file("path/__init__.pyi", "")
@@ -523,7 +522,7 @@ class ImportTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         module = ...  # type: __builtin__.module
-        def my_foo(x) -> str
+        def my_foo(x) -> str: ...
       """)
 
   @test_base.skip("flaky")
@@ -550,7 +549,7 @@ class ImportTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       builtins = ...  # type: module
 
-      def f() -> int
+      def f() -> int: ...
     """)
 
   def test_imported_method_as_class_attribute(self):
@@ -562,7 +561,7 @@ class ImportTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       os = ...  # type: module
       class Foo(object):
-        def killpg(__pgid: int, __signal: int) -> None
+        def killpg(__pgid: int, __signal: int) -> None: ...
     """)
 
   def test_match_against_imported(self):
@@ -571,7 +570,7 @@ class ImportTest(test_base.TargetIndependentTest):
         class Foo(object):
           pass
         class Bar(object):
-          def f1(self, x: Foo) -> Baz
+          def f1(self, x: Foo) -> Baz: ...
         class Baz(object):
           pass
       """)
@@ -589,9 +588,9 @@ class ImportTest(test_base.TargetIndependentTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         foo = ...  # type: module
-        def f(x, y) -> Any
-        def g(x) -> Any
-        def h(x) -> Any
+        def f(x, y) -> Any: ...
+        def g(x) -> Any: ...
+        def h(x) -> Any: ...
 
         class FooSub(foo.Foo):
           pass
@@ -615,9 +614,9 @@ class ImportTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         module = ...  # type: __builtin__.module
-        def f() -> int
-        def g() -> float
-        def h() -> float
+        def f() -> int: ...
+        def g() -> float: ...
+        def h() -> float: ...
       """)
 
   def test_circular(self):
@@ -678,7 +677,7 @@ class ImportTest(test_base.TargetIndependentTest):
         from typing import Union
         from typing import SupportsFloat
         foo = ...  # type: module
-        def d(__x: SupportsFloat, __y: SupportsFloat) -> float
+        def d(__x: SupportsFloat, __y: SupportsFloat) -> float: ...
       """)
 
   def test_import_constant(self):
@@ -775,7 +774,7 @@ class ImportTest(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         from typing import Any
         object = ...  # type: Any
-        def f(x) -> Any
+        def f(x) -> Any: ...
       """)
       ty = self.Infer("""
         import foo
@@ -792,7 +791,7 @@ class ImportTest(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         class object:
           def foo(self) -> None: ...
-        def f(x: object) -> object
+        def f(x: object) -> object: ...
       """)
       ty, _ = self.InferWithErrors("""
         import foo
@@ -809,7 +808,7 @@ class ImportTest(test_base.TargetIndependentTest):
   def test_no_fail_on_bad_symbol_lookup(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        def f(x: FooBar) -> FooBar
+        def f(x: FooBar) -> FooBar: ...
       """)
       self.assertNoCrash(self.Check, """
         import foo
@@ -819,7 +818,7 @@ class ImportTest(test_base.TargetIndependentTest):
   def test_import_type_factory(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
-        def factory() -> type
+        def factory() -> type: ...
       """)
       ty = self.Infer("""
         import a
@@ -1072,7 +1071,7 @@ class ImportTest(test_base.TargetIndependentTest):
         bar = ...  # type: module
         _Tfoo = TypeVar("_Tfoo", bound=foo)
         class foo(object):
-          def __new__(cls: Type[_Tfoo]) -> _Tfoo
+          def __new__(cls: Type[_Tfoo]) -> _Tfoo: ...
       """)
 
   def test_class_alias(self):

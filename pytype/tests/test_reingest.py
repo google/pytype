@@ -53,8 +53,8 @@ class ReingestTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
-        def f() -> int
-        def g() -> int
+        def f() -> int: ...
+        def g() -> int: ...
       """)
 
   @test_base.skip("Needs better handling of Union[Callable, f] in output.py.""")
@@ -75,8 +75,8 @@ class ReingestTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
-        def f() -> int
-        def g() -> int
+        def f() -> int: ...
+        def g() -> int: ...
       """)
 
   def test_namedtuple(self):

@@ -40,8 +40,8 @@ class ImportTest(test_base.TargetPython3FeatureTest):
       bad_import = ...  # type: Any
       sys = ...  # type: module
       def f() -> TextIO: ...
-      def g() -> int
-      def h() -> int
+      def g() -> int: ...
+      def h() -> int: ...
     """)
 
   def test_relative_priority(self):

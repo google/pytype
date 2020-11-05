@@ -28,7 +28,7 @@ class TypingTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List
       typing = ...  # type: module
-      def f() -> List[int]
+      def f() -> List[int]: ...
     """)
 
   def test_cast2(self):
@@ -196,9 +196,9 @@ class LiteralTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Literal
-        def f(x: Literal[True]) -> int
-        def f(x: Literal[False]) -> float
-        def f(x: bool) -> complex
+        def f(x: Literal[True]) -> int: ...
+        def f(x: Literal[False]) -> float: ...
+        def f(x: bool) -> complex: ...
       """)
       ty = self.Infer("""
         import foo
@@ -265,7 +265,7 @@ class LiteralTest(test_base.TargetIndependentTest):
         def f3(x: Literal[None]) -> None: ...
         def f4(x: Literal['hello']) -> None: ...
         def f5(x: Literal[b'hello']) -> None: ...
-        def f6(x: Literal[u'hello']) -> None: ...
+        #def f6(x: Literal[u'hello']) -> None: ...
       """)
       self.Check("""
         import foo
@@ -274,15 +274,15 @@ class LiteralTest(test_base.TargetIndependentTest):
         foo.f3(None)
         foo.f4('hello')
         foo.f5(b'hello')
-        foo.f6(u'hello')
+        #foo.f6(u'hello')
       """, pythonpath=[d.path])
 
   def test_pyi_multiple(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Literal
-        def f(x: Literal[False, None]) -> int
-        def f(x) -> str
+        def f(x: Literal[False, None]) -> int: ...
+        def f(x) -> str: ...
       """)
       ty = self.Infer("""
         import foo

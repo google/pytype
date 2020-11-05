@@ -151,7 +151,7 @@ class FlowTest(test_base.TargetIndependentTest):
       f(__any_object__)
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      def f(x) -> int
+      def f(x) -> int: ...
     """)
 
   def test_continue_in_with(self):
@@ -242,8 +242,8 @@ class FlowTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      def f() -> Any
-      def g() -> Any
+      def f() -> Any: ...
+      def g() -> Any: ...
     """)
 
   def test_change_boolean(self):
@@ -255,7 +255,7 @@ class FlowTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      def f() -> Any
+      def f() -> Any: ...
     """)
 
   def test_independent_calls(self):
@@ -307,7 +307,7 @@ class FlowTest(test_base.TargetIndependentTest):
         return 3j
     """)
     self.assertTypesMatchPytd(ty, """
-      def _foo() -> complex
+      def _foo() -> complex: ...
     """)
 
   def test_continue(self):
@@ -320,7 +320,7 @@ class FlowTest(test_base.TargetIndependentTest):
           return 3  # dead code
     """)
     self.assertTypesMatchPytd(ty, """
-      def bar() -> complex
+      def bar() -> complex: ...
     """)
 
   def test_loop_over_list_of_lists(self):
@@ -392,8 +392,8 @@ class FlowTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       b = ...  # type: bool
-      def f() -> None
-      def g() -> None
+      def f() -> None: ...
+      def g() -> None: ...
     """)
 
 

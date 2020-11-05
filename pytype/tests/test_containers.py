@@ -404,7 +404,7 @@ class ContainerTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
-      def f() -> Dict[nothing, nothing]
+      def f() -> Dict[nothing, nothing]: ...
     """)
 
   def test_dict_tuple_init(self):
@@ -414,7 +414,7 @@ class ContainerTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
-      def f() -> Dict[str, str]
+      def f() -> Dict[str, str]: ...
     """)
 
   def test_empty_tuple_as_arg(self):
@@ -427,7 +427,7 @@ class ContainerTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
-      def f(x) -> Union[bool, complex]
+      def f(x) -> Union[bool, complex]: ...
     """)
 
   def test_empty_type_param_as_arg(self):
@@ -437,7 +437,7 @@ class ContainerTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      def f() -> Any
+      def f() -> Any: ...
     """)
 
   def test_access_empty_dict_in_if(self):
@@ -458,7 +458,7 @@ class ContainerTest(test_base.TargetIndependentTest):
       class Foo(object):
         next = ...  # type: NoneType
 
-      def f(key) -> Foo
+      def f(key) -> Foo: ...
     """)
 
   def test_cascade(self):
@@ -503,7 +503,7 @@ class ContainerTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       # The element types aren't more precise since the solver doesn't know
       # which element of the list gets modified.
-      def f() -> list
+      def f() -> list: ...
     """)
 
   def test_circular_reference_list(self):
@@ -596,7 +596,7 @@ class ContainerTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict, Union
       cache = ...  # type: Dict[str, Union[Dict[nothing, nothing], list]]
-      def read(path) -> Any
+      def read(path) -> Any: ...
     """)
 
   def test_recursive_definition_and_conflict(self):

@@ -19,7 +19,7 @@ class MatchTest(test_base.TargetPython27FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Generator, Tuple
       tokenize = ...  # type: module
-      def f() -> NoneType
+      def f() -> NoneType: ...
       x = ...  # type: Generator[Tuple[int, str, Tuple[int, int], Tuple[int, int], str], None, None]
     """)
 

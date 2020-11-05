@@ -154,7 +154,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict, List
       empty = ...  # type: List[nothing]
-      def f(x) -> Dict[type, Any]
+      def f(x) -> Dict[type, Any]: ...
       y = ...  # type: List[Dict[type, Any]]
       x = ...  # type: Any
     """)
@@ -187,7 +187,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List, Union
       empty = ...  # type: List[nothing]
-      def f(x) -> Union[int, str]
+      def f(x) -> Union[int, str]: ...
       y = ...  # type: List[Union[int, str]]
       x = ...  # type: Any
     """)
@@ -222,7 +222,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
         return u"".join(map(unicode, ()))
     """)
     self.assertTypesMatchPytd(ty, """
-      def f() -> unicode
+      def f() -> unicode: ...
     """)
 
 

@@ -275,8 +275,8 @@ class SplitTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
-      def f1() -> Union[str, int]
-      def f2() -> Union[str, int]
+      def f1() -> Union[str, int]: ...
+      def f2() -> Union[str, int]: ...
     """)
 
   def test_isinstance(self):
@@ -386,7 +386,7 @@ class SplitTest(test_base.TargetIndependentTest):
       from typing import Any, Optional, TypeVar, Union
       _T0 = TypeVar("_T0")
       def f2(x: _T0) -> Union[_T0, complex]: ...
-      def f1(x) -> Optional[int]
+      def f1(x) -> Optional[int]: ...
     """)
 
   def test_dead_if(self):
@@ -549,9 +549,9 @@ class SplitTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       class A(object):
-        def __contains__(self, x) -> int
+        def __contains__(self, x) -> int: ...
       class B(object):
-        def __contains__(self, x) -> int
+        def __contains__(self, x) -> int: ...
       x1 = ...  # type: str
       x2 = ...  # type: complex
       y1 = ...  # type: complex
@@ -573,7 +573,7 @@ class SplitTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Optional
-      def f(r) -> Optional[str]
+      def f(r) -> Optional[str]: ...
     """)
 
   def test_dict_eq(self):
@@ -773,7 +773,7 @@ class SplitTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
-      def f() -> List[int]
+      def f() -> List[int]: ...
     """)
 
   def test_keep_constant(self):

@@ -91,14 +91,14 @@ class TestVisitors(parser_test_base.ParserTest):
         class A(X):
             def a(self, a: A, b: X, c: int) -> X:
                 raise X()
-            def b(self) -> X[int]
+            def b(self) -> X[int]: ...
     """)
     expected = textwrap.dedent("""
         from typing import Any
         class A(Any):
             def a(self, a: A, b: Any, c: int) -> Any:
                 raise Any
-            def b(self) -> Any
+            def b(self) -> Any: ...
     """)
     tree = self.Parse(src)
     new_tree = tree.Visit(visitors.DefaceUnresolved([tree, builtins]))
@@ -119,14 +119,14 @@ class TestVisitors(parser_test_base.ParserTest):
         class A(X):
             def a(self, a: A, b: X, c: int) -> X:
                 raise X()
-            def c(self) -> Union[list[X], int]
+            def c(self) -> Union[list[X], int]: ...
     """)
     expected = textwrap.dedent("""
         from typing import Any, Union
         class A(Any):
             def a(self, a: A, b: Any, c: int) -> Any:
                 raise Any
-            def c(self) -> Union[list[Any], int]
+            def c(self) -> Union[list[Any], int]: ...
     """)
     tree = self.Parse(src)
     new_tree = tree.Visit(visitors.DefaceUnresolved([tree, builtins]))
@@ -175,19 +175,19 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_strip_self(self):
     src = textwrap.dedent("""
-        def add(x: int, y: int) -> int
+        def add(x: int, y: int) -> int: ...
         class A:
-            def bar(self, x: int) -> float
-            def baz(self) -> float
-            def foo(self, x: int, y: float) -> float
+            def bar(self, x: int) -> float: ...
+            def baz(self) -> float: ...
+            def foo(self, x: int, y: float) -> float: ...
     """)
     expected = textwrap.dedent("""
-        def add(x: int, y: int) -> int
+        def add(x: int, y: int) -> int: ...
 
         class A:
-            def bar(x: int) -> float
-            def baz() -> float
-            def foo(x: int, y: float) -> float
+            def bar(x: int) -> float: ...
+            def baz() -> float: ...
+            def foo(x: int, y: float) -> float: ...
     """)
     tree = self.Parse(src)
     new_tree = tree.Visit(visitors.StripSelf())
@@ -201,12 +201,12 @@ class TestVisitors(parser_test_base.ParserTest):
         class `~unknown2`():
             pass
         class A:
-            def foobar(x: `~unknown1`, y: `~unknown2`) -> Union[`~unknown1`, int]
+            def foobar(x: `~unknown1`, y: `~unknown2`) -> Union[`~unknown1`, int]: ...
     """)
     expected = textwrap.dedent("""
         from typing import Any, Union
         class A:
-            def foobar(x, y) -> Union[Any, int]
+            def foobar(x, y) -> Union[Any, int]: ...
     """)
     tree = self.Parse(src)
     tree = tree.Visit(visitors.RemoveUnknownClasses())
@@ -225,9 +225,9 @@ class TestVisitors(parser_test_base.ParserTest):
         class `~int`():
           pass
         class A():
-          def foobar(self, x: `~unknown1`) -> Any
+          def foobar(self, x: `~unknown1`) -> Any: ...
         class B():
-          def foobar(self, x: `~int`) -> Any
+          def foobar(self, x: `~int`) -> Any: ...
         class C():
           x = ... # type: `~unknown_foobar`
         class D(`~unknown1`):
@@ -243,12 +243,12 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_in_place_lookup_external_classes(self):
     src1 = textwrap.dedent("""
-      def f1() -> bar.Bar
+      def f1() -> bar.Bar: ...
       class Foo:
         pass
     """)
     src2 = textwrap.dedent("""
-      def f2() -> foo.Foo
+      def f2() -> foo.Foo: ...
       class Bar:
         pass
     """)
@@ -375,7 +375,7 @@ class TestVisitors(parser_test_base.ParserTest):
     src2 = textwrap.dedent("""
       from typing import Any
       from foo import *
-      def __getattr__(name) -> Any
+      def __getattr__(name) -> Any: ...
     """)
     ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
     ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
@@ -388,8 +388,8 @@ class TestVisitors(parser_test_base.ParserTest):
     """).strip())
 
   def test_lookup_two_star_aliases_with_different_getattrs(self):
-    src1 = "def __getattr__(name) -> int"
-    src2 = "def __getattr__(name) -> str"
+    src1 = "def __getattr__(name) -> int: ..."
+    src2 = "def __getattr__(name) -> str: ..."
     src3 = textwrap.dedent("""
       from foo import *
       from bar import *
@@ -401,10 +401,10 @@ class TestVisitors(parser_test_base.ParserTest):
         {"foo": ast1, "bar": ast2, "baz": ast3}, self_name="baz"))
 
   def test_lookup_star_alias_with_different_getattr(self):
-    src1 = "def __getattr__(name) -> int"
+    src1 = "def __getattr__(name) -> int: ..."
     src2 = textwrap.dedent("""
       from foo import *
-      def __getattr__(name) -> str
+      def __getattr__(name) -> str: ...
     """)
     ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
     ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
@@ -418,8 +418,8 @@ class TestVisitors(parser_test_base.ParserTest):
     src = textwrap.dedent("""
       from typing import Union
       l = ... # type: list[Union[int, baz.BigInt]]
-      def f1() -> bar.Bar
-      def f2() -> foo.bar.Baz
+      def f1() -> bar.Bar: ...
+      def f2() -> foo.bar.Baz: ...
     """)
     deps = visitors.CollectDependencies()
     self.Parse(src).Visit(deps)
@@ -437,16 +437,16 @@ class TestVisitors(parser_test_base.ParserTest):
   def test_expand(self):
     src = textwrap.dedent("""
         from typing import Union
-        def foo(a: Union[int, float], z: Union[complex, str], u: bool) -> file
-        def bar(a: int) -> Union[str, unicode]
+        def foo(a: Union[int, float], z: Union[complex, str], u: bool) -> file: ...
+        def bar(a: int) -> Union[str, unicode]: ...
     """)
     new_src = textwrap.dedent("""
         from typing import Union
-        def foo(a: int, z: complex, u: bool) -> file
-        def foo(a: int, z: str, u: bool) -> file
-        def foo(a: float, z: complex, u: bool) -> file
-        def foo(a: float, z: str, u: bool) -> file
-        def bar(a: int) -> Union[str, unicode]
+        def foo(a: int, z: complex, u: bool) -> file: ...
+        def foo(a: int, z: str, u: bool) -> file: ...
+        def foo(a: float, z: complex, u: bool) -> file: ...
+        def foo(a: float, z: str, u: bool) -> file: ...
+        def bar(a: int) -> Union[str, unicode]: ...
     """)
     self.AssertSourceEquals(
         self.ApplyVisitorToString(src, visitors.ExpandSignatures()),
@@ -504,7 +504,7 @@ class TestVisitors(parser_test_base.ParserTest):
       from typing import Union
       T = TypeVar("T")
       T2 = TypeVar("T2")
-      def f(x: T) -> T
+      def f(x: T) -> T: ...
       class A(Generic[T]):
         def a(self, x: T2) -> None:
           self = A[Union[T, T2]]
@@ -971,9 +971,9 @@ class TestVisitors(parser_test_base.ParserTest):
   def test_create_type_parameters_for_new(self):
     src = textwrap.dedent("""
       class Foo:
-          def __new__(cls: Type[Foo]) -> Foo
+          def __new__(cls: Type[Foo]) -> Foo: ...
       class Bar:
-          def __new__(cls: Type[Bar], x, y, z) -> Bar
+          def __new__(cls: Type[Bar], x, y, z) -> Bar: ...
     """)
     ast = self.Parse(src).Visit(visitors.CreateTypeParametersForSignatures())
     self.assertMultiLineEqual(pytd_utils.Print(ast), textwrap.dedent("""
@@ -1024,7 +1024,7 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_print_no_return(self):
     src = textwrap.dedent("""
-      def f() -> nothing
+      def f() -> nothing: ...
     """)
     self.assertMultiLineEqual(pytd_utils.Print(self.Parse(src)),
                               textwrap.dedent("""

@@ -18,7 +18,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Tuple
-      def f(x, y) -> Tuple[Any, Any]
+      def f(x, y) -> Tuple[Any, Any]: ...
     """)
 
   def test_defaultdict(self):
@@ -104,12 +104,12 @@ class BuiltinTests2(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict, Type
       class Foo:
-        def get_dict(self) -> Dict[str, Any]
-        def get_name(self) -> str
-        def get_class(self) -> Type[Foo]
-        def get_doc(self) -> str
-        def get_module(self) -> str
-        def get_bases(self) -> tuple
+        def get_dict(self) -> Dict[str, Any]: ...
+        def get_name(self) -> str: ...
+        def get_class(self) -> Type[Foo]: ...
+        def get_doc(self) -> str: ...
+        def get_module(self) -> str: ...
+        def get_bases(self) -> tuple: ...
     """)
 
   def test_new_style_class(self):
@@ -135,14 +135,14 @@ class BuiltinTests2(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict, Type
       class Foo(object):
-        def get_dict(self) -> Dict[str, Any]
-        def get_name(self) -> str
-        def get_class(self) -> Type[Foo]
-        def get_doc(self) -> str
-        def get_module(self) -> str
-        def get_hash(self) -> int
-        def get_mro(self) -> list
-        def get_bases(self) -> tuple
+        def get_dict(self) -> Dict[str, Any]: ...
+        def get_name(self) -> str: ...
+        def get_class(self) -> Type[Foo]: ...
+        def get_doc(self) -> str: ...
+        def get_module(self) -> str: ...
+        def get_hash(self) -> int: ...
+        def get_mro(self) -> list: ...
+        def get_bases(self) -> tuple: ...
     """)
 
   def test_dict_init(self):

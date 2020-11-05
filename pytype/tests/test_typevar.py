@@ -88,11 +88,11 @@ class TypeVarTest(test_base.TargetIndependentTest):
       from typing import Dict, List, Tuple, Union
       _T0 = TypeVar("_T0")
       _T1 = TypeVar("_T1")
-      def id(x: _T0) -> _T0
-      def wrap_tuple(x: _T0, y: _T1) -> Tuple[_T0, _T1]
-      def wrap_list(x: _T0, y: _T1) -> List[Union[_T0, _T1]]
-      def wrap_dict(x: _T0, y: _T1) -> Dict[_T0, _T1]
-      def return_second(x, y: _T1) -> _T1
+      def id(x: _T0) -> _T0: ...
+      def wrap_tuple(x: _T0, y: _T1) -> Tuple[_T0, _T1]: ...
+      def wrap_list(x: _T0, y: _T1) -> List[Union[_T0, _T1]]: ...
+      def wrap_dict(x: _T0, y: _T1) -> Dict[_T0, _T1]: ...
+      def return_second(x, y: _T1) -> _T1: ...
     """)
 
   def test_infer_union(self):
@@ -106,8 +106,8 @@ class TypeVarTest(test_base.TargetIndependentTest):
       from typing import Union
       _T0 = TypeVar("_T0")
       _T1 = TypeVar("_T1")
-      def return_either(x: _T0, y: _T1) -> Union[_T0, _T1]
-      def return_arg_or_42(x: _T0) -> Union[_T0, int]
+      def return_either(x: _T0, y: _T1) -> Union[_T0, _T1]: ...
+      def return_arg_or_42(x: _T0) -> Union[_T0, int]: ...
     """)
 
   def test_typevar_in_type_comment(self):
@@ -175,7 +175,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
       d.create_file("a.pyi", """
         from typing import TypeVar
         AnyInt = TypeVar('AnyInt', int)
-        def f(x: AnyInt) -> AnyInt
+        def f(x: AnyInt) -> AnyInt: ...
       """)
       ty = self.Infer("""
         import a
@@ -322,7 +322,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
       T = TypeVar('T')
       class Meta():
         @property
-        def foo(self: Type[T]) -> List[T]
+        def foo(self: Type[T]) -> List[T]: ...
 
       class A(metaclass=Meta):
         pass

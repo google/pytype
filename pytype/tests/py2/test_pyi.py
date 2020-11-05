@@ -10,7 +10,7 @@ class PYITest(test_base.TargetPython27FeatureTest):
   def test_bytes(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        def f() -> bytes
+        def f() -> bytes: ...
       """)
       ty = self.Infer("""
         import foo

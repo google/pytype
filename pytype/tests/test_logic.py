@@ -23,7 +23,7 @@ class LogicTest(test_base.TargetIndependentTest):
             assert isinstance(args[k], str)
     """)
     self.assertTypesMatchPytd(ty, """
-      def f(args_list) -> NoneType
+      def f(args_list) -> NoneType: ...
     """)
 
 

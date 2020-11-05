@@ -47,7 +47,7 @@ class RecoveryTestsPython3(test_base.TargetPython3FeatureTest):
             return "%s" % chr("foo")
         """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
-          def f() -> str
+          def f() -> str: ...
         """)
 
   def test_bad_function(self):
@@ -61,8 +61,8 @@ class RecoveryTestsPython3(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
         from typing import Any
         time = ...  # type: module
-        def f() -> Any
-        def g() -> str
+        def f() -> Any: ...
+        def g() -> str: ...
       """)
 
 test_base.main(globals(), __name__ == "__main__")

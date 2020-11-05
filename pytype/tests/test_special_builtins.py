@@ -202,7 +202,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
         foo = ...  # type: Union[int, str]
         bar = ...  # type: Any
         def __init__(self) -> None: ...
-      def f() -> Tuple[int, str]
+      def f() -> Tuple[int, str]: ...
     """)
 
   def test_different_property_instances(self):

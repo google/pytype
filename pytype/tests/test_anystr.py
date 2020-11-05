@@ -11,7 +11,7 @@ class AnyStrTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import AnyStr
-        def f(x: AnyStr) -> AnyStr
+        def f(x: AnyStr) -> AnyStr: ...
       """)
       ty = self.Infer("""
         import a
@@ -30,7 +30,7 @@ class AnyStrTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import AnyStr
-        def f(x: AnyStr) -> AnyStr
+        def f(x: AnyStr) -> AnyStr: ...
       """)
       self.Check("""
         import foo

@@ -41,9 +41,9 @@ class InTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
-        def __contains__(self, x) -> complex
-      def f() -> bool
-      def g() -> bool
+        def __contains__(self, x) -> complex: ...
+      def f() -> bool: ...
+      def g() -> bool: ...
     """)
 
   def test_none(self):
@@ -87,9 +87,9 @@ class NotInTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
-        def __contains__(self, x) -> complex
-      def f() -> bool
-      def g() -> bool
+        def __contains__(self, x) -> complex: ...
+      def f() -> bool: ...
+      def g() -> bool: ...
     """)
 
   def test_none(self):

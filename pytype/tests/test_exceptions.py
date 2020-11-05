@@ -19,7 +19,7 @@ class TestExceptions(test_base.TargetIndependentTest):
         return x
     """)
     self.assertTypesMatchPytd(ty, """
-      def f() -> int
+      def f() -> int: ...
     """)
 
   def test_catching_exceptions(self):
@@ -190,7 +190,7 @@ class TestExceptions(test_base.TargetIndependentTest):
       class Foo(Exception):
         pass
 
-      def bar(x) -> Foo
+      def bar(x) -> Foo: ...
     """)
 
   def test_match_exception_type(self):
@@ -210,7 +210,7 @@ class TestExceptions(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         warnings = ...  # type: module
-        def warn() -> None
+        def warn() -> None: ...
       """)
 
   def test_end_finally(self):
@@ -223,7 +223,7 @@ class TestExceptions(test_base.TargetIndependentTest):
           return 42
     """)
     self.assertTypesMatchPytd(ty, """
-      def foo() -> int
+      def foo() -> int: ...
     """)
 
   def test_dead_except_block(self):
@@ -251,7 +251,7 @@ class TestExceptions(test_base.TargetIndependentTest):
       """)
     else:
       self.assertTypesMatchPytd(ty, """
-        def foo() -> int
+        def foo() -> int: ...
       """)
 
   def test_assert(self):
@@ -266,7 +266,7 @@ class TestExceptions(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Union
 
-      def foo() -> Union[complex, int]
+      def foo() -> Union[complex, int]: ...
     """)
 
   def test_no_return(self):
@@ -276,7 +276,7 @@ class TestExceptions(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import NoReturn
-      def f() -> NoReturn
+      def f() -> NoReturn: ...
     """)
 
   def test_no_return_chain(self):
@@ -288,8 +288,8 @@ class TestExceptions(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import NoReturn
-      def f() -> NoReturn
-      def g() -> NoReturn
+      def f() -> NoReturn: ...
+      def g() -> NoReturn: ...
     """)
 
   def test_try_except_noreturn(self):
@@ -314,7 +314,7 @@ class TestExceptions(test_base.TargetIndependentTest):
           raise ValueError()
     """)
     self.assertTypesMatchPytd(ty, """
-      def f() -> int
+      def f() -> int: ...
     """)
 
   def test_return_or_raise_set_attribute(self):

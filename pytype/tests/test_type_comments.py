@@ -13,7 +13,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
         return x
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      def foo(x) -> int
+      def foo(x) -> int: ...
     """)
 
   def test_function_return_space(self):
@@ -25,7 +25,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
-      def foo(x) -> Dict[int, int]
+      def foo(x) -> Dict[int, int]: ...
     """)
 
   def test_function_zero_args(self):
@@ -36,7 +36,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
         return x
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      def foo() -> int
+      def foo() -> int: ...
     """)
 
   def test_function_one_arg(self):
@@ -47,7 +47,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
         return x
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      def foo(x: int) -> int
+      def foo(x: int) -> int: ...
     """)
 
   def test_function_several_args(self):
@@ -57,7 +57,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
         return x
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      def foo(x: int, y: str, z: float) -> None
+      def foo(x: int, y: str, z: float) -> None: ...
     """)
 
   def test_function_several_lines(self):
@@ -69,7 +69,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
         return x
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      def foo(x: int, y: str, z: float) -> None
+      def foo(x: int, y: str, z: float) -> None: ...
     """)
 
   def test_function_comment_on_colon(self):
@@ -102,7 +102,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
         return x
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      def foo(x: int, y: str, z: None) -> None
+      def foo(x: int, y: str, z: None) -> None: ...
     """)
 
   def test_self_is_optional(self):
@@ -176,7 +176,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
         '''Docstring but no body.'''
     """)
     self.assertTypesMatchPytd(ty, """
-      def foo(x: int, y: str) -> None
+      def foo(x: int, y: str) -> None: ...
     """)
 
   def test_filter_out_class_constructor(self):
@@ -311,7 +311,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       X = ...  # type: str
-      def f() -> None
+      def f() -> None: ...
     """)
 
   def test_local_comment(self):
@@ -420,7 +420,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
       class A(object):
         x = ...  # type: int
         def __init__(self) -> None: ...
-        def f(self) -> int
+        def f(self) -> int: ...
       a = ...  # type: A
       b = ...  # type: Any
     """)

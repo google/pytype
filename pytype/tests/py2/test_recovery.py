@@ -13,7 +13,7 @@ class RecoveryTests(test_base.TargetPython27FeatureTest):
       """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
         from typing import Any
-        def f() -> Any
+        def f() -> Any: ...
     """)
 
   def test_bad_function(self):
@@ -27,8 +27,8 @@ class RecoveryTests(test_base.TargetPython27FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       time = ...  # type: module
-      def f() -> Any
-      def g() -> Any
+      def f() -> Any: ...
+      def g() -> Any: ...
     """)
 
 

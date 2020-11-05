@@ -19,8 +19,8 @@ class ClosuresTest(test_base.TargetIndependentTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Callable
-      def f() -> Callable[[], Any]
-      def caller() -> int
+      def f() -> Callable[[], Any]: ...
+      def caller() -> int: ...
     """)
 
   def test_closure_on_arg(self):
@@ -35,8 +35,8 @@ class ClosuresTest(test_base.TargetIndependentTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Callable
-      def f(x: int) -> Callable[[], Any]
-      def caller() -> int
+      def f(x: int) -> Callable[[], Any]: ...
+      def caller() -> int: ...
     """)
 
   def test_closure_with_arg(self):
@@ -51,8 +51,8 @@ class ClosuresTest(test_base.TargetIndependentTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List, Callable
-      def f(x: List[float, ...]) -> Callable[[Any], Any]
-      def caller() -> float
+      def f(x: List[float, ...]) -> Callable[[Any], Any]: ...
+      def caller() -> float: ...
     """)
 
   def test_closure_same_name(self):
@@ -73,8 +73,8 @@ class ClosuresTest(test_base.TargetIndependentTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Callable
-      def f() -> Callable[[], Any]
-      def caller() -> str
+      def f() -> Callable[[], Any]: ...
+      def caller() -> str: ...
     """)
 
   def test_closures_add(self):
@@ -90,8 +90,8 @@ class ClosuresTest(test_base.TargetIndependentTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Callable
-      def caller() -> int
-      def f(x: int) -> Callable[[Any], Any]
+      def caller() -> int: ...
+      def f(x: int) -> Callable[[Any], Any]: ...
     """)
 
   def test_closures_with_defaults(self):
@@ -112,10 +112,10 @@ class ClosuresTest(test_base.TargetIndependentTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Callable
-      def f(x: int, y: int=..., z: int=...) -> Callable
-      def t1() -> int
-      def t2() -> int
-      def t3() -> int
+      def f(x: int, y: int=..., z: int=...) -> Callable: ...
+      def t1() -> int: ...
+      def t2() -> int: ...
+      def t3() -> int: ...
     """)
 
   def test_closure_scope(self):
@@ -138,9 +138,9 @@ class ClosuresTest(test_base.TargetIndependentTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Callable, List
-      def caller() -> List[str, ...]
-      def f() -> Callable[[], Any]
-      def g(funcptr: Callable[[], Any]) -> List[str, ...]
+      def caller() -> List[str, ...]: ...
+      def f() -> Callable[[], Any]: ...
+      def g(funcptr: Callable[[], Any]) -> List[str, ...]: ...
     """)
 
   def test_deep_closures(self):
@@ -163,8 +163,8 @@ class ClosuresTest(test_base.TargetIndependentTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Callable
-      def f1(a: int) -> Callable[[Any], Any]
-      def caller() -> int
+      def f1(a: int) -> Callable[[Any], Any]: ...
+      def caller() -> int: ...
     """)
 
   def test_no_visible_bindings(self):

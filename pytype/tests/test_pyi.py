@@ -12,7 +12,7 @@ class PYITest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         import types
-        def f(x: types.ModuleType = ...) -> None
+        def f(x: types.ModuleType = ...) -> None: ...
       """)
       self.Check("""
         import os
@@ -24,7 +24,7 @@ class PYITest(test_base.TargetIndependentTest):
   def test_optional(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
-        def f(x: int = ...) -> None
+        def f(x: int = ...) -> None: ...
       """)
       ty = self.Infer("""
         import mod
@@ -35,14 +35,14 @@ class PYITest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         mod = ...  # type: module
-        def f() -> NoneType
-        def g() -> NoneType
+        def f() -> NoneType: ...
+        def g() -> NoneType: ...
       """)
 
   def test_solve(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
-        def f(node: int, *args, **kwargs) -> str
+        def f(node: int, *args, **kwargs) -> str: ...
       """)
       ty = self.Infer("""
         import mod
@@ -51,7 +51,7 @@ class PYITest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         mod = ...  # type: module
-        def g(x) -> str
+        def g(x) -> str: ...
       """)
 
   def test_typing(self):
@@ -68,14 +68,14 @@ class PYITest(test_base.TargetIndependentTest):
       self.assertTypesMatchPytd(ty, """
         from typing import List
         mod = ...  # type: module
-        def g(x) -> List[str, ...]
+        def g(x) -> List[str, ...]: ...
       """)
 
   def test_classes(self):
     with file_utils.Tempdir() as d:
       d.create_file("classes.pyi", """
         class A(object):
-          def foo(self) -> A
+          def foo(self) -> A: ...
         class B(A):
           pass
       """)
@@ -92,7 +92,7 @@ class PYITest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("vague.pyi", """
         from typing import Any
-        def __getattr__(name) -> Any
+        def __getattr__(name) -> Any: ...
       """)
       ty = self.Infer("""
         import vague
@@ -181,7 +181,7 @@ class PYITest(test_base.TargetIndependentTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
-        def f(foo, bar) -> Any
+        def f(foo, bar) -> Any: ...
         def g() -> NoneType: ...
       """)
 
@@ -203,7 +203,7 @@ class PYITest(test_base.TargetIndependentTest):
   def test_object(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
-        def make_object() -> object
+        def make_object() -> object: ...
       """)
       ty = self.Infer("""
         import a
@@ -257,7 +257,7 @@ class PYITest(test_base.TargetIndependentTest):
         class B(Generic[T], A[T]): ...
         class C(A[int]): ...
         class D(object):
-          def baz(self) -> int
+          def baz(self) -> int: ...
       """)
       ty = self.Infer("""
         import foo
@@ -271,16 +271,16 @@ class PYITest(test_base.TargetIndependentTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         foo = ...  # type: module
-        def f(x) -> Any
-        def g(x) -> Any
-        def h(x) -> Any
+        def f(x) -> Any: ...
+        def g(x) -> Any: ...
+        def h(x) -> Any: ...
       """)
 
   def test_old_style_class_object_match(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any
-        def f(x) -> Any
+        def f(x) -> Any: ...
         class Foo: pass
       """)
       ty = self.Infer("""
@@ -291,7 +291,7 @@ class PYITest(test_base.TargetIndependentTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         foo = ...  # type: module
-        def g() -> Any
+        def g() -> Any: ...
       """)
 
   def test_identity(self):
@@ -299,7 +299,7 @@ class PYITest(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         from typing import TypeVar
         T = TypeVar("T")
-        def f(x: T) -> T
+        def f(x: T) -> T: ...
       """)
       ty = self.Infer("""
         import foo
@@ -315,7 +315,7 @@ class PYITest(test_base.TargetIndependentTest):
       d1.create_file("foo.pyi", """
         from typing import TypeVar
         T = TypeVar("T")
-        def f(x: T) -> T
+        def f(x: T) -> T: ...
       """)
       with file_utils.Tempdir() as d2:
         d2.create_file("bar.pyi", """
@@ -335,7 +335,7 @@ class PYITest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any
-        def __getattr__(name) -> Any
+        def __getattr__(name) -> Any: ...
       """)
       ty, errors = self.InferWithErrors("""
         from foo import *
@@ -343,7 +343,7 @@ class PYITest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
-        def __getattr__(name) -> Any
+        def __getattr__(name) -> Any: ...
       """)
       self.assertErrorRegexes(errors, {"e": r"bar"})
 
@@ -351,7 +351,7 @@ class PYITest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         lst = ...  # type: list
-        def f(x: int) -> str
+        def f(x: int) -> str: ...
       """)
       ty = self.Infer("""
         import a
@@ -366,7 +366,7 @@ class PYITest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       # TODO(b/159148301): pytd.ToType() currently allows this. Should it?
       d.create_file("a.pyi", """
-        def DubiousType() -> None
+        def DubiousType() -> None: ...
         x = ...  # type: DubiousType
       """)
       ty = self.Infer("""
@@ -469,7 +469,7 @@ class PYITest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         a = ...  # type: module
-        def f(x) -> a.A1
+        def f(x) -> a.A1: ...
       """)
 
   def test_builtins_module(self):
@@ -613,7 +613,7 @@ class PYITest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         T = TypeVar("T")
-        def f(x: T) -> T
+        def f(x: T) -> T: ...
         class Foo(object): pass
       """)
       d.create_file("bar.pyi", """
@@ -634,7 +634,7 @@ class PYITest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any
-        def __getattr__(name) -> Any
+        def __getattr__(name) -> Any: ...
       """)
       d.create_file("bar.pyi", """
         from foo import *

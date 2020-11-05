@@ -14,7 +14,7 @@ class TypingMethodsTest(test_base.TargetPython27FeatureTest):
         K = TypeVar("K")
         V = TypeVar("V")
         class MyDict(Mapping[K, V]): ...
-        def f() -> MyDict[str, int]
+        def f() -> MyDict[str, int]: ...
       """)
       ty = self.Infer("""
         import foo

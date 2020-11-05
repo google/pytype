@@ -56,7 +56,7 @@ class PYITestPython3Feature(test_base.TargetPython3FeatureTest):
   def test_bytes(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        def f() -> bytes
+        def f() -> bytes: ...
       """)
       ty = self.Infer("""
         import foo

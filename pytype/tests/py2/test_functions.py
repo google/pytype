@@ -32,13 +32,13 @@ class TestFunctions(test_base.TargetPython27FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
-      def f() -> int
+      def f() -> int: ...
       class Foo(object):
-        def match_method(self) -> List[nothing, ...]
-        def match_function(self) -> List[nothing, ...]
-        def match_pytd_function(self) -> List[nothing, ...]
-        def match_bound_pytd_function(self) -> List[nothing, ...]
-        def method(self) -> NoneType
+        def match_method(self) -> List[nothing, ...]: ...
+        def match_function(self) -> List[nothing, ...]: ...
+        def match_pytd_function(self) -> List[nothing, ...]: ...
+        def match_bound_pytd_function(self) -> List[nothing, ...]: ...
+        def method(self) -> NoneType: ...
     """)
 
 

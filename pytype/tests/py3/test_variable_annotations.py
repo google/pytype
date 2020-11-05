@@ -88,7 +88,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       class Foo:
         bar: int
-        def baz(self) -> int
+        def baz(self) -> int: ...
     """)
 
   def test_uninitialized_module_annotation(self):

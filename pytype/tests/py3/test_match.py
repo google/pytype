@@ -10,7 +10,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
   def test_no_argument_pytd_function_against_callable(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        def bar() -> bool
+        def bar() -> bool: ...
       """)
       _, errors = self.InferWithErrors("""
         from typing import Callable
@@ -178,7 +178,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
       d.create_file("foo.pyi", """
         from typing import Callable, Iterator, List, TypeVar
         T = TypeVar("T")
-        def decorate(func: Callable[..., Iterator[T]]) -> List[T]
+        def decorate(func: Callable[..., Iterator[T]]) -> List[T]: ...
       """)
       ty = self.Infer("""
         from typing import Generator, Optional
@@ -229,8 +229,8 @@ class MatchTest(test_base.TargetPython3BasicTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Callable, Union, Type
-        def f() -> Union[Callable[[], ...], Type[Exception]]
-        def g() -> Union[Type[Exception], Callable[[], ...]]
+        def f() -> Union[Callable[[], ...], Type[Exception]]: ...
+        def g() -> Union[Type[Exception], Callable[[], ...]]: ...
       """)
       self.Check("""
         from typing import Union
@@ -320,7 +320,7 @@ class MatchTestPy3(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Generator
       tokenize = ...  # type: module
-      def f() -> NoneType
+      def f() -> NoneType: ...
       x = ...  # type: Generator[tokenize.TokenInfo, None, None]
     """)
 

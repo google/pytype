@@ -169,7 +169,7 @@ class TupleTestPython3Feature(test_base.TargetPython3FeatureTest):
       from typing import List, Tuple, Union
       class Foo(object):
         mytuple = ...  # type: Tuple[int, str, complex]
-        def __getitem__(self, pos: int) -> Union[int, str, complex]
+        def __getitem__(self, pos: int) -> Union[int, str, complex]: ...
       r = ...  # type: List[Union[int, str, complex]]
     """)
 

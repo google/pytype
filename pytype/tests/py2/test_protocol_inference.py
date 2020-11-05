@@ -24,8 +24,8 @@ class ProtocolInferenceTest(test_base.TargetPython27FeatureTest):
       cp = ...  # type: ConfigParser
 
       class ConfigParser(object):
-        def __init__(self, filename: Union[str, buffer, unicode]) -> NoneType
-        def read(self) -> str
+        def __init__(self, filename: Union[str, buffer, unicode]) -> NoneType: ...
+        def read(self) -> str: ...
         filename = ...  # type: Union[str, buffer, unicode]
     """)
 

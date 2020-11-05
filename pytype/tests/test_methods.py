@@ -100,8 +100,8 @@ class MethodsTest(test_base.TargetIndependentTest):
       class A(object):
         x = ...  # type: float
         def __init__(self) -> None : ...
-        def get_x(self) -> Union[float, int]
-        def set_x(self, x: float) -> None
+        def get_x(self) -> Union[float, int]: ...
+        def set_x(self, x: float) -> None: ...
     """)
 
   def test_boolean_op(self):
@@ -506,9 +506,9 @@ class MethodsTest(test_base.TargetIndependentTest):
         return args
     """)
     self.assertTypesMatchPytd(ty, """
-    def f(*args) -> tuple
-    def g(x, *args) -> tuple
-    def h(x, y, *args) -> tuple
+    def f(*args) -> tuple: ...
+    def g(x, *args) -> tuple: ...
+    def h(x, y, *args) -> tuple: ...
     """)
 
   def test_starargs_pass_through(self):
@@ -519,7 +519,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
     class Foo(object):
-      def __init__(self, *args, **kwargs) -> NoneType
+      def __init__(self, *args, **kwargs) -> NoneType: ...
     """)
 
   def test_empty_starargs_type(self):
@@ -563,7 +563,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
     from typing import Any
     class Foo(object):
-      def __init__(self, **kwargs) -> NoneType
+      def __init__(self, **kwargs) -> NoneType: ...
       kwargs = ...  # type: dict[str, Any]
     """)
 
@@ -577,10 +577,10 @@ class MethodsTest(test_base.TargetIndependentTest):
         return kwargs
     """)
     self.assertTypesMatchPytd(ty, """
-    from typing import Any
-    def f(**kwargs) -> dict[str, Any]
-    def g(x, **kwargs) -> dict[str, Any]
-    def h(x, y, **kwargs) -> dict[str, Any]
+      from typing import Any
+      def f(**kwargs) -> dict[str, Any]: ...
+      def g(x, **kwargs) -> dict[str, Any]: ...
+      def h(x, y, **kwargs) -> dict[str, Any]: ...
     """)
 
   def test_builtin_starargs(self):
@@ -595,9 +595,9 @@ class MethodsTest(test_base.TargetIndependentTest):
           return myjson.loads(*args)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-      from typing import Any
-      myjson = ...  # type: module
-      def f(*args) -> Any
+        from typing import Any
+        myjson = ...  # type: module
+        def f(*args) -> Any: ...
       """)
 
   def test_builtin_starstarargs(self):
@@ -612,9 +612,9 @@ class MethodsTest(test_base.TargetIndependentTest):
           return myjson.loads(**args)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-      from typing import Any
-      myjson = ...  # type: module
-      def f(**args) -> Any
+        from typing import Any
+        myjson = ...  # type: module
+        def f(**args) -> Any: ...
       """)
 
   def test_builtin_keyword(self):
@@ -629,10 +629,10 @@ class MethodsTest(test_base.TargetIndependentTest):
           return myjson.loads(s="{}")
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-      from typing import Any
-      myjson = ...  # type: module
+        from typing import Any
+        myjson = ...  # type: module
 
-      def f() -> Any
+        def f() -> Any: ...
       """)
 
   def test_none_or_function(self):
@@ -768,7 +768,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       class Cloneable(object):
-        def clone(self) -> Cloneable
+        def clone(self) -> Cloneable: ...
     """)
 
   def test_decorator(self):
@@ -832,8 +832,8 @@ class MethodsTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
-        def mymethod(self, x, y) -> int
-      def myfunction(self: Foo, x, y) -> int
+        def mymethod(self, x, y) -> int: ...
+      def myfunction(self: Foo, x, y) -> int: ...
     """)
 
   def test_assign_method(self):
@@ -846,8 +846,8 @@ class MethodsTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
-        def mymethod(self, x, y) -> int
-      def myfunction(self: Foo, x, y) -> int
+        def mymethod(self, x, y) -> int: ...
+      def myfunction(self: Foo, x, y) -> int: ...
     """)
 
   def test_function_attr(self):
@@ -870,9 +870,9 @@ class MethodsTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
     os = ...  # type: module
-    def f() -> NoneType
+    def f() -> NoneType: ...
     class Foo(object):
-      def method(self) -> NoneType
+      def method(self) -> NoneType: ...
     foo = ...  # type: Foo
     a = ...  # type: int
     b = ...  # type: complex
@@ -906,7 +906,7 @@ class MethodsTest(test_base.TargetIndependentTest):
       from typing import Type, TypeVar
       _TFoo = TypeVar("_TFoo", bound=Foo)
       class Foo(str):
-        def __new__(cls: Type[_TFoo], string) -> _TFoo
+        def __new__(cls: Type[_TFoo], string) -> _TFoo: ...
     """)
 
   def test_inherit_new(self):
@@ -932,7 +932,7 @@ class MethodsTest(test_base.TargetIndependentTest):
       _TFoo = TypeVar("_TFoo", bound=Foo)
       class Foo(object):
         name = ...  # type: Any
-        def __new__(cls: Type[_TFoo], name) -> _TFoo
+        def __new__(cls: Type[_TFoo], name) -> _TFoo: ...
     """)
 
   def test_attributes_in_new_and_init(self):
@@ -951,7 +951,7 @@ class MethodsTest(test_base.TargetIndependentTest):
       class Foo(object):
         name = ...  # type: str
         nickname = ...  # type: int
-        def __new__(cls: Type[_TFoo]) -> _TFoo
+        def __new__(cls: Type[_TFoo]) -> _TFoo: ...
         def __init__(self) -> None : ...
     """)
 
@@ -1023,10 +1023,10 @@ class MethodsTest(test_base.TargetIndependentTest):
       _TBar = TypeVar("_TBar", bound=Bar)
       class Foo(object):
         name = ...  # type: Any
-        def __new__(cls: Type[_TFoo], name) -> _TFoo
+        def __new__(cls: Type[_TFoo], name) -> _TFoo: ...
       class Bar(Foo):
         name = ...  # type: str
-        def __new__(cls: Type[_TBar]) -> _TBar
+        def __new__(cls: Type[_TBar]) -> _TBar: ...
     """)
 
 
