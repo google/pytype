@@ -1,6 +1,7 @@
 """Tests for collections_overlay.py."""
 
 from pytype.overlays import collections_overlay
+from pytype.pytd import escape
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
@@ -51,13 +52,13 @@ class NamedTupleAstTest(test_base.UnitTest):
   def test_name(self):
     # The generated name has to be different from the official name, or we'll
     # end up with nonsense like X = X.
-    self.assertNotEqual("X", collections_overlay.namedtuple_name("X", []))
+    self.assertNotEqual("X", escape.pack_namedtuple("X", []))
     # Two namedtuple instances should have the same name iff the instances are
     # the same.
-    self.assertNotEqual(collections_overlay.namedtuple_name("X", []),
-                        collections_overlay.namedtuple_name("X", ["a"]))
-    self.assertNotEqual(collections_overlay.namedtuple_name("X", ["a"]),
-                        collections_overlay.namedtuple_name("X", ["b"]))
+    self.assertNotEqual(escape.pack_namedtuple("X", []),
+                        escape.pack_namedtuple("X", ["a"]))
+    self.assertNotEqual(escape.pack_namedtuple("X", ["a"]),
+                        escape.pack_namedtuple("X", ["b"]))
 
 
 if __name__ == "__main__":

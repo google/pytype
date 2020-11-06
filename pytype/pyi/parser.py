@@ -8,6 +8,7 @@ from pytype import module_utils
 from pytype import utils
 from pytype.pyi import parser_ext  # pytype: disable=import-error
 from pytype.pytd import pep484
+from pytype.pytd import escape
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import slots as cmp_slots
@@ -1046,7 +1047,7 @@ class _Parser:
     fields = [(_handle_string_literal(n), t) for n, t in fields]
     # Handle previously defined NamedTuples with the same name
     prev_list = self._generated_classes[base_name]
-    class_name = "namedtuple_%s_%d" % (base_name, len(prev_list))
+    class_name = escape.pack_namedtuple_base_class(base_name, len(prev_list))
     class_parent = self._heterogeneous_tuple(pytd.NamedType("tuple"),
                                              tuple(t for _, t in fields))
     class_constants = tuple(pytd.Constant(n, t) for n, t in fields)

@@ -145,8 +145,8 @@ class ErrorTest(test_base.TargetPython3BasicTest):
       bar(a)  # wrong-arg-types[e5]
       """)
     self.assertErrorRegexes(errors, {
-        "e1": r"`X`", "e2": r"`Z`", "e3": r"`W`",
-        "e4": r"Iterator", "e5": r"Union\[int, `X`\]"})
+        "e1": r"x: X", "e2": r"x: Z", "e3": r"x: W",
+        "e4": r"Iterator", "e5": r"Union\[int, X\]"})
 
   def test_argument_order(self):
     _, errors = self.InferWithErrors("""

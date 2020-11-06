@@ -6,6 +6,7 @@ File 1/3. Split into parts to enable better test parallelism.
 import textwrap
 
 from pytype.overlays import collections_overlay
+from pytype.pytd import escape
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
@@ -480,7 +481,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
           collections.namedtuple('_Foo', 'x y z')):
         pass
     """)
-    name = collections_overlay.namedtuple_name("_Foo", ["x", "y", "z"])
+    name = escape.pack_namedtuple("_Foo", ["x", "y", "z"])
     ast = collections_overlay.namedtuple_ast(name, ["x", "y", "z"],
                                              self.python_version)
     expected = pytd_utils.Print(ast) + textwrap.dedent("""
@@ -499,7 +500,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
       y = t.y
       z = t.z
     """)
-    name = collections_overlay.namedtuple_name("t", ["x", "y", "z"])
+    name = escape.pack_namedtuple("t", ["x", "y", "z"])
     ast = collections_overlay.namedtuple_ast(name, ["x", "y", "z"],
                                              self.python_version)
     expected = pytd_utils.Print(ast) + textwrap.dedent("""

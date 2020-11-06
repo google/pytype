@@ -10,6 +10,7 @@ from pytype import compat
 from pytype import overlay
 from pytype import utils
 from pytype.pyi import parser
+from pytype.pytd import escape
 from pytype.pytd import pytd
 from pytype.pytd import visitors
 
@@ -63,12 +64,6 @@ def namedtuple_ast(name, fields, python_version=None):
               field_names=field_names,
               field_names_as_strings=field_names_as_strings)
   return parser.parse_string(nt, python_version=python_version)
-
-
-def namedtuple_name(name, fields):
-  # Use a character not allowed in Python variable names to avoid naming
-  # conflicts with user-defined objects.
-  return "namedtuple-%s-%s" % (name, "-".join(fields))
 
 
 class CollectionsOverlay(overlay.Overlay):
@@ -272,7 +267,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
       self.vm.errorlog.invalid_namedtuple_arg(self.vm.frames, utils.message(e))
       return node, self.vm.new_unsolvable(node)
 
-    name = namedtuple_name(name, field_names)
+    name = escape.pack_namedtuple(name, field_names)
     ast = namedtuple_ast(name, field_names,
                          python_version=self.vm.python_version)
     mapping = self._get_known_types_mapping()
