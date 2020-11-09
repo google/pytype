@@ -7,7 +7,7 @@
       * [Mechanics](#mechanics)
       * [Adding an overlay](#adding-an-overlay)
 
-<!-- Added by: rechen, at: 2020-09-18T17:00-07:00 -->
+<!-- Added by: rechen, at: 2020-11-09T13:36-08:00 -->
 
 <!--te-->
 
@@ -81,7 +81,7 @@ and the VM instance, and returns an abstract.AtomicAbstractValue instance.
    [libvm CMake target][libvm-cmake].
 1. In the `{Module}Overlay` initializer, add an entry to `member_map` for each
    new member. The key should be the member name and the value the constructor.
-1. Implememt the new module members! The existing overlays contain plenty of
+1. Implement the new module members! The existing overlays contain plenty of
    examples of how to do this.
 
 [libvm-cmake]: https://github.com/google/pytype/blob/2f2a1483751171421490c352f05955655ea572fa/pytype/CMakeLists.txt#L171-L182
