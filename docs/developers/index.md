@@ -2,6 +2,15 @@
 
 **Under Construction**
 
+<!-- TODO(b/151848869):
+* Add documentation for: two-pass analysis in analyze.py, config.py
+* For completeness, mention: copybara, imports_map, blaze integration
+* Clean up/re-organize/finish writing this index page
+* Add a quick guide for how to add a new typing feature
+* Coordinate dev guide and CONTRIBUTING.md
+  (https://github.com/google/pytype/issues/570)
+-->
+
 This documentation is for developers of and contributors to pytype. It covers
 [tips][development-process] on suggested workflow, how to
 [upgrade][python-upgrade] pytype for new Python versions, and pytype's core
@@ -11,20 +20,14 @@ concepts and code layout.
    * [Developer guide](#developer-guide)
       * [Introduction](#introduction)
       * [Basic concepts](#basic-concepts)
-      * [Adding a new feature](#adding-a-new-feature)
       * [Important code components](#important-code-components)
-         * [AST representation of type stubs](#ast-representation-of-type-stubs)
-            * [Where stubs are located](#where-stubs-are-located)
-         * [Abstract representation of types](#abstract-representation-of-types)
-         * [Conversion between representations](#conversion-between-representations)
-         * [Bytecode handling](#bytecode-handling)
          * [CFG](#cfg)
             * [Typegraph](#typegraph)
             * [Python interface](#python-interface)
             * [Utilities](#utilities)
       * [Updating the developer guide](#updating-the-developer-guide)
 
-<!-- Added by: rechen, at: 2020-08-29T02:18-07:00 -->
+<!-- Added by: rechen, at: 2020-11-09T11:54-08:00 -->
 
 <!--te-->
 
@@ -96,32 +99,7 @@ only the code under `else:` will be executed, then pytype will report a
 `name-error` on `str(y)` because there is no path through the CFG where `y` is
 defined.
 
-## Adding a new feature
-
-pytd node, abstract value, conversion both ways
-
 ## Important code components
-
-### AST representation of type stubs
-
-`pytd/optimize.py`
-
-#### Where stubs are located
-
-typeshed, `pytd/builtins/`, `pytd/stdlib/`,
-`//devtools/python/blaze/pytype/overrides/`
-
-### Abstract representation of types
-
-`abstract.py`, `overlays/`
-
-### Conversion between representations
-
-`convert.py`
-
-### Bytecode handling
-
-`pyc/`, `vm.py`
 
 ### CFG
 
@@ -207,7 +185,6 @@ section.)
 #### Utilities
 
 <!-- Contents of cfg_utils and why you'd use it. -->
-
 
 ## Updating the developer guide
 

@@ -10,8 +10,9 @@ freshness: { owner: 'mdemello' reviewed: '2020-07-09' }
       * [Abstract Values](#abstract-values-1)
       * [Type Information](#type-information)
       * [Matching](#matching)
+      * [Construction](#construction)
 
-<!-- Added by: rechen, at: 2020-09-26T03:28-07:00 -->
+<!-- Added by: rechen, at: 2020-11-09T11:54-08:00 -->
 
 <!--te-->
 
@@ -215,8 +216,41 @@ valid because we can find a substitution, `{T: int}`, that matches the types of
 the arguments for `x` and `y`. The matcher also returns this substitution
 dictionary so that the type `T` is mapped to can be propagated.
 
+## Construction
+
+[`pytype.convert`][pytype.convert] constructs abstract values from raw Python
+constants and [PyTD nodes][type_stubs]. The main conversion method is
+`Converter.constant_to_value`, which wraps the `_constant_to_value` method that
+contains most of the important logic and adds some caching. A few input-output
+examples for `constant_to_value`:
+
+`pyval`         | `constant_to_value(pyval)`
+--------------- | --------------------------
+`'hello world'` | `abstract.AbstractOrConcreteValue('hello world')`
+`0`             | `abstract.AbstractOrConcreteValue(0)`
+`42`            | `abstract.Instance(int)`
+`pytd.Class(X)` | `abstract.PyTDClass(X)`
+
+Some constants such as strings and small integers have to be represented as
+`AbstractOrConcreteValue` objects, which save the concrete value for later use.
+String values, for example, often contain forward references, and `-1` through
+`2` are common import levels. Otherwise, constants are converted to abstract
+instances of their types.
+
+When code under analysis imports another module, pytype parses the other
+module's types into PyTD nodes. Those nodes that are used in the current module
+are then converted to abstract values as needed.
+
+NOTE: Conversely, [`pytype.output`][stub-generation] converts abstract values
+into PyTD nodes.
+
 [abstract_utils]: https://github.com/google/pytype/blob/master/pytype/abstract_utils.py
 
 [matcher]: https://github.com/google/pytype/blob/master/pytype/matcher.py
+
+[pytype.convert]: https://github.com/google/pytype/blob/master/pytype/convert.py
+
+[stub-generation]: type_stubs.md#stub_generation
+[type_stubs]: type_stubs.md
 
 [vm-attributes]: https://github.com/google/pytype/blob/62b9bd1d636965e695bd2e735244be47168dc5b0/pytype/vm.py#L147-L151
