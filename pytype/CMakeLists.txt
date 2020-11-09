@@ -635,7 +635,7 @@ py_test(
   NAME
     collections_overlay_test
   SRCS
-    collections_overlay_test.py
+    overlays/collections_overlay_test.py
   DEPS
     .libvm
     pytype.tests.test_base
