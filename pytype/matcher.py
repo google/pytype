@@ -5,7 +5,6 @@ import logging
 
 from pytype import abstract
 from pytype import abstract_utils
-from pytype import compat
 from pytype import datatypes
 from pytype import function
 from pytype import mixin
@@ -16,7 +15,6 @@ from pytype.overlays import typing_overlay
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
-from pytype.pytd.parse import parser_constants
 
 
 log = logging.getLogger(__name__)
@@ -738,33 +736,6 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         return None
     return subst
 
-  def _match_pyval_against_string(self, pyval, string, subst):
-    """Matches a concrete value against a string literal."""
-    assert isinstance(string, str)
-
-    if pyval.__class__ is str:  # native str
-      left_type = "bytes" if self.vm.PY2 else "unicode"
-    elif isinstance(pyval, compat.BytesType):
-      left_type = "bytes"
-    elif isinstance(pyval, compat.UnicodeType):
-      left_type = "unicode"
-    else:
-      return None
-    # needs to be native str to match `string`
-    left_value = compat.native_str(pyval)
-
-    right_prefix, right_value = (
-        parser_constants.STRING_RE.match(string).groups()[:2])
-    if "b" in right_prefix or "u" not in right_prefix and self.vm.PY2:
-      right_type = "bytes"
-    else:
-      right_type = "unicode"
-    right_value = right_value[1:-1]  # remove quotation marks
-
-    if left_type == right_type and left_value == right_value:
-      return subst
-    return None
-
   def _match_class_and_instance_against_type(
       self, left, instance, other_type, subst, node, view):
     """Checks whether an instance of a type is compatible with a (formal) type.
@@ -782,9 +753,6 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     if isinstance(other_type, abstract.LiteralClass):
       other_value = other_type.value
       if other_value and isinstance(instance, abstract.AbstractOrConcreteValue):
-        if isinstance(other_value.pyval, str):
-          return self._match_pyval_against_string(
-              instance.pyval, other_value.pyval, subst)
         return subst if instance.pyval == other_value.pyval else None
       elif other_value:
         # `instance` does not contain a concrete value. Literal overloads are

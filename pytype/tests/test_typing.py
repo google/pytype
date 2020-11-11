@@ -265,7 +265,7 @@ class LiteralTest(test_base.TargetIndependentTest):
         def f3(x: Literal[None]) -> None: ...
         def f4(x: Literal['hello']) -> None: ...
         def f5(x: Literal[b'hello']) -> None: ...
-        #def f6(x: Literal[u'hello']) -> None: ...
+        def f6(x: Literal[u'hello']) -> None: ...
       """)
       self.Check("""
         import foo
@@ -274,7 +274,7 @@ class LiteralTest(test_base.TargetIndependentTest):
         foo.f3(None)
         foo.f4('hello')
         foo.f5(b'hello')
-        #foo.f6(u'hello')
+        foo.f6(u'hello')
       """, pythonpath=[d.path])
 
   def test_pyi_multiple(self):
@@ -356,6 +356,30 @@ class LiteralTest(test_base.TargetIndependentTest):
         from typing import Any
         foo: module
         v: Any
+      """)
+
+  def test_literal_constant(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Literal, overload
+        x: Literal["x"]
+        y: Literal["y"]
+        @overload
+        def f(arg: Literal["x"]) -> int: ...
+        @overload
+        def f(arg: Literal["y"]) -> str: ...
+      """)
+      ty = self.Infer("""
+        import foo
+        def f1():
+          return foo.f(foo.x)
+        def f2():
+          return foo.f(foo.y)
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo: module
+        def f1() -> int: ...
+        def f2() -> str: ...
       """)
 
 
