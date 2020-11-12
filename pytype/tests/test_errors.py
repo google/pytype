@@ -1,7 +1,6 @@
 """Tests for displaying errors."""
 
 from pytype import file_utils
-from pytype.pytd import escape
 from pytype.tests import test_base
 
 

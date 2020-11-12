@@ -1,5 +1,4 @@
 import textwrap
-import unittest
 
 from pytype.pytd import escape
 from pytype.pytd import pytd
