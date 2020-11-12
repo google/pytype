@@ -382,6 +382,7 @@ class TypingTest(test_base.TargetPython3BasicTest):
       func7(my_special_a)
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       class A(object):
         pass
       class MyInt(int):
@@ -394,7 +395,7 @@ class TypingTest(test_base.TargetPython3BasicTest):
         def __init__(self, val: str): ...
       class MyStr2(str):
         def __init__(self, val: str): ...
-      MyAnyType = ... # Any
+      MyAnyType = ... # type: Any
       class MyFunnyNameType(str):
         def __init__(self, val:str): ...
       def func1(i: MyInt) -> MyInt: ...
