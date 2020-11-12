@@ -381,7 +381,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         other_type = other_type.get_formal_type_parameter(abstract_utils.RET)
         return self._instantiate_and_match(left, other_type, subst, node, view)
       elif other_type.full_name in [
-          "__builtin__.type", "__builtin__.object", "typing.Callable"]:
+          "__builtin__.type", "__builtin__.object", "typing.Callable",
+          "typing.Hashable"]:
         return subst
       elif _is_callback_protocol(other_type):
         return self._match_type_against_callback_protocol(

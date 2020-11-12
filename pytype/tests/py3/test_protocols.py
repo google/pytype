@@ -334,6 +334,15 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"Hashable.*Foo.*__hash__"})
 
+  def test_hash_type(self):
+    self.Check("""
+      from typing import Hashable, Type
+      def f(x: Hashable):
+        pass
+      def g(x: Type[int]):
+        return f(x)
+    """)
+
   def test_generic_callable(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
