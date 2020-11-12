@@ -1,3 +1,8 @@
+Version 2020.11.12
+* Support `# type: ignore[errorcode, ...]` in pyi files.
+* Always allow classes to match typing.Hashable.
+* Fix a bug in pytype's handling of Literal[<str>].
+
 Version 2020.11.03
 * Drop support for running pytype under Python 3.5.
 * Add a dependency on pybind11 for new typegraph metrics.
