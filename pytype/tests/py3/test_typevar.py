@@ -149,12 +149,12 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       u = f(__any_object__)  # ok
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, TypeVar
+      from typing import Any, TypeVar, Union
       T = TypeVar("T", int, float)
       def f(x: T) -> T: ...
       v = ...  # type: Any
       w = ...  # type: bool
-      u = ...  # type: int or float
+      u = ...  # type: Union[int, float]
     """)
     self.assertErrorRegexes(errors, {"e": r"Union\[float, int\].*str"})
 
@@ -301,7 +301,7 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any, TypeVar
       T = TypeVar("T", bound=float)
-      def f(x: T) -> T
+      def f(x: T) -> T: ...
       v1 = ...  # type: float
       v2 = ...  # type: bool
       v3 = ...  # type: int
@@ -401,7 +401,7 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       class A(Generic[T]):
           _foo: Any
           foo: Any
-          def __init__(self, foo: T) -> None
+          def __init__(self, foo: T) -> None: ...
     """)
 
   def test_return_typevar(self):
@@ -487,7 +487,7 @@ class TypeVarTestPy3(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import List
       subprocess: module
-      def run(args: List[str]) -> str
+      def run(args: List[str]) -> str: ...
     """)
 
   def test_abstract_classmethod(self):

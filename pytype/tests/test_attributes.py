@@ -186,7 +186,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Generator, Any
-      def f() -> Generator[None, Any, None]
+      def f() -> Generator[None, Any, None]: ...
     """)
 
   def test_keep_contained_none_return(self):
@@ -196,7 +196,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
-      def f() -> List[None]
+      def f() -> List[None]: ...
     """)
 
   def test_discard_none_return(self):
@@ -208,7 +208,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       x = ...  # type: None
-      def f() -> Any
+      def f() -> Any: ...
     """)
 
   def test_discard_none_yield(self):
@@ -220,7 +220,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Generator
       x = ...  # type: None
-      def f() -> Generator[Any, Any, None]
+      def f() -> Generator[Any, Any, None]: ...
     """)
 
   def test_discard_contained_none_return(self):
@@ -231,7 +231,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: None
-      def f() -> list
+      def f() -> list: ...
     """)
 
   def test_discard_attribute_none_return(self):
@@ -245,7 +245,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
       from typing import Any
       class Foo:
         x = ...  # type: None
-      def f() -> Any
+      def f() -> Any: ...
     """)
 
   def test_getitem(self):
@@ -345,10 +345,11 @@ class TestAttributes(test_base.TargetIndependentTest):
           self.a = 3j
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Union
       class A(object):
-        a = ...  # type: complex or int
-        def method1(self) -> NoneType
-        def method2(self) -> NoneType
+        a = ...  # type: Union[complex, int]
+        def method1(self) -> NoneType: ...
+        def method2(self) -> NoneType: ...
     """)
 
   def test_outside_attribute_access(self):
@@ -361,10 +362,11 @@ class TestAttributes(test_base.TargetIndependentTest):
         A().a = 3j
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Union
       class A(object):
-        a = ...  # type: complex or int
-      def f1() -> NoneType
-      def f2() -> NoneType
+        a = ...  # type: Union[complex, int]
+      def f1() -> NoneType: ...
+      def f2() -> NoneType: ...
     """)
 
   def test_private(self):
@@ -379,7 +381,7 @@ class TestAttributes(test_base.TargetIndependentTest):
       class C(object):
         _x = ...  # type: int
         def __init__(self) -> None: ...
-        def foo(self) -> int
+        def foo(self) -> int: ...
     """)
 
   def test_public(self):
@@ -394,7 +396,7 @@ class TestAttributes(test_base.TargetIndependentTest):
       class C(object):
         x = ...  # type: int
         def __init__(self) -> None: ...
-        def foo(self) -> int
+        def foo(self) -> int: ...
     """)
 
   def test_crosswise(self):
@@ -417,12 +419,12 @@ class TestAttributes(test_base.TargetIndependentTest):
         b = ...  # type: B
         x = ...  # type: complex
         def __init__(self) -> None: ...
-        def set_on_b(self) -> NoneType
+        def set_on_b(self) -> NoneType: ...
       class B(object):
         a = ...  # type: A
         x = ...  # type: int
         def __init__(self) -> None: ...
-        def set_on_a(self) -> NoneType
+        def set_on_a(self) -> NoneType: ...
     """)
 
   def test_attr_with_bad_getattr(self):
@@ -476,7 +478,7 @@ class TestAttributes(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       class A(object):
         x = ...  # type: str
-        def __getattribute__(self, name) -> int
+        def __getattribute__(self, name) -> int: ...
       a = ...  # type: A
       x = ...  # type: int
     """)
@@ -499,8 +501,8 @@ class TestAttributes(test_base.TargetIndependentTest):
       class A(object):
         x = ...  # type: str
       class B(object):
-        def __getattribute__(self, name) -> bool
-      def f(x) -> Any
+        def __getattribute__(self, name) -> bool: ...
+      def f(x) -> Any: ...
     """)
 
   def test_set_class(self):
@@ -511,7 +513,7 @@ class TestAttributes(test_base.TargetIndependentTest):
         return set([x, y])
     """)
     self.assertTypesMatchPytd(ty, """
-      def f(x) -> set
+      def f(x) -> set: ...
     """)
 
   def test_get_mro(self):
@@ -531,7 +533,7 @@ class TestAttributes(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       class A(object):
-        def __call__(self) -> int
+        def __call__(self) -> int: ...
       x = ...  # type: int
     """)
 
@@ -545,7 +547,7 @@ class TestAttributes(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       class A(object):
-        def __getattribute__(self, name) -> int
+        def __getattribute__(self, name) -> int: ...
       x = ...  # type: int
     """)
 

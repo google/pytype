@@ -18,7 +18,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
     """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      def f() -> Any
+      def f() -> Any: ...
     """)
 
   def test_inherit_from_instance(self):
@@ -27,7 +27,8 @@ class RecoveryTests(test_base.TargetIndependentTest):
         pass
     """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
-      class Foo(?):
+      from typing import Any
+      class Foo(Any):
         pass
     """)
 
@@ -39,8 +40,9 @@ class RecoveryTests(test_base.TargetIndependentTest):
       pow(A(), 2)
     """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
-      x = ...  # type: ?
-      class A(?):
+      from typing import Any
+      x = ...  # type: Any
+      class A(Any):
         pass
     """)
 
@@ -62,12 +64,13 @@ class RecoveryTests(test_base.TargetIndependentTest):
         pass
     """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
+      from typing import Any
       class A:
         pass
-      x = ...  # type: ?
+      x = ...  # type: Any
       class B:
         pass
-      y = ...  # type: ?
+      y = ...  # type: Any
       class C:
         pass
     """)

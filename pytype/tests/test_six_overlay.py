@@ -70,7 +70,7 @@ class SixTests(test_base.TargetIndependentTest):
       six: module
       class Foo(type):
         x: int
-        def __init__(self, *args) -> None
+        def __init__(self, *args) -> None: ...
       class Bar(object, metaclass=Foo):
         x: int
       x1: int

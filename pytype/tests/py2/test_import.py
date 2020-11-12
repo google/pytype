@@ -16,11 +16,11 @@ class ImportTest(test_base.TargetPython27FeatureTest):
       p = os.__package__
       """)
     self.assertTypesMatchPytd(ty, """
-       from typing import Optional
+       from typing import Optional, Union
        os = ...  # type: module
        f = ...  # type: str
        n = ...  # type: str
-       d = ...  # type: str or unicode
+       d = ...  # type: Union[str, unicode]
        p = ...  # type: Optional[str]
     """)
 
@@ -36,12 +36,12 @@ class ImportTest(test_base.TargetPython27FeatureTest):
         return sys.getrecursionlimit()
     """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import IO
-      bad_import = ...  # type: ?
+      from typing import Any, IO
+      bad_import = ...  # type: Any
       sys = ...  # type: module
-      def f() -> IO[str]
-      def g() -> int
-      def h() -> int
+      def f() -> IO[str]: ...
+      def g() -> int: ...
+      def h() -> int: ...
     """)
 
   def test_module_name(self):
@@ -80,7 +80,7 @@ class ImportTest(test_base.TargetPython27FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       StringIO = ...  # type: module
-      def f() -> bool
+      def f() -> bool: ...
     """)
 
 

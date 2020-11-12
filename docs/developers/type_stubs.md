@@ -7,9 +7,11 @@
       * [Parser](#parser)
       * [AST manipulation](#ast-manipulation)
       * [Stub generation](#stub-generation)
-      * [Pickling](#pickling)
+      * [Optimizations](#optimizations)
+         * [AST simplification](#ast-simplification)
+         * [Pickling](#pickling)
 
-<!-- Added by: rechen, at: 2020-08-21T19:16-07:00 -->
+<!-- Added by: rechen, at: 2020-11-09T02:22-08:00 -->
 
 <!--te-->
 
@@ -59,7 +61,8 @@ pytype relies on the stubs provided by the open-source [typeshed][typeshed]
 project for most of its standard library and third party type information. For
 modules for which accurate mutation information is important, we shadow the
 typeshed stubs with custom pytd stubs located in
-[pytype/pytd/{builtins,stdlib}][pytd]. During analysis, pytype
+[pytype/pytd/{builtins,stdlib}][pytd].
+During analysis, pytype
 will emit stubs of inferred type information for local files to communicate
 between `pytype-single` runs.
 
@@ -148,7 +151,7 @@ The [`pytype.output`][pytype.output] module is responsible for converting the
 [abstract values][abstract-values] produced by pytype's shadow bytecode
 interpreter into AST nodes.
 
-NOTE: Conversely, [`pytype.convert`][pytype.convert] converts AST nodes into
+NOTE: Conversely, [`pytype.convert`][abstract-from-pytd] converts AST nodes into
 abstract values.
 
 The `output` module contains two core methods: `value_to_pytd_def`, which
@@ -157,7 +160,57 @@ converts an object to its definition (for example, `InterpreterClass(Foo)` to
 (`InterpreterClass(Foo)` to `Type[Foo]`). For convenience, these methods can be
 accessed as `to_pytd_def` and `to_type`, respectively, on abstract values.
 
-## Pickling
+## Optimizations
+
+### AST simplification
+
+To decrease the size of emitted type stubs, pytype runs the visitors in
+[`pytype.pytd.optimize`][pytype.pytd.optimize] to simplify ASTs as much as
+possible before serializing them. This also ensures that equivalent nodes are
+reduced to a canonical form.
+
+For example, suppose pytype is analyzing the following code, which describes a
+simple company structure:
+
+```python
+class Employee:
+  pass
+class CEO(Employee):
+  pass
+class Company:
+  def __init__(self):
+    self.employees = [CEO()]
+  def hire(self, employee: Employee):
+    self.employees.append(employee)
+```
+
+pytype produces a raw pyi in which `Company.employees` is inferred to be a list
+of both CEOs and employees:
+
+```python {highlight="lines:5"}
+from typing import List, Union
+class Employee: ...
+class CEO(Employee): ...
+class Company:
+  employees: List[Union[CEO, Employee]]
+  def __init__(self) -> None: ...
+  def hire(self, employee: Employee) -> None: ...
+```
+
+The `optimize.SimplifyUnionsWithSuperclasses` visitor then notices that a CEO is
+a type of employee and simplifies the pyi to:
+
+```python {highlight="lines:5"}
+from typing import List
+class Employee: ...
+class CEO(Employee): ...
+class Company:
+  employees: List[Employee]
+  def __init__(self) -> None: ...
+  def hire(self, employee: Employee) -> None: ...
+```
+
+### Pickling
 
 For improved performance, pytype will read and write pickled pyi files instead
 of plaintext when run with:
@@ -169,6 +222,7 @@ of plaintext when run with:
 The [`pytype.pytd.pytd_utils.{Load,Save}Pickle`][pickle-utils] methods can be
 used to debug pickles.
 
+[abstract-from-pytd]: abstract_values.md#construction
 [abstract-values]: abstract_values.md
 
 [importlab]: https://github.com/google/importlab
@@ -181,11 +235,11 @@ used to debug pickles.
 
 [pytd]: https://github.com/google/pytype/tree/master/pytype/pytd
 
-[pytype.convert]: https://github.com/google/pytype/blob/master/pytype/convert.py
-
 [pytype.output]: https://github.com/google/pytype/blob/master/pytype/output.py
 
 [pytype.pyi]: https://github.com/google/pytype/tree/master/pytype/pyi
+
+[pytype.pytd.optimize]: https://github.com/google/pytype/blob/master/pytype/pytd/optimize.py
 
 [pytype.pytd.pytd]: https://github.com/google/pytype/blob/master/pytype/pytd/pytd.py
 

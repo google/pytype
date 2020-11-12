@@ -17,7 +17,7 @@ class DictTest(test_base.TargetPython3BasicTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict, Union
       MAP = ...  # type: Dict[int, str]
-      def foo(x: Union[int, None]) -> Any
+      def foo(x: Union[int, None]) -> Any: ...
     """)
 
   def test_object_in_dict(self):

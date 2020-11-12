@@ -93,9 +93,10 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
           foo = property(fget=foo.Foo.get_foo)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Union
         foo = ...  # type: module
         class Bar(foo.Foo):
-          foo = ...  # type: str or int
+          foo = ...  # type: Union[str, int]
       """)
 
   def test_callable_if_splitting(self):
@@ -201,7 +202,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
         foo = ...  # type: Union[int, str]
         bar = ...  # type: Any
         def __init__(self) -> None: ...
-      def f() -> Tuple[int, str]
+      def f() -> Tuple[int, str]: ...
     """)
 
   def test_different_property_instances(self):

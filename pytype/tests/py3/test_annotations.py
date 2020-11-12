@@ -35,7 +35,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
          pass
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      def bar(p1: str, p2: complex) -> int
+      def bar(p1: str, p2: complex) -> int: ...
     """)
 
   def test_deep(self):
@@ -44,7 +44,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
          pass
     """)
     self.assertTypesMatchPytd(ty, """
-      def bar(p1: str, p2: complex) -> None
+      def bar(p1: str, p2: complex) -> None: ...
     """)
 
   def test_union(self):
@@ -428,7 +428,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
   def test_unknown_argument(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
-        def factory() -> type
+        def factory() -> type: ...
       """)
       ty = self.Infer("""
         import a
@@ -440,7 +440,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         from typing import Any
         a = ...  # type: module
         A = ...  # type: Any
-        def f(x) -> Any
+        def f(x) -> Any: ...
       """)
 
   @test_utils.skipFromPy((3, 8), "error line number changed in 3.8")
@@ -459,8 +459,8 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 
     """)
     self.assertTypesMatchPytd(ty, """
-      def foo() -> None
-      def bar(path: str, **kwargs) -> str
+      def foo() -> None: ...
+      def bar(path: str, **kwargs) -> str: ...
     """)
     error = r"Actually passed:.*path: None"
     self.assertErrorRegexes(errors, {"e": error})
@@ -481,8 +481,8 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 
     """)
     self.assertTypesMatchPytd(ty, """
-      def foo() -> None
-      def bar(path: str, **kwargs) -> str
+      def foo() -> None: ...
+      def bar(path: str, **kwargs) -> str: ...
     """)
     error = r"Actually passed:.*path: None"
     self.assertErrorRegexes(errors, {"e": error})
@@ -503,8 +503,8 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 
     """)
     self.assertTypesMatchPytd(ty, """
-      def foo() -> None
-      def bar(path: str, **kwargs) -> str
+      def foo() -> None: ...
+      def bar(path: str, **kwargs) -> str: ...
     """)
     error = r"Actually passed:.*path: None"
     self.assertErrorRegexes(errors, {"e": error})
@@ -525,8 +525,8 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 
     """)
     self.assertTypesMatchPytd(ty, """
-      def foo() -> None
-      def bar(path: str, **kwargs) -> str
+      def foo() -> None: ...
+      def bar(path: str, **kwargs) -> str: ...
     """)
     error = r"Actually passed:.*path: None"
     self.assertErrorRegexes(errors, {"e": error})
@@ -676,9 +676,9 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
-      def f(x, **kwargs: int) -> Dict[str, int]
-      def g() -> Dict[str, float]
-      def h() -> Dict[float, int]
+      def f(x, **kwargs: int) -> Dict[str, int]: ...
+      def g() -> Dict[str, float]: ...
+      def h() -> Dict[float, int]: ...
     """)
     error1 = (r"Expected.*Mapping\[str, int\].*"
               r"Actually passed.*Dict\[str, float\]")
@@ -873,9 +873,9 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       v = f({"a": "b"})
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import Dict
-      def f(x: Dict[str, str]) -> Dict[str or bool, str or int]: ...
-      v = ...  # type: Dict[str or bool, str or int]
+      from typing import Dict, Union
+      def f(x: Dict[str, str]) -> Dict[Union[str, bool], Union[str, int]]: ...
+      v = ...  # type: Dict[Union[str, bool], Union[str, int]]
     """)
 
   def test_inner_string_annotation(self):
@@ -1171,7 +1171,7 @@ class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
-      def quack(x, *args: int) -> Tuple[int, ...]
+      def quack(x, *args: int) -> Tuple[int, ...]: ...
     """)
     error = r"Expected.*Iterable\[int\].*Actually passed.*Tuple\[float\]"
     self.assertErrorRegexes(errors, {"e": error})

@@ -34,7 +34,7 @@ class TestExceptions(test_base.TargetPython27FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import NoReturn
       sys = ...  # type: module
-      def f() -> NoReturn
+      def f() -> NoReturn: ...
     """)
 
   # Infers __init__(self, _) -> NoReturn under target py3

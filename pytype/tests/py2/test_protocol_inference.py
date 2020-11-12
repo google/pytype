@@ -20,12 +20,13 @@ class ProtocolInferenceTest(test_base.TargetPython27FeatureTest):
       cp.read()
       """, deep=False)
     self.assertTypesMatchPytd(ty, """
+      from typing import Union
       cp = ...  # type: ConfigParser
 
       class ConfigParser(object):
-        def __init__(self, filename: str or buffer or unicode) -> NoneType
-        def read(self) -> str
-        filename = ...  # type: str or buffer or unicode
+        def __init__(self, filename: Union[str, buffer, unicode]) -> NoneType: ...
+        def read(self) -> str: ...
+        filename = ...  # type: Union[str, buffer, unicode]
     """)
 
 

@@ -28,7 +28,7 @@ class TypingTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List
       typing = ...  # type: module
-      def f() -> List[int]
+      def f() -> List[int]: ...
     """)
 
   def test_cast2(self):
@@ -196,9 +196,9 @@ class LiteralTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Literal
-        def f(x: Literal[True]) -> int
-        def f(x: Literal[False]) -> float
-        def f(x: bool) -> complex
+        def f(x: Literal[True]) -> int: ...
+        def f(x: Literal[False]) -> float: ...
+        def f(x: bool) -> complex: ...
       """)
       ty = self.Infer("""
         import foo
@@ -281,8 +281,8 @@ class LiteralTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Literal
-        def f(x: Literal[False, None]) -> int
-        def f(x) -> str
+        def f(x: Literal[False, None]) -> int: ...
+        def f(x) -> str: ...
       """)
       ty = self.Infer("""
         import foo
@@ -356,6 +356,30 @@ class LiteralTest(test_base.TargetIndependentTest):
         from typing import Any
         foo: module
         v: Any
+      """)
+
+  def test_literal_constant(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Literal, overload
+        x: Literal["x"]
+        y: Literal["y"]
+        @overload
+        def f(arg: Literal["x"]) -> int: ...
+        @overload
+        def f(arg: Literal["y"]) -> str: ...
+      """)
+      ty = self.Infer("""
+        import foo
+        def f1():
+          return foo.f(foo.x)
+        def f2():
+          return foo.f(foo.y)
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo: module
+        def f1() -> int: ...
+        def f2() -> str: ...
       """)
 
 

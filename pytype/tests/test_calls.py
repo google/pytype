@@ -10,7 +10,7 @@ class CallsTest(test_base.TargetIndependentTest):
   def test_optional(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
-        def foo(x: int, y: int = ..., z: int = ...) -> int
+        def foo(x: int, y: int = ..., z: int = ...) -> int: ...
       """)
       self.Check("""
         import mod
@@ -22,7 +22,7 @@ class CallsTest(test_base.TargetIndependentTest):
   def test_missing(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
-        def foo(x, y) -> int
+        def foo(x, y) -> int: ...
       """)
       self.InferWithErrors("""
         import mod
@@ -32,7 +32,7 @@ class CallsTest(test_base.TargetIndependentTest):
   def test_extraneous(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
-        def foo(x, y) -> int
+        def foo(x, y) -> int: ...
       """)
       self.InferWithErrors("""
         import mod
@@ -42,7 +42,7 @@ class CallsTest(test_base.TargetIndependentTest):
   def test_missing_kwonly(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
-        def foo(x, y, *, z) -> int
+        def foo(x, y, *, z) -> int: ...
       """)
       _, errors = self.InferWithErrors("""
         import mod
@@ -53,7 +53,7 @@ class CallsTest(test_base.TargetIndependentTest):
   def test_extra_keyword(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
-        def foo(x, y) -> int
+        def foo(x, y) -> int: ...
       """)
       self.InferWithErrors("""
         import mod
@@ -63,7 +63,7 @@ class CallsTest(test_base.TargetIndependentTest):
   def test_varargs_with_kwonly(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
-        def foo(*args: int, z: int) -> int
+        def foo(*args: int, z: int) -> int: ...
       """)
       self.Check(
           """
@@ -74,7 +74,7 @@ class CallsTest(test_base.TargetIndependentTest):
   def test_varargs_with_missing_kwonly(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
-        def foo(*args: int, z: int) -> int
+        def foo(*args: int, z: int) -> int: ...
       """)
       _, errors = self.InferWithErrors("""
         import mod

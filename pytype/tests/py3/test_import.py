@@ -36,12 +36,12 @@ class ImportTest(test_base.TargetPython3FeatureTest):
         return sys.getrecursionlimit()
     """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import TextIO
-      bad_import = ...  # type: ?
+      from typing import Any, TextIO
+      bad_import = ...  # type: Any
       sys = ...  # type: module
       def f() -> TextIO: ...
-      def g() -> int
-      def h() -> int
+      def g() -> int: ...
+      def h() -> int: ...
     """)
 
   def test_relative_priority(self):

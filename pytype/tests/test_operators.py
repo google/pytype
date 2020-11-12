@@ -258,8 +258,8 @@ class ReverseTest(test_base.TargetIndependentTest,
       d.create_file("test.pyi", """
         from typing import Tuple
         class Test():
-          def __or__(self, other: Tuple[int, ...]) -> bool
-          def __ror__(self, other: Tuple[int, ...]) -> bool
+          def __or__(self, other: Tuple[int, ...]) -> bool: ...
+          def __ror__(self, other: Tuple[int, ...]) -> bool: ...
       """)
       ty = self.Infer("""
         import test
@@ -275,8 +275,8 @@ class ReverseTest(test_base.TargetIndependentTest,
         test = ...  # type: module
         x = ...  # type: bool
         y = ...  # type: bool
-        def f(t) -> Any
-        def g(t) -> Any
+        def f(t) -> Any: ...
+        def g(t) -> Any: ...
       """)
 
   def test_custom_reverse_unused(self):

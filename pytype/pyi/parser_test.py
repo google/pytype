@@ -1075,6 +1075,17 @@ class FunctionTest(_ParserTestBase):
           __slots__ = ["a", "b"]
     """)
 
+  def test_typeignore_errorcode(self):
+    self.check("""
+      def f() -> None: ...  # type: ignore[override]
+      def g() -> None: ...  # type: ignore[var-annotated]
+      def h() -> None: ...  # type: ignore[abstract, no-untyped-def]
+    """, """
+      def f() -> None: ...
+      def g() -> None: ...
+      def h() -> None: ...
+    """)
+
   def test_decorators(self):
     # These tests are a bit questionable because most of the decorators only
     # make sense for methods of classes.  But this at least gives us some

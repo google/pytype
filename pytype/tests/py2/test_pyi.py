@@ -10,7 +10,7 @@ class PYITest(test_base.TargetPython27FeatureTest):
   def test_bytes(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        def f() -> bytes
+        def f() -> bytes: ...
       """)
       ty = self.Infer("""
         import foo
@@ -41,13 +41,13 @@ class PYITest(test_base.TargetPython27FeatureTest):
         v5 = a.get_varargs(1, *None)  # wrong-arg-types[e2]
       """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Any
+        from typing import Any, Union
         a = ...  # type: module
         l1 = ...  # type: list[str]
-        l2 = ...  # type: list[str or complex]
+        l2 = ...  # type: list[Union[str, complex]]
         v1 = ...  # type: str
-        v2 = ...  # type: str or complex
-        v3 = ...  # type: bool or float
+        v2 = ...  # type: Union[str, complex]
+        v3 = ...  # type: Union[bool, float]
         v4 = ...  # type: Any
         v5 = ...  # type: Any
       """)
@@ -76,13 +76,13 @@ class PYITest(test_base.TargetPython27FeatureTest):
         v4 = a.get_kwargs(1, 2, 3, z=5, v="", u=3j)  # wrong-arg-types[e2]
       """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Any, Mapping
+        from typing import Any, Mapping, Union
         a = ...  # type: module
         d1 = ...  # type: dict[int, int]
-        d2 = ...  # type: Mapping[str, str or complex]
+        d2 = ...  # type: Mapping[str, Union[str, complex]]
         v1 = ...  # type: Any
-        v2 = ...  # type: str or complex
-        v3 = ...  # type: int or complex
+        v2 = ...  # type: Union[str, complex]
+        v3 = ...  # type: Union[int, complex]
         v4 = ...  # type: Any
       """)
       msg1 = (r"Expected: \(x, \*args, z, \*\*kws: Mapping\[str, Any\]\).*"

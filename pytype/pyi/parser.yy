@@ -570,6 +570,10 @@ return
 
 typeignore
   : TYPECOMMENT NAME { Py_DecRef($2); }
+  | TYPECOMMENT NAME '[' maybe_type_list ']' {
+      Py_DecRef($2);
+      Py_DecRef($4);
+    }
   ;
 
 maybe_body

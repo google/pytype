@@ -21,7 +21,7 @@ class InheritanceTest(test_base.TargetIndependentTest):
         pass
       class Leaf(Base):
         lineno: int
-        def get_lineno(self) -> int
+        def get_lineno(self) -> int: ...
     """)
 
   def test_class_attributes(self):

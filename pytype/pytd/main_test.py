@@ -52,7 +52,7 @@ class TestPytdTool(unittest.TestCase):
 
   def test_no_output(self):
     with file_utils.Tempdir() as d:
-      inpath = d.create_file("in.pytd", "def f(x) -> str")
+      inpath = d.create_file("in.pytd", "def f(x) -> str: ...")
       # Not specifying an output is fine; the tool simply checks that the input
       # file is parseable.
       sys.argv = ["main.py", inpath]

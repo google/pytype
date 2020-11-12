@@ -19,9 +19,10 @@ class TestUtils(parser_test_base.ParserTest):
   def test_unpack_union(self):
     """Test for UnpackUnion."""
     ast = self.Parse("""
-      c1 = ...  # type: int or float
+      from typing import Union
+      c1 = ...  # type: Union[int, float]
       c2 = ...  # type: int
-      c3 = ...  # type: list[int or float]""")
+      c3 = ...  # type: list[Union[int, float]]""")
     c1 = ast.Lookup("c1").type
     c2 = ast.Lookup("c2").type
     c3 = ast.Lookup("c3").type
@@ -115,7 +116,7 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertIsInstance(pytd_utils.JoinTypes([]), pytd.NothingType)
 
   def test_join_anything_types(self):
-    """Test that JoinTypes() simplifies unions containing '?'."""
+    """Test that JoinTypes() simplifies unions containing 'Any'."""
     types = [pytd.AnythingType(), pytd.NamedType("a")]
     self.assertIsInstance(pytd_utils.JoinTypes(types), pytd.AnythingType)
 
@@ -147,15 +148,16 @@ class TestUtils(parser_test_base.ParserTest):
   def test_print(self):
     """Smoketest for printing pytd."""
     ast = self.Parse("""
+      from typing import Any, Union
       c1 = ...  # type: int
       T = TypeVar('T')
       class A(typing.Generic[T], object):
         bar = ...  # type: T
-        def foo(self, x: list[int], y: T) -> list[T] or float:
+        def foo(self, x: list[int], y: T) -> Union[list[T], float]:
           raise ValueError()
       X = TypeVar('X')
       Y = TypeVar('Y')
-      def bar(x: X or Y) -> ?
+      def bar(x: Union[X, Y]) -> Any
     """)
     # TODO(b/159051689): Do more extensive testing.
     pytd_utils.Print(ast)
@@ -196,7 +198,8 @@ class TestUtils(parser_test_base.ParserTest):
         ast1.classes + ast1.functions + ast1.constants +
         ast2.classes + ast2.functions + ast2.constants)
     expected = textwrap.dedent("""
-      c = ...  # type: int or float
+      from typing import Union
+      c = ...  # type: Union[int, float]
       d = ...  # type: int
       def f(x: int) -> int
       def f(x: float) -> float
@@ -384,18 +387,20 @@ class TestUtils(parser_test_base.ParserTest):
     # different. The union types are different (int,str) vs (str,int) but the
     # ordering is ignored when testing for equality (which ASTeq uses).
     src1 = textwrap.dedent("""
-        def foo(a: int or str) -> C
+        from typing import Union
+        def foo(a: Union[int, str]) -> C
         T = TypeVar('T')
         class C(typing.Generic[T], object):
             def bar(x: T) -> NoneType
         CONSTANT = ...  # type: C[float]
         """)
     src2 = textwrap.dedent("""
+        from typing import Union
         CONSTANT = ...  # type: C[float]
         T = TypeVar('T')
         class C(typing.Generic[T], object):
             def bar(x: T) -> NoneType
-        def foo(a: str or int) -> C
+        def foo(a: Union[str, int]) -> C
         """)
     tree1 = parser.parse_string(src1, python_version=self.python_version)
     tree2 = parser.parse_string(src2, python_version=self.python_version)

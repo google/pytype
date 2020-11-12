@@ -169,7 +169,7 @@ class SuperTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Grandparent(object):
-          def f(self) -> int
+          def f(self) -> int: ...
       """)
       ty = self.Infer("""
         import foo

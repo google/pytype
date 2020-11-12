@@ -37,8 +37,8 @@ class TestExceptionsPy3(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import NoReturn
 
-      def e() -> NoReturn
-      def f() -> int
+      def e() -> NoReturn: ...
+      def f() -> int: ...
     """)
 
 

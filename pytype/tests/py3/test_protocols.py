@@ -204,7 +204,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
       class Bar(object):
         def __getitem__(self, i: T) -> T: ...
       T2 = TypeVar("T2")
-      def f(s: Iterable[T2]) -> Iterator[T2]
+      def f(s: Iterable[T2]) -> Iterator[T2]: ...
     """)
 
   def test_iterable_iter(self):
@@ -223,7 +223,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
       class Bar(object):
         def __iter__(self) -> Iterator: ...
       T = TypeVar("T")
-      def f(s: Iterable[T]) -> Iterator[T]
+      def f(s: Iterable[T]) -> Iterator[T]: ...
     """)
 
   def test_pyi_iterable_getitem(self):
@@ -244,8 +244,9 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
   def test_pyi_iterable_iter(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        from typing import Any
         class Foo(object):
-          def __iter__(self) -> ?: ...
+          def __iter__(self) -> Any: ...
       """)
       self.Check("""
         from typing import Iterable, TypeVar
@@ -332,6 +333,15 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
       f(Foo())  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"Hashable.*Foo.*__hash__"})
+
+  def test_hash_type(self):
+    self.Check("""
+      from typing import Hashable, Type
+      def f(x: Hashable):
+        pass
+      def g(x: Type[int]):
+        return f(x)
+    """)
 
   def test_generic_callable(self):
     with file_utils.Tempdir() as d:

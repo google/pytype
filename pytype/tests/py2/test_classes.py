@@ -75,7 +75,7 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Type
       class A(type):
-        def f(self) -> float
+        def f(self) -> float: ...
       class X(object, metaclass=A):
         __metaclass__ = ...  # type: Type[A]
       v = ...  # type: float
@@ -103,8 +103,8 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
       d.create_file("foo.pyi", """
         T = TypeVar("T")
         class MyMeta(type):
-          def register(self, cls: type) -> None
-        def mymethod(funcobj: T) -> T
+          def register(self, cls: type) -> None: ...
+        def mymethod(funcobj: T) -> T: ...
       """)
       ty = self.Infer("""
         import foo
@@ -121,7 +121,7 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
         foo = ...  # type: module
         class X(object, metaclass=foo.MyMeta):
           __metaclass__ = ...  # type: Type[foo.MyMeta]
-          def f(self) -> int
+          def f(self) -> int: ...
         v = ...  # type: int
       """)
 
@@ -135,9 +135,9 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      def MyMeta(names, bases, members) -> Any
+      def MyMeta(names, bases, members) -> Any: ...
       class X(object, metaclass=MyMeta):
-        def __metaclass__(names, bases, members) -> Any
+        def __metaclass__(names, bases, members) -> Any: ...
     """)
 
   def test_unknown_metaclass(self):

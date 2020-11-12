@@ -16,11 +16,11 @@ class UnionTest(test_base.TargetIndependentTest):
     """)
 
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, TypeVar
+      from typing import Any, TypeVar, Union
       _T0 = TypeVar("_T0")
-      def id(x: _T0) ->_T0
+      def id(x: _T0) ->_T0: ...
 
-      def f(b, x, y) -> int or float
+      def f(b, x, y) -> Union[int, float]: ...
     """)
 
   def test_call(self):
@@ -34,7 +34,7 @@ class UnionTest(test_base.TargetIndependentTest):
         return type(x)()
     """, deep=True)
     self.assertTypesMatchPytd(ty, """
-      def f() -> int
+      def f() -> int: ...
     """)
     self.assertErrorRegexes(errors, {"e1": r"int", "e2": r"int"})
 

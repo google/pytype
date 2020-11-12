@@ -14,7 +14,8 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
         return x + 2.0
     """)
     self.assertTypesMatchPytd(ty, """
-      def t_testAdd1(x: int or float or complex or bool) -> float or complex
+      from typing import Union
+      def t_testAdd1(x: Union[int, float, complex, bool]) -> Union[float, complex]: ...
     """)
 
   @test_base.skip("Needs __radd__ on all builtins")
@@ -25,7 +26,8 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
         return 2.0 + x
     """)
     self.assertTypesMatchPytd(ty, """
-      def t_testAdd2(x: int or float or complex or bool) -> float or complex
+      from typing import Union
+      def t_testAdd2(x: Union[int, float, complex, bool]) -> Union[float, complex]: ...
     """)
 
   def test_add3(self):
@@ -36,7 +38,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      def t_testAdd3(x) -> Any
+      def t_testAdd3(x) -> Any: ...
     """)
 
   @test_base.skip("Needs handling of immutable types for += on an unknown")
@@ -49,7 +51,8 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
     """)
     # Currently missing str and unicode
     self.assertTypesMatchPytd(ty, """
-      def t_testAdd5(x: str or unicode or bytearray or list[?]) -> str or unicode or bytearray or list[?]
+      from typing import Any, Union
+      def t_testAdd5(x: Union[str, unicode, bytearray, list[Any]]) -> Union[str, unicode, bytearray, list[Any]]: ...
     """)
 
   def test_str_mul(self):
@@ -59,7 +62,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
         return "abc" * x
     """)
     self.assertTypesMatchPytd(ty, """
-      def t_testAdd4(x) -> str
+      def t_testAdd4(x) -> str: ...
     """)
 
   def test_pow1(self):
@@ -69,7 +72,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      def t_testPow1(x, y) -> Any
+      def t_testPow1(x, y) -> Any: ...
     """)
 
   def test_isinstance1(self):
@@ -78,7 +81,7 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
         return isinstance(x, int)
     """)
     self.assertTypesMatchPytd(ty, """
-      def t_testIsinstance1(x) -> bool
+      def t_testIsinstance1(x) -> bool: ...
     """)
 
   def test_call_any(self):
@@ -87,7 +90,8 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
       t_testCallAny()  # error because there's no "def f()..."
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      t_testCallAny = ...  # type: ?
+      from typing import Any
+      t_testCallAny = ...  # type: Any
     """)
 
   @test_base.skip("Needs NameError support")

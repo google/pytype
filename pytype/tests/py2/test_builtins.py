@@ -27,11 +27,12 @@ class BuiltinTests(test_base.TargetPython27FeatureTest):
       h = u",".join([u"foo", "bar"])
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
+      from typing import Union
       b = ...  # type: unicode
       d = ...  # type: unicode
       e = ...  # type: unicode
       f = ...  # type: unicode
-      g = ...  # type: str or unicode
+      g = ...  # type: Union[str, unicode]
       h = ...  # type: unicode
     """)
 
@@ -97,12 +98,12 @@ class BuiltinTests(test_base.TargetPython27FeatureTest):
       d = m.viewkeys() ^ {1, 2, 3}
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import Dict, Set
+      from typing import Dict, Set, Union
       m = ...  # type: Dict[str, None]
       a = ...  # type: Set[str]
       b = ...  # type: Set[str]
-      c = ...  # type: Set[int or str]
-      d = ...  # type: Set[int or str]
+      c = ...  # type: Set[Union[int, str]]
+      d = ...  # type: Set[Union[int, str]]
     """)
 
   def test_filter(self):
@@ -170,8 +171,8 @@ class BuiltinTests(test_base.TargetPython27FeatureTest):
     self.assertTypesMatchPytd(ty, """
       os = ...  # type: module
 
-      def f() -> file
-      def g() -> int
+      def f() -> file: ...
+      def g() -> int: ...
     """)
 
   def test_map_basic(self):
@@ -195,7 +196,7 @@ class BuiltinTests(test_base.TargetPython27FeatureTest):
       class Foo(object):
         pass
 
-      def f() -> list
+      def f() -> list: ...
     """)
 
   def test_map1(self):
@@ -289,12 +290,12 @@ class BuiltinTests(test_base.TargetPython27FeatureTest):
       t_testDict()
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import Dict, List
-      def t_testDict() -> float or int
+      from typing import Dict, List, Union
+      def t_testDict() -> Union[float, int]: ...
       # _i1_, _i2_ capture the more precise definitions of the ~dict, ~list
-      def _i1_(x: List[float]) -> List[float]
-      def _i1_(x: List[int]) -> List[int]
-      def _i2_(x: dict[complex or str, float or int]) -> Dict[complex or str, float or int]
+      def _i1_(x: List[float]) -> List[float]: ...
+      def _i1_(x: List[int]) -> List[int]: ...
+      def _i2_(x: dict[Union[complex, str], Union[float, int]]) -> Dict[Union[complex, str], Union[float, int]]: ...
     """)
 
   def test_list_init(self):
@@ -332,7 +333,7 @@ class BuiltinTests(test_base.TargetPython27FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       class MyException(Exception):
-        def get_message(self) -> str
+        def get_message(self) -> str: ...
     """)
 
   def test_iter_items(self):
@@ -385,7 +386,7 @@ class BuiltinTests(test_base.TargetPython27FeatureTest):
         t_testStrUnicodeMod()
       """, deep=False)
     self.assertTypesMatchPytd(ty, """
-        def t_testStrUnicodeMod() -> unicode
+        def t_testStrUnicodeMod() -> unicode: ...
       """)
 
   def test_round(self):

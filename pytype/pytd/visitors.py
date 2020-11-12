@@ -189,7 +189,7 @@ class DefaceUnresolved(RemoveTypeParametersFromGenericAny):
     else:
       if (self._do_not_log_prefix is None or
           not name.startswith(self._do_not_log_prefix)):
-        logging.warning("Setting %s to ?", name)
+        logging.warning("Setting %s to Any", name)
       return pytd.AnythingType()
 
   def VisitCallableType(self, node):
@@ -728,7 +728,7 @@ class AdjustSelf(Visitor):
     """Adjust all parameters called "self" to have their parent class type.
 
     But do this only if their original type is unoccupied ("object" or,
-    if configured, "?").
+    if configured, "Any").
 
     Args:
       p: pytd.Parameter instance.
@@ -756,7 +756,7 @@ class RemoveUnknownClasses(Visitor):
     class ~unknown2:
       ...
   to
-    def f(x) -> ?
+    def f(x) -> Any
   """
 
   def __init__(self):
@@ -1207,12 +1207,12 @@ class ExpandSignatures(Visitor):
   """Expand to Cartesian product of parameter types.
 
   For example, this transforms
-    def f(x: int or float, y: int or float) -> str or unicode
+    def f(x: Union[int, float], y: Union[int, float]) -> Union[str, unicode]
   to
-    def f(x: int, y: int) -> str or unicode
-    def f(x: int, y: float) -> str or unicode
-    def f(x: float, y: int) -> str or unicode
-    def f(x: float, y: float) -> str or unicode
+    def f(x: int, y: int) -> Union[str, unicode]
+    def f(x: int, y: float) -> Union[str, unicode]
+    def f(x: float, y: int) -> Union[str, unicode]
+    def f(x: float, y: float) -> Union[str, unicode]
 
   The expansion by this class is typically *not* an optimization. But it can be
   the precursor for optimizations that need the expanded signatures, and it can

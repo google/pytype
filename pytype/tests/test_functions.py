@@ -423,7 +423,7 @@ class TestFunctions(test_base.TargetIndependentTest):
         return "%s" % ",".join(t for t in elements)
     """)
     self.assertTypesMatchPytd(ty, """
-      def f(elements) -> str
+      def f(elements) -> str: ...
     """)
 
   def test_named_arg_unsolvable_max_depth(self):
@@ -440,8 +440,8 @@ class TestFunctions(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         from typing import List, TypeVar
         T = TypeVar("T")
-        def f(x: T, y: int) -> List[T]
-        def f(x: List[T], y: str) -> List[T]
+        def f(x: T, y: int) -> List[T]: ...
+        def f(x: List[T], y: str) -> List[T]: ...
       """)
       ty = self.Infer("""
         import foo
@@ -451,7 +451,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         foo = ...  # type: module
-        def f(x, y) -> list
+        def f(x, y) -> list: ...
       """)
 
   def test_multiple_signatures_with_multiple_type_parameter(self):
@@ -470,7 +470,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         foo = ... # type: module
-        def f(x) -> Any
+        def f(x) -> Any: ...
       """)
 
   def test_unknown_single_signature(self):
@@ -479,8 +479,8 @@ class TestFunctions(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         from typing import List, TypeVar
         T = TypeVar("T")
-        def f(x: T, y: int) -> List[T]
-        def f(x: List[T], y: str) -> List[T]
+        def f(x: T, y: int) -> List[T]: ...
+        def f(x: List[T], y: str) -> List[T]: ...
       """)
       ty = self.Infer("""
         import foo
@@ -490,7 +490,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       self.assertTypesMatchPytd(ty, """
         from typing import List
         foo = ...  # type: module
-        def f(y) -> List[str]
+        def f(y) -> List[str]: ...
     """)
 
   def test_unknown_with_solved_type_parameter(self):
@@ -498,8 +498,8 @@ class TestFunctions(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         from typing import List, TypeVar
         T = TypeVar("T")
-        def f(x: T, y: T) -> List[T]
-        def f(x: List[T], y: T) -> List[T]
+        def f(x: T, y: T) -> List[T]: ...
+        def f(x: List[T], y: T) -> List[T]: ...
       """)
       ty = self.Infer("""
         import foo
@@ -507,10 +507,10 @@ class TestFunctions(test_base.TargetIndependentTest):
           return foo.f(x, "")
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Any
+        from typing import Any, Union
         foo = ...  # type: module
-        # TODO(rechen): def f(x: str or List[str]) -> List[str]
-        def f(x) -> list
+        # TODO(rechen): def f(x: str or List[str]) -> List[str]: ...
+        def f(x) -> list: ...
       """)
 
   def test_unknown_with_extra_information(self):
@@ -518,8 +518,8 @@ class TestFunctions(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         from typing import List, TypeVar
         T = TypeVar("T")
-        def f(x: T) -> List[T]
-        def f(x: List[T]) -> List[T]
+        def f(x: T) -> List[T]: ...
+        def f(x: List[T]) -> List[T]: ...
       """)
       ty = self.Infer("""
         import foo
@@ -535,11 +535,11 @@ class TestFunctions(test_base.TargetIndependentTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Any, List, MutableSequence
         foo = ...  # type: module
-        # TODO(rechen): def f(x: unicode or List[unicode]) -> bool
-        def f(x) -> Any
-        def g(x) -> list
-        # TODO(rechen): def h(x: buffer or bytearray or unicode) -> List[buffer or bytearray or unicode]
-        def h(x) -> list
+        # TODO(rechen): def f(x: unicode or List[unicode]) -> bool: ...
+        def f(x) -> Any: ...
+        def g(x) -> list: ...
+        # TODO(rechen): def h(x: Union[buffer, bytearray, unicode]) -> List[Union[buffer, bytearray, unicode]]: ...
+        def h(x) -> list: ...
       """)
 
   def test_type_parameter_in_return(self):
@@ -548,7 +548,7 @@ class TestFunctions(test_base.TargetIndependentTest):
         from typing import Generic, TypeVar
         T = TypeVar("T")
         class MyPattern(Generic[T]):
-          def match(self, string: T) -> MyMatch[T]
+          def match(self, string: T) -> MyMatch[T]: ...
         class MyMatch(Generic[T]):
           pass
         def compile() -> MyPattern[T]: ...
@@ -567,8 +567,8 @@ class TestFunctions(test_base.TargetIndependentTest):
   def test_multiple_signatures(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        def f(x: str) -> float
-        def f(x: int, y: bool) -> int
+        def f(x: str) -> float: ...
+        def f(x: int, y: bool) -> int: ...
       """)
       ty = self.Infer("""
         import foo
@@ -582,8 +582,8 @@ class TestFunctions(test_base.TargetIndependentTest):
   def test_multiple_signatures_with_unknown(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        def f(arg1: str) -> float
-        def f(arg2: int) -> bool
+        def f(arg1: str) -> float: ...
+        def f(arg2: int) -> bool: ...
       """)
       ty = self.Infer("""
         import foo
@@ -593,14 +593,14 @@ class TestFunctions(test_base.TargetIndependentTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         foo = ...  # type: module
-        def f(x) -> Any
+        def f(x) -> Any: ...
       """)
 
   def test_multiple_signatures_with_optional_arg(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        def f(x: str) -> int
-        def f(...) -> float
+        def f(x: str) -> int: ...
+        def f(*args) -> float: ...
       """)
       ty = self.Infer("""
         import foo
@@ -610,14 +610,14 @@ class TestFunctions(test_base.TargetIndependentTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         foo = ...  # type: module
-        def f(x) -> Any
+        def f(x) -> Any: ...
       """)
 
   def test_multiple_signatures_with_kwarg(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        def f(*, y: int) -> bool
-        def f(y: str) -> float
+        def f(*, y: int) -> bool: ...
+        def f(y: str) -> float: ...
       """)
       ty = self.Infer("""
         import foo
@@ -627,7 +627,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         foo = ...  # type: module
-        def f(x) -> Any
+        def f(x) -> Any: ...
       """)
 
   def test_isinstance(self):
@@ -641,8 +641,8 @@ class TestFunctions(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Callable, Tuple, Union
-      def f(isinstance = ...) -> None
-      def g() -> None
+      def f(isinstance = ...) -> None: ...
+      def g() -> None: ...
       def h() -> Callable[[Any, Union[Tuple[Union[Tuple[type, ...], type], ...], type]], bool]: ...
     """)
 
@@ -693,15 +693,16 @@ class TestFunctions(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         from typing import Tuple, TypeVar, Union
         T = TypeVar("T")
-        def f(x: T) -> Tuple[Union[T, str], int]
+        def f(x: T) -> Tuple[Union[T, str], int]: ...
       """)
       ty = self.Infer("""
         import foo
         v1, v2 = foo.f(42j)
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Union
         foo = ...  # type: module
-        v1 = ...  # type: str or complex
+        v1 = ...  # type: Union[str, complex]
         v2 = ...  # type: int
       """)
 
@@ -866,7 +867,7 @@ class TestFunctions(test_base.TargetIndependentTest):
   def test_pyi_starargs(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        def f(x: str, ...) -> None: ...
+        def f(x: str, *args) -> None: ...
       """)
       self.CheckWithErrors("""
         import foo
@@ -889,16 +890,18 @@ class TestFunctions(test_base.TargetIndependentTest):
   def test_preserve_return_union(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        def f(x: int) -> int or str
-        def f(x: float) -> int or str
+        from typing import Union
+        def f(x: int) -> Union[int, str]: ...
+        def f(x: float) -> Union[int, str]: ...
       """)
       ty = self.Infer("""
         import foo
         v = foo.f(__any_object__)
       """, pythonpath=[d.path])
     self.assertTypesMatchPytd(ty, """
+      from typing import Union
       foo = ...  # type: module
-      v = ...  # type: int or str
+      v = ...  # type: Union[int, str]
     """)
 
   def test_call_with_varargs_and_kwargs(self):

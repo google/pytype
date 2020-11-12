@@ -59,10 +59,10 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
       a = [str(ty) for ty in (float, int, bool)[:len(sys.argv)]]
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import List, Type
+      from typing import List, Type, Union
       sys = ...  # type: module
       a = ...  # type: List[str, ...]
-      ty = ...  # type: Type[float or int]
+      ty = ...  # type: Type[Union[float, int]]
     """)
 
   def test_call_empty(self):
@@ -80,8 +80,8 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
   def test_iterate_pyi_list_union(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
-        from typing import List, Set
-        lst1 = ...  # type: List[nothing] or Set[int]
+        from typing import List, Set, Union
+        lst1 = ...  # type: Union[List[nothing], Set[int]]
       """)
       ty = self.Infer("""
         import a
@@ -154,7 +154,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict, List
       empty = ...  # type: List[nothing]
-      def f(x) -> Dict[type, Any]
+      def f(x) -> Dict[type, Any]: ...
       y = ...  # type: List[Dict[type, Any]]
       x = ...  # type: Any
     """)
@@ -185,10 +185,10 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
       y = [f(x) for x in empty]
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, List
+      from typing import Any, List, Union
       empty = ...  # type: List[nothing]
-      def f(x) -> int or str
-      y = ...  # type: List[int or str]
+      def f(x) -> Union[int, str]: ...
+      y = ...  # type: List[Union[int, str]]
       x = ...  # type: Any
     """)
 
@@ -222,7 +222,7 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
         return u"".join(map(unicode, ()))
     """)
     self.assertTypesMatchPytd(ty, """
-      def f() -> unicode
+      def f() -> unicode: ...
     """)
 
 

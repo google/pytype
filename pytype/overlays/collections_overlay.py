@@ -10,6 +10,7 @@ from pytype import compat
 from pytype import overlay
 from pytype import utils
 from pytype.pyi import parser
+from pytype.pytd import escape
 from pytype.pytd import pytd
 from pytype.pytd import visitors
 
@@ -32,14 +33,14 @@ def namedtuple_ast(name, fields, python_version=None):
   typevar = visitors.CreateTypeParametersForSignatures.PREFIX + name
   num_fields = len(fields)
   field_defs = "\n  ".join(
-      "%s = ...  # type: ?" % field for field in fields)
+      "%s = ...  # type: typing.Any" % field for field in fields)
   field_names = "".join(", " + field for field in fields)
   field_names_as_strings = ", ".join(repr(field) for field in fields)
 
   nt = textwrap.dedent("""
     {typevar} = TypeVar("{typevar}", bound={name})
     class {name}(tuple):
-      __dict__ = ...  # type: collections.OrderedDict[str, ?]
+      __dict__ = ...  # type: collections.OrderedDict[str, typing.Any]
       __slots__ = [{field_names_as_strings}]
       _fields = ...  # type: typing.Tuple[{repeat_str}]
       {field_defs}
@@ -47,7 +48,7 @@ def namedtuple_ast(name, fields, python_version=None):
       def __getstate__(self) -> None: ...
       def __init__(self, *args, **kwargs) -> None: ...
       def __new__(cls: typing.Type[{typevar}]{field_names}) -> {typevar}: ...
-      def _asdict(self) -> collections.OrderedDict[str, ?]: ...
+      def _asdict(self) -> collections.OrderedDict[str, typing.Any]: ...
       @classmethod
       def _make(cls: typing.Type[{typevar}],
                 iterable: typing.Iterable,
@@ -59,16 +60,10 @@ def namedtuple_ast(name, fields, python_version=None):
               name=name,
               repeat_str=_repeat_type("str", num_fields),
               field_defs=field_defs,
-              repeat_any=_repeat_type("?", num_fields),
+              repeat_any=_repeat_type("typing.Any", num_fields),
               field_names=field_names,
               field_names_as_strings=field_names_as_strings)
   return parser.parse_string(nt, python_version=python_version)
-
-
-def namedtuple_name(name, fields):
-  # Use a character not allowed in Python variable names to avoid naming
-  # conflicts with user-defined objects.
-  return "namedtuple-%s-%s" % (name, "-".join(fields))
 
 
 class CollectionsOverlay(overlay.Overlay):
@@ -272,7 +267,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
       self.vm.errorlog.invalid_namedtuple_arg(self.vm.frames, utils.message(e))
       return node, self.vm.new_unsolvable(node)
 
-    name = namedtuple_name(name, field_names)
+    name = escape.pack_namedtuple(name, field_names)
     ast = namedtuple_ast(name, field_names,
                          python_version=self.vm.python_version)
     mapping = self._get_known_types_mapping()

@@ -259,8 +259,8 @@ class SplitTestPy3(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Optional, Union
-      def UpperIfString(value: Union[bytes, int, str]) -> Optional[Union[bytes, str]]
-      def ReturnIfNumeric(value: Union[str, int]) -> Optional[int]
+      def UpperIfString(value: Union[bytes, int, str]) -> Optional[Union[bytes, str]]: ...
+      def ReturnIfNumeric(value: Union[str, int]) -> Optional[int]: ...
     """)
 
   def test_isinstance_aliased(self):
@@ -275,7 +275,7 @@ class SplitTestPy3(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Callable, Optional, Tuple, Union
       def myisinstance(object, class_or_type_or_tuple: Union[Tuple[Union[Tuple[type, ...], type], ...], type]) -> bool: ...
-      def UpperIfString(value: Union[bytes, int, str]) -> Optional[Union[bytes, str]]
+      def UpperIfString(value: Union[bytes, int, str]) -> Optional[Union[bytes, str]]: ...
     """)
 
   def test_shadow_none(self):

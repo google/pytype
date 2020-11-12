@@ -11,7 +11,7 @@ class TypingTest(test_base.TargetPython27FeatureTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import NamedTuple
-        def f() -> NamedTuple("ret", [("x", int), ("y", unicode)])
+        def f() -> NamedTuple("ret", [("x", int), ("y", unicode)]): ...
       """)
       ty = self.Infer("""
         import foo
@@ -21,11 +21,12 @@ class TypingTest(test_base.TargetPython27FeatureTest):
         z = foo.f()[2]  # out of bounds, fall back to the combined element type
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Union
         foo = ...  # type: module
         w = ...  # type: unicode
         x = ...  # type: int
         y = ...  # type: unicode
-        z = ...  # type: int or unicode
+        z = ...  # type: Union[int, unicode]
       """)
 
   def test_match(self):

@@ -10,8 +10,8 @@ class QuickTest(test_base.TargetPython3BasicTest):
   def test_multiple_returns(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        def add(x: int, y: int) -> int
-        def add(x: int,  y: float) -> float
+        def add(x: int, y: int) -> int: ...
+        def add(x: int,  y: float) -> float: ...
       """)
       self.Check("""
         import foo
@@ -27,8 +27,8 @@ class QuickTest(test_base.TargetPython3BasicTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Tuple
-        def concat(x: int, y: int) -> Tuple[int, int]
-        def concat(x: int, y: float) -> Tuple[int, float]
+        def concat(x: int, y: int) -> Tuple[int, int]: ...
+        def concat(x: int, y: float) -> Tuple[int, float]: ...
       """)
       self.Check("""
         from typing import Tuple

@@ -14,7 +14,7 @@ class TypingMethodsTest(test_base.TargetPython3FeatureTest):
         K = TypeVar("K")
         V = TypeVar("V")
         class MyDict(Mapping[K, V]): ...
-        def f() -> MyDict[str, int]
+        def f() -> MyDict[str, int]: ...
       """)
       ty = self.Infer("""
         import foo
@@ -45,7 +45,7 @@ class TypingMethodsTest(test_base.TargetPython3FeatureTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import SupportsBytes
-        def f() -> SupportsBytes
+        def f() -> SupportsBytes: ...
       """)
       self.Check("""
         import foo

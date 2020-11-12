@@ -15,7 +15,7 @@ class StdlibTests(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       ast = ...  # type: module
-      def f() -> _ast.Module
+      def f() -> _ast.Module: ...
     """)
 
   def test_urllib(self):
@@ -35,7 +35,7 @@ class StdlibTests(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import List
       traceback = ...  # type: module
-      def f(exc) -> List[str]
+      def f(exc) -> List[str]: ...
     """)
 
   def test_os_walk(self):

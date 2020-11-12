@@ -4,6 +4,7 @@ import textwrap
 
 from pytype import file_utils
 from pytype.overlays import collections_overlay
+from pytype.pytd import escape
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
@@ -28,7 +29,7 @@ class NamedtupleTests(test_base.TargetIndependentTest):
       The expected pyi for the namedtuple instance.
     """
     (alias, (name, fields)), = kws.items()  # pylint: disable=unbalanced-tuple-unpacking
-    name = collections_overlay.namedtuple_name(name, fields)
+    name = escape.pack_namedtuple(name, fields)
     suffix += textwrap.dedent("""
       collections = ...  # type: module
       {alias} = {name}""").format(alias=alias, name=name)
@@ -201,8 +202,8 @@ class NamedtupleTests(test_base.TargetIndependentTest):
       Y = collections.namedtuple("_", [])
       Z = collections.namedtuple("_", "a")
     """, deep=False)
-    name_x = collections_overlay.namedtuple_name("_", [])
-    name_z = collections_overlay.namedtuple_name("_", ["a"])
+    name_x = escape.pack_namedtuple("_", [])
+    name_z = escape.pack_namedtuple("_", ["a"])
     ast_x = self._namedtuple_ast(name_x, [])
     ast_z = self._namedtuple_ast(name_z, ["a"])
     ast = pytd_utils.Concat(ast_x, ast_z)
@@ -220,7 +221,7 @@ class NamedtupleTests(test_base.TargetIndependentTest):
         def __new__(cls, _):
           return super(X, cls).__new__(cls)
     """)
-    name = collections_overlay.namedtuple_name("X", [])
+    name = escape.pack_namedtuple("X", [])
     ast = self._namedtuple_ast(name, [])
     expected = pytd_utils.Print(ast) + textwrap.dedent("""
       collections = ...  # type: module

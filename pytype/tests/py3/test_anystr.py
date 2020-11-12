@@ -63,7 +63,7 @@ class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import AnyStr
-        def f(x: AnyStr) -> AnyStr
+        def f(x: AnyStr) -> AnyStr: ...
       """)
       ty = self.Infer("""
         from a import f
@@ -71,7 +71,7 @@ class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
       self.assertTypesMatchPytd(ty, """
         from typing import TypesVar
         AnyStr = TypeVar("AnyStr", str, bytes)
-        def f(x: AnyStr) -> AnyStr
+        def f(x: AnyStr) -> AnyStr: ...
       """)
 
   def test_use_anystr_constraints(self):

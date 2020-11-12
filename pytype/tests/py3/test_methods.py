@@ -13,7 +13,7 @@ class TestMethods(test_base.TargetPython3BasicTest):
         return self
     """)
     self.assertTypesMatchPytd(ty, """
-      def __init__(self: int) -> int
+      def __init__(self: int) -> int: ...
     """)
 
   def test_annotated_self(self):

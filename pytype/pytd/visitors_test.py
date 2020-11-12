@@ -1,5 +1,6 @@
 import textwrap
 
+from pytype.pytd import escape
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
@@ -11,6 +12,16 @@ import unittest
 
 # All of these tests implicitly test pytd_utils.Print because
 # parser_test_base.AssertSourceEquals() uses pytd_utils.Print.
+
+
+DEFAULT_PYI = """
+from typing import Any
+def __getattr__(name) -> Any: ...
+"""
+
+
+def pytd_src(text):
+  return textwrap.dedent(escape.preprocess_pytd(text))
 
 
 class TestVisitors(parser_test_base.ParserTest):
@@ -28,16 +39,17 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_lookup_classes(self):
     src = textwrap.dedent("""
+        from typing import Union
         class object:
             pass
 
         class A:
-            def a(self, a: A, b: B) -> A or B:
+            def a(self, a: A, b: B) -> Union[A, B]:
                 raise A()
                 raise B()
 
         class B:
-            def b(self, a: A, b: B) -> A or B:
+            def b(self, a: A, b: B) -> Union[A, B]:
                 raise A()
                 raise B()
     """)
@@ -48,8 +60,9 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_maybe_fill_in_local_pointers(self):
     src = textwrap.dedent("""
+        from typing import Union
         class A:
-            def a(self, a: A, b: B) -> A or B:
+            def a(self, a: A, b: B) -> Union[A, B]:
                 raise A()
                 raise B()
     """)
@@ -77,13 +90,14 @@ class TestVisitors(parser_test_base.ParserTest):
         class A(X):
             def a(self, a: A, b: X, c: int) -> X:
                 raise X()
-            def b(self) -> X[int]
+            def b(self) -> X[int]: ...
     """)
     expected = textwrap.dedent("""
-        class A(?):
-            def a(self, a: A, b: ?, c: int) -> ?:
-                raise ?
-            def b(self) -> ?
+        from typing import Any
+        class A(Any):
+            def a(self, a: A, b: Any, c: int) -> Any:
+                raise Any
+            def b(self) -> Any: ...
     """)
     tree = self.Parse(src)
     new_tree = tree.Visit(visitors.DefaceUnresolved([tree, builtins]))
@@ -104,14 +118,14 @@ class TestVisitors(parser_test_base.ParserTest):
         class A(X):
             def a(self, a: A, b: X, c: int) -> X:
                 raise X()
-            def c(self) -> Union[list[X], int]
+            def c(self) -> Union[list[X], int]: ...
     """)
     expected = textwrap.dedent("""
-        from typing import Union
-        class A(?):
-            def a(self, a: A, b: ?, c: int) -> ?:
-                raise ?
-            def c(self) -> Union[list[?], int]
+        from typing import Any, Union
+        class A(Any):
+            def a(self, a: A, b: Any, c: int) -> Any:
+                raise Any
+            def c(self) -> Union[list[Any], int]: ...
     """)
     tree = self.Parse(src)
     new_tree = tree.Visit(visitors.DefaceUnresolved([tree, builtins]))
@@ -120,14 +134,16 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_replace_types(self):
     src = textwrap.dedent("""
+        from typing import Union
         class A:
-            def a(self, a: A or B) -> A or B:
+            def a(self, a: Union[A, B]) -> Union[A, B]:
                 raise A()
                 raise B()
     """)
     expected = textwrap.dedent("""
+        from typing import Union
         class A:
-            def a(self: A2, a: A2 or B) -> A2 or B:
+            def a(self: A2, a: Union[A2, B]) -> Union[A2, B]:
                 raise A2()
                 raise B()
     """)
@@ -158,36 +174,38 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_strip_self(self):
     src = textwrap.dedent("""
-        def add(x: int, y: int) -> int
+        def add(x: int, y: int) -> int: ...
         class A:
-            def bar(self, x: int) -> float
-            def baz(self) -> float
-            def foo(self, x: int, y: float) -> float
+            def bar(self, x: int) -> float: ...
+            def baz(self) -> float: ...
+            def foo(self, x: int, y: float) -> float: ...
     """)
     expected = textwrap.dedent("""
-        def add(x: int, y: int) -> int
+        def add(x: int, y: int) -> int: ...
 
         class A:
-            def bar(x: int) -> float
-            def baz() -> float
-            def foo(x: int, y: float) -> float
+            def bar(x: int) -> float: ...
+            def baz() -> float: ...
+            def foo(x: int, y: float) -> float: ...
     """)
     tree = self.Parse(src)
     new_tree = tree.Visit(visitors.StripSelf())
     self.AssertSourceEquals(new_tree, expected)
 
   def test_remove_unknown_classes(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
+        from typing import Union
         class `~unknown1`():
             pass
         class `~unknown2`():
             pass
         class A:
-            def foobar(x: `~unknown1`, y: `~unknown2`) -> `~unknown1` or int
+            def foobar(x: `~unknown1`, y: `~unknown2`) -> Union[`~unknown1`, int]: ...
     """)
     expected = textwrap.dedent("""
+        from typing import Any, Union
         class A:
-            def foobar(x, y) -> ? or int
+            def foobar(x, y) -> Union[Any, int]: ...
     """)
     tree = self.Parse(src)
     tree = tree.Visit(visitors.RemoveUnknownClasses())
@@ -195,7 +213,8 @@ class TestVisitors(parser_test_base.ParserTest):
     self.AssertSourceEquals(tree, expected)
 
   def test_find_unknown_visitor(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
+        from typing import Any
         class object:
           pass
         class `~unknown1`():
@@ -205,9 +224,9 @@ class TestVisitors(parser_test_base.ParserTest):
         class `~int`():
           pass
         class A():
-          def foobar(self, x: `~unknown1`) -> ?
+          def foobar(self, x: `~unknown1`) -> Any: ...
         class B():
-          def foobar(self, x: `~int`) -> ?
+          def foobar(self, x: `~int`) -> Any: ...
         class C():
           x = ... # type: `~unknown_foobar`
         class D(`~unknown1`):
@@ -223,12 +242,12 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_in_place_lookup_external_classes(self):
     src1 = textwrap.dedent("""
-      def f1() -> bar.Bar
+      def f1() -> bar.Bar: ...
       class Foo:
         pass
     """)
     src2 = textwrap.dedent("""
-      def f2() -> foo.Foo
+      def f2() -> foo.Foo: ...
       class Bar:
         pass
     """)
@@ -333,8 +352,8 @@ class TestVisitors(parser_test_base.ParserTest):
     """).strip())
 
   def test_lookup_two_star_aliases_with_default_pyi(self):
-    src1 = "def __getattr__(name) -> ?"
-    src2 = "def __getattr__(name) -> ?"
+    src1 = DEFAULT_PYI
+    src2 = DEFAULT_PYI
     src3 = textwrap.dedent("""
       from foo import *
       from bar import *
@@ -351,10 +370,11 @@ class TestVisitors(parser_test_base.ParserTest):
     """).strip())
 
   def test_lookup_star_alias_with_duplicate_getattr(self):
-    src1 = "def __getattr__(name) -> ?"
+    src1 = DEFAULT_PYI
     src2 = textwrap.dedent("""
+      from typing import Any
       from foo import *
-      def __getattr__(name) -> ?
+      def __getattr__(name) -> Any: ...
     """)
     ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
     ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
@@ -367,8 +387,8 @@ class TestVisitors(parser_test_base.ParserTest):
     """).strip())
 
   def test_lookup_two_star_aliases_with_different_getattrs(self):
-    src1 = "def __getattr__(name) -> int"
-    src2 = "def __getattr__(name) -> str"
+    src1 = "def __getattr__(name) -> int: ..."
+    src2 = "def __getattr__(name) -> str: ..."
     src3 = textwrap.dedent("""
       from foo import *
       from bar import *
@@ -380,10 +400,10 @@ class TestVisitors(parser_test_base.ParserTest):
         {"foo": ast1, "bar": ast2, "baz": ast3}, self_name="baz"))
 
   def test_lookup_star_alias_with_different_getattr(self):
-    src1 = "def __getattr__(name) -> int"
+    src1 = "def __getattr__(name) -> int: ..."
     src2 = textwrap.dedent("""
       from foo import *
-      def __getattr__(name) -> str
+      def __getattr__(name) -> str: ...
     """)
     ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
     ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
@@ -395,9 +415,10 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_collect_dependencies(self):
     src = textwrap.dedent("""
-      l = ... # type: list[int or baz.BigInt]
-      def f1() -> bar.Bar
-      def f2() -> foo.bar.Baz
+      from typing import Union
+      l = ... # type: list[Union[int, baz.BigInt]]
+      def f1() -> bar.Bar: ...
+      def f2() -> foo.bar.Baz: ...
     """)
     deps = visitors.CollectDependencies()
     self.Parse(src).Visit(deps)
@@ -414,15 +435,17 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_expand(self):
     src = textwrap.dedent("""
-        def foo(a: int or float, z: complex or str, u: bool) -> file
-        def bar(a: int) -> str or unicode
+        from typing import Union
+        def foo(a: Union[int, float], z: Union[complex, str], u: bool) -> file: ...
+        def bar(a: int) -> Union[str, unicode]: ...
     """)
     new_src = textwrap.dedent("""
-        def foo(a: int, z: complex, u: bool) -> file
-        def foo(a: int, z: str, u: bool) -> file
-        def foo(a: float, z: complex, u: bool) -> file
-        def foo(a: float, z: str, u: bool) -> file
-        def bar(a: int) -> str or unicode
+        from typing import Union
+        def foo(a: int, z: complex, u: bool) -> file: ...
+        def foo(a: int, z: str, u: bool) -> file: ...
+        def foo(a: float, z: complex, u: bool) -> file: ...
+        def foo(a: float, z: str, u: bool) -> file: ...
+        def bar(a: int) -> Union[str, unicode]: ...
     """)
     self.AssertSourceEquals(
         self.ApplyVisitorToString(src, visitors.ExpandSignatures()),
@@ -430,8 +453,8 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_print_imports(self):
     src = textwrap.dedent("""
-      from typing import List, Tuple, Union
-      def f(x: Union[int, slice]) -> List[?]: ...
+      from typing import Any, List, Tuple, Union
+      def f(x: Union[int, slice]) -> List[Any]: ...
       def g(x: foo.C.C2) -> None: ...
     """)
     expected = textwrap.dedent("""
@@ -465,10 +488,11 @@ class TestVisitors(parser_test_base.ParserTest):
     res = pytd_utils.Print(tree)
     self.assertMultiLineEqual(res, src)
 
+  @unittest.skip("depended on `or`")
   def test_print_union_name_conflict(self):
     src = textwrap.dedent("""
       class Union: ...
-      def g(x: Union) -> int or float: ...
+      def g(x: Union) -> Union[int, float]: ...
     """)
     tree = self.Parse(src)
     res = pytd_utils.Print(tree)
@@ -476,12 +500,13 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_adjust_type_parameters(self):
     ast = self.Parse("""
+      from typing import Union
       T = TypeVar("T")
       T2 = TypeVar("T2")
-      def f(x: T) -> T
+      def f(x: T) -> T: ...
       class A(Generic[T]):
         def a(self, x: T2) -> None:
-          self = A[T or T2]
+          self = A[Union[T, T2]]
     """)
 
     f = ast.Lookup("f")
@@ -647,8 +672,8 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_add_name_prefix_twice(self):
     src = textwrap.dedent("""
-      from typing import TypeVar
-      x = ...  # type: ?
+      from typing import Any, TypeVar
+      x = ...  # type: Any
       T = TypeVar("T")
       class X(Generic[T]): ...
     """)
@@ -897,7 +922,7 @@ class TestVisitors(parser_test_base.ParserTest):
     assert node.cls
 
   def test_create_type_parameters_from_unknowns(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
       from typing import Dict
       def f(x: `~unknown1`) -> `~unknown1`: ...
       def g(x: `~unknown2`, y: `~unknown2`) -> None: ...
@@ -909,7 +934,7 @@ class TestVisitors(parser_test_base.ParserTest):
         def __add__(self, x: `~unknown6`) -> `~unknown6`: ...
       def `~f`(x: `~unknown7`) -> `~unknown7`: ...
     """)
-    expected = textwrap.dedent("""
+    expected = pytd_src("""
       from typing import Dict
 
       _T0 = TypeVar('_T0')
@@ -928,7 +953,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.AssertSourceEquals(ast1, expected)
 
   def test_redefine_typevar(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
       def f(x: `~unknown1`) -> `~unknown1`: ...
       class `TypeVar`: ...
     """)
@@ -945,9 +970,9 @@ class TestVisitors(parser_test_base.ParserTest):
   def test_create_type_parameters_for_new(self):
     src = textwrap.dedent("""
       class Foo:
-          def __new__(cls: Type[Foo]) -> Foo
+          def __new__(cls: Type[Foo]) -> Foo: ...
       class Bar:
-          def __new__(cls: Type[Bar], x, y, z) -> Bar
+          def __new__(cls: Type[Bar], x, y, z) -> Bar: ...
     """)
     ast = self.Parse(src).Visit(visitors.CreateTypeParametersForSignatures())
     self.assertMultiLineEqual(pytd_utils.Print(ast), textwrap.dedent("""
@@ -998,7 +1023,7 @@ class TestVisitors(parser_test_base.ParserTest):
 
   def test_print_no_return(self):
     src = textwrap.dedent("""
-      def f() -> nothing
+      def f() -> nothing: ...
     """)
     self.assertMultiLineEqual(pytd_utils.Print(self.Parse(src)),
                               textwrap.dedent("""

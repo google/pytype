@@ -1,3 +1,4 @@
+import re
 import textwrap
 
 from pytype import load_pytd
@@ -7,6 +8,15 @@ from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.pytd.parse import parser_test_base
 import unittest
+
+
+def pytd_src(text):
+  """Add a typing.Union import if needed."""
+  text = textwrap.dedent(text)
+  if "Union" in text and not re.search("typing.*Union", text):
+    return "from typing import Union\n" + text
+  else:
+    return text
 
 
 class TestOptimize(parser_test_base.ParserTest):
@@ -35,7 +45,7 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertSourceEquals(self.OptimizedString(src), new_src)
 
   def test_one_function(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
         def foo(a: int, c: bool) -> int:
           raise AssertionError()
           raise ValueError()
@@ -43,7 +53,7 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertOptimizeEquals(src, src)
 
   def test_function_duplicate(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
         def foo(a: int, c: bool) -> int:
           raise AssertionError()
           raise ValueError()
@@ -51,7 +61,7 @@ class TestOptimize(parser_test_base.ParserTest):
           raise AssertionError()
           raise ValueError()
     """)
-    new_src = textwrap.dedent("""
+    new_src = pytd_src("""
         def foo(a: int, c: bool) -> int:
           raise AssertionError()
           raise ValueError()
@@ -59,33 +69,33 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertOptimizeEquals(src, new_src)
 
   def test_complex_function_duplicate(self):
-    src = textwrap.dedent("""
-        def foo(a: int or float, c: bool) -> list[int]:
+    src = pytd_src("""
+        def foo(a: Union[int, float], c: bool) -> list[int]:
           raise IndexError()
-        def foo(a: str, c: str) -> str
-        def foo(a: int, ...) -> int or float:
-          raise list[str]()
-        def foo(a: int or float, c: bool) -> list[int]:
+        def foo(a: str, c: str) -> str: ...
+        def foo(a: int, *args) -> Union[int, float]:
+          raise ValueError()
+        def foo(a: Union[int, float], c: bool) -> list[int]:
           raise IndexError()
-        def foo(a: int, ...) -> int or float:
-          raise list[str]()
+        def foo(a: int, *args) -> Union[int, float]:
+          raise ValueError()
     """)
-    new_src = textwrap.dedent("""
+    new_src = pytd_src("""
         def foo(a: float, c: bool) -> list[int]:
           raise IndexError()
-        def foo(a: str, c: str) -> str
-        def foo(a: int, ...) -> int or float:
-          raise list[str]()
+        def foo(a: str, c: str) -> str: ...
+        def foo(a: int, *args) -> Union[int, float]:
+          raise ValueError()
     """)
     self.AssertOptimizeEquals(src, new_src)
 
   def test_remove_redundant_signature(self):
-    src = textwrap.dedent("""
-        def foo(a: int) -> int
-        def foo(a: int or bool) -> int
+    src = pytd_src("""
+        def foo(a: int) -> int: ...
+        def foo(a: Union[int, bool]) -> int: ...
     """)
-    expected = textwrap.dedent("""
-        def foo(a: int or bool) -> int
+    expected = pytd_src("""
+        def foo(a: Union[int, bool]) -> int: ...
     """)
     ast = self.Parse(src)
     ast = ast.Visit(optimize.RemoveRedundantSignatures(
@@ -93,15 +103,15 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertSourceEquals(ast, expected)
 
   def test_remove_redundant_signature_with_exceptions(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
         def foo(a: int) -> int:
           raise IOError()
-        def foo(a: int or bool) -> int
+        def foo(a: Union[int, bool]) -> int: ...
     """)
-    expected = textwrap.dedent("""
+    expected = pytd_src("""
         def foo(a: int) -> int:
           raise IOError()
-        def foo(a: int or bool) -> int
+        def foo(a: Union[int, bool]) -> int: ...
     """)
     ast = self.Parse(src)
     ast = ast.Visit(optimize.RemoveRedundantSignatures(
@@ -109,132 +119,142 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertSourceEquals(ast, expected)
 
   def test_remove_redundant_signature_with_subclasses(self):
-    src = textwrap.dedent("""
-        def foo(a: bool) -> int
-        def foo(a: int) -> int
+    src = pytd_src("""
+        def foo(a: bool) -> int: ...
+        def foo(a: int) -> int: ...
     """)
-    new_src = textwrap.dedent("""
-        def foo(a: int) -> int
+    new_src = pytd_src("""
+        def foo(a: int) -> int: ...
     """)
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
 
   def test_remove_redundant_signature_with_any1(self):
-    src = textwrap.dedent("""
-        def foo(a: ?) -> ?
-        def foo(a: int) -> int
+    src = pytd_src("""
+        from typing import Any
+        def foo(a: Any) -> Any: ...
+        def foo(a: int) -> int: ...
     """)
-    new_src = textwrap.dedent("""
-        def foo(a) -> ?
+    new_src = pytd_src("""
+        from typing import Any
+        def foo(a) -> Any: ...
     """)
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
 
   def test_remove_redundant_signature_with_any2(self):
-    src = textwrap.dedent("""
-        def foo(a: int) -> int
-        def foo(a: ?) -> ?
+    src = pytd_src("""
+        from typing import Any
+        def foo(a: int) -> int: ...
+        def foo(a: Any) -> Any: ...
     """)
-    new_src = textwrap.dedent("""
-        def foo(a) -> ?
+    new_src = pytd_src("""
+        from typing import Any
+        def foo(a) -> Any: ...
     """)
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
 
   def test_remove_redundant_signature_with_optional1(self):
-    src = textwrap.dedent("""
-        def foo(a: int = ...) -> int
-        def foo(a: ? = ...) -> int
+    src = pytd_src("""
+        from typing import Any
+        def foo(a: int = ...) -> int: ...
+        def foo(a: Any = ...) -> int: ...
     """)
-    new_src = textwrap.dedent("""
-        def foo(a = ...) -> int
+    new_src = pytd_src("""
+        def foo(a = ...) -> int: ...
     """)
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
 
   def test_remove_redundant_signature_with_optional2(self):
-    src = textwrap.dedent("""
-        def foo(a: ? = ...) -> int
-        def foo(a: int = ...) -> int
+    src = pytd_src("""
+        from typing import Any
+        def foo(a: Any = ...) -> int: ...
+        def foo(a: int = ...) -> int: ...
     """)
-    new_src = textwrap.dedent("""
-        def foo(a = ...) -> int
+    new_src = pytd_src("""
+        def foo(a = ...) -> int: ...
     """)
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
 
   def test_remove_redundant_signatures_with_long_union(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
         from typing import Union
         def foo(x: None = ...) -> None: ...
         def foo(x: Union[int, complex, float, long, set, list, unicode,
                          dict, tuple, str, module, OSError, bytearray,
                          KeyError, slice, None]) -> None: ...
     """)
-    new_src = textwrap.dedent("""
-        def foo(x:None = ...) -> None
-        def foo(x) -> None
+    new_src = pytd_src("""
+        def foo(x:None = ...) -> None: ...
+        def foo(x) -> None: ...
     """)
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
 
   def test_remove_redundant_signature_with_object(self):
-    src = textwrap.dedent("""
-        def foo(x) -> ?
-        def foo(x: int) -> int
+    src = pytd_src("""
+        from typing import Any
+        def foo(x) -> Any: ...
+        def foo(x: int) -> int: ...
     """)
-    new_src = textwrap.dedent("""
-        def foo(x) -> ?
+    new_src = pytd_src("""
+        from typing import Any
+        def foo(x) -> Any: ...
     """)
     ast = self.ParseAndResolve(src)
     self.AssertOptimizeEquals(ast, new_src)
 
   def test_remove_redundant_signature_any_type(self):
-    src = textwrap.dedent("""
-        def foo(a: int) -> int
-        def foo(a: ?) -> int
-        def bar(a: ?) -> int
-        def bar(a: int) -> int
-        def baz(a: ?) -> ?
-        def baz(a: int) -> int
-        def two(a: ?) -> int
-        def two(a: int) -> ?
+    src = pytd_src("""
+        from typing import Any
+        def foo(a: int) -> int: ...
+        def foo(a: Any) -> int: ...
+        def bar(a: Any) -> int: ...
+        def bar(a: int) -> int: ...
+        def baz(a: Any) -> Any: ...
+        def baz(a: int) -> int: ...
+        def two(a: Any) -> int: ...
+        def two(a: int) -> Any: ...
     """)
-    new_src = textwrap.dedent("""
-        def foo(a) -> int
-        def bar(a) -> int
-        def baz(a) -> ?
-        def two(a) -> int
-        def two(a: int) -> ?
+    new_src = pytd_src("""
+        from typing import Any
+        def foo(a) -> int: ...
+        def bar(a) -> int: ...
+        def baz(a) -> Any: ...
+        def two(a) -> int: ...
+        def two(a: int) -> Any: ...
     """)
     self.AssertOptimizeEquals(src, new_src)
 
   def test_remove_redundant_signature_generic(self):
-    src = textwrap.dedent("""
-        def foo(a: list[int]) -> list[int]
-        def foo(a: list) -> list
-        def bar(a: list) -> list
-        def bar(a: list[int]) -> list[int]
+    src = pytd_src("""
+        def foo(a: list[int]) -> list[int]: ...
+        def foo(a: list) -> list: ...
+        def bar(a: list) -> list: ...
+        def bar(a: list[int]) -> list[int]: ...
     """)
-    new_src = textwrap.dedent("""
-        def foo(a: list) -> list
-        def bar(a: list) -> list
+    new_src = pytd_src("""
+        def foo(a: list) -> list: ...
+        def bar(a: list) -> list: ...
     """)
     self.AssertOptimizeEquals(src, new_src)
 
   def test_remove_redundant_signature_template(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
         T = TypeVar("T")
         class A(Generic[T]):
-          def foo(a: int) -> int
-          def foo(a: T) -> T
-          def foo(a: int or bool) -> int
+          def foo(a: int) -> int: ...
+          def foo(a: T) -> T: ...
+          def foo(a: Union[int, bool]) -> int: ...
     """)
-    expected = textwrap.dedent("""
+    expected = pytd_src("""
         T = TypeVar("T")
         class A(Generic[T]):
-          def foo(a: T) -> T
-          def foo(a: int or bool) -> int
+          def foo(a: T) -> T: ...
+          def foo(a: Union[int, bool]) -> int: ...
     """)
     ast = self.Parse(src)
     ast = ast.Visit(optimize.RemoveRedundantSignatures(
@@ -242,19 +262,19 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertSourceEquals(ast, expected)
 
   def test_remove_redundant_signature_two_type_params(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
         X = TypeVar("X")
         Y = TypeVar("Y")
         class A(Generic[X, Y]):
-          def foo(a: X) -> Y
-          def foo(a: Y) -> Y
+          def foo(a: X) -> Y: ...
+          def foo(a: Y) -> Y: ...
     """)
-    expected = textwrap.dedent("""
+    expected = pytd_src("""
         X = TypeVar("X")
         Y = TypeVar("Y")
         class A(Generic[X, Y]):
-          def foo(a: X) -> Y
-          def foo(a: Y) -> Y
+          def foo(a: X) -> Y: ...
+          def foo(a: Y) -> Y: ...
     """)
     ast = self.Parse(src)
     ast = ast.Visit(optimize.RemoveRedundantSignatures(
@@ -263,14 +283,16 @@ class TestOptimize(parser_test_base.ParserTest):
 
   @unittest.skip("Not supported yet.")
   def test_remove_redundant_signature_generic_left_side(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
+        from typing import Any
         X = TypeVar("X")
-        def foo(a: X, b: int) -> X
-        def foo(a: X, b: ?) -> X
+        def foo(a: X, b: int) -> X: ...
+        def foo(a: X, b: Any) -> X: ...
     """)
-    expected = textwrap.dedent("""
+    expected = pytd_src("""
+        from typing import Any
         X = TypeVar("X")
-        def foo(a: X, b: ?) -> X
+        def foo(a: X, b: Any) -> X: ...
     """)
     ast = self.Parse(src)
     ast = ast.Visit(optimize.RemoveRedundantSignatures(
@@ -278,14 +300,14 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertSourceEquals(ast, expected)
 
   def test_remove_redundant_signature_polymorphic(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
         T = TypeVar("T")
-        def foo(a: T) -> T
-        def foo(a: int or bool) -> int
+        def foo(a: T) -> T: ...
+        def foo(a: Union[int, bool]) -> int: ...
     """)
-    expected = textwrap.dedent("""
+    expected = pytd_src("""
         T = TypeVar("T")
-        def foo(a: T) -> T
+        def foo(a: T) -> T: ...
     """)
     ast = self.Parse(src)
     ast = ast.Visit(optimize.RemoveRedundantSignatures(
@@ -293,40 +315,40 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertSourceEquals(ast, expected)
 
   def test_combine_returns(self):
-    src = textwrap.dedent("""
-        def foo(a: int) -> int
-        def foo(a: int) -> float
+    src = pytd_src("""
+        def foo(a: int) -> int: ...
+        def foo(a: int) -> float: ...
     """)
-    new_src = textwrap.dedent("""
-        def foo(a: int) -> int or float
+    new_src = pytd_src("""
+        def foo(a: int) -> Union[int, float]: ...
     """)
     self.AssertOptimizeEquals(src, new_src)
 
   def test_combine_redundant_returns(self):
-    src = textwrap.dedent("""
-        def foo(a: int) -> int
-        def foo(a: int) -> float
-        def foo(a: int) -> int or float
+    src = pytd_src("""
+        def foo(a: int) -> int: ...
+        def foo(a: int) -> float: ...
+        def foo(a: int) -> Union[int, float]: ...
     """)
-    new_src = textwrap.dedent("""
-        def foo(a: int) -> int or float
+    new_src = pytd_src("""
+        def foo(a: int) -> Union[int, float]: ...
     """)
     self.AssertOptimizeEquals(src, new_src)
 
   def test_combine_union_returns(self):
-    src = textwrap.dedent("""
-        def foo(a: int) -> int or float
-        def bar(a: str) -> str
-        def foo(a: int) -> str or bytes
+    src = pytd_src("""
+        def foo(a: int) -> Union[int, float]: ...
+        def bar(a: str) -> str: ...
+        def foo(a: int) -> Union[str, bytes]: ...
     """)
-    new_src = textwrap.dedent("""
-        def foo(a: int) -> int or float or str or bytes
-        def bar(a: str) -> str
+    new_src = pytd_src("""
+        def foo(a: int) -> Union[int, float, str, bytes]: ...
+        def bar(a: str) -> str: ...
     """)
     self.AssertOptimizeEquals(src, new_src)
 
   def test_combine_exceptions(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
         def foo(a: int) -> int:
           raise ValueError()
         def foo(a: int) -> int:
@@ -336,7 +358,7 @@ class TestOptimize(parser_test_base.ParserTest):
         def foo(a: int) -> int:
           raise AttributeError()
     """)
-    new_src = textwrap.dedent("""
+    new_src = pytd_src("""
         def foo(a: int) -> int:
           raise ValueError()
           raise IndexError()
@@ -347,7 +369,7 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertOptimizeEquals(src, new_src)
 
   def test_mixed_combine(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
         def foo(a: int) -> int:
           raise ValueError()
         def foo(a: int) -> float:
@@ -355,8 +377,8 @@ class TestOptimize(parser_test_base.ParserTest):
         def foo(a: int) -> int:
           raise IndexError()
     """)
-    new_src = textwrap.dedent("""
-        def foo(a: int) -> int or float:
+    new_src = pytd_src("""
+        def foo(a: int) -> Union[int, float]:
           raise ValueError()
           raise IndexError()
     """)
@@ -366,7 +388,7 @@ class TestOptimize(parser_test_base.ParserTest):
     # Lossy compression is hard to test, since we don't know to which degree
     # "compressible" items will be compressed. This test only checks that
     # non-compressible things stay the same.
-    src = textwrap.dedent("""
+    src = pytd_src("""
         def foo(a: int) -> float:
           raise IndexError()
         def foo(a: str) -> complex:
@@ -377,33 +399,33 @@ class TestOptimize(parser_test_base.ParserTest):
 
   @unittest.skip("Needs ABCs to be included in the builtins")
   def test_abcs(self):
-    src = textwrap.dedent("""
-        def foo(a: int or float) -> NoneType
-        def foo(a: int or complex or float) -> NoneType
+    src = pytd_src("""
+        def foo(a: Union[int, float]) -> NoneType: ...
+        def foo(a: Union[int, complex, float]) -> NoneType: ...
     """)
-    new_src = textwrap.dedent("""
-        def foo(a: Real) -> NoneType
-        def foo(a: Complex) -> NoneType
+    new_src = pytd_src("""
+        def foo(a: Real) -> NoneType: ...
+        def foo(a: Complex) -> NoneType: ...
     """)
     optimized = self.Optimize(self.Parse(src), lossy=True, use_abcs=True)
     self.AssertSourceEquals(optimized, new_src)
 
   def test_duplicates_in_unions(self):
-    src = textwrap.dedent("""
-      def a(x: int or float or complex) -> bool
-      def b(x: int or float) -> bool
-      def c(x: int or int or int) -> bool
-      def d(x: int or int) -> bool
-      def e(x: float or int or int or float) -> bool
-      def f(x: float or int) -> bool
+    src = pytd_src("""
+      def a(x: Union[int, float, complex]) -> bool: ...
+      def b(x: Union[int, float]) -> bool: ...
+      def c(x: Union[int, int, int]) -> bool: ...
+      def d(x: Union[int, int]) -> bool: ...
+      def e(x: Union[float, int, int, float]) -> bool: ...
+      def f(x: Union[float, int]) -> bool: ...
     """)
-    new_src = textwrap.dedent("""
-      def a(x) -> bool  # max_union=2 makes this object
-      def b(x: int or float) -> bool
-      def c(x: int) -> bool
-      def d(x: int) -> bool
-      def e(x: float or int) -> bool
-      def f(x: float or int) -> bool
+    new_src = pytd_src("""
+      def a(x) -> bool: ...  # max_union=2 makes this object
+      def b(x: Union[int, float]) -> bool: ...
+      def c(x: int) -> bool: ...
+      def d(x: int) -> bool: ...
+      def e(x: Union[float, int]) -> bool: ...
+      def f(x: Union[float, int]) -> bool: ...
     """)
     ast = self.ParseAndResolve(src)
     optimized = self.Optimize(ast, lossy=False, max_union=2)
@@ -411,39 +433,41 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertSourceEquals(optimized, new_src)
 
   def test_simplify_unions(self):
-    src = textwrap.dedent("""
-      a = ...  # type: int or int
-      b = ...  # type: int or ?
-      c = ...  # type: int or (int or float)
+    src = pytd_src("""
+      from typing import Any
+      a = ...  # type: Union[int, int]
+      b = ...  # type: Union[int, Any]
+      c = ...  # type: Union[int, int, float]
     """)
-    new_src = textwrap.dedent("""
+    new_src = pytd_src("""
+      from typing import Any
       a = ...  # type: int
-      b = ...  # type: ?
-      c = ...  # type: int or float
+      b = ...  # type: Any
+      c = ...  # type: Union[int, float]
     """)
     self.AssertSourceEquals(
         self.ApplyVisitorToString(src, optimize.SimplifyUnions()),
         new_src)
 
   def test_factorize(self):
-    src = textwrap.dedent("""
-        def foo(a: int) -> file
-        def foo(a: int, x: complex) -> file
-        def foo(a: int, x: str) -> file
-        def foo(a: float, x: complex) -> file
-        def foo(a: float, x: str) -> file
-        def foo(a: int, x: file, ...) -> file
+    src = pytd_src("""
+        def foo(a: int) -> file: ...
+        def foo(a: int, x: complex) -> file: ...
+        def foo(a: int, x: str) -> file: ...
+        def foo(a: float, x: complex) -> file: ...
+        def foo(a: float, x: str) -> file: ...
+        def foo(a: int, x: file, *args) -> file: ...
     """)
-    new_src = textwrap.dedent("""
-        def foo(a: int) -> file
-        def foo(a: float, x: complex or str) -> file
-        def foo(a: int, x: file, ...) -> file
+    new_src = pytd_src("""
+        def foo(a: int) -> file: ...
+        def foo(a: float, x: Union[complex, str]) -> file: ...
+        def foo(a: int, x: file, *args) -> file: ...
     """)
     self.AssertSourceEquals(
         self.ApplyVisitorToString(src, optimize.Factorize()), new_src)
 
   def test_factorize_mutable(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
         def foo(a: list[bool], b: X) -> file:
             a = list[int]
         def foo(a: list[bool], b: Y) -> file:
@@ -454,8 +478,8 @@ class TestOptimize(parser_test_base.ParserTest):
         def bar(a: int, b: list[float]) -> file:
             b = list[str]
     """)
-    new_src = textwrap.dedent("""
-        def foo(a: list[bool], b: X or Y) -> file:
+    new_src = pytd_src("""
+        def foo(a: list[bool], b: Union[X, Y]) -> file:
             a = list[int]
         def bar(a: int, b: list[int]) -> file:
             b = list[complex]
@@ -466,26 +490,26 @@ class TestOptimize(parser_test_base.ParserTest):
         self.ApplyVisitorToString(src, optimize.Factorize()), new_src)
 
   def test_optional_arguments(self):
-    src = textwrap.dedent("""
-        def foo(a: A, ...) -> Z
-        def foo(a: A) -> Z
-        def foo(a: A, b: B) -> Z
-        def foo(a: A, b: B, ...) -> Z
-        def foo() -> Z
+    src = pytd_src("""
+        def foo(a: A, *args) -> Z: ...
+        def foo(a: A) -> Z: ...
+        def foo(a: A, b: B) -> Z: ...
+        def foo(a: A, b: B, *args) -> Z: ...
+        def foo() -> Z: ...
     """)
-    expected = textwrap.dedent("""
-        def foo(a: A, ...) -> Z
-        def foo() -> Z
+    expected = pytd_src("""
+        def foo(a: A, *args) -> Z: ...
+        def foo() -> Z: ...
     """)
     new_src = self.ApplyVisitorToString(src, optimize.ApplyOptionalArguments())
     self.AssertSourceEquals(new_src, expected)
 
   def test_builtin_superclasses(self):
-    src = textwrap.dedent("""
-        def f(x: list or object, y: complex or memoryview) -> int or bool
+    src = pytd_src("""
+        def f(x: Union[list, object], y: Union[complex, memoryview]) -> Union[int, bool]: ...
     """)
-    expected = textwrap.dedent("""
-        def f(x: object, y: object) -> int
+    expected = pytd_src("""
+        def f(x: object, y: object) -> int: ...
     """)
     hierarchy = self.builtins.Visit(visitors.ExtractSuperClassesByName())
     hierarchy.update(self.typing.Visit(visitors.ExtractSuperClassesByName()))
@@ -498,7 +522,7 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertSourceEquals(ast, expected)
 
   def test_user_superclass_hierarchy(self):
-    class_data = textwrap.dedent("""
+    class_data = pytd_src("""
         class AB(object):
             pass
 
@@ -521,16 +545,18 @@ class TestOptimize(parser_test_base.ParserTest):
             pass
     """)
 
-    src = textwrap.dedent("""
-        def f(x: A or B, y: A, z: B) -> E or F or G
-        def g(x: E or F or G or B) -> E or F
-        def h(x) -> ?
+    src = pytd_src("""
+        from typing import Any
+        def f(x: Union[A, B], y: A, z: B) -> Union[E, F, G]: ...
+        def g(x: Union[E, F, G, B]) -> Union[E, F]: ...
+        def h(x) -> Any: ...
     """) + class_data
 
-    expected = textwrap.dedent("""
-        def f(x: AB, y: A, z: B) -> EFG
-        def g(x: object) -> EFG
-        def h(x) -> ?
+    expected = pytd_src("""
+        from typing import Any
+        def f(x: AB, y: A, z: B) -> EFG: ...
+        def g(x: object) -> EFG: ...
+        def h(x) -> Any: ...
     """) + class_data
 
     hierarchy = self.Parse(src).Visit(
@@ -541,11 +567,11 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertSourceEquals(new_src, expected)
 
   def test_find_common_superclasses(self):
-    src = textwrap.dedent("""
-        x = ...  # type: int or other.Bar
+    src = pytd_src("""
+        x = ...  # type: Union[int, other.Bar]
     """)
-    expected = textwrap.dedent("""
-        x = ...  # type: int or other.Bar
+    expected = pytd_src("""
+        x = ...  # type: Union[int, other.Bar]
     """)
     ast = self.Parse(src)
     ast = ast.Visit(visitors.ReplaceTypes(
@@ -557,15 +583,15 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertSourceEquals(ast, expected)
 
   def test_simplify_unions_with_superclasses(self):
-    src = textwrap.dedent("""
-        x = ...  # type: int or bool
-        y = ...  # type: int or bool or float
-        z = ...  # type: list[int] or int
+    src = pytd_src("""
+        x = ...  # type: Union[int, bool]
+        y = ...  # type: Union[int, bool, float]
+        z = ...  # type: Union[list[int], int]
     """)
-    expected = textwrap.dedent("""
+    expected = pytd_src("""
         x = ...  # type: int
-        y = ...  # type: int or float
-        z = ...  # type: list[int] or int
+        y = ...  # type: Union[int, float]
+        z = ...  # type: Union[list[int], int]
     """)
     hierarchy = self.builtins.Visit(visitors.ExtractSuperClassesByName())
     visitor = optimize.SimplifyUnionsWithSuperclasses(
@@ -577,10 +603,10 @@ class TestOptimize(parser_test_base.ParserTest):
 
   @unittest.skip("Needs better handling of GenericType")
   def test_simplify_unions_with_superclasses_generic(self):
-    src = textwrap.dedent("""
-        x = ...  # type: frozenset[int] or AbstractSet[int]
+    src = pytd_src("""
+        x = ...  # type: Union[frozenset[int], AbstractSet[int]]
     """)
-    expected = textwrap.dedent("""
+    expected = pytd_src("""
         x = ...  # type: AbstractSet[int]
     """)
     hierarchy = self.builtins.Visit(visitors.ExtractSuperClassesByName())
@@ -592,15 +618,16 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertSourceEquals(ast, expected)
 
   def test_collapse_long_unions(self):
-    src = textwrap.dedent("""
-        def f(x: A or B or C or D) -> X
-        def g(x: A or B or C or D or E) -> X
-        def h(x: A or ?) -> X
+    src = pytd_src("""
+        from typing import Any
+        def f(x: Union[A, B, C, D]) -> X: ...
+        def g(x: Union[A, B, C, D, E]) -> X: ...
+        def h(x: Union[A, Any]) -> X: ...
     """)
-    expected = textwrap.dedent("""
-        def f(x: A or B or C or D) -> X
-        def g(x) -> X
-        def h(x) -> X
+    expected = pytd_src("""
+        def f(x: Union[A, B, C, D]) -> X: ...
+        def g(x) -> X: ...
+        def h(x) -> X: ...
     """)
     ast = self.ParseAndResolve(src)
     ast = ast.Visit(optimize.CollapseLongUnions(max_length=4))
@@ -608,13 +635,14 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertSourceEquals(ast, expected)
 
   def test_collapse_long_constant_unions(self):
-    src = textwrap.dedent("""
-      x = ...  # type: A or B or C or D
-      y = ...  # type: A or B or C or D or E
+    src = pytd_src("""
+      x = ...  # type: Union[A, B, C, D]
+      y = ...  # type: Union[A, B, C, D, E]
     """)
-    expected = textwrap.dedent("""
-      x = ...  # type: A or B or C or D
-      y = ...  # type: ?
+    expected = pytd_src("""
+      from typing import Any
+      x = ...  # type: Union[A, B, C, D]
+      y = ...  # type: Any
     """)
     ast = self.ParseAndResolve(src)
     ast = ast.Visit(optimize.CollapseLongUnions(max_length=4))
@@ -622,61 +650,63 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertSourceEquals(ast, expected)
 
   def test_combine_containers(self):
-    src = textwrap.dedent("""
-        def f(x: list[int] or list[float]) -> ?
-        def g(x: list[int] or str or list[float] or set[int] or long) -> ?
-        def h(x: list[int] or list[str] or set[int] or set[float]) -> ?
-        def i(x: list[int] or list[int]) -> ?
-        def j(x: dict[int, float] or dict[float, int]) -> ?
-        def k(x: dict[int, bool] or list[int] or dict[bool, int] or list[bool]) -> ?
+    src = pytd_src("""
+        from typing import Any
+        def f(x: Union[list[int], list[float]]) -> Any: ...
+        def g(x: Union[list[int], str, list[float], set[int], long]) -> Any: ...
+        def h(x: Union[list[int], list[str], set[int], set[float]]) -> Any: ...
+        def i(x: Union[list[int], list[int]]) -> Any: ...
+        def j(x: Union[dict[int, float], dict[float, int]]) -> Any: ...
+        def k(x: Union[dict[int, bool], list[int], dict[bool, int], list[bool]]) -> Any: ...
     """)
-    expected = textwrap.dedent("""
-        def f(x: list[float]) -> ?: ...
-        def g(x: list[float] or str or set[int] or long) -> ?: ...
-        def h(x: list[int or str] or set[float]) -> ?: ...
-        def i(x: list[int]) -> ?: ...
-        def j(x: dict[float, float]) -> ?: ...
-        def k(x: dict[int or bool, bool or int] or list[int or bool]) -> ?: ...
+    expected = pytd_src("""
+        from typing import Any
+        def f(x: list[float]) -> Any: ...
+        def g(x: Union[list[float], str, set[int], long]) -> Any: ...
+        def h(x: Union[list[Union[int, str]], set[float]]) -> Any: ...
+        def i(x: list[int]) -> Any: ...
+        def j(x: dict[float, float]) -> Any: ...
+        def k(x: Union[dict[Union[int, bool], Union[bool, int]], list[Union[int, bool]]]) -> Any: ...
     """)
     new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
     self.AssertSourceEquals(new_src, expected)
 
   def test_combine_containers_multi_level(self):
-    src = textwrap.dedent("""
-      v = ...  # type: list[tuple[long or int, ...]] or list[tuple[float or bool, ...]]
+    src = pytd_src("""
+      v = ...  # type: Union[list[tuple[Union[long, int], ...]], list[tuple[Union[float, bool], ...]]]
     """)
-    expected = textwrap.dedent("""
-      v = ...  # type: list[tuple[long or int or float or bool, ...]]
+    expected = pytd_src("""
+      v = ...  # type: list[tuple[Union[long, int, float, bool], ...]]
     """)
     new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
     self.AssertSourceEquals(new_src, expected)
 
   def test_combine_same_length_tuples(self):
-    src = textwrap.dedent("""
-      x = ...  # type: tuple[int] or tuple[str]
+    src = pytd_src("""
+      x = ...  # type: Union[tuple[int], tuple[str]]
     """)
-    expected = textwrap.dedent("""
-      x = ...  # type: tuple[int or str]
+    expected = pytd_src("""
+      x = ...  # type: tuple[Union[int, str]]
     """)
     new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
     self.AssertSourceEquals(new_src, expected)
 
   def test_combine_different_length_tuples(self):
-    src = textwrap.dedent("""
-      x = ...  # type: tuple[int] or tuple[int, str]
+    src = pytd_src("""
+      x = ...  # type: Union[tuple[int], tuple[int, str]]
     """)
-    expected = textwrap.dedent("""
-      x = ...  # type: tuple[int or str, ...]
+    expected = pytd_src("""
+      x = ...  # type: tuple[Union[int, str], ...]
     """)
     new_src = self.ApplyVisitorToString(src, optimize.CombineContainers())
     self.AssertSourceEquals(new_src, expected)
 
   def test_combine_different_length_callables(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
       from typing import Callable
-      x = ...  # type: Callable[[int], str] or Callable[[int, int], str]
+      x = ...  # type: Union[Callable[[int], str], Callable[[int, int], str]]
     """)
-    expected = textwrap.dedent("""
+    expected = pytd_src("""
       from typing import Callable
       x = ...  # type: Callable[..., str]
     """)
@@ -684,35 +714,37 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertSourceEquals(new_src, expected)
 
   def test_pull_in_method_classes(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
+        from typing import Any
         class A(object):
             mymethod1 = ...  # type: Method1
             mymethod2 = ...  # type: Method2
             member = ...  # type: Method3
             mymethod4 = ...  # type: Method4
         class Method1(object):
-            def __call__(self: A, x: int) -> ?
+            def __call__(self: A, x: int) -> Any: ...
         class Method2(object):
-            def __call__(self: object, x: int) -> ?
+            def __call__(self: object, x: int) -> Any: ...
         class Method3(object):
-            def __call__(x: bool, y: int) -> ?
+            def __call__(x: bool, y: int) -> Any: ...
         class Method4(object):
-            def __call__(self: ?) -> ?
+            def __call__(self: Any) -> Any: ...
         class B(Method4):
             pass
     """)
-    expected = textwrap.dedent("""
+    expected = pytd_src("""
+        from typing import Any
         class A(object):
             member = ...  # type: Method3
-            def mymethod1(self, x: int) -> ?
-            def mymethod2(self, x: int) -> ?
-            def mymethod4(self) -> ?
+            def mymethod1(self, x: int) -> Any: ...
+            def mymethod2(self, x: int) -> Any: ...
+            def mymethod4(self) -> Any: ...
 
         class Method3(object):
-            def __call__(x: bool, y: int) -> ?
+            def __call__(x: bool, y: int) -> Any: ...
 
         class Method4(object):
-            def __call__(self) -> ?
+            def __call__(self) -> Any: ...
 
         class B(Method4):
             pass
@@ -722,16 +754,17 @@ class TestOptimize(parser_test_base.ParserTest):
     self.AssertSourceEquals(new_src, expected)
 
   def test_add_inherited_methods(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
+        from typing import Any
         class A():
             foo = ...  # type: bool
-            def f(self, x: int) -> float
-            def h(self) -> complex
+            def f(self, x: int) -> float: ...
+            def h(self) -> complex: ...
 
         class B(A):
             bar = ...  # type: int
-            def g(self, y: int) -> bool
-            def h(self, z: float) -> ?
+            def g(self, y: int) -> bool: ...
+            def h(self, z: float) -> Any: ...
     """)
     ast = self.Parse(src)
     ast = visitors.LookupClasses(ast, self.builtins)
@@ -741,9 +774,9 @@ class TestOptimize(parser_test_base.ParserTest):
                           [m.name for m in ast.Lookup("B").methods])
 
   def test_adjust_inherited_method_self(self):
-    src = textwrap.dedent("""
+    src = pytd_src("""
       class A():
-        def f(self: object) -> float
+        def f(self: object) -> float: ...
       class B(A):
         pass
     """)
@@ -751,24 +784,26 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = visitors.LookupClasses(ast, self.builtins)
     ast = ast.Visit(optimize.AddInheritedMethods())
     self.assertMultiLineEqual(pytd_utils.Print(ast.Lookup("B")),
-                              textwrap.dedent("""
+                              pytd_src("""
         class B(A):
             def f(self) -> float: ...
     """).lstrip())
 
   def test_absorb_mutable_parameters(self):
-    src = textwrap.dedent("""
-        def popall(x: list[?]) -> ?:
+    src = pytd_src("""
+        from typing import Any
+        def popall(x: list[Any]) -> Any:
             x = list[nothing]
-        def add_float(x: list[int]) -> ?:
-            x = list[int or float]
-        def f(x: list[int]) -> ?:
-            x = list[int or float]
+        def add_float(x: list[int]) -> Any:
+            x = list[Union[int, float]]
+        def f(x: list[int]) -> Any:
+            x = list[Union[int, float]]
     """)
-    expected = textwrap.dedent("""
-        def popall(x: list[?]) -> ?
-        def add_float(x: list[int or float]) -> ?
-        def f(x: list[int or float]) -> ?
+    expected = pytd_src("""
+        from typing import Any
+        def popall(x: list[Any]) -> Any: ...
+        def add_float(x: list[Union[int, float]]) -> Any: ...
+        def f(x: list[Union[int, float]]) -> Any: ...
     """)
     tree = self.Parse(src)
     new_tree = tree.Visit(optimize.AbsorbMutableParameters())
@@ -778,18 +813,20 @@ class TestOptimize(parser_test_base.ParserTest):
   def test_absorb_mutable_parameters_from_methods(self):
     # This is a test for intermediate data. See AbsorbMutableParameters class
     # pydoc about how AbsorbMutableParameters works on methods.
-    src = textwrap.dedent("""
+    src = pytd_src("""
+        from typing import Any
         T = TypeVar('T')
         NEW = TypeVar('NEW')
         class MyClass(typing.Generic[T], object):
-            def append(self, x: NEW) -> ?:
-                self = MyClass[T or NEW]
+            def append(self, x: NEW) -> Any:
+                self = MyClass[Union[T, NEW]]
     """)
-    expected = textwrap.dedent("""
+    expected = pytd_src("""
+        from typing import Any
         T = TypeVar('T')
         NEW = TypeVar('NEW')
         class MyClass(typing.Generic[T], object):
-            def append(self: MyClass[T or NEW], x: NEW) -> ?
+            def append(self: MyClass[Union[T, NEW]], x: NEW) -> Any: ...
     """)
     tree = self.Parse(src)
     new_tree = tree.Visit(optimize.AbsorbMutableParameters())
@@ -800,41 +837,43 @@ class TestOptimize(parser_test_base.ParserTest):
     # This test uses pytd of the kind that's typically the output of
     # AbsorbMutableParameters.
     # See comment in RemoveMutableParameters
-    src = textwrap.dedent("""
+    src = pytd_src("""
+      from typing import Any
       T = TypeVar('T')
       T2 = TypeVar('T2')
       T3 = TypeVar('T3')
       class A(typing.Generic[T], object):
-          def foo(self, x: T or T2) -> T2
-          def bar(self, x: T or T2 or T3) -> T3
-          def baz(self, x: T or T2, y: T2 or T3) -> ?
+          def foo(self, x: Union[T, T2]) -> T2: ...
+          def bar(self, x: Union[T, T2, T3]) -> T3: ...
+          def baz(self, x: Union[T, T2], y: Union[T2, T3]) -> Any: ...
 
       K = TypeVar('K')
       V = TypeVar('V')
       class D(typing.Generic[K, V], object):
-          def foo(self, x: T) -> K or T
-          def bar(self, x: T) -> V or T
-          def baz(self, x: K or V) -> K or V
-          def lorem(self, x: T) -> T or K or V
-          def ipsum(self, x: T) -> T or K
+          def foo(self, x: T) -> Union[K, T]: ...
+          def bar(self, x: T) -> Union[V, T]: ...
+          def baz(self, x: Union[K, V]) -> Union[K, V]: ...
+          def lorem(self, x: T) -> Union[T, K, V]: ...
+          def ipsum(self, x: T) -> Union[T, K]: ...
     """)
-    expected = textwrap.dedent("""
+    expected = pytd_src("""
+      from typing import Any
       T = TypeVar('T')
       T2 = TypeVar('T2')
       T3 = TypeVar('T3')
       class A(typing.Generic[T], object):
-          def foo(self, x: T) -> T
-          def bar(self, x: T) -> T
-          def baz(self, x: T, y: T) -> ?
+          def foo(self, x: T) -> T: ...
+          def bar(self, x: T) -> T: ...
+          def baz(self, x: T, y: T) -> Any: ...
 
       K = TypeVar('K')
       V = TypeVar('V')
       class D(typing.Generic[K, V], object):
-          def foo(self, x: K) -> K
-          def bar(self, x: V) -> V
-          def baz(self, x: K or V) -> K or V
-          def lorem(self, x: K or V) -> K or V
-          def ipsum(self, x: K) -> K
+          def foo(self, x: K) -> K: ...
+          def bar(self, x: V) -> V: ...
+          def baz(self, x: Union[K, V]) -> Union[K, V]: ...
+          def lorem(self, x: Union[K, V]) -> Union[K, V]: ...
+          def ipsum(self, x: K) -> K: ...
       """)
     tree = self.Parse(src)
     new_tree = tree.Visit(optimize.MergeTypeParameters())
