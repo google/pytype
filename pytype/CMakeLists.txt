@@ -631,16 +631,6 @@ py_test(
     .libvm
 )
 
-py_test(
-  NAME
-    collections_overlay_test
-  SRCS
-    overlays/collections_overlay_test.py
-  DEPS
-    .libvm
-    pytype.tests.test_base
-)
-
 py_library(
   NAME
     pytdtest
