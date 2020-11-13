@@ -5,7 +5,10 @@
 <!-- TODO(b/151848869):
 * Add documentation for: two-pass analysis in analyze.py, config.py
 * For completeness, mention: copybara, imports_map, blaze integration
-* Clean up/re-organize/finish writing this index page
+* In index.md:
+  * Add non-typegraph things to "Basic concepts" and "Import code components"
+  * Fill in the commented out typegraph overview sections
+* Fill in the commented out "Hashing and Sets" section in typegraph.md
 * Add a quick guide for how to add a new typing feature
 * Coordinate dev guide and CONTRIBUTING.md
   (https://github.com/google/pytype/issues/570)
@@ -27,7 +30,7 @@ concepts and code layout.
             * [Utilities](#utilities)
       * [Updating the developer guide](#updating-the-developer-guide)
 
-<!-- Added by: rechen, at: 2020-11-09T11:54-08:00 -->
+<!-- Added by: rechen, at: 2020-11-13T11:41-08:00 -->
 
 <!--te-->
 

@@ -10,7 +10,7 @@
          * [Conversion to abstract types](#conversion-to-abstract-types)
       * [Tracking local operations](#tracking-local-operations)
 
-<!-- Added by: mdemello, at: 2020-10-12T13:44-07:00 -->
+<!-- Added by: rechen, at: 2020-11-13T11:41-08:00 -->
 
 <!--te-->
 
@@ -24,11 +24,11 @@ tools like pytype. [This blog
 post](http://veekaybee.github.io/2019/07/08/python-type-hints/) is a good quick
 overview of how type hints fit into the python ecosystem in general.
 
-A significant difference between annotations and typecomments is that
+A significant difference between annotations and type comments is that
 annotations are parsed and compiled by the interpreter, even if they have no
 semantic meaning in the runtime code. From pytype's point of view, this means
 that we can process them as part of the regular bytecode VM (by contrast,
-typecomments need a [separate system](directives) to parse and integrate them
+type comments need a [separate system](directives) to parse and integrate them
 into the main code). For example, the following code:
 
 ```
@@ -48,9 +48,13 @@ LOAD_NAME                0 (A)
 STORE_ANNOTATION         1 (x)
 ```
 
+NOTE: Within a function body, type annotations without an assignment (e.g. `x:
+A` versus `x: A = foo()`) do not generate any bytecode, and are therefore not
+processed by pytype's bytecode VM.
+
 ## Annotations dictionary
 
-Python's `SETUP_ANNOTATION` and `STORE_ANNOTATION` opcodes respectively create
+Python's `SETUP_ANNOTATIONS` and `STORE_ANNOTATION` opcodes respectively create
 and populate an `__annotations__` dict in `locals` (for variables in functions)
 or in `__dict__` (for annotated class members). Pytype similarly creates a
 corresponding dictionary, `abstract.AnnotationsDict`, which it stores in the
