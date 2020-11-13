@@ -343,6 +343,15 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
         return f(x)
     """)
 
+  def test_hash_module(self):
+    self.Check("""
+      import subprocess
+      from typing import Hashable
+      def f(x: Hashable):
+        pass
+      f(subprocess)
+    """)
+
   def test_generic_callable(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
