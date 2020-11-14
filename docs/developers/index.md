@@ -12,7 +12,6 @@
 * Add a quick guide for how to add a new typing feature
 * Coordinate dev guide and CONTRIBUTING.md
   (https://github.com/google/pytype/issues/570)
-* Standardize capitalization in doc headings.
 -->
 
 This documentation is for developers of and contributors to pytype. It covers
@@ -31,7 +30,7 @@ concepts and code layout.
             * [Utilities](#utilities)
       * [Updating the developer guide](#updating-the-developer-guide)
 
-<!-- Added by: rechen, at: 2020-11-13T11:55-08:00 -->
+<!-- Added by: rechen, at: 2020-11-13T17:05-08:00 -->
 
 <!--te-->
 
