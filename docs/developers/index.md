@@ -14,10 +14,12 @@
   (https://github.com/google/pytype/issues/570)
 -->
 
-This documentation is for developers of and contributors to pytype. It covers
-[tips][development-process] on suggested workflow, how to
-[upgrade][python-upgrade] pytype for new Python versions, and pytype's core
-concepts and code layout.
+This documentation is for developers of and contributors to pytype. It covers:
+
+* [tips][development-process] on suggested workflow
+* how to [upgrade][python-upgrade] pytype for new Python versions,
+* how to [support][supporting-features] new typing features,
+* and pytype's core concepts and code layout.
 
 <!--ts-->
    * [Developer guide](#developer-guide)
@@ -28,7 +30,7 @@ concepts and code layout.
             * [Typegraph](#typegraph)
       * [Updating the developer guide](#updating-the-developer-guide)
 
-<!-- Added by: tsudol, at: 2020-11-16T10:33-08:00 -->
+<!-- Added by: rechen, at: 2020-11-16T01:36-08:00 -->
 
 <!--te-->
 
@@ -199,4 +201,5 @@ PNG, and embed the latter in docs for consistent rendering.
 [images-dir]: https://github.com/google/pytype/blob/master/docs/images/
 [main-loop]: main_loop.md
 [python-upgrade]: python_version_upgrades.md
+[supporting-features]: features.md
 [wiki-cfg]: https://en.wikipedia.org/wiki/Control-flow_graph
