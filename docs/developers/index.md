@@ -26,11 +26,9 @@ concepts and code layout.
       * [Important code components](#important-code-components)
          * [CFG](#cfg)
             * [Typegraph](#typegraph)
-            * [Python interface](#python-interface)
-            * [Utilities](#utilities)
       * [Updating the developer guide](#updating-the-developer-guide)
 
-<!-- Added by: rechen, at: 2020-11-13T17:05-08:00 -->
+<!-- Added by: tsudol, at: 2020-11-16T10:33-08:00 -->
 
 <!--te-->
 
