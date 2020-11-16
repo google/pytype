@@ -1,5 +1,7 @@
 """Tests for matcher.py."""
 
+import textwrap
+
 from pytype import abstract
 from pytype import abstract_utils
 from pytype import config
@@ -56,9 +58,11 @@ class MatcherTest(test_base.UnitTest):
     Returns:
       An AtomicAbstractValue.
     """
-    src = "from typing import Any, Callable, Iterator, Tuple, Type\n"
-    src += "from protocols import Sequence, SupportsLower\n"
-    src += "x = ...  # type: " + t
+    src = textwrap.dedent(f"""
+      from typing import Any, Callable, Iterator, Tuple, Type, Union
+      from protocols import Sequence, SupportsLower
+      x = ...  # type: {t}
+    """)
     filename = str(hash((t, as_instance)))
     x = self._parse_and_lookup(src, "x", filename).type
     if as_instance:
@@ -159,7 +163,7 @@ class MatcherTest(test_base.UnitTest):
     self.assertNoMatch(left, right2)
 
   def test_heterogeneous_tuple(self):
-    left1 = self._convert_type("Tuple[int or str]", as_instance=True)
+    left1 = self._convert_type("Tuple[Union[int, str]]", as_instance=True)
     left2 = self._convert_type("Tuple[int, str]", as_instance=True)
     left3 = self._convert_type("Tuple[str, int]", as_instance=True)
     right = self._convert_type("Tuple[int, str]")
@@ -194,7 +198,7 @@ class MatcherTest(test_base.UnitTest):
     self.assertNoMatch(left, right2)
 
     # heterogeneous against heterogeneous
-    left1 = self._convert_type("Type[Tuple[int or str]]", as_instance=True)
+    left1 = self._convert_type("Type[Tuple[Union[int, str]]]", as_instance=True)
     left2 = self._convert_type("Type[Tuple[int, str]]", as_instance=True)
     left3 = self._convert_type("Type[Tuple[str, int]]", as_instance=True)
     right = self._convert_type("Type[Tuple[int, str]]")

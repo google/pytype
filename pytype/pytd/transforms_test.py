@@ -22,22 +22,22 @@ class TestTransforms(parser_test_base.ParserTest):
           self = Union[T, T2]
 
       class TrivialList2(typing.Generic[T], object):
-        def __init__(self, x: T) -> NoneType
+        def __init__(self, x: T) -> NoneType: ...
         def append(self, v: T2) -> NoneType:
           self = Union[T, T2]
-        def get_first(self) -> T
+        def get_first(self) -> T: ...
     """)
     expected = textwrap.dedent("""
       T = TypeVar('T')
       T2 = TypeVar('T2')
 
       class TrivialList(typing.Generic[T], object):
-          def append(self, v: T) -> NoneType
+          def append(self, v: T) -> NoneType: ...
 
       class TrivialList2(typing.Generic[T], object):
-          def __init__(self, x: T) -> NoneType
-          def append(self, v: T) -> NoneType
-          def get_first(self) -> T
+          def __init__(self, x: T) -> NoneType: ...
+          def append(self, v: T) -> NoneType: ...
+          def get_first(self) -> T: ...
     """)
     ast = self.Parse(src)
     ast = transforms.RemoveMutableParameters(ast)
@@ -54,10 +54,10 @@ class TestTransforms(parser_test_base.ParserTest):
       V2 = TypeVar('V2')
 
       class MyDict(typing.Generic[K, V], object):
-          def getitem(self, k: K, default: T) -> Union[V, T]
+          def getitem(self, k: K, default: T) -> Union[V, T]: ...
           def setitem(self, k: K2, value: V2) -> NoneType:
               self = dict[Union[K, K2], Union[V, V2]]
-          def getanykeyorvalue(self) -> Union[K, V]
+          def getanykeyorvalue(self) -> Union[K, V]: ...
           def setdefault(self, k: K2, v: V2) -> Union[V, V2]:
               self = dict[Union[K, K2], Union[V, V2]]
     """)
@@ -70,10 +70,10 @@ class TestTransforms(parser_test_base.ParserTest):
       V2 = TypeVar('V2')
 
       class MyDict(typing.Generic[K, V], object):
-          def getitem(self, k: K, default: V) -> V
-          def setitem(self, k: K, value: V) -> NoneType
-          def getanykeyorvalue(self) -> Union[K, V]
-          def setdefault(self, k: K, v: V) -> V
+          def getitem(self, k: K, default: V) -> V: ...
+          def setitem(self, k: K, value: V) -> NoneType: ...
+          def getanykeyorvalue(self) -> Union[K, V]: ...
+          def setdefault(self, k: K, v: V) -> V: ...
     """)
     ast = self.Parse(src)
     ast = transforms.RemoveMutableParameters(ast)
