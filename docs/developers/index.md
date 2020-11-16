@@ -5,9 +5,7 @@
 <!-- TODO(b/151848869):
 * Add documentation for: two-pass analysis in analyze.py, config.py
 * For completeness, mention: copybara, imports_map, blaze integration
-* In index.md:
-  * Add non-typegraph things to "Basic concepts" and "Import code components"
-  * Fill in the commented out typegraph overview sections
+* Add non-typegraph things to "Basic concepts" and "Important code components"
 * Fill in the commented out "Hashing and Sets" section in typegraph.md
 * Add a quick guide for how to add a new typing feature
 * Coordinate dev guide and CONTRIBUTING.md
@@ -30,7 +28,7 @@ This documentation is for developers of and contributors to pytype. It covers:
             * [Typegraph](#typegraph)
       * [Updating the developer guide](#updating-the-developer-guide)
 
-<!-- Added by: rechen, at: 2020-11-16T01:36-08:00 -->
+<!-- Added by: rechen, at: 2020-11-16T11:29-08:00 -->
 
 <!--te-->
 
@@ -125,8 +123,6 @@ information. (In pytype, we use the two terms interchangeably.) `typegraph.h`
 covers the classes that are used to build the typegraph. Some of them were
 already mentioned earlier in Basic Concepts, namely Variables, Bindings and
 Nodes (called CFGNodes here).
-
-<!-- TODO(tsudol): Document the semantics of the CFG. When are nodes added? -->
 
 First is **CFGNode**, the building block of the CFG. A CFGNode corresponds to
 one or more opcodes in the Python program being analyzed. As mentioned
