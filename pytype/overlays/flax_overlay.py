@@ -30,5 +30,5 @@ class Dataclass(dataclass_overlay.Dataclass):
   """Implements the @dataclass decorator."""
 
   @classmethod
-  def make(cls, name, vm):
-    return super().make(name, vm, "flax.struct")
+  def make(cls, vm):
+    return super().make(vm, "flax.struct")

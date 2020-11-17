@@ -42,12 +42,10 @@ class Overlay(abstract.Module):
     self.real_module = vm.convert.constant_to_value(
         ast, subst=datatypes.AliasingDict(), node=vm.root_cfg_node)
 
-  def _convert_member(self, name, member):
-    val = member(name, self.vm)
+  def _convert_member(self, member):
+    val = member(self.vm)
     val.module = self.name
-    var = val.to_variable(self.vm.root_cfg_node)
-    self.vm.trace_module_member(self, name, var)
-    return var
+    return val.to_variable(self.vm.root_cfg_node)
 
   def get_module(self, name):
     """Returns the abstract.Module for the given name."""
@@ -61,3 +59,8 @@ class Overlay(abstract.Module):
     items += [(name, item) for name, item in self.real_module.items()
               if name not in self._member_map]
     return items
+
+
+def build(name, builder):
+  """Wrapper to turn (name, vm) -> val method signatures into (vm) -> val."""
+  return lambda vm: builder(name, vm)

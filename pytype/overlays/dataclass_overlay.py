@@ -34,8 +34,8 @@ class Dataclass(classgen.Decorator):
   """Implements the @dataclass decorator."""
 
   @classmethod
-  def make(cls, name, vm, mod="dataclasses"):
-    return super().make(name, vm, mod)
+  def make(cls, vm, mod="dataclasses"):
+    return super().make("dataclass", vm, mod)
 
   def _handle_initvar(self, node, cls, name, typ, orig):
     """Unpack or delete an initvar in the class annotations."""
@@ -124,8 +124,8 @@ class Field(classgen.FieldConstructor):
   """Implements dataclasses.field."""
 
   @classmethod
-  def make(cls, name, vm):
-    return super().make(name, vm, "dataclasses")
+  def make(cls, vm):
+    return super().make("field", vm, "dataclasses")
 
   def call(self, node, unused_func, args):
     """Returns a type corresponding to a field."""

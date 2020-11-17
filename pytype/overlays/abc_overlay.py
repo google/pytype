@@ -21,8 +21,8 @@ class AbstractMethod(abstract.PyTDFunction):
   """Implements the @abc.abstractmethod decorator."""
 
   @classmethod
-  def make(cls, name, vm):
-    return super().make(name, vm, "abc")
+  def make(cls, vm):
+    return super().make("abstractmethod", vm, "abc")
 
   def call(self, node, unused_func, args):
     """Marks that the given function is abstract."""
@@ -44,8 +44,8 @@ class AbstractMethod(abstract.PyTDFunction):
 class AbstractProperty(special_builtins.PropertyTemplate):
   """Implements the @abc.abstractproperty decorator."""
 
-  def __init__(self, name, vm):
-    super().__init__(vm, name, "abc")
+  def __init__(self, vm):
+    super().__init__(vm, "abstractproperty", "abc")
 
   def call(self, node, funcv, args):
     property_args = self._get_args(args)

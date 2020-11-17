@@ -27,9 +27,8 @@ class VersionInfo(abstract.Tuple):
     return self.pyval[index]
 
 
-def build_version_info(name, vm):
+def build_version_info(vm):
   """Build sys.version_info."""
-  del name
   version = []
   # major, minor
   for i in vm.python_version:

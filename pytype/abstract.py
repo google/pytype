@@ -667,7 +667,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
   def load_lazy_attribute(self, name):
     """Load the named attribute into self.members."""
     if name not in self.members and name in self._member_map:
-      variable = self._convert_member(name, self._member_map[name])
+      variable = self._convert_member(self._member_map[name])
       assert isinstance(variable, cfg.Variable)
       self.members[name] = variable
 
@@ -1415,7 +1415,7 @@ class LazyConcreteDict(SimpleAbstractValue, mixin.PythonConstant):
     self._member_map = member_map
     mixin.PythonConstant.init_mixin(self, self.members)
 
-  def _convert_member(self, _, pyval):
+  def _convert_member(self, pyval):
     return self.vm.convert.constant_to_var(pyval)
 
   def is_empty(self):
@@ -2519,17 +2519,17 @@ class PyTDClass(SimpleAbstractValue, mixin.Class):
       self.members[name] = self.vm.new_unsolvable(
           self.vm.root_cfg_node)
 
-  def _convert_member(self, _, pyval, subst=None, node=None):
+  def _convert_member(self, pyval, subst=None):
     """Convert a member as a variable. For lazy lookup."""
     subst = subst or datatypes.AliasingDict()
-    node = node or self.vm.root_cfg_node
+    node = self.vm.root_cfg_node
     if isinstance(pyval, pytd.Constant):
       return self.vm.convert.constant_to_var(
           abstract_utils.AsInstance(pyval.type), subst, node)
     elif isinstance(pyval, pytd.Function):
       c = self.vm.convert.constant_to_value(pyval, subst=subst, node=node)
       c.parent = self
-      return c.to_variable(self.vm.root_cfg_node)
+      return c.to_variable(node)
     elif isinstance(pyval, pytd.Class):
       return self.vm.convert.constant_to_var(pyval, subst=subst, node=node)
     else:
@@ -2569,7 +2569,7 @@ class PyTDClass(SimpleAbstractValue, mixin.Class):
       return None
     if isinstance(c, pytd.Constant):
       try:
-        self._convert_member(name, c)
+        self._convert_member(c)
       except self.vm.convert.TypeParameterError:
         # Constant c cannot be converted without type parameter substitutions,
         # so it must be an instance attribute.
@@ -2578,7 +2578,7 @@ class PyTDClass(SimpleAbstractValue, mixin.Class):
           subst[itm.full_name] = self.vm.convert.constant_to_value(
               itm.type_param, {}).instantiate(
                   self.vm.root_cfg_node, container=instance)
-        return self._convert_member(name, c, subst)
+        return self._convert_member(c, subst)
 
   def generate_ast(self):
     """Generate this class's AST, including updated members."""
@@ -3794,7 +3794,7 @@ class Module(Instance):
     self._member_map = member_map
     self.ast = ast
 
-  def _convert_member(self, name, ty):
+  def _convert_member(self, ty):
     """Called to convert the items in _member_map to cfg.Variable."""
     var = self.vm.convert.constant_to_var(ty)
     for value in var.data:
@@ -3804,7 +3804,6 @@ class Module(Instance):
       #  do "from foo import x".)
       if not value.module and not isinstance(value, Module):
         value.module = self.name
-    self.vm.trace_module_member(self, name, var)
     return var
 
   @property
@@ -3856,8 +3855,9 @@ class Module(Instance):
       return None
 
   def items(self):
-    return [(name, self._convert_member(name, ty))
-            for name, ty in self._member_map.items()]
+    for name in self._member_map:
+      self.load_lazy_attribute(name)
+    return list(self.members.items())
 
   def get_fullhash(self):
     """Hash the set of member names."""

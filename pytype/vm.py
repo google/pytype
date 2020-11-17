@@ -989,10 +989,6 @@ class VirtualMachine:
     state, ret = self.call_inplace_operator(state, name, x, y)
     return state.push(ret)
 
-  def trace_module_member(self, *args):
-    """Fired whenever a member of a module is converted."""
-    return NotImplemented
-
   def trace_unknown(self, *args):
     """Fired whenever we create a variable containing 'Unknown'."""
     return NotImplemented

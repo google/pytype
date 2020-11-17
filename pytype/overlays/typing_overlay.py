@@ -34,15 +34,15 @@ class TypingOverlay(overlay.Overlay):
     for cls in ast.classes:
       _, name = cls.name.rsplit(".", 1)
       if name not in member_map and pytd.IsContainer(cls) and cls.template:
-        member_map[name] = TypingContainer
+        member_map[name] = overlay.build(name, TypingContainer)
     super().__init__(vm, "typing", member_map, ast)
 
 
 class Union(abstract.AnnotationClass):
   """Implementation of typing.Union[...]."""
 
-  def __init__(self, name, vm, options=()):
-    super().__init__(name, vm)
+  def __init__(self, vm, options=()):
+    super().__init__("Union", vm)
     self.options = options
 
   def _build_value(self, node, inner, ellipses):
@@ -216,8 +216,7 @@ class NoReturn(abstract.Singleton):
     super().__init__("NoReturn", vm)
 
 
-def build_any(name, vm):
-  del name
+def build_any(vm):
   return vm.convert.unsolvable
 
 
@@ -225,14 +224,14 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
   """Factory for creating typing.NamedTuple classes."""
 
   @classmethod
-  def make(cls, name, vm):
+  def make(cls, vm):
     typing_ast = vm.loader.import_name("typing")
     # Because NamedTuple is a special case for the pyi parser, typing.pytd has
     # "_NamedTuple" instead. Replace the name of the returned function so that
     # error messages will correctly display "typing.NamedTuple".
     pyval = typing_ast.Lookup("typing._NamedTuple")
     pyval = pyval.Replace(name="typing.NamedTuple")
-    self = super().make(name, vm, pyval)
+    self = super().make("NamedTuple", vm, pyval)
     # NamedTuple's fields arg has type Sequence[Sequence[Union[str, type]]],
     # which doesn't provide precise enough type-checking, so we have to do
     # some of our own in _getargs. _NamedTupleFields is an alias to
@@ -477,16 +476,16 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
 
   _special = ("__module__", "__name__", "__qualname__", "__annotations__")
 
-  def __init__(self, name, vm):
+  def __init__(self, vm):
     typing_ast = vm.loader.import_name("typing")
     pyval = typing_ast.Lookup("typing._NamedTupleClass")
     pyval = pyval.Replace(name="typing.NamedTuple")
-    super().__init__(name, pyval, vm)
+    super().__init__("NamedTuple", pyval, vm)
     # Prior to python 3.6, NamedTuple is a function. Although NamedTuple is a
     # class in python 3.6+, we can still use it like a function. Hold the
     # an instance of 'NamedTupleFuncBuilder' so that we can reuse the
     # old implementation to implement the NamedTuple in python 3.6+
-    self.namedtuple = NamedTupleFuncBuilder.make(name, vm)
+    self.namedtuple = NamedTupleFuncBuilder.make(vm)
 
   def call(self, node, _, args):
     posargs = args.posargs
@@ -668,49 +667,47 @@ def not_supported_yet(name, vm):
   return vm.convert.unsolvable
 
 
-def build_namedtuple(name, vm):
+def build_namedtuple(vm):
   if vm.python_version < (3, 6):
-    return NamedTupleFuncBuilder.make(name, vm)
+    return NamedTupleFuncBuilder.make(vm)
   else:
-    return NamedTupleClassBuilder(name, vm)
+    return NamedTupleClassBuilder(vm)
 
 
-def build_newtype(name, vm):
-  return NewType.make(name, vm, "typing")
+def build_newtype(vm):
+  return NewType.make("NewType", vm, "typing")
 
 
-def build_noreturn(name, vm):
-  del name
+def build_noreturn(vm):
   return vm.convert.no_return
 
 
-def build_overload(name, vm):
-  return Overload.make(name, vm, "typing")
+def build_overload(vm):
+  return Overload.make("overload", vm, "typing")
 
 
-def build_typevar(name, vm):
-  return TypeVar.make(name, vm, "typing", pyval_name="_typevar_new")
+def build_typevar(vm):
+  return TypeVar.make("TypeVar", vm, "typing", pyval_name="_typevar_new")
 
 
-def build_typechecking(name, vm):
-  del name
+def build_typechecking(vm):
   return vm.convert.true
 
 
-def build_cast(name, vm):
-  return Cast.make(name, vm, "typing")
+def build_cast(vm):
+  return Cast.make("cast", vm, "typing")
 
 
 typing_overlay = {
     "Any": build_any,
-    "Callable": Callable,
-    "Generic": Generic,
-    "Literal": not_supported_yet,
+    "Callable": overlay.build("Callable", Callable),
+    "Generic": overlay.build("Generic", Generic),
+    "Literal": overlay.build("Literal", not_supported_yet),
     "NamedTuple": build_namedtuple,
     "NewType": build_newtype,
     "NoReturn": build_noreturn,
-    "Optional": Optional,
-    "Tuple": Tuple,
+    "Optional": overlay.build("Optional", Optional),
+    "Tuple": overlay.build("Tuple", Tuple),
     "TypeVar": build_typevar,
     "Union": Union,
     "TYPE_CHECKING": build_typechecking,

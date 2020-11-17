@@ -15,5 +15,5 @@ class FutureUtilsOverlay(overlay.Overlay):
     super().__init__(vm, "future.utils", member_map, ast)
 
 
-def build_with_metaclass(name, vm):
-  return metaclass.WithMetaclass.make(name, vm, "future.utils")
+def build_with_metaclass(vm):
+  return metaclass.WithMetaclass.make("with_metaclass", vm, "future.utils")

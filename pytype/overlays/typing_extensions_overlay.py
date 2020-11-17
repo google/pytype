@@ -24,11 +24,12 @@ class TypingExtensionsOverlay(overlay.Overlay):
         vm.loader.typing.Lookup(f"typing.{name}")
       except KeyError:
         if name not in member_map:
-          member_map[name] = typing_overlay.not_supported_yet
+          member_map[name] = overlay.build(
+              name, typing_overlay.not_supported_yet)
     super().__init__(vm, "typing_extensions", member_map, ast)
 
-  def _convert_member(self, name, member):
-    var = super()._convert_member(name, member)
+  def _convert_member(self, member):
+    var = super()._convert_member(member)
     for val in var.data:
       # typing_extensions backports typing features to older versions.
       # Pretending that the backports are in typing is easier than remembering
@@ -38,11 +39,9 @@ class TypingExtensionsOverlay(overlay.Overlay):
     return var
 
 
-def build_protocol(name, vm):
-  del name
+def build_protocol(vm):
   return vm.convert.name_to_value("typing.Protocol")
 
 
-def build_runtime(name, vm):
-  del name
+def build_runtime(vm):
   return vm.convert.name_to_value("typing.runtime_checkable")
