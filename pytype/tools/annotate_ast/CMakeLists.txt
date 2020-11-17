@@ -9,6 +9,7 @@ toplevel_py_binary(
     main.py
   DEPS
     .annotate_ast
+    pytype.ast.visitor
     pytype.tools
 )
 

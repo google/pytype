@@ -1,6 +1,6 @@
 """Debug utils for working with the indexer and the AST."""
 
-from pytype.tools import debug
+from pytype.ast import debug
 
 # pylint: disable=protected-access
 # We never care about protected access when writing debug code!

@@ -5,6 +5,7 @@ import re
 from typing import Optional
 
 import attr
+
 from pytype import abstract
 from pytype import analyze
 from pytype import config
@@ -12,12 +13,12 @@ from pytype import errors
 from pytype import io
 from pytype import load_pytd
 from pytype import module_utils
+from pytype.ast import visitor as ast_visitor
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.tools.traces import source
 from pytype.tools.traces import traces
-from pytype.tools.traces import visitor as ast_visitor
 
 from pytype.tools.xref import callgraph
 from pytype.tools.xref import utils as xref_utils

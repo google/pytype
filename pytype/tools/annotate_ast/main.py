@@ -3,8 +3,8 @@
 import argparse
 import sys
 
+from pytype.ast import debug
 from pytype.tools import arg_parser
-from pytype.tools import debug
 from pytype.tools.annotate_ast import annotate_ast
 from typed_ast import ast27 as ast27
 from typed_ast import ast3

@@ -3,7 +3,7 @@
 import ast
 import sys
 import textwrap
-from pytype.tools.traces import visitor
+from pytype.ast import visitor
 import unittest
 
 
