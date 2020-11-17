@@ -1278,6 +1278,11 @@ class FunctionTest(_ParserTestBase):
       def foo() -> int:
           raise Bar.Error()""", prologue="import Bar")
 
+  def test_invalid_body(self):
+    self.check_error("""
+      def foo(x) -> int:
+        a: str""", 2, "syntax error")
+
   def test_return(self):
     self.check("def foo() -> int: ...")
     self.check("def foo(): ...",
