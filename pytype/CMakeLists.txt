@@ -23,7 +23,6 @@ filegroup(
     pytd/builtins/2/numpy/__init__.pytd
     pytd/builtins/2/protocols.pytd
     pytd/builtins/2/typing.pytd
-    pytd/builtins/2/typing_extensions.pytd
 
     pytd/builtins/2and3/array.pytd
     pytd/builtins/2and3/attr/__init__.pytd
@@ -40,7 +39,6 @@ filegroup(
     pytd/builtins/2and3/numpy/__init__.pytd
     pytd/builtins/2and3/protocols.pytd
     pytd/builtins/2and3/typing.pytd
-    pytd/builtins/2and3/typing_extensions.pytd
 
     pytd/builtins/3/__builtin__.pytd
     pytd/builtins/3/array.pytd
@@ -59,7 +57,6 @@ filegroup(
     pytd/builtins/3/numpy/__init__.pytd
     pytd/builtins/3/protocols.pytd
     pytd/builtins/3/typing.pytd
-    pytd/builtins/3/typing_extensions.pytd
 
     pytd/stdlib/2/_ctypes.pytd
     pytd/stdlib/2/collections.pytd
@@ -182,6 +179,7 @@ py_library(
     overlays/six_overlay.py
     overlays/subprocess_overlay.py
     overlays/sys_overlay.py
+    overlays/typing_extensions_overlay.py
     overlays/typing_overlay.py
     special_builtins.py
     state.py

@@ -29,7 +29,7 @@ class TypingOverlay(overlay.Overlay):
     # Make sure we have typing available as a dependency
     if vm.python_version < (3, 5) and not vm.loader.can_see("typing"):
       vm.errorlog.import_error(vm.frames, "typing")
-    member_map = typing_overload.copy()
+    member_map = typing_overlay.copy()
     ast = vm.loader.typing
     for cls in ast.classes:
       _, name = cls.name.rsplit(".", 1)
@@ -701,7 +701,7 @@ def build_cast(name, vm):
   return Cast.make(name, vm, "typing")
 
 
-typing_overload = {
+typing_overlay = {
     "Any": build_any,
     "Callable": Callable,
     "Generic": Generic,

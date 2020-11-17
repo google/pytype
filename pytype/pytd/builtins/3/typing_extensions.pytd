@@ -1,5 +1,0 @@
-import typing
-Any = typing.Any
-Literal = typing.Literal
-Protocol = typing.Protocol
-def __getattr__(name) -> Any: ...

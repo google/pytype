@@ -183,6 +183,16 @@ class TypingTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
     self.assertErrorRegexes(errors, {"e": r"ClassVar.*1.*2"})
 
+  def test_not_supported_yet(self):
+    # Tests that typing_extension members not implemented in
+    # typing_extensions_overlay are reported as [not-supported-yet]. If this
+    # test starts failing due to this specific member gaining support, just pick
+    # an unsupported member to replace it with from
+    # https://github.com/python/typeshed/blob/master/third_party/2and3/typing_extensions.pyi
+    self.CheckWithErrors("""
+      from typing_extensions import TypedDict  # not-supported-yet
+    """)
+
 
 class LiteralTest(test_base.TargetIndependentTest):
   """Tests for typing.Literal."""
@@ -381,6 +391,11 @@ class LiteralTest(test_base.TargetIndependentTest):
         def f1() -> int: ...
         def f2() -> str: ...
       """)
+
+  def test_typing_extensions(self):
+    self.CheckWithErrors("""
+      from typing_extensions import Literal  # not-supported-yet
+    """)
 
 
 test_base.main(globals(), __name__ == "__main__")
