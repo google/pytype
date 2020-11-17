@@ -8,12 +8,12 @@ from pytype import analyze
 from pytype import config
 from pytype import errors
 from pytype import load_pytd
+from pytype.ast import visitor
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 
 from pytype.tools.traces import source
-from pytype.tools.traces import visitor
 
 _ATTR_OPS = frozenset((
     "LOAD_ATTR",

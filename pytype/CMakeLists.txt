@@ -252,7 +252,6 @@ py_library(
     SRCS
       tools/arg_parser.py
       tools/config.py
-      tools/debug.py
       tools/environment.py
       tools/runner.py
       tools/tool_utils.py
@@ -663,6 +662,7 @@ py_test(
     pytype.tests.test_base
 )
 
+add_subdirectory(ast)
 add_subdirectory(overlays)
 add_subdirectory(pyc)
 add_subdirectory(pyi)

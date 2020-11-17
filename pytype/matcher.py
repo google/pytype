@@ -392,7 +392,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
             left, other_type, subst, node, view)
     elif isinstance(left, abstract.Module):
       if other_type.full_name in [
-          "__builtin__.module", "__builtin__.object", "types.ModuleType"]:
+          "__builtin__.module", "__builtin__.object", "types.ModuleType",
+          "typing.Hashable"]:
         return subst
     elif isinstance(left, abstract.FUNCTION_TYPES):
       if other_type.full_name == "typing.Callable":

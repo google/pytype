@@ -35,7 +35,7 @@ class TestUtils(parser_test_base.ParserTest):
     ast1 = self.Parse("""
       c1 = ...  # type: int
 
-      def f1() -> int
+      def f1() -> int: ...
 
       class Class1(object):
         pass
@@ -43,7 +43,7 @@ class TestUtils(parser_test_base.ParserTest):
     ast2 = self.Parse("""
       c2 = ...  # type: int
 
-      def f2() -> int
+      def f2() -> int: ...
 
       class Class2(object):
         pass
@@ -52,8 +52,8 @@ class TestUtils(parser_test_base.ParserTest):
       c1 = ...  # type: int
       c2 = ...  # type: int
 
-      def f1() -> int
-      def f2() -> int
+      def f1() -> int: ...
+      def f2() -> int: ...
 
       class Class1(object):
           pass
@@ -157,7 +157,7 @@ class TestUtils(parser_test_base.ParserTest):
           raise ValueError()
       X = TypeVar('X')
       Y = TypeVar('Y')
-      def bar(x: Union[X, Y]) -> Any
+      def bar(x: Union[X, Y]) -> Any: ...
     """)
     # TODO(b/159051689): Do more extensive testing.
     pytd_utils.Print(ast)
@@ -181,15 +181,15 @@ class TestUtils(parser_test_base.ParserTest):
     """Test WrapTypeDeclUnit."""
     ast1 = self.Parse("""
       c = ...  # type: int
-      def f(x: int) -> int
-      def f(x: float) -> float
+      def f(x: int) -> int: ...
+      def f(x: float) -> float: ...
       class A(object):
         pass
     """)
     ast2 = self.Parse("""
       c = ...  # type: float
       d = ...  # type: int
-      def f(x: complex) -> complex
+      def f(x: complex) -> complex: ...
       class B(object):
         pass
     """)
@@ -201,9 +201,9 @@ class TestUtils(parser_test_base.ParserTest):
       from typing import Union
       c = ...  # type: Union[int, float]
       d = ...  # type: int
-      def f(x: int) -> int
-      def f(x: float) -> float
-      def f(x: complex) -> complex
+      def f(x: int) -> int: ...
+      def f(x: float) -> float: ...
+      def f(x: complex) -> complex: ...
       class A(object):
         pass
       class B(object):
@@ -388,10 +388,10 @@ class TestUtils(parser_test_base.ParserTest):
     # ordering is ignored when testing for equality (which ASTeq uses).
     src1 = textwrap.dedent("""
         from typing import Union
-        def foo(a: Union[int, str]) -> C
+        def foo(a: Union[int, str]) -> C: ...
         T = TypeVar('T')
         class C(typing.Generic[T], object):
-            def bar(x: T) -> NoneType
+            def bar(x: T) -> NoneType: ...
         CONSTANT = ...  # type: C[float]
         """)
     src2 = textwrap.dedent("""
@@ -399,8 +399,8 @@ class TestUtils(parser_test_base.ParserTest):
         CONSTANT = ...  # type: C[float]
         T = TypeVar('T')
         class C(typing.Generic[T], object):
-            def bar(x: T) -> NoneType
-        def foo(a: Union[str, int]) -> C
+            def bar(x: T) -> NoneType: ...
+        def foo(a: Union[str, int]) -> C: ...
         """)
     tree1 = parser.parse_string(src1, python_version=self.python_version)
     tree2 = parser.parse_string(src2, python_version=self.python_version)

@@ -87,8 +87,7 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
         class X(tuple):
           __slots__ = ["a", "b"]
           __dict__ = ...  # type: collections.OrderedDict[str, Union[int, str]]
-          _field_defaults = ...  # type: collections.OrderedDict[str, Union[int,
-            str]]
+          _field_defaults = ...  # type: collections.OrderedDict[str, Union[int, str]]
           _field_types = ...  # type: collections.OrderedDict[str, type]
           _fields = ...  # type: Tuple[str, str]
           a = ...  # type: int

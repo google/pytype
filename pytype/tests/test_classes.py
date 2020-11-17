@@ -163,7 +163,7 @@ class ClassesTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
     from typing import Any
     module = ...  # type: Any
-    def f() -> NoneType
+    def f() -> NoneType: ...
     class Foo(object):
       @classmethod
       def bar(cls) -> None: ...
