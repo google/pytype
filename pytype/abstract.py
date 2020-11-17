@@ -587,6 +587,19 @@ class SimpleAbstractValue(AtomicAbstractValue):
 
   Note that the cls attribute will point to another abstract value that
   represents the class object itself, not to some special type representation.
+
+  Attributes:
+    is_lazy: (class attribute) Whether this class uses lazy loading for the
+      attributes of the represented instance. A subclass of SimpleAbstractValue
+      that declares itself as lazy must define a `_member_map` attribute that
+      stores the raw values of the instance's attributes, as well as a
+      `_convert_member` method that processes a raw attribute into an abstract
+      value to store in `members`. When accessing an attribute on a lazy
+      instance, the caller must first call `load_lazy_attribute(name)` to ensure
+      the attribute is loaded. Calling `_convert_member` directly should be
+      avoided! Doing so will create multiple copies of the same attribute,
+      leading to subtle bugs.
+    members: A name->value dictionary of the instance's attributes.
   """
   is_lazy = False
 
@@ -2562,7 +2575,19 @@ class PyTDClass(SimpleAbstractValue, mixin.Class):
     return name in self._member_map
 
   def convert_as_instance_attribute(self, name, instance):
-    """Convert `name` as an instance attribute."""
+    """Convert `name` as an instance attribute.
+
+    This method is used by attribute.py to lazily load attributes on instances
+    of this PyTDClass. Calling this method directly should be avoided. Doing so
+    will create multiple copies of the same attribute, leading to subtle bugs.
+
+    Args:
+      name: The attribute name.
+      instance: An instance of this PyTDClass.
+
+    Returns:
+      The converted attribute.
+    """
     try:
       c = self.pytd_cls.Lookup(name)
     except KeyError:
