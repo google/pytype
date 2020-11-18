@@ -59,7 +59,6 @@ class CallTracer(vm.VirtualMachine):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self._unknowns = {}
-    self._builtin_map = {}
     self._calls = set()
     self._method_calls = set()
     # Used by init_class.
@@ -400,7 +399,7 @@ class CallTracer(vm.VirtualMachine):
 
   def analyze_toplevel(self, node, defs):
     for name, var in sorted(defs.items()):  # sort, for determinicity
-      if name not in self._builtin_map:
+      if not self._is_typing_member(name, var):
         for value in var.bindings:
           if isinstance(value.data, abstract.InterpreterClass):
             new_node = self.analyze_class(node, value)
@@ -432,16 +431,6 @@ class CallTracer(vm.VirtualMachine):
     self._analyzing = True
     node = node.ConnectNew(name="Analyze")
     return self.analyze_toplevel(node, defs)
-
-  def trace_module_member(self, module, name, member):
-    if module is None or isinstance(module, typing_overlay.TypingOverlay):
-      # TypingOverlay takes precedence over typing.pytd.
-      trace = True
-    else:
-      trace = (module.ast is self.loader.typing
-               and name not in self._builtin_map)
-    if trace:
-      self._builtin_map[name] = member.data
 
   def trace_unknown(self, name, unknown_binding):
     self._unknowns[name] = unknown_binding
@@ -497,7 +486,7 @@ class CallTracer(vm.VirtualMachine):
       data.append(pytd.Constant(name, t))
     for name, var in defs.items():
       if (name in output.TOP_LEVEL_IGNORE or name in annotated_names or
-          self._is_builtin(name, var.data)):
+          self._is_typing_member(name, var)):
         continue
       options = var.FilteredData(self.exitpoint, strict=False)
       if (len(options) > 1 and
@@ -553,8 +542,14 @@ class CallTracer(vm.VirtualMachine):
                                      pytd.METHOD))
     return functions
 
-  def _is_builtin(self, name, data):
-    return self._builtin_map.get(name) == data
+  def _is_typing_member(self, name, var):
+    if var.data and all(
+        val.module == "typing" and val.name == name for val in var.data):
+      return True
+    if "typing" not in self.loaded_overlays:
+      return False
+    module = self.loaded_overlays["typing"].get_module(name)
+    return name in module.members and module.members[name].data == var.data
 
   def pytd_functions_for_call_traces(self):
     return self._call_traces_to_function(self._calls, escape.pack_partial)
@@ -616,11 +611,8 @@ class CallTracer(vm.VirtualMachine):
     if not bad:
       bad = self.matcher.bad_matches(actual, formal, node)
     if bad:
-      with self.convert.pytd_convert.produce_detailed_output():
-        combined = pytd_utils.JoinTypes(
-            view[actual].data.to_type(node, view=view) for view in bad)
-        self.errorlog.bad_return_type(
-            self.frames, combined, formal.get_instance_type(node))
+      self.errorlog.bad_return_type(
+          self.frames, node, formal, actual, bad)
     return not bad
 
 

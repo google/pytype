@@ -21,9 +21,9 @@ class Popen(abstract.PyTDClass):
 
   _UNLOADED = object()
 
-  def __init__(self, name, vm):
+  def __init__(self, vm):
     pyval = vm.loader.import_name("subprocess").Lookup("subprocess.Popen")
-    super().__init__(name, pyval, vm)
+    super().__init__("Popen", pyval, vm)
     # lazily loaded because the signatures refer back to Popen itself
     self._new = self._UNLOADED
 

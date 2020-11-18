@@ -30,12 +30,12 @@ class CoroutineDecorator(abstract.PyTDFunction):
   """Implements the @types.coroutine and @asyncio.coroutine decorator."""
 
   @classmethod
-  def make_for_types(cls, name, vm):
-    return super().make(name, vm, "types")
+  def make_for_types(cls, vm):
+    return super().make("coroutine", vm, "types")
 
   @classmethod
-  def make_for_asyncio(cls, name, vm):
-    return super().make(name, vm, "asyncio")
+  def make_for_asyncio(cls, vm):
+    return super().make("coroutine", vm, "asyncio")
 
   def call(self, node, unused_func, args):
     """Marks the function as a generator-based coroutine."""

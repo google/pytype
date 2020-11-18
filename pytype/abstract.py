@@ -587,6 +587,19 @@ class SimpleAbstractValue(AtomicAbstractValue):
 
   Note that the cls attribute will point to another abstract value that
   represents the class object itself, not to some special type representation.
+
+  Attributes:
+    is_lazy: (class attribute) Whether this class uses lazy loading for the
+      attributes of the represented instance. A subclass of SimpleAbstractValue
+      that declares itself as lazy must define a `_member_map` attribute that
+      stores the raw values of the instance's attributes, as well as a
+      `_convert_member` method that processes a raw attribute into an abstract
+      value to store in `members`. When accessing an attribute on a lazy
+      instance, the caller must first call `load_lazy_attribute(name)` to ensure
+      the attribute is loaded. Calling `_convert_member` directly should be
+      avoided! Doing so will create multiple copies of the same attribute,
+      leading to subtle bugs.
+    members: A name->value dictionary of the instance's attributes.
   """
   is_lazy = False
 
@@ -667,7 +680,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
   def load_lazy_attribute(self, name):
     """Load the named attribute into self.members."""
     if name not in self.members and name in self._member_map:
-      variable = self._convert_member(name, self._member_map[name])
+      variable = self._convert_member(self._member_map[name])
       assert isinstance(variable, cfg.Variable)
       self.members[name] = variable
 
@@ -1380,15 +1393,11 @@ class AnnotationContainer(AnnotationClass):
           actual = params[formal.name].instantiate(root_node)
           bad = self.vm.matcher.bad_matches(actual, formal, root_node)
           if bad:
-            with self.vm.convert.pytd_convert.produce_detailed_output():
-              combined = pytd_utils.JoinTypes(
-                  view[actual].data.to_type(root_node, view=view)
-                  for view in bad)
-              formal = self.vm.annotations_util.sub_one_annotation(
-                  root_node, formal, [{}])
-              self.vm.errorlog.bad_concrete_type(
-                  self.vm.frames, combined, formal.get_instance_type(root_node))
-              return self.vm.convert.unsolvable
+            formal = self.vm.annotations_util.sub_one_annotation(
+                root_node, formal, [{}])
+            self.vm.errorlog.bad_concrete_type(
+                self.vm.frames, root_node, formal, actual, bad)
+            return self.vm.convert.unsolvable
 
     try:
       return abstract_class(self.base_cls, params, self.vm, template_params)
@@ -1415,7 +1424,7 @@ class LazyConcreteDict(SimpleAbstractValue, mixin.PythonConstant):
     self._member_map = member_map
     mixin.PythonConstant.init_mixin(self, self.members)
 
-  def _convert_member(self, _, pyval):
+  def _convert_member(self, pyval):
     return self.vm.convert.constant_to_var(pyval)
 
   def is_empty(self):
@@ -1713,7 +1722,6 @@ class PyTDFunction(Function):
       A new PyTDFunction.
     """
     assert not pyval or not pyval_name  # there's never a reason to pass both
-    function_name = module + "." + name
     if not pyval:
       pyval_name = module + "." + (pyval_name or name)
       if module not in ("__builtin__", "typing"):
@@ -1724,7 +1732,9 @@ class PyTDFunction(Function):
         and isinstance(pyval.type, pytd.FunctionType)):
       pyval = pyval.type.function
     f = vm.convert.constant_to_value(pyval, {}, vm.root_cfg_node)
-    return cls(function_name, f.signatures, pyval.kind, vm)
+    self = cls(name, f.signatures, pyval.kind, vm)
+    self.module = module
+    return self
 
   def __init__(self, name, signatures, kind, vm):
     super().__init__(name, vm)
@@ -2264,12 +2274,18 @@ class ParameterizedClass(
     self.formal_type_parameters[key] = typ
 
   def replace(self, inner_types):
+    inner_types = dict(inner_types)
     if isinstance(self, LiteralClass):
-      # We can't create a LiteralClass because we don't have a concrete value.
+      if inner_types == self.formal_type_parameters:
+        # If the type hasn't changed, we can return a copy of this class.
+        return LiteralClass(
+            self.base_cls, self._instance, self.vm, self.template)
+      # Otherwise, we can't create a LiteralClass because we don't have a
+      # concrete value.
       typ = ParameterizedClass
     else:
       typ = self.__class__
-    return typ(self.base_cls, dict(inner_types), self.vm, self.template)
+    return typ(self.base_cls, inner_types, self.vm, self.template)
 
 
 class TupleClass(ParameterizedClass, mixin.HasSlots):
@@ -2519,17 +2535,17 @@ class PyTDClass(SimpleAbstractValue, mixin.Class):
       self.members[name] = self.vm.new_unsolvable(
           self.vm.root_cfg_node)
 
-  def _convert_member(self, _, pyval, subst=None, node=None):
+  def _convert_member(self, pyval, subst=None):
     """Convert a member as a variable. For lazy lookup."""
     subst = subst or datatypes.AliasingDict()
-    node = node or self.vm.root_cfg_node
+    node = self.vm.root_cfg_node
     if isinstance(pyval, pytd.Constant):
       return self.vm.convert.constant_to_var(
           abstract_utils.AsInstance(pyval.type), subst, node)
     elif isinstance(pyval, pytd.Function):
       c = self.vm.convert.constant_to_value(pyval, subst=subst, node=node)
       c.parent = self
-      return c.to_variable(self.vm.root_cfg_node)
+      return c.to_variable(node)
     elif isinstance(pyval, pytd.Class):
       return self.vm.convert.constant_to_var(pyval, subst=subst, node=node)
     else:
@@ -2562,14 +2578,26 @@ class PyTDClass(SimpleAbstractValue, mixin.Class):
     return name in self._member_map
 
   def convert_as_instance_attribute(self, name, instance):
-    """Convert `name` as an instance attribute."""
+    """Convert `name` as an instance attribute.
+
+    This method is used by attribute.py to lazily load attributes on instances
+    of this PyTDClass. Calling this method directly should be avoided. Doing so
+    will create multiple copies of the same attribute, leading to subtle bugs.
+
+    Args:
+      name: The attribute name.
+      instance: An instance of this PyTDClass.
+
+    Returns:
+      The converted attribute.
+    """
     try:
       c = self.pytd_cls.Lookup(name)
     except KeyError:
       return None
     if isinstance(c, pytd.Constant):
       try:
-        self._convert_member(name, c)
+        self._convert_member(c)
       except self.vm.convert.TypeParameterError:
         # Constant c cannot be converted without type parameter substitutions,
         # so it must be an instance attribute.
@@ -2578,7 +2606,7 @@ class PyTDClass(SimpleAbstractValue, mixin.Class):
           subst[itm.full_name] = self.vm.convert.constant_to_value(
               itm.type_param, {}).instantiate(
                   self.vm.root_cfg_node, container=instance)
-        return self._convert_member(name, c, subst)
+        return self._convert_member(c, subst)
 
   def generate_ast(self):
     """Generate this class's AST, including updated members."""
@@ -3794,7 +3822,7 @@ class Module(Instance):
     self._member_map = member_map
     self.ast = ast
 
-  def _convert_member(self, name, ty):
+  def _convert_member(self, ty):
     """Called to convert the items in _member_map to cfg.Variable."""
     var = self.vm.convert.constant_to_var(ty)
     for value in var.data:
@@ -3804,7 +3832,6 @@ class Module(Instance):
       #  do "from foo import x".)
       if not value.module and not isinstance(value, Module):
         value.module = self.name
-    self.vm.trace_module_member(self, name, var)
     return var
 
   @property
@@ -3856,8 +3883,9 @@ class Module(Instance):
       return None
 
   def items(self):
-    return [(name, self._convert_member(name, ty))
-            for name, ty in self._member_map.items()]
+    for name in self._member_map:
+      self.load_lazy_attribute(name)
+    return list(self.members.items())
 
   def get_fullhash(self):
     """Hash the set of member names."""

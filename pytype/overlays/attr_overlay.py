@@ -37,8 +37,8 @@ class Attrs(classgen.Decorator):
   """Implements the @attr.s decorator."""
 
   @classmethod
-  def make(cls, name, vm):
-    return super().make(name, vm, "attr")
+  def make(cls, vm):
+    return super().make("s", vm, "attr")
 
   def init_name(self, attr):
     # attrs removes leading underscores from attrib names when generating kwargs
@@ -163,8 +163,8 @@ class Attrib(classgen.FieldConstructor):
   """Implements attr.ib."""
 
   @classmethod
-  def make(cls, name, vm):
-    return super().make(name, vm, "attr")
+  def make(cls, vm):
+    return super().make("ib", vm, "attr")
 
   def call(self, node, unused_func, args):
     """Returns a type corresponding to an attr."""
@@ -227,5 +227,5 @@ class Factory(abstract.PyTDFunction):
   """Implementation of attr.Factory."""
 
   @classmethod
-  def make(cls, name, vm):
-    return super().make(name, vm, "attr")
+  def make(cls, vm):
+    return super().make("Factory", vm, "attr")

@@ -7,8 +7,8 @@ from pytype import file_utils
 from pytype import module_utils
 from pytype import utils
 from pytype.pyi import parser_ext  # pytype: disable=import-error
-from pytype.pytd import pep484
 from pytype.pytd import escape
+from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import slots as cmp_slots
@@ -864,13 +864,18 @@ class _Parser:
     if self._is_literal_base_type(base_type):
       literal_parameters = []
       for p in parameters:
-        if self._is_none(p):
+        if self._is_none(p) or isinstance(p, pytd.Literal):
           literal_parameters.append(p)
-        elif isinstance(p, pytd.NamedType) and p.name not in ("True", "False"):
-          # TODO(b/123775699): support enums.
-          literal_parameters.append(pytd.AnythingType())
-        else:
+        elif isinstance(p, pytd.NamedType):
+          if p.name in ("True", "False"):
+            literal_parameters.append(pytd.Literal(p))
+          else:
+            # TODO(b/123775699): support enums.
+            literal_parameters.append(pytd.AnythingType())
+        elif isinstance(p, (int, str, bytes)):
           literal_parameters.append(pytd.Literal(p))
+        else:
+          raise ParseError("Literal[%s] not supported" % p)
       return pytd_utils.JoinTypes(literal_parameters)
     elif any(isinstance(p, (int, str)) for p in parameters):
       parameters = ", ".join(

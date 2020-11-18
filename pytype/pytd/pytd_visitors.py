@@ -280,6 +280,7 @@ class PrintVisitor(Visitor):
     self.imports = collections.defaultdict(set)
     self.in_alias = False
     self.in_parameter = False
+    self.in_literal = False
     self._unit_name = None
     self._local_names = set()
     self._class_members = set()
@@ -420,7 +421,13 @@ class PrintVisitor(Visitor):
 
   def VisitConstant(self, node):
     """Convert a class-level or module-level constant to a string."""
-    return self._SafeName(node.name) + ": " + node.type
+    if self.in_literal:
+      module, _, name = node.name.partition(".")
+      assert module == "__builtin__", module
+      assert name in ("True", "False"), name
+      return name
+    else:
+      return self._SafeName(node.name) + ": " + node.type
 
   def EnterAlias(self, _):
     self.old_imports = self.imports.copy()
@@ -761,6 +768,14 @@ class PrintVisitor(Visitor):
       return type_list[0]
     else:
       return " and ".join(type_list)
+
+  def EnterLiteral(self, _):
+    assert not self.in_literal
+    self.in_literal = True
+
+  def LeaveLiteral(self, _):
+    assert self.in_literal
+    self.in_literal = False
 
   def VisitLiteral(self, node):
     base = "Literal"

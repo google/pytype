@@ -748,4 +748,113 @@ class TypingTestPython3Feature(test_base.TargetPython3FeatureTest):
       """, pythonpath=[d.path])
 
 
+class LiteralTest(test_base.TargetPython3FeatureTest):
+  """Tests for typing.Literal in source code."""
+
+  def test_basic(self):
+    ty = self.Infer("""
+      from typing_extensions import Literal
+      x1: Literal["hello"]
+      x2: Literal[b"hello"]
+      x3: Literal[u"hello"]
+      x4: Literal[0]
+      x5: Literal[True]
+      x6: Literal[None]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Literal
+      x1: Literal['hello']
+      x2: Literal[b'hello']
+      x3: Literal['hello']
+      x4: Literal[0]
+      x5: Literal[True]
+      x6: None
+    """)
+
+  def test_union(self):
+    ty = self.Infer("""
+      from typing_extensions import Literal
+      def f(x: Literal["x", "y"]):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Literal, Union
+      def f(x: Union[Literal['x'], Literal['y']]) -> None: ...
+    """)
+
+  def test_unnest(self):
+    ty = self.Infer("""
+      from typing_extensions import Literal
+      X = Literal["X"]
+      def f(x: Literal[X, Literal[None], Literal[Literal["Y"]]]):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Literal, Optional, Union
+      X = Literal['X']
+      def f(x: Optional[Union[Literal['X'], Literal['Y']]]) -> None: ...
+    """)
+
+  def test_invalid(self):
+    errors = self.CheckWithErrors("""
+      from typing_extensions import Literal
+      x1: Literal[0, ...]  # invalid-annotation[e1]
+      x2: Literal[str, 4.2]  # invalid-annotation[e2]
+    """)
+    self.assertErrorRegexes(errors, {
+        "e1": r"Bad parameter '...' at index 1",
+        "e2": (r"Bad parameter 'str' at index 0\n"
+               r"\s*Bad parameter 'float' at index 1"),
+    })
+
+  def test_variable(self):
+    errors = self.CheckWithErrors("""
+      from typing_extensions import Literal
+      x: Literal[0] = 0
+      y: Literal[0] = 1  # annotation-type-mismatch[e]
+    """)
+    self.assertErrorRegexes(errors, {
+        "e": r"Annotation: Literal\[0\].*Assignment: Literal\[1\]"
+    })
+
+  def test_parameter(self):
+    errors = self.CheckWithErrors("""
+      from typing_extensions import Literal
+      def f(x: Literal[True]):
+        pass
+      f(True)
+      f(False)  # wrong-arg-types[e]
+    """)
+    self.assertErrorRegexes(errors, {
+        "e": r"Expected.*Literal\[True\].*Actual.*Literal\[False\]"
+    })
+
+  def test_union_parameter(self):
+    errors = self.CheckWithErrors("""
+      from typing_extensions import Literal
+      def f(x: Literal["x", "z"]):
+        pass
+      f("x")
+      f("y")  # wrong-arg-types[e]
+      f("z")
+    """)
+    self.assertErrorRegexes(errors, {
+        "e": (r"Expected.*Union\[Literal\['x'\], Literal\['z'\]\].*"
+              r"Actual.*Literal\['y'\]")
+    })
+
+  def test_return(self):
+    errors = self.CheckWithErrors("""
+      from typing_extensions import Literal
+      def f() -> Literal["hello"]:
+        if __random__:
+          return "hello"
+        else:
+          return "goodbye"  # bad-return-type[e]
+    """)
+    self.assertErrorRegexes(errors, {
+        "e": r"Expected.*Literal\['hello'\].*Actual.*Literal\['goodbye'\]"
+    })
+
+
 test_base.main(globals(), __name__ == "__main__")

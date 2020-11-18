@@ -18,6 +18,7 @@ from pytype.overlays import future_overlay
 from pytype.overlays import six_overlay
 from pytype.overlays import subprocess_overlay
 from pytype.overlays import sys_overlay
+from pytype.overlays import typing_extensions_overlay
 from pytype.overlays import typing_overlay
 
 # Collection of module overlays, used by the vm to fetch an overlay
@@ -35,4 +36,5 @@ overlays = {
     "sys": sys_overlay.SysOverlay,
     "types": asyncio_types_overlay.TypesOverlay,
     "typing": typing_overlay.TypingOverlay,
+    "typing_extensions": typing_extensions_overlay.TypingExtensionsOverlay,
 }

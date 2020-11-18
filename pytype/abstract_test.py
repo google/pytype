@@ -582,7 +582,7 @@ class FunctionTest(AbstractTestBase):
 
   def test_constructor_args(self):
     f = abstract.PyTDFunction.make("open", self._vm, "__builtin__")
-    self.assertEqual(f.name, "__builtin__.open")
+    self.assertEqual(f.full_name, "__builtin__.open")
     six.assertCountEqual(
         self,
         {sig.pytd_sig for sig in f.signatures},
@@ -594,7 +594,7 @@ class FunctionTest(AbstractTestBase):
     sig = pytd.Signature((), None, None, pytd.AnythingType(), (), ())
     pyval = pytd.Function("blah", (sig,), pytd.STATICMETHOD, 0)
     f = abstract.PyTDFunction.make("open", self._vm, "__builtin__", pyval=pyval)
-    self.assertEqual(f.name, "__builtin__.open")
+    self.assertEqual(f.full_name, "__builtin__.open")
     f_sig, = f.signatures
     self.assertIs(f_sig.pytd_sig, sig)
     self.assertIs(f.kind, pytd.STATICMETHOD)
@@ -603,7 +603,7 @@ class FunctionTest(AbstractTestBase):
   def test_get_constructor_args(self):
     f = abstract.PyTDFunction.make(
         "TypeVar", self._vm, "typing", pyval_name="_typevar_new")
-    self.assertEqual(f.name, "typing.TypeVar")
+    self.assertEqual(f.full_name, "typing.TypeVar")
     six.assertCountEqual(
         self,
         {sig.pytd_sig for sig in f.signatures},

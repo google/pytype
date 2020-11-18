@@ -2469,6 +2469,25 @@ class LiteralTest(_ParserTestBase):
       x: Literal[42]
     """)
 
+  def test_unnest(self):
+    self.check("""
+      from typing import Literal
+      MyLiteralAlias = Literal[42]
+      x: Literal[MyLiteralAlias, Literal[Literal[True]], None]
+    """, """
+      from typing import Literal, Optional, Union
+
+      MyLiteralAlias = Literal[42]
+
+      x: Optional[Union[Literal[42], Literal[True]]]
+    """)
+
+  def test_bad_value(self):
+    self.check_error("""
+      from typing import Literal
+      x: Literal[0.0]
+    """, 2, "Literal[0.0] not supported")
+
 
 class TypedDictTest(_ParserTestBase):
 

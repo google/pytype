@@ -294,5 +294,5 @@ class NamedTupleBuilder(abstract.PyTDFunction):
 
 
 collections_overlay = {
-    "namedtuple": NamedTupleBuilder.make,
+    "namedtuple": overlay.build("namedtuple", NamedTupleBuilder.make),
 }
