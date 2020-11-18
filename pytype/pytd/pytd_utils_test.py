@@ -162,6 +162,28 @@ class TestUtils(parser_test_base.ParserTest):
     # TODO(b/159051689): Do more extensive testing.
     pytd_utils.Print(ast)
 
+  def test_print_literal(self):
+    ast = self.Parse("""
+      from typing import Literal
+      x1: Literal[""]
+      x2: Literal[b""]
+      x3: Literal[u""]
+      x4: Literal[0]
+      x5: Literal[True]
+      x6: Literal[None]
+    """)
+    ast = ast.Visit(visitors.LookupBuiltins(self.loader.builtins))
+    self.assertMultiLineEqual(pytd_utils.Print(ast), textwrap.dedent("""
+      from typing import Literal
+
+      x1: Literal[""]
+      x2: Literal[b""]
+      x3: Literal[u""]
+      x4: Literal[0]
+      x5: Literal[True]
+      x6: None
+    """).strip())
+
   def test_named_type_with_module(self):
     """Test NamedTypeWithModule()."""
     self.assertEqual(pytd_utils.NamedTypeWithModule("name"),

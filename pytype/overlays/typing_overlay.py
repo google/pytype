@@ -662,6 +662,37 @@ class Optional(abstract.AnnotationClass):
     return abstract.Union((self.vm.convert.none_type,) + inner, self.vm)
 
 
+class Literal(TypingContainer):
+  """Implementation of typing.Literal."""
+
+  def _build_value(self, node, inner, ellipses):
+    values = []
+    errors = []
+    for i, param in enumerate(inner):
+      # TODO(b/123775699): Once pytype has proper support for enums, we should
+      # stop allowing unsolvable and handle enums here.
+      if (param == self.vm.convert.none or
+          isinstance(param, abstract.LiteralClass) or
+          param == self.vm.convert.unsolvable and i not in ellipses):
+        value = param
+      elif (isinstance(param, abstract.AbstractOrConcreteValue) and
+            isinstance(param.pyval, (int, str, bytes))):
+        value = abstract.LiteralClass(self.base_cls, param, self.vm)
+      else:
+        if i in ellipses:
+          invalid_param = "..."
+        else:
+          invalid_param = param.name
+        errors.append((invalid_param, i))
+        value = self.vm.convert.unsolvable
+      values.append(value)
+    if errors:
+      self.vm.errorlog.invalid_annotation(
+          self.vm.frames, self,
+          "\n".join("Bad parameter %r at index %d" % e for e in errors))
+    return self.vm.merge_values(values)
+
+
 def not_supported_yet(name, vm):
   vm.errorlog.not_supported_yet(vm.frames, "typing." + name)
   return vm.convert.unsolvable
@@ -702,7 +733,7 @@ typing_overlay = {
     "Any": build_any,
     "Callable": overlay.build("Callable", Callable),
     "Generic": overlay.build("Generic", Generic),
-    "Literal": overlay.build("Literal", not_supported_yet),
+    "Literal": overlay.build("Literal", Literal),
     "NamedTuple": build_namedtuple,
     "NewType": build_newtype,
     "NoReturn": build_noreturn,

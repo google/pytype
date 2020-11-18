@@ -2,6 +2,7 @@
 
 import collections
 import contextlib
+import enum
 import logging
 
 from pytype import abstract
@@ -43,25 +44,41 @@ CLASS_LEVEL_IGNORE = frozenset({
 class Converter(utils.VirtualMachineWeakrefMixin):
   """Functions for converting abstract classes into PyTD."""
 
+  class OutputMode(enum.IntEnum):
+    """Controls the level of detail in pytd types. See set_output_mode."""
+    NORMAL = 0
+    DETAILED = 1
+    LITERAL = 2
+
   def __init__(self, vm):
     super().__init__(vm)
-    self._detailed = False
+    self._output_mode = Converter.OutputMode.NORMAL
 
   @contextlib.contextmanager
-  def produce_detailed_output(self):
-    """Produce more detailed pytd types, which may be unsafe for pyi files.
+  def set_output_mode(self, mode):
+    """Change the level of detail in pytd types.
 
-    With this setting, the converter will do things like using the names of
-    inner classes rather than Any and including the known argument types for a
-    callable even if the argument count is unknown. Useful for error messages.
+    Args:
+      mode: Converter.OutputMode option controlling the level of detail to use.
+        NORMAL - the default, safe for pyi files.
+        DETAILED - more detail, unsafe for pyi files. The converter will do
+          things like using the names of inner classes rather than Any and
+          including the known argument types for a callable even if the argument
+          count is unknown. Useful for error messages.
+        LITERAL - like DETAILED, but bool, int, str, and bytes constants will be
+          emitted as Literal[<constant>] rather than their type.
 
     Yields:
       None.
     """
-    old = self._detailed
-    self._detailed = True
+    old = self._output_mode
+    self._output_mode = mode
     yield
-    self._detailed = old
+    self._output_mode = old
+
+  @property
+  def _detailed(self):
+    return self._output_mode >= Converter.OutputMode.DETAILED
 
   def _get_values(self, node, var, view):
     if var.bindings and view is not None:
@@ -145,6 +162,26 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     elif isinstance(v, abstract.AnnotationContainer):
       return self.value_instance_to_pytd_type(
           node, v.base_cls, instance, seen, view)
+    elif isinstance(v, abstract.LiteralClass):
+      if not v.value:
+        # TODO(b/123775699): Remove this workaround once we support literal
+        # enums.
+        return pytd.AnythingType()
+      if isinstance(v.value.pyval, (str, bytes)):
+        # Strings are stored as strings of their representations, prefix and
+        # quotes and all.
+        value = repr(v.value.pyval)
+      elif isinstance(v.value.pyval, bool):
+        # True and False are stored as pytd constants.
+        value = self.vm.lookup_builtin(f"__builtin__.{v.value.pyval}")
+      else:
+        # Ints are stored as their literal values. Note that Literal[None] or a
+        # nested literal will never appear here, since we simplified it to None
+        # or unnested it, respectively, in typing_overlay. Literal[<enum>] does
+        # not appear here yet because it is unsupported.
+        assert isinstance(v.value.pyval, int), v.value.pyval
+        value = v.value.pyval
+      return pytd.Literal(value)
     elif isinstance(v, mixin.Class):
       if not self._detailed and v.official_name is None:
         return pytd.AnythingType()
@@ -246,6 +283,12 @@ class Converter(utils.VirtualMachineWeakrefMixin):
                               parameters=(param,))
     elif isinstance(v, abstract.Module):
       return pytd.NamedType("__builtin__.module")
+    elif (self._output_mode >= Converter.OutputMode.LITERAL and
+          isinstance(v, abstract.AbstractOrConcreteValue) and
+          isinstance(v.pyval, (int, str, bytes))):
+      # LITERAL mode is used only for pretty-printing, so we just stringify the
+      # inner value rather than properly converting it.
+      return pytd.Literal(repr(v.pyval))
     elif isinstance(v, abstract.SimpleAbstractValue):
       if v.cls:
         ret = self.value_instance_to_pytd_type(

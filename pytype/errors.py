@@ -495,7 +495,8 @@ class ErrorLog(ErrorLogBase):
       return t.expr
     elif isinstance(t, (abstract.Unknown, abstract.Unsolvable, mixin.Class,
                         abstract.Union)):
-      with t.vm.convert.pytd_convert.produce_detailed_output():
+      with t.vm.convert.pytd_convert.set_output_mode(
+          t.vm.convert.pytd_convert.OutputMode.DETAILED):
         return self._pytd_print(t.get_instance_type(instance=instance))
     elif (isinstance(t, mixin.PythonConstant) and
           not getattr(t, "could_contain_anything", False)):
@@ -506,8 +507,12 @@ class ErrorLog(ErrorLogBase):
     else:
       return "<instance of %s>" % self._print_as_expected_type(t.cls, t)
 
-  def _print_as_actual_type(self, t):
-    with t.vm.convert.pytd_convert.produce_detailed_output():
+  def _print_as_actual_type(self, t, literal=False):
+    if literal:
+      output_mode = t.vm.convert.pytd_convert.OutputMode.LITERAL
+    else:
+      output_mode = t.vm.convert.pytd_convert.OutputMode.DETAILED
+    with t.vm.convert.pytd_convert.set_output_mode(output_mode):
       return self._pytd_print(t.to_type())
 
   def _print_as_generic_type(self, t):
@@ -515,13 +520,25 @@ class ErrorLog(ErrorLogBase):
         t.get_instance_type().base_type,
         t.formal_type_parameters.keys(),
         False)
-    with t.vm.convert.pytd_convert.produce_detailed_output():
+    with t.vm.convert.pytd_convert.set_output_mode(
+        t.vm.convert.pytd_convert.OutputMode.DETAILED):
       return self._pytd_print(generic)
 
-  def _print_as_return_type(self, t):
-    ret = self._pytd_print(t)
+  def _print_as_return_types(self, node, formal, actual, bad):
+    """Print the actual and expected values for a return type."""
+    convert = formal.vm.convert.pytd_convert
+    with convert.set_output_mode(convert.OutputMode.DETAILED):
+      expected = self._pytd_print(formal.get_instance_type(node))
+    if "Literal[" in expected:
+      output_mode = convert.OutputMode.LITERAL
+    else:
+      output_mode = convert.OutputMode.DETAILED
+    with convert.set_output_mode(output_mode):
+      actual = self._pytd_print(pytd_utils.JoinTypes(
+          view[actual].data.to_type(node, view=view) for view in bad))
     # typing.NoReturn is a prettier alias for nothing.
-    return "NoReturn" if ret == "nothing" else ret
+    fmt = lambda ret: "NoReturn" if ret == "nothing" else ret
+    return fmt(expected), fmt(actual)
 
   def _join_printed_types(self, types):
     """Pretty-print the union of the printed types."""
@@ -559,7 +576,7 @@ class ErrorLog(ErrorLogBase):
         suffix = ": " + type_str + suffix
       yield prefix, name, suffix
 
-  def _iter_actual(self, sig, passed_args, bad_param):
+  def _iter_actual(self, sig, passed_args, bad_param, literal):
     """Yield the prefix, name and type information for actual parameters."""
     # We want to display the passed_args in the order they're defined in the
     # signature, unless there are starargs or starstarargs.
@@ -575,7 +592,7 @@ class ErrorLog(ErrorLogBase):
       return keys.get(arg_name, len(keys)+1)
     for name, arg in sorted(passed_args, key=key_f):
       if bad_param and name == bad_param.name:
-        suffix = ": " + self._print_as_actual_type(arg)
+        suffix = ": " + self._print_as_actual_type(arg, literal=literal)
       else:
         suffix = ""
       yield "", name, suffix
@@ -684,8 +701,9 @@ class ErrorLog(ErrorLogBase):
     """Log an invalid parameters error."""
     sig, passed_args, bad_param = bad_call
     expected = self._print_args(self._iter_expected(sig, bad_param), bad_param)
+    literal = "Literal[" in expected
     actual = self._print_args(
-        self._iter_actual(sig, passed_args, bad_param), bad_param)
+        self._iter_actual(sig, passed_args, bad_param, literal), bad_param)
     details = [
         "       Expected: (", expected, ")\n",
         "Actually passed: (", actual,
@@ -839,19 +857,17 @@ class ErrorLog(ErrorLogBase):
     self.error(stack, "Invalid base class: %s" % base_cls, keyword=base_cls)
 
   @_error_name("bad-return-type")
-  def bad_return_type(self, stack, actual_pytd, expected_pytd):
-    details = "".join([
-        "         Expected: ", self._print_as_return_type(expected_pytd), "\n",
-        "Actually returned: ", self._print_as_return_type(actual_pytd),
-    ])
+  def bad_return_type(self, stack, node, formal, actual, bad):
+    expected, actual = self._print_as_return_types(node, formal, actual, bad)
+    details = "".join(["         Expected: ", expected, "\n",
+                       "Actually returned: ", actual])
     self.error(stack, "bad option in return type", details)
 
   @_error_name("bad-concrete-type")
-  def bad_concrete_type(self, stack, actual_pytd, expected_pytd):
-    details = "".join([
-        "       Expected: ", self._print_as_return_type(expected_pytd), "\n",
-        "Actually passed: ", self._print_as_return_type(actual_pytd),
-    ])
+  def bad_concrete_type(self, stack, node, formal, actual, bad):
+    expected, actual = self._print_as_return_types(node, formal, actual, bad)
+    details = "".join(["       Expected: ", expected, "\n",
+                       "Actually passed: ", actual])
     self.error(stack, "Invalid instantiation of generic class", details)
 
   def unsupported_operands(self, stack, operator, var1, var2):
@@ -1015,14 +1031,15 @@ class ErrorLog(ErrorLogBase):
     if annot is None:
       return
     annot_string = self._print_as_expected_type(annot)
-    actual_string = self._print_as_actual_type(binding.data)
+    literal = "Literal[" in annot_string
+    actual_string = self._print_as_actual_type(binding.data, literal=literal)
     details = ("Annotation: %s\n" % annot_string +
                "Assignment: %s" % actual_string)
     if len(binding.variable.bindings) > 1:
       # Joining the printed types rather than merging them before printing
       # ensures that we print all of the options when 'Any' is among them.
       # We don't need to print this if there is only 1 unique type.
-      print_types = set(self._print_as_actual_type(v)
+      print_types = set(self._print_as_actual_type(v, literal=literal)
                         for v in binding.variable.data)
       if len(print_types) > 1:
         details += "\nIn assignment of type: %s" % self._join_printed_types(

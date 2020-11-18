@@ -197,11 +197,6 @@ class TypingTest(test_base.TargetIndependentTest):
 class LiteralTest(test_base.TargetIndependentTest):
   """Tests for typing.Literal."""
 
-  def test_py(self):
-    self.CheckWithErrors("""
-      from typing import Literal  # not-supported-yet
-    """)
-
   def test_pyi_parameter(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
@@ -391,11 +386,6 @@ class LiteralTest(test_base.TargetIndependentTest):
         def f1() -> int: ...
         def f2() -> str: ...
       """)
-
-  def test_typing_extensions(self):
-    self.CheckWithErrors("""
-      from typing_extensions import Literal  # not-supported-yet
-    """)
 
 
 test_base.main(globals(), __name__ == "__main__")

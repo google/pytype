@@ -543,6 +543,9 @@ class CallTracer(vm.VirtualMachine):
     return functions
 
   def _is_typing_member(self, name, var):
+    if var.data and all(
+        val.module == "typing" and val.name == name for val in var.data):
+      return True
     if "typing" not in self.loaded_overlays:
       return False
     module = self.loaded_overlays["typing"].get_module(name)
@@ -608,11 +611,8 @@ class CallTracer(vm.VirtualMachine):
     if not bad:
       bad = self.matcher.bad_matches(actual, formal, node)
     if bad:
-      with self.convert.pytd_convert.produce_detailed_output():
-        combined = pytd_utils.JoinTypes(
-            view[actual].data.to_type(node, view=view) for view in bad)
-        self.errorlog.bad_return_type(
-            self.frames, combined, formal.get_instance_type(node))
+      self.errorlog.bad_return_type(
+          self.frames, node, formal, actual, bad)
     return not bad
 
 

@@ -1393,15 +1393,11 @@ class AnnotationContainer(AnnotationClass):
           actual = params[formal.name].instantiate(root_node)
           bad = self.vm.matcher.bad_matches(actual, formal, root_node)
           if bad:
-            with self.vm.convert.pytd_convert.produce_detailed_output():
-              combined = pytd_utils.JoinTypes(
-                  view[actual].data.to_type(root_node, view=view)
-                  for view in bad)
-              formal = self.vm.annotations_util.sub_one_annotation(
-                  root_node, formal, [{}])
-              self.vm.errorlog.bad_concrete_type(
-                  self.vm.frames, combined, formal.get_instance_type(root_node))
-              return self.vm.convert.unsolvable
+            formal = self.vm.annotations_util.sub_one_annotation(
+                root_node, formal, [{}])
+            self.vm.errorlog.bad_concrete_type(
+                self.vm.frames, root_node, formal, actual, bad)
+            return self.vm.convert.unsolvable
 
     try:
       return abstract_class(self.base_cls, params, self.vm, template_params)
@@ -1726,7 +1722,6 @@ class PyTDFunction(Function):
       A new PyTDFunction.
     """
     assert not pyval or not pyval_name  # there's never a reason to pass both
-    function_name = module + "." + name
     if not pyval:
       pyval_name = module + "." + (pyval_name or name)
       if module not in ("__builtin__", "typing"):
@@ -1737,7 +1732,9 @@ class PyTDFunction(Function):
         and isinstance(pyval.type, pytd.FunctionType)):
       pyval = pyval.type.function
     f = vm.convert.constant_to_value(pyval, {}, vm.root_cfg_node)
-    return cls(function_name, f.signatures, pyval.kind, vm)
+    self = cls(name, f.signatures, pyval.kind, vm)
+    self.module = module
+    return self
 
   def __init__(self, name, signatures, kind, vm):
     super().__init__(name, vm)
@@ -2277,12 +2274,18 @@ class ParameterizedClass(
     self.formal_type_parameters[key] = typ
 
   def replace(self, inner_types):
+    inner_types = dict(inner_types)
     if isinstance(self, LiteralClass):
-      # We can't create a LiteralClass because we don't have a concrete value.
+      if inner_types == self.formal_type_parameters:
+        # If the type hasn't changed, we can return a copy of this class.
+        return LiteralClass(
+            self.base_cls, self._instance, self.vm, self.template)
+      # Otherwise, we can't create a LiteralClass because we don't have a
+      # concrete value.
       typ = ParameterizedClass
     else:
       typ = self.__class__
-    return typ(self.base_cls, dict(inner_types), self.vm, self.template)
+    return typ(self.base_cls, inner_types, self.vm, self.template)
 
 
 class TupleClass(ParameterizedClass, mixin.HasSlots):
