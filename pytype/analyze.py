@@ -543,13 +543,13 @@ class CallTracer(vm.VirtualMachine):
     return functions
 
   def _is_typing_member(self, name, var):
-    if var.data and all(
-        val.module == "typing" and val.name == name for val in var.data):
-      return True
-    if "typing" not in self.loaded_overlays:
-      return False
-    module = self.loaded_overlays["typing"].get_module(name)
-    return name in module.members and module.members[name].data == var.data
+    for module_name in ("typing", "typing_extensions"):
+      if module_name not in self.loaded_overlays:
+        continue
+      module = self.loaded_overlays[module_name].get_module(name)
+      if name in module.members and module.members[name].data == var.data:
+        return True
+    return False
 
   def pytd_functions_for_call_traces(self):
     return self._call_traces_to_function(self._calls, escape.pack_partial)

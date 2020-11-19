@@ -193,6 +193,18 @@ class TypingTest(test_base.TargetIndependentTest):
       from typing_extensions import TypedDict  # not-supported-yet
     """)
 
+  def test_reuse_name(self):
+    ty = self.Infer("""
+      from typing import Sequence as Sequence_
+      Sequence = Sequence_[int]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import typing
+      from typing import Any
+      Sequence = typing.Sequence[int]
+      Sequence_: Any
+    """)
+
 
 class LiteralTest(test_base.TargetIndependentTest):
   """Tests for typing.Literal."""
