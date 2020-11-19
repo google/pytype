@@ -677,7 +677,7 @@ class Literal(TypingContainer):
         value = param
       elif (isinstance(param, abstract.AbstractOrConcreteValue) and
             isinstance(param.pyval, (int, str, bytes))):
-        value = abstract.LiteralClass(self.base_cls, param, self.vm)
+        value = abstract.LiteralClass(param, self.vm)
       else:
         if i in ellipses:
           invalid_param = "..."

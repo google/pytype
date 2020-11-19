@@ -2284,8 +2284,7 @@ class ParameterizedClass(
     if isinstance(self, LiteralClass):
       if inner_types == self.formal_type_parameters:
         # If the type hasn't changed, we can return a copy of this class.
-        return LiteralClass(
-            self.base_cls, self._instance, self.vm, self.template)
+        return LiteralClass(self._instance, self.vm, self.template)
       # Otherwise, we can't create a LiteralClass because we don't have a
       # concrete value.
       typ = ParameterizedClass
@@ -2470,7 +2469,8 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):
 class LiteralClass(ParameterizedClass):
   """The class of a typing.Literal."""
 
-  def __init__(self, base_cls, instance, vm, template=None):
+  def __init__(self, instance, vm, template=None):
+    base_cls = vm.convert.name_to_value("typing.Literal")
     formal_type_parameters = {abstract_utils.T: instance.get_class()}
     super().__init__(base_cls, formal_type_parameters, vm, template)
     self._instance = instance
@@ -2478,12 +2478,24 @@ class LiteralClass(ParameterizedClass):
   def __repr__(self):
     return "LiteralClass(%s)" % self._instance
 
+  def __eq__(self, other):
+    if isinstance(other, LiteralClass):
+      if self.value and other.value:
+        return self.value.pyval == other.value.pyval
+    return super().__eq__(other)
+
+  def __hash__(self):
+    return hash((super().__hash__(), self._instance))
+
   @property
   def value(self):
     if isinstance(self._instance, AbstractOrConcreteValue):
       return self._instance
     # TODO(b/123775699): Remove this workaround once we support literal enums.
     return None
+
+  def instantiate(self, node, container=None):
+    return self._instance.to_variable(node)
 
 
 class PyTDClass(SimpleAbstractValue, mixin.Class):

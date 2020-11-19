@@ -790,8 +790,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     elif isinstance(pyval, pytd.Literal):
       value = self.constant_to_value(
           self._get_literal_value(pyval.value), subst, self.vm.root_cfg_node)
-      return abstract.LiteralClass(
-          self.name_to_value("typing.Literal"), value, self.vm)
+      return abstract.LiteralClass(value, self.vm)
     elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node
       return self.tuple_to_value([self.constant_to_var(item, subst,
                                                        self.vm.root_cfg_node)

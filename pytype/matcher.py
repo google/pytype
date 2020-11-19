@@ -680,14 +680,27 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           return None
       elif isinstance(other_type, abstract.ParameterizedClass):
         class_param = other_type.get_formal_type_parameter(abstract_utils.T)
+        # Copying the parameters directly preserves literal values. In most
+        # cases, we shouldn't assume that objects with the same type have the
+        # same value, but substituting from a concrete tuple into an abstract
+        # one typically happens during operations like tuple iteration, when
+        # values are indeed preserved. See
+        # tests.py3.test_typing.LiteralTest.test_iterate for a case in which
+        # this is important.
+        copy_params_directly = (
+            class_param.full_name == f"{left.full_name}.{abstract_utils.T}")
         # If we merge in the new substitution results prematurely, then we'll
         # accidentally trigger _enforce_common_superclass.
         new_substs = []
         for instance_param in instance.pyval:
-          new_subst = self.match_var_against_type(
-              instance_param, class_param, subst, node, view)
-          if new_subst is None:
-            return None
+          if copy_params_directly:
+            new_subst = {class_param.full_name: view[
+                instance_param].AssignToNewVariable(node)}
+          else:
+            new_subst = self.match_var_against_type(
+                instance_param, class_param, subst, node, view)
+            if new_subst is None:
+              return None
           new_substs.append(new_subst)
         if new_substs:
           subst = self._merge_substs(subst, new_substs)

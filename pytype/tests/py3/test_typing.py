@@ -856,5 +856,26 @@ class LiteralTest(test_base.TargetPython3FeatureTest):
         "e": r"Expected.*Literal\['hello'\].*Actual.*Literal\['goodbye'\]"
     })
 
+  def test_match_non_literal(self):
+    self.CheckWithErrors("""
+      from typing_extensions import Literal
+      x: Literal["x"]
+      def f(x: str):
+        pass
+      def g(x: int):
+        pass
+      f(x)
+      g(x)  # wrong-arg-types
+    """)
+
+  def test_iterate(self):
+    self.Check("""
+      from typing_extensions import Literal
+      def f(x: Literal["x", "y"]):
+        pass
+      for x in ["x", "y"]:
+        f(x)
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

@@ -363,8 +363,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       attr_var = self._lookup_from_mro(node, cls, compute_function, valself,
                                        skip={self.vm.convert.object_type})
       if attr_var and attr_var.bindings:
-        name_var = abstract.AbstractOrConcreteValue(
-            name, self.vm.convert.str_type, self.vm).to_variable(node)
+        name_var = self.vm.convert.constant_to_var(name, node=node)
         return self.vm.call_function(node, attr_var, function.Args((name_var,)))
     return node, None
 

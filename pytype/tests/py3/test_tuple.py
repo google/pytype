@@ -153,6 +153,13 @@ class TupleTest(test_base.TargetPython3BasicTest):
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"1.*3"})
 
+  def test_count(self):
+    self.Check("""
+      from typing import Optional
+      def f(x: Optional[str] = None, y: Optional[str] = None):
+        return (x, y).count(None)
+    """)
+
 
 class TupleTestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for __builtin__.tuple."""
