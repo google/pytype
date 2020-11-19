@@ -36,3 +36,19 @@ py_test(
   DEPS
     pytype.pyc
 )
+
+py_library(
+  NAME
+    generate_opcode_diffs
+  SRCS
+    generate_opcode_diffs.py
+)
+
+py_test(
+  NAME
+    generate_opcode_diffs_test
+  SRCS
+    generate_opcode_diffs_test.py
+  DEPS
+    .generate_opcode_diffs
+)

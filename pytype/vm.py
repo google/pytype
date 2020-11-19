@@ -3379,3 +3379,50 @@ class VirtualMachine:
     state, func = state.pop()
     state, result = self.call_function_with_state(state, func, args)
     return state.push(result)
+
+  # New in 3.9
+  # TODO(rechen): These opcodes are stubs; implement them.
+
+  def byte_RERAISE(self, state, op):
+    del op
+    return state
+
+  def byte_WITH_EXCEPT_START(self, state, op):
+    del op
+    return state
+
+  def byte_LOAD_ASSERTION_ERROR(self, state, op):
+    del op
+    return state
+
+  def byte_LIST_TO_TUPLE(self, state, op):
+    del op
+    return state
+
+  def byte_IS_OP(self, state, op):
+    del op
+    return state
+
+  def byte_CONTAINS_OP(self, state, op):
+    del op
+    return state
+
+  def byte_JUMP_IF_NOT_EXC_MATCH(self, state, op):
+    del op
+    return state
+
+  def byte_LIST_EXTEND(self, state, op):
+    del op
+    return state
+
+  def byte_SET_UPDATE(self, state, op):
+    del op
+    return state
+
+  def byte_DICT_MERGE(self, state, op):
+    del op
+    return state
+
+  def byte_DICT_UPDATE(self, state, op):
+    del op
+    return state
