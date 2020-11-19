@@ -83,11 +83,14 @@ class UtilsTest(unittest.TestCase):
     self.assertEqual(utils.normalize_version((2, 7)), (2, 7))
 
   def test_validate_version(self):
+    old = utils._VALIDATE_PYTHON_VERSION_UPPER_BOUND
+    utils._VALIDATE_PYTHON_VERSION_UPPER_BOUND = True
     self._validate_version_helper((1, 1))
     self._validate_version_helper((2, 1))
     self._validate_version_helper((2, 8))
     self._validate_version_helper((3, 1))
     self._validate_version_helper((3, 9))
+    utils._VALIDATE_PYTHON_VERSION_UPPER_BOUND = old
 
   def _validate_version_helper(self, python_version):
     with self.assertRaises(utils.UsageError):

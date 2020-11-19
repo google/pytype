@@ -862,6 +862,57 @@ class POP_FINALLY(OpcodeWithArg):
   __slots__ = ()
 
 
+class RERAISE(Opcode):
+  __slots__ = ()
+
+
+class WITH_EXCEPT_START(Opcode):
+  __slots__ = ()
+
+
+class LOAD_ASSERTION_ERROR(Opcode):
+  __slots__ = ()
+
+
+class LIST_TO_TUPLE(Opcode):
+  __slots__ = ()
+
+
+class IS_OP(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class CONTAINS_OP(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class JUMP_IF_NOT_EXC_MATCH(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT | HAS_JABS
+  __slots__ = ()
+
+
+class LIST_EXTEND(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class SET_UPDATE(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class DICT_MERGE(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class DICT_UPDATE(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
 python2_mapping = {
     0: STOP_CODE,  # removed in Python 3
     1: POP_TOP,
@@ -1136,6 +1187,29 @@ python_3_8_mapping = _overlay_mapping(python_3_7_mapping, {
     163: POP_FINALLY,
 })
 
+python_3_9_mapping = _overlay_mapping(python_3_8_mapping, {
+    48: RERAISE,
+    49: WITH_EXCEPT_START,
+    53: None,  # was BEGIN_FINALLY in 3.8
+    74: LOAD_ASSERTION_ERROR,
+    81: None,  # was WITH_CLEANUP_START in 3.8
+    82: LIST_TO_TUPLE,  # was WITH_CLEANUP_FINISH in 3.8
+    88: None,  # was END_FINALLY in 3.8
+    117: IS_OP,
+    118: CONTAINS_OP,
+    121: JUMP_IF_NOT_EXC_MATCH,
+    149: None,  # was BUILD_LIST_UNPACK in 3.8
+    150: None,  # was BUILD_MAP_UNPACK in 3.8
+    151: None,  # was BUILD_MAP_UNPACK_WITH_CALL in 3.8
+    152: None,  # was BUILD_TUPLE_UNPACK in 3.8
+    153: None,  # was BUILD_SET_UNPACK in 3.8
+    158: None,  # was BUILD_TUPLE_UNPACK_WITH_CALL in 3.8
+    162: LIST_EXTEND,  # was CALL_FINALLY in 3.8
+    163: SET_UPDATE,  # was POP_FINALLY in 3.8
+    164: DICT_MERGE,
+    165: DICT_UPDATE,
+})
+
 
 class _LineNumberTableParser:
   """State machine for decoding a Python line number array."""
@@ -1321,7 +1395,8 @@ def dis(data, python_version, *args, **kwargs):
       (3, 5): python_3_5_mapping,
       (3, 6): python_3_6_mapping,
       (3, 7): python_3_7_mapping,
-      (3, 8): python_3_8_mapping
+      (3, 8): python_3_8_mapping,
+      (3, 9): python_3_9_mapping,
   }[(major, minor)]
   reader = _wordcode_reader if (major, minor) > (3, 5) else _bytecode_reader
   return _dis(python_version, data, mapping, reader, *args, **kwargs)

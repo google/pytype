@@ -3,10 +3,12 @@
 import collections
 import contextlib
 import itertools
+import os.path
 import re
 import subprocess
 import sys
 import threading
+import traceback
 import types
 from typing import List, Tuple
 import weakref
@@ -17,6 +19,21 @@ from pytype import pytype_source_utils
 # Set this value to True to indicate that pytype is running under a 2.7
 # interpreter with the type annotations patch applied.
 USE_ANNOTATIONS_BACKPORT = False
+
+
+# We disable the check that keeps pytype from running on not-yet-supported
+# versions when we detect that a pytype test is executing, in order to be able
+# to test upcoming versions.
+def _validate_python_version_upper_bound():
+  for frame_summary in traceback.extract_stack():
+    head, tail = os.path.split(frame_summary.filename)
+    if "/pytype/" in head + "/" and (
+        tail.startswith("test_") or tail.endswith("_test.py")):
+      return False
+  return True
+
+
+_VALIDATE_PYTHON_VERSION_UPPER_BOUND = _validate_python_version_upper_bound()
 
 
 def message(error):
@@ -92,7 +109,7 @@ def validate_version(python_version):
     # that typing.py isn't introduced until 3.5, anyway.
     raise UsageError(
         "Python versions 3.0 - 3.4 are not supported. Use 3.5 and higher.")
-  elif python_version > (3, 8):
+  elif python_version > (3, 8) and _VALIDATE_PYTHON_VERSION_UPPER_BOUND:
     # We have an explicit per-minor-version mapping in opcodes.py
     raise UsageError("Python versions > 3.8 are not yet supported.")
 

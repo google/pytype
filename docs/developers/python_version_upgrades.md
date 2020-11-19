@@ -34,6 +34,18 @@ should be added to
 [pytype/pyc/opcodes.py][pyc.opcodes.python_3_7_mapping] and new opcodes
 implemented in [pytype/vm.py][vm.VirtualMachine.byte_LOAD_METHOD].
 
+TIP: [pytype/pyc/generate_opcode_diffs.py][pyc.generate_opcode_diffs] will
+generate the changes you need to make to opcodes.py, as well as
+stub implementations for vm.py.
+
+If the above script doesn't work, you can figure out the necessary changes by
+playing around with the [opcode][cpython-opcode] library:
+
+* `opcode.opmap` contains a name->index mapping of all opcodes.
+* Opcodes with an index of at least `opcode.HAVE_ARGUMENT` have an argument.
+* The `opcode.has{property}` attributes correspond to `HAS_{PROPERTY}` flags in
+  pytype's opcodes module.
+
 The [documentation](https://docs.python.org/3/library/dis.html) for the dis
 library is a good reference for bytecode changes. dis is also handy for
 disassembling a piece of code and comparing the bytecode between two versions.
@@ -88,9 +100,13 @@ dataclasses, and typing.OrderedDict. New features can be found on the
 and by searching for "New in version 3.x" in the
 [typing module documentation](https://docs.python.org/3/library/typing.html).
 
+[cpython-opcode]: https://github.com/python/cpython/blob/master/Lib/opcode.py
+
 <!-- References with different internal and external versions -->
 
 [cpython-source]: https://github.com/python/cpython/blob/beba1a808000d5fc445cb28eab96bdb4cdb7c959/Lib/importlib/_bootstrap_external.py#L245
+
+[pyc.generate_opcode_diffs]: https://github.com/google/pytype/blob/master/pytype/pyc/generate_opcode_diffs.py
 
 [pyc.magic]: https://github.com/google/pytype/blob/ee51995a1c5937cb4ebee291acb2e049fb0f81cc/pytype/pyc/magic.py#L97
 
