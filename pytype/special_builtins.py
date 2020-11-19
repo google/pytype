@@ -720,6 +720,9 @@ class StaticMethodInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
   def func_slot(self, node, obj, objtype):
     return node, self.func
 
+  def isinstance_StaticMethodInstance(self):
+    return True
+
 
 class StaticMethod(BuiltinClass):
   """Static method decorator."""
@@ -757,6 +760,9 @@ class ClassMethodInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
   def func_slot(self, node, obj, objtype):
     results = [ClassMethodCallable(objtype, b.data) for b in self.func.bindings]
     return node, self.vm.program.NewVariable(results, [], node)
+
+  def isinstance_ClassMethodInstance(self):
+    return True
 
 
 class ClassMethod(BuiltinClass):

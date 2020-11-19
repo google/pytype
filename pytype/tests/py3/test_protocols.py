@@ -605,6 +605,30 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
         foo.accepts_foo(str)  # wrong-arg-types
       """, pythonpath=[d.path])
 
+  def test_classmethod(self):
+    # TODO(rechen): An instance method shouldn't match a classmethod.
+    self.CheckWithErrors("""
+      from typing import Protocol
+      class Foo(Protocol):
+        @classmethod
+        def f(cls):
+          return cls()
+      class Bar:
+        @classmethod
+        def f(cls):
+          return cls()
+      class Baz:
+        def f(self):
+          return type(self)
+      class Qux:
+        pass
+      def f(x: Foo):
+        pass
+      f(Bar())
+      f(Baz())
+      f(Qux())  # wrong-arg-types
+    """)
+
 
 class ProtocolsTestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for protocol implementation on a target using a Python 3 feature."""

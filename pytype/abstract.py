@@ -361,6 +361,9 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   def isinstance_Class(self):
     return isinstance(self, mixin.Class)
 
+  def isinstance_ClassMethodInstance(self):
+    return False  # overridden in special_builtins.ClassMethodInstance
+
   def isinstance_Instance(self):
     return isinstance(self, Instance)
 
@@ -384,6 +387,9 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
 
   def isinstance_SimpleAbstractValue(self):
     return isinstance(self, SimpleAbstractValue)
+
+  def isinstance_StaticMethodInstance(self):
+    return False  # overridden in special_builtins.StaticMethodInstance
 
   def isinstance_Tuple(self):
     return isinstance(self, Tuple)
@@ -2728,7 +2734,9 @@ class InterpreterClass(SimpleAbstractValue, mixin.Class):
 
   def get_own_methods(self):
     def _can_be_function(var):
-      return any(isinstance(v, FUNCTION_TYPES) for v in var.data)
+      return any(isinstance(v, FUNCTION_TYPES) or
+                 v.isinstance_ClassMethodInstance() or
+                 v.isinstance_StaticMethodInstance() for v in var.data)
     return {name for name, var in self.members.items() if _can_be_function(var)}
 
   def get_own_abstract_methods(self):
