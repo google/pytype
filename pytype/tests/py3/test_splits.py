@@ -243,6 +243,15 @@ class SplitTest(test_base.TargetPython3BasicTest):
       def f(x: MyIterable[int]) -> Union[int, str]: ...
     """)
 
+  def test_str_none_eq(self):
+    self.Check("""
+      from typing import Optional
+      def f(x: str, y: Optional[str]) -> str:
+        if x == y:
+          return y
+        return x
+    """)
+
 
 class SplitTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for if-splitting in Python 3."""
