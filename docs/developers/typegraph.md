@@ -1,7 +1,7 @@
 # The Typegraph
 
 <!--*
-freshness: { owner: 'tsudol' reviewed: '2020-11-02' }
+freshness: { owner: 'tsudol' reviewed: '2020-11-20' }
 *-->
 
 <!--ts-->
@@ -19,7 +19,7 @@ freshness: { owner: 'tsudol' reviewed: '2020-11-02' }
          * [A More Complex Example](#a-more-complex-example)
          * [Shortcircuiting and the solver cache](#shortcircuiting-and-the-solver-cache)
 
-<!-- Added by: tsudol, at: 2020-11-09T11:12-08:00 -->
+<!-- Added by: tsudol, at: 2020-11-20T10:48-08:00 -->
 
 <!--te-->
 
@@ -363,13 +363,3 @@ if a solver is queried multiple times. It is also helpful for preventing
 infinite recursion; new states are considered to be solvable, on the reasoning
 that if the state _couldn't_ be solved in an ensuing state then the cache entry
 would be updated.
-
-<!--
-
-Hashing and Sets
-
--   CFGNodes and Bindings have partial ordering using operator<
--   They also have Hashes
--   This + everything in map_util.h is just to enable using sets and hashes of
-    CFGnodes, bindings, etc.
--->
