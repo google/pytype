@@ -6,7 +6,6 @@
 * Add documentation for: two-pass analysis in analyze.py, config.py
 * For completeness, mention: copybara, imports_map, blaze integration
 * Add non-typegraph things to "Basic concepts" and "Important code components"
-* Fill in the commented out "Hashing and Sets" section in typegraph.md
 * Add a quick guide for how to add a new typing feature
 * Coordinate dev guide and CONTRIBUTING.md
   (https://github.com/google/pytype/issues/570)
@@ -28,7 +27,7 @@ This documentation is for developers of and contributors to pytype. It covers:
             * [Typegraph](#typegraph)
       * [Updating the developer guide](#updating-the-developer-guide)
 
-<!-- Added by: rechen, at: 2020-11-16T11:29-08:00 -->
+<!-- Added by: rechen, at: 2020-11-20T15:43-08:00 -->
 
 <!--te-->
 
