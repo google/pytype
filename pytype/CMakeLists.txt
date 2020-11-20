@@ -228,6 +228,7 @@ py_library(
     .function
     .pytd_for_parser
     .utils
+    pytype.typegraph.cfg
 )
 
 py_library(

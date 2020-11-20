@@ -868,7 +868,7 @@ class VirtualMachine:
       for cls in subcls.mro:
         if cls == supercls:
           break
-        if cls.is_lazy:
+        if isinstance(cls, mixin.LazyMembers):
           cls.load_lazy_attribute(attr)
         if attr in cls.members and cls.members[attr].bindings:
           return True
@@ -1175,7 +1175,7 @@ class VirtualMachine:
   def load_from(self, state, store, name, discard_concrete_values=False):
     """Load an item out of locals, globals, or builtins."""
     assert isinstance(store, abstract.SimpleAbstractValue)
-    assert store.is_lazy
+    assert isinstance(store, mixin.LazyMembers)
     store.load_lazy_attribute(name)
     bindings = store.members[name].Bindings(state.node)
     if not bindings:

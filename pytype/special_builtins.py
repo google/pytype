@@ -635,8 +635,6 @@ class PropertyTemplate(BuiltinClass):
 class PropertyInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
   """Property instance (constructed by Property.call())."""
 
-  CAN_BE_ABSTRACT = True
-
   def __init__(self, vm, name, cls, fget=None, fset=None, fdel=None, doc=None):
     super().__init__("property", vm)
     mixin.HasSlots.init_mixin(self)
@@ -690,6 +688,9 @@ class PropertyInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
         self.vm, self.name, self.cls, self.fget, self.fset, fdel, self.doc)
     result = self.vm.program.NewVariable([prop], fdel.bindings, node)
     return node, result
+
+  def isinstance_PropertyInstance(self):
+    return True
 
 
 class Property(PropertyTemplate):

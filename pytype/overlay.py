@@ -21,11 +21,6 @@ class Overlay(abstract.Module):
     real_module: An abstract.Module wrapping the AST for the underlying module.
   """
 
-  # is_lazy tells attribute.py to use load_lazy_attribute, which will in turn
-  # call our _convert_member. This is how we intercept calls made to the module
-  # members we override.
-  is_lazy = True
-
   def __init__(self, vm, name, member_map, ast):
     """Initialize the overlay.
 
