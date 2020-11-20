@@ -2429,9 +2429,9 @@ class LiteralTest(_ParserTestBase):
 
       x: Literal[True, 0, b"", u"", None]
     """, """
-      from typing import Literal, Optional, Union
+      from typing import Literal, Optional
 
-      x: Optional[Union[Literal[True], Literal[0], Literal[b""], Literal[u""]]]
+      x: Optional[Literal[True, 0, b"", u""]]
     """)
 
   def test_stray_number(self):
@@ -2475,11 +2475,11 @@ class LiteralTest(_ParserTestBase):
       MyLiteralAlias = Literal[42]
       x: Literal[MyLiteralAlias, Literal[Literal[True]], None]
     """, """
-      from typing import Literal, Optional, Union
+      from typing import Literal, Optional
 
       MyLiteralAlias = Literal[42]
 
-      x: Optional[Union[Literal[42], Literal[True]]]
+      x: Optional[Literal[42, True]]
     """)
 
   def test_bad_value(self):

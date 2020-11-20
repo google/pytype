@@ -779,7 +779,7 @@ class LiteralTest(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Literal, Union
-      def f(x: Union[Literal['x'], Literal['y']]) -> None: ...
+      def f(x: Literal['x', 'y']) -> None: ...
     """)
 
   def test_unnest(self):
@@ -792,7 +792,7 @@ class LiteralTest(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Literal, Optional, Union
       X = Literal['X']
-      def f(x: Optional[Union[Literal['X'], Literal['Y']]]) -> None: ...
+      def f(x: Optional[Literal['X', 'Y']]) -> None: ...
     """)
 
   def test_invalid(self):
@@ -839,8 +839,7 @@ class LiteralTest(test_base.TargetPython3FeatureTest):
       f("z")
     """)
     self.assertErrorRegexes(errors, {
-        "e": (r"Expected.*Union\[Literal\['x'\], Literal\['z'\]\].*"
-              r"Actual.*Literal\['y'\]")
+        "e": (r"Expected.*Literal\['x', 'z'\].*Actual.*Literal\['y'\]")
     })
 
   def test_return(self):
