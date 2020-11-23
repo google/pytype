@@ -30,6 +30,7 @@ overlays = {
     "collections": collections_overlay.CollectionsOverlay,
     "dataclasses": dataclass_overlay.DataclassOverlay,
     "flax.struct": flax_overlay.DataclassOverlay,
+    "flax.linen": flax_overlay.LinenOverlay,
     "future.utils": future_overlay.FutureUtilsOverlay,
     "six": six_overlay.SixOverlay,
     "subprocess": subprocess_overlay.SubprocessOverlay,

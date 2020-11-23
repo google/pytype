@@ -462,3 +462,12 @@ py_test(
   DEPS
     pytype.tests.test_base
 )
+
+py_test(
+  NAME
+    test_flax_overlay
+  SRCS
+    test_flax_overlay.py
+  DEPS
+    pytype.tests.test_base
+)

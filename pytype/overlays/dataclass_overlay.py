@@ -49,6 +49,12 @@ class Dataclass(classgen.Decorator):
       cls.members[name] = classgen.instantiate(node, name, initvar)
     return initvar
 
+  def get_class_locals(self, node, cls):
+    del node
+    return classgen.get_class_locals(
+        cls.name, allow_methods=True, ordering=classgen.Ordering.FIRST_ANNOTATE,
+        vm=self.vm)
+
   def decorate(self, node, cls):
     """Processes class members."""
 
@@ -60,9 +66,7 @@ class Dataclass(classgen.Decorator):
     #   x = 10
     # would have init(x:int = 10, y:str = 'hello')
     own_attrs = []
-    cls_locals = classgen.get_class_locals(
-        cls.name, allow_methods=True, ordering=classgen.Ordering.FIRST_ANNOTATE,
-        vm=self.vm)
+    cls_locals = self.get_class_locals(node, cls)
     for name, local in cls_locals.items():
       typ, orig = local.get_type(node, name), local.orig
       assert typ

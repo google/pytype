@@ -623,6 +623,7 @@ class VirtualMachine:
           var = self.program.NewVariable()
         var.AddBinding(val, class_dict_var.bindings, node)
         node = val.call_metaclass_init(node)
+        node = val.call_init_subclass(node)
         if not val.is_abstract:
           # Since a class decorator could have made the class inherit from
           # ABCMeta, we have to mark concrete classes now and check for
