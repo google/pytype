@@ -635,8 +635,6 @@ class PropertyTemplate(BuiltinClass):
 class PropertyInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
   """Property instance (constructed by Property.call())."""
 
-  CAN_BE_ABSTRACT = True
-
   def __init__(self, vm, name, cls, fget=None, fset=None, fdel=None, doc=None):
     super().__init__("property", vm)
     mixin.HasSlots.init_mixin(self)
@@ -691,6 +689,9 @@ class PropertyInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
     result = self.vm.program.NewVariable([prop], fdel.bindings, node)
     return node, result
 
+  def isinstance_PropertyInstance(self):
+    return True
+
 
 class Property(PropertyTemplate):
   """Property method decorator."""
@@ -719,6 +720,9 @@ class StaticMethodInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
 
   def func_slot(self, node, obj, objtype):
     return node, self.func
+
+  def isinstance_StaticMethodInstance(self):
+    return True
 
 
 class StaticMethod(BuiltinClass):
@@ -757,6 +761,9 @@ class ClassMethodInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
   def func_slot(self, node, obj, objtype):
     results = [ClassMethodCallable(objtype, b.data) for b in self.func.bindings]
     return node, self.vm.program.NewVariable(results, [], node)
+
+  def isinstance_ClassMethodInstance(self):
+    return True
 
 
 class ClassMethod(BuiltinClass):

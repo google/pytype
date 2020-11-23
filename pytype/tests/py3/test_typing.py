@@ -779,7 +779,7 @@ class LiteralTest(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Literal, Union
-      def f(x: Union[Literal['x'], Literal['y']]) -> None: ...
+      def f(x: Literal['x', 'y']) -> None: ...
     """)
 
   def test_unnest(self):
@@ -792,7 +792,7 @@ class LiteralTest(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Literal, Optional, Union
       X = Literal['X']
-      def f(x: Optional[Union[Literal['X'], Literal['Y']]]) -> None: ...
+      def f(x: Optional[Literal['X', 'Y']]) -> None: ...
     """)
 
   def test_invalid(self):
@@ -839,8 +839,7 @@ class LiteralTest(test_base.TargetPython3FeatureTest):
       f("z")
     """)
     self.assertErrorRegexes(errors, {
-        "e": (r"Expected.*Union\[Literal\['x'\], Literal\['z'\]\].*"
-              r"Actual.*Literal\['y'\]")
+        "e": (r"Expected.*Literal\['x', 'z'\].*Actual.*Literal\['y'\]")
     })
 
   def test_return(self):
@@ -855,6 +854,27 @@ class LiteralTest(test_base.TargetPython3FeatureTest):
     self.assertErrorRegexes(errors, {
         "e": r"Expected.*Literal\['hello'\].*Actual.*Literal\['goodbye'\]"
     })
+
+  def test_match_non_literal(self):
+    self.CheckWithErrors("""
+      from typing_extensions import Literal
+      x: Literal["x"]
+      def f(x: str):
+        pass
+      def g(x: int):
+        pass
+      f(x)
+      g(x)  # wrong-arg-types
+    """)
+
+  def test_iterate(self):
+    self.Check("""
+      from typing_extensions import Literal
+      def f(x: Literal["x", "y"]):
+        pass
+      for x in ["x", "y"]:
+        f(x)
+    """)
 
 
 test_base.main(globals(), __name__ == "__main__")

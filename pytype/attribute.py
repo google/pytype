@@ -363,8 +363,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       attr_var = self._lookup_from_mro(node, cls, compute_function, valself,
                                        skip={self.vm.convert.object_type})
       if attr_var and attr_var.bindings:
-        name_var = abstract.AbstractOrConcreteValue(
-            name, self.vm.convert.str_type, self.vm).to_variable(node)
+        name_var = self.vm.convert.constant_to_var(name, node=node)
         return self.vm.call_function(node, attr_var, function.Args((name_var,)))
     return node, None
 
@@ -430,7 +429,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
 
   def _get_member(self, node, obj, name):
     """Get a member of an object."""
-    if obj.is_lazy:
+    if isinstance(obj, mixin.LazyMembers):
       obj.load_lazy_attribute(name)
 
     # If we are looking up a member that we can determine is an instance
@@ -513,7 +512,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     """Set a member on an object."""
     assert isinstance(var, cfg.Variable)
 
-    if obj.is_lazy:
+    if isinstance(obj, mixin.LazyMembers):
       obj.load_lazy_attribute(name)
 
     if name == "__class__":

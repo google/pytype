@@ -145,45 +145,6 @@ class TestUtils(parser_test_base.ParserTest):
         pytd.Function("f2", (s2, s2), pytd.METHOD),
         mykeyword="foobar"))
 
-  def test_print(self):
-    """Smoketest for printing pytd."""
-    ast = self.Parse("""
-      from typing import Any, Union
-      c1 = ...  # type: int
-      T = TypeVar('T')
-      class A(typing.Generic[T], object):
-        bar = ...  # type: T
-        def foo(self, x: list[int], y: T) -> Union[list[T], float]:
-          raise ValueError()
-      X = TypeVar('X')
-      Y = TypeVar('Y')
-      def bar(x: Union[X, Y]) -> Any: ...
-    """)
-    # TODO(b/159051689): Do more extensive testing.
-    pytd_utils.Print(ast)
-
-  def test_print_literal(self):
-    ast = self.Parse("""
-      from typing import Literal
-      x1: Literal[""]
-      x2: Literal[b""]
-      x3: Literal[u""]
-      x4: Literal[0]
-      x5: Literal[True]
-      x6: Literal[None]
-    """)
-    ast = ast.Visit(visitors.LookupBuiltins(self.loader.builtins))
-    self.assertMultiLineEqual(pytd_utils.Print(ast), textwrap.dedent("""
-      from typing import Literal
-
-      x1: Literal[""]
-      x2: Literal[b""]
-      x3: Literal[u""]
-      x4: Literal[0]
-      x5: Literal[True]
-      x6: None
-    """).strip())
-
   def test_named_type_with_module(self):
     """Test NamedTypeWithModule()."""
     self.assertEqual(pytd_utils.NamedTypeWithModule("name"),
@@ -523,6 +484,60 @@ class TestDataFiles(parser_test_base.ParserTest):
     self.assertFalse(t)
     t.add_type(pytd.AnythingType())
     self.assertTrue(t)
+
+
+class PrintTest(parser_test_base.ParserTest):
+  """Test pytd_utils.Print."""
+
+  def test_smoke(self):
+    """Smoketest for printing pytd."""
+    ast = self.Parse("""
+      from typing import Any, Union
+      c1 = ...  # type: int
+      T = TypeVar('T')
+      class A(typing.Generic[T], object):
+        bar = ...  # type: T
+        def foo(self, x: list[int], y: T) -> Union[list[T], float]:
+          raise ValueError()
+      X = TypeVar('X')
+      Y = TypeVar('Y')
+      def bar(x: Union[X, Y]) -> Any: ...
+    """)
+    # TODO(b/159051689): Do more extensive testing.
+    pytd_utils.Print(ast)
+
+  def test_literal(self):
+    ast = self.Parse("""
+      from typing import Literal
+      x1: Literal[""]
+      x2: Literal[b""]
+      x3: Literal[u""]
+      x4: Literal[0]
+      x5: Literal[True]
+      x6: Literal[None]
+    """)
+    ast = ast.Visit(visitors.LookupBuiltins(self.loader.builtins))
+    self.assertMultiLineEqual(pytd_utils.Print(ast), textwrap.dedent("""
+      from typing import Literal
+
+      x1: Literal[""]
+      x2: Literal[b""]
+      x3: Literal[u""]
+      x4: Literal[0]
+      x5: Literal[True]
+      x6: None
+    """).strip())
+
+  def test_literal_union(self):
+    ast = self.Parse("""
+      from typing import Literal, Union
+      x: Union[Literal["x"], Literal["y"]]
+    """)
+    self.assertMultiLineEqual(pytd_utils.Print(ast), textwrap.dedent("""
+      from typing import Literal
+
+      x: Literal["x", "y"]
+    """).strip())
 
 
 if __name__ == "__main__":

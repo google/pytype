@@ -1,14 +1,14 @@
 """Mixins for abstract.py."""
 
 import logging
+from typing import Dict
 
 from pytype import abstract_utils
 from pytype import datatypes
 from pytype import function
 from pytype.pytd import mro
 from pytype.pytd import pytd
-
-import six
+from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
 
@@ -56,8 +56,7 @@ class MixinMeta(type):
     return getattr(super(method_cls, method.__self__), method.__name__)
 
 
-@six.add_metaclass(MixinMeta)
-class PythonConstant:
+class PythonConstant(metaclass=MixinMeta):
   """A mix-in for storing actual Python constants, not just their types.
 
   This is used for things that are stored in cfg.Variable, but where we
@@ -89,8 +88,7 @@ class PythonConstant:
     return "<%s %r>" % (self.name, self.str_of_constant(str))
 
 
-@six.add_metaclass(MixinMeta)
-class HasSlots:
+class HasSlots(metaclass=MixinMeta):
   """Mix-in for overriding slots with custom methods.
 
   This makes it easier to emulate built-in classes like dict which need special
@@ -134,8 +132,7 @@ class HasSlots:
     return HasSlots.super(self.get_special_attribute)(node, name, valself)
 
 
-@six.add_metaclass(MixinMeta)
-class Class:
+class Class(metaclass=MixinMeta):
   """Mix-in to mark all class-like values."""
 
   overloads = ("get_special_attribute", "get_own_new", "call", "compute_mro")
@@ -442,8 +439,7 @@ class Class:
     return tuple(base2cls[base] for base in mro.MROMerge(newbases))
 
 
-@six.add_metaclass(MixinMeta)
-class NestedAnnotation:
+class NestedAnnotation(metaclass=MixinMeta):
   """An annotation containing inner types, such as a Union.
 
   For example, in `Union[int, str]`, `int` and `str` are the annotation's inner
@@ -469,3 +465,35 @@ class NestedAnnotation:
 
   def replace(self, inner_types):
     raise NotImplementedError()
+
+
+class LazyMembers(metaclass=MixinMeta):
+  """Use lazy loading for the attributes of the represented value.
+
+  A class that mixes in LazyMembers must:
+    * pass init_mixin a dict of the raw attribute values. This will be stored as
+      the `_member_map` attribute.
+    * Define a `members` attribute to be a name->attribute dictionary.
+    * Implement a `_convert_member` method that processes a raw attribute into
+      an abstract value to store in `members`.
+
+  When accessing an attribute on a lazy value, the caller must first call
+  `load_lazy_attribute(name)` to ensure the attribute is loaded. Calling
+  `_convert_member` directly should be avoided! Doing so will create multiple
+  copies of the same attribute, leading to subtle bugs.
+  """
+
+  members: Dict[str, cfg.Variable]
+
+  def init_mixin(self, member_map):
+    self._member_map = member_map
+
+  def _convert_member(self, pyval):
+    raise NotImplementedError()
+
+  def load_lazy_attribute(self, name):
+    """Load the named attribute into self.members."""
+    if name not in self.members and name in self._member_map:
+      variable = self._convert_member(self._member_map[name])
+      assert isinstance(variable, cfg.Variable)
+      self.members[name] = variable

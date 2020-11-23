@@ -868,7 +868,7 @@ class VirtualMachine:
       for cls in subcls.mro:
         if cls == supercls:
           break
-        if cls.is_lazy:
+        if isinstance(cls, mixin.LazyMembers):
           cls.load_lazy_attribute(attr)
         if attr in cls.members and cls.members[attr].bindings:
           return True
@@ -1175,7 +1175,7 @@ class VirtualMachine:
   def load_from(self, state, store, name, discard_concrete_values=False):
     """Load an item out of locals, globals, or builtins."""
     assert isinstance(store, abstract.SimpleAbstractValue)
-    assert store.is_lazy
+    assert isinstance(store, mixin.LazyMembers)
     store.load_lazy_attribute(name)
     bindings = store.members[name].Bindings(state.node)
     if not bindings:
@@ -2056,17 +2056,20 @@ class VirtualMachine:
     # A variable of the values without a special cmp_rel implementation. Needed
     # because overloaded __eq__ implementations do not necessarily return a
     # bool; see, e.g., test_overloaded in test_cmp.
-    leftover = self.program.NewVariable()
+    leftover_x = self.program.NewVariable()
+    leftover_y = self.program.NewVariable()
     for b1 in x.bindings:
       for b2 in y.bindings:
         val = compare.cmp_rel(self, getattr(slots, op_name), b1.data, b2.data)
         if val is None:
-          leftover.AddBinding(b1.data, {b1}, state.node)
+          leftover_x.AddBinding(b1.data, {b1}, state.node)
+          leftover_y.AddBinding(b2.data, {b2}, state.node)
         else:
           ret.AddBinding(self.convert.bool_values[val], {b1, b2}, state.node)
-    if leftover.bindings:
+    if leftover_x.bindings:
       op = "__%s__" % op_name.lower()
-      state, leftover_ret = self.call_binary_operator(state, op, leftover, y)
+      state, leftover_ret = self.call_binary_operator(
+          state, op, leftover_x, leftover_y)
       ret.PasteVariable(leftover_ret, state.node)
     return state, ret
 
