@@ -89,6 +89,7 @@ class Dataclass(classgen.Decorator):
       # TODO(b/74434237): The first check can be removed once
       # --check-variable-types is on by default.
       if ((not self.vm.options.check_variable_types and
+           local.last_op and
            local.last_op.line in self.vm.director.type_comments) or
           orig and orig.data == [self.vm.convert.none]):
         # vm._apply_annotation mostly takes care of checking that the default
