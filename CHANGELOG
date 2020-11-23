@@ -1,3 +1,8 @@
+Version 2020.11.23
+* Treat modules as hashable.
+* Support typing_extensions.Literal in source files.
+* Take classmethods and staticmethods into account in protocols.
+
 Version 2020.11.12
 * Support `# type: ignore[errorcode, ...]` in pyi files.
 * Always allow classes to match typing.Hashable.

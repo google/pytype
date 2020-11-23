@@ -11,7 +11,7 @@
          * [AST simplification](#ast-simplification)
          * [Pickling](#pickling)
 
-<!-- Added by: rechen, at: 2020-11-09T02:22-08:00 -->
+<!-- Added by: rechen, at: 2020-11-23T02:16-08:00 -->
 
 <!--te-->
 
@@ -187,7 +187,7 @@ class Company:
 pytype produces a raw pyi in which `Company.employees` is inferred to be a list
 of both CEOs and employees:
 
-```python {highlight="lines:5"}
+```python
 from typing import List, Union
 class Employee: ...
 class CEO(Employee): ...
@@ -200,7 +200,7 @@ class Company:
 The `optimize.SimplifyUnionsWithSuperclasses` visitor then notices that a CEO is
 a type of employee and simplifies the pyi to:
 
-```python {highlight="lines:5"}
+```python
 from typing import List
 class Employee: ...
 class CEO(Employee): ...
