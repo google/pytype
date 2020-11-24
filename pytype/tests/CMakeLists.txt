@@ -191,6 +191,7 @@ py_test(
     test_builtins1.py
   DEPS
     .test_base
+    pytype.overlays.collections_overlay
 )
 
 py_test(
@@ -506,6 +507,7 @@ py_test(
     test_namedtuple.py
   DEPS
     .test_base
+    pytype.overlays.collections_overlay
 )
 
 py_test(
