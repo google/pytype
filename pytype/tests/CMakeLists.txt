@@ -7,6 +7,7 @@ py_library(
     test_base.py
     test_utils.py
   DEPS
+    pytype.analyze
     pytype.config
     pytype.libvm
 )

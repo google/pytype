@@ -143,7 +143,78 @@ py_library(
   SRCS
     io.py
   DEPS
+    .analyze
     .errors
+    .libvm
+)
+
+py_library(
+  NAME
+    analyze
+  SRCS
+    analyze.py
+  DEPS
+    .libvm
+    .output
+    .vm
+)
+
+py_library(
+  NAME
+    vm
+  SRCS
+    vm.py
+  DEPS
+    .annotations_util
+    .convert
+    .libvm
+    .matcher
+    .overlay_dict
+)
+
+py_library(
+  NAME
+    annotations_util
+  SRCS
+    annotations_util.py
+  DEPS
+    .libvm
+)
+
+py_library(
+  NAME
+    convert
+  SRCS
+    convert.py
+  DEPS
+    .libvm
+    .output
+)
+
+py_library(
+  NAME
+    matcher
+  SRCS
+    matcher.py
+  DEPS
+    .libvm
+)
+
+py_library(
+  NAME
+    output
+  SRCS
+    output.py
+  DEPS
+    .libvm
+)
+
+py_library(
+  NAME
+    overlay_dict
+  SRCS
+    overlay_dict.py
+  DEPS
     .libvm
 )
 
@@ -153,20 +224,14 @@ py_library(
   SRCS
     __version__.py
     abstract.py
-    analyze.py
-    annotations_util.py
     attribute.py
     blocks.py
     compare.py
-    convert.py
     convert_structural.py
     directors.py
     imports_map_loader.py
-    matcher.py
     metaclass.py
-    output.py
     overlay.py
-    overlay_dict.py
     overlay_utils.py
     overlays/abc_overlay.py
     overlays/asyncio_types_overlay.py
@@ -183,7 +248,6 @@ py_library(
     overlays/typing_overlay.py
     special_builtins.py
     state.py
-    vm.py
   DEPS
     .abstract_utils
     .debug
@@ -493,6 +557,7 @@ py_test(
   DEPS
     .config
     .libvm
+    .vm
     pytype.tests.test_base
 )
 
@@ -505,6 +570,7 @@ py_test(
     .abstract_utils
     .config
     .libvm
+    .vm
     pytype.tests.test_base
 )
 
@@ -516,6 +582,7 @@ py_test(
   DEPS
     .config
     .libvm
+    .vm
     pytype.tests.test_base
 )
 
@@ -536,6 +603,7 @@ py_test(
   DEPS
     .config
     .libvm
+    .vm
     pytype.tests.test_base
 )
 
@@ -547,6 +615,7 @@ py_test(
   DEPS
     .config
     .libvm
+    .vm
     pytype.tests.test_base
 )
 
@@ -558,6 +627,7 @@ py_test(
   DEPS
     .config
     .libvm
+    .vm
     pytype.tests.test_base
 )
 
@@ -576,6 +646,7 @@ py_test(
   SRCS
     vm_test.py
   DEPS
+    .vm
     pytype.tests.test_base
 )
 
