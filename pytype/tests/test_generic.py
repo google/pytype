@@ -781,22 +781,22 @@ class GenericTest(test_base.TargetIndependentTest):
       ty = self.Infer("""
         import a
         def f(x):
-          inst = a.A([42])
+          inst = a.A([4.2])
           if x:
-            inst.x = 4.2
+            inst.x = 42
           return inst.x
         def g(x):
-          inst = a.A([42])
+          inst = a.A([4.2])
           if x:
-            inst.x = 4.2
+            inst.x = 42
           else:
             return inst.x
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Union
+        from typing import Optional, Union
         a = ...  # type: module
         def f(x) -> Union[int, float]: ...
-        def g(x) -> Union[None, int]: ...
+        def g(x) -> Optional[float]: ...
       """)
 
   def test_instance_attribute_method(self):

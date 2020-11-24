@@ -850,5 +850,26 @@ class TestAttributes(test_base.TargetIndependentTest):
       def f(x: Union[Foo, Bar]) -> None: ...
     """)
 
+  def test_separate_instances(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Any
+        _T = TypeVar('_T')
+
+        class Foo:
+          return_value: Any
+
+        def patch() -> Foo: ...
+      """)
+      self.Check("""
+        import foo
+
+        x = foo.patch()
+        y = foo.patch()
+
+        x.return_value = 0
+        y.return_value.rumpelstiltskin = 1
+      """, pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")
