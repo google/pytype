@@ -1,7 +1,6 @@
 # Lint as: python3
 """Tests for the dataclasses overlay."""
 
-from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -451,47 +450,6 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       class NHNetConfig:
         passage_list: List[str] = dataclasses.field(
             default_factory=lambda: [chr(i) for i in range(5)])
-    """)
-
-
-class TestFlaxDataclass(test_base.TargetPython3FeatureTest):
-  """Tests for flax.struct.dataclass."""
-
-  def test_basic(self):
-    with file_utils.Tempdir() as d:
-      d.create_file("flax/struct.pyi", """
-        from typing import Type
-        def dataclass(_cls: Type[_T]) -> Type[_T]: ...
-      """)
-      ty = self.Infer("""
-        import flax
-        @flax.struct.dataclass
-        class Foo(object):
-          x: bool
-          y: int
-          z: str
-        """, pythonpath=[d.path], module_name="foo")
-      self.assertTypesMatchPytd(ty, """
-        flax: module
-        class Foo(object):
-          x: bool
-          y: int
-          z: str
-          def __init__(self, x: bool, y: int, z: str) -> None: ...
-      """)
-
-  def test_redefine_field(self):
-    # Tests that pytype can infer types for this (simplified) snippet of code
-    # from flax.struct.py.
-    ty = self.Infer("""
-      import dataclasses
-      def field(**kwargs):
-        return dataclasses.field(**kwargs)
-    """)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Any
-      dataclasses: module
-      def field(**kwargs) -> Any: ...
     """)
 
 

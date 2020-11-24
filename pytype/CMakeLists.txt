@@ -143,8 +143,97 @@ py_library(
   SRCS
     io.py
   DEPS
+    .analyze
     .errors
     .libvm
+)
+
+py_library(
+  NAME
+    analyze
+  SRCS
+    analyze.py
+  DEPS
+    .libvm
+    .output
+    .vm
+    pytype.overlays.typing_overlay
+)
+
+py_library(
+  NAME
+    vm
+  SRCS
+    vm.py
+  DEPS
+    .annotations_util
+    .convert
+    .libvm
+    .matcher
+    .overlay_dict
+)
+
+py_library(
+  NAME
+    annotations_util
+  SRCS
+    annotations_util.py
+  DEPS
+    .libvm
+    pytype.overlays.typing_overlay
+)
+
+py_library(
+  NAME
+    convert
+  SRCS
+    convert.py
+  DEPS
+    .libvm
+    .output
+    pytype.overlays.typing_overlay
+)
+
+py_library(
+  NAME
+    matcher
+  SRCS
+    matcher.py
+  DEPS
+    .libvm
+    pytype.overlays.dataclass_overlay
+    pytype.overlays.typing_overlay
+)
+
+py_library(
+  NAME
+    output
+  SRCS
+    output.py
+  DEPS
+    .libvm
+    pytype.overlays.dataclass_overlay
+    pytype.overlays.typing_overlay
+)
+
+py_library(
+  NAME
+    overlay_dict
+  SRCS
+    overlay_dict.py
+  DEPS
+    pytype.overlays.abc_overlay
+    pytype.overlays.asyncio_types_overlay
+    pytype.overlays.attr_overlay
+    pytype.overlays.collections_overlay
+    pytype.overlays.dataclass_overlay
+    pytype.overlays.flax_overlay
+    pytype.overlays.future_overlay
+    pytype.overlays.six_overlay
+    pytype.overlays.subprocess_overlay
+    pytype.overlays.sys_overlay
+    pytype.overlays.typing_extensions_overlay
+    pytype.overlays.typing_overlay
 )
 
 py_library(
@@ -153,37 +242,17 @@ py_library(
   SRCS
     __version__.py
     abstract.py
-    analyze.py
-    annotations_util.py
     attribute.py
     blocks.py
     compare.py
-    convert.py
     convert_structural.py
     directors.py
     imports_map_loader.py
-    matcher.py
     metaclass.py
-    output.py
     overlay.py
-    overlay_dict.py
     overlay_utils.py
-    overlays/abc_overlay.py
-    overlays/asyncio_types_overlay.py
-    overlays/attr_overlay.py
-    overlays/classgen.py
-    overlays/collections_overlay.py
-    overlays/dataclass_overlay.py
-    overlays/flax_overlay.py
-    overlays/future_overlay.py
-    overlays/six_overlay.py
-    overlays/subprocess_overlay.py
-    overlays/sys_overlay.py
-    overlays/typing_extensions_overlay.py
-    overlays/typing_overlay.py
     special_builtins.py
     state.py
-    vm.py
   DEPS
     .abstract_utils
     .debug
@@ -493,6 +562,7 @@ py_test(
   DEPS
     .config
     .libvm
+    .vm
     pytype.tests.test_base
 )
 
@@ -505,6 +575,7 @@ py_test(
     .abstract_utils
     .config
     .libvm
+    .vm
     pytype.tests.test_base
 )
 
@@ -516,6 +587,7 @@ py_test(
   DEPS
     .config
     .libvm
+    .vm
     pytype.tests.test_base
 )
 
@@ -536,6 +608,7 @@ py_test(
   DEPS
     .config
     .libvm
+    .vm
     pytype.tests.test_base
 )
 
@@ -547,6 +620,7 @@ py_test(
   DEPS
     .config
     .libvm
+    .vm
     pytype.tests.test_base
 )
 
@@ -558,6 +632,7 @@ py_test(
   DEPS
     .config
     .libvm
+    .vm
     pytype.tests.test_base
 )
 
@@ -576,6 +651,7 @@ py_test(
   SRCS
     vm_test.py
   DEPS
+    .vm
     pytype.tests.test_base
 )
 

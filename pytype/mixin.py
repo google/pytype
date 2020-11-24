@@ -306,6 +306,17 @@ class Class(metaclass=MixinMeta):
     node, _ = self.vm.call_function(node, init, args)
     return node
 
+  def call_init_subclass(self, node):
+    """Call init_subclass(cls) for all base classes."""
+    for b in self.bases():
+      # If a base has multiple bindings don't try to call init_subclass, since
+      # it is not clear what to do if different bindings implement the method
+      # differently.
+      if len(b.data) == 1:
+        base, = b.data
+        node = base.init_subclass(node, self)
+    return node
+
   def get_own_new(self, node, value):
     """Get this value's __new__ method, if it isn't object.__new__.
 

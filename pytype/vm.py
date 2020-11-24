@@ -623,6 +623,7 @@ class VirtualMachine:
           var = self.program.NewVariable()
         var.AddBinding(val, class_dict_var.bindings, node)
         node = val.call_metaclass_init(node)
+        node = val.call_init_subclass(node)
         if not val.is_abstract:
           # Since a class decorator could have made the class inherit from
           # ABCMeta, we have to mark concrete classes now and check for
@@ -1554,6 +1555,21 @@ class VirtualMachine:
       module = self.convert.unsolvable
     return module
 
+  def _maybe_load_overlay(self, name):
+    """Check if a module path is in the overlay dictionary."""
+    if name not in overlay_dict.overlays:
+      return None
+    if name in self.loaded_overlays:
+      overlay = self.loaded_overlays[name]
+    else:
+      overlay = overlay_dict.overlays[name](self)
+      # The overlay should be available only if the underlying pyi is.
+      if overlay.ast:
+        self.loaded_overlays[name] = overlay
+      else:
+        overlay = self.loaded_overlays[name] = None
+    return overlay
+
   @utils.memoize
   def _import_module(self, name, level):
     """Import the module and return the module object.
@@ -1572,18 +1588,9 @@ class VirtualMachine:
     if name:
       if level <= 0:
         assert level in [-1, 0]
-        if name in overlay_dict.overlays:
-          if name in self.loaded_overlays:
-            overlay = self.loaded_overlays[name]
-          else:
-            overlay = overlay_dict.overlays[name](self)
-            # The overlay should be available only if the underlying pyi is.
-            if overlay.ast:
-              self.loaded_overlays[name] = overlay
-            else:
-              overlay = self.loaded_overlays[name] = None
-          if overlay:
-            return overlay
+        overlay = self._maybe_load_overlay(name)
+        if overlay:
+          return overlay
         if level == -1 and self.loader.base_module:
           # Python 2 tries relative imports first.
           ast = (self.loader.import_relative_name(name) or
@@ -1595,7 +1602,11 @@ class VirtualMachine:
         base = self.loader.import_relative(level)
         if base is None:
           return None
-        ast = self.loader.import_name(base.name + "." + name)
+        full_name = base.name + "." + name
+        overlay = self._maybe_load_overlay(full_name)
+        if overlay:
+          return overlay
+        ast = self.loader.import_name(full_name)
     else:
       assert level > 0
       ast = self.loader.import_relative(level)
@@ -2227,15 +2238,17 @@ class VirtualMachine:
     """Store an attribute."""
     name = self.frame.f_code.co_names[op.arg]
     state, (val, obj) = state.popn(2)
-    # If `obj` is a single InterpreterClass or an instance of one, then grab its
+    # If `obj` is a single class or an instance of one, then grab its
     # __annotations__ dict so we can type-check the new attribute value.
     try:
-      maybe_cls = abstract_utils.get_atomic_value(obj)
+      obj_val = abstract_utils.get_atomic_value(obj)
     except abstract_utils.ConversionError:
       annotations_dict = None
     else:
-      if not isinstance(maybe_cls, abstract.InterpreterClass):
-        maybe_cls = maybe_cls.cls
+      if isinstance(obj_val, abstract.InterpreterClass):
+        maybe_cls = obj_val
+      else:
+        maybe_cls = obj_val.cls
       if isinstance(maybe_cls, abstract.InterpreterClass):
         if (self.options.check_attribute_types and
             "__annotations__" not in maybe_cls.members and
@@ -2249,6 +2262,20 @@ class VirtualMachine:
             maybe_cls.members)
         if annotations_dict:
           annotations_dict = annotations_dict.annotated_locals
+      elif isinstance(maybe_cls, abstract.PyTDClass):
+        node, attr = self.attribute_handler.get_attribute(
+            state.node, obj_val, name)
+        # Even when check_attribute_types is not enabled, Any overrides
+        # inference so that typeshed stubs that annotate attributes as Any are
+        # interpreted correctly.
+        if attr and (self.options.check_attribute_types or
+                     attr.data == [self.convert.unsolvable]):
+          typ = self.convert.merge_classes(attr.data)
+          annotations_dict = {name: abstract_utils.Local(
+              state.node, op, typ, None, self)}
+          state = state.change_cfg_node(node)
+        else:
+          annotations_dict = None
       else:
         annotations_dict = None
     val = self._apply_annotation(state, op, name, val, annotations_dict,

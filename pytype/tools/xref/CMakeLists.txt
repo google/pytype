@@ -13,6 +13,7 @@ py_library(
   DEPS
     .callgraph
     .node_utils
+    pytype.analyze
     pytype.errors
     pytype.io
     pytype.libvm

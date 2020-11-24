@@ -341,6 +341,29 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
       return {b.data.get_type_key(): b for b in parameter.bindings}.values()
     return [_get_values(parameter) for parameter in self._unique_parameters()]
 
+  def init_subclass(self, node, cls):
+    """Allow metaprogramming via __init_subclass__.
+
+    We do not analyse __init_subclass__ methods in the code, but overlays that
+    wish to replicate metaprogramming constructs using __init_subclass__ can
+    define a class overriding this method, and vm.make_class will call
+    Class.call_init_subclass(), which will invoke the init_subclass() method for
+    all classes in the list of base classes.
+
+    This is here rather than in mixin.Class because a class's list of bases can
+    include abstract objects that do not derive from Class (e.g. Unknown and
+    Unsolvable).
+
+    Args:
+      node: cfg node
+      cls: the abstract.InterpreterClass that is being constructed with subclass
+           as a base
+    Returns:
+      A possibly new cfg node
+    """
+    del cls
+    return node
+
   def update_official_name(self, _):
     """Update the official name."""
 

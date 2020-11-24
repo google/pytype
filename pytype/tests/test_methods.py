@@ -802,15 +802,15 @@ class MethodsTest(test_base.TargetIndependentTest):
     self.assertEqual(ty.Lookup("f").type, pytd.AnythingType())
 
   def test_func_name(self):
-    ty = self.Infer("""
+    ty, _ = self.InferWithErrors("""
       def f():
         pass
-      f.func_name = 3.1415
+      f.func_name = 3.1415  # annotation-type-mismatch
       def g():
         return f.func_name
       g()
     """, deep=False, show_library_calls=True)
-    self.assertHasSignature(ty.Lookup("g"), (), self.float)
+    self.assertHasSignature(ty.Lookup("g"), (), self.str)
 
   def test_register(self):
     ty = self.Infer("""

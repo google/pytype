@@ -6,7 +6,6 @@
 * Add documentation for: config.py
 * For completeness, mention: copybara, imports_map, blaze integration
 * Add non-typegraph things to "Basic concepts" and "Important code components"
-* Add a quick guide for how to add a new typing feature
 * Coordinate dev guide and CONTRIBUTING.md
   (https://github.com/google/pytype/issues/570)
 -->
@@ -27,7 +26,7 @@ This documentation is for developers of and contributors to pytype. It covers:
             * [Typegraph](#typegraph)
       * [Updating the developer guide](#updating-the-developer-guide)
 
-<!-- Added by: rechen, at: 2020-11-20T16:25-08:00 -->
+<!-- Added by: rechen, at: 2020-11-23T14:36-08:00 -->
 
 <!--te-->
 
