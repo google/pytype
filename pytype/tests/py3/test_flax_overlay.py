@@ -74,6 +74,62 @@ class TestLinenModule(test_base.TargetPython3FeatureTest):
           def __init__(self, x: bool, y: int = ..., name: str = ..., parent = ...) -> None: ...
       """)
 
+  def test_unexported_constructor(self):
+    with file_utils.Tempdir() as d:
+      self._setup_linen_pyi(d)
+      ty = self.Infer("""
+        from flax.linen import module
+        class Foo(module.Module):
+          x: bool
+          y: int = 10
+        """, pythonpath=[d.path], module_name="foo")
+      self.assertTypesMatchPytd(ty, """
+        import __builtin__
+        import flax.linen.module
+        module: __builtin__.module
+        class Foo(flax.linen.module.Module):
+          x: bool
+          y: int
+          def __init__(self, x: bool, y: int = ..., name: str = ..., parent = ...) -> None: ...
+      """)
+
+  def test_relative_import_from_package_module(self):
+    with file_utils.Tempdir() as d:
+      self._setup_linen_pyi(d)
+      ty = self.Infer("""
+        from .module import Module
+        class Foo(Module):
+          x: bool
+          y: int = 10
+        """, pythonpath=[d.path], module_name="flax.linen.foo")
+      self.assertTypesMatchPytd(ty, """
+        from typing import Type
+        import flax.linen.module
+        Module: Type[flax.linen.module.Module]
+        class Foo(flax.linen.module.Module):
+          x: bool
+          y: int
+          def __init__(self, x: bool, y: int = ..., name: str = ..., parent = ...) -> None: ...
+      """)
+
+  def test_parent_import_from_package_module(self):
+    with file_utils.Tempdir() as d:
+      self._setup_linen_pyi(d)
+      ty = self.Infer("""
+        from .. import linen
+        class Foo(linen.Module):
+          x: bool
+          y: int = 10
+        """, pythonpath=[d.path], module_name="flax.linen.foo")
+      self.assertTypesMatchPytd(ty, """
+        import flax.linen.module
+        linen: module
+        class Foo(flax.linen.module.Module):
+          x: bool
+          y: int
+          def __init__(self, x: bool, y: int = ..., name: str = ..., parent = ...) -> None: ...
+      """)
+
   def test_invalid_field(self):
     with file_utils.Tempdir() as d:
       self._setup_linen_pyi(d)

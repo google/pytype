@@ -38,6 +38,13 @@ class Dataclass(dataclass_overlay.Dataclass):
     return super().make(vm, "flax.struct")
 
 
+# NOTE: flax.linen.module.Module is reexported as flax.linen.Module in
+# flax.linen/__init__.py. Due to the way the import system interacts with
+# overlays, we cannot just provide an overlay for flax.linen.module.Module and
+# trust `flax.linen.Module` to redirect to it whenever needed; we have to
+# explicitly handle both ways of referring to the class.
+
+
 class LinenOverlay(overlay.Overlay):
   """A custom overlay for the 'flax.linen' module."""
 
@@ -47,6 +54,17 @@ class LinenOverlay(overlay.Overlay):
     }
     ast = vm.loader.import_name("flax.linen")
     super().__init__(vm, "flax.linen", member_map, ast)
+
+
+class LinenModuleOverlay(overlay.Overlay):
+  """A custom overlay for the 'flax.linen.module' module."""
+
+  def __init__(self, vm):
+    member_map = {
+        "Module": Module,
+    }
+    ast = vm.loader.import_name("flax.linen.module")
+    super().__init__(vm, "flax.linen.module", member_map, ast)
 
 
 class ModuleDataclass(dataclass_overlay.Dataclass):
