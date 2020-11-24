@@ -99,7 +99,6 @@ class Module(abstract.PyTDClass):
     if isinstance(pytd_cls, pytd.Constant):
       pytd_cls = vm.convert.constant_to_value(pytd_cls).pytd_cls
     super().__init__(name, pytd_cls, vm)
-    self.module = module
 
   def init_subclass(self, node, subclass):
     dc = ModuleDataclass.make(self.vm)
@@ -114,3 +113,12 @@ class Module(abstract.PyTDClass):
     # The class is imported as flax.linen.Module but aliases
     # flax.linen.module.Module internally
     return pytd.NamedType("flax.linen.module.Module")
+
+  @property
+  def full_name(self):
+    # Overide the full name here rather than overriding the module name in the
+    # overlay because we might want to overlay other things from flax.linen.
+    return "flax.linen.module.Module"
+
+  def __repr__(self):
+    return "Overlay(flax.linen.module.Module)"

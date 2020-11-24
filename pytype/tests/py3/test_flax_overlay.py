@@ -53,7 +53,8 @@ class TestLinenModule(test_base.TargetPython3FeatureTest):
       from .module import Module
     """)
     d.create_file("flax/linen/module.pyi", """
-      class Module: ...
+      class Module:
+        def make_rng(self, x: str) -> None: ...
     """)
 
   def test_constructor(self):
@@ -129,6 +130,18 @@ class TestLinenModule(test_base.TargetPython3FeatureTest):
           y: int
           def __init__(self, x: bool, y: int = ..., name: str = ..., parent = ...) -> None: ...
       """)
+
+  def test_self_type(self):
+    """Match self: f.l.module.Module even if imported as f.l.Module."""
+    with file_utils.Tempdir() as d:
+      self._setup_linen_pyi(d)
+      self.Check("""
+        from flax import linen
+        class Foo(linen.Module):
+          x: int
+        a = Foo(10)
+        b = a.make_rng("a")  # called on base class
+      """, pythonpath=[d.path])
 
   def test_invalid_field(self):
     with file_utils.Tempdir() as d:
