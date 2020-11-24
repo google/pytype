@@ -176,7 +176,7 @@ class Typeshed:
 
   def read_blacklist(self):
     """Read the typeshed blacklist."""
-    _, data = self._load_file(os.path.join("tests", "pytype_exclude_list.txt"))
+    _, data = self._load_file(os.path.join("tests", "pytype_blacklist.txt"))
     # |data| is raw byte data.
     for line in data.splitlines():
       line = line.decode("utf-8")

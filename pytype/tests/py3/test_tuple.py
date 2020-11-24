@@ -195,11 +195,11 @@ class TupleTestPython3Feature(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       time: module
-      year: int
-      month: int
-      day: int
-      hour: int
-      minute: int
+      year: Union[int, str]
+      month: Union[int, str]
+      day: Union[int, str]
+      hour: Union[int, str]
+      minute: Union[int, str]
     """)
 
 

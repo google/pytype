@@ -1,12 +1,25 @@
 add_package()
 
+py_library(
+  NAME
+    pyc
+  SRCS
+    compile_bytecode.py
+    loadmarshal.py
+    magic.py
+    opcodes.py
+    pyc.py
+  DEPS
+    pytype.utils
+)
+
 py_test(
   NAME
     loadmarshal_test
   SRCS
     loadmarshal_test.py
   DEPS
-    pytype.pyc
+    .pyc
 )
 
 py_test(
@@ -15,7 +28,7 @@ py_test(
   SRCS
     opcodes_test.py
   DEPS
-    pytype.pyc
+    .pyc
 )
 
 py_test(
@@ -24,7 +37,7 @@ py_test(
     SRCS
       pyc_test.py
     DEPS
-      pytype.pyc
+      .pyc
       pytype.tests.test_base
 )
 
@@ -34,7 +47,7 @@ py_test(
   SRCS
     magic_test.py
   DEPS
-    pytype.pyc
+    .pyc
 )
 
 py_library(

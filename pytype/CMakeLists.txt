@@ -259,9 +259,9 @@ py_library(
     .function
     .metrics
     .mixin
-    .pyc
     .pytd
     .utils
+    pytype.pyc.pyc
 )
 
 py_library(
@@ -271,9 +271,9 @@ py_library(
     abstract_utils.py
   DEPS
     .cfg_utils
-    .pyc
     .pytd_for_parser
     .utils
+    pytype.pyc.pyc
 )
 
 py_library(
@@ -454,19 +454,6 @@ py_library(
     .pytd_visitors
     .utils
     pytype.typegraph.cfg
-)
-
-py_library(
-  NAME
-    pyc
-  SRCS
-    pyc/compile_bytecode.py
-    pyc/loadmarshal.py
-    pyc/magic.py
-    pyc/opcodes.py
-    pyc/pyc.py
-  DEPS
-    .utils
 )
 
 py_library(
