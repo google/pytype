@@ -309,7 +309,7 @@ py_library(
     pytd/serialize_ast.py
     pytd/typeshed.py
   DEPS
-    .parser
+    pytype.pyi.parser
     .pytd_for_parser
     .utils
 )
@@ -454,17 +454,6 @@ py_library(
     .pytd_visitors
     .utils
     pytype.typegraph.cfg
-)
-
-py_library(
-  NAME
-    parser
-  SRCS
-    pyi/parser.py
-  DEPS
-    .pytd_for_parser
-    .utils
-    pytype.pyi.parser_ext
 )
 
 py_test(

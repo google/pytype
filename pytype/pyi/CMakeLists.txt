@@ -1,16 +1,5 @@
 add_package()
 
-genbison(
-  NAME
-    parser_gen
-  SRC
-    parser.yy
-  HDR_OUT
-    parser.tab.hh
-  CC_OUT
-    parser.tab.cc
-)
-
 genflex(
   NAME
     lexer
@@ -20,6 +9,17 @@ genflex(
     lexer.lex.cc
   BISON_DEP
     .parser_gen
+)
+
+genbison(
+  NAME
+    parser_gen
+  SRC
+    parser.yy
+  HDR_OUT
+    parser.tab.hh
+  CC_OUT
+    parser.tab.cc
 )
 
 py_extension(
@@ -33,6 +33,17 @@ py_extension(
   DEPS
     .parser_gen
     .lexer
+)
+
+py_library(
+  NAME
+    parser
+  SRCS
+    parser.py
+  DEPS
+    .parser_ext
+    pytype.pytd_for_parser
+    pytype.utils
 )
 
 py_test(
@@ -52,7 +63,7 @@ py_test(
   SRCS
     parser_test.py
   DEPS
-    pytype.parser
+    .parser
     pytype.pytd
     pytype.tests.test_base
 )
@@ -63,7 +74,7 @@ py_test(
   SRCS
     parser_memleak_test.py
   DEPS
-    pytype.parser
+    .parser
     pytype.pytd
     pytype.tests.test_base
 )
