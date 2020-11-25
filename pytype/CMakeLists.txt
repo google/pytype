@@ -305,13 +305,13 @@ py_library(
     pytd
   SRCS
     load_pytd.py
-    pytd/parse/builtins.py
     pytd/serialize_ast.py
     pytd/typeshed.py
   DEPS
-    pytype.pyi.parser
     .pytd_for_parser
     .utils
+    pytype.pyi.parser
+    pytype.pytd.parse.builtins
 )
 
 py_library(
@@ -367,37 +367,12 @@ py_library(
 
 py_library(
   NAME
-    preconditions
-  SRCS
-    pytd/parse/preconditions.py
-  DEPS
-    .utils
-)
-
-py_library(
-  NAME
-    node_c
-  SRCS
-    pytd/parse/node.py
-)
-
-py_library(
-  NAME
-    node
-  DEPS
-    .metrics
-    .node_c
-    .preconditions
-)
-
-py_library(
-  NAME
     pytd_defs
   SRCS
     pytd/pytd.py
   DEPS
-    .node
-    .preconditions
+    pytype.pytd.parse.node
+    pytype.pytd.parse.preconditions
 )
 
 py_library(
@@ -407,8 +382,8 @@ py_library(
     pytd/pytd_visitors.py
   DEPS
     .cfg_utils
-    .parser_constants
     .pytd_defs
+    pytype.pytd.parse.parser_constants
 )
 
 py_library(
@@ -420,13 +395,6 @@ py_library(
     .pytd_defs
     .pytd_visitors
     .utils
-)
-
-py_library(
-  NAME
-    parser_constants
-  SRCS
-    pytd/parse/parser_constants.py
 )
 
 py_library(
@@ -447,12 +415,12 @@ py_library(
     .builtins_pytd  # TODO(b/159043305): Move this into a data dependency
     .debug
     .metrics
-    .node
-    .parser_constants
     .pytd_defs
     .pytd_utils
     .pytd_visitors
     .utils
+    pytype.pytd.parse.node
+    pytype.pytd.parse.parser_constants
     pytype.typegraph.cfg
 )
 
@@ -679,16 +647,6 @@ py_test(
     state_test.py
   DEPS
     .libvm
-)
-
-py_library(
-  NAME
-    pytdtest
-  SRCS
-    pytd/parse/parser_test_base.py
-  DEPS
-    .pytd
-    pytype.tests.test_base
 )
 
 py_test(

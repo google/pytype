@@ -7,7 +7,7 @@ py_test(
     serialize_ast_test.py
   DEPS
     pytype.libvm
-    pytype.pytdtest
+    pytype.pytd.parse.parser_test_base
     pytype.tests.test_base
 )
 
@@ -17,7 +17,7 @@ py_test(
   SRCS
     booleq_test.py
   DEPS
-    pytype.pytdtest
+    pytype.pytd.parse.parser_test_base
 )
 
 py_test(
@@ -26,7 +26,7 @@ py_test(
   SRCS
     pep484_test.py
   DEPS
-    pytype.pytdtest
+    pytype.pytd.parse.parser_test_base
 )
 
 py_test(
@@ -35,7 +35,7 @@ py_test(
   SRCS
     type_match_test.py
   DEPS
-    pytype.pytdtest
+    pytype.pytd.parse.parser_test_base
 )
 
 py_test(
@@ -44,7 +44,7 @@ py_test(
   SRCS
     typeshed_test.py
   DEPS
-    pytype.pytdtest
+    pytype.pytd.parse.parser_test_base
     pytype.tests.test_base
 )
 
@@ -54,7 +54,7 @@ py_test(
   SRCS
     transforms_test.py
   DEPS
-    pytype.pytdtest
+    pytype.pytd.parse.parser_test_base
 )
 
 py_test(
@@ -63,7 +63,7 @@ py_test(
   SRCS
     optimize_test.py
   DEPS
-    pytype.pytdtest
+    pytype.pytd.parse.parser_test_base
 )
 
 py_test(
@@ -72,7 +72,7 @@ py_test(
   SRCS
     pytd_test.py
   DEPS
-    pytype.pytdtest
+    pytype.pytd.parse.parser_test_base
 )
 
 py_test(
@@ -81,7 +81,7 @@ py_test(
   SRCS
     pytd_visitors_test.py
   DEPS
-    pytype.pytdtest
+    pytype.pytd.parse.parser_test_base
 )
 
 py_test(
@@ -90,7 +90,7 @@ py_test(
   SRCS
     visitors_test.py
   DEPS
-    pytype.pytdtest
+    pytype.pytd.parse.parser_test_base
 )
 
 py_test(
@@ -99,7 +99,7 @@ py_test(
   SRCS
     slots_test.py
   DEPS
-    pytype.pytdtest
+    pytype.pytd.parse.parser_test_base
 )
 
 py_test(
@@ -108,7 +108,7 @@ py_test(
   SRCS
     pytd_utils_test.py
   DEPS
-    pytype.pytdtest
+    pytype.pytd.parse.parser_test_base
 )
 
 py_test(
@@ -117,7 +117,7 @@ py_test(
   SRCS
     mro_test.py
   DEPS
-    pytype.pytdtest
+    pytype.pytd.parse.parser_test_base
 )
 
 py_test(
@@ -126,7 +126,7 @@ py_test(
   SRCS
     abc_hierarchy_test.py
   DEPS
-    pytype.pytdtest
+    pytype.pytd.parse.parser_test_base
 )
 
 toplevel_py_binary(
