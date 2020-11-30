@@ -339,10 +339,11 @@ class CallTracer(vm.VirtualMachine):
       for param in b.data.instance_type_parameters.values():
         node = self.call_init(node, param)
     node = self._call_method(node, b, "__init__")
-    # Test classes initialize attributes in setUp() as well.
     cls = b.data.get_class()
-    if isinstance(cls, abstract.InterpreterClass) and cls.is_test_class:
-      node = self._call_method(node, b, "setUp")
+    if isinstance(cls, abstract.InterpreterClass):
+      # Call any additional initalizers the class has registered.
+      for method in cls.additional_init_methods:
+        node = self._call_method(node, b, method)
     return node
 
   def call_init(self, node, instance):

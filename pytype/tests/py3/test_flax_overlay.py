@@ -154,5 +154,18 @@ class TestLinenModule(test_base.TargetPython3FeatureTest):
         """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"name.*implicitly"})
 
+  def test_setup(self):
+    with file_utils.Tempdir() as d:
+      self._setup_linen_pyi(d)
+      self.Check("""
+        from flax import linen
+        class Foo(linen.Module):
+          x: int
+          def setup(self):
+            self.y = 10
+        a = Foo(10)
+        b = a.y
+      """, pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")
