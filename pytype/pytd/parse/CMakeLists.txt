@@ -6,9 +6,9 @@ py_library(
   SRCS
     builtins.py
   DEPS
-    pytype.pytd_for_parser
     pytype.utils
     pytype.pyi.parser
+    pytype.pytd.pytd_for_parser
 )
 
 py_library(
@@ -49,7 +49,9 @@ py_library(
   SRCS
     parser_test_base.py
   DEPS
-    pytype.pytd
+    pytype.load_pytd
+    pytype.pyi.parser
+    pytype.pytd.pytd_for_parser
     pytype.tests.test_base
 )
 

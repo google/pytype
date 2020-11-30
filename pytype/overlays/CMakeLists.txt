@@ -130,8 +130,8 @@ py_test(
     collections_overlay_test.py
   DEPS
     .collections_overlay
-    pytype.pytd_defs
-    pytype.pytd_for_parser
-    pytype.pytd_utils
+    pytype.pytd.pytd_defs
+    pytype.pytd.pytd_for_parser
+    pytype.pytd.pytd_utils
     pytype.tests.test_base
 )

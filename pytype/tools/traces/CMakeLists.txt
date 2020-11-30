@@ -22,10 +22,11 @@ py_library(
     pytype.analyze
     pytype.config
     pytype.errors
-    pytype.libvm
-    pytype.pytd_defs
-    pytype.pytd_for_parser
+    pytype.load_pytd
     pytype.ast.visitor
+    pytype.pytd.pytd_defs
+    pytype.pytd.pytd_for_parser
+    pytype.pytd.pytd_utils
 )
 
 py_test(
@@ -36,8 +37,8 @@ py_test(
   DEPS
     .traces
     pytype.config
-    pytype.pytd_defs
     pytype.utils
+    pytype.pytd.pytd_defs
     pytype.tests.test_base
 )
 
