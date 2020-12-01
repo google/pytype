@@ -2474,12 +2474,14 @@ class LiteralTest(_ParserTestBase):
       from typing import Literal
       MyLiteralAlias = Literal[42]
       x: Literal[MyLiteralAlias, Literal[Literal[True]], None]
+      y: Literal[1, Literal[2, Literal[3]]]
     """, """
       from typing import Literal, Optional
 
       MyLiteralAlias = Literal[42]
 
       x: Optional[Literal[42, True]]
+      y: Literal[1, 2, 3]
     """)
 
   def test_bad_value(self):
