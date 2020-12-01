@@ -75,15 +75,15 @@ python build_scripts/run_tests.py
 ```
 
 The new version should also be added to the
-[Travis test matrix](
-https://github.com/google/pytype/blob/ee51995a1c5937cb4ebee291acb2e049fb0f81cc/.travis.yml#L9).
-Even if the tests do not pass yet, it is helpful to see the failures, and you
-can configure them to not fail the build by adding to the matrix:
-
-```
-allow_failures:
-  - python: "3.x"  # replace x with the appropriate minor version
-```
+[CI test matrix](
+https://github.com/google/pytype/blob/a2ce16edc0ee992f97b328ce752b51318a00d513/.github/workflows/ci.yml#L15-L22).
+Even if the tests do not pass yet, it is helpful to see the failures. You can
+can configure them to not fail the workflow by [marking the check as experimental](
+https://github.com/google/pytype/blob/a2ce16edc0ee992f97b328ce752b51318a00d513/.github/workflows/ci.yml#L19-L22)
+<!-- TODO(rechen): Once https://github.com/actions/toolkit/issues/399 is
+supported, suggest that instead of the `|| exit 0` hack -->
+and using `|| exit 0` to [always report a success](
+https://github.com/google/pytype/blob/a2ce16edc0ee992f97b328ce752b51318a00d513/.github/workflows/ci.yml#L47-L49).
 
 ### GitHub release
 
