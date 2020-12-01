@@ -1,80 +1,5 @@
 add_package()
 
-# CMake does not do dependency tracking if files are listed by a GLOB operation.
-# So, we have to list the files individually as we want them to be tracked as
-# build inputs.
-filegroup(
-  NAME
-    builtins_pytd
-  SRCS
-    pytd/builtins/2/__builtin__.pytd
-    pytd/builtins/2/array.pytd
-    pytd/builtins/2/attr/__init__.pytd
-    pytd/builtins/2/attr/_compat.pytd
-    pytd/builtins/2/attr/_config.pytd
-    pytd/builtins/2/attr/_funcs.pytd
-    pytd/builtins/2/attr/_make.pytd
-    pytd/builtins/2/attr/converters.pytd
-    pytd/builtins/2/attr/exceptions.pytd
-    pytd/builtins/2/attr/filters.pytd
-    pytd/builtins/2/attr/setters.pytd
-    pytd/builtins/2/attr/validators.pytd
-    pytd/builtins/2/mypy_extensions.pytd
-    pytd/builtins/2/numpy/__init__.pytd
-    pytd/builtins/2/protocols.pytd
-    pytd/builtins/2/typing.pytd
-
-    pytd/builtins/2and3/array.pytd
-    pytd/builtins/2and3/attr/__init__.pytd
-    pytd/builtins/2and3/attr/_compat.pytd
-    pytd/builtins/2and3/attr/_config.pytd
-    pytd/builtins/2and3/attr/_funcs.pytd
-    pytd/builtins/2and3/attr/_make.pytd
-    pytd/builtins/2and3/attr/converters.pytd
-    pytd/builtins/2and3/attr/exceptions.pytd
-    pytd/builtins/2and3/attr/filters.pytd
-    pytd/builtins/2and3/attr/setters.pytd
-    pytd/builtins/2and3/attr/validators.pytd
-    pytd/builtins/2and3/mypy_extensions.pytd
-    pytd/builtins/2and3/numpy/__init__.pytd
-    pytd/builtins/2and3/protocols.pytd
-    pytd/builtins/2and3/typing.pytd
-
-    pytd/builtins/3/__builtin__.pytd
-    pytd/builtins/3/array.pytd
-    pytd/builtins/3/attr/__init__.pytd
-    pytd/builtins/3/attr/_compat.pytd
-    pytd/builtins/3/attr/_config.pytd
-    pytd/builtins/3/attr/_funcs.pytd
-    pytd/builtins/3/attr/_make.pytd
-    pytd/builtins/3/attr/converters.pytd
-    pytd/builtins/3/attr/exceptions.pytd
-    pytd/builtins/3/attr/filters.pytd
-    pytd/builtins/3/attr/setters.pytd
-    pytd/builtins/3/attr/validators.pytd
-    pytd/builtins/3/builtins.pytd
-    pytd/builtins/3/mypy_extensions.pytd
-    pytd/builtins/3/numpy/__init__.pytd
-    pytd/builtins/3/protocols.pytd
-    pytd/builtins/3/typing.pytd
-
-    pytd/stdlib/2/_ctypes.pytd
-    pytd/stdlib/2/collections.pytd
-    pytd/stdlib/2/dummy_thread.pytd
-    pytd/stdlib/2/encodings.pytd
-
-    pytd/stdlib/2and3/_ctypes.pytd
-    pytd/stdlib/2and3/collections.pytd
-    pytd/stdlib/2and3/dummy_thread.pytd
-    pytd/stdlib/2and3/encodings.pytd
-
-    pytd/stdlib/3/_ctypes.pytd
-    pytd/stdlib/3/collections.pytd
-    pytd/stdlib/3/dummy_thread.pytd
-    pytd/stdlib/3/encodings.pytd
-    pytd/stdlib/3/enum.pytd
-)
-
 toplevel_py_binary(
   NAME
     pytype-single
@@ -85,7 +10,11 @@ toplevel_py_binary(
   DEPS
     .config
     .io
-    .libvm
+    .load_pytd
+    .metrics
+    .utils
+    pytype.pytd.typeshed
+    pytype.pytd.parse.node
 )
 
 py_library(
@@ -106,7 +35,7 @@ py_library(
     pytype_source_utils.py
     utils.py
   DEPS
-    .builtins_pytd
+    pytype.pytd.builtins_pytd
 )
 
 py_library(
@@ -126,6 +55,7 @@ py_library(
   DEPS
     .errors
     .libvm
+    .load_pytd
 )
 
 py_library(
@@ -146,6 +76,7 @@ py_library(
     .analyze
     .errors
     .libvm
+    .load_pytd
 )
 
 py_library(
@@ -169,6 +100,7 @@ py_library(
     .annotations_util
     .convert
     .libvm
+    .load_pytd
     .matcher
     .overlay_dict
 )
@@ -192,6 +124,20 @@ py_library(
     .libvm
     .output
     pytype.overlays.typing_overlay
+)
+
+py_library(
+  NAME
+    load_pytd
+  SRCS
+    load_pytd.py
+  DEPS
+    .utils
+    pytype.pyi.parser
+    pytype.pytd.pytd_for_parser
+    pytype.pytd.serialize_ast
+    pytype.pytd.typeshed
+    pytype.pytd.parse.builtins
 )
 
 py_library(
@@ -259,9 +205,10 @@ py_library(
     .function
     .metrics
     .mixin
-    .pyc
-    .pytd
     .utils
+    pytype.pyc.pyc
+    pytype.pytd.serialize_ast
+    pytype.pytd.typeshed
 )
 
 py_library(
@@ -271,9 +218,9 @@ py_library(
     abstract_utils.py
   DEPS
     .cfg_utils
-    .pyc
-    .pytd_for_parser
     .utils
+    pytype.pyc.pyc
+    pytype.pytd.pytd_for_parser
 )
 
 py_library(
@@ -283,8 +230,8 @@ py_library(
     function.py
   DEPS
     .abstract_utils
-    .pytd_for_parser
     .utils
+    pytype.pytd.pytd_for_parser
 )
 
 py_library(
@@ -295,23 +242,9 @@ py_library(
   DEPS
     .abstract_utils
     .function
-    .pytd_for_parser
     .utils
+    pytype.pytd.pytd_for_parser
     pytype.typegraph.cfg
-)
-
-py_library(
-  NAME
-    pytd
-  SRCS
-    load_pytd.py
-    pytd/parse/builtins.py
-    pytd/serialize_ast.py
-    pytd/typeshed.py
-  DEPS
-    .parser
-    .pytd_for_parser
-    .utils
 )
 
 py_library(
@@ -325,8 +258,8 @@ py_library(
       tools/tool_utils.py
     DEPS
       .config
-      .libvm
       .utils
+      pytype.pytd.typeshed
 )
 
 py_library(
@@ -363,121 +296,6 @@ py_library(
     typegraph/cfg_utils.py
   DEPS
     pytype.typegraph.cfg
-)
-
-py_library(
-  NAME
-    preconditions
-  SRCS
-    pytd/parse/preconditions.py
-  DEPS
-    .utils
-)
-
-py_library(
-  NAME
-    node_c
-  SRCS
-    pytd/parse/node.py
-)
-
-py_library(
-  NAME
-    node
-  DEPS
-    .metrics
-    .node_c
-    .preconditions
-)
-
-py_library(
-  NAME
-    pytd_defs
-  SRCS
-    pytd/pytd.py
-  DEPS
-    .node
-    .preconditions
-)
-
-py_library(
-  NAME
-    pytd_visitors
-  SRCS
-    pytd/pytd_visitors.py
-  DEPS
-    .cfg_utils
-    .parser_constants
-    .pytd_defs
-)
-
-py_library(
-  NAME
-    pytd_utils
-  SRCS
-    pytd/pytd_utils.py
-  DEPS
-    .pytd_defs
-    .pytd_visitors
-    .utils
-)
-
-py_library(
-  NAME
-    parser_constants
-  SRCS
-    pytd/parse/parser_constants.py
-)
-
-py_library(
-  NAME
-    pytd_for_parser
-  SRCS
-    pytd/abc_hierarchy.py
-    pytd/booleq.py
-    pytd/escape.py
-    pytd/mro.py
-    pytd/optimize.py
-    pytd/pep484.py
-    pytd/slots.py
-    pytd/transforms.py
-    pytd/type_match.py
-    pytd/visitors.py
-  DEPS
-    .builtins_pytd  # TODO(b/159043305): Move this into a data dependency
-    .debug
-    .metrics
-    .node
-    .parser_constants
-    .pytd_defs
-    .pytd_utils
-    .pytd_visitors
-    .utils
-    pytype.typegraph.cfg
-)
-
-py_library(
-  NAME
-    pyc
-  SRCS
-    pyc/compile_bytecode.py
-    pyc/loadmarshal.py
-    pyc/magic.py
-    pyc/opcodes.py
-    pyc/pyc.py
-  DEPS
-    .utils
-)
-
-py_library(
-  NAME
-    parser
-  SRCS
-    pyi/parser.py
-  DEPS
-    .pytd_for_parser
-    .utils
-    pytype.pyi.parser_ext
 )
 
 py_test(
@@ -574,7 +392,8 @@ py_test(
   DEPS
     .abstract_utils
     .config
-    .libvm
+    .errors
+    .load_pytd
     .vm
     pytype.tests.test_base
 )
@@ -672,8 +491,8 @@ py_test(
   SRCS
     load_pytd_test.py
   DEPS
-    .builtins_pytd
-    .libvm
+    .load_pytd
+    pytype.pytd.builtins_pytd
     pytype.tests.test_base
 )
 
@@ -683,8 +502,8 @@ py_test(
   SRCS
     imports_map_loader_test.py
   DEPS
-    .builtins_pytd
     .libvm
+    pytype.pytd.builtins_pytd
 )
 
 py_test(
@@ -705,16 +524,6 @@ py_test(
     .libvm
 )
 
-py_library(
-  NAME
-    pytdtest
-  SRCS
-    pytd/parse/parser_test_base.py
-  DEPS
-    .pytd
-    pytype.tests.test_base
-)
-
 py_test(
   NAME
     debug_test
@@ -722,7 +531,7 @@ py_test(
     debug_test.py
   DEPS
     .debug
-    .pytd
+    pytype.typegraph.cfg
 )
 
 py_test(
@@ -731,8 +540,8 @@ py_test(
   SRCS
     typegraph_metrics_test.py
   DEPS
-    .config
-    .libvm
+    .analyze
+    .errors
     pytype.typegraph.cfg
     pytype.tests.test_base
 )

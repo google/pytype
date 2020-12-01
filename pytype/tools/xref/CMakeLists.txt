@@ -47,7 +47,7 @@ py_library(
     callgraph.py
   DEPS
     .node_utils
-    pytype.pytd_utils
+    pytype.pytd.pytd_utils
 )
 
 py_test(
@@ -94,5 +94,6 @@ toplevel_py_binary(
   DEPS
     .indexer
     .parse_args
-    pytype.libvm
+    pytype.utils
+    pytype.pytd.parse.node
 )

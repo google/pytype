@@ -26,7 +26,6 @@ py_test(
   SRCS
     environment_test.py
   DEPS
-    pytype.pytd
     pytype.tools
     pytype.utils
 )

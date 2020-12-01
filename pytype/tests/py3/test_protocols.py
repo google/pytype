@@ -629,6 +629,30 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
       f(Qux())  # wrong-arg-types
     """)
 
+  def test_abstractmethod(self):
+    self.CheckWithErrors("""
+      import abc
+      from typing import Protocol
+
+      class Foo(Protocol):
+        @abc.abstractmethod
+        def f(self) -> int:
+          pass
+
+      class Bar:
+        def f(self):
+          pass
+
+      class Baz:
+        pass
+
+      def f(x: Foo):
+        pass
+
+      f(Bar())
+      f(Baz())  # wrong-arg-types
+    """)
+
 
 class ProtocolsTestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for protocol implementation on a target using a Python 3 feature."""

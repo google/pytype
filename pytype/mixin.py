@@ -266,11 +266,29 @@ class Class(metaclass=MixinMeta):
       abstract_methods |= {m for m in cls.abstract_methods if m in cls}
     self.abstract_methods = abstract_methods
 
+  def _has_explicit_abcmeta(self):
+    return self.cls and any(
+        parent.full_name == "abc.ABCMeta" for parent in self.cls.mro)
+
+  def _has_implicit_abcmeta(self):
+    """Whether the class should be considered implicitly abstract."""
+    # Protocols must be marked as abstract to get around the
+    # [ignored-abstractmethod] check for interpreter classes.
+    if not self.isinstance_InterpreterClass():
+      return False
+    # We check self._bases (immediate parents) instead of self.mro because our
+    # builtins and typing stubs are inconsistent about implementing abstract
+    # methods, and we don't want [not-instantiable] errors all over the place
+    # because a class has Protocol buried in its MRO.
+    for var in self._bases:
+      if any(parent.full_name == "typing.Protocol" for parent in var.data):
+        return True
+    return False
+
   @property
   def is_abstract(self):
-    has_abstract_metaclass = self.cls and any(
-        parent.full_name == "abc.ABCMeta" for parent in self.cls.mro)
-    return has_abstract_metaclass and bool(self.abstract_methods)
+    return ((self._has_explicit_abcmeta() or self._has_implicit_abcmeta()) and
+            bool(self.abstract_methods))
 
   @property
   def is_test_class(self):
