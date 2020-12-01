@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""A simple script to run Travis build steps."""
+"""A simple script to run CI build steps."""
 
 from __future__ import print_function
 
