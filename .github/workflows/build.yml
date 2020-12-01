@@ -7,7 +7,12 @@
 # - Don't run this on every push ('on' param)
 
 name: Build wheels
-on: push
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
 jobs:
   manylinux_wheels:
     name: Python ${{ matrix.python_tag }} ${{ matrix.platform }} wheels
