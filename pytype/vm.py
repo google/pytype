@@ -3177,9 +3177,12 @@ class VirtualMachine:
         itr = abstract_utils.get_atomic_python_constant(
             var, collections.Iterable)
       except abstract_utils.ConversionError:
-        # TODO(rechen): The assumption that any abstract iterable unpacks to
-        # exactly one element is highly dubious.
-        elements.append(self.new_unsolvable(self.root_cfg_node))
+        if abstract_utils.is_var_indefinite_tuple(var):
+          elements.append(var)
+        else:
+          # TODO(rechen): The assumption that any abstract iterable unpacks to
+          # exactly one element is highly dubious.
+          elements.append(self.new_unsolvable(self.root_cfg_node))
       else:
         # Some iterable constants (e.g., tuples) already contain variables,
         # whereas others (e.g., strings) need to be wrapped.

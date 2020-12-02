@@ -696,3 +696,15 @@ def is_literal(annot: Optional[_AbstractValueType]):
   if annot.isinstance_Union():
     return all(is_literal(o) for o in annot.options)
   return annot.isinstance_LiteralClass()
+
+
+def is_indefinite_tuple(val: _AbstractValueType):
+  """True if val is an instance of PyTDClass(__builtin__.tuple)."""
+  return (val.isinstance_Instance() and
+          val.cls.isinstance_PyTDClass() and
+          val.cls.full_name == "__builtin__.tuple")
+
+
+def is_var_indefinite_tuple(var):
+  """True if all bindings of var are indefinite tuples."""
+  return all(is_indefinite_tuple(x) for x in var.data)

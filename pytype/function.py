@@ -341,12 +341,41 @@ class Args(collections.namedtuple(
         # starargs into the missing posargs.
         missing_posarg_count = len(match_signature.param_names) - len(posargs)
         starargs_list = list(starargs_as_tuple)
+        final_stararg = None
         for _ in range(missing_posarg_count):
-          if starargs_list:
-            posargs += (starargs_list.pop(0),)
-          else:
+          if not starargs_list:
             break
-        starargs = vm.convert.tuple_to_value(starargs_list).to_variable(node)
+          arg = starargs_list.pop(0)
+          # If the final element in the list is an indefinite tuple, stop
+          # assigning posargs and assign it to *args instead.
+          # TODO(mdemello): If we hit an indefinite tuple in non-final position,
+          # what should we do? e.g. for
+          #   f(*(a, b), *xs, *(c, d))
+          # matched against sig
+          #   f(u, v, w, x, y, z)
+          # do we
+          # 1. match *xs to (w, x) by matching z=d, y=c from the end
+          # 2. match *xs to w and raise a missing parameter error for z, or
+          # 3. match *xs to w..z and raise an extra parameter error?
+          # We currently opt for (2) but all three options have their points.
+          if not starargs_list and abstract_utils.is_var_indefinite_tuple(arg):
+            final_stararg = arg
+          else:
+            posargs += (arg,)
+
+        if final_stararg:
+          starargs = final_stararg
+        elif starargs_list:
+          # Check if we are matching *args in the invocation list with *args in
+          # the function signature rather than against leftover posargs.
+          if (len(starargs_list) == 1 and
+              abstract_utils.is_var_indefinite_tuple(starargs_list[0])):
+            starargs, = starargs_list
+          else:
+            starargs = vm.convert.tuple_to_value(
+                starargs_list).to_variable(node)
+        else:
+          starargs = None
       else:
         posargs += starargs_as_tuple
         starargs = None

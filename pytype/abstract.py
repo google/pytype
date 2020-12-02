@@ -1813,7 +1813,10 @@ class PyTDFunction(Function):
 
   def call(self, node, func, args, alias_map=None):
     # TODO(b/159052609): We should be passing function signatures to simplify.
-    args = args.simplify(node, self.vm)
+    if len(self.signatures) == 1:
+      args = args.simplify(node, self.vm, self.signatures[0].signature)
+    else:
+      args = args.simplify(node, self.vm)
     self._log_args(arg.bindings for arg in args.posargs)
     ret_map = {}
     retvar = self.vm.program.NewVariable()
