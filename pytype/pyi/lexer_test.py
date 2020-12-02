@@ -1,7 +1,7 @@
+import os
 import textwrap
 
 from pytype.pyi import parser_ext
-from pytype.pytd import pytd_utils
 from pytype.pytd.parse import parser_constants
 from pytype.tests import test_base
 
@@ -279,8 +279,10 @@ class LexerTest(test_base.UnitTest):
       3""")
 
   def test_builtins(self):
-    _, text = pytd_utils.GetPredefinedFile(
-        "builtins/%d" % self.python_version[0], "__builtin__")
+    filename = "builtins/%d/__builtin__.pytd" % self.python_version[0]
+    pytd_dir = os.path.dirname(os.path.dirname(parser_constants.__file__))
+    with open(os.path.join(pytd_dir, filename)) as f:
+      text = f.read()
     self.check(None, text)
 
   def test_typevar(self):

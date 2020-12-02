@@ -71,7 +71,7 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
 
       paths = {p.rsplit("pytype/", 1)[-1]
                for p in self.ts.get_pytd_paths(self.python_version)}
-      self.assertSetEqual(paths, {"stubs/builtins/3", "stubs/stdlib/3"})
+      self.assertSetEqual(paths, {"pytd/builtins/3", "pytd/stdlib/3"})
     finally:
       os.environ = old_env
 

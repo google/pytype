@@ -53,9 +53,8 @@ py_test(
     lexer_test.py
   DEPS
     .parser_ext
-    pytype.pytd.pytd_utils
+    pytype.pytd.builtins_pytd
     pytype.pytd.parse.parser_constants
-    pytype.stubs.stubs
     pytype.tests.test_base
 )
 
@@ -66,9 +65,9 @@ py_test(
     parser_test.py
   DEPS
     .parser
+    pytype.pytd.builtins_pytd
     pytype.pytd.pytd_defs
     pytype.pytd.pytd_utils
-    pytype.stubs.stubs
     pytype.tests.test_base
 )
 
@@ -79,7 +78,6 @@ py_test(
     parser_memleak_test.py
   DEPS
     .parser
-    pytype.pytd.pytd_utils
-    pytype.stubs.stubs
+    pytype.pytd.builtins_pytd
     pytype.tests.test_base
 )

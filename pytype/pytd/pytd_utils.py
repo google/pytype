@@ -406,12 +406,12 @@ def WrapsDict(member_name, writable=False, implement_len=False):
   return namespace["WrapsDict"]  # pytype: disable=key-error
 
 
-def GetPredefinedFile(stubs_subdir, module, extension=".pytd",
+def GetPredefinedFile(pytd_subdir, module, extension=".pytd",
                       as_package=False):
   """Get the contents of a predefined PyTD, typically with a file name *.pytd.
 
   Arguments:
-    stubs_subdir: the directory, typically "builtins" or "stdlib"
+    pytd_subdir: the directory, typically "builtins" or "stdlib"
     module: module name (e.g., "sys" or "__builtins__")
     extension: either ".pytd" or ".py"
     as_package: try the module as a directory with an __init__ file
@@ -424,8 +424,8 @@ def GetPredefinedFile(stubs_subdir, module, extension=".pytd",
   if as_package:
     parts.append("__init__")
   mod_path = os.path.join(*parts) + extension
-  path = os.path.join("stubs", stubs_subdir, mod_path)
-  return path, pytype_source_utils.load_pytype_file(path).decode("utf-8")
+  path = os.path.join("pytd", pytd_subdir, mod_path)
+  return path, pytype_source_utils.load_pytype_file(path)
 
 
 def LoadPickle(filename, compress=False, open_function=open):

@@ -1,4 +1,4 @@
-"""Tests of builtins (in stubs/builtins/{version}/__builtins__.pytd)."""
+"""Tests of builtins (in pytd/builtins/{version}/__builtins__.pytd)."""
 
 from pytype import file_utils
 from pytype.tests import test_base
