@@ -534,11 +534,16 @@ class ErrorLog(ErrorLogBase):
     else:
       output_mode = convert.OutputMode.DETAILED
     with convert.set_output_mode(output_mode):
-      actual = self._pytd_print(pytd_utils.JoinTypes(
+      bad_actual = self._pytd_print(pytd_utils.JoinTypes(
           view[actual].data.to_type(node, view=view) for view in bad))
+      if len(actual.bindings) > len(bad):
+        full_actual = self._pytd_print(pytd_utils.JoinTypes(
+            v.to_type(node) for v in actual.data))
+      else:
+        full_actual = bad_actual
     # typing.NoReturn is a prettier alias for nothing.
     fmt = lambda ret: "NoReturn" if ret == "nothing" else ret
-    return fmt(expected), fmt(actual)
+    return fmt(expected), fmt(bad_actual), fmt(full_actual)
 
   def _join_printed_types(self, types):
     """Pretty-print the union of the printed types."""
@@ -858,14 +863,20 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("bad-return-type")
   def bad_return_type(self, stack, node, formal, actual, bad):
-    expected, actual = self._print_as_return_types(node, formal, actual, bad)
+    """Logs a [bad-return-type] error."""
+    expected, bad_actual, full_actual = self._print_as_return_types(
+        node, formal, actual, bad)
+    if full_actual == bad_actual:
+      message = "bad return type"
+    else:
+      message = f"bad option {bad_actual!r} in return type"
     details = "".join(["         Expected: ", expected, "\n",
-                       "Actually returned: ", actual])
-    self.error(stack, "bad option in return type", details)
+                       "Actually returned: ", full_actual])
+    self.error(stack, message, details)
 
   @_error_name("bad-concrete-type")
   def bad_concrete_type(self, stack, node, formal, actual, bad):
-    expected, actual = self._print_as_return_types(node, formal, actual, bad)
+    expected, actual, _ = self._print_as_return_types(node, formal, actual, bad)
     details = "".join(["       Expected: ", expected, "\n",
                        "Actually passed: ", actual])
     self.error(stack, "Invalid instantiation of generic class", details)

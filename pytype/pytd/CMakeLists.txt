@@ -145,8 +145,8 @@ py_library(
     pytd_visitors.py
   DEPS
     .pytd_defs
-    pytype.cfg_utils
     pytype.pytd.parse.parser_constants
+    pytype.typegraph.cfg_utils
 )
 
 py_library(

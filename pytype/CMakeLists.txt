@@ -217,10 +217,10 @@ py_library(
   SRCS
     abstract_utils.py
   DEPS
-    .cfg_utils
     .utils
     pytype.pyc.pyc
     pytype.pytd.pytd_for_parser
+    pytype.typegraph.cfg_utils
 )
 
 py_library(
@@ -244,57 +244,6 @@ py_library(
     .function
     .utils
     pytype.pytd.pytd_for_parser
-    pytype.typegraph.cfg
-)
-
-py_library(
-    NAME
-      tools
-    SRCS
-      tools/arg_parser.py
-      tools/config.py
-      tools/environment.py
-      tools/runner.py
-      tools/tool_utils.py
-    DEPS
-      .config
-      .utils
-      pytype.pytd.typeshed
-)
-
-py_library(
-    NAME
-      analyze_project
-    SRCS
-      tools/analyze_project/config.py
-      tools/analyze_project/environment.py
-      tools/analyze_project/parse_args.py
-      tools/analyze_project/pytype_runner.py
-    DEPS
-      .config
-      .io
-      .tools
-      .utils
-)
-
-# This library is disabled because cfg.py can conflict with the typegraph.cfg
-# extension module.
-# py_library(
-#   NAME
-#     cfg_py
-#   SRCS
-#     typegraph/cfg.py
-#   DEPS
-#     .debug
-#     .metrics
-# )
-
-py_library(
-  NAME
-    cfg_utils
-  SRCS
-    typegraph/cfg_utils.py
-  DEPS
     pytype.typegraph.cfg
 )
 

@@ -10,7 +10,7 @@ toplevel_py_binary(
   DEPS
     .annotate_ast
     pytype.ast.visitor
-    pytype.tools
+    pytype.tools.tools
 )
 
 py_library(

@@ -874,8 +874,14 @@ class _Parser:
             literal_parameters.append(pytd.AnythingType())
         elif isinstance(p, (int, str, bytes)):
           literal_parameters.append(pytd.Literal(p))
+        elif isinstance(p, pytd.UnionType):
+          for t in p.type_list:
+            if isinstance(t, pytd.Literal):
+              literal_parameters.append(t)
+            else:
+              raise ParseError(f"Literal[{t}] not supported")
         else:
-          raise ParseError("Literal[%s] not supported" % p)
+          raise ParseError(f"Literal[{p}] not supported")
       return pytd_utils.JoinTypes(literal_parameters)
     elif any(isinstance(p, (int, str)) for p in parameters):
       parameters = ", ".join(

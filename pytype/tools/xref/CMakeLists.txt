@@ -17,7 +17,7 @@ py_library(
     pytype.errors
     pytype.io
     pytype.libvm
-    pytype.tools
+    pytype.tools.tools
     pytype.tools.traces.traces
 )
 
@@ -36,8 +36,8 @@ py_library(
   DEPS
     .indexer
     pytype.config
-    pytype.tools
     pytype.utils
+    pytype.tools.tools
 )
 
 py_library(

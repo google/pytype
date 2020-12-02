@@ -101,6 +101,8 @@ class Module(abstract.PyTDClass):
     super().__init__(name, pytd_cls, vm)
 
   def init_subclass(self, node, subclass):
+    # Subclasses of Module call self.setup() when creating instances.
+    subclass.additional_init_methods.append("setup")
     dc = ModuleDataclass.make(self.vm)
     subclass_var = subclass.to_variable(node)
     args = function.Args(

@@ -161,5 +161,23 @@ class CheckerTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errorlog, {"e1": r"Generic", "e2": r"Generic"})
 
+  def test_bad_return_type(self):
+    errorlog = self.CheckWithErrors("""
+      def f() -> int:
+        return ''  # bad-return-type[e]
+    """)
+    self.assertErrorRegexes(errorlog, {
+        "e": r"bad return type.*Expected: int.*Actually returned: str"})
+
+  def test_bad_option_in_return_type(self):
+    errorlog = self.CheckWithErrors("""
+      from typing import Union
+      def f(x: Union[int, str]) -> int:
+        return x  # bad-return-type[e]
+    """)
+    self.assertErrorRegexes(errorlog, {"e": (
+        r"bad option 'str' in return type.*"
+        r"Expected: int.*Actually returned: Union\[int, str\]")})
+
 
 test_base.main(globals(), __name__ == "__main__")

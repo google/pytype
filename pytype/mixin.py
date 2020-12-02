@@ -158,6 +158,10 @@ class Class(metaclass=MixinMeta):
     self._init_overrides_bool()
     self._all_formal_type_parameters = datatypes.AliasingMonitorDict()
     self._all_formal_type_parameters_loaded = False
+    # Call these methods in addition to __init__ when constructing instances.
+    self.additional_init_methods = []
+    if self._is_test_class():
+      self.additional_init_methods.append("setUp")
 
   def bases(self):
     return []
@@ -290,8 +294,7 @@ class Class(metaclass=MixinMeta):
     return ((self._has_explicit_abcmeta() or self._has_implicit_abcmeta()) and
             bool(self.abstract_methods))
 
-  @property
-  def is_test_class(self):
+  def _is_test_class(self):
     return any(base.full_name in ("unittest.TestCase", "unittest.case.TestCase")
                for base in self.mro)
 
@@ -386,9 +389,9 @@ class Class(metaclass=MixinMeta):
 
   def _call_init(self, node, value, args):
     node = self._call_method(node, value, "__init__", args)
-    # Test classes initialize attributes in setUp() as well.
-    if self.is_test_class:
-      node = self._call_method(node, value, "setUp", function.Args(()))
+    # Call any additional initalizers the class has registered.
+    for method in self.additional_init_methods:
+      node = self._call_method(node, value, method, function.Args(()))
     return node
 
   def _new_instance(self):
