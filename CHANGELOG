@@ -1,3 +1,7 @@
+Version 2020.12.02
+* Update typeshed pin to commit fae6bda from October 12.
+* Improve the [bad-return-type] error message.
+
 Version 2020.11.23
 * Treat modules as hashable.
 * Support typing_extensions.Literal in source files.
