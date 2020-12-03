@@ -1081,6 +1081,27 @@ class _Parser:
     self._generated_classes[base_name].append(nt_class)
     return pytd.NamedType(nt_class.name)
 
+  def new_new_type(self, name, typ):
+    """Returns a type for a NewType."""
+    name = _handle_string_literal(name)
+    args = [("self", pytd.AnythingType(), None), ("val", typ, None)]
+    ret = pytd.NamedType("NoneType")
+    methods = _merge_method_signatures(
+        [self.new_function((), False, "__init__", args, ret, ())])
+    cls_name = escape.pack_newtype_base_class(
+        name, len(self._generated_classes[name]))
+    cls = pytd.Class(name=cls_name,
+                     metaclass=None,
+                     parents=(typ,),
+                     methods=tuple(methods),
+                     constants=(),
+                     decorators=(),
+                     classes=(),
+                     slots=None,
+                     template=())
+    self._generated_classes[name].append(cls)
+    return pytd.NamedType(cls_name)
+
   def new_typed_dict(self, name, items, total):
     """Returns a type for a TypedDict.
 

@@ -34,6 +34,7 @@ enum CallSelector {
   kNewConstant,
   kNewFunction,
   kNewNamedTuple,
+  kNewNewType,
   kNewTypedDict,
   kRegisterClassName,
   kAddTypeVar,

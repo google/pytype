@@ -302,6 +302,10 @@ class LexerTest(test_base.UnitTest):
     self.check(["TYPEDDICT"], "typing.TypedDict")
     self.check(["TYPEDDICT"], "typing_extensions.TypedDict")
 
+  def test_newtype(self):
+    self.check(["NEWTYPE"], "NewType")
+    self.check(["NEWTYPE"], "typing.NewType")
+
 
 if __name__ == "__main__":
   unittest.main()

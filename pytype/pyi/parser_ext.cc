@@ -45,6 +45,7 @@ static const SelectorEntry<CallSelector> call_attributes[] = {
   {kNewConstant, "new_constant"},
   {kNewFunction, "new_function"},
   {kNewNamedTuple, "new_named_tuple"},
+  {kNewNewType, "new_new_type"},
   {kNewTypedDict, "new_typed_dict"},
   {kRegisterClassName, "register_class_name"},
   {kAddTypeVar, "add_type_var"},
@@ -294,6 +295,7 @@ static void add_tokens_dict(PyObject* module) {
   add_token(tokens, "NOTHING",         t::NOTHING);
   add_token(tokens, "NAMEDTUPLE",      t::NAMEDTUPLE);
   add_token(tokens, "COLL_NAMEDTUPLE", t::COLL_NAMEDTUPLE);
+  add_token(tokens, "NEWTYPE",         t::NEWTYPE);
   add_token(tokens, "TYPEDDICT",       t::TYPEDDICT);
   add_token(tokens, "TYPEVAR",         t::TYPEVAR);
 

@@ -70,7 +70,7 @@ int pytypelex(pytype::parser::semantic_type* lvalp, pytype::location* llocp,
 
 /* Reserved words. */
 %token ASYNC CLASS DEF ELSE ELIF IF OR AND PASS IMPORT FROM AS RAISE
-%token NOTHING NAMEDTUPLE COLL_NAMEDTUPLE TYPEDDICT TYPEVAR
+%token NOTHING NAMEDTUPLE COLL_NAMEDTUPLE NEWTYPE TYPEDDICT TYPEVAR
 /* Punctuation. */
 %token ARROW ELLIPSIS EQ NE LE GE
 /* Other. */
@@ -435,6 +435,9 @@ from_item
   | COLL_NAMEDTUPLE {
       $$ = PyString_FromString("namedtuple");
     }
+  | NEWTYPE {
+      $$ = PyString_FromString("NewType");
+    }
   | TYPEDDICT {
       $$ = PyString_FromString("TypedDict");
     }
@@ -445,6 +448,7 @@ from_item
       $$ = PyString_FromString("*");
     }
   | NAME AS NAME { $$ = Py_BuildValue("(NN)", $1, $3); }
+  | NEWTYPE AS NEWTYPE { $$ = PyString_FromString("NewType"); }
   ;
 
 alias_or_constant
@@ -504,6 +508,7 @@ funcdef
 funcname
   : NAME { $$ = $1; }
   | COLL_NAMEDTUPLE { $$ = PyString_FromString("namedtuple"); }
+  | NEWTYPE { $$ = PyString_FromString("NewType"); }
   | TYPEDDICT { $$ = PyString_FromString("TypedDict"); }
   ;
 
@@ -650,6 +655,10 @@ type
     }
   | COLL_NAMEDTUPLE '(' STRING ',' coll_named_tuple_fields maybe_comma ')' {
       $$ = ctx->Call(kNewNamedTuple, "(NN)", $3, $5);
+      CHECK($$, @$);
+    }
+  | NEWTYPE '(' STRING ',' type maybe_comma ')' {
+      $$ = ctx->Call(kNewNewType, "(NN)", $3, $5);
       CHECK($$, @$);
     }
   | TYPEDDICT '(' STRING ',' typed_dict_fields maybe_typed_dict_kwarg ')' {

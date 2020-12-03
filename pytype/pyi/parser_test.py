@@ -2579,5 +2579,30 @@ class TypedDictTest(_ParserTestBase):
     """)
 
 
+class NewTypeTest(_ParserTestBase):
+
+  def test_basic(self):
+    self.check("""
+      from typing import NewType
+      X = NewType('X', int)
+    """, """
+      X = newtype_X_0
+
+      class newtype_X_0(int):
+          def __init__(self, val: int) -> None: ...
+    """)
+
+  def test_fullname(self):
+    self.check("""
+      import typing
+      X = typing.NewType('X', int)
+    """, """
+      X = newtype_X_0
+
+      class newtype_X_0(int):
+          def __init__(self, val: int) -> None: ...
+    """)
+
+
 if __name__ == "__main__":
   unittest.main()
