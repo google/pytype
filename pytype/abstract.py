@@ -420,6 +420,9 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   def isinstance_PyTDFunction(self):
     return isinstance(self, PyTDFunction)
 
+  def isinstance_PythonConstant(self):
+    return isinstance(self, mixin.PythonConstant)
+
   def isinstance_SimpleAbstractValue(self):
     return isinstance(self, SimpleAbstractValue)
 

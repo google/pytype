@@ -358,7 +358,8 @@ class Args(collections.namedtuple(
           # 2. match *xs to w and raise a missing parameter error for z, or
           # 3. match *xs to w..z and raise an extra parameter error?
           # We currently opt for (2) but all three options have their points.
-          if not starargs_list and abstract_utils.is_var_indefinite_tuple(arg):
+          if (not starargs_list and
+              abstract_utils.is_var_indefinite_sequence(arg)):
             final_stararg = arg
           else:
             posargs += (arg,)
@@ -369,7 +370,7 @@ class Args(collections.namedtuple(
           # Check if we are matching *args in the invocation list with *args in
           # the function signature rather than against leftover posargs.
           if (len(starargs_list) == 1 and
-              abstract_utils.is_var_indefinite_tuple(starargs_list[0])):
+              abstract_utils.is_var_indefinite_sequence(starargs_list[0])):
             starargs, = starargs_list
           else:
             starargs = vm.convert.tuple_to_value(

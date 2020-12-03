@@ -3177,7 +3177,7 @@ class VirtualMachine:
         itr = abstract_utils.get_atomic_python_constant(
             var, collections.Iterable)
       except abstract_utils.ConversionError:
-        if abstract_utils.is_var_indefinite_tuple(var):
+        if abstract_utils.is_var_indefinite_sequence(var):
           elements.append(var)
         else:
           # TODO(rechen): The assumption that any abstract iterable unpacks to
