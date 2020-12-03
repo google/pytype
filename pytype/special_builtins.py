@@ -38,6 +38,17 @@ class TypeNew(abstract.PyTDFunction):
       # bound to a class or function, so we'll go with Any.
       self.match_args(node, args)  # May raise FailedFunctionCall.
       return node, self.vm.new_unsolvable(node)
+    elif args.posargs and all(
+        v.full_name == "typing.Protocol" for v in args.posargs[-1].data):
+      # type(Protocol) is a _ProtocolMeta class that inherits from abc.ABCMeta.
+      # Changing the definition of Protocol in typing.pytd to include this
+      # metaclass causes a bunch of weird breakages, so we instead return the
+      # metaclass when type() or __class__ is accessed on Protocol. For
+      # simplicity, we pretend the metaclass is ABCMeta rather than a subclass.
+      self.match_args(node, args)  # May raise FailedFunctionCall.
+      abc = self.vm.import_module("abc", "abc", 0).get_module("ABCMeta")
+      abc.load_lazy_attribute("ABCMeta")
+      return node, abc.members["ABCMeta"].AssignToNewVariable(node)
     node, raw_ret = super().call(node, func, args)
     # Removes TypeVars from the return value.
     # See test_typevar.TypeVarTest.test_type_of_typevar(_error).
