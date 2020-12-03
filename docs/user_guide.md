@@ -297,9 +297,9 @@ syntax; the one-type-comment-per-parameter syntax isn't supported
 
 [new-bug]: https://github.com/google/pytype/issues/new
 
-[pytype-builtins]: https://github.com/google/pytype/tree/master/pytype/pytd/builtins
+[pytype-builtins]: https://github.com/google/pytype/tree/master/pytype/stubs/builtins
 
-[pytype-stdlib]: https://github.com/google/pytype/tree/master/pytype/pytd/stdlib
+[pytype-stdlib]: https://github.com/google/pytype/tree/master/pytype/stubs/stdlib
 
 [style-guide-conditional-imports]: https://google.github.io/styleguide/pyguide.html#31913-conditional-imports
 

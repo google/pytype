@@ -28,9 +28,9 @@ and output phases of pytype's execution.
 
 ## Loading
 
-To allow the feature to be imported in source files and referenced in type 
+To allow the feature to be imported in source files and referenced in type
 stubs, we need to declare it in the stub for `typing`, located in
-`pytype/pytd/builtins`. This declaration should describe
+`pytype/stubs/builtins`. This declaration should describe
 [how the feature is typed][type_stubs].
 
 Note:

@@ -35,7 +35,7 @@ py_library(
     pytype_source_utils.py
     utils.py
   DEPS
-    pytype.pytd.builtins_pytd
+    pytype.stubs.stubs
 )
 
 py_library(
@@ -441,7 +441,7 @@ py_test(
     load_pytd_test.py
   DEPS
     .load_pytd
-    pytype.pytd.builtins_pytd
+    pytype.stubs.stubs
     pytype.tests.test_base
 )
 
@@ -452,7 +452,7 @@ py_test(
     imports_map_loader_test.py
   DEPS
     .libvm
-    pytype.pytd.builtins_pytd
+    pytype.stubs.stubs
 )
 
 py_test(
@@ -500,6 +500,7 @@ add_subdirectory(overlays)
 add_subdirectory(pyc)
 add_subdirectory(pyi)
 add_subdirectory(pytd)
+add_subdirectory(stubs)
 add_subdirectory(tests)
 add_subdirectory(tools)
 add_subdirectory(typegraph)
