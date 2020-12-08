@@ -16,7 +16,7 @@ freshness: { owner: 'mdemello' reviewed: '2020-12-04' }
       * [Adding a new option](#adding-a-new-option)
       * [Config files](#config-files)
 
-<!-- Added by: mdemello, at: 2020-12-04T21:55-08:00 -->
+<!-- Added by: rechen, at: 2020-12-07T20:53-08:00 -->
 
 <!--te-->
 
@@ -185,6 +185,9 @@ other option groups to change).
 
 If your option needs validation or postprocessing, add a corresponding method to
 the `Postprocessor` class.
+
+Options added to `basic_options` should also be added to the
+`_PYTYPE_SINGLE_ITEMS` dict in `tools/analyze_project/config.py`
 
 For instance, look at the complete code for the `pythonpath` option:
 
