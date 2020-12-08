@@ -441,6 +441,17 @@ class TestFunctions(test_base.TargetPython3BasicTest):
       g(f)
     """)
 
+  def test_starargs_list(self):
+    self.Check("""
+      from typing import List
+      def f() -> List[int]:
+        return __any_object__
+      def g(x, y, z):
+        pass
+      def h(x):
+        return g(x, *f())
+    """)
+
 
 class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for functions."""

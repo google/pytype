@@ -696,3 +696,23 @@ def is_literal(annot: Optional[_AbstractValueType]):
   if annot.isinstance_Union():
     return all(is_literal(o) for o in annot.options)
   return annot.isinstance_LiteralClass()
+
+
+def is_indefinite_sequence(val: _AbstractValueType):
+  """True if val is a non-concrete instance of typing.Sequence."""
+  if (not val.isinstance_Instance() or val.isinstance_PythonConstant() or
+      not val.cls.isinstance_Class()):
+    return False
+  for cls in val.cls.mro:
+    if cls.full_name == "__builtin__.tuple":
+      # A tuple's cls attribute may point to either PyTDClass(tuple) or
+      # TupleClass; only the former is indefinite.
+      return cls.isinstance_PyTDClass()
+    elif cls.full_name == "typing.Sequence":
+      return True
+  return False
+
+
+def is_var_indefinite_sequence(var):
+  """True if all bindings of var are indefinite sequences."""
+  return all(is_indefinite_sequence(x) for x in var.data)

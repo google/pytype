@@ -156,6 +156,22 @@ class ImportPathsTest(test_base.UnitTest):
     loader = load_pytd.Loader("base", self.python_version)
     self.assertTrue(loader.import_name("urllib.request"))
 
+  def test_prefer_typeshed(self):
+    with file_utils.Tempdir() as d:
+      # Override two modules from typeshed
+      d.create_file("typing_extensions/__init__.pyi", "foo: str = ...")
+      d.create_file("crypt/__init__.pyi", "foo: str = ...")
+      loader = load_pytd.Loader("x", self.python_version, pythonpath=[d.path])
+      # typing_extensions should ignore the override, crypt should not.
+      ast1 = loader.import_name("typing_extensions")
+      ast2 = loader.import_name("crypt")
+      self.assertTrue(ast1.Lookup("typing_extensions.Literal"))
+      self.assertTrue(ast2.Lookup("crypt.foo"))
+      with self.assertRaises(KeyError):
+        ast1.Lookup("typing_extensions.foo")
+      with self.assertRaises(KeyError):
+        ast2.Lookup("crypt.crypt")
+
   def test_resolve_alias(self):
     with file_utils.Tempdir() as d:
       d.create_file("module1.pyi", """

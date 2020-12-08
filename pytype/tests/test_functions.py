@@ -874,6 +874,33 @@ class TestFunctions(test_base.TargetIndependentTest):
         foo.f(True, False)  # wrong-arg-types
       """, pythonpath=[d.path])
 
+  def test_starargs_matching_pyi_posargs(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(x: int, y: int, z: int) -> None: ...
+      """)
+      self.CheckWithErrors("""
+        import foo
+        def g(x, *args):
+          foo.f(x, *args)
+          foo.f(x, 1, *args)
+          foo.f(x, 1)  # missing-parameter
+      """, pythonpath=[d.path])
+
+  def test_starargs_forwarding(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(x: int) -> None: ...
+      """)
+      self.Check("""
+        import foo
+        def f(x, y, *args):
+          for i in args:
+            foo.f(i)
+        def g(*args):
+          f(1, 2, *args)
+      """, pythonpath=[d.path])
+
   def test_infer_bound_pytd_func(self):
     ty = self.Infer("""
       import struct

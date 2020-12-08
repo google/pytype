@@ -791,7 +791,7 @@ class PullInMethodClasses(visitors.Visitor):
     """
     if not self._processed_count[cls.name]:
       # Leave standalone classes alone. E.g. the pytd files in
-      # pytd/builtins/ defines classes not used by anything else.
+      # stubs/builtins/ defines classes not used by anything else.
       return False
     return self._processed_count[cls.name] == self._total_count[cls.name]
 

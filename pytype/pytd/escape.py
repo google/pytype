@@ -61,3 +61,8 @@ def pack_namedtuple_base_class(name: str, index: int) -> str:
 def unpack_namedtuple(name: str) -> str:
   """Retrieve the original namedtuple class name."""
   return re.sub(r"\bnamedtuple[-_]([^-_]+)[-_\w]*", r"\1", name)
+
+
+def pack_newtype_base_class(name: str, index: int) -> str:
+  """Generate a name for a NewType proxy base class."""
+  return "newtype_%s_%d" % (name, index)

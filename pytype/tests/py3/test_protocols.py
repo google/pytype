@@ -713,5 +713,23 @@ class ProtocolsTestPython3Feature(test_base.TargetPython3FeatureTest):
       g(foo)
     """)
 
+  def test_metaclass_abstractness(self):
+    self.Check("""
+      import abc
+      from typing import Protocol
+      class Meta1(type(Protocol)):
+        pass
+      class Meta2(Protocol.__class__):
+        pass
+      class Foo(metaclass=Meta1):
+        @abc.abstractmethod
+        def foo(self):
+          pass
+      class Bar(metaclass=Meta2):
+        @abc.abstractmethod
+        def bar(self):
+          pass
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

@@ -1,5 +1,4 @@
 import hashlib
-import os
 import re
 import textwrap
 
@@ -16,10 +15,8 @@ IGNORE = object()
 
 
 def get_builtins_source(python_version):
-  filename = "builtins/%d/__builtin__.pytd" % python_version[0]
-  pytd_dir = os.path.dirname(pytd.__file__)
-  with open(os.path.join(pytd_dir, filename)) as f:
-    return f.read()
+  return pytd_utils.GetPredefinedFile(
+      "builtins/%d" % python_version[0], "__builtin__")[1]
 
 
 class _ParserTestBase(test_base.UnitTest):
@@ -2576,6 +2573,31 @@ class TypedDictTest(_ParserTestBase):
       from typing import TypedDict
 
       class Foo(TypedDict, metaclass=Meta): ...
+    """)
+
+
+class NewTypeTest(_ParserTestBase):
+
+  def test_basic(self):
+    self.check("""
+      from typing import NewType
+      X = NewType('X', int)
+    """, """
+      X = newtype_X_0
+
+      class newtype_X_0(int):
+          def __init__(self, val: int) -> None: ...
+    """)
+
+  def test_fullname(self):
+    self.check("""
+      import typing
+      X = typing.NewType('X', int)
+    """, """
+      X = newtype_X_0
+
+      class newtype_X_0(int):
+          def __init__(self, val: int) -> None: ...
     """)
 
 

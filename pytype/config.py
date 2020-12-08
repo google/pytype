@@ -193,9 +193,8 @@ def add_pickle_options(o):
   o.add_argument(
       "--pickle-output", action="store_true", default=False,
       dest="pickle_output",
-      help=("Saves the ast representation of the inferred pyi as a pickled "
-            "file. The value of this parameter is the destination filename "
-            "for the pickled data."))
+      help=("Save the ast representation of the inferred pyi as a pickled "
+            "file to the destination filename in the --output parameter."))
   o.add_argument(
       "--use-pickled-files", action="store_true", default=False,
       dest="use_pickled_files",

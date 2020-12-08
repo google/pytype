@@ -103,6 +103,8 @@ typedef pytype::parser::token t;
 "typing.NamedTuple" { return t::NAMEDTUPLE; }
 "namedtuple" { return t::COLL_NAMEDTUPLE; }
 "collections.namedtuple" { return t::COLL_NAMEDTUPLE; }
+"NewType" { return t::NEWTYPE; }
+"typing.NewType" { return t::NEWTYPE; }
 "TypedDict" { return t::TYPEDDICT; }
 "typing.TypedDict" { return t::TYPEDDICT; }
 "typing_extensions.TypedDict" { return t::TYPEDDICT; }

@@ -36,6 +36,10 @@ PICKLE_EXT = ".pickled"
 DEFAULT_PYI_PATH_SUFFIX = None
 
 
+# Always load this module from typeshed, even if we have it in the imports map
+_ALWAYS_PREFER_TYPESHED = frozenset({"typing_extensions"})
+
+
 def is_pickle(filename):
   return os.path.splitext(filename)[1].startswith(PICKLE_EXT)
 
@@ -520,6 +524,8 @@ class Loader:
         # Remove the default module from the cache; we will return it later if
         # nothing else supplies the module AST.
         default = self._modules.get(module_name)
+        del self._modules[module_name]
+      elif module_name in _ALWAYS_PREFER_TYPESHED:
         del self._modules[module_name]
       else:
         return file_ast

@@ -11,7 +11,7 @@
          * [AST simplification](#ast-simplification)
          * [Pickling](#pickling)
 
-<!-- Added by: rechen, at: 2020-11-23T02:16-08:00 -->
+<!-- Added by: rechen, at: 2020-12-04T17:03-08:00 -->
 
 <!--te-->
 
@@ -82,6 +82,24 @@ whole-project analysis tools always pass in `--imports_info` for more reliable,
 reproducible stub finding. The pytype GitHub project uses
 [importlab][importlab], another Google open-source project, to generate the
 dependency graph from which imports_info is constructed.
+
+As a concrete example, suppose a module `bar` contains the following imports:
+
+```python
+import dep1
+from foo import dep2
+```
+
+pytype will first analyze `dep1` and `dep2` and write type stubs to an output
+directory, say `/home/.pytype/pyi/`. It will then construct this imports_info
+file:
+
+```
+dep1 /home/.pytype/pyi/dep1.pyi
+foo/dep2 /home/.pytype/pyi/foo/dep2.pyi
+```
+
+and use it for import lookup when analyzing `bar`.
 
 If an import can't be resolved locally, pytype falls back to the standard
 library, then typeshed/third_party.

@@ -120,9 +120,9 @@ def scan_package_data(path, pattern, check):
 
 
 def get_data_files():
-  builtins = scan_package_data(['pytd', 'builtins'], '*.py*',
-                               check=['3', '*.py*'])
-  stdlib = scan_package_data(['pytd', 'stdlib'], '*.pytd',
+  builtins = scan_package_data(['stubs', 'builtins'], '*.pytd',
+                               check=['3', '*.pytd'])
+  stdlib = scan_package_data(['stubs', 'stdlib'], '*.pytd',
                              check=['3', '*.pytd'])
   typeshed = scan_package_data(['typeshed'], '*.pyi',
                                check=['stdlib', '2', '*.pyi'])

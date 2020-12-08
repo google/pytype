@@ -187,7 +187,18 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   def get_special_attribute(self, unused_node, name, unused_valself):
     """Fetch a special attribute (e.g., __get__, __iter__)."""
     if name == "__class__":
-      return self.get_class().to_variable(self.vm.root_cfg_node)
+      if self.full_name == "typing.Protocol":
+        # Protocol.__class__ is a _ProtocolMeta class that inherits from
+        # abc.ABCMeta. Changing the definition of Protocol in typing.pytd to
+        # include this metaclass causes a bunch of weird breakages, so we
+        # instead return the metaclass when type() or __class__ is accessed on
+        # Protocol. For simplicity, we pretend the metaclass is ABCMeta rather
+        # than a subclass.
+        abc = self.vm.import_module("abc", "abc", 0).get_module("ABCMeta")
+        abc.load_lazy_attribute("ABCMeta")
+        return abc.members["ABCMeta"]
+      else:
+        return self.get_class().to_variable(self.vm.root_cfg_node)
     return None
 
   def get_own_new(self, node, value):
@@ -408,6 +419,9 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
 
   def isinstance_PyTDFunction(self):
     return isinstance(self, PyTDFunction)
+
+  def isinstance_PythonConstant(self):
+    return isinstance(self, mixin.PythonConstant)
 
   def isinstance_SimpleAbstractValue(self):
     return isinstance(self, SimpleAbstractValue)
@@ -1813,7 +1827,10 @@ class PyTDFunction(Function):
 
   def call(self, node, func, args, alias_map=None):
     # TODO(b/159052609): We should be passing function signatures to simplify.
-    args = args.simplify(node, self.vm)
+    if len(self.signatures) == 1:
+      args = args.simplify(node, self.vm, self.signatures[0].signature)
+    else:
+      args = args.simplify(node, self.vm)
     self._log_args(arg.bindings for arg in args.posargs)
     ret_map = {}
     retvar = self.vm.program.NewVariable()
