@@ -1,5 +1,7 @@
 # Supporting new typing features
 
+<!--* freshness: { owner: 'rechen' reviewed: '2020-12-08' } *-->
+
 <!--ts-->
    * [Supporting new typing features](#supporting-new-typing-features)
       * [Introduction](#introduction)
@@ -16,7 +18,7 @@
          * [PrintVisitor](#printvisitor)
       * [Partial support](#partial-support)
 
-<!-- Added by: rechen, at: 2020-11-23T14:36-08:00 -->
+<!-- Added by: rechen, at: 2020-12-08T18:14-08:00 -->
 
 <!--te-->
 

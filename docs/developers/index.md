@@ -1,5 +1,7 @@
 # Developer guide
 
+<!--* freshness: { owner: 'rechen' reviewed: '2020-12-08' } *-->
+
 **Under Construction**
 
 <!-- TODO(b/151848869):
@@ -24,7 +26,7 @@ This documentation is for developers of and contributors to pytype. It covers:
             * [Typegraph](#typegraph)
       * [Updating the developer guide](#updating-the-developer-guide)
 
-<!-- Added by: rechen, at: 2020-12-07T20:53-08:00 -->
+<!-- Added by: rechen, at: 2020-12-08T18:14-08:00 -->
 
 <!--te-->
 

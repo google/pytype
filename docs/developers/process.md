@@ -1,5 +1,7 @@
 # Development process
 
+<!--* freshness: { owner: 'rechen' reviewed: '2020-12-08' } *-->
+
 <!--ts-->
    * [Development process](#development-process)
       * [GitHub](#github)
@@ -7,7 +9,7 @@
       * [Debugging](#debugging)
       * [Profiling](#profiling)
 
-<!-- Added by: mdemello, at: 2020-08-10T13:15-07:00 -->
+<!-- Added by: rechen, at: 2020-12-08T18:14-08:00 -->
 
 <!--te-->
 
