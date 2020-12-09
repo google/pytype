@@ -1634,7 +1634,7 @@ def _merge_method_signatures(signatures):
     is_coroutine = name_to_is_coroutine[name]
     if name == "__new__" or decorator == "staticmethod":
       kind = pytd.STATICMETHOD
-    elif decorator == "classmethod":
+    elif name == "__init_subclass__" or decorator == "classmethod":
       kind = pytd.CLASSMETHOD
     elif _is_property(name, decorator, sigs[0]):
       kind = pytd.PROPERTY

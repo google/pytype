@@ -501,7 +501,7 @@ class PrintVisitor(Visitor):
     decorators = ""
     if node.kind == pytd.STATICMETHOD and function_name != "__new__":
       decorators += "@staticmethod\n"
-    elif node.kind == pytd.CLASSMETHOD:
+    elif node.kind == pytd.CLASSMETHOD and function_name != "__init_subclass__":
       decorators += "@classmethod\n"
     elif node.kind == pytd.PROPERTY:
       decorators += "@property\n"

@@ -61,26 +61,14 @@ git submodule update --init
 ```
 
 ### Building `pytype` and other executables
-There are two ways to build the executables like `pytype` etc. To build them the
-same way that the continuous integration tests do, use this convenience script:
+The executables like `pytype` etc. are built using a convenience script as
+follows:
 
 ```shell
 python build_scripts/build.py
 ```
 
 `build.py` will build the executables in the `out/bin` directory.
-
-To emulate the way they are built when a user downloads the source code from
-PyPI, use:
-
-```shell
-pip install -e .
-```
-
-`-e` makes it so that the executables will automatically pick up code edits.
-This second method is useful for making sure that pytype is still packaged
-correctly after changes to its code structure or dependencies. The downside is
-that logging from extension modules is unavailable (see below).
 
 ### Logging
 One can pass the logging verbosity level option to `pytype-single` to see the
@@ -136,17 +124,6 @@ source tree. If a target name is not specified, the script runs all `py_test`
 and `cc_test` targets in the Pytype source tree.
 
 For more information about `run_tests.py` options, run `run_test.py --help`.
-
-To also lint and type-check the code, you can use:
-
-```shell
-python build_scripts/ci_script.py
-```
-
-### Resources
-
-For more resources for contributors, check out our developer guide:
-https://google.github.io/pytype/developers/index.html.
 
 ### The small print
 Contributions made by corporations are covered by a different agreement than

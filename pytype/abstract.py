@@ -3184,6 +3184,9 @@ class InterpreterFunction(SignedFunction):
       self.is_class_builder = False  # Will be set by BuildClass.
     else:
       self.is_class_builder = self.code.has_opcode(opcodes.LOAD_LOCALS)
+    if name.endswith(".__init_subclass__"):
+      # __init_subclass__ is automatically promoted to a classmethod
+      self.is_classmethod = True
 
   @contextlib.contextmanager
   def record_calls(self):
