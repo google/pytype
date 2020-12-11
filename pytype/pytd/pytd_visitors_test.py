@@ -134,24 +134,5 @@ class PytdVisitorsTest(parser_test_base.ParserTest):
                          [t.name for t in data[ast.Lookup("E")]])
 
 
-class TestAncestorMap(unittest.TestCase):
-
-  def test_get_ancestor_map(self):
-    ancestors = pytd_visitors._GetAncestorMap()
-    # TypeDeclUnit is the top of the food chain - no ancestors other than
-    # itself.
-    self.assertEqual({"TypeDeclUnit"}, ancestors["TypeDeclUnit"])
-    # NamedType can appear in quite a few places, spot check a few.
-    named_type = ancestors["NamedType"]
-    self.assertIn("TypeDeclUnit", named_type)
-    self.assertIn("Parameter", named_type)
-    self.assertIn("GenericType", named_type)
-    self.assertIn("NamedType", named_type)
-    # Check a few places where NamedType cannot appear.
-    self.assertNotIn("ClassType", named_type)
-    self.assertNotIn("NothingType", named_type)
-    self.assertNotIn("AnythingType", named_type)
-
-
 if __name__ == "__main__":
   unittest.main()

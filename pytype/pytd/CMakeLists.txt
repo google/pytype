@@ -24,12 +24,13 @@ py_library(
     escape.py
     mro.py
     optimize.py
-    pep484.py
     slots.py
     transforms.py
     type_match.py
     visitors.py
   DEPS
+    .base_visitor
+    .pep484
     .pytd_defs
     .pytd_utils
     .pytd_visitors
@@ -40,6 +41,26 @@ py_library(
     pytype.pytd.parse.parser_constants
     pytype.stubs.stubs  # TODO(b/159043305): Move this into a data dependency
     pytype.typegraph.cfg
+)
+
+py_library(
+  NAME
+    base_visitor
+  SRCS
+    base_visitor.py
+  DEPS
+    .pytd_defs
+    pytype.typegraph.cfg_utils
+)
+
+py_library(
+  NAME
+    pep484
+  SRCS
+    pep484.py
+  DEPS
+    .base_visitor
+    .pytd_defs
 )
 
 py_library(
@@ -69,6 +90,8 @@ py_library(
   SRCS
     pytd_visitors.py
   DEPS
+    .base_visitor
+    .pep484
     .pytd_defs
     pytype.pytd.parse.parser_constants
     pytype.typegraph.cfg_utils
@@ -103,6 +126,15 @@ py_test(
     abc_hierarchy_test.py
   DEPS
     pytype.pytd.parse.parser_test_base
+)
+
+py_test(
+  NAME
+    base_visitor_test
+  SRCS
+    base_visitor_test.py
+  DEPS
+    .base_visitor
 )
 
 py_test(

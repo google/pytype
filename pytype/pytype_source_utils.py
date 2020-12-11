@@ -15,7 +15,11 @@ class NoSuchDirectory(Exception):  # pylint: disable=g-bad-exception-name
 
 def pytype_source_dir():
   """The base directory of the pytype source tree."""
-  return os.path.dirname(__file__)
+  res = os.path.dirname(__file__)
+  if os.path.basename(res) == "__pycache__":
+    # For source-less par files __file__ points at __pycache__ subdirectory...
+    res = os.path.dirname(res)
+  return res
 
 
 def get_full_path(path):

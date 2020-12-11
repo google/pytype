@@ -1,7 +1,7 @@
 """PEP484 compatibility code."""
 
+from pytype.pytd import base_visitor
 from pytype.pytd import pytd
-from pytype.pytd import visitors
 
 
 PEP484_NAMES = ["AbstractSet", "AnyStr", "AsyncGenerator", "BinaryIO",
@@ -42,7 +42,7 @@ def PEP484_MaybeCapitalize(name):  # pylint: disable=invalid-name
       return capitalized
 
 
-class ConvertTypingToNative(visitors.Visitor):
+class ConvertTypingToNative(base_visitor.Visitor):
   """Visitor for converting PEP 484 types to native representation."""
 
   def __init__(self, module):

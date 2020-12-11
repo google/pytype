@@ -102,4 +102,24 @@ class TestMethods(test_base.TargetPython3BasicTest):
     """, maximum_depth=2)
 
 
+class TestMethodsPy3(test_base.TargetPython3FeatureTest):
+  """Test python3-specific method features."""
+
+  def test_init_subclass_classmethod(self):
+    """__init_subclass__ should be promoted to a classmethod."""
+
+    self.Check("""
+      from typing import Type
+
+      _REGISTERED_BUILDERS = {}
+
+      class A():
+        def __init_subclass__(cls, **kwargs):
+          _REGISTERED_BUILDERS['name'] = cls
+
+      def get_builder(name: str) -> Type[A]:
+        return _REGISTERED_BUILDERS[name]
+    """)
+
+
 test_base.main(globals(), __name__ == "__main__")

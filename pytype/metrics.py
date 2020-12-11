@@ -23,16 +23,9 @@ import math
 import re
 import sys
 import time
+import tracemalloc
 
 import six
-
-
-# TODO(tsudol): Not needed once pytype is ported to Python 3.
-try:
-  import tracemalloc  # pytype: disable=import-error  # pylint: disable=g-import-not-at-top
-except ImportError:
-  tracemalloc = None
-
 
 # Metric serialization/deserialization code, taking advantage of the fact that
 # all instance vars of metrics are things that json can serialize, so we don't
@@ -358,12 +351,11 @@ class Snapshot(Metric):
     # The number of memory block statistics to save.
     self.count = count
     self.running = False
-    # Three conditions must be met for memory snapshots to be taken:
-    # 1. tracemalloc was imported successfully (tracemalloc)
-    # 2. Metrics have been enabled (global _enabled)
-    # 3. Explicitly enabled by the arg to the constructor (which should be the
+    # Two conditions must be met for memory snapshots to be taken:
+    # 1. Metrics have been enabled (global _enabled)
+    # 2. Explicitly enabled by the arg to the constructor (which should be the
     # options.memory_snapshot flag set by the --memory-snapshots option)
-    self.enabled = tracemalloc and _enabled and enabled
+    self.enabled = _enabled and enabled
 
   def _start_tracemalloc(self):
     tracemalloc.start(self.nframes)

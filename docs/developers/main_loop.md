@@ -1,12 +1,14 @@
 # The main loop
 
+<!--* freshness: { owner: 'mdemello' reviewed: '2020-12-08' } *-->
+
 <!--ts-->
    * [The main loop](#the-main-loop)
       * [Processing a file](#processing-a-file)
       * [Processing a single opcode](#processing-a-single-opcode)
       * [Two-pass Analysis](#two-pass-analysis)
 
-<!-- Added by: tsudol, at: 2020-11-20T16:19-08:00 -->
+<!-- Added by: rechen, at: 2020-12-08T18:14-08:00 -->
 
 <!--te-->
 

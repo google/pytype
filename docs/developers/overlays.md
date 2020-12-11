@@ -1,5 +1,7 @@
 # Overlays
 
+<!--* freshness: { owner: 'rechen' reviewed: '2020-12-08' } *-->
+
 <!--ts-->
    * [Overlays](#overlays)
       * [Introduction](#introduction)
@@ -7,7 +9,7 @@
       * [Mechanics](#mechanics)
       * [Adding an overlay](#adding-an-overlay)
 
-<!-- Added by: rechen, at: 2020-11-17T00:18-08:00 -->
+<!-- Added by: rechen, at: 2020-12-08T18:14-08:00 -->
 
 <!--te-->
 

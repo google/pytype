@@ -1,5 +1,7 @@
 # Attributes
 
+<!--* freshness: { owner: 'rechen' reviewed: '2020-12-08' } *-->
+
 <!--ts-->
    * [Attributes](#attributes)
       * [Introduction](#introduction)
@@ -10,7 +12,7 @@
          * [get_special_attribute](#get_special_attribute)
          * [valself](#valself)
 
-<!-- Added by: rechen, at: 2020-10-12T17:27-07:00 -->
+<!-- Added by: rechen, at: 2020-12-08T18:14-08:00 -->
 
 <!--te-->
 

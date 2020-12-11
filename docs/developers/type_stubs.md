@@ -1,5 +1,7 @@
 # Type stubs
 
+<!--* freshness: { owner: 'rechen' reviewed: '2020-12-08' } *-->
+
 <!--ts-->
    * [Type stubs](#type-stubs)
       * [Introduction](#introduction)
@@ -11,7 +13,7 @@
          * [AST simplification](#ast-simplification)
          * [Pickling](#pickling)
 
-<!-- Added by: rechen, at: 2020-12-04T17:03-08:00 -->
+<!-- Added by: rechen, at: 2020-12-08T18:14-08:00 -->
 
 <!--te-->
 

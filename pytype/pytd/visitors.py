@@ -11,8 +11,10 @@ import re
 from pytype import datatypes
 from pytype import module_utils
 from pytype import utils
+from pytype.pytd import base_visitor
 from pytype.pytd import escape
 from pytype.pytd import mro
+from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import pytd_visitors
@@ -29,8 +31,8 @@ class SymbolLookupError(Exception):
 
 # All public elements of pytd_visitors are aliased here so that we can maintain
 # the conceptually simpler illusion of having a single visitors module.
-ALL_NODE_NAMES = pytd_visitors.ALL_NODE_NAMES
-Visitor = pytd_visitors.Visitor
+ALL_NODE_NAMES = base_visitor.ALL_NODE_NAMES
+Visitor = base_visitor.Visitor
 CanonicalOrderingVisitor = pytd_visitors.CanonicalOrderingVisitor
 ClassTypeToNamedType = pytd_visitors.ClassTypeToNamedType
 CollectTypeParameters = pytd_visitors.CollectTypeParameters
@@ -1620,8 +1622,6 @@ class ExpandCompatibleBuiltins(Visitor):
     """Dict[str, UnionType[ClassType, ...]] map."""
     prefix = builtins.name + "."
     rmap = collections.defaultdict(list)
-    # Import here due to circular import.
-    from pytype.pytd import pep484  # pylint: disable=g-import-not-at-top
 
     # compat_list :: [(compat, name)], where name is the more generalized
     # type and compat is the less generalized one. (eg: name = float, compat =
