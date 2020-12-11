@@ -1,4 +1,7 @@
 """Base class for visitors."""
+
+from typing import Any
+
 from pytype.pytd import pytd
 from pytype.typegraph import cfg_utils
 
@@ -86,6 +89,10 @@ class Visitor:
       data about legal ASTs.  As an optimization, the visitor will only visit
       nodes under which some actionable node can appear.
   """
+  # The old_node attribute contains a copy of the node before its children were
+  # visited. It has the same type as the node currently being visited.
+  old_node: Any
+
   visits_all_node_types = False
   unchecked_node_names = set()
 
