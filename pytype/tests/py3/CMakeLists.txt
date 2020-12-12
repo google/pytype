@@ -393,6 +393,16 @@ py_test(
 
 py_test(
   NAME
+    test_unpack
+  SRCS
+    test_unpack.py
+  DEPS
+    pytype.utils
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
     test_pickle
   SRCS
     test_pickle.py

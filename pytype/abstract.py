@@ -438,6 +438,9 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   def isinstance_Union(self):
     return isinstance(self, Union)
 
+  def isinstance_Unknown(self):
+    return isinstance(self, Unknown)
+
   def isinstance_Unsolvable(self):
     return isinstance(self, Unsolvable)
 
