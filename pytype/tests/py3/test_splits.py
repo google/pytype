@@ -252,6 +252,20 @@ class SplitTest(test_base.TargetPython3BasicTest):
         return x
     """)
 
+  def test_annotation_class(self):
+    ty = self.Infer("""
+      from typing import Sequence, Union
+      def f(x: Union[int, Sequence[int]]):
+        if isinstance(x, Sequence):
+          return x[0]
+        else:
+          return x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Sequence, Union
+      def f(x: Union[int, Sequence[int]]) -> int: ...
+    """)
+
 
 class SplitTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for if-splitting in Python 3."""
