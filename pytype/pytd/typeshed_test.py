@@ -88,6 +88,8 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
       self.assertNotIn("/", module_name)
 
   def test_carriage_return(self):
+    # _env_home is used in preference to _root, so make sure it's unset.
+    self.ts._env_home = None
     with file_utils.Tempdir() as d:
       d.create_file("stdlib/3/foo.pyi", b"x: int\r\n")
       self.ts._root = d.path
