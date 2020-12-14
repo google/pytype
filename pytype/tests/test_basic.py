@@ -501,6 +501,14 @@ class TestBasic(test_base.TargetIndependentTest):
   def test_string2(self):
     self.Check("v = '\\uD800'")
 
+  def test_del_after_listcomp(self):
+    self.Check("""
+      def foo(x):
+        num = 1
+        nums = [num for _ in range(2)]
+        del num
+    """)
+
 
 class TestLoops(test_base.TargetIndependentTest):
   """Loop tests."""
