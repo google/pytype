@@ -1,18 +1,17 @@
 add_package()
 
 py_library(
-    NAME
-      analyze_project
-    SRCS
-      config.py
-      environment.py
-      parse_args.py
-      pytype_runner.py
-    DEPS
-      pytype.config
-      pytype.io
-      pytype.utils
-      pytype.tools.tools
+  NAME
+    analyze_project
+  SRCS
+    config.py
+    environment.py
+    parse_args.py
+    pytype_runner.py
+  DEPS
+    pytype.config
+    pytype.utils
+    pytype.tools.tools
 )
 
 py_test(
@@ -54,4 +53,6 @@ toplevel_py_binary(
     main.py
   DEPS
     .analyze_project
+    pytype.io
+    pytype.tools.tools
 )

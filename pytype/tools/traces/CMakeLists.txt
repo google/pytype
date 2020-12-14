@@ -8,13 +8,22 @@ toplevel_py_binary(
   MAIN
     run.py
   DEPS
-    .traces
+    .traces_internal
     pytype.config
 )
 
 py_library(
   NAME
     traces
+  DEPS
+    .source
+    .traces_internal
+    pytype.ast.visitor
+)
+
+py_library(
+  NAME
+    traces_internal
   SRCS
     traces.py
   DEPS
@@ -35,10 +44,11 @@ py_test(
   SRCS
     traces_test.py
   DEPS
-    .traces
+    .traces_internal
     pytype.config
     pytype.utils
     pytype.pytd.pytd_defs
+    pytype.pytd.pytd_utils
     pytype.tests.test_base
 )
 

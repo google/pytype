@@ -698,21 +698,33 @@ def is_literal(annot: Optional[_AbstractValueType]):
   return annot.isinstance_LiteralClass()
 
 
-def is_indefinite_sequence(val: _AbstractValueType):
-  """True if val is a non-concrete instance of typing.Sequence."""
-  if (not val.isinstance_Instance() or val.isinstance_PythonConstant() or
-      not val.cls.isinstance_Class()):
+def is_indefinite_iterable(val: _AbstractValueType):
+  """True if val is a non-concrete instance of typing.Iterable."""
+  instance = val.isinstance_Instance()
+  concrete = (val.isinstance_PythonConstant() and
+              not getattr(val, "could_contain_anything", False))
+  cls_instance = val.cls and val.cls.isinstance_Class()
+  if not (instance and cls_instance and not concrete):
     return False
   for cls in val.cls.mro:
-    if cls.full_name == "__builtin__.tuple":
+    if cls.full_name == "__builtin__.str":
+      return False
+    elif cls.full_name == "__builtin__.tuple":
       # A tuple's cls attribute may point to either PyTDClass(tuple) or
       # TupleClass; only the former is indefinite.
       return cls.isinstance_PyTDClass()
-    elif cls.full_name == "typing.Sequence":
+    elif cls.full_name == "typing.Iterable":
       return True
   return False
 
 
-def is_var_indefinite_sequence(var):
+def is_var_indefinite_iterable(var):
   """True if all bindings of var are indefinite sequences."""
-  return all(is_indefinite_sequence(x) for x in var.data)
+  return all(is_indefinite_iterable(x) for x in var.data)
+
+
+def merged_type_parameter(node, var, param):
+  if not var.bindings:
+    return node.program.NewVariable()
+  params = [v.get_instance_type_parameter(param) for v in var.data]
+  return var.data[0].vm.join_variables(node, params)

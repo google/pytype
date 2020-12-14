@@ -1,9 +1,11 @@
+add_package()
+
 py_library(
   NAME
     visitor
   SRCS
-    visitor.py
     debug.py
+    visitor.py
 )
 
 py_test(
@@ -13,6 +15,4 @@ py_test(
     visitor_test.py
   DEPS
     .visitor
-    pytype.tests.test_base
 )
-

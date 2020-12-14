@@ -32,13 +32,13 @@ py_test(
 )
 
 py_test(
-    NAME
-      pyc_test
-    SRCS
-      pyc_test.py
-    DEPS
-      .pyc
-      pytype.tests.test_base
+  NAME
+    pyc_test
+  SRCS
+    pyc_test.py
+  DEPS
+    .pyc
+    pytype.tests.test_base
 )
 
 py_test(

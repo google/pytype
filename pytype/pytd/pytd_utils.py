@@ -425,7 +425,7 @@ def GetPredefinedFile(stubs_subdir, module, extension=".pytd",
     parts.append("__init__")
   mod_path = os.path.join(*parts) + extension
   path = os.path.join("stubs", stubs_subdir, mod_path)
-  return path, pytype_source_utils.load_pytype_file(path).decode("utf-8")
+  return path, pytype_source_utils.load_text_file(path)
 
 
 def LoadPickle(filename, compress=False, open_function=open):

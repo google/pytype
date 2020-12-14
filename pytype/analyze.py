@@ -396,7 +396,7 @@ class CallTracer(vm.VirtualMachine):
             not data.is_overload and
             not data.is_class_builder and
             data.get_first_opcode() not in self._analyzed_functions and
-            not _SKIP_FUNCTION_RE.match(data.name))
+            not _SKIP_FUNCTION_RE.search(data.name))
 
   def analyze_toplevel(self, node, defs):
     for name, var in sorted(defs.items()):  # sort, for determinicity

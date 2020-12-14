@@ -82,4 +82,3 @@ py_test(
   DEPS
     .parser_test_base
 )
-

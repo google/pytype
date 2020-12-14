@@ -50,18 +50,17 @@ class Typeshed:
   def _load_file(self, path):
     if self._env_home:
       filename = os.path.join(self._env_home, path)
-      with open(filename, "rb") as f:
+      with open(filename, "r") as f:
         return filename, f.read()
     else:
       filepath = os.path.join(self._root, path)
-      data = pytype_source_utils.load_pytype_file(filepath)
-      return filepath, data
+      return filepath, pytype_source_utils.load_text_file(filepath)
 
   def _load_missing(self):
     if not self.MISSING_FILE:
       return set()
-    _, data = self._load_file(self.MISSING_FILE)
-    return {line.decode("utf-8").strip() for line in data.split(b"\n") if line}
+    _, text = self._load_file(self.MISSING_FILE)
+    return {line.strip() for line in text.split("\n") if line}
 
   @property
   def missing(self):
@@ -176,10 +175,8 @@ class Typeshed:
 
   def read_blacklist(self):
     """Read the typeshed blacklist."""
-    _, data = self._load_file(os.path.join("tests", "pytype_exclude_list.txt"))
-    # |data| is raw byte data.
-    for line in data.splitlines():
-      line = line.decode("utf-8")
+    _, text = self._load_file(os.path.join("tests", "pytype_exclude_list.txt"))
+    for line in text.splitlines():
       line = line[:line.find("#")].strip()
       if line:
         yield line

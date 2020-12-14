@@ -326,6 +326,60 @@ class Args(collections.namedtuple(
       args = None
     return args
 
+  def _unpack_and_match_args(self, node, vm, match_signature, starargs_tuple):
+    """Match args against a signature with unpacking."""
+    posargs = self.posargs
+    # As we have the function signature we will attempt to adjust the
+    # starargs into the missing posargs.
+    pre = []
+    post = []
+    stars = collections.deque(starargs_tuple)
+    while stars and not abstract_utils.is_var_indefinite_iterable(stars[0]):
+      pre.append(stars.popleft())
+    while stars and not abstract_utils.is_var_indefinite_iterable(stars[-1]):
+      post.append(stars.pop())
+    post.reverse()
+    n_matched = len(posargs) + len(pre) + len(post)
+    posarg_delta = len(match_signature.param_names) - n_matched
+    if stars and not post:
+      # If the invocation ends with `*args`, return it to match against *args in
+      # the function signature. For f(<k args>, *xs, ..., *ys), transform to
+      # f(<k args>, *ys) since ys is an indefinite tuple anyway and will match
+      # against all remaining posargs.
+      return posargs + tuple(pre), stars[-1]
+    elif posarg_delta <= len(stars):
+      # We have too many args; don't do *xs expansion. Go back to matching from
+      # the start and treat every entry in starargs_tuple as length 1.
+      n_params = len(match_signature.param_names)
+      all_args = posargs + starargs_tuple
+      pos = all_args[:n_params]
+      star = []
+      for var in all_args[n_params:]:
+        if abstract_utils.is_var_indefinite_iterable(var):
+          star.append(
+              abstract_utils.merged_type_parameter(node, var, abstract_utils.T))
+        else:
+          star.append(var)
+      if star:
+        return pos, vm.convert.tuple_to_value(star).to_variable(node)
+      else:
+        return pos, None
+    elif stars:
+      if len(stars) == 1:
+        # Special case (*xs, <post>) to fill in the type of xs in every arg
+        p = abstract_utils.merged_type_parameter(
+            node, stars[0], abstract_utils.T)
+        mid = [p.AssignToNewVariable(node) for _ in range(posarg_delta)]
+      else:
+        # If we have (*xs, <k args>, *ys) remaining, and more than k+2 params to
+        # match, don't try to match the intermediate params to any range, just
+        # match all k+2 to Any
+        mid = [vm.new_unsolvable(node) for _ in range(posarg_delta)]
+      return posargs + tuple(pre + mid + post), None
+    else:
+      # We have **kwargs but no *args in the invocation
+      return posargs + tuple(pre), None
+
   def simplify(self, node, vm, match_signature=None):
     """Try to insert part of *args, **kwargs into posargs / namedargs."""
     # TODO(rechen): When we have type information about *args/**kwargs,
@@ -337,55 +391,24 @@ class Args(collections.namedtuple(
     starargs_as_tuple = self.starargs_as_tuple(node, vm)
     if starargs_as_tuple is not None:
       if match_signature:
-        # As we have the function signature we will attempt to adjust the
-        # starargs into the missing posargs.
-        missing_posarg_count = len(match_signature.param_names) - len(posargs)
-        starargs_list = list(starargs_as_tuple)
-        final_stararg = None
-        for _ in range(missing_posarg_count):
-          if not starargs_list:
-            break
-          arg = starargs_list.pop(0)
-          # If the final element in the list is an indefinite tuple, stop
-          # assigning posargs and assign it to *args instead.
-          # TODO(mdemello): If we hit an indefinite tuple in non-final position,
-          # what should we do? e.g. for
-          #   f(*(a, b), *xs, *(c, d))
-          # matched against sig
-          #   f(u, v, w, x, y, z)
-          # do we
-          # 1. match *xs to (w, x) by matching z=d, y=c from the end
-          # 2. match *xs to w and raise a missing parameter error for z, or
-          # 3. match *xs to w..z and raise an extra parameter error?
-          # We currently opt for (2) but all three options have their points.
-          if (not starargs_list and
-              abstract_utils.is_var_indefinite_sequence(arg)):
-            final_stararg = arg
-          else:
-            posargs += (arg,)
-
-        if final_stararg:
-          starargs = final_stararg
-        elif starargs_list:
-          # Check if we are matching *args in the invocation list with *args in
-          # the function signature rather than against leftover posargs.
-          if (len(starargs_list) == 1 and
-              abstract_utils.is_var_indefinite_sequence(starargs_list[0])):
-            starargs, = starargs_list
-          else:
-            starargs = vm.convert.tuple_to_value(
-                starargs_list).to_variable(node)
-        else:
-          starargs = None
+        posargs, starargs = self._unpack_and_match_args(
+            node, vm, match_signature, starargs_as_tuple)
+      elif (starargs_as_tuple and
+            abstract_utils.is_var_indefinite_iterable(starargs_as_tuple[-1])):
+        # If the last arg is an indefinite iterable keep it in starargs
+        posargs = self.posargs + starargs_as_tuple[:-1]
+        starargs = starargs_as_tuple[-1]
       else:
-        posargs += starargs_as_tuple
+        # Don't try to unpack iterables in any other position since we don't
+        # have a signature to match
+        posargs = self.posargs + starargs_as_tuple
         starargs = None
     starstarargs_as_dict = self.starstarargs_as_dict()
     if starstarargs_as_dict is not None:
       # Unlike varargs above, we do not adjust starstarargs into namedargs when
       # the function signature has matching param_names because we have not
       # found a benefit in doing so.
-      if namedargs is None:
+      if self.namedargs is None:
         namedargs = starstarargs_as_dict
       else:
         namedargs.update(node, starstarargs_as_dict)

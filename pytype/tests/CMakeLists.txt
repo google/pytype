@@ -59,12 +59,12 @@ py_test(
 )
 
 py_test(
-    NAME
-      test_dict
-    SRCS
-      test_dict.py
-    DEPS
-      .test_base
+  NAME
+    test_dict
+  SRCS
+    test_dict.py
+  DEPS
+    .test_base
 )
 
 py_test(
@@ -317,7 +317,7 @@ py_test(
   SRCS
     test_pickle.py
   DEPS
-     .test_base
+    .test_base
 )
 
 py_test(
