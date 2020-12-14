@@ -6,10 +6,10 @@ py_library(
   SRCS
     __init__.py
     debug.py
+    utils.py
     indexer.py
     kythe.py
     output.py
-    utils.py
   DEPS
     .callgraph
     .node_utils
@@ -47,7 +47,7 @@ py_library(
     callgraph.py
   DEPS
     .node_utils
-    pytype.pytd.pytd_utils
+    pytype.pytd_lib
 )
 
 py_test(
@@ -62,24 +62,24 @@ py_test(
 
 py_test(
   NAME
-    callgraph_test
-  SRCS
-    callgraph_test.py
-  DEPS
-    .callgraph
-    .indexer
-    pytype.utils
-    pytype.tests.test_base
-)
-
-py_test(
-  NAME
     indexer_test
   SRCS
     indexer_test.py
   DEPS
     .indexer
     pytype.config
+    pytype.utils
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    callgraph_test
+  SRCS
+    callgraph_test.py
+  DEPS
+    .callgraph
+    .indexer
     pytype.utils
     pytype.tests.test_base
 )

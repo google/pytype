@@ -397,7 +397,6 @@ py_test(
   SRCS
     test_unpack.py
   DEPS
-    pytype.utils
     pytype.tests.test_base
 )
 
@@ -416,6 +415,7 @@ py_test(
   SRCS
     test_quick.py
   DEPS
+    pytype.utils
     pytype.tests.test_base
 )
 

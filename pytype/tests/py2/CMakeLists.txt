@@ -29,9 +29,9 @@ py_test(
 
 py_test(
   NAME
-    test_containers
+    test_classes
   SRCS
-    test_containers.py
+    test_classes.py
   DEPS
     pytype.tests.test_base
 )
@@ -41,6 +41,15 @@ py_test(
     test_cmp
   SRCS
     test_cmp.py
+  DEPS
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    test_containers
+  SRCS
+    test_containers.py
   DEPS
     pytype.tests.test_base
 )
@@ -275,6 +284,15 @@ py_test(
     test_recovery
   SRCS
     test_recovery.py
+  DEPS
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    test_generic
+  SRCS
+    test_generic.py
   DEPS
     pytype.tests.test_base
 )

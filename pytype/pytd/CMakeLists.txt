@@ -19,6 +19,7 @@ py_library(
   NAME
     pytd_for_parser
   SRCS
+    __init__.py
     abc_hierarchy.py
     booleq.py
     escape.py
@@ -39,7 +40,7 @@ py_library(
     pytype.utils
     pytype.pytd.parse.node
     pytype.pytd.parse.parser_constants
-    pytype.stubs.stubs  # TODO(b/159043305): Move this into a data dependency
+    pytype.stubs.stubs
     pytype.typegraph.cfg
 )
 
@@ -94,7 +95,6 @@ py_library(
     .pep484
     .pytd_defs
     pytype.pytd.parse.parser_constants
-    pytype.typegraph.cfg_utils
 )
 
 py_library(
@@ -242,7 +242,10 @@ py_test(
   SRCS
     serialize_ast_test.py
   DEPS
-    pytype.libvm
+    .pytd_for_parser
+    .serialize_ast
+    pytype.load_pytd
+    pytype.utils
     pytype.pytd.parse.parser_test_base
     pytype.tests.test_base
 )

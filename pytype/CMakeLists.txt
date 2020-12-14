@@ -1,5 +1,24 @@
 add_package()
 
+py_library(
+  NAME
+    io_lib
+  DEPS
+    .config
+    .errors
+    .io
+)
+
+py_library(
+  NAME
+    pytd_lib
+  DEPS
+    pytype.pyi.parser
+    pytype.pytd.pytd_defs
+    pytype.pytd.pytd_utils
+    pytype.pytd.pytd_visitors
+)
+
 toplevel_py_binary(
   NAME
     pytype-single
@@ -8,13 +27,7 @@ toplevel_py_binary(
   MAIN
     single.py
   DEPS
-    .config
-    .io
-    .load_pytd
-    .metrics
-    .utils
-    pytype.pytd.typeshed
-    pytype.pytd.parse.node
+    .pytype_main_deps
 )
 
 py_library(
@@ -45,6 +58,7 @@ py_library(
     debug.py
   DEPS
     .utils
+    pytype.typegraph.cfg_utils
 )
 
 py_library(
@@ -99,10 +113,10 @@ py_library(
   DEPS
     .annotations_util
     .convert
+    .overlay_dict
     .libvm
     .load_pytd
     .matcher
-    .overlay_dict
 )
 
 py_library(
@@ -186,6 +200,7 @@ py_library(
   NAME
     libvm
   SRCS
+    __init__.py
     __version__.py
     abstract.py
     attribute.py
@@ -244,6 +259,18 @@ py_library(
     .function
     .utils
     pytype.pytd.pytd_for_parser
+    pytype.typegraph.cfg
+)
+
+py_test(
+  NAME
+    typegraph_metrics_test
+  SRCS
+    typegraph_metrics_test.py
+  DEPS
+    .analyze
+    .errors
+    pytype.tests.test_base
     pytype.typegraph.cfg
 )
 
@@ -473,6 +500,19 @@ py_test(
     .libvm
 )
 
+py_library(
+  NAME
+    pytype_main_deps
+  DEPS
+    .config
+    .io
+    .load_pytd
+    .metrics
+    .utils
+    pytype.pytd.typeshed
+    pytype.pytd.parse.node
+)
+
 py_test(
   NAME
     debug_test
@@ -481,18 +521,6 @@ py_test(
   DEPS
     .debug
     pytype.typegraph.cfg
-)
-
-py_test(
-  NAME
-    typegraph_metrics_test
-  SRCS
-    typegraph_metrics_test.py
-  DEPS
-    .analyze
-    .errors
-    pytype.typegraph.cfg
-    pytype.tests.test_base
 )
 
 add_subdirectory(ast)

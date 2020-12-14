@@ -1,3 +1,4 @@
+# gen-cmake: skip
 # Copied from typeshed stdlib/3.7/dataclasses.pyi
 #
 # TODO(mdemello): Delete this once we upgrade to python 3.7

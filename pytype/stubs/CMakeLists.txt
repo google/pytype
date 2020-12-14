@@ -1,8 +1,5 @@
 add_package()
 
-# CMake does not do dependency tracking if files are listed by a GLOB operation.
-# So, we have to list the files individually as we want them to be tracked as
-# build inputs.
 filegroup(
   NAME
     stubs
@@ -20,10 +17,8 @@ filegroup(
     builtins/2/attr/setters.pytd
     builtins/2/attr/validators.pytd
     builtins/2/mypy_extensions.pytd
-    builtins/2/numpy/__init__.pytd
     builtins/2/protocols.pytd
     builtins/2/typing.pytd
-
     builtins/2and3/array.pytd
     builtins/2and3/attr/__init__.pytd
     builtins/2and3/attr/_compat.pytd
@@ -39,7 +34,6 @@ filegroup(
     builtins/2and3/numpy/__init__.pytd
     builtins/2and3/protocols.pytd
     builtins/2and3/typing.pytd
-
     builtins/3/__builtin__.pytd
     builtins/3/array.pytd
     builtins/3/attr/__init__.pytd
@@ -54,20 +48,16 @@ filegroup(
     builtins/3/attr/validators.pytd
     builtins/3/builtins.pytd
     builtins/3/mypy_extensions.pytd
-    builtins/3/numpy/__init__.pytd
     builtins/3/protocols.pytd
     builtins/3/typing.pytd
-
     stdlib/2/_ctypes.pytd
     stdlib/2/collections.pytd
     stdlib/2/dummy_thread.pytd
     stdlib/2/encodings.pytd
-
     stdlib/2and3/_ctypes.pytd
     stdlib/2and3/collections.pytd
     stdlib/2and3/dummy_thread.pytd
     stdlib/2and3/encodings.pytd
-
     stdlib/3/_ctypes.pytd
     stdlib/3/collections.pytd
     stdlib/3/dummy_thread.pytd
