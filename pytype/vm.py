@@ -3192,7 +3192,7 @@ class VirtualMachine:
           # Treat the fallthrough case as an indefinite iterable too. We should
           # never reach here, so log a warning.
           log.warning("Unexpected value when unpacking variable %r: %r",
-                      v, v.data)
+                      var, var.data)
           indefinite = True
           v = self.convert.tuple_type.instantiate(self.root_cfg_node)
           elements.append(v)

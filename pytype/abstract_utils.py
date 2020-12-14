@@ -721,3 +721,10 @@ def is_indefinite_iterable(val: _AbstractValueType):
 def is_var_indefinite_iterable(var):
   """True if all bindings of var are indefinite sequences."""
   return all(is_indefinite_iterable(x) for x in var.data)
+
+
+def merged_type_parameter(node, var, param):
+  if not var.bindings:
+    return node.program.NewVariable()
+  params = [v.get_instance_type_parameter(param) for v in var.data]
+  return var.data[0].vm.join_variables(node, params)

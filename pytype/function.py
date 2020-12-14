@@ -353,7 +353,13 @@ class Args(collections.namedtuple(
       n_params = len(match_signature.param_names)
       all_args = posargs + starargs_tuple
       pos = all_args[:n_params]
-      star = all_args[n_params:]
+      star = []
+      for var in all_args[n_params:]:
+        if abstract_utils.is_var_indefinite_iterable(var):
+          star.append(
+              abstract_utils.merged_type_parameter(node, var, abstract_utils.T))
+        else:
+          star.append(var)
       if star:
         return pos, vm.convert.tuple_to_value(star).to_variable(node)
       else:
@@ -361,9 +367,8 @@ class Args(collections.namedtuple(
     elif stars:
       if len(stars) == 1:
         # Special case (*xs, <post>) to fill in the type of xs in every arg
-        ps = [x.get_instance_type_parameter(abstract_utils.T)
-              for x in stars[0].data]
-        p = vm.join_variables(node, ps)
+        p = abstract_utils.merged_type_parameter(
+            node, stars[0], abstract_utils.T)
         mid = [p.AssignToNewVariable(node) for _ in range(posarg_delta)]
       else:
         # If we have (*xs, <k args>, *ys) remaining, and more than k+2 params to

@@ -140,4 +140,14 @@ class TestUnpack(test_base.TargetPython3FeatureTest):
           foo.f(x, 1, **kwargs)
       """, pythonpath=[d.path])
 
+  def test_unknown_length_tuple(self):
+    self.Check("""
+      from typing import Tuple
+      def f(*args: str):
+        pass
+      x: Tuple[str, ...]
+      f(*x, 'a', 'b', 'c')
+    """)
+
+
 test_base.main(globals(), __name__ == "__main__")
