@@ -6,6 +6,7 @@
 
 import atexit
 import os
+import re
 import tempfile
 
 
@@ -36,29 +37,39 @@ def get_full_path(path):
   return os.path.join(pytype_source_dir(), path)
 
 
-def load_pytype_file(filename):
+def load_text_file(filename):
+  return _load_data_file(filename, text=True)
+
+
+def load_binary_file(filename):
+  return _load_data_file(filename, text=False)
+
+
+def _load_data_file(filename, text):
   """Get the contents of a data file from the pytype installation.
 
   Arguments:
     filename: the path, relative to "pytype/"
+    text: whether to load the file as text or bytes.
   Returns:
     The contents of the file as a bytestring
   Raises:
     IOError: if file not found
   """
-  return load_data_file(get_full_path(filename))
-
-
-def load_data_file(path):
-  """Load a file either from __loader__ or the filesystem."""
+  path = filename if os.path.isabs(filename) else  get_full_path(filename)
   # Check for a ResourceLoader (see comment under list_pytype_files).
   loader = globals().get("__loader__", None)
   if loader:
     # For an explanation of the args to loader.get_data, see
     # https://www.python.org/dev/peps/pep-0302/#optional-extensions-to-the-importer-protocol
     # https://docs.python.org/3/library/importlib.html#importlib.abc.ResourceLoader.get_data
-    return loader.get_data(path)
-  with open(path, "rb") as fi:
+    data = loader.get_data(path)
+    if text:
+      # Opening a file in text mode automatically converts carriage returns to
+      # newlines, so we manually simulate that behavior here.
+      return re.sub("\r\n?", "\n", data.decode("utf-8"))
+    return data
+  with open(path, "r" if text else "rb") as fi:
     return fi.read()
 
 
@@ -135,7 +146,7 @@ def get_custom_python_exe(python_version):
   if os.path.exists(path):
     return path
   try:
-    data = load_pytype_file(path)
+    data = load_binary_file(path)
   except IOError:
     return None
 

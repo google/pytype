@@ -85,7 +85,7 @@ def compile_src_string_to_pyc_string(
       exe, flags = python_exe
       cmd = exe + flags + ["-E", "-", fi.name, filename or fi.name, mode]
 
-      compile_script_src = pytype_source_utils.load_pytype_file(COMPILE_SCRIPT)
+      compile_script_src = pytype_source_utils.load_binary_file(COMPILE_SCRIPT)
 
       p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
       bytecode, _ = p.communicate(compile_script_src)

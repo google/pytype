@@ -256,6 +256,7 @@ py_test(
   SRCS
     typeshed_test.py
   DEPS
+    pytype.utils
     pytype.pytd.parse.parser_test_base
     pytype.tests.test_base
 )

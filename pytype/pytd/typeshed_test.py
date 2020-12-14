@@ -2,6 +2,7 @@
 
 import os
 
+from pytype import file_utils
 from pytype.pytd import typeshed
 from pytype.pytd.parse import builtins
 from pytype.pytd.parse import parser_test_base
@@ -19,13 +20,13 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     filename, data = self.ts.get_module_file(
         "stdlib", "errno", self.python_version)
     self.assertEqual("errno.pyi", os.path.basename(filename))
-    self.assertIn(b"errorcode", data)
+    self.assertIn("errorcode", data)
 
   def test_get_typeshed_dir(self):
     filename, data = self.ts.get_module_file(
         "stdlib", "logging", self.python_version)
     self.assertEqual("__init__.pyi", os.path.basename(filename))
-    self.assertIn(b"LogRecord", data)
+    self.assertIn("LogRecord", data)
 
   def test_parse_type_definition(self):
     filename, ast = typeshed.parse_type_definition(
@@ -85,6 +86,20 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
       self.assertNotIn("/", module_name)
     for module_name in self.ts.blacklisted_modules([3, 6]):
       self.assertNotIn("/", module_name)
+
+  def test_carriage_return(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("stdlib/3/foo.pyi", b"x: int\r\n")
+      self.ts._root = d.path
+      _, src = self.ts.get_module_file("stdlib", "foo", (3, 8))
+    self.assertEqual(src, "x: int\n")
+
+  def test_carriage_return_custom_root(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("stdlib/3/foo.pyi", b"x: int\r\n")
+      self.ts._env_home = d.path
+      _, src = self.ts.get_module_file("stdlib", "foo", (3, 8))
+    self.assertEqual(src, "x: int\n")
 
 
 class TestTypeshedParsing(test_base.TargetPython27FeatureTest):
