@@ -3172,34 +3172,27 @@ class VirtualMachine:
     """Pop count iterables off the stack and concatenate."""
     state, iterables = state.popn(count)
     elements = []
-    indefinite = False
     for var in iterables:
       try:
         itr = abstract_utils.get_atomic_python_constant(
             var, collections.Iterable)
       except abstract_utils.ConversionError:
         if abstract_utils.is_var_indefinite_iterable(var):
-          indefinite = True
-          elements.append(var)
+          elements.append(abstract.Splat(self, var).to_variable(state.node))
         elif (any(x.isinstance_Unsolvable() for x in var.data) or
               all(x.isinstance_Unknown() for x in var.data)):
           # If we have an unsolvable or unknown we are unpacking as an iterable,
           # make sure it is treated as a tuple and not a single value.
-          indefinite = True
-          v = self.convert.tuple_type.instantiate(self.root_cfg_node)
-          elements.append(v)
+          v = self.convert.tuple_type.instantiate(state.node)
+          elements.append(abstract.Splat(self, v).to_variable(state.node))
         else:
           # Treat the fallthrough case as an indefinite iterable too. We should
           # never reach here, so log a warning.
           log.warning("Unexpected value when unpacking variable %r: %r",
                       var, var.data)
-          indefinite = True
-          v = self.convert.tuple_type.instantiate(self.root_cfg_node)
-          elements.append(v)
+          v = self.convert.tuple_type.instantiate(state.node)
+          elements.append(abstract.Splat(self, v).to_variable(state.node))
       else:
-        # TODO(mdemello): If itr is an indefinite iterable it will get wrongly
-        # unwrapped to its contained type in _build_indefinite_sequence. We
-        # should be tracking `indefinite` on a per-element basis.
         for v in itr:
           # Some iterable constants (e.g., tuples) already contain variables,
           # whereas others (e.g., strings) need to be wrapped.
@@ -3207,23 +3200,23 @@ class VirtualMachine:
             elements.append(v)
           else:
             elements.append(self.convert.constant_to_var(v))
-    return state, elements, indefinite
+    return state, elements
 
   def _build_indefinite_sequence(self, node, typ, content):
     """Create an indefinite container typ[T] from the given sequence."""
-    ret = abstract.Instance(typ, self)
+    seq = abstract.Instance(typ, self)
     for var in content:
-      if abstract_utils.is_var_indefinite_iterable(var):
-        for val in var.data:
+      if abstract_utils.is_var_splat(var):
+        for val in abstract_utils.unwrap_splat(var).data:
           p = val.get_instance_type_parameter(abstract_utils.T)
-          ret.merge_instance_type_parameter(node, abstract_utils.T, p)
+          seq.merge_instance_type_parameter(node, abstract_utils.T, p)
       else:
-        ret.merge_instance_type_parameter(node, abstract_utils.T, var)
-    return ret.to_variable(node)
+        seq.merge_instance_type_parameter(node, abstract_utils.T, var)
+    return seq.to_variable(node)
 
   def _unpack_and_build(self, state, count, build_concrete, container_type):
-    state, seq, indef = self._pop_and_unpack_list(state, count)
-    if indef:
+    state, seq = self._pop_and_unpack_list(state, count)
+    if any(abstract_utils.is_var_splat(x) for x in seq):
       ret = self._build_indefinite_sequence(state.node, container_type, seq)
     else:
       ret = build_concrete(state.node, seq)
@@ -3263,7 +3256,7 @@ class VirtualMachine:
     # If we are building function call args, do not collapse indefinite
     # subsequences into a single tuple[x, ...], but allow them to be concrete
     # elements to match against function parameters and *args.
-    state, seq, _ = self._pop_and_unpack_list(state, op.arg)
+    state, seq = self._pop_and_unpack_list(state, op.arg)
     ret = self.convert.build_tuple(state.node, seq)
     return state.push(ret)
 

@@ -328,15 +328,16 @@ class Args(collections.namedtuple(
 
   def _unpack_and_match_args(self, node, vm, match_signature, starargs_tuple):
     """Match args against a signature with unpacking."""
+
     posargs = self.posargs
     # As we have the function signature we will attempt to adjust the
     # starargs into the missing posargs.
     pre = []
     post = []
     stars = collections.deque(starargs_tuple)
-    while stars and not abstract_utils.is_var_indefinite_iterable(stars[0]):
+    while stars and not abstract_utils.is_var_splat(stars[0]):
       pre.append(stars.popleft())
-    while stars and not abstract_utils.is_var_indefinite_iterable(stars[-1]):
+    while stars and not abstract_utils.is_var_splat(stars[-1]):
       post.append(stars.pop())
     post.reverse()
     n_matched = len(posargs) + len(pre) + len(post)
@@ -346,7 +347,7 @@ class Args(collections.namedtuple(
       # the function signature. For f(<k args>, *xs, ..., *ys), transform to
       # f(<k args>, *ys) since ys is an indefinite tuple anyway and will match
       # against all remaining posargs.
-      return posargs + tuple(pre), stars[-1]
+      return posargs + tuple(pre), abstract_utils.unwrap_splat(stars[-1])
     elif posarg_delta <= len(stars):
       # We have too many args; don't do *xs expansion. Go back to matching from
       # the start and treat every entry in starargs_tuple as length 1.
@@ -355,7 +356,7 @@ class Args(collections.namedtuple(
       pos = all_args[:n_params]
       star = []
       for var in all_args[n_params:]:
-        if abstract_utils.is_var_indefinite_iterable(var):
+        if abstract_utils.is_var_splat(var):
           star.append(
               abstract_utils.merged_type_parameter(node, var, abstract_utils.T))
         else:
@@ -394,14 +395,14 @@ class Args(collections.namedtuple(
         posargs, starargs = self._unpack_and_match_args(
             node, vm, match_signature, starargs_as_tuple)
       elif (starargs_as_tuple and
-            abstract_utils.is_var_indefinite_iterable(starargs_as_tuple[-1])):
+            abstract_utils.is_var_splat(starargs_as_tuple[-1])):
         # If the last arg is an indefinite iterable keep it in starargs
         posargs = self.posargs + starargs_as_tuple[:-1]
-        starargs = starargs_as_tuple[-1]
+        starargs = abstract_utils.unwrap_splat(starargs_as_tuple[-1])
       else:
         # Don't try to unpack iterables in any other position since we don't
-        # have a signature to match
-        posargs = self.posargs + starargs_as_tuple
+        # have a signature to match. Just set all splats to Any.
+        posargs = self.posargs + _splats_to_any(starargs_as_tuple, vm)
         starargs = None
     starstarargs_as_dict = self.starstarargs_as_dict()
     if starstarargs_as_dict is not None:
@@ -805,3 +806,10 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
 
   def __repr__(self):
     return pytd_utils.Print(self.pytd_sig)
+
+
+def _splats_to_any(seq, vm):
+  return tuple(
+      vm.new_unsolvable(vm.root_cfg_node) if abstract_utils.is_var_splat(v)
+      else v
+      for v in seq)

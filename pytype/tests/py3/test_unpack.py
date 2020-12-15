@@ -149,5 +149,19 @@ class TestUnpack(test_base.TargetPython3FeatureTest):
       f(*x, 'a', 'b', 'c')
     """)
 
+  def test_dont_unpack_iterable(self):
+    # Check that we don't treat x as a splat in the call to f() just because
+    # it's an indefinite iterable.
+    self.Check("""
+      class Foo(list):
+        pass
+
+      def f(x: Foo, y: int, z: bool = True):
+        pass
+
+      def g(x: Foo, **kwargs):
+        f(x, 10, **kwargs)
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

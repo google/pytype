@@ -426,6 +426,9 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   def isinstance_SimpleAbstractValue(self):
     return isinstance(self, SimpleAbstractValue)
 
+  def isinstance_Splat(self):
+    return isinstance(self, Splat)
+
   def isinstance_StaticMethodInstance(self):
     return False  # overridden in special_builtins.StaticMethodInstance
 
@@ -3850,6 +3853,24 @@ class Iterator(Instance, mixin.HasSlots):
 
   def next_slot(self, node):
     return node, self._return_var
+
+
+class Splat(AtomicAbstractValue):
+  """Representation of unpacked iterables."""
+
+  def __init__(self, vm, iterable):
+    super().__init__("splat", vm)
+    self.iterable = iterable
+
+  def get_class(self):
+    # When building a tuple for a function call, we preserve splats as elements
+    # in a concrete tuple (e.g. f(x, *ys, z) gets called with the concrete tuple
+    # (x, *ys, z) in starargs) and let the arg matcher in function.py unpack
+    # them. Constructing the tuple invokes get_class() as a side effect; ideally
+    # we would specialise abstract.Tuple for function calls and not bother
+    # constructing an associated TupleClass for a function call tuple, but for
+    # now we just set the class to Any here.
+    return self.vm.convert.unsolvable
 
 
 class Module(Instance, mixin.LazyMembers):
