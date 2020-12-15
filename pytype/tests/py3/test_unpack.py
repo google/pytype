@@ -163,5 +163,26 @@ class TestUnpack(test_base.TargetPython3FeatureTest):
         f(x, 10, **kwargs)
     """)
 
+  def test_erroneous_splat(self):
+    # Don't crash on an unnecessary splat.
+    # TODO(mdemello): Raise an error instead.
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Any, Sequence
+        def f(x: Sequence[Any], y: str): ...
+        def g(x: Sequence[Any], y: Sequence[str]): ...
+      """)
+      self.Check("""
+        import itertools
+        from typing import List
+        import foo
+        x: list
+        y: List[int]
+        foo.f(*x, "a")
+        foo.f(*x, *y)
+        foo.g(*x, *y)
+        a = itertools.product(*x, *y)
+      """, pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")

@@ -353,7 +353,10 @@ class Args(collections.namedtuple(
       # the start and treat every entry in starargs_tuple as length 1.
       n_params = len(match_signature.param_names)
       all_args = posargs + starargs_tuple
-      pos = all_args[:n_params]
+      # Don't unwrap splats here because f(*xs, y) is not the same as f(xs, y).
+      # TODO(mdemello): Ideally, since we are matching call f(*xs, y) against
+      # sig f(x, y) we should raise an error here.
+      pos = _splats_to_any(all_args[:n_params], vm)
       star = []
       for var in all_args[n_params:]:
         if abstract_utils.is_var_splat(var):
@@ -396,8 +399,12 @@ class Args(collections.namedtuple(
             node, vm, match_signature, starargs_as_tuple)
       elif (starargs_as_tuple and
             abstract_utils.is_var_splat(starargs_as_tuple[-1])):
-        # If the last arg is an indefinite iterable keep it in starargs
-        posargs = self.posargs + starargs_as_tuple[:-1]
+        # If the last arg is an indefinite iterable keep it in starargs. Convert
+        # any other splats to Any.
+        # TODO(mdemello): If there are multiple splats should we just fall
+        # through to the next case (setting them all to Any), and only hit this
+        # case for a *single* splat in terminal position?
+        posargs = self.posargs + _splats_to_any(starargs_as_tuple[:-1], vm)
         starargs = abstract_utils.unwrap_splat(starargs_as_tuple[-1])
       else:
         # Don't try to unpack iterables in any other position since we don't
