@@ -1,3 +1,13 @@
+Version 2020.12.16
+* Support NewType in stubs.
+* Treat classes whose metaclass inherits from type(Protocol) as abstract.
+* Automatically promote __init_subclass__ to a classmethod.
+* Improve unpacking and function arg matching by tracking unpacked iterables.
+* Fix a [name-error] caused by a bad regex check for comprehensions.
+* Strip carriage returns from files read as bytes.
+* Support using an AnnotationClass in an isinstance check.
+* Support aliases to methods of classes in the same module in the pyi parser.
+
 Version 2020.12.02
 * Update typeshed pin to commit fae6bda from October 12.
 * Improve the [bad-return-type] error message.
