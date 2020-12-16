@@ -2601,5 +2601,77 @@ class NewTypeTest(_ParserTestBase):
     """)
 
 
+class MethodAliasTest(_ParserTestBase):
+
+  def test_normal_method(self):
+    self.check("""
+      class Foo:
+          def f(self, x: int) -> None: ...
+      _foo: Foo
+      f1 = Foo.f
+      f2 = _foo.f
+    """, """
+      _foo: Foo
+
+      class Foo:
+          def f(self, x: int) -> None: ...
+
+      def f1(self, x: int) -> None: ...
+      def f2(x: int) -> None: ...
+    """)
+
+  def test_classmethod(self):
+    self.check("""
+      class Foo:
+          @classmethod
+          def f(cls, x: int) -> None: ...
+      _foo: Foo
+      f1 = Foo.f
+      f2 = _foo.f
+    """, """
+      _foo: Foo
+
+      class Foo:
+          @classmethod
+          def f(cls, x: int) -> None: ...
+
+      def f1(x: int) -> None: ...
+      def f2(x: int) -> None: ...
+    """)
+
+  def test_staticmethod(self):
+    self.check("""
+      class Foo:
+          @staticmethod
+          def f(x: int) -> None: ...
+      _foo: Foo
+      f1 = Foo.f
+      f2 = _foo.f
+    """, """
+      _foo: Foo
+
+      class Foo:
+          @staticmethod
+          def f(x: int) -> None: ...
+
+      def f1(x: int) -> None: ...
+      def f2(x: int) -> None: ...
+    """)
+
+  def test_nested_constant(self):
+    self.check("""
+      class Foo:
+          foo: Foo
+          def f(self, x: int) -> None: ...
+      f = Foo.foo.f
+    """, """
+      class Foo:
+          foo: Foo
+          def f(self, x: int) -> None: ...
+
+      def f(x: int) -> None: ...
+    """)
+
+
 if __name__ == "__main__":
   unittest.main()

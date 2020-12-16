@@ -474,9 +474,10 @@ class _Parser:
     functions = _merge_method_signatures(functions)
 
     name_to_class = {c.name: c for c in classes}
+    name_to_constant = {c.name: c for c in constants}
     aliases = []
     for a in self._aliases.values():
-      t = _maybe_resolve_alias(a, name_to_class)
+      t = _maybe_resolve_alias(a, name_to_class, name_to_constant)
       if t is None:
         continue
       elif isinstance(t, pytd.Function):
@@ -1657,12 +1658,13 @@ def _merge_method_signatures(signatures):
   return methods
 
 
-def _maybe_resolve_alias(alias, name_to_class):
+def _maybe_resolve_alias(alias, name_to_class, name_to_constant):
   """Resolve the alias if possible.
 
   Args:
     alias: A pytd.Alias
     name_to_class: A class map used for resolution.
+    name_to_constant: A constant map used for resolution.
 
   Returns:
     None, if the alias pointed to an un-aliasable type.
@@ -1680,12 +1682,21 @@ def _maybe_resolve_alias(alias, name_to_class):
     # as constants to distinguish them from imports.
     return alias
   parts = alias.type.name.split(".")
-  if parts[0] not in name_to_class:
+  if parts[0] not in name_to_class and parts[0] not in name_to_constant:
     return alias
-  value = name_to_class[parts[0]]
+  prev_value = None
+  value = name_to_class.get(parts[0]) or name_to_constant[parts[0]]
   for part in parts[1:]:
+    prev_value = value
     # We can immediately return upon encountering an error, as load_pytd will
     # complain when it can't resolve the alias.
+    if isinstance(value, pytd.Constant):
+      if (not isinstance(value.type, pytd.NamedType) or
+          value.type.name not in name_to_class):
+        # TODO(rechen): Parameterized constants of generic classes should
+        # probably also be allowed.
+        return alias
+      value = name_to_class[value.type.name]
     if not isinstance(value, pytd.Class):
       return alias
     try:
@@ -1695,6 +1706,17 @@ def _maybe_resolve_alias(alias, name_to_class):
   if isinstance(value, pytd.Class):
     return pytd.Constant(
         alias.name, _make_type_type(pytd.NamedType(alias.type.name)))
+  elif isinstance(value, pytd.Function):
+    # We allow module-level aliases of methods from classes and class instances.
+    # When a static method is aliased, or a normal method is aliased from a
+    # class (not an instance), the entire method signature is copied. Otherwise,
+    # the first parameter ('self' or 'cls') is dropped.
+    new_value = value.Replace(name=alias.name).Replace(kind="method")
+    if value.kind == "staticmethod" or (
+        value.kind == "method" and isinstance(prev_value, pytd.Class)):
+      return new_value
+    return new_value.Replace(signatures=tuple(
+        s.Replace(params=s.params[1:]) for s in new_value.signatures))
   else:
     return value.Replace(name=alias.name)
 
