@@ -2,8 +2,6 @@
 
 set -eux
 
-brew untap local/openssl
-brew untap local/python2
 brew update
 python -V
 brew install -v bison || brew upgrade bison
