@@ -149,5 +149,52 @@ class TestUnpack(test_base.TargetPython3FeatureTest):
       f(*x, 'a', 'b', 'c')
     """)
 
+  def test_dont_unpack_iterable(self):
+    # Check that we don't treat x as a splat in the call to f() just because
+    # it's an indefinite iterable.
+    self.Check("""
+      class Foo(list):
+        pass
+
+      def f(x: Foo, y: int, z: bool = True):
+        pass
+
+      def g(x: Foo, **kwargs):
+        f(x, 10, **kwargs)
+    """)
+
+  def test_erroneous_splat(self):
+    # Don't crash on an unnecessary splat.
+    # TODO(mdemello): Raise an error instead.
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Any, Sequence
+        def f(x: Sequence[Any], y: str): ...
+        def g(x: Sequence[Any], y: Sequence[str]): ...
+      """)
+      self.Check("""
+        import itertools
+        from typing import List
+        import foo
+        x: list
+        y: List[int]
+        foo.f(*x, "a")
+        foo.f(*x, *y)
+        foo.g(*x, *y)
+        a = itertools.product(*x, *y)
+      """, pythonpath=[d.path])
+
+  def test_unpack_namedtuple(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(a, b, c, d, e, f): ...
+      """)
+      self.Check("""
+        import collections
+        import foo
+        X = collections.namedtuple('X', ('a', 'b', 'c'))
+        foo.f(*X(0, 1, 2), 3, 4, 5)
+      """, pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")

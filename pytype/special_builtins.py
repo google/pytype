@@ -369,6 +369,8 @@ class IsInstance(BinaryPredicate):
     if (isinstance(obj, abstract.AMBIGUOUS_OR_EMPTY) or cls is None or
         isinstance(cls, abstract.AMBIGUOUS_OR_EMPTY)):
       return None
+    if isinstance(class_spec, abstract.AnnotationClass):
+      class_spec = class_spec.base_cls
     return _check_against_mro(self.vm, cls, class_spec)
 
 

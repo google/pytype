@@ -726,5 +726,20 @@ def is_var_indefinite_iterable(var):
 def merged_type_parameter(node, var, param):
   if not var.bindings:
     return node.program.NewVariable()
+  if is_var_splat(var):
+    var = unwrap_splat(var)
   params = [v.get_instance_type_parameter(param) for v in var.data]
   return var.data[0].vm.join_variables(node, params)
+
+
+def is_var_splat(var):
+  if var.data and var.data[0].isinstance_Splat():
+    # A splat should never have more than one binding, since we create and use
+    # it immediately.
+    assert len(var.bindings) == 1
+    return True
+  return False
+
+
+def unwrap_splat(var):
+  return var.data[0].iterable
