@@ -184,5 +184,17 @@ class TestUnpack(test_base.TargetPython3FeatureTest):
         a = itertools.product(*x, *y)
       """, pythonpath=[d.path])
 
+  def test_unpack_namedtuple(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(a, b, c, d, e, f): ...
+      """)
+      self.Check("""
+        import collections
+        import foo
+        X = collections.namedtuple('X', ('a', 'b', 'c'))
+        foo.f(*X(0, 1, 2), 3, 4, 5)
+      """, pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")

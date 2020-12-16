@@ -373,6 +373,11 @@ class Args(collections.namedtuple(
         # Special case (*xs, <post>) to fill in the type of xs in every arg
         p = abstract_utils.merged_type_parameter(
             node, stars[0], abstract_utils.T)
+        if not p.bindings:
+          # TODO(b/159052609): This shouldn't happen. For some reason,
+          # namedtuple instances don't have any bindings in T; see
+          # tests/py3/test_unpack:TestUnpack.test_unpack_namedtuple.
+          p.AddBinding(vm.convert.unsolvable)
         mid = [p.AssignToNewVariable(node) for _ in range(posarg_delta)]
       else:
         # If we have (*xs, <k args>, *ys) remaining, and more than k+2 params to
