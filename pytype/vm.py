@@ -3168,38 +3168,43 @@ class VirtualMachine:
     # coroutine first, and do nothing if it is, else call GET_ITER
     return self.byte_GET_ITER(state, op)
 
+  def _unpack_iterable(self, node, var):
+    """Pop count iterables off the stack and concatenate."""
+    elements = []
+    try:
+      itr = abstract_utils.get_atomic_python_constant(var, collections.Iterable)
+    except abstract_utils.ConversionError:
+      if abstract_utils.is_var_indefinite_iterable(var):
+        elements.append(abstract.Splat(self, var).to_variable(node))
+      elif (any(x.isinstance_Unsolvable() for x in var.data) or
+            all(x.isinstance_Unknown() for x in var.data)):
+        # If we have an unsolvable or unknown we are unpacking as an iterable,
+        # make sure it is treated as a tuple and not a single value.
+        v = self.convert.tuple_type.instantiate(node)
+        elements.append(abstract.Splat(self, v).to_variable(node))
+      else:
+        # Treat the fallthrough case as an indefinite iterable too. We should
+        # never reach here, so log a warning.
+        log.warning("Unexpected value when unpacking variable %r: %r",
+                    var, var.data)
+        v = self.convert.tuple_type.instantiate(node)
+        elements.append(abstract.Splat(self, v).to_variable(node))
+    else:
+      for v in itr:
+        # Some iterable constants (e.g., tuples) already contain variables,
+        # whereas others (e.g., strings) need to be wrapped.
+        if isinstance(v, cfg.Variable):
+          elements.append(v)
+        else:
+          elements.append(self.convert.constant_to_var(v))
+    return elements
+
   def _pop_and_unpack_list(self, state, count):
     """Pop count iterables off the stack and concatenate."""
     state, iterables = state.popn(count)
     elements = []
     for var in iterables:
-      try:
-        itr = abstract_utils.get_atomic_python_constant(
-            var, collections.Iterable)
-      except abstract_utils.ConversionError:
-        if abstract_utils.is_var_indefinite_iterable(var):
-          elements.append(abstract.Splat(self, var).to_variable(state.node))
-        elif (any(x.isinstance_Unsolvable() for x in var.data) or
-              all(x.isinstance_Unknown() for x in var.data)):
-          # If we have an unsolvable or unknown we are unpacking as an iterable,
-          # make sure it is treated as a tuple and not a single value.
-          v = self.convert.tuple_type.instantiate(state.node)
-          elements.append(abstract.Splat(self, v).to_variable(state.node))
-        else:
-          # Treat the fallthrough case as an indefinite iterable too. We should
-          # never reach here, so log a warning.
-          log.warning("Unexpected value when unpacking variable %r: %r",
-                      var, var.data)
-          v = self.convert.tuple_type.instantiate(state.node)
-          elements.append(abstract.Splat(self, v).to_variable(state.node))
-      else:
-        for v in itr:
-          # Some iterable constants (e.g., tuples) already contain variables,
-          # whereas others (e.g., strings) need to be wrapped.
-          if isinstance(v, cfg.Variable):
-            elements.append(v)
-          else:
-            elements.append(self.convert.constant_to_var(v))
+      elements.extend(self._unpack_iterable(state.node, var))
     return state, elements
 
   def _build_indefinite_sequence(self, node, typ, content):
