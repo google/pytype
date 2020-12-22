@@ -354,7 +354,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     classes = set()
     for v in instances:
       cls = v.get_class()
-      if cls:
+      if cls and cls != self.empty:
         classes.add(cls)
     return self.vm.merge_values(classes)
 

@@ -23,16 +23,22 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
   def sub_one_annotation(self, node, annot, substs, instantiate_unbound=True):
     """Apply type parameter substitutions to an annotation."""
     if isinstance(annot, abstract.TypeParameter):
-      def contains(subst, annot):
-        return (annot.full_name in subst and subst[annot.full_name].bindings and
-                not any(isinstance(v, abstract.AMBIGUOUS_OR_EMPTY)
-                        for v in subst[annot.full_name].data))
-      if all(contains(subst, annot) for subst in substs):
+      # We use the given substitutions to bind the annotation if
+      # (1) every subst provides at least one binding, and
+      # (2) none of the bindings are ambiguous, and
+      # (3) at least one binding is non-empty.
+      if all(annot.full_name in subst and subst[annot.full_name].bindings
+             for subst in substs):
         vals = sum((subst[annot.full_name].data for subst in substs), [])
-      elif instantiate_unbound:
-        vals = annot.instantiate(node).data
       else:
-        vals = [annot]
+        vals = None
+      if (vals is None or
+          any(isinstance(v, abstract.AMBIGUOUS) for v in vals) or
+          all(isinstance(v, abstract.Empty) for v in vals)):
+        if instantiate_unbound:
+          vals = annot.instantiate(node).data
+        else:
+          vals = [annot]
       return self.vm.convert.merge_classes(vals)
     elif isinstance(annot, mixin.NestedAnnotation):
       inner_types = [(key, self.sub_one_annotation(node, val, substs,

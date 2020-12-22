@@ -304,6 +304,23 @@ class MatchTest(test_base.TargetPython3BasicTest):
         return {k: b', '.join(v) for k, v in six.iteritems(d)}
     """)
 
+  def test_cast_away_optional(self):
+    ty = self.Infer("""
+      from typing import Optional, TypeVar
+      T = TypeVar('T')
+      def f(x: Optional[T]) -> T:
+        assert x is not None
+        return x
+      def g(x: Optional[str]):
+        return f(x)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Optional, TypeVar
+      T = TypeVar('T')
+      def f(x: Optional[T]) -> T: ...
+      def g(x: Optional[str]) -> str: ...
+    """)
+
 
 class MatchTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for matching types."""
