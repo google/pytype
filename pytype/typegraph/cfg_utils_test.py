@@ -21,9 +21,10 @@ class CFGUtilTest(unittest.TestCase):
     p = cfg.Program()
     n0 = p.NewCFGNode("n0")
     u = p.NewVariable([0], [], n0)
-    self.assertIs(cfg_utils.merge_variables(p, n0, [u]), u)
-    self.assertIs(cfg_utils.merge_variables(p, n0, [u, u]), u)
-    self.assertIs(cfg_utils.merge_variables(p, n0, [u, u, u]), u)
+    self.assertIsNot(cfg_utils.merge_variables(p, n0, [u]), u)
+    self.assertIsNot(cfg_utils.merge_variables(p, n0, [u, u, u]), u)
+    self.assertCountEqual(cfg_utils.merge_variables(p, n0, [u, u, u]).data,
+                          u.data)
 
   def test_merge_variables(self):
     p = cfg.Program()

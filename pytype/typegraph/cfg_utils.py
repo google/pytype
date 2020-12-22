@@ -158,11 +158,8 @@ def merge_variables(program, node, variables):
   """
   if not variables:
     return program.NewVariable()  # return empty var
-  elif len(variables) == 1:
-    v, = variables
-    return v
   elif all(v is variables[0] for v in variables):
-    return variables[0]
+    return variables[0].AssignToNewVariable(node)
   else:
     v = program.NewVariable()
     for r in variables:

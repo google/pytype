@@ -329,12 +329,36 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       # Accumulate substitutions in "subst", or break in case of error:
       return self._match_type_against_type(left, other_type, subst, node, view)
     elif isinstance(other_type, abstract.Union):
+      # If `value` matches a union option that contains no type parameters, it
+      # is not allowed to match options that do contain type parameters. For
+      # example, for `(x: Optional[T]) -> T`, matching `None` against `x` should
+      # not result in `None` being a valid substitution for `T`. We order the
+      # options so that ones without type parameters are checked first, so we
+      # can break early if any of them match.
       matched = False
-      for t in other_type.options:
+      # By sorting first by whether the option contains type parameters and then
+      # by its index, we move options without type parameters to the front and
+      # otherwise preserve the original order.
+      options = sorted(enumerate(other_type.options),
+                       key=lambda itm: (itm[1].formal, itm[0]))
+      for _, t in options:
         new_subst = self._match_value_against_type(value, t, subst, node, view)
-        if new_subst is not None:
-          matched = True
-          subst = new_subst
+        if new_subst is None:
+          continue
+        matched = True
+        subst = new_subst
+        if isinstance(value.data, abstract.AMBIGUOUS_OR_EMPTY) or t.formal:
+          continue
+        # Since options without type parameters do not modify subst, we can
+        # break after the first match rather than finding all matches. We still
+        # need to fill in subst with *something* so that
+        # annotations_util.sub_one_annotation can tell that all annotations have
+        # been fully matched.
+        subst = subst.copy()
+        for param in self.vm.annotations_util.get_type_parameters(other_type):
+          if param.name not in subst:
+            subst[param.name] = self.vm.convert.empty.to_variable(node)
+        break
       return subst if matched else None
     elif (isinstance(other_type, (abstract.Unknown, abstract.Unsolvable)) or
           isinstance(left, (abstract.Unknown, abstract.Unsolvable))):
