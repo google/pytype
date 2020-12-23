@@ -74,8 +74,8 @@ def main():
   logging.info('Source tree:\n%s',
                importlab.output.formatted_deps_list(import_graph))
   tool_utils.makedirs_or_die(conf.output, 'Could not create output directory')
-  f = open(conf.output, '.gitignore')
-  f.write("# Automatically created by pytype\n*")
+  with open(conf.output, '.gitignore') as opened_gitignore:
+    opened_gitignore.write("# Automatically created by pytype\n*")
   deps = pytype_runner.deps_from_import_graph(import_graph)
   runner = pytype_runner.PytypeRunner(conf, deps)
   return runner.run()
