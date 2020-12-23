@@ -3,6 +3,7 @@
 import logging
 import sys
 import tempfile
+import os
 
 import importlab.environment
 import importlab.fs
@@ -74,7 +75,7 @@ def main():
   logging.info('Source tree:\n%s',
                importlab.output.formatted_deps_list(import_graph))
   tool_utils.makedirs_or_die(conf.output, 'Could not create output directory')
-  with open(conf.output + '/.gitignore', 'w') as f:
+  with open(os.path.join(conf.output, 'gitignore'), 'w') as f:
     f.write("# Automatically created by pytype\n*")
   deps = pytype_runner.deps_from_import_graph(import_graph)
   runner = pytype_runner.PytypeRunner(conf, deps)
