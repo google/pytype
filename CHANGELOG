@@ -1,3 +1,7 @@
+Version 2020.12.23
+* Support using a union to filter types out of a type parameter.
+* Fix the attribute type obtained from `attr.ib(default=())`.
+
 Version 2020.12.16
 * Support NewType in stubs.
 * Treat classes whose metaclass inherits from type(Protocol) as abstract.

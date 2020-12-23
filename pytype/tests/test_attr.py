@@ -651,6 +651,20 @@ class TestAttrib(test_base.TargetIndependentTest):
         def __init__(self, x = ...) -> None: ...
     """)
 
+  def test_empty_tuple_default(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s
+      class Foo:
+        x = attr.ib(default=())
+    """)
+    self.assertTypesMatchPytd(ty, """
+      attr: module
+      class Foo:
+        x: tuple
+        def __init__(self, x: tuple = ...) -> None: ...
+    """)
+
 
 class TestAttrs(test_base.TargetIndependentTest):
   """Tests for attr.s."""
