@@ -76,7 +76,6 @@ def main():
   tool_utils.makedirs_or_die(conf.output, 'Could not create output directory')
   f = open(conf.output + ".gitignore", "w")
   f.write("# Automatically created by pytype\n*")
-  f.close()
   deps = pytype_runner.deps_from_import_graph(import_graph)
   runner = pytype_runner.PytypeRunner(conf, deps)
   return runner.run()
