@@ -214,12 +214,17 @@ def match_classvar(typ):
 
 
 def get_type_from_default(default_var, vm):
-  if default_var and default_var.data == [vm.convert.none]:
+  """Get the type of an attribute from its default value."""
+  if default_var.data == [vm.convert.none]:
     # A default of None doesn't give us any information about the actual type.
     return vm.convert.unsolvable
   typ = vm.convert.merge_classes(default_var.data)
   if typ == vm.convert.empty:
     return vm.convert.unsolvable
+  elif isinstance(typ, abstract.TupleClass) and not typ.tuple_length:
+    # The type of an attribute whose default is an empty tuple should be
+    # Tuple[Any, ...], not Tuple[()].
+    return vm.convert.tuple_type
   return typ
 
 
