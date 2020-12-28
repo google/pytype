@@ -15,6 +15,7 @@ py_test(
   SRCS
     test_anystr.py
   DEPS
+    pytype.utils
     pytype.tests.test_base
 )
 
@@ -33,6 +34,7 @@ py_test(
   SRCS
     test_classes.py
   DEPS
+    pytype.utils
     pytype.tests.test_base
 )
 
@@ -51,6 +53,7 @@ py_test(
   SRCS
     test_containers.py
   DEPS
+    pytype.utils
     pytype.tests.test_base
 )
 
@@ -114,6 +117,7 @@ py_test(
   SRCS
     test_typing.py
   DEPS
+    pytype.utils
     pytype.tests.test_base
 )
 
@@ -123,6 +127,7 @@ py_test(
   SRCS
     test_typing_methods.py
   DEPS
+    pytype.utils
     pytype.tests.test_base
 )
 
@@ -177,6 +182,7 @@ py_test(
   SRCS
     test_match.py
   DEPS
+    pytype.utils
     pytype.tests.test_base
 )
 
@@ -186,6 +192,7 @@ py_test(
   SRCS
     test_builtins.py
   DEPS
+    pytype.utils
     pytype.tests.test_base
 )
 
@@ -195,6 +202,7 @@ py_test(
   SRCS
     test_import.py
   DEPS
+    pytype.utils
     pytype.tests.test_base
 )
 
@@ -204,6 +212,7 @@ py_test(
   SRCS
     test_pyi.py
   DEPS
+    pytype.utils
     pytype.tests.test_base
 )
 
@@ -231,6 +240,7 @@ py_test(
   SRCS
     test_typevar.py
   DEPS
+    pytype.utils
     pytype.tests.test_base
 )
 
@@ -294,6 +304,7 @@ py_test(
   SRCS
     test_generic.py
   DEPS
+    pytype.utils
     pytype.tests.test_base
 )
 
@@ -303,5 +314,7 @@ py_test(
   SRCS
     test_reingest.py
   DEPS
+    pytype.utils
+    pytype.pytd.pytd_utils
     pytype.tests.test_base
 )

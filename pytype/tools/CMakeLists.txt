@@ -3,16 +3,55 @@ add_package()
 py_library(
   NAME
     tools
+  DEPS
+    .arg_parser
+    .config
+    .environment
+    .runner
+    .tool_utils
+)
+
+py_library(
+  NAME
+    arg_parser
   SRCS
     arg_parser.py
-    config.py
-    environment.py
-    runner.py
-    tool_utils.py
   DEPS
     pytype.config
     pytype.utils
+)
+
+py_library(
+  NAME
+    config
+  SRCS
+    config.py
+)
+
+py_library(
+  NAME
+    environment
+  SRCS
+    environment.py
+  DEPS
+    .runner
     pytype.pytd.typeshed
+)
+
+py_library(
+  NAME
+    runner
+  SRCS
+    runner.py
+)
+
+py_library(
+  NAME
+    tool_utils
+  SRCS
+    tool_utils.py
+  DEPS
+    pytype.utils
 )
 
 py_test(
@@ -23,6 +62,7 @@ py_test(
   DEPS
     .tools
     pytype.config
+    pytype.utils
 )
 
 py_test(
