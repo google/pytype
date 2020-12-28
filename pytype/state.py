@@ -239,7 +239,7 @@ class Frame(utils.VirtualMachineWeakrefMixin):
       node: The current CFG graph node.
       vm: The owning virtual machine.
       f_code: The code object to execute in this frame.
-      f_globals: The global context to execute in as a SimpleAbstractValue as
+      f_globals: The global context to execute in as a SimpleValue as
         used by TypegraphVirtualMachine.
       f_locals: Local variables. Will be modified if callargs is passed.
       f_back: The frame above this one on the stack.
@@ -264,7 +264,7 @@ class Frame(utils.VirtualMachineWeakrefMixin):
       self.f_builtins = f_back.f_builtins
     else:
       _, bltin = self.vm.attribute_handler.get_attribute(
-          self.vm.root_cfg_node, f_globals, "__builtins__")
+          self.vm.root_node, f_globals, "__builtins__")
       builtins_pu, = bltin.bindings
       self.f_builtins = builtins_pu.data
     self.f_lineno = f_code.co_firstlineno

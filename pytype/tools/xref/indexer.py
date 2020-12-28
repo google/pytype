@@ -1165,7 +1165,7 @@ class Indexer:
 
   def get_pytd_def(self, data, name):
     assert self.vm, "Indexer vm has not been preserved."
-    node = self.vm.root_cfg_node
+    node = self.vm.root_node
     return self.vm.convert.pytd_convert.value_to_pytd_def(node, data, name)
 
   def get_pytd(self, datum):

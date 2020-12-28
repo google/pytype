@@ -110,7 +110,7 @@ class Attrs(classgen.Decorator):
       cls.members["__init__"] = init_method
 
 
-class AttribInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
+class AttribInstance(abstract.SimpleValue, mixin.HasSlots):
   """Return value of an attr.ib() call."""
 
   def __init__(self, vm, typ, has_type, init, kw_only, default):

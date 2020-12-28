@@ -35,6 +35,6 @@ def build_version_info(vm):
     version.append(vm.convert.constant_to_var(i))
   # micro, releaselevel, serial
   for t in (int, str, int):
-    version.append(
-        vm.convert.primitive_class_instances[t].to_variable(vm.root_cfg_node))
+    version.append(vm.convert.primitive_class_instances[t].to_variable(
+        vm.root_node))
   return VersionInfo(tuple(version), vm)

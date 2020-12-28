@@ -28,7 +28,7 @@ class ValselfTest(test_base.UnitTest):
     options = config.Options.create(python_version=self.python_version)
     self.vm = vm.VirtualMachine(
         errors.ErrorLog(), options, load_pytd.Loader(None, self.python_version))
-    self.node = self.vm.root_cfg_node
+    self.node = self.vm.root_node
     self.attribute_handler = self.vm.attribute_handler
 
   def test_instance_no_valself(self):
@@ -123,8 +123,8 @@ class AttributeTest(test_base.UnitTest):
     t_instance = abstract.TypeParameterInstance(
         t, self._vm.convert.primitive_class_instances[str], self._vm)
     node, var = self._vm.attribute_handler.get_attribute(
-        self._vm.root_cfg_node, t_instance, "upper")
-    self.assertIs(node, self._vm.root_cfg_node)
+        self._vm.root_node, t_instance, "upper")
+    self.assertIs(node, self._vm.root_node)
     attr, = var.data
     self.assertIsInstance(attr, abstract.PyTDFunction)
 
@@ -133,8 +133,8 @@ class AttributeTest(test_base.UnitTest):
     t_instance = abstract.TypeParameterInstance(
         t, self._vm.convert.primitive_class_instances[str], self._vm)
     node, var = self._vm.attribute_handler.get_attribute(
-        self._vm.root_cfg_node, t_instance, "rumpelstiltskin")
-    self.assertIs(node, self._vm.root_cfg_node)
+        self._vm.root_node, t_instance, "rumpelstiltskin")
+    self.assertIs(node, self._vm.root_node)
     self.assertIsNone(var)
 
   def test_empty_type_parameter_instance(self):
@@ -143,8 +143,8 @@ class AttributeTest(test_base.UnitTest):
     instance = abstract.Instance(self._vm.convert.list_type, self._vm)
     t_instance = abstract.TypeParameterInstance(t, instance, self._vm)
     node, var = self._vm.attribute_handler.get_attribute(
-        self._vm.root_cfg_node, t_instance, "real")
-    self.assertIs(node, self._vm.root_cfg_node)
+        self._vm.root_node, t_instance, "real")
+    self.assertIs(node, self._vm.root_node)
     attr, = var.data
     self.assertIs(attr, self._vm.convert.primitive_class_instances[int])
 
@@ -153,9 +153,9 @@ class AttributeTest(test_base.UnitTest):
     t_instance = abstract.TypeParameterInstance(
         t, self._vm.convert.primitive_class_instances[str], self._vm)
     node = self._vm.attribute_handler.set_attribute(
-        self._vm.root_cfg_node, t_instance, "rumpelstiltskin",
-        self._vm.new_unsolvable(self._vm.root_cfg_node))
-    self.assertIs(node, self._vm.root_cfg_node)
+        self._vm.root_node, t_instance, "rumpelstiltskin",
+        self._vm.new_unsolvable(self._vm.root_node))
+    self.assertIs(node, self._vm.root_node)
     self.assertEqual(
         str(self._vm.errorlog).strip(),
         "Can't assign attribute 'rumpelstiltskin' on str [not-writable]")
@@ -167,11 +167,11 @@ class AttributeTest(test_base.UnitTest):
     cls_instance = abstract.Instance(cls, self._vm)
     union = abstract.Union([cls_instance, list_instance], self._vm)
     node = self._vm.attribute_handler.set_attribute(
-        self._vm.root_cfg_node, union, "rumpelstiltskin",
-        self._vm.convert.none_type.to_variable(self._vm.root_cfg_node))
+        self._vm.root_node, union, "rumpelstiltskin",
+        self._vm.convert.none_type.to_variable(self._vm.root_node))
     self.assertEqual(cls_instance.members["rumpelstiltskin"].data.pop(),
                      self._vm.convert.none_type)
-    self.assertIs(node, self._vm.root_cfg_node)
+    self.assertIs(node, self._vm.root_node)
     error, = self._vm.errorlog.unique_sorted_errors()
     self.assertEqual(error.name, "not-writable")
 

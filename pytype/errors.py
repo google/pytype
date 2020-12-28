@@ -901,10 +901,12 @@ class ErrorLog(ErrorLogBase):
             " and ".join(repr(operand) for operand in operands)),
         details=details.get("details"))
 
-  def invalid_annotation(
-      self, stack, annot: Optional[Union[str, abstract.AtomicAbstractValue]],
-      details=None, name=None):
-    if isinstance(annot, abstract.AtomicAbstractValue):
+  def invalid_annotation(self,
+                         stack,
+                         annot: Optional[Union[str, abstract.BaseValue]],
+                         details=None,
+                         name=None):
+    if isinstance(annot, abstract.BaseValue):
       annot = self._print_as_expected_type(annot)
     self._invalid_annotation(stack, annot, details, name)
 
@@ -917,9 +919,11 @@ class ErrorLog(ErrorLogBase):
       self._invalid_annotation(stack, "Ellipsis", details, None)
 
   def ambiguous_annotation(
-      self, stack,
-      options: Optional[Union[str, Iterable[abstract.AtomicAbstractValue]]],
+      self,
+      stack,
+      options: Optional[Union[str, Iterable[abstract.BaseValue]]],
       name=None):
+    """Log an ambiguous annotation."""
     if isinstance(options, (str, type(None))):
       desc = options
     else:

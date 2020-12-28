@@ -73,7 +73,7 @@ pytype analyses this bytecode it needs to implement any special behaviour when
 
 The return types of special builtins are sometimes special objects too; we model
 these with corresponding custom classes deriving directly from
-`abstract.AtomicAbstractValue` and implementing the right behaviour for various
+`abstract.BaseValue` and implementing the right behaviour for various
 attribute and method accesses.
 
 ## Invoking
@@ -140,7 +140,7 @@ class PropertyInstance(mixin.HasSlots, ...):
 ```
 
 NOTE: Slots are implemented via the `get_special_attribute` method in
-the `abstract.py/AtomicAbstractValue` hierarchy and the corresponding override
+the `abstract.py/BaseValue` hierarchy and the corresponding override
 in `mixin.HasSlots`.
 
 ### Instances
@@ -194,7 +194,7 @@ clear the distinction between Data (representation of python objects) and
 Variables (typegraph representations of a python variable, potentially with
 multiple Bindings to data). The special builtins' `call()` methods all take
 arguments in `Variable` form, perform computations on the underlying
-`AtomicAbstractValue`s, and then construct a new `Variable` with the results of
+`BaseValue`s, and then construct a new `Variable` with the results of
 those computations.
 
 Look for the pattern

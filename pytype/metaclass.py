@@ -14,7 +14,7 @@ from pytype import mixin
 log = logging.getLogger(__name__)
 
 
-class AddMetaclassInstance(abstract.AtomicAbstractValue):
+class AddMetaclassInstance(abstract.BaseValue):
   """AddMetaclass instance (constructed by AddMetaclass.call())."""
 
   def __init__(self, meta, vm, module_name):
@@ -58,7 +58,7 @@ class AddMetaclass(abstract.PyTDFunction):
         meta, self.vm, self.module_name).to_variable(node)
 
 
-class WithMetaclassInstance(abstract.AtomicAbstractValue):
+class WithMetaclassInstance(abstract.BaseValue):
   """Anonymous class created by with_metaclass."""
 
   def __init__(self, vm, cls, bases):

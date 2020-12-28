@@ -288,7 +288,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
 
     # We can't build the PyTDClass directly, and instead must run it through
     # convert.constant_to_value first, for caching.
-    instance = self.vm.convert.constant_to_value(cls, {}, self.vm.root_cfg_node)
+    instance = self.vm.convert.constant_to_value(cls, {}, self.vm.root_node)
     self.vm.trace_namedtuple(instance)
     return node, instance.to_variable(node)
 

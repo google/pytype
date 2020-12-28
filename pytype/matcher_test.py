@@ -42,7 +42,7 @@ class MatcherTest(test_base.UnitTest):
     pyval = self._parse_and_lookup(x, name)
     if as_instance:
       pyval = abstract_utils.AsInstance(pyval)
-    return self.vm.convert.constant_to_value(pyval, {}, self.vm.root_cfg_node)
+    return self.vm.convert.constant_to_value(pyval, {}, self.vm.root_node)
 
   def _convert_type(self, t, as_instance=False):
     """Convenience function for turning a string into an abstract value.
@@ -56,7 +56,7 @@ class MatcherTest(test_base.UnitTest):
       as_instance: Whether to convert as an instance.
 
     Returns:
-      An AtomicAbstractValue.
+      A BaseValue.
     """
     src = textwrap.dedent(f"""
       from typing import Any, Callable, Iterator, Tuple, Type, Union
@@ -67,14 +67,14 @@ class MatcherTest(test_base.UnitTest):
     x = self._parse_and_lookup(src, "x", filename).type
     if as_instance:
       x = abstract_utils.AsInstance(x)
-    return self.vm.convert.constant_to_value(x, {}, self.vm.root_cfg_node)
+    return self.vm.convert.constant_to_value(x, {}, self.vm.root_node)
 
   def _match_var(self, left, right):
     var = self.vm.program.NewVariable()
-    var.AddBinding(left, [], self.vm.root_cfg_node)
-    for view in abstract_utils.get_views([var], self.vm.root_cfg_node):
-      yield self.vm.matcher.match_var_against_type(
-          var, right, {}, self.vm.root_cfg_node, view)
+    var.AddBinding(left, [], self.vm.root_node)
+    for view in abstract_utils.get_views([var], self.vm.root_node):
+      yield self.vm.matcher.match_var_against_type(var, right, {},
+                                                   self.vm.root_node, view)
 
   def assertMatch(self, left, right):
     for match in self._match_var(left, right):
@@ -107,39 +107,39 @@ class MatcherTest(test_base.UnitTest):
     left = self._make_class("left")
     meta1 = self._make_class("m1")
     meta2 = self._make_class("m2")
-    left.set_class(self.vm.root_cfg_node,
-                   self.vm.program.NewVariable(
-                       [meta1, meta2], [], self.vm.root_cfg_node))
+    left.set_class(
+        self.vm.root_node,
+        self.vm.program.NewVariable([meta1, meta2], [], self.vm.root_node))
     self.assertMatch(left, meta1)
     self.assertMatch(left, meta2)
 
   def test_empty_against_class(self):
     var = self.vm.program.NewVariable()
     right = self._make_class("bar")
-    result = self.vm.matcher.match_var_against_type(
-        var, right, {}, self.vm.root_cfg_node, {})
+    result = self.vm.matcher.match_var_against_type(var, right, {},
+                                                    self.vm.root_node, {})
     self.assertEqual(result, {})
 
   def test_empty_var_against_empty(self):
     var = self.vm.program.NewVariable()
     right = abstract.Empty(self.vm)
-    result = self.vm.matcher.match_var_against_type(
-        var, right, {}, self.vm.root_cfg_node, {})
+    result = self.vm.matcher.match_var_against_type(var, right, {},
+                                                    self.vm.root_node, {})
     self.assertEqual(result, {})
 
   def test_empty_against_type_parameter(self):
     var = self.vm.program.NewVariable()
     right = abstract.TypeParameter("T", self.vm)
-    result = self.vm.matcher.match_var_against_type(
-        var, right, {}, self.vm.root_cfg_node, {})
+    result = self.vm.matcher.match_var_against_type(var, right, {},
+                                                    self.vm.root_node, {})
     six.assertCountEqual(self, result.keys(), ["T"])
     self.assertFalse(result["T"].bindings)
 
   def test_empty_against_unsolvable(self):
     var = self.vm.program.NewVariable()
     right = abstract.Empty(self.vm)
-    result = self.vm.matcher.match_var_against_type(
-        var, right, {}, self.vm.root_cfg_node, {})
+    result = self.vm.matcher.match_var_against_type(var, right, {},
+                                                    self.vm.root_node, {})
     self.assertEqual(result, {})
 
   def test_class_against_type_union(self):
@@ -254,8 +254,8 @@ class MatcherTest(test_base.UnitTest):
               1: abstract.TypeParameter(abstract_utils.V, self.vm)}
     params[abstract_utils.T] = abstract.Union((params[0], params[1]), self.vm)
     right = abstract.TupleClass(self.vm.convert.tuple_type, params, self.vm)
-    match = self.vm.matcher.match_var_against_type(
-        var, right, {}, self.vm.root_cfg_node, {})
+    match = self.vm.matcher.match_var_against_type(var, right, {},
+                                                   self.vm.root_node, {})
     self.assertSetEqual(set(match), {abstract_utils.K, abstract_utils.V})
 
   def test_unsolvable_against_tuple_class(self):
@@ -309,12 +309,12 @@ class MatcherTest(test_base.UnitTest):
       class A(object):
         def f(self, x: int) -> bool: ...
     """, "A", as_instance=True)
-    binding = instance.to_binding(self.vm.root_cfg_node)
-    _, var = self.vm.attribute_handler.get_attribute(
-        self.vm.root_cfg_node, instance, "f", binding)
+    binding = instance.to_binding(self.vm.root_node)
+    _, var = self.vm.attribute_handler.get_attribute(self.vm.root_node,
+                                                     instance, "f", binding)
     bound = var.data[0]
-    _, var = self.vm.attribute_handler.get_attribute(
-        self.vm.root_cfg_node, instance.cls, "f")
+    _, var = self.vm.attribute_handler.get_attribute(self.vm.root_node,
+                                                     instance.cls, "f")
     unbound = var.data[0]
     callable_no_self = self._convert_type("Callable[[int]]")
     callable_self = self._convert_type("Callable[[Any, int]]")

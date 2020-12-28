@@ -181,7 +181,7 @@ What data does a Binding actually bind?
 
 In an expression like `x = a()`, pytype will add a Binding to `x` stating that
 `x` is bound to whatever value `a` returns. This value will be an instance of (a
-subclass of) `abstract.AtomicAbstractValue`, the type that represents values in
+subclass of) `abstract.BaseValue`, the type that represents values in
 the Python program being analyzed.
 
 But the typegraph is implemented in C++. That means the typegraph works with

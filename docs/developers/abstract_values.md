@@ -119,7 +119,7 @@ globals = {'A': obj1, 'foo': obj3}
 ```
 
 The `abstract.*` classes are defined in `abstract.py`. They all inherit from the
-base class `AtomicAbstractValue`, which is the pytype representation of a python
+base class `BaseValue`, which is the pytype representation of a python
 object, and store various metadata that is relevant to type inference and
 checking (e.g.  the `InterpreterClass` object stores a list of base classes and
 a dictionary of members, and the `Instance` object stores a reference to the
@@ -226,13 +226,13 @@ examples for `constant_to_value`:
 
 `pyval`         | `constant_to_value(pyval)`
 --------------- | --------------------------
-`'hello world'` | `abstract.AbstractOrConcreteValue('hello world')`
-`0`             | `abstract.AbstractOrConcreteValue(0)`
+`'hello world'` | `abstract.ConcreteValue('hello world')`
+`0`             | `abstract.ConcreteValue(0)`
 `42`            | `abstract.Instance(int)`
 `pytd.Class(X)` | `abstract.PyTDClass(X)`
 
 Some constants such as strings and small integers have to be represented as
-`AbstractOrConcreteValue` objects, which save the concrete value for later use.
+`ConcreteValue` objects, which save the concrete value for later use.
 String values, for example, often contain forward references, and `-1` through
 `2` are common import levels. Otherwise, constants are converted to abstract
 instances of their types.

@@ -270,7 +270,7 @@ class CallTracer(vm.VirtualMachine):
     """Set maybe_missing_members to True on these values and their type params.
 
     Args:
-      values: A list of AtomicAbstractValue objects. On every instance among
+      values: A list of BaseValue objects. On every instance among
         the values, recursively set maybe_missing_members to True on the
         instance and its type parameters.
     """
@@ -280,7 +280,7 @@ class CallTracer(vm.VirtualMachine):
       v = values.pop(0)
       if v not in seen:
         seen.add(v)
-        if isinstance(v, abstract.SimpleAbstractValue):
+        if isinstance(v, abstract.SimpleValue):
           v.maybe_missing_members = True
           for child in v.instance_type_parameters.values():
             values.extend(child.data)
@@ -335,7 +335,7 @@ class CallTracer(vm.VirtualMachine):
     return node
 
   def _call_init_on_binding(self, node, b):
-    if isinstance(b.data, abstract.SimpleAbstractValue):
+    if isinstance(b.data, abstract.SimpleValue):
       for param in b.data.instance_type_parameters.values():
         node = self.call_init(node, param)
     node = self._call_method(node, b, "__init__")

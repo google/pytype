@@ -99,7 +99,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
 
     Args:
       var: A cfg.Variable, containing instances.
-      other_type: An instance of AtomicAbstractValue.
+      other_type: An instance of BaseValue.
       node: A cfg.CFGNode. The position in the CFG from which we "observe" the
         match.
     Returns:
@@ -223,7 +223,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
 
     Args:
       value: A cfg.Binding.
-      other_type: An AtomicAbstractValue instance.
+      other_type: A BaseValue instance.
       subst: The current substitution. This dictionary is not modified.
       node: Current location (CFG node)
       view: A mapping of Variable to Value.
@@ -232,9 +232,9 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       None otherwise.
     """
     left = value.data
-    assert isinstance(left, abstract.AtomicAbstractValue), left
+    assert isinstance(left, abstract.BaseValue), left
     assert not left.formal, left
-    assert isinstance(other_type, abstract.AtomicAbstractValue), other_type
+    assert isinstance(other_type, abstract.BaseValue), other_type
 
     if isinstance(left, abstract.TypeParameterInstance) and (
         isinstance(left.instance, (abstract.CallableClass,
@@ -249,10 +249,10 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           subst[other_type.full_name] = node.program.NewVariable([], [], node)
           return subst
         else:
-          left_dummy = left.param.instantiate(
-              self.vm.root_cfg_node, abstract_utils.DUMMY_CONTAINER)
-          right_dummy = left.param.instantiate(
-              self.vm.root_cfg_node, abstract_utils.DUMMY_CONTAINER)
+          left_dummy = left.param.instantiate(self.vm.root_node,
+                                              abstract_utils.DUMMY_CONTAINER)
+          right_dummy = left.param.instantiate(self.vm.root_node,
+                                               abstract_utils.DUMMY_CONTAINER)
           self._set_error_subst(
               self._merge_substs(subst, [{
                   left.param.name: left_dummy,
@@ -450,7 +450,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     elif isinstance(left, dataclass_overlay.FieldInstance) and left.default:
       return self._match_all_bindings(
           left.default, other_type, subst, node, view)
-    elif isinstance(left, abstract.SimpleAbstractValue):
+    elif isinstance(left, abstract.SimpleValue):
       return self._match_instance_against_type(
           left, other_type, subst, node, view)
     elif isinstance(left, special_builtins.SuperInstance):
@@ -656,8 +656,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         for type_param in other_type.template:
           value = other_type.get_formal_type_parameter(type_param.name)
           if isinstance(value, abstract.TypeParameter):
-            subst[value.full_name] = self.vm.new_unsolvable(
-                self.vm.root_cfg_node)
+            subst[value.full_name] = self.vm.new_unsolvable(self.vm.root_node)
         return subst
       else:
         # Parameterized classes can rename type parameters, which is why we need
@@ -737,7 +736,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       return self._instantiate_and_match(left, other_type, subst, node, view)
     else:
       assert isinstance(other_type, abstract.TupleClass)
-      if isinstance(instance, abstract.SimpleAbstractValue):
+      if isinstance(instance, abstract.SimpleValue):
         instance_param = instance.get_instance_type_parameter(
             abstract_utils.T, node)
         for i in range(other_type.tuple_length):
@@ -751,7 +750,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
   def _match_callable_instance(
       self, left, instance, other_type, subst, node, view):
     """Used by _match_instance."""
-    if (not isinstance(instance, abstract.SimpleAbstractValue) or
+    if (not isinstance(instance, abstract.SimpleValue) or
         not isinstance(other_type, abstract.ParameterizedClass)):
       return subst
     subst = self.match_var_against_type(
@@ -791,7 +790,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     """
     if isinstance(other_type, abstract.LiteralClass):
       other_value = other_type.value
-      if other_value and isinstance(instance, abstract.AbstractOrConcreteValue):
+      if other_value and isinstance(instance, abstract.ConcreteValue):
         return subst if instance.pyval == other_value.pyval else None
       elif other_value:
         # `instance` does not contain a concrete value. Literal overloads are

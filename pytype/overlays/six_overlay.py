@@ -37,7 +37,7 @@ def build_string_types(vm):
   # in Py3.
   # We're following the pyi definition of string_types here, because the real
   # value in Py2 is `basestring`, which we don't have available.
-  node = vm.root_cfg_node
+  node = vm.root_node
   classes = [vm.convert.str_type.to_variable(node)]
   if vm.PY2:
     classes.append(vm.convert.unicode_type.to_variable(node))
@@ -48,4 +48,4 @@ def build_integer_types(vm):
   # pytype treats `long` as an alias of `int`, so the value of integer_types can
   # be represented as just `(int,)` in both Py2 and Py3.
   return vm.convert.tuple_to_value(
-      (vm.convert.int_type.to_variable(vm.root_cfg_node),))
+      (vm.convert.int_type.to_variable(vm.root_node),))

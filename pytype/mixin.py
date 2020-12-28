@@ -75,7 +75,7 @@ class PythonConstant(metaclass=MixinMeta):
     """Get a string representation of this constant.
 
     Args:
-      printer: An AtomicAbstractValue -> str function that will be used to
+      printer: A BaseValue -> str function that will be used to
         print abstract values.
 
     Returns:
@@ -112,11 +112,10 @@ class HasSlots(metaclass=MixinMeta):
     """Add a new slot to this value."""
     assert name not in self._slots, "slot %s already occupied" % name
     _, attr = self.vm.attribute_handler.get_attribute(
-        self.vm.root_cfg_node, self, name,
-        self.to_binding(self.vm.root_cfg_node))
+        self.vm.root_node, self, name, self.to_binding(self.vm.root_node))
     self._super[name] = attr
     f = self.make_native_function(name, method)
-    self._slots[name] = f.to_variable(self.vm.root_cfg_node)
+    self._slots[name] = f.to_variable(self.vm.root_node)
 
   def call_pytd(self, node, name, *args):
     """Call the (original) pytd version of a method we overwrote."""

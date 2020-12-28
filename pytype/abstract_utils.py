@@ -15,8 +15,8 @@ from pytype.typegraph import cfg_utils
 
 log = logging.getLogger(__name__)
 
-# We can't import abstract.AtomicAbstractValue here due to a circular dep.
-_AbstractValueType = Any
+# We can't import abstract.BaseValue here due to a circular dep.
+_BaseValue = Any
 
 # Type parameter names matching the ones in __builtin__.pytd and typing.pytd.
 T = "_T"
@@ -208,7 +208,7 @@ def has_type_parameters(node, val, seen=None):
   Args:
     node: The current CFG node.
     val: The object to check for TypeParameters. Will likely be a
-      SimpleAbstractValue or a cfg.Variable with SimpleAbstractValues bindings.
+      SimpleValue or a cfg.Variable with SimpleValues bindings.
     seen: Optional. A set of already-visited objects, to avoid infinite loops.
 
   Returns:
@@ -225,7 +225,7 @@ def has_type_parameters(node, val, seen=None):
     return True
   elif val.isinstance_ParameterizedClass() or val.isinstance_Union():
     return val.formal
-  elif val.isinstance_SimpleAbstractValue():
+  elif val.isinstance_SimpleValue():
     return any((has_type_parameters(node, tp, seen)
                 for tp in val.instance_type_parameters.values()))
   else:
@@ -430,7 +430,7 @@ def compute_template(val):
   if the check fails.
 
   Args:
-    val: The abstract.AtomicAbstractValue to compute a template for.
+    val: The abstract.BaseValue to compute a template for.
 
   Returns:
     parsed type parameters
@@ -595,7 +595,7 @@ def check_classes(var, check):
 
   Args:
     var: A cfg.Variable or empty.
-    check: (AtomicAbstractValue) -> bool.
+    check: (BaseValue) -> bool.
 
   Returns:
     Whether the check passes.
@@ -690,7 +690,7 @@ class Local:
       return None
 
 
-def is_literal(annot: Optional[_AbstractValueType]):
+def is_literal(annot: Optional[_BaseValue]):
   if not annot:
     return False
   if annot.isinstance_Union():
@@ -698,7 +698,7 @@ def is_literal(annot: Optional[_AbstractValueType]):
   return annot.isinstance_LiteralClass()
 
 
-def is_indefinite_iterable(val: _AbstractValueType):
+def is_indefinite_iterable(val: _BaseValue):
   """True if val is a non-concrete instance of typing.Iterable."""
   instance = val.isinstance_Instance()
   concrete = (val.isinstance_PythonConstant() and
