@@ -3,15 +3,52 @@ add_package()
 py_library(
   NAME
     analyze_project
+  DEPS
+    .config
+    .environment
+    .parse_args
+    .pytype_runner
+)
+
+py_library(
+  NAME
+    config
   SRCS
     config.py
-    environment.py
-    parse_args.py
-    pytype_runner.py
   DEPS
+    pytype.utils
+    pytype.tools.tools
+)
+
+py_library(
+  NAME
+    environment
+  SRCS
+    environment.py
+  DEPS
+    pytype.utils
+)
+
+py_library(
+  NAME
+    parse_args
+  SRCS
+    parse_args.py
+  DEPS
+    .config
     pytype.config
     pytype.utils
     pytype.tools.tools
+)
+
+py_library(
+  NAME
+    pytype_runner
+  SRCS
+    pytype_runner.py
+  DEPS
+    .config
+    pytype.utils
 )
 
 py_test(
@@ -31,6 +68,7 @@ py_test(
     parse_args_test.py
   DEPS
     .analyze_project
+    pytype.utils
 )
 
 py_test(
