@@ -125,7 +125,8 @@ class Signature:
     pytd_annotations.append(("return", sig.return_type))
     def param_to_var(p):
       return vm.convert.constant_to_var(
-          p.type, subst=datatypes.AliasingDict(), node=vm.root_cfg_node)
+          p.type, subst=datatypes.AliasingDict(), node=vm.root_node)
+
     return cls(
         name=name,
         param_names=tuple(p.name for p in sig.params if not p.kwonly),
@@ -133,9 +134,11 @@ class Signature:
         kwonly_params=set(p.name for p in sig.params if p.kwonly),
         kwargs_name=None if sig.starstarargs is None else sig.starstarargs.name,
         defaults={p.name: param_to_var(p) for p in sig.params if p.optional},
-        annotations={name: vm.convert.constant_to_value(
-            typ, subst=datatypes.AliasingDict(), node=vm.root_cfg_node)
-                     for name, typ in pytd_annotations},
+        annotations={
+            name: vm.convert.constant_to_value(
+                typ, subst=datatypes.AliasingDict(), node=vm.root_node)
+            for name, typ in pytd_annotations
+        },
         postprocess_annotations=False,
     )
 
@@ -568,8 +571,9 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
     self.pytd_sig = pytd_sig
     self.param_types = [
         self.vm.convert.constant_to_value(
-            p.type, subst=datatypes.AliasingDict(), node=self.vm.root_cfg_node)
-        for p in self.pytd_sig.params]
+            p.type, subst=datatypes.AliasingDict(), node=self.vm.root_node)
+        for p in self.pytd_sig.params
+    ]
     self.signature = Signature.from_pytd(vm, name, pytd_sig)
 
   def _map_args(self, args, view):
@@ -741,8 +745,7 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
     for formal in self.pytd_sig.params:
       actual = arg_dict[formal.name]
       arg = actual.data
-      if (formal.mutated_type is not None and
-          arg.isinstance_SimpleAbstractValue()):
+      if (formal.mutated_type is not None and arg.isinstance_SimpleValue()):
         if (isinstance(formal.type, pytd.GenericType) and
             isinstance(formal.mutated_type, pytd.GenericType) and
             formal.type.base_type == formal.mutated_type.base_type and
@@ -811,8 +814,9 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
     self.pytd_sig = new_sig
     self.param_types = [
         self.vm.convert.constant_to_value(
-            p.type, subst=datatypes.AliasingDict(), node=self.vm.root_cfg_node)
-        for p in self.pytd_sig.params]
+            p.type, subst=datatypes.AliasingDict(), node=self.vm.root_node)
+        for p in self.pytd_sig.params
+    ]
     self.signature = Signature.from_pytd(self.vm, self.name, self.pytd_sig)
     return self
 
@@ -822,6 +826,5 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
 
 def _splats_to_any(seq, vm):
   return tuple(
-      vm.new_unsolvable(vm.root_cfg_node) if abstract_utils.is_var_splat(v)
-      else v
+      vm.new_unsolvable(vm.root_node) if abstract_utils.is_var_splat(v) else v
       for v in seq)

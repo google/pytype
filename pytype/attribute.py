@@ -55,7 +55,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
           node, obj.get_module(name), name, valself)
     elif isinstance(obj, abstract.Module):
       return self._get_module_attribute(node, obj, name, valself)
-    elif isinstance(obj, abstract.SimpleAbstractValue):
+    elif isinstance(obj, abstract.SimpleValue):
       return self._get_instance_attribute(node, obj, name, valself)
     elif isinstance(obj, abstract.Union):
       if name == "__getitem__":
@@ -81,7 +81,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     elif isinstance(obj, abstract.TypeParameterInstance):
       param_var = obj.instance.get_instance_type_parameter(obj.name)
       if not param_var.bindings:
-        param_var = obj.param.instantiate(self.vm.root_cfg_node)
+        param_var = obj.param.instantiate(self.vm.root_node)
       results = []
       nodes = []
       for v in param_var.data:
@@ -133,7 +133,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       return node
     elif isinstance(obj, (abstract.StaticMethod, abstract.ClassMethod)):
       return self.set_attribute(node, obj.method, name, value)
-    elif isinstance(obj, abstract.SimpleAbstractValue):
+    elif isinstance(obj, abstract.SimpleValue):
       return self._set_member(node, obj, name, value)
     elif isinstance(obj, abstract.BoundFunction):
       return self.set_attribute(node, obj.underlying, name, value)
@@ -167,7 +167,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         # It's not possible to set an attribute on object itself.
         # (object has __setattr__, but that honors __slots__.)
         continue
-      if (isinstance(baseclass, abstract.SimpleAbstractValue) and
+      if (isinstance(baseclass, abstract.SimpleValue) and
           ("__setattr__" in baseclass or name in baseclass)):
         return True  # This is a programmatic attribute.
       if baseclass.slots is None or name in baseclass.slots:
@@ -216,7 +216,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
 
   def _get_instance_attribute(self, node, obj, name, valself=None):
     """Get an attribute from an instance."""
-    assert isinstance(obj, abstract.SimpleAbstractValue)
+    assert isinstance(obj, abstract.SimpleValue)
     return self._get_attribute(node, obj, obj.cls, name, valself)
 
   def _get_attribute(self, node, obj, cls, name, valself):
@@ -395,7 +395,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
           # we shouldn't bind the function to the class.
           if (not isinstance(value, abstract.PyTDFunction) or
               not isinstance(base, abstract.InterpreterClass)):
-            # See AtomicAbstractValue.property_get for an explanation of the
+            # See BaseValue.property_get for an explanation of the
             # parameters we're passing here.
             value = value.property_get(
                 valself.AssignToNewVariable(node),
@@ -493,7 +493,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       return None
 
   def _maybe_load_as_instance_attribute(self, node, obj, name):
-    assert isinstance(obj, abstract.SimpleAbstractValue)
+    assert isinstance(obj, abstract.SimpleValue)
     if not isinstance(obj.cls, mixin.Class):
       return
     for base in obj.cls.mro:
@@ -528,7 +528,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       # The previous value needs to be loaded at the root node so that
       # (1) it is overwritten by the current value and (2) it is still
       # visible on branches where the current value is not
-      self._maybe_load_as_instance_attribute(self.vm.root_cfg_node, obj, name)
+      self._maybe_load_as_instance_attribute(self.vm.root_node, obj, name)
 
     variable = obj.members.get(name)
     if variable:

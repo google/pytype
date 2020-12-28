@@ -237,8 +237,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     # some of our own in _getargs. _NamedTupleFields is an alias to
     # List[Tuple[str, type]], which gives a more understandable error message.
     fields_pyval = typing_ast.Lookup("typing._NamedTupleFields").type
-    fields_type = vm.convert.constant_to_value(
-        fields_pyval, {}, vm.root_cfg_node)
+    fields_type = vm.convert.constant_to_value(fields_pyval, {}, vm.root_node)
     # pylint: disable=protected-access
     self._fields_param = function.BadParam(name="fields", expected=fields_type)
     return self
@@ -261,7 +260,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
           sig.signature, args, self.vm, self._fields_param)
     # The fields is a list of tuples, so we need to deeply unwrap them.
     fields = [abstract_utils.get_atomic_python_constant(t) for t in fields]
-    # We need the actual string for the field names and the AtomicAbstractValue
+    # We need the actual string for the field names and the BaseValue
     # for the field types.
     names = []
     types = []
@@ -675,7 +674,7 @@ class Literal(TypingContainer):
           isinstance(param, abstract.LiteralClass) or
           param == self.vm.convert.unsolvable and i not in ellipses):
         value = param
-      elif (isinstance(param, abstract.AbstractOrConcreteValue) and
+      elif (isinstance(param, abstract.ConcreteValue) and
             isinstance(param.pyval, (int, str, bytes))):
         value = abstract.LiteralClass(param, self.vm)
       else:

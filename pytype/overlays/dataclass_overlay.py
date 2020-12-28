@@ -115,7 +115,7 @@ class Dataclass(classgen.Decorator):
       cls.members["__init__"] = init_method
 
 
-class FieldInstance(abstract.SimpleAbstractValue):
+class FieldInstance(abstract.SimpleValue):
   """Return value of a field() call."""
 
   def __init__(self, vm, init, default):

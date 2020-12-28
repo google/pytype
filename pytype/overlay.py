@@ -27,7 +27,7 @@ class Overlay(abstract.Module):
     Args:
       vm: Instance of vm.VirtualMachine.
       name: A string containing the name of the underlying module.
-      member_map: Dict of str to abstract.AtomicAbstractValues that provide type
+      member_map: Dict of str to abstract.BaseValues that provide type
         information not available in the underlying module.
       ast: An pytd.TypeDeclUnit containing the AST for the underlying module.
         Used to access type information for members of the module that are not
@@ -35,12 +35,12 @@ class Overlay(abstract.Module):
     """
     super().__init__(vm, name, member_map, ast)
     self.real_module = vm.convert.constant_to_value(
-        ast, subst=datatypes.AliasingDict(), node=vm.root_cfg_node)
+        ast, subst=datatypes.AliasingDict(), node=vm.root_node)
 
   def _convert_member(self, member):
     val = member(self.vm)
     val.module = self.name
-    return val.to_variable(self.vm.root_cfg_node)
+    return val.to_variable(self.vm.root_node)
 
   def get_module(self, name):
     """Returns the abstract.Module for the given name."""

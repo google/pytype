@@ -113,7 +113,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return [self.value_instance_to_pytd_type(
           node, v.get_formal_type_parameter(t), None, seen, view)
               for t in template]
-    elif isinstance(instance, abstract.SimpleAbstractValue):
+    elif isinstance(instance, abstract.SimpleValue):
       type_arguments = []
       for t in template:
         if isinstance(instance, abstract.Tuple):
@@ -123,7 +123,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
               node, instance.get_instance_type_parameter(t), view)
         elif isinstance(v, abstract.CallableClass):
           param_values = v.get_formal_type_parameter(t).instantiate(
-              node or self.vm.root_cfg_node).data
+              node or self.vm.root_node).data
         else:
           param_values = [self.vm.convert.unsolvable]
         if (param_values == [self.vm.convert.unsolvable] and
@@ -284,12 +284,12 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     elif isinstance(v, abstract.Module):
       return pytd.NamedType("__builtin__.module")
     elif (self._output_mode >= Converter.OutputMode.LITERAL and
-          isinstance(v, abstract.AbstractOrConcreteValue) and
+          isinstance(v, abstract.ConcreteValue) and
           isinstance(v.pyval, (int, str, bytes))):
       # LITERAL mode is used only for pretty-printing, so we just stringify the
       # inner value rather than properly converting it.
       return pytd.Literal(repr(v.pyval))
-    elif isinstance(v, abstract.SimpleAbstractValue):
+    elif isinstance(v, abstract.SimpleValue):
       if v.cls:
         ret = self.value_instance_to_pytd_type(
             node, v.cls, v, seen=seen, view=view)

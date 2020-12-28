@@ -23,7 +23,7 @@ class CompareTestBase(test_base.UnitTest):
     self._vm = vm.VirtualMachine(
         errors.ErrorLog(), options, load_pytd.Loader(None, self.python_version))
     self._program = self._vm.program
-    self._node = self._vm.root_cfg_node.ConnectNew("test_node")
+    self._node = self._vm.root_node.ConnectNew("test_node")
     self._convert = self._vm.convert
 
   def assertTruthy(self, value):
@@ -58,7 +58,7 @@ class InstanceTest(CompareTestBase):
     # Once a type parameter is set, list is compatible with True and False.
     i.merge_instance_type_parameter(
         self._node, abstract_utils.T,
-        self._convert.object_type.to_variable(self._vm.root_cfg_node))
+        self._convert.object_type.to_variable(self._vm.root_node))
     self.assertAmbiguous(i)
 
   def test_compatible_with_set(self):
@@ -68,12 +68,12 @@ class InstanceTest(CompareTestBase):
     # Once a type parameter is set, list is compatible with True and False.
     i.merge_instance_type_parameter(
         self._node, abstract_utils.T,
-        self._convert.object_type.to_variable(self._vm.root_cfg_node))
+        self._convert.object_type.to_variable(self._vm.root_node))
     self.assertAmbiguous(i)
 
   def test_compatible_with_none(self):
     # This test is specifically for abstract.Instance, so we don't use
-    # self._convert.none, which is an AbstractOrConcreteValue.
+    # self._convert.none, which is a ConcreteValue.
     i = abstract.Instance(self._convert.none_type, self._vm)
     self.assertFalsy(i)
 

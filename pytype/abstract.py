@@ -1,6 +1,6 @@
 """The abstract values used by vm.py.
 
-This file contains AtomicAbstractValue and its subclasses. Mixins such as Class
+This file contains BaseValue and its subclasses. Mixins such as Class
 are in mixin.py, and other abstract logic is in abstract_utils.py.
 """
 
@@ -36,7 +36,7 @@ from pytype.typegraph import cfg_utils
 log = logging.getLogger(__name__)
 
 
-class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
+class BaseValue(utils.VirtualMachineWeakrefMixin):
   """A single abstract value such as a type or function signature.
 
   This is the base class of the things that appear in Variables. It represents
@@ -51,7 +51,7 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   formal = False  # is this type non-instantiable?
 
   def __init__(self, name, vm):
-    """Basic initializer for all AtomicAbstractValues."""
+    """Basic initializer for all BaseValues."""
     super().__init__(vm)
     assert hasattr(vm, "program"), type(self)
     self.cls = None
@@ -135,7 +135,7 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
 
     Treating self as an abstract.Instance, gets the variable of its values for
     the given type parameter. For the real implementation, see
-    SimpleAbstractValue.get_instance_type_parameter.
+    SimpleValue.get_instance_type_parameter.
 
     Args:
       name: The name of the type parameter.
@@ -145,7 +145,7 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
     """
     del name
     if node is None:
-      node = self.vm.root_cfg_node
+      node = self.vm.root_node
     return self.vm.new_unsolvable(node)
 
   def get_formal_type_parameter(self, t):
@@ -198,7 +198,7 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
         abc.load_lazy_attribute("ABCMeta")
         return abc.members["ABCMeta"]
       else:
-        return self.get_class().to_variable(self.vm.root_cfg_node)
+        return self.get_class().to_variable(self.vm.root_node)
     return None
 
   def get_own_new(self, node, value):
@@ -240,7 +240,7 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
     the formal definition of a class. See InterpreterClass and TupleClass.
 
     Args:
-      instance: An instance of this class (as an AtomicAbstractValue)
+      instance: An instance of this class (as a BaseValue)
     """
 
   def get_class(self):
@@ -423,8 +423,8 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
   def isinstance_PythonConstant(self):
     return isinstance(self, mixin.PythonConstant)
 
-  def isinstance_SimpleAbstractValue(self):
-    return isinstance(self, SimpleAbstractValue)
+  def isinstance_SimpleValue(self):
+    return isinstance(self, SimpleValue)
 
   def isinstance_Splat(self):
     return isinstance(self, Splat)
@@ -451,7 +451,7 @@ class AtomicAbstractValue(utils.VirtualMachineWeakrefMixin):
     return False
 
 
-class Singleton(AtomicAbstractValue):
+class Singleton(BaseValue):
   """A Singleton class must only be instantiated once.
 
   This is essentially an ABC for Unsolvable, Empty, and others.
@@ -523,7 +523,7 @@ class Deleted(Empty):
     self.name = "deleted"
 
 
-class TypeParameter(AtomicAbstractValue):
+class TypeParameter(BaseValue):
   """Parameter of a type."""
 
   formal = True
@@ -572,7 +572,7 @@ class TypeParameter(AtomicAbstractValue):
 
   def instantiate(self, node, container=None):
     var = self.vm.program.NewVariable()
-    if container and (not isinstance(container, SimpleAbstractValue) or
+    if container and (not isinstance(container, SimpleValue) or
                       self.full_name in container.all_template_names):
       instance = TypeParameterInstance(self, container, self.vm)
       return instance.to_variable(node)
@@ -598,7 +598,7 @@ class TypeParameter(AtomicAbstractValue):
     return node, self.instantiate(node)
 
 
-class TypeParameterInstance(AtomicAbstractValue):
+class TypeParameterInstance(BaseValue):
   """An instance of a type parameter."""
 
   def __init__(self, param, instance, vm):
@@ -615,7 +615,7 @@ class TypeParameterInstance(AtomicAbstractValue):
     if var.bindings:
       return self.vm.call_function(node, var, args)
     else:
-      return node, self.vm.convert.empty.to_variable(self.vm.root_cfg_node)
+      return node, self.vm.convert.empty.to_variable(self.vm.root_node)
 
   def __repr__(self):
     return "TypeParameterInstance(%r)" % self.name
@@ -629,7 +629,7 @@ class TypeParameterInstance(AtomicAbstractValue):
     return hash((self.param, self.instance))
 
 
-class SimpleAbstractValue(AtomicAbstractValue):
+class SimpleValue(BaseValue):
   """A basic abstract value that represents instances.
 
   This class implements instances in the Python sense. Instances of the same
@@ -643,7 +643,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
   """
 
   def __init__(self, name, vm):
-    """Initialize a SimpleAbstractValue.
+    """Initialize a SimpleValue.
 
     Args:
       name: Name of this value. For debugging and error reporting.
@@ -691,7 +691,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     if not param:
       log.info("Creating new empty type param %s", name)
       if node is None:
-        node = self.vm.root_cfg_node
+        node = self.vm.root_node
       param = self.vm.program.NewVariable([], [], node)
       self.instance_type_parameters[name] = param
     return param
@@ -798,7 +798,7 @@ class SimpleAbstractValue(AtomicAbstractValue):
     return parameters
 
 
-class Instance(SimpleAbstractValue):
+class Instance(SimpleValue):
   """An instance of some object."""
 
   def __init__(self, cls, vm):
@@ -821,7 +821,7 @@ class Instance(SimpleAbstractValue):
         self._instance_type_parameters[name] = value
       else:
         self._instance_type_parameters[name] = param.instantiate(
-            self.vm.root_cfg_node, self)
+            self.vm.root_node, self)
     # We purposely set this flag at the very end so that accidentally accessing
     # instance_type_parameters during loading will trigger an obvious crash due
     # to infinite recursion, rather than silently returning an incomplete dict.
@@ -902,7 +902,7 @@ class List(Instance, mixin.HasSlots, mixin.PythonConstant):
     vm.py:get_slice replaces an argument with an Instance of int.
 
     Args:
-      data: The object to extract from. Usually an AbstractOrConcreteValue or an
+      data: The object to extract from. Usually a ConcreteValue or an
         Instance.
 
     Returns:
@@ -911,7 +911,7 @@ class List(Instance, mixin.HasSlots, mixin.PythonConstant):
     Raises:
       abstract_utils.ConversionError: If the data could not be converted.
     """
-    if isinstance(data, AbstractOrConcreteValue):
+    if isinstance(data, ConcreteValue):
       return self.vm.convert.value_to_constant(data, (int, type(None)))
     elif isinstance(data, Instance):
       if data.cls != self.vm.convert.int_type:
@@ -1163,7 +1163,7 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
         self.merge_instance_type_parameter(node, abstract_utils.V, v)
         self.could_contain_anything |= other_dict.could_contain_anything
     else:
-      assert isinstance(other_dict, AtomicAbstractValue)
+      assert isinstance(other_dict, BaseValue)
       if (isinstance(other_dict, Instance) and
           other_dict.full_name == "__builtin__.dict"):
         k = other_dict.get_instance_type_parameter(abstract_utils.K, node)
@@ -1261,7 +1261,7 @@ class LateAnnotation:
     if self.resolved:
       return self._type.to_variable(node)
     else:
-      return AtomicAbstractValue.to_variable(self, node)
+      return BaseValue.to_variable(self, node)
 
   def instantiate(self, node, container=None):
     if self.resolved:
@@ -1273,7 +1273,7 @@ class LateAnnotation:
 
   def get_special_attribute(self, node, name, valself):
     if name == "__getitem__" and not self.resolved:
-      container = AtomicAbstractValue.to_annotation_container(self)
+      container = BaseValue.to_annotation_container(self)
       return container.get_special_attribute(node, name, valself)
     return self._type.get_special_attribute(node, name, valself)
 
@@ -1281,7 +1281,7 @@ class LateAnnotation:
     return True
 
 
-class AnnotationClass(SimpleAbstractValue, mixin.HasSlots):
+class AnnotationClass(SimpleValue, mixin.HasSlots):
   """Base class of annotations that can be parameterized."""
 
   def __init__(self, name, vm):
@@ -1421,7 +1421,7 @@ class AnnotationContainer(AnnotationClass):
                 self.vm.frames,
                 "Renaming TypeVar `%s` with constraints or bound" % formal.name)
         else:
-          root_node = self.vm.root_cfg_node
+          root_node = self.vm.root_node
           actual = params[formal.name].instantiate(root_node)
           bad = self.vm.matcher.bad_matches(actual, formal, root_node)
           if bad:
@@ -1438,7 +1438,7 @@ class AnnotationContainer(AnnotationClass):
       return self.vm.convert.unsolvable
 
 
-class AbstractOrConcreteValue(Instance, mixin.PythonConstant):
+class ConcreteValue(Instance, mixin.PythonConstant):
   """Abstract value with a concrete fallback."""
 
   def __init__(self, pyval, cls, vm):
@@ -1446,8 +1446,7 @@ class AbstractOrConcreteValue(Instance, mixin.PythonConstant):
     mixin.PythonConstant.init_mixin(self, pyval)
 
 
-class LazyConcreteDict(
-    SimpleAbstractValue, mixin.PythonConstant, mixin.LazyMembers):
+class LazyConcreteDict(SimpleValue, mixin.PythonConstant, mixin.LazyMembers):
   """Dictionary with lazy values."""
 
   def __init__(self, name, member_map, vm):
@@ -1462,11 +1461,13 @@ class LazyConcreteDict(
     return not bool(self._member_map)
 
 
-class Union(AtomicAbstractValue, mixin.NestedAnnotation, mixin.HasSlots):
-  """A list of types. Used for parameter matching.
+class Union(BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
+  """A list of types.
+
+  Used for parameter matching.
 
   Attributes:
-    options: Iterable of instances of AtomicAbstractValue.
+    options: Iterable of instances of BaseValue.
   """
 
   def __init__(self, options, vm):
@@ -1494,7 +1495,7 @@ class Union(AtomicAbstractValue, mixin.NestedAnnotation, mixin.HasSlots):
     return hash(tuple(self.options))
 
   def _unique_parameters(self):
-    return [o.to_variable(self.vm.root_cfg_node) for o in self.options]
+    return [o.to_variable(self.vm.root_node) for o in self.options]
 
   def _get_type_params(self):
     params = self.vm.annotations_util.get_type_parameters(self)
@@ -1549,7 +1550,7 @@ class Union(AtomicAbstractValue, mixin.NestedAnnotation, mixin.HasSlots):
     return self.__class__((v for _, v in sorted(inner_types)), self.vm)
 
 
-class Function(SimpleAbstractValue):
+class Function(SimpleValue):
   """Base class for function objects (NativeFunction, InterpreterFunction).
 
   Attributes:
@@ -1564,7 +1565,7 @@ class Function(SimpleAbstractValue):
     self.is_classmethod = False
     self.is_abstract = False
     self.members["func_name"] = self.vm.convert.build_string(
-        self.vm.root_cfg_node, name)
+        self.vm.root_node, name)
 
   def property_get(self, callself, is_class=False):
     if self.name == "__new__" or not callself or is_class:
@@ -1669,7 +1670,7 @@ class Function(SimpleAbstractValue):
     raise NotImplementedError(self.__class__.__name__)
 
 
-class ClassMethod(AtomicAbstractValue):
+class ClassMethod(BaseValue):
   """Implements @classmethod methods in pyi."""
 
   def __init__(self, name, method, callself, vm):
@@ -1691,7 +1692,7 @@ class ClassMethod(AtomicAbstractValue):
     return BoundPyTDFunction(self._callcls, self.method)
 
 
-class StaticMethod(AtomicAbstractValue):
+class StaticMethod(BaseValue):
   """Implements @staticmethod methods in pyi."""
 
   def __init__(self, name, method, _, vm):
@@ -1706,7 +1707,7 @@ class StaticMethod(AtomicAbstractValue):
     return self.vm.convert.function_type
 
 
-class Property(AtomicAbstractValue):
+class Property(BaseValue):
   """Implements @property methods in pyi.
 
   If a getter's return type depends on the type of the class, it needs to be
@@ -1760,7 +1761,7 @@ class PyTDFunction(Function):
     if (isinstance(pyval, pytd.Alias)
         and isinstance(pyval.type, pytd.FunctionType)):
       pyval = pyval.type.function
-    f = vm.convert.constant_to_value(pyval, {}, vm.root_cfg_node)
+    f = vm.convert.constant_to_value(pyval, {}, vm.root_node)
     self = cls(name, f.signatures, pyval.kind, vm)
     self.module = module
     return self
@@ -1802,7 +1803,7 @@ class PyTDFunction(Function):
               callself.instance.get_instance_type_parameter(callself.name),
               default=self.vm.convert.unsolvable)
         # callself is the instance, and we want to bind to its class.
-        callself = callself.get_class().to_variable(self.vm.root_cfg_node)
+        callself = callself.get_class().to_variable(self.vm.root_node)
       return ClassMethod(self.name, self, callself, self.vm)
     elif self.kind == pytd.PROPERTY and not is_class:
       return Property(self.name, self, callself, self.vm)
@@ -1915,14 +1916,14 @@ class PyTDFunction(Function):
 
     Args:
       node: The current CFG node.
-      values: A list of instances of AtomicAbstractValue.
+      values: A list of instances of BaseValue.
 
     Returns:
       A list of function.Mutation instances.
     """
     mutations = []
     for v in values:
-      if isinstance(v, SimpleAbstractValue):
+      if isinstance(v, SimpleValue):
         for name in v.instance_type_parameters:
           mutations.append(
               function.Mutation(v, name, self.vm.convert.create_new_unknown(
@@ -2103,14 +2104,15 @@ class PyTDFunction(Function):
         flags=pytd.Function.abstract_flag(self.is_abstract))
 
 
-class ParameterizedClass(
-    AtomicAbstractValue, mixin.Class, mixin.NestedAnnotation):
-  """A class that contains additional parameters. E.g. a container.
+class ParameterizedClass(BaseValue, mixin.Class, mixin.NestedAnnotation):
+  """A class that contains additional parameters.
+
+  E.g. a container.
 
   Attributes:
     cls: A PyTDClass representing the base type.
-    formal_type_parameters: An iterable of AtomicAbstractValue, one for each
-        type parameter.
+    formal_type_parameters: An iterable of BaseValue, one for each type
+      parameter.
   """
 
   def get_self_annot(self):
@@ -2232,7 +2234,7 @@ class ParameterizedClass(
           formal_type_parameters[name] = self.vm.convert.unsolvable
         else:
           formal_type_parameters[name] = self.vm.convert.constant_to_value(
-              param, self._formal_type_parameters.subst, self.vm.root_cfg_node)
+              param, self._formal_type_parameters.subst, self.vm.root_node)
       self._formal_type_parameters = formal_type_parameters
     # Hack: we'd like to evaluate annotations at the currently active node so
     # that imports, etc., are visible. The last created node is usually the
@@ -2362,12 +2364,12 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):
     for i in range(self.tuple_length):
       p = self.formal_type_parameters[i]
       if container is abstract_utils.DUMMY_CONTAINER or (
-          isinstance(container, SimpleAbstractValue) and
+          isinstance(container, SimpleValue) and
           isinstance(p, TypeParameter) and
           p.full_name in container.all_template_names):
-        content.append(p.instantiate(self.vm.root_cfg_node, container))
+        content.append(p.instantiate(self.vm.root_node, container))
       else:
-        content.append(p.instantiate(self.vm.root_cfg_node))
+        content.append(p.instantiate(self.vm.root_node))
     return Tuple(tuple(content), self.vm).to_variable(node)
 
   def _instantiate_index(self, node, index):
@@ -2513,7 +2515,7 @@ class LiteralClass(ParameterizedClass):
 
   @property
   def value(self):
-    if isinstance(self._instance, AbstractOrConcreteValue):
+    if isinstance(self._instance, ConcreteValue):
       return self._instance
     # TODO(b/123775699): Remove this workaround once we support literal enums.
     return None
@@ -2522,14 +2524,14 @@ class LiteralClass(ParameterizedClass):
     return self._instance.to_variable(node)
 
 
-class PyTDClass(SimpleAbstractValue, mixin.Class, mixin.LazyMembers):
+class PyTDClass(SimpleValue, mixin.Class, mixin.LazyMembers):
   """An abstract wrapper for PyTD class objects.
 
   These are the abstract values for class objects that are described in PyTD.
 
   Attributes:
     cls: A pytd.Class
-    mro: Method resolution order. An iterable of AtomicAbstractValue.
+    mro: Method resolution order. An iterable of BaseValue.
   """
 
   def __init__(self, name, pytd_cls, vm):
@@ -2544,8 +2546,9 @@ class PyTDClass(SimpleAbstractValue, mixin.Class, mixin.LazyMembers):
       metaclass = None
     else:
       metaclass = self.vm.convert.constant_to_value(
-          pytd_cls.metaclass, subst=datatypes.AliasingDict(),
-          node=self.vm.root_cfg_node)
+          pytd_cls.metaclass,
+          subst=datatypes.AliasingDict(),
+          node=self.vm.root_node)
     self.official_name = self.name
     self.slots = pytd_cls.slots
     mixin.LazyMembers.init_mixin(self, mm)
@@ -2562,9 +2565,11 @@ class PyTDClass(SimpleAbstractValue, mixin.Class, mixin.LazyMembers):
 
   def bases(self):
     convert = self.vm.convert
-    return [convert.constant_to_var(parent, subst=datatypes.AliasingDict(),
-                                    node=self.vm.root_cfg_node)
-            for parent in self.pytd_cls.parents]
+    return [
+        convert.constant_to_var(
+            parent, subst=datatypes.AliasingDict(), node=self.vm.root_node)
+        for parent in self.pytd_cls.parents
+    ]
 
   def load_lazy_attribute(self, name):
     try:
@@ -2572,13 +2577,12 @@ class PyTDClass(SimpleAbstractValue, mixin.Class, mixin.LazyMembers):
     except self.vm.convert.TypeParameterError as e:
       self.vm.errorlog.unbound_type_param(
           self.vm.frames, self, name, e.type_param_name)
-      self.members[name] = self.vm.new_unsolvable(
-          self.vm.root_cfg_node)
+      self.members[name] = self.vm.new_unsolvable(self.vm.root_node)
 
   def _convert_member(self, pyval, subst=None):
     """Convert a member as a variable. For lazy lookup."""
     subst = subst or datatypes.AliasingDict()
-    node = self.vm.root_cfg_node
+    node = self.vm.root_node
     if isinstance(pyval, pytd.Constant):
       return self.vm.convert.constant_to_var(
           abstract_utils.AsInstance(pyval.type), subst, node)
@@ -2645,7 +2649,7 @@ class PyTDClass(SimpleAbstractValue, mixin.Class, mixin.LazyMembers):
         for itm in self.pytd_cls.template:
           subst[itm.full_name] = self.vm.convert.constant_to_value(
               itm.type_param, {}).instantiate(
-                  self.vm.root_cfg_node, container=instance)
+                  self.vm.root_node, container=instance)
         return self._convert_member(c, subst)
 
   def generate_ast(self):
@@ -2680,7 +2684,7 @@ class FunctionPyTDClass(PyTDClass):
     return self.func.to_variable(node)
 
 
-class InterpreterClass(SimpleAbstractValue, mixin.Class):
+class InterpreterClass(SimpleValue, mixin.Class):
   """An abstract wrapper for user-defined class objects.
 
   These are the abstract value for class objects that are implemented in the
@@ -3125,7 +3129,7 @@ class InterpreterFunction(SignedFunction):
       defaults: Default arguments.
       kw_defaults: Default arguments for kwonly parameters.
       closure: The free variables this closure binds to.
-      annotations: Function annotations. Dict of name -> AtomicAbstractValue.
+      annotations: Function annotations. Dict of name -> BaseValue.
       vm: VirtualMachine instance.
 
     Returns:
@@ -3148,11 +3152,13 @@ class InterpreterFunction(SignedFunction):
            abstract_utils.hash_all_dicts(
                (f_globals.members, set(code.co_names)),
                (f_locals.members,
-                set(f_locals.members) - set(code.co_varnames)),
-               ({key: vm.program.NewVariable([value], [], vm.root_cfg_node)
-                 for key, value in annotations.items()}, None),
-               (dict(enumerate(vm.program.NewVariable([f], [], vm.root_cfg_node)
-                               for f in overloads)), None),
+                set(f_locals.members) - set(code.co_varnames)), ({
+                    key: vm.program.NewVariable([value], [], vm.root_node)
+                    for key, value in annotations.items()
+                }, None), (dict(
+                    enumerate(
+                        vm.program.NewVariable([f], [], vm.root_node)
+                        for f in overloads)), None),
                (dict(enumerate(defaults)), None),
                (dict(enumerate(closure or ())), None)))
     if key not in cls._function_cache:
@@ -3591,7 +3597,7 @@ class SimpleFunction(SignedFunction):
     return node, ret
 
 
-class BoundFunction(AtomicAbstractValue):
+class BoundFunction(BaseValue):
   """An function type which has had an argument bound into it."""
 
   def __init__(self, callself, underlying):
@@ -3608,7 +3614,7 @@ class BoundFunction(AtomicAbstractValue):
     if isinstance(self.underlying, InterpreterFunction):
       if isinstance(inst.cls, ParameterizedClass):
         self.replace_self_annot = inst.cls.get_self_annot()
-    if isinstance(inst, SimpleAbstractValue):
+    if isinstance(inst, SimpleValue):
       self.alias_map = inst.instance_type_parameters.uf
     elif isinstance(inst, TypeParameterInstance):
       self.alias_map = inst.instance.instance_type_parameters.uf
@@ -3855,7 +3861,7 @@ class Iterator(Instance, mixin.HasSlots):
     return node, self._return_var
 
 
-class Splat(AtomicAbstractValue):
+class Splat(BaseValue):
   """Representation of unpacked iterables."""
 
   def __init__(self, vm, iterable):
@@ -3956,7 +3962,7 @@ class Module(Instance, mixin.LazyMembers):
     return m.digest()
 
 
-class BuildClass(AtomicAbstractValue):
+class BuildClass(BaseValue):
   """Representation of the Python 3 __build_class__ object."""
 
   CLOSURE_NAME = "__class__"
@@ -4042,7 +4048,7 @@ class Unsolvable(Singleton):
     return 0
 
 
-class Unknown(AtomicAbstractValue):
+class Unknown(BaseValue):
   """Representation of unknown values.
 
   These are e.g. the return values of certain functions (e.g. eval()). They
@@ -4111,16 +4117,14 @@ class Unknown(AtomicAbstractValue):
     if name in self.members:
       return self.members[name]
     new = self.vm.convert.create_new_unknown(
-        self.vm.root_cfg_node,
-        action="getattr_" + self.name + ":" + name)
+        self.vm.root_node, action="getattr_" + self.name + ":" + name)
     # We store this at the root node, even though we only just created this.
     # From the analyzing point of view, we don't know when the "real" version
     # of this attribute (the one that's not an unknown) gets created, hence
     # we assume it's there since the program start.  If something overwrites it
     # in some later CFG node, that's fine, we'll then work only with the new
     # value, which is more accurate than the "fictional" value we create here.
-    self.vm.attribute_handler.set_attribute(
-        self.vm.root_cfg_node, self, name, new)
+    self.vm.attribute_handler.set_attribute(self.vm.root_node, self, name, new)
     return new
 
   def call(self, node, _, args, alias_map=None):

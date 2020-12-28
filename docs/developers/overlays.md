@@ -60,7 +60,7 @@ of abstract.Module that [overrides][member-conversion] member lookup so that
 when a member name is present in the overlay map, the representation of that
 member is constructed by calling the constructor specified in the map. The
 constructor can be any callable that accepts a VM instance and returns an
-abstract.AtomicAbstractValue instance.
+abstract.BaseValue instance.
 
 ## Adding an overlay
 

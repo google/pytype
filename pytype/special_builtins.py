@@ -16,8 +16,7 @@ class TypeNew(abstract.PyTDFunction):
       try:
         bases = list(abstract_utils.get_atomic_python_constant(bases_var))
         if not bases:
-          bases = [
-              self.vm.convert.object_type.to_variable(self.vm.root_cfg_node)]
+          bases = [self.vm.convert.object_type.to_variable(self.vm.root_node)]
         node, variable = self.vm.make_class(
             node, name_var, bases, class_dict_var, cls)
       except abstract_utils.ConversionError:
@@ -265,9 +264,9 @@ class HasAttr(BinaryPredicate):
 
     Args:
       node: The given node.
-      obj: An AtomicAbstractValue, generally the left hand side of a
+      obj: A BaseValue, generally the left hand side of a
           hasattr() call.
-      attr: An AtomicAbstractValue, generally the right hand side of a
+      attr: A BaseValue, generally the right hand side of a
           hasattr() call.
 
     Returns:
@@ -324,7 +323,7 @@ def _check_against_mro(vm, target, class_spec):
 
   Args:
     vm: The virtual machine.
-    target: An AtomicAbstractValue whose MRO will be checked.
+    target: A BaseValue whose MRO will be checked.
     class_spec: A Class or PythonConstant tuple of classes (i.e. the second
       argument to isinstance or issubclass).
 
@@ -356,9 +355,9 @@ class IsInstance(BinaryPredicate):
     """Check if the object matches a class specification.
 
     Args:
-      obj: An AtomicAbstractValue, generally the left hand side of an
+      obj: A BaseValue, generally the left hand side of an
           isinstance() call.
-      class_spec: An AtomicAbstractValue, generally the right hand side of an
+      class_spec: A BaseValue, generally the right hand side of an
           isinstance() call.
 
     Returns:
@@ -386,8 +385,8 @@ class IsSubclass(BinaryPredicate):
     """Check if the given class is a subclass of a class specification.
 
     Args:
-      cls: An AtomicAbstractValue, the first argument to an issubclass call.
-      class_spec: An AtomicAbstractValue, the second issubclass argument.
+      cls: A BaseValue, the first argument to an issubclass call.
+      class_spec: A BaseValue, the second issubclass argument.
 
     Returns:
       True if the class is a subclass (or is a class) in the class_spec, False
@@ -413,7 +412,7 @@ class IsCallable(UnaryPredicate):
 
     Args:
       node: The given node.
-      obj: An AtomicAbstractValue, the arg of a callable() call.
+      obj: A BaseValue, the arg of a callable() call.
 
     Returns:
       (node, result) where result = True if the object is callable,
@@ -451,7 +450,7 @@ class BuiltinClass(abstract.PyTDClass):
     self.module = module
 
 
-class SuperInstance(abstract.AtomicAbstractValue):
+class SuperInstance(abstract.BaseValue):
   """The result of a super() call, i.e., a lookup proxy."""
 
   def __init__(self, cls, obj, vm):
@@ -609,7 +608,7 @@ class Object(BuiltinClass):
     return super().get_special_attribute(node, name, valself)
 
 
-class RevealType(abstract.AtomicAbstractValue):
+class RevealType(abstract.BaseValue):
   """For debugging. reveal_type(x) prints the type of "x"."""
 
   def __init__(self, vm):
@@ -645,7 +644,7 @@ class PropertyTemplate(BuiltinClass):
     raise NotImplementedError()
 
 
-class PropertyInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
+class PropertyInstance(abstract.SimpleValue, mixin.HasSlots):
   """Property instance (constructed by Property.call())."""
 
   def __init__(self, vm, name, cls, fget=None, fset=None, fdel=None, doc=None):
@@ -718,7 +717,7 @@ class Property(PropertyTemplate):
         self.vm, "property", self, **property_args).to_variable(node)
 
 
-class StaticMethodInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
+class StaticMethodInstance(abstract.SimpleValue, mixin.HasSlots):
   """StaticMethod instance (constructed by StaticMethod.call())."""
 
   def __init__(self, vm, cls, func):
@@ -758,7 +757,7 @@ class ClassMethodCallable(abstract.BoundFunction):
   """Tag a ClassMethod bound function so we can dispatch on it."""
 
 
-class ClassMethodInstance(abstract.SimpleAbstractValue, mixin.HasSlots):
+class ClassMethodInstance(abstract.SimpleValue, mixin.HasSlots):
   """ClassMethod instance (constructed by ClassMethod.call())."""
 
   def __init__(self, vm, cls, func):

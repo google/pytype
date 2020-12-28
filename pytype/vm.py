@@ -142,8 +142,8 @@ class VirtualMachine:
     self.concrete_classes = []
     self.frame = None  # The current frame.
     self.program = cfg.Program()
-    self.root_cfg_node = self.program.NewCFGNode("root")
-    self.program.entrypoint = self.root_cfg_node
+    self.root_node = self.program.NewCFGNode("root")
+    self.program.entrypoint = self.root_node
     self.annotations_util = annotations_util.AnnotationsUtil(self)
     self.attribute_handler = attribute.AbstractAttributeHandler(self)
     self.matcher = matcher.AbstractMatcher(self)
@@ -525,7 +525,7 @@ class VirtualMachine:
           with_metaclass = True
           if not meta:
             # Only the first metaclass gets applied.
-            meta = b.get_class().to_variable(self.root_cfg_node)
+            meta = b.get_class().to_variable(self.root_node)
           non_meta.extend(b.bases)
       if not with_metaclass:
         non_meta.append(base)
@@ -571,7 +571,7 @@ class VirtualMachine:
         base = self.convert.oldstyleclass_type
       else:
         base = self.convert.object_type
-      bases = [base.to_variable(self.root_cfg_node)]
+      bases = [base.to_variable(self.root_node)]
     if (isinstance(class_dict, abstract.Unsolvable) or
         not isinstance(class_dict, mixin.PythonConstant)):
       # An unsolvable appears here if the vm hit maximum depth and gave up on
@@ -825,7 +825,7 @@ class VirtualMachine:
       self.errorlog.ignored_type_comment(
           self.filename, line, self.director.type_comments[line])
 
-    node = self.root_cfg_node.ConnectNew("init")
+    node = self.root_node.ConnectNew("init")
     node, f_globals, f_locals, _ = self.run_bytecode(node, code)
     logging.info("Done running bytecode, postprocessing globals")
     # Check for abstract methods on non-abstract classes.
@@ -1057,7 +1057,7 @@ class VirtualMachine:
     has_noreturn = False
     for funcv in funcu.bindings:
       func = funcv.data
-      assert isinstance(func, abstract.AtomicAbstractValue), type(func)
+      assert isinstance(func, abstract.BaseValue), type(func)
       one_result = None
       try:
         new_node, one_result = func.call(node, funcv, args)
@@ -1175,7 +1175,7 @@ class VirtualMachine:
 
   def load_from(self, state, store, name, discard_concrete_values=False):
     """Load an item out of locals, globals, or builtins."""
-    assert isinstance(store, abstract.SimpleAbstractValue)
+    assert isinstance(store, abstract.SimpleValue)
     assert isinstance(store, mixin.LazyMembers)
     store.load_lazy_attribute(name)
     bindings = store.members[name].Bindings(state.node)
@@ -1221,7 +1221,7 @@ class VirtualMachine:
   def load_builtin(self, state, name):
     if name == "__undefined__":
       # For values that don't exist. (Unlike None, which is a valid object)
-      return state, self.convert.empty.to_variable(self.root_cfg_node)
+      return state, self.convert.empty.to_variable(self.root_node)
     special = self.load_special_builtin(name)
     if special:
       return state, special.to_variable(state.node)
@@ -1417,7 +1417,7 @@ class VirtualMachine:
       return node, None, values_without_attribute
 
   def _data_is_none(self, x):
-    assert isinstance(x, abstract.AtomicAbstractValue)
+    assert isinstance(x, abstract.BaseValue)
     return x.cls == self.convert.none_type
 
   def _var_is_none(self, v):
@@ -1612,7 +1612,7 @@ class VirtualMachine:
       ast = self.loader.import_relative(level)
     if ast:
       return self.convert.constant_to_value(
-          ast, subst=datatypes.AliasingDict(), node=self.root_cfg_node)
+          ast, subst=datatypes.AliasingDict(), node=self.root_node)
     else:
       return None
 
@@ -2048,7 +2048,7 @@ class VirtualMachine:
 
   def byte_LOAD_LOCALS(self, state, op):
     log.debug("Returning locals: %r", self.frame.f_locals)
-    locals_dict = self.frame.f_locals.to_variable(self.root_cfg_node)
+    locals_dict = self.frame.f_locals.to_variable(self.root_node)
     return state.push(locals_dict)
 
   def _cmp_rel(self, state, op_name, x, y):
@@ -2257,7 +2257,7 @@ class VirtualMachine:
           # annotated instance attribute.
           annotations_dict = abstract.AnnotationsDict({}, self)
           maybe_cls.members["__annotations__"] = annotations_dict.to_variable(
-              self.root_cfg_node)
+              self.root_node)
         annotations_dict = abstract_utils.get_annotations_dict(
             maybe_cls.members)
         if annotations_dict:
@@ -2368,7 +2368,7 @@ class VirtualMachine:
               # we're a subclass of a heterogenous tuple (usually a
               # typing.NamedTuple instance).
               new_data = self.merge_values(
-                  base.instantiate(self.root_cfg_node).data)
+                  base.instantiate(self.root_node).data)
               return self._get_literal_sequence(new_data)
         return None
 
