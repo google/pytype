@@ -46,7 +46,8 @@ import sys
 
 from lib2to3 import pygram
 from lib2to3 import pytree
-from lib2to3 import refactor
+# lib2to3.refactor is missing from typeshed
+from lib2to3 import refactor  # pytype: disable=import-error
 from lib2to3.fixer_base import BaseFix
 from lib2to3.fixer_util import does_tree_import
 from lib2to3.fixer_util import find_indentation
@@ -60,6 +61,9 @@ from lib2to3.pytree import Node
 __all__ = ['KnownError',
            'FixMergePyi',
            'annotate_string']
+
+# Because this file modifies dictionaries as a method side effect:
+# pytype: disable=key-error
 
 
 _GRAMMAR_FILE = os.path.join(os.path.dirname(__file__), 'Grammar.txt')
@@ -291,6 +295,8 @@ class ArgSignature:
 class FuncSignature:
   """A function or method."""
 
+  _full_name: str
+
   # The pattern to match.
   PATTERN = """
               funcdef<
@@ -458,7 +464,7 @@ class FuncSignature:
     while node is not None:
       match_result = {}
       if cls.scope_pattern.match(node, match_result):
-        result.append(match_result.get('name').value)
+        result.append(match_result['name'].value)
 
       node = node.parent
 

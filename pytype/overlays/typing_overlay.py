@@ -1,5 +1,10 @@
 """Implementation of the types in Python 3's typing.py."""
 
+# We should be able to enable pytype on this file once we switch to the
+# typed_ast-based pyi parser. The current parser can't handle a constant called
+# 'namedtuple':
+# pytype: skip-file
+
 # pylint's detection of this is error-prone:
 # pylint: disable=unpacking-non-sequence
 

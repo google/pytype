@@ -19,17 +19,18 @@ class SubprocessOverlay(overlay.Overlay):
 class Popen(abstract.PyTDClass):
   """Custom implementation of subprocess.Popen."""
 
-  _UNLOADED = object()
+  class _Unloaded:
+    pass
 
   def __init__(self, vm):
     pyval = vm.loader.import_name("subprocess").Lookup("subprocess.Popen")
     super().__init__("Popen", pyval, vm)
     # lazily loaded because the signatures refer back to Popen itself
-    self._new = self._UNLOADED
+    self._new = Popen._Unloaded()
 
   @property
   def new(self):
-    if self._new is self._UNLOADED:
+    if isinstance(self._new, Popen._Unloaded):
       try:
         f = self.pytd_cls.Lookup("__new__")
       except KeyError:
@@ -41,8 +42,9 @@ class Popen(abstract.PyTDClass):
     return self._new
 
   def get_own_new(self, node, value):
-    if self.new:
-      return node, self.new.to_variable(node)
+    new = self.new
+    if new:
+      return node, new.to_variable(node)
     return super().get_own_new(node, value)
 
 

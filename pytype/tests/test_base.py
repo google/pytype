@@ -4,6 +4,7 @@ import logging
 import re
 import sys
 import textwrap
+from typing import Tuple
 
 from pytype import analyze
 from pytype import config
@@ -96,6 +97,9 @@ class UnitTest(unittest.TestCase):
 class BaseTest(unittest.TestCase):
   """Base class for implementing tests that check PyTD output."""
 
+  python_version: Tuple[int, int]
+  _loader: load_pytd.Loader
+
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
@@ -156,7 +160,9 @@ class BaseTest(unittest.TestCase):
 
   def setUp(self):
     super().setUp()
-    self.options = config.Options.create(python_version=self.python_version,
+    # For some reason, the declaration of python_version in BaseTest doesn't
+    # seem to be respected in subclasses.
+    self.options = config.Options.create(python_version=self.python_version,  # pytype: disable=attribute-error
                                          check_attribute_types=True,
                                          check_container_types=True,
                                          check_parameter_types=True,

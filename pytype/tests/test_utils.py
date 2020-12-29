@@ -45,6 +45,8 @@ def fake_stack(length):
 class OperatorsTestMixin(object):
   """Mixin providing utilities for operators tests."""
 
+  _HAS_DYNAMIC_ATTRIBUTES = True
+
   def check_expr(self, expr, assignments, expected_return):
     """Check the expression."""
     # Note that testing "1+2" as opposed to "x=1; y=2; x+y" doesn't really test
@@ -139,6 +141,8 @@ class OperatorsTestMixin(object):
 class InplaceTestMixin(object):
   """Mixin providing a method to check in-place operators."""
 
+  _HAS_DYNAMIC_ATTRIBUTES = True
+
   def _check_inplace(self, op, assignments, expected_return):
     """Check the inplace operator."""
     assignments = "; ".join(assignments)
@@ -156,6 +160,8 @@ class InplaceTestMixin(object):
 class TestCollectionsMixin(object):
   """Mixin providing utils for tests on the collections module."""
 
+  _HAS_DYNAMIC_ATTRIBUTES = True
+
   def _testCollectionsObject(self, obj, good_arg, bad_arg, error):  # pylint: disable=invalid-name
     result = self.CheckWithErrors("""
       import collections
@@ -168,6 +174,8 @@ class TestCollectionsMixin(object):
 
 class MakeCodeMixin(object):
   """Mixin providing a method to make a code object from bytecode."""
+
+  _HAS_DYNAMIC_ATTRIBUTES = True
 
   def make_code(self, int_array, name="testcode"):
     """Utility method for creating CodeType objects."""

@@ -43,6 +43,8 @@ class OrderedCode:
     python_version: The Python version this bytecode is from.
   """
 
+  _HAS_DYNAMIC_ATTRIBUTES = True
+
   def __init__(self, code, bytecode, order, python_version):
     # Copy all "co_*" attributes from code.
     # This is preferable to both inheritance (because we don't want to be

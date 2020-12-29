@@ -4,6 +4,7 @@ import collections
 import logging
 import re
 import subprocess
+from typing import Any, Dict, Union
 
 from pytype import abstract
 from pytype import abstract_utils
@@ -22,6 +23,7 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.pytd.parse import builtins
+from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
 
@@ -43,7 +45,8 @@ QUICK_CHECK_MAXIMUM_DEPTH = 2  # during quick checking
 QUICK_INFER_MAXIMUM_DEPTH = 1  # during quick inference
 
 
-_INITIALIZING = object()
+class _Initializing:
+  pass
 
 
 class CallTracer(vm.VirtualMachine):
@@ -62,7 +65,7 @@ class CallTracer(vm.VirtualMachine):
     self._calls = set()
     self._method_calls = set()
     # Used by init_class.
-    self._instance_cache = {}
+    self._instance_cache: Dict[Any, Union[_Initializing, cfg.Variable]] = {}
     # Used by call_init. Can differ from _instance_cache because we also call
     # __init__ on classes not initialized via init_class.
     self._initialized_instances = set()
@@ -303,8 +306,8 @@ class CallTracer(vm.VirtualMachine):
       A tuple of node and instance variable.
     """
     key = (self.frame and self.frame.current_opcode, extra_key, cls)
-    if (key not in self._instance_cache or
-        self._instance_cache[key] is _INITIALIZING):
+    instance = self._instance_cache.get(key)
+    if not instance or isinstance(instance, _Initializing):
       clsvar = cls.to_variable(node)
       node, instance = self._instantiate_var(node, clsvar)
       if key in self._instance_cache:
@@ -320,10 +323,10 @@ class CallTracer(vm.VirtualMachine):
         # all attribute errors on self in __init__.
         self._mark_maybe_missing_members(instance.data)
       else:
-        self._instance_cache[key] = _INITIALIZING
+        self._instance_cache[key] = _Initializing()
         node = self.call_init(node, instance)
       self._instance_cache[key] = instance
-    return node, self._instance_cache[key]
+    return node, instance
 
   def _call_method(self, node, binding, method_name):
     node, method = self.attribute_handler.get_attribute(

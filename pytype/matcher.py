@@ -1006,6 +1006,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       ignored_superclasses = {"__builtin__.object",
                               "typing.Generic",
                               "typing.Protocol"}
-    if concrete_values and common_classes.issubset(ignored_superclasses):
-      return None
+    if concrete_values:
+      assert common_classes is not None
+      if common_classes.issubset(ignored_superclasses):
+        return None
     return var

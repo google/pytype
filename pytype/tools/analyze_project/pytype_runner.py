@@ -4,6 +4,7 @@ import logging
 import os
 import subprocess
 import sys
+from typing import Iterable, Sequence, Tuple
 
 from pytype import file_utils
 from pytype import module_utils
@@ -229,7 +230,8 @@ class PytypeRunner:
       report('%s: %s module %s', action, module.kind, module.name)
     return action
 
-  def yield_sorted_modules(self):
+  def yield_sorted_modules(self) -> Iterable[
+      Tuple[module_utils.Module, str, Sequence[module_utils.Module], str]]:
     """Yield modules from our sorted source files."""
     for group, deps in self.sorted_sources:
       modules = []
@@ -238,7 +240,8 @@ class PytypeRunner:
         if action:
           modules.append((module, action))
       if len(modules) == 1:
-        yield modules[0] + (deps, Stage.SINGLE_PASS)
+        # TODO(b/73562531): Remove the pytype disable once the bug is fixed.
+        yield modules[0] + (deps, Stage.SINGLE_PASS)  # pytype: disable=bad-return-type
       else:
         # If we have a cycle we run pytype over the files twice. So that we
         # don't fail on missing dependencies, we'll ignore errors the first

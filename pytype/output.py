@@ -110,10 +110,12 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         v = instance = None
       template = new_template
     if instance is None and isinstance(v, abstract.ParameterizedClass):
+      assert v
       return [self.value_instance_to_pytd_type(
           node, v.get_formal_type_parameter(t), None, seen, view)
               for t in template]
     elif isinstance(instance, abstract.SimpleValue):
+      assert instance
       type_arguments = []
       for t in template:
         if isinstance(instance, abstract.Tuple):

@@ -4,6 +4,9 @@ A VM for python byte code that uses pytype/pytd/cfg to generate a trace of the
 program execution.
 """
 
+# Because pytype takes too long:
+# pytype: skip-file
+
 # We have names like "byte_NOP":
 # pylint: disable=invalid-name
 
