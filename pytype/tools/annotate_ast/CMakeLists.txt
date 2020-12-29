@@ -20,7 +20,7 @@ py_library(
     annotate_ast.py
   DEPS
     pytype.io
-    pytype.pytd.pytd_for_parser
+    pytype.pytd.pytd_utils
     pytype.tools.traces.traces
 )
 

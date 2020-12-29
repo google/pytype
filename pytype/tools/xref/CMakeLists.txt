@@ -17,6 +17,7 @@ py_library(
     pytype.errors
     pytype.io
     pytype.libvm
+    pytype.ast.visitor
     pytype.tools.tools
     pytype.tools.traces.traces
 )

@@ -18,7 +18,6 @@ py_library(
   DEPS
     .source
     .traces_internal
-    pytype.ast.visitor
 )
 
 py_library(
