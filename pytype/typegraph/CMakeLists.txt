@@ -49,8 +49,6 @@ py_library(
     cfg_utils
   SRCS
     cfg_utils.py
-  DEPS
-    .cfg
 )
 
 cc_library(

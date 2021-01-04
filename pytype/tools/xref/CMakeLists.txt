@@ -14,11 +14,16 @@ py_library(
     .callgraph
     .node_utils
     pytype.analyze
+    pytype.config
     pytype.errors
     pytype.io
     pytype.libvm
+    pytype.load_pytd
+    pytype.utils
     pytype.ast.visitor
-    pytype.tools.tools
+    pytype.pytd.pytd_defs
+    pytype.pytd.pytd_for_parser
+    pytype.pytd.pytd_utils
     pytype.tools.traces.traces
 )
 
@@ -47,8 +52,8 @@ py_library(
   SRCS
     callgraph.py
   DEPS
-    .node_utils
     pytype.pytd_lib
+    pytype.pytd.pytd_for_parser
 )
 
 py_test(
@@ -69,6 +74,7 @@ py_test(
   DEPS
     .indexer
     pytype.config
+    pytype.libvm
     pytype.utils
     pytype.tests.test_base
 )
@@ -79,8 +85,8 @@ py_test(
   SRCS
     callgraph_test.py
   DEPS
-    .callgraph
     .indexer
+    pytype.config
     pytype.utils
     pytype.tests.test_base
 )

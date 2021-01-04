@@ -35,13 +35,10 @@ py_library(
     .pytd_defs
     .pytd_utils
     .pytd_visitors
-    pytype.debug
-    pytype.metrics
     pytype.utils
     pytype.pytd.parse.node
     pytype.pytd.parse.parser_constants
     pytype.stubs.stubs
-    pytype.typegraph.cfg
 )
 
 py_library(
@@ -103,7 +100,9 @@ py_library(
   SRCS
     serialize_ast.py
   DEPS
+    .pytd_defs
     .pytd_for_parser
+    .pytd_utils
     pytype.utils
     pytype.pyi.parser
 )
@@ -125,7 +124,7 @@ py_test(
   SRCS
     abc_hierarchy_test.py
   DEPS
-    pytype.pytd.parse.parser_test_base
+    .pytd_for_parser
 )
 
 py_test(
@@ -143,7 +142,7 @@ py_test(
   SRCS
     booleq_test.py
   DEPS
-    pytype.pytd.parse.parser_test_base
+    .pytd_for_parser
 )
 
 py_test(
@@ -152,6 +151,9 @@ py_test(
   SRCS
     mro_test.py
   DEPS
+    .pytd_for_parser
+    pytype.load_pytd
+    pytype.pyi.parser
     pytype.pytd.parse.parser_test_base
 )
 
@@ -161,6 +163,10 @@ py_test(
   SRCS
     optimize_test.py
   DEPS
+    .pytd_defs
+    .pytd_for_parser
+    .pytd_utils
+    pytype.load_pytd
     pytype.pytd.parse.parser_test_base
 )
 
@@ -170,6 +176,9 @@ py_test(
   SRCS
     pep484_test.py
   DEPS
+    .pep484
+    .pytd_defs
+    .pytd_utils
     pytype.pytd.parse.parser_test_base
 )
 
@@ -179,7 +188,7 @@ py_test(
   SRCS
     slots_test.py
   DEPS
-    pytype.pytd.parse.parser_test_base
+    .pytd_for_parser
 )
 
 py_test(
@@ -188,6 +197,7 @@ py_test(
   SRCS
     transforms_test.py
   DEPS
+    .pytd_for_parser
     pytype.pytd.parse.parser_test_base
 )
 
@@ -197,6 +207,10 @@ py_test(
   SRCS
     type_match_test.py
   DEPS
+    .pytd_defs
+    .pytd_for_parser
+    .pytd_utils
+    pytype.pyi.parser
     pytype.pytd.parse.parser_test_base
 )
 
@@ -206,6 +220,9 @@ py_test(
   SRCS
     visitors_test.py
   DEPS
+    .pytd_defs
+    .pytd_for_parser
+    .pytd_utils
     pytype.pytd.parse.parser_test_base
 )
 
@@ -215,7 +232,7 @@ py_test(
   SRCS
     pytd_test.py
   DEPS
-    pytype.pytd.parse.parser_test_base
+    .pytd_defs
 )
 
 py_test(
@@ -224,6 +241,12 @@ py_test(
   SRCS
     pytd_utils_test.py
   DEPS
+    .pytd_defs
+    .pytd_for_parser
+    .pytd_utils
+    .serialize_ast
+    pytype.utils
+    pytype.pyi.parser
     pytype.pytd.parse.parser_test_base
 )
 
@@ -233,6 +256,8 @@ py_test(
   SRCS
     pytd_visitors_test.py
   DEPS
+    .pytd_for_parser
+    .pytd_visitors
     pytype.pytd.parse.parser_test_base
 )
 
@@ -243,10 +268,10 @@ py_test(
     serialize_ast_test.py
   DEPS
     .pytd_for_parser
+    .pytd_utils
     .serialize_ast
     pytype.load_pytd
     pytype.utils
-    pytype.pytd.parse.parser_test_base
     pytype.tests.test_base
 )
 
@@ -256,7 +281,9 @@ py_test(
   SRCS
     typeshed_test.py
   DEPS
+    .typeshed
     pytype.utils
+    pytype.pytd.parse.builtins
     pytype.pytd.parse.parser_test_base
     pytype.tests.test_base
 )

@@ -20,6 +20,7 @@ py_test(
     loadmarshal_test.py
   DEPS
     .pyc
+    pytype.utils
 )
 
 py_test(
@@ -29,6 +30,7 @@ py_test(
     opcodes_test.py
   DEPS
     .pyc
+    pytype.utils
 )
 
 py_test(
