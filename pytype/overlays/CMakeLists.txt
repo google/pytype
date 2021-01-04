@@ -2,6 +2,24 @@ add_package()
 
 py_library(
   NAME
+    overlays
+  DEPS
+    .abc_overlay
+    .asyncio_types_overlay
+    .attr_overlay
+    .collections_overlay
+    .dataclass_overlay
+    .flax_overlay
+    .future_overlay
+    .six_overlay
+    .subprocess_overlay
+    .sys_overlay
+    .typing_extensions_overlay
+    .typing_overlay
+)
+
+py_library(
+  NAME
     classgen
   SRCS
     classgen.py

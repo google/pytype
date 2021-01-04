@@ -20,7 +20,7 @@ py_library(
     pytype.libvm
     pytype.load_pytd
     pytype.utils
-    pytype.ast.visitor
+    pytype.ast.ast
     pytype.pytd.pytd_defs
     pytype.pytd.pytd_for_parser
     pytype.pytd.pytd_utils

@@ -122,7 +122,7 @@ py_library(
     .metrics
     .output
     .vm
-    pytype.overlays.typing_overlay
+    pytype.overlays.overlays
     pytype.pytd.pytd_defs
     pytype.pytd.pytd_for_parser
     pytype.pytd.pytd_utils
@@ -164,7 +164,7 @@ py_library(
     .libvm
     .mixin
     .utils
-    pytype.overlays.typing_overlay
+    pytype.overlays.overlays
 )
 
 py_library(
@@ -179,7 +179,7 @@ py_library(
     .mixin
     .output
     .utils
-    pytype.overlays.typing_overlay
+    pytype.overlays.overlays
     pytype.pyc.pyc
     pytype.pytd.pytd_defs
     pytype.pytd.pytd_for_parser
@@ -215,8 +215,7 @@ py_library(
     .libvm
     .mixin
     .utils
-    pytype.overlays.dataclass_overlay
-    pytype.overlays.typing_overlay
+    pytype.overlays.overlays
     pytype.pytd.pep484
     pytype.pytd.pytd_defs
     pytype.pytd.pytd_utils
@@ -232,8 +231,7 @@ py_library(
     .libvm
     .mixin
     .utils
-    pytype.overlays.dataclass_overlay
-    pytype.overlays.typing_overlay
+    pytype.overlays.overlays
     pytype.pytd.pytd_defs
     pytype.pytd.pytd_for_parser
     pytype.pytd.pytd_utils
@@ -245,18 +243,7 @@ py_library(
   SRCS
     overlay_dict.py
   DEPS
-    pytype.overlays.abc_overlay
-    pytype.overlays.asyncio_types_overlay
-    pytype.overlays.attr_overlay
-    pytype.overlays.collections_overlay
-    pytype.overlays.dataclass_overlay
-    pytype.overlays.flax_overlay
-    pytype.overlays.future_overlay
-    pytype.overlays.six_overlay
-    pytype.overlays.subprocess_overlay
-    pytype.overlays.sys_overlay
-    pytype.overlays.typing_extensions_overlay
-    pytype.overlays.typing_overlay
+    pytype.overlays.overlays
 )
 
 py_library(

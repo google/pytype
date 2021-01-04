@@ -3,22 +3,40 @@ add_package()
 py_library(
   NAME
     test_base
+  DEPS
+    ._test_base
+    .test_utils
+)
+
+py_library(
+  NAME
+    _test_base
   SRCS
     test_base.py
-    test_utils.py
   DEPS
+    .test_utils
     pytype.analyze
     pytype.config
-    pytype.errors
     pytype.libvm
     pytype.load_pytd
     pytype.utils
-    pytype.pyc.pyc
     pytype.pyi.parser
     pytype.pytd.pytd_defs
     pytype.pytd.pytd_for_parser
     pytype.pytd.pytd_utils
     pytype.pytd.serialize_ast
+)
+
+py_library(
+  NAME
+    test_utils
+  SRCS
+    test_utils.py
+  DEPS
+    pytype.errors
+    pytype.libvm
+    pytype.utils
+    pytype.pyc.pyc
 )
 
 py_test(
@@ -27,7 +45,8 @@ py_test(
   SRCS
     test_base_test.py
   DEPS
-    .test_base
+    ._test_base
+    .test_utils
     pytype.utils
 )
 
@@ -211,7 +230,7 @@ py_test(
     test_builtins1.py
   DEPS
     .test_base
-    pytype.overlays.collections_overlay
+    pytype.overlays.overlays
     pytype.pytd.pytd_for_parser
     pytype.pytd.pytd_utils
 )
@@ -464,6 +483,7 @@ py_test(
     test_operators.py
   DEPS
     .test_base
+    .test_utils
     pytype.utils
 )
 
@@ -483,6 +503,7 @@ py_test(
     test_inplace.py
   DEPS
     .test_base
+    .test_utils
 )
 
 py_test(
@@ -561,7 +582,7 @@ py_test(
   DEPS
     .test_base
     pytype.utils
-    pytype.overlays.collections_overlay
+    pytype.overlays.overlays
     pytype.pytd.pytd_for_parser
     pytype.pytd.pytd_utils
 )
