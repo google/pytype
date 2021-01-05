@@ -489,7 +489,7 @@ class ErrorLog(ErrorLogBase):
       return name[:start] + name[start+1:].replace("_DOT_", ".")
     return name
 
-  def _print_as_expected_type(self, t, instance=None):
+  def _print_as_expected_type(self, t: abstract.BaseValue, instance=None):
     """Print abstract value t as a pytd type."""
     if t.is_late_annotation():
       return t.expr

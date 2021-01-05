@@ -31,6 +31,8 @@ MAX_IMPORT_DEPTH = 12
 class Converter(utils.VirtualMachineWeakrefMixin):
   """Functions for creating the classes in abstract.py."""
 
+  unsolvable: abstract.Unsolvable
+
   # Define this error inside Converter so that it is exposed to abstract.py
   class TypeParameterError(Exception):
 

@@ -14,6 +14,8 @@ from pytype.tests import test_base
 class ParserTest(test_base.UnitTest):
   """Test utility class. Knows how to parse PYTD and compare source code."""
 
+  loader: load_pytd.Loader
+
   @classmethod
   def setUpClass(cls):
     super(ParserTest, cls).setUpClass()

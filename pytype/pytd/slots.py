@@ -5,6 +5,10 @@ of PyTypeObject structures, and also other constants, like compare operator
 mappings.
 """
 
+# TODO(b/175443170): pytype takes too long on this file. Once the linked bug is
+# fixed, check if we can remove the skip-file.
+# pytype: skip-file
+
 
 TYPEOBJECT_PREFIX = "tp_"
 NUMBER_PREFIX = "nb_"

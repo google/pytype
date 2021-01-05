@@ -80,16 +80,18 @@ LazyFormalTypeParameters = collections.namedtuple(
     "LazyFormalTypeParameters", ("template", "parameters", "subst"))
 
 
-_NONE = object()  # sentinel for get_atomic_value
+# Sentinel for get_atomic_value
+class _None:
+  pass
 
 
-def get_atomic_value(variable, constant_type=None, default=_NONE):
+def get_atomic_value(variable, constant_type=None, default=_None()):
   """Get the atomic value stored in this variable."""
   if len(variable.bindings) == 1:
     v, = variable.bindings
     if isinstance(v.data, constant_type or object):
       return v.data  # success
-  if default is not _NONE:
+  if not isinstance(default, _None):
     # If a default is specified, we return it instead of failing.
     return default
   # Determine an appropriate failure message.

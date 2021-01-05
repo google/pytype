@@ -348,8 +348,9 @@ class Director:
     is_nested = bool(matches) and matches[0].start(0) > 0
     for m in matches:
       code = line[:col].strip()
-      tool, data = m.groups()
       open_ended = not code
+      tool, data = m.groups()
+      assert data is not None
       data = data.strip()
       if tool == "type":
         self._process_type(lineno, code, data, is_nested, type_comment_set)

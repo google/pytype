@@ -8,7 +8,7 @@ toplevel_py_binary(
   MAIN
     run.py
   DEPS
-    .traces_internal
+    ._traces
     pytype.config
 )
 
@@ -16,13 +16,13 @@ py_library(
   NAME
     traces
   DEPS
+    ._traces
     .source
-    .traces_internal
 )
 
 py_library(
   NAME
-    traces_internal
+    _traces
   SRCS
     traces.py
   DEPS
@@ -31,7 +31,7 @@ py_library(
     pytype.config
     pytype.errors
     pytype.load_pytd
-    pytype.ast.visitor
+    pytype.ast.ast
     pytype.pytd.pytd_defs
     pytype.pytd.pytd_for_parser
     pytype.pytd.pytd_utils
@@ -43,7 +43,7 @@ py_test(
   SRCS
     traces_test.py
   DEPS
-    .traces_internal
+    ._traces
     pytype.config
     pytype.utils
     pytype.pytd.pytd_defs

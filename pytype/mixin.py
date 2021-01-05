@@ -1,7 +1,7 @@
 """Mixins for abstract.py."""
 
 import logging
-from typing import Dict
+from typing import Any, Dict, Type
 
 from pytype import abstract_utils
 from pytype import datatypes
@@ -15,6 +15,9 @@ log = logging.getLogger(__name__)
 
 class MixinMeta(type):
   """Metaclass for mix-ins."""
+
+  __mixin_overloads__: Dict[str, Type[Any]]
+  _HAS_DYNAMIC_ATTRIBUTES = True
 
   def __init__(cls, name, superclasses, *args, **kwargs):
     super(MixinMeta, cls).__init__(name, superclasses, *args, **kwargs)
@@ -46,6 +49,9 @@ class MixinMeta(type):
     Returns:
       The method overloaded by 'method'.
     """
+    # Bound methods have a __self__ attribute, but we don't have a way of
+    # annotating `method` as being a bound rather than unbound method.
+    # pytype: disable=attribute-error
     for supercls in type(method.__self__).__mro__:
       # Fetch from __dict__ rather than using getattr() because we only want
       # to consider methods defined on supercls itself (not on a parent).
@@ -54,6 +60,7 @@ class MixinMeta(type):
         method_cls = supercls
         break
     return getattr(super(method_cls, method.__self__), method.__name__)
+    # pytype: enable=attribute-error
 
 
 class PythonConstant(metaclass=MixinMeta):

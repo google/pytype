@@ -2,10 +2,24 @@ add_package()
 
 py_library(
   NAME
+    ast
+  DEPS
+    .debug
+    .visitor
+)
+
+py_library(
+  NAME
     visitor
   SRCS
-    debug.py
     visitor.py
+)
+
+py_library(
+  NAME
+    debug
+  SRCS
+    debug.py
 )
 
 py_test(

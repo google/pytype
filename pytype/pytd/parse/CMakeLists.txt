@@ -9,6 +9,7 @@ py_library(
     pytype.utils
     pytype.pyi.parser
     pytype.pytd.pytd_for_parser
+    pytype.pytd.pytd_utils
 )
 
 py_library(
@@ -52,6 +53,7 @@ py_library(
     pytype.load_pytd
     pytype.pyi.parser
     pytype.pytd.pytd_for_parser
+    pytype.pytd.pytd_utils
     pytype.tests.test_base
 )
 
@@ -61,7 +63,9 @@ py_test(
   SRCS
     builtins_test.py
   DEPS
-    .parser_test_base
+    .builtins
+    pytype.pytd.pytd_defs
+    pytype.pytd.pytd_for_parser
     pytype.tests.test_base
 )
 
@@ -71,7 +75,7 @@ py_test(
   SRCS
     preconditions_test.py
   DEPS
-    .parser_test_base
+    .preconditions
 )
 
 py_test(
@@ -80,5 +84,6 @@ py_test(
   SRCS
     node_test.py
   DEPS
-    .parser_test_base
+    .node
+    pytype.pytd.pytd_for_parser
 )

@@ -1,5 +1,10 @@
 """Load and link .pyi files."""
 
+# TODO(b/175443166): pytype cannot infer the type of Loader._modules correctly.
+# Once strict attribute checking is rolled out, we should be able to annotate
+# _modules and remove this disable.
+# pytype: disable=attribute-error
+
 import collections
 import logging
 import os
@@ -542,6 +547,7 @@ class Loader:
 
     # Now return the default module if we have found nothing better.
     if file_ast:
+      assert default
       self._modules[module_name] = default
       return file_ast
 
