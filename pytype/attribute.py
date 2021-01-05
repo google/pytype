@@ -163,7 +163,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       # "Any" etc.
       return True
     for baseclass in obj.cls.mro:
-      if baseclass.full_name == "__builtin__.object":
+      if baseclass.full_name == "builtins.object":
         # It's not possible to set an attribute on object itself.
         # (object has __setattr__, but that honors __slots__.)
         continue

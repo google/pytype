@@ -50,7 +50,7 @@ def compile_src_string_to_pyc_string(
     filename: Name of the source file. For error messages.
     python_version: Python version, (major, minor).
     python_exe: Tuple of a path to a Python interpreter and command-line flags.
-    mode: Same as __builtin__.compile: "exec" if source consists of a
+    mode: Same as builtins.compile: "exec" if source consists of a
       sequence of statements, "eval" if it consists of a single expression,
       or "single" if it consists of a single interactive statement.
 

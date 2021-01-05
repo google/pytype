@@ -108,7 +108,7 @@ class BaseTest(unittest.TestCase):
     cls._loader = None
 
     def t(name):  # pylint: disable=invalid-name
-      return pytd.ClassType("__builtin__." + name)
+      return pytd.ClassType("builtins." + name)
     cls.bool = t("bool")
     cls.dict = t("dict")
     cls.float = t("float")

@@ -261,5 +261,5 @@ def PrepareForExport(module_name, ast, loader):
   ast = ast.Visit(visitors.NamedTypeToClassType())
   ast = ast.Visit(visitors.FillInLocalPointers({"": ast, module_name: ast}))
   ast = ast.Visit(visitors.ClassTypeToLateType(
-      ignore=[module_name + ".", "__builtin__.", "typing."]))
+      ignore=[module_name + ".", "builtins.", "typing."]))
   return ast

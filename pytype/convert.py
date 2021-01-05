@@ -145,29 +145,27 @@ class Converter(utils.VirtualMachineWeakrefMixin):
   def _type_to_name(self, t):
     """Convert a type to its name."""
     assert t.__class__ is type
-    # TODO(rechen): We should use the target version-specific name of the
-    # builtins module rather than hard-coding __builtin__.
     if t is types.FunctionType:
       return "typing.Callable"
     elif t is compat.BytesType:
-      return "__builtin__.bytes"
+      return "builtins.bytes"
     elif t is compat.UnicodeType:
       if self.vm.PY2:
-        return "__builtin__.unicode"
+        return "builtins.unicode"
       else:
-        return "__builtin__.str"
+        return "builtins.str"
     elif t is compat.OldStyleClassType:
-      return "__builtin__.classobj"
+      return "builtins.classobj"
     elif t is compat.IteratorType:
-      return "__builtin__.object"
+      return "builtins.object"
     elif t is compat.CoroutineType:
-      return "__builtin__.coroutine"
+      return "builtins.coroutine"
     elif t is compat.AwaitableType:
       return "typing.Awaitable"
     elif t is compat.AsyncGeneratorType:
-      return "__builtin__.asyncgenerator"
+      return "builtins.asyncgenerator"
     else:
-      return "__builtin__." + t.__name__
+      return "builtins." + t.__name__
 
   def value_to_constant(self, val, constant_type):
     if (isinstance(val, mixin.PythonConstant) and
@@ -321,7 +319,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     """Extract the element type of a vararg or kwarg."""
     if not isinstance(arg_type, abstract.ParameterizedClass):
       assert (isinstance(arg_type, mixin.Class) and
-              arg_type.full_name in ("__builtin__.dict", "__builtin__.tuple"))
+              arg_type.full_name in ("builtins.dict", "builtins.tuple"))
       return None
     elif arg_type.base_cls is self.dict_type:
       return arg_type.get_formal_type_parameter(abstract_utils.V)
@@ -340,10 +338,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
 
   def widen_type(self, container):
     """Widen a tuple to an iterable, or a dict to a mapping."""
-    if container.full_name == "__builtin__.tuple":
+    if container.full_name == "builtins.tuple":
       return self._copy_type_parameters(container, "typing.Iterable")
     else:
-      assert container.full_name == "__builtin__.dict", container.full_name
+      assert container.full_name == "builtins.dict", container.full_name
       return self._copy_type_parameters(container, "typing.Mapping")
 
   def merge_classes(self, instances):
@@ -515,9 +513,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     return abstract.Module(self.vm, ast.name, members, ast)
 
   def _get_literal_value(self, pyval):
-    if pyval == self.vm.lookup_builtin("__builtin__.True"):
+    if pyval == self.vm.lookup_builtin("builtins.True"):
       return True
-    elif pyval == self.vm.lookup_builtin("__builtin__.False"):
+    elif pyval == self.vm.lookup_builtin("builtins.False"):
       return False
     elif isinstance(pyval, str):
       prefix, value = parser_constants.STRING_RE.match(pyval).groups()[:2]
@@ -590,9 +588,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       mod = self.vm.loader.import_name(pyval.module_name)
       return self._create_module(mod)
     elif isinstance(pyval, pytd.Class):
-      if pyval.name == "__builtin__.super":
+      if pyval.name == "builtins.super":
         return self.vm.special_builtins["super"]
-      elif pyval.name == "__builtin__.object":
+      elif pyval.name == "builtins.object":
         return self.object_type
       elif pyval.name == "types.ModuleType":
         return self.module_type
@@ -622,7 +620,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     elif isinstance(pyval, pytd.Function):
       signatures = [function.PyTDSignature(pyval.name, sig, self.vm)
                     for sig in pyval.signatures]
-      type_new = self.vm.lookup_builtin("__builtin__.type").Lookup("__new__")
+      type_new = self.vm.lookup_builtin("builtins.type").Lookup("__new__")
       if pyval is type_new:
         f_cls = special_builtins.TypeNew
       else:
@@ -643,7 +641,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return self.unsolvable
     elif (isinstance(pyval, pytd.Constant) and
           isinstance(pyval.type, pytd.GenericType) and
-          pyval.type.base_type.name == "__builtin__.type"):
+          pyval.type.base_type.name == "builtins.type"):
       # `X: Type[other_mod.X]` is equivalent to `X = other_mod.X`.
       param, = pyval.type.parameters
       return self.constant_to_value(param, subst, self.vm.root_node)
@@ -699,7 +697,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           assert isinstance(cls.base_type, pytd.ClassType)
           base_cls = cls.base_type.cls
         assert isinstance(base_cls, pytd.Class), base_cls
-        if base_cls.name == "__builtin__.type":
+        if base_cls.name == "builtins.type":
           c, = cls.parameters
           if isinstance(c, pytd.TypeParameter):
             if not subst or c.full_name not in subst:
@@ -736,7 +734,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         # This key is also used in __init__
         key = (abstract.Instance, cls)
         if key not in self._convert_cache:
-          if cls.name in ["__builtin__.type", "__builtin__.property"]:
+          if cls.name in ["builtins.type", "builtins.property"]:
             # An instance of "type" or of an anonymous property can be anything.
             instance = self._create_new_unknown_value("type")
           else:

@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 
 
 _COMPATIBLE_BUILTINS = [
-    ("__builtin__." + compatible_builtin, "__builtin__." + builtin)
+    ("builtins." + compatible_builtin, "builtins." + builtin)
     for compatible_builtin, builtin in pep484.COMPAT_ITEMS
 ]
 
@@ -395,7 +395,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         value = self.vm.convert.unsolvable
       return self._mutate_type_parameters(params, value, subst, node)
     elif isinstance(left, mixin.Class):
-      if (other_type.full_name == "__builtin__.type" and
+      if (other_type.full_name == "builtins.type" and
           isinstance(other_type, abstract.ParameterizedClass)):
         other_type = other_type.get_formal_type_parameter(abstract_utils.T)
         return self._instantiate_and_match(left, other_type, subst, node, view)
@@ -405,7 +405,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         other_type = other_type.get_formal_type_parameter(abstract_utils.RET)
         return self._instantiate_and_match(left, other_type, subst, node, view)
       elif other_type.full_name in [
-          "__builtin__.type", "__builtin__.object", "typing.Callable",
+          "builtins.type", "builtins.object", "typing.Callable",
           "typing.Hashable"]:
         return subst
       elif _is_callback_protocol(other_type):
@@ -416,7 +416,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
             left, other_type, subst, node, view)
     elif isinstance(left, abstract.Module):
       if other_type.full_name in [
-          "__builtin__.module", "__builtin__.object", "types.ModuleType",
+          "builtins.module", "builtins.object", "types.ModuleType",
           "typing.Hashable"]:
         return subst
     elif isinstance(left, abstract.FUNCTION_TYPES):
@@ -458,13 +458,13 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           left.super_cls, left.super_obj, other_type, subst, node, view)
     elif isinstance(left, abstract.ClassMethod):
       if other_type.full_name in [
-          "__builtin__.classmethod", "__builtin__.object"]:
+          "builtins.classmethod", "builtins.object"]:
         return subst
       return self._match_type_against_type(
           left.to_bound_function(), other_type, subst, node, view)
     elif isinstance(left, abstract.StaticMethod):
       if other_type.full_name in [
-          "__builtin__.staticmethod", "__builtin__.object"]:
+          "builtins.staticmethod", "builtins.object"]:
         return subst
       return self._match_type_against_type(
           left.method, other_type, subst, node, view)
@@ -1003,7 +1003,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     if object_in_values:
       ignored_superclasses = {}
     else:
-      ignored_superclasses = {"__builtin__.object",
+      ignored_superclasses = {"builtins.object",
                               "typing.Generic",
                               "typing.Protocol"}
     if concrete_values:

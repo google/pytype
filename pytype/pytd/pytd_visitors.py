@@ -213,7 +213,7 @@ class PrintVisitor(base_visitor.Visitor):
     return ret
 
   def _IsBuiltin(self, module):
-    return module == "__builtin__"
+    return module == "builtins"
 
   def _FormatTypeParams(self, type_params):
     formatted_type_params = []
@@ -267,7 +267,7 @@ class PrintVisitor(base_visitor.Visitor):
     """Convert a class-level or module-level constant to a string."""
     if self.in_literal:
       module, _, name = node.name.partition(".")
-      assert module == "__builtin__", module
+      assert module == "builtins", module
       assert name in ("True", "False"), name
       return name
     else:

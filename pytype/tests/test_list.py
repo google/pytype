@@ -1,10 +1,10 @@
-"""Tests for __builtin__.list."""
+"""Tests for builtins.list."""
 
 from pytype.tests import test_base
 
 
 class ListTest(test_base.TargetIndependentTest):
-  """Tests for __builtin__.list."""
+  """Tests for builtins.list."""
 
   def test_add(self):
     ty = self.Infer("""

@@ -223,7 +223,7 @@ class CombineContainers(visitors.Visitor):
   """
 
   _CONTAINER_NAMES = {
-      pytd.TupleType: ("__builtin__.tuple", "typing.Tuple"),
+      pytd.TupleType: ("builtins.tuple", "typing.Tuple"),
       pytd.CallableType: ("typing.Callable",),
   }
 
@@ -647,7 +647,7 @@ class AdjustGenericType(visitors.Visitor):
 
   def __init__(self):
     super().__init__()
-    self.old_generic_type = pytd.ClassType("__builtin__.object")
+    self.old_generic_type = pytd.ClassType("builtins.object")
     self.new_generic_type = pytd.AnythingType()
 
   def VisitClassType(self, t):

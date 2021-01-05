@@ -30,7 +30,7 @@ class TestTypeMatch(parser_test_base.ParserTest):
   def setUp(self):
     super().setUp()
     builtins = parser.parse_string(textwrap.dedent(_BUILTINS),
-                                   name="__builtin__",
+                                   name="builtins",
                                    python_version=self.python_version)
     typing = parser.parse_string("class Generic: ...", name="typing",
                                  python_version=self.python_version)
@@ -327,9 +327,9 @@ class TestTypeMatch(parser_test_base.ParserTest):
     m = type_match.TypeMatch(type_match.get_all_subclasses([ast]))
     match = m.match_Unknown_against_Generic(unk, tup, {})
     self.assertCountEqual(sorted(match.extract_equalities()),
-                          [(unknown0, "__builtin__.tuple"),
-                           (f"{unknown0}.__builtin__.tuple._T", "int"),
-                           (f"{unknown0}.__builtin__.tuple._T", "str")])
+                          [(unknown0, "builtins.tuple"),
+                           (f"{unknown0}.builtins.tuple._T", "int"),
+                           (f"{unknown0}.builtins.tuple._T", "str")])
 
   def test_function_against_tuple_subclass(self):
     ast = self.ParseWithBuiltins("""

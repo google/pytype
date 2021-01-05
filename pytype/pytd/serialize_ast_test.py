@@ -89,7 +89,7 @@ class SerializeAstTest(test_base.UnitTest):
       loaded_ast = serialize_ast.ProcessAst(serialized_ast, module_map)
 
       with six.assertRaisesRegex(
-          self, ValueError, "Unresolved class: '__builtin__.NoneType'"):
+          self, ValueError, "Unresolved class: 'builtins.NoneType'"):
         loaded_ast.Visit(visitors.VerifyLookup())
 
   def test_pickle(self):
@@ -104,7 +104,7 @@ class SerializeAstTest(test_base.UnitTest):
         serialized_ast = pickle.load(fi)
       self.assertTrue(serialized_ast.ast)
       six.assertCountEqual(self, dict(serialized_ast.dependencies),
-                           ["__builtin__", "foo.bar.module1", "module2"])
+                           ["builtins", "foo.bar.module1", "module2"])
 
   def test_unrestorable_child(self):
     # Assume .cls in a ClassType X in module1 was referencing something for

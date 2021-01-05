@@ -106,12 +106,12 @@ class TypeMatch(pytd_utils.TypeMatcher):
       return sum((self.get_superclasses(c) for c in t.cls.parents), [t])
     elif isinstance(t, pytd.AnythingType):
       # All types, even "?", inherit from object.
-      return [pytd.NamedType("__builtin__.object")]
+      return [pytd.NamedType("builtins.object")]
     elif isinstance(t, pytd.GenericType):
       return self.get_superclasses(t.base_type)
     else:
       log.warning("Can't extract superclasses from %s", type(t))
-      return [pytd.NamedType("__builtin__.object")]
+      return [pytd.NamedType("builtins.object")]
 
   def get_subclasses(self, t):
     """Get all classes derived from this type.
@@ -171,13 +171,13 @@ class TypeMatch(pytd_utils.TypeMatcher):
           isinstance(t2, pytd.CallableType)):
       # Flip the arguments, since argument types are contravariant.
       return t2.args + (t1.ret,), t1.args + (t2.ret,)
-    elif (t1.base_type.cls.name == "__builtin__.type" and
+    elif (t1.base_type.cls.name == "builtins.type" and
           t2.base_type.cls.name == "typing.Callable"):
       # We'll only check the return type, since getting the argument types for
       # initializing a class is tricky.
       return t1.parameters, (t2.parameters[-1],)
     elif (t1.base_type.cls.name == "typing.Callable" and
-          t2.base_type.cls.name == "__builtin__.type"):
+          t2.base_type.cls.name == "builtins.type"):
       return (t1.parameters[-1],), t2.parameters
     elif isinstance(t1, pytd.CallableType):
       # We're matching against GenericType(Callable, (Any, _RET)), so we don't
@@ -230,7 +230,7 @@ class TypeMatch(pytd_utils.TypeMatcher):
 
   def match_Generic_against_Unknown(self, t1, t2, subst):  # pylint: disable=invalid-name
     # Note: This flips p1 and p2 above.
-    return self.match_Unknown_against_Generic(t2, t1, subst)
+    return self.match_Unknown_against_Generic(t2, t1, subst)  # pylint: disable=arguments-out-of-order
 
   def maybe_lookup_type_param(self, t, subst):
     while isinstance(t, pytd.TypeParameter):
@@ -248,7 +248,7 @@ class TypeMatch(pytd_utils.TypeMatcher):
   def unclass(self, t):
     """Prevent further subclass or superclass expansion for this type."""
     if isinstance(t, pytd.ClassType):
-      # When t.name and t.cls.name differ (e.g., int vs. __builtin__.int), the
+      # When t.name and t.cls.name differ (e.g., int vs. builtins.int), the
       # latter is the complete name.
       return pytd.NamedType(t.cls.name)
     else:
@@ -306,11 +306,11 @@ class TypeMatch(pytd_utils.TypeMatcher):
       # For strict types, avoid subclasses of the left side.
       return booleq.Eq(self._full_name(t1), self._full_name(t2))
     elif (isinstance(t1, pytd.ClassType) and hasattr(t2, "name") and
-          t2.name == "__builtin__.object"):
+          t2.name == "builtins.object"):
       return booleq.TRUE
     elif (hasattr(t1, "name") and hasattr(t2, "name") and
-          t1.name in ("__builtin__.type", "typing.Callable") and
-          t2.name in ("__builtin__.type", "typing.Callable")):
+          t1.name in ("builtins.type", "typing.Callable") and
+          t2.name in ("builtins.type", "typing.Callable")):
       return booleq.TRUE
     elif isinstance(t1, pytd.ClassType):
       # ClassTypes are similar to Unions, except they're disjunctions: We can

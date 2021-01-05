@@ -248,8 +248,8 @@ class PyTDTest(AbstractTestBase):
     view = {
         instance.get_instance_type_parameter(abstract_utils.T): param_binding}
     pytd_type = instance.to_type(self._vm.root_node, seen=None, view=view)
-    self.assertEqual("__builtin__.list", pytd_type.base_type.name)
-    self.assertSetEqual({"__builtin__.int"},
+    self.assertEqual("builtins.list", pytd_type.base_type.name)
+    self.assertSetEqual({"builtins.int"},
                         {t.name for t in pytd_type.parameters})
 
   def test_to_type_with_view2(self):
@@ -262,18 +262,18 @@ class PyTDTest(AbstractTestBase):
     view = {param_var: str_binding}
     pytd_type = instance.to_type(self._vm.root_node, seen=None, view=view)
     self.assertEqual(pytd_type.parameters[0],
-                     pytd.NamedType("__builtin__.str"))
+                     pytd.NamedType("builtins.str"))
 
   def test_to_type_with_view_and_empty_param(self):
     instance = abstract.List([], self._vm)
     pytd_type = instance.to_type(self._vm.root_node, seen=None, view={})
-    self.assertEqual("__builtin__.list", pytd_type.base_type.name)
+    self.assertEqual("builtins.list", pytd_type.base_type.name)
     self.assertSequenceEqual((pytd.NothingType(),), pytd_type.parameters)
 
   def test_typing_container(self):
     cls = self._vm.convert.list_type
     container = abstract.AnnotationContainer("List", self._vm, cls)
-    expected = pytd.GenericType(pytd.NamedType("__builtin__.list"),
+    expected = pytd.GenericType(pytd.NamedType("builtins.list"),
                                 (pytd.AnythingType(),))
     actual = container.get_instance_type(self._vm.root_node)
     self.assertEqual(expected, actual)
@@ -305,7 +305,7 @@ class FunctionTest(AbstractTestBase):
 
   def test_call_with_bad_arg(self):
     f = self._make_pytd_function(
-        (self._vm.lookup_builtin("__builtin__.str"),))
+        (self._vm.lookup_builtin("builtins.str"),))
     arg = self._vm.convert.primitive_class_instances[int].to_variable(
         self._vm.root_node)
     self.assertRaises(
@@ -313,7 +313,7 @@ class FunctionTest(AbstractTestBase):
 
   def test_simple_call(self):
     f = self._make_pytd_function(
-        (self._vm.lookup_builtin("__builtin__.str"),))
+        (self._vm.lookup_builtin("builtins.str"),))
     arg = self._vm.convert.primitive_class_instances[str].to_variable(
         self._vm.root_node)
     node, ret = self._call_pytd_function(f, (arg,))
@@ -323,7 +323,7 @@ class FunctionTest(AbstractTestBase):
 
   def test_call_with_multiple_arg_bindings(self):
     f = self._make_pytd_function(
-        (self._vm.lookup_builtin("__builtin__.str"),))
+        (self._vm.lookup_builtin("builtins.str"),))
     arg = self._vm.program.NewVariable()
     arg.AddBinding(self._vm.convert.primitive_class_instances[str], [],
                    self._vm.root_node)
@@ -336,7 +336,7 @@ class FunctionTest(AbstractTestBase):
 
   def test_call_with_skipped_combination(self):
     f = self._make_pytd_function(
-        (self._vm.lookup_builtin("__builtin__.str"),))
+        (self._vm.lookup_builtin("builtins.str"),))
     node = self._vm.root_node.ConnectNew()
     arg = self._vm.convert.primitive_class_instances[str].to_variable(node)
     node, ret = self._call_pytd_function(f, (arg,))
@@ -383,7 +383,7 @@ class FunctionTest(AbstractTestBase):
     # def f(self: Any, *args: Any)
     self_param = pytd.Parameter("self", pytd.AnythingType(), False, False, None)
     # Imitate the parser's conversion of '*args: Any' to '*args: Tuple[Any]'.
-    tup = pytd.ClassType("__builtin__.tuple")
+    tup = pytd.ClassType("builtins.tuple")
     tup.cls = self._vm.convert.tuple_type.pytd_cls
     any_tuple = pytd.GenericType(tup, (pytd.AnythingType(),))
     args_param = pytd.Parameter("args", any_tuple, False, True, None)
@@ -583,20 +583,20 @@ class FunctionTest(AbstractTestBase):
     self.assertRaises(KeyError, sig.del_annotation, "rumpelstiltskin")
 
   def test_constructor_args(self):
-    f = abstract.PyTDFunction.make("open", self._vm, "__builtin__")
-    self.assertEqual(f.full_name, "__builtin__.open")
+    f = abstract.PyTDFunction.make("open", self._vm, "builtins")
+    self.assertEqual(f.full_name, "builtins.open")
     six.assertCountEqual(
         self,
         {sig.pytd_sig for sig in f.signatures},
-        self._vm.lookup_builtin("__builtin__.open").signatures)
+        self._vm.lookup_builtin("builtins.open").signatures)
     self.assertIs(f.kind, pytd.METHOD)
     self.assertIs(f.vm, self._vm)
 
   def test_constructor_args_pyval(self):
     sig = pytd.Signature((), None, None, pytd.AnythingType(), (), ())
     pyval = pytd.Function("blah", (sig,), pytd.STATICMETHOD, 0)
-    f = abstract.PyTDFunction.make("open", self._vm, "__builtin__", pyval=pyval)
-    self.assertEqual(f.full_name, "__builtin__.open")
+    f = abstract.PyTDFunction.make("open", self._vm, "builtins", pyval=pyval)
+    self.assertEqual(f.full_name, "builtins.open")
     f_sig, = f.signatures
     self.assertIs(f_sig.pytd_sig, sig)
     self.assertIs(f.kind, pytd.STATICMETHOD)

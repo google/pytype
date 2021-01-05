@@ -148,11 +148,11 @@ class Loader:
                open_function=open):
     self.python_version = utils.normalize_version(python_version)
     self._modules = modules or self._base_modules(self.python_version)
-    if self._modules["__builtin__"].needs_unpickling():
-      self._unpickle_module(self._modules["__builtin__"])
+    if self._modules["builtins"].needs_unpickling():
+      self._unpickle_module(self._modules["builtins"])
     if self._modules["typing"].needs_unpickling():
       self._unpickle_module(self._modules["typing"])
-    self.builtins = self._modules["__builtin__"].ast
+    self.builtins = self._modules["builtins"].ast
     self.typing = self._modules["typing"].ast
     self.base_module = base_module
     self.pythonpath = pythonpath
@@ -190,8 +190,8 @@ class Loader:
   def _base_modules(self, python_version):
     bltins, typing = builtins.GetBuiltinsAndTyping(python_version)
     return {
-        "__builtin__":
-        Module("__builtin__", self.PREFIX + "__builtin__", bltins, dirty=False),
+        "builtins":
+        Module("builtins", self.PREFIX + "builtins", bltins, dirty=False),
         "typing":
         Module("typing", self.PREFIX + "typing", typing, dirty=False)
     }

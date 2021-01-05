@@ -521,7 +521,7 @@ class ImportTest(test_base.TargetIndependentTest):
           return module.foo(x)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        module = ...  # type: __builtin__.module
+        module = ...  # type: builtins.module
         def my_foo(x) -> str: ...
       """)
 
@@ -541,13 +541,13 @@ class ImportTest(test_base.TargetIndependentTest):
 
   def test_import_builtins(self):
     ty = self.Infer("""
-      import __builtin__ as builtins
+      import builtins as __builtin__
 
       def f():
-        return builtins.int()
+        return __builtin__.int()
     """)
     self.assertTypesMatchPytd(ty, """
-      builtins = ...  # type: module
+      __builtin__: module
 
       def f() -> int: ...
     """)
@@ -613,7 +613,7 @@ class ImportTest(test_base.TargetIndependentTest):
           return module.Foo.x
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        module = ...  # type: __builtin__.module
+        module = ...  # type: builtins.module
         def f() -> int: ...
         def g() -> float: ...
         def h() -> float: ...

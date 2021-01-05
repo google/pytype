@@ -1,11 +1,11 @@
-"""Tests for __builtin__.list."""
+"""Tests for builtins.list."""
 
 
 from pytype.tests import test_base
 
 
 class ListTestBasic(test_base.TargetPython3BasicTest):
-  """Basic tests for __builtin__.list in Python 3."""
+  """Basic tests for builtins.list in Python 3."""
 
   def test_repeated_add(self):
     # At the time of this writing, this test completes in <5s. If it takes
@@ -22,7 +22,7 @@ class ListTestBasic(test_base.TargetPython3BasicTest):
 
 
 class ListTest(test_base.TargetPython3FeatureTest):
-  """Tests for __builtin__.list in Python 3."""
+  """Tests for builtins.list in Python 3."""
 
   def test_byte_unpack_ex(self):
     ty = self.Infer("""

@@ -280,7 +280,7 @@ class LexerTest(test_base.UnitTest):
 
   def test_builtins(self):
     _, text = pytd_utils.GetPredefinedFile(
-        "builtins/%d" % self.python_version[0], "__builtin__")
+        "builtins/%d" % self.python_version[0], "builtins")
     self.check(None, text)
 
   def test_typevar(self):

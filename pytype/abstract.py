@@ -1165,7 +1165,7 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
     else:
       assert isinstance(other_dict, BaseValue)
       if (isinstance(other_dict, Instance) and
-          other_dict.full_name == "__builtin__.dict"):
+          other_dict.full_name == "builtins.dict"):
         k = other_dict.get_instance_type_parameter(abstract_utils.K, node)
         v = other_dict.get_instance_type_parameter(abstract_utils.V, node)
       else:
@@ -1660,7 +1660,7 @@ class Function(SimpleValue):
       # Case 3: Data is anything else. Same as Case 2, but emit a warning.
       if not (all(isinstance(d, (Instance, Unknown, Unsolvable))
                   for d in defaults_var.data) and
-              all(d.full_name == "__builtin__.tuple"
+              all(d.full_name == "builtins.tuple"
                   for d in defaults_var.data if isinstance(d, Instance))):
         self.vm.errorlog.bad_function_defaults(self.vm.frames, self.name)
       # The ambiguous case is handled by the subclass.
@@ -1754,7 +1754,7 @@ class PyTDFunction(Function):
     assert not pyval or not pyval_name  # there's never a reason to pass both
     if not pyval:
       pyval_name = module + "." + (pyval_name or name)
-      if module not in ("__builtin__", "typing"):
+      if module not in ("builtins", "typing"):
         pyval = vm.loader.import_name(module).Lookup(pyval_name)
       else:
         pyval = vm.lookup_builtin(pyval_name)
@@ -2248,7 +2248,7 @@ class ParameterizedClass(BaseValue, mixin.Class, mixin.NestedAnnotation):
     return (self,) + self.base_cls.mro[1:]
 
   def instantiate(self, node, container=None):
-    if self.full_name == "__builtin__.type":
+    if self.full_name == "builtins.type":
       # deformalize removes TypeVars.
       # See py3.test_typevar.TypeVarTest.testTypeParameterType(Error).
       instance = self.vm.annotations_util.deformalize(
@@ -2286,7 +2286,7 @@ class ParameterizedClass(BaseValue, mixin.Class, mixin.NestedAnnotation):
   def _is_callable(self):
     return (not self.is_abstract
             and isinstance(self.base_cls, (InterpreterClass, PyTDClass))
-            and self.module not in  ("__builtin__", "typing")
+            and self.module not in  ("builtins", "typing")
             and all(not isinstance(val, TypeParameter)
                     for val in self.formal_type_parameters.values()))
 
@@ -4166,7 +4166,7 @@ class Unknown(BaseValue):
     return pytd.Class(
         name=class_name,
         metaclass=None,
-        parents=(pytd.NamedType("__builtin__.object"),),
+        parents=(pytd.NamedType("builtins.object"),),
         methods=methods,
         constants=tuple(pytd.Constant(name, Unknown._to_pytd(node, c))
                         for name, c in self.members.items()),

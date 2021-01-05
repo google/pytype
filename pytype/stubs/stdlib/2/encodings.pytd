@@ -2,7 +2,7 @@
 #
 from typing import Any, Text, Union
 
-__builtin__ = ...  # type: module
+builtins = ...  # type: module
 _aliases = ...  # type: dict[Union[bytes, Text], Union[bytes, Text]]
 _cache = ...  # type: dict[Any, Any]
 _import_tail = ...  # type: list[str]

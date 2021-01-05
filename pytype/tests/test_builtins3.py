@@ -76,7 +76,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
 
   def test_explicit_typevar_import(self):
     self.Check("""
-      from __builtin__ import _T
+      from builtins import _T
       _T
     """)
 

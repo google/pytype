@@ -100,7 +100,7 @@ class ConvertTypingToNative(base_visitor.Visitor):
     return self.VisitGenericType(t)
 
   def VisitClass(self, node):
-    if self.module == "__builtin__":
+    if self.module == "builtins":
       parents = []
       for old_parent, new_parent in zip(self.old_node.parents, node.parents):
         if (isinstance(new_parent, (pytd.GenericType, pytd.ClassType,

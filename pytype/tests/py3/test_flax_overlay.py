@@ -85,9 +85,9 @@ class TestLinenModule(test_base.TargetPython3FeatureTest):
           y: int = 10
         """, pythonpath=[d.path], module_name="foo")
       self.assertTypesMatchPytd(ty, """
-        import __builtin__
+        import builtins
         import flax.linen.module
-        module: __builtin__.module
+        module: builtins.module
         class Foo(flax.linen.module.Module):
           x: bool
           y: int

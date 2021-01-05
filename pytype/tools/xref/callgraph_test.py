@@ -57,17 +57,17 @@ class CallgraphTest(test_base.TargetIndependentTest):
     self.assertHasFunctions(fns, ["f", "g"])
     f = fns["module.f"]
     self.assertAttrsEqual(f.param_attrs,
-                          {("x", "__builtin__.str", "x.strip")})
+                          {("x", "builtins.str", "x.strip")})
     self.assertAttrsEqual(f.local_attrs, set())
     self.assertCallsEqual(f.calls, [("str.strip", [])])
     self.assertEqual(f.ret.id, "module.f.y")
     self.assertParamsEqual(
-        f.params, [("x", "__builtin__.str")])
+        f.params, [("x", "builtins.str")])
 
     g = fns["module.g"]
     self.assertAttrsEqual(g.param_attrs, set())
     self.assertAttrsEqual(g.local_attrs,
-                          {("b", "__builtin__.complex", "b.real")})
+                          {("b", "builtins.complex", "b.real")})
     self.assertCallsEqual(g.calls, [
         ("f", [("y", "Param", "typing.Any")]),
         ("complex", [])
@@ -120,7 +120,7 @@ class CallgraphTest(test_base.TargetIndependentTest):
     self.assertAttrsEqual(f.param_attrs, [])
     self.assertAttrsEqual(f.local_attrs, [])
     self.assertCallsEqual(f.calls, [])
-    self.assertParamsEqual(f.params, [("x", "__builtin__.int")])
+    self.assertParamsEqual(f.params, [("x", "builtins.int")])
 
   def test_call_records(self):
     """Use a function's call records to infer param types."""
@@ -149,10 +149,10 @@ class CallgraphTest(test_base.TargetIndependentTest):
     fns = ix.function_map
     self.assertHasFunctions(fns, ["A.foo", "f", "g", "h"])
     expected = [
-        ("f", [("x", "__builtin__.int"), ("y", "__builtin__.int")]),
-        ("g", [("a", "__builtin__.int")]),
-        ("h", [("b", "Union[A, __builtin__.str]")]),
-        ("A.foo", [("self", "A"), ("x", "__builtin__.str")])
+        ("f", [("x", "builtins.int"), ("y", "builtins.int")]),
+        ("g", [("a", "builtins.int")]),
+        ("h", [("b", "Union[A, builtins.str]")]),
+        ("A.foo", [("self", "A"), ("x", "builtins.str")])
     ]
     for fn, params in expected:
       f = fns["module.%s" % fn]
