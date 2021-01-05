@@ -13,12 +13,12 @@ from pytype import file_utils
 from pytype import module_utils
 from pytype import utils
 from pytype.pyi import parser
+from pytype.pytd import builtins
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import typeshed
 from pytype.pytd import visitors
-from pytype.pytd.parse import builtins
 from six.moves import cPickle
 
 log = logging.getLogger(__name__)

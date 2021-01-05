@@ -6,7 +6,7 @@ from pytype import module_utils
 from pytype import pytype_source_utils
 from pytype import utils
 from pytype.pyi import parser
-from pytype.pytd.parse import builtins
+from pytype.pytd import builtins
 
 
 def _get_module_names_in_path(lister, path):

@@ -1,9 +1,10 @@
 """Tests for pytype.pytd.parse.builtins."""
 
+from pytype.pytd import builtins
 from pytype.pytd import pytd
 from pytype.pytd import visitors
-from pytype.pytd.parse import builtins
 from pytype.tests import test_base
+
 import unittest
 
 

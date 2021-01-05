@@ -103,10 +103,10 @@ py_library(
     .utils
     pytype.pyc.pyc
     pytype.pyi.parser
+    pytype.pytd.builtins
     pytype.pytd.pytd_for_parser
     pytype.pytd.pytd_utils
     pytype.pytd.serialize_ast
-    pytype.pytd.parse.builtins
 )
 
 py_library(
@@ -123,10 +123,10 @@ py_library(
     .output
     .vm
     pytype.overlays.overlays
+    pytype.pytd.builtins
     pytype.pytd.pytd_defs
     pytype.pytd.pytd_for_parser
     pytype.pytd.pytd_utils
-    pytype.pytd.parse.builtins
     pytype.typegraph.cfg
 )
 
@@ -196,12 +196,12 @@ py_library(
   DEPS
     .utils
     pytype.pyi.parser
+    pytype.pytd.builtins
     pytype.pytd.pytd_defs
     pytype.pytd.pytd_for_parser
     pytype.pytd.pytd_utils
     pytype.pytd.serialize_ast
     pytype.pytd.typeshed
-    pytype.pytd.parse.builtins
 )
 
 py_library(

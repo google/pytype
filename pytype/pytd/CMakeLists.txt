@@ -8,11 +8,11 @@ toplevel_py_binary(
   MAIN
     main.py
   DEPS
+    .builtins
     .pytd_for_parser
     .pytd_utils
     pytype.utils
     pytype.pyi.parser
-    pytype.pytd.parse.builtins
 )
 
 py_library(
@@ -49,6 +49,18 @@ py_library(
   DEPS
     .pytd_defs
     pytype.typegraph.cfg_utils
+)
+
+py_library(
+  NAME
+    builtins
+  SRCS
+    builtins.py
+  DEPS
+    .pytd_for_parser
+    .pytd_utils
+    pytype.utils
+    pytype.pyi.parser
 )
 
 py_library(
@@ -113,9 +125,9 @@ py_library(
   SRCS
     typeshed.py
   DEPS
+    .builtins
     pytype.utils
     pytype.pyi.parser
-    pytype.pytd.parse.builtins
 )
 
 py_test(
@@ -143,6 +155,18 @@ py_test(
     booleq_test.py
   DEPS
     .pytd_for_parser
+)
+
+py_test(
+  NAME
+    builtins_test
+  SRCS
+    builtins_test.py
+  DEPS
+    .builtins
+    .pytd_defs
+    .pytd_for_parser
+    pytype.tests.test_base
 )
 
 py_test(
@@ -281,9 +305,9 @@ py_test(
   SRCS
     typeshed_test.py
   DEPS
+    .builtins
     .typeshed
     pytype.utils
-    pytype.pytd.parse.builtins
     pytype.pytd.parse.parser_test_base
     pytype.tests.test_base
 )

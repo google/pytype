@@ -16,12 +16,11 @@ from pytype import load_pytd
 from pytype import utils
 from pytype.pyc import pyc
 from pytype.pyi import parser
+from pytype.pytd import builtins as pytd_builtins
 from pytype.pytd import optimize
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
-from pytype.pytd.parse import builtins as pytd_builtins
-
 import six
 
 
