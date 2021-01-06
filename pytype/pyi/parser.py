@@ -833,22 +833,13 @@ class _Parser:
         self._matches_full_name(t, "typing_extensions.Literal"))
 
   def _heterogeneous_tuple(self, base_type, parameters):
-    if parameters:
-      return pytd.TupleType(base_type=base_type, parameters=parameters)
-    else:
-      return pytd.GenericType(base_type=base_type,
-                              parameters=(pytd.NothingType(),))
+    return pytd.TupleType(base_type=base_type, parameters=parameters)
 
   def _is_empty_tuple(self, t):
-    return (isinstance(t, pytd.GenericType) and
-            self._is_tuple_base_type(t.base_type) and
-            t.parameters == (pytd.NothingType(),))
+    return isinstance(t, pytd.TupleType) and not t.parameters
 
   def _is_heterogeneous_tuple(self, t):
-    # An empty tuple is represented as a GenericType rather than a TupleType,
-    # but we still consider it heterogeneous because we know exactly what the
-    # parameters are (there are none).
-    return isinstance(t, pytd.TupleType) or self._is_empty_tuple(t)
+    return isinstance(t, pytd.TupleType)
 
   def _is_any(self, t):
     return isinstance(t, pytd.AnythingType) or t == pytd.NamedType("typing.Any")

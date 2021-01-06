@@ -1006,9 +1006,6 @@ class VerifyVisitor(Visitor):
   def EnterCallableType(self, node):
     self.EnterGenericType(node)
 
-  def EnterTupleType(self, node):
-    self.EnterGenericType(node)
-
   def EnterGenericType(self, node):
     assert node.parameters, node
 

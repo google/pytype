@@ -43,11 +43,8 @@ py_library(
   DEPS
     .parser_ext
     pytype.utils
-    pytype.pytd.pep484
-    pytype.pytd.pytd_defs
     pytype.pytd.pytd_for_parser
-    pytype.pytd.pytd_utils
-    pytype.pytd.parse.parser_constants
+    pytype.pytd.parse.parse
 )
 
 py_test(
@@ -57,8 +54,8 @@ py_test(
     lexer_test.py
   DEPS
     .parser_ext
-    pytype.pytd.pytd_utils
-    pytype.pytd.parse.parser_constants
+    pytype.pytd.pytd_for_parser
+    pytype.pytd.parse.parse
     pytype.stubs.stubs
     pytype.tests.test_base
 )
@@ -71,8 +68,7 @@ py_test(
   DEPS
     .parser
     pytype.utils
-    pytype.pytd.pytd_defs
-    pytype.pytd.pytd_utils
+    pytype.pytd.pytd_for_parser
     pytype.stubs.stubs
     pytype.tests.test_base
 )
@@ -84,7 +80,7 @@ py_test(
     parser_memleak_test.py
   DEPS
     .parser
-    pytype.pytd.pytd_utils
+    pytype.pytd.pytd_for_parser
     pytype.stubs.stubs
     pytype.tests.test_base
 )

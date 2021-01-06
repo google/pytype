@@ -55,7 +55,7 @@ py_test(
     test_protocols.py
   DEPS
     pytype.utils
-    pytype.pytd.pytd_utils
+    pytype.pytd.pytd
     pytype.tests.test_base
 )
 
@@ -93,7 +93,7 @@ py_test(
     test_decorators.py
   DEPS
     pytype.utils
-    pytype.pytd.pytd_utils
+    pytype.pytd.pytd
     pytype.tests.test_base
 )
 
@@ -179,7 +179,7 @@ py_test(
     test_typing.py
   DEPS
     pytype.utils
-    pytype.pytd.pep484
+    pytype.pytd.pytd
     pytype.tests.test_base
 )
 
@@ -199,7 +199,7 @@ py_test(
   SRCS
     test_typing_namedtuple.py
   DEPS
-    pytype.pytd.pytd_utils
+    pytype.pytd.pytd
     pytype.tests.test_base
 )
 
@@ -305,7 +305,7 @@ py_test(
     test_reingest.py
   DEPS
     pytype.utils
-    pytype.pytd.pytd_utils
+    pytype.pytd.pytd
     pytype.tests.test_base
 )
 
@@ -371,6 +371,7 @@ py_test(
     test_tuple.py
   DEPS
     pytype.utils
+    pytype.pytd.pytd
     pytype.tests.test_base
 )
 
@@ -487,7 +488,7 @@ py_test(
     test_overload.py
   DEPS
     pytype.utils
-    pytype.pytd.pytd_utils
+    pytype.pytd.pytd
     pytype.tests.test_base
 )
 

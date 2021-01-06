@@ -36,7 +36,7 @@ py_library(
     parse_args.py
   DEPS
     .config
-    pytype.config
+    pytype.libvm
     pytype.utils
     pytype.tools.tools
 )
@@ -78,7 +78,7 @@ py_test(
     pytype_runner_test.py
   DEPS
     .analyze_project
-    pytype.config
+    pytype.libvm
     pytype.utils
 )
 
@@ -91,6 +91,6 @@ toplevel_py_binary(
     main.py
   DEPS
     .analyze_project
-    pytype.io
+    pytype.libvm
     pytype.tools.tools
 )

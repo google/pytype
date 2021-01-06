@@ -203,11 +203,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           node, v, instance, type_params, seen, view)
       base = pytd_utils.NamedTypeWithModule(v.official_name or v.name, v.module)
       if self._is_tuple(v, instance):
-        if type_arguments:
-          homogeneous = False
-        else:
-          homogeneous = True
-          type_arguments = [pytd.NothingType()]
+        homogeneous = False
       elif v.full_name == "typing.Callable":
         homogeneous = not isinstance(v, abstract.CallableClass)
       else:
@@ -348,8 +344,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     """
     base_cls = self.vm.convert.function_type
     ret = sig.annotations.get("return", self.vm.convert.unsolvable)
-    if self._detailed or (
-        sig.mandatory_param_count() == sig.maximum_param_count()):
+    if not sig.kwonly_params and (self._detailed or (
+        sig.mandatory_param_count() == sig.maximum_param_count())):
       # If self._detailed is false, we throw away the argument types if the
       # function takes a variable number of arguments, which is correct for pyi
       # generation but undesirable for, say, error message printing.
@@ -360,8 +356,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       params.update(enumerate(args))
       return abstract.CallableClass(base_cls, params, self.vm)
     else:
-      # The only way to indicate a variable number of arguments in a Callable
-      # is to not specify argument types at all.
+      # The only way to indicate kwonly arguments or a variable number of
+      # arguments in a Callable is to not specify argument types at all.
       params = {abstract_utils.ARGS: self.vm.convert.unsolvable,
                 abstract_utils.RET: ret}
       return abstract.ParameterizedClass(base_cls, params, self.vm)

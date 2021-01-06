@@ -2,6 +2,27 @@ add_package()
 
 py_library(
   NAME
+    parse
+  DEPS
+    .node
+    .parser_constants
+    .preconditions
+)
+
+py_library(
+  NAME
+    parser_test_base
+  SRCS
+    parser_test_base.py
+  DEPS
+    pytype.libvm
+    pytype.pyi.parser
+    pytype.pytd.pytd
+    pytype.tests.test_base
+)
+
+py_library(
+  NAME
     preconditions
   SRCS
     preconditions.py
@@ -22,7 +43,7 @@ py_library(
   DEPS
     .node_c
     .preconditions
-    pytype.metrics
+    pytype.utils
 )
 
 py_library(
@@ -30,19 +51,6 @@ py_library(
     parser_constants
   SRCS
     parser_constants.py
-)
-
-py_library(
-  NAME
-    parser_test_base
-  SRCS
-    parser_test_base.py
-  DEPS
-    pytype.load_pytd
-    pytype.pyi.parser
-    pytype.pytd.pytd_for_parser
-    pytype.pytd.pytd_utils
-    pytype.tests.test_base
 )
 
 py_test(
@@ -61,5 +69,5 @@ py_test(
     node_test.py
   DEPS
     .node
-    pytype.pytd.pytd_for_parser
+    pytype.pytd.pytd
 )

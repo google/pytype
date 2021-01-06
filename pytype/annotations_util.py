@@ -116,8 +116,11 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     if isinstance(annot, abstract.TypeParameter):
       return [annot]
     elif isinstance(annot, abstract.TupleClass):
-      return self.get_type_parameters(
-          annot.formal_type_parameters[abstract_utils.T], seen)
+      annots = []
+      for idx in range(annot.tuple_length):
+        annots.extend(self.get_type_parameters(
+            annot.formal_type_parameters[idx], seen))
+      return annots
     elif isinstance(annot, mixin.NestedAnnotation):
       return sum((self.get_type_parameters(t, seen)
                   for _, t in annot.get_inner_types()), [])

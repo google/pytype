@@ -40,8 +40,7 @@ set_target_properties(
 #   SRCS
 #     cfg.py
 #   DEPS
-#     pytype.debug
-#     pytype.metrics
+#     pytype.utils
 # )
 
 py_library(

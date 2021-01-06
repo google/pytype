@@ -744,5 +744,21 @@ class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
     """)
     self.assertErrorRegexes(errors, {"e1": r"str.*int", "e2": r"str.*int"})
 
+  def test_kwonly_to_callable(self):
+    ty = self.Infer("""
+      def f(x, *, y):
+        pass
+      class Foo:
+        def __init__(self):
+          self.f = f
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable
+      def f(x, *, y) -> None: ...
+      class Foo:
+        f: Callable
+        def __init__(self) -> None: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

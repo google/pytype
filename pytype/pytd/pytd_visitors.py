@@ -160,7 +160,7 @@ class PrintVisitor(base_visitor.Visitor):
   def _IsEmptyTuple(self, t):
     """Check if it is an empty tuple."""
     assert isinstance(t, pytd.GenericType)
-    return t.base_type == "tuple" and t.parameters == ("nothing",)
+    return isinstance(t, pytd.TupleType) and not t.parameters
 
   def _NeedsTupleEllipsis(self, t):
     """Do we need to use Tuple[x, ...] instead of Tuple[x]?"""

@@ -15,16 +15,10 @@ py_library(
     test_base.py
   DEPS
     .test_utils
-    pytype.analyze
-    pytype.config
     pytype.libvm
-    pytype.load_pytd
     pytype.utils
     pytype.pyi.parser
-    pytype.pytd.pytd_defs
-    pytype.pytd.pytd_for_parser
-    pytype.pytd.pytd_utils
-    pytype.pytd.serialize_ast
+    pytype.pytd.pytd
 )
 
 py_library(
@@ -33,7 +27,6 @@ py_library(
   SRCS
     test_utils.py
   DEPS
-    pytype.errors
     pytype.libvm
     pytype.utils
     pytype.pyc.pyc
@@ -97,7 +90,7 @@ py_test(
   DEPS
     .test_base
     pytype.utils
-    pytype.pytd.pytd_utils
+    pytype.pytd.pytd
 )
 
 py_test(
@@ -136,7 +129,7 @@ py_test(
     test_quick.py
   DEPS
     .test_base
-    pytype.pytd.pytd_for_parser
+    pytype.pytd.pytd
 )
 
 py_test(
@@ -231,8 +224,7 @@ py_test(
   DEPS
     .test_base
     pytype.overlays.overlays
-    pytype.pytd.pytd_for_parser
-    pytype.pytd.pytd_utils
+    pytype.pytd.pytd
 )
 
 py_test(
@@ -252,7 +244,7 @@ py_test(
     test_builtins3.py
   DEPS
     .test_base
-    pytype.abstract_utils
+    pytype.libvm
     pytype.utils
 )
 
@@ -284,7 +276,7 @@ py_test(
   DEPS
     .test_base
     pytype.utils
-    pytype.pytd.pytd_utils
+    pytype.pytd.pytd
 )
 
 py_test(
@@ -304,7 +296,7 @@ py_test(
   DEPS
     .test_base
     pytype.utils
-    pytype.pytd.pytd_defs
+    pytype.pytd.pytd
 )
 
 py_test(
@@ -324,8 +316,7 @@ py_test(
   DEPS
     .test_base
     pytype.utils
-    pytype.pytd.pytd_defs
-    pytype.pytd.pytd_utils
+    pytype.pytd.pytd
 )
 
 py_test(
@@ -374,7 +365,7 @@ py_test(
     .test_base
     pytype.utils
     pytype.pyi.parser
-    pytype.pytd.pytd_for_parser
+    pytype.pytd.pytd
 )
 
 py_test(
@@ -385,7 +376,7 @@ py_test(
   DEPS
     .test_base
     pytype.utils
-    pytype.pytd.pytd_utils
+    pytype.pytd.pytd
 )
 
 py_test(
@@ -473,7 +464,7 @@ py_test(
     test_inheritance.py
   DEPS
     .test_base
-    pytype.pytd.pytd_defs
+    pytype.pytd.pytd
 )
 
 py_test(
@@ -583,8 +574,7 @@ py_test(
     .test_base
     pytype.utils
     pytype.overlays.overlays
-    pytype.pytd.pytd_for_parser
-    pytype.pytd.pytd_utils
+    pytype.pytd.pytd
 )
 
 py_test(

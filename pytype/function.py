@@ -310,6 +310,14 @@ class Args(collections.namedtuple(
         starargs=starargs,
         starstarargs=starstarargs)
 
+  def is_empty(self):
+    if self.posargs or self.starargs or self.starstarargs:
+      return False
+    if isinstance(self.namedargs, dict):
+      return not self.namedargs
+    else:
+      return not self.namedargs.pyval
+
   def starargs_as_tuple(self, node, vm):
     try:
       args = self.starargs and abstract_utils.get_atomic_python_constant(

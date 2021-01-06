@@ -1002,7 +1002,7 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
            pytd_utils.WrapsDict("pyval")):
   """Representation of Python 'dict' objects.
 
-  It works like __builtins__.dict, except that, for string keys, it keeps track
+  It works like builtins.dict, except that, for string keys, it keeps track
   of what got stored.
   """
 
@@ -2600,8 +2600,11 @@ class PyTDClass(SimpleValue, mixin.Class, mixin.LazyMembers):
       self.vm.errorlog.not_instantiable(self.vm.frames, self)
     node, results = self._call_new_and_init(node, func, args)
     if results is None:
-      value = Instance(
-          self.vm.convert.constant_to_value(self.pytd_cls), self.vm)
+      if self.full_name == "builtins.tuple" and args.is_empty():
+        value = Tuple((), self.vm)
+      else:
+        value = Instance(
+            self.vm.convert.constant_to_value(self.pytd_cls), self.vm)
       for type_param in self.template:
         name = type_param.full_name
         if name not in value.instance_type_parameters:
