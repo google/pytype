@@ -3,8 +3,8 @@
 import os
 
 from pytype import file_utils
+from pytype.pytd import builtins
 from pytype.pytd import typeshed
-from pytype.pytd.parse import builtins
 from pytype.pytd.parse import parser_test_base
 from pytype.tests import test_base
 

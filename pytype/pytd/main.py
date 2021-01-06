@@ -14,9 +14,9 @@ import sys
 
 from pytype import utils
 from pytype.pyi import parser
+from pytype.pytd import builtins
 from pytype.pytd import optimize
 from pytype.pytd import pytd_utils
-from pytype.pytd.parse import builtins
 
 
 def make_parser():

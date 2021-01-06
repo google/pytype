@@ -175,7 +175,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         value = repr(v.value.pyval)
       elif isinstance(v.value.pyval, bool):
         # True and False are stored as pytd constants.
-        value = self.vm.lookup_builtin(f"__builtin__.{v.value.pyval}")
+        value = self.vm.lookup_builtin(f"builtins.{v.value.pyval}")
       else:
         # Ints are stored as their literal values. Note that Literal[None] or a
         # nested literal will never appear here, since we simplified it to None
@@ -255,7 +255,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       else:
         return pytd.AnythingType()
     elif isinstance(v, typing_overlay.TypeVar):
-      return pytd.NamedType("__builtin__.type")
+      return pytd.NamedType("builtins.type")
     elif isinstance(v, dataclass_overlay.FieldInstance):
       if not v.default:
         return pytd.AnythingType()
@@ -281,10 +281,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return pytd.NamedType("typing.Callable")
     elif isinstance(v, mixin.Class):
       param = self.value_instance_to_pytd_type(node, v, None, seen, view)
-      return pytd.GenericType(base_type=pytd.NamedType("__builtin__.type"),
+      return pytd.GenericType(base_type=pytd.NamedType("builtins.type"),
                               parameters=(param,))
     elif isinstance(v, abstract.Module):
-      return pytd.NamedType("__builtin__.module")
+      return pytd.NamedType("builtins.module")
     elif (self._output_mode >= Converter.OutputMode.LITERAL and
           isinstance(v, abstract.ConcreteValue) and
           isinstance(v.pyval, (int, str, bytes))):
@@ -296,7 +296,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         ret = self.value_instance_to_pytd_type(
             node, v.cls, v, seen=seen, view=view)
         ret.Visit(visitors.FillInLocalPointers(
-            {"__builtin__": self.vm.loader.builtins}))
+            {"builtins": self.vm.loader.builtins}))
         return ret
       else:
         # We don't know this type's __class__, so return AnythingType to
@@ -317,7 +317,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         opts.append(opt)
       return pytd.UnionType(tuple(opts))
     elif isinstance(v, special_builtins.SuperInstance):
-      return pytd.NamedType("__builtin__.super")
+      return pytd.NamedType("builtins.super")
     elif isinstance(v, abstract.TypeParameter):
       # Arguably, the type of a type parameter is NamedType("typing.TypeVar"),
       # but pytype doesn't know how to handle that, so let's just go with Any
@@ -461,7 +461,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         annot = func.signature.annotations[func.signature.varargs_name]
         typ = annot.get_instance_type(node_after)
       else:
-        typ = pytd.NamedType("__builtin__.tuple")
+        typ = pytd.NamedType("builtins.tuple")
       starargs = pytd.Parameter(
           func.signature.varargs_name, typ, False, True, None)
     else:
@@ -471,7 +471,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         annot = func.signature.annotations[func.signature.kwargs_name]
         typ = annot.get_instance_type(node_after)
       else:
-        typ = pytd.NamedType("__builtin__.dict")
+        typ = pytd.NamedType("builtins.dict")
       starstarargs = pytd.Parameter(
           func.signature.kwargs_name, typ, False, True, None)
     else:
@@ -524,7 +524,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     if sig.has_return_annotation:
       ret_type = sig.annotations["return"].get_instance_type(node)
     else:
-      ret_type = pytd.NamedType("__builtin__.NoneType")
+      ret_type = pytd.NamedType("builtins.NoneType")
     pytd_sig = pytd.Signature(
         params=tuple(params+kwonly),
         starargs=star,

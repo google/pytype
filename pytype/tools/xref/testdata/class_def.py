@@ -4,7 +4,7 @@ import collections
 
 
 #- @A defines/binding ClassA
-#- @object ref vname("module.object", _, _, "pytd:__builtin__", _)
+#- @object ref vname("module.object", _, _, "pytd:builtins", _)
 #- ClassA.node/kind class
 class A(object):
   pass

@@ -79,11 +79,11 @@ class TestUtils(parser_test_base.ParserTest):
 
   def test_concat_type_parameters(self):
     """Test for concatenating ASTs with type parameters."""
-    ast1 = self.Parse("""T = TypeVar("T")""", name="__builtin__")
+    ast1 = self.Parse("""T = TypeVar("T")""", name="builtins")
     ast2 = self.Parse("""T = TypeVar("T")""")
     combined = pytd_utils.Concat(ast1, ast2)
-    self.assertEqual(combined.Lookup("__builtin__.T"),
-                     pytd.TypeParameter("T", scope="__builtin__"))
+    self.assertEqual(combined.Lookup("builtins.T"),
+                     pytd.TypeParameter("T", scope="builtins"))
     self.assertEqual(combined.Lookup("T"), pytd.TypeParameter("T", scope=None))
 
   def test_join_types(self):
@@ -445,8 +445,8 @@ class TestDataFiles(parser_test_base.ParserTest):
   def test_get_predefined_file_basic(self):
     # smoke test, only checks that it doesn't throw, the filepath is correct,
     # and the result is a string
-    path, src = pytd_utils.GetPredefinedFile(self.BUILTINS, "__builtin__")
-    self.assertEqual(path, "stubs/builtins/3/__builtin__.pytd")
+    path, src = pytd_utils.GetPredefinedFile(self.BUILTINS, "builtins")
+    self.assertEqual(path, "stubs/builtins/3/builtins.pytd")
     self.assertIsInstance(src, str)
 
   def test_get_predefined_file_throws(self):
@@ -459,18 +459,18 @@ class TestDataFiles(parser_test_base.ParserTest):
   def test_pytd_builtin2(self):
     """Verify 'import sys' for python2."""
     subdir = "builtins/2"
-    _, import_contents = pytd_utils.GetPredefinedFile(subdir, "__builtin__")
+    _, import_contents = pytd_utils.GetPredefinedFile(subdir, "builtins")
     with open(os.path.join(os.path.dirname(file_utils.__file__), "stubs",
-                           subdir, "__builtin__.pytd"), "r") as fi:
+                           subdir, "builtins.pytd"), "r") as fi:
       file_contents = fi.read()
     self.assertMultiLineEqual(import_contents, file_contents)
 
   def test_pytd_builtin3(self):
     """Verify 'import sys' for python3."""
     subdir = "builtins/3"
-    _, import_contents = pytd_utils.GetPredefinedFile(subdir, "__builtin__")
+    _, import_contents = pytd_utils.GetPredefinedFile(subdir, "builtins")
     with open(os.path.join(os.path.dirname(file_utils.__file__), "stubs",
-                           subdir, "__builtin__.pytd"), "r") as fi:
+                           subdir, "builtins.pytd"), "r") as fi:
       file_contents = fi.read()
     self.assertMultiLineEqual(import_contents, file_contents)
 

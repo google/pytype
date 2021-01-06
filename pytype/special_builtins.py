@@ -59,14 +59,14 @@ class TypeNew(abstract.PyTDFunction):
 
 
 class BuiltinFunction(abstract.PyTDFunction):
-  """Implementation of functions in __builtin__.pytd."""
+  """Implementation of functions in builtins.pytd."""
 
   name = None
 
   @classmethod
   def make(cls, vm):
     assert cls.name
-    return super().make(cls.name, vm, "__builtin__")
+    return super().make(cls.name, vm, "builtins")
 
   def get_underlying_method(self, node, receiver, method_name):
     """Get the bound method that a built-in function delegates to."""
@@ -434,15 +434,15 @@ class IsCallable(UnaryPredicate):
 
 
 class BuiltinClass(abstract.PyTDClass):
-  """Implementation of classes in __builtin__.pytd.
+  """Implementation of classes in builtins.pytd.
 
   The module name is passed in to allow classes in other modules to subclass a
-  module in __builtin__ and inherit the custom behaviour.
+  module in builtins and inherit the custom behaviour.
   """
 
-  def __init__(self, vm, name, module="__builtin__"):
-    if module == "__builtin__":
-      pytd_cls = vm.lookup_builtin("__builtin__.%s" % name)
+  def __init__(self, vm, name, module="builtins"):
+    if module == "builtins":
+      pytd_cls = vm.lookup_builtin("builtins.%s" % name)
     else:
       ast = vm.loader.import_name(module)
       pytd_cls = ast.Lookup("%s.%s" % (module, name))
@@ -550,7 +550,7 @@ class Super(BuiltinClass):
 
 
 class Object(BuiltinClass):
-  """Implementation of __builtin__.object."""
+  """Implementation of builtins.object."""
 
   def __init__(self, vm):
     super().__init__(vm, "object")
@@ -581,7 +581,7 @@ class Object(BuiltinClass):
 
     Returns:
       True if the class's definition of the method is different from the
-      definition in __builtin__.object, False otherwise.
+      definition in builtins.object, False otherwise.
     """
     assert method in ("__new__", "__init__")
     if not isinstance(cls, mixin.Class):
@@ -625,7 +625,7 @@ class PropertyTemplate(BuiltinClass):
 
   _KEYS = ["fget", "fset", "fdel", "doc"]
 
-  def __init__(self, vm, name, module="__builtin__"):  # pylint: disable=useless-super-delegation
+  def __init__(self, vm, name, module="builtins"):  # pylint: disable=useless-super-delegation
     super().__init__(vm, name, module)
 
   def signature(self):

@@ -16,6 +16,7 @@ filegroup(
     builtins/2/attr/filters.pytd
     builtins/2/attr/setters.pytd
     builtins/2/attr/validators.pytd
+    builtins/2/builtins.pytd
     builtins/2/mypy_extensions.pytd
     builtins/2/protocols.pytd
     builtins/2/typing.pytd

@@ -475,8 +475,8 @@ class PYITest(test_base.TargetIndependentTest):
   def test_builtins_module(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
-        import __builtin__
-        x = ...  # type: __builtin__.int
+        import builtins
+        x = ...  # type: builtins.int
       """)
       ty = self.Infer("""
         import a

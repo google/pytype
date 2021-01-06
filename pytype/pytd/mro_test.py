@@ -43,7 +43,7 @@ class MroTest(parser_test_base.ParserTest):
     loader = load_pytd.Loader(None, self.python_version)
     ast = loader.resolve_ast(ast)
     bases = mro.GetBasesInMRO(ast.Lookup("Bar"), lookup_ast=ast)
-    self.assertListEqual(["Foo", "typing.Generic", "__builtin__.object"],
+    self.assertListEqual(["Foo", "typing.Generic", "builtins.object"],
                          [t.name for t in bases])
 
 

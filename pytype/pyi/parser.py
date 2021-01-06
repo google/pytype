@@ -453,8 +453,8 @@ class _Parser:
       ast = ast.Replace(name=hashlib.md5(src.encode("utf-8")).hexdigest())
     ast = ast.Visit(visitors.StripExternalNamePrefix())
 
-    # Typeshed files that explicitly import and refer to "builtins" need to have
-    # that rewritten to __builtin__
+    # Typeshed files that explicitly import and refer to "__builtin__" need to
+    # have that rewritten to builtins
     return ast.Visit(visitors.RenameBuiltinsPrefix())
 
   def _build_type_decl_unit(self, defs):
@@ -465,7 +465,7 @@ class _Parser:
     assert not aliases  # We handle top-level aliases in add_alias_or_constant.
     constants.extend(self._constants)
 
-    if self._ast_name == "__builtin__":
+    if self._ast_name == "builtins":
       constants.extend(_builtin_keyword_constants())
 
     generated_classes = sum(self._generated_classes.values(), [])
@@ -820,7 +820,7 @@ class _Parser:
 
   def _is_tuple_base_type(self, t):
     return isinstance(t, pytd.NamedType) and (
-        t.name == "tuple" or self._matches_full_name(t, "__builtin__.tuple") or
+        t.name == "tuple" or self._matches_full_name(t, "builtins.tuple") or
         self._matches_full_name(t, "typing.Tuple"))
 
   def _is_callable_base_type(self, t):
@@ -1035,7 +1035,7 @@ class _Parser:
     """Build an __init__ method for a namedtuple.
 
     Builds a dummy __init__ that accepts any arguments. Needed because our
-    model of __builtin__.tuple uses __init__.
+    model of builtins.tuple uses __init__.
 
     Returns:
       A _NameAndSig object for an __init__ method.

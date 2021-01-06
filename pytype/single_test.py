@@ -13,10 +13,11 @@ from pytype import config
 from pytype import single
 from pytype import utils
 from pytype.pyi import parser
+from pytype.pytd import builtins
 from pytype.pytd import pytd_utils
 from pytype.pytd import typeshed
-from pytype.pytd.parse import builtins
 from pytype.tests import test_base
+
 import unittest
 
 

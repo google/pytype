@@ -1049,10 +1049,10 @@ class TestVisitors(parser_test_base.ParserTest):
         """).strip())
 
   def test_rename_builtins_prefix(self):
-    """builtins.foo should get rewritten to __builtin__.foo and then to foo."""
+    """__builtin__.foo should get rewritten to builtins.foo and then to foo."""
     src = textwrap.dedent("""
-      import builtins
-      class MyError(builtins.KeyError): ...
+      import __builtin__
+      class MyError(__builtin__.KeyError): ...
     """)
     self.assertMultiLineEqual(pytd_utils.Print(self.Parse(src)),
                               "class MyError(KeyError): ...")

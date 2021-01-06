@@ -6,13 +6,13 @@ from pytype import mixin
 from pytype.pytd import slots
 
 # Equality classes.
-NUMERIC = frozenset({"__builtin__.bool", "__builtin__.int", "__builtin__.float",
-                     "__builtin__.complex"})
-STRING = frozenset({"__builtin__.str", "__builtin__.unicode"})
+NUMERIC = frozenset({"builtins.bool", "builtins.int", "builtins.float",
+                     "builtins.complex"})
+STRING = frozenset({"builtins.str", "builtins.unicode"})
 
 # Fully qualified names of types that are parameterized containers.
 _CONTAINER_NAMES = frozenset({
-    "__builtin__.list", "__builtin__.set", "__builtin__.frozenset"})
+    "builtins.list", "builtins.set", "builtins.frozenset"})
 
 
 def _incompatible(left_name, right_name):
@@ -221,7 +221,7 @@ def compatible_with(value, logical_value):
           value.has_instance_type_parameter(abstract_utils.T) and
           bool(value.get_instance_type_parameter(abstract_utils.T).bindings))
       return ret
-    elif name == "__builtin__.NoneType":
+    elif name == "builtins.NoneType":
       # NoneType instances cannot match True.
       return not logical_value
     elif name in NUMERIC:

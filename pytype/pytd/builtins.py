@@ -25,17 +25,17 @@ def InvalidateCache(python_version):
 
 
 def GetBuiltinsAndTyping(python_version):  # Deprecated. Use load_pytd instead.
-  """Get __builtin__.pytd and typing.pytd."""
+  """Get builtins.pytd and typing.pytd."""
   assert python_version
   if python_version not in _cached_builtins_pytd:
     t = parser.parse_string(_FindBuiltinFile("typing", python_version),
                             name="typing",
                             python_version=python_version)
-    b = parser.parse_string(_FindBuiltinFile("__builtin__", python_version),
-                            name="__builtin__",
+    b = parser.parse_string(_FindBuiltinFile("builtins", python_version),
+                            name="builtins",
                             python_version=python_version)
     b = b.Visit(visitors.LookupExternalTypes({"typing": t},
-                                             self_name="__builtin__"))
+                                             self_name="builtins"))
     t = t.Visit(visitors.LookupBuiltins(b))
     b = b.Visit(visitors.NamedTypeToClassType())
     t = t.Visit(visitors.NamedTypeToClassType())
@@ -44,9 +44,9 @@ def GetBuiltinsAndTyping(python_version):  # Deprecated. Use load_pytd instead.
     b = b.Visit(visitors.CanonicalOrderingVisitor())
     t = t.Visit(visitors.CanonicalOrderingVisitor())
     b.Visit(visitors.FillInLocalPointers({"": b, "typing": t,
-                                          "__builtin__": b}))
+                                          "builtins": b}))
     t.Visit(visitors.FillInLocalPointers({"": t, "typing": t,
-                                          "__builtin__": b}))
+                                          "builtins": b}))
     b.Visit(visitors.VerifyLookup())
     t.Visit(visitors.VerifyLookup())
     b.Visit(visitors.VerifyContainers())

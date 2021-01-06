@@ -80,8 +80,8 @@ class ImportPathsTest(test_base.UnitTest):
       loader = load_pytd.Loader(
           "base", self.python_version, pythonpath=[d.path])
       mod = loader.import_name("foo")
-      self.assertEqual("__builtin__.int", mod.Lookup("foo.x").type.cls.name)
-      self.assertEqual("__builtin__.int", mod.Lookup("foo.x").type.name)
+      self.assertEqual("builtins.int", mod.Lookup("foo.x").type.cls.name)
+      self.assertEqual("builtins.int", mod.Lookup("foo.x").type.name)
 
   def test_no_init(self):
     with file_utils.Tempdir() as d:
@@ -270,7 +270,7 @@ class ImportPathsTest(test_base.UnitTest):
       loader = load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
       ast = loader.import_name("dir.module")
       modules = loader.get_resolved_modules()
-      self.assertEqual(set(modules), {"__builtin__", "typing", "dir.module"})
+      self.assertEqual(set(modules), {"builtins", "typing", "dir.module"})
       module = modules["dir.module"]
       self.assertEqual(module.module_name, "dir.module")
       self.assertEqual(module.filename, filename)
@@ -292,7 +292,7 @@ class ImportPathsTest(test_base.UnitTest):
       loader = load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
       ast = loader.import_name("os2.path")
       self.assertEqual(ast.Lookup("os2.path._PathType").type.name,
-                       "__builtin__.bytes")
+                       "builtins.bytes")
 
   def test_circular_import_with_external_type(self):
     with file_utils.Tempdir() as d:

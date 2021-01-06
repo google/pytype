@@ -59,7 +59,7 @@ class TypingContainer(abstract.AnnotationContainer):
 
   def __init__(self, name, vm):
     if name in pep484.PEP484_CAPITALIZED:
-      pytd_name = "__builtin__." + name.lower()
+      pytd_name = "builtins." + name.lower()
     else:
       pytd_name = "typing." + name
     base = vm.convert.name_to_value(pytd_name)
@@ -93,7 +93,7 @@ class Callable(TypingContainer):
       self.vm.errorlog.invalid_ellipses(
           self.vm.frames, inner_ellipses, args.name)
     else:
-      if args.cls and args.cls.full_name == "__builtin__.list":
+      if args.cls and args.cls.full_name == "builtins.list":
         self.vm.errorlog.ambiguous_annotation(self.vm.frames, [args])
       elif 0 not in ellipses or not isinstance(args, abstract.Unsolvable):
         self.vm.errorlog.invalid_annotation(
@@ -249,7 +249,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
 
   def _is_str_instance(self, val):
     return (isinstance(val, abstract.Instance) and
-            val.full_name in ("__builtin__.str", "__builtin__.unicode"))
+            val.full_name in ("builtins.str", "builtins.unicode"))
 
   def _getargs(self, node, args):
     self.match_args(node, args)

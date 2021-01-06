@@ -590,7 +590,7 @@ class VirtualMachine:
           self.errorlog.ignored_metaclass(
               self.frames, name,
               cls_var.data[0].full_name if cls_var.bindings else "Any")
-      if cls_var and all(v.data.full_name == "__builtin__.type"
+      if cls_var and all(v.data.full_name == "builtins.type"
                          for v in cls_var.bindings):
         cls_var = None
       # pylint: disable=g-long-ternary
@@ -2145,13 +2145,13 @@ class VirtualMachine:
           value.PasteVariable(sub_value)
           types.extend(sub_types)
       elif (isinstance(e, abstract.Instance) and
-            e.cls.full_name == "__builtin__.tuple"):
+            e.cls.full_name == "builtins.tuple"):
         sub_exc_type = e.get_instance_type_parameter(abstract_utils.T)
         sub_value, sub_types = self._instantiate_exception(node, sub_exc_type)
         value.PasteVariable(sub_value)
         types.extend(sub_types)
       elif isinstance(e, mixin.Class) and any(
-          base.full_name == "__builtin__.BaseException" or
+          base.full_name == "builtins.BaseException" or
           isinstance(base, abstract.AMBIGUOUS_OR_EMPTY) for base in e.mro):
         node, instance = self.init_class(node, e)
         value.PasteVariable(instance)
@@ -3427,8 +3427,8 @@ class VirtualMachine:
             and isinstance(val.cls,
                            (abstract.ParameterizedClass, abstract.PyTDClass))
             and val.cls.full_name in ("typing.Awaitable",
-                                      "__builtin__.coroutine",
-                                      "__builtin__.generator")):
+                                      "builtins.coroutine",
+                                      "builtins.generator")):
         if val.cls.full_name == "typing.Awaitable":
           ret_var = val.get_instance_type_parameter(abstract_utils.T)
         else:

@@ -1,11 +1,11 @@
-"""Tests of __builtin__.tuple."""
+"""Tests of builtins.tuple."""
 
 from pytype import file_utils
 from pytype.tests import test_base
 
 
 class TupleTest(test_base.TargetPython3BasicTest):
-  """Tests for __builtin__.tuple."""
+  """Tests for builtins.tuple."""
 
   def test_unpack_inline_tuple(self):
     ty = self.Infer("""
@@ -162,7 +162,7 @@ class TupleTest(test_base.TargetPython3BasicTest):
 
 
 class TupleTestPython3Feature(test_base.TargetPython3FeatureTest):
-  """Tests for __builtin__.tuple."""
+  """Tests for builtins.tuple."""
 
   def test_iteration(self):
     ty = self.Infer("""

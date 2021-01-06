@@ -104,9 +104,9 @@ class FillInLocalPointers(Visitor):
       modules_to_try = [("", module)]
     else:
       modules_to_try = [("", ""),
-                        ("", "__builtin__"),
-                        ("__builtin__.", "__builtin__")]
-    modules_to_try += [("", "*"), ("__builtin__.", "*")]
+                        ("", "builtins"),
+                        ("builtins.", "builtins")]
+    modules_to_try += [("", "*"), ("builtins.", "*")]
     for prefix, module in modules_to_try:
       mod_ast = self._lookup_map.get(module)
       if mod_ast:
@@ -221,25 +221,27 @@ class NamedTypeToClassType(Visitor):
 
 
 class DropBuiltinPrefix(Visitor):
-  """Drop '__builtin__.' prefix."""
+  """Drop 'builtins.' prefix."""
 
   def VisitClassType(self, node):
-    _, _, name = node.name.rpartition("__builtin__.")
+    _, _, name = node.name.rpartition("builtins.")
     return pytd.NamedType(name)
 
   def VisitNamedType(self, node):
     return self.VisitClassType(node)
 
 
-# TODO(b/110164593): Get rid of this hack.
+# TODO(rechen): Get rid of this hack once we drop Python 2 support and all
+# typeshed references to __builtin__ are gone.
 def RenameBuiltinsPrefixInName(name):
-  if name.startswith("builtins."):
-    name = "__builtin__." + name[len("builtins."):]
+  module, _, basename = name.partition(".")
+  if module == "__builtin__":
+    return f"builtins.{basename}" if basename else "builtins"
   return name
 
 
 class RenameBuiltinsPrefix(Visitor):
-  """Rename 'builtins' to '__builtin__' at import time."""
+  """Rename '__builtin__' to 'builtins' at import time."""
 
   def VisitClassType(self, node):
     return pytd.NamedType(RenameBuiltinsPrefixInName(node.name))
@@ -1597,9 +1599,9 @@ class ExpandCompatibleBuiltins(Visitor):
   """Ad-hoc inheritance.
 
   In parameters, replaces
-    ClassType('__builtin__.float')
+    ClassType('builtins.float')
   with
-    Union[ClassType('__builtin__.float'), ClassType('__builtin__.int')]
+    Union[ClassType('builtins.float'), ClassType('builtins.int')]
 
   And similarly for unicode->(unicode, str, bytes) and bool->(bool, None).
 
@@ -1712,7 +1714,7 @@ class ClassTypeToLateType(Visitor):
 
     Args:
       ignore: A list of prefixes to ignore. Typically, this list includes
-        things something like like "__builtin__.", since we don't want to
+        things something like like "builtins.", since we don't want to
         convert builtin types to late types. (And, more generally, types of
         modules that are always loaded by pytype don't need to be late types)
     """

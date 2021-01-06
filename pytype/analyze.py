@@ -17,12 +17,12 @@ from pytype import special_builtins
 from pytype import state as frame_state
 from pytype import vm
 from pytype.overlays import typing_overlay
+from pytype.pytd import builtins
 from pytype.pytd import escape
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
-from pytype.pytd.parse import builtins
 from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
@@ -575,7 +575,7 @@ class CallTracer(vm.VirtualMachine):
       classes.append(pytd.Class(
           name=escape.pack_partial(full_name),
           metaclass=None,
-          parents=(pytd.NamedType("__builtin__.object"),),  # not used in solver
+          parents=(pytd.NamedType("builtins.object"),),  # not used in solver
           methods=tuple(self._call_traces_to_function(call_records)),
           constants=(),
           classes=(),

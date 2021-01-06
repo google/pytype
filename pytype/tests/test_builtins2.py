@@ -320,7 +320,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
     """, deep=False)
     p1, p2 = ty.Lookup("CryptoException").parents
     self.assertEqual(p1.name, "BaseException")
-    self.assertEqual(p2.name, "__builtin__.ValueError")
+    self.assertEqual(p2.name, "builtins.ValueError")
     self.assertTypesMatchPytd(ty, """
       class BaseException(Exception): ...
       class CryptoException(BaseException, ValueError): ...

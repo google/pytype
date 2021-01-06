@@ -16,7 +16,7 @@ IGNORE = object()
 
 def get_builtins_source(python_version):
   return pytd_utils.GetPredefinedFile(
-      "builtins/%d" % python_version[0], "__builtin__")[1]
+      "builtins/%d" % python_version[0], "builtins")[1]
 
 
 class _ParserTestBase(test_base.UnitTest):

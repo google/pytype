@@ -1,10 +1,10 @@
-"""Tests for __builtin__.list."""
+"""Tests for builtins.list."""
 
 from pytype.tests import test_base
 
 
 class ListTest(test_base.TargetPython27FeatureTest):
-  """Tests for __builtin__.list."""
+  """Tests for builtins.list."""
 
   # __getslice__ is py2 only
   def test_getslice_slot(self):

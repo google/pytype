@@ -47,7 +47,7 @@ def MakeClassOrContainerType(base_type, type_arguments, homogeneous):
     container_type = pytd.GenericType
   elif base_type.name == "typing.Callable":
     container_type = pytd.CallableType
-  elif base_type.name in ("__builtin__.tuple", "typing.Tuple"):
+  elif base_type.name in ("builtins.tuple", "typing.Tuple"):
     container_type = pytd.TupleType
   else:
     container_type = pytd.GenericType

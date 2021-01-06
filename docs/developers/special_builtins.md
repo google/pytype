@@ -15,7 +15,7 @@ freshness: { owner: 'mdemello' reviewed: '2020-09-18' }
          * [Instances](#instances)
       * [Variables and data](#variables-and-data)
 
-<!-- Added by: mdemello, at: 2020-09-21T13:57-07:00 -->
+<!-- Added by: rechen, at: 2020-12-01T17:02-08:00 -->
 
 <!--te-->
 
@@ -49,7 +49,7 @@ third-party libraries.
 
 NOTE: These special functions still need type signatures to interoperate with
 the rest of pytype; in the case of `special_builtins.py` the corresponding
-signatures can be found in `__builtin__.pytd`
+signatures can be found in `builtins.pytd`
 
 ## Representation
 

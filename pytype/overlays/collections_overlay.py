@@ -100,7 +100,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
     return self
 
   def _get_builtin_classtype(self, name):
-    fullname = "__builtin__.%s" % name
+    fullname = "builtins.%s" % name
     return pytd.ClassType(fullname, self.vm.loader.builtins.Lookup(fullname))
 
   def _get_typing_classtype(self, name):

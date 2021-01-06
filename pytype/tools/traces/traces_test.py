@@ -42,8 +42,8 @@ class TraceTest(unittest.TestCase):
     self.assertEqual(trace.op, "LOAD_CONST")
     self.assertIsNone(trace.symbol)
     pyval, = trace.types
-    self.assertEqual(pyval.name, "__builtin__.NoneType")
-    self.assertEqual(pyval.cls.name, "__builtin__.NoneType")
+    self.assertEqual(pyval.name, "builtins.NoneType")
+    self.assertEqual(pyval.cls.name, "builtins.NoneType")
 
   def test_options(self):
     src = traces.trace("", config.Options.create("rumpelstiltskin"))

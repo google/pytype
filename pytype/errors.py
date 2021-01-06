@@ -147,7 +147,7 @@ def _compare_traceback_strings(left, right):
 
 
 def _function_name(name, capitalize=False):
-  builtin_prefix = "__builtin__."
+  builtin_prefix = "builtins."
   if name.startswith(builtin_prefix):
     ret = "built-in function %s" % name[len(builtin_prefix):]
   else:

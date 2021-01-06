@@ -55,7 +55,7 @@ class PickleTest(test_base.TargetIndependentTest):
       a = 42
       file_dispatcher = asyncore.file_dispatcher  # copy class
     """, deep=False, pickle=True, module_name="foo")
-    self._verifyDeps(pickled_foo, ["__builtin__"], ["asyncore"])
+    self._verifyDeps(pickled_foo, ["builtins"], ["asyncore"])
     with file_utils.Tempdir() as d:
       foo = d.create_file("foo.pickled", pickled_foo)
       pickled_bar = self.Infer("""
@@ -63,13 +63,13 @@ class PickleTest(test_base.TargetIndependentTest):
         file_dispatcher = foo.file_dispatcher  # copy class
       """, pickle=True, pythonpath=[""],
                                imports_map={"foo": foo}, module_name="bar")
-      self._verifyDeps(pickled_bar, ["__builtin__"], ["asyncore"])
+      self._verifyDeps(pickled_bar, ["builtins"], ["asyncore"])
       bar = d.create_file("bar.pickled", pickled_bar)
       ty = self.Infer("""
         import bar
         r = bar.file_dispatcher(0)
       """, deep=False, pythonpath=[""], imports_map={"foo": foo, "bar": bar})
-      self._verifyDeps(ty, ["asyncore", "__builtin__"], [])
+      self._verifyDeps(ty, ["asyncore", "builtins"], [])
       self.assertTypesMatchPytd(ty, """
         import asyncore
         bar = ...  # type: module
@@ -81,7 +81,7 @@ class PickleTest(test_base.TargetIndependentTest):
       pickled_foo = self.Infer("""
         class X(object): pass
       """, deep=False, pickle=True, module_name="foo")
-      self._verifyDeps(pickled_foo, ["__builtin__"], [])
+      self._verifyDeps(pickled_foo, ["builtins"], [])
       foo = d.create_file("foo.pickled", pickled_foo)
       pickled_bar = self.Infer("""
         import foo
@@ -91,7 +91,7 @@ class PickleTest(test_base.TargetIndependentTest):
                                imports_map={"foo": foo}, module_name="bar",
                                deep=True)
       bar = d.create_file("bar.pickled", pickled_bar)
-      self._verifyDeps(pickled_bar, ["__builtin__"], ["foo"])
+      self._verifyDeps(pickled_bar, ["builtins"], ["foo"])
       self.Infer("""
         import bar
         f = bar.f
@@ -112,7 +112,7 @@ class PickleTest(test_base.TargetIndependentTest):
         class A(foo.X): pass
         class B(foo.Y): pass
       """, deep=False, pickle=True, imports_map={"foo": foo}, module_name="bar")
-      self._verifyDeps(pickled_bar, ["__builtin__"], ["foo"])
+      self._verifyDeps(pickled_bar, ["builtins"], ["foo"])
       bar = d.create_file("bar.pickled", pickled_bar)
       # Now, replace the old foo.pickled with a version that doesn't have Y
       # anymore.
@@ -160,7 +160,7 @@ class PickleTest(test_base.TargetIndependentTest):
         @overload
         def f(self, x: UserDict.UserDict, y: Foo): ...
       """, module_name="foo")
-      self._verifyDeps(pickled_foo, ["__builtin__", "foo"], ["UserDict"])
+      self._verifyDeps(pickled_foo, ["builtins", "foo"], ["UserDict"])
       foo = d.create_file("foo.pickled", pickled_foo)
       self.assertNoCrash(self.Infer, """
         import foo

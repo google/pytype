@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 # We can't import abstract.BaseValue here due to a circular dep.
 _BaseValue = Any
 
-# Type parameter names matching the ones in __builtin__.pytd and typing.pytd.
+# Type parameter names matching the ones in builtins.pytd and typing.pytd.
 T = "_T"
 T2 = "_T2"
 K = "_K"
@@ -709,9 +709,9 @@ def is_indefinite_iterable(val: _BaseValue):
   if not (instance and cls_instance and not concrete):
     return False
   for cls in val.cls.mro:
-    if cls.full_name == "__builtin__.str":
+    if cls.full_name == "builtins.str":
       return False
-    elif cls.full_name == "__builtin__.tuple":
+    elif cls.full_name == "builtins.tuple":
       # A tuple's cls attribute may point to either PyTDClass(tuple) or
       # TupleClass; only the former is indefinite.
       return cls.isinstance_PyTDClass()

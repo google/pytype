@@ -92,7 +92,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"function list\.__iadd__"})
 
   def test_rewrite_builtin_function_name(self):
-    """Should rewrite `function __builtin__.len` to `built-in function len`."""
+    """Should rewrite `function builtins.len` to `built-in function len`."""
     _, errors = self.InferWithErrors("x = len(None)  # wrong-arg-types[e]")
     self.assertErrorRegexes(errors, {"e": r"Built-in function len"})
 

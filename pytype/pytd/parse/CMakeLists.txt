@@ -2,18 +2,6 @@ add_package()
 
 py_library(
   NAME
-    builtins
-  SRCS
-    builtins.py
-  DEPS
-    pytype.utils
-    pytype.pyi.parser
-    pytype.pytd.pytd_for_parser
-    pytype.pytd.pytd_utils
-)
-
-py_library(
-  NAME
     preconditions
   SRCS
     preconditions.py
@@ -54,18 +42,6 @@ py_library(
     pytype.pyi.parser
     pytype.pytd.pytd_for_parser
     pytype.pytd.pytd_utils
-    pytype.tests.test_base
-)
-
-py_test(
-  NAME
-    builtins_test
-  SRCS
-    builtins_test.py
-  DEPS
-    .builtins
-    pytype.pytd.pytd_defs
-    pytype.pytd.pytd_for_parser
     pytype.tests.test_base
 )
 
