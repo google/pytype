@@ -1,6 +1,7 @@
 """Tests of builtins.tuple."""
 
 from pytype import file_utils
+from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
@@ -159,6 +160,20 @@ class TupleTest(test_base.TargetPython3BasicTest):
       def f(x: Optional[str] = None, y: Optional[str] = None):
         return (x, y).count(None)
     """)
+
+  def test_empty_pyi_tuple(self):
+    foo = self.Infer("""
+      from typing import Tuple
+      def f(x: Tuple[()]):
+        pass
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo))
+      self.CheckWithErrors("""
+        from typing import Any
+        import foo
+        foo.f((Any, Any))  # wrong-arg-types
+      """, pythonpath=[d.path])
 
 
 class TupleTestPython3Feature(test_base.TargetPython3FeatureTest):

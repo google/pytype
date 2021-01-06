@@ -139,7 +139,7 @@ class BaseTest(unittest.TestCase):
     cls.intorfloatorcomplex = pytd.UnionType(
         (cls.int, cls.float, cls.complex))
     cls.int_tuple = pytd.GenericType(cls.tuple, (cls.int,))
-    cls.nothing_tuple = pytd.GenericType(cls.tuple, (cls.nothing,))
+    cls.nothing_tuple = pytd.TupleType(cls.tuple, ())
     cls.intorfloat_tuple = pytd.GenericType(cls.tuple, (cls.intorfloat,))
     cls.int_set = pytd.GenericType(cls.set, (cls.int,))
     cls.intorfloat_set = pytd.GenericType(cls.set, (cls.intorfloat,))

@@ -16,7 +16,7 @@ from pytype.pytd import visitors
 
 
 def _repeat_type(type_str, n):
-  return ", ".join((type_str,) * n) if n else "nothing, ..."
+  return ", ".join((type_str,) * n) if n else "()"
 
 
 def namedtuple_ast(name, fields, python_version=None):

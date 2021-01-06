@@ -203,11 +203,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           node, v, instance, type_params, seen, view)
       base = pytd_utils.NamedTypeWithModule(v.official_name or v.name, v.module)
       if self._is_tuple(v, instance):
-        if type_arguments:
-          homogeneous = False
-        else:
-          homogeneous = True
-          type_arguments = [pytd.NothingType()]
+        homogeneous = False
       elif v.full_name == "typing.Callable":
         homogeneous = not isinstance(v, abstract.CallableClass)
       else:

@@ -27,8 +27,9 @@ from six.moves import cPickle
 _PICKLE_PROTOCOL = cPickle.HIGHEST_PROTOCOL
 _PICKLE_RECURSION_LIMIT_AST = 40000
 
-
 ANON_PARAM = re.compile(r"_[0-9]+")
+
+_TUPLE_NAMES = ("builtins.tuple", "typing.Tuple")
 
 
 def UnpackUnion(t):
@@ -41,13 +42,13 @@ def UnpackUnion(t):
 
 def MakeClassOrContainerType(base_type, type_arguments, homogeneous):
   """If we have type params, build a generic type, a normal type otherwise."""
-  if not type_arguments:
+  if not type_arguments and (homogeneous or base_type.name not in _TUPLE_NAMES):
     return base_type
   if homogeneous:
     container_type = pytd.GenericType
   elif base_type.name == "typing.Callable":
     container_type = pytd.CallableType
-  elif base_type.name in ("builtins.tuple", "typing.Tuple"):
+  elif base_type.name in _TUPLE_NAMES:
     container_type = pytd.TupleType
   else:
     container_type = pytd.GenericType

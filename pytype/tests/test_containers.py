@@ -48,8 +48,7 @@ class ContainerTest(test_base.TargetIndependentTest):
       f()
     """, deep=False, show_library_calls=True)
     self.assertHasOnlySignatures(
-        ty.Lookup("f"),
-        ((), pytd.GenericType(self.tuple, (pytd.NothingType(),))))
+        ty.Lookup("f"), ((), pytd.TupleType(self.tuple, ())))
 
   def test_sets_sanity(self):
     ty = self.Infer("""

@@ -371,6 +371,7 @@ py_test(
     test_tuple.py
   DEPS
     pytype.utils
+    pytype.pytd.pytd
     pytype.tests.test_base
 )
 

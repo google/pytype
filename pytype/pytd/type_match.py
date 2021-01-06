@@ -166,7 +166,7 @@ class TypeMatch(pytd_utils.TypeMatcher):
       # compatible base types, t1 is a homogeneous tuple here.
       return (t1.element_type,) * len(t2.parameters), t2.parameters
     elif isinstance(t1, pytd.TupleType):
-      return (pytd.UnionType(type_list=t1.parameters),), t2.parameters
+      return (pytd_utils.JoinTypes(t1.parameters),), t2.parameters
     elif (isinstance(t1, pytd.CallableType) and
           isinstance(t2, pytd.CallableType)):
       # Flip the arguments, since argument types are contravariant.
@@ -221,7 +221,7 @@ class TypeMatch(pytd_utils.TypeMatcher):
     for type_param in type_params:
       self.solver.register_variable(type_param.name)
     if isinstance(t2, pytd.TupleType):
-      t2_parameters = (pytd.UnionType(type_list=t2.parameters),)
+      t2_parameters = (pytd_utils.JoinTypes(t2.parameters),)
     else:
       t2_parameters = t2.parameters
     params = [self.match_type_against_type(p1, p2, subst)
@@ -446,7 +446,7 @@ class TypeMatch(pytd_utils.TypeMatcher):
             values = tuple(pytd.AnythingType() for _ in cls.template)
           elif isinstance(base, pytd.TupleType):
             cls = base.base_type.cls
-            values = (pytd.UnionType(type_list=base.parameters),)
+            values = (pytd_utils.JoinTypes(base.parameters),)
           else:
             cls = base.base_type.cls
             values = base.parameters

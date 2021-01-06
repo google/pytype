@@ -287,7 +287,7 @@ class CombineContainers(visitors.Visitor):
       for t in union.type_list:
         if merge_tuples and isinstance(t, pytd.TupleType):
           t = pytd.GenericType(base_type=t.base_type,
-                               parameters=(pytd.UnionType(t.parameters),))
+                               parameters=(pytd_utils.JoinTypes(t.parameters),))
         elif merge_callables and isinstance(t, pytd.CallableType):
           t = pytd.GenericType(base_type=t.base_type,
                                parameters=(pytd.AnythingType(), t.ret))
