@@ -17,7 +17,7 @@ py_library(
   SRCS
     arg_parser.py
   DEPS
-    pytype.config
+    pytype.libvm
     pytype.utils
 )
 
@@ -35,7 +35,7 @@ py_library(
     environment.py
   DEPS
     .runner
-    pytype.pytd.typeshed
+    pytype.pytd.pytd
 )
 
 py_library(
@@ -61,7 +61,7 @@ py_test(
     arg_parser_test.py
   DEPS
     .tools
-    pytype.config
+    pytype.libvm
     pytype.utils
 )
 

@@ -245,7 +245,7 @@ Pytype ships with a few scripts in addition to `pytype` itself:
 * `annotate-ast`, an in-progress type annotator for ASTs.
 * [`merge-pyi`][merge-pyi], for merging type information from a .pyi file into a
 Python file.
-* `pytd`, a parser for .pyi files.
+* `pytd-tool`, a parser for .pyi files.
 * `pytype-single`, a debugging tool for pytype developers, which analyzes a
 single Python file assuming that .pyi files have already been generated for all
 of its dependencies.

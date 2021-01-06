@@ -1,15 +1,59 @@
 add_package()
 
-toplevel_py_binary(
+py_library(
+  NAME
+    api
+  DEPS
+    ._pytd
+    .pytd_utils
+    .pytd_visitors
+)
+
+py_library(
   NAME
     pytd
+  DEPS
+    ._pytd
+    .abc_hierarchy
+    .base_visitor
+    .booleq
+    .builtins
+    .escape
+    .mro
+    .optimize
+    .pep484
+    .pytd_utils
+    .pytd_visitors
+    .serialize_ast
+    .slots
+    .transforms
+    .type_match
+    .typeshed
+    .visitors
+)
+
+py_library(
+  NAME
+    pytd_for_parser
+  DEPS
+    ._pytd
+    .escape
+    .pep484
+    .pytd_utils
+    .slots
+    .visitors
+)
+
+toplevel_py_binary(
+  NAME
+    pytd-tool
   SRCS
     main.py
   MAIN
     main.py
   DEPS
     .builtins
-    .pytd_for_parser
+    .optimize
     .pytd_utils
     pytype.utils
     pytype.pyi.parser
@@ -17,28 +61,11 @@ toplevel_py_binary(
 
 py_library(
   NAME
-    pytd_for_parser
+    abc_hierarchy
   SRCS
-    __init__.py
     abc_hierarchy.py
-    booleq.py
-    escape.py
-    mro.py
-    optimize.py
-    slots.py
-    transforms.py
-    type_match.py
-    visitors.py
   DEPS
-    .base_visitor
-    .pep484
-    .pytd_defs
-    .pytd_utils
-    .pytd_visitors
     pytype.utils
-    pytype.pytd.parse.node
-    pytype.pytd.parse.parser_constants
-    pytype.stubs.stubs
 )
 
 py_library(
@@ -47,8 +74,17 @@ py_library(
   SRCS
     base_visitor.py
   DEPS
-    .pytd_defs
+    ._pytd
     pytype.typegraph.cfg_utils
+)
+
+py_library(
+  NAME
+    booleq
+  SRCS
+    booleq.py
+  DEPS
+    .pytd_utils
 )
 
 py_library(
@@ -57,10 +93,42 @@ py_library(
   SRCS
     builtins.py
   DEPS
-    .pytd_for_parser
     .pytd_utils
+    .visitors
     pytype.utils
     pytype.pyi.parser
+)
+
+py_library(
+  NAME
+    escape
+  SRCS
+    escape.py
+)
+
+py_library(
+  NAME
+    mro
+  SRCS
+    mro.py
+  DEPS
+    ._pytd
+)
+
+py_library(
+  NAME
+    optimize
+  SRCS
+    optimize.py
+  DEPS
+    ._pytd
+    .abc_hierarchy
+    .booleq
+    .escape
+    .pytd_utils
+    .type_match
+    .visitors
+    pytype.utils
 )
 
 py_library(
@@ -69,18 +137,18 @@ py_library(
   SRCS
     pep484.py
   DEPS
+    ._pytd
     .base_visitor
-    .pytd_defs
 )
 
 py_library(
   NAME
-    pytd_defs
+    _pytd
   SRCS
+    __init__.py
     pytd.py
   DEPS
-    pytype.pytd.parse.node
-    pytype.pytd.parse.preconditions
+    pytype.pytd.parse.parse
 )
 
 py_library(
@@ -89,7 +157,7 @@ py_library(
   SRCS
     pytd_utils.py
   DEPS
-    .pytd_defs
+    ._pytd
     .pytd_visitors
     pytype.utils
 )
@@ -100,10 +168,10 @@ py_library(
   SRCS
     pytd_visitors.py
   DEPS
+    ._pytd
     .base_visitor
     .pep484
-    .pytd_defs
-    pytype.pytd.parse.parser_constants
+    pytype.pytd.parse.parse
 )
 
 py_library(
@@ -112,11 +180,43 @@ py_library(
   SRCS
     serialize_ast.py
   DEPS
-    .pytd_defs
-    .pytd_for_parser
+    ._pytd
     .pytd_utils
+    .visitors
     pytype.utils
     pytype.pyi.parser
+)
+
+py_library(
+  NAME
+    slots
+  SRCS
+    slots.py
+)
+
+py_library(
+  NAME
+    transforms
+  SRCS
+    transforms.py
+  DEPS
+    .optimize
+    .visitors
+)
+
+py_library(
+  NAME
+    type_match
+  SRCS
+    type_match.py
+  DEPS
+    ._pytd
+    .booleq
+    .escape
+    .pytd_utils
+    .visitors
+    pytype.utils
+    pytype.pytd.parse.parse
 )
 
 py_library(
@@ -130,13 +230,30 @@ py_library(
     pytype.pyi.parser
 )
 
+py_library(
+  NAME
+    visitors
+  SRCS
+    visitors.py
+  DEPS
+    ._pytd
+    .base_visitor
+    .escape
+    .mro
+    .pep484
+    .pytd_utils
+    .pytd_visitors
+    pytype.utils
+    pytype.pytd.parse.parse
+)
+
 py_test(
   NAME
     abc_hierarchy_test
   SRCS
     abc_hierarchy_test.py
   DEPS
-    .pytd_for_parser
+    .abc_hierarchy
 )
 
 py_test(
@@ -154,7 +271,7 @@ py_test(
   SRCS
     booleq_test.py
   DEPS
-    .pytd_for_parser
+    .booleq
 )
 
 py_test(
@@ -163,9 +280,9 @@ py_test(
   SRCS
     builtins_test.py
   DEPS
+    ._pytd
     .builtins
-    .pytd_defs
-    .pytd_for_parser
+    .visitors
     pytype.tests.test_base
 )
 
@@ -175,8 +292,9 @@ py_test(
   SRCS
     mro_test.py
   DEPS
-    .pytd_for_parser
-    pytype.load_pytd
+    .mro
+    .visitors
+    pytype.libvm
     pytype.pyi.parser
     pytype.pytd.parse.parser_test_base
 )
@@ -187,10 +305,11 @@ py_test(
   SRCS
     optimize_test.py
   DEPS
-    .pytd_defs
-    .pytd_for_parser
+    ._pytd
+    .optimize
     .pytd_utils
-    pytype.load_pytd
+    .visitors
+    pytype.libvm
     pytype.pytd.parse.parser_test_base
 )
 
@@ -200,8 +319,8 @@ py_test(
   SRCS
     pep484_test.py
   DEPS
+    ._pytd
     .pep484
-    .pytd_defs
     .pytd_utils
     pytype.pytd.parse.parser_test_base
 )
@@ -212,7 +331,7 @@ py_test(
   SRCS
     slots_test.py
   DEPS
-    .pytd_for_parser
+    .slots
 )
 
 py_test(
@@ -221,7 +340,7 @@ py_test(
   SRCS
     transforms_test.py
   DEPS
-    .pytd_for_parser
+    .transforms
     pytype.pytd.parse.parser_test_base
 )
 
@@ -231,9 +350,12 @@ py_test(
   SRCS
     type_match_test.py
   DEPS
-    .pytd_defs
-    .pytd_for_parser
+    ._pytd
+    .booleq
+    .escape
     .pytd_utils
+    .type_match
+    .visitors
     pytype.pyi.parser
     pytype.pytd.parse.parser_test_base
 )
@@ -244,9 +366,10 @@ py_test(
   SRCS
     visitors_test.py
   DEPS
-    .pytd_defs
-    .pytd_for_parser
+    ._pytd
+    .escape
     .pytd_utils
+    .visitors
     pytype.pytd.parse.parser_test_base
 )
 
@@ -256,7 +379,7 @@ py_test(
   SRCS
     pytd_test.py
   DEPS
-    .pytd_defs
+    ._pytd
 )
 
 py_test(
@@ -265,10 +388,10 @@ py_test(
   SRCS
     pytd_utils_test.py
   DEPS
-    .pytd_defs
-    .pytd_for_parser
+    ._pytd
     .pytd_utils
     .serialize_ast
+    .visitors
     pytype.utils
     pytype.pyi.parser
     pytype.pytd.parse.parser_test_base
@@ -280,8 +403,8 @@ py_test(
   SRCS
     pytd_visitors_test.py
   DEPS
-    .pytd_for_parser
     .pytd_visitors
+    .visitors
     pytype.pytd.parse.parser_test_base
 )
 
@@ -291,10 +414,10 @@ py_test(
   SRCS
     serialize_ast_test.py
   DEPS
-    .pytd_for_parser
     .pytd_utils
     .serialize_ast
-    pytype.load_pytd
+    .visitors
+    pytype.libvm
     pytype.utils
     pytype.tests.test_base
 )

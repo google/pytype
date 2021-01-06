@@ -24,9 +24,11 @@ py_library(
   SRCS
     classgen.py
   DEPS
+    pytype.abstract
     pytype.abstract_utils
-    pytype.libvm
     pytype.mixin
+    pytype.overlay_utils
+    pytype.special_builtins
 )
 
 py_library(
@@ -35,7 +37,9 @@ py_library(
   SRCS
     abc_overlay.py
   DEPS
-    pytype.libvm
+    pytype.abstract
+    pytype.overlay
+    pytype.special_builtins
 )
 
 py_library(
@@ -44,7 +48,8 @@ py_library(
   SRCS
     asyncio_types_overlay.py
   DEPS
-    pytype.libvm
+    pytype.abstract
+    pytype.overlay
 )
 
 py_library(
@@ -54,10 +59,12 @@ py_library(
     attr_overlay.py
   DEPS
     .classgen
+    pytype.abstract
     pytype.abstract_utils
     pytype.function
-    pytype.libvm
     pytype.mixin
+    pytype.overlay
+    pytype.overlay_utils
 )
 
 py_library(
@@ -66,12 +73,12 @@ py_library(
   SRCS
     collections_overlay.py
   DEPS
+    pytype.abstract
     pytype.abstract_utils
-    pytype.libvm
+    pytype.overlay
     pytype.utils
     pytype.pyi.parser
-    pytype.pytd.pytd_defs
-    pytype.pytd.pytd_for_parser
+    pytype.pytd.pytd
 )
 
 py_library(
@@ -81,9 +88,10 @@ py_library(
     dataclass_overlay.py
   DEPS
     .classgen
+    pytype.abstract
     pytype.abstract_utils
     pytype.function
-    pytype.libvm
+    pytype.overlay
 )
 
 py_library(
@@ -93,10 +101,11 @@ py_library(
     flax_overlay.py
   DEPS
     .dataclass_overlay
+    pytype.abstract
     pytype.abstract_utils
     pytype.function
-    pytype.libvm
-    pytype.pytd.pytd_defs
+    pytype.overlay
+    pytype.pytd.pytd
 )
 
 py_library(
@@ -105,7 +114,8 @@ py_library(
   SRCS
     future_overlay.py
   DEPS
-    pytype.libvm
+    pytype.metaclass
+    pytype.overlay
 )
 
 py_library(
@@ -114,7 +124,8 @@ py_library(
   SRCS
     six_overlay.py
   DEPS
-    pytype.libvm
+    pytype.metaclass
+    pytype.overlay
 )
 
 py_library(
@@ -123,8 +134,9 @@ py_library(
   SRCS
     subprocess_overlay.py
   DEPS
+    pytype.abstract
     pytype.function
-    pytype.libvm
+    pytype.overlay
 )
 
 py_library(
@@ -133,7 +145,8 @@ py_library(
   SRCS
     sys_overlay.py
   DEPS
-    pytype.libvm
+    pytype.abstract
+    pytype.overlay
 )
 
 py_library(
@@ -143,7 +156,7 @@ py_library(
     typing_extensions_overlay.py
   DEPS
     .typing_overlay
-    pytype.libvm
+    pytype.overlay
 )
 
 py_library(
@@ -154,13 +167,13 @@ py_library(
   DEPS
     .classgen
     .collections_overlay
+    pytype.abstract
     pytype.abstract_utils
     pytype.function
-    pytype.libvm
+    pytype.overlay
+    pytype.overlay_utils
     pytype.utils
-    pytype.pytd.pep484
-    pytype.pytd.pytd_defs
-    pytype.pytd.pytd_for_parser
+    pytype.pytd.pytd
 )
 
 py_test(
@@ -170,8 +183,6 @@ py_test(
     collections_overlay_test.py
   DEPS
     .collections_overlay
-    pytype.pytd.pytd_defs
-    pytype.pytd.pytd_for_parser
-    pytype.pytd.pytd_utils
+    pytype.pytd.pytd
     pytype.tests.test_base
 )

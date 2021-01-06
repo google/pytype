@@ -2,21 +2,11 @@ add_package()
 
 py_library(
   NAME
-    io_lib
+    api
   DEPS
     .config
     .errors
     .io
-)
-
-py_library(
-  NAME
-    pytd_lib
-  DEPS
-    pytype.pyi.parser
-    pytype.pytd.pytd_defs
-    pytype.pytd.pytd_utils
-    pytype.pytd.pytd_visitors
 )
 
 toplevel_py_binary(
@@ -32,81 +22,83 @@ toplevel_py_binary(
 
 py_library(
   NAME
-    metrics
-  SRCS
-    metrics.py
+    libvm
+  DEPS
+    .__version__
+    .abstract
+    .abstract_utils
+    .analyze
+    .annotations_util
+    .attribute
+    .blocks
+    .compare
+    .config
+    .convert
+    .convert_structural
+    .debug
+    .directors
+    .errors
+    .function
+    .overlay_dict
+    .imports_map_loader
+    .io
+    .load_pytd
+    .matcher
+    .metaclass
+    .mixin
+    .output
+    .overlay
+    .overlay_dict
+    .overlay_utils
+    .special_builtins
+    .state
+    .vm
 )
 
 py_library(
   NAME
     utils
-  SRCS
-    compat.py
-    datatypes.py
-    file_utils.py
-    module_utils.py
-    pytype_source_utils.py
-    utils.py
   DEPS
-    pytype.stubs.stubs
+    ._utils
+    .compat
+    .datatypes
+    .file_utils
+    .metrics
+    .module_utils
+    .pytype_source_utils
 )
 
 py_library(
   NAME
-    debug
+    abstract
   SRCS
-    debug.py
+    abstract.py
   DEPS
-    .utils
-    pytype.typegraph.cfg_utils
-)
-
-py_library(
-  NAME
-    config
-  SRCS
-    config.py
-  DEPS
-    .errors
-    .libvm
-    .load_pytd
-    .utils
-    pytype.typegraph.cfg_utils
-)
-
-py_library(
-  NAME
-    errors
-  SRCS
-    errors.py
-  DEPS
-    .debug
+    ._utils
+    .abstract_utils
+    .compat
+    .datatypes
     .function
-    .libvm
     .mixin
-    .utils
-    pytype.pytd.pytd_for_parser
-    pytype.pytd.pytd_utils
+    pytype.pyc.pyc
+    pytype.pytd.pytd
+    pytype.typegraph.cfg
+    pytype.typegraph.cfg_utils
 )
 
 py_library(
   NAME
-    io
+    abstract_utils
   SRCS
-    io.py
+    abstract_utils.py
   DEPS
-    .analyze
-    .config
-    .errors
-    .libvm
-    .load_pytd
-    .utils
+    ._utils
+    .compat
+    .datatypes
     pytype.pyc.pyc
-    pytype.pyi.parser
-    pytype.pytd.builtins
-    pytype.pytd.pytd_for_parser
-    pytype.pytd.pytd_utils
-    pytype.pytd.serialize_ast
+    pytype.pytd.pytd
+    pytype.typegraph.cfg
+    pytype.typegraph.cfg_utils
 )
 
 py_library(
@@ -115,43 +107,19 @@ py_library(
   SRCS
     analyze.py
   DEPS
+    .abstract
     .abstract_utils
+    .convert_structural
     .debug
     .function
-    .libvm
     .metrics
     .output
+    .special_builtins
+    .state
     .vm
     pytype.overlays.overlays
-    pytype.pytd.builtins
-    pytype.pytd.pytd_defs
-    pytype.pytd.pytd_for_parser
-    pytype.pytd.pytd_utils
+    pytype.pytd.pytd
     pytype.typegraph.cfg
-)
-
-py_library(
-  NAME
-    vm
-  SRCS
-    vm.py
-  DEPS
-    .abstract_utils
-    .annotations_util
-    .convert
-    .function
-    .overlay_dict
-    .libvm
-    .load_pytd
-    .matcher
-    .metrics
-    .mixin
-    .utils
-    pytype.pyc.pyc
-    pytype.pyi.parser
-    pytype.pytd.pytd_for_parser
-    pytype.typegraph.cfg
-    pytype.typegraph.cfg_utils
 )
 
 py_library(
@@ -160,11 +128,70 @@ py_library(
   SRCS
     annotations_util.py
   DEPS
+    ._utils
+    .abstract
     .abstract_utils
-    .libvm
     .mixin
-    .utils
     pytype.overlays.overlays
+)
+
+py_library(
+  NAME
+    attribute
+  SRCS
+    attribute.py
+  DEPS
+    ._utils
+    .abstract
+    .abstract_utils
+    .function
+    .mixin
+    .overlay
+    .special_builtins
+    pytype.typegraph.cfg
+)
+
+py_library(
+  NAME
+    blocks
+  SRCS
+    blocks.py
+  DEPS
+    pytype.pyc.pyc
+    pytype.typegraph.cfg_utils
+)
+
+py_library(
+  NAME
+    compare
+  SRCS
+    compare.py
+  DEPS
+    .abstract
+    .abstract_utils
+    .mixin
+    pytype.pytd.pytd
+)
+
+py_library(
+  NAME
+    compat
+  SRCS
+    compat.py
+)
+
+py_library(
+  NAME
+    config
+  SRCS
+    config.py
+  DEPS
+    ._utils
+    .datatypes
+    .errors
+    .imports_map_loader
+    .load_pytd
+    pytype.typegraph.cfg_utils
 )
 
 py_library(
@@ -173,19 +200,117 @@ py_library(
   SRCS
     convert.py
   DEPS
+    ._utils
+    .abstract
     .abstract_utils
+    .blocks
+    .compat
+    .datatypes
     .function
-    .libvm
     .mixin
     .output
-    .utils
+    .special_builtins
     pytype.overlays.overlays
     pytype.pyc.pyc
-    pytype.pytd.pytd_defs
-    pytype.pytd.pytd_for_parser
-    pytype.pytd.pytd_utils
-    pytype.pytd.parse.parser_constants
+    pytype.pytd.pytd
+    pytype.pytd.parse.parse
     pytype.typegraph.cfg
+)
+
+py_library(
+  NAME
+    convert_structural
+  SRCS
+    convert_structural.py
+  DEPS
+    pytype.pytd.pytd
+)
+
+py_library(
+  NAME
+    datatypes
+  SRCS
+    datatypes.py
+)
+
+py_library(
+  NAME
+    debug
+  SRCS
+    debug.py
+  DEPS
+    ._utils
+    pytype.typegraph.cfg_utils
+)
+
+py_library(
+  NAME
+    directors
+  SRCS
+    directors.py
+  DEPS
+    ._utils
+    .blocks
+)
+
+py_library(
+  NAME
+    errors
+  SRCS
+    errors.py
+  DEPS
+    ._utils
+    .abstract
+    .debug
+    .function
+    .mixin
+    pytype.pytd.pytd
+)
+
+py_library(
+  NAME
+    file_utils
+  SRCS
+    file_utils.py
+  DEPS
+    .compat
+)
+
+py_library(
+  NAME
+    function
+  SRCS
+    function.py
+  DEPS
+    ._utils
+    .abstract_utils
+    .datatypes
+    pytype.pytd.pytd
+)
+
+py_library(
+  NAME
+    imports_map_loader
+  SRCS
+    imports_map_loader.py
+)
+
+py_library(
+  NAME
+    io
+  SRCS
+    io.py
+  DEPS
+    .__version__
+    ._utils
+    .analyze
+    .config
+    .directors
+    .errors
+    .load_pytd
+    pytype.pyc.pyc
+    pytype.pyi.parser
+    pytype.pytd.pytd
 )
 
 py_library(
@@ -194,14 +319,11 @@ py_library(
   SRCS
     load_pytd.py
   DEPS
-    .utils
+    ._utils
+    .file_utils
+    .module_utils
     pytype.pyi.parser
-    pytype.pytd.builtins
-    pytype.pytd.pytd_defs
-    pytype.pytd.pytd_for_parser
-    pytype.pytd.pytd_utils
-    pytype.pytd.serialize_ast
-    pytype.pytd.typeshed
+    pytype.pytd.pytd
 )
 
 py_library(
@@ -210,15 +332,54 @@ py_library(
   SRCS
     matcher.py
   DEPS
+    ._utils
+    .abstract
+    .abstract_utils
+    .datatypes
+    .function
+    .mixin
+    .special_builtins
+    pytype.overlays.overlays
+    pytype.pytd.pytd
+)
+
+py_library(
+  NAME
+    metaclass
+  SRCS
+    metaclass.py
+  DEPS
+    .abstract
     .abstract_utils
     .function
-    .libvm
     .mixin
-    .utils
-    pytype.overlays.overlays
-    pytype.pytd.pep484
-    pytype.pytd.pytd_defs
-    pytype.pytd.pytd_utils
+)
+
+py_library(
+  NAME
+    metrics
+  SRCS
+    metrics.py
+)
+
+py_library(
+  NAME
+    mixin
+  SRCS
+    mixin.py
+  DEPS
+    .abstract_utils
+    .datatypes
+    .function
+    pytype.pytd.pytd
+    pytype.typegraph.cfg
+)
+
+py_library(
+  NAME
+    module_utils
+  SRCS
+    module_utils.py
 )
 
 py_library(
@@ -227,14 +388,23 @@ py_library(
   SRCS
     output.py
   DEPS
+    ._utils
+    .abstract
     .abstract_utils
-    .libvm
     .mixin
-    .utils
+    .special_builtins
     pytype.overlays.overlays
-    pytype.pytd.pytd_defs
-    pytype.pytd.pytd_for_parser
-    pytype.pytd.pytd_utils
+    pytype.pytd.pytd
+)
+
+py_library(
+  NAME
+    overlay
+  SRCS
+    overlay.py
+  DEPS
+    .abstract
+    .datatypes
 )
 
 py_library(
@@ -248,74 +418,97 @@ py_library(
 
 py_library(
   NAME
-    libvm
+    overlay_utils
   SRCS
-    __init__.py
-    __version__.py
-    abstract.py
-    attribute.py
-    blocks.py
-    compare.py
-    convert_structural.py
-    directors.py
-    imports_map_loader.py
-    metaclass.py
-    overlay.py
     overlay_utils.py
+  DEPS
+    .abstract
+    .mixin
+    pytype.typegraph.cfg
+)
+
+py_library(
+  NAME
+    pytype_source_utils
+  SRCS
+    pytype_source_utils.py
+  DEPS
+    pytype.stubs.stubs
+)
+
+py_library(
+  NAME
+    special_builtins
+  SRCS
     special_builtins.py
+  DEPS
+    .abstract
+    .abstract_utils
+    .function
+    .mixin
+)
+
+py_library(
+  NAME
+    state
+  SRCS
     state.py
   DEPS
-    .abstract_utils
-    .function
+    ._utils
+    .abstract
+    .compare
     .metrics
     .mixin
-    .utils
-    pytype.pyc.pyc
-    pytype.pytd.pytd_defs
-    pytype.pytd.pytd_for_parser
-    pytype.pytd.pytd_utils
     pytype.typegraph.cfg
-    pytype.typegraph.cfg_utils
 )
 
 py_library(
   NAME
-    abstract_utils
+    _utils
   SRCS
-    abstract_utils.py
+    utils.py
   DEPS
-    .utils
-    pytype.pyc.pyc
-    pytype.pytd.pytd_for_parser
-    pytype.typegraph.cfg
-    pytype.typegraph.cfg_utils
+    .pytype_source_utils
 )
 
 py_library(
   NAME
-    function
+    __version__
   SRCS
-    function.py
+    __version__.py
+)
+
+py_library(
+  NAME
+    vm
+  SRCS
+    __init__.py
+    vm.py
   DEPS
+    ._utils
+    .abstract
     .abstract_utils
-    .utils
-    pytype.pytd.pytd_defs
-    pytype.pytd.pytd_for_parser
-    pytype.pytd.pytd_utils
-)
-
-py_library(
-  NAME
-    mixin
-  SRCS
-    mixin.py
-  DEPS
-    .abstract_utils
+    .annotations_util
+    .attribute
+    .blocks
+    .compare
+    .convert
+    .datatypes
+    .directors
     .function
-    .utils
-    pytype.pytd.pytd_defs
-    pytype.pytd.pytd_for_parser
+    .overlay_dict
+    .load_pytd
+    .matcher
+    .metaclass
+    .metrics
+    .mixin
+    .special_builtins
+    .state
+    pytype.pyc.pyc
+    pytype.pyi.parser
+    pytype.pytd.pytd
     pytype.typegraph.cfg
+    pytype.typegraph.cfg_utils
 )
 
 py_test(
@@ -326,7 +519,7 @@ py_test(
   DEPS
     .analyze
     .errors
-    .libvm
+    .vm
     pytype.tests.test_base
     pytype.typegraph.cfg
 )
@@ -337,8 +530,8 @@ py_test(
   SRCS
     config_test.py
   DEPS
+    ._utils
     .config
-    .utils
 )
 
 py_test(
@@ -347,7 +540,8 @@ py_test(
   SRCS
     compat_test.py
   DEPS
-    .utils
+    .compat
+    .file_utils
 )
 
 py_test(
@@ -356,7 +550,7 @@ py_test(
   SRCS
     datatypes_test.py
   DEPS
-    .utils
+    .datatypes
     pytype.typegraph.cfg
 )
 
@@ -368,7 +562,7 @@ py_test(
   DEPS
     .config
     .io
-    pytype.pytd.pytd_defs
+    pytype.pytd.pytd
 )
 
 py_test(
@@ -377,7 +571,7 @@ py_test(
   SRCS
     file_utils_test.py
   DEPS
-    .utils
+    .file_utils
 )
 
 py_test(
@@ -386,7 +580,8 @@ py_test(
   SRCS
     module_utils_test.py
   DEPS
-    .utils
+    .file_utils
+    .module_utils
 )
 
 py_test(
@@ -395,7 +590,8 @@ py_test(
   SRCS
     pytype_source_utils_test.py
   DEPS
-    .utils
+    ._utils
+    .pytype_source_utils
 )
 
 py_test(
@@ -404,7 +600,7 @@ py_test(
   SRCS
     utils_test.py
   DEPS
-    .utils
+    ._utils
 )
 
 py_test(
@@ -413,15 +609,16 @@ py_test(
   SRCS
     abstract_test.py
   DEPS
+    .abstract
     .abstract_utils
     .config
     .errors
     .function
-    .libvm
     .load_pytd
+    .special_builtins
+    .state
     .vm
-    pytype.pytd.pytd_defs
-    pytype.pytd.pytd_utils
+    pytype.pytd.pytd
     pytype.tests.test_base
     pytype.typegraph.cfg
 )
@@ -446,15 +643,15 @@ py_test(
   SRCS
     compare_test.py
   DEPS
+    .abstract
     .abstract_utils
+    .compare
     .config
     .errors
     .function
-    .libvm
     .load_pytd
     .vm
-    pytype.pytd.pytd_defs
-    pytype.pytd.pytd_for_parser
+    pytype.pytd.pytd
     pytype.tests.test_base
 )
 
@@ -473,12 +670,12 @@ py_test(
   SRCS
     matcher_test.py
   DEPS
+    .abstract
     .abstract_utils
     .config
     .errors
-    .libvm
+    .file_utils
     .load_pytd
-    .utils
     .vm
     pytype.tests.test_base
 )
@@ -489,15 +686,14 @@ py_test(
   SRCS
     convert_test.py
   DEPS
+    .abstract
     .abstract_utils
     .config
     .errors
-    .libvm
+    .file_utils
     .load_pytd
-    .utils
     .vm
-    pytype.pytd.pytd_defs
-    pytype.pytd.pytd_utils
+    pytype.pytd.pytd
     pytype.tests.test_base
 )
 
@@ -507,10 +703,10 @@ py_test(
   SRCS
     attribute_test.py
   DEPS
+    .abstract
     .abstract_utils
     .config
     .errors
-    .libvm
     .load_pytd
     .vm
     pytype.tests.test_base
@@ -522,7 +718,7 @@ py_test(
   SRCS
     blocks_test.py
   DEPS
-    .libvm
+    .blocks
     pytype.pyc.pyc
     pytype.tests.test_base
 )
@@ -533,10 +729,11 @@ py_test(
   SRCS
     vm_test.py
   DEPS
+    ._utils
     .analyze
+    .blocks
+    .compat
     .errors
-    .libvm
-    .utils
     .vm
     pytype.pyc.pyc
     pytype.tests.test_base
@@ -548,8 +745,8 @@ py_test(
   SRCS
     directors_test.py
   DEPS
+    .directors
     .errors
-    .libvm
     pytype.tests.test_base
 )
 
@@ -559,12 +756,9 @@ py_test(
   SRCS
     load_pytd_test.py
   DEPS
+    .file_utils
     .load_pytd
-    .utils
-    pytype.pytd.pytd_defs
-    pytype.pytd.pytd_for_parser
-    pytype.pytd.pytd_utils
-    pytype.pytd.serialize_ast
+    pytype.pytd.pytd
     pytype.stubs.stubs
     pytype.tests.test_base
 )
@@ -575,8 +769,9 @@ py_test(
   SRCS
     imports_map_loader_test.py
   DEPS
-    .libvm
-    .utils
+    .compat
+    .file_utils
+    .imports_map_loader
     pytype.stubs.stubs
 )
 
@@ -595,21 +790,9 @@ py_test(
   SRCS
     state_test.py
   DEPS
-    .libvm
+    .compare
+    .state
     pytype.typegraph.cfg
-)
-
-py_library(
-  NAME
-    pytype_main_deps
-  DEPS
-    .config
-    .io
-    .load_pytd
-    .metrics
-    .utils
-    pytype.pytd.typeshed
-    pytype.pytd.parse.node
 )
 
 py_test(
@@ -620,6 +803,19 @@ py_test(
   DEPS
     .debug
     pytype.typegraph.cfg
+)
+
+py_library(
+  NAME
+    pytype_main_deps
+  DEPS
+    ._utils
+    .config
+    .io
+    .load_pytd
+    .metrics
+    pytype.pytd.pytd
+    pytype.pytd.parse.parse
 )
 
 add_subdirectory(ast)
