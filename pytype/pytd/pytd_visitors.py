@@ -131,32 +131,6 @@ class PrintVisitor(base_visitor.Visitor):
     self._typing_import_counts = collections.defaultdict(int)
     self.multiline_args = multiline_args
 
-  def _EscapedName(self, name):
-    """Name, possibly escaped with backticks.
-
-    If a name is a reserved PyTD token or contains special characters, it is
-    enclosed in backticks.  See parser.Pylexer.t_NAME for legal names that
-    require backticks.
-
-    Args:
-      name: A name, typically an identifier in the PyTD.
-
-    Returns:
-      The escaped name, or the original name if it doesn't need escaping.
-    """
-    if parser_constants.BACKTICK_NAME.search(name) or name in self._RESERVED:
-      # We can do this because name will never contain backticks. Everything
-      # we process here came in through the pytd parser, and the pytd syntax
-      # doesn't allow escaping backticks themselves.
-      return r"`" + name + "`"
-    else:
-      return name
-
-  def _SafeName(self, name):
-    split_name = name.split(".")
-    split_result = (self._EscapedName(piece) for piece in split_name)
-    return ".".join(split_result)
-
   def _IsEmptyTuple(self, t):
     """Check if it is an empty tuple."""
     assert isinstance(t, pytd.GenericType)
@@ -271,7 +245,7 @@ class PrintVisitor(base_visitor.Visitor):
       assert name in ("True", "False"), name
       return name
     else:
-      return self._SafeName(node.name) + ": " + node.type
+      return node.name + ": " + node.type
 
   def EnterAlias(self, _):
     self.old_imports = self.imports.copy()
@@ -289,11 +263,11 @@ class PrintVisitor(base_visitor.Visitor):
         return "from " + module + " import " + name + suffix
     elif isinstance(self.old_node.type, pytd.Module):
       return node.type
-    return self._SafeName(node.name) + " = " + node.type
+    return node.name + " = " + node.type
 
   def EnterClass(self, node):
     """Entering a class - record class name for children's use."""
-    n = self._SafeName(node.name)
+    n = node.name
     if node.template:
       n += "[{}]".format(
           ", ".join(t.Visit(PrintVisitor()) for t in node.template))
@@ -314,7 +288,7 @@ class PrintVisitor(base_visitor.Visitor):
     if node.metaclass is not None:
       parents += ("metaclass=" + node.metaclass,)
     parents_str = "(" + ", ".join(parents) + ")" if parents else ""
-    header = ["class " + self._SafeName(node.name) + parents_str + ":"]
+    header = ["class " + node.name + parents_str + ":"]
     if node.slots is not None:
       slots_str = ", ".join("\"%s\"" % s for s in node.slots)
       slots = [self.INDENT + "__slots__ = [" + slots_str + "]"]
@@ -340,7 +314,7 @@ class PrintVisitor(base_visitor.Visitor):
 
   def VisitFunction(self, node):
     """Visit function, producing multi-line string (one for each signature)."""
-    function_name = self._EscapedName(node.name)
+    function_name = node.name
     decorators = ""
     if node.kind == pytd.STATICMETHOD and function_name != "__new__":
       decorators += "@staticmethod\n"
@@ -451,16 +425,16 @@ class PrintVisitor(base_visitor.Visitor):
     # Its name is `ClsName` before `[`.
     elif node.name == "self" and self.class_names and (
         self.class_names[-1].split("[")[0] == node.type):
-      return self._SafeName(node.name) + suffix
+      return node.name + suffix
     elif node.name == "cls" and self.class_names and (
         node.type == "Type[%s]" % self.class_names[-1]):
       self._typing_import_counts["Type"] -= 1
-      return self._SafeName(node.name) + suffix
+      return node.name + suffix
     elif node.type is None:
       logging.warning("node.type is None")
-      return self._SafeName(node.name)
+      return node.name
     else:
-      return self._SafeName(node.name) + ": " + node.type + suffix
+      return node.name + ": " + node.type + suffix
 
   def VisitTemplateItem(self, node):
     """Convert a template to a string."""
@@ -491,7 +465,7 @@ class PrintVisitor(base_visitor.Visitor):
       # PEP 484 allows this special abbreviation.
       return "None"
     else:
-      return self._SafeName(node_name)
+      return node_name
 
   def VisitLateType(self, node):
     return self.VisitNamedType(node)
@@ -517,7 +491,7 @@ class PrintVisitor(base_visitor.Visitor):
     return "nothing"
 
   def VisitTypeParameter(self, node):
-    return self._SafeName(node.name)
+    return node.name
 
   def VisitModule(self, node):
     if node.is_aliased:
