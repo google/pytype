@@ -20,7 +20,8 @@ Pytype is a static analyzer; it does not execute the code it runs on.
 Thousands of projects at Google rely on pytype to keep their Python code
 well-typed and error-free.
 
-For more information, check out the [user guide][user-guide] or [FAQ][faq].
+For more information, check out the [user guide][user-guide], [FAQ][faq], or
+[supported features][supported-features].
 
 ## How is pytype different from other type checkers?
 
@@ -254,12 +255,11 @@ single Python file assuming that .pyi files have already been generated for all
 of its dependencies.
 * `pyxref`, a cross references generator.
 
-## 2020 Roadmap
+## 2021 Roadmap
 
-* Python 3.7 and 3.8 support
-* Stricter type annotation enforcement
+* Python 3.9 support
 * Better performance on large files
-* Developer documentation
+* Support for numerical libraries
 
 ## License
 [Apache 2.0][license]
@@ -277,5 +277,6 @@ This is not an official Google product.
 [pep-484]: https://www.python.org/dev/peps/pep-0484
 [pyi-stub-files]: docs/user_guide.md#pyi-stub-files
 [scikit-build-issue]: https://github.com/scikit-build/ninja-python-distributions/issues/27
+[supported-features]: docs/support.md
 [user-guide]: docs/user_guide.md
 [wsl]: https://docs.microsoft.com/en-us/windows/wsl/faq

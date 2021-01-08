@@ -952,6 +952,7 @@ class TestVisitors(parser_test_base.ParserTest):
     ast1 = ast1.Visit(visitors.CreateTypeParametersForSignatures())
     self.AssertSourceEquals(ast1, expected)
 
+  @unittest.skip("We no longer support redefining TypeVar")
   def test_redefine_typevar(self):
     src = pytd_src("""
       def f(x: `~unknown1`) -> `~unknown1`: ...

@@ -79,5 +79,15 @@ class AbstractMethodTests(test_base.TargetPython3FeatureTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"Foo.*foo"})
 
+  def test_dictviews(self):
+    self.Check("""
+      from collections import abc
+      from typing import Dict
+      d: Dict[str, int] = {}
+      abc.ItemsView(d)
+      abc.KeysView(d)
+      abc.ValuesView(d)
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
