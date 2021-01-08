@@ -1,3 +1,10 @@
+Version 2021.01.08
+* Automatically add a .gitignore file to the pytype output directory.
+* Do not allow python keywords in pytd files.
+* Fix: Don't infer Callable parameters when there are kwonly params.
+* Fix: Represent empty tuples as TupleType(()).
+* Fix: add __init__ and __contains__ to dict view classes.
+
 Version 2020.12.23
 * Support using a union to filter types out of a type parameter.
 * Fix the attribute type obtained from `attr.ib(default=())`.
