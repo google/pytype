@@ -1,5 +1,7 @@
 # Support
 
+<!--* freshness: { owner: 'rechen' reviewed: '2021-01-08' } *-->
+
 This page lists the Python versions and features supported by the latest version
 of pytype.
 
@@ -11,7 +13,7 @@ of pytype.
          * [Typing](#typing)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2021-01-08T12:38-08:00 -->
+<!-- Added by: rechen, at: 2021-01-08T13:08-08:00 -->
 
 <!--te-->
 
@@ -51,24 +53,24 @@ Enums                                    | 🟡        | [#788][enum]
 
 ### Typing
 
-Feature                                                  | Supports | Issues
--------------------------------------------------------- | :------: | :----:
-PEP 484 -- Type Hints                                    | ✅        |
-PEP 526 -- Syntax for Variable Annotations               | ✅        |
-PEP 544 -- Protocols                                     | 🟡        | [#524][protocol-attributes], [#789][protocol-modules], [#792][protocol-generic]
-PEP 561 -- Distributing and Packaging Type Information   | ❌        | [#151][packaging]
-PEP 563 -- Postponed Evaluation of Annotations           | ✅        |
-PEP 585 -- Type Hinting Generics in Standard Collections | ✅        |
-PEP 586 -- Literal Types                                 | 🟡        | [#790][literal-enums]
-PEP 589 -- TypedDict                                     | ❌        | [#680][typeddict]
-PEP 591 -- Adding a Final Qualifier to Typing            | ❌        | [#680][final]
-PEP 593 -- Flexible Function and Variable Annotations    | ❌        | [#791][annotated]
-PEP 604 -- Allow Writing Union Types as X \| Y           | ❌        | [#785][union-pipe]
-PEP 612 -- Parameter Specification Variables             | ❌        | [#786][param-spec]
-PEP 613 -- Explicit Type Aliases                         | ❌        | [#787][typealias]
-Custom Recursive Types                                   | ❌        | [#407][recursive-types]
-Generic Type Aliases                                     | 🟡        | [#793][generic-aliases]
-Type Annotation Inheritance                              | ❌        | [#81][annotation-inheritance]
+Feature                                                         | Supports | Issues
+--------------------------------------------------------------- | :------: | :----:
+[PEP 484 -- Type Hints][484]                                    | ✅        |
+[PEP 526 -- Syntax for Variable Annotations][526]               | ✅        |
+[PEP 544 -- Protocols][544]                                     | 🟡        | [#524][protocol-attributes], [#789][protocol-modules], [#792][protocol-generic]
+[PEP 561 -- Distributing and Packaging Type Information][561]   | ❌        | [#151][packaging]
+[PEP 563 -- Postponed Evaluation of Annotations][563]           | ✅        |
+[PEP 585 -- Type Hinting Generics in Standard Collections][585] | ✅        |
+[PEP 586 -- Literal Types][586]                                 | 🟡        | [#790][literal-enums]
+[PEP 589 -- TypedDict][589]                                     | ❌        | [#680][typeddict]
+[PEP 591 -- Adding a Final Qualifier to Typing][591]            | ❌        | [#680][final]
+[PEP 593 -- Flexible Function and Variable Annotations][593]    | ❌        | [#791][annotated]
+[PEP 604 -- Allow Writing Union Types as X \| Y][604]           | ❌        | [#785][union-pipe]
+[PEP 612 -- Parameter Specification Variables][612]             | ❌        | [#786][param-spec]
+[PEP 613 -- Explicit Type Aliases][613]                         | ❌        | [#787][typealias]
+Custom Recursive Types                                          | ❌        | [#407][recursive-types]
+Generic Type Aliases                                            | 🟡        | [#793][generic-aliases]
+Type Annotation Inheritance                                     | ❌        | [#81][annotation-inheritance]
 
 ### Third-Party Libraries
 
@@ -83,6 +85,19 @@ Flax       | 🟡        | Google-internal
 Numpy      | 🟡        | Minimal type stub
 Tensorflow | 🟡        | Minimal, Google-internal
 
+[484]: https://www.python.org/dev/peps/pep-0484
+[526]: https://www.python.org/dev/peps/pep-0526
+[544]: https://www.python.org/dev/peps/pep-0544
+[561]: https://www.python.org/dev/peps/pep-0561
+[563]: https://www.python.org/dev/peps/pep-0563
+[585]: https://www.python.org/dev/peps/pep-0585
+[586]: https://www.python.org/dev/peps/pep-0586
+[589]: https://www.python.org/dev/peps/pep-0589
+[591]: https://www.python.org/dev/peps/pep-0591
+[593]: https://www.python.org/dev/peps/pep-0593
+[604]: https://www.python.org/dev/peps/pep-0604
+[612]: https://www.python.org/dev/peps/pep-0612
+[613]: https://www.python.org/dev/peps/pep-0613
 [annotated]: https://github.com/google/pytype/issues/791
 [annotation-inheritance]: https://github.com/google/pytype/issues/81
 [enum]: https://github.com/google/pytype/issues/788
