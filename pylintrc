@@ -153,7 +153,7 @@ notes=FIXME,XXX
 max-line-length=80
 
 # Regexp for a line that is allowed to be longer than the limit.
-ignore-long-lines=(^.{1,80}\s\s# pytype:\s)|(^\s*# http)
+ignore-long-lines=(^.{1,80}\s\s# pytype:\s)|(^\s*#\s+http)
 
 # Maximum number of lines in a module
 max-module-lines=99999

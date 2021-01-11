@@ -76,7 +76,7 @@ class StripSelf(Visitor):
 
 
 class FillInLocalPointers(Visitor):
-  """Fill in ClassType and FunctionType pointers using symbol tables.
+  """Fill in ClassType pointers using symbol tables.
 
   This is an in-place visitor! It modifies the original tree. This is
   necessary because we introduce loops.
@@ -135,15 +135,6 @@ class FillInLocalPointers(Visitor):
       else:
         logging.warning("Couldn't resolve %s: Not a class: %s",
                         prefix + node.name, type(cls))
-
-  def EnterFunctionType(self, node):
-    for prefix, func in self._Lookup(node):
-      if isinstance(func, pytd.Function):
-        node.function = func
-        return
-      else:
-        logging.warning("Couldn't resolve %s: Not a function: %s",
-                        prefix + node.name, type(func))
 
 
 class RemoveTypeParametersFromGenericAny(Visitor):
@@ -297,7 +288,43 @@ class VerifyLookup(Visitor):
       raise ValueError("Unresolved class: %r" % node.name)
 
 
-class LookupBuiltins(Visitor):
+class _ToTypeVisitor(Visitor):
+  """Visitor for calling pytd.ToType().
+
+  pytd.ToType() usually rejects constants and functions, as they cannot be
+  converted to types. However, aliases can point to them, and typing.Literal can
+  be parameterized by constants, so this visitor tracks whether we are inside an
+  alias or literal, and its to_type() method calls pytd.ToType() with the
+  appropriate allow_constants and allow_functions values.
+  """
+
+  def __init__(self):
+    super().__init__()
+    self._in_alias = False
+    self._in_literal = []
+
+  def EnterAlias(self, _):
+    assert not self._in_alias
+    self._in_alias = True
+
+  def LeaveAlias(self, _):
+    assert self._in_alias
+    self._in_alias = False
+
+  def EnterLiteral(self, _):
+    self._in_literal.append(True)
+
+  def LeaveLiteral(self, _):
+    self._in_literal.pop()
+
+  def to_type(self, t):
+    allow_constants = self._in_alias or self._in_literal
+    allow_functions = self._in_alias
+    return pytd.ToType(
+        t, allow_constants=allow_constants, allow_functions=allow_functions)
+
+
+class LookupBuiltins(_ToTypeVisitor):
   """Look up built-in NamedTypes and give them fully-qualified names."""
 
   def __init__(self, builtins, full_names=True):
@@ -333,7 +360,11 @@ class LookupBuiltins(Visitor):
       except KeyError:
         return t
       else:
-        return pytd.ToType(item)
+        try:
+          return self.to_type(item)
+        except NotImplementedError:
+          # This can happen if a builtin is redefined.
+          return t
     else:
       return t
 
@@ -356,7 +387,7 @@ def MaybeSubstituteParameters(base_type, parameters=None):
   return base_type.Visit(ReplaceTypeParameters(mapping))
 
 
-class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
+class LookupExternalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
   """Look up NamedType pointers using a symbol table."""
 
   def __init__(self, module_map, self_name=None, module_alias_map=None):
@@ -374,7 +405,6 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
     self._module_map = module_map
     self._module_alias_map = module_alias_map or {}
     self.name = self_name
-    self._in_constant = []
     self._alias_name = None
     self._in_generic_type = []
     self._star_imports = set()
@@ -389,17 +419,13 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
     assert len(g.signatures) == 1
     return g.signatures[0].return_type
 
-  def EnterConstant(self, _):
-    self._in_constant.append(True)
-
-  def LeaveConstant(self, _):
-    self._in_constant.pop()
-
   def EnterAlias(self, t):
+    super().EnterAlias(t)
     assert not self._alias_name
     self._alias_name = t.name
 
-  def LeaveAlias(self, _):
+  def LeaveAlias(self, t):
+    super().LeaveAlias(t)
     assert self._alias_name
     self._alias_name = None
 
@@ -442,8 +468,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
     if t.name in self._module_map:
       if self._alias_name and "." in self._alias_name:
         # Module aliases appear only in asts that use fully-qualified names.
-        return pytd.ToType(
-            pytd.Module(name=self._alias_name, module_name=t.name))
+        return pytd.Module(name=self._alias_name, module_name=t.name)
       else:
         # We have a class with the same name as a module.
         return t
@@ -470,7 +495,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
       # If `item` contains type parameters and is not inside a GenericType, then
       # we replace the parameters with Any.
       item = MaybeSubstituteParameters(item.type) or item
-    return pytd.ToType(item, allow_constants=not self._in_constant)
+    return self.to_type(item)
 
   def VisitClassType(self, t):
     new_type = self.VisitNamedType(t)
@@ -514,7 +539,8 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
         # than aliased.
         getattrs.add(member.Replace(name=new_name))
       else:
-        aliases.append(pytd.Alias(new_name, pytd.ToType(member)))
+        t = pytd.ToType(member, allow_constants=True, allow_functions=True)
+        aliases.append(pytd.Alias(new_name, t))
     return aliases, getattrs
 
   def _DiscardExistingNames(self, node, potential_members):
@@ -597,7 +623,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny):
             tuple(new_aliases)))
 
 
-class LookupLocalTypes(RemoveTypeParametersFromGenericAny):
+class LookupLocalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
   """Look up local identifiers. Must be called on a TypeDeclUnit."""
 
   def EnterTypeDeclUnit(self, unit):
@@ -619,11 +645,16 @@ class LookupLocalTypes(RemoveTypeParametersFromGenericAny):
         except KeyError as e:
           raise SymbolLookupError("Couldn't find %s in %s" % (
               node.name, self.unit.name)) from e
-      return pytd.ToType(item, allow_constants=False)
+      resolved_node = self.to_type(item)
     elif module_name == self.unit.name:
-      return pytd.ToType(self.unit.Lookup(node.name), allow_constants=False)
+      resolved_node = self.to_type(self.unit.Lookup(node.name))
     else:
-      return node
+      resolved_node = node
+    if isinstance(resolved_node, (pytd.Constant, pytd.Function)):
+      visitor = LookupLocalTypes()
+      visitor.unit = self.unit
+      return resolved_node.Visit(visitor)
+    return resolved_node
 
 
 class ReplaceTypes(Visitor):
@@ -674,9 +705,7 @@ class ExtractSuperClassesByName(ExtractSuperClasses):
   """
 
   def _Key(self, node):
-    if isinstance(node, pytd.GenericType):
-      return node.base_type.name
-    elif isinstance(node, (pytd.GENERIC_BASE_TYPE, pytd.Class)):
+    if isinstance(node, (pytd.GenericType, pytd.GENERIC_BASE_TYPE, pytd.Class)):
       return node.name
 
 
@@ -1167,9 +1196,6 @@ class CollectDependencies(Visitor):
   def EnterNamedType(self, node):
     self._ProcessName(node.name, self.dependencies)
 
-  def EnterFunctionType(self, node):
-    self._ProcessName(node.name, self.dependencies)
-
   def EnterLateType(self, node):
     self._ProcessName(node.name, self.late_dependencies)
 
@@ -1302,7 +1328,7 @@ class AdjustTypeParameters(Visitor):
       if isinstance(parent, pytd.GenericType):
         params = sum((self._GetTemplateItems(param)
                       for param in parent.parameters), [])
-        if parent.base_type.name in ["typing.Generic", "Generic"]:
+        if parent.name in ["typing.Generic", "Generic"]:
           # TODO(mdemello): Do we need "Generic" in here or is it guaranteed
           # to be replaced by typing.Generic by the time this visitor is called?
           self._CheckDuplicateNames(params, node.name)

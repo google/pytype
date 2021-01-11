@@ -410,6 +410,21 @@ class ImportPathsTest(test_base.UnitTest):
         def bar.f() -> List[int]: ...
       """).strip())
 
+  def test_reuse_builtin_name(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class Ellipsis: ...
+      """)
+      d.create_file("bar.pyi", """
+        from foo import *
+        def f(x: Ellipsis): ...
+      """)
+      loader = load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
+      loader.import_name("foo")
+      bar = loader.import_name("bar")
+      self.assertEqual(pytd_utils.Print(bar.Lookup("bar.f")),
+                       "def bar.f(x: foo.Ellipsis) -> Any: ...")
+
 
 class ImportTypeMacroTest(test_base.UnitTest):
 
@@ -567,7 +582,7 @@ class PickledPyiLoaderTest(test_base.UnitTest):
       self._pickle_modules(loader, d, foo)
       loaded_ast = self._load_pickled_module(d, foo)
       g = loaded_ast.Lookup("foo.g")
-      self.assertEqual(g.type.function, loaded_ast.Lookup("foo.f"))
+      self.assertEqual(g.type, loaded_ast.Lookup("foo.f"))
 
   def test_package_relative_import(self):
     with file_utils.Tempdir() as d:

@@ -362,22 +362,6 @@ class PYITest(test_base.TargetIndependentTest):
         x = ...  # type: str
       """)
 
-  def test_dubious_function_reference(self):
-    with file_utils.Tempdir() as d:
-      # TODO(b/159148301): pytd.ToType() currently allows this. Should it?
-      d.create_file("a.pyi", """
-        def DubiousType() -> None: ...
-        x = ...  # type: DubiousType
-      """)
-      ty = self.Infer("""
-        import a
-        x = a.x
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
-        def x() -> None: ...
-      """)
-
   def test_keyword_only_args(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """

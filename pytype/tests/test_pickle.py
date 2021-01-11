@@ -181,7 +181,7 @@ class PickleTest(test_base.TargetIndependentTest):
       foo = d.create_file("foo.pickled", pickled_foo)
       self.loader.imports_map = {"foo": foo}
       pickled_bar = self.PicklePyi("""
-        from foo import f  # Alias(name="f", type=FunctionType("foo.f", f))
+        from foo import f  # Alias(name="f", type=Function("foo.f", ...))
       """, module_name="bar")
       bar = d.create_file("bar.pickled", pickled_bar)
       self.assertNoCrash(self.Infer, """

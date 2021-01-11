@@ -65,10 +65,10 @@ class SerializeAstTest(test_base.UnitTest):
     module_name = "foo.bar"
     with file_utils.Tempdir() as d:
       ast, _ = self._get_ast(temp_dir=d, module_name=module_name)
-    indexer = serialize_ast.FindClassAndFunctionTypesVisitor()
+    indexer = serialize_ast.FindClassTypesVisitor()
     ast.Visit(indexer)
 
-    self.assertEqual(len(indexer.class_type_nodes), 9)
+    self.assertEqual(len(indexer.class_type_nodes), 10)
 
   def test_node_index_visitor_usage(self):
     """Confirms that the node index is used.
@@ -103,8 +103,9 @@ class SerializeAstTest(test_base.UnitTest):
       with open(pickled_ast_filename, "rb") as fi:
         serialized_ast = pickle.load(fi)
       self.assertTrue(serialized_ast.ast)
-      six.assertCountEqual(self, dict(serialized_ast.dependencies),
-                           ["builtins", "foo.bar.module1", "module2"])
+      six.assertCountEqual(
+          self, dict(serialized_ast.dependencies),
+          ["builtins", "foo.bar.module1", "module2", "queue"])
 
   def test_unrestorable_child(self):
     # Assume .cls in a ClassType X in module1 was referencing something for
@@ -276,15 +277,14 @@ class SerializeAstTest(test_base.UnitTest):
       # Check that the saved ast had its name changed.
       self.assertEqual(serializable_ast.ast.name, expected_name)
 
-  def test_function_type(self):
+  def test_function(self):
     with file_utils.Tempdir() as d:
       foo = d.create_file("foo.pickle")
       module_map = self._store_ast(d, "foo", foo, ast=self._get_ast(d, "foo"))
       p = pytd_utils.LoadPickle(foo)
-      self.assertTrue(p.function_type_nodes)
       ast = serialize_ast.ProcessAst(p, module_map)
       f, = [a for a in ast.aliases if a.name == "foo.f"]
-      signature, = f.type.function.signatures
+      signature, = f.type.signatures
       self.assertIsNotNone(signature.return_type.cls)
 
 

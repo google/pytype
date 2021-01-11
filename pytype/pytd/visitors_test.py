@@ -74,13 +74,6 @@ class TestVisitors(parser_test_base.ParserTest):
     ty_b.Visit(visitors.FillInLocalPointers({"": tree}))
     self.assertIsNone(ty_b.cls)
 
-  def test_fill_in_function_type_pointers(self):
-    src = textwrap.dedent("def f(): ...")
-    tree = self.Parse(src)
-    ty = pytd.FunctionType("f", None)
-    ty.Visit(visitors.FillInLocalPointers({"": tree}))
-    self.assertEqual(ty.function, tree.Lookup("f"))
-
   def test_deface_unresolved(self):
     builtins = self.Parse(textwrap.dedent("""
       class int:
@@ -268,7 +261,8 @@ class TestVisitors(parser_test_base.ParserTest):
       class Bar:
         bar = ...  # type: foo.Foo
     """)
-    ast1 = self.Parse(src1, name="foo")
+    ast1 = self.Parse(src1, name="foo").Visit(
+        visitors.LookupBuiltins(self.loader.builtins))
     ast2 = self.Parse(src2, name="bar")
     ast2 = ast2.Visit(visitors.LookupExternalTypes({"foo": ast1, "bar": ast2}))
     self.assertEqual(ast2.Lookup("bar.Bar").constants[0],
@@ -423,15 +417,6 @@ class TestVisitors(parser_test_base.ParserTest):
     deps = visitors.CollectDependencies()
     self.Parse(src).Visit(deps)
     six.assertCountEqual(self, {"baz", "bar", "foo.bar"}, deps.dependencies)
-
-  def test_collect_dependencies_on_function_type(self):
-    other = self.Parse("""
-      def f(): ...
-    """)
-    ast = pytd.FunctionType("foo.bar", other.Lookup("f"))
-    deps = visitors.CollectDependencies()
-    ast.Visit(deps)
-    six.assertCountEqual(self, {"foo"}, deps.dependencies)
 
   def test_expand(self):
     src = textwrap.dedent("""

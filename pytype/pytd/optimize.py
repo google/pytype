@@ -256,8 +256,7 @@ class CombineContainers(visitors.Visitor):
           length = len(t.parameters)
         elif length != len(t.parameters):
           return True
-      elif (isinstance(t, pytd.GenericType) and
-            t.base_type.name in names):
+      elif isinstance(t, pytd.GenericType) and t.name in names:
         return True
     return False
 

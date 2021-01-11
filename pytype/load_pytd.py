@@ -358,8 +358,8 @@ class Loader:
             attr = None
           # 'from . import submodule as submodule' produces
           # Alias(submodule, NamedType(submodule)).
-          if attr is None or (isinstance(attr, pytd.Alias) and
-                              attr.name == getattr(attr.type, "name", None)):
+          if attr is None or (
+              isinstance(attr, pytd.Alias) and attr.name == attr.type.name):
             # Don't check the import result - _resolve_external_types will raise
             # a better error.
             self._import_name(full_name)

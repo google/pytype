@@ -146,8 +146,7 @@ class PrintVisitor(base_visitor.Visitor):
   def _NeedsCallableEllipsis(self, t):
     """Check if it is typing.Callable type."""
     assert isinstance(t, pytd.GenericType)
-    base = t.base_type
-    return isinstance(base, pytd.ClassType) and base.name == "typing.Callable"
+    return t.name == "typing.Callable"
 
   def _RequireImport(self, module, name=None):
     """Register that we're using name from module.
@@ -261,6 +260,8 @@ class PrintVisitor(base_visitor.Visitor):
           suffix += " as " + self.old_node.name
         self.imports = self.old_imports  # undo unnecessary imports change
         return "from " + module + " import " + name + suffix
+    elif isinstance(self.old_node.type, (pytd.Constant, pytd.Function)):
+      return self.old_node.type.Replace(name=node.name).Visit(PrintVisitor())
     elif isinstance(self.old_node.type, pytd.Module):
       return node.type
     return node.name + " = " + node.type
@@ -294,7 +295,8 @@ class PrintVisitor(base_visitor.Visitor):
       slots = [self.INDENT + "__slots__ = [" + slots_str + "]"]
     else:
       slots = []
-    decorators = ["@" + d for d in node.decorators]
+    decorators = ["@" + d.type.Replace(name=d.name).Visit(PrintVisitor())
+                  for d in self.old_node.decorators]
     if node.classes or node.methods or node.constants or slots:
       # We have multiple methods, and every method has multiple signatures
       # (i.e., the method string will have multiple lines). Combine this into
@@ -336,7 +338,7 @@ class PrintVisitor(base_visitor.Visitor):
     """Print out the last type parameter of a container. Used for *args/**kw."""
     assert isinstance(node, pytd.Parameter)
     if isinstance(node.type, pytd.GenericType):
-      container_name = node.type.base_type.name.rpartition(".")[2]
+      container_name = node.type.name.rpartition(".")[2]
       assert container_name in ("tuple", "dict")
       self._typing_import_counts[container_name.capitalize()] -= 1
       # If the type is "Any", e.g. `**kwargs: Any`, decrement Any to avoid an
@@ -478,10 +480,6 @@ class PrintVisitor(base_visitor.Visitor):
     # here so that booleq.py can use pytd_utils.Print().
     return self.VisitNamedType(node)
 
-  def VisitFunctionType(self, unused_node):
-    """Convert a function type to a string."""
-    return self._FromTyping("Callable")
-
   def VisitAnythingType(self, unused_node):
     """Convert an anything type to a string."""
     return self._FromTyping("Any")
@@ -515,6 +513,8 @@ class PrintVisitor(base_visitor.Visitor):
     elif self._NeedsTupleEllipsis(node):
       parameters += ("...",)
     elif self._NeedsCallableEllipsis(self.old_node):
+      # Callable[Any, X] is rewritten to Callable[..., X].
+      self._typing_import_counts["Any"] -= 1
       parameters = ("...",) + parameters[1:]
     return (self.MaybeCapitalize(node.base_type) +
             "[" + ", ".join(parameters) + "]")
