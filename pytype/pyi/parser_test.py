@@ -534,13 +534,16 @@ class HomogeneousTypeTest(_ParserTestBase):
       from typing import Callable
 
       x = ...  # type: Callable[..., bool]""", """
-      from typing import Any, Callable
+      from typing import Callable
 
-      x: Callable[Any, bool]""")
+      x: Callable[..., bool]""")
     self.check("""
       from typing import Any, Callable
 
-      x: Callable[Any, bool]""")
+      x: Callable[Any, bool]""", """
+      from typing import Callable
+
+      x: Callable[..., bool]""")
     self.check("""
       from typing import Any, Callable
 

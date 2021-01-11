@@ -224,6 +224,10 @@ class Signature(node.Node('params: tuple[Parameter]',
   __slots__ = ()
 
   @property
+  def name(self):
+    return None
+
+  @property
   def has_optional(self):
     return self.starargs is not None or self.starstarargs is not None
 
@@ -398,11 +402,12 @@ class AnythingType(node.Node(), Type):
   """A type we know nothing about yet ('?' in pytd)."""
   __slots__ = ()
 
+  @property
+  def name(self):
+    return None
+
   def __bool__(self):
     return True
-
-  # For running under Python 2
-  __nonzero__ = __bool__
 
 
 class NothingType(node.Node(), Type):
@@ -413,11 +418,12 @@ class NothingType(node.Node(), Type):
   """
   __slots__ = ()
 
+  @property
+  def name(self):
+    return None
+
   def __bool__(self):
     return True
-
-  # For running under Python 2
-  __nonzero__ = __bool__
 
 
 class _SetOfTypes(node.Node('type_list: tuple[{Type}]'), Type):
@@ -439,6 +445,10 @@ class _SetOfTypes(node.Node('type_list: tuple[{Type}]'), Type):
     unique = tuple(collections.OrderedDict.fromkeys(flattened))
 
     return super(_SetOfTypes, cls).__new__(cls, unique)
+
+  @property
+  def name(self):
+    return None
 
   def __hash__(self):
     # See __eq__ - order doesn't matter, so use frozenset
@@ -477,6 +487,10 @@ class GenericType(node.Node('base_type: NamedType or ClassType or LateType',
   __slots__ = ()
 
   @property
+  def name(self):
+    return self.base_type.name
+
+  @property
   def element_type(self):
     """Type of the contained type, assuming we only have one type parameter."""
     element_type, = self.parameters
@@ -512,6 +526,10 @@ class CallableType(GenericType):
 
 class Literal(node.Node('value: int or str or {Type}'), Type):
   __slots__ = ()
+
+  @property
+  def name(self):
+    return None
 
 
 # Types that can be a base type of GenericType:
@@ -556,18 +574,19 @@ def ToType(item, allow_constants=False, allow_functions=False):
     return ClassType(item.name, item)
   elif isinstance(item, Function) and allow_functions:
     return item
-  elif (isinstance(item, Constant) and isinstance(item.type, GenericType) and
-        getattr(item.type.base_type, 'name', None) == 'builtins.type'):
+  elif (isinstance(item, Constant) and item.type.name == 'builtins.type'):
     # A constant whose type is Type[C] is equivalent to class C, so the type of
     # an instance of the constant is C.
-    return item.type.parameters[0]
+    if isinstance(item.type, GenericType):
+      return item.type.parameters[0]
+    else:
+      return AnythingType()
   elif isinstance(item, Constant) and (
       isinstance(item.type, AnythingType) or
-      item.name == 'typing_extensions.TypedDict' or
-      getattr(item.type, 'name', None) in (
-          'builtins.type', 'typing_extensions._SpecialForm')):
+      item.type.name == 'typing_extensions._SpecialForm' or
+      item.name == 'typing_extensions.TypedDict'):
     # The following constants are treated as (unknown) types:
-    # * one whose type is Any, type, or typing_extensions._SpecialForm
+    # * one whose type is Any or typing_extensions._SpecialForm
     # * one whose name is typing_extensions.TypedDict, as TypedDict is a class
     #   that looks like a constant:
     #   https://github.com/python/typeshed/blob/8cad322a8ccf4b104cafbac2c798413edaa4f327/third_party/2and3/typing_extensions.pyi#L68

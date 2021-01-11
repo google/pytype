@@ -52,7 +52,7 @@ def get_all_subclasses(asts):
     hierarchy.update(ast.Visit(visitors.ExtractSuperClasses()))
   def filter_superclasses(superclasses):
     return [superclass for superclass in superclasses
-            if hasattr(superclass, "name") and is_complete(superclass)]
+            if is_complete(superclass)]
   hierarchy = {cls: filter_superclasses(superclasses)
                for cls, superclasses in hierarchy.items() if is_complete(cls)}
   # typically this is a fairly short list, e.g.:
@@ -305,11 +305,9 @@ class TypeMatch(pytd_utils.TypeMatcher):
           isinstance(t1, StrictType) and isinstance(t2, pytd.ClassType)):
       # For strict types, avoid subclasses of the left side.
       return booleq.Eq(self._full_name(t1), self._full_name(t2))
-    elif (isinstance(t1, pytd.ClassType) and hasattr(t2, "name") and
-          t2.name == "builtins.object"):
+    elif isinstance(t1, pytd.ClassType) and t2.name == "builtins.object":
       return booleq.TRUE
-    elif (hasattr(t1, "name") and hasattr(t2, "name") and
-          t1.name in ("builtins.type", "typing.Callable") and
+    elif (t1.name in ("builtins.type", "typing.Callable") and
           t2.name in ("builtins.type", "typing.Callable")):
       return booleq.TRUE
     elif isinstance(t1, pytd.ClassType):

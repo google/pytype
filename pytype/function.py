@@ -688,8 +688,7 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
     # in the return value. Since the matcher does not call __init__, we need to
     # do that now. The one exception is that Type[X] does not instantiate X, so
     # we do not call X.__init__.
-    if (not isinstance(return_type, pytd.GenericType) or
-        return_type.base_type.name != "builtins.type"):
+    if return_type.name != "builtins.type":
       for param in pytd_utils.GetTypeParameters(return_type):
         if param.full_name in subst:
           node = self.vm.call_init(node, subst[param.full_name])

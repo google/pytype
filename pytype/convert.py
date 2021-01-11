@@ -457,8 +457,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     if key in self._convert_cache:
       if self._convert_cache[key] is None:
         # This error is triggered by, e.g., classes inheriting from each other.
-        name = (pyval.name if hasattr(pyval, "name")
-                else pyval.__class__.__name__)
+        name = getattr(pyval, "name", None) or pyval.__class__.__name__
         self.vm.errorlog.recursion_error(self.vm.frames, name)
         self._convert_cache[key] = self.unsolvable
       return self._convert_cache[key]
@@ -641,7 +640,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return self.unsolvable
     elif (isinstance(pyval, pytd.Constant) and
           isinstance(pyval.type, pytd.GenericType) and
-          pyval.type.base_type.name == "builtins.type"):
+          pyval.type.name == "builtins.type"):
       # `X: Type[other_mod.X]` is equivalent to `X = other_mod.X`.
       param, = pyval.type.parameters
       return self.constant_to_value(param, subst, self.vm.root_node)
@@ -673,8 +672,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         cls = actual.cls
       if isinstance(cls, pytd.ClassType):
         cls = cls.cls
-      if (isinstance(cls, pytd.GenericType) and
-          cls.base_type.name == "typing.ClassVar"):
+      if isinstance(cls, pytd.GenericType) and cls.name == "typing.ClassVar":
         param, = cls.parameters
         return self.constant_to_value(
             abstract_utils.AsInstance(param), subst, self.vm.root_node)
@@ -747,7 +745,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       else:
         return self.constant_to_value(cls, subst, self.vm.root_node)
     elif (isinstance(pyval, pytd.GenericType) and
-          pyval.base_type.name == "typing.ClassVar"):
+          pyval.name == "typing.ClassVar"):
       param, = pyval.parameters
       return self.constant_to_value(param, subst, self.vm.root_node)
     elif isinstance(pyval, pytd.GenericType):
@@ -776,14 +774,13 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         parameters = pyval.args + (pytd_utils.JoinTypes(pyval.args), pyval.ret)
       else:
         abstract_class = abstract.ParameterizedClass
-        if pyval.base_type.name == "typing.Generic":
+        if pyval.name == "typing.Generic":
           pyval_template = pyval.parameters
         else:
           pyval_template = base.template
         template = tuple(t.name for t in pyval_template)
         parameters = pyval.parameters
-      assert (pyval.base_type.name == "typing.Generic" or
-              len(parameters) <= len(template))
+      assert pyval.name == "typing.Generic" or len(parameters) <= len(template)
       # Delay type parameter loading to handle recursive types.
       # See the ParameterizedClass.formal_type_parameters() property.
       type_parameters = abstract_utils.LazyFormalTypeParameters(

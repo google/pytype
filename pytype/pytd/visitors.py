@@ -705,9 +705,7 @@ class ExtractSuperClassesByName(ExtractSuperClasses):
   """
 
   def _Key(self, node):
-    if isinstance(node, pytd.GenericType):
-      return node.base_type.name
-    elif isinstance(node, (pytd.GENERIC_BASE_TYPE, pytd.Class)):
+    if isinstance(node, (pytd.GenericType, pytd.GENERIC_BASE_TYPE, pytd.Class)):
       return node.name
 
 
@@ -1330,7 +1328,7 @@ class AdjustTypeParameters(Visitor):
       if isinstance(parent, pytd.GenericType):
         params = sum((self._GetTemplateItems(param)
                       for param in parent.parameters), [])
-        if parent.base_type.name in ["typing.Generic", "Generic"]:
+        if parent.name in ["typing.Generic", "Generic"]:
           # TODO(mdemello): Do we need "Generic" in here or is it guaranteed
           # to be replaced by typing.Generic by the time this visitor is called?
           self._CheckDuplicateNames(params, node.name)

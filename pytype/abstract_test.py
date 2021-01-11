@@ -248,7 +248,7 @@ class PyTDTest(AbstractTestBase):
     view = {
         instance.get_instance_type_parameter(abstract_utils.T): param_binding}
     pytd_type = instance.to_type(self._vm.root_node, seen=None, view=view)
-    self.assertEqual("builtins.list", pytd_type.base_type.name)
+    self.assertEqual("builtins.list", pytd_type.name)
     self.assertSetEqual({"builtins.int"},
                         {t.name for t in pytd_type.parameters})
 
@@ -267,7 +267,7 @@ class PyTDTest(AbstractTestBase):
   def test_to_type_with_view_and_empty_param(self):
     instance = abstract.List([], self._vm)
     pytd_type = instance.to_type(self._vm.root_node, seen=None, view={})
-    self.assertEqual("builtins.list", pytd_type.base_type.name)
+    self.assertEqual("builtins.list", pytd_type.name)
     self.assertSequenceEqual((pytd.NothingType(),), pytd_type.parameters)
 
   def test_typing_container(self):

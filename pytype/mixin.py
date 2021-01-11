@@ -7,7 +7,6 @@ from pytype import abstract_utils
 from pytype import datatypes
 from pytype import function
 from pytype.pytd import mro
-from pytype.pytd import pytd
 from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
@@ -199,8 +198,7 @@ class Class(metaclass=MixinMeta):
     """Whether this class is a protocol."""
     if self.isinstance_PyTDClass():
       for parent in self.pytd_cls.parents:
-        if isinstance(
-            parent, pytd.ClassType) and parent.name == "typing.Protocol":
+        if parent.name == "typing.Protocol":
           return True
     elif self.isinstance_InterpreterClass():
       for parent_var in self._bases:

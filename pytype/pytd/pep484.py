@@ -50,9 +50,7 @@ class ConvertTypingToNative(base_visitor.Visitor):
     self.module = module
 
   def _GetModuleAndName(self, t):
-    if isinstance(t, pytd.GenericType):
-      return self._GetModuleAndName(t.base_type)
-    elif isinstance(t, (pytd.ClassType, pytd.NamedType)) and "." in t.name:
+    if t.name and "." in t.name:
       return t.name.rsplit(".", 1)
     else:
       return None, t.name
@@ -103,9 +101,7 @@ class ConvertTypingToNative(base_visitor.Visitor):
     if self.module == "builtins":
       parents = []
       for old_parent, new_parent in zip(self.old_node.parents, node.parents):
-        if (isinstance(new_parent, (pytd.GenericType, pytd.ClassType,
-                                    pytd.NamedType)) and
-            self._GetModuleAndName(new_parent)[1] == node.name):
+        if self._GetModuleAndName(new_parent)[1] == node.name:
           # Don't do conversions like class list(List) -> class list(list)
           parents.append(old_parent)
         else:
