@@ -1198,11 +1198,9 @@ class FunctionTest(_ParserTestBase):
       @dataclass
       class Foo: ...
     """, """
-    import dataclasses
-
     from dataclasses import dataclass
 
-    @dataclasses.dataclass
+    @dataclass
     class Foo: ...
     """)
 

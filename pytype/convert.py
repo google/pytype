@@ -498,7 +498,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
             log.warning("Couldn't resolve %s", late_type.name)
           t = pytd.AnythingType()
         else:
-          t = pytd.ToType(cls, allow_constants=False)
+          t = pytd.ToType(cls, allow_functions=True)
       else:
         # A pickle file refers to a module that went away in the mean time.
         log.error("During dependency resolution, couldn't import %r", module)
@@ -645,8 +645,6 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       # `X: Type[other_mod.X]` is equivalent to `X = other_mod.X`.
       param, = pyval.type.parameters
       return self.constant_to_value(param, subst, self.vm.root_node)
-    elif isinstance(pyval, pytd.FunctionType):
-      return self.constant_to_value(pyval.function, subst, self.vm.root_node)
     elif isinstance(pyval, pytd.UnionType):
       options = [
           self.constant_to_value(t, subst, self.vm.root_node)

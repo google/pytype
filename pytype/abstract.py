@@ -1758,9 +1758,8 @@ class PyTDFunction(Function):
         pyval = vm.loader.import_name(module).Lookup(pyval_name)
       else:
         pyval = vm.lookup_builtin(pyval_name)
-    if (isinstance(pyval, pytd.Alias)
-        and isinstance(pyval.type, pytd.FunctionType)):
-      pyval = pyval.type.function
+    if isinstance(pyval, pytd.Alias) and isinstance(pyval.type, pytd.Function):
+      pyval = pyval.type
     f = vm.convert.constant_to_value(pyval, {}, vm.root_node)
     self = cls(name, f.signatures, pyval.kind, vm)
     self.module = module

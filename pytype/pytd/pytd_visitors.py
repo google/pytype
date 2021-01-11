@@ -261,6 +261,8 @@ class PrintVisitor(base_visitor.Visitor):
           suffix += " as " + self.old_node.name
         self.imports = self.old_imports  # undo unnecessary imports change
         return "from " + module + " import " + name + suffix
+    elif isinstance(self.old_node.type, (pytd.Constant, pytd.Function)):
+      return self.old_node.type.Replace(name=node.name).Visit(PrintVisitor())
     elif isinstance(self.old_node.type, pytd.Module):
       return node.type
     return node.name + " = " + node.type
@@ -294,7 +296,8 @@ class PrintVisitor(base_visitor.Visitor):
       slots = [self.INDENT + "__slots__ = [" + slots_str + "]"]
     else:
       slots = []
-    decorators = ["@" + d for d in node.decorators]
+    decorators = ["@" + d.type.Replace(name=d.name).Visit(PrintVisitor())
+                  for d in self.old_node.decorators]
     if node.classes or node.methods or node.constants or slots:
       # We have multiple methods, and every method has multiple signatures
       # (i.e., the method string will have multiple lines). Combine this into
@@ -477,10 +480,6 @@ class PrintVisitor(base_visitor.Visitor):
     # 'StrictType' is defined, and internally used, by booleq.py. We allow it
     # here so that booleq.py can use pytd_utils.Print().
     return self.VisitNamedType(node)
-
-  def VisitFunctionType(self, unused_node):
-    """Convert a function type to a string."""
-    return self._FromTyping("Callable")
 
   def VisitAnythingType(self, unused_node):
     """Convert an anything type to a string."""
