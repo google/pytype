@@ -967,6 +967,8 @@ class Tuple(Instance, mixin.PythonConstant):
     mixin.PythonConstant.init_mixin(self, content)
     self.tuple_length = len(self.pyval)
     self._hash = None  # memoized due to expensive computation
+    # set this to true when creating a function arg tuple
+    self.is_unpacked_function_args = False
 
   def str_of_constant(self, printer):
     content = ", ".join(" or ".join(abstract_utils.var_map(printer, val))
@@ -2897,7 +2899,10 @@ class NativeFunction(Function):
     return self.func.func_code.co_argcount
 
   def call(self, node, _, args, alias_map=None):
-    args = args.simplify(node, self.vm)
+    sig = None
+    if isinstance(self.func.__self__, CallableClass):
+      sig = function.Signature.from_callable(self.func.__self__)
+    args = args.simplify(node, self.vm, match_signature=sig)
     posargs = [u.AssignToNewVariable(node) for u in args.posargs]
     namedargs = {k: u.AssignToNewVariable(node)
                  for k, u in args.namedargs.items()}
@@ -3879,6 +3884,9 @@ class Splat(BaseValue):
     # constructing an associated TupleClass for a function call tuple, but for
     # now we just set the class to Any here.
     return self.vm.convert.unsolvable
+
+  def __repr__(self):
+    return "splat(%r)" % self.iterable.data
 
 
 class Module(Instance, mixin.LazyMembers):

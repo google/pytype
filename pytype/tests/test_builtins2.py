@@ -637,8 +637,8 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       x1 = ...  # type: Dict[str, int]
       y1 = ...  # type: int
 
-      x2 = ...  # type: dict
-      y2 = ...  # type: Any
+      x2 = ...  # type: Dict[str, int]
+      y2 = ...  # type: int
     """)
 
   def test_redefine_next(self):
