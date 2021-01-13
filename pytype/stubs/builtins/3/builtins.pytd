@@ -973,7 +973,9 @@ class GeneratorExit(BaseException):
 IOError = OSError
 
 class ImportError(StandardError):
-    pass
+    if sys.version_info >= (3, 3):
+        name = ...  # type: str
+        path = ...  # type: str
 
 class ImportWarning(Warning):
     pass

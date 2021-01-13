@@ -57,5 +57,13 @@ class ImportTest(test_base.TargetPython3FeatureTest):
         x = ...  # type: int
       """)
 
+  def test_import_attribute_error(self):
+    self.CheckWithErrors("""
+      try:
+        import nonexistent  # import-error
+      except ImportError as err:
+        print(err.name)
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

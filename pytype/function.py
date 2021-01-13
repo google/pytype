@@ -337,10 +337,22 @@ class Args(collections.namedtuple(
       args = None
     return args
 
+  def _expand_typed_star(self, vm, node, star, count):
+    """Convert *xs: Sequence[T] -> [T, T, ...]."""
+    if not count:
+      return []
+    p = abstract_utils.merged_type_parameter(node, star, abstract_utils.T)
+    if not p.bindings:
+      # TODO(b/159052609): This shouldn't happen. For some reason,
+      # namedtuple instances don't have any bindings in T; see
+      # tests/py3/test_unpack:TestUnpack.test_unpack_namedtuple.
+      return [vm.new_unsolvable(node) for _ in range(count)]
+    return [p.AssignToNewVariable(node) for _ in range(count)]
+
   def _unpack_and_match_args(self, node, vm, match_signature, starargs_tuple):
     """Match args against a signature with unpacking."""
-
     posargs = self.posargs
+    namedargs = self.namedargs
     # As we have the function signature we will attempt to adjust the
     # starargs into the missing posargs.
     pre = []
@@ -352,18 +364,35 @@ class Args(collections.namedtuple(
       post.append(stars.pop())
     post.reverse()
     n_matched = len(posargs) + len(pre) + len(post)
-    posarg_delta = len(match_signature.param_names) - n_matched
+    required_posargs = 0
+    for p in match_signature.param_names:
+      if p in namedargs or p in match_signature.defaults:
+        break
+      required_posargs += 1
+    posarg_delta = required_posargs - n_matched
+
     if stars and not post:
-      # If the invocation ends with `*args`, return it to match against *args in
-      # the function signature. For f(<k args>, *xs, ..., *ys), transform to
-      # f(<k args>, *ys) since ys is an indefinite tuple anyway and will match
-      # against all remaining posargs.
-      return posargs + tuple(pre), abstract_utils.unwrap_splat(stars[-1])
+      star = stars[-1]
+      if match_signature.varargs_name:
+        # If the invocation ends with `*args`, return it to match against *args
+        # in the function signature. For f(<k args>, *xs, ..., *ys), transform
+        # to f(<k args>, *ys) since ys is an indefinite tuple anyway and will
+        # match against all remaining posargs.
+        return posargs + tuple(pre), abstract_utils.unwrap_splat(star)
+      else:
+        # If we do not have a `*args` in match_signature, just expand the
+        # terminal splat to as many args as needed and then drop it.
+        mid = self._expand_typed_star(vm, node, star, posarg_delta)
+        return posargs + tuple(pre + mid), None
     elif posarg_delta <= len(stars):
       # We have too many args; don't do *xs expansion. Go back to matching from
       # the start and treat every entry in starargs_tuple as length 1.
       n_params = len(match_signature.param_names)
       all_args = posargs + starargs_tuple
+      if not match_signature.varargs_name:
+        # If the function sig has no *args, return everything in posargs
+        pos = _splats_to_any(all_args, vm)
+        return pos, None
       # Don't unwrap splats here because f(*xs, y) is not the same as f(xs, y).
       # TODO(mdemello): Ideally, since we are matching call f(*xs, y) against
       # sig f(x, y) we should raise an error here.
@@ -381,15 +410,9 @@ class Args(collections.namedtuple(
         return pos, None
     elif stars:
       if len(stars) == 1:
-        # Special case (*xs, <post>) to fill in the type of xs in every arg
-        p = abstract_utils.merged_type_parameter(
-            node, stars[0], abstract_utils.T)
-        if not p.bindings:
-          # TODO(b/159052609): This shouldn't happen. For some reason,
-          # namedtuple instances don't have any bindings in T; see
-          # tests/py3/test_unpack:TestUnpack.test_unpack_namedtuple.
-          p.AddBinding(vm.convert.unsolvable)
-        mid = [p.AssignToNewVariable(node) for _ in range(posarg_delta)]
+        # Special case (<pre>, *xs) and (*xs, <post>) to fill in the type of xs
+        # in every remaining arg.
+        mid = self._expand_typed_star(vm, node, stars[0], posarg_delta)
       else:
         # If we have (*xs, <k args>, *ys) remaining, and more than k+2 params to
         # match, don't try to match the intermediate params to any range, just
@@ -408,6 +431,18 @@ class Args(collections.namedtuple(
     namedargs = self.namedargs
     starargs = self.starargs
     starstarargs = self.starstarargs
+    # Unpack starstarargs into namedargs. We need to do this first so we can see
+    # what posargs are still required.
+    starstarargs_as_dict = self.starstarargs_as_dict()
+    if starstarargs_as_dict is not None:
+      # Unlike varargs below, we do not adjust starstarargs into namedargs when
+      # the function signature has matching param_names because we have not
+      # found a benefit in doing so.
+      if self.namedargs is None:
+        namedargs = starstarargs_as_dict
+      else:
+        namedargs.update(node, starstarargs_as_dict)
+      starstarargs = None
     starargs_as_tuple = self.starargs_as_tuple(node, vm)
     if starargs_as_tuple is not None:
       if match_signature:
@@ -427,16 +462,6 @@ class Args(collections.namedtuple(
         # have a signature to match. Just set all splats to Any.
         posargs = self.posargs + _splats_to_any(starargs_as_tuple, vm)
         starargs = None
-    starstarargs_as_dict = self.starstarargs_as_dict()
-    if starstarargs_as_dict is not None:
-      # Unlike varargs above, we do not adjust starstarargs into namedargs when
-      # the function signature has matching param_names because we have not
-      # found a benefit in doing so.
-      if self.namedargs is None:
-        namedargs = starstarargs_as_dict
-      else:
-        namedargs.update(node, starstarargs_as_dict)
-      starstarargs = None
     return Args(posargs, namedargs, starargs, starstarargs)
 
   def get_variables(self):

@@ -64,6 +64,15 @@ class TestUnpack(test_base.TargetPython3FeatureTest):
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"w: A.*w: Union.int,.str."})
 
+  def test_unpack_concrete_in_function_args(self):
+    self.CheckWithErrors("""
+      def f(x: int, y: str):
+        pass
+      a = (1, 2)
+      f(*a)  # wrong-arg-types
+      f(1, *("x", "y"))  # wrong-arg-count
+    """)
+
   def test_match_typed_starargs(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
@@ -165,22 +174,21 @@ class TestUnpack(test_base.TargetPython3FeatureTest):
 
   def test_erroneous_splat(self):
     # Don't crash on an unnecessary splat.
-    # TODO(mdemello): Raise an error instead.
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any, Sequence
         def f(x: Sequence[Any], y: str): ...
         def g(x: Sequence[Any], y: Sequence[str]): ...
       """)
-      self.Check("""
+      self.CheckWithErrors("""
         import itertools
         from typing import List
         import foo
         x: list
         y: List[int]
         foo.f(*x, "a")
-        foo.f(*x, *y)
-        foo.g(*x, *y)
+        foo.f(*x, *y)  # wrong-arg-types
+        foo.g(*x, *y)  # wrong-arg-types
         a = itertools.product(*x, *y)
       """, pythonpath=[d.path])
 
@@ -194,7 +202,53 @@ class TestUnpack(test_base.TargetPython3FeatureTest):
         import foo
         X = collections.namedtuple('X', ('a', 'b', 'c'))
         foo.f(*X(0, 1, 2), 3, 4, 5)
+
+        def g() -> X:
+          return X(0, 1, 2)
+        p = X(*g())
+        q = X(*g())
+        f = X(*(x - y for x, y in zip(p, q)))
       """, pythonpath=[d.path])
+
+  def test_posargs_and_namedargs(self):
+    self.Check("""
+      def f(x, y=1, z=2, a=3):
+        pass
+
+      def g(b=None):
+        f(*b, y=2, z=3)
+    """)
+
+  def test_dont_unpack_into_optional(self):
+    self.Check("""
+      def f(x: int, y: int, z: str = ...):
+        pass
+
+      def g(*args: int):
+        f(*args)
+    """)
+
+  def test_multiple_tuple_bindings(self):
+    ty = self.Infer("""
+      from typing import Tuple
+
+      class C:
+        def __init__(self, p, q):
+          self.p = p
+          self.q = q
+
+      x = [('a', 1), ('c', 3j), (2, 3)]
+      y = [C(*a).q for a in x]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, List, Tuple, Union
+      class C:
+        p: Any
+        q: Any
+        def __init__(self, p, q): ...
+      x: List[Tuple[Union[int, str], Union[complex, int]]]
+      y: List[Union[complex, int]]
+    """)
 
 
 test_base.main(globals(), __name__ == "__main__")

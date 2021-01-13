@@ -97,7 +97,7 @@ def deep_variable_product(variables, limit=DEEP_VARIABLE_LIMIT):
   Raises:
     TooComplexError: If we expanded too many values.
   """
-  return _deep_values_list_product((v.bindings for v in variables), set(),
+  return _deep_values_list_product([v.bindings for v in variables], set(),
                                    ComplexityLimit(limit))
 
 

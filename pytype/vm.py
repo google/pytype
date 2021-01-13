@@ -2939,8 +2939,9 @@ class VirtualMachine:
     return self.call_function_from_stack(state, op.arg, None, None)
 
   def byte_CALL_FUNCTION_VAR(self, state, op):
-    state, args = self.pop_varargs(state)
-    return self.call_function_from_stack(state, op.arg, args, None)
+    state, starargs = self.pop_varargs(state)
+    starargs = self._ensure_unpacked_starargs(state.node, starargs)
+    return self.call_function_from_stack(state, op.arg, starargs, None)
 
   def byte_CALL_FUNCTION_KW(self, state, op):
     state, kwargs = self.pop_kwargs(state)
@@ -2948,8 +2949,9 @@ class VirtualMachine:
 
   def byte_CALL_FUNCTION_VAR_KW(self, state, op):
     state, kwargs = self.pop_kwargs(state)
-    state, args = self.pop_varargs(state)
-    return self.call_function_from_stack(state, op.arg, args, kwargs)
+    state, starargs = self.pop_varargs(state)
+    starargs = self._ensure_unpacked_starargs(state.node, starargs)
+    return self.call_function_from_stack(state, op.arg, starargs, kwargs)
 
   def byte_CALL_FUNCTION_EX(self, state, op):
     """Call a function."""
@@ -2958,6 +2960,7 @@ class VirtualMachine:
     else:
       starstarargs = None
     state, starargs = state.pop()
+    starargs = self._ensure_unpacked_starargs(state.node, starargs)
     state, fn = state.pop()
     # TODO(mdemello): fix function.Args() to properly init namedargs,
     # and remove this.
@@ -3171,14 +3174,33 @@ class VirtualMachine:
     # coroutine first, and do nothing if it is, else call GET_ITER
     return self.byte_GET_ITER(state, op)
 
+  def _merge_tuple_bindings(self, node, var):
+    """Merge a set of heterogeneous tuples from var's bindings."""
+    # Helper function for _unpack_iterable. We have already checked that all the
+    # tuples are the same length.
+    if len(var.bindings) == 1:
+      return var
+    length = var.data[0].tuple_length
+    seq = [self.program.NewVariable() for _ in range(length)]
+    for tup in var.data:
+      for i in range(length):
+        seq[i].PasteVariable(tup.pyval[i])
+    return seq
+
   def _unpack_iterable(self, node, var):
-    """Pop count iterables off the stack and concatenate."""
+    """Unpack an iterable."""
     elements = []
     try:
       itr = abstract_utils.get_atomic_python_constant(var, collections.Iterable)
     except abstract_utils.ConversionError:
       if abstract_utils.is_var_indefinite_iterable(var):
         elements.append(abstract.Splat(self, var).to_variable(node))
+      elif (all(d.isinstance_Tuple() for d in var.data) and
+            all(d.tuple_length == var.data[0].tuple_length for d in var.data)):
+        # If we have a set of bindings to tuples all of the same length, treat
+        # them as a definite tuple with union-typed fields.
+        vs = self._merge_tuple_bindings(node, var)
+        elements.extend(vs)
       elif (any(x.isinstance_Unsolvable() for x in var.data) or
             all(x.isinstance_Unknown() for x in var.data)):
         # If we have an unsolvable or unknown we are unpacking as an iterable,
@@ -3186,12 +3208,9 @@ class VirtualMachine:
         v = self.convert.tuple_type.instantiate(node)
         elements.append(abstract.Splat(self, v).to_variable(node))
       else:
-        # Treat the fallthrough case as an indefinite iterable too. We should
-        # never reach here, so log a warning.
-        log.warning("Unexpected value when unpacking variable %r: %r",
-                    var, var.data)
-        v = self.convert.tuple_type.instantiate(node)
-        elements.append(abstract.Splat(self, v).to_variable(node))
+        # If we reach here we have tried to unpack something that wasn't
+        # iterable. Wrap it in a splat and let the matcher raise an error.
+        elements.append(abstract.Splat(self, var).to_variable(node))
     else:
       for v in itr:
         # Some iterable constants (e.g., tuples) already contain variables,
@@ -3230,6 +3249,24 @@ class VirtualMachine:
       ret = build_concrete(state.node, seq)
     return state.push(ret)
 
+  def _build_function_args_tuple(self, node, seq):
+    # If we are building function call args, do not collapse indefinite
+    # subsequences into a single tuple[x, ...], but allow them to be concrete
+    # elements to match against function parameters and *args.
+    tup = self.convert.tuple_to_value(seq)
+    tup.is_unpacked_function_args = True
+    return tup.to_variable(node)
+
+  def _ensure_unpacked_starargs(self, node, starargs):
+    """Unpack starargs if it has not been done already."""
+    # TODO(mdemello): If we *have* unpacked the arg in a previous opcode will it
+    # always have a single binding?
+    if not any(x.isinstance_Tuple() and x.is_unpacked_function_args
+               for x in starargs.data):
+      seq = self._unpack_iterable(node, starargs)
+      starargs = self._build_function_args_tuple(node, seq)
+    return starargs
+
   def byte_BUILD_LIST_UNPACK(self, state, op):
     return self._unpack_and_build(state, op.arg, self.convert.build_list,
                                   self.convert.list_type)
@@ -3261,11 +3298,8 @@ class VirtualMachine:
                                   self.convert.tuple_type)
 
   def byte_BUILD_TUPLE_UNPACK_WITH_CALL(self, state, op):
-    # If we are building function call args, do not collapse indefinite
-    # subsequences into a single tuple[x, ...], but allow them to be concrete
-    # elements to match against function parameters and *args.
     state, seq = self._pop_and_unpack_list(state, op.arg)
-    ret = self.convert.build_tuple(state.node, seq)
+    ret = self._build_function_args_tuple(state.node, seq)
     return state.push(ret)
 
   def byte_BUILD_SET_UNPACK(self, state, op):
