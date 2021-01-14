@@ -347,6 +347,8 @@ class TypeMatch(pytd_utils.TypeMatcher):
         return booleq.FALSE
       else:
         return booleq.Eq(t1.name, t2.name)
+    elif isinstance(t1,pytd.NamedType) and isinstance(t2,pytd.Literal):
+        return booleq.FALSE
     elif isinstance(t1, pytd.LateType) or isinstance(t2, pytd.LateType):
       # Unresolved types never match against anything.
       return booleq.FALSE
