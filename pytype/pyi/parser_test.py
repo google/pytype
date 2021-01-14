@@ -953,6 +953,11 @@ class NamedTupleTest(_ParserTestBase):
       class X(NamedTuple, NamedTuple): ...
     """, 2, "cannot inherit from bare NamedTuple more than once")
 
+  def test_redefine_namedtuple(self):
+    self.check("""
+      class NamedTuple: ...
+    """)
+
 
 class FunctionTest(_ParserTestBase):
 
