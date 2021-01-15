@@ -1,3 +1,8 @@
+Version 2021.01.14
+* Fix some corner cases with unpacking and function args.
+* Add ImportError attributes name, path for Python 3.3+.
+* Unbreak annotate-ast by adding an empty pytype/ast/__init__.py file.
+
 Version 2021.01.08
 * Automatically add a .gitignore file to the pytype output directory.
 * Do not allow python keywords in pytd files.

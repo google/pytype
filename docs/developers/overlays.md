@@ -9,7 +9,7 @@
       * [Mechanics](#mechanics)
       * [Adding an overlay](#adding-an-overlay)
 
-<!-- Added by: rechen, at: 2020-12-08T18:14-08:00 -->
+<!-- Added by: rechen, at: 2021-01-14T02:40-08:00 -->
 
 <!--te-->
 
@@ -79,14 +79,14 @@ abstract.BaseValue instance.
        super().__init__(vm, "foo", member_map, ast)
    ```
 
-   Then add the new overlay to [overlay_dict][overlay_dict], and the file to the
-   [libvm CMake target][libvm-cmake].
+   Then add the new overlay to [overlay_dict][overlay_dict], and create a new
+   target for the file in [`overlays/CMakeLists.txt`][overlays-cmake].
 1. In the `{Module}Overlay` initializer, add an entry to `member_map` for each
    new member. The key should be the member name and the value the constructor.
 1. Implement the new module members! The existing overlays contain plenty of
    examples of how to do this.
 
-[libvm-cmake]: https://github.com/google/pytype/blob/2f2a1483751171421490c352f05955655ea572fa/pytype/CMakeLists.txt#L171-L182
+[overlays-cmake]: https://github.com/google/pytype/blob/master/pytype/overlays/CMakeLists.txt
 
 [member-conversion]: https://github.com/google/pytype/blob/2f2a1483751171421490c352f05955655ea572fa/pytype/overlay.py#L45
 

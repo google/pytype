@@ -12,6 +12,7 @@ py_library(
   NAME
     visitor
   SRCS
+    __init__.py
     visitor.py
 )
 

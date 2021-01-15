@@ -176,6 +176,13 @@ classdef
       @$.begin = @3.begin;
       CHECK($$, @$);
     }
+  | decorators CLASS NAMEDTUPLE parents ':' maybe_type_ignore maybe_class_funcs
+    {
+      $$ = ctx->Call(kNewClass, "(NNNN)", $1, PyString_FromString("NamedTuple"), $4, $7);
+      // Fix location tracking. See funcdef.
+      @$.begin = @3.begin;
+      CHECK($$, @$);
+    }
   ;
 
 class_name
