@@ -5,11 +5,12 @@
 <!--ts-->
    * [Development process](#development-process)
       * [GitHub](#github)
+      * [Issue tracker](#issue-tracker)
       * [Running pytype locally](#running-pytype-locally)
       * [Debugging](#debugging)
       * [Profiling](#profiling)
 
-<!-- Added by: rechen, at: 2020-12-08T19:37-08:00 -->
+<!-- Added by: rechen, at: 2021-01-15T16:04-08:00 -->
 
 <!--te-->
 
@@ -23,12 +24,28 @@
 1. Make your change! Make sure the tests pass, and linting and type-checking are
    clean.
 
-1. Push your change to your fork and open a PR against the original repo. If
-   it's your first time contributing to a Google open source project, please
-   sign the Contributor License Agreement when prompted. Depending on what files
-   your PR touches, it will be either merged directly or closed after being
-   copied into the Google-internal codebase and re-exported to GitHub. You will
-   be credited as the author either way.
+1. Push your change to your fork and open a pull request (PR) against the
+   original repo. If it's your first time contributing to a Google open source
+   project, please sign the Contributor License Agreement when prompted.
+   Depending on what files your PR touches, it will be either merged directly or
+   closed after being copied into the Google-internal codebase and re-exported
+   to GitHub. You will be credited as the author either way.
+
+## Issue tracker
+
+Externally, pytype uses the [GitHub issue tracker][github-issues] for issue
+management. You can filter by the [good first issue][good-first-issues] label to
+find issues friendly to new contributors. Please comment on an issue before
+starting any work, to avoid duplication of effort. When opening a PR to close an
+issue, include the following in the description to
+[close the issue][pr-keywords] when the PR is merged:
+
+```
+Resolves #XXX
+```
+
+(Replace `XXX` with the issue ID.) If a PR is relevant to an issue but doesn't
+fix it, you can link the two by mentioning the ID without the closing keyword.
 
 ## Running pytype locally
 
@@ -84,7 +101,10 @@ rank of functions in the profile is stable between runs.
 
 <!-- General references -->
 [contributing-md]: https://github.com/google/pytype/blob/master/CONTRIBUTING.md
+[github-issues]: https://github.com/google/pytype/issues
+[good-first-issues]: https://github.com/google/pytype/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22
 [pdb]: https://docs.python.org/3/library/pdb.html
+[pr-keywords]: https://docs.github.com/en/github/managing-your-work-on-github/linking-a-pull-request-to-an-issue#linking-a-pull-request-to-an-issue-using-a-keyword
 [pylint]: http://pylint.pycqa.org/en/latest/
 [pytype-quickstart]: https://github.com/google/pytype#quickstart
 [pstats]: https://docs.python.org/3/library/profile.html#module-pstats
