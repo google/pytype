@@ -32,6 +32,7 @@ class FunctionCommentWithAnnotationsTest(test_base.TargetPython3BasicTest):
 
 
 class Py3TypeCommentTest(test_base.TargetPython3FeatureTest):
+  """Type comment tests that use Python 3-only features."""
 
   def test_ignored_comment(self):
     self.CheckWithErrors("""
@@ -39,5 +40,23 @@ class Py3TypeCommentTest(test_base.TargetPython3FeatureTest):
         v: int = None  # type: str  # ignored-type-comment
     """)
 
+  def test_first_line_of_code(self):
+    # In Python 3.8, the line number of this method's first opcode is the second
+    # line in the method body, not the first. This test verifies that we are
+    # still able to determine the first line number in the body. If we get the
+    # wrong line, the `Dict[str, int]` annotation is associated to the method
+    # signature, generating a spurious [redundant-function-type-comment] error.
+    self.Check("""
+      from typing import Dict
+      def f() -> Dict[str, int]:
+        # some_var = ''
+        # something more
+        cast_type: Dict[str, int] = {
+          'one': 1,
+          'two': 2,
+          'three': 3,
+        }
+        return cast_type
+    """)
 
 test_base.main(globals(), __name__ == "__main__")
