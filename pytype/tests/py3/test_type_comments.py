@@ -39,5 +39,18 @@ class Py3TypeCommentTest(test_base.TargetPython3FeatureTest):
         v: int = None  # type: str  # ignored-type-comment
     """)
 
+  def test_first_line_of_code(self):
+    self.Check("""
+      from typing import Dict
+      def f() -> Dict[str, int]:
+        # some_var = ''
+        # something more
+        cast_type: Dict[str, int] = {
+          'one': 1,
+          'two': 2,
+          'three': 3,
+        }
+        return cast_type
+    """)
 
 test_base.main(globals(), __name__ == "__main__")
