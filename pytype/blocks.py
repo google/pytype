@@ -340,7 +340,8 @@ class CollectAnnotationTargetsVisitor:
         fn_code = code.co_consts[code_op.arg]
         if not _is_function_def(fn_code):
           continue
-        end_line = fn_code.co_code[0].line  # First line of code in body.
+        # First line of code in body.
+        end_line = min(op.line for op in fn_code.co_code)
         self.make_function_ops[op.line] = (end_line, op)
       elif (isinstance(op, STORE_OPCODES) and
             op.line not in self.make_function_ops):
