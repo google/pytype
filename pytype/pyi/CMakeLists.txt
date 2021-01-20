@@ -43,6 +43,7 @@ py_library(
   DEPS
     .parser_ext
     pytype.utils
+    pytype.pytd.pyi.typed_ast.ast_parser
     pytype.pytd.pytd_for_parser
     pytype.pytd.parse.parse
 )

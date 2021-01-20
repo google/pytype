@@ -520,9 +520,9 @@ class PrintTest(parser_test_base.ParserTest):
     self.assertMultiLineEqual(pytd_utils.Print(ast), textwrap.dedent("""
       from typing import Literal
 
-      x1: Literal[""]
-      x2: Literal[b""]
-      x3: Literal[u""]
+      x1: Literal['']
+      x2: Literal[b'']
+      x3: Literal[u'']
       x4: Literal[0]
       x5: Literal[True]
       x6: None
@@ -536,7 +536,7 @@ class PrintTest(parser_test_base.ParserTest):
     self.assertMultiLineEqual(pytd_utils.Print(ast), textwrap.dedent("""
       from typing import Literal
 
-      x: Literal["x", "y"]
+      x: Literal['x', 'y']
     """).strip())
 
 

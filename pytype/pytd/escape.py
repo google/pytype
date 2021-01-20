@@ -5,7 +5,11 @@ import re
 from typing import List
 
 
-PARTIAL = "~"
+# The partial prefix was originally `~` and some part of the protocol inference
+# code relies on it sorting later than `typing.`, so we start the prefix with
+# `z` to make sure it comes last in the sort order. To reproduce, remove the `z`
+# and test tests/test_protocol_inference
+PARTIAL = "z__pytype_partial__"
 UNKNOWN = PARTIAL + "unknown"
 
 

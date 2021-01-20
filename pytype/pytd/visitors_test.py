@@ -21,7 +21,9 @@ def __getattr__(name) -> Any: ...
 
 
 def pytd_src(text):
-  return textwrap.dedent(escape.preprocess_pytd(text))
+  text = textwrap.dedent(escape.preprocess_pytd(text))
+  text = text.replace("`", "")
+  return text
 
 
 class TestVisitors(parser_test_base.ParserTest):
