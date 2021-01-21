@@ -1,0 +1,168 @@
+add_package()
+
+py_library(
+  NAME
+    ast_parser
+  DEPS
+    ._ast_parser
+    .classdef
+    .conditions
+    .definitions
+    .function
+    .modules
+    .namedtuple
+    .types
+    .visitor
+)
+
+py_library(
+  NAME
+    _ast_parser
+  SRCS
+    ast_parser.py
+  DEPS
+    .classdef
+    .conditions
+    .definitions
+    .function
+    .modules
+    .types
+    .visitor
+    pytype.utils
+    pytype.ast.ast
+    pytype.pytd.pytd_for_parser
+)
+
+py_library(
+  NAME
+    classdef
+  SRCS
+    classdef.py
+  DEPS
+    .types
+    pytype.pytd.pytd_for_parser
+    pytype.pytd.parse.parse
+)
+
+py_library(
+  NAME
+    conditions
+  SRCS
+    conditions.py
+  DEPS
+    .types
+    pytype.utils
+    pytype.ast.ast
+    pytype.pytd.pytd_for_parser
+)
+
+py_library(
+  NAME
+    definitions
+  SRCS
+    definitions.py
+  DEPS
+    .classdef
+    .function
+    .namedtuple
+    .types
+    pytype.pytd.pytd_for_parser
+    pytype.pytd.parse.parse
+)
+
+py_library(
+  NAME
+    function
+  SRCS
+    function.py
+  DEPS
+    .types
+    pytype.utils
+    pytype.pytd.pytd_for_parser
+    pytype.pytd.parse.parse
+)
+
+py_library(
+  NAME
+    modules
+  SRCS
+    modules.py
+  DEPS
+    .types
+    pytype.utils
+    pytype.pytd.pytd_for_parser
+    pytype.pytd.parse.parse
+)
+
+py_library(
+  NAME
+    namedtuple
+  SRCS
+    namedtuple.py
+  DEPS
+    .function
+    .types
+    pytype.pytd.pytd_for_parser
+)
+
+py_library(
+  NAME
+    types
+  SRCS
+    types.py
+  DEPS
+    pytype.utils
+    pytype.pytd.pytd_for_parser
+    pytype.pytd.parse.parse
+)
+
+py_library(
+  NAME
+    visitor
+  SRCS
+    visitor.py
+  DEPS
+    .types
+    pytype.ast.ast
+)
+
+py_test(
+  NAME
+    ast_parser_test
+  SRCS
+    ast_parser_test.py
+  DEPS
+    ._ast_parser
+    .types
+    pytype.pytd.pytd_for_parser
+    pytype.tests.test_base
+)
+
+toplevel_py_binary(
+  NAME
+    parse_ast
+  SRCS
+    parse_ast.py
+  MAIN
+    parse_ast.py
+  DEPS
+    ._ast_parser
+    .types
+    pytype.utils
+    pytype.pyi.parser
+    pytype.pytd.pytd_for_parser
+)
+
+toplevel_py_binary(
+  NAME
+    typeshed_parsing_test
+  SRCS
+    typeshed_parsing_test.py
+  MAIN
+    typeshed_parsing_test.py
+  DEPS
+    ._ast_parser
+    pytype.utils
+    pytype.pyi.parser
+    pytype.pytd.pytd_for_parser
+)

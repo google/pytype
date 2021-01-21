@@ -115,17 +115,18 @@ class ParseErrorTest(unittest.TestCase):
 class ParserTest(_ParserTestBase):
 
   def test_syntax_error(self):
-    self.check_error("123", 1, "syntax error")
+    self.check_error("123", 1, "Unexpected expression")
 
   def test_illegal_character(self):
-    self.check_error("^", 1, "Illegal character '^'")
+    self.check_error("^", 1, "invalid syntax")
 
   def test_invalid_indentation(self):
     self.check_error("""
       class Foo:
         x = ... # type: int
-       y""", 3, "Invalid indentation")
+       y""", 3, "unindent does not match")
 
+  @unittest.skip("New parser does not support this")
   def test_type_on_next_line(self):
     self.check("""
       a = ...
@@ -138,6 +139,9 @@ class ParserTest(_ParserTestBase):
     self.check("x: str")
     self.check("x = 0", "x: int")
     self.check("x = 0.0", "x: float")
+
+  @unittest.skip("Not checking invalid literals")
+  def test_invalid_constant(self):
     self.check_error("x = 123", 1,
                      "Only '0' allowed as int literal")
     self.check("x = 0.0", "x: float")
@@ -151,6 +155,9 @@ class ParserTest(_ParserTestBase):
     self.check('x = u""', "x: unicode")
     self.check("x = ''", "x: str")
     self.check('x = ""', "x: str")
+
+  @unittest.skip("We allow all strings.")
+  def test_invalid_string_constant(self):
     self.check_error("x = b'x'", 1,
                      "Only '', b'', and u'' allowed as string literals")
     self.check_error("x = u'x'", 1,
@@ -186,11 +193,11 @@ class ParserTest(_ParserTestBase):
   def test_method_aliases(self):
     self.check("""
       class A:
-          def x(self) -> int
+          def x(self) -> int: ...
           y = x
           z = y
           @classmethod
-          def a(cls) -> str
+          def a(cls) -> str: ...
           b = a
           c = b""", """
       class A:
@@ -231,7 +238,7 @@ class ParserTest(_ParserTestBase):
     self.check_error("""
       class A:
           __slots__ = ["foo", ?]
-    """, 2, "syntax error")
+    """, 2, "invalid syntax")
     self.check_error("""
       class A:
           __slots__ = int
@@ -284,7 +291,7 @@ class ParserTest(_ParserTestBase):
     self.check("from foo.bar import baz as abc")
     self.check("from typing import NamedTuple, TypeVar", "")
     self.check("from foo.bar import *")
-    self.check_error("from foo import * as bar", 1, "syntax error")
+    self.check_error("from foo import * as bar", 1, "invalid syntax")
     self.check("from foo import a, b",
                "from foo import a\nfrom foo import b")
     self.check("from foo import (a, b)",
@@ -338,15 +345,15 @@ class ParserTest(_ParserTestBase):
     self.check("x: str")
     self.check("x = ...  # type: (str)", "x: str")
     self.check("x: foo.bar.Baz", prologue="import foo.bar")
-    self.check("x = ...  # type: ?", "x: Any",
-               prologue="from typing import Any")
     self.check("x: nothing")
-    self.check("x = ...  # type: int or str or float", """
-                from typing import Union
 
-                x: Union[int, str, float]""")
-    self.check("x = ...  # type: int and str and float", """
-                x: int and str and float""")
+  @unittest.skip("TODO: add errors for these")
+  def test_deprecated_type(self):
+    self.check_error("x = ...  # type: int and str and float",
+                     1, "invalid syntax")
+    self.check_error("x = ...  # type: ?", 1, "invalid syntax")
+    self.check("x = ...  # type: int or str or float",
+               1, "invalid syntax")
 
   def test_empty_union_or_intersection_or_optional(self):
     self.check_error("def f(x: typing.Union): ...", 1,
@@ -412,13 +419,13 @@ class ParserTest(_ParserTestBase):
     self.assertIsInstance(sig.return_type, pytd.TypeParameter)
 
     # Check various illegal TypeVar arguments.
-    self.check_error("T = TypeVar()", 1, "syntax error")
-    self.check_error("T = TypeVar(*args)", 1, "syntax error")
-    self.check_error("T = TypeVar(...)", 1, "syntax error")
+    self.check_error("T = TypeVar()", 1, "Missing arguments to TypeVar")
+    self.check_error("T = TypeVar(*args)", 1, "Bad arguments to TypeVar")
+    self.check_error("T = TypeVar(...)", 1, "Bad arguments to TypeVar")
     self.check_error("T = TypeVar('Q')", 1,
                      "TypeVar name needs to be 'Q' (not 'T')")
     self.check_error("T = TypeVar('T', covariant=True, int, float)", 1,
-                     "syntax error")
+                     "positional argument follows keyword argument")
     self.check_error("T = TypeVar('T', rumpelstiltskin=True)", 1,
                      "Unrecognized keyword")
 
@@ -445,6 +452,16 @@ class ParserTest(_ParserTestBase):
 
       T = TypeVar('T', other_mod.A, other_mod.B)""")
 
+  def test_typing_typevar(self):
+    self.check("""
+      import typing
+      T = typing.TypeVar('T')
+    """, """
+      from typing import TypeVar
+
+      T = TypeVar('T')
+    """)
+
   def test_error_formatting(self):
     src = """
       class Foo:
@@ -455,8 +472,8 @@ class ParserTest(_ParserTestBase):
     self.assertMultiLineEqual(textwrap.dedent("""
         File: "foo.py", line 2
           this is not valid
-               ^
-      ParseError: syntax error, unexpected NAME, expecting ':' or '='
+         ^
+      ParseError: Unexpected expression
     """).strip("\n"), str(e.exception))
 
   def test_pep484_translations(self):
@@ -489,7 +506,7 @@ class ParserTest(_ParserTestBase):
     ast = parser.parse_string(textwrap.dedent("""
       from bar import X
       class bar:
-        X = ... # type: ?
+        X = ... # type: Any
       y = bar.X.Baz
       z = X.Baz
     """), name="foo", python_version=self.python_version)
@@ -631,6 +648,7 @@ class HomogeneousTypeTest(_ParserTestBase):
 
 class NamedTupleTest(_ParserTestBase):
 
+  @unittest.skip("Constructors in type annotations not supported")
   def test_no_fields(self):
     self.check("x = ...  # type: NamedTuple('foo', [])", """
       from typing import Any, Tuple, Type, TypeVar
@@ -652,6 +670,7 @@ class NamedTupleTest(_ParserTestBase):
           def __init__(self, *args, **kwargs) -> None: ...
       """)
 
+  @unittest.skip("Constructors in type annotations not supported")
   def test_multiple_fields(self):
     expected = """
       from typing import Any, Tuple, Type, TypeVar
@@ -682,6 +701,7 @@ class NamedTupleTest(_ParserTestBase):
                expected)
 
   # pylint: disable=line-too-long
+  @unittest.skip("Constructors in type annotations not supported")
   def test_dedup_basename(self):
     self.check("""
       x = ...  # type: NamedTuple('foo', [('a', int,)])
@@ -983,8 +1003,8 @@ class FunctionTest(_ParserTestBase):
     self.check("def foo(x: str = None) -> int: ...",
                "def foo(x: str = ...) -> int: ...")
     # Allow but do not preserve a trailing comma in the param list.
-    self.check("def foo(x: int, y: str = ..., z: bool,) -> int: ...",
-               "def foo(x: int, y: str = ..., z: bool) -> int: ...")
+    self.check("def foo(x: int, y: str, z: bool,) -> int: ...",
+               "def foo(x: int, y: str, z: bool) -> int: ...")
 
   def test_star_params(self):
     self.check("def foo(*, x) -> str: ...")
@@ -996,12 +1016,11 @@ class FunctionTest(_ParserTestBase):
     self.check("def foo(x: int, *args, **kwargs) -> str: ...")
     # Various illegal uses of * args.
     self.check_error("def foo(*) -> int: ...", 1,
-                     "Named arguments must follow bare *")
-    self.check_error("def foo(*x, *y) -> int: ...", 1,
-                     "Unexpected second *")
-    self.check_error("def foo(**x, *y) -> int: ...", 1,
-                     "**x must be last parameter")
+                     "named arguments must follow bare *")
+    self.check_error("def foo(*x, *y) -> int: ...", 1, "invalid syntax")
+    self.check_error("def foo(**x, *y) -> int: ...", 1, "invalid syntax")
 
+  @unittest.skip("New parser does not support this syntax")
   def test_ellipsis_param(self):
     self.check("def foo(...) -> int: ...",
                "def foo(*args, **kwargs) -> int: ...")
@@ -1168,7 +1187,7 @@ class FunctionTest(_ParserTestBase):
 
     self.check_error("""
       @property
-      def foo(self) -> int""",
+      def foo(self) -> int: ...""",
                      None,
                      "Module-level functions with property decorators: foo")
 
@@ -1182,7 +1201,7 @@ class FunctionTest(_ParserTestBase):
       @classmethod
       @staticmethod
       def foo() -> int: ...""",
-                     3,
+                     1,
                      "Too many decorators for foo")
 
   def test_type_check_only(self):
@@ -1223,11 +1242,11 @@ class FunctionTest(_ParserTestBase):
     self.check_error("""
       @classmethod
       class Foo: ...
-    """, 2, "Unsupported class decorators: classmethod")
+    """, 1, "Unsupported class decorators: classmethod")
 
   def test_empty_body(self):
     self.check("def foo() -> int: ...")
-    self.check("def foo() -> int",
+    self.check("def foo() -> int: ...",
                "def foo() -> int: ...")
     self.check("def foo() -> int: pass",
                "def foo() -> int: ...")
@@ -1277,7 +1296,7 @@ class FunctionTest(_ParserTestBase):
   def test_invalid_body(self):
     self.check_error("""
       def foo(x) -> int:
-        a: str""", 2, "syntax error")
+        a: str""", 1, "Unexpected statement in function body")
 
   def test_return(self):
     self.check("def foo() -> int: ...")
@@ -1349,7 +1368,7 @@ class ClassTest(_ParserTestBase):
       """, 1, "Unexpected classdef kwarg 'badkeyword'")
     self.check_error("""
       class Foo(metaclass=Meta, Bar): ...
-      """, 1, "non-keyword arguments cannot follow keyword arguments")
+      """, 1, "positional argument follows keyword argument")
 
   def test_shadow_pep484(self):
     self.check("""
@@ -1409,7 +1428,7 @@ class ClassTest(_ParserTestBase):
     self.check("""
       class Foo:
           @property
-          def a(self) -> int
+          def a(self) -> int: ...
       """, """
       class Foo:
           a: int
@@ -1420,12 +1439,12 @@ class ClassTest(_ParserTestBase):
       class Foo:
           bar = ...  # type: int
           bar = ...  # type: str
-      """, 1, "Duplicate identifier(s): bar")
+      """, 1, "Duplicate class-level identifier(s): bar")
     self.check_error("""
       class Foo:
           def bar(self) -> int: ...
           bar = ...  # type: str
-      """, 1, "Duplicate identifier(s): bar")
+      """, 1, "Duplicate class-level identifier(s): bar")
     # Multiple method defs are ok (needed for variant signatures).
     self.check("""
       class Foo:
@@ -1700,7 +1719,7 @@ class ClassIfTest(_ParserTestBase):
       class Foo:
         if sys.version_info > (3, 4, 0):
           import foo
-    """, 3, "syntax error")
+    """, 3, "Import statements need to be at module level")
 
   def test_no_class(self):
     self.check("""
@@ -1716,7 +1735,7 @@ class ClassIfTest(_ParserTestBase):
       class Foo:
         if sys.version_info > (3, 4, 0):
           T = TypeVar('T')
-    """, 3, "syntax error")
+    """, 3, r"TypeVars need to be defined at module level")
 
 
 class ConditionTest(_ParserTestBase):
@@ -1975,7 +1994,7 @@ class PropertyDecoratorTest(_ParserTestBase):
           @property
           @staticmethod
           def name(self): ...
-      """, 4, "Too many decorators for name")
+      """, 2, "Too many decorators for name")
 
     self.check_error("""
       @property
@@ -2370,26 +2389,25 @@ class LiteralTest(_ParserTestBase):
     self.check("""
       from typing import Literal
 
-      x: Literal["x"]
-      y: Literal[""]
+      x: Literal['x']
+      y: Literal['']
     """)
 
   def test_bytestring(self):
     self.check("""
       from typing import Literal
 
-      x: Literal[b""]
+      x: Literal[b'']
       y: Literal[b'']
-      z: Literal[b"xyz"]
+      z: Literal[b'xyz']
     """)
 
   def test_unicodestring(self):
     self.check("""
       from typing import Literal
 
-      x: Literal[u""]
       y: Literal[u'']
-      z: Literal[u"xyz"]
+      z: Literal[u'xyz']
     """)
 
   def test_none(self):
@@ -2427,7 +2445,7 @@ class LiteralTest(_ParserTestBase):
     """, """
       from typing import Literal, Optional
 
-      x: Optional[Literal[True, 0, b"", u""]]
+      x: Optional[Literal[True, 0, b'', u'']]
     """)
 
   def test_stray_number(self):
@@ -2484,7 +2502,7 @@ class LiteralTest(_ParserTestBase):
     self.check_error("""
       from typing import Literal
       x: Literal[0.0]
-    """, 2, "Literal[0.0] not supported")
+    """, 2, "Invalid type `float` in Literal[0.0].")
 
 
 class TypedDictTest(_ParserTestBase):

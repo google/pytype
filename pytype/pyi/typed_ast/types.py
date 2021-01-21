@@ -132,6 +132,8 @@ class Constant:
       return pytd.NamedType("None")
     if self.type in _STRING_TYPES:
       val = self.repr_str()
+    elif self.type == "float":
+      raise ParseError(f"Invalid type `float` in Literal[{self.value}].")
     else:
       val = self.value
     return pytd.Literal(val)
