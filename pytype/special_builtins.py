@@ -510,10 +510,14 @@ class Super(BuiltinClass):
     if num_args == 0 and self.vm.PY3:
       # The implicit type argument is available in a freevar named '__class__'.
       cls_var = None
-      for i, free_var in enumerate(self.vm.frame.f_code.co_freevars):
+      # If we are in a list comprehension we want the enclosing frame.
+      index = -1
+      while self.vm.frames[index].f_code.co_name == "<listcomp>":
+        index -= 1
+      frame = self.vm.frames[index]
+      for i, free_var in enumerate(frame.f_code.co_freevars):
         if free_var == abstract.BuildClass.CLOSURE_NAME:
-          cls_var = self.vm.frame.cells[
-              len(self.vm.frame.f_code.co_cellvars) + i]
+          cls_var = frame.cells[len(frame.f_code.co_cellvars) + i]
           break
       if not (cls_var and cls_var.bindings):
         self.vm.errorlog.invalid_super_call(
@@ -522,7 +526,7 @@ class Super(BuiltinClass):
         return node, self.vm.new_unsolvable(node)
       # The implicit super object argument is the first positional argument to
       # the function calling 'super'.
-      self_arg = self.vm.frame.first_posarg
+      self_arg = frame.first_posarg
       if not self_arg:
         self.vm.errorlog.invalid_super_call(
             self.vm.frames, message="Missing 'self' argument to 'super' call.")

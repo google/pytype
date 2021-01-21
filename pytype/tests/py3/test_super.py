@@ -185,5 +185,17 @@ class TestSuperPython3Featue(test_base.TargetPython3FeatureTest):
           return super()._replace(*args, **kwargs)
     """)
 
+  def test_list_comprehension(self):
+    self.Check("""
+      class Foo:
+        def f(self) -> int:
+          return 42
+
+      class Bar(Foo):
+        def f(self) -> int:
+          return [x for x in
+               [super().f() for _ in range(1)]][0]
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
