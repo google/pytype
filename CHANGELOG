@@ -1,3 +1,8 @@
+Version 2021.01.21
+* Switch to a typed_ast-based stub parser.
+* Fix matching of NamedType against LiteralType in --protocols mode.
+* Fix: super() in a list comprehension needs to look at the enclosing frame.
+
 Version 2021.01.14
 * Fix some corner cases with unpacking and function args.
 * Add ImportError attributes name, path for Python 3.3+.
