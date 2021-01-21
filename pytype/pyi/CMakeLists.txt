@@ -43,7 +43,7 @@ py_library(
   DEPS
     .parser_ext
     pytype.utils
-    pytype.pytd.pyi.typed_ast.ast_parser
+    pytype.pyi.typed_ast.ast_parser
     pytype.pytd.pytd_for_parser
     pytype.pytd.parse.parse
 )
@@ -85,3 +85,5 @@ py_test(
     pytype.stubs.stubs
     pytype.tests.test_base
 )
+
+add_subdirectory(typed_ast)

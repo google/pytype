@@ -467,7 +467,7 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
     # passing them to internal functions directly in visit_Call.
     if isinstance(node.func, ast3.Attribute):
       node.func = _attribute_to_name(node.func)
-    if node.func.id == "TypeVar":
+    if node.func.id in ("TypeVar", "typing.TypeVar"):
       self._convert_typevar_args(node)
     elif node.func.id in ("NamedTuple", "typing.NamedTuple"):
       self._convert_typing_namedtuple_args(node)
@@ -480,7 +480,7 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
       return self._convert_newtype_args(node)
 
   def visit_Call(self, node):
-    if node.func.id == "TypeVar":
+    if node.func.id in ("TypeVar", "typing.TypeVar"):
       if self.level > 0:
         raise ParseError("TypeVars need to be defined at module level")
       return _TypeVar.from_call(node)

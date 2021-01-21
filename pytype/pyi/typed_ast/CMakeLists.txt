@@ -30,8 +30,6 @@ py_library(
     .visitor
     pytype.utils
     pytype.ast.ast
-    pytype.pytd.pep484
-    pytype.pytd.pytd_defs
     pytype.pytd.pytd_for_parser
 )
 
@@ -42,9 +40,8 @@ py_library(
     classdef.py
   DEPS
     .types
-    pytype.pytd.pytd_defs
-    pytype.pytd.parse.node
-    pytype.pytd.parse.parser_constants
+    pytype.pytd.pytd_for_parser
+    pytype.pytd.parse.parse
 )
 
 py_library(
@@ -69,11 +66,8 @@ py_library(
     .function
     .namedtuple
     .types
-    pytype.pytd.pytd_defs
     pytype.pytd.pytd_for_parser
-    pytype.pytd.pytd_utils
-    pytype.pytd.parse.node
-    pytype.pytd.parse.parser_constants
+    pytype.pytd.parse.parse
 )
 
 py_library(
@@ -84,9 +78,8 @@ py_library(
   DEPS
     .types
     pytype.utils
-    pytype.pytd.pytd_defs
     pytype.pytd.pytd_for_parser
-    pytype.pytd.parse.node
+    pytype.pytd.parse.parse
 )
 
 py_library(
@@ -97,9 +90,8 @@ py_library(
   DEPS
     .types
     pytype.utils
-    pytype.pytd.pytd_defs
     pytype.pytd.pytd_for_parser
-    pytype.pytd.parse.parser_constants
+    pytype.pytd.parse.parse
 )
 
 py_library(
@@ -110,7 +102,6 @@ py_library(
   DEPS
     .function
     .types
-    pytype.pytd.pytd_defs
     pytype.pytd.pytd_for_parser
 )
 
@@ -121,9 +112,8 @@ py_library(
     types.py
   DEPS
     pytype.utils
-    pytype.pytd.pytd_defs
-    pytype.pytd.pytd_utils
-    pytype.pytd.parse.node
+    pytype.pytd.pytd_for_parser
+    pytype.pytd.parse.parse
 )
 
 py_library(
@@ -144,7 +134,7 @@ py_test(
   DEPS
     ._ast_parser
     .types
-    pytype.pytd.pytd_defs
+    pytype.pytd.pytd_for_parser
     pytype.tests.test_base
 )
 
@@ -160,7 +150,7 @@ toplevel_py_binary(
     .types
     pytype.utils
     pytype.pyi.parser
-    pytype.pytd.pytd_utils
+    pytype.pytd.pytd_for_parser
 )
 
 toplevel_py_binary(
@@ -174,5 +164,5 @@ toplevel_py_binary(
     ._ast_parser
     pytype.utils
     pytype.pyi.parser
-    pytype.pytd.pytd_utils
+    pytype.pytd.pytd_for_parser
 )

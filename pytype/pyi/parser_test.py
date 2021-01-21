@@ -452,6 +452,16 @@ class ParserTest(_ParserTestBase):
 
       T = TypeVar('T', other_mod.A, other_mod.B)""")
 
+  def test_typing_typevar(self):
+    self.check("""
+      import typing
+      T = typing.TypeVar('T')
+    """, """
+      from typing import TypeVar
+
+      T = TypeVar('T')
+    """)
+
   def test_error_formatting(self):
     src = """
       class Foo:
