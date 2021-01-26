@@ -11,6 +11,7 @@ class TypingExtensionsOverlay(overlay.Overlay):
         "Literal": typing_overlay.typing_overlay["Literal"],
         "Protocol": build_protocol,
         "runtime": build_runtime,  # alias for runtime_checkable
+        "Annotated": typing_overlay.typing_overlay["Annotated"],
     }
     ast = vm.loader.import_name("typing_extensions")
     for pyval in ast.aliases + ast.classes + ast.constants + ast.functions:

@@ -11,6 +11,16 @@ py_test(
 
 py_test(
   NAME
+    test_annotated
+  SRCS
+    test_annotated.py
+  DEPS
+    pytype.utils
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
     test_annotations
   SRCS
     test_annotations.py
