@@ -1,12 +1,16 @@
 """Utilities for parsing typeshed files."""
 
+import collections
 import os
+import re
 
 from pytype import module_utils
 from pytype import pytype_source_utils
 from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import builtins
+
+import toml
 
 
 def _get_module_names_in_path(lister, path):
@@ -46,6 +50,15 @@ class Typeshed:
     else:
       self._root = pytype_source_utils.get_full_path("typeshed")
     self._missing = frozenset(self._load_missing())
+    # See https://github.com/google/pytype/issues/820. typeshed's directory
+    # structure significantly changed in January 2021. We need to support both
+    # the old and the new structures until our bundled typeshed is updated past
+    # the restructuring commit.
+    self._use_new_structure = os.path.exists(
+        os.path.join(self._root, "stdlib", "VERSIONS"))
+    if self._use_new_structure:
+      self._stdlib_versions = self._load_stdlib_versions()
+      self._third_party_packages = self._load_third_party_packages()
 
   def _load_file(self, path):
     if self._env_home:
@@ -61,6 +74,57 @@ class Typeshed:
       return set()
     _, text = self._load_file(self.MISSING_FILE)
     return {line.strip() for line in text.split("\n") if line}
+
+  def _load_stdlib_versions(self):
+    """Loads the contents of typeshed/stdlib/VERSIONS.
+
+    VERSIONS lists the stdlib modules with the Python version in which they were
+    first added, in the format `{module}: {major}.{minor}`. Note that this file
+    ignores the stdlib/@python2 subdirectory! If stdlib/foo.pyi targets Python
+    3.6+ and stdlib/@python2/foo.pyi, 2.7, VERSIONS will contain `foo: 3.6`.
+
+    Returns:
+      A mapping from module name to (major, minor) Python version.
+    """
+    _, text = self._load_file(os.path.join("stdlib", "VERSIONS"))
+    versions = {}
+    for line in text.splitlines():
+      match = re.fullmatch(r"(.+): (\d)\.(\d+)", line)
+      assert match
+      module, major, minor = match.groups()
+      versions[module] = (int(major), int(minor))
+    return versions
+
+  def _load_third_party_packages(self):
+    """Loads package and Python version information for typeshed/stubs/.
+
+    stubs/ contains type information for third-party packages. Each top-level
+    directory corresponds to one PyPI package and contains one or more modules,
+    plus a metadata file (METADATA.toml). If there are separate Python 2 stubs,
+    they live in an @python2 subdirectory. Unlike stdlib/VERSIONS, METADATA.toml
+    does take @python2 into account, so if a package has both foo.pyi and
+    @python2/foo.pyi, METADATA.toml will contain `python2 = True`.
+
+    Returns:
+      A mapping from module name to a set of
+      (package name, major_python_version) tuples.
+    """
+    third_party_root = os.path.join(self._root, "stubs")
+    packages = collections.defaultdict(set)
+    for package in os.listdir(third_party_root):
+      _, metadata = self._load_file(
+          os.path.join(third_party_root, package, "METADATA.toml"))
+      metadata = toml.loads(metadata)
+      for name in os.listdir(os.path.join(third_party_root, package)):
+        if name in ("METADATA.toml", "@python2"):
+          continue
+        name, _ = os.path.splitext(name)
+        # When not specified, packages are Python 3-only.
+        if metadata.get("python2", False):
+          packages[name].add((package, 2))
+        if metadata.get("python3", True):
+          packages[name].add((package, 3))
+    return packages
 
   @property
   def missing(self):
@@ -86,11 +150,13 @@ class Typeshed:
     return False
 
   def get_module_file(self, toplevel, module, version):
-    """Get the contents of a typeshed file, typically with a file name *.pyi.
+    """Get the contents of a typeshed .pyi file.
 
     Arguments:
-      toplevel: the top-level directory within typeshed/, typically "builtins",
-        "stdlib" or "third_party".
+      toplevel: the top-level directory within typeshed/, "builtins", "stdlib",
+        or "third_party". "builtins" doesn't exist but is requested because
+        there exists a pytype pyi directory with this name, and "third_party"
+        corresponds to the the typeshed/stubs/ directory.
       module: module name (e.g., "sys" or "__builtins__"). Can contain dots, if
         it's a submodule.
       version: The Python version. (major, minor)
@@ -100,6 +166,57 @@ class Typeshed:
     Raises:
       IOError: if file not found
     """
+    if self._use_new_structure:
+      return self._get_module_file(toplevel, module, version)
+    else:
+      return self._get_module_file_old(toplevel, module, version)
+
+  def _get_module_file(self, toplevel, module, version):
+    """get_module_file for typeshed's new directory structure."""
+    module_parts = module.split(".")
+    module_path = os.path.join(*module_parts)
+    paths = []
+    if toplevel == "stdlib":
+      # stubs for the stdlib 'foo' module are located in either stdlib/foo or
+      # (for Python 2) stdlib/@python2/foo. The VERSIONS file tells us whether
+      # stdlib/foo exists and what versions it targets; we also have to
+      # separately check for stdlib/@python2/foo.
+      if (module_parts[0] in self._stdlib_versions and
+          self._stdlib_versions[module_parts[0]] <= version):
+        paths.append(os.path.join(toplevel, module_path))
+      elif version[0] == 2:
+        paths.append(os.path.join(toplevel, "@python2", module_path))
+    elif toplevel == "third_party":
+      # For third-party modules, we grab the alphabetically first package that
+      # provides a module with the specified name in the right version.
+      # TODO(rechen): It would be more correct to check what packages are
+      # currently installed and only consider those.
+      if module_parts[0] in self._third_party_packages:
+        for package, v in sorted(self._third_party_packages[module_parts[0]]):
+          if v == version[0]:
+            if v == 2:
+              # In packages that support Python 2, if @python2/ exists, then it
+              # contains the Python 2 stubs; otherwise, the top-level stubs are
+              # Python 2and3.
+              paths.append(
+                  os.path.join("stubs", package, "@python2", module_path))
+            paths.append(os.path.join("stubs", package, module_path))
+    for path_rel in paths:
+      # Give precedence to MISSING_FILE
+      if path_rel in self.missing:
+        return (os.path.join(self._root, "nonexistent", path_rel + ".pyi"),
+                builtins.DEFAULT_SRC)
+      # TODO(mdemello): handle this in the calling code.
+      for path in [os.path.join(path_rel, "__init__.pyi"), path_rel + ".pyi"]:
+        try:
+          name, src = self._load_file(path)
+          return name, src
+        except IOError:
+          pass
+    raise IOError("Couldn't find %s" % module)
+
+  def _get_module_file_old(self, toplevel, module, version):
+    """get_module_file for typeshed's old directory structure."""
     if self._ignore(module, version):
       raise IOError("Couldn't find %s" % module)
     module_path = os.path.join(*module.split("."))
@@ -129,6 +246,27 @@ class Typeshed:
 
   def get_typeshed_paths(self, python_version):
     """Gets the paths to typeshed's version-specific pyi files."""
+    if self._use_new_structure:
+      return self._get_typeshed_paths(python_version)
+    else:
+      return self._get_typeshed_paths_old(python_version)
+
+  def _get_typeshed_paths(self, python_version):
+    """get_typeshed_paths for typeshed's new directory structure."""
+    major, _ = python_version
+    typeshed_subdirs = ["stdlib"]
+    if major == 2:
+      typeshed_subdirs.append(os.path.join("stdlib", "@python2"))
+    for packages in self._third_party_packages.values():
+      for package, v in packages:
+        if v == major:
+          typeshed_subdirs.append(os.path.join("stubs", package))
+          if v == 2:
+            typeshed_subdirs.append(os.path.join("stubs", package, "@python2"))
+    return [os.path.join(self._root, d) for d in typeshed_subdirs]
+
+  def _get_typeshed_paths_old(self, python_version):
+    """get_typeshed_paths for typeshed's old directory structure."""
     major, minor = python_version
     typeshed_subdirs = ["stdlib/%d" % major,
                         "stdlib/2and3",
@@ -177,7 +315,9 @@ class Typeshed:
     """Read the typeshed blacklist."""
     _, text = self._load_file(os.path.join("tests", "pytype_exclude_list.txt"))
     for line in text.splitlines():
-      line = line[:line.find("#")].strip()
+      if "#" in line:
+        line = line[:line.index("#")]
+      line = line.strip()
       if line:
         yield line
 
@@ -185,14 +325,47 @@ class Typeshed:
     """Return the blacklist, as a list of module names. E.g. ["x", "y.z"]."""
     for full_filename in self.read_blacklist():
       filename = os.path.splitext(full_filename)[0]
-      path = filename.split("/")  # E.g. ["stdlib", "2", "html", "parser.pyi"]
-      # It's possible that something is blacklisted with a more
-      # specific version (e.g. stdlib/3.4/...). That usually just means
-      # that this module didn't exist in earlier Python versions. So
-      # we can still just use python_version[0].
-      if (path[1].startswith(str(python_version[0])) or
-          path[1] == "2and3"):
-        yield module_utils.path_to_module_name("/".join(path[2:]))
+      path = filename.split(os.path.sep)  # E.g. ["stdlib", "html", "parser"]
+      if python_version[0] in self.get_python_major_versions(full_filename):
+        yield module_utils.path_to_module_name(os.path.sep.join(path[2:]))
+
+  def get_python_major_versions(self, filename):
+    """Gets the Python major versions targeted by the given .pyi file."""
+    if self._use_new_structure:
+      return self._get_python_major_versions(filename)
+    else:
+      return self._get_python_major_versions_old(filename)
+
+  def _get_python_major_versions(self, filename):
+    """get_python_major_versions for the new typeshed directory structure."""
+    if os.path.sep + "@python2" + os.path.sep in filename:
+      return (2,)
+    parts = filename.split(os.path.sep)
+    if parts[0] == "stdlib":
+      if self._stdlib_versions[os.path.splitext(parts[1])[0]] >= (3, 0):
+        return (3,)
+      else:
+        return (2, 3)
+    else:
+      assert parts[0] == "stubs"
+      package, module = parts[1], os.path.splitext(parts[2])[0]
+      versions = []
+      for p, v in self._third_party_packages[module]:
+        if p != package or v == 2 and os.path.exists(
+            os.path.join(self._root, "stubs", p, "@python2")):
+          # If a dedicated @python2 subdirectory exists, then the top-level
+          # stubs are Python 3-only.
+          continue
+        versions.append(v)
+      return tuple(versions)
+
+  def _get_python_major_versions_old(self, filename):
+    """get_python_major_versions for the old typeshed directory structure."""
+    path = filename.split(os.path.sep)
+    if path[1] == "2and3":
+      return (2, 3)
+    else:
+      return (int(path[1][0]),)
 
 
 _typeshed = None
