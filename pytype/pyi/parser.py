@@ -7,6 +7,8 @@ from pytype import file_utils
 from pytype import module_utils
 from pytype import utils
 from pytype.pyi import parser_ext  # pytype: disable=import-error
+from pytype.pyi.typed_ast import ast_parser
+from pytype.pyi.typed_ast import types as ast_parser_types
 from pytype.pytd import escape
 from pytype.pytd import pep484
 from pytype.pytd import pytd
@@ -14,6 +16,7 @@ from pytype.pytd import pytd_utils
 from pytype.pytd import slots as cmp_slots
 from pytype.pytd import visitors
 from pytype.pytd.parse import parser_constants  # pylint: disable=g-importing-member
+
 
 _DEFAULT_PLATFORM = "linux"
 # Typing members that represent sets of types.
@@ -79,34 +82,7 @@ class _ConditionScope:
     return self._parent
 
 
-class ParseError(Exception):
-
-  """Exceptions raised by the parser."""
-
-  def __init__(self, msg, line=None, filename=None, column=None, text=None):
-    super().__init__(msg)
-    self._line = line
-    self._filename = filename
-    self._column = column
-    self._text = text
-
-  @property
-  def line(self):
-    return self._line
-
-  def __str__(self):
-    lines = []
-    if self._filename or self._line is not None:
-      lines.append('  File: "%s", line %s' % (self._filename, self._line))
-    if self._column and self._text:
-      indent = 4
-      stripped = self._text.lstrip()
-      lines.append("%*s%s" % (indent, "", stripped))
-      # Output a pointer below the error column, adjusting for stripped spaces.
-      pos = indent + (self._column - 1) - (len(self._text) - len(stripped))
-      lines.append("%*s^" % (pos, ""))
-    lines.append("%s: %s" % (type(self).__name__, utils.message(self)))
-    return "\n".join(lines)
+ParseError = ast_parser_types.ParseError
 
 
 class OverloadedDecoratorError(ParseError):
@@ -1334,6 +1310,13 @@ class _Parser:
 
 
 def parse_string(src, python_version, name=None, filename=None, platform=None):
+  """This is now delegating to the new parser."""
+  return ast_parser.parse_string(src, python_version, name, filename, platform)
+
+
+def old_parse_string(src, python_version, name=None, filename=None,
+                     platform=None):
+  # Preserve the existing parser for regression testing.
   return _Parser(version=python_version, platform=platform).parse(
       src, name, filename)
 

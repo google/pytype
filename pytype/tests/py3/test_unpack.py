@@ -140,7 +140,7 @@ class TestUnpack(test_base.TargetPython3FeatureTest):
             k: bool = ...,
             l: Optional[Text] = ...,
             m: Optional[A] = ...,
-        ) -> None
+        ) -> None: ...
       """)
       self.Check("""
         import foo

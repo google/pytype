@@ -27,20 +27,10 @@ WONTFIX_BLOCKLIST = frozenset({
     'third_party/py/typeshed/stdlib/3/unittest/mock.pyi',
     'third_party/py/typeshed/third_party/3/six/__init__.pyi',
     'third_party/py/typeshed/third_party/2/six/__init__.pyi',
+    'third_party/py/typeshed/stdlib/3/asyncio/windows_events.pyi',
 
-    # " vs ' in Literal
-    'third_party/py/typeshed/stdlib/3/ast.pyi',
-    'third_party/py/typeshed/stdlib/2and3/mailbox.pyi',
-    'third_party/py/typeshed/stdlib/3/tempfile.pyi',
-    'third_party/py/typeshed/stdlib/2and3/aifc.pyi',
-    'third_party/py/typeshed/stdlib/2and3/imaplib.pyi',
-    'third_party/py/typeshed/stdlib/2and3/codecs.pyi',
-    'third_party/py/typeshed/stdlib/2and3/xml/etree/ElementTree.pyi',
-    'third_party/py/typeshed/stdlib/3/multiprocessing/context.pyi',
-    'third_party/py/typeshed/stdlib/3/xmlrpc/client.pyi',
-    'third_party/py/typeshed/stdlib/3/multiprocessing/__init__.pyi',
-    'third_party/py/pytype/stubs/builtins/3/builtins.pytd',
-    'third_party/py/pytype/stubs/builtins/3/__builtin__.pytd',
+    # some typing imports are not reexported in the old parser
+    'third_party/py/typeshed/third_party/2and3/typing_extensions.pyi',
 
     # old parser raises an error
     'third_party/py/typeshed/stdlib/2/typing.pyi',
@@ -49,6 +39,7 @@ WONTFIX_BLOCKLIST = frozenset({
 
 # Diffs that are a bug in the new parser.
 OTHER_BLOCKLIST = frozenset({
+    'third_party/py/typeshed/stdlib/3.9/zoneinfo/__init__.pyi',
 })
 
 BLOCKLIST = WONTFIX_BLOCKLIST | OTHER_BLOCKLIST
@@ -69,12 +60,12 @@ def test_file(filename):
   # Parse using typed ast parser
   out = ast_parser.parse_pyi(src, filename=filename, module_name=mod,
                              python_version=version)
-  new = pytd_utils.Print(out).splitlines(True)
+  new = pytd_utils.Print(out).replace('"', "'").splitlines(True)
 
   # Parse using bison parser
-  pytd = parser.parse_string(src, name=mod, filename=filename,
-                             python_version=version)
-  old = pytd_utils.Print(pytd).splitlines(True)
+  pytd = parser.old_parse_string(src, name=mod, filename=filename,
+                                 python_version=version)
+  old = pytd_utils.Print(pytd).replace('"', "'").splitlines(True)
 
   if old != new:
     print(''.join(old))

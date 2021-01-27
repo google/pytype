@@ -20,15 +20,22 @@ if __name__ == '__main__':
 
   version = (3, 6)
   try:
-    out, _ = ast_parser.parse_pyi_debug(src, filename, module_name, version)
+    out, _ = ast_parser.parse_pyi_debug(
+        src, filename, module_name, version, None)
   except ParseError as e:
     print(e)
     sys.exit(1)
 
-  # print out the pytd tree so we can compare it to the output from ast_parser
-  pytd = parser.parse_string(src, filename=filename, python_version=version)
-  print('------pytd--------------')
-  print(pytd)
-
   print('------round trip--------------')
   print(pytd_utils.Print(out))
+
+  # print out the pytd tree so we can compare it to the output from ast_parser
+  pytd = parser.old_parse_string(src, filename=filename, python_version=version,
+                                 name=module_name)
+  print('------pytd--------------')
+  print(pytd)
+  print('------pytd--------------')
+  print(pytd_utils.Print(pytd))
+
+  print('------round trip--------------')
+  print(pytd_utils.Print(pytd))
