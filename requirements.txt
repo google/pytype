@@ -9,4 +9,5 @@ pybind11>=2.6.0rc3
 pylint
 pyyaml>=3.11
 six
+toml
 typed_ast
