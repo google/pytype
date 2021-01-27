@@ -13,7 +13,7 @@ of pytype.
          * [Typing](#typing)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2021-01-08T13:08-08:00 -->
+<!-- Added by: rechen, at: 2021-01-27T13:52-08:00 -->
 
 <!--te-->
 
@@ -64,7 +64,7 @@ Feature                                                         | Supports | Iss
 [PEP 586 -- Literal Types][586]                                 | 🟡        | [#790][literal-enums]
 [PEP 589 -- TypedDict][589]                                     | ❌        | [#680][typeddict]
 [PEP 591 -- Adding a Final Qualifier to Typing][591]            | ❌        | [#680][final]
-[PEP 593 -- Flexible Function and Variable Annotations][593]    | ❌        | [#791][annotated]
+[PEP 593 -- Flexible Function and Variable Annotations][593]    | ✅        |
 [PEP 604 -- Allow Writing Union Types as X \| Y][604]           | ❌        | [#785][union-pipe]
 [PEP 612 -- Parameter Specification Variables][612]             | ❌        | [#786][param-spec]
 [PEP 613 -- Explicit Type Aliases][613]                         | ❌        | [#787][typealias]
