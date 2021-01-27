@@ -1157,7 +1157,7 @@ class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
       x: List[int] = []
       x.append("hello")  # container-type-mismatch[e]
     """)
-    pattern = r"Annot.*List\[int\].*Contained.*int.*New.*Union\[int, str\]"
+    pattern = r"Container.*List\[_T\].*Allowed.*int.*New.*str"
     self.assertErrorRegexes(errors, {"e": pattern})
 
   def test_varargs(self):
@@ -1182,9 +1182,9 @@ class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
       x: Dict[int, str] = {}
       x["hello"] = 1.0  # container-type-mismatch[e]
     """)
-    pattern = (r"New container.*for x.*Dict\[int, str\].*Dict\[_K, _V\].*" +
-               r"Contained.*_K.*int.*_V.*str.*"
-               r"New.*_K.*Union\[int, str\].*_V.*Union\[float, str\]")
+    pattern = (r"New container.*for x.*Dict\[_K, _V\].*" +
+               r"Allowed.*_K.*int.*_V.*str.*"
+               r"New.*_K.*str.*_V.*float")
     self.assertErrorRegexes(errors, {"e": pattern})
 
   def test_allowed_container_mutation_subclass(self):

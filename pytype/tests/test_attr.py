@@ -665,6 +665,18 @@ class TestAttrib(test_base.TargetIndependentTest):
         def __init__(self, x: tuple = ...) -> None: ...
     """)
 
+  def test_long_alias(self):
+    # Tests an [annotation-type-mismatch] bug that appears only when
+    # --check-variable-types is enabled AND the "serious-business alias" for
+    # attr.ib is used.
+    self.options.tweak(check_variable_types=True)
+    self.Check("""
+      import attr
+      @attr.s
+      class Foo:
+        x= attr.attrib(default=0)  # type: int
+    """)
+
 
 class TestAttrs(test_base.TargetIndependentTest):
   """Tests for attr.s."""

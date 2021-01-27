@@ -1870,7 +1870,7 @@ class PyTDFunction(Function):
       def filter_contents(var):
         # reduces the work compatible_with has to do.
         return set(x for x in var.data
-                   if not x.isinstance_AMBIGUOUS_OR_EMPTY())
+                   if not x.isinstance_AMBIGUOUS_OR_EMPTY() and x.cls)
 
       def compatible_with(existing, new):
         """Check whether a new type can be added to a container."""

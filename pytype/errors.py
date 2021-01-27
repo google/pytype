@@ -1074,23 +1074,23 @@ class ErrorLog(ErrorLogBase):
       name: the variable name (or None)
     """
     cls = obj.cls
-    annot_string = "%s (type parameters %s)" % (
-        self._print_as_expected_type(cls),
-        self._print_as_generic_type(cls))
-    details = "Annotation: %s\n" % annot_string
-    contained = ""
+    details = "Container: %s\n" % self._print_as_generic_type(cls)
+    allowed_contained = ""
     new_contained = ""
     for formal in cls.formal_type_parameters.keys():
       if formal in mutations:
         params, values, _ = mutations[formal]
-        old_content = self._join_printed_types(
-            set(self._print_as_actual_type(v) for v in params.data))
+        allowed_content = self._print_as_expected_type(
+            cls.get_formal_type_parameter(formal))
         new_content = self._join_printed_types(
-            set(self._print_as_actual_type(v) for v in values.data))
-        contained += "  %s: %s\n" % (formal, old_content)
+            sorted(self._print_as_actual_type(v)
+                   for v in set(values.data) - set(params.data)))
+        allowed_contained += "  %s: %s\n" % (formal, allowed_content)
         new_contained += "  %s: %s\n" % (formal, new_content)
-    details += ("Contained types:\n" + contained +
-                "New contained types:\n" + new_contained)
+    annotation = self._print_as_expected_type(cls)
+    details += ("Allowed contained types (from annotation %s):\n%s"
+                "New contained types:\n%s") % (
+                    annotation, allowed_contained, new_contained)
     suffix = "" if name is None else " for " + name
     err_msg = "New container type%s does not match type annotation" % suffix
     self.error(stack, err_msg, details=details)

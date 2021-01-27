@@ -25,6 +25,8 @@ class AttrOverlay(overlay.Overlay):
 
   def __init__(self, vm):
     member_map = {
+        "attrs": Attrs.make,
+        "attrib": Attrib.make,
         "s": Attrs.make,
         "ib": Attrib.make,
         "Factory": Factory.make,
