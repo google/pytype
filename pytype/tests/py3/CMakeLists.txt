@@ -11,11 +11,10 @@ py_test(
 
 py_test(
   NAME
-    test_annotated
+    test_typing_annotated
   SRCS
-    test_annotated.py
+    test_typing_annotated.py
   DEPS
-    pytype.utils
     pytype.tests.test_base
 )
 
