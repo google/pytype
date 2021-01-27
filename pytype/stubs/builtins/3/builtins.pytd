@@ -3,7 +3,7 @@
 
 
 from typing import (
-    AbstractSet, Annotated, Any, AnyStr, AsyncGenerator, Awaitable, BinaryIO, Callable,
+    AbstractSet, Any, AnyStr, AsyncGenerator, Awaitable, BinaryIO, Callable,
     Coroutine, Dict, FrozenSet, Generator, Generic, Hashable, IO, ItemsView,
     Iterable, Iterator, KeysView, List, Literal, Mapping, MutableSequence,
     Optional, overload, Protocol, Reversible, Sequence, Set, Sized, SupportsAbs,
@@ -12,6 +12,9 @@ from typing import (
 
 if sys.version_info >= (3, 8):
     from typing import SupportsIndex
+
+# typing.Annotated, added in Python 3.9
+class Annotated: ...
 
 # "_T", "_K", and "_V" are hardcoded in abstract.py
 _T = TypeVar('_T')
