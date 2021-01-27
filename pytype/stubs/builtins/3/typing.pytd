@@ -583,5 +583,8 @@ if sys.version_info >= (3, 6):
     @abstractmethod
     def aclose(self) -> Awaitable[_T]: ...
 
+if sys.version_info >= (3, 9):
+  # typing.Annotated
+  class Annotated: ...
 
 TYPE_CHECKING = ...  # type: bool

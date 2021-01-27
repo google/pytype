@@ -13,9 +13,6 @@ from typing import (
 if sys.version_info >= (3, 8):
     from typing import SupportsIndex
 
-# typing.Annotated, added in Python 3.9
-class Annotated: ...
-
 # "_T", "_K", and "_V" are hardcoded in abstract.py
 _T = TypeVar('_T')
 _T2 = TypeVar('_T2')
