@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class AnnotatedTest(test_base.TargetPython3BasicTest):
+class AnnotatedTest(test_base.TargetPython3FeatureTest):
   """Tests for typing.Annotated types."""
 
   def test_basic(self):
