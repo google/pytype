@@ -8,6 +8,7 @@ class TypingExtensionsOverlay(overlay.Overlay):
 
   def __init__(self, vm):
     member_map = {
+        "Annotated": typing_overlay.typing_overlay["Annotated"],
         "Literal": typing_overlay.typing_overlay["Literal"],
         "Protocol": build_protocol,
         "runtime": build_runtime,  # alias for runtime_checkable

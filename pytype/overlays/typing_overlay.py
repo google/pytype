@@ -55,6 +55,18 @@ class Union(abstract.AnnotationClass):
     return abstract.Union(self.options + inner, self.vm)
 
 
+class Annotated(abstract.AnnotationClass):
+  """Implementation of typing.Annotated[T, *annotations]."""
+
+  def _build_value(self, node, inner, ellipses):
+    self.vm.errorlog.invalid_ellipses(self.vm.frames, ellipses, self.name)
+    if len(inner) == 1:
+      error = "typing.Annotated must have at least 1 annotation"
+      self.vm.errorlog.invalid_annotation(self.vm.frames, self, error)
+    # discard annotations
+    return inner[0]
+
+
 class TypingContainer(abstract.AnnotationContainer):
 
   def __init__(self, name, vm):
@@ -734,6 +746,7 @@ def build_cast(vm):
 
 
 typing_overlay = {
+    "Annotated": overlay.build("Annotated", Annotated),
     "Any": build_any,
     "Callable": overlay.build("Callable", Callable),
     "Generic": overlay.build("Generic", Generic),
