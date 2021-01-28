@@ -1,3 +1,14 @@
+Version 2021.01.28
+
+New features:
+* Update typeshed pin to commit 8c20938 from Nov 13.
+* Implement basic support for PEP 593.
+* Support typeshed's new directory structure.
+
+Bug fixes:
+* Support aliases attr.attrs for attr.s, and attr.attrib for attr.ib.
+* --check-container-types: fix a crash and improve the error message.
+
 Version 2021.01.21
 * Switch to a typed_ast-based stub parser.
 * Fix matching of NamedType against LiteralType in --protocols mode.
