@@ -3,10 +3,10 @@
 
 
 from typing import (
-    AbstractSet, Any, AnyStr, AsyncGenerator, Awaitable, BinaryIO, Callable,
-    Coroutine, Dict, FrozenSet, Generator, Generic, Hashable, IO, ItemsView,
-    Iterable, Iterator, KeysView, List, Literal, Mapping, MutableSequence,
-    Optional, overload, Protocol, Reversible, Sequence, Set, Sized, SupportsAbs,
+    AbstractSet, Any, AsyncGenerator, Awaitable, BinaryIO, Callable, Coroutine,
+    Dict, FrozenSet, Generator, Generic, Hashable, IO, ItemsView, Iterable,
+    Iterator, KeysView, List, Literal, Mapping, MutableSequence, Optional,
+    overload, Protocol, Reversible, Sequence, Set, Sized, SupportsAbs,
     SupportsBytes, SupportsComplex, SupportsFloat, SupportsInt, TextIO, Tuple,
     Type, Union, ValuesView)
 
@@ -23,6 +23,9 @@ _V = TypeVar('_V')
 _K2 = TypeVar('_K2')
 _V2 = TypeVar('_V2')
 _NUMBER = TypeVar('_NUMBER', bound=complex)
+# See b/142884093. We redefine AnyStr rather than importing it to avoid pytype
+# mistakenly treating it as a public builtin.
+_AnyStr = TypeVar('_AnyStr', bytes, str)
 
 # isinstance() and issubclass() can take a type or an arbitrarily nested
 # tuple of types. This adds support for a few levels; in theory we want
@@ -1135,8 +1138,8 @@ if sys.version_info >= (3, 6):
     # This class is to be exported as PathLike from os,
     # but we define it here as _PathLike to avoid import cycle issues.
     # See https://github.com/python/typeshed/pull/991#issuecomment-288160993
-    class _PathLike(Generic[AnyStr], Protocol):
-        def __fspath__(self) -> AnyStr: ...
+    class _PathLike(Generic[_AnyStr], Protocol):
+        def __fspath__(self) -> _AnyStr: ...
     _FileType = Union[str, bytes, int, _PathLike]
 else:
     _FileType = Union[str, bytes, int]
