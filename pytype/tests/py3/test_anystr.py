@@ -42,6 +42,12 @@ class AnyStrTest(test_base.TargetPython3BasicTest):
         d[__any_object__] = bar()
     """)
 
+  def test_missing_import(self):
+    self.CheckWithErrors("""
+      def f(x: AnyStr) -> AnyStr:  # name-error
+        return x
+    """)
+
 
 class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for issues related to AnyStr in Python 3."""

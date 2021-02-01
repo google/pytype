@@ -396,5 +396,16 @@ class FlowTest(test_base.TargetIndependentTest):
       def g() -> None: ...
     """)
 
+  def test_deleted(self):
+    self.CheckWithErrors("""
+      def bar(y):
+        return y*y
+
+      def foo(x):
+        del x
+        y = x.y()  # name-error
+        return bar(y)
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

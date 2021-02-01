@@ -1,9 +1,9 @@
 from typing import (
-    AbstractSet, Any, AnyStr, BinaryIO, Callable, Dict, FrozenSet, Generator,
-    Generic, ItemsView, Iterable, Iterator, KeysView, List, Mapping,
-    MutableSequence, Optional, Protocol, Reversible, Sequence, Set, Sized,
-    SupportsAbs, SupportsComplex, SupportsFloat, SupportsInt, Text, Tuple, Type,
-    Union, ValuesView)
+    AbstractSet, Any, BinaryIO, Callable, Dict, FrozenSet, Generator, Generic,
+    ItemsView, Iterable, Iterator, KeysView, List, Mapping, MutableSequence,
+    Optional, Protocol, Reversible, Sequence, Set, Sized, SupportsAbs,
+    SupportsComplex, SupportsFloat, SupportsInt, Text, Tuple, Type, Union,
+    ValuesView)
 
 # "_T", "_K", and "_V" are hardcoded in abstract.py
 _T = TypeVar('_T')
@@ -15,6 +15,9 @@ _V = TypeVar('_V')
 _K2 = TypeVar('_K2')
 _V2 = TypeVar('_V2')
 _NUMBER = TypeVar('_NUMBER', bound=complex)
+# See b/142884093. We redefine AnyStr instead of importing it to avoid pytype
+# mistakenly treating it as a public builtin.
+_AnyStr = TypeVar('_AnyStr', str, unicode)
 
 # isinstance() and issubclass() can take a type or an arbitrarily nested
 # tuple of types. This adds support for a few levels; in theory we want
@@ -50,7 +53,7 @@ def divmod(x: Union[int, float, complex], y: Union[int, float, complex]) -> tupl
 def eval(src, *args, **kwargs) -> Any: ...  # Can't say *anything* about the result -- different from "-> object"
 def exec(src, *args, **kwargs) -> NoneType: ...
 def execfile(filename: str, *args, **kwargs) -> NoneType: ...
-def filter(function: Optional[Callable[[AnyStr], Any]], iterable: AnyStr) -> AnyStr: ...
+def filter(function: Optional[Callable[[_AnyStr], Any]], iterable: _AnyStr) -> _AnyStr: ...
 def filter(function: Optional[Callable[[_T], Any]], iterable: Tuple[_T, ...]) -> Tuple[_T, ...]: ...
 def filter(function: Optional[Callable[[_T], Any]], iterable: Iterable[_T]) -> List[_T]: ...
 def format(value, *args, **kwargs) -> str: ...
@@ -217,7 +220,7 @@ class str(basestring, Sequence[str]):
     __slots__ = []
     def __init__(self, object) -> NoneType: ...
     def __init__(self) -> NoneType: ...
-    # TODO(rechen): Look into using AnyStr for __add__ once our solving of
+    # TODO(rechen): Look into using _AnyStr for __add__ once our solving of
     # unknowns takes TypeVar constraints into account.
     def __add__(self, y: str) -> str: ...
     def __add__(self, y: bytearray) -> bytearray: ...

@@ -452,5 +452,25 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
             default_factory=lambda: [chr(i) for i in range(5)])
     """)
 
+  def test_field_wrapper(self):
+    ty = self.Infer("""
+      import dataclasses
+      def field_wrapper(**kwargs):
+        return dataclasses.field(**kwargs)
+      @dataclasses.dataclass
+      class Foo:
+        x: int = dataclasses.field(default=0)
+        y: int = field_wrapper(default=1)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      dataclasses: module
+      def field_wrapper(**kwargs) -> Any: ...
+      class Foo:
+        x: int
+        y: int
+        def __init__(self, x: int = ..., y: int = ...) -> None: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

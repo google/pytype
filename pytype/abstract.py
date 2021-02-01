@@ -522,6 +522,10 @@ class Deleted(Empty):
     super().__init__(vm)
     self.name = "deleted"
 
+  def get_special_attribute(self, node, name, valself):
+    del name, valself  # unused
+    return self.vm.new_unsolvable(node)
+
 
 class TypeParameter(BaseValue):
   """Parameter of a type."""
