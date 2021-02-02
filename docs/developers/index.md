@@ -7,13 +7,20 @@ pytype's core concepts and code layout, as well as tips on suggested workflow.
 
 <!--ts-->
    * [Developer guide](#developer-guide)
+      * [Contributing](#contributing)
       * [Introduction](#introduction)
       * [Basic concepts](#basic-concepts)
       * [Updating the developer guide](#updating-the-developer-guide)
 
-<!-- Added by: rechen, at: 2020-12-08T19:37-08:00 -->
+<!-- Added by: rechen, at: 2021-02-02T02:25-08:00 -->
 
 <!--te-->
+
+## Contributing
+
+To get started with contributing to pytype, we recommend familiarizing yourself
+with the codebase and workflow by fixing a small issue. See the
+[Issue Tracker][issue-tracker] section for tips on finding issues.
 
 ## Introduction
 
@@ -58,5 +65,6 @@ PNG, and embed the latter in docs for consistent rendering.
 
 <!-- General references -->
 [dev-landing-page]: https://github.com/google/pytype/blob/master/docs/_layouts/dev_guide.html
+[issue-tracker]: process.md#issue-tracker
 [images-dir]: https://github.com/google/pytype/blob/master/docs/images/
 [main-loop]: main_loop.md
