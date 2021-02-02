@@ -205,7 +205,7 @@ def pytd_literal(parameters: List[Any]) -> pytd_node.Node:
     if is_none(p):
       literal_parameters.append(p)
     elif isinstance(p, pytd.NamedType):
-      # TODO(b/123775699): support enums.
+      # TODO(b/173742489): support enums.
       literal_parameters.append(pytd.AnythingType())
     elif isinstance(p, Constant):
       literal_parameters.append(p.to_pytd_literal())

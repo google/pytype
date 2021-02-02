@@ -26,13 +26,10 @@ def recursive_glob(path):
     return glob.glob(path)
   elif sys.version_info >= (3, 5):
     # Recursive glob is supported.
-    # TODO(b/110380447): Remove the pytype disable.
     # Pylint doesn't respect the version check.
-    # pytype: disable=wrong-keyword-args
     # pylint: disable=unexpected-keyword-arg
     return glob.glob(path, recursive=True)
     # pylint: enable=unexpected-keyword-arg
-    # pytype: enable=wrong-keyword-args
   # Simulate recursive glob with os.walk.
   left, right = path.split("**", 1)
   if not left:

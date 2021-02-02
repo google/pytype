@@ -464,5 +464,29 @@ class TypeVarTest(test_base.TargetIndependentTest):
         def f2(self, x: T) -> T: ...
     """)
 
+  def test_extra_arguments(self):
+    _, errors = self.InferWithErrors("""
+      from typing import TypeVar
+      T = TypeVar("T", extra_arg=42)  # invalid-typevar[e1]
+      S = TypeVar("S", *__any_object__)  # invalid-typevar[e2]
+      U = TypeVar("U", **__any_object__)  # invalid-typevar[e3]
+    """)
+    self.assertErrorRegexes(errors, {
+        "e1": r"extra_arg", "e2": r"\*args", "e3": r"\*\*kwargs"})
+
+  def test_simplify_args_and_kwargs(self):
+    ty = self.Infer("""
+      from typing import TypeVar
+      constraints = (int, str)
+      kwargs = {"covariant": True}
+      T = TypeVar("T", *constraints, **kwargs)  # pytype: disable=not-supported-yet
+    """, deep=False)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Tuple, Type, TypeVar
+      T = TypeVar("T", int, str)
+      constraints = ...  # type: Tuple[Type[int], Type[str]]
+      kwargs = ...  # type: Dict[str, bool]
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

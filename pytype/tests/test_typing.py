@@ -271,7 +271,7 @@ class LiteralTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, "foo: module")
 
-  # TODO(b/123775699): Include enums once we support looking up local enums.
+  # TODO(b/173742489): Include enums once we support looking up local enums.
   def test_pyi_value(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """

@@ -685,7 +685,7 @@ class Literal(TypingContainer):
     values = []
     errors = []
     for i, param in enumerate(inner):
-      # TODO(b/123775699): Once pytype has proper support for enums, we should
+      # TODO(b/173742489): Once pytype has proper support for enums, we should
       # stop allowing unsolvable and handle enums here.
       if (param == self.vm.convert.none or
           isinstance(param, abstract.LiteralClass) or

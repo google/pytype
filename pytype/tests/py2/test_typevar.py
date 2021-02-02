@@ -24,32 +24,6 @@ class Test(test_base.TargetPython27FeatureTest):
           "e1": r"Union\[float, int\].*str",
           "e2": r"Union\[str, unicode\].*int"})
 
-  def test_extra_arguments(self):
-    # TODO(b/78905523): Make this a target-independent test.
-    _, errors = self.InferWithErrors("""
-      from typing import TypeVar
-      T = TypeVar("T", extra_arg=42)  # invalid-typevar[e1]
-      S = TypeVar("S", *__any_object__)  # invalid-typevar[e2]
-      U = TypeVar("U", **__any_object__)  # invalid-typevar[e3]
-    """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"extra_arg", "e2": r"\*args", "e3": r"\*\*kwargs"})
-
-  def test_simplify_args_and_kwargs(self):
-    # TODO(b/78905523): Make this a target-independent test.
-    ty = self.Infer("""
-      from typing import TypeVar
-      constraints = (int, str)
-      kwargs = {"covariant": True}
-      T = TypeVar("T", *constraints, **kwargs)  # pytype: disable=not-supported-yet
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Dict, Tuple, Type, TypeVar
-      T = TypeVar("T", int, str)
-      constraints = ...  # type: Tuple[Type[int], Type[str]]
-      kwargs = ...  # type: Dict[str, bool]
-    """)
-
   def test_call_type_parameter_instance(self):
     # Python 2-specific due to the iteritems call (which is required to trigger
     # use of TypeParameterInstance).

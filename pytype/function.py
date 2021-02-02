@@ -118,7 +118,6 @@ class Signature:
   @classmethod
   def from_pytd(cls, vm, name, sig):
     """Construct an abstract signature from a pytd signature."""
-    # TODO(b/159041421): templates
     pytd_annotations = [(p.name, p.type)
                         for p in sig.params + (sig.starargs, sig.starstarargs)
                         if p is not None]
