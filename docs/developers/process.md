@@ -10,7 +10,7 @@
       * [Debugging](#debugging)
       * [Profiling](#profiling)
 
-<!-- Added by: rechen, at: 2021-01-15T16:04-08:00 -->
+<!-- Added by: rechen, at: 2021-02-02T02:25-08:00 -->
 
 <!--te-->
 
@@ -34,11 +34,11 @@
 ## Issue tracker
 
 Externally, pytype uses the [GitHub issue tracker][github-issues] for issue
-management. You can filter by the [good first issue][good-first-issues] label to
-find issues friendly to new contributors. Please comment on an issue before
-starting any work, to avoid duplication of effort. When opening a PR to close an
-issue, include the following in the description to
-[close the issue][pr-keywords] when the PR is merged:
+management. You can filter by the [good first issue][good-first-issues] and
+[help wanted][help-wanted-issues] labels to find contributor-friendly issues.
+Please comment on an issue before starting any work, to avoid duplication of
+effort. When opening a PR to close an issue, include the following in the
+description to [close the issue][pr-keywords] when the PR is merged:
 
 ```
 Resolves #XXX
@@ -103,6 +103,7 @@ rank of functions in the profile is stable between runs.
 [contributing-md]: https://github.com/google/pytype/blob/master/CONTRIBUTING.md
 [github-issues]: https://github.com/google/pytype/issues
 [good-first-issues]: https://github.com/google/pytype/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22
+[help-wanted-issues]: https://github.com/google/pytype/labels/help%20wanted
 [pdb]: https://docs.python.org/3/library/pdb.html
 [pr-keywords]: https://docs.github.com/en/github/managing-your-work-on-github/linking-a-pull-request-to-an-issue#linking-a-pull-request-to-an-issue-using-a-keyword
 [pylint]: http://pylint.pycqa.org/en/latest/
