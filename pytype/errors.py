@@ -892,14 +892,12 @@ class ErrorLog(ErrorLogBase):
     self._unsupported_operands(stack, operator, left, right, details=details)
 
   @_error_name("unsupported-operands")
-  def _unsupported_operands(self, stack, operator, *operands, **details):
-    # TODO(b/114124544): Change the signature to (..., *operands, details=None)
-    assert set(details) <= {"details"}
+  def _unsupported_operands(self, stack, operator, *operands, details=None):
     self.error(
         stack, "unsupported operand type(s) for %s: %s" % (
             slots.SYMBOL_MAPPING[operator],
             " and ".join(repr(operand) for operand in operands)),
-        details=details.get("details"))
+        details=details)
 
   def invalid_annotation(self,
                          stack,

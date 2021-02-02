@@ -798,7 +798,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         # fail here.
         return None
       else:
-        # TODO(b/123775699): Remove this workaround once we can match against
+        # TODO(b/173742489): Remove this workaround once we can match against
         # literal enums.
         return self._match_type_against_type(
             instance, other_type.formal_type_parameters[abstract_utils.T],

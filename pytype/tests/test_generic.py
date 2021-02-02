@@ -1055,5 +1055,16 @@ class GenericTest(test_base.TargetIndependentTest):
           def __init__(self) -> None: ...
       """)
 
+  def test_bad_mro(self):
+    self.CheckWithErrors("""
+      from typing import Iterator, TypeVar
+      T = TypeVar('T')
+      U = TypeVar('U')
+      V = TypeVar('V')
+
+      class A(Iterator[T]): ...
+      class B(Iterator[U], A[V]): ...  # mro-error
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

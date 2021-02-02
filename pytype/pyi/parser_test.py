@@ -2418,7 +2418,7 @@ class LiteralTest(_ParserTestBase):
     """, "x: None")
 
   def test_enum(self):
-    # TODO(b/123775699): support enums.
+    # TODO(b/173742489): support enums.
     self.check("""
       import enum
       from typing import Literal

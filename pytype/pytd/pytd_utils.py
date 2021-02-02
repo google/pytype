@@ -433,7 +433,7 @@ def LoadPickle(filename, compress=False, open_function=open):
   with open_function(filename, "rb") as fi:
     if compress:
       with gzip.GzipFile(fileobj=fi) as zfi:
-        # TODO(b/117797409): Remove the disable once the typeshed bug is fixed.
+        # TODO(b/173150871): Remove the disable once the typeshed bug is fixed.
         return cPickle.load(zfi)  # pytype: disable=wrong-arg-types
     else:
       return cPickle.load(fi)
@@ -451,7 +451,7 @@ def SavePickle(data, filename=None, compress=False, open_function=open):
         # deterministic gzip files.
         with gzip.GzipFile(filename="", mode="wb",
                            fileobj=fi, mtime=1.0) as zfi:
-          # TODO(b/117797409): Remove disable once typeshed bug is fixed.
+          # TODO(b/173150871): Remove disable once typeshed bug is fixed.
           cPickle.dump(data, zfi, _PICKLE_PROTOCOL)  # pytype: disable=wrong-arg-types
     elif filename is not None:
       with open_function(filename, "wb") as fi:

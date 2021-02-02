@@ -166,7 +166,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           node, v.base_cls, instance, seen, view)
     elif isinstance(v, abstract.LiteralClass):
       if not v.value:
-        # TODO(b/123775699): Remove this workaround once we support literal
+        # TODO(b/173742489): Remove this workaround once we support literal
         # enums.
         return pytd.AnythingType()
       if isinstance(v.value.pyval, (str, bytes)):

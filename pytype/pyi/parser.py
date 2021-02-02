@@ -838,7 +838,7 @@ class _Parser:
           if p.name in ("True", "False"):
             literal_parameters.append(pytd.Literal(p))
           else:
-            # TODO(b/123775699): support enums.
+            # TODO(b/173742489): support enums.
             literal_parameters.append(pytd.AnythingType())
         elif isinstance(p, (int, str, bytes)):
           literal_parameters.append(pytd.Literal(p))

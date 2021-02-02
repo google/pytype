@@ -448,16 +448,6 @@ class Class(metaclass=MixinMeta):
     """Compute the class precedence list (mro) according to C3."""
     bases = abstract_utils.get_mro_bases(self.bases(), self.vm)
     bases = [[self]] + [list(base.mro) for base in bases] + [list(bases)]
-    # If base classes are `ParameterizedClass`, we will use their `base_cls` to
-    # calculate the MRO. Bacause of type parameter renaming, we can not compare
-    # the `ParameterizedClass`s which contain the same `base_cls`.  See example:
-    #   class A(Iterator[T]): ...
-    #   class B(Iterator[U], A[V]): ...
-    # The inheritance: [B], [Iterator, ...], [A, Iterator, ...], [Iterator, A]
-    # So this has MRO order issue, but because the template names of
-    # `ParameterizedClass` of `Iterator` are different, they will be treated as
-    # different base classes and it will infer the MRO order is correct.
-    # TODO(b/159044968): fix this by solving the template rename problem
     base2cls = {}
     newbases = []
     for row in bases:
