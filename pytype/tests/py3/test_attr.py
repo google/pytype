@@ -373,5 +373,23 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
         def __init__(self, y: str = ...) -> None: ...
     """)
 
+  def test_wrapper(self):
+    ty = self.Infer("""
+      import attr
+      def s(*args, **kwargs):
+        return attr.s(*args, auto_attribs=True, **kwargs)
+      @s
+      class Foo:
+        x: int
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable
+      attr: module
+      def s(*args, **kwargs) -> Callable: ...
+      class Foo:
+        x: int
+        def __init__(self, x: int) -> None: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

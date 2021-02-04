@@ -146,6 +146,7 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
 
   def call(self, node, func, args):
     """Construct a decorator, and call it on the class."""
+    args = args.simplify(node, self.vm)
     self.match_args(node, args)
 
     # There are two ways to use a decorator:
