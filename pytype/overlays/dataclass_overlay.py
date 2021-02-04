@@ -134,8 +134,8 @@ class Field(classgen.FieldConstructor):
 
   def call(self, node, unused_func, args):
     """Returns a type corresponding to a field."""
-    self.match_args(node, args)
     args = args.simplify(node, self.vm)
+    self.match_args(node, args)
     node, default_var = self._get_default_var(node, args)
     init = self.get_kwarg(args, "init", True)
     typ = FieldInstance(self.vm, init, default_var).to_variable(node)
