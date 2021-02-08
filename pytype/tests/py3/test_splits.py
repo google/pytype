@@ -266,6 +266,17 @@ class SplitTest(test_base.TargetPython3BasicTest):
       def f(x: Union[int, Sequence[int]]) -> int: ...
     """)
 
+  def test_isinstance_tuple(self):
+    self.Check("""
+      from typing import AbstractSet, Sequence, Union
+
+      def yo(collection: Union[AbstractSet[int], Sequence[int]]):
+        if isinstance(collection, (Sequence,)):
+          return collection.index(5)
+        else:
+          return len(collection)
+    """)
+
 
 class SplitTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for if-splitting in Python 3."""

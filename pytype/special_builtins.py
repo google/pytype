@@ -300,6 +300,8 @@ def _flatten(value, classes):
     True iff a value was ignored during flattening.
   """
   # Used by IsInstance and IsSubclass
+  if isinstance(value, abstract.AnnotationClass):
+    value = value.base_cls
   if isinstance(value, mixin.Class):
     # A single class, no ambiguity.
     classes.append(value)
@@ -368,8 +370,6 @@ class IsInstance(BinaryPredicate):
     if (isinstance(obj, abstract.AMBIGUOUS_OR_EMPTY) or cls is None or
         isinstance(cls, abstract.AMBIGUOUS_OR_EMPTY)):
       return None
-    if isinstance(class_spec, abstract.AnnotationClass):
-      class_spec = class_spec.base_cls
     return _check_against_mro(self.vm, cls, class_spec)
 
 
