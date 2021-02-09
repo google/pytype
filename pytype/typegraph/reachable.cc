@@ -1,10 +1,11 @@
 #include "reachable.h"
 
 #include <cstddef>
+#include <cstdint>
 
 namespace devtools_python_typegraph {
 
-static inline int64_t _node_bit(int node_id) {
+static inline std::int64_t _node_bit(int node_id) {
   return 1l << (node_id & 63);
 }
 
@@ -27,13 +28,13 @@ void ReachabilityAnalyzer::add_connection(const int src, const int dst) {
   /* Update the bit matrix to account for the fact that src and dst are now
    * connected. We consider every pair (i, j) of nodes, and check whether we
    * can now connect them using the new src->dst edge. */
-  int64_t src_bit = _node_bit(src);
+  std::int64_t src_bit = _node_bit(src);
   int src_pos = src / 64;
-  int64_t* row_dst = adj_[dst].data();
+  std::int64_t* row_dst = adj_[dst].data();
   for (int i = 0; i < num_nodes_; i++) {
     if (adj_[i][src_pos] & src_bit) {
       // i is connected to src
-      int64_t* row_i = adj_[i].data();
+      std::int64_t* row_i = adj_[i].data();
       for (int j = 0; j < size_; j++) {
         row_i[j] |= row_dst[j];  // if dst is connected to j, connect i and j
       }

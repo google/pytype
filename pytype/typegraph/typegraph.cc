@@ -1,6 +1,7 @@
 #include "typegraph.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <iterator>
 #include <stack>
 #include <unordered_set>
@@ -21,7 +22,7 @@ CFGNode* Program::NewCFGNode(const std::string& name) {
 CFGNode* Program::NewCFGNode(const std::string& name, Binding* condition) {
   // Count the number of nodes so far and use that as ID
   InvalidateSolver();
-  size_t node_nr = CountCFGNodes();
+  std::size_t node_nr = CountCFGNodes();
   int n = backward_reachability_->add_node();
   CHECK(n == node_nr) <<
       "internal error: wrong reachability cache node count.";
@@ -101,7 +102,7 @@ Metrics Program::CalculateMetrics() {
                  solver_metrics);
 }
 
-CFGNode::CFGNode(Program* program, const std::string& name, size_t id,
+CFGNode::CFGNode(Program* program, const std::string& name, std::size_t id,
                  Binding* condition,
                  ReachabilityAnalyzer* backward_reachability)
     : name_(name),
@@ -169,7 +170,7 @@ void Origin::AddSourceSet(const SourceSet& source_set) {
 
 // Create a Binding, and also registers it with its CFG node.
 Binding::Binding(Program* program, Variable* variable, const BindingData& data,
-                 size_t id)
+                 std::size_t id)
     : variable_(variable), data_(data), program_(program), id_(id) {}
 
 Binding::~Binding() {}
@@ -252,7 +253,8 @@ bool Binding::HasSource(const Binding* binding) const {
   return false;
 }
 
-Variable::Variable(Program* program, size_t id) : id_(id), program_(program) {}
+Variable::Variable(Program* program, std::size_t id)
+    : id_(id), program_(program) {}
 
 Binding* Variable::FindOrAddBindingHelper(const BindingData& data) {
   auto it = data_to_binding_.find(data.get());

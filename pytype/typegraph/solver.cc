@@ -1,6 +1,7 @@
 #include "solver.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <functional>
 #include <stack>
 #include <string>
@@ -108,8 +109,8 @@ State::State(const CFGNode* pos, const std::vector<const Binding*>& goals)
 
 State::~State() {}
 
-size_t State::Hash() const {
-  size_t hash = std::hash<const CFGNode*>{}(pos_);
+std::size_t State::Hash() const {
+  std::size_t hash = std::hash<const CFGNode*>{}(pos_);
   for (auto goal : goals_)
     hash_mix<const Binding*>(hash, goal);
   return hash;

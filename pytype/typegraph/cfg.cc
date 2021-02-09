@@ -3,6 +3,7 @@
 #include <Python.h>
 #include <structseq.h>
 
+#include <cstddef>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -855,10 +856,10 @@ static void BindingDealloc(PyObject* self) {
 static PyObject* BindingRepr(PyObject* self) {
   PyBindingObj* attr = reinterpret_cast<PyBindingObj*>(self);
   PyObject* py_id = PyObject_GetAttrString(self, "id");
-  size_t id;
+  std::size_t id;
   if (!py_id) {
     PyErr_Clear();
-    id = reinterpret_cast<size_t>(attr->attr->data().get());
+    id = reinterpret_cast<std::size_t>(attr->attr->data().get());
   } else {
     id = PyInt_AsLong(py_id);
     if (id == -1 && PyErr_Occurred())
