@@ -1062,8 +1062,10 @@ class GenericTest(test_base.TargetIndependentTest):
       U = TypeVar('U')
       V = TypeVar('V')
 
-      class A(Iterator[T]): ...
-      class B(Iterator[U], A[V]): ...  # mro-error
+      class A(Iterator[T]):
+        pass
+      class B(Iterator[U], A[V]):   # mro-error
+        pass
     """)
 
 
