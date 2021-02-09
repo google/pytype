@@ -727,7 +727,7 @@ def _maybe_output_debug(options, program):
     dot = debug.program_to_dot(program, set([]), bool(options.output_cfg))
     proc = subprocess.Popen(["/usr/bin/dot", "-T", "svg", "-o",
                              options.output_cfg or options.output_typegraph],
-                            stdin=subprocess.PIPE)
+                            stdin=subprocess.PIPE, universal_newlines=True)
     proc.stdin.write(dot)
     proc.stdin.close()
   if options.output_debug:

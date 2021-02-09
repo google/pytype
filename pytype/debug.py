@@ -1,20 +1,19 @@
 """Debugging helper functions."""
 
 import collections
+import io
 import re
 import traceback
 
 from pytype import utils
 from pytype.typegraph import cfg_utils
 
-import six
 
-
-def _ascii_tree(io, node, p1, p2, seen, get_children, get_description=None):
+def _ascii_tree(out, node, p1, p2, seen, get_children, get_description=None):
   """Draw a graph, starting at a given position.
 
   Args:
-    io: A file-like object to write the ascii tree to.
+    out: A file-like object to write the ascii tree to.
     node: The node from where to draw.
     p1: The current prefix.
     p2: The upcoming prefix.
@@ -25,14 +24,14 @@ def _ascii_tree(io, node, p1, p2, seen, get_children, get_description=None):
   children = list(get_children(node))
   text = get_description(node) if get_description else str(node)
   if node in seen:
-    io.write(p1 + "[" + text + "]\n")
+    out.write(p1 + "[" + text + "]\n")
   else:
-    io.write(p1 + text + "\n")
+    out.write(p1 + text + "\n")
     seen.add(node)
     for i, c in enumerate(children):
       last = (i == len(children) - 1)
-      io.write(p2 + "|\n")
-      _ascii_tree(io, c, p2 + "+-", p2 + ("  " if last else "| "),
+      out.write(p2 + "|\n")
+      _ascii_tree(out, c, p2 + "+-", p2 + ("  " if last else "| "),
                   seen, get_children, get_description)
 
 
@@ -47,9 +46,9 @@ def ascii_tree(node, get_children, get_description=None):
   Returns:
     A string.
   """
-  io = six.StringIO()
-  _ascii_tree(io, node, "", "", set(), get_children, get_description)
-  return io.getvalue()
+  out = io.StringIO()
+  _ascii_tree(out, node, "", "", set(), get_children, get_description)
+  return out.getvalue()
 
 
 def prettyprint_binding(binding, indent_level=0):
@@ -188,7 +187,7 @@ def program_to_text(program):
   """
   def label(node):
     return "<%d>%s" % (node.id, node.name)
-  s = six.StringIO()
+  s = io.StringIO()
   seen = set()
   for node in cfg_utils.order_nodes(program.cfg_nodes):
     seen.add(node)
@@ -232,7 +231,7 @@ def program_to_dot(program, ignored, only_cfg=False):
       sum(len(v.bindings) for v in program.variables),
       len(program.variables)))
 
-  sb = six.StringIO()
+  sb = io.StringIO()
   sb.write("digraph {\n")
   for node in program.cfg_nodes:
     if node in ignored:
