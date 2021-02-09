@@ -1,3 +1,16 @@
+Version 2021.02.09
+
+New features and updates:
+* Replace namedtuples with attrs in our PyTD representation.
+
+Bug fixes:
+* Improve error messaging for typing.AnyStr.
+* Fully qualify `std::size_t` to avoid platform incompatibilities.
+* Add isascii attribute to str, bytes, and bytearray.
+* Support isinstance() checks on tuples of typing containers.
+* Improve *args and **kwargs forwarding for attrs and dataclasses.
+* Don't propagate attribute errors for deleted names.
+
 Version 2021.01.28
 
 New features:
