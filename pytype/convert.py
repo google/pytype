@@ -690,8 +690,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
             return self.unsolvable
           base_cls = actual.cls
         else:
-          assert isinstance(cls.base_type, pytd.ClassType)
-          base_cls = cls.base_type.cls
+          base_type = cls.base_type
+          assert isinstance(base_type, pytd.ClassType)
+          base_cls = base_type.cls
         assert isinstance(base_cls, pytd.Class), base_cls
         if base_cls.name == "builtins.type":
           c, = cls.parameters

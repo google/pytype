@@ -5,7 +5,6 @@ import sys
 import traceback
 
 from pytype import utils
-from pytype.pytd.parse import node
 
 from pytype.tools.xref import debug
 from pytype.tools.xref import indexer
@@ -20,8 +19,6 @@ def main():
   except utils.UsageError as e:
     print(str(e), file=sys.stderr)
     sys.exit(1)
-
-  node.SetCheckPreconditions(options.check_preconditions)
 
   if options.timeout is not None:
     signal.alarm(options.timeout)

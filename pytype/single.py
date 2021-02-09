@@ -17,7 +17,6 @@ from pytype import load_pytd
 from pytype import metrics
 from pytype import utils
 from pytype.pytd import typeshed
-from pytype.pytd.parse import node
 
 
 log = logging.getLogger(__name__)
@@ -72,8 +71,6 @@ def main():
   if options.version:
     print(io.get_pytype_version())
     sys.exit(0)
-
-  node.SetCheckPreconditions(options.check_preconditions)
 
   if options.timeout is not None:
     signal.alarm(options.timeout)

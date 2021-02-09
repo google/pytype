@@ -1,31 +1,39 @@
-"""AST representation of a pytd file."""
+"""Internal representation of pytd nodes.
+
+All pytd nodes should be frozen attrs inheriting from node.Node (aliased
+to Node in this module). Nodes representing types should also inherit from Type.
+
+Since we use frozen classes, setting attributes in __post_init__ needs to be
+done via
+  object.__setattr__(self, 'attr', value)
+
+NOTE: The way we introspect on the types of the fields requires forward
+references to be simple classes, hence use
+  x: Union['Foo', 'Bar']
+rather than
+  x: 'Union[Foo, Bar]'
+"""
 
 import collections
 import itertools
 
+from typing import Optional, Tuple, Union
+
+import attr
+
 from pytype.pytd.parse import node
-from pytype.pytd.parse import preconditions
+
+# Alias node.Node for convenience.
+Node = node.Node
 
 
-# This mixin is used to define the classes that satisfy the {Type}
-# precondition.  Each type class below should inherit from this mixin.
-# Note that the mixin must be registered with preconditions.register() below.
-
-
+# Each type class below should inherit from this mixin.
 class Type:
-
   __slots__ = ()
 
 
-preconditions.register(Type)
-
-
-class TypeDeclUnit(node.Node('name: str or None',
-                             'constants: tuple[Constant]',
-                             'type_params: tuple[TypeParameter]',
-                             'classes: tuple[Class]',
-                             'functions: tuple[Function]',
-                             'aliases: tuple[Alias]')):
+@attr.s(auto_attribs=True, frozen=True, order=False, eq=False)
+class TypeDeclUnit(Node):
   """Module node. Holds module contents (constants / classes / functions).
 
   Attributes:
@@ -36,6 +44,12 @@ class TypeDeclUnit(node.Node('name: str or None',
     classes: Iterable of classes defined in this type decl unit.
     aliases: Iterable of aliases (or imports) for types in other modules.
   """
+  name: Optional[str]
+  constants: Tuple['Constant', ...]
+  type_params: Tuple['TypeParameter', ...]
+  classes: Tuple['Class', ...]
+  functions: Tuple['Function', ...]
+  aliases: Tuple['Alias', ...]
 
   def Lookup(self, name):
     """Convenience function: Look up a given name in the global namespace.
@@ -56,7 +70,7 @@ class TypeDeclUnit(node.Node('name: str or None',
     try:
       return self._name2item[name]
     except AttributeError:
-      self._name2item = {}
+      object.__setattr__(self, '_name2item', {})
       for x in self.type_params:
         self._name2item[x.full_name] = x
       for x in self.constants + self.functions + self.classes + self.aliases:
@@ -75,38 +89,40 @@ class TypeDeclUnit(node.Node('name: str or None',
     return id(self) != id(other)
 
 
-class Constant(node.Node('name: str', 'type: {Type}')):
-  __slots__ = ()
+@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
+        cache_hash=True)
+class Constant(Node):
+  name: str
+  type: Type
 
 
-class Alias(node.Node('name: str', 'type: {Type} or Constant or Function')):
+@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
+        cache_hash=True)
+class Alias(Node):
   """An alias (symbolic link) for a class implemented in some other module.
 
   Unlike Constant, the Alias is the same type, as opposed to an instance of that
   type. It's generated, among others, from imports - e.g. "from x import y as z"
   will create a local alias "z" for "x.y".
   """
-  __slots__ = ()
+  name: str
+  type: Union[Type, Constant, 'Function', 'Module']
 
 
-class Module(node.Node('name: str', 'module_name: str')):
+@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
+        cache_hash=True)
+class Module(Node):
   """A module imported into the current module, possibly with an alias."""
-  __slots__ = ()
+  name: str
+  module_name: str
 
   @property
   def is_aliased(self):
     return self.name != self.module_name
 
 
-class Class(node.Node('name: str',
-                      'metaclass: None or {Type}',
-                      'parents: tuple[Class or {Type}]',
-                      'methods: tuple[Function]',
-                      'constants: tuple[Constant]',
-                      'classes: tuple[Class]',
-                      'decorators: tuple[Function or {Type}]',
-                      'slots: None or tuple[str]',
-                      'template: tuple[TemplateItem]')):
+@attr.s(auto_attribs=True, frozen=True, order=False, cache_hash=True)
+class Class(Node):
   """Represents a class declaration.
 
   Used as dict/set key, so all components must be hashable.
@@ -121,6 +137,16 @@ class Class(node.Node('name: str',
     slots: A.k.a. __slots__, declaring which instance attributes are writable.
     template: Tuple of pytd.TemplateItem instances.
   """
+  name: str
+  metaclass: Union[None, Type]
+  parents: Tuple[Union['Class', Type], ...]
+  methods: Tuple['Function', ...]
+  constants: Tuple[Constant, ...]
+  classes: Tuple['Class', ...]
+  decorators: Tuple[Alias, ...]
+  slots: Optional[Tuple[str, ...]]
+  template: Tuple['TemplateItem', ...]
+
   # TODO(b/159053187): Rename "parents" to "bases". "Parents" is confusing since
   # we're in a tree.
 
@@ -142,7 +168,7 @@ class Class(node.Node('name: str',
     try:
       return self._name2item[name]
     except AttributeError:
-      self._name2item = {}
+      object.__setattr__(self, '_name2item', {})
       for x in self.methods + self.constants + self.classes:
         self._name2item[x.name] = x
       return self._name2item[name]
@@ -152,10 +178,9 @@ STATICMETHOD, CLASSMETHOD, METHOD, PROPERTY = (
     'staticmethod', 'classmethod', 'method', 'property')
 
 
-class Function(node.Node('name: str',
-                         'signatures: tuple[Signature]',
-                         'kind: str',
-                         'flags: int')):
+@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
+        cache_hash=True)
+class Function(Node):
   """A function or a method, defined by one or more PyTD signatures.
 
   Attributes:
@@ -164,13 +189,13 @@ class Function(node.Node('name: str',
     kind: The type of this function. One of: STATICMETHOD, CLASSMETHOD, METHOD
     flags: A bitfield of flags like is_abstract
   """
-  __slots__ = ()
+  name: str
+  signatures: Tuple['Signature', ...]
+  kind: str
+  flags: int = 0
+
   IS_ABSTRACT = 1
   IS_COROUTINE = 2
-
-  def __new__(cls, name, signatures, kind, flags=0):
-    self = super(Function, cls).__new__(cls, name, signatures, kind, flags)
-    return self
 
   def _set_flag(self, flag, enable):
     if enable:
@@ -201,12 +226,9 @@ class Function(node.Node('name: str',
     return cls.IS_ABSTRACT if is_abstract else 0
 
 
-class Signature(node.Node('params: tuple[Parameter]',
-                          'starargs: Parameter or None',
-                          'starstarargs: Parameter or None',
-                          'return_type: {Type}',
-                          'exceptions: tuple[{Type}]',
-                          'template: tuple[TemplateItem]')):
+@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
+        cache_hash=True)
+class Signature(Node):
   """Represents an individual signature of a function.
 
   For overloaded functions, this is one specific combination of parameters.
@@ -221,7 +243,12 @@ class Signature(node.Node('params: tuple[Parameter]',
     exceptions: List of exceptions for this function definition.
     template: names for bindings for bounded types in params/return_type
   """
-  __slots__ = ()
+  params: Tuple['Parameter', ...]
+  starargs: Optional['Parameter']
+  starstarargs: Optional['Parameter']
+  return_type: Type
+  exceptions: Tuple[Type, ...]
+  template: Tuple['TemplateItem', ...]
 
   @property
   def name(self):
@@ -232,11 +259,9 @@ class Signature(node.Node('params: tuple[Parameter]',
     return self.starargs is not None or self.starstarargs is not None
 
 
-class Parameter(node.Node('name: str',
-                          'type: {Type}',
-                          'kwonly: bool',
-                          'optional: bool',
-                          'mutated_type: {Type} or None')):
+@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
+        cache_hash=True)
+class Parameter(Node):
   """Represents a parameter of a function definition.
 
   Attributes:
@@ -247,13 +272,16 @@ class Parameter(node.Node('name: str',
     mutated_type: The type the parameter will have after the function is called
       if the type is mutated, None otherwise.
   """
-  __slots__ = ()
+  name: str
+  type: Type
+  kwonly: bool
+  optional: bool
+  mutated_type: Optional[Type]
 
 
-class TypeParameter(node.Node('name: str',
-                              'constraints: tuple[{Type}]',
-                              'bound: {Type} or None',
-                              'scope: str or None'), Type):
+@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
+        cache_hash=True)
+class TypeParameter(Node, Type):
   """Represents a type parameter.
 
   A type parameter is a bound variable in the context of a function or class
@@ -266,11 +294,10 @@ class TypeParameter(node.Node('name: str',
     scope: Fully-qualified name of the class or function this parameter is
       bound to. E.g. "mymodule.MyClass.mymethod", or None.
   """
-  __slots__ = ()
-
-  def __new__(cls, name, constraints=(), bound=None, scope=None):
-    return super(TypeParameter, cls).__new__(
-        cls, name, constraints, bound, scope)
+  name: str
+  constraints: Tuple[Type, ...] = attr.ib(factory=tuple)
+  bound: Optional[Type] = None
+  scope: Optional[str] = None
 
   def __lt__(self, other):
     try:
@@ -298,7 +325,9 @@ class TypeParameter(node.Node('name: str',
       return AnythingType()
 
 
-class TemplateItem(node.Node('type_param: TypeParameter')):
+@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
+        cache_hash=True)
+class TemplateItem(Node):
   """Represents template name for generic types.
 
   This is used for classes and signatures. The 'template' field of both is
@@ -313,7 +342,7 @@ class TemplateItem(node.Node('type_param: TypeParameter')):
     type_param: the TypeParameter instance used. This is the actual instance
       that's used wherever this type parameter appears, e.g. within a class.
   """
-  __slots__ = ()
+  type_param: TypeParameter
 
   @property
   def name(self):
@@ -341,46 +370,44 @@ class TemplateItem(node.Node('type_param: TypeParameter')):
 # corresponding AST representations.
 
 
-class NamedType(node.Node('name: str'), Type):
+@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
+        cache_hash=True)
+class NamedType(Node, Type):
   """A type specified by name and, optionally, the module it is in."""
-  __slots__ = ()
+  name: str
 
   def __str__(self):
     return self.name
 
 
-class ClassType(node.Node('name: str'), Type):
+@attr.s(auto_attribs=False, init=False, frozen=False, order=False, slots=False,
+        eq=False)
+class ClassType(Node, Type):
   """A type specified through an existing class node."""
-
   # This type is different from normal nodes:
   # (a) It's mutable, and there are functions
   #     (parse/visitors.py:FillInLocalPointers) that modify a tree in place.
-  # (b) Because it's mutable, it's not actually using the tuple/Node interface
-  #     to store things (in particular, the pointer to the existing class).
+  # (b) The cls pointer is not treated as a regular attr field.
   # (c) Visitors will not process the "children" of this node. Since we point
   #     to classes that are back at the top of the tree, that would generate
   #     cycles.
 
-  def __getnewargs__(self):
-    # Due to a peculiarity of cPickle, the new args cannot have references back
-    # into the tree, so we only set name (a string) as a newarg, and set
-    # cls to its actual value through getstate/setstate.
-    return self.name, None
+  name: str = attr.ib()
 
-  def __getstate__(self):
-    return (self.cls,)
+  # We do not want cls to be a child node, but we do want it to be an optional
+  # arg to __init__ and accessible via self.cls
+  cls = None
 
-  def __setstate__(self, state):
-    self.cls = state[0]
-
-  def __new__(pycls, name, cls=None):  # pylint: disable=bad-classmethod-argument
-    self = super(ClassType, pycls).__new__(pycls, name)
-    # self.cls potentially filled in later (by visitors.FillInLocalPointers)
+  def __init__(self, name, cls=None):
+    self.name = name
     self.cls = cls
-    return self
 
-  # __eq__ is inherited (using tuple equality + requiring the two classes
-  #                      be the same)
+  def __eq__(self, other):
+    return (self.__class__ == other.__class__ and
+            self.name == other.name)
+
+  def __hash__(self):
+    return hash((self.__class__.__name__, self.name))
 
   def __str__(self):
     return str(self.cls.name) if self.cls else self.name
@@ -391,16 +418,20 @@ class ClassType(node.Node('name: str'), Type):
         cls='<unresolved>' if self.cls is None else '')
 
 
-class LateType(node.Node('name: str'), Type):
+@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
+        cache_hash=True)
+class LateType(Node, Type):
   """A type we have yet to resolve."""
+  name: str
 
   def __str__(self):
     return self.name
 
 
-class AnythingType(node.Node(), Type):
-  """A type we know nothing about yet ('?' in pytd)."""
-  __slots__ = ()
+@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
+        cache_hash=True)
+class AnythingType(Node, Type):
+  """A type we know nothing about yet (? in pytd)."""
 
   @property
   def name(self):
@@ -410,13 +441,14 @@ class AnythingType(node.Node(), Type):
     return True
 
 
-class NothingType(node.Node(), Type):
-  """An "impossible" type, with no instances ('nothing' in pytd).
+@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
+        cache_hash=True)
+class NothingType(Node, Type):
+  """An "impossible" type, with no instances (nothing in pytd).
 
   Also known as the "uninhabited" type, or, in type systems, the "bottom" type.
   For representing empty lists, and functions that never return.
   """
-  __slots__ = ()
 
   @property
   def name(self):
@@ -426,25 +458,25 @@ class NothingType(node.Node(), Type):
     return True
 
 
-class _SetOfTypes(node.Node('type_list: tuple[{Type}]'), Type):
+def _FlattenTypes(type_list):
+  """Helper function for _SetOfTypes initialization."""
+  assert type_list  # Disallow empty sets. Use NothingType for these.
+  flattened = itertools.chain.from_iterable(
+      t.type_list if isinstance(t, _SetOfTypes) else [t]
+      for t in type_list)
+  # Remove duplicates, preserving order
+  unique = tuple(collections.OrderedDict.fromkeys(flattened))
+  return unique
+
+
+@attr.s(auto_attribs=True, frozen=True, order=False, slots=True, eq=False)
+class _SetOfTypes(Node, Type):
   """Super class for shared behavior of UnionType and IntersectionType."""
-
-  __slots__ = ()
-
   # NOTE: type_list is kept as a tuple, to preserve the original order
   #       even though in most respects it acts like a frozenset.
   #       It also flattens the input, such that printing without
   #       parentheses gives the same result.
-
-  def __new__(cls, type_list):
-    assert type_list  # Disallow empty sets. Use NothingType for these.
-    flattened = itertools.chain.from_iterable(
-        t.type_list if isinstance(t, cls) else [t] for t in type_list)
-
-    # Remove duplicates, preserving order
-    unique = tuple(collections.OrderedDict.fromkeys(flattened))
-
-    return super(_SetOfTypes, cls).__new__(cls, unique)
+  type_list: Tuple[Type, ...] = attr.ib(converter=_FlattenTypes)
 
   @property
   def name(self):
@@ -468,14 +500,17 @@ class _SetOfTypes(node.Node('type_list: tuple[{Type}]'), Type):
 
 class UnionType(_SetOfTypes):
   """A union type that contains all types in self.type_list."""
+  __slots__ = ()
 
 
 class IntersectionType(_SetOfTypes):
   """An intersection type."""
+  __slots__ = ()
 
 
-class GenericType(node.Node('base_type: NamedType or ClassType or LateType',
-                            'parameters: tuple[{Type}]'), Type):
+@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
+        cache_hash=True)
+class GenericType(Node, Type):
   """Generic type. Takes a base type and type parameters.
 
   This is used for homogeneous tuples, lists, dictionaries, user classes, etc.
@@ -484,7 +519,8 @@ class GenericType(node.Node('base_type: NamedType or ClassType or LateType',
     base_type: The base type. Instance of Type.
     parameters: Type parameters. Tuple of instances of Type.
   """
-  __slots__ = ()
+  base_type: Union[NamedType, ClassType, LateType]
+  parameters: Tuple[Type, ...]
 
   @property
   def name(self):
@@ -524,8 +560,10 @@ class CallableType(GenericType):
     return self.parameters[-1]
 
 
-class Literal(node.Node('value: int or str or {Type}'), Type):
-  __slots__ = ()
+@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
+        cache_hash=True)
+class Literal(Node, Type):
+  value: Union[int, str, Type]
 
   @property
   def name(self):

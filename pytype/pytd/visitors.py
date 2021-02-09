@@ -987,10 +987,6 @@ class VerifyVisitor(Visitor):
     super().__init__()
     self._valid_param_name = re.compile(r"[a-zA-Z_]\w*$")
 
-  def Enter(self, node):
-    super().Enter(node)
-    node.Validate()
-
   def _AssertNoDuplicates(self, node, attrs):
     """Checks that we don't have duplicate top-level names."""
     get_set = lambda attr: {entry.name for entry in getattr(node, attr)}
@@ -1383,7 +1379,7 @@ class AdjustTypeParameters(Visitor):
     return node.Visit(AdjustSelf()).Visit(NamedTypeToClassType())
 
   def EnterSignature(self, unused_node):
-    assert self.function_typeparams is None
+    assert self.function_typeparams is None, self.function_typeparams
     self.function_typeparams = set()
 
   def LeaveSignature(self, unused_node):

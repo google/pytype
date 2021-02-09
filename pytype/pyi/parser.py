@@ -2,6 +2,7 @@
 
 import collections
 import hashlib
+from typing import cast
 
 from pytype import file_utils
 from pytype import module_utils
@@ -871,6 +872,7 @@ class _Parser:
         return self._heterogeneous_tuple(base_type, parameters)
       elif (self._is_callable_base_type(base_type) and
             self._is_heterogeneous_tuple(parameters[0])):
+        first_param = cast(pytd.TupleType, parameters[0])
         if len(parameters) > 2:
           raise ParseError(
               "Expected 2 parameters to Callable, got %d" % len(parameters))
@@ -879,10 +881,10 @@ class _Parser:
           # need a return type for CallableType, or we wouldn't know whether the
           # last parameter is an argument or return type.
           parameters += (pytd.AnythingType(),)
-        if self._is_empty_tuple(parameters[0]):
+        if self._is_empty_tuple(first_param):
           parameters = parameters[1:]
         else:
-          parameters = parameters[0].parameters + parameters[1:]
+          parameters = first_param.parameters + parameters[1:]
         return pytd.CallableType(base_type=base_type, parameters=parameters)
       else:
         assert parameters

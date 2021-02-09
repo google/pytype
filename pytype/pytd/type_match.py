@@ -12,6 +12,8 @@ signatures against new inference results.
 
 import logging
 
+import attr
+
 from pytype import utils
 from pytype.pytd import booleq
 from pytype.pytd import escape
@@ -60,12 +62,14 @@ def get_all_subclasses(asts):
   return utils.invert_dict(hierarchy)
 
 
-class StrictType(node.Node("name")):
+@attr.s(auto_attribs=True, frozen=True, slots=True, cache_hash=True)
+class StrictType(node.Node):
   """A type that doesn't allow sub- or superclasses to match.
 
   For example, "int" is considered a valid argument for a function that accepts
   "object", but StrictType("int") is not.
   """
+  name: str
 
   def __str__(self):
     return self.name
