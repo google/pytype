@@ -106,7 +106,7 @@ class Alias(Node):
   will create a local alias "z" for "x.y".
   """
   name: str
-  type: Union[Type, Constant, 'Function']
+  type: Union[Type, Constant, 'Function', 'Module']
 
 
 @attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
@@ -143,7 +143,7 @@ class Class(Node):
   methods: Tuple['Function', ...]
   constants: Tuple[Constant, ...]
   classes: Tuple['Class', ...]
-  decorators: Tuple[Union['Function', Type], ...]
+  decorators: Tuple[Alias, ...]
   slots: Optional[Tuple[str, ...]]
   template: Tuple['TemplateItem', ...]
 
