@@ -211,8 +211,16 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     if not typ:
       return self.vm.convert.unsolvable
     if typ.formal and is_var:
+      if "AnyStr" in [x.name for x in self.get_type_parameters(typ)]:
+        if self.vm.PY2:
+          str_type = "typing.Text"
+        else:
+          str_type = "Union[str, bytes]"
+        details = f"Note: AnyStr is a TypeVar; use {str_type} for string types."
+      else:
+        details = None
       self.vm.errorlog.not_supported_yet(
-          stack, "using type parameter in variable annotation")
+          stack, "using type parameter in variable annotation", details=details)
       return self.vm.convert.unsolvable
     return typ
 

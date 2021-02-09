@@ -16,7 +16,7 @@ namespace map_util {
 // Functor for calculating the hash of an object using its Hash() method.
 template<typename Key>
 struct hash {
-  size_t operator()(const Key& key) const noexcept {
+  std::size_t operator()(const Key& key) const noexcept {
     return key.Hash();
   }
 };
@@ -24,7 +24,7 @@ struct hash {
 // Same as hasher, but for pointer-type keys.
 template<typename Key>
 struct ptr_hash {
-  size_t operator()(const Key* key) const noexcept {
+  std::size_t operator()(const Key* key) const noexcept {
     return key->Hash();
   }
 };

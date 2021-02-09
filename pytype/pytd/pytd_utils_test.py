@@ -503,7 +503,6 @@ class PrintTest(parser_test_base.ParserTest):
       Y = TypeVar('Y')
       def bar(x: Union[X, Y]) -> Any: ...
     """)
-    # TODO(b/159051689): Do more extensive testing.
     pytd_utils.Print(ast)
 
   def test_literal(self):

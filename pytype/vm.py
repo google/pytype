@@ -1516,7 +1516,7 @@ class VirtualMachine:
       return state
     nodes = []
     for val in obj.Filter(state.node):
-      # TODO(b/159038991): Check whether val.data is a descriptor (i.e. has
+      # TODO(b/172045608): Check whether val.data is a descriptor (i.e. has
       # "__set__")
       nodes.append(self.attribute_handler.set_attribute(
           state.node, val.data, attr, value))
@@ -1524,9 +1524,8 @@ class VirtualMachine:
 
   def del_attr(self, state, obj, attr):
     """Delete an attribute."""
-    # TODO(b/159039569): Store abstract.Empty
-    log.warning("Attribute removal does not actually do "
-                "anything in the abstract interpreter")
+    log.info("Attribute removal does not do anything in the abstract "
+             "interpreter")
     return state
 
   def del_subscr(self, state, obj, subscr):
@@ -2669,11 +2668,9 @@ class VirtualMachine:
     return state.push(self.convert.build_none(state.node))
 
   def byte_CALL_FINALLY(self, state, op):
-    # TODO(b/157603915): Don't we need to do something here?
     return state
 
   def byte_END_ASYNC_FOR(self, state, op):
-    # TODO(b/157603915): Don't we need to do something here?
     return state
 
   def byte_POP_FINALLY(self, state, op):

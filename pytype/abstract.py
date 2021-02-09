@@ -2522,7 +2522,7 @@ class LiteralClass(ParameterizedClass):
   def value(self):
     if isinstance(self._instance, ConcreteValue):
       return self._instance
-    # TODO(b/123775699): Remove this workaround once we support literal enums.
+    # TODO(b/173742489): Remove this workaround once we support literal enums.
     return None
 
   def instantiate(self, node, container=None):

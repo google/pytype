@@ -42,13 +42,14 @@ typedef std::set<const Binding*, pointer_less<Binding>> GoalSet;
 // This implementation is based on Google's hash mixing algorithm written by
 // Jyrki Alakuijala.
 template <typename T>
-void hash_mix(size_t& seed, const T& val) {
-  static const size_t kMul = static_cast<size_t>(0xdc3eb94af8ab4c93ULL);
+void hash_mix(std::size_t& seed, const T& val) {
+  static const std::size_t kMul =
+      static_cast<std::size_t>(0xdc3eb94af8ab4c93ULL);
   // Multiplicative hashing will mix bits better in the msb end ...
   seed *= kMul;
   // ... and rotating will move the better mixed msb-bits to lsb-bits.
   seed = (((seed << 19) |
-           (seed >> (std::numeric_limits<size_t>::digits - 19))) +
+           (seed >> (std::numeric_limits<std::size_t>::digits - 19))) +
           std::hash<T>{}(val));
 }
 
@@ -67,7 +68,7 @@ class State {
 
   // Compute hash code for this State. We use State instances as keys when
   // memoizing.
-  size_t Hash() const;
+  std::size_t Hash() const;
 
   // Retrieve current position in the CFG. The position is used to determine
   // whether goals (bindings) are reachable.
@@ -103,8 +104,8 @@ class QueryKey {
            const CFGNodeSet& b):
     start_(s), finish_(f), blocked_(b) {}
 
-  size_t Hash() const {
-    size_t hash = std::hash<const CFGNode*>{}(start_);
+  std::size_t Hash() const {
+    std::size_t hash = std::hash<const CFGNode*>{}(start_);
     hash_mix<const CFGNode*>(hash, finish_);
     for (auto n : blocked_)
       hash_mix<const CFGNode*>(hash, n);
@@ -225,8 +226,8 @@ class Solver {
              const CFGNode* start_node);
 
   const std::unique_ptr<internal::StateMap> solved_states_;
-  size_t state_cache_hits_;
-  size_t state_cache_misses_;
+  std::size_t state_cache_hits_;
+  std::size_t state_cache_misses_;
 
   std::vector<QueryMetrics> query_metrics_;
 

@@ -1221,5 +1221,12 @@ class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
         return 0  # bad-return-type
     """)
 
+  def test_anystr_error(self):
+    errors = self.CheckWithErrors("""
+      from typing import AnyStr, List, Union
+      x: Union[List[AnyStr], List[int]]  # not-supported-yet[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": "AnyStr is a TypeVar"})
+
 
 test_base.main(globals(), __name__ == "__main__")

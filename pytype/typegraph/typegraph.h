@@ -57,7 +57,7 @@ inline BindingData MakeBindingData(RawDataType* raw_data,
 // the largest variable was, on average, 157. For files below 25 seconds, it was
 // 7. Additionally, for 99% of files, the largest variable was below 64, so we
 // use that as the cutoff.
-static const size_t MAX_VAR_SIZE = 64;
+static const std::size_t MAX_VAR_SIZE = 64;
 
 // Program instances tie together the CFG and the data flow graph (variables
 // + bindings). We use this for memory allocation (deleting a program will
@@ -77,13 +77,13 @@ class Program {
   CFGNode* NewCFGNode(const std::string& name);
   CFGNode* NewCFGNode(const std::string& name, Binding* condition);
   Variable* NewVariable();
-  size_t CountCFGNodes() const { return cfg_nodes_.size(); }
+  std::size_t CountCFGNodes() const { return cfg_nodes_.size(); }
 
   const std::vector<std::unique_ptr<CFGNode>>& cfg_nodes() const {
     return cfg_nodes_;
   }
 
-  size_t next_variable_id() { return next_variable_id_; }
+  std::size_t next_variable_id() { return next_variable_id_; }
 
   const BindingData& default_data() const { return default_data_; }
 
@@ -91,10 +91,10 @@ class Program {
     default_data_ = new_default;
   }
 
-  size_t next_binding_id() const { return next_binding_id_; }
+  std::size_t next_binding_id() const { return next_binding_id_; }
 
-  size_t MakeBindingId() {
-    size_t id = next_binding_id_++;
+  std::size_t MakeBindingId() {
+    std::size_t id = next_binding_id_++;
     return id;
   }
 
@@ -113,8 +113,8 @@ class Program {
 
  private:
   CFGNode* entrypoint_;
-  size_t next_variable_id_;
-  size_t next_binding_id_;
+  std::size_t next_variable_id_;
+  std::size_t next_binding_id_;
   std::unique_ptr<ReachabilityAnalyzer> backward_reachability_;
   // For deallocation, and for node counting:
   std::vector<std::unique_ptr<CFGNode>> cfg_nodes_;
@@ -156,7 +156,7 @@ class CFGNode {
   const Program* program() const { return program_; }
 
   // Node ID. Node IDs are dense (they don't have any gaps).
-  size_t id() const { return id_; }
+  std::size_t id() const { return id_; }
 
   // Node name. E.g. filename plus line number, for generating backtraces.
   const std::string& name() const { return name_; }
@@ -178,18 +178,18 @@ class CFGNode {
   // Ordering CFGNodes is useful for ordered data structures like std::set.
   bool operator<(const CFGNode& other) const { return id() < other.id(); }
 
-  size_t Hash() const {
+  std::size_t Hash() const {
     return id_;
   }
 
  private:
-  CFGNode(Program* program, const std::string& name, size_t id,
+  CFGNode(Program* program, const std::string& name, std::size_t id,
           Binding* condition, ReachabilityAnalyzer* backward_reachability);
 
   const std::string name_;
   std::vector<CFGNode*> incoming_;
   std::vector<CFGNode*> outgoing_;
-  size_t id_;
+  std::size_t id_;
   std::vector<Binding*> bindings_;
   Program* program_;  // for alloc
   Binding* condition_;
@@ -265,7 +265,7 @@ class Binding {
   Program* program() const { return program_; }
 
   // The ID of this Binding, used for ordering Bindings.
-  size_t id() const { return id_; }
+  std::size_t id() const { return id_; }
 
   // "<" is used to order Bindings by id.
   bool operator<(const Binding& other) const { return id() < other.id(); }
@@ -295,7 +295,7 @@ class Binding {
 
  private:
   Binding(Program* program, Variable* variable, const BindingData& data,
-          size_t id);
+          std::size_t id);
   Origin* FindOrAddOrigin(CFGNode* node);
 
   std::vector<std::unique_ptr<Origin>> origins_;
@@ -303,7 +303,7 @@ class Binding {
   Variable* variable_;
   BindingData data_;
   Program* program_;  // for alloc
-  size_t id_;
+  std::size_t id_;
   friend Variable;    // to allow Variables to construct Bindings
 };
 
@@ -349,10 +349,10 @@ class Variable {
                     const SourceSet& additional_sources);
 
   // Number of choices we have for this binding.
-  size_t size() const { return bindings_.size(); }
+  std::size_t size() const { return bindings_.size(); }
 
   // ID of this Variable.
-  size_t id() const { return id_; }
+  std::size_t id() const { return id_; }
 
   // What program this Variable belongs to.
   Program* program() const { return program_; }
@@ -373,12 +373,12 @@ class Variable {
 
  private:
   // Initialize an empty variable
-  explicit Variable(Program* program, size_t id);
+  explicit Variable(Program* program, std::size_t id);
   Binding* FindOrAddBindingHelper(const BindingData& data);
   Binding* FindOrAddBinding(const BindingData& data);
   void RegisterBindingAtNode(Binding* binding, const CFGNode* node);
 
-  size_t id_;
+  std::size_t id_;
   std::vector<std::unique_ptr<Binding>> bindings_;
   std::unordered_map<DataType*, Binding*> data_to_binding_;
   std::unordered_map<const CFGNode*, SourceSet, CFGNodePtrHash>
