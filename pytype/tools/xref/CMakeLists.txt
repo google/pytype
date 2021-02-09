@@ -26,7 +26,6 @@ toplevel_py_binary(
     .output
     .parse_args
     pytype.utils
-    pytype.pytd.parse.parse
 )
 
 py_library(

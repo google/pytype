@@ -1,48 +1,78 @@
 import itertools
 
+from typing import Any
+
+import attr
+
 from pytype.pytd import visitors
 from pytype.pytd.parse import node
 import unittest
 
 
-# gpylint doesn't understand collections.namedtuple():
-# pylint: disable=no-member
+Node = node.Node
 
 
-class Node1(node.Node("a", "b")):
+@attr.s(auto_attribs=True, frozen=True, order=False)
+class Node1(Node):
   """Simple node for equality testing. Not equal to anything else."""
+  a: Any
+  b: Any
 
 
-class Node2(node.Node("x", "y")):
+@attr.s(auto_attribs=True, frozen=True, order=False)
+class Node2(Node):
   """For equality testing. Same attributes as Node3."""
+  x: Any
+  y: Any
 
 
-class Node3(node.Node("x", "y")):
-  """For equality testing: Same attributes as Node2."""
+@attr.s(auto_attribs=True, frozen=True, order=False)
+class Node3(Node):
+  """For equality testing. Same attributes as Node2."""
+  x: Any
+  y: Any
 
 
-class Data(node.Node("d1", "d2", "d3")):
+@attr.s(auto_attribs=True, frozen=True, order=False)
+class Data(Node):
   """'Data' node. Visitor tests use this to store numbers in leafs."""
+  d1: Any
+  d2: Any
+  d3: Any
 
 
-class V(node.Node("x")):
+@attr.s(auto_attribs=True, frozen=True, order=False)
+class V(Node):
   """Inner node 'V', with one child. See testVisitor[...]() below."""
+  x: Any
 
 
-class X(node.Node("a", "b")):
+@attr.s(auto_attribs=True, frozen=True, order=False)
+class X(Node):
   """Inner node 'X', with two children. See testVisitor[...]() below."""
+  a: Any
+  b: Any
 
 
-class Y(node.Node("c", "d")):
+@attr.s(auto_attribs=True, frozen=True, order=False)
+class Y(Node):
   """Inner node 'Y', with two children. See testVisitor[...]() below."""
+  c: Any
+  d: Any
 
 
-class XY(node.Node("x", "y")):
+@attr.s(auto_attribs=True, frozen=True, order=False)
+class XY(Node):
   """Inner node 'XY', with two children. See testVisitor[...]() below."""
+  x: Any
+  y: Any
 
 
-class NodeWithVisit(node.Node("x", "y")):
+@attr.s(auto_attribs=True, frozen=True, order=False)
+class NodeWithVisit(Node):
   """A node with its own VisitNode function."""
+  x: Any
+  y: Any
 
   def VisitNode(self, visitor):
     """Allow a visitor to modify our children. Returns modified node."""
@@ -167,42 +197,46 @@ class TestNode(unittest.TestCase):
     x = X(1, (1, 2))
     y = Y((V(1),), Data(42, 43, 44))
     xy = XY(x, y)
-    xy_expected = "XY(X(1, (1, 2)), Y((V(1),), Data(42, 43, 44)))"
+    xy_expected = ("XY(x=X(a=1, b=(1, 2)), y=Y(c=(V(x=1),),"
+                   " d=Data(d1=42, d2=43, d3=44)))")
     self.assertEqual(repr(xy), xy_expected)
     v = DataVisitor()
     new_xy = xy.Visit(v)
     self.assertEqual(repr(new_xy),
-                     "XY(X(1, (1, 2)), Y((V(1),), Data(42, 43, -1)))")
+                     "XY(x=X(a=1, b=(1, 2)), y=Y(c=(V(x=1),),"
+                     " d=Data(d1=42, d2=43, d3=-1)))")
     self.assertEqual(repr(xy), xy_expected)  # check that xy is unchanged
 
   def test_visitor2(self):
     """Test node.Node.Visit() for visitors that modify inner nodes."""
     xy = XY(V(1), Data(1, 2, 3))
-    xy_expected = "XY(V(1), Data(1, 2, 3))"
+    xy_expected = "XY(x=V(x=1), y=Data(d1=1, d2=2, d3=3))"
     self.assertEqual(repr(xy), xy_expected)
     v = MultiNodeVisitor()
     new_xy = xy.Visit(v, 42)
-    self.assertEqual(repr(new_xy), "XY(X(V(42), V(42)), XY(42, 42))")
+    self.assertEqual(repr(new_xy),
+                     "XY(x=X(a=V(x=42), b=V(x=42)), y=XY(x=42, y=42))")
     self.assertEqual(repr(xy), xy_expected)  # check that xy is unchanged
 
   def test_recursion(self):
     """Test node.Node.Visit() for visitors that preserve attributes."""
     y = Y(Y(1, 2), Y(3, Y(4, 5)))
-    y_expected = "Y(Y(1, 2), Y(3, Y(4, 5)))"
+    y_expected = "Y(c=Y(c=1, d=2), d=Y(c=3, d=Y(c=4, d=5)))"
     self.assertEqual(repr(y), y_expected)
     v = MultiNodeVisitor()
     new_y = y.Visit(v)
-    self.assertEqual(repr(new_y), y_expected.replace("Y", "X"))
+    new_repr = "X(a=X(a=1, b=2), b=X(a=3, b=X(a=4, b=5)))"
+    self.assertEqual(repr(new_y), new_repr)
     self.assertEqual(repr(y), y_expected)  # check that original is unchanged
 
   def test_tuple(self):
     """Test node.Node.Visit() for nodes that contain tuples."""
     v = V((Data(1, 2, 3), Data(4, 5, 6)))
-    v_expected = "V((Data(1, 2, 3), Data(4, 5, 6)))"
+    v_expected = "V(x=(Data(d1=1, d2=2, d3=3), Data(d1=4, d2=5, d3=6)))"
     self.assertEqual(repr(v), v_expected)
     visit = DataVisitor()
     new_v = v.Visit(visit)
-    new_v_expected = "V((Data(1, 2, -1), Data(4, 5, -1)))"
+    new_v_expected = "V(x=(Data(d1=1, d2=2, d3=-1), Data(d1=4, d2=5, d3=-1)))"
     self.assertEqual(repr(new_v), new_v_expected)
 
   def test_ordering(self):
@@ -218,17 +252,6 @@ class TestNode(unittest.TestCase):
     for p in itertools.permutations(nodes):
       self.assertEqual(list(sorted(p)), nodes)
 
-  def test_precondition(self):
-    class MyNode(node.Node("s: str")):
-      pass
-    MyNode("a")  # OK.
-    try:
-      node.SetCheckPreconditions(False)
-      MyNode(1)  # Preconditions are ignored.
-    finally:
-      # Restore preconditions (not part of the public API, but ensures the
-      # test doesn't have a surprising side effect).
-      node.SetCheckPreconditions(True)
 # pylint: enable=g-generic-assert
 
 

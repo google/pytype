@@ -58,6 +58,11 @@ class Mutator(visitors.Visitor):
     else:
       return p
 
+  def __repr__(self):
+    return f"Mutator<{self.name} -> {self.new_type}>"
+
+  __str__ = __repr__
+
 
 @dataclasses.dataclass
 class Param:

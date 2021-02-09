@@ -697,8 +697,7 @@ class PickledPyiLoader(Loader):
       m.pickle = None
     module_map = self._get_module_map()
     for loaded_ast in newly_loaded_asts:
-      unused_new_serialize_ast = serialize_ast.FillLocalReferences(
-          loaded_ast, module_map)
+      serialize_ast.FillLocalReferences(loaded_ast, module_map)
     assert module.ast
 
   def load_file(self, module_name, filename, ast=None):

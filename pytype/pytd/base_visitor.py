@@ -2,6 +2,8 @@
 
 from typing import Any
 
+import attr
+
 from pytype.pytd import pytd
 from pytype.typegraph import cfg_utils
 
@@ -14,13 +16,13 @@ ALL_NODE_NAMES = type(
 
 
 class _NodeClassInfo:
-  """Representation of a node class in the precondition graph."""
+  """Representation of a node class in the graph."""
 
   def __init__(self, cls):
     self.cls = cls  # The class object.
     self.name = cls.__name__
     # The set of NodeClassInfo objects that may appear below this particular
-    # type of node.  Initially empty, filled in by examining preconditions.
+    # type of node. Initially empty, filled in by examining child fields.
     self.outgoing = set()
 
 
@@ -28,12 +30,40 @@ def _FindNodeClasses():
   """Yields _NodeClassInfo objects for each node found in pytd."""
   for name in dir(pytd):
     value = getattr(pytd, name)
-    if isinstance(value, type) and hasattr(value, "_CHECKER"):
+    if (isinstance(value, type) and
+        issubclass(value, pytd.Node) and
+        value is not pytd.Node):
       yield _NodeClassInfo(value)
 
 
 _IGNORED_TYPENAMES = frozenset(["str", "bool", "int", "NoneType"])
 _ancestor_map = None  # Memoized ancestors map.
+
+
+def _GetChildTypes(node_classes, cls: Any):
+  """Get all the types that can be in a node's subtree."""
+
+  types = set()
+
+  def AddType(t: Any):
+    if hasattr(t, "__args__"):
+      # Tuple[...] and Union[...] store their contained types in __args__
+      for x in t.__args__:
+        if x is not Ellipsis:
+          AddType(x)
+      return
+    if hasattr(t, "__forward_arg__"):
+      # __forward_arg__ is the runtime representation of late annotations
+      t = t.__forward_arg__
+    if isinstance(t, str) and t in node_classes:
+      types.add(node_classes[t].cls)
+    else:
+      types.add(t)
+
+  for field in attr.fields(cls):
+    AddType(field.type)  # pytype: disable=invalid-typevar
+
+  return types
 
 
 def _GetAncestorMap():
@@ -44,9 +74,9 @@ def _GetAncestorMap():
     # Map from name to _NodeClassInfo.
     node_classes = {i.name: i for i in _FindNodeClasses()}
 
-    # Update _NodeClassInfo.outgoing based on preconditions.
+    # Update _NodeClassInfo.outgoing based on children.
     for info in node_classes.values():
-      for allowed in info.cls._CHECKER.allowed_types():  # pylint: disable=protected-access
+      for allowed in _GetChildTypes(node_classes, info.cls):
         if isinstance(allowed, type):
           # All subclasses of the type are allowed.
           info.outgoing.update(
@@ -54,10 +84,10 @@ def _GetAncestorMap():
         elif allowed in node_classes:
           info.outgoing.add(node_classes[allowed])
         elif allowed not in _IGNORED_TYPENAMES:
-          # This means preconditions list a typename that is unknown.  If it
-          # is a node then make sure _FindNodeClasses() can discover it.  If it
-          # is not a node, then add the typename to _IGNORED_TYPENAMES.
-          raise AssertionError("Unknown precondition typename: %s" % allowed)
+          # This means we have a child type that is unknown. If it is a node
+          # then make sure _FindNodeClasses() can discover it. If it is not a
+          # node, then add the typename to _IGNORED_TYPENAMES.
+          raise AssertionError("Unknown child type: %s" % allowed)
 
     predecessors = cfg_utils.compute_predecessors(node_classes.values())
     # Convert predecessors keys and values to use names instead of info objects.
@@ -119,13 +149,13 @@ class Visitor:
       leave_prefix = "Leave"
       leave_len = len(leave_prefix)
 
-      for attr in dir(cls):
-        if attr.startswith(enter_prefix):
-          enter_fns[attr[enter_len:]] = getattr(cls, attr)
-        elif attr.startswith(visit_prefix):
-          visit_fns[attr[visit_len:]] = getattr(cls, attr)
-        elif attr.startswith(leave_prefix):
-          leave_fns[attr[leave_len:]] = getattr(cls, attr)
+      for attrib in dir(cls):
+        if attrib.startswith(enter_prefix):
+          enter_fns[attrib[enter_len:]] = getattr(cls, attrib)
+        elif attrib.startswith(visit_prefix):
+          visit_fns[attrib[visit_len:]] = getattr(cls, attrib)
+        elif attrib.startswith(leave_prefix):
+          leave_fns[attrib[leave_len:]] = getattr(cls, attrib)
 
       ancestors = _GetAncestorMap()
       visit_class_names = set()
