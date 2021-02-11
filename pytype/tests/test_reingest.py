@@ -57,7 +57,7 @@ class ReingestTest(test_base.TargetIndependentTest):
         def g() -> int: ...
       """)
 
-  @test_base.skip("Needs better handling of Union[Callable, f] in output.py.""")
+  @test_base.skip("Needs better handling of Union[Callable, f] in output.py.")
   def test_maybe_identity_decorators(self):
     foo = self.Infer("""
       def maybe_decorate(f):
@@ -201,6 +201,25 @@ class ReingestTest(test_base.TargetIndependentTest):
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         lst = ...  # type: foo.MyList[int]
+      """)
+
+  def test_instantiate_imported_generic(self):
+    foo = self.Infer("""
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        def __init__(self):
+          pass
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo))
+      ty = self.Infer("""
+        import foo
+        x = foo.Foo[int]()
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo: module
+        x: foo.Foo[int]
       """)
 
 
