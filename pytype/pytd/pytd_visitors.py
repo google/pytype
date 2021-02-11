@@ -426,7 +426,7 @@ class PrintVisitor(base_visitor.Visitor):
     # For parameterized class, for example: ClsName[T, V].
     # Its name is `ClsName` before `[`.
     elif node.name == "self" and self.class_names and (
-        self.class_names[-1].split("[")[0] == node.type):
+        self.class_names[-1].split("[")[0] == node.type.split("[")[0]):
       return node.name + suffix
     elif node.name == "cls" and self.class_names and (
         node.type == "Type[%s]" % self.class_names[-1]):
