@@ -7,14 +7,15 @@ from typing import Any, Dict, List, Optional, Union
 import dataclasses
 
 from pytype.pyi.typed_ast import classdef
-from pytype.pyi.typed_ast import function
-from pytype.pyi.typed_ast import namedtuple
 from pytype.pyi.typed_ast import types
 from pytype.pyi.typed_ast.types import ParseError  # pylint: disable=g-importing-member
 from pytype.pytd import escape
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
+from pytype.pytd.codegen import function
+from pytype.pytd.codegen import namedtuple
+from pytype.pytd.codegen import pytdgen
 from pytype.pytd.parse import node as pytd_node
 from pytype.pytd.parse import parser_constants  # pylint: disable=g-importing-member
 
@@ -108,7 +109,7 @@ def _maybe_resolve_alias(alias, name_to_class, name_to_constant):
       return alias
   if isinstance(value, pytd.Class):
     return pytd.Constant(
-        alias.name, types.pytd_type(pytd.NamedType(alias.type.name)))
+        alias.name, pytdgen.pytd_type(pytd.NamedType(alias.type.name)))
   elif isinstance(value, pytd.Function):
     # We allow module-level aliases of methods from classes and class instances.
     # When a static method is aliased, or a normal method is aliased from a
@@ -429,7 +430,7 @@ class Definitions:
           for p in parameters)
       raise ParseError(
           "%s[%s] not supported" % (pytd_utils.Print(base_type), parameters))
-    elif types.is_any(base_type):
+    elif pytdgen.is_any(base_type):
       return pytd.AnythingType()
     elif len(parameters) == 2 and parameters[-1] is self.ELLIPSIS and (
         not self._is_callable_base_type(base_type)):
@@ -441,9 +442,9 @@ class Definitions:
       parameters = tuple(pytd.AnythingType() if p is self.ELLIPSIS else p
                          for p in parameters)
       if self._is_tuple_base_type(base_type):
-        return types.heterogeneous_tuple(base_type, parameters)
+        return pytdgen.heterogeneous_tuple(base_type, parameters)
       elif self._is_callable_base_type(base_type):
-        return types.pytd_callable(base_type, parameters)
+        return pytdgen.pytd_callable(base_type, parameters)
       else:
         assert parameters
         return pytd.GenericType(base_type=base_type, parameters=parameters)
@@ -562,7 +563,7 @@ class Definitions:
           methods.append(val)
         else:
           if isinstance(val, pytd.Class):
-            t = types.pytd_type(pytd.NamedType(class_name + "." + val.name))
+            t = pytdgen.pytd_type(pytd.NamedType(class_name + "." + val.name))
           else:
             t = val.type
           constants.append(pytd.Constant(name, t))

@@ -2,10 +2,10 @@
 
 from typing import Any, List, Tuple
 
-from pytype.pyi.typed_ast import function
-from pytype.pyi.typed_ast import types
 from pytype.pytd import escape
 from pytype.pytd import pytd
+from pytype.pytd.codegen import function
+from pytype.pytd.codegen import pytdgen
 
 
 # Attributes that all namedtuple instances have.
@@ -37,8 +37,9 @@ class NamedTuple:
     Returns:
       A generated class that describes the named tuple.
     """
-    class_parent = types.heterogeneous_tuple(pytd.NamedType("tuple"),
-                                             tuple(t for _, t in fields))
+    class_parent = pytdgen.heterogeneous_tuple(
+        pytd.NamedType("tuple"),
+        tuple(t for _, t in fields))
     class_constants = tuple(pytd.Constant(n, t) for n, t in fields)
     # Since the user-defined fields are the only namedtuple attributes commonly
     # used, we define all the other attributes as Any for simplicity.
@@ -77,7 +78,7 @@ class NamedTuple:
     """
     type_param = pytd.TypeParameter("_T" + name, bound=pytd.NamedType(name))
     self.type_param = type_param
-    cls_arg = ("cls", types.pytd_type(type_param))
+    cls_arg = ("cls", pytdgen.pytd_type(type_param))
     args = [cls_arg] + fields
     return function.NameAndSig.make("__new__", args, type_param)
 
