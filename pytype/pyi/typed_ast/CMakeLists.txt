@@ -10,7 +10,6 @@ py_library(
     .definitions
     .function
     .modules
-    .namedtuple
     .types
     .visitor
 )
@@ -63,8 +62,6 @@ py_library(
     definitions.py
   DEPS
     .classdef
-    .function
-    .namedtuple
     .types
     pytype.pytd.pytd_for_parser
     pytype.pytd.parse.parse
@@ -92,17 +89,6 @@ py_library(
     pytype.utils
     pytype.pytd.pytd_for_parser
     pytype.pytd.parse.parse
-)
-
-py_library(
-  NAME
-    namedtuple
-  SRCS
-    namedtuple.py
-  DEPS
-    .function
-    .types
-    pytype.pytd.pytd_for_parser
 )
 
 py_library(
