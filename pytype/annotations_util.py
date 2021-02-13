@@ -85,9 +85,9 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         return new_annot
       return annot
     elif isinstance(annot, abstract.TupleClass):
-      params = dict(annot.formal_type_parameters)
-      params[abstract_utils.T] = self.add_scope(
-          annot.formal_type_parameters[abstract_utils.T], types, module)
+      params = {}
+      for name, param in annot.formal_type_parameters.items():
+        params[name] = self.add_scope(param, types, module)
       return abstract.TupleClass(
           annot.base_cls, params, self.vm, annot.template)
     elif isinstance(annot, mixin.NestedAnnotation):
