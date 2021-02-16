@@ -282,7 +282,8 @@ bool Solver::GoalsConflict(const internal::GoalSet& goals) const {
   return false;
 }
 
-bool Solver::FindSolution(const internal::State& state, int current_depth) {
+bool Solver::FindSolution(const internal::State& state,
+                          internal::StateSet& seen_states, int current_depth) {
   std::string indent(current_depth, ' ');
   LOG(INFO) << indent << "I'm at <" << state.pos()->id() << "> "
             << state.pos()->name();
@@ -353,8 +354,13 @@ bool Solver::FindSolution(const internal::State& state, int current_depth) {
     for (const auto* new_pos : new_positions) {
       LOG(INFO) << indent << "New pos: <" << new_pos->id() << "> "
                 << new_pos->name();
-      internal::State new_state(new_pos, result.new_goals);
-      if (RecallOrFindSolution(new_state, current_depth)) {
+      const internal::State new_state(new_pos, result.new_goals);
+      if (internal::set_contains<const internal::State*>(
+              seen_states, &new_state) && new_positions.size() > 1) {
+        // Cycle detected. We ignore it unless it is the only solution.
+        continue;
+      }
+      if (RecallOrFindSolution(new_state, seen_states, current_depth)) {
         return true;
       }
     }
@@ -381,8 +387,9 @@ bool Solver::CanHaveSolution(
 }
 
 // Like FindSolution, but memoizes states we already solved.
-bool Solver::RecallOrFindSolution(const internal::State& state,
-                                  int current_depth) {
+bool Solver::RecallOrFindSolution(
+    const internal::State& state, internal::StateSet& seen_states,
+    int current_depth) {
   const bool* status = map_util::FindOrNull(*solved_states_, state);
   if (status) {
     state_cache_hits_ += 1;
@@ -403,8 +410,12 @@ bool Solver::RecallOrFindSolution(const internal::State& state,
   // that if it's possible to solve this state at this level of the tree, it can
   // also be solved in any of the children.
   (*solved_states_)[state] = true;
+  // Careful! Modifying seen_states would affect other recursive calls, so we
+  // need to copy it.
+  internal::StateSet new_seen_states(seen_states);
+  new_seen_states.insert(&state);
 
-  bool result = FindSolution(state, current_depth);
+  bool result = FindSolution(state, new_seen_states, current_depth);
   (*solved_states_)[state] = result;
   return result;
 }
@@ -419,7 +430,8 @@ bool Solver::Solve_(const std::vector<const Binding*>& start_attrs,
     return false;
   }
   internal::State state(start_node, start_attrs);
-  return RecallOrFindSolution(state, 0);
+  internal::StateSet seen_states;
+  return RecallOrFindSolution(state, seen_states, 0);
 }
 
 // "Main method" of the solver.

@@ -816,5 +816,18 @@ class SplitTest(test_base.TargetIndependentTest):
       x: Union[A, bool]
     """)
 
+  def test_container_loop(self):
+    self.Check("""
+      from typing import Optional
+      def f(x):
+        # type: (Optional[str]) -> str
+        lst = []
+        if x:
+          lst.append(x)
+        for _ in range(5):
+          lst.append('hello')
+        return lst[0]
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

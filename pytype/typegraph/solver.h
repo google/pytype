@@ -86,12 +86,18 @@ class State {
     return pos_ != other.pos_ || goals_ != other.goals_;
   }
 
+  bool operator<(const State& other) const {
+    return Hash() < other.Hash();
+  }
+
  private:
   const CFGNode* pos_;
   GoalSet goals_;
 };
 
 typedef std::unordered_map<const State, bool, map_util::hash<State>> StateMap;
+
+typedef std::set<const State*, pointer_less<State>> StateSet;
 
 // The PathFinder uses QueryKeys to cache queries. Each query is characterized
 // by the start and end nodes and the set of blocked nodes.
@@ -213,9 +219,11 @@ class Solver {
   bool CanHaveSolution(const std::vector<const Binding*>& start_attrs,
                        const CFGNode* start_node);
   // Find a sequence of assignments that would solve the given state.
-  bool FindSolution(const internal::State& state, int current_depth);
+  bool FindSolution(const internal::State& state,
+                    internal::StateSet& seen_state, int current_depth);
   // "memoized" version of FindSolution()
-  bool RecallOrFindSolution(const internal::State& state, int current_depth);
+  bool RecallOrFindSolution(const internal::State& state,
+                            internal::StateSet& seen_state, int current_depth);
 
   // Are the given Bindings conflicting?
   bool GoalsConflict(const internal::GoalSet& goals) const;
