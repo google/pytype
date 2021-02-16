@@ -7,7 +7,6 @@ from typing import Any, Dict, List, Optional, Tuple
 import dataclasses
 
 from pytype.pytd import pytd
-from pytype.pytd.parse import node as pytd_node
 
 
 class OverloadedDecoratorError(Exception):
@@ -28,7 +27,7 @@ class Param:
   """Internal representation of function parameters."""
 
   name: str
-  type: Optional[str] = None
+  type: Optional[pytd.Type] = None
   default: Any = None
   kwonly: bool = False
 
@@ -60,8 +59,8 @@ class NameAndSig:
   def make(
       cls,
       name: str,
-      args: List[Tuple[str, pytd_node.Node]],
-      return_type: pytd_node.Node
+      args: List[Tuple[str, pytd.Type]],
+      return_type: pytd.Type
   ) -> "NameAndSig":
     """Make a new NameAndSig from an argument list."""
     params = tuple(Param(n, t).to_pytd() for (n, t) in args)
@@ -73,9 +72,9 @@ class NameAndSig:
 
 def pytd_return_type(
     name: str,
-    return_type: Optional[pytd_node.Node],
+    return_type: Optional[pytd.Type],
     is_async: bool
-) -> pytd_node.Node:
+) -> pytd.Type:
   """Convert function return type to pytd."""
   if name == "__init__":
     if (return_type is None or
@@ -102,7 +101,7 @@ def pytd_default_starstar_param() -> pytd.Parameter:
   return pytd.Parameter("kwargs", pytd.NamedType("dict"), False, True, None)
 
 
-def pytd_star_param(name: str, annotation: pytd_node.Node) -> pytd.Parameter:
+def pytd_star_param(name: str, annotation: pytd.Type) -> pytd.Parameter:
   """Return a pytd.Parameter for a *args argument."""
   if annotation is None:
     param_type = pytd.NamedType("tuple")
@@ -113,7 +112,7 @@ def pytd_star_param(name: str, annotation: pytd_node.Node) -> pytd.Parameter:
 
 
 def pytd_starstar_param(
-    name: str, annotation: pytd_node.Node
+    name: str, annotation: pytd.Type
 ) -> pytd.Parameter:
   """Return a pytd.Parameter for a **kwargs argument."""
   if annotation is None:

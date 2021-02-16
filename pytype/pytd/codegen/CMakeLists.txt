@@ -16,7 +16,6 @@ py_library(
     function.py
   DEPS
     pytype.pytd.pytd_for_codegen
-    pytype.pytd.parse.parse
 )
 
 py_library(
