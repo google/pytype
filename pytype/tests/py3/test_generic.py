@@ -227,7 +227,6 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
 
       x = MyClass[int, int]()
       y = MyClass(5, 5)
-      y.fun("5", "5")
 
       class A(Generic[T, S]):
         pass
@@ -248,10 +247,10 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Generic, Optional, TypeVar, Union
 
-      a = ...  # type: D[nothing, nothing]
-      x = ...  # type: MyClass[int, int]
-      y = ...  # type: MyClass[Union[int, str], Union[int, str]]
-      z = ...  # type: C[nothing, nothing]
+      a: D[nothing, nothing]
+      x: MyClass[int, int]
+      y: MyClass[int, int]
+      z: C[nothing, nothing]
 
       S = TypeVar('S')
       T = TypeVar('T')
@@ -592,6 +591,89 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
 
       def f(x: T) -> SomeAlias:
         return [x]
+    """)
+
+  def test_return_type_param(self):
+    ty = self.Infer("""
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        def __init__(self, x: T):
+          self.x = x
+        def f(self) -> T:
+          return self.x
+      def g():
+        return Foo(0).f()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Generic, TypeVar
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        x: Any
+        def __init__(self, x: T) -> None: ...
+        def f(self) -> T: ...
+      def g() -> int: ...
+    """)
+
+  def test_generic_function_in_generic_class(self):
+    ty = self.Infer("""
+      from typing import Generic, Tuple, TypeVar
+      S = TypeVar('S')
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        def __init__(self, x: T):
+          self.x = x
+        def f(self, x: S) -> Tuple[S, T]:
+          return (x, self.x)
+      def g(x):
+        return Foo(0).f('hello world')
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Generic, Tuple, TypeVar
+      S = TypeVar('S')
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        x: Any
+        def __init__(self, x: T) -> None: ...
+        def f(self, x: S) -> Tuple[S, T]: ...
+      def g(x) -> Tuple[str, int]: ...
+    """)
+
+  def test_check_class_param(self):
+    errors = self.CheckWithErrors("""
+      from typing import Generic, Tuple, TypeVar
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        def __init__(self, x: T):
+          self.x = x
+        def f(self, x: T):
+          pass
+      foo = Foo(0)
+      foo.f(1)  # okay
+      foo.f('1')  # wrong-arg-types[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Expected.*int.*Actual.*str"})
+
+  def test_instantiate_parameterized_class(self):
+    ty = self.Infer("""
+      from typing import Any, Generic, TypeVar
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        def __init__(self, x: T):
+          self.x = x
+      def f(x: Foo[int]):
+        return x.x
+      def g(x: Any):
+        return Foo[int](x)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Generic, TypeVar
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        x: Any
+        def __init__(self, x: T) -> None: ...
+      def f(x: Foo[int]) -> int: ...
+      def g(x: Any) -> Foo[int]: ...
     """)
 
 

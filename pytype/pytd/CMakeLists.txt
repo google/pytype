@@ -36,6 +36,14 @@ py_library(
   NAME
     pytd_for_parser
   DEPS
+    .pytd_for_codegen
+    pytype.pytd.codegen.codegen
+)
+
+py_library(
+  NAME
+    pytd_for_codegen
+  DEPS
     ._pytd
     .escape
     .pep484
@@ -180,7 +188,6 @@ py_library(
   SRCS
     serialize_ast.py
   DEPS
-    ._pytd
     .pytd_utils
     .visitors
     pytype.utils
@@ -435,4 +442,5 @@ py_test(
     pytype.tests.test_base
 )
 
+add_subdirectory(codegen)
 add_subdirectory(parse)

@@ -2120,15 +2120,14 @@ class ParameterizedClass(BaseValue, mixin.Class, mixin.NestedAnnotation):
       parameter.
   """
 
-  def get_self_annot(self):
+  @classmethod
+  def get_generic_instance_type(cls, base_cls):
     """This is used to annotate the `self` in a class."""
-    if not self.self_annot:
-      formal_type_parameters = {}
-      for item in self.base_cls.template:
-        formal_type_parameters[item.name] = item
-      self.self_annot = ParameterizedClass(
-          self.base_cls, formal_type_parameters, self.vm)
-    return self.self_annot
+    assert base_cls.template
+    formal_type_parameters = {}
+    for item in base_cls.template:
+      formal_type_parameters[item.name] = item
+    return cls(base_cls, formal_type_parameters, base_cls.vm)
 
   def __init__(self, base_cls, formal_type_parameters, vm, template=None):
     # A ParameterizedClass is created by converting a pytd.GenericType, whose
@@ -2150,7 +2149,6 @@ class ParameterizedClass(BaseValue, mixin.Class, mixin.NestedAnnotation):
       # needed for typing.Generic.
       self._template = template
     self.slots = self.base_cls.slots
-    self.self_annot = None
     mixin.Class.init_mixin(self, base_cls.cls)
     mixin.NestedAnnotation.init_mixin(self)
     self.type_param_check()
@@ -3624,7 +3622,12 @@ class BoundFunction(BaseValue):
         self._callself, default=self.vm.convert.unsolvable)
     if isinstance(self.underlying, InterpreterFunction):
       if isinstance(inst.cls, ParameterizedClass):
-        self.replace_self_annot = inst.cls.get_self_annot()
+        base_cls = inst.cls.base_cls
+      else:
+        base_cls = inst.cls
+      if isinstance(base_cls, mixin.Class) and base_cls.template:
+        self.replace_self_annot = ParameterizedClass.get_generic_instance_type(
+            base_cls)
     if isinstance(inst, SimpleValue):
       self.alias_map = inst.instance_type_parameters.uf
     elif isinstance(inst, TypeParameterInstance):

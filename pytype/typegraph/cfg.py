@@ -782,9 +782,9 @@ class Solver:
       back all the way to the entry point of the program).
     """
     state = State(start_node, start_attrs)
-    return self._RecallOrFindSolution(state)
+    return self._RecallOrFindSolution(state, set())
 
-  def _RecallOrFindSolution(self, state):
+  def _RecallOrFindSolution(self, state, seen_states):
     """Memoized version of FindSolution()."""
     if state in self._solved_states:
       Solver._cache_metric.inc("hit")
@@ -795,12 +795,15 @@ class Solver:
     # that if it's possible to solve this state at this level of the tree, it
     # can also be solved in any of the children.
     self._solved_states[state] = True
+    # Careful! Modifying seen_states would affect other recursive calls, so we
+    # need to copy it.
+    seen_states = seen_states | {state}
 
     Solver._cache_metric.inc("miss")
-    result = self._solved_states[state] = self._FindSolution(state)
+    result = self._solved_states[state] = self._FindSolution(state, seen_states)
     return result
 
-  def _FindSolution(self, state):
+  def _FindSolution(self, state, seen_states):
     """Find a sequence of assignments that would solve the given state."""
     if state.pos.condition:
       state.goals.add(state.pos.condition)
@@ -828,6 +831,9 @@ class Solver:
             new_positions.add(where)
       for new_pos in new_positions:
         new_state = State(new_pos, new_goals)
-        if self._RecallOrFindSolution(new_state):
+        if new_state in seen_states and len(new_positions) > 1:
+          # Cycle detected. We ignore it unless it is the only solution.
+          continue
+        if self._RecallOrFindSolution(new_state, seen_states):
           return True
     return False

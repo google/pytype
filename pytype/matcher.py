@@ -85,6 +85,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     if alias_map:
       subst.uf = alias_map
     self._set_error_subst(None)
+    self_subst = None
     for name, formal in formal_args:
       actual = arg_dict[name]
       subst = self._match_value_against_type(actual, formal, subst, node, view)
@@ -92,6 +93,16 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         formal = self.vm.annotations_util.sub_one_annotation(
             node, formal, [self._error_subst or {}])
         return None, function.BadParam(name=name, expected=formal)
+      if name == "self":
+        self_subst = subst
+    if self_subst:
+      # Type parameters matched from a 'self' arg are class parameters whose
+      # values have been declared by the user, e.g.:
+      #   x = Container[int](__any_object__)
+      # We should keep the 'int' value rather than using Union[int, Unknown].
+      for name, value in self_subst.items():
+        if any(not isinstance(v, abstract.Empty) for v in value.data):
+          subst[name] = value
     return datatypes.HashableDict(subst), None
 
   def bad_matches(self, var, other_type, node):

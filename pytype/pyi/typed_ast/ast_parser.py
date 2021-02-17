@@ -23,6 +23,7 @@ from pytype.pyi.typed_ast.types import ParseError  # pylint: disable=g-importing
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import visitors
+from pytype.pytd.codegen import pytdgen
 
 from typed_ast import ast3
 
@@ -299,7 +300,7 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
     elif isinstance(value, ast3.List):
       if name != "__all__":
         raise ParseError("Only __slots__ and __all__ can be literal lists")
-      return pytd.Constant(name, types.pytd_list("str"))
+      return pytd.Constant(name, pytdgen.pytd_list("str"))
     elif isinstance(value, ast3.Tuple):
       # TODO(mdemello): Consistent with the current parser, but should it
       # properly be Tuple[Type]?

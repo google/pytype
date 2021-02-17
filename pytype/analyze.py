@@ -725,11 +725,12 @@ def _maybe_output_debug(options, program):
   """Maybe emit debugging output."""
   if options.output_cfg or options.output_typegraph:
     dot = debug.program_to_dot(program, set([]), bool(options.output_cfg))
-    proc = subprocess.Popen(["/usr/bin/dot", "-T", "svg", "-o",
-                             options.output_cfg or options.output_typegraph],
-                            stdin=subprocess.PIPE)
-    proc.stdin.write(dot)
-    proc.stdin.close()
+    svg_file = options.output_cfg or options.output_typegraph
+    proc = subprocess.Popen(["/usr/bin/dot", "-T", "svg", "-o", svg_file],
+                            stdin=subprocess.PIPE, universal_newlines=True)
+    (_, stderr) = proc.communicate(dot)
+    if stderr:
+      log.info("Failed to create %s: %s", svg_file, stderr)
   if options.output_debug:
     text = debug.program_to_text(program)
     if options.output_debug == "-":

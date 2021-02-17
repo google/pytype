@@ -27,20 +27,20 @@ class BaseVisitor(ast_visitor.BaseVisitor):
   def _call_visitor(self, node):
     try:
       return super()._call_visitor(node)
-    except ParseError as e:
-      raise e.at(node, self.filename, self.src_code)
+    except Exception as e:  # pylint: disable=broad-except
+      raise ParseError.from_exc(e).at(node, self.filename, self.src_code)
 
   def enter(self, node):
     try:
       return super().enter(node)
-    except ParseError as e:
-      raise e.at(node, self.filename, self.src_code)
+    except Exception as e:  # pylint: disable=broad-except
+      raise ParseError.from_exc(e).at(node, self.filename, self.src_code)
 
   def leave(self, node):
     try:
       return super().leave(node)
-    except ParseError as e:
-      raise e.at(node, self.filename, self.src_code)
+    except Exception as e:  # pylint: disable=broad-except
+      raise ParseError.from_exc(e).at(node, self.filename, self.src_code)
 
   def visit_Ellipsis(self, node):
     return self.defs.ELLIPSIS
