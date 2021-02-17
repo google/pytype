@@ -1858,7 +1858,8 @@ class PyTDFunction(Function):
             node, func, arg_dict, subst, ret_map, alias_map)
       node, result, mutations = ret
       retvar.PasteVariable(result, node)
-      all_mutations.update(mutations)
+      all_mutations.update(
+          (mutation, datatypes.HashableDict(view)) for mutation in mutations)
 
     # Don't check container types if the function has multiple bindings.
     # This is a hack to prevent false positives when we call a method on a
@@ -1871,31 +1872,36 @@ class PyTDFunction(Function):
       # Raise an error if:
       # - An annotation has a type param that is not ambigious or empty
       # - The mutation adds a type that is not ambiguous or empty
-      def filter_contents(var):
-        # reduces the work compatible_with has to do.
-        return set(x for x in var.data
-                   if not x.isinstance_AMBIGUOUS_OR_EMPTY() and x.cls)
+      def keep(value):
+        return not value.isinstance_AMBIGUOUS_OR_EMPTY() and value.cls
 
-      def compatible_with(existing, new):
+      def compatible_with(new, existing, view):
         """Check whether a new type can be added to a container."""
         for data in existing:
-          if self.vm.matcher.match_from_mro(new.cls, data.cls):
+          if self.vm.matcher.match_var_against_type(
+              new, data.cls, {}, node, view) is not None:
             return True
         return False
 
       filtered_mutations = []
       errors = collections.defaultdict(dict)
 
-      for obj, name, values in all_mutations:
+      for (obj, name, values), view in all_mutations:
         if obj.from_annotation:
           params = obj.get_instance_type_parameter(name)
-          ps = filter_contents(params)
+          ps = {v for v in params.data if keep(v)}
           if ps:
             # We filter out mutations to parameters with type Any.
             filtered_mutations.append((obj, name, values))
             # check if the container type is being broadened.
-            vs = filter_contents(values)
-            new = [x for x in (vs - ps) if not compatible_with(ps, x)]
+            new = []
+            for b in values.bindings:
+              if not keep(b.data) or b.data in ps:
+                continue
+              new_view = dict(view)
+              new_view[values] = b
+              if not compatible_with(values, ps, new_view):
+                new.append(b.data)
             if new:
               formal = name.split(".")[-1]
               errors[obj][formal] = (params, values, obj.from_annotation)
@@ -1909,6 +1915,8 @@ class PyTDFunction(Function):
         name = list(names)[0] if len(names) == 1 else None
         self.vm.errorlog.container_type_mismatch(
             self.vm.frames, obj, errs, name)
+    else:
+      all_mutations = (mutation for (mutation, _) in all_mutations)
 
     node = abstract_utils.apply_mutations(node, all_mutations.__iter__)
     return node, retvar
