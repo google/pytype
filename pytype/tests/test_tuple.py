@@ -136,5 +136,32 @@ class TupleTest(test_base.TargetIndependentTest):
         return x
     """)
 
+  def test_tuple_container_matching(self):
+    # Regression test for crash introduced by using
+    # matcher.match_var_against_type() for container mutation checking without
+    # fully populating the view.
+    self.Check("""
+      from typing import Dict, Tuple
+
+      class Foo:
+        pass
+
+      class _SupplyPoolAsset:
+        def __init__(self):
+          self._resources_available = {}
+          self._resources_used = {}  # type: Dict[str, Tuple[Foo, Foo]]
+          self._PopulateResources()
+
+        def _PopulateResources(self):
+          for x, y, z in __any_object__:
+            self._resources_available[x] = (y, z)
+          for x, y, z in __any_object__:
+            self._resources_available[x] = (y, z)
+
+        def RequestResource(self, resource):
+          self._resources_used[
+              resource.Name()] = self._resources_available[resource.Name()]
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

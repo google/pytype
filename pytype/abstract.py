@@ -1846,9 +1846,16 @@ class PyTDFunction(Function):
     self._log_args(arg.bindings for arg in args.posargs)
     ret_map = {}
     retvar = self.vm.program.NewVariable()
-    all_mutations = set()
+    all_mutations = {}
     # The following line may raise function.FailedFunctionCall
     possible_calls = self.match_args(node, args, alias_map)
+    # It's possible for the substitution dictionary computed for a particular
+    # view of 'args' to contain references to variables not in the view because
+    # of optimizations that copy bindings directly into subst without going
+    # through the normal matching process. Thus, we create a combined view that
+    # is guaranteed to contain an entry for every variable in every view for use
+    # by the match_var_against_type() call in 'compatible_with' below.
+    combined_view = {}
     for view, signatures in possible_calls:
       if len(signatures) > 1:
         ret = self._call_with_signatures(node, func, args, view, signatures)
@@ -1858,8 +1865,11 @@ class PyTDFunction(Function):
             node, func, arg_dict, subst, ret_map, alias_map)
       node, result, mutations = ret
       retvar.PasteVariable(result, node)
-      all_mutations.update(
-          (mutation, datatypes.HashableDict(view)) for mutation in mutations)
+      for mutation in mutations:
+        # This may overwrite a previous view, which is fine: we just want any
+        # valid view to pass to match_var_against_type() later.
+        all_mutations[mutation] = view
+      combined_view.update(view)
 
     # Don't check container types if the function has multiple bindings.
     # This is a hack to prevent false positives when we call a method on a
@@ -1886,7 +1896,7 @@ class PyTDFunction(Function):
       filtered_mutations = []
       errors = collections.defaultdict(dict)
 
-      for (obj, name, values), view in all_mutations:
+      for (obj, name, values), view in all_mutations.items():
         if obj.from_annotation:
           params = obj.get_instance_type_parameter(name)
           ps = {v for v in params.data if keep(v)}
@@ -1898,8 +1908,7 @@ class PyTDFunction(Function):
             for b in values.bindings:
               if not keep(b.data) or b.data in ps:
                 continue
-              new_view = dict(view)
-              new_view[values] = b
+              new_view = {**combined_view, **view, values: b}
               if not compatible_with(values, ps, new_view):
                 new.append(b.data)
             if new:
@@ -1915,8 +1924,6 @@ class PyTDFunction(Function):
         name = list(names)[0] if len(names) == 1 else None
         self.vm.errorlog.container_type_mismatch(
             self.vm.frames, obj, errs, name)
-    else:
-      all_mutations = (mutation for (mutation, _) in all_mutations)
 
     node = abstract_utils.apply_mutations(node, all_mutations.__iter__)
     return node, retvar
