@@ -3273,8 +3273,9 @@ class InterpreterFunction(SignedFunction):
       for key, value in last_frame.f_locals.pyval.items():
         value = abstract_utils.get_atomic_value(
             value, default=self.vm.convert.unsolvable)
-        if (not self.signature.has_param(key)  # skip the argument list
-            and isinstance(value, InterpreterClass) and value.template):
+        if (isinstance(value, InterpreterClass) and value.template and
+            key == value.name):
+          # `value` is a nested class definition.
           inner_cls_types = value.collect_inner_cls_types()
           inner_cls_types.update([(value, item.with_module(None))
                                   for item in value.template])
@@ -3283,8 +3284,8 @@ class InterpreterFunction(SignedFunction):
             if item in all_type_parameters:
               self.vm.errorlog.invalid_annotation(
                   self.vm.simple_stack(self.get_first_opcode()), item,
-                  ("Function [%s] and its nested generic class [%s] can"
-                   " not use the same type variable %s")
+                  ("Function [%s] and its nested generic class [%s] cannot use "
+                   "the same type variable %s")
                   % (self.full_name, cls.full_name, item.name))
 
   def _mutations_generator(self, node, first_posarg, substs):
