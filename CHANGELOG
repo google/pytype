@@ -1,3 +1,11 @@
+Version 2021.02.19
+
+Bug fixes:
+* Fix 'nothing' parameter inference for self in custom generic classes.
+* Fix several cases of class type parameters being instantiated incorrectly.
+* Fix an if-splitting bug by (mostly) ignoring cycles in the CFG.
+* Use match_var_against_type, not match_from_mro, for check_container_types.
+
 Version 2021.02.09
 
 New features and updates:
