@@ -1228,5 +1228,13 @@ class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
     """)
     self.assertErrorRegexes(errors, {"e": "AnyStr is a TypeVar"})
 
+  def test_protocol_container(self):
+    self.Check("""
+      import functools
+      from typing import Any, Callable, List
+      x: List[Callable[..., Any]] = []
+      x.append(functools.partial(int, '42'))
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

@@ -305,10 +305,11 @@ class HashableDict(AliasingDict):
   have been overwritten to throw an exception.
   """
 
-  def __init__(self, alias_dict=None):
-    if alias_dict:
-      super().__init__(alias_dict)
-      self.uf = alias_dict.uf
+  def __init__(self, in_dict=None):
+    if in_dict:
+      super().__init__(in_dict)
+      if isinstance(in_dict, AliasingDict):
+        self.uf = in_dict.uf
     else:
       super().__init__()
     self._hash = hash(frozenset(self.items()))

@@ -1846,9 +1846,16 @@ class PyTDFunction(Function):
     self._log_args(arg.bindings for arg in args.posargs)
     ret_map = {}
     retvar = self.vm.program.NewVariable()
-    all_mutations = set()
+    all_mutations = {}
     # The following line may raise function.FailedFunctionCall
     possible_calls = self.match_args(node, args, alias_map)
+    # It's possible for the substitution dictionary computed for a particular
+    # view of 'args' to contain references to variables not in the view because
+    # of optimizations that copy bindings directly into subst without going
+    # through the normal matching process. Thus, we create a combined view that
+    # is guaranteed to contain an entry for every variable in every view for use
+    # by the match_var_against_type() call in 'compatible_with' below.
+    combined_view = {}
     for view, signatures in possible_calls:
       if len(signatures) > 1:
         ret = self._call_with_signatures(node, func, args, view, signatures)
@@ -1858,7 +1865,11 @@ class PyTDFunction(Function):
             node, func, arg_dict, subst, ret_map, alias_map)
       node, result, mutations = ret
       retvar.PasteVariable(result, node)
-      all_mutations.update(mutations)
+      for mutation in mutations:
+        # This may overwrite a previous view, which is fine: we just want any
+        # valid view to pass to match_var_against_type() later.
+        all_mutations[mutation] = view
+      combined_view.update(view)
 
     # Don't check container types if the function has multiple bindings.
     # This is a hack to prevent false positives when we call a method on a
@@ -1871,31 +1882,35 @@ class PyTDFunction(Function):
       # Raise an error if:
       # - An annotation has a type param that is not ambigious or empty
       # - The mutation adds a type that is not ambiguous or empty
-      def filter_contents(var):
-        # reduces the work compatible_with has to do.
-        return set(x for x in var.data
-                   if not x.isinstance_AMBIGUOUS_OR_EMPTY() and x.cls)
+      def keep(value):
+        return not value.isinstance_AMBIGUOUS_OR_EMPTY() and value.cls
 
-      def compatible_with(existing, new):
+      def compatible_with(new, existing, view):
         """Check whether a new type can be added to a container."""
         for data in existing:
-          if self.vm.matcher.match_from_mro(new.cls, data.cls):
+          if self.vm.matcher.match_var_against_type(
+              new, data.cls, {}, node, view) is not None:
             return True
         return False
 
       filtered_mutations = []
       errors = collections.defaultdict(dict)
 
-      for obj, name, values in all_mutations:
+      for (obj, name, values), view in all_mutations.items():
         if obj.from_annotation:
           params = obj.get_instance_type_parameter(name)
-          ps = filter_contents(params)
+          ps = {v for v in params.data if keep(v)}
           if ps:
             # We filter out mutations to parameters with type Any.
             filtered_mutations.append((obj, name, values))
             # check if the container type is being broadened.
-            vs = filter_contents(values)
-            new = [x for x in (vs - ps) if not compatible_with(ps, x)]
+            new = []
+            for b in values.bindings:
+              if not keep(b.data) or b.data in ps:
+                continue
+              new_view = {**combined_view, **view, values: b}
+              if not compatible_with(values, ps, new_view):
+                new.append(b.data)
             if new:
               formal = name.split(".")[-1]
               errors[obj][formal] = (params, values, obj.from_annotation)
@@ -3265,8 +3280,9 @@ class InterpreterFunction(SignedFunction):
       for key, value in last_frame.f_locals.pyval.items():
         value = abstract_utils.get_atomic_value(
             value, default=self.vm.convert.unsolvable)
-        if (not self.signature.has_param(key)  # skip the argument list
-            and isinstance(value, InterpreterClass) and value.template):
+        if (isinstance(value, InterpreterClass) and value.template and
+            key == value.name):
+          # `value` is a nested class definition.
           inner_cls_types = value.collect_inner_cls_types()
           inner_cls_types.update([(value, item.with_module(None))
                                   for item in value.template])
@@ -3275,8 +3291,8 @@ class InterpreterFunction(SignedFunction):
             if item in all_type_parameters:
               self.vm.errorlog.invalid_annotation(
                   self.vm.simple_stack(self.get_first_opcode()), item,
-                  ("Function [%s] and its nested generic class [%s] can"
-                   " not use the same type variable %s")
+                  ("Function [%s] and its nested generic class [%s] cannot use "
+                   "the same type variable %s")
                   % (self.full_name, cls.full_name, item.name))
 
   def _mutations_generator(self, node, first_posarg, substs):

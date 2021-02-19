@@ -1068,5 +1068,17 @@ class GenericTest(test_base.TargetIndependentTest):
         pass
     """)
 
+  def test_generic_class_attribute(self):
+    # Tests that a reference to a generic class does not trigger pytype's
+    # template check for nested generic class definitions.
+    self.Check("""
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        def copy(self):
+          cls = self.__class__
+          return cls()
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

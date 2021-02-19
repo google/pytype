@@ -9,6 +9,8 @@ import collections
 import logging
 import os
 
+from typing import Dict, Iterable, Optional, Tuple
+
 from pytype import file_utils
 from pytype import module_utils
 from pytype import utils
@@ -43,6 +45,10 @@ DEFAULT_PYI_PATH_SUFFIX = None
 
 # Always load this module from typeshed, even if we have it in the imports map
 _ALWAYS_PREFER_TYPESHED = frozenset({"typing_extensions"})
+
+
+# Type alias
+_AST = pytd.TypeDeclUnit
 
 
 def is_pickle(filename):
@@ -119,6 +125,182 @@ class BadDependencyError(Exception):
     return utils.message(self)
 
 
+class _ModuleMap:
+  """A map of fully qualified module name -> Module."""
+
+  PREFIX = "pytd:"  # for pytd files that ship with pytype
+
+  def __init__(self, python_version, modules=None):
+    self.python_version = utils.normalize_version(python_version)
+    self._modules = modules or self._base_modules(self.python_version)
+    if self._modules["builtins"].needs_unpickling():
+      self._unpickle_module(self._modules["builtins"])
+    if self._modules["typing"].needs_unpickling():
+      self._unpickle_module(self._modules["typing"])
+    self._concatenated = None
+
+  def __getitem__(self, key):
+    return self._modules[key]
+
+  def __setitem__(self, key, val):
+    self._modules[key] = val
+
+  def __delitem__(self, key):
+    del self._modules[key]
+
+  def __contains__(self, key):
+    return key in self._modules
+
+  def items(self):
+    return self._modules.items()
+
+  def values(self):
+    return self._modules.values()
+
+  def get(self, key):
+    return self._modules.get(key)
+
+  def get_existing_ast(self, module_name: str) -> Optional[_AST]:
+    existing = self._modules.get(module_name)
+    if existing:
+      if existing.needs_unpickling():
+        self._unpickle_module(existing)
+      return existing.ast
+    return None
+
+  def defined_asts(self) -> Iterable[_AST]:
+    """All module ASTs that are not None."""
+    return (module.ast for module in self._modules.values() if module.ast)
+
+  def get_module_map(self) -> Dict[str, _AST]:
+    """Get a {name: ast} map of all modules with a filled-in ast."""
+    return {name: module.ast for name, module in self._modules.items()
+            if module.ast}
+
+  def get_resolved_modules(self) -> Dict[str, ResolvedModule]:
+    """Get a {name: ResolvedModule} map of all resolved modules."""
+    resolved_modules = {}
+    for name, mod in self._modules.items():
+      if not mod.dirty:
+        resolved_modules[name] = ResolvedModule(
+            mod.module_name, mod.filename, mod.ast)
+    return resolved_modules
+
+  def _base_modules(self, python_version):
+    bltins, typing = builtins.GetBuiltinsAndTyping(python_version)
+    return {
+        "builtins":
+        Module("builtins", self.PREFIX + "builtins", bltins, dirty=False),
+        "typing":
+        Module("typing", self.PREFIX + "typing", typing, dirty=False)
+    }
+
+  def _unpickle_module(self, module):
+    """Unpickle a pickled ast and its dependncies."""
+    if not module.pickle:
+      return
+    todo = [module]
+    seen = set()
+    newly_loaded_asts = []
+    while todo:
+      m = todo.pop()
+      if m in seen:
+        continue
+      else:
+        seen.add(m)
+      if not m.pickle:
+        continue
+      loaded_ast = cPickle.loads(m.pickle)
+      deps = [d for d, _ in loaded_ast.dependencies if d != loaded_ast.ast.name]
+      loaded_ast = serialize_ast.EnsureAstName(loaded_ast, m.module_name)
+      assert m.module_name in self._modules
+      todo.extend(self._modules[dependency] for dependency in deps)
+      newly_loaded_asts.append(loaded_ast)
+      m.ast = loaded_ast.ast
+      m.pickle = None
+    module_map = self.get_module_map()
+    for loaded_ast in newly_loaded_asts:
+      serialize_ast.FillLocalReferences(loaded_ast, module_map)
+    assert module.ast
+
+  def concat_all(self):
+    if not self._concatenated:
+      self._concatenated = pytd_utils.Concat(*self.defined_asts(), name="<all>")
+    return self._concatenated
+
+  def invalidate_concatenated(self):
+    self._concatenated = None
+
+
+class _PathFinder:
+  """Find a filepath for a module."""
+
+  def __init__(self, imports_map, pythonpath):
+    self.imports_map = imports_map
+    self.pythonpath = pythonpath
+
+  def find_import(self, module_name: str) -> Tuple[Optional[str], bool]:
+    """Search through pythonpath for a module.
+
+    Args:
+      module_name: module name
+
+    Returns:
+      - (path, file_exists) if we find a path (file_exists will be false if we
+        have found a directory where we need to create an __init__.pyi)
+      - None if we cannot find a full path
+    """
+    module_name_split = module_name.split(".")
+    for searchdir in self.pythonpath:
+      path = os.path.join(searchdir, *module_name_split)
+      # See if this is a directory with a "__init__.py" defined.
+      # (These also get automatically created in imports_map_loader.py)
+      init_path = os.path.join(path, "__init__")
+      full_path = self.get_pyi_path(init_path)
+      if full_path is not None:
+        log.debug("Found module %r with path %r", module_name, init_path)
+        return full_path, True
+      elif self.imports_map is None and os.path.isdir(path):
+        # We allow directories to not have an __init__ file.
+        # The module's empty, but you can still load submodules.
+        log.debug("Created empty module %r with path %r",
+                  module_name, init_path)
+        full_path = os.path.join(path, "__init__.pyi")
+        return full_path, False
+      else:  # Not a directory
+        full_path = self.get_pyi_path(path)
+        if full_path is not None:
+          log.debug("Found module %r in path %r", module_name, path)
+          return full_path, True
+    return None, None
+
+  def get_pyi_path(self, path: str) -> Optional[str]:
+    """Get a pyi file from path if it exists."""
+    if self.imports_map is not None:
+      if path in self.imports_map:
+        full_path = self.imports_map[path]
+      else:
+        return None
+    else:
+      full_path = path + ".pyi"
+
+    # We have /dev/null entries in the import_map - os.path.isfile() returns
+    # False for those. However, we *do* want to load them. Hence exists / isdir.
+    if os.path.exists(full_path) and not os.path.isdir(full_path):
+      return full_path
+    else:
+      return None
+
+  def log_module_not_found(self, module_name):
+    log.warning("Couldn't import module %s %r in (path=%r) imports_map: %s",
+                module_name, module_name, self.pythonpath,
+                "%d items" % len(self.imports_map) if
+                self.imports_map is not None else "none")
+    if log.isEnabledFor(logging.DEBUG) and self.imports_map:
+      for module, path in self.imports_map.items():
+        log.debug("%s -> %s", module, path)
+
+
 class Loader:
   """A cache for loaded PyTD files.
 
@@ -147,25 +329,36 @@ class Loader:
                modules=None,
                open_function=open):
     self.python_version = utils.normalize_version(python_version)
-    self._modules = modules or self._base_modules(self.python_version)
-    if self._modules["builtins"].needs_unpickling():
-      self._unpickle_module(self._modules["builtins"])
-    if self._modules["typing"].needs_unpickling():
-      self._unpickle_module(self._modules["typing"])
+    self._modules = _ModuleMap(python_version, modules)
     self.builtins = self._modules["builtins"].ast
     self.typing = self._modules["typing"].ast
     self.base_module = base_module
-    self.pythonpath = pythonpath
-    self.imports_map = imports_map
+    self._path_finder = _PathFinder(imports_map, pythonpath)
     self.use_typeshed = use_typeshed
     self.open_function = open_function
-    self._concatenated = None
     self._import_name_cache = {}  # performance cache
     self._aliases = {}
     self._prefixes = set()
     # Paranoid verification that pytype.main properly checked the flags:
     if imports_map is not None:
       assert pythonpath == [""], pythonpath
+
+  # Delegate some attributes
+  @property
+  def pythonpath(self):
+    return self._path_finder.pythonpath
+
+  @pythonpath.setter
+  def pythonpath(self, val):
+    self._path_finder.pythonpath = val
+
+  @property
+  def imports_map(self):
+    return self._path_finder.imports_map
+
+  @imports_map.setter
+  def imports_map(self, val):
+    self._path_finder.imports_map = val
 
   def save_to_pickle(self, filename):
     """Save to a pickle. See PickledPyiLoader.load_from_pickle for reverse."""
@@ -183,18 +376,6 @@ class Loader:
     # performance optimization - unpickling is slow.
     pytd_utils.SavePickle(
         items, filename, compress=True, open_function=self.open_function)
-
-  def _unpickle_module(self, module):
-    raise NotImplementedError()  # overwritten in PickledPyiLoader
-
-  def _base_modules(self, python_version):
-    bltins, typing = builtins.GetBuiltinsAndTyping(python_version)
-    return {
-        "builtins":
-        Module("builtins", self.PREFIX + "builtins", bltins, dirty=False),
-        "typing":
-        Module("typing", self.PREFIX + "typing", typing, dirty=False)
-    }
 
   def _parse_predefined(self, pytd_subdir, module, as_package=False):
     """Parse a pyi/pytd file in the pytype source tree."""
@@ -237,19 +418,13 @@ class Loader:
     return self.load_file(module_name, filename,
                           pytd_utils.CreateModule(module_name))
 
-  def _get_existing_ast(self, module_name):
-    existing = self._modules.get(module_name)
-    if existing:
-      if existing.needs_unpickling():
-        self._unpickle_module(existing)
-      return existing.ast
-    return None
-
   def load_file(self, module_name, filename, ast=None):
     """Load (or retrieve from cache) a module and resolve its dependencies."""
-    self._concatenated = None  # invalidate
+    # TODO(mdemello): Should we do this in _ModuleMap.__setitem__? Also, should
+    # we only invalidate concatenated if existing = None?
+    self._modules.invalidate_concatenated()
     # Check for an existing ast first
-    existing = self._get_existing_ast(module_name)
+    existing = self._modules.get_existing_ast(module_name)
     if existing:
       return existing
     if not ast:
@@ -368,14 +543,14 @@ class Loader:
     name = ast_name or pyval.name
     try:
       pyval = pyval.Visit(visitors.LookupExternalTypes(
-          self._get_module_map(), self_name=name,
+          self._modules.get_module_map(), self_name=name,
           module_alias_map=self._aliases))
     except KeyError as e:
       raise BadDependencyError(utils.message(e), name) from e
     return pyval
 
   def _finish_pyi(self, pyval, ast=None):
-    module_map = self._get_module_map()
+    module_map = self._modules.get_module_map()
     module_map[""] = ast or pyval  # The module itself (local lookup)
     pyval.Visit(visitors.FillInLocalPointers(module_map))
 
@@ -404,16 +579,25 @@ class Loader:
         self._finish_pyi(module.ast)
         module.dirty = False
 
+  def _import_and_verify(self, name, use_cache=False):
+    """Import an AST, finish and verify it."""
+    # TODO(mdemello): Why do import_relative_* not use the cache?
+    if use_cache and name in self._import_name_cache:
+      return self._import_name_cache[name]
+    ast = self._import_name(name)
+    self._lookup_all_classes()
+    ast = self.finish_and_verify_ast(ast)
+    if use_cache:
+      self._import_name_cache[name] = ast
+    return ast
+
   def import_relative_name(self, name):
     """IMPORT_NAME with level=-1. A name relative to the current directory."""
     if self.base_module is None:
       raise ValueError("Attempting relative import in non-package.")
     path = self.base_module.split(".")[:-1]
     path.append(name)
-    ast = self._import_name(".".join(path))
-    self._lookup_all_classes()
-    ast = self.finish_and_verify_ast(ast)
-    return ast
+    return self._import_and_verify(".".join(path))
 
   def import_relative(self, level):
     """Import a module relative to our base module.
@@ -438,20 +622,11 @@ class Loader:
       raise ValueError("Attempting relative import in non-package.")
     components = self.base_module.split(".")
     sub_module = ".".join(components[0:-level])
-    ast = self._import_name(sub_module)
-    self._lookup_all_classes()
-    ast = self.finish_and_verify_ast(ast)
-    return ast
+    return self._import_and_verify(sub_module)
 
   def import_name(self, module_name):
     # This method is used by convert.py for LateType, so memoize results early:
-    if module_name in self._import_name_cache:
-      return self._import_name_cache[module_name]
-    ast = self._import_name(module_name)
-    self._lookup_all_classes()
-    ast = self.finish_and_verify_ast(ast)
-    self._import_name_cache[module_name] = ast
-    return ast
+    return self._import_and_verify(module_name, use_cache=True)
 
   def finish_and_verify_ast(self, ast):
     """Verify the ast, doing external type resolution first if necessary."""
@@ -509,7 +684,7 @@ class Loader:
       The parsed file, instance of pytd.TypeDeclUnit, or None if we
       the module wasn't found.
     """
-    existing = self._get_existing_ast(module_name)
+    existing = self._modules.get_existing_ast(module_name)
     if existing:
       return existing
 
@@ -523,7 +698,7 @@ class Loader:
     if mod:
       return mod
 
-    file_ast, path = self._import_file(module_name, module_name.split("."))
+    file_ast, path = self._import_file(module_name)
     if file_ast:
       if _is_default_pyi(path):
         # Remove the default module from the cache; we will return it later if
@@ -551,91 +726,34 @@ class Loader:
       self._modules[module_name] = default
       return file_ast
 
-    log.warning("Couldn't import module %s %r in (path=%r) imports_map: %s",
-                module_name, module_name, self.pythonpath,
-                "%d items" % len(self.imports_map) if
-                self.imports_map is not None else "none")
-    if log.isEnabledFor(logging.DEBUG) and self.imports_map:
-      for module, path in self.imports_map.items():
-        log.debug("%s -> %s", module, path)
-
+    # Add debug logging if we have not found the module.
+    self._path_finder.log_module_not_found(module_name)
     return None
 
-  def _import_file(self, module_name, module_name_split):
+  def _import_file(self, module_name):
     """Helper for import_relative: try to load an AST, using pythonpath.
 
     Loops over self.pythonpath, taking care of the semantics for
     __init__, and pretending there's an empty __init__ if the path (derived from
-    module_name_split) is a directory.
+    module_name) is a directory.
 
     Args:
       module_name: The name of the module. May contain dots.
-      module_name_split: module_name.split(".")
     Returns:
       The parsed file (AST) and file path if found, otherwise None.
-
     """
-    for searchdir in self.pythonpath:
-      path = os.path.join(searchdir, *module_name_split)
-      # See if this is a directory with a "__init__.py" defined.
-      # (These also get automatically created in imports_map_loader.py)
-      init_path = os.path.join(path, "__init__")
-      init_ast, full_path = self._load_pyi(init_path, module_name)
-      if init_ast is not None:
-        log.debug("Found module %r with path %r", module_name, init_path)
-        return init_ast, full_path
-      elif self.imports_map is None and os.path.isdir(path):
-        # We allow directories to not have an __init__ file.
-        # The module's empty, but you can still load submodules.
-        log.debug("Created empty module %r with path %r",
-                  module_name, init_path)
-        filename = os.path.join(path, "__init__.pyi")
-        ast = self._create_empty(filename=filename, module_name=module_name)
-        return ast, filename
-      else:  # Not a directory
-        file_ast, full_path = self._load_pyi(path, module_name)
-        if file_ast is not None:
-          log.debug("Found module %r in path %r", module_name, path)
-          return file_ast, full_path
-    return None, None
-
-  def _load_pyi(self, path, module_name):
-    """Load a pyi from the path.
-
-    Args:
-      path: Path to the file (without '.pyi' or similar extension).
-      module_name: Name of the module (may contain dots).
-    Returns:
-      The parsed pyi, instance of pytd.TypeDeclUnit, and full path, or None if
-      we didn't find the module.
-    """
-    if self.imports_map is not None:
-      if path in self.imports_map:
-        full_path = self.imports_map[path]
-      else:
-        return None, None
-    else:
-      full_path = path + ".pyi"
-
-    # We have /dev/null entries in the import_map - os.path.isfile() returns
-    # False for those. However, we *do* want to load them. Hence exists / isdir.
-    if os.path.exists(full_path) and not os.path.isdir(full_path):
-      ast = self.load_file(filename=full_path, module_name=module_name)
-      return ast, full_path
-    else:
+    full_path, file_exists = self._path_finder.find_import(module_name)
+    if full_path is None:
       return None, None
+    if file_exists:
+      ast = self.load_file(filename=full_path, module_name=module_name)
+    else:
+      ast = self._create_empty(filename=full_path, module_name=module_name)
+    assert ast is not None, full_path
+    return ast, full_path
 
   def concat_all(self):
-    if not self._concatenated:
-      self._concatenated = pytd_utils.Concat(
-          *(module.ast for module in self._modules.values()
-            if module.ast),
-          name="<all>")
-    return self._concatenated
-
-  def _get_module_map(self):
-    return {name: module.ast for name, module in self._modules.items()
-            if module.ast}
+    return self._modules.concat_all()
 
   def can_see(self, module):
     """Reports whether the Loader is allowed to use the module."""
@@ -648,12 +766,7 @@ class Loader:
 
   def get_resolved_modules(self):
     """Gets a name -> ResolvedModule map of the loader's resolved modules."""
-    resolved_modules = {}
-    for name, mod in self._modules.items():
-      if not mod.dirty:
-        resolved_modules[name] = ResolvedModule(
-            mod.module_name, mod.filename, mod.ast)
-    return resolved_modules
+    return self._modules.get_resolved_modules()
 
 
 class PickledPyiLoader(Loader):
@@ -673,38 +786,11 @@ class PickledPyiLoader(Loader):
     }
     return cls(base_module=base_module, modules=modules, **kwargs)
 
-  def _unpickle_module(self, module):
-    if not module.pickle:
-      return
-    todo = [module]
-    seen = set()
-    newly_loaded_asts = []
-    while todo:
-      m = todo.pop()
-      if m in seen:
-        continue
-      else:
-        seen.add(m)
-      if not m.pickle:
-        continue
-      loaded_ast = cPickle.loads(m.pickle)
-      deps = [d for d, _ in loaded_ast.dependencies if d != loaded_ast.ast.name]
-      loaded_ast = serialize_ast.EnsureAstName(loaded_ast, m.module_name)
-      assert m.module_name in self._modules
-      todo.extend(self._modules[dependency] for dependency in deps)
-      newly_loaded_asts.append(loaded_ast)
-      m.ast = loaded_ast.ast
-      m.pickle = None
-    module_map = self._get_module_map()
-    for loaded_ast in newly_loaded_asts:
-      serialize_ast.FillLocalReferences(loaded_ast, module_map)
-    assert module.ast
-
   def load_file(self, module_name, filename, ast=None):
     """Load (or retrieve from cache) a module and resolve its dependencies."""
     if not is_pickle(filename):
       return super().load_file(module_name, filename, ast)
-    existing = self._get_existing_ast(module_name)
+    existing = self._modules.get_existing_ast(module_name)
     if existing:
       return existing
     loaded_ast = pytd_utils.LoadPickle(
@@ -717,7 +803,7 @@ class PickledPyiLoader(Loader):
     self._modules[module_name] = Module(module_name, filename, loaded_ast.ast)
     self._load_ast_dependencies(dependencies, ast, module_name)
     try:
-      ast = serialize_ast.ProcessAst(loaded_ast, self._get_module_map())
+      ast = serialize_ast.ProcessAst(loaded_ast, self._modules.get_module_map())
     except serialize_ast.UnrestorableDependencyError as e:
       del self._modules[module_name]
       raise BadDependencyError(utils.message(e), module_name) from e
