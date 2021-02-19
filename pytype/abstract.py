@@ -1909,7 +1909,11 @@ class PyTDFunction(Function):
               if not keep(b.data) or b.data in ps:
                 continue
               new_view = {**combined_view, **view, values: b}
-              if not compatible_with(values, ps, new_view):
+              if (not compatible_with(values, ps, new_view) and
+                  node.HasCombination([b])):
+                # Since HasCombination is expensive, we don't use it to
+                # pre-filter bindings, but once we think we have an error, we
+                # should double-check that the binding is actually visible.
                 new.append(b.data)
             if new:
               formal = name.split(".")[-1]
