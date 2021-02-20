@@ -579,16 +579,14 @@ class Loader:
         self._finish_pyi(module.ast)
         module.dirty = False
 
-  def _import_and_verify(self, name, use_cache=False):
+  def _import_and_verify(self, name):
     """Import an AST, finish and verify it."""
-    # TODO(mdemello): Why do import_relative_* not use the cache?
-    if use_cache and name in self._import_name_cache:
+    if name in self._import_name_cache:
       return self._import_name_cache[name]
     ast = self._import_name(name)
     self._lookup_all_classes()
     ast = self.finish_and_verify_ast(ast)
-    if use_cache:
-      self._import_name_cache[name] = ast
+    self._import_name_cache[name] = ast
     return ast
 
   def import_relative_name(self, name):
@@ -625,8 +623,7 @@ class Loader:
     return self._import_and_verify(sub_module)
 
   def import_name(self, module_name):
-    # This method is used by convert.py for LateType, so memoize results early:
-    return self._import_and_verify(module_name, use_cache=True)
+    return self._import_and_verify(module_name)
 
   def finish_and_verify_ast(self, ast):
     """Verify the ast, doing external type resolution first if necessary."""
