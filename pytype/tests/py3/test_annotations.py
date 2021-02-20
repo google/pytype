@@ -1236,5 +1236,16 @@ class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
       x.append(functools.partial(int, '42'))
     """)
 
+  def test_container_if_splitting(self):
+    self.Check("""
+      from typing import List, Optional
+      def f() -> Optional[str]:
+        return __any_object__
+      lst: List[str] = []
+      x = f()
+      if x is not None:
+        lst.append(x)
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
