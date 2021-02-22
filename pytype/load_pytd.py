@@ -99,16 +99,16 @@ class Module:
       NamedType nodes referencing other modules might still be unresolved.
     pickle: The AST as a pickled string. As long as this field is not None, the
       ast will be None.
-    dirty: The initial value of the dirty attribute.
+    has_unresolved_pointers: Whether all ClassType pointers have been filled in
   """
 
   def __init__(self, module_name, filename, ast,
-               pickle=None, dirty=True):
+               pickle=None, has_unresolved_pointers=True):
     self.module_name = module_name
     self.filename = filename
     self.ast = ast
     self.pickle = pickle
-    self.dirty = dirty
+    self.has_unresolved_pointers = has_unresolved_pointers
 
   def needs_unpickling(self):
     return bool(self.pickle)
@@ -184,7 +184,7 @@ class _ModuleMap:
     """Get a {name: ResolvedModule} map of all resolved modules."""
     resolved_modules = {}
     for name, mod in self._modules.items():
-      if not mod.dirty:
+      if not mod.has_unresolved_pointers:
         resolved_modules[name] = ResolvedModule(
             mod.module_name, mod.filename, mod.ast)
     return resolved_modules
@@ -193,9 +193,11 @@ class _ModuleMap:
     bltins, typing = builtins.GetBuiltinsAndTyping(python_version)
     return {
         "builtins":
-        Module("builtins", self.PREFIX + "builtins", bltins, dirty=False),
+        Module("builtins", self.PREFIX + "builtins", bltins,
+               has_unresolved_pointers=False),
         "typing":
-        Module("typing", self.PREFIX + "typing", typing, dirty=False)
+        Module("typing", self.PREFIX + "typing", typing,
+               has_unresolved_pointers=False)
     }
 
   def _unpickle_module(self, module):
@@ -481,14 +483,6 @@ class Loader:
     mod_ast = self._resolver.resolve_local_types(mod_ast, lookup_ast=lookup_ast)
     return mod_ast
 
-  def _postprocess_pyi(self, mod_ast, lookup_ast):
-    """Apply all the PYI transformations we need."""
-    mod_ast = self._resolver.resolve_builtin_types(
-        mod_ast, lookup_ast=lookup_ast)
-    mod_ast = self._resolve_external_and_local_types(
-        mod_ast, lookup_ast=lookup_ast)
-    return mod_ast
-
   def _create_empty(self, module_name, filename):
     return self.load_file(module_name, filename,
                           pytd_utils.CreateModule(module_name))
@@ -551,7 +545,7 @@ class Loader:
     prefix = name
     while "." in prefix:
       prefix, _ = prefix.rsplit(".", 1)
-      ast = self._import_name(prefix)
+      ast = self._import_module_by_name(prefix)
       if ast:
         return ast
     return None
@@ -568,7 +562,7 @@ class Loader:
       if name in self._modules and self._modules[name].ast:
         dep_ast = self._modules[name].ast
       else:
-        dep_ast = self._import_name(name)
+        dep_ast = self._import_module_by_name(name)
         if dep_ast is None:
           dep_ast = self._try_import_prefix(name)
           if dep_ast:
@@ -601,7 +595,7 @@ class Loader:
               isinstance(attr, pytd.Alias) and attr.name == attr.type.name):
             # Don't check the import result - resolve_external_types will raise
             # a better error.
-            self._import_name(full_name)
+            self._import_module_by_name(full_name)
 
   def _resolve_external_types(self, mod_ast, mod_name=None):
     module_map = self._modules.get_module_map()
@@ -609,28 +603,33 @@ class Loader:
         mod_ast, module_map, self._aliases, mod_name=mod_name)
     return mod_ast
 
-  def _finish_pyi(self, mod_ast, lookup_ast=None):
+  def _resolve_classtype_pointers(self, mod_ast, *, lookup_ast=None):
     module_map = self._modules.get_module_map()
     module_map[""] = lookup_ast or mod_ast  # The module itself (local lookup)
     mod_ast.Visit(visitors.FillInLocalPointers(module_map))
 
-  def resolve_type(self, mod_ast, lookup_ast):
-    """Resolve a pytd value, using the given ast for local lookup."""
-    mod_ast = self._postprocess_pyi(mod_ast, lookup_ast)
-    self._lookup_all_classes()
-    self._finish_pyi(mod_ast, lookup_ast)
-    self._resolver.verify(mod_ast, mod_name=lookup_ast.name)
-    return mod_ast
+  def resolve_pytd(self, pytd_node, lookup_ast):
+    """Resolve and verify pytd value, using the given ast for local lookup."""
+    # NOTE: Modules of dependencies will be loaded into the cache
+    pytd_node = self._resolver.resolve_builtin_types(
+        pytd_node, lookup_ast=lookup_ast)
+    pytd_node = self._resolve_external_and_local_types(
+        pytd_node, lookup_ast=lookup_ast)
+    self._resolve_classtype_pointers_for_all_modules()
+    self._resolve_classtype_pointers(pytd_node, lookup_ast=lookup_ast)
+    self._resolver.verify(pytd_node, mod_name=lookup_ast.name)
+    return pytd_node
 
   def resolve_ast(self, ast):
     """Resolve the dependencies of an AST, without adding it to our modules."""
-    return self.resolve_type(ast, ast)
+    # NOTE: Modules of dependencies will be loaded into the cache
+    return self.resolve_pytd(ast, ast)
 
-  def _lookup_all_classes(self):
+  def _resolve_classtype_pointers_for_all_modules(self):
     for module in self._modules.values():
-      if module.dirty:
-        self._finish_pyi(module.ast)
-        module.dirty = False
+      if module.has_unresolved_pointers:
+        self._resolve_classtype_pointers(module.ast)
+        module.has_unresolved_pointers = False
 
   def import_relative_name(self, name: str) -> _AST:
     """IMPORT_NAME with level=-1. A name relative to the current directory."""
@@ -668,8 +667,8 @@ class Loader:
   def import_name(self, module_name: str) -> _AST:
     if module_name in self._import_name_cache:
       return self._import_name_cache[module_name]
-    mod_ast = self._import_name(module_name)
-    self._lookup_all_classes()
+    mod_ast = self._import_module_by_name(module_name)
+    self._resolve_classtype_pointers_for_all_modules()
     mod_ast = self.finish_and_verify_ast(mod_ast)
     self._import_name_cache[module_name] = mod_ast
     return mod_ast
@@ -716,7 +715,7 @@ class Loader:
                             module_name=module_name, mod_ast=mod_ast)
     return None
 
-  def _import_name(self, module_name):
+  def _import_module_by_name(self, module_name):
     """Load a name like 'sys' or 'foo.bar.baz'.
 
     Args:
@@ -819,11 +818,13 @@ class PickledPyiLoader(Loader):
 
   @classmethod
   def load_from_pickle(cls, filename, base_module, **kwargs):
+    """Load a pytd module from a pickle file."""
     items = pytd_utils.LoadPickle(
         filename, compress=True,
         open_function=kwargs.get("open_function", open))
     modules = {
-        name: Module(name, filename=None, ast=None, pickle=pickle, dirty=False)
+        name: Module(name, filename=None, ast=None, pickle=pickle,
+                     has_unresolved_pointers=False)
         for name, pickle in items
     }
     return cls(base_module=base_module, modules=modules, **kwargs)
@@ -857,5 +858,5 @@ class PickledPyiLoader(Loader):
 
     self._modules[module_name].ast = ast
     self._modules[module_name].pickle = None
-    self._modules[module_name].dirty = False
+    self._modules[module_name].has_unresolved_pointers = False
     return ast

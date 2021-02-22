@@ -1173,7 +1173,7 @@ class Indexer:
       return pytd.AnythingType()
     t = pytd_utils.JoinTypes(v.to_type() for v in datum).Visit(
         visitors.RemoveUnknownClasses())
-    return self.loader.resolve_type(t, self.pytd_module)
+    return self.loader.resolve_pytd(t, self.pytd_module)
 
   def make_serializable(self):
     """Delete all data that cannot be pickled."""

@@ -97,7 +97,7 @@ def _to_pytd(datum, loader, ast):
     return pytd.AnythingType()
   t = pytd_utils.JoinTypes(v.to_type() for v in datum).Visit(
       visitors.RemoveUnknownClasses())
-  return loader.resolve_type(t, ast)
+  return loader.resolve_pytd(t, ast)
 
 
 class _SymbolMatcher:
