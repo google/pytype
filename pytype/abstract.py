@@ -1888,11 +1888,19 @@ class PyTDFunction(Function):
       def compatible_with(new, existing, view):
         """Check whether a new type can be added to a container."""
         for data in existing:
-          if self.vm.matcher.match_var_against_type(
-              new, data.cls, {}, node, view) is not None:
+          k = data.get_type_key()
+          if k not in compatible_with_cache:
+            # This caching lets us skip duplicate matching work. Very
+            # unfortunately, it is also needed for correctness because
+            # cfg_utils.deep_variable_product() ignores bindings to values with
+            # duplicate type keys when generating views.
+            compatible_with_cache[k] = self.vm.matcher.match_var_against_type(
+                new, data.cls, {}, node, view)
+          if compatible_with_cache[k] is not None:
             return True
         return False
 
+      compatible_with_cache = {}
       filtered_mutations = []
       errors = collections.defaultdict(dict)
 

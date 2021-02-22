@@ -1071,7 +1071,12 @@ class ErrorLog(ErrorLogBase):
       mutations: a dict of {parameter name: (annotated types, new types)}
       name: the variable name (or None)
     """
-    cls = obj.cls
+    for parent in obj.cls.mro:
+      if isinstance(parent, abstract.ParameterizedClass):
+        cls = parent
+        break
+    else:
+      assert False, f"{obj.cls.full_name} is not a container"
     details = "Container: %s\n" % self._print_as_generic_type(cls)
     allowed_contained = ""
     new_contained = ""
