@@ -18,7 +18,7 @@ class TestCompileError(unittest.TestCase):
 
   def test_error_does_not_match_re(self):
     e = pyc.CompileError("some error in foo.py at line 123")
-    self.assertEqual(None, e.filename)
+    self.assertIsNone(e.filename)
     self.assertEqual(1, e.lineno)
     self.assertEqual("some error in foo.py at line 123", e.error)
 
@@ -27,7 +27,7 @@ class TestPyc(test_base.UnitTest):
   """Tests for pyc.py."""
 
   def _compile(self, src, mode="exec"):
-    exe = ("python" + ".".join(map(str, self.python_version)), [])
+    exe = (["python" + ".".join(map(str, self.python_version))], [])
     pyc_data = pyc.compile_src_string_to_pyc_string(
         src, filename="test_input.py", python_version=self.python_version,
         python_exe=exe, mode=mode)
