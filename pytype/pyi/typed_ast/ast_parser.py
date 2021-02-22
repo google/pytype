@@ -289,7 +289,7 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
       if not (isinstance(value, ast3.List) and
               all(types.Constant.is_str(x) for x in value.elts)):
         raise ParseError("__slots__ must be a list of strings")
-      return types.SlotDecl(tuple([x.value for x in value.elts]))
+      return types.SlotDecl(tuple(x.value for x in value.elts))
     elif isinstance(value, types.Constant):
       return pytd.Constant(name, value.to_pytd())
     elif isinstance(value, types.Ellipsis):
