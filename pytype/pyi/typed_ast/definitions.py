@@ -413,7 +413,8 @@ class Definitions:
 
   def _is_callable_base_type(self, t):
     return (isinstance(t, pytd.NamedType) and
-            self._matches_full_name(t, "typing.Callable"))
+            (self._matches_full_name(t, "typing.Callable") or
+             self._matches_full_name(t, "collections.abc.Callable")))
 
   def _is_literal_base_type(self, t):
     return isinstance(t, pytd.NamedType) and (

@@ -836,5 +836,21 @@ class PYITest(test_base.TargetIndependentTest):
       """)
       self.Check("import foo", pythonpath=[d.path])
 
+  def test_parameterize_builtin_tuple(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(x: tuple[int]) -> tuple[int, int]: ...
+      """)
+      ty, _ = self.InferWithErrors("""
+        import foo
+        foo.f((0, 0))  # wrong-arg-types
+        x = foo.f((0,))
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Tuple
+        foo: module
+        x: Tuple[int, int]
+      """)
+
 
 test_base.main(globals(), __name__ == "__main__")

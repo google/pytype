@@ -67,5 +67,24 @@ class PYITestPython3Feature(test_base.TargetPython3FeatureTest):
         x = ...  # type: bytes
       """)
 
+  def test_collections_abc_callable(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from collections.abc import Callable
+        def f() -> Callable[[], float]: ...
+      """)
+      ty, _ = self.InferWithErrors("""
+        import foo
+        func = foo.f()
+        func(0.0)  # wrong-arg-count
+        x = func()
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Callable
+        foo: module
+        func: Callable[[], float]
+        x: float
+      """)
+
 
 test_base.main(globals(), __name__ == "__main__")

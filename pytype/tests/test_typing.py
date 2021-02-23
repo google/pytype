@@ -205,6 +205,14 @@ class TypingTest(test_base.TargetIndependentTest):
       Sequence_: Any
     """)
 
+  def test_type_checking_local(self):
+    self.Check("""
+      from typing import TYPE_CHECKING
+      def f():
+        if not TYPE_CHECKING:
+          name_error  # should be ignored
+    """)
+
 
 class LiteralTest(test_base.TargetIndependentTest):
   """Tests for typing.Literal."""

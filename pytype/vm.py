@@ -1210,8 +1210,12 @@ class VirtualMachine:
       return state, self._load_annotation(state.node, name)
 
   def load_global(self, state, name):
+    # The concrete value of typing.TYPE_CHECKING should be preserved; otherwise,
+    # concrete values are converted to abstract instances of their types, as we
+    # generally can't assume that globals are constant.
     return self.load_from(
-        state, self.frame.f_globals, name, discard_concrete_values=True)
+        state, self.frame.f_globals, name,
+        discard_concrete_values=name != "TYPE_CHECKING")
 
   def load_special_builtin(self, name):
     if name == "__any_object__":
