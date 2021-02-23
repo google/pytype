@@ -301,7 +301,7 @@ class _ToTypeVisitor(Visitor):
   def __init__(self):
     super().__init__()
     self._in_alias = False
-    self._in_literal = []
+    self._in_literal = 0
 
   def EnterAlias(self, _):
     assert not self._in_alias
@@ -312,10 +312,10 @@ class _ToTypeVisitor(Visitor):
     self._in_alias = False
 
   def EnterLiteral(self, _):
-    self._in_literal.append(True)
+    self._in_literal += 1
 
   def LeaveLiteral(self, _):
-    self._in_literal.pop()
+    self._in_literal -= 1
 
   def to_type(self, t):
     allow_constants = self._in_alias or self._in_literal
@@ -406,7 +406,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     self._module_alias_map = module_alias_map or {}
     self.name = self_name
     self._alias_name = None
-    self._in_generic_type = []
+    self._in_generic_type = 0
     self._star_imports = set()
 
   def _ResolveUsingGetattr(self, module_name, module):
@@ -430,10 +430,10 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     self._alias_name = None
 
   def EnterGenericType(self, _):
-    self._in_generic_type.append(True)
+    self._in_generic_type += 1
 
   def LeaveGenericType(self, _):
-    self._in_generic_type.pop()
+    self._in_generic_type -= 1
 
   def _LookupModuleRecursive(self, name):
     module_name, cls_prefix = name, ""

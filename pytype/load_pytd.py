@@ -99,19 +99,22 @@ class Module:
       NamedType nodes referencing other modules might still be unresolved.
     pickle: The AST as a pickled string. As long as this field is not None, the
       ast will be None.
-    dirty: The initial value of the dirty attribute.
+    has_unresolved_pointers: Whether all ClassType pointers have been filled in
   """
 
   def __init__(self, module_name, filename, ast,
-               pickle=None, dirty=True):
+               pickle=None, has_unresolved_pointers=True):
     self.module_name = module_name
     self.filename = filename
     self.ast = ast
     self.pickle = pickle
-    self.dirty = dirty
+    self.has_unresolved_pointers = has_unresolved_pointers
 
   def needs_unpickling(self):
     return bool(self.pickle)
+
+  def is_package(self):
+    return self.filename and os.path.basename(self.filename) == "__init__.pyi"
 
 
 class BadDependencyError(Exception):
@@ -131,7 +134,7 @@ class _ModuleMap:
   PREFIX = "pytd:"  # for pytd files that ship with pytype
 
   def __init__(self, python_version, modules=None):
-    self.python_version = utils.normalize_version(python_version)
+    self.python_version = python_version
     self._modules = modules or self._base_modules(self.python_version)
     if self._modules["builtins"].needs_unpickling():
       self._unpickle_module(self._modules["builtins"])
@@ -181,7 +184,7 @@ class _ModuleMap:
     """Get a {name: ResolvedModule} map of all resolved modules."""
     resolved_modules = {}
     for name, mod in self._modules.items():
-      if not mod.dirty:
+      if not mod.has_unresolved_pointers:
         resolved_modules[name] = ResolvedModule(
             mod.module_name, mod.filename, mod.ast)
     return resolved_modules
@@ -190,9 +193,11 @@ class _ModuleMap:
     bltins, typing = builtins.GetBuiltinsAndTyping(python_version)
     return {
         "builtins":
-        Module("builtins", self.PREFIX + "builtins", bltins, dirty=False),
+        Module("builtins", self.PREFIX + "builtins", bltins,
+               has_unresolved_pointers=False),
         "typing":
-        Module("typing", self.PREFIX + "typing", typing, dirty=False)
+        Module("typing", self.PREFIX + "typing", typing,
+               has_unresolved_pointers=False)
     }
 
   def _unpickle_module(self, module):
@@ -301,6 +306,95 @@ class _PathFinder:
         log.debug("%s -> %s", module, path)
 
 
+class _Resolver:
+  """Resolve symbols in a pytd tree."""
+
+  def __init__(self, builtins_ast):
+    self.builtins_ast = builtins_ast
+
+  def _lookup(self, visitor, mod_ast, lookup_ast):
+    if lookup_ast:
+      visitor.EnterTypeDeclUnit(lookup_ast)
+    mod_ast = mod_ast.Visit(visitor)
+    return mod_ast
+
+  def resolve_local_types(self, mod_ast, *, lookup_ast=None):
+    local_lookup = visitors.LookupLocalTypes()
+    return self._lookup(local_lookup, mod_ast, lookup_ast)
+
+  def resolve_builtin_types(self, mod_ast, *, lookup_ast=None):
+    bltn_lookup = visitors.LookupBuiltins(self.builtins_ast, full_names=False)
+    mod_ast = self._lookup(bltn_lookup, mod_ast, lookup_ast)
+    mod_ast = mod_ast.Visit(
+        visitors.ExpandCompatibleBuiltins(self.builtins_ast))
+    return mod_ast
+
+  def resolve_external_types(self, mod_ast, module_map, aliases, *,
+                             mod_name=None):
+    name = mod_name or mod_ast.name
+    try:
+      mod_ast = mod_ast.Visit(visitors.LookupExternalTypes(
+          module_map, self_name=name, module_alias_map=aliases))
+    except KeyError as e:
+      raise BadDependencyError(utils.message(e), name) from e
+    return mod_ast
+
+  def resolve_module_alias(self, name, *, lookup_ast=None,
+                           lookup_ast_name=None):
+    """Check if a given name is an alias and resolve it if so."""
+    # name is bare, but aliases are stored as "ast_name.alias".
+    if lookup_ast is None:
+      return name
+    ast_name = lookup_ast_name or lookup_ast.name
+    key = f"{ast_name}.{name}"
+    for alias, value in lookup_ast.aliases:
+      if alias == key and isinstance(value, pytd.Module):
+        return value.module_name
+    return name
+
+  def verify(self, mod_ast, *, mod_name=None):
+    try:
+      mod_ast.Visit(visitors.VerifyLookup(ignore_late_types=True))
+    except ValueError as e:
+      name = mod_name or mod_ast.name
+      raise BadDependencyError(utils.message(e), name) from e
+    mod_ast.Visit(visitors.VerifyContainers())
+
+  @classmethod
+  def collect_dependencies(cls, mod_ast):
+    """Goes over an ast and returns all references module names."""
+    deps = visitors.CollectDependencies()
+    mod_ast.Visit(deps)
+    return deps.dependencies
+
+
+# TODO(mdemello): move this to pytd.builtins
+class _BuiltinLoader:
+  """Load builtins from the pytype source tree."""
+
+  def __init__(self, python_version):
+    self.python_version = python_version
+
+  def _parse_predefined(self, pytd_subdir, module, as_package=False):
+    """Parse a pyi/pytd file in the pytype source tree."""
+    try:
+      filename, src = pytd_utils.GetPredefinedFile(
+          pytd_subdir, module, as_package=as_package)
+    except IOError:
+      return None
+    ast = parser.parse_string(src, filename=filename, name=module,
+                              python_version=self.python_version)
+    assert ast.name == module
+    return ast
+
+  def get_builtin(self, subdir, module_name):
+    builtin_dir = file_utils.get_versioned_path(subdir, self.python_version)
+    mod = self._parse_predefined(builtin_dir, module_name)
+    if not mod:
+      mod = self._parse_predefined(builtin_dir, module_name, as_package=True)
+    return mod
+
+
 class Loader:
   """A cache for loaded PyTD files.
 
@@ -329,11 +423,13 @@ class Loader:
                modules=None,
                open_function=open):
     self.python_version = utils.normalize_version(python_version)
-    self._modules = _ModuleMap(python_version, modules)
+    self._modules = _ModuleMap(self.python_version, modules)
     self.builtins = self._modules["builtins"].ast
     self.typing = self._modules["typing"].ast
     self.base_module = base_module
     self._path_finder = _PathFinder(imports_map, pythonpath)
+    self._builtin_loader = _BuiltinLoader(self.python_version)
+    self._resolver = _Resolver(self.builtins)
     self.use_typeshed = use_typeshed
     self.open_function = open_function
     self._import_name_cache = {}  # performance cache
@@ -377,48 +473,21 @@ class Loader:
     pytd_utils.SavePickle(
         items, filename, compress=True, open_function=self.open_function)
 
-  def _parse_predefined(self, pytd_subdir, module, as_package=False):
-    """Parse a pyi/pytd file in the pytype source tree."""
-    try:
-      filename, src = pytd_utils.GetPredefinedFile(pytd_subdir, module,
-                                                   as_package=as_package)
-    except IOError:
-      return None
-    ast = parser.parse_string(src, filename=filename, name=module,
-                              python_version=self.python_version)
-    assert ast.name == module
-    return ast
-
-  def _resolve_builtins(self, pyval, ast=None):
-    builtins_lookup = visitors.LookupBuiltins(self.builtins, full_names=False)
-    if ast:
-      builtins_lookup.EnterTypeDeclUnit(ast)
-    pyval = pyval.Visit(builtins_lookup)
-    pyval = pyval.Visit(visitors.ExpandCompatibleBuiltins(self.builtins))
-    return pyval
-
-  def _resolve_external_and_local_types(self, pyval, ast=None):
-    dependencies = self._collect_ast_dependencies(pyval)
+  def _resolve_external_and_local_types(self, mod_ast, lookup_ast=None):
+    dependencies = self._resolver.collect_dependencies(mod_ast)
     if dependencies:
-      self._load_ast_dependencies(dependencies, ast or pyval)
-      pyval = self._resolve_external_types(pyval, ast and ast.name)
-    local_lookup = visitors.LookupLocalTypes()
-    if ast:
-      local_lookup.EnterTypeDeclUnit(ast)
-    pyval = pyval.Visit(local_lookup)
-    return pyval
-
-  def _postprocess_pyi(self, pyval, ast):
-    """Apply all the PYI transformations we need."""
-    pyval = self._resolve_builtins(pyval, ast)
-    pyval = self._resolve_external_and_local_types(pyval, ast)
-    return pyval
+      lookup_ast = lookup_ast or mod_ast
+      self._load_ast_dependencies(dependencies, lookup_ast)
+      mod_ast = self._resolve_external_types(
+          mod_ast, lookup_ast and lookup_ast.name)
+    mod_ast = self._resolver.resolve_local_types(mod_ast, lookup_ast=lookup_ast)
+    return mod_ast
 
   def _create_empty(self, module_name, filename):
     return self.load_file(module_name, filename,
                           pytd_utils.CreateModule(module_name))
 
-  def load_file(self, module_name, filename, ast=None):
+  def load_file(self, module_name, filename, mod_ast=None):
     """Load (or retrieve from cache) a module and resolve its dependencies."""
     # TODO(mdemello): Should we do this in _ModuleMap.__setitem__? Also, should
     # we only invalidate concatenated if existing = None?
@@ -427,29 +496,30 @@ class Loader:
     existing = self._modules.get_existing_ast(module_name)
     if existing:
       return existing
-    if not ast:
+    if not mod_ast:
       with self.open_function(filename, "r") as f:
-        ast = parser.parse_string(f.read(), filename=filename, name=module_name,
-                                  python_version=self.python_version)
-    return self._process_module(module_name, filename, ast)
+        mod_ast = parser.parse_string(
+            f.read(), filename=filename, name=module_name,
+            python_version=self.python_version)
+    return self._process_module(module_name, filename, mod_ast)
 
-  def _process_module(self, module_name, filename, ast):
+  def _process_module(self, module_name, filename, mod_ast):
     """Create a module from a loaded ast and save it to the loader cache.
 
     Args:
       module_name: The fully qualified name of the module being imported.
         May be None.
       filename: The file the ast was generated from. May be None.
-      ast: The pytd.TypeDeclUnit representing the module.
+      mod_ast: The pytd.TypeDeclUnit representing the module.
 
     Returns:
       The ast (pytd.TypeDeclUnit) as represented in this loader.
     """
-    module = Module(module_name, filename, ast)
+    module = Module(module_name, filename, mod_ast)
     # Builtins need to be resolved before the module is cached so that they are
     # not mistaken for local types. External types can be left unresolved
     # because they are unambiguous.
-    module.ast = self._resolve_builtins(module.ast)
+    module.ast = self._resolver.resolve_builtin_types(module.ast)
     self._modules[module_name] = module
     try:
       module.ast = self._resolve_external_and_local_types(module.ast)
@@ -460,9 +530,8 @@ class Loader:
       # module. This code executes when the module is first loaded, which
       # happens before any others use it to resolve dependencies, so there are
       # no external pointers into the module at this point.
-      module.ast.Visit(
-          visitors.FillInLocalPointers({"": module.ast,
-                                        module_name: module.ast}))
+      module_map = {"": module.ast, module_name: module.ast}
+      module.ast.Visit(visitors.FillInLocalPointers(module_map))
     except:
       # don't leave half-resolved modules around
       del self._modules[module_name]
@@ -471,55 +540,44 @@ class Loader:
       self.add_module_prefixes(module_name)
     return module.ast
 
-  def _collect_ast_dependencies(self, ast):
-    """Goes over an ast and returns all references module names."""
-    deps = visitors.CollectDependencies()
-    ast.Visit(deps)
-    return deps.dependencies
+  def _try_import_prefix(self, name: str) -> Optional[_AST]:
+    """Try importing all prefixes of name, returning the first valid module."""
+    prefix = name
+    while "." in prefix:
+      prefix, _ = prefix.rsplit(".", 1)
+      ast = self._import_module_by_name(prefix)
+      if ast:
+        return ast
+    return None
 
-  def _resolve_module_alias(self, name, ast, ast_name=None):
-    """Check if a given name is an alias and resolve it if so."""
-    # name is bare, but aliases are stored as "ast_name.alias".
-    if ast is None:
-      return name
-    key = "%s.%s" % (ast_name or ast.name, name)
-    for alias, value in ast.aliases:
-      if alias == key and isinstance(value, pytd.Module):
-        return value.module_name
-    return name
-
-  def _load_ast_dependencies(self, dependencies, ast, ast_name=None):
+  def _load_ast_dependencies(self, dependencies, lookup_ast,
+                             lookup_ast_name=None):
     """Fill in all ClassType.cls pointers and load reexported modules."""
     for dep_name in dependencies:
-      name = self._resolve_module_alias(dep_name, ast, ast_name)
+      name = self._resolver.resolve_module_alias(
+          dep_name, lookup_ast=lookup_ast, lookup_ast_name=lookup_ast_name)
       if dep_name != name:
         # We have an alias. Store it in the aliases map.
         self._aliases[dep_name] = name
       if name in self._modules and self._modules[name].ast:
-        other_ast = self._modules[name].ast
+        dep_ast = self._modules[name].ast
       else:
-        other_ast = self._import_name(name)
-        if other_ast is None:
-          prefix = name
-          while "." in prefix:
-            prefix, _ = prefix.rsplit(".", 1)
-            other_ast = self._import_name(prefix)
-            if other_ast:
-              break
-          if other_ast:
+        dep_ast = self._import_module_by_name(name)
+        if dep_ast is None:
+          dep_ast = self._try_import_prefix(name)
+          if dep_ast:
             # If any prefix is a valid module, then we'll assume that we're
             # importing a nested class.
             continue
           else:
             error = "Can't find pyi for %r" % name
-            raise BadDependencyError(error, ast_name or ast.name)
+            raise BadDependencyError(error, lookup_ast_name or lookup_ast.name)
       # If `name` is a package, try to load any base names not defined in
       # __init__ as submodules.
-      if (not self._modules[name].filename or
-          os.path.basename(self._modules[name].filename) != "__init__.pyi"):
+      if not self._modules[name].is_package():
         continue
       try:
-        other_ast.Lookup("__getattr__")
+        dep_ast.Lookup("__getattr__")
       except KeyError:
         for base_name in dependencies[dep_name]:
           if base_name == "*":
@@ -528,78 +586,60 @@ class Loader:
           # Check whether full_name is a submodule based on whether it is
           # defined in the __init__ file.
           try:
-            attr = other_ast.Lookup(full_name)
+            attr = dep_ast.Lookup(full_name)
           except KeyError:
             attr = None
           # 'from . import submodule as submodule' produces
           # Alias(submodule, NamedType(submodule)).
           if attr is None or (
               isinstance(attr, pytd.Alias) and attr.name == attr.type.name):
-            # Don't check the import result - _resolve_external_types will raise
+            # Don't check the import result - resolve_external_types will raise
             # a better error.
-            self._import_name(full_name)
+            self._import_module_by_name(full_name)
 
-  def _resolve_external_types(self, pyval, ast_name=None):
-    name = ast_name or pyval.name
-    try:
-      pyval = pyval.Visit(visitors.LookupExternalTypes(
-          self._modules.get_module_map(), self_name=name,
-          module_alias_map=self._aliases))
-    except KeyError as e:
-      raise BadDependencyError(utils.message(e), name) from e
-    return pyval
-
-  def _finish_pyi(self, pyval, ast=None):
+  def _resolve_external_types(self, mod_ast, mod_name=None):
     module_map = self._modules.get_module_map()
-    module_map[""] = ast or pyval  # The module itself (local lookup)
-    pyval.Visit(visitors.FillInLocalPointers(module_map))
+    mod_ast = self._resolver.resolve_external_types(
+        mod_ast, module_map, self._aliases, mod_name=mod_name)
+    return mod_ast
 
-  def _verify_pyi(self, pyval, ast_name=None):
-    try:
-      pyval.Visit(visitors.VerifyLookup(ignore_late_types=True))
-    except ValueError as e:
-      raise BadDependencyError(utils.message(e), ast_name or pyval.name) from e
-    pyval.Visit(visitors.VerifyContainers())
+  def _resolve_classtype_pointers(self, mod_ast, *, lookup_ast=None):
+    module_map = self._modules.get_module_map()
+    module_map[""] = lookup_ast or mod_ast  # The module itself (local lookup)
+    mod_ast.Visit(visitors.FillInLocalPointers(module_map))
 
-  def resolve_type(self, pyval, ast):
-    """Resolve a pytd value, using the given ast for local lookup."""
-    pyval = self._postprocess_pyi(pyval, ast)
-    self._lookup_all_classes()
-    self._finish_pyi(pyval, ast)
-    self._verify_pyi(pyval, ast.name)
-    return pyval
+  def resolve_pytd(self, pytd_node, lookup_ast):
+    """Resolve and verify pytd value, using the given ast for local lookup."""
+    # NOTE: Modules of dependencies will be loaded into the cache
+    pytd_node = self._resolver.resolve_builtin_types(
+        pytd_node, lookup_ast=lookup_ast)
+    pytd_node = self._resolve_external_and_local_types(
+        pytd_node, lookup_ast=lookup_ast)
+    self._resolve_classtype_pointers_for_all_modules()
+    self._resolve_classtype_pointers(pytd_node, lookup_ast=lookup_ast)
+    self._resolver.verify(pytd_node, mod_name=lookup_ast.name)
+    return pytd_node
 
   def resolve_ast(self, ast):
     """Resolve the dependencies of an AST, without adding it to our modules."""
-    return self.resolve_type(ast, ast)
+    # NOTE: Modules of dependencies will be loaded into the cache
+    return self.resolve_pytd(ast, ast)
 
-  def _lookup_all_classes(self):
+  def _resolve_classtype_pointers_for_all_modules(self):
     for module in self._modules.values():
-      if module.dirty:
-        self._finish_pyi(module.ast)
-        module.dirty = False
+      if module.has_unresolved_pointers:
+        self._resolve_classtype_pointers(module.ast)
+        module.has_unresolved_pointers = False
 
-  def _import_and_verify(self, name, use_cache=False):
-    """Import an AST, finish and verify it."""
-    # TODO(mdemello): Why do import_relative_* not use the cache?
-    if use_cache and name in self._import_name_cache:
-      return self._import_name_cache[name]
-    ast = self._import_name(name)
-    self._lookup_all_classes()
-    ast = self.finish_and_verify_ast(ast)
-    if use_cache:
-      self._import_name_cache[name] = ast
-    return ast
-
-  def import_relative_name(self, name):
+  def import_relative_name(self, name: str) -> _AST:
     """IMPORT_NAME with level=-1. A name relative to the current directory."""
     if self.base_module is None:
       raise ValueError("Attempting relative import in non-package.")
     path = self.base_module.split(".")[:-1]
     path.append(name)
-    return self._import_and_verify(".".join(path))
+    return self.import_name(".".join(path))
 
-  def import_relative(self, level):
+  def import_relative(self, level: int) -> _AST:
     """Import a module relative to our base module.
 
     Args:
@@ -622,24 +662,29 @@ class Loader:
       raise ValueError("Attempting relative import in non-package.")
     components = self.base_module.split(".")
     sub_module = ".".join(components[0:-level])
-    return self._import_and_verify(sub_module)
+    return self.import_name(sub_module)
 
-  def import_name(self, module_name):
-    # This method is used by convert.py for LateType, so memoize results early:
-    return self._import_and_verify(module_name, use_cache=True)
+  def import_name(self, module_name: str) -> _AST:
+    if module_name in self._import_name_cache:
+      return self._import_name_cache[module_name]
+    mod_ast = self._import_module_by_name(module_name)
+    self._resolve_classtype_pointers_for_all_modules()
+    mod_ast = self.finish_and_verify_ast(mod_ast)
+    self._import_name_cache[module_name] = mod_ast
+    return mod_ast
 
-  def finish_and_verify_ast(self, ast):
+  def finish_and_verify_ast(self, mod_ast):
     """Verify the ast, doing external type resolution first if necessary."""
-    if ast:
+    if mod_ast:
       try:
-        self._verify_pyi(ast)
+        self._resolver.verify(mod_ast)
       except BadDependencyError:
         # In the case of a circular import, an external type may be left
         # unresolved. As long as the module containing the unresolved type does
         # not also contain a circular import, an extra lookup should resolve it.
-        ast = self._resolve_external_types(ast)
-        self._verify_pyi(ast)
-    return ast
+        mod_ast = self._resolve_external_types(mod_ast)
+        self._resolver.verify(mod_ast)
+    return mod_ast
 
   def add_module_prefixes(self, module_name):
     for prefix in module_utils.get_all_prefixes(module_name):
@@ -652,14 +697,10 @@ class Loader:
     """Load a pytd/pyi that ships with pytype or typeshed."""
     # Try our own type definitions first.
     if not third_party_only:
-      builtin_dir = file_utils.get_versioned_path(subdir, self.python_version)
-      mod = self._parse_predefined(builtin_dir, module_name)
-      if not mod:
-        mod = self._parse_predefined(builtin_dir, module_name, as_package=True)
-      if mod:
+      mod_ast = self._builtin_loader.get_builtin(subdir, module_name)
+      if mod_ast:
         return self.load_file(filename=self.PREFIX + module_name,
-                              module_name=module_name,
-                              ast=mod)
+                              module_name=module_name, mod_ast=mod_ast)
     if self.use_typeshed:
       return self._load_typeshed_builtin(subdir, module_name)
     return None
@@ -669,12 +710,12 @@ class Loader:
     loaded = typeshed.parse_type_definition(
         subdir, module_name, self.python_version)
     if loaded:
-      filename, mod = loaded
+      filename, mod_ast = loaded
       return self.load_file(filename=self.PREFIX + filename,
-                            module_name=module_name, ast=mod)
+                            module_name=module_name, mod_ast=mod_ast)
     return None
 
-  def _import_name(self, module_name):
+  def _import_module_by_name(self, module_name):
     """Load a name like 'sys' or 'foo.bar.baz'.
 
     Args:
@@ -746,11 +787,11 @@ class Loader:
     if full_path is None:
       return None, None
     if file_exists:
-      ast = self.load_file(filename=full_path, module_name=module_name)
+      mod_ast = self.load_file(filename=full_path, module_name=module_name)
     else:
-      ast = self._create_empty(filename=full_path, module_name=module_name)
-    assert ast is not None, full_path
-    return ast, full_path
+      mod_ast = self._create_empty(filename=full_path, module_name=module_name)
+    assert mod_ast is not None, full_path
+    return mod_ast, full_path
 
   def concat_all(self):
     return self._modules.concat_all()
@@ -762,7 +803,7 @@ class Loader:
     if self.imports_map is None or self.use_typeshed:
       return True
     return (module in self.imports_map or
-            "%s/__init__" % module in self.imports_map)
+            f"{module}/__init__" in self.imports_map)
 
   def get_resolved_modules(self):
     """Gets a name -> ResolvedModule map of the loader's resolved modules."""
@@ -777,19 +818,21 @@ class PickledPyiLoader(Loader):
 
   @classmethod
   def load_from_pickle(cls, filename, base_module, **kwargs):
+    """Load a pytd module from a pickle file."""
     items = pytd_utils.LoadPickle(
         filename, compress=True,
         open_function=kwargs.get("open_function", open))
     modules = {
-        name: Module(name, filename=None, ast=None, pickle=pickle, dirty=False)
+        name: Module(name, filename=None, ast=None, pickle=pickle,
+                     has_unresolved_pointers=False)
         for name, pickle in items
     }
     return cls(base_module=base_module, modules=modules, **kwargs)
 
-  def load_file(self, module_name, filename, ast=None):
+  def load_file(self, module_name, filename, mod_ast=None):
     """Load (or retrieve from cache) a module and resolve its dependencies."""
     if not is_pickle(filename):
-      return super().load_file(module_name, filename, ast)
+      return super().load_file(module_name, filename, mod_ast)
     existing = self._modules.get_existing_ast(module_name)
     if existing:
       return existing
@@ -801,7 +844,8 @@ class PickledPyiLoader(Loader):
                     if d != loaded_ast.ast.name}
     loaded_ast = serialize_ast.EnsureAstName(loaded_ast, module_name, fix=True)
     self._modules[module_name] = Module(module_name, filename, loaded_ast.ast)
-    self._load_ast_dependencies(dependencies, ast, module_name)
+    self._load_ast_dependencies(dependencies, lookup_ast=mod_ast,
+                                lookup_ast_name=module_name)
     try:
       ast = serialize_ast.ProcessAst(loaded_ast, self._modules.get_module_map())
     except serialize_ast.UnrestorableDependencyError as e:
@@ -814,5 +858,5 @@ class PickledPyiLoader(Loader):
 
     self._modules[module_name].ast = ast
     self._modules[module_name].pickle = None
-    self._modules[module_name].dirty = False
+    self._modules[module_name].has_unresolved_pointers = False
     return ast

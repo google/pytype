@@ -1139,6 +1139,38 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
           pass
       """, pythonpath=[d.path])
 
+  def test_tuple_container_check(self):
+    # Regression test for a container_type_mismatch crash that was caused by
+    # two tuples having the same type key and one of them therefore being
+    # omitted from argument views.
+    self.Check("""
+      from typing import Dict, Tuple
+
+      _FilesMap = Dict[Tuple[int, int], int]
+
+      class ShardinfoGen(object):
+        def _GenerateFiles(self):
+          def _GenerateService():
+            d2f = {}  # type: _FilesMap
+            d2f[(0, 1)] = 3
+            d2f[(4, 5)] = 6
+            files.update(d2f)
+          files = {}  # type: _FilesMap
+          for _ in __any_object__:
+            _GenerateService()
+    """)
+
+  def test_newtype_container_check(self):
+    errors = self.CheckWithErrors("""
+      from typing import Dict, NewType, Set
+      ClusterInfoConfig = NewType('ClusterInfoConfig', Dict[str, int])
+      class CommonConfigBuilder:
+        def _AddMachines(self, cluster_info_config: ClusterInfoConfig):
+          cluster_info_config[''] = {}  # container-type-mismatch[e]
+    """)
+    self.assertErrorRegexes(
+        errors, {"e": r"Container: Dict\[_K, _V\].*_V: int.*_V: Dict"})
+
 
 class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for PEP 484 style inline annotations."""

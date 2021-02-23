@@ -140,7 +140,7 @@ def _pytd_signature(
   _apply_defaults(pos_params, args.defaults)
   _apply_defaults(kwonly_params, args.kw_defaults)
   all_params = pos_params + kwonly_params
-  params = tuple([x.to_pytd() for x in all_params])
+  params = tuple(x.to_pytd() for x in all_params)
   starargs = _pytd_star_param(args.vararg)
   starstarargs = _pytd_starstar_param(args.kwarg)
   ret = pytd_function.pytd_return_type(name, function.returns, is_async)
