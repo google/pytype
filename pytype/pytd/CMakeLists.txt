@@ -168,6 +168,7 @@ py_library(
     ._pytd
     .pytd_visitors
     pytype.utils
+    pytype.pytd.parse.parse
 )
 
 py_library(

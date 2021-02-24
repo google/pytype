@@ -6,15 +6,13 @@ from typing import Dict, Optional, List, Tuple
 
 from pytype.pyi.typed_ast.types import ParseError  # pylint: disable=g-importing-member
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.pytd.parse import node as pytd_node
-from pytype.pytd.parse import parser_constants  # pylint: disable=g-importing-member
 
 from typed_ast import ast3
 
 
-_TYPED_DICT_ALIASES = (
-    "typing.TypedDict",
-    parser_constants.EXTERNAL_NAME_PREFIX + "typing_extensions.TypedDict")
+_TYPED_DICT_ALIASES = ("typing.TypedDict", "typing_extensions.TypedDict")
 
 
 def get_parents(
@@ -54,7 +52,8 @@ def get_metaclass(keywords: List[ast3.AST], parents: List[pytd_node.Node]):
       raise ParseError("Unexpected classdef kwarg %r" % keyword)
     elif keyword == "total" and not any(
         isinstance(parent, pytd.NamedType) and
-        parent.name in _TYPED_DICT_ALIASES for parent in parents):
+        pytd_utils.MatchesFullName(parent, _TYPED_DICT_ALIASES)
+        for parent in parents):
       raise ParseError(
           "'total' allowed as classdef kwarg only for TypedDict subclasses")
     if keyword == "metaclass":

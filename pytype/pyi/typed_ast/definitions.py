@@ -17,7 +17,6 @@ from pytype.pytd.codegen import function
 from pytype.pytd.codegen import namedtuple
 from pytype.pytd.codegen import pytdgen
 from pytype.pytd.parse import node as pytd_node
-from pytype.pytd.parse import parser_constants  # pylint: disable=g-importing-member
 
 from typed_ast import ast3
 
@@ -379,26 +378,8 @@ class Definitions:
 
   def _matches_full_name(self, t, full_name):
     """Whether t.name matches full_name in format {module}.{member}."""
-    expected_module_name, expected_name = full_name.rsplit(".", 1)
-    if self.module_info.module_name == expected_module_name:
-      # full_name is inside the current module, so check for the name without
-      # the module prefix.
-      return t.name == expected_name
-    elif "." not in t.name:
-      # full_name is not inside the current module, so a local type can't match.
-      return False
-    else:
-      module_name, name = t.name.rsplit(".", 1)
-      if module_name in self.aliases:
-        # Adjust the module name if it has been aliased with `import x as y`.
-        # See test_pyi.PYITest.testTypingAlias.
-        module = self.aliases[module_name].type
-        if isinstance(module, pytd.Module):
-          module_name = module.module_name
-      expected_module_names = {
-          expected_module_name,
-          parser_constants.EXTERNAL_NAME_PREFIX + expected_module_name}
-      return module_name in expected_module_names and name == expected_name
+    return pytd_utils.MatchesFullName(
+        t, full_name, self.module_info.module_name, self.aliases)
 
   def _is_tuple_base_type(self, t):
     return isinstance(t, pytd.NamedType) and (
