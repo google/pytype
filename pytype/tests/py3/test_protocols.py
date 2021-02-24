@@ -653,6 +653,24 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
       f(Baz())  # wrong-arg-types
     """)
 
+  def test_decorated_method(self):
+    self.Check("""
+      from typing import Callable
+      from typing_extensions import Protocol
+      class Foo(Protocol):
+        def foo(self):
+          pass
+      def decorate(f: Callable) -> Callable:
+        return f
+      class Bar:
+        @decorate
+        def foo(self):
+          pass
+      def accept(foo: Foo):
+        pass
+      accept(Bar())
+    """)
+
 
 class ProtocolsTestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for protocol implementation on a target using a Python 3 feature."""

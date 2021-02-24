@@ -858,9 +858,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           left_methods.pop(c.name, None)
       elif isinstance(cls, abstract.InterpreterClass):
         for name, member in cls.members.items():
-          if any(isinstance(data, (
-              abstract.Function, special_builtins.ClassMethodInstance,
-              special_builtins.StaticMethodInstance)) for data in member.data):
+          if any(abstract_utils.is_callable(data) for data in member.data):
             left_methods[name] = member
           else:
             left_methods.pop(name, None)

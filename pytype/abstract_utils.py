@@ -745,3 +745,15 @@ def is_var_splat(var):
 
 def unwrap_splat(var):
   return var.data[0].iterable
+
+
+def is_callable(value: _BaseValue):
+  if (value.isinstance_Function() or
+      value.isinstance_ClassMethodInstance() or
+      value.isinstance_StaticMethodInstance()):
+    return True
+  if not value.cls or not value.cls.isinstance_Class():
+    return False
+  _, attr = value.vm.attribute_handler.get_attribute(
+      value.vm.root_node, value.cls, "__call__")
+  return attr is not None
