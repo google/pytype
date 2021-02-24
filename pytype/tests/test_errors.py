@@ -894,13 +894,13 @@ class ErrorTest(test_base.TargetIndependentTest):
 
   def test_bad_annotation(self):
     _, errors = self.InferWithErrors("""
-      tuple[0]  # not-indexable[e1]
+      list[0]  # not-indexable[e1]
       dict[1, 2]  # invalid-annotation[e2]  # invalid-annotation[e3]
       class A(object): pass
       A[3]  # not-indexable[e4]
     """)
     self.assertErrorRegexes(errors, {
-        "e1": r"class tuple", "e2": r"1.*Not a type", "e3": r"2.*Not a type",
+        "e1": r"class list", "e2": r"1.*Not a type", "e3": r"2.*Not a type",
         "e4": r"class A"})
 
   def test_reveal_type(self):

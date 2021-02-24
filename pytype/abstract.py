@@ -301,6 +301,10 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
     return Instance(self, self.vm)
 
   def to_annotation_container(self):
+    if self.full_name == "builtins.tuple":
+      typing = self.vm.import_module("typing", "typing", 0).get_module("Tuple")
+      typing.load_lazy_attribute("Tuple")
+      return abstract_utils.get_atomic_value(typing.members["Tuple"])
     return AnnotationContainer(self.name, self.vm, self)
 
   def to_variable(self, node):
@@ -1409,7 +1413,8 @@ class AnnotationContainer(AnnotationClass):
     else:
       if len(inner) == 1:
         val, = inner
-        # It's a common mistake to index tuple, not tuple().
+        # It's a common mistake to index a container class rather than an
+        # instance (e.g., list[0]).
         # We only check the "int" case, since string literals are allowed for
         # late annotations.
         if isinstance(val, Instance) and val.cls == self.vm.convert.int_type:
