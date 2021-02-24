@@ -396,6 +396,9 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
   def isinstance_ClassMethodInstance(self):
     return False  # overridden in special_builtins.ClassMethodInstance
 
+  def isinstance_Function(self):
+    return isinstance(self, Function)
+
   def isinstance_Instance(self):
     return isinstance(self, Instance)
 
