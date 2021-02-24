@@ -36,7 +36,7 @@ def _FindNodeClasses():
       yield _NodeClassInfo(value)
 
 
-_IGNORED_TYPENAMES = frozenset(["str", "bool", "int", "NoneType"])
+_IGNORED_TYPES = frozenset([str, bool, int, type(None), Any])
 _ancestor_map = None  # Memoized ancestors map.
 
 
@@ -63,6 +63,10 @@ def _GetChildTypes(node_classes, cls: Any):
   for field in attr.fields(cls):
     AddType(field.type)  # pytype: disable=invalid-typevar
 
+  # Verify that all late types have been converted.
+  for x in types:
+    assert isinstance(x, type) or x == Any
+
   return types
 
 
@@ -77,16 +81,16 @@ def _GetAncestorMap():
     # Update _NodeClassInfo.outgoing based on children.
     for info in node_classes.values():
       for allowed in _GetChildTypes(node_classes, info.cls):
-        if isinstance(allowed, type):
+        if allowed in _IGNORED_TYPES:
+          pass
+        elif allowed.__module__ == "pytype.pytd.pytd":
           # All subclasses of the type are allowed.
           info.outgoing.update(
               [i for i in node_classes.values() if issubclass(i.cls, allowed)])
-        elif allowed in node_classes:
-          info.outgoing.add(node_classes[allowed])
-        elif allowed not in _IGNORED_TYPENAMES:
+        else:
           # This means we have a child type that is unknown. If it is a node
           # then make sure _FindNodeClasses() can discover it. If it is not a
-          # node, then add the typename to _IGNORED_TYPENAMES.
+          # node, then add the typename to _IGNORED_TYPES.
           raise AssertionError("Unknown child type: %s" % allowed)
 
     predecessors = cfg_utils.compute_predecessors(node_classes.values())
