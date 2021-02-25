@@ -2634,7 +2634,7 @@ class PyTDClass(SimpleValue, mixin.Class, mixin.LazyMembers):
       raise AssertionError("Invalid class member %s" % pytd_utils.Print(pyval))
 
   def call(self, node, func, args, alias_map=None):
-    if self.is_abstract:
+    if self.is_abstract and not self.from_annotation:
       self.vm.errorlog.not_instantiable(self.vm.frames, self)
     node, results = self._call_new_and_init(node, func, args)
     if results is None:

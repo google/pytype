@@ -6,6 +6,7 @@ py_test(
   SRCS
     test_abc.py
   DEPS
+    pytype.utils
     pytype.tests.test_base
 )
 

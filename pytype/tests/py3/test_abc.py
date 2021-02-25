@@ -1,5 +1,6 @@
 """Tests for @abc.abstractmethod in abc_overlay.py."""
 
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -88,6 +89,39 @@ class AbstractMethodTests(test_base.TargetPython3FeatureTest):
       abc.KeysView(d)
       abc.ValuesView(d)
     """)
+
+  def test_instantiate_abstract_class_annotation(self):
+    # When a function parameter is annotated as `Type[A]`, where A is abstract,
+    # presumably the intent is for callers to pass in concrete subclasses of A,
+    # so we should not raise an error if A is instantiated in the body.
+    self.Check("""
+      import abc
+      from typing import Type
+      class A(metaclass=abc.ABCMeta):
+        @abc.abstractmethod
+        def a(self):
+          pass
+      def f(x: Type[A]):
+        return x()
+    """)
+
+  def test_instantiate_abstract_pytdclass_annotation(self):
+    # When a function parameter is annotated as `Type[A]`, where A is abstract,
+    # presumably the intent is for callers to pass in concrete subclasses of A,
+    # so we should not raise an error if A is instantiated in the body.
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import abc
+        class A(metaclass=abc.ABCMeta):
+          @abc.abstractmethod
+          def a(self) -> None: ...
+      """)
+      self.Check("""
+        import foo
+        from typing import Type
+        def f(x: Type[foo.A]):
+          return x()
+      """, pythonpath=[d.path])
 
 
 test_base.main(globals(), __name__ == "__main__")
