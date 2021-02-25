@@ -20,6 +20,7 @@ from pytype import pytype_source_utils
 from pytype import utils
 from pytype.pytd import pytd
 from pytype.pytd import pytd_visitors
+from pytype.pytd.parse import parser_constants
 import six
 from six.moves import cPickle
 
@@ -566,3 +567,30 @@ def MergeBaseClass(cls, base):
                     decorators=decorators,
                     slots=slots,
                     template=cls.template or base.template)
+
+
+def MatchesFullName(t, full_name, current_module_name=None, aliases=None):
+  """Whether t.name matches full_name in format {module}.{member}."""
+  if isinstance(full_name, tuple):
+    return any(MatchesFullName(t, name, current_module_name, aliases)
+               for name in full_name)
+  expected_module_name, expected_name = full_name.rsplit(".", 1)
+  if current_module_name == expected_module_name:
+    # full_name is inside the current module, so check for the name without
+    # the module prefix.
+    return t.name == expected_name
+  elif "." not in t.name:
+    # full_name is not inside the current module, so a local type can't match.
+    return False
+  else:
+    module_name, name = t.name.rsplit(".", 1)
+    if aliases and module_name in aliases:
+      # Adjust the module name if it has been aliased with `import x as y`.
+      # See test_pyi.PYITest.testTypingAlias.
+      module = aliases[module_name].type
+      if isinstance(module, pytd.Module):
+        module_name = module.module_name
+    expected_module_names = {
+        expected_module_name,
+        parser_constants.EXTERNAL_NAME_PREFIX + expected_module_name}
+    return module_name in expected_module_names and name == expected_name

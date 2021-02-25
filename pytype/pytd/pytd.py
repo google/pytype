@@ -17,7 +17,7 @@ rather than
 import collections
 import itertools
 
-from typing import Optional, Tuple, Union
+from typing import Any, Optional, Tuple, Union
 
 import attr
 
@@ -94,6 +94,7 @@ class TypeDeclUnit(Node):
 class Constant(Node):
   name: str
   type: Type
+  value: Any = None
 
 
 @attr.s(auto_attribs=True, frozen=True, order=False, slots=True,

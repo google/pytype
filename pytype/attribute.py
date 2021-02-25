@@ -480,9 +480,8 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         var_bindings = var.Bindings(node)
         if var_bindings:
           bindings.extend(var_bindings)
-        elif val.param.constraints:
-          constraints = self.vm.merge_values(val.param.constraints)
-          ret.PasteVariable(constraints.instantiate(node))
+        elif val.param.constraints or val.param.bound:
+          ret.PasteVariable(val.param.instantiate(node))
         else:
           ret.AddBinding(self.vm.convert.empty, [], node)
       else:

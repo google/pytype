@@ -407,7 +407,7 @@ class Class(metaclass=MixinMeta):
     return self._instance_cache[key]
 
   def call(self, node, value, args):
-    if self.is_abstract:
+    if self.is_abstract and not self.from_annotation:
       self.vm.errorlog.not_instantiable(self.vm.frames, self)
     node, variable = self._call_new_and_init(node, value, args)
     if variable is None:

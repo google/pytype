@@ -637,23 +637,27 @@ class GenericTest(test_base.TargetIndependentTest):
   def test_instance_attribute(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
-        from typing import List, TypeVar
-        T = TypeVar("T", int, float)
-        class A(List[T]):
-          x = ...  # type: T
+        from typing import Dict, TypeVar
+        T1 = TypeVar("T1", int, float)
+        T2 = TypeVar("T2", bound=complex)
+        class A(Dict[T1, T2]):
+          x: T1
+          y: T2
       """)
       ty = self.Infer("""
         import a
         def f():
-          return a.A().x
+          v = a.A()
+          return (v.x, v.y)
         def g():
-          return a.A([42]).x
+          v = a.A({0: 4.2})
+          return (v.x, v.y)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Any, Union
-        a = ...  # type: module
-        def f() -> Union[int, float]: ...
-        def g() -> int: ...
+        from typing import Tuple, Union
+        a: module
+        def f() -> Tuple[Union[int, float], complex]: ...
+        def g() -> Tuple[int, float]: ...
       """)
 
   def test_instance_attribute_visible(self):
