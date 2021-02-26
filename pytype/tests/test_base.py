@@ -184,10 +184,13 @@ class BaseTest(unittest.TestCase):
   # For historical reasons (byterun), this method name is snakecase:
   # pylint: disable=invalid-name
   def Check(self, code, pythonpath=(), skip_repeat_calls=True,
-            report_errors=True, filename=None, quick=False, **kwargs):
+            report_errors=True, filename=None, quick=False, imports_map=None,
+            **kwargs):
     """Run an inference smoke test for the given code."""
-    self.ConfigureOptions(skip_repeat_calls=skip_repeat_calls,
-                          pythonpath=pythonpath, quick=quick)
+    self.ConfigureOptions(
+        skip_repeat_calls=skip_repeat_calls,
+        pythonpath=[""] if (not pythonpath and imports_map) else pythonpath,
+        quick=quick, imports_map=imports_map)
     try:
       if six.PY3:
         src = _Format(code)

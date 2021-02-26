@@ -741,7 +741,7 @@ class Loader:
 
     file_ast, path = self._import_file(module_name)
     if file_ast:
-      if _is_default_pyi(path):
+      if _is_default_pyi(path) or path == os.devnull:
         # Remove the default module from the cache; we will return it later if
         # nothing else supplies the module AST.
         default = self._modules.get(module_name)
