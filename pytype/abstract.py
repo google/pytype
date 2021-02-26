@@ -1895,8 +1895,9 @@ class PyTDFunction(Function):
 
       def compatible_with(new, existing, view):
         """Check whether a new type can be added to a container."""
+        new_key = view[new].data.get_type_key()
         for data in existing:
-          k = data.get_type_key()
+          k = (new_key, data.get_type_key())
           if k not in compatible_with_cache:
             # This caching lets us skip duplicate matching work. Very
             # unfortunately, it is also needed for correctness because
