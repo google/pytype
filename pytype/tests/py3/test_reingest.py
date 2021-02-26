@@ -37,6 +37,23 @@ class ReingestTest(test_base.TargetPython3BasicTest):
         foo.g(foo.f).upper()
       """, pythonpath=[d.path])
 
+  def test_duplicate_anystr_import(self):
+    dep1 = self.Infer("""
+      from typing import AnyStr
+      def f(x: AnyStr) -> AnyStr:
+        return x
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("dep1.pyi", pytd_utils.Print(dep1))
+      dep2 = self.Infer("""
+        from typing import AnyStr
+        from dep1 import f
+        def g(x: AnyStr) -> AnyStr:
+          return x
+      """, pythonpath=[d.path])
+      d.create_file("dep2.pyi", pytd_utils.Print(dep2))
+      self.Check("import dep2", pythonpath=[d.path])
+
 
 class ReingestTestPy3(test_base.TargetPython3FeatureTest):
   """Python 3 tests for reloading the pyi we generate."""
