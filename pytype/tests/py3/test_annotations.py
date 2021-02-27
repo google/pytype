@@ -1279,5 +1279,22 @@ class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
         lst.append(x)
     """)
 
+  def test_imported_container_type(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Dict, List, Union
+        MyDict = Dict[str, int]
+        def f() -> Union[List[MyDict], MyDict]: ...
+      """)
+      errors = self.CheckWithErrors("""
+        import foo
+        from typing import List
+        x: List[foo.MyDict] = []
+        x.append(foo.f())  # container-type-mismatch[e]
+      """, pythonpath=[d.path])
+      self.assertErrorRegexes(errors, {
+          "e": (r"Allowed contained types.*Dict\[str, int\].*"
+                r"New contained types.*List\[Dict\[str, int\]\]")})
+
 
 test_base.main(globals(), __name__ == "__main__")

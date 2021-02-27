@@ -1188,5 +1188,18 @@ class ImportTest(test_base.TargetIndependentTest):
         v: str
       """)
 
+  def test_submodule_imports_info(self):
+    # Tests that the presence of a submodule in imports_info doesn't prevent
+    # pytype from finding attributes in a module's __init__ file.
+    with file_utils.Tempdir() as d:
+      empty = d.create_file("empty.pyi")
+      imports_info = d.create_file(
+          "imports_info",
+          "email/_header_value_parser {}".format(empty))
+      imports_map = imports_map_loader.build_imports_map(imports_info)
+      self.Check("""
+        from email import message_from_bytes
+      """, imports_map=imports_map)
+
 
 test_base.main(globals(), __name__ == "__main__")

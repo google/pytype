@@ -1295,13 +1295,14 @@ class AdjustTypeParameters(Visitor):
     return items
 
   def VisitTypeDeclUnit(self, node):
-    type_params_to_add = set()
+    type_params_to_add = []
     declared_type_params = {n.name for n in node.type_params}
     # Sorting type params helps keep pickling deterministic.
     for t in sorted(self.all_typeparams):
       if t.name not in declared_type_params:
         logging.debug("Adding definition for type parameter %r", t.name)
-        type_params_to_add.add(t.Replace(scope=None))
+        declared_type_params.add(t.name)
+        type_params_to_add.append(t.Replace(scope=None))
     new_type_params = tuple(
         sorted(node.type_params + tuple(type_params_to_add)))
     return node.Replace(type_params=new_type_params)
