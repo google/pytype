@@ -300,6 +300,75 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         foo: Optional[str] = ''
     """)
 
+  def test_union_late_annotation(self):
+    # This test is deliberately complicated to exercise various aspects of late
+    # initialization and method body analysis.
+    ty = self.Infer("""
+      import dataclasses
+      from typing import Optional, Union
+
+      @dataclasses.dataclass
+      class Tree:
+        children: 'Node'
+
+        def get_children(self) -> 'Node':
+          return self.children
+
+        def get_leaf(self) -> int:
+          if not isinstance(self.children, Tree):
+            return self.children.value
+          return 0
+
+      @dataclasses.dataclass
+      class Root(Tree):
+        pass
+
+      @dataclasses.dataclass
+      class IntLeaf:
+        value: int
+
+      @dataclasses.dataclass
+      class StrLeaf:
+        label: str
+
+      def get_value(x: Root):
+        ch = x.get_children()
+        if isinstance(ch, Tree):
+          return None
+        elif isinstance(ch, IntLeaf):
+          return ch.value
+        else:
+          return ch.label
+
+      Node = Union[Tree, IntLeaf, StrLeaf]
+    """)
+
+    self.assertTypesMatchPytd(ty, """
+      from typing import Optional, Type, Union
+
+      Node: Type[Union[IntLeaf, StrLeaf, Tree]]
+      dataclasses: module
+
+      class IntLeaf:
+          value: int
+          def __init__(self, value: int) -> None: ...
+
+      class StrLeaf:
+          label: str
+          def __init__(self, label: str) -> None: ...
+
+      class Tree:
+          children: Union[IntLeaf, StrLeaf, Tree]
+          def __init__(self, children: Union[IntLeaf, StrLeaf, Tree]) -> None: ...
+          def get_children(self) -> Union[IntLeaf, StrLeaf, Tree]: ...
+          def get_leaf(self) -> int: ...
+
+      class Root(Tree):
+          def __init__(self, children: Union[IntLeaf, StrLeaf, Tree]) -> None: ...
+
+      def get_value(x: Root) -> Optional[Union[int, str]]: ...
+    """)
+
   def test_reuse_attribute_name(self):
     self.Check("""
       import dataclasses

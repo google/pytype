@@ -1267,7 +1267,12 @@ class LateAnnotation:
       # Since the annotation was unresolved at the time, we need to call
       # __init__ again to define any instance attributes.
       for instance in self._unresolved_instances:
-        self.vm.reinitialize_if_initialized(node, instance)
+        if isinstance(instance.cls, Union):
+          # Having instance.cls be a Union type will crash in attribute.py.
+          # Setting it to Any picks up the annotation in another code path.
+          instance.cls = self.vm.convert.unsolvable
+        else:
+          self.vm.reinitialize_if_initialized(node, instance)
     log.info("Resolved late annotation %r to %r", self.expr, self._type)
 
   def to_variable(self, node):
@@ -1277,6 +1282,7 @@ class LateAnnotation:
       return BaseValue.to_variable(self, node)
 
   def instantiate(self, node, container=None):
+    """Instantiate the pointed-to class, or record a placeholder instance."""
     if self.resolved:
       return self._type.instantiate(node, container)
     else:
