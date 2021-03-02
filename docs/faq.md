@@ -14,8 +14,9 @@
       * [How do I disable all pytype checks for a particular file?](#how-do-i-disable-all-pytype-checks-for-a-particular-file)
       * [How do I disable all pytype checks for a particular import?](#how-do-i-disable-all-pytype-checks-for-a-particular-import)
       * [How do I write code that is seen by pytype but ignored at runtime?](#how-do-i-write-code-that-is-seen-by-pytype-but-ignored-at-runtime)
+      * [How do I silence overzealous pytype errors when adding multiple types to a dict (or list, set, etc.)?](#how-do-i-silence-overzealous-pytype-errors-when-adding-multiple-types-to-a-dict-or-list-set-etc)
 
-<!-- Added by: rechen, at: 2020-09-11T15:57-07:00 -->
+<!-- Added by: rechen, at: 2021-03-01T17:54-08:00 -->
 
 <!--te-->
 
@@ -72,12 +73,11 @@ will indeed result in a type error.
 
 ## Why didn't pytype catch that I changed the type of an annotated variable?
 
-pytype uses an annotation as the initial type of a variable but does not protect
-against the type from changing. For example, the following patterns are allowed:
+By default, pytype does not protect against the value of a variable
+contradicting its annotation. For example, the following patterns are allowed:
 
 ```python
-x: str = ""
-x = 0
+x = 0  # type: str
 ```
 
 and
@@ -87,7 +87,9 @@ x: List[str] = []
 x.append(0)
 ```
 
-We will disallow both of these patterns at some point in the future.
+To forbid these patterns, use the `--check-variable-types` and
+`--check-container-types` flags, respectively. These flags will eventually be
+enabled by default.
 
 ## How do I declare that something can be either byte string or unicode?
 
@@ -190,6 +192,31 @@ short of rearranging your source tree, you won't be able to annotate with that
 specific type. You can typically work around the "inexpressible" type by
 inserting `Any` where you would have used it. See the
 [style guide][style-guide-circular-dependencies] for more information.
+
+## How do I silence overzealous pytype errors when adding multiple types to a dict (or list, set, etc.)?
+
+A common pattern is to use a dictionary as a container for values of many types,
+for example:
+
+```python
+MY_REGISTRY = {
+    "slot1": Class1,
+    "slot2": Class2,
+}
+```
+
+This will often cause pytype to produce errors for any operation that is not
+valid on *all* of the types. To fix this, annotate the value type as `Any`:
+
+```python
+MY_REGISTRY: Dict[str, Any] = {
+    ....
+}
+```
+
+Note that if you modify the dictionary in a different scope from the one in
+which it is defined, you may need to re-annotate it at the modification site to
+indicate to pytype that you are intentionally doing something it deems unsafe.
 
 <!-- General references -->
 [compatibility]: user_guide.md#compatibility
