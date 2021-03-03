@@ -1220,15 +1220,8 @@ class FunctionTest(_ParserTestBase):
 
   def test_decorated_class(self):
     self.check("""
-      from dataclasses import dataclass
-
-      @dataclass
+      @decorator
       class Foo: ...
-    """, """
-    from dataclasses import dataclass
-
-    @dataclass
-    class Foo: ...
     """)
 
   def test_multiple_class_decorators(self):
@@ -1243,6 +1236,33 @@ class FunctionTest(_ParserTestBase):
       @classmethod
       class Foo: ...
     """, 1, "Unsupported class decorators: classmethod")
+
+  def test_dataclass_decorator(self):
+    self.check("""
+      from dataclasses import dataclass
+
+      @dataclass
+      class Foo:
+        x: int
+        y: str = ...
+    """, """
+    from dataclasses import dataclass
+
+    @dataclass
+    class Foo:
+        x: int
+        y: str
+        def __init__(self, x: int, y: str = ...) -> None: ...
+    """)
+
+  def test_dataclass_default_error(self):
+    self.check_error("""
+      from dataclasses import dataclass
+      @dataclass
+      class Foo:
+        x: int = ...
+        y: str
+    """, None, "non-default argument y follows default arguments")
 
   def test_empty_body(self):
     self.check("def foo() -> int: ...")

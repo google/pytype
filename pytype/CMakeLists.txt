@@ -324,6 +324,7 @@ py_library(
     .module_utils
     pytype.pyi.parser
     pytype.pytd.pytd
+    pytype.pytd.codegen.codegen
 )
 
 py_library(

@@ -45,6 +45,7 @@ py_library(
     pytd_for_codegen
   DEPS
     ._pytd
+    .base_visitor
     .escape
     .pep484
     .pytd_utils
