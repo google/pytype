@@ -1,8 +1,24 @@
+Version 2021.03.03
+
+New features and updates:
+* Enable part of --check-attribute-types by default.
+
+Bug fixes:
+* Allow callable constants to match protocol methods.
+* Allow builtins.tuple to be used for a heterogeneous tuple annotation.
+* Don't report [not-instantiable] when instantiating an abstract annotation.
+* Take a TypeVar's bound into account when instantiating it in attribute.py.
+* Use typeshed stubs in preference to empty stubs.
+* Fix a bug where multiple definitions of a TypeVar could end up in a stub.
+* Fix a caching bug in check_container_types.
+* Fix initialization of Union types in forward references.
+
 Version 2021.02.23
 
 New features and updates:
 * Support running pytype under Python 3.9. (Does not yet support analyzing 3.9
   code; see details in https://github.com/google/pytype/pull/840.)
+* Update typeshed pin to commit 869238e from Jan 26.
 
 Bug fixes:
 * Do stricter filtering of container_type_mismatch errors.
