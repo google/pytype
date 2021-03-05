@@ -219,10 +219,11 @@ class BaseTest(unittest.TestCase):
     return {"src": code, "errorlog": errorlog, "options": self.options,
             "loader": self.loader}
 
-  def InferWithErrors(self, code, deep=True, pythonpath=(),
+  def InferWithErrors(self, code, deep=True, pythonpath=(), module_name=None,
                       analyze_annotated=True, quick=False, **kwargs):
     kwargs.update(
         self._SetUpErrorHandling(code, pythonpath, analyze_annotated, quick))
+    self.ConfigureOptions(module_name=module_name)
     unit, builtins_pytd = analyze.infer_types(deep=deep, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
     unit = optimize.Optimize(unit, builtins_pytd, lossy=False, use_abcs=False,

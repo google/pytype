@@ -46,7 +46,7 @@ def _validate_imports_map(imports_map):
   return errors
 
 
-def build_imports_map(options_info_path, output=None, open_function=open):
+def build_imports_map(options_info_path, open_function=open):
   """Create a file mapping from a .imports_info file.
 
   Builds a dict of short_path to full name
@@ -54,8 +54,6 @@ def build_imports_map(options_info_path, output=None, open_function=open):
            "$GENDIR/rulename~~pytype-gen/path_to_file.py~~pytype"
   Args:
     options_info_path: The file with the info (may be None, for do-nothing)
-    output: The output file from the command line. When validating
-             imports_info, this output should *not* exist.
     open_function: A custom file opening function.
   Returns:
     Dict of .py short_path to list of .pytd path or None if no options_info_path
@@ -72,17 +70,6 @@ def build_imports_map(options_info_path, output=None, open_function=open):
                   short_path, paths[0], paths[1:])
   imports_map = {short_path: os.path.abspath(paths[0])
                  for short_path, paths in imports_multimap.items()}
-  # It's not helpful for a file that's being analyzed to import its own pyi,
-  # because we're trying to update that information!
-  # This _usually_ isn't a problem, but it can be if an __init__.py imports
-  # one of its submodules -- the submodule will be read as an Any from the pyi.
-  if output:
-    for k, v in imports_map.items():
-      # Our convention is that if a pyi is generated twice, the first path is
-      # the second plus some suffix such as `-1`.
-      if output in v:
-        del imports_map[k]
-        break
 
   errors = _validate_imports_map(imports_multimap)
   if errors:
