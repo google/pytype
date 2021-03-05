@@ -9,7 +9,7 @@ import logging
 
 from pytype import abstract
 from pytype import abstract_utils
-from pytype import mixin
+from pytype import class_mixin
 from pytype import overlay_utils
 from pytype import special_builtins
 
@@ -133,7 +133,7 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
     base_attrs = []
     taken_attr_names = {a.name for a in cls_attrs}
     for base_cls in cls.mro[1:]:
-      if not isinstance(base_cls, mixin.Class):
+      if not isinstance(base_cls, class_mixin.Class):
         continue
       sub_attrs = base_cls.metadata.get(metadata_key, None)
       if sub_attrs is None:
@@ -183,7 +183,7 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
     # We should only have a single binding here
     cls, = cls_var.data
 
-    if not isinstance(cls, mixin.Class):
+    if not isinstance(cls, class_mixin.Class):
       # There are other valid types like abstract.Unsolvable that we don't need
       # to do anything with.
       return node, cls_var

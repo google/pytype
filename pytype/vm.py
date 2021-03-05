@@ -25,6 +25,7 @@ from pytype import abstract_utils
 from pytype import annotations_util
 from pytype import attribute
 from pytype import blocks
+from pytype import class_mixin
 from pytype import compare
 from pytype import convert
 from pytype import datatypes
@@ -501,7 +502,7 @@ class VirtualMachine:
       else:
         new_base.AddBinding(base_val, {b}, node)
     base = new_base
-    if not any(isinstance(t, (mixin.Class, abstract.AMBIGUOUS_OR_EMPTY))
+    if not any(isinstance(t, (class_mixin.Class, abstract.AMBIGUOUS_OR_EMPTY))
                for t in base.data):
       self.errorlog.base_class_error(self.frames, base)
     return base
@@ -898,7 +899,8 @@ class VirtualMachine:
         options.reverse()
     error = None
     for left_val, right_val, attr_name in options:
-      if isinstance(left_val.data, mixin.Class) and attr_name == "__getitem__":
+      if (isinstance(left_val.data, class_mixin.Class) and
+          attr_name == "__getitem__"):
         # We're parameterizing a type annotation. Set valself to None to
         # differentiate this action from a real __getitem__ call on the class.
         valself = None
@@ -2153,7 +2155,7 @@ class VirtualMachine:
         sub_value, sub_types = self._instantiate_exception(node, sub_exc_type)
         value.PasteVariable(sub_value)
         types.extend(sub_types)
-      elif isinstance(e, mixin.Class) and any(
+      elif isinstance(e, class_mixin.Class) and any(
           base.full_name == "builtins.BaseException" or
           isinstance(base, abstract.AMBIGUOUS_OR_EMPTY) for base in e.mro):
         node, instance = self.init_class(node, e)
@@ -2161,8 +2163,8 @@ class VirtualMachine:
         types.append(e)
       else:
         if not isinstance(e, abstract.AMBIGUOUS_OR_EMPTY):
-          if isinstance(e, mixin.Class):
-            mro_seqs = [e.mro] if isinstance(e, mixin.Class) else []
+          if isinstance(e, class_mixin.Class):
+            mro_seqs = [e.mro] if isinstance(e, class_mixin.Class) else []
             msg = "%s does not inherit from BaseException" % e.name
           else:
             mro_seqs = []

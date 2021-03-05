@@ -8,8 +8,8 @@ import logging
 
 from pytype import abstract
 from pytype import abstract_utils
+from pytype import class_mixin
 from pytype import function
-from pytype import mixin
 
 log = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class AddMetaclassInstance(abstract.BaseValue):
       # For metaclasses defined natively or using with_metaclass, the
       # metaclass's initializer is called in vm.make_class. However, with
       # add_metaclass, the metaclass is not known until the decorator fires.
-      if isinstance(cls, mixin.Class):
+      if isinstance(cls, class_mixin.Class):
         node = cls.call_metaclass_init(node)
     return node, cls_var
 

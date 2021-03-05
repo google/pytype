@@ -7,7 +7,7 @@ import logging
 
 from pytype import abstract
 from pytype import abstract_utils
-from pytype import mixin
+from pytype import class_mixin
 from pytype import special_builtins
 from pytype import utils
 from pytype.overlays import dataclass_overlay
@@ -184,7 +184,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         assert isinstance(v.value.pyval, int), v.value.pyval
         value = v.value.pyval
       return pytd.Literal(value)
-    elif isinstance(v, mixin.Class):
+    elif isinstance(v, class_mixin.Class):
       if not self._detailed and v.official_name is None:
         return pytd.AnythingType()
       if seen is None:
@@ -275,7 +275,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     elif isinstance(v, (special_builtins.IsInstance,
                         special_builtins.ClassMethodCallable)):
       return pytd.NamedType("typing.Callable")
-    elif isinstance(v, mixin.Class):
+    elif isinstance(v, class_mixin.Class):
       param = self.value_instance_to_pytd_type(node, v, None, seen, view)
       return pytd.GenericType(base_type=pytd.NamedType("builtins.type"),
                               parameters=(param,))

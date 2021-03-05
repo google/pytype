@@ -4,6 +4,7 @@ import sys
 
 from pytype import abstract
 from pytype import abstract_utils
+from pytype import class_mixin
 from pytype import mixin
 from pytype import utils
 from pytype.overlays import typing_overlay
@@ -320,7 +321,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
           return None
         annotation.update_inner_type(key, processed)
       return annotation
-    elif isinstance(annotation, (mixin.Class,
+    elif isinstance(annotation, (class_mixin.Class,
                                  abstract.AMBIGUOUS_OR_EMPTY,
                                  abstract.TypeParameter,
                                  typing_overlay.NoReturn)):

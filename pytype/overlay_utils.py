@@ -1,7 +1,7 @@
 """Utilities for writing overlays."""
 
 from pytype import abstract
-from pytype import mixin
+from pytype import class_mixin
 from pytype.typegraph import cfg
 
 
@@ -11,7 +11,7 @@ from pytype.typegraph import cfg
 # it to the list if valid.
 PARAM_TYPES = (
     cfg.Variable,
-    mixin.Class,
+    class_mixin.Class,
     abstract.TypeParameter,
     abstract.Union,
     abstract.Unsolvable,
