@@ -22,7 +22,7 @@ def _check_defaults(cls: pytd.Class):
           f"non-default argument {c.name} follows default arguments")
 
 
-def _make_param(attr: pytd.Constant) -> function.Param:
+def _make_param(attr: pytd.Constant) -> pytd.Parameter:
   return function.Param(
       name=attr.name, type=attr.type, default=attr.value).to_pytd()
 
