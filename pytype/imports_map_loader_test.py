@@ -1,6 +1,5 @@
 """Tests for imports_map_loader.py."""
 
-import os
 import tempfile
 import textwrap
 
@@ -40,62 +39,20 @@ class ImportMapLoaderTest(unittest.TestCase):
               ("a/b/e", ["2/a/b/foo/#2.py~", "2/a/b/e1.py~", "2/a/b/e2.py~"]),
           ])
 
-  def test_imports_info_filter(self):
-    """Test filtering out the current target's entry from the imports info."""
-    with file_utils.Tempdir() as d:
-      # The files in our "program" that we're building an imports_map for.
-      files = [
-          "a/__init__.py",
-          "a/b.py",
-      ]
-      # The files the previous files are mapped to:
-      imports = ["prefix{0}/{1}~suffix".format(d.path, f) for f in files]
-      # Since we're calling _validate_map (via build_imports_map), the files
-      # have to actually exist.
-      for f in files + imports:
-        d.create_file(f, "")
-      # We have to add the path so the import map contains the actual files as
-      # they exist in the tempdir.
-      imports_map = ["%s %s" % (d[f], d[t]) for f, t in zip(files, imports)]
-      d.create_file("imports_info", "\n".join(imports_map))
-      # build_imports_map should strip out the entry for a/__init__.py, leaving
-      # the entry for a/b.py intact.
-      expected = [
-          ("%s/a/b" % d.path, "{0}/prefix{0}/a/b.py~suffix".format(d.path)),
-          # These are all added by the last bit of build_imports_map
-          ("__init__", os.devnull),
-          ("%s/__init__" % d.path[1:], os.devnull),
-          ("%s/a/__init__" % d.path[1:], os.devnull),
-      ]
-      path = tempfile.tempdir[1:]
-      while path:
-        expected.append((os.path.join(path, "__init__"), os.devnull))
-        path = os.path.dirname(path)
-      six.assertCountEqual(
-          self,
-          imports_map_loader.build_imports_map(
-              d["imports_info"],
-              d["a/__init__.py"]).items(),
-          expected,
-      )
-
   def test_do_not_filter(self):
     with file_utils.Tempdir() as d:
       d.create_file("a/b/c.pyi")
       imports_info = "%s %s\n" % ("a/b/c.pyi", d["a/b/c.pyi"])
       d.create_file("imports_info", imports_info)
-      output = os.path.join(d.path, "a/b.pyi")
-      imports_map = imports_map_loader.build_imports_map(
-          d["imports_info"], output)
+      imports_map = imports_map_loader.build_imports_map(d["imports_info"])
       self.assertEqual(imports_map["a/b/c"], d["a/b/c.pyi"])
 
   def test_invalid_map_entry(self):
     with file_utils.Tempdir() as d:
       imports_info = "%s %s\n" % ("a/b/c.pyi", d["a/b/c.pyi"])
       d.create_file("imports_info", imports_info)
-      output = os.path.join(d.path, "a/b.pyi")
       with self.assertRaises(ValueError):
-        imports_map_loader.build_imports_map(d["imports_info"], output)
+        imports_map_loader.build_imports_map(d["imports_info"])
 
 
 if __name__ == "__main__":

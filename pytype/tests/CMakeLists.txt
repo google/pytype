@@ -435,6 +435,7 @@ py_test(
     .test_base
     pytype.libvm
     pytype.utils
+    pytype.pytd.pytd
 )
 
 py_test(

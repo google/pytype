@@ -6,6 +6,7 @@ import types
 from pytype import abstract
 from pytype import abstract_utils
 from pytype import blocks
+from pytype import class_mixin
 from pytype import compat
 from pytype import datatypes
 from pytype import function
@@ -318,7 +319,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
   def get_element_type(self, arg_type):
     """Extract the element type of a vararg or kwarg."""
     if not isinstance(arg_type, abstract.ParameterizedClass):
-      assert (isinstance(arg_type, mixin.Class) and
+      assert (isinstance(arg_type, class_mixin.Class) and
               arg_type.full_name in ("builtins.dict", "builtins.tuple"))
       return None
     elif arg_type.base_cls is self.dict_type:
@@ -333,7 +334,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return abstract.ParameterizedClass(
           new_container, old_container.formal_type_parameters, self.vm)
     else:
-      assert isinstance(old_container, mixin.Class)
+      assert isinstance(old_container, class_mixin.Class)
       return new_container
 
   def widen_type(self, container):
@@ -760,7 +761,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         base = pyval.base_type.cls
       assert isinstance(base, pytd.Class), base
       base_cls = self.constant_to_value(base, subst, self.vm.root_node)
-      if not isinstance(base_cls, mixin.Class):
+      if not isinstance(base_cls, class_mixin.Class):
         # base_cls can be, e.g., an unsolvable due to an mro error.
         return self.unsolvable
       if isinstance(pyval, pytd.TupleType):

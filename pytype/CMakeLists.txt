@@ -31,6 +31,7 @@ py_library(
     .annotations_util
     .attribute
     .blocks
+    .class_mixin
     .compare
     .config
     .convert
@@ -76,6 +77,7 @@ py_library(
   DEPS
     ._utils
     .abstract_utils
+    .class_mixin
     .compat
     .datatypes
     .function
@@ -131,6 +133,7 @@ py_library(
     ._utils
     .abstract
     .abstract_utils
+    .class_mixin
     .mixin
     pytype.overlays.overlays
 )
@@ -144,6 +147,7 @@ py_library(
     ._utils
     .abstract
     .abstract_utils
+    .class_mixin
     .function
     .mixin
     .overlay
@@ -163,12 +167,26 @@ py_library(
 
 py_library(
   NAME
+    class_mixin
+  SRCS
+    class_mixin.py
+  DEPS
+    .abstract_utils
+    .datatypes
+    .function
+    .mixin
+    pytype.pytd.pytd
+)
+
+py_library(
+  NAME
     compare
   SRCS
     compare.py
   DEPS
     .abstract
     .abstract_utils
+    .class_mixin
     .mixin
     pytype.pytd.pytd
 )
@@ -204,6 +222,7 @@ py_library(
     .abstract
     .abstract_utils
     .blocks
+    .class_mixin
     .compat
     .datatypes
     .function
@@ -261,6 +280,7 @@ py_library(
   DEPS
     ._utils
     .abstract
+    .class_mixin
     .debug
     .function
     .mixin
@@ -324,6 +344,7 @@ py_library(
     .module_utils
     pytype.pyi.parser
     pytype.pytd.pytd
+    pytype.pytd.codegen.codegen
 )
 
 py_library(
@@ -335,9 +356,9 @@ py_library(
     ._utils
     .abstract
     .abstract_utils
+    .class_mixin
     .datatypes
     .function
-    .mixin
     .special_builtins
     pytype.overlays.overlays
     pytype.pytd.pytd
@@ -351,8 +372,8 @@ py_library(
   DEPS
     .abstract
     .abstract_utils
+    .class_mixin
     .function
-    .mixin
 )
 
 py_library(
@@ -368,10 +389,7 @@ py_library(
   SRCS
     mixin.py
   DEPS
-    .abstract_utils
-    .datatypes
     .function
-    pytype.pytd.pytd
     pytype.typegraph.cfg
 )
 
@@ -391,7 +409,7 @@ py_library(
     ._utils
     .abstract
     .abstract_utils
-    .mixin
+    .class_mixin
     .special_builtins
     pytype.overlays.overlays
     pytype.pytd.pytd
@@ -423,7 +441,7 @@ py_library(
     overlay_utils.py
   DEPS
     .abstract
-    .mixin
+    .class_mixin
     pytype.typegraph.cfg
 )
 
@@ -444,6 +462,7 @@ py_library(
   DEPS
     .abstract
     .abstract_utils
+    .class_mixin
     .function
     .mixin
 )
@@ -456,6 +475,7 @@ py_library(
   DEPS
     ._utils
     .abstract
+    .class_mixin
     .compare
     .metrics
     .mixin
@@ -491,6 +511,7 @@ py_library(
     .annotations_util
     .attribute
     .blocks
+    .class_mixin
     .compare
     .convert
     .datatypes

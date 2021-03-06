@@ -1,8 +1,10 @@
 """Abstract attribute handling."""
 import logging
+from typing import Optional
 
 from pytype import abstract
 from pytype import abstract_utils
+from pytype import class_mixin
 from pytype import function
 from pytype import mixin
 from pytype import overlay
@@ -24,7 +26,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       obj: The object.
       name: The name of the attribute to retrieve.
       valself: A cfg.Binding to a self reference to include in the attribute's
-        origins. If obj is a mixin.Class, valself can be a binding to:
+        origins. If obj is a class_mixin.Class, valself can be a binding to:
         * an instance of obj - obj will be treated strictly as a class.
         * obj itself - obj will be treated as an instance of its metaclass.
         * None - if name == "__getitem__", obj is a type annotation; else, obj
@@ -48,7 +50,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         return self._get_instance_attribute(node, obj, name, valself)
     elif isinstance(obj, abstract.ParameterizedClass):
       return self.get_attribute(node, obj.base_cls, name, valself)
-    elif isinstance(obj, mixin.Class):
+    elif isinstance(obj, class_mixin.Class):
       return self._get_class_attribute(node, obj, name, valself)
     elif isinstance(obj, overlay.Overlay):
       return self._get_module_attribute(
@@ -175,32 +177,43 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     self.vm.errorlog.not_writable(self.vm.frames, obj, name)
     return False
 
-  def _is_simple_module(self, var):
-    # A simple module is an abstract.Instance(module). It returns Any for all
-    # attribute accesses (unlike an abstract.Module, which does ast lookups).
-    cls = self.vm.convert.merge_classes(var.data)
-    if cls != self.vm.convert.module_type:
-      return False
-    return not any(isinstance(v, abstract.Module) for v in var.data)
+  def _should_look_for_submodule(
+      self, module: abstract.Module, attr_var: Optional[cfg.Variable]):
+    # Given a module and an attribute looked up from its contents, determine
+    # whether a possible submodule with the same name as the attribute should
+    # take precedence over the attribute.
+    if attr_var is None:
+      return True
+    attr_cls = self.vm.convert.merge_classes(attr_var.data)
+    if attr_cls == self.vm.convert.module_type and not any(
+        isinstance(attr, abstract.Module) for attr in attr_var.data):
+      # The attribute is an abstract.Instance(module), which returns Any for all
+      # attribute accesses, so we should try to find the actual submodule.
+      return True
+    if (f"{module.name}.__init__" == self.vm.options.module_name and
+        attr_var.data == [self.vm.convert.unsolvable]):
+      # There's no reason for a module's __init__ file to look up attributes in
+      # itself, so attr_var is a submodule whose type was inferred as Any during
+      # a first-pass analysis with incomplete type information.
+      return True
+    # Otherwise, local variables in __init__.py take precedence over submodules.
+    return False
 
   def _get_module_attribute(self, node, module, name, valself=None):
     """Get an attribute from a module."""
     assert isinstance(module, abstract.Module)
 
-    # Local variables in __init__.py take precedence over submodules.
     node, var = self._get_instance_attribute(node, module, name, valself)
-    if var is not None and not self._is_simple_module(var):
-      # If `var` is a simple module, then we want to try get_submodule, to see
-      # if it can find a more precise value.
+    if not self._should_look_for_submodule(module, var):
       return node, var
 
-    # And finally, look for a submodule. If none is found, then return `var`
-    # instead, which may be a submodule that appears only in __init__.
+    # Look for a submodule. If none is found, then return `var` instead, which
+    # may be a submodule that appears only in __init__.
     return node, module.get_submodule(node, name) or var
 
   def _get_class_attribute(self, node, cls, name, valself=None):
     """Get an attribute from a class."""
-    assert isinstance(cls, mixin.Class)
+    assert isinstance(cls, class_mixin.Class)
     if (not valself or not abstract_utils.equivalent_to(valself, cls) or
         cls == self.vm.convert.type_type):
       # Since type(type) == type, the type_type check prevents an infinite loop.
@@ -245,7 +258,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       attr = None
     if attr is None:
       # Check for the attribute on the instance.
-      if isinstance(obj, mixin.Class):
+      if isinstance(obj, class_mixin.Class):
         # A class is an instance of its metaclass.
         node, attr = self._lookup_from_mro_and_handle_descriptors(
             node, obj, name, valself, skip=())
@@ -357,7 +370,8 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
 
   def _get_attribute_computed(self, node, cls, name, valself, compute_function):
     """Call compute_function (if defined) to compute an attribute."""
-    assert isinstance(cls, (mixin.Class, abstract.AMBIGUOUS_OR_EMPTY)), cls
+    assert isinstance(
+        cls, (class_mixin.Class, abstract.AMBIGUOUS_OR_EMPTY)), cls
     if (valself and not isinstance(valself.data, abstract.Module) and
         self._computable(name)):
       attr_var = self._lookup_from_mro(node, cls, compute_function, valself,
@@ -416,7 +430,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     """Flat attribute retrieval (no mro lookup)."""
     if isinstance(cls, abstract.ParameterizedClass):
       return self._get_attribute_flat(node, cls.base_cls, name)
-    elif isinstance(cls, mixin.Class):
+    elif isinstance(cls, class_mixin.Class):
       node, attr = self._get_member(node, cls, name)
       if attr is not None:
         attr = self._filter_var(node, attr)
@@ -493,7 +507,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
 
   def _maybe_load_as_instance_attribute(self, node, obj, name):
     assert isinstance(obj, abstract.SimpleValue)
-    if not isinstance(obj.cls, mixin.Class):
+    if not isinstance(obj.cls, class_mixin.Class):
       return
     for base in obj.cls.mro:
       if isinstance(base, abstract.ParameterizedClass):

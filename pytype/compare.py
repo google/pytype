@@ -2,6 +2,7 @@
 
 from pytype import abstract
 from pytype import abstract_utils
+from pytype import class_mixin
 from pytype import mixin
 from pytype.pytd import slots
 
@@ -227,7 +228,8 @@ def compatible_with(value, logical_value):
     elif name in NUMERIC:
       # Numeric types can match both True and False
       return True
-    elif isinstance(value.cls, mixin.Class) and not value.cls.overrides_bool:
+    elif (isinstance(value.cls, class_mixin.Class) and
+          not value.cls.overrides_bool):
       if getattr(value.cls, "template", None):
         # A parameterized class can match both True and False, since it might be
         # an empty container.
@@ -235,7 +237,7 @@ def compatible_with(value, logical_value):
       # Objects evaluate to True unless explicitly overridden.
       return logical_value
     return True
-  elif isinstance(value, (abstract.Function, mixin.Class)):
+  elif isinstance(value, (abstract.Function, class_mixin.Class)):
     # Functions and classes always evaluate to True.
     return logical_value
   else:

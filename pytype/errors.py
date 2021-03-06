@@ -9,6 +9,7 @@ import sys
 from typing import Iterable, Optional, Union
 
 from pytype import abstract
+from pytype import class_mixin
 from pytype import debug
 from pytype import function
 from pytype import mixin
@@ -493,8 +494,8 @@ class ErrorLog(ErrorLogBase):
     """Print abstract value t as a pytd type."""
     if t.is_late_annotation():
       return t.expr
-    elif isinstance(t, (abstract.Unknown, abstract.Unsolvable, mixin.Class,
-                        abstract.Union)):
+    elif isinstance(t, (abstract.Unknown, abstract.Unsolvable,
+                        class_mixin.Class, abstract.Union)):
       with t.vm.convert.pytd_convert.set_output_mode(
           t.vm.convert.pytd_convert.OutputMode.DETAILED):
         return self._pytd_print(t.get_instance_type(instance=instance))
@@ -685,7 +686,7 @@ class ErrorLog(ErrorLogBase):
       return []
     expected = protocol_param.expected
     vm = expected.vm
-    if not isinstance(expected, mixin.Class) or not expected.is_protocol:
+    if not isinstance(expected, class_mixin.Class) or not expected.is_protocol:
       return []
     p = None  # make pylint happy
     for name, p in passed_params:

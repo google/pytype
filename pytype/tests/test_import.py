@@ -2,6 +2,7 @@
 
 from pytype import file_utils
 from pytype import imports_map_loader
+from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
@@ -886,38 +887,90 @@ class ImportTest(test_base.TargetIndependentTest):
           pass
       """, pythonpath=[d.path])
 
-  def test_import_map_filter(self):
+  def test_submodule_lookup(self):
+    # Tests a common Blaze pattern: when mod/__init__.py and mod/submod.py are
+    # in the same target, they are analyzed twice, and we should not use the
+    # first-pass __init__.pyi to look up types for the second pass, as the
+    # former contains a 'submod: Any' entry that masks the actual submodule.
+
+    # The "%s" is used to silence the import error from the first pass.
+    init_py = """
+      from mod import submod%s
+      X = submod.X
+    """
+    submod_py = """
+      class X:
+        pass
+    """
+    init_pyi_1, _ = self.InferWithErrors(
+        init_py % "  # import-error", module_name="mod.__init__")
+    submod_pyi_1, _ = self.InferWithErrors(submod_py, module_name="mod.submod")
     with file_utils.Tempdir() as d:
-      imp_path = ".".join(d.path[1:].split("/"))
-      init_body = """
-        from {0}.foo import bar
-        from {0}.foo import baz
-        Qux = bar.Quack
-        """.format(imp_path)
-      init_fn = d.create_file("foo/__init__.py", init_body)
-      initpyi_fn = d.create_file("foo/__init__.pyi~", """
-        from typing import Any
-        bar = ...  # type: Any
-        baz = ...  # type: Any
-        Qux = ...  # type: Any
-        """)
-      bar_fn = d.create_file("foo/bar.py", "class Quack(object): pass")
-      barpyi_fn = d.create_file("foo/bar.pyi", "class Quack(object): pass")
-      imports_fn = d.create_file("imports_info", """
-        {0} {1}
-        {2} {3}
-        """.format(init_fn[1:-3], initpyi_fn, bar_fn[1:-3], barpyi_fn))
-      imports_map = imports_map_loader.build_imports_map(imports_fn, init_fn)
-      ty = self.Infer("""
-        from {0}.foo import bar
-        Adz = bar.Quack
-        """.format(imp_path),
-                      deep=False, imports_map=imports_map, pythonpath=[""])
-      self.assertTypesMatchPytd(ty, """
-        from typing import Any, Type
-        bar = ...  # type: module
-        Adz = ...  # type: Type[{0}.foo.bar.Quack]
-        """.format(imp_path))
+      init_path = d.create_file(
+          "mod/__init__.pyi", pytd_utils.Print(init_pyi_1))
+      submod_path = d.create_file(
+          "mod/submod.pyi", pytd_utils.Print(submod_pyi_1))
+      imports_info = d.create_file("imports_info", f"""
+        mod/__init__ {init_path}
+        mod/submod {submod_path}
+      """)
+      imports_map = imports_map_loader.build_imports_map(imports_info)
+      init_pyi = self.Infer(
+          init_py % "", imports_map=imports_map, module_name="mod.__init__")
+    self.assertTypesMatchPytd(init_pyi, """
+      from typing import Type
+      submod: module
+      X: Type[mod.submod.X]
+    """)
+
+  def test_circular_dep(self):
+    # This test imitates how analyze_project handles circular dependencies.
+    # See https://github.com/google/pytype/issues/760. In the test, the circular
+    # dep is between a module's __init__.py and a submodule to make it harder
+    # for pytype to distinguish this case from test_submodule_lookup.
+
+    # "%s" is used to silence import errors from the first-pass analysis.
+    submod_py = """
+      from mod import Y%s
+      class X:
+        pass
+    """
+    init_py = """
+      import typing
+      if typing.TYPE_CHECKING:
+        from mod.submod import X%s
+      class Y:
+        def __init__(self, x):
+          # type: ('X') -> None
+          pass
+    """
+    submod_pyi_1, _ = self.InferWithErrors(
+        submod_py % "  # import-error", module_name="mod.submod")
+    init_pyi_1, _ = self.InferWithErrors(
+        init_py % "  # import-error", module_name="mod.__init__")
+    with file_utils.Tempdir() as d:
+      submod_path = d.create_file(
+          "mod/submod.pyi", pytd_utils.Print(submod_pyi_1))
+      init_path = d.create_file(
+          "mod/__init__.pyi", pytd_utils.Print(init_pyi_1))
+      imports_info = d.create_file("imports_info", f"""
+        mod/submod {submod_path}
+        mod/__init__ {init_path}
+      """)
+      imports_map = imports_map_loader.build_imports_map(imports_info)
+      submod_pyi = self.Infer(submod_py % "", imports_map=imports_map,
+                              module_name="mod.submod")
+      with open(submod_path, "w") as f:
+        f.write(pytd_utils.Print(submod_pyi))
+      init_pyi = self.Infer(init_py % "", imports_map=imports_map,
+                            module_name="mod.__init__")
+    self.assertTypesMatchPytd(init_pyi, """
+      from typing import Type
+      typing: module
+      X: Type[mod.submod.X]
+      class Y:
+        def __init__(self, x: X) -> None: ...
+    """)
 
   def test_mutual_imports(self):
     with file_utils.Tempdir() as d:

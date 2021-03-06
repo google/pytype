@@ -4,6 +4,7 @@ import collections
 import logging
 
 from pytype import abstract
+from pytype import class_mixin
 from pytype import compare
 from pytype import metrics
 from pytype import mixin
@@ -411,7 +412,8 @@ def _is_or_is_not_cmp(left, right, is_not=False):
       # comparing types.
       return is_not
     return None
-  elif isinstance(left, mixin.Class) and isinstance(right, mixin.Class):
+  elif (isinstance(left, class_mixin.Class) and
+        isinstance(right, class_mixin.Class)):
     # types are singletons. We use the name so that, e.g., two different
     # TupleClass instances compare as identical.
     return is_not ^ (left.full_name == right.full_name)

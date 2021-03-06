@@ -306,7 +306,7 @@ def _merge_type(t0, t1, name, cls):
     t0: The first type.
     t1: The second type.
     name: Type parameter name.
-    cls: The mixin.Class on which any error should be reported.
+    cls: The class_mixin.Class on which any error should be reported.
   Returns:
     A type.
   Raises:

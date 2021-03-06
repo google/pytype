@@ -538,8 +538,7 @@ class Postprocessor:
 
       with verbosity_from(self.output_options):
         self.output_options.imports_map = imports_map_loader.build_imports_map(
-            imports_map, self.output_options.output,
-            self.output_options.open_function)
+            imports_map, self.output_options.open_function)
     else:
       self.output_options.imports_map = None
 

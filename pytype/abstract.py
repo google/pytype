@@ -19,6 +19,7 @@ import itertools
 import logging
 
 from pytype import abstract_utils
+from pytype import class_mixin
 from pytype import compat
 from pytype import datatypes
 from pytype import function
@@ -151,7 +152,7 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
   def get_formal_type_parameter(self, t):
     """Get the class's type for the type parameter.
 
-    Treating self as a mixin.Class, gets its formal type for the given
+    Treating self as a class_mixin.Class, gets its formal type for the given
     type parameter. For the real implementation, see
     ParameterizedClass.get_formal_type_parameter.
 
@@ -365,9 +366,9 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
     Class.call_init_subclass(), which will invoke the init_subclass() method for
     all classes in the list of base classes.
 
-    This is here rather than in mixin.Class because a class's list of bases can
-    include abstract objects that do not derive from Class (e.g. Unknown and
-    Unsolvable).
+    This is here rather than in class_mixin.Class because a class's list of
+    bases can include abstract objects that do not derive from Class (e.g.
+    Unknown and Unsolvable).
 
     Args:
       node: cfg node
@@ -395,7 +396,7 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
     return isinstance(self, BoundFunction)
 
   def isinstance_Class(self):
-    return isinstance(self, mixin.Class)
+    return isinstance(self, class_mixin.Class)
 
   def isinstance_ClassMethodInstance(self):
     return False  # overridden in special_builtins.ClassMethodInstance
@@ -756,7 +757,7 @@ class SimpleValue(BaseValue):
     elif isinstance(self, InterpreterClass):
       return ParameterizedClass(
           self.vm.convert.type_type, {abstract_utils.T: self}, self.vm)
-    elif isinstance(self, (AnnotationClass, mixin.Class)):
+    elif isinstance(self, (AnnotationClass, class_mixin.Class)):
       return self.vm.convert.type_type
 
   def set_class(self, node, var):
@@ -1383,9 +1384,9 @@ class AnnotationContainer(AnnotationClass):
       # A parameterized LateAnnotation should be converted to another
       # LateAnnotation to delay evaluation until the first late annotation is
       # resolved. We don't want to create a ParameterizedClass immediately
-      # because (1) ParameterizedClass expects its base_cls to be a mixin.Class,
-      # and (2) we have to postpone error-checking anyway so we might as well
-      # postpone the entire evaluation.
+      # because (1) ParameterizedClass expects its base_cls to be a
+      # class_mixin.Class, and (2) we have to postpone error-checking anyway so
+      # we might as well postpone the entire evaluation.
       printed_params = []
       for i, param in enumerate(raw_inner):
         if i in ellipses:
@@ -2151,7 +2152,7 @@ class PyTDFunction(Function):
         flags=pytd.Function.abstract_flag(self.is_abstract))
 
 
-class ParameterizedClass(BaseValue, mixin.Class, mixin.NestedAnnotation):
+class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
   """A class that contains additional parameters.
 
   E.g. a container.
@@ -2174,7 +2175,7 @@ class ParameterizedClass(BaseValue, mixin.Class, mixin.NestedAnnotation):
   def __init__(self, base_cls, formal_type_parameters, vm, template=None):
     # A ParameterizedClass is created by converting a pytd.GenericType, whose
     # base type is restricted to NamedType and ClassType.
-    assert isinstance(base_cls, mixin.Class)
+    assert isinstance(base_cls, class_mixin.Class)
     self.base_cls = base_cls
     super().__init__(base_cls.name, vm)
     self.module = base_cls.module
@@ -2191,7 +2192,7 @@ class ParameterizedClass(BaseValue, mixin.Class, mixin.NestedAnnotation):
       # needed for typing.Generic.
       self._template = template
     self.slots = self.base_cls.slots
-    mixin.Class.init_mixin(self, base_cls.cls)
+    class_mixin.Class.init_mixin(self, base_cls.cls)
     mixin.NestedAnnotation.init_mixin(self)
     self.type_param_check()
 
@@ -2339,7 +2340,7 @@ class ParameterizedClass(BaseValue, mixin.Class, mixin.NestedAnnotation):
     if not self._is_callable():
       raise function.NotCallable(self)
     else:
-      return mixin.Class.call(self, node, func, args)
+      return class_mixin.Class.call(self, node, func, args)
 
   def get_formal_type_parameter(self, t):
     return self.formal_type_parameters.get(t, self.vm.convert.unsolvable)
@@ -2569,7 +2570,7 @@ class LiteralClass(ParameterizedClass):
     return self._instance.to_variable(node)
 
 
-class PyTDClass(SimpleValue, mixin.Class, mixin.LazyMembers):
+class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
   """An abstract wrapper for PyTD class objects.
 
   These are the abstract values for class objects that are described in PyTD.
@@ -2598,7 +2599,7 @@ class PyTDClass(SimpleValue, mixin.Class, mixin.LazyMembers):
     self.slots = pytd_cls.slots
     mixin.LazyMembers.init_mixin(self, mm)
     self.is_dynamic = self.compute_is_dynamic()
-    mixin.Class.init_mixin(self, metaclass)
+    class_mixin.Class.init_mixin(self, metaclass)
 
   def get_own_methods(self):
     return {name for name, member in self._member_map.items()
@@ -2732,7 +2733,7 @@ class FunctionPyTDClass(PyTDClass):
     return self.func.to_variable(node)
 
 
-class InterpreterClass(SimpleValue, mixin.Class):
+class InterpreterClass(SimpleValue, class_mixin.Class):
   """An abstract wrapper for user-defined class objects.
 
   These are the abstract value for class objects that are implemented in the
@@ -2746,7 +2747,7 @@ class InterpreterClass(SimpleValue, mixin.Class):
     self._bases = bases
     super().__init__(name, vm)
     self.members = datatypes.MonitorDict(members)
-    mixin.Class.init_mixin(self, cls)
+    class_mixin.Class.init_mixin(self, cls)
     self.instances = set()  # filled through register_instance
     self.slots = self._convert_slots(members.get("__slots__"))
     self.is_dynamic = self.compute_is_dynamic()
@@ -3668,7 +3669,7 @@ class BoundFunction(BaseValue):
         base_cls = inst.cls.base_cls
       else:
         base_cls = inst.cls
-      if isinstance(base_cls, mixin.Class) and base_cls.template:
+      if isinstance(base_cls, class_mixin.Class) and base_cls.template:
         self.replace_self_annot = ParameterizedClass.get_generic_instance_type(
             base_cls)
     if isinstance(inst, SimpleValue):

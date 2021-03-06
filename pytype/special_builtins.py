@@ -2,6 +2,7 @@
 
 from pytype import abstract
 from pytype import abstract_utils
+from pytype import class_mixin
 from pytype import function
 from pytype import mixin
 
@@ -302,7 +303,7 @@ def _flatten(value, classes):
   # Used by IsInstance and IsSubclass
   if isinstance(value, abstract.AnnotationClass):
     value = value.base_cls
-  if isinstance(value, mixin.Class):
+  if isinstance(value, class_mixin.Class):
     # A single class, no ambiguity.
     classes.append(value)
     return False
@@ -425,7 +426,7 @@ class IsCallable(UnaryPredicate):
     if isinstance(val, abstract.AMBIGUOUS_OR_EMPTY):
       return node, None
     # Classes are always callable.
-    if isinstance(val, mixin.Class):
+    if isinstance(val, class_mixin.Class):
       return node, True
     # Otherwise, see if the object has a __call__ method.
     node, ret = self.vm.attribute_handler.get_attribute(
@@ -538,7 +539,8 @@ class Super(BuiltinClass):
     else:
       raise function.WrongArgCount(self._SIGNATURE, args, self.vm)
     for cls in cls_var.bindings:
-      if not isinstance(cls.data, (mixin.Class, abstract.AMBIGUOUS_OR_EMPTY)):
+      if not isinstance(cls.data, (class_mixin.Class,
+                                   abstract.AMBIGUOUS_OR_EMPTY)):
         bad = function.BadParam(
             name="cls", expected=self.vm.convert.type_type)
         raise function.WrongArgTypes(
@@ -579,7 +581,7 @@ class Object(BuiltinClass):
 
     Args:
       node: The current node.
-      cls: A mixin.Class.
+      cls: A class_mixin.Class.
       method: The method name. So that we don't have to handle the cases when
         the method doesn't exist, we only support "__new__" and "__init__".
 
@@ -588,7 +590,7 @@ class Object(BuiltinClass):
       definition in builtins.object, False otherwise.
     """
     assert method in ("__new__", "__init__")
-    if not isinstance(cls, mixin.Class):
+    if not isinstance(cls, class_mixin.Class):
       return False
     self.load_lazy_attribute(method)
     obj_method = self.members[method]

@@ -4,6 +4,8 @@ py_library(
   NAME
     codegen
   DEPS
+    .dataclass
+    .decorate
     .function
     .namedtuple
     .pytdgen
@@ -35,6 +37,29 @@ py_library(
   SRCS
     pytdgen.py
   DEPS
+    pytype.pytd.pytd_for_codegen
+    pytype.pytd.parse.parse
+)
+
+py_library(
+  NAME
+    decorate
+  SRCS
+    decorate.py
+  DEPS
+    .dataclass
+    pytype.pytd.pytd_for_codegen
+    pytype.pytd.parse.parse
+)
+
+py_library(
+  NAME
+    dataclass
+  SRCS
+    dataclass.py
+  DEPS
+    .function
+    .pytdgen
     pytype.pytd.pytd_for_codegen
     pytype.pytd.parse.parse
 )

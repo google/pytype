@@ -26,7 +26,7 @@ py_library(
   DEPS
     pytype.abstract
     pytype.abstract_utils
-    pytype.mixin
+    pytype.class_mixin
     pytype.overlay_utils
     pytype.special_builtins
 )

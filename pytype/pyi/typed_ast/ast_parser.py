@@ -23,6 +23,7 @@ from pytype.pyi.typed_ast.types import ParseError  # pylint: disable=g-importing
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import visitors
+from pytype.pytd.codegen import decorate
 from pytype.pytd.codegen import pytdgen
 
 from typed_ast import ast3
@@ -324,7 +325,7 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
     if val and not types.is_any(val):
       msg = f"Default value for {name}: {typ.name} can only be '...', got {val}"
       raise ParseError(msg)
-    return pytd.Constant(name, typ)
+    return pytd.Constant(name, typ, val)
 
   def visit_Assign(self, node):
     targets = node.targets
@@ -542,9 +543,20 @@ def post_process_ast(ast, src, name=None):
     ast = ast.Replace(name=hashlib.md5(src.encode("utf-8")).hexdigest())
   ast = ast.Visit(visitors.StripExternalNamePrefix())
 
+  # Now that we have resolved external names, process any class decorators that
+  # do code generation.
+  try:
+    ast = ast.Visit(decorate.DecorateClassVisitor())
+  except TypeError as e:
+    # Convert errors into ParseError. Unfortunately we no longer have location
+    # information if an error is raised during transformation of a class node.
+    raise ParseError.from_exc(e)
+
   # Typeshed files that explicitly import and refer to "__builtin__" need to
   # have that rewritten to builtins
-  return ast.Visit(visitors.RenameBuiltinsPrefix())
+  ast = ast.Visit(visitors.RenameBuiltinsPrefix())
+
+  return ast
 
 
 def _parse(src: str, feature_version: int, filename: str = ""):

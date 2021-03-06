@@ -1,6 +1,7 @@
 # Lint as: python3
 """Tests for the dataclasses overlay."""
 
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -540,6 +541,38 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         y: int
         def __init__(self, x: int = ..., y: int = ...) -> None: ...
     """)
+
+
+class TestPyiDataclass(test_base.TargetPython3FeatureTest):
+  """Tests for @dataclasses in pyi files."""
+
+  def test_basic(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from dataclasses import dataclass
+        @dataclass
+        class A:
+          x: int
+          y: str
+      """)
+      self.Check("""
+        import foo
+        x = foo.A(10, 'hello')
+      """, pythonpath=[d.path])
+
+  def test_type_mismatch(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from dataclasses import dataclass
+        @dataclass
+        class A:
+          x: int
+          y: str
+      """)
+      self.CheckWithErrors("""
+        import foo
+        x = foo.A(10, 20)  # wrong-arg-types
+      """, pythonpath=[d.path])
 
 
 test_base.main(globals(), __name__ == "__main__")
