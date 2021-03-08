@@ -17,8 +17,9 @@ from pytype import special_builtins
 log = logging.getLogger(__name__)
 
 
-# type alias for convenience
+# type aliases for convenience
 Param = overlay_utils.Param
+Attribute = class_mixin.Attribute
 
 
 class Ordering:
@@ -40,29 +41,6 @@ class Ordering:
   # the locals will be [(y, Instance(str)), (x, Instance(float))]. Note that
   # variables without assignments will be skipped.
   LAST_ASSIGN = object()
-
-
-class Attribute:
-  """Represents a class member variable.
-
-  Members:
-    name: field name
-    typ: field python type
-    init: Whether the field should be included in the generated __init__
-    kw_only: Whether the field is kw_only in the generated __init__
-    default: Default value
-  """
-
-  def __init__(self, name, typ, init, kw_only, default):
-    self.name = name
-    self.typ = typ
-    self.init = init
-    self.kw_only = kw_only
-    self.default = default
-
-  def __repr__(self):
-    return str({"name": self.name, "typ": self.typ, "init": self.init,
-                "default": self.default})
 
 
 class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
@@ -126,23 +104,6 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
 
     return overlay_utils.make_method(
         self.vm, node, "__init__", pos_params, kwonly_params)
-
-  def get_base_class_attrs(self, cls, cls_attrs, metadata_key):
-    # Traverse the MRO and collect base class attributes. We only add an
-    # attribute if it hasn't been defined before.
-    base_attrs = []
-    taken_attr_names = {a.name for a in cls_attrs}
-    for base_cls in cls.mro[1:]:
-      if not isinstance(base_cls, class_mixin.Class):
-        continue
-      sub_attrs = base_cls.metadata.get(metadata_key, None)
-      if sub_attrs is None:
-        continue
-      for a in sub_attrs:
-        if a.name not in taken_attr_names:
-          taken_attr_names.add(a.name)
-          base_attrs.append(a)
-    return base_attrs
 
   def call(self, node, func, args):
     """Construct a decorator, and call it on the class."""

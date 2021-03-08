@@ -101,7 +101,7 @@ class Attrs(classgen.Decorator):
             cls.members[name] = classgen.instantiate(node, name, typ)
           own_attrs.append(attr)
 
-    base_attrs = self.get_base_class_attrs(cls, own_attrs, _ATTRS_METADATA_KEY)
+    base_attrs = cls.get_base_class_attrs(own_attrs, _ATTRS_METADATA_KEY)
     attrs = base_attrs + own_attrs
     # Stash attributes in class metadata for subclasses.
     cls.metadata[_ATTRS_METADATA_KEY] = attrs

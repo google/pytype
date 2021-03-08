@@ -102,8 +102,7 @@ class Dataclass(classgen.Decorator):
           name=name, typ=typ, init=init, kw_only=False, default=orig)
       own_attrs.append(attr)
 
-    base_attrs = self.get_base_class_attrs(
-        cls, own_attrs, _DATACLASS_METADATA_KEY)
+    base_attrs = cls.get_base_class_attrs(own_attrs, _DATACLASS_METADATA_KEY)
     attrs = base_attrs + own_attrs
     # Stash attributes in class metadata for subclasses.
     cls.metadata[_DATACLASS_METADATA_KEY] = attrs
