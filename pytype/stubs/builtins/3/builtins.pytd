@@ -186,7 +186,7 @@ class classobj(object):
     def __cmp__(self, y) -> bool: ...
 
 # Not actually a builtin
-class NotImplementedType(object):
+class NotImplementedType(bool):
     pass
 
 class NoneType(object):

@@ -17,6 +17,34 @@ class InstanceUnequalityTest(test_base.TargetPython3BasicTest):
       """)
 
 
+class NotImplementedTest(test_base.TargetPython3BasicTest):
+  """Tests handling of the NotImplemented builtin."""
+
+  def test_return_annotation(self):
+    self.Check("""
+      class Foo:
+        def __eq__(self, other) -> bool:
+          if isinstance(other, Foo):
+            return id(self) == id(other)
+          else:
+            return NotImplemented
+    """)
+
+  def test_infer_return_type(self):
+    ty = self.Infer("""
+      class Foo:
+        def __eq__(self, other):
+          if isinstance(other, Foo):
+            return id(self) == id(other)
+          else:
+            return NotImplemented
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Foo:
+        def __eq__(self, other) -> bool: ...
+    """)
+
+
 class CmpOpTest(test_base.TargetPython3FeatureTest):
   """Tests comparison operator behavior in Python 3."""
 
