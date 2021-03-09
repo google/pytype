@@ -4,7 +4,7 @@ from typing import Tuple
 
 from pytype import utils
 from pytype.ast import visitor as ast_visitor
-from pytype.pyi.typed_ast.types import ParseError  # pylint: disable=g-importing-member
+from pytype.pyi.types import ParseError  # pylint: disable=g-importing-member
 from pytype.pytd import slots as cmp_slots
 
 from typed_ast import ast3

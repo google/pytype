@@ -1,8 +1,8 @@
 """Base visitor for typed_ast parse trees."""
 
 from pytype.ast import visitor as ast_visitor
-from pytype.pyi.typed_ast import types
-from pytype.pyi.typed_ast.types import ParseError  # pylint: disable=g-importing-member
+from pytype.pyi import types
+from pytype.pyi.types import ParseError  # pylint: disable=g-importing-member
 
 from typed_ast import ast3
 

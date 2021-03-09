@@ -29,10 +29,6 @@ dependencies.
 2. __[CMake](https://cmake.org) version 2.8 or higher__: To build the extension
    modules and to run tests in parallel, Pytype makes use of a CMake based
    build system.
-3. __[Bison](https://www.gnu.org/software/bison/) version 3.0.2 or higher__:
-   Pytype uses a custom parser to parse PYI files. This parser is implemented
-   using Flex and Bison.
-4. __[Flex](https://www.gnu.org/software/flex/) version 2.5.35 or higher__
 5. __[ninja build](https://ninja-build.org/)__: Pytype's test utility scripts
    make use of ninja as the CMake generated build system. NOTE: if you
    have a [ninja Python distribution](https://pypi.org/project/ninja/) installed

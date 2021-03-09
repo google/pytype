@@ -1,64 +1,130 @@
 add_package()
 
-genflex(
+py_library(
   NAME
-    lexer
-  SRC
-    lexer.lex
-  CC_OUT
-    lexer.lex.cc
-  BISON_DEP
-    .parser_gen
-)
-
-genbison(
-  NAME
-    parser_gen
-  SRC
-    parser.yy
-  HDR_OUT
-    parser.tab.hh
-  CC_OUT
-    parser.tab.cc
-)
-
-py_extension(
-  NAME
-    parser_ext
-  SRCS
-    parser_ext.cc
-    $<TARGET_PROPERTY:pytype.pyi.lexer,CC_OUT>
-    $<TARGET_PROPERTY:pytype.pyi.parser_gen,CC_OUT>
-    $<TARGET_PROPERTY:pytype.pyi.parser_gen,HDR_OUT>
+    parser
   DEPS
-    .parser_gen
-    .lexer
+    ._ast_parser
+    .classdef
+    .conditions
+    .definitions
+    .function
+    .modules
+    .types
+    .visitor
 )
 
 py_library(
   NAME
-    parser
+    _ast_parser
   SRCS
     parser.py
   DEPS
-    .parser_ext
+    .classdef
+    .conditions
+    .definitions
+    .function
+    .modules
+    .types
+    .visitor
     pytype.utils
-    pytype.pyi.typed_ast.ast_parser
+    pytype.ast.ast
+    pytype.pytd.pytd_for_parser
+)
+
+py_library(
+  NAME
+    classdef
+  SRCS
+    classdef.py
+  DEPS
+    .types
     pytype.pytd.pytd_for_parser
     pytype.pytd.parse.parse
 )
 
-py_test(
+py_library(
   NAME
-    lexer_test
+    conditions
   SRCS
-    lexer_test.py
+    conditions.py
   DEPS
-    .parser_ext
+    .types
+    pytype.utils
+    pytype.ast.ast
+    pytype.pytd.pytd_for_parser
+)
+
+py_library(
+  NAME
+    definitions
+  SRCS
+    definitions.py
+  DEPS
+    .classdef
+    .types
     pytype.pytd.pytd_for_parser
     pytype.pytd.parse.parse
-    pytype.stubs.stubs
-    pytype.tests.test_base
+)
+
+py_library(
+  NAME
+    function
+  SRCS
+    function.py
+  DEPS
+    .types
+    pytype.utils
+    pytype.pytd.pytd_for_parser
+    pytype.pytd.parse.parse
+)
+
+py_library(
+  NAME
+    modules
+  SRCS
+    modules.py
+  DEPS
+    .types
+    pytype.utils
+    pytype.pytd.pytd_for_parser
+    pytype.pytd.parse.parse
+)
+
+py_library(
+  NAME
+    types
+  SRCS
+    types.py
+  DEPS
+    pytype.utils
+    pytype.pytd.pytd_for_parser
+    pytype.pytd.parse.parse
+)
+
+py_library(
+  NAME
+    visitor
+  SRCS
+    visitor.py
+  DEPS
+    .types
+    pytype.ast.ast
+)
+
+toplevel_py_binary(
+  NAME
+    parse_pyi
+  SRCS
+    parse_pyi.py
+  MAIN
+    parse_pyi.py
+  DEPS
+    ._ast_parser
+    .types
+    pytype.utils
+    pytype.pyi.parser
+    pytype.pytd.pytd_for_parser
 )
 
 py_test(
@@ -73,17 +139,3 @@ py_test(
     pytype.stubs.stubs
     pytype.tests.test_base
 )
-
-py_test(
-  NAME
-    parser_memleak_test
-  SRCS
-    parser_memleak_test.py
-  DEPS
-    .parser
-    pytype.pytd.pytd_for_parser
-    pytype.stubs.stubs
-    pytype.tests.test_base
-)
-
-add_subdirectory(typed_ast)

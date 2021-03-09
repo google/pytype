@@ -5,8 +5,8 @@ import textwrap
 from typing import Any, List, Optional
 
 from pytype import utils
-from pytype.pyi.typed_ast import types
-from pytype.pyi.typed_ast.types import ParseError  # pylint: disable=g-importing-member
+from pytype.pyi import types
+from pytype.pyi.types import ParseError  # pylint: disable=g-importing-member
 from pytype.pytd import pytd
 from pytype.pytd import visitors
 from pytype.pytd.codegen import function as pytd_function

@@ -4,7 +4,7 @@ import collections
 
 from typing import Dict, Optional, List, Tuple
 
-from pytype.pyi.typed_ast.types import ParseError  # pylint: disable=g-importing-member
+from pytype.pyi.types import ParseError  # pylint: disable=g-importing-member
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd.parse import node as pytd_node

@@ -6,9 +6,9 @@ from typing import Any, Dict, List, Optional, Union
 
 import dataclasses
 
-from pytype.pyi.typed_ast import classdef
-from pytype.pyi.typed_ast import types
-from pytype.pyi.typed_ast.types import ParseError  # pylint: disable=g-importing-member
+from pytype.pyi import classdef
+from pytype.pyi import types
+from pytype.pyi.types import ParseError  # pylint: disable=g-importing-member
 from pytype.pytd import escape
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
