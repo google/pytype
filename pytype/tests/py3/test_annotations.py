@@ -1171,6 +1171,16 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(
         errors, {"e": r"Container: Dict\[_K, _V\].*_V: int.*_V: Dict"})
 
+  def test_check_defaults(self):
+    # Because 0.0 == False in Python, previously buggy caching led to `False`
+    # being converted to the cached abstract value for `0.0`.
+    self.Check("""
+      def f(x=0.0):
+        pass
+      def g(y: bool = False):
+        pass
+    """)
+
 
 class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for PEP 484 style inline annotations."""
