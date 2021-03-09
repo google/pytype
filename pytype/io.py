@@ -260,7 +260,7 @@ def print_error_doc_url(errorlog):
     doclink = "\nFor more details, see %s" % ERROR_DOC_URL
     if len(names) == 1:
       doclink += "#" + names.pop()
-    print(doclink + ".", file=sys.stderr)
+    print(doclink, file=sys.stderr)
 
 
 @_set_verbosity_from(posarg=1)
