@@ -1,3 +1,15 @@
+Version 2021.03.10
+
+New features and updates:
+* Basic support for defining dataclasses in pyi files.
+* Enable more of --check-attribute-types by default.
+* Get rid of the legacy pyi parser.
+
+Bug fixes:
+* Fix a circular import error (#760).
+* Make NotImplementedType inherit from bool.
+* Fix a caching bug that caused incorrect function parameter defaults.
+
 Version 2021.03.03
 
 New features and updates:
