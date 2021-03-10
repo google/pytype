@@ -574,5 +574,28 @@ class TestPyiDataclass(test_base.TargetPython3FeatureTest):
         x = foo.A(10, 20)  # wrong-arg-types
       """, pythonpath=[d.path])
 
+  def test_subclass(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from dataclasses import dataclass
+        @dataclass
+        class A:
+          x: bool
+          y: int
+      """)
+      ty = self.Infer("""
+        import dataclasses
+        import foo
+        @dataclasses.dataclass
+        class Foo(foo.A):
+          z: str = "hello"
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        dataclasses: module
+        foo: module
+        class Foo(foo.A):
+          z: str
+          def __init__(self, x: bool, y: int, z: str = ...) -> None: ...
+      """)
 
 test_base.main(globals(), __name__ == "__main__")

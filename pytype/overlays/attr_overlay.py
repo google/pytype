@@ -17,9 +17,6 @@ Param = overlay_utils.Param
 Attribute = classgen.Attribute
 
 
-_ATTRS_METADATA_KEY = "__attrs_attrs__"
-
-
 class AttrOverlay(overlay.Overlay):
   """A custom overlay for the 'attr' module."""
 
@@ -101,10 +98,7 @@ class Attrs(classgen.Decorator):
             cls.members[name] = classgen.instantiate(node, name, typ)
           own_attrs.append(attr)
 
-    base_attrs = cls.get_base_class_attrs(own_attrs, _ATTRS_METADATA_KEY)
-    attrs = base_attrs + own_attrs
-    # Stash attributes in class metadata for subclasses.
-    cls.metadata[_ATTRS_METADATA_KEY] = attrs
+    attrs = cls.compute_attr_metadata(own_attrs, "attr.s")
 
     # Add an __init__ method
     if self.args[cls]["init"]:

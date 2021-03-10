@@ -2600,6 +2600,14 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     mixin.LazyMembers.init_mixin(self, mm)
     self.is_dynamic = self.compute_is_dynamic()
     class_mixin.Class.init_mixin(self, metaclass)
+    self._populate_decorator_metadata()
+
+  def _populate_decorator_metadata(self):
+    """Fill in class attribute metadata for decorators like @dataclass."""
+    for decorator in self.pytd_cls.decorators:
+      name = decorator.type.name
+      if class_mixin.get_metadata_key(name):
+        self.init_attr_metadata_from_pytd(name, self.pytd_cls.constants)
 
   def get_own_methods(self):
     return {name for name, member in self._member_map.items()
