@@ -10,18 +10,8 @@ import sys
 
 PYTYPE_SRC_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(PYTYPE_SRC_ROOT, "out")
-SRC_PYI_DIR = os.path.join(PYTYPE_SRC_ROOT, "pytype", "pyi")
-OUT_PYI_DIR = os.path.join(OUT_DIR, "pytype", "pyi")
 CMAKE_LOG = os.path.join(OUT_DIR, "cmake.log")
 NINJA_LOG = os.path.join(OUT_DIR, "ninja.log")
-GEN_FILE_LIST = [
-    "lexer.lex.cc",
-    "location.hh",
-    "parser.tab.cc",
-    "parser.tab.hh",
-    "position.hh",
-    "stack.hh",
-]
 
 NINJA_FAILURE_PREFIX = "FAILED: "
 FAILURE_MSG_PREFIX = ">>> FAIL"
@@ -272,30 +262,3 @@ def run_ninja(targets, fail_collector=None, fail_fast=False, verbose=False):
     print(">>>         Full Ninja output is available in '%s'." % NINJA_LOG)
     print(">>>         Failing test modules (if any) will be reported below.")
     return False
-
-
-def generate_files():
-  """Run flex and bison to produce the parser .cc and .h files.
-
-  Returns:
-    None upon success, otherwise an error message.
-  """
-  if not run_cmake(force_clean=True):
-    return "Running CMake failed!"
-  ninja_cmd = ["ninja", "pytype.pyi.parser_gen", "pytype.pyi.lexer"]
-  print("Building flex and bison outputs ...\n")
-  returncode, stdout = run_cmd(ninja_cmd, cwd=OUT_DIR)
-  if returncode != 0:
-    return "Error generating the Flex and Bison outputs:\n%s" % stdout
-  # Copy the generated files into the source tree.
-  for gen_file in GEN_FILE_LIST:
-    print("Copying %s to source tree ...\n" % gen_file)
-    shutil.copy(os.path.join(OUT_PYI_DIR, gen_file),
-                os.path.join(SRC_PYI_DIR, gen_file))
-  return None
-
-
-def clean_generated_files():
-  for gen_file in GEN_FILE_LIST:
-    print("Deleting %s from source tree ...\n" % gen_file)
-    os.remove(os.path.join(SRC_PYI_DIR, gen_file))

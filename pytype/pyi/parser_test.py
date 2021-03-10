@@ -1,5 +1,6 @@
 import hashlib
 import re
+import sys
 import textwrap
 
 from pytype import utils
@@ -2708,6 +2709,45 @@ class MethodAliasTest(_ParserTestBase):
 
       def f(x: int) -> None: ...
     """)
+
+
+class ErrorTest(test_base.UnitTest):
+  """Test parser errors."""
+
+  def test_filename(self):
+    src = textwrap.dedent("""
+      a: int
+      a: int
+    """)
+    with self.assertRaisesRegex(parser.ParseError, "File.*foo.pyi"):
+      parser.parse_pyi(src, "foo.pyi", "foo", (3, 6))
+
+  def test_lineno(self):
+    src = textwrap.dedent("""
+      class A:
+        __slots__ = 0
+    """)
+    with self.assertRaisesRegex(parser.ParseError, "line 3"):
+      parser.parse_pyi(src, "foo.py", "foo", (3, 6))
+
+
+class ParamsTest(test_base.UnitTest):
+  """Test input parameter handling."""
+
+  def test_feature_version(self):
+    cases = [
+        [2, 6],
+        [(2,), 6],
+        [(2, 7), 6],
+        [(2, 7, 8), 6],
+        [3, sys.version_info.minor],
+        [(3,), sys.version_info.minor],
+        [(3, 7), 7],
+        [(3, 8, 2), 8]
+    ]
+    for version, expected in cases:
+      actual = parser._feature_version(version)
+      self.assertEqual(actual, expected)
 
 
 if __name__ == "__main__":

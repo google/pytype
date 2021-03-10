@@ -10,7 +10,7 @@ import re
 import shutil
 import sys
 
-from setuptools import setup, Extension
+from setuptools import setup
 
 # Path to directory containing setup.py
 here = os.path.abspath(os.path.dirname(__file__))
@@ -22,43 +22,6 @@ here = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(os.path.join(here, "pybind11"))
 
 from pybind11.setup_helpers import Pybind11Extension  # pylint: disable=g-import-not-at-top,wrong-import-position
-
-try:
-  # The repository root is not on the pythonpath with PEP 517 builds
-  if 'build_scripts' in os.listdir(here):
-      sys.path.append(here)
-
-  from build_scripts import build_utils  # pylint: disable=g-import-not-at-top
-except ImportError:
-  # When build_utils is present, we'll generate parser files for installing
-  # from source or packaging into a PyPI release.
-  build_utils = None
-
-
-def get_parser_ext():
-  """Get the parser extension."""
-  # We need some platform-dependent compile args for the C extensions.
-  if sys.platform == 'win32':
-    # windows does not have unistd.h; lex/yacc needs this define.
-    extra_compile_args = ['-DYY_NO_UNISTD_H']
-    extra_link_args = []
-  elif sys.platform == 'darwin':
-    # clang on darwin requires some extra flags, which gcc does not support
-    extra_compile_args = ['-std=c++11', '-stdlib=libc++']
-    extra_link_args = ['-stdlib=libc++']
-  else:
-    extra_compile_args = ['-std=c++11']
-    extra_link_args = []
-  return Extension(
-      'pytype.pyi.parser_ext',
-      sources=[
-          'pytype/pyi/parser_ext.cc',
-          'pytype/pyi/lexer.lex.cc',
-          'pytype/pyi/parser.tab.cc',
-      ],
-      extra_compile_args=extra_compile_args,
-      extra_link_args=extra_link_args,
-  )
 
 
 def get_typegraph_ext():
@@ -141,17 +104,11 @@ def get_long_description():
 
 
 copy_typeshed()
-if build_utils:
-  e = build_utils.generate_files()
-  assert not e, e
 
 # Only options configured at build time are declared here, everything else is
 # declared in setup.cfg
 setup(
     long_description=get_long_description(),
     package_data={'pytype': get_data_files()},
-    ext_modules=[get_parser_ext(), get_typegraph_ext()],
+    ext_modules=[get_typegraph_ext()],
 )
-
-if build_utils:
-  build_utils.clean_generated_files()

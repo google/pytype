@@ -116,31 +116,12 @@ to be the methods that do AST postprocessing and finalization.
 ## Parser
 
 The stub parser in [pytype/pyi][pytype.pyi] reads in a type stub and produces an
-AST representation of its contents. Its structure is as follows:
+AST representation of its contents. It uses the open source `typed_ast` parser
+to convert the type stub into a python AST (type stubs are required to parse as
+valid python3), then generates a pytd tree from the AST.
 
-`lexer.lex` turns the stub contents into a stream of tokens. `parser.yy` (the
-grammar) matches on the tokens and produces expressions that build AST nodes.
-`parser.h` declares names that appear in these expressions, and `parser.py`
-implements the expressions. `parser_ext.cc` describes the mappings between names
-in each step of the process.
-
-A few examples:
-
-* A string produces a `t::STRING` token. `parser_ext.cc` maps `t::STRING` to the
-  name `STRING`, which the grammar can then use to refer to strings.
-* The `...` constant produces a `t::ELLIPSIS` token, which `parser_ext.cc` maps
-  to the name `ELLIPSIS` that the grammar then uses. The grammar outputs the
-  expression `kEllipsis`, which is declared in `parser.h` and mapped by
-  `parser_ext.cc` to a value again named `ELLIPSIS`. Finally, the `ELLIPSIS`
-  value is defined in `parser.py` as an attribute on the `Parser` class.
-* The grammar outputs an expression that calls a function, `kNewClass`, in order
-  to build a class node. `parser.h` declares `kNewClass`, and `parser_ext.cc`
-  maps it to the name of the implementation, `new_class`, which is defined in
-  `parser.py` as a method of the `Parser` class.
-
-The AST nodes are defined in
-[pytype/pytd/pytd.py][pytype.pytd.pytd] as collections.namedtuple objects whose
-attributes may be other namedtuples.
+The pytd nodes are defined in [pytype/pytd/pytd.py][pytype.pytd.pytd] as
+immutable `attrs` classes.
 
 ## AST manipulation
 
