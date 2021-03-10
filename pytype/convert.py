@@ -454,7 +454,11 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       The converted constant. (Instance of BaseValue)
     """
     node = node or self.vm.root_node
-    key = ("constant", pyval, type(pyval))
+    if pyval.__class__ is tuple:
+      type_key = tuple(type(v) for v in pyval)
+    else:
+      type_key = type(pyval)
+    key = ("constant", pyval, type_key)
     if key in self._convert_cache:
       if self._convert_cache[key] is None:
         # This error is triggered by, e.g., classes inheriting from each other.

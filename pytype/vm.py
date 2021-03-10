@@ -2258,8 +2258,7 @@ class VirtualMachine:
       else:
         maybe_cls = obj_val.cls
       if isinstance(maybe_cls, abstract.InterpreterClass):
-        if (self.options.check_attribute_types and
-            "__annotations__" not in maybe_cls.members and
+        if ("__annotations__" not in maybe_cls.members and
             op.line in self.director.annotations):
           # The class has no annotated class attributes but does have an
           # annotated instance attribute.
@@ -2273,11 +2272,7 @@ class VirtualMachine:
       elif isinstance(maybe_cls, abstract.PyTDClass):
         node, attr = self.attribute_handler.get_attribute(
             state.node, obj_val, name)
-        # Even when check_attribute_types is not enabled, Any overrides
-        # inference so that typeshed stubs that annotate attributes as Any are
-        # interpreted correctly.
-        if attr and (self.options.check_attribute_types or
-                     attr.data == [self.convert.unsolvable]):
+        if attr:
           typ = self.convert.merge_classes(attr.data)
           annotations_dict = {name: abstract_utils.Local(
               state.node, op, typ, None, self)}
