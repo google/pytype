@@ -686,8 +686,10 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
       ops = match_opcodes_multiline(self.traces, node.lineno, last_line, [
           ("LOAD_BUILD_CLASS", None),
           ("STORE_NAME", class_name),
-          # Classes defined within a function generate a STORE_FAST op.
+          # Classes defined within a function generate a STORE_FAST or
+          # STORE_DEREF op.
           ("STORE_FAST", class_name),
+          ("STORE_DEREF", class_name),
           # A class being declared global anywhere generates a STORE_GLOBAL op.
           ("STORE_GLOBAL", class_name),
       ])
@@ -695,11 +697,13 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
       # traces. We only want the first two in the list.
       if (len(ops) >= 2 and
           ops[0][0] == "LOAD_BUILD_CLASS" and
-          ops[1][0] in ("STORE_NAME", "STORE_FAST", "STORE_GLOBAL")):
+          ops[1][0] in (
+              "STORE_NAME", "STORE_FAST", "STORE_DEREF", "STORE_GLOBAL")):
         _, _, data = ops[1]
         d = _unwrap(data)
 
-    assert d, "Did not get pytype data for class %s" % class_name
+    assert d, "Did not get pytype data for class %s at line %d" % (
+        class_name, node.lineno)
     defn = self.add_local_def(node, data=data,
                               doc=DocString.from_node(self._ast, node))
     self.classmap[d[0]] = defn
