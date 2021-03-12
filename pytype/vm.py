@@ -2248,6 +2248,7 @@ class VirtualMachine:
     state, (val, obj) = state.popn(2)
     # If `obj` is a single class or an instance of one, then grab its
     # __annotations__ dict so we can type-check the new attribute value.
+    check_attribute_types = self.options.check_attribute_types
     try:
       obj_val = abstract_utils.get_atomic_value(obj)
     except abstract_utils.ConversionError:
@@ -2279,10 +2280,15 @@ class VirtualMachine:
           state = state.change_cfg_node(node)
         else:
           annotations_dict = None
+        # In a PyTDClass, we can't distinguish between an inferred type and an
+        # annotation. Even though we don't check against the attribute type, we
+        # still apply it so that setting an attribute value on an instance of a
+        # class doesn't affect the attribute type in other instances.
+        check_attribute_types = False
       else:
         annotations_dict = None
-    val = self._apply_annotation(state, op, name, val, annotations_dict,
-                                 self.options.check_attribute_types)
+    val = self._apply_annotation(
+        state, op, name, val, annotations_dict, check_attribute_types)
     state = state.forward_cfg_node()
     state = self.store_attr(state, obj, name, val)
     state = state.forward_cfg_node()
