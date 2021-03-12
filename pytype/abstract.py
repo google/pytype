@@ -31,6 +31,7 @@ from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
+from pytype.pytd.codegen import decorate
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 
@@ -2581,6 +2582,9 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
   """
 
   def __init__(self, name, pytd_cls, vm):
+    # Apply decorators first, in case they set any properties that later
+    # initialization code needs to read.
+    pytd_cls, decorated = decorate.process_class(pytd_cls)
     self.pytd_cls = pytd_cls
     super().__init__(name, vm)
     mm = {}
@@ -2600,14 +2604,36 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     mixin.LazyMembers.init_mixin(self, mm)
     self.is_dynamic = self.compute_is_dynamic()
     class_mixin.Class.init_mixin(self, metaclass)
-    self._populate_decorator_metadata()
+    if decorated:
+      self._populate_decorator_metadata()
 
   def _populate_decorator_metadata(self):
     """Fill in class attribute metadata for decorators like @dataclass."""
+    key = None
+    keyed_decorator = None
     for decorator in self.pytd_cls.decorators:
       name = decorator.type.name
-      if class_mixin.get_metadata_key(name):
-        self.init_attr_metadata_from_pytd(name, self.pytd_cls.constants)
+      decorator_key = class_mixin.get_metadata_key(name)
+      if decorator_key:
+        if key:
+          error = f"Cannot apply both @{keyed_decorator} and @{decorator}."
+          self.vm.errorlog.invalid_annotation(self.vm.frames, self, error)
+        else:
+          key, keyed_decorator = decorator_key, decorator
+          self.init_attr_metadata_from_pytd(name, self.pytd_cls.constants)
+          self._recompute_init_from_metadata(key)
+
+  def _recompute_init_from_metadata(self, key):
+    # Some decorated classes (dataclasses e.g.) have their __init__ function
+    # set via traversing the MRO to collect initializers from decorated parent
+    # classes as well. Since we don't have access to the MRO when initially
+    # decorating the class, we recalculate the __init__ signature from the
+    # combined attribute list in the metadata.
+    attrs = self.metadata[key]
+    fields = [x.to_pytd_constant() for x in attrs]
+    self.pytd_cls = decorate.add_init_from_fields(self.pytd_cls, fields)
+    init = self.pytd_cls.Lookup("__init__")
+    self._member_map["__init__"] = init
 
   def get_own_methods(self):
     return {name for name, member in self._member_map.items()

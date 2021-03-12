@@ -41,12 +41,14 @@ class Attribute:
   Used in metadata (see Class.metadata below).
   """
 
-  def __init__(self, name, typ, init, kw_only, default):
+  def __init__(self, name, typ, init, kw_only, default, pytd_const=None):
     self.name = name
     self.typ = typ
     self.init = init
     self.kw_only = kw_only
     self.default = default
+    # Store the pytd_const if we have generated this via from_pytd_constant.
+    self.pytd_const = pytd_const
 
   @classmethod
   def from_pytd_constant(cls, const, vm):
@@ -54,7 +56,14 @@ class Attribute:
     val = const.value and vm.convert.constant_to_value(const.value)
     # Dataclasses and similar decorators in pytd files cannot set init and
     # kw_only properties.
-    return cls(name=const.name, typ=typ, init=True, kw_only=False, default=val)
+    return cls(name=const.name, typ=typ, init=True, kw_only=False, default=val,
+               pytd_const=const)
+
+  def to_pytd_constant(self):
+    # TODO(mdemello): This is a bit fragile, but we only call this when
+    # constructing a dataclass from a PyTDClass, where the initial Attribute
+    # will have been created from a parent PyTDClass.
+    return self.pytd_const
 
   def __repr__(self):
     return str({"name": self.name, "typ": self.typ, "init": self.init,

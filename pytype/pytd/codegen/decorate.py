@@ -1,42 +1,90 @@
 """Apply decorators to classes and functions."""
 
-from typing import List
+from typing import Iterable, List, Tuple
 
 from pytype.pytd import base_visitor
 from pytype.pytd import pytd
-from pytype.pytd.codegen import dataclass
+from pytype.pytd.codegen import function
 
 
-_DECORATORS = {
-    "dataclasses.dataclass": dataclass.make_dataclass
-}
-
-
-# NOTE: This needs to be called in the parser, otherwise the generated code will
-# not have all the ast finalizing visitors from load_pytd applied to it.
-class DecorateClassVisitor(base_visitor.Visitor):
+class ValidateDecoratedClassVisitor(base_visitor.Visitor):
   """Apply class decorators."""
 
-  def VisitClass(self, cls):
-    return _process_class(cls)
+  def EnterClass(self, cls):
+    validate_class(cls)
 
 
-def _decorate_class(cls: pytd.Class, decorator: str) -> pytd.Class:
-  """Apply a single decoator to a class."""
+def _decorate_class(cls: pytd.Class, decorator: str) -> Tuple[pytd.Class, bool]:
+  """Apply a single decorator to a class."""
   factory = _DECORATORS.get(decorator, None)
   if factory:
-    return factory(cls)
+    return factory(cls), True
   else:
     # do nothing for unknown decorators
-    return cls
+    return cls, False
+
+
+def _validate_class(cls: pytd.Class, decorator: str) -> None:
+  """Validate a single decorator for a class."""
+  validator = _VALIDATORS.get(decorator, None)
+  if validator:
+    validator(cls)
 
 
 def _decorator_names(cls: pytd.Class) -> List[str]:
   return [x.type.name for x in reversed(cls.decorators)]  # pytype: disable=attribute-error
 
 
-def _process_class(cls: pytd.Class) -> pytd.Class:
+def check_defaults(fields: Iterable[pytd.Constant], cls_name: str):
+  """Check that a non-default field does not follow a default one."""
+  default = None
+  for c in fields:
+    if c.value is not None:
+      default = c.name
+    elif default:
+      raise TypeError(
+          f"In class {cls_name}: "
+          f"non-default argument {c.name} follows default argument {default}")
+
+
+def check_class(cls: pytd.Class) -> None:
+  check_defaults(cls.constants, cls.name)
+
+
+def add_init_from_fields(
+    cls: pytd.Class,
+    fields: Iterable[pytd.Constant]
+) -> pytd.Class:
+  check_defaults(fields, cls.name)
+  init = function.generate_init(fields)
+  methods = cls.methods + (init,)
+  return cls.Replace(methods=methods)
+
+
+def add_generated_init(cls: pytd.Class) -> pytd.Class:
+  return add_init_from_fields(cls, cls.constants)
+
+
+def process_class(cls: pytd.Class) -> Tuple[pytd.Class, bool]:
   """Apply all decorators to a class."""
+  changed = False
   for decorator in _decorator_names(cls):
-    cls = _decorate_class(cls, decorator)
-  return cls
+    cls, decorated = _decorate_class(cls, decorator)
+    changed = changed or decorated
+  return cls, changed
+
+
+def validate_class(cls: pytd.Class) -> None:
+  for decorator in _decorator_names(cls):
+    _validate_class(cls, decorator)
+
+
+_DECORATORS = {
+    "dataclasses.dataclass": add_generated_init
+}
+
+
+_VALIDATORS = {
+    "dataclasses.dataclass": check_class
+}
+

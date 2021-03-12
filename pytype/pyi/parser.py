@@ -547,10 +547,11 @@ def post_process_ast(ast, src, name=None):
     ast = ast.Replace(name=hashlib.md5(src.encode("utf-8")).hexdigest())
   ast = ast.Visit(visitors.StripExternalNamePrefix())
 
-  # Now that we have resolved external names, process any class decorators that
-  # do code generation.
+  # Now that we have resolved external names, validate any class decorators that
+  # do code generation. (We will generate the class lazily, but we should check
+  # for errors at parse time so they can be reported early.)
   try:
-    ast = ast.Visit(decorate.DecorateClassVisitor())
+    ast = ast.Visit(decorate.ValidateDecoratedClassVisitor())
   except TypeError as e:
     # Convert errors into ParseError. Unfortunately we no longer have location
     # information if an error is raised during transformation of a class node.

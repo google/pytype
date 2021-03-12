@@ -2,7 +2,7 @@
 
 import collections
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import dataclasses
 
@@ -250,3 +250,20 @@ def _is_property(name: str, decorator: str, signature: pytd.Signature) -> bool:
   sigs = _property_decorators(name)
   return (decorator in sigs and
           sigs[decorator].arity == len(signature.params))
+
+
+def _make_param(attr: pytd.Constant) -> pytd.Parameter:
+  return Param(name=attr.name, type=attr.type, default=attr.value).to_pytd()
+
+
+def generate_init(fields: Iterable[pytd.Constant]) -> pytd.Function:
+  """Build an __init__ method from pytd class constants."""
+  self_arg = Param("self").to_pytd()
+  params = (self_arg,) + tuple(_make_param(c) for c in fields)
+  # We call this at 'runtime' rather than from the parser, so we need to use the
+  # resolved type of None, rather than NamedType("NoneType")
+  ret = pytd.ClassType("builtins.NoneType")
+  sig = pytd.Signature(params=params, return_type=ret,
+                       starargs=None, starstarargs=None,
+                       exceptions=(), template=())
+  return pytd.Function("__init__", (sig,), kind=pytd.METHOD, flags=0)
