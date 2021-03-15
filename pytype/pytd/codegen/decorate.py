@@ -79,12 +79,23 @@ def validate_class(cls: pytd.Class) -> None:
     _validate_class(cls, decorator)
 
 
+# NOTE: For attrs, the resolved "real name" of the decorator in pyi files is
+# attr._make.attrs; the aliases are added here in case the attrs stub files
+# change to hide that implementation detail. We also add an implicit
+# "auto_attribs=True" to @attr.s decorators in pyi files.
+
 _DECORATORS = {
-    "dataclasses.dataclass": add_generated_init
+    "dataclasses.dataclass": add_generated_init,
+    "attr.s": add_generated_init,
+    "attr.attrs": add_generated_init,
+    "attr._make.attrs": add_generated_init,
 }
 
 
 _VALIDATORS = {
-    "dataclasses.dataclass": check_class
+    "dataclasses.dataclass": check_class,
+    "attr.s": check_class,
+    "attr.attrs": check_class,
+    "attr._make.attrs": check_class,
 }
 

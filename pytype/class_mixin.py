@@ -20,7 +20,11 @@ log = logging.getLogger(__name__)
 # indirection.
 _METADATA_KEYS = {
     "dataclasses.dataclass": "__dataclass_fields__",
-    "attr.s": "__attrs_attrs__"
+    # attr.s gets resolved to attr._make.attrs in pyi files but intercepted by
+    # the attr overlay as attr.s when processing bytecode.
+    "attr.s": "__attrs_attrs__",
+    "attr.attrs": "__attrs_attrs__",
+    "attr._make.attrs": "__attrs_attrs__"
 }
 
 
