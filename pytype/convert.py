@@ -704,7 +704,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           if isinstance(c, pytd.TypeParameter):
             if not subst or c.full_name not in subst:
               raise self.TypeParameterError(c.full_name)
-            return self.merge_classes(subst[c.full_name].data)
+            # deformalize gets rid of any unexpected TypeVars, which can appear
+            # if something is annotated as Type[T].
+            return self.vm.annotations_util.deformalize(
+                self.merge_classes(subst[c.full_name].data))
           else:
             return self.constant_to_value(c, subst, self.vm.root_node)
         elif isinstance(cls, pytd.TupleType):
