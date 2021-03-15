@@ -525,9 +525,9 @@ class Super(BuiltinClass):
             self.vm.frames, message="Missing __class__ closure for super call.",
             details="Is 'super' being called from a method defined in a class?")
         return node, self.vm.new_unsolvable(node)
-      # The implicit super object argument is the first positional argument to
-      # the function calling 'super'.
-      self_arg = frame.first_posarg
+      # The implicit super object argument is the first argument to the function
+      # calling 'super'.
+      self_arg = frame.first_arg
       if not self_arg:
         self.vm.errorlog.invalid_super_call(
             self.vm.frames, message="Missing 'self' argument to 'super' call.")

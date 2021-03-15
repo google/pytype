@@ -3357,13 +3357,13 @@ class InterpreterFunction(SignedFunction):
                    "the same type variable %s")
                   % (self.full_name, cls.full_name, item.name))
 
-  def _mutations_generator(self, node, first_posarg, substs):
+  def _mutations_generator(self, node, first_arg, substs):
     def generator():
       """Yields mutations."""
-      if not self.is_attribute_of_class or not first_posarg or not substs:
+      if not self.is_attribute_of_class or not first_arg or not substs:
         return
       try:
-        inst = abstract_utils.get_atomic_value(first_posarg, Instance)
+        inst = abstract_utils.get_atomic_value(first_arg, Instance)
       except abstract_utils.ConversionError:
         return
       if inst.cls.template:
@@ -3428,7 +3428,7 @@ class InterpreterFunction(SignedFunction):
       # We've matched an overload; remap the callargs using the implementation
       # so that optional parameters, etc, are correctly defined.
       callargs = self._map_args(node, args)
-    first_posarg = args.posargs[0] if args.posargs else None
+    first_arg = callargs.get(sig.param_names[0]) if sig.param_names else None
     # Keep type parameters without substitutions, as they may be needed for
     # type-checking down the road.
     annotations = self.vm.annotations_util.sub_annotations(
@@ -3445,7 +3445,7 @@ class InterpreterFunction(SignedFunction):
       frame = self.vm.make_frame(
           node, self.code, self.f_globals, self.f_locals, callargs,
           self.closure, new_locals=new_locals, func=func,
-          first_posarg=first_posarg)
+          first_arg=first_arg)
     except self.vm.VirtualMachineRecursionError:
       # If we've encountered recursion in a constructor, then we have another
       # incompletely initialized instance of the same class (or a subclass) at
@@ -3456,11 +3456,10 @@ class InterpreterFunction(SignedFunction):
       # as incomplete.
       self._set_callself_maybe_missing_members()
       return node, self.vm.new_unsolvable(node)
-    self_var = sig.param_names and callargs.get(sig.param_names[0])
     caller_is_abstract = abstract_utils.check_classes(
-        self_var, lambda cls: cls.is_abstract)
+        first_arg, lambda cls: cls.is_abstract)
     caller_is_protocol = abstract_utils.check_classes(
-        self_var, lambda cls: cls.is_protocol)
+        first_arg, lambda cls: cls.is_protocol)
     # We should avoid checking the return value against any return annotation
     # when we are analyzing an attribute of a protocol or an abstract class's
     # abstract method.
@@ -3532,7 +3531,7 @@ class InterpreterFunction(SignedFunction):
         ret = Coroutine(self.vm, ret, node2).to_variable(node2)
       node_after_call = node2
     self._inner_cls_check(frame)
-    mutations = self._mutations_generator(node_after_call, first_posarg, substs)
+    mutations = self._mutations_generator(node_after_call, first_arg, substs)
     node_after_call = abstract_utils.apply_mutations(node_after_call, mutations)
     self._call_cache[callkey] = ret, self.vm.remaining_depth()
     if self._store_call_records or self.vm.store_all_calls:

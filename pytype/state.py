@@ -233,7 +233,7 @@ class Frame(utils.VirtualMachineWeakrefMixin):
   """
 
   def __init__(self, node, vm, f_code, f_globals, f_locals, f_back, callargs,
-               closure, func, first_posarg=None):
+               closure, func, first_arg=None):
     """Initialize a special frame as needed by TypegraphVirtualMachine.
 
     Args:
@@ -247,7 +247,7 @@ class Frame(utils.VirtualMachineWeakrefMixin):
       callargs: Additional function arguments to store in f_locals.
       closure: A tuple containing the new co_freevars.
       func: An Optional[cfg.Binding] to the function this frame corresponds to.
-      first_posarg: Optional first positional argument to the function.
+      first_arg: Optional first argument to the function.
     Raises:
       NameError: If we can't resolve any references into the outer frame.
     """
@@ -269,9 +269,9 @@ class Frame(utils.VirtualMachineWeakrefMixin):
       builtins_pu, = bltin.bindings
       self.f_builtins = builtins_pu.data
     self.f_lineno = f_code.co_firstlineno
-    # The first positional argument is used to make Python 3 super calls
-    # when super is not passed any arguments.
-    self.first_posarg = first_posarg
+    # The first argument is used to make Python 3 super calls when super is not
+    # passed any arguments.
+    self.first_arg = first_arg
     self.cells = {}
 
     self.allowed_returns = None

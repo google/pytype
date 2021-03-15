@@ -714,7 +714,7 @@ class VirtualMachine:
     return abstract.NativeFunction(name, method, self)
 
   def make_frame(self, node, code, f_globals, f_locals, callargs=None,
-                 closure=None, new_locals=False, func=None, first_posarg=None):
+                 closure=None, new_locals=False, func=None, first_arg=None):
     """Create a new frame object, using the given args, globals and locals."""
     if any(code is f.f_code for f in self.frames):
       log.info("Detected recursion in %s", code.co_name or code.co_filename)
@@ -733,7 +733,7 @@ class VirtualMachine:
 
     return frame_state.Frame(node, self, code, f_globals, f_locals,
                              self.frame, callargs or {}, closure, func,
-                             first_posarg)
+                             first_arg)
 
   def simple_stack(self, opcode=None):
     """Get a stack of simple frames.
@@ -1642,12 +1642,12 @@ class VirtualMachine:
 
   def _is_classmethod_cls_arg(self, var):
     """True if var is the first arg of a class method in the current frame."""
-    if not (self.frame.func and self.frame.first_posarg):
+    if not (self.frame.func and self.frame.first_arg):
       return False
 
     func = self.frame.func.data
     if func.is_classmethod or func.name.rsplit(".")[-1] == "__new__":
-      is_cls = not set(var.data) - set(self.frame.first_posarg.data)
+      is_cls = not set(var.data) - set(self.frame.first_arg.data)
       return is_cls
     return False
 
