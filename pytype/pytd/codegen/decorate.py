@@ -98,4 +98,3 @@ _VALIDATORS = {
     "attr.attrs": check_class,
     "attr._make.attrs": check_class,
 }
-
