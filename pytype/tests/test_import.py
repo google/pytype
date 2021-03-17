@@ -1254,5 +1254,21 @@ class ImportTest(test_base.TargetIndependentTest):
         from email import message_from_bytes
       """, imports_map=imports_map)
 
+  def test_directory_module_clash(self):
+    with file_utils.Tempdir() as d:
+      foo = d.create_file("foo.pyi", "x: int")
+      foo_bar = d.create_file("foo/bar.pyi", "y: str")
+      imports_info = d.create_file("imports_info", f"""
+        foo {foo}
+        foo/bar {foo_bar}
+      """)
+      imports_map = imports_map_loader.build_imports_map(imports_info)
+      # When both foo.py and a foo/ package exist, the latter shadows the
+      # former, so `import foo` gets you the (empty) foo/__init__.py.
+      self.CheckWithErrors("""
+        import foo
+        x = foo.x  # module-attr
+      """, imports_map=imports_map)
+
 
 test_base.main(globals(), __name__ == "__main__")

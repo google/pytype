@@ -211,18 +211,22 @@ class BaseTest(unittest.TestCase):
   def assertNoCrash(self, method, code, **kwargs):
     method(code, report_errors=False, **kwargs)
 
-  def _SetUpErrorHandling(self, code, pythonpath, analyze_annotated, quick):
+  def _SetUpErrorHandling(self, code, pythonpath, analyze_annotated, quick,
+                          imports_map):
     code = _Format(code)
     errorlog = test_utils.TestErrorLog(code)
     self.ConfigureOptions(
-        pythonpath=pythonpath, analyze_annotated=analyze_annotated, quick=quick)
+        pythonpath=[""] if (not pythonpath and imports_map) else pythonpath,
+        analyze_annotated=analyze_annotated, quick=quick,
+        imports_map=imports_map)
     return {"src": code, "errorlog": errorlog, "options": self.options,
             "loader": self.loader}
 
   def InferWithErrors(self, code, deep=True, pythonpath=(), module_name=None,
-                      analyze_annotated=True, quick=False, **kwargs):
-    kwargs.update(
-        self._SetUpErrorHandling(code, pythonpath, analyze_annotated, quick))
+                      analyze_annotated=True, quick=False, imports_map=None,
+                      **kwargs):
+    kwargs.update(self._SetUpErrorHandling(
+        code, pythonpath, analyze_annotated, quick, imports_map))
     self.ConfigureOptions(module_name=module_name)
     unit, builtins_pytd = analyze.infer_types(deep=deep, **kwargs)
     unit.Visit(visitors.VerifyVisitor())
@@ -233,9 +237,10 @@ class BaseTest(unittest.TestCase):
     return pytd_utils.CanonicalOrdering(unit), errorlog
 
   def CheckWithErrors(self, code, deep=True, pythonpath=(),
-                      analyze_annotated=True, quick=False, **kwargs):
-    kwargs.update(
-        self._SetUpErrorHandling(code, pythonpath, analyze_annotated, quick))
+                      analyze_annotated=True, quick=False, imports_map=None,
+                      **kwargs):
+    kwargs.update(self._SetUpErrorHandling(
+        code, pythonpath, analyze_annotated, quick, imports_map))
     analyze.check_types(filename="<inline>", deep=deep, **kwargs)
     errorlog = kwargs["errorlog"]
     errorlog.assert_errors_match_expected()
