@@ -281,6 +281,7 @@ py_library(
   DEPS
     ._utils
     .abstract
+    .abstract_utils
     .class_mixin
     .debug
     .function

@@ -676,6 +676,29 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       def g(x: Any) -> Foo[int]: ...
     """)
 
+  def test_reinherit_generic(self):
+    ty = self.Infer("""
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        def __init__(self, x: T):
+          self.x = x
+      # Inheriting from Foo (unparameterized) is equivalent to inheriting from
+      # Foo[Any]. This is likely a mistake, but we should still do something
+      # reasonable.
+      class Bar(Foo, Generic[T]):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Generic, TypeVar
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        x: Any
+        def __init__(self, x: T) -> None: ...
+      class Bar(Foo, Generic[T]):
+        x: Any
+    """)
+
 
 class GenericFeatureTest(test_base.TargetPython3FeatureTest):
   """Tests for User-defined Generic Type."""

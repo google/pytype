@@ -446,6 +446,9 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
   def isinstance_TypeParameter(self):
     return isinstance(self, TypeParameter)
 
+  def isinstance_TypeParameterInstance(self):
+    return isinstance(self, TypeParameterInstance)
+
   def isinstance_Union(self):
     return isinstance(self, Union)
 
@@ -825,7 +828,7 @@ class Instance(SimpleValue):
       return
     all_formal_type_parameters = datatypes.AliasingMonitorDict()
     abstract_utils.parse_formal_type_parameters(
-        self.cls, None, all_formal_type_parameters)
+        self.cls, None, all_formal_type_parameters, self._container)
     self._instance_type_parameters.uf = all_formal_type_parameters.uf
     for name, param in all_formal_type_parameters.items():
       if param is None:
@@ -3377,7 +3380,18 @@ class InterpreterFunction(SignedFunction):
           for k, v in subst.items():
             if k in inst.instance_type_parameters:
               value = inst.instance_type_parameters[k].AssignToNewVariable(node)
-              value.PasteVariable(v, node)
+              if all(isinstance(val, Unknown) for val in v.data):
+                for param in inst.cls.template:
+                  if subst.same_name(k, param.full_name):
+                    value.PasteVariable(param.instantiate(node), node)
+                    break
+                else:
+                  # See GenericFeatureTest.test_reinherit_generic in
+                  # tests/py3/test_generic. This can happen if one generic class
+                  # inherits from another and separately reuses a TypeVar.
+                  value.PasteVariable(v, node)
+              else:
+                value.PasteVariable(v, node)
               yield function.Mutation(inst, k, value)
     # Optimization: return a generator to avoid iterating over the mutations an
     # extra time.
@@ -3447,6 +3461,8 @@ class InterpreterFunction(SignedFunction):
           extra_key = (self.get_first_opcode(), name)
           node, callargs[name] = self.vm.annotations_util.init_annotation(
               node, name, annotations[name], extra_key=extra_key)
+    mutations = self._mutations_generator(node, first_arg, substs)
+    node = abstract_utils.apply_mutations(node, mutations)
     try:
       frame = self.vm.make_frame(
           node, self.code, self.f_globals, self.f_locals, callargs,
@@ -3537,8 +3553,6 @@ class InterpreterFunction(SignedFunction):
         ret = Coroutine(self.vm, ret, node2).to_variable(node2)
       node_after_call = node2
     self._inner_cls_check(frame)
-    mutations = self._mutations_generator(node_after_call, first_arg, substs)
-    node_after_call = abstract_utils.apply_mutations(node_after_call, mutations)
     self._call_cache[callkey] = ret, self.vm.remaining_depth()
     if self._store_call_records or self.vm.store_all_calls:
       self._call_records.append((callargs, ret, node_after_call))

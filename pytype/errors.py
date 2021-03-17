@@ -9,6 +9,7 @@ import sys
 from typing import Iterable, Optional, Union
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import class_mixin
 from pytype import debug
 from pytype import function
@@ -1034,9 +1035,10 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("reveal-type")
   def reveal_type(self, stack, node, var):
-    types = [self._print_as_actual_type(b.data)
-             for b in var.bindings
-             if node.HasCombination([b])]
+    types = [
+        self._print_as_actual_type(b.data)
+        for b in abstract_utils.expand_type_parameter_instances(var.bindings)
+        if node.HasCombination([b])]
     self.error(stack, self._join_printed_types(types))
 
   @_error_name("annotation-type-mismatch")
