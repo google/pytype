@@ -11,7 +11,7 @@
       * [Pytype's pyi stub files](#pytypes-pyi-stub-files)
       * [Compatibility](#compatibility)
 
-<!-- Added by: mdemello, at: 2020-08-10T13:15-07:00 -->
+<!-- Added by: rechen, at: 2021-03-17T15:54-07:00 -->
 
 <!--te-->
 
@@ -288,7 +288,7 @@ syntax; the one-type-comment-per-parameter syntax isn't supported
 [pep-484-the-typing-module]: https://www.python.org/dev/peps/pep-0484/#the-typing-module
 [pep-526]: https://www.python.org/dev/peps/pep-0526/
 [per-parameter-type-comments-bug]: https://github.com/google/pytype/issues/49
-[pyi-examples]: https://github.com/python/typeshed/tree/master/stdlib/2
+[pyi-examples]: https://github.com/python/typeshed/tree/master/stdlib
 [stdtypes]: https://docs.python.org/2/library/stdtypes.html
 
 <!-- References with different internal and external versions -->
