@@ -373,6 +373,8 @@ class CallTracer(vm.VirtualMachine):
     elif len(good_instances) != len(instance.bindings):
       # __new__ returned some extra possibilities we don't need.
       instance = self.join_bindings(node, good_instances)
+    for instance_value in instance.data:
+      val.data.register_canonical_instance(instance_value)
     for name, methodvar in sorted(val.data.members.items()):
       if name in self._CONSTRUCTORS:
         continue  # We already called this method during initialization.

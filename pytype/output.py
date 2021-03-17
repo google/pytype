@@ -628,13 +628,33 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           else:
             constants[name].add_type(value.to_type(node))
 
-    # instance-level attributes
-    for instance in set(v.instances):
+    # Instance-level attributes: all attributes from 'canonical' instances (that
+    # is, ones created by analyze.py:analyze_class()) are added. Attributes from
+    # non-canonical instances are added if their canonical values do not contain
+    # type parameters.
+    ignore = set(annotated_names)
+    canonical_attributes = set()
+
+    def add_attributes_from(instance):
       for name, member in instance.members.items():
-        if name in CLASS_LEVEL_IGNORE or name in annotated_names:
+        if name in CLASS_LEVEL_IGNORE or name in ignore:
           continue
         for value in member.FilteredData(self.vm.exitpoint, strict=False):
-          constants[name].add_type(value.to_type(node))
+          typ = value.to_type(node)
+          collector = visitors.CollectTypeParameters()
+          typ.Visit(collector)
+          if collector.params:
+            # This attribute's type comes from an annotation that contains a
+            # type parameter; we do not want to merge in substituted values of
+            # the type parameter.
+            canonical_attributes.add(name)
+          constants[name].add_type(typ)
+
+    for instance in v.canonical_instances:
+      add_attributes_from(instance)
+    ignore |= canonical_attributes
+    for instance in v.instances - v.canonical_instances:
+      add_attributes_from(instance)
 
     for name in list(methods):
       if name in constants:

@@ -2783,6 +2783,9 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
     self.members = datatypes.MonitorDict(members)
     class_mixin.Class.init_mixin(self, cls)
     self.instances = set()  # filled through register_instance
+    # instances created by analyze.py for the purpose of analyzing this class,
+    # a subset of 'instances'. Filled through register_canonical_instance.
+    self.canonical_instances = set()
     self.slots = self._convert_slots(members.get("__slots__"))
     self.is_dynamic = self.compute_is_dynamic()
     log.info("Created class: %r", self)
@@ -2925,6 +2928,9 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
 
   def register_instance(self, instance):
     self.instances.add(instance)
+
+  def register_canonical_instance(self, instance):
+    self.canonical_instances.add(instance)
 
   def bases(self):
     return self._bases
