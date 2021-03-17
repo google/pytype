@@ -241,14 +241,14 @@ class CallTracer(vm.VirtualMachine):
       bound.AddBinding(m.property_get(instance_var, is_cls), [], node)
     return bound
 
-  def _instantiate_binding(self, node0, cls):
+  def _instantiate_binding(self, node0, cls, container):
     """Instantiate a class binding."""
     node1, new = cls.data.get_own_new(node0, cls)
     if not new or (
         any(not isinstance(f, abstract.InterpreterFunction) for f in new.data)):
       # This assumes that any inherited __new__ method defined in a pyi file
       # returns an instance of the current class.
-      return node0, cls.data.instantiate(node0)
+      return node0, cls.data.instantiate(node0, container=container)
     instance = self.program.NewVariable()
     nodes = []
     for b in new.bindings:
@@ -261,11 +261,11 @@ class CallTracer(vm.VirtualMachine):
       nodes.append(node4)
     return self.join_cfg_nodes(nodes), instance
 
-  def _instantiate_var(self, node, clsv):
+  def _instantiate_var(self, node, clsv, container):
     """Build an (dummy) instance from a class, for analyzing it."""
     n = self.program.NewVariable()
     for cls in clsv.Bindings(node, strict=False):
-      node, var = self._instantiate_binding(node, cls)
+      node, var = self._instantiate_binding(node, cls, container)
       n.PasteVariable(var)
     return node, n
 
@@ -288,7 +288,7 @@ class CallTracer(vm.VirtualMachine):
           for child in v.instance_type_parameters.values():
             values.extend(child.data)
 
-  def init_class(self, node, cls, extra_key=None):
+  def init_class(self, node, cls, container=None, extra_key=None):
     """Instantiate a class, and also call __init__.
 
     Calling __init__ can be expensive, so this method caches its created
@@ -297,6 +297,9 @@ class CallTracer(vm.VirtualMachine):
     Args:
       node: The current node.
       cls: The class to instantiate.
+      container: Optionally, a container to pass to the class's instantiate()
+        method, so that type parameters in the container's template are
+        instantiated to TypeParameterInstance.
       extra_key: Optionally, extra information about the location at which the
         instantion occurs. By default, this method keys on the current opcode
         and the class, which sometimes isn't enough to disambiguate callers
@@ -309,7 +312,7 @@ class CallTracer(vm.VirtualMachine):
     instance = self._instance_cache.get(key)
     if not instance or isinstance(instance, _Initializing):
       clsvar = cls.to_variable(node)
-      node, instance = self._instantiate_var(node, clsvar)
+      node, instance = self._instantiate_var(node, clsvar, container)
       if key in self._instance_cache:
         # We've encountered a recursive pattern such as
         # class A:

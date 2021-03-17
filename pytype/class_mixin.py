@@ -335,12 +335,12 @@ class Class(metaclass=mixin.MixinMeta):
       node = self._call_method(node, value, method, function.Args(()))
     return node
 
-  def _new_instance(self):
+  def _new_instance(self, container):
     # We allow only one "instance" per code location, regardless of call stack.
     key = self.vm.frame.current_opcode
     assert key
     if key not in self._instance_cache:
-      self._instance_cache[key] = self._to_instance()
+      self._instance_cache[key] = self._to_instance(container)
     return self._instance_cache[key]
 
   def call(self, node, value, args):
@@ -348,7 +348,7 @@ class Class(metaclass=mixin.MixinMeta):
       self.vm.errorlog.not_instantiable(self.vm.frames, self)
     node, variable = self._call_new_and_init(node, value, args)
     if variable is None:
-      value = self._new_instance()
+      value = self._new_instance(None)
       variable = self.vm.program.NewVariable()
       val = variable.AddBinding(value, [], node)
       node = self._call_init(node, val, args)

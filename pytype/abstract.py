@@ -296,11 +296,10 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
     Returns:
       The instance.
     """
-    del container
-    return self._to_instance().to_variable(node)
+    return self._to_instance(container).to_variable(node)
 
-  def _to_instance(self):
-    return Instance(self, self.vm)
+  def _to_instance(self, container):
+    return Instance(self, self.vm, container=container)
 
   def to_annotation_container(self):
     if self.full_name == "builtins.tuple":
@@ -814,10 +813,11 @@ class SimpleValue(BaseValue):
 class Instance(SimpleValue):
   """An instance of some object."""
 
-  def __init__(self, cls, vm):
+  def __init__(self, cls, vm, container=None):
     super().__init__(cls.name, vm)
     self.cls = cls
     self._instance_type_parameters_loaded = False
+    self._container = container
     cls.register_instance(self)
 
   def _load_instance_type_parameters(self):
@@ -834,7 +834,7 @@ class Instance(SimpleValue):
         self._instance_type_parameters[name] = value
       else:
         self._instance_type_parameters[name] = param.instantiate(
-            self.vm.root_node, self)
+            self.vm.root_node, self._container or self)
     # We purposely set this flag at the very end so that accidentally accessing
     # instance_type_parameters during loading will trigger an obvious crash due
     # to infinite recursion, rather than silently returning an incomplete dict.
@@ -2305,7 +2305,7 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
       return self.formal_type_parameters[abstract_utils.T].instantiate(
           node, container)
     elif self.vm.frame and self.vm.frame.current_opcode:
-      return self._new_instance().to_variable(node)
+      return self._new_instance(container).to_variable(node)
     else:
       return super().instantiate(node, container)
 
@@ -2943,7 +2943,7 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
 
   def instantiate(self, node, container=None):
     if self.vm.frame and self.vm.frame.current_opcode:
-      return self._new_instance().to_variable(node)
+      return self._new_instance(container).to_variable(node)
     else:
       # When the analyze_x methods in CallTracer instantiate classes in
       # preparation for analysis, often there is no frame on the stack yet, or
