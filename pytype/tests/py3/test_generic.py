@@ -609,7 +609,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       from typing import Any, Generic, TypeVar
       T = TypeVar('T')
       class Foo(Generic[T]):
-        x: Any
+        x: T
         def __init__(self, x: T) -> None: ...
         def f(self) -> T: ...
       def g() -> int: ...
@@ -633,7 +633,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       S = TypeVar('S')
       T = TypeVar('T')
       class Foo(Generic[T]):
-        x: Any
+        x: T
         def __init__(self, x: T) -> None: ...
         def f(self, x: S) -> Tuple[S, T]: ...
       def g(x) -> Tuple[str, int]: ...
@@ -670,10 +670,34 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       from typing import Any, Generic, TypeVar
       T = TypeVar('T')
       class Foo(Generic[T]):
-        x: Any
+        x: T
         def __init__(self, x: T) -> None: ...
       def f(x: Foo[int]) -> int: ...
       def g(x: Any) -> Foo[int]: ...
+    """)
+
+  def test_constructor_typevar_container(self):
+    ty = self.Infer("""
+      from typing import Generic, List, TypeVar
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        def __init__(self, x: List[T]):
+          self.x = x
+          self.y = x[0]
+        def f(self) -> T:
+          return self.y
+      def g():
+        return Foo([0]).f()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Generic, List, TypeVar
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        x: List[T]
+        y: T
+        def __init__(self, x: List[T]) -> None: ...
+        def f(self) -> T: ...
+      def g() -> int: ...
     """)
 
   def test_reinherit_generic(self):
@@ -693,7 +717,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       from typing import Any, Generic, TypeVar
       T = TypeVar('T')
       class Foo(Generic[T]):
-        x: Any
+        x: T
         def __init__(self, x: T) -> None: ...
       class Bar(Foo, Generic[T]):
         x: Any

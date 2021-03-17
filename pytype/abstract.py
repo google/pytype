@@ -3454,13 +3454,29 @@ class InterpreterFunction(SignedFunction):
     annotations = self.vm.annotations_util.sub_annotations(
         node, sig.annotations, substs, instantiate_unbound=False)
     if sig.has_param_annotations:
+      if first_arg and sig.param_names[0] == "self":
+        try:
+          maybe_container = abstract_utils.get_atomic_value(first_arg)
+        except abstract_utils.ConversionError:
+          container = None
+        else:
+          cls = maybe_container.cls
+          if (isinstance(cls, InterpreterClass) or
+              isinstance(cls, ParameterizedClass) and
+              isinstance(cls.base_cls, InterpreterClass)):
+            container = maybe_container
+          else:
+            container = None
+      else:
+        container = None
       for name in callargs:
         if (name in annotations and (not self.is_attribute_of_class or
                                      self.argcount(node) == 0 or
                                      name != sig.param_names[0])):
           extra_key = (self.get_first_opcode(), name)
           node, callargs[name] = self.vm.annotations_util.init_annotation(
-              node, name, annotations[name], extra_key=extra_key)
+              node, name, annotations[name], container=container,
+              extra_key=extra_key)
     mutations = self._mutations_generator(node, first_arg, substs)
     node = abstract_utils.apply_mutations(node, mutations)
     try:

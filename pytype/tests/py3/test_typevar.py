@@ -399,7 +399,7 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       from typing import TypeVar, Generic, Any
       T = TypeVar('T')
       class A(Generic[T]):
-          _foo: Any
+          _foo: T
           foo: Any
           def __init__(self, foo: T) -> None: ...
     """)
@@ -502,6 +502,17 @@ class TypeVarTestPy3(test_base.TargetPython3FeatureTest):
         @abstractmethod
         def f(cls: Type[T]) -> T:
           return cls()
+    """)
+
+  def test_split(self):
+    self.Check("""
+      from typing import AnyStr, Generic
+      class Foo(Generic[AnyStr]):
+        def __init__(self, x: AnyStr):
+          if isinstance(x, str):
+            self.x = x
+          else:
+            self.x = x.decode('utf-8')
     """)
 
 

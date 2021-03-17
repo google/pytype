@@ -53,6 +53,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
   def __init__(self, vm):
     super().__init__(vm)
     self._output_mode = Converter.OutputMode.NORMAL
+    self._scopes = []
 
   @contextlib.contextmanager
   def set_output_mode(self, mode):
@@ -235,7 +236,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     if isinstance(v, (abstract.Empty, typing_overlay.NoReturn)):
       return pytd.NothingType()
     elif isinstance(v, abstract.TypeParameterInstance):
-      if v.instance.get_instance_type_parameter(v.full_name).bindings:
+      if v.module in self._scopes:
+        return self._typeparam_to_def(node, v.param, v.param.name)
+      elif v.instance.get_instance_type_parameter(v.full_name).bindings:
         # The type parameter was initialized. Set the view to None, since we
         # don't include v.instance in the view.
         return pytd_utils.JoinTypes(
@@ -573,6 +576,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
 
   def _class_to_def(self, node, v, class_name):
     """Convert an InterpreterClass to a PyTD definition."""
+    self._scopes.append(class_name)
     methods = {}
     constants = collections.defaultdict(pytd_utils.TypeBuilder)
 
@@ -707,6 +711,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     for base in missing_bases:
       base_cls = self.value_to_pytd_def(node, base, base.name)
       cls = pytd_utils.MergeBaseClass(cls, base_cls)
+    self._scopes.pop()
     return cls
 
   def _typeparam_to_def(self, node, v, name):

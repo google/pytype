@@ -245,8 +245,10 @@ class BinaryPredicate(ObjectPredicate):
   """
 
   def run(self, node, args, result):
-    for left in args.posargs[0].bindings:
-      for right in args.posargs[1].bindings:
+    for left in abstract_utils.expand_type_parameter_instances(
+        args.posargs[0].bindings):
+      for right in abstract_utils.expand_type_parameter_instances(
+          args.posargs[1].bindings):
         node, pyval = self._call_predicate(node, left, right)
         result.AddBinding(self._vm_values[pyval],
                           source_set=(left, right), where=node)
