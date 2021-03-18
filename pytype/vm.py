@@ -714,7 +714,7 @@ class VirtualMachine:
     return abstract.NativeFunction(name, method, self)
 
   def make_frame(self, node, code, f_globals, f_locals, callargs=None,
-                 closure=None, new_locals=False, func=None, first_posarg=None):
+                 closure=None, new_locals=False, func=None, first_arg=None):
     """Create a new frame object, using the given args, globals and locals."""
     if any(code is f.f_code for f in self.frames):
       log.info("Detected recursion in %s", code.co_name or code.co_filename)
@@ -733,7 +733,7 @@ class VirtualMachine:
 
     return frame_state.Frame(node, self, code, f_globals, f_locals,
                              self.frame, callargs or {}, closure, func,
-                             first_posarg)
+                             first_arg)
 
   def simple_stack(self, opcode=None):
     """Get a stack of simple frames.
@@ -1642,12 +1642,12 @@ class VirtualMachine:
 
   def _is_classmethod_cls_arg(self, var):
     """True if var is the first arg of a class method in the current frame."""
-    if not (self.frame.func and self.frame.first_posarg):
+    if not (self.frame.func and self.frame.first_arg):
       return False
 
     func = self.frame.func.data
     if func.is_classmethod or func.name.rsplit(".")[-1] == "__new__":
-      is_cls = not set(var.data) - set(self.frame.first_posarg.data)
+      is_cls = not set(var.data) - set(self.frame.first_arg.data)
       return is_cls
     return False
 
@@ -2248,6 +2248,7 @@ class VirtualMachine:
     state, (val, obj) = state.popn(2)
     # If `obj` is a single class or an instance of one, then grab its
     # __annotations__ dict so we can type-check the new attribute value.
+    check_attribute_types = self.options.check_attribute_types
     try:
       obj_val = abstract_utils.get_atomic_value(obj)
     except abstract_utils.ConversionError:
@@ -2279,10 +2280,15 @@ class VirtualMachine:
           state = state.change_cfg_node(node)
         else:
           annotations_dict = None
+        # In a PyTDClass, we can't distinguish between an inferred type and an
+        # annotation. Even though we don't check against the attribute type, we
+        # still apply it so that setting an attribute value on an instance of a
+        # class doesn't affect the attribute type in other instances.
+        check_attribute_types = False
       else:
         annotations_dict = None
-    val = self._apply_annotation(state, op, name, val, annotations_dict,
-                                 self.options.check_attribute_types)
+    val = self._apply_annotation(
+        state, op, name, val, annotations_dict, check_attribute_types)
     state = state.forward_cfg_node()
     state = self.store_attr(state, obj, name, val)
     state = state.forward_cfg_node()

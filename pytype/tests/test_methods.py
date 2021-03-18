@@ -805,7 +805,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     ty, _ = self.InferWithErrors("""
       def f():
         pass
-      f.func_name = 3.1415  # annotation-type-mismatch
+      f.func_name = 3.1415
       def g():
         return f.func_name
       g()

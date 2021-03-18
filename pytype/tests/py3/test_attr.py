@@ -392,4 +392,118 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     """)
 
 
+class TestPyiAttrs(test_base.TargetPython3FeatureTest):
+  """Tests for @attr.s in pyi files."""
+
+  def test_basic(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import attr
+        @attr.s
+        class A:
+          x: int
+          y: str
+      """)
+      self.Check("""
+        import foo
+        x = foo.A(10, 'hello')
+      """, pythonpath=[d.path])
+
+  def test_type_mismatch(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import attr
+        @attr.s
+        class A:
+          x: int
+          y: str
+      """)
+      self.CheckWithErrors("""
+        import foo
+        x = foo.A(10, 20)  # wrong-arg-types
+      """, pythonpath=[d.path])
+
+  def test_subclass(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import attr
+        @attr.s
+        class A:
+          x: bool
+          y: int
+      """)
+      ty = self.Infer("""
+        import attr
+        import foo
+        @attr.s(auto_attribs=True)
+        class Foo(foo.A):
+          z: str = "hello"
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        attr: module
+        foo: module
+        class Foo(foo.A):
+          z: str
+          def __init__(self, x: bool, y: int, z: str = ...) -> None: ...
+      """)
+
+  def test_subclass_from_same_pyi(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import attr
+        @attr.s
+        class A:
+          x: bool
+          y: int
+
+        @attr.s
+        class B(A):
+          z: str
+      """)
+      ty = self.Infer("""
+        import attr
+        import foo
+        @attr.s(auto_attribs=True)
+        class Foo(foo.B):
+          a: str = "hello"
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        attr: module
+        foo: module
+        class Foo(foo.B):
+          a: str
+          def __init__(self, x: bool, y: int, z: str, a: str = ...) -> None: ...
+      """)
+
+  def test_subclass_from_different_pyi(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("bar.pyi", """
+        import attr
+        @attr.s
+        class A:
+          x: bool
+          y: int
+      """)
+      d.create_file("foo.pyi", """
+        import attr
+        import bar
+        @attr.s
+        class B(bar.A):
+          z: str
+      """)
+      ty = self.Infer("""
+        import attr
+        import foo
+        @attr.attrs(auto_attribs=True)
+        class Foo(foo.B):
+          a: str = "hello"
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        attr: module
+        foo: module
+        class Foo(foo.B):
+          a: str
+          def __init__(self, x: bool, y: int, z: str, a: str = ...) -> None: ...
+      """)
+
 test_base.main(globals(), __name__ == "__main__")

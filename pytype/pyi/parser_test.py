@@ -1253,7 +1253,6 @@ class FunctionTest(_ParserTestBase):
     class Foo:
         x: int
         y: str
-        def __init__(self, x: int, y: str = ...) -> None: ...
     """)
 
   def test_dataclass_default_error(self):
@@ -1263,7 +1262,7 @@ class FunctionTest(_ParserTestBase):
       class Foo:
         x: int = ...
         y: str
-    """, None, "non-default argument y follows default arguments")
+    """, None, "non-default argument y follows default argument x")
 
   def test_empty_body(self):
     self.check("def foo() -> int: ...")

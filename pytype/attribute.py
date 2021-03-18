@@ -86,15 +86,19 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         param_var = obj.param.instantiate(self.vm.root_node)
       results = []
       nodes = []
-      for v in param_var.data:
-        node2, ret = self.get_attribute(node, v, name, valself)
+      for b in param_var.bindings:
+        node2, ret = self.get_attribute(node, b.data, name, valself)
         if ret is None:
-          return node, None
+          if b.IsVisible(node):
+            return node, None
         else:
           results.append(ret)
           nodes.append(node2)
-      node = self.vm.join_cfg_nodes(nodes)
-      return node, self.vm.join_variables(node, results)
+      if nodes:
+        node = self.vm.join_cfg_nodes(nodes)
+        return node, self.vm.join_variables(node, results)
+      else:
+        return node, self.vm.new_unsolvable(node)
     elif isinstance(obj, abstract.Empty):
       return node, None
     else:

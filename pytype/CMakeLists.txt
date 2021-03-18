@@ -84,6 +84,7 @@ py_library(
     .mixin
     pytype.pyc.pyc
     pytype.pytd.pytd
+    pytype.pytd.codegen.codegen
     pytype.typegraph.cfg
     pytype.typegraph.cfg_utils
 )
@@ -280,6 +281,7 @@ py_library(
   DEPS
     ._utils
     .abstract
+    .abstract_utils
     .class_mixin
     .debug
     .function

@@ -197,5 +197,23 @@ class TestSuperPython3Featue(test_base.TargetPython3FeatureTest):
                [super().f() for _ in range(1)]][0]
     """)
 
+  def test_keyword_arg(self):
+    ty = self.Infer("""
+      class Foo:
+        def f(self):
+          return 42
+      class Bar(Foo):
+        def f(self):
+          return super().f()
+      x = Bar.f(self=Bar())
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Foo:
+        def f(self) -> int: ...
+      class Bar(Foo):
+        def f(self) -> int: ...
+      x: int
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

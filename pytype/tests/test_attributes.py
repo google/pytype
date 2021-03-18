@@ -871,5 +871,24 @@ class TestAttributes(test_base.TargetIndependentTest):
         y.return_value.rumpelstiltskin = 1
       """, pythonpath=[d.path])
 
+  def test_typevar(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Generic, Type, TypeVar
+        T = TypeVar('T')
+        class Foo(Generic[T]):
+          x: Type[T]
+      """)
+      self.Check("""
+        import foo
+        from typing import Any, Type
+        class Bar:
+          x = None  # type: Type[Any]
+          def __init__(self, foo):
+            self.x = foo.x
+        def f():
+          return Bar(foo.Foo())
+      """, pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")

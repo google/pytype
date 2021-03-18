@@ -490,5 +490,12 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
         pass
     """)
 
+  def test_array_frombytes(self):
+    self.Check("""
+      import array
+      def f(x: array.array, y: bytes):
+        return x.frombytes(y)
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

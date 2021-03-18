@@ -3,6 +3,7 @@
 # We maintain our own array.pytd, rather than using array.pyi from typeshed,
 # because this file makes use of mutable parameters.
 
+import sys
 from typing import (Any, Generic, IO, Iterable, Sequence, TypeVar,
                     Union, overload, Iterator, Text, Tuple, BinaryIO, List)
 
@@ -38,6 +39,8 @@ class array(Generic[_T]):
         raise RuntimeError()
     def count(self) -> int: ...
     def extend(self, x: Sequence[_T]) -> None: ...
+    if sys.version_info >= (3, 2):
+        def frombytes(self, __buffer: bytes) -> None: ...
     def fromlist(self, list: List[_T]) -> None:
         raise EOFError()
         raise IOError()

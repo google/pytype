@@ -11,6 +11,27 @@ from pytype.pytd import mro
 log = logging.getLogger(__name__)
 
 
+# Classes have a metadata dictionary that can store arbitrary metadata for
+# various overlays. We define the dictionary keys here so that they can be
+# shared by abstract.py and the overlays.
+# TODO(mdemello): We choose the key based on the attribute used by the actual
+# decorator for a similar purpose, but we never actually read that attribute. We
+# should just use the decorator name as a key and eliminate one level of
+# indirection.
+_METADATA_KEYS = {
+    "dataclasses.dataclass": "__dataclass_fields__",
+    # attr.s gets resolved to attr._make.attrs in pyi files but intercepted by
+    # the attr overlay as attr.s when processing bytecode.
+    "attr.s": "__attrs_attrs__",
+    "attr.attrs": "__attrs_attrs__",
+    "attr._make.attrs": "__attrs_attrs__"
+}
+
+
+def get_metadata_key(decorator):
+  return _METADATA_KEYS.get(decorator)
+
+
 class Attribute:
   """Represents a class member variable.
 
@@ -24,12 +45,29 @@ class Attribute:
   Used in metadata (see Class.metadata below).
   """
 
-  def __init__(self, name, typ, init, kw_only, default):
+  def __init__(self, name, typ, init, kw_only, default, pytd_const=None):
     self.name = name
     self.typ = typ
     self.init = init
     self.kw_only = kw_only
     self.default = default
+    # Store the pytd_const if we have generated this via from_pytd_constant.
+    self.pytd_const = pytd_const
+
+  @classmethod
+  def from_pytd_constant(cls, const, vm):
+    typ = vm.convert.constant_to_value(const.type)
+    val = const.value and vm.convert.constant_to_value(const.value)
+    # Dataclasses and similar decorators in pytd files cannot set init and
+    # kw_only properties.
+    return cls(name=const.name, typ=typ, init=True, kw_only=False, default=val,
+               pytd_const=const)
+
+  def to_pytd_constant(self):
+    # TODO(mdemello): This is a bit fragile, but we only call this when
+    # constructing a dataclass from a PyTDClass, where the initial Attribute
+    # will have been created from a parent PyTDClass.
+    return self.pytd_const
 
   def __repr__(self):
     return str({"name": self.name, "typ": self.typ, "init": self.init,
@@ -297,12 +335,12 @@ class Class(metaclass=mixin.MixinMeta):
       node = self._call_method(node, value, method, function.Args(()))
     return node
 
-  def _new_instance(self):
+  def _new_instance(self, container):
     # We allow only one "instance" per code location, regardless of call stack.
     key = self.vm.frame.current_opcode
     assert key
     if key not in self._instance_cache:
-      self._instance_cache[key] = self._to_instance()
+      self._instance_cache[key] = self._to_instance(container)
     return self._instance_cache[key]
 
   def call(self, node, value, args):
@@ -310,7 +348,7 @@ class Class(metaclass=mixin.MixinMeta):
       self.vm.errorlog.not_instantiable(self.vm.frames, self)
     node, variable = self._call_new_and_init(node, value, args)
     if variable is None:
-      value = self._new_instance()
+      value = self._new_instance(None)
       variable = self.vm.program.NewVariable()
       val = variable.AddBinding(value, [], node)
       node = self._call_init(node, val, args)
@@ -363,7 +401,7 @@ class Class(metaclass=mixin.MixinMeta):
     # calc MRO and replace them with original base classes
     return tuple(base2cls[base] for base in mro.MROMerge(newbases))
 
-  def get_base_class_attrs(self, cls_attrs, metadata_key):
+  def _get_base_class_attrs(self, cls_attrs, metadata_key):
     """Traverse the MRO and collect base class attributes for metadata_key."""
     # We only add an attribute if it hasn't been defined before.
     base_attrs = []
@@ -379,3 +417,28 @@ class Class(metaclass=mixin.MixinMeta):
           taken_attr_names.add(a.name)
           base_attrs.append(a)
     return base_attrs
+
+  def compute_attr_metadata(self, own_attrs, decorator):
+    """Sets combined metadata based on inherited and own attrs.
+
+    Args:
+      own_attrs: The attrs defined explicitly in this class
+      decorator: The fully qualified decorator name
+
+    Returns:
+      The list of combined attrs.
+    """
+    # We want this to crash if 'decorator' is not in _METADATA_KEYS
+    assert decorator in _METADATA_KEYS, f"No metadata key for {decorator}"
+    key = _METADATA_KEYS[decorator]
+    base_attrs = self._get_base_class_attrs(own_attrs, key)
+    attrs = base_attrs + own_attrs
+    # Stash attributes in class metadata for subclasses.
+    self.metadata[key] = attrs
+    return attrs
+
+  def init_attr_metadata_from_pytd(self, decorator, fields):
+    """Initialise metadata[key] with a list of Attributes."""
+    # Called in abstract.PyTDClass.__init__
+    own_attrs = [Attribute.from_pytd_constant(c, self.vm) for c in fields]
+    self.compute_attr_metadata(own_attrs, decorator)

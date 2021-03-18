@@ -3,7 +3,7 @@
 import collections
 import hashlib
 import logging
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Iterable, Optional, Tuple, Union
 
 from pytype import compat
 from pytype import datatypes
@@ -325,13 +325,18 @@ def _merge_type(t0, t1, name, cls):
   raise GenericTypeError(cls, "Conflicting value for TypeVar %s" % name)
 
 
-def parse_formal_type_parameters(base, prefix, formal_type_parameters):
+def parse_formal_type_parameters(
+    base, prefix, formal_type_parameters, container=None):
   """Parse type parameters from base class.
 
   Args:
     base: base class.
     prefix: the full name of subclass of base class.
-    formal_type_parameters: the mapping of type parameter name to its type
+    formal_type_parameters: the mapping of type parameter name to its type.
+    container: An abstract value whose class template is used when prefix=None
+      to decide how to handle type parameters that are aliased to other type
+      parameters. Values that are in the class template are kept, while all
+      others are ignored.
 
   Raises:
     GenericTypeError: If the lazy types of type parameter don't match
@@ -348,6 +353,10 @@ def parse_formal_type_parameters(base, prefix, formal_type_parameters):
       formal_type_parameters.merge_from(
           base.base_cls.all_formal_type_parameters, merge)
     params = base.get_formal_type_parameters()
+    if getattr(container, "cls", None):
+      container_template = container.cls.template
+    else:
+      container_template = ()
     for name, param in params.items():
       if param.isinstance_TypeParameter():
         # We have type parameter renaming, e.g.,
@@ -356,6 +365,8 @@ def parse_formal_type_parameters(base, prefix, formal_type_parameters):
         if prefix:
           formal_type_parameters.add_alias(
               name, prefix + "." + param.name, merge)
+        elif param in container_template:
+          formal_type_parameters[name] = param
       else:
         # We have either a non-formal parameter, e.g.,
         # class Foo(List[int]), or a non-1:1 parameter mapping, e.g.,
@@ -757,3 +768,14 @@ def is_callable(value: _BaseValue):
   _, attr = value.vm.attribute_handler.get_attribute(
       value.vm.root_node, value.cls, "__call__")
   return attr is not None
+
+
+def expand_type_parameter_instances(bindings: Iterable[cfg.Binding]):
+  bindings = list(bindings)
+  while bindings:
+    b = bindings.pop(0)
+    if b.data.isinstance_TypeParameterInstance():
+      bindings = b.data.instance.get_instance_type_parameter(
+          b.data.name).bindings + bindings
+      continue
+    yield b

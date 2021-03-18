@@ -177,8 +177,9 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       annotations[name] = annot or self.vm.convert.unsolvable
     return annotations
 
-  def init_annotation(self, node, name, annot, extra_key=None):
-    node, value = self.vm.init_class(node, annot, extra_key=extra_key)
+  def init_annotation(self, node, name, annot, container=None, extra_key=None):
+    node, value = self.vm.init_class(
+        node, annot, container=container, extra_key=extra_key)
     for d in value.data:
       d.from_annotation = name
     return node, value

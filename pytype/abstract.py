@@ -31,6 +31,7 @@ from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
+from pytype.pytd.codegen import decorate
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 
@@ -295,11 +296,10 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
     Returns:
       The instance.
     """
-    del container
-    return self._to_instance().to_variable(node)
+    return self._to_instance(container).to_variable(node)
 
-  def _to_instance(self):
-    return Instance(self, self.vm)
+  def _to_instance(self, container):
+    return Instance(self, self.vm, container=container)
 
   def to_annotation_container(self):
     if self.full_name == "builtins.tuple":
@@ -445,6 +445,9 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
 
   def isinstance_TypeParameter(self):
     return isinstance(self, TypeParameter)
+
+  def isinstance_TypeParameterInstance(self):
+    return isinstance(self, TypeParameterInstance)
 
   def isinstance_Union(self):
     return isinstance(self, Union)
@@ -813,10 +816,11 @@ class SimpleValue(BaseValue):
 class Instance(SimpleValue):
   """An instance of some object."""
 
-  def __init__(self, cls, vm):
+  def __init__(self, cls, vm, container=None):
     super().__init__(cls.name, vm)
     self.cls = cls
     self._instance_type_parameters_loaded = False
+    self._container = container
     cls.register_instance(self)
 
   def _load_instance_type_parameters(self):
@@ -824,7 +828,7 @@ class Instance(SimpleValue):
       return
     all_formal_type_parameters = datatypes.AliasingMonitorDict()
     abstract_utils.parse_formal_type_parameters(
-        self.cls, None, all_formal_type_parameters)
+        self.cls, None, all_formal_type_parameters, self._container)
     self._instance_type_parameters.uf = all_formal_type_parameters.uf
     for name, param in all_formal_type_parameters.items():
       if param is None:
@@ -833,7 +837,7 @@ class Instance(SimpleValue):
         self._instance_type_parameters[name] = value
       else:
         self._instance_type_parameters[name] = param.instantiate(
-            self.vm.root_node, self)
+            self.vm.root_node, self._container or self)
     # We purposely set this flag at the very end so that accidentally accessing
     # instance_type_parameters during loading will trigger an obvious crash due
     # to infinite recursion, rather than silently returning an incomplete dict.
@@ -2304,7 +2308,7 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
       return self.formal_type_parameters[abstract_utils.T].instantiate(
           node, container)
     elif self.vm.frame and self.vm.frame.current_opcode:
-      return self._new_instance().to_variable(node)
+      return self._new_instance(container).to_variable(node)
     else:
       return super().instantiate(node, container)
 
@@ -2581,6 +2585,9 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
   """
 
   def __init__(self, name, pytd_cls, vm):
+    # Apply decorators first, in case they set any properties that later
+    # initialization code needs to read.
+    pytd_cls, decorated = decorate.process_class(pytd_cls)
     self.pytd_cls = pytd_cls
     super().__init__(name, vm)
     mm = {}
@@ -2600,6 +2607,36 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     mixin.LazyMembers.init_mixin(self, mm)
     self.is_dynamic = self.compute_is_dynamic()
     class_mixin.Class.init_mixin(self, metaclass)
+    if decorated:
+      self._populate_decorator_metadata()
+
+  def _populate_decorator_metadata(self):
+    """Fill in class attribute metadata for decorators like @dataclass."""
+    key = None
+    keyed_decorator = None
+    for decorator in self.pytd_cls.decorators:
+      name = decorator.type.name
+      decorator_key = class_mixin.get_metadata_key(name)
+      if decorator_key:
+        if key:
+          error = f"Cannot apply both @{keyed_decorator} and @{decorator}."
+          self.vm.errorlog.invalid_annotation(self.vm.frames, self, error)
+        else:
+          key, keyed_decorator = decorator_key, decorator
+          self.init_attr_metadata_from_pytd(name, self.pytd_cls.constants)
+          self._recompute_init_from_metadata(key)
+
+  def _recompute_init_from_metadata(self, key):
+    # Some decorated classes (dataclasses e.g.) have their __init__ function
+    # set via traversing the MRO to collect initializers from decorated parent
+    # classes as well. Since we don't have access to the MRO when initially
+    # decorating the class, we recalculate the __init__ signature from the
+    # combined attribute list in the metadata.
+    attrs = self.metadata[key]
+    fields = [x.to_pytd_constant() for x in attrs]
+    self.pytd_cls = decorate.add_init_from_fields(self.pytd_cls, fields)
+    init = self.pytd_cls.Lookup("__init__")
+    self._member_map["__init__"] = init
 
   def get_own_methods(self):
     return {name for name, member in self._member_map.items()
@@ -2749,6 +2786,9 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
     self.members = datatypes.MonitorDict(members)
     class_mixin.Class.init_mixin(self, cls)
     self.instances = set()  # filled through register_instance
+    # instances created by analyze.py for the purpose of analyzing this class,
+    # a subset of 'instances'. Filled through register_canonical_instance.
+    self.canonical_instances = set()
     self.slots = self._convert_slots(members.get("__slots__"))
     self.is_dynamic = self.compute_is_dynamic()
     log.info("Created class: %r", self)
@@ -2892,6 +2932,9 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
   def register_instance(self, instance):
     self.instances.add(instance)
 
+  def register_canonical_instance(self, instance):
+    self.canonical_instances.add(instance)
+
   def bases(self):
     return self._bases
 
@@ -2903,7 +2946,7 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
 
   def instantiate(self, node, container=None):
     if self.vm.frame and self.vm.frame.current_opcode:
-      return self._new_instance().to_variable(node)
+      return self._new_instance(container).to_variable(node)
     else:
       # When the analyze_x methods in CallTracer instantiate classes in
       # preparation for analysis, often there is no frame on the stack yet, or
@@ -3323,13 +3366,13 @@ class InterpreterFunction(SignedFunction):
                    "the same type variable %s")
                   % (self.full_name, cls.full_name, item.name))
 
-  def _mutations_generator(self, node, first_posarg, substs):
+  def _mutations_generator(self, node, first_arg, substs):
     def generator():
       """Yields mutations."""
-      if not self.is_attribute_of_class or not first_posarg or not substs:
+      if not self.is_attribute_of_class or not first_arg or not substs:
         return
       try:
-        inst = abstract_utils.get_atomic_value(first_posarg, Instance)
+        inst = abstract_utils.get_atomic_value(first_arg, Instance)
       except abstract_utils.ConversionError:
         return
       if inst.cls.template:
@@ -3337,7 +3380,18 @@ class InterpreterFunction(SignedFunction):
           for k, v in subst.items():
             if k in inst.instance_type_parameters:
               value = inst.instance_type_parameters[k].AssignToNewVariable(node)
-              value.PasteVariable(v, node)
+              if all(isinstance(val, Unknown) for val in v.data):
+                for param in inst.cls.template:
+                  if subst.same_name(k, param.full_name):
+                    value.PasteVariable(param.instantiate(node), node)
+                    break
+                else:
+                  # See GenericFeatureTest.test_reinherit_generic in
+                  # tests/py3/test_generic. This can happen if one generic class
+                  # inherits from another and separately reuses a TypeVar.
+                  value.PasteVariable(v, node)
+              else:
+                value.PasteVariable(v, node)
               yield function.Mutation(inst, k, value)
     # Optimization: return a generator to avoid iterating over the mutations an
     # extra time.
@@ -3394,24 +3448,42 @@ class InterpreterFunction(SignedFunction):
       # We've matched an overload; remap the callargs using the implementation
       # so that optional parameters, etc, are correctly defined.
       callargs = self._map_args(node, args)
-    first_posarg = args.posargs[0] if args.posargs else None
+    first_arg = callargs.get(sig.param_names[0]) if sig.param_names else None
     # Keep type parameters without substitutions, as they may be needed for
     # type-checking down the road.
     annotations = self.vm.annotations_util.sub_annotations(
         node, sig.annotations, substs, instantiate_unbound=False)
     if sig.has_param_annotations:
+      if first_arg and sig.param_names[0] == "self":
+        try:
+          maybe_container = abstract_utils.get_atomic_value(first_arg)
+        except abstract_utils.ConversionError:
+          container = None
+        else:
+          cls = maybe_container.cls
+          if (isinstance(cls, InterpreterClass) or
+              isinstance(cls, ParameterizedClass) and
+              isinstance(cls.base_cls, InterpreterClass)):
+            container = maybe_container
+          else:
+            container = None
+      else:
+        container = None
       for name in callargs:
         if (name in annotations and (not self.is_attribute_of_class or
                                      self.argcount(node) == 0 or
                                      name != sig.param_names[0])):
           extra_key = (self.get_first_opcode(), name)
           node, callargs[name] = self.vm.annotations_util.init_annotation(
-              node, name, annotations[name], extra_key=extra_key)
+              node, name, annotations[name], container=container,
+              extra_key=extra_key)
+    mutations = self._mutations_generator(node, first_arg, substs)
+    node = abstract_utils.apply_mutations(node, mutations)
     try:
       frame = self.vm.make_frame(
           node, self.code, self.f_globals, self.f_locals, callargs,
           self.closure, new_locals=new_locals, func=func,
-          first_posarg=first_posarg)
+          first_arg=first_arg)
     except self.vm.VirtualMachineRecursionError:
       # If we've encountered recursion in a constructor, then we have another
       # incompletely initialized instance of the same class (or a subclass) at
@@ -3422,11 +3494,10 @@ class InterpreterFunction(SignedFunction):
       # as incomplete.
       self._set_callself_maybe_missing_members()
       return node, self.vm.new_unsolvable(node)
-    self_var = sig.param_names and callargs.get(sig.param_names[0])
     caller_is_abstract = abstract_utils.check_classes(
-        self_var, lambda cls: cls.is_abstract)
+        first_arg, lambda cls: cls.is_abstract)
     caller_is_protocol = abstract_utils.check_classes(
-        self_var, lambda cls: cls.is_protocol)
+        first_arg, lambda cls: cls.is_protocol)
     # We should avoid checking the return value against any return annotation
     # when we are analyzing an attribute of a protocol or an abstract class's
     # abstract method.
@@ -3498,8 +3569,6 @@ class InterpreterFunction(SignedFunction):
         ret = Coroutine(self.vm, ret, node2).to_variable(node2)
       node_after_call = node2
     self._inner_cls_check(frame)
-    mutations = self._mutations_generator(node_after_call, first_posarg, substs)
-    node_after_call = abstract_utils.apply_mutations(node_after_call, mutations)
     self._call_cache[callkey] = ret, self.vm.remaining_depth()
     if self._store_call_records or self.vm.store_all_calls:
       self._call_records.append((callargs, ret, node_after_call))

@@ -15,9 +15,6 @@ from pytype.overlays import classgen
 log = logging.getLogger(__name__)
 
 
-_DATACLASS_METADATA_KEY = "__dataclass_fields__"
-
-
 class DataclassOverlay(overlay.Overlay):
   """A custom overlay for the 'dataclasses' module."""
 
@@ -102,10 +99,7 @@ class Dataclass(classgen.Decorator):
           name=name, typ=typ, init=init, kw_only=False, default=orig)
       own_attrs.append(attr)
 
-    base_attrs = cls.get_base_class_attrs(own_attrs, _DATACLASS_METADATA_KEY)
-    attrs = base_attrs + own_attrs
-    # Stash attributes in class metadata for subclasses.
-    cls.metadata[_DATACLASS_METADATA_KEY] = attrs
+    attrs = cls.compute_attr_metadata(own_attrs, "dataclasses.dataclass")
 
     # Add an __init__ method if one doesn't exist already (dataclasses do not
     # overwrite an explicit __init__ method).
