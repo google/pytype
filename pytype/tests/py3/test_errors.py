@@ -235,6 +235,13 @@ class ErrorTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"str.*int"})
 
+  def test_silence_variable_mismatch(self):
+    self.Check("""
+      x = [
+          0,
+      ]  # type: None  # pytype: disable=annotation-type-mismatch
+    """)
+
 
 class InPlaceOperationsTest(test_base.TargetPython3BasicTest):
   """Test in-place operations."""
@@ -324,6 +331,26 @@ class ErrorTestPy3(test_base.TargetPython3FeatureTest):
         return x  # bad-return-type[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"int.*str"})
+
+  def test_silence_parameter_mismatch(self):
+    self.Check("""
+      def f(
+        x: int = 0.0,
+        y: str = '',
+        **kwargs,
+      ):  # pytype: disable=annotation-type-mismatch
+        pass
+    """)
+
+  def test_do_not_silence_parameter_mismatch(self):
+    self.CheckWithErrors("""
+      def f(
+        x: int = 0.0,
+        y: str = '',  # annotation-type-mismatch
+        **kwargs,
+      ):
+        pass  # pytype: disable=annotation-type-mismatch
+    """)
 
 
 class MatrixOperationsTest(test_base.TargetPython3FeatureTest):
