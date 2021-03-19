@@ -775,7 +775,8 @@ def expand_type_parameter_instances(bindings: Iterable[cfg.Binding]):
   while bindings:
     b = bindings.pop(0)
     if b.data.isinstance_TypeParameterInstance():
-      bindings = b.data.instance.get_instance_type_parameter(
-          b.data.name).bindings + bindings
-      continue
+      param_value = b.data.instance.get_instance_type_parameter(b.data.name)
+      if param_value.bindings:
+        bindings = param_value.bindings + bindings
+        continue
     yield b

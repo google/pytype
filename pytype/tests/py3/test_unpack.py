@@ -250,5 +250,30 @@ class TestUnpack(test_base.TargetPython3FeatureTest):
       y: List[Union[complex, int]]
     """)
 
+  def test_type_parameter_instance(self):
+    ty = self.Infer("""
+      from typing import Dict, Tuple
+
+      class Key:
+        pass
+      class Value:
+        pass
+
+      def foo(x: Dict[Tuple[Key, Value], str]):
+        ret = []
+        for k, v in sorted(x.items()):
+          key, value = k
+          ret.append(key)
+        return ret
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict, List, Tuple
+
+      class Key: ...
+      class Value: ...
+
+      def foo(x: Dict[Tuple[Key, Value], str]) -> List[Key]: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

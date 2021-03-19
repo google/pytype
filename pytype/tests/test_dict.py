@@ -124,5 +124,15 @@ class DictTest(test_base.TargetIndependentTest):
       else:
         self.assertMultiLineEqual(canonical, out)
 
+  def test_unpack_ordered_dict_value(self):
+    self.Check("""
+      import collections
+      def f():
+        d = collections.OrderedDict()
+        for k, (v1, v2) in d.items():
+          pass
+      f()
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

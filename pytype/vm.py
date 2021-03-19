@@ -2414,7 +2414,7 @@ class VirtualMachine:
     nontuple_seq = self.program.NewVariable()
     has_slurp = n_after > -1
     count = n_before + n_after + 1
-    for b in seq.bindings:
+    for b in abstract_utils.expand_type_parameter_instances(seq.bindings):
       tup = self._get_literal_sequence(b.data)
       if tup:
         if has_slurp and len(tup) >= count:
