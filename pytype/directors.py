@@ -450,13 +450,14 @@ class Director:
     """Uses the bytecode to adjust line numbers."""
     store_lines = set()
     make_function_lines = set()
-    all_opcode_lines = set()
+    non_load_lines = set()
     for opcode in itertools.chain.from_iterable(_collect_bytecode(code)):
       if opcode.name.startswith("STORE_"):
         store_lines.add(opcode.line)
       elif opcode.name == "MAKE_FUNCTION":
         make_function_lines.add(opcode.line)
-      all_opcode_lines.add(opcode.line)
+      if not opcode.name.startswith("LOAD_"):
+        non_load_lines.add(opcode.line)
 
     def adjust(line, allowed_lines, min_line=1):
       adjusted_line = line
@@ -504,7 +505,10 @@ class Director:
       lines = self._disables["annotation-type-mismatch"].lines
       for line, membership in sorted(lines.items()):
         min_line = line
-        while min_line not in all_opcode_lines and min_line > 1:
+        # In Python 3.8+, the MAKE_FUNCTION opcode's line number is the first
+        # line of the function signature, so we need to skip any LOAD_* opcodes
+        # in between.
+        while min_line not in non_load_lines and min_line > 1:
           min_line -= 1
         adjusted_line = adjust(
             line, store_lines | make_function_lines, min_line)
