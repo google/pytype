@@ -348,7 +348,9 @@ class PytypeRunner:
     # -j N     run N jobs in parallel (0 means infinity)
     # -v       show all command lines while building
     k = '0' if self.keep_going else '1'
-    c = os.path.dirname(self.ninja_file)
+    # relpath() prevents possibly sensitive directory info from appearing in
+    # ninja's "Entering directory" message.
+    c = os.path.relpath(os.path.dirname(self.ninja_file))
     command = _get_executable('ninja') + [
         '-k', k, '-C', c, '-j', str(self.jobs)]
     if logging.getLogger().isEnabledFor(logging.INFO):
