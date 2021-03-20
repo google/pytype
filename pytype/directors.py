@@ -51,6 +51,10 @@ class _LineSet:
     # [2, 5, 10] would disable lines 2, 3, 4, 10, 11, 12, ...
     self._transitions = []
 
+  @property
+  def lines(self):
+    return self._lines
+
   def set_line(self, line, membership):
     """Set whether a given line is a member of the set."""
     self._lines[line] = membership
@@ -446,11 +450,14 @@ class Director:
     """Uses the bytecode to adjust line numbers."""
     store_lines = set()
     make_function_lines = set()
+    non_load_lines = set()
     for opcode in itertools.chain.from_iterable(_collect_bytecode(code)):
       if opcode.name.startswith("STORE_"):
         store_lines.add(opcode.line)
       elif opcode.name == "MAKE_FUNCTION":
         make_function_lines.add(opcode.line)
+      if not opcode.name.startswith("LOAD_"):
+        non_load_lines.add(opcode.line)
 
     def adjust(line, allowed_lines, min_line=1):
       adjusted_line = line
@@ -492,3 +499,19 @@ class Director:
       elif adjusted_line != line:
         self._variable_annotations[adjusted_line] = annot
         del self._variable_annotations[line]
+
+    # Process annotation-type-mismatch directives.
+    if "annotation-type-mismatch" in self._disables:
+      lines = self._disables["annotation-type-mismatch"].lines
+      for line, membership in sorted(lines.items()):
+        min_line = line
+        # In Python 3.8+, the MAKE_FUNCTION opcode's line number is the first
+        # line of the function signature, so we need to skip any LOAD_* opcodes
+        # in between.
+        while min_line not in non_load_lines and min_line > 1:
+          min_line -= 1
+        adjusted_line = adjust(
+            line, store_lines | make_function_lines, min_line)
+        if adjusted_line and adjusted_line != line:
+          lines[adjusted_line] = membership
+          del lines[line]

@@ -105,6 +105,17 @@ class MultiNodeVisitor(visitors.Visitor):
     return X(*y)
 
 
+class SkipNodeVisitor(visitors.Visitor):
+  """A visitor that skips XY.y subtrees."""
+
+  def EnterXY(self, _):
+    return {"y"}
+
+  def VisitData(self, data):
+    """Visit Data nodes, and zero all data."""
+    return data.Replace(d1=0, d2=0, d3=0)
+
+
 # We want to test == and != so:
 # pylint: disable=g-generic-assert
 class TestNode(unittest.TestCase):
@@ -217,6 +228,16 @@ class TestNode(unittest.TestCase):
     self.assertEqual(repr(new_xy),
                      "XY(x=X(a=V(x=42), b=V(x=42)), y=XY(x=42, y=42))")
     self.assertEqual(repr(xy), xy_expected)  # check that xy is unchanged
+
+  def test_skip_visitor(self):
+    tree = XY(V(Data(1, 2, 3)), XY(Data(3, 4, 5), Data(6, 7, 8)))
+    init = ("XY(x=V(x=Data(d1=1, d2=2, d3=3)), y=XY(x=Data(d1=3, d2=4, d3=5), "
+            "y=Data(d1=6, d2=7, d3=8)))")
+    self.assertEqual(repr(tree), init)
+    new_tree = tree.Visit(SkipNodeVisitor())
+    exp = ("XY(x=V(x=Data(d1=0, d2=0, d3=0)), y=XY(x=Data(d1=3, d2=4, d3=5), "
+           "y=Data(d1=6, d2=7, d3=8)))")
+    self.assertEqual(repr(new_tree), exp)
 
   def test_recursion(self):
     """Test node.Node.Visit() for visitors that preserve attributes."""

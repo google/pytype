@@ -59,6 +59,10 @@ class Node:
   def __ge__(self, other):
     return self == other or self > other
 
+  def IterChildren(self):
+    for field in attr.fields(self.__class__):
+      yield field.name, getattr(self, field.name)
+
   def Visit(self, visitor, *args, **kwargs):
     """Visitor interface for transforming a tree of nodes to a new tree.
 
@@ -133,10 +137,12 @@ def _VisitNode(node, visitor, *args, **kwargs):
           Additionally, if the visitor has a "Enter<Name>" method, that method
           will be called on the original node before descending into it. If
           "Enter<Name>" returns False, the visitor will not visit children of
-          this node (the result of "Enter<Name>" is otherwise unused; in
-          particular it's OK to return None, which will be ignored).
-          ["Enter<Name>" is called pre-order; "Visit<Name> and "Leave<Name>" are
-          called post-order.]  A counterpart to "Enter<Name>" is "Leave<Name>",
+          this node. If "Enter<name>" returns a set of field names, those field
+          names will not be visited. Otherwise, "Enter<Name>" should return
+          None, to indicate that nodes will be visited normally.
+
+          "Enter<Name>" is called pre-order; "Visit<Name> and "Leave<Name>" are
+          called post-order.  A counterpart to "Enter<Name>" is "Leave<Name>",
           which is intended for any clean-up that "Enter<Name>" needs (other
           than that, it's redundant, and could be combined with "Visit<Name>").
     *args: Passed to visitor callbacks.
@@ -169,23 +175,31 @@ def _VisitNode(node, visitor, *args, **kwargs):
   if node_class_name not in visitor.visit_class_names:
     return node
 
+  skip_children = set()
   if node_class_name in visitor.enter_functions:
     # The visitor wants to be informed that we're descending into this part
     # of the tree.
     status = visitor.Enter(node, *args, **kwargs)
-    # Don't descend if Enter<Node> explicitly returns False, but not None,
-    # since None is the default return of Python functions.
     if status is False:  # pylint: disable=g-bool-id-comparison
+      # Don't descend if Enter<Node> explicitly returns False, but not None,
+      # since None is the default return of Python functions.
       return node
-    # Any other value returned from Enter is ignored, so check:
-    assert status is None, repr((node_class_name, status))
+    elif isinstance(status, set):
+      # If we are given a set of field names, do not visit those fields
+      skip_children = status
+    else:
+      # Any other value returned from Enter is ignored, so check:
+      assert status is None, repr((node_class_name, status))
 
   changed = False
   new_children = []
-  for child in node:
-    new_child = _VisitNode(child, visitor, *args, **kwargs)
-    if new_child is not child:
-      changed = True
+  for name, child in node.IterChildren():
+    if name in skip_children:
+      new_child = child
+    else:
+      new_child = _VisitNode(child, visitor, *args, **kwargs)
+      if new_child is not child:
+        changed = True
     new_children.append(new_child)
   if changed:
     new_node = node_class(*new_children)

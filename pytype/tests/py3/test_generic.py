@@ -723,6 +723,42 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
         x: Any
     """)
 
+  def test_generic_substitution(self):
+    # Tests a complicated use of generics distilled from real user code.
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Any, Dict, Generic, List, Optional, Protocol, TypeVar
+
+        AD = TypeVar('AD', bound=AsDictable)
+        T = TypeVar('T')
+
+        class AsDictable(Protocol):
+          def _asdict(self) -> Dict[str, Any]: ...
+        class AsDictableListField(Field[List[AD]]): ...
+        class Field(Generic[T]):
+          def __call__(self) -> T: ...
+        class FieldDeclaration(Generic[T]):
+          def __call__(self) -> T: ...
+      """)
+      d.create_file("bar.pyi", """
+        import foo
+        from typing import Any, Dict
+
+        BarFieldDeclaration: foo.FieldDeclaration[foo.AsDictableListField[X]]
+
+        class X:
+          def _asdict(self) -> Dict[str, Any]: ...
+      """)
+      self.Check("""
+        import bar
+        from typing import Sequence
+
+        def f(x: Sequence[bar.X]):
+          pass
+        def g():
+          f(bar.BarFieldDeclaration()())
+      """, pythonpath=[d.path])
+
 
 class GenericFeatureTest(test_base.TargetPython3FeatureTest):
   """Tests for User-defined Generic Type."""

@@ -486,6 +486,10 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         if new_subst is not None:
           return new_subst
     elif isinstance(left, abstract.TypeParameterInstance):
+      if isinstance(left.instance, abstract.BaseValue):
+        param = left.instance.get_instance_type_parameter(left.param.name)
+        if param.bindings:
+          return self._match_all_bindings(param, other_type, subst, node, view)
       return self._instantiate_and_match(
           left.param, other_type, subst, node, view)
     else:
