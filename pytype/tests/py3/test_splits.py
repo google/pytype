@@ -277,6 +277,25 @@ class SplitTest(test_base.TargetPython3BasicTest):
           return len(collection)
     """)
 
+  def test_ordered_dict_value(self):
+    self.Check("""
+      import collections
+      from typing import Iterator, Optional, Tuple
+
+      _DEFINITIONS = {'a': 'b'}
+
+      class Foo:
+        def __init__(self):
+          self.d = collections.OrderedDict()
+        def add(self, k: str, v: Optional[str]):
+          if v is None:
+            v = _DEFINITIONS[k]
+          self.d[k] = v
+        def generate(self) -> Iterator[Tuple[str, str]]:
+          for k, v in self.d.items():
+            yield k, v
+    """)
+
 
 class SplitTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for if-splitting in Python 3."""
@@ -334,6 +353,35 @@ class SplitTestPy3(test_base.TargetPython3FeatureTest):
       class A:
         def __bool__(self) -> bool: ...
       x: Union[A, bool]
+    """)
+
+  def test_ordered_dict_list_value(self):
+    self.Check("""
+      import collections
+      from typing import List, Optional
+
+      class A:
+        def __init__(self):
+          self._arg_dict = collections.OrderedDict()
+        def Set(self, arg_name: str, arg_value: Optional[str] = None):
+          if arg_value is not None:
+            self._arg_dict[arg_name] = [arg_value]
+        def Get(self) -> List[str]:
+          arg_list: List[str] = []
+          for key, value in self._arg_dict.items():
+            arg_list.append(key)
+            if __random__:
+              arg_list.append('')
+            else:
+              arg_list.extend(value)
+          return arg_list
+        def __str__(self) -> str:
+          return ''.join(self.Get())
+
+      class B:
+        def Build(self) -> List[str]:
+          a = A()
+          return a.Get()
     """)
 
 

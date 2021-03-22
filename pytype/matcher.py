@@ -623,8 +623,18 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         new_substs.append(new_subst)
     if new_substs:
       return self._merge_substs(subst, new_substs)
-    else:
+    elif var.Filter(node):
+      # Filter() is expensive, so we delay calling it until we need to check the
+      # visibility of a failed match.
       return None
+    else:
+      # If no matches, successful or not, are visible, we assume success and
+      # manually fill in the substitution dictionary.
+      subst = subst.copy()
+      for param in self.vm.annotations_util.get_type_parameters(other_type):
+        if param.full_name not in subst:
+          subst[param.full_name] = self.vm.convert.empty.to_variable(node)
+      return subst
 
   def _match_instance_against_type(self, left, other_type, subst, node, view):
     left_type = left.get_class()
