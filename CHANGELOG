@@ -1,3 +1,15 @@
+Version 2021.03.22
+
+New features and updates:
+* Support inheritance from dataclasses defined in pyi files.
+
+Bug fixes:
+* Don't check attribute values against types from pyi files.
+* Add a missing array.array.frombytes method.
+* Fix the pyi type of attributes annotated with class type parameters.
+* Allow annotation-type-mismatch directives to be put on more sensible lines.
+* Pass ninja relative paths instead of absolute ones.
+
 Version 2021.03.10
 
 New features and updates:

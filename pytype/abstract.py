@@ -1901,7 +1901,7 @@ class PyTDFunction(Function):
       # Raise an error if:
       # - An annotation has a type param that is not ambigious or empty
       # - The mutation adds a type that is not ambiguous or empty
-      def keep(value):
+      def should_check(value):
         return not value.isinstance_AMBIGUOUS_OR_EMPTY() and value.cls
 
       def compatible_with(new, existing, view):
@@ -1927,22 +1927,28 @@ class PyTDFunction(Function):
       for (obj, name, values), view in all_mutations.items():
         if obj.from_annotation:
           params = obj.get_instance_type_parameter(name)
-          ps = {v for v in params.data if keep(v)}
+          ps = {v for v in params.data if should_check(v)}
           if ps:
-            # We filter out mutations to parameters with type Any.
-            filtered_mutations.append((obj, name, values))
+            filtered_values = self.vm.program.NewVariable()
             # check if the container type is being broadened.
             new = []
             for b in values.bindings:
-              if not keep(b.data) or b.data in ps:
+              if not should_check(b.data) or b.data in ps:
+                filtered_values.PasteBinding(b)
                 continue
               new_view = {**combined_view, **view, values: b}
-              if (not compatible_with(values, ps, new_view) and
-                  node.HasCombination([b])):
-                # Since HasCombination is expensive, we don't use it to
-                # pre-filter bindings, but once we think we have an error, we
-                # should double-check that the binding is actually visible.
+              if not compatible_with(values, ps, new_view):
+                if not node.HasCombination([b]):
+                  # Since HasCombination is expensive, we don't use it to
+                  # pre-filter bindings, but once we think we have an error, we
+                  # should double-check that the binding is actually visible. We
+                  # also drop non-visible bindings from filtered_values.
+                  continue
+                filtered_values.PasteBinding(b)
                 new.append(b.data)
+            # By updating filtered_mutations only when ps is non-empty, we
+            # filter out mutations to parameters with type Any.
+            filtered_mutations.append((obj, name, filtered_values))
             if new:
               formal = name.split(".")[-1]
               errors[obj][formal] = (params, values, obj.from_annotation)
