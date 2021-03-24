@@ -3563,13 +3563,15 @@ class InterpreterFunction(SignedFunction):
       node2, _ = async_generator.run_generator(node)
       node_after_call, ret = node2, async_generator.to_variable(node2)
     else:
-      if self.vm.options.check_parameter_types:
-        annotated_locals = {
-            name: abstract_utils.Local(node, self.get_first_opcode(), annot,
-                                       callargs.get(name), self.vm)
-            for name, annot in annotations.items() if name != "return"}
-      else:
-        annotated_locals = {}
+      # If any parameters are annotated as Any, we add the annotations to the
+      # new frame's dictionary of local variable annotations, so that
+      # vm._apply_annotation will treat these as explicit Any annotations that
+      # disable inference.
+      annotated_locals = {}
+      for name, annot in annotations.items():
+        if name != "return" and annot == self.vm.convert.unsolvable:
+          annotated_locals[name] = abstract_utils.Local(
+              node, self.get_first_opcode(), annot, callargs.get(name), self.vm)
       node2, ret = self.vm.run_frame(frame, node, annotated_locals)
       if self.is_coroutine():
         ret = Coroutine(self.vm, ret, node2).to_variable(node2)
