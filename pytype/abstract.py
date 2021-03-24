@@ -1810,7 +1810,7 @@ class PyTDFunction(Function):
       sig.name = self.name
 
   def property_get(self, callself, is_class=False):
-    if self.kind == pytd.STATICMETHOD:
+    if self.kind == pytd.MethodTypes.STATICMETHOD:
       if is_class:
         # Binding the function to None rather than not binding it tells
         # output.py to infer the type as a Callable rather than reproducing the
@@ -1818,7 +1818,7 @@ class PyTDFunction(Function):
         # undesirable for module-level aliases.
         callself = None
       return StaticMethod(self.name, self, callself, self.vm)
-    elif self.kind == pytd.CLASSMETHOD:
+    elif self.kind == pytd.MethodTypes.CLASSMETHOD:
       if not is_class:
         callself = abstract_utils.get_atomic_value(
             callself, default=self.vm.convert.unsolvable)
@@ -1829,7 +1829,7 @@ class PyTDFunction(Function):
         # callself is the instance, and we want to bind to its class.
         callself = callself.get_class().to_variable(self.vm.root_node)
       return ClassMethod(self.name, self, callself, self.vm)
-    elif self.kind == pytd.PROPERTY and not is_class:
+    elif self.kind == pytd.MethodTypes.PROPERTY and not is_class:
       return Property(self.name, self, callself, self.vm)
     else:
       return super().property_get(callself, is_class)
@@ -2159,7 +2159,7 @@ class PyTDFunction(Function):
         name=self.name,
         signatures=tuple(s.pytd_sig for s in self.signatures),
         kind=self.kind,
-        flags=pytd.Function.abstract_flag(self.is_abstract))
+        flags=pytd.MethodFlags.abstract_flag(self.is_abstract))
 
 
 class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
@@ -4297,7 +4297,7 @@ class Unknown(BaseValue):
     calls = tuple(pytd_utils.OrderedSet(
         _make_sig(args, ret) for args, _, ret in self._calls))
     if calls:
-      methods = (pytd.Function("__call__", calls, pytd.METHOD),)
+      methods = (pytd.Function("__call__", calls, pytd.MethodTypes.METHOD),)
     else:
       methods = ()
     # TODO(rechen): Should we convert self.cls to a metaclass here as well?

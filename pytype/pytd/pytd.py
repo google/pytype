@@ -175,8 +175,21 @@ class Class(Node):
       return self._name2item[name]
 
 
-STATICMETHOD, CLASSMETHOD, METHOD, PROPERTY = (
-    'staticmethod', 'classmethod', 'method', 'property')
+class MethodTypes:
+  METHOD = 'method'
+  STATICMETHOD = 'staticmethod'
+  CLASSMETHOD = 'classmethod'
+  PROPERTY = 'property'
+
+
+class MethodFlags:
+  ABSTRACT = 1
+  COROUTINE = 2
+
+  @classmethod
+  def abstract_flag(cls, is_abstract):  # pylint: disable=invalid-name
+    # Useful when creating functions directly (other flags aren't needed there).
+    return cls.ABSTRACT if is_abstract else 0
 
 
 @attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
@@ -195,36 +208,18 @@ class Function(Node):
   kind: str
   flags: int = 0
 
-  IS_ABSTRACT = 1
-  IS_COROUTINE = 2
-
-  def _set_flag(self, flag, enable):
-    if enable:
-      self.flags |= flag
-    else:
-      self.flags |= ~flag
-
   @property
   def is_abstract(self):
-    return self.flags & self.IS_ABSTRACT
-
-  @is_abstract.setter
-  def is_abstract(self, value):
-    self._set_flag(self.IS_ABSTRACT, value)
+    return bool(self.flags & MethodFlags.ABSTRACT)
 
   @property
   def is_coroutine(self):
-    return self.flags & self.IS_COROUTINE
+    return bool(self.flags & MethodFlags.COROUTINE)
 
-  @is_coroutine.setter
-  def is_coroutine(self, value):
-    self._set_flag(self.IS_COROUTINE, value)
-
-  @classmethod
-  def abstract_flag(cls, is_abstract):
-    # Temporary hack to support existing code that creates a Function
-    # TODO(b/159053187): Implement a common flag bitmap for all function types
-    return cls.IS_ABSTRACT if is_abstract else 0
+  def with_flag(self, flag, value):
+    """Return a copy of self with flag set to value."""
+    new_flags = self.flags | flag if value else self.flags & ~flag
+    return self.Replace(flags=new_flags)
 
 
 @attr.s(auto_attribs=True, frozen=True, order=False, slots=True,

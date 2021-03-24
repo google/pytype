@@ -387,7 +387,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           name=name,
           signatures=tuple(sig.pytd_sig for sig in v.signatures),
           kind=v.kind,
-          flags=pytd.Function.abstract_flag(v.is_abstract))
+          flags=pytd.MethodFlags.abstract_flag(v.is_abstract))
     elif isinstance(v, abstract.InterpreterFunction):
       return self._function_to_def(node, v, name)
     elif isinstance(v, abstract.SimpleFunction):
@@ -495,8 +495,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           for combination in combinations)
     return pytd.Function(name=function_name,
                          signatures=tuple(signatures),
-                         kind=pytd.METHOD,
-                         flags=pytd.Function.abstract_flag(v.is_abstract))
+                         kind=pytd.MethodTypes.METHOD,
+                         flags=pytd.MethodFlags.abstract_flag(v.is_abstract))
 
   def _simple_func_to_def(self, node, v, name):
     """Convert a SimpleFunction to a PyTD definition."""
@@ -531,7 +531,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         return_type=ret_type,
         exceptions=(),
         template=())
-    return pytd.Function(name, (pytd_sig,), pytd.METHOD)
+    return pytd.Function(name, (pytd_sig,), pytd.MethodTypes.METHOD)
 
   def _function_to_return_types(self, node, fvar):
     """Convert a function variable to a list of PyTD return types."""
@@ -603,13 +603,13 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         elif isinstance(value, special_builtins.StaticMethodInstance):
           try:
             methods[name] = self._static_method_to_def(
-                node, value, name, pytd.STATICMETHOD)
+                node, value, name, pytd.MethodTypes.STATICMETHOD)
           except abstract_utils.ConversionError:
             constants[name].add_type(pytd.AnythingType())
         elif isinstance(value, special_builtins.ClassMethodInstance):
           try:
             methods[name] = self._class_method_to_def(
-                node, value, name, pytd.CLASSMETHOD)
+                node, value, name, pytd.MethodTypes.CLASSMETHOD)
           except abstract_utils.ConversionError:
             constants[name].add_type(pytd.AnythingType())
         elif isinstance(value, abstract.Function):

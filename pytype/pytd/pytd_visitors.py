@@ -318,11 +318,13 @@ class PrintVisitor(base_visitor.Visitor):
     """Visit function, producing multi-line string (one for each signature)."""
     function_name = node.name
     decorators = ""
-    if node.kind == pytd.STATICMETHOD and function_name != "__new__":
+    if (node.kind == pytd.MethodTypes.STATICMETHOD and
+        function_name != "__new__"):
       decorators += "@staticmethod\n"
-    elif node.kind == pytd.CLASSMETHOD and function_name != "__init_subclass__":
+    elif (node.kind == pytd.MethodTypes.CLASSMETHOD and
+          function_name != "__init_subclass__"):
       decorators += "@classmethod\n"
-    elif node.kind == pytd.PROPERTY:
+    elif node.kind == pytd.MethodTypes.PROPERTY:
       decorators += "@property\n"
     if node.is_abstract:
       decorators += "@abstractmethod\n"

@@ -527,7 +527,7 @@ def DummyMethod(name, *params):
                        exceptions=(), template=())
   return pytd.Function(name=name,
                        signatures=(sig,),
-                       kind=pytd.METHOD,
+                       kind=pytd.MethodTypes.METHOD,
                        flags=0)
 
 

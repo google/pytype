@@ -548,7 +548,7 @@ class CallTracer(vm.VirtualMachine):
     functions = []
     for name, signatures in funcs.items():
       functions.append(pytd.Function(name_transform(name), tuple(signatures),
-                                     pytd.METHOD))
+                                     pytd.MethodTypes.METHOD))
     return functions
 
   def _is_typing_member(self, name, var):

@@ -236,7 +236,7 @@ class _PropertyToConstant(visitors.Visitor):
 
   def EnterFunction(self, node):
     if (self.const_properties and
-        node.kind == pytd.PROPERTY and
+        node.kind == pytd.MethodTypes.PROPERTY and
         not self._is_parametrised(node)):
       self.const_properties[-1].append(node)
 
@@ -612,7 +612,7 @@ class Definitions:
       raise ParseError(
           "Duplicate top-level identifier(s): " + ", ".join(duplicates))
 
-    properties = [x for x in functions if x.kind == pytd.PROPERTY]
+    properties = [x for x in functions if x.kind == pytd.MethodTypes.PROPERTY]
     if properties:
       prop_names = ", ".join(p.name for p in properties)
       raise ParseError(
