@@ -426,21 +426,25 @@ class ImportPathsTest(test_base.UnitTest):
                        "def bar.f(x: foo.Ellipsis) -> Any: ...")
 
 
-class ImportTypeMacroTest(test_base.UnitTest):
+class _LoaderTest(test_base.UnitTest):
 
-  def _import(self, a_pyi, b_pyi):
+  def _import(self, **kwargs):
     with file_utils.Tempdir() as d:
-      d.create_file("a.pyi", a_pyi)
-      d.create_file("b.pyi", b_pyi)
+      for name, contents in kwargs.items():
+        d.create_file(f"{name}.pyi", contents)
+        last_name = name
       loader = load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
-      return loader.import_name("b")
+      return loader.import_name(last_name)
+
+
+class ImportTypeMacroTest(_LoaderTest):
 
   def test_container(self):
-    ast = self._import("""
+    ast = self._import(a="""
       from typing import List, TypeVar
       T = TypeVar('T')
       Alias = List[T]
-    """, """
+    """, b="""
       import a
       Strings = a.Alias[str]
     """)
@@ -448,11 +452,11 @@ class ImportTypeMacroTest(test_base.UnitTest):
         pytd_utils.Print(ast.Lookup("b.Strings").type), "List[str]")
 
   def test_union(self):
-    ast = self._import("""
+    ast = self._import(a="""
       from typing import List, TypeVar, Union
       T = TypeVar('T')
       Alias = Union[T, List[T]]
-    """, """
+    """, b="""
       import a
       Strings = a.Alias[str]
     """)
@@ -463,21 +467,21 @@ class ImportTypeMacroTest(test_base.UnitTest):
     with self.assertRaisesRegex(
         load_pytd.BadDependencyError,
         r"Union\[T, List\[T\]\] expected 1 parameters, got 2"):
-      self._import("""
+      self._import(a="""
         from typing import List, TypeVar, Union
         T = TypeVar('T')
         Alias = Union[T, List[T]]
-      """, """
+      """, b="""
         import a
         Strings = a.Alias[str, str]
       """)
 
   def test_no_parameters(self):
-    ast = self._import("""
+    ast = self._import(a="""
       from typing import List, TypeVar
       T = TypeVar('T')
       Alias = List[T]
-    """, """
+    """, b="""
       import a
       def f(x: a.Alias): ...
     """)
@@ -618,6 +622,62 @@ class PickledPyiLoaderTest(test_base.UnitTest):
       self.assertTrue(loader.import_name("datetime"))
       self.assertTrue(loader.import_name("foo"))
       self.assertTrue(loader.import_name("ctypes"))
+
+
+class MethodAliasTest(_LoaderTest):
+
+  def test_import_class(self):
+    b_ast = self._import(a="""
+      class Foo:
+        def f(self) -> int: ...
+    """, b="""
+      import a
+      f = a.Foo.f
+    """)
+    self.assertEqual(pytd_utils.Print(b_ast.Lookup("b.f")),
+                     "def b.f(self: a.Foo) -> int: ...")
+
+  def test_import_class_instance(self):
+    b_ast = self._import(a="""
+      class Foo:
+        def f(self) -> int: ...
+      foo: Foo
+    """, b="""
+      import a
+      f = a.foo.f
+    """)
+    self.assertEqual(pytd_utils.Print(b_ast.Lookup("b.f")),
+                     "def b.f() -> int: ...")
+
+  def test_create_instance_after_import(self):
+    b_ast = self._import(a="""
+      class Foo:
+        def f(self) -> int: ...
+    """, b="""
+      import a
+      foo: a.Foo
+      f = foo.f
+    """)
+    self.assertEqual(pytd_utils.Print(b_ast.Lookup("b.f")),
+                     "def b.f() -> int: ...")
+
+  def test_function(self):
+    ast = self._import(a="""
+      def f(x: int) -> int: ...
+      g = f
+    """)
+    self.assertEqual(pytd_utils.Print(ast.Lookup("a.g")),
+                     "def a.g(x: int) -> int: ...")
+
+  def test_imported_function(self):
+    b_ast = self._import(a="""
+      def f(x: int) -> int: ...
+    """, b="""
+      import a
+      f = a.f
+    """)
+    self.assertEqual(pytd_utils.Print(b_ast.Lookup("b.f")),
+                     "def b.f(x: int) -> int: ...")
 
 
 if __name__ == "__main__":

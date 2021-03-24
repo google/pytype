@@ -553,6 +553,7 @@ class Loader:
   def _load_ast_dependencies(self, dependencies, lookup_ast,
                              lookup_ast_name=None):
     """Fill in all ClassType.cls pointers and load reexported modules."""
+    ast_name = lookup_ast_name or lookup_ast.name
     for dep_name in dependencies:
       name = self._resolver.resolve_module_alias(
           dep_name, lookup_ast=lookup_ast, lookup_ast_name=lookup_ast_name)
@@ -565,13 +566,14 @@ class Loader:
         dep_ast = self._import_module_by_name(name)
         if dep_ast is None:
           dep_ast = self._try_import_prefix(name)
-          if dep_ast:
+          if dep_ast or f"{ast_name}.{name}" in lookup_ast:
             # If any prefix is a valid module, then we'll assume that we're
-            # importing a nested class.
+            # importing a nested class. If name is in lookup_ast, then it is a
+            # local reference and not an import at all.
             continue
           else:
             error = "Can't find pyi for %r" % name
-            raise BadDependencyError(error, lookup_ast_name or lookup_ast.name)
+            raise BadDependencyError(error, ast_name)
       # If `name` is a package, try to load any base names not defined in
       # __init__ as submodules.
       if not self._modules[name].is_package():

@@ -77,6 +77,13 @@ class TypeDeclUnit(Node):
         self._name2item[x.name] = x
       return self._name2item[name]
 
+  def __contains__(self, name):
+    try:
+      self.Lookup(name)
+    except KeyError:
+      return False
+    return True
+
   # The hash/eq/ne values are used for caching and speed things up quite a bit.
 
   def __hash__(self):

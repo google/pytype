@@ -110,16 +110,9 @@ def _maybe_resolve_alias(alias, name_to_class, name_to_constant):
     return pytd.Constant(
         alias.name, pytdgen.pytd_type(pytd.NamedType(alias.type.name)))
   elif isinstance(value, pytd.Function):
-    # We allow module-level aliases of methods from classes and class instances.
-    # When a static method is aliased, or a normal method is aliased from a
-    # class (not an instance), the entire method signature is copied. Otherwise,
-    # the first parameter ('self' or 'cls') is dropped.
-    new_value = value.Replace(name=alias.name).Replace(kind="method")
-    if value.kind == "staticmethod" or (
-        value.kind == "method" and isinstance(prev_value, pytd.Class)):
-      return new_value
-    return new_value.Replace(signatures=tuple(
-        s.Replace(params=s.params[1:]) for s in new_value.signatures))
+    return pytd_utils.AliasMethod(
+        value.Replace(name=alias.name),
+        from_constant=isinstance(prev_value, pytd.Constant))
   else:
     return value.Replace(name=alias.name)
 
