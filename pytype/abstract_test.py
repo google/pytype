@@ -292,7 +292,8 @@ class FunctionTest(AbstractTestBase):
     pytd_sig = pytd.Signature(
         tuple(pytd_params), None, None, pytd.AnythingType(), (), ())
     sig = function.PyTDSignature(name, pytd_sig, self._vm)
-    return abstract.PyTDFunction(name, (sig,), pytd.METHOD, self._vm)
+    return abstract.PyTDFunction(
+        name, (sig,), pytd.MethodTypes.METHOD, self._vm)
 
   def _call_pytd_function(self, f, args):
     b = f.to_binding(self._vm.root_node)
@@ -589,17 +590,17 @@ class FunctionTest(AbstractTestBase):
         self,
         {sig.pytd_sig for sig in f.signatures},
         self._vm.lookup_builtin("builtins.open").signatures)
-    self.assertIs(f.kind, pytd.METHOD)
+    self.assertIs(f.kind, pytd.MethodTypes.METHOD)
     self.assertIs(f.vm, self._vm)
 
   def test_constructor_args_pyval(self):
     sig = pytd.Signature((), None, None, pytd.AnythingType(), (), ())
-    pyval = pytd.Function("blah", (sig,), pytd.STATICMETHOD, 0)
+    pyval = pytd.Function("blah", (sig,), pytd.MethodTypes.STATICMETHOD, 0)
     f = abstract.PyTDFunction.make("open", self._vm, "builtins", pyval=pyval)
     self.assertEqual(f.full_name, "builtins.open")
     f_sig, = f.signatures
     self.assertIs(f_sig.pytd_sig, sig)
-    self.assertIs(f.kind, pytd.STATICMETHOD)
+    self.assertIs(f.kind, pytd.MethodTypes.STATICMETHOD)
     self.assertIs(f.vm, self._vm)
 
   def test_get_constructor_args(self):
@@ -611,7 +612,7 @@ class FunctionTest(AbstractTestBase):
         {sig.pytd_sig for sig in f.signatures},
         self._vm.loader.import_name("typing").Lookup(
             "typing._typevar_new").signatures)
-    self.assertIs(f.kind, pytd.METHOD)
+    self.assertIs(f.kind, pytd.MethodTypes.METHOD)
     self.assertIs(f.vm, self._vm)
 
   def test_bound_function_repr(self):

@@ -137,12 +137,12 @@ class TestUtils(parser_test_base.ParserTest):
     s1 = pytd.Signature((), None, None, pytd.NothingType(), (), ())
     s2 = pytd.Signature((), None, None, pytd.AnythingType(), (), ())
     self.assertTrue(MyTypeMatcher().match(
-        pytd.Function("f1", (s1, s2), pytd.METHOD),
-        pytd.Function("f2", (s1, s2), pytd.METHOD),
+        pytd.Function("f1", (s1, s2), pytd.MethodTypes.METHOD),
+        pytd.Function("f2", (s1, s2), pytd.MethodTypes.METHOD),
         mykeyword="foobar"))
     self.assertFalse(MyTypeMatcher().match(
-        pytd.Function("f1", (s1, s2), pytd.METHOD),
-        pytd.Function("f2", (s2, s2), pytd.METHOD),
+        pytd.Function("f1", (s1, s2), pytd.MethodTypes.METHOD),
+        pytd.Function("f2", (s2, s2), pytd.MethodTypes.METHOD),
         mykeyword="foobar"))
 
   def test_named_type_with_module(self):

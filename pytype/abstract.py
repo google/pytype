@@ -1810,7 +1810,7 @@ class PyTDFunction(Function):
       sig.name = self.name
 
   def property_get(self, callself, is_class=False):
-    if self.kind == pytd.STATICMETHOD:
+    if self.kind == pytd.MethodTypes.STATICMETHOD:
       if is_class:
         # Binding the function to None rather than not binding it tells
         # output.py to infer the type as a Callable rather than reproducing the
@@ -1818,7 +1818,7 @@ class PyTDFunction(Function):
         # undesirable for module-level aliases.
         callself = None
       return StaticMethod(self.name, self, callself, self.vm)
-    elif self.kind == pytd.CLASSMETHOD:
+    elif self.kind == pytd.MethodTypes.CLASSMETHOD:
       if not is_class:
         callself = abstract_utils.get_atomic_value(
             callself, default=self.vm.convert.unsolvable)
@@ -1829,7 +1829,7 @@ class PyTDFunction(Function):
         # callself is the instance, and we want to bind to its class.
         callself = callself.get_class().to_variable(self.vm.root_node)
       return ClassMethod(self.name, self, callself, self.vm)
-    elif self.kind == pytd.PROPERTY and not is_class:
+    elif self.kind == pytd.MethodTypes.PROPERTY and not is_class:
       return Property(self.name, self, callself, self.vm)
     else:
       return super().property_get(callself, is_class)
@@ -2159,7 +2159,7 @@ class PyTDFunction(Function):
         name=self.name,
         signatures=tuple(s.pytd_sig for s in self.signatures),
         kind=self.kind,
-        flags=pytd.Function.abstract_flag(self.is_abstract))
+        flags=pytd.MethodFlags.abstract_flag(self.is_abstract))
 
 
 class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
@@ -3563,13 +3563,15 @@ class InterpreterFunction(SignedFunction):
       node2, _ = async_generator.run_generator(node)
       node_after_call, ret = node2, async_generator.to_variable(node2)
     else:
-      if self.vm.options.check_parameter_types:
-        annotated_locals = {
-            name: abstract_utils.Local(node, self.get_first_opcode(), annot,
-                                       callargs.get(name), self.vm)
-            for name, annot in annotations.items() if name != "return"}
-      else:
-        annotated_locals = {}
+      # If any parameters are annotated as Any, we add the annotations to the
+      # new frame's dictionary of local variable annotations, so that
+      # vm._apply_annotation will treat these as explicit Any annotations that
+      # disable inference.
+      annotated_locals = {}
+      for name, annot in annotations.items():
+        if name != "return" and annot == self.vm.convert.unsolvable:
+          annotated_locals[name] = abstract_utils.Local(
+              node, self.get_first_opcode(), annot, callargs.get(name), self.vm)
       node2, ret = self.vm.run_frame(frame, node, annotated_locals)
       if self.is_coroutine():
         ret = Coroutine(self.vm, ret, node2).to_variable(node2)
@@ -4295,7 +4297,7 @@ class Unknown(BaseValue):
     calls = tuple(pytd_utils.OrderedSet(
         _make_sig(args, ret) for args, _, ret in self._calls))
     if calls:
-      methods = (pytd.Function("__call__", calls, pytd.METHOD),)
+      methods = (pytd.Function("__call__", calls, pytd.MethodTypes.METHOD),)
     else:
       methods = ()
     # TODO(rechen): Should we convert self.cls to a metaclass here as well?

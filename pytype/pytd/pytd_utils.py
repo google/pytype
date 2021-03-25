@@ -527,7 +527,7 @@ def DummyMethod(name, *params):
                        exceptions=(), template=())
   return pytd.Function(name=name,
                        signatures=(sig,),
-                       kind=pytd.METHOD,
+                       kind=pytd.MethodTypes.METHOD,
                        flags=0)
 
 
@@ -594,3 +594,34 @@ def MatchesFullName(t, full_name, current_module_name=None, aliases=None):
         expected_module_name,
         parser_constants.EXTERNAL_NAME_PREFIX + expected_module_name}
     return module_name in expected_module_names and name == expected_name
+
+
+def AliasMethod(func, from_constant):
+  """Returns method func with its signature modified as if it has been aliased.
+
+  Args:
+    func: A pytd.Function.
+    from_constant: If True, func will be modified as if it has been aliased from
+      an instance of its defining class, e.g.,
+        class Foo:
+          def func(self): ...
+        const = ...  # type: Foo
+        func = const.func
+      Otherwise, it will be modified as if aliased from the class itself:
+        class Foo:
+          def func(self): ...
+        func = Foo.func
+
+  Returns:
+    A pytd.Function, the aliased method.
+  """
+  # We allow module-level aliases of methods from classes and class instances.
+  # When a static method is aliased, or a normal method is aliased from a class
+  # (not an instance), the entire method signature is copied. Otherwise, the
+  # first parameter ('self' or 'cls') is dropped.
+  new_func = func.Replace(kind=pytd.MethodTypes.METHOD)
+  if func.kind == pytd.MethodTypes.STATICMETHOD or (
+      func.kind == pytd.MethodTypes.METHOD and not from_constant):
+    return new_func
+  return new_func.Replace(signatures=tuple(
+      s.Replace(params=s.params[1:]) for s in new_func.signatures))

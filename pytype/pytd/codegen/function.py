@@ -153,11 +153,11 @@ def merge_method_signatures(
     is_abstract = name_to_is_abstract[name]
     is_coroutine = name_to_is_coroutine[name]
     if name == "__new__" or decorator == "staticmethod":
-      kind = pytd.STATICMETHOD
+      kind = pytd.MethodTypes.STATICMETHOD
     elif name == "__init_subclass__" or decorator == "classmethod":
-      kind = pytd.CLASSMETHOD
+      kind = pytd.MethodTypes.CLASSMETHOD
     elif decorator and _is_property(name, decorator, sigs[0]):
-      kind = pytd.PROPERTY
+      kind = pytd.MethodTypes.PROPERTY
       # If we have only setters and/or deleters, replace them with a single
       # method foo(...) -> Any, so that we infer a constant `foo: Any` even if
       # the original method signatures are all `foo(...) -> None`. (If we have a
@@ -170,12 +170,12 @@ def merge_method_signatures(
       raise ValueError("Unhandled decorator: %s" % decorator)
     else:
       # Other decorators do not affect the kind
-      kind = pytd.METHOD
+      kind = pytd.MethodTypes.METHOD
     flags = 0
     if is_abstract:
-      flags |= pytd.Function.IS_ABSTRACT
+      flags |= pytd.MethodFlags.ABSTRACT
     if is_coroutine:
-      flags |= pytd.Function.IS_COROUTINE
+      flags |= pytd.MethodFlags.COROUTINE
     methods.append(pytd.Function(name, tuple(sigs), kind, flags))
   return methods
 
@@ -266,4 +266,4 @@ def generate_init(fields: Iterable[pytd.Constant]) -> pytd.Function:
   sig = pytd.Signature(params=params, return_type=ret,
                        starargs=None, starstarargs=None,
                        exceptions=(), template=())
-  return pytd.Function("__init__", (sig,), kind=pytd.METHOD, flags=0)
+  return pytd.Function("__init__", (sig,), kind=pytd.MethodTypes.METHOD)
