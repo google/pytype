@@ -496,9 +496,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         try:
           cls = ast.Lookup(late_type.name)
         except KeyError:
-          try:
-            ast.Lookup("__getattr__")
-          except KeyError:
+          if "__getattr__" not in ast:
             log.warning("Couldn't resolve %s", late_type.name)
           t = pytd.AnythingType()
         else:

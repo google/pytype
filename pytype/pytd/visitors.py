@@ -348,25 +348,20 @@ class LookupBuiltins(_ToTypeVisitor):
 
   def VisitNamedType(self, t):
     """Do lookup on a pytd.NamedType."""
-    if "." in t.name:
+    if "." in t.name or self._prefix + t.name in self._current_unit:
       return t
+    # We can't find this identifier in our current module, and it isn't fully
+    # qualified (doesn't contain a dot). Now check whether it's a builtin.
     try:
-      self._current_unit.Lookup(self._prefix + t.name)
+      item = self._builtins.Lookup(self._builtins.name + "." + t.name)
     except KeyError:
-      # We can't find this identifier in our current module, and it isn't fully
-      # qualified (doesn't contain a dot). Now check whether it's a builtin.
-      try:
-        item = self._builtins.Lookup(self._builtins.name + "." + t.name)
-      except KeyError:
-        return t
-      else:
-        try:
-          return self.to_type(item)
-        except NotImplementedError:
-          # This can happen if a builtin is redefined.
-          return t
-    else:
       return t
+    else:
+      try:
+        return self.to_type(item)
+      except NotImplementedError:
+        # This can happen if a builtin is redefined.
+        return t
 
 
 def MaybeSubstituteParameters(base_type, parameters=None):
@@ -578,9 +573,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
   def _DiscardExistingNames(self, node, potential_members):
     new_members = []
     for m in potential_members:
-      try:
-        node.Lookup(m.name)
-      except KeyError:
+      if m.name not in node:
         new_members.append(m)
     return new_members
 
