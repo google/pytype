@@ -2174,34 +2174,34 @@ class VirtualMachine:
         types.append(None)
     return value, types
 
-  def byte_COMPARE_OP(self, state, op):
+  def _compare_op(self, state, op_arg):
     """Pops and compares the top two stack values and pushes a boolean."""
     state, (x, y) = state.popn(2)
     # Explicit, redundant, switch statement, to make it easier to address the
     # behavior of individual compare operations:
-    if op.arg == slots.CMP_LT:
+    if op_arg == slots.CMP_LT:
       state, ret = self._cmp_rel(state, "LT", x, y)
-    elif op.arg == slots.CMP_LE:
+    elif op_arg == slots.CMP_LE:
       state, ret = self._cmp_rel(state, "LE", x, y)
-    elif op.arg == slots.CMP_EQ:
+    elif op_arg == slots.CMP_EQ:
       state, ret = self._cmp_rel(state, "EQ", x, y)
-    elif op.arg == slots.CMP_NE:
+    elif op_arg == slots.CMP_NE:
       state, ret = self._cmp_rel(state, "NE", x, y)
-    elif op.arg == slots.CMP_GT:
+    elif op_arg == slots.CMP_GT:
       state, ret = self._cmp_rel(state, "GT", x, y)
-    elif op.arg == slots.CMP_GE:
+    elif op_arg == slots.CMP_GE:
       state, ret = self._cmp_rel(state, "GE", x, y)
-    elif op.arg == slots.CMP_IS:
+    elif op_arg == slots.CMP_IS:
       ret = self.expand_bool_result(state.node, x, y,
                                     "is_cmp", frame_state.is_cmp)
-    elif op.arg == slots.CMP_IS_NOT:
+    elif op_arg == slots.CMP_IS_NOT:
       ret = self.expand_bool_result(state.node, x, y,
                                     "is_not_cmp", frame_state.is_not_cmp)
-    elif op.arg == slots.CMP_NOT_IN:
+    elif op_arg == slots.CMP_NOT_IN:
       state, ret = self._cmp_in(state, x, y, true_val=False)
-    elif op.arg == slots.CMP_IN:
+    elif op_arg == slots.CMP_IN:
       state, ret = self._cmp_in(state, x, y)
-    elif op.arg == slots.CMP_EXC_MATCH:
+    elif op_arg == slots.CMP_EXC_MATCH:
       # When the `try` block is set up, push_abstract_exception pushes on
       # unknowns for the value and exception type. CMP_EXC_MATCH occurs at the
       # beginning  of the `except` block, when we know the exception being
@@ -2219,8 +2219,8 @@ class VirtualMachine:
         state = state.push(value, exc_type)
       ret = self.convert.build_bool(state.node)
     else:
-      raise VirtualMachineError("Invalid argument to COMPARE_OP: %d" % op.arg)
-    if not ret.bindings and self._cmp_is_always_supported(op.arg):
+      raise VirtualMachineError("Invalid argument to COMPARE_OP: %d" % op_arg)
+    if not ret.bindings and self._cmp_is_always_supported(op_arg):
       # Some comparison operations are always supported, depending on the target
       # Python version. In this case, always return a (boolean) value.
       # (https://docs.python.org/2/library/stdtypes.html#comparisons or
@@ -2228,6 +2228,9 @@ class VirtualMachine:
       ret.AddBinding(
           self.convert.primitive_class_instances[bool], [], state.node)
     return state.push(ret)
+
+  def byte_COMPARE_OP(self, state, op):
+    return self._compare_op(state, op.arg)
 
   def byte_LOAD_ATTR(self, state, op):
     """Pop an object, and retrieve a named attribute from it."""
@@ -3496,48 +3499,82 @@ class VirtualMachine:
     return state.push(result)
 
   # New in 3.9
-  # TODO(rechen): These opcodes are stubs; implement them.
 
   def byte_RERAISE(self, state, op):
-    del op
-    return state
+    del op  # unused
+    state, _ = state.popn(3)
+    return state.set_why("reraise")
 
   def byte_WITH_EXCEPT_START(self, state, op):
-    del op
-    return state
+    del op  # unused
+    func = state.peek(7)
+    args = state.topn(3)
+    state, result = self.call_function_with_state(state, func, args)
+    return state.push(result)
 
   def byte_LOAD_ASSERTION_ERROR(self, state, op):
-    del op
-    return state
+    del op  # unused
+    assertion_error = self.convert.name_to_value("builtins.AssertionError")
+    return state.push(assertion_error.to_variable(state.node))
 
   def byte_LIST_TO_TUPLE(self, state, op):
-    del op
-    return state
+    """Convert the list at the top of the stack to a tuple."""
+    del op  # unused
+    state, lst_var = state.pop()
+    tup_var = self.program.NewVariable()
+    for b in lst_var.bindings:
+      if (isinstance(b.data, abstract.List) and
+          not b.data.could_contain_anything):
+        tup_var.AddBinding(
+            self.convert.tuple_to_value(b.data.pyval), {b}, state.node)
+      else:
+        param = b.data.get_instance_type_parameter(abstract_utils.T)
+        tup = abstract.Instance(self.convert.tuple_type, self)
+        tup.merge_instance_type_parameter(state.node, abstract_utils.T, param)
+        tup_var.AddBinding(tup, {b}, state.node)
+    return state.push(tup_var)
 
   def byte_IS_OP(self, state, op):
-    del op
-    return state
+    if op.arg:
+      op_arg = slots.CMP_IS_NOT
+    else:
+      op_arg = slots.CMP_IS
+    return self._compare_op(state, op_arg)
 
   def byte_CONTAINS_OP(self, state, op):
-    del op
-    return state
+    if op.arg:
+      op_arg = slots.CMP_NOT_IN
+    else:
+      op_arg = slots.CMP_IN
+    return self._compare_op(state, op_arg)
 
   def byte_JUMP_IF_NOT_EXC_MATCH(self, state, op):
-    del op
+    state, args = state.popn(2)
+    state, isinstance_func = self.load_builtin(state, "isinstance")
+    state, result = self.call_function_with_state(state, isinstance_func, args)
+    state = state.push(result)
+    return self._jump_if(state, op, pop=True, jump_if=False)
+
+  def _update_from_top(self, state, op, target_type, update_method_name):
+    """Pops the stack's top object and uses it to update stack[op.arg]."""
+    state, update = state.pop()
+    target = state.peek(op.arg)
+    node, update_method = self.attribute_handler.get_attribute(
+        state.node, target_type, update_method_name)
+    state = state.change_cfg_node(node)
+    state, _ = self.call_function_with_state(
+        state, update_method, (target, update))
     return state
 
   def byte_LIST_EXTEND(self, state, op):
-    del op
-    return state
+    return self._update_from_top(state, op, self.convert.list_type, "extend")
 
   def byte_SET_UPDATE(self, state, op):
-    del op
-    return state
+    return self._update_from_top(state, op, self.convert.set_type, "update")
 
   def byte_DICT_MERGE(self, state, op):
-    del op
-    return state
+    # DICT_MERGE is like DICT_UPDATE but raises an exception for duplicate keys.
+    return self.byte_DICT_UPDATE(state, op)
 
   def byte_DICT_UPDATE(self, state, op):
-    del op
-    return state
+    return self._update_from_top(state, op, self.convert.dict_type, "update")
