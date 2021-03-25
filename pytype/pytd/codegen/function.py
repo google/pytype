@@ -18,8 +18,14 @@ class OverloadedDecoratorError(Exception):
     super().__init__(msg)
 
 
-# Strategies for combining a new decorator with an existing one
-_MERGE, _REPLACE, _DISCARD = 1, 2, 3
+class PropertyDecoratorError(Exception):
+  """Inconsistent property decorators on an overloaded function."""
+
+  def __init__(self, name):
+    msg = (f"Invalid property decorators for method `{name}` "
+           "(need at most one each of @property, "
+           f"@{name}.setter and @{name}.deleter)")
+    super().__init__(msg)
 
 
 @dataclasses.dataclass
@@ -123,135 +129,6 @@ def pytd_starstar_param(
   return pytd.Parameter(name, param_type, False, True, None)
 
 
-def merge_method_signatures(
-    signatures: List[NameAndSig],
-    check_unhandled_decorator: bool = True
-) -> List[pytd.Function]:
-  """Group the signatures by name, turning each group into a function."""
-  name_to_signatures = collections.OrderedDict()
-  name_to_decorator = {}
-  name_to_is_abstract = {}
-  name_to_is_coroutine = {}
-  for sig in signatures:
-    if sig.name not in name_to_signatures:
-      name_to_signatures[sig.name] = []
-      name_to_decorator[sig.name] = sig.decorator
-    old_decorator = name_to_decorator[sig.name]
-    check = _check_decorator_overload(sig.name, old_decorator, sig.decorator)
-    if check == _MERGE:
-      name_to_signatures[sig.name].append(sig.signature)
-    elif check == _REPLACE:
-      name_to_signatures[sig.name] = [sig.signature]
-      name_to_decorator[sig.name] = sig.decorator
-    _add_flag_overload(
-        name_to_is_abstract, sig.name, sig.is_abstract, "abstractmethod")
-    _add_flag_overload(
-        name_to_is_coroutine, sig.name, sig.is_coroutine, "coroutine")
-  methods = []
-  for name, sigs in name_to_signatures.items():
-    decorator = name_to_decorator[name]
-    is_abstract = name_to_is_abstract[name]
-    is_coroutine = name_to_is_coroutine[name]
-    if name == "__new__" or decorator == "staticmethod":
-      kind = pytd.MethodTypes.STATICMETHOD
-    elif name == "__init_subclass__" or decorator == "classmethod":
-      kind = pytd.MethodTypes.CLASSMETHOD
-    elif decorator and _is_property(name, decorator, sigs[0]):
-      kind = pytd.MethodTypes.PROPERTY
-      # If we have only setters and/or deleters, replace them with a single
-      # method foo(...) -> Any, so that we infer a constant `foo: Any` even if
-      # the original method signatures are all `foo(...) -> None`. (If we have a
-      # getter we use its return type, but in the absence of a getter we want to
-      # fall back on Any since we cannot say anything about what the setter sets
-      # the type of foo to.)
-      if decorator.endswith(".setter") or decorator.endswith(".deleter"):
-        sigs = [sigs[0].Replace(return_type=pytd.AnythingType())]
-    elif decorator and check_unhandled_decorator:
-      raise ValueError("Unhandled decorator: %s" % decorator)
-    else:
-      # Other decorators do not affect the kind
-      kind = pytd.MethodTypes.METHOD
-    flags = 0
-    if is_abstract:
-      flags |= pytd.MethodFlags.ABSTRACT
-    if is_coroutine:
-      flags |= pytd.MethodFlags.COROUTINE
-    methods.append(pytd.Function(name, tuple(sigs), kind, flags))
-  return methods
-
-
-@dataclasses.dataclass
-class _Property:
-  precedence: int
-  arity: int
-
-
-def _property_decorators(name: str) -> Dict[str, _Property]:
-  """Generates the property decorators for a method name.
-
-  Used internally by other methods.
-
-  Args:
-    name: method name
-
-  Returns:
-    A dictionary of decorators to precedence and required arity
-  """
-  return {
-      "property": _Property(2, 1),
-      (name + ".getter"): _Property(2, 1),
-      (name + ".setter"): _Property(1, 2),
-      (name + ".deleter"): _Property(1, 1)
-  }
-
-
-def _check_decorator_overload(name: str, old: str, new: str) -> int:
-  """Conditions for a decorator to overload an existing one."""
-  properties = _property_decorators(name)
-  if old == new:
-    return _MERGE
-  elif old in properties and new in properties:
-    p_old, p_new = properties[old].precedence, properties[new].precedence
-    if p_old > p_new:
-      return _DISCARD
-    elif p_old == p_new:
-      return _MERGE
-    else:
-      return _REPLACE
-  raise OverloadedDecoratorError(name, "")
-
-
-def _add_flag_overload(
-    mapping: Dict[str, bool], name: str, val: bool, flag: str
-) -> None:
-  if name not in mapping:
-    mapping[name] = val
-  elif mapping[name] != val:
-    raise OverloadedDecoratorError(name, flag)
-
-
-def _is_property(name: str, decorator: str, signature: pytd.Signature) -> bool:
-  """Parse a signature as a property getter, setter, or deleter.
-
-  Checks that the decorator name matches one of {@property, @foo.getter,
-  @foo.setter, @foo.deleter} and that the corresponding signature is valid.
-
-  NOTE: This function assumes that all other recognised decorators have already
-  been handled, and will therefore raise if decorator is not a property.
-
-  Args:
-    name: method name
-    decorator: decorator
-    signature: method signature
-  Returns:
-    True: If we have a valid property decorator
-    False: If we have a non-property decorator.
-  """
-  sigs = _property_decorators(name)
-  return (decorator in sigs and
-          sigs[decorator].arity == len(signature.params))
-
-
 def _make_param(attr: pytd.Constant) -> pytd.Parameter:
   return Param(name=attr.name, type=attr.type, default=attr.value).to_pytd()
 
@@ -267,3 +144,141 @@ def generate_init(fields: Iterable[pytd.Constant]) -> pytd.Function:
                        starargs=None, starstarargs=None,
                        exceptions=(), template=())
   return pytd.Function("__init__", (sig,), kind=pytd.MethodTypes.METHOD)
+
+
+# -------------------------------------------
+# Method signature merging
+
+
+@dataclasses.dataclass
+class _Property:
+  type: str
+  arity: int
+
+
+def _property_decorators(name: str) -> Dict[str, _Property]:
+  """Generates the property decorators for a method name."""
+  return {
+      "property": _Property("getter", 1),
+      (name + ".setter"): _Property("setter", 2),
+      (name + ".deleter"): _Property("deleter", 1)
+  }
+
+
+@dataclasses.dataclass
+class _Properties:
+  """Function property decorators."""
+
+  getter: Optional[pytd.Signature] = None
+  setter: Optional[pytd.Signature] = None
+  deleter: Optional[pytd.Signature] = None
+
+  def set(self, prop, sig, name):
+    assert hasattr(self, prop), prop
+    if getattr(self, prop):
+      raise PropertyDecoratorError(name)
+    setattr(self, prop, sig)
+
+
+@dataclasses.dataclass
+class _DecoratedFunction:
+  """A mutable builder for pytd.Function values."""
+
+  name: str
+  sigs: List[pytd.Signature]
+  is_abstract: bool = False
+  is_coroutine: bool = False
+  decorator: Optional[str] = None
+  properties: Optional[_Properties] = dataclasses.field(init=False)
+  prop_names: Dict[str, _Property] = dataclasses.field(init=False)
+
+  @classmethod
+  def make(cls, fn: NameAndSig):
+    return cls(
+        name=fn.name,
+        sigs=[fn.signature],
+        is_abstract=fn.is_abstract,
+        is_coroutine=fn.is_coroutine,
+        decorator=fn.decorator)
+
+  def __post_init__(self):
+    self.prop_names = _property_decorators(self.name)
+    if self.decorator in self.prop_names:
+      self.properties = _Properties()
+      self.add_property(self.decorator, self.sigs[0])
+    else:
+      self.properties = None
+
+  def add_property(self, decorator, sig):
+    prop = self.prop_names[decorator]
+    if prop.arity == len(sig.params):
+      self.properties.set(prop.type, sig, self.name)
+    else:
+      raise TypeError("Property decorator @%s needs %d param(s), got %d" %
+                      (decorator, prop.arity, len(sig.params)))
+
+  def add_overload(self, fn: NameAndSig):
+    """Add an overloaded signature to a function."""
+    # Check for decorator consistency. Note that we currently limit pyi files to
+    # one decorator per function, other than @abstractmethod and @coroutine
+    # which are special-cased.
+    if (self.properties and fn.decorator in self.prop_names):
+      # For properties, we can have at most one of setter, getter and deleter,
+      # and no other overloads
+      self.add_property(fn.decorator, fn.signature)
+    elif self.decorator == fn.decorator:
+      # For other decorators, we can have multiple overloads but they need to
+      # all have the same decorator
+      self.sigs.append(fn.signature)
+    else:
+      raise OverloadedDecoratorError(self.name, None)
+    # @abstractmethod and @coroutine can be combined with other decorators, but
+    # they need to be consistent for all overloads
+    if self.is_abstract != fn.is_abstract:
+      raise OverloadedDecoratorError(self.name, "abstractmethod")
+    if self.is_coroutine != fn.is_coroutine:
+      raise OverloadedDecoratorError(self.name, "coroutine")
+
+
+def merge_method_signatures(
+    name_and_sigs: List[NameAndSig],
+    check_unhandled_decorator: bool = True
+) -> List[pytd.Function]:
+  """Group the signatures by name, turning each group into a function."""
+  functions = collections.OrderedDict()
+  for fn in name_and_sigs:
+    if fn.name not in functions:
+      functions[fn.name] = _DecoratedFunction.make(fn)
+    else:
+      functions[fn.name].add_overload(fn)
+  methods = []
+  for name, fn in functions.items():
+    if name == "__new__" or fn.decorator == "staticmethod":
+      kind = pytd.MethodTypes.STATICMETHOD
+    elif name == "__init_subclass__" or fn.decorator == "classmethod":
+      kind = pytd.MethodTypes.CLASSMETHOD
+    elif fn.properties:
+      kind = pytd.MethodTypes.PROPERTY
+      # If we have only setters and/or deleters, replace them with a single
+      # method foo(...) -> Any, so that we infer a constant `foo: Any` even if
+      # the original method signatures are all `foo(...) -> None`. (If we have a
+      # getter we use its return type, but in the absence of a getter we want to
+      # fall back on Any since we cannot say anything about what the setter sets
+      # the type of foo to.)
+      if fn.properties.getter:
+        fn.sigs = [fn.properties.getter]
+      else:
+        sig = fn.properties.setter or fn.properties.deleter
+        fn.sigs = [sig.Replace(return_type=pytd.AnythingType())]
+    elif fn.decorator and check_unhandled_decorator:
+      raise ValueError("Unhandled decorator: %s" % fn.decorator)
+    else:
+      # Other decorators do not affect the kind
+      kind = pytd.MethodTypes.METHOD
+    flags = 0
+    if fn.is_abstract:
+      flags |= pytd.MethodFlags.ABSTRACT
+    if fn.is_coroutine:
+      flags |= pytd.MethodFlags.COROUTINE
+    methods.append(pytd.Function(name, tuple(fn.sigs), kind, flags))
+  return methods

@@ -1989,13 +1989,13 @@ class PropertyDecoratorTest(_ParserTestBase):
       class A:
           @property
           def name(self, bad_arg): ...
-    """, 1, "Unhandled decorator: property")
+      """, 1, "@property needs 1 param(s), got 2")
 
     self.check_error("""
       class A:
           @name.setter
           def name(self): ...
-      """, 1, "Unhandled decorator: name.setter")
+      """, 1, "@name.setter needs 2 param(s), got 1")
 
     self.check_error("""
       class A:
@@ -2021,20 +2021,15 @@ class PropertyDecoratorTest(_ParserTestBase):
       def name(self): ...
       """, None, "Module-level functions with property decorators: name")
 
-  def test_property_getter(self):
-    self.check("""
+  def test_property_clash(self):
+    self.check_error("""
       class A:
-        @property
-        def name(self) -> str: ...
+          @property
+          def name(self) -> str: ...
 
-        @name.getter
-        def name(self) -> int: ...
-    """, """
-    from typing import Union
-
-    class A:
-        name: Union[str, int]
-    """)
+          @property
+          def name(self) -> int: ...
+      """, 1, "Invalid property decorators for method `name`")
 
 
 class MergeSignaturesTest(_ParserTestBase):
@@ -2048,35 +2043,6 @@ class MergeSignaturesTest(_ParserTestBase):
       class A:
           name: str
       """)
-
-  def test_merge_property_types(self):
-    self.check("""
-      class A:
-          @property
-          def name(self) -> str: ...
-
-          @property
-          def name(self) -> int: ...
-      """, """
-      from typing import Union
-
-      class A:
-          name: Union[str, int]
-      """)
-
-    self.check("""
-      class A:
-          @property
-          def name(self) -> str: ...
-
-          @property
-          def name(self): ...
-    """, """
-      from typing import Any
-
-      class A:
-          name: Any
-    """)
 
   def test_method(self):
     self.check("""
