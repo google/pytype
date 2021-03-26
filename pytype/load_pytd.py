@@ -576,28 +576,25 @@ class Loader:
             raise BadDependencyError(error, ast_name)
       # If `name` is a package, try to load any base names not defined in
       # __init__ as submodules.
-      if not self._modules[name].is_package():
+      if not self._modules[name].is_package() or "__getattr__" in dep_ast:
         continue
-      try:
-        dep_ast.Lookup("__getattr__")
-      except KeyError:
-        for base_name in dependencies[dep_name]:
-          if base_name == "*":
-            continue
-          full_name = "%s.%s" % (name, base_name)
-          # Check whether full_name is a submodule based on whether it is
-          # defined in the __init__ file.
-          try:
-            attr = dep_ast.Lookup(full_name)
-          except KeyError:
-            attr = None
-          # 'from . import submodule as submodule' produces
-          # Alias(submodule, NamedType(submodule)).
-          if attr is None or (
-              isinstance(attr, pytd.Alias) and attr.name == attr.type.name):
-            # Don't check the import result - resolve_external_types will raise
-            # a better error.
-            self._import_module_by_name(full_name)
+      for base_name in dependencies[dep_name]:
+        if base_name == "*":
+          continue
+        full_name = "%s.%s" % (name, base_name)
+        # Check whether full_name is a submodule based on whether it is
+        # defined in the __init__ file.
+        try:
+          attr = dep_ast.Lookup(full_name)
+        except KeyError:
+          attr = None
+        # 'from . import submodule as submodule' produces
+        # Alias(submodule, NamedType(submodule)).
+        if attr is None or (
+            isinstance(attr, pytd.Alias) and attr.name == attr.type.name):
+          # Don't check the import result - resolve_external_types will raise
+          # a better error.
+          self._import_module_by_name(full_name)
 
   def _resolve_external_types(self, mod_ast, mod_name=None):
     module_map = self._modules.get_module_map()

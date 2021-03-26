@@ -20,10 +20,7 @@ class TypingExtensionsOverlay(overlay.Overlay):
       _, name = pyval.name.rsplit(".", 1)
       if name.startswith("_"):
         continue
-      try:
-        # This check is to avoid marking typing re-exports as unsupported.
-        vm.loader.typing.Lookup(f"typing.{name}")
-      except KeyError:
+      if f"typing.{name}" not in vm.loader.typing:
         if name not in member_map:
           member_map[name] = overlay.build(
               name, typing_overlay.not_supported_yet)

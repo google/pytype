@@ -698,9 +698,7 @@ def infer_types(src, errorlog, options, loader,
   ast = tracer.loader.resolve_ast(ast)
   if tracer.has_unknown_wildcard_imports or any(
       a in defs for a in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS):
-    try:
-      ast.Lookup("__getattr__")
-    except KeyError:
+    if "__getattr__" not in ast:
       ast = pytd_utils.Concat(
           ast, builtins.GetDefaultAst(options.python_version))
   # If merged with other if statement, triggers a ValueError: Unresolved class
