@@ -638,8 +638,7 @@ class VirtualMachine:
 
   def _check_defaults(self, node, method):
     """Check parameter defaults against annotations."""
-    if (not self.options.check_parameter_types or
-        not method.signature.has_param_annotations):
+    if not method.signature.has_param_annotations:
       return
     _, args = self.create_method_arguments(node, method, use_defaults=True)
     positional_names = method.get_positional_names()
@@ -665,7 +664,12 @@ class VirtualMachine:
             # any method that does nothing except return None.
             should_report = not method.has_empty_body()
           else:
-            should_report = True
+            if self.options.check_parameter_types:
+              should_report = True
+            elif self.options.check_nonnull_parameter_types:
+              should_report = value != self.convert.none
+            else:
+              should_report = False
           if should_report:
             self.errorlog.annotation_type_mismatch(
                 self.frames, expected_type, value.to_binding(node), arg_name)
