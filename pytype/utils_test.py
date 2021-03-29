@@ -89,7 +89,7 @@ class UtilsTest(unittest.TestCase):
     self._validate_version_helper((2, 1))
     self._validate_version_helper((2, 8))
     self._validate_version_helper((3, 1))
-    self._validate_version_helper((3, 9))
+    self._validate_version_helper((3, 42))
     utils._VALIDATE_PYTHON_VERSION_UPPER_BOUND = old
 
   def _validate_version_helper(self, python_version):
