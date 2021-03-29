@@ -2240,6 +2240,20 @@ class VirtualMachine:
   def byte_COMPARE_OP(self, state, op):
     return self._compare_op(state, op.arg)
 
+  def byte_IS_OP(self, state, op):
+    if op.arg:
+      op_arg = slots.CMP_IS_NOT
+    else:
+      op_arg = slots.CMP_IS
+    return self._compare_op(state, op_arg)
+
+  def byte_CONTAINS_OP(self, state, op):
+    if op.arg:
+      op_arg = slots.CMP_NOT_IN
+    else:
+      op_arg = slots.CMP_IN
+    return self._compare_op(state, op_arg)
+
   def byte_LOAD_ATTR(self, state, op):
     """Pop an object, and retrieve a named attribute from it."""
     name = self.frame.f_code.co_names[op.arg]
@@ -2484,12 +2498,53 @@ class VirtualMachine:
     state, _ = self._call(state, the_list, "append", (val,))
     return state
 
+  def byte_LIST_EXTEND(self, state, op):
+    """Pops top-of-stack and uses it to extend the list at stack[op.arg]."""
+    state, update = state.pop()
+    target = state.peek(op.arg)
+
+    def pytd_extend(state):
+      state, _ = self._call(state, target, "extend", (update,))
+      return state
+
+    if not all(isinstance(v, abstract.List) and not v.could_contain_anything
+               for v in target.data):
+      return pytd_extend(state)
+    try:
+      update_value = abstract_utils.get_atomic_python_constant(
+          update, collections.abc.Iterable)
+    except abstract_utils.ConversionError:
+      return pytd_extend(state)
+    update_param = update.data[0].get_instance_type_parameter(
+        abstract_utils.T, state.node)
+    for abstract_target_value in target.data:
+      target_value = abstract_target_value.pyval
+      # abstract.Dict keys and string characters are raw strings that need to be
+      # converted to variables. All other container-like PythonConstants already
+      # store their elements as variables.
+      if isinstance(update_value, (dict, str)):
+        for v in update_value:
+          target_value.append(self.convert.constant_to_var(v))
+      else:
+        target_value.extend(update_value)
+      # We use Instance.merge_instance_type_parameter because the List
+      # implementation also sets could_contain_anything to True.
+      abstract.Instance.merge_instance_type_parameter(
+          abstract_target_value, state.node, abstract_utils.T, update_param)
+    return state
+
   def byte_SET_ADD(self, state, op):
     # Used by the compiler e.g. for {x for x in ...}
     count = op.arg
     state, val = state.pop()
     the_set = state.peek(count)
     state, _ = self._call(state, the_set, "add", (val,))
+    return state
+
+  def byte_SET_UPDATE(self, state, op):
+    state, update = state.pop()
+    target = state.peek(op.arg)
+    state, _ = self._call(state, target, "update", (update,))
     return state
 
   def byte_MAP_ADD(self, state, op):
@@ -2505,6 +2560,31 @@ class VirtualMachine:
       val, key = item
     the_map = state.peek(count)
     state, _ = self._call(state, the_map, "__setitem__", (key, val))
+    return state
+
+  def byte_DICT_MERGE(self, state, op):
+    # DICT_MERGE is like DICT_UPDATE but raises an exception for duplicate keys.
+    return self.byte_DICT_UPDATE(state, op)
+
+  def byte_DICT_UPDATE(self, state, op):
+    """Pops top-of-stack and uses it to update the dict at stack[op.arg]."""
+    state, update = state.pop()
+    target = state.peek(op.arg)
+
+    def pytd_update(state):
+      state, _ = self._call(state, target, "update", (update,))
+      return state
+
+    if not all(isinstance(v, abstract.Dict) and not v.could_contain_anything
+               for v in target.data):
+      return pytd_update(state)
+    try:
+      update_value = abstract_utils.get_atomic_python_constant(update, dict)
+    except abstract_utils.ConversionError:
+      return pytd_update(state)
+    for abstract_target_value in target.data:
+      for k, v in update_value.items():
+        abstract_target_value.set_str_item(state.node, k, v)
     return state
 
   def byte_PRINT_EXPR(self, state, op):
@@ -2600,6 +2680,13 @@ class VirtualMachine:
   def byte_JUMP_ABSOLUTE(self, state, op):
     self.store_jump(op.target, state.forward_cfg_node())
     return state
+
+  def byte_JUMP_IF_NOT_EXC_MATCH(self, state, op):
+    state, args = state.popn(2)
+    state, isinstance_func = self.load_builtin(state, "isinstance")
+    state, result = self.call_function_with_state(state, isinstance_func, args)
+    state = state.push(result)
+    return self._jump_if(state, op, pop=True, jump_if=False)
 
   def byte_SETUP_LOOP(self, state, op):
     # We ignore the implicit jump in SETUP_LOOP; the interpreter never takes it.
@@ -3281,6 +3368,23 @@ class VirtualMachine:
     return self._unpack_and_build(state, op.arg, self.convert.build_list,
                                   self.convert.list_type)
 
+  def byte_LIST_TO_TUPLE(self, state, op):
+    """Convert the list at the top of the stack to a tuple."""
+    del op  # unused
+    state, lst_var = state.pop()
+    tup_var = self.program.NewVariable()
+    for b in lst_var.bindings:
+      if (isinstance(b.data, abstract.List) and
+          not b.data.could_contain_anything):
+        tup_var.AddBinding(
+            self.convert.tuple_to_value(b.data.pyval), {b}, state.node)
+      else:
+        param = b.data.get_instance_type_parameter(abstract_utils.T)
+        tup = abstract.Instance(self.convert.tuple_type, self)
+        tup.merge_instance_type_parameter(state.node, abstract_utils.T, param)
+        tup_var.AddBinding(tup, {b}, state.node)
+    return state.push(tup_var)
+
   def _build_map_unpack(self, state, arg_list):
     """Merge a list of kw dicts into a single dict."""
     args = abstract.Dict(self)
@@ -3499,8 +3603,6 @@ class VirtualMachine:
     state, result = self.call_function_with_state(state, func, args)
     return state.push(result)
 
-  # New in 3.9
-
   def byte_RERAISE(self, state, op):
     del op  # unused
     state, _ = state.popn(3)
@@ -3517,61 +3619,3 @@ class VirtualMachine:
     del op  # unused
     assertion_error = self.convert.name_to_value("builtins.AssertionError")
     return state.push(assertion_error.to_variable(state.node))
-
-  def byte_LIST_TO_TUPLE(self, state, op):
-    """Convert the list at the top of the stack to a tuple."""
-    del op  # unused
-    state, lst_var = state.pop()
-    tup_var = self.program.NewVariable()
-    for b in lst_var.bindings:
-      if (isinstance(b.data, abstract.List) and
-          not b.data.could_contain_anything):
-        tup_var.AddBinding(
-            self.convert.tuple_to_value(b.data.pyval), {b}, state.node)
-      else:
-        param = b.data.get_instance_type_parameter(abstract_utils.T)
-        tup = abstract.Instance(self.convert.tuple_type, self)
-        tup.merge_instance_type_parameter(state.node, abstract_utils.T, param)
-        tup_var.AddBinding(tup, {b}, state.node)
-    return state.push(tup_var)
-
-  def byte_IS_OP(self, state, op):
-    if op.arg:
-      op_arg = slots.CMP_IS_NOT
-    else:
-      op_arg = slots.CMP_IS
-    return self._compare_op(state, op_arg)
-
-  def byte_CONTAINS_OP(self, state, op):
-    if op.arg:
-      op_arg = slots.CMP_NOT_IN
-    else:
-      op_arg = slots.CMP_IN
-    return self._compare_op(state, op_arg)
-
-  def byte_JUMP_IF_NOT_EXC_MATCH(self, state, op):
-    state, args = state.popn(2)
-    state, isinstance_func = self.load_builtin(state, "isinstance")
-    state, result = self.call_function_with_state(state, isinstance_func, args)
-    state = state.push(result)
-    return self._jump_if(state, op, pop=True, jump_if=False)
-
-  def _update_from_top(self, state, op, update_method_name):
-    """Pops the stack's top object and uses it to update stack[op.arg]."""
-    state, update = state.pop()
-    target = state.peek(op.arg)
-    state, _ = self._call(state, target, update_method_name, (update,))
-    return state
-
-  def byte_LIST_EXTEND(self, state, op):
-    return self._update_from_top(state, op, "extend")
-
-  def byte_SET_UPDATE(self, state, op):
-    return self._update_from_top(state, op, "update")
-
-  def byte_DICT_MERGE(self, state, op):
-    # DICT_MERGE is like DICT_UPDATE but raises an exception for duplicate keys.
-    return self.byte_DICT_UPDATE(state, op)
-
-  def byte_DICT_UPDATE(self, state, op):
-    return self._update_from_top(state, op, "update")
