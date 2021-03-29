@@ -74,9 +74,11 @@ class AbstractMethodTests(test_base.TargetPython3FeatureTest):
       v1 = ...  # type: Any
       v2 = ...  # type: int
       class Bar(Foo):
-        foo = ...  # type: Any
+        @property
+        def foo(self) -> Any: ...
       class Foo(metaclass=abc.ABCMeta):
-        foo = ...  # type: Any
+        @property
+        def foo(self) -> Any: ...
     """)
     self.assertErrorRegexes(errors, {"e": r"Foo.*foo"})
 

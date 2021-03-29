@@ -202,43 +202,6 @@ def _contains_any_type(ast, type_names):
   return out.found
 
 
-class _PropertyToConstant(visitors.Visitor):
-  """Convert some properties to constant types."""
-
-  def EnterTypeDeclUnit(self, node):
-    self.type_param_names = [x.name for x in node.type_params]
-    self.const_properties = []
-
-  def LeaveTypeDeclUnit(self, node):
-    self.type_param_names = None
-
-  def EnterClass(self, node):
-    self.const_properties.append([])
-
-  def LeaveClass(self, node):
-    self.const_properties.pop()
-
-  def VisitClass(self, node):
-    constants = list(node.constants)
-    for fn in self.const_properties[-1]:
-      ptypes = [x.return_type for x in fn.signatures]
-      constants.append(
-          pytd.Constant(name=fn.name, type=pytd_utils.JoinTypes(ptypes)))
-    methods = [x for x in node.methods if x not in self.const_properties[-1]]
-    return node.Replace(constants=tuple(constants), methods=tuple(methods))
-
-  def EnterFunction(self, node):
-    if (self.const_properties and
-        node.kind == pytd.MethodTypes.PROPERTY and
-        not self._is_parametrised(node)):
-      self.const_properties[-1].append(node)
-
-  def _is_parametrised(self, method):
-    for sig in method.signatures:
-      if _contains_any_type(sig.return_type, self.type_param_names):
-        return True
-
-
 class Definitions:
   """Collect definitions used to build a TypeDeclUnit."""
 
@@ -620,7 +583,6 @@ class Definitions:
 
 
 def finalize_ast(ast: pytd.TypeDeclUnit):
-  ast = ast.Visit(_PropertyToConstant())
   ast = ast.Visit(_InsertTypeParameters(ast.type_params))
   ast = ast.Visit(_VerifyMutators())
   return ast

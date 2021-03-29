@@ -16,6 +16,7 @@ py_library(
   SRCS
     function.py
   DEPS
+    pytype.utils
     pytype.pytd.pytd_for_codegen
 )
 

@@ -9,6 +9,7 @@ import collections
 import logging
 import re
 
+from pytype import datatypes
 from pytype.pytd import base_visitor
 from pytype.pytd import pep484
 from pytype.pytd import pytd
@@ -46,7 +47,9 @@ class CanonicalOrderingVisitor(base_visitor.Visitor):
     # Typically, signatures should *not* be sorted because their order
     # determines lookup order. But some pytd (e.g., inference output) doesn't
     # have that property, in which case self.sort_signatures will be True.
-    if self.sort_signatures:
+    # NOTE: We do not sort property signatures; we want them in (getter, setter,
+    # deleter) order, which upstream code should ensure.
+    if self.sort_signatures and node.kind != pytd.MethodTypes.PROPERTY:
       return node.Replace(signatures=tuple(sorted(node.signatures)))
     else:
       return node
@@ -314,8 +317,28 @@ class PrintVisitor(base_visitor.Visitor):
     lines = decorators + header + slots + classes + constants + methods
     return "\n".join(lines) + "\n"
 
+  def _VisitProperty(self, node):
+    """Emit property decorators rather than @overload for property methods."""
+    assert node.kind == pytd.MethodTypes.PROPERTY
+    name = node.name
+    flags = datatypes.BitFlags(node.flags)
+    decorators = []
+    for flag, decorator in [
+        (pytd.MethodFlags.PROP_GETTER, "property"),
+        (pytd.MethodFlags.PROP_SETTER, f"{name}.setter"),
+        (pytd.MethodFlags.PROP_DELETER, f"{name}.deleter")
+    ]:
+      if flags.has(flag):
+        decorators.append(f"@{decorator}\n")
+
+    signatures = "\n".join(dec + "def " + name + sig
+                           for dec, sig in zip(decorators, node.signatures))
+    return signatures
+
   def VisitFunction(self, node):
     """Visit function, producing multi-line string (one for each signature)."""
+    if node.kind == pytd.MethodTypes.PROPERTY:
+      return self._VisitProperty(node)
     function_name = node.name
     decorators = ""
     if (node.kind == pytd.MethodTypes.STATICMETHOD and
@@ -324,8 +347,6 @@ class PrintVisitor(base_visitor.Visitor):
     elif (node.kind == pytd.MethodTypes.CLASSMETHOD and
           function_name != "__init_subclass__"):
       decorators += "@classmethod\n"
-    elif node.kind == pytd.MethodTypes.PROPERTY:
-      decorators += "@property\n"
     if node.is_abstract:
       decorators += "@abstractmethod\n"
     if node.is_coroutine:

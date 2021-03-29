@@ -398,8 +398,9 @@ class ClassesTest(test_base.TargetIndependentTest):
       from typing import Any
       class Foo(object):
         _name = ...  # type: str
-        name = ...  # type: Any
         def __init__(self) -> None: ...
+        @property
+        def name(self) -> Any: ...
         def test(self) -> str: ...
     """)
 

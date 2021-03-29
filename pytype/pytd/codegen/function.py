@@ -6,6 +6,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import dataclasses
 
+from pytype import datatypes
 from pytype.pytd import pytd
 
 
@@ -165,6 +166,14 @@ def _property_decorators(name: str) -> Dict[str, _Property]:
   }
 
 
+def default_getter_sig():
+  self_arg = Param("self").to_pytd()
+  ret = pytd.AnythingType()
+  return pytd.Signature(params=(self_arg,), return_type=ret,
+                        starargs=None, starstarargs=None,
+                        exceptions=(), template=())
+
+
 @dataclasses.dataclass
 class _Properties:
   """Function property decorators."""
@@ -178,6 +187,12 @@ class _Properties:
     if getattr(self, prop):
       raise PropertyDecoratorError(name)
     setattr(self, prop, sig)
+
+  def add_getter(self):
+    """We always want a getter, so add one at the end if not defined."""
+    if self.getter:
+      return
+    self.getter = default_getter_sig()
 
 
 @dataclasses.dataclass
@@ -208,6 +223,33 @@ class _DecoratedFunction:
       self.add_property(self.decorator, self.sigs[0])
     else:
       self.properties = None
+
+  @property
+  def kind(self):
+    """Get the method kind from the decorators."""
+    if self.name == "__new__" or self.decorator == "staticmethod":
+      return pytd.MethodTypes.STATICMETHOD
+    elif (self.name == "__init_subclass__" or
+          self.decorator == "classmethod"):
+      return pytd.MethodTypes.CLASSMETHOD
+    elif self.properties:
+      return pytd.MethodTypes.PROPERTY
+    else:
+      # Other decorators do not affect the kind
+      return pytd.MethodTypes.METHOD
+
+  @property
+  def flags(self):
+    """Get the method flags from the decorators."""
+    flags = datatypes.BitFlags()
+    flags.set_if(self.is_abstract, pytd.MethodFlags.ABSTRACT)
+    flags.set_if(self.is_coroutine, pytd.MethodFlags.COROUTINE)
+    if self.properties:
+      p = self.properties
+      flags.set_if(p.getter, pytd.MethodFlags.PROP_GETTER)
+      flags.set_if(p.setter, pytd.MethodFlags.PROP_SETTER)
+      flags.set_if(p.deleter, pytd.MethodFlags.PROP_DELETER)
+    return flags.flags
 
   def add_property(self, decorator, sig):
     prop = self.prop_names[decorator]
@@ -253,32 +295,15 @@ def merge_method_signatures(
       functions[fn.name].add_overload(fn)
   methods = []
   for name, fn in functions.items():
-    if name == "__new__" or fn.decorator == "staticmethod":
-      kind = pytd.MethodTypes.STATICMETHOD
-    elif name == "__init_subclass__" or fn.decorator == "classmethod":
-      kind = pytd.MethodTypes.CLASSMETHOD
-    elif fn.properties:
-      kind = pytd.MethodTypes.PROPERTY
-      # If we have only setters and/or deleters, replace them with a single
-      # method foo(...) -> Any, so that we infer a constant `foo: Any` even if
-      # the original method signatures are all `foo(...) -> None`. (If we have a
-      # getter we use its return type, but in the absence of a getter we want to
-      # fall back on Any since we cannot say anything about what the setter sets
-      # the type of foo to.)
-      if fn.properties.getter:
-        fn.sigs = [fn.properties.getter]
-      else:
-        sig = fn.properties.setter or fn.properties.deleter
-        fn.sigs = [sig.Replace(return_type=pytd.AnythingType())]
-    elif fn.decorator and check_unhandled_decorator:
+    if (fn.kind == pytd.MethodTypes.METHOD and fn.decorator and
+        check_unhandled_decorator):
+      # We don't support arbitrary function decorators. If a decorator was not
+      # translated to a method kind, raise an error here.
       raise ValueError("Unhandled decorator: %s" % fn.decorator)
-    else:
-      # Other decorators do not affect the kind
-      kind = pytd.MethodTypes.METHOD
-    flags = 0
-    if fn.is_abstract:
-      flags |= pytd.MethodFlags.ABSTRACT
-    if fn.is_coroutine:
-      flags |= pytd.MethodFlags.COROUTINE
-    methods.append(pytd.Function(name, tuple(fn.sigs), kind, flags))
+    elif fn.properties:
+      # Sort the sigs in order (getter, setter, deleter)
+      p = fn.properties
+      p.add_getter()  # If we don't have a getter yet, we need one now
+      fn.sigs = [x for x in [p.getter, p.setter, p.deleter] if x]
+    methods.append(pytd.Function(name, tuple(fn.sigs), fn.kind, fn.flags))
   return methods
