@@ -66,9 +66,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
 
     # Now fill primitive_classes with the real values using constant_to_value.
     primitive_classes = [
-        int, float, str, object, frozenset, compat.NoneType, complex, bool,
-        slice, types.CodeType, compat.EllipsisType, compat.OldStyleClassType,
-        super
+        int, float, str, object, compat.NoneType, complex, bool, slice,
+        types.CodeType, compat.EllipsisType, compat.OldStyleClassType, super,
     ] + version_specific
     self.primitive_classes = {
         v: self.constant_to_value(v) for v in primitive_classes
@@ -567,6 +566,13 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return self.primitive_class_instances[int]
     elif pyval.__class__ in self.primitive_classes:
       return self.primitive_class_instances[pyval.__class__]
+    elif pyval.__class__ is frozenset:
+      instance = abstract.Instance(self.frozenset_type, self.vm)
+      for element in pyval:
+        instance.merge_instance_type_parameter(
+            self.vm.root_node, abstract_utils.T, self.constant_to_var(
+                element, subst, self.vm.root_node))
+      return instance
     elif isinstance(pyval, (loadmarshal.CodeType, blocks.OrderedCode)):
       return abstract.ConcreteValue(pyval,
                                     self.primitive_classes[types.CodeType],
