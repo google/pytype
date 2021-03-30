@@ -11,12 +11,13 @@ ignore=test_data
 # multiple time (only on the command line, not in the configuration file where
 disable=
   abstract-method,
-  c-extension-no-member,
   arguments-differ,
   arguments-out-of-order,
   assigning-non-slot,
   attribute-defined-outside-init,
   bad-option-value,
+  c-extension-no-member,
+  comparison-with-callable,
   comparison-with-itself,
   consider-using-enumerate,
   consider-using-in,
