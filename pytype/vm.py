@@ -2182,6 +2182,24 @@ class VirtualMachine:
         types.append(None)
     return value, types
 
+  def _replace_abstract_exception(self, state, exc_type):
+    """Replace unknowns added by push_abstract_exception with precise values."""
+    # When the `try` block is set up, push_abstract_exception pushes on
+    # unknowns for the value and exception type. At the beginning of the
+    # `except` block, when we know the exception being caught, we can replace
+    # the unknowns with more useful variables.
+    value, types = self._instantiate_exception(state.node, exc_type)
+    if None in types:
+      exc_type = self.new_unsolvable(state.node)
+    if self.python_version >= (3, 8):
+      # See SETUP_FINALLY: in 3.8+, we push the exception on twice.
+      state, (_, _, tb, _, _) = state.popn(5)
+      state = state.push(value, exc_type, tb, value, exc_type)
+    else:
+      state, _ = state.popn(2)
+      state = state.push(value, exc_type)
+    return state
+
   def _compare_op(self, state, op_arg):
     """Pops and compares the top two stack values and pushes a boolean."""
     state, (x, y) = state.popn(2)
@@ -2210,21 +2228,7 @@ class VirtualMachine:
     elif op_arg == slots.CMP_IN:
       state, ret = self._cmp_in(state, x, y)
     elif op_arg == slots.CMP_EXC_MATCH:
-      # When the `try` block is set up, push_abstract_exception pushes on
-      # unknowns for the value and exception type. CMP_EXC_MATCH occurs at the
-      # beginning  of the `except` block, when we know the exception being
-      # caught, so we can replace the unknowns with more useful variables.
-      exc_type = y
-      value, types = self._instantiate_exception(state.node, exc_type)
-      if None in types:
-        exc_type = self.new_unsolvable(state.node)
-      if self.python_version >= (3, 8):
-        # See SETUP_FINALLY: in 3.8+, we push the exception on twice.
-        state, (_, _, tb, _, _) = state.popn(5)
-        state = state.push(value, exc_type, tb, value, exc_type)
-      else:
-        state, _ = state.popn(2)
-        state = state.push(value, exc_type)
+      state = self._replace_abstract_exception(state, y)
       ret = self.convert.build_bool(state.node)
     else:
       raise VirtualMachineError("Invalid argument to COMPARE_OP: %d" % op_arg)
@@ -2502,34 +2506,40 @@ class VirtualMachine:
     """Pops top-of-stack and uses it to extend the list at stack[op.arg]."""
     state, update = state.pop()
     target = state.peek(op.arg)
-
-    def pytd_extend(state):
+    if not all(abstract_utils.is_concrete_list(v) for v in target.data):
       state, _ = self._call(state, target, "extend", (update,))
       return state
 
-    if not all(abstract_utils.is_concrete_list(v) for v in target.data):
-      return pytd_extend(state)
-    try:
-      update_value = abstract_utils.get_atomic_python_constant(
-          update, collections.abc.Iterable)
-    except abstract_utils.ConversionError:
-      return pytd_extend(state)
-    update_param = update.data[0].get_instance_type_parameter(
-        abstract_utils.T, state.node)
-    for abstract_target_value in target.data:
-      target_value = abstract_target_value.pyval
-      # abstract.Dict keys and string characters are raw strings that need to be
-      # converted to variables. All other container-like PythonConstants already
-      # store their elements as variables.
-      if isinstance(update_value, (dict, str)):
-        for v in update_value:
-          target_value.append(self.convert.constant_to_var(v))
-      else:
-        target_value.extend(update_value)
-      # We use Instance.merge_instance_type_parameter because the List
-      # implementation also sets could_contain_anything to True.
-      abstract.Instance.merge_instance_type_parameter(
-          abstract_target_value, state.node, abstract_utils.T, update_param)
+    # Is the list we're constructing going to be the argument list for a
+    # function call? If so, we will keep any abstract.Splat objects around so we
+    # can unpack the function arguments precisely. Otherwise, splats will be
+    # converted to indefinite iterables.
+    keep_splats = False
+    next_op = op
+    while next_op:
+      next_op = next_op.next
+      if isinstance(next_op, opcodes.CALL_FUNCTION_EX):
+        keep_splats = True
+        break
+      elif next_op.__class__ in blocks.STORE_OPCODES:
+        break
+
+    update_elements = self._unpack_iterable(state.node, update)
+    if not keep_splats and any(
+        abstract_utils.is_var_splat(x) for x in update_elements):
+      for target_value in target.data:
+        self._merge_indefinite_iterables(
+            state.node, target_value, update_elements)
+    else:
+      for target_value in target.data:
+        target_value.pyval.extend(update_elements)
+        for update_value in update.data:
+          update_param = update_value.get_instance_type_parameter(
+              abstract_utils.T, state.node)
+          # We use Instance.merge_instance_type_parameter because the List
+          # implementation also sets could_contain_anything to True.
+          abstract.Instance.merge_instance_type_parameter(
+              target_value, state.node, abstract_utils.T, update_param)
     return state
 
   def byte_SET_ADD(self, state, op):
@@ -2680,10 +2690,13 @@ class VirtualMachine:
     return state
 
   def byte_JUMP_IF_NOT_EXC_MATCH(self, state, op):
-    state, args = state.popn(2)
-    state, isinstance_func = self.load_builtin(state, "isinstance")
-    state, result = self.call_function_with_state(state, isinstance_func, args)
-    state = state.push(result)
+    state, (unused_exc, exc_type) = state.popn(2)
+    # At runtime, this opcode calls isinstance(exc, exc_type) and pushes the
+    # result onto the stack. Instead, we use exc_type to refine the type of the
+    # exception instance still on the stack and push on an indefinite result for
+    # the isinstance call.
+    state = self._replace_abstract_exception(state, exc_type)
+    state = state.push(self.convert.bool_values[None].to_variable(state.node))
     return self._jump_if(state, op, pop=True, jump_if=False)
 
   def byte_SETUP_LOOP(self, state, op):
@@ -3324,22 +3337,21 @@ class VirtualMachine:
       elements.extend(self._unpack_iterable(state.node, var))
     return state, elements
 
-  def _build_indefinite_sequence(self, node, typ, content):
-    """Create an indefinite container typ[T] from the given sequence."""
-    seq = abstract.Instance(typ, self)
-    for var in content:
+  def _merge_indefinite_iterables(self, node, target, iterables_to_merge):
+    for var in iterables_to_merge:
       if abstract_utils.is_var_splat(var):
         for val in abstract_utils.unwrap_splat(var).data:
           p = val.get_instance_type_parameter(abstract_utils.T)
-          seq.merge_instance_type_parameter(node, abstract_utils.T, p)
+          target.merge_instance_type_parameter(node, abstract_utils.T, p)
       else:
-        seq.merge_instance_type_parameter(node, abstract_utils.T, var)
-    return seq.to_variable(node)
+        target.merge_instance_type_parameter(node, abstract_utils.T, var)
 
   def _unpack_and_build(self, state, count, build_concrete, container_type):
     state, seq = self._pop_and_unpack_list(state, count)
     if any(abstract_utils.is_var_splat(x) for x in seq):
-      ret = self._build_indefinite_sequence(state.node, container_type, seq)
+      retval = abstract.Instance(container_type, self)
+      self._merge_indefinite_iterables(state.node, retval, seq)
+      ret = retval.to_variable(state.node)
     else:
       ret = build_concrete(state.node, seq)
     return state.push(ret)
@@ -3372,8 +3384,7 @@ class VirtualMachine:
     state, lst_var = state.pop()
     tup_var = self.program.NewVariable()
     for b in lst_var.bindings:
-      if (isinstance(b.data, abstract.List) and
-          not b.data.could_contain_anything):
+      if abstract_utils.is_concrete_list(b.data):
         tup_var.AddBinding(
             self.convert.tuple_to_value(b.data.pyval), {b}, state.node)
       else:
