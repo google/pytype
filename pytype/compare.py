@@ -168,8 +168,7 @@ def _compare_dict(op, left, right):
   # Determines when dicts are definitely not equal by checking their key sets.
   if (_is_equality_cmp(op) and
       not left.could_contain_anything and
-      isinstance(right, abstract.Dict) and
-      not right.could_contain_anything and
+      abstract_utils.is_concrete_dict(right) and
       set(left.pyval) != set(right.pyval)):
     return op != slots.EQ
   return None

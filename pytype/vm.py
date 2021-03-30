@@ -2507,8 +2507,7 @@ class VirtualMachine:
       state, _ = self._call(state, target, "extend", (update,))
       return state
 
-    if not all(isinstance(v, abstract.List) and not v.could_contain_anything
-               for v in target.data):
+    if not all(abstract_utils.is_concrete_list(v) for v in target.data):
       return pytd_extend(state)
     try:
       update_value = abstract_utils.get_atomic_python_constant(
@@ -2575,8 +2574,7 @@ class VirtualMachine:
       state, _ = self._call(state, target, "update", (update,))
       return state
 
-    if not all(isinstance(v, abstract.Dict) and not v.could_contain_anything
-               for v in target.data):
+    if not all(abstract_utils.is_concrete_dict(v) for v in target.data):
       return pytd_update(state)
     try:
       update_value = abstract_utils.get_atomic_python_constant(update, dict)

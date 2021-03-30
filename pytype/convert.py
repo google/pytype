@@ -168,9 +168,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return "builtins." + t.__name__
 
   def value_to_constant(self, val, constant_type):
-    if (isinstance(val, mixin.PythonConstant) and
-        isinstance(val.pyval, constant_type or object) and
-        not getattr(val, "could_contain_anything", False)):
+    if (abstract_utils.is_concrete(val) and
+        isinstance(val.pyval, constant_type or object)):
       return val.pyval
     name = self.constant_name(constant_type)
     raise abstract_utils.ConversionError("%s is not of type %s" % (val, name))

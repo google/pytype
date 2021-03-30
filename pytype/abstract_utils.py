@@ -711,11 +711,23 @@ def is_literal(annot: Optional[_BaseValue]):
   return annot.isinstance_LiteralClass()
 
 
+def is_concrete_dict(val: _BaseValue):
+  return val.isinstance_Dict() and not val.could_contain_anything
+
+
+def is_concrete_list(val: _BaseValue):
+  return val.isinstance_List() and not val.could_contain_anything
+
+
+def is_concrete(val: _BaseValue):
+  return (val.isinstance_PythonConstant() and
+          not getattr(val, "could_contain_anything", False))
+
+
 def is_indefinite_iterable(val: _BaseValue):
   """True if val is a non-concrete instance of typing.Iterable."""
   instance = val.isinstance_Instance()
-  concrete = (val.isinstance_PythonConstant() and
-              not getattr(val, "could_contain_anything", False))
+  concrete = is_concrete(val)
   cls_instance = val.cls and val.cls.isinstance_Class()
   if not (instance and cls_instance and not concrete):
     return False

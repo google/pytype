@@ -401,6 +401,9 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
   def isinstance_ClassMethodInstance(self):
     return False  # overridden in special_builtins.ClassMethodInstance
 
+  def isinstance_Dict(self):
+    return isinstance(self, Dict)
+
   def isinstance_Function(self):
     return isinstance(self, Function)
 
@@ -412,6 +415,9 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
 
   def isinstance_InterpreterFunction(self):
     return isinstance(self, InterpreterFunction)
+
+  def isinstance_List(self):
+    return isinstance(self, List)
 
   def isinstance_LiteralClass(self):
     return isinstance(self, LiteralClass)
