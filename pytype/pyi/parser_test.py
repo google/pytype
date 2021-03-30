@@ -1449,7 +1449,10 @@ class ClassTest(_ParserTestBase):
       class Foo:
           @property
           def a(self) -> int: ...
-    """)
+      """, """
+      class Foo:
+          a: int
+      """)
 
   def test_duplicate_name(self):
     self.check_error("""
@@ -1896,23 +1899,18 @@ class PropertyDecoratorTest(_ParserTestBase):
   """Tests that cover _parse_signature_as_property()."""
 
   def test_property_with_type(self):
+    expected = """
+      class A:
+          name: str
+    """
+
     # The return type of @property is used for the property type.
     self.check("""
       class A:
           @property
-          def name(self) -> str: ...
-      """)
+          def name(self) -> str:...
+      """, expected)
 
-  def test_getter_and_setter(self):
-    self.check("""
-      class A:
-          @property
-          def name(self) -> str: ...
-          @name.setter
-          def name(self, value: str) -> None: ...
-      """)
-
-  def test_missing_getter(self):
     self.check("""
       class A:
           @name.setter
@@ -1921,67 +1919,70 @@ class PropertyDecoratorTest(_ParserTestBase):
       from typing import Any
 
       class A:
-          @property
-          def name(self) -> Any: ...
-          @name.setter
-          def name(self, value: str) -> None: ...
+          name: Any
       """)
 
-  def test_getter_setter_type_mismatch(self):
     self.check("""
       class A:
           @property
-          def name(self) -> str: ...
+          def name(self) -> str:...
+
+          @name.setter
+          def name(self, value: str) -> None: ...
+      """, expected)
+
+    self.check("""
+      class A:
+          @property
+          def name(self) -> str:...
+
+          @name.setter
+          def name(self, value) -> None: ...
+      """, expected)
+
+    self.check("""
+      class A:
+          @property
+          def name(self) -> str:...
+
           @name.setter
           def name(self, value: int) -> None: ...
-      """)
+      """, expected)
 
   def test_property_decorator_any_type(self):
+    expected = """
+          from typing import Any
+
+          class A:
+              name: Any
+              """
+
     self.check("""
       class A:
           @property
           def name(self): ...
-      """, """
-      from typing import Any
+      """, expected)
 
-      class A:
-          @property
-          def name(self) -> Any: ...
-      """)
-
-  def test_deleter_only(self):
     self.check("""
       class A:
-          @name.deleter
-          def name(self) -> None: ...
-      """, """
-      from typing import Any
-
-      class A:
-          @property
-          def name(self) -> Any: ...
-          @name.deleter
-          def name(self) -> None: ...
-      """)
-
-  def test_setter_and_deleter(self):
-    self.check("""
-      class A:
-          @name.deleter
-          def name(self): ...
           @name.setter
           def name(self, value): ...
-      """, """
-      from typing import Any
+      """, expected)
 
+    self.check("""
       class A:
-          @property
-          def name(self) -> Any: ...
-          @name.setter
-          def name(self, value) -> Any: ...
           @name.deleter
-          def name(self) -> Any: ...
-      """)
+          def name(self): ...
+      """, expected)
+
+    self.check("""
+      class A:
+          @name.setter
+          def name(self, value): ...
+
+          @name.deleter
+          def name(self): ...
+      """, expected)
 
   def test_property_decorator_bad_syntax(self):
     self.check_error("""
@@ -2040,8 +2041,7 @@ class MergeSignaturesTest(_ParserTestBase):
           def name(self) -> str: ...
       """, """
       class A:
-          @property
-          def name(self) -> str: ...
+          name: str
       """)
 
   def test_method(self):

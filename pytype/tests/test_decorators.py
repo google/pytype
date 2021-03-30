@@ -125,12 +125,9 @@ class DecoratorsTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo(object):
+        f = ...  # type: Any
         x = ...  # type: Any
         def __init__(self, x) -> None: ...
-        @property
-        def f(self) -> Any: ...
-        @f.setter
-        def f(self, x) -> None: ...
       foo = ...  # type: Foo
       x = ...  # type: int
     """)
@@ -206,14 +203,10 @@ class DecoratorsTest(test_base.TargetIndependentTest):
           def name(self):
             return [42]
     """)
-    # TODO(mdemello): When we treated properties as constants we would infer the
-    # union type here; can we recover that by merging function variable bindings
-    # in general at some point?
     self.assertTypesMatchPytd(ty, """
-      from typing import List
+      from typing import List, Union
       class Foo(object):
-        @property
-        def name(self) -> List[int]: ...
+        name = ...  # type: Union[int, List[int]]
     """)
 
   def test_overwrite_property_type(self):
@@ -228,8 +221,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       class Foo(object):
-        @property
-        def name(self) -> str: ...
+        name = ...  # type: str
     """)
 
   def test_unknown_property_type(self):
@@ -242,10 +234,7 @@ class DecoratorsTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo(object):
-        @property
-        def name(self) -> Any: ...
-        @name.setter
-        def name(self, x) -> None: ...
+        name = ...  # type: Any
     """)
 
   def test_bad_fget(self):

@@ -424,23 +424,3 @@ class ParserWrapper:
 
   def error(self, *args, **kwargs):
     return self.parser.error(*args, **kwargs)
-
-
-class BitFlags:
-  """Store flags as bits in an integer."""
-
-  def __init__(self, flags: int = 0):
-    self.flags = flags
-
-  def has(self, flags: int) -> bool:
-    return bool(self.flags & flags)
-
-  def set(self, flags: int):
-    self.flags |= flags
-
-  def unset(self, flags: int):
-    self.flags &= ~flags
-
-  def set_if(self, pred, flags):
-    if pred:
-      self.set(flags)

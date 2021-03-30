@@ -56,22 +56,6 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo(object):
-          @property
-          def x(self) -> int: ...
-      """)
-      ty = self.Infer("""
-        import foo
-        a = foo.Foo().x
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
-        foo: module
-        a: int
-      """)
-
-  def test_property_from_pyi_function(self):
-    with file_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
-        class Foo(object):
           def get_foo(self) -> int: ...
       """)
       ty = self.Infer("""
@@ -82,21 +66,18 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
       self.assertTypesMatchPytd(ty, """
         foo = ...  # type: module
         class Bar(foo.Foo):
-          @property
-          def foo(self: foo.Foo) -> int: ...
+          foo = ...  # type: int
       """)
 
   def test_property_from_native_function(self):
     ty = self.Infer("""
-      class Foo(list):
-        foo = property(fget=list.__len__)
+      class Foo(dict):
+        foo = property(fget=dict.__getitem__)
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import List, TypeVar
-      _T = TypeVar('_T')
-      class Foo(list):
-        @property
-        def foo(self: List[_T]) -> int: ...
+      from typing import Any
+      class Foo(dict):
+        foo = ...  # type: Any
     """)
 
   def test_property_from_pyi_with_type_parameter(self):
@@ -115,8 +96,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
         from typing import Union
         foo = ...  # type: module
         class Bar(foo.Foo):
-          @property
-          def foo(self: foo.Foo) -> Union[str, int]: ...
+          foo = ...  # type: Union[str, int]
       """)
 
   def test_callable_if_splitting(self):
@@ -190,13 +170,12 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
       j = ...  # type: int
       def fun(x) -> None: ...
       class A:
+          quux = ...  # type: None
           def __call__(self) -> None: ...
           @staticmethod
           def bar(self) -> None: ...
           @classmethod
           def baz() -> None: ...
-          @property
-          def quux(self) -> None: ...
           def foo(self) -> None: ...
       class B:
           pass
@@ -221,9 +200,8 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
       from typing import Any, Tuple, Union
       class Foo(object):
         foo = ...  # type: Union[int, str]
+        bar = ...  # type: Any
         def __init__(self) -> None: ...
-        @property
-        def bar(self) -> Any: ...
       def f() -> Tuple[int, str]: ...
     """)
 
