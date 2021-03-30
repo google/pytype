@@ -44,6 +44,7 @@ jobs:
         sudo apt-get install python2-minimal
 
     - name: Install Dependencies
+      if: matrix.python-version != '3.10-dev'
       run: pip install -r requirements.txt
 
     - name: Run Tests
@@ -52,4 +53,10 @@ jobs:
 
     - name: Run Tests for python 3.10
       if: matrix.python-version == '3.10-dev'
-      run: python build_scripts/ci_script.py || exit 0
+      # Dependency installation fails in 3.10 due to a typed_ast bug that is
+      # fixed by https://github.com/python/typed_ast/pull/155. Once that fix is
+      # released, we can remove the version check from Install Dependencies and
+      # the install step here.
+      run: |
+        pip install -r requirements.txt || exit 0
+        python build_scripts/ci_script.py || exit 0
