@@ -19,6 +19,7 @@ import itertools
 import logging
 import os
 import re
+from typing import Tuple
 
 from pytype import abstract
 from pytype import abstract_utils
@@ -409,6 +410,12 @@ class VirtualMachine:
   def repper(self, s):
     return repr_obj.repr(s)
 
+  def _call(
+      self, state, obj, method_name, args
+  ) -> Tuple[frame_state.FrameState, cfg.Variable]:
+    state, method = self.load_attr(state, obj, method_name)
+    return self.call_function_with_state(state, method, args)
+
   # Operators
 
   def pop_slice_and_obj(self, state, count):
@@ -434,8 +441,7 @@ class VirtualMachine:
     state, slice_args, obj = self.pop_slice_and_obj(state, count)
     slice_obj = self.convert.build_slice(state.node, *slice_args)
     state, new_value = state.pop()
-    state, f = self.load_attr(state, obj, "__setitem__")
-    state, _ = self.call_function_with_state(state, f, (slice_obj, new_value))
+    state, _ = self._call(state, obj, "__setitem__", (slice_obj, new_value))
     return state
 
   def delete_slice(self, state, count):
@@ -638,8 +644,7 @@ class VirtualMachine:
 
   def _check_defaults(self, node, method):
     """Check parameter defaults against annotations."""
-    if (not self.options.check_parameter_types or
-        not method.signature.has_param_annotations):
+    if not method.signature.has_param_annotations:
       return
     _, args = self.create_method_arguments(node, method, use_defaults=True)
     positional_names = method.get_positional_names()
@@ -665,7 +670,12 @@ class VirtualMachine:
             # any method that does nothing except return None.
             should_report = not method.has_empty_body()
           else:
-            should_report = True
+            if self.options.check_parameter_types:
+              should_report = True
+            elif self.options.check_nonnull_parameter_types:
+              should_report = value != self.convert.none
+            else:
+              should_report = False
           if should_report:
             self.errorlog.annotation_type_mismatch(
                 self.frames, expected_type, value.to_binding(node), arg_name)
@@ -1434,8 +1444,7 @@ class VirtualMachine:
     return v.bindings and all(self._data_is_none(b.data) for b in v.bindings)
 
   def _delete_item(self, state, obj, arg):
-    state, f = self.load_attr(state, obj, "__delitem__")
-    state, _ = self.call_function_with_state(state, f, (arg,))
+    state, _ = self._call(state, obj, "__delitem__", (arg,))
     return state
 
   def load_attr(self, state, obj, attr):
@@ -1635,8 +1644,7 @@ class VirtualMachine:
 
   def unary_operator(self, state, name):
     state, x = state.pop()
-    state, method = self.load_attr(state, x, name)  # E.g. __not__
-    state, result = self.call_function_with_state(state, method, ())
+    state, result = self._call(state, x, name, ())
     state = state.push(result)
     return state
 
@@ -2232,6 +2240,20 @@ class VirtualMachine:
   def byte_COMPARE_OP(self, state, op):
     return self._compare_op(state, op.arg)
 
+  def byte_IS_OP(self, state, op):
+    if op.arg:
+      op_arg = slots.CMP_IS_NOT
+    else:
+      op_arg = slots.CMP_IS
+    return self._compare_op(state, op_arg)
+
+  def byte_CONTAINS_OP(self, state, op):
+    if op.arg:
+      op_arg = slots.CMP_NOT_IN
+    else:
+      op_arg = slots.CMP_IN
+    return self._compare_op(state, op_arg)
+
   def byte_LOAD_ATTR(self, state, op):
     """Pop an object, and retrieve a named attribute from it."""
     name = self.frame.f_code.co_names[op.arg]
@@ -2305,8 +2327,7 @@ class VirtualMachine:
     return self.del_attr(state, obj, name)
 
   def store_subscr(self, state, obj, key, val):
-    state, f = self.load_attr(state, obj, "__setitem__")
-    state, _ = self.call_function_with_state(state, f, (key, val))
+    state, _ = self._call(state, obj, "__setitem__", (key, val))
     return state
 
   def byte_STORE_SUBSCR(self, state, op):
@@ -2431,8 +2452,7 @@ class VirtualMachine:
       nontuple_seq.AddBinding(b.data, {b}, state.node)
     if nontuple_seq.bindings:
       state, itr = self._get_iter(state, nontuple_seq)
-      state, f = self.load_attr(state, itr, self.convert.next_attr)
-      state, result = self.call_function_with_state(state, f, ())
+      state, result = self._call(state, itr, self.convert.next_attr, ())
       # For a non-literal iterable, next() should always return the same type T,
       # so we can iterate `count` times in both UNPACK_SEQUENCE and UNPACK_EX,
       # and assign the slurp variable type List[T].
@@ -2475,8 +2495,42 @@ class VirtualMachine:
     count = op.arg
     state, val = state.pop()
     the_list = state.peek(count)
-    state, f = self.load_attr(state, the_list, "append")
-    state, _ = self.call_function_with_state(state, f, (val,))
+    state, _ = self._call(state, the_list, "append", (val,))
+    return state
+
+  def byte_LIST_EXTEND(self, state, op):
+    """Pops top-of-stack and uses it to extend the list at stack[op.arg]."""
+    state, update = state.pop()
+    target = state.peek(op.arg)
+
+    def pytd_extend(state):
+      state, _ = self._call(state, target, "extend", (update,))
+      return state
+
+    if not all(isinstance(v, abstract.List) and not v.could_contain_anything
+               for v in target.data):
+      return pytd_extend(state)
+    try:
+      update_value = abstract_utils.get_atomic_python_constant(
+          update, collections.abc.Iterable)
+    except abstract_utils.ConversionError:
+      return pytd_extend(state)
+    update_param = update.data[0].get_instance_type_parameter(
+        abstract_utils.T, state.node)
+    for abstract_target_value in target.data:
+      target_value = abstract_target_value.pyval
+      # abstract.Dict keys and string characters are raw strings that need to be
+      # converted to variables. All other container-like PythonConstants already
+      # store their elements as variables.
+      if isinstance(update_value, (dict, str)):
+        for v in update_value:
+          target_value.append(self.convert.constant_to_var(v))
+      else:
+        target_value.extend(update_value)
+      # We use Instance.merge_instance_type_parameter because the List
+      # implementation also sets could_contain_anything to True.
+      abstract.Instance.merge_instance_type_parameter(
+          abstract_target_value, state.node, abstract_utils.T, update_param)
     return state
 
   def byte_SET_ADD(self, state, op):
@@ -2484,8 +2538,13 @@ class VirtualMachine:
     count = op.arg
     state, val = state.pop()
     the_set = state.peek(count)
-    state, f = self.load_attr(state, the_set, "add")
-    state, _ = self.call_function_with_state(state, f, (val,))
+    state, _ = self._call(state, the_set, "add", (val,))
+    return state
+
+  def byte_SET_UPDATE(self, state, op):
+    state, update = state.pop()
+    target = state.peek(op.arg)
+    state, _ = self._call(state, target, "update", (update,))
     return state
 
   def byte_MAP_ADD(self, state, op):
@@ -2500,8 +2559,32 @@ class VirtualMachine:
     else:
       val, key = item
     the_map = state.peek(count)
-    state, f = self.load_attr(state, the_map, "__setitem__")
-    state, _ = self.call_function_with_state(state, f, (key, val))
+    state, _ = self._call(state, the_map, "__setitem__", (key, val))
+    return state
+
+  def byte_DICT_MERGE(self, state, op):
+    # DICT_MERGE is like DICT_UPDATE but raises an exception for duplicate keys.
+    return self.byte_DICT_UPDATE(state, op)
+
+  def byte_DICT_UPDATE(self, state, op):
+    """Pops top-of-stack and uses it to update the dict at stack[op.arg]."""
+    state, update = state.pop()
+    target = state.peek(op.arg)
+
+    def pytd_update(state):
+      state, _ = self._call(state, target, "update", (update,))
+      return state
+
+    if not all(isinstance(v, abstract.Dict) and not v.could_contain_anything
+               for v in target.data):
+      return pytd_update(state)
+    try:
+      update_value = abstract_utils.get_atomic_python_constant(update, dict)
+    except abstract_utils.ConversionError:
+      return pytd_update(state)
+    for abstract_target_value in target.data:
+      for k, v in update_value.items():
+        abstract_target_value.set_str_item(state.node, k, v)
     return state
 
   def byte_PRINT_EXPR(self, state, op):
@@ -2597,6 +2680,13 @@ class VirtualMachine:
   def byte_JUMP_ABSOLUTE(self, state, op):
     self.store_jump(op.target, state.forward_cfg_node())
     return state
+
+  def byte_JUMP_IF_NOT_EXC_MATCH(self, state, op):
+    state, args = state.popn(2)
+    state, isinstance_func = self.load_builtin(state, "isinstance")
+    state, result = self.call_function_with_state(state, isinstance_func, args)
+    state = state.push(result)
+    return self._jump_if(state, op, pop=True, jump_if=False)
 
   def byte_SETUP_LOOP(self, state, op):
     # We ignore the implicit jump in SETUP_LOOP; the interpreter never takes it.
@@ -2742,8 +2832,7 @@ class VirtualMachine:
     level = len(state.data_stack)
     state, exit_method = self.load_attr(state, ctxmgr, "__exit__")
     state = state.push(exit_method)
-    state, enter = self.load_attr(state, ctxmgr, "__enter__")
-    state, ctxmgr_obj = self.call_function_with_state(state, enter, ())
+    state, ctxmgr_obj = self._call(state, ctxmgr, "__enter__", ())
     if self.PY2:
       state = self.push_block(state, "with", level)
     else:
@@ -3198,7 +3287,8 @@ class VirtualMachine:
     """Unpack an iterable."""
     elements = []
     try:
-      itr = abstract_utils.get_atomic_python_constant(var, collections.Iterable)
+      itr = abstract_utils.get_atomic_python_constant(
+          var, collections.abc.Iterable)
     except abstract_utils.ConversionError:
       if abstract_utils.is_var_indefinite_iterable(var):
         elements.append(abstract.Splat(self, var).to_variable(node))
@@ -3277,6 +3367,23 @@ class VirtualMachine:
   def byte_BUILD_LIST_UNPACK(self, state, op):
     return self._unpack_and_build(state, op.arg, self.convert.build_list,
                                   self.convert.list_type)
+
+  def byte_LIST_TO_TUPLE(self, state, op):
+    """Convert the list at the top of the stack to a tuple."""
+    del op  # unused
+    state, lst_var = state.pop()
+    tup_var = self.program.NewVariable()
+    for b in lst_var.bindings:
+      if (isinstance(b.data, abstract.List) and
+          not b.data.could_contain_anything):
+        tup_var.AddBinding(
+            self.convert.tuple_to_value(b.data.pyval), {b}, state.node)
+      else:
+        param = b.data.get_instance_type_parameter(abstract_utils.T)
+        tup = abstract.Instance(self.convert.tuple_type, self)
+        tup.merge_instance_type_parameter(state.node, abstract_utils.T, param)
+        tup_var.AddBinding(tup, {b}, state.node)
+    return state.push(tup_var)
 
   def _build_map_unpack(self, state, arg_list):
     """Merge a list of kw dicts into a single dict."""
@@ -3357,8 +3464,7 @@ class VirtualMachine:
 
   def byte_GET_ANEXT(self, state, op):
     """Implementation of the GET_ANEXT opcode."""
-    state, anext = self.load_attr(state, state.top(), "__anext__")
-    state, ret = self.call_function_with_state(state, anext, ())
+    state, ret = self._call(state, state.top(), "__anext__", ())
     if not self._check_return(state.node, ret, self.convert.awaitable_type):
       ret = self.new_unsolvable(state.node)
     return state.push(ret)
@@ -3369,8 +3475,7 @@ class VirtualMachine:
     state, ctxmgr = state.pop()
     state, aexit_method = self.load_attr(state, ctxmgr, "__aexit__")
     state = state.push(aexit_method)
-    state, aenter_method = self.load_attr(state, ctxmgr, "__aenter__")
-    state, ctxmgr_obj = self.call_function_with_state(state, aenter_method, ())
+    state, ctxmgr_obj = self._call(state, ctxmgr, "__aenter__", ())
     return state.push(ctxmgr_obj)
 
   def _to_coroutine(self, state, obj, top=True):
@@ -3498,8 +3603,6 @@ class VirtualMachine:
     state, result = self.call_function_with_state(state, func, args)
     return state.push(result)
 
-  # New in 3.9
-
   def byte_RERAISE(self, state, op):
     del op  # unused
     state, _ = state.popn(3)
@@ -3516,65 +3619,3 @@ class VirtualMachine:
     del op  # unused
     assertion_error = self.convert.name_to_value("builtins.AssertionError")
     return state.push(assertion_error.to_variable(state.node))
-
-  def byte_LIST_TO_TUPLE(self, state, op):
-    """Convert the list at the top of the stack to a tuple."""
-    del op  # unused
-    state, lst_var = state.pop()
-    tup_var = self.program.NewVariable()
-    for b in lst_var.bindings:
-      if (isinstance(b.data, abstract.List) and
-          not b.data.could_contain_anything):
-        tup_var.AddBinding(
-            self.convert.tuple_to_value(b.data.pyval), {b}, state.node)
-      else:
-        param = b.data.get_instance_type_parameter(abstract_utils.T)
-        tup = abstract.Instance(self.convert.tuple_type, self)
-        tup.merge_instance_type_parameter(state.node, abstract_utils.T, param)
-        tup_var.AddBinding(tup, {b}, state.node)
-    return state.push(tup_var)
-
-  def byte_IS_OP(self, state, op):
-    if op.arg:
-      op_arg = slots.CMP_IS_NOT
-    else:
-      op_arg = slots.CMP_IS
-    return self._compare_op(state, op_arg)
-
-  def byte_CONTAINS_OP(self, state, op):
-    if op.arg:
-      op_arg = slots.CMP_NOT_IN
-    else:
-      op_arg = slots.CMP_IN
-    return self._compare_op(state, op_arg)
-
-  def byte_JUMP_IF_NOT_EXC_MATCH(self, state, op):
-    state, args = state.popn(2)
-    state, isinstance_func = self.load_builtin(state, "isinstance")
-    state, result = self.call_function_with_state(state, isinstance_func, args)
-    state = state.push(result)
-    return self._jump_if(state, op, pop=True, jump_if=False)
-
-  def _update_from_top(self, state, op, target_type, update_method_name):
-    """Pops the stack's top object and uses it to update stack[op.arg]."""
-    state, update = state.pop()
-    target = state.peek(op.arg)
-    node, update_method = self.attribute_handler.get_attribute(
-        state.node, target_type, update_method_name)
-    state = state.change_cfg_node(node)
-    state, _ = self.call_function_with_state(
-        state, update_method, (target, update))
-    return state
-
-  def byte_LIST_EXTEND(self, state, op):
-    return self._update_from_top(state, op, self.convert.list_type, "extend")
-
-  def byte_SET_UPDATE(self, state, op):
-    return self._update_from_top(state, op, self.convert.set_type, "update")
-
-  def byte_DICT_MERGE(self, state, op):
-    # DICT_MERGE is like DICT_UPDATE but raises an exception for duplicate keys.
-    return self.byte_DICT_UPDATE(state, op)
-
-  def byte_DICT_UPDATE(self, state, op):
-    return self._update_from_top(state, op, self.convert.dict_type, "update")

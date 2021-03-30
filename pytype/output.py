@@ -8,6 +8,7 @@ import logging
 from pytype import abstract
 from pytype import abstract_utils
 from pytype import class_mixin
+from pytype import datatypes
 from pytype import special_builtins
 from pytype import utils
 from pytype.overlays import dataclass_overlay
@@ -15,6 +16,7 @@ from pytype.overlays import typing_overlay
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
+from pytype.pytd.codegen import function
 from six import moves
 
 log = logging.getLogger(__name__)
@@ -558,18 +560,6 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       safe_types.append(t)
     return safe_types
 
-  def _class_method_to_def(self, node, v, name, kind):
-    """Convert a classmethod to a PyTD definition."""
-    # This line may raise abstract_utils.ConversionError
-    func = abstract_utils.get_atomic_value(v.func, abstract.Function)
-    return self.value_to_pytd_def(node, func, name).Replace(kind=kind)
-
-  def _static_method_to_def(self, node, v, name, kind):
-    """Convert a staticmethod to a PyTD definition."""
-    # This line may raise abstract_utils.ConversionError
-    func = abstract_utils.get_atomic_value(v.func, abstract.Function)
-    return self.value_to_pytd_def(node, func, name).Replace(kind=kind)
-
   def _is_instance(self, value, cls_name):
     return (isinstance(value, abstract.Instance) and
             value.cls.full_name == cls_name)
@@ -587,31 +577,59 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       constants[name].add_type(t)
       annotated_names.add(name)
 
+    def get_decorated_method(name, value, func_slot):
+      fvar = getattr(value, func_slot)
+      func = abstract_utils.get_atomic_value(fvar, abstract.Function)
+      defn = self.value_to_pytd_def(node, func, name)
+      defn = defn.Visit(visitors.DropMutableParameters())
+      return defn
+
+    def add_decorated_method(name, value, kind):
+      try:
+        defn = get_decorated_method(name, value, "func")
+      except (AttributeError, abstract_utils.ConversionError):
+        constants[name].add_type(pytd.AnythingType())
+        return
+      defn = defn.Replace(kind=kind)
+      methods[name] = defn
+
+    def add_property_method(name, value):
+      props = [
+          ("fget", pytd.MethodFlags.PROP_GETTER),
+          ("fset", pytd.MethodFlags.PROP_SETTER),
+          ("fdel", pytd.MethodFlags.PROP_DELETER),
+      ]
+      flags = datatypes.BitFlags()
+      defs = []
+      for func_slot, flag in props:
+        try:
+          d = get_decorated_method(name, value, func_slot)
+        except (AttributeError, abstract_utils.ConversionError):
+          continue
+        defs.append(d)
+        flags.set(flag)
+      sigs = tuple(x.signatures[0] for x in defs)
+      if not flags.has(pytd.MethodFlags.PROP_GETTER):
+        sigs = (function.default_getter_sig(),) + sigs
+        flags.set(pytd.MethodFlags.PROP_GETTER)
+      if defs:
+        defn = defs[0].Replace(
+            signatures=sigs, kind=pytd.MethodTypes.PROPERTY, flags=flags.flags)
+        methods[name] = defn
+      else:
+        constants[name].add_type(pytd.AnythingType())
+
     # class-level attributes
     for name, member in v.members.items():
       if name in CLASS_LEVEL_IGNORE or name in annotated_names:
         continue
       for value in member.FilteredData(self.vm.exitpoint, strict=False):
         if isinstance(value, special_builtins.PropertyInstance):
-          # For simplicity, output properties as constants, since our parser
-          # turns them into constants anyway.
-          if value.fget:
-            for typ in self._function_to_return_types(node, value.fget):
-              constants[name].add_type(typ)
-          else:
-            constants[name].add_type(pytd.AnythingType())
+          add_property_method(name, value)
         elif isinstance(value, special_builtins.StaticMethodInstance):
-          try:
-            methods[name] = self._static_method_to_def(
-                node, value, name, pytd.MethodTypes.STATICMETHOD)
-          except abstract_utils.ConversionError:
-            constants[name].add_type(pytd.AnythingType())
+          add_decorated_method(name, value, pytd.MethodTypes.STATICMETHOD)
         elif isinstance(value, special_builtins.ClassMethodInstance):
-          try:
-            methods[name] = self._class_method_to_def(
-                node, value, name, pytd.MethodTypes.CLASSMETHOD)
-          except abstract_utils.ConversionError:
-            constants[name].add_type(pytd.AnythingType())
+          add_decorated_method(name, value, pytd.MethodTypes.CLASSMETHOD)
         elif isinstance(value, abstract.Function):
           # TODO(rechen): Removing mutations altogether won't work for generic
           # classes. To support those, we'll need to change the mutated type's

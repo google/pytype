@@ -394,14 +394,16 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
           def foo(self, foo: T) -> None:
               self._foo = foo
     """)
-    # types inferred as Any due to b/123835298
     self.assertTypesMatchPytd(ty, """
-      from typing import TypeVar, Generic, Any
+      from typing import TypeVar, Generic
       T = TypeVar('T')
       class A(Generic[T]):
           _foo: T
-          foo: Any
           def __init__(self, foo: T) -> None: ...
+          @property
+          def foo(self) -> T: ...
+          @foo.setter
+          def foo(self, foo: T) -> None: ...
     """)
 
   def test_return_typevar(self):

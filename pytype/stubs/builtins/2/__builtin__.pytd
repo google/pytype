@@ -578,7 +578,11 @@ class set(Set[_T]):
     def issuperset(self, y: Iterable) -> bool: ...
     def pop(self) -> _T: ...
     def remove(self, x) -> None: ...
-    def update(self, *args, **kwargs) -> NoneType:
+    @overload
+    def update(self, other: Iterable[_T2]) -> None:
+      self = set[Union[_T, _T2]]
+    @overload
+    def update(self, *args, **kwargs) -> None:
         self = set[Any]
     def add(self, y: _T2) -> NoneType:
         self = set[Union[_T, _T2]]

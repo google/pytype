@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class TestSuperPython3Featue(test_base.TargetPython3FeatureTest):
+class TestSuperPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for super()."""
 
   def test_super_without_args(self):
