@@ -18,6 +18,7 @@ import sys
 
 from pytype import pytype_source_utils
 from pytype import utils
+from pytype.pytd import printer
 from pytype.pytd import pytd
 from pytype.pytd import pytd_visitors
 from pytype.pytd.parse import parser_constants
@@ -173,7 +174,7 @@ def GetAllSubClasses(ast):
 
 
 def Print(ast, multiline_args=False):
-  return ast.Visit(pytd_visitors.PrintVisitor(multiline_args))
+  return ast.Visit(printer.PrintVisitor(multiline_args))
 
 
 def CreateModule(name="<empty>", **kwargs):
