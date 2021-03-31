@@ -100,7 +100,7 @@ class Callable(TypingContainer):
     content = abstract_utils.maybe_extract_tuple(slice_var)
     inner, ellipses = self._build_inner(content)
     args = inner[0]
-    if isinstance(args, abstract.List) and not args.could_contain_anything:
+    if abstract_utils.is_concrete_list(args):
       inner[0], inner_ellipses = self._build_inner(args.pyval)
       self.vm.errorlog.invalid_ellipses(
           self.vm.frames, inner_ellipses, args.name)

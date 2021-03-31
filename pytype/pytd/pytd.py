@@ -183,8 +183,6 @@ class Class(Node):
 
 
 class MethodTypes:
-  """Types of methods."""
-
   METHOD = 'method'
   STATICMETHOD = 'staticmethod'
   CLASSMETHOD = 'classmethod'
@@ -192,13 +190,8 @@ class MethodTypes:
 
 
 class MethodFlags:
-  """Method property bit flags."""
-
   ABSTRACT = 1
   COROUTINE = 2
-  PROP_GETTER = 4
-  PROP_SETTER = 8
-  PROP_DELETER = 16
 
   @classmethod
   def abstract_flag(cls, is_abstract):  # pylint: disable=invalid-name
@@ -214,8 +207,7 @@ class Function(Node):
   Attributes:
     name: The name of this function.
     signatures: Tuple of possible parameter type combinations for this function.
-    kind: The type of this function. One of:
-        STATICMETHOD, CLASSMETHOD, PROPERTY, METHOD
+    kind: The type of this function. One of: STATICMETHOD, CLASSMETHOD, METHOD
     flags: A bitfield of flags like is_abstract
   """
   name: str
@@ -230,6 +222,11 @@ class Function(Node):
   @property
   def is_coroutine(self):
     return bool(self.flags & MethodFlags.COROUTINE)
+
+  def with_flag(self, flag, value):
+    """Return a copy of self with flag set to value."""
+    new_flags = self.flags | flag if value else self.flags & ~flag
+    return self.Replace(flags=new_flags)
 
 
 @attr.s(auto_attribs=True, frozen=True, order=False, slots=True,

@@ -109,9 +109,9 @@ def validate_version(python_version):
     # that typing.py isn't introduced until 3.5, anyway.
     raise UsageError(
         "Python versions 3.0 - 3.4 are not supported. Use 3.5 and higher.")
-  elif python_version > (3, 8) and _VALIDATE_PYTHON_VERSION_UPPER_BOUND:
+  elif python_version > (3, 9) and _VALIDATE_PYTHON_VERSION_UPPER_BOUND:
     # We have an explicit per-minor-version mapping in opcodes.py
-    raise UsageError("Python versions > 3.8 are not yet supported.")
+    raise UsageError("Python versions > 3.9 are not yet supported.")
 
 
 def strip_prefix(string, prefix):

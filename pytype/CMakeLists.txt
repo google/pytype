@@ -285,7 +285,6 @@ py_library(
     .class_mixin
     .debug
     .function
-    .mixin
     pytype.pytd.pytd
 )
 
@@ -412,11 +411,9 @@ py_library(
     .abstract
     .abstract_utils
     .class_mixin
-    .datatypes
     .special_builtins
     pytype.overlays.overlays
     pytype.pytd.pytd
-    pytype.pytd.codegen.codegen
 )
 
 py_library(

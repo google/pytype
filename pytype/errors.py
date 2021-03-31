@@ -13,7 +13,6 @@ from pytype import abstract_utils
 from pytype import class_mixin
 from pytype import debug
 from pytype import function
-from pytype import mixin
 from pytype import utils
 from pytype.pytd import escape
 from pytype.pytd import optimize
@@ -500,8 +499,7 @@ class ErrorLog(ErrorLogBase):
       with t.vm.convert.pytd_convert.set_output_mode(
           t.vm.convert.pytd_convert.OutputMode.DETAILED):
         return self._pytd_print(t.get_instance_type(instance=instance))
-    elif (isinstance(t, mixin.PythonConstant) and
-          not getattr(t, "could_contain_anything", False)):
+    elif abstract_utils.is_concrete(t):
       return re.sub(r"(\\n|\s)+", " ",
                     t.str_of_constant(self._print_as_expected_type))
     elif isinstance(t, abstract.AnnotationClass) or not t.cls:

@@ -700,9 +700,8 @@ class TestAttributes(test_base.TargetIndependentTest):
         def __init__(self) -> None: ...
       class B:
         bar = ...  # type: int
+        foo = ...  # type: int
         def __init__(self) -> None: ...
-        @property
-        def foo(self) -> int: ...
     """)
 
   @test_base.skip("Needs vm._get_iter() to iterate over individual bindings.")
