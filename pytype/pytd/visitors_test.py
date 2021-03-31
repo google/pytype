@@ -29,16 +29,6 @@ def pytd_src(text):
 class TestVisitors(parser_test_base.ParserTest):
   """Tests the classes in parse/visitors."""
 
-  def test_invent_starargs_params(self):
-    call = lambda x: tuple(f.name for f in visitors.InventStarArgParams(x))
-    self.assertEqual(("args", "kwargs"), call({}))
-    self.assertEqual(("args", "kwargs"), call({"a"}))
-    self.assertEqual(("_args", "kwargs"), call({"args"}))
-    self.assertEqual(("args", "_kwargs"), call({"kwargs"}))
-    self.assertEqual(("_args", "_kwargs"), call({"args", "kwargs"}))
-    self.assertEqual(("__args", "_kwargs"), call({"args", "_args", "kwargs"}))
-    self.assertEqual(("args", "__kwargs"), call({"kwargs", "_kwargs"}))
-
   def test_lookup_classes(self):
     src = textwrap.dedent("""
         from typing import Union

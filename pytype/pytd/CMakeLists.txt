@@ -167,6 +167,7 @@ py_library(
     pytd_utils.py
   DEPS
     ._pytd
+    .printer
     .pytd_visitors
     pytype.utils
     pytype.pytd.parse.parse
@@ -177,6 +178,16 @@ py_library(
     pytd_visitors
   SRCS
     pytd_visitors.py
+  DEPS
+    ._pytd
+    .base_visitor
+)
+
+py_library(
+  NAME
+    printer
+  SRCS
+    printer.py
   DEPS
     ._pytd
     .base_visitor
@@ -250,6 +261,7 @@ py_library(
     .escape
     .mro
     .pep484
+    .printer
     .pytd_utils
     .pytd_visitors
     pytype.utils

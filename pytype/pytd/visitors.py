@@ -15,6 +15,7 @@ from pytype.pytd import base_visitor
 from pytype.pytd import escape
 from pytype.pytd import mro
 from pytype.pytd import pep484
+from pytype.pytd import printer
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import pytd_visitors
@@ -37,21 +38,8 @@ CanonicalOrderingVisitor = pytd_visitors.CanonicalOrderingVisitor
 ClassTypeToNamedType = pytd_visitors.ClassTypeToNamedType
 CollectTypeParameters = pytd_visitors.CollectTypeParameters
 ExtractSuperClasses = pytd_visitors.ExtractSuperClasses
-PrintVisitor = pytd_visitors.PrintVisitor
+PrintVisitor = printer.PrintVisitor
 RenameModuleVisitor = pytd_visitors.RenameModuleVisitor
-
-
-def InventStarArgParams(existing_names):
-  """Try to find names for *args, **kwargs that aren't taken already."""
-  names = {x if isinstance(x, str) else x.name
-           for x in existing_names}
-  args, kwargs = "args", "kwargs"
-  while args in names:
-    args = "_" + args
-  while kwargs in names:
-    kwargs = "_" + kwargs
-  return (pytd.Parameter(args, pytd.NamedType("tuple"), False, True, None),
-          pytd.Parameter(kwargs, pytd.NamedType("dict"), False, True, None))
 
 
 class StripSelf(Visitor):
