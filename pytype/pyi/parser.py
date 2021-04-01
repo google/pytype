@@ -36,6 +36,16 @@ _DEFAULT_PLATFORM = "linux"
 ParseError = types.ParseError
 
 
+_TYPEVAR_IDS = ("TypeVar", "typing.TypeVar")
+_PARAMSPEC_IDS = (
+    "ParamSpec", "typing.ParamSpec", "typing_extensions.ParamSpec")
+_TYPING_NAMEDTUPLE_IDS = ("NamedTuple", "typing.NamedTuple")
+_COLL_NAMEDTUPLE_IDS = ("namedtuple", "collections.namedtuple")
+_TYPEDDICT_IDS = (
+    "TypedDict", "typing.TypedDict", "typing_extensions.TypedDict")
+_NEWTYPE_IDS = ("NewType", "typing.NewType")
+
+
 #------------------------------------------------------
 # imports
 
@@ -84,6 +94,18 @@ class _TypeVar:
       if kw.arg == "bound":
         bound = kw.value
     return cls(name, bound, constraints)
+
+
+@dataclasses.dataclass
+class _ParamSpec:
+  """Internal representation of ParamSpecs."""
+
+  name: str
+
+  @classmethod
+  def from_call(cls, node: ast3.AST) -> "_ParamSpec":
+    name, = node.args
+    return cls(name)
 
 
 #------------------------------------------------------
@@ -340,9 +362,12 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
     target = targets[0]
     name = target.id
 
-    # Record and erase typevar definitions.
+    # Record and erase TypeVar and ParamSpec definitions.
     if isinstance(node.value, _TypeVar):
       self.defs.add_type_var(name, node.value)
+      return Splice([])
+    elif isinstance(node.value, _ParamSpec):
+      self.defs.add_param_spec(name, node.value)
       return Splice([])
 
     if node.type_comment:
@@ -412,7 +437,7 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
     self.defs.add_import(module, imports)
     return Splice([])
 
-  def _convert_newtype_args(self, node):
+  def _convert_newtype_args(self, node: ast3.AST):
     if len(node.args) != 2:
       msg = "Wrong args: expected NewType(name, [(field, type), ...])"
       raise ParseError(msg)
@@ -420,7 +445,7 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
     typ = self.convert_node(typ)
     node.args = [name.s, typ]
 
-  def _convert_typing_namedtuple_args(self, node):
+  def _convert_typing_namedtuple_args(self, node: ast3.AST):
     # TODO(mdemello): handle NamedTuple("X", a=int, b=str, ...)
     if len(node.args) != 2:
       msg = "Wrong args: expected NamedTuple(name, [(field, type), ...])"
@@ -430,7 +455,7 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
     fields = [(types.string_value(n), t) for (n, t) in fields]
     node.args = [name.s, fields]
 
-  def _convert_collections_namedtuple_args(self, node):
+  def _convert_collections_namedtuple_args(self, node: ast3.AST):
     if len(node.args) != 2:
       msg = "Wrong args: expected namedtuple(name, [field, ...])"
       raise ParseError(msg)
@@ -454,7 +479,11 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
           val = types.string_value(kw.value, context="TypeVar bound")
           kw.value = self.annotation_visitor.convert_late_annotation(val)
 
-  def _convert_typed_dict_args(self, node):
+  def _convert_paramspec_args(self, node):
+    name, = node.args
+    node.args = [name.s]
+
+  def _convert_typed_dict_args(self, node: ast3.AST):
     # TODO(b/157603915): new_typed_dict currently doesn't do anything with the
     # args, so we don't bother converting them fully.
     msg = "Wrong args: expected TypedDict(name, {field: type, ...})"
@@ -473,30 +502,31 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
     # passing them to internal functions directly in visit_Call.
     if isinstance(node.func, ast3.Attribute):
       node.func = _attribute_to_name(node.func)
-    if node.func.id in ("TypeVar", "typing.TypeVar"):
+    if node.func.id in _TYPEVAR_IDS:
       self._convert_typevar_args(node)
-    elif node.func.id in ("NamedTuple", "typing.NamedTuple"):
+    elif node.func.id in _PARAMSPEC_IDS:
+      self._convert_paramspec_args(node)
+    elif node.func.id in _TYPING_NAMEDTUPLE_IDS:
       self._convert_typing_namedtuple_args(node)
-    elif node.func.id in ("namedtuple", "collections.namedtuple"):
+    elif node.func.id in _COLL_NAMEDTUPLE_IDS:
       self._convert_collections_namedtuple_args(node)
-    elif node.func.id in ("TypedDict", "typing.TypedDict",
-                          "typing_extensions.TypedDict"):
+    elif node.func.id in _TYPEDDICT_IDS:
       self._convert_typed_dict_args(node)
-    elif node.func.id in ("NewType", "typing.NewType"):
+    elif node.func.id in _NEWTYPE_IDS:
       return self._convert_newtype_args(node)
 
   def visit_Call(self, node):
-    if node.func.id in ("TypeVar", "typing.TypeVar"):
+    if node.func.id in _TYPEVAR_IDS:
       if self.level > 0:
         raise ParseError("TypeVars need to be defined at module level")
       return _TypeVar.from_call(node)
-    elif node.func.id in ("NamedTuple", "typing.NamedTuple",
-                          "namedtuple", "collections.namedtuple"):
+    elif node.func.id in _PARAMSPEC_IDS:
+      return _ParamSpec.from_call(node)
+    elif node.func.id in _TYPING_NAMEDTUPLE_IDS + _COLL_NAMEDTUPLE_IDS:
       return self.defs.new_named_tuple(*node.args)
-    elif node.func.id in ("TypedDict", "typing.TypedDict",
-                          "typing_extensions.TypedDict"):
+    elif node.func.id in _TYPEDDICT_IDS:
       return self.defs.new_typed_dict(*node.args, total=False)
-    elif node.func.id in ("NewType", "typing.NewType"):
+    elif node.func.id in _NEWTYPE_IDS:
       return self.defs.new_new_type(*node.args)
     # Convert all other calls to NamedTypes; for example:
     # * typing.pyi uses things like
