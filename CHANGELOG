@@ -1,3 +1,12 @@
+Version 2021.04.01
+
+New features and updates:
+* Add basic Python 3.9 support.
+
+Bug fixes:
+* Fully support method aliasing in stub files.
+* Improve pytype's handling of sets.
+
 Version 2021.03.22
 
 New features and updates:
