@@ -152,13 +152,16 @@ class PrintVisitor(base_visitor.Visitor):
 
   def VisitAlias(self, node):
     """Convert an import or alias to a string."""
-    if isinstance(self.old_node.type, pytd.NamedType):
+    if isinstance(self.old_node.type, (pytd.NamedType, pytd.ClassType)):
       full_name = self.old_node.type.name
       suffix = ""
       module, _, name = full_name.rpartition(".")
       if module:
-        if name not in ("*", self.old_node.name):
-          suffix += " as " + self.old_node.name
+        alias_name = self.old_node.name
+        if alias_name.startswith(f"{self._unit_name}."):
+          alias_name = alias_name[len(self._unit_name)+1:]
+        if name not in ("*", alias_name):
+          suffix += " as " + alias_name
         self.imports = self.old_imports  # undo unnecessary imports change
         return "from " + module + " import " + name + suffix
     elif isinstance(self.old_node.type, (pytd.Constant, pytd.Function)):

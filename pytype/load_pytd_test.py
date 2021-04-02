@@ -401,11 +401,12 @@ class ImportPathsTest(test_base.UnitTest):
       loader = load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
       foo = loader.import_name("foo")
       bar = loader.import_name("bar")
-      self.assertEqual(pytd_utils.Print(foo), "foo.List = list")
+      self.assertEqual(pytd_utils.Print(foo),
+                       "from builtins import list as List")
       self.assertEqual(pytd_utils.Print(bar), textwrap.dedent("""
         from typing import List
 
-        bar.List = list
+        from builtins import list as List
 
         def bar.f() -> List[int]: ...
       """).strip())
@@ -569,11 +570,7 @@ class PickledPyiLoaderTest(test_base.UnitTest):
       self._pickle_modules(loader, d, foo, bar)
       loaded_ast = self._load_pickled_module(d, bar)
       loaded_ast.Visit(visitors.VerifyLookup())
-      self.assertMultiLineEqual(pytd_utils.Print(loaded_ast),
-                                textwrap.dedent("""
-        import foo
-
-        bar.A = foo.A""").lstrip())
+      self.assertEqual(pytd_utils.Print(loaded_ast), "from foo import A")
 
   def test_function_alias(self):
     with file_utils.Tempdir() as d:

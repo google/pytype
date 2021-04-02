@@ -2715,5 +2715,129 @@ class ParamsTest(test_base.UnitTest):
       self.assertEqual(actual, expected)
 
 
+class ParamSpecTest(_ParserTestBase):
+
+  def test_from_typing(self):
+    self.check("""
+      from typing import Awaitable, Callable, ParamSpec, TypeVar
+
+      P = ParamSpec('P')
+      R = TypeVar('R')
+
+      def f(x: Callable[P, R]) -> Callable[P, Awaitable[R]]: ...
+    """, """
+      from typing import Awaitable, Callable, TypeVar
+
+      R = TypeVar('R')
+
+      def f(x: Callable[..., R]) -> Callable[..., Awaitable[R]]: ...
+    """)
+
+  def test_from_typing_extensions(self):
+    self.check("""
+      from typing import Awaitable, Callable, TypeVar
+
+      from typing_extensions import ParamSpec
+
+      P = ParamSpec('P')
+      R = TypeVar('R')
+
+      def f(x: Callable[P, R]) -> Callable[P, Awaitable[R]]: ...
+    """, """
+      from typing import Awaitable, Callable, TypeVar
+
+      from typing_extensions import ParamSpec
+
+      R = TypeVar('R')
+
+      def f(x: Callable[..., R]) -> Callable[..., Awaitable[R]]: ...
+    """)
+
+  @test_base.skip("ParamSpec in custom generic classes not supported yet")
+  def test_custom_generic(self):
+    self.check("""
+      from typing import Callable, Generic, ParamSpec, TypeVar
+
+      P = ParamSpec('P')
+      T = TypeVar('T')
+
+      class X(Generic[T, P]):
+          f: Callable[P, int]
+          x: T
+    """)
+
+  @test_base.skip("ParamSpec in custom generic classes not supported yet")
+  def test_double_brackets(self):
+    # Double brackets can be omitted when instantiating a class parameterized
+    # with only a single ParamSpec.
+    self.check("""
+      from typing import Generic, ParamSpec
+
+      P = ParamSpec('P')
+
+      class X(Generic[P]): ...
+
+      def f1(x: X[int, str]) -> None: ...
+      def f2(x: X[[int, str]]) -> None: ...
+    """, """
+      from typing import Generic, ParamSpec
+
+      P = ParamSpec('P')
+
+      class X(Generic[P]): ...
+
+      def f1(x: X[int, str]) -> None: ...
+      def f2(x: X[int, str]) -> None: ...
+    """)
+
+
+class ConcatenateTest(_ParserTestBase):
+
+  def test_from_typing(self):
+    self.check("""
+      from typing import Callable, Concatenate, ParamSpec, TypeVar
+
+      P = ParamSpec('P')
+      R = TypeVar('R')
+
+      class X: ...
+
+      def f(x: Callable[Concatenate[X, P], R]) -> Callable[P, R]: ...
+    """, """
+      from typing import Callable, TypeVar
+
+      R = TypeVar('R')
+
+      class X: ...
+
+      def f(x: Callable[..., R]) -> Callable[..., R]: ...
+    """)
+
+  def test_from_typing_extensions(self):
+    self.check("""
+      from typing import Callable, TypeVar
+
+      from typing_extensions import Concatenate, ParamSpec
+
+      P = ParamSpec('P')
+      R = TypeVar('R')
+
+      class X: ...
+
+      def f(x: Callable[Concatenate[X, P], R]) -> Callable[P, R]: ...
+    """, """
+      from typing import Callable, TypeVar
+
+      from typing_extensions import Concatenate
+      from typing_extensions import ParamSpec
+
+      R = TypeVar('R')
+
+      class X: ...
+
+      def f(x: Callable[..., R]) -> Callable[..., R]: ...
+    """)
+
+
 if __name__ == "__main__":
   unittest.main()

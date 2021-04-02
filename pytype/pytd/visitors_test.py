@@ -288,11 +288,7 @@ class TestVisitors(parser_test_base.ParserTest):
     ast2 = ast2.Visit(visitors.LookupExternalTypes(
         {"foo": ast1}, self_name=None))
     self.assertEqual(name, ast2.name)
-    self.assertMultiLineEqual(pytd_utils.Print(ast2), textwrap.dedent("""
-      import foo
-
-      A = foo.A
-    """).strip())
+    self.assertEqual(pytd_utils.Print(ast2), "from foo import A")
 
   def test_lookup_two_star_aliases(self):
     src1 = "class A: ..."

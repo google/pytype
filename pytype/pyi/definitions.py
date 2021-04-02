@@ -250,6 +250,7 @@ class Definitions:
     self.constants = []
     self.aliases = collections.OrderedDict()
     self.type_params = []
+    self.param_specs = []
     self.generated_classes = collections.defaultdict(list)
     self.module_path_map = {}
 
@@ -342,6 +343,16 @@ class Definitions:
     self.type_params.append(pytd.TypeParameter(
         name=name, constraints=constraints, bound=bound))
 
+  def add_param_spec(self, name, paramspec):
+    if name != paramspec.name:
+      raise ParseError("ParamSpec name needs to be %r (not %r)" % (
+          paramspec.name, name))
+    # ParamSpec should probably be represented with its own pytd class, like
+    # TypeVar. This is just a quick, hacky way for us to keep track of which
+    # names refer to ParamSpecs so we can replace them with Any in
+    # _parameterized_type().
+    self.param_specs.append(pytd.NamedType(name))
+
   def add_import(self, from_package, import_list):
     """Add an import.
 
@@ -419,7 +430,18 @@ class Definitions:
       if self._is_tuple_base_type(base_type):
         return pytdgen.heterogeneous_tuple(base_type, parameters)
       elif self._is_callable_base_type(base_type):
-        return pytdgen.pytd_callable(base_type, parameters)
+        callable_parameters = []
+        for p in parameters:
+          # We do not yet support PEP 612, Parameter Specification Variables.
+          # To avoid blocking typeshed from adopting this PEP, we convert new
+          # features to Any.
+          if p in self.param_specs or (
+              isinstance(p, pytd.GenericType) and self._matches_full_name(
+                  p, ("typing.Concatenate", "typing_extensions.Concatenate"))):
+            callable_parameters.append(pytd.AnythingType())
+          else:
+            callable_parameters.append(p)
+        return pytdgen.pytd_callable(base_type, tuple(callable_parameters))
       else:
         assert parameters
         return pytd.GenericType(base_type=base_type, parameters=parameters)
