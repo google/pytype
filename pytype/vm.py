@@ -1157,6 +1157,14 @@ class VirtualMachine:
 
     namedargs = abstract.Dict(self)
 
+    def set_named_arg(node, key, val):
+      # If we have no bindings for val, fall back to unsolvable.
+      # See test_closures.ClosuresTest.test_undefined_var
+      if val.bindings:
+        namedargs.setitem_slot(node, key, val)
+      else:
+        namedargs.setitem_slot(node, key, self.new_unsolvable(node))
+
     # The way arguments are put on the stack changed in python 3.6:
     #   https://github.com/python/cpython/blob/3.5/Python/ceval.c#L4712
     #   https://github.com/python/cpython/blob/3.6/Python/ceval.c#L4806
@@ -1165,7 +1173,7 @@ class VirtualMachine:
 
       for _ in range(num_kw):
         state, (key, val) = state.popn(2)
-        namedargs.setitem_slot(state.node, key, val)
+        set_named_arg(state.node, key, val)
       state, posargs = state.popn(num_pos)
     else:
       state, args = state.popn(num)
@@ -1173,7 +1181,7 @@ class VirtualMachine:
         kwnames = abstract_utils.get_atomic_python_constant(starstarargs, tuple)
         n = len(args) - len(kwnames)
         for key, arg in zip(kwnames, args[n:]):
-          namedargs.setitem_slot(state.node, key, arg)
+          set_named_arg(state.node, key, arg)
         posargs = args[0:n]
         starstarargs = None
       else:
@@ -1844,7 +1852,14 @@ class VirtualMachine:
     return self.inplace_operator(state, "__itruediv__")
 
   def byte_LOAD_CONST(self, state, op):
-    raw_const = self.frame.f_code.co_consts[op.arg]
+    try:
+      raw_const = self.frame.f_code.co_consts[op.arg]
+    except IndexError:
+      # We have tried to access an undefined closure variable.
+      # There is an associated LOAD_DEREF failure where the error will be
+      # raised, so we just return unsolvable here.
+      # See test_closures.ClosuresTest.test_undefined_var
+      return state.push(self.new_unsolvable(state.node))
     return self.load_constant(state, op, raw_const)
 
   def byte_POP_TOP(self, state, op):
@@ -1985,7 +2000,7 @@ class VirtualMachine:
       # TODO(mdemello): A "use-after-delete" error would be more helpful.
       self.errorlog.name_error(self.frames, name)
 
-  def load_closure_cell(self, state, op):
+  def load_closure_cell(self, state, op, check_bindings=False):
     """Retrieve the value out of a closure cell.
 
     Used to generate the 'closure' tuple for MAKE_CLOSURE.
@@ -1997,10 +2012,16 @@ class VirtualMachine:
       op: The opcode. op.arg is the index of a "cell variable": This corresponds
         to an entry in co_cellvars or co_freevars and is a variable that's bound
         into a closure.
+      check_bindings: Whether to check the retrieved value for bindings.
     Returns:
       A new state.
     """
     cell = self.frame.cells[op.arg]
+    # If we have closed over a variable in an inner function, then invoked the
+    # inner function before the variable is defined, raise a name error here.
+    # See test_closures.ClosuresTest.test_undefined_var
+    if check_bindings and not cell.bindings:
+      self.errorlog.name_error(self.frames, op.pretty_arg)
     visible_bindings = cell.Filter(state.node, strict=False)
     if len(visible_bindings) != len(cell.bindings):
       # We need to filter here because the closure will be analyzed outside of
@@ -2011,8 +2032,7 @@ class VirtualMachine:
         for b in visible_bindings:
           new_cell.AddBinding(b.data, {b}, state.node)
       else:
-        # TODO(rechen): Is this a bug?
-        # See test_closures.ClosuresTest.testNoVisibleBindings.
+        # See test_closures.ClosuresTest.test_no_visible_bindings.
         new_cell.AddBinding(self.convert.unsolvable)
       # Update the cell because the DELETE_DEREF implementation works on
       # variable identity.
@@ -2028,7 +2048,7 @@ class VirtualMachine:
 
   def byte_LOAD_DEREF(self, state, op):
     """Retrieves a value out of a cell."""
-    return self.load_closure_cell(state, op)
+    return self.load_closure_cell(state, op, True)
 
   def byte_STORE_DEREF(self, state, op):
     """Stores a value in a closure cell."""

@@ -185,5 +185,18 @@ class ClosuresTest(test_base.TargetIndependentTest):
         return {'': name}
     """)
 
+  def test_undefined_var(self):
+    err = self.CheckWithErrors("""
+      def f(param):
+        pass
+
+      def outer_fn():
+        def inner_fn():
+          f(param=yet_to_be_defined)  # name-error[e]
+        inner_fn()
+        yet_to_be_defined = 0
+    """)
+    self.assertErrorRegexes(err, {"e": r"yet_to_be_defined.*not.defined"})
+
 
 test_base.main(globals(), __name__ == "__main__")
