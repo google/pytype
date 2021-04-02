@@ -1496,6 +1496,26 @@ class ClassTest(_ParserTestBase):
       class Foo(Protocol, Generic[T]): ...
     """)
 
+  def test_typing_extensions_parameterized_protocol(self):
+    self.check("""
+      from typing import TypeVar
+
+      from typing_extensions import Protocol
+
+      T = TypeVar('T')
+
+      class Foo(Protocol[T]): ...
+    """, """
+      from typing import Generic, TypeVar
+      import typing_extensions
+
+      from typing_extensions import Protocol
+
+      T = TypeVar('T')
+
+      class Foo(typing_extensions.Protocol, Generic[T]): ...
+    """)
+
   def test_bad_typevar_in_mutation(self):
     self.check_error("""
       from typing import Generic, TypeVar

@@ -12,6 +12,7 @@ from pytype.pytd.parse import node as pytd_node
 from typed_ast import ast3
 
 
+_PROTOCOL_ALIASES = ("typing.Protocol", "typing_extensions.Protocol")
 _TYPED_DICT_ALIASES = ("typing.TypedDict", "typing_extensions.TypedDict")
 
 
@@ -101,4 +102,4 @@ def check_for_duplicate_defs(methods, constants, aliases) -> None:
 
 def _is_parameterized_protocol(t) -> bool:
   return (isinstance(t, pytd.GenericType) and
-          t.base_type.name == "typing.Protocol")
+          pytd_utils.MatchesFullName(t.base_type, _PROTOCOL_ALIASES))
