@@ -488,5 +488,22 @@ class TypeVarTest(test_base.TargetIndependentTest):
       kwargs = ...  # type: Dict[str, bool]
     """)
 
+  def test_typevar_starargs(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import Generic, TypeVar, Union
+        T = TypeVar('T')
+        S = TypeVar('S')
+        SS = TypeVar('SS')
+        class A(Generic[T]):
+          def __init__(self, x: T, *args: S, **kwargs: SS):
+            self = A[Union[T, S, SS]]
+      """)
+      self.Check("""
+        import a
+        a.A(1)
+        a.A(1, 2, 3)
+        a.A(1, 2, 3, a=1, b=2)
+      """, pythonpath=[d.path])
 
 test_base.main(globals(), __name__ == "__main__")

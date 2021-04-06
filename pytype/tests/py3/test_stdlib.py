@@ -167,6 +167,19 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
       take_defaultdict(d)
     """)
 
+  def test_defaultdict_kwargs(self):
+    self.Check("""
+      import collections
+      from typing import DefaultDict, Union
+      def take_str_int_values(d: DefaultDict[str, Union[str, int]]): pass
+      d = collections.defaultdict(str, {'x': 'x'}, an_int = 1)
+      take_str_int_values(d)
+      def take_three_types(d: DefaultDict[str, Union[str, int, list]]): pass
+      e = collections.defaultdict(str, {'x': [1, 2]}, an_int = 3)
+      take_three_types(e)
+      collections.defaultdict(None, [(1, '2'), (3, '4')], a=1, b=2)
+    """)
+
   def test_sys_version_info_lt(self):
     ty = self.Infer("""
       import sys

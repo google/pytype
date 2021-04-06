@@ -773,6 +773,17 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
     """
     # Handle mutable parameters using the information type parameters
     mutations = []
+    # It's possible that the signature contains type parameters that are used
+    # in mutations but are not filled in by the arguments, e.g. when starargs
+    # and starstarargs have type parameters but are not in the args. Check that
+    # subst has an entry for every type parameter, adding any that are missing.
+    if any(f.mutated_type for f in self.pytd_sig.params):
+      subst = subst.copy()
+      visitor = visitors.CollectTypeParameters()
+      self.pytd_sig.Visit(visitor)
+      for t in visitor.params:
+        if t.full_name not in subst:
+          subst[t.full_name] = self.vm.convert.empty.to_variable(node)
     for formal in self.pytd_sig.params:
       actual = arg_dict[formal.name]
       arg = actual.data
