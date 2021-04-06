@@ -165,6 +165,10 @@ class _VerifyMutators(visitors.Visitor):
     for sig in node.signatures:
       for arg in sig.params:
         params |= self._GetTypeParameters(arg.type)
+      if sig.starargs:
+        params |= self._GetTypeParameters(sig.starargs.type)
+      if sig.starstarargs:
+        params |= self._GetTypeParameters(sig.starstarargs.type)
     self._AddParams(params)
 
   def LeaveFunction(self, _):
