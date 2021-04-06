@@ -146,9 +146,8 @@ class _VerifyMutators(visitors.Visitor):
     self.type_params_in_scope.append(top | params)
 
   def _GetTypeParameters(self, node):
-    collector = visitors.CollectTypeParameters()
-    node.Visit(collector)
-    return {x.name for x in collector.params}
+    params = pytd_utils.GetTypeParameters(node)
+    return {x.name for x in params}
 
   def EnterClass(self, node):
     params = set()

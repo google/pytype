@@ -8,7 +8,6 @@ from pytype import datatypes
 from pytype import utils
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
-from pytype.pytd import visitors
 
 log = logging.getLogger(__name__)
 
@@ -723,10 +722,7 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
     except self.vm.convert.TypeParameterError:
       # The return type contains a type parameter without a substitution.
       subst = subst.copy()
-      visitor = visitors.CollectTypeParameters()
-      return_type.Visit(visitor)
-
-      for t in visitor.params:
+      for t in pytd_utils.GetTypeParameters(return_type):
         if t.full_name not in subst:
           subst[t.full_name] = self.vm.convert.empty.to_variable(node)
       return node, self.vm.convert.constant_to_var(
@@ -779,9 +775,7 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
     # subst has an entry for every type parameter, adding any that are missing.
     if any(f.mutated_type for f in self.pytd_sig.params):
       subst = subst.copy()
-      visitor = visitors.CollectTypeParameters()
-      self.pytd_sig.Visit(visitor)
-      for t in visitor.params:
+      for t in pytd_utils.GetTypeParameters(self.pytd_sig):
         if t.full_name not in subst:
           subst[t.full_name] = self.vm.convert.empty.to_variable(node)
     for formal in self.pytd_sig.params:

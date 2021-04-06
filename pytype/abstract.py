@@ -2079,11 +2079,10 @@ class PyTDFunction(Function):
     options = []
     for sig, _, _ in signatures:
       t = sig.pytd_sig.return_type
-      visitor = visitors.CollectTypeParameters()
-      t.Visit(visitor)
-      if visitor.params:
+      params = pytd_utils.GetTypeParameters(t)
+      if params:
         replacement = {}
-        for param_type in visitor.params:
+        for param_type in params:
           replacement[param_type] = pytd.AnythingType()
         replace_visitor = visitors.ReplaceTypeParameters(replacement)
         t = t.Visit(replace_visitor)

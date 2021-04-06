@@ -551,10 +551,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         types.append(pytd.AnythingType())
     safe_types = []  # types without type parameters
     for t in types:
-      collector = visitors.CollectTypeParameters()
-      t.Visit(collector)
+      params = pytd_utils.GetTypeParameters(t)
       t = t.Visit(visitors.ReplaceTypeParameters(
-          {p: p.upper_value for p in collector.params}))
+          {p: p.upper_value for p in params}))
       safe_types.append(t)
     return safe_types
 
@@ -645,9 +644,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           continue
         for value in member.FilteredData(self.vm.exitpoint, strict=False):
           typ = value.to_type(node)
-          collector = visitors.CollectTypeParameters()
-          typ.Visit(collector)
-          if collector.params:
+          if pytd_utils.GetTypeParameters(typ):
             # This attribute's type comes from an annotation that contains a
             # type parameter; we do not want to merge in substituted values of
             # the type parameter.
