@@ -13,7 +13,18 @@ from pytype.pytd import builtins
 import toml
 
 
+def _is_module(filename):
+  """Helper for _get_module_names_in_path."""
+  # When Python 2 is requested, relative paths that already have the @python2/
+  # prefix stripped are separately passed to _get_module_names_in_path, so we
+  # should always skip paths that start with @python2/.
+  # stdlib/VERSIONS and stubs/{package}/METADATA.toml are metadata files.
+  return (not filename.startswith("@python2/") and filename != "VERSIONS" and
+          filename != "METADATA.toml")
+
+
 def _get_module_names_in_path(lister, path):
+  """Get module names for all  .pyi files in the given path."""
   names = set()
   try:
     contents = list(lister(path))
@@ -21,7 +32,8 @@ def _get_module_names_in_path(lister, path):
     pass
   else:
     for filename in contents:
-      names.add(module_utils.path_to_module_name(filename))
+      if _is_module(filename):
+        names.add(module_utils.path_to_module_name(filename))
   return names
 
 
@@ -186,6 +198,10 @@ class Typeshed:
         paths.append(os.path.join(toplevel, module_path))
       elif version[0] == 2:
         paths.append(os.path.join(toplevel, "@python2", module_path))
+      else:
+        # When the module is not found, we still want to add its expected
+        # location to paths so that we can check for it in MISSING_FILE.
+        paths.append(os.path.join(toplevel, module_path))
     elif toplevel == "third_party":
       # For third-party modules, we grab the alphabetically first package that
       # provides a module with the specified name in the right version.
@@ -260,9 +276,11 @@ class Typeshed:
     for packages in self._third_party_packages.values():
       for package, v in packages:
         if v == major:
-          typeshed_subdirs.append(os.path.join("stubs", package))
-          if v == 2:
-            typeshed_subdirs.append(os.path.join("stubs", package, "@python2"))
+          py2only_dir = os.path.join("stubs", package, "@python2")
+          if v == 2 and os.path.exists(os.path.join(self._root, py2only_dir)):
+            typeshed_subdirs.append(os.path.join(py2only_dir))
+          else:
+            typeshed_subdirs.append(os.path.join("stubs", package))
     return [os.path.join(self._root, d) for d in typeshed_subdirs]
 
   def _get_typeshed_paths_old(self, python_version):
