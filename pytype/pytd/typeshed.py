@@ -13,18 +13,8 @@ from pytype.pytd import builtins
 import toml
 
 
-def _is_module(filename):
-  """Helper for _get_module_names_in_path."""
-  # When Python 2 is requested, relative paths that already have the @python2/
-  # prefix stripped are separately passed to _get_module_names_in_path, so we
-  # should always skip paths that start with @python2/.
-  # stdlib/VERSIONS and stubs/{package}/METADATA.toml are metadata files.
-  return (not filename.startswith("@python2/") and filename != "VERSIONS" and
-          filename != "METADATA.toml")
-
-
 def _get_module_names_in_path(lister, path):
-  """Get module names for all  .pyi files in the given path."""
+  """Get module names for all .pyi files in the given path."""
   names = set()
   try:
     contents = list(lister(path))
@@ -32,8 +22,7 @@ def _get_module_names_in_path(lister, path):
     pass
   else:
     for filename in contents:
-      if _is_module(filename):
-        names.add(module_utils.path_to_module_name(filename))
+      names.add(module_utils.path_to_module_name(filename))
   return names
 
 
@@ -193,15 +182,13 @@ class Typeshed:
       # (for Python 2) stdlib/@python2/foo. The VERSIONS file tells us whether
       # stdlib/foo exists and what versions it targets; we also have to
       # separately check for stdlib/@python2/foo.
-      if (module_parts[0] in self._stdlib_versions and
-          self._stdlib_versions[module_parts[0]] <= version):
-        paths.append(os.path.join(toplevel, module_path))
-      elif version[0] == 2:
+      path = os.path.join(toplevel, module_path)
+      if ((module_parts[0] in self._stdlib_versions and
+           self._stdlib_versions[module_parts[0]] <= version) or
+          path in self.missing):
+        paths.append(path)
+      if version[0] == 2:
         paths.append(os.path.join(toplevel, "@python2", module_path))
-      else:
-        # When the module is not found, we still want to add its expected
-        # location to paths so that we can check for it in MISSING_FILE.
-        paths.append(os.path.join(toplevel, module_path))
     elif toplevel == "third_party":
       # For third-party modules, we grab the alphabetically first package that
       # provides a module with the specified name in the right version.
@@ -304,6 +291,35 @@ class Typeshed:
         "stubs/builtins/%d" % python_version[0],
         "stubs/stdlib/%d" % python_version[0]]]
 
+  def _build_lister(self, underlying_lister, python_version):
+    """Builds a lister for use by _get_module_names_in_path."""
+
+    def lister(path):
+      for filename in underlying_lister(path):
+        if filename.startswith("@python2/"):
+          # When Python 2 is requested, relative paths that already have the
+          # @python2/ prefix stripped are separately listed, so we should always
+          # skip paths that start with @python2/.
+          continue
+        if filename == "VERSIONS" or filename == "METADATA.toml":
+          # stdlib/VERSIONS, stubs/{package}/METADATA.toml are metadata files.
+          continue
+        parts = path.split("/")
+        if self._use_new_structure and "stdlib" in parts:
+          if "@python2" in parts:
+            # stdlib/@python2/ stubs are Python 2-only.
+            if python_version[0] != 2:
+              continue
+          else:
+            # Check supported versions for stubs directly in stdlib/.
+            module = os.path.splitext(filename)[0].split("/", 1)[0]
+            if (module not in self._stdlib_versions or
+                self._stdlib_versions[module] > python_version):
+              continue
+        yield filename
+
+    return lister
+
   def get_all_module_names(self, python_version):
     """Get the names of all modules in typeshed or bundled with pytype."""
     module_names = set()
@@ -311,21 +327,34 @@ class Typeshed:
     pytd_paths = self.get_pytd_paths(python_version)
     if self._env_home:
       for p in typeshed_paths:
-        module_names |= _get_module_names_in_path(
-            pytype_source_utils.list_files, p)
+        module_names |= _get_module_names_in_path(self._build_lister(
+            pytype_source_utils.list_files, python_version), p)
       pytype_paths = pytd_paths
     else:
       pytype_paths = typeshed_paths + pytd_paths
     subdirs = [d.rpartition("pytype/")[-1] for d in pytype_paths]
     for subdir in subdirs:
-      module_names |= _get_module_names_in_path(
-          pytype_source_utils.list_pytype_files, subdir)
+      module_names |= _get_module_names_in_path(self._build_lister(
+          pytype_source_utils.list_pytype_files, python_version), subdir)
     # Also load modules not in typeshed, so that we have a dummy entry for them.
     for f in self.missing:
       parts = f.split("/")
-      if parts[1].startswith(str(python_version[0])):
-        filename = "/".join(parts[2:])  # remove prefixes like stdlib/2.7
+      if self._use_new_structure:
+        if ("@python2" in parts) != (python_version[0] == 2):
+          continue
+        if parts[0] == "stdlib":
+          start_index = 1  # remove stdlib/ prefix
+        else:
+          assert parts[0] == "stubs"
+          start_index = 2  # remove stubs/{package}/ prefix
+        if parts[start_index] == "@python2":
+          start_index += 1
+        filename = "/".join(parts[start_index:])
         module_names.add(filename.replace("/", "."))
+      else:
+        if parts[1].startswith(str(python_version[0])):
+          filename = "/".join(parts[2:])  # remove prefixes like stdlib/2.7
+          module_names.add(filename.replace("/", "."))
     assert "ctypes" in module_names  # sanity check
     return module_names
 
