@@ -542,6 +542,26 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         def __init__(self, x: int = ..., y: int = ...) -> None: ...
     """)
 
+  def test_property(self):
+    ty = self.Infer("""
+      import dataclasses
+      @dataclasses.dataclass
+      class Foo(object):
+        x: bool
+        y: int
+        @property
+        def z(self) -> str:
+          return "hello world"
+    """)
+    self.assertTypesMatchPytd(ty, """
+      dataclasses: module
+      class Foo(object):
+        x: bool
+        y: int
+        z: str
+        def __init__(self, x: bool, y: int) -> None: ...
+    """)
+
 
 class TestPyiDataclass(test_base.TargetPython3FeatureTest):
   """Tests for @dataclasses in pyi files."""
@@ -655,6 +675,36 @@ class TestPyiDataclass(test_base.TargetPython3FeatureTest):
         class Foo(foo.B):
           a: str
           def __init__(self, x: bool, y: int, z: str, a: str = ...) -> None: ...
+      """)
+
+  def test_properties_from_pyi(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from dataclasses import dataclass
+        @dataclass
+        class A:
+          x: bool
+          y: int
+          @property
+          def z(self) -> int: ...
+      """)
+      ty = self.Infer("""
+        import dataclasses
+        import foo
+        @dataclasses.dataclass
+        class Foo(foo.A):
+          a: str = "hello"
+          @property
+          def b(self) -> int:
+            return 42
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        dataclasses: module
+        foo: module
+        class Foo(foo.A):
+          a: str
+          b: int
+          def __init__(self, x: bool, y: int, a: str = ...) -> None: ...
       """)
 
 

@@ -2639,7 +2639,8 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
           self.vm.errorlog.invalid_annotation(self.vm.frames, self, error)
         else:
           key, keyed_decorator = decorator_key, decorator
-          self.init_attr_metadata_from_pytd(name, self.pytd_cls.constants)
+          fields = decorate.get_attributes(self.pytd_cls)
+          self.init_attr_metadata_from_pytd(name, fields)
           self._recompute_init_from_metadata(key)
 
   def _recompute_init_from_metadata(self, key):

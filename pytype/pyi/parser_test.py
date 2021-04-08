@@ -1450,8 +1450,10 @@ class ClassTest(_ParserTestBase):
           @property
           def a(self) -> int: ...
       """, """
+      from typing import Annotated
+
       class Foo:
-          a: int
+          a: Annotated[int, 'property']
       """)
 
   def test_duplicate_name(self):
@@ -1920,8 +1922,10 @@ class PropertyDecoratorTest(_ParserTestBase):
 
   def test_property_with_type(self):
     expected = """
+      from typing import Annotated
+
       class A:
-          name: str
+          name: Annotated[str, 'property']
     """
 
     # The return type of @property is used for the property type.
@@ -1936,10 +1940,10 @@ class PropertyDecoratorTest(_ParserTestBase):
           @name.setter
           def name(self, value: str) -> None: ...
       """, """
-      from typing import Any
+      from typing import Annotated, Any
 
       class A:
-          name: Any
+          name: Annotated[Any, 'property']
       """)
 
     self.check("""
@@ -1971,11 +1975,11 @@ class PropertyDecoratorTest(_ParserTestBase):
 
   def test_property_decorator_any_type(self):
     expected = """
-          from typing import Any
+          from typing import Annotated, Any
 
           class A:
-              name: Any
-              """
+              name: Annotated[Any, 'property']
+    """
 
     self.check("""
       class A:
@@ -2060,8 +2064,10 @@ class MergeSignaturesTest(_ParserTestBase):
           @property
           def name(self) -> str: ...
       """, """
+      from typing import Annotated
+
       class A:
-          name: str
+          name: Annotated[str, 'property']
       """)
 
   def test_method(self):

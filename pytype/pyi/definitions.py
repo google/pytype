@@ -231,8 +231,9 @@ class _PropertyToConstant(visitors.Visitor):
     constants = list(node.constants)
     for fn in self.const_properties[-1]:
       ptypes = [x.return_type for x in fn.signatures]
-      constants.append(
-          pytd.Constant(name=fn.name, type=pytd_utils.JoinTypes(ptypes)))
+      prop = pytd.Annotated(base_type=pytd_utils.JoinTypes(ptypes),
+                            annotations=("'property'",))
+      constants.append(pytd.Constant(name=fn.name, type=prop))
     methods = [x for x in node.methods if x not in self.const_properties[-1]]
     return node.Replace(constants=tuple(constants), methods=tuple(methods))
 

@@ -48,7 +48,8 @@ def check_defaults(fields: Iterable[pytd.Constant], cls_name: str):
 
 
 def check_class(cls: pytd.Class) -> None:
-  check_defaults(cls.constants, cls.name)
+  fields = get_attributes(cls)
+  check_defaults(fields, cls.name)
 
 
 def add_init_from_fields(
@@ -61,8 +62,22 @@ def add_init_from_fields(
   return cls.Replace(methods=methods)
 
 
+def get_attributes(cls: pytd.Class):
+  """Get class attributes, filtering out properties."""
+  attributes = []
+  for c in cls.constants:
+    if isinstance(c.type, pytd.Annotated):
+      if "'property'" not in c.type.annotations:
+        c = c.Replace(type=c.type.base_type)
+        attributes.append(c)
+    else:
+      attributes.append(c)
+  return tuple(attributes)
+
+
 def add_generated_init(cls: pytd.Class) -> pytd.Class:
-  return add_init_from_fields(cls, cls.constants)
+  fields = get_attributes(cls)
+  return add_init_from_fields(cls, fields)
 
 
 def process_class(cls: pytd.Class) -> Tuple[pytd.Class, bool]:
