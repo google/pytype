@@ -404,11 +404,11 @@ class ImportPathsTest(test_base.UnitTest):
       self.assertEqual(pytd_utils.Print(foo),
                        "from builtins import list as List")
       self.assertEqual(pytd_utils.Print(bar), textwrap.dedent("""
-        from typing import List
+        import typing
 
         from builtins import list as List
 
-        def bar.f() -> List[int]: ...
+        def bar.f() -> typing.List[int]: ...
       """).strip())
 
   def test_reuse_builtin_name(self):

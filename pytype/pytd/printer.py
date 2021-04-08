@@ -27,7 +27,7 @@ class PrintVisitor(base_visitor.Visitor):
     self.in_parameter = False
     self.in_literal = False
     self._unit_name = None
-    self._local_names = set()
+    self._local_names = {}
     self._class_members = set()
     self._typing_import_counts = collections.defaultdict(int)
     self.multiline_args = multiline_args
@@ -59,10 +59,6 @@ class PrintVisitor(base_visitor.Visitor):
     """
     self.imports[module].add(name)
 
-  def _RequireTypingImport(self, name=None):
-    """Convenience function, wrapper for _RequireImport("typing", name)."""
-    self._RequireImport("typing", name)
-
   def _GenerateImportStrings(self):
     """Generate import statements needed by the nodes we've visited so far.
 
@@ -73,9 +69,14 @@ class PrintVisitor(base_visitor.Visitor):
     for module in sorted(self.imports):
       names = set(self.imports[module])
       if module == "typing":
+        need_typing = False
         for (name, count) in self._typing_import_counts.items():
-          if not count:
+          if count:
+            need_typing = True
+          else:
             names.discard(name)
+        if not need_typing:
+          names.discard(None)
       if None in names:
         ret.append("import %s" % module)
         names.remove(None)
@@ -101,26 +102,44 @@ class PrintVisitor(base_visitor.Visitor):
     return sorted(formatted_type_params)
 
   def _NameCollision(self, name):
-    return name in self._class_members or name in self._local_names
+
+    def name_in(members):
+      return name in members or f"{self._unit_name}.{name}" in members
+
+    return name_in(self._class_members) or name_in(self._local_names)
 
   def _FromTyping(self, name):
     self._typing_import_counts[name] += 1
     if self._NameCollision(name):
-      self._RequireTypingImport(None)
+      self._RequireImport("typing")
       return "typing." + name
     else:
-      self._RequireTypingImport(name)
+      self._RequireImport("typing", name)
       return name
+
+  def _ImportTypingExtension(self, name):
+    # `name` is a typing construct that is not supported in all Python versions.
+    if self._local_names.get(name) == "alias":
+      # A typing_extensions import is parsed as Alias(X, typing_extensions.X).
+      # If we see an alias to `name`, assume it's been explicitly imported from
+      # typing_extensions due to the current Python version not supporting it.
+      return name
+    else:
+      return self._FromTyping(name)
 
   def EnterTypeDeclUnit(self, unit):
     self._unit_name = unit.name
-    definitions = (unit.classes + unit.functions + unit.constants +
-                   unit.type_params + unit.aliases)
-    self._local_names = {c.name for c in definitions}
+    for definitions, label in [(unit.classes, "class"),
+                               (unit.functions, "function"),
+                               (unit.constants, "constant"),
+                               (unit.type_params, "type_param"),
+                               (unit.aliases, "alias")]:
+      for defn in definitions:
+        self._local_names[defn.name] = label
 
   def LeaveTypeDeclUnit(self, _):
     self._unit_name = None
-    self._local_names = set()
+    self._local_names = {}
 
   def VisitTypeDeclUnit(self, node):
     """Convert the AST for an entire module back to a string."""
@@ -509,16 +528,10 @@ class PrintVisitor(base_visitor.Visitor):
     self.in_literal = False
 
   def VisitLiteral(self, node):
-    base = "Literal"
-    # Check whether Literal is already imported from typing_extensions.
-    if base not in self._local_names:
-      base = self._FromTyping(base)
+    base = self._ImportTypingExtension("Literal")
     return "%s[%s]" % (base, node.value)
 
   def VisitAnnotated(self, node):
-    base = "Annotated"
-    # Check whether Annotated is already imported from typing_extensions.
-    if base not in self._local_names:
-      base = self._FromTyping(base)
+    base = self._ImportTypingExtension("Annotated")
     annotations = ", ".join(node.annotations)
     return "%s[%s, %s]" % (base, node.base_type, annotations)
