@@ -16,6 +16,7 @@ py_test(
   SRCS
     test_typing_annotated.py
   DEPS
+    pytype.utils
     pytype.tests.test_base
 )
 

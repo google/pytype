@@ -802,6 +802,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       value = self.constant_to_value(
           self._get_literal_value(pyval.value), subst, self.vm.root_node)
       return abstract.LiteralClass(value, self.vm)
+    elif isinstance(pyval, pytd.Annotated):
+      return self.constant_to_value(pyval.base_type, subst, self.vm.root_node)
     elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node
       return self.tuple_to_value([
           self.constant_to_var(item, subst, self.vm.root_node)

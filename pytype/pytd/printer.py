@@ -514,3 +514,11 @@ class PrintVisitor(base_visitor.Visitor):
     if base not in self._local_names:
       base = self._FromTyping(base)
     return "%s[%s]" % (base, node.value)
+
+  def VisitAnnotated(self, node):
+    base = "Annotated"
+    # Check whether Annotated is already imported from typing_extensions.
+    if base not in self._local_names:
+      base = self._FromTyping(base)
+    annotations = ", ".join(node.annotations)
+    return "%s[%s, %s]" % (base, node.base_type, annotations)

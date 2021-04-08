@@ -23,7 +23,7 @@ class Param:
 
   def __init__(self, name, typ=None, default=None):
     if typ:
-      assert isinstance(typ, PARAM_TYPES), typ
+      assert isinstance(typ, PARAM_TYPES), (typ, type(typ))
     self.name = name
     self.typ = typ
     self.default = default

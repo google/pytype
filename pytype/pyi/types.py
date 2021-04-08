@@ -206,6 +206,21 @@ def pytd_literal(parameters: List[Any]) -> pytd_node.Node:
   return pytd_utils.JoinTypes(literal_parameters)
 
 
+def pytd_annotated(parameters: List[Any]) -> pytd_node.Node:
+  """Create a pytd.Annotated."""
+  if len(parameters) < 2:
+    raise ParseError(
+        "typing.Annotated takes at least two parameters: "
+        "Annotated[type, 'annotation', ...].")
+  typ, *annotations = parameters
+  if not all(isinstance(x, Constant) for x in annotations):
+    raise ParseError(
+        "Annotations needs to be string literals: "
+        "Annotated[type, 'annotation', ...].")
+  annotations = tuple(x.repr_str() for x in annotations)
+  return pytd.Annotated(typ, annotations)
+
+
 def builtin_keyword_constants():
   # We cannot define these in a pytd file because assigning to a keyword breaks
   # the python parser.

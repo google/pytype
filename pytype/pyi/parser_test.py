@@ -2696,6 +2696,26 @@ class MethodAliasTest(_ParserTestBase):
     """)
 
 
+class AnnotatedTest(_ParserTestBase):
+  """Test typing.Annotated."""
+
+  def test_annotated(self):
+    self.check("""
+      from typing import Annotated
+
+      class Foo:
+          x: Annotated[int, 'a', 'b', 'c']
+    """)
+
+  def test_annotated_from_extensions(self):
+    self.check("""
+      from typing_extensions import Annotated
+
+      class Foo:
+          x: Annotated[int, 'a', 'b', 'c']
+    """)
+
+
 class ErrorTest(test_base.UnitTest):
   """Test parser errors."""
 

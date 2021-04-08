@@ -2602,7 +2602,12 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     self.pytd_cls = pytd_cls
     super().__init__(name, vm)
     mm = {}
-    for val in pytd_cls.constants + pytd_cls.methods:
+    for val in pytd_cls.constants:
+      if isinstance(val.type, pytd.Annotated):
+        mm[val.name] = val.Replace(type=val.type.base_type)
+      else:
+        mm[val.name] = val
+    for val in pytd_cls.methods:
       mm[val.name] = val
     for val in pytd_cls.classes:
       mm[val.name.rsplit(".", 1)[-1]] = val
