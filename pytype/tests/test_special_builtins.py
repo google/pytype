@@ -64,9 +64,10 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
           foo = property(fget=foo.Foo.get_foo)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Annotated
         foo = ...  # type: module
         class Bar(foo.Foo):
-          foo = ...  # type: int
+          foo = ...  # type: Annotated[int, 'property']
       """)
 
   def test_property_from_native_function(self):
@@ -75,9 +76,9 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
         foo = property(fget=dict.__getitem__)
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Annotated, Any
       class Foo(dict):
-        foo = ...  # type: Any
+        foo = ...  # type: Annotated[Any, 'property']
     """)
 
   def test_property_from_pyi_with_type_parameter(self):
@@ -93,10 +94,10 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
           foo = property(fget=foo.Foo.get_foo)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Union
+        from typing import Annotated, Union
         foo = ...  # type: module
         class Bar(foo.Foo):
-          foo = ...  # type: Union[str, int]
+          foo = ...  # type: Annotated[Union[int, str], 'property']
       """)
 
   def test_callable_if_splitting(self):
@@ -157,6 +158,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
       if callable(B()): z = 1
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Annotated
       obj = ...  # type: A
       a = ...  # type: int
       b = ...  # type: int
@@ -170,7 +172,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
       j = ...  # type: int
       def fun(x) -> None: ...
       class A:
-          quux = ...  # type: None
+          quux = ...  # type: Annotated[None, 'property']
           def __call__(self) -> None: ...
           @staticmethod
           def bar(self) -> None: ...
@@ -197,10 +199,10 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
         return (x, y)
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, Tuple, Union
+      from typing import Annotated, Any, Tuple, Union
       class Foo(object):
         foo = ...  # type: Union[int, str]
-        bar = ...  # type: Any
+        bar = ...  # type: Annotated[Any, 'property']
         def __init__(self) -> None: ...
       def f() -> Tuple[int, str]: ...
     """)

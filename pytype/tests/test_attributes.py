@@ -692,7 +692,7 @@ class TestAttributes(test_base.TargetIndependentTest):
       a = x.foo
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import Union
+      from typing import Annotated, Union
       a = ...  # type: int
       x = ...  # type: Union[A, B]
       class A:
@@ -700,7 +700,7 @@ class TestAttributes(test_base.TargetIndependentTest):
         def __init__(self) -> None: ...
       class B:
         bar = ...  # type: int
-        foo = ...  # type: int
+        foo = ...  # type: Annotated[int, 'property']
         def __init__(self) -> None: ...
     """)
 

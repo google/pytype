@@ -123,9 +123,9 @@ class DecoratorsTest(test_base.TargetIndependentTest):
       del foo.x
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Annotated, Any
       class Foo(object):
-        f = ...  # type: Any
+        f = ...  # type: Annotated[Any, 'property']
         x = ...  # type: Any
         def __init__(self, x) -> None: ...
       foo = ...  # type: Foo
@@ -150,9 +150,9 @@ class DecoratorsTest(test_base.TargetIndependentTest):
       del foo.x
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Annotated, Any
       class Foo(object):
-        x = ...  # type: Any
+        x = ...  # type: Annotated[Any, 'property']
         def __init__(self, x) -> None: ...
         def _del(self) -> None: ...
         def _get(self) -> Any: ...
@@ -180,9 +180,9 @@ class DecoratorsTest(test_base.TargetIndependentTest):
       del foo.x
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Annotated, Any
       class Foo(object):
-        x = ...  # type: Any
+        x = ...  # type: Annotated[Any, 'property']
         def __init__(self, x) -> None: ...
         def _del(self) -> None: ...
         def _get(self) -> Any: ...
@@ -204,9 +204,9 @@ class DecoratorsTest(test_base.TargetIndependentTest):
             return [42]
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import List, Union
+      from typing import Annotated, List, Union
       class Foo(object):
-        name = ...  # type: Union[int, List[int]]
+        name = ...  # type: Annotated[Union[int, List[int]], 'property']
     """)
 
   def test_overwrite_property_type(self):
@@ -220,8 +220,9 @@ class DecoratorsTest(test_base.TargetIndependentTest):
           return "hello"
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Annotated
       class Foo(object):
-        name = ...  # type: str
+        name = ...  # type: Annotated[str, 'property']
     """)
 
   def test_unknown_property_type(self):
@@ -232,9 +233,9 @@ class DecoratorsTest(test_base.TargetIndependentTest):
         name = property(fset=name)
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Annotated, Any
       class Foo(object):
-        name = ...  # type: Any
+        name = ...  # type: Annotated[Any, 'property']
     """)
 
   def test_bad_fget(self):
@@ -244,10 +245,10 @@ class DecoratorsTest(test_base.TargetIndependentTest):
         name = property(v)
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Annotated, Any
       class Foo(object):
         v = ...  # type: str
-        name = ...  # type: Any
+        name = ...  # type: Annotated[Any, 'property']
     """)
 
   def test_infer_called_decorated_method(self):

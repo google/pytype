@@ -386,7 +386,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     if isinstance(pyval, pytd.NothingType):
       return self.vm.program.NewVariable([], [], self.vm.root_node)
     elif isinstance(pyval, pytd.Alias):
-      return self.constant_to_var(pyval.type, subst, node, source_sets,
+      return self.constant_to_var(pyval.type, subst, node, source_sets,  # pytype: disable=attribute-error
                                   discard_concrete_values)
     elif isinstance(pyval, abstract_utils.AsInstance):
       cls = pyval.cls

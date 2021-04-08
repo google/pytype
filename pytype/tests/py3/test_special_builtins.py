@@ -15,9 +15,9 @@ class SpecialBuiltinsTest(test_base.TargetPython3BasicTest):
           return __any_object__
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Union
+      from typing import Annotated, Union
       class Foo(object):
-        foo = ...  # type: Union[int, str]
+        foo = ...  # type: Annotated[Union[int, str], 'property']
     """)
 
   def test_property_with_contained_type_parameter(self):
@@ -29,9 +29,9 @@ class SpecialBuiltinsTest(test_base.TargetPython3BasicTest):
           return __any_object__
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import List, Union
+      from typing import Annotated, List, Union
       class Foo(object):
-        foo = ...  # type: List[Union[int, str]]
+        foo = ...  # type: Annotated[List[Union[int, str]], 'property']
     """)
 
   def test_callable_matching(self):

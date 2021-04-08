@@ -554,11 +554,12 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
           return "hello world"
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Annotated
       dataclasses: module
       class Foo(object):
         x: bool
         y: int
-        z: str
+        z: Annotated[str, 'property']
         def __init__(self, x: bool, y: int) -> None: ...
     """)
 
@@ -699,11 +700,12 @@ class TestPyiDataclass(test_base.TargetPython3FeatureTest):
             return 42
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Annotated
         dataclasses: module
         foo: module
         class Foo(foo.A):
           a: str
-          b: int
+          b: Annotated[int, 'property']
           def __init__(self, x: bool, y: int, a: str = ...) -> None: ...
       """)
 

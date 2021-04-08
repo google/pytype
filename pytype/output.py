@@ -596,9 +596,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           # turns them into constants anyway.
           if value.fget:
             for typ in self._function_to_return_types(node, value.fget):
-              constants[name].add_type(typ)
+              constants[name].add_type(pytd.Annotated(typ, ("'property'",)))
           else:
-            constants[name].add_type(pytd.AnythingType())
+            constants[name].add_type(
+                pytd.Annotated(pytd.AnythingType(), ("'property'",)))
         elif isinstance(value, special_builtins.StaticMethodInstance):
           try:
             methods[name] = self._static_method_to_def(

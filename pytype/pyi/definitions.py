@@ -468,7 +468,7 @@ class Definitions:
     if isinstance(name, (pytd.GenericType, pytd.AnythingType)):
       return name
     if isinstance(name, pytd.NamedType):
-      name = name.name
+      name = name.name  # pytype: disable=attribute-error
     if name == "nothing":
       return pytd.NothingType()
     base_type = self.type_map.get(name)

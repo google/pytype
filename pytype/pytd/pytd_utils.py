@@ -267,14 +267,21 @@ class TypeBuilder:
 
   def __init__(self):
     self.union = pytd.NothingType()
+    self.tags = set()
 
   def add_type(self, other):
     """Add a new pytd type to the types represented by this TypeBuilder."""
+    if isinstance(other, pytd.Annotated):
+      self.tags.update(other.annotations)
+      other = other.base_type
     self.union = JoinTypes([self.union, other])
 
   def build(self):
     """Get a union of all the types added so far."""
-    return self.union
+    if self.tags:
+      return pytd.Annotated(self.union, tuple(sorted(self.tags)))
+    else:
+      return self.union
 
   def __bool__(self):
     return not isinstance(self.union, pytd.NothingType)
