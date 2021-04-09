@@ -551,10 +551,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         types.append(pytd.AnythingType())
     safe_types = []  # types without type parameters
     for t in types:
-      collector = visitors.CollectTypeParameters()
-      t.Visit(collector)
+      params = pytd_utils.GetTypeParameters(t)
       t = t.Visit(visitors.ReplaceTypeParameters(
-          {p: p.upper_value for p in collector.params}))
+          {p: p.upper_value for p in params}))
       safe_types.append(t)
     return safe_types
 
@@ -597,9 +596,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           # turns them into constants anyway.
           if value.fget:
             for typ in self._function_to_return_types(node, value.fget):
-              constants[name].add_type(typ)
+              constants[name].add_type(pytd.Annotated(typ, ("'property'",)))
           else:
-            constants[name].add_type(pytd.AnythingType())
+            constants[name].add_type(
+                pytd.Annotated(pytd.AnythingType(), ("'property'",)))
         elif isinstance(value, special_builtins.StaticMethodInstance):
           try:
             methods[name] = self._static_method_to_def(
@@ -645,9 +645,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           continue
         for value in member.FilteredData(self.vm.exitpoint, strict=False):
           typ = value.to_type(node)
-          collector = visitors.CollectTypeParameters()
-          typ.Visit(collector)
-          if collector.params:
+          if pytd_utils.GetTypeParameters(typ):
             # This attribute's type comes from an annotation that contains a
             # type parameter; we do not want to merge in substituted values of
             # the type parameter.

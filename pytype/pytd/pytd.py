@@ -573,6 +573,17 @@ class Literal(Node, Type):
     return None
 
 
+@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
+        cache_hash=True)
+class Annotated(Node, Type):
+  base_type: Type
+  annotations: Tuple[str, ...]
+
+  @property
+  def name(self):
+    return None
+
+
 # Types that can be a base type of GenericType:
 GENERIC_BASE_TYPE = (NamedType, ClassType)
 

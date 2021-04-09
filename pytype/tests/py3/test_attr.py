@@ -283,11 +283,11 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
           pass
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, Annotated
       attr: module
       class Foo(object):
         _x: int
-        x: Any
+        x: Annotated[Any, 'property']
         y: str
         def __init__(self, y: str = ...) -> None: ...
         def f(self) -> None: ...

@@ -1,6 +1,7 @@
 """Test instance and class attributes."""
 
 from pytype import file_utils
+from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
@@ -692,7 +693,7 @@ class TestAttributes(test_base.TargetIndependentTest):
       a = x.foo
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import Union
+      from typing import Annotated, Union
       a = ...  # type: int
       x = ...  # type: Union[A, B]
       class A:
@@ -700,9 +701,20 @@ class TestAttributes(test_base.TargetIndependentTest):
         def __init__(self) -> None: ...
       class B:
         bar = ...  # type: int
-        foo = ...  # type: int
+        foo = ...  # type: Annotated[int, 'property']
         def __init__(self) -> None: ...
     """)
+
+  def test_reuse_annotated(self):
+    foo = self.Infer("""
+      class Annotated:
+        @property
+        def name(self):
+          return ''
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo))
+      self.Check("import foo", pythonpath=[d.path])
 
   @test_base.skip("Needs vm._get_iter() to iterate over individual bindings.")
   def test_bad_iter(self):

@@ -69,14 +69,14 @@ class AbstractMethodTests(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import abc
-      from typing import Any
+      from typing import Annotated, Any
       abc = ...  # type: module
       v1 = ...  # type: Any
       v2 = ...  # type: int
       class Bar(Foo):
-        foo = ...  # type: Any
+        foo = ...  # type: Annotated[Any, 'property']
       class Foo(metaclass=abc.ABCMeta):
-        foo = ...  # type: Any
+        foo = ...  # type: Annotated[Any, 'property']
     """)
     self.assertErrorRegexes(errors, {"e": r"Foo.*foo"})
 

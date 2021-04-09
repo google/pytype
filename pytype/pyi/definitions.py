@@ -24,6 +24,12 @@ from typed_ast import ast3
 # Typing members that represent sets of types.
 _TYPING_SETS = ("typing.Intersection", "typing.Optional", "typing.Union")
 
+# Aliases for some typing.X types
+_TUPLE_TYPES = ("tuple", "builtins.tuple", "typing.Tuple")
+_CALLABLE_TYPES = ("typing.Callable", "collections.abc.Callable")
+_LITERAL_TYPES = ("typing.Literal", "typing_extensions.Literal")
+_ANNOTATED_TYPES = ("typing.Annotated", "typing_extensions.Annotated")
+
 
 def _split_definitions(defs: List[Any]):
   """Return [constants], [functions] given a mixed list of definitions."""
@@ -146,9 +152,8 @@ class _VerifyMutators(visitors.Visitor):
     self.type_params_in_scope.append(top | params)
 
   def _GetTypeParameters(self, node):
-    collector = visitors.CollectTypeParameters()
-    node.Visit(collector)
-    return {x.name for x in collector.params}
+    params = pytd_utils.GetTypeParameters(node)
+    return {x.name for x in params}
 
   def EnterClass(self, node):
     params = set()
@@ -226,8 +231,9 @@ class _PropertyToConstant(visitors.Visitor):
     constants = list(node.constants)
     for fn in self.const_properties[-1]:
       ptypes = [x.return_type for x in fn.signatures]
-      constants.append(
-          pytd.Constant(name=fn.name, type=pytd_utils.JoinTypes(ptypes)))
+      prop = pytd.Annotated(base_type=pytd_utils.JoinTypes(ptypes),
+                            annotations=("'property'",))
+      constants.append(pytd.Constant(name=fn.name, type=prop))
     methods = [x for x in node.methods if x not in self.const_properties[-1]]
     return node.Replace(constants=tuple(constants), methods=tuple(methods))
 
@@ -389,10 +395,18 @@ class Definitions:
     return pytd_utils.MatchesFullName(
         t, full_name, self.module_info.module_name, self.aliases)
 
-  def _is_tuple_base_type(self, t):
-    return isinstance(t, pytd.NamedType) and (
-        t.name == "tuple" or self._matches_full_name(t, "builtins.tuple") or
-        self._matches_full_name(t, "typing.Tuple"))
+  def _matches_named_type(self, t, names):
+    """Whether t is a NamedType matching any of names."""
+    if not isinstance(t, pytd.NamedType):
+      return False
+    for name in names:
+      if "." in name:
+        if self._matches_full_name(t, name):
+          return True
+      else:
+        if t.name == name:
+          return True
+    return False
 
   def _is_empty_tuple(self, t):
     return isinstance(t, pytd.TupleType) and not t.parameters
@@ -400,20 +414,12 @@ class Definitions:
   def _is_heterogeneous_tuple(self, t):
     return isinstance(t, pytd.TupleType)
 
-  def _is_callable_base_type(self, t):
-    return (isinstance(t, pytd.NamedType) and
-            (self._matches_full_name(t, "typing.Callable") or
-             self._matches_full_name(t, "collections.abc.Callable")))
-
-  def _is_literal_base_type(self, t):
-    return isinstance(t, pytd.NamedType) and (
-        self._matches_full_name(t, "typing.Literal") or
-        self._matches_full_name(t, "typing_extensions.Literal"))
-
   def _parameterized_type(self, base_type, parameters):
     """Return a parameterized type."""
-    if self._is_literal_base_type(base_type):
+    if self._matches_named_type(base_type, _LITERAL_TYPES):
       return types.pytd_literal(parameters)
+    elif self._matches_named_type(base_type, _ANNOTATED_TYPES):
+      return types.pytd_annotated(parameters)
     elif any(isinstance(p, types.Constant) for p in parameters):
       parameters = ", ".join(
           p.repr_str() if isinstance(p, types.Constant) else "_"
@@ -423,7 +429,7 @@ class Definitions:
     elif pytdgen.is_any(base_type):
       return pytd.AnythingType()
     elif len(parameters) == 2 and parameters[-1] is self.ELLIPSIS and (
-        not self._is_callable_base_type(base_type)):
+        not self._matches_named_type(base_type, _CALLABLE_TYPES)):
       element_type = parameters[0]
       if element_type is self.ELLIPSIS:
         raise ParseError("[..., ...] not supported")
@@ -431,9 +437,9 @@ class Definitions:
     else:
       parameters = tuple(pytd.AnythingType() if p is self.ELLIPSIS else p
                          for p in parameters)
-      if self._is_tuple_base_type(base_type):
+      if self._matches_named_type(base_type, _TUPLE_TYPES):
         return pytdgen.heterogeneous_tuple(base_type, parameters)
-      elif self._is_callable_base_type(base_type):
+      elif self._matches_named_type(base_type, _CALLABLE_TYPES):
         callable_parameters = []
         for p in parameters:
           # We do not yet support PEP 612, Parameter Specification Variables.
@@ -462,7 +468,7 @@ class Definitions:
     if isinstance(name, (pytd.GenericType, pytd.AnythingType)):
       return name
     if isinstance(name, pytd.NamedType):
-      name = name.name
+      name = name.name  # pytype: disable=attribute-error
     if name == "nothing":
       return pytd.NothingType()
     base_type = self.type_map.get(name)

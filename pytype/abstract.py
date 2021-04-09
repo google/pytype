@@ -2079,11 +2079,10 @@ class PyTDFunction(Function):
     options = []
     for sig, _, _ in signatures:
       t = sig.pytd_sig.return_type
-      visitor = visitors.CollectTypeParameters()
-      t.Visit(visitor)
-      if visitor.params:
+      params = pytd_utils.GetTypeParameters(t)
+      if params:
         replacement = {}
-        for param_type in visitor.params:
+        for param_type in params:
           replacement[param_type] = pytd.AnythingType()
         replace_visitor = visitors.ReplaceTypeParameters(replacement)
         t = t.Visit(replace_visitor)
@@ -2603,7 +2602,12 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     self.pytd_cls = pytd_cls
     super().__init__(name, vm)
     mm = {}
-    for val in pytd_cls.constants + pytd_cls.methods:
+    for val in pytd_cls.constants:
+      if isinstance(val.type, pytd.Annotated):
+        mm[val.name] = val.Replace(type=val.type.base_type)
+      else:
+        mm[val.name] = val
+    for val in pytd_cls.methods:
       mm[val.name] = val
     for val in pytd_cls.classes:
       mm[val.name.rsplit(".", 1)[-1]] = val
@@ -2635,7 +2639,8 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
           self.vm.errorlog.invalid_annotation(self.vm.frames, self, error)
         else:
           key, keyed_decorator = decorator_key, decorator
-          self.init_attr_metadata_from_pytd(name, self.pytd_cls.constants)
+          fields = decorate.get_attributes(self.pytd_cls)
+          self.init_attr_metadata_from_pytd(name, fields)
           self._recompute_init_from_metadata(key)
 
   def _recompute_init_from_metadata(self, key):

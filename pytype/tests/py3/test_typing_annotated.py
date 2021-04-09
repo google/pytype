@@ -1,5 +1,6 @@
 """Tests for PEP-593 typing.Annotated types."""
 
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -60,6 +61,59 @@ class AnnotatedTest(test_base.TargetPython3FeatureTest):
       x: Annotated[int] # invalid-annotation[err]
     """)
     self.assertErrorRegexes(errors, {"err": r"must have at least 1 annotation"})
+
+  def test_annotated_in_pyi(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import Annotated
+        class A:
+          x: Annotated[int, 'tag'] = ...
+      """)
+      ty = self.Infer("""
+        import a
+        x = a.A().x
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        a: module
+        x: int
+      """)
+
+  def test_annotated_type_in_pyi(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import Annotated
+        class Foo:
+          w: int
+        class A:
+          x: Annotated[Foo, 'tag'] = ...
+      """)
+      ty = self.Infer("""
+        import a
+        x = a.A().x.w
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        a: module
+        x: int
+      """)
+
+  def test_subclass_annotated_in_pyi(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("a.pyi", """
+        from typing import Annotated
+        class A:
+          x: Annotated[int, 'tag1', 'tag2'] = ...
+      """)
+      ty = self.Infer("""
+        import a
+        class B(a.A):
+          pass
+        x = B().x
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        a: module
+        class B(a.A): ...
+        x: int
+      """)
 
 
 test_base.main(globals(), __name__ == "__main__")

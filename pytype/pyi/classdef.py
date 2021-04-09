@@ -38,7 +38,7 @@ def get_parents(
     elif isinstance(p, pytd.Type):
       parents.append(p)
     else:
-      msg = "Unexpected class base:" + p
+      msg = "Unexpected class base: " + str(p)
       raise ParseError(msg)
 
   return parents, namedtuple_index

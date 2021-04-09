@@ -386,7 +386,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     if isinstance(pyval, pytd.NothingType):
       return self.vm.program.NewVariable([], [], self.vm.root_node)
     elif isinstance(pyval, pytd.Alias):
-      return self.constant_to_var(pyval.type, subst, node, source_sets,
+      return self.constant_to_var(pyval.type, subst, node, source_sets,  # pytype: disable=attribute-error
                                   discard_concrete_values)
     elif isinstance(pyval, abstract_utils.AsInstance):
       cls = pyval.cls
@@ -802,6 +802,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       value = self.constant_to_value(
           self._get_literal_value(pyval.value), subst, self.vm.root_node)
       return abstract.LiteralClass(value, self.vm)
+    elif isinstance(pyval, pytd.Annotated):
+      return self.constant_to_value(pyval.base_type, subst, self.vm.root_node)
     elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node
       return self.tuple_to_value([
           self.constant_to_var(item, subst, self.vm.root_node)

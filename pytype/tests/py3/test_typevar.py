@@ -396,11 +396,11 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
     """)
     # types inferred as Any due to b/123835298
     self.assertTypesMatchPytd(ty, """
-      from typing import TypeVar, Generic, Any
+      from typing import TypeVar, Generic, Any, Annotated
       T = TypeVar('T')
       class A(Generic[T]):
           _foo: T
-          foo: Any
+          foo: Annotated[Any, 'property']
           def __init__(self, foo: T) -> None: ...
     """)
 
