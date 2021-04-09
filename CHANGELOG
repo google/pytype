@@ -1,3 +1,19 @@
+Version 2021.04.09
+
+New features and updates:
+* Enable --check-parameter-types by default for non-None default values.
+* Add some minimal support for PEP 612 in type stubs.
+* Add support for typing.Annotated in pyi files.
+
+Bug fixes:
+* Fix a crash when analysed code accessed an undefined closure cell.
+* Fix a minor bug in pytype's expansion of Protocol[T].
+* Check starargs and starstarargs when gathering TypeVars in function sigs.
+* Fix some bugs in pytype's handling of the new typeshed directory structure.
+* Make sure `collections.defaultdict.__init__` always accepts kwargs.
+* Filter out properties from class attributes when constructing dataclasses.
+* Add gi_* fields to Generators.
+
 Version 2021.04.01
 
 New features and updates:
