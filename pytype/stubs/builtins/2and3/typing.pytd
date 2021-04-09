@@ -361,6 +361,10 @@ class Set(MutableSet[_T]):
 # _T is the yield type, _T2 the send type, _V the return type.
 class Generator(Iterator[_T], Generic[_T, _T2, _V]):
   __slots__ = []
+  gi_code: Any  # Should be types.CodeType
+  gi_frame: Any  # Should be types.FrameType
+  gi_running: bool
+  gi_yieldfrom: Optional[Generator[Any, Any, Any]]
   if sys.version_info >= (3, 0):
     def __next__(self) -> _T: ...
   else:

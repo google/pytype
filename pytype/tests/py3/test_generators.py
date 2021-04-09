@@ -107,5 +107,28 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
         "e1": r"typing.Generator\[_T, _T2, _V].*3.*2",
         "e2": r"typing.Generator\[_T, _T2, _V].*3.*1"})
 
+  def test_hidden_fields(self):
+    self.Check("""
+      from typing import Generator
+      from types import GeneratorType
+      a: generator = __any_object__
+      a.gi_code
+      a.gi_frame
+      a.gi_running
+      a.gi_yieldfrom
+
+      b: Generator = __any_object__
+      b.gi_code
+      b.gi_frame
+      b.gi_running
+      b.gi_yieldfrom
+
+      c: GeneratorType = __any_object__
+      c.gi_code
+      c.gi_frame
+      c.gi_running
+      c.gi_yieldfrom
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
