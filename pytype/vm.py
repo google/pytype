@@ -672,10 +672,8 @@ class VirtualMachine:
           else:
             if self.options.check_parameter_types:
               should_report = True
-            elif self.options.check_nonnull_parameter_types:
-              should_report = value != self.convert.none
             else:
-              should_report = False
+              should_report = value != self.convert.none
           if should_report:
             self.errorlog.annotation_type_mismatch(
                 self.frames, expected_type, value.to_binding(node), arg_name)
