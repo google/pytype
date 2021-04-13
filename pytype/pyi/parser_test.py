@@ -331,12 +331,20 @@ class ParserTest(_ParserTestBase):
       def foo(x: int) -> int: ...
       def foo(x: str) -> str: ...""",
                """
+      from typing import overload
+
       @overload
       def foo(x: int) -> int: ...
       @overload
       def foo(x: str) -> str: ...""")
     # @overload decorators should be properly round-tripped.
     self.check("""
+      @overload
+      def foo(x: int) -> int: ...
+      @overload
+      def foo(x: str) -> str: ...""", """
+      from typing import overload
+
       @overload
       def foo(x: int) -> int: ...
       @overload
@@ -1122,6 +1130,8 @@ class FunctionTest(_ParserTestBase):
       @overload  # type: ignore  # unsupported signature
       def foo(bool) -> int: ...""",
                """
+      from typing import overload
+
       @overload
       def foo() -> int: ...
       @overload
@@ -1168,6 +1178,8 @@ class FunctionTest(_ParserTestBase):
       @coroutine
       def foo() -> str: ...""",
                """
+      from typing import overload
+
       @coroutine
       @overload
       def foo() -> int: ...
@@ -1469,6 +1481,14 @@ class ClassTest(_ParserTestBase):
       """, 1, "Duplicate class-level identifier(s): bar")
     # Multiple method defs are ok (needed for variant signatures).
     self.check("""
+      class Foo:
+          @overload
+          def x(self) -> int: ...
+          @overload
+          def x(self) -> str: ...
+      """, """
+      from typing import overload
+
       class Foo:
           @overload
           def x(self) -> int: ...
@@ -2081,6 +2101,8 @@ class MergeSignaturesTest(_ParserTestBase):
       def foo(x: int) -> str: ...
       def foo(x: str) -> str: ...""",
                      """
+      from typing import overload
+
       @overload
       def foo(x: int) -> str: ...
       @overload
@@ -2149,6 +2171,8 @@ class MergeSignaturesTest(_ParserTestBase):
           @abstractmethod
           def foo(x: int, y: int, z: int) -> str: ...
       """, """
+      from typing import overload
+
       class A:
           @abstractmethod
           @overload
@@ -2214,7 +2238,7 @@ class CanonicalPyiTest(_ParserTestBase):
         def foo(x: str) -> Any: ...
     """)
     expected = textwrap.dedent("""
-        from typing import Any
+        from typing import Any, overload
 
         @overload
         def foo(x: int = ...) -> Any: ...

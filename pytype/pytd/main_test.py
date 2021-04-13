@@ -12,11 +12,13 @@ class TestPytdTool(unittest.TestCase):
   """Test pytd/main.py."""
 
   def setUp(self):
+    super().setUp()
     # Save the value of sys.argv (which will be restored in tearDown), so that
     # tests can overwrite it.
     self._sys_argv = sys.argv
 
   def tearDown(self):
+    super().tearDown()
     sys.argv = self._sys_argv
 
   def test_parse_opts(self):
@@ -61,6 +63,8 @@ class TestPytdTool(unittest.TestCase):
   def test_output(self):
     with file_utils.Tempdir() as d:
       src = textwrap.dedent("""
+        from typing import overload
+
         @overload
         def f(x: int) -> str: ...
         @overload
@@ -76,6 +80,8 @@ class TestPytdTool(unittest.TestCase):
   def test_optimize(self):
     with file_utils.Tempdir() as d:
       inpath = d.create_file("in.pytd", """
+        from typing import overload
+
         @overload
         def f(x: int) -> str: ...
         @overload

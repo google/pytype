@@ -1033,7 +1033,7 @@ class OperationsTest(test_base.TargetIndependentTest):
       def f(): return 3 ** 'foo'  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
-        "e": r"\*\*.*int.*str.*__pow__ on int.*int"})
+        "e": r"\*\*.*int.*str.*__pow__ on int"})
 
   def test_neg(self):
     errors = self.CheckWithErrors("""

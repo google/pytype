@@ -269,12 +269,6 @@ def add_infrastructure_options(o):
       "-Z", "--quick", action="store_true",
       dest="quick", default=None,
       help=("Only do an approximation."))
-  o.add_argument(
-      "--check-nonnull-parameter-types", action="store_true",
-      dest="check_nonnull_parameter_types", default=True,
-      help=("Temporary flag to aid in the rollout of --check-parameter-types. "
-            "Do not use! Use --check-parameter-types instead, which enables a "
-            "superset of the checks enabled by this flag."))
 
 
 def add_debug_options(o):

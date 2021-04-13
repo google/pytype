@@ -13,7 +13,7 @@ of pytype.
          * [Typing](#typing)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2021-03-30T15:55-07:00 -->
+<!-- Added by: rechen, at: 2021-04-12T11:16-07:00 -->
 
 <!--te-->
 
@@ -69,6 +69,7 @@ Feature                                                         | Supports | Iss
 [PEP 604 -- Allow Writing Union Types as X \| Y][604]           | ❌        | [#785][union-pipe]
 [PEP 612 -- Parameter Specification Variables][612]             | ❌        | [#786][param-spec]
 [PEP 613 -- Explicit Type Aliases][613]                         | ❌        | [#787][typealias]
+[PEP 647 -- User-Defined Type Guards][647]                      | ❌        |
 Custom Recursive Types                                          | ❌        | [#407][recursive-types]
 Generic Type Aliases                                            | 🟡        | [#793][generic-aliases]
 Type Annotation Inheritance                                     | ❌        | [#81][annotation-inheritance]
@@ -99,6 +100,7 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [604]: https://www.python.org/dev/peps/pep-0604
 [612]: https://www.python.org/dev/peps/pep-0612
 [613]: https://www.python.org/dev/peps/pep-0613
+[647]: https://www.python.org/dev/peps/pep-0647
 [annotated]: https://github.com/google/pytype/issues/791
 [annotation-inheritance]: https://github.com/google/pytype/issues/81
 [enum]: https://github.com/google/pytype/issues/788

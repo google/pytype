@@ -386,5 +386,20 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       int(Bar())
     """)
 
+  def test_bool_methods(self):
+    ty = self.Infer("""
+      x = True
+      print((not x) * (1,))
+      print((not x) * [1])
+      print((1,) * (not x))
+      print([1] * (not x))
+      a = True ** True
+      b = True ** 1.0
+    """)
+    self.assertTypesMatchPytd(ty, """
+      a: int
+      b: float
+      x: bool
+    """)
 
 test_base.main(globals(), __name__ == "__main__")
