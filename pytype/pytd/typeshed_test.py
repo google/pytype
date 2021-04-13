@@ -37,7 +37,7 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
   def test_get_typeshed_missing(self):
     if not self.ts.missing:
       return  # nothing to test
-    self.assertIn(os.path.join("stdlib", "3", "pytypecanary"), self.ts.missing)
+    self.assertIn(os.path.join("stdlib", "pytypecanary"), self.ts.missing)
     _, data = self.ts.get_module_file(
         "stdlib", "pytypecanary", self.python_version)
     self.assertEqual(data, builtins.DEFAULT_SRC)
@@ -79,7 +79,7 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
   def test_read_blacklist(self):
     for filename in self.ts.read_blacklist():
       self.assertTrue(filename.startswith("stdlib") or
-                      filename.startswith("third_party"))
+                      filename.startswith("stubs"))
 
   def test_blacklisted_modules(self):
     for module_name in self.ts.blacklisted_modules([2, 7]):
@@ -90,15 +90,17 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
   def test_carriage_return(self):
     # _env_home is used in preference to _root, so make sure it's unset.
     self.ts._env_home = None
+    self.ts._stdlib_versions["foo"] = (3, 8)
     with file_utils.Tempdir() as d:
-      d.create_file("stdlib/3/foo.pyi", b"x: int\r\n")
+      d.create_file("stdlib/foo.pyi", b"x: int\r\n")
       self.ts._root = d.path
       _, src = self.ts.get_module_file("stdlib", "foo", (3, 8))
     self.assertEqual(src, "x: int\n")
 
   def test_carriage_return_custom_root(self):
+    self.ts._stdlib_versions["foo"] = (3, 8)
     with file_utils.Tempdir() as d:
-      d.create_file("stdlib/3/foo.pyi", b"x: int\r\n")
+      d.create_file("stdlib/foo.pyi", b"x: int\r\n")
       self.ts._env_home = d.path
       _, src = self.ts.get_module_file("stdlib", "foo", (3, 8))
     self.assertEqual(src, "x: int\n")
