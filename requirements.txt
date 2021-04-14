@@ -10,4 +10,4 @@ pylint
 pyyaml>=3.11
 six
 toml
-typed_ast
+typed_ast>=1.4.3
