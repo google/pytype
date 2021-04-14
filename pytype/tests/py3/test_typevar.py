@@ -448,6 +448,25 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       def f(x: Tree[int]): ... # no error since Tree is set to Any
     """)
 
+  def test_tuple_type_alias(self):
+    ty = self.Infer("""
+      from typing import Tuple, TypeVar
+      T = TypeVar('T')
+      X = Tuple[T, ...]
+
+      def f(x: X[int]):
+        pass
+
+      f((0, 1, 2))  # should not raise an error
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Tuple, TypeVar
+      T = TypeVar('T')
+      X = Tuple[T, ...]
+
+      def f(x: Tuple[int, ...]) -> None: ...
+    """)
+
 
 class TypeVarTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for TypeVar in Python 3."""

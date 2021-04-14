@@ -302,7 +302,11 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
     return Instance(self, self.vm, container=container)
 
   def to_annotation_container(self):
-    if self.full_name == "builtins.tuple":
+    if isinstance(self, PyTDClass) and self.full_name == "builtins.tuple":
+      # If we are parameterizing builtins.tuple, replace it with typing.Tuple so
+      # that heterogeneous tuple annotations work. We need the isinstance()
+      # check to distinguish PyTDClass(tuple) from ParameterizedClass(tuple);
+      # the latter appears here when a generic type alias is being substituted.
       typing = self.vm.import_module("typing", "typing", 0).get_module("Tuple")
       typing.load_lazy_attribute("Tuple")
       return abstract_utils.get_atomic_value(typing.members["Tuple"])
