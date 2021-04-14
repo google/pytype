@@ -16,7 +16,7 @@
       * [How do I write code that is seen by pytype but ignored at runtime?](#how-do-i-write-code-that-is-seen-by-pytype-but-ignored-at-runtime)
       * [How do I silence overzealous pytype errors when adding multiple types to a dict (or list, set, etc.)?](#how-do-i-silence-overzealous-pytype-errors-when-adding-multiple-types-to-a-dict-or-list-set-etc)
 
-<!-- Added by: rechen, at: 2021-03-01T17:54-08:00 -->
+<!-- Added by: mdemello, at: 2021-04-14T16:11-07:00 -->
 
 <!--te-->
 
@@ -28,6 +28,8 @@ information, check out:
 * A [PyCon lightning talk][lightning-talk] comparing pytype and mypy,
 another popular type checker. The slides are [here][lightning-talk-slides].
 * A more detailed written discussion in a [Lobste.rs post][lobsters-comment].
+* A [paper][type-system-paper] detailing pytype and mypy's differing views of
+  python's type system.
 
 ## Can I find out what pytype thinks the type of my expression is?
 
@@ -224,6 +226,7 @@ indicate to pytype that you are intentionally doing something it deems unsafe.
 [lightning-talk]: https://youtu.be/yFcCuinRVnU?t=2300
 [lightning-talk-slides]: https://docs.google.com/presentation/d/1GYqLeLkknjYaYX2JrMzxX8LGw_rlO-6kTk-VNPVG9gY/edit?usp=sharing
 [lobsters-comment]: https://lobste.rs/s/0uv5hy/how_quickly_find_type_issues_your_python#c_6ojqaj
+[type-system-paper]: https://www.cs.rpi.edu/~milanova/docs/dls2020.pdf
 [why-is-pytype-taking-so-long]: #why-is-pytype-taking-so-long
 
 <!-- References with different internal and external versions -->
