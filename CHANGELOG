@@ -1,3 +1,15 @@
+Version 2021.04.15
+
+New features and updates:
+* Update typeshed pin to commit ce24720 from Jan 27, and drop support for the
+  old typeshed directory structure.
+* Delete the --check-nonnull-parameter-types flag.
+
+Bug fixes:
+* Add "from typing import overload" statement when using @overload.
+* Add object.__delattr__ to our builtins stubs.
+* Add some more support for generic type aliases.
+
 Version 2021.04.09
 
 New features and updates:
