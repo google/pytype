@@ -92,11 +92,12 @@ class TupleTest(test_base.TargetIndependentTest):
     """)
 
   def test_bad_tuple_class_getitem(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       v = type((3, ""))
-      w = v[0]  # invalid-annotation[e]
+      w = v[0]  # invalid-annotation[e1]  # invalid-annotation[e2]
     """)
-    self.assertErrorRegexes(errors, {"e": r"'0'.*Not a type"})
+    self.assertErrorRegexes(errors, {"e1": r"Expected 0 parameter\(s\), got 1",
+                                     "e2": r"'0'.*Not a type"})
 
   def test_tuple_isinstance(self):
     ty = self.Infer("""
@@ -161,6 +162,25 @@ class TupleTest(test_base.TargetIndependentTest):
         def RequestResource(self, resource):
           self._resources_used[
               resource.Name()] = self._resources_available[resource.Name()]
+    """)
+
+  def test_bad_extra_parameterization(self):
+    errors = self.CheckWithErrors("""
+      from typing import Tuple
+      X = Tuple[int][str]  # invalid-annotation[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Expected 0 parameter\(s\), got 1"})
+
+  def test_legal_extra_parameterization(self):
+    ty = self.Infer("""
+      from typing import Tuple, TypeVar
+      T = TypeVar('T')
+      X = Tuple[T][T][str]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Tuple, TypeVar
+      T = TypeVar('T')
+      X = Tuple[str]
     """)
 
 

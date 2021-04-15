@@ -1,6 +1,7 @@
 """Tests for TypeVar."""
 
 from pytype import file_utils
+from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
@@ -446,6 +447,189 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       T = TypeVar("T")
       Tree = Union[T, List['Tree']]  # not-supported-yet
       def f(x: Tree[int]): ... # no error since Tree is set to Any
+    """)
+
+
+class GenericTypeAliasTest(test_base.TargetPython3BasicTest):
+  """Tests for generic type aliases ("type macros")."""
+
+  def test_homogeneous_tuple(self):
+    ty = self.Infer("""
+      from typing import Tuple, TypeVar
+      T = TypeVar('T')
+      X = Tuple[T, ...]
+
+      def f(x: X[int]):
+        pass
+
+      f((0, 1, 2))  # should not raise an error
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Tuple, TypeVar
+      T = TypeVar('T')
+      X = Tuple[T, ...]
+
+      def f(x: Tuple[int, ...]) -> None: ...
+    """)
+
+  def test_heterogeneous_tuple(self):
+    ty, _ = self.InferWithErrors("""
+      from typing import Tuple, TypeVar
+      T = TypeVar('T')
+      X = Tuple[T]
+      def f(x: X[int]):
+        pass
+      f((0, 1, 2))  # wrong-arg-types
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Tuple, TypeVar
+      T = TypeVar('T')
+      X = Tuple[T]
+      def f(x: Tuple[int]) -> None: ...
+    """)
+
+  def test_substitute_typevar(self):
+    foo_ty = self.Infer("""
+      from typing import List, TypeVar
+      T1 = TypeVar('T1')
+      T2 = TypeVar('T2')
+      X = List[T1]
+      def f(x: X[T2]) -> T2:
+        return x[0]
+    """)
+    self.assertTypesMatchPytd(foo_ty, """
+      from typing import List, TypeVar
+      T1 = TypeVar('T1')
+      T2 = TypeVar('T2')
+      X = List[T1]
+      def f(x: List[T2]) -> T2: ...
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
+      ty = self.Infer("""
+        import foo
+        from typing import TypeVar
+        T = TypeVar('T')
+        def f(x: T) -> foo.X[T]:
+          return [x]
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import List, TypeVar
+        foo: module
+        T = TypeVar('T')
+        def f(x: T) -> List[T]: ...
+      """)
+
+  def test_substitute_value(self):
+    foo_ty = self.Infer("""
+      from typing import List, TypeVar
+      T = TypeVar('T')
+      X = List[T]
+      def f(x: X[int]) -> int:
+        return x[0]
+    """)
+    self.assertTypesMatchPytd(foo_ty, """
+      from typing import List, TypeVar
+      T = TypeVar('T')
+      X = List[T]
+      def f(x: List[int]) -> int: ...
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
+      ty = self.Infer("""
+        import foo
+        def f(x: int) -> foo.X[int]:
+          return [x]
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import List
+        foo: module
+        def f(x: int) -> List[int]: ...
+      """)
+
+  def test_partial_substitution(self):
+    ty = self.Infer("""
+      from typing import Dict, TypeVar
+      T = TypeVar('T')
+      X = Dict[T, str]
+      def f(x: X[int]) -> int:
+        return next(iter(x.keys()))
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict, TypeVar
+      T = TypeVar('T')
+      X = Dict[T, str]
+      def f(x: Dict[int, str]) -> int: ...
+    """)
+
+  @test_base.skip("Not supported yet: b/140251808")
+  def test_callable(self):
+    ty = self.Infer("""
+      from typing import Callable, TypeVar
+      T = TypeVar('T')
+      X = Callable[[T], str]
+      def f() -> X[int]:
+        def g(x: int):
+          return str(x)
+        return g
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable, TypeVar
+      T = TypeVar('T')
+      X = Callable[[T], str]
+      def f() -> Callable[[int], str]: ...
+    """)
+
+  @test_base.skip("Not supported yet: b/140251808")
+  def test_literal(self):
+    ty = self.Infer("""
+      from typing import TypeVar
+      from typing_extensions import Literal
+      T = TypeVar('T')
+      X = Literal[T, 'r']
+      def f(x: X['w']):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypeVar
+      from typing_extensions import Literal
+      T = TypeVar('T')
+      X = Literal[T, 'r']
+      def f(x: Literal['w', 'r']) -> None: ...
+    """)
+
+  @test_base.skip("Not supported yet: b/140251808")
+  def test_union_typevar(self):
+    ty = self.Infer("""
+      from typing import TypeVar, Union
+      T1 = TypeVar('T1')
+      T2 = TypeVar('T2')
+      X = Union[int, T1]
+      def f(x: X[T2], y: T2):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, TypeVar, Union
+      T1 = TypeVar('T1')
+      T2 = TypeVar('T2')
+      X = Union[int, T1]
+      def f(x: Union[int, T2], y: T2) -> None: ...
+    """)
+
+  def test_union_value(self):
+    ty = self.Infer("""
+      from typing import TypeVar, Union
+      T = TypeVar('T')
+      X = Union[int, T]
+      def f(x: X[str]):
+        pass
+    """)
+    # TODO(b/140251808): X should not be Any.
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Union, TypeVar
+      T = TypeVar('T')
+      X: Any
+      def f(x: Union[int, str]) -> None: ...
     """)
 
 

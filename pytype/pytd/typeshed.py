@@ -51,15 +51,8 @@ class Typeshed:
     else:
       self._root = pytype_source_utils.get_full_path("typeshed")
     self._missing = frozenset(self._load_missing())
-    # See https://github.com/google/pytype/issues/820. typeshed's directory
-    # structure significantly changed in January 2021. We need to support both
-    # the old and the new structures until our bundled typeshed is updated past
-    # the restructuring commit.
-    self._use_new_structure = self._file_exists(
-        os.path.join("stdlib", "VERSIONS"))
-    if self._use_new_structure:
-      self._stdlib_versions = self._load_stdlib_versions()
-      self._third_party_packages = self._load_third_party_packages()
+    self._stdlib_versions = self._load_stdlib_versions()
+    self._third_party_packages = self._load_third_party_packages()
 
   def _load_file(self, path):
     if self._env_home:
@@ -202,13 +195,6 @@ class Typeshed:
     Raises:
       IOError: if file not found
     """
-    if self._use_new_structure:
-      return self._get_module_file(toplevel, module, version)
-    else:
-      return self._get_module_file_old(toplevel, module, version)
-
-  def _get_module_file(self, toplevel, module, version):
-    """get_module_file for typeshed's new directory structure."""
     module_parts = module.split(".")
     module_path = os.path.join(*module_parts)
     paths = []
@@ -253,44 +239,8 @@ class Typeshed:
           pass
     raise IOError("Couldn't find %s" % module)
 
-  def _get_module_file_old(self, toplevel, module, version):
-    """get_module_file for typeshed's old directory structure."""
-    if self._ignore(module, version):
-      raise IOError("Couldn't find %s" % module)
-    module_path = os.path.join(*module.split("."))
-    versions = ["%d.%d" % (version[0], minor)
-                for minor in range(version[1], -1, -1)]
-    # E.g. for Python 3.5, try 3.5/, 3.4/, 3.3/, ..., 3.0/, 3/, 2and3.
-    # E.g. for Python 2.7, try 2.7/, 2.6/, ..., 2/, 2and3.
-    # The order is the same as that of mypy. See default_lib_path in
-    # https://github.com/JukkaL/mypy/blob/master/mypy/build.py#L249
-    for v in versions + [str(version[0]), "2and3"]:
-      path_rel = os.path.join(toplevel, v, module_path)
-
-      # Give precedence to MISSING_FILE
-      if path_rel in self.missing:
-        return (os.path.join(self._root, "nonexistent", path_rel + ".pyi"),
-                builtins.DEFAULT_SRC)
-
-      # TODO(mdemello): handle this in the calling code.
-      for path in [os.path.join(path_rel, "__init__.pyi"), path_rel + ".pyi"]:
-        try:
-          name, src = self._load_file(path)
-          return name, src
-        except IOError:
-          pass
-
-    raise IOError("Couldn't find %s" % module)
-
   def get_typeshed_paths(self, python_version):
     """Gets the paths to typeshed's version-specific pyi files."""
-    if self._use_new_structure:
-      return self._get_typeshed_paths(python_version)
-    else:
-      return self._get_typeshed_paths_old(python_version)
-
-  def _get_typeshed_paths(self, python_version):
-    """get_typeshed_paths for typeshed's new directory structure."""
     major, _ = python_version
     typeshed_subdirs = ["stdlib"]
     if major == 2:
@@ -303,20 +253,6 @@ class Typeshed:
             typeshed_subdirs.append(os.path.join(py2only_dir))
           else:
             typeshed_subdirs.append(os.path.join("stubs", package))
-    return [os.path.join(self._root, d) for d in typeshed_subdirs]
-
-  def _get_typeshed_paths_old(self, python_version):
-    """get_typeshed_paths for typeshed's old directory structure."""
-    major, minor = python_version
-    typeshed_subdirs = ["stdlib/%d" % major,
-                        "stdlib/2and3",
-                        "third_party/%d" % major,
-                        "third_party/2and3",
-                       ]
-    if major == 3:
-      for i in range(0, minor + 1):
-        # iterate over 3.0, 3.1, 3.2, ...
-        typeshed_subdirs.append("stdlib/3.%d" % i)
     return [os.path.join(self._root, d) for d in typeshed_subdirs]
 
   def get_pytd_paths(self, python_version):
@@ -338,7 +274,7 @@ class Typeshed:
         # stdlib/VERSIONS, stubs/{package}/METADATA.toml are metadata files.
         continue
       parts = path.split("/")
-      if self._use_new_structure and "stdlib" in parts:
+      if "stdlib" in parts:
         if "@python2" in parts:
           # stdlib/@python2/ stubs are Python 2-only.
           if python_version[0] != 2:
@@ -366,22 +302,17 @@ class Typeshed:
     # Also load modules not in typeshed, so that we have a dummy entry for them.
     for f in self.missing:
       parts = f.split("/")
-      if self._use_new_structure:
-        if ("@python2" in parts) != (python_version[0] == 2):
-          continue
-        if parts[0] == "stdlib":
-          start_index = 1  # remove stdlib/ prefix
-        else:
-          assert parts[0] == "stubs"
-          start_index = 2  # remove stubs/{package}/ prefix
-        if parts[start_index] == "@python2":
-          start_index += 1
-        filename = "/".join(parts[start_index:])
-        module_names.add(filename.replace("/", "."))
+      if ("@python2" in parts) != (python_version[0] == 2):
+        continue
+      if parts[0] == "stdlib":
+        start_index = 1  # remove stdlib/ prefix
       else:
-        if parts[1].startswith(str(python_version[0])):
-          filename = "/".join(parts[2:])  # remove prefixes like stdlib/2.7
-          module_names.add(filename.replace("/", "."))
+        assert parts[0] == "stubs"
+        start_index = 2  # remove stubs/{package}/ prefix
+      if parts[start_index] == "@python2":
+        start_index += 1
+      filename = "/".join(parts[start_index:])
+      module_names.add(filename.replace("/", "."))
     assert "ctypes" in module_names  # sanity check
     return module_names
 
@@ -405,13 +336,6 @@ class Typeshed:
 
   def get_python_major_versions(self, filename):
     """Gets the Python major versions targeted by the given .pyi file."""
-    if self._use_new_structure:
-      return self._get_python_major_versions(filename)
-    else:
-      return self._get_python_major_versions_old(filename)
-
-  def _get_python_major_versions(self, filename):
-    """get_python_major_versions for the new typeshed directory structure."""
     if os.path.sep + "@python2" + os.path.sep in filename:
       return (2,)
     parts = filename.split(os.path.sep)
@@ -432,14 +356,6 @@ class Typeshed:
           continue
         versions.append(v)
       return tuple(versions)
-
-  def _get_python_major_versions_old(self, filename):
-    """get_python_major_versions for the old typeshed directory structure."""
-    path = filename.split(os.path.sep)
-    if path[1] == "2and3":
-      return (2, 3)
-    else:
-      return (int(path[1][0]),)
 
 
 _typeshed = None

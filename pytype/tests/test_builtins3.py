@@ -402,4 +402,12 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       x: bool
     """)
 
+  def test_delattr(self):
+    self.Check("""
+      class Foo(object):
+        def __delattr__(self, name):
+          super(Foo, self).__delattr__(name)
+    """)
+
+
 test_base.main(globals(), __name__ == "__main__")
