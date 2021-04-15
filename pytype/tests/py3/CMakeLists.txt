@@ -354,6 +354,7 @@ py_test(
     test_typevar.py
   DEPS
     pytype.utils
+    pytype.pytd.pytd
     pytype.tests.test_base
 )
 
