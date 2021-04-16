@@ -87,8 +87,11 @@ def get_data_files():
                                check=['3', '*.pytd'])
   stdlib = scan_package_data(['stubs', 'stdlib'], '*.pytd',
                              check=['3', '*.pytd'])
-  typeshed = scan_package_data(['typeshed'], '*.pyi',
-                               check=['stdlib', '*.pyi'])
+  typeshed = (scan_package_data(['typeshed'], '*.pyi',
+                                check=['stdlib', '*.pyi']) +
+              ['typeshed/stdlib/VERSIONS'] +
+              scan_package_data(['typeshed'], 'METADATA.toml',
+                                check=['stubs', 'six', 'METADATA.toml']))
   merge_pyi_grammar = ['tools/merge_pyi/Grammar.txt']
   return builtins + stdlib + typeshed + merge_pyi_grammar
 
