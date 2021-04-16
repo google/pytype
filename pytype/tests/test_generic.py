@@ -1084,5 +1084,25 @@ class GenericTest(test_base.TargetIndependentTest):
           return cls()
     """)
 
+  def test_subclass_typevar(self):
+    ty = self.Infer("""
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class Stack(Generic[T]):
+        def peek(self) -> T:
+          return __any_object__
+      class IntStack(Stack[int]):
+        pass
+      x = IntStack().peek()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class Stack(Generic[T]):
+        def peek(self) -> T: ...
+      class IntStack(Stack[int]): ...
+      x: int
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

@@ -3797,14 +3797,18 @@ class BoundFunction(BaseValue):
     self.replace_self_annot = None
     inst = abstract_utils.get_atomic_value(
         self._callself, default=self.vm.convert.unsolvable)
-    if isinstance(self.underlying, InterpreterFunction):
-      if isinstance(inst.cls, ParameterizedClass):
-        base_cls = inst.cls.base_cls
-      else:
-        base_cls = inst.cls
-      if isinstance(base_cls, class_mixin.Class) and base_cls.template:
-        self.replace_self_annot = ParameterizedClass.get_generic_instance_type(
-            base_cls)
+    if isinstance(self.underlying, InterpreterFunction) and (
+        self.underlying.signature.param_names):
+      if isinstance(inst.cls, class_mixin.Class):
+        for cls in inst.cls.mro:
+          if isinstance(cls, ParameterizedClass):
+            base_cls = cls.base_cls
+          else:
+            base_cls = cls
+          if isinstance(base_cls, class_mixin.Class) and base_cls.template:
+            self.replace_self_annot = (
+                ParameterizedClass.get_generic_instance_type(base_cls))
+            break
     if isinstance(inst, SimpleValue):
       self.alias_map = inst.instance_type_parameters.uf
     elif isinstance(inst, TypeParameterInstance):
