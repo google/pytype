@@ -745,10 +745,16 @@ def build_cast(vm):
   return Cast.make("cast", vm, "typing")
 
 
+def build_final(vm):
+  vm.errorlog.not_supported_yet(vm.frames, "typing.final")
+  return vm.convert.name_to_value("typing.final")
+
+
 typing_overlay = {
     "Annotated": overlay.build("Annotated", Annotated),
     "Any": build_any,
     "Callable": overlay.build("Callable", Callable),
+    "final": build_final,
     "Generic": overlay.build("Generic", Generic),
     "Literal": overlay.build("Literal", Literal),
     "NamedTuple": build_namedtuple,
