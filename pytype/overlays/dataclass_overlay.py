@@ -41,8 +41,12 @@ class Dataclass(classgen.Decorator):
       return None
     # The InitVar annotation is not retained as a class member, but any default
     # value is retained.
-    del self.vm.annotated_locals[cls.name][name]
-    if orig is not None:
+    if orig is None:
+      # If an initvar does not have a default, it will not be a class member
+      # variable, so delete it from the annotated locals. Otherwise, leave the
+      # annotation as InitVar[...].
+      del self.vm.annotated_locals[cls.name][name]
+    else:
       cls.members[name] = classgen.instantiate(node, name, initvar)
     return initvar
 

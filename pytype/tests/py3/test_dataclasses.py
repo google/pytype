@@ -412,7 +412,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       dataclasses: module
       class A:
-        x: str
+        x: dataclasses.InitVar[str]
         y: int
         def __init__(self, x: str = ..., y: int = ...) -> None: ...
     """)
@@ -433,7 +433,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       dataclasses: module
       class A:
-        x: str
+        x: dataclasses.InitVar[str]
         y: int
         def __init__(self, w: Foo, x: str = ..., y: int = ...) -> None: ...
 
@@ -460,7 +460,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         def __init__(self, x: str, y: int = ...) -> None: ...
 
       class B(A):
-        z: int
+        z: dataclasses.InitVar[int]
         def __init__(self, x: str, y: int = ..., z: int = ...) -> None: ...
     """)
 

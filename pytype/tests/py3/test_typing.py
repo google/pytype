@@ -747,6 +747,28 @@ class TypingTestPython3Feature(test_base.TargetPython3FeatureTest):
         f3({0: 'a'})  # wrong-arg-types
       """, pythonpath=[d.path])
 
+  def test_final(self):
+    self.CheckWithErrors("""
+      from typing import final  # not-supported-yet
+      class Foo:
+        @final
+        def __init__(self):
+          self.x = 0
+        def get_x(self):
+          return self.x
+    """)
+
+  def test_final_extension(self):
+    self.CheckWithErrors("""
+      from typing_extensions import final  # not-supported-yet
+      class Foo:
+        @final
+        def __init__(self):
+          self.x = 0
+        def get_x(self):
+          return self.x
+    """)
+
 
 class LiteralTest(test_base.TargetPython3FeatureTest):
   """Tests for typing.Literal in source code."""

@@ -587,6 +587,10 @@ if sys.version_info >= (3, 6):
     @abstractmethod
     def aclose(self) -> Awaitable[_T]: ...
 
+# final is new in Python 3.8; we don't put a version guard here because we want
+# to reuse this definition for typing_extensions in lower versions.
+def final(x: _T) -> _T: ...
+
 if sys.version_info >= (3, 9):
   class Annotated: ...
 
