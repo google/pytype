@@ -156,11 +156,11 @@ def add_basic_options(o):
                "is enabled by default.")
   o.add_argument(
       "--check-attribute-types", action="store_true",
-      dest="check_attribute_types", default=False,
+      dest="check_attribute_types", default=True,
       help="Check attribute values against their annotations. " + temporary)
   o.add_argument(
       "--check-container-types", action="store_true",
-      dest="check_container_types", default=False,
+      dest="check_container_types", default=True,
       help="Check container mutations against their annotations. " + temporary)
   o.add_argument(
       "--check-parameter-types", action="store_true",
