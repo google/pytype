@@ -29,6 +29,7 @@ class TestAttrib(test_base.TargetPython3BasicTest):
       attr: module
       class CustomClass(object): ...
       def annotated_func() -> CustomClass: ...
+      @attr.s
       class Foo(object):
         x: CustomClass
         def __init__(self, x: CustomClass = ...) -> None: ...
@@ -54,6 +55,7 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
+      @attr.s
       class Foo(object):
         x: int
         y: str
@@ -70,6 +72,7 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
+      @attr.s
       class Foo(object):
         x: Foo
         y: str
@@ -87,6 +90,7 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
+      @attr.s
       class Foo(object):
         x: int
         y: str
@@ -112,6 +116,7 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
+      @attr.s
       class Foo(object):
         x: int
         y: str
@@ -172,6 +177,7 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       attr: module
+      @attr.s
       class Foo(object):
         x: int
         y: int
@@ -201,6 +207,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       attr: module
+      @attr.s
       class Foo(object):
         x: Any
         y: int
@@ -218,6 +225,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       attr: module
+      @attr.s
       class Foo(object):
         x: int
         def __init__(self, *, x : int = ...) -> None: ...
@@ -235,11 +243,12 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
+      @attr.s
       class Foo(object):
         x: int
         y: Foo
-        z: int
         a: str
+        z: int
         def __init__(self, x: int, y: Foo, a: str = ...) -> None: ...
     """)
 
@@ -254,6 +263,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
+      @attr.s
       class Foo(object):
         y: int
         x: str
@@ -285,10 +295,11 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Annotated
       attr: module
+      @attr.s
       class Foo(object):
+        y: str
         _x: int
         x: Annotated[Any, 'property']
-        y: str
         def __init__(self, y: str = ...) -> None: ...
         def f(self) -> None: ...
         @staticmethod
@@ -321,6 +332,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
+      @attr.s
       class Foo(object):
         x: bool
         y: int
@@ -347,9 +359,11 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       attr: module
+      @attr.s
       class Foo:
         foo: str
         def __init__(self, foo: str) -> None: ...
+      @attr.s
       class Bar:
         bar: str
         baz: Any
@@ -367,9 +381,10 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
+      @attr.s
       class Foo(object):
-        x: int
         y: str
+        x: int
         def __init__(self, y: str = ...) -> None: ...
     """)
 
@@ -386,6 +401,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
       from typing import Callable
       attr: module
       def s(*args, **kwargs) -> Callable: ...
+      @attr.s
       class Foo:
         x: int
         def __init__(self, x: int) -> None: ...
@@ -401,6 +417,21 @@ class TestPyiAttrs(test_base.TargetPython3FeatureTest):
         import attr
         @attr.s
         class A:
+          x: int
+          y: str
+      """)
+      self.Check("""
+        import foo
+        x = foo.A(10, 'hello')
+      """, pythonpath=[d.path])
+
+  def test_docstring(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import attr
+        @attr.s
+        class A:
+          __doc__: str  # should be filtered out
           x: int
           y: str
       """)
@@ -442,6 +473,7 @@ class TestPyiAttrs(test_base.TargetPython3FeatureTest):
       self.assertTypesMatchPytd(ty, """
         attr: module
         foo: module
+        @attr.s
         class Foo(foo.A):
           z: str
           def __init__(self, x: bool, y: int, z: str = ...) -> None: ...
@@ -470,6 +502,7 @@ class TestPyiAttrs(test_base.TargetPython3FeatureTest):
       self.assertTypesMatchPytd(ty, """
         attr: module
         foo: module
+        @attr.s
         class Foo(foo.B):
           a: str
           def __init__(self, x: bool, y: int, z: str, a: str = ...) -> None: ...
@@ -501,6 +534,7 @@ class TestPyiAttrs(test_base.TargetPython3FeatureTest):
       self.assertTypesMatchPytd(ty, """
         attr: module
         foo: module
+        @attr.s
         class Foo(foo.B):
           a: str
           def __init__(self, x: bool, y: int, z: str, a: str = ...) -> None: ...

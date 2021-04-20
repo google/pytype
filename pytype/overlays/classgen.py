@@ -20,6 +20,7 @@ log = logging.getLogger(__name__)
 # type aliases for convenience
 Param = overlay_utils.Param
 Attribute = class_mixin.Attribute
+AttributeKinds = class_mixin.AttributeKinds
 
 
 class Ordering:

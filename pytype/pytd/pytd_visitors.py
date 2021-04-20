@@ -25,12 +25,19 @@ class CanonicalOrderingVisitor(base_visitor.Visitor):
                              aliases=tuple(sorted(node.aliases)))
 
   def VisitClass(self, node):
+    # If we have a dataclass-like decorator we need to preserve the order of the
+    # class attributes, otherwise inheritance will not work correctly.
+    if any(x.name in ("attr.s", "dataclasses.dataclass")
+           for x in node.decorators):
+      constants = node.constants
+    else:
+      constants = sorted(node.constants)
     return pytd.Class(
         name=node.name,
         metaclass=node.metaclass,
         parents=node.parents,
         methods=tuple(sorted(node.methods)),
-        constants=tuple(sorted(node.constants)),
+        constants=tuple(constants),
         decorators=tuple(sorted(node.decorators)),
         classes=tuple(sorted(node.classes)),
         slots=tuple(sorted(node.slots)) if node.slots is not None else None,

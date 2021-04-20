@@ -414,15 +414,40 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     else:
       raise NotImplementedError(v.__class__.__name__)
 
+  def _instance_type(self, node, typ):
+    contained_type = abstract_utils.match_type_container(
+        typ, "typing.ClassVar")
+    if contained_type:
+      typ = contained_type
+    return typ.get_instance_type(node)
+
+  def _ordered_attrs_to_instance_types(self, node, metadata, annots):
+    """Get instance types for ordered attrs in the metadata."""
+    attrs = metadata.get("attr_order", [])
+    if not annots or not attrs:
+      return
+
+    # Use the ordering from attr_order, but use the types in the annotations
+    # dict, to handle InitVars correctly (an InitVar without a default will be
+    # in attr_order, but not in annotations, and an InitVar with a default will
+    # have its type in attr_order set to the inner type).
+    annotations = {k: v for k, v in annots.get_annotations(node)}
+    for a in attrs:
+      if a.name in annotations:
+        typ = annotations[a.name]
+      elif a.kind == class_mixin.AttributeKinds.INITVAR:
+        # Do not output initvars without defaults
+        typ = None
+      else:
+        typ = a.typ
+      typ = typ and self._instance_type(node, typ)
+      yield a.name, typ
+
   def annotations_to_instance_types(self, node, annots):
     """Get instance types for annotations not present in the members map."""
     if annots:
       for name, typ in annots.get_annotations(node):
-        contained_type = abstract_utils.match_type_container(
-            typ, "typing.ClassVar")
-        if contained_type:
-          typ = contained_type
-        yield name, typ.get_instance_type(node)
+        yield name, self._instance_type(node, typ)
 
   def _function_call_to_return_type(self, node, v, seen_return, num_returns):
     """Get a function call's pytd return type."""
@@ -557,18 +582,6 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       safe_types.append(t)
     return safe_types
 
-  def _class_method_to_def(self, node, v, name, kind):
-    """Convert a classmethod to a PyTD definition."""
-    # This line may raise abstract_utils.ConversionError
-    func = abstract_utils.get_atomic_value(v.func, abstract.Function)
-    return self.value_to_pytd_def(node, func, name).Replace(kind=kind)
-
-  def _static_method_to_def(self, node, v, name, kind):
-    """Convert a staticmethod to a PyTD definition."""
-    # This line may raise abstract_utils.ConversionError
-    func = abstract_utils.get_atomic_value(v.func, abstract.Function)
-    return self.value_to_pytd_def(node, func, name).Replace(kind=kind)
-
   def _is_instance(self, value, cls_name):
     return (isinstance(value, abstract.Instance) and
             value.cls.full_name == cls_name)
@@ -582,9 +595,44 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     annots = abstract_utils.get_annotations_dict(v.members)
     annotated_names = set()
 
-    for name, t in self.annotations_to_instance_types(node, annots):
-      constants[name].add_type(t)
-      annotated_names.add(name)
+    def add_constants(iterator):
+      for name, t in iterator:
+        if t is None:
+          # Remove the entry from constants
+          annotated_names.add(name)
+        elif name not in annotated_names:
+          constants[name].add_type(t)
+          annotated_names.add(name)
+
+    add_constants(self._ordered_attrs_to_instance_types(
+        node, v.metadata, annots))
+    add_constants(self.annotations_to_instance_types(node, annots))
+
+    def get_decorated_method(name, value, func_slot):
+      fvar = getattr(value, func_slot)
+      func = abstract_utils.get_atomic_value(fvar, abstract.Function)
+      defn = self.value_to_pytd_def(node, func, name)
+      defn = defn.Visit(visitors.DropMutableParameters())
+      return defn
+
+    def add_decorated_method(name, value, kind):
+      try:
+        defn = get_decorated_method(name, value, "func")
+      except (AttributeError, abstract_utils.ConversionError):
+        constants[name].add_type(pytd.AnythingType())
+        return
+      defn = defn.Replace(kind=kind)
+      methods[name] = defn
+
+    # If decorators are output as aliases to NamedTypes, they will be converted
+    # to Functions and fail a verification step if those functions have type
+    # parameters. Since we just want the function name, and since we have a
+    # fully resolved name at this stage, we just output a minimal pytd.Function
+    sig = pytd.Signature((), None, None, pytd.AnythingType(), (), ())
+    decorators = [
+        pytd.Alias(x, pytd.Function(x, (sig,), pytd.MethodTypes.METHOD, 0))
+        for x in v.decorators
+    ]
 
     # class-level attributes
     for name, member in v.members.items():
@@ -601,17 +649,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
             constants[name].add_type(
                 pytd.Annotated(pytd.AnythingType(), ("'property'",)))
         elif isinstance(value, special_builtins.StaticMethodInstance):
-          try:
-            methods[name] = self._static_method_to_def(
-                node, value, name, pytd.MethodTypes.STATICMETHOD)
-          except abstract_utils.ConversionError:
-            constants[name].add_type(pytd.AnythingType())
+          add_decorated_method(name, value, pytd.MethodTypes.STATICMETHOD)
         elif isinstance(value, special_builtins.ClassMethodInstance):
-          try:
-            methods[name] = self._class_method_to_def(
-                node, value, name, pytd.MethodTypes.CLASSMETHOD)
-          except abstract_utils.ConversionError:
-            constants[name].add_type(pytd.AnythingType())
+          add_decorated_method(name, value, pytd.MethodTypes.CLASSMETHOD)
         elif isinstance(value, abstract.Function):
           # TODO(rechen): Removing mutations altogether won't work for generic
           # classes. To support those, we'll need to change the mutated type's
@@ -703,7 +743,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
                      methods=tuple(methods.values()),
                      constants=tuple(constants),
                      classes=(),
-                     decorators=(),
+                     decorators=tuple(decorators),
                      slots=v.slots,
                      template=())
     for base in missing_bases:

@@ -25,6 +25,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       dataclasses: module
+      @dataclasses.dataclass
       class Foo(object):
         x: bool
         y: int
@@ -42,6 +43,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       dataclasses: module
+      @dataclasses.dataclass
       class Foo(object):
         x: Foo
         y: str
@@ -61,9 +63,10 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       dataclasses: module
+      @dataclasses.dataclass
       class Foo(object):
-        y: int
         x: str
+        y: int
         def __init__(self, x: str = ..., y: int = ...) -> None: ...
     """)
 
@@ -79,6 +82,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       dataclasses: module
+      @dataclasses.dataclass
       class Foo(object):
         x: str
         y: int
@@ -98,6 +102,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       dataclasses: module
+      @dataclasses.dataclass
       class Foo(object):
         x: bool
         y: int
@@ -117,6 +122,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       dataclasses: module
+      @dataclasses.dataclass
       class Foo(object):
         x: bool
         y: int
@@ -135,6 +141,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import List
       dataclasses: module
+      @dataclasses.dataclass
       class Foo(object):
         x: bool
         y: List[int]
@@ -198,6 +205,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       dataclasses: module
+      @dataclasses.dataclass
       class Foo(object):
         x: bool
         y: int
@@ -214,6 +222,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       dataclasses: module
+      @dataclasses.dataclass
       class Foo(object):
         x: bool
         y: int
@@ -267,6 +276,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       dataclasses: module
+      @dataclasses.dataclass
       class Foo(object):
         w: float
         x: bool
@@ -350,20 +360,24 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       Node: Type[Union[IntLeaf, StrLeaf, Tree]]
       dataclasses: module
 
+      @dataclasses.dataclass
       class IntLeaf:
           value: int
           def __init__(self, value: int) -> None: ...
 
+      @dataclasses.dataclass
       class StrLeaf:
           label: str
           def __init__(self, label: str) -> None: ...
 
+      @dataclasses.dataclass
       class Tree:
           children: Union[IntLeaf, StrLeaf, Tree]
           def __init__(self, children: Union[IntLeaf, StrLeaf, Tree]) -> None: ...
           def get_children(self) -> Union[IntLeaf, StrLeaf, Tree]: ...
           def get_leaf(self) -> int: ...
 
+      @dataclasses.dataclass
       class Root(Tree):
           def __init__(self, children: Union[IntLeaf, StrLeaf, Tree]) -> None: ...
 
@@ -395,6 +409,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       dataclasses: module
+      @dataclasses.dataclass
       class A:
         y: int
         def __init__(self, x: str, y: int = ...) -> None: ...
@@ -411,6 +426,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       dataclasses: module
+      @dataclasses.dataclass
       class A:
         x: dataclasses.InitVar[str]
         y: int
@@ -432,6 +448,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       dataclasses: module
+      @dataclasses.dataclass
       class A:
         x: dataclasses.InitVar[str]
         y: int
@@ -455,10 +472,12 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       dataclasses: module
+      @dataclasses.dataclass
       class A:
         y: int
         def __init__(self, x: str, y: int = ...) -> None: ...
 
+      @dataclasses.dataclass
       class B(A):
         z: dataclasses.InitVar[int]
         def __init__(self, x: str, y: int = ..., z: int = ...) -> None: ...
@@ -476,9 +495,10 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       dataclasses: module
+      @dataclasses.dataclass
       class Foo(object):
-        x: int
         y: str
+        x: int
         def __init__(self, y: str = ...) -> None: ...
     """)
 
@@ -503,9 +523,11 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         Inner: Type[Inner1]
       class Bar:
         Inner: Type[Inner2]
+      @dataclasses.dataclass
       class Inner1:
         a: int
         def __init__(self, a: int) -> None: ...
+      @dataclasses.dataclass
       class Inner2:
         b: str
         def __init__(self, b: str) -> None: ...
@@ -536,6 +558,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       from typing import Any
       dataclasses: module
       def field_wrapper(**kwargs) -> Any: ...
+      @dataclasses.dataclass
       class Foo:
         x: int
         y: int
@@ -556,6 +579,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Annotated
       dataclasses: module
+      @dataclasses.dataclass
       class Foo(object):
         x: bool
         y: int
@@ -614,6 +638,7 @@ class TestPyiDataclass(test_base.TargetPython3FeatureTest):
       self.assertTypesMatchPytd(ty, """
         dataclasses: module
         foo: module
+        @dataclasses.dataclass
         class Foo(foo.A):
           z: str
           def __init__(self, x: bool, y: int, z: str = ...) -> None: ...
@@ -642,6 +667,7 @@ class TestPyiDataclass(test_base.TargetPython3FeatureTest):
       self.assertTypesMatchPytd(ty, """
         dataclasses: module
         foo: module
+        @dataclasses.dataclass
         class Foo(foo.B):
           a: str
           def __init__(self, x: bool, y: int, z: str, a: str = ...) -> None: ...
@@ -673,6 +699,7 @@ class TestPyiDataclass(test_base.TargetPython3FeatureTest):
       self.assertTypesMatchPytd(ty, """
         dataclasses: module
         foo: module
+        @dataclasses.dataclass
         class Foo(foo.B):
           a: str
           def __init__(self, x: bool, y: int, z: str, a: str = ...) -> None: ...
@@ -703,6 +730,7 @@ class TestPyiDataclass(test_base.TargetPython3FeatureTest):
         from typing import Annotated
         dataclasses: module
         foo: module
+        @dataclasses.dataclass
         class Foo(foo.A):
           a: str
           b: Annotated[int, 'property']

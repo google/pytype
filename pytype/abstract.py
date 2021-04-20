@@ -2643,6 +2643,7 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
   def __init__(self, name, pytd_cls, vm):
     # Apply decorators first, in case they set any properties that later
     # initialization code needs to read.
+    self.has_explicit_init = any(x.name == "__init__" for x in pytd_cls.methods)
     pytd_cls, decorated = decorate.process_class(pytd_cls)
     self.pytd_cls = pytd_cls
     super().__init__(name, vm)
@@ -2694,6 +2695,9 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     # classes as well. Since we don't have access to the MRO when initially
     # decorating the class, we recalculate the __init__ signature from the
     # combined attribute list in the metadata.
+    if self.has_explicit_init:
+      # Do not override an __init__ from the pyi file
+      return
     attrs = self.metadata[key]
     fields = [x.to_pytd_constant() for x in attrs]
     self.pytd_cls = decorate.add_init_from_fields(self.pytd_cls, fields)
@@ -2855,6 +2859,7 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
     self.is_dynamic = self.compute_is_dynamic()
     log.info("Created class: %r", self)
     self.type_param_check()
+    self.decorators = []
 
   def type_param_check(self):
     """Throw exception for invalid type parameters."""

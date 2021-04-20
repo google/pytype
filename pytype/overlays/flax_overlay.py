@@ -80,9 +80,15 @@ class ModuleDataclass(dataclass_overlay.Dataclass):
 
   def get_class_locals(self, node, cls):
     cls_locals = super().get_class_locals(node, cls)
-    name_type = self.vm.convert.str_type
+    dataclass_ast = self.vm.loader.import_name("dataclasses")
+    initvar = self.vm.convert.name_to_value(
+        "dataclasses.InitVar", ast=dataclass_ast)
+    def make_initvar(t):
+      return abstract.ParameterizedClass(
+          initvar, {abstract_utils.T: t}, self.vm)
+    name_type = make_initvar(self.vm.convert.str_type)
     # TODO(mdemello): Fill in the parent type properly
-    parent_type = self.vm.convert.unsolvable
+    parent_type = make_initvar(self.vm.convert.unsolvable)
     self._add_implicit_field(node, cls_locals, "name", name_type)
     self._add_implicit_field(node, cls_locals, "parent", parent_type)
     return cls_locals

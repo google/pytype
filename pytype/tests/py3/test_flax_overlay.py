@@ -23,6 +23,7 @@ class TestStructDataclass(test_base.TargetPython3FeatureTest):
         """, pythonpath=[d.path], module_name="foo")
       self.assertTypesMatchPytd(ty, """
         flax: module
+        @dataclasses.dataclass
         class Foo(object):
           x: bool
           y: int
@@ -69,6 +70,7 @@ class TestLinenModule(test_base.TargetPython3FeatureTest):
       self.assertTypesMatchPytd(ty, """
         import flax.linen.module
         nn: module
+        @dataclasses.dataclass
         class Foo(flax.linen.module.Module):
           x: bool
           y: int
@@ -88,6 +90,7 @@ class TestLinenModule(test_base.TargetPython3FeatureTest):
         import builtins
         import flax.linen.module
         module: builtins.module
+        @dataclasses.dataclass
         class Foo(flax.linen.module.Module):
           x: bool
           y: int
@@ -107,6 +110,7 @@ class TestLinenModule(test_base.TargetPython3FeatureTest):
         from typing import Type
         import flax.linen.module
         Module: Type[flax.linen.module.Module]
+        @dataclasses.dataclass
         class Foo(flax.linen.module.Module):
           x: bool
           y: int
@@ -125,6 +129,7 @@ class TestLinenModule(test_base.TargetPython3FeatureTest):
       self.assertTypesMatchPytd(ty, """
         import flax.linen.module
         linen: module
+        @dataclasses.dataclass
         class Foo(flax.linen.module.Module):
           x: bool
           y: int

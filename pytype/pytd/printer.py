@@ -198,6 +198,11 @@ class PrintVisitor(base_visitor.Visitor):
     for member in node.methods + node.constants:
       self._class_members.add(member.name)
     self.class_names.append(n)
+    # Class decorators are resolved to their underlying functions, but all we
+    # output is '@{decorator.name}', so we do not want to visit the Function()
+    # node and collect types etc. (In particular, we would add a spurious import
+    # of 'Any' when generating a decorator for an InterpreterClass.)
+    return {"decorators"}
 
   def LeaveClass(self, unused_node):
     self._class_members.clear()
@@ -218,7 +223,7 @@ class PrintVisitor(base_visitor.Visitor):
       slots = [self.INDENT + "__slots__ = [" + slots_str + "]"]
     else:
       slots = []
-    decorators = ["@" + d.type.Replace(name=d.name).Visit(PrintVisitor())
+    decorators = ["@" + self.VisitNamedType(d)
                   for d in self.old_node.decorators]
     if node.classes or node.methods or node.constants or slots:
       # We have multiple methods, and every method has multiple signatures
