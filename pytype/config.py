@@ -155,6 +155,11 @@ def add_basic_options(o):
   temporary = ("This flag is temporary and will be removed once this behavior "
                "is enabled by default.")
   o.add_argument(
+      "--attribute-variable-annotations", action="store_true",
+      dest="attribute_variable_annotations", default=False,
+      help=("Apply PEP 526-style variable annotations on attributes. " +
+            temporary))
+  o.add_argument(
       "--check-attribute-types", action="store_true",
       dest="check_attribute_types", default=True,
       help="Check attribute values against their annotations. " + temporary)

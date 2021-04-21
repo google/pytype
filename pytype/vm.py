@@ -820,7 +820,8 @@ class VirtualMachine:
         well as all the top-level names defined by it.
     """
     director = directors.Director(
-        src, self.errorlog, filename, self.options.disable, self.python_version)
+        src, self.errorlog, filename, self.options.disable, self.python_version,
+        self.options.attribute_variable_annotations)
 
     # This modifies the errorlog passed to the constructor.  Kind of ugly,
     # but there isn't a better way to wire both pieces together.

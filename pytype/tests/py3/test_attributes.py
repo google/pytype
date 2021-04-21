@@ -212,5 +212,20 @@ class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"Annotation: int.*Assignment: str"})
 
+  def test_pep526_annotation(self):
+    ty, _ = self.InferWithErrors("""
+      class Foo:
+        def __init__(self):
+          self.x: int = None
+        def do_something(self, x: str):
+          self.x = x  # annotation-type-mismatch
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Foo:
+        x: int
+        def __init__(self) -> None: ...
+        def do_something(self, x: str) -> None: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
