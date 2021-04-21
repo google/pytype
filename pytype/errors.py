@@ -1047,6 +1047,8 @@ class ErrorLog(ErrorLogBase):
     annot_string = self._print_as_expected_type(annot)
     literal = "Literal[" in annot_string
     actual_string = self._print_as_actual_type(binding.data, literal=literal)
+    if actual_string == "None":
+      annot_string += f" (Did you mean 'typing.Optional[{annot_string}]'?)"
     details = ("Annotation: %s\n" % annot_string +
                "Assignment: %s" % actual_string)
     if len(binding.variable.bindings) > 1:
