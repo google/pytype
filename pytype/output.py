@@ -431,7 +431,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     # dict, to handle InitVars correctly (an InitVar without a default will be
     # in attr_order, but not in annotations, and an InitVar with a default will
     # have its type in attr_order set to the inner type).
-    annotations = {k: v for k, v in annots.get_annotations(node)}
+    annotations = dict(annots.get_annotations(node))
     for a in attrs:
       if a.name in annotations:
         typ = annotations[a.name]
