@@ -98,12 +98,16 @@ class Attrs(classgen.Decorator):
             cls.members[name] = classgen.instantiate(node, name, typ)
           own_attrs.append(attr)
 
+    cls.record_attr_ordering(own_attrs)
     attrs = cls.compute_attr_metadata(own_attrs, "attr.s")
 
     # Add an __init__ method
     if self.args[cls]["init"]:
       init_method = self.make_init(node, cls, attrs)
       cls.members["__init__"] = init_method
+
+    if isinstance(cls, abstract.InterpreterClass):
+      cls.decorators.append("attr.s")
 
 
 class AttribInstance(abstract.SimpleValue, mixin.HasSlots):

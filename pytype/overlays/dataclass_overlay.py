@@ -70,6 +70,7 @@ class Dataclass(classgen.Decorator):
     cls_locals = self.get_class_locals(node, cls)
     for name, local in cls_locals.items():
       typ, orig = local.get_type(node, name), local.orig
+      kind = ""
       assert typ
       if match_classvar(typ):
         continue
@@ -77,6 +78,7 @@ class Dataclass(classgen.Decorator):
       if initvar_typ:
         typ = initvar_typ
         init = True
+        kind = classgen.AttributeKinds.INITVAR
       else:
         if not orig:
           cls.members[name] = classgen.instantiate(node, name, typ)
@@ -100,9 +102,10 @@ class Dataclass(classgen.Decorator):
             node, name, typ, orig, local.stack, allow_none=False)
 
       attr = classgen.Attribute(
-          name=name, typ=typ, init=init, kw_only=False, default=orig)
+          name=name, typ=typ, init=init, kw_only=False, default=orig, kind=kind)
       own_attrs.append(attr)
 
+    cls.record_attr_ordering(own_attrs)
     attrs = cls.compute_attr_metadata(own_attrs, "dataclasses.dataclass")
 
     # Add an __init__ method if one doesn't exist already (dataclasses do not
@@ -110,6 +113,9 @@ class Dataclass(classgen.Decorator):
     if "__init__" not in cls.members and self.args[cls]["init"]:
       init_method = self.make_init(node, cls, attrs)
       cls.members["__init__"] = init_method
+
+    if isinstance(cls, abstract.InterpreterClass):
+      cls.decorators.append("dataclasses.dataclass")
 
 
 class FieldInstance(abstract.SimpleValue):

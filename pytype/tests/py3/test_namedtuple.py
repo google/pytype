@@ -32,5 +32,13 @@ class NamedtupleTestsPy3(test_base.TargetPython3FeatureTest):
         collections.namedtuple("_", "", True, True, True)  # wrong-arg-count
     """)
 
+  def test_nested_namedtuple(self):
+    self.Check("""
+      from typing import NamedTuple
+      class Bar:
+        class Foo(NamedTuple):
+          pass
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

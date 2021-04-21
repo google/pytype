@@ -25,6 +25,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       attr: module
+      @attr.s
       class Foo(object):
         x: Any
         y: int
@@ -43,6 +44,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       attr: module
       class A(object): ...
+      @attr.s
       class Foo(object):
         x: A
         def __init__(self, x: A) -> None: ...
@@ -59,6 +61,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import List
       attr: module
+      @attr.s
       class Foo(object):
         x: List[int]
         def __init__(self, x: List[int]) -> None: ...
@@ -75,6 +78,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       attr: module
+      @attr.s
       class Foo(object):
         x: Union[str, int]
         def __init__(self, x: Union[str, int]) -> None: ...
@@ -92,6 +96,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       attr: module
+      @attr.s
       class Foo(object):
         x: Union[str, int]
         y: str
@@ -108,6 +113,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
+      @attr.s
       class Foo(object):
         x: Foo
         y: str
@@ -123,6 +129,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
+      @attr.s
       class Foo(object):
         x: Foo
         def __init__(self, x: Foo) -> None: ...
@@ -139,6 +146,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
+      @attr.s
       class Foo(object):
         x: int
         y: str
@@ -176,6 +184,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
+      @attr.s
       class Foo(object):
         _x: int
         _Foo__y: int
@@ -195,6 +204,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
+      @attr.s
       class Foo(object):
         x: int
         y: int
@@ -216,6 +226,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
+      @attr.s
       class Foo(object):
         x: int
         y: str
@@ -237,6 +248,7 @@ class TestAttrib(test_base.TargetIndependentTest):
       from typing import List
       attr: module
       class CustomClass(object): ...
+      @attr.s
       class Foo(object):
         x: list
         y: CustomClass
@@ -260,6 +272,7 @@ class TestAttrib(test_base.TargetIndependentTest):
       attr: module
       class CustomClass(object): ...
       def unannotated_func() -> CustomClass: ...
+      @attr.s
       class Foo(object):
         x: Dict[str, Any]
         y: Any  # b/64832148: the return type isn't inferred early enough
@@ -276,6 +289,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import List
       attr: module
+      @attr.s
       class Foo(object):
         x: list
         def __init__(self, x: list = ...) -> None: ...
@@ -310,6 +324,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
+      @attr.s
       class Foo(object):
         x: int
         def __init__(self, x: int = ...) -> None: ...
@@ -325,6 +340,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       attr: module
+      @attr.s
       class Foo(object):
         x: Any
         def __init__(self, x: Any = ...) -> None: ...
@@ -341,6 +357,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
+      @attr.s
       class Foo(object):
         x: list
         def __init__(self, x: list) -> None: ...
@@ -386,6 +403,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
+      @attr.s
       class Foo(object):
         x: str
         y: int
@@ -449,12 +467,15 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
+      @attr.s
       class A(object):
         a: int
         def __init__(self, a: int) -> None: ...
+      @attr.s
       class B(object):
         b: str
         def __init__(self, b: str) -> None: ...
+      @attr.s
       class C(A, B):
         c: int
         def __init__(self, a: int, b: str, c: int) -> None: ...
@@ -476,12 +497,15 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
+      @attr.s
       class A(object):
         a: int
         def __init__(self, a: int) -> None: ...
+      @attr.s
       class B(object):
         b: str
         def __init__(self, b: str) -> None: ...
+      @attr.s
       class C(A, B):
         a: str
         c: int
@@ -503,12 +527,15 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
+      @attr.s
       class A(object):
         a: int
         def __init__(self) -> None: ...
+      @attr.s
       class B(object):
         b: str
         def __init__(self, b: str) -> None: ...
+      @attr.s
       class C(A, B):
         c: int
         def __init__(self, b: str, c: int) -> None: ...
@@ -524,6 +551,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       attr: module
+      @attr.s
       class Foo(Any):
         a: int
         def __init__(self, a: int) -> None: ...
@@ -559,6 +587,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       attr: module
+      @attr.s
       class Foo(object):
         a: int
         b: int
@@ -597,6 +626,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       attr: module
+      @attr.s
       class Foo(object):
         a: int
         b: Any
@@ -646,6 +676,7 @@ class TestAttrib(test_base.TargetIndependentTest):
       from typing import Any, List
       attr: module
       FACTORIES: List[nothing]
+      @attr.s
       class Foo:
         x: Any
         def __init__(self, x = ...) -> None: ...
@@ -660,6 +691,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
+      @attr.s
       class Foo:
         x: tuple
         def __init__(self, x: tuple = ...) -> None: ...
@@ -699,6 +731,7 @@ class TestAttrs(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       attr: module
+      @attr.s
       class Foo(object):
         x: Any
         y: int
@@ -718,6 +751,7 @@ class TestAttrs(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       attr: module
+      @attr.s
       class Foo(object):
         x: Any
         y: int

@@ -1,6 +1,9 @@
 """Mixin for all class-like abstract classes."""
 
 import logging
+from typing import Any
+
+import attr
 
 from pytype import abstract_utils
 from pytype import datatypes
@@ -32,6 +35,12 @@ def get_metadata_key(decorator):
   return _METADATA_KEYS.get(decorator)
 
 
+class AttributeKinds:
+  CLASSVAR = "classvar"
+  INITVAR = "initvar"
+
+
+@attr.s(auto_attribs=True)
 class Attribute:
   """Represents a class member variable.
 
@@ -41,18 +50,18 @@ class Attribute:
     init: Whether the field should be included in the generated __init__
     kw_only: Whether the field is kw_only in the generated __init__
     default: Default value
+    kind: Kind of attribute (see the AttributeKinds enum)
 
   Used in metadata (see Class.metadata below).
   """
 
-  def __init__(self, name, typ, init, kw_only, default, pytd_const=None):
-    self.name = name
-    self.typ = typ
-    self.init = init
-    self.kw_only = kw_only
-    self.default = default
-    # Store the pytd_const if we have generated this via from_pytd_constant.
-    self.pytd_const = pytd_const
+  name: str
+  typ: Any
+  init: bool
+  kw_only: bool
+  default: Any
+  kind: str = ""
+  pytd_const: Any = None
 
   @classmethod
   def from_pytd_constant(cls, const, vm):
@@ -361,10 +370,10 @@ class Class(metaclass=mixin.MixinMeta):
       # indicates an annotation.
       if self.cls:
         # This class has a custom metaclass; check if it defines __getitem__.
-        _, attr = self.vm.attribute_handler.get_attribute(
+        _, att = self.vm.attribute_handler.get_attribute(
             node, self, name, self.to_binding(node))
-        if attr:
-          return attr
+        if att:
+          return att
       # Treat this class as a parameterized container in an annotation. We do
       # not need to worry about the class not being a container: in that case,
       # AnnotationContainer's param length check reports an appropriate error.
@@ -417,6 +426,10 @@ class Class(metaclass=mixin.MixinMeta):
           taken_attr_names.add(a.name)
           base_attrs.append(a)
     return base_attrs
+
+  def record_attr_ordering(self, own_attrs):
+    """Records the order of attrs to write in the output pyi."""
+    self.metadata["attr_order"] = own_attrs
 
   def compute_attr_metadata(self, own_attrs, decorator):
     """Sets combined metadata based on inherited and own attrs.

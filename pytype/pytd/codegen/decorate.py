@@ -70,12 +70,19 @@ def get_attributes(cls: pytd.Class):
       if "'property'" not in c.type.annotations:
         c = c.Replace(type=c.type.base_type)
         attributes.append(c)
+    elif c.name == "__doc__":
+      # Filter docstrings out from the attribs list
+      # (we emit them as `__doc__ : str` in pyi output)
+      pass
     else:
       attributes.append(c)
   return tuple(attributes)
 
 
 def add_generated_init(cls: pytd.Class) -> pytd.Class:
+  # Do not override an __init__ from the pyi file
+  if any(x.name == "__init__" for x in cls.methods):
+    return cls
   fields = get_attributes(cls)
   return add_init_from_fields(cls, fields)
 
