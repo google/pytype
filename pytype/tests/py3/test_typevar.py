@@ -580,25 +580,6 @@ class GenericTypeAliasTest(test_base.TargetPython3BasicTest):
       def f() -> Callable[[int], str]: ...
     """)
 
-  @test_base.skip("Not supported yet: b/140251808")
-  def test_literal(self):
-    ty = self.Infer("""
-      from typing import TypeVar
-      from typing_extensions import Literal
-      T = TypeVar('T')
-      X = Literal[T, 'r']
-      def f(x: X['w']):
-        pass
-    """)
-    self.assertTypesMatchPytd(ty, """
-      from typing import TypeVar
-      from typing_extensions import Literal
-      T = TypeVar('T')
-      X = Literal[T, 'r']
-      def f(x: Literal['w', 'r']) -> None: ...
-    """)
-
-  @test_base.skip("Not supported yet: b/140251808")
   def test_union_typevar(self):
     ty = self.Infer("""
       from typing import TypeVar, Union
@@ -608,11 +589,12 @@ class GenericTypeAliasTest(test_base.TargetPython3BasicTest):
       def f(x: X[T2], y: T2):
         pass
     """)
+    # TODO(b/140251808): X should not be Any.
     self.assertTypesMatchPytd(ty, """
       from typing import Any, TypeVar, Union
       T1 = TypeVar('T1')
       T2 = TypeVar('T2')
-      X = Union[int, T1]
+      X: Any
       def f(x: Union[int, T2], y: T2) -> None: ...
     """)
 
