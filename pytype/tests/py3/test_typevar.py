@@ -562,7 +562,6 @@ class GenericTypeAliasTest(test_base.TargetPython3BasicTest):
       def f(x: Dict[int, str]) -> int: ...
     """)
 
-  @test_base.skip("Not supported yet: b/140251808")
   def test_callable(self):
     ty = self.Infer("""
       from typing import Callable, TypeVar
@@ -579,6 +578,33 @@ class GenericTypeAliasTest(test_base.TargetPython3BasicTest):
       X = Callable[[T], str]
       def f() -> Callable[[int], str]: ...
     """)
+
+  def test_import_callable(self):
+    foo = self.Infer("""
+      from typing import TypeVar
+      T = TypeVar('T')
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo))
+      bar = self.Infer("""
+        import foo
+        from typing import Callable
+        X = Callable[[foo.T], foo.T]
+      """, pythonpath=[d.path])
+      d.create_file("bar.pyi", pytd_utils.Print(bar))
+      ty = self.Infer("""
+        import foo
+        import bar
+        def f(x: foo.T, y: bar.X[foo.T]):
+          pass
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Callable, TypeVar
+        foo: module
+        bar: module
+        T = TypeVar('T')
+        def f(x: T, y: Callable[[T], T]) -> None: ...
+      """)
 
   def test_union_typevar(self):
     ty = self.Infer("""
@@ -613,6 +639,27 @@ class GenericTypeAliasTest(test_base.TargetPython3BasicTest):
       X: Any
       def f(x: Union[int, str]) -> None: ...
     """)
+
+  def test_extra_parameter(self):
+    errors = self.CheckWithErrors("""
+      from typing import Dict, TypeVar
+      T = TypeVar('T')
+      X = Dict[T, T]
+      def f(x: X[int, str]):  # invalid-annotation[e]
+        pass
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Expected 1 parameter\(s\), got 2"})
+
+  def test_missing_parameter(self):
+    errors = self.CheckWithErrors("""
+      from typing import Dict, TypeVar
+      T1 = TypeVar('T1')
+      T2 = TypeVar('T2')
+      X = Dict[T1, T2]
+      def f(x: X[int]):  # invalid-annotation[e]
+        pass
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Expected 2 parameter\(s\), got 1"})
 
 
 class TypeVarTestPy3(test_base.TargetPython3FeatureTest):

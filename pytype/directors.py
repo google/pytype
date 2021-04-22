@@ -152,12 +152,12 @@ class _VariableAnnotation:
   """Processes a single logical line, looking for a variable annotation."""
 
   @classmethod
-  def start(cls, lineno, token):
-    self = cls()
+  def start(cls, lineno, token, attribute_variable_annotations):
+    self = cls(attribute_variable_annotations)
     self.add_token(lineno, token)
     return self
 
-  def __init__(self):
+  def __init__(self, attribute_variable_annotations):
     self._tokens = []
     self.annotation = ""
     # Set to True when the full annotation has been found, or if we determine
@@ -166,6 +166,19 @@ class _VariableAnnotation:
     # Set to the line on which the colon is found. We do not use the line at
     # which start() is called because the latter may be a blank line.
     self.start_lineno = None
+    # Used to consume a 'self.' or 'cls.' prefix so we can detect variable
+    # annotations on attributes.
+    self._attr_prefix = []
+    self._attribute_variable_annotations = attribute_variable_annotations
+
+  def _add_to_attr_prefix(self, token):
+    if not self._attribute_variable_annotations or self._tokens:
+      return False
+    if (not self._attr_prefix and token.string in ("self", "cls") or
+        len(self._attr_prefix) == 1 and token.exact_type == tokenize.DOT):
+      self._attr_prefix.append(token)
+      return True
+    return False
 
   def _accept(self, token):
     if self.closed:
@@ -177,6 +190,8 @@ class _VariableAnnotation:
   def add_token(self, lineno, token):
     """Process a token."""
     if not self._accept(token):
+      return
+    if self._add_to_attr_prefix(token):
       return
     # Match NAME COLON [annotation] EQUAL. We assume the annotation starts at
     # the beginning of the line, which greatly simplifies matching at the cost
@@ -215,7 +230,8 @@ def _collect_bytecode(ordered_code):
 class Director:
   """Holds all of the directive information for a source file."""
 
-  def __init__(self, src, errorlog, filename, disable, python_version):
+  def __init__(self, src, errorlog, filename, disable, python_version,
+               attribute_variable_annotations=True):
     """Create a Director for a source file.
 
     Args:
@@ -225,6 +241,9 @@ class Director:
       filename: The name of the source file.
       disable: List of error messages to always ignore.
       python_version: The target python version.
+      attribute_variable_annotations: Whether PEP 526-style variable annotations
+        on attributes should be applied. This is a temporary attribute that will
+        be removed once its behavior is the default.
     """
     self._filename = filename
     self._errorlog = errorlog
@@ -245,6 +264,7 @@ class Director:
     # Apply global disable, from the command line arguments:
     for error_name in disable:
       self._disables[error_name].start_range(0, True)
+    self._attribute_variable_annotations = attribute_variable_annotations
     # Parse the source code for directives.
     self._parse_source(src, python_version)
 
@@ -315,7 +335,8 @@ class Director:
       if last_function_definition and last_function_definition.contains(lineno):
         pass  # ignore function annotations
       elif not open_variable_annotation:
-        open_variable_annotation = _VariableAnnotation.start(lineno, token)
+        open_variable_annotation = _VariableAnnotation.start(
+            lineno, token, self._attribute_variable_annotations)
       elif tok in (tokenize.NEWLINE, tokenize.SEMI):
         # NEWLINE indicates the end of a *logical* line of Python code, allowing
         # us to handle annotations split over multiple lines.

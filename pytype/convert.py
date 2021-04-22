@@ -432,7 +432,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     raise ValueError(
         "Cannot convert {} to an abstract value".format(pyval.__class__))
 
-  def constant_to_value(self, pyval, subst=None, node=None):
+  def constant_to_value(self, pyval, subst=None, node=None, *,
+                        allow_recursion=False):
     """Like constant_to_var, but convert to an abstract.BaseValue.
 
     This also memoizes the results.  We don't memoize on name, as builtin types
@@ -447,6 +448,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       pyval: The constant to convert.
       subst: The current type parameters.
       node: The current CFG node. (For instances)
+      allow_recursion: Whether to raise an error when converting a recursive
+          type to Any
 
     Returns:
       The converted constant. (Instance of BaseValue)
@@ -460,8 +463,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     if key in self._convert_cache:
       if self._convert_cache[key] is None:
         # This error is triggered by, e.g., classes inheriting from each other.
-        name = getattr(pyval, "name", None) or pyval.__class__.__name__
-        self.vm.errorlog.recursion_error(self.vm.frames, name)
+        if not allow_recursion:
+          name = getattr(pyval, "name", None) or pyval.__class__.__name__
+          self.vm.errorlog.recursion_error(self.vm.frames, name)
         self._convert_cache[key] = self.unsolvable
       return self._convert_cache[key]
     else:
@@ -470,7 +474,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       def get_node():
         need_node[0] = True
         return node
-      value = self._constant_to_value(pyval, subst, get_node)
+      value = self._constant_to_value(pyval, subst, get_node,
+                                      allow_recursion=allow_recursion)
       if not need_node[0] or node is self.vm.root_node:
         # Values that contain a non-root node cannot be cached. Otherwise,
         # we'd introduce bugs such as the following:
@@ -528,7 +533,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     else:
       return pyval
 
-  def _constant_to_value(self, pyval, subst, get_node):
+  def _constant_to_value(self, pyval, subst, get_node, allow_recursion=False):
     """Create a BaseValue that represents a python constant.
 
     This supports both constant from code constant pools and PyTD constants such
@@ -538,6 +543,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       pyval: The python or PyTD value to convert.
       subst: The current type parameters.
       get_node: A getter function for the current node.
+      allow_recursion: Whether to raise an error when converting a recursive
+          type to Any
 
     Returns:
       A Value that represents the constant, or None if we couldn't convert.
@@ -588,7 +595,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         raise
     elif isinstance(pyval, pytd.LateType):
       actual = self._load_late_type(pyval)
-      return self._constant_to_value(actual, subst, get_node)
+      return self._constant_to_value(actual, subst, get_node,
+                                     allow_recursion=allow_recursion)
     elif isinstance(pyval, pytd.TypeDeclUnit):
       return self._create_module(pyval)
     elif isinstance(pyval, pytd.Module):
@@ -637,7 +645,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return f
     elif isinstance(pyval, pytd.ClassType):
       assert pyval.cls
-      return self.constant_to_value(pyval.cls, subst, self.vm.root_node)
+      return self.constant_to_value(pyval.cls, subst, self.vm.root_node,
+                                    allow_recursion=allow_recursion)
     elif isinstance(pyval, pytd.NothingType):
       return self.empty
     elif isinstance(pyval, pytd.AnythingType):
@@ -651,10 +660,12 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           pyval.type.name == "builtins.type"):
       # `X: Type[other_mod.X]` is equivalent to `X = other_mod.X`.
       param, = pyval.type.parameters
-      return self.constant_to_value(param, subst, self.vm.root_node)
+      return self.constant_to_value(param, subst, self.vm.root_node,
+                                    allow_recursion=allow_recursion)
     elif isinstance(pyval, pytd.UnionType):
       options = [
-          self.constant_to_value(t, subst, self.vm.root_node)
+          self.constant_to_value(t, subst, self.vm.root_node,
+                                 allow_recursion=allow_recursion)
           for t in pyval.type_list
       ]
       if len(options) > 1:
@@ -663,11 +674,13 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         return options[0]
     elif isinstance(pyval, pytd.TypeParameter):
       constraints = tuple(
-          self.constant_to_value(c, {}, self.vm.root_node)
+          self.constant_to_value(c, {}, self.vm.root_node,
+                                 allow_recursion=allow_recursion)
           for c in pyval.constraints)
       bound = (
           pyval.bound and
-          self.constant_to_value(pyval.bound, {}, self.vm.root_node))
+          self.constant_to_value(pyval.bound, {}, self.vm.root_node,
+                                 allow_recursion=allow_recursion))
       return abstract.TypeParameter(
           pyval.name, self.vm, constraints=constraints,
           bound=bound, module=pyval.scope)
@@ -683,7 +696,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       if isinstance(cls, pytd.GenericType) and cls.name == "typing.ClassVar":
         param, = cls.parameters
         return self.constant_to_value(
-            abstract_utils.AsInstance(param), subst, self.vm.root_node)
+            abstract_utils.AsInstance(param), subst, self.vm.root_node,
+            allow_recursion=allow_recursion)
       elif isinstance(cls, pytd.GenericType) or (isinstance(cls, pytd.Class) and
                                                  cls.template):
         # If we're converting a generic Class, need to create a new instance of
@@ -712,17 +726,20 @@ class Converter(utils.VirtualMachineWeakrefMixin):
             return self.vm.annotations_util.deformalize(
                 self.merge_classes(subst[c.full_name].data))
           else:
-            return self.constant_to_value(c, subst, self.vm.root_node)
+            return self.constant_to_value(c, subst, self.vm.root_node,
+                                          allow_recursion=allow_recursion)
         elif isinstance(cls, pytd.TupleType):
           content = tuple(self.constant_to_var(abstract_utils.AsInstance(p),
                                                subst, get_node())
                           for p in cls.parameters)
           return abstract.Tuple(content, self.vm)
         elif isinstance(cls, pytd.CallableType):
-          clsval = self.constant_to_value(cls, subst, self.vm.root_node)
+          clsval = self.constant_to_value(cls, subst, self.vm.root_node,
+                                          allow_recursion=allow_recursion)
           return abstract.Instance(clsval, self.vm)
         else:
-          clsval = self.constant_to_value(base_cls, subst, self.vm.root_node)
+          clsval = self.constant_to_value(base_cls, subst, self.vm.root_node,
+                                          allow_recursion=allow_recursion)
           instance = abstract.Instance(clsval, self.vm)
           num_params = len(cls.parameters)
           assert num_params <= len(base_cls.template)
@@ -746,20 +763,24 @@ class Converter(utils.VirtualMachineWeakrefMixin):
             # An instance of "type" or of an anonymous property can be anything.
             instance = self._create_new_unknown_value("type")
           else:
-            mycls = self.constant_to_value(cls, subst, self.vm.root_node)
+            mycls = self.constant_to_value(cls, subst, self.vm.root_node,
+                                           allow_recursion=allow_recursion)
             instance = abstract.Instance(mycls, self.vm)
           log.info("New pytd instance for %s: %r", cls.name, instance)
           self._convert_cache[key] = instance
         return self._convert_cache[key]
       elif isinstance(cls, pytd.Literal):
         return self.constant_to_value(
-            self._get_literal_value(cls.value), subst, self.vm.root_node)
+            self._get_literal_value(cls.value), subst, self.vm.root_node,
+            allow_recursion=allow_recursion)
       else:
-        return self.constant_to_value(cls, subst, self.vm.root_node)
+        return self.constant_to_value(cls, subst, self.vm.root_node,
+                                      allow_recursion=allow_recursion)
     elif (isinstance(pyval, pytd.GenericType) and
           pyval.name == "typing.ClassVar"):
       param, = pyval.parameters
-      return self.constant_to_value(param, subst, self.vm.root_node)
+      return self.constant_to_value(param, subst, self.vm.root_node,
+                                    allow_recursion=allow_recursion)
     elif isinstance(pyval, pytd.GenericType):
       if isinstance(pyval.base_type, pytd.LateType):
         actual = self._load_late_type(pyval.base_type)
@@ -770,7 +791,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         assert isinstance(pyval.base_type, pytd.ClassType), pyval
         base = pyval.base_type.cls
       assert isinstance(base, pytd.Class), base
-      base_cls = self.constant_to_value(base, subst, self.vm.root_node)
+      base_cls = self.constant_to_value(base, subst, self.vm.root_node,
+                                        allow_recursion=allow_recursion)
       if not isinstance(base_cls, class_mixin.Class):
         # base_cls can be, e.g., an unsolvable due to an mro error.
         return self.unsolvable
@@ -800,10 +822,12 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return abstract_class(base_cls, type_parameters, self.vm)
     elif isinstance(pyval, pytd.Literal):
       value = self.constant_to_value(
-          self._get_literal_value(pyval.value), subst, self.vm.root_node)
+          self._get_literal_value(pyval.value), subst, self.vm.root_node,
+          allow_recursion=allow_recursion)
       return abstract.LiteralClass(value, self.vm)
     elif isinstance(pyval, pytd.Annotated):
-      return self.constant_to_value(pyval.base_type, subst, self.vm.root_node)
+      return self.constant_to_value(pyval.base_type, subst, self.vm.root_node,
+                                    allow_recursion=allow_recursion)
     elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node
       return self.tuple_to_value([
           self.constant_to_var(item, subst, self.vm.root_node)

@@ -61,6 +61,8 @@ ITEMS = {
 
 # The missing fields will be filled in by generate_sample_config_or_die.
 _PYTYPE_SINGLE_ITEMS = {
+    'attribute_variable_annotations': Item(
+        None, 'False', ArgInfo('--attribute-variable-annotations', None), None),
     'check_attribute_types': Item(
         None, 'True', ArgInfo('--check-attribute-types', None), None),
     'check_container_types': Item(
