@@ -737,5 +737,62 @@ class TestPyiDataclass(test_base.TargetPython3FeatureTest):
           def __init__(self, x: bool, y: int, a: str = ...) -> None: ...
       """)
 
+  def test_recursion(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import dataclasses
+        from typing import Callable, Optional, List
+        @dataclasses.dataclass
+        class A:
+          x: Optional[A]
+          y: str
+          z: List[A]
+      """)
+      ty = self.Infer("""
+        import foo
+        x = foo.A(None, 'hello', [])
+        y = foo.A(x, "world", [x])
+        a = y.x
+        b = y.y
+        c = y.z
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Any, Optional, List
+        foo: module
+        x: foo.A
+        y: foo.A
+        a: Optional[foo.A]
+        b: str
+        c: List[foo.A]
+      """)
+
+  def test_recursion_with_subclass(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import dataclasses
+        from typing import Callable, Optional, List
+        @dataclasses.dataclass
+        class A:
+          x: Optional[A]
+          y: str
+          z: List[A]
+      """)
+      ty = self.Infer("""
+        import dataclasses
+        import foo
+        @dataclasses.dataclass
+        class B(foo.A):
+          w: int
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Any, List
+        dataclasses: module
+        foo: module
+        @dataclasses.dataclass
+        class B(foo.A):
+          w: int
+          def __init__(self, x, y: str, z: list, w: int) -> None: ...
+      """)
+
 
 test_base.main(globals(), __name__ == "__main__")

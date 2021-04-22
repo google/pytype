@@ -65,7 +65,9 @@ class Attribute:
 
   @classmethod
   def from_pytd_constant(cls, const, vm):
-    typ = vm.convert.constant_to_value(const.type)
+    # We cannot yet handle recursive type annotations in pyi dataclasses, so set
+    # them to Any without raising an exception.
+    typ = vm.convert.constant_to_value(const.type, allow_recursion=True)
     val = const.value and vm.convert.constant_to_value(const.value)
     # Dataclasses and similar decorators in pytd files cannot set init and
     # kw_only properties.
