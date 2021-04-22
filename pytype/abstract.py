@@ -2407,9 +2407,13 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
           method = cls.pytd_cls.Lookup(method_name)
         except KeyError:
           continue  # Method not found, proceed to next class in MRO.
+        method = self.vm.convert.constant_to_value(method)
+        break  # Method found!
+      elif isinstance(cls, InterpreterClass) and method_name in cls.members:
+        method = cls.members[method_name].data[0]
         break  # Method found!
     assert method
-    return self.vm.convert.constant_to_value(method)
+    return method
 
   def _is_callable(self):
     return (not self.is_abstract
