@@ -1385,6 +1385,8 @@ class AnnotationContainer(AnnotationClass):
     """
     if isinstance(self.base_cls, TupleClass):
       template = tuple(range(self.base_cls.tuple_length))
+    elif isinstance(self.base_cls, CallableClass):
+      template = tuple(range(self.base_cls.num_args)) + (abstract_utils.RET,)
     else:
       template = tuple(t.name for t in self.base_cls.template)
     self.vm.errorlog.invalid_ellipses(
@@ -1394,9 +1396,7 @@ class AnnotationContainer(AnnotationClass):
       # Even if an ellipsis is not allowed at this position, strip it off so
       # that we report only one error for something like 'List[int, ...]'
       inner = inner[:-1]
-    if (isinstance(self.base_cls, ParameterizedClass) and
-        # TODO(b/140251808): Support CallableClass.
-        not isinstance(self.base_cls, CallableClass)):
+    if isinstance(self.base_cls, ParameterizedClass):
       # We're dealing with a generic type alias, e.g.:
       #   X = Dict[T, str]
       #   def f(x: X[int]): ...
@@ -1406,11 +1406,20 @@ class AnnotationContainer(AnnotationClass):
       #   inner=(int, str)
       new_inner = []
       inner_idx = 0
+      subst = {}
       for k in template:
         v = self.base_cls.formal_type_parameters[k]
         if v.formal:
-          new_inner.append(inner[inner_idx])
-          inner_idx += 1
+          if v.full_name in subst:
+            new_inner.append(subst[v.full_name])
+          # If there are too few parameters, we ignore the problem for now;
+          # it'll be reported when _build_value checks that the lengths of
+          # template and inner match.
+          elif inner_idx < len(inner):
+            inner_value = inner[inner_idx]
+            new_inner.append(inner_value)
+            inner_idx += 1
+            subst[v.full_name] = inner_value
         else:
           new_inner.append(v)
       # Tack on any leftover values so that an error will be reported if `inner`
@@ -1419,6 +1428,10 @@ class AnnotationContainer(AnnotationClass):
       if isinstance(self.base_cls, TupleClass):
         template += (abstract_utils.T,)
         inner += (self.vm.merge_values(inner),)
+      elif isinstance(self.base_cls, CallableClass):
+        template = template[:-1] + (abstract_utils.ARGS,) + template[-1:]
+        args = inner[:-1]
+        inner = args + (self.vm.merge_values(args),) + inner[-1:]
       abstract_class = type(self.base_cls)
     else:
       abstract_class = ParameterizedClass
@@ -1464,9 +1477,12 @@ class AnnotationContainer(AnnotationClass):
         name = "%s[%s]" % (
             self.full_name, ", ".join(t.name for t in base_cls.template))
         if isinstance(self.base_cls, ParameterizedClass):
-          template_length = sum(
-              self.base_cls.formal_type_parameters[k.name].formal
-              for k in base_cls.template)
+          unique_template_items = set()
+          for k in base_cls.template:
+            item = self.base_cls.formal_type_parameters[k.name]
+            if item.formal and item.full_name not in unique_template_items:
+              unique_template_items.add(item.full_name)
+          template_length = len(unique_template_items)
         else:
           template_length = len(base_cls.template)
         error = "Expected %d parameter(s), got %d" % (
