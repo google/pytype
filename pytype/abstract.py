@@ -2704,17 +2704,24 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     key = None
     keyed_decorator = None
     for decorator in self.pytd_cls.decorators:
-      name = decorator.type.name
-      decorator_key = class_mixin.get_metadata_key(name)
+      decorator_name = decorator.type.name
+      decorator_key = class_mixin.get_metadata_key(decorator_name)
       if decorator_key:
         if key:
           error = f"Cannot apply both @{keyed_decorator} and @{decorator}."
           self.vm.errorlog.invalid_annotation(self.vm.frames, self, error)
         else:
           key, keyed_decorator = decorator_key, decorator
-          fields = decorate.get_attributes(self.pytd_cls)
-          self.init_attr_metadata_from_pytd(name, fields)
+          self._init_attr_metadata_from_pytd(decorator_name)
           self._recompute_init_from_metadata(key)
+
+  def _init_attr_metadata_from_pytd(self, decorator):
+    """Initialise metadata[key] with a list of Attributes."""
+    name = self.pytd_cls.name
+    fields = decorate.get_attributes(self.pytd_cls)
+    own_attrs = [class_mixin.Attribute.from_pytd_constant(c, name, self.vm)
+                 for c in fields]
+    self.compute_attr_metadata(own_attrs, decorator)
 
   def _recompute_init_from_metadata(self, key):
     # Some decorated classes (dataclasses e.g.) have their __init__ function
