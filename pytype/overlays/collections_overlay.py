@@ -200,7 +200,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
               or not field_name  # catches empty string, etc.
               or field_name[0].isdigit())
 
-    if not_valid(typename.rsplit(".", 1)[-1]):
+    if not_valid(typename):
       raise ValueError(typename)
 
     valid_fields = list(field_names)
