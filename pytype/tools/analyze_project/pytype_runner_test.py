@@ -147,8 +147,8 @@ class TestCustomOptions(TestBase):
     # These are temporarily no-op flags that are set to true by default; they
     # will be removed altogether in the next release.
     self.assertEqual(
-        flags - {'--check-attribute-types', '--check-container-types'},
-        expected_flags)
+        flags - {'--check-attribute-types', '--check-container-types',
+                 '--check-variable-types'}, expected_flags)
 
   # --disable tests a flag with a string value.
 

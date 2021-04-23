@@ -164,8 +164,7 @@ class BaseTest(unittest.TestCase):
     # seem to be respected in subclasses.
     self.options = config.Options.create(python_version=self.python_version,  # pytype: disable=attribute-error
                                          attribute_variable_annotations=True,
-                                         check_parameter_types=True,
-                                         check_variable_types=True)
+                                         check_parameter_types=True)
 
   @property
   def loader(self):

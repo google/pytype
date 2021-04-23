@@ -174,7 +174,7 @@ def add_basic_options(o):
             "annotations. " + temporary))
   o.add_argument(
       "--check-variable-types", action="store_true",
-      dest="check_variable_types", default=False,
+      dest="check_variable_types", default=True,
       help="Check variable values against their annotations. " + temporary)
 
 

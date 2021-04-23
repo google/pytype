@@ -7,12 +7,6 @@ from pytype.tests import test_base
 class TestAttrib(test_base.TargetIndependentTest):
   """Tests for attr.ib."""
 
-  def setUp(self):
-    super().setUp()
-    # Checking field defaults against their types should work even when general
-    # variable checking is disabled.
-    self.options.tweak(check_variable_types=False)
-
   def test_basic(self):
     ty = self.Infer("""
       import attr
@@ -698,10 +692,8 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
 
   def test_long_alias(self):
-    # Tests an [annotation-type-mismatch] bug that appears only when
-    # --check-variable-types is enabled AND the "serious-business alias" for
-    # attr.ib is used.
-    self.options.tweak(check_variable_types=True)
+    # Tests an [annotation-type-mismatch] bug that appears when the
+    # "serious-business alias" for attr.ib is used.
     self.Check("""
       import attr
       @attr.s
@@ -712,12 +704,6 @@ class TestAttrib(test_base.TargetIndependentTest):
 
 class TestAttrs(test_base.TargetIndependentTest):
   """Tests for attr.s."""
-
-  def setUp(self):
-    super().setUp()
-    # Checking field defaults against their types should work even when general
-    # variable checking is disabled.
-    self.options.tweak(check_variable_types=False)
 
   def test_basic(self):
     ty = self.Infer("""
