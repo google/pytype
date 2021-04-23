@@ -2670,7 +2670,8 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     # Apply decorators first, in case they set any properties that later
     # initialization code needs to read.
     self.has_explicit_init = any(x.name == "__init__" for x in pytd_cls.methods)
-    pytd_cls, decorated = decorate.process_class(pytd_cls)
+    if vm.options.create_pyi_dataclasses:
+      pytd_cls, decorated = decorate.process_class(pytd_cls)
     self.pytd_cls = pytd_cls
     super().__init__(name, vm)
     mm = {}
@@ -2695,7 +2696,7 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     mixin.LazyMembers.init_mixin(self, mm)
     self.is_dynamic = self.compute_is_dynamic()
     class_mixin.Class.init_mixin(self, metaclass)
-    if decorated:
+    if vm.options.create_pyi_dataclasses and decorated:
       self._populate_decorator_metadata()
 
   def _populate_decorator_metadata(self):

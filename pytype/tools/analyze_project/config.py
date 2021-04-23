@@ -71,6 +71,8 @@ _PYTYPE_SINGLE_ITEMS = {
         None, 'False', ArgInfo('--check-parameter-types', None), None),
     'check_variable_types': Item(
         None, 'True', ArgInfo('--check-variable-types', None), None),
+    'create_pyi_dataclasses': Item(
+        None, 'False', ArgInfo('--create-pyi-dataclasses', None), None),
     'disable': Item(
         None, 'pyi-error', ArgInfo('--disable', ','.join),
         'Comma or space separated list of error names to ignore.'),
