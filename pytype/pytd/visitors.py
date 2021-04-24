@@ -1827,5 +1827,3 @@ class ClassTypeToAny(base_visitor.Visitor):
     if node.name == self.target_name:
       return pytd.AnythingType()
     return node
-
-
