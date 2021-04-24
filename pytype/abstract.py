@@ -2717,10 +2717,16 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
 
   def _init_attr_metadata_from_pytd(self, decorator):
     """Initialise metadata[key] with a list of Attributes."""
+    # Use the __init__ function as the source of truth for dataclass fields; if
+    # this is a generated module we will have already processed ClassVar and
+    # InitVar attributes to generate __init__, so the fields we want to add to
+    # the subclass __init__ are the init params rather than the full list of
+    # class attributes.
     name = self.pytd_cls.name
-    fields = decorate.get_attributes(self.pytd_cls)
-    own_attrs = [class_mixin.Attribute.from_pytd_constant(c, name, self.vm)
-                 for c in fields]
+    init = next(x for x in self.pytd_cls.methods if x.name == "__init__")
+    params = init.signatures[0].params[1:]
+    own_attrs = [class_mixin.Attribute.from_param(p, name, self.vm)
+                 for p in params]
     self.compute_attr_metadata(own_attrs, decorator)
 
   def _recompute_init_from_metadata(self, key):
