@@ -8,12 +8,6 @@ from pytype.tests import test_base
 class TestDataclass(test_base.TargetPython3FeatureTest):
   """Tests for @dataclass."""
 
-  def setUp(self):
-    super().setUp()
-    # Checking field defaults against their types should work even when general
-    # variable checking is disabled.
-    self.options.tweak(check_variable_types=False)
-
   def test_basic(self):
     ty = self.Infer("""
       import dataclasses
@@ -534,7 +528,6 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
 
   def test_check_field_against_container(self):
-    self.options.tweak(check_variable_types=True)
     self.Check("""
       import dataclasses
       from typing import List

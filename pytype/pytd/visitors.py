@@ -387,12 +387,35 @@ def _LookupItemRecursive(module, module_name, name):
     elif not isinstance(item, (pytd.TypeDeclUnit, pytd.Class)):
       raise KeyError(name)
     lookup_name = partial_name + "." + part
+
+    def Lookup(item, *names):
+      for name in names:
+        try:
+          return item.Lookup(name)
+        except KeyError:
+          continue
+      raise KeyError(names[-1])
+
     # Nested class names are fully qualified while function names are not, so
     # we try lookup for both naming conventions.
     try:
-      item = item.Lookup(lookup_name)
+      item = Lookup(item, lookup_name, part)
     except KeyError:
-      item = item.Lookup(part)
+      if not isinstance(item, pytd.Class):
+        raise
+      for parent in item.parents:
+        if not isinstance(parent, pytd.ClassType):
+          # If the parent is unknown, we don't know whether it contains the name
+          # part, so it cannot be resolved.
+          raise
+        try:
+          item = Lookup(parent.cls, lookup_name, part)
+        except KeyError:
+          continue  # continue up the MRO
+        else:
+          break  # name found!
+      else:
+        raise  # unresolved
     if isinstance(item, pytd.Constant):
       partial_name += "." + item.name.rsplit(".", 1)[-1]
     else:
@@ -1791,3 +1814,16 @@ class DropMutableParameters(Visitor):
 
   def VisitParameter(self, p):
     return p.Replace(mutated_type=None)
+
+
+class ClassTypeToAny(base_visitor.Visitor):
+  """Change all ClassType objects with a given name to Any."""
+
+  def __init__(self, target_name):
+    super().__init__()
+    self.target_name = target_name
+
+  def VisitClassType(self, node):
+    if node.name == self.target_name:
+      return pytd.AnythingType()
+    return node

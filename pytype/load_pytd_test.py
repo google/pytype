@@ -676,6 +676,30 @@ class MethodAliasTest(_LoaderTest):
     self.assertEqual(pytd_utils.Print(b_ast.Lookup("b.f")),
                      "def b.f(x: int) -> int: ...")
 
+  def test_base_class(self):
+    a_ast = self._import(a="""
+      class Foo:
+        def f(self) -> int: ...
+      class Bar(Foo): ...
+      x: Bar
+      f = x.f
+    """)
+    self.assertEqual(pytd_utils.Print(a_ast.Lookup("a.f")),
+                     "def a.f() -> int: ...")
+
+  def test_base_class_imported(self):
+    b_ast = self._import(a="""
+      class Foo:
+        def f(self) -> int: ...
+      class Bar(Foo): ...
+      x: Bar
+    """, b="""
+      import a
+      f = a.x.f
+    """)
+    self.assertEqual(pytd_utils.Print(b_ast.Lookup("b.f")),
+                     "def b.f() -> int: ...")
+
 
 if __name__ == "__main__":
   unittest.main()

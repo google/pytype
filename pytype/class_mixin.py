@@ -10,6 +10,7 @@ from pytype import datatypes
 from pytype import function
 from pytype import mixin
 from pytype.pytd import mro
+from pytype.pytd import visitors
 
 log = logging.getLogger(__name__)
 
@@ -64,10 +65,11 @@ class Attribute:
   pytd_const: Any = None
 
   @classmethod
-  def from_pytd_constant(cls, const, vm):
+  def from_pytd_constant(cls, const, class_name, vm):
     # We cannot yet handle recursive type annotations in pyi dataclasses, so set
     # them to Any without raising an exception.
-    typ = vm.convert.constant_to_value(const.type, allow_recursion=True)
+    typ = const.type.Visit(visitors.ClassTypeToAny(class_name))
+    typ = vm.convert.constant_to_value(typ)
     val = const.value and vm.convert.constant_to_value(const.value)
     # Dataclasses and similar decorators in pytd files cannot set init and
     # kw_only properties.
@@ -451,9 +453,3 @@ class Class(metaclass=mixin.MixinMeta):
     # Stash attributes in class metadata for subclasses.
     self.metadata[key] = attrs
     return attrs
-
-  def init_attr_metadata_from_pytd(self, decorator, fields):
-    """Initialise metadata[key] with a list of Attributes."""
-    # Called in abstract.PyTDClass.__init__
-    own_attrs = [Attribute.from_pytd_constant(c, self.vm) for c in fields]
-    self.compute_attr_metadata(own_attrs, decorator)

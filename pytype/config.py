@@ -174,8 +174,12 @@ def add_basic_options(o):
             "annotations. " + temporary))
   o.add_argument(
       "--check-variable-types", action="store_true",
-      dest="check_variable_types", default=False,
+      dest="check_variable_types", default=True,
       help="Check variable values against their annotations. " + temporary)
+  o.add_argument(
+      "--create-pyi-dataclasses", action="store_true",
+      dest="create_pyi_dataclasses", default=False,
+      help="Construct a dataclass from a decorated pyi class. " + temporary)
 
 
 def add_subtools(o):

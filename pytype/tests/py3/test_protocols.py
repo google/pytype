@@ -671,6 +671,16 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
       accept(Bar())
     """)
 
+  def test_len(self):
+    self.Check("""
+      from typing import Generic, Protocol, TypeVar
+      T = TypeVar('T')
+      class SupportsLen(Generic[T], Protocol):
+        def __len__(self) -> int: ...
+      def f() -> SupportsLen[int]:
+        return [1, 2, 3]
+    """)
+
 
 class ProtocolsTestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for protocol implementation on a target using a Python 3 feature."""

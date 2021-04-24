@@ -37,7 +37,8 @@ class NamedtupleTestsPy3(test_base.TargetPython3FeatureTest):
       from typing import NamedTuple
       class Bar:
         class Foo(NamedTuple):
-          pass
+          x: int
+        foo = Foo(x=0)
     """)
 
 

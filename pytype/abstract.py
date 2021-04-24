@@ -2407,9 +2407,13 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
           method = cls.pytd_cls.Lookup(method_name)
         except KeyError:
           continue  # Method not found, proceed to next class in MRO.
+        method = self.vm.convert.constant_to_value(method)
+        break  # Method found!
+      elif isinstance(cls, InterpreterClass) and method_name in cls.members:
+        method = cls.members[method_name].data[0]
         break  # Method found!
     assert method
-    return self.vm.convert.constant_to_value(method)
+    return method
 
   def _is_callable(self):
     return (not self.is_abstract
@@ -2666,7 +2670,8 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     # Apply decorators first, in case they set any properties that later
     # initialization code needs to read.
     self.has_explicit_init = any(x.name == "__init__" for x in pytd_cls.methods)
-    pytd_cls, decorated = decorate.process_class(pytd_cls)
+    if vm.options.create_pyi_dataclasses:
+      pytd_cls, decorated = decorate.process_class(pytd_cls)
     self.pytd_cls = pytd_cls
     super().__init__(name, vm)
     mm = {}
@@ -2691,7 +2696,7 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     mixin.LazyMembers.init_mixin(self, mm)
     self.is_dynamic = self.compute_is_dynamic()
     class_mixin.Class.init_mixin(self, metaclass)
-    if decorated:
+    if vm.options.create_pyi_dataclasses and decorated:
       self._populate_decorator_metadata()
 
   def _populate_decorator_metadata(self):
@@ -2699,17 +2704,24 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     key = None
     keyed_decorator = None
     for decorator in self.pytd_cls.decorators:
-      name = decorator.type.name
-      decorator_key = class_mixin.get_metadata_key(name)
+      decorator_name = decorator.type.name
+      decorator_key = class_mixin.get_metadata_key(decorator_name)
       if decorator_key:
         if key:
           error = f"Cannot apply both @{keyed_decorator} and @{decorator}."
           self.vm.errorlog.invalid_annotation(self.vm.frames, self, error)
         else:
           key, keyed_decorator = decorator_key, decorator
-          fields = decorate.get_attributes(self.pytd_cls)
-          self.init_attr_metadata_from_pytd(name, fields)
+          self._init_attr_metadata_from_pytd(decorator_name)
           self._recompute_init_from_metadata(key)
+
+  def _init_attr_metadata_from_pytd(self, decorator):
+    """Initialise metadata[key] with a list of Attributes."""
+    name = self.pytd_cls.name
+    fields = decorate.get_attributes(self.pytd_cls)
+    own_attrs = [class_mixin.Attribute.from_pytd_constant(c, name, self.vm)
+                 for c in fields]
+    self.compute_attr_metadata(own_attrs, decorator)
 
   def _recompute_init_from_metadata(self, key):
     # Some decorated classes (dataclasses e.g.) have their __init__ function

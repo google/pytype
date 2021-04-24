@@ -949,9 +949,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       else:
         return None
       converter = self.vm.convert.pytd_convert
-      for signature in abstract_method.signatures:
-        callable_signature = converter.signature_to_callable(
-            signature.signature)
+      for signature in abstract_utils.get_signatures(abstract_method):
+        callable_signature = converter.signature_to_callable(signature)
         if isinstance(callable_signature, abstract.CallableClass):
           # Prevent the matcher from trying to enforce contravariance on 'self'.
           callable_signature.formal_type_parameters[0] = (

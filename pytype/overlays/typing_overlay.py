@@ -537,13 +537,17 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
 
     # retrieve __qualname__ to get the name of class
     name = f_locals["__qualname__"]
+    nameval = abstract_utils.get_atomic_python_constant(name)
+    if "." in nameval:
+      nameval = nameval.rsplit(".", 1)[-1]
+      name = self.vm.convert.constant_to_var(nameval)
 
     # assemble the arguments that are compatible with NamedTupleFuncBuilder.call
     field_list = []
     defaults = []
     cls_locals = classgen.get_class_locals(
-        abstract_utils.get_atomic_python_constant(name), allow_methods=True,
-        ordering=classgen.Ordering.FIRST_ANNOTATE, vm=self.vm)
+        nameval, allow_methods=True, ordering=classgen.Ordering.FIRST_ANNOTATE,
+        vm=self.vm)
     for k, local in cls_locals.items():
       assert local.typ
       if k in f_locals:

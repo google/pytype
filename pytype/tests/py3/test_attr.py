@@ -8,12 +8,6 @@ from pytype.tests import test_base
 class TestAttrib(test_base.TargetPython3BasicTest):
   """Tests for attr.ib."""
 
-  def setUp(self):
-    super().setUp()
-    # Checking field defaults against their types should work even when general
-    # variable checking is disabled.
-    self.options.tweak(check_variable_types=False)
-
   def test_factory_function(self):
     ty = self.Infer("""
       import attr
@@ -38,12 +32,6 @@ class TestAttrib(test_base.TargetPython3BasicTest):
 
 class TestAttribPy3(test_base.TargetPython3FeatureTest):
   """Tests for attr.ib using PEP526 syntax."""
-
-  def setUp(self):
-    super().setUp()
-    # Checking field defaults against their types should work even when general
-    # variable checking is disabled.
-    self.options.tweak(check_variable_types=False)
 
   def test_variable_annotations(self):
     ty = self.Infer("""
@@ -188,12 +176,6 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
 
 class TestAttrs(test_base.TargetPython3FeatureTest):
   """Tests for attr.s."""
-
-  def setUp(self):
-    super().setUp()
-    # Checking field defaults against their types should work even when general
-    # variable checking is disabled.
-    self.options.tweak(check_variable_types=False)
 
   def test_kw_only(self):
     ty = self.Infer("""
