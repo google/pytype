@@ -22,6 +22,7 @@ disable=
   consider-using-enumerate,
   consider-using-in,
   consider-using-ternary,
+  consider-using-with,
   cyclic-import,
   deprecated-method,
   duplicate-code,
