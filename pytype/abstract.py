@@ -17,6 +17,7 @@ import hashlib
 import inspect
 import itertools
 import logging
+from typing import Mapping
 
 from pytype import abstract_utils
 from pytype import class_mixin
@@ -1371,6 +1372,28 @@ class AnnotationContainer(AnnotationClass):
     super().__init__(name, vm)
     self.base_cls = base_cls
 
+  def _sub_annotation(
+      self, annot: BaseValue, subst: Mapping[str, BaseValue]) -> BaseValue:
+    """Apply type parameter substitutions to an annotation."""
+    # This is very similar to annotations_util.sub_one_annotation, but a couple
+    # differences make it more convenient to maintain two separate methods:
+    # - subst here is a str->BaseValue mapping rather than str->Variable, and it
+    #   would be wasteful to create variables just to match sub_one_annotation's
+    #   expected input type.
+    # - subst contains the type to be substituted in, not an instance of it.
+    #   Again, instantiating the type just to later get the type of the instance
+    #   is unnecessary extra work.
+    if isinstance(annot, TypeParameter):
+      if annot.full_name in subst:
+        return subst[annot.full_name]
+      else:
+        return self.vm.convert.unsolvable
+    elif isinstance(annot, mixin.NestedAnnotation):
+      inner_types = [(key, self._sub_annotation(val, subst))
+                     for key, val in annot.get_inner_types()]
+      return annot.replace(inner_types)
+    return annot
+
   def _get_value_info(self, inner, ellipses, allowed_ellipses=frozenset()):
     """Get information about the container's inner values.
 
@@ -1407,24 +1430,23 @@ class AnnotationContainer(AnnotationClass):
       new_inner = []
       inner_idx = 0
       subst = {}
+      # Note that we ignore any missing or extra values in inner for now; the
+      # problem will be reported later by _validate_inner.
       for k in template:
         v = self.base_cls.formal_type_parameters[k]
         if v.formal:
-          if v.full_name in subst:
-            new_inner.append(subst[v.full_name])
-          # If there are too few parameters, we ignore the problem for now;
-          # it'll be reported when _build_value checks that the lengths of
-          # template and inner match.
-          elif inner_idx < len(inner):
-            inner_value = inner[inner_idx]
-            new_inner.append(inner_value)
-            inner_idx += 1
-            subst[v.full_name] = inner_value
+          params = self.vm.annotations_util.get_type_parameters(v)
+          for param in params:
+            # If there are too few parameters, we ignore the problem for now;
+            # it'll be reported when _build_value checks that the lengths of
+            # template and inner match.
+            if param.full_name not in subst and inner_idx < len(inner):
+              subst[param.full_name] = inner[inner_idx]
+              inner_idx += 1
+          new_inner.append(self._sub_annotation(v, subst))
         else:
           new_inner.append(v)
-      # Tack on any leftover values so that an error will be reported if `inner`
-      # is the wrong length.
-      inner = tuple(new_inner) + inner[inner_idx:]
+      inner = tuple(new_inner)
       if isinstance(self.base_cls, TupleClass):
         template += (abstract_utils.T,)
         inner += (self.vm.merge_values(inner),)
@@ -1436,6 +1458,49 @@ class AnnotationContainer(AnnotationClass):
     else:
       abstract_class = ParameterizedClass
     return template, inner, abstract_class
+
+  def _validate_inner(self, template, inner, raw_inner):
+    """Check that the passed inner values are valid for the given template."""
+    if isinstance(self.base_cls, ParameterizedClass):
+      # For a generic type alias, we check that the number of typevars in the
+      # alias matches the number of raw parameters provided.
+      template_length = raw_template_length = len(set(
+          self.vm.annotations_util.get_type_parameters(self.base_cls)))
+      inner_length = raw_inner_length = len(raw_inner)
+      base_cls = self.base_cls.base_cls
+    else:
+      # In all other cases, we check that the final template length and
+      # parameter count match, after any adjustments like flattening the inner
+      # argument list in a Callable.
+      template_length = len(template)
+      raw_template_length = len(self.base_cls.template)
+      inner_length = len(inner)
+      raw_inner_length = len(raw_inner)
+      base_cls = self.base_cls
+    if inner_length != template_length:
+      if not template:
+        self.vm.errorlog.not_indexable(self.vm.frames, base_cls.name,
+                                       generic_warning=True)
+      else:
+        # Use the unprocessed values of `template` and `inner` so that the error
+        # message matches what the user sees.
+        name = "%s[%s]" % (
+            self.full_name, ", ".join(t.name for t in base_cls.template))
+        error = "Expected %d parameter(s), got %d" % (
+            raw_template_length, raw_inner_length)
+        self.vm.errorlog.invalid_annotation(self.vm.frames, None, error, name)
+    else:
+      if len(inner) == 1:
+        val, = inner
+        # It's a common mistake to index a container class rather than an
+        # instance (e.g., list[0]).
+        # We only check the "int" case, since string literals are allowed for
+        # late annotations.
+        if isinstance(val, Instance) and val.cls == self.vm.convert.int_type:
+          # Don't report this error again.
+          inner = (self.vm.convert.unsolvable,)
+          self.vm.errorlog.not_indexable(self.vm.frames, self.name)
+    return inner
 
   def _build_value(self, node, raw_inner, ellipses):
     if self.base_cls.is_late_annotation():
@@ -1467,38 +1532,7 @@ class AnnotationContainer(AnnotationClass):
           param.with_module(base_cls.full_name) for param in inner]
     else:
       template_params = None
-    if len(inner) != len(template):
-      if not template:
-        self.vm.errorlog.not_indexable(self.vm.frames, base_cls.name,
-                                       generic_warning=True)
-      else:
-        # Use the unprocessed values of `template` and `inner` so that the error
-        # message matches what the user sees.
-        name = "%s[%s]" % (
-            self.full_name, ", ".join(t.name for t in base_cls.template))
-        if isinstance(self.base_cls, ParameterizedClass):
-          unique_template_items = set()
-          for k in base_cls.template:
-            item = self.base_cls.formal_type_parameters[k.name]
-            if item.formal and item.full_name not in unique_template_items:
-              unique_template_items.add(item.full_name)
-          template_length = len(unique_template_items)
-        else:
-          template_length = len(base_cls.template)
-        error = "Expected %d parameter(s), got %d" % (
-            template_length, len(raw_inner))
-        self.vm.errorlog.invalid_annotation(self.vm.frames, None, error, name)
-    else:
-      if len(inner) == 1:
-        val, = inner
-        # It's a common mistake to index a container class rather than an
-        # instance (e.g., list[0]).
-        # We only check the "int" case, since string literals are allowed for
-        # late annotations.
-        if isinstance(val, Instance) and val.cls == self.vm.convert.int_type:
-          # Don't report this error again.
-          inner = (self.vm.convert.unsolvable,)
-          self.vm.errorlog.not_indexable(self.vm.frames, self.name)
+    inner = self._validate_inner(template, inner, raw_inner)
     params = {name: inner[i] if i < len(inner) else self.vm.convert.unsolvable
               for i, name in enumerate(template)}
 

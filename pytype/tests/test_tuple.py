@@ -94,10 +94,9 @@ class TupleTest(test_base.TargetIndependentTest):
   def test_bad_tuple_class_getitem(self):
     errors = self.CheckWithErrors("""
       v = type((3, ""))
-      w = v[0]  # invalid-annotation[e1]  # invalid-annotation[e2]
+      w = v[0]  # invalid-annotation[e]
     """)
-    self.assertErrorRegexes(errors, {"e1": r"Expected 0 parameter\(s\), got 1",
-                                     "e2": r"'0'.*Not a type"})
+    self.assertErrorRegexes(errors, {"e": r"Expected 0 parameter\(s\), got 1"})
 
   def test_tuple_isinstance(self):
     ty = self.Infer("""
