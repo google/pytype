@@ -1,3 +1,23 @@
+Version 2021.04.26
+
+New features and updates:
+* Enable --check-attribute-types, --check-container-types, and
+  --check-variable-types by default. These flags will soon be removed.
+* Add a fix suggestion for [annotation-type-mismatch] with a None value.
+* Add a temporary --attribute-variable-annotations flag that applies PEP
+  526-style annotations on attribute assignments. This behavior will ultimately
+  be enabled by default and the flag removed.
+* Add a temporary --create-pyi-dataclasses flag that creates dataclasses from
+  @dataclass-annotated classes in type stubs. This behavior will ultimately be
+  enabled by default and the flag removed.
+
+Bug fixes:
+* Don't lose track of attributes when @typing.final is used.
+* Fix generation of type information for nested typing.NamedTuple classes.
+* Fix some bugs in handling of generic type aliases.
+* Fix a pytype crash on a generic protocol.
+* For method aliasing in pyi files, consider base classes when doing lookup.
+
 Version 2021.04.15
 
 New features and updates:
