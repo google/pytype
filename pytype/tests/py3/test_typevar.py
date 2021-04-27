@@ -661,6 +661,59 @@ class GenericTypeAliasTest(test_base.TargetPython3BasicTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"Expected 2 parameter\(s\), got 1"})
 
+  def test_nested_typevars(self):
+    ty = self.Infer("""
+      from typing import Callable, Dict, TypeVar
+      K = TypeVar('K')
+      V = TypeVar('V')
+      X = Callable[[int], Dict[K, V]]
+      def f(x: X[float, str]):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable, Dict, TypeVar
+      K = TypeVar('K')
+      V = TypeVar('V')
+      X = Callable[[int], Dict[K, V]]
+      def f(x: Callable[[int], Dict[float, str]]) -> None: ...
+    """)
+
+  def test_extra_nested_parameter(self):
+    ty, errors = self.InferWithErrors("""
+      from typing import Callable, Dict, TypeVar
+      K = TypeVar('K')
+      V = TypeVar('V')
+      X = Callable[[int], Dict[K, V]]
+      def f(x: X[float, str, complex]):  # invalid-annotation[e]
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable, Dict, TypeVar
+      K = TypeVar('K')
+      V = TypeVar('V')
+      X = Callable[[int], Dict[K, V]]
+      def f(x: Callable[[int], Dict[float, str]]) -> None: ...
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Expected 2 parameter\(s\), got 3"})
+
+  def test_missing_nested_parameter(self):
+    ty, errors = self.InferWithErrors("""
+      from typing import Callable, Dict, TypeVar
+      K = TypeVar('K')
+      V = TypeVar('V')
+      X = Callable[[int], Dict[K, V]]
+      def f(x: X[float]):  # invalid-annotation[e]
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Callable, Dict, TypeVar
+      K = TypeVar('K')
+      V = TypeVar('V')
+      X = Callable[[int], Dict[K, V]]
+      def f(x: Callable[[int], Dict[float, Any]]) -> None: ...
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Expected 2 parameter\(s\), got 1"})
+
 
 class TypeVarTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for TypeVar in Python 3."""

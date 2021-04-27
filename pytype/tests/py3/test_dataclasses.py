@@ -698,6 +698,38 @@ class TestPyiDataclass(test_base.TargetPython3FeatureTest):
           def __init__(self, x: bool, y: int, z: str, a: str = ...) -> None: ...
       """)
 
+  def test_default_params(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("bar.pyi", """
+        from dataclasses import dataclass
+        @dataclass
+        class A:
+          x: bool
+          y: int = ...
+      """)
+      d.create_file("foo.pyi", """
+        from dataclasses import dataclass
+        import bar
+        @dataclass
+        class B(bar.A):
+          z: str = ...
+      """)
+      ty = self.Infer("""
+        import dataclasses
+        import foo
+        @dataclasses.dataclass
+        class Foo(foo.B):
+          a: str = "hello"
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        dataclasses: module
+        foo: module
+        @dataclasses.dataclass
+        class Foo(foo.B):
+          a: str
+          def __init__(self, x: bool, y: int = ..., z: str = ..., a: str = ...) -> None: ...
+      """)
+
   def test_properties_from_pyi(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
