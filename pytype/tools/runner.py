@@ -17,7 +17,7 @@ class BinaryRun:
     if dry_run:
       self.results = (0, "", "")
     else:
-      self.proc = subprocess.Popen(
+      self.proc = subprocess.Popen(  # pylint: disable=consider-using-with
           self.args,
           stdout=subprocess.PIPE,
           stderr=subprocess.PIPE)

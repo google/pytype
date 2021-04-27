@@ -1,6 +1,7 @@
 # coding=utf8
 """Tests for io.py."""
 
+import contextlib
 import io as builtins_io
 import os
 import sys
@@ -22,17 +23,18 @@ class IOTest(unittest.TestCase):
     with self._tmpfile(u"abc□def\n") as f:
       self.assertEqual(io.read_source_file(f.name), u"abc□def\n")
 
+  @contextlib.contextmanager
   def _tmpfile(self, contents):
     tempfile_options = {"mode": "w", "suffix": ".txt"}
     if six.PY3:
       tempfile_options.update({"encoding": "utf-8"})
-    f = tempfile.NamedTemporaryFile(**tempfile_options)
-    if six.PY3:
-      f.write(contents)
-    else:
-      f.write(contents.encode("utf-8"))
-    f.flush()
-    return f
+    with tempfile.NamedTemporaryFile(**tempfile_options) as f:
+      if six.PY3:
+        f.write(contents)
+      else:
+        f.write(contents.encode("utf-8"))
+      f.flush()
+      yield f
 
   def test_wrap_pytype_exceptions(self):
     with self.assertRaises(ValueError):
@@ -107,7 +109,7 @@ class IOTest(unittest.TestCase):
       if filename == "my_amazing_file.py":
         return builtins_io.StringIO("x = 0.0")
       else:
-        return open(filename, *args, **kwargs)
+        return open(filename, *args, **kwargs)  # pylint: disable=consider-using-with
     options = config.Options.create(
         "my_amazing_file.py", check=False, open_function=mock_open)
     _, pyi_string, _ = io.check_or_generate_pyi(options)

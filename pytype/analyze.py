@@ -729,9 +729,10 @@ def _maybe_output_debug(options, program):
   if options.output_cfg or options.output_typegraph:
     dot = debug.program_to_dot(program, set([]), bool(options.output_cfg))
     svg_file = options.output_cfg or options.output_typegraph
-    proc = subprocess.Popen(["/usr/bin/dot", "-T", "svg", "-o", svg_file],
-                            stdin=subprocess.PIPE, universal_newlines=True)
-    (_, stderr) = proc.communicate(dot)
+    with subprocess.Popen(
+        ["/usr/bin/dot", "-T", "svg", "-o", svg_file],
+        stdin=subprocess.PIPE, universal_newlines=True) as proc:
+      (_, stderr) = proc.communicate(dot)
     if stderr:
       log.info("Failed to create %s: %s", svg_file, stderr)
   if options.output_debug:
