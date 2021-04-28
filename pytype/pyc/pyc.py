@@ -71,7 +71,7 @@ def compile_src_string_to_pyc_string(
       tempfile_options.update({"encoding": "utf-8"})
     else:
       tempfile_options.update({"mode": "wb"})
-    fi = tempfile.NamedTemporaryFile(**tempfile_options)
+    fi = tempfile.NamedTemporaryFile(**tempfile_options)  # pylint: disable=consider-using-with
     try:
       if six.PY3:
         fi.write(src)
@@ -87,9 +87,10 @@ def compile_src_string_to_pyc_string(
 
       compile_script_src = pytype_source_utils.load_binary_file(COMPILE_SCRIPT)
 
-      p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-      bytecode, _ = p.communicate(compile_script_src)
-      assert p.poll() == 0, "Child process failed"
+      with subprocess.Popen(
+          cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE) as p:
+        bytecode, _ = p.communicate(compile_script_src)
+        assert p.poll() == 0, "Child process failed"
     finally:
       os.unlink(fi.name)
   first_byte = six.indexbytes(bytecode, 0)

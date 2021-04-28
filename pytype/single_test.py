@@ -90,10 +90,10 @@ class PytypeTest(test_base.UnitTest):
       if value is not self.INCLUDE:
         arg += "=" + str(value)
       pytype_args.append(arg)
-    p = subprocess.Popen(
-        pytype_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    self.stdout, self.stderr = (s.decode("utf-8") for s in p.communicate())
-    self.returncode = p.returncode
+    with subprocess.Popen(
+        pytype_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
+      self.stdout, self.stderr = (s.decode("utf-8") for s in p.communicate())
+      self.returncode = p.returncode
 
   def _parse_string(self, string):
     """A wrapper for parser.parse_string that inserts the python version."""

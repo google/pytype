@@ -121,12 +121,12 @@ def run_cmd(cmd, cwd=None, pipe=True):
     }
   if cwd:
     process_options["cwd"] = cwd
-  process = subprocess.Popen(cmd, **process_options)
-  stdout, _ = process.communicate()
-  if pipe and sys.version_info.major >= 3:
-    # Popen.communicate returns a bytes object always.
-    stdout = stdout.decode("utf-8")
-  return process.returncode, stdout
+  with subprocess.Popen(cmd, **process_options) as process:
+    stdout, _ = process.communicate()
+    if pipe and sys.version_info.major >= 3:
+      # Popen.communicate returns a bytes object always.
+      stdout = stdout.decode("utf-8")
+    return process.returncode, stdout
 
 
 def run_cmake(force_clean=False, log_output=False, debug_build=False):
@@ -214,51 +214,54 @@ def run_ninja(targets, fail_collector=None, fail_fast=False, verbose=False):
   # detects all failures. So, we set it to a high value unless |fail_fast| is
   # True.
   cmd = ["ninja", "-k", "1" if fail_fast else "100000"] + targets
-  process = subprocess.Popen(cmd, cwd=OUT_DIR,
-                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-  failed_targets = []
-  # When verbose output is requested, test failure logs are printed to stderr.
-  # However, sometimes a test fails without generating a log, in which case we
-  # need to print the ninja build output to see what happened.
-  print_if_verbose = False
-  with open(NINJA_LOG, "w") as ninja_log:
-    while True:
-      line = process.stdout.readline()
-      if not line:
-        break
-      if sys.version_info.major >= 3:
-        # process.stdout.readline() always returns a 'bytes' object.
-        line = line.decode("utf-8")
-      ninja_log.write(line)
-      msg_type, modname, logfile = parse_ninja_output_line(line)
-      if msg_type == _NINJA_FAILURE_MSG:
-        # This is a failed ninja target.
-        failed_targets.append(line[len(NINJA_FAILURE_PREFIX):].strip())
-        print_if_verbose = True
-      if msg_type == _TEST_MODULE_PASS_MSG or msg_type == _TEST_MODULE_FAIL_MSG:
-        print(line)
-        if msg_type == _TEST_MODULE_FAIL_MSG:
-          fail_collector.add_failure(modname, logfile)
-        print_if_verbose = False
-      if verbose and print_if_verbose:
-        print(line.rstrip())
-    if failed_targets:
-      # For convenience, we will print the list of failed targets.
-      summary_hdr = ">>> Found Ninja target failures (includes test failures):"
-      print("\n" + summary_hdr)
-      ninja_log.write("\n" + summary_hdr + "\n")
-      for t in failed_targets:
-        target = "    - %s" % t
-        print(target)
-        ninja_log.write(target + "\n")
-  process.wait()
-  if process.returncode == 0:
-    return True
-  else:
-    # Ninja output can be a lot. Printing it here will clutter the output of
-    # this script. So, just tell the user how to repro the error.
-    print(">>> FAILED: Ninja command '%s'." % " ".join(cmd))
-    print(">>>         Run it in the 'out' directory to reproduce.")
-    print(">>>         Full Ninja output is available in '%s'." % NINJA_LOG)
-    print(">>>         Failing test modules (if any) will be reported below.")
-    return False
+  with subprocess.Popen(
+      cmd, cwd=OUT_DIR,
+      stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as process:
+    failed_targets = []
+    # When verbose output is requested, test failure logs are printed to stderr.
+    # However, sometimes a test fails without generating a log, in which case we
+    # need to print the ninja build output to see what happened.
+    print_if_verbose = False
+    with open(NINJA_LOG, "w") as ninja_log:
+      while True:
+        line = process.stdout.readline()
+        if not line:
+          break
+        if sys.version_info.major >= 3:
+          # process.stdout.readline() always returns a 'bytes' object.
+          line = line.decode("utf-8")
+        ninja_log.write(line)
+        msg_type, modname, logfile = parse_ninja_output_line(line)
+        if msg_type == _NINJA_FAILURE_MSG:
+          # This is a failed ninja target.
+          failed_targets.append(line[len(NINJA_FAILURE_PREFIX):].strip())
+          print_if_verbose = True
+        if (msg_type == _TEST_MODULE_PASS_MSG or
+            msg_type == _TEST_MODULE_FAIL_MSG):
+          print(line)
+          if msg_type == _TEST_MODULE_FAIL_MSG:
+            fail_collector.add_failure(modname, logfile)
+          print_if_verbose = False
+        if verbose and print_if_verbose:
+          print(line.rstrip())
+      if failed_targets:
+        # For convenience, we will print the list of failed targets.
+        summary_hdr = (
+            ">>> Found Ninja target failures (includes test failures):")
+        print("\n" + summary_hdr)
+        ninja_log.write("\n" + summary_hdr + "\n")
+        for t in failed_targets:
+          target = "    - %s" % t
+          print(target)
+          ninja_log.write(target + "\n")
+    process.wait()
+    if process.returncode == 0:
+      return True
+    else:
+      # Ninja output can be a lot. Printing it here will clutter the output of
+      # this script. So, just tell the user how to repro the error.
+      print(">>> FAILED: Ninja command '%s'." % " ".join(cmd))
+      print(">>>         Run it in the 'out' directory to reproduce.")
+      print(">>>         Full Ninja output is available in '%s'." % NINJA_LOG)
+      print(">>>         Failing test modules (if any) will be reported below.")
+      return False
