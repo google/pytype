@@ -73,26 +73,6 @@ that this is different to attribute checking, where e.g.
 
 will indeed result in a type error.
 
-## Why didn't pytype catch that I changed the type of an annotated variable?
-
-By default, pytype does not protect against the value of a variable
-contradicting its annotation. For example, the following patterns are allowed:
-
-```python
-x = 0  # type: str
-```
-
-and
-
-```python
-x: List[str] = []
-x.append(0)
-```
-
-To forbid these patterns, use the `--check-variable-types` and
-`--check-container-types` flags, respectively. These flags will eventually be
-enabled by default.
-
 ## How do I declare that something can be either byte string or unicode?
 
 Using `typing.Text` if it is conceptually a text object,

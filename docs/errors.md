@@ -213,8 +213,6 @@ a: List[int] = [1, 2]
 a.append("hello")  # <-- contained type is now Union[int, str]
 ```
 
-NOTE: This is currently only checked when using the `--check-variable-types` flag.
-
 ## duplicate-keyword-argument
 
 A positional argument was supplied again as a keyword argument. Example:
