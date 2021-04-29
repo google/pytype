@@ -2,6 +2,8 @@
 
 from pytype import abstract
 from pytype import class_mixin
+from pytype import function
+from pytype.pytd import pytd
 from pytype.typegraph import cfg
 
 
@@ -39,7 +41,8 @@ class Param:
 
 
 def make_method(vm, node, name, params=None, kwonly_params=None,
-                return_type=None, self_param=None, varargs=None, kwargs=None):
+                return_type=None, self_param=None, varargs=None, kwargs=None,
+                kind=pytd.MethodTypes.METHOD):
   """Make a method from params.
 
   Args:
@@ -52,6 +55,7 @@ def make_method(vm, node, name, params=None, kwonly_params=None,
     self_param: Self param [type: Param, defaults to self: Any]
     varargs: Varargs param [type: Param, allows *args to be named and typed]
     kwargs: Kwargs param [type: Param, allows **kwargs to be named and typed]
+    kind: The method kind
 
   Returns:
     A new method wrapped in a variable.
@@ -75,10 +79,16 @@ def make_method(vm, node, name, params=None, kwonly_params=None,
   # Set default values
   params = params or []
   kwonly_params = kwonly_params or []
-  self_param = self_param or Param("self", None, None)
+  if kind in (pytd.MethodTypes.METHOD, pytd.MethodTypes.PROPERTY):
+    self_param = [self_param or Param("self", None, None)]
+  elif kind == pytd.MethodTypes.CLASSMETHOD:
+    self_param = [Param("cls", None, None)]
+  else:
+    assert kind == pytd.MethodTypes.STATICMETHOD
+    self_param = []
   annotations = {}
 
-  params = [self_param] + params
+  params = self_param + params
 
   return_param = Param("return", return_type, None) if return_type else None
   special_params = [x for x in (return_param, varargs, kwargs) if x]
@@ -112,4 +122,13 @@ def make_method(vm, node, name, params=None, kwonly_params=None,
         name, bad_param)
     vm.errorlog.invalid_function_definition(vm.frames, msg)
 
-  return ret.to_variable(node)
+  retvar = ret.to_variable(node)
+  if kind in (pytd.MethodTypes.METHOD, pytd.MethodTypes.PROPERTY):
+    return retvar
+  if kind == pytd.MethodTypes.CLASSMETHOD:
+    decorator = vm.load_special_builtin("classmethod")
+  else:
+    assert kind == pytd.MethodTypes.STATICMETHOD
+    decorator = vm.load_special_builtin("staticmethod")
+  args = function.Args(posargs=(retvar,))
+  return decorator.call(node, funcv=None, args=args)[1]

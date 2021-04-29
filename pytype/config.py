@@ -266,6 +266,10 @@ def add_infrastructure_options(o):
       "-Z", "--quick", action="store_true",
       dest="quick", default=None,
       help=("Only do an approximation."))
+  o.add_argument(
+      "--chex-overlay", action="store_true",
+      dest="chex_overlay", default=False,
+      help="Temporary flag to aid the release of an overlay for chex.dataclass")
 
 
 def add_debug_options(o):

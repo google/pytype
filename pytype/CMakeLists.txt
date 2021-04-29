@@ -443,6 +443,8 @@ py_library(
   DEPS
     .abstract
     .class_mixin
+    .function
+    pytype.pytd.pytd
     pytype.typegraph.cfg
 )
 
