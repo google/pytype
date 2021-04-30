@@ -414,13 +414,6 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     else:
       raise NotImplementedError(v.__class__.__name__)
 
-  def _instance_type(self, node, typ):
-    contained_type = abstract_utils.match_type_container(
-        typ, "typing.ClassVar")
-    if contained_type:
-      typ = contained_type
-    return typ.get_instance_type(node)
-
   def _ordered_attrs_to_instance_types(self, node, metadata, annots):
     """Get instance types for ordered attrs in the metadata."""
     attrs = metadata.get("attr_order", [])
@@ -440,14 +433,14 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         typ = None
       else:
         typ = a.typ
-      typ = typ and self._instance_type(node, typ)
+      typ = typ and typ.get_instance_type(node)
       yield a.name, typ
 
   def annotations_to_instance_types(self, node, annots):
     """Get instance types for annotations not present in the members map."""
     if annots:
       for name, typ in annots.get_annotations(node):
-        yield name, self._instance_type(node, typ)
+        yield name, typ.get_instance_type(node)
 
   def _function_call_to_return_type(self, node, v, seen_return, num_returns):
     """Get a function call's pytd return type."""

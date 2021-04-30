@@ -155,8 +155,9 @@ class TypingTest(test_base.TargetIndependentTest):
         x = 5  # type: ClassVar[int]
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import ClassVar
       class A(object):
-        x: int = ...
+        x: ClassVar[int] = ...
     """)
 
   def test_pyi_classvar(self):
