@@ -516,6 +516,17 @@ py_test(
 
 py_test(
   NAME
+    test_chex_overlay
+  SRCS
+    test_chex_overlay.py
+  DEPS
+    pytype.utils
+    pytype.pytd.pytd
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
     test_flax_overlay
   SRCS
     test_flax_overlay.py

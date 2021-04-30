@@ -160,22 +160,10 @@ def add_basic_options(o):
       help=("Apply PEP 526-style variable annotations on attributes. " +
             temporary))
   o.add_argument(
-      "--check-attribute-types", action="store_true",
-      dest="check_attribute_types", default=True,
-      help="Check attribute values against their annotations. " + temporary)
-  o.add_argument(
-      "--check-container-types", action="store_true",
-      dest="check_container_types", default=True,
-      help="Check container mutations against their annotations. " + temporary)
-  o.add_argument(
       "--check-parameter-types", action="store_true",
       dest="check_parameter_types", default=False,
       help=("Check parameter defaults and assignments against their "
             "annotations. " + temporary))
-  o.add_argument(
-      "--check-variable-types", action="store_true",
-      dest="check_variable_types", default=True,
-      help="Check variable values against their annotations. " + temporary)
   o.add_argument(
       "--create-pyi-dataclasses", action="store_true",
       dest="create_pyi_dataclasses", default=False,
@@ -278,6 +266,10 @@ def add_infrastructure_options(o):
       "-Z", "--quick", action="store_true",
       dest="quick", default=None,
       help=("Only do an approximation."))
+  o.add_argument(
+      "--chex-overlay", action="store_true",
+      dest="chex_overlay", default=False,
+      help="Temporary flag to aid the release of an overlay for chex.dataclass")
 
 
 def add_debug_options(o):

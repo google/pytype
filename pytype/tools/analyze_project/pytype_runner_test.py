@@ -143,13 +143,6 @@ class TestCustomOptions(TestBase):
     super().setUp()
     self.conf = self.parser.config_from_defaults()
 
-  def assertFlags(self, flags, expected_flags):
-    # These are temporarily no-op flags that are set to true by default; they
-    # will be removed altogether in the next release.
-    self.assertEqual(
-        flags - {'--check-attribute-types', '--check-container-types',
-                 '--check-variable-types'}, expected_flags)
-
   # --disable tests a flag with a string value.
 
   def test_disable(self):
@@ -173,21 +166,21 @@ class TestCustomOptions(TestBase):
     runner = make_runner([], [], self.conf)
     binary_flags = {'--no-report-errors'}
     runner.set_custom_options({}, binary_flags)
-    self.assertFlags(binary_flags, set())
+    self.assertEqual(binary_flags, set())
 
   def test_no_report_errors(self):
     self.conf.report_errors = False
     runner = make_runner([], [], self.conf)
     binary_flags = set()
     runner.set_custom_options({}, binary_flags)
-    self.assertFlags(binary_flags, {'--no-report-errors'})
+    self.assertEqual(binary_flags, {'--no-report-errors'})
 
   def test_report_errors_default(self):
     self.conf.report_errors = True
     runner = make_runner([], [], self.conf)
     binary_flags = set()
     runner.set_custom_options({}, binary_flags)
-    self.assertFlags(binary_flags, set())
+    self.assertEqual(binary_flags, set())
 
   # --protocols tests a binary flag whose value is passed through transparently.
 
@@ -196,21 +189,21 @@ class TestCustomOptions(TestBase):
     runner = make_runner([], [], self.conf)
     binary_flags = set()
     runner.set_custom_options({}, binary_flags)
-    self.assertFlags(binary_flags, {'--protocols'})
+    self.assertEqual(binary_flags, {'--protocols'})
 
   def test_no_protocols(self):
     self.conf.protocols = False
     runner = make_runner([], [], self.conf)
     binary_flags = {'--protocols'}
     runner.set_custom_options({}, binary_flags)
-    self.assertFlags(binary_flags, set())
+    self.assertEqual(binary_flags, set())
 
   def test_no_protocols_default(self):
     self.conf.protocols = False
     runner = make_runner([], [], self.conf)
     binary_flags = set()
     runner.set_custom_options({}, binary_flags)
-    self.assertFlags(binary_flags, set())
+    self.assertEqual(binary_flags, set())
 
 
 class TestGetRunCmd(TestBase):

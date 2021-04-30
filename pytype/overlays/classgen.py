@@ -68,7 +68,7 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
     """Apply the decorator to cls."""
 
   def update_kwargs(self, args):
-    self._current_args = Decorator._DEFAULT_ARGS.copy()
+    self._current_args = self._DEFAULT_ARGS.copy()
     for k, v in args.namedargs.items():
       if k in self._current_args:
         try:

@@ -1395,12 +1395,8 @@ class VirtualMachine:
     """Pop a value off the stack and store it in a variable."""
     state, orig_val = state.pop()
     annotations_dict = self.current_annotated_locals if local else None
-    # TODO(b/74434237): Enable --check-variable-types by default.
-    check_types = (self.options.check_variable_types or
-                   self.convert.none in orig_val.data or
-                   op.line not in self.director.type_comments)
     value = self._apply_annotation(
-        state, op, name, orig_val, annotations_dict, check_types)
+        state, op, name, orig_val, annotations_dict, check_types=True)
     value = self._remove_recursion(state.node, name, value)
     state = state.forward_cfg_node()
     state = self._store_value(state, name, value, local)
@@ -1582,6 +1578,9 @@ class VirtualMachine:
   def _maybe_load_overlay(self, name):
     """Check if a module path is in the overlay dictionary."""
     if name not in overlay_dict.overlays:
+      return None
+    if name == "chex" and not self.options.chex_overlay:
+      # TODO(b/185807105): Enable --chex-overlay by default.
       return None
     if name in self.loaded_overlays:
       overlay = self.loaded_overlays[name]
@@ -2296,7 +2295,7 @@ class VirtualMachine:
     state, (val, obj) = state.popn(2)
     # If `obj` is a single class or an instance of one, then grab its
     # __annotations__ dict so we can type-check the new attribute value.
-    check_attribute_types = self.options.check_attribute_types
+    check_attribute_types = True
     try:
       obj_val = abstract_utils.get_atomic_value(obj)
     except abstract_utils.ConversionError:

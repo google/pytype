@@ -11,6 +11,7 @@ Each entry in overlays maps the module name to the overlay object
 from pytype.overlays import abc_overlay
 from pytype.overlays import asyncio_types_overlay
 from pytype.overlays import attr_overlay
+from pytype.overlays import chex_overlay
 from pytype.overlays import collections_overlay
 from pytype.overlays import dataclass_overlay
 from pytype.overlays import flax_overlay
@@ -27,6 +28,7 @@ overlays = {
     "abc": abc_overlay.ABCOverlay,
     "asyncio": asyncio_types_overlay.AsyncioOverlay,
     "attr": attr_overlay.AttrOverlay,
+    "chex": chex_overlay.ChexOverlay,
     "collections": collections_overlay.CollectionsOverlay,
     "dataclasses": dataclass_overlay.DataclassOverlay,
     "flax.struct": flax_overlay.DataclassOverlay,

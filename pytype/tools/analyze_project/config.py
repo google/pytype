@@ -63,14 +63,8 @@ ITEMS = {
 _PYTYPE_SINGLE_ITEMS = {
     'attribute_variable_annotations': Item(
         None, 'False', ArgInfo('--attribute-variable-annotations', None), None),
-    'check_attribute_types': Item(
-        None, 'True', ArgInfo('--check-attribute-types', None), None),
-    'check_container_types': Item(
-        None, 'True', ArgInfo('--check-container-types', None), None),
     'check_parameter_types': Item(
         None, 'False', ArgInfo('--check-parameter-types', None), None),
-    'check_variable_types': Item(
-        None, 'True', ArgInfo('--check-variable-types', None), None),
     'create_pyi_dataclasses': Item(
         None, 'False', ArgInfo('--create-pyi-dataclasses', None), None),
     'disable': Item(

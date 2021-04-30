@@ -7,6 +7,7 @@ py_library(
     .abc_overlay
     .asyncio_types_overlay
     .attr_overlay
+    .chex_overlay
     .collections_overlay
     .dataclass_overlay
     .flax_overlay
@@ -65,6 +66,20 @@ py_library(
     pytype.mixin
     pytype.overlay
     pytype.overlay_utils
+)
+
+py_library(
+  NAME
+    chex_overlay
+  SRCS
+    chex_overlay.py
+  DEPS
+    .dataclass_overlay
+    pytype.abstract
+    pytype.abstract_utils
+    pytype.overlay
+    pytype.overlay_utils
+    pytype.pytd.pytd
 )
 
 py_library(
