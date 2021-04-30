@@ -521,6 +521,7 @@ py_test(
     test_chex_overlay.py
   DEPS
     pytype.utils
+    pytype.pytd.pytd
     pytype.tests.test_base
 )
 

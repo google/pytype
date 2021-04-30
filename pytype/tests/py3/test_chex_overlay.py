@@ -3,6 +3,7 @@
 import contextlib
 
 from pytype import file_utils
+from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
@@ -22,12 +23,18 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       yield d
 
   def Check(self, *args, **kwargs):
-    with self._add_chex() as d:
-      return super().Infer(*args, **kwargs, pythonpath=[d.path])
+    if "pythonpath" in kwargs:
+      return super().Check(*args, **kwargs)
+    else:
+      with self._add_chex() as d:
+        return super().Check(*args, **kwargs, pythonpath=[d.path])
 
   def Infer(self, *args, **kwargs):
-    with self._add_chex() as d:
-      return super().Infer(*args, **kwargs, pythonpath=[d.path])
+    if "pythonpath" in kwargs:
+      return super().Infer(*args, **kwargs)
+    else:
+      with self._add_chex() as d:
+        return super().Infer(*args, **kwargs, pythonpath=[d.path])
 
   def test_basic(self):
     ty = self.Infer("""
@@ -40,12 +47,12 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       import dataclasses
       from typing import Mapping, TypeVar
       chex: module
-      _T = TypeVar('_T', bound=Foo)
+      _TFoo = TypeVar('_TFoo', bound=Foo)
       @dataclasses.dataclass
       class Foo(Mapping, object):
         x: int
         def __init__(self, x: int) -> None: ...
-        def replace(self: _T, **changes) -> _T: ...
+        def replace(self: _TFoo, **changes) -> _TFoo: ...
         @staticmethod
         def from_tuple(args) -> Foo: ...
         def to_tuple(self) -> tuple: ...
@@ -62,12 +69,12 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       import dataclasses
       from typing import TypeVar
       chex: module
-      _T = TypeVar('_T', bound=Foo)
+      _TFoo = TypeVar('_TFoo', bound=Foo)
       @dataclasses.dataclass
       class Foo:
         x: int
         def __init__(self, x: int) -> None: ...
-        def replace(self: _T, **changes) -> _T: ...
+        def replace(self: _TFoo, **changes) -> _TFoo: ...
         @staticmethod
         def from_tuple(args) -> Foo: ...
         def to_tuple(self) -> tuple: ...
@@ -99,12 +106,12 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       import dataclasses
       from typing import Mapping, TypeVar
       chex: module
-      _T = TypeVar('_T', bound=Foo)
+      _TFoo = TypeVar('_TFoo', bound=Foo)
       @dataclasses.dataclass
       class Foo(Mapping, object):
         x: int
         def __init__(self, x: int) -> None: ...
-        def replace(self: _T, **changes) -> _T: ...
+        def replace(self: _TFoo, **changes) -> _TFoo: ...
         @staticmethod
         def from_tuple(args) -> Foo: ...
         def to_tuple(self) -> tuple: ...
@@ -123,12 +130,12 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       import dataclasses
       from typing import Mapping, TypeVar
       chex: module
-      _T = TypeVar('_T', bound=Foo)
+      _TFoo = TypeVar('_TFoo', bound=Foo)
       @dataclasses.dataclass
       class Foo(Mapping, object):
         x: int
         def __init__(self, x: int) -> None: ...
-        def replace(self: _T, **changes) -> _T: ...
+        def replace(self: _TFoo, **changes) -> _TFoo: ...
         @staticmethod
         def from_tuple(args) -> Foo: ...
         def to_tuple(self) -> tuple: ...
@@ -147,17 +154,34 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       import dataclasses
       from typing import Mapping, TypeVar
       chex: module
-      _T = TypeVar('_T', bound=Foo)
+      _TFoo = TypeVar('_TFoo', bound=Foo)
       @dataclasses.dataclass
       class Foo(Mapping, object):
         x: int
         def __init__(self, x: int) -> None: ...
-        def replace(self: _T, **changes) -> _T: ...
+        def replace(self: _TFoo, **changes) -> _TFoo: ...
         @staticmethod
         def from_tuple(args) -> Foo: ...
         def to_tuple(self) -> tuple: ...
       tup: tuple
     """)
+
+  def test_multiple_dataclasses(self):
+    foo = self.Infer("""
+      import chex
+      @chex.dataclass
+      class A:
+        x: int
+      @chex.dataclass
+      class B:
+        x: str
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo))
+      self.Check("""
+        import foo
+        print(foo.B(x='hello').replace(x='world'))
+      """, pythonpath=[d.path])
 
 
 test_base.main(globals(), __name__ == "__main__")

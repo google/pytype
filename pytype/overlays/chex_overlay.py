@@ -36,7 +36,8 @@ class Dataclass(dataclass_overlay.Dataclass):
     return super().make(vm, "chex")
 
   def _add_replace_method(self, node, cls):
-    typevar = abstract.TypeParameter(abstract_utils.T, self.vm, bound=cls)
+    typevar = abstract.TypeParameter(
+        abstract_utils.T + cls.name, self.vm, bound=cls)
     cls.members["replace"] = overlay_utils.make_method(
         vm=self.vm,
         node=node,
