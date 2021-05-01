@@ -168,6 +168,10 @@ def add_basic_options(o):
       "--create-pyi-dataclasses", action="store_true",
       dest="create_pyi_dataclasses", default=False,
       help="Construct a dataclass from a decorated pyi class. " + temporary)
+  o.add_argument(
+      "--preserve-union-macros", action="store_true",
+      dest="preserve_union_macros", default=False,
+      help="Preserve Union generic type aliases in pyi files. " + temporary)
 
 
 def add_subtools(o):

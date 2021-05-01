@@ -349,9 +349,9 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
 
     self.assertTypesMatchPytd(ty, """
-      from typing import Optional, Type, Union
+      from typing import Optional, Union
 
-      Node: Type[Union[IntLeaf, StrLeaf, Tree]]
+      Node = Union[IntLeaf, StrLeaf, Tree]
       dataclasses: module
 
       @dataclasses.dataclass

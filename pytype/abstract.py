@@ -1625,7 +1625,7 @@ class Union(BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
 
   def _get_type_params(self):
     params = self.vm.annotations_util.get_type_parameters(self)
-    params = [x.name for x in params]
+    params = [x.full_name for x in params]
     return utils.unique_list(params)
 
   def getitem_slot(self, node, slice_var):

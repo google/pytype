@@ -500,11 +500,18 @@ class CallTracer(vm.VirtualMachine):
       options = var.FilteredData(self.exitpoint, strict=False)
       if (len(options) > 1 and
           not all(isinstance(o, abstract.FUNCTION_TYPES) for o in options)):
-        # It's ambiguous whether this is a type, a function or something
-        # else, so encode it as a constant.
-        combined_types = pytd_utils.JoinTypes(t.to_type(self.exitpoint)
-                                              for t in options)
-        data.append(pytd.Constant(name, combined_types))
+        if all(isinstance(o, (abstract.ParameterizedClass,
+                              abstract.TypeParameter,
+                              abstract.Union)) for o in options
+               ) and self.options.preserve_union_macros:  # type alias
+          data.append(pytd_utils.JoinTypes(t.to_pytd_def(self.exitpoint, name)
+                                           for t in options))
+        else:
+          # It's ambiguous whether this is a type, a function or something
+          # else, so encode it as a constant.
+          combined_types = pytd_utils.JoinTypes(t.to_type(self.exitpoint)
+                                                for t in options)
+          data.append(pytd.Constant(name, combined_types))
       elif options:
         for option in options:
           try:

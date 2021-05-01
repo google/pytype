@@ -305,16 +305,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         log.info("Using Any for %s", v.name)
         return pytd.AnythingType()
     elif isinstance(v, abstract.Union):
-      opts = []
-      for o in v.options:
-        # NOTE: Guarding printing of type parameters behind _detailed until
-        # round-tripping is working properly.
-        if self._detailed and isinstance(o, abstract.TypeParameter):
-          opt = self._typeparam_to_def(node, o, o.name)
-        else:
-          opt = self.value_to_pytd_type(node, o, seen, view)
-        opts.append(opt)
-      return pytd.UnionType(tuple(opts))
+      return pytd_utils.JoinTypes(self.value_to_pytd_type(node, o, seen, view)
+                                  for o in v.options)
     elif isinstance(v, special_builtins.SuperInstance):
       return pytd.NamedType("builtins.super")
     elif isinstance(v, abstract.TypeParameter):
@@ -392,7 +384,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return self._function_to_def(node, v, name)
     elif isinstance(v, abstract.SimpleFunction):
       return self._simple_func_to_def(node, v, name)
-    elif isinstance(v, abstract.ParameterizedClass):
+    elif (isinstance(v, abstract.ParameterizedClass) or
+          (self.vm.options.preserve_union_macros and
+           isinstance(v, abstract.Union))):
       return pytd.Alias(name, v.get_instance_type(node))
     elif isinstance(v, abstract.PyTDClass) and v.module:
       # This happens if a module does e.g. "from x import y as z", i.e., copies
