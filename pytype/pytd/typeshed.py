@@ -120,8 +120,8 @@ class Typeshed:
       match = re.fullmatch(r"(.+): (\d)\.(\d+)(?:-(?:(\d)\.(\d))?)?", line)
       assert match
       module, min_major, min_minor, max_major, max_minor = match.groups()
-      minimum = (int(major), int(minor))
-      maximum = (int(max_major), int(max_minor))
+      minimum = (int(min_major), int(min_minor))
+      maximum = ((int(max_major), int(max_minor))
                  if max_major is not None and max_minor is not None else None)
       versions[module] = minimum, maximum
     return versions
@@ -246,7 +246,7 @@ class Typeshed:
 
   def _is_module_in_typeshed(self, name, version):
     if name not in self._stdlib_versions:
-        return False
+      return False
     min_version, max_version = self._stdlib_versions[name]
     return (min_version <= version and
             (max_version is None or max_version >= version))
