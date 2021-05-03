@@ -349,9 +349,9 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
 
     self.assertTypesMatchPytd(ty, """
-      from typing import Optional, Type, Union
+      from typing import Optional, Union
 
-      Node: Type[Union[IntLeaf, StrLeaf, Tree]]
+      Node = Union[IntLeaf, StrLeaf, Tree]
       dataclasses: module
 
       @dataclasses.dataclass
@@ -488,11 +488,12 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         y: str = 'hello'
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import ClassVar
       dataclasses: module
       @dataclasses.dataclass
       class Foo(object):
         y: str
-        x: int
+        x: ClassVar[int]
         def __init__(self, y: str = ...) -> None: ...
     """)
 
@@ -728,6 +729,32 @@ class TestPyiDataclass(test_base.TargetPython3FeatureTest):
         class Foo(foo.B):
           a: str
           def __init__(self, x: bool, y: int = ..., z: str = ..., a: str = ...) -> None: ...
+      """)
+
+  def test_subclass_classvar(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import ClassVar
+        from dataclasses import dataclass
+        @dataclass
+        class A:
+          x: ClassVar[bool]
+          y: int
+      """)
+      ty = self.Infer("""
+        import dataclasses
+        import foo
+        @dataclasses.dataclass
+        class Foo(foo.A):
+          z: str = "hello"
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        dataclasses: module
+        foo: module
+        @dataclasses.dataclass
+        class Foo(foo.A):
+          z: str
+          def __init__(self, y: int, z: str = ...) -> None: ...
       """)
 
   def test_properties_from_pyi(self):

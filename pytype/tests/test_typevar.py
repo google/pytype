@@ -409,9 +409,9 @@ class TypeVarTest(test_base.TargetIndependentTest):
       x = 10  # type: Num[int]
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, TypeVar, Union
+      from typing import TypeVar, Union
       T = TypeVar("T", int, float)
-      Num: Any
+      Num = Union[T, complex]
       x: Union[int, complex] = ...
     """)
 

@@ -166,7 +166,8 @@ class BaseTest(unittest.TestCase):
                                          attribute_variable_annotations=True,
                                          check_parameter_types=True,
                                          chex_overlay=True,
-                                         create_pyi_dataclasses=True)
+                                         create_pyi_dataclasses=True,
+                                         preserve_union_macros=True)
 
   @property
   def loader(self):

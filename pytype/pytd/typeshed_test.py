@@ -90,7 +90,7 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
   def test_carriage_return(self):
     # _env_home is used in preference to _root, so make sure it's unset.
     self.ts._env_home = None
-    self.ts._stdlib_versions["foo"] = (3, 8)
+    self.ts._stdlib_versions["foo"] = ((3, 8), None)
     with file_utils.Tempdir() as d:
       d.create_file("stdlib/foo.pyi", b"x: int\r\n")
       self.ts._root = d.path
@@ -98,7 +98,7 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     self.assertEqual(src, "x: int\n")
 
   def test_carriage_return_custom_root(self):
-    self.ts._stdlib_versions["foo"] = (3, 8)
+    self.ts._stdlib_versions["foo"] = ((3, 8), None)
     with file_utils.Tempdir() as d:
       d.create_file("stdlib/foo.pyi", b"x: int\r\n")
       self.ts._env_home = d.path

@@ -362,11 +362,12 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
         y: str = 'hello'
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import ClassVar
       attr: module
       @attr.s
       class Foo(object):
         y: str
-        x: int
+        x: ClassVar[int]
         def __init__(self, y: str = ...) -> None: ...
     """)
 

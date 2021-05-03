@@ -423,10 +423,10 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       def f(x: Foo[int, str]): ...
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Dict, List, TypeVar, Union, Any
+      from typing import Dict, List, TypeVar, Union
       T = TypeVar("T")
       U = TypeVar("U")
-      Foo: Any
+      Foo = Union[T, List[T], Dict[T, List[U]], complex]
       def f(x: Union[Dict[int, List[str]], List[int], complex, int]) -> None: ...
     """)
 
@@ -615,12 +615,11 @@ class GenericTypeAliasTest(test_base.TargetPython3BasicTest):
       def f(x: X[T2], y: T2):
         pass
     """)
-    # TODO(b/140251808): X should not be Any.
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, TypeVar, Union
+      from typing import TypeVar, Union
       T1 = TypeVar('T1')
       T2 = TypeVar('T2')
-      X: Any
+      X = Union[int, T1]
       def f(x: Union[int, T2], y: T2) -> None: ...
     """)
 
@@ -632,11 +631,10 @@ class GenericTypeAliasTest(test_base.TargetPython3BasicTest):
       def f(x: X[str]):
         pass
     """)
-    # TODO(b/140251808): X should not be Any.
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, Union, TypeVar
+      from typing import Union, TypeVar
       T = TypeVar('T')
-      X: Any
+      X = Union[int, T]
       def f(x: Union[int, str]) -> None: ...
     """)
 
@@ -713,6 +711,52 @@ class GenericTypeAliasTest(test_base.TargetPython3BasicTest):
       def f(x: Callable[[int], Dict[float, Any]]) -> None: ...
     """)
     self.assertErrorRegexes(errors, {"e": r"Expected 2 parameter\(s\), got 1"})
+
+  def test_reingest_union(self):
+    foo = self.Infer("""
+      from typing import Optional, TypeVar
+      T = TypeVar('T')
+      X = Optional[T]
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo))
+      ty = self.Infer("""
+        import foo
+        from typing import TypeVar
+        T = TypeVar('T')
+        def f1(x: foo.X[int]):
+          pass
+        def f2(x: foo.X[T]) -> T:
+          assert x
+          return x
+      """, pythonpath=[d.path])
+    self.assertTypesMatchPytd(ty, """
+      foo: module
+      from typing import Optional, TypeVar
+      T = TypeVar('T')
+      def f1(x: Optional[int]) -> None: ...
+      def f2(x: Optional[T]) -> T: ...
+    """)
+
+  def test_multiple_options(self):
+    # distilled from real user code
+    ty = self.Infer("""
+      from typing import Any, Mapping, Sequence, TypeVar, Union
+      K = TypeVar('K')
+      V = TypeVar('V')
+      X = Union[Sequence, Mapping[K, Any], V]
+      try:
+        Y = X[str, V]
+      except TypeError:
+        Y = Union[Sequence, Mapping[str, Any], V]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Mapping, Sequence, TypeVar, Union
+      K = TypeVar('K')
+      V = TypeVar('V')
+      X = Union[Sequence, Mapping[K, Any], V]
+      Y = Union[Sequence, Mapping[str, Any], V]
+    """)
 
 
 class TypeVarTestPy3(test_base.TargetPython3FeatureTest):

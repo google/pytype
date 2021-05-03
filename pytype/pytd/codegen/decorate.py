@@ -63,7 +63,7 @@ def add_init_from_fields(
 
 
 def get_attributes(cls: pytd.Class):
-  """Get class attributes, filtering out properties."""
+  """Get class attributes, filtering out properties and ClassVars."""
   attributes = []
   for c in cls.constants:
     if isinstance(c.type, pytd.Annotated):
@@ -73,6 +73,9 @@ def get_attributes(cls: pytd.Class):
     elif c.name == "__doc__":
       # Filter docstrings out from the attribs list
       # (we emit them as `__doc__ : str` in pyi output)
+      pass
+    elif c.type.name == "typing.ClassVar":  # pytype: disable=attribute-error
+      # We do not want classvars treated as attribs
       pass
     else:
       attributes.append(c)
