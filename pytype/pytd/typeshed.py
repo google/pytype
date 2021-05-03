@@ -122,7 +122,8 @@ class Typeshed:
       module, min_major, min_minor, max_major, max_minor = match.groups()
       minimum = (int(min_major), int(min_minor))
       maximum = ((int(max_major), int(max_minor))
-                 if max_major is not None and max_minor is not None else None)
+                 if max_major is not None and max_minor is not None
+                 else None)
       versions[module] = minimum, maximum
     return versions
 
