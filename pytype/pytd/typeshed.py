@@ -104,20 +104,30 @@ class Typeshed:
     """Loads the contents of typeshed/stdlib/VERSIONS.
 
     VERSIONS lists the stdlib modules with the Python version in which they were
-    first added, in the format `{module}: {major}.{minor}`. Note that this file
-    ignores the stdlib/@python2 subdirectory! If stdlib/foo.pyi targets Python
-    3.6+ and stdlib/@python2/foo.pyi, 2.7, VERSIONS will contain `foo: 3.6`.
+    first added, in the format `{module}: {min_major}.{min_minor}-` or
+    `{module}: {min_major}.{min_minor}-{max_major}.{max_minor}`. Note that this
+    file ignores the stdlib/@python2 subdirectory! If stdlib/foo.pyi targets
+    Python 3.6+ and stdlib/@python2/foo.pyi, 2.7, VERSIONS will contain
+    `foo: 3.6-`.
 
     Returns:
-      A mapping from module name to (major, minor) Python version.
+      A mapping from module name to ((min_major, min_minor),
+      (max_major, max_minor)) Python version. The max tuple can be `None`.
     """
     _, text = self._load_file(os.path.join("stdlib", "VERSIONS"))
     versions = {}
     for line in text.splitlines():
-      match = re.fullmatch(r"(.+): (\d)\.(\d+)", line)
+      line2 = line.split("#")[0].strip()
+      if not line2:
+        continue
+      match = re.fullmatch(r"(.+): (\d)\.(\d+)(?:-(?:(\d)\.(\d))?)?", line2)
       assert match
-      module, major, minor = match.groups()
-      versions[module] = (int(major), int(minor))
+      module, min_major, min_minor, max_major, max_minor = match.groups()
+      minimum = (int(min_major), int(min_minor))
+      maximum = ((int(max_major), int(max_minor))
+                 if max_major is not None and max_minor is not None
+                 else None)
+      versions[module] = minimum, maximum
     return versions
 
   def _load_third_party_packages(self):
@@ -204,8 +214,7 @@ class Typeshed:
       # stdlib/foo exists and what versions it targets; we also have to
       # separately check for stdlib/@python2/foo.
       path = os.path.join(toplevel, module_path)
-      if ((module_parts[0] in self._stdlib_versions and
-           self._stdlib_versions[module_parts[0]] <= version) or
+      if (self._is_module_in_typeshed(module_parts[0], version) or
           path in self.missing):
         paths.append(path)
       if version[0] == 2:
@@ -238,6 +247,13 @@ class Typeshed:
         except IOError:
           pass
     raise IOError("Couldn't find %s" % module)
+
+  def _is_module_in_typeshed(self, name, version):
+    if name not in self._stdlib_versions:
+      return False
+    min_version, max_version = self._stdlib_versions[name]
+    return (min_version <= version and
+            (max_version is None or max_version >= version))
 
   def get_typeshed_paths(self, python_version):
     """Gets the paths to typeshed's version-specific pyi files."""
@@ -282,8 +298,7 @@ class Typeshed:
         else:
           # Check supported versions for stubs directly in stdlib/.
           module = os.path.splitext(filename)[0].split("/", 1)[0]
-          if (module not in self._stdlib_versions or
-              self._stdlib_versions[module] > python_version):
+          if not self._is_module_in_typeshed(module, python_version):
             continue
       yield filename
 
@@ -340,7 +355,7 @@ class Typeshed:
       return (2,)
     parts = filename.split(os.path.sep)
     if parts[0] == "stdlib":
-      if self._stdlib_versions[os.path.splitext(parts[1])[0]] >= (3, 0):
+      if self._stdlib_versions[os.path.splitext(parts[1])[0]][0] >= (3, 0):
         return (3,)
       else:
         return (2, 3)
