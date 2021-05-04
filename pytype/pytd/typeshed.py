@@ -105,14 +105,16 @@ class Typeshed:
 
     VERSIONS lists the stdlib modules with the Python version in which they were
     first added, in the format `{module}: {min_major}.{min_minor}-` or
-    `{module}: {min_major}.{min_minor}-{max_major}.{max_minor}`. Note that this
-    file ignores the stdlib/@python2 subdirectory! If stdlib/foo.pyi targets
-    Python 3.6+ and stdlib/@python2/foo.pyi, 2.7, VERSIONS will contain
-    `foo: 3.6-`.
+    `{module}: {min_major}.{min_minor}-{max_major}.{max_minor}`.
 
     Returns:
       A mapping from module name to ((min_major, min_minor),
-      (max_major, max_minor)) Python version. The max tuple can be `None`.
+      (max_major, max_minor), use_python2) Python version.
+      The max tuple can be `None`. The use_python2 member indicates
+      whether stubs are present in the @python2 directory. If so,
+      stubs outside @python2 should not be used. This is relevant
+      if a package contains more files in Python 3 than it did in
+      Python 2.
     """
     _, text = self._load_file(os.path.join("stdlib", "VERSIONS"))
     versions = {}
@@ -127,7 +129,10 @@ class Typeshed:
       maximum = ((int(max_major), int(max_minor))
                  if max_major is not None and max_minor is not None
                  else None)
-      versions[module] = minimum, maximum
+      use_python2 = min_major == "2" and (
+          self._file_exists(os.path.join("stdlib", "@python2", module + ".pyi"))
+          or self._file_exists(os.path.join("stdlib", "@python2", module)))
+      versions[module] = minimum, maximum, use_python2
     return versions
 
   def _load_third_party_packages(self):
@@ -136,8 +141,8 @@ class Typeshed:
     stubs/ contains type information for third-party packages. Each top-level
     directory corresponds to one PyPI package and contains one or more modules,
     plus a metadata file (METADATA.toml). If there are separate Python 2 stubs,
-    they live in an @python2 subdirectory. Unlike stdlib/VERSIONS, METADATA.toml
-    does take @python2 into account, so if a package has both foo.pyi and
+    they live in an @python2 subdirectory. METADATA.toml
+    takes @python2 into account, so if a package has both foo.pyi and
     @python2/foo.pyi, METADATA.toml will contain `python2 = True`.
 
     Returns:
@@ -211,14 +216,14 @@ class Typeshed:
     if toplevel == "stdlib":
       # stubs for the stdlib 'foo' module are located in either stdlib/foo or
       # (for Python 2) stdlib/@python2/foo. The VERSIONS file tells us whether
-      # stdlib/foo exists and what versions it targets; we also have to
-      # separately check for stdlib/@python2/foo.
+      # stdlib/foo exists and what versions it targets; we always have to check
+      # @python2 first for Python 2 stubs.
       path = os.path.join(toplevel, module_path)
+      if version[0] == 2:
+        paths.append(os.path.join(toplevel, "@python2", module_path))
       if (self._is_module_in_typeshed(module_parts[0], version) or
           path in self.missing):
         paths.append(path)
-      if version[0] == 2:
-        paths.append(os.path.join(toplevel, "@python2", module_path))
     elif toplevel == "third_party":
       # For third-party modules, we grab the alphabetically first package that
       # provides a module with the specified name in the right version.
@@ -251,16 +256,17 @@ class Typeshed:
   def _is_module_in_typeshed(self, name, version):
     if name not in self._stdlib_versions:
       return False
-    min_version, max_version = self._stdlib_versions[name]
+    min_version, max_version, _ = self._stdlib_versions[name]
     return (min_version <= version and
             (max_version is None or max_version >= version))
 
   def get_typeshed_paths(self, python_version):
     """Gets the paths to typeshed's version-specific pyi files."""
     major, _ = python_version
-    typeshed_subdirs = ["stdlib"]
+    typeshed_subdirs = []
     if major == 2:
       typeshed_subdirs.append(os.path.join("stdlib", "@python2"))
+    typeshed_subdirs.append("stdlib")
     for packages in self._third_party_packages.values():
       for package, v in packages:
         if v == major:
@@ -355,7 +361,10 @@ class Typeshed:
       return (2,)
     parts = filename.split(os.path.sep)
     if parts[0] == "stdlib":
-      if self._stdlib_versions[os.path.splitext(parts[1])[0]][0] >= (3, 0):
+      min_version, _, use_python2 = self._stdlib_versions[
+          os.path.splitext(parts[1])[0]]
+      # If use_python2 is true, we just use the stubs in @python2
+      if min_version >= (3, 0) or use_python2:
         return (3,)
       else:
         return (2, 3)

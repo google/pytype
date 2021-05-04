@@ -1,3 +1,17 @@
+Version 2021.05.04
+
+New features and updates:
+* Remove --check-attribute-types, --check-container-types, and
+  --check-variable-types flags. Their behaviors are now enabled by default.
+* Add a temporary --preserve-union-macros flag that preserves Union generic type
+  aliases in type stubs. This behavior will ultimately be enabled by default and
+  the flag removed.
+* Support max versions in typeshed VERSIONS file.
+
+Bug fixes:
+* Add typing.GenericMeta stub.
+* Fix handling of typeshed/stdlib/@python2.
+
 Version 2021.04.26
 
 New features and updates:
