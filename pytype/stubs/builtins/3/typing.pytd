@@ -58,6 +58,10 @@ class Generic(object):
   __slots__ = []
 
 
+if sys.version_info < (3, 7):
+  class GenericMeta(type): ...
+
+
 # This class is the implementation of PEP 586
 # (https://www.python.org/dev/peps/pep-0586/)
 class Literal(Generic[_T]):
