@@ -1814,16 +1814,3 @@ class DropMutableParameters(Visitor):
 
   def VisitParameter(self, p):
     return p.Replace(mutated_type=None)
-
-
-class ClassTypeToAny(base_visitor.Visitor):
-  """Change all ClassType objects with a given name to Any."""
-
-  def __init__(self, target_name):
-    super().__init__()
-    self.target_name = target_name
-
-  def VisitClassType(self, node):
-    if node.name == self.target_name:
-      return pytd.AnythingType()
-    return node

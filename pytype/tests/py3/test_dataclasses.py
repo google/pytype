@@ -846,5 +846,32 @@ class TestPyiDataclass(test_base.TargetPython3FeatureTest):
           def __init__(self, x, y: str, z: list, w: int) -> None: ...
       """)
 
+  def test_multi_step_recursion(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import dataclasses
+        @dataclasses.dataclass
+        class A:
+          x: B
+
+        class B(A):
+          y: int
+      """)
+      ty = self.Infer("""
+        import dataclasses
+        import foo
+        @dataclasses.dataclass
+        class C(foo.A):
+          w: int
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Any, List
+        dataclasses: module
+        foo: module
+        @dataclasses.dataclass
+        class C(foo.A):
+          w: int
+          def __init__(self, x: foo.B, w: int) -> None: ...
+      """)
 
 test_base.main(globals(), __name__ == "__main__")

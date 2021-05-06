@@ -46,6 +46,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     self.vm.convert = self  # to make constant_to_value calls below work
     self.pytd_convert = output.Converter(vm)
 
+    # If set, allow construction of recursive values, setting the
+    # self-referential field to Any
+    self.recursion_allowed = False
+
     self._convert_cache = {}
     self._resolved_late_types = {}  # performance cache
 
@@ -459,10 +463,11 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     key = ("constant", pyval, type_key)
     if key in self._convert_cache:
       if self._convert_cache[key] is None:
-        # This error is triggered by, e.g., classes inheriting from each other.
-        name = getattr(pyval, "name", None) or pyval.__class__.__name__
-        self.vm.errorlog.recursion_error(self.vm.frames, name)
         self._convert_cache[key] = self.unsolvable
+        # This error is triggered by, e.g., classes inheriting from each other.
+        if not self.recursion_allowed:
+          name = getattr(pyval, "name", None) or pyval.__class__.__name__
+          self.vm.errorlog.recursion_error(self.vm.frames, name)
       return self._convert_cache[key]
     else:
       self._convert_cache[key] = None  # for recursion detection
