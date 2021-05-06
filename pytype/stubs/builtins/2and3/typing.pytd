@@ -599,3 +599,8 @@ if sys.version_info >= (3, 9):
   class Annotated: ...
 
 TYPE_CHECKING = ...  # type: bool
+
+# This does not exist at runtime; it needs to be here because it's used by
+# typeshed (specifically, typing_extensions.pyi).
+class _Alias:
+    def __getitem__(self, typeargs: Any) -> Any: ...
