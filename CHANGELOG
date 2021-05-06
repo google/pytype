@@ -1,3 +1,9 @@
+Version 2021.05.06
+
+Bug fixes:
+* Add typing._Alias.
+* Pin attrs to 20.3.0.
+
 Version 2021.05.04
 
 New features and updates:
