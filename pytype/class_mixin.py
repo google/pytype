@@ -65,7 +65,7 @@ class Attribute:
   pytd_const: Any = None
 
   @classmethod
-  def from_pytd_constant(cls, const, vm):
+  def from_pytd_constant(cls, const, vm, *, kw_only=False):
     """Generate an Attribute from a pytd.Constant."""
     typ = vm.convert.constant_to_value(const.type)
     # We want to generate the default from the type, not from the value
@@ -73,13 +73,13 @@ class Attribute:
     val = const.value and typ.instantiate(vm.root_node)
     # Dataclasses and similar decorators in pytd files cannot set init and
     # kw_only properties.
-    return cls(name=const.name, typ=typ, init=True, kw_only=False, default=val,
-               pytd_const=const)
+    return cls(name=const.name, typ=typ, init=True, kw_only=kw_only,
+               default=val, pytd_const=const)
 
   @classmethod
   def from_param(cls, param, vm):
     const = pytd.Constant(param.name, param.type, param.optional)
-    return cls.from_pytd_constant(const, vm)
+    return cls.from_pytd_constant(const, vm, kw_only=param.kwonly)
 
   def to_pytd_constant(self):
     # TODO(mdemello): This is a bit fragile, but we only call this when
