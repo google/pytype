@@ -1,6 +1,7 @@
 """Representation of Python function headers and calls."""
 
 import collections
+import itertools
 import logging
 
 from pytype import abstract_utils
@@ -749,6 +750,28 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
                        {}, ret_map[t])
     return node, ret_map[t], mutations
 
+  @classmethod
+  def _collect_mutated_parameters(cls, typ, mutated_type):
+    if (isinstance(typ, pytd.UnionType) and
+        isinstance(mutated_type, pytd.UnionType)):
+      if len(typ.type_list) != len(mutated_type.type_list):
+        raise ValueError(
+            "Type list lengths do not match:\nOld: %s\nNew: %s" %
+            (typ.type_list, mutated_type.type_list))
+      return itertools.chain.from_iterable(
+          cls._collect_mutated_parameters(t1, t2)
+          for t1, t2 in zip(typ.type_list, mutated_type.type_list))
+    if typ == mutated_type and isinstance(typ, pytd.ClassType):
+      return []  # no mutation needed
+    if (not isinstance(typ, pytd.GenericType) or
+        not isinstance(mutated_type, pytd.GenericType) or
+        typ.base_type != mutated_type.base_type or
+        not isinstance(typ.base_type, pytd.ClassType) or
+        not typ.base_type.cls):
+      raise ValueError("Unsupported mutation:\n%r ->\n%r" %
+                       (typ, mutated_type))
+    return [zip(mutated_type.base_type.cls.template, mutated_type.parameters)]
+
   def _get_mutation(self, node, arg_dict, subst):
     """Mutation for changing the type parameters of mutable arguments.
 
@@ -782,13 +805,16 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
       actual = arg_dict[formal.name]
       arg = actual.data
       if (formal.mutated_type is not None and arg.isinstance_SimpleValue()):
-        if (isinstance(formal.type, pytd.GenericType) and
-            isinstance(formal.mutated_type, pytd.GenericType) and
-            formal.type.base_type == formal.mutated_type.base_type and
-            isinstance(formal.type.base_type, pytd.ClassType) and
-            formal.type.base_type.cls):
-          names_actuals = zip(formal.mutated_type.base_type.cls.template,
-                              formal.mutated_type.parameters)
+        try:
+          all_names_actuals = self._collect_mutated_parameters(
+              formal.type, formal.mutated_type)
+        except ValueError:
+          log.error("Old: %s", pytd_utils.Print(formal.type))
+          log.error("New: %s", pytd_utils.Print(formal.mutated_type))
+          log.error("Actual: %r", actual)
+          raise ValueError("Mutable parameters setting a type to a "
+                           "different base type is not allowed.")
+        for names_actuals in all_names_actuals:
           for tparam, type_actual in names_actuals:
             log.info("Mutating %s to %s",
                      tparam.name,
@@ -797,12 +823,6 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
                 abstract_utils.AsInstance(type_actual), subst, node,
                 discard_concrete_values=True)
             mutations.append(Mutation(arg, tparam.full_name, type_actual_val))
-        else:
-          log.error("Old: %s", pytd_utils.Print(formal.type))
-          log.error("New: %s", pytd_utils.Print(formal.mutated_type))
-          log.error("Actual: %r", actual)
-          raise ValueError("Mutable parameters setting a type to a "
-                           "different base type is not allowed.")
     return mutations
 
   def get_positional_names(self):

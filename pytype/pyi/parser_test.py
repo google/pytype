@@ -1307,6 +1307,22 @@ class FunctionTest(_ParserTestBase):
       def foo(x) -> int:
           y = int""", 1, "No parameter named y")
 
+  def test_mutator_from_annotation(self):
+    self.check("""
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+          def __init__(self: Foo[str]) -> None: ...
+    """, """
+      from typing import Generic, TypeVar
+
+      T = TypeVar('T')
+
+      class Foo(Generic[T]):
+          def __init__(self) -> None:
+              self = Foo[str]
+    """)
+
   def test_exceptions(self):
     self.check("""
       def foo(x) -> int:
