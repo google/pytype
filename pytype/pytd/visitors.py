@@ -376,14 +376,21 @@ def _LookupItemRecursive(module, module_name, name):
   partial_name = module_name
   prev_item = None
   item = module
+
+  def ExtractClass(t):
+    if isinstance(t, pytd.ClassType):
+      return t.cls
+    t = module.Lookup(t.name)  # may raise KeyError
+    if isinstance(t, pytd.Class):
+      return t
+    raise KeyError(t.name)
+
   for part in parts:
     prev_item = item
     # Check the type of item and give up if we encounter a type we don't know
     # how to handle.
     if isinstance(item, pytd.Constant):
-      if not isinstance(item.type, pytd.ClassType):
-        raise KeyError(name)
-      item = item.type.cls
+      item = ExtractClass(item.type)  # may raise KeyError
     elif not isinstance(item, (pytd.TypeDeclUnit, pytd.Class)):
       raise KeyError(name)
     lookup_name = partial_name + "." + part
@@ -404,12 +411,9 @@ def _LookupItemRecursive(module, module_name, name):
       if not isinstance(item, pytd.Class):
         raise
       for parent in item.parents:
-        if not isinstance(parent, pytd.ClassType):
-          # If the parent is unknown, we don't know whether it contains the name
-          # part, so it cannot be resolved.
-          raise
+        parent_cls = ExtractClass(parent)  # may raise KeyError
         try:
-          item = Lookup(parent.cls, lookup_name, part)
+          item = Lookup(parent_cls, lookup_name, part)
         except KeyError:
           continue  # continue up the MRO
         else:
