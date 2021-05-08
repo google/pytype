@@ -12,7 +12,7 @@ freshness: { owner: 'mdemello' reviewed: '2020-07-09' }
       * [Matching](#matching)
       * [Construction](#construction)
 
-<!-- Added by: rechen, at: 2020-11-09T11:54-08:00 -->
+<!-- Added by: rechen, at: 2021-05-07T17:10-07:00 -->
 
 <!--te-->
 
@@ -119,11 +119,11 @@ globals = {'A': obj1, 'foo': obj3}
 ```
 
 The `abstract.*` classes are defined in `abstract.py`. They all inherit from the
-base class `BaseValue`, which is the pytype representation of a python
-object, and store various metadata that is relevant to type inference and
-checking (e.g.  the `InterpreterClass` object stores a list of base classes and
-a dictionary of members, and the `Instance` object stores a reference to the
-`InterpreterClass` object it was instantiated from).
+base class `BaseValue`, which is the pytype representation of a python object,
+and store various metadata that is relevant to type inference and checking (e.g.
+the `InterpreterClass` object stores a list of base classes and a dictionary of
+members, and the `Instance` object stores a reference to the `InterpreterClass`
+object it was instantiated from).
 
 TIP: The [abstract_utils][abstract_utils] module contains many useful functions
 for working with abstract values. Additionally, all abstract values have a `vm`
@@ -225,17 +225,17 @@ contains most of the important logic and adds some caching. A few input-output
 examples for `constant_to_value`:
 
 `pyval`         | `constant_to_value(pyval)`
---------------- | --------------------------
+--------------- | ---------------------------------------
 `'hello world'` | `abstract.ConcreteValue('hello world')`
 `0`             | `abstract.ConcreteValue(0)`
 `42`            | `abstract.Instance(int)`
 `pytd.Class(X)` | `abstract.PyTDClass(X)`
 
 Some constants such as strings and small integers have to be represented as
-`ConcreteValue` objects, which save the concrete value for later use.
-String values, for example, often contain forward references, and `-1` through
-`2` are common import levels. Otherwise, constants are converted to abstract
-instances of their types.
+`ConcreteValue` objects, which save the concrete value for later use. String
+values, for example, often contain forward references, and `-1` through `2` are
+common import levels. Otherwise, constants are converted to abstract instances
+of their types.
 
 When code under analysis imports another module, pytype parses the other
 module's types into PyTD nodes. Those nodes that are used in the current module
