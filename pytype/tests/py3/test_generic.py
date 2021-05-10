@@ -779,6 +779,25 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       x: int
     """)
 
+  def test_inference_with_subclass(self):
+    ty = self.Infer("""
+      from typing import Generic, TypeVar
+      T = TypeVar('T', int, str)
+      class Foo(Generic[T]):
+        def __init__(self, x: T):
+          self.x = x
+      class Bar(Foo[int]): ...
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Generic, TypeVar
+      T = TypeVar('T', int, str)
+      class Foo(Generic[T]):
+        x: T
+        def __init__(self, x: T) -> None: ...
+      class Bar(Foo[int]):
+        x: int
+    """)
+
 
 class GenericFeatureTest(test_base.TargetPython3FeatureTest):
   """Tests for User-defined Generic Type."""

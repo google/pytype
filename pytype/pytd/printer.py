@@ -357,6 +357,11 @@ class PrintVisitor(base_visitor.Visitor):
     # Its name is `ClsName` before `[`.
     elif node.name == "self" and self.class_names and (
         self.class_names[-1].split("[")[0] == node.type.split("[")[0]):
+      if "[" in node.type:
+        elided = node.type.split("[", 1)[-1]
+        for k in self._typing_import_counts:
+          if re.search(r"(^|\W)%s($|\W)" % k, elided):
+            self._typing_import_counts[k] -= 1
       return node.name + suffix
     elif node.name == "cls" and self.class_names and (
         node.type == "Type[%s]" % self.class_names[-1]):
