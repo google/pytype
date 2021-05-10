@@ -2755,11 +2755,10 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     # InitVar attributes to generate __init__, so the fields we want to add to
     # the subclass __init__ are the init params rather than the full list of
     # class attributes.
-    name = self.pytd_cls.name
     init = next(x for x in self.pytd_cls.methods if x.name == "__init__")
     params = init.signatures[0].params[1:]
-    own_attrs = [class_mixin.Attribute.from_param(p, name, self.vm)
-                 for p in params]
+    with self.vm.allow_recursive_convert():
+      own_attrs = [class_mixin.Attribute.from_param(p, self.vm) for p in params]
     self.compute_attr_metadata(own_attrs, decorator)
 
   def _recompute_init_from_metadata(self, key):

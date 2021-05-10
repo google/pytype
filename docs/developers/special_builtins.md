@@ -15,7 +15,7 @@ freshness: { owner: 'mdemello' reviewed: '2020-09-18' }
          * [Instances](#instances)
       * [Variables and data](#variables-and-data)
 
-<!-- Added by: rechen, at: 2020-12-01T17:02-08:00 -->
+<!-- Added by: rechen, at: 2021-05-07T17:10-07:00 -->
 
 <!--te-->
 
@@ -73,8 +73,8 @@ pytype analyses this bytecode it needs to implement any special behaviour when
 
 The return types of special builtins are sometimes special objects too; we model
 these with corresponding custom classes deriving directly from
-`abstract.BaseValue` and implementing the right behaviour for various
-attribute and method accesses.
+`abstract.BaseValue` and implementing the right behaviour for various attribute
+and method accesses.
 
 ## Invoking
 
@@ -139,9 +139,9 @@ class PropertyInstance(mixin.HasSlots, ...):
     return self.vm.call_function(self.fget, ...)
 ```
 
-NOTE: Slots are implemented via the `get_special_attribute` method in
-the `abstract.py/BaseValue` hierarchy and the corresponding override
-in `mixin.HasSlots`.
+NOTE: Slots are implemented via the `get_special_attribute` method in the
+`abstract.py/BaseValue` hierarchy and the corresponding override in
+`mixin.HasSlots`.
 
 ### Instances
 
@@ -194,8 +194,8 @@ clear the distinction between Data (representation of python objects) and
 Variables (typegraph representations of a python variable, potentially with
 multiple Bindings to data). The special builtins' `call()` methods all take
 arguments in `Variable` form, perform computations on the underlying
-`BaseValue`s, and then construct a new `Variable` with the results of
-those computations.
+`BaseValue`s, and then construct a new `Variable` with the results of those
+computations.
 
 Look for the pattern
 

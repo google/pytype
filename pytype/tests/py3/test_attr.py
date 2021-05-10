@@ -523,4 +523,31 @@ class TestPyiAttrs(test_base.TargetPython3FeatureTest):
           def __init__(self, x: bool, y: int, z: str, a: str = ...) -> None: ...
       """)
 
+  def test_subclass_with_kwonly(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import attr
+        @attr.s
+        class A:
+          x: bool
+          y: int
+          def __init__(self, x: bool, *, y: int = ...): ...
+      """)
+      ty = self.Infer("""
+        import attr
+        import foo
+        @attr.s(auto_attribs=True)
+        class Foo(foo.A):
+          z: str
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        attr: module
+        foo: module
+        @attr.s
+        class Foo(foo.A):
+          z: str
+          def __init__(self, x: bool, z: str, *, y: int = ...) -> None: ...
+      """)
+
+
 test_base.main(globals(), __name__ == "__main__")

@@ -116,6 +116,10 @@ class NameAndSig(pytd_function.NameAndSig):
     sig = _pytd_signature(function, is_async, exceptions=exceptions)
 
     # mutators
+    # If `self` is generic, a type parameter is being mutated.
+    if (sig.params and sig.params[0].name == "self" and
+        isinstance(sig.params[0].type, pytd.GenericType)):
+      mutators.append(Mutator("self", sig.params[0].type))
     for mutator in mutators:
       try:
         sig = sig.Visit(mutator)

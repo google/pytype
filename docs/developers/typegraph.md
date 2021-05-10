@@ -22,7 +22,7 @@ freshness: { owner: 'tsudol' reviewed: '2020-11-20' }
          * [A More Complex Example](#a-more-complex-example)
          * [Shortcircuiting and the solver cache](#shortcircuiting-and-the-solver-cache)
 
-<!-- Added by: rechen, at: 2020-12-08T19:37-08:00 -->
+<!-- Added by: rechen, at: 2021-05-07T17:10-07:00 -->
 
 <!--te-->
 
@@ -181,8 +181,8 @@ What data does a Binding actually bind?
 
 In an expression like `x = a()`, pytype will add a Binding to `x` stating that
 `x` is bound to whatever value `a` returns. This value will be an instance of (a
-subclass of) `abstract.BaseValue`, the type that represents values in
-the Python program being analyzed.
+subclass of) `abstract.BaseValue`, the type that represents values in the Python
+program being analyzed.
 
 But the typegraph is implemented in C++. That means the typegraph works with
 `PyObject` pointers. And to store those, the Binding class can hold onto a

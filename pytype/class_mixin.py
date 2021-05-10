@@ -11,7 +11,6 @@ from pytype import function
 from pytype import mixin
 from pytype.pytd import mro
 from pytype.pytd import pytd
-from pytype.pytd import visitors
 
 log = logging.getLogger(__name__)
 
@@ -66,24 +65,21 @@ class Attribute:
   pytd_const: Any = None
 
   @classmethod
-  def from_pytd_constant(cls, const, class_name, vm):
+  def from_pytd_constant(cls, const, vm, *, kw_only=False):
     """Generate an Attribute from a pytd.Constant."""
-    # We cannot yet handle recursive type annotations in pyi dataclasses, so set
-    # them to Any without raising an exception.
-    typ = const.type.Visit(visitors.ClassTypeToAny(class_name))  # pytype: disable=attribute-error
-    typ = vm.convert.constant_to_value(typ)
+    typ = vm.convert.constant_to_value(const.type)
     # We want to generate the default from the type, not from the value
     # (typically value will be Ellipsis or a similar placeholder).
     val = const.value and typ.instantiate(vm.root_node)
     # Dataclasses and similar decorators in pytd files cannot set init and
     # kw_only properties.
-    return cls(name=const.name, typ=typ, init=True, kw_only=False, default=val,
-               pytd_const=const)
+    return cls(name=const.name, typ=typ, init=True, kw_only=kw_only,
+               default=val, pytd_const=const)
 
   @classmethod
-  def from_param(cls, param, class_name, vm):
+  def from_param(cls, param, vm):
     const = pytd.Constant(param.name, param.type, param.optional)
-    return cls.from_pytd_constant(const, class_name, vm)
+    return cls.from_pytd_constant(const, vm, kw_only=param.kwonly)
 
   def to_pytd_constant(self):
     # TODO(mdemello): This is a bit fragile, but we only call this when

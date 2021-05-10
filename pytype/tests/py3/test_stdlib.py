@@ -78,6 +78,13 @@ class StdLibTestsBasic(test_base.TargetPython3BasicTest,
     self._testCollectionsObject(
         "MutableMapping", "{}", "42", r"MutableMapping.*int")
 
+  def test_tempdir_name(self):
+    self.Check("""
+      import tempfile
+      def f() -> str:
+        return tempfile.TemporaryDirectory().name
+    """)
+
 
 class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
                           test_utils.TestCollectionsMixin):

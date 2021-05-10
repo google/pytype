@@ -11,7 +11,7 @@
       * [Pytype's pyi stub files](#pytypes-pyi-stub-files)
       * [Compatibility](#compatibility)
 
-<!-- Added by: rechen, at: 2021-03-17T15:54-07:00 -->
+<!-- Added by: rechen, at: 2021-05-07T17:10-07:00 -->
 
 <!--te-->
 
@@ -176,9 +176,9 @@ Above, we only silenced the error pytype gave us. A better fix is to make pytype
 aware of the attributes `Server` has (or is going to have). For this, we use
 the following approaches to add a *variable annotation*.
 
-1. [PEP 526][pep-526]-style annotation (only in Python 3.6+).
+1. Preferred: [PEP 526][pep-526]-style annotation.
 
-   In Python 3.6+, the preferred approach is to add a
+   As of Python 3.6, the preferred approach is to add a
    [PEP 526][pep-526]-style annotation:
 
    ```python
@@ -196,8 +196,9 @@ the following approaches to add a *variable annotation*.
        self.socket = None  # type: socket.socket
    ```
 
-   While this method doesn't look as clear as the first, it works in both Python
-   2 and Python 3.
+   While this method doesn't look as clear as the first, it works in both
+   Python 2 and Python 3. This should only be used if you need to support
+   Python 2 or early versions of Python 3.
 
 3. Type comment as class attribute.
 

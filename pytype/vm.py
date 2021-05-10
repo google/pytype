@@ -228,6 +228,15 @@ class VirtualMachine:
     finally:
       self._late_annotations_stack = old_late_annotations_stack
 
+  @contextlib.contextmanager
+  def allow_recursive_convert(self):
+    old = self.convert.recursion_allowed
+    self.convert.recursion_allowed = True
+    try:
+      yield
+    finally:
+      self.convert.recursion_allowed = old
+
   def trace_opcode(self, op, symbol, val):
     """Record trace data for other tools to use."""
     if not self._trace_opcodes:

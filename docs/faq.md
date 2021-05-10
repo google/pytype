@@ -7,7 +7,6 @@
       * [How do I reference a type from within its definition? (Forward References)](#how-do-i-reference-a-type-from-within-its-definition-forward-references)
       * [I'm dynamically populating a class / module using setattr or by modifying <code>locals()</code> / <code>globals()</code>. Now pytype complains about missing attributes or module members. How do I fix this?](#im-dynamically-populating-a-class--module-using-setattr-or-by-modifying-locals--globals-now-pytype-complains-about-missing-attributes-or-module-members-how-do-i-fix-this)
       * [Why didn't pytype catch that my program (might) pass an invalid argument to a function?](#why-didnt-pytype-catch-that-my-program-might-pass-an-invalid-argument-to-a-function)
-      * [Why didn't pytype catch that I changed the type of an annotated variable?](#why-didnt-pytype-catch-that-i-changed-the-type-of-an-annotated-variable)
       * [How do I declare that something can be either byte string or unicode?](#how-do-i-declare-that-something-can-be-either-byte-string-or-unicode)
       * [I'm trying to use a mixin, but pytype raises errors about it. What should I do?](#im-trying-to-use-a-mixin-but-pytype-raises-errors-about-it-what-should-i-do)
       * [Why is pytype taking so long?](#why-is-pytype-taking-so-long)
@@ -16,7 +15,7 @@
       * [How do I write code that is seen by pytype but ignored at runtime?](#how-do-i-write-code-that-is-seen-by-pytype-but-ignored-at-runtime)
       * [How do I silence overzealous pytype errors when adding multiple types to a dict (or list, set, etc.)?](#how-do-i-silence-overzealous-pytype-errors-when-adding-multiple-types-to-a-dict-or-list-set-etc)
 
-<!-- Added by: mdemello, at: 2021-04-14T16:11-07:00 -->
+<!-- Added by: rechen, at: 2021-05-07T17:10-07:00 -->
 
 <!--te-->
 

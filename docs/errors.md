@@ -64,7 +64,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: mdemello, at: 2020-08-10T13:15-07:00 -->
+<!-- Added by: rechen, at: 2021-05-07T17:10-07:00 -->
 
 <!--te-->
 
@@ -78,8 +78,6 @@ Example:
 ```python
 x: int = 'hello world'
 ```
-
-NOTE: This is currently only checked for fields within a @dataclass definition.
 
 ## attribute-error
 
