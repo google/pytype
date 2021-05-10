@@ -32,7 +32,7 @@ def _validate_class(cls: pytd.Class, decorator: str) -> None:
 
 
 def _decorator_names(cls: pytd.Class) -> List[str]:
-  return [x.type.name for x in reversed(cls.decorators)]  # pytype: disable=attribute-error
+  return [x.type.name for x in reversed(cls.decorators)]
 
 
 def check_defaults(fields: Iterable[pytd.Constant], cls_name: str):
@@ -74,7 +74,7 @@ def get_attributes(cls: pytd.Class):
       # Filter docstrings out from the attribs list
       # (we emit them as `__doc__ : str` in pyi output)
       pass
-    elif c.type.name == "typing.ClassVar":  # pytype: disable=attribute-error
+    elif c.type.name == "typing.ClassVar":
       # We do not want classvars treated as attribs
       pass
     else:

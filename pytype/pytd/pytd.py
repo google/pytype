@@ -29,6 +29,7 @@ Node = node.Node
 
 # Each type class below should inherit from this mixin.
 class Type:
+  name: Optional[str]
   __slots__ = ()
 
 

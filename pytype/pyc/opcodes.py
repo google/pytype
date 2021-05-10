@@ -1,8 +1,5 @@
 """Opcode definitions for both Python 2 and Python 3."""
 
-# Because pytype takes too long:
-# pytype: skip-file
-
 import six
 import six.moves
 
@@ -1370,8 +1367,7 @@ def _dis(python_version, data, mapping, reader,
         oparg += end_pos
       pretty = _prettyprint_arg(cls, oparg, co_consts, co_names, co_varnames,
                                 cellvars_freevars)
-      code.append(
-          cls(index, line, oparg, pretty))  # pytype: disable=wrong-arg-count
+      code.append(cls(index, line, oparg, pretty))
     else:
       code.append(cls(index, line))
 

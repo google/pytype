@@ -164,7 +164,7 @@ def check_or_generate_pyi(options, loader=None):
     if options.nofail:
       log.warning("***Caught exception: %s", str(e), exc_info=True)
       if not options.check:
-        result += (  # pytype: disable=name-error
+        result += (
             "# Caught error in pytype: " + str(e).replace("\n", "\n#")
             + "\n# " + "\n# ".join(traceback.format_exc().splitlines()))
     else:
