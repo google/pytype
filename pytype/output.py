@@ -4,6 +4,7 @@ import collections
 import contextlib
 import enum
 import logging
+from typing import cast
 
 from pytype import abstract
 from pytype import abstract_utils
@@ -640,7 +641,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         elif isinstance(value, special_builtins.ClassMethodInstance):
           add_decorated_method(name, value, pytd.MethodTypes.CLASSMETHOD)
         elif isinstance(value, abstract.Function):
-          method = self.value_to_pytd_def(node, value, name)
+          # value_to_pytd_def returns different pytd node types depending on the
+          # input type, which pytype struggles to reason about.
+          method = cast(pytd.Function,
+                        self.value_to_pytd_def(node, value, name))
           keep = lambda name: not name or name.startswith(v.name)
           signatures = tuple(s for s in method.signatures
                              if not s.params or keep(s.params[0].type.name))
