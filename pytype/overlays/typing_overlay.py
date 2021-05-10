@@ -767,6 +767,7 @@ typing_overlay = {
     "Optional": overlay.build("Optional", Optional),
     "Tuple": overlay.build("Tuple", Tuple),
     "TypeVar": build_typevar,
+    "TypedDict": overlay.build("TypedDict", not_supported_yet),
     "Union": Union,
     "TYPE_CHECKING": build_typechecking,
     "cast": build_cast,
