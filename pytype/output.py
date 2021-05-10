@@ -4,6 +4,7 @@ import collections
 import contextlib
 import enum
 import logging
+from typing import cast
 
 from pytype import abstract
 from pytype import abstract_utils
@@ -640,13 +641,24 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         elif isinstance(value, special_builtins.ClassMethodInstance):
           add_decorated_method(name, value, pytd.MethodTypes.CLASSMETHOD)
         elif isinstance(value, abstract.Function):
+          # value_to_pytd_def returns different pytd node types depending on the
+          # input type, which pytype struggles to reason about.
+          method = cast(pytd.Function,
+                        self.value_to_pytd_def(node, value, name))
+          keep = lambda name: not name or name.startswith(v.name)
+          signatures = tuple(s for s in method.signatures
+                             if not s.params or keep(s.params[0].type.name))
+          if signatures and signatures != method.signatures:
+            # Filter out calls made from subclasses unless they are the only
+            # ones recorded; when inferring types for ParentClass.__init__, we
+            # do not want `self: Union[ParentClass, Subclass]`.
+            method = method.Replace(signatures=signatures)
           # TODO(rechen): Removing mutations altogether won't work for generic
           # classes. To support those, we'll need to change the mutated type's
           # base to the current class, rename aliased type parameters, and
           # replace any parameter not in the class or function template with
           # its upper value.
-          methods[name] = self.value_to_pytd_def(node, value, name).Visit(
-              visitors.DropMutableParameters())
+          methods[name] = method.Visit(visitors.DropMutableParameters())
         else:
           cls = self.vm.convert.merge_classes([value])
           node, attr = self.vm.attribute_handler.get_attribute(

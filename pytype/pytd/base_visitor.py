@@ -61,7 +61,7 @@ def _GetChildTypes(node_classes, cls: Any):
       types.add(t)
 
   for field in attr.fields(cls):
-    AddType(field.type)  # pytype: disable=invalid-typevar
+    AddType(field.type)
 
   # Verify that all late types have been converted.
   for x in types:

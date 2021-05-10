@@ -452,7 +452,7 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
   # anything by way of maintainability or readability?
 
   def __init__(self, ast, module_name, **kwargs):
-    super().__init__(ast=ast, **kwargs)  # pytype: disable=wrong-keyword-args
+    super().__init__(ast=ast, **kwargs)
     self.stack = []
     self.class_ids = []
     self.envs = {}

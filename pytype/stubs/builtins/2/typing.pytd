@@ -595,6 +595,10 @@ if sys.version_info >= (3, 6):
 # to reuse this definition for typing_extensions in lower versions.
 def final(x: _T) -> _T: ...
 
+if sys.version_info >= (3, 8):
+  # Not supported yet, but we want typeshed to be able to reference this.
+  class TypedDict: ...
+
 if sys.version_info >= (3, 9):
   class Annotated: ...
 

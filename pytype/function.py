@@ -205,7 +205,7 @@ class Signature:
       if attr not in kwargs:
         kwargs[attr] = getattr(self, attr)
     kwargs["postprocess_annotations"] = False
-    return type(self)(**kwargs)  # pytype: disable=missing-parameter
+    return type(self)(**kwargs)
 
   def iter_args(self, args):
     """Iterates through the given args, attaching names and expected types."""

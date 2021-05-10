@@ -276,14 +276,18 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         node, attr = self._get_attribute_computed(
             node, cls, name, valself, compute_function="__getattr__")
     if attr is None:
-      annots = abstract_utils.get_annotations_dict(obj.members)
-      if annots:
-        typ = annots.get_type(node, name)
-        if typ:
-          # An attribute has been declared but not defined, e.g.,
-          #   class Foo:
-          #     bar: int
-          _, attr = self.vm.annotations_util.init_annotation(node, name, typ)
+      for base in obj.mro:
+        if not isinstance(base, abstract.InterpreterClass):
+          break
+        annots = abstract_utils.get_annotations_dict(base.members)
+        if annots:
+          typ = annots.get_type(node, name)
+          if typ:
+            # An attribute has been declared but not defined, e.g.,
+            #   class Foo:
+            #     bar: int
+            _, attr = self.vm.annotations_util.init_annotation(node, name, typ)
+            break
     if attr is not None:
       attr = self._filter_var(node, attr)
     if attr is None and obj.maybe_missing_members:

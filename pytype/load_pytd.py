@@ -1,10 +1,5 @@
 """Load and link .pyi files."""
 
-# TODO(b/175443166): pytype cannot infer the type of Loader._modules correctly.
-# Once strict attribute checking is rolled out, we should be able to annotate
-# _modules and remove this disable.
-# pytype: disable=attribute-error
-
 import collections
 import logging
 import os
@@ -135,7 +130,8 @@ class _ModuleMap:
 
   def __init__(self, python_version, modules=None):
     self.python_version = python_version
-    self._modules = modules or self._base_modules(self.python_version)
+    self._modules: Dict[str, Module] = modules or self._base_modules(
+        self.python_version)
     if self._modules["builtins"].needs_unpickling():
       self._unpickle_module(self._modules["builtins"])
     if self._modules["typing"].needs_unpickling():
