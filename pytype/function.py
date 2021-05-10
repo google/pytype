@@ -808,12 +808,12 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
         try:
           all_names_actuals = self._collect_mutated_parameters(
               formal.type, formal.mutated_type)
-        except ValueError:
+        except ValueError as e:
           log.error("Old: %s", pytd_utils.Print(formal.type))
           log.error("New: %s", pytd_utils.Print(formal.mutated_type))
           log.error("Actual: %r", actual)
           raise ValueError("Mutable parameters setting a type to a "
-                           "different base type is not allowed.")
+                           "different base type is not allowed.") from e
         for names_actuals in all_names_actuals:
           for tparam, type_actual in names_actuals:
             log.info("Mutating %s to %s",
