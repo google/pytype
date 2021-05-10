@@ -227,5 +227,20 @@ class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):
         def do_something(self, x: str) -> None: ...
     """)
 
+  def test_inherit_declared_attribute(self):
+    ty = self.Infer("""
+      class Foo:
+        x: int
+      class Bar(Foo):
+        def f(self):
+          return self.x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Foo:
+        x: int
+      class Bar(Foo):
+        def f(self) -> int: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
