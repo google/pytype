@@ -558,5 +558,20 @@ class BuiltinTests(test_base.TargetIndependentTest):
       def f(tz) -> NoneType: ...
   """)
 
+  def test_fraction_subclass(self):
+    ty = self.Infer("""
+      import fractions
+      class MyClass(fractions.Fraction):
+        pass
+      def foo() -> MyClass:
+        return MyClass(1, 2)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      fractions = ...  # type: module
+      class MyClass(fractions.Fraction):
+        pass
+      def foo() -> MyClass: ...
+  """)
+
 
 test_base.main(globals(), __name__ == "__main__")
