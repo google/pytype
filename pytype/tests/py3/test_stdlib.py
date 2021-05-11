@@ -85,6 +85,20 @@ class StdLibTestsBasic(test_base.TargetPython3BasicTest,
         return tempfile.TemporaryDirectory().name
     """)
 
+  def test_fraction_subclass(self):
+    ty = self.Infer("""
+      import fractions
+      class MyClass(fractions.Fraction):
+        pass
+      def foo() -> MyClass:
+        return MyClass(1, 2)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      fractions: module
+      class MyClass(fractions.Fraction): ...
+      def foo() -> MyClass: ...
+  """)
+
 
 class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
                           test_utils.TestCollectionsMixin):
