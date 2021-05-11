@@ -1,4 +1,17 @@
+Version 2021.05.11
+
+Bug fixes:
+* Report [not-supported-yet] instead of [import-error] for importing TypedDict.
+* Fix a bug in attribute lookup from parent classes.
+* Fix a Python 3.7 failure in typeshed/tests/pytype_test.py.
+* pytd: populated mutated_type from annotated `self` parameters.
+* Preserve kw_only attribute when inheriting attrs from a different module.
+* Add a vm state to allow recursive construction of pytd values.
+
 Version 2021.05.06
+
+New features and updates:
+* Update typeshed pin to commit 2c8cb60 from Apr 27.
 
 Bug fixes:
 * Add typing._Alias.
