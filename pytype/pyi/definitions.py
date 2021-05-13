@@ -25,10 +25,12 @@ from typed_ast import ast3
 _TYPING_SETS = ("typing.Intersection", "typing.Optional", "typing.Union")
 
 # Aliases for some typing.X types
-_TUPLE_TYPES = ("tuple", "builtins.tuple", "typing.Tuple")
-_CALLABLE_TYPES = ("typing.Callable", "collections.abc.Callable")
-_LITERAL_TYPES = ("typing.Literal", "typing_extensions.Literal")
 _ANNOTATED_TYPES = ("typing.Annotated", "typing_extensions.Annotated")
+_CALLABLE_TYPES = ("typing.Callable", "collections.abc.Callable")
+_CONCATENATE_TYPES = ("typing.Concatenate", "typing_extensions.Concatenate")
+_LITERAL_TYPES = ("typing.Literal", "typing_extensions.Literal")
+_TUPLE_TYPES = ("tuple", "builtins.tuple", "typing.Tuple")
+_TYPEGUARD_TYPES = ("typing.TypeGuard", "typing_extensions.TypeGuard")
 
 
 def _split_definitions(defs: List[Any]):
@@ -432,6 +434,10 @@ class Definitions:
       return types.pytd_literal(parameters)
     elif self._matches_named_type(base_type, _ANNOTATED_TYPES):
       return types.pytd_annotated(parameters)
+    elif self._matches_named_type(base_type, _TYPEGUARD_TYPES):
+      # We do not yet support PEP 647, User-Defined Type Guards. To avoid
+      # blocking typeshed, convert type guards to plain bools.
+      return pytd.NamedType("bool")
     elif any(isinstance(p, types.Constant) for p in parameters):
       parameters = ", ".join(
           p.repr_str() if isinstance(p, types.Constant) else "_"
@@ -458,8 +464,8 @@ class Definitions:
           # To avoid blocking typeshed from adopting this PEP, we convert new
           # features to Any.
           if p in self.param_specs or (
-              isinstance(p, pytd.GenericType) and self._matches_full_name(
-                  p, ("typing.Concatenate", "typing_extensions.Concatenate"))):
+              isinstance(p, pytd.GenericType) and
+              self._matches_full_name(p, _CONCATENATE_TYPES)):
             callable_parameters.append(pytd.AnythingType())
           else:
             callable_parameters.append(p)

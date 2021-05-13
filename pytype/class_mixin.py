@@ -419,9 +419,17 @@ class Class(metaclass=mixin.MixinMeta):
     # calc MRO and replace them with original base classes
     return tuple(base2cls[base] for base in mro.MROMerge(newbases))
 
-  def _get_base_class_attrs(self, cls_attrs, metadata_key):
+  def _get_mro_attrs_for_attrs(self, cls_attrs, metadata_key):
     """Traverse the MRO and collect base class attributes for metadata_key."""
-    # We only add an attribute if it hasn't been defined before.
+    # For dataclasses, attributes preserve the ordering from the reversed MRO,
+    # but derived classes can override the type of an attribute. For attrs,
+    # derived attributes follow a more complicated scheme which we reproduce
+    # below.
+    #
+    # We take the dataclass behaviour as default, and special-case attrs.
+    #
+    # TODO(mdemello): See https://github.com/python-attrs/attrs/issues/428 -
+    # there are two separate behaviours, based on a `collect_by_mro` argument.
     base_attrs = []
     taken_attr_names = {a.name for a in cls_attrs}
     for base_cls in self.mro[1:]:
@@ -434,7 +442,24 @@ class Class(metaclass=mixin.MixinMeta):
         if a.name not in taken_attr_names:
           taken_attr_names.add(a.name)
           base_attrs.append(a)
-    return base_attrs
+    return base_attrs + cls_attrs
+
+  def _get_attrs_from_mro(self, cls_attrs, metadata_key):
+    """Traverse the MRO and collect base class attributes for metadata_key."""
+
+    if metadata_key == "__attrs_attrs__":
+      # attrs are special-cased
+      return self._get_mro_attrs_for_attrs(cls_attrs, metadata_key)
+
+    all_attrs = {}
+    sub_attrs = [base_cls.metadata.get(metadata_key, [])
+                 for base_cls in reversed(self.mro[1:])
+                 if isinstance(base_cls, Class)]
+    sub_attrs.append(cls_attrs)
+    for attrs in sub_attrs:
+      for a in attrs:
+        all_attrs[a.name] = a
+    return list(all_attrs.values())
 
   def record_attr_ordering(self, own_attrs):
     """Records the order of attrs to write in the output pyi."""
@@ -453,8 +478,7 @@ class Class(metaclass=mixin.MixinMeta):
     # We want this to crash if 'decorator' is not in _METADATA_KEYS
     assert decorator in _METADATA_KEYS, f"No metadata key for {decorator}"
     key = _METADATA_KEYS[decorator]
-    base_attrs = self._get_base_class_attrs(own_attrs, key)
-    attrs = base_attrs + own_attrs
+    attrs = self._get_attrs_from_mro(own_attrs, key)
     # Stash attributes in class metadata for subclasses.
     self.metadata[key] = attrs
     return attrs

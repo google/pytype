@@ -2925,5 +2925,34 @@ class ConcatenateTest(_ParserTestBase):
     """)
 
 
+class TypeGuardTest(_ParserTestBase):
+
+  def test_typing_extensions(self):
+    self.check("""
+      from typing import List
+
+      from typing_extensions import TypeGuard
+
+      def f(x: List[object]) -> TypeGuard[List[str]]: ...
+    """, """
+      from typing import List
+
+      from typing_extensions import TypeGuard
+
+      def f(x: List[object]) -> bool: ...
+  """)
+
+  def test_typing(self):
+    self.check("""
+      from typing import List, TypeGuard
+
+      def f(x: List[object]) -> TypeGuard[List[str]]: ...
+    """, """
+      from typing import List
+
+      def f(x: List[object]) -> bool: ...
+    """)
+
+
 if __name__ == "__main__":
   unittest.main()

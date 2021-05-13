@@ -160,9 +160,7 @@ class BaseTest(unittest.TestCase):
 
   def setUp(self):
     super().setUp()
-    # For some reason, the declaration of python_version in BaseTest doesn't
-    # seem to be respected in subclasses.
-    self.options = config.Options.create(python_version=self.python_version,  # pytype: disable=attribute-error
+    self.options = config.Options.create(python_version=self.python_version,
                                          attribute_variable_annotations=True,
                                          check_parameter_types=True,
                                          chex_overlay=True,
