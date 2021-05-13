@@ -282,6 +282,63 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         def get_y(self) -> int: ...
     """)
 
+  def test_subclass_override(self):
+    ty = self.Infer("""
+      import dataclasses
+      @dataclasses.dataclass
+      class Foo(object):
+        w: float
+        x: bool = dataclasses.field(default=True)
+        y: int = dataclasses.field(init=False)
+      @dataclasses.dataclass
+      class Bar(Foo):
+        w: int
+        z: bool = dataclasses.field(default=True)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      dataclasses: module
+      @dataclasses.dataclass
+      class Foo(object):
+        w: float
+        x: bool
+        y: int
+        def __init__(self, w: float, x: bool = ...) -> None: ...
+      @dataclasses.dataclass
+      class Bar(Foo):
+        w: int
+        z: bool = ...
+        def __init__(self, w: int, x: bool = ..., z: bool = ...) -> None: ...
+    """)
+
+  def test_multiple_inheritance(self):
+    ty = self.Infer("""
+      import dataclasses
+      @dataclasses.dataclass
+      class A(object):
+        a: int
+      @dataclasses.dataclass
+      class B(object):
+        b: str
+      @dataclasses.dataclass
+      class C(B, A):
+        c: int
+    """)
+    self.assertTypesMatchPytd(ty, """
+      dataclasses: module
+      @dataclasses.dataclass
+      class A(object):
+        a: int
+        def __init__(self, a: int) -> None: ...
+      @dataclasses.dataclass
+      class B(object):
+        b: str
+        def __init__(self, b: str) -> None: ...
+      @dataclasses.dataclass
+      class C(B, A):
+        c: int
+        def __init__(self, a: int, b: str, c: int) -> None: ...
+    """)
+
   def test_use_late_annotation(self):
     self.Check("""
       import dataclasses
