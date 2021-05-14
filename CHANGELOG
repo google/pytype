@@ -1,3 +1,13 @@
+Version 2021.05.14
+
+New features and updates:
+* Allow TypeGuard to be used in type stubs by rewriting TypeGuard[X] to bool.
+
+Bug fixes:
+* Fix the order of inherited attributes for dataclasses.
+* Change the type of __path__ from Iterable to List.
+* Add a replace() method to flax dataclasses.
+
 Version 2021.05.11
 
 Bug fixes:

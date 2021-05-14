@@ -442,6 +442,9 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
   def isinstance_PythonConstant(self):
     return isinstance(self, mixin.PythonConstant)
 
+  def isinstance_SignedFunction(self):
+    return isinstance(self, SignedFunction)
+
   def isinstance_SimpleValue(self):
     return isinstance(self, SimpleValue)
 
