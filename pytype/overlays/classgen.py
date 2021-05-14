@@ -231,3 +231,19 @@ def get_class_locals(cls_name, allow_methods, ordering, vm):
         del out[op.name]
     out[op.name] = local
   return out
+
+
+def make_replace_method(vm, node, cls, *, kwargs_name="kwargs"):
+  """Create a replace() method for a dataclass."""
+  # This is used by several packages that extend dataclass.
+  # The signature is
+  #   def replace(self: T, **kwargs) -> T
+  typevar = abstract.TypeParameter(abstract_utils.T + cls.name, vm, bound=cls)
+  return overlay_utils.make_method(
+      vm=vm,
+      node=node,
+      name="replace",
+      return_type=typevar,
+      self_param=overlay_utils.Param("self", typevar),
+      kwargs=overlay_utils.Param(kwargs_name),
+  )

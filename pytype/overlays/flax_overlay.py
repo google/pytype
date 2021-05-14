@@ -15,6 +15,7 @@ from pytype import abstract
 from pytype import abstract_utils
 from pytype import function
 from pytype import overlay
+from pytype.overlays import classgen
 from pytype.overlays import dataclass_overlay
 from pytype.pytd import pytd
 
@@ -36,6 +37,12 @@ class Dataclass(dataclass_overlay.Dataclass):
   @classmethod
   def make(cls, vm):
     return super().make(vm, "flax.struct")
+
+  def decorate(self, node, cls):
+    super().decorate(node, cls)
+    if not isinstance(cls, abstract.InterpreterClass):
+      return
+    cls.members["replace"] = classgen.make_replace_method(self.vm, node, cls)
 
 
 # NOTE: flax.linen.module.Module is reexported as flax.linen.Module in
@@ -92,6 +99,12 @@ class ModuleDataclass(dataclass_overlay.Dataclass):
     self._add_implicit_field(node, cls_locals, "name", name_type)
     self._add_implicit_field(node, cls_locals, "parent", parent_type)
     return cls_locals
+
+  def decorate(self, node, cls):
+    super().decorate(node, cls)
+    if not isinstance(cls, abstract.InterpreterClass):
+      return
+    cls.members["replace"] = classgen.make_replace_method(self.vm, node, cls)
 
 
 class Module(abstract.PyTDClass):

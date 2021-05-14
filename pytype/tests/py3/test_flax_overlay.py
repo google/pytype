@@ -7,12 +7,15 @@ from pytype.tests import test_base
 class TestStructDataclass(test_base.TargetPython3FeatureTest):
   """Tests for flax.struct.dataclass."""
 
+  def _setup_struct_pyi(self, d):
+    d.create_file("flax/struct.pyi", """
+      from typing import Type
+      def dataclass(_cls: Type[_T]) -> Type[_T]: ...
+    """)
+
   def test_basic(self):
     with file_utils.Tempdir() as d:
-      d.create_file("flax/struct.pyi", """
-        from typing import Type
-        def dataclass(_cls: Type[_T]) -> Type[_T]: ...
-      """)
+      self._setup_struct_pyi(d)
       ty = self.Infer("""
         import flax
         @flax.struct.dataclass
@@ -22,13 +25,18 @@ class TestStructDataclass(test_base.TargetPython3FeatureTest):
           z: str
         """, pythonpath=[d.path], module_name="foo")
       self.assertTypesMatchPytd(ty, """
+        from typing import TypeVar
         flax: module
+
+        _TFoo = TypeVar('_TFoo', bound=Foo)
+
         @dataclasses.dataclass
-        class Foo(object):
+        class Foo:
           x: bool
           y: int
           z: str
           def __init__(self, x: bool, y: int, z: str) -> None: ...
+          def replace(self: _TFoo, **kwargs) -> _TFoo: ...
       """)
 
   def test_redefine_field(self):
@@ -44,6 +52,20 @@ class TestStructDataclass(test_base.TargetPython3FeatureTest):
       dataclasses: module
       def field(**kwargs) -> Any: ...
     """)
+
+  def test_replace(self):
+    with file_utils.Tempdir() as d:
+      self._setup_struct_pyi(d)
+      self.Check("""
+        import flax
+
+        @flax.struct.dataclass
+        class Foo:
+          x: int = 10
+          y: str = "hello"
+
+        Foo().replace(y="a")
+      """, pythonpath=[d.path])
 
 
 class TestLinenModule(test_base.TargetPython3FeatureTest):
@@ -69,12 +91,15 @@ class TestLinenModule(test_base.TargetPython3FeatureTest):
         """, pythonpath=[d.path], module_name="foo")
       self.assertTypesMatchPytd(ty, """
         import flax.linen.module
+        from typing import TypeVar
         nn: module
+        _TFoo = TypeVar('_TFoo', bound=Foo)
         @dataclasses.dataclass
         class Foo(flax.linen.module.Module):
           x: bool
           y: int
           def __init__(self, x: bool, y: int = ..., name: str = ..., parent = ...) -> None: ...
+          def replace(self: _TFoo, **kwargs) -> _TFoo: ...
       """)
 
   def test_unexported_constructor(self):
@@ -89,12 +114,15 @@ class TestLinenModule(test_base.TargetPython3FeatureTest):
       self.assertTypesMatchPytd(ty, """
         import builtins
         import flax.linen.module
+        from typing import TypeVar
         module: builtins.module
+        _TFoo = TypeVar('_TFoo', bound=Foo)
         @dataclasses.dataclass
         class Foo(flax.linen.module.Module):
           x: bool
           y: int
           def __init__(self, x: bool, y: int = ..., name: str = ..., parent = ...) -> None: ...
+          def replace(self: _TFoo, **kwargs) -> _TFoo: ...
       """)
 
   def test_relative_import_from_package_module(self):
@@ -107,14 +135,16 @@ class TestLinenModule(test_base.TargetPython3FeatureTest):
           y: int = 10
         """, pythonpath=[d.path], module_name="flax.linen.foo")
       self.assertTypesMatchPytd(ty, """
-        from typing import Type
+        from typing import Type, TypeVar
         import flax.linen.module
         Module: Type[flax.linen.module.Module]
+        _TFoo = TypeVar('_TFoo', bound=Foo)
         @dataclasses.dataclass
         class Foo(flax.linen.module.Module):
           x: bool
           y: int
           def __init__(self, x: bool, y: int = ..., name: str = ..., parent = ...) -> None: ...
+          def replace(self: _TFoo, **kwargs) -> _TFoo: ...
       """)
 
   def test_parent_import_from_package_module(self):
@@ -129,11 +159,14 @@ class TestLinenModule(test_base.TargetPython3FeatureTest):
       self.assertTypesMatchPytd(ty, """
         import flax.linen.module
         linen: module
+        from typing import TypeVar
+        _TFoo = TypeVar('_TFoo', bound=Foo)
         @dataclasses.dataclass
         class Foo(flax.linen.module.Module):
           x: bool
           y: int
           def __init__(self, x: bool, y: int = ..., name: str = ..., parent = ...) -> None: ...
+          def replace(self: _TFoo, **kwargs) -> _TFoo: ...
       """)
 
   def test_self_type(self):
