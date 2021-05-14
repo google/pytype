@@ -274,13 +274,18 @@ class Class(metaclass=mixin.MixinMeta):
     node, init = self.vm.attribute_handler.get_attribute(
         node, self.cls, "__init__")
     if not init or not any(
-        f.isinstance_InterpreterFunction() for f in init.data):
-      # Only an InterpreterFunction has interesting side effects.
+        f.isinstance_SignedFunction() for f in init.data):
+      # Only SignedFunctions (InterpreterFunction and SimpleFunction) have
+      # interesting side effects.
       return node
     # TODO(rechen): The signature is (cls, name, bases, dict); should we fill in
-    # the last three args more precisely?
-    args = function.Args(posargs=(self.to_variable(node),) + tuple(
-        self.vm.new_unsolvable(node) for _ in range(3)))
+    # the last arg more precisely?
+    args = function.Args(
+        posargs=(
+            self.to_variable(node),
+            self.vm.convert.build_string(node, self.name),
+            self.vm.convert.build_tuple(node, self.bases()),
+            self.vm.new_unsolvable(node)))
     log.debug("Calling __init__ on metaclass %s of class %s",
               self.cls.name, self.name)
     node, _ = self.vm.call_function(node, init, args)
