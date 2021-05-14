@@ -8,9 +8,9 @@ differences between @dataclasses.dataclass and @chex.dataclass are:
 """
 
 from pytype import abstract
-from pytype import abstract_utils
 from pytype import overlay
 from pytype import overlay_utils
+from pytype.overlays import classgen
 from pytype.overlays import dataclass_overlay
 from pytype.pytd import pytd
 
@@ -36,16 +36,8 @@ class Dataclass(dataclass_overlay.Dataclass):
     return super().make(vm, "chex")
 
   def _add_replace_method(self, node, cls):
-    typevar = abstract.TypeParameter(
-        abstract_utils.T + cls.name, self.vm, bound=cls)
-    cls.members["replace"] = overlay_utils.make_method(
-        vm=self.vm,
-        node=node,
-        name="replace",
-        return_type=typevar,
-        self_param=overlay_utils.Param("self", typevar),
-        kwargs=overlay_utils.Param("changes"),
-    )
+    cls.members["replace"] = classgen.make_replace_method(
+        self.vm, node, cls, kwargs_name="changes")
 
   def _add_from_tuple_method(self, node, cls):
     # from_tuple is discouraged anyway, so we provide only bare-bones types.

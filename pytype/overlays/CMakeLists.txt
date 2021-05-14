@@ -74,9 +74,9 @@ py_library(
   SRCS
     chex_overlay.py
   DEPS
+    .classgen
     .dataclass_overlay
     pytype.abstract
-    pytype.abstract_utils
     pytype.overlay
     pytype.overlay_utils
     pytype.pytd.pytd
@@ -115,6 +115,7 @@ py_library(
   SRCS
     flax_overlay.py
   DEPS
+    .classgen
     .dataclass_overlay
     pytype.abstract
     pytype.abstract_utils
