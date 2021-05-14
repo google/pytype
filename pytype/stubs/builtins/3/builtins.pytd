@@ -820,7 +820,7 @@ class instancemethod(object):
     def __init__(self, function: Union[Callable, instancemethod], instance, cls) -> NoneType: ...
     def __get__(self, obj, *args, **kwargs) -> instancemethod: ...
 
-__path__ = ...  # type: Iterable[str]  # only sometimes present
+__path__ = ...  # type: List[str]  # only sometimes present
 
 class module(object):
     __doc__ = ...  # type: str
