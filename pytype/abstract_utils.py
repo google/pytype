@@ -667,14 +667,8 @@ class Local:
     self.vm = vm
 
   @property
-  def last_op(self):
-    # TODO(b/74434237): This property can be removed once the usage of it in
-    # dataclass_overlay is gone.
-    return self._ops[-1]
-
-  @property
   def stack(self):
-    return self.vm.simple_stack(self.last_op)
+    return self.vm.simple_stack(self._ops[-1])
 
   def update(self, node, op, typ, orig):
     """Update this variable's annotation and/or value."""

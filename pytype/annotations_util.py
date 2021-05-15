@@ -199,11 +199,22 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       self.vm.errorlog.invalid_annotation(
           self.vm.frames, annot, details=errorlog.details)
     typ = self.extract_annotation(
-        state.node, var, name, self.vm.simple_stack(), is_var=True)
+        state.node, var, name, self.vm.simple_stack(), allowed_type_params=())
     _, value = self.init_annotation(state.node, name, typ)
     return typ, value
 
-  def extract_annotation(self, node, var, name, stack, is_var=False):
+  def extract_annotation(
+      self, node, var, name, stack, allowed_type_params=None):
+    """Returns an annotation extracted from 'var'.
+
+    Args:
+      node: The current node.
+      var: The variable to extract from.
+      name: The annotated name.
+      stack: The frame stack.
+      allowed_type_params: Type parameters that are allowed to appear in the
+        annotation. 'None' means all are allowed.
+    """
     try:
       typ = abstract_utils.get_atomic_value(var)
     except abstract_utils.ConversionError:
@@ -212,7 +223,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     typ = self._process_one_annotation(node, typ, name, stack)
     if not typ:
       return self.vm.convert.unsolvable
-    if typ.formal and is_var:
+    if typ.formal and allowed_type_params is not None:
       if "AnyStr" in [x.name for x in self.get_type_parameters(typ)]:
         if self.vm.PY2:
           str_type = "typing.Text"

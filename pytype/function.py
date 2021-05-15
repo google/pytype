@@ -283,6 +283,9 @@ class Signature:
     return "def {name}({args}) -> {ret}".format(
         name=self.name, args=args, ret=ret if ret else "Any")
 
+  def get_first_arg(self, callargs):
+    return callargs.get(self.param_names[0]) if self.param_names else None
+
 
 class Args(collections.namedtuple(
     "Args", ["posargs", "namedargs", "starargs", "starstarargs"])):

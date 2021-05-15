@@ -47,7 +47,7 @@ class Dataclass(classgen.Decorator):
       # annotation as InitVar[...].
       del self.vm.annotated_locals[cls.name][name]
     else:
-      cls.members[name] = classgen.instantiate(node, name, initvar)
+      classgen.add_member(node, cls, name, initvar)
     return initvar
 
   def get_class_locals(self, node, cls):
@@ -81,7 +81,7 @@ class Dataclass(classgen.Decorator):
         kind = classgen.AttributeKinds.INITVAR
       else:
         if not orig:
-          cls.members[name] = classgen.instantiate(node, name, typ)
+          classgen.add_member(node, cls, name, typ)
         if is_field(orig):
           field = orig.data[0]
           orig = field.default
