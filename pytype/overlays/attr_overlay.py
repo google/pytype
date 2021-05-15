@@ -75,7 +75,7 @@ class Attrs(classgen.Decorator):
               init=attrib.init,
               kw_only=attrib.kw_only,
               default=attrib.default)
-          cls.members[name] = classgen.instantiate(node, name, attr.typ)
+          classgen.add_member(node, cls, name, attr.typ)
         else:
           # cls.members[name] has already been set via a typecomment
           attr = Attribute(
@@ -95,7 +95,7 @@ class Attrs(classgen.Decorator):
           attr = Attribute(
               name=name, typ=typ, init=True, kw_only=False, default=orig)
           if not orig:
-            cls.members[name] = classgen.instantiate(node, name, typ)
+            classgen.add_member(node, cls, name, typ)
           own_attrs.append(attr)
 
     cls.record_attr_ordering(own_attrs)

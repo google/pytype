@@ -730,8 +730,9 @@ class VirtualMachine:
   def make_native_function(self, name, method):
     return abstract.NativeFunction(name, method, self)
 
-  def make_frame(self, node, code, f_globals, f_locals, callargs=None,
-                 closure=None, new_locals=False, func=None, first_arg=None):
+  def make_frame(
+      self, node, code, f_globals, f_locals, callargs=None, closure=None,
+      new_locals=False, func=None, first_arg=None, type_params=()):
     """Create a new frame object, using the given args, globals and locals."""
     if any(code is f.f_code for f in self.frames):
       log.info("Detected recursion in %s", code.co_name or code.co_filename)
@@ -748,9 +749,9 @@ class VirtualMachine:
     if code.has_newlocals() or new_locals:
       f_locals = abstract.LazyConcreteDict("locals", {}, self)
 
-    return frame_state.Frame(node, self, code, f_globals, f_locals,
-                             self.frame, callargs or {}, closure, func,
-                             first_arg)
+    return frame_state.Frame(node, self, code, f_globals, f_locals, self.frame,
+                             callargs or {}, closure, func, first_arg,
+                             type_params)
 
   def simple_stack(self, opcode=None):
     """Get a stack of simple frames.
@@ -2373,7 +2374,8 @@ class VirtualMachine:
         pass
       else:
         typ = self.annotations_util.extract_annotation(
-            state.node, val, name, self.simple_stack(), is_var=True)
+            state.node, val, name, self.simple_stack(),
+            allowed_type_params=self.frame.type_params)
         self._record_annotation(state.node, op, name, typ)
     state = self.store_subscr(state, obj, subscr, val)
     return state
@@ -3296,7 +3298,8 @@ class VirtualMachine:
     name = self.frame.f_code.co_names[op.arg]
     state, value = state.pop()
     typ = self.annotations_util.extract_annotation(
-        state.node, value, name, self.simple_stack(), is_var=True)
+        state.node, value, name, self.simple_stack(),
+        allowed_type_params=self.frame.type_params)
     self._record_annotation(state.node, op, name, typ)
     key = self.convert.primitive_class_instances[str]
     state = self.store_subscr(

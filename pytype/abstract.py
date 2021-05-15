@@ -2936,9 +2936,7 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
     self.type_param_check()
     self.decorators = []
 
-  def type_param_check(self):
-    """Throw exception for invalid type parameters."""
-
+  def update_method_type_params(self):
     def update_sig(method):
       method.signature.excluded_types.update(
           [t.name for t in self.template])
@@ -2962,6 +2960,10 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
                 if isinstance(d, InterpreterFunction):
                   update_sig(d)
 
+  def type_param_check(self):
+    """Throw exception for invalid type parameters."""
+    self.update_method_type_params()
+    if self.template:
       # nested class can not use the same type parameter
       # in current generic class
       inner_cls_types = self.collect_inner_cls_types()
@@ -3334,6 +3336,37 @@ class SignedFunction(Function):
     defaults = dict(zip(self.signature.param_names[-len(defaults):], defaults))
     self.signature.defaults = defaults
 
+  def _mutations_generator(self, node, first_arg, substs):
+    def generator():
+      """Yields mutations."""
+      if not self.is_attribute_of_class or not first_arg or not substs:
+        return
+      try:
+        inst = abstract_utils.get_atomic_value(first_arg, Instance)
+      except abstract_utils.ConversionError:
+        return
+      if inst.cls.template:
+        for subst in substs:
+          for k, v in subst.items():
+            if k in inst.instance_type_parameters:
+              value = inst.instance_type_parameters[k].AssignToNewVariable(node)
+              if all(isinstance(val, Unknown) for val in v.data):
+                for param in inst.cls.template:
+                  if subst.same_name(k, param.full_name):
+                    value.PasteVariable(param.instantiate(node), node)
+                    break
+                else:
+                  # See GenericFeatureTest.test_reinherit_generic in
+                  # tests/py3/test_generic. This can happen if one generic class
+                  # inherits from another and separately reuses a TypeVar.
+                  value.PasteVariable(v, node)
+              else:
+                value.PasteVariable(v, node)
+              yield function.Mutation(inst, k, value)
+    # Optimization: return a generator to avoid iterating over the mutations an
+    # extra time.
+    return generator
+
 
 class InterpreterFunction(SignedFunction):
   """An abstract value representing a user-defined function.
@@ -3508,37 +3541,6 @@ class InterpreterFunction(SignedFunction):
                    "the same type variable %s")
                   % (self.full_name, cls.full_name, item.name))
 
-  def _mutations_generator(self, node, first_arg, substs):
-    def generator():
-      """Yields mutations."""
-      if not self.is_attribute_of_class or not first_arg or not substs:
-        return
-      try:
-        inst = abstract_utils.get_atomic_value(first_arg, Instance)
-      except abstract_utils.ConversionError:
-        return
-      if inst.cls.template:
-        for subst in substs:
-          for k, v in subst.items():
-            if k in inst.instance_type_parameters:
-              value = inst.instance_type_parameters[k].AssignToNewVariable(node)
-              if all(isinstance(val, Unknown) for val in v.data):
-                for param in inst.cls.template:
-                  if subst.same_name(k, param.full_name):
-                    value.PasteVariable(param.instantiate(node), node)
-                    break
-                else:
-                  # See GenericFeatureTest.test_reinherit_generic in
-                  # tests/py3/test_generic. This can happen if one generic class
-                  # inherits from another and separately reuses a TypeVar.
-                  value.PasteVariable(v, node)
-              else:
-                value.PasteVariable(v, node)
-              yield function.Mutation(inst, k, value)
-    # Optimization: return a generator to avoid iterating over the mutations an
-    # extra time.
-    return generator
-
   def signature_functions(self):
     """Get the functions that describe this function's signature."""
     return self._overloads or [self]
@@ -3576,7 +3578,8 @@ class InterpreterFunction(SignedFunction):
       for b in self.vm.callself_stack[-1].bindings:
         b.data.maybe_missing_members = True
 
-  def call(self, node, func, args, new_locals=False, alias_map=None):
+  def call(
+      self, node, func, args, new_locals=False, alias_map=None, type_params=()):
     if self.is_overload:
       raise function.NotCallable(self)
     if (self.vm.is_at_maximum_depth() and
@@ -3590,7 +3593,7 @@ class InterpreterFunction(SignedFunction):
       # We've matched an overload; remap the callargs using the implementation
       # so that optional parameters, etc, are correctly defined.
       callargs = self._map_args(node, args)
-    first_arg = callargs.get(sig.param_names[0]) if sig.param_names else None
+    first_arg = sig.get_first_arg(callargs)
     # Keep type parameters without substitutions, as they may be needed for
     # type-checking down the road.
     annotations = self.vm.annotations_util.sub_annotations(
@@ -3625,7 +3628,7 @@ class InterpreterFunction(SignedFunction):
       frame = self.vm.make_frame(
           node, self.code, self.f_globals, self.f_locals, callargs,
           self.closure, new_locals=new_locals, func=func,
-          first_arg=first_arg)
+          first_arg=first_arg, type_params=type_params)
     except self.vm.VirtualMachineRecursionError:
       # If we've encountered recursion in a constructor, then we have another
       # incompletely initialized instance of the same class (or a subclass) at
@@ -3877,8 +3880,7 @@ class BoundFunction(BaseValue):
     self.replace_self_annot = None
     inst = abstract_utils.get_atomic_value(
         self._callself, default=self.vm.convert.unsolvable)
-    if isinstance(self.underlying, InterpreterFunction) and (
-        self.underlying.signature.param_names):
+    if self._should_replace_self_annot():
       if isinstance(inst.cls, class_mixin.Class):
         for cls in inst.cls.mro:
           if isinstance(cls, ParameterizedClass):
@@ -3895,6 +3897,12 @@ class BoundFunction(BaseValue):
       self.alias_map = inst.instance.instance_type_parameters.uf
     else:
       self.alias_map = None
+
+  def _should_replace_self_annot(self):
+    # To do argument matching for custom generic classes, 'self' should be
+    # replaced for all user-defined methods in which it exists.
+    return isinstance(self.underlying, InterpreterFunction) and (
+        self.underlying.signature.param_names)
 
   def argcount(self, node):
     return self.underlying.argcount(node) - 1  # account for self
@@ -4272,7 +4280,7 @@ class BuildClass(BaseValue):
 
     node, _ = func.call(node, funcvar.bindings[0],
                         args.replace(posargs=(), namedargs={}),
-                        new_locals=True)
+                        new_locals=True, type_params=())
     if func.last_frame:
       func.f_locals = func.last_frame.f_locals
       class_closure_var = func.last_frame.class_closure_var

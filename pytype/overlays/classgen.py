@@ -187,11 +187,11 @@ def is_dunder(name):
   return name.startswith("__") and name.endswith("__")
 
 
-def instantiate(node, name, typ):
+def add_member(node, cls, name, typ):
   # See test_attr.TestAttrib.test_repeated_default - keying on the name prevents
   # attributes from sharing the same default object.
   _, instance = typ.vm.init_class(node, typ, extra_key=name)
-  return instance
+  cls.members[name] = instance
 
 
 def get_class_locals(cls_name, allow_methods, ordering, vm):
