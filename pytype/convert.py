@@ -641,8 +641,15 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       f.is_abstract = pyval.is_abstract
       return f
     elif isinstance(pyval, pytd.ClassType):
-      assert pyval.cls
-      return self.constant_to_value(pyval.cls, subst, self.vm.root_node)
+      if pyval.cls:
+        cls = pyval.cls
+      else:
+        # If pyval is a reference to a class in builtins or typing, we can fill
+        # in the class ourselves. lookup_builtin raises a KeyError if the name
+        # is not found.
+        cls = self.vm.lookup_builtin(pyval.name)
+        assert isinstance(cls, pytd.Class)
+      return self.constant_to_value(cls, subst, self.vm.root_node)
     elif isinstance(pyval, pytd.NothingType):
       return self.empty
     elif isinstance(pyval, pytd.AnythingType):
