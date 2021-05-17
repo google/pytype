@@ -2925,6 +2925,21 @@ class ConcatenateTest(_ParserTestBase):
     """)
 
 
+class UnionOrTest(_ParserTestBase):
+  def test(self):
+    self.check("""
+      def f(x: int | str) -> None: ...
+      def g(x: bool | str | float) -> None: ...
+      def h(x: str | None) -> None: ...
+    """, """
+      from typing import Optional, Union
+
+      def f(x: Union[int, str]) -> None: ...
+      def g(x: Union[bool, str, float]) -> None: ...
+      def h(x: Optional[str]) -> None: ...
+    """)
+
+
 class TypeGuardTest(_ParserTestBase):
 
   def test_typing_extensions(self):

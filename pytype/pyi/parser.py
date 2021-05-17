@@ -190,6 +190,12 @@ class AnnotationVisitor(visitor.BaseVisitor):
     annotation = _attribute_to_name(node).id
     return self.defs.new_type(annotation)
 
+  def visit_BinOp(self, node):
+    if isinstance(node.op, ast3.BitOr):
+      return self.defs.new_type("typing.Union", [node.left, node.right])
+    else:
+      raise ParseError(f"Unexpected operator {node.op}")
+
   def visit_BoolOp(self, node):
     if isinstance(node.op, ast3.Or):
       raise ParseError("Deprecated syntax `x or y`; use `Union[x, y]` instead")
