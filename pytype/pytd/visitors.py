@@ -572,6 +572,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     aliases = []
     getattrs = set()
     ast = self._module_map[module]
+    type_param_names = set()
     for member in sum((ast.constants, ast.type_params, ast.classes,
                        ast.functions, ast.aliases), ()):
       _, _, member_name = member.name.rpartition(".")
@@ -581,6 +582,12 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
         # than aliased.
         getattrs.add(member.Replace(name=new_name))
       else:
+        # Imported type parameters produce both a type parameter definition and
+        # an alias. Keep the definition and discard the alias.
+        if isinstance(member, pytd.TypeParameter):
+          type_param_names.add(new_name)
+        elif new_name in type_param_names:
+          continue
         t = pytd.ToType(member, allow_constants=True, allow_functions=True)
         aliases.append(pytd.Alias(new_name, t))
     return aliases, getattrs
@@ -1537,8 +1544,17 @@ class VerifyContainers(Visitor):
         if not isinstance(t, pytd.TypeParameter):
           raise ContainerError("Name %s must be defined as a TypeVar" % t.name)
     elif not isinstance(node, (pytd.CallableType, pytd.TupleType)):
-      max_param_count = len(base_type.cls.template)
       actual_param_count = len(node.parameters)
+      if actual_param_count and not base_type.cls.template:
+        # This AdjustTypeParameters() call is needed because we validate nodes
+        # before their type parameters have been adjusted in some circular
+        # import cases. The result of this adjustment is not saved because it
+        # may not be accurate if the container is only partially resolved, but
+        # it's good enough to avoid some spurious container validation errors.
+        cls = base_type.cls.Visit(AdjustTypeParameters())
+      else:
+        cls = base_type.cls
+      max_param_count = len(cls.template)
       if actual_param_count > max_param_count:
         raise ContainerError(
             "Too many parameters on %s: expected %s, got %s" % (
