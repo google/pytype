@@ -1,3 +1,12 @@
+Version 2021.05.19
+
+New features and updates:
+* Add support for PEP 604 (Union |) in stub files.
+
+Bug fixes:
+* Get rid of special_builtins.Filter.
+* Fix circular import issues in the pytd loader.
+
 Version 2021.05.14
 
 New features and updates:

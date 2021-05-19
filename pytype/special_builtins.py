@@ -133,65 +133,6 @@ class Next(BuiltinFunction):
       return node, self.vm.new_unsolvable(node)
 
 
-class Filter(BuiltinFunction):
-  """Implementation of filter(...)."""
-
-  name = "filter"
-
-  def _filter_pyval(self, data, node):
-    """Filter None and False out of literal lists and tuples."""
-    if not isinstance(data, (abstract.List, abstract.Tuple)):
-      return None
-    remove = ([self.vm.convert.none], [self.vm.convert.false])
-    pyval = [x for x in data.pyval if x.data not in remove]
-    if len(pyval) < len(data.pyval):
-      return type(data)(pyval, data.vm).to_variable(node)
-    return None
-
-  def _filter_unions(self, data, node):
-    """Remove None from any Union type parameters in data."""
-    param = data.cls.get_formal_type_parameter(abstract_utils.T)
-    if not param.isinstance_Union():
-      return None
-    new_opts = [x for x in param.options if x.name != "NoneType"]
-    if not new_opts:
-      return None
-    typ = self.vm.merge_values(new_opts)
-    cls = data.cls
-    params = {**cls.formal_type_parameters, abstract_utils.T: typ}
-    new_cls = type(cls)(cls.base_cls, params, cls.vm, cls.template)
-    return new_cls.instantiate(node)
-
-  def _filter_none(self, data, node):
-    if isinstance(data, abstract.Unsolvable):
-      return None
-    elif not data.cls:
-      return None
-    elif isinstance(data, mixin.PythonConstant):
-      return self._filter_pyval(data, node)
-    else:
-      return self._filter_unions(data, node)
-    return None
-
-  def call(self, node, func, args):
-    self.match_args(node, args)
-    if len(args.posargs) != 2:
-      return super().call(node, func, args)
-    pred, seq = args.posargs
-    # Special case filter(None, seq). We remove None from seq and then call the
-    # regular filter() so we don't need to reimplement eveything.
-    if pred.data == [self.vm.convert.none]:
-      result = self.vm.program.NewVariable()
-      for b in seq.bindings:
-        ret = self._filter_none(b.data, node)
-        if ret:
-          result.PasteVariable(ret, node, {b})
-        else:
-          result.PasteBinding(b)
-      args = function.Args((pred, result))
-    return super().call(node, func, args)
-
-
 class ObjectPredicate(BuiltinFunction):
   """The base class for builtin predicates of the form f(obj, ...) -> bool.
 

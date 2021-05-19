@@ -1,6 +1,7 @@
 """Tests for load_pytd.py."""
 
 import collections
+import contextlib
 import io
 import os
 import textwrap
@@ -16,7 +17,21 @@ from pytype.tests import test_base
 import unittest
 
 
-class ImportPathsTest(test_base.UnitTest):
+class _LoaderTest(test_base.UnitTest):
+
+  @contextlib.contextmanager
+  def _setup_loader(self, **kwargs):
+    with file_utils.Tempdir() as d:
+      for name, contents in kwargs.items():
+        d.create_file(f"{name}.pyi", contents)
+      yield load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
+
+  def _import(self, **kwargs):
+    with self._setup_loader(**kwargs) as loader:
+      return loader.import_name(kwargs.popitem()[0])
+
+
+class ImportPathsTest(_LoaderTest):
   """Tests for load_pytd.py."""
 
   def test_filepath_to_module(self):
@@ -133,6 +148,35 @@ class ImportPathsTest(test_base.UnitTest):
       f2, = bar.Lookup("bar.get_foo").signatures
       self.assertEqual("bar.Bar", f1.return_type.cls.name)
       self.assertEqual("foo.Foo", f2.return_type.cls.name)
+
+  def test_circular_dependency_complicated(self):
+    # The dependency graph looks like:
+    # target ----------
+    # |               |
+    # v               v
+    # dep1 -> dep2 -> dep3
+    # ^               |
+    # |               |
+    # -----------------
+    with self._setup_loader(target="""
+      from dep1 import PathLike
+      from dep3 import AnyPath
+      def abspath(path: PathLike[str]) -> str: ...
+    """, dep1="""
+      from dep2 import Popen
+      from typing import Generic, TypeVar
+      _T = TypeVar('_T')
+      class PathLike(Generic[_T]): ...
+    """, dep2="""
+      from dep3 import AnyPath
+      class Popen: ...
+    """, dep3="""
+      from dep1 import PathLike
+      AnyPath = PathLike[str]
+    """) as loader:
+      loader.finish_and_verify_ast(
+          loader.load_file(
+              "target", os.path.join(loader.pythonpath[0], "target.pyi")))
 
   def test_relative(self):
     with file_utils.Tempdir() as d:
@@ -426,16 +470,18 @@ class ImportPathsTest(test_base.UnitTest):
       self.assertEqual(pytd_utils.Print(bar.Lookup("bar.f")),
                        "def bar.f(x: foo.Ellipsis) -> Any: ...")
 
-
-class _LoaderTest(test_base.UnitTest):
-
-  def _import(self, **kwargs):
-    with file_utils.Tempdir() as d:
-      for name, contents in kwargs.items():
-        d.create_file(f"{name}.pyi", contents)
-        last_name = name
-      loader = load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
-      return loader.import_name(last_name)
+  def test_import_typevar(self):
+    # Regression test for the loader crashing with a
+    # ""Duplicate top level items: 'T', 'T'" error.
+    self._import(a="""
+      from typing import TypeVar
+      T = TypeVar('T')
+    """, b="""
+      from a import T
+      def f(x: T) -> T: ...
+    """, c="""
+      from b import *
+    """)
 
 
 class ImportTypeMacroTest(_LoaderTest):
