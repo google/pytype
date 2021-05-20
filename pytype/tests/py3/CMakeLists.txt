@@ -461,6 +461,7 @@ py_test(
     test_generic.py
   DEPS
     pytype.utils
+    pytype.pytd.pytd
     pytype.tests.test_base
 )
 

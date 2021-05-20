@@ -402,7 +402,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       class A(Generic[T]):
           _foo: T
           foo: Annotated[Any, 'property']
-          def __init__(self, foo: T) -> None: ...
+          def __init__(self, foo: T) -> None:
+            self = A[T]
     """)
 
   def test_return_typevar(self):
