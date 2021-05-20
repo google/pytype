@@ -1446,10 +1446,37 @@ class AdjustTypeParameters(Visitor):
   def LeaveSignature(self, unused_node):
     self.function_typeparams = None
 
+  def _MaybeMutateSelf(self, sig):
+    # If the given signature is an __init__ method for a generic class and the
+    # class's type parameters all appear among the method's parameter
+    # annotations, then we should add a mutation to the parameter values, e.g.:
+    #   class Foo(Generic[T]):
+    #      def __init__(self, x: T) -> None: ...
+    # becomes:
+    #   class Foo(Generic[T]):
+    #     def __init__(self, x: T) -> None:
+    #       self = Foo[T]
+    if self.function_name != "__init__" or not self.class_name:
+      return sig
+    class_template = self.class_template[-1]
+    if not class_template:
+      return sig
+    seen_params = {t.name: t for t in pytd_utils.GetTypeParameters(sig)}
+    if any(t.name not in seen_params for t in class_template):
+      return sig
+    if not sig.params or sig.params[0].mutated_type:
+      return sig
+    mutated_type = pytd.GenericType(
+        base_type=pytd.ClassType(self.class_name),
+        parameters=tuple(seen_params[t.name] for t in class_template))
+    self_param = sig.params[0].Replace(mutated_type=mutated_type)
+    return sig.Replace(params=(self_param,) + sig.params[1:])
+
   def VisitSignature(self, node):
     # Sorting the template in CanonicalOrderingVisitor is enough to guarantee
     # pyi determinism, but we need to sort here as well for pickle determinism.
-    return node.Replace(template=tuple(sorted(self.function_typeparams)))
+    return self._MaybeMutateSelf(
+        node.Replace(template=tuple(sorted(self.function_typeparams))))
 
   def EnterFunction(self, node):
     self.function_name = node.name

@@ -1,6 +1,7 @@
 """Tests for handling GenericType."""
 
 from pytype import file_utils
+from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
@@ -270,7 +271,8 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
           pass
 
       class MyClass(Generic[T, S]):
-          def __init__(self, x: Optional[T] = ..., y: Optional[S] = ...) -> None: ...
+          def __init__(self, x: Optional[T] = ..., y: Optional[S] = ...) -> None:
+            self = MyClass[T, S]
           def fun(self, x: T, y: S) -> None: ...
     """)
 
@@ -610,7 +612,8 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       T = TypeVar('T')
       class Foo(Generic[T]):
         x: T
-        def __init__(self, x: T) -> None: ...
+        def __init__(self, x: T) -> None:
+          self = Foo[T]
         def f(self) -> T: ...
       def g() -> int: ...
     """)
@@ -634,7 +637,8 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       T = TypeVar('T')
       class Foo(Generic[T]):
         x: T
-        def __init__(self, x: T) -> None: ...
+        def __init__(self, x: T) -> None:
+          self = Foo[T]
         def f(self, x: S) -> Tuple[S, T]: ...
       def g(x) -> Tuple[str, int]: ...
     """)
@@ -671,7 +675,8 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       T = TypeVar('T')
       class Foo(Generic[T]):
         x: T
-        def __init__(self, x: T) -> None: ...
+        def __init__(self, x: T) -> None:
+          self = Foo[T]
       def f(x: Foo[int]) -> int: ...
       def g(x: Any) -> Foo[int]: ...
     """)
@@ -695,7 +700,8 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       class Foo(Generic[T]):
         x: List[T]
         y: T
-        def __init__(self, x: List[T]) -> None: ...
+        def __init__(self, x: List[T]) -> None:
+          self = Foo[T]
         def f(self) -> T: ...
       def g() -> int: ...
     """)
@@ -718,7 +724,8 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       T = TypeVar('T')
       class Foo(Generic[T]):
         x: T
-        def __init__(self, x: T) -> None: ...
+        def __init__(self, x: T) -> None:
+          self = Foo[T]
       class Bar(Foo, Generic[T]):
         x: Any
     """)
@@ -793,7 +800,8 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
       T = TypeVar('T', int, str)
       class Foo(Generic[T]):
         x: T
-        def __init__(self, x: T) -> None: ...
+        def __init__(self, x: T) -> None:
+          self = Foo[T]
       class Bar(Foo[int]):
         x: int
     """)
@@ -840,6 +848,27 @@ class GenericFeatureTest(test_base.TargetPython3FeatureTest):
         def parse(self) -> Tuple[T]:
           raise NotImplementedError()
     """)
+
+  def test_reingest_generic(self):
+    foo = self.Infer("""
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        def __init__(self, x: T):
+          self.x = x
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo))
+      ty = self.Infer("""
+        import foo
+        x1 = foo.Foo(0).x
+        x2 = foo.Foo[str](__any_object__).x
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo: module
+        x1: int
+        x2: str
+      """)
 
 
 test_base.main(globals(), __name__ == "__main__")

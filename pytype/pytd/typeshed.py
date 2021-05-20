@@ -129,10 +129,13 @@ class Typeshed:
       maximum = ((int(max_major), int(max_minor))
                  if max_major is not None and max_minor is not None
                  else None)
-      use_python2 = min_major == "2" and (
-          self._file_exists(os.path.join("stdlib", "@python2", module + ".pyi"))
-          or self._file_exists(os.path.join("stdlib", "@python2", module)))
-      versions[module] = minimum, maximum, use_python2
+      versions[module] = minimum, maximum, False
+    for path in self._list_files(os.path.join("stdlib", "@python2")):
+      mod, _ = os.path.splitext(path.split(os.path.sep, 1)[0])
+      if mod in versions:
+        (min_major, min_minor), maximum, _ = versions[mod]
+        if min_major == 2:
+          versions[mod] = (min_major, min_minor), maximum, True
     return versions
 
   def _load_third_party_packages(self):

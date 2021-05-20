@@ -946,11 +946,10 @@ class TestFunctions(test_base.TargetIndependentTest):
         pass
       partial_f = functools.partial(f, 0)
     """)
-    # TODO(b/66005735): The type of partial_f should be functools.partial[Any].
     self.assertTypesMatchPytd(ty, """
       functools: module
       def f(a, b) -> None: ...
-      partial_f: functools.partial[nothing]
+      partial_f: functools.partial
     """)
 
   def test_functools_partial_kw(self):

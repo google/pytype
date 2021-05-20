@@ -852,5 +852,22 @@ class PYITest(test_base.TargetIndependentTest):
         x: Tuple[int, int]
       """)
 
+  def test_implicit_mutation(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Generic, TypeVar
+        T = TypeVar('T')
+        class Foo(Generic[T]):
+          def __init__(self, x: T) -> None: ...
+      """)
+      ty = self.Infer("""
+        import foo
+        x = foo.Foo(x=0)
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        foo: module
+        x: foo.Foo[int]
+      """)
+
 
 test_base.main(globals(), __name__ == "__main__")
