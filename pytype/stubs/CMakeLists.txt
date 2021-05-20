@@ -5,7 +5,6 @@ filegroup(
     stubs
   SRCS
     builtins/2/__builtin__.pytd
-    builtins/2/array.pytd
     builtins/2/attr/__init__.pytd
     builtins/2/attr/_compat.pytd
     builtins/2/attr/_config.pytd
@@ -20,7 +19,6 @@ filegroup(
     builtins/2/mypy_extensions.pytd
     builtins/2/protocols.pytd
     builtins/2/typing.pytd
-    builtins/2and3/array.pytd
     builtins/2and3/attr/__init__.pytd
     builtins/2and3/attr/_compat.pytd
     builtins/2and3/attr/_config.pytd
@@ -36,7 +34,6 @@ filegroup(
     builtins/2and3/protocols.pytd
     builtins/2and3/typing.pytd
     builtins/3/__builtin__.pytd
-    builtins/3/array.pytd
     builtins/3/attr/__init__.pytd
     builtins/3/attr/_compat.pytd
     builtins/3/attr/_config.pytd
