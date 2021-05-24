@@ -198,14 +198,18 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     if errorlog:
       self.vm.errorlog.invalid_annotation(
           self.vm.frames, annot, details=errorlog.details)
-    self_var = self.vm.frame.f_locals.pyval.get("self")
-    if self_var:
-      allowed_type_params = []
-      for v in self_var.data:
-        if v.cls:
-          allowed_type_params.extend(p.name for p in v.cls.template)
+    if frame.func and isinstance(frame.func.data, abstract.BoundFunction):
+      self_var = frame.f_locals.pyval.get("self")
+      if self_var:
+        allowed_type_params = []
+        for v in self_var.data:
+          if v.cls:
+            allowed_type_params.extend(p.name for p in v.cls.template)
+      else:
+        allowed_type_params = ()
     else:
-      allowed_type_params = ()
+      self_var = None
+      allowed_type_params = self.vm.frame.type_params
     typ = self.extract_annotation(
         state.node, var, name, self.vm.simple_stack(),
         allowed_type_params=allowed_type_params)
@@ -214,9 +218,13 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       substs = [
           abstract_utils.get_type_parameter_substitutions(v, type_params)
           for v in self_var.data]
-      typ = self.sub_one_annotation(state.node, typ, substs,
-                                    instantiate_unbound=False)
-    _, value = self.init_annotation(state.node, name, typ)
+      resolved_type = self.sub_one_annotation(state.node, typ, substs,
+                                              instantiate_unbound=False)
+      _, value = self.init_annotation(state.node, name, resolved_type)
+    elif typ.formal:
+      value = self.vm.convert.empty.to_variable(state.node)
+    else:
+      _, value = self.init_annotation(state.node, name, typ)
     return typ, value
 
   def extract_annotation(

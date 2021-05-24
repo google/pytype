@@ -275,7 +275,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         # Fall back to __getattr__ if the attribute doesn't otherwise exist.
         node, attr = self._get_attribute_computed(
             node, cls, name, valself, compute_function="__getattr__")
-    if attr is None:
+    if attr is None or attr.data == [self.vm.convert.empty]:
       for base in obj.mro:
         if not isinstance(base, abstract.InterpreterClass):
           break

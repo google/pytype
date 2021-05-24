@@ -638,6 +638,34 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         def __init__(self, x: bool, y: int) -> None: ...
     """)
 
+  def test_generic(self):
+    ty = self.Infer("""
+      import dataclasses
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      @dataclasses.dataclass
+      class Foo(Generic[T]):
+        x: T
+      foo1 = Foo(x=0)
+      x1 = foo1.x
+      foo2 = Foo[str](x=__any_object__)
+      x2 = foo2.x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Generic, TypeVar
+      dataclasses: module
+      T = TypeVar('T')
+      @dataclasses.dataclass
+      class Foo(Generic[T]):
+        x: T
+        def __init__(self, x: T) -> None:
+          self = Foo[T]
+      foo1: Foo[int]
+      x1: int
+      foo2: Foo[str]
+      x2: str
+    """)
+
 
 class TestPyiDataclass(test_base.TargetPython3FeatureTest):
   """Tests for @dataclasses in pyi files."""

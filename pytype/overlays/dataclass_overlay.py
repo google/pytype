@@ -111,6 +111,8 @@ class Dataclass(classgen.Decorator):
 
     if isinstance(cls, abstract.InterpreterClass):
       cls.decorators.append("dataclasses.dataclass")
+      # Fix up type parameters in methods added by the decorator.
+      cls.update_method_type_params()
 
 
 class FieldInstance(abstract.SimpleValue):

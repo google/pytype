@@ -173,6 +173,66 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
         def __init__(self, x: int = ..., z: str = ..., *, y: int) -> None: ...
     """)
 
+  def test_generic(self):
+    ty = self.Infer("""
+      import attr
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      @attr.s
+      class Foo(Generic[T]):
+        x: T = attr.ib()
+        y = attr.ib()  # type: T
+      foo1 = Foo[int](x=__any_object__, y=__any_object__)
+      x1, y1 = foo1.x, foo1.y
+      foo2 = Foo(x='', y='')
+      x2, y2 = foo2.x, foo2.y
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Generic, TypeVar
+      attr: module
+      T = TypeVar('T')
+      @attr.s
+      class Foo(Generic[T]):
+        x: T
+        y: T
+        def __init__(self, x: T, y: T) -> None:
+          self = Foo[T]
+      foo1: Foo[int]
+      x1: int
+      y1: int
+      foo2: Foo[str]
+      x2: str
+      y2: str
+    """)
+
+  def test_generic_auto_attribs(self):
+    ty = self.Infer("""
+      import attr
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      @attr.s(auto_attribs=True)
+      class Foo(Generic[T]):
+        x: T
+      foo1 = Foo[int](x=__any_object__)
+      x1 = foo1.x
+      foo2 = Foo(x='')
+      x2 = foo2.x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Generic, TypeVar
+      attr: module
+      T = TypeVar('T')
+      @attr.s
+      class Foo(Generic[T]):
+        x: T
+        def __init__(self, x: T) -> None:
+          self = Foo[T]
+      foo1: Foo[int]
+      x1: int
+      foo2: Foo[str]
+      x2: str
+    """)
+
 
 class TestAttrs(test_base.TargetPython3FeatureTest):
   """Tests for attr.s."""
