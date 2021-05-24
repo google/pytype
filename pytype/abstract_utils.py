@@ -8,6 +8,7 @@ from typing import Any, Iterable, Optional, Tuple, Union
 from pytype import compat
 from pytype import datatypes
 from pytype import utils
+from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.pytd import mro
 from pytype.typegraph import cfg
@@ -655,7 +656,13 @@ def get_annotations_dict(members):
 class Local:
   """A possibly annotated local variable."""
 
-  def __init__(self, node, op, typ, orig, vm):
+  def __init__(
+      self,
+      node,
+      op: Optional[opcodes.Opcode],
+      typ: Optional[_BaseValue],
+      orig: Optional[cfg.Variable],
+      vm):
     self._ops = [op]
     if typ:
       self.typ = vm.program.NewVariable([typ], [], node)
