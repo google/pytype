@@ -849,6 +849,70 @@ class GenericFeatureTest(test_base.TargetPython3FeatureTest):
           raise NotImplementedError()
     """)
 
+  def test_typevar_in_class_attribute(self):
+    ty = self.Infer("""
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        x: T
+      x = Foo[int]().x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        x: T
+      x: int
+    """)
+
+  def test_bad_typevar_in_class_attribute(self):
+    errors = self.CheckWithErrors("""
+      from typing import Generic, TypeVar
+      T1 = TypeVar('T1')
+      T2 = TypeVar('T2')
+      class Foo(Generic[T1]):
+        x: T2  # not-supported-yet[e]
+    """)
+    self.assertErrorRegexes(
+        errors, {"e": r"TypeVar\(s\) 'T2' not in scope for class 'Foo'"})
+
+  def test_typevar_in_instance_attribute(self):
+    ty = self.Infer("""
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        def __init__(self, x, y):
+          self.x: T = x
+          self.y = y  # type: T
+      foo = Foo[int](__any_object__, __any_object__)
+      x, y = foo.x, foo.y
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        x: T
+        y: T
+        def __init__(self, x, y) -> None: ...
+      foo: Foo[int]
+      x: int
+      y: int
+    """)
+
+  def test_bad_typevar_in_instance_attribute(self):
+    errors = self.CheckWithErrors("""
+      from typing import Generic, TypeVar
+      T1 = TypeVar('T1')
+      T2 = TypeVar('T2')
+      class Foo(Generic[T1]):
+        def __init__(self, x, y):
+          self.x: T2 = x  # not-supported-yet[e1]
+          self.y = y  # type: T2  # not-supported-yet[e2]
+    """)
+    self.assertErrorRegexes(
+        errors, {"e1": r"TypeVar\(s\) 'T2' not in scope for class 'Foo'",
+                 "e2": r"TypeVar\(s\) 'T2' not in scope for class 'Foo'"})
+
   def test_reingest_generic(self):
     foo = self.Infer("""
       from typing import Generic, TypeVar

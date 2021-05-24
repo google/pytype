@@ -198,8 +198,24 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     if errorlog:
       self.vm.errorlog.invalid_annotation(
           self.vm.frames, annot, details=errorlog.details)
+    self_var = self.vm.frame.f_locals.pyval.get("self")
+    if self_var:
+      allowed_type_params = []
+      for v in self_var.data:
+        if v.cls:
+          allowed_type_params.extend(p.name for p in v.cls.template)
+    else:
+      allowed_type_params = ()
     typ = self.extract_annotation(
-        state.node, var, name, self.vm.simple_stack(), allowed_type_params=())
+        state.node, var, name, self.vm.simple_stack(),
+        allowed_type_params=allowed_type_params)
+    if typ.formal and self_var:
+      type_params = self.get_type_parameters(typ)
+      substs = [
+          abstract_utils.get_type_parameter_substitutions(v, type_params)
+          for v in self_var.data]
+      typ = self.sub_one_annotation(state.node, typ, substs,
+                                    instantiate_unbound=False)
     _, value = self.init_annotation(state.node, name, typ)
     return typ, value
 
@@ -224,17 +240,31 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     if not typ:
       return self.vm.convert.unsolvable
     if typ.formal and allowed_type_params is not None:
-      if "AnyStr" in [x.name for x in self.get_type_parameters(typ)]:
-        if self.vm.PY2:
-          str_type = "typing.Text"
-        else:
-          str_type = "Union[str, bytes]"
-        details = f"Note: AnyStr is a TypeVar; use {str_type} for string types."
-      else:
-        details = None
-      self.vm.errorlog.not_supported_yet(
-          stack, "using type parameter in variable annotation", details=details)
-      return self.vm.convert.unsolvable
+      illegal_params = [x.name for x in self.get_type_parameters(typ)
+                        if x.name not in allowed_type_params]
+      if illegal_params:
+        details = "TypeVar(s) %s not in scope" % ", ".join(
+            repr(p) for p in utils.unique_list(illegal_params))
+        if self.vm.frame.func:
+          method = self.vm.frame.func.data
+          if isinstance(method, abstract.BoundFunction):
+            class_name = method.name.rsplit(".", 1)[0]
+          else:
+            class_name = method.name
+          details += " for class %r" % class_name
+        if "AnyStr" in illegal_params:
+          if self.vm.PY2:
+            str_type = "typing.Text"
+          else:
+            str_type = "Union[str, bytes]"
+          details += (
+              f"\nNote: For all string types, use {str_type}.")
+        # TODO(b/186896951): Once the remaining use cases in the linked bug are
+        # supported, we should switch this to an [invalid-annotation] error.
+        self.vm.errorlog.not_supported_yet(
+            stack, "using type parameter in variable annotation",
+            details=details)
+        return self.vm.convert.unsolvable
     return typ
 
   def eval_multi_arg_annotation(self, node, func, annot, stack):

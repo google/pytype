@@ -4277,10 +4277,17 @@ class BuildClass(BaseValue):
           "Invalid argument to __build_class__")
     func.is_class_builder = True
     bases = args.posargs[2:]
+    type_params = []
+    for basevar in bases:
+      for base in basevar.data:
+        if isinstance(base, ParameterizedClass):
+          type_params.extend(
+              v.name for v in base.formal_type_parameters.values()
+              if isinstance(v, TypeParameter))
 
     node, _ = func.call(node, funcvar.bindings[0],
                         args.replace(posargs=(), namedargs={}),
-                        new_locals=True, type_params=())
+                        new_locals=True, type_params=type_params)
     if func.last_frame:
       func.f_locals = func.last_frame.f_locals
       class_closure_var = func.last_frame.class_closure_var
