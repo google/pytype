@@ -222,6 +222,12 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
                                               instantiate_unbound=False)
       _, value = self.init_annotation(state.node, name, resolved_type)
     elif typ.formal:
+      # The only time extract_annotation returns a formal type (i.e., one that
+      # contains type parameters) is when we are in the body of a generic class.
+      # Without `self_var`, we don't know what to instantiate those parameters
+      # to. We set the value to empty to defer instantiation until the value is
+      # being looked up on class instances, at which point the parameters will
+      # have been filled in.
       value = self.vm.convert.empty.to_variable(state.node)
     else:
       _, value = self.init_annotation(state.node, name, typ)
