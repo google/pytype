@@ -1,3 +1,14 @@
+Version 2021.05.25
+
+New features and updates:
+* Add support for referencing class-scoped TypeVars in variable annotations.
+* Add support for generic dataclasses and attrs.
+
+Bug fixes:
+* Fix a performance regression in pytype/pytd/typeshed.py.
+* Generate mutations from __init__ parameter annotations in stubs.
+* Use the typeshed stub for the array module instead of a custom one.
+
 Version 2021.05.19
 
 New features and updates:
