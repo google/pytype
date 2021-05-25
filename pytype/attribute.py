@@ -275,7 +275,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         # Fall back to __getattr__ if the attribute doesn't otherwise exist.
         node, attr = self._get_attribute_computed(
             node, cls, name, valself, compute_function="__getattr__")
-    if attr is None:
+    if attr is None or attr.data == [self.vm.convert.empty]:
       for base in obj.mro:
         if not isinstance(base, abstract.InterpreterClass):
           break
@@ -286,6 +286,12 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
             # An attribute has been declared but not defined, e.g.,
             #   class Foo:
             #     bar: int
+            if typ.formal and valself:
+              subst = abstract_utils.get_type_parameter_substitutions(
+                  valself.data,
+                  self.vm.annotations_util.get_type_parameters(typ))
+              typ = self.vm.annotations_util.sub_one_annotation(
+                  node, typ, [subst])
             _, attr = self.vm.annotations_util.init_annotation(node, name, typ)
             break
     if attr is not None:

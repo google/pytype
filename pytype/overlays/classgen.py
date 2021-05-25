@@ -188,9 +188,14 @@ def is_dunder(name):
 
 
 def add_member(node, cls, name, typ):
-  # See test_attr.TestAttrib.test_repeated_default - keying on the name prevents
-  # attributes from sharing the same default object.
-  _, instance = typ.vm.init_class(node, typ, extra_key=name)
+  if typ.formal:
+    # If typ contains a type parameter, we mark it as empty so that instances
+    # will use __annotations__ to fill in concrete type parameter values.
+    instance = typ.vm.convert.empty.to_variable(node)
+  else:
+    # See test_attr.TestAttrib.test_repeated_default - keying on the name
+    # prevents attributes from sharing the same default object.
+    _, instance = typ.vm.init_class(node, typ, extra_key=name)
   cls.members[name] = instance
 
 

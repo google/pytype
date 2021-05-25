@@ -1268,7 +1268,7 @@ class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
       from typing import AnyStr, List, Union
       x: Union[List[AnyStr], List[int]]  # not-supported-yet[e]
     """)
-    self.assertErrorRegexes(errors, {"e": "AnyStr is a TypeVar"})
+    self.assertErrorRegexes(errors, {"e": "'AnyStr' not in scope"})
 
   def test_protocol_container(self):
     self.Check("""

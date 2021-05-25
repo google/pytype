@@ -108,6 +108,8 @@ class Attrs(classgen.Decorator):
 
     if isinstance(cls, abstract.InterpreterClass):
       cls.decorators.append("attr.s")
+      # Fix up type parameters in methods added by the decorator.
+      cls.update_method_type_params()
 
 
 class AttribInstance(abstract.SimpleValue, mixin.HasSlots):

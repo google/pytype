@@ -3,11 +3,12 @@
 import collections
 import hashlib
 import logging
-from typing import Any, Iterable, Optional, Tuple, Union
+from typing import Any, Iterable, Mapping, Optional, Tuple, Union
 
 from pytype import compat
 from pytype import datatypes
 from pytype import utils
+from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.pytd import mro
 from pytype.typegraph import cfg
@@ -15,8 +16,9 @@ from pytype.typegraph import cfg_utils
 
 log = logging.getLogger(__name__)
 
-# We can't import abstract.BaseValue here due to a circular dep.
-_BaseValue = Any
+# We can't import abstract here due to a circular dep.
+_BaseValue = Any  # abstract.BaseValue
+_TypeParameter = Any  # abstract.TypeParameter
 
 # Type parameter names matching the ones in builtins.pytd and typing.pytd.
 T = "_T"
@@ -655,7 +657,13 @@ def get_annotations_dict(members):
 class Local:
   """A possibly annotated local variable."""
 
-  def __init__(self, node, op, typ, orig, vm):
+  def __init__(
+      self,
+      node,
+      op: Optional[opcodes.Opcode],
+      typ: Optional[_BaseValue],
+      orig: Optional[cfg.Variable],
+      vm):
     self._ops = [op]
     if typ:
       self.typ = vm.program.NewVariable([typ], [], node)
@@ -786,3 +794,10 @@ def expand_type_parameter_instances(bindings: Iterable[cfg.Binding]):
         bindings = param_value.bindings + bindings
         continue
     yield b
+
+
+def get_type_parameter_substitutions(
+    val: _BaseValue, type_params: Iterable[_TypeParameter]
+) -> Mapping[str, cfg.Variable]:
+  return {p.full_name: val.get_instance_type_parameter(p.name)
+          for p in type_params}

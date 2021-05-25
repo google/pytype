@@ -11,7 +11,7 @@
       * [Pytype's pyi stub files](#pytypes-pyi-stub-files)
       * [Compatibility](#compatibility)
 
-<!-- Added by: rechen, at: 2021-05-07T17:10-07:00 -->
+<!-- Added by: rechen, at: 2021-05-19T18:52-07:00 -->
 
 <!--te-->
 
@@ -41,12 +41,7 @@ def annotated(x: int, y: float = 0.0) -> int:
 ```
 
 The above code uses the syntax from [PEP 3107][pep-3107] and [PEP 484][pep-484]
-to declare the parameter and return types of the function `annotated`. In Python
-2, you can access this syntax with an interpreter patch (available by default in
-Google) and a `from __future__ import google_type_annotations` import. In Python
-3, the syntax is available natively, so you do not need the import, although you
-may include it to allow your code to run under both Python 2 and 3. See the
-[compatibility][compatibility] section for additional Python 2 options.
+to declare the parameter and return types of the function `annotated`.
 
 Note that the return type of `annotated` is declared to be an integer, but the
 function actually returns a float. pytype will also find this bug:
@@ -196,9 +191,8 @@ the following approaches to add a *variable annotation*.
        self.socket = None  # type: socket.socket
    ```
 
-   While this method doesn't look as clear as the first, it works in both
-   Python 2 and Python 3. This should only be used if you need to support
-   Python 2 or early versions of Python 3.
+   While this method doesn't look as clear as the first, it can be used if you
+   need to support early versions of Python 3.
 
 3. Type comment as class attribute.
 
@@ -211,12 +205,9 @@ the following approaches to add a *variable annotation*.
    for reasons other than typing, since it creates an unnecessary class
    attribute compared with the first two methods.
 
-   Note that the Ellipsis literal, `...`, is another Python 3 syntax
-   extension that you get in Python 2 when you include
-   `from __future__ import google_type_annotations`. Assigning to `...` is a
-   convention to indicate that the attribute has no value yet. If the attribute
-   will be accessed before being set to its actual value, you should instead
-   assign it a sensible initial value such as `None`.
+   Assigning to `...` is a convention to indicate that the attribute has no
+   value yet. If the attribute will be accessed before being set to its actual
+   value, you should instead assign it a sensible initial value such as `None`.
 
 ## Hiding extra dependencies
 
@@ -269,13 +260,9 @@ and [typeshed][typeshed]. If you find a mistake in one of these files, please
 ## Compatibility
 
 Both [PEP 3107][pep-3107] as well as [PEP 484][pep-484] are Python 3 features.
-However, we [backported][type-annotations-backport] them to the Python 2.7 we
-run at Google, and the patch is available as part of pytype.
 
-To run annotated code under normal Python 2,
-you can use a restricted form of comment annotation syntax. See
-[PEP 484][pep-484-2-7]. Note that pytype only supports the single-type-comment
-syntax; the one-type-comment-per-parameter syntax isn't supported
+Note that pytype only supports the single-type-comment syntax; the
+one-type-comment-per-parameter syntax isn't supported
 ([#49][per-parameter-type-comments-bug]).
 
 <!-- General references -->

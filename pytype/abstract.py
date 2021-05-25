@@ -2947,7 +2947,7 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
       for mbr in self.members.values():
         m = abstract_utils.get_atomic_value(
             mbr, default=self.vm.convert.unsolvable)
-        if isinstance(m, InterpreterFunction):
+        if isinstance(m, SignedFunction):
           update_sig(m)
         elif mbr.data and all(
             x.__class__.__name__ == "PropertyInstance" for x in mbr.data):
@@ -2957,7 +2957,7 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
           for slot in (prop.fget, prop.fset, prop.fdel):
             if slot:
               for d in slot.data:
-                if isinstance(d, InterpreterFunction):
+                if isinstance(d, SignedFunction):
                   update_sig(d)
 
   def type_param_check(self):
@@ -3851,13 +3851,14 @@ class SimpleFunction(SignedFunction):
   def call(self, node, _, args, alias_map=None):
     # We only simplify args for _map_args, because that simplifies checking.
     # This allows match_args to typecheck varargs and kwargs.
-    # We discard the results from _map_args, because SimpleFunction only cares
-    # that the arguments are acceptable.
-    self._map_args(node, args.simplify(node, self.vm))
+    callargs = self._map_args(node, args.simplify(node, self.vm))
     substs = self.match_args(node, args, alias_map)
     # Substitute type parameters in the signature's annotations.
     annotations = self.vm.annotations_util.sub_annotations(
         node, self.signature.annotations, substs, instantiate_unbound=False)
+    mutations = self._mutations_generator(
+        node, self.signature.get_first_arg(callargs), substs)
+    node = abstract_utils.apply_mutations(node, mutations)
     if self.signature.has_return_annotation:
       ret_type = annotations["return"]
       ret = ret_type.instantiate(node)
@@ -3899,10 +3900,22 @@ class BoundFunction(BaseValue):
       self.alias_map = None
 
   def _should_replace_self_annot(self):
-    # To do argument matching for custom generic classes, 'self' should be
-    # replaced for all user-defined methods in which it exists.
-    return isinstance(self.underlying, InterpreterFunction) and (
-        self.underlying.signature.param_names)
+    # To do argument matching for custom generic classes, the 'self' annotation
+    # needs to be replaced with a generic type.
+    f = self.underlying
+    if not isinstance(f, SignedFunction) or not f.signature.param_names:
+      # no 'self' to replace
+      return False
+    if isinstance(f, InterpreterFunction):
+      # always replace for user-defined methods
+      return True
+    # SimpleFunctions are methods we construct internally for generated classes
+    # like namedtuples.
+    if not isinstance(f, SimpleFunction):
+      return False
+    # We don't want to clobber our own generic annotations.
+    return (f.signature.param_names[0] not in f.signature.annotations or
+            not f.signature.annotations[f.signature.param_names[0]].formal)
 
   def argcount(self, node):
     return self.underlying.argcount(node) - 1  # account for self
@@ -4277,10 +4290,17 @@ class BuildClass(BaseValue):
           "Invalid argument to __build_class__")
     func.is_class_builder = True
     bases = args.posargs[2:]
+    type_params = []
+    for basevar in bases:
+      for base in basevar.data:
+        if isinstance(base, ParameterizedClass):
+          type_params.extend(
+              v.name for v in base.formal_type_parameters.values()
+              if isinstance(v, TypeParameter))
 
     node, _ = func.call(node, funcvar.bindings[0],
                         args.replace(posargs=(), namedargs={}),
-                        new_locals=True, type_params=())
+                        new_locals=True, type_params=type_params)
     if func.last_frame:
       func.f_locals = func.last_frame.f_locals
       class_closure_var = func.last_frame.class_closure_var

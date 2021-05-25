@@ -75,7 +75,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
     self.assertErrorRegexes(errors, {
         "e1": r"Name \'abc\' is not defined", "e2": r"Not a type",
         "e3": r"NoReturn is not allowed",
-        "e4": r"type parameter.*variable annotation",
+        "e4": r"'T' not in scope",
         "e5": r"Must be constant", "e6": r"NoReturn is not allowed"})
 
   def test_uninitialized_class_annotation(self):
