@@ -22,6 +22,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
 <!--ts-->
    * [Error classes](#error-classes)
       * [annotation-type-mismatch](#annotation-type-mismatch)
+      * [assert-type](#assert-type)
       * [attribute-error](#attribute-error)
       * [bad-concrete-type](#bad-concrete-type)
       * [bad-function-defaults](#bad-function-defaults)
@@ -64,7 +65,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2021-05-07T17:10-07:00 -->
+<!-- Added by: mdemello, at: 2021-06-01T13:47-07:00 -->
 
 <!--te-->
 
@@ -77,6 +78,33 @@ Example:
 <!-- bad -->
 ```python
 x: int = 'hello world'
+```
+
+## assert-type
+
+The error message displays the expected and actual type of the expression passed
+to `assert_type()` if the two do not match. Example:
+
+<!-- bad -->
+```python
+x = 10
+assert_type(x, 'str')
+```
+
+will raise the error
+
+```
+File "foo.py", line 2, in <module>:
+Type[int] [assert-type]
+Expected: str
+  Actual: int
+```
+
+`assert_type` can also be used without an `expected` argument to assert that a
+type is not Any; in that case the error message is
+
+```
+File "foo.py", line 10, in f: Asserted type was Any [assert-type]
 ```
 
 ## attribute-error

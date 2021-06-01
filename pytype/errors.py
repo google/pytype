@@ -1039,6 +1039,36 @@ class ErrorLog(ErrorLogBase):
         if node.HasCombination([b])]
     self.error(stack, self._join_printed_types(types))
 
+  @_error_name("assert-type")
+  def assert_type(self, stack, node, var, typ=None):
+    """Check that a variable type matches its expected value."""
+
+    types = [
+        self._print_as_actual_type(b.data)
+        for b in abstract_utils.expand_type_parameter_instances(var.bindings)
+        if node.HasCombination([b])]
+    actual = self._join_printed_types(types)
+
+    # assert_type(x) checks that x is not Any
+    if typ is None:
+      if types == ["Any"] or types == ["typing.Any"]:
+        self.error(stack, f"Asserted type was {actual}")
+      return
+
+    try:
+      expected = abstract_utils.get_atomic_python_constant(typ, str)
+    except abstract_utils.ConversionError:
+      # NOTE: Converting types to strings is provided as a fallback, but is not
+      # really supported, since there are issues around name resolution.
+      wanted = [
+          self._print_as_actual_type(b.data)
+          for b in abstract_utils.expand_type_parameter_instances(typ.bindings)
+          if node.HasCombination([b])]
+      expected = self._join_printed_types(wanted)
+    if actual != expected:
+      details = f"Expected: {expected}\n  Actual: {actual}"
+      self.error(stack, actual, details=details)
+
   @_error_name("annotation-type-mismatch")
   def annotation_type_mismatch(self, stack, annot, binding, name):
     """Invalid combination of annotation and assignment."""

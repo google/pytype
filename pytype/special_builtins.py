@@ -569,6 +569,28 @@ class RevealType(abstract.BaseValue):
     return node, self.vm.convert.build_none(node)
 
 
+class AssertType(abstract.BaseValue):
+  """For debugging. assert_type(x, t) asserts that the type of "x" is "t"."""
+
+  # Minimal signature, only used for constructing exceptions.
+  _SIGNATURE = function.Signature.from_param_names(
+      "assert_type", ("variable", "type"))
+
+  def __init__(self, vm):
+    super().__init__("assert_type", vm)
+
+  def call(self, node, _, args):
+    if len(args.posargs) == 1:
+      a, = args.posargs
+      t = None
+    elif len(args.posargs) == 2:
+      a, t = args.posargs
+    else:
+      raise function.WrongArgCount(self._SIGNATURE, args, self.vm)
+    self.vm.errorlog.assert_type(self.vm.frames, node, a, t)
+    return node, self.vm.convert.build_none(node)
+
+
 class PropertyTemplate(BuiltinClass):
   """Template for property decorators."""
 
