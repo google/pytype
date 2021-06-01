@@ -106,6 +106,24 @@ class BuiltinTests(test_base.TargetPython3BasicTest):
       len(x)
     """)
 
+  def test_dict_copy(self):
+    ty = self.Infer("""
+      import collections
+      from typing import Dict
+      def f1(x: Dict[int, str]):
+        return x.copy()
+      def f2(x: 'collections.OrderedDict[int, str]'):
+        return x.copy()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict
+      collections: module
+      def f1(x: Dict[int, str]) -> Dict[int, str]: ...
+      def f2(
+          x: collections.OrderedDict[int, str]
+      ) -> collections.OrderedDict[int, str]: ...
+    """)
+
 
 class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
   """Tests for builtin methods and classes."""
