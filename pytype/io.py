@@ -338,4 +338,3 @@ def wrap_pytype_exceptions(exception_type, filename=""):
 
 def assert_type(*unused_args):
   """Prevent runtime errors from assert_type statements."""
-  pass
