@@ -916,22 +916,6 @@ class ErrorTest(test_base.TargetIndependentTest):
         "e1": r"^Union\[int, str\]$", "e2": r"^Type\[Foo\]$", "e3": r"^Foo$",
         "e4": r"^List\[int\]$"})
 
-  def test_assert_type(self):
-    _, errors = self.InferWithErrors("""
-      class A: pass
-      def f(x: int, y: str, z):
-        assert_type(x, 'int')
-        assert_type(y, 'int')  # assert-type[e1]
-        assert_type(z)  # assert-type[e2]
-        if __random__:
-          x = A()
-        assert_type(x, 'Union[A, int]')
-    """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"Expected.*int.*Actual.*str",
-        "e2": r"type was Any"
-    })
-
   def test_not_protocol(self):
     _, errors = self.InferWithErrors("""
       a = []
