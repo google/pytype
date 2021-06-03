@@ -334,3 +334,7 @@ def wrap_pytype_exceptions(exception_type, filename=""):
       six.reraise(exception_type, exception_type(msg), tb)
     else:
       raise exception_type(msg).with_traceback(e.__traceback__)
+
+
+def assert_type(*unused_args):
+  """Prevent runtime errors from assert_type statements."""

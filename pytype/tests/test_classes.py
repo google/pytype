@@ -469,6 +469,29 @@ class ClassesTest(test_base.TargetIndependentTest):
         def test(self) -> str: ...
     """)
 
+  def test_descriptor_split(self):
+    ty = self.Infer("""
+      class Foo(object):
+        def __get__(self, obj, cls):
+          if obj is None:
+            return ''
+          else:
+            return 0
+      class Bar:
+        foo = Foo()
+      x1 = Bar.foo
+      x2 = Bar().foo
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Union
+      class Foo:
+        def __get__(self, obj, cls) -> Union[str, int]: ...
+      class Bar:
+        foo: Union[str, int]
+      x1: str
+      x2: int
+    """)
+
   def test_bad_descriptor(self):
     ty = self.Infer("""
       class Foo(object):

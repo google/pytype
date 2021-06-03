@@ -363,7 +363,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         node2, getter = self.get_attribute(node, value, "__get__", v)
         if getter is not None:
           posargs = []
-          if valself:
+          if valself and valself.data != cls:
             posargs.append(valself.AssignToNewVariable())
           else:
             posargs.append(self.vm.convert.none.to_variable(node))
