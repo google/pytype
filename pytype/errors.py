@@ -1060,6 +1060,10 @@ class ErrorLog(ErrorLogBase):
     except abstract_utils.ConversionError:
       # NOTE: Converting types to strings is provided as a fallback, but is not
       # really supported, since there are issues around name resolution.
+      vm = typ.data[0].vm
+      typ = vm.annotations_util.extract_annotation(
+          node, typ, "assert_type", vm.simple_stack())
+      node, typ = vm.init_class(node, typ)
       wanted = [
           self._print_as_actual_type(b.data)
           for b in abstract_utils.expand_type_parameter_instances(typ.bindings)
