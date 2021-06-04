@@ -1,7 +1,5 @@
 # Lint as: python2, python3
 """Type system extensions for use with pytype."""
-from __future__ import google_type_annotations
-
 import typing
 from typing import Text, Dict, Any, TypeVar, Callable
 

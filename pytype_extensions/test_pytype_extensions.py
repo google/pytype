@@ -1,8 +1,6 @@
 # Lint as: python2, python3
 """Tests for pytype_extensions."""
 
-from __future__ import google_type_annotations
-
 import os
 from typing import Text
 
