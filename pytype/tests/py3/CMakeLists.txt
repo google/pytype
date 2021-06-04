@@ -533,5 +533,6 @@ py_test(
     test_flax_overlay.py
   DEPS
     pytype.utils
+    pytype.pytd.pytd
     pytype.tests.test_base
 )

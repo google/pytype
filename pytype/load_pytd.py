@@ -568,8 +568,8 @@ class Loader:
             # local reference and not an import at all.
             continue
           else:
-            error = "Can't find pyi for %r" % name
-            raise BadDependencyError(error, ast_name)
+            self._path_finder.log_module_not_found(name)
+            raise BadDependencyError("Can't find pyi for %r" % name, ast_name)
       # If `name` is a package, try to load any base names not defined in
       # __init__ as submodules.
       if not self._modules[name].is_package() or "__getattr__" in dep_ast:
@@ -588,9 +588,10 @@ class Loader:
         # Alias(submodule, NamedType(submodule)).
         if attr is None or (
             isinstance(attr, pytd.Alias) and attr.name == attr.type.name):
-          # Don't check the import result - resolve_external_types will raise
-          # a better error.
-          self._import_module_by_name(full_name)
+          if not self._import_module_by_name(full_name):
+            # Add logging to make debugging easier but otherwise ignore the
+            # result - resolve_external_types will raise a better error.
+            self._path_finder.log_module_not_found(full_name)
 
   def _resolve_external_types(self, mod_ast, mod_name=None):
     module_map = self._modules.get_module_map()
@@ -663,6 +664,8 @@ class Loader:
     if module_name in self._import_name_cache:
       return self._import_name_cache[module_name]
     mod_ast = self._import_module_by_name(module_name)
+    if not mod_ast:
+      self._path_finder.log_module_not_found(module_name)
     self._resolve_classtype_pointers_for_all_modules()
     mod_ast = self.finish_and_verify_ast(mod_ast)
     self._import_name_cache[module_name] = mod_ast
@@ -762,8 +765,6 @@ class Loader:
       self._modules[module_name] = default
       return file_ast
 
-    # Add debug logging if we have not found the module.
-    self._path_finder.log_module_not_found(module_name)
     return None
 
   def _import_file(self, module_name):

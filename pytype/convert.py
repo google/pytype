@@ -10,6 +10,7 @@ from pytype import class_mixin
 from pytype import compat
 from pytype import datatypes
 from pytype import function
+from pytype import overlay_dict
 from pytype import mixin
 from pytype import output
 from pytype import special_builtins
@@ -615,8 +616,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       else:
         module, dot, base_name = pyval.name.rpartition(".")
         # typing.TypingContainer intentionally loads the underlying pytd types.
-        if module != "typing" and module in self.vm.loaded_overlays:
-          overlay = self.vm.loaded_overlays[module]
+        if (module not in ("typing", "typing_extensions") and
+            module in overlay_dict.overlays):
+          overlay = self.vm.import_module(module, module, 0)
           if overlay.get_module(base_name) is overlay:
             overlay.load_lazy_attribute(base_name)
             return abstract_utils.get_atomic_value(overlay.members[base_name])
