@@ -227,7 +227,7 @@ py_library(
     .compat
     .datatypes
     .function
-    .google_overlay_dict
+    .overlay_dict
     .mixin
     .output
     .special_builtins
