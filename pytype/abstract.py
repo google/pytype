@@ -2753,6 +2753,12 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
 
   def _init_attr_metadata_from_pytd(self, decorator):
     """Initialise metadata[key] with a list of Attributes."""
+    attributes_to_ignore = set()
+    for cls in self.mro:
+      if hasattr(cls, "IMPLICIT_FIELDS"):
+        # Some third-party dataclass implementations add implicit fields that
+        # should not be considered inherited attributes.
+        attributes_to_ignore.update(cls.IMPLICIT_FIELDS)
     # Use the __init__ function as the source of truth for dataclass fields; if
     # this is a generated module we will have already processed ClassVar and
     # InitVar attributes to generate __init__, so the fields we want to add to
@@ -2761,7 +2767,8 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     init = next(x for x in self.pytd_cls.methods if x.name == "__init__")
     params = init.signatures[0].params[1:]
     with self.vm.allow_recursive_convert():
-      own_attrs = [class_mixin.Attribute.from_param(p, self.vm) for p in params]
+      own_attrs = [class_mixin.Attribute.from_param(p, self.vm) for p in params
+                   if p.name not in attributes_to_ignore]
     self.compute_attr_metadata(own_attrs, decorator)
 
   def _recompute_init_from_metadata(self, key):

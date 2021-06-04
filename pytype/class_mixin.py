@@ -293,13 +293,8 @@ class Class(metaclass=mixin.MixinMeta):
 
   def call_init_subclass(self, node):
     """Call init_subclass(cls) for all base classes."""
-    for b in self.bases():
-      # If a base has multiple bindings don't try to call init_subclass, since
-      # it is not clear what to do if different bindings implement the method
-      # differently.
-      if len(b.data) == 1:
-        base, = b.data
-        node = base.init_subclass(node, self)
+    for cls in self.mro:
+      node = cls.init_subclass(node, self)
     return node
 
   def get_own_new(self, node, value):

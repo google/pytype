@@ -110,6 +110,8 @@ class ModuleDataclass(dataclass_overlay.Dataclass):
 class Module(abstract.PyTDClass):
   """Construct a dataclass for any class inheriting from Module."""
 
+  IMPLICIT_FIELDS = ("name", "parent")
+
   def __init__(self, vm, name="Module", module="flax.linen.module"):
     ast = vm.loader.import_name(module)
     pytd_cls = ast.Lookup(f"{module}.{name}")

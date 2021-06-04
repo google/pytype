@@ -1,6 +1,7 @@
 """Tests for the flax overlay."""
 
 from pytype import file_utils
+from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
@@ -204,6 +205,34 @@ class TestLinenModule(test_base.TargetPython3FeatureTest):
         a = Foo(10)
         b = a.y
       """, pythonpath=[d.path])
+
+  def test_reingest(self):
+    with file_utils.Tempdir() as d:
+      self._setup_linen_pyi(d)
+      foo_ty = self.Infer("""
+        from flax import linen
+        class Foo(linen.Module):
+          pass
+      """, pythonpath=[d.path])
+      d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
+      ty = self.Infer("""
+        import foo
+        class Bar(foo.Foo):
+          x: int
+      """, pythonpath=[d.path])
+    self.assertTypesMatchPytd(ty, """
+      import dataclasses
+      from typing import Any, TypeVar
+      foo: module
+
+      _TBar = TypeVar('_TBar', bound=Bar)
+      @dataclasses.dataclass
+      class Bar(foo.Foo):
+        x: int
+        def __init__(
+            self, x: int, name: str = ..., parent: Any = ...) -> None: ...
+        def replace(self: _TBar, **kwargs) -> _TBar: ...
+    """)
 
 
 test_base.main(globals(), __name__ == "__main__")
