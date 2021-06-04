@@ -78,7 +78,7 @@ inputs = package_name
 
 Now you can run the no-argument command `pytype` to type-check the package. It's
 also easy to add pytype to your automated testing; see this
-[example][importlab-travis] of a GitHub project that runs pytype on Travis.
+[example][importlab-github-actions] of a GitHub project that runs pytype on GitHub Actions.
 
 Finally, pytype generates files of inferred type information, located by default
 in `.pytype/pyi`. You can use this information to type-annotate the
@@ -271,7 +271,7 @@ This is not an official Google product.
 [faq]: docs/faq.md
 [faq-diff]: docs/faq.md#how-is-pytype-different-from-other-type-checkers
 [github]: https://github.com/google/pytype/
-[importlab-travis]: https://github.com/google/importlab/blob/master/.travis.yml
+[importlab-github-actions]: https://github.com/google/importlab/blob/master/.github/workflows/ci.yml
 [license]: https://github.com/google/pytype/blob/master/LICENSE
 [merge-pyi]: https://github.com/google/pytype/tree/master/pytype/tools/merge_pyi
 [pep-484]: https://www.python.org/dev/peps/pep-0484
