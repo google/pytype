@@ -551,7 +551,7 @@ class VirtualMachine:
     return meta, non_meta
 
   def make_class(self, node, name_var, bases, class_dict_var, cls_var,
-                 new_class_var=None, is_decorated=False):
+                 new_class_var=None, is_decorated=False, class_type=None):
     """Create a class with the name, bases and methods given.
 
     Args:
@@ -565,10 +565,13 @@ class VirtualMachine:
           the newly constructed class added as a binding. Otherwise, a new
           variable if returned.
       is_decorated: True if the class definition has a decorator.
+      class_type: The internal type to build an instance of. Defaults to
+          abstract.InterpreterClass. If set, must be a subclass of
+          abstract.InterpreterClass.
 
 
     Returns:
-      A node and an instance of Class.
+      A node and an instance of class_type.
     """
     name = abstract_utils.get_atomic_python_constant(name_var)
     log.info("Declaring class %s", name)
@@ -622,7 +625,11 @@ class VirtualMachine:
           class_dict.members["__annotations__"] = abstract.AnnotationsDict(
               annotations_dict, self).to_variable(node)
       try:
-        val = abstract.InterpreterClass(
+        if not class_type:
+          class_type = abstract.InterpreterClass
+        elif class_type is not abstract.InterpreterClass:
+          assert issubclass(class_type, abstract.InterpreterClass)
+        val = class_type(
             name,
             bases,
             class_dict.pyval,
