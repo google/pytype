@@ -182,7 +182,6 @@ class VirtualMachine:
         "__random__": self.convert.primitive_class_instances[bool],
         # for debugging
         "reveal_type": special_builtins.RevealType(self),
-        "assert_type": special_builtins.AssertType(self),
         # boolean values.
         "True": self.convert.true,
         "False": self.convert.false,
@@ -194,6 +193,7 @@ class VirtualMachine:
     # builtin functions
     for cls in (
         special_builtins.Abs,
+        special_builtins.AssertType,
         special_builtins.HasAttr,
         special_builtins.IsCallable,
         special_builtins.IsInstance,

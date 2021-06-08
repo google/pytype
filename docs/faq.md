@@ -15,7 +15,7 @@
       * [How do I write code that is seen by pytype but ignored at runtime?](#how-do-i-write-code-that-is-seen-by-pytype-but-ignored-at-runtime)
       * [How do I silence overzealous pytype errors when adding multiple types to a dict (or list, set, etc.)?](#how-do-i-silence-overzealous-pytype-errors-when-adding-multiple-types-to-a-dict-or-list-set-etc)
 
-<!-- Added by: mdemello, at: 2021-06-01T13:48-07:00 -->
+<!-- Added by: mdemello, at: 2021-06-08T13:25-07:00 -->
 
 <!--te-->
 
@@ -45,7 +45,7 @@ qualifying imports and resolving aliases).
 To simply verify that pytype has inferred some type for an expression, and not fallen back to `Any`, use `assert_type(x)` without the second argument.
 
 If you would like to leave the `assert_type` statement in your code (rather than
-adding it, running pytype, and removing it), add `from pytype.io import
+adding it, running pytype, and removing it), add `from pytype_extensions import
 assert_type` to your module.
 
 ## How do I reference a type from within its definition? (Forward References)
