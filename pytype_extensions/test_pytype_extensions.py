@@ -25,7 +25,7 @@ class CodeTest(test_base.TargetPython3BasicTest):
     extensions_pyi = pytd_utils.Print(self.Infer(InitContents()))
     with file_utils.Tempdir() as d:
       d.create_file('pytype_extensions.pyi', extensions_pyi)
-      return super(CodeTest, self).CheckWithErrors(code, pythonpath=[d.path])
+      return super().CheckWithErrors(code, pythonpath=[d.path])
 
 
 class DecoratorTest(CodeTest):
