@@ -65,7 +65,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: mdemello, at: 2021-06-01T13:47-07:00 -->
+<!-- Added by: mdemello, at: 2021-06-08T15:24-07:00 -->
 
 <!--te-->
 
@@ -88,7 +88,7 @@ to `assert_type()` if the two do not match. Example:
 <!-- bad -->
 ```python
 x = 10
-assert_type(x, 'str')
+assert_type(x, str)
 ```
 
 will raise the error
@@ -100,8 +100,24 @@ Expected: str
   Actual: int
 ```
 
+The expected type can be either a python type (like `str` or `foo.A`) or its
+string representation. The latter form is useful when you want to assert a type
+without importing it, e.g.
+
+```python
+from typing import List
+
+assert_type(x, List[int])
+```
+
+versus
+
+```python
+assert_type(x, 'List[int]')
+```
+
 `assert_type` can also be used without an `expected` argument to assert that a
-type is not Any; in that case the error message is
+type is not `Any`; in that case the error message is
 
 ```
 File "foo.py", line 10, in f: Asserted type was Any [assert-type]

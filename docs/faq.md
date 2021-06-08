@@ -15,7 +15,7 @@
       * [How do I write code that is seen by pytype but ignored at runtime?](#how-do-i-write-code-that-is-seen-by-pytype-but-ignored-at-runtime)
       * [How do I silence overzealous pytype errors when adding multiple types to a dict (or list, set, etc.)?](#how-do-i-silence-overzealous-pytype-errors-when-adding-multiple-types-to-a-dict-or-list-set-etc)
 
-<!-- Added by: mdemello, at: 2021-06-08T13:25-07:00 -->
+<!-- Added by: mdemello, at: 2021-06-08T15:24-07:00 -->
 
 <!--te-->
 
@@ -36,13 +36,16 @@ Yes, insert `reveal_type(expr)` as a statement inside your code. This will cause
 pytype to emit an error that will describe the type of `expr`.
 
 If you would like to ensure that pytype's view of a type matches what you expect
-it to be, use `assert_type(expr, 'expected-type')`. Note that this matches on
-the string pytype uses to display the type, so you might have to tweak your
-expected type a bit to eliminate false positives (e.g. `assert_type(x, 'foo.A')`
-might fail because pytype thinks `x` is of type `bar.foo.A`, due to fully
-qualifying imports and resolving aliases).
+it to be, use `assert_type(expr, expected-type)` or `assert_type(expr,
+'expected-type')`. Note that the string version matches on the string pytype uses
+to display the type, so you might have to tweak your expected type a bit to
+eliminate false positives (e.g. `assert_type(x, 'foo.A')` might fail because
+pytype thinks `x` is of type `bar.foo.A`, due to fully qualifying imports and
+resolving aliases, but `assert_type(x, foo.A)` should work even if `foo` is
+an alias for `bar.foo`).
 
-To simply verify that pytype has inferred some type for an expression, and not fallen back to `Any`, use `assert_type(x)` without the second argument.
+To simply verify that pytype has inferred some type for an expression, and not
+fallen back to `Any`, use `assert_type(x)` without the second argument.
 
 If you would like to leave the `assert_type` statement in your code (rather than
 adding it, running pytype, and removing it), add `from pytype_extensions import
