@@ -162,6 +162,7 @@ class BaseTest(unittest.TestCase):
     super().setUp()
     self.options = config.Options.create(python_version=self.python_version,
                                          attribute_variable_annotations=True,
+                                         bind_properties=True,
                                          check_parameter_types=True,
                                          chex_overlay=True,
                                          create_pyi_dataclasses=True,

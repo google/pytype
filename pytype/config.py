@@ -160,6 +160,11 @@ def add_basic_options(o):
       help=("Apply PEP 526-style variable annotations on attributes. " +
             temporary))
   o.add_argument(
+      "--bind-properties", action="store_true",
+      dest="bind_properties", default=False,
+      help=("Bind @property methods to the classes they're defined on for more "
+            "precise type-checking. " + temporary))
+  o.add_argument(
       "--check-parameter-types", action="store_true",
       dest="check_parameter_types", default=False,
       help=("Check parameter defaults and assignments against their "

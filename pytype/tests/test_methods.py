@@ -243,6 +243,14 @@ class MethodsTest(test_base.TargetIndependentTest):
           return super(B, self).bar + 42
     """)
 
+  def test_error_in_property(self):
+    self.CheckWithErrors("""
+      class Foo:
+        @property
+        def f(self):
+          return self.nonexistent  # attribute-error
+    """)
+
   def test_generators(self):
     ty = self.Infer("""
       def f():

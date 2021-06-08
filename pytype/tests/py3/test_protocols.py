@@ -681,6 +681,15 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
         return [1, 2, 3]
     """)
 
+  def test_property(self):
+    self.Check("""
+      from typing_extensions import Protocol
+      class Foo(Protocol):
+        @property
+        def name(self) -> str: ...
+        def f(self) -> int: ...
+    """)
+
 
 class ProtocolsTestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for protocol implementation on a target using a Python 3 feature."""
