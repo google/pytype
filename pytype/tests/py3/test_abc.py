@@ -74,7 +74,7 @@ class AbstractMethodTests(test_base.TargetPython3FeatureTest):
       v1 = ...  # type: Any
       v2 = ...  # type: int
       class Bar(Foo):
-        foo = ...  # type: Annotated[Any, 'property']
+        foo = ...  # type: Annotated[int, 'property']
       class Foo(metaclass=abc.ABCMeta):
         foo = ...  # type: Annotated[Any, 'property']
     """)

@@ -378,9 +378,17 @@ class CallTracer(vm.VirtualMachine):
       instance = self.join_bindings(node, good_instances)
     for instance_value in instance.data:
       val.data.register_canonical_instance(instance_value)
-    for name, methodvar in sorted(val.data.members.items()):
+    methods = sorted(val.data.members.items())
+    while methods:
+      name, methodvar = methods.pop(0)
       if name in self._CONSTRUCTORS:
         continue  # We already called this method during initialization.
+      for v in methodvar.data:
+        if (self.options.bind_properties and
+            isinstance(v, special_builtins.PropertyInstance)):
+          for m in (v.fget, v.fset, v.fdel):
+            if m:
+              methods.insert(0, (name, m))
       b = self.bind_method(node, name, methodvar, instance)
       node = self.analyze_method_var(node, name, b, val)
     return node

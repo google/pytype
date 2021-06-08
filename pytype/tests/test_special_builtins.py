@@ -202,7 +202,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
       from typing import Annotated, Any, Tuple, Union
       class Foo(object):
         foo = ...  # type: Union[int, str]
-        bar = ...  # type: Annotated[Any, 'property']
+        bar = ...  # type: Annotated[int, 'property']
         def __init__(self) -> None: ...
       def f() -> Tuple[int, str]: ...
     """)

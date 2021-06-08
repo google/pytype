@@ -12,6 +12,7 @@ py_library(
     .dataclass_overlay
     .flax_overlay
     .future_overlay
+    .pytype_extensions_overlay
     .six_overlay
     .subprocess_overlay
     .sys_overlay
@@ -132,6 +133,16 @@ py_library(
   DEPS
     pytype.metaclass
     pytype.overlay
+)
+
+py_library(
+  NAME
+    pytype_extensions_overlay
+  SRCS
+    pytype_extensions_overlay.py
+  DEPS
+    pytype.overlay
+    pytype.special_builtins
 )
 
 py_library(

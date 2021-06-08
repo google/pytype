@@ -16,6 +16,7 @@ from pytype.overlays import collections_overlay
 from pytype.overlays import dataclass_overlay
 from pytype.overlays import flax_overlay
 from pytype.overlays import future_overlay
+from pytype.overlays import pytype_extensions_overlay
 from pytype.overlays import six_overlay
 from pytype.overlays import subprocess_overlay
 from pytype.overlays import sys_overlay
@@ -35,6 +36,7 @@ overlays = {
     "flax.linen": flax_overlay.LinenOverlay,
     "flax.linen.module": flax_overlay.LinenModuleOverlay,
     "future.utils": future_overlay.FutureUtilsOverlay,
+    "pytype_extensions": pytype_extensions_overlay.PytypeExtensionsOverlay,
     "six": six_overlay.SixOverlay,
     "subprocess": subprocess_overlay.SubprocessOverlay,
     "sys": sys_overlay.SysOverlay,

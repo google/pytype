@@ -61,3 +61,11 @@ if typing.TYPE_CHECKING:
 else:
   # At runtime, Decorator is a simple identify function that returns its input.
   Decorator = lambda d: d
+
+
+def assert_type(*unused_args):
+  """Prevent runtime errors from assert_type statements.
+
+  assert_type is handled internally by pytype at type checking time; it should
+  do nothing at runtime.
+  """

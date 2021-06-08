@@ -235,7 +235,8 @@ class DecoratorsTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Annotated, Any
       class Foo(object):
-        name = ...  # type: Annotated[Any, 'property']
+        _x: Any
+        name: Annotated[Any, 'property']
     """)
 
   def test_bad_fget(self):

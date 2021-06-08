@@ -245,6 +245,23 @@ class ErrorTest(test_base.TargetPython3BasicTest):
 
   def test_assert_type(self):
     _, errors = self.InferWithErrors("""
+      from typing import Union
+      class A: pass
+      def f(x: int, y: str, z):
+        assert_type(x, int)
+        assert_type(y, int)  # assert-type[e1]
+        assert_type(z)  # assert-type[e2]
+        if __random__:
+          x = A()
+        assert_type(x, Union[A, int])
+    """)
+    self.assertErrorRegexes(errors, {
+        "e1": r"Expected.*int.*Actual.*str",
+        "e2": r"type was Any"
+    })
+
+  def test_assert_type_str(self):
+    _, errors = self.InferWithErrors("""
       class A: pass
       def f(x: int, y: str, z):
         assert_type(x, 'int')
@@ -258,6 +275,28 @@ class ErrorTest(test_base.TargetPython3BasicTest):
         "e1": r"Expected.*int.*Actual.*str",
         "e2": r"type was Any"
     })
+
+  def test_assert_type_import(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("pytype_extensions.pyi", """
+        def assert_type(*args): ...
+      """)
+      _, errors = self.InferWithErrors("""
+        from typing import Union
+        from pytype_extensions import assert_type
+        class A: pass
+        def f(x: int, y: str, z):
+          assert_type(x, int)
+          assert_type(y, int)  # assert-type[e1]
+          assert_type(z)  # assert-type[e2]
+          if __random__:
+            x = A()
+          assert_type(x, Union[A, int])
+      """, pythonpath=[d.path])
+      self.assertErrorRegexes(errors, {
+          "e1": r"Expected.*int.*Actual.*str",
+          "e2": r"type was Any"
+      })
 
 
 class InPlaceOperationsTest(test_base.TargetPython3BasicTest):

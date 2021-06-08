@@ -69,6 +69,14 @@ class BuiltinFunction(abstract.PyTDFunction):
     assert cls.name
     return super().make(cls.name, vm, "builtins")
 
+  @classmethod
+  def make_alias(cls, name, vm, module_name):
+    """Create an alias to this function."""
+    # See overlays/pytype_extensions_overlay.py
+    self = super().make(name, vm, module_name)
+    self.module_name = module_name
+    return self
+
   def get_underlying_method(self, node, receiver, method_name):
     """Get the bound method that a built-in function delegates to."""
     results = []
@@ -569,15 +577,14 @@ class RevealType(abstract.BaseValue):
     return node, self.vm.convert.build_none(node)
 
 
-class AssertType(abstract.BaseValue):
+class AssertType(BuiltinFunction):
   """For debugging. assert_type(x, t) asserts that the type of "x" is "t"."""
 
   # Minimal signature, only used for constructing exceptions.
   _SIGNATURE = function.Signature.from_param_names(
       "assert_type", ("variable", "type"))
 
-  def __init__(self, vm):
-    super().__init__("assert_type", vm)
+  name = "assert_type"
 
   def call(self, node, _, args):
     if len(args.posargs) == 1:

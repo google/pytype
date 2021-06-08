@@ -395,10 +395,10 @@ class ClassesTest(test_base.TargetIndependentTest):
         name = property(fget=lambda self: self._name)
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Annotated, Any
+      from typing import Annotated
       class Foo(object):
         _name = ...  # type: str
-        name = ...  # type: Annotated[Any, 'property']
+        name = ...  # type: Annotated[str, 'property']
         def __init__(self) -> None: ...
         def test(self) -> str: ...
     """)

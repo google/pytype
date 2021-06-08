@@ -329,7 +329,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
         def x(self):
           return self._x
         @x.setter
-        def x(self, x):
+        def x(self, x: int):
           self._x = x
         def f(self):
           pass
@@ -341,7 +341,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
       class Foo(object):
         y: str
         _x: int
-        x: Annotated[Any, 'property']
+        x: Annotated[int, 'property']
         def __init__(self, y: str = ...) -> None: ...
         def f(self) -> None: ...
         @staticmethod
