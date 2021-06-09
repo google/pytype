@@ -224,8 +224,10 @@ class PytypeRunner:
     else:
       action = Action.INFER
       report = logging.info
-    # For builtin and system files, do not attempt to generate a pyi.
-    if module.kind in ('Builtin', 'System'):
+    # For builtin and system files not in pytype's own pytype_extensions
+    # library, do not attempt to generate a pyi.
+    if (not module.name.startswith('pytype_extensions.') and
+        module.kind in ('Builtin', 'System')):
       action = Action.GENERATE_DEFAULT
       report('%s: %s module %s', action, module.kind, module.name)
     return action
