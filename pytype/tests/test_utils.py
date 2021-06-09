@@ -217,11 +217,9 @@ class TestErrorLog(errors.ErrorLog):
     raise AssertionError(msg)
 
   def assert_errors_match_expected(self):
-    # TODO(rechen): The sorted() call can be removed once we stop supporting
-    # host Python 2, since dictionaries preserve insertion order in Python 3.6+.
     expected_errors = itertools.chain.from_iterable(
         [(line, code, mark) for (code, mark) in errors]
-        for line, errors in sorted(self.expected.items()))
+        for line, errors in self.expected.items())
     self.marks = {}
 
     def _format_error(line, code, mark=None):
