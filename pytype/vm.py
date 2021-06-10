@@ -28,6 +28,7 @@ from pytype import attribute
 from pytype import blocks
 from pytype import class_mixin
 from pytype import compare
+from pytype import constant_folding
 from pytype import convert
 from pytype import datatypes
 from pytype import directors
@@ -163,6 +164,7 @@ class VirtualMachine:
     self.opcode_traces = []
     self._importing = False  # Are we importing another file?
     self._trace_opcodes = True  # whether to trace opcodes
+    self._fold_constants = False  # feature in development, disable by default
     # If set, we will generate LateAnnotations with this stack rather than
     # logging name errors.
     self._late_annotations_stack = None
@@ -854,6 +856,10 @@ class VirtualMachine:
     for line in visitor.ignored_lines():
       self.errorlog.ignored_type_comment(
           self.filename, line, self.director.type_comments[line])
+
+    if self._fold_constants:
+      # Disabled while the feature is in development.
+      code = constant_folding.optimize(code)
 
     node = self.root_node.ConnectNew("init")
     node, f_globals, f_locals, _ = self.run_bytecode(node, code)
@@ -1876,6 +1882,11 @@ class VirtualMachine:
       # See test_closures.ClosuresTest.test_undefined_var
       return state.push(self.new_unsolvable(state.node))
     return self.load_constant(state, op, raw_const)
+
+  def byte_LOAD_FOLDED_CONST(self, state, op):
+    const = op.arg
+    state, var = constant_folding.build_folded_type(self, state, const)
+    return state.push(var)
 
   def byte_POP_TOP(self, state, op):
     return state.pop_and_discard()

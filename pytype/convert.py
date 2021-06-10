@@ -244,11 +244,15 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     content = [var.AssignToNewVariable(node) for var in content]
     return abstract.List(content, self.vm).to_variable(node)
 
-  def build_list_of_type(self, node, var):
-    """Create a VM list with element type derived from the given variable."""
-    ret = abstract.Instance(self.list_type, self.vm)
+  def build_collection_of_type(self, node, typ, var):
+    """Create a collection Typ[T] with T derived from the given variable."""
+    ret = abstract.Instance(typ, self.vm)
     ret.merge_instance_type_parameter(node, abstract_utils.T, var)
     return ret.to_variable(node)
+
+  def build_list_of_type(self, node, var):
+    """Create a VM list with element type derived from the given variable."""
+    return self.build_collection_of_type(node, self.list_type, var)
 
   def build_set(self, node, content):
     """Create a VM set from the given sequence."""

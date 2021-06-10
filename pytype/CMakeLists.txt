@@ -215,6 +215,15 @@ py_library(
 
 py_library(
   NAME
+    constant_folding
+  SRCS
+    constant_folding.py
+  DEPS
+    pytype.pyc.pyc
+)
+
+py_library(
+  NAME
     convert
   SRCS
     convert.py
@@ -517,6 +526,7 @@ py_library(
     .blocks
     .class_mixin
     .compare
+    .constant_folding
     .convert
     .datatypes
     .directors
@@ -745,6 +755,24 @@ py_test(
   DEPS
     .blocks
     pytype.pyc.pyc
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    constant_folding_test
+  SRCS
+    constant_folding_test.py
+  DEPS
+    .blocks
+    .config
+    .constant_folding
+    .errors
+    .load_pytd
+    .state
+    .vm
+    pytype.pyc.pyc
+    pytype.pytd.pytd
     pytype.tests.test_base
 )
 

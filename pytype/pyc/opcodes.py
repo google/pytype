@@ -25,7 +25,7 @@ class Opcode:
   """An opcode without arguments."""
 
   __slots__ = ("line", "index", "prev", "next", "target", "block_target",
-               "code", "annotation")
+               "code", "annotation", "folded")
   FLAGS = 0
 
   def __init__(self, index, line):
@@ -34,6 +34,7 @@ class Opcode:
     self.target = None
     self.code = None  # If we have a CodeType or OrderedCode parent
     self.annotation = None
+    self.folded = False  # elided by constant folding
 
   def at_line(self, line):
     """Return a new opcode simliar to this one but with a different line."""
@@ -45,7 +46,9 @@ class Opcode:
 
   def basic_str(self):
     """Helper function for the various __str__ formats."""
-    return "%d: %d: %s" % (self.line, self.index, self.__class__.__name__)
+    folded = "<<<<" if self.folded else ""
+    return "%d: %d: %s %s" % (
+        self.line, self.index, self.__class__.__name__, folded)
 
   def __str__(self):
     if self.annotation:
@@ -906,6 +909,11 @@ class DICT_MERGE(OpcodeWithArg):
 
 
 class DICT_UPDATE(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class LOAD_FOLDED_CONST(OpcodeWithArg):  # A fake opcode used internally
   FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
