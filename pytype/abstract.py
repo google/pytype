@@ -4320,11 +4320,16 @@ class BuildClass(BaseValue):
       # make a class.
       base = abstract_utils.get_atomic_value(
           base, default=self.vm.convert.unsolvable)
-      if isinstance(base, PyTDClass) and base.full_name == "typing.NamedTuple":
-        # The subclass of NamedTuple will ignore all its base classes. This is
-        # controled by a metaclass provided to NamedTuple.
-        # See: https://github.com/python/typing/blob/master/src/typing.py#L2170
-        return base.make_class(node, func.f_locals.to_variable(node))
+      cls_dict = func.f_locals.to_variable(node)
+      if isinstance(base, PyTDClass):
+        if base.full_name == "typing.NamedTuple":
+          # The subclass of NamedTuple will ignore all its base classes. This is
+          # controled by a metaclass provided to NamedTuple.
+          return base.make_class(node, cls_dict)
+        elif base.full_name == "enum.Enum" and self.vm.options.use_enum_overlay:
+          return base.make_class(
+              node, name, list(bases), cls_dict, metaclass,
+              new_class_var=class_closure_var, is_decorated=self.is_decorated)
     return self.vm.make_class(
         node, name, list(bases), func.f_locals.to_variable(node), metaclass,
         new_class_var=class_closure_var, is_decorated=self.is_decorated)

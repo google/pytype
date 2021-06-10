@@ -630,6 +630,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         else:
           if dot:
             cls.module = module
+          cls.call_metaclass_init(get_node())
         return cls
     elif isinstance(pyval, pytd.Function):
       signatures = [function.PyTDSignature(pyval.name, sig, self.vm)

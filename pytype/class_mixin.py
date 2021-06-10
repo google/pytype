@@ -258,6 +258,10 @@ class Class(metaclass=mixin.MixinMeta):
                for base in self.mro)
 
   @property
+  def is_enum(self):
+    return self.cls.full_name == "enum.EnumMeta" if self.cls else False
+
+  @property
   def is_protocol(self):
     return bool(self.protocol_methods)
 

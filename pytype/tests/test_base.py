@@ -166,7 +166,8 @@ class BaseTest(unittest.TestCase):
                                          check_parameter_types=True,
                                          chex_overlay=True,
                                          create_pyi_dataclasses=True,
-                                         preserve_union_macros=True)
+                                         preserve_union_macros=True,
+                                         use_enum_overlay=True)
 
   @property
   def loader(self):

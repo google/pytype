@@ -536,3 +536,13 @@ py_test(
     pytype.pytd.pytd
     pytype.tests.test_base
 )
+
+py_test(
+  NAME
+    test_enums
+  SRCS
+    test_enums.py
+  DEPS
+    pytype.utils
+    pytype.tests.test_base
+)
