@@ -88,6 +88,15 @@ class _FoldConstants:
   def visit_code(self, code):
     """Visit code, folding literals."""
 
+    def build_tuple(tup):
+      out = []
+      for e in tup:
+        if isinstance(e, tuple):
+          out.append(build_tuple(e))
+        else:
+          out.append(('prim', type(e)))
+      return ('tuple', tuple(out))
+
     for block in code.order:
       stack = _Stack()
       consts = {}
@@ -95,8 +104,7 @@ class _FoldConstants:
         if isinstance(op, opcodes.LOAD_CONST):
           elt = code.co_consts[op.arg]
           if isinstance(elt, tuple):
-            types = tuple(('prim', type(e)) for e in elt)
-            stack.push([('tuple', types), op])
+            stack.push([build_tuple(elt), op])
           else:
             stack.push([('prim', type(elt)), op])
         elif isinstance(op, opcodes.BUILD_LIST):
