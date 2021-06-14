@@ -178,7 +178,7 @@ class Typeshed:
           packages[name].add((package, 2))
         # When python3 = false or no stubs exist outside @python2, packages
         # are Python 2-only
-        if py3 and not metadata[package].get("python3", True):
+        if py3 and metadata[package].get("python3", True):
           packages[name].add((package, 3))
     return packages
 
