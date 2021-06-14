@@ -2833,6 +2833,8 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     if results is None:
       if self.full_name == "builtins.tuple" and args.is_empty():
         value = Tuple((), self.vm)
+      elif self.full_name == "builtins.dict" and args.is_empty():
+        value = Dict(self.vm)
       else:
         value = Instance(
             self.vm.convert.constant_to_value(self.pytd_cls), self.vm)
