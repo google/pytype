@@ -166,7 +166,7 @@ class Typeshed:
         py2 = True
       elif "@python2" not in parts: # {package}/{module}
         if parts[-1].endswith(".pyi"):
-            py3 = True
+          py3 = True
         name, _ = os.path.splitext(parts[1])
         modules[parts[0]].add(name)
     packages = collections.defaultdict(set)
