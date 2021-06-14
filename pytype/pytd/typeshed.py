@@ -144,9 +144,9 @@ class Typeshed:
     stubs/ contains type information for third-party packages. Each top-level
     directory corresponds to one PyPI package and contains one or more modules,
     plus a metadata file (METADATA.toml). If there are separate Python 2 stubs,
-    they live in an @python2 subdirectory. METADATA.toml
-    takes @python2 into account, so if a package has both foo.pyi and
-    @python2/foo.pyi, METADATA.toml will contain `python2 = True`.
+    they live in an @python2 subdirectory. If stubs support both Python 2 and
+    Python 3 without a separate @python2 directory, METADATA.toml will contain
+    `python2 = True`.
 
     Returns:
       A mapping from module name to a set of
@@ -154,22 +154,31 @@ class Typeshed:
     """
     metadata = {}
     modules = collections.defaultdict(set)
+    py2 = False
+    py3 = False
     for third_party_file in self._list_files("stubs"):
       parts = third_party_file.split(os.path.sep)
       if parts[-1] == "METADATA.toml":  # {package}/METADATA.toml
         _, metadata_file = self._load_file(
             os.path.join("stubs", third_party_file))
         metadata[parts[0]] = toml.loads(metadata_file)
-      elif "@python2" not in parts:  # {package}/{module}
+      elif "@python2" in parts:  # {package}/@python2/{module}
+        py2 = True
+      elif "@python2" not in parts: # {package}/{module}
+        if parts[-1].endswith(".pyi"):
+            py3 = True
         name, _ = os.path.splitext(parts[1])
         modules[parts[0]].add(name)
     packages = collections.defaultdict(set)
     for package, names in modules.items():
       for name in names:
-        # When not specified, packages are Python 3-only
-        if metadata[package].get("python2", False):
+        # When not specified and no @python2 directory exists, packages are
+        # Python 3-only
+        if py2 or metadata[package].get("python2", False):
           packages[name].add((package, 2))
-        if metadata[package].get("python3", True):
+        # When python3 = false or no stubs exist outside @python2, packages
+        # are Python 2-only
+        if py3 and not metadata[package].get("python3", True):
           packages[name].add((package, 3))
     return packages
 
