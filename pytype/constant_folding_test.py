@@ -14,6 +14,7 @@ from pytype.pyc import pyc
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 import unittest
 
@@ -55,12 +56,14 @@ class TestFolding(test_base.UnitTest):
     actual = self._fold(code)
     return actual
 
+  @test_utils.skipFromPy((3, 9), "Constant lists get optimised in 3.9")
   def test_basic(self):
     actual = self._process("a = [1, 2, 3]")
     self.assertCountEqual(actual, [
         (1, ("list", int))
     ])
 
+  @test_utils.skipFromPy((3, 9), "Constant lists get optimised in 3.9")
   def test_union(self):
     actual = self._process("a = [1, 2, '3']")
     self.assertCountEqual(actual, [
@@ -94,6 +97,7 @@ class TestFolding(test_base.UnitTest):
         )))
     ])
 
+  @test_utils.skipFromPy((3, 9), "Constant lists get optimised in 3.9")
   def test_nested(self):
     actual = self._process("""
       a = {
