@@ -97,8 +97,8 @@ class TestFolding(test_base.UnitTest):
         )))
     ])
 
-  @test_utils.skipFromPy((3, 9), "Constant lists get optimised in 3.9")
-  def test_nested(self):
+  @test_utils.skipFromPy((3, 8), "opcode line number changed in 3.8")
+  def test_nested_pre38(self):
     actual = self._process("""
       a = {
         'x': [(1, '2', 3), ('4', '5', 6)],
@@ -114,6 +114,26 @@ class TestFolding(test_base.UnitTest):
     k = (("tuple", str, str), str)
     self.assertCountEqual(actual, [
         (4, ("map", k, (y, x, str)))
+    ])
+
+  # TODO(b/175443170): Change the decorator to skipBeforePy once 3.9 works.
+  @test_utils.skipUnlessPy((3, 8), reason="Constant lists get optimised in 3.9")
+  def test_nested(self):
+    actual = self._process("""
+      a = {
+        'x': [(1, '2', 3), ('4', '5', 6)],
+        'y': [{'a': 'b'}, {'c': 'd'}],
+        ('p', 'q'): 'r'
+      }
+    """)
+    x = ("list", (
+        ("tuple", int, str, int),
+        ("tuple", str, str, int)
+    ))
+    y = ("list", ("map", str, str))
+    k = (("tuple", str, str), str)
+    self.assertCountEqual(actual, [
+        (1, ("map", k, (y, x, str)))
     ])
 
   def test_partial(self):
