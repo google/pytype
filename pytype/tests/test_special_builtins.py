@@ -222,5 +222,22 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"upper.*int"})
 
+  def test_property_on_class(self):
+    ty = self.Infer("""
+      class Foo(object):
+        x = 0
+        @property
+        def foo(self):
+          return self.x
+      foo = Foo.foo
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Annotated
+      class Foo:
+        x: int
+        foo: Annotated[int, "property"]
+      foo: property
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
