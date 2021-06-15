@@ -213,6 +213,38 @@ class ParserTest(_ParserTestBase):
           def c(cls) -> str: ...
     """)
 
+  def test_chained_assignment(self):
+    self.check("""
+      a = b = int
+    """, """
+      a = int
+      b = int
+    """)
+
+  def test_multiple_assignment(self):
+    self.check("""
+      a, b = int, str
+    """, """
+      a = int
+      b = str
+    """)
+    self.check("""
+      (a, b) = (c, d) = int, str
+    """, """
+      a = int
+      b = str
+      c = int
+      d = str
+    """)
+
+  def test_invalid_multiple_assignment(self):
+    self.check_error("""
+      a, b = int, str, bool
+    """, 1, "Cannot unpack 2 values for multiple assignment")
+    self.check_error("""
+      a, b = int
+    """, 1, "Cannot unpack 2 values for multiple assignment")
+
   def test_slots(self):
     self.check("""
       class A:

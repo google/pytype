@@ -360,7 +360,11 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       # Deal with descriptors as a potential additional level of indirection.
       for v in attr.bindings:
         value = v.data
-        node2, getter = self.get_attribute(node, value, "__get__", v)
+        if (isinstance(value, special_builtins.PropertyInstance) and valself and
+            valself.data == cls):
+          node2, getter = node, None
+        else:
+          node2, getter = self.get_attribute(node, value, "__get__", v)
         if getter is not None:
           posargs = []
           if valself and valself.data != cls:

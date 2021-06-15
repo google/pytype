@@ -1193,8 +1193,7 @@ class ClassesTest(test_base.TargetIndependentTest):
       X = type("", (), dict())
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
-      X = ...  # type: Any
+      class X: ...
     """)
 
   def test_not_instantiable(self):

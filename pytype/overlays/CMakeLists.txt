@@ -10,6 +10,7 @@ py_library(
     .chex_overlay
     .collections_overlay
     .dataclass_overlay
+    .enum_overlay
     .flax_overlay
     .future_overlay
     .pytype_extensions_overlay
@@ -108,6 +109,18 @@ py_library(
     pytype.abstract_utils
     pytype.function
     pytype.overlay
+)
+
+py_library(
+  NAME
+    enum_overlay
+  SRCS
+    enum_overlay.py
+  DEPS
+    .classgen
+    pytype.abstract
+    pytype.overlay
+    pytype.pytd.pytd
 )
 
 py_library(

@@ -659,6 +659,23 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           # replace any parameter not in the class or function template with
           # its upper value.
           methods[name] = method.Visit(visitors.DropMutableParameters())
+        elif v.is_enum and any(isinstance(enum_member, abstract.Instance)
+                               and enum_member.cls == v
+                               for enum_member in member.data):
+          # i.e. if this is an enum that has any enum members, and the current
+          # member is an enum member.
+          # In this case, we would normally output:
+          # class M(enum.Enum):
+          #   A: M
+          # However, this loses the type of A.value. Instead, annotate members
+          # with the type of their value. (This is what typeshed does.)
+          # class M(enum.Enum):
+          #   A: int
+          enum_member = abstract_utils.get_atomic_value(member)
+          node, attr_var = self.vm.attribute_handler.get_attribute(
+              node, enum_member, "value")
+          attr = abstract_utils.get_atomic_value(attr_var)
+          constants[name].add_type(attr.to_type(node))
         else:
           cls = self.vm.convert.merge_classes([value])
           node, attr = self.vm.attribute_handler.get_attribute(
@@ -676,6 +693,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     # non-canonical instances are added if their canonical values do not contain
     # type parameters.
     ignore = set(annotated_names)
+    # enums should not print "name" and "value" for instances.
+    if v.is_enum:
+      ignore.update(("name", "value"))
     canonical_attributes = set()
 
     def add_attributes_from(instance):

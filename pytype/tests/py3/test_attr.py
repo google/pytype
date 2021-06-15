@@ -29,6 +29,17 @@ class TestAttrib(test_base.TargetPython3BasicTest):
         def __init__(self, x: CustomClass = ...) -> None: ...
     """)
 
+  def test_attr_default_dict(self):
+    self.Check("""
+      import attr
+      @attr.s
+      class Dog2():
+        dog_attr = attr.ib(default='woofing', **dict())
+
+        def make_puppy(self) -> 'Dog2':
+          return Dog2()
+    """)
+
 
 class TestAttribPy3(test_base.TargetPython3FeatureTest):
   """Tests for attr.ib using PEP526 syntax."""

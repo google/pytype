@@ -419,20 +419,21 @@ class PYITest(test_base.TargetIndependentTest):
       """)
       ty, errors = self.InferWithErrors("""
         import foo
-        a = foo.foo(*tuple(), **dict())
+        a = foo.foo(*tuple(), **dict())  # missing-parameter[e1]
         b = foo.foo(*(1,), **{"c": 3j})
-        c = foo.foo(*(1,))  # missing-parameter[e1]
-        d = foo.foo(*(), **{"d": 3j})  # missing-parameter[e2]
+        c = foo.foo(*(1,))  # missing-parameter[e2]
+        d = foo.foo(*(), **{"d": 3j})  # missing-parameter[e3]
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any, Dict
         foo = ...  # type: module
-        a = ...  # type: dict
+        a = ...  # type: Any
         b = ...  # type: Dict[int, complex]
         c = ...  # type: Any
         d = ...  # type: Any
       """)
-      self.assertErrorRegexes(errors, {"e1": r"\bc\b", "e2": r"\ba\b"})
+      self.assertErrorRegexes(errors,
+                              {"e1": r"\ba\b", "e2": r"\bc\b", "e3": r"\ba\b"})
 
   def test_union_with_superclass(self):
     with file_utils.Tempdir() as d:

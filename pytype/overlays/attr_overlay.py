@@ -170,6 +170,7 @@ class Attrib(classgen.FieldConstructor):
 
   def call(self, node, unused_func, args):
     """Returns a type corresponding to an attr."""
+    args = args.simplify(node, self.vm)
     self.match_args(node, args)
     node, default_var = self._get_default_var(node, args)
     type_var = args.namedargs.get("type")
