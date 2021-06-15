@@ -780,15 +780,5 @@ class TestAttrs(test_base.TargetIndependentTest):
             on_setattr=attr.setters.convert)
     """)
 
-  def test_attr_default_dict(self):
-    self.Check("""
-      import attr
-      @attr.s
-      class Dog2():
-        dog_attr = attr.ib(default='woofing', **dict())
-
-        def make_puppy(self) -> 'Dog2':
-          return Dog2()
-    """)
 
 test_base.main(globals(), __name__ == "__main__")
