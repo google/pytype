@@ -359,28 +359,22 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
       raise ParseError(msg)
     return pytd.Constant(name, typ, val)
 
-  def visit_Assign(self, node):
-    targets = node.targets
-    if len(targets) > 1 or isinstance(targets[0], ast3.Tuple):
-      msg = "Assignments must be of the form 'name = value'"
-      raise ParseError(msg)
-    self.convert_node_annotations(node)
-    target = targets[0]
+  def _assign(self, node, target, value):
     name = target.id
 
     # Record and erase TypeVar and ParamSpec definitions.
-    if isinstance(node.value, _TypeVar):
-      self.defs.add_type_var(name, node.value)
+    if isinstance(value, _TypeVar):
+      self.defs.add_type_var(name, value)
       return Splice([])
-    elif isinstance(node.value, _ParamSpec):
-      self.defs.add_param_spec(name, node.value)
+    elif isinstance(value, _ParamSpec):
+      self.defs.add_param_spec(name, value)
       return Splice([])
 
     if node.type_comment:
       # TODO(mdemello): can pyi files have aliases with typecomments?
       ret = pytd.Constant(name, node.type_comment)
     else:
-      ret = self.new_alias_or_constant(name, node.value)
+      ret = self.new_alias_or_constant(name, value)
 
     if self.in_function:
       # Should never happen, but this keeps pytype happy.
@@ -391,6 +385,23 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
     if self.level == 0:
       self.defs.add_alias_or_constant(ret)
     return ret
+
+  def visit_Assign(self, node):
+    self.convert_node_annotations(node)
+    out = []
+    value = node.value
+    for target in node.targets:
+      if isinstance(target, ast3.Tuple):
+        if not (isinstance(value, ast3.Tuple) and
+                len(target.elts) == len(value.elts)):
+          msg = ("Cannot unpack %d values for multiple assignment" %
+                 len(target.elts))
+          raise ParseError(msg)
+        for k, v in zip(target.elts, value.elts):
+          out.append(self._assign(node, k, v))
+      else:
+        out.append(self._assign(node, target, value))
+    return Splice(out)
 
   def visit_ClassDef(self, node):
     class_name = node.name
