@@ -119,6 +119,7 @@ py_library(
   DEPS
     .classgen
     pytype.abstract
+    pytype.abstract_utils
     pytype.overlay
     pytype.pytd.pytd
 )
