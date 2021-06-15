@@ -154,8 +154,8 @@ class Typeshed:
     """
     metadata = {}
     modules = collections.defaultdict(set)
-    py2 = False
-    py3 = False
+    py2 = False  # does a @python2 directory exist
+    py3 = False  # are there stub files outside @python2
     for third_party_file in self._list_files("stubs"):
       parts = third_party_file.split(os.path.sep)
       if parts[-1] == "METADATA.toml":  # {package}/METADATA.toml
@@ -164,7 +164,7 @@ class Typeshed:
         metadata[parts[0]] = toml.loads(metadata_file)
       elif "@python2" in parts:  # {package}/@python2/{module}
         py2 = True
-      elif "@python2" not in parts: # {package}/{module}
+      elif "@python2" not in parts:  # {package}/{module}
         if parts[-1].endswith(".pyi"):
           py3 = True
         name, _ = os.path.splitext(parts[1])
@@ -172,12 +172,12 @@ class Typeshed:
     packages = collections.defaultdict(set)
     for package, names in modules.items():
       for name in names:
-        # When not specified and no @python2 directory exists, packages are
-        # Python 3-only
+        # Packages support Python 2 if either there is a @python2 directory
+        # or `python2 = true` is set in the METADATA.toml file.
         if py2 or metadata[package].get("python2", False):
           packages[name].add((package, 2))
-        # When python3 = false or no stubs exist outside @python2, packages
-        # are Python 2-only
+        # Packages support Python 3 if there are stub files outside the
+        # @python2 directory and `python3 = false` is not set in METADATA.toml.
         if py3 and metadata[package].get("python3", True):
           packages[name].add((package, 3))
     return packages
