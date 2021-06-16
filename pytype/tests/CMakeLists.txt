@@ -555,6 +555,7 @@ py_test(
   DEPS
     .test_base
     pytype.utils
+    pytype.pytd.pytd
 )
 
 py_test(

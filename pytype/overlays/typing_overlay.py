@@ -654,20 +654,7 @@ class Generic(TypingContainer):
   """Implementation of typing.Generic."""
 
   def _get_value_info(self, inner, ellipses):
-    if not all(isinstance(item, abstract.TypeParameter) for item in inner):
-      self.vm.errorlog.invalid_annotation(
-          self.vm.frames, self,
-          "Parameters to Generic[...] must all be type variables")
-      inner = [item for item in inner
-               if isinstance(item, abstract.TypeParameter)]
-
-    template = [item.name for item in inner]
-
-    if len(set(template)) != len(template):
-      self.vm.errorlog.invalid_annotation(
-          self.vm.frames, self,
-          "Parameters to Generic[...] must all be unique")
-
+    template, inner = abstract_utils.build_generic_template(inner, self)
     return template, inner, abstract.ParameterizedClass
 
 

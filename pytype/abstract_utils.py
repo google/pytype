@@ -3,7 +3,7 @@
 import collections
 import hashlib
 import logging
-from typing import Any, Iterable, Mapping, Optional, Tuple, Union
+from typing import Any, Iterable, Mapping, Optional, Sequence, Tuple, Union
 
 from pytype import compat
 from pytype import datatypes
@@ -801,3 +801,29 @@ def get_type_parameter_substitutions(
 ) -> Mapping[str, cfg.Variable]:
   return {p.full_name: val.get_instance_type_parameter(p.name)
           for p in type_params}
+
+
+def build_generic_template(
+    type_params: Sequence[_BaseValue], base_type: _BaseValue
+) -> Tuple[Sequence[str], Sequence[_TypeParameter]]:
+  """Build a typing.Generic template from a sequence of type parameters."""
+  if not all(item.isinstance_TypeParameter() for item in type_params):
+    base_type.vm.errorlog.invalid_annotation(
+        base_type.vm.frames, base_type,
+        "Parameters to Generic[...] must all be type variables")
+    type_params = [item for item in type_params
+                   if item.isinstance_TypeParameter()]
+
+  template = [item.name for item in type_params]
+
+  if len(set(template)) != len(template):
+    base_type.vm.errorlog.invalid_annotation(
+        base_type.vm.frames, base_type,
+        "Parameters to Generic[...] must all be unique")
+
+  return template, type_params
+
+
+def is_generic_protocol(val: _BaseValue) -> bool:
+  return (val.isinstance_ParameterizedClass() and
+          val.full_name == "typing.Protocol")

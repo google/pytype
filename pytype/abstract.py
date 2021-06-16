@@ -1409,6 +1409,9 @@ class AnnotationContainer(AnnotationClass):
     Returns:
       A tuple of the template, the parameters, and the container class.
     """
+    if self.base_cls.full_name == "typing.Protocol":
+      return abstract_utils.build_generic_template(inner, self) + (
+          ParameterizedClass,)
     if isinstance(self.base_cls, TupleClass):
       template = tuple(range(self.base_cls.tuple_length))
     elif isinstance(self.base_cls, CallableClass):
@@ -1464,7 +1467,8 @@ class AnnotationContainer(AnnotationClass):
 
   def _validate_inner(self, template, inner, raw_inner):
     """Check that the passed inner values are valid for the given template."""
-    if isinstance(self.base_cls, ParameterizedClass):
+    if (isinstance(self.base_cls, ParameterizedClass) and
+        not abstract_utils.is_generic_protocol(self.base_cls)):
       # For a generic type alias, we check that the number of typevars in the
       # alias matches the number of raw parameters provided.
       template_length = raw_template_length = len(set(
@@ -1528,9 +1532,10 @@ class AnnotationContainer(AnnotationClass):
       base_cls = self.base_cls.base_cls
     else:
       base_cls = self.base_cls
-    if base_cls.full_name == "typing.Generic":
+    if base_cls.full_name in ("typing.Generic", "typing.Protocol"):
       # Generic is unique in that parameterizing it defines a new template;
       # usually, the parameterized class inherits the base class's template.
+      # Protocol[T, ...] is a shorthand for Protocol, Generic[T, ...].
       template_params = [
           param.with_module(base_cls.full_name) for param in inner]
     else:

@@ -1566,7 +1566,7 @@ class VerifyContainers(Visitor):
       return  # We can't verify this yet
     if not pytd.IsContainer(base_type.cls):
       raise ContainerError("Class %s is not a container" % base_type.name)
-    elif base_type.name == "typing.Generic":
+    elif base_type.name in ("typing.Generic", "typing.Protocol"):
       for t in node.parameters:
         if not isinstance(t, pytd.TypeParameter):
           raise ContainerError("Name %s must be defined as a TypeVar" % t.name)

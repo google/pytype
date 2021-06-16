@@ -811,7 +811,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           pyval_template = base.template
         template = tuple(t.name for t in pyval_template)
         parameters = pyval.parameters
-      assert pyval.name == "typing.Generic" or len(parameters) <= len(template)
+      assert (pyval.name in ("typing.Generic", "typing.Protocol") or
+              len(parameters) <= len(template))
       # Delay type parameter loading to handle recursive types.
       # See the ParameterizedClass.formal_type_parameters() property.
       type_parameters = abstract_utils.LazyFormalTypeParameters(
