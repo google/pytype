@@ -552,6 +552,29 @@ class VirtualMachine:
         non_meta.append(base)
     return meta, non_meta
 
+  def _expand_generic_protocols(self, node, bases):
+    """Expand Protocol[T, ...] to Protocol, Generic[T, ...]."""
+    expanded_bases = []
+    for base in bases:
+      if any(abstract_utils.is_generic_protocol(b) for b in base.data):
+        protocol_base = self.program.NewVariable()
+        generic_base = self.program.NewVariable()
+        generic_cls = self.convert.name_to_value("typing.Generic")
+        for b in base.bindings:
+          if abstract_utils.is_generic_protocol(b.data):
+            protocol_base.AddBinding(b.data.base_cls, {b}, node)
+            generic_base.AddBinding(
+                abstract.ParameterizedClass(
+                    generic_cls, b.data.formal_type_parameters, self,
+                    b.data.template), {b}, node)
+          else:
+            protocol_base.PasteBinding(b)
+        expanded_bases.append(protocol_base)
+        expanded_bases.append(generic_base)
+      else:
+        expanded_bases.append(base)
+    return expanded_bases
+
   def make_class(self, node, name_var, bases, class_dict_var, cls_var,
                  new_class_var=None, is_decorated=False, class_type=None):
     """Create a class with the name, bases and methods given.
@@ -588,6 +611,8 @@ class VirtualMachine:
       cls_var = metacls
     # Flatten Unions in the bases
     bases = [self._process_base_class(node, base) for base in bases]
+    # Expand Protocol[T, ...] to Protocol, Generic[T, ...]
+    bases = self._expand_generic_protocols(node, bases)
     if not bases:
       # A parent-less class inherits from classobj in Python 2 and from object
       # in Python 3.
@@ -1885,7 +1910,7 @@ class VirtualMachine:
 
   def byte_LOAD_FOLDED_CONST(self, state, op):
     const = op.arg
-    state, var = constant_folding.build_folded_type(self, state, const)
+    state, var = constant_folding.build_folded_type(self, state, const.typ)
     return state.push(var)
 
   def byte_POP_TOP(self, state, op):

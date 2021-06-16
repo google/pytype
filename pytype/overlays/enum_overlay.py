@@ -25,6 +25,7 @@ into a proper enum.
 import logging
 
 from pytype import abstract
+from pytype import abstract_utils
 from pytype import overlay
 from pytype.overlays import classgen
 from pytype.pytd import pytd
@@ -97,6 +98,9 @@ class EnumMeta(abstract.PyTDClass):
     init = EnumMetaInit(vm)
     self._member_map["__init__"] = init
     self.members["__init__"] = init.to_variable(vm.root_node)
+    getitem = EnumMetaGetItem(vm)
+    self._member_map["__getitem__"] = getitem
+    self.members["__getitem__"] = getitem.to_variable(vm.root_node)
 
 
 class EnumMetaInit(abstract.SimpleFunction):
@@ -157,7 +161,8 @@ class EnumMetaInit(abstract.SimpleFunction):
     argmap = self._map_args(node, args)
 
     # Args: cls, name, bases, namespace_dict.
-    # cls is the EnumInstance created by EnumBuilder.make_class.
+    # cls is the EnumInstance created by EnumBuilder.make_class, or an
+    # abstract.PyTDClass created by convert.py.
     cls_var = argmap["cls"]
     cls, = cls_var.data
 
@@ -175,3 +180,49 @@ class EnumMetaInit(abstract.SimpleFunction):
           f"Expected an InterpreterClass or PyTDClass, but got {type(cls)}")
 
     return node, ret
+
+
+class EnumMetaGetItem(abstract.SimpleFunction):
+  """Implements the functionality of __getitem__ for enums."""
+
+  def __init__(self, vm):
+    super().__init__(
+        name="__getitem__",
+        param_names=("cls", "name"),
+        varargs_name=None,
+        kwonly_params=(),
+        kwargs_name=None,
+        defaults={},
+        annotations={"name": vm.convert.str_type},
+        vm=vm)
+
+  def _get_member_by_name(self, enum, name):
+    if isinstance(enum, EnumInstance):
+      return enum.members.get(name)
+    else:
+      assert isinstance(enum, abstract.PyTDClass)
+      if name in enum:
+        enum.load_lazy_attribute(name)
+        return enum.members[name]
+
+  def call(self, node, _, args, alias_map=None):
+    _, argmap = self.match_and_map_args(node, args, alias_map)
+    cls_var = argmap["cls"]
+    name_var = argmap["name"]
+    try:
+      cls = abstract_utils.get_atomic_value(cls_var)
+    except abstract_utils.ConversionError:
+      return node, self.vm.new_unsolvable(node)
+    # If we can't get a concrete name, treat it like it matches and return a
+    # canonical enum member.
+    try:
+      name = abstract_utils.get_atomic_python_constant(name_var, str)
+    except abstract_utils.ConversionError:
+      return node, cls.instantiate(node)
+    inst = self._get_member_by_name(cls, name)
+    if inst:
+      return node, inst
+    else:
+      self.vm.errorlog.attribute_error(
+          self.vm.frames, cls_var.bindings[0], name)
+      return node, self.vm.new_unsolvable(node)

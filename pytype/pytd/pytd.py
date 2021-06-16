@@ -592,14 +592,14 @@ GENERIC_BASE_TYPE = (NamedType, ClassType)
 def IsContainer(t):
   """Checks whether class t is a container."""
   assert isinstance(t, Class)
-  if t.name == 'typing.Generic':
+  if t.name in ('typing.Generic', 'typing.Protocol'):
     return True
   for p in t.parents:
     if isinstance(p, GenericType):
       base = p.base_type
-      # We need to check for 'typing.Generic' again here because base may not
-      # yet have been resolved to a ClassType.
-      if (base.name == 'typing.Generic' or
+      # We need to check for Generic and Protocol again here because base may
+      # not yet have been resolved to a ClassType.
+      if (base.name in ('typing.Generic', 'typing.Protocol') or
           isinstance(base, ClassType) and IsContainer(base.cls)):
         return True
   return False

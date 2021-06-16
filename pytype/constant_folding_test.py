@@ -46,7 +46,7 @@ class TestFolding(test_base.UnitTest):
   def _fold(self, code):
     code = constant_folding.optimize(code)
     folded = self._find_load_folded(code)
-    actual = [(op.line, constant_folding.to_literal(op.arg))
+    actual = [(op.line, constant_folding.to_literal(op.arg.typ), op.arg.value)
               for op in folded]
     return actual
 
@@ -60,41 +60,43 @@ class TestFolding(test_base.UnitTest):
   def test_basic(self):
     actual = self._process("a = [1, 2, 3]")
     self.assertCountEqual(actual, [
-        (1, ("list", int))
+        (1, ("list", int), [1, 2, 3])
     ])
 
   @test_utils.skipFromPy((3, 9), "Constant lists get optimised in 3.9")
   def test_union(self):
     actual = self._process("a = [1, 2, '3']")
     self.assertCountEqual(actual, [
-        (1, ("list", (int, str)))
+        (1, ("list", (int, str)), [1, 2, "3"])
     ])
 
   def test_map(self):
     actual = self._process("a = {'x': 1, 'y': '2'}")
     self.assertCountEqual(actual, [
-        (1, ("map", str, (int, str)))
+        (1, ("map", str, (int, str)), {"x": 1, "y": "2"})
     ])
 
   def test_tuple(self):
     actual = self._process("a = (1, '2', True)")
     self.assertCountEqual(actual, [
-        (1, ("tuple", int, str, bool))
+        (1, ("tuple", int, str, bool), (1, "2", True))
     ])
 
   def test_list_of_tuple(self):
     actual = self._process("a = [(1, '2', 3), (4, '5', 6)]")
+    val = [(1, "2", 3), (4, "5", 6)]
     self.assertCountEqual(actual, [
-        (1, ("list", ("tuple", int, str, int)))
+        (1, ("list", ("tuple", int, str, int)), val)
     ])
 
   def test_list_of_varied_tuple(self):
     actual = self._process("a = [(1, '2', 3), ('4', '5', 6)]")
+    val = [(1, "2", 3), ("4", "5", 6)]
     self.assertCountEqual(actual, [
         (1, ("list", (
             ("tuple", int, str, int),
             ("tuple", str, str, int)
-        )))
+        )), val)
     ])
 
   @test_utils.skipFromPy((3, 8), "opcode line number changed in 3.8")
@@ -106,6 +108,11 @@ class TestFolding(test_base.UnitTest):
         ('p', 'q'): 'r'
       }
     """)
+    val = {
+        "x": [(1, "2", 3), ("4", "5", 6)],
+        "y": [{"a": "b"}, {"c": "d"}],
+        ("p", "q"): "r"
+    }
     x = ("list", (
         ("tuple", int, str, int),
         ("tuple", str, str, int)
@@ -113,7 +120,7 @@ class TestFolding(test_base.UnitTest):
     y = ("list", ("map", str, str))
     k = (("tuple", str, str), str)
     self.assertCountEqual(actual, [
-        (4, ("map", k, (y, x, str)))
+        (4, ("map", k, (y, x, str)), val)
     ])
 
   # TODO(b/175443170): Change the decorator to skipBeforePy once 3.9 works.
@@ -126,6 +133,11 @@ class TestFolding(test_base.UnitTest):
         ('p', 'q'): 'r'
       }
     """)
+    val = {
+        "x": [(1, "2", 3), ("4", "5", 6)],
+        "y": [{"a": "b"}, {"c": "d"}],
+        ("p", "q"): "r"
+    }
     x = ("list", (
         ("tuple", int, str, int),
         ("tuple", str, str, int)
@@ -133,7 +145,7 @@ class TestFolding(test_base.UnitTest):
     y = ("list", ("map", str, str))
     k = (("tuple", str, str), str)
     self.assertCountEqual(actual, [
-        (1, ("map", k, (y, x, str)))
+        (1, ("map", k, (y, x, str)), val)
     ])
 
   def test_partial(self):
@@ -144,8 +156,9 @@ class TestFolding(test_base.UnitTest):
         "y": [{"a": "b"}, {"c": "d"}],
       }
     """)
+    val = [{"a": "b"}, {"c": "d"}]
     self.assertCountEqual(actual, [
-        (4, ("list", ("map", str, str)))
+        (4, ("list", ("map", str, str)), val)
     ])
 
 

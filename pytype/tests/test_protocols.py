@@ -5,6 +5,7 @@ Based on PEP 544 https://www.python.org/dev/peps/pep-0544/.
 
 
 from pytype import file_utils
+from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
@@ -35,6 +36,50 @@ class ProtocolTest(test_base.TargetIndependentTest):
       self.Check("""
         import foo
       """, pythonpath=[d.path])
+
+  def test_generic_py(self):
+    ty = self.Infer("""
+      from typing import Protocol, TypeVar
+      T = TypeVar("T")
+      class Foo(Protocol[T]):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Generic, Protocol, TypeVar
+      T = TypeVar("T")
+      class Foo(Protocol, Generic[T]): ...
+    """)
+
+  def test_generic_alias(self):
+    foo_ty = self.Infer("""
+      from typing import Protocol, TypeVar
+      T = TypeVar("T")
+      Foo = Protocol[T]
+
+      class Bar(Foo[T]):
+        pass
+    """)
+    self.assertTypesMatchPytd(foo_ty, """
+      from typing import Generic, Protocol, TypeVar
+      T = TypeVar("T")
+      Foo = Protocol[T]
+      class Bar(Protocol, Generic[T]): ...
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
+      ty = self.Infer("""
+        import foo
+        from typing import TypeVar
+        T = TypeVar('T')
+        class Baz(foo.Foo[T]):
+          pass
+      """, pythonpath=[d.path])
+    self.assertTypesMatchPytd(ty, """
+      foo: module
+      from typing import Generic, Protocol, TypeVar
+      T = TypeVar('T')
+      class Baz(Protocol, Generic[T]): ...
+    """)
 
   def test_self_referential_protocol(self):
     # Some protocols use methods that return instances of the protocol, e.g.
