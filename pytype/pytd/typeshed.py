@@ -170,6 +170,8 @@ class Typeshed:
           no_py3_meta.add(parts[0])
       elif "@python2" in parts:  # {package}/@python2/{module}
         py2_dir.add(parts[0])
+        name, _ = os.path.splitext(parts[2])
+        modules[parts[0]].add(name)
       elif "@python2" not in parts:  # {package}/{module}
         if parts[-1].endswith(".pyi"):
           top_level_stubs.add(parts[0])
