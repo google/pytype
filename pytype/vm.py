@@ -1885,7 +1885,7 @@ class VirtualMachine:
 
   def byte_LOAD_FOLDED_CONST(self, state, op):
     const = op.arg
-    state, var = constant_folding.build_folded_type(self, state, const)
+    state, var = constant_folding.build_folded_type(self, state, const.typ)
     return state.push(var)
 
   def byte_POP_TOP(self, state, op):

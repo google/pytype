@@ -23,9 +23,45 @@ This is less uniform, and therefore not recommended to use other than for
 input/output.
 """
 
+from typing import Any, FrozenSet, Tuple
+
+import attr
+
 from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
+
+
+@attr.s(auto_attribs=True)
+class _Constant:
+  typ: Tuple[str, Any]
+  value: Any
+  op: opcodes.Opcode
+
+  @property
+  def tag(self):
+    return self.typ[0]
+
+
+@attr.s(auto_attribs=True)
+class _Collection:
+  types: FrozenSet[Any]
+  values: Tuple[Any, ...]
+
+
+class _CollectionBuilder:
+  """Build up a collection of constants."""
+
+  def __init__(self):
+    self.types = set()
+    self.values = []
+
+  def add(self, constant):
+    self.types.add(constant.typ)
+    self.values.append(constant.value)
+
+  def build(self):
+    return _Collection(frozenset(self.types), tuple(reversed(self.values)))
 
 
 class _Stack:
@@ -48,38 +84,41 @@ class _Stack:
 
   def fold_args(self, n):
     """Collect the arguments to a build call."""
-    types = set()
+    ret = _CollectionBuilder()
     if len(self.stack) < n:
       # We have something other than constants in the op list
       return None
     else:
       for _ in range(n):
-        elt, op = self.stack.pop()
-        types.add(elt)
-        op.folded = True
-    return frozenset(types)
+        elt = self.stack.pop()
+        ret.add(elt)
+        elt.op.folded = True
+    return ret.build()
 
   def fold_map_args(self, n):
     """Collect the arguments to a BUILD_MAP call."""
-    k_types = set()
-    v_types = set()
+    keys = _CollectionBuilder()
+    vals = _CollectionBuilder()
     if len(self.stack) < 2 * n:
       # We have something other than constants in the op list
       return None, None
     else:
       for _ in range(n):
-        v_elt, v_op = self.stack.pop()
-        k_elt, k_op = self.stack.pop()
-        k_types.add(k_elt)
-        v_types.add(v_elt)
-        k_op.folded = True
-        v_op.folded = True
-    return frozenset(k_types), frozenset(v_types)
+        v_elt = self.stack.pop()
+        k_elt = self.stack.pop()
+        keys.add(k_elt)
+        vals.add(v_elt)
+        k_elt.op.folded = True
+        v_elt.op.folded = True
+    return keys.build(), vals.build()
 
-  def build(self, typename, op):
-    const = self.fold_args(op.arg)
-    if const:
-      self.stack.append([(typename, const), op])
+  def build(self, python_type, op):
+    collection = self.fold_args(op.arg)
+    if collection:
+      typename = python_type.__name__
+      typ = (typename, collection.types)
+      value = python_type(collection.values)
+      self.stack.append(_Constant(typ, value, op))
 
 
 class _FoldConstants:
@@ -104,40 +143,43 @@ class _FoldConstants:
         if isinstance(op, opcodes.LOAD_CONST):
           elt = code.co_consts[op.arg]
           if isinstance(elt, tuple):
-            stack.push([build_tuple(elt), op])
+            stack.push(_Constant(build_tuple(elt), elt, op))
           else:
-            stack.push([('prim', type(elt)), op])
+            stack.push(_Constant(('prim', type(elt)), elt, op))
         elif isinstance(op, opcodes.BUILD_LIST):
-          stack.build('list', op)
+          stack.build(list, op)
         elif isinstance(op, opcodes.BUILD_SET):
-          stack.build('set', op)
+          stack.build(set, op)
         elif isinstance(op, opcodes.FORMAT_VALUE):
           if op.arg & loadmarshal.FVS_MASK:
             stack.pop()
           _ = stack.fold_args(1)
-          stack.push([('prim', str), op])
+          stack.push(_Constant(('prim', str), '', op))
         elif isinstance(op, opcodes.BUILD_STRING):
           _ = stack.fold_args(op.arg)
-          stack.push([('prim', str), op])
+          stack.push(_Constant(('prim', str), '', op))
         elif isinstance(op, opcodes.BUILD_MAP):
-          key_types, val_types = stack.fold_map_args(op.arg)
-          if key_types:
-            key_types = frozenset(key_types)
-            stack.push([('map', (key_types, val_types)), op])
+          keys, vals = stack.fold_map_args(op.arg)
+          if keys:
+            typ = ('map', (keys.types, vals.types))
+            val = dict(zip(keys.values, vals.values))
+            stack.push(_Constant(typ, val, op))
         elif isinstance(op, opcodes.BUILD_CONST_KEY_MAP):
-          (_, key_types), key_op = stack.pop()
-          key_types = frozenset(key_types)
-          val_types = stack.fold_args(op.arg)
-          if val_types:
-            key_op.folded = True
-            stack.push([('map', (key_types, val_types)), op])
+          keys = stack.pop()
+          vals = stack.fold_args(op.arg)
+          if vals:
+            keys.op.folded = True
+            _, t = keys.typ
+            typ = ('map', (frozenset(t), vals.types))
+            val = dict(zip(keys.value, vals.values))
+            stack.push(_Constant(typ, val, op))
         else:
           # If we hit any other bytecode, we are no longer building a literal
           # constant. Clear the stack, but save any substructures that have
           # already been folded from primitives.
-          for t, o in stack:
-            if t[0] != 'prim' or isinstance(o, opcodes.BUILD_STRING):
-              consts[id(o)] = t
+          for c in stack:
+            if c.tag != 'prim' or isinstance(c.op, opcodes.BUILD_STRING):
+              consts[id(c.op)] = c
           stack.clear()
       out = []
       for op in block:
