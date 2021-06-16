@@ -1010,8 +1010,6 @@ class VirtualMachine:
           self.errorlog.unsupported_operands(self.frames, name, x, y)
         result = self.new_unsolvable(state.node)
       elif isinstance(error, function.DictKeyMissing):
-        if self.options.report_errors:
-          self.errorlog.key_error(self.frames, error.name)
         state, result = error.get_return(state)
       else:
         if self.options.report_errors:
@@ -1173,9 +1171,7 @@ class VirtualMachine:
     if nodes:
       return node, result
     elif fallback_to_unsolvable:
-      if isinstance(error, function.DictKeyMissing):
-        self.errorlog.key_error(self.frames, error.name)
-      else:
+      if not isinstance(error, function.DictKeyMissing):
         self.errorlog.invalid_function_call(self.frames, error)
       return node, result
     else:

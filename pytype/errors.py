@@ -966,11 +966,6 @@ class ErrorLog(ErrorLogBase):
   def not_supported_yet(self, stack, feature, details=None):
     self.error(stack, "%s not supported yet" % feature, details=details)
 
-  @_error_name("key-error")
-  def key_error(self, stack, key):
-    self.error(stack, "Key %r possibly not in dictionary (yet)" % key,
-               keyword=key)
-
   @_error_name("python-compiler-error")
   def python_compiler_error(self, filename, lineno, message):
     self._add(Error(

@@ -43,7 +43,6 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [invalid-namedtuple-arg](#invalid-namedtuple-arg)
       * [invalid-super-call](#invalid-super-call)
       * [invalid-typevar](#invalid-typevar)
-      * [key-error](#key-error)
       * [late-directive](#late-directive)
       * [missing-parameter](#missing-parameter)
       * [module-attr](#module-attr)
@@ -65,7 +64,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: mdemello, at: 2021-06-08T15:24-07:00 -->
+<!-- Added by: rechen, at: 2021-06-16T13:27-07:00 -->
 
 <!--te-->
 
@@ -486,16 +485,6 @@ T = TypeVar("S")  # bad: storing TypeVar "S" as "T"
 T = TypeVar(42)  # bad: using a non-str value for the TypeVar name
 T = TypeVar("T", str)  # bad: supplying a single constraint (did you mean `bound=str`?)
 T = TypeVar("T", 0, 100)  # bad: 0 and 100 are not types
-```
-
-## key-error
-
-The dictionary key doesn't exist. Example:
-
-<!-- bad -->
-```python
-x = {}
-y = x["y"]  # key-error
 ```
 
 ## late-directive
