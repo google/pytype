@@ -163,5 +163,48 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
         assert_type(M.value.value, "str")
       """, pythonpath=[d.path])
 
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_value_lookup(self):
+    self.CheckWithErrors("""
+      import enum
+      from typing import Union
+      class M(enum.Enum):
+        A = 1
+      assert_type(M(1), "M")
+      assert_type(M(1).value, "int")
+      assert_type(M(-500), "M")
+      M("str")  # wrong-arg-types
+      class N(enum.Enum):
+        A = 1
+        B = "str"
+      assert_type(N(1), "N")
+      assert_type(N("str"), "N")
+      assert_type(N(499).value, "Union[int, str]")
+      N(M.A)  # wrong-arg-types
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_value_lookup_pytd(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("m.pyi", """
+        enum: module
+        class M(enum.Enum):
+          A: int
+        class N(enum.Enum):
+          A: int
+          B: str
+      """)
+      self.CheckWithErrors("""
+        from typing import Union
+        from m import M, N
+        assert_type(M(1), "m.M")
+        # assert_type(M(1).value, "int")
+        assert_type(M(-500), "m.M")
+        M("str")  # wrong-arg-types
+        assert_type(N(1), "m.N")
+        assert_type(N("str"), "m.N")
+        # assert_type(N(499).value, "Union[int, str]")
+        N(M.A)  # wrong-arg-types
+      """, pythonpath=[d.path])
 
 test_base.main(globals(), __name__ == "__main__")

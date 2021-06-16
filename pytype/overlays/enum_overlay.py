@@ -27,8 +27,10 @@ import logging
 from pytype import abstract
 from pytype import abstract_utils
 from pytype import overlay
+from pytype import overlay_utils
 from pytype.overlays import classgen
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 
 log = logging.getLogger(__name__)
 
@@ -72,6 +74,11 @@ class EnumBuilder(abstract.PyTDClass):
 class EnumInstance(abstract.InterpreterClass):
   """A wrapper for classes that subclass enum.Enum."""
 
+  def __init__(self, name, bases, members, cls, vm):
+    super().__init__(name, bases, members, cls, vm)
+    # This is set by EnumMetaInit.setup_interpreterclass.
+    self.member_type = None
+
   def instantiate(self, node, container=None):
     # Instantiate creates a canonical enum member. This intended for when no
     # particular enum member is needed, e.g. during analysis. Real members have
@@ -80,7 +87,14 @@ class EnumInstance(abstract.InterpreterClass):
     del container
     instance = abstract.Instance(self, self.vm)
     instance.members["name"] = self.vm.convert.build_string(node, "")
-    instance.members["value"] = self.vm.new_unsolvable(node)
+    if self.member_type:
+      value = self.member_type.instantiate(node)
+    else:
+      # instantiate() should never be called before setup_interpreterclass sets
+      # self.member_type, because pytype will complain about recursive types.
+      # But there's no reason not to make sure this function is safe.
+      value = self.vm.new_unsolvable(node)
+    instance.members["value"] = value
     return instance.to_variable(node)
 
 
@@ -123,7 +137,18 @@ class EnumMetaInit(abstract.SimpleFunction):
     self._str_pytd = vm.lookup_builtin("builtins.str")
     self._ignored_locals = {"__module__", "__qualname__"}
 
+  def _make_new(self, node, member_type, cls):
+    return overlay_utils.make_method(
+        vm=self.vm,
+        node=node,
+        name="__new__",
+        params=[
+            overlay_utils.Param("value", member_type)
+        ],
+        return_type=cls)
+
   def _setup_interpreterclass(self, node, cls):
+    member_types = []
     for name, value in classgen.get_class_locals(
         cls.name, False, classgen.Ordering.LAST_ASSIGN, self.vm).items():
       # Build instances directly, because you can't call instantiate() when
@@ -132,11 +157,16 @@ class EnumMetaInit(abstract.SimpleFunction):
       member.members["value"] = value.orig
       member.members["name"] = self.vm.convert.build_string(node, name)
       cls.members[name] = member.to_variable(node)
+      member_types.extend(value.orig.data)
+    member_type = self.vm.convert.merge_classes(member_types)
+    cls.member_type = member_type
+    cls.members["__new__"] = self._make_new(node, member_type, cls)
     return node
 
   def _setup_pytdclass(self, node, cls):
     # We need to rewrite the member map of the PytdClass.
     members = dict(cls._member_map)  # pylint: disable=protected-access
+    member_types = []
     for name, pytd_val in members.items():
       # Only constants need to be transformed.
       # TODO(tsudol): Ensure only valid enum members are transformed.
@@ -153,6 +183,10 @@ class EnumMetaInit(abstract.SimpleFunction):
           node=node)
       cls._member_map[name] = member  # pylint: disable=protected-access
       cls.members[name] = member.to_variable(node)
+      member_types.append(pytd_val.type)
+    member_type = self.vm.convert.constant_to_value(
+        pytd_utils.JoinTypes(member_types))
+    cls.members["__new__"] = self._make_new(node, member_type, cls)
     return node
 
   def call(self, node, func, args, alias_map=None):
@@ -166,9 +200,10 @@ class EnumMetaInit(abstract.SimpleFunction):
     cls_var = argmap["cls"]
     cls, = cls_var.data
 
-    # This function will get called for enum.Enum, because its metaclass is
-    # enum.EnumMeta. We don't have anything to do for that, so return early.
-    if cls.isinstance_PyTDClass() and cls.full_name == "enum.Enum":
+    # This function will get called for every class that has enum.EnumMeta as
+    # its metaclass, including enum.Enum and other enum module members.
+    # We don't have anything to do for those, so return early.
+    if cls.isinstance_PyTDClass() and cls.full_name.startswith("enum."):
       return node, ret
 
     if cls.isinstance_InterpreterClass():
