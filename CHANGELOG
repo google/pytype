@@ -1,3 +1,19 @@
+Version 2021.06.17
+
+New features and updates:
+* Open source pytype_extensions, a library of type system extensions for use
+  with pytype.
+* Add an assert_type statement to assert pytype's view of an expression type.
+* Remove the [key-error] error class: it found few real type errors and produced
+  many false positives.
+
+Bug fixes:
+* Fix a bug that caused 'self' to be typed as 'Any' in @property bodies
+  (temporarily requires --bind-properties flag).
+* Add support for multiple and chained assignments in pyi files.
+* Support the 'Protocol[T, ...]' shorthand for generic protocols.
+* Typeshed: support py2-only third-party packages with no top-level stubs.
+
 Version 2021.05.25
 
 New features and updates:

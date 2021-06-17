@@ -121,6 +121,7 @@ py_library(
     pytype.abstract
     pytype.abstract_utils
     pytype.overlay
+    pytype.overlay_utils
     pytype.pytd.pytd
 )
 

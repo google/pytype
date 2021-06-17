@@ -544,11 +544,11 @@ class ContainerTest(test_base.TargetIndependentTest):
     """, deep=False)
 
   def test_dict(self):
-    ty, errors = self.InferWithErrors("""
+    ty = self.Infer("""
       mymap = {'a': 3.14, 'b':1}
       a = mymap['a']
       b1 = mymap['b']
-      c = mymap['foobar']  # key-error[e]
+      c = mymap['foobar']  # unrecognized values are treated as Any
       mymap[str()] = 3j
       b2 = mymap['b']
     """, deep=True)
@@ -560,7 +560,6 @@ class ContainerTest(test_base.TargetIndependentTest):
       c = ...  # type: Any
       b2 = ...  # type: Union[int, float, complex]
     """)
-    self.assertErrorRegexes(errors, {"e": r"foobar"})
 
   def test_dict_or_any(self):
     self.Check("""
@@ -573,11 +572,15 @@ class ContainerTest(test_base.TargetIndependentTest):
     """)
 
   def test_dict_getitem(self):
-    _, errors = self.InferWithErrors("""
+    ty = self.Infer("""
       v = {}
-      v.__getitem__("a")  # key-error[e]
+      a = v.__getitem__("a")
     """)
-    self.assertErrorRegexes(errors, {"e": r"'a'"})
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Dict
+      v: Dict[nothing, nothing]
+      a: Any
+    """)
 
   def test_empty_list(self):
     ty = self.Infer("""
