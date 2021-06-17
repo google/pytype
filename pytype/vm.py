@@ -98,7 +98,7 @@ class _FindIgnoredTypeComments:
 
   def visit_code(self, code):
     """Interface for pyc.visit."""
-    for op in code.co_code:
+    for op in code.code_iter:
       # Make sure we have attached the type comment to an opcode.
       if isinstance(op, blocks.STORE_OPCODES):
         if op.annotation:
@@ -322,7 +322,7 @@ class VirtualMachine:
   def run_frame(self, frame, node, annotated_locals=None):
     """Run a frame (typically belonging to a method)."""
     self.push_frame(frame)
-    frame.states[frame.f_code.co_code[0]] = frame_state.FrameState.init(
+    frame.states[frame.f_code.first_opcode] = frame_state.FrameState.init(
         node, self)
     frame_name = frame.f_code.co_name
     if frame_name not in self.local_ops or frame_name != "<module>":

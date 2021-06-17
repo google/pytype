@@ -3518,7 +3518,7 @@ class InterpreterFunction(SignedFunction):
         annotations)
 
   def get_first_opcode(self):
-    return self.code.co_code[0]
+    return self.code.first_opcode
 
   def argcount(self, _):
     return self.code.co_argcount
@@ -3816,7 +3816,8 @@ class InterpreterFunction(SignedFunction):
     return self.code.has_coroutine() or self.code.has_iterable_coroutine()
 
   def has_empty_body(self):
-    ops = self.code.co_code
+    # TODO(mdemello): Optimise this.
+    ops = list(self.code.code_iter)
     if len(ops) != 2:
       # This check isn't strictly necessary but prevents us from wastefully
       # building a list of opcode names for a long method.
@@ -4027,7 +4028,7 @@ class BoundInterpreterFunction(BoundFunction):
       yield
 
   def get_first_opcode(self):
-    return self.underlying.code.co_code[0]
+    return self.underlying.code.first_opcode
 
   @property
   def has_overloads(self):
