@@ -282,7 +282,7 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
       # __contains__
       M.A in M
       N.A in M
-      # 1 in M  # should be a type error
+      1 in M  # unsupported-operands
 
       # __iter__
       assert_type([e for e in M], "List[M]")
@@ -310,7 +310,7 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
         # __contains__
         M.A in M
         N.A in M
-        # 1 in M  # should be a type error
+        1 in M  # unsupported-operands
 
         # __iter__
         assert_type([e for e in M], "List[m.M]")
