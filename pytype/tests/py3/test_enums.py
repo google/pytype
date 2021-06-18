@@ -271,5 +271,55 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
         assert_type(c, "bool")
       """, pythonpath=[d.path])
 
+  def test_metaclass_methods(self):
+    self.CheckWithErrors("""
+      import enum
+      class M(enum.Enum):
+        A = 1
+      class N(enum.Enum):
+        A = 1
+
+      # __contains__
+      M.A in M
+      N.A in M
+      # 1 in M  # should be a type error
+
+      # __iter__
+      assert_type([e for e in M], "List[M]")
+
+      # __len__
+      assert_type(len(M), "int")
+
+      # __bool__
+      assert_type(bool(M), "bool")
+    """)
+
+  def test_pytd_metaclass_methods(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("m.pyi", """
+        enum: module
+        class M(enum.Enum):
+          A: int
+      """)
+      self.CheckWithErrors("""
+        import enum
+        from m import M
+        class N(enum.Enum):
+          A = 1
+
+        # __contains__
+        M.A in M
+        N.A in M
+        # 1 in M  # should be a type error
+
+        # __iter__
+        assert_type([e for e in M], "List[m.M]")
+
+        # __len__
+        assert_type(len(M), "int")
+
+        # __bool__
+        assert_type(bool(M), "bool")
+      """, pythonpath=[d.path])
 
 test_base.main(globals(), __name__ == "__main__")
