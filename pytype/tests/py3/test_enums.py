@@ -98,7 +98,7 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
           B = "b"
         assert_type(M["A"].value, "int")
         assert_type(M["B"].value, "str")
-        assert_type(M[e.a_string].value, "Any")
+        assert_type(M[e.a_string].value, "Union[int, str]")
         _ = M["C"]  # attribute-error
       """, pythonpath=[d.path])
 
@@ -206,5 +206,70 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
         # assert_type(N(499).value, "Union[int, str]")
         N(M.A)  # wrong-arg-types
       """, pythonpath=[d.path])
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_enum_eq(self):
+    # Note that this test only checks __eq__'s behavior. Though enums support
+    # comparisons using `is`, pytype doesn't check `is` the same way as __eq__.
+    self.Check("""
+      import enum
+      class M(enum.Enum):
+        A = 1
+      class N(enum.Enum):
+        A = 1
+
+      # Boolean values indicate the expected result.
+      if M.A == N.A:
+        a = None
+      else:
+        a = False
+
+      if M.A == M.A:
+        b = True
+      else:
+        b = None
+
+      if M["A"] == M.A:
+        c = True
+      else:
+        c = None
+      assert_type(a, "bool")
+      assert_type(b, "bool")
+      assert_type(c, "bool")
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_enum_pytd_eq(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("m.pyi", """
+        enum: module
+        class M(enum.Enum):
+          A: int
+        class N(enum.Enum):
+          A: int
+      """)
+      self.Check("""
+        from m import M, N
+
+        # Boolean values indicate the expected result.
+        if M.A == N.A:
+          a = None
+        else:
+          a = False
+
+        if M.A == M.A:
+          b = True
+        else:
+          b = None
+
+        if M["A"] == M.A:
+          c = True
+        else:
+          c = None
+        assert_type(a, "bool")
+        assert_type(b, "bool")
+        assert_type(c, "bool")
+      """, pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")

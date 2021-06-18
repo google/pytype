@@ -108,6 +108,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     self.super_type = self.primitive_classes[super]
     self.str_type = self.primitive_classes[str]
     self.int_type = self.primitive_classes[int]
+    self.bool_type = self.primitive_classes[bool]
 
     self.list_type = self.constant_to_value(list)
     self.set_type = self.constant_to_value(set)
