@@ -365,10 +365,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         # need to fill in subst with *something* so that
         # annotations_util.sub_one_annotation can tell that all annotations have
         # been fully matched.
-        subst = subst.copy()
-        for param in self.vm.annotations_util.get_type_parameters(other_type):
-          if param.name not in subst:
-            subst[param.name] = self.vm.convert.empty.to_variable(node)
+        subst = self._subst_with_type_parameters_from(node, subst, other_type)
         break
       return subst if matched else None
     elif (isinstance(other_type, (abstract.Unknown, abstract.Unsolvable)) or
@@ -630,11 +627,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     else:
       # If no matches, successful or not, are visible, we assume success and
       # manually fill in the substitution dictionary.
-      subst = subst.copy()
-      for param in self.vm.annotations_util.get_type_parameters(other_type):
-        if param.full_name not in subst:
-          subst[param.full_name] = self.vm.convert.empty.to_variable(node)
-      return subst
+      return self._subst_with_type_parameters_from(node, subst, other_type)
 
   def _match_instance_against_type(self, left, other_type, subst, node, view):
     left_type = left.get_class()
@@ -678,11 +671,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       if isinstance(left, abstract.ParameterizedClass):
         assert left.base_cls is other_type.base_cls
       elif isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
-        for type_param in other_type.template:
-          value = other_type.get_formal_type_parameter(type_param.name)
-          if isinstance(value, abstract.TypeParameter):
-            subst[value.full_name] = self.vm.new_unsolvable(self.vm.root_node)
-        return subst
+        return self._subst_with_type_parameters_from(node, subst, other_type)
       else:
         # Parameterized classes can rename type parameters, which is why we need
         # the instance type for lookup. But if the instance type is not
@@ -911,6 +900,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       # between the type parameters in List's and Mapping's abstract methods,
       # but that's tricky to do.
       return None
+    elif left.is_dynamic:
+      return self._subst_with_type_parameters_from(node, subst, other_type)
     left_methods = self._get_methods_dict(left)
     method_names_matched = all(
         method in left_methods for method in other_type.protocol_methods)
@@ -1033,3 +1024,10 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       if common_classes.issubset(ignored_superclasses):
         return None
     return var
+
+  def _subst_with_type_parameters_from(self, node, subst, typ):
+    subst = subst.copy()
+    for param in self.vm.annotations_util.get_type_parameters(typ):
+      if param.name not in subst:
+        subst[param.name] = self.vm.convert.empty.to_variable(node)
+    return subst

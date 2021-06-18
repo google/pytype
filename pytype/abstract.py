@@ -2315,6 +2315,7 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
       # needed for typing.Generic.
       self._template = template
     self.slots = self.base_cls.slots
+    self.is_dynamic = self.base_cls.is_dynamic
     class_mixin.Class.init_mixin(self, base_cls.cls)
     mixin.NestedAnnotation.init_mixin(self)
     self.type_param_check()
