@@ -105,7 +105,8 @@ class Dataclass(classgen.Decorator):
 
     # Add an __init__ method if one doesn't exist already (dataclasses do not
     # overwrite an explicit __init__ method).
-    if "__init__" not in cls.members and self.args[cls]["init"]:
+    if ("__init__" not in cls.members and self.args[cls] and
+        self.args[cls]["init"]):
       init_method = self.make_init(node, cls, attrs)
       cls.members["__init__"] = init_method
 
