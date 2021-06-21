@@ -171,7 +171,7 @@ def add_basic_options(o):
             "annotations. " + temporary))
   o.add_argument(
       "--create-pyi-dataclasses", action="store_true",
-      dest="create_pyi_dataclasses", default=False,
+      dest="create_pyi_dataclasses", default=True,
       help="Construct a dataclass from a decorated pyi class. " + temporary)
   o.add_argument(
       "--preserve-union-macros", action="store_true",

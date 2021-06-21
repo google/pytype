@@ -165,7 +165,6 @@ class BaseTest(unittest.TestCase):
                                          bind_properties=True,
                                          check_parameter_types=True,
                                          chex_overlay=True,
-                                         create_pyi_dataclasses=True,
                                          preserve_union_macros=True,
                                          use_enum_overlay=True)
 
