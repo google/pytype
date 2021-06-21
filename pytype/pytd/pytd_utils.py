@@ -413,7 +413,7 @@ def WrapsDict(member_name, writable=False, implement_len=False):
 
   namespace = {"six": six}
   exec(src, namespace)  # pylint: disable=exec-used
-  return namespace["WrapsDict"]  # pytype: disable=key-error
+  return namespace["WrapsDict"]
 
 
 def GetPredefinedFile(stubs_subdir, module, extension=".pytd",
