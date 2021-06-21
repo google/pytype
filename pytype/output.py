@@ -20,27 +20,6 @@ from six import moves
 
 log = logging.getLogger(__name__)
 
-TOP_LEVEL_IGNORE = frozenset({
-    "__builtins__",
-    "__doc__",
-    "__file__",
-    "__future__",
-    "__module__",
-    "__name__",
-    "__annotations__",
-    "google_type_annotations",
-})
-
-CLASS_LEVEL_IGNORE = frozenset({
-    "__builtins__",
-    "__class__",
-    "__module__",
-    "__name__",
-    "__qualname__",
-    "__slots__",
-    "__annotations__",
-})
-
 
 class Converter(utils.VirtualMachineWeakrefMixin):
   """Functions for converting abstract classes into PyTD."""
@@ -624,8 +603,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
 
     # class-level attributes
     for name, member in v.members.items():
-      if (name in CLASS_LEVEL_IGNORE or name in annotated_names or
-          (v.is_enum and name in ("__new__", "__eq__"))):
+      if (name in abstract_utils.CLASS_LEVEL_IGNORE or name in annotated_names
+          or (v.is_enum and name in ("__new__", "__eq__"))):
         continue
       for value in member.FilteredData(self.vm.exitpoint, strict=False):
         if isinstance(value, special_builtins.PropertyInstance):
@@ -701,7 +680,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
 
     def add_attributes_from(instance):
       for name, member in instance.members.items():
-        if name in CLASS_LEVEL_IGNORE or name in ignore:
+        if name in abstract_utils.CLASS_LEVEL_IGNORE or name in ignore:
           continue
         for value in member.FilteredData(self.vm.exitpoint, strict=False):
           typ = value.to_type(node)

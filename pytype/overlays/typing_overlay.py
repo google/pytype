@@ -490,8 +490,6 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
                  "_fields", "_field_defaults", "_field_types",
                  "_make", "_replace", "_asdict", "_source")
 
-  _special = ("__module__", "__name__", "__qualname__", "__annotations__")
-
   def __init__(self, vm):
     typing_ast = vm.loader.import_name("typing")
     pyval = typing_ast.Lookup("typing._NamedTupleClass")
@@ -578,7 +576,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
       for key in f_locals:
         if key in self._prohibited:
           self.vm.errorlog.not_writable(self.vm.frames, cls_val, key)
-        if key not in self._special and  key not in fields:
+        if key not in abstract_utils.CLASS_LEVEL_IGNORE and  key not in fields:
           node = self.vm.attribute_handler.set_attribute(
               node, cls_val, key, f_locals[key])
 

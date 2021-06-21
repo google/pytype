@@ -12,7 +12,6 @@ from pytype import convert_structural
 from pytype import debug
 from pytype import function
 from pytype import metrics
-from pytype import output
 from pytype import special_builtins
 from pytype import state as frame_state
 from pytype import vm
@@ -502,7 +501,7 @@ class CallTracer(vm.VirtualMachine):
       annotated_names.add(name)
       data.append(pytd.Constant(name, t))
     for name, var in defs.items():
-      if (name in output.TOP_LEVEL_IGNORE or name in annotated_names or
+      if (name in abstract_utils.TOP_LEVEL_IGNORE or name in annotated_names or
           self._is_typing_member(name, var)):
         continue
       options = var.FilteredData(self.exitpoint, strict=False)

@@ -116,7 +116,6 @@ py_library(
     .debug
     .function
     .metrics
-    .output
     .special_builtins
     .state
     .vm

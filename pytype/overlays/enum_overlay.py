@@ -169,7 +169,6 @@ class EnumMetaInit(abstract.SimpleFunction):
         annotations={},
         vm=vm)
     self._str_pytd = vm.lookup_builtin("builtins.str")
-    self._ignored_locals = {"__module__", "__qualname__"}
 
   def _make_new(self, node, member_type, cls):
     return overlay_utils.make_method(

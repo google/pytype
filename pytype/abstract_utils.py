@@ -40,6 +40,27 @@ DYNAMIC_ATTRIBUTE_MARKERS = [
 # and for sub_(one_)annotation(s).
 DUMMY_CONTAINER = object()
 
+# Names defined on every module/class that should be ignored in most cases.
+TOP_LEVEL_IGNORE = frozenset({
+    "__builtins__",
+    "__doc__",
+    "__file__",
+    "__future__",
+    "__module__",
+    "__name__",
+    "__annotations__",
+    "google_type_annotations",
+})
+CLASS_LEVEL_IGNORE = frozenset({
+    "__builtins__",
+    "__class__",
+    "__module__",
+    "__name__",
+    "__qualname__",
+    "__slots__",
+    "__annotations__",
+})
+
 
 class ConversionError(ValueError):
   pass
