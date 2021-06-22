@@ -693,14 +693,14 @@ class ErrorLog(ErrorLogBase):
         break
     else:
       return []
-    methods = vm.matcher.unimplemented_protocol_methods(p, expected)
-    if not methods:
-      # Happens if all the protocol methods are implemented, but with the wrong
-      # types. We don't yet provide more detail about that.
+    attributes = vm.matcher.unimplemented_protocol_attributes(p, expected)
+    if not attributes:
+      # Happens if all the protocol attributes are implemented, but with the
+      # wrong types. We don't yet provide more detail about that.
       return []
     return [
-        "\nThe following methods aren't implemented on %s:\n" %
-        self._print_as_actual_type(p)] + [", ".join(sorted(methods))]
+        "\nThe following attributes aren't implemented on %s:\n" %
+        self._print_as_actual_type(p)] + [", ".join(sorted(attributes))]
 
   def _invalid_parameters(self, stack, message, bad_call):
     """Log an invalid parameters error."""

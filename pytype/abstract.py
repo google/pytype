@@ -2377,8 +2377,8 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
       # TODO(rechen): A missing parameter should be an error.
       yield name, parameters[i] if i < len(parameters) else None
 
-  def get_own_methods(self):
-    return self.base_cls.get_own_methods()
+  def get_own_attributes(self):
+    return self.base_cls.get_own_attributes()
 
   def get_own_abstract_methods(self):
     return self.base_cls.get_own_abstract_methods()
@@ -2779,7 +2779,7 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     init = self.pytd_cls.Lookup("__init__")
     self._member_map["__init__"] = init
 
-  def get_own_methods(self):
+  def get_own_attributes(self):
     return {name for name, member in self._member_map.items()
             if isinstance(member, pytd.Function)}
 
@@ -3003,7 +3003,7 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
         for mbr in self.members.values()]
     return [x for x in values if isinstance(x, InterpreterClass)]
 
-  def get_own_methods(self):
+  def get_own_attributes(self):
     return {name for name, var in self.members.items()
             if any(abstract_utils.is_callable(v) for v in var.data)}
 

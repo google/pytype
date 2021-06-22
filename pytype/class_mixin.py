@@ -114,7 +114,7 @@ class Class(metaclass=mixin.MixinMeta):
     self.metadata = {}
     self._instance_cache = {}
     self._init_abstract_methods()
-    self._init_protocol_methods()
+    self._init_protocol_attributes()
     self._init_overrides_bool()
     self._all_formal_type_parameters = datatypes.AliasingMonitorDict()
     self._all_formal_type_parameters_loaded = False
@@ -145,8 +145,8 @@ class Class(metaclass=mixin.MixinMeta):
 
     self._all_formal_type_parameters_loaded = True
 
-  def get_own_methods(self):
-    """Get the methods defined by this class."""
+  def get_own_attributes(self):
+    """Get the attributes defined by this class."""
     raise NotImplementedError(self.__class__.__name__)
 
   def _is_protocol(self):
@@ -163,35 +163,35 @@ class Class(metaclass=mixin.MixinMeta):
             return True
     return False
 
-  def _init_protocol_methods(self):
-    """Compute this class's protocol methods."""
+  def _init_protocol_attributes(self):
+    """Compute this class's protocol attributes."""
     if self.isinstance_ParameterizedClass():
-      self.protocol_methods = self.base_cls.protocol_methods
+      self.protocol_attributes = self.base_cls.protocol_attributes
       return
     if not self._is_protocol():
-      self.protocol_methods = set()
+      self.protocol_attributes = set()
       return
     if self.isinstance_PyTDClass() and self.pytd_cls.name.startswith("typing."):
       # In typing.pytd, we've experimentally marked some classes such as
       # Sequence, which contains a mix of abstract and non-abstract methods, as
       # protocols, with only the abstract methods being required.
-      self.protocol_methods = self.abstract_methods
+      self.protocol_attributes = self.abstract_methods
       return
-    # For the algorithm to run, protocol_methods needs to be populated with the
-    # protocol methods defined by this class. We'll overwrite the attribute
-    # with the full set of protocol methods later.
-    self.protocol_methods = self.get_own_methods()
-    protocol_methods = set()
+    # For the algorithm to run, protocol_attributes needs to be populated with
+    # the protocol attributes defined by this class. We'll overwrite the
+    # attribute with the full set of protocol attributes later.
+    self.protocol_attributes = self.get_own_attributes()
+    protocol_attributes = set()
     for cls in reversed(self.mro):
       if not isinstance(cls, Class):
         continue
       if cls.is_protocol:
-        # Add protocol methods defined by this class.
-        protocol_methods |= {m for m in cls.protocol_methods if m in cls}
+        # Add protocol attributes defined by this class.
+        protocol_attributes |= {a for a in cls.protocol_attributes if a in cls}
       else:
-        # Remove methods implemented by this class.
-        protocol_methods = {m for m in protocol_methods if m not in cls}
-    self.protocol_methods = protocol_methods
+        # Remove attributes implemented by this class.
+        protocol_attributes = {a for a in protocol_attributes if a not in cls}
+    self.protocol_attributes = protocol_attributes
 
   def _init_overrides_bool(self):
     """Compute and cache whether the class sets its own boolean value."""
@@ -203,7 +203,8 @@ class Class(metaclass=mixin.MixinMeta):
       return
     for cls in self.mro:
       if isinstance(cls, Class):
-        if any(x in cls.get_own_methods() for x in (bool_override, "__len__")):
+        if any(x in cls.get_own_attributes()
+               for x in (bool_override, "__len__")):
           self.overrides_bool = True
           return
     self.overrides_bool = False
@@ -263,7 +264,7 @@ class Class(metaclass=mixin.MixinMeta):
 
   @property
   def is_protocol(self):
-    return bool(self.protocol_methods)
+    return bool(self.protocol_attributes)
 
   def _get_inherited_metaclass(self):
     for base in self.mro[1:]:
