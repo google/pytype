@@ -1,5 +1,11 @@
 # Needed until pytype can support typeshed/stdlib/3/enum.pyi.
 
+# TODO(tsudol): The following changes are needed for the enum overlay:
+# - Remove EnumMeta.__getattribute__
+# - Remove Enum.__getattribute__
+# - Remove the Enum.__init__ signature that only takes 1 arg.
+# - Remove Enum.name and Enum.value
+
 from typing import Any, Dict, Iterable, Iterator, Tuple, Type, TypeVar, Union
 
 _T = TypeVar('_T')

@@ -322,4 +322,39 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
         assert_type(bool(M), "bool")
       """, pythonpath=[d.path])
 
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_functional_api(self):
+    self.Check("""
+      import enum
+
+      M = enum.Enum("M", "A, B")
+      assert_type(M.B, "M")
+      assert_type(M.B.value, "int")
+
+      N = enum.Enum("N", ["A", "B"])
+      assert_type(N.B, "N")
+      assert_type(N.B.value, "int")
+
+      class Marker: pass
+      O = enum.Enum("O", [("A", Marker()), ("B", Marker())])
+      assert_type(O.B, "O")
+      assert_type(O.B.value, "Marker")
+
+      P = enum.Enum("P", {"A": "a", "B": "b"})
+      assert_type(P.B, "P")
+      assert_type(P.B.value, "str")
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_functional_api_errors(self):
+    self.CheckWithErrors("""
+      import enum
+
+      enum.Enum(1)  # missing-parameter
+      enum.Enum(1, "A")  # wrong-arg-types
+      enum.Enum("X", [1, 2])  # wrong-arg-types
+      enum.Enum("X", object())  # wrong-arg-types
+      enum.Enum("Y", "A", start="4")  # wrong-arg-types
+    """)
+
 test_base.main(globals(), __name__ == "__main__")
