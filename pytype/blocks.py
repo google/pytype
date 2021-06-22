@@ -270,9 +270,12 @@ def compute_order(bytecode):
   first_op_to_block = {block.code[0]: block for block in blocks}
   for i, block in enumerate(blocks):
     next_block = blocks[i + 1] if i < len(blocks) - 1 else None
-    last_op = block.code[-1]
+    first_op, last_op = block.code[0], block.code[-1]
     if next_block and not last_op.no_next():
       block.connect_outgoing(next_block)
+    if first_op.target:
+      # Handles SETUP_EXCEPT -> except block
+      block.connect_outgoing(first_op_to_block[first_op.target])
     if last_op.target:
       block.connect_outgoing(first_op_to_block[last_op.target])
     if last_op.block_target:

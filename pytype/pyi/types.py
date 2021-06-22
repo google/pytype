@@ -27,7 +27,7 @@ class ParseError(Exception):
     self._text = text
 
   @classmethod
-  def from_exc(cls, exc):
+  def from_exc(cls, exc) -> "ParseError":
     if isinstance(exc, cls):
       return exc
     elif exc.args:
