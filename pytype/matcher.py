@@ -13,7 +13,6 @@ from pytype import utils
 from pytype.overlays import dataclass_overlay
 from pytype.overlays import typing_overlay
 from pytype.pytd import pep484
-from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 
 
@@ -839,46 +838,23 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       raise NotImplementedError(
           "Can't match instance %r against %r" % (left, other_type))
 
-  def _fill_in_implicit_protocol_methods(self, methods):
-    if "__getitem__" in methods and "__iter__" not in methods:
+  def _get_method_names(self, left):
+    """Get the methods implemented (or implicit) on a type."""
+    left_methods = set.union(*(cls.get_own_methods() for cls in left.mro
+                               if isinstance(cls, class_mixin.Class)))
+    if "__getitem__" in left_methods and "__iter__" not in left_methods:
       # If a class has a __getitem__ method, it also (implicitly) has a
       # __iter__: Python will emulate __iter__ by calling __getitem__ with
       # increasing integers until it throws IndexError.
-      methods["__iter__"] = pytd_utils.DummyMethod("__iter__", "self")
-
-  def _get_methods_dict(self, left):
-    """Get the methods implemented (or implicit) on a type."""
-    left_methods = {}
-    for cls in reversed(left.mro):
-      if isinstance(cls, abstract.ParameterizedClass):
-        cls = cls.base_cls
-      # We add newly discovered methods to the methods dict and remove from the
-      # dict the names of non-method members, since that means the method was
-      # overwritten with something else.
-      if isinstance(cls, abstract.PyTDClass):
-        left_methods.update({m.name: m for m in cls.pytd_cls.methods})
-        for c in cls.pytd_cls.constants:
-          left_methods.pop(c.name, None)
-      elif isinstance(cls, abstract.InterpreterClass):
-        for name, member in cls.members.items():
-          if any(abstract_utils.is_callable(data) for data in member.data):
-            left_methods[name] = member
-          else:
-            left_methods.pop(name, None)
-    self._fill_in_implicit_protocol_methods(left_methods)
+      left_methods.add("__iter__")
     return left_methods
 
   def unimplemented_protocol_methods(self, left, other_type):
     """Get a list of the protocol methods not implemented by `left`."""
     assert other_type.is_protocol
     if left.cls:
-      methods = self._get_methods_dict(left.cls)
-      unimplemented = [
-          method for method in other_type.protocol_methods
-          if method not in methods]
-      if unimplemented:
-        return unimplemented
-    return []
+      return other_type.protocol_methods - self._get_method_names(left.cls)
+    return set()
 
   def _match_against_protocol(self, left, other_type, subst, node, view):
     """Checks whether a type is compatible with a protocol.
@@ -902,50 +878,59 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       return None
     elif left.is_dynamic:
       return self._subst_with_type_parameters_from(node, subst, other_type)
-    left_methods = self._get_methods_dict(left)
-    method_names_matched = all(
-        method in left_methods for method in other_type.protocol_methods)
-    if method_names_matched and isinstance(other_type,
-                                           abstract.ParameterizedClass):
-      key = (node, left, other_type)
-      if key in self._protocol_cache:
-        return subst
-      self._protocol_cache.add(key)
-      return self._match_parameterized_protocol(left_methods, other_type, subst,
-                                                node, view)
-    elif method_names_matched:
+    left_methods = self._get_method_names(left)
+    if other_type.protocol_methods - left_methods:
+      return None  # not all protocol methods are implemented by 'left'
+    key = (node, left, other_type)
+    if key in self._protocol_cache:
       return subst
-    else:
-      return None
+    self._protocol_cache.add(key)
+    new_substs = []
+    for method in other_type.protocol_methods:
+      new_subst = self._match_protocol_method(
+          left, other_type, method, subst, node, view)
+      if new_subst is None:
+        return None
+      new_substs.append(new_subst)
+    return self._merge_substs(subst, new_substs)
 
-  def _match_parameterized_protocol(self, left_methods, other_type, subst, node,
-                                    view):
-    """Checks whether left_methods is compatible with a parameterized protocol.
+  def _match_protocol_method(self, left, other_type, method, subst, node, view):
+    """Checks whether left and other_type are compatible in the given method.
 
     Args:
-      left_methods: A dictionary name -> method. method can either be a
-        Variable or a pytd.Function.
-      other_type: A formal type of type abstract.ParameterizedClass.
+      left: A type.
+      other_type: A protocol.
+      method: A method name.
       subst: The current type parameter assignment.
       node: The current CFG node.
       view: The current mapping of Variable to Value.
     Returns:
       A new type parameter assignment if the matching succeeded, None otherwise.
     """
+    _, left_method = self.vm.attribute_handler.get_attribute(
+        node, left, method, left.to_binding(node))
+    if left_method is None and method == "__iter__":
+      # See _get_method_names: left has an implicit __iter__ method implemented
+      # using __getitem__ under the hood.
+      left_method = self.vm.convert.constant_to_var(
+          pytd_utils.DummyMethod("__iter__", "self"))
+    assert left_method
+    if (any(abstract_utils.is_callable(v) for v in left_method.data) and
+        not isinstance(other_type, abstract.ParameterizedClass)):
+      # TODO(rechen): Even if other_type isn't parameterized, we should run
+      # _match_protocol_method to catch mismatches in method signatures.
+      return subst
     new_substs = []
-    for name in other_type.protocol_methods:
-      abstract_method = other_type.get_method(name)
-      if name in left_methods:
-        matching_left_method = left_methods[name]
-      else:
-        return None
-      converter = self.vm.convert.pytd_convert
-      for signature in abstract_utils.get_signatures(abstract_method):
-        callable_signature = converter.signature_to_callable(signature)
-        if isinstance(callable_signature, abstract.CallableClass):
-          # Prevent the matcher from trying to enforce contravariance on 'self'.
-          callable_signature.formal_type_parameters[0] = (
-              self.vm.convert.unsolvable)
+    abstract_method = self.vm.attribute_handler.get_attribute(
+        node, other_type, method, other_type.to_binding(node))[1].data[0]
+    converter = self.vm.convert.pytd_convert
+    for signature in abstract_utils.get_signatures(abstract_method):
+      callable_signature = converter.signature_to_callable(signature)
+      if isinstance(callable_signature, abstract.CallableClass):
+        # Prevent the matcher from trying to enforce contravariance on 'self'.
+        callable_signature.formal_type_parameters[0] = (
+            self.vm.convert.unsolvable)
+      if isinstance(other_type, abstract.ParameterizedClass):
         annotation_subst = datatypes.AliasingDict()
         if isinstance(other_type.base_cls, class_mixin.Class):
           annotation_subst.uf = (
@@ -953,18 +938,15 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         for (param, value) in other_type.get_formal_type_parameters().items():
           annotation_subst[param] = value.instantiate(
               node, abstract_utils.DUMMY_CONTAINER)
-        annotated_callable = self.vm.annotations_util.sub_one_annotation(
+        callable_signature = self.vm.annotations_util.sub_one_annotation(
             node, callable_signature, [annotation_subst])
-        if isinstance(matching_left_method, pytd.Function):
-          matching_left_method = self.vm.convert.constant_to_var(
-              matching_left_method)
-        for m in matching_left_method.data:
-          match_result = self._match_type_against_type(
-              m, annotated_callable, subst, node, view)
-          if match_result is None:
-            return None
-          else:
-            new_substs.append(match_result)
+      for m in left_method.data:
+        match_result = self._match_type_against_type(
+            m, callable_signature, subst, node, view)
+        if match_result is None:
+          return None
+        else:
+          new_substs.append(match_result)
     return self._merge_substs(subst, new_substs)
 
   def _get_concrete_values_and_classes(self, var):

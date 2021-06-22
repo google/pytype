@@ -403,6 +403,9 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
   def isinstance_Class(self):
     return isinstance(self, class_mixin.Class)
 
+  def isinstance_ClassMethod(self):
+    return isinstance(self, ClassMethod)
+
   def isinstance_ClassMethodInstance(self):
     return False  # overridden in special_builtins.ClassMethodInstance
 
@@ -450,6 +453,9 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
 
   def isinstance_Splat(self):
     return isinstance(self, Splat)
+
+  def isinstance_StaticMethod(self):
+    return isinstance(self, StaticMethod)
 
   def isinstance_StaticMethodInstance(self):
     return False  # overridden in special_builtins.StaticMethodInstance
@@ -2438,25 +2444,6 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
   def set_class(self, node, var):
     self.base_cls.set_class(node, var)
 
-  def get_method(self, method_name):
-    """Retrieve the method with the given name."""
-    method = None
-    for cls in self.base_cls.mro:
-      if isinstance(cls, ParameterizedClass):
-        cls = cls.base_cls
-      if isinstance(cls, PyTDClass):
-        try:
-          method = cls.pytd_cls.Lookup(method_name)
-        except KeyError:
-          continue  # Method not found, proceed to next class in MRO.
-        method = self.vm.convert.constant_to_value(method)
-        break  # Method found!
-      elif isinstance(cls, InterpreterClass) and method_name in cls.members:
-        method = cls.members[method_name].data[0]
-        break  # Method found!
-    assert method
-    return method
-
   def _is_callable(self):
     return (not self.is_abstract
             and isinstance(self.base_cls, (InterpreterClass, PyTDClass))
@@ -3017,11 +3004,8 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
     return [x for x in values if isinstance(x, InterpreterClass)]
 
   def get_own_methods(self):
-    def _can_be_function(var):
-      return any(isinstance(v, FUNCTION_TYPES) or
-                 v.isinstance_ClassMethodInstance() or
-                 v.isinstance_StaticMethodInstance() for v in var.data)
-    return {name for name, var in self.members.items() if _can_be_function(var)}
+    return {name for name, var in self.members.items()
+            if any(abstract_utils.is_callable(v) for v in var.data)}
 
   def get_own_abstract_methods(self):
     def _can_be_abstract(var):

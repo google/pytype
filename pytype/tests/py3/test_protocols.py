@@ -321,7 +321,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
         pass
       f([])  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"Hashable.*List.*__hash__"})
+    self.assertErrorRegexes(errors, {"e": r"Hashable.*List"})
 
   def test_hash_constant(self):
     errors = self.CheckWithErrors("""
@@ -332,7 +332,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
         pass
       f(Foo())  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"Hashable.*Foo.*__hash__"})
+    self.assertErrorRegexes(errors, {"e": r"Hashable.*Foo"})
 
   def test_hash_type(self):
     self.Check("""
