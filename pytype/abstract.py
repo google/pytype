@@ -2779,8 +2779,7 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     self._member_map["__init__"] = init
 
   def get_own_attributes(self):
-    return {name for name, member in self._member_map.items()
-            if isinstance(member, pytd.Function)}
+    return {name for name, member in self._member_map.items()}
 
   def get_own_abstract_methods(self):
     return {name for name, member in self._member_map.items()
@@ -3003,8 +3002,11 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
     return [x for x in values if isinstance(x, InterpreterClass)]
 
   def get_own_attributes(self):
-    return {name for name, var in self.members.items()
-            if any(abstract_utils.is_callable(v) for v in var.data)}
+    attributes = set(self.members)
+    annotations_dict = abstract_utils.get_annotations_dict(self.members)
+    if annotations_dict:
+      attributes.update(annotations_dict.annotated_locals)
+    return attributes - abstract_utils.CLASS_LEVEL_IGNORE
 
   def get_own_abstract_methods(self):
     def _can_be_abstract(var):
@@ -3099,7 +3101,10 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
     return "InterpreterClass(%s)" % self.name
 
   def __contains__(self, name):
-    return name in self.members
+    if name in self.members:
+      return True
+    annotations_dict = abstract_utils.get_annotations_dict(self.members)
+    return annotations_dict and name in annotations_dict.annotated_locals
 
   def update_official_name(self, name):
     assert isinstance(name, str)

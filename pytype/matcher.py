@@ -832,8 +832,13 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
 
   def _get_attribute_names(self, left):
     """Get the attributes implemented (or implicit) on a type."""
-    left_attributes = set.union(*(cls.get_own_attributes() for cls in left.mro
-                                  if isinstance(cls, class_mixin.Class)))
+    left_attributes = set()
+    if isinstance(left, abstract.SimpleValue):
+      left_attributes.update(left.members)
+    left_cls = left.get_class()
+    if left_cls:
+      left_attributes.update(*(cls.get_own_attributes() for cls in left_cls.mro
+                               if isinstance(cls, class_mixin.Class)))
     if "__getitem__" in left_attributes and "__iter__" not in left_attributes:
       # If a class has a __getitem__ method, it also (implicitly) has a
       # __iter__: Python will emulate __iter__ by calling __getitem__ with
@@ -844,10 +849,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
   def unimplemented_protocol_attributes(self, left, other_type):
     """Get a list of the protocol attributes not implemented by `left`."""
     assert other_type.is_protocol
-    if left.cls:
-      return (other_type.protocol_attributes -
-              self._get_attribute_names(left.cls))
-    return set()
+    return other_type.protocol_attributes - self._get_attribute_names(left)
 
   def _match_against_protocol(self, left, other_type, subst, node, view):
     """Checks whether a type is compatible with a protocol.
@@ -873,7 +875,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       return None
     elif left_cls.is_dynamic:
       return self._subst_with_type_parameters_from(node, subst, other_type)
-    left_attributes = self._get_attribute_names(left_cls)
+    left_attributes = self._get_attribute_names(left)
     if other_type.protocol_attributes - left_attributes:
       return None  # not all protocol attributes are implemented by 'left'
     key = (node, left_cls, other_type)
@@ -883,44 +885,20 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     new_substs = []
     for attribute in other_type.protocol_attributes:
       new_subst = self._match_protocol_attribute(
-          left_cls, other_type, attribute, subst, node, view)
+          left, other_type, attribute, subst, node, view)
       if new_subst is None:
         return None
       new_substs.append(new_subst)
     return self._merge_substs(subst, new_substs)
 
-  def _match_protocol_attribute(
-      self, left, other_type, attribute, subst, node, view):
-    """Checks whether left and other_type are compatible in the given attribute.
-
-    Args:
-      left: A type.
-      other_type: A protocol.
-      attribute: An attribute name.
-      subst: The current type parameter assignment.
-      node: The current CFG node.
-      view: The current mapping of Variable to Value.
-    Returns:
-      A new type parameter assignment if the matching succeeded, None otherwise.
-    """
-    _, left_attribute = self.vm.attribute_handler.get_attribute(
-        node, left, attribute, left.to_binding(node))
-    if left_attribute is None and attribute == "__iter__":
-      # See _get_attribute_names: left has an implicit __iter__ method
-      # implemented using __getitem__ under the hood.
-      left_attribute = self.vm.convert.constant_to_var(
-          pytd_utils.DummyMethod("__iter__", "self"))
-    assert left_attribute
-    if (any(abstract_utils.is_callable(v) for v in left_attribute.data) and
-        not isinstance(other_type, abstract.ParameterizedClass)):
-      # TODO(rechen): Even if other_type isn't parameterized, we should run
-      # _match_protocol_attribute to catch mismatches in method signatures.
-      return subst
-    new_substs = []
-    protocol_attribute = self.vm.attribute_handler.get_attribute(
-        node, other_type, attribute, other_type.to_binding(node))[1].data[0]
+  def _get_attribute_types(self, node, other_type, attribute):
+    if not abstract_utils.is_callable(attribute):
+      cls = attribute.get_class()
+      if cls:
+        yield cls
+      return
     converter = self.vm.convert.pytd_convert
-    for signature in abstract_utils.get_signatures(protocol_attribute):
+    for signature in abstract_utils.get_signatures(attribute):
       callable_signature = converter.signature_to_callable(signature)
       if isinstance(callable_signature, abstract.CallableClass):
         # Prevent the matcher from trying to enforce contravariance on 'self'.
@@ -936,9 +914,49 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
               node, abstract_utils.DUMMY_CONTAINER)
         callable_signature = self.vm.annotations_util.sub_one_annotation(
             node, callable_signature, [annotation_subst])
+      yield callable_signature
+
+  def _match_protocol_attribute(
+      self, left, other_type, attribute, subst, node, view):
+    """Checks whether left and other_type are compatible in the given attribute.
+
+    Args:
+      left: An instance of a type.
+      other_type: A protocol.
+      attribute: An attribute name.
+      subst: The current type parameter assignment.
+      node: The current CFG node.
+      view: The current mapping of Variable to Value.
+    Returns:
+      A new type parameter assignment if the matching succeeded, None otherwise.
+    """
+    left_cls = left.get_class()
+    _, left_attribute = self.vm.attribute_handler.get_attribute(
+        node, left_cls, attribute, left_cls.to_binding(node))
+    if left_attribute is None:
+      if attribute == "__iter__":
+        # See _get_attribute_names: left has an implicit __iter__ method
+        # implemented using __getitem__ under the hood.
+        left_attribute = self.vm.convert.constant_to_var(
+            pytd_utils.DummyMethod("__iter__", "self"))
+      else:
+        _, left_attribute = self.vm.attribute_handler.get_attribute(
+            node, left, attribute)
+    assert left_attribute
+    protocol_attribute = self.vm.attribute_handler.get_attribute(
+        node, other_type, attribute, other_type.to_binding(node))[1].data[0]
+    if (any(abstract_utils.is_callable(v) for v in left_attribute.data) and
+        abstract_utils.is_callable(protocol_attribute) and
+        not isinstance(other_type, abstract.ParameterizedClass)):
+      # TODO(rechen): Even if other_type isn't parameterized, we should run
+      # _match_protocol_attribute to catch mismatches in method signatures.
+      return subst
+    new_substs = []
+    for protocol_attribute_type in self._get_attribute_types(
+        node, other_type, protocol_attribute):
       for v in left_attribute.data:
         match_result = self._match_type_against_type(
-            v, callable_signature, subst, node, view)
+            v, protocol_attribute_type, subst, node, view)
         if match_result is None:
           return None
         else:

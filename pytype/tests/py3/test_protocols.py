@@ -781,4 +781,96 @@ class ProtocolsTestPython3Feature(test_base.TargetPython3FeatureTest):
     """)
 
 
+class ProtocolAttributesTest(test_base.TargetPython3FeatureTest):
+  """Tests for non-method protocol attributes."""
+
+  def test_basic(self):
+    self.CheckWithErrors("""
+      from typing import Protocol
+      class Foo(Protocol):
+        x: int
+      class Bar:
+        x: int
+      class Baz:
+        x: str
+      def f(foo: Foo):
+        pass
+      f(Bar())
+      f(Baz())  # wrong-arg-types
+    """)
+
+  def test_missing(self):
+    errors = self.CheckWithErrors("""
+      from typing import Protocol
+      class Foo(Protocol):
+        x: int
+        y: str
+      class Bar:
+        y = ''
+      def f(foo: Foo):
+        pass
+      f(Bar())  # wrong-arg-types[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Foo.*Bar.*x"})
+
+  def test_pyi(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Protocol
+        class Foo(Protocol):
+          x: int
+      """)
+      self.CheckWithErrors("""
+        import foo
+        class Bar:
+          x = 0
+        class Baz:
+          x = '1'
+        def f(x: foo.Foo):
+          pass
+        f(Bar())
+        f(Baz())  # wrong-arg-types
+      """, pythonpath=[d.path])
+
+  def test_pyi_inheritance(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class Foo:
+          x: int
+      """)
+      self.CheckWithErrors("""
+        import foo
+        from typing import Protocol
+        class Bar(Protocol):
+          x: int
+        class Baz(Protocol):
+          x: str
+        class Foo2(foo.Foo):
+          pass
+        def f(bar: Bar):
+          pass
+        def g(baz: Baz):
+          pass
+        f(Foo2())
+        g(Foo2())  # wrong-arg-types
+      """, pythonpath=[d.path])
+
+  def test_instance_attribute(self):
+    self.CheckWithErrors("""
+      from typing import Protocol
+      class Foo(Protocol):
+        x: int
+      class Bar:
+        def __init__(self):
+          self.x = 0
+      class Baz:
+        def __init__(self):
+          self.x = ''
+      def f(foo: Foo):
+        pass
+      f(Bar())
+      f(Baz())  # wrong-arg-types
+    """)
+
+
 test_base.main(globals(), __name__ == "__main__")
