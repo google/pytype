@@ -290,7 +290,7 @@ def _check_against_mro(vm, target, class_spec):
   ambiguous = _flatten(class_spec, classes)
 
   for c in classes:
-    if vm.matcher.match_from_mro(target, c, allow_compat_builtins=False):
+    if vm.matcher(None).match_from_mro(target, c, allow_compat_builtins=False):
       return True  # A definite match.
   # No matches, return result depends on whether _flatten() was
   # ambiguous.

@@ -632,7 +632,7 @@ class CallTracer(vm.VirtualMachine):
     bad = [view for view in views
            if actual in view and view[actual].data.formal]
     if not bad:
-      bad = self.matcher.bad_matches(actual, formal, node)
+      bad = self.matcher(node).bad_matches(actual, formal)
     if bad:
       self.errorlog.bad_return_type(
           self.frames, node, formal, actual, bad)

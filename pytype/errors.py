@@ -693,7 +693,7 @@ class ErrorLog(ErrorLogBase):
         break
     else:
       return []
-    attributes = vm.matcher.unimplemented_protocol_attributes(p, expected)
+    attributes = vm.matcher(None).unimplemented_protocol_attributes(p, expected)
     if not attributes:
       # Happens if all the protocol attributes are implemented, but with the
       # wrong types. We don't yet provide more detail about that.

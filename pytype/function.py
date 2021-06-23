@@ -691,8 +691,8 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
     """Substitute matching args into this signature. Used by PyTDFunction."""
     formal_args, arg_dict = self._map_args(args, view)
     self._fill_in_missing_parameters(node, args, arg_dict)
-    subst, bad_arg = self.vm.matcher.compute_subst(
-        node, formal_args, arg_dict, view, alias_map)
+    subst, bad_arg = self.vm.matcher(node).compute_subst(
+        formal_args, arg_dict, view, alias_map)
     if subst is None:
       if self.signature.has_param(bad_arg.name):
         signature = self.signature

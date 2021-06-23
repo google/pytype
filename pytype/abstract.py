@@ -1563,7 +1563,7 @@ class AnnotationContainer(AnnotationClass):
         else:
           root_node = self.vm.root_node
           actual = params[formal.name].instantiate(root_node)
-          bad = self.vm.matcher.bad_matches(actual, formal, root_node)
+          bad = self.vm.matcher(root_node).bad_matches(actual, formal)
           if bad:
             formal = self.vm.annotations_util.sub_one_annotation(
                 root_node, formal, [{}])
@@ -2034,8 +2034,8 @@ class PyTDFunction(Function):
             # unfortunately, it is also needed for correctness because
             # cfg_utils.deep_variable_product() ignores bindings to values with
             # duplicate type keys when generating views.
-            compatible_with_cache[k] = self.vm.matcher.match_var_against_type(
-                new, data.cls, {}, node, view)
+            compatible_with_cache[k] = self.vm.matcher(
+                node).match_var_against_type(new, data.cls, {}, view)
           if compatible_with_cache[k] is not None:
             return True
         return False
@@ -2631,8 +2631,8 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):
     for view in abstract_utils.get_views(args, node):
       arg_dict = {function.argname(i): view[args[i]]
                   for i in range(self.num_args)}
-      subst, bad_param = self.vm.matcher.compute_subst(
-          node, formal_args, arg_dict, view, None)
+      subst, bad_param = self.vm.matcher(node).compute_subst(
+          formal_args, arg_dict, view, None)
       if subst is not None:
         substs = [subst]
         break
@@ -3309,8 +3309,8 @@ class SignedFunction(Function):
           # Iterable or Mapping.
           formal = self.vm.convert.widen_type(formal)
         formal_args.append((name, formal))
-    subst, bad_arg = self.vm.matcher.compute_subst(
-        node, formal_args, arg_dict, view, alias_map)
+    subst, bad_arg = self.vm.matcher(node).compute_subst(
+        formal_args, arg_dict, view, alias_map)
     if subst is None:
       raise function.WrongArgTypes(
           self.signature, args, self.vm, bad_param=bad_arg)
