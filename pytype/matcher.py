@@ -461,8 +461,9 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       return self._match_instance_against_type(
           left, other_type, subst, node, view)
     elif isinstance(left, special_builtins.SuperInstance):
-      return self._match_class_and_instance_against_type(
-          left.super_cls, left.super_obj, other_type, subst, node, view)
+      instance = left.super_obj or abstract.Instance(left.super_cls, self.vm)
+      return self._match_instance_against_type(
+          instance, other_type, subst, node, view)
     elif isinstance(left, abstract.ClassMethod):
       if other_type.full_name in [
           "builtins.classmethod", "builtins.object"]:
@@ -629,13 +630,55 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       return self._subst_with_type_parameters_from(node, subst, other_type)
 
   def _match_instance_against_type(self, left, other_type, subst, node, view):
-    left_type = left.get_class()
-    assert left_type
-    return self._match_class_and_instance_against_type(
-        left_type, left, other_type, subst, node, view)
+    """Checks whether an instance of a type is compatible with a (formal) type.
+
+    Args:
+      left: An instance of a type.
+      other_type: A formal type. E.g. class_mixin.Class or abstract.Union.
+      subst: The current type parameter assignment.
+      node: The current CFG node.
+      view: The current mapping of Variable to Value.
+    Returns:
+      A new type parameter assignment if the matching succeeded, None otherwise.
+    """
+    if isinstance(other_type, abstract.LiteralClass):
+      other_value = other_type.value
+      if other_value and isinstance(left, abstract.ConcreteValue):
+        return subst if left.pyval == other_value.pyval else None
+      elif other_value:
+        # `left` does not contain a concrete value. Literal overloads are
+        # always followed by at least one non-literal fallback, so we should
+        # fail here.
+        return None
+      else:
+        # TODO(b/173742489): Remove this workaround once we can match against
+        # literal enums.
+        return self._match_type_against_type(
+            left, other_type.formal_type_parameters[abstract_utils.T], subst,
+            node, view)
+    elif isinstance(other_type, class_mixin.Class):
+      base = self.match_from_mro(left.get_class(), other_type)
+      if base is None:
+        if other_type.is_protocol:
+          with self._track_partially_matched_protocols():
+            return self._match_against_protocol(left, other_type, subst, node,
+                                                view)
+        return None
+      elif isinstance(base, abstract.AMBIGUOUS_OR_EMPTY):
+        # An ambiguous base class matches everything.
+        # _match_maybe_parameterized_instance puts the right params in `subst`.
+        return self._match_maybe_parameterized_instance(
+            base, left, other_type, subst, node, view)
+      else:
+        return self._match_instance(base, left, other_type, subst, node, view)
+    elif isinstance(other_type, abstract.Empty):
+      return None
+    else:
+      raise NotImplementedError(
+          "Can't match %r against %r" % (left, other_type))
 
   def _match_instance(self, left, instance, other_type, subst, node, view):
-    """Used by _match_class_and_instance_against_type. Matches one MRO entry.
+    """Used by _match_instance_against_type. Matches one MRO entry.
 
     Called after the instance has been successfully matched against a
     formal type to do any remaining matching special to the type.
@@ -787,57 +830,6 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         return None
     return subst
 
-  def _match_class_and_instance_against_type(
-      self, left, instance, other_type, subst, node, view):
-    """Checks whether an instance of a type is compatible with a (formal) type.
-
-    Args:
-      left: A type.
-      instance: An instance of the type. An abstract.Instance.
-      other_type: A formal type. E.g. class_mixin.Class or abstract.Union.
-      subst: The current type parameter assignment.
-      node: The current CFG node.
-      view: The current mapping of Variable to Value.
-    Returns:
-      A new type parameter assignment if the matching succeeded, None otherwise.
-    """
-    if isinstance(other_type, abstract.LiteralClass):
-      other_value = other_type.value
-      if other_value and isinstance(instance, abstract.ConcreteValue):
-        return subst if instance.pyval == other_value.pyval else None
-      elif other_value:
-        # `instance` does not contain a concrete value. Literal overloads are
-        # always followed by at least one non-literal fallback, so we should
-        # fail here.
-        return None
-      else:
-        # TODO(b/173742489): Remove this workaround once we can match against
-        # literal enums.
-        return self._match_type_against_type(
-            instance, other_type.formal_type_parameters[abstract_utils.T],
-            subst, node, view)
-    elif isinstance(other_type, class_mixin.Class):
-      base = self.match_from_mro(left, other_type)
-      if base is None:
-        if other_type.is_protocol:
-          with self._track_partially_matched_protocols():
-            return self._match_against_protocol(left, other_type, subst, node,
-                                                view)
-        return None
-      elif isinstance(base, abstract.AMBIGUOUS_OR_EMPTY):
-        # An ambiguous base class matches everything.
-        # _match_maybe_parameterized_instance puts the right params in `subst`.
-        return self._match_maybe_parameterized_instance(
-            base, instance, other_type, subst, node, view)
-      else:
-        return self._match_instance(
-            base, instance, other_type, subst, node, view)
-    elif isinstance(other_type, abstract.Empty):
-      return None
-    else:
-      raise NotImplementedError(
-          "Can't match instance %r against %r" % (left, other_type))
-
   def _get_attribute_names(self, left):
     """Get the attributes implemented (or implicit) on a type."""
     left_attributes = set.union(*(cls.get_own_attributes() for cls in left.mro
@@ -861,7 +853,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     """Checks whether a type is compatible with a protocol.
 
     Args:
-      left: A type.
+      left: An instance of a type.
       other_type: A protocol.
       subst: The current type parameter assignment.
       node: The current CFG node.
@@ -869,27 +861,29 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     Returns:
       A new type parameter assignment if the matching succeeded, None otherwise.
     """
-    if isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
+    left_cls = left.get_class()
+    if isinstance(left_cls, abstract.AMBIGUOUS_OR_EMPTY):
       return subst
-    elif len(left.template) == 1 and other_type.full_name == "typing.Mapping":
+    elif (len(left_cls.template) == 1 and
+          other_type.full_name == "typing.Mapping"):
       # TODO(rechen): This check is a workaround to prevent List from matching
       # against Mapping. What we should actually do is detect the mismatch
       # between the type parameters in List's and Mapping's abstract methods,
       # but that's tricky to do.
       return None
-    elif left.is_dynamic:
+    elif left_cls.is_dynamic:
       return self._subst_with_type_parameters_from(node, subst, other_type)
-    left_attributes = self._get_attribute_names(left)
+    left_attributes = self._get_attribute_names(left_cls)
     if other_type.protocol_attributes - left_attributes:
       return None  # not all protocol attributes are implemented by 'left'
-    key = (node, left, other_type)
+    key = (node, left_cls, other_type)
     if key in self._protocol_cache:
       return subst
     self._protocol_cache.add(key)
     new_substs = []
     for attribute in other_type.protocol_attributes:
       new_subst = self._match_protocol_attribute(
-          left, other_type, attribute, subst, node, view)
+          left_cls, other_type, attribute, subst, node, view)
       if new_subst is None:
         return None
       new_substs.append(new_subst)
