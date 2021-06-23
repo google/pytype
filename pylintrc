@@ -49,6 +49,7 @@ disable=
   too-few-public-methods,
   too-many-ancestors,
   too-many-arguments,
+  too-many-boolean-expressions,
   too-many-branches,
   too-many-instance-attributes,
   too-many-locals,

@@ -40,6 +40,7 @@ class OrderedCode:
     order: A list of bytecode blocks. They're ordered ancestors-first, see
       cfg_utils.py:order_nodes.
     code_iter: A flattened list of block opcodes. Corresponds to co_code.
+    original_co_code: The original code object's co_code.
     first_opcode: The first opcode in code_iter.
     python_version: The Python version this bytecode is from.
   """
@@ -57,6 +58,9 @@ class OrderedCode:
     self.__dict__.update({name: value for name, value in code.__dict__.items()
                           if name.startswith("co_") and name != "co_code"})
     self.order = order
+    # Keep the original co_code around temporarily to work around an issue in
+    # the block collection algorithm (b/191517403)
+    self.original_co_code = bytecode
     self.python_version = python_version
     for insn in bytecode:
       insn.code = self
@@ -266,9 +270,12 @@ def compute_order(bytecode):
   first_op_to_block = {block.code[0]: block for block in blocks}
   for i, block in enumerate(blocks):
     next_block = blocks[i + 1] if i < len(blocks) - 1 else None
-    last_op = block.code[-1]
+    first_op, last_op = block.code[0], block.code[-1]
     if next_block and not last_op.no_next():
       block.connect_outgoing(next_block)
+    if first_op.target:
+      # Handles SETUP_EXCEPT -> except block
+      block.connect_outgoing(first_op_to_block[first_op.target])
     if last_op.target:
       block.connect_outgoing(first_op_to_block[last_op.target])
     if last_op.block_target:
@@ -340,7 +347,7 @@ class CollectAnnotationTargetsVisitor:
     else:
       # [LOAD_CONST <code>, LOAD_CONST name, MAKE_FUNCTION]
       offset = 2
-    co_code = list(code.code_iter)
+    co_code = code.original_co_code
     for i, op in enumerate(co_code):
       if isinstance(op, opcodes.MAKE_FUNCTION):
         code_op = co_code[i - offset]
@@ -349,7 +356,7 @@ class CollectAnnotationTargetsVisitor:
         if not _is_function_def(fn_code):
           continue
         # First line of code in body.
-        end_line = min(op.line for op in fn_code.code_iter)
+        end_line = min(op.line for op in fn_code.original_co_code)
         self.make_function_ops[op.line] = (end_line, op)
       elif (isinstance(op, STORE_OPCODES) and
             op.line not in self.make_function_ops):

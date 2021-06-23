@@ -62,10 +62,6 @@ __all__ = ['KnownError',
            'FixMergePyi',
            'annotate_string']
 
-# Because this file modifies dictionaries as a method side effect:
-# pytype: disable=key-error
-
-
 _GRAMMAR_FILE = os.path.join(os.path.dirname(__file__), 'Grammar.txt')
 
 

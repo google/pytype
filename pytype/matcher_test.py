@@ -73,8 +73,8 @@ class MatcherTest(test_base.UnitTest):
     var = self.vm.program.NewVariable()
     var.AddBinding(left, [], self.vm.root_node)
     for view in abstract_utils.get_views([var], self.vm.root_node):
-      yield self.vm.matcher.match_var_against_type(var, right, {},
-                                                   self.vm.root_node, view)
+      yield self.vm.matcher(self.vm.root_node).match_var_against_type(
+          var, right, {}, view)
 
   def assertMatch(self, left, right):
     for match in self._match_var(left, right):
@@ -116,30 +116,30 @@ class MatcherTest(test_base.UnitTest):
   def test_empty_against_class(self):
     var = self.vm.program.NewVariable()
     right = self._make_class("bar")
-    result = self.vm.matcher.match_var_against_type(var, right, {},
-                                                    self.vm.root_node, {})
+    result = self.vm.matcher(self.vm.root_node).match_var_against_type(
+        var, right, {}, {})
     self.assertEqual(result, {})
 
   def test_empty_var_against_empty(self):
     var = self.vm.program.NewVariable()
     right = abstract.Empty(self.vm)
-    result = self.vm.matcher.match_var_against_type(var, right, {},
-                                                    self.vm.root_node, {})
+    result = self.vm.matcher(self.vm.root_node).match_var_against_type(
+        var, right, {}, {})
     self.assertEqual(result, {})
 
   def test_empty_against_type_parameter(self):
     var = self.vm.program.NewVariable()
     right = abstract.TypeParameter("T", self.vm)
-    result = self.vm.matcher.match_var_against_type(var, right, {},
-                                                    self.vm.root_node, {})
+    result = self.vm.matcher(self.vm.root_node).match_var_against_type(
+        var, right, {}, {})
     six.assertCountEqual(self, result.keys(), ["T"])
     self.assertFalse(result["T"].bindings)
 
   def test_empty_against_unsolvable(self):
     var = self.vm.program.NewVariable()
     right = abstract.Empty(self.vm)
-    result = self.vm.matcher.match_var_against_type(var, right, {},
-                                                    self.vm.root_node, {})
+    result = self.vm.matcher(self.vm.root_node).match_var_against_type(
+        var, right, {}, {})
     self.assertEqual(result, {})
 
   def test_class_against_type_union(self):
@@ -254,8 +254,8 @@ class MatcherTest(test_base.UnitTest):
               1: abstract.TypeParameter(abstract_utils.V, self.vm)}
     params[abstract_utils.T] = abstract.Union((params[0], params[1]), self.vm)
     right = abstract.TupleClass(self.vm.convert.tuple_type, params, self.vm)
-    match = self.vm.matcher.match_var_against_type(var, right, {},
-                                                   self.vm.root_node, {})
+    match = self.vm.matcher(self.vm.root_node).match_var_against_type(
+        var, right, {}, {})
     self.assertSetEqual(set(match), {abstract_utils.K, abstract_utils.V})
 
   def test_unsolvable_against_tuple_class(self):

@@ -258,6 +258,15 @@ class BuiltinTests3(test_base.TargetIndependentTest):
       ba[1:4:2] = b"at"
     """)
 
+  def test_bytearray_contains(self):
+    self.Check("""
+      ba = bytearray(b"test")
+      1 in ba
+      "world" in ba
+      b"world" in ba
+      bytearray(b"t") in ba
+    """)
+
   def test_from_hex(self):
     ty = self.Infer("""
       f = float.fromhex("feed")

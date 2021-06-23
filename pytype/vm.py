@@ -152,7 +152,6 @@ class VirtualMachine:
     self.program.entrypoint = self.root_node
     self.annotations_util = annotations_util.AnnotationsUtil(self)
     self.attribute_handler = attribute.AbstractAttributeHandler(self)
-    self.matcher = matcher.AbstractMatcher(self)
     self.loaded_overlays = {}  # memoize which overlays are loaded
     self.convert = convert.Converter(self)
     self.program.default_data = self.convert.unsolvable
@@ -211,6 +210,9 @@ class VirtualMachine:
   @property
   def current_annotated_locals(self):
     return self.annotated_locals[self.frame.f_code.co_name]
+
+  def matcher(self, node):
+    return matcher.AbstractMatcher(node, self)
 
   @contextlib.contextmanager
   def _suppress_opcode_tracing(self):
@@ -1430,7 +1432,7 @@ class VirtualMachine:
         typ, ("typing.ClassVar", "dataclasses.InitVar"))
     if contained_type:
       typ = contained_type
-    bad = self.matcher.bad_matches(value, typ, node)
+    bad = self.matcher(node).bad_matches(value, typ)
     for view in bad:
       binding = view[value]
       self.errorlog.annotation_type_mismatch(stack, typ, binding, name)
@@ -3580,8 +3582,8 @@ class VirtualMachine:
     """
     bad_bindings = []
     for b in obj.bindings:
-      if self.matcher.match_var_against_type(
-          obj, self.convert.coroutine_type, {}, state.node, {obj: b}) is None:
+      if self.matcher(state.node).match_var_against_type(
+          obj, self.convert.coroutine_type, {}, {obj: b}) is None:
         bad_bindings.append(b)
     if not bad_bindings:  # there are no non-coroutines
       return state, obj
@@ -3606,8 +3608,8 @@ class VirtualMachine:
     if b not in bad_bindings:  # this is already a coroutine
       ret.PasteBinding(b)
       return state
-    if self.matcher.match_var_against_type(
-        b.variable, self.convert.generator_type, {}, state.node, {b.variable: b}
+    if self.matcher(state.node).match_var_against_type(
+        b.variable, self.convert.generator_type, {}, {b.variable: b}
     ) is not None:
       # This is a generator; convert it to a coroutine. This conversion is
       # necessary even though generator-based coroutines convert their return

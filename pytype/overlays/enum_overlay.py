@@ -70,6 +70,68 @@ class EnumBuilder(abstract.PyTDClass):
     return self.vm.make_class(node, name_var, bases, class_dict_var, cls_var,
                               new_class_var, class_type=EnumInstance)
 
+  def call(self, node, f, args, alias_map=None):
+    """Implements the behavior of the enum functional API."""
+    # Because of how this is called, we supply our own "self" argument.
+    # See class_mixin.Class._call_new_and_init.
+    args = args.simplify(node, self.vm)
+    args = args.replace(posargs=(self.vm.new_unsolvable(node),) + args.posargs)
+    self.load_lazy_attribute("__init__")
+    func = abstract_utils.get_atomic_value(self.members["__init__"])
+    # Note that super().call or _call_new_and_init won't work here, because
+    # they don't raise FailedFunctionCall.
+    func.match_args(node, args, alias_map)
+    # There should only be 1 signature for Enum.__init__.
+    assert len(func.signatures) == 1, "Expected only 1 Enum.__init__ signature."
+    sig = func.signatures[0].signature
+    argmap = {name: var for name, var, _ in sig.iter_args(args)}
+
+    cls_name_var = argmap["value"]
+    try:
+      names = abstract_utils.get_atomic_python_constant(argmap["names"])
+    except abstract_utils.ConversionError as e:
+      log.info("Failed to unwrap values in enum functional interface:\n%s", e)
+      return node, self.vm.new_unsolvable(node)
+
+    if isinstance(names, str):
+      names = names.replace(",", " ").split()
+      fields = {name: self.vm.convert.build_int(node) for name in names}
+    elif isinstance(names, dict):
+      # Dict keys are strings, not strings in variables. The values are
+      # variables, they don't need to be changed.
+      fields = names
+    else:
+      # List of names, or list of (name, value) pairs.
+      possible_pairs = [abstract_utils.get_atomic_python_constant(p)
+                        for p in names]
+      if not possible_pairs:
+        fields = {}
+      elif isinstance(possible_pairs[0], str):
+        fields = {name: self.vm.convert.build_int(node)
+                  for name in possible_pairs}
+      else:
+        # List of (name_var, value_var) pairs.
+        # The earlier get_atomic_python_constant call only unwrapped the tuple,
+        # so the values in the tuple still need to be unwrapped.
+        fields = {
+            abstract_utils.get_atomic_python_constant(name):
+                value
+            for name, value in possible_pairs
+        }
+
+    cls_dict = abstract.Dict(self.vm)
+    cls_dict.update(node, fields)
+
+    metaclass = self.vm.loaded_overlays["enum"].members["EnumMeta"]
+
+    return self.vm.make_class(
+        node=node,
+        name_var=cls_name_var,
+        bases=[self.to_variable(node)],
+        class_dict_var=cls_dict.to_variable(node),
+        cls_var=metaclass,
+        class_type=EnumInstance)
+
 
 class EnumInstance(abstract.InterpreterClass):
   """A wrapper for classes that subclass enum.Enum."""
@@ -169,7 +231,19 @@ class EnumMetaInit(abstract.SimpleFunction):
         annotations={},
         vm=vm)
     self._str_pytd = vm.lookup_builtin("builtins.str")
-    self._ignored_locals = {"__module__", "__qualname__"}
+
+  def _get_class_locals(self, node, cls_name, cls_dict):
+    # First, check if get_class_locals works for this class.
+    if cls_name in self.vm.local_ops:
+      ret = classgen.get_class_locals(
+          cls_name, False, classgen.Ordering.LAST_ASSIGN, self.vm).items()
+      return ret
+
+    # If it doesn't work, then it's likely this class was created using the
+    # functional API. Grab members from the cls_dict instead.
+    ret = {name: abstract_utils.Local(node, None, None, value, self.vm)
+           for name, value in cls_dict.items()}
+    return ret.items()
 
   def _make_new(self, node, member_type, cls):
     return overlay_utils.make_method(
@@ -183,8 +257,7 @@ class EnumMetaInit(abstract.SimpleFunction):
 
   def _setup_interpreterclass(self, node, cls):
     member_types = []
-    for name, value in classgen.get_class_locals(
-        cls.name, False, classgen.Ordering.LAST_ASSIGN, self.vm).items():
+    for name, value in self._get_class_locals(node, cls.name, cls.members):
       # Build instances directly, because you can't call instantiate() when
       # creating the class -- pytype complains about recursive types.
       member = abstract.Instance(cls, self.vm)
@@ -192,6 +265,8 @@ class EnumMetaInit(abstract.SimpleFunction):
       member.members["name"] = self.vm.convert.build_string(node, name)
       cls.members[name] = member.to_variable(node)
       member_types.extend(value.orig.data)
+    if not member_types:
+      member_types.append(self.vm.convert.unsolvable)
     member_type = self.vm.convert.merge_classes(member_types)
     cls.member_type = member_type
     cls.members["__new__"] = self._make_new(node, member_type, cls)

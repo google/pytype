@@ -67,8 +67,6 @@ _PYTYPE_SINGLE_ITEMS = {
         None, 'False', ArgInfo('--bind-properties', None), None),
     'check_parameter_types': Item(
         None, 'False', ArgInfo('--check-parameter-types', None), None),
-    'create_pyi_dataclasses': Item(
-        None, 'False', ArgInfo('--create-pyi-dataclasses', None), None),
     'preserve_union_macros': Item(
         None, 'False', ArgInfo('--preserve-union-macros', None), None),
     'use_enum_overlay': Item(

@@ -40,6 +40,27 @@ DYNAMIC_ATTRIBUTE_MARKERS = [
 # and for sub_(one_)annotation(s).
 DUMMY_CONTAINER = object()
 
+# Names defined on every module/class that should be ignored in most cases.
+TOP_LEVEL_IGNORE = frozenset({
+    "__builtins__",
+    "__doc__",
+    "__file__",
+    "__future__",
+    "__module__",
+    "__name__",
+    "__annotations__",
+    "google_type_annotations",
+})
+CLASS_LEVEL_IGNORE = frozenset({
+    "__builtins__",
+    "__class__",
+    "__module__",
+    "__name__",
+    "__qualname__",
+    "__slots__",
+    "__annotations__",
+})
+
 
 class ConversionError(ValueError):
   pass
@@ -178,6 +199,7 @@ def get_views(variables, node):
 
 
 def get_signatures(func):
+  """Gets the given function's signatures."""
   if func.isinstance_PyTDFunction():
     return [sig.signature for sig in func.signatures]
   elif func.isinstance_InterpreterFunction():
@@ -185,6 +207,8 @@ def get_signatures(func):
   elif func.isinstance_BoundFunction():
     sigs = get_signatures(func.underlying)
     return [sig.drop_first_parameter() for sig in sigs]  # drop "self"
+  elif func.isinstance_ClassMethod() or func.isinstance_StaticMethod():
+    return get_signatures(func.method)
   else:
     raise NotImplementedError(func.__class__.__name__)
 
@@ -773,8 +797,12 @@ def unwrap_splat(var):
 
 
 def is_callable(value: _BaseValue):
+  """Returns whether 'value' is a callable."""
   if (value.isinstance_Function() or
+      value.isinstance_BoundFunction() or
+      value.isinstance_ClassMethod() or
       value.isinstance_ClassMethodInstance() or
+      value.isinstance_StaticMethod() or
       value.isinstance_StaticMethodInstance()):
     return True
   if not value.cls or not value.cls.isinstance_Class():
