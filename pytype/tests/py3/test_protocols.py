@@ -690,6 +690,18 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
         def f(self) -> int: ...
     """)
 
+  def test_has_dynamic_attributes(self):
+    self.Check("""
+      from typing import Protocol
+      class Foo(Protocol):
+        def f(self) -> int: ...
+      class Bar:
+        _HAS_DYNAMIC_ATTRIBUTES = True
+      def f(x: Foo):
+        pass
+      f(Bar())
+    """)
+
 
 class ProtocolsTestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for protocol implementation on a target using a Python 3 feature."""

@@ -2315,6 +2315,7 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
       # needed for typing.Generic.
       self._template = template
     self.slots = self.base_cls.slots
+    self.is_dynamic = self.base_cls.is_dynamic
     class_mixin.Class.init_mixin(self, base_cls.cls)
     mixin.NestedAnnotation.init_mixin(self)
     self.type_param_check()
@@ -3518,7 +3519,7 @@ class InterpreterFunction(SignedFunction):
         annotations)
 
   def get_first_opcode(self):
-    return self.code.co_code[0]
+    return self.code.first_opcode
 
   def argcount(self, _):
     return self.code.co_argcount
@@ -3816,7 +3817,8 @@ class InterpreterFunction(SignedFunction):
     return self.code.has_coroutine() or self.code.has_iterable_coroutine()
 
   def has_empty_body(self):
-    ops = self.code.co_code
+    # TODO(mdemello): Optimise this.
+    ops = list(self.code.code_iter)
     if len(ops) != 2:
       # This check isn't strictly necessary but prevents us from wastefully
       # building a list of opcode names for a long method.
@@ -4027,7 +4029,7 @@ class BoundInterpreterFunction(BoundFunction):
       yield
 
   def get_first_opcode(self):
-    return self.underlying.code.co_code[0]
+    return self.underlying.code.first_opcode
 
   @property
   def has_overloads(self):

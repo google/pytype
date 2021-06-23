@@ -625,7 +625,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     # class-level attributes
     for name, member in v.members.items():
       if (name in CLASS_LEVEL_IGNORE or name in annotated_names or
-          (v.is_enum and name == "__new__")):
+          (v.is_enum and name in ("__new__", "__eq__"))):
         continue
       for value in member.FilteredData(self.vm.exitpoint, strict=False):
         if isinstance(value, special_builtins.PropertyInstance):

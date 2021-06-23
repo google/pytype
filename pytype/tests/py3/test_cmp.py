@@ -17,6 +17,39 @@ class InstanceUnequalityTest(test_base.TargetPython3BasicTest):
       """)
 
 
+class ContainsFallbackTest(test_base.TargetPython3BasicTest):
+  """Tests the __contains__ -> __iter__ -> __getitem__ fallbacks."""
+
+  def test_overload_contains(self):
+    self.CheckWithErrors("""
+      class F:
+        def __contains__(self, x: int):
+          if not isinstance(x, int):
+            raise TypeError("__contains__ only takes int")
+          return True
+      1 in F()
+      "not int" in F()  # unsupported-operands
+    """)
+
+  def test_fallback_iter(self):
+    self.Check("""
+      class F:
+        def __iter__(self):
+          pass
+      1 in F()
+      "not int" in F()
+    """)
+
+  def test_fallback_getitem(self):
+    self.Check("""
+      class F:
+        def __getitem__(self, key):
+          pass
+      1 in F()
+      "not int" in F()
+    """)
+
+
 class NotImplementedTest(test_base.TargetPython3BasicTest):
   """Tests handling of the NotImplemented builtin."""
 

@@ -98,7 +98,7 @@ class _FindIgnoredTypeComments:
 
   def visit_code(self, code):
     """Interface for pyc.visit."""
-    for op in code.co_code:
+    for op in code.code_iter:
       # Make sure we have attached the type comment to an opcode.
       if isinstance(op, blocks.STORE_OPCODES):
         if op.annotation:
@@ -322,7 +322,7 @@ class VirtualMachine:
   def run_frame(self, frame, node, annotated_locals=None):
     """Run a frame (typically belonging to a method)."""
     self.push_frame(frame)
-    frame.states[frame.f_code.co_code[0]] = frame_state.FrameState.init(
+    frame.states[frame.f_code.first_opcode] = frame_state.FrameState.init(
         node, self)
     frame_name = frame.f_code.co_name
     if frame_name not in self.local_ops or frame_name != "<module>":
@@ -2183,19 +2183,23 @@ class VirtualMachine:
       bool_var.AddBinding(self.convert.bool_values[const], {b}, node)
     return bool_var
 
-  def _cmp_in(self, state, x, y, true_val=True):
+  def _cmp_in(self, state, item, seq, true_val=True):
     """Implementation of CMP_IN/CMP_NOT_IN."""
-    state, ret = self.call_binary_operator(state, "__contains__", y, x)
-    if ret.bindings:
-      ret = self._coerce_to_bool(state.node, ret, true_val=true_val)
+    state, has_contains = self.load_attr_noerror(state, seq, "__contains__")
+    if has_contains:
+      state, ret = self.call_binary_operator(state, "__contains__", seq, item,
+                                             report_errors=True)
+      if ret.bindings:
+        ret = self._coerce_to_bool(state.node, ret, true_val=true_val)
     else:
       # For an object without a __contains__ method, cmp_in falls back to
-      # checking x against the items produced by y's iterator.
-      state, itr = self._get_iter(state, y, report_errors=False)
-      if len(itr.bindings) < len(y.bindings):
-        # y does not have any of __contains__, __iter__, and __getitem__.
+      # checking item against the items produced by seq's iterator.
+      state, itr = self._get_iter(state, seq, report_errors=False)
+      if len(itr.bindings) < len(seq.bindings):
+        # seq does not have any of __contains__, __iter__, and __getitem__.
         # (The last two are checked by _get_iter.)
-        self.errorlog.unsupported_operands(self.frames, "__contains__", y, x)
+        self.errorlog.unsupported_operands(
+            self.frames, "__contains__", seq, item)
       ret = self.convert.build_bool(state.node)
     return state, ret
 

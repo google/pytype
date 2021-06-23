@@ -28,7 +28,6 @@ class OrderedCode:
     co_nlocals: Same as loadmarshal.CodeType.
     co_stacksize: Same as loadmarshal.CodeType.
     co_flags: Same as loadmarshal.CodeType.
-    co_code: Same as loadmarshal.CodeType.
     co_consts: Same as loadmarshal.CodeType.
     co_names: Same as loadmarshal.CodeType.
     co_varnames: Same as loadmarshal.CodeType.
@@ -40,6 +39,8 @@ class OrderedCode:
     co_cellvars: Same as loadmarshal.CodeType.
     order: A list of bytecode blocks. They're ordered ancestors-first, see
       cfg_utils.py:order_nodes.
+    code_iter: A flattened list of block opcodes. Corresponds to co_code.
+    first_opcode: The first opcode in code_iter.
     python_version: The Python version this bytecode is from.
   """
 
@@ -51,19 +52,25 @@ class OrderedCode:
     # compatible with the base class, which is too low level) as well as
     # object composition (because that would make the API too clunky for
     # callers).
+    # NOTE: We don't copy co_code; callers should use self.code_iter instead.
     assert hasattr(code, "co_code")
     self.__dict__.update({name: value for name, value in code.__dict__.items()
-                          if name.startswith("co_")})
+                          if name.startswith("co_") and name != "co_code"})
     self.order = order
     self.python_version = python_version
-    # Store the "nice" version of the bytecode under co_code. We never claimed
-    # to be compatible with CodeType.
-    self.co_code = bytecode
     for insn in bytecode:
       insn.code = self
 
+  @property
+  def code_iter(self):
+    return (op for block in self.order for op in block)  # pylint: disable=g-complex-comprehension
+
+  @property
+  def first_opcode(self):
+    return next(self.code_iter)
+
   def has_opcode(self, op_type):
-    return any(isinstance(op, op_type) for op in self.co_code)
+    return any(isinstance(op, op_type) for op in self.code_iter)
 
   def has_iterable_coroutine(self):
     return bool(self.co_flags & loadmarshal.CodeType.CO_ITERABLE_COROUTINE)
@@ -333,15 +340,16 @@ class CollectAnnotationTargetsVisitor:
     else:
       # [LOAD_CONST <code>, LOAD_CONST name, MAKE_FUNCTION]
       offset = 2
-    for i, op in enumerate(code.co_code):
+    co_code = list(code.code_iter)
+    for i, op in enumerate(co_code):
       if isinstance(op, opcodes.MAKE_FUNCTION):
-        code_op = code.co_code[i - offset]
+        code_op = co_code[i - offset]
         assert isinstance(code_op, CODE_LOADING_OPCODES)
         fn_code = code.co_consts[code_op.arg]
         if not _is_function_def(fn_code):
           continue
         # First line of code in body.
-        end_line = min(op.line for op in fn_code.co_code)
+        end_line = min(op.line for op in fn_code.code_iter)
         self.make_function_ops[op.line] = (end_line, op)
       elif (isinstance(op, STORE_OPCODES) and
             op.line not in self.make_function_ops):
@@ -360,7 +368,7 @@ def _is_function_def(fn_code):
 
   # Class definitions generate a constructor function. We can distinguish them
   # by checking for code blocks that start with LOAD_NAME __name__
-  op = fn_code.co_code[0]
+  op = fn_code.first_opcode
   if (isinstance(op, opcodes.LOAD_NAME) and
       op.pretty_arg == "__name__"):
     return False

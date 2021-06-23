@@ -98,6 +98,40 @@ class EnumInstance(abstract.InterpreterClass):
     return instance.to_variable(node)
 
 
+class EnumCmpEQ(abstract.SimpleFunction):
+  """Implements the functionality of __eq__ for an enum."""
+
+  def __init__(self, vm):
+    super().__init__(
+        name="__eq__",
+        param_names=("self", "other"),
+        varargs_name=None,
+        kwonly_params=(),
+        kwargs_name=None,
+        defaults={},
+        annotations={
+            "return": vm.convert.bool_type,
+        },
+        vm=vm)
+
+  def call(self, node, unused_f, args, alias_map=None):
+    _, argmap = self.match_and_map_args(node, args, alias_map)
+    this_var = argmap["self"]
+    other_var = argmap["other"]
+    # This is called by vm._call_binop_on_bindings, so both should have
+    # exactly 1 possibility.
+    try:
+      this = abstract_utils.get_atomic_value(this_var)
+      other = abstract_utils.get_atomic_value(other_var)
+    except abstract_utils.ConversionError:
+      return node, self.vm.convert.build_bool(node)
+    return node, self.vm.convert.build_bool(
+        node,
+        this.cls == other.cls and
+        "name" in this.members and
+        this.members["name"] == other.members.get("name"))
+
+
 class EnumMeta(abstract.PyTDClass):
   """Wrapper for enum.EnumMeta.
 
@@ -161,6 +195,7 @@ class EnumMetaInit(abstract.SimpleFunction):
     member_type = self.vm.convert.merge_classes(member_types)
     cls.member_type = member_type
     cls.members["__new__"] = self._make_new(node, member_type, cls)
+    cls.members["__eq__"] = EnumCmpEQ(self.vm).to_variable(node)
     return node
 
   def _setup_pytdclass(self, node, cls):
@@ -187,6 +222,7 @@ class EnumMetaInit(abstract.SimpleFunction):
     member_type = self.vm.convert.constant_to_value(
         pytd_utils.JoinTypes(member_types))
     cls.members["__new__"] = self._make_new(node, member_type, cls)
+    cls.members["__eq__"] = EnumCmpEQ(self.vm).to_variable(node)
     return node
 
   def call(self, node, func, args, alias_map=None):
