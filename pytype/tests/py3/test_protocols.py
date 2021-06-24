@@ -873,5 +873,79 @@ class ProtocolAttributesTest(test_base.TargetPython3FeatureTest):
       f(Baz())  # wrong-arg-types
     """)
 
+  def test_property(self):
+    errors = self.CheckWithErrors("""
+      from typing import Protocol
+      class Foo(Protocol):
+        @property
+        def x(self) -> int: ...
+      class Bar:
+        @property
+        def x(self):
+          return 0
+      class Baz:
+        @property
+        def x(self):
+          return ''
+      def f(foo: Foo):
+        pass
+      f(Bar())
+      f(Baz())  # wrong-arg-types[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": r"x.*expected int, got str"})
+
+  def test_property_in_pyi_protocol(self):
+    foo_ty = self.Infer("""
+      from typing import Protocol
+      class Foo(Protocol):
+        @property
+        def x(self) -> int: ...
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
+      self.CheckWithErrors("""
+        import foo
+        class Bar:
+          @property
+          def x(self):
+            return 0
+        class Baz:
+          @property
+          def x(self):
+            return ''
+        def f(x: foo.Foo):
+          pass
+        f(Bar())
+        f(Baz())  # wrong-arg-types
+      """, pythonpath=[d.path])
+
+  def test_inherit_property(self):
+    foo_ty = self.Infer("""
+      class Foo:
+        @property
+        def x(self):
+          return 0
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
+      self.CheckWithErrors("""
+        import foo
+        from typing import Protocol
+        class Protocol1(Protocol):
+          @property
+          def x(self) -> int: ...
+        class Protocol2(Protocol):
+          @property
+          def x(self) -> str: ...
+        class Bar(foo.Foo):
+          pass
+        def f1(x: Protocol1):
+          pass
+        def f2(x: Protocol2):
+          pass
+        f1(Bar())
+        f2(Bar())  # wrong-arg-types
+      """, pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")

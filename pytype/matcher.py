@@ -891,6 +891,33 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       new_substs.append(new_subst)
     return self._merge_substs(subst, new_substs)
 
+  def _get_attribute_for_protocol_matching(self, cls, name, instance=None):
+    # For protocol matching, we want to look up attributes on classes (not
+    # instances) so that we get unbound methods. This means that we have to
+    # manually call __get__ on property instances
+    _, attribute = self.vm.attribute_handler.get_attribute(
+        self._node, cls, name, cls.to_binding(self._node))
+    if not attribute:
+      return attribute
+    elif any(isinstance(attr, special_builtins.PropertyInstance)
+             for attr in attribute.data):
+      return self._resolve_property_attribute(cls, attribute, instance)
+    else:
+      return attribute
+
+  def _resolve_property_attribute(self, cls, attribute, instance):
+    instance = instance or abstract.Instance(cls, self.vm)
+    resolved_attribute = self.vm.program.NewVariable()
+    for b in attribute.bindings:
+      if isinstance(b.data, special_builtins.PropertyInstance):
+        fget = self.vm.bind_method(
+            self._node, b.data.fget, instance.to_variable(self._node))
+        _, ret = self.vm.call_function(self._node, fget, function.Args(()))
+        resolved_attribute.PasteVariable(ret)
+      else:
+        resolved_attribute.PasteBinding(b)
+    return resolved_attribute
+
   def _get_attribute_types(self, other_type, attribute):
     if not abstract_utils.is_callable(attribute):
       cls = attribute.get_class()
@@ -929,8 +956,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       A new type parameter assignment if the matching succeeded, None otherwise.
     """
     left_cls = left.get_class()
-    _, left_attribute = self.vm.attribute_handler.get_attribute(
-        self._node, left_cls, attribute, left_cls.to_binding(self._node))
+    left_attribute = self._get_attribute_for_protocol_matching(
+        left_cls, attribute, left)
     if left_attribute is None:
       if attribute == "__iter__":
         # See _get_attribute_names: left has an implicit __iter__ method
@@ -941,9 +968,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         _, left_attribute = self.vm.attribute_handler.get_attribute(
             self._node, left, attribute)
     assert left_attribute
-    protocol_attribute = self.vm.attribute_handler.get_attribute(
-        self._node, other_type,
-        attribute, other_type.to_binding(self._node))[1].data[0]
+    protocol_attribute = self._get_attribute_for_protocol_matching(
+        other_type, attribute).data[0]
     if (any(abstract_utils.is_callable(v) for v in left_attribute.data) and
         abstract_utils.is_callable(protocol_attribute) and
         not isinstance(other_type, abstract.ParameterizedClass)):
