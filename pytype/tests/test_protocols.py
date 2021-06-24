@@ -117,5 +117,17 @@ class ProtocolTest(test_base.TargetIndependentTest):
       f(Baz())  # wrong-arg-types
     """)
 
+  def test_empty(self):
+    self.Check("""
+      from typing import Protocol
+      class Foo(Protocol):
+        pass
+      class Bar:
+        pass
+      def f(foo: Foo):
+        pass
+      f(Bar())
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

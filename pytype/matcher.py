@@ -668,6 +668,11 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         if other_type.is_protocol:
           with self._track_partially_matched_protocols():
             return self._match_against_protocol(left, other_type, subst, view)
+        elif other_type.has_protocol_parent():
+          # 'is_protocol' returns True only if the protocol has at least one
+          # attribute that needs checking. In the edge case of a protocol being
+          # completely empty, everything should match.
+          return subst
         return None
       elif isinstance(base, abstract.AMBIGUOUS_OR_EMPTY):
         # An ambiguous base class matches everything.

@@ -149,8 +149,8 @@ class Class(metaclass=mixin.MixinMeta):
     """Get the attributes defined by this class."""
     raise NotImplementedError(self.__class__.__name__)
 
-  def _is_protocol(self):
-    """Whether this class is a protocol."""
+  def has_protocol_parent(self):
+    """Whether this class inherits directly from typing.Protocol."""
     if self.isinstance_PyTDClass():
       for parent in self.pytd_cls.parents:
         if parent.name == "typing.Protocol":
@@ -168,7 +168,7 @@ class Class(metaclass=mixin.MixinMeta):
     if self.isinstance_ParameterizedClass():
       self.protocol_attributes = self.base_cls.protocol_attributes
       return
-    if not self._is_protocol():
+    if not self.has_protocol_parent():
       self.protocol_attributes = set()
       return
     if self.isinstance_PyTDClass() and self.pytd_cls.name.startswith("typing."):
