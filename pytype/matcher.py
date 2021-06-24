@@ -440,6 +440,11 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           "builtins.module", "builtins.object", "types.ModuleType",
           "typing.Hashable"]:
         return subst
+      elif other_type.has_protocol_parent():
+        return self._match_instance_against_type(
+            left, other_type, subst, view)
+      else:
+        return None
     elif isinstance(left, abstract.FUNCTION_TYPES):
       if other_type.full_name == "typing.Callable":
         if not isinstance(other_type, abstract.ParameterizedClass):
@@ -840,6 +845,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
   def _get_attribute_names(self, left):
     """Get the attributes implemented (or implicit) on a type."""
     left_attributes = set()
+    if isinstance(left, abstract.Module):
+      _ = left.items()  # loads all attributes into members
     if isinstance(left, abstract.SimpleValue):
       left_attributes.update(left.members)
     left_cls = left.get_class()

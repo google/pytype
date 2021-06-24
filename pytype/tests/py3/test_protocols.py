@@ -702,6 +702,18 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
       f(Bar())
     """)
 
+  def test_empty(self):
+    self.Check("""
+      from typing import Protocol
+      class Foo(Protocol):
+        pass
+      class Bar:
+        pass
+      def f(foo: Foo):
+        pass
+      f(Bar())
+    """)
+
 
 class ProtocolsTestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for protocol implementation on a target using a Python 3 feature."""
@@ -779,6 +791,47 @@ class ProtocolsTestPython3Feature(test_base.TargetPython3FeatureTest):
         def bar(self):
           pass
     """)
+
+  def test_module(self):
+    foo_ty = self.Infer("""
+      x: int
+      def f() -> str:
+        return 'hello world'
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
+      errors = self.CheckWithErrors("""
+        import foo
+        from typing import Protocol
+        class ShouldMatch(Protocol):
+          x: int
+          def f(self) -> str: ...
+        class ExtraAttribute(Protocol):
+          x: int
+          y: str
+        class ExtraMethod(Protocol):
+          def f(self) -> str: ...
+          def g(self) -> int: ...
+        class WrongType(Protocol):
+          x: str
+        def should_match(x: ShouldMatch):
+          pass
+        def extra_attribute(x: ExtraAttribute):
+          pass
+        def extra_method(x: ExtraMethod):
+          pass
+        def wrong_type(x: WrongType):
+          pass
+        should_match(foo)
+        extra_attribute(foo)  # wrong-arg-types[e1]
+        extra_method(foo)  # wrong-arg-types[e2]
+        wrong_type(foo)  # wrong-arg-types[e3]
+      """, pythonpath=[d.path])
+      self.assertErrorRegexes(errors, {
+          "e1": r"not implemented on module: y",
+          "e2": r"not implemented on module: g",
+          "e3": r"x.*expected str, got int",
+      })
 
 
 class ProtocolAttributesTest(test_base.TargetPython3FeatureTest):
