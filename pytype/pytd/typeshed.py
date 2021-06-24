@@ -3,6 +3,7 @@
 import collections
 import os
 import re
+from typing import Sequence
 
 from pytype import module_utils
 from pytype import pytype_source_utils
@@ -237,7 +238,7 @@ class Typeshed:
       path = os.path.join(toplevel, module_path)
       if version[0] == 2:
         paths.append(os.path.join(toplevel, "@python2", module_path))
-      if (self._is_module_in_typeshed(module_parts[0], version) or
+      if (self._is_module_in_typeshed(module_parts, version) or
           path in self.missing):
         paths.append(path)
     elif toplevel == "third_party":
@@ -269,10 +270,21 @@ class Typeshed:
           pass
     raise IOError("Couldn't find %s" % module)
 
-  def _is_module_in_typeshed(self, name, version):
-    if name not in self._stdlib_versions:
+  def _lookup_stdlib_version(self, module_parts: Sequence[str]):
+    """Looks up the prefix chain until we find the module in stdlib/VERSIONS."""
+    index = len(module_parts)
+    while index > 0:
+      name = ".".join(module_parts[:index])
+      if name in self._stdlib_versions:
+        return self._stdlib_versions[name]
+      index -= 1
+    return None
+
+  def _is_module_in_typeshed(self, module_parts, version):
+    version_info = self._lookup_stdlib_version(module_parts)
+    if version_info is None:
       return False
-    min_version, max_version, _ = self._stdlib_versions[name]
+    min_version, max_version, _ = version_info
     return (min_version <= version and
             (max_version is None or max_version >= version))
 
@@ -319,8 +331,8 @@ class Typeshed:
             continue
         else:
           # Check supported versions for stubs directly in stdlib/.
-          module = os.path.splitext(filename)[0].split("/", 1)[0]
-          if not self._is_module_in_typeshed(module, python_version):
+          module_parts = os.path.splitext(filename)[0].split("/", 1)
+          if not self._is_module_in_typeshed(module_parts, python_version):
             continue
       yield filename
 
@@ -377,8 +389,9 @@ class Typeshed:
       return (2,)
     parts = filename.split(os.path.sep)
     if parts[0] == "stdlib":
-      min_version, _, use_python2 = self._stdlib_versions[
-          os.path.splitext(parts[1])[0]]
+      version_info = self._lookup_stdlib_version(os.path.splitext(parts[1]))
+      assert version_info, f"{filename} missing from stdlib/VERSIONS"
+      min_version, _, use_python2 = version_info
       # If use_python2 is true, we just use the stubs in @python2
       if min_version >= (3, 0) or use_python2:
         return (3,)
