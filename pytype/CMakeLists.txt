@@ -294,6 +294,7 @@ py_library(
     .class_mixin
     .debug
     .function
+    .matcher
     pytype.pytd.pytd
 )
 

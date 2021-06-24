@@ -229,7 +229,7 @@ class CallTracer(vm.VirtualMachine):
       node2.ConnectTo(node0)
     return node0
 
-  def bind_method(self, node, name, methodvar, instance_var):
+  def bind_method(self, node, methodvar, instance_var):
     bound = self.program.NewVariable()
     for m in methodvar.Data(node):
       if isinstance(m, special_builtins.ClassMethodInstance):
@@ -335,7 +335,7 @@ class CallTracer(vm.VirtualMachine):
         node, binding.data.get_class(), method_name, binding)
     if method:
       bound_method = self.bind_method(
-          node, method_name, method, binding.AssignToNewVariable())
+          node, method, binding.AssignToNewVariable())
       node = self.analyze_method_var(node, method_name, bound_method)
     return node
 
@@ -388,7 +388,7 @@ class CallTracer(vm.VirtualMachine):
           for m in (v.fget, v.fset, v.fdel):
             if m:
               methods.insert(0, (name, m))
-      b = self.bind_method(node, name, methodvar, instance)
+      b = self.bind_method(node, methodvar, instance)
       node = self.analyze_method_var(node, name, b, val)
     return node
 
@@ -629,7 +629,7 @@ class CallTracer(vm.VirtualMachine):
     views = abstract_utils.get_views([actual], node)
     # Check for typevars in the return value first, since bad_matches
     # expects not to get any.
-    bad = [view for view in views
+    bad = [(view, None) for view in views
            if actual in view and view[actual].data.formal]
     if not bad:
       bad = self.matcher(node).bad_matches(actual, formal)

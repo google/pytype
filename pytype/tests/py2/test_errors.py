@@ -20,8 +20,7 @@ class ErrorTest(test_base.TargetPython27FeatureTest):
           return self
       next(Foo())  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(
-        errors, {"e": r"\n\s*next\s*$"})  # `next` on its own line
+    self.assertErrorRegexes(errors, {"e": r"not implemented on Foo: next"})
 
   def test_getslice(self):
     errors = self.CheckWithErrors("""

@@ -530,7 +530,11 @@ class DictKeyMissing(Exception, ReturnValueMixin):
 BadCall = collections.namedtuple("_", ["sig", "passed_args", "bad_param"])
 
 
-BadParam = collections.namedtuple("_", ["name", "expected"])
+class BadParam(
+    collections.namedtuple("_", ["name", "expected", "protocol_error"])):
+
+  def __new__(cls, name, expected, protocol_error=None):
+    return super().__new__(cls, name, expected, protocol_error)
 
 
 class InvalidParameters(FailedFunctionCall):

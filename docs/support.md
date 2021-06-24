@@ -13,7 +13,7 @@ of pytype.
          * [Typing](#typing)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2021-06-10T18:00-07:00 -->
+<!-- Added by: rechen, at: 2021-06-24T12:34-07:00 -->
 
 <!--te-->
 
@@ -58,7 +58,7 @@ Feature                                                         | Supports | Iss
 --------------------------------------------------------------- | :------: | :----:
 [PEP 484 -- Type Hints][484]                                    | ✅        |
 [PEP 526 -- Syntax for Variable Annotations][526]               | ✅        |
-[PEP 544 -- Protocols][544]                                     | 🟡        | [#524][protocol-attributes], [#789][protocol-modules], [#792][protocol-generic]
+[PEP 544 -- Protocols][544]                                     | ✅        |
 [PEP 561 -- Distributing and Packaging Type Information][561]   | ❌        | [#151][packaging]
 [PEP 563 -- Postponed Evaluation of Annotations][563]           | ✅        |
 [PEP 585 -- Type Hinting Generics in Standard Collections][585] | ✅        |
@@ -109,9 +109,6 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [literal-enums]: https://github.com/google/pytype/issues/790
 [packaging]: https://github.com/google/pytype/issues/151
 [param-spec]: https://github.com/google/pytype/issues/786
-[protocol-attributes]: https://github.com/google/pytype/issues/524
-[protocol-generic]: https://github.com/google/pytype/issues/792
-[protocol-modules]: https://github.com/google/pytype/issues/789
 [py27]: https://github.com/google/pytype/issues/545
 [py35]: https://github.com/google/pytype/issues/677
 [py39]: https://github.com/google/pytype/issues/749
