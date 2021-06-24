@@ -376,8 +376,7 @@ class ErrorTestPy3(test_base.TargetPython3FeatureTest):
           return self
       next(Foo())  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(
-        errors, {"e": r"\n\s*__next__\s*$"})  # `next` on its own line
+    self.assertErrorRegexes(errors, {"e": r"not implemented on Foo: __next__"})
 
   def test_generator_send_ret_type(self):
     _, errors = self.InferWithErrors("""

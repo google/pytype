@@ -30,6 +30,30 @@ def _is_callback_protocol(typ):
           "__call__" in typ.protocol_attributes)
 
 
+class ProtocolError(Exception):
+
+  def __init__(self, left_type, other_type):
+    super().__init__()
+    self.left_type = left_type
+    self.other_type = other_type
+
+
+class ProtocolMissingAttributesError(ProtocolError):
+
+  def __init__(self, left_type, other_type, missing):
+    super().__init__(left_type, other_type)
+    self.missing = missing
+
+
+class ProtocolTypeError(ProtocolError):
+
+  def __init__(self, left_type, other_type, attribute, actual, expected):
+    super().__init__(left_type, other_type)
+    self.attribute_name = attribute
+    self.actual_type = actual
+    self.expected_type = expected
+
+
 class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
   """Matcher for abstract values."""
 
@@ -37,10 +61,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     super().__init__(vm)
     self._node = node
     self._protocol_cache = set()
-
-  def _set_error_subst(self, subst):
-    """Set the substitution used by compute_subst in the event of an error."""
-    self._error_subst = subst
+    self._protocol_error = None
+    self._error_subst = None
 
   @contextlib.contextmanager
   def _track_partially_matched_protocols(self):
@@ -83,7 +105,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     subst = datatypes.AliasingDict()
     if alias_map:
       subst.uf = alias_map
-    self._set_error_subst(None)
+    self._protocol_error = None
+    self._error_subst = None
     self_subst = None
     for name, formal in formal_args:
       actual = arg_dict[name]
@@ -91,7 +114,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       if subst is None:
         formal = self.vm.annotations_util.sub_one_annotation(
             self._node, formal, [self._error_subst or {}])
-        return None, function.BadParam(name=name, expected=formal)
+        return None, function.BadParam(
+            name=name, expected=formal, protocol_error=self._protocol_error)
       if name == "self":
         self_subst = subst
     if self_subst:
@@ -126,9 +150,10 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         view = views.send(skip_future)
       except StopIteration:
         break
+      self._protocol_error = None
       if self.match_var_against_type(var, other_type, {}, view) is None:
         if self._node.HasCombination(list(view.values())):
-          bad.append(view)
+          bad.append((view, self._protocol_error))
         # To get complete error messages, we need to collect all bad views, so
         # we can't skip any.
         skip_future = False
@@ -258,10 +283,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
                                               abstract_utils.DUMMY_CONTAINER)
           right_dummy = left.param.instantiate(self.vm.root_node,
                                                abstract_utils.DUMMY_CONTAINER)
-          self._set_error_subst(
-              self._merge_substs(subst, [{
-                  left.param.name: left_dummy,
-                  other_type.name: right_dummy}]))
+          self._error_subst = self._merge_substs(subst, [{
+              left.param.name: left_dummy, other_type.name: right_dummy}])
           return None
       elif isinstance(left.instance, abstract.CallableClass):
         # We're doing argument-matching against a callable. We flipped the
@@ -280,7 +303,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           break
       else:
         if other_type.constraints:
-          self._set_error_subst(subst)
+          self._error_subst = subst
           return None
       if other_type.bound:
         new_subst = self._match_value_against_type(
@@ -289,7 +312,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           new_subst = {other_type.full_name:
                        other_type.bound.instantiate(
                            self._node, abstract_utils.DUMMY_CONTAINER)}
-          self._set_error_subst(self._merge_substs(subst, [new_subst]))
+          self._error_subst = self._merge_substs(subst, [new_subst])
           return None
       if other_type.full_name in subst:
         # Merge the two variables.
@@ -313,7 +336,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       else:
         new_var = self._enforce_common_superclass(new_var)
       if new_var is None:
-        self._set_error_subst(subst)
+        self._error_subst = subst
         return None
       subst = subst.copy()
       subst[other_type.full_name] = new_var
@@ -825,11 +848,6 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       left_attributes.add("__iter__")
     return left_attributes
 
-  def unimplemented_protocol_attributes(self, left, other_type):
-    """Get a list of the protocol attributes not implemented by `left`."""
-    assert other_type.is_protocol
-    return other_type.protocol_attributes - self._get_attribute_names(left)
-
   def _match_against_protocol(self, left, other_type, subst, view):
     """Checks whether a type is compatible with a protocol.
 
@@ -854,8 +872,11 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     elif left_cls.is_dynamic:
       return self._subst_with_type_parameters_from(subst, other_type)
     left_attributes = self._get_attribute_names(left)
-    if other_type.protocol_attributes - left_attributes:
-      return None  # not all protocol attributes are implemented by 'left'
+    missing = other_type.protocol_attributes - left_attributes
+    if missing:  # not all protocol attributes are implemented by 'left'
+      self._protocol_error = ProtocolMissingAttributesError(
+          left_cls, other_type, missing)
+      return None
     key = (left_cls, other_type)
     if key in self._protocol_cache:
       return subst
@@ -865,6 +886,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       new_subst = self._match_protocol_attribute(
           left, other_type, attribute, subst, view)
       if new_subst is None:
+        # _match_protocol_attribute already set _protocol_error.
         return None
       new_substs.append(new_subst)
     return self._merge_substs(subst, new_substs)
@@ -935,6 +957,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         match_result = self._match_type_against_type(
             v, protocol_attribute_type, subst, view)
         if match_result is None:
+          self._protocol_error = ProtocolTypeError(
+              left_cls, other_type, attribute, v, protocol_attribute)
           return None
         else:
           new_substs.append(match_result)

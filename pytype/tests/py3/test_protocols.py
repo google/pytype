@@ -321,7 +321,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
         pass
       f([])  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"Hashable.*List"})
+    self.assertErrorRegexes(errors, {"e": r"Hashable.*List.*__hash__"})
 
   def test_hash_constant(self):
     errors = self.CheckWithErrors("""
@@ -332,7 +332,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
         pass
       f(Foo())  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"Hashable.*Foo"})
+    self.assertErrorRegexes(errors, {"e": r"Hashable.*Foo.*__hash__"})
 
   def test_hash_type(self):
     self.Check("""
@@ -785,7 +785,7 @@ class ProtocolAttributesTest(test_base.TargetPython3FeatureTest):
   """Tests for non-method protocol attributes."""
 
   def test_basic(self):
-    self.CheckWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Protocol
       class Foo(Protocol):
         x: int
@@ -796,8 +796,9 @@ class ProtocolAttributesTest(test_base.TargetPython3FeatureTest):
       def f(foo: Foo):
         pass
       f(Bar())
-      f(Baz())  # wrong-arg-types
+      f(Baz())  # wrong-arg-types[e]
     """)
+    self.assertErrorRegexes(errors, {"e": r"x.*expected int, got str"})
 
   def test_missing(self):
     errors = self.CheckWithErrors("""

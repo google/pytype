@@ -13,6 +13,7 @@ from pytype import abstract_utils
 from pytype import class_mixin
 from pytype import debug
 from pytype import function
+from pytype import matcher
 from pytype import utils
 from pytype.pytd import escape
 from pytype.pytd import optimize
@@ -535,7 +536,7 @@ class ErrorLog(ErrorLogBase):
       output_mode = convert.OutputMode.DETAILED
     with convert.set_output_mode(output_mode):
       bad_actual = self._pytd_print(pytd_utils.JoinTypes(
-          view[actual].data.to_type(node, view=view) for view in bad))
+          view[actual].data.to_type(node, view=view) for view, _ in bad))
       if len(actual.bindings) > len(bad):
         full_actual = self._pytd_print(pytd_utils.JoinTypes(
             v.to_type(node) for v in actual.data))
@@ -544,6 +545,21 @@ class ErrorLog(ErrorLogBase):
     # typing.NoReturn is a prettier alias for nothing.
     fmt = lambda ret: "NoReturn" if ret == "nothing" else ret
     return fmt(expected), fmt(bad_actual), fmt(full_actual)
+
+  def _print_protocol_error(self, error):
+    """Pretty-print the matcher.ProtocolError instance."""
+    left = self._pytd_print(error.left_type.get_instance_type())
+    protocol = self._pytd_print(error.other_type.get_instance_type())
+    if isinstance(error, matcher.ProtocolMissingAttributesError):
+      missing = ", ".join(sorted(error.missing))
+      return (f"Attributes of protocol {protocol} are not implemented on "
+              f"{left}: {missing}")
+    else:
+      assert isinstance(error, matcher.ProtocolTypeError)
+      actual = self._pytd_print(error.actual_type.to_type())
+      expected = self._pytd_print(error.expected_type.to_type())
+      return (f"Attribute {error.attribute_name} of protocol {protocol} has "
+              f"wrong type in {left}: expected {expected}, got {actual}")
 
   def _join_printed_types(self, types):
     """Pretty-print the union of the printed types."""
@@ -679,29 +695,6 @@ class ErrorLog(ErrorLogBase):
     self.error(stack, "Can't find module %r." % module_name,
                keyword=module_name)
 
-  def _explain_protocol_mismatch(self, protocol_param, passed_params):
-    """Return possibly extra protocol details about an argument mismatch."""
-    if not protocol_param:
-      return []
-    expected = protocol_param.expected
-    vm = expected.vm
-    if not isinstance(expected, class_mixin.Class) or not expected.is_protocol:
-      return []
-    p = None  # make pylint happy
-    for name, p in passed_params:
-      if name == protocol_param.name:
-        break
-    else:
-      return []
-    attributes = vm.matcher(None).unimplemented_protocol_attributes(p, expected)
-    if not attributes:
-      # Happens if all the protocol attributes are implemented, but with the
-      # wrong types. We don't yet provide more detail about that.
-      return []
-    return [
-        "\nThe following attributes aren't implemented on %s:\n" %
-        self._print_as_actual_type(p)] + [", ".join(sorted(attributes))]
-
   def _invalid_parameters(self, stack, message, bad_call):
     """Log an invalid parameters error."""
     sig, passed_args, bad_param = bad_call
@@ -709,12 +702,13 @@ class ErrorLog(ErrorLogBase):
     literal = "Literal[" in expected
     actual = self._print_args(
         self._iter_actual(sig, passed_args, bad_param, literal), bad_param)
-    details = [
+    details = "".join([
         "       Expected: (", expected, ")\n",
         "Actually passed: (", actual,
-        ")"]
-    details += self._explain_protocol_mismatch(bad_param, passed_args)
-    self.error(stack, message, "".join(details), bad_call=bad_call)
+        ")"])
+    if bad_param and bad_param.protocol_error:
+      details += "\n" + self._print_protocol_error(bad_param.protocol_error)
+    self.error(stack, message, details, bad_call=bad_call)
 
   @_error_name("wrong-arg-count")
   def wrong_arg_count(self, stack, name, bad_call):
@@ -870,16 +864,19 @@ class ErrorLog(ErrorLogBase):
       message = "bad return type"
     else:
       message = f"bad option {bad_actual!r} in return type"
-    details = "".join(["         Expected: ", expected, "\n",
-                       "Actually returned: ", full_actual])
-    self.error(stack, message, details)
+    details = ["         Expected: ", expected, "\n",
+               "Actually returned: ", full_actual]
+    details.extend("\n" + self._print_protocol_error(e) for _, e in bad if e)
+    self.error(stack, message, "".join(details))
 
   @_error_name("bad-concrete-type")
   def bad_concrete_type(self, stack, node, formal, actual, bad):
     expected, actual, _ = self._print_as_return_types(node, formal, actual, bad)
-    details = "".join(["       Expected: ", expected, "\n",
-                       "Actually passed: ", actual])
-    self.error(stack, "Invalid instantiation of generic class", details)
+    details = ["       Expected: ", expected, "\n",
+               "Actually passed: ", actual]
+    details.extend("\n" + self._print_protocol_error(e) for _, e in bad if e)
+    self.error(
+        stack, "Invalid instantiation of generic class", "".join(details))
 
   def unsupported_operands(self, stack, operator, var1, var2):
     left = self._join_printed_types(
