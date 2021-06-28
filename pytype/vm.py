@@ -163,7 +163,7 @@ class VirtualMachine:
     self.opcode_traces = []
     self._importing = False  # Are we importing another file?
     self._trace_opcodes = True  # whether to trace opcodes
-    self._fold_constants = False  # feature in development, disable by default
+    self._fold_constants = False and self.PY3  # feature in development
     # If set, we will generate LateAnnotations with this stack rather than
     # logging name errors.
     self._late_annotations_stack = None
@@ -1908,7 +1908,7 @@ class VirtualMachine:
 
   def byte_LOAD_FOLDED_CONST(self, state, op):
     const = op.arg
-    state, var = constant_folding.build_folded_type(self, state, const.typ)
+    state, var = constant_folding.build_folded_type(self, state, const)
     return state.push(var)
 
   def byte_POP_TOP(self, state, op):

@@ -23,7 +23,7 @@ This is less uniform, and therefore not recommended to use other than for
 input/output.
 """
 
-from typing import Any, FrozenSet, Tuple
+from typing import Any, Dict, FrozenSet, Tuple
 
 import attr
 
@@ -32,10 +32,37 @@ from pytype.pyc import opcodes
 from pytype.pyc import pyc
 
 
+# Copied from typegraph/cfg.py
+# If we have more than 64 elements in a map/list, the type variable accumulates
+# too many bindings and falls back to Any. So if we find a constant with too
+# many elements, we go directly to constructing an abstract type, and do not
+# attempt to track keys/element positions.
+MAX_VAR_SIZE = 64
+
+
+#  We track constants at three levels:
+#    typ: A typestruct representing the abstract type of the constant
+#    elements: A list or map of top-level types
+#    value: The concrete python value
+#
+#  'elements' is an intermediate structure that tracks individual typestructs
+#  for every element in a map or list. So e.g. for the constant
+#    {'x': [1, 2], 'y': 3}
+#  we would have
+#    typ = ('map', {str}, {('list', {int}), int})
+#    value = {'x': [1, 2], 'y': 3}
+#    elements = {'x': ('list', {int}), 'y': int}
+#
+#  Note that while we could in theory just track the python value, and then
+#  construct 'typ' and 'elements' at the end, that would mean recursively
+#  unfolding a structure that we have just folded; the code is simpler if we
+#  track elements and types at every stage.
 @attr.s(auto_attribs=True)
 class _Constant:
+  """A folded python constant."""
   typ: Tuple[str, Any]
   value: Any
+  elements: Any
   op: opcodes.Opcode
 
   @property
@@ -45,8 +72,20 @@ class _Constant:
 
 @attr.s(auto_attribs=True)
 class _Collection:
+  """A linear collection (e.g. list, tuple, set)."""
   types: FrozenSet[Any]
   values: Tuple[Any, ...]
+  elements: Tuple[Any, ...]
+
+
+@attr.s(auto_attribs=True)
+class _Map:
+  """A dictionary."""
+  key_types: FrozenSet[Any]
+  keys: Tuple[Any, ...]
+  value_types: FrozenSet[Any]
+  values: Tuple[Any, ...]
+  elements: Dict[Any, Any]
 
 
 class _CollectionBuilder:
@@ -55,13 +94,44 @@ class _CollectionBuilder:
   def __init__(self):
     self.types = set()
     self.values = []
+    self.elements = []
 
   def add(self, constant):
     self.types.add(constant.typ)
+    self.elements.append(constant.typ)
     self.values.append(constant.value)
 
   def build(self):
-    return _Collection(frozenset(self.types), tuple(reversed(self.values)))
+    return _Collection(
+        types=frozenset(self.types),
+        values=tuple(reversed(self.values)),
+        elements=tuple(reversed(self.elements)))
+
+
+class _MapBuilder:
+  """Build up a map of constants."""
+
+  def __init__(self):
+    self.key_types = set()
+    self.value_types = set()
+    self.keys = []
+    self.values = []
+    self.elements = {}
+
+  def add(self, key, value):
+    self.key_types.add(key.typ)
+    self.value_types.add(value.typ)
+    self.keys.append(key.value)
+    self.values.append(value.value)
+    self.elements[key.value] = value.typ
+
+  def build(self):
+    return _Map(
+        key_types=frozenset(self.key_types),
+        keys=tuple(reversed(self.keys)),
+        value_types=frozenset(self.value_types),
+        values=tuple(reversed(self.values)),
+        elements=self.elements)
 
 
 class _Stack:
@@ -69,6 +139,7 @@ class _Stack:
 
   def __init__(self):
     self.stack = []
+    self.consts = {}
 
   def __iter__(self):
     return self.stack.__iter__()
@@ -80,9 +151,14 @@ class _Stack:
     return self.stack.pop()
 
   def clear(self):
+    # Preserve any constants in the stack before clearing it.
+    for c in self.stack:
+      if (not isinstance(c.op, opcodes.LOAD_CONST) or
+          isinstance(c.op, opcodes.BUILD_STRING)):
+        self.consts[id(c.op)] = c
     self.stack = []
 
-  def fold_args(self, n):
+  def fold_args(self, n, op):
     """Collect the arguments to a build call."""
     ret = _CollectionBuilder()
     if len(self.stack) < n:
@@ -90,35 +166,50 @@ class _Stack:
       return None
     else:
       for _ in range(n):
-        elt = self.stack.pop()
+        elt = self.pop()
         ret.add(elt)
-        elt.op.folded = True
+        elt.op.folded = op
     return ret.build()
 
-  def fold_map_args(self, n):
+  def fold_map_args(self, n, op):
     """Collect the arguments to a BUILD_MAP call."""
-    keys = _CollectionBuilder()
-    vals = _CollectionBuilder()
+    ret = _MapBuilder()
     if len(self.stack) < 2 * n:
       # We have something other than constants in the op list
-      return None, None
+      return None
     else:
       for _ in range(n):
-        v_elt = self.stack.pop()
-        k_elt = self.stack.pop()
-        keys.add(k_elt)
-        vals.add(v_elt)
-        k_elt.op.folded = True
-        v_elt.op.folded = True
-    return keys.build(), vals.build()
+        v_elt = self.pop()
+        k_elt = self.pop()
+        ret.add(k_elt, v_elt)
+        k_elt.op.folded = op
+        v_elt.op.folded = op
+    return ret.build()
 
   def build(self, python_type, op):
-    collection = self.fold_args(op.arg)
+    collection = self.fold_args(op.arg, op)
     if collection:
       typename = python_type.__name__
       typ = (typename, collection.types)
       value = python_type(collection.values)
-      self.stack.append(_Constant(typ, value, op))
+      elements = collection.elements
+      self.push(_Constant(typ, value, elements, op))
+
+
+class _FoldedOps:
+  """Mapping from a folded opcode to the top level constant that replaces it."""
+
+  def __init__(self):
+    self.folds = {}
+
+  def add(self, op):
+    self.folds[id(op)] = op.folded
+
+  def resolve(self, op):
+    f = op
+    while id(f) in self.folds:
+      f = self.folds[id(f)]
+    return f
 
 
 class _FoldConstants:
@@ -136,16 +227,17 @@ class _FoldConstants:
           out.append(('prim', type(e)))
       return ('tuple', tuple(out))
 
+    folds = _FoldedOps()
     for block in code.order:
       stack = _Stack()
-      consts = {}
       for op in block:
         if isinstance(op, opcodes.LOAD_CONST):
           elt = code.co_consts[op.arg]
           if isinstance(elt, tuple):
-            stack.push(_Constant(build_tuple(elt), elt, op))
+            typ = build_tuple(elt)
+            stack.push(_Constant(typ, elt, typ[1], op))
           else:
-            stack.push(_Constant(('prim', type(elt)), elt, op))
+            stack.push(_Constant(('prim', type(elt)), elt, None, op))
         elif isinstance(op, opcodes.BUILD_LIST):
           stack.build(list, op)
         elif isinstance(op, opcodes.BUILD_SET):
@@ -153,47 +245,60 @@ class _FoldConstants:
         elif isinstance(op, opcodes.FORMAT_VALUE):
           if op.arg & loadmarshal.FVS_MASK:
             stack.pop()
-          _ = stack.fold_args(1)
-          stack.push(_Constant(('prim', str), '', op))
+          _ = stack.fold_args(1, op)
+          stack.push(_Constant(('prim', str), '', None, op))
         elif isinstance(op, opcodes.BUILD_STRING):
-          _ = stack.fold_args(op.arg)
-          stack.push(_Constant(('prim', str), '', op))
+          _ = stack.fold_args(op.arg, op)
+          stack.push(_Constant(('prim', str), '', None, op))
         elif isinstance(op, opcodes.BUILD_MAP):
-          keys, vals = stack.fold_map_args(op.arg)
-          if keys:
-            typ = ('map', (keys.types, vals.types))
-            val = dict(zip(keys.values, vals.values))
-            stack.push(_Constant(typ, val, op))
+          map_ = stack.fold_map_args(op.arg, op)
+          if map_:
+            typ = ('map', (map_.key_types, map_.value_types))
+            val = dict(zip(map_.keys, map_.values))
+            stack.push(_Constant(typ, val, map_.elements, op))
         elif isinstance(op, opcodes.BUILD_CONST_KEY_MAP):
           keys = stack.pop()
-          vals = stack.fold_args(op.arg)
+          vals = stack.fold_args(op.arg, op)
           if vals:
-            keys.op.folded = True
+            keys.op.folded = op
             _, t = keys.typ
             typ = ('map', (frozenset(t), vals.types))
             val = dict(zip(keys.value, vals.values))
-            stack.push(_Constant(typ, val, op))
+            elements = {k: v for k, v in zip(keys.value, vals.elements)}
+            stack.push(_Constant(typ, val, elements, op))
         else:
           # If we hit any other bytecode, we are no longer building a literal
           # constant. Clear the stack, but save any substructures that have
           # already been folded from primitives.
-          for c in stack:
-            if c.tag != 'prim' or isinstance(c.op, opcodes.BUILD_STRING):
-              consts[id(c.op)] = c
           stack.clear()
+      # Clear the stack to save any folded constants before exiting the block
+      stack.clear()
+
+      # Now rewrite the block to replace folded opcodes with a single
+      # LOAD_FOLDED_CONSTANT opcode.
       out = []
       for op in block:
-        if id(op) in consts:
-          t = consts[id(op)]
+        if id(op) in stack.consts:
+          t = stack.consts[id(op)]
           arg = t
           pretty_arg = t
           o = opcodes.LOAD_FOLDED_CONST(op.index, op.line, arg, pretty_arg)
+          o.next = op.next
+          op.folded = o
+          folds.add(op)
           out.append(o)
-        elif not op.folded:
-          out.append(op)
+        elif op.folded:
+          folds.add(op)
         else:
-          pass
+          out.append(op)
       block.code = out
+
+    # Adjust 'next' and 'target' pointers to account for folding.
+    for op in code.code_iter:
+      if op.next:
+        op.next = folds.resolve(op.next)
+      if op.target:
+        op.target = folds.resolve(op.target)
     return code
 
 
@@ -258,14 +363,29 @@ def optimize(code):
   return pyc.visit(code, _FoldConstants())
 
 
-def build_folded_type(vm, state, typ):
+def build_folded_type(vm, state, const):
   """Convert a typestruct to a vm type."""
 
-  def join(state, xs):
+  def typeconst(t):
+    """Create a constant purely to hold types for a recursive call."""
+    return _Constant(t, None, None, const.op)
+
+  def build_pyval(state, typ, pyval):
+    if pyval and typ[0] in ('prim', 'tuple'):
+      return state, vm.convert.constant_to_var(pyval)
+    else:
+      return build_folded_type(vm, state, typeconst(typ))
+
+  def expand(state, types, pyvals):
     vs = []
-    for x in xs:
-      state, v = build_folded_type(vm, state, x)
+    pyvals = pyvals or [None for _ in types]
+    for t, p in zip(types, pyvals):
+      state, v = build_pyval(state, t, p)
       vs.append(v)
+    return state, vs
+
+  def join(state, xs):
+    state, vs = expand(state, xs, None)
     val = vm.convert.build_content(vs)
     return state, val
 
@@ -274,34 +394,48 @@ def build_folded_type(vm, state, typ):
     ret = vm.convert.build_collection_of_type(state.node, convert_type, t)
     return state, ret
 
-  def collect_tuple(state, params):
-    vs = []
-    for t in params:
-      state, v = build_folded_type(vm, state, t)
-      vs.append(v)
-    ret = vm.convert.build_tuple(state.node, vs)
-    return state, ret
+  def collect_tuple(state, params, pyvals):
+    state, vs = expand(state, params, pyvals)
+    return state, vm.convert.build_tuple(state.node, vs)
 
-  def collect_map(state, params):
-    k_types, v_types = params
-    state, v = join(state, v_types)
+  def collect_list(state, params, elements, pyvals):
+    if elements is not None and len(elements) < MAX_VAR_SIZE:
+      state, vs = expand(state, elements, pyvals)
+      return state, vm.convert.build_list(state.node, vs)
+    else:
+      return collect(state, vm.convert.list_type, params)
+
+  def collect_map(state, params, elements, pyvals):
     m = vm.convert.build_map(state.node)
-    for t in k_types:
-      state, kt = build_folded_type(vm, state, t)
-      state = vm.store_subscr(state, m, kt, v)
+    if elements is not None and len(elements) < MAX_VAR_SIZE:
+      pyvals = pyvals or [None for _ in elements]
+      for (k, v), p in zip(elements.items(), pyvals):
+        k = vm.convert.constant_to_var(k)
+        state, v = build_pyval(state, v, p)
+        state = vm.store_subscr(state, m, k, v)
+    else:
+      k_types, v_types = params
+      state, v = join(state, v_types)
+      for t in k_types:
+        state, k = build_folded_type(vm, state, typeconst(t))
+        state = vm.store_subscr(state, m, k, v)
     return state, m
 
-  tag, params = typ
+  tag, params = const.typ
   if tag == 'prim':
-    val = vm.convert.primitive_class_instances[params]
-    return state, val.to_variable(state.node)
+    if const.value:
+      return state, vm.convert.constant_to_var(const.value)
+    else:
+      val = vm.convert.primitive_class_instances[params]
+      return state, val.to_variable(state.node)
   elif tag == 'list':
-    return collect(state, vm.convert.list_type, params)
+    return collect_list(state, params, const.elements, const.value)
   elif tag == 'set':
     return collect(state, vm.convert.set_type, params)
   elif tag == 'tuple':
-    return collect_tuple(state, params)
+    return collect_tuple(state, params, const.value)
   elif tag == 'map':
-    return collect_map(state, params)
+    pyvals = const.value and const.value.values()
+    return collect_map(state, params, const.elements, pyvals)
   else:
-    assert False, ('Unexpected type tag:', typ)
+    assert False, ('Unexpected type tag:', const.typ)
