@@ -10,7 +10,7 @@ this file before adding new tests.
 
 ## Organization
 
-The tests in this directory are grouped into three logical buckets:
+The tests in this directory are grouped into four logical buckets:
 
 1. Target Independent Bucket: Tests of this kind live in the top level of this
 directory. They do not depend on any specific feature from the target's version.
