@@ -282,6 +282,11 @@ class Frame(utils.VirtualMachineWeakrefMixin):
     self.return_variable = self.vm.program.NewVariable()
     self.yield_variable = self.vm.program.NewVariable()
 
+    # Keep track of the current opcode block and and block targets we add while
+    # executing it; they can potentially be removed if the block returns early.
+    self.current_block = None
+    self.targets = collections.defaultdict(list)
+
     # A map from function name to @typing.overload-decorated signatures. The
     # overloads are copied to the implementation in InterpreterFunction.make.
     self.overloads = collections.defaultdict(list)

@@ -340,14 +340,18 @@ class VirtualMachine:
     for block in frame.f_code.order:
       state = frame.states.get(block[0])
       if not state:
-        log.warning("Skipping block %d,"
-                    " we don't have any non-erroneous code that goes here.",
-                    block.id)
+        log.warning("Skipping block %d, nothing connects to it.", block.id)
         continue
+      self.frame.current_block = block
       op = None
       for op in block:
         state = self.run_instruction(op, state)
         if state.why:
+          # If we raise an exception or return in a 'finally' block do not
+          # execute any target blocks it has added.
+          if state.block_stack and state.block_stack[-1].type == "finally":
+            for target in self.frame.targets[block.id]:
+              del self.frame.states[target]
           # we can't process this block any further
           break
       if state.why:
@@ -2786,6 +2790,7 @@ class VirtualMachine:
 
   def store_jump(self, target, state):
     assert target
+    self.frame.targets[self.frame.current_block.id].append(target)
     self.frame.states[target] = state.merge_into(self.frame.states.get(target))
 
   def byte_FOR_ITER(self, state, op):
