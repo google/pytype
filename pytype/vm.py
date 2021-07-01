@@ -1393,7 +1393,7 @@ class VirtualMachine:
       self, state, op, name, orig_val, annotations_dict, check_types):
     """Applies the type annotation, if any, associated with this object."""
     typ, value = self.annotations_util.apply_annotation(
-        state, op, name, orig_val)
+        state.node, op, name, orig_val)
     if annotations_dict is not None:
       if annotations_dict is self.current_annotated_locals:
         self._record_local(state.node, op, name, typ, orig_val)

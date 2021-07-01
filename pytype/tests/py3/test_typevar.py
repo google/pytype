@@ -450,6 +450,15 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       def f(x: Tree[int]): ... # no error since Tree is set to Any
     """)
 
+  def test_cast_generic_tuple(self):
+    self.Check("""
+      from typing import Tuple, TypeVar, cast
+      T = TypeVar('T')
+      def f(x: T, y: T):
+        return cast(Tuple[T, ...], x)
+      assert_type(f(0, 1), Tuple[int, ...])
+    """)
+
 
 class GenericTypeAliasTest(test_base.TargetPython3BasicTest):
   """Tests for generic type aliases ("type macros")."""

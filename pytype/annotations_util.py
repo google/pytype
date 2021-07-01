@@ -211,20 +211,10 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       d.from_annotation = name
     return node, value
 
-  def apply_annotation(self, state, op, name, value):
-    """If there is an annotation for the op, return its value."""
-    assert op is self.vm.frame.current_opcode
-    if op.code.co_filename != self.vm.filename:
-      return None, value
-    if not op.annotation:
-      return None, value
-    annot = op.annotation
+  def extract_and_init_annotation(self, node, name, var,
+                                  use_not_supported_yet=False):
+    """Extracts an annotation from var and instantiates it."""
     frame = self.vm.frame
-    var, errorlog = abstract_utils.eval_expr(
-        self.vm, state.node, frame.f_globals, frame.f_locals, annot)
-    if errorlog:
-      self.vm.errorlog.invalid_annotation(
-          self.vm.frames, annot, details=errorlog.details)
     if frame.func and isinstance(frame.func.data, abstract.BoundFunction):
       self_var = frame.f_locals.pyval.get("self")
       if self_var:
@@ -244,18 +234,37 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     allowed_type_params = set(
         itertools.chain(*substs, self.get_callable_type_parameter_names(var)))
     typ = self.extract_annotation(
-        state.node, var, name, self.vm.simple_stack(),
-        allowed_type_params=allowed_type_params)
+        node, var, name, self.vm.simple_stack(),
+        allowed_type_params=allowed_type_params,
+        use_not_supported_yet=use_not_supported_yet)
     if typ.formal:
-      resolved_type = self.sub_one_annotation(state.node, typ, substs,
+      resolved_type = self.sub_one_annotation(node, typ, substs,
                                               instantiate_unbound=False)
-      _, value = self.init_annotation(state.node, name, resolved_type)
+      _, value = self.init_annotation(node, name, resolved_type)
     else:
-      _, value = self.init_annotation(state.node, name, typ)
+      _, value = self.init_annotation(node, name, typ)
     return typ, value
 
+  def apply_annotation(self, node, op, name, value):
+    """If there is an annotation for the op, return its value."""
+    assert op is self.vm.frame.current_opcode
+    if op.code.co_filename != self.vm.filename:
+      return None, value
+    if not op.annotation:
+      return None, value
+    annot = op.annotation
+    frame = self.vm.frame
+    var, errorlog = abstract_utils.eval_expr(
+        self.vm, node, frame.f_globals, frame.f_locals, annot)
+    if errorlog:
+      self.vm.errorlog.invalid_annotation(
+          self.vm.frames, annot, details=errorlog.details)
+    return self.extract_and_init_annotation(node, name, var,
+                                            use_not_supported_yet=True)
+
   def extract_annotation(
-      self, node, var, name, stack, allowed_type_params=None):
+      self, node, var, name, stack, allowed_type_params=None,
+      use_not_supported_yet=True):
     """Returns an annotation extracted from 'var'.
 
     Args:
@@ -265,6 +274,9 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       stack: The frame stack.
       allowed_type_params: Type parameters that are allowed to appear in the
         annotation. 'None' means all are allowed.
+      use_not_supported_yet: Temporary parameter to help transition the error
+        class for reporting 'type parameter not in scope' errors from
+        [not-supported-yet] to [invalid-annotation].
     """
     try:
       typ = abstract_utils.get_atomic_value(var)
@@ -296,11 +308,13 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
             str_type = "Union[str, bytes]"
           details += (
               f"\nNote: For all string types, use {str_type}.")
-        # TODO(b/186896951): Once the remaining use cases in the linked bug are
-        # supported, we should switch this to an [invalid-annotation] error.
-        self.vm.errorlog.not_supported_yet(
-            stack, "using type parameter in variable annotation",
-            details=details)
+        if use_not_supported_yet:
+          # TODO(b/186896951): Switch this to an [invalid-annotation] error.
+          self.vm.errorlog.not_supported_yet(
+              stack, "using type parameter in variable annotation",
+              details=details)
+        else:
+          self.vm.errorlog.invalid_annotation(stack, typ, details, name)
         return self.vm.convert.unsolvable
     return typ
 

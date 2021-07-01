@@ -506,4 +506,16 @@ class TypeVarTest(test_base.TargetIndependentTest):
         a.A(1, 2, 3, a=1, b=2)
       """, pythonpath=[d.path])
 
+  def test_cast_generic_callable(self):
+    errors = self.CheckWithErrors("""
+      from typing import Callable, TypeVar, cast
+      T = TypeVar('T')
+      def f(x):
+        return cast(Callable[[T, T], T], x)
+      assert_type(f(None)(0, 1), int)
+      f(None)(0, '1')  # wrong-arg-types[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": "Expected.*int.*Actual.*str"})
+
+
 test_base.main(globals(), __name__ == "__main__")
