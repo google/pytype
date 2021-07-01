@@ -446,7 +446,9 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       else:
         return None
     elif isinstance(left, abstract.FUNCTION_TYPES):
-      if other_type.full_name == "typing.Callable":
+      if other_type.full_name == "builtins.object":
+        return subst
+      elif other_type.full_name == "typing.Callable":
         if not isinstance(other_type, abstract.ParameterizedClass):
           # The callable has no parameters, so any function matches it.
           return subst
