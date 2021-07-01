@@ -1,5 +1,6 @@
 """Utilities for inline type annotations."""
 
+import itertools
 import sys
 
 from pytype import abstract
@@ -201,34 +202,26 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     if frame.func and isinstance(frame.func.data, abstract.BoundFunction):
       self_var = frame.f_locals.pyval.get("self")
       if self_var:
-        allowed_type_params = []
+        type_params = []
         for v in self_var.data:
           if v.cls:
-            allowed_type_params.extend(p.name for p in v.cls.template)
+            # Normalize type parameter names by dropping the scope.
+            type_params.extend(p.with_module(None) for p in v.cls.template)
+        substs = tuple(
+            abstract_utils.get_type_parameter_substitutions(v, type_params)
+            for v in self_var.data)
       else:
-        allowed_type_params = ()
+        substs = ()
     else:
       self_var = None
-      allowed_type_params = self.vm.frame.type_params
+      substs = self.vm.frame.substs
     typ = self.extract_annotation(
         state.node, var, name, self.vm.simple_stack(),
-        allowed_type_params=allowed_type_params)
-    if typ.formal and self_var:
-      type_params = self.get_type_parameters(typ)
-      substs = [
-          abstract_utils.get_type_parameter_substitutions(v, type_params)
-          for v in self_var.data]
+        allowed_type_params=set(itertools.chain.from_iterable(substs)))
+    if typ.formal:
       resolved_type = self.sub_one_annotation(state.node, typ, substs,
                                               instantiate_unbound=False)
       _, value = self.init_annotation(state.node, name, resolved_type)
-    elif typ.formal:
-      # The only time extract_annotation returns a formal type (i.e., one that
-      # contains type parameters) is when we are in the body of a generic class.
-      # Without `self_var`, we don't know what to instantiate those parameters
-      # to. We set the value to empty to defer instantiation until the value is
-      # being looked up on class instances, at which point the parameters will
-      # have been filled in.
-      value = self.vm.convert.empty.to_variable(state.node)
     else:
       _, value = self.init_annotation(state.node, name, typ)
     return typ, value

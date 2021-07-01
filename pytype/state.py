@@ -1,8 +1,9 @@
 """Objects modelling VM state. (Frames etc.)."""
 
 import collections
+import itertools
 import logging
-from typing import Collection, Optional
+from typing import Collection, Dict, Optional
 
 from pytype import abstract
 from pytype import class_mixin
@@ -235,7 +236,7 @@ class Frame(utils.VirtualMachineWeakrefMixin):
 
   def __init__(self, node, vm, f_code, f_globals, f_locals, f_back, callargs,
                closure, func, first_arg: Optional[cfg.Variable],
-               type_params: Collection[abstract.TypeParameter]):
+               substs: Collection[Dict[str, cfg.Variable]]):
     """Initialize a special frame as needed by TypegraphVirtualMachine.
 
     Args:
@@ -250,7 +251,8 @@ class Frame(utils.VirtualMachineWeakrefMixin):
       closure: A tuple containing the new co_freevars.
       func: An Optional[cfg.Binding] to the function this frame corresponds to.
       first_arg: First argument to the function.
-      type_params: Type parameters in scope for this frame.
+      substs: Maps from type parameter names in scope for this frame to their
+        possible values.
     Raises:
       NameError: If we can't resolve any references into the outer frame.
     """
@@ -328,12 +330,16 @@ class Frame(utils.VirtualMachineWeakrefMixin):
         i = f_code.co_cellvars.index(closure_name)
         self.class_closure_var = self.cells[i]
     self.func = func
-    self.type_params = type_params
+    self.substs = substs
 
   def __repr__(self):     # pragma: no cover
     return "<Frame at 0x%08x: %r @ %d>" % (
         id(self), self.f_code.co_filename, self.f_lineno
     )
+
+  @property
+  def type_params(self):
+    return set(itertools.chain.from_iterable(self.substs))
 
 
 class Condition:

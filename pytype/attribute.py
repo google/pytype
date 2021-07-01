@@ -275,25 +275,29 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         # Fall back to __getattr__ if the attribute doesn't otherwise exist.
         node, attr = self._get_attribute_computed(
             node, cls, name, valself, compute_function="__getattr__")
-    if attr is None or attr.data == [self.vm.convert.empty]:
-      for base in obj.mro:
-        if not isinstance(base, abstract.InterpreterClass):
-          break
-        annots = abstract_utils.get_annotations_dict(base.members)
-        if annots:
-          typ = annots.get_type(node, name)
-          if typ:
-            # An attribute has been declared but not defined, e.g.,
-            #   class Foo:
-            #     bar: int
-            if typ.formal and valself:
-              subst = abstract_utils.get_type_parameter_substitutions(
-                  valself.data,
-                  self.vm.annotations_util.get_type_parameters(typ))
-              typ = self.vm.annotations_util.sub_one_annotation(
-                  node, typ, [subst])
-            _, attr = self.vm.annotations_util.init_annotation(node, name, typ)
-            break
+    for base in obj.mro:
+      if not isinstance(base, abstract.InterpreterClass):
+        break
+      annots = abstract_utils.get_annotations_dict(base.members)
+      if annots:
+        typ = annots.get_type(node, name)
+        if not typ:
+          continue
+        if typ.formal and valself:
+          # The attribute contains a class-scoped type parameter, so we need to
+          # reinitialize it with the current instance's parameter values.
+          subst = abstract_utils.get_type_parameter_substitutions(
+              valself.data,
+              self.vm.annotations_util.get_type_parameters(typ))
+          typ = self.vm.annotations_util.sub_one_annotation(
+              node, typ, [subst])
+          _, attr = self.vm.annotations_util.init_annotation(node, name, typ)
+        elif attr is None:
+          # An attribute has been declared but not defined, e.g.,
+          #   class Foo:
+          #     bar: int
+          _, attr = self.vm.annotations_util.init_annotation(node, name, typ)
+        break
     if attr is not None:
       attr = self._filter_var(node, attr)
     if attr is None and obj.maybe_missing_members:

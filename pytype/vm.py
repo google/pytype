@@ -772,7 +772,7 @@ class VirtualMachine:
 
   def make_frame(
       self, node, code, f_globals, f_locals, callargs=None, closure=None,
-      new_locals=False, func=None, first_arg=None, type_params=()):
+      new_locals=False, func=None, first_arg=None, substs=()):
     """Create a new frame object, using the given args, globals and locals."""
     if any(code is f.f_code for f in self.frames):
       log.info("Detected recursion in %s", code.co_name or code.co_filename)
@@ -790,8 +790,7 @@ class VirtualMachine:
       f_locals = abstract.LazyConcreteDict("locals", {}, self)
 
     return frame_state.Frame(node, self, code, f_globals, f_locals, self.frame,
-                             callargs or {}, closure, func, first_arg,
-                             type_params)
+                             callargs or {}, closure, func, first_arg, substs)
 
   def simple_stack(self, opcode=None):
     """Get a stack of simple frames.

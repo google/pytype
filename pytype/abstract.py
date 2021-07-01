@@ -3583,8 +3583,8 @@ class InterpreterFunction(SignedFunction):
       for b in self.vm.callself_stack[-1].bindings:
         b.data.maybe_missing_members = True
 
-  def call(
-      self, node, func, args, new_locals=False, alias_map=None, type_params=()):
+  def call(self, node, func, args, new_locals=False, alias_map=None,
+           frame_substs=()):
     if self.is_overload:
       raise function.NotCallable(self)
     if (self.vm.is_at_maximum_depth() and
@@ -3633,7 +3633,7 @@ class InterpreterFunction(SignedFunction):
       frame = self.vm.make_frame(
           node, self.code, self.f_globals, self.f_locals, callargs,
           self.closure, new_locals=new_locals, func=func,
-          first_arg=first_arg, type_params=type_params)
+          first_arg=first_arg, substs=frame_substs)
     except self.vm.VirtualMachineRecursionError:
       # If we've encountered recursion in a constructor, then we have another
       # incompletely initialized instance of the same class (or a subclass) at
@@ -4296,17 +4296,21 @@ class BuildClass(BaseValue):
           "Invalid argument to __build_class__")
     func.is_class_builder = True
     bases = args.posargs[2:]
-    type_params = []
+    subst = {}
+    # We need placeholder values to stick in 'subst'. These will be replaced by
+    # the actual type parameter values when attribute.py looks up generic
+    # attributes on instances of this class.
+    any_var = self.vm.new_unsolvable(node)
     for basevar in bases:
       for base in basevar.data:
         if isinstance(base, ParameterizedClass):
-          type_params.extend(
-              v.name for v in base.formal_type_parameters.values()
-              if isinstance(v, TypeParameter))
+          subst.update(
+              {v.name: any_var for v in base.formal_type_parameters.values()
+               if isinstance(v, TypeParameter)})
 
     node, _ = func.call(node, funcvar.bindings[0],
                         args.replace(posargs=(), namedargs={}),
-                        new_locals=True, type_params=type_params)
+                        new_locals=True, frame_substs=(subst,))
     if func.last_frame:
       func.f_locals = func.last_frame.f_locals
       class_closure_var = func.last_frame.class_closure_var
