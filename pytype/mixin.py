@@ -183,7 +183,7 @@ class LazyMembers(metaclass=MixinMeta):
   def init_mixin(self, member_map):
     self._member_map = member_map
 
-  def _convert_member(self, pyval):
+  def _convert_member(self, member):
     raise NotImplementedError()
 
   def load_lazy_attribute(self, name):

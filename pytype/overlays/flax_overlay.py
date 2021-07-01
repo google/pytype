@@ -121,13 +121,12 @@ class Module(abstract.PyTDClass):
       pytd_cls = vm.convert.constant_to_value(pytd_cls).pytd_cls
     super().__init__(name, pytd_cls, vm)
 
-  def init_subclass(self, node, subclass):
+  def init_subclass(self, node, cls):
     # Subclasses of Module call self.setup() when creating instances.
-    subclass.additional_init_methods.append("setup")
+    cls.additional_init_methods.append("setup")
     dc = ModuleDataclass.make(self.vm)
-    subclass_var = subclass.to_variable(node)
-    args = function.Args(
-        posargs=(subclass_var,), namedargs=abstract.Dict(self.vm))
+    cls_var = cls.to_variable(node)
+    args = function.Args(posargs=(cls_var,), namedargs=abstract.Dict(self.vm))
     node, _ = dc.call(node, None, args)
     return node
 

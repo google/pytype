@@ -70,20 +70,20 @@ class EnumBuilder(abstract.PyTDClass):
     return self.vm.make_class(node, name_var, bases, class_dict_var, cls_var,
                               new_class_var, class_type=EnumInstance)
 
-  def call(self, node, f, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None):
     """Implements the behavior of the enum functional API."""
     # Because of how this is called, we supply our own "self" argument.
     # See class_mixin.Class._call_new_and_init.
     args = args.simplify(node, self.vm)
     args = args.replace(posargs=(self.vm.new_unsolvable(node),) + args.posargs)
     self.load_lazy_attribute("__new__")
-    func = abstract_utils.get_atomic_value(self.members["__new__"])
+    new = abstract_utils.get_atomic_value(self.members["__new__"])
     # Note that super().call or _call_new_and_init won't work here, because
     # they don't raise FailedFunctionCall.
-    func.match_args(node, args, alias_map)
+    new.match_args(node, args, alias_map)
     # There should only be 1 signature for Enum.__new__.
-    assert len(func.signatures) == 1, "Expected only 1 Enum.__new__ signature."
-    sig = func.signatures[0].signature
+    assert len(new.signatures) == 1, "Expected only 1 Enum.__new__ signature."
+    sig = new.signatures[0].signature
     argmap = {name: var for name, var, _ in sig.iter_args(args)}
 
     cls_name_var = argmap["value"]

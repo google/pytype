@@ -1095,9 +1095,9 @@ class VirtualMachine:
       state = state.set_why("NoReturn")
     return state.change_cfg_node(node), ret
 
-  def _call_with_fake_args(self, node, funcu):
+  def _call_with_fake_args(self, node0, funcv):
     """Attempt to call the given function with made-up arguments."""
-    return node, self.new_unsolvable(node)
+    return node0, self.new_unsolvable(node0)
 
   def call_function(self, node, funcu, args, fallback_to_unsolvable=True,
                     allow_noreturn=False):

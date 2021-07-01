@@ -264,7 +264,7 @@ class _FoldConstants:
             _, t = keys.typ
             typ = ('map', (frozenset(t), vals.types))
             val = dict(zip(keys.value, vals.values))
-            elements = {k: v for k, v in zip(keys.value, vals.elements)}
+            elements = dict(zip(keys.value, vals.elements))
             stack.push(_Constant(typ, val, elements, op))
         else:
           # If we hit any other bytecode, we are no longer building a literal
