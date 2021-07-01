@@ -24,6 +24,7 @@ disable=
   consider-using-ternary,
   cyclic-import,
   deprecated-method,
+  deprecated-module,
   duplicate-code,
   global-statement,
   import-error,
