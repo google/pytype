@@ -2421,9 +2421,12 @@ class VirtualMachine:
       except abstract_utils.ConversionError:
         pass
       else:
+        allowed_type_params = (
+            self.frame.type_params |
+            self.annotations_util.get_callable_type_parameter_names(val))
         typ = self.annotations_util.extract_annotation(
             state.node, val, name, self.simple_stack(),
-            allowed_type_params=self.frame.type_params)
+            allowed_type_params=allowed_type_params)
         self._record_annotation(state.node, op, name, typ)
     state = self.store_subscr(state, obj, subscr, val)
     return state
@@ -3346,9 +3349,12 @@ class VirtualMachine:
     state, annotations_var = self.load_local(state, "__annotations__")
     name = self.frame.f_code.co_names[op.arg]
     state, value = state.pop()
+    allowed_type_params = (
+        self.frame.type_params |
+        self.annotations_util.get_callable_type_parameter_names(value))
     typ = self.annotations_util.extract_annotation(
         state.node, value, name, self.simple_stack(),
-        allowed_type_params=self.frame.type_params)
+        allowed_type_params=allowed_type_params)
     self._record_annotation(state.node, op, name, typ)
     key = self.convert.primitive_class_instances[str]
     state = self.store_subscr(

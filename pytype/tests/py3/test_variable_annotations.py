@@ -276,5 +276,82 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
       def f() -> Dict[str, Any]: ...
     """)
 
+  def test_function_parameter(self):
+    self.Check("""
+      from typing import TypeVar
+      T = TypeVar('T')
+      def f(x: T, y: T):
+        z: T = x
+        return z
+      assert_type(f(0, 1), int)
+    """)
+
+  def test_illegal_parameter(self):
+    errors = self.CheckWithErrors("""
+      from typing import TypeVar
+      T = TypeVar('T')
+      S = TypeVar('S')
+      def f(x: T, y: T):
+        z: S = x  # not-supported-yet[e]
+        return z
+    """)
+    self.assertErrorRegexes(errors, {"e": r"'S' not in scope for method 'f'"})
+
+  def test_callable_parameters(self):
+    errors = self.CheckWithErrors("""
+      from typing import Callable, TypeVar
+      T = TypeVar('T')
+      f: Callable[[T, T], T]
+      assert_type(f(0, 1), int)
+      f(0, '1')  # wrong-arg-types[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Expected.*int.*Actual.*str"})
+
+  def test_nested_callable_parameters(self):
+    self.Check("""
+      from typing import Callable, List, TypeVar
+      T = TypeVar('T')
+      fs: List[Callable[[T], T]]
+      assert_type(fs[0]('hello world'), str)
+    """)
+
+  def test_callable_parameters_in_method(self):
+    self.Check("""
+      from typing import Callable, TypeVar
+      T = TypeVar('T')
+      def f():
+        g: Callable[[T], T] = None
+        assert_type(g(0), int)
+    """)
+
+  def test_class_and_callable_parameters(self):
+    errors = self.CheckWithErrors("""
+      from typing import Callable, Generic, TypeVar
+      T1 = TypeVar('T1')
+      T2 = TypeVar('T2')
+      class Foo(Generic[T1]):
+        x: Callable[[T1, T2], T2]
+        def f(self):
+          x: Callable[[T1, T2], T2] = None
+          return x
+      foo = Foo[int]()
+      assert_type(foo.x(0, 'hello world'), str)
+      assert_type(foo.f()(0, 4.2), float)
+      foo.x(None, 'hello world')  # wrong-arg-types[e1]
+      foo.f()('oops', 4.2)  # wrong-arg-types[e2]
+    """)
+    self.assertErrorRegexes(errors, {"e1": r"Expected.*int.*Actual.*None",
+                                     "e2": r"Expected.*int.*Actual.*str"})
+
+  def test_invalid_callable_parameter(self):
+    # Do not allow TypeVars that appear only once in a Callable signature.
+    self.CheckWithErrors("""
+      from typing import Callable, TypeVar
+      T = TypeVar('T')
+      f: Callable[[T], int]  # not-supported-yet
+      def g(x: T, y: T):
+        f2: Callable[[T], int]  # ok, since T is from the signature of g
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

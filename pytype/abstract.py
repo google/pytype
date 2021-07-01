@@ -3629,6 +3629,8 @@ class InterpreterFunction(SignedFunction):
               extra_key=extra_key)
     mutations = self._mutations_generator(node, first_arg, substs)
     node = abstract_utils.apply_mutations(node, mutations)
+    if substs:
+      frame_substs = tuple(itertools.chain(frame_substs, substs))
     try:
       frame = self.vm.make_frame(
           node, self.code, self.f_globals, self.f_locals, callargs,

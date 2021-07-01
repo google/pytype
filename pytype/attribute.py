@@ -290,7 +290,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
               valself.data,
               self.vm.annotations_util.get_type_parameters(typ))
           typ = self.vm.annotations_util.sub_one_annotation(
-              node, typ, [subst])
+              node, typ, [subst], instantiate_unbound=False)
           _, attr = self.vm.annotations_util.init_annotation(node, name, typ)
         elif attr is None:
           # An attribute has been declared but not defined, e.g.,

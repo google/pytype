@@ -1,5 +1,6 @@
 """Utilities for inline type annotations."""
 
+import collections
 import itertools
 import sys
 
@@ -128,6 +129,31 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
                   for _, t in annot.get_inner_types()), [])
     return []
 
+  def get_callable_type_parameter_names(self, var):
+    """Gets all TypeParameter names that appear in a Callable in 'var'."""
+    type_params = set()
+    seen = set()
+    stack = list(var.data)
+    while stack:
+      annot = stack.pop()
+      if annot in seen:
+        continue
+      seen.add(annot)
+      if annot.full_name == "typing.Callable":
+        params = collections.Counter(self.get_type_parameters(annot))
+        if isinstance(annot, abstract.CallableClass):
+          # pytype represents Callable[[T1, T2], None] as
+          # CallableClass({0: T1, 1: T2, ARGS: Union[T1, T2], RET: None}),
+          # so we have to fix double-counting of argument type parameters.
+          params -= collections.Counter(self.get_type_parameters(
+              annot.formal_type_parameters[abstract_utils.ARGS]))
+        # Type parameters that appear only once in a function signature are
+        # invalid, so ignore them.
+        type_params.update(p.name for p, n in params.items() if n > 1)
+      elif isinstance(annot, mixin.NestedAnnotation):
+        stack.extend(v for _, v in annot.get_inner_types())
+    return type_params
+
   def convert_function_type_annotation(self, name, typ):
     visible = typ.data
     if len(visible) > 1:
@@ -215,9 +241,11 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     else:
       self_var = None
       substs = self.vm.frame.substs
+    allowed_type_params = set(
+        itertools.chain(*substs, self.get_callable_type_parameter_names(var)))
     typ = self.extract_annotation(
         state.node, var, name, self.vm.simple_stack(),
-        allowed_type_params=set(itertools.chain.from_iterable(substs)))
+        allowed_type_params=allowed_type_params)
     if typ.formal:
       resolved_type = self.sub_one_annotation(state.node, typ, substs,
                                               instantiate_unbound=False)
@@ -255,10 +283,12 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         if self.vm.frame.func:
           method = self.vm.frame.func.data
           if isinstance(method, abstract.BoundFunction):
-            class_name = method.name.rsplit(".", 1)[0]
+            desc = "class"
+            frame_name = method.name.rsplit(".", 1)[0]
           else:
-            class_name = method.name
-          details += " for class %r" % class_name
+            desc = "class" if method.is_class_builder else "method"
+            frame_name = method.name
+          details += f" for {desc} {frame_name!r}"
         if "AnyStr" in illegal_params:
           if self.vm.PY2:
             str_type = "typing.Text"
