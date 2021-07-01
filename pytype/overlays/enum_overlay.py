@@ -76,13 +76,13 @@ class EnumBuilder(abstract.PyTDClass):
     # See class_mixin.Class._call_new_and_init.
     args = args.simplify(node, self.vm)
     args = args.replace(posargs=(self.vm.new_unsolvable(node),) + args.posargs)
-    self.load_lazy_attribute("__init__")
-    func = abstract_utils.get_atomic_value(self.members["__init__"])
+    self.load_lazy_attribute("__new__")
+    func = abstract_utils.get_atomic_value(self.members["__new__"])
     # Note that super().call or _call_new_and_init won't work here, because
     # they don't raise FailedFunctionCall.
     func.match_args(node, args, alias_map)
-    # There should only be 1 signature for Enum.__init__.
-    assert len(func.signatures) == 1, "Expected only 1 Enum.__init__ signature."
+    # There should only be 1 signature for Enum.__new__.
+    assert len(func.signatures) == 1, "Expected only 1 Enum.__new__ signature."
     sig = func.signatures[0].signature
     argmap = {name: var for name, var, _ in sig.iter_args(args)}
 
@@ -102,8 +102,12 @@ class EnumBuilder(abstract.PyTDClass):
       fields = names
     else:
       # List of names, or list of (name, value) pairs.
-      possible_pairs = [abstract_utils.get_atomic_python_constant(p)
-                        for p in names]
+      try:
+        possible_pairs = [abstract_utils.get_atomic_python_constant(p)
+                          for p in names]
+      except abstract_utils.ConversionError as e:
+        log.debug("Failed to unwrap possible enum field pairs:\n  %s", e)
+        return node, self.vm.new_unsolvable(node)
       if not possible_pairs:
         fields = {}
       elif isinstance(possible_pairs[0], str):
@@ -113,11 +117,15 @@ class EnumBuilder(abstract.PyTDClass):
         # List of (name_var, value_var) pairs.
         # The earlier get_atomic_python_constant call only unwrapped the tuple,
         # so the values in the tuple still need to be unwrapped.
-        fields = {
-            abstract_utils.get_atomic_python_constant(name):
-                value
-            for name, value in possible_pairs
-        }
+        try:
+          fields = {
+              abstract_utils.get_atomic_python_constant(name):
+                  value
+              for name, value in possible_pairs
+          }
+        except abstract_utils.ConversionError as e:
+          log.debug("Failed to unwrap field names for enum:\n  %s", e)
+          return node, self.vm.new_unsolvable(node)
 
     cls_dict = abstract.Dict(self.vm)
     cls_dict.update(node, fields)
