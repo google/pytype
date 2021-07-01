@@ -58,10 +58,10 @@ class TypingTest(test_base.TargetIndependentTest):
     self.InferWithErrors("""
         from typing import cast, AnyStr, Type, TypeVar, _T, Union
         def f(x):
-          return cast(AnyStr, x)  # invalid-typevar
+          return cast(AnyStr, x)  # invalid-annotation
         f("hello")
         def g(x):
-          return cast(Union[AnyStr, _T], x)  # invalid-typevar
+          return cast(Union[AnyStr, _T], x)  # invalid-annotation
         g("quack")
         """)
 

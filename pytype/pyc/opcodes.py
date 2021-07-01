@@ -34,7 +34,7 @@ class Opcode:
     self.target = None
     self.code = None  # If we have a CodeType or OrderedCode parent
     self.annotation = None
-    self.folded = False  # elided by constant folding
+    self.folded = None  # elided by constant folding
 
   def at_line(self, line):
     """Return a new opcode simliar to this one but with a different line."""
@@ -916,6 +916,9 @@ class DICT_UPDATE(OpcodeWithArg):
 class LOAD_FOLDED_CONST(OpcodeWithArg):  # A fake opcode used internally
   FLAGS = HAS_ARGUMENT
   __slots__ = ()
+
+  def __str__(self):
+    return self.basic_str() + " " + str(self.arg.value)
 
 
 python2_mapping = {

@@ -547,13 +547,14 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     else:
       return new_type
 
-  def VisitGenericType(self, t):
-    if isinstance(t.base_type, (pytd.GenericType, pytd.UnionType)):
+  def VisitGenericType(self, node):
+    if isinstance(node.base_type, (pytd.GenericType, pytd.UnionType)):
       try:
-        t = MaybeSubstituteParameters(t.base_type, t.parameters) or t
+        node = MaybeSubstituteParameters(
+            node.base_type, node.parameters) or node
       except ValueError as e:
         raise KeyError(str(e)) from e
-    return t
+    return node
 
   def _ModulePrefix(self):
     return self.name + "." if self.name else ""

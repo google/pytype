@@ -943,9 +943,9 @@ class MergeTypeParameters(TypeParameterScope):
       if not any(e1 is e2 for e1 in l1):
         l1.append(e2)
 
-  def EnterSignature(self, node):
+  def EnterSignature(self, sig):
     # Necessary because TypeParameterScope also defines this function
-    super().EnterSignature(node)
+    super().EnterSignature(sig)
     assert self.type_param_union is None
     self.type_param_union = collections.defaultdict(list)
 

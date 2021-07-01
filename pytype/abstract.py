@@ -1515,7 +1515,7 @@ class AnnotationContainer(AnnotationClass):
           self.vm.errorlog.not_indexable(self.vm.frames, self.name)
     return inner
 
-  def _build_value(self, node, raw_inner, ellipses):
+  def _build_value(self, node, inner, ellipses):
     if self.base_cls.is_late_annotation():
       # A parameterized LateAnnotation should be converted to another
       # LateAnnotation to delay evaluation until the first late annotation is
@@ -1524,7 +1524,7 @@ class AnnotationContainer(AnnotationClass):
       # class_mixin.Class, and (2) we have to postpone error-checking anyway so
       # we might as well postpone the entire evaluation.
       printed_params = []
-      for i, param in enumerate(raw_inner):
+      for i, param in enumerate(inner):
         if i in ellipses:
           printed_params.append("...")
         else:
@@ -1533,7 +1533,8 @@ class AnnotationContainer(AnnotationClass):
       annot = LateAnnotation(expr, self.base_cls.stack, self.vm)
       self.vm.late_annotations[self.base_cls.expr].append(annot)
       return annot
-    template, inner, abstract_class = self._get_value_info(raw_inner, ellipses)
+    template, processed_inner, abstract_class = self._get_value_info(
+        inner, ellipses)
     if isinstance(self.base_cls, ParameterizedClass):
       base_cls = self.base_cls.base_cls
     else:
@@ -1543,11 +1544,12 @@ class AnnotationContainer(AnnotationClass):
       # usually, the parameterized class inherits the base class's template.
       # Protocol[T, ...] is a shorthand for Protocol, Generic[T, ...].
       template_params = [
-          param.with_module(base_cls.full_name) for param in inner]
+          param.with_module(base_cls.full_name) for param in processed_inner]
     else:
       template_params = None
-    inner = self._validate_inner(template, inner, raw_inner)
-    params = {name: inner[i] if i < len(inner) else self.vm.convert.unsolvable
+    processed_inner = self._validate_inner(template, processed_inner, inner)
+    params = {name: processed_inner[i]
+                    if i < len(processed_inner) else self.vm.convert.unsolvable
               for i, name in enumerate(template)}
 
     # For user-defined generic types, check if its type parameter matches
@@ -1594,8 +1596,8 @@ class LazyConcreteDict(SimpleValue, mixin.PythonConstant, mixin.LazyMembers):
     mixin.PythonConstant.init_mixin(self, self.members)
     mixin.LazyMembers.init_mixin(self, member_map)
 
-  def _convert_member(self, pyval):
-    return self.vm.convert.constant_to_var(pyval)
+  def _convert_member(self, member):
+    return self.vm.convert.constant_to_var(member)
 
   def is_empty(self):
     return not bool(self._member_map)
@@ -2801,21 +2803,21 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
           self.vm.frames, self, name, e.type_param_name)
       self.members[name] = self.vm.new_unsolvable(self.vm.root_node)
 
-  def _convert_member(self, pyval, subst=None):
+  def _convert_member(self, member, subst=None):
     """Convert a member as a variable. For lazy lookup."""
     subst = subst or datatypes.AliasingDict()
     node = self.vm.root_node
-    if isinstance(pyval, pytd.Constant):
+    if isinstance(member, pytd.Constant):
       return self.vm.convert.constant_to_var(
-          abstract_utils.AsInstance(pyval.type), subst, node)
-    elif isinstance(pyval, pytd.Function):
-      c = self.vm.convert.constant_to_value(pyval, subst=subst, node=node)
+          abstract_utils.AsInstance(member.type), subst, node)
+    elif isinstance(member, pytd.Function):
+      c = self.vm.convert.constant_to_value(member, subst=subst, node=node)
       c.parent = self
       return c.to_variable(node)
-    elif isinstance(pyval, pytd.Class):
-      return self.vm.convert.constant_to_var(pyval, subst=subst, node=node)
+    elif isinstance(member, pytd.Class):
+      return self.vm.convert.constant_to_var(member, subst=subst, node=node)
     else:
-      raise AssertionError("Invalid class member %s" % pytd_utils.Print(pyval))
+      raise AssertionError("Invalid class member %s" % pytd_utils.Print(member))
 
   def call(self, node, func, args, alias_map=None):
     if self.is_abstract and not self.from_annotation:
@@ -3581,8 +3583,8 @@ class InterpreterFunction(SignedFunction):
       for b in self.vm.callself_stack[-1].bindings:
         b.data.maybe_missing_members = True
 
-  def call(
-      self, node, func, args, new_locals=False, alias_map=None, type_params=()):
+  def call(self, node, func, args, new_locals=False, alias_map=None,
+           frame_substs=()):
     if self.is_overload:
       raise function.NotCallable(self)
     if (self.vm.is_at_maximum_depth() and
@@ -3627,11 +3629,13 @@ class InterpreterFunction(SignedFunction):
               extra_key=extra_key)
     mutations = self._mutations_generator(node, first_arg, substs)
     node = abstract_utils.apply_mutations(node, mutations)
+    if substs:
+      frame_substs = tuple(itertools.chain(frame_substs, substs))
     try:
       frame = self.vm.make_frame(
           node, self.code, self.f_globals, self.f_locals, callargs,
           self.closure, new_locals=new_locals, func=func,
-          first_arg=first_arg, type_params=type_params)
+          first_arg=first_arg, substs=frame_substs)
     except self.vm.VirtualMachineRecursionError:
       # If we've encountered recursion in a constructor, then we have another
       # incompletely initialized instance of the same class (or a subclass) at
@@ -4191,9 +4195,9 @@ class Module(Instance, mixin.LazyMembers):
     self.ast = ast
     mixin.LazyMembers.init_mixin(self, member_map)
 
-  def _convert_member(self, ty):
+  def _convert_member(self, member):
     """Called to convert the items in _member_map to cfg.Variable."""
-    var = self.vm.convert.constant_to_var(ty)
+    var = self.vm.convert.constant_to_var(member)
     for value in var.data:
       # Only do this if this is a class which isn't already part of a module, or
       # is a module itself.
@@ -4294,17 +4298,21 @@ class BuildClass(BaseValue):
           "Invalid argument to __build_class__")
     func.is_class_builder = True
     bases = args.posargs[2:]
-    type_params = []
+    subst = {}
+    # We need placeholder values to stick in 'subst'. These will be replaced by
+    # the actual type parameter values when attribute.py looks up generic
+    # attributes on instances of this class.
+    any_var = self.vm.new_unsolvable(node)
     for basevar in bases:
       for base in basevar.data:
         if isinstance(base, ParameterizedClass):
-          type_params.extend(
-              v.name for v in base.formal_type_parameters.values()
-              if isinstance(v, TypeParameter))
+          subst.update(
+              {v.name: any_var for v in base.formal_type_parameters.values()
+               if isinstance(v, TypeParameter)})
 
     node, _ = func.call(node, funcvar.bindings[0],
                         args.replace(posargs=(), namedargs={}),
-                        new_locals=True, type_params=type_params)
+                        new_locals=True, frame_substs=(subst,))
     if func.last_frame:
       func.f_locals = func.last_frame.f_locals
       class_closure_var = func.last_frame.class_closure_var

@@ -1,5 +1,7 @@
 """Utilities for inline type annotations."""
 
+import collections
+import itertools
 import sys
 
 from pytype import abstract
@@ -127,6 +129,31 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
                   for _, t in annot.get_inner_types()), [])
     return []
 
+  def get_callable_type_parameter_names(self, var):
+    """Gets all TypeParameter names that appear in a Callable in 'var'."""
+    type_params = set()
+    seen = set()
+    stack = list(var.data)
+    while stack:
+      annot = stack.pop()
+      if annot in seen:
+        continue
+      seen.add(annot)
+      if annot.full_name == "typing.Callable":
+        params = collections.Counter(self.get_type_parameters(annot))
+        if isinstance(annot, abstract.CallableClass):
+          # pytype represents Callable[[T1, T2], None] as
+          # CallableClass({0: T1, 1: T2, ARGS: Union[T1, T2], RET: None}),
+          # so we have to fix double-counting of argument type parameters.
+          params -= collections.Counter(self.get_type_parameters(
+              annot.formal_type_parameters[abstract_utils.ARGS]))
+        # Type parameters that appear only once in a function signature are
+        # invalid, so ignore them.
+        type_params.update(p.name for p, n in params.items() if n > 1)
+      elif isinstance(annot, mixin.NestedAnnotation):
+        stack.extend(v for _, v in annot.get_inner_types())
+    return type_params
+
   def convert_function_type_annotation(self, name, typ):
     visible = typ.data
     if len(visible) > 1:
@@ -184,7 +211,41 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       d.from_annotation = name
     return node, value
 
-  def apply_annotation(self, state, op, name, value):
+  def extract_and_init_annotation(self, node, name, var,
+                                  use_not_supported_yet=False):
+    """Extracts an annotation from var and instantiates it."""
+    frame = self.vm.frame
+    if frame.func and isinstance(frame.func.data, abstract.BoundFunction):
+      self_var = frame.f_locals.pyval.get("self")
+      if self_var:
+        type_params = []
+        for v in self_var.data:
+          if v.cls:
+            # Normalize type parameter names by dropping the scope.
+            type_params.extend(p.with_module(None) for p in v.cls.template)
+        substs = tuple(
+            abstract_utils.get_type_parameter_substitutions(v, type_params)
+            for v in self_var.data)
+      else:
+        substs = ()
+    else:
+      self_var = None
+      substs = self.vm.frame.substs
+    allowed_type_params = set(
+        itertools.chain(*substs, self.get_callable_type_parameter_names(var)))
+    typ = self.extract_annotation(
+        node, var, name, self.vm.simple_stack(),
+        allowed_type_params=allowed_type_params,
+        use_not_supported_yet=use_not_supported_yet)
+    if typ.formal:
+      resolved_type = self.sub_one_annotation(node, typ, substs,
+                                              instantiate_unbound=False)
+      _, value = self.init_annotation(node, name, resolved_type)
+    else:
+      _, value = self.init_annotation(node, name, typ)
+    return typ, value
+
+  def apply_annotation(self, node, op, name, value):
     """If there is an annotation for the op, return its value."""
     assert op is self.vm.frame.current_opcode
     if op.code.co_filename != self.vm.filename:
@@ -194,47 +255,16 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     annot = op.annotation
     frame = self.vm.frame
     var, errorlog = abstract_utils.eval_expr(
-        self.vm, state.node, frame.f_globals, frame.f_locals, annot)
+        self.vm, node, frame.f_globals, frame.f_locals, annot)
     if errorlog:
       self.vm.errorlog.invalid_annotation(
           self.vm.frames, annot, details=errorlog.details)
-    if frame.func and isinstance(frame.func.data, abstract.BoundFunction):
-      self_var = frame.f_locals.pyval.get("self")
-      if self_var:
-        allowed_type_params = []
-        for v in self_var.data:
-          if v.cls:
-            allowed_type_params.extend(p.name for p in v.cls.template)
-      else:
-        allowed_type_params = ()
-    else:
-      self_var = None
-      allowed_type_params = self.vm.frame.type_params
-    typ = self.extract_annotation(
-        state.node, var, name, self.vm.simple_stack(),
-        allowed_type_params=allowed_type_params)
-    if typ.formal and self_var:
-      type_params = self.get_type_parameters(typ)
-      substs = [
-          abstract_utils.get_type_parameter_substitutions(v, type_params)
-          for v in self_var.data]
-      resolved_type = self.sub_one_annotation(state.node, typ, substs,
-                                              instantiate_unbound=False)
-      _, value = self.init_annotation(state.node, name, resolved_type)
-    elif typ.formal:
-      # The only time extract_annotation returns a formal type (i.e., one that
-      # contains type parameters) is when we are in the body of a generic class.
-      # Without `self_var`, we don't know what to instantiate those parameters
-      # to. We set the value to empty to defer instantiation until the value is
-      # being looked up on class instances, at which point the parameters will
-      # have been filled in.
-      value = self.vm.convert.empty.to_variable(state.node)
-    else:
-      _, value = self.init_annotation(state.node, name, typ)
-    return typ, value
+    return self.extract_and_init_annotation(node, name, var,
+                                            use_not_supported_yet=True)
 
   def extract_annotation(
-      self, node, var, name, stack, allowed_type_params=None):
+      self, node, var, name, stack, allowed_type_params=None,
+      use_not_supported_yet=True):
     """Returns an annotation extracted from 'var'.
 
     Args:
@@ -244,6 +274,9 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       stack: The frame stack.
       allowed_type_params: Type parameters that are allowed to appear in the
         annotation. 'None' means all are allowed.
+      use_not_supported_yet: Temporary parameter to help transition the error
+        class for reporting 'type parameter not in scope' errors from
+        [not-supported-yet] to [invalid-annotation].
     """
     try:
       typ = abstract_utils.get_atomic_value(var)
@@ -262,10 +295,12 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         if self.vm.frame.func:
           method = self.vm.frame.func.data
           if isinstance(method, abstract.BoundFunction):
-            class_name = method.name.rsplit(".", 1)[0]
+            desc = "class"
+            frame_name = method.name.rsplit(".", 1)[0]
           else:
-            class_name = method.name
-          details += " for class %r" % class_name
+            desc = "class" if method.is_class_builder else "method"
+            frame_name = method.name
+          details += f" for {desc} {frame_name!r}"
         if "AnyStr" in illegal_params:
           if self.vm.PY2:
             str_type = "typing.Text"
@@ -273,11 +308,13 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
             str_type = "Union[str, bytes]"
           details += (
               f"\nNote: For all string types, use {str_type}.")
-        # TODO(b/186896951): Once the remaining use cases in the linked bug are
-        # supported, we should switch this to an [invalid-annotation] error.
-        self.vm.errorlog.not_supported_yet(
-            stack, "using type parameter in variable annotation",
-            details=details)
+        if use_not_supported_yet:
+          # TODO(b/186896951): Switch this to an [invalid-annotation] error.
+          self.vm.errorlog.not_supported_yet(
+              stack, "using type parameter in variable annotation",
+              details=details)
+        else:
+          self.vm.errorlog.invalid_annotation(stack, typ, details, name)
         return self.vm.convert.unsolvable
     return typ
 

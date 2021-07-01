@@ -357,4 +357,15 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
       enum.Enum("Y", "A", start="4")  # wrong-arg-types
     """)
 
+  def test_functional_no_constants(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("m.pyi", "A: str")
+      self.Check("""
+        import enum
+        import m
+        F = enum.Enum("F", [(m.A, m.A)])
+        for x in F:
+          print(x)
+      """, pythonpath=[d.path])
+
 test_base.main(globals(), __name__ == "__main__")

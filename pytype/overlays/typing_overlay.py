@@ -216,13 +216,9 @@ class Cast(abstract.PyTDFunction):
 
   def call(self, node, func, args):
     if args.posargs:
-      annot = self.vm.annotations_util.extract_annotation(
-          node, args.posargs[0], "typing.cast", self.vm.simple_stack())
-      if annot.formal:
-        self.vm.errorlog.invalid_typevar(
-            self.vm.frames, "cannot pass a TypeVar to a function")
-        return node, self.vm.new_unsolvable(node)
-      return self.vm.init_class(node, annot)
+      _, value = self.vm.annotations_util.extract_and_init_annotation(
+          node, "typing.cast", args.posargs[0])
+      return node, value
     return super().call(node, func, args)
 
 

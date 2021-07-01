@@ -228,6 +228,18 @@ class TestCheckDefaults(test_base.TargetPython3FeatureTest):
 class TestFunctions(test_base.TargetPython3BasicTest):
   """Tests for functions."""
 
+  def test_object_to_callable(self):
+    self.Check("""
+      class MyClass:
+        def method(self):
+          return
+
+      def takes_object(o: object):
+        return
+
+      takes_object(MyClass().method)
+    """)
+
   def test_function_to_callable(self):
     ty = self.Infer("""
       def f():

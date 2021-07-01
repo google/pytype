@@ -166,7 +166,7 @@ def add_basic_options(o):
             "precise type-checking. " + temporary))
   o.add_argument(
       "--check-parameter-types", action="store_true",
-      dest="check_parameter_types", default=False,
+      dest="check_parameter_types", default=True,
       help=("Check parameter defaults and assignments against their "
             "annotations. " + temporary))
   o.add_argument(

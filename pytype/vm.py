@@ -163,7 +163,7 @@ class VirtualMachine:
     self.opcode_traces = []
     self._importing = False  # Are we importing another file?
     self._trace_opcodes = True  # whether to trace opcodes
-    self._fold_constants = False  # feature in development, disable by default
+    self._fold_constants = False and self.PY3  # feature in development
     # If set, we will generate LateAnnotations with this stack rather than
     # logging name errors.
     self._late_annotations_stack = None
@@ -340,14 +340,18 @@ class VirtualMachine:
     for block in frame.f_code.order:
       state = frame.states.get(block[0])
       if not state:
-        log.warning("Skipping block %d,"
-                    " we don't have any non-erroneous code that goes here.",
-                    block.id)
+        log.warning("Skipping block %d, nothing connects to it.", block.id)
         continue
+      self.frame.current_block = block
       op = None
       for op in block:
         state = self.run_instruction(op, state)
         if state.why:
+          # If we raise an exception or return in a 'finally' block do not
+          # execute any target blocks it has added.
+          if state.block_stack and state.block_stack[-1].type == "finally":
+            for target in self.frame.targets[block.id]:
+              del self.frame.states[target]
           # we can't process this block any further
           break
       if state.why:
@@ -768,7 +772,7 @@ class VirtualMachine:
 
   def make_frame(
       self, node, code, f_globals, f_locals, callargs=None, closure=None,
-      new_locals=False, func=None, first_arg=None, type_params=()):
+      new_locals=False, func=None, first_arg=None, substs=()):
     """Create a new frame object, using the given args, globals and locals."""
     if any(code is f.f_code for f in self.frames):
       log.info("Detected recursion in %s", code.co_name or code.co_filename)
@@ -786,8 +790,7 @@ class VirtualMachine:
       f_locals = abstract.LazyConcreteDict("locals", {}, self)
 
     return frame_state.Frame(node, self, code, f_globals, f_locals, self.frame,
-                             callargs or {}, closure, func, first_arg,
-                             type_params)
+                             callargs or {}, closure, func, first_arg, substs)
 
   def simple_stack(self, opcode=None):
     """Get a stack of simple frames.
@@ -1091,9 +1094,9 @@ class VirtualMachine:
       state = state.set_why("NoReturn")
     return state.change_cfg_node(node), ret
 
-  def _call_with_fake_args(self, node, funcu):
+  def _call_with_fake_args(self, node0, funcv):
     """Attempt to call the given function with made-up arguments."""
-    return node, self.new_unsolvable(node)
+    return node0, self.new_unsolvable(node0)
 
   def call_function(self, node, funcu, args, fallback_to_unsolvable=True,
                     allow_noreturn=False):
@@ -1390,7 +1393,7 @@ class VirtualMachine:
       self, state, op, name, orig_val, annotations_dict, check_types):
     """Applies the type annotation, if any, associated with this object."""
     typ, value = self.annotations_util.apply_annotation(
-        state, op, name, orig_val)
+        state.node, op, name, orig_val)
     if annotations_dict is not None:
       if annotations_dict is self.current_annotated_locals:
         self._record_local(state.node, op, name, typ, orig_val)
@@ -1908,7 +1911,7 @@ class VirtualMachine:
 
   def byte_LOAD_FOLDED_CONST(self, state, op):
     const = op.arg
-    state, var = constant_folding.build_folded_type(self, state, const.typ)
+    state, var = constant_folding.build_folded_type(self, state, const)
     return state.push(var)
 
   def byte_POP_TOP(self, state, op):
@@ -2418,9 +2421,12 @@ class VirtualMachine:
       except abstract_utils.ConversionError:
         pass
       else:
+        allowed_type_params = (
+            self.frame.type_params |
+            self.annotations_util.get_callable_type_parameter_names(val))
         typ = self.annotations_util.extract_annotation(
             state.node, val, name, self.simple_stack(),
-            allowed_type_params=self.frame.type_params)
+            allowed_type_params=allowed_type_params)
         self._record_annotation(state.node, op, name, typ)
     state = self.store_subscr(state, obj, subscr, val)
     return state
@@ -2786,6 +2792,7 @@ class VirtualMachine:
 
   def store_jump(self, target, state):
     assert target
+    self.frame.targets[self.frame.current_block.id].append(target)
     self.frame.states[target] = state.merge_into(self.frame.states.get(target))
 
   def byte_FOR_ITER(self, state, op):
@@ -3342,9 +3349,12 @@ class VirtualMachine:
     state, annotations_var = self.load_local(state, "__annotations__")
     name = self.frame.f_code.co_names[op.arg]
     state, value = state.pop()
+    allowed_type_params = (
+        self.frame.type_params |
+        self.annotations_util.get_callable_type_parameter_names(value))
     typ = self.annotations_util.extract_annotation(
         state.node, value, name, self.simple_stack(),
-        allowed_type_params=self.frame.type_params)
+        allowed_type_params=allowed_type_params)
     self._record_annotation(state.node, op, name, typ)
     key = self.convert.primitive_class_instances[str]
     state = self.store_subscr(

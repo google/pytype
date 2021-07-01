@@ -128,6 +128,20 @@ class TestExceptions(test_base.TargetIndependentTest):
       fn()
     """)
 
+  def test_reraise_in_function_call(self):
+    self.Check("""
+      def raise_error(e):
+        raise(e)
+
+      def f():
+        try:
+          return "hello"
+        except Exception as e:
+          raise_error(e)
+
+      f().lower()  # f() should be str, not str|None
+    """)
+
   def test_finally_while_throwing(self):
     self.Check("""
       def fn():

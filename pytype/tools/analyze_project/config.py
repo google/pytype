@@ -66,7 +66,7 @@ _PYTYPE_SINGLE_ITEMS = {
     'bind_properties': Item(
         None, 'False', ArgInfo('--bind-properties', None), None),
     'check_parameter_types': Item(
-        None, 'False', ArgInfo('--check-parameter-types', None), None),
+        None, 'True', ArgInfo('--check-parameter-types', None), None),
     'preserve_union_macros': Item(
         None, 'False', ArgInfo('--preserve-union-macros', None), None),
     'use_enum_overlay': Item(
