@@ -870,5 +870,22 @@ class PYITest(test_base.TargetIndependentTest):
         x: foo.Foo[int]
       """)
 
+  def test_import_typevar_for_property(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("_typeshed.pyi", """
+        from typing import TypeVar
+        Self = TypeVar('Self')
+      """)
+      d.create_file("foo.pyi", """
+        from _typeshed import Self
+        class Foo:
+          @property
+          def foo(self: Self) -> Self: ...
+      """)
+      self.Check("""
+        import foo
+        assert_type(foo.Foo().foo, foo.Foo)
+      """, pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")

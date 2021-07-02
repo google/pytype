@@ -259,7 +259,12 @@ class _PropertyToConstant(visitors.Visitor):
 
   def _is_parametrised(self, method):
     for sig in method.signatures:
-      if _contains_any_type(sig.return_type, self.type_param_names):
+      # 'method' is definitely parametrised if its return type contains a type
+      # parameter defined in the current TypeDeclUnit. It's also likely
+      # parametrised with an imported TypeVar if 'self' is annotated. ('self' is
+      # given a type of Any when unannotated.)
+      if (_contains_any_type(sig.return_type, self.type_param_names) or
+          sig.params and not isinstance(sig.params[0].type, pytd.AnythingType)):
         return True
 
 
