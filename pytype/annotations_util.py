@@ -215,6 +215,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
                                   use_not_supported_yet=False):
     """Extracts an annotation from var and instantiates it."""
     frame = self.vm.frame
+    substs = frame.substs
     if frame.func and isinstance(frame.func.data, abstract.BoundFunction):
       self_var = frame.f_locals.pyval.get("self")
       if self_var:
@@ -223,14 +224,16 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
           if v.cls:
             # Normalize type parameter names by dropping the scope.
             type_params.extend(p.with_module(None) for p in v.cls.template)
-        substs = tuple(
+        self_substs = tuple(
             abstract_utils.get_type_parameter_substitutions(v, type_params)
             for v in self_var.data)
-      else:
-        substs = ()
-    else:
-      self_var = None
-      substs = self.vm.frame.substs
+        if substs and self_substs:
+          # pylint: disable=g-complex-comprehension
+          substs = tuple({**subst, **self_subst}
+                         for subst in substs for self_subst in self_substs)
+          # pylint: enable=g-complex-comprehension
+        elif self_substs:
+          substs = self_substs
     allowed_type_params = set(
         itertools.chain(*substs, self.get_callable_type_parameter_names(var)))
     typ = self.extract_annotation(
