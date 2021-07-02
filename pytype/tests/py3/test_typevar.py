@@ -459,6 +459,18 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       assert_type(f(0, 1), Tuple[int, ...])
     """)
 
+  def test_cast_in_instance_method(self):
+    self.Check("""
+      from typing import TypeVar, cast
+      T = TypeVar('T', bound='Base')
+      class Base:
+        def clone(self: T) -> T:
+          return cast(T, __any_object__)
+      class Child(Base):
+        pass
+      Child().clone()
+    """)
+
 
 class GenericTypeAliasTest(test_base.TargetPython3BasicTest):
   """Tests for generic type aliases ("type macros")."""
