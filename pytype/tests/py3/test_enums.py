@@ -208,6 +208,29 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
       """, pythonpath=[d.path])
 
   @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_value_lookup_no_members(self):
+    self.Check("""
+      import enum
+      class M(enum.Enum):
+        pass
+      x = M(1)
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_value_looku_no_members_pytd(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class M(enum.Enum):
+          ...
+      """)
+      self.Check("""
+        import foo
+        x = foo.M  # to force foo.M to be loaded by the overlay.
+        y = foo.M(1)
+      """, pythonpath=[d.path])
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_enum_eq(self):
     # Note that this test only checks __eq__'s behavior. Though enums support
     # comparisons using `is`, pytype doesn't check `is` the same way as __eq__.

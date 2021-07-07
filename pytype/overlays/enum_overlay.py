@@ -254,6 +254,10 @@ class EnumMetaInit(abstract.SimpleFunction):
     return ret.items()
 
   def _make_new(self, node, member_type, cls):
+    # Note that setup_interpreterclass and setup_pytdclass both set member_type
+    # to `unsolvable` if the enum has no members. Technically, `__new__` should
+    # not accept any arguments, because it will always fail if the enum has no
+    # members. But `unsolvable` is much simpler to implement and use.
     return overlay_utils.make_method(
         vm=self.vm,
         node=node,
@@ -316,6 +320,8 @@ class EnumMetaInit(abstract.SimpleFunction):
       cls._member_map[name] = member  # pylint: disable=protected-access
       cls.members[name] = member.to_variable(node)
       member_types.append(pytd_val.type)
+    if not member_types:
+      member_types.append(pytd.AnythingType())
     member_type = self.vm.convert.constant_to_value(
         pytd_utils.JoinTypes(member_types))
     cls.members["__new__"] = self._make_new(node, member_type, cls)
