@@ -412,4 +412,103 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
       assert_type(M.B.value, "int")
     """)
 
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_auto_generate_basic(self):
+    self.Check("""
+      import enum
+      class M(enum.Enum):
+        def _generate_next_value_(name, start, count, last_values):
+          return name
+        A = enum.auto()
+      assert_type(M.A, "M")
+      assert_type(M.A.value, "str")
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_auto_generate_staticmethod(self):
+    self.Check("""
+      import enum
+      class M(enum.Enum):
+        @staticmethod
+        def _generate_next_value_(name, start, count, last_values):
+          return name
+        A = enum.auto()
+      assert_type(M.A, "M")
+      assert_type(M.A.value, "str")
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_auto_generate_error(self):
+    self.CheckWithErrors("""
+      import enum
+      class M(enum.Enum):
+        def _generate_next_value_(name, start, count, last_values):
+          return name + count  # unsupported-operands
+        A = enum.auto()
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_auto_generate_wrong_annots(self):
+    self.CheckWithErrors("""
+      import enum
+      class M(enum.Enum):  # wrong-arg-types
+        def _generate_next_value_(name: int, start: int, count: int, last_values: int):
+          return name
+        A = enum.auto()
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_auto_generate_from_pyi_base(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class Base(enum.Enum):
+          def _generate_next_value_(name: str, start: int, count: int, last_values: list) -> str: ...
+      """)
+      self.Check("""
+        import enum
+        import foo
+        class M(foo.Base):
+          A = enum.auto()
+        assert_type(M.A.value, "str")
+      """, pythonpath=[d.path])
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_auto_generate_from_pyi_base_staticmethod(self):
+    # It's possible that _generate_next_value_ will appear in a type stub as a
+    # staticmethod. This should not change how pytype handles it.
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class Base(enum.Enum):
+          @staticmethod
+          def _generate_next_value_(name: str, start: int, count: int, last_values: list) -> str: ...
+      """)
+      self.Check("""
+        import enum
+        import foo
+        class M(foo.Base):
+          A = enum.auto()
+        assert_type(M.A.value, "str")
+      """, pythonpath=[d.path])
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_auto_pytd(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class M(enum.Enum):
+          A: int
+          B: int
+          def _generate_next_value_(name: str, start: int, count: int, last_values: list) -> str: ...
+      """)
+      self.Check("""
+        from typing import Callable
+        from foo import M
+        assert_type(M.A, "foo.M")
+        assert_type(M.A.value, "int")
+        assert_type(M.B.value, "int")
+        assert_type(M._generate_next_value_, Callable[[str, int, int, list], str])
+      """, pythonpath=[d.path])
+
 test_base.main(globals(), __name__ == "__main__")

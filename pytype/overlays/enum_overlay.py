@@ -26,6 +26,7 @@ import logging
 
 from pytype import abstract
 from pytype import abstract_utils
+from pytype import function
 from pytype import overlay
 from pytype import overlay_utils
 from pytype.overlays import classgen
@@ -275,6 +276,19 @@ class EnumMetaInit(abstract.SimpleFunction):
       return False
     return data.isinstance_Instance() and data.cls.full_name == "enum.auto"
 
+  def _call_generate_next_value(self, node, cls, name):
+    node, method = self.vm.attribute_handler.get_attribute(
+        node, cls, "_generate_next_value_", cls.to_binding(node))
+    if method:
+      args = function.Args(posargs=(
+          self.vm.convert.build_string(node, name),
+          self.vm.convert.build_int(node),
+          self.vm.convert.build_int(node),
+          self.vm.convert.build_list(node, [])))
+      return self.vm.call_function(node, method, args)
+    else:
+      return node, self.vm.convert.build_int(node)
+
   def _setup_interpreterclass(self, node, cls):
     member_types = []
     for name, local in self._get_class_locals(node, cls.name, cls.members):
@@ -285,8 +299,7 @@ class EnumMetaInit(abstract.SimpleFunction):
                           "enum overlay.")
       value = local.orig
       if self._is_orig_auto(value):
-        # TODO(tsudol): Use _generate_next_value_ to generate auto values.
-        value = self.vm.convert.build_int(node)
+        node, value = self._call_generate_next_value(node, cls, name)
       member.members["value"] = value
       member.members["name"] = self.vm.convert.build_string(node, name)
       cls.members[name] = member.to_variable(node)
@@ -297,6 +310,16 @@ class EnumMetaInit(abstract.SimpleFunction):
     cls.member_type = member_type
     cls.members["__new__"] = self._make_new(node, member_type, cls)
     cls.members["__eq__"] = EnumCmpEQ(self.vm).to_variable(node)
+    # _generate_next_value_ is used as a static method of the enum, not a class
+    # method. We need to rebind it here to make pytype analyze it correctly.
+    # However, we skip this if it's already a staticmethod.
+    if "_generate_next_value_" in cls.members:
+      gnv = cls.members["_generate_next_value_"]
+      if not any(x.isinstance_StaticMethodInstance() for x in gnv.data):
+        args = function.Args(posargs=(gnv,))
+        node, new_gnv = self.vm.load_special_builtin("staticmethod").call(
+            node, None, args)
+        cls.members["_generate_next_value_"] = new_gnv
     return node
 
   def _setup_pytdclass(self, node, cls):
@@ -304,7 +327,8 @@ class EnumMetaInit(abstract.SimpleFunction):
     members = dict(cls._member_map)  # pylint: disable=protected-access
     member_types = []
     for name, pytd_val in members.items():
-      # Only constants need to be transformed.
+      # Only constants need to be transformed. We assume that enums in type
+      # stubs are full realized, i.e. there are no auto() calls.
       # TODO(tsudol): Ensure only valid enum members are transformed.
       if not isinstance(pytd_val, pytd.Constant):
         continue
