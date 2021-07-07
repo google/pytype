@@ -64,9 +64,17 @@ class Dataclass(dataclass_overlay.Dataclass):
     # The class's MRO is constructed from its bases at the moment the class is
     # created, so both need to be updated.
     bases = cls.bases()
-    if bases[-1].data == [self.vm.convert.object_type]:
-      bases.insert(-1, mapping.to_variable(node))
-      cls.mro = cls.mro[:-1] + (mapping,) + cls.mro[-1:]
+    # If any class in Mapping's MRO already exists in the list of bases, Mapping
+    # needs to be inserted before it, otherwise we put it at the end.
+    mapping_mro = {x.full_name for x in mapping.mro}
+    cls_bases = [x.data[0].full_name for x in bases]
+    cls_mro = [x.full_name for x in cls.mro]
+    bpos = [i for i, x in enumerate(cls_bases) if x in mapping_mro]
+    mpos = [i for i, x in enumerate(cls_mro) if x in mapping_mro]
+    if bpos:
+      bpos, mpos = bpos[0], mpos[0]
+      bases.insert(bpos, mapping.to_variable(node))
+      cls.mro = cls.mro[:mpos] + (mapping,) + cls.mro[mpos:]
     else:
       bases.append(mapping.to_variable(node))
       cls.mro = cls.mro + (mapping,)
