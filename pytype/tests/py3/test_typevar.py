@@ -471,6 +471,26 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       Child().clone()
     """)
 
+  def test_typevar_in_nested_function(self):
+    self.Check("""
+      from typing import TypeVar
+      T = TypeVar('T')
+      def f(x: T):
+        def wrapper(x: T):
+          pass
+        return wrapper
+    """)
+
+  def test_typevar_in_nested_function_in_instance_method(self):
+    self.Check("""
+      from typing import TypeVar
+      T = TypeVar('T')
+      class Foo:
+        def f(self, x: T):
+          def g(x: T):
+            pass
+    """)
+
 
 class GenericTypeAliasTest(test_base.TargetPython3BasicTest):
   """Tests for generic type aliases ("type macros")."""
@@ -845,6 +865,14 @@ class TypeVarTestPy3(test_base.TargetPython3FeatureTest):
             self.x = x
           else:
             self.x = x.decode('utf-8')
+    """)
+
+  def test_typevar_in_variable_annotation(self):
+    self.Check("""
+      from typing import TypeVar
+      T = TypeVar('T')
+      def f(x: T):
+        y: T = x
     """)
 
 
