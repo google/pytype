@@ -263,16 +263,30 @@ class EnumMetaInit(abstract.SimpleFunction):
         ],
         return_type=cls)
 
+  def _is_orig_auto(self, orig):
+    try:
+      data = abstract_utils.get_atomic_value(orig)
+    except abstract_utils.ConversionError as e:
+      log.info("Failed to extract atomic enum value for auto() check: %s", e)
+      return False
+    return data.isinstance_Instance() and data.cls.full_name == "enum.auto"
+
   def _setup_interpreterclass(self, node, cls):
     member_types = []
-    for name, value in self._get_class_locals(node, cls.name, cls.members):
+    for name, local in self._get_class_locals(node, cls.name, cls.members):
       # Build instances directly, because you can't call instantiate() when
       # creating the class -- pytype complains about recursive types.
       member = abstract.Instance(cls, self.vm)
-      member.members["value"] = value.orig
+      assert local.orig, ("A local with no assigned value was passed to the "
+                          "enum overlay.")
+      value = local.orig
+      if self._is_orig_auto(value):
+        # TODO(tsudol): Use _generate_next_value_ to generate auto values.
+        value = self.vm.convert.build_int(node)
+      member.members["value"] = value
       member.members["name"] = self.vm.convert.build_string(node, name)
       cls.members[name] = member.to_variable(node)
-      member_types.extend(value.orig.data)
+      member_types.extend(value.data)
     if not member_types:
       member_types.append(self.vm.convert.unsolvable)
     member_type = self.vm.convert.merge_classes(member_types)

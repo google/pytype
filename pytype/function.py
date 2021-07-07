@@ -37,6 +37,7 @@ class Signature:
     annotations: A dictionary of type annotations. (string to type)
     excluded_types: A set of type names that will be ignored when checking the
       count of type parameters.
+    type_params: The set of type parameter names that appear in annotations.
     has_return_annotation: Whether the function has a return annotation.
     has_param_annotations: Whether the function has parameter annotations.
   """
@@ -55,6 +56,10 @@ class Signature:
     if postprocess_annotations:
       for k, annot in self.annotations.items():
         self.annotations[k] = self._postprocess_annotation(k, annot)
+    self.type_params = set()
+    for annot in self.annotations.values():
+      self.type_params.update(
+          p.name for p in annot.vm.annotations_util.get_type_parameters(annot))
 
   @property
   def has_return_annotation(self):

@@ -363,6 +363,7 @@ class VirtualMachine:
         # nodes to overlap the boundary of blocks.
         state = state.forward_cfg_node()
         frame.states[op.next] = state.merge_into(frame.states.get(op.next))
+    self._update_excluded_types(node)
     self.pop_frame(frame)
     if not return_nodes:
       # Happens if the function never returns. (E.g. an infinite loop)
@@ -379,6 +380,35 @@ class VirtualMachine:
         self._set_frame_return(
             node, frame, self.convert.no_return.to_variable(node))
     return node, frame.return_variable
+
+  def _update_excluded_types(self, node):
+    """Update the excluded_types attribute of functions in the current frame."""
+    if not self.frame.func:
+      return
+    func = self.frame.func.data
+    if isinstance(func, abstract.BoundFunction):
+      func = func.underlying
+    if not isinstance(func, abstract.SignedFunction):
+      return
+    # If we have code like:
+    #   def f(x: T):
+    #     def g(x: T): ...
+    # then TypeVar T needs to be added to both f and g's excluded_types
+    # attribute to avoid 'appears only once in signature' errors for T.
+    # Similarly, any TypeVars that appear in variable annotations in a
+    # function body also need to be added to excluded_types.
+    for name, local in self.current_annotated_locals.items():
+      typ = local.get_type(node, name)
+      if typ:
+        func.signature.excluded_types.update(
+            p.name for p in self.annotations_util.get_type_parameters(typ))
+      if local.orig:
+        for v in local.orig.data:
+          if isinstance(v, abstract.BoundFunction):
+            v = v.underlying
+          if isinstance(v, abstract.SignedFunction):
+            v.signature.excluded_types |= func.signature.type_params
+            func.signature.excluded_types |= v.signature.type_params
 
   def push_block(self, state, t, level=None):
     if level is None:
@@ -905,8 +935,6 @@ class VirtualMachine:
       # contains a real name error that will be logged when we resolve it now.
       annot.resolve(node, f_globals, f_locals)
     self.late_annotations = None  # prevent adding unresolvable annotations
-    for func, opcode in self.functions_type_params_check:
-      func.signature.check_type_parameter_count(self.simple_stack(opcode))
     assert not self.frames, "Frames left over!"
     log.info("Final node: <%d>%s", node.id, node.name)
     return node, f_globals.members
