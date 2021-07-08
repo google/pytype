@@ -76,6 +76,15 @@ class Attrs(classgen.Decorator):
               kw_only=attrib.kw_only,
               default=attrib.default)
           classgen.add_member(node, cls, name, attr.typ)
+          if attrib.has_type and isinstance(cls, abstract.InterpreterClass):
+            # Add the attrib to the class's __annotations__ dict.
+            annotations_dict = abstract_utils.get_annotations_dict(cls.members)
+            if annotations_dict is None:
+              annotations_dict = abstract.AnnotationsDict({}, self.vm)
+              cls.members["__annotations__"] = annotations_dict.to_variable(
+                  self.vm.root_node)
+            annotations_dict.annotated_locals[name] = abstract_utils.Local(
+                node, None, attrib.typ, orig, self.vm)
         else:
           # cls.members[name] has already been set via a typecomment
           attr = Attribute(
@@ -171,15 +180,26 @@ class Attrib(classgen.FieldConstructor):
   def call(self, node, unused_func, args):
     """Returns a type corresponding to an attr."""
     args = args.simplify(node, self.vm)
+    # Remove the 'type' argument from args so that it doesn't trigger
+    # match_args' "cannot pass a TypeVar to a function" check.
+    # TODO(rechen): consider getting rid of this check altogether; it makes
+    # using types at runtime difficult and sometimes triggers incorrectly.
+    try:
+      type_var = args.namedargs.pyval.pop("type")
+    except KeyError:
+      type_var = None
     self.match_args(node, args)
     node, default_var = self._get_default_var(node, args)
-    type_var = args.namedargs.get("type")
     init = self.get_kwarg(args, "init", True)
     kw_only = self.get_kwarg(args, "kw_only", False)
     has_type = type_var is not None
     if type_var:
+      allowed_type_params = (
+          self.vm.frame.type_params |
+          self.vm.annotations_util.get_callable_type_parameter_names(type_var))
       typ = self.vm.annotations_util.extract_annotation(
-          node, type_var, "attr.ib", self.vm.simple_stack())
+          node, type_var, "attr.ib", self.vm.simple_stack(),
+          allowed_type_params=allowed_type_params, use_not_supported_yet=False)
     elif default_var:
       typ = get_type_from_default(default_var, self.vm)
     else:
