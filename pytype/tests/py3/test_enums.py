@@ -87,6 +87,31 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
       """)
 
   @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_canonical_enum_members(self):
+    # Checks that enum members created by instantiate() behave similarly to
+    # real enum members.
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class F(enum.Enum):
+          X: int
+      """)
+      self.Check("""
+        import enum
+        from foo import F
+        class M(enum.Enum):
+          A = 1
+        def get_name(x: M) -> str:
+          return x.name
+        def get_pyi_name(x: F) -> str:
+          return x.name
+        def get_value(x: M) -> int:
+          return x.value
+        def get_pyi_value(x: F) -> int:
+          return x.value
+      """, pythonpath=[d.path])
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_name_lookup(self):
     with file_utils.Tempdir() as d:
       d.create_file("e.pyi", "a_string: str")
@@ -116,8 +141,7 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
         import e
         assert_type(e.M["A"].value, "int")
         assert_type(e.M["B"].value, "str")
-        # Canonical PyTD enums are missing name/value fields.
-        # assert_type(e.M[e.a_string].value, "Any")
+        assert_type(e.M[e.a_string].value, "Any")
         _ = e.M["C"]  # attribute-error
       """, pythonpath=[d.path])
 
