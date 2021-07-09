@@ -1,6 +1,6 @@
 # Support
 
-<!--* freshness: { owner: 'rechen' reviewed: '2021-01-08' } *-->
+<!--* freshness: { owner: 'rechen' reviewed: '2021-07-09' } *-->
 
 This page lists the Python versions and features supported by the latest version
 of pytype.
@@ -13,7 +13,7 @@ of pytype.
          * [Typing](#typing)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2021-06-24T12:34-07:00 -->
+<!-- Added by: rechen, at: 2021-07-09T14:44-07:00 -->
 
 <!--te-->
 
