@@ -226,40 +226,6 @@ def func_name_is_class_init(name):
   return name == "__init__" or name.endswith(".__init__")
 
 
-def has_type_parameters(node, val, seen=None):
-  """Checks if the given object contains any TypeParameters.
-
-  This method differs from the `.formal` attribute on abstract values in that it
-  recurses into container instances to detect type parameters that have
-  (likely incorrectly) been inserted into runtime objects.
-
-  Args:
-    node: The current CFG node.
-    val: The object to check for TypeParameters. Will likely be a
-      SimpleValue or a cfg.Variable with SimpleValues bindings.
-    seen: Optional. A set of already-visited objects, to avoid infinite loops.
-
-  Returns:
-    True if the object contains any TypeParameters, or False otherwise.
-  """
-  if seen is None:
-    seen = set()
-  if val in seen:
-    return False
-  seen.add(val)
-  if isinstance(val, cfg.Variable):
-    return any((has_type_parameters(node, d, seen) for d in val.data))
-  elif val.isinstance_TypeParameter():
-    return True
-  elif val.isinstance_ParameterizedClass() or val.isinstance_Union():
-    return val.formal
-  elif val.isinstance_SimpleValue():
-    return any((has_type_parameters(node, tp, seen)
-                for tp in val.instance_type_parameters.values()))
-  else:
-    return False
-
-
 def equivalent_to(binding, cls):
   """Whether binding.data is equivalent to cls, modulo parameterization."""
   return (binding.data.isinstance_Class() and

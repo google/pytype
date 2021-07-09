@@ -180,19 +180,9 @@ class Attrib(classgen.FieldConstructor):
   def call(self, node, unused_func, args):
     """Returns a type corresponding to an attr."""
     args = args.simplify(node, self.vm)
-    if isinstance(args.namedargs, mixin.PythonConstant):
-      # Remove the 'type' argument from args so that it doesn't trigger
-      # match_args' "cannot pass a TypeVar to a function" check.
-      # TODO(rechen): consider getting rid of this check altogether; it makes
-      # using types at runtime difficult and sometimes triggers incorrectly.
-      try:
-        type_var = args.namedargs.pyval.pop("type")
-      except KeyError:
-        type_var = None
-    else:
-      type_var = None
     self.match_args(node, args)
     node, default_var = self._get_default_var(node, args)
+    type_var = args.namedargs.get("type")
     init = self.get_kwarg(args, "init", True)
     kw_only = self.get_kwarg(args, "kw_only", False)
     has_type = type_var is not None

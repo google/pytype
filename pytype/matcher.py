@@ -262,8 +262,19 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     """
     left = value.data
     assert isinstance(left, abstract.BaseValue), left
-    assert not left.formal, left
     assert isinstance(other_type, abstract.BaseValue), other_type
+
+    if left.formal:
+      # 'left' contains a TypeParameter. The code under analysis is likely doing
+      # some sort of runtime processing of type annotations. We replace all type
+      # parameters with 'object' so that they don't match concrete types like
+      # 'int' but still match things like 'Any'.
+      type_params = self.vm.annotations_util.get_type_parameters(left)
+      obj_var = self.vm.convert.primitive_class_instances[object].to_variable(
+          self._node)
+      left = self.vm.annotations_util.sub_one_annotation(
+          self._node, left, [{p.full_name: obj_var for p in type_params}])
+    assert not left.formal, left
 
     if isinstance(left, abstract.TypeParameterInstance) and (
         isinstance(left.instance, (abstract.CallableClass,

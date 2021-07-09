@@ -185,7 +185,7 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
         return x()[0]
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"Expected.*int.*Actual.*Type\[Sequence\]"})
+        errors, {"e": r"Expected.*int.*Actual.*Type\[Sequence\[T\]\]"})
 
   def test_print_nested_type_parameter(self):
     _, errors = self.InferWithErrors("""
@@ -406,6 +406,7 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
             self = A[T]
     """)
 
+  @test_base.skip("Needs improvements to matcher.py to detect error.")
   def test_return_typevar(self):
     errors = self.CheckWithErrors("""
       from typing import TypeVar
@@ -489,6 +490,14 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
         def f(self, x: T):
           def g(x: T):
             pass
+    """)
+
+  def test_pass_through_class(self):
+    self.Check("""
+      from typing import Type, TypeVar
+      T = TypeVar('T')
+      def f(cls: Type[T]) -> Type[T]:
+        return cls
     """)
 
 

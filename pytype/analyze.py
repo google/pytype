@@ -628,13 +628,7 @@ class CallTracer(vm.VirtualMachine):
   def _check_return(self, node, actual, formal):
     if not self.options.report_errors:
       return True
-    views = abstract_utils.get_views([actual], node)
-    # Check for typevars in the return value first, since bad_matches
-    # expects not to get any.
-    bad = [(view, None) for view in views
-           if actual in view and view[actual].data.formal]
-    if not bad:
-      bad = self.matcher(node).bad_matches(actual, formal)
+    bad = self.matcher(node).bad_matches(actual, formal)
     if bad:
       self.errorlog.bad_return_type(
           self.frames, node, formal, actual, bad)

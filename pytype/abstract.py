@@ -1125,12 +1125,6 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
   def setitem_slot(self, node, name_var, value_var):
     """Implements the __setitem__ slot."""
     self.setitem(node, name_var, value_var)
-    # Hack to allow storing types with parameters in a dict (needed for
-    # python3.6 function annotation support). A dict assigned to a visible
-    # variable will be inferred as Dict[key_type, Any], but the pyval will
-    # contain the data we need for annotations.
-    if any(abstract_utils.has_type_parameters(node, x) for x in value_var.data):
-      value_var = self.vm.new_unsolvable(node)
     return self.call_pytd(node, "__setitem__", name_var, value_var)
 
   def setdefault_slot(self, node, name_var, value_var=None):
@@ -1757,11 +1751,6 @@ class Function(SimpleValue):
         break
       log.debug("args in view: %r", [(a.bindings and view[a].data)
                                      for a in args.posargs])
-      for arg in arg_variables:
-        if abstract_utils.has_type_parameters(node, view[arg].data):
-          self.vm.errorlog.invalid_typevar(
-              self.vm.frames, "cannot pass a TypeVar to a function")
-          view[arg] = arg.AddBinding(self.vm.convert.unsolvable, [], node)
       try:
         match = self._match_view(node, args, view, alias_map)
       except function.FailedFunctionCall as e:
@@ -2427,11 +2416,7 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
 
   def instantiate(self, node, container=None):
     if self.full_name == "builtins.type":
-      # deformalize removes TypeVars.
-      # See py3.test_typevar.TypeVarTest.testTypeParameterType(Error).
-      instance = self.vm.annotations_util.deformalize(
-          self.formal_type_parameters[abstract_utils.T])
-      return instance.to_variable(node)
+      return self.formal_type_parameters[abstract_utils.T].to_variable(node)
     elif self.full_name == "typing.ClassVar":
       return self.formal_type_parameters[abstract_utils.T].instantiate(
           node, container)
@@ -2447,11 +2432,20 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
     self.base_cls.set_class(node, var)
 
   def _is_callable(self):
-    return (not self.is_abstract
-            and isinstance(self.base_cls, (InterpreterClass, PyTDClass))
-            and self.module not in  ("builtins", "typing")
-            and all(not isinstance(val, TypeParameter)
-                    for val in self.formal_type_parameters.values()))
+    if not isinstance(self.base_cls, (InterpreterClass, PyTDClass)):
+      # We don't know how to instantiate this base_cls.
+      return False
+    if self.from_annotation:
+      # A user-provided annotation is always instantiable.
+      return True
+    # Otherwise, non-abstract classes are instantiable. The exception is
+    # typing classes; for example,
+    #   from typing import List
+    #   print(List[str]())
+    # produces 'TypeError: Type List cannot be instantiated; use list() instead'
+    # at runtime. We also disallow the builtins module because pytype represents
+    # concrete typing classes like List with their builtins equivalents.
+    return not self.is_abstract and self.module not in ("builtins", "typing")
 
   def call(self, node, func, args, alias_map=None):
     if not self._is_callable():

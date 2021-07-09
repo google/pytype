@@ -1074,7 +1074,7 @@ class AbstractTest(AbstractTestBase):
     cls = abstract.ParameterizedClass(
         self._vm.convert.type_type, params, self._vm)
     self.assertListEqual(cls.instantiate(self._node).data,
-                         [self._vm.convert.unsolvable])
+                         [params[abstract_utils.T]])
 
   def test_super_type(self):
     supercls = special_builtins.Super(self._vm)
