@@ -571,4 +571,54 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
         assert_type(M._generate_next_value_, Callable[[str, int, int, list], str])
       """, pythonpath=[d.path])
 
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_subclassing_simple(self):
+    self.Check("""
+      import enum
+      class Base(enum.Enum): pass
+      class M(Base):
+        A = 1
+      assert_type(M.A, "M")
+      assert_type(M.A.name, "str")
+      assert_type(M.A.value, "int")
+      assert_type(M["A"], "M")
+      assert_type(M(1), "M")
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_subclassing_pytd_simple(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class Base(enum.Enum): ...
+        class M(Base):
+          A: int
+      """)
+      self.Check("""
+        from foo import M
+        assert_type(M.A, "foo.M")
+        assert_type(M.A.name, "str")
+        assert_type(M.A.value, "int")
+        assert_type(M["A"], "foo.M")
+        assert_type(M(1), "foo.M")
+      """, pythonpath=[d.path])
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_subclassing_pytd_cross_file(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class Base(enum.Enum): ...
+      """)
+      self.Check("""
+        from foo import Base
+        class M(Base):
+          A = 1
+        assert_type(M.A, "M")
+        assert_type(M.A.name, "str")
+        assert_type(M.A.value, "int")
+        assert_type(M["A"], "M")
+        assert_type(M(1), "M")
+      """, pythonpath=[d.path])
+
 test_base.main(globals(), __name__ == "__main__")

@@ -4326,15 +4326,19 @@ class BuildClass(BaseValue):
       base = abstract_utils.get_atomic_value(
           base, default=self.vm.convert.unsolvable)
       cls_dict = func.f_locals.to_variable(node)
-      if isinstance(base, PyTDClass):
-        if base.full_name == "typing.NamedTuple":
-          # The subclass of NamedTuple will ignore all its base classes. This is
-          # controled by a metaclass provided to NamedTuple.
-          return base.make_class(node, cls_dict)
-        elif base.full_name == "enum.Enum" and self.vm.options.use_enum_overlay:
-          return base.make_class(
-              node, name, list(bases), cls_dict, metaclass,
-              new_class_var=class_closure_var, is_decorated=self.is_decorated)
+      # Every subclass of an enum is itself an enum. To properly process them,
+      # the class must be built by the enum overlay.
+      if (base.isinstance_Class() and base.is_enum and
+          self.vm.options.use_enum_overlay):
+        enum_base = abstract_utils.get_atomic_value(
+            self.vm.loaded_overlays["enum"].members["Enum"])
+        return enum_base.make_class(
+            node, name, list(bases), cls_dict, metaclass,
+            new_class_var=class_closure_var, is_decorated=self.is_decorated)
+      if isinstance(base, PyTDClass) and base.full_name == "typing.NamedTuple":
+        # The subclass of NamedTuple will ignore all its base classes. This is
+        # controled by a metaclass provided to NamedTuple.
+        return base.make_class(node, cls_dict)
     return self.vm.make_class(
         node, name, list(bases), func.f_locals.to_variable(node), metaclass,
         new_class_var=class_closure_var, is_decorated=self.is_decorated)
