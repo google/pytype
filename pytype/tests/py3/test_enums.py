@@ -112,6 +112,42 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
       """, pythonpath=[d.path])
 
   @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_name_value_overlap(self):
+    # Make sure enum members named "name" and "value" work correctly.
+    self.Check("""
+      import enum
+      class M(enum.Enum):
+        name = 1
+        value = "hello"
+      assert_type(M.name, "M")
+      assert_type(M.name.name, "str")
+      assert_type(M.name.value, "int")
+      assert_type(M.value, "M")
+      assert_type(M.value.name, "str")
+      assert_type(M.value.value, "str")
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_name_value_overlap_pyi(self):
+    # Make sure enum members named "name" and "value" work correctly.
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class M(enum.Enum):
+          name: int
+          value: str
+      """)
+      self.Check("""
+        import foo
+        assert_type(foo.M.name, "foo.M")
+        assert_type(foo.M.name.name, "str")
+        assert_type(foo.M.name.value, "int")
+        assert_type(foo.M.value, "foo.M")
+        assert_type(foo.M.value.name, "str")
+        assert_type(foo.M.value.value, "str")
+      """, pythonpath=[d.path])
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_name_lookup(self):
     with file_utils.Tempdir() as d:
       d.create_file("e.pyi", "a_string: str")
