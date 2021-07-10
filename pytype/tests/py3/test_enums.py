@@ -87,6 +87,67 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
       """)
 
   @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_canonical_enum_members(self):
+    # Checks that enum members created by instantiate() behave similarly to
+    # real enum members.
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class F(enum.Enum):
+          X: int
+      """)
+      self.Check("""
+        import enum
+        from foo import F
+        class M(enum.Enum):
+          A = 1
+        def get_name(x: M) -> str:
+          return x.name
+        def get_pyi_name(x: F) -> str:
+          return x.name
+        def get_value(x: M) -> int:
+          return x.value
+        def get_pyi_value(x: F) -> int:
+          return x.value
+      """, pythonpath=[d.path])
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_name_value_overlap(self):
+    # Make sure enum members named "name" and "value" work correctly.
+    self.Check("""
+      import enum
+      class M(enum.Enum):
+        name = 1
+        value = "hello"
+      assert_type(M.name, "M")
+      assert_type(M.name.name, "str")
+      assert_type(M.name.value, "int")
+      assert_type(M.value, "M")
+      assert_type(M.value.name, "str")
+      assert_type(M.value.value, "str")
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_name_value_overlap_pyi(self):
+    # Make sure enum members named "name" and "value" work correctly.
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class M(enum.Enum):
+          name: int
+          value: str
+      """)
+      self.Check("""
+        import foo
+        assert_type(foo.M.name, "foo.M")
+        assert_type(foo.M.name.name, "str")
+        assert_type(foo.M.name.value, "int")
+        assert_type(foo.M.value, "foo.M")
+        assert_type(foo.M.value.name, "str")
+        assert_type(foo.M.value.value, "str")
+      """, pythonpath=[d.path])
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_name_lookup(self):
     with file_utils.Tempdir() as d:
       d.create_file("e.pyi", "a_string: str")
@@ -116,8 +177,7 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
         import e
         assert_type(e.M["A"].value, "int")
         assert_type(e.M["B"].value, "str")
-        # Canonical PyTD enums are missing name/value fields.
-        # assert_type(e.M[e.a_string].value, "Any")
+        assert_type(e.M[e.a_string].value, "Any")
         _ = e.M["C"]  # attribute-error
       """, pythonpath=[d.path])
 
@@ -205,6 +265,29 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
         assert_type(N("str"), "m.N")
         # assert_type(N(499).value, "Union[int, str]")
         N(M.A)  # wrong-arg-types
+      """, pythonpath=[d.path])
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_value_lookup_no_members(self):
+    self.Check("""
+      import enum
+      class M(enum.Enum):
+        pass
+      x = M(1)
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_value_looku_no_members_pytd(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class M(enum.Enum):
+          ...
+      """)
+      self.Check("""
+        import foo
+        x = foo.M  # to force foo.M to be loaded by the overlay.
+        y = foo.M(1)
       """, pythonpath=[d.path])
 
   @test_base.skip("Fails due to __getattr__ in pytd.")
@@ -388,5 +471,154 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
       assert_type(M.A.value, "str")
       assert_type(M.B.value, "int")
     """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_auto_generate_basic(self):
+    self.Check("""
+      import enum
+      class M(enum.Enum):
+        def _generate_next_value_(name, start, count, last_values):
+          return name
+        A = enum.auto()
+      assert_type(M.A, "M")
+      assert_type(M.A.value, "str")
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_auto_generate_staticmethod(self):
+    self.Check("""
+      import enum
+      class M(enum.Enum):
+        @staticmethod
+        def _generate_next_value_(name, start, count, last_values):
+          return name
+        A = enum.auto()
+      assert_type(M.A, "M")
+      assert_type(M.A.value, "str")
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_auto_generate_error(self):
+    self.CheckWithErrors("""
+      import enum
+      class M(enum.Enum):
+        def _generate_next_value_(name, start, count, last_values):
+          return name + count  # unsupported-operands
+        A = enum.auto()
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_auto_generate_wrong_annots(self):
+    self.CheckWithErrors("""
+      import enum
+      class M(enum.Enum):  # wrong-arg-types
+        def _generate_next_value_(name: int, start: int, count: int, last_values: int):
+          return name
+        A = enum.auto()
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_auto_generate_from_pyi_base(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class Base(enum.Enum):
+          def _generate_next_value_(name: str, start: int, count: int, last_values: list) -> str: ...
+      """)
+      self.Check("""
+        import enum
+        import foo
+        class M(foo.Base):
+          A = enum.auto()
+        assert_type(M.A.value, "str")
+      """, pythonpath=[d.path])
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_auto_generate_from_pyi_base_staticmethod(self):
+    # It's possible that _generate_next_value_ will appear in a type stub as a
+    # staticmethod. This should not change how pytype handles it.
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class Base(enum.Enum):
+          @staticmethod
+          def _generate_next_value_(name: str, start: int, count: int, last_values: list) -> str: ...
+      """)
+      self.Check("""
+        import enum
+        import foo
+        class M(foo.Base):
+          A = enum.auto()
+        assert_type(M.A.value, "str")
+      """, pythonpath=[d.path])
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_auto_pytd(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class M(enum.Enum):
+          A: int
+          B: int
+          def _generate_next_value_(name: str, start: int, count: int, last_values: list) -> str: ...
+      """)
+      self.Check("""
+        from typing import Callable
+        from foo import M
+        assert_type(M.A, "foo.M")
+        assert_type(M.A.value, "int")
+        assert_type(M.B.value, "int")
+        assert_type(M._generate_next_value_, Callable[[str, int, int, list], str])
+      """, pythonpath=[d.path])
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_subclassing_simple(self):
+    self.Check("""
+      import enum
+      class Base(enum.Enum): pass
+      class M(Base):
+        A = 1
+      assert_type(M.A, "M")
+      assert_type(M.A.name, "str")
+      assert_type(M.A.value, "int")
+      assert_type(M["A"], "M")
+      assert_type(M(1), "M")
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_subclassing_pytd_simple(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class Base(enum.Enum): ...
+        class M(Base):
+          A: int
+      """)
+      self.Check("""
+        from foo import M
+        assert_type(M.A, "foo.M")
+        assert_type(M.A.name, "str")
+        assert_type(M.A.value, "int")
+        assert_type(M["A"], "foo.M")
+        assert_type(M(1), "foo.M")
+      """, pythonpath=[d.path])
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_subclassing_pytd_cross_file(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class Base(enum.Enum): ...
+      """)
+      self.Check("""
+        from foo import Base
+        class M(Base):
+          A = 1
+        assert_type(M.A, "M")
+        assert_type(M.A.name, "str")
+        assert_type(M.A.value, "int")
+        assert_type(M["A"], "M")
+        assert_type(M(1), "M")
+      """, pythonpath=[d.path])
 
 test_base.main(globals(), __name__ == "__main__")

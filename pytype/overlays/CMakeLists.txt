@@ -120,6 +120,7 @@ py_library(
     .classgen
     pytype.abstract
     pytype.abstract_utils
+    pytype.function
     pytype.overlay
     pytype.overlay_utils
     pytype.pytd.pytd

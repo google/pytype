@@ -183,5 +183,21 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         print(foo.B(x='hello').replace(x='world'))
       """, pythonpath=[d.path])
 
+  def test_generic_dataclass(self):
+    foo = self.Infer("""
+      from typing import Generic, TypeVar
+      import chex
+      T = TypeVar("T")
+      @chex.dataclass
+      class A(Generic[T]):
+        x: T
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo))
+      self.Check("""
+        import foo
+        a = foo.A(x=42)
+        assert_type(a.x, int)
+      """, pythonpath=[d.path])
 
 test_base.main(globals(), __name__ == "__main__")

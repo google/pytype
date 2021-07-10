@@ -701,6 +701,27 @@ class TestAttrib(test_base.TargetIndependentTest):
         x= attr.attrib(default=0)  # type: int
     """)
 
+  def test_typevar_in_type_arg(self):
+    self.Check("""
+      import attr
+      from typing import Callable, TypeVar
+      T = TypeVar('T')
+      @attr.s
+      class Foo:
+        f = attr.ib(type=Callable[[T], T])
+      assert_type(Foo(__any_object__).f(0), int)
+    """)
+
+  def test_bad_typevar_in_type_arg(self):
+    self.CheckWithErrors("""
+      import attr
+      from typing import TypeVar
+      T = TypeVar('T')
+      @attr.s
+      class Foo:
+        x = attr.ib(type=T)  # invalid-annotation
+    """)
+
 
 class TestAttrs(test_base.TargetIndependentTest):
   """Tests for attr.s."""

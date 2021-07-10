@@ -244,6 +244,17 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
       x2: str
     """)
 
+  def test_typevar_in_type_arg_generic(self):
+    self.Check("""
+      import attr
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      @attr.s
+      class Foo(Generic[T]):
+        x = attr.ib(type=T)
+      assert_type(Foo[int](__any_object__).x, int)
+    """)
+
 
 class TestAttrs(test_base.TargetPython3FeatureTest):
   """Tests for attr.s."""

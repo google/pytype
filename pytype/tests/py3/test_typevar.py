@@ -406,6 +406,7 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
             self = A[T]
     """)
 
+  @test_base.skip("Needs improvements to matcher.py to detect error.")
   def test_return_typevar(self):
     errors = self.CheckWithErrors("""
       from typing import TypeVar
@@ -489,6 +490,37 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
         def f(self, x: T):
           def g(x: T):
             pass
+    """)
+
+  def test_pass_through_class(self):
+    self.Check("""
+      from typing import Type, TypeVar
+      T = TypeVar('T')
+      def f(cls: Type[T]) -> Type[T]:
+        return cls
+    """)
+
+  @test_base.skip("Requires completing TODO in annotations_util.deformalize")
+  def test_type_of_typevar(self):
+    self.Check("""
+      from typing import Type, TypeVar
+      T = TypeVar('T', bound=int)
+      class Foo:
+        def f(self, x: T) -> Type[T]:
+          return type(x)
+        def g(self):
+          assert_type(self.f(0), Type[int])
+    """)
+
+  def test_instantiate_unsubstituted_typevar(self):
+    # TODO(b/79369981): Report an error for T appearing only once in f.
+    self.Check("""
+      from typing import Type, TypeVar
+      T = TypeVar('T', bound=int)
+      def f() -> Type[T]:
+        return int
+      def g():
+        return f().__name__
     """)
 
 

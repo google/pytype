@@ -1125,12 +1125,6 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
   def setitem_slot(self, node, name_var, value_var):
     """Implements the __setitem__ slot."""
     self.setitem(node, name_var, value_var)
-    # Hack to allow storing types with parameters in a dict (needed for
-    # python3.6 function annotation support). A dict assigned to a visible
-    # variable will be inferred as Dict[key_type, Any], but the pyval will
-    # contain the data we need for annotations.
-    if any(abstract_utils.has_type_parameters(node, x) for x in value_var.data):
-      value_var = self.vm.new_unsolvable(node)
     return self.call_pytd(node, "__setitem__", name_var, value_var)
 
   def setdefault_slot(self, node, name_var, value_var=None):
@@ -1757,11 +1751,6 @@ class Function(SimpleValue):
         break
       log.debug("args in view: %r", [(a.bindings and view[a].data)
                                      for a in args.posargs])
-      for arg in arg_variables:
-        if abstract_utils.has_type_parameters(node, view[arg].data):
-          self.vm.errorlog.invalid_typevar(
-              self.vm.frames, "cannot pass a TypeVar to a function")
-          view[arg] = arg.AddBinding(self.vm.convert.unsolvable, [], node)
       try:
         match = self._match_view(node, args, view, alias_map)
       except function.FailedFunctionCall as e:
@@ -2428,7 +2417,6 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
   def instantiate(self, node, container=None):
     if self.full_name == "builtins.type":
       # deformalize removes TypeVars.
-      # See py3.test_typevar.TypeVarTest.testTypeParameterType(Error).
       instance = self.vm.annotations_util.deformalize(
           self.formal_type_parameters[abstract_utils.T])
       return instance.to_variable(node)
@@ -2447,11 +2435,20 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
     self.base_cls.set_class(node, var)
 
   def _is_callable(self):
-    return (not self.is_abstract
-            and isinstance(self.base_cls, (InterpreterClass, PyTDClass))
-            and self.module not in  ("builtins", "typing")
-            and all(not isinstance(val, TypeParameter)
-                    for val in self.formal_type_parameters.values()))
+    if not isinstance(self.base_cls, (InterpreterClass, PyTDClass)):
+      # We don't know how to instantiate this base_cls.
+      return False
+    if self.from_annotation:
+      # A user-provided annotation is always instantiable.
+      return True
+    # Otherwise, non-abstract classes are instantiable. The exception is
+    # typing classes; for example,
+    #   from typing import List
+    #   print(List[str]())
+    # produces 'TypeError: Type List cannot be instantiated; use list() instead'
+    # at runtime. We also disallow the builtins module because pytype represents
+    # concrete typing classes like List with their builtins equivalents.
+    return not self.is_abstract and self.module not in ("builtins", "typing")
 
   def call(self, node, func, args, alias_map=None):
     if not self._is_callable():
@@ -2841,8 +2838,14 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     return node, results
 
   def instantiate(self, node, container=None):
-    return self.vm.convert.constant_to_var(
+    res = self.vm.convert.constant_to_value(
         abstract_utils.AsInstance(self.pytd_cls), {}, node)
+    # Canonical enum members (i.e. enum instances created by instantiate()) need
+    # to have "name" and "value" set to prevent spurious attribute errors.
+    if self.is_enum:
+      res.members["name"] = self.vm.convert.build_string(node, "")
+      res.members["value"] = self.vm.new_unsolvable(node)
+    return res.to_variable(node)
 
   def __repr__(self):
     return "PyTDClass(%s)" % self.name
@@ -4326,15 +4329,19 @@ class BuildClass(BaseValue):
       base = abstract_utils.get_atomic_value(
           base, default=self.vm.convert.unsolvable)
       cls_dict = func.f_locals.to_variable(node)
-      if isinstance(base, PyTDClass):
-        if base.full_name == "typing.NamedTuple":
-          # The subclass of NamedTuple will ignore all its base classes. This is
-          # controled by a metaclass provided to NamedTuple.
-          return base.make_class(node, cls_dict)
-        elif base.full_name == "enum.Enum" and self.vm.options.use_enum_overlay:
-          return base.make_class(
-              node, name, list(bases), cls_dict, metaclass,
-              new_class_var=class_closure_var, is_decorated=self.is_decorated)
+      # Every subclass of an enum is itself an enum. To properly process them,
+      # the class must be built by the enum overlay.
+      if (base.isinstance_Class() and base.is_enum and
+          self.vm.options.use_enum_overlay):
+        enum_base = abstract_utils.get_atomic_value(
+            self.vm.loaded_overlays["enum"].members["Enum"])
+        return enum_base.make_class(
+            node, name, list(bases), cls_dict, metaclass,
+            new_class_var=class_closure_var, is_decorated=self.is_decorated)
+      if isinstance(base, PyTDClass) and base.full_name == "typing.NamedTuple":
+        # The subclass of NamedTuple will ignore all its base classes. This is
+        # controled by a metaclass provided to NamedTuple.
+        return base.make_class(node, cls_dict)
     return self.vm.make_class(
         node, name, list(bases), func.f_locals.to_variable(node), metaclass,
         new_class_var=class_closure_var, is_decorated=self.is_decorated)

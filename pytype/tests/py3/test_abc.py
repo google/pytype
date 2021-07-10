@@ -123,5 +123,17 @@ class AbstractMethodTests(test_base.TargetPython3FeatureTest):
           return x()
       """, pythonpath=[d.path])
 
+  def test_instantiate_generic_abstract_class(self):
+    self.Check("""
+      import abc
+      from typing import Generic, Type, TypeVar
+      T = TypeVar('T')
+      class A(Generic[T], abc.ABC):
+        @abc.abstractmethod
+        def a(self): ...
+      def f(x: Type[A[int]]):
+        return x()
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

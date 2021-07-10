@@ -51,7 +51,6 @@ class TypeNew(abstract.PyTDFunction):
       return node, abc.members["ABCMeta"].AssignToNewVariable(node)
     node, raw_ret = super().call(node, func, args)
     # Removes TypeVars from the return value.
-    # See test_typevar.TypeVarTest.test_type_of_typevar(_error).
     ret = self.vm.program.NewVariable()
     for b in raw_ret.bindings:
       value = self.vm.annotations_util.deformalize(b.data)

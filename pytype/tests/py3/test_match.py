@@ -201,15 +201,16 @@ class MatchTest(test_base.TargetPython3BasicTest):
     """)
 
   def test_formal_type(self):
+    # TODO(b/143116886): Detect AnyStr not being in scope for NamedTuple H.
     self.InferWithErrors("""
       from typing import AnyStr, List, NamedTuple
       def f(x: str):
         pass
-      f(AnyStr)  # invalid-typevar
+      f(AnyStr)  # wrong-arg-types
       def g(x: List[str]):
         pass
-      g([AnyStr])  # invalid-typevar
-      H = NamedTuple("H", [('a', AnyStr)])  # invalid-typevar
+      g([AnyStr])  # wrong-arg-types
+      H = NamedTuple("H", [('a', AnyStr)])
     """)
 
   def test_typevar_with_bound(self):
