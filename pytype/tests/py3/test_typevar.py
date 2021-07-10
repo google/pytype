@@ -185,7 +185,7 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
         return x()[0]
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"Expected.*int.*Actual.*Type\[Sequence\[T\]\]"})
+        errors, {"e": r"Expected.*int.*Actual.*Type\[Sequence\]"})
 
   def test_print_nested_type_parameter(self):
     _, errors = self.InferWithErrors("""
@@ -498,6 +498,29 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       T = TypeVar('T')
       def f(cls: Type[T]) -> Type[T]:
         return cls
+    """)
+
+  @test_base.skip("Requires completing TODO in annotations_util.deformalize")
+  def test_type_of_typevar(self):
+    self.Check("""
+      from typing import Type, TypeVar
+      T = TypeVar('T', bound=int)
+      class Foo:
+        def f(self, x: T) -> Type[T]:
+          return type(x)
+        def g(self):
+          assert_type(self.f(0), Type[int])
+    """)
+
+  def test_instantiate_unsubstituted_typevar(self):
+    # TODO(b/79369981): Report an error for T appearing only once in f.
+    self.Check("""
+      from typing import Type, TypeVar
+      T = TypeVar('T', bound=int)
+      def f() -> Type[T]:
+        return int
+      def g():
+        return f().__name__
     """)
 
 

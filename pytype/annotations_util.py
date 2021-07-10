@@ -443,3 +443,13 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
               errorlog)
     else:
       return (result,), errorlog
+
+  def deformalize(self, value):
+    # TODO(rechen): Instead of doing this, call sub_one_annotation() to replace
+    # type parameters with their bound/constraints.
+    while value.formal:
+      if isinstance(value, abstract.ParameterizedClass):
+        value = value.base_cls
+      else:
+        value = self.vm.convert.unsolvable
+    return value

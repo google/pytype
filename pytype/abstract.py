@@ -2416,7 +2416,10 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
 
   def instantiate(self, node, container=None):
     if self.full_name == "builtins.type":
-      return self.formal_type_parameters[abstract_utils.T].to_variable(node)
+      # deformalize removes TypeVars.
+      instance = self.vm.annotations_util.deformalize(
+          self.formal_type_parameters[abstract_utils.T])
+      return instance.to_variable(node)
     elif self.full_name == "typing.ClassVar":
       return self.formal_type_parameters[abstract_utils.T].instantiate(
           node, container)

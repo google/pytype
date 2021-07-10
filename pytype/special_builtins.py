@@ -49,7 +49,13 @@ class TypeNew(abstract.PyTDFunction):
       abc = self.vm.import_module("abc", "abc", 0).get_module("ABCMeta")
       abc.load_lazy_attribute("ABCMeta")
       return node, abc.members["ABCMeta"].AssignToNewVariable(node)
-    return super().call(node, func, args)
+    node, raw_ret = super().call(node, func, args)
+    # Removes TypeVars from the return value.
+    ret = self.vm.program.NewVariable()
+    for b in raw_ret.bindings:
+      value = self.vm.annotations_util.deformalize(b.data)
+      ret.AddBinding(value, {b}, node)
+    return node, ret
 
 
 class BuiltinFunction(abstract.PyTDFunction):
