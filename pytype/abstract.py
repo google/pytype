@@ -3859,6 +3859,19 @@ class SimpleFunction(SignedFunction):
     super().__init__(signature, vm)
     self.bound_class = BoundFunction
 
+  @classmethod
+  def from_signature(cls, signature, vm):
+    """Create a SimpleFunction from a function.Signature."""
+    return cls(
+        name=signature.name,
+        param_names=signature.param_names,
+        varargs_name=signature.varargs_name,
+        kwonly_params=signature.kwonly_params,
+        kwargs_name=signature.kwargs_name,
+        defaults=signature.defaults,
+        annotations=signature.annotations,
+        vm=vm)
+
   def call(self, node, _, args, alias_map=None):
     # We only simplify args for _map_args, because that simplifies checking.
     # This allows match_args to typecheck varargs and kwargs.

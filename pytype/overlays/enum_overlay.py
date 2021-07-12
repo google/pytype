@@ -78,14 +78,19 @@ class EnumBuilder(abstract.PyTDClass):
     # See class_mixin.Class._call_new_and_init.
     args = args.simplify(node, self.vm)
     args = args.replace(posargs=(self.vm.new_unsolvable(node),) + args.posargs)
-    self.load_lazy_attribute("__new__")
-    new = abstract_utils.get_atomic_value(self.members["__new__"])
+    # To actually type check this call, we build a new SimpleFunction and check
+    # against that. This guarantees we only check against the functional API
+    # signature for __new__, rather than the value lookup signature.
     # Note that super().call or _call_new_and_init won't work here, because
     # they don't raise FailedFunctionCall.
-    new.match_args(node, args, alias_map)
-    # There should only be 1 signature for Enum.__new__.
-    assert len(new.signatures) == 1, "Expected only 1 Enum.__new__ signature."
-    sig = new.signatures[0].signature
+    self.load_lazy_attribute("__new__")
+    pytd_new = abstract_utils.get_atomic_value(self.members["__new__"])
+    # There are two signatures for __new__. We want the longer one.
+    sig = max(
+        pytd_new.signatures, key=lambda s: s.signature.maximum_param_count())
+    sig = sig.signature
+    new = abstract.SimpleFunction.from_signature(sig, self.vm)
+    new.call(node, None, args, alias_map)
     argmap = {name: var for name, var, _ in sig.iter_args(args)}
 
     cls_name_var = argmap["value"]
