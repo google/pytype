@@ -350,7 +350,7 @@ class VirtualMachine:
           # If we raise an exception or return in a 'finally' block do not
           # execute any target blocks it has added.
           if (state.block_stack and
-              state.block_stack[-1].type == "finally" and
+              any(x.type == "finally" for x in state.block_stack) and
               state.why in ("return", "exception")):
             for target in self.frame.targets[block.id]:
               del self.frame.states[target]
