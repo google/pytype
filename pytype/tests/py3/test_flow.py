@@ -43,5 +43,43 @@ class FlowTest(test_base.TargetPython3BasicTest):
           self.x = self.x
     """)
 
+  def test_unsatisfiable_in_with_block(self):
+    self.Check("""
+      import threading
+
+      _temporaries = {}
+      _temporaries_lock = threading.RLock()
+
+      def GetResourceFilename(name: str):
+        with _temporaries_lock:
+          filename = _temporaries.get(name)
+          if filename:
+            return filename
+        return name
+
+      x = GetResourceFilename('a')
+      assert_type(x, str)
+    """)
+
+  @test_base.skip("Does not work. See b/193472939")
+  def test_unsatisfiable_in_except_block(self):
+    self.Check("""
+      def raise_error(e):
+        raise(e)
+
+      _temporaries = {}
+
+      def f():
+        try:
+          return "hello"
+        except Exception as e:
+          filename = _temporaries.get('hello')
+          if filename:
+            return filename
+          raise_error(e)
+
+      f().lower()  # f() should be str, not str|None
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
