@@ -174,6 +174,13 @@ class EnumInstance(abstract.InterpreterClass):
     instance.members["value"] = value
     return instance.to_variable(node)
 
+  def is_empty_enum(self):
+    for member in self.members.values():
+      for b in member.data:
+        if b.cls == self:
+          return False
+    return True
+
 
 class EnumCmpEQ(abstract.SimpleFunction):
   """Implements the functionality of __eq__ for an enum."""
@@ -274,6 +281,31 @@ class EnumMetaInit(abstract.SimpleFunction):
         ],
         return_type=cls)
 
+  def _get_base_type(self, bases):
+    # Enums may have a data class as one of their bases: class F(str, Enum) will
+    # make all of F's members strings, even if they're assigned a value of
+    # a different type.
+    # The enum library searches through cls's bases' MRO to find all possible
+    # base types. For simplicity, we just grab the second-to-last base.
+    if len(bases) > 1:
+      base_type_var = bases[-2]
+      return abstract_utils.get_atomic_value(base_type_var, default=None)
+    elif bases and len(bases[0].data) == 1:
+      base_type_cls = abstract_utils.get_atomic_value(bases[0])
+      if isinstance(base_type_cls, EnumInstance):
+        # Enums with no members and no explicit base type have `unsolvable` as
+        # their member type. Their subclasses use the default base type, int.
+        # Some enums may have members with actually unsolvable member types, so
+        # check if the enum is empty.
+        if (base_type_cls.member_type == self.vm.convert.unsolvable and
+            base_type_cls.is_empty_enum()):
+          return None
+        else:
+          return base_type_cls.member_type
+      elif base_type_cls.is_enum:
+        return self._get_base_type(base_type_cls.bases())
+    return None
+
   def _is_orig_auto(self, orig):
     try:
       data = abstract_utils.get_atomic_value(orig)
@@ -297,6 +329,7 @@ class EnumMetaInit(abstract.SimpleFunction):
 
   def _setup_interpreterclass(self, node, cls):
     member_types = []
+    base_type = self._get_base_type(cls.bases())
     for name, local in self._get_class_locals(node, cls.name, cls.members):
       # Build instances directly, because you can't call instantiate() when
       # creating the class -- pytype complains about recursive types.
@@ -306,13 +339,19 @@ class EnumMetaInit(abstract.SimpleFunction):
       value = local.orig
       if self._is_orig_auto(value):
         node, value = self._call_generate_next_value(node, cls, name)
+      if base_type:
+        args = function.Args(posargs=(value,))
+        node, value = base_type.call(node, base_type.to_binding(node), args)
       member.members["value"] = value
       member.members["name"] = self.vm.convert.build_string(node, name)
       cls.members[name] = member.to_variable(node)
       member_types.extend(value.data)
-    if not member_types:
-      member_types.append(self.vm.convert.unsolvable)
-    member_type = self.vm.convert.merge_classes(member_types)
+    if base_type:
+      member_type = base_type
+    elif member_types:
+      member_type = self.vm.convert.merge_classes(member_types)
+    else:
+      member_type = self.vm.convert.unsolvable
     cls.member_type = member_type
     cls.members["__new__"] = self._make_new(node, member_type, cls)
     cls.members["__eq__"] = EnumCmpEQ(self.vm).to_variable(node)
@@ -334,7 +373,8 @@ class EnumMetaInit(abstract.SimpleFunction):
     member_types = []
     for name, pytd_val in members.items():
       # Only constants need to be transformed. We assume that enums in type
-      # stubs are full realized, i.e. there are no auto() calls.
+      # stubs are full realized, i.e. there are no auto() calls and the members
+      # already have values of the base type.
       # TODO(tsudol): Ensure only valid enum members are transformed.
       if not isinstance(pytd_val, pytd.Constant):
         continue
