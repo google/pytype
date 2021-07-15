@@ -2257,7 +2257,9 @@ class VirtualMachine:
     """
     value = self.program.NewVariable()
     types = []
-    for e in exc_type.data:
+    stack = list(exc_type.data)
+    while stack:
+      e = stack.pop()
       if isinstance(e, abstract.Tuple):
         for sub_exc_type in e.pyval:
           sub_value, sub_types = self._instantiate_exception(node, sub_exc_type)
@@ -2275,6 +2277,8 @@ class VirtualMachine:
         node, instance = self.init_class(node, e)
         value.PasteVariable(instance)
         types.append(e)
+      elif isinstance(e, abstract.Union):
+        stack.extend(e.options)
       else:
         if not isinstance(e, abstract.AMBIGUOUS_OR_EMPTY):
           if isinstance(e, class_mixin.Class):
