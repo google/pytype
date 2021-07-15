@@ -621,4 +621,84 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
         assert_type(M(1), "M")
       """, pythonpath=[d.path])
 
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_subclassing_base_types(self):
+    self.Check("""
+      import enum
+
+      class Base(enum.Enum): pass
+      class M(Base):
+        A = 1
+      assert_type(M.A, M)
+      assert_type(M.A.value, int)
+
+      class F(float, enum.Enum):
+        A = 1
+      assert_type(F.A.value, float)
+
+      class C(complex, enum.Enum): pass
+      class C2(C):
+        A = 1
+      assert_type(C2.A.value, complex)
+
+      class D(str, enum.Enum): pass
+      class D1(D): pass
+      class D2(D1):
+        A = 1
+      assert_type(D2.A.value, str)
+
+      class X(D):
+        def _generate_next_value(n, s, c, l):
+          return float(c)
+        A = enum.auto()
+      assert_type(X.A.value, str)
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_subclassing_base_types_pyi(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class NoBase(enum.Enum): ...
+        class StrBase(str, enum.Enum): ...
+        class OnceRemoved(StrBase): ...
+      """)
+      self.Check("""
+        import enum
+        import foo
+
+        class M(foo.NoBase):
+          A = 1
+        assert_type(M.A.value, int)
+
+        class N(float, foo.NoBase):
+          A = 1
+        assert_type(N.A.value, float)
+
+        class O(foo.NoBase): pass
+        class O2(O):
+          A = 1
+        assert_type(O2.A.value, int)
+
+        class P(foo.StrBase):
+          A = 1
+        assert_type(P.A.value, str)
+
+        class Q(foo.StrBase): pass
+        class Q2(Q):
+          A = 1
+        assert_type(Q2.A.value, str)
+
+        class R(foo.OnceRemoved):
+          A = 1
+        assert_type(R.A.value, str)
+
+        class Y(foo.StrBase):
+          def _generate_next_value(n, s, c, l):
+            return float(c)
+          A = enum.auto()
+        assert_type(Y.A.value, str)
+      """, pythonpath=[d.path])
+
+
 test_base.main(globals(), __name__ == "__main__")

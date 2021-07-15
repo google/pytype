@@ -41,5 +41,35 @@ class TestExceptionsPy3(test_base.TargetPython3FeatureTest):
       def f() -> int: ...
     """)
 
+  def test_union(self):
+    self.Check("""
+      from typing import Type, Union
+      class Foo:
+        @property
+        def exception_types(self) -> Type[Union[ValueError, IndexError]]:
+          return ValueError
+      def f(x: Foo):
+        try:
+          pass
+        except x.exception_types as e:
+          return e
+    """)
+
+  def test_bad_union(self):
+    errors = self.CheckWithErrors("""
+      from typing import Type, Optional
+      class Foo:
+        @property
+        def exception_types(self) -> Type[Optional[ValueError]]:
+          return ValueError
+      def f(x: Foo):
+        try:
+          pass
+        except x.exception_types as e:  # mro-error[e]
+          return e
+    """)
+    self.assertErrorRegexes(
+        errors, {"e": "NoneType does not inherit from BaseException"})
+
 
 test_base.main(globals(), __name__ == "__main__")
