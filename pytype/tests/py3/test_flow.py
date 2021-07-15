@@ -81,5 +81,20 @@ class FlowTest(test_base.TargetPython3BasicTest):
       f().lower()  # f() should be str, not str|None
     """)
 
+  def test_finally_with_returns(self):
+    # If both the try and except blocks return, a finally block shouldn't cause
+    # the code to continue.
+    self.Check("""
+      def f() -> int:
+        try:
+          return 10
+        except:
+          return 42
+        finally:
+          x = None
+        return "hello world"
+      f()
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

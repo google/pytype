@@ -118,21 +118,6 @@ class FlowTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (), self.int)
 
-  def test_finally_with_returns(self):
-    # If both the try and except blocks return, a finally block shouldn't cause
-    # the code to continue.
-    self.Check("""
-      def f() -> int:
-        try:
-          return 10
-        except:
-          return 42
-        finally:
-          x = None
-        return "hello world"
-      f()
-    """)
-
   def test_simple_with(self):
     ty = self.Infer("""
       def f(x):
