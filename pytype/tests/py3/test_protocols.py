@@ -714,6 +714,20 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
       f(Bar())
     """)
 
+  def test_deduplicate_error_message(self):
+    # Tests that the 'Attributes not implemented' line appears only once in the
+    # error message.
+    errors = self.CheckWithErrors("""
+      from typing import Callable, Iterable, Optional, Union
+
+      DistanceFunctionsType = Iterable[Union[Callable[[str, str], float], str]]
+
+      def f(x: DistanceFunctionsType) -> DistanceFunctionsType:
+        return (x,)  # bad-return-type[e]
+    """)
+    self.assertErrorRegexes(
+        errors, {"e": r"Actually returned[^\n]*\nAttributes[^\n]*$"})
+
 
 class ProtocolsTestPython3Feature(test_base.TargetPython3FeatureTest):
   """Tests for protocol implementation on a target using a Python 3 feature."""
