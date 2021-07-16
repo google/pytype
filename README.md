@@ -98,13 +98,17 @@ Platform support:
 
 * Pytype is currently developed and tested on Linux\*, which is the main supported
   platform.
-* Installation on MacOSX requires OSX 10.7 or higher and Xcode v8 or higher.
+* Installation on MacOSX requires OSX 10.7 or higher and Xcode v8 or higher**.
 * Windows is currently not supported unless you use [WSL][wsl].
 
 <sub>\*
-Note: On Alpine Linux, installing may fail due to issues with upstream
+On Alpine Linux, installing may fail due to issues with upstream
 dependencies.  See the details of [this issue][scikit-build-issue] for a
 possible fix.
+<br />
+\*\*
+Make sure cmake is installed, or installation of the ninja dependency will fail.
+See [this issue][ninja-build-issue] for details.
 </sub>
 
 ## Installing
@@ -274,6 +278,7 @@ This is not an official Google product.
 [importlab-github-actions]: https://github.com/google/importlab/blob/master/.github/workflows/ci.yml
 [license]: https://github.com/google/pytype/blob/master/LICENSE
 [merge-pyi]: https://github.com/google/pytype/tree/master/pytype/tools/merge_pyi
+[ninja-build-issue]: https://github.com/google/pytype/issues/957
 [pep-484]: https://www.python.org/dev/peps/pep-0484
 [pyi-stub-files]: docs/user_guide.md#pyi-stub-files
 [scikit-build-issue]: https://github.com/scikit-build/ninja-python-distributions/issues/27
