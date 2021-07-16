@@ -544,7 +544,9 @@ class ErrorLog(ErrorLogBase):
         full_actual = bad_actual
     # typing.NoReturn is a prettier alias for nothing.
     fmt = lambda ret: "NoReturn" if ret == "nothing" else ret
-    return fmt(expected), fmt(bad_actual), fmt(full_actual)
+    protocol_details = sorted(set("\n" + self._print_protocol_error(e)
+                                  for _, e in bad if e))
+    return fmt(expected), fmt(bad_actual), fmt(full_actual), protocol_details
 
   def _print_protocol_error(self, error):
     """Pretty-print the matcher.ProtocolError instance."""
@@ -858,23 +860,24 @@ class ErrorLog(ErrorLogBase):
   @_error_name("bad-return-type")
   def bad_return_type(self, stack, node, formal, actual, bad):
     """Logs a [bad-return-type] error."""
-    expected, bad_actual, full_actual = self._print_as_return_types(
-        node, formal, actual, bad)
+    expected, bad_actual, full_actual, protocol_details = (
+        self._print_as_return_types(node, formal, actual, bad))
     if full_actual == bad_actual:
       message = "bad return type"
     else:
       message = f"bad option {bad_actual!r} in return type"
     details = ["         Expected: ", expected, "\n",
                "Actually returned: ", full_actual]
-    details.extend("\n" + self._print_protocol_error(e) for _, e in bad if e)
+    details.extend(protocol_details)
     self.error(stack, message, "".join(details))
 
   @_error_name("bad-concrete-type")
   def bad_concrete_type(self, stack, node, formal, actual, bad):
-    expected, actual, _ = self._print_as_return_types(node, formal, actual, bad)
+    expected, actual, _, protocol_details = self._print_as_return_types(
+        node, formal, actual, bad)
     details = ["       Expected: ", expected, "\n",
                "Actually passed: ", actual]
-    details.extend("\n" + self._print_protocol_error(e) for _, e in bad if e)
+    details.extend(protocol_details)
     self.error(
         stack, "Invalid instantiation of generic class", "".join(details))
 
