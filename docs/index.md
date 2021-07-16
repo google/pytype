@@ -104,8 +104,8 @@ dependencies.  See the details of [this issue][scikit-build-issue] for a
 possible fix.
 <br />
 \*\*
-Make sure cmake is installed, or installation of the ninja dependency will fail.
-See [this issue][ninja-build-issue] for details.
+If the ninja dependency fails to install, make sure cmake is installed. See
+[this issue][ninja-build-issue] for details.
 </sub>
 
 ## Installing
