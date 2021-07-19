@@ -451,7 +451,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           "builtins.module", "builtins.object", "types.ModuleType",
           "typing.Hashable"]:
         return subst
-      elif other_type.has_protocol_parent():
+      elif (isinstance(other_type, class_mixin.Class) and
+            other_type.has_protocol_parent()):
         return self._match_instance_against_type(
             left, other_type, subst, view)
       else:
