@@ -751,10 +751,7 @@ class VirtualMachine:
             # any method that does nothing except return None.
             should_report = not method.has_empty_body()
           else:
-            if self.options.check_parameter_types:
-              should_report = True
-            else:
-              should_report = value != self.convert.none
+            should_report = True
           if should_report:
             self.errorlog.annotation_type_mismatch(
                 self.frames, expected_type, value.to_binding(node), arg_name)

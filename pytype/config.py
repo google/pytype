@@ -165,11 +165,6 @@ def add_basic_options(o):
       help=("Bind @property methods to the classes they're defined on for more "
             "precise type-checking. " + temporary))
   o.add_argument(
-      "--check-parameter-types", action="store_true",
-      dest="check_parameter_types", default=True,
-      help=("Check parameter defaults and assignments against their "
-            "annotations. " + temporary))
-  o.add_argument(
       "--preserve-union-macros", action="store_true",
       dest="preserve_union_macros", default=False,
       help="Preserve Union generic type aliases in pyi files. " + temporary)

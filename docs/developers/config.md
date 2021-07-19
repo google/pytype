@@ -56,7 +56,7 @@ single object, either via the vm (it's stored as `vm.options`) or by passing it
 directly as a function argument. Options can be accessed as attributes, e.g.
 
 ```
-if options.check_parameter_types:
+if options.analyze_annotated:
   ...
 ```
 
