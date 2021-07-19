@@ -700,5 +700,29 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
         assert_type(Y.A.value, str)
       """, pythonpath=[d.path])
 
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_intenum_basic(self):
+    self.Check("""
+      import enum
+      class I(enum.IntEnum):
+        A = 1
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_flag_basic(self):
+    self.Check("""
+      import enum
+      class F(enum.Flag):
+        A = 1
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_intflag_basic(self):
+    self.Check("""
+      import enum
+      class IF(enum.IntFlag):
+        A = 1
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
