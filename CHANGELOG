@@ -1,3 +1,27 @@
+Version 2021.07.19
+
+New features and updates:
+* Add a flag, --use-enum-overlay, for greatly improved support for the stdlib
+  enum library. The behavior of this flag will be enabled by default once it is
+  stable.
+* Default --check-parameter-types to True.
+* Take advantage of submodule version information in typeshed/stdlib/VERSIONS.
+* typing.Protocol: support non-method attributes and modules, make error
+  messages more detailed, and fix several bugs.
+* Remove --create-pyi-dataclasses and make its behavior the default.
+* Do not try doing dead block elimination within try/except blocks.
+
+Bug fixes:
+* Handle unions correctly when dealing with exception types.
+* Support adding typing.Mapping as a chex.dataclass base class.
+* Get rid of some incorrect 'appears only once in signature' TypeVar errors.
+* Fix a pyi error caused by _PropertyToConstant not recognizing imported
+  TypeVars.
+* Allow more cases of valid typevars in variable annotations, typing.cast, and
+  attr.ib's 'type' argument.
+* Allow bound class methods to match object.
+* Allow bytearray.__contains__ to accept bytes.
+
 Version 2021.06.17
 
 New features and updates:
