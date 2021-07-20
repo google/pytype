@@ -687,8 +687,10 @@ class VirtualMachine:
         # attribute assignments.
         annotations_dict = self.annotated_locals[name]
         if any(local.typ for local in annotations_dict.values()):
-          class_dict.members["__annotations__"] = abstract.AnnotationsDict(
+          annotations_member = abstract.AnnotationsDict(
               annotations_dict, self).to_variable(node)
+          class_dict.members["__annotations__"] = annotations_member
+          class_dict.pyval["__annotations__"] = annotations_member
       try:
         if not class_type:
           class_type = abstract.InterpreterClass

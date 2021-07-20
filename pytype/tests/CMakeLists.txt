@@ -545,6 +545,8 @@ py_test(
     test_typing_namedtuple.py
   DEPS
     .test_base
+    pytype.utils
+    pytype.pytd.pytd
 )
 
 py_test(

@@ -1225,6 +1225,9 @@ class AnnotationsDict(Dict):
       if typ:
         yield name, typ
 
+  def __repr__(self):
+    return repr(self.annotated_locals)
+
 
 class LateAnnotation:
   """A late annotation.
@@ -3347,7 +3350,8 @@ class SignedFunction(Function):
   def _mutations_generator(self, node, first_arg, substs):
     def generator():
       """Yields mutations."""
-      if not self.is_attribute_of_class or not first_arg or not substs:
+      if (not (self.is_attribute_of_class or self.name == "__new__") or
+          not first_arg or not substs):
         return
       try:
         inst = abstract_utils.get_atomic_value(first_arg, Instance)
@@ -3880,14 +3884,17 @@ class SimpleFunction(SignedFunction):
     # Substitute type parameters in the signature's annotations.
     annotations = self.vm.annotations_util.sub_annotations(
         node, self.signature.annotations, substs, instantiate_unbound=False)
-    mutations = self._mutations_generator(
-        node, self.signature.get_first_arg(callargs), substs)
-    node = abstract_utils.apply_mutations(node, mutations)
     if self.signature.has_return_annotation:
       ret_type = annotations["return"]
       ret = ret_type.instantiate(node)
     else:
       ret = self.vm.convert.none.to_variable(node)
+    if self.name == "__new__":
+      self_arg = ret
+    else:
+      self_arg = self.signature.get_first_arg(callargs)
+    mutations = self._mutations_generator(node, self_arg, substs)
+    node = abstract_utils.apply_mutations(node, mutations)
     return node, ret
 
 
@@ -4354,7 +4361,7 @@ class BuildClass(BaseValue):
       if isinstance(base, PyTDClass) and base.full_name == "typing.NamedTuple":
         # The subclass of NamedTuple will ignore all its base classes. This is
         # controled by a metaclass provided to NamedTuple.
-        return base.make_class(node, cls_dict)
+        return base.make_class(node, list(bases), cls_dict)
     return self.vm.make_class(
         node, name, list(bases), func.f_locals.to_variable(node), metaclass,
         new_class_var=class_closure_var, is_decorated=self.is_decorated)

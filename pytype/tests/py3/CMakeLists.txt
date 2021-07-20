@@ -210,6 +210,7 @@ py_test(
   SRCS
     test_typing_namedtuple.py
   DEPS
+    pytype.utils
     pytype.pytd.pytd
     pytype.tests.test_base
 )

@@ -1,5 +1,6 @@
 """Tests for the typing.NamedTuple overlay."""
 
+from pytype import file_utils
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 from pytype.tests import test_utils
@@ -211,7 +212,7 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
 
         _TSubNamedTuple = TypeVar('_TSubNamedTuple', bound=SubNamedTuple)
 
-        class SubNamedTuple(tuple):
+        class SubNamedTuple(baseClass, tuple):
             __slots__ = ["a"]
             __dict__ = ...  # type: collections.OrderedDict[str, int]
             _field_defaults = ...  # type: collections.OrderedDict[str, int]
@@ -318,6 +319,49 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
       def bar():
         foo()
     """)
+
+  def test_generic_namedtuple(self):
+    self.Check("""
+      from typing import Generic, NamedTuple, TypeVar
+      T = TypeVar('T')
+      class Foo(NamedTuple, Generic[T]):
+        x: T
+      assert_type(Foo(x=0).x, int)
+    """)
+
+  def test_bad_typevar(self):
+    self.CheckWithErrors("""
+      from typing import Generic, NamedTuple, TypeVar
+      T = TypeVar('T')
+      class Foo(NamedTuple):
+        x: T  # not-supported-yet
+    """)
+
+  def test_generic_callable(self):
+    self.Check("""
+      from typing import Callable, NamedTuple, TypeVar
+      T = TypeVar('T')
+      class Foo(NamedTuple):
+        f: Callable[[T], T]
+      assert_type(Foo(f=__any_object__).f(''), str)
+    """)
+
+  def test_reingest(self):
+    foo_ty = self.Infer("""
+      from typing import Callable, Generic, NamedTuple, TypeVar
+      T = TypeVar('T')
+      class Foo(NamedTuple, Generic[T]):
+        x: T
+      class Bar(NamedTuple):
+        x: Callable[[T], T]
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
+      self.Check("""
+        import foo
+        assert_type(foo.Foo(x=0).x, int)
+        assert_type(foo.Bar(x=__any_object__).x(0), int)
+      """, pythonpath=[d.path])
 
 
 test_base.main(globals(), __name__ == "__main__")
