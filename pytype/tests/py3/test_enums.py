@@ -701,6 +701,36 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
       """, pythonpath=[d.path])
 
   @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_submeta(self):
+    self.Check("""
+      import enum
+      class Custom(enum.EnumMeta): pass
+      class Base(enum.Enum, metaclass=Custom): pass
+      class M(Base):
+        A = 1
+      assert_type(M.A, M)
+      assert_type(M.A.value, int)
+      def take_m(m: M):
+        print(m.value)
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_submeta_withmetaclass(self):
+    # Ensure six.with_metaclass works with enums, even with a custom metaclass.
+    self.Check("""
+      import enum
+      import six
+      class Custom(enum.EnumMeta): pass
+      class C(six.with_metaclass(Custom, enum.Enum)): pass
+      class C2(C):
+        A = 1
+      assert_type(C2.A, C2)
+      assert_type(C2.A.value, int)
+      def print_c(c: C):
+        print(c.value)
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_intenum_basic(self):
     self.Check("""
       import enum

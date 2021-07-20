@@ -58,16 +58,22 @@ class AddMetaclass(abstract.PyTDFunction):
         meta, self.vm, self.module_name).to_variable(node)
 
 
-class WithMetaclassInstance(abstract.BaseValue):
+class WithMetaclassInstance(abstract.BaseValue, class_mixin.Class):
   """Anonymous class created by with_metaclass."""
 
   def __init__(self, vm, cls, bases):
     super().__init__("WithMetaclassInstance", vm)
-    self.cls = cls
+    class_mixin.Class.init_mixin(self, cls)
     self.bases = bases
 
   def get_class(self):
     return self.cls
+
+  def get_own_attributes(self):
+    return self.cls.get_own_attributes()
+
+  def get_own_abstract_methods(self):
+    return self.cls.get_own_abstract_methods()
 
 
 class WithMetaclass(abstract.PyTDFunction):
