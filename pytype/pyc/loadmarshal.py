@@ -122,6 +122,9 @@ class CodeType:
     self.co_cellvars = cellvars
     self.python_version = python_version  # This field is not in types.CodeType.
 
+  def __repr__(self):
+    return f'<code: {self.co_name}>'
+
 
 class _LoadMarshal:
   """Stateful loader for marshalled files."""
