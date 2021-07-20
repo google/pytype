@@ -87,6 +87,19 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
       """)
 
   @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_enum_from_pyi_recur(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class Recur(enum.Enum):
+          A: Recur
+      """)
+      self.Check("""
+        import foo
+        Recur = foo.Recur
+      """, pythonpath=[d.path])
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_canonical_enum_members(self):
     # Checks that enum members created by instantiate() behave similarly to
     # real enum members.
