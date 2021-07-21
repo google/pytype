@@ -689,8 +689,9 @@ class ErrorLog(ErrorLogBase):
         keyword_context=obj.name)
 
   @_error_name("name-error")
-  def name_error(self, stack, name):
-    self.error(stack, "Name %r is not defined" % name, keyword=name)
+  def name_error(self, stack, name, details=None):
+    self.error(
+        stack, "Name %r is not defined" % name, keyword=name, details=details)
 
   @_error_name("import-error")
   def import_error(self, stack, module_name):

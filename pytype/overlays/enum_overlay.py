@@ -22,6 +22,10 @@ call_metaclass_init is called, allowing EnumMetaInit to transform the PyTDClass
 into a proper enum.
 """
 
+# TODO(tsudol):
+# - Flag b/194136075
+# - pyis that aren't formatted correctly
+
 import logging
 
 from pytype import abstract
@@ -384,12 +388,18 @@ class EnumMetaInit(abstract.SimpleFunction):
       member.members["name"] = self.vm.convert.constant_to_var(
           pyval=pytd.Constant(name="name", type=self._str_pytd),
           node=node)
+      # Some type stubs may use the class type for enum member values, instead
+      # of the actual value type. Detect that and use Any.
+      if pytd_val.type.name == cls.pytd_cls.name:
+        value_type = pytd.AnythingType()
+      else:
+        value_type = pytd_val.type
       member.members["value"] = self.vm.convert.constant_to_var(
-          pyval=pytd.Constant(name="value", type=pytd_val.type),
+          pyval=pytd.Constant(name="value", type=value_type),
           node=node)
       cls._member_map[name] = member  # pylint: disable=protected-access
       cls.members[name] = member.to_variable(node)
-      member_types.append(pytd_val.type)
+      member_types.append(value_type)
     if not member_types:
       member_types.append(pytd.AnythingType())
     member_type = self.vm.convert.constant_to_value(

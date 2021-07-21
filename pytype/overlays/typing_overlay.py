@@ -259,7 +259,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     return (isinstance(val, abstract.Instance) and
             val.full_name in ("builtins.str", "builtins.unicode"))
 
-  def _getargs(self, node, args):
+  def _getargs(self, node, args, functional):
     self.match_args(node, args)
     sig, = self.signatures
     callargs = {name: var for name, var, _ in sig.signature.iter_args(args)}
@@ -294,10 +294,21 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
         # Unicode values should be ASCII.
         name_py_constant = compat.native_str(name_py_constant.encode("ascii"))
       names.append(name_py_constant)
-      types.append(abstract_utils.get_atomic_value(typ))
+      if functional:
+        allowed_type_params = (
+            self.vm.annotations_util.get_callable_type_parameter_names(typ))
+        annot = self.vm.annotations_util.extract_annotation(
+            node, typ, name_py_constant, self.vm.simple_stack(),
+            allowed_type_params=allowed_type_params,
+            use_not_supported_yet=False)
+      else:
+        # This NamedTuple was constructed with the class syntax. The field
+        # annotations were already processed when added to __annotations__.
+        annot = abstract_utils.get_atomic_value(typ)
+      types.append(annot)
     return name_var, names, types
 
-  def _build_namedtuple(self, name, field_names, field_types, node):
+  def _build_namedtuple(self, name, field_names, field_types, node, bases):
     # Build an InterpreterClass representing the namedtuple.
     if field_types:
       # TODO(mdemello): Fix this to support late types.
@@ -333,13 +344,13 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     members["__dict__"] = field_dict_cls.instantiate(node)
     members["_field_defaults"] = field_dict_cls.instantiate(node)
     # _field_types and __annotations__ are both collections.OrderedDicts
-    # that map field names (strings) to the types of the fields.
+    # that map field names (strings) to the types of the fields. Note that
+    # vm.make_class will take care of adding the __annotations__ member.
     field_types_cls = abstract.ParameterizedClass(
         ordered_dict_cls,
         {"K": field_keys_union, "V": self.vm.convert.type_type},
         self.vm)
     members["_field_types"] = field_types_cls.instantiate(node)
-    members["__annotations__"] = field_types_cls.instantiate(node)
 
     # __new__
     # We set the bound on this TypeParameter later. This gives __new__ the
@@ -437,10 +448,27 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
       # Unicode values should be ASCII.
       name = compat.native_str(name.encode("ascii"))
 
+    if bases:
+      final_bases = []
+      for base in bases:
+        if any(b.full_name == "typing.NamedTuple" for b in base.data):
+          final_bases.append(self.vm.convert.tuple_type.to_variable(node))
+        else:
+          final_bases.append(base)
+    else:
+      final_bases = [self.vm.convert.tuple_type.to_variable(node)]
+      # This NamedTuple is being created via a function call. We manually
+      # construct an annotated_locals entry for it so that __annotations__ is
+      # initialized properly for the generated class.
+      self.vm.annotated_locals[name] = {
+          field: abstract_utils.Local(node, None, typ, None, self.vm)
+          for field, typ in zip(field_names, field_types)
+      }
+
     node, cls_var = self.vm.make_class(
         node=node,
         name_var=self.vm.convert.build_string(node, name),
-        bases=[self.vm.convert.tuple_type.to_variable(node)],
+        bases=final_bases,
         class_dict_var=cls_dict.to_variable(node),
         cls_var=None)
     cls = cls_var.data[0]
@@ -451,9 +479,10 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
 
     return node, cls_var
 
-  def call(self, node, _, args):
+  def call(self, node, _, args, bases=None):
     try:
-      name_var, field_names, field_types = self._getargs(node, args)
+      name_var, field_names, field_types = self._getargs(
+          node, args, functional=bases is None)
     except abstract_utils.ConversionError:
       return node, self.vm.new_unsolvable(node)
 
@@ -472,7 +501,8 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
         node, moves.zip(field_names, field_types))
     field_types = [annots.get(field_name, self.vm.convert.unsolvable)
                    for field_name in field_names]
-    node, cls_var = self._build_namedtuple(name, field_names, field_types, node)
+    node, cls_var = self._build_namedtuple(
+        name, field_names, field_types, node, bases)
 
     self.vm.trace_classdef(cls_var)
     return node, cls_var
@@ -519,7 +549,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
       self.vm.errorlog.invalid_namedtuple_arg(self.vm.frames, err_msg=errmsg)
     return self.namedtuple.call(node, None, args)
 
-  def make_class(self, node, f_locals):
+  def make_class(self, node, bases, f_locals):
     # If BuildClass.call() hits max depth, f_locals will be [unsolvable]
     # Since we don't support defining NamedTuple subclasses in a nested scope
     # anyway, we can just return unsolvable here to prevent a crash, and let the
@@ -551,7 +581,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
     anno = self.vm.convert.build_list(node, field_list)
     posargs = (name, anno)
     args = function.Args(posargs=posargs)
-    node, cls_var = self.namedtuple.call(node, None, args)
+    node, cls_var = self.namedtuple.call(node, None, args, bases)
     cls_val = abstract_utils.get_atomic_value(cls_var)
 
     if not isinstance(cls_val, abstract.Unsolvable):

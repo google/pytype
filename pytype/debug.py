@@ -8,6 +8,8 @@ import traceback
 from pytype import utils
 from pytype.typegraph import cfg_utils
 
+import tabulate
+
 
 def _ascii_tree(out, node, p1, p2, seen, get_children, get_description=None):
   """Draw a graph, starting at a given position.
@@ -322,3 +324,61 @@ def stack_trace(indent_level=0, limit=100):
   trace = traceback.format_list(stack[-limit:])
   trace = [indent + re.sub(r"/usr/.*/pytype/", "", x) for x in trace]
   return "\n  ".join(trace)
+
+
+def _setup_tabulate():
+  """Customise tabulate."""
+  tabulate.PRESERVE_WHITESPACE = True
+  tabulate.MIN_PADDING = 0
+  # Overwrite the 'presto' format to use the block-drawing vertical line.
+  # pytype: disable=module-attr
+  tabulate._table_formats["presto"] = tabulate.TableFormat(  # pylint: disable=protected-access
+      lineabove=None,
+      linebelowheader=tabulate.Line("", "-", "+", ""),
+      linebetweenrows=None,
+      linebelow=None,
+      headerrow=tabulate.DataRow("", "│", ""),
+      datarow=tabulate.DataRow("", "│", ""),
+      padding=1, with_header_hide=None)
+  # pytype: enable=module-attr
+
+
+def show_ordered_code(code, extra_col=None):
+  """Print out the block structure of an OrderedCode object as a table.
+
+  Args:
+    code: A blocks.OrderedCode object
+    extra_col: A map from opcode_index to a single additional cell to display
+  """
+  if not extra_col:
+    extra_col = {}
+  _setup_tabulate()
+  block_lines = []
+  op_lines = []
+  boundaries = []
+  start = 0
+  for block in code.order:
+    end = start
+    block_lines.append(f"block: {block.id} -> {[x.id for x in block.outgoing]}")
+    for op in block:
+      end += 1
+      op_lines.append([
+          op.index,
+          op.__class__.__name__,
+          getattr(op, "pretty_arg", ""),
+          op.target and op.target.index,
+          op.block_target and op.block_target.index,
+          "T" if op.carry_on_to_next() else "F",
+          extra_col.get(op.index)
+      ])
+    boundaries.append((start, end))
+    start = end
+  headers = ["ix", "op", "arg", "tgt", "btgt", "next", "extra"]
+  block_table = tabulate.tabulate(op_lines, headers, tablefmt="presto")
+  block_table = block_table.split("\n")
+  tab = [[block_table[0]]]
+  block_table = block_table[2:]
+  for blk, (start, end) in zip(block_lines, boundaries):
+    tab.append([blk])
+    tab.append(["\n".join(block_table[start:end])])
+  print(tabulate.tabulate(tab, tablefmt="fancy_grid"))

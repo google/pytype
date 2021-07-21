@@ -1,5 +1,7 @@
 """Tests for the typing.NamedTuple overlay."""
 
+from pytype import file_utils
+from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
@@ -116,6 +118,34 @@ class NamedTupleTest(test_base.TargetIndependentTest):
       Y = NamedTuple("Y", ["ab"])  # wrong-arg-types[e2]
     """)
     self.assertErrorRegexes(errors, {"e1": r"List.*str", "e2": r"Tuple.*str"})
+
+  def test_typevar(self):
+    self.Check("""
+      from typing import Callable, NamedTuple, TypeVar
+      T = TypeVar('T')
+      X = NamedTuple("X", [("f", Callable[[T], T])])
+      assert_type(X(f=__any_object__).f(""), str)
+    """)
+
+  def test_bad_typevar(self):
+    self.CheckWithErrors("""
+      from typing import NamedTuple, TypeVar
+      T = TypeVar('T')
+      X = NamedTuple("X", [("a", T)])  # invalid-annotation
+    """)
+
+  def test_reingest(self):
+    foo_ty = self.Infer("""
+      from typing import Callable, NamedTuple, TypeVar
+      T = TypeVar('T')
+      X = NamedTuple("X", [("a", Callable[[T], T])])
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
+      self.Check("""
+        import foo
+        assert_type(foo.X(a=__any_object__).a(4.2), float)
+      """, pythonpath=[d.path])
 
 
 test_base.main(globals(), __name__ == "__main__")

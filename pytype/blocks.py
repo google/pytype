@@ -431,5 +431,8 @@ def merge_annotations(code, annotations, docstrings):
 
 
 def process_code(code, python_version):
-  return pyc.visit(
-      pyc.visit(code, DisCodeVisitor()), OrderCodeVisitor(python_version))
+  # [binary opcodes] -> [pyc.Opcode]
+  ops = pyc.visit(code, DisCodeVisitor())
+  # pyc.load_marshal.CodeType -> blocks.OrderedCode
+  ordered = pyc.visit(ops, OrderCodeVisitor(python_version))
+  return ordered

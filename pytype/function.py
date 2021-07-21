@@ -756,7 +756,7 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
       # add the new sources
       for data in ret_map[t].data:
         ret_map[t].AddBinding(data, sources, node)
-    mutations = self._get_mutation(node, arg_dict, subst)
+    mutations = self._get_mutation(node, arg_dict, subst, ret_map[t])
     self.vm.trace_call(node, func, (self,),
                        tuple(arg_dict[p.name] for p in self.pytd_sig.params),
                        {}, ret_map[t])
@@ -784,7 +784,7 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
                        (typ, mutated_type))
     return [zip(mutated_type.base_type.cls.template, mutated_type.parameters)]
 
-  def _get_mutation(self, node, arg_dict, subst):
+  def _get_mutation(self, node, arg_dict, subst, retvar):
     """Mutation for changing the type parameters of mutable arguments.
 
     This will adjust the type parameters as needed for pytd functions like:
@@ -797,6 +797,7 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
       node: The current CFG node.
       arg_dict: A map of strings to pytd.Bindings instances.
       subst: Current type parameters.
+      retvar: A variable of the return value.
     Returns:
       A list of Mutation instances.
     Raises:
@@ -835,6 +836,14 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
                 abstract_utils.AsInstance(type_actual), subst, node,
                 discard_concrete_values=True)
             mutations.append(Mutation(arg, tparam.full_name, type_actual_val))
+    if self.name == "__new__":
+      # This is a constructor, so check whether the constructed instance needs
+      # to be mutated.
+      for ret in retvar.data:
+        if ret.cls:
+          for t in ret.cls.template:
+            if t.full_name in subst:
+              mutations.append(Mutation(ret, t.full_name, subst[t.full_name]))
     return mutations
 
   def get_positional_names(self):

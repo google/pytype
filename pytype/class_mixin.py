@@ -261,9 +261,9 @@ class Class(metaclass=mixin.MixinMeta):
   @property
   def is_enum(self):
     if self.cls:
-      return self.cls.full_name == "enum.EnumMeta"
+      return any(cls.full_name == "enum.EnumMeta" for cls in self.cls.mro)
     else:
-      return any(base.cls and base.cls.full_name == "enum.EnumMeta"
+      return any(base.cls and base.cls.full_name == "enum.Enum"
                  for base in self.mro)
 
   @property

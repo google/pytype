@@ -687,8 +687,10 @@ class VirtualMachine:
         # attribute assignments.
         annotations_dict = self.annotated_locals[name]
         if any(local.typ for local in annotations_dict.values()):
-          class_dict.members["__annotations__"] = abstract.AnnotationsDict(
+          annotations_member = abstract.AnnotationsDict(
               annotations_dict, self).to_variable(node)
+          class_dict.members["__annotations__"] = annotations_member
+          class_dict.pyval["__annotations__"] = annotations_member
       try:
         if not class_type:
           class_type = abstract.InterpreterClass
@@ -751,10 +753,7 @@ class VirtualMachine:
             # any method that does nothing except return None.
             should_report = not method.has_empty_body()
           else:
-            if self.options.check_parameter_types:
-              should_report = True
-            else:
-              should_report = value != self.convert.none
+            should_report = True
           if should_report:
             self.errorlog.annotation_type_mismatch(
                 self.frames, expected_type, value.to_binding(node), arg_name)
@@ -1976,14 +1975,32 @@ class VirtualMachine:
   def _is_private(self, name):
     return name.startswith("_") and not name.startswith("__")
 
-  def _name_error_or_late_annotation(self, name):
+  def _find_outer_scope_with_def(self, state, name):
+    try:
+      _ = self.load_global(state, name)
+    except KeyError:
+      return None
+    return "global scope"
+
+  def _name_error_or_late_annotation(self, state, name):
+    """Returns a late annotation or returns Any and logs a name error."""
     if self._late_annotations_stack and self.late_annotations is not None:
       annot = abstract.LateAnnotation(name, self._late_annotations_stack, self)
       log.info("Created %r", annot)
       self.late_annotations[name].append(annot)
       return annot
     else:
-      self.errorlog.name_error(self.frames, name)
+      outer_scope = self._find_outer_scope_with_def(state, name)
+      if outer_scope:
+        # This name is defined in an outer scope but cannot be accessed, which
+        # means that the outer definition must be shadowed in the current scope.
+        assert self.frame.func
+        inner_scope = self.frame.func.data.name.rsplit(".")[-1]
+        details = (f"Note: Cannot reference {name!r} from {outer_scope} due to "
+                   f"redefinition in {inner_scope!r}")
+      else:
+        details = None
+      self.errorlog.name_error(self.frames, name, details=details)
       return self.convert.unsolvable
 
   def byte_LOAD_NAME(self, state, op):
@@ -2003,7 +2020,7 @@ class VirtualMachine:
           state, val = self.load_builtin(state, name)
         except KeyError:
           if self._is_private(name) or not self.has_unknown_wildcard_imports:
-            one_val = self._name_error_or_late_annotation(name)
+            one_val = self._name_error_or_late_annotation(state, name)
           else:
             one_val = self.convert.unsolvable
           self.trace_opcode(op, name, None)
@@ -2026,7 +2043,8 @@ class VirtualMachine:
     try:
       state, val = self.load_local(state, name)
     except KeyError:
-      val = self._name_error_or_late_annotation(name).to_variable(state.node)
+      val = self._name_error_or_late_annotation(state, name).to_variable(
+          state.node)
     self.check_for_deleted(state, name, val)
     self.trace_opcode(op, name, val)
     return state.push(val)
@@ -2054,8 +2072,8 @@ class VirtualMachine:
         state, val = self.load_builtin(state, name)
       except KeyError:
         self.trace_opcode(op, name, None)
-        return state.push(
-            self._name_error_or_late_annotation(name).to_variable(state.node))
+        ret = self._name_error_or_late_annotation(state, name)
+        return state.push(ret.to_variable(state.node))
     self.check_for_deleted(state, name, val)
     self.trace_opcode(op, name, val)
     return state.push(val)
