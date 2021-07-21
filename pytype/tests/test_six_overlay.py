@@ -54,6 +54,15 @@ class SixTests(test_base.TargetIndependentTest):
       y = Bar().bar()
     """)
 
+  def test_with_metaclass_any(self):
+    self.Check("""
+      import six
+      from typing import Any
+      Meta = type  # type: Any
+      class Foo(six.with_metaclass(Meta)):
+        pass
+    """)
+
   def test_type_init(self):
     ty = self.Infer("""
       import six

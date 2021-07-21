@@ -331,7 +331,6 @@ def _setup_tabulate():
   tabulate.PRESERVE_WHITESPACE = True
   tabulate.MIN_PADDING = 0
   # Overwrite the 'presto' format to use the block-drawing vertical line.
-  # pytype: disable=module-attr
   tabulate._table_formats["presto"] = tabulate.TableFormat(  # pylint: disable=protected-access
       lineabove=None,
       linebelowheader=tabulate.Line("", "-", "+", ""),
@@ -340,7 +339,6 @@ def _setup_tabulate():
       headerrow=tabulate.DataRow("", "│", ""),
       datarow=tabulate.DataRow("", "│", ""),
       padding=1, with_header_hide=None)
-  # pytype: enable=module-attr
 
 
 def show_ordered_code(code, extra_col=None):
