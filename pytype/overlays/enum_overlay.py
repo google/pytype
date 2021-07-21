@@ -331,6 +331,23 @@ class EnumMetaInit(abstract.SimpleFunction):
     else:
       return node, self.vm.convert.build_int(node)
 
+  def _mark_dynamic_enum(self, cls):
+    # Checks if the enum should be marked as having dynamic attributes.
+    # The most typical use of custom subclasses of EnumMeta is to add more
+    # members to the enum, or to (for example) make attribute access
+    # case-insensitive. Treat such enums as having dynamic attributes.
+    # Of course, if it's already marked dynamic, don't accidentally unmark it.
+    if cls.maybe_missing_members:
+      return
+    if cls.cls and cls.cls.full_name != "enum.EnumMeta":
+      cls.maybe_missing_members = True
+      return
+    for base_var in cls.bases():
+      for base in base_var.data:
+        if base.is_enum and base.cls and base.cls.full_name != "enum.EnumMeta":
+          cls.maybe_missing_members = True
+          return
+
   def _setup_interpreterclass(self, node, cls):
     member_types = []
     base_type = self._get_base_type(cls.bases())
@@ -370,6 +387,7 @@ class EnumMetaInit(abstract.SimpleFunction):
         node, new_gnv = self.vm.load_special_builtin("staticmethod").call(
             node, None, args)
         cls.members["_generate_next_value_"] = new_gnv
+    self._mark_dynamic_enum(cls)
     return node
 
   def _setup_pytdclass(self, node, cls):
@@ -408,6 +426,7 @@ class EnumMetaInit(abstract.SimpleFunction):
         pytd_utils.JoinTypes(member_types))
     cls.members["__new__"] = self._make_new(node, member_type, cls)
     cls.members["__eq__"] = EnumCmpEQ(self.vm).to_variable(node)
+    self._mark_dynamic_enum(cls)
     return node
 
   def call(self, node, func, args, alias_map=None):
