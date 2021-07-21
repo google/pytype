@@ -2944,19 +2944,19 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
     self.type_param_check()
     self.decorators = []
 
-  def update_method_type_params(self):
-    def update_sig(method):
-      method.signature.excluded_types.update(
-          [t.name for t in self.template])
-      method.signature.add_scope(self.full_name)
+  def update_signature_scope(self, method):
+    method.signature.excluded_types.update(
+        [t.name for t in self.template])
+    method.signature.add_scope(self.full_name)
 
+  def update_method_type_params(self):
     if self.template:
       # For function type parameters check
       for mbr in self.members.values():
         m = abstract_utils.get_atomic_value(
             mbr, default=self.vm.convert.unsolvable)
         if isinstance(m, SignedFunction):
-          update_sig(m)
+          self.update_signature_scope(m)
         elif mbr.data and all(
             x.__class__.__name__ == "PropertyInstance" for x in mbr.data):
           # We generate a new variable every time we add a property slot, so we
@@ -2966,7 +2966,7 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
             if slot:
               for d in slot.data:
                 if isinstance(d, SignedFunction):
-                  update_sig(d)
+                  self.update_signature_scope(d)
 
   def type_param_check(self):
     """Throw exception for invalid type parameters."""
@@ -3472,6 +3472,7 @@ class InterpreterFunction(SignedFunction):
       self.nonstararg_count += self.code.co_kwonlyargcount
     signature = self._build_signature(name, annotations)
     super().__init__(signature, vm)
+    self._update_signature_scope()
     self.last_frame = None  # for BuildClass
     self._store_call_records = False
     if self.vm.PY3:
@@ -3514,6 +3515,21 @@ class InterpreterFunction(SignedFunction):
         kwarg_name,
         defaults,
         annotations)
+
+  def _update_signature_scope(self):
+    # If this is a nested function in an instance method and the nested function
+    # accesses 'self', then the first variable in the closure is 'self'. We use
+    # 'self' to update the scopes of any type parameters in the nested method's
+    # signature to the containing class.
+    if not self.closure:
+      return
+    maybe_instance = self.closure[0]
+    try:
+      instance = abstract_utils.get_atomic_value(maybe_instance, Instance)
+    except abstract_utils.ConversionError:
+      return
+    if isinstance(instance.cls, InterpreterClass):
+      instance.cls.update_signature_scope(self)
 
   def get_first_opcode(self):
     return self.code.first_opcode
@@ -3606,10 +3622,15 @@ class InterpreterFunction(SignedFunction):
       # so that optional parameters, etc, are correctly defined.
       callargs = self._map_args(node, args)
     first_arg = sig.get_first_arg(callargs)
+    annotation_substs = substs
+    # Adds type parameter substitutions from all containing classes.
+    for frame in self.vm.frames:
+      annotation_substs = abstract_utils.combine_substs(
+          annotation_substs, frame.substs)
     # Keep type parameters without substitutions, as they may be needed for
     # type-checking down the road.
     annotations = self.vm.annotations_util.sub_annotations(
-        node, sig.annotations, substs, instantiate_unbound=False)
+        node, sig.annotations, annotation_substs, instantiate_unbound=False)
     if sig.has_param_annotations:
       if first_arg and sig.param_names[0] == "self":
         try:

@@ -227,13 +227,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         self_substs = tuple(
             abstract_utils.get_type_parameter_substitutions(v, type_params)
             for v in self_var.data)
-        if substs and self_substs:
-          # pylint: disable=g-complex-comprehension
-          substs = tuple({**subst, **self_subst}
-                         for subst in substs for self_subst in self_substs)
-          # pylint: enable=g-complex-comprehension
-        elif self_substs:
-          substs = self_substs
+        substs = abstract_utils.combine_substs(substs, self_substs)
     allowed_type_params = set(
         itertools.chain(*substs, self.get_callable_type_parameter_names(var)))
     typ = self.extract_annotation(
