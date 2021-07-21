@@ -675,7 +675,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     ignore = set(annotated_names)
     # enums should not print "name" and "value" for instances.
     if v.is_enum:
-      ignore.update(("name", "value"))
+      ignore.update(("name", "_name_", "value", "_value_"))
     canonical_attributes = set()
 
     def add_attributes_from(instance):

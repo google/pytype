@@ -20,6 +20,12 @@ class EnumMeta(type, Iterable):
 
 class Enum(metaclass=EnumMeta):
   __members__ = ...  # type: collections.OrderedDict[str, Enum]
+  # These are copies of `name` and `value`. These are occasionally used in
+  # methods on the enum, so set them here to guarantee pytype sees them.
+  # Unlike `name` and `value`, these are never valid enum member names, so it's
+  # fine to set them here.
+  _name_: str
+  _value_: Any
   def __new__(cls, value: str, names: Union[str, Iterable[str], Iterable[Tuple[str, Any]], Dict[str, Any]], module = ..., type: type = ..., start: complex = ...) -> Type[Enum]: ...
   def __new__(cls: Type[_T], value) -> _T: ...
   def __getattribute__(self, name) -> Any: ...

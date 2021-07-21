@@ -347,6 +347,7 @@ class EnumMetaInit(abstract.SimpleFunction):
         args = function.Args(posargs=(value,))
         node, value = base_type.call(node, base_type.to_binding(node), args)
       member.members["value"] = value
+      member.members["_value_"] = value
       member.members["name"] = self.vm.convert.build_string(node, name)
       cls.members[name] = member.to_variable(node)
       member_types.extend(value.data)
@@ -397,6 +398,7 @@ class EnumMetaInit(abstract.SimpleFunction):
       member.members["value"] = self.vm.convert.constant_to_var(
           pyval=pytd.Constant(name="value", type=value_type),
           node=node)
+      member.members["_value_"] = member.members["value"]
       cls._member_map[name] = member  # pylint: disable=protected-access
       cls.members[name] = member.to_variable(node)
       member_types.append(value_type)
@@ -467,6 +469,10 @@ class EnumMetaGetItem(abstract.SimpleFunction):
       cls = abstract_utils.get_atomic_value(cls_var)
     except abstract_utils.ConversionError:
       return node, self.vm.new_unsolvable(node)
+    # We may have been given an instance of the class, such as if pytype is
+    # analyzing this method due to a super() call in a subclass.
+    if cls.isinstance_Instance():
+      cls = cls.cls
     # If we can't get a concrete name, treat it like it matches and return a
     # canonical enum member.
     try:

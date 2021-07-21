@@ -64,6 +64,38 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
     """)
 
   @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_sunderscore_name_value(self):
+    self.Check("""
+      from typing import Any
+      import enum
+      class M(enum.Enum):
+        A = 1
+      assert_type(M.A._name_, str)
+      assert_type(M.A._value_, int)
+      def f(m: M):
+        assert_type(m._name_, str)
+        assert_type(m._value_, Any)
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_sunderscore_name_value_pytd(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class M(enum.Enum):
+          A: int
+      """)
+      self.Check("""
+        from typing import Any
+        import foo
+        assert_type(foo.M.A._name_, str)
+        assert_type(foo.M.A._value_, int)
+        def f(m: foo.M):
+          assert_type(m._name_, str)
+          assert_type(m._value_, Any)
+      """, pythonpath=[d.path])
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_basic_enum_from_pyi(self):
     with file_utils.Tempdir() as d:
       d.create_file("e.pyi", """
