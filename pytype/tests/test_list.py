@@ -46,16 +46,6 @@ class ListTest(test_base.TargetIndependentTest):
       b = ...  # type: List[int]
     """)
 
-  def test_add_string(self):
-    ty = self.Infer("""
-      a = []
-      a += "foo"
-    """)
-    self.assertTypesMatchPytd(ty, """
-      from typing import List, Union
-      a = ...  # type: List[str]
-    """)
-
   def test_extend_with_empty(self):
     ty = self.Infer("""
       from typing import List
