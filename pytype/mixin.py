@@ -73,6 +73,7 @@ class PythonConstant(metaclass=MixinMeta):
   def init_mixin(self, pyval):
     """Mix-in equivalent of __init__."""
     self.pyval = pyval
+    self._printing = False
 
   def str_of_constant(self, printer):
     """Get a string representation of this constant.
@@ -88,7 +89,13 @@ class PythonConstant(metaclass=MixinMeta):
     return repr(self.pyval)
 
   def __repr__(self):
-    return "<%s %r>" % (self.name, self.str_of_constant(str))
+    if self._printing:  # recursion detected
+      const = "[...]"
+    else:
+      self._printing = True
+      const = self.str_of_constant(str)
+      self._printing = False
+    return "<%s %r>" % (self.name, const)
 
 
 class HasSlots(metaclass=MixinMeta):
