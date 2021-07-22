@@ -1014,5 +1014,21 @@ class ProtocolAttributesTest(test_base.TargetPython3FeatureTest):
         f2(Bar())  # wrong-arg-types
       """, pythonpath=[d.path])
 
+  def test_optional(self):
+    errors = self.CheckWithErrors("""
+      from typing import Optional, Protocol
+      class Foo(Protocol):
+        x: Optional[int]
+      class Bar:
+        x = 0
+      class Baz:
+        x = ''
+      def f(x: Foo):
+        pass
+      f(Bar())
+      f(Baz())  # wrong-arg-types[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": r"expected Optional\[int\], got str"})
+
 
 test_base.main(globals(), __name__ == "__main__")

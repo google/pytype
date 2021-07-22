@@ -994,27 +994,42 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         _, left_attribute = self.vm.attribute_handler.get_attribute(
             self._node, left, attribute)
     assert left_attribute
-    protocol_attribute = self._get_attribute_for_protocol_matching(
-        other_type, attribute).data[0]
+    protocol_attribute_var = self._get_attribute_for_protocol_matching(
+        other_type, attribute)
     if (any(abstract_utils.is_callable(v) for v in left_attribute.data) and
-        abstract_utils.is_callable(protocol_attribute) and
+        all(abstract_utils.is_callable(protocol_attribute)
+            for protocol_attribute in protocol_attribute_var.data) and
         not isinstance(other_type, abstract.ParameterizedClass)):
       # TODO(rechen): Even if other_type isn't parameterized, we should run
       # _match_protocol_attribute to catch mismatches in method signatures.
       return subst
-    new_substs = []
-    for protocol_attribute_type in self._get_attribute_types(
-        other_type, protocol_attribute):
-      for v in left_attribute.data:
-        match_result = self._match_type_against_type(
-            v, protocol_attribute_type, subst, view)
-        if match_result is None:
-          self._protocol_error = ProtocolTypeError(
-              left_cls, other_type, attribute, v, protocol_attribute)
-          return None
+    # The entire match succeeds if left_attribute matches *any* binding of
+    # protocol_attribute_var. A binding matches only if *all* options for
+    # left_attribute match *all* options for the binding's types.
+    bad_matches = []
+    for protocol_attribute in protocol_attribute_var.data:
+      new_substs = []
+      for protocol_attribute_type in self._get_attribute_types(
+          other_type, protocol_attribute):
+        for v in left_attribute.data:
+          match_result = self._match_type_against_type(
+              v, protocol_attribute_type, subst, view)
+          if match_result is None:
+            bad_matches.append((v, protocol_attribute))
+            break
+          else:
+            new_substs.append(match_result)
         else:
-          new_substs.append(match_result)
-    return self._merge_substs(subst, new_substs)
+          # match succeeded, so go on to the next protocol_attribute_type
+          continue
+        break  # if we get to this point, the match failed
+      else:
+        return self._merge_substs(subst, new_substs)
+    bad_left, bad_right = zip(*bad_matches)
+    self._protocol_error = ProtocolTypeError(
+        left_cls, other_type, attribute, self.vm.merge_values(bad_left),
+        self.vm.merge_values(bad_right))
+    return None
 
   def _get_concrete_values_and_classes(self, var):
     # TODO(rechen): For type parameter instances, we should extract the concrete
