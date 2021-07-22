@@ -1030,5 +1030,18 @@ class ProtocolAttributesTest(test_base.TargetPython3FeatureTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"expected Optional\[int\], got str"})
 
+  def test_match_optional_to_optional(self):
+    self.Check("""
+      from typing import Optional, Protocol
+      class Foo(Protocol):
+        x: Optional[int]
+      class Bar:
+        def __init__(self, x: Optional[int]):
+          self.x = x
+      def f(x: Foo):
+        pass
+      f(Bar(0))
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")
