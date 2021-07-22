@@ -61,7 +61,6 @@ class FlowTest(test_base.TargetPython3BasicTest):
       assert_type(x, str)
     """)
 
-  @test_base.skip("Does not work. See b/193472939")
   def test_unsatisfiable_in_except_block(self):
     self.Check("""
       def raise_error(e):
