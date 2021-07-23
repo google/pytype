@@ -685,6 +685,9 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
             left, other_type.formal_type_parameters[abstract_utils.T], subst,
             view)
     elif isinstance(other_type, class_mixin.Class):
+      if (self.vm.options.enforce_noniterable_strings and
+          self._enforce_noniterable_str(left.get_class(), other_type)):
+        return None
       base = self.match_from_mro(left.get_class(), other_type)
       if base is None:
         if other_type.is_protocol:
@@ -1088,6 +1091,18 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       if common_classes.issubset(ignored_superclasses):
         return None
     return var
+
+  def _enforce_noniterable_str(self, left, other_type):
+    """Enforce a str to NOT be matched against a conflicting iterable type."""
+    conflicting_iter_types = ["typing.Iterable", "typing.Sequence",
+                              "typing.Collection", "typing.Container",
+                              "typing.Mapping",]
+    str_types = ["builtins.str", "builtins.unicode",]
+    if (left.full_name in str_types and
+        other_type.full_name in conflicting_iter_types):
+      return True
+
+    return False
 
   def _subst_with_type_parameters_from(self, subst, typ):
     subst = subst.copy()
