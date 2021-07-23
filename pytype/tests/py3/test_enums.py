@@ -859,5 +859,25 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
         A = 1
     """)
 
+  def test_unique_enum_in_dict(self):
+    # Regression test for a recursion error in matcher.py
+    self.assertNoCrash(self.Check, """
+      import enum
+      from typing import Dict, Generic, TypeVar
+
+      Feature = enum.unique(enum.Enum)
+      F = TypeVar('F', bound=Feature)
+
+      class Features(Dict[F, bool], Generic[F]):
+        def __setitem__(self, feature: F, on: bool):
+          super(Features, self).__setitem__(feature, on)
+
+      class _FeaturesParser(Generic[F]):
+        def parse(self) -> Features[F]:
+          result = Features()
+          result[Feature('')] = True
+          return result
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

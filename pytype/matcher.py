@@ -514,7 +514,10 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     elif isinstance(left, abstract.TypeParameterInstance):
       if isinstance(left.instance, abstract.BaseValue):
         param = left.instance.get_instance_type_parameter(left.param.name)
-        if param.bindings:
+        # If left resolves to itself
+        # (see tests/py3/test_enums:EnumOverlayTest.test_unique_enum_in_dict),
+        # calling _match_all_bindings would lead to an infinite recursion error.
+        if param.bindings and not any(v is left for v in param.data):
           return self._match_all_bindings(param, other_type, subst, view)
       return self._instantiate_and_match(left.param, other_type, subst, view)
     else:
