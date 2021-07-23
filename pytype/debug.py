@@ -359,7 +359,9 @@ def show_ordered_code(code, extra_col=None):
   start = 0
   for block in code.order:
     end = start
-    block_lines.append(f"block: {block.id} -> {[x.id for x in block.outgoing]}")
+    ids = lambda xs: [x.id for x in xs]
+    block_lines.append(
+        f"block: {block.id} -> {ids(block.outgoing)} <- {ids(block.incoming)}")
     for op in block:
       end += 1
       op_lines.append([
@@ -368,7 +370,7 @@ def show_ordered_code(code, extra_col=None):
           getattr(op, "pretty_arg", ""),
           op.target and op.target.index,
           op.block_target and op.block_target.index,
-          "T" if op.carry_on_to_next() else "F",
+          op.next and op.next.index,
           extra_col.get(op.index)
       ])
     boundaries.append((start, end))

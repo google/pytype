@@ -69,6 +69,16 @@ class PytypeTest(test_base.UnitTest):
       print(contents, file=f)
     return path
 
+  def _create_pytype_subprocess(self, pytype_args_dict):
+    pytype_exe = os.path.join(self.pytype_dir, "pytype")
+    pytype_args = [pytype_exe]
+    for arg, value in pytype_args_dict.items():
+      if value is not self.INCLUDE:
+        arg += "=" + str(value)
+      pytype_args.append(arg)
+    return subprocess.Popen(  # pylint: disable=consider-using-with
+        pytype_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
   def _run_pytype(self, pytype_args_dict):
     """A single command-line call to the pytype binary.
 
@@ -84,14 +94,7 @@ class PytypeTest(test_base.UnitTest):
           pytype simple.py --output=-
        the arguments should be {"simple.py": self.INCLUDE, "--output": "-"}
     """
-    pytype_exe = os.path.join(self.pytype_dir, "pytype")
-    pytype_args = [pytype_exe]
-    for arg, value in pytype_args_dict.items():
-      if value is not self.INCLUDE:
-        arg += "=" + str(value)
-      pytype_args.append(arg)
-    with subprocess.Popen(
-        pytype_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
+    with self._create_pytype_subprocess(pytype_args_dict) as p:
       self.stdout, self.stderr = (s.decode("utf-8") for s in p.communicate())
       self.returncode = p.returncode
 
@@ -103,10 +106,19 @@ class PytypeTest(test_base.UnitTest):
     os.environ["PYTHONHASHSEED"] = "0"
     f1 = self._tmp_path("builtins1.pickle")
     f2 = self._tmp_path("builtins2.pickle")
+    # We store and poll subprocess.Popen instances so that the (slow)
+    # --generate-builtins actions can proceed in parallel. Since we're not using
+    # Popen as a contextmanager, we manually close the stdout and stderr pipes.
+    processes = []
     for f in (f1, f2):
       self.pytype_args["--generate-builtins"] = f
       self.pytype_args["--python_version"] = python_version
-      self._run_pytype(self.pytype_args)
+      processes.append(self._create_pytype_subprocess(self.pytype_args))
+    while any(p.poll() is None for p in processes):
+      pass
+    for p in processes:
+      p.stdout.close()
+      p.stderr.close()
     return f1, f2
 
   def assertBuiltinsPickleEqual(self, f1, f2):

@@ -64,6 +64,38 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
     """)
 
   @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_sunderscore_name_value(self):
+    self.Check("""
+      from typing import Any
+      import enum
+      class M(enum.Enum):
+        A = 1
+      assert_type(M.A._name_, str)
+      assert_type(M.A._value_, int)
+      def f(m: M):
+        assert_type(m._name_, str)
+        assert_type(m._value_, Any)
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_sunderscore_name_value_pytd(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class M(enum.Enum):
+          A: int
+      """)
+      self.Check("""
+        from typing import Any
+        import foo
+        assert_type(foo.M.A._name_, str)
+        assert_type(foo.M.A._value_, int)
+        def f(m: foo.M):
+          assert_type(m._name_, str)
+          assert_type(m._value_, Any)
+      """, pythonpath=[d.path])
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_basic_enum_from_pyi(self):
     with file_utils.Tempdir() as d:
       d.create_file("e.pyi", """
@@ -717,12 +749,14 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
   def test_submeta(self):
     self.Check("""
       import enum
+      from typing import Any
       class Custom(enum.EnumMeta): pass
       class Base(enum.Enum, metaclass=Custom): pass
       class M(Base):
         A = 1
-      assert_type(M.A, M)
-      assert_type(M.A.value, int)
+      # Ideally, this would be "M" and "int", but M is a dynamic enum.
+      assert_type(M.A, Any)
+      assert_type(M.A.value, Any)
       def take_m(m: M):
         print(m.value)
     """)
@@ -733,15 +767,73 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
     self.Check("""
       import enum
       import six
+      from typing import Any
       class Custom(enum.EnumMeta): pass
       class C(six.with_metaclass(Custom, enum.Enum)): pass
       class C2(C):
         A = 1
-      assert_type(C2.A, C2)
-      assert_type(C2.A.value, int)
+      # Ideally, this would be "C2" and "int", but C2 is a dynamic enum.
+      assert_type(C2.A, Any)
+      assert_type(C2.A.value, Any)
       def print_c(c: C):
         print(c.value)
     """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_dynamic_attributes(self):
+    self.CheckWithErrors("""
+      import enum
+      class Normal(enum.Enum):
+        A = 1
+      Normal.B  # attribute-error
+
+      class Custom(enum.EnumMeta):
+        def __new__(cls, name, bases, dct):
+          for name in ["FOO", "BAR", "QUUX"]:
+            dct[name] = name
+          return super().__new__(cls, name, bases, dct)
+      class Yes(enum.Enum, metaclass=Custom):
+        A = 1
+      Yes.B
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_dynamic_attributes_pytd(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class Normal:
+          A: int
+        class Custom(enum.EnumMeta):
+          def __new__(cls, name, bases, dct): ...
+        class Yes(enum.Enum, metaclass=Custom):
+          A: int
+      """)
+      self.CheckWithErrors("""
+        import foo
+        foo.Normal.B  # attribute-error
+        foo.Yes.B
+      """, pythonpath=[d.path])
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_typical_subclassed_meta(self):
+    # The typical pattern when subclassing EnumMeta is to create a base enum
+    # using that metaclass, then subclass that enum in other files.
+    # In this case, all enums that have the custom metaclass should be dynamic.
+    with file_utils.Tempdir() as d:
+      d.create_file("base_enum.pyi", """
+        import enum
+        class CustomMeta(enum.EnumMeta): pass
+        class Base(enum.Enum, metaclass=CustomMeta): pass
+      """)
+      self.Check("""
+        import base_enum
+        class M(base_enum.Base):
+          A = 1
+        M.A
+        M.B
+        base_enum.Base.A
+      """, pythonpath=[d.path])
 
   @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_intenum_basic(self):
@@ -765,6 +857,26 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
       import enum
       class IF(enum.IntFlag):
         A = 1
+    """)
+
+  def test_unique_enum_in_dict(self):
+    # Regression test for a recursion error in matcher.py
+    self.assertNoCrash(self.Check, """
+      import enum
+      from typing import Dict, Generic, TypeVar
+
+      Feature = enum.unique(enum.Enum)
+      F = TypeVar('F', bound=Feature)
+
+      class Features(Dict[F, bool], Generic[F]):
+        def __setitem__(self, feature: F, on: bool):
+          super(Features, self).__setitem__(feature, on)
+
+      class _FeaturesParser(Generic[F]):
+        def parse(self) -> Features[F]:
+          result = Features()
+          result[Feature('')] = True
+          return result
     """)
 
 

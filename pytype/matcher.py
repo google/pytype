@@ -514,7 +514,10 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     elif isinstance(left, abstract.TypeParameterInstance):
       if isinstance(left.instance, abstract.BaseValue):
         param = left.instance.get_instance_type_parameter(left.param.name)
-        if param.bindings:
+        # If left resolves to itself
+        # (see tests/py3/test_enums:EnumOverlayTest.test_unique_enum_in_dict),
+        # calling _match_all_bindings would lead to an infinite recursion error.
+        if param.bindings and not any(v is left for v in param.data):
           return self._match_all_bindings(param, other_type, subst, view)
       return self._instantiate_and_match(left.param, other_type, subst, view)
     else:
@@ -994,27 +997,39 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         _, left_attribute = self.vm.attribute_handler.get_attribute(
             self._node, left, attribute)
     assert left_attribute
-    protocol_attribute = self._get_attribute_for_protocol_matching(
-        other_type, attribute).data[0]
+    protocol_attribute_var = self._get_attribute_for_protocol_matching(
+        other_type, attribute)
     if (any(abstract_utils.is_callable(v) for v in left_attribute.data) and
-        abstract_utils.is_callable(protocol_attribute) and
+        all(abstract_utils.is_callable(protocol_attribute)
+            for protocol_attribute in protocol_attribute_var.data) and
         not isinstance(other_type, abstract.ParameterizedClass)):
       # TODO(rechen): Even if other_type isn't parameterized, we should run
       # _match_protocol_attribute to catch mismatches in method signatures.
       return subst
-    new_substs = []
-    for protocol_attribute_type in self._get_attribute_types(
-        other_type, protocol_attribute):
+    # The entire match succeeds if left_attribute matches *any* binding of
+    # protocol_attribute_var. A binding matches if *any* options for
+    # left_attribute match *all* options for the binding's types.
+    bad_matches = []
+    for protocol_attribute in protocol_attribute_var.data:
+      protocol_attribute_types = list(
+          self._get_attribute_types(other_type, protocol_attribute))
       for v in left_attribute.data:
-        match_result = self._match_type_against_type(
-            v, protocol_attribute_type, subst, view)
-        if match_result is None:
-          self._protocol_error = ProtocolTypeError(
-              left_cls, other_type, attribute, v, protocol_attribute)
-          return None
+        new_substs = []
+        for protocol_attribute_type in protocol_attribute_types:
+          match_result = self._match_type_against_type(
+              v, protocol_attribute_type, subst, view)
+          if match_result is None:
+            bad_matches.append((v, protocol_attribute))
+            break
+          else:
+            new_substs.append(match_result)
         else:
-          new_substs.append(match_result)
-    return self._merge_substs(subst, new_substs)
+          return self._merge_substs(subst, new_substs)
+    bad_left, bad_right = zip(*bad_matches)
+    self._protocol_error = ProtocolTypeError(
+        left_cls, other_type, attribute, self.vm.merge_values(bad_left),
+        self.vm.merge_values(bad_right))
+    return None
 
   def _get_concrete_values_and_classes(self, var):
     # TODO(rechen): For type parameter instances, we should extract the concrete

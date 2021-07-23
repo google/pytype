@@ -19,7 +19,7 @@ import itertools
 import logging
 import os
 import re
-from typing import Tuple
+from typing import Optional, Tuple
 
 from pytype import abstract
 from pytype import abstract_utils
@@ -114,6 +114,39 @@ class _FindIgnoredTypeComments:
   def ignored_lines(self):
     """Returns a set of lines that contain ignored type comments."""
     return self._ignored_type_lines
+
+
+class _FinallyStateTracker:
+  """Track return state for try/except/finally blocks."""
+  # Used in vm.run_frame()
+
+  SETUP_OPCODES = (opcodes.SETUP_EXCEPT, opcodes.SETUP_FINALLY,
+                   opcodes.SETUP_WITH, opcodes.SETUP_ASYNC_WITH)
+
+  RETURN_STATES = ("return", "exception")
+
+  def __init__(self):
+    self.stack = []
+
+  def process(self, op, state) -> Optional[str]:
+    """Store state.why, or return it from a stored state."""
+    if isinstance(op, self.SETUP_OPCODES):
+      self.stack.append([op, None])
+    if isinstance(op, opcodes.END_FINALLY):
+      _, why = self.stack.pop()
+      if why:
+        return why
+    elif self.stack and state.why in self.RETURN_STATES:
+      self.stack[-1][-1] = state.why
+
+  def check_early_exit(self, state) -> bool:
+    """Check if we are exiting the frame from within an except block."""
+    return (state.block_stack and
+            any(x.type == "finally" for x in state.block_stack) and
+            state.why in self.RETURN_STATES)
+
+  def __repr__(self):
+    return repr(self.stack)
 
 
 class VirtualMachine:
@@ -337,6 +370,7 @@ class VirtualMachine:
       assert annotated_locals is None
     can_return = False
     return_nodes = []
+    finally_tracker = _FinallyStateTracker()
     for block in frame.f_code.order:
       state = frame.states.get(block[0])
       if not state:
@@ -346,17 +380,20 @@ class VirtualMachine:
       op = None
       for op in block:
         state = self.run_instruction(op, state)
+        # Check if we have to carry forward the return state from an except
+        # block to the END_FINALLY opcode.
+        new_why = finally_tracker.process(op, state)
+        if new_why:
+          state = state.set_why(new_why)
         if state.why:
-          # If we raise an exception or return in a 'finally' block do not
-          # execute any target blocks it has added.
-          if (state.block_stack and
-              any(x.type == "finally" for x in state.block_stack) and
-              state.why in ("return", "exception")):
-            for target in self.frame.targets[block.id]:
-              del self.frame.states[target]
           # we can't process this block any further
           break
       if state.why:
+        # If we raise an exception or return in an except block do not
+        # execute any target blocks it has added.
+        if finally_tracker.check_early_exit(state):
+          for target in self.frame.targets[block.id]:
+            del frame.states[target]
         # return, raise, or yield. Leave the current frame.
         can_return |= state.why in ("return", "yield")
         return_nodes.append(state.node)

@@ -70,10 +70,16 @@ class WithMetaclassInstance(abstract.BaseValue, class_mixin.Class):
     return self.cls
 
   def get_own_attributes(self):
-    return self.cls.get_own_attributes()
+    if isinstance(self.cls, class_mixin.Class):
+      return self.cls.get_own_attributes()
+    else:
+      return set()
 
   def get_own_abstract_methods(self):
-    return self.cls.get_own_abstract_methods()
+    if isinstance(self.cls, class_mixin.Class):
+      return self.cls.get_own_abstract_methods()
+    else:
+      return set()
 
 
 class WithMetaclass(abstract.PyTDFunction):

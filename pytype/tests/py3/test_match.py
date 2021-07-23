@@ -382,4 +382,178 @@ class MatchTestPy3(test_base.TargetPython3FeatureTest):
     """)
 
 
+class NonIterableStringsTest(test_base.TargetPython3BasicTest):
+  """Tests for non-iterable string behavior."""
+
+  @test_base.skip("failing until Implementation is approved.")
+  def test_add_invalid_string(self):
+    self.CheckWithErrors("""
+      a = []
+      a += "foo" # unsupported-operands
+    """)
+
+  def test_add_string(self):
+    ty = self.Infer("""
+      a = []
+      a += list("foo")
+    """)
+    self.assertTypesMatchPytd(
+        ty, """
+      from typing import List
+      a = ...  # type: List[str]
+    """)
+
+  @test_base.skip("failing until Implementation is approved.")
+  def test_str_against_plain_iterable(self):
+    self.CheckWithErrors("""
+      from typing import Iterable
+      def f (itr: Iterable):
+        return
+      f("abcdef")  # wrong-arg-types
+      f(["abc", "def", "ghi"])
+      f(("abc", "def", "ghi"))
+    """)
+
+  @test_base.skip("failing until Implementation is approved.")
+  def test_str_against_iterable(self):
+    self.CheckWithErrors("""
+      from typing import Iterable
+      def f(x: Iterable[str]):
+        return x
+      f("abcdef")  # wrong-arg-types
+      f(["abc", "def", "ghi"])
+      f(("abc", "def", "ghi"))
+    """)
+
+  @test_base.skip("failing until Implementation is approved.")
+  def test_str_against_plain_sequence(self):
+    self.CheckWithErrors("""
+      from typing import Sequence
+      def f (itr: Sequence):
+        return
+      f("abcdef")  # wrong-arg-types
+      f(["abc", "def", "ghi"])
+    """)
+
+  @test_base.skip("failing until Implementation is approved.")
+  def test_str_against_sequence(self):
+    self.CheckWithErrors("""
+      from typing import Sequence
+      def f(x: Sequence[str]):
+        return x
+      f("abcdef")  # wrong-arg-types
+      f(["abc", "def", "ghi"])
+      f(("abc", "def", "ghi"))
+    """)
+
+  def test_intended_iterable_str_against_sequence(self):
+    self.Check("""
+      from typing import Union, Sequence
+      def f(x: Union[str, Sequence[str]]):
+        return x
+      f("abcdef")
+      f(["abc", "def", "ghi"])
+      f(("abc", "def", "ghi"))
+    """)
+
+  def test_intended_iterable_str_against_iterable(self):
+    self.Check("""
+      from typing import Union, Iterable
+      def f(x: Union[str, Iterable[str]]):
+        return x
+      f("abcdef")
+      f(["abc", "def", "ghi"])
+      f(("abc", "def", "ghi"))
+    """)
+
+  def test_str_against_union_sequence_str(self):
+    self.Check("""
+      from typing import Union, Sequence
+      def f(x: Union[Sequence[str], str]):
+        return x
+      f("abcdef")
+      f(["abc", "def", "ghi"])
+      f(("abc", "def", "ghi"))
+    """)
+
+  def test_str_against_union_iterable_str(self):
+    self.Check("""
+      from typing import Union, Iterable
+      def f(x: Union[Iterable[str], str]):
+        return x
+      f("abcdef")
+      f(["abc", "def", "ghi"])
+      f(("abc", "def", "ghi"))
+    """)
+
+  @test_base.skip("failing until Implementation is approved.")
+  def test_optional_str_against_iterable(self):
+    self.CheckWithErrors("""
+      from typing import Iterable, Optional
+      def foo(x: Iterable[str]): ...
+
+      def bar(s: str):
+        foo(s)  # wrong-arg-types
+
+      def baz(os: Optional[str]):
+        foo(os)  # wrong-arg-types
+    """)
+
+  @test_base.skip("failing until Implementation is approved.")
+  def test_str_against_plain_collection(self):
+    self.CheckWithErrors("""
+      from typing import Collection
+      def f(itr: Collection):
+        return
+      f("abcdef")  # wrong-arg-types
+      f(["abc", "def", "ghi"])
+    """)
+
+  @test_base.skip("failing until Implementation is approved.")
+  def test_str_against_plain_container(self):
+    self.CheckWithErrors("""
+      from typing import Container
+      def f(itr: Container):
+        return
+      f("abcdef")  # wrong-arg-types
+      f(["abc", "def", "ghi"])
+    """)
+
+  @test_base.skip("failing until Implementation is approved.")
+  def test_str_against_plain_mapping(self):
+    self.CheckWithErrors("""
+      from typing import Mapping
+      def f(itr: Mapping):
+        return
+      f("abcdef")  # wrong-arg-types
+    """)
+
+  @test_base.skip("failing until Implementation is approved.")
+  def test_str_against_collection(self):
+    self.CheckWithErrors("""
+      from typing import Collection
+      def f(x: Collection[str]):
+        return
+      f("abcdef")  # wrong-arg-types
+    """)
+
+  @test_base.skip("failing until Implementation is approved.")
+  def test_str_against_container(self):
+    self.CheckWithErrors("""
+      from typing import Container
+      def f(x: Container[str]):
+        return
+      f("abcdef")  # wrong-arg-types
+    """)
+
+  @test_base.skip("failing until Implementation is approved.")
+  def test_str_against_mapping(self):
+    self.CheckWithErrors("""
+      from typing import Mapping
+      def f(x: Mapping[int, str]):
+        return
+      f("abcdef")  # wrong-arg-types
+    """)
+
+
 test_base.main(globals(), __name__ == "__main__")

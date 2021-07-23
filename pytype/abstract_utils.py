@@ -3,7 +3,7 @@
 import collections
 import hashlib
 import logging
-from typing import Any, Iterable, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Collection, Dict, Iterable, Mapping, Optional, Sequence, Tuple, Union
 
 from pytype import compat
 from pytype import datatypes
@@ -821,3 +821,18 @@ def build_generic_template(
 def is_generic_protocol(val: _BaseValue) -> bool:
   return (val.isinstance_ParameterizedClass() and
           val.full_name == "typing.Protocol")
+
+
+def combine_substs(
+    substs1: Optional[Collection[Dict[str, cfg.Variable]]],
+    substs2: Optional[Collection[Dict[str, cfg.Variable]]]
+) -> Collection[Dict[str, cfg.Variable]]:
+  """Combines the two collections of type parameter substitutions."""
+  if substs1 and substs2:
+    return tuple({**sub1, **sub2} for sub1 in substs1 for sub2 in substs2)  # pylint: disable=g-complex-comprehension
+  elif substs1:
+    return substs1
+  elif substs2:
+    return substs2
+  else:
+    return ()

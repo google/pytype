@@ -523,6 +523,20 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
         return f().__name__
     """)
 
+  def test_class_typevar_in_nested_method(self):
+    self.Check("""
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        def __init__(self, x: T):
+          self.x = x
+        def f(self):
+          def g() -> T:
+            return self.x
+          return g()
+      assert_type(Foo(0).f(), int)
+    """)
+
 
 class GenericTypeAliasTest(test_base.TargetPython3BasicTest):
   """Tests for generic type aliases ("type macros")."""
