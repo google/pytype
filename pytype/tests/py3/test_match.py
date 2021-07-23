@@ -547,5 +547,9 @@ class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
       f("abcdef")  # wrong-arg-types
     """)
 
+  def test_star_unpacking_strings(self):
+    self.CheckWithErrors("""
+      *a, b = "hello world"  # wrong-arg-types
+    """)
 
 test_base.main(globals(), __name__ == "__main__")
