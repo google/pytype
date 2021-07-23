@@ -385,6 +385,10 @@ class MatchTestPy3(test_base.TargetPython3FeatureTest):
 class NonIterableStringsTest(test_base.TargetPython3BasicTest):
   """Tests for non-iterable string behavior."""
 
+  def setUp(self):
+    super().setUp()
+    self.options.tweak(enforce_noniterable_strings=True)
+
   @test_base.skip("failing until Implementation is approved.")
   def test_add_invalid_string(self):
     self.CheckWithErrors("""
