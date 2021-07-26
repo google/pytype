@@ -562,6 +562,11 @@ class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
       x = filter(None, "")  # wrong-arg-types
     """)
 
+  def test_reduce(self):
+    self.CheckWithErrors("""
+      x = reduce(lambda x, y: 42, "abcdef")  # wrong-arg-types
+    """)
+
   def test_sorted(self):
     self.CheckWithErrors("""
       x = sorted(u"hello")  # wrong-arg-types
@@ -570,11 +575,22 @@ class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
   def test_iter(self):
     self.CheckWithErrors("""
       x = iter(u"hello")  # wrong-arg-types
+      x = iter("hello")  # wrong-arg-types
     """)
 
   def test_zip(self):
     self.CheckWithErrors("""
       x = zip("abc", "def")  # wrong-arg-types
+    """)
+
+  def test_tuple_init(self):
+    self.CheckWithErrors("""
+      x = tuple("abcdef")  # wrong-arg-types
+    """)
+
+  def test_frozenset_init(self):
+    self.CheckWithErrors("""
+      x = frozenset("abcdef")  # wrong-arg-types
     """)
 
 test_base.main(globals(), __name__ == "__main__")
