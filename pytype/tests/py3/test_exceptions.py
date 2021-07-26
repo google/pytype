@@ -71,5 +71,20 @@ class TestExceptionsPy3(test_base.TargetPython3FeatureTest):
     self.assertErrorRegexes(
         errors, {"e": "NoneType does not inherit from BaseException"})
 
+  def test_no_return_in_finally(self):
+    # Tests that pytype is okay with the finally block not returning anything.
+    self.Check("""
+      import array
+      import os
+      def f(fd) -> int:
+        try:
+          buf = array.array("l", [0])
+          return buf[0]
+        except (IOError, OSError):
+          return 0
+        finally:
+          os.close(fd)
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

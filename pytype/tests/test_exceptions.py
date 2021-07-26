@@ -440,21 +440,6 @@ class TestExceptions(test_base.TargetIndependentTest):
         pass
     """)
 
-  def test_no_return_in_finally(self):
-    # Tests that pytype is okay with the finally block not returning anything.
-    self.Check("""
-      import array
-      import os
-      def f(fd) -> int:
-        try:
-          buf = array.array("l", [0])
-          return buf[0]
-        except (IOError, OSError):
-          return 0
-        finally:
-          os.close(fd)
-    """)
-
   def test_contextmanager(self):
     # Tests that the with block doesn't get mistaken for an exception.
     ty = self.Infer("""
@@ -471,6 +456,21 @@ class TestExceptions(test_base.TargetIndependentTest):
       from typing import Any, Dict
       _temporaries: Dict[nothing, nothing]
       def f(name) -> Any: ...
+    """)
+
+  def test_no_except(self):
+    # Tests inference for a finally block without an except.
+    ty = self.Infer("""
+      def f():
+        try:
+          if __random__:
+            raise ValueError()
+        finally:
+          __any_object__()
+        return 0
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> int: ...
     """)
 
 

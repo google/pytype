@@ -120,7 +120,7 @@ class _FinallyStateTracker:
   """Track return state for try/except/finally blocks."""
   # Used in vm.run_frame()
 
-  SETUP_OPCODES = (opcodes.SETUP_EXCEPT, opcodes.SETUP_FINALLY)
+  SETUP_OPCODES = (opcodes.SETUP_EXCEPT,)
 
   RETURN_STATES = ("return", "exception")
 
