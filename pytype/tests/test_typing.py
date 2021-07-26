@@ -100,10 +100,15 @@ class TypingTest(test_base.TargetIndependentTest):
         from typing import Tuple
         class Foo(Tuple[Foo]): ...
       """)
-      self.Check("""
+      ty = self.Infer("""
         import foo
-        foo.Foo()
+        x = foo.Foo()[0]
       """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        import foo
+        foo: module
+        x: foo.Foo
+      """)
 
   def test_base_class(self):
     ty = self.Infer("""

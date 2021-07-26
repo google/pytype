@@ -267,7 +267,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         node, attr = self._lookup_from_mro_and_handle_descriptors(
             node, obj, name, valself, skip=())
       else:
-        node, attr = self._get_member(node, obj, name)
+        node, attr = self._get_member(node, obj, name, valself)
     if attr is None and cls:
       # Check for the attribute on the class.
       node, attr = self.get_attribute(node, cls, name, valself)
@@ -420,7 +420,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       # that class, so we have to call get_special_attribute here as well.
       var = base.get_special_attribute(node, name, valself)
       if var is None:
-        node, var = self._get_attribute_flat(node, base, name)
+        node, var = self._get_attribute_flat(node, base, name, valself)
       if var is None or not var.bindings:
         continue
       for varval in var.bindings:
@@ -448,12 +448,12 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       break  # we found a class which has this attribute
     return ret
 
-  def _get_attribute_flat(self, node, cls, name):
+  def _get_attribute_flat(self, node, cls, name, valself):
     """Flat attribute retrieval (no mro lookup)."""
     if isinstance(cls, abstract.ParameterizedClass):
-      return self._get_attribute_flat(node, cls.base_cls, name)
+      return self._get_attribute_flat(node, cls.base_cls, name, valself)
     elif isinstance(cls, class_mixin.Class):
-      node, attr = self._get_member(node, cls, name)
+      node, attr = self._get_member(node, cls, name, valself)
       if attr is not None:
         attr = self._filter_var(node, attr)
       return node, attr
@@ -463,10 +463,15 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     else:
       return node, None
 
-  def _get_member(self, node, obj, name):
+  def _get_member(self, node, obj, name, valself):
     """Get a member of an object."""
     if isinstance(obj, mixin.LazyMembers):
-      obj.load_lazy_attribute(name)
+      if valself and isinstance(valself.data, abstract.ParameterizedClass):
+        subst = {f"{valself.data.full_name}.{k}": v.instantiate(node)
+                 for k, v in valself.data.formal_type_parameters.items()}
+      else:
+        subst = None
+      obj.load_lazy_attribute(name, subst)
 
     # If we are looking up a member that we can determine is an instance
     # rather than a class attribute, add it to the instance's members.

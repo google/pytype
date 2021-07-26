@@ -28,8 +28,8 @@ class TypingExtensionsOverlay(overlay.Overlay):
               name, typing_overlay.not_supported_yet)
     super().__init__(vm, "typing_extensions", member_map, ast)
 
-  def _convert_member(self, member):
-    var = super()._convert_member(member)
+  def _convert_member(self, member, subst=None):
+    var = super()._convert_member(member, subst)
     for val in var.data:
       # typing_extensions backports typing features to older versions.
       # Pretending that the backports are in typing is easier than remembering
