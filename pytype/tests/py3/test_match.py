@@ -552,4 +552,29 @@ class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
       *a, b = "hello world"  # wrong-arg-types
     """)
 
+  def test_from_keys(self):
+    self.CheckWithErrors("""
+      d = dict.fromkeys(u"x")  # wrong-arg-types
+    """)
+
+  def test_filter(self):
+    self.CheckWithErrors("""
+      x = filter(None, "")  # wrong-arg-types
+    """)
+
+  def test_sorted(self):
+    self.CheckWithErrors("""
+      x = sorted(u"hello")  # wrong-arg-types
+    """)
+
+  def test_iter(self):
+    self.CheckWithErrors("""
+      x = iter(u"hello")  # wrong-arg-types
+    """)
+
+  def test_zip(self):
+    self.CheckWithErrors("""
+      x = zip("abc", "def")  # wrong-arg-types
+    """)
+
 test_base.main(globals(), __name__ == "__main__")
