@@ -3623,10 +3623,12 @@ class InterpreterFunction(SignedFunction):
       callargs = self._map_args(node, args)
     first_arg = sig.get_first_arg(callargs)
     annotation_substs = substs
-    # Adds type parameter substitutions from all containing classes.
-    for frame in self.vm.frames:
+    # Adds type parameter substitutions from all containing classes. Note that
+    # lower frames (ones closer to the end of self.vm.frames) take precedence
+    # over higher ones.
+    for frame in reversed(self.vm.frames):
       annotation_substs = abstract_utils.combine_substs(
-          annotation_substs, frame.substs)
+          frame.substs, annotation_substs)
     # Keep type parameters without substitutions, as they may be needed for
     # type-checking down the road.
     annotations = self.vm.annotations_util.sub_annotations(
