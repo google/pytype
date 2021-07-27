@@ -2841,14 +2841,8 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     return node, results
 
   def instantiate(self, node, container=None):
-    res = self.vm.convert.constant_to_value(
+    return self.vm.convert.constant_to_var(
         abstract_utils.AsInstance(self.pytd_cls), {}, node)
-    # Canonical enum members (i.e. enum instances created by instantiate()) need
-    # to have "name" and "value" set to prevent spurious attribute errors.
-    if self.is_enum:
-      res.members["name"] = self.vm.convert.build_string(node, "")
-      res.members["value"] = self.vm.new_unsolvable(node)
-    return res.to_variable(node)
 
   def __repr__(self):
     return "PyTDClass(%s)" % self.name

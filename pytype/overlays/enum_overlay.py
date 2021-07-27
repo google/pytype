@@ -22,10 +22,6 @@ call_metaclass_init is called, allowing EnumMetaInit to transform the PyTDClass
 into a proper enum.
 """
 
-# TODO(tsudol):
-# - Flag b/194136075
-# - pyis that aren't formatted correctly
-
 import logging
 
 from pytype import abstract
